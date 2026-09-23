@@ -6,9 +6,8 @@
 
 どの環境でも、**ソースは保存先にファイルで残す**（図は `.md` 内の Mermaid か SVG、ワイヤーは `.html`）。表示は環境にある道具で行う:
 
-- **show_widget がある（claude.ai）** — 最初の描画前に `mcp__visualize__read_me`（`modules: ["diagram"]` または `["mockup"]`）を一度読み、`diagram` / `mockup` でインライン描画する。
-- **Artifact ツールがある（Claude Code on the web 等）** — 保存した HTML を Artifact として公開し、リンクを渡す。
-- **どちらも無い** — 保存したファイルのパスを示し、ユーザーにブラウザ／Markdown プレビューで開いてもらう。
+- **インライン描画や Artifact の道具がある** — それで表示する（claude.ai の show_widget、Claude Code on the web の Artifact など）。
+- **無い** — 保存したファイルのパスを示し、ユーザーにブラウザ／Markdown プレビューで開いてもらう。
 
 **忠実度は渡す HTML/SVG の作り込み度で表す**（粗い＝枠だけ／中＝ペイン分割や情報階層まで）。工程に合わせて段階的に上げる: ③粗いワイヤー → ⑥中忠実度レイアウト → ⑦作り込み。着色は⑦まで最小に留める。
 
