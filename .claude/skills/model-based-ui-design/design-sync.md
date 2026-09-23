@@ -17,6 +17,8 @@
 - 同期先は design-system 型のプロジェクト（通常プロジェクトに push しても design system にはならない）
 - **1コンポーネントずつ**同期し、Claude Design 側で磨いた結果は次の往復で読み戻してローカルに反映する
 
+正本はリポジトリの `DESIGN.md` 側に置く。Claude Design で磨いた色・タイポ・部品は、引き継ぎ（[handoff.md](handoff.md)）で `DESIGN.md` に書き出す。既存の `DESIGN.md` があれば、往復の出発点もそのトークンにする。
+
 ## フォールバック（DesignSync が無い環境）
 
 往復ツールが無くても⑦は止めない:
