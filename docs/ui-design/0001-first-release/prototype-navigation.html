@@ -1,0 +1,374 @@
+<title>nu-tori 骨組みの比較</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑤ ナビゲーション構造の問い「今日（タイムライン）と目標をどうつなぐか」に答えるためのもの。
+  3案を #A #B #C で切り替える。下の黒いバーか ← → キーで切り替えられる。
+  A: 2タブ（今日／目標）  B: タブなし＋今日の一番上に目標の要約  C: 1本のタイムラインだけ（基準）
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#e9ecef; --phone:#fbfcfd; --ink:#22272d; --muted:#69727c; --line:#c3c9d0; --soft:#eef1f4;
+  --accent:#34597f; --good:#2f7a52; --pill:#15181b; --pill-ink:#f3f5f7;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+    --accent:#8fb2d8; --good:#7cc49b; --pill:#f3f5f7; --pill-ink:#15181b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+  --accent:#8fb2d8; --good:#7cc49b; --pill:#f3f5f7; --pill-ink:#15181b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:13px/1.5 "BIZ UDPGothic",system-ui,-apple-system,"Hiragino Sans",sans-serif;padding:16px 16px 96px}
+.wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+.lead{max-width:390px;width:100%;color:var(--muted);margin:0}
+.lead b{color:var(--ink)}
+.phone{position:relative;width:min(390px,100%);height:760px;background:var(--phone);border:2px solid var(--line);border-radius:30px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+.bar h1{font-size:15px;margin:0;font-weight:700}
+.bar .l,.bar .r{min-width:56px;display:flex;gap:6px}
+.bar .r{justify-content:flex-end}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.link{color:var(--accent)}
+.iconbtn{border:1px solid var(--line);border-radius:8px;padding:2px 8px;color:var(--accent)}
+.scroll{flex:1;overflow:auto;display:flex;flex-direction:column}
+.sec{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.finder{height:190px;border:1px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);background:var(--soft)}
+.shutter{width:54px;height:54px;border-radius:50%;border:3px solid var(--ink)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.summary{border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:left;width:100%}
+.summary .t{font-weight:700}
+.ok{color:var(--good);font-weight:700}
+.grass{display:grid;grid-template-columns:repeat(28,1fr);gap:2px}
+.grass i{aspect-ratio:1;border-radius:2px;background:var(--soft);border:1px solid var(--line)}
+.grass i.f{background:var(--muted);border-color:var(--muted)}
+.grass i.h{background:var(--line)}
+.cap{color:var(--muted);font-size:11px}
+.meters{display:grid;grid-template-columns:auto 1fr auto;gap:3px 8px;align-items:center;font-variant-numeric:tabular-nums}
+.meter{height:8px;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.meter span{display:block;height:100%;background:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.tl{display:flex;flex-direction:column}
+.item{display:flex;gap:10px;align-items:flex-start;padding:8px 14px;border-top:1px solid var(--soft);text-align:left;width:100%}
+.item .time{color:var(--muted);width:40px;flex:none;font-variant-numeric:tabular-nums}
+.item .ph{width:34px;height:34px;flex:none;border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted)}
+.item .main{flex:1;min-width:0}
+.item .sub{color:var(--muted);font-size:12px}
+.day{padding:12px 14px 4px;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px}
+.day::after{content:"";flex:1;border-top:1px solid var(--line)}
+.card{margin:6px 14px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;text-align:left}
+.card .t{font-weight:700}
+.q{background:var(--soft)}
+.ask{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--line)}
+.ask input{flex:1;min-width:0;font:inherit;color:inherit;background:var(--phone);border:1px solid var(--line);border-radius:18px;padding:6px 12px}
+.ask button{border:1px solid var(--line);border-radius:18px;padding:0 12px;color:var(--accent)}
+.tabs{display:flex;border-top:1px solid var(--line);padding:8px 0 12px}
+.tabs button{flex:1;color:var(--muted)}
+.tabs button[aria-current="page"]{color:var(--ink);font-weight:700;text-decoration:underline;text-underline-offset:4px}
+.chart{width:100%;height:auto;display:block}
+.list{display:flex;flex-direction:column}
+.list .li{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--soft);text-align:left;width:100%}
+.h2{font-weight:700;font-size:13px;margin:0}
+.big{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.primary{border:1px solid var(--ink);border-radius:10px;padding:8px;text-align:center;width:100%}
+.empty{color:var(--muted);padding:6px 0}
+.scrim{position:absolute;inset:0;background:rgb(0 0 0 / .28);display:flex;align-items:flex-end}
+.sheet{background:var(--phone);width:100%;border-radius:18px 18px 0 0;border-top:1px solid var(--line);padding:12px 14px 18px;display:flex;flex-direction:column;gap:10px;max-height:80%;overflow:auto}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--line);align-self:center}
+.menu .li{padding:10px 0}
+.toast{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);background:var(--pill);color:var(--pill-ink);padding:6px 12px;border-radius:14px;font-size:12px;white-space:nowrap}
+.inline-trend{padding:4px 14px 8px 64px}
+.switcher{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--pill);color:var(--pill-ink);border-radius:999px;padding:6px;box-shadow:0 6px 20px rgb(0 0 0 / .25);max-width:calc(100% - 32px)}
+.switcher button{width:34px;height:34px;border-radius:50%;font-size:16px}
+.switcher button:hover{background:rgb(127 127 127 / .25)}
+.switcher .lbl{padding:0 8px;text-align:center;min-width:0}
+.switcher .lbl b{display:block;font-size:13px}
+.switcher .lbl span{display:block;font-size:11px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion: no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+</style>
+
+<div class="wrap">
+  <p class="lead"><b>プロトタイプ（捨てる前提）。</b>問い：今日（記録の時系列）と目標（見渡す場所）を、どうつなぐか。体重・食事・目標の要約・質問をタップして行き来を比べてください。データは例です。</p>
+  <div class="phone" id="phone"></div>
+</div>
+
+<div class="switcher" role="group" aria-label="案の切り替え（プロトタイプ用）">
+  <button id="prev" aria-label="前の案">←</button>
+  <div class="lbl"><b id="vname"></b><span id="vstate"></span></div>
+  <button id="next" aria-label="次の案">→</button>
+</div>
+
+<script>
+const VARIANTS = {
+  A: '2タブ（今日／目標）',
+  B: 'タブなし＋目標の要約',
+  C: 'タイムラインだけ（基準）',
+};
+const KEYS = Object.keys(VARIANTS);
+
+// 例のデータ（Tさん、減量）
+const goal = { dir: '減量', start: 76.0, target: 71.0, startDate: '8/28', due: '11/20', daysLeft: 58, now: 72.4 };
+const weights = [76.0,75.6,75.4,75.7,75.2,75.0,75.3,74.8,74.6,74.9,74.4,74.2,74.5,74.0,73.9,74.1,73.6,73.5,73.8,73.2,73.1,73.4,72.9,72.8,73.0,72.6,72.4];
+const trend = weights.map((_, i, a) => { const s = a.slice(Math.max(0, i - 6), i + 1); return s.reduce((x, y) => x + y, 0) / s.length; });
+const targets = [
+  { from: '9/21', kcal: 1900, why: '先週の減りが見込みより遅く、推定消費量を 2,310 → 2,240 kcal に見直した' },
+  { from: '9/14', kcal: 2000, why: '推定消費量 2,310 kcal。このペースで期限に間に合う' },
+  { from: '9/7',  kcal: 2050, why: '使い始めの1週間の記録から、推定消費量を見直した' },
+  { from: '8/28', kcal: 2100, why: '身長・体重・歩数から計算した最初の目安' },
+];
+const weeks = [
+  { label: '9/14〜9/20', diff: '−0.7 kg', pace: '間に合う' },
+  { label: '9/7〜9/13',  diff: '−0.8 kg', pace: '間に合う' },
+  { label: '8/31〜9/6',  diff: '−0.9 kg', pace: '間に合う' },
+];
+const grass = '1111111111111101111111111111'.split('').map((c, i) => i === 27 ? 'h' : c === '1' ? 'f' : '');
+const timeline = [
+  { day: '9/23（今日）' },
+  { t: '12:30', kind: 'meal', name: '唐揚げ弁当', kcal: 820, dishes: [['唐揚げ', ['鶏もも肉 120g', 'サラダ油 大さじ1', '片栗粉 大さじ1']], ['ご飯', ['ご飯 220g']], ['キャベツの千切り', ['キャベツ 30g']]] },
+  { t: '07:12', kind: 'meal', name: 'おにぎり ほか', kcal: 420, dishes: [['鮭おにぎり', ['ご飯 110g', '鮭 15g', '海苔 1枚']], ['ゆで卵', ['卵 1個']]] },
+  { t: '07:05', kind: 'weight', v: 72.4 },
+  { day: '9/22' },
+  { t: '21:50', kind: 'q', q: '夜に食べすぎた。明日どうすればいい？', a: '今日は目安を 380 kcal 超えました。明日の昼を軽めにすれば、週の合計では目安の範囲に収まります。' },
+  { t: '21:40', kind: 'text', name: '残りご飯と唐揚げ', kcal: 380, dishes: [['唐揚げ', ['鶏もも肉 60g', 'サラダ油 小さじ2']], ['ご飯', ['ご飯 100g']]] },
+  { t: '19:05', kind: 'meal', name: 'カレーライス', kcal: 780, dishes: [['カレーライス', ['ご飯 250g', '豚肉 60g', 'じゃがいも 50g', 'カレールウ 20g']]] },
+  { t: '07:02', kind: 'weight', v: 72.6 },
+  { week: 0 },
+  { day: '9/21' },
+  { target: 0 },
+  { t: '12:15', kind: 'meal', name: 'ざるそば', kcal: 450, dishes: [['ざるそば', ['そば 200g', 'めんつゆ 50ml']]] },
+  { t: '07:10', kind: 'weight', v: 72.8 },
+];
+
+let variant = 'A';
+let view = 'today';      // today | goal | meal
+let mealRef = null;
+let sheet = null;        // weight | menu | null
+let expandedWeight = false;
+let asked = [];
+
+function read() {
+  const h = (location.hash || '').replace('#', '');
+  if (KEYS.includes(h)) variant = h;
+}
+function go(v) {
+  variant = v; view = 'today'; sheet = null; expandedWeight = false;
+  try { history.replaceState(null, '', '#' + v); } catch (e) {}
+  render();
+}
+
+function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content; }
+
+function chart({ w = 320, h = 140, full = false } = {}) {
+  // 目標期間（8/28〜11/20 = 84日）を横軸に、71〜76.5kg を縦軸にとる
+  const days = full ? 84 : weights.length - 1;
+  const lo = 70.5, hi = 76.5, pl = 30, pr = 8, pt = 8, pb = 20;
+  const x = d => pl + (w - pl - pr) * d / days;
+  const y = v => pt + (h - pt - pb) * (hi - v) / (hi - lo);
+  const off = full ? 0 : 0;
+  const pts = weights.map((v, i) => `<circle cx="${x(i + off).toFixed(1)}" cy="${y(v).toFixed(1)}" r="1.6" fill="var(--muted)"/>`).join('');
+  const line = trend.map((v, i) => `${x(i + off).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const goalLine = full ? `<line x1="${x(0)}" y1="${y(goal.start)}" x2="${x(84)}" y2="${y(goal.target)}" stroke="var(--line)" stroke-dasharray="4 3"/>
+    <text x="${x(84) - 2}" y="${y(goal.target) + 14}" text-anchor="end" font-size="10" fill="var(--muted)">目標 71.0（11/20）</text>` : '';
+  const grid = [71, 73, 75].map(v => `<line x1="${pl}" x2="${w - pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--soft)"/><text x="${pl - 4}" y="${y(v) + 3}" text-anchor="end" font-size="10" fill="var(--muted)">${v}</text>`).join('');
+  const xl = full
+    ? `<text x="${x(0)}" y="${h - 4}" font-size="10" fill="var(--muted)">8/28</text><text x="${x(weights.length - 1)}" y="${h - 4}" font-size="10" fill="var(--muted)" text-anchor="middle">今日</text><text x="${x(84)}" y="${h - 4}" font-size="10" fill="var(--muted)" text-anchor="end">11/20</text>`
+    : `<text x="${x(0)}" y="${h - 4}" font-size="10" fill="var(--muted)">8/28</text><text x="${x(days)}" y="${h - 4}" font-size="10" fill="var(--muted)" text-anchor="end">今日</text>`;
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="体重の傾向">${grid}${goalLine}${pts}<polyline points="${line}" fill="none" stroke="var(--ink)" stroke-width="2"/>${xl}</svg>`;
+}
+
+function goalSummary() {
+  return `<button class="summary" data-act="goal">
+    <div class="row"><span class="t">${goal.dir} 71.0kg・11/20まで</span><span class="link">›</span></div>
+    <div class="row"><span>あと <b class="num">−1.4 kg</b>・<span class="num">58</span>日</span><span class="ok">間に合うペース</span></div>
+  </button>`;
+}
+
+function todayTop() {
+  return `<div class="sec">
+    ${variant === 'B' ? goalSummary() : ''}
+    <div class="finder"><div class="shutter" aria-hidden="true"></div><button class="iconbtn" data-act="shoot">撮る</button><button class="link" data-act="text">撮り忘れた食事を文章で入れる</button></div>
+    <div><div class="grass" aria-label="記録した日（直近4週）">${grass.map(c => `<i class="${c}"></i>`).join('')}</div><div class="cap">記録した日（直近4週）</div></div>
+    <div class="meters">
+      <span>kcal</span><div class="meter"><span style="width:65%"></span></div><span class="num">1,240 / 1,900</span>
+      <span>P</span><div class="meter"><span style="width:48%"></span></div><span class="num">58 / 120 g</span>
+      <span>F</span><div class="meter"><span style="width:73%"></span></div><span class="num">40 / 55 g</span>
+      <span>C</span><div class="meter"><span style="width:65%"></span></div><span class="num">150 / 230 g</span>
+    </div>
+  </div>`;
+}
+
+function timelineHtml() {
+  let out = '';
+  asked.forEach(a => {
+    out += `<div class="card q"><div class="cap">いま</div><div class="t">${a.q}</div><div>${a.a}</div></div>`;
+  });
+  timeline.forEach((it, i) => {
+    if (it.day) { out += `<div class="day">${it.day}</div>`; return; }
+    if (it.week !== undefined) {
+      const w = weeks[it.week];
+      out += `<button class="card" data-act="${variant === 'C' ? 'weekinline' : 'goal'}"><div class="t">週のふりかえり ${w.label}</div><div>傾向 <b class="num">${w.diff}</b>・<span class="ok">${w.pace}</span>${variant === 'C' ? '' : '　<span class="link">目標で見る ›</span>'}</div></button>`;
+      return;
+    }
+    if (it.target !== undefined) {
+      const t = targets[it.target];
+      out += `<div class="card"><div class="t">1日の目安 2,000 → ${t.kcal.toLocaleString()} kcal</div><div class="sub cap">${t.why}</div></div>`;
+      return;
+    }
+    if (it.kind === 'weight') {
+      out += `<button class="item" data-act="weight" data-i="${i}"><span class="time">${it.t}</span><span class="ph">体重</span><span class="main"><span class="num"><b>${it.v.toFixed(1)}</b> kg</span><div class="sub">傾向 ${trend[trend.length - 1].toFixed(1)} kg ─╲_</div></span></button>`;
+      if (variant === 'C' && expandedWeight && i === 3) out += `<div class="inline-trend">${chart({ h: 110 })}<div class="cap">直近4週の傾向。長い期間はここでは見られない</div></div>`;
+      return;
+    }
+    if (it.kind === 'q') {
+      out += `<div class="item"><span class="time">${it.t}</span><span class="ph">質問</span><span class="main"><b>${it.q}</b><div class="sub">${it.a}</div></span></div>`;
+      return;
+    }
+    out += `<button class="item" data-act="meal" data-i="${i}"><span class="time">${it.t}</span><span class="ph">${it.kind === 'text' ? '文' : '写真'}</span><span class="main"><b>${it.name}</b><div class="sub num">${it.kcal} kcal</div></span></button>`;
+  });
+  return `<div class="tl">${out}</div>`;
+}
+
+function askBar() {
+  return `<form class="ask" id="ask"><label for="q" class="cap" hidden>質問</label><input id="q" placeholder="食事や体重について質問…" autocomplete="off"><button>送る</button></form>`;
+}
+
+function goalView() {
+  return `<div class="sec">
+    <div class="row"><span class="h2">${goal.dir}・11/20まで</span><span class="cap">8/28 に 76.0kg から開始</span></div>
+    <div class="row"><span>あと <span class="big">−1.4 kg</span></span><span><span class="num">58</span>日 ・ <span class="ok">間に合うペース</span></span></div>
+    ${chart({ full: true })}
+    <div class="cap">点は測った体重、線は日々のブレをならした傾向、破線は目標までの道筋</div>
+  </div>
+  <div class="sec"><p class="h2">1日の目安の推移</p><div class="list">
+    ${targets.map(t => `<div class="li"><span><b class="num">${t.kcal.toLocaleString()} kcal</b>　<span class="cap">${t.from}〜</span><div class="cap">${t.why}</div></span></div>`).join('')}
+  </div></div>
+  <div class="sec"><p class="h2">週のふりかえり</p><div class="list">
+    ${weeks.map(w => `<div class="li"><span>${w.label}</span><span><span class="num">${w.diff}</span>・<span class="ok">${w.pace}</span></span></div>`).join('')}
+  </div></div>
+  <div class="sec"><button class="primary" data-act="switchgoal">目標を切り替える</button></div>
+  <div class="sec"><p class="h2">過去の目標</p><div class="empty">まだありません</div></div>`;
+}
+
+function mealView() {
+  const m = timeline[mealRef];
+  return `<div class="sec">
+    <div class="finder" style="height:150px">${m.kind === 'text' ? '文章で記録：「' + m.name + '」' : '写真'}</div>
+    <div class="row"><span class="h2">${m.t}　${m.name}</span><span class="num">${m.kcal} kcal</span></div>
+    ${m.dishes.map(([d, ings]) => `<div class="card" style="margin:0"><div class="row"><span class="t">${d}</span><button class="link" data-act="toast" data-msg="料理の量・名前を直す（省略）">直す</button></div>${ings.map(s => `<div class="row"><span>${s.split(' ')[0]}</span><button class="link num" data-act="toast" data-msg="材料の量を直す（省略）">${s.split(' ').slice(1).join(' ')}</button></div>`).join('')}</div>`).join('')}
+    <button class="link" data-act="toast" data-msg="料理を足す（省略）" style="text-align:left">＋ 料理を足す</button>
+  </div>`;
+}
+
+function sheetHtml() {
+  if (sheet === 'weight') {
+    return `<div class="scrim" data-act="close"><div class="sheet" data-stop>
+      <div class="grab"></div>
+      <div class="row"><span class="h2">9/23 の体重</span><span class="big">72.4 kg</span></div>
+      <button class="iconbtn" data-act="toast" data-msg="体重を直す（省略）" style="align-self:flex-start">直す</button>
+      ${chart({ h: 120 })}
+      ${variant === 'A' ? '<button class="link" data-act="goal" style="text-align:left">目標期間の傾向は「目標」タブで ›</button>' : ''}
+      ${variant === 'B' ? '<button class="link" data-act="goal" style="text-align:left">目標までの道筋を見る ›</button>' : ''}
+    </div></div>`;
+  }
+  if (sheet === 'menu') {
+    return `<div class="scrim" data-act="close"><div class="sheet menu" data-stop>
+      <div class="grab"></div>
+      <div class="list">
+        <button class="li" data-act="goal"><span>目標</span><span class="cap">減量 71.0kg・11/20まで ›</span></button>
+        <button class="li" data-act="toast" data-msg="アカウント（省略）"><span>アカウント</span><span class="cap">›</span></button>
+      </div>
+    </div></div>`;
+  }
+  return '';
+}
+
+function stateLabel() {
+  const where = view === 'goal' ? '目標' : view === 'meal' ? '食事の詳細' : '今日';
+  const s = sheet === 'weight' ? ' ＋体重のシート' : sheet === 'menu' ? ' ＋メニュー' : '';
+  return `表示中：${where}${s}`;
+}
+
+function render() {
+  const p = document.getElementById('phone');
+  let bar, body, bottom = '';
+  if (view === 'meal') {
+    bar = `<div class="bar"><div class="l"><button class="link" data-act="back">‹ 戻る</button></div><h1>食事</h1><div class="r"></div></div>`;
+    body = mealView();
+  } else if (view === 'goal') {
+    const back = variant === 'A' ? '' : `<button class="link" data-act="back">‹ 今日</button>`;
+    bar = `<div class="bar"><div class="l">${back}</div><h1>目標</h1><div class="r"><button class="iconbtn" data-act="toast" data-msg="アカウント（省略）" aria-label="アカウント">人</button></div></div>`;
+    body = goalView();
+  } else {
+    const right = variant === 'C'
+      ? `<button class="iconbtn" data-act="menu" aria-label="メニュー">≡</button>`
+      : `<button class="iconbtn" data-act="toast" data-msg="アカウント（省略）" aria-label="アカウント">人</button>`;
+    bar = `<div class="bar"><div class="l"></div><h1>9/23（今日）</h1><div class="r">${right}</div></div>`;
+    body = todayTop() + timelineHtml();
+    bottom = askBar();
+  }
+  if (variant === 'A' && view !== 'meal') {
+    bottom += `<nav class="tabs"><button data-act="tab-today" ${view === 'today' ? 'aria-current="page"' : ''}>今日</button><button data-act="goal" ${view === 'goal' ? 'aria-current="page"' : ''}>目標</button></nav>`;
+  }
+  p.replaceChildren(el(bar + `<div class="scroll">${body}</div>` + bottom + sheetHtml()));
+  document.getElementById('vname').textContent = `${variant}　${VARIANTS[variant]}`;
+  document.getElementById('vstate').textContent = stateLabel();
+  const f = document.getElementById('ask');
+  if (f) f.addEventListener('submit', e => {
+    e.preventDefault();
+    const q = document.getElementById('q').value.trim();
+    if (!q) return;
+    asked.unshift({ q, a: '（例）今日のここまでと目標を踏まえた答えが、ここにその時刻の出来事として並ぶ。' });
+    render();
+  });
+}
+
+let toastTimer;
+function toast(msg) {
+  const p = document.getElementById('phone');
+  p.querySelector('.toast')?.remove();
+  p.append(el(`<div class="toast" role="status">${msg}</div>`));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => p.querySelector('.toast')?.remove(), 1600);
+}
+
+document.getElementById('phone').addEventListener('click', e => {
+  const stop = e.target.closest('[data-stop]');
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  if (stop && b.dataset.act === 'close') return;
+  const act = b.dataset.act;
+  if (act === 'goal') { view = 'goal'; sheet = null; }
+  else if (act === 'tab-today' || act === 'back') { view = 'today'; }
+  else if (act === 'meal') { view = 'meal'; mealRef = +b.dataset.i; }
+  else if (act === 'weight') {
+    if (variant === 'C') expandedWeight = !expandedWeight; else sheet = 'weight';
+  }
+  else if (act === 'menu') sheet = 'menu';
+  else if (act === 'close') sheet = null;
+  else if (act === 'weekinline') { toast('C では週のふりかえりはここに出るだけ'); return; }
+  else if (act === 'shoot') { toast('撮影（省略）→ 撮ると今日の一番上に並ぶ'); return; }
+  else if (act === 'text') { toast('文章で記録（省略）'); return; }
+  else if (act === 'switchgoal') { toast('目標の設定（省略）'); return; }
+  else if (act === 'toast') { toast(b.dataset.msg); return; }
+  render();
+  if (act === 'goal' || act === 'back' || act === 'tab-today' || act === 'meal') document.querySelector('.scroll').scrollTop = 0;
+});
+
+function step(d) { go(KEYS[(KEYS.indexOf(variant) + d + KEYS.length) % KEYS.length]); }
+document.getElementById('prev').addEventListener('click', () => step(-1));
+document.getElementById('next').addEventListener('click', () => step(1));
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') step(-1);
+  if (e.key === 'ArrowRight') step(1);
+});
+window.addEventListener('hashchange', () => { read(); view = 'today'; sheet = null; render(); });
+read();
+render();
+</script>
