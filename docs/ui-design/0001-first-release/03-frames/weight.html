@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>体重の入力</title><style>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>体重</title><style>
 :root{--line:#888;--fg:#222;--bg:#fff;--muted:#777}
 @media (prefers-color-scheme: dark){:root{--line:#999;--fg:#ddd;--bg:#1a1a1a;--muted:#aaa}}
 body{margin:0;padding:16px;font:13px/1.5 system-ui,sans-serif;color:var(--fg);background:var(--bg)}
@@ -17,5 +17,5 @@ p.note{margin:0 0 12px;color:var(--muted);max-width:390px}
 .sheet{margin-top:auto;border-top:2px solid var(--line);border-radius:16px 16px 0 0;padding:10px;display:flex;flex-direction:column;gap:8px}
 .dim{flex:1;border:1px dashed var(--line);margin:10px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
 </style></head><body>
-<h1>体重の入力（枠組みワイヤー）</h1><p class="note">単位ビュー「体重の入力」。入力と修正を兼ねる。測った値だけを受け付ける。UC: 体重_1,2</p>
-<div class="phone"><div class="dim">日</div><div class="sheet"><div class="bar" style="border:0;padding:0"><span>キャンセル</span><span>記録</span></div><div class="box"><div class="t">体重</div><div class="d">初期値は前日の値（初回はヘルスケアにあった値）</div></div><div class="box"><div class="t">体脂肪率（任意）</div></div><div class="box"><div class="t">入力元</div><div class="d">ヘルスケアから入った値は、その旨を示す</div></div></div></div></body></html>
+<h1>体重（枠組みワイヤー）</h1><p class="note">単位ビュー「体重」。入力と修正を兼ねる。測った値だけを受け付ける。UC: 体重_1,2,4</p>
+<div class="phone"><div class="dim">今日</div><div class="sheet"><div class="bar" style="border:0;padding:0"><span>キャンセル</span><span>記録</span></div><div class="box"><div class="t">体重</div><div class="d">初期値は前日の値（初回はヘルスケアにあった値）。ヘルスケアから入った値はその旨を示す</div></div><div class="box" style="flex:1"><div class="t">直近の傾向</div><div class="d">日々のブレをならした線</div><div class="acts"><span class="act">目標へ</span></div></div></div></div></body></html>
