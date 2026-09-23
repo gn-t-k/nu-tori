@@ -6,7 +6,7 @@
 - 序盤ブロック（① ②）: ゲート通過・承認済み（2026-09-23）
 - 中盤ブロック: ③ 概念設計（コンテンツ構造）、④ コンセプト定義の叩き台を作成、レビュー中（2026-09-23）
 - 次に着手する工程: ⑤ ナビゲーション構造設計と、③ の枠組みワイヤー
-- 要調査だった FoodNoms・MacroFactor とヘルスケアのやりとりは `docs/research/healthkit-foodnoms-macrofactor.md` に調査済み（公式ページの抜粋に基づく。実機での確認は残る）
+- 要調査だった FoodNoms・MacroFactor とヘルスケアのやりとりは `docs/research/healthkit-foodnoms-macrofactor.md` に調査済み（公式ページの本文で確認。ヘルスケア経由で MacroFactor に届くかの最終確認は実機で行う）
 
 ## 成果物マップ
 
