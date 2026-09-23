@@ -1,7 +1,7 @@
 # FoodNoms・MacroFactor とヘルスケア（HealthKit）のデータのやりとり
 
 調査日: 2026-09-23（同日に本文で再確認）
-対象: `docs/ui-design/0001-first-release/00-behavioral-scenarios.md` の S2-2・S5-5 の【要調査】
+対象: `docs/ui-design/0001-first-release/00-behavioral-scenarios.md` の S2-2・S5-6 の【要調査】
 
 > **確認の方法と限界**
 > - FoodNoms の公式ヘルプ・公式ブログ（foodnoms.com）、MacroFactor の公式ヘルプ（help.macrofactorapp.com）・公式ブログとリリースノート（macrofactor.com）、両アプリの App Store ページ（apps.apple.com、説明文とバージョン履歴）、Apple の HealthKit ドキュメント（developer.apple.com）の**本文を直接取得して読んだ**。本文で確かめた主張は「本文で確認」と書く。
@@ -19,7 +19,7 @@
   - FoodNoms の無料版で記録できるのはカロリーとマクロだけで、ビタミン・ミネラル・水分・ナトリウムなどの記録は有料の Foodnoms+ の機能（本文で確認）。無料ユーザーのヘルスケアにはビタミン・ミネラルが入っていないと考えられる（本文からの読み取り）。
   - 両アプリが同じ食事を書き込んでいると、合計が二重になる。nu-tori は出どころ（`sourceRevision`）ごとに分けて集計し、1日ごとに1つの出どころを選ぶ必要がある。
   - iOS 27 から、ユーザーは読み取りを「期間を限って」許可できる。nu-tori はその境界より前を「データなし」ではなく「不明」として扱う必要がある（本文で確認）。
-- **S5-5（nu-tori → ヘルスケア → MacroFactor）は成り立つ。**
+- **S5-6（nu-tori → ヘルスケア → MacroFactor）は成り立つ。**
   - MacroFactor は、ヘルスケアにある「その日の」カロリー・マクロ・微量栄養素を取り込む。別の記録アプリを使いながら MacroFactor のコーチングを受ける使い方（BYOFL: bring your own food logger）を想定していると公式に書かれている（本文で確認）。
   - **取り込んだ栄養は消費量の推定に使われる。** 公式ヘルプの消費量の記事に「摂取カロリーは、MacroFactor で食事を記録するか、同期している別の出どころから栄養を取り込むかのどちらかで得る」とある（本文で確認。前回は「直接の記述は未確認」だった）。
   - 取り込むのは**日ごとの合計**で、食品や食事の単位では取り込まない。取り込んだ値は Food Log ではなく Nutrition ページに出る（本文で確認）。
@@ -122,7 +122,7 @@
 - **データの種類**: 摂取エネルギー（dietaryEnergyConsumed）は累積型、体重（bodyMass）は離散型。
   https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/dietaryenergyconsumed 、https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/bodymass
 
-## S2-2・S5-5 への示唆
+## S2-2・S5-6 への示唆
 
 ### S2-2（過去の体重・食事量から、使い始めた日から消費量を推定）
 
@@ -135,7 +135,7 @@
 7. **読み取り許可が無いことは判別できない。** 「過去の食事データが0件」は「許可されていない」のかもしれない。UI の文言でどちらかに断定しない。
 8. 参考: Foodnoms は 2026 年夏に Calibrated Energy（摂取量と体重から消費量を逆算）を入れた。MacroFactor の消費量推定と同じ考え方で、nu-tori の差別化の論点として CONTEXT.md や ADR で扱う価値がある。
 
-### S5-5（nu-tori → ヘルスケア → MacroFactor）
+### S5-6（nu-tori → ヘルスケア → MacroFactor）
 
 1. **仕組みとして成り立つ。** MacroFactor はヘルスケアの日ごとのカロリー・マクロ・微量栄養素を取り込み、それを消費量の推定とコーチングに使う（本文で確認）。nu-tori は dietaryEnergyConsumed と各栄養の quantity サンプルを書けばよい。
 2. **MacroFactor は日の合計しか見ない**ので、nu-tori が食事単位で書いても、MacroFactor 側の見え方は変わらないと考えられる。food correlation を使った場合に MacroFactor が中の quantity サンプルを数えるかは未確認なので、確実にするなら quantity サンプルとして書く（correlation を使うかは別に決める）。
@@ -160,4 +160,4 @@
 - 同じ体重の計測が複数アプリから重複してヘルスケアに入るか
 
 実機で確かめる必要があるもの:
-- 上の correlation の扱いと、S5-5 の一連の流れ（nu-tori → ヘルスケア → MacroFactor の Nutrition ページと消費量）
+- 上の correlation の扱いと、S5-6 の一連の流れ（nu-tori → ヘルスケア → MacroFactor の Nutrition ページと消費量）
