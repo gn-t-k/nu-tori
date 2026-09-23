@@ -1,5 +1,6 @@
 #!/bin/bash
 # クラウドセッション開始時に、mattpocock/skills を skills-lock.json に沿って最新版へ更新する。
+# settings.json で async 実行しているので、結果は次のターンでClaudeに届く。
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then

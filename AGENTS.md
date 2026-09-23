@@ -18,6 +18,6 @@ Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する
 
 mattpocock/skills は [skills](https://skills.sh) CLIで `.agents/skills/` に入れ、`.claude/skills/` からシンボリックリンクしている。取り込んだスキルは `skills-lock.json` で管理する。
 
-- クラウドセッションでは、開始時に `.claude/hooks/session-start.sh` が `npx skills update -p -y` を実行し、自動で最新版に更新する。
+- クラウドセッションでは、開始時に `.claude/hooks/session-start.sh` がバックグラウンドで `npx skills update -p -y` を実行し、自動で最新版に更新する。更新はそのセッションに間に合わないことがあり、その場合は次のセッションから反映される。
 - ローカルでは `npx skills update -p -y` を手で実行する。
 - 更新で上書きされるため、取り込んだスキルのファイルは直接編集しない。
