@@ -13,3 +13,7 @@ Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する
 ### ドメインドキュメント
 
 単一コンテキスト構成：リポジトリ直下に `CONTEXT.md` と `docs/adr/` を1つずつ置く。詳細は `docs/agents/domain.md` を参照。
+
+### スキルの管理
+
+mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-start.sh` で自動更新している。更新で上書きされるため、`.agents/skills/` 配下は直接編集しない。
