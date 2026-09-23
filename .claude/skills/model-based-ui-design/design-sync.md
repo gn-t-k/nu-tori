@@ -2,8 +2,6 @@
 
 [block-3-expression.md](block-3-expression.md) の⑦で、**単位ビューをコンポーネント単位**にして、ローカル HTML ⇄ Claude Design の design-system プロジェクトを**1コンポーネントずつ**往復し、色・タイポ・グラフィックを作り込む。
 
-本書はデザインシステム構築を対象外とする。これは本書の単位ビュー＋「同じ性質の構造はパターン化して再利用」を土台に乗せた**拡張**である。
-
 ## コンポーネントの作り方
 
 - 単位ビュー1つ＝1コンポーネント。`07-components/<名前>/index.html` に、概念オブジェクトのコンテンツ＋CRUD アクションを含むプレビュー HTML を書く。
@@ -16,6 +14,8 @@
 - 同期元ディレクトリは `07-components/`
 - 同期先は design-system 型のプロジェクト（通常プロジェクトに push しても design system にはならない）
 - **1コンポーネントずつ**同期し、Claude Design 側で磨いた結果は次の往復で読み戻してローカルに反映する
+
+正本はリポジトリの `DESIGN.md` 側に置く。Claude Design で磨いた色・タイポ・部品は、引き継ぎ（[handoff.md](handoff.md)）で `DESIGN.md` に書き出す。既存の `DESIGN.md` があれば、往復の出発点もそのトークンにする。
 
 ## フォールバック（DesignSync が無い環境）
 
