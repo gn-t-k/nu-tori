@@ -6,7 +6,7 @@
 - 序盤ブロック（① ②）: ゲート通過・承認済み（2026-09-23）
 - 中盤ブロック: ③ 概念設計（コンテンツ構造）の叩き台を作成、レビュー中（2026-09-23）
 - 次に着手する工程: ④ コンセプト定義。「AI のアドバイスを尋ねられたときだけにした分、何が習慣化を支えるか」を扱う
-- 要調査だった FoodNoms・MacroFactor とヘルスケアのやりとりは `docs/research/healthkit-foodnoms-macrofactor.md` に調査済み（公式ページの抜粋に基づく。実機での確認は残る）
+- 要調査だった FoodNoms・MacroFactor とヘルスケアのやりとりは `docs/research/healthkit-foodnoms-macrofactor.md` に調査済み（公式ページの本文で確認。ヘルスケア経由で MacroFactor に届くかの最終確認は実機で行う）
 
 ## 成果物マップ
 
