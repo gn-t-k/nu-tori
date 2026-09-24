@@ -1,0 +1,21 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>日のまとめ</title><style>
+:root{--line:#888;--fg:#222;--bg:#fff;--muted:#777}
+@media (prefers-color-scheme: dark){:root{--line:#999;--fg:#ddd;--bg:#1a1a1a;--muted:#aaa}}
+body{margin:0;padding:16px;font:13px/1.5 system-ui,sans-serif;color:var(--fg);background:var(--bg)}
+h1{font-size:15px;margin:0 0 4px}
+p.note{margin:0 0 12px;color:var(--muted);max-width:390px}
+.phone{width:min(390px,100%);height:760px;border:2px solid var(--line);border-radius:28px;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box}
+.bar{border-bottom:1px solid var(--line);padding:10px 14px;display:flex;justify-content:space-between;gap:8px}
+.body{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.box{border:1px dashed var(--line);border-radius:8px;padding:8px}
+.box .t{font-weight:600}
+.box .d{color:var(--muted)}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.act{border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+.tabs{border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:10px 0}
+.tabs .on{font-weight:700;text-decoration:underline}
+.sheet{margin-top:auto;border-top:2px solid var(--line);border-radius:16px 16px 0 0;padding:10px;display:flex;flex-direction:column;gap:8px}
+.dim{flex:1;border:1px dashed var(--line);margin:10px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+</style></head><body>
+<h1>日のまとめ（枠組みワイヤー）</h1><p class="note">単位ビュー「日のまとめ」。1日で区切った集計ビュー。タイムラインの1日の丸から開く。食事と栄養、体重と目標を、1日の中でまとめて見せる。UC: 体重_4 フィードバック_3,4,6 目標_7 食事_9</p>
+<div class="phone"><div class="dim">タイムライン</div><div class="sheet"><div class="bar" style="border:0;padding:0"><span>‹ 前の日　日付　次の日 ›</span><span>完了</span></div><div class="box"><div class="t">食事と栄養</div><div class="d">その日の1日の丸（大きく）、カロリーと PFC、1日の目安との比較（目標がなければ食べた量だけ）</div></div><div class="box"><div class="t">体重と目標</div><div class="d">その日の体重、体重の傾向、目標の要約（あと何 kg・あと何日・間に合うペースか）。目標がなければ、または達成・期限のときは、目標の設定の入口</div><div class="acts"><span class="act">目標へ</span><span class="act">目標を立てる／次の目標を選ぶ</span></div></div><div class="box"><div class="t">週の振り返り</div><div class="d">その日が入る週</div><div class="acts"><span class="act">週の振り返りへ</span></div></div><div class="box"><div class="t">タイムラインでこの日を見る</div><div class="acts"><span class="act">タイムラインのこの日へ</span></div></div></div></div></body></html>
