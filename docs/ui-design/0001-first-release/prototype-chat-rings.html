@@ -1,13 +1,13 @@
 <title>チャットと1日の丸</title>
 <!--
-  PROTOTYPE（捨てる前提）。⑥ の問い「タブもヘッダーもないチャット型のタイムラインで、アカウントの入口をどこに置くか」。1日の丸の帯と、まとめのシートの形も確かめる。
-  両案で同じ: タイムラインは下が新しい。記録は下の入力欄から（撮る、体重、文章）。アプリが話しかけるのは記録を忘れたときの知らせだけ。
-  1日の丸: 1本の輪を P・F・C の kcal で色分けし、一周で1日の目安。体重を記録した日は中にチェック。アクティビティリングとは形と色で分ける。
-  #v1 と #v2 で切り替える。下の黒いバーか ← → キーでも切り替えられる。
-  両案で同じ: タブもヘッダーも持たない。一番上は7日分の丸の帯だけ。丸を押すと、その日のまとめ（食事と栄養、体重と目標）がシートで開く。
-  1: アカウントは帯の右端のアイコンから、シートで開く
-  2: アカウントはまとめのシートの左上から、シートの中でプッシュする
-  文言と見た目は⑦で決める。
+  PROTOTYPE（捨てる前提）。⑥ の問い「帯から目標の1行を外したチャット型のタイムラインで、目標を立てる・次の目標を選ぶ入口をどこに置くか」に答えるためのもの。
+  共通: タブもヘッダーもない。一番上は7日分の丸の帯と、右端のアカウント。丸を押すと、その日のまとめ（食事と栄養、体重と目標）がシートで開く。
+  タイムラインは下が新しい。記録は下の入力欄から（撮る、体重、文章）。アプリが話しかけるのは、記録を忘れたときの知らせと、目標の知らせ（達成、期限）だけ。
+  1日の丸: 1本の輪を P・F・C の kcal で色分けし、一周で1日の目安。目標がないあいだは目安がないので、P・F・C の割合で一周させる。体重を記録した日は中にチェック。
+  #G1 と #G2 で切り替える。下の黒いバーか ← → キーでも切り替えられる。右の「目標の状態」で、目標なし・進行中・達成・期限を切り替える。
+  G1: 目標の入口をアプリの発言としてチャットに流す。カードをその場で広げて手順を進める。まとめのシートから始めると、新しいカードが一番下に出る
+  G2: 目標の入口を入力欄の上に固定する（目標がないとき、達成・期限のとき）。「あとで」で隠すと、まとめのシートからだけ開ける
+  目標の設定の手順は、向き → 目標案の2ページに縮めている（足りない値のページと、ヘルスケアの許可は、⑥ の「目標の設定の流れ」のとおり）。文言と見た目は⑦で決める。
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -119,6 +119,19 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .pager button{color:var(--accent);font-size:16px;padding:0 4px}
 .pager button:disabled{opacity:.3;cursor:default}
 .sb{flex:1;overflow:auto;padding:12px 14px 24px;display:flex;flex-direction:column;gap:10px}
+.gcard{border:1.5px solid var(--accent);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;max-width:92%;background:var(--phone)}
+.dock-in .gcard{max-width:none}
+.gh{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.gh b{flex:1}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.opts button,.plan{border:1px solid var(--line);border-radius:8px;padding:6px 8px;text-align:center}
+.plan{display:grid;grid-template-columns:1fr auto;text-align:left;font-size:12px;width:100%}
+.plan.rec{border-width:2px;border-color:var(--accent)}
+.plan .d{grid-column:1/-1;color:var(--muted)}
+.row2{display:flex;justify-content:space-between;align-items:center}
+.gs{display:flex;gap:4px;flex-wrap:wrap}
+.gs button{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px}
+.gs button[aria-pressed="true"]{background:var(--ink);color:var(--phone);border-color:var(--ink)}
 .state{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:4px}
 .state b{font-size:12px;letter-spacing:.06em;color:var(--muted)}
 .reset{align-self:flex-start;border:1px solid var(--line);border-radius:8px;padding:4px 10px}
@@ -135,14 +148,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="phone" id="phone"></div>
   </div>
   <div class="col">
+    <div class="state"><b>目標の状態</b><div class="gs" id="gs"><button data-goal="none">目標なし</button><button data-goal="active">進行中</button><button data-goal="achieved">期限前に達成</button><button data-goal="due">期限が来た</button></div></div>
     <div class="state"><b>いまの状態</b><div id="state"></div></div>
-    <p class="lead">例は Tさんの木曜の昼（12:40）。9時に「体重がまだ」の知らせが来ている。試すこと:</p>
-    <p class="lead">・知らせの中で体重を記録する（今日の丸にチェックが付く）<br>・<b>撮る</b>で食事を送る（今日の丸が伸びる）<br>・「唐揚げ食べた」と送る（食事として記録される）、「夜は何を食べればいい？」と送る（会話になる）<br>・丸を押してまとめを開き、日を送る。「タイムラインでこの日を見る」で戻る<br>・アカウントを開く</p>
-    <p class="lead">丸は1本の輪で、青が P、黄が F、緑が C の kcal。一周で1日の目安 1,850 kcal。丸を押すとまとめのシートが開き、‹ › で日を送れる。目標と週の振り返りは、まとめから開く想定で、ここでは開かない。</p>
+    <p class="lead">例は Tさんの木曜の昼（12:40）。試すこと:</p>
+    <p class="lead">・「目標なし」で、目標の入口がどこに見えるか。チャットを上へ戻して、最初のカードを探す<br>・カードの「目標を立てる」から、向きと目標案を選んで決める（決まると丸が1日の目安と比べる形に変わる）<br>・途中で「閉じる」、丸からまとめのシートを開いて「目標を立てる」<br>・「期限前に達成」「期限が来た」で、知らせと「次の目標を選ぶ」の出方</p>
+    <p class="lead">撮る、体重、文章を送る、プリセットは前と同じに動く。丸は青が P、黄が F、緑が C。</p>
     <button class="reset" id="reset">はじめに戻す</button>
   </div>
 </div>
-<div class="dock"><nav aria-label="案の切り替え"><button id="v1">1 アカウントは帯の右端</button><button id="v2">2 まとめの中</button></nav></div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="vG1">G1 発言として流す</button><button id="vG2">G2 入力欄の上に固定</button></nav></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -174,15 +188,15 @@ function base(){
   ev.push({d:6,t:'12:20',k:'photo'},{d:6,t:'12:20',k:'meal',n:'サラダチキン・おにぎり 2個',p:34,f:6,c:80});
   return ev.map((e,i)=>({...e,id:i}));
 }
-const st={v:'1',sheet:null,acct:false,cam:false,ev:base(),weight:null,sel:6,now:40,last:null,seq:1000,log:'まだ何もしていない'};
+const st={v:'G1',goal:'none',setup:null,gid:null,pinHidden:false,sheet:null,acct:false,cam:false,ev:base(),weight:null,sel:6,now:40,last:null,seq:1000,log:'まだ何もしていない'};
 function nowT(){const m=12*60+st.now;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
 function totals(d){let p=0,f=0,c=0;st.ev.filter(e=>e.d===d&&e.k==='meal'&&!e.pending).forEach(e=>{p+=e.p;f+=e.f;c+=e.c});return {p,f,c,k:kc(p,f,c)}}
 function weightOf(d){return d===6?st.weight:(WEIGHTS[d]?WEIGHTS[d].toFixed(1):null)}
 function ring(d,size,sw){
-  const T=totals(d),r=(size-sw)/2,C=2*Math.PI*r,cx=size/2;
+  const T=totals(d),r=(size-sw)/2,C=2*Math.PI*r,cx=size/2,TG=st.goal==='none'?Math.max(T.k,1):TARGET;
   let off=0,segs='';
-  [['p',T.p*4],['f',T.f*9],['c',T.c*4]].forEach(([k,v])=>{const len=Math.min(v/TARGET,1-off/C)*C;if(len>0){segs+='<circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="var(--'+k+')" stroke-width="'+sw+'" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cx+')"/>';off+=len}});
-  const over=T.k>TARGET;
+  [['p',T.p*4],['f',T.f*9],['c',T.c*4]].forEach(([k,v])=>{const len=Math.min(v/TG,1-off/C)*C;if(len>0){segs+='<circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="var(--'+k+')" stroke-width="'+sw+'" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cx+')"/>';off+=len}});
+  const over=st.goal!=='none'&&T.k>TARGET;
   const mid=weightOf(d)?'<path d="M'+(cx-size*.14)+' '+cx+' l'+size*.1+' '+size*.1+' l'+size*.18+' -'+size*.2+'" fill="none" stroke="var(--ink)" stroke-width="'+Math.max(1.6,size/18)+'" stroke-linecap="round" stroke-linejoin="round"/>':'';
   return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true"><circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+sw+'"/>'+segs+(over?'<circle cx="'+cx+'" cy="'+cx+'" r="'+(r+sw/2+1.5)+'" fill="none" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 2"/>':'')+mid+'</svg>';
 }
@@ -194,6 +208,7 @@ function msgHTML(e){
   if(e.k==='app')return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="b">'+(e.x?esc(e.x):'<span class="muted">考えています…</span>')+'</span></div>';
   if(e.k==='card')return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="card"><span>'+esc(e.x)+'</span><span class="muted">'+esc(e.s)+'</span></span></div>';
   if(e.k==='remind')return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="b">今日の体重がまだです。測ったら入れてください。'+(st.weight?'<br><span class="muted">記録しました</span>':'<form class="wtin" id="wf"><input id="wv" inputmode="decimal" value="72.6" aria-label="今日の体重"><span>kg</span><button class="btn" type="submit">記録</button></form>')+'</span><span class="t num">'+e.t+'</span></div>';
+  if(e.k==='goalcard')return '<div class="msg app'+nw+'" data-id="'+e.id+'"><div class="gcard">'+goalInner(e)+'</div><span class="t num">'+e.t+'</span></div>';
   if(e.k==='meal'){
     if(e.pending)return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="mealc"><span class="n muted">推定しています…</span></span></div>';
     return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="mealc"><span class="n"><b>'+esc(e.n)+'</b><span class="s num">P'+e.p+' F'+e.f+' C'+e.c+'</span>'+(e.fromText?'<span class="s link">会話として送り直す</span>':'')+'</span><span class="num">'+kc(e.p,e.f,e.c)+' kcal ›</span></span></div>';
@@ -201,27 +216,71 @@ function msgHTML(e){
   return '';
 }
 function chatHTML(){let h='';for(let d=0;d<7;d++){h+='<div class="dayh" data-dh="'+d+'">'+DN[d]+'</div>';h+=st.ev.filter(e=>e.d===d).sort((x,y)=>x.t<y.t?-1:x.t>y.t?1:x.id-y.id).map(msgHTML).join('')}return h}
-function composer(){return '<div class="dock-in"><div class="chips"><button data-preset="ここまでの食事のフィードバック">ここまでの食事のフィードバック</button><button data-preset="次の食事のアドバイス">次の食事のアドバイス</button></div><form class="send" id="f"><button type="button" class="round" data-act="opencam" aria-label="撮る">撮る</button><button type="button" class="round" data-act="weight" aria-label="体重を記録">体重</button><input id="msg" placeholder="食べたものや、なんでも" aria-label="入力欄"><button class="btn" type="submit">送る</button></form></div>'}
+function composer(){return '<div class="dock-in">'+pinHTML()+'<div class="chips"><button data-preset="ここまでの食事のフィードバック">ここまでの食事のフィードバック</button><button data-preset="次の食事のアドバイス">次の食事のアドバイス</button></div><form class="send" id="f"><button type="button" class="round" data-act="opencam" aria-label="撮る">撮る</button><button type="button" class="round" data-act="weight" aria-label="体重を記録">体重</button><input id="msg" placeholder="食べたものや、なんでも" aria-label="入力欄"><button class="btn" type="submit">送る</button></form></div>'}
 function spark(){
   const pts=WEIGHTS.map((w,i)=>i===6?(st.weight?+st.weight:null):w).map((w,i)=>w?[i,w]:null).filter(Boolean);
   const x=i=>10+i*(300/6),y=w=>8+(73.4-w)/(73.4-72.0)*54;
   return '<svg class="spark" viewBox="0 0 320 70" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="320" y1="'+y(71.8+0.2)+'" y2="'+y(72.0)+'" stroke="var(--line)" stroke-dasharray="3 3"/><polyline fill="none" stroke="var(--ink)" stroke-width="1.5" points="'+pts.map(([i,w])=>x(i)+','+y(w)).join(' ')+'"/>'+pts.map(([i,w])=>'<circle cx="'+x(i)+'" cy="'+y(w)+'" r="2.5" fill="var(--ink)"/>').join('')+'</svg>';
 }
+
+const GTEXT={none:['目標を立てると、食べた量を1日の目安と比べられます。','目標を立てる'],achieved:['体重の傾向が目標の 69.0 kg に届きました。次の目標を選ぶまで、今の目標を続けます。','次の目標を選ぶ'],due:['目標の期限が来ました。9/24 までに -3.4 kg（目標は -4.0 kg）。','次の目標を選ぶ']};
+function goalInner(e){
+  const live=st.v==='G2'?e==='pin':e.id===st.gid;
+  if(e!=='pin'&&e.done)return '<span class="muted">'+esc(e.done)+'</span>';
+  const kind=e==='pin'?st.goal:e.kind,[txt,btn]=GTEXT[kind]||GTEXT.none;
+  if(!live||!st.setup||!st.setup.open){
+    const resume=live&&st.setup&&!st.setup.open;
+    return '<span>'+txt+'</span><div class="row2"><button class="btn" data-act="gstart">'+(resume?'途中から続ける':btn)+'</button>'+(e==='pin'?'<button class="link" data-act="ghide">あとで</button>':'')+'</div>';
+  }
+  const pg=st.setup.page;
+  let h='<div class="gh"><b>'+btn+'</b><span class="muted num">'+pg+'/2</span><button class="link" data-act="gclose">閉じる</button></div>';
+  if(pg===1)h+='<span>何を目指しますか</span><div class="opts"><button data-dir="減量">減量</button><button data-dir="維持">維持</button><button data-dir="増量">増量</button></div>';
+  else{
+    const dir=st.setup.dir;
+    h+='<span class="muted" style="font-size:11px">172cm・35歳・男性・72.6kg・歩数から</span>';
+    if(dir==='維持')h+='<button class="plan rec" data-plan="維持"><b>今の体重を保つ</b><span>1日 2,200 kcal</span><span class="d">72.6 kg・期限なし</span></button>';
+    else[['ゆるめ','2,050','12/31・'+(dir==='減量'?'70.0':'75.0')+' kg','無理なく続けられる'],['標準（おすすめ）','1,850','11/20・'+(dir==='減量'?'69.0':'76.0')+' kg','外食を少し控える'],['ハード','1,600','10/31・'+(dir==='減量'?'69.0':'76.0')+' kg','毎食の量を減らす']].forEach(([n,k,d1,d2],i)=>{h+='<button class="plan'+(i===1?' rec':'')+'" data-plan="'+dir+'・'+n.replace('（おすすめ）','')+'"><b>'+n+'</b><span class="num">1日 '+k+' kcal</span><span class="d">'+d1+'</span><span class="d">'+d2+'</span></button>'});
+    h+='<button class="link" data-act="gback">‹ 戻る</button>';
+  }
+  return h;
+}
+function setGoal(g){
+  st.goal=g;st.setup=null;st.pinHidden=false;st.gid=null;
+  st.ev=st.ev.filter(e=>!e.goal);
+  if(g==='active')return;
+  const at=g==='none'?{d:0,t:'07:00'}:{d:6,t:'07:15'};
+  const [txt]=GTEXT[g];
+  const e=st.v==='G1'?{...at,k:'goalcard',kind:g,goal:1}:{...at,k:'app',x:txt,goal:1};
+  e.id=++st.seq;st.ev.push(e);if(st.v==='G1')st.gid=e.id;
+}
+function goalSheetHTML(){
+  if(st.goal==='active')return '<div class="goal"><div style="display:flex;justify-content:space-between"><span><b>'+esc(st.plan||'減量')+'</b>　あと 3.2 kg・あと 58 日</span><span class="link">目標 ›</span></div><span class="muted">間に合うペース</span>'+spark();
+  const [txt,btn]=GTEXT[st.goal];
+  return '<div class="goal"><span>'+(st.goal==='none'?'目標はまだありません。':txt)+'</span><button class="btn" style="align-self:flex-start" data-act="gfromsheet">'+btn+'</button>'+spark();
+}
+function pinHTML(){return st.v==='G2'&&st.goal!=='active'&&!st.pinHidden?'<div class="gcard">'+goalInner('pin')+'</div>':''}
+function goalEntrySeen(){
+  if(st.goal==='active')return '—（進行中は入口を出さない）';
+  if(st.v==='G2')return st.pinHidden?'見えない（隠した。まとめのシートから開ける）':'見えている（入力欄の上）';
+  const el=document.querySelector('#sc [data-id="'+st.gid+'"]');if(!el)return '見えない';
+  const a=$('sc').getBoundingClientRect(),b=el.getBoundingClientRect();
+  return b.bottom>a.top&&b.top<a.bottom?'見えている（チャットの中）':'見えない（チャットの'+(b.bottom<=a.top?'上':'下')+'へ流れた）';
+}
 function render(toBottom){
   const prev=$('sc'),keep=prev?prev.scrollTop:0;
   const acctBtn='<button class="acct" data-act="account" aria-label="アカウント"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="7" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 17.5c.8-3.4 3.5-5 6.5-5s5.7 1.6 6.5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>';
-  const band='<div class="band"><div class="rings"><div class="days">'+SHORT.map((s,d)=>'<button class="day" data-day="'+d+'" aria-pressed="'+(d===st.sel)+'">'+ring(d,34,5)+s+'</button>').join('')+'</div>'+(st.v==='1'?acctBtn:'')+'</div></div>';
+  const band='<div class="band"><div class="rings"><div class="days">'+SHORT.map((s,d)=>'<button class="day" data-day="'+d+'" aria-pressed="'+(d===st.sel)+'">'+ring(d,34,5)+s+'</button>').join('')+'</div>'+acctBtn+'</div></div>';
   let sheet='';
   if(st.sheet!==null||st.acct){
     let head,body;
     if(st.acct){
-      head=(st.v==='2'?'<button class="link" data-act="acctback">‹ まとめ</button>':'<span></span>')+'<b>アカウント</b><button class="link" data-act="close">完了</button>';
+      head='<span></span>'+'<b>アカウント</b><button class="link" data-act="close">完了</button>';
       body='<div class="sec">身体データ</div><div class="card" style="max-width:none"><span>身長・生年月日・性別</span><span class="muted">›</span></div><div class="sec">ヘルスケア・通知・カメラ</div><div class="card" style="max-width:none"><span>読み書きする種類と、許可の状態</span><span class="muted">›</span></div><div class="sec">アカウント</div><div class="card" style="max-width:none"><span>アカウントの削除</span><span></span></div><p class="muted" style="margin:0">中身は「各ビューの出し方とアカウントの入口」のとおり。ここでは開かない。</p>';
     }else{
       const d=st.sheet,T=totals(d),w=weightOf(d);
-      head=(st.v==='2'?acctBtn:'<span style="min-width:44px"></span>')+'<span class="pager"><button data-act="prev" aria-label="前の日"'+(d===0?' disabled':'')+'>‹</button><b>'+DN[d]+'</b><button data-act="next" aria-label="次の日"'+(d===6?' disabled':'')+'>›</button></span><button class="link" data-act="close">完了</button>';
-      body='<div class="sec">食事と栄養</div><div class="big">'+ring(d,120,14)+'<dl class="num"><dt>kcal</dt><dd>'+T.k.toLocaleString()+' / 1,850</dd><dt><span class="key"><span><i style="background:var(--p)"></i>P</span></span></dt><dd>'+T.p+' g</dd><dt><span class="key"><span><i style="background:var(--f)"></i>F</span></span></dt><dd>'+T.f+' g</dd><dt><span class="key"><span><i style="background:var(--c)"></i>C</span></span></dt><dd>'+T.c+' g</dd></dl></div>'+
-        '<div class="sec">体重と目標</div><div class="goal"><div style="display:flex;justify-content:space-between"><span><b>減量</b>　あと 3.2 kg・あと 58 日</span><span class="link">目標 ›</span></div><span class="muted">間に合うペース</span>'+spark()+'<span class="num">'+(w?'この日の体重 '+w+' kg':'この日の体重 まだ')+'</span></div>'+
+      head='<span style="min-width:44px"></span>'+'<span class="pager"><button data-act="prev" aria-label="前の日"'+(d===0?' disabled':'')+'>‹</button><b>'+DN[d]+'</b><button data-act="next" aria-label="次の日"'+(d===6?' disabled':'')+'>›</button></span><button class="link" data-act="close">完了</button>';
+      body='<div class="sec">食事と栄養</div><div class="big">'+ring(d,120,14)+'<dl class="num"><dt>kcal</dt><dd>'+T.k.toLocaleString()+(st.goal==='none'?'（目安なし）':' / 1,850')+'</dd><dt><span class="key"><span><i style="background:var(--p)"></i>P</span></span></dt><dd>'+T.p+' g</dd><dt><span class="key"><span><i style="background:var(--f)"></i>F</span></span></dt><dd>'+T.f+' g</dd><dt><span class="key"><span><i style="background:var(--c)"></i>C</span></span></dt><dd>'+T.c+' g</dd></dl></div>'+
+        '<div class="sec">体重と目標</div>'+goalSheetHTML()+'<span class="num">'+(w?'この日の体重 '+w+' kg':'この日の体重 まだ')+'</span></div>'+
         '<span class="card" style="max-width:none"><span>週の振り返り 9/15〜9/21</span><span class="muted">›</span></span><button class="link" data-act="goto">タイムラインでこの日を見る</button>';
     }
     sheet='<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="'+(st.acct?'アカウント':'まとめ')+'"><span class="grab"></span><div class="sh">'+head+'</div><div class="sb">'+body+'</div></div>';
@@ -229,15 +288,16 @@ function render(toBottom){
   $('phone').innerHTML='<div class="status num">12:40</div>'+band+'<div class="scroll" id="sc">'+chatHTML()+'</div>'+composer()+
     (st.cam?'<div class="cam"><div class="top"><button data-act="closecam" style="color:inherit">閉じる</button><span>カメラ</span><span style="min-width:40px"></span></div><div class="c">ファインダー（全画面）</div><div class="row"><button data-act="pick">写真を選ぶ</button><button class="shutter" data-act="shoot" aria-label="撮る"><i></i></button><span style="min-width:76px"></span></div></div>':'')+sheet;
   const sc=$('sc');sc.scrollTop=toBottom?sc.scrollHeight:keep;sc.onscroll=spy;
-  $('lead').innerHTML=st.v==='1'?'<b>1 アカウントは帯の右端</b>　ヘッダーなし。帯は7日分の丸だけ。丸を押すと、その日のまとめがシートで開く':'<b>2 アカウントはまとめのシートの中</b>　ヘッダーなし。帯は7日分の丸だけで、端まで丸に使う。アカウントは、まとめの左上からシートの中でプッシュ';
-  $('v1').setAttribute('aria-pressed',st.v==='1');$('v2').setAttribute('aria-pressed',st.v==='2');
+  $('lead').innerHTML=st.v==='G1'?'<b>G1 発言として流す</b>　目標の入口は、アプリの発言としてチャットに出る。カードの中で手順を進める。流れて見えなくなったら、丸からまとめのシートを開いて始める':'<b>G2 入力欄の上に固定</b>　目標がないときと、達成・期限のときは、入力欄の上にカードを固定する。「あとで」で隠すと、まとめのシートからだけ開ける';
+  $('vG1').setAttribute('aria-pressed',st.v==='G1');$('vG2').setAttribute('aria-pressed',st.v==='G2');document.querySelectorAll('[data-goal]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.goal===st.goal));
   const T=totals(6);
-  $('state').innerHTML='案: '+st.v+'<br>開いているもの: '+(st.acct?'アカウント':st.sheet!==null?'まとめ（'+SHORT[st.sheet]+'）':'タイムライン')+'<br>帯で選ばれている日: '+SHORT[st.sel]+'<br>今日: '+T.k.toLocaleString()+' / 1,850 kcal・体重 '+(st.weight?st.weight+' kg':'まだ')+'<br>アカウントまでのタップ: '+(st.v==='1'?'1（帯の右端）':'2（丸 → まとめの左上）')+'<br>'+st.log;
+  $('state').innerHTML='案: '+st.v+'<br>目標: '+{none:'なし',active:'進行中'+(st.plan?'（'+esc(st.plan)+'）':''),achieved:'期限前に達成',due:'期限が来た'}[st.goal]+'<br>目標の入口: '+goalEntrySeen()+'<br>目標の手順: '+(st.setup?(st.setup.open?st.setup.page+'/2 を開いている':'途中で閉じた（'+st.setup.page+'/2）'):'開いていない')+'<br>開いているもの: '+(st.acct?'アカウント':st.sheet!==null?'まとめ（'+SHORT[st.sheet]+'）':'タイムライン')+'<br>今日: '+T.k.toLocaleString()+(st.goal==='none'?' kcal（目安なし）':' / 1,850 kcal')+'・体重 '+(st.weight?st.weight+' kg':'まだ')+'<br>'+st.log;
 }
 function spy(){
   const sc=$('sc'),top=sc.getBoundingClientRect().top+4;let d=0;
   sc.querySelectorAll('[data-dh]').forEach(h=>{if(h.getBoundingClientRect().top<=top+40)d=+h.dataset.dh});
   if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-4)d=6;
+  const ge=$('state');if(ge&&st.goal!=='active'&&st.v==='G1'){ge.innerHTML=ge.innerHTML.replace(/目標の入口: [^<]*/,'目標の入口: '+goalEntrySeen())}
   if(d!==st.sel){st.sel=d;document.querySelectorAll('.band .day').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.day===d))}
 }
 function goChat(){st.sheet=null;st.acct=false}
@@ -251,7 +311,20 @@ const isQuestion=s=>/[？?]|どう|何|なに|いい$|べき|教えて/.test(s);
 document.addEventListener('click',ev=>{
   const a=ev.target.closest('[data-act]'),p=ev.target.closest('[data-preset]'),dy=ev.target.closest('[data-day]');
   if(dy){st.sheet=+dy.dataset.day;st.acct=false;st.log='丸を押した: '+SHORT[st.sheet]+'のまとめ';render(false);return}
+  const gb=ev.target.closest('[data-goal]'),dir=ev.target.closest('[data-dir]'),pl=ev.target.closest('[data-plan]');
+  if(gb){setGoal(gb.dataset.goal);goChat();st.log='目標の状態を切り替えた';render(true);return}
+  if(dir){st.setup.dir=dir.dataset.dir;st.setup.page=2;render(false);return}
+  if(pl){const plan=pl.dataset.plan;st.plan=plan;const card=st.ev.find(e=>e.id===st.gid);if(card)card.done=plan+'で決めました';st.goal='active';st.setup=null;st.now++;
+    push([{t:nowT(),k:'app',goal:1,x:'目標を決めました。'+plan+'。今日から、食べた量を1日の目安と比べます。'}],null,'目標を決めた（'+plan+'）');return}
   if(a){const act=a.dataset.act;
+    if(act==='gstart'){st.setup=st.setup?{...st.setup,open:true}:{page:1,open:true};st.log='目標の手順を開いた';render(false);return}
+    if(act==='gclose'){st.setup.open=false;st.log='目標の手順を途中で閉じた';render(false);return}
+    if(act==='gback'){st.setup.page=1;render(false);return}
+    if(act==='ghide'){st.pinHidden=true;st.log='固定したカードを隠した';render(false);return}
+    if(act==='gfromsheet'){goChat();
+      if(st.v==='G1'){const old=st.ev.find(e=>e.id===st.gid);if(old&&!old.done)old.done='（下のカードから続ける）';st.now++;const e={t:nowT(),k:'goalcard',kind:st.goal,goal:1};st.setup={page:st.setup?st.setup.page:1,dir:st.setup&&st.setup.dir,open:true};push([e],null,'まとめから目標を始めた');st.gid=e.id;render(true)}
+      else{st.pinHidden=false;st.setup={page:st.setup?st.setup.page:1,dir:st.setup&&st.setup.dir,open:true};st.log='まとめから目標を始めた';render(true)}
+      return}
     if(act==='account'){st.acct=true;st.log='アカウントを開いた';render(false);return}
     if(act==='acctback'){st.acct=false;render(false);return}
     if(act==='close'){goChat();render(false);return}
@@ -273,9 +346,9 @@ document.addEventListener('submit',ev=>{
   }
   if(ev.target.id==='wf'){const v=parseFloat($('wv').value);if(!(v>20&&v<300))return;st.weight=v.toFixed(1);st.now++;push([{t:nowT(),k:'weight',v:st.weight}],null,'体重 '+st.weight+' kg')}
 });
-function setV(v){st.v=v;goChat();st.cam=false;st.sel=6;try{history.replaceState(null,'','#v'+v)}catch(_){location.hash='v'+v}render(true)}
-$('v1').onclick=()=>setV('1');$('v2').onclick=()=>setV('2');
-$('reset').onclick=()=>{st.ev=base();st.weight=null;st.now=40;st.last=null;st.log='まだ何もしていない';setV(st.v)};
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='1'?'2':'1')});
-setV(location.hash==='#v2'?'2':'1');
+function setV(v){st.v=v;goChat();st.cam=false;st.sel=6;setGoal(st.goal);try{history.replaceState(null,'','#'+v)}catch(_){location.hash=v}render(true)}
+$('vG1').onclick=()=>setV('G1');$('vG2').onclick=()=>setV('G2');
+$('reset').onclick=()=>{st.ev=base();st.weight=null;st.now=40;st.last=null;st.plan=null;st.goal='none';st.log='まだ何もしていない';setV(st.v)};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='G1'?'G2':'G1')});
+setV(location.hash==='#G2'?'G2':'G1');
 </script>
