@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>サインインのレイアウト</title>
+<style>
+:root{--line:#8a9199;--soft:#e6e9ec;--fg:#22272d;--muted:#6b737c;--bg:#f4f5f7;--phone:#fff;--scrim:rgb(0 0 0 / .25);color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--line:#7d858e;--soft:#2a3036;--fg:#e2e6ea;--muted:#9aa3ad;--bg:#121518;--phone:#1b1f23;--scrim:rgb(0 0 0 / .5);color-scheme:dark}}
+:root[data-theme="dark"]{--line:#7d858e;--soft:#2a3036;--fg:#e2e6ea;--muted:#9aa3ad;--bg:#121518;--phone:#1b1f23;--scrim:rgb(0 0 0 / .5);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:13px/1.5 system-ui,-apple-system,"Hiragino Sans",sans-serif}
+h1{font-size:15px;margin:0 0 4px}
+p.note{margin:0 0 16px;color:var(--muted);max-width:760px}
+.row{display:flex;flex-wrap:wrap;gap:16px}
+figure{margin:0;width:min(300px,100%)}
+figcaption{color:var(--muted);font-size:12px;margin:6px 2px 0}
+.phone{position:relative;height:600px;background:var(--phone);border:2px solid var(--line);border-radius:26px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.bar b{flex:1;text-align:center}
+.bar span{min-width:56px}
+.body{flex:1;padding:10px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;overflow:hidden}
+.card{border:1.5px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.card.dash{border-style:dashed}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.hd .t{font-weight:700}
+.muted{color:var(--muted)}
+.dots{display:flex;gap:4px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--soft);border:1px solid var(--line)}
+.dots i.on{background:var(--fg);border-color:var(--fg)}
+.q{font-weight:700}
+.ch{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.ch div,.opt{border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center}
+.facts{border:1px solid var(--line);border-radius:8px}
+.facts div{display:flex;justify-content:space-between;padding:5px 8px;border-top:1px solid var(--soft)}
+.facts div:first-child{border-top:0}
+.facts .need{background:var(--soft)}
+.plan{border:1px solid var(--line);border-radius:8px;padding:6px 8px;display:grid;grid-template-columns:1fr auto;font-size:12px}
+.plan .d{grid-column:1/-1;color:var(--muted)}
+.plan.rec{border-width:2px}
+.btn{border:1.5px solid var(--fg);border-radius:8px;padding:6px;text-align:center;font-weight:700}
+.btn.off{opacity:.4}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+.sum span:last-child{white-space:nowrap;margin-left:6px}
+.finder{flex:1;min-height:80px;border:1px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.tl{border-top:1px solid var(--soft);padding-top:6px;color:var(--muted);font-size:12px}
+.sys{position:absolute;inset:0;background:var(--scrim);display:flex;align-items:flex-end}
+.sys .p{width:100%;height:78%;background:var(--soft);border-radius:14px 14px 0 0;padding:12px;display:flex;flex-direction:column;gap:8px}
+.sys .l{background:var(--phone);border-radius:8px}
+.sys .l div{padding:6px 8px;border-top:1px solid var(--soft)}
+.sys .l div:first-child{border-top:0}
+.meters{display:grid;grid-template-columns:auto 1fr;gap:3px 6px;align-items:center;font-size:11px}
+.meters i{height:6px;border:1px solid var(--line);border-radius:3px}
+.band{display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.band{justify-content:space-between}
+.band i{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;font-weight:700}
+.band i.w::after{content:"✓"}
+.comp{border-top:1px solid var(--line);padding:6px 8px 10px;display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)}
+.comp b{border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-weight:400}
+.comp .in{flex:1;border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.ev{color:var(--muted);font-size:12px;border-top:1px solid var(--soft);padding-top:6px}
+.nudge{margin:6px 10px 0;border:1px solid var(--fg);border-radius:999px;padding:3px 10px;font-size:11px;display:flex;justify-content:space-between}
+.band i.sel{outline:2px solid var(--fg);outline-offset:2px}
+.band label{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;color:var(--muted)}
+.me{align-self:flex-end;max-width:80%;background:var(--soft);border-radius:12px;padding:5px 8px;font-size:12px}
+.photo{align-self:flex-end;width:110px;height:80px;border-radius:10px;background:var(--soft);border:1px solid var(--line)}
+.mealc{border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12px;display:flex;justify-content:space-between;gap:6px}
+.app{border-left:2px solid var(--line);padding-left:8px;font-size:12px}
+.dayh{text-align:center;color:var(--muted);font-size:11px}
+.comp .hot{border:2px solid var(--fg);color:var(--fg);font-weight:700}
+.chips{padding:6px 8px 0;display:flex;gap:4px;font-size:10px;color:var(--muted)}
+.chips span{border:1px solid var(--line);border-radius:999px;padding:2px 6px;white-space:nowrap}
+.cam{flex:1;background:#2b3036;color:#d9dee3;display:flex;flex-direction:column;justify-content:space-between;padding:12px}
+.cam .r{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.cam .sh{width:48px;height:48px;border-radius:50%;border:3px solid #d9dee3}
+.big{display:flex;gap:10px;align-items:center}
+.big i{width:90px;height:90px;border-radius:50%;border:12px solid var(--line);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:20px;font-weight:700}
+.bar b{font-weight:700}
+.pics{display:flex;gap:6px}
+.pics div{flex:1;height:120px;border-radius:10px;background:var(--soft);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px}
+.pics div.s{flex:0 0 28px}
+.tot{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;font-size:11px}
+.tot div{border:1px solid var(--line);border-radius:8px;padding:3px 2px}
+.tot b{display:block;font-size:13px}
+.pill{border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.dish{border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:12px}
+.dish .dh{display:flex;justify-content:space-between;gap:6px;padding:6px 8px}
+.dish .dh .t{font-weight:700}
+.dish .ing{border-top:1px solid var(--soft);padding:4px 8px 4px 16px;display:flex;flex-direction:column;gap:1px}
+.dish .ing div{display:flex;justify-content:space-between;gap:6px}
+.dish .more{border-top:1px solid var(--soft);padding:4px 8px;display:flex;justify-content:space-between}
+.dish.edit{border:2px solid var(--fg)}
+.q2{text-decoration:underline dotted;text-underline-offset:3px}
+.fld{border:1.5px solid var(--fg);border-radius:6px;padding:1px 6px;min-width:64px;text-align:right}
+.add{border:1px dashed var(--line);border-radius:10px;padding:6px 8px;font-size:12px}
+.kb{height:150px;background:var(--soft);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px;font-size:12px}
+.kb span{background:var(--phone);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.swipe{display:flex}
+.swipe .dh{flex:1;transform:translateX(-50px)}
+.del{background:var(--fg);color:var(--phone);padding:6px 10px;display:flex;align-items:center;font-weight:700}
+.act{position:absolute;left:8px;right:8px;bottom:10px;display:flex;flex-direction:column;gap:6px}
+.act .g{background:var(--phone);border-radius:12px;text-align:center}
+.act .g div{padding:9px;border-top:1px solid var(--soft)}
+.act .g div:first-child{border-top:0}
+.nutl{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:12px}
+.nutl .g{grid-column:1/-1;color:var(--muted);font-size:11px;margin-top:8px;font-weight:700}
+.nutl .g:first-child{margin-top:0}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--phone);border-top:1.5px solid var(--line);border-radius:14px 14px 0 0;display:flex;flex-direction:column}
+.sheet .sb{display:flex;justify-content:space-between;align-items:center;padding:10px 12px}
+.sheet .sb b{font-weight:700}
+.sheet .in2{padding:4px 12px 12px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.val{font-size:30px;font-weight:700;display:flex;align-items:baseline;gap:4px}
+.val .sel{background:var(--soft);border-bottom:2px solid var(--fg);padding:0 4px}
+.stp{display:flex;align-items:center;gap:14px}
+.stp .pm{width:46px;height:36px;border:1.5px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.warn{border:1.5px solid var(--fg);border-radius:8px;padding:4px 8px;font-size:11px;align-self:stretch}
+.alert{position:absolute;left:30px;right:30px;top:38%;background:var(--soft);border-radius:14px;text-align:center;font-size:12px;overflow:hidden}
+.alert .m{padding:12px 10px}
+.alert .bt{display:flex;border-top:1px solid var(--line)}
+.alert .bt div{flex:1;padding:8px}
+.alert .bt div+div{border-left:1px solid var(--line)}
+
+.grp{display:flex;flex-direction:column;gap:3px}
+.grp .gh{font-size:10px;color:var(--muted);padding:0 8px}
+.grp .gf{font-size:10px;color:var(--muted);padding:0 8px;line-height:1.4}
+.lst{background:var(--phone);border:1px solid var(--line);border-radius:10px;font-size:12px}
+.lst>div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border-top:1px solid var(--soft)}
+.lst>div:first-child{border-top:0}
+.lst .v{color:var(--muted);text-align:right}
+.lst .lk{font-weight:700}
+.lst .dz{font-weight:700;justify-content:center;text-decoration:underline;text-underline-offset:3px}
+.lst .src{font-size:10px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted);margin-left:4px}
+.lst .pick{display:block;background:var(--soft);text-align:center;color:var(--muted);padding:18px 8px}
+.gsheet{position:absolute;left:0;right:0;bottom:0;top:18px;background:var(--bg);border-top:1.5px solid var(--line);border-radius:14px 14px 0 0;display:flex;flex-direction:column}
+.gsheet .sb{display:flex;justify-content:space-between;align-items:center;padding:10px 12px}
+.gsheet .sb b{font-weight:700}
+.gsheet .sb span{min-width:56px}
+.gsheet .gb{flex:1;overflow:hidden;padding:4px 10px 10px;display:flex;flex-direction:column;gap:10px}
+.behind{position:absolute;inset:0;background:var(--phone);opacity:.35}
+.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
+.hero .logo{width:72px;height:72px;border-radius:18px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px}
+.hero .nm{font-size:22px;font-weight:700}
+.siwa{margin:0 14px;background:var(--fg);color:var(--phone);border-radius:10px;padding:10px;text-align:center;font-weight:700}
+.foot{text-align:center;font-size:10px;color:var(--muted);padding:10px 14px 18px}
+.err{margin:0 14px 8px;border:1.5px solid var(--fg);border-radius:8px;padding:4px 8px;font-size:11px}
+</style>
+</head>
+<body>
+<h1>サインイン（中忠実度レイアウト）</h1>
+<p class="note">単位ビュー「サインイン」。起動してサインインしていなければ、全画面で出す。Sign in with Apple のボタン1つで済ませ、済んだらタイムラインに置き換える。例は Tさんの初めての起動。文言と色は⑦で決める。決めたことは <code>06-layout.md</code> の「全単位ビューのレイアウト」の「サインイン」。</p>
+<div class="row">
+<figure><div class="phone"><div class="hero"><div class="logo">アイコン</div><div class="nm">nu-tori</div><div class="muted" style="max-width:220px">毎朝の体重と、食事の写真だけ。<br>目標までの1日の目安は nu-tori が決める</div></div><div class="siwa"> Apple でサインイン</div><div class="foot">プライバシーポリシー ↗</div></div><figcaption>起動してサインインしていなければ、全画面で出す。ナビゲーションバーを置かず、ほかに行ける画面もない。アプリの名前とひとことの説明、Apple の標準の「Apple でサインイン」ボタン、プライバシーポリシーだけ（アカウント_1）</figcaption></figure>
+<figure><div class="phone"><div class="hero"><div class="logo">アイコン</div><div class="nm">nu-tori</div><div class="muted" style="max-width:220px">毎朝の体重と、食事の写真だけ。<br>目標までの1日の目安は nu-tori が決める</div></div><div class="siwa"> Apple でサインイン</div><div class="foot">プライバシーポリシー ↗</div><div class="sys"><div class="p" style="height:52%"><div class="muted" style="text-align:center;font-size:11px">iPhone（Apple でサインイン）の画面</div><b style="text-align:center">Apple ID を使って nu-tori にサインイン</b><div class="muted" style="font-size:11px;text-align:center">名前とメールアドレスは求めない</div><div style="margin-top:auto" class="btn">続ける（Face ID）</div></div></div></div><figcaption>ボタンを押すと、iPhone の「Apple でサインイン」の画面が出る。名前とメールアドレスは求めない（使い道がないので、共有の選択を省く）。自前の説明画面は作らない</figcaption></figure>
+<figure><div class="phone"><div class="hero"><div class="logo">アイコン</div><div class="nm">nu-tori</div><div class="muted" style="max-width:220px">毎朝の体重と、食事の写真だけ。<br>目標までの1日の目安は nu-tori が決める</div></div><div class="err">サインインできませんでした。通信を確かめて、もう一度押してください</div><div class="siwa"> Apple でサインイン</div><div class="foot">プライバシーポリシー ↗</div></div><figcaption>失敗したときは、ボタンの上に理由を出し、同じボタンでやり直す。iPhone の画面を閉じてやめたときは何も出さず、この画面に戻るだけ</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span></span><b></b><span class="muted" style="text-align:right">アカウント</span></div><div class="band"><label><i></i>金</label><label><i></i>土</label><label><i></i>日</label><label><i></i>月</label><label><i></i>火</label><label><i></i>水</label><label><i class="sel"></i>今日</label></div><div class="body"><div class="dayh">今日 9/24（木）</div><div class="card"><div class="hd"><span class="t">目標を立てる</span></div><div class="muted" style="font-size:12px">いつまでに何 kg にするかを決めると、1日の目安を出す</div><div class="btn">目標を立てる</div></div></div><div class="chips"><span>ここまでの食事のフィードバック</span><span>次の食事のアドバイス</span></div><div class="comp"><b class="hot">撮る</b><b>体重</b><span class="in">書く</span><b>送る</b></div></div><figcaption>済むと、タイムラインに置き換わり、戻れない。記録はまだなく、目標を立てるよう誘う知らせと、入力欄の「撮る」が待っている。目標の設定も許可も、ここでは求めない（S1-1）</figcaption></figure>
+</div>
+</body>
+</html>

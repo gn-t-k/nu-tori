@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>食事のレイアウト</title>
+<style>
+:root{--line:#8a9199;--soft:#e6e9ec;--fg:#22272d;--muted:#6b737c;--bg:#f4f5f7;--phone:#fff;--scrim:rgb(0 0 0 / .25);color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--line:#7d858e;--soft:#2a3036;--fg:#e2e6ea;--muted:#9aa3ad;--bg:#121518;--phone:#1b1f23;--scrim:rgb(0 0 0 / .5);color-scheme:dark}}
+:root[data-theme="dark"]{--line:#7d858e;--soft:#2a3036;--fg:#e2e6ea;--muted:#9aa3ad;--bg:#121518;--phone:#1b1f23;--scrim:rgb(0 0 0 / .5);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:13px/1.5 system-ui,-apple-system,"Hiragino Sans",sans-serif}
+h1{font-size:15px;margin:0 0 4px}
+p.note{margin:0 0 16px;color:var(--muted);max-width:760px}
+.row{display:flex;flex-wrap:wrap;gap:16px}
+figure{margin:0;width:min(300px,100%)}
+figcaption{color:var(--muted);font-size:12px;margin:6px 2px 0}
+.phone{position:relative;height:600px;background:var(--phone);border:2px solid var(--line);border-radius:26px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.bar b{flex:1;text-align:center}
+.bar span{min-width:56px}
+.body{flex:1;padding:10px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;overflow:hidden}
+.card{border:1.5px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.card.dash{border-style:dashed}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.hd .t{font-weight:700}
+.muted{color:var(--muted)}
+.dots{display:flex;gap:4px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--soft);border:1px solid var(--line)}
+.dots i.on{background:var(--fg);border-color:var(--fg)}
+.q{font-weight:700}
+.ch{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.ch div,.opt{border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center}
+.facts{border:1px solid var(--line);border-radius:8px}
+.facts div{display:flex;justify-content:space-between;padding:5px 8px;border-top:1px solid var(--soft)}
+.facts div:first-child{border-top:0}
+.facts .need{background:var(--soft)}
+.plan{border:1px solid var(--line);border-radius:8px;padding:6px 8px;display:grid;grid-template-columns:1fr auto;font-size:12px}
+.plan .d{grid-column:1/-1;color:var(--muted)}
+.plan.rec{border-width:2px}
+.btn{border:1.5px solid var(--fg);border-radius:8px;padding:6px;text-align:center;font-weight:700}
+.btn.off{opacity:.4}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+.sum span:last-child{white-space:nowrap;margin-left:6px}
+.finder{flex:1;min-height:80px;border:1px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.tl{border-top:1px solid var(--soft);padding-top:6px;color:var(--muted);font-size:12px}
+.sys{position:absolute;inset:0;background:var(--scrim);display:flex;align-items:flex-end}
+.sys .p{width:100%;height:78%;background:var(--soft);border-radius:14px 14px 0 0;padding:12px;display:flex;flex-direction:column;gap:8px}
+.sys .l{background:var(--phone);border-radius:8px}
+.sys .l div{padding:6px 8px;border-top:1px solid var(--soft)}
+.sys .l div:first-child{border-top:0}
+.meters{display:grid;grid-template-columns:auto 1fr;gap:3px 6px;align-items:center;font-size:11px}
+.meters i{height:6px;border:1px solid var(--line);border-radius:3px}
+.band{display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.band{justify-content:space-between}
+.band i{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;font-weight:700}
+.band i.w::after{content:"✓"}
+.comp{border-top:1px solid var(--line);padding:6px 8px 10px;display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)}
+.comp b{border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-weight:400}
+.comp .in{flex:1;border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.ev{color:var(--muted);font-size:12px;border-top:1px solid var(--soft);padding-top:6px}
+.nudge{margin:6px 10px 0;border:1px solid var(--fg);border-radius:999px;padding:3px 10px;font-size:11px;display:flex;justify-content:space-between}
+.band i.sel{outline:2px solid var(--fg);outline-offset:2px}
+.band label{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;color:var(--muted)}
+.me{align-self:flex-end;max-width:80%;background:var(--soft);border-radius:12px;padding:5px 8px;font-size:12px}
+.photo{align-self:flex-end;width:110px;height:80px;border-radius:10px;background:var(--soft);border:1px solid var(--line)}
+.mealc{border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12px;display:flex;justify-content:space-between;gap:6px}
+.app{border-left:2px solid var(--line);padding-left:8px;font-size:12px}
+.dayh{text-align:center;color:var(--muted);font-size:11px}
+.comp .hot{border:2px solid var(--fg);color:var(--fg);font-weight:700}
+.chips{padding:6px 8px 0;display:flex;gap:4px;font-size:10px;color:var(--muted)}
+.chips span{border:1px solid var(--line);border-radius:999px;padding:2px 6px;white-space:nowrap}
+.cam{flex:1;background:#2b3036;color:#d9dee3;display:flex;flex-direction:column;justify-content:space-between;padding:12px}
+.cam .r{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.cam .sh{width:48px;height:48px;border-radius:50%;border:3px solid #d9dee3}
+.big{display:flex;gap:10px;align-items:center}
+.big i{width:90px;height:90px;border-radius:50%;border:12px solid var(--line);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:20px;font-weight:700}
+.bar b{font-weight:700}
+.pics{display:flex;gap:6px}
+.pics div{flex:1;height:120px;border-radius:10px;background:var(--soft);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px}
+.pics div.s{flex:0 0 28px}
+.tot{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;font-size:11px}
+.tot div{border:1px solid var(--line);border-radius:8px;padding:3px 2px}
+.tot b{display:block;font-size:13px}
+.pill{border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.dish{border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:12px}
+.dish .dh{display:flex;justify-content:space-between;gap:6px;padding:6px 8px}
+.dish .dh .t{font-weight:700}
+.dish .ing{border-top:1px solid var(--soft);padding:4px 8px 4px 16px;display:flex;flex-direction:column;gap:1px}
+.dish .ing div{display:flex;justify-content:space-between;gap:6px}
+.dish .more{border-top:1px solid var(--soft);padding:4px 8px;display:flex;justify-content:space-between}
+.dish.edit{border:2px solid var(--fg)}
+.q2{text-decoration:underline dotted;text-underline-offset:3px}
+.fld{border:1.5px solid var(--fg);border-radius:6px;padding:1px 6px;min-width:64px;text-align:right}
+.add{border:1px dashed var(--line);border-radius:10px;padding:6px 8px;font-size:12px}
+.kb{height:150px;background:var(--soft);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px;font-size:12px}
+.kb span{background:var(--phone);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.swipe{display:flex}
+.swipe .dh{flex:1;transform:translateX(-50px)}
+.del{background:var(--fg);color:var(--phone);padding:6px 10px;display:flex;align-items:center;font-weight:700}
+.act{position:absolute;left:8px;right:8px;bottom:10px;display:flex;flex-direction:column;gap:6px}
+.act .g{background:var(--phone);border-radius:12px;text-align:center}
+.act .g div{padding:9px;border-top:1px solid var(--soft)}
+.act .g div:first-child{border-top:0}
+.nutl{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:12px}
+.nutl .g{grid-column:1/-1;color:var(--muted);font-size:11px;margin-top:8px;font-weight:700}
+.nutl .g:first-child{margin-top:0}
+</style>
+</head>
+<body>
+<h1>食事（中忠実度レイアウト）</h1>
+<p class="note">単位ビュー「食事」。食事の画面と、栄養の内訳の画面の2つからなる。タイムラインの食事のカードからプッシュで開く。上から、写真（0枚なら記録した文章）、時刻、合計（kcal と P・F・C）、料理の一覧（料理の行の下に材料）、料理を足す。直すのはすべてその場で行い、別の画面を開かない。例は Mさんの外食の定食。文言と色は⑦で決める。決めたことは <code>06-layout.md</code> の「全単位ビューのレイアウト」の「食事」。</p>
+<div class="row">
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>食事</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="pics"><div>写真（定食）</div></div><div class="hd"><span class="pill">12:40</span><span class="muted" style="font-size:11px">撮った時刻</span></div><div class="tot"><div><span class="muted">kcal</span><b>816</b></div><div><span class="muted">P</span><b>38 g</b></div><div><span class="muted">F</span><b>32 g</b></div><div><span class="muted">C</span><b>93 g</b></div></div><div class="q">料理</div><div class="dish "><div class="dh"><span class="t">竜田揚げ</span><span><span class="q2">5個（推定）</span>　420 kcal</span></div><div class="ing"><div><span>鶏もも肉</span><span class="q2">150 g</span></div><div><span>片栗粉</span><span class="q2">大さじ2</span></div><div><span>しょうゆ</span><span class="q2">大さじ1</span></div><div><span>揚げ油</span><span class="q2">吸った分 12 g</span></div></div><div class="more"><span>栄養の内訳</span><span>›</span></div></div><div class="dish "><div class="dh"><span class="t">ご飯</span><span><span class="q2">180 g</span>　281 kcal</span></div><div class="ing"><div><span>精白米（炊いたもの）</span><span class="q2">180 g</span></div></div><div class="more"><span>栄養の内訳</span><span>›</span></div></div><div class="muted" style="font-size:11px">味噌汁、冷ややっこ、料理を足す、食事を消す（スクロールの先）</div></div></div><figcaption>タイムラインの食事のカードを押すと、プッシュで開く。写真、時刻、合計、料理の一覧。料理の行の下に材料を並べる。点線の下線は押すとその場で直せる値。「（推定）」は推定した量で、直すと外れる</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>食事</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="pics"><div>写真（定食）</div></div><div class="hd"><span class="pill">12:40</span><span class="muted" style="font-size:11px">撮った時刻</span></div><div class="tot"><div><span class="muted">kcal</span><b>816</b></div><div><span class="muted">P</span><b>38 g</b></div><div><span class="muted">F</span><b>32 g</b></div><div><span class="muted">C</span><b>93 g</b></div></div><div class="q">料理</div><div class="dish edit"><div class="dh"><span class="fld" style="text-align:left;flex:1">竜田揚げ</span><span class="muted">完了</span></div><div class="ing"><div><span>量</span><span><span class="fld">5</span> 個</span></div><div class="muted" style="margin-top:4px">材料の量も同じ割合で変わる</div></div><div class="more"><span>この料理を消す</span><span></span></div></div><div class="dish "><div class="dh"><span class="t">ご飯</span><span><span class="q2">180 g</span>　281 kcal</span></div><div class="ing"><div><span>精白米（炊いたもの）</span><span class="q2">180 g</span></div></div></div></div></div><figcaption>料理の名前か量を押すと、その行がその場で値の欄に変わる（名前と量を一緒に直せる）。量を直すと材料の量も同じ割合で変わり、合計と1日の丸が変わる。料理は、行を左へ送っても消せる</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>食事</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="tot"><div><span class="muted">kcal</span><b>766</b></div><div><span class="muted">P</span><b>32 g</b></div><div><span class="muted">F</span><b>29 g</b></div><div><span class="muted">C</span><b>93 g</b></div></div><div class="q">料理</div><div class="dish"><div class="dh"><span class="t">竜田揚げ</span><span>5個　420 kcal</span></div><div class="ing"><div><span>鶏もも肉</span><span><span class="fld">120</span> g</span></div><div><span>片栗粉</span><span class="q2">大さじ2</span></div><div><span>しょうゆ</span><span class="q2">大さじ1</span></div><div><span>揚げ油</span><span class="q2">吸った分 12 g</span></div></div></div></div><div style="display:flex;justify-content:flex-end;padding:4px 10px;border-top:1px solid var(--line);font-size:12px;font-weight:700">完了</div><div class="kb"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>.</span><span>0</span><span>⌫</span></div></div><figcaption>材料の量を押すと、その場で値の欄に変わり、数字のキーボードが出る。単位は材料ごとに推定したものを使う。入れるそばから料理と食事の合計が変わる（Mさんの S5-3）</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>食事</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="pics"><div>写真（定食）</div></div><div class="hd"><span class="pill">12:40</span><span class="muted" style="font-size:11px">撮った時刻</span></div><div class="tot"><div><span class="muted">kcal</span><b>816</b></div><div><span class="muted">P</span><b>38 g</b></div><div><span class="muted">F</span><b>32 g</b></div><div><span class="muted">C</span><b>93 g</b></div></div><div class="q">料理</div><div class="dish "><div class="dh"><span class="t">竜田揚げ</span><span><span class="q2">5個</span>　420 kcal</span></div><div class="ing"><div><span>鶏もも肉</span><span class="q2">150 g</span></div><div><span>片栗粉</span><span class="q2">大さじ2</span></div></div></div><div class="dish edit"><div class="dh"><span class="fld" style="text-align:left;flex:1">ポテトサラダ</span><span class="muted">足す</span></div></div><div class="dish"><div class="dh"><span class="t">漬物</span><span class="muted">推定しています…</span></div></div></div></div><figcaption>「料理を足す」を押すと、一番下に名前の欄が出る。名前を入れて足すと、量と材料を推定する（推定中は「推定しています…」）。写真に写っていないものも足せる（Mさんの S5-8）</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>食事</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="pics"><div>写真</div></div><div class="hd"><span class="pill">19:05</span><span class="muted" style="font-size:11px">撮った時刻</span></div><div class="card dash" style="align-items:center;text-align:center"><div>料理を推定できませんでした</div><div class="muted" style="font-size:12px">料理の名前を入れると、量と材料を推定します</div></div><div class="add">料理を足す</div></div></div><figcaption>推定できなかったとき（料理が0件）。空の理由と、次にできることを示す。推定中は同じ場所に「推定しています…」を出す</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>食事</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="card" style="font-size:12px"><span class="muted" style="font-size:11px">記録した文章</span>残りご飯と唐揚げ</div><div class="hd"><span class="pill">21:30</span><span class="muted" style="font-size:11px">送った時刻</span></div><div class="tot"><div><span class="muted">kcal</span><b>610</b></div><div><span class="muted">P</span><b>24 g</b></div><div><span class="muted">F</span><b>22 g</b></div><div><span class="muted">C</span><b>78 g</b></div></div><div class="q">料理</div><div class="dish "><div class="dh"><span class="t">ご飯</span><span><span class="q2">150 g（推定）</span>　234 kcal</span></div><div class="ing"><div><span>精白米（炊いたもの）</span><span class="q2">150 g</span></div></div><div class="more"><span>栄養の内訳</span><span>›</span></div></div><div class="dish "><div class="dh"><span class="t">唐揚げ</span><span><span class="q2">4個（推定）</span>　376 kcal</span></div><div class="ing"><div><span>鶏もも肉</span><span class="q2">120 g</span></div><div><span>小麦粉</span><span class="q2">大さじ1</span></div></div><div class="more"><span>栄養の内訳</span><span>›</span></div></div></div></div><figcaption>書いて送った文章から記録した食事（写真が0枚）。写真の場所に文章を出す。時刻は文章に時刻があればそれを、なければ送った時刻にし、押して直せる</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 食事</span><b>竜田揚げ</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="muted">5個（推定）</div><div class="nutl"><span class="g">主な栄養</span><span>エネルギー</span><span>420 kcal</span><span>たんぱく質</span><span>24.0 g</span><span>脂質</span><span>26.1 g</span><span>炭水化物</span><span>20.3 g</span><span>食物繊維</span><span>0.3 g</span><span>食塩相当量</span><span>2.4 g</span><span class="g">ミネラル</span><span>カルシウム</span><span>12 mg</span><span>鉄</span><span>1.0 mg</span><span>カリウム</span><span>420 mg</span><span class="g">ビタミン</span><span>ビタミンA</span><span>60 µg</span><span>ビタミンB1</span><span>0.11 mg</span><span>ビタミンB2</span><span>0.27 mg</span><span>ビタミンC</span><span>5 mg</span><span>ビタミンD</span><span>0.6 µg</span></div></div></div><figcaption>栄養の内訳。料理の行の「栄養の内訳 ›」からプッシュで開く。題は料理の名前。見るだけで、直すのは食事の画面で行う（Mさんの S5-4）</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>食事</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="dish"><div class="dh"><span class="t">味噌汁</span><span><span class="q2">1杯（推定）</span>　40 kcal</span></div><div class="more"><span>栄養の内訳</span><span>›</span></div></div><div class="dish"><div class="dh"><span class="t">冷ややっこ</span><span><span class="q2">1皿（推定）</span>　75 kcal</span></div><div class="more"><span>栄養の内訳</span><span>›</span></div></div><div class="add">料理を足す</div><div class="card" style="margin-top:12px;text-align:center"><b>食事を消す</b></div></div></div><figcaption>一番下までスクロールしたところ（材料は省いて描いている）。食事を消すのはここだけに置き、破壊的な操作の見た目にする。iOS の連絡先の「連絡先を削除」と同じ置き方</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>食事</b><span></span></div><div class="body" style="justify-content:flex-start;opacity:.35"><div class="pics"><div>写真（定食）</div></div><div class="hd"><span class="pill">12:40</span><span class="muted" style="font-size:11px">撮った時刻</span></div><div class="tot"><div><span class="muted">kcal</span><b>816</b></div><div><span class="muted">P</span><b>38 g</b></div><div><span class="muted">F</span><b>32 g</b></div><div><span class="muted">C</span><b>93 g</b></div></div><div class="q">料理</div></div><div class="sys" style="align-items:stretch"><div class="act"><div class="g"><div class="muted" style="font-size:11px">この食事と料理がすべて消えます。ヘルスケアに書き出した分も消します</div><div><b>食事を消す</b></div></div><div class="g"><div><b>キャンセル</b></div></div></div></div></div><figcaption>「食事を消す」を押すと、下から確かめる。否定の操作は「キャンセル」1つ。消すとタイムラインに戻り、1日の丸が減る（Tさんの S4-5）</figcaption></figure>
+</div>
+</body>
+</html>
