@@ -1,0 +1,263 @@
+<title>チャットと1日の丸</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑥ の問い「タイムラインをチャット型にしたとき、1日の丸（食事と体重のまとめ）をどこに置くか」に答えるためのもの。
+  両案で同じ: タイムラインは下が新しい。記録は下の入力欄から（撮る、体重、文章）。アプリが話しかけるのは記録を忘れたときの知らせだけ。
+  1日の丸: 1本の輪を P・F・C の kcal で色分けし、一周で1日の目安。体重を記録した日は中にチェック。アクティビティリングとは形と色で分ける。
+  #a と #b で切り替える。下の黒いバーか ← → キーでも切り替えられる。
+  a: タブなし。チャットの上に、7日分の丸の帯を固定する。丸を押すとその日へ移り、スクロールすると帯の選択も動く
+  b: タブ「タイムライン」「まとめ」。まとめに、丸の並び（ページ送り）、選んだ日の大きな丸、体重と目標をまとめる
+  文言と見た目は⑦で決める。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#e9ecef; --phone:#fbfcfd; --ink:#22272d; --muted:#69727c; --line:#c3c9d0; --soft:#eef1f4;
+  --accent:#34597f; --hi:#fff3c4; --pill:#15181b; --pill-ink:#f3f5f7; --finder:#2b3036; --finder-ink:#d9dee3;
+  --p:#3d74b8; --f:#c98a1c; --c:#4e9a62; --track:#e1e5e9;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+    --accent:#8fb2d8; --hi:#4a4220; --pill:#f3f5f7; --pill-ink:#15181b; --finder:#0d0f11; --finder-ink:#aab2ba;
+    --p:#7fa9e0; --f:#e0b057; --c:#7fc493; --track:#2c3339; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+  --accent:#8fb2d8; --hi:#4a4220; --pill:#f3f5f7; --pill-ink:#15181b; --finder:#0d0f11; --finder-ink:#aab2ba;
+  --p:#7fa9e0; --f:#e0b057; --c:#7fc493; --track:#2c3339; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:13px/1.5 "BIZ UDPGothic",system-ui,-apple-system,"Hiragino Sans",sans-serif;padding:16px 16px 96px}
+.wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:16px}
+.col{display:flex;flex-direction:column;gap:10px;width:min(390px,100%)}
+.lead{color:var(--muted);margin:0}
+.lead b{color:var(--ink)}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.link{color:var(--accent)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+.phone{position:relative;width:100%;height:760px;background:var(--phone);border:2px solid var(--line);border-radius:30px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line);min-height:46px}
+.bar h1{font-size:15px;margin:0;font-weight:700;text-align:center;flex:1}
+.bar .l,.bar .r{min-width:40px}
+.bar .r{text-align:right}
+.scroll{flex:1;overflow:auto;padding:10px 12px 16px;display:flex;flex-direction:column;gap:8px}
+.tabs{display:flex;border-top:1px solid var(--line);padding:6px 0 16px;background:var(--phone)}
+.tabs button{flex:1;text-align:center;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+.tabs button i{width:22px;height:22px;border-radius:6px;border:1.5px solid currentColor}
+.tabs button[aria-selected="true"]{color:var(--accent);font-weight:700}
+.tabs button[aria-selected="true"] i{background:currentColor}
+
+.band{border-bottom:1px solid var(--line);padding:6px 8px 8px;display:flex;flex-direction:column;gap:4px;background:var(--phone)}
+.goalline{display:flex;justify-content:space-between;font-size:12px;padding:0 4px}
+.rings{display:flex;align-items:center;gap:2px}
+.rings .pg{color:var(--muted);padding:0 4px;font-size:16px}
+.rings .days{flex:1;display:grid;grid-template-columns:repeat(7,1fr)}
+.day{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:10px;color:var(--muted);border-radius:10px;padding:2px 0}
+.day[aria-pressed="true"]{background:var(--soft);color:var(--ink);font-weight:700}
+.readout{display:flex;justify-content:space-between;gap:6px;font-size:11px;padding:0 4px}
+.readout .k{font-weight:700}
+.key{display:inline-flex;gap:8px}
+.key i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px;vertical-align:0}
+
+.dayh{text-align:center;font-size:11px;color:var(--muted);padding:8px 0 2px}
+.msg{display:flex;flex-direction:column;gap:2px;border-radius:10px;transition:background .6s;padding:2px}
+.msg.new{background:var(--hi)}
+.msg .t{font-size:10px;color:var(--muted)}
+.me{align-items:flex-end}
+.me .b{max-width:80%;background:var(--soft);border-radius:14px;padding:6px 10px}
+.me .photo{width:150px;height:110px;border-radius:12px;background:var(--line)}
+.app .b{max-width:92%;padding:2px 0 2px 10px;border-left:2px solid var(--line)}
+.mealc{border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;gap:10px;align-items:center;max-width:92%}
+.mealc .n{flex:1;display:flex;flex-direction:column}
+.mealc .s{font-size:11px;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:10px;padding:6px 10px;display:flex;justify-content:space-between;gap:8px;max-width:92%}
+.wtin{display:flex;align-items:center;gap:6px;margin-top:6px}
+.wtin input{width:70px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--phone);text-align:right}
+.btn{border:1.5px solid var(--accent);color:var(--accent);border-radius:8px;padding:4px 10px;font-weight:700;white-space:nowrap}
+
+.dock-in{border-top:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--phone)}
+.chips{display:flex;gap:6px;overflow-x:auto}
+.chips button{border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap;font-size:12px}
+.send{display:flex;gap:6px;align-items:center}
+.send input{flex:1;min-width:0;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--phone)}
+.round{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:700;text-align:center!important;flex:none}
+
+.cam{position:absolute;inset:0;z-index:5;background:var(--finder);color:var(--finder-ink);display:flex;flex-direction:column;padding:14px 16px 34px}
+.cam .top{display:flex;justify-content:space-between}
+.cam .c{flex:1;display:flex;align-items:center;justify-content:center;font-size:12px}
+.cam .row{display:flex;align-items:center;justify-content:space-between}
+.cam .row button{color:var(--finder-ink);font-size:12px;min-width:76px}
+.shutter{width:60px;height:60px;border-radius:50%;border:3px solid var(--finder-ink);display:flex;align-items:center;justify-content:center;min-width:0!important}
+.shutter i{width:48px;height:48px;border-radius:50%;background:var(--finder-ink)}
+
+.sum{display:flex;flex-direction:column;gap:12px}
+.sec{font-weight:700;font-size:12px;color:var(--muted);letter-spacing:.06em}
+.big{display:flex;gap:14px;align-items:center}
+.big dl{margin:0;display:grid;grid-template-columns:auto auto;gap:2px 10px;font-size:12px}
+.big dt{color:var(--muted)}
+.big dd{margin:0;text-align:right}
+.goal{border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.spark{width:100%;height:70px}
+
+.state{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:4px}
+.state b{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.reset{align-self:flex-start;border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;pointer-events:none}
+.dock nav{pointer-events:auto;display:flex;gap:4px;background:var(--pill);color:var(--pill-ink);border-radius:999px;padding:5px}
+.dock button{color:var(--pill-ink);padding:7px 14px;border-radius:999px}
+.dock button[aria-pressed="true"]{background:var(--pill-ink);color:var(--pill)}
+@media (prefers-reduced-motion: reduce){.msg{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="col">
+    <p class="lead" id="lead"></p>
+    <div class="phone" id="phone"></div>
+  </div>
+  <div class="col">
+    <div class="state"><b>いまの状態</b><div id="state"></div></div>
+    <p class="lead">例は Tさんの木曜の昼（12:40）。9時に「体重がまだ」の知らせが来ている。試すこと:</p>
+    <p class="lead">・知らせの中で体重を記録する（今日の丸にチェックが付く）<br>・<b>撮る</b>で食事を送る（今日の丸が伸びる）<br>・「唐揚げ食べた」と送る（食事として記録される）、「夜は何を食べればいい？」と送る（会話になる）<br>・丸を押して前の日へ、チャットをスクロールして丸の選択が動くか</p>
+    <p class="lead">丸は1本の輪で、青が P、黄が F、緑が C の kcal。一周で1日の目安 1,850 kcal。目標は丸の帯（a）かまとめ（b）から開く想定で、ここでは開かない。</p>
+    <button class="reset" id="reset">はじめに戻す</button>
+  </div>
+</div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="va">a 帯（タブなし）</button><button id="vb">b タブ2つ</button></nav></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TARGET=1850;
+const DN=['9/18（金）','9/19（土）','9/20（日）','9/21（月）','9/22（火）','昨日 9/23（水）','今日 9/24（木）'];
+const SHORT=['金','土','日','月','火','水','今日'];
+const WEIGHTS=[73.1,72.9,null,73.0,72.8,72.6,null];
+const PAST=[
+  [['07:40','トースト・目玉焼き',16,14,40],['12:30','牛丼 並',22,25,95],['19:40','豚キムチ炒め・ご飯',30,22,85]],
+  [['09:30','パンケーキ',10,18,70],['13:00','ラーメン',24,26,85],['20:10','刺身定食',38,12,80]],
+  [['11:00','ブランチ（ベーグル）',18,15,65],['19:00','焼肉',55,60,40],['21:30','アイス',4,12,26]],
+  [['07:30','納豆ご飯・味噌汁',16,6,70],['12:10','カレーライス',20,24,120],['20:00','鶏むね肉のソテー・サラダ',42,14,40]],
+  [['07:30','ヨーグルト・バナナ',8,4,40],['12:15','そば',16,5,70],['19:30','焼き魚定食',35,15,85]],
+  [['07:50','ヨーグルト・バナナ',8,4,40],['12:30','焼き魚定食',35,15,85],['19:30','焼き鳥・ビール 2杯',38,28,55]]
+];
+const kc=(p,f,c)=>p*4+f*9+c*4;
+function base(){
+  const ev=[];
+  PAST.forEach((ms,d)=>{
+    if(WEIGHTS[d])ev.push({d,t:'07:1'+d,k:'weight',v:WEIGHTS[d].toFixed(1)});
+    ms.forEach(([t,n,p,f,c])=>{ev.push({d,t,k:'photo'});ev.push({d,t,k:'meal',n,p,f,c})});
+  });
+  ev.push({d:5,t:'15:10',k:'me',x:'夜の外食、何に気をつければいい？'},{d:5,t:'15:10',k:'app',x:'今日は残り 900 kcal ほどです。揚げ物を1品にして、ご飯を少なめにすると収まります。'});
+  ev.push({d:4,t:'06:00',k:'card',x:'週の振り返り 9/15〜9/21',s:'傾向 -0.4 kg ›'},{d:4,t:'06:00',k:'card',x:'1日の目安が変わりました',s:'1,900 → 1,850 kcal ›'});
+  ev.push({d:6,t:'08:10',k:'photo'},{d:6,t:'08:10',k:'meal',n:'トースト・ゆで卵・コーヒー',p:18,f:14,c:40});
+  ev.push({d:6,t:'09:00',k:'remind'});
+  ev.push({d:6,t:'10:45',k:'me',x:'昼はコンビニになりそう。何を選べばいい？'},{d:6,t:'10:45',k:'app',x:'朝のたんぱく質が 18 g なので、サラダチキンかゆで卵を足して 30 g ほどにすると、夜が楽になります。'});
+  ev.push({d:6,t:'12:20',k:'photo'},{d:6,t:'12:20',k:'meal',n:'サラダチキン・おにぎり 2個',p:34,f:6,c:80});
+  return ev.map((e,i)=>({...e,id:i}));
+}
+const st={v:'a',tab:0,cam:false,ev:base(),weight:null,sel:6,now:40,last:null,seq:1000,log:'まだ何もしていない'};
+function nowT(){const m=12*60+st.now;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
+function totals(d){let p=0,f=0,c=0;st.ev.filter(e=>e.d===d&&e.k==='meal'&&!e.pending).forEach(e=>{p+=e.p;f+=e.f;c+=e.c});return {p,f,c,k:kc(p,f,c)}}
+function weightOf(d){return d===6?st.weight:(WEIGHTS[d]?WEIGHTS[d].toFixed(1):null)}
+function ring(d,size,sw){
+  const T=totals(d),r=(size-sw)/2,C=2*Math.PI*r,cx=size/2;
+  let off=0,segs='';
+  [['p',T.p*4],['f',T.f*9],['c',T.c*4]].forEach(([k,v])=>{const len=Math.min(v/TARGET,1-off/C)*C;if(len>0){segs+='<circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="var(--'+k+')" stroke-width="'+sw+'" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cx+')"/>';off+=len}});
+  const over=T.k>TARGET;
+  const mid=weightOf(d)?'<path d="M'+(cx-size*.14)+' '+cx+' l'+size*.1+' '+size*.1+' l'+size*.18+' -'+size*.2+'" fill="none" stroke="var(--ink)" stroke-width="'+Math.max(1.6,size/18)+'" stroke-linecap="round" stroke-linejoin="round"/>':'';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true"><circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+sw+'"/>'+segs+(over?'<circle cx="'+cx+'" cy="'+cx+'" r="'+(r+sw/2+1.5)+'" fill="none" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 2"/>':'')+mid+'</svg>';
+}
+function readout(d){const T=totals(d),w=weightOf(d);return '<div class="readout num"><span><span class="k">'+SHORT[d].replace('今日','今日')+'</span>　'+T.k.toLocaleString()+' / 1,850 kcal'+(T.k>TARGET?'（+'+(T.k-TARGET)+'）':'')+'</span><span>P'+T.p+' F'+T.f+' C'+T.c+'</span><span>'+(w?'体重 '+w+' kg':'<span class="muted">体重 まだ</span>')+'</span></div>'}
+function daysRow(size,sw){return '<div class="rings"><button class="pg" aria-label="前の週">‹</button><div class="days">'+SHORT.map((s,d)=>'<button class="day" data-day="'+d+'" aria-pressed="'+(d===st.sel)+'">'+ring(d,size,sw)+s+'</button>').join('')+'</div><button class="pg" aria-label="次の週" style="opacity:.3">›</button></div>'}
+function msgHTML(e){
+  const nw=e.id===st.last?' new':'';
+  if(e.k==='photo')return '<div class="msg me'+nw+'" data-id="'+e.id+'"><span class="photo"></span><span class="t num">'+e.t+'</span></div>';
+  if(e.k==='weight')return '<div class="msg me'+nw+'" data-id="'+e.id+'"><span class="b num">体重 '+esc(e.v)+' kg</span><span class="t num">'+e.t+'</span></div>';
+  if(e.k==='me')return '<div class="msg me'+nw+'" data-id="'+e.id+'"><span class="b">'+esc(e.x)+'</span><span class="t num">'+e.t+'</span></div>';
+  if(e.k==='app')return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="b">'+(e.x?esc(e.x):'<span class="muted">考えています…</span>')+'</span></div>';
+  if(e.k==='card')return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="card"><span>'+esc(e.x)+'</span><span class="muted">'+esc(e.s)+'</span></span></div>';
+  if(e.k==='remind')return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="b">今日の体重がまだです。測ったら入れてください。'+(st.weight?'<br><span class="muted">記録しました</span>':'<form class="wtin" id="wf"><input id="wv" inputmode="decimal" value="72.6" aria-label="今日の体重"><span>kg</span><button class="btn" type="submit">記録</button></form>')+'</span><span class="t num">'+e.t+'</span></div>';
+  if(e.k==='meal'){
+    if(e.pending)return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="mealc"><span class="n muted">推定しています…</span></span></div>';
+    return '<div class="msg app'+nw+'" data-id="'+e.id+'"><span class="mealc"><span class="n"><b>'+esc(e.n)+'</b><span class="s num">P'+e.p+' F'+e.f+' C'+e.c+'</span>'+(e.fromText?'<span class="s link">会話として送り直す</span>':'')+'</span><span class="num">'+kc(e.p,e.f,e.c)+' kcal ›</span></span></div>';
+  }
+  return '';
+}
+function chatHTML(){let h='';for(let d=0;d<7;d++){h+='<div class="dayh" data-dh="'+d+'">'+DN[d]+'</div>';h+=st.ev.filter(e=>e.d===d).sort((x,y)=>x.t<y.t?-1:x.t>y.t?1:x.id-y.id).map(msgHTML).join('')}return h}
+function composer(){return '<div class="dock-in"><div class="chips"><button data-preset="ここまでの食事のフィードバック">ここまでの食事のフィードバック</button><button data-preset="次の食事のアドバイス">次の食事のアドバイス</button></div><form class="send" id="f"><button type="button" class="round" data-act="opencam" aria-label="撮る">撮る</button><button type="button" class="round" data-act="weight" aria-label="体重を記録">体重</button><input id="msg" placeholder="食べたものや、なんでも" aria-label="入力欄"><button class="btn" type="submit">送る</button></form></div>'}
+function spark(){
+  const pts=WEIGHTS.map((w,i)=>i===6?(st.weight?+st.weight:null):w).map((w,i)=>w?[i,w]:null).filter(Boolean);
+  const x=i=>10+i*(300/6),y=w=>8+(73.4-w)/(73.4-72.0)*54;
+  return '<svg class="spark" viewBox="0 0 320 70" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="320" y1="'+y(71.8+0.2)+'" y2="'+y(72.0)+'" stroke="var(--line)" stroke-dasharray="3 3"/><polyline fill="none" stroke="var(--ink)" stroke-width="1.5" points="'+pts.map(([i,w])=>x(i)+','+y(w)).join(' ')+'"/>'+pts.map(([i,w])=>'<circle cx="'+x(i)+'" cy="'+y(w)+'" r="2.5" fill="var(--ink)"/>').join('')+'</svg>';
+}
+function render(toBottom){
+  const tabs=st.v==='b';const chat=!tabs||st.tab===0;
+  let top='',body='',foot='',title='タイムライン';
+  if(!tabs){top='<div class="band"><div class="goalline"><span><b>減量</b>　あと 3.2 kg・あと 58 日</span><span class="link">目標 ›</span></div>'+daysRow(34,5)+readout(st.sel)+'</div>'}
+  if(chat){body=chatHTML();foot=composer()}
+  else{title='まとめ';
+    body='<div class="sum"><div class="sec">食事と栄養</div>'+daysRow(34,5)+'<div class="big">'+ring(st.sel,120,14)+'<dl class="num"><dt>'+esc(SHORT[st.sel])+'</dt><dd></dd><dt>kcal</dt><dd>'+totals(st.sel).k.toLocaleString()+' / 1,850</dd><dt><span class="key"><span><i style="background:var(--p)"></i>P</span></span></dt><dd>'+totals(st.sel).p+' g</dd><dt><span class="key"><span><i style="background:var(--f)"></i>F</span></span></dt><dd>'+totals(st.sel).f+' g</dd><dt><span class="key"><span><i style="background:var(--c)"></i>C</span></span></dt><dd>'+totals(st.sel).c+' g</dd></dl></div><span class="link">タイムラインでこの日を見る</span>'+
+      '<div class="sec">体重と目標</div><div class="goal"><div style="display:flex;justify-content:space-between"><span><b>減量</b>　あと 3.2 kg・あと 58 日</span><span class="link">目標 ›</span></div><span class="muted">間に合うペース</span>'+spark()+'<span class="num">'+(weightOf(st.sel)?SHORT[st.sel]+'の体重 '+weightOf(st.sel)+' kg':SHORT[st.sel]+'の体重 まだ')+'</span></div><span class="card" style="max-width:none"><span>週の振り返り 9/15〜9/21</span><span class="muted">›</span></span></div>';
+  }
+  const prev=$('sc'),keep=prev?prev.scrollTop:0;
+  $('phone').innerHTML='<div class="bar"><span class="l"></span><h1>'+title+'</h1><span class="r link" aria-label="アカウント">人</span></div>'+top+'<div class="scroll" id="sc">'+body+'</div>'+foot+
+    (tabs?'<div class="tabs" role="tablist">'+['タイムライン','まとめ'].map((n,i)=>'<button role="tab" data-tab="'+i+'" aria-selected="'+(i===st.tab)+'"><i></i>'+n+'</button>').join('')+'</div>':'')+
+    (st.cam?'<div class="cam"><div class="top"><button data-act="closecam" style="color:inherit">閉じる</button><span>カメラ</span><span style="min-width:40px"></span></div><div class="c">ファインダー（全画面）</div><div class="row"><button data-act="pick">写真を選ぶ</button><button class="shutter" data-act="shoot" aria-label="撮る"><i></i></button><span style="min-width:76px"></span></div></div>':'');
+  const sc=$('sc');sc.scrollTop=toBottom?sc.scrollHeight:keep;
+  if(chat&&!tabs)sc.onscroll=spy;
+  $('lead').innerHTML=tabs?'<b>b タブ「タイムライン」「まとめ」</b>　タイムラインはチャットだけ。まとめに丸の並び、選んだ日の大きな丸、体重と目標を集める':'<b>a 帯（タブなし）</b>　チャットの上に目標の1行と7日分の丸を固定。丸を押すとその日へ移り、下の1行にその日の kcal・PFC・体重が出る';
+  $('va').setAttribute('aria-pressed',!tabs);$('vb').setAttribute('aria-pressed',tabs);
+  const T=totals(6);
+  $('state').innerHTML='案: '+st.v+(tabs?'　タブ: '+['タイムライン','まとめ'][st.tab]:'')+'<br>選んでいる日: '+SHORT[st.sel]+'<br>今日: '+T.k.toLocaleString()+' / 1,850 kcal・体重 '+(st.weight?st.weight+' kg':'まだ')+'<br>'+st.log;
+}
+function spy(){
+  const sc=$('sc'),top=sc.getBoundingClientRect().top+4;let d=0;
+  sc.querySelectorAll('[data-dh]').forEach(h=>{if(h.getBoundingClientRect().top<=top+40)d=+h.dataset.dh});
+  if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-4)d=6;
+  if(d!==st.sel){st.sel=d;const band=document.querySelector('.band');if(band){band.querySelectorAll('.day').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.day===d));band.querySelector('.readout').outerHTML=readout(d)}}
+}
+function goChat(){if(st.v==='b')st.tab=0}
+function push(list,after,label){
+  goChat();st.cam=false;st.sel=6;
+  list.forEach(e=>{e.id=++st.seq;e.d=6;st.ev.push(e)});st.last=list[list.length-1].id;
+  st.log='足した: '+label;render(true);
+  if(after)setTimeout(()=>{after();render(true)},1300);
+}
+const isQuestion=s=>/[？?]|どう|何|なに|いい$|べき|教えて/.test(s);
+document.addEventListener('click',ev=>{
+  const a=ev.target.closest('[data-act]'),p=ev.target.closest('[data-preset]'),t=ev.target.closest('[data-tab]'),dy=ev.target.closest('[data-day]');
+  if(t){st.tab=+t.dataset.tab;render(st.tab===0);return}
+  if(dy){st.sel=+dy.dataset.day;
+    if(st.v==='a'){render(false);const h=$('sc').querySelector('[data-dh="'+st.sel+'"]');if(h){$('sc').onscroll=null;$('sc').scrollTop=h.offsetTop-$('sc').offsetTop-4;setTimeout(()=>{$('sc').onscroll=spy},50)}}
+    else render(false);
+    st.log='丸を押した: '+SHORT[st.sel];$('state').lastChild.textContent=st.log;return}
+  if(a){const act=a.dataset.act;
+    if(act==='opencam'){st.cam=true;render(false);return}
+    if(act==='closecam'){st.cam=false;render(true);return}
+    if(act==='weight'){goChat();st.sel=6;render(true);const w=$('wv');if(w){w.focus();w.select();st.log='体重: 知らせの入力欄へ移った'}else{st.log='体重: 今日は記録済み。直すときはシートで開く想定'}render(true);if($('wv'))$('wv').focus();return}
+    if(act==='shoot'||act==='pick'){st.now++;const m={t:act==='pick'?'11:50':nowT(),k:'meal',pending:1};
+      push([{t:m.t,k:'photo'},m],()=>{delete m.pending;Object.assign(m,act==='pick'?{n:'カフェラテ',p:6,f:7,c:10}:{n:'焼き鮭弁当',p:30,f:18,c:90})},act==='pick'?'11:50 の写真':'撮った食事')}
+  }
+  if(p){st.now++;const r={t:nowT(),k:'app'};push([{t:nowT(),k:'me',x:p.dataset.preset},r],()=>{r.x=p.dataset.preset.startsWith('次')?'残りは 1,000 kcal ほどです。夜は脂の少ない肉か魚を主菜にすると、たんぱく質も目安に届きます。':'朝と昼で 950 kcal、たんぱく質は 52 g です。ペースどおりで、このままで大丈夫です。'},'会話（プリセット）')}
+});
+document.addEventListener('submit',ev=>{
+  ev.preventDefault();
+  if(ev.target.id==='f'){const v=$('msg').value.trim();if(!v)return;$('msg').value='';st.now++;
+    if(isQuestion(v)){const r={t:nowT(),k:'app'};push([{t:nowT(),k:'me',x:v},r],()=>{r.x='（ここに AI の発言が出る）'},'会話（「'+v+'」）')}
+    else{const m={t:nowT(),k:'meal',pending:1,fromText:1};push([{t:nowT(),k:'me',x:v},m],()=>{delete m.pending;Object.assign(m,{n:v.replace(/(を)?食べた$/,''),p:22,f:28,c:60})},'文章の食事（「'+v+'」）')}
+  }
+  if(ev.target.id==='wf'){const v=parseFloat($('wv').value);if(!(v>20&&v<300))return;st.weight=v.toFixed(1);st.now++;push([{t:nowT(),k:'weight',v:st.weight}],null,'体重 '+st.weight+' kg')}
+});
+function setV(v){st.v=v;st.tab=0;st.cam=false;st.sel=6;try{history.replaceState(null,'','#'+v)}catch(_){location.hash=v}render(true)}
+$('va').onclick=()=>setV('a');$('vb').onclick=()=>setV('b');
+$('reset').onclick=()=>{st.ev=base();st.weight=null;st.now=40;st.last=null;st.log='まだ何もしていない';setV(st.v)};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='a'?'b':'a')});
+setV(location.hash==='#b'?'b':'a');
+</script>
