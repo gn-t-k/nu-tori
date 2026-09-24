@@ -20,7 +20,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 ### コーディングの好み
 
-Swift のコード・テスト・依存を書く・直す前に、`docs/agents/coding-style.md` と `docs/agents/testing.md` を読む。PR を出す前と PR に push する前に、`docs/agents/git.md` の好みのレビューを通す。好みのほうが違うと思ったら、ユーザーに聞いてからこの2つを直す。
+コード・テスト・依存を書く・直す前に、`docs/agents/coding-style.md` と `docs/agents/testing.md`、その言語の `docs/agents/languages/<言語>.md`（あれば）を読む。PR を出す前と PR に push する前に、`docs/agents/git.md` の好みのレビューを通す。好みのほうが違うと思ったら、ユーザーに聞いてからこれらを直す。
 
 ### スキルの管理
 
