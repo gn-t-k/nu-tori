@@ -1,0 +1,147 @@
+<title>目標のグラフ</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑥ の問い「目標の画面で、体重の傾向・1日の目安の推移・推定した消費量をどう見せるか」に答えるためのもの。
+  #A #B で切り替える。下の黒いバーか ← → キーでも切り替えられる。
+  A: 3つのグラフ（体重、1日の目安、推定した消費量）  B: 2つのグラフ（体重、消費量と1日の目安を1つの kcal の軸に重ねる）
+  両案とも、週の振り返りの一覧は置かず「週の振り返り ›」1行にする（開いた先の ‹ › で遡る）。今の1日の目安に P・F・C を添える。
+  グラフの週を押すと、その週の値がグラフの上に出る。文言と見た目は⑦で決める。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#e9ecef; --phone:#fbfcfd; --ink:#22272d; --muted:#69727c; --line:#c3c9d0; --soft:#eef1f4; --grid:#e3e7eb;
+  --accent:#34597f; --s1:#2f6bb0; --s2:#c2682a; --pill:#15181b; --pill-ink:#f3f5f7;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30; --grid:#2c3238;
+    --accent:#8fb2d8; --s1:#4f95e0; --s2:#cc7433; --pill:#f3f5f7; --pill-ink:#15181b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30; --grid:#2c3238;
+  --accent:#8fb2d8; --s1:#4f95e0; --s2:#cc7433; --pill:#f3f5f7; --pill-ink:#15181b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:13px/1.5 "BIZ UDPGothic",system-ui,-apple-system,"Hiragino Sans",sans-serif;padding:16px 16px 96px;margin:0}
+.wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:16px}
+.col{display:flex;flex-direction:column;gap:10px;width:min(390px,100%)}
+.lead{color:var(--muted);margin:0}
+.lead b{color:var(--ink)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.phone{position:relative;width:100%;height:780px;background:var(--phone);border:2px solid var(--line);border-radius:30px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;padding:12px 14px 8px;border-bottom:1px solid var(--line);min-height:46px}
+.bar span{min-width:70px;color:var(--accent)}
+.bar h1{flex:1;text-align:center;font-size:15px;margin:0}
+.scroll{flex:1;overflow:auto;padding:12px 14px 24px;display:flex;flex-direction:column;gap:10px}
+.scroll>*{flex-shrink:0}
+.goal{border:2px solid var(--ink);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.goal .t{font-size:18px;font-weight:700}
+h2{font-size:12px;letter-spacing:.06em;color:var(--muted);margin:6px 0 0;font-weight:700}
+.chart{border:1px solid var(--line);border-radius:10px;padding:8px 8px 4px}
+.readout{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12px;min-height:20px;margin-bottom:2px}
+.readout b{font-size:14px}
+.legend{display:flex;gap:12px;font-size:11px;color:var(--muted);margin:2px 2px 0}
+.legend i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{fill:var(--muted);font-size:10px;font-family:inherit}
+.gr{stroke:var(--grid);stroke-width:1}
+.tgt{background:var(--soft);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.pfc{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:12px}
+.row{display:flex;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.past{border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;font-size:12px}
+.state{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:4px}
+.state b{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;pointer-events:none}
+.dock nav{pointer-events:auto;display:flex;gap:4px;background:var(--pill);color:var(--pill-ink);border-radius:999px;padding:5px}
+.dock button{color:var(--pill-ink);padding:7px 14px;border-radius:999px}
+.dock button[aria-pressed="true"]{background:var(--pill-ink);color:var(--pill)}
+</style>
+
+<div class="wrap">
+  <div class="col">
+    <p class="lead" id="lead"></p>
+    <div class="phone"><div class="bar"><span>‹ 戻る</span><h1>目標</h1><span></span></div><div class="scroll" id="scroll"></div></div>
+  </div>
+  <div class="col">
+    <div class="state"><b>見比べるところ</b>
+      <div>・1日の目安がなぜ変わったかが、パッと見でわかるか</div>
+      <div>・スクロールせずにどこまで見えるか</div>
+      <div>・グラフの週を押すと、その週の値が上に出る</div>
+    </div>
+    <p class="lead">例は Tさんの減量（8/31 開始、11/21 期限、目標 69.0 kg）。いまは9週目。週の振り返りは一覧にせず1行にし、開いた先の ‹ › で前の週へ遡る。今の1日の目安には P・F・C を添える。</p>
+  </div>
+</div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="vA">A 3つのグラフ</button><button id="vB">B 2つのグラフ</button></nav></div>
+
+<script>
+const weeks=['8/31','9/7','9/14','9/21','9/28','10/5','10/12','10/19'];
+const TOTAL=12; // 期限までの週の数
+const wt=[73.8,73.3,72.9,72.5,72.2,72.0,71.6,71.3];
+const tg=[1880,1900,1850,1780,1780,1740,1760,1720];
+const ex=[2400,2430,2380,2310,2300,2260,2280,2240];
+const st={v:'B',sel:weeks.length-1};
+const $=id=>document.getElementById(id);
+const W=340,PADL=34,PADR=8;
+const xAt=i=>PADL+(W-PADL-PADR)*i/TOTAL;
+function frame(h,ticks,y,fmt){
+  let s='';
+  ticks.forEach(t=>{s+='<line class="gr" x1="'+PADL+'" x2="'+(W-PADR)+'" y1="'+y(t)+'" y2="'+y(t)+'"/><text x="'+(PADL-4)+'" y="'+(y(t)+3)+'" text-anchor="end">'+fmt(t)+'</text>'});
+  [0,4,8,12].forEach(i=>{const lb=i<weeks.length?weeks[i]:(i===12?'11/21':'');s+='<text x="'+xAt(i)+'" y="'+(h-2)+'" text-anchor="middle">'+lb+'</text>'});
+  return s;
+}
+function hits(h){let s='';for(let i=0;i<weeks.length;i++){s+='<rect data-w="'+i+'" x="'+(xAt(i)-11)+'" y="0" width="22" height="'+(h-14)+'" fill="transparent" style="cursor:pointer"/>'}
+  s+='<line x1="'+xAt(st.sel)+'" x2="'+xAt(st.sel)+'" y1="4" y2="'+(h-16)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 2"/>';return s}
+function poly(arr,y,step){let p='';arr.forEach((v,i)=>{if(step&&i>0)p+=' '+xAt(i)+','+y(arr[i-1]);p+=' '+xAt(i)+','+y(v)});if(step)p+=' '+xAt(arr.length)+','+y(arr[arr.length-1]);return p}
+function dots(arr,y,col){return arr.map((v,i)=>'<circle cx="'+xAt(i)+'" cy="'+y(v)+'" r="'+(i===st.sel?4.5:3)+'" fill="'+col+'" stroke="var(--phone)" stroke-width="2"/>').join('')}
+function weightChart(){
+  const h=140,lo=68.2,hi=74.2,y=v=>6+(h-22)*(hi-v)/(hi-lo);
+  let s='<svg viewBox="0 0 '+W+' '+h+'">'+frame(h,[69,71,73],y,v=>v)+
+   '<line x1="'+xAt(0)+'" y1="'+y(73.8)+'" x2="'+xAt(12)+'" y2="'+y(69)+'" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3"/>'+
+   '<polyline points="'+poly(wt,y)+'" fill="none" stroke="var(--s1)" stroke-width="2"/>'+dots(wt,y,'var(--s1)')+
+   '<text x="'+(xAt(12)-2)+'" y="'+(y(69)+12)+'" text-anchor="end">目標 69.0</text>'+hits(h)+'</svg>';
+  return '<h2>体重の傾向</h2><div class="chart"><div class="readout num"><span>'+weeks[st.sel]+' の週</span><b>'+wt[st.sel].toFixed(1)+' kg</b><span class="muted">点線は目標までの道筋</span></div>'+s+'</div>';
+}
+function kcalChart(arr,col,title,step,label){
+  const h=110,lo=Math.min(...arr)-60,hi=Math.max(...arr)+60,y=v=>6+(h-22)*(hi-v)/(hi-lo);
+  const t1=Math.ceil(lo/100)*100,t2=Math.floor(hi/100)*100;
+  let s='<svg viewBox="0 0 '+W+' '+h+'">'+frame(h,[t1,t2],y,v=>v.toLocaleString())+'<polyline points="'+poly(arr,y,step)+'" fill="none" stroke="'+col+'" stroke-width="2"/>'+dots(arr,y,col)+hits(h)+'</svg>';
+  const d=st.sel>0?arr[st.sel]-arr[st.sel-1]:0;
+  return '<h2>'+title+'</h2><div class="chart"><div class="readout num"><span>'+weeks[st.sel]+' の週</span><b>'+arr[st.sel].toLocaleString()+' kcal</b><span class="muted">'+(st.sel>0?(d>0?'+':d<0?'−':'±')+Math.abs(d)+'':'始め')+'</span></div>'+s+'</div>';
+}
+function energyChart(){
+  const h=150,lo=1600,hi=2500,y=v=>6+(h-22)*(hi-v)/(hi-lo);
+  let band='';for(let i=0;i<weeks.length;i++){const x0=xAt(i),x1=xAt(i+1);band+='<rect x="'+x0+'" y="'+y(ex[i])+'" width="'+(x1-x0)+'" height="'+(y(tg[i])-y(ex[i]))+'" fill="var(--s2)" opacity=".10"/>'}
+  const i=st.sel,last=weeks.length-1;
+  let s='<svg viewBox="0 0 '+W+' '+h+'">'+frame(h,[1800,2100,2400],y,v=>v.toLocaleString())+band+
+    '<polyline points="'+poly(ex,y)+'" fill="none" stroke="var(--s1)" stroke-width="2"/>'+dots(ex,y,'var(--s1)')+
+    '<polyline points="'+poly(tg,y,true)+'" fill="none" stroke="var(--s2)" stroke-width="2"/>'+
+    '<text x="'+(xAt(last)+6)+'" y="'+(y(ex[last])+3)+'">消費量</text><text x="'+(xAt(last+1)+4)+'" y="'+(y(tg[last])+3)+'">目安</text>'+hits(h)+'</svg>';
+  return '<h2>消費量と1日の目安</h2><div class="chart"><div class="readout num"><span>'+weeks[i]+' の週</span><span>消費量 <b>'+ex[i].toLocaleString()+'</b></span><span>目安 <b>'+tg[i].toLocaleString()+'</b></span><span class="muted">減らす分 '+(ex[i]-tg[i])+'</span></div>'+s+
+    '<div class="legend"><span><i style="border-color:var(--s1)"></i>推定した消費量</span><span><i style="border-color:var(--s2)"></i>1日の目安</span><span><i style="border:0;height:8px;background:var(--s2);opacity:.2"></i>減らす分</span></div></div>';
+}
+function render(){
+  const top=$('scroll').scrollTop;
+  let h='<div class="goal"><div style="display:flex;justify-content:space-between"><span class="muted">減量　8/31〜11/21</span><span style="color:var(--accent)">目標を切り替える</span></div><div class="t num">69.0 kg まで あと 2.3 kg</div><div class="num">あと 33 日・間に合うペース</div></div>';
+  h+='<div class="tgt"><div style="display:flex;justify-content:space-between"><span class="muted">今の1日の目安（10/19〜）</span><b class="num">1,720 kcal</b></div><div class="pfc num"><span>P 130 g</span><span>F 48 g</span><span>C 190 g</span></div></div>';
+  h+=weightChart();
+  if(st.v==='A') h+=kcalChart(tg,'var(--s2)','1日の目安の推移',true)+kcalChart(ex,'var(--s1)','推定した消費量',false);
+  else h+=energyChart();
+  h+='<button class="row"><span>週の振り返り（10/19〜10/25）</span><span class="muted">›</span></button>';
+  h+='<h2>過去の目標</h2><div class="past num"><span>増量 4/1〜7/31</span><span>66.0 → 73.5 kg　届いた</span></div>';
+  $('scroll').innerHTML=h;$('scroll').scrollTop=top;
+  $('lead').innerHTML=st.v==='A'?'<b>A 3つのグラフ</b>　体重、1日の目安、推定した消費量を別々のグラフにする':'<b>B 2つのグラフ</b>　体重と、推定した消費量と1日の目安を重ねたグラフ。2本の間が1日に減らす分';
+  $('vA').setAttribute('aria-pressed',st.v==='A');$('vB').setAttribute('aria-pressed',st.v==='B');
+}
+document.addEventListener('click',e=>{const r=e.target.closest('[data-w]');if(r){st.sel=+r.dataset.w;render()}});
+function setV(v){st.v=v;try{history.replaceState(null,'','#'+v)}catch(_){location.hash=v}render()}
+$('vA').onclick=()=>setV('A');$('vB').onclick=()=>setV('B');
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='A'?'B':'A')});
+st.v=location.hash==='#A'?'A':'B';render();
+</script>
