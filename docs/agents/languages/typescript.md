@@ -12,13 +12,13 @@
 ### ファイルと公開するもの
 
 - 公開するものは export で数える
-- ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export const WeightRecordStore`）
+- ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export type WeightRecordStore`）
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/index.ts` のディレクトリにする
 
 ### ファイルの中はトップダウン
 
 - `export default` と `export const` をファイルの先頭の近くに置く
-- `const` には TDZ があるので、トップレベルで評価する式（`export default` の値の組み立てなど）が参照するものは、その式より前に書く。トップレベルで呼ばない関数の本体の中で参照するものは、後ろに書いてよい
+- `const` には TDZ があるので、トップレベルで評価する式（`export default` の値の組み立てなど）が参照するものは、その式より前に書く。ここだけは「内部のものは下にまとめる」を置き換える。トップレベルで呼ばない関数の本体の中で参照するものは、後ろに書いてよい
 
 ### 状態は論理状態の数で型を作る
 
@@ -52,7 +52,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 
 ### キャストのいらない形を探す
 
-- キャストは `as` を指す。`as const` は型を狭めるだけなので含めない
+- キャストは `as`、`<T>x`、非 null アサーションの `!` を指す。`as const` は型を狭めるだけなので含めない
 
 ### 依存パッケージ
 
@@ -73,7 +73,9 @@ type Options = { formatProgress: (progress: Progress) => string };
 
 ```ts
 describe("トークン発行に失敗したとき", () => {
+  let input: RegisterUserInput;
   beforeEach(() => {
+    input = { userId: "user-1" };
     mockCreateDatabaseOk();
     mockIssueTokenError(new IssueTokenError());
   });
@@ -110,12 +112,14 @@ export const mockCreateDatabaseError = (error: CreateDatabaseError) => {
 - 呼び出しの引数を確かめるテストは、`let spy: ReturnType<typeof mockXxxOk>` で型を付け、`beforeEach` で代入して `test` で参照する
 
 ```ts
+let input: RegisterUserInput;
 let createDatabaseSpy: ReturnType<typeof mockCreateDatabaseOk>;
 beforeEach(() => {
+  input = { userId: "user-1" };
   createDatabaseSpy = mockCreateDatabaseOk();
 });
 test("ユーザーの ID の名前でデータベースを作ること", async () => {
-  await registerUser({ userId: "user-1" });
+  await registerUser(input);
   expect(createDatabaseSpy).toHaveBeenCalledWith("user-1");
 });
 ```
@@ -126,9 +130,9 @@ test("ユーザーの ID の名前でデータベースを作ること", async (
 ### ファイルの置き場所
 
 - テストは、実装と同じディレクトリに `{機能名}.test.ts` で置く
-- mock は、実装と同じディレクトリに `{機能名}.mock.ts` で置く
+- mock は、差し替える依存の実装と同じディレクトリに、`{依存の機能名}.mock.ts` で置く
 
 ### 日時は実行環境に左右されない形で確かめる
 
-- `Intl.DateTimeFormat` などは、`timeZone` と locales を指定しなければ、実行環境のタイムゾーンとロケール（`TZ`、`LANG`）で整形する
-- `TZ=UTC LANG=en_US.UTF-8 pnpm exec vitest run ...` のようにタイムゾーンとロケールを変えても通ることを確かめる
+- `Intl.DateTimeFormat` などは、`timeZone` と locales を指定しなければ、実行環境のタイムゾーンとロケール（`TZ`、`LC_ALL`・`LANG`）で整形する
+- `TZ=UTC LC_ALL=en_US.UTF-8 pnpm exec vitest run ...` のようにタイムゾーンとロケールを変えても通ることを確かめる
