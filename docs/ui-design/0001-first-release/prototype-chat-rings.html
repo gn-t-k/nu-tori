@@ -4,8 +4,9 @@
   共通: タブもヘッダーもない。一番上は7日分の丸の帯と、右端のアカウント。丸を押すと、その日のまとめ（食事と栄養、体重と目標）がシートで開く。
   タイムラインは下が新しい。記録は下の入力欄から（撮る、体重、文章）。アプリが話しかけるのは、記録を忘れたときの知らせと、目標の知らせ（達成、期限）だけ。
   1日の丸: 1本の輪を P・F・C の kcal で色分けし、一周で1日の目安。目標がないあいだは目安がないので、P・F・C の割合で一周させる。体重を記録した日は中にチェック。
-  #G1 と #G2 で切り替える。下の黒いバーか ← → キーでも切り替えられる。右の「目標の状態」で、目標なし・進行中・達成・期限を切り替える。
+  #G1、#G2、#G3 で切り替える。下の黒いバーか ← → キーでも切り替えられる。右の「目標の状態」で、目標なし・進行中・達成・期限を切り替える。
   G1: 目標の入口をアプリの発言としてチャットに流す。カードをその場で広げて手順を進める。まとめのシートから始めると、新しいカードが一番下に出る
+  G3: G1 に加えて、答えていないアプリの発言（目標のカード、体重の知らせ）が画面の外へ流れたら、帯の下に1行の知らせを出す。押すとその発言までスクロールする
   G2: 目標の入口を入力欄の上に固定する（目標がないとき、達成・期限のとき）。「あとで」で隠すと、まとめのシートからだけ開ける
   目標の設定の手順は、向き → 目標案の2ページに縮めている（足りない値のページと、ヘルスケアの許可は、⑥ の「目標の設定の流れ」のとおり）。文言と見た目は⑦で決める。
 -->
@@ -129,6 +130,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .plan.rec{border-width:2px;border-color:var(--accent)}
 .plan .d{grid-column:1/-1;color:var(--muted)}
 .row2{display:flex;justify-content:space-between;align-items:center}
+.nudges{display:flex;flex-direction:column;gap:4px;padding:0 8px 6px;background:var(--phone);border-bottom:1px solid var(--line)}
+.nudges:empty{display:none}
+.nudge{display:flex;justify-content:space-between;align-items:center;gap:6px;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:4px 12px;font-size:12px}
+.band.hasn{border-bottom:0}
 .gs{display:flex;gap:4px;flex-wrap:wrap}
 .gs button{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px}
 .gs button[aria-pressed="true"]{background:var(--ink);color:var(--phone);border-color:var(--ink)}
@@ -151,12 +156,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="state"><b>目標の状態</b><div class="gs" id="gs"><button data-goal="none">目標なし</button><button data-goal="active">進行中</button><button data-goal="achieved">期限前に達成</button><button data-goal="due">期限が来た</button></div></div>
     <div class="state"><b>いまの状態</b><div id="state"></div></div>
     <p class="lead">例は Tさんの木曜の昼（12:40）。試すこと:</p>
-    <p class="lead">・「目標なし」で、目標の入口がどこに見えるか。チャットを上へ戻して、最初のカードを探す<br>・カードの「目標を立てる」から、向きと目標案を選んで決める（決まると丸が1日の目安と比べる形に変わる）<br>・途中で「閉じる」、丸からまとめのシートを開いて「目標を立てる」<br>・「期限前に達成」「期限が来た」で、知らせと「次の目標を選ぶ」の出方</p>
+    <p class="lead">・G3 で、帯の下の知らせを押して、目標のカードや体重の知らせまで戻る<br>・「目標なし」で、目標の入口がどこに見えるか。チャットを上へ戻して、最初のカードを探す<br>・カードの「目標を立てる」から、向きと目標案を選んで決める（決まると丸が1日の目安と比べる形に変わる）<br>・途中で「閉じる」、丸からまとめのシートを開いて「目標を立てる」<br>・「期限前に達成」「期限が来た」で、知らせと「次の目標を選ぶ」の出方</p>
     <p class="lead">撮る、体重、文章を送る、プリセットは前と同じに動く。丸は青が P、黄が F、緑が C。</p>
     <button class="reset" id="reset">はじめに戻す</button>
   </div>
 </div>
-<div class="dock"><nav aria-label="案の切り替え"><button id="vG1">G1 発言として流す</button><button id="vG2">G2 入力欄の上に固定</button></nav></div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="vG1">G1 流す</button><button id="vG2">G2 固定</button><button id="vG3">G3 流す＋帯に知らせ</button></nav></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -250,8 +255,8 @@ function setGoal(g){
   if(g==='active')return;
   const at=g==='none'?{d:0,t:'07:00'}:{d:6,t:'07:15'};
   const [txt]=GTEXT[g];
-  const e=st.v==='G1'?{...at,k:'goalcard',kind:g,goal:1}:{...at,k:'app',x:txt,goal:1};
-  e.id=++st.seq;st.ev.push(e);if(st.v==='G1')st.gid=e.id;
+  const e=st.v!=='G2'?{...at,k:'goalcard',kind:g,goal:1}:{...at,k:'app',x:txt,goal:1};
+  e.id=++st.seq;st.ev.push(e);if(st.v!=='G2')st.gid=e.id;
 }
 function goalSheetHTML(){
   if(st.goal==='active')return '<div class="goal"><div style="display:flex;justify-content:space-between"><span><b>'+esc(st.plan||'減量')+'</b>　あと 3.2 kg・あと 58 日</span><span class="link">目標 ›</span></div><span class="muted">間に合うペース</span>'+spark();
@@ -263,6 +268,7 @@ function goalEntrySeen(){
   if(st.goal==='active')return '—（進行中は入口を出さない）';
   if(st.v==='G2')return st.pinHidden?'見えない（隠した。まとめのシートから開ける）':'見えている（入力欄の上）';
   const el=document.querySelector('#sc [data-id="'+st.gid+'"]');if(!el)return '見えない';
+  if(st.v==='G3'&&offAbove(st.gid))return '帯の下の知らせから戻れる（発言はチャットの上へ流れた）';
   const a=$('sc').getBoundingClientRect(),b=el.getBoundingClientRect();
   return b.bottom>a.top&&b.top<a.bottom?'見えている（チャットの中）':'見えない（チャットの'+(b.bottom<=a.top?'上':'下')+'へ流れた）';
 }
@@ -285,19 +291,33 @@ function render(toBottom){
     }
     sheet='<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="'+(st.acct?'アカウント':'まとめ')+'"><span class="grab"></span><div class="sh">'+head+'</div><div class="sb">'+body+'</div></div>';
   }
-  $('phone').innerHTML='<div class="status num">12:40</div>'+band+'<div class="scroll" id="sc">'+chatHTML()+'</div>'+composer()+
+  $('phone').innerHTML='<div class="status num">12:40</div>'+band+'<div class="nudges" id="nudges"></div><div class="scroll" id="sc">'+chatHTML()+'</div>'+composer()+
     (st.cam?'<div class="cam"><div class="top"><button data-act="closecam" style="color:inherit">閉じる</button><span>カメラ</span><span style="min-width:40px"></span></div><div class="c">ファインダー（全画面）</div><div class="row"><button data-act="pick">写真を選ぶ</button><button class="shutter" data-act="shoot" aria-label="撮る"><i></i></button><span style="min-width:76px"></span></div></div>':'')+sheet;
-  const sc=$('sc');sc.scrollTop=toBottom?sc.scrollHeight:keep;sc.onscroll=spy;
-  $('lead').innerHTML=st.v==='G1'?'<b>G1 発言として流す</b>　目標の入口は、アプリの発言としてチャットに出る。カードの中で手順を進める。流れて見えなくなったら、丸からまとめのシートを開いて始める':'<b>G2 入力欄の上に固定</b>　目標がないときと、達成・期限のときは、入力欄の上にカードを固定する。「あとで」で隠すと、まとめのシートからだけ開ける';
-  $('vG1').setAttribute('aria-pressed',st.v==='G1');$('vG2').setAttribute('aria-pressed',st.v==='G2');document.querySelectorAll('[data-goal]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.goal===st.goal));
+  const sc=$('sc');sc.scrollTop=toBottom?sc.scrollHeight:keep;sc.onscroll=spy;nudges();
+  $('lead').innerHTML=st.v==='G3'?'<b>G3 流す＋帯に知らせ</b>　G1 と同じくチャットに流す。答えていない発言（目標のカード、体重の知らせ）が画面の上へ流れると、帯の下に1行の知らせが出る。押すとその発言まで戻る':st.v==='G1'?'<b>G1 発言として流す</b>　目標の入口は、アプリの発言としてチャットに出る。カードの中で手順を進める。流れて見えなくなったら、丸からまとめのシートを開いて始める':'<b>G2 入力欄の上に固定</b>　目標がないときと、達成・期限のときは、入力欄の上にカードを固定する。「あとで」で隠すと、まとめのシートからだけ開ける';
+  $('vG1').setAttribute('aria-pressed',st.v==='G1');$('vG2').setAttribute('aria-pressed',st.v==='G2');$('vG3').setAttribute('aria-pressed',st.v==='G3');document.querySelectorAll('[data-goal]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.goal===st.goal));
   const T=totals(6);
   $('state').innerHTML='案: '+st.v+'<br>目標: '+{none:'なし',active:'進行中'+(st.plan?'（'+esc(st.plan)+'）':''),achieved:'期限前に達成',due:'期限が来た'}[st.goal]+'<br>目標の入口: '+goalEntrySeen()+'<br>目標の手順: '+(st.setup?(st.setup.open?st.setup.page+'/2 を開いている':'途中で閉じた（'+st.setup.page+'/2）'):'開いていない')+'<br>開いているもの: '+(st.acct?'アカウント':st.sheet!==null?'まとめ（'+SHORT[st.sheet]+'）':'タイムライン')+'<br>今日: '+T.k.toLocaleString()+(st.goal==='none'?' kcal（目安なし）':' / 1,850 kcal')+'・体重 '+(st.weight?st.weight+' kg':'まだ')+'<br>'+st.log;
 }
-function spy(){
+function pendings(){
+  const out=[];
+  if(!st.weight){const r=st.ev.find(e=>e.k==='remind');if(r)out.push({id:r.id,label:'今日の体重がまだです'})}
+  if(st.v!=='G2'&&st.goal!=='active'){const c=st.ev.find(e=>e.id===st.gid);if(c&&!c.done)out.push({id:c.id,label:GTEXT[st.goal][1]})}
+  return out;
+}
+function offAbove(id){const sc=$('sc'),el=sc&&sc.querySelector('[data-id="'+id+'"]');if(!el)return false;return el.getBoundingClientRect().bottom<=sc.getBoundingClientRect().top+8}
+function nudges(){
+  const box=$('nudges');if(!box)return;
+  const list=st.v==='G3'?pendings().filter(x=>offAbove(x.id)):[];
+  const h=list.map(x=>'<button class="nudge" data-jump="'+x.id+'"><span>'+x.label+'</span><span aria-hidden="true">↑</span></button>').join('');
+  if(box.innerHTML!==h)box.innerHTML=h;
+  const b=document.querySelector('.band');if(b)b.classList.toggle('hasn',!!h);
+}
+function spy(){nudges();
   const sc=$('sc'),top=sc.getBoundingClientRect().top+4;let d=0;
   sc.querySelectorAll('[data-dh]').forEach(h=>{if(h.getBoundingClientRect().top<=top+40)d=+h.dataset.dh});
   if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-4)d=6;
-  const ge=$('state');if(ge&&st.goal!=='active'&&st.v==='G1'){ge.innerHTML=ge.innerHTML.replace(/目標の入口: [^<]*/,'目標の入口: '+goalEntrySeen())}
+  const ge=$('state');if(ge&&st.goal!=='active'&&st.v!=='G2'){ge.innerHTML=ge.innerHTML.replace(/目標の入口: [^<]*/,'目標の入口: '+goalEntrySeen())}
   if(d!==st.sel){st.sel=d;document.querySelectorAll('.band .day').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.day===d))}
 }
 function goChat(){st.sheet=null;st.acct=false}
@@ -311,6 +331,8 @@ const isQuestion=s=>/[？?]|どう|何|なに|いい$|べき|教えて/.test(s);
 document.addEventListener('click',ev=>{
   const a=ev.target.closest('[data-act]'),p=ev.target.closest('[data-preset]'),dy=ev.target.closest('[data-day]');
   if(dy){st.sheet=+dy.dataset.day;st.acct=false;st.log='丸を押した: '+SHORT[st.sheet]+'のまとめ';render(false);return}
+  const jp=ev.target.closest('[data-jump]');
+  if(jp){const id=+jp.dataset.jump,sc=$('sc'),el=sc.querySelector('[data-id="'+id+'"]');if(el){st.last=id;sc.scrollTop=el.offsetTop-sc.offsetTop-8;el.classList.add('new');st.log='知らせから発言へ移った';nudges();spy()}return}
   const gb=ev.target.closest('[data-goal]'),dir=ev.target.closest('[data-dir]'),pl=ev.target.closest('[data-plan]');
   if(gb){setGoal(gb.dataset.goal);goChat();st.log='目標の状態を切り替えた';render(true);return}
   if(dir){st.setup.dir=dir.dataset.dir;st.setup.page=2;render(false);return}
@@ -322,7 +344,7 @@ document.addEventListener('click',ev=>{
     if(act==='gback'){st.setup.page=1;render(false);return}
     if(act==='ghide'){st.pinHidden=true;st.log='固定したカードを隠した';render(false);return}
     if(act==='gfromsheet'){goChat();
-      if(st.v==='G1'){const old=st.ev.find(e=>e.id===st.gid);if(old&&!old.done)old.done='（下のカードから続ける）';st.now++;const e={t:nowT(),k:'goalcard',kind:st.goal,goal:1};st.setup={page:st.setup?st.setup.page:1,dir:st.setup&&st.setup.dir,open:true};push([e],null,'まとめから目標を始めた');st.gid=e.id;render(true)}
+      if(st.v!=='G2'){const old=st.ev.find(e=>e.id===st.gid);if(old&&!old.done)old.done='（下のカードから続ける）';st.now++;const e={t:nowT(),k:'goalcard',kind:st.goal,goal:1};st.setup={page:st.setup?st.setup.page:1,dir:st.setup&&st.setup.dir,open:true};push([e],null,'まとめから目標を始めた');st.gid=e.id;render(true)}
       else{st.pinHidden=false;st.setup={page:st.setup?st.setup.page:1,dir:st.setup&&st.setup.dir,open:true};st.log='まとめから目標を始めた';render(true)}
       return}
     if(act==='account'){st.acct=true;st.log='アカウントを開いた';render(false);return}
@@ -347,8 +369,8 @@ document.addEventListener('submit',ev=>{
   if(ev.target.id==='wf'){const v=parseFloat($('wv').value);if(!(v>20&&v<300))return;st.weight=v.toFixed(1);st.now++;push([{t:nowT(),k:'weight',v:st.weight}],null,'体重 '+st.weight+' kg')}
 });
 function setV(v){st.v=v;goChat();st.cam=false;st.sel=6;setGoal(st.goal);try{history.replaceState(null,'','#'+v)}catch(_){location.hash=v}render(true)}
-$('vG1').onclick=()=>setV('G1');$('vG2').onclick=()=>setV('G2');
+$('vG1').onclick=()=>setV('G1');$('vG2').onclick=()=>setV('G2');$('vG3').onclick=()=>setV('G3');
 $('reset').onclick=()=>{st.ev=base();st.weight=null;st.now=40;st.last=null;st.plan=null;st.goal='none';st.log='まだ何もしていない';setV(st.v)};
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='G1'?'G2':'G1')});
-setV(location.hash==='#G2'?'G2':'G1');
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV({G1:'G2',G2:'G3',G3:'G1'}[st.v])});
+setV(['#G2','#G3'].includes(location.hash)?location.hash.slice(1):'G1');
 </script>
