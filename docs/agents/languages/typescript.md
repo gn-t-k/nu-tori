@@ -13,6 +13,7 @@
 
 - 公開するものは export で数える
 - ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export type WeightRecordStore`）
+- mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `testing/index.ts` は、「1つのファイルから1つ」を置き換える
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/index.ts` のディレクトリにする
 
 ### ファイルの中はトップダウン
@@ -40,7 +41,6 @@ type CreateState = "empty" | "duplicate" | "creatable";
 
 - 値が無いことは、`?:`（省略できる）と `T | undefined`（値か、空）で書き分ける
 - 常にある枠で、中身が空になり得るものは `caption: string | undefined` にし、キーを省略できる `caption?: string | undefined` にしない
-- `exactOptionalPropertyTypes` の下では、要らない `?:` をやめると `?: T | undefined` の冗長さも消える
 
 ```ts
 // 未実装という段取りの都合で省略できるようにしている
@@ -52,7 +52,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 
 ### キャストのいらない形を探す
 
-- キャストは `as`、`<T>x`、非 null アサーションの `!` を指す。`as const` は型を狭めるだけなので含めない
+- キャストは `as`（と同じ意味の `<T>x`）を指す。`as const` は型を狭めるだけなので含めない
 
 ### 依存パッケージ
 
@@ -125,12 +125,12 @@ test("ユーザーの ID の名前でデータベースを作ること", async (
 ```
 
 - パッケージをまたいで mock を使うときは、パッケージの `testing/index.ts` から mock の関数を再 export し、`package.json` の `exports` に `"./testing"` を足す。使う側は `@<スコープ>/xxx/testing` から読み込む
-- パッケージの中だけで使うテスト用のデータは、対象のモジュールの下の `testing/` に置き、`./testing` の export には足さない
 
 ### ファイルの置き場所
 
 - テストは、実装と同じディレクトリに `{機能名}.test.ts` で置く
 - mock は、差し替える依存の実装と同じディレクトリに、`{依存の機能名}.mock.ts` で置く
+- パッケージの中だけで使うテスト用のデータは、対象のモジュールの下の `testing/` に置き、`./testing` の export には足さない
 
 ### 日時は実行環境に左右されない形で確かめる
 
