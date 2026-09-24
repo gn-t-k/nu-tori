@@ -1,12 +1,13 @@
 <title>nu-tori の見た目</title>
 <!--
-  PROTOTYPE（捨てる前提）。⑦ の問い「アクセントの色と P・F・C の色、地の色をどうするか」に答えるためのもの。
-  同じタイムラインと日のまとめを3つの見た目で並べる。上のボタンでライトとダークを切り替えられる。
-  A: iOS の標準の青を操作の色にし、地は iOS のグループの灰色。P・F・C は紫・橙・青緑
-  B: 深い緑を操作の色にし、地はわずかに緑に寄せた白。P・F・C は薔薇・黄・青
-  C: 操作の色を墨（文字の色）にして色を P・F・C だけに使う。地は白。P・F・C は青・黄・緑
-  P・F・C の3色は、3色のどの組も色覚の型を問わず見分けられることを validate_palette で確かめた（ライト・ダーク）。
-  3案とも、アクティビティリングの赤・黄緑・水色を使わず、輪は1本にする。
+  PROTOTYPE（捨てる前提）。⑦ の問い「P・F・C の色と操作の色を、どんな根拠で決めるか」に答えるためのもの。
+  根拠は docs/research/pfc-colors.md（ほかのアプリの P・F・C の色、iOS のシステムの色のコントラスト比、HIG の求め）。
+  地と部品は iOS の標準（グループの灰色の地、白いカード）にそろえ、P・F・C の色だけを3案で変える。
+  A: 多数派の色相を、iOS のシステムの色そのもので（P systemOrange・F systemPurple・C systemTeal）
+  B: 多数派の色相を、白の地で 3:1 以上になるよう暗めに合わせた独自の色で
+  C: 参考。MacroFactor と同じ色相（P オレンジ・F 黄・C 緑）。2型の色覚で P と C が見分けにくい
+  上の切り替えで、操作の色（systemBlue／systemIndigo）と、2型の色覚（緑が見えにくい型）での見え方を試せる。
+  3色の見分けやすさとコントラストは dataviz の validate_palette で確かめた。
 -->
 <style>
 :root{
@@ -18,18 +19,29 @@
 }
 :root[data-theme="dark"]{ --ground:#0e1012; --page-ink:#e6e8eb; --page-muted:#99a1aa; --page-line:#343a40; color-scheme:dark; }
 
-/* 案ごとのトークン（ライト） */
-.dir-a{ --bg:#f2f2f7; --surface:#ffffff; --ink:#000000; --ink2:#3c3c43b3; --sep:#3c3c434a; --fill:#7878801f; --tint:#007aff; --on-tint:#ffffff; --p:#6a5ae0; --f:#e08a1e; --c:#1f9e8f; --track:#e5e5ea; --me:#007aff; --on-me:#ffffff; }
-.dir-b{ --bg:#f1f4f1; --surface:#fcfdfb; --ink:#18221d; --ink2:#55615a; --sep:#c9d2cc; --fill:#e3e9e4; --tint:#1e7f6a; --on-tint:#ffffff; --p:#c2477f; --f:#e0a21b; --c:#2b8fb0; --track:#e1e7e2; --me:#dcebe5; --on-me:#18221d; }
-.dir-c{ --bg:#ffffff; --surface:#ffffff; --ink:#15171a; --ink2:#5d636a; --sep:#e1e4e8; --fill:#f1f2f4; --tint:#15171a; --on-tint:#ffffff; --p:#3b6fe0; --f:#e0a21b; --c:#2fa37a; --track:#eceef1; --me:#f1f2f4; --on-me:#15171a; }
+/* 地と部品は iOS の標準（HIG の値）。P・F・C だけを案ごとに変える */
+.col{ --bg:#f2f2f7; --surface:#ffffff; --ink:#000000; --ink2:#3c3c4399; --sep:#3c3c434a; --fill:#7878801f; --track:#e5e5ea; --on-tint:#ffffff; --tint:var(--acc); --me:var(--acc); --on-me:#ffffff; --acc:#0088ff; }
+.acc-indigo .col{ --acc:#6155f5; }
+.dir-a{ --p:#ff8d28; --f:#cb30e0; --c:#00c3d0; }
+.dir-b{ --p:#d06000; --f:#9c4ddb; --c:#00897a; }
+.dir-c{ --p:#ff8d28; --f:#ffcc00; --c:#34c759; }
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]) .dir-a{ --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:#ebebf599; --sep:#54545899; --fill:#7878803d; --tint:#0a84ff; --on-tint:#ffffff; --p:#8b7ef0; --f:#c98221; --c:#1fa090; --track:#2c2c2e; --me:#0a84ff; --on-me:#ffffff; }
-  :root:not([data-theme="light"]) .dir-b{ --bg:#0f1512; --surface:#18201c; --ink:#e7eee9; --ink2:#9aa8a0; --sep:#2c3731; --fill:#243029; --tint:#3db39a; --on-tint:#0b1210; --p:#d35c8e; --f:#b98c26; --c:#3a9dc0; --track:#26302a; --me:#1f3a31; --on-me:#e7eee9; }
-  :root:not([data-theme="light"]) .dir-c{ --bg:#101113; --surface:#101113; --ink:#f2f3f5; --ink2:#a0a6ad; --sep:#2a2d31; --fill:#1d1f22; --tint:#f2f3f5; --on-tint:#101113; --p:#5a8cf0; --f:#b58a22; --c:#2fa67c; --track:#25282c; --me:#1d1f22; --on-me:#f2f3f5; }
+  :root:not([data-theme="light"]) .col{ --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:#ebebf599; --sep:#54545899; --fill:#7878803d; --track:#2c2c2e; --acc:#0091ff; }
+  :root:not([data-theme="light"]) .acc-indigo .col{ --acc:#6d7cff; }
+  :root:not([data-theme="light"]) .dir-a{ --p:#ff9230; --f:#db34f2; --c:#00d2e0; }
+  :root:not([data-theme="light"]) .dir-b{ --p:#de7424; --f:#b06ceb; --c:#23a08c; }
+  :root:not([data-theme="light"]) .dir-c{ --p:#ff9230; --f:#ffd600; --c:#30d158; }
 }
-:root[data-theme="dark"] .dir-a{ --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:#ebebf599; --sep:#54545899; --fill:#7878803d; --tint:#0a84ff; --on-tint:#ffffff; --p:#8b7ef0; --f:#c98221; --c:#1fa090; --track:#2c2c2e; --me:#0a84ff; --on-me:#ffffff; }
-:root[data-theme="dark"] .dir-b{ --bg:#0f1512; --surface:#18201c; --ink:#e7eee9; --ink2:#9aa8a0; --sep:#2c3731; --fill:#243029; --tint:#3db39a; --on-tint:#0b1210; --p:#d35c8e; --f:#b98c26; --c:#3a9dc0; --track:#26302a; --me:#1f3a31; --on-me:#e7eee9; }
-:root[data-theme="dark"] .dir-c{ --bg:#101113; --surface:#101113; --ink:#f2f3f5; --ink2:#a0a6ad; --sep:#2a2d31; --fill:#1d1f22; --tint:#f2f3f5; --on-tint:#101113; --p:#5a8cf0; --f:#b58a22; --c:#2fa67c; --track:#25282c; --me:#1d1f22; --on-me:#f2f3f5; }
+:root[data-theme="dark"] .col{ --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:#ebebf599; --sep:#54545899; --fill:#7878803d; --track:#2c2c2e; --acc:#0091ff; }
+:root[data-theme="dark"] .acc-indigo .col{ --acc:#6d7cff; }
+:root[data-theme="dark"] .dir-a{ --p:#ff9230; --f:#db34f2; --c:#00d2e0; }
+:root[data-theme="dark"] .dir-b{ --p:#de7424; --f:#b06ceb; --c:#23a08c; }
+:root[data-theme="dark"] .dir-c{ --p:#ff9230; --f:#ffd600; --c:#30d158; }
+.cvd .phone{ filter:url(#deutan); }
+.ctrls{display:flex;flex-wrap:wrap;gap:8px}
+.facts{margin:0;padding:0;list-style:none;font-size:12.5px;color:var(--page-muted);display:flex;flex-direction:column;gap:2px}
+.facts b{color:var(--page-ink);font-weight:600}
+.facts .ng b{color:var(--page-ink)}
 
 *{box-sizing:border-box}
 body{margin:0;padding:16px 16px 48px;background:var(--ground);color:var(--page-ink);font:14px/1.5 system-ui,-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif}
@@ -45,7 +57,7 @@ header.page p{margin:2px 0 0;color:var(--page-muted);max-width:640px}
 .cols{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
 .col{display:flex;flex-direction:column;gap:10px;min-width:0}
 .col h2{font-size:15px;margin:0}
-.col .why{margin:0;min-height:4.5em;color:var(--page-muted);font-size:12.5px}
+.col .facts{min-height:11em;} .col .why{margin:0;color:var(--page-muted);font-size:12.5px}
 .sw{display:flex;gap:10px;font-size:12px;color:var(--page-muted);flex-wrap:wrap}
 .sw span{display:flex;align-items:center;gap:4px}
 .sw i{width:12px;height:12px;border-radius:3px;display:inline-block}
@@ -116,23 +128,46 @@ header.page p{margin:2px 0 0;color:var(--page-muted);max-width:640px}
 
 <header class="page">
   <div>
-    <h1>nu-tori の見た目（3案）</h1>
-    <p>同じタイムラインと日のまとめを、操作の色・地の色・P・F・C の色だけ変えて並べた。形と並びは⑥のまま。</p>
+    <h1>P・F・C の色（3案）</h1>
+    <p>地と部品は iOS の標準にそろえ、P・F・C の色だけを変えて並べた。ほかのアプリで多い色相（P オレンジ・F 紫・C 青緑）を、iOS のシステムの色そのもので使うか（A）、白の地でも見やすい濃さに合わせるか（B）。C は MacroFactor と同じ色相の参考。</p>
+  </div>
+  <div class="ctrls">
+  <div class="theme" role="group" aria-label="操作の色">
+    <button type="button" id="acc-blue" aria-pressed="true">操作 systemBlue</button>
+    <button type="button" id="acc-indigo" aria-pressed="false">操作 systemIndigo</button>
+  </div>
+  <div class="theme" role="group" aria-label="色覚">
+    <button type="button" id="cv-n" aria-pressed="true">ふつうの見え方</button>
+    <button type="button" id="cv-d" aria-pressed="false">2型の色覚</button>
   </div>
   <div class="theme" role="group" aria-label="テーマ">
     <button type="button" id="th-sys" aria-pressed="true">システム</button>
     <button type="button" id="th-light" aria-pressed="false">ライト</button>
     <button type="button" id="th-dark" aria-pressed="false">ダーク</button>
   </div>
+  </div>
 </header>
 
 <div class="cols" id="cols"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="deutan" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="0.367 0.861 -0.228 0 0  0.280 0.673 0.047 0 0  -0.012 0.043 0.969 0 0  0 0 0 1 0"/></filter></svg>
 
 <script>
 const DIRS = [
-  { id:'a', name:'A　iOS の標準の青', why:'操作の色はシステムの青。地は iOS のグループの灰色で、カードは白。いちばん iOS らしく、新しい iOS にもそのまま馴染む。P・F・C は紫・橙・青緑。' },
-  { id:'b', name:'B　深い緑', why:'操作の色を深い緑にし、地をわずかに緑に寄せる。アプリとして見分けやすい。自分の文章の吹き出しは淡い緑。P・F・C は薔薇・黄・青。' },
-  { id:'c', name:'C　墨と一色', why:'操作は墨（文字の色）で塗り、色は P・F・C だけに使う。地は白。数字とグラフの色がいちばん目立つ。P・F・C は青・黄・緑。' },
+  { id:'a', name:'A　システムの色（多数派の色相）', facts:[
+    ['色相','P オレンジ・F 紫・C 青緑。調べた4アプリで多い色相（P オレンジ3、C 青〜青緑3、F 紫2）'],
+    ['値','systemOrange・systemPurple・systemTeal。ダークと「コントラストを上げる」の版を iOS が出し分ける'],
+    ['見分け','どの2色も色覚の型を問わず見分けられる'],
+    ['弱み','白の地で P と C が約 2.2:1。グラフの印の目安の 3:1 に届かず、細い輪では薄く見える'] ] },
+  { id:'b', name:'B　読みやすさ優先（多数派の色相）', facts:[
+    ['色相','A と同じ（P オレンジ・F 紫・C 青緑）'],
+    ['値','白の地で3色とも 3:1 以上になるよう、暗めに合わせた独自の色。ダークの版も同じ条件で合わせた'],
+    ['見分け','どの2色も色覚の型を問わず見分けられる（ライト・ダーク）'],
+    ['弱み','システムの色ではないので、「コントラストを上げる」の版を自分で用意する'] ] },
+  { id:'c', name:'C　参考：MacroFactor の色相', facts:[
+    ['色相','P オレンジ・F 黄・C 緑（MacroFactor のヘルプに書いてある色）'],
+    ['値','systemOrange・systemYellow・systemGreen'],
+    ['見分け','2型の色覚で P と C がほぼ同じに見える（ΔE 4.9）。黄は白の地で 1.5:1'],
+    ['弱み','乗り換えた人は迷わないが、見分けにくい人がいる'] ] },
 ];
 // 1週間（P・F・C の kcal）。目安 1,850 kcal。w は体重を記録した日
 const WEEK = [
@@ -212,12 +247,16 @@ function summary(){
 }
 document.getElementById('cols').innerHTML = DIRS.map(x => `<section class="col dir-${x.id}">
   <h2>${x.name}</h2>
-  <p class="why">${x.why}</p>
+  <ul class="facts">${x.facts.map(([k,v])=>`<li><b>${k}</b>　${v}</li>`).join('')}</ul>
   <div class="sw"><span><i style="background:var(--tint)"></i>操作</span><span><i style="background:var(--p)"></i>P</span><span><i style="background:var(--f)"></i>F</span><span><i style="background:var(--c)"></i>C</span></div>
   ${timeline()}
   ${summary()}
 </section>`).join('');
 
+function grp(ids, on){ ids.forEach(([id,fn]) => document.getElementById(id).addEventListener('click', () => { fn(); ids.forEach(([id2]) => document.getElementById(id2).setAttribute('aria-pressed', String(id2===id))); })); }
+const cols = document.getElementById('cols');
+grp([['acc-blue',()=>cols.classList.remove('acc-indigo')],['acc-indigo',()=>cols.classList.add('acc-indigo')]]);
+grp([['cv-n',()=>cols.classList.remove('cvd')],['cv-d',()=>cols.classList.add('cvd')]]);
 const btns = {sys:document.getElementById('th-sys'), light:document.getElementById('th-light'), dark:document.getElementById('th-dark')};
 for (const [k,b] of Object.entries(btns)) b.addEventListener('click', () => {
   if (k === 'sys') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', k);
