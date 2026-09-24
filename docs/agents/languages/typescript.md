@@ -4,6 +4,10 @@
 
 ## コーディング
 
+### 型検査の前提
+
+- tsconfig は `@tsconfig/strictest` を継承する。このファイルの型の話は、そこで有効になる `strict`、`exactOptionalPropertyTypes`、`noImplicitReturns` などを前提にする
+
 ### 関数はアロー関数で書く
 
 - 関数は `const functionName = () => {}` で書く
@@ -35,11 +39,11 @@ type CreateState = "empty" | "duplicate" | "creatable";
 
 ### 関数は処理の流れで分ける
 
-- タグ付きユニオンを1つの関数で受けるときは、switch ですべての case を書く。漏れが型エラーになるのは、strict の下で、戻り値の型を書いた関数で各 case から return するときなので、その形にして `default` を置かない。値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
+- タグ付きユニオンを1つの関数で受けるときは、switch ですべての case を書き、`default` を置かない。各 case から値を返す switch なら、case を足したときの漏れが型エラーになる（`noImplicitReturns`）。値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
 
 ### 値が無いことを許すのは、必要な事情があるときだけ
 
-- 値が無いことは、`?:`（省略できる）と `T | undefined`（値か、空）で書き分ける
+- 値が無いことは、`?:`（キーを省略できる）と `T | undefined`（キーはあり、値が空）で書き分ける。この区別は `exactOptionalPropertyTypes` の下で型に効く
 - 常にある枠で、中身が空になり得るものは `caption: string | undefined` にし、キーを省略できる `caption?: string | undefined` にしない
 
 ```ts
@@ -99,6 +103,7 @@ describe("トークン発行に失敗したとき", () => {
 import * as module from "./create-database";
 
 export const mockCreateDatabaseOk = (overrides?: Partial<Database>) => {
+  const defaultDatabase: Database = { name: "default-db" };
   return vi.spyOn(module, "createDatabase").mockResolvedValue({ ...defaultDatabase, ...overrides });
 };
 
@@ -108,7 +113,6 @@ export const mockCreateDatabaseError = (error: CreateDatabaseError) => {
 ```
 
 - 失敗の返し方は、差し替える関数に合わせる（throw する関数なら `mockRejectedValue`、Result を返す関数なら失敗の Result）
-
 - 呼び出しの引数を確かめるテストは、`let spy: ReturnType<typeof mockXxxOk>` で型を付け、`beforeEach` で代入して `test` で参照する
 
 ```ts
