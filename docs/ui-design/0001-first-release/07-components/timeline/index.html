@@ -1,0 +1,262 @@
+<!-- @dsCard group="Views" -->
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>タイムライン</title>
+<link rel="stylesheet" href="../_base.css">
+<style>
+.nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+.band{display:flex;justify-content:space-between;padding:4px 16px 12px;border-bottom:.5px solid var(--sep);flex:none;background:var(--bg)}
+.band .day{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:var(--t-cap2);color:var(--ink2);padding:3px 4px;border-radius:10px}
+.band .day.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.band .day.future{opacity:.45}
+.pending{margin:12px 16px 0;align-self:stretch;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:8px 16px;border-radius:999px;background:var(--surface);font-size:var(--t-foot);box-shadow:0 0 0 .5px var(--sep);flex:none}
+.pending span:last-child{color:var(--tint);font-weight:600}
+.tl{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:12px 16px}
+.tl > *{flex:none}
+/* 自分が送ったもの（食事・体重）は右に寄せ、薄いアクセントの地を敷く。返ってくる発言は左の地の上、アプリの知らせは全幅の白いカード */
+.tl > .row,.tl > .meal{align-self:flex-end;width:86%;background:color-mix(in srgb,var(--tint) 10%,var(--surface))}
+.dayh{text-align:center;font-size:var(--t-cap);color:var(--ink2);font-weight:600}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;background:var(--surface);border-radius:12px;padding:12px 16px;font-size:var(--t-sub)}
+.row .tm{color:var(--ink2);font-size:var(--t-foot);width:36px;flex:none}
+.row .grow{flex:1;min-width:0}
+.row .val{font-variant-numeric:tabular-nums}
+.row .disc{color:var(--ink3)}
+.meal{background:var(--surface);border-radius:12px;overflow:hidden;display:flex;gap:12px;padding:12px 16px 12px 12px;align-items:center}
+.meal .ph{width:64px;height:64px;border-radius:8px;flex:none;background:linear-gradient(135deg,#c79a63,#8a6238 55%,#e6d2ac)}
+.meal .ph.b{background:linear-gradient(135deg,#e7c889,#b87a3a 60%,#f1e3c2)}
+.meal .ph.c{background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.meal .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.meal .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:var(--t-sub)}
+.meal .top b{font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.meal .top .k{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:var(--t-foot);color:var(--ink2)}
+.meal .disc{color:var(--ink3);font-size:18px;flex:none}
+.meal .pfc b{color:var(--ink);font-weight:600}
+.meal .pfc > *{white-space:nowrap}
+.meal .pfc{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:var(--t-cap);color:var(--ink2);font-variant-numeric:tabular-nums}
+.meal .tm{font-size:var(--t-cap);color:var(--ink2)}
+.meal.text .ph{display:none}
+.meal.text{padding-left:16px}
+.meal .resend{font-size:var(--t-foot);color:var(--tint);align-self:flex-start;margin-top:6px}
+.me{align-self:flex-end;max-width:80%;background:var(--me);color:var(--on-me);border-radius:18px;padding:8px 12px;font-size:var(--t-sub)}
+.photo-me{align-self:flex-end;width:120px;height:90px;border-radius:14px;background:linear-gradient(135deg,#c79a63,#8a6238 55%,#e6d2ac)}
+.reply{font-size:var(--t-sub);max-width:92%;line-height:1.4}
+.note{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.note .h + .d{margin-top:-4px}
+.note .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.note .h b{font-size:var(--t-sub);font-weight:600}
+.note .h span{font-size:var(--t-cap);color:var(--ink2)}
+.note .d{font-size:var(--t-foot);color:var(--ink2);margin:0}
+.note .acts{display:flex;gap:12px;justify-content:flex-end}
+.note .done{font-size:var(--t-foot);color:var(--ink2)}
+.weekly{background:var(--surface);border-radius:12px;padding:12px 16px;display:flex;flex-direction:column;gap:4px;font-size:var(--t-sub)}
+.weekly .top{display:flex;justify-content:space-between;gap:12px}
+.weekly .d{font-size:var(--t-foot);color:var(--ink2)}
+/* 入力欄 */
+.chips{display:flex;gap:8px;padding:8px 16px 0;overflow:hidden;flex:none;background:var(--bg)}
+.chips span{white-space:nowrap;font-size:var(--t-foot);height:32px;display:flex;align-items:center;padding:0 12px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep)}
+.comp{display:flex;align-items:center;gap:12px;padding:8px 16px;flex:none;background:var(--bg)}
+.comp .cam{width:44px;height:44px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;flex:none}
+.comp .wt{width:44px;height:44px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center;flex:none}
+.comp .wt.hot{background:var(--tint);color:var(--on-tint)}
+.comp .in{flex:1;height:36px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);color:var(--ink3);font-size:var(--t-body);display:flex;align-items:center;padding:0 16px;min-width:0}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>タイムライン</h1>
+  <p>根のビュー。いま見ている日の日付を題にしたナビゲーションバー、月曜を左端に今週の月〜日を並べた1日の丸の帯、古い日から今日へ下に伸びる時系列、下に固定した入力欄。自分が送ったもの（食事・体重・書いた文）は右に寄せ、返ってくる発言は左の地の上に、アプリの知らせは全幅のカードにする。押して潜れる行には › を付ける。</p>
+</header>
+
+<div class="states">
+
+<figure>
+  <div class="phone" style="height:840px">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="goal"></div>
+    <div class="tl">
+      <div class="dayh">昨日 9月23日（水）</div>
+      <div class="meal"><span class="ph b"></span><div class="body"><div class="top"><b>焼き鳥・ビール 2杯</b><span class="k">19:40</span></div><div class="pfc"><b>840 kcal</b><span>P 48 g</span><span>F 38 g</span><span>C 52 g</span></div></div><span class="disc">›</span></div>
+      <div class="dayh">今日 9月24日（木）</div>
+      <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+      <div class="meal"><span class="ph"></span><div class="body"><div class="top"><b>トースト・ゆで卵</b><span class="k">7:40</span></div><div class="pfc"><b>358 kcal</b><span>P 17 g</span><span>F 14 g</span><span>C 40 g</span></div></div><span class="disc">›</span></div>
+      <div class="me">昼はコンビニになりそう。何を選べばいい？</div>
+      <div class="reply">朝のたんぱく質が 17 g なので、サラダチキンかゆで卵を足すと目安に近づきます。おにぎりは1つなら残りの炭水化物に収まります。</div>
+      <div class="meal"><span class="ph c"></span><div class="body"><div class="top"><b>サラダチキン・おにぎり 2個</b><span class="k">12:20</span></div><div class="pfc"><b>510 kcal</b><span>P 32 g</span><span>F 6 g</span><span>C 78 g</span></div></div><span class="disc">›</span></div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>開いたところ。</b>今日の一番新しい位置にいる。今日の体重は記録済みなので、今日の丸に印が付き、体重のボタンは灰色の地で目立たない。題と帯の選ばれた丸は、いま見ている日（スクロールすると変わる）。帯は月曜を左端に今週の月〜日を並べ、まだ来ていない日は薄い空の丸。自分が送った体重と食事は右に寄せて薄いアクセントの地を敷き、返ってくる発言は左の地の上に置く。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="goal-noweight"></div>
+    <div class="pending"><span>今朝の体重がまだです</span><span>↑ 見る</span></div>
+    <div class="tl">
+      <div class="meal"><span class="ph"></span><div class="body"><div class="top"><b>トースト・ゆで卵</b><span class="k">7:40</span></div><div class="pfc"><b>358 kcal</b><span>P 17 g</span><span>F 14 g</span><span>C 40 g</span></div></div><span class="disc">›</span></div>
+      <div class="me">昼はコンビニになりそう。何を選べばいい？</div>
+      <div class="reply">朝のたんぱく質が 17 g なので、サラダチキンかゆで卵を足すと目安に近づきます。</div>
+      <div class="meal"><span class="ph c"></span><div class="body"><div class="top"><b>サラダチキン・おにぎり 2個</b><span class="k">12:20</span></div><div class="pfc"><b>510 kcal</b><span>P 32 g</span><span>F 6 g</span><span>C 78 g</span></div></div><span class="disc">›</span></div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt hot" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>答えていない知らせが上へ流れた。</b>9:00 の体重の知らせが画面の外へ出たので、帯の下に1行で示す。押すと知らせまで戻る。今日の体重がまだなので、体重のボタンをアクセントの色で塗って目立たせる。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="goal-noweight"></div>
+    <div class="tl">
+      <div class="dayh">今日 9月24日（木）</div>
+      <div class="note">
+        <div class="h"><b>今朝の体重</b><span>9:00</span></div>
+        <div class="stepper"><span class="pm" aria-label="0.1 kg 減らす">−</span><span class="v">72.6<small>kg</small></span><span class="pm" aria-label="0.1 kg 増やす">+</span></div>
+        <p class="d">前回 9月23日（水）72.6 kg</p>
+        <div class="acts"><span class="btn filled">記録</span></div>
+      </div>
+      <div class="photo-me" aria-label="撮った写真"></div>
+      <div class="meal"><span class="ph c"></span><div class="body"><div class="top"><b></b><span class="k">12:20</span></div><div class="loading"><span class="spinner"></span>推定しています…</div></div></div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt hot" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>体重の知らせと、撮った直後。</b>知らせの中でその場で体重を入れられる（ステッパーは体重の入力と同じで、前回の値から始まる）。撮った写真は入力欄のすぐ上に出て、推定が済むまで食事のカードに「推定しています…」を出す。済むと今日の丸が伸びる。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月21日（月）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="goal" data-week="sep21"></div>
+    <div class="tl">
+      <div class="dayh">今日 9月21日（月）</div>
+      <div class="weekly"><div class="top"><span>週の振り返り　9月14日〜20日</span><span style="color:var(--ink3)">›</span></div><span class="d">間に合うペース・−0.5 kg／週</span></div>
+      <div class="note">
+        <div class="h"><b>1日の目安が変わりました</b><span>0:00</span></div>
+        <p class="d" style="color:var(--ink)"><span class="num">1,880 → 1,850 kcal</span>。消費量が 2,190 から 2,140 kcal に下がったためです。</p>
+        <div class="acts"><span class="btn plain">目標 ›</span></div>
+      </div>
+      <div class="me" style="max-width:70%">残りご飯と唐揚げ</div>
+      <div class="meal text"><span class="ph"></span><div class="body"><div class="top"><b>ご飯・唐揚げ</b><span class="k"></span></div><div class="pfc"><b>610 kcal</b><span>P 28 g</span><span>F 26 g</span><span>C 64 g</span></div><span class="resend">会話として送り直す</span></div><span class="disc">›</span></div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt hot" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>週の区切りと、書いて送った食事（9月21日（月）0:00）。</b>週が変わり1日の目安が切り替わる月曜 0:00 に、前の週の振り返りのカードと目安の変更の知らせを並べる。帯は新しい週に変わり、今日（月）より後の日は薄い空の丸。「目標 ›」で目標へ潜り、目安が変わった理由をグラフで見られる。書いて送った文章を食事と読んだときは、カードに「会話として送り直す」を添える。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="nogoal"></div>
+    <div class="tl">
+      <div class="dayh">今日 9月24日（木）</div>
+      <div class="note">
+        <div class="h"><b>目標を立てる</b><span>7:00</span></div>
+        <p class="d">目指す体重と期限を決めると、1日に食べる量の目安が出ます。ヘルスケアにある値を使うので、答えるのは2〜3問です。</p>
+        <div class="acts"><span class="btn gray">あとで</span><span class="btn filled">始める</span></div>
+      </div>
+      <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+      <div class="meal"><span class="ph"></span><div class="body"><div class="top"><b>トースト・ゆで卵</b><span class="k">7:40</span></div><div class="pfc"><b>358 kcal</b><span>P 17 g</span><span>F 14 g</span><span>C 40 g</span></div></div><span class="disc">›</span></div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>目標がないとき。</b>比べる目安がないので、丸は P・F・C の割合で一周する。目標の知らせは「始める」でその場で広がる（中身は目標の設定）。「あとで」で帯の下の1行が消える。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="goal"></div>
+    <div class="tl">
+      <div class="meal"><span class="ph c"></span><div class="body"><div class="top"><b>サラダチキン・おにぎり 2個</b><span class="k">12:20</span></div><div class="pfc"><b>510 kcal</b><span>P 32 g</span><span>F 6 g</span><span>C 78 g</span></div></div><span class="disc">›</span></div>
+      <div class="note">
+        <div class="h"><b>夜の食事はまだ撮っていません</b><span>20:30</span></div>
+        <p class="d">いつもはこの時間までに記録しています。食べたら撮っておきましょう。</p>
+        <div class="acts"><span class="btn filled">撮る</span></div>
+      </div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>食事の知らせ。</b>いつもの時刻を過ぎても記録がないときだけ、iPhone の通知と同じ内容をタイムラインにも出す。カードの「撮る」でカメラを開く。書いて記録するときは入力欄を使う。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">11月8日（日）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="goal" data-week="nov8"></div>
+    <div class="tl">
+      <div class="dayh">今日 11月8日（日）</div>
+      <div class="row"><span class="tm">7:05</span><span class="grow">体重</span><span class="val">70.0 kg</span><span class="disc">›</span></div>
+      <div class="note">
+        <div class="h"><b>目標の 70.0 kg に届きました</b><span>7:05</span></div>
+        <p class="d">期限の11月30日より22日早く届きました。次の目標を選ぶまで、今の目標を続けます。</p>
+        <div class="acts"><span class="btn gray">あとで</span><span class="btn filled">次の目標を選ぶ</span></div>
+      </div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>目標に届いたとき（11月8日の例）。</b>届いたことを知らせ、次の目標を選ぶまで今の目標を続けると添える。「次の目標を選ぶ」でその場でカードが広がる（中身は目標の設定）。期限が来たときは同じ形で結果を出し、期限を過ぎても選ばなければ「次の目標を立てる」に変わる。</figcaption>
+</figure>
+
+</div>
+
+<script src="../_ring.js"></script>
+<script>
+// 帯は月曜を左端に今の週の7日分。まだ来ていない日（future）は薄い空の丸。選ばれた丸は、いま見ている日（どの例も今日）
+// goal: 1日の目安と比べる。nogoal: P・F・C の割合で一周
+const WEEK = [
+  {d:'月', p:450,f:600,c:840, w:true},
+  {d:'火', p:470,f:480,c:820, w:true},
+  {d:'水', p:500,f:510,c:760, w:true},
+  {d:'今日', p:196,f:180,c:472, w:true},
+  {d:'金', future:true}, {d:'土', future:true}, {d:'日', future:true},
+];
+// 9月21日（月）0:00（週の区切り。書いて送ったご飯・唐揚げだけ）と、11月8日（日）の朝の帯
+const WEEKS = {
+  sep21: [
+    {d:'今日', p:112,f:234,c:256, w:false},
+    {d:'火', future:true}, {d:'水', future:true}, {d:'木', future:true}, {d:'金', future:true}, {d:'土', future:true}, {d:'日', future:true},
+  ],
+  nov8: [
+    {d:'月', p:480,f:500,c:760, w:true}, {d:'火', p:460,f:540,c:720, w:true}, {d:'水', p:500,f:470,c:780, w:true},
+    {d:'木', p:440,f:520,c:740, w:true}, {d:'金', p:470,f:610,c:860, w:true}, {d:'土', p:430,f:650,c:900, w:false},
+    {d:'今日', p:0,f:0,c:0, w:true},
+  ],
+};
+document.querySelectorAll('[data-band]').forEach(el => {
+  const mode = el.dataset.band;
+  const days = WEEKS[el.dataset.week] || WEEK;
+  el.innerHTML = days.map(x => {
+    const today = x.d === '今日';
+    const o = x.future ? {size:28, stroke:4.5} : {size:28, stroke:4.5, p:x.p, f:x.f, c:x.c, weighed: today && mode==='goal-noweight' ? false : x.w};
+    if (mode !== 'nogoal' && !x.future) o.goal = el.dataset.week === 'nov8' ? 1760 : 1850;
+    return `<div class="day${today?' sel':''}${x.future?' future':''}">${nuRing.svg(o)}<span>${x.d}</span></div>`;
+  }).join('');
+});
+</script>
+</body>
+</html>

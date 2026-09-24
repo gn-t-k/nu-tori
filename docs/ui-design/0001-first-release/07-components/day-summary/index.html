@@ -1,0 +1,201 @@
+<!-- @dsCard group="Views" -->
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>日のまとめ</title>
+<link rel="stylesheet" href="../_base.css">
+<style>
+/* 後ろのタイムライン */
+.nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+.band{display:flex;justify-content:space-between;padding:4px 16px 12px;border-bottom:.5px solid var(--sep);flex:none;background:var(--bg)}
+.band .day{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:var(--t-cap2);color:var(--ink2);padding:3px 4px;border-radius:10px}
+.band .day.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.band .day.future{opacity:.45}
+/* シート */
+.sheet.large{top:40px}
+.sheet .nav{background:transparent}
+.daynav{display:flex;align-items:center;gap:16px}
+.daynav .ar{color:var(--tint);font-size:24px;font-weight:400;line-height:1;margin-top:-2px}
+.daynav .ar.off{color:var(--ink3)}
+/* 食事と栄養 */
+.eat{display:flex;align-items:center;gap:16px;padding:16px}
+.eat .ring .c b{font-size:var(--t-title2);font-weight:600;font-variant-numeric:tabular-nums}
+.eat .ring .c span{font-size:var(--t-cap);color:var(--ink2);font-variant-numeric:tabular-nums}
+.facts{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.facts div{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.facts div b{color:var(--ink);font-size:var(--t-sub);font-weight:600}
+.facts div + div{border-top:.5px solid var(--sep);padding-top:8px}
+.cell .num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>日のまとめ</h1>
+  <p>1日の丸を押すと開くシート。その日の食べた量と P・F・C を1日の目安と並べ、体重と目標の要約（目標の状態で変わる）、週の振り返りへの入口を置く。‹ › で日を送り、「完了」で閉じる。</p>
+</header>
+
+<div class="states">
+
+<figure>
+  <div class="phone" style="height:730px">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="goal"></div>
+    <div class="scrim">
+      <div class="sheet large">
+        <span class="grab"></span>
+        <div class="nav"><span></span><span class="t daynav"><span class="ar" aria-label="前の日">‹</span>9月24日（木）<span class="ar off" aria-label="次の日">›</span></span><span class="r b">完了</span></div>
+        <div class="scroll">
+          <div>
+            <p class="group-h">食事と栄養</p>
+            <div class="list eat">
+              <span class="ring" data-ring='{"size":128,"stroke":14,"p":196,"f":180,"c":472,"goal":1850,"weighed":false}'><span class="c"><b>868</b><span>/ 1,850 kcal</span></span></span>
+              <div class="facts">
+                <div><span><span class="key p"></span> P たんぱく質</span><span><b>49</b> / 130 g</span></div>
+                <div><span><span class="key f"></span> F 脂質</span><span><b>20</b> / 55 g</span></div>
+                <div><span><span class="key c"></span> C 炭水化物</span><span><b>118</b> / 210 g</span></div>
+              </div>
+            </div>
+            <p class="group-f">食べた量 / 1日の目安。食事2回分。</p>
+          </div>
+          <div>
+            <p class="group-h">体重と目標</p>
+            <div class="list">
+              <div class="cell"><span class="grow">この日の体重</span><span class="val num">72.4 kg</span></div>
+              <div class="cell"><span class="grow">体重の傾向<span class="sub">最近4週</span></span><span class="val num">−0.5 kg／週</span></div>
+              <div class="cell"><span class="grow">減量 70.0 kg・11月30日まで<span class="sub">あと 2.4 kg・あと 67 日。間に合うペース</span></span><span class="disc">›</span></div>
+            </div>
+          </div>
+          <div class="list">
+            <div class="cell"><span class="grow">週の振り返り<span class="sub">9月21日〜27日</span></span><span class="disc">›</span></div>
+          </div>
+          <div class="list"><div class="cell link">タイムラインでこの日を見る</div></div>
+        </div>
+        <div class="home"></div>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>目標あり。</b>今日の丸を押したところ。大きな丸は P・F・C の kcal で色分けし、一周で1日の目安。今日は最新なので › は押せない。目標の行と週の振り返りは、シートを閉じてからプッシュで開く。「タイムラインでこの日を見る」はシートを閉じてその日の位置へ送る。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone" style="height:820px">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">11月8日（日）</span><span class="r"><span class="person"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="done"></div>
+    <div class="scrim">
+      <div class="sheet large">
+        <span class="grab"></span>
+        <div class="nav"><span></span><span class="t daynav"><span class="ar" aria-label="前の日">‹</span>11月8日（日）<span class="ar off" aria-label="次の日">›</span></span><span class="r b">完了</span></div>
+        <div class="scroll">
+          <div>
+            <p class="group-h">食事と栄養</p>
+            <div class="list eat">
+              <span class="ring" data-ring='{"size":128,"stroke":14,"p":260,"f":333,"c":528,"goal":1760,"weighed":false}'><span class="c"><b>1,121</b><span>/ 1,760 kcal</span></span></span>
+              <div class="facts">
+                <div><span><span class="key p"></span> P たんぱく質</span><span><b>65</b> / 125 g</span></div>
+                <div><span><span class="key f"></span> F 脂質</span><span><b>37</b> / 53 g</span></div>
+                <div><span><span class="key c"></span> C 炭水化物</span><span><b>132</b> / 196 g</span></div>
+              </div>
+            </div>
+            <p class="group-f">食べた量 / 1日の目安。食事2回分。</p>
+          </div>
+          <div>
+            <p class="group-h">体重と目標</p>
+            <div class="list">
+              <div class="cell"><span class="grow">この日の体重</span><span class="val num">70.0 kg</span></div>
+              <div class="cell"><span class="grow">体重の傾向<span class="sub">最近4週</span></span><span class="val num">−0.4 kg／週</span></div>
+              <div class="cell"><span class="grow">減量 70.0 kg に届きました<span class="sub">期限の11月30日より 22 日早い・傾向 69.9 kg</span></span><span class="disc">›</span></div>
+              <div class="cell link">次の目標を選ぶ</div>
+            </div>
+            <p class="group-f">次の目標を選ぶまで、今の目標を続けます。</p>
+          </div>
+          <div class="list">
+            <div class="cell"><span class="grow">週の振り返り<span class="sub">11月2日〜8日</span></span><span class="disc">›</span></div>
+          </div>
+          <div class="list"><div class="cell link">タイムラインでこの日を見る</div></div>
+        </div>
+        <div class="home"></div>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>目標に届いた日。</b>期限より前に、傾向の線で目標体重に届いたとき。例は後の日付で、11月8日（日）に 70.0 kg を測り、傾向が 69.9 kg になった日。目標の要約の行が届いたことを示し、すぐ下に「次の目標を選ぶ」を置く。押すとシートを閉じ、タイムラインの一番下の知らせのカード（同じ「次の目標を選ぶ」）を広げる。途中まで進めていたら同じページから続ける。選ぶまで今の目標と1日の目安は続くので、丸は 1,760 kcal の目安と比べる。要約の行を押すと、ふだんと同じく目標へ潜る。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band" data-band="nogoal"></div>
+    <div class="scrim">
+      <div class="sheet large">
+        <span class="grab"></span>
+        <div class="nav"><span></span><span class="t daynav"><span class="ar" aria-label="前の日">‹</span>9月24日（木）<span class="ar off" aria-label="次の日">›</span></span><span class="r b">完了</span></div>
+        <div class="scroll">
+          <div>
+            <p class="group-h">食事と栄養</p>
+            <div class="list eat">
+              <span class="ring" data-ring='{"size":128,"stroke":14,"p":196,"f":180,"c":472,"weighed":false}'><span class="c"><b>868</b><span>kcal</span></span></span>
+              <div class="facts">
+                <div><span><span class="key p"></span> P たんぱく質</span><span><b>49</b> g</span></div>
+                <div><span><span class="key f"></span> F 脂質</span><span><b>20</b> g</span></div>
+                <div><span><span class="key c"></span> C 炭水化物</span><span><b>118</b> g</span></div>
+              </div>
+            </div>
+            <p class="group-f">目標がないので、丸は P・F・C の割合で一周します。目標を立てると、1日の目安と比べて示します。</p>
+          </div>
+          <div>
+            <p class="group-h">体重と目標</p>
+            <div class="list">
+              <div class="cell"><span class="grow">この日の体重</span><span class="val num">72.4 kg</span></div>
+              <div class="cell"><span class="grow">体重の傾向<span class="sub">最近4週</span></span><span class="val num">−0.5 kg／週</span></div>
+              <div class="cell link">目標を立てる</div>
+            </div>
+          </div>
+          <div class="list"><div class="cell link">タイムラインでこの日を見る</div></div>
+        </div>
+        <div class="home"></div>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>目標がないとき。</b>比べる目安がないので、kcal と P・F・C は食べた量だけを書き、丸は割合で一周する。目標の要約の代わりに「目標を立てる」を置き、押すとシートを閉じてタイムラインの一番下の知らせのカードを広げる。1日の目安の区切りがないので、週の振り返りの行は出さない。</figcaption>
+</figure>
+
+</div>
+
+<script src="../_ring.js"></script>
+<script>
+// 9月21日（月）〜27日（日）。まだ来ていない日は空の丸
+const WEEK = [
+  {d:'月', p:450,f:600,c:840, w:true},
+  {d:'火', p:470,f:480,c:820, w:true},
+  {d:'水', p:500,f:510,c:760, w:true},
+  {d:'今日', p:196,f:180,c:472, w:true},
+  {d:'金', future:true},
+  {d:'土', future:true},
+  {d:'日', future:true},
+];
+// 11月2日（月）〜8日（日）。目標に届いた日の例
+const WEEK_DONE = [
+  {d:'月', p:480,f:500,c:760, w:true},
+  {d:'火', p:460,f:540,c:720, w:true},
+  {d:'水', p:500,f:470,c:780, w:true},
+  {d:'木', p:440,f:520,c:740, w:true},
+  {d:'金', p:470,f:610,c:860, w:true},
+  {d:'土', p:430,f:650,c:900, w:false},
+  {d:'今日', p:208,f:270,c:508, w:true},
+];
+document.querySelectorAll('[data-band]').forEach(el => {
+  const kind = el.dataset.band;
+  const week = kind === 'done' ? WEEK_DONE : WEEK;
+  el.innerHTML = week.map(x => {
+    const o = x.future ? {size:28, stroke:4.5} : {size:28, stroke:4.5, p:x.p, f:x.f, c:x.c, weighed:x.w};
+    if (kind !== 'nogoal' && !x.future) o.goal = kind === 'done' ? 1760 : 1850;
+    return `<div class="day${x.d==='今日'?' sel':''}${x.future?' future':''}">${nuRing.svg(o)}<span>${x.d}</span></div>`;
+  }).join('');
+});
+</script>
+</body>
+</html>

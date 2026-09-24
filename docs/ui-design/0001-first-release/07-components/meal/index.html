@@ -1,0 +1,305 @@
+<!-- @dsCard group="Views" -->
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>食事</title>
+<link rel="stylesheet" href="../_base.css">
+<style>
+.photo{height:210px;border-radius:12px;background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.photo.b{background:linear-gradient(135deg,#e7c889,#b87a3a 60%,#f1e3c2)}
+.photo.short{height:120px}
+/* 合計 */
+.tot{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.tot .k{font-size:var(--t-title2);font-weight:600;font-variant-numeric:tabular-nums}
+.tot .k small{font-size:var(--t-sub);font-weight:400;color:var(--ink2);margin-left:4px}
+.tot .k.none{color:var(--ink3)}
+.tot .pfc{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.tot .pfc b{color:var(--ink);font-weight:600;font-size:var(--t-sub);margin-left:2px}
+/* 料理 */
+.dish .cell.dh{font-weight:600}
+.dish .cell.dh .kc{font-weight:400;color:var(--ink2);font-size:var(--t-sub);font-variant-numeric:tabular-nums;margin-left:auto}
+.dish .cell.dh .q{font-weight:400;margin-left:8px;font-variant-numeric:tabular-nums}
+.dish .cell.ing{font-size:var(--t-sub);min-height:44px;padding:11px 16px 11px 28px}
+.dish .cell.ing .edit{font-variant-numeric:tabular-nums}
+.dish .cell.ing + .cell::before{left:28px}
+.dish .cell.more{font-size:var(--t-sub)}
+.cell .field{flex:1;padding:6px 12px}
+.cell .field.num{flex:none;width:72px;justify-content:flex-end;font-variant-numeric:tabular-nums}
+.cell .unit{color:var(--ink2)}
+.caret{display:inline-block;width:2px;height:19px;background:var(--tint);vertical-align:-3px;margin-left:1px}
+/* 行を左へ送る */
+.swipe{position:relative;overflow:hidden}
+.swipe .del{position:absolute;top:0;right:0;bottom:0;width:78px;background:var(--destructive);color:var(--on-tint);display:grid;place-items:center;font-size:var(--t-body)}
+.swipe .cell{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;background:var(--surface);transform:translateX(-78px)}
+.list > .swipe + .cell::before{content:"";position:absolute;top:0;left:28px;right:0;border-top:.5px solid var(--sep)}
+/* 空の食事 */
+.empty{padding:22px 16px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.empty b{font-weight:600}
+.empty span{font-size:var(--t-foot);color:var(--ink2)}
+/* 数字のキーボード（decimalPad）と、上の「完了」 */
+.kbbar{flex:none;display:flex;justify-content:flex-end;padding:9px 16px;background:var(--chrome);border-top:.5px solid var(--sep);color:var(--tint);font-weight:600;font-size:var(--t-body)}
+.kb{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:7px 6px 6px;background:color-mix(in srgb,var(--ink) 9%,var(--bg))}
+.kb span{height:44px;border-radius:6px;background:color-mix(in srgb,var(--surface) 55%,var(--surface2));display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;line-height:1;color:var(--ink)}
+.kb span i{font-style:normal;font-size:9px;letter-spacing:1.5px;margin-top:2px}
+.kb span.fn{background:transparent}
+.kb-home{height:22px;flex:none;background:color-mix(in srgb,var(--ink) 9%,var(--bg))}
+/* 栄養の内訳 */
+.nut .cell{font-size:var(--t-sub);min-height:44px;padding:11px 16px}
+.nut .cell .val{color:var(--ink);font-variant-numeric:tabular-nums}
+.lead{font-size:var(--t-foot);color:var(--ink2);padding:0 16px;margin:0}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>食事</h1>
+  <p>タイムラインの食事のカードから潜る食事の画面と、料理の行から潜る栄養の内訳。時刻、料理の名前と量、材料の量はアクセントの色で示し、押すとその場で直せる。</p>
+</header>
+
+<div class="states">
+
+<figure>
+  <div class="phone" style="height:1170px">
+    <div class="status"></div>
+    <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">食事</span><span></span></div>
+    <div class="scroll">
+      <div class="photo" role="img" aria-label="写真（サラダチキンとおにぎり）"></div>
+      <div class="list">
+        <div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="edit num">9月24日 12:20</span></div>
+      </div>
+      <div class="list tot">
+        <span class="k">510<small>kcal</small></span>
+        <div class="pfc"><span><span class="key p"></span> P<b>32</b> g</span><span><span class="key f"></span> F<b>6</b> g</span><span><span class="key c"></span> C<b>78</b> g</span></div>
+      </div>
+      <div>
+        <p class="group-h">料理</p>
+        <div class="list dish">
+          <div class="cell dh"><span class="edit">サラダチキン</span><span class="q edit">110 g</span><span class="kc">121 kcal</span></div>
+          <div class="cell ing"><span class="grow">鶏むね肉（皮なし）</span><span class="edit">110 g</span></div>
+          <div class="cell more"><span class="grow">栄養の内訳</span><span class="disc">›</span></div>
+        </div>
+      </div>
+      <div class="list dish">
+        <div class="cell dh"><span class="edit">おにぎり</span><span class="q edit">2個</span><span class="est">推定</span><span class="kc">389 kcal</span></div>
+        <div class="cell ing"><span class="grow">ご飯</span><span class="edit">190 g</span></div>
+        <div class="cell ing"><span class="grow">鮭フレーク</span><span class="edit">10 g</span></div>
+        <div class="cell ing"><span class="grow">ツナ（油漬）</span><span class="edit">12 g</span></div>
+        <div class="cell ing"><span class="grow">マヨネーズ</span><span class="edit">6 g</span></div>
+        <div class="cell ing"><span class="grow">焼きのり</span><span class="edit">2枚</span></div>
+        <div class="cell more"><span class="grow">栄養の内訳</span><span class="disc">›</span></div>
+      </div>
+      <div class="list"><div class="cell link">料理を足す</div></div>
+      <div class="list"><div class="cell danger">食事を削除</div></div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>食事の画面。</b>12:20 の昼食を、上から下まで縦に長く描いた。写真、時刻、合計、料理（行の下に材料）、料理を足す、食事を削除。サラダチキンは量を直したので「推定」がなく、おにぎりは推定したままなので「推定」を添える。写真が2枚以上なら横に送る。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav sep"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">食事</span><span></span></div>
+    <div class="scroll">
+      <div class="list tot">
+        <span class="k">510<small>kcal</small></span>
+        <div class="pfc"><span><span class="key p"></span> P<b>32</b> g</span><span><span class="key f"></span> F<b>6</b> g</span><span><span class="key c"></span> C<b>78</b> g</span></div>
+      </div>
+      <div>
+        <div class="list dish">
+          <div class="cell"><span class="field">おにぎり</span></div>
+          <div class="cell"><span class="grow">量</span><span class="field focus num">2<span class="caret"></span></span><span class="unit">個</span></div>
+          <div class="cell danger">この料理を削除</div>
+        </div>
+        <p class="group-f">量を変えると、材料の量も同じ割合で変わります。</p>
+      </div>
+    </div>
+    <div class="kbbar">完了</div>
+    <div class="kb" data-kb></div>
+    <div class="kb-home"></div>
+  </div>
+  <figcaption><b>料理を直す。</b>料理の名前か量を押すと、その行が値の欄に変わり、名前と量を一緒に直せる。量を押したときは数字のキーボードが出る。直すと材料の量も同じ割合で変わり、「推定」が外れ、合計と1日の丸がその場で変わる。スクロールした位置を描いた。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav sep"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">食事</span><span></span></div>
+    <div class="scroll">
+      <div class="list tot">
+        <span class="k">448<small>kcal</small></span>
+        <div class="pfc"><span><span class="key p"></span> P<b>31</b> g</span><span><span class="key f"></span> F<b>6</b> g</span><span><span class="key c"></span> C<b>63</b> g</span></div>
+      </div>
+      <div class="list dish">
+        <div class="cell dh"><span class="edit">おにぎり</span><span class="q edit">2個</span><span class="est">推定</span><span class="kc">327 kcal</span></div>
+        <div class="cell ing"><span class="grow">ご飯</span><span class="field focus num">150<span class="caret"></span></span><span class="unit">g</span></div>
+        <div class="cell ing"><span class="grow">鮭フレーク</span><span class="edit">10 g</span></div>
+        <div class="cell ing"><span class="grow">ツナ（油漬）</span><span class="edit">12 g</span></div>
+      </div>
+    </div>
+    <div class="kbbar">完了</div>
+    <div class="kb" data-kb></div>
+    <div class="kb-home"></div>
+  </div>
+  <figcaption><b>材料の量を直す。</b>材料の量を押すと、その場で値の欄に変わり、数字のキーボードが出る。単位は材料ごとに推定したもの。ご飯を 190 g から 150 g にすると、打つそばから料理と食事の合計が変わる（510 → 448 kcal）。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">食事</span><span></span></div>
+    <div class="scroll">
+      <div class="photo b short" role="img" aria-label="写真"></div>
+      <div class="list">
+        <div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="edit num">9月24日 15:10</span></div>
+      </div>
+      <div class="list tot">
+        <span class="k none">— <small>kcal</small></span>
+      </div>
+      <div>
+        <p class="group-h">料理</p>
+        <div class="list"><div class="cell"><span class="loading"><span class="spinner"></span>推定しています…</span></div></div>
+      </div>
+      <div class="list"><div class="cell link">料理を足す</div></div>
+      <div class="list"><div class="cell danger">食事を削除</div></div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>推定中。</b>撮ってすぐ開いたとき。料理の一覧の場所に回る印と「推定しています…」を出す。画面はふさがず、時刻を直したり料理を足したりできる。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">食事</span><span></span></div>
+    <div class="scroll">
+      <div class="photo b short" role="img" aria-label="写真"></div>
+      <div class="list">
+        <div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="edit num">9月24日 15:10</span></div>
+      </div>
+      <div class="list tot">
+        <span class="k">0<small>kcal</small></span>
+      </div>
+      <div>
+        <p class="group-h">料理</p>
+        <div class="list empty"><b>料理を推定できませんでした</b><span>料理の名前を入れると、量と材料を推定します。</span></div>
+      </div>
+      <div class="list"><div class="cell link">料理を足す</div></div>
+      <div class="list"><div class="cell danger">食事を削除</div></div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>推定できない。</b>料理が0件のとき。アラートにせず、料理の一覧の場所で理由と次にできることを示し、「料理を足す」を続けて置く。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav sep"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">食事</span><span></span></div>
+    <div class="scroll">
+      <div class="list tot">
+        <span class="k">510<small>kcal</small></span>
+        <div class="pfc"><span><span class="key p"></span> P<b>32</b> g</span><span><span class="key f"></span> F<b>6</b> g</span><span><span class="key c"></span> C<b>78</b> g</span></div>
+      </div>
+      <div>
+        <p class="group-h">料理</p>
+        <div class="list dish">
+          <div class="swipe"><div class="cell dh"><span class="edit">サラダチキン</span><span class="q edit">110 g</span><span class="kc">121 kcal</span></div><span class="del">削除</span></div>
+          <div class="cell ing"><span class="grow">鶏むね肉（皮なし）</span><span class="edit">110 g</span></div>
+          <div class="cell more"><span class="grow">栄養の内訳</span><span class="disc">›</span></div>
+        </div>
+      </div>
+      <div class="list dish">
+        <div class="cell dh"><span class="edit">おにぎり</span><span class="q edit">2個</span><span class="est">推定</span><span class="kc">389 kcal</span></div>
+        <div class="cell ing"><span class="grow">ご飯</span><span class="edit">190 g</span></div>
+        <div class="cell ing"><span class="grow">鮭フレーク</span><span class="edit">10 g</span></div>
+      </div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>行を左へ送る。</b>料理の行を左へ送ると赤い「削除」が出る。押すか送りきると、確かめずに料理が削除され、合計が変わる。足し直すときは「料理を足す」。VoiceOver ではカスタムアクション「削除」で出す。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav sep"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">食事</span><span></span></div>
+    <div class="scroll" style="justify-content:flex-end">
+      <div class="list dish">
+        <div class="cell ing"><span class="grow">マヨネーズ</span><span class="edit">6 g</span></div>
+        <div class="cell ing"><span class="grow">焼きのり</span><span class="edit">2枚</span></div>
+        <div class="cell more"><span class="grow">栄養の内訳</span><span class="disc">›</span></div>
+      </div>
+      <div class="list"><div class="cell link">料理を足す</div></div>
+      <div class="list"><div class="cell danger">食事を削除</div></div>
+      <div style="height:190px"></div>
+    </div>
+    <div class="home"></div>
+    <div class="scrim">
+      <div class="action">
+        <div class="grp">
+          <div class="msg">この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。</div>
+          <div class="a danger">食事を削除</div>
+        </div>
+        <div class="grp"><div class="a cancel">キャンセル</div></div>
+      </div>
+      <div class="home"></div>
+    </div>
+  </div>
+  <figcaption><b>食事を削除。</b>一番下までスクロールし、「食事を削除」を押したところ。画面の下から確かめ、否定の操作は「キャンセル」1つ。削除するとタイムラインに戻り、1日の丸が減る。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone" style="height:960px">
+    <div class="status"></div>
+    <div class="nav"><span class="l"><span class="chev">‹</span>食事</span><span class="t">おにぎり</span><span></span></div>
+    <div class="scroll">
+      <p class="lead" style="margin-bottom:-12px">2個<span class="est">推定</span>　ご飯 190 g ほか</p>
+      <div>
+        <p class="group-h">主な栄養</p>
+        <div class="list nut">
+          <div class="cell"><span class="grow">エネルギー</span><span class="val">389 kcal</span></div>
+          <div class="cell"><span class="grow"><span class="key p"></span> たんぱく質</span><span class="val">6.0 g</span></div>
+          <div class="cell"><span class="grow"><span class="key f"></span> 脂質</span><span class="val">5.0 g</span></div>
+          <div class="cell"><span class="grow"><span class="key c"></span> 炭水化物</span><span class="val">77.0 g</span></div>
+          <div class="cell"><span class="grow">食物繊維</span><span class="val">1.2 g</span></div>
+          <div class="cell"><span class="grow">食塩相当量</span><span class="val">2.0 g</span></div>
+        </div>
+      </div>
+      <div>
+        <p class="group-h">ミネラル</p>
+        <div class="list nut">
+          <div class="cell"><span class="grow">カルシウム</span><span class="val">12 mg</span></div>
+          <div class="cell"><span class="grow">鉄</span><span class="val">0.4 mg</span></div>
+          <div class="cell"><span class="grow">カリウム</span><span class="val">120 mg</span></div>
+          <div class="cell"><span class="grow">マグネシウム</span><span class="val">16 mg</span></div>
+        </div>
+      </div>
+      <div>
+        <p class="group-h">ビタミン</p>
+        <div class="list nut">
+          <div class="cell"><span class="grow">ビタミンA</span><span class="val">45 µg</span></div>
+          <div class="cell"><span class="grow">ビタミンB1</span><span class="val">0.06 mg</span></div>
+          <div class="cell"><span class="grow">ビタミンB2</span><span class="val">0.05 mg</span></div>
+          <div class="cell"><span class="grow">ビタミンC</span><span class="val">0 mg</span></div>
+          <div class="cell"><span class="grow">ビタミンD</span><span class="val">1.5 µg</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>栄養の内訳。</b>料理の行の「栄養の内訳 ›」から潜る。題は料理の名前、戻るは「‹ 食事」。主な栄養、ミネラル、ビタミンの順。見るだけで、値は黒で書く（直すのは食事の画面）。縦に長く描いた。</figcaption>
+</figure>
+
+</div>
+
+<script>
+// 数字のキーボード（decimalPad）
+const KEYS = [['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['.',''],['0',''],['⌫','']];
+document.querySelectorAll('[data-kb]').forEach(el => {
+  el.innerHTML = KEYS.map(([k,s]) => `<span${k==='.'||k==='⌫'?' class="fn"':''}>${k}${s?`<i>${s}</i>`:''}</span>`).join('');
+});
+</script>
+</body>
+</html>
