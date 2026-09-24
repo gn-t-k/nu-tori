@@ -40,7 +40,7 @@ type CreateState = "empty" | "duplicate" | "creatable";
 ### 関数は処理の流れで分ける
 
 - タグ付きユニオンを1つの関数で受けるときは、switch ですべての case を書く
-- 各 case から値を返す switch には `default` を置かない。case を足したときの漏れが型エラーになる（`noImplicitReturns`）
+- 各 case から値を返す switch には `default` を置かない。case を足したときの漏れが型エラーになる（戻り値の型を書けば TS2366、推論させれば `noImplicitReturns` の TS7030）
 - 値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
 
 ### 値が無いことを許すのは、必要な事情があるときだけ
@@ -62,7 +62,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 
 ### 依存パッケージ
 
-- パッケージは `pnpm add <パッケージ>@<版>` で足し、`package.json` を直接書き換えない。`^` や `~` の範囲指定にしない
+- パッケージは `pnpm add <パッケージ>@<版>`（開発用なら `pnpm add -D <パッケージ>@<版>`）で足し、`package.json` を直接書き換えない。`^` や `~` の範囲指定にしない
 - 最新の版は `npm view <パッケージ> version` で確かめる
 
 ## テスト
@@ -115,7 +115,7 @@ export const mockCreateDatabaseError = (error: CreateDatabaseError) => {
 };
 ```
 
-- 返し方は、差し替える関数に合わせる。Result を返す関数（Promise に包んだものも）は、成功も失敗も Result で返す（`mockResolvedValue(成功の Result)`・`mockResolvedValue(失敗の Result)`）。Result を使わない関数は、Promise を返すなら `mockResolvedValue`・`mockRejectedValue`、同期なら `mockReturnValue`・`mockImplementation(() => { throw error; })`
+- 返し方は、差し替える関数に合わせる。Result を返す関数は、成功も失敗も Result で返す（Promise に包んだ Result なら `mockResolvedValue(Result)`、同期の Result なら `mockReturnValue(Result)`）。Result を使わない関数は、Promise を返すなら `mockResolvedValue`・`mockRejectedValue`、同期なら `mockReturnValue`・`mockImplementation(() => { throw error; })`
 - 呼び出しの引数を確かめるテストは、`let spy: ReturnType<typeof mockXxxOk>` で型を付け、`beforeEach` で代入して `test` で参照する。結果だけを確かめるテストは、`beforeEach` で `mockXxxOk()` を呼ぶだけにし、spy を持たない
 
 ```ts
