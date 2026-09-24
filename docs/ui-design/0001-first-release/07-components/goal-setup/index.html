@@ -1,0 +1,267 @@
+<!-- @dsCard group="Views" -->
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>目標の設定</title>
+<link rel="stylesheet" href="../_base.css">
+<style>
+/* タイムラインから写したもの */
+.nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+.band{display:flex;justify-content:space-between;padding:4px 16px 12px;border-bottom:.5px solid var(--sep);flex:none;background:var(--bg)}
+.band .day{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:var(--t-cap2);color:var(--ink2);padding:3px 4px;border-radius:10px}
+.band .day.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.band .day.future{opacity:.45}
+.tl{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:12px 16px}
+.tl > *{flex:none}
+/* 自分が送ったもの（食事・体重）は右に寄せ、薄いアクセントの地を敷く。返ってくる発言は左の地の上、アプリの知らせは全幅の白いカード */
+.tl > .row,.tl > .meal{align-self:flex-end;width:86%;background:color-mix(in srgb,var(--tint) 10%,var(--surface))}
+.dayh{text-align:center;font-size:var(--t-cap);color:var(--ink2);font-weight:600}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;background:var(--surface);border-radius:12px;padding:12px 16px;font-size:var(--t-sub)}
+.row .tm{color:var(--ink2);font-size:var(--t-foot);width:36px;flex:none}
+.row .grow{flex:1;min-width:0}
+.row .val{font-variant-numeric:tabular-nums}
+.row .disc{color:var(--ink3)}
+.meal{background:var(--surface);border-radius:12px;overflow:hidden;display:flex;gap:12px;padding:12px 16px 12px 12px;align-items:center}
+.meal .ph{width:64px;height:64px;border-radius:8px;flex:none;background:linear-gradient(135deg,#c79a63,#8a6238 55%,#e6d2ac)}
+.meal .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.meal .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:var(--t-sub)}
+.meal .top b{font-weight:600}
+.meal .top .k{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:var(--t-foot);color:var(--ink2)}
+.meal .disc{color:var(--ink3);font-size:18px;flex:none}
+.meal .pfc b{color:var(--ink);font-weight:600}
+.meal .pfc > *{white-space:nowrap}
+.meal .pfc{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:var(--t-cap);color:var(--ink2);font-variant-numeric:tabular-nums}
+.note{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.note .h + .d{margin-top:-4px}
+.note.decided{gap:8px}
+.note.decided .acts{margin-top:4px}
+.note .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.note .h b{font-size:var(--t-sub);font-weight:600}
+.note .h span{font-size:var(--t-cap);color:var(--ink2)}
+.note .d{font-size:var(--t-foot);color:var(--ink2);margin:0}
+.note .acts{display:flex;gap:12px;justify-content:flex-end}
+.chips{display:flex;gap:8px;padding:8px 16px 0;overflow:hidden;flex:none;background:var(--bg)}
+.chips span{white-space:nowrap;font-size:var(--t-foot);height:32px;display:flex;align-items:center;padding:0 12px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep)}
+.comp{display:flex;align-items:center;gap:12px;padding:8px 16px;flex:none;background:var(--bg)}
+.comp .cam{width:44px;height:44px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;flex:none}
+.comp .wt{width:44px;height:44px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center;flex:none}
+.comp .wt.hot{background:var(--tint);color:var(--on-tint)}
+.comp .in{flex:1;height:36px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);color:var(--ink3);font-size:var(--t-body);display:flex;align-items:center;padding:0 16px;min-width:0}
+/* 広げたカード */
+.setup{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.setup .h{display:flex;align-items:center;gap:12px}
+.setup .h b{font-size:var(--t-headline);font-weight:600;flex:1}
+.setup .h .step{font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.setup .h .close{font-size:var(--t-body);color:var(--tint)}
+.dots{display:flex;gap:6px;margin-top:-6px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--ink3)}
+.dots i.on{background:var(--ink)}
+.setup .q{font-size:var(--t-title3);font-weight:700;margin:0;line-height:1.25}
+.setup .qd{font-size:var(--t-foot);color:var(--ink2);margin:-4px 0 0}
+.opts{background:var(--surface2);border-radius:10px;overflow:hidden}
+.opts .o{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative}
+.opts .o + .o::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.opts .o .grow{flex:1}
+.opts .o .sub{display:block;font-size:var(--t-foot);color:var(--ink2)}
+.opts .o .disc{color:var(--ink3);font-size:18px}
+.opts .o .v{color:var(--ink2);font-size:var(--t-sub)}
+.opts .o .in{width:96px;background:var(--fill);border-radius:8px;padding:6px 12px;display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+.opts .o .in.focus{box-shadow:0 0 0 2px var(--tint) inset;background:var(--surface)}
+.opts .o .in .ph{color:var(--ink3)}
+.opts .o .in small{color:var(--ink2)}
+.opts .o .in .caret{display:inline-block;width:2px;height:18px;background:var(--tint);vertical-align:-3px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.used{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:var(--t-foot);color:var(--ink2);background:var(--surface2);border-radius:8px;min-height:36px;padding:8px 12px}
+.used span:last-child{color:var(--tint);flex:none}
+.plan{background:var(--surface2);border-radius:10px;padding:12px 16px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;box-shadow:0 0 0 .5px var(--sep) inset}
+.plan.rec{box-shadow:0 0 0 2px var(--tint) inset}
+.plan b{font-size:var(--t-body);font-weight:600;display:flex;align-items:center;gap:6px}
+.plan .badge{font-size:var(--t-cap2);font-weight:600;color:var(--tint);background:color-mix(in srgb,var(--tint) 15%,transparent);border-radius:999px;padding:1px 7px}
+.plan .kc{font-size:var(--t-sub);font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.plan .t{font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.plan .dd{grid-column:1/-1;font-size:var(--t-foot);color:var(--ink2)}
+.link{color:var(--tint);font-size:var(--t-sub)}
+.result{background:var(--surface2);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+.result .k{font-size:var(--t-title3);font-weight:700;font-variant-numeric:tabular-nums}
+.result .k small{font-size:var(--t-sub);font-weight:400;color:var(--ink2)}
+.result span{font-size:var(--t-foot);color:var(--ink2)}
+.datepill{background:var(--fill);color:var(--tint);border-radius:8px;padding:6px 12px;font-variant-numeric:tabular-nums}
+.decided .g{font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.decided .g b{font-weight:600}
+.decided .m{display:flex;gap:12px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.decided .m .key{margin-right:4px}
+/* 数字のキーボード */
+.kb{flex:none;background:var(--surface2);border-top:.5px solid var(--sep);padding:0 6px 4px}
+.kb .bar{display:flex;justify-content:flex-end;padding:8px 10px;color:var(--tint);font-weight:600;font-size:var(--t-body)}
+.kb .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.kb .keys span{height:44px;border-radius:6px;background:var(--surface);box-shadow:0 1px 0 var(--sep);display:grid;place-items:center;font-size:24px}
+.kb .keys span.blank{background:none;box-shadow:none}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>目標の設定</h1>
+  <p>タイムラインの目標の知らせのカードをその場で広げ、1ページに1つの問いで進む。「閉じる」はどのページでも右上、「戻る」は2ページ目から左下、進み具合は右上の「2/3」と押せない点。例は Tさん（身長と生年月日がヘルスケアになく、歩数は取れる、今朝の体重は記録済み）。</p>
+</header>
+
+<div class="states">
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月1日（火）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band"><div class="day"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>月</span></div><div class="day sel"><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":70,"f":125,"c":163,"weighed":true}'></span><span>今日</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>水</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>木</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>金</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>土</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>日</span></div></div>
+    <div class="tl">
+      <div class="dayh">今日 9月1日（火）</div>
+      <div class="note">
+        <div class="h"><b>目標を立てる</b><span>7:00</span></div>
+        <p class="d">減量まで答えました。続きは 2/3 からです。</p>
+        <div class="acts"><span class="btn gray">あとで</span><span class="btn filled">続ける</span></div>
+      </div>
+      <div class="row"><span class="tm">7:05</span><span class="grow">体重</span><span class="val">74.0 kg</span><span class="disc">›</span></div>
+      <div class="meal"><span class="ph"></span><div class="body"><div class="top"><b>トースト・ゆで卵</b><span class="k">7:40</span></div><div class="pfc"><b>358 kcal</b><span>P 17 g</span><span>F 14 g</span><span>C 40 g</span></div></div><span class="disc">›</span></div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>閉じたカード。</b>途中で閉じたところ。知らせは使い始めの 7:00 に出たので、そのあとの体重（7:05）と食事（7:40）より上にある。答えは端末の中に残り、「続ける」で同じページ（2/3）から始まる。「あとで」を押すと、流れたときに帯の下に出る1行も消える。まだ始めていないカード（「あとで」「始める」）はタイムラインのコンポーネントにある。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone" style="height:720px">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月1日（火）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band"><div class="day"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>月</span></div><div class="day sel"><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":70,"f":125,"c":163,"weighed":true}'></span><span>今日</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>水</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>木</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>金</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>土</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>日</span></div></div>
+    <div class="tl">
+      <div class="setup">
+        <div class="h"><b>目標を立てる</b><span class="step" aria-label="1問目、全部で3問">1/3</span><span class="close">閉じる</span></div>
+        <div class="dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+        <p class="q">何を目指しますか</p>
+        <div class="opts">
+          <div class="o"><span class="grow">減量<span class="sub">体重を減らす</span></span><span class="disc">›</span></div>
+          <div class="o"><span class="grow">維持<span class="sub">今の体重を保つ</span></span><span class="disc">›</span></div>
+          <div class="o"><span class="grow">増量<span class="sub">体重を増やす</span></span><span class="disc">›</span></div>
+        </div>
+      </div>
+      <div class="meal"><span class="ph"></span><div class="body"><div class="top"><b>トースト・ゆで卵</b><span class="k">7:40</span></div><div class="pfc"><b>358 kcal</b><span>P 17 g</span><span>F 14 g</span><span>C 40 g</span></div></div><span class="disc">›</span></div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>何を目指すか。</b>「始める」でカードがその場で広がり、カード全体が見える位置までタイムラインが送られる。選ぶと次のページへ進む。初めて目標を立てるときは、選んだ直後に iPhone のヘルスケアの許可の画面が重なる（自前の説明画面は置かない）。1ページ目に「戻る」はない。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone" style="height:960px">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月1日（火）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band"><div class="day"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>月</span></div><div class="day sel"><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":70,"f":125,"c":163,"weighed":true}'></span><span>今日</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>水</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>木</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>金</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>土</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>日</span></div></div>
+    <div class="tl">
+      <div class="setup">
+        <div class="h"><b>目標を立てる</b><span class="step" aria-label="2問目、全部で3問">2/3</span><span class="close">閉じる</span></div>
+        <div class="dots" aria-hidden="true"><i></i><i class="on"></i><i></i></div>
+        <p class="q">身長と生まれた年を入れてください</p>
+        <p class="qd">ヘルスケアになかった値です。1日の目安の計算にだけ使い、目標が決まったら残しません。</p>
+        <div class="opts">
+          <div class="o"><span class="grow">身長</span><span class="in"><span>172</span><small>cm</small></span></div>
+          <div class="o"><span class="grow">生まれた年</span><span class="in focus"><span><span class="caret"></span><span class="ph">1990</span></span><small>年</small></span></div>
+        </div>
+        <div class="opts">
+          <div class="o"><span class="grow">性別</span><span class="v">男性・ヘルスケア</span></div>
+          <div class="o"><span class="grow">今の体重</span><span class="v num">74.0 kg・今朝</span></div>
+          <div class="o"><span class="grow">活動量</span><span class="v">歩数から</span></div>
+        </div>
+        <div class="foot"><span class="btn gray">戻る</span><span class="btn filled" aria-disabled="true">次へ</span></div>
+      </div>
+    </div>
+    <div class="kb"><div class="bar">完了</div><div class="keys"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span class="blank"></span><span>0</span><span>⌫</span></div></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>足りない値。</b>ヘルスケアから取れなかった身長と生まれた年だけを値の欄にし、取れた値は読むだけで並べる。数字のキーボードが入力欄の位置に出て、カードはキーボードの上に収まる。生まれた年が空なので「次へ」はまだ押せない。カード全体が見えるよう、縦に伸ばして示す。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone" style="height:880px">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月1日（火）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band"><div class="day"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>月</span></div><div class="day sel"><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":70,"f":125,"c":163,"weighed":true}'></span><span>今日</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>水</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>木</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>金</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>土</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>日</span></div></div>
+    <div class="tl">
+      <div class="setup">
+        <div class="h"><b>目標を立てる</b><span class="step" aria-label="3問目、全部で3問">3/3</span><span class="close">閉じる</span></div>
+        <div class="dots" aria-hidden="true"><i></i><i></i><i class="on"></i></div>
+        <div class="used"><span class="num">172cm・36歳・男性・74.0kg・歩数から</span><span>変える</span></div>
+        <p class="q">どのくらいのペースで進めますか</p>
+        <div class="plan"><b>ゆるめ</b><span class="kc">1日 2,000 kcal</span><span class="t">11月30日までに 71.0 kg</span><span class="dd">今の食事を少し控える程度</span></div>
+        <div class="plan rec"><b>標準<span class="badge">おすすめ</span></b><span class="kc">1日 1,900 kcal</span><span class="t">11月30日までに 70.0 kg</span><span class="dd">夜の主食を半分にするくらい</span></div>
+        <div class="plan"><b>ハード</b><span class="kc">1日 1,800 kcal</span><span class="t">11月30日までに 69.0 kg</span><span class="dd">毎食を控えめにする。空腹を感じやすい</span></div>
+        <span class="link">期限と目標体重を自分で決める ›</span>
+        <div class="foot"><span class="btn gray">戻る</span><span></span></div>
+      </div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>目標案。</b>上の1行が使った値で、「変える」でページ2を開き直す。3つの案に期限と目標体重、1日の目安、大変さを選ぶ前から書き、標準に「おすすめ」を付ける。期限はどれも11月30日（13週）で、推定した消費量 2,250 kcal から、標準は1日に約 350 kcal 減らす。目標体重が軽いほど1日の目安が低い。案を押した時点で目標が決まり、確認のページはない。維持を選んだときは、案の代わりに「今の体重を保つ」1枚と「維持で始める」になる。カード全体が見えるよう、縦に伸ばして示す。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone" style="height:850px">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月1日（火）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band"><div class="day"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>月</span></div><div class="day sel"><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":70,"f":125,"c":163,"weighed":true}'></span><span>今日</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>水</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>木</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>金</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>土</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>日</span></div></div>
+    <div class="tl">
+      <div class="setup">
+        <div class="h"><b>目標を立てる</b><span class="step" aria-label="3問目、全部で3問">3/3</span><span class="close">閉じる</span></div>
+        <div class="dots" aria-hidden="true"><i></i><i></i><i class="on"></i></div>
+        <div class="used"><span class="num">172cm・36歳・男性・74.0kg・歩数から</span><span>変える</span></div>
+        <p class="q">期限と目標体重を決める</p>
+        <div class="opts">
+          <div class="o"><span class="grow">目標体重</span><span class="in"><span>71.0</span><small>kg</small></span></div>
+          <div class="o"><span class="grow">期限</span><span class="datepill">2026年12月20日</span></div>
+        </div>
+        <div class="result"><span>この目標の1日の目安</span><div class="k">2,050 <small>kcal</small></div><span>1週間に −0.2 kg のペース。今の食事を少し控える程度です。</span></div>
+        <span class="btn filled large">この目標で始める</span>
+        <div class="foot"><span class="btn gray">戻る</span><span></span></div>
+      </div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>自分で決める。</b>「期限と目標体重を自分で決める」を押すと、同じページで値の欄に変わる。入れるとその場で1日の目安と大変さを出し、「この目標で始める」で決まる。「戻る」で目標案に戻る。カード全体が見えるよう、縦に伸ばして示す。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone">
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">9月1日（火）</span><span class="r"><span class="person" aria-label="アカウント"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    <div class="band"><div class="day"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>月</span></div><div class="day sel"><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":70,"f":125,"c":163,"weighed":true,"goal":1900}'></span><span>今日</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>水</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>木</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>金</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>土</span></div><div class="day future"><span class="ring" data-ring='{"size":28,"stroke":4.5}'></span><span>日</span></div></div>
+    <div class="tl">
+      <div class="dayh">今日 9月1日（火）</div>
+      <div class="row"><span class="tm">7:05</span><span class="grow">体重</span><span class="val">74.0 kg</span><span class="disc">›</span></div>
+      <div class="meal"><span class="ph"></span><div class="body"><div class="top"><b>トースト・ゆで卵</b><span class="k">7:40</span></div><div class="pfc"><b>358 kcal</b><span>P 17 g</span><span>F 14 g</span><span>C 40 g</span></div></div><span class="disc">›</span></div>
+      <div class="note decided">
+        <div class="h"><b>目標を決めました</b><span>7:52</span></div>
+        <div class="g"><b>減量</b>　11月30日までに 70.0 kg</div>
+        <div class="g">1日の目安 <b>1,900 kcal</b></div>
+        <div class="m"><span><i class="key p"></i>P 130 g</span><span><i class="key f"></i>F 57 g</span><span><i class="key c"></i>C 220 g</span></div>
+        <div class="acts"><span class="btn plain" style="font-size:var(--t-sub)">目標を見る ›</span></div>
+      </div>
+    </div>
+    <div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="wt" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span><span class="in">書く</span></div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>決まったあと。</b>iPhone の触覚で軽く知らせ、カードは決めた目標を示す形に変わる。今日の丸が、この時点から1日の目安（1,900 kcal）と比べる形に変わる（ほかの日の丸は割合で一周したまま）。</figcaption>
+</figure>
+
+</div>
+
+<script src="../_ring.js"></script>
+</body>
+</html>

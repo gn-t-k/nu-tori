@@ -1,0 +1,110 @@
+<!-- @dsCard group="Views" -->
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>週の振り返り</title>
+<link rel="stylesheet" href="../_base.css">
+<style>
+.wk{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;text-align:center}
+.wk .arr{color:var(--tint);font-size:26px;line-height:1}
+.wk .arr.off{color:var(--ink3)}
+.wk b{font-size:var(--t-headline);font-weight:600;display:block}
+.wk span.s{font-size:var(--t-foot);color:var(--ink2)}
+.pace{background:var(--surface);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+.pace b{font-size:var(--t-title3);font-weight:700}
+.pace p{margin:0;font-size:var(--t-sub);color:var(--ink2);line-height:1.4}
+.card{background:var(--surface);border-radius:10px;padding:16px 16px 12px}
+.card .kv{display:flex;justify-content:space-between;gap:12px;font-size:var(--t-foot);padding:8px 0 0}
+.card .kv span:last-child{color:var(--ink2);white-space:nowrap}
+.sec > .group-h{padding-left:16px}
+.pfc .cell .n{font-variant-numeric:tabular-nums}
+.pfc .cell .n small{color:var(--ink2);font-size:var(--t-foot)}
+.pfc .key{margin-right:8px}
+.days .cell{gap:12px;padding:8px 16px}
+.days .cell .dt{width:104px;white-space:nowrap;flex:none;font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.days .cell .dt small{color:var(--ink2);font-size:var(--t-foot)}
+.days .cell .k{flex:1;font-variant-numeric:tabular-nums;font-size:var(--t-sub)}
+.days .cell .k.none{color:var(--ink3)}
+.days .cell .w{width:62px;text-align:right;color:var(--ink2);font-variant-numeric:tabular-nums;font-size:var(--t-sub)}
+.next .cell{flex-direction:column;align-items:stretch;gap:6px;padding:12px 16px}
+.next .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.next .top b{font-size:var(--t-title2);font-weight:700;font-variant-numeric:tabular-nums}
+.next .top span{color:var(--ink2);font-variant-numeric:tabular-nums}
+.next p{margin:0;font-size:var(--t-foot);color:var(--ink2)}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>週の振り返り</h1>
+  <p>1日の目安が変わるまでの1週間をまとめる、プッシュで開く画面。一番上に期限に間に合うペースかを置き、体重、食べた量、P・F・C の平均、日ごと、次の週の1日の目安と続く。‹ › で週を送る。</p>
+</header>
+
+<div class="states">
+
+<figure>
+  <div class="phone" style="height:auto">
+    <div class="status"></div>
+    <div class="nav"><span class="l"><span class="chev">‹</span>9月21日（月）</span><span class="t">週の振り返り</span><span></span></div>
+    <div class="scroll">
+      <div class="wk"><span class="arr" aria-label="前の週">‹</span><div><b>9月14日（月）〜20日（日）</b><span class="s">減量の3週目</span></div><span class="arr off" aria-label="次の週">›</span></div>
+      <div class="pace"><b>間に合うペースです</b><p>傾向で1週間に −0.5 kg。期限の11月30日に 70.0 kg へは、1週間に −0.3 kg で届きます。</p></div>
+      <div class="sec"><p class="group-h">体重</p><div class="card"><div class="chart"><svg viewBox="0 0 320 150" role="img" aria-label="体重の点と傾向の線、目標への道筋"><line x1="34" x2="268" y1="124" y2="124" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="127.5" text-anchor="end">72.5</text><line x1="34" x2="268" y1="86" y2="86" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="89.5" text-anchor="end">73.0</text><line x1="34" x2="268" y1="48" y2="48" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="51.5" text-anchor="end">73.5</text><line x1="34" x2="268" y1="10" y2="10" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="13.5" text-anchor="end">74.0</text><text x="42" y="142" text-anchor="middle">月</text><text x="78.33" y="142" text-anchor="middle">火</text><text x="114.67" y="142" text-anchor="middle">水</text><text x="151" y="142" text-anchor="middle">木</text><text x="187.33" y="142" text-anchor="middle">金</text><text x="223.67" y="142" text-anchor="middle">土</text><text x="260" y="142" text-anchor="middle">日</text><line x1="42" y1="54.08" x2="260" y2="73.84" stroke="var(--guide)" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/><text x="268" y="77.34" style="fill:var(--ink2)">道筋</text><line x1="42" y1="55.6" x2="260" y2="93.6" stroke="var(--series)" stroke-width="2.5" stroke-linecap="round" fill="none"/><text x="268" y="97.1" style="fill:var(--ink)">傾向</text><circle cx="42" cy="55.6" r="3.5" fill="var(--surface)" stroke="var(--series)" stroke-width="1.8"/><circle cx="78.33" cy="63.2" r="3.5" fill="var(--surface)" stroke="var(--series)" stroke-width="1.8"/><circle cx="114.67" cy="78.4" r="3.5" fill="var(--surface)" stroke="var(--series)" stroke-width="1.8"/><circle cx="151" cy="70.8" r="3.5" fill="var(--surface)" stroke="var(--series)" stroke-width="1.8"/><circle cx="187.33" cy="86" r="3.5" fill="var(--surface)" stroke="var(--series)" stroke-width="1.8"/><circle cx="223.67" cy="93.6" r="3.5" fill="var(--surface)" stroke="var(--series)" stroke-width="1.8"/></svg></div><div class="kv"><span class="num">傾向 73.4 → 72.9 kg</span><span class="num">記録 6 日（7日中）</span></div></div></div>
+      <div class="sec"><p class="group-h">食べた量</p><div class="card"><div class="chart"><svg viewBox="0 0 320 150" role="img" aria-label="日ごとの食べた量と1日の目安"><line x1="34" x2="268" y1="124" y2="124" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="127.5" text-anchor="end">0</text><line x1="34" x2="268" y1="78.4" y2="78.4" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="81.9" text-anchor="end">1,000</text><line x1="34" x2="268" y1="32.8" y2="32.8" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="36.3" text-anchor="end">2,000</text><rect x="39.71" y="37.82" width="22" height="86.18" rx="3" fill="var(--series)"/><text x="50.71" y="142" text-anchor="middle">月</text><rect x="73.14" y="43.29" width="22" height="80.71" rx="3" fill="var(--series)"/><text x="84.14" y="142" text-anchor="middle">火</text><rect x="106.57" y="43.29" width="22" height="80.71" rx="3" fill="var(--series)"/><text x="117.57" y="142" text-anchor="middle">水</text><rect x="140" y="43.74" width="22" height="80.26" rx="3" fill="var(--series)"/><text x="151" y="142" text-anchor="middle">木</text><rect x="173.43" y="44.66" width="22" height="79.34" rx="3" fill="var(--series)"/><text x="184.43" y="142" text-anchor="middle">金</text><rect x="206.86" y="27.78" width="22" height="96.22" rx="3" fill="var(--series)"/><text x="217.86" y="142" text-anchor="middle">土</text><rect x="240.29" y="50.13" width="22" height="73.87" rx="3" fill="var(--series)"/><text x="251.29" y="142" text-anchor="middle">日</text><line x1="34" x2="268" y1="38.27" y2="38.27" stroke="var(--guide)" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/><text x="274" y="36.27" style="fill:var(--ink2)">目安</text><text x="274" y="48.27" style="fill:var(--ink2)">1,880</text></svg></div><div class="kv"><span class="num">平均 1,809 kcal</span><span class="num">1日の目安 1,880 kcal</span></div></div></div>
+      <div class="sec"><p class="group-h">P・F・C の1日の平均</p><div class="list pfc">
+        <div class="cell"><span class="grow"><i class="key p"></i>P たんぱく質</span><span class="n">114 <small>/ 130 g</small></span></div>
+        <div class="cell"><span class="grow"><i class="key f"></i>F 脂質</span><span class="n">62 <small>/ 56 g</small></span></div>
+        <div class="cell"><span class="grow"><i class="key c"></i>C 炭水化物</span><span class="n">200 <small>/ 215 g</small></span></div>
+      </div><p class="group-f">平均 / 1日の目安</p></div>
+      <div class="sec"><p class="group-h">日ごと</p><div class="list days">
+        <div class="cell"><span class="dt">9月14日<small>（月）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":450,"f":600,"c":840,"goal":1880,"weighed":true}'></span><span class="k">1,890 kcal</span><span class="w">73.4 kg</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月15日<small>（火）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":470,"f":480,"c":820,"goal":1880,"weighed":true}'></span><span class="k">1,770 kcal</span><span class="w">73.3 kg</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月16日<small>（水）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":500,"f":510,"c":760,"goal":1880,"weighed":true}'></span><span class="k">1,770 kcal</span><span class="w">73.1 kg</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月17日<small>（木）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":480,"f":520,"c":760,"goal":1880,"weighed":true}'></span><span class="k">1,760 kcal</span><span class="w">73.2 kg</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月18日<small>（金）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":420,"f":560,"c":760,"goal":1880,"weighed":true}'></span><span class="k">1,740 kcal</span><span class="w">73.0 kg</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月19日<small>（土）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":480,"f":700,"c":930,"goal":1880,"weighed":true}'></span><span class="k">2,110 kcal</span><span class="w">72.9 kg</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月20日<small>（日）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":380,"f":520,"c":720,"goal":1880,"weighed":false}'></span><span class="k">1,620 kcal</span><span class="w">—</span><span class="disc">›</span></div>
+      </div><p class="group-f">押すと、タイムラインのその日に戻ります。</p></div>
+      <div class="sec"><p class="group-h">次の週の1日の目安</p><div class="list next"><div class="cell"><div class="top"><b>1,850 kcal</b><span>−30 kcal</span></div><p>1,880 → 1,850 kcal。体重が減って、推定した消費量が 2,190 から 2,140 kcal に下がったためです。推移は目標で見られます。</p></div></div></div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>ふだんの週。</b>9月21日（月）0:00 に週が閉じたところで、スクロールした全体を縦に伸ばして示す。ペースは日々のブレではなく傾向の変化と要るペースで言う。体重は測った点と傾向の線、点線は目標への道筋。食べた量は日ごとの棒と1日の目安の点線。日ごとの行を押すとタイムラインのその日へ戻る。次の週がまだないので › は押せない。戻るには、iOS の標準どおり前の画面の題が出る（タイムラインから開くと、その日の日付）。目標から開いたときは「‹ 目標」になる。目標へは潜らず、推移は目標で見ると文で示す。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone" style="height:auto">
+    <div class="status"></div>
+    <div class="nav"><span class="l"><span class="chev">‹</span>9月21日（月）</span><span class="t">週の振り返り</span><span></span></div>
+    <div class="scroll">
+      <div class="wk"><span class="arr" aria-label="前の週">‹</span><div><b>9月7日（月）〜13日（日）</b><span class="s">減量の2週目</span></div><span class="arr" aria-label="次の週">›</span></div>
+      <div class="pace"><b>まだ言い切れません</b><p>体重の記録が 2 日なので、傾向が定まっていません。</p></div>
+      <div class="sec"><p class="group-h">体重</p><div class="card"><div class="chart"><svg viewBox="0 0 320 150" role="img" aria-label="体重の点と傾向の線、目標への道筋"><line x1="34" x2="268" y1="124" y2="124" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="127.5" text-anchor="end">73.0</text><line x1="34" x2="268" y1="86" y2="86" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="89.5" text-anchor="end">73.5</text><line x1="34" x2="268" y1="48" y2="48" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="51.5" text-anchor="end">74.0</text><line x1="34" x2="268" y1="10" y2="10" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="13.5" text-anchor="end">74.5</text><text x="42" y="142" text-anchor="middle">月</text><text x="78.33" y="142" text-anchor="middle">火</text><text x="114.67" y="142" text-anchor="middle">水</text><text x="151" y="142" text-anchor="middle">木</text><text x="187.33" y="142" text-anchor="middle">金</text><text x="223.67" y="142" text-anchor="middle">土</text><text x="260" y="142" text-anchor="middle">日</text><line x1="42" y1="68.52" x2="260" y2="88.28" stroke="var(--guide)" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/><text x="268" y="91.78" style="fill:var(--ink2)">道筋</text><circle cx="114.67" cy="86" r="3.5" fill="var(--surface)" stroke="var(--series)" stroke-width="1.8"/><circle cx="223.67" cy="93.6" r="3.5" fill="var(--surface)" stroke="var(--series)" stroke-width="1.8"/></svg></div><div class="kv"><span>傾向の線は、記録がたまると引きます</span><span class="num">記録 2 日（7日中）</span></div></div></div>
+      <div class="sec"><p class="group-h">食べた量</p><div class="card"><div class="chart"><svg viewBox="0 0 320 150" role="img" aria-label="日ごとの食べた量と1日の目安"><line x1="34" x2="268" y1="124" y2="124" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="127.5" text-anchor="end">0</text><line x1="34" x2="268" y1="78.4" y2="78.4" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="81.9" text-anchor="end">1,000</text><line x1="34" x2="268" y1="32.8" y2="32.8" stroke="var(--grid)" stroke-width="1" fill="none"/><text x="28" y="36.3" text-anchor="end">2,000</text><rect x="39.71" y="42.38" width="22" height="81.62" rx="3" fill="var(--series)"/><text x="50.71" y="142" text-anchor="middle">月</text><text x="84.14" y="119" text-anchor="middle" style="fill:var(--ink3)">なし</text><text x="84.14" y="142" text-anchor="middle">火</text><rect x="106.57" y="46.48" width="22" height="77.52" rx="3" fill="var(--series)"/><text x="117.57" y="142" text-anchor="middle">水</text><text x="151" y="119" text-anchor="middle" style="fill:var(--ink3)">なし</text><text x="151" y="142" text-anchor="middle">木</text><rect x="173.43" y="38.27" width="22" height="85.73" rx="3" fill="var(--series)"/><text x="184.43" y="142" text-anchor="middle">金</text><rect x="206.86" y="25.96" width="22" height="98.04" rx="3" fill="var(--series)"/><text x="217.86" y="142" text-anchor="middle">土</text><text x="251.29" y="119" text-anchor="middle" style="fill:var(--ink3)">なし</text><text x="251.29" y="142" text-anchor="middle">日</text><line x1="34" x2="268" y1="37.36" y2="37.36" stroke="var(--guide)" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/><text x="274" y="35.36" style="fill:var(--ink2)">目安</text><text x="274" y="47.36" style="fill:var(--ink2)">1,900</text></svg></div><div class="kv"><span class="num">記録した 4 日の平均 1,880 kcal</span><span class="num">1日の目安 1,900 kcal</span></div></div></div>
+      <div class="sec"><p class="group-h">P・F・C の1日の平均</p><div class="list pfc">
+        <div class="cell"><span class="grow"><i class="key p"></i>P たんぱく質</span><span class="n">108 <small>/ 130 g</small></span></div>
+        <div class="cell"><span class="grow"><i class="key f"></i>F 脂質</span><span class="n">67 <small>/ 57 g</small></span></div>
+        <div class="cell"><span class="grow"><i class="key c"></i>C 炭水化物</span><span class="n">211 <small>/ 220 g</small></span></div>
+      </div><p class="group-f">記録した 4 日の平均 / 1日の目安</p></div>
+      <div class="sec"><p class="group-h">日ごと</p><div class="list days">
+        <div class="cell"><span class="dt">9月7日<small>（月）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":420,"f":570,"c":800,"goal":1900,"weighed":false}'></span><span class="k">1,790 kcal</span><span class="w">—</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月8日<small>（火）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":0,"f":0,"c":0,"goal":1900,"weighed":false}'></span><span class="k none">記録なし</span><span class="w">—</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月9日<small>（水）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":410,"f":530,"c":760,"goal":1900,"weighed":true}'></span><span class="k">1,700 kcal</span><span class="w">73.5 kg</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月10日<small>（木）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":0,"f":0,"c":0,"goal":1900,"weighed":false}'></span><span class="k none">記録なし</span><span class="w">—</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月11日<small>（金）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":440,"f":600,"c":840,"goal":1900,"weighed":false}'></span><span class="k">1,880 kcal</span><span class="w">—</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月12日<small>（土）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":460,"f":720,"c":970,"goal":1900,"weighed":true}'></span><span class="k">2,150 kcal</span><span class="w">73.4 kg</span><span class="disc">›</span></div>
+        <div class="cell"><span class="dt">9月13日<small>（日）</small></span><span class="ring" data-ring='{"size":28,"stroke":4.5,"p":0,"f":0,"c":0,"goal":1900,"weighed":false}'></span><span class="k none">記録なし</span><span class="w">—</span><span class="disc">›</span></div>
+      </div><p class="group-f">押すと、タイムラインのその日に戻ります。</p></div>
+      <div class="sec"><p class="group-h">次の週の1日の目安</p><div class="list next"><div class="cell"><div class="top"><b>1,880 kcal</b><span>−20 kcal</span></div><p>1,900 → 1,880 kcal。推定した消費量が 2,250 から 2,190 kcal に下がったためです。推移は目標で見られます。</p></div></div></div>
+    </div>
+    <div class="home"></div>
+  </div>
+  <figcaption><b>記録が少ない週。</b>体重の記録が 2 日しかないので、ペースを言い切らず記録の日数を示し、傾向の線は引かず点だけを置く。食べた量は記録した 4 日だけで平均し、記録のない日は棒の代わりに「なし」、日ごとの行に「記録なし」と出す。全体を縦に伸ばして示す。</figcaption>
+</figure>
+
+</div>
+
+<script src="../_ring.js"></script>
+</body>
+</html>

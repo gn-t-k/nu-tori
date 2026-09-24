@@ -1,0 +1,149 @@
+<!-- @dsCard group="Views" -->
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>アカウント</title>
+<link rel="stylesheet" href="../_base.css">
+<style>
+.phone.tall{height:830px}
+/* シートの後ろのタイムライン（上端だけ見える） */
+.behind{position:absolute;inset:0;display:flex;flex-direction:column}
+.behind .nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+.sheet .nav{background:var(--bg)}
+.list > .cell.stack{flex-direction:column;align-items:stretch;gap:4px}
+.cell .kv{font-size:var(--t-foot);color:var(--ink2);line-height:1.4}
+.cell .ext{margin-left:auto;font-size:var(--t-foot)}
+.alert .bt.stack{grid-template-columns:1fr}
+.alert .bt.stack span + span{border-left:0;border-top:.5px solid var(--sep)}
+.alert .bt.stack .cancel{font-weight:400}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>アカウント</h1>
+  <p>タイムラインのナビゲーションバーの右端の人の形から、シートで開き「完了」で閉じる。許可の状態とアカウントの削除だけを、iOS の設定と同じ Inset Grouped の一覧で扱う。許可を切り替えるスイッチと身体データは置かない。</p>
+</header>
+
+<div class="states">
+
+<figure>
+  <div class="phone tall">
+    <div class="behind">
+      <div class="status"></div>
+      <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    </div>
+    <div class="scrim">
+      <div class="sheet large">
+        <span class="grab"></span>
+        <div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div>
+        <div class="scroll">
+          <div class="sec">
+            <p class="group-h">ヘルスケア</p>
+            <div class="list">
+              <div class="cell stack"><span>読み取る</span><span class="kv">体重、体脂肪率、身長、生年月日、性別、歩数、食べた栄養</span></div>
+              <div class="cell stack"><span>書き込む</span><span class="kv">食べた栄養（エネルギー、P・F・C ほか）</span></div>
+            </div>
+            <p class="group-f">変えるときは、iPhone の「設定」の「プライバシーとセキュリティ」か、ヘルスケアアプリで変えられます。</p>
+          </div>
+          <div class="sec">
+            <p class="group-h">通知</p>
+            <div class="list">
+              <div class="cell"><span class="grow">記録忘れ（体重・食事）</span><span class="val">許可している</span></div>
+              <div class="cell link"><span class="grow">iPhone の設定を開く</span><span class="ext">↗</span></div>
+            </div>
+          </div>
+          <div class="sec">
+            <p class="group-h">カメラ</p>
+            <div class="list">
+              <div class="cell"><span class="grow">食事を撮る</span><span class="val">許可している</span></div>
+              <div class="cell link"><span class="grow">iPhone の設定を開く</span><span class="ext">↗</span></div>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="list">
+              <div class="cell link"><span class="grow">プライバシーポリシー</span><span class="ext">↗</span></div>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="list">
+              <div class="cell danger">アカウントを削除</div>
+            </div>
+            <p class="group-f">食事、体重、目標、会話の記録がすべて消え、元に戻せません。</p>
+          </div>
+        </div>
+        <div class="home"></div>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>一覧。</b>上から、ヘルスケア、通知、カメラ、プライバシーポリシー、アカウントの削除（電話を縦に長くして全体を描いた）。ヘルスケアは読み取る種類と書き込む種類だけを示し、許可の状態は出さない。通知とカメラは状態の行と「iPhone の設定を開く」の行を持ち、開く先はそれぞれこのアプリの通知の設定と、このアプリの設定。プライバシーポリシーはブラウザで開く。</figcaption>
+</figure>
+
+<figure>
+  <div class="phone tall">
+    <div class="behind">
+      <div class="status"></div>
+      <div class="nav"><span></span><span class="t">9月24日（木）</span><span class="r"><span class="person"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span></span></div>
+    </div>
+    <div class="scrim">
+      <div class="sheet large">
+        <span class="grab"></span>
+        <div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div>
+        <div class="scroll">
+          <div class="sec">
+            <p class="group-h">ヘルスケア</p>
+            <div class="list">
+              <div class="cell stack"><span>読み取る</span><span class="kv">体重、体脂肪率、身長、生年月日、性別、歩数、食べた栄養</span></div>
+              <div class="cell stack"><span>書き込む</span><span class="kv">食べた栄養（エネルギー、P・F・C ほか）</span></div>
+            </div>
+            <p class="group-f">変えるときは、iPhone の「設定」の「プライバシーとセキュリティ」か、ヘルスケアアプリで変えられます。</p>
+          </div>
+          <div class="sec">
+            <p class="group-h">通知</p>
+            <div class="list">
+              <div class="cell"><span class="grow">記録忘れ（体重・食事）</span><span class="val">許可していない</span></div>
+              <div class="cell link"><span class="grow">iPhone の設定を開く</span><span class="ext">↗</span></div>
+            </div>
+          </div>
+          <div class="sec">
+            <p class="group-h">カメラ</p>
+            <div class="list">
+              <div class="cell"><span class="grow">食事を撮る</span><span class="val">許可している</span></div>
+              <div class="cell link"><span class="grow">iPhone の設定を開く</span><span class="ext">↗</span></div>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="list">
+              <div class="cell link"><span class="grow">プライバシーポリシー</span><span class="ext">↗</span></div>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="list">
+              <div class="cell danger">アカウントを削除</div>
+            </div>
+            <p class="group-f">食事、体重、目標、会話の記録がすべて消え、元に戻せません。</p>
+          </div>
+        </div>
+        <div class="home"></div>
+      </div>
+    </div>
+    <div class="alert-wrap">
+      <div class="alert" role="alertdialog">
+        <div class="ab">
+          <b>アカウントを削除しますか？</b>
+          <span>食事、体重、目標、会話の記録がすべて消え、元に戻せません。ヘルスケアに書き込んだ栄養は残り、ヘルスケアアプリで消せます。</span>
+        </div>
+        <div class="bt stack">
+          <span class="danger">アカウントを削除</span>
+          <span class="cancel">キャンセル</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>アカウントの削除のアラート。</b>「アカウントを削除」を押すと、シートの上にアラートで確かめる（入れ子の最も深い2階層）。消すボタンは消すものの名前を入れた破壊的な操作の見た目で、否定の操作は「キャンセル」1つ。ボタンの文が長いので縦に並べる。消すとサインインの画面に置き換わる。後ろの一覧は、通知を許可していないときの見え方。</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

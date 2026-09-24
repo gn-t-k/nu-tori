@@ -1,0 +1,184 @@
+/*
+  nu-tori のコンポーネントの共通の見た目。トークンと、iOS の標準の部品を HTML で写したもの。
+  実装では SwiftUI の標準の部品とシステムの色を使う。ここの値はその見本で、対応は README.md の「ルック&フィール」。
+*/
+
+/* ── トークン（ライト） ── */
+:root{
+  /* iOS のシステムの色 */
+  --bg:#f2f2f7;            /* systemGroupedBackground */
+  --surface:#ffffff;       /* secondarySystemGroupedBackground */
+  --surface2:#f2f2f7;      /* tertiarySystemGroupedBackground */
+  --ink:#000000;           /* label */
+  --ink2:rgb(60 60 67 / .6);   /* secondaryLabel */
+  --ink3:rgb(60 60 67 / .3);   /* tertiaryLabel */
+  --sep:rgb(60 60 67 / .29);   /* separator */
+  --fill:rgb(120 120 128 / .12); /* tertiarySystemFill */
+  --tint:#6155f5;          /* アクセント（systemIndigo） */
+  --on-tint:#ffffff;
+  --destructive:#ff383c;   /* systemRed。破壊的な操作だけに使う */
+  --scrim:rgb(0 0 0 / .2);
+  --chrome:rgb(249 249 249 / .94); /* バーの材質 */
+  /* P・F・C（3色のどの組も色覚の型を問わず見分けられる。validate_palette で確認） */
+  --p:#f07f1a; --f:#15803d; --c:#2c7be5;
+  --track:#e5e5ea;         /* 輪の地 */
+  /* グラフ */
+  --series:#6155f5; --grid:rgb(60 60 67 / .12); --guide:rgb(60 60 67 / .45);
+  /* 自分の発言 */
+  --me:#6155f5; --on-me:#ffffff;
+  /* ページ（コンポーネントの見本を並べる地） */
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+    --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+    --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+    --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+    --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+    --me:#6d7cff; --on-me:#ffffff;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+  --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+  --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+  --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+  --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+  --me:#6d7cff; --on-me:#ffffff;
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+  color-scheme:dark;
+}
+
+/* ── 文字（iOS のテキストスタイル。Dynamic Type の既定の大きさ） ── */
+:root{
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  --t-title2:22px;   /* Title 2（大きな数字） */
+  --t-title3:20px;   /* Title 3 */
+  --t-headline:17px; /* Headline（600） */
+  --t-body:17px;     /* Body */
+  --t-callout:16px;  /* Callout */
+  --t-sub:15px;      /* Subheadline */
+  --t-foot:13px;     /* Footnote */
+  --t-cap:12px;      /* Caption 1 */
+  --t-cap2:11px;     /* Caption 2 */
+}
+
+/* ── 見本を並べるページ ── */
+*{box-sizing:border-box}
+body{margin:0;padding:16px 16px 40px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.sheet-head,.page-head{max-width:1280px;margin:0 auto 14px}
+.page-head h1{font-size:17px;margin:0}
+.page-head p{margin:2px 0 0;color:var(--page-muted);max-width:720px}
+.states{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr));gap:20px;align-items:start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+figcaption{color:var(--page-muted);font-size:12.5px}
+figcaption b{color:var(--page-ink)}
+
+/* ── 電話の枠 ── */
+.phone{position:relative;height:680px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;font-size:var(--t-body);line-height:1.3}
+.phone.short{height:520px}
+.status{height:34px;flex:none}
+.home{height:22px;flex:none}
+
+/* ナビゲーションバー */
+.nav{height:44px;flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 12px;background:var(--bg)}
+.nav .l{justify-self:start;color:var(--tint);display:flex;align-items:center;gap:2px;font-size:var(--t-body)}
+.nav .l .chev{font-size:24px;line-height:1;margin-top:-2px}
+.nav .t{font-size:var(--t-headline);font-weight:600;text-align:center;white-space:nowrap}
+.nav .r{justify-self:end;color:var(--tint);font-size:var(--t-body)}
+.nav .r.b,.nav .l.b{font-weight:600}
+.nav.sep{border-bottom:.5px solid var(--sep)}
+.large-title{font-size:34px;font-weight:700;padding:2px 16px 8px}
+
+/* 本文のスクロール域 */
+.scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:24px;padding:12px 16px 16px}
+.scroll > *{flex:none}
+
+/* グループの一覧（Inset Grouped） */
+.group-h{font-size:var(--t-foot);color:var(--ink2);text-transform:none;padding:0 16px 6px;margin:0}
+.group-f{font-size:var(--t-foot);color:var(--ink2);padding:6px 16px 0;margin:0}
+.list{background:var(--surface);border-radius:10px;overflow:hidden}
+.list > .cell{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative;font-size:var(--t-body)}
+.list > .cell + .cell::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.cell .grow{flex:1;min-width:0}
+.cell .val{color:var(--ink2);text-align:right}
+.cell .disc{color:var(--ink3);font-size:18px;line-height:1;margin-left:2px}
+.cell.link{color:var(--tint)}
+.cell.danger{color:var(--destructive);justify-content:center}
+.cell .sub{display:block;color:var(--ink2);font-size:var(--t-foot)}
+
+/* 押して直せる値（iOS の編集できる値と同じく、アクセントの色で示す） */
+.edit{color:var(--tint)}
+/* 推定の印 */
+.est{display:inline-block;font-size:var(--t-cap2);color:var(--ink2);border:.5px solid var(--ink3);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:1px;line-height:1.5}
+
+/* ボタン */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font-size:var(--t-sub);font-weight:600}
+.btn.filled{background:var(--tint);color:var(--on-tint)}
+.btn.tinted{background:color-mix(in srgb,var(--tint) 15%,transparent);color:var(--tint)}
+.btn.gray{background:var(--fill);color:var(--tint)}
+.btn.large{height:50px;border-radius:12px;font-size:var(--t-body);width:100%}
+.btn.plain{height:auto;padding:0;color:var(--tint);font-weight:400;font-size:var(--t-body)}
+.btn[aria-disabled="true"]{opacity:.35}
+
+/* 値の欄 */
+.field{background:var(--fill);border-radius:10px;padding:11px 12px;font-size:var(--t-body);display:flex;justify-content:space-between;gap:8px}
+.field.focus{box-shadow:0 0 0 2px var(--tint) inset;background:var(--surface)}
+.field .ph{color:var(--ink3)}
+
+/* ステッパー（体重） */
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper .pm{width:48px;height:44px;border-radius:10px;background:var(--fill);color:var(--tint);font-size:22px;display:grid;place-items:center;flex:none}
+.stepper .v{flex:1;text-align:center;font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.stepper .v small{font-size:var(--t-sub);font-weight:400;color:var(--ink2);margin-left:3px}
+
+/* シート */
+.scrim{position:absolute;inset:0;background:var(--scrim);display:flex;flex-direction:column;justify-content:flex-end}
+.sheet{background:var(--bg);border-radius:12px 12px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -1px 0 var(--sep)}
+.sheet.large{position:absolute;inset:44px 0 0}
+.sheet .grab{width:36px;height:5px;border-radius:3px;background:var(--ink3);align-self:center;margin:6px 0 2px;flex:none}
+
+/* アクションシート・アラート */
+.action{margin:0 8px 8px;display:flex;flex-direction:column;gap:8px}
+.action .grp{background:var(--chrome);border-radius:14px;overflow:hidden;text-align:center}
+.action .msg{padding:13px 16px;font-size:var(--t-foot);color:var(--ink2)}
+.action .a{padding:17px;font-size:20px;color:var(--tint);border-top:.5px solid var(--sep)}
+.action .a.danger{color:var(--destructive)}
+.action .a.cancel{font-weight:600;border-top:0}
+.alert-wrap{position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center}
+.alert{width:270px;background:var(--chrome);border-radius:14px;overflow:hidden;text-align:center}
+.alert .ab{padding:18px 16px 16px;display:flex;flex-direction:column;gap:4px}
+.alert .ab b{font-size:var(--t-headline)}
+.alert .ab span{font-size:var(--t-foot)}
+.alert .bt{display:grid;grid-template-columns:1fr 1fr;border-top:.5px solid var(--sep)}
+.alert .bt span{padding:11px;font-size:var(--t-body);color:var(--tint)}
+.alert .bt span + span{border-left:.5px solid var(--sep)}
+.alert .bt .danger{color:var(--destructive);font-weight:600}
+
+/* 1日の丸（1本の輪を P・F・C で色分け）。SVG は ring() が描く */
+.ring{position:relative;display:inline-block;flex:none}
+.ring svg{display:block}
+.ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;text-align:center}
+
+/* P・F・C の見出しの色の印 */
+.key{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:0}
+.key.p{background:var(--p)} .key.f{background:var(--f)} .key.c{background:var(--c)}
+
+/* 推定中 */
+.loading{display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:var(--t-sub)}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink3);border-top-color:var(--ink2);animation:spin 1s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+
+/* グラフ */
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--ink2);font-size:10px;font-family:var(--font)}
