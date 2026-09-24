@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>目標のレイアウト</title>
+<style>
+:root{--line:#8a9199;--soft:#e6e9ec;--fg:#22272d;--muted:#6b737c;--bg:#f4f5f7;--phone:#fff;--scrim:rgb(0 0 0 / .25);color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--line:#7d858e;--soft:#2a3036;--fg:#e2e6ea;--muted:#9aa3ad;--bg:#121518;--phone:#1b1f23;--scrim:rgb(0 0 0 / .5);color-scheme:dark}}
+:root[data-theme="dark"]{--line:#7d858e;--soft:#2a3036;--fg:#e2e6ea;--muted:#9aa3ad;--bg:#121518;--phone:#1b1f23;--scrim:rgb(0 0 0 / .5);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:13px/1.5 system-ui,-apple-system,"Hiragino Sans",sans-serif}
+h1{font-size:15px;margin:0 0 4px}
+p.note{margin:0 0 16px;color:var(--muted);max-width:760px}
+.row{display:flex;flex-wrap:wrap;gap:16px}
+figure{margin:0;width:min(300px,100%)}
+figcaption{color:var(--muted);font-size:12px;margin:6px 2px 0}
+.phone{position:relative;height:600px;background:var(--phone);border:2px solid var(--line);border-radius:26px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.bar b{flex:1;text-align:center}
+.bar span{min-width:56px}
+.body{flex:1;padding:10px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;overflow:hidden}
+.card{border:1.5px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.card.dash{border-style:dashed}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.hd .t{font-weight:700}
+.muted{color:var(--muted)}
+.dots{display:flex;gap:4px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--soft);border:1px solid var(--line)}
+.dots i.on{background:var(--fg);border-color:var(--fg)}
+.q{font-weight:700}
+.ch{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.ch div,.opt{border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center}
+.facts{border:1px solid var(--line);border-radius:8px}
+.facts div{display:flex;justify-content:space-between;padding:5px 8px;border-top:1px solid var(--soft)}
+.facts div:first-child{border-top:0}
+.facts .need{background:var(--soft)}
+.plan{border:1px solid var(--line);border-radius:8px;padding:6px 8px;display:grid;grid-template-columns:1fr auto;font-size:12px}
+.plan .d{grid-column:1/-1;color:var(--muted)}
+.plan.rec{border-width:2px}
+.btn{border:1.5px solid var(--fg);border-radius:8px;padding:6px;text-align:center;font-weight:700}
+.btn.off{opacity:.4}
+.sum{border:1px solid var(--soft);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+.sum span:last-child{white-space:nowrap;margin-left:6px}
+.finder{flex:1;min-height:80px;border:1px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.tl{border-top:1px solid var(--soft);padding-top:6px;color:var(--muted);font-size:12px}
+.sys{position:absolute;inset:0;background:var(--scrim);display:flex;align-items:flex-end}
+.sys .p{width:100%;height:78%;background:var(--soft);border-radius:14px 14px 0 0;padding:12px;display:flex;flex-direction:column;gap:8px}
+.sys .l{background:var(--phone);border-radius:8px}
+.sys .l div{padding:6px 8px;border-top:1px solid var(--soft)}
+.sys .l div:first-child{border-top:0}
+.meters{display:grid;grid-template-columns:auto 1fr;gap:3px 6px;align-items:center;font-size:11px}
+.meters i{height:6px;border:1px solid var(--line);border-radius:3px}
+.band{display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.band{justify-content:space-between}
+.band i{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;font-weight:700}
+.band i.w::after{content:"✓"}
+.comp{border-top:1px solid var(--line);padding:6px 8px 10px;display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)}
+.comp b{border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-weight:400}
+.comp .in{flex:1;border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.ev{color:var(--muted);font-size:12px;border-top:1px solid var(--soft);padding-top:6px}
+.nudge{margin:6px 10px 0;border:1px solid var(--fg);border-radius:999px;padding:3px 10px;font-size:11px;display:flex;justify-content:space-between}
+.band i.sel{outline:2px solid var(--fg);outline-offset:2px}
+.band label{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;color:var(--muted)}
+.me{align-self:flex-end;max-width:80%;background:var(--soft);border-radius:12px;padding:5px 8px;font-size:12px}
+.photo{align-self:flex-end;width:110px;height:80px;border-radius:10px;background:var(--soft);border:1px solid var(--line)}
+.mealc{border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12px;display:flex;justify-content:space-between;gap:6px}
+.app{border-left:2px solid var(--line);padding-left:8px;font-size:12px}
+.dayh{text-align:center;color:var(--muted);font-size:11px}
+.comp .hot{border:2px solid var(--fg);color:var(--fg);font-weight:700}
+.chips{padding:6px 8px 0;display:flex;gap:4px;font-size:10px;color:var(--muted)}
+.chips span{border:1px solid var(--line);border-radius:999px;padding:2px 6px;white-space:nowrap}
+.cam{flex:1;background:#2b3036;color:#d9dee3;display:flex;flex-direction:column;justify-content:space-between;padding:12px}
+.cam .r{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.cam .sh{width:48px;height:48px;border-radius:50%;border:3px solid #d9dee3}
+.big{display:flex;gap:10px;align-items:center}
+.big i{width:90px;height:90px;border-radius:50%;border:12px solid var(--line);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:20px;font-weight:700}
+.bar b{font-weight:700}
+.pics{display:flex;gap:6px}
+.pics div{flex:1;height:120px;border-radius:10px;background:var(--soft);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px}
+.pics div.s{flex:0 0 28px}
+.tot{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;font-size:11px}
+.tot div{border:1px solid var(--line);border-radius:8px;padding:3px 2px}
+.tot b{display:block;font-size:13px}
+.pill{border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.dish{border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:12px}
+.dish .dh{display:flex;justify-content:space-between;gap:6px;padding:6px 8px}
+.dish .dh .t{font-weight:700}
+.dish .ing{border-top:1px solid var(--soft);padding:4px 8px 4px 16px;display:flex;flex-direction:column;gap:1px}
+.dish .ing div{display:flex;justify-content:space-between;gap:6px}
+.dish .more{border-top:1px solid var(--soft);padding:4px 8px;display:flex;justify-content:space-between}
+.dish.edit{border:2px solid var(--fg)}
+.q2{text-decoration:underline dotted;text-underline-offset:3px}
+.fld{border:1.5px solid var(--fg);border-radius:6px;padding:1px 6px;min-width:64px;text-align:right}
+.add{border:1px dashed var(--line);border-radius:10px;padding:6px 8px;font-size:12px}
+.kb{height:150px;background:var(--soft);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px;font-size:12px}
+.kb span{background:var(--phone);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.swipe{display:flex}
+.swipe .dh{flex:1;transform:translateX(-50px)}
+.del{background:var(--fg);color:var(--phone);padding:6px 10px;display:flex;align-items:center;font-weight:700}
+.act{position:absolute;left:8px;right:8px;bottom:10px;display:flex;flex-direction:column;gap:6px}
+.act .g{background:var(--phone);border-radius:12px;text-align:center}
+.act .g div{padding:9px;border-top:1px solid var(--soft)}
+.act .g div:first-child{border-top:0}
+.nutl{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:12px}
+.nutl .g{grid-column:1/-1;color:var(--muted);font-size:11px;margin-top:8px;font-weight:700}
+.nutl .g:first-child{margin-top:0}
+.wk{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.wk b{font-size:14px}
+.pace{border:2px solid var(--fg);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.pace b{font-size:16px}
+.chart{position:relative;height:96px;border:1px solid var(--line);border-radius:8px;display:flex;align-items:flex-end;gap:6px;padding:8px 8px 16px}
+.chart .bar2{flex:1;background:var(--soft);border:1px solid var(--line);border-radius:3px 3px 0 0}
+.chart .tgt{position:absolute;left:6px;right:6px;border-top:1.5px dashed var(--fg)}
+.chart .lb{position:absolute;right:8px;font-size:10px;color:var(--muted)}
+.chart .days{position:absolute;left:8px;right:8px;bottom:1px;display:flex;justify-content:space-around;font-size:9px;color:var(--muted)}
+.wchart{position:relative;height:90px;border:1px solid var(--line);border-radius:8px}
+.wchart svg{width:100%;height:100%}
+.kv{display:flex;justify-content:space-between;font-size:12px}
+.days7 div{display:grid;grid-template-columns:54px 18px 1fr auto auto;gap:6px;align-items:center;font-size:12px;padding:4px 8px;border-top:1px solid var(--soft)}
+.days7 div:first-child{border-top:0}
+.days7 i{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--line)}
+.days7 i.w{position:relative}
+.days7 i.w::after{content:"✓";position:absolute;inset:-2px 0 0 0;font-size:8px;font-style:normal;text-align:center}
+.days7{border:1px solid var(--line);border-radius:8px}
+.fg{fill:none;stroke:var(--fg);stroke-width:1.5}
+.dt{fill:var(--muted)}
+.gl{stroke:var(--fg);stroke-dasharray:4 3;stroke-width:1}
+.goal{border:2px solid var(--fg);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:4px}
+.goal .big2{font-size:18px;font-weight:700}
+.lst div{display:grid;grid-template-columns:1fr auto auto;gap:8px;font-size:12px;padding:5px 8px;border-top:1px solid var(--soft)}
+.lst div:first-child{border-top:0}
+.lst{border:1px solid var(--line);border-radius:8px}
+.lst .now{font-weight:700;background:var(--soft)}
+.lst .r{grid-column:1/-1;color:var(--muted);font-size:11px;margin-top:-4px;padding-top:0}
+</style>
+</head>
+<body>
+<h1>目標（中忠実度レイアウト）</h1>
+<p class="note">単位ビュー「目標」。日のまとめ、体重の画面、タイムラインの目安の変更の知らせ、目標の知らせからプッシュで開く。目標がないあいだは開かない。上から、今の目標のカード、今の1日の目安（kcal と P・F・C）、体重の傾向、消費量と1日の目安、週の振り返り、過去の目標。目標の状態（進行中、期限前の達成、期限、期限後）でカードの中身が変わる。例は Tさんの減量。文言と色、グラフの描き方は⑦で決める。決めたことは <code>06-layout.md</code> の「全単位ビューのレイアウト」の「目標」。</p>
+<div class="row">
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>目標</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="goal"><div class="hd"><span class="muted">減量　8/31〜11/21</span><span class="muted">目標を切り替える</span></div><div class="big2">69.0 kg まで あと 3.2 kg</div><div>あと 58 日・間に合うペース</div></div><div class="card" style="background:var(--soft);border:0;gap:2px"><div class="hd"><span class="muted" style="font-size:12px">今の1日の目安（9/22〜）</span><b>1,780 kcal</b></div><div class="hd" style="font-size:12px"><span>P 130 g</span><span>F 50 g</span><span>C 200 g</span></div></div><div class="q">体重の傾向</div><div class="wchart" style="height:100px"><svg viewBox="0 0 280 100" preserveAspectRatio="none"><line class="gl" x1="10" y1="16" x2="270" y2="90"/><polyline class="fg" points="10,16 40,22 70,28 100,32"/><circle class="dt" cx="10" cy="16" r="2.5"/><circle class="dt" cx="40" cy="22" r="2.5"/><circle class="dt" cx="70" cy="28" r="2.5"/><circle class="dt" cx="100" cy="32" r="2.5"/></svg></div><div class="kv"><span class="muted">8/31 開始 73.8 kg</span><span class="muted">11/21 期限 69.0 kg</span></div><div class="q">消費量と1日の目安</div><div class="wchart" style="height:100px"><svg viewBox="0 0 280 100" preserveAspectRatio="none"><polygon points="10,14 40,10 70,18 100,28 100,70 70,64 40,58 10,60" style="fill:var(--soft)"/><polyline class="fg" points="10,14 40,10 70,18 100,28"/><polyline class="fg" style="stroke-dasharray:5 2" points="10,60 40,60 40,58 70,58 70,64 100,64 100,70 120,70"/></svg></div><div class="kv"><span class="muted">線: 推定した消費量　破線: 1日の目安</span><span class="muted">間: 減らす分</span></div></div></div><figcaption>進行中。一番上に今の目標、その下に今の1日の目安（kcal と P・F・C）。体重の傾向は開始から期限まで、点線は目標までの道筋。消費量と1日の目安は1つの kcal のグラフに重ね、2本の間が1日に減らす分。消費量が下がると目安も下がることが、線で見える（目安_4,5）。グラフの週を押すと、その週の値がグラフの上に出る</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>目標</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="q">消費量と1日の目安</div><div class="wchart" style="height:100px"><svg viewBox="0 0 280 100" preserveAspectRatio="none"><polygon points="10,14 40,10 70,18 100,28 100,70 70,64 40,58 10,60" style="fill:var(--soft)"/><polyline class="fg" points="10,14 40,10 70,18 100,28"/><polyline class="fg" style="stroke-dasharray:5 2" points="10,60 40,60 40,58 70,58 70,64 100,64 100,70 120,70"/></svg></div><div class="kv"><span class="muted">線: 推定した消費量　破線: 1日の目安</span><span class="muted">間: 減らす分</span></div><div class="sum" style="font-size:12px;padding:8px"><span>週の振り返り（9/22〜9/28）</span><span>›</span></div><div class="q">過去の目標</div><div class="lst"><div><span>増量 4/1〜7/31</span><span>66.0 → 73.5 kg</span><span class="muted">届いた</span></div></div></div></div><figcaption>下へスクロールしたところ。週の振り返りは一覧にせず、いまの週への1行にする。前の週へは、開いた先の ‹ › で遡る。過去の目標は期限と結果だけで、空なら出さない</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>目標</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="card" style="border:2px solid var(--fg)"><div class="hd"><span class="t">目標を切り替える</span><span class="muted">1/2　閉じる</span></div><div class="dots"><i class="on"></i><i></i></div><div class="q">何を目指しますか</div><div class="ch"><div>減量</div><div>維持</div><div>増量</div></div><div class="muted" style="font-size:11px">今の目標は、選び終えるまで続く</div></div><div class="q" style="opacity:.35">体重の傾向</div><div style="opacity:.35"><div class="wchart" style="height:110px"><svg viewBox="0 0 280 110" preserveAspectRatio="none"><line class="gl" x1="10" y1="20" x2="270" y2="92"/><polyline class="fg" points="10,20 40,24 70,30 100,34 130,38 150,40"/><circle class="dt" cx="20" cy="18" r="2.5"/><circle class="dt" cx="50" cy="28" r="2.5"/><circle class="dt" cx="80" cy="29" r="2.5"/><circle class="dt" cx="110" cy="37" r="2.5"/><circle class="dt" cx="140" cy="36" r="2.5"/></svg></div><div class="kv"><span class="muted">8/31 開始 73.8 kg</span><span class="muted">11/21 期限 69.0 kg</span></div></div></div></div><figcaption>「目標を切り替える」を押すと、今の目標のカードをその場で広げる。中身はタイムラインの目標の設定と同じ（目標を立て直すときは身体データを使わず、推定した消費量から案を出すので2ページ。その日の体重がなければ3ページ）。前の目標は過去の目標に移る（S9-1）</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>目標</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="goal"><div class="hd"><span class="muted">減量　8/31〜11/21</span><span></span></div><div class="big2">69.0 kg に届きました</div><div>期限より 23 日早い・傾向 68.9 kg</div><div class="muted" style="font-size:12px">次の目標を選ぶまで、今の目標を続けます</div><span class="btn">次の目標を選ぶ</span></div><div class="q">体重の傾向</div><div class="wchart" style="height:110px"><svg viewBox="0 0 280 110" preserveAspectRatio="none"><line class="gl" x1="10" y1="20" x2="270" y2="92"/><polyline class="fg" points="10,20 40,24 70,30 100,34 130,38 150,40"/><circle class="dt" cx="20" cy="18" r="2.5"/><circle class="dt" cx="50" cy="28" r="2.5"/><circle class="dt" cx="80" cy="29" r="2.5"/><circle class="dt" cx="110" cy="37" r="2.5"/><circle class="dt" cx="140" cy="36" r="2.5"/><polyline class="fg" points="150,40 200,70 220,90"/></svg></div><div class="kv"><span class="muted">8/31 開始 73.8 kg</span><span class="muted">11/21 期限 69.0 kg</span></div></div></div><figcaption>期限より前に達成したとき（傾向の線で判定）。届いたことと「次の目標を選ぶ」をカードに出す。押すとこのカードを広げて目標の設定を始める。選ぶまで今の目標を続ける（S11-1,2）</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>目標</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="goal"><div class="hd"><span class="muted">減量　8/31〜11/21　期限</span><span></span></div><div class="big2">69.4 kg で期限を迎えました</div><div>開始から −4.4 kg・目標まであと 0.4 kg</div><div class="muted" style="font-size:12px">選ばなければ、今の体重を保つ目標で続けます</div><span class="btn">次の目標を選ぶ</span></div><div class="q">体重の歩み</div><div class="wchart" style="height:110px"><svg viewBox="0 0 280 110" preserveAspectRatio="none"><line class="gl" x1="10" y1="20" x2="270" y2="92"/><polyline class="fg" points="10,20 40,24 70,30 100,34 130,38 150,40"/><circle class="dt" cx="20" cy="18" r="2.5"/><circle class="dt" cx="50" cy="28" r="2.5"/><circle class="dt" cx="80" cy="29" r="2.5"/><circle class="dt" cx="110" cy="37" r="2.5"/><circle class="dt" cx="140" cy="36" r="2.5"/><polyline class="fg" points="150,40 200,66 270,86"/></svg></div><div class="kv"><span class="muted">8/31 開始 73.8 kg</span><span class="muted">11/21 期限 69.0 kg</span></div></div></div><figcaption>期限が来たとき。結果（開始からの変化、目標との差）と体重の歩みを見せ、「次の目標を選ぶ」を置く（S10-1,2）。選ばなければ、今の体重を保つ目標に切り替わる（S10-3）</figcaption></figure>
+<figure><div class="phone"><div class="bar"><span class="muted">‹ 戻る</span><b>目標</b><span></span></div><div class="body" style="justify-content:flex-start"><div class="goal"><div class="hd"><span class="muted">維持　11/22〜（期限なし）</span><span></span></div><div class="big2">69.4 kg を保つ</div><div>傾向 69.5 kg・保てている</div><div class="muted" style="font-size:12px">減量の期限を過ぎたので、今の体重を保つ目標に切り替えました</div><span class="btn">次の目標を立てる</span></div><div class="q">体重の傾向</div><div class="wchart" style="height:80px"><svg viewBox="0 0 280 80" preserveAspectRatio="none"><line class="gl" x1="10" y1="40" x2="270" y2="40"/><polyline class="fg" points="10,38 90,42 170,39 250,41"/></svg></div><div class="q">過去の目標</div><div class="lst"><div><span>減量 8/31〜11/21</span><span>73.8 → 69.4 kg</span><span class="muted">あと 0.4 kg</span></div><div><span>増量 4/1〜7/31</span><span>66.0 → 73.5 kg</span><span class="muted">届いた</span></div></div></div></div><figcaption>期限後に選ばなかったとき。今の体重を保つ目標（期限なし）として続け、前の目標は過去の目標に移る。「次の目標を立てる」でカードを広げる（S10-3）。達成と期限のときと同じく、ボタンが「目標を切り替える」の代わりになる</figcaption></figure>
+</div>
+</body>
+</html>
