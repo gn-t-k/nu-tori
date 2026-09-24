@@ -18,6 +18,10 @@ Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する
 
 UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（見た目のトークンとガードレール）があれば従う。`docs/ui-design/` は凍結済みの設計記録で、現在の用語と決定は `CONTEXT.md` と `docs/adr/` が持つ。
 
+### コーディングの好み
+
+Swift のコード・テスト・依存を書く・直す前に、`docs/agents/coding-style.md` と `docs/agents/testing.md` を読む。PR を出す前と PR に push する前に、`docs/agents/git.md` の好みのレビューを通す。好みのほうが違うと思ったら、ユーザーに聞いてからこの2つを直す。
+
 ### スキルの管理
 
 mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-start.sh` で自動更新している。更新で上書きされるため、`.agents/skills/` 配下は直接編集しない。
