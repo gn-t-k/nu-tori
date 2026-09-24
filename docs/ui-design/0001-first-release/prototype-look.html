@@ -2,10 +2,10 @@
 <!--
   PROTOTYPE（捨てる前提）。⑦ の問い「P・F・C の色と操作の色を、どんな根拠で決めるか」に答えるためのもの。
   根拠は docs/research/pfc-colors.md（ほかのアプリの P・F・C の色、iOS のシステムの色のコントラスト比、HIG の求め）。
-  地と部品は iOS の標準（グループの灰色の地、白いカード）にそろえ、P・F・C の色だけを3案で変える。
-  A: 多数派の色相を、iOS のシステムの色そのもので（P systemOrange・F systemPurple・C systemTeal）
-  B: 多数派の色相を、白の地で 3:1 以上になるよう暗めに合わせた独自の色で
-  C: 参考。MacroFactor と同じ色相（P オレンジ・F 黄・C 緑）。2型の色覚で P と C が見分けにくい
+  地と部品は iOS の標準にそろえ、P・F・C の色だけを3案で変える。
+  A: FoodNoms の色相（P オレンジ・F 緑・C 青）を、iOS のシステムの色そのもので
+  B: A と同じ色相を、色覚の型を問わず見分けられるよう明るさで調整した独自の色で
+  C: 多数派の色相（P オレンジ・F 紫・C 青緑）を、白の地で 3:1 以上になるよう合わせた独自の色で
   上の切り替えで、操作の色（systemBlue／systemIndigo）と、2型の色覚（緑が見えにくい型）での見え方を試せる。
   3色の見分けやすさとコントラストは dataviz の validate_palette で確かめた。
 -->
@@ -22,21 +22,21 @@
 /* 地と部品は iOS の標準（HIG の値）。P・F・C だけを案ごとに変える */
 .col{ --bg:#f2f2f7; --surface:#ffffff; --ink:#000000; --ink2:#3c3c4399; --sep:#3c3c434a; --fill:#7878801f; --track:#e5e5ea; --on-tint:#ffffff; --tint:var(--acc); --me:var(--acc); --on-me:#ffffff; --acc:#0088ff; }
 .acc-indigo .col{ --acc:#6155f5; }
-.dir-a{ --p:#ff8d28; --f:#cb30e0; --c:#00c3d0; }
-.dir-b{ --p:#d06000; --f:#9c4ddb; --c:#00897a; }
-.dir-c{ --p:#ff8d28; --f:#ffcc00; --c:#34c759; }
+.dir-a{ --p:#ff8d28; --f:#34c759; --c:#0088ff; }
+.dir-b{ --p:#f07f1a; --f:#15803d; --c:#2c7be5; }
+.dir-c{ --p:#d06000; --f:#9c4ddb; --c:#00897a; }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]) .col{ --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:#ebebf599; --sep:#54545899; --fill:#7878803d; --track:#2c2c2e; --acc:#0091ff; }
   :root:not([data-theme="light"]) .acc-indigo .col{ --acc:#6d7cff; }
-  :root:not([data-theme="light"]) .dir-a{ --p:#ff9230; --f:#db34f2; --c:#00d2e0; }
-  :root:not([data-theme="light"]) .dir-b{ --p:#de7424; --f:#b06ceb; --c:#23a08c; }
-  :root:not([data-theme="light"]) .dir-c{ --p:#ff9230; --f:#ffd600; --c:#30d158; }
+  :root:not([data-theme="light"]) .dir-a{ --p:#ff9230; --f:#30d158; --c:#0091ff; }
+  :root:not([data-theme="light"]) .dir-b{ --p:#e8903a; --f:#228c48; --c:#4290f4; }
+  :root:not([data-theme="light"]) .dir-c{ --p:#de7424; --f:#b06ceb; --c:#23a08c; }
 }
 :root[data-theme="dark"] .col{ --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:#ebebf599; --sep:#54545899; --fill:#7878803d; --track:#2c2c2e; --acc:#0091ff; }
 :root[data-theme="dark"] .acc-indigo .col{ --acc:#6d7cff; }
-:root[data-theme="dark"] .dir-a{ --p:#ff9230; --f:#db34f2; --c:#00d2e0; }
-:root[data-theme="dark"] .dir-b{ --p:#de7424; --f:#b06ceb; --c:#23a08c; }
-:root[data-theme="dark"] .dir-c{ --p:#ff9230; --f:#ffd600; --c:#30d158; }
+:root[data-theme="dark"] .dir-a{ --p:#ff9230; --f:#30d158; --c:#0091ff; }
+:root[data-theme="dark"] .dir-b{ --p:#e8903a; --f:#228c48; --c:#4290f4; }
+:root[data-theme="dark"] .dir-c{ --p:#de7424; --f:#b06ceb; --c:#23a08c; }
 .cvd .phone{ filter:url(#deutan); }
 .ctrls{display:flex;flex-wrap:wrap;gap:8px}
 .facts{margin:0;padding:0;list-style:none;font-size:12.5px;color:var(--page-muted);display:flex;flex-direction:column;gap:2px}
@@ -128,13 +128,13 @@ header.page p{margin:2px 0 0;color:var(--page-muted);max-width:640px}
 
 <header class="page">
   <div>
-    <h1>P・F・C の色（3案）</h1>
-    <p>地と部品は iOS の標準にそろえ、P・F・C の色だけを変えて並べた。ほかのアプリで多い色相（P オレンジ・F 紫・C 青緑）を、iOS のシステムの色そのもので使うか（A）、白の地でも見やすい濃さに合わせるか（B）。C は MacroFactor と同じ色相の参考。</p>
+    <h1>P・F・C の色（FoodNoms の色相を検証）</h1>
+    <p>地と部品は iOS の標準にそろえ、P・F・C の色だけを変えて並べた。A と B は FoodNoms と同じ色相（P オレンジ・F 緑・C 青）。A はシステムの色そのもの、B は色覚の型を問わず見分けられるよう調整したもの。C は前回すすめた多数派の色相。上で操作の色と、2型の色覚での見え方を切り替えられる。</p>
   </div>
   <div class="ctrls">
   <div class="theme" role="group" aria-label="操作の色">
-    <button type="button" id="acc-blue" aria-pressed="true">操作 systemBlue</button>
-    <button type="button" id="acc-indigo" aria-pressed="false">操作 systemIndigo</button>
+    <button type="button" id="acc-blue" aria-pressed="false">操作 systemBlue</button>
+    <button type="button" id="acc-indigo" aria-pressed="true">操作 systemIndigo</button>
   </div>
   <div class="theme" role="group" aria-label="色覚">
     <button type="button" id="cv-n" aria-pressed="true">ふつうの見え方</button>
@@ -148,26 +148,26 @@ header.page p{margin:2px 0 0;color:var(--page-muted);max-width:640px}
   </div>
 </header>
 
-<div class="cols" id="cols"></div>
+<div class="cols acc-indigo" id="cols"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="deutan" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="0.367 0.861 -0.228 0 0  0.280 0.673 0.047 0 0  -0.012 0.043 0.969 0 0  0 0 0 1 0"/></filter></svg>
 
 <script>
 const DIRS = [
-  { id:'a', name:'A　システムの色（多数派の色相）', facts:[
-    ['色相','P オレンジ・F 紫・C 青緑。調べた4アプリで多い色相（P オレンジ3、C 青〜青緑3、F 紫2）'],
-    ['値','systemOrange・systemPurple・systemTeal。ダークと「コントラストを上げる」の版を iOS が出し分ける'],
-    ['見分け','どの2色も色覚の型を問わず見分けられる'],
-    ['弱み','白の地で P と C が約 2.2:1。グラフの印の目安の 3:1 に届かず、細い輪では薄く見える'] ] },
-  { id:'b', name:'B　読みやすさ優先（多数派の色相）', facts:[
-    ['色相','A と同じ（P オレンジ・F 紫・C 青緑）'],
-    ['値','白の地で3色とも 3:1 以上になるよう、暗めに合わせた独自の色。ダークの版も同じ条件で合わせた'],
+  { id:'a', name:'A　FoodNoms の色相を、システムの色そのもので', facts:[
+    ['色相','P オレンジ・F 緑・C 青（FoodNoms と同じ）'],
+    ['値','systemOrange・systemGreen・systemBlue。ダークと「コントラストを上げる」の版を iOS が出し分ける'],
+    ['見分け','2型・1型の色覚で P と F が近い（ライト ΔE 6.6 はラベルがあれば許容、ダーク ΔE 4.9 は見分けにくい）'],
+    ['弱み','C が操作の色（青）と同じ色になる。白の地で P と F が約 2.2:1'] ] },
+  { id:'b', name:'B　FoodNoms の色相を、見分けやすく調整', facts:[
+    ['色相','A と同じ（P オレンジ・F 緑・C 青）'],
+    ['値','緑を暗く、オレンジを明るくして、明るさの差で見分けられるようにした独自の色'],
     ['見分け','どの2色も色覚の型を問わず見分けられる（ライト・ダーク）'],
-    ['弱み','システムの色ではないので、「コントラストを上げる」の版を自分で用意する'] ] },
-  { id:'c', name:'C　参考：MacroFactor の色相', facts:[
-    ['色相','P オレンジ・F 黄・C 緑（MacroFactor のヘルプに書いてある色）'],
-    ['値','systemOrange・systemYellow・systemGreen'],
-    ['見分け','2型の色覚で P と C がほぼ同じに見える（ΔE 4.9）。黄は白の地で 1.5:1'],
-    ['弱み','乗り換えた人は迷わないが、見分けにくい人がいる'] ] },
+    ['弱み','白の地で P が 2.6:1。C の青と操作の色が近いので、操作の色を systemIndigo にするとよい'] ] },
+  { id:'c', name:'C　多数派の色相を、読みやすく', facts:[
+    ['色相','P オレンジ・F 紫・C 青緑（調べた4アプリで多い色相）'],
+    ['値','白の地で3色とも 3:1 以上になるよう暗めに合わせた独自の色'],
+    ['見分け','どの2色も色覚の型を問わず見分けられる（ライト・ダーク）'],
+    ['弱み','「コントラストを上げる」の版は自分で用意する'] ] },
 ];
 // 1週間（P・F・C の kcal）。目安 1,850 kcal。w は体重を記録した日
 const WEEK = [
