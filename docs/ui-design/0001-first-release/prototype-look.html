@@ -1,0 +1,226 @@
+<title>nu-tori の見た目</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑦ の問い「アクセントの色と P・F・C の色、地の色をどうするか」に答えるためのもの。
+  同じタイムラインと日のまとめを3つの見た目で並べる。上のボタンでライトとダークを切り替えられる。
+  A: iOS の標準の青を操作の色にし、地は iOS のグループの灰色。P・F・C は紫・橙・青緑
+  B: 深い緑を操作の色にし、地はわずかに緑に寄せた白。P・F・C は薔薇・黄・青
+  C: 操作の色を墨（文字の色）にして色を P・F・C だけに使う。地は白。P・F・C は青・黄・緑
+  P・F・C の3色は、3色のどの組も色覚の型を問わず見分けられることを validate_palette で確かめた（ライト・ダーク）。
+  3案とも、アクティビティリングの赤・黄緑・水色を使わず、輪は1本にする。
+-->
+<style>
+:root{
+  --ground:#e8eaed; --page-ink:#1f2328; --page-muted:#646c75; --page-line:#c9ced4;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --ground:#0e1012; --page-ink:#e6e8eb; --page-muted:#99a1aa; --page-line:#343a40; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --ground:#0e1012; --page-ink:#e6e8eb; --page-muted:#99a1aa; --page-line:#343a40; color-scheme:dark; }
+
+/* 案ごとのトークン（ライト） */
+.dir-a{ --bg:#f2f2f7; --surface:#ffffff; --ink:#000000; --ink2:#3c3c43b3; --sep:#3c3c434a; --fill:#7878801f; --tint:#007aff; --on-tint:#ffffff; --p:#6a5ae0; --f:#e08a1e; --c:#1f9e8f; --track:#e5e5ea; --me:#007aff; --on-me:#ffffff; }
+.dir-b{ --bg:#f1f4f1; --surface:#fcfdfb; --ink:#18221d; --ink2:#55615a; --sep:#c9d2cc; --fill:#e3e9e4; --tint:#1e7f6a; --on-tint:#ffffff; --p:#c2477f; --f:#e0a21b; --c:#2b8fb0; --track:#e1e7e2; --me:#dcebe5; --on-me:#18221d; }
+.dir-c{ --bg:#ffffff; --surface:#ffffff; --ink:#15171a; --ink2:#5d636a; --sep:#e1e4e8; --fill:#f1f2f4; --tint:#15171a; --on-tint:#ffffff; --p:#3b6fe0; --f:#e0a21b; --c:#2fa37a; --track:#eceef1; --me:#f1f2f4; --on-me:#15171a; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .dir-a{ --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:#ebebf599; --sep:#54545899; --fill:#7878803d; --tint:#0a84ff; --on-tint:#ffffff; --p:#8b7ef0; --f:#c98221; --c:#1fa090; --track:#2c2c2e; --me:#0a84ff; --on-me:#ffffff; }
+  :root:not([data-theme="light"]) .dir-b{ --bg:#0f1512; --surface:#18201c; --ink:#e7eee9; --ink2:#9aa8a0; --sep:#2c3731; --fill:#243029; --tint:#3db39a; --on-tint:#0b1210; --p:#d35c8e; --f:#b98c26; --c:#3a9dc0; --track:#26302a; --me:#1f3a31; --on-me:#e7eee9; }
+  :root:not([data-theme="light"]) .dir-c{ --bg:#101113; --surface:#101113; --ink:#f2f3f5; --ink2:#a0a6ad; --sep:#2a2d31; --fill:#1d1f22; --tint:#f2f3f5; --on-tint:#101113; --p:#5a8cf0; --f:#b58a22; --c:#2fa67c; --track:#25282c; --me:#1d1f22; --on-me:#f2f3f5; }
+}
+:root[data-theme="dark"] .dir-a{ --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:#ebebf599; --sep:#54545899; --fill:#7878803d; --tint:#0a84ff; --on-tint:#ffffff; --p:#8b7ef0; --f:#c98221; --c:#1fa090; --track:#2c2c2e; --me:#0a84ff; --on-me:#ffffff; }
+:root[data-theme="dark"] .dir-b{ --bg:#0f1512; --surface:#18201c; --ink:#e7eee9; --ink2:#9aa8a0; --sep:#2c3731; --fill:#243029; --tint:#3db39a; --on-tint:#0b1210; --p:#d35c8e; --f:#b98c26; --c:#3a9dc0; --track:#26302a; --me:#1f3a31; --on-me:#e7eee9; }
+:root[data-theme="dark"] .dir-c{ --bg:#101113; --surface:#101113; --ink:#f2f3f5; --ink2:#a0a6ad; --sep:#2a2d31; --fill:#1d1f22; --tint:#f2f3f5; --on-tint:#101113; --p:#5a8cf0; --f:#b58a22; --c:#2fa67c; --track:#25282c; --me:#1d1f22; --on-me:#f2f3f5; }
+
+*{box-sizing:border-box}
+body{margin:0;padding:16px 16px 48px;background:var(--ground);color:var(--page-ink);font:14px/1.5 system-ui,-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--tint,var(--page-ink));outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+header.page{max-width:1240px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:end;justify-content:space-between}
+header.page h1{font-size:17px;margin:0}
+header.page p{margin:2px 0 0;color:var(--page-muted);max-width:640px}
+.theme{display:flex;border:1px solid var(--page-line);border-radius:999px;overflow:hidden}
+.theme button{padding:5px 12px;color:var(--page-muted)}
+.theme button[aria-pressed="true"]{background:var(--page-ink);color:var(--ground)}
+.cols{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.col h2{font-size:15px;margin:0}
+.col .why{margin:0;min-height:4.5em;color:var(--page-muted);font-size:12.5px}
+.sw{display:flex;gap:10px;font-size:12px;color:var(--page-muted);flex-wrap:wrap}
+.sw span{display:flex;align-items:center;gap:4px}
+.sw i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+/* 電話 */
+.phone{position:relative;height:640px;background:var(--bg);color:var(--ink);border:1px solid var(--page-line);border-radius:34px;overflow:hidden;display:flex;flex-direction:column;font-size:15px;line-height:1.35}
+.status{height:30px;flex:none}
+.nav{height:36px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;flex:none}
+.person{width:28px;height:28px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+.band{display:flex;justify-content:space-between;padding:4px 12px 8px;border-bottom:.5px solid var(--sep);flex:none;background:var(--bg)}
+.day{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--ink2)}
+.day.sel b{color:var(--ink)}
+.day b{font-weight:600}
+.day svg{display:block}
+.nudge{margin:8px 12px 0;padding:6px 12px;border-radius:999px;background:var(--surface);font-size:12.5px;display:flex;justify-content:space-between;color:var(--ink);box-shadow:0 0 0 .5px var(--sep)}
+.nudge span:last-child{color:var(--tint);font-weight:600}
+.tl{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding:10px 12px}
+.tl>*{flex:none}
+.time{font-size:11px;color:var(--ink2);text-align:center}
+.meal{background:var(--surface);border-radius:14px;overflow:hidden;box-shadow:0 0 0 .5px var(--sep)}
+.meal .ph{height:78px;background:linear-gradient(135deg,#c9a57a,#8b6a44 55%,#e8d6b5);position:relative}
+.meal .ph::after{content:"";position:absolute;inset:18px 30% 12px 22%;border-radius:50%;background:radial-gradient(circle at 40% 40%,#f3efe6,#d8cdb8)}
+.meal .row{display:flex;justify-content:space-between;align-items:baseline;padding:8px 12px 2px}
+.meal .row b{font-weight:600}
+.meal .pfc{display:flex;gap:10px;padding:0 12px 9px;font-size:12px;color:var(--ink2)}
+.meal .pfc span{display:flex;align-items:center;gap:4px}
+.meal .pfc i{width:7px;height:7px;border-radius:2px}
+.note{background:var(--surface);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 0 0 .5px var(--sep)}
+.note .t{font-size:13px;color:var(--ink2)}
+.step{display:flex;align-items:center;gap:8px}
+.step .pm{width:34px;height:30px;border-radius:9px;background:var(--fill);color:var(--tint);font-size:18px;display:grid;place-items:center}
+.step .v{flex:1;text-align:center;font-size:20px;font-weight:600}
+.step .v small{font-size:13px;font-weight:400;color:var(--ink2)}
+.step .rec{padding:6px 12px;border-radius:9px;background:var(--tint);color:var(--on-tint);font-weight:600;font-size:14px}
+.me{align-self:flex-end;max-width:78%;background:var(--me);color:var(--on-me);border-radius:16px;padding:7px 11px;font-size:14px}
+.reply{font-size:14px;max-width:92%}
+.chips{display:flex;gap:6px;padding:6px 12px 0;overflow:hidden;flex:none}
+.chips span{white-space:nowrap;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);color:var(--ink)}
+.comp{display:flex;align-items:center;gap:8px;padding:8px 12px 22px;flex:none}
+.cam{width:40px;height:40px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;flex:none}
+.wt{height:32px;padding:0 10px;border-radius:999px;background:var(--fill);color:var(--tint);font-size:13px;font-weight:600;display:flex;align-items:center;flex:none}
+.wt.hot{background:var(--tint);color:var(--on-tint)}
+.in{flex:1;height:34px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);color:var(--ink2);font-size:14px;display:flex;align-items:center;padding:0 12px;min-width:0;white-space:nowrap;overflow:hidden}
+
+/* 日のまとめ（シート） */
+.phone.sheetp{height:400px;background:#00000030}
+.sheet{position:absolute;inset:26px 0 0;background:var(--bg);border-radius:14px 14px 0 0;display:flex;flex-direction:column;gap:10px;padding:8px 14px}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--sep);align-self:center}
+.shd{display:flex;justify-content:space-between;align-items:center}
+.shd b{font-size:16px}
+.shd .done{color:var(--tint);font-weight:600}
+.shd .ar{color:var(--tint);font-size:18px;padding:0 6px}
+.group{background:var(--surface);border-radius:12px;padding:12px;display:flex;gap:14px;align-items:center;box-shadow:0 0 0 .5px var(--sep)}
+.big{position:relative;flex:none}
+.big .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
+.big .c b{font-size:20px}
+.big .c small{font-size:11px;color:var(--ink2)}
+.legend{display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
+.legend div{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:baseline;font-size:13px}
+.legend i{width:9px;height:9px;border-radius:2px;align-self:center}
+.legend small{color:var(--ink2);font-size:11.5px}
+.lrow{background:var(--surface);border-radius:12px;box-shadow:0 0 0 .5px var(--sep)}
+.lrow div{display:flex;justify-content:space-between;padding:10px 12px;border-top:.5px solid var(--sep);font-size:14px}
+.lrow div:first-child{border-top:0}
+.lrow .go{color:var(--ink2)}
+.lrow .tint{color:var(--tint)}
+</style>
+
+<header class="page">
+  <div>
+    <h1>nu-tori の見た目（3案）</h1>
+    <p>同じタイムラインと日のまとめを、操作の色・地の色・P・F・C の色だけ変えて並べた。形と並びは⑥のまま。</p>
+  </div>
+  <div class="theme" role="group" aria-label="テーマ">
+    <button type="button" id="th-sys" aria-pressed="true">システム</button>
+    <button type="button" id="th-light" aria-pressed="false">ライト</button>
+    <button type="button" id="th-dark" aria-pressed="false">ダーク</button>
+  </div>
+</header>
+
+<div class="cols" id="cols"></div>
+
+<script>
+const DIRS = [
+  { id:'a', name:'A　iOS の標準の青', why:'操作の色はシステムの青。地は iOS のグループの灰色で、カードは白。いちばん iOS らしく、新しい iOS にもそのまま馴染む。P・F・C は紫・橙・青緑。' },
+  { id:'b', name:'B　深い緑', why:'操作の色を深い緑にし、地をわずかに緑に寄せる。アプリとして見分けやすい。自分の文章の吹き出しは淡い緑。P・F・C は薔薇・黄・青。' },
+  { id:'c', name:'C　墨と一色', why:'操作は墨（文字の色）で塗り、色は P・F・C だけに使う。地は白。数字とグラフの色がいちばん目立つ。P・F・C は青・黄・緑。' },
+];
+// 1週間（P・F・C の kcal）。目安 1,850 kcal。w は体重を記録した日
+const WEEK = [
+  {d:'木', p:420,f:560,c:760, w:true},
+  {d:'金', p:480,f:620,c:930, w:true},
+  {d:'土', p:380,f:520,c:720, w:false},
+  {d:'日', p:450,f:700,c:980, w:true},
+  {d:'月', p:470,f:480,c:820, w:true},
+  {d:'火', p:500,f:510,c:760, w:true},
+  {d:'水', p:230,f:190,c:360, w:false, sel:true},
+];
+const GOAL = 1850;
+
+function ring(size, stroke, parts, goal, opts={}){
+  const r = (size - stroke) / 2, C = 2 * Math.PI * r, gap = opts.gap ?? 2;
+  const total = parts.reduce((s,x)=>s+x.v,0);
+  const scale = Math.min(1, goal / Math.max(total,1));
+  let off = 0, segs = '';
+  for (const x of parts){
+    const len = x.v / goal * C * scale;
+    const draw = Math.max(0, len - gap);
+    segs += `<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${x.col}" stroke-width="${stroke}" stroke-dasharray="${draw} ${C}" stroke-dashoffset="${-off}" stroke-linecap="butt"/>`;
+    off += len;
+  }
+  const over = total > goal ? `<circle cx="${size/2}" cy="${stroke/2}" r="${stroke*0.55}" fill="var(--ink)"/>` : '';
+  const dot = opts.dot ? `<circle cx="${size/2}" cy="${size/2}" r="${size*0.13}" fill="var(--ink2)"/>` : '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><g transform="rotate(-90 ${size/2} ${size/2})"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--track)" stroke-width="${stroke}"/>${segs}</g>${over}${dot}</svg>`;
+}
+const pfc = d => [{v:d.p,col:'var(--p)'},{v:d.f,col:'var(--f)'},{v:d.c,col:'var(--c)'}];
+const camIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+const personIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>';
+
+function timeline(){
+  const band = WEEK.map(d => `<div class="day${d.sel?' sel':''}">${ring(26,4,pfc(d),GOAL,{dot:d.w,gap:1.5})}<b>${d.d}</b></div>`).join('');
+  return `<div class="phone" aria-label="タイムライン">
+    <div class="status"></div>
+    <div class="nav"><span class="person" aria-label="アカウント">${personIcon}</span></div>
+    <div class="band">${band}</div>
+    <div class="nudge"><span>今朝の体重がまだです</span><span>見る</span></div>
+    <div class="tl">
+      <div class="time">7:40</div>
+      <div class="note"><span class="t">今朝の体重</span>
+        <div class="step"><span class="pm">−</span><span class="v num">72.4 <small>kg</small></span><span class="pm">+</span><span class="rec">記録</span></div>
+      </div>
+      <div class="time">8:05</div>
+      <div class="meal"><div class="ph"></div>
+        <div class="row"><b>ヨーグルトとバナナ ほか</b><span class="num">310 kcal</span></div>
+        <div class="pfc num"><span><i style="background:var(--p)"></i>P 12g</span><span><i style="background:var(--f)"></i>F 8g</span><span><i style="background:var(--c)"></i>C 48g</span></div>
+      </div>
+      <div class="me">昼はコンビニなんだけど何がいい？</div>
+      <div class="reply">残りは 1,070 kcal、たんぱく質があと 75 g です。サラダチキンとおにぎり1つなら、どちらも目安に収まります。</div>
+    </div>
+    <div class="chips"><span>今日あと何食べられる？</span><span>今週のペースは？</span></div>
+    <div class="comp"><span class="cam" aria-label="撮る">${camIcon}</span><span class="wt hot">体重</span><span class="in">書いて送る</span></div>
+  </div>`;
+}
+function summary(){
+  const d = WEEK[6];
+  const tot = d.p + d.f + d.c;
+  return `<div class="phone sheetp" aria-label="日のまとめ"><div class="sheet">
+    <span class="grab"></span>
+    <div class="shd"><span><span class="ar">‹</span></span><b>9月23日（水）</b><span class="done">完了</span></div>
+    <div class="group">
+      <div class="big">${ring(112,14,pfc(d),GOAL,{gap:2})}<div class="c"><b class="num">${tot.toLocaleString()}</b><small class="num">/ ${GOAL.toLocaleString()} kcal</small></div></div>
+      <div class="legend num">
+        <div><i style="background:var(--p)"></i><span>たんぱく質</span><span>58 <small>/ 130 g</small></span></div>
+        <div><i style="background:var(--f)"></i><span>脂質</span><span>21 <small>/ 55 g</small></span></div>
+        <div><i style="background:var(--c)"></i><span>炭水化物</span><span>90 <small>/ 230 g</small></span></div>
+      </div>
+    </div>
+    <div class="lrow num">
+      <div><span>体重</span><span class="go">72.4 kg ›</span></div>
+      <div><span>目標</span><span class="go">あと 2.4 kg・間に合うペース ›</span></div>
+      <div><span class="tint">タイムラインでこの日を見る</span><span></span></div>
+    </div>
+  </div></div>`;
+}
+document.getElementById('cols').innerHTML = DIRS.map(x => `<section class="col dir-${x.id}">
+  <h2>${x.name}</h2>
+  <p class="why">${x.why}</p>
+  <div class="sw"><span><i style="background:var(--tint)"></i>操作</span><span><i style="background:var(--p)"></i>P</span><span><i style="background:var(--f)"></i>F</span><span><i style="background:var(--c)"></i>C</span></div>
+  ${timeline()}
+  ${summary()}
+</section>`).join('');
+
+const btns = {sys:document.getElementById('th-sys'), light:document.getElementById('th-light'), dark:document.getElementById('th-dark')};
+for (const [k,b] of Object.entries(btns)) b.addEventListener('click', () => {
+  if (k === 'sys') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', k);
+  for (const [k2,b2] of Object.entries(btns)) b2.setAttribute('aria-pressed', String(k2 === k));
+});
+</script>
