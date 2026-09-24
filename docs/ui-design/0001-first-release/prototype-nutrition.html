@@ -1,0 +1,150 @@
+<title>栄養の内訳の出し方</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑥ の問い「料理の栄養の内訳を、プッシュで開くか、料理の行の下にその場で広げるか」に答えるためのもの。
+  #A と #B で切り替える。下の黒いバーか ← → キーでも切り替えられる。
+  A: 料理の行から「栄養の内訳」をプッシュで開く  B: 料理の行の下に、その場で広げる
+  料理と材料の並べ方、量の直し方は両案で同じ。文言と見た目は⑦で決める。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#e9ecef; --phone:#fbfcfd; --ink:#22272d; --muted:#69727c; --line:#c3c9d0; --soft:#eef1f4;
+  --accent:#34597f; --pill:#15181b; --pill-ink:#f3f5f7;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+    --accent:#8fb2d8; --pill:#f3f5f7; --pill-ink:#15181b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+  --accent:#8fb2d8; --pill:#f3f5f7; --pill-ink:#15181b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:13px/1.5 "BIZ UDPGothic",system-ui,-apple-system,"Hiragino Sans",sans-serif;padding:16px 16px 96px}
+.wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:16px}
+.col{display:flex;flex-direction:column;gap:10px;width:min(390px,100%)}
+.lead{color:var(--muted);margin:0}
+.lead b{color:var(--ink)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.link{color:var(--accent)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+.phone{position:relative;width:100%;height:760px;background:var(--phone);border:2px solid var(--line);border-radius:30px;overflow:hidden}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--phone);transition:transform .28s ease}
+.screen.off{transform:translateX(100%)}
+.screen.under{transform:translateX(-28%)}
+@media (prefers-reduced-motion: reduce){.screen{transition:opacity .2s}.screen.off{transform:none;opacity:0;pointer-events:none}.screen.under{transform:none}}
+.bar{display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line);min-height:46px}
+.bar h1{font-size:15px;margin:0;font-weight:700;text-align:center;flex:1}
+.bar .l,.bar .r{min-width:72px}
+.bar .r{text-align:right}
+.scroll{flex:1;overflow:auto;padding:12px 14px 24px;display:flex;flex-direction:column;gap:12px}
+.scroll>*{flex-shrink:0}
+.photo{height:150px;border-radius:12px;background:var(--soft);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.totals{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.totals div{border:1px solid var(--line);border-radius:10px;padding:6px 2px}
+.totals b{display:block;font-size:15px}
+h2{font-size:12px;letter-spacing:.06em;color:var(--muted);margin:4px 0 0;font-weight:700}
+.dish{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.dh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 12px}
+.dh .t{font-weight:700}
+.ing{border-top:1px solid var(--soft);padding:6px 12px 8px 22px;display:flex;flex-direction:column;gap:3px}
+.ing div{display:flex;justify-content:space-between;gap:8px}
+.ing .q{color:var(--accent)}
+.more{display:flex;justify-content:space-between;width:100%;padding:8px 12px;border-top:1px solid var(--soft);color:var(--accent)}
+.nut{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 12px 10px;border-top:1px solid var(--soft);background:var(--soft)}
+.nut .g{grid-column:1/-1;font-size:11px;color:var(--muted);letter-spacing:.06em;margin-top:6px}
+.nut .g:first-child{margin-top:0}
+.nut span:nth-child(odd):not(.g){}
+.nutpage .nut{background:none;border-top:0;padding:0;gap:6px 10px}
+.nutpage .nut .g{margin-top:12px}
+.add{border:1px dashed var(--line);border-radius:12px;padding:10px 12px;color:var(--accent)}
+
+.state{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:4px}
+.state b{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;pointer-events:none}
+.dock nav{pointer-events:auto;display:flex;gap:4px;background:var(--pill);color:var(--pill-ink);border-radius:999px;padding:5px}
+.dock button{color:var(--pill-ink);padding:7px 14px;border-radius:999px}
+.dock button[aria-pressed="true"]{background:var(--pill-ink);color:var(--pill)}
+</style>
+
+<div class="wrap">
+  <div class="col">
+    <p class="lead" id="lead"></p>
+    <div class="phone" id="phone"></div>
+  </div>
+  <div class="col">
+    <div class="state">
+      <b>いまの状態</b>
+      <div id="state"></div>
+    </div>
+    <p class="lead">例は Mさんの外食の定食。材料の量（青い字）は、その場で直す想定で、ここでは押しても変わらない。「栄養の内訳」を押して、料理と材料の読みやすさ、戻りやすさを比べる。</p>
+  </div>
+</div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="vA">A プッシュ</button><button id="vB">B その場で広げる</button></nav></div>
+
+<script>
+const dishes=[
+  {n:'竜田揚げ',q:'5個（推定）',kcal:420,p:24,f:26,c:20,ing:[['鶏もも肉','150 g'],['片栗粉','大さじ2'],['しょうゆ','大さじ1'],['揚げ油','吸油 12 g']],
+   nut:[['エネルギー','420 kcal'],['たんぱく質','24.0 g'],['脂質','26.1 g'],['炭水化物','20.3 g'],['食物繊維','0.3 g'],['食塩相当量','2.4 g'],['カルシウム','12 mg'],['鉄','1.0 mg'],['カリウム','420 mg'],['ビタミンA','60 µg'],['ビタミンB1','0.11 mg'],['ビタミンB2','0.27 mg'],['ビタミンC','5 mg'],['ビタミンD','0.6 µg']]},
+  {n:'ご飯',q:'180 g',kcal:281,p:4.5,f:0.5,c:67,ing:[['精白米（炊いたもの）','180 g']],
+   nut:[['エネルギー','281 kcal'],['たんぱく質','4.5 g'],['脂質','0.5 g'],['炭水化物','66.8 g'],['食物繊維','2.7 g'],['食塩相当量','0 g'],['カルシウム','5 mg'],['鉄','0.2 mg'],['カリウム','52 mg'],['ビタミンA','0 µg'],['ビタミンB1','0.04 mg'],['ビタミンB2','0.02 mg'],['ビタミンC','0 mg'],['ビタミンD','0 µg']]},
+  {n:'味噌汁',q:'1杯（推定）',kcal:40,p:2.6,f:1.2,c:4.6,ing:[['豆腐','30 g'],['わかめ','2 g'],['みそ','12 g'],['だし','150 ml']],
+   nut:[['エネルギー','40 kcal'],['たんぱく質','2.6 g'],['脂質','1.2 g'],['炭水化物','4.6 g'],['食物繊維','0.9 g'],['食塩相当量','1.6 g'],['カルシウム','40 mg'],['鉄','0.7 mg'],['カリウム','160 mg'],['ビタミンA','8 µg'],['ビタミンB1','0.04 mg'],['ビタミンB2','0.03 mg'],['ビタミンC','0 mg'],['ビタミンD','0 µg']]},
+  {n:'冷ややっこ',q:'1皿（推定）',kcal:75,p:6.6,f:4.2,c:2.2,ing:[['絹ごし豆腐','100 g'],['しょうが','3 g'],['しょうゆ','小さじ1']],
+   nut:[['エネルギー','75 kcal'],['たんぱく質','6.6 g'],['脂質','4.2 g'],['炭水化物','2.2 g'],['食物繊維','0.4 g'],['食塩相当量','0.8 g'],['カルシウム','75 mg'],['鉄','1.2 mg'],['カリウム','160 mg'],['ビタミンA','0 µg'],['ビタミンB1','0.11 mg'],['ビタミンB2','0.04 mg'],['ビタミンC','0 mg'],['ビタミンD','0 µg']]}
+];
+const groups=[['主な栄養',0,6],['ミネラル',6,9],['ビタミン',9,14]];
+const st={v:'A',open:new Set(),pushed:null};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function nutHTML(d){
+  return '<div class="nut num">'+groups.map(([g,a,b])=>'<span class="g">'+g+'</span>'+d.nut.slice(a,b).map(([k,v])=>'<span>'+k+'</span><span>'+v+'</span>').join('')).join('')+'</div>';
+}
+function mealHTML(){
+  const t=dishes.reduce((s,d)=>({kcal:s.kcal+d.kcal,p:s.p+d.p,f:s.f+d.f,c:s.c+d.c}),{kcal:0,p:0,f:0,c:0});
+  let h='<div class="photo">写真（定食）</div><div class="muted">12:40</div><div class="totals num">'+
+    [['kcal',Math.round(t.kcal)],['P',t.p.toFixed(0)+' g'],['F',t.f.toFixed(0)+' g'],['C',t.c.toFixed(0)+' g']].map(([k,v])=>'<div><span class="muted">'+k+'</span><b>'+v+'</b></div>').join('')+'</div><h2>料理</h2>';
+  dishes.forEach((d,i)=>{
+    const open=st.open.has(i);
+    h+='<div class="dish"><div class="dh"><span class="t">'+esc(d.n)+'</span><span class="num">'+esc(d.q)+'　'+d.kcal+' kcal</span></div>'+
+      '<div class="ing num">'+d.ing.map(([k,v])=>'<div><span>'+esc(k)+'</span><span class="q">'+esc(v)+'</span></div>').join('')+'</div>';
+    if(st.v==='A') h+='<button class="more" data-push="'+i+'"><span>栄養の内訳</span><span>›</span></button>';
+    else h+='<button class="more" data-tog="'+i+'" aria-expanded="'+open+'"><span>栄養の内訳</span><span>'+(open?'閉じる':'開く')+'</span></button>'+(open?nutHTML(d):'');
+    h+='</div>';
+  });
+  return h+'<button class="add">料理を足す</button>';
+}
+function render(keepScroll){
+  const prev=document.querySelector('#meal .scroll');const top=keepScroll&&prev?prev.scrollTop:0;
+  const pushed=st.pushed;
+  $('phone').innerHTML=
+    '<section class="screen'+(pushed!==null?' under':'')+'" id="meal"><div class="bar"><span class="l link">‹ タイムライン</span><h1>食事</h1><span class="r link">…</span></div><div class="scroll">'+mealHTML()+'</div></section>'+
+    '<section class="screen nutpage'+(pushed===null?' off':'')+'" id="nutv" aria-hidden="'+(pushed===null)+'"><div class="bar"><button class="l link" id="back">‹ 食事</button><h1>'+(pushed!==null?esc(dishes[pushed].n):'')+'</h1><span class="r"></span></div><div class="scroll">'+
+      (pushed!==null?'<div class="muted num">'+esc(dishes[pushed].q)+'</div>'+nutHTML(dishes[pushed]):'')+'</div></section>';
+  document.querySelector('#meal .scroll').scrollTop=top;
+  $('lead').innerHTML=st.v==='A'?'<b>A プッシュ</b>　料理の行の「栄養の内訳 ›」で、別の画面へ潜る。左上で食事に戻る':'<b>B その場で広げる</b>　料理の行の下に、栄養の内訳を広げる。もう一度押すと閉じる';
+  const depth=st.v==='A'&&pushed!==null?3:2;
+  $('state').innerHTML='案: '+st.v+'<br>画面: '+(pushed!==null?'タイムライン › 食事 › 栄養の内訳（'+esc(dishes[pushed].n)+'）':'タイムライン › 食事')+
+    '<br>潜った深さ: '+depth+' 段'+(st.v==='B'?'<br>広げている料理: '+(st.open.size?[...st.open].map(i=>dishes[i].n).join('、'):'なし'):'');
+  $('vA').setAttribute('aria-pressed',st.v==='A');$('vB').setAttribute('aria-pressed',st.v==='B');
+}
+document.addEventListener('click',e=>{
+  const p=e.target.closest('[data-push]'),t=e.target.closest('[data-tog]');
+  if(p){st.pushed=+p.dataset.push;render(true)}
+  else if(t){const i=+t.dataset.tog;st.open.has(i)?st.open.delete(i):st.open.add(i);render(true)}
+  else if(e.target.closest('#back')){st.pushed=null;render(true)}
+});
+function setV(v){st.v=v;st.pushed=null;st.open.clear();try{history.replaceState(null,'','#'+v)}catch(_){location.hash=v}render(false)}
+$('vA').onclick=()=>setV('A');$('vB').onclick=()=>setV('B');
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='A'?'B':'A')});
+st.v=location.hash==='#B'?'B':'A';render(false);
+</script>
