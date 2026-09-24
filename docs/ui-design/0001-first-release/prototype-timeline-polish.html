@@ -1,0 +1,216 @@
+<title>タイムラインの手直し</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑦ のタイムラインの問い4つに答えるためのもの。
+  1. ナビゲーションバーの題: 空のまま／いま見ている日付／アプリの名前
+  2. 自分と相手（返ってくる発言）の見分け方: 今のまま／自分のものを右に寄せる／相手の発言に印を付ける
+  3. 入力欄の「撮る」と「体重」の示し方: アイコンと文字／アイコン2つ／文字2つ
+  4. 書いているあいだは「体重」を隠して、書く欄を広げる（右下の「書いているところ」で確かめる）
+  帯は月曜を左端にし、今週の月〜日を並べる（まだ来ていない日は空の丸）。
+  右の切り替えで組み合わせを試せる。
+-->
+<style>
+/* ── トークン（ライト） ── */
+:root{
+  /* iOS のシステムの色 */
+  --bg:#f2f2f7;            /* systemGroupedBackground */
+  --surface:#ffffff;       /* secondarySystemGroupedBackground */
+  --surface2:#f2f2f7;      /* tertiarySystemGroupedBackground */
+  --ink:#000000;           /* label */
+  --ink2:rgb(60 60 67 / .6);   /* secondaryLabel */
+  --ink3:rgb(60 60 67 / .3);   /* tertiaryLabel */
+  --sep:rgb(60 60 67 / .29);   /* separator */
+  --fill:rgb(120 120 128 / .12); /* tertiarySystemFill */
+  --tint:#6155f5;          /* アクセント（systemIndigo） */
+  --on-tint:#ffffff;
+  --destructive:#ff383c;   /* systemRed。破壊的な操作だけに使う */
+  --scrim:rgb(0 0 0 / .2);
+  --chrome:rgb(249 249 249 / .94); /* バーの材質 */
+  /* P・F・C（3色のどの組も色覚の型を問わず見分けられる。validate_palette で確認） */
+  --p:#f07f1a; --f:#15803d; --c:#2c7be5;
+  --track:#e5e5ea;         /* 輪の地 */
+  /* グラフ */
+  --series:#6155f5; --grid:rgb(60 60 67 / .12); --guide:rgb(60 60 67 / .45);
+  /* 自分の発言 */
+  --me:#6155f5; --on-me:#ffffff;
+  /* ページ（コンポーネントの見本を並べる地） */
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+    --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+    --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+    --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+    --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+    --me:#6d7cff; --on-me:#ffffff;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+  --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+  --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+  --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+  --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+  --me:#6d7cff; --on-me:#ffffff;
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+  color-scheme:dark;
+}
+
+（iOS のテキストスタイル。Dynamic Type の既定の大きさ） ── */
+
+*{box-sizing:border-box}
+body{margin:0;padding:16px 16px 40px;background:var(--page);color:var(--page-ink);font:14px/1.5 system-ui,-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;justify-content:center}
+.side{flex:1 1 300px;max-width:420px;display:flex;flex-direction:column;gap:18px}
+.side h1{font-size:17px;margin:0}
+.side p{margin:0;color:var(--page-muted);font-size:13px}
+.q{display:flex;flex-direction:column;gap:6px}
+.q b{font-size:13.5px}
+.seg{display:flex;flex-wrap:wrap;border:1px solid var(--frame);border-radius:10px;overflow:hidden}
+.seg button{flex:1 1 auto;padding:7px 10px;font-size:12.5px;color:var(--page-muted);border-left:1px solid var(--frame)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--page-ink);color:var(--page)}
+.note{font-size:12.5px;color:var(--page-muted);margin:0}
+.phone{width:min(393px,100%);height:760px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:44px;overflow:hidden;display:flex;flex-direction:column;position:relative;font-size:17px;line-height:1.3}
+.status{height:44px;flex:none}
+.nav{height:44px;flex:none;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;padding:0 16px}
+.nav .t{text-align:center;font-weight:600;font-size:17px}
+.person{width:32px;height:32px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center;justify-self:end}
+.band{display:flex;justify-content:space-between;padding:4px 16px 12px;border-bottom:.5px solid var(--sep);flex:none}
+.day{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--ink2);padding:3px 4px;border-radius:10px;min-width:38px}
+.day.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.day.future{opacity:.45}
+.tl{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:12px 16px}
+.tl>*{flex:none}
+.dayh{text-align:center;font-size:12px;color:var(--ink2);font-weight:600}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;background:var(--surface);border-radius:12px;padding:12px 16px;font-size:15px}
+.tm{color:var(--ink2);font-size:13px}
+.row .g{flex:1}
+.disc{color:var(--ink3)}
+.meal{background:var(--surface);border-radius:12px;display:flex;gap:12px;padding:12px;align-items:center}
+.ph{width:60px;height:60px;border-radius:8px;flex:none;background:linear-gradient(135deg,#c79a63,#8a6238 55%,#e6d2ac)}
+.ph.c{background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.mb{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.mt{display:flex;justify-content:space-between;gap:8px;font-size:15px}
+.mt b{font-weight:600}
+.pfc{display:flex;gap:10px;font-size:12px;color:var(--ink2)}
+.pfc b{color:var(--ink)}
+.me{align-self:flex-end;max-width:80%;background:var(--me);color:var(--on-me);border-radius:18px;padding:9px 13px;font-size:15px}
+.reply{font-size:15px;line-height:1.45;max-width:92%}
+/* 2B: 自分のものを右に寄せる */
+.mine-right .row,.mine-right .meal{align-self:flex-end;width:86%}
+.mine-right .row,.mine-right .meal{background:color-mix(in srgb,var(--tint) 10%,var(--surface))}
+/* 2C: 相手の発言に印 */
+.mark-reply .reply{display:flex;gap:10px;align-items:flex-start;max-width:100%}
+.mark-reply .reply .av{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--p),var(--c));flex:none;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700}
+.mark-reply .reply .bub{background:var(--surface);border-radius:4px 18px 18px 18px;padding:10px 13px}
+.reply .av{display:none}
+.mark-reply .reply .av{display:grid}
+.chips{display:flex;gap:8px;padding:8px 16px 0;overflow:hidden;flex:none}
+.chips span{white-space:nowrap;font-size:13px;height:32px;display:flex;align-items:center;padding:0 12px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep)}
+.comp{display:flex;align-items:flex-end;gap:12px;padding:8px 16px 8px;flex:none}
+.ib{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--fill);color:var(--tint)}
+.ib.cam{background:var(--tint);color:var(--on-tint)}
+.ib.hot{background:var(--tint);color:var(--on-tint)}
+.tb{height:36px;margin-bottom:4px;padding:0 14px;border-radius:999px;background:var(--fill);color:var(--tint);font-size:15px;font-weight:600;display:flex;align-items:center;flex:none}
+.tb.hot{background:var(--tint);color:var(--on-tint)}
+.in{flex:1;min-height:36px;margin-bottom:4px;border-radius:18px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);color:var(--ink3);font-size:17px;display:flex;align-items:center;justify-content:space-between;padding:6px 6px 6px 14px;min-width:0}
+.in.typing{color:var(--ink);box-shadow:0 0 0 1.5px var(--tint)}
+.send{width:28px;height:28px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;flex:none}
+.kb{height:230px;flex:none;background:var(--surface2);border-top:.5px solid var(--sep);display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:8px 6px 30px}
+.kb i{background:var(--surface);border-radius:6px;font-style:normal;display:grid;place-items:center;color:var(--ink);font-size:16px}
+.home{height:28px;flex:none}
+</style>
+
+<div class="wrap">
+  <div class="phone" id="phone"></div>
+  <div class="side">
+    <div><h1>タイムラインの手直し</h1><p>右の切り替えで、題・見分け方・入力欄のボタンを組み合わせて試せる。帯は月曜を左端にした。</p></div>
+    <div class="q"><b>1. ナビゲーションバーの題</b>
+      <div class="seg" data-k="title"><button type="button" data-v="none">空のまま</button><button type="button" data-v="date" aria-pressed="true">いま見ている日付</button><button type="button" data-v="app">アプリの名前</button></div>
+      <p class="note" id="n-title"></p></div>
+    <div class="q"><b>2. 自分と相手の見分け方</b>
+      <div class="seg" data-k="who"><button type="button" data-v="now">今のまま</button><button type="button" data-v="right" aria-pressed="true">自分のものを右に寄せる</button><button type="button" data-v="mark">相手の発言に印</button></div>
+      <p class="note" id="n-who"></p></div>
+    <div class="q"><b>3. 入力欄の「撮る」と「体重」</b>
+      <div class="seg" data-k="btn"><button type="button" data-v="mix">アイコンと文字</button><button type="button" data-v="icons" aria-pressed="true">アイコン2つ</button><button type="button" data-v="text">文字2つ</button></div>
+      <p class="note" id="n-btn"></p></div>
+    <div class="q"><b>4. 書いているところ</b>
+      <div class="seg" data-k="typing"><button type="button" data-v="off" aria-pressed="true">ふだん</button><button type="button" data-v="on">書いているあいだ</button></div>
+      <p class="note">書いているあいだは「体重」を隠して、書く欄を広げる。カメラは残す（書きかけの文と写真を一緒に送れる）。</p></div>
+    <div class="q"><b>今日の体重</b>
+      <div class="seg" data-k="weighed"><button type="button" data-v="no" aria-pressed="true">まだ</button><button type="button" data-v="yes">記録済み</button></div></div>
+  </div>
+</div>
+
+<script>
+const NOTES = {
+  title: { none:'題を空にする。帯と時系列だけで今の位置を示す。', date:'スクロールすると、いま見ている日の日付に変わる。帯の選ばれた丸と同じ日を文字でも示す。', app:'アプリの名前を置く。位置は示さない。' },
+  who: { now:'自分の記録と文は全幅のカード、返ってくる発言は地の上の文。', right:'自分が送った記録（食事・体重）と文を右に寄せて薄い色を敷く。返ってくる発言は左の地の上に置く。メッセージアプリと同じ左右の分け方。', mark:'返ってくる発言を、アプリの印を付けた左の吹き出しにする。自分の記録と文は今のまま。' },
+  btn: { mix:'カメラはアイコン、体重は文字。', icons:'カメラと体重計のアイコンを並べる。VoiceOver では「撮る」「体重」と読む。', text:'「撮る」「体重」を文字のボタンにする。' },
+};
+const st = { title:'date', who:'right', btn:'icons', typing:'off', weighed:'no' };
+const WEEK = [
+  {d:'月', p:450,f:600,c:840, w:true}, {d:'火', p:470,f:480,c:820, w:true}, {d:'水', p:500,f:510,c:760, w:true},
+  {d:'木', p:196,f:180,c:472, w:true, today:true}, {d:'金', future:true}, {d:'土', future:true}, {d:'日', future:true},
+];
+function ring(o){
+  const size=28, stroke=4.5, r=(size-stroke)/2, C=2*Math.PI*r, m=size/2, gap=1.5;
+  let off=0, segs='';
+  const total=(o.p||0)+(o.f||0)+(o.c||0), base=Math.max(1850,total);
+  for (const [k,v] of [['p',o.p],['f',o.f],['c',o.c]]) { if(!v) continue; const len=v/base*C; segs+=`<circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="var(--${k})" stroke-width="${stroke}" stroke-dasharray="${Math.max(0,len-gap)} ${C}" stroke-dashoffset="${-off}"/>`; off+=len; }
+  const dot=o.w?`<circle cx="${m}" cy="${m}" r="3.4" fill="var(--ink2)"/>`:'';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><g transform="rotate(-90 ${m} ${m})"><circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="var(--track)" stroke-width="${stroke}"/>${segs}</g>${dot}</svg>`;
+}
+const cam='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+const scale='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg>';
+const person='<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>';
+function render(){
+  const weighed = st.weighed === 'yes', typing = st.typing === 'on';
+  const title = st.title==='date' ? '9月24日（木）' : st.title==='app' ? 'nu-tori' : '';
+  const band = WEEK.map(x => `<div class="day${x.today?' sel':''}${x.future?' future':''}">${ring(x.future?{}:{...x, w: x.today ? weighed : x.w})}<span>${x.today?'今日':x.d}</span></div>`).join('');
+  const hot = !weighed;
+  let bw = '';
+  if (!typing) {
+    if (st.btn==='mix') bw = `<span class="ib cam" aria-label="撮る">${cam}</span><span class="tb${hot?' hot':''}">体重</span>`;
+    if (st.btn==='icons') bw = `<span class="ib cam" aria-label="撮る">${cam}</span><span class="ib${hot?' hot':''}" aria-label="体重">${scale}</span>`;
+    if (st.btn==='text') bw = `<span class="tb" style="background:var(--tint);color:var(--on-tint)">撮る</span><span class="tb${hot?' hot':''}">体重</span>`;
+  } else {
+    bw = st.btn==='text' ? `<span class="tb" style="background:var(--tint);color:var(--on-tint)">撮る</span>` : `<span class="ib cam" aria-label="撮る">${cam}</span>`;
+  }
+  const input = typing
+    ? `<span class="in typing">夜は鍋にする予定<span class="send" aria-label="送る"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></span>`
+    : `<span class="in">書く</span>`;
+  const wrow = weighed ? `<div class="row"><span class="tm">7:12</span><span class="g">体重</span><span>72.4 kg</span><span class="disc">›</span></div>` : '';
+  document.getElementById('phone').className = 'phone' + (st.who==='right'?' mine-right':'') + (st.who==='mark'?' mark-reply':'');
+  document.getElementById('phone').innerHTML = `
+    <div class="status"></div>
+    <div class="nav"><span></span><span class="t">${title}</span><span class="person" aria-label="アカウント">${person}</span></div>
+    <div class="band">${band}</div>
+    <div class="tl">
+      <div class="dayh">今日 9月24日（木）</div>
+      ${wrow}
+      <div class="meal"><span class="ph"></span><div class="mb"><div class="mt"><b>トースト・ゆで卵</b><span class="tm">7:40</span></div><div class="pfc"><b>358 kcal</b><span>P 17 g</span><span>F 14 g</span><span>C 40 g</span></div></div><span class="disc">›</span></div>
+      <div class="me">昼はコンビニになりそう。何を選べばいい？</div>
+      <div class="reply"><span class="av">nu</span><span class="bub">朝のたんぱく質が 17 g なので、サラダチキンかゆで卵を足すと目安に近づきます。おにぎりは1つなら残りの炭水化物に収まります。</span></div>
+      <div class="meal"><span class="ph c"></span><div class="mb"><div class="mt"><b>サラダチキン・おにぎり 2個</b><span class="tm">12:20</span></div><div class="pfc"><b>510 kcal</b><span>P 32 g</span><span>F 6 g</span><span>C 78 g</span></div></div><span class="disc">›</span></div>
+    </div>
+    ${typing ? '' : '<div class="chips"><span>ここまでの食事を見て</span><span>次の食事のアドバイス</span></div>'}
+    <div class="comp">${bw}${input}</div>
+    ${typing ? '<div class="kb">' + 'あかさたなはまやらわ、゛小空改'.split('').map(c=>`<i>${c}</i>`).join('') + '</div>' : '<div class="home"></div>'}`;
+  for (const k of ['title','who','btn']) document.getElementById('n-'+k).textContent = NOTES[k][st[k]];
+}
+document.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  st[seg.dataset.k] = b.dataset.v;
+  seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x===b)));
+  render();
+})));
+render();
+</script>
