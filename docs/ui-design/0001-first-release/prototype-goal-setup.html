@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>目標の設定の比較</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑥ の問い「目標の設定の流れを、どういう形で見せると摩擦が少ないか」に答えるためのもの。
+  3案を #A #B #C で切り替える。下の黒いバーか ← → キーで切り替えられる。
+  A: 1枚のシート（答えると次が現れる）  B: ページ送りのシート（1画面に1つの問い）  C: タイムラインの中で広げる
+  3案とも、手順を減らす工夫（向きを先に聞く・取れた値は聞かない・維持なら案を出さない・大変さは選ぶ前に見せる・最後の確認なし）は同じ。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#e9ecef; --phone:#fbfcfd; --ink:#22272d; --muted:#69727c; --line:#c3c9d0; --soft:#eef1f4;
+  --accent:#34597f; --good:#2f7a52; --warn:#9a5b16; --pill:#15181b; --pill-ink:#f3f5f7; --scrim:rgb(0 0 0 / .28);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+    --accent:#8fb2d8; --good:#7cc49b; --warn:#e0a860; --pill:#f3f5f7; --pill-ink:#15181b; --scrim:rgb(0 0 0 / .5); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+  --accent:#8fb2d8; --good:#7cc49b; --warn:#e0a860; --pill:#f3f5f7; --pill-ink:#15181b; --scrim:rgb(0 0 0 / .5); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:13px/1.5 "BIZ UDPGothic",system-ui,-apple-system,"Hiragino Sans",sans-serif;padding:16px 16px 96px}
+.wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:16px}
+.col{display:flex;flex-direction:column;gap:10px;width:min(390px,100%)}
+.lead{color:var(--muted);margin:0}
+.lead b{color:var(--ink)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+input,select{font:inherit;color:inherit;background:var(--phone);border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-width:0}
+.link{color:var(--accent)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+.phone{position:relative;width:100%;height:760px;background:var(--phone);border:2px solid var(--line);border-radius:30px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line);min-height:46px}
+.bar h1{font-size:15px;margin:0;font-weight:700;text-align:center;flex:1}
+.bar .l,.bar .r{min-width:72px;display:flex;gap:6px}
+.bar .r{justify-content:flex-end}
+.scroll{flex:1;overflow:auto;display:flex;flex-direction:column}
+.sec{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.finder{height:150px;border:1px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);background:var(--soft)}
+.shutter{width:48px;height:48px;border-radius:50%;border:3px solid var(--ink)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;text-align:left;width:100%}
+.card .t{font-weight:700}
+.entry{border-style:dashed}
+.meters{display:grid;grid-template-columns:auto 1fr auto;gap:3px 8px;align-items:center;font-variant-numeric:tabular-nums}
+.meter{height:8px;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.meter span{display:block;height:100%;background:var(--muted)}
+.item{display:flex;gap:10px;align-items:flex-start;padding:8px 14px;border-top:1px solid var(--soft)}
+.item .time{color:var(--muted);width:40px;flex:none}
+.item .ph{width:34px;height:34px;flex:none;border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted)}
+.item .sub{color:var(--muted);font-size:12px}
+.day{padding:12px 14px 4px;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px}
+.day::after{content:"";flex:1;border-top:1px solid var(--line)}
+
+/* 問いのブロック */
+.q{display:flex;flex-direction:column;gap:8px}
+.q .qt{font-weight:700;font-size:14px}
+.q.done .qt{font-size:12px;color:var(--muted);font-weight:400}
+.answer{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.answer b{font-size:14px}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.choice{border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center}
+.choice[aria-pressed="true"]{border-color:var(--ink);font-weight:700}
+.choice small{display:block;color:var(--muted);font-size:11px;font-weight:400}
+.facts{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.fact{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;border-top:1px solid var(--soft);min-height:40px}
+.fact:first-child{border-top:0}
+.fact .k{color:var(--muted);flex:none;width:84px}
+.fact .v{flex:1;text-align:right}
+.fact .src{color:var(--muted);font-size:11px;display:block}
+.fact input{width:90px;text-align:right}
+.fact.need{background:var(--soft)}
+.seg{display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);border-radius:8px;padding:3px 8px}
+.seg button[aria-pressed="true"]{border-color:var(--ink);font-weight:700}
+.primary{border:1px solid var(--ink);border-radius:10px;padding:9px;text-align:center;width:100%;font-weight:700}
+.primary[disabled]{opacity:.4;cursor:default}
+.plan{border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 8px}
+.plan .name{font-weight:700;font-size:14px}
+.plan .kcal{text-align:right;font-variant-numeric:tabular-nums}
+.plan .how{grid-column:1/-1;color:var(--muted);font-size:12px}
+.plan:hover{border-color:var(--ink)}
+.plan.rec{border-width:2px}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:6px;font-weight:400;color:var(--muted)}
+.summaryline{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:12px;border:1px solid var(--soft);border-radius:8px;padding:6px 8px}
+.custom{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.custom .pv{grid-column:1/-1;color:var(--muted);font-size:12px}
+
+/* シート */
+.scrim{position:absolute;inset:0;background:var(--scrim);display:flex;flex-direction:column;justify-content:flex-end;z-index:5}
+.sheet{background:var(--phone);border-radius:14px 14px 0 0;height:calc(100% - 44px);display:flex;flex-direction:column;box-shadow:0 -4px 20px rgb(0 0 0 / .15)}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--line);margin:6px auto 0}
+.dots{display:flex;gap:5px;justify-content:center}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--ink)}
+
+/* iPhone の許可シート（アプリの外） */
+.sys{position:absolute;inset:0;background:var(--scrim);z-index:9;display:flex;align-items:flex-end}
+.sys .panel{width:100%;background:var(--soft);border-radius:14px 14px 0 0;padding:14px;display:flex;flex-direction:column;gap:8px;height:78%}
+.sys .panel .who{font-size:11px;color:var(--muted);text-align:center}
+.sys .list{background:var(--phone);border-radius:10px}
+.sys .list div{display:flex;justify-content:space-between;padding:8px 10px;border-top:1px solid var(--soft)}
+.sys .list div:first-child{border-top:0}
+.sys .btns{margin-top:auto;display:flex;flex-direction:column;gap:6px}
+
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);background:var(--pill);color:var(--pill-ink);padding:6px 12px;border-radius:14px;font-size:12px;white-space:nowrap;z-index:10}
+
+/* 右の操作パネル（プロトタイプ用） */
+.panelbox{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:8px}
+.panelbox h2{font-size:13px;margin:0}
+.opt{display:grid;grid-template-columns:110px 1fr;gap:6px;align-items:center}
+.opt select{width:100%}
+.state{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px}
+.state dt{color:var(--muted)}
+.state dd{margin:0}
+.count{font-size:22px;font-weight:700}
+.reset{border:1px solid var(--line);border-radius:8px;padding:5px 10px;align-self:flex-start}
+
+.switcher{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--pill);color:var(--pill-ink);border-radius:999px;padding:6px;box-shadow:0 6px 20px rgb(0 0 0 / .25);max-width:calc(100% - 32px);z-index:20}
+.switcher button{width:34px;height:34px;border-radius:50%;font-size:16px}
+.switcher button:hover{background:rgb(127 127 127 / .25)}
+.switcher .lbl{padding:0 8px;text-align:center;min-width:0}
+.switcher .lbl b{display:block;font-size:13px}
+.switcher .lbl span{display:block;font-size:11px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col">
+    <p class="lead" id="lead"></p>
+    <div class="phone" id="phone"></div>
+  </div>
+  <div class="col">
+    <div class="panelbox">
+      <h2>条件（プロトタイプ用）</h2>
+      <div class="opt"><label for="c-perm">ヘルスケアの許可</label>
+        <select id="c-perm"><option value="ask">まだ（許可シートが出る）</option><option value="granted">済み</option></select></div>
+      <div class="opt"><label for="c-data">ヘルスケアの中身</label>
+        <select id="c-data"><option value="all">身長・生年月日・性別がある（Mさん）</option><option value="partial">性別だけある（Tさん）</option></select></div>
+      <div class="opt"><label for="c-steps">歩数</label>
+        <select id="c-steps"><option value="yes">取れる</option><option value="no">取れない</option></select></div>
+      <div class="opt"><label for="c-weight">今朝の体重</label>
+        <select id="c-weight"><option value="yes">記録済み</option><option value="no">まだ（最新は3日前）</option></select></div>
+      <button class="reset" data-reset>最初からやり直す</button>
+    </div>
+    <div class="panelbox">
+      <h2>ここまでの手数</h2>
+      <div><span class="count num" id="taps">0</span> 回タップ <span class="muted">／ 入力 <span class="num" id="typed">0</span> 項目 ／ iPhone の許可 <span class="num" id="sysn">0</span> 回</span></div>
+      <dl class="state" id="state"></dl>
+    </div>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="案の切り替え（プロトタイプ用）">
+  <button aria-label="前の案" data-sw="-1">←</button>
+  <div class="lbl"><b id="vname"></b><span>← → キーでも切り替え</span></div>
+  <button aria-label="次の案" data-sw="1">→</button>
+</div>
+
+<script>
+const VARIANTS = { A: '1枚のシート', B: 'ページ送りのシート', C: 'タイムラインの中で広げる' };
+const LEADS = {
+  A: '<b>A. 1枚のシート</b>　「目標を立てる」でシートが開く。答えると、その下に次の問いが現れる。答えた項目はシートの中でいつでも変えられる。',
+  B: '<b>B. ページ送りのシート</b>　シートの中で1画面に1つの問い。選ぶと次へ進む。入力が要る画面だけ「次へ」がある。',
+  C: '<b>C. タイムラインの中で広げる</b>　一番上の「目標を立てる」がその場で広がる。画面は変わらず、閉じても途中から続けられる。',
+};
+const KEYS = Object.keys(VARIANTS);
+const TODAY = new Date(2026, 8, 24);
+const MAINT = 2350; // 維持の消費量の見積もり（仮）
+const PLANS = {
+  lose: [
+    { key: 'easy', name: 'ゆるめ', weeks: 12, delta: -3.0, kcal: 2050, how: '空腹はほとんど感じない。外食もそのままでいい' },
+    { key: 'std', name: '標準', weeks: 10, delta: -4.0, kcal: 1850, how: '夜に少し空腹を感じる日がある', rec: true },
+    { key: 'hard', name: 'ハード', weeks: 8, delta: -5.0, kcal: 1600, how: '飲み会や外食は量の調整が要る。空腹の日が多い' },
+  ],
+  gain: [
+    { key: 'easy', name: 'ゆるめ', weeks: 12, delta: 2.0, kcal: 2600, how: 'いつもより少し多めに食べる程度' },
+    { key: 'std', name: '標準', weeks: 12, delta: 3.0, kcal: 2800, how: '間食を1回足す', rec: true },
+    { key: 'hard', name: 'ハード', weeks: 12, delta: 4.5, kcal: 3100, how: '意識して食べ続ける必要がある。脂肪も増えやすい' },
+  ],
+};
+const DIRS = { lose: '減量', keep: '維持', gain: '増量' };
+
+let variant = 'A';
+let cond = { perm: 'ask', data: 'all', steps: 'yes', weight: 'yes' };
+let s;
+function fresh() {
+  s = {
+    open: false, sys: false, perm: cond.perm === 'granted' ? 'granted' : null,
+    dir: null, height: '', birth: '', sex: '', weight: '', activity: '', aboutDone: false, editAbout: false,
+    custom: false, cDate: '', cWeight: '', goal: null, page: 0,
+    taps: 0, typed: new Set(), sysn: 0, toast: '',
+  };
+}
+fresh();
+
+// ヘルスケアから取れる値
+function fromHealth() {
+  if (s.perm !== 'granted') return {};
+  const h = { sex: '男性' };
+  if (cond.data === 'all') { h.height = '172'; h.birth = '1991'; }
+  return h;
+}
+function todayWeight() { return cond.weight === 'yes' ? '72.4' : ''; }
+function staleWeight() { return '72.9'; }
+function val(k) { return s[k] || fromHealth()[k] || ''; }
+function weightNow() { return s.weight || todayWeight(); }
+
+// 「あなたについて」で聞く必要がある項目
+function missing() {
+  const m = [];
+  const h = fromHealth();
+  if (!h.height) m.push('height');
+  if (!h.birth) m.push('birth');
+  if (!h.sex) m.push('sex');
+  if (!todayWeight()) m.push('weight');
+  if (!(s.perm === 'granted' && cond.steps === 'yes')) m.push('activity');
+  return m;
+}
+function aboutComplete() {
+  return val('height') && val('birth') && val('sex') && weightNow() && (s.activity || (s.perm === 'granted' && cond.steps === 'yes'));
+}
+function aboutNeeded() { return missing().length > 0; }
+function aboutOk() { return s.aboutDone || (!aboutNeeded() && s.perm); }
+
+// 流れのどこにいるか
+function stage() {
+  if (!s.dir) return 'dir';
+  if (!s.perm) return 'perm';
+  if (!aboutOk()) return 'about';
+  return 'plan';
+}
+
+function fmtDate(weeks) {
+  const d = new Date(TODAY); d.setDate(d.getDate() + weeks * 7);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+function age() { const b = +val('birth'); return b ? 2026 - b : ''; }
+
+// ---------- 部品 ----------
+function qDir(compact) {
+  if (compact && s.dir) return `<div class="q done"><div class="qt">目指すこと</div><div class="answer"><b>${DIRS[s.dir]}</b><button class="link" data-act="redir">変える</button></div></div>`;
+  return `<div class="q"><div class="qt">何を目指しますか</div>
+    <div class="choices">
+      <button class="choice" data-act="dir" data-v="lose" aria-pressed="${s.dir === 'lose'}">減量<small>体重を落とす</small></button>
+      <button class="choice" data-act="dir" data-v="keep" aria-pressed="${s.dir === 'keep'}">維持<small>今の体重を保つ</small></button>
+      <button class="choice" data-act="dir" data-v="gain" aria-pressed="${s.dir === 'gain'}">増量<small>体を大きくする</small></button>
+    </div></div>`;
+}
+
+function fact(k, label, shown, src, input) {
+  if (input) return `<div class="fact need"><span class="k">${label}</span><span class="v">${input}</span></div>`;
+  return `<div class="fact"><span class="k">${label}</span><span class="v">${shown}<span class="src">${src}</span></span></div>`;
+}
+function aboutRows(editAll) {
+  const h = fromHealth();
+  const m = missing();
+  const ed = k => editAll || m.includes(k);
+  const rows = [];
+  rows.push(fact('height', '身長', `${val('height')} cm`, 'ヘルスケアから',
+    ed('height') ? `<input type="number" inputmode="decimal" data-in="height" value="${val('height')}" placeholder="170"> cm` : ''));
+  rows.push(fact('birth', '生まれた年', `${val('birth')} 年（${age()} 歳）`, 'ヘルスケアから',
+    ed('birth') ? `<input type="number" inputmode="numeric" data-in="birth" value="${val('birth')}" placeholder="1990"> 年` : ''));
+  rows.push(fact('sex', '性別', val('sex'), 'ヘルスケアから',
+    ed('sex') ? `<span class="seg">${['男性', '女性'].map(x => `<button data-act="sex" data-v="${x}" aria-pressed="${val('sex') === x}">${x}</button>`).join('')}</span>` : ''));
+  const w = weightNow();
+  rows.push(fact('weight', '今の体重', `${w} kg`, '今朝の記録',
+    ed('weight') ? `<input type="number" inputmode="decimal" step="0.1" data-in="weight" value="${s.weight || ''}" placeholder="${staleWeight()}"> kg<span class="src">3日前は ${staleWeight()} kg</span>` : ''));
+  const stepsOk = s.perm === 'granted' && cond.steps === 'yes';
+  rows.push(fact('activity', 'ふだんの動き', '1日平均 6,200 歩', 'ヘルスケアの歩数から',
+    (!stepsOk) ? `<span class="seg">${['ほぼ座り仕事', '立ち仕事が多い', 'よく動く'].map(x => `<button data-act="act" data-v="${x}" aria-pressed="${s.activity === x}">${x}</button>`).join('')}</span>` : ''));
+  return `<div class="facts">${rows.join('')}</div>`;
+}
+function qAbout(compact) {
+  if (compact) return `<div class="summaryline"><span>${val('height')}cm・${age()}歳・${val('sex')}・${weightNow()}kg${s.activity ? '・' + s.activity : ''}</span><button class="link" data-act="editabout">変える</button></div>`;
+  const n = missing().length;
+  const head = s.editAbout ? 'あなたについて' : `あなたについて<span class="muted" style="font-weight:400;font-size:12px">　足りない ${n} 項目だけ入れてください</span>`;
+  return `<div class="q"><div class="qt">${head}</div>${aboutRows(s.editAbout)}
+    <button class="primary" data-act="aboutok" ${aboutComplete() ? '' : 'disabled'}>${variant === 'B' ? '次へ' : '目標案を見る'}</button></div>`;
+}
+function qPlan() {
+  const w = +weightNow();
+  if (s.dir === 'keep') {
+    return `<div class="q"><div class="qt">今の体重を保つ</div>
+      <div class="plan rec" style="cursor:default"><span class="name">${w.toFixed(1)} kg を保つ</span><span class="kcal">1日 ${MAINT.toLocaleString()} kcal</span><span class="how">期限はありません。体重が動いたら目安を直します</span></div>
+      <button class="primary" data-act="keepgo">維持で始める</button></div>`;
+  }
+  const plans = PLANS[s.dir].map(p => `<button class="plan ${p.rec ? 'rec' : ''}" data-act="plan" data-v="${p.key}">
+      <span class="name">${p.name}${p.rec ? '<span class="tag">おすすめ</span>' : ''}</span><span class="kcal">1日 ${p.kcal.toLocaleString()} kcal</span>
+      <span class="how num">${fmtDate(p.weeks)} までに ${(w + p.delta).toFixed(1)} kg（${p.delta > 0 ? '+' : ''}${p.delta.toFixed(1)} kg）</span>
+      <span class="how">${p.how}</span></button>`).join('');
+  let custom = `<button class="link" data-act="custom" style="align-self:flex-start">期限と目標体重を自分で決める</button>`;
+  if (s.custom) {
+    const pv = customPreview();
+    custom = `<div class="custom">
+      <label for="cd">期限</label><input id="cd" type="date" data-in="cDate" value="${s.cDate}">
+      <label for="cw">目標体重</label><span><input id="cw" type="number" step="0.1" inputmode="decimal" data-in="cWeight" value="${s.cWeight}" placeholder="68.0" style="width:90px"> kg</span>
+      <div class="pv" id="pv">${pv.text}</div>
+      <button class="primary" style="grid-column:1/-1" data-act="customgo" ${pv.ok ? '' : 'disabled'} id="cgo">この目標で始める</button></div>`;
+  }
+  return `<div class="q"><div class="qt">どのペースで${DIRS[s.dir]}しますか</div><span class="muted" style="font-size:12px">押すと、そのまま目標になります。あとからいつでも変えられます</span>${plans}${custom}</div>`;
+}
+function customPreview() {
+  if (!s.cDate || !s.cWeight) return { ok: false, text: '期限と目標体重を入れると、1日の目安と大変さが出ます' };
+  const days = Math.round((new Date(s.cDate) - TODAY) / 86400000);
+  if (days < 7) return { ok: false, text: '期限は1週間より先にしてください' };
+  const diff = +s.cWeight - +weightNow();
+  const kcal = Math.round((MAINT + diff * 7700 / days) / 10) * 10;
+  const perWeek = Math.abs(diff) / days * 7;
+  const how = perWeek > 0.9 ? '<b style="color:var(--warn)">かなり厳しいペース</b>です' : perWeek > 0.6 ? '厳しめのペースです' : '無理のないペースです';
+  return { ok: true, text: `1日 ${kcal.toLocaleString()} kcal ・ 週 ${perWeek.toFixed(2)} kg。${how}` };
+}
+
+// ---------- タイムライン ----------
+function goalSummary() {
+  const g = s.goal;
+  const meter = (label, now, max, unit) => `<span>${label}</span><span class="meter"><span style="width:${Math.min(100, now / max * 100)}%"></span></span><span>${now}/${max}${unit}</span>`;
+  const left = g.target ? `あと <b class="num">${Math.abs(+weightNow() - g.target).toFixed(1)} kg</b>・あと <b class="num">${g.days} 日</b>・<span style="color:var(--good)">間に合うペース</span>` : `<b class="num">${(+weightNow()).toFixed(1)} kg</b> を保つ・期限なし`;
+  return `<div class="card"><div class="row"><span class="t">${DIRS[g.dir]}</span><span class="link">目標 ›</span></div><div>${left}</div>
+    <div class="meters">${meter('kcal', 1120, g.kcal, '')}${meter('P', 62, Math.round(+weightNow() * 2), 'g')}${meter('F', 38, Math.round(g.kcal * .25 / 9), 'g')}${meter('C', 150, Math.round(g.kcal * .45 / 4), 'g')}</div></div>`;
+}
+function entryCard() {
+  if (s.goal) return goalSummary();
+  if (variant === 'C' && s.open) return inlineCard();
+  const started = s.dir ? '<span class="muted">途中から続ける</span>' : '<span class="muted">1分ほど</span>';
+  return `<button class="card entry" data-act="open"><div class="row"><span class="t">目標を立てる</span>${started}</div><span class="muted">目標を立てると、1日の目安と比べられます</span></button>`;
+}
+function inlineCard() {
+  const st = stage();
+  let body = qDir(st !== 'dir');
+  if (st === 'about') body += qAbout(false);
+  if (st === 'plan') body += (aboutNeeded() ? qAbout(true) : `<div class="summaryline"><span>${val('height')}cm・${age()}歳・${val('sex')}・${weightNow()}kg・歩数から</span><button class="link" data-act="editabout">変える</button></div>`) + qPlan();
+  return `<div class="card" id="inline"><div class="row"><span class="t">目標を立てる</span><button class="link" data-act="close">閉じる</button></div>${body}</div>`;
+}
+function timeline() {
+  const w = todayWeight() || s.weight;
+  const weightRow = w
+    ? `<div class="row"><span>今朝の体重</span><b class="num">${w} kg</b></div>`
+    : `<button class="card" data-act="noop" style="border-width:2px"><div class="row"><span class="t">今朝の体重</span><span class="link">入れる</span></div></button>`;
+  return `<div class="bar"><div class="l"></div><h1>タイムライン</h1><div class="r"><span class="link">アカウント</span></div></div>
+    <div class="scroll" id="tl">
+      <div class="sec">${entryCard()}${weightRow}
+        <div class="finder"><div class="shutter"></div><span>ファインダー</span></div></div>
+      <div class="day">今日　食べた量 1,120 kcal・P62 F38 C150</div>
+      <div class="item"><span class="time">12:40</span><span class="ph">写真</span><div><div>鮭弁当</div><div class="sub">720 kcal・P32 F22 C98</div></div></div>
+      <div class="item"><span class="time">08:10</span><span class="ph">写真</span><div><div>トーストとゆで卵</div><div class="sub">400 kcal・P30 F16 C52</div></div></div>
+      <div class="day">昨日</div>
+      <div class="item"><span class="time">19:30</span><span class="ph">写真</span><div><div>カレー</div><div class="sub">860 kcal・P24 F30 C120</div></div></div>
+    </div>`;
+}
+
+// ---------- シート ----------
+function sheetA() {
+  const st = stage();
+  let body = qDir(st !== 'dir');
+  if (st === 'about') body += qAbout(false);
+  if (st === 'plan') body += (aboutNeeded() ? qAbout(true) : `<div class="summaryline"><span>${val('height')}cm・${age()}歳・${val('sex')}・${weightNow()}kg・歩数から</span><button class="link" data-act="editabout">変える</button></div>`) + qPlan();
+  return `<div class="scrim"><div class="sheet"><div class="grab"></div>
+    <div class="bar"><div class="l"><button class="link" data-act="close">キャンセル</button></div><h1>目標を立てる</h1><div class="r"></div></div>
+    <div class="scroll" id="sheetscroll"><div class="sec">${body}</div></div></div></div>`;
+}
+function pagesB() {
+  const p = ['dir'];
+  if (aboutNeeded() || s.editAbout) p.push('about');
+  p.push('plan');
+  return p;
+}
+function sheetB() {
+  const pages = pagesB();
+  const cur = pages[Math.min(s.page, pages.length - 1)];
+  let body = '';
+  if (cur === 'dir') body = qDir(false);
+  if (cur === 'about') body = qAbout(false);
+  if (cur === 'plan') body = (aboutNeeded() ? qAbout(true) : `<div class="summaryline"><span>${val('height')}cm・${age()}歳・${val('sex')}・${weightNow()}kg・歩数から</span><button class="link" data-act="editabout">変える</button></div>`) + qPlan();
+  const left = s.page > 0 ? `<button class="link" data-act="back">‹ 戻る</button>` : `<button class="link" data-act="close">キャンセル</button>`;
+  const dots = pages.map((_, i) => `<i class="${i === s.page ? 'on' : ''}"></i>`).join('');
+  return `<div class="scrim"><div class="sheet"><div class="grab"></div>
+    <div class="bar"><div class="l">${left}</div><h1>目標を立てる</h1><div class="r"><div class="dots">${dots}</div></div></div>
+    <div class="scroll" id="sheetscroll"><div class="sec">${body}</div></div></div></div>`;
+}
+function sysSheet() {
+  return `<div class="sys"><div class="panel">
+    <div class="who">iPhone（ヘルスケア）の画面</div>
+    <div style="font-weight:700;text-align:center">“nu-tori” がヘルスケアのデータへのアクセスを求めています</div>
+    <div class="muted" style="font-size:12px;text-align:center">身長・年齢・性別・歩数から、1日の目安を見積もります</div>
+    <div class="list"><div><span>身長</span><span>読み出し</span></div><div><span>生年月日</span><span>読み出し</span></div><div><span>性別</span><span>読み出し</span></div><div><span>歩数</span><span>読み出し</span></div></div>
+    <div class="btns"><button class="primary" data-sys="granted">許可</button><button class="link" data-sys="denied" style="padding:8px">許可しない</button></div>
+  </div></div>`;
+}
+
+// ---------- 描画 ----------
+function render() {
+  const phone = document.getElementById('phone');
+  const keepSheet = document.getElementById('sheetscroll')?.scrollTop;
+  let html = timeline();
+  if (s.open && !s.goal && variant !== 'C') html += variant === 'A' ? sheetA() : sheetB();
+  if (s.sys) html += sysSheet();
+  if (s.toast) html += `<div class="toast">${s.toast}</div>`;
+  phone.innerHTML = html;
+  const sc = document.getElementById('sheetscroll');
+  if (sc && variant === 'A' && keepSheet != null) sc.scrollTop = keepSheet;
+  document.getElementById('lead').innerHTML = LEADS[variant];
+  document.getElementById('vname').textContent = `${variant}　${VARIANTS[variant]}`;
+  document.getElementById('taps').textContent = s.taps;
+  document.getElementById('typed').textContent = s.typed.size;
+  document.getElementById('sysn').textContent = s.sysn;
+  const st = s.goal ? '目標が決まった' : !s.open ? 'タイムライン' : { dir: '向きを聞いている', perm: 'iPhone の許可', about: '足りない値を聞いている', plan: '目標案を見せている' }[stage()];
+  const rows = [
+    ['いま', st],
+    ['向き', s.dir ? DIRS[s.dir] : '—'],
+    ['ヘルスケア', s.perm === 'granted' ? '許可' : s.perm === 'denied' ? '許可しない' : 'まだ'],
+    ['聞く項目', s.dir && s.perm ? (missing().map(k => ({ height: '身長', birth: '生まれた年', sex: '性別', weight: '今の体重', activity: 'ふだんの動き' })[k]).join('・') || 'なし') : '—'],
+    ['目標', s.goal ? (s.goal.target ? `${s.goal.target.toFixed(1)} kg・${s.goal.date}・1日 ${s.goal.kcal.toLocaleString()} kcal` : `維持・1日 ${s.goal.kcal.toLocaleString()} kcal`) : '—'],
+  ];
+  document.getElementById('state').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  for (const [k, v] of Object.entries(cond)) document.getElementById('c-' + k).value = v;
+}
+
+function toast(t) { s.toast = t; render(); setTimeout(() => { s.toast = ''; render(); }, 1600); }
+function scrollSheetEnd() {
+  requestAnimationFrame(() => {
+    const el = document.getElementById(variant === 'C' ? 'tl' : 'sheetscroll');
+    if (!el) return;
+    if (variant === 'C') { const c = document.getElementById('inline'); if (c) el.scrollTop = Math.max(0, c.offsetTop + c.offsetHeight - el.clientHeight + 20); }
+    else el.scrollTop = el.scrollHeight;
+  });
+}
+function finish(goal) {
+  s.goal = goal; s.open = false;
+  toast('1日の目安を決めました');
+}
+
+document.getElementById('phone').addEventListener('click', e => {
+  const sys = e.target.closest('[data-sys]');
+  if (sys) {
+    s.sysn++; s.perm = sys.dataset.sys; s.sys = false;
+    render(); scrollSheetEnd(); return;
+  }
+  const b = e.target.closest('[data-act]');
+  if (!b || b.disabled) return;
+  const act = b.dataset.act, v = b.dataset.v;
+  if (act === 'noop') return;
+  s.taps++;
+  if (act === 'open') { s.open = true; }
+  else if (act === 'close') { s.open = false; }
+  else if (act === 'dir') {
+    s.dir = v; s.custom = false;
+    if (!s.perm) s.sys = true;
+    if (variant === 'B') s.page = 1;
+  }
+  else if (act === 'redir') { s.dir = null; s.page = 0; }
+  else if (act === 'sex') { s.sex = v; }
+  else if (act === 'act') { s.activity = v; }
+  else if (act === 'aboutok') { s.aboutDone = true; s.editAbout = false; if (variant === 'B') s.page = pagesB().length - 1; }
+  else if (act === 'editabout') { s.aboutDone = false; s.editAbout = true; if (variant === 'B') s.page = 1; }
+  else if (act === 'back') { s.page = Math.max(0, s.page - 1); }
+  else if (act === 'custom') { s.custom = !s.custom; }
+  else if (act === 'plan') {
+    const p = PLANS[s.dir].find(x => x.key === v);
+    return finish({ dir: s.dir, target: +weightNow() + p.delta, date: fmtDate(p.weeks), days: p.weeks * 7, kcal: p.kcal });
+  }
+  else if (act === 'keepgo') { return finish({ dir: 'keep', target: null, kcal: MAINT }); }
+  else if (act === 'customgo') {
+    const days = Math.round((new Date(s.cDate) - TODAY) / 86400000);
+    const diff = +s.cWeight - +weightNow();
+    return finish({ dir: s.dir, target: +s.cWeight, date: s.cDate.replaceAll('-', '/'), days, kcal: Math.round((MAINT + diff * 7700 / days) / 10) * 10 });
+  }
+  render();
+  if (['dir', 'aboutok', 'custom'].includes(act)) scrollSheetEnd();
+});
+document.getElementById('phone').addEventListener('input', e => {
+  const k = e.target.dataset.in;
+  if (!k) return;
+  s[k] = e.target.value;
+  if (e.target.value) s.typed.add(k); else s.typed.delete(k);
+  document.getElementById('typed').textContent = s.typed.size;
+  const ok = document.querySelector('[data-act="aboutok"]');
+  if (ok) ok.disabled = !aboutComplete();
+  const pv = document.getElementById('pv');
+  if (pv) { const r = customPreview(); pv.innerHTML = r.text; document.getElementById('cgo').disabled = !r.ok; }
+});
+
+for (const k of Object.keys(cond)) {
+  document.getElementById('c-' + k).addEventListener('change', e => { cond[k] = e.target.value; fresh(); render(); });
+}
+document.querySelector('[data-reset]').addEventListener('click', () => { fresh(); render(); });
+
+function read() { const h = (location.hash || '').replace('#', ''); if (KEYS.includes(h)) variant = h; }
+function go(v) { variant = v; fresh(); if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); render(); }
+function step(d) { go(KEYS[(KEYS.indexOf(variant) + d + KEYS.length) % KEYS.length]); }
+document.querySelectorAll('[data-sw]').forEach(b => b.addEventListener('click', () => step(+b.dataset.sw)));
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,select,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') step(-1);
+  if (e.key === 'ArrowRight') step(1);
+});
+window.addEventListener('hashchange', () => { read(); fresh(); render(); });
+read(); render();
+</script>
+</body>
+</html>
