@@ -39,11 +39,13 @@ type CreateState = "empty" | "duplicate" | "creatable";
 
 ### 関数は処理の流れで分ける
 
-- タグ付きユニオンを1つの関数で受けるときは、switch ですべての case を書き、`default` を置かない。各 case から値を返す switch なら、case を足したときの漏れが型エラーになる（`noImplicitReturns`）。値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
+- タグ付きユニオンを1つの関数で受けるときは、switch ですべての case を書く
+- 各 case から値を返す switch には `default` を置かない。case を足したときの漏れが型エラーになる（`noImplicitReturns`）
+- 値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
 
 ### 値が無いことを許すのは、必要な事情があるときだけ
 
-- 値が無いことは、`?:`（キーを省略できる）と `T | undefined`（キーはあり、値が空）で書き分ける。この区別は `exactOptionalPropertyTypes` の下で型に効く
+- 値が無いことは、`?:`（キーを省略できる）と `T | undefined`（キーは必ずあり、値が空になり得る）で書き分ける。`exactOptionalPropertyTypes` の下では、`?:` のキーに `undefined` を渡せなくなる
 - 常にある枠で、中身が空になり得るものは `caption: string | undefined` にし、キーを省略できる `caption?: string | undefined` にしない
 
 ```ts
@@ -113,7 +115,7 @@ export const mockCreateDatabaseError = (error: CreateDatabaseError) => {
 };
 ```
 
-- 返し方は、差し替える関数に合わせる。Promise を返す関数なら `mockResolvedValue`・`mockRejectedValue`、同期の関数なら `mockReturnValue`・`mockImplementation(() => { throw error; })`、Result を返す関数なら成功・失敗の Result を返す
+- 返し方は、差し替える関数に合わせる。Result を返す関数（Promise に包んだものも）は、成功も失敗も Result で返す（`mockResolvedValue(成功の Result)`・`mockResolvedValue(失敗の Result)`）。Result を使わない関数は、Promise を返すなら `mockResolvedValue`・`mockRejectedValue`、同期なら `mockReturnValue`・`mockImplementation(() => { throw error; })`
 - 呼び出しの引数を確かめるテストは、`let spy: ReturnType<typeof mockXxxOk>` で型を付け、`beforeEach` で代入して `test` で参照する。結果だけを確かめるテストは、`beforeEach` で `mockXxxOk()` を呼ぶだけにし、spy を持たない
 
 ```ts
