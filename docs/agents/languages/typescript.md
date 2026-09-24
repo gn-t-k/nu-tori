@@ -17,8 +17,8 @@
 
 - 公開するものは export で数える
 - ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export type WeightRecordStore`）
-- mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `testing/index.ts` は、「1つのファイルから1つ」を置き換える
-- 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/index.ts` のディレクトリにする
+- mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える
+- 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/` のディレクトリにし、入口の `foo/index.ts` から再 export する（`foo/foo.ts`、`foo/foo.test.ts`、`foo/foo.mock.ts` を並べる）
 
 ### ファイルの中はトップダウン
 
@@ -73,7 +73,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 
 - まとまりは `describe`、テストは `test` で書く
 - 「各テストの前の準備」は、その条件の `describe` のすぐ下の `beforeEach` で行う
-- パラメータ化テストは `test.each`・`test.for`・`describe.each` のこと
+- パラメータ化テストは `test.each`・`test.for`・`it.each`・`describe.each`・`describe.for` のこと
 
 ```ts
 describe("トークン発行に失敗したとき", () => {
@@ -84,7 +84,7 @@ describe("トークン発行に失敗したとき", () => {
     mockIssueTokenError(new IssueTokenError());
   });
 
-  test("エラーが返されること", async () => {
+  test("IssueTokenError で失敗すること", async () => {
     await expect(registerUser(input)).rejects.toThrow(IssueTokenError);
   });
 });
@@ -94,13 +94,14 @@ describe("トークン発行に失敗したとき", () => {
 
 - Vitest は `restoreMocks: true` で動かし、spy が次のテストに漏れないようにする。条件を `beforeEach` だけで決める構造は、これを前提にする
 - モジュールから export された関数を差し替えるときは、mock のファイルを作る。テスト対象に渡すコールバックは、その場で `vi.fn()` を書く
-- mock のファイルでは、`import * as module` でモジュール全体を読み込み、`vi.spyOn(module, "関数名")` で差し替える
+- mock のファイルでは、使う側が読み込む入口（`./index`）を `import * as module` で読み込み、`vi.spyOn(module, "関数名")` で差し替える
 - 成功は `mockXxxOk`、失敗は `mockXxxError` にし、`Xxx` は差し替える関数の名前に対応させる（`createDatabase` → `mockCreateDatabaseOk`）
 - `mockXxxOk` は `overrides` の引数で既定のデータの一部を上書きでき、`mockXxxError` は具体的なエラーの型を受け取る
 - どちらもスパイを return する
 
 ```ts
-import * as module from "./create-database";
+import { vi } from "vitest";
+import * as module from "./index";
 
 export const mockCreateDatabaseOk = (overrides?: Partial<Database>) => {
   const defaultDatabase: Database = { name: "default-db" };
@@ -112,8 +113,8 @@ export const mockCreateDatabaseError = (error: CreateDatabaseError) => {
 };
 ```
 
-- 失敗の返し方は、差し替える関数に合わせる（throw する関数なら `mockRejectedValue`、Result を返す関数なら失敗の Result）
-- 呼び出しの引数を確かめるテストは、`let spy: ReturnType<typeof mockXxxOk>` で型を付け、`beforeEach` で代入して `test` で参照する
+- 返し方は、差し替える関数に合わせる（同期の関数なら `mockReturnValue`、throw する関数の失敗なら `mockRejectedValue`、Result を返す関数なら成功・失敗の Result）
+- 呼び出しの引数を確かめるテストは、`let spy: ReturnType<typeof mockXxxOk>` で型を付け、`beforeEach` で代入して `test` で参照する。結果だけを確かめるテストは、`beforeEach` で `mockXxxOk()` を呼ぶだけにし、spy を持たない
 
 ```ts
 let input: RegisterUserInput;
