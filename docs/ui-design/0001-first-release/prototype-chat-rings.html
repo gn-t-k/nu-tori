@@ -1,11 +1,12 @@
 <title>チャットと1日の丸</title>
 <!--
-  PROTOTYPE（捨てる前提）。⑥ の問い「タイムラインをチャット型にしたとき、1日の丸（食事と体重のまとめ）をどこに置くか」に答えるためのもの。
+  PROTOTYPE（捨てる前提）。⑥ の問い「タブもヘッダーもないチャット型のタイムラインで、アカウントの入口をどこに置くか」。1日の丸の帯と、まとめのシートの形も確かめる。
   両案で同じ: タイムラインは下が新しい。記録は下の入力欄から（撮る、体重、文章）。アプリが話しかけるのは記録を忘れたときの知らせだけ。
   1日の丸: 1本の輪を P・F・C の kcal で色分けし、一周で1日の目安。体重を記録した日は中にチェック。アクティビティリングとは形と色で分ける。
-  #a と #b で切り替える。下の黒いバーか ← → キーでも切り替えられる。
-  a: タブなし。チャットの上に、7日分の丸の帯を固定する。丸を押すとその日へ移り、スクロールすると帯の選択も動く
-  b: タブ「タイムライン」「まとめ」。まとめに、丸の並び（ページ送り）、選んだ日の大きな丸、体重と目標をまとめる
+  #v1 と #v2 で切り替える。下の黒いバーか ← → キーでも切り替えられる。
+  両案で同じ: タブもヘッダーも持たない。一番上は7日分の丸の帯だけ。丸を押すと、その日のまとめ（食事と栄養、体重と目標）がシートで開く。
+  1: アカウントは帯の右端のアイコンから、シートで開く
+  2: アカウントはまとめのシートの左上から、シートの中でプッシュする
   文言と見た目は⑦で決める。
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -107,6 +108,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .goal{border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
 .spark{width:100%;height:70px}
 
+.status{padding:10px 20px 2px;font-size:12px;font-weight:700}
+.acct{flex:none;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--line);color:var(--accent);display:flex;align-items:center;justify-content:center;margin-left:4px}
+.scrim{position:absolute;inset:0;background:rgb(0 0 0 / .28);z-index:6}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:80%;z-index:7;background:var(--phone);border-radius:16px 16px 0 0;display:flex;flex-direction:column}
+.grab{align-self:center;width:36px;height:5px;border-radius:3px;background:var(--line);margin:6px 0 2px}
+.sh{display:flex;align-items:center;justify-content:space-between;padding:4px 14px 8px;border-bottom:1px solid var(--line)}
+.sh .acct{margin:0}
+.pager{display:flex;align-items:center;gap:8px}
+.pager button{color:var(--accent);font-size:16px;padding:0 4px}
+.pager button:disabled{opacity:.3;cursor:default}
+.sb{flex:1;overflow:auto;padding:12px 14px 24px;display:flex;flex-direction:column;gap:10px}
 .state{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:4px}
 .state b{font-size:12px;letter-spacing:.06em;color:var(--muted)}
 .reset{align-self:flex-start;border:1px solid var(--line);border-radius:8px;padding:4px 10px}
@@ -125,12 +137,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
   <div class="col">
     <div class="state"><b>いまの状態</b><div id="state"></div></div>
     <p class="lead">例は Tさんの木曜の昼（12:40）。9時に「体重がまだ」の知らせが来ている。試すこと:</p>
-    <p class="lead">・知らせの中で体重を記録する（今日の丸にチェックが付く）<br>・<b>撮る</b>で食事を送る（今日の丸が伸びる）<br>・「唐揚げ食べた」と送る（食事として記録される）、「夜は何を食べればいい？」と送る（会話になる）<br>・丸を押して前の日へ、チャットをスクロールして丸の選択が動くか</p>
-    <p class="lead">丸は1本の輪で、青が P、黄が F、緑が C の kcal。一周で1日の目安 1,850 kcal。目標は丸の帯（a）かまとめ（b）から開く想定で、ここでは開かない。</p>
+    <p class="lead">・知らせの中で体重を記録する（今日の丸にチェックが付く）<br>・<b>撮る</b>で食事を送る（今日の丸が伸びる）<br>・「唐揚げ食べた」と送る（食事として記録される）、「夜は何を食べればいい？」と送る（会話になる）<br>・丸を押してまとめを開き、日を送る。「タイムラインでこの日を見る」で戻る<br>・アカウントを開く</p>
+    <p class="lead">丸は1本の輪で、青が P、黄が F、緑が C の kcal。一周で1日の目安 1,850 kcal。丸を押すとまとめのシートが開き、‹ › で日を送れる。目標と週の振り返りは、まとめから開く想定で、ここでは開かない。</p>
     <button class="reset" id="reset">はじめに戻す</button>
   </div>
 </div>
-<div class="dock"><nav aria-label="案の切り替え"><button id="va">a 帯（タブなし）</button><button id="vb">b タブ2つ</button></nav></div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="v1">1 アカウントは帯の右端</button><button id="v2">2 まとめの中</button></nav></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -162,7 +174,7 @@ function base(){
   ev.push({d:6,t:'12:20',k:'photo'},{d:6,t:'12:20',k:'meal',n:'サラダチキン・おにぎり 2個',p:34,f:6,c:80});
   return ev.map((e,i)=>({...e,id:i}));
 }
-const st={v:'a',tab:0,cam:false,ev:base(),weight:null,sel:6,now:40,last:null,seq:1000,log:'まだ何もしていない'};
+const st={v:'1',sheet:null,acct:false,cam:false,ev:base(),weight:null,sel:6,now:40,last:null,seq:1000,log:'まだ何もしていない'};
 function nowT(){const m=12*60+st.now;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
 function totals(d){let p=0,f=0,c=0;st.ev.filter(e=>e.d===d&&e.k==='meal'&&!e.pending).forEach(e=>{p+=e.p;f+=e.f;c+=e.c});return {p,f,c,k:kc(p,f,c)}}
 function weightOf(d){return d===6?st.weight:(WEIGHTS[d]?WEIGHTS[d].toFixed(1):null)}
@@ -174,8 +186,6 @@ function ring(d,size,sw){
   const mid=weightOf(d)?'<path d="M'+(cx-size*.14)+' '+cx+' l'+size*.1+' '+size*.1+' l'+size*.18+' -'+size*.2+'" fill="none" stroke="var(--ink)" stroke-width="'+Math.max(1.6,size/18)+'" stroke-linecap="round" stroke-linejoin="round"/>':'';
   return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true"><circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+sw+'"/>'+segs+(over?'<circle cx="'+cx+'" cy="'+cx+'" r="'+(r+sw/2+1.5)+'" fill="none" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 2"/>':'')+mid+'</svg>';
 }
-function readout(d){const T=totals(d),w=weightOf(d);return '<div class="readout num"><span><span class="k">'+SHORT[d].replace('今日','今日')+'</span>　'+T.k.toLocaleString()+' / 1,850 kcal'+(T.k>TARGET?'（+'+(T.k-TARGET)+'）':'')+'</span><span>P'+T.p+' F'+T.f+' C'+T.c+'</span><span>'+(w?'体重 '+w+' kg':'<span class="muted">体重 まだ</span>')+'</span></div>'}
-function daysRow(size,sw){return '<div class="rings"><button class="pg" aria-label="前の週">‹</button><div class="days">'+SHORT.map((s,d)=>'<button class="day" data-day="'+d+'" aria-pressed="'+(d===st.sel)+'">'+ring(d,size,sw)+s+'</button>').join('')+'</div><button class="pg" aria-label="次の週" style="opacity:.3">›</button></div>'}
 function msgHTML(e){
   const nw=e.id===st.last?' new':'';
   if(e.k==='photo')return '<div class="msg me'+nw+'" data-id="'+e.id+'"><span class="photo"></span><span class="t num">'+e.t+'</span></div>';
@@ -198,32 +208,39 @@ function spark(){
   return '<svg class="spark" viewBox="0 0 320 70" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="320" y1="'+y(71.8+0.2)+'" y2="'+y(72.0)+'" stroke="var(--line)" stroke-dasharray="3 3"/><polyline fill="none" stroke="var(--ink)" stroke-width="1.5" points="'+pts.map(([i,w])=>x(i)+','+y(w)).join(' ')+'"/>'+pts.map(([i,w])=>'<circle cx="'+x(i)+'" cy="'+y(w)+'" r="2.5" fill="var(--ink)"/>').join('')+'</svg>';
 }
 function render(toBottom){
-  const tabs=st.v==='b';const chat=!tabs||st.tab===0;
-  let top='',body='',foot='',title='タイムライン';
-  if(!tabs){top='<div class="band"><div class="goalline"><span><b>減量</b>　あと 3.2 kg・あと 58 日</span><span class="link">目標 ›</span></div>'+daysRow(34,5)+readout(st.sel)+'</div>'}
-  if(chat){body=chatHTML();foot=composer()}
-  else{title='まとめ';
-    body='<div class="sum"><div class="sec">食事と栄養</div>'+daysRow(34,5)+'<div class="big">'+ring(st.sel,120,14)+'<dl class="num"><dt>'+esc(SHORT[st.sel])+'</dt><dd></dd><dt>kcal</dt><dd>'+totals(st.sel).k.toLocaleString()+' / 1,850</dd><dt><span class="key"><span><i style="background:var(--p)"></i>P</span></span></dt><dd>'+totals(st.sel).p+' g</dd><dt><span class="key"><span><i style="background:var(--f)"></i>F</span></span></dt><dd>'+totals(st.sel).f+' g</dd><dt><span class="key"><span><i style="background:var(--c)"></i>C</span></span></dt><dd>'+totals(st.sel).c+' g</dd></dl></div><span class="link">タイムラインでこの日を見る</span>'+
-      '<div class="sec">体重と目標</div><div class="goal"><div style="display:flex;justify-content:space-between"><span><b>減量</b>　あと 3.2 kg・あと 58 日</span><span class="link">目標 ›</span></div><span class="muted">間に合うペース</span>'+spark()+'<span class="num">'+(weightOf(st.sel)?SHORT[st.sel]+'の体重 '+weightOf(st.sel)+' kg':SHORT[st.sel]+'の体重 まだ')+'</span></div><span class="card" style="max-width:none"><span>週の振り返り 9/15〜9/21</span><span class="muted">›</span></span></div>';
-  }
   const prev=$('sc'),keep=prev?prev.scrollTop:0;
-  $('phone').innerHTML='<div class="bar"><span class="l"></span><h1>'+title+'</h1><span class="r link" aria-label="アカウント">人</span></div>'+top+'<div class="scroll" id="sc">'+body+'</div>'+foot+
-    (tabs?'<div class="tabs" role="tablist">'+['タイムライン','まとめ'].map((n,i)=>'<button role="tab" data-tab="'+i+'" aria-selected="'+(i===st.tab)+'"><i></i>'+n+'</button>').join('')+'</div>':'')+
-    (st.cam?'<div class="cam"><div class="top"><button data-act="closecam" style="color:inherit">閉じる</button><span>カメラ</span><span style="min-width:40px"></span></div><div class="c">ファインダー（全画面）</div><div class="row"><button data-act="pick">写真を選ぶ</button><button class="shutter" data-act="shoot" aria-label="撮る"><i></i></button><span style="min-width:76px"></span></div></div>':'');
-  const sc=$('sc');sc.scrollTop=toBottom?sc.scrollHeight:keep;
-  if(chat&&!tabs)sc.onscroll=spy;
-  $('lead').innerHTML=tabs?'<b>b タブ「タイムライン」「まとめ」</b>　タイムラインはチャットだけ。まとめに丸の並び、選んだ日の大きな丸、体重と目標を集める':'<b>a 帯（タブなし）</b>　チャットの上に目標の1行と7日分の丸を固定。丸を押すとその日へ移り、下の1行にその日の kcal・PFC・体重が出る';
-  $('va').setAttribute('aria-pressed',!tabs);$('vb').setAttribute('aria-pressed',tabs);
+  const acctBtn='<button class="acct" data-act="account" aria-label="アカウント"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="7" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 17.5c.8-3.4 3.5-5 6.5-5s5.7 1.6 6.5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>';
+  const band='<div class="band"><div class="rings"><div class="days">'+SHORT.map((s,d)=>'<button class="day" data-day="'+d+'" aria-pressed="'+(d===st.sel)+'">'+ring(d,34,5)+s+'</button>').join('')+'</div>'+(st.v==='1'?acctBtn:'')+'</div></div>';
+  let sheet='';
+  if(st.sheet!==null||st.acct){
+    let head,body;
+    if(st.acct){
+      head=(st.v==='2'?'<button class="link" data-act="acctback">‹ まとめ</button>':'<span></span>')+'<b>アカウント</b><button class="link" data-act="close">完了</button>';
+      body='<div class="sec">身体データ</div><div class="card" style="max-width:none"><span>身長・生年月日・性別</span><span class="muted">›</span></div><div class="sec">ヘルスケア・通知・カメラ</div><div class="card" style="max-width:none"><span>読み書きする種類と、許可の状態</span><span class="muted">›</span></div><div class="sec">アカウント</div><div class="card" style="max-width:none"><span>アカウントの削除</span><span></span></div><p class="muted" style="margin:0">中身は「各ビューの出し方とアカウントの入口」のとおり。ここでは開かない。</p>';
+    }else{
+      const d=st.sheet,T=totals(d),w=weightOf(d);
+      head=(st.v==='2'?acctBtn:'<span style="min-width:44px"></span>')+'<span class="pager"><button data-act="prev" aria-label="前の日"'+(d===0?' disabled':'')+'>‹</button><b>'+DN[d]+'</b><button data-act="next" aria-label="次の日"'+(d===6?' disabled':'')+'>›</button></span><button class="link" data-act="close">完了</button>';
+      body='<div class="sec">食事と栄養</div><div class="big">'+ring(d,120,14)+'<dl class="num"><dt>kcal</dt><dd>'+T.k.toLocaleString()+' / 1,850</dd><dt><span class="key"><span><i style="background:var(--p)"></i>P</span></span></dt><dd>'+T.p+' g</dd><dt><span class="key"><span><i style="background:var(--f)"></i>F</span></span></dt><dd>'+T.f+' g</dd><dt><span class="key"><span><i style="background:var(--c)"></i>C</span></span></dt><dd>'+T.c+' g</dd></dl></div>'+
+        '<div class="sec">体重と目標</div><div class="goal"><div style="display:flex;justify-content:space-between"><span><b>減量</b>　あと 3.2 kg・あと 58 日</span><span class="link">目標 ›</span></div><span class="muted">間に合うペース</span>'+spark()+'<span class="num">'+(w?'この日の体重 '+w+' kg':'この日の体重 まだ')+'</span></div>'+
+        '<span class="card" style="max-width:none"><span>週の振り返り 9/15〜9/21</span><span class="muted">›</span></span><button class="link" data-act="goto">タイムラインでこの日を見る</button>';
+    }
+    sheet='<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="'+(st.acct?'アカウント':'まとめ')+'"><span class="grab"></span><div class="sh">'+head+'</div><div class="sb">'+body+'</div></div>';
+  }
+  $('phone').innerHTML='<div class="status num">12:40</div>'+band+'<div class="scroll" id="sc">'+chatHTML()+'</div>'+composer()+
+    (st.cam?'<div class="cam"><div class="top"><button data-act="closecam" style="color:inherit">閉じる</button><span>カメラ</span><span style="min-width:40px"></span></div><div class="c">ファインダー（全画面）</div><div class="row"><button data-act="pick">写真を選ぶ</button><button class="shutter" data-act="shoot" aria-label="撮る"><i></i></button><span style="min-width:76px"></span></div></div>':'')+sheet;
+  const sc=$('sc');sc.scrollTop=toBottom?sc.scrollHeight:keep;sc.onscroll=spy;
+  $('lead').innerHTML=st.v==='1'?'<b>1 アカウントは帯の右端</b>　ヘッダーなし。帯は7日分の丸だけ。丸を押すと、その日のまとめがシートで開く':'<b>2 アカウントはまとめのシートの中</b>　ヘッダーなし。帯は7日分の丸だけで、端まで丸に使う。アカウントは、まとめの左上からシートの中でプッシュ';
+  $('v1').setAttribute('aria-pressed',st.v==='1');$('v2').setAttribute('aria-pressed',st.v==='2');
   const T=totals(6);
-  $('state').innerHTML='案: '+st.v+(tabs?'　タブ: '+['タイムライン','まとめ'][st.tab]:'')+'<br>選んでいる日: '+SHORT[st.sel]+'<br>今日: '+T.k.toLocaleString()+' / 1,850 kcal・体重 '+(st.weight?st.weight+' kg':'まだ')+'<br>'+st.log;
+  $('state').innerHTML='案: '+st.v+'<br>開いているもの: '+(st.acct?'アカウント':st.sheet!==null?'まとめ（'+SHORT[st.sheet]+'）':'タイムライン')+'<br>帯で選ばれている日: '+SHORT[st.sel]+'<br>今日: '+T.k.toLocaleString()+' / 1,850 kcal・体重 '+(st.weight?st.weight+' kg':'まだ')+'<br>アカウントまでのタップ: '+(st.v==='1'?'1（帯の右端）':'2（丸 → まとめの左上）')+'<br>'+st.log;
 }
 function spy(){
   const sc=$('sc'),top=sc.getBoundingClientRect().top+4;let d=0;
   sc.querySelectorAll('[data-dh]').forEach(h=>{if(h.getBoundingClientRect().top<=top+40)d=+h.dataset.dh});
   if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-4)d=6;
-  if(d!==st.sel){st.sel=d;const band=document.querySelector('.band');if(band){band.querySelectorAll('.day').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.day===d));band.querySelector('.readout').outerHTML=readout(d)}}
+  if(d!==st.sel){st.sel=d;document.querySelectorAll('.band .day').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.day===d))}
 }
-function goChat(){if(st.v==='b')st.tab=0}
+function goChat(){st.sheet=null;st.acct=false}
 function push(list,after,label){
   goChat();st.cam=false;st.sel=6;
   list.forEach(e=>{e.id=++st.seq;e.d=6;st.ev.push(e)});st.last=list[list.length-1].id;
@@ -232,16 +249,17 @@ function push(list,after,label){
 }
 const isQuestion=s=>/[？?]|どう|何|なに|いい$|べき|教えて/.test(s);
 document.addEventListener('click',ev=>{
-  const a=ev.target.closest('[data-act]'),p=ev.target.closest('[data-preset]'),t=ev.target.closest('[data-tab]'),dy=ev.target.closest('[data-day]');
-  if(t){st.tab=+t.dataset.tab;render(st.tab===0);return}
-  if(dy){st.sel=+dy.dataset.day;
-    if(st.v==='a'){render(false);const h=$('sc').querySelector('[data-dh="'+st.sel+'"]');if(h){$('sc').onscroll=null;$('sc').scrollTop=h.offsetTop-$('sc').offsetTop-4;setTimeout(()=>{$('sc').onscroll=spy},50)}}
-    else render(false);
-    st.log='丸を押した: '+SHORT[st.sel];$('state').lastChild.textContent=st.log;return}
+  const a=ev.target.closest('[data-act]'),p=ev.target.closest('[data-preset]'),dy=ev.target.closest('[data-day]');
+  if(dy){st.sheet=+dy.dataset.day;st.acct=false;st.log='丸を押した: '+SHORT[st.sheet]+'のまとめ';render(false);return}
   if(a){const act=a.dataset.act;
+    if(act==='account'){st.acct=true;st.log='アカウントを開いた';render(false);return}
+    if(act==='acctback'){st.acct=false;render(false);return}
+    if(act==='close'){goChat();render(false);return}
+    if(act==='prev'||act==='next'){st.sheet+=act==='prev'?-1:1;render(false);return}
+    if(act==='goto'){const d=st.sheet;goChat();render(false);const sc=$('sc'),h=sc.querySelector('[data-dh="'+d+'"]');if(h)sc.scrollTop=h.offsetTop-sc.offsetTop-4;spy();return}
     if(act==='opencam'){st.cam=true;render(false);return}
     if(act==='closecam'){st.cam=false;render(true);return}
-    if(act==='weight'){goChat();st.sel=6;render(true);const w=$('wv');if(w){w.focus();w.select();st.log='体重: 知らせの入力欄へ移った'}else{st.log='体重: 今日は記録済み。直すときはシートで開く想定'}render(true);if($('wv'))$('wv').focus();return}
+    if(act==='weight'){goChat();render(true);const w=$('wv');if(w){w.focus();w.select();st.log='体重: 知らせの入力欄へ移った'}else{st.log='体重: 今日は記録済み。直すときはシートで開く想定'}render(true);if($('wv'))$('wv').focus();return}
     if(act==='shoot'||act==='pick'){st.now++;const m={t:act==='pick'?'11:50':nowT(),k:'meal',pending:1};
       push([{t:m.t,k:'photo'},m],()=>{delete m.pending;Object.assign(m,act==='pick'?{n:'カフェラテ',p:6,f:7,c:10}:{n:'焼き鮭弁当',p:30,f:18,c:90})},act==='pick'?'11:50 の写真':'撮った食事')}
   }
@@ -255,9 +273,9 @@ document.addEventListener('submit',ev=>{
   }
   if(ev.target.id==='wf'){const v=parseFloat($('wv').value);if(!(v>20&&v<300))return;st.weight=v.toFixed(1);st.now++;push([{t:nowT(),k:'weight',v:st.weight}],null,'体重 '+st.weight+' kg')}
 });
-function setV(v){st.v=v;st.tab=0;st.cam=false;st.sel=6;try{history.replaceState(null,'','#'+v)}catch(_){location.hash=v}render(true)}
-$('va').onclick=()=>setV('a');$('vb').onclick=()=>setV('b');
+function setV(v){st.v=v;goChat();st.cam=false;st.sel=6;try{history.replaceState(null,'','#v'+v)}catch(_){location.hash='v'+v}render(true)}
+$('v1').onclick=()=>setV('1');$('v2').onclick=()=>setV('2');
 $('reset').onclick=()=>{st.ev=base();st.weight=null;st.now=40;st.last=null;st.log='まだ何もしていない';setV(st.v)};
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='a'?'b':'a')});
-setV(location.hash==='#b'?'b':'a');
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='1'?'2':'1')});
+setV(location.hash==='#v2'?'2':'1');
 </script>
