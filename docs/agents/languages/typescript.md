@@ -6,7 +6,7 @@
 
 ### 型検査の前提
 
-- tsconfig は `@tsconfig/strictest` を継承する。このファイルの型の話は、そこで有効になる `strict`、`exactOptionalPropertyTypes`、`noImplicitReturns` などを前提にする
+- tsconfig は `@tsconfig/strictest` を継承し、`moduleResolution` は `Bundler` にする（拡張子なしの `./index` やディレクトリの import はこれを前提にする）。このファイルの型の話は、そこで有効になる `strict`、`exactOptionalPropertyTypes`、`noImplicitReturns` などを前提にする
 
 ### 関数はアロー関数で書く
 
@@ -40,7 +40,7 @@ type CreateState = "empty" | "duplicate" | "creatable";
 ### 関数は処理の流れで分ける
 
 - タグ付きユニオンを1つの関数で受けるときは、switch ですべての case を書く
-- 各 case から値を返す switch には `default` を置かない。case を足したときの漏れが型エラーになる（戻り値の型を書けば TS2366、推論させれば `noImplicitReturns` の TS7030）
+- 各 case から値を返す switch には `default` を置かない。case を足したときの漏れが型エラーになる（undefined を含まない戻り値の型を書けば TS2366、それ以外は `noImplicitReturns` の TS7030）
 - 値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
 
 ### 値が無いことを許すのは、必要な事情があるときだけ
