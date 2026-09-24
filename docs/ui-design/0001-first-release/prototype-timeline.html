@@ -1,0 +1,201 @@
+<title>タイムラインの並べ方</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑥ の問い「タイムラインの1日の中を、新しい順に並べるか、古い順に並べるか」に答えるためのもの。
+  撮った食事や会話の AI の発言が、どこに出て、入力欄からどれだけ離れるかを比べる。
+  #A と #B で切り替える。下の黒いバーか ← → キーでも切り替えられる。
+  A: 日の中も新しい順（新しい出来事は今日の一番上、1日の目安のすぐ下に出る）
+  B: 日の中は古い順（新しい出来事は今日の一番下、昨日の見出しのすぐ上に出る）
+  どちらも、今日から過去へ下に並べ、ファインダーは今日の上に置く（決定済み）。文言と見た目は⑦で決める。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#e9ecef; --phone:#fbfcfd; --ink:#22272d; --muted:#69727c; --line:#c3c9d0; --soft:#eef1f4;
+  --accent:#34597f; --hi:#fff3c4; --pill:#15181b; --pill-ink:#f3f5f7; --finder:#2b3036; --finder-ink:#d9dee3;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+    --accent:#8fb2d8; --hi:#4a4220; --pill:#f3f5f7; --pill-ink:#15181b; --finder:#0d0f11; --finder-ink:#aab2ba; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+  --accent:#8fb2d8; --hi:#4a4220; --pill:#f3f5f7; --pill-ink:#15181b; --finder:#0d0f11; --finder-ink:#aab2ba; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:13px/1.5 "BIZ UDPGothic",system-ui,-apple-system,"Hiragino Sans",sans-serif;padding:16px 16px 96px}
+.wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:16px}
+.col{display:flex;flex-direction:column;gap:10px;width:min(390px,100%)}
+.lead{color:var(--muted);margin:0}
+.lead b{color:var(--ink)}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.link{color:var(--accent)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+.phone{position:relative;width:100%;height:760px;background:var(--phone);border:2px solid var(--line);border-radius:30px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line);min-height:46px}
+.bar h1{font-size:15px;margin:0;font-weight:700;text-align:center;flex:1}
+.bar .l,.bar .r{min-width:40px}
+.bar .r{text-align:right}
+.scroll{flex:1;overflow:auto;padding:10px 12px 16px;display:flex;flex-direction:column;gap:10px;position:relative}
+
+.goal{border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;justify-content:space-between;gap:8px}
+.wt{border:2px solid var(--accent);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px}
+.wt label{font-weight:700;flex:1}
+.wt input{width:72px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--phone);text-align:right}
+.btn{border:1.5px solid var(--accent);color:var(--accent);border-radius:8px;padding:4px 10px;font-weight:700}
+.finder{background:var(--finder);color:var(--finder-ink);border-radius:14px;height:190px;display:flex;flex-direction:column;justify-content:space-between;padding:10px}
+.finder .c{flex:1;display:flex;align-items:center;justify-content:center;font-size:12px}
+.finder .row{display:flex;align-items:center;justify-content:space-between}
+.finder .row button{color:var(--finder-ink);font-size:12px;min-width:76px}
+.finder .row button:last-child{text-align:right}
+.shutter{width:52px;height:52px;border-radius:50%;border:3px solid var(--finder-ink);display:flex;align-items:center;justify-content:center;min-width:0!important}
+.shutter i{width:40px;height:40px;border-radius:50%;background:var(--finder-ink)}
+.trk{display:grid;grid-template-columns:auto repeat(7,1fr);gap:3px 4px;align-items:center;font-size:11px}
+.trk .d{text-align:center;color:var(--muted)}
+.trk i{justify-self:center;width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line)}
+.trk i.on{background:var(--ink);border-color:var(--ink)}
+.meters{display:grid;grid-template-columns:34px 1fr auto;gap:4px 8px;align-items:center;font-size:11px}
+.meters .b{height:7px;border-radius:4px;background:var(--soft);overflow:hidden}
+.meters .b span{display:block;height:100%;background:var(--ink)}
+.dayh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding:10px 0 4px;font-weight:700}
+.dayh span{font-weight:400;color:var(--muted);font-size:12px}
+.ev{display:grid;grid-template-columns:42px 1fr;gap:8px;padding:4px 0;border-radius:8px;transition:background .6s}
+.ev .t{color:var(--muted);font-size:12px;padding-top:2px}
+.ev.new{background:var(--hi)}
+.meal{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.ph{width:40px;height:40px;border-radius:6px;background:var(--soft);flex:none}
+.meal .n{flex:1}
+.wrow{display:flex;justify-content:space-between;padding:2px 0}
+.talk{display:flex;flex-direction:column;gap:6px}
+.u{align-self:flex-end;max-width:85%;background:var(--soft);border-radius:12px;padding:6px 10px}
+.a{max-width:92%;border-left:2px solid var(--line);padding:2px 0 2px 10px}
+.card{border:1px solid var(--line);border-radius:10px;padding:6px 10px;display:flex;justify-content:space-between;gap:8px}
+.dock-in{border-top:1px solid var(--line);padding:8px 10px 18px;display:flex;flex-direction:column;gap:6px;background:var(--phone)}
+.chips{display:flex;gap:6px;overflow-x:auto}
+.chips button{border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap;font-size:12px}
+.send{display:flex;gap:6px}
+.send input{flex:1;min-width:0;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--phone)}
+
+.state{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:4px}
+.state b{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.reset{align-self:flex-start;border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;pointer-events:none}
+.dock nav{pointer-events:auto;display:flex;gap:4px;background:var(--pill);color:var(--pill-ink);border-radius:999px;padding:5px}
+.dock button{color:var(--pill-ink);padding:7px 14px;border-radius:999px}
+.dock button[aria-pressed="true"]{background:var(--pill-ink);color:var(--pill)}
+@media (prefers-reduced-motion: reduce){.ev{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="col">
+    <p class="lead" id="lead"></p>
+    <div class="phone">
+      <div class="bar"><span class="l"></span><h1>タイムライン</h1><span class="r link" aria-label="アカウント">人</span></div>
+      <div class="scroll" id="sc"></div>
+      <div class="dock-in">
+        <div class="chips"><button data-preset="ここまでの食事のフィードバック">ここまでの食事のフィードバック</button><button data-preset="次の食事のアドバイス">次の食事のアドバイス</button></div>
+        <form class="send" id="f"><input id="msg" placeholder="なんでも書いてください" aria-label="会話の入力欄"><button class="btn" type="submit">送る</button></form>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="state"><b>いまの状態</b><div id="state"></div></div>
+    <p class="lead">例は Tさんの木曜の昼（12:40）。今朝の体重はまだ。<b>撮る</b>、<b>写真を選ぶ</b>（11:50 に撮った写真）、<b>体重の記録</b>、<b>プリセット</b>か<b>送る</b>を押して、新しい出来事がどこに出るか、入力欄から見えるかを比べる。出た出来事は黄色く光る。</p>
+    <p class="lead">どちらの案も、今日から過去へ下に並べ、今日の上にファインダーを置く。食事や目標は押しても開かない。</p>
+    <button class="reset" id="reset">はじめに戻す</button>
+  </div>
+</div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="vA">A 新しい順</button><button id="vB">B 古い順</button></nav></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const days=[{h:'今日',d:'9月24日（木）'},{h:'昨日',d:'9月23日（水）',sum:'1,790 / 1,850 kcal'},{h:'9月22日（火）',d:'',sum:'1,920 / 1,850 kcal'}];
+function base(){return [
+  {day:0,t:'08:10',k:'meal',n:'トースト・ゆで卵・コーヒー',kcal:390},
+  {day:0,t:'10:45',k:'talk',u:'昼はコンビニになりそう。何を選べばいい？',a:'朝のたんぱく質が 18 g なので、サラダチキンかゆで卵を足して 30 g ほどにすると、夜が楽になります。'},
+  {day:0,t:'12:20',k:'meal',n:'サラダチキン・おにぎり 2個',kcal:560},
+  {day:1,t:'07:20',k:'weight',v:'72.6'},
+  {day:1,t:'07:50',k:'meal',n:'ヨーグルト・バナナ',kcal:230},
+  {day:1,t:'12:30',k:'meal',n:'焼き魚定食',kcal:720},
+  {day:1,t:'15:10',k:'talk',u:'夜の外食、何に気をつければいい？',a:'今日は残り 900 kcal ほどです。揚げ物を1品にして、ご飯を少なめにすると収まります。'},
+  {day:1,t:'19:30',k:'meal',n:'焼き鳥・ビール 2杯',kcal:840},
+  {day:2,t:'06:00',k:'weekly',n:'週の振り返り 9/15〜9/21',s:'傾向 -0.4 kg・間に合うペース'},
+  {day:2,t:'06:00',k:'target',n:'1日の目安が変わりました',s:'1,900 → 1,850 kcal'},
+  {day:2,t:'07:30',k:'weight',v:'72.8'},
+  {day:2,t:'12:10',k:'meal',n:'カレーライス',kcal:880},
+  {day:2,t:'20:00',k:'meal',n:'鶏むね肉のソテー・サラダ',kcal:610}
+];}
+const st={v:'A',ev:base(),weight:null,now:40,last:null,seq:0};
+function nowT(){const m=12*60+st.now;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
+function evHTML(e){
+  let b='';
+  if(e.k==='meal')b='<div class="meal"><span class="ph"></span><span class="n">'+(e.pending?'<span class="muted">推定しています…</span>':esc(e.n))+'</span><span class="num muted">'+(e.pending?'':e.kcal+' kcal')+'</span></div>';
+  else if(e.k==='weight')b='<div class="wrow"><span>体重</span><span class="num">'+esc(e.v)+' kg</span></div>';
+  else if(e.k==='talk')b='<div class="talk"><div class="u">'+esc(e.u)+'</div><div class="a">'+(e.a?esc(e.a):'<span class="muted">考えています…</span>')+'</div></div>';
+  else b='<div class="card"><span>'+esc(e.n)+'</span><span class="muted">'+esc(e.s)+' ›</span></div>';
+  return '<div class="ev'+(e.id===st.last?' new':'')+'" data-id="'+(e.id??'')+'"><span class="t num">'+e.t+'</span>'+b+'</div>';
+}
+function sorted(day){const a=st.ev.filter(e=>e.day===day).sort((x,y)=>x.t<y.t?-1:x.t>y.t?1:(x.id??-1)-(y.id??-1));return st.v==='A'?a.reverse():a}
+function kcalToday(){return st.ev.filter(e=>e.day===0&&e.k==='meal'&&!e.pending).reduce((s,e)=>s+e.kcal,0)}
+function render(){
+  const k=kcalToday(),pct=Math.min(100,Math.round(k/1850*100));
+  let h='<div class="goal"><span><b>減量</b>　あと 3.2 kg・あと 58 日</span><span class="link">間に合うペース ›</span></div>';
+  if(!st.weight)h+='<form class="wt" id="wf"><label for="wv">今朝の体重</label><input id="wv" inputmode="decimal" value="72.6"><span>kg</span><button class="btn" type="submit">記録</button></form>';
+  h+='<div class="finder"><div class="c">ファインダー</div><div class="row"><button data-act="pick">写真を選ぶ</button><button class="shutter" data-act="shoot" aria-label="撮る"><i></i></button><button data-act="text">文章で記録</button></div></div>';
+  const dn=['金','土','日','月','火','水','今日'];
+  h+='<div class="trk"><span></span>'+dn.map(d=>'<span class="d">'+d+'</span>').join('')+'<span>体重</span>'+[1,1,0,1,1,1,st.weight?1:0].map(o=>'<i class="'+(o?'on':'')+'"></i>').join('')+'<span>食事</span>'+[1,1,1,1,1,1,1].map(o=>'<i class="on"></i>').join('')+'</div>';
+  h+='<div class="meters num"><span>kcal</span><span class="b"><span style="width:'+pct+'%"></span></span><span>'+k.toLocaleString()+' / 1,850</span><span>P</span><span class="b"><span style="width:48%"></span></span><span>52 / 110 g</span><span>F</span><span class="b"><span style="width:55%"></span></span><span>30 / 55 g</span><span>C</span><span class="b"><span style="width:52%"></span></span><span>120 / 230 g</span></div>';
+  days.forEach((d,i)=>{
+    h+='<div class="dayh"><div>'+d.h+(d.d?'　<span>'+d.d+'</span>':'')+'</div>'+(i?'<span class="num">'+d.sum+'</span>':'')+'</div>';
+    h+=sorted(i).map(evHTML).join('');
+  });
+  const sc=$('sc'),top=sc.scrollTop;sc.innerHTML=h;sc.scrollTop=top;
+  $('lead').innerHTML=st.v==='A'?'<b>A 新しい順</b>　日の中も上が新しい。撮った食事も会話も、今日の一番上（1日の目安のすぐ下）に出る':'<b>B 古い順</b>　日の中は朝から夜へ。撮った食事も会話も、今日の一番下（昨日の見出しのすぐ上）に出る';
+  $('vA').setAttribute('aria-pressed',st.v==='A');$('vB').setAttribute('aria-pressed',st.v==='B');
+}
+function report(id){
+  const sc=$('sc'),el=sc.querySelector('[data-id="'+id+'"]'),e=st.ev.find(x=>x.id===id);
+  if(!el){$('state').textContent='';return}
+  const sr=sc.getBoundingClientRect(),r=el.getBoundingClientRect();
+  const seen=r.top>=sr.top&&r.bottom<=sr.bottom;
+  const list=sorted(0),pos=list.findIndex(x=>x.id===id);
+  const where=pos===0?'今日の一番上':pos===list.length-1?'今日の一番下':'今日の途中（'+(pos+1)+' 番目）';
+  const before=sc.scrollTop;
+  if(!seen)el.scrollIntoView({block:'nearest'});
+  const moved=Math.round(Math.abs(sc.scrollTop-before));
+  const kind={meal:'食事',weight:'体重',talk:'会話'}[e.k];
+  const gap=Math.max(0,Math.round(sr.bottom-el.getBoundingClientRect().bottom));
+  $('state').innerHTML='案: '+st.v+'<br>新しい出来事: '+e.t+' '+kind+'<br>出た場所: '+where+
+    '<br>出たとき画面に見えていたか: '+(seen?'見えていた':'見えていなかった（'+moved+' px 自動でスクロールした）')+
+    '<br>スクロール後、ファインダー: '+(finderSeen()?'見えている':'画面の外')+'<br>会話の入力欄までの距離: '+gap+' px';
+}
+function finderSeen(){const sc=$('sc'),f=sc.querySelector('.finder');if(!f)return false;const a=sc.getBoundingClientRect(),b=f.getBoundingClientRect();return b.bottom>a.top+20&&b.top<a.bottom-20}
+function add(e,after){e.id=++st.seq;e.day=0;st.ev.push(e);st.last=e.id;render();setTimeout(()=>report(e.id),30);
+  if(after)setTimeout(()=>{after(e);render();},1400)}
+function tick(){st.now+=1}
+document.addEventListener('click',ev=>{
+  const a=ev.target.closest('[data-act]'),p=ev.target.closest('[data-preset]');
+  if(a){const act=a.dataset.act;tick();
+    if(act==='shoot')add({t:nowT(),k:'meal',pending:1},e=>{delete e.pending;e.n='焼き鮭弁当';e.kcal=680});
+    if(act==='pick')add({t:'11:50',k:'meal',pending:1},e=>{delete e.pending;e.n='カフェラテ';e.kcal=130});
+    if(act==='text')add({t:nowT(),k:'meal',pending:1},e=>{delete e.pending;e.n='残りご飯と唐揚げ';e.kcal=610});
+  }
+  if(p){tick();add({t:nowT(),k:'talk',u:p.dataset.preset},e=>{e.a=p.dataset.preset.startsWith('次')?'残りは 1,000 kcal ほどです。夜は脂の少ない肉か魚を主菜にすると、たんぱく質も目安に届きます。':'朝と昼で 950 kcal、たんぱく質は 52 g です。ペースどおりで、このままで大丈夫です。'})}
+});
+$('f').addEventListener('submit',ev=>{ev.preventDefault();const v=$('msg').value.trim();if(!v)return;$('msg').value='';tick();add({t:nowT(),k:'talk',u:v},e=>{e.a='（ここに AI の発言が出る）'})});
+$('sc').addEventListener('submit',ev=>{if(ev.target.id!=='wf')return;ev.preventDefault();const v=parseFloat($('wv').value);if(!(v>20&&v<300))return;st.weight=v.toFixed(1);tick();add({t:nowT(),k:'weight',v:st.weight})});
+function setV(v){st.v=v;try{history.replaceState(null,'','#'+v)}catch(_){location.hash=v}const id=st.last;render();if(id)setTimeout(()=>report(id),30);else $('state').textContent='まだ何も足していない'}
+$('vA').onclick=()=>setV('A');$('vB').onclick=()=>setV('B');
+$('reset').onclick=()=>{st.ev=base();st.weight=null;st.now=40;st.last=null;$('sc').scrollTop=0;setV(st.v)};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='A'?'B':'A')});
+setV(location.hash==='#B'?'B':'A');
+</script>
