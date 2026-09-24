@@ -1,0 +1,165 @@
+<title>体重を押した先</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑥ の問い「タイムラインの体重の行を押したら、どの画面へ潜るか」に答えるためのもの。
+  食事のカードを押すと食事の画面へ潜るのと揃え、体重も「体重そのもの」を見る画面へプッシュで潜る。行き先を2案で比べる。
+  #A と #B で切り替える。下の黒いバーか ← → キーでも切り替えられる。右の「目標」で、目標あり・なしを切り替える。
+  A: 目標の画面へ潜る（体重の傾向は目標の画面の中にある。押した日を傾向の上で示し、そこで直す）
+  B: 体重の画面へ潜る（押した日の値と直す、最近4週の傾向、目標までの道のり、最近の記録。目標の画面へはここから進む）
+  文言と見た目は⑦で決める。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#e9ecef; --phone:#fbfcfd; --ink:#22272d; --muted:#69727c; --line:#c3c9d0; --soft:#eef1f4;
+  --accent:#34597f; --hi:#fff3c4; --pill:#15181b; --pill-ink:#f3f5f7; --goal:#b3541e;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+    --accent:#8fb2d8; --hi:#4a4220; --pill:#f3f5f7; --pill-ink:#15181b; --goal:#e39a6b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+  --accent:#8fb2d8; --hi:#4a4220; --pill:#f3f5f7; --pill-ink:#15181b; --goal:#e39a6b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:13px/1.5 "BIZ UDPGothic",system-ui,-apple-system,"Hiragino Sans",sans-serif;padding:16px 16px 96px}
+.wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:16px}
+.col{display:flex;flex-direction:column;gap:10px;width:min(390px,100%)}
+.lead{color:var(--muted);margin:0}
+.lead b{color:var(--ink)}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.link{color:var(--accent)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.phone{position:relative;width:100%;height:760px;background:var(--phone);border:2px solid var(--line);border-radius:30px;overflow:hidden}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--phone);transition:transform .28s ease}
+.screen.off{transform:translateX(100%)}
+.screen.under{transform:translateX(-28%)}
+@media (prefers-reduced-motion: reduce){.screen{transition:opacity .2s}.screen.off{transform:none;opacity:0;pointer-events:none}.screen.under{transform:none}}
+.bar{display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line);min-height:46px}
+.bar h1{font-size:15px;margin:0;font-weight:700;text-align:center;flex:1}
+.bar .l,.bar .r{min-width:84px}
+.bar .r{text-align:right}
+.scroll{flex:1;overflow:auto;padding:12px 14px 24px;display:flex;flex-direction:column;gap:12px}
+.band{display:flex;justify-content:space-between;padding:6px 14px 8px;border-bottom:1px solid var(--line)}
+.band i{width:26px;height:26px;border-radius:50%;border:4px solid var(--line)}
+.tl{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px}
+.dayh{text-align:center;font-size:11px;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+.row.w{align-self:flex-end;width:auto;min-width:60%;background:var(--soft);border-color:transparent;border-radius:14px;gap:12px}
+.comp{border-top:1px solid var(--line);padding:8px 10px 18px;display:flex;gap:6px;color:var(--muted);font-size:12px}
+.comp span{border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.comp span.in{flex:1}
+.sec{font-weight:700;font-size:12px;color:var(--muted);letter-spacing:.06em}
+.card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.hero{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.hero b{font-size:28px}
+.fix{display:flex;gap:6px;align-items:center}
+.fix input{width:80px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--phone);text-align:right}
+.btn{border:1.5px solid var(--accent);color:var(--accent);border-radius:8px;padding:3px 10px;font-weight:700;white-space:nowrap}
+svg.g{width:100%;height:150px}
+.list{display:flex;flex-direction:column}
+.list button{display:flex;justify-content:space-between;padding:7px 2px;border-top:1px solid var(--soft)}
+.list button[aria-current="true"]{font-weight:700;background:var(--hi)}
+.toast{position:absolute;left:12px;right:12px;bottom:70px;background:var(--pill);color:var(--pill-ink);border-radius:10px;padding:8px 12px;font-size:12px}
+.state{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:4px}
+.state b{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.gs{display:flex;gap:4px}
+.gs button{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px}
+.gs button[aria-pressed="true"]{background:var(--ink);color:var(--phone);border-color:var(--ink)}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;pointer-events:none}
+.dock nav{pointer-events:auto;display:flex;gap:4px;background:var(--pill);color:var(--pill-ink);border-radius:999px;padding:5px}
+.dock button{color:var(--pill-ink);padding:7px 14px;border-radius:999px}
+.dock button[aria-pressed="true"]{background:var(--pill-ink);color:var(--pill)}
+</style>
+
+<div class="wrap">
+  <div class="col">
+    <p class="lead" id="lead"></p>
+    <div class="phone" id="phone"></div>
+  </div>
+  <div class="col">
+    <div class="state"><b>目標</b><div class="gs"><button data-goal="1">目標あり</button><button data-goal="0">目標なし</button></div></div>
+    <div class="state"><b>いまの状態</b><div id="state"></div></div>
+    <p class="lead">例は Tさんの木曜の昼。タイムラインの<b>体重の行</b>（今日と昨日）を押して潜る。食事のカードは押すと食事の画面へ潜る想定で、ここでは開かない。潜った先で「直す」を押すと、その場で値を直せる。</p>
+    <p class="lead">グラフの点は測った体重、線はならした傾向、点線は目標体重。黄色の点が押した日。</p>
+  </div>
+</div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="vA">A 目標の画面へ</button><button id="vB">B 体重の画面へ</button></nav></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const DAYS=28,W=[];let v=74.6;
+for(let i=0;i<DAYS;i++){v+=-0.08+Math.sin(i*1.7)*0.35-(i%7===5?-0.4:0);W.push(i%9===4?null:Math.round(v*10)/10)}
+W[DAYS-1]=72.4;W[DAYS-2]=72.6;
+const label=i=>{const d=new Date(2026,8,24-(DAYS-1-i));return (d.getMonth()+1)+'/'+d.getDate()+'（'+'日月火水木金土'[d.getDay()]+'）'};
+function trend(){let t=null;return W.map(w=>{if(w==null)return t;t=t==null?w:t+0.25*(w-t);return Math.round(t*100)/100})}
+const st={v:'A',goal:true,pushed:false,sel:DAYS-1,edit:false,toast:''};
+function graph(){
+  const T=trend(),vals=W.filter(x=>x!=null).concat(st.goal?[69]:[]),lo=Math.min(...vals)-0.3,hi=Math.max(...vals)+0.3;
+  const x=i=>14+i*(292/(DAYS-1)),y=w=>10+(hi-w)/(hi-lo)*118;
+  let s='<svg class="g" viewBox="0 0 320 150" aria-hidden="true">';
+  [Math.ceil(lo),Math.floor(hi)].forEach(k=>{s+='<line x1="14" x2="306" y1="'+y(k)+'" y2="'+y(k)+'" stroke="var(--soft)"/><text x="0" y="'+(y(k)+4)+'" font-size="9" fill="var(--muted)">'+k+'</text>'});
+  if(st.goal)s+='<line x1="14" x2="306" y1="'+y(69)+'" y2="'+y(69)+'" stroke="var(--goal)" stroke-dasharray="4 3"/><text x="306" y="'+(y(69)-4)+'" font-size="9" text-anchor="end" fill="var(--goal)">目標 69.0</text>';
+  s+='<polyline fill="none" stroke="var(--ink)" stroke-width="2" points="'+T.map((t,i)=>x(i)+','+y(t)).join(' ')+'"/>';
+  W.forEach((w,i)=>{if(w!=null)s+='<circle cx="'+x(i)+'" cy="'+y(w)+'" r="'+(i===st.sel?5:2.5)+'" fill="'+(i===st.sel?'var(--hi)':'var(--muted)')+'" stroke="'+(i===st.sel?'var(--ink)':'none')+'"/>'});
+  s+='<text x="14" y="146" font-size="9" fill="var(--muted)">'+label(0)+'</text><text x="306" y="146" font-size="9" text-anchor="end" fill="var(--muted)">今日</text></svg>';
+  return s;
+}
+function selCard(){
+  const w=W[st.sel];
+  return '<div class="card"><div class="hero"><span class="muted">'+label(st.sel)+'</span>'+(st.edit?'':'<button class="link" data-act="edit">直す</button>')+'</div>'+
+    (st.edit?'<form class="fix" id="fx"><input id="fv" inputmode="decimal" value="'+w+'" aria-label="体重"><span>kg</span><button class="btn" type="submit">記録</button><button type="button" class="link" data-act="cancel">キャンセル</button></form>':'<div class="hero"><b class="num">'+w.toFixed(1)+' kg</b><span class="muted">手で記録</span></div>')+'</div>';
+}
+function goalView(){
+  let h='';
+  if(st.goal)h+='<div class="card"><div class="hero"><span><b style="font-size:15px">減量</b>　11/20 までに 69.0 kg</span></div><span class="num">あと 3.2 kg・あと 58 日・間に合うペース</span></div>';
+  else h+='<div class="card"><span>目標はまだありません。</span><button class="btn" style="align-self:flex-start">目標を立てる</button></div>';
+  h+='<div class="sec">体重の傾向'+(st.goal?'（目標期間）':'')+'</div>'+graph()+selCard();
+  if(st.goal)h+='<div class="sec">1日の目安の推移</div><div class="list"><button><span>9/22〜</span><span class="num">1,850 kcal</span></button><button><span>9/15〜</span><span class="num">1,900 kcal</span></button></div><div class="sec">週の振り返り</div><div class="list"><button><span>9/15〜9/21</span><span>›</span></button></div><button class="link">目標を切り替える</button>';
+  return h;
+}
+function weightView(){
+  let h=selCard()+'<div class="sec">最近4週の傾向</div>'+graph();
+  h+=st.goal?'<div class="card"><div class="hero"><span>目標 69.0 kg まで <b style="font-size:15px" class="num">あと 3.2 kg</b></span><span class="link">目標 ›</span></div><span class="muted">間に合うペース</span></div>':'<div class="card"><span>目標を立てると、目標までの道のりもここに出ます。</span><button class="btn" style="align-self:flex-start">目標を立てる</button></div>';
+  h+='<div class="sec">最近の記録</div><div class="list">';
+  for(let i=DAYS-1;i>=DAYS-8;i--)h+='<button data-sel="'+i+'" aria-current="'+(i===st.sel)+'"><span>'+label(i)+'</span><span class="num">'+(W[i]==null?'<span class="muted">なし</span>':W[i].toFixed(1)+' kg')+'</span></button>';
+  return h+'</div>';
+}
+function render(){
+  const title=st.v==='A'?'目標':'体重';
+  const canOpen=!(st.v==='A'&&!st.goal&&false);
+  $('phone').innerHTML=
+   '<section class="screen'+(st.pushed?' under':'')+'"><div class="bar"><span class="l"></span><h1></h1><span class="r link">人</span></div><div class="band">'+'<i></i>'.repeat(7)+'</div>'+
+   '<div class="tl"><div class="dayh">昨日 9/23（水）</div><button class="row w" data-w="'+(DAYS-2)+'"><span>体重</span><span class="num">72.6 kg</span></button><button class="row" data-meal><span>焼き鳥・ビール 2杯</span><span class="num">840 kcal ›</span></button>'+
+   '<div class="dayh">今日 9/24（木）</div><button class="row w" data-w="'+(DAYS-1)+'"><span>体重</span><span class="num">72.4 kg</span></button><button class="row" data-meal><span>トースト・ゆで卵</span><span class="num">358 kcal ›</span></button><button class="row" data-meal><span>サラダチキン・おにぎり 2個</span><span class="num">510 kcal ›</span></button></div>'+
+   '<div class="comp"><span>撮る</span><span>体重</span><span class="in">書く</span><span>送る</span></div>'+(st.toast?'<div class="toast">'+st.toast+'</div>':'')+'</section>'+
+   '<section class="screen'+(st.pushed?'':' off')+'" aria-hidden="'+!st.pushed+'"><div class="bar"><button class="l link" data-act="back">‹ 戻る</button><h1>'+title+'</h1><span class="r"></span></div><div class="scroll">'+(st.v==='A'?goalView():weightView())+'</div></section>';
+  $('lead').innerHTML=st.v==='A'?'<b>A 目標の画面へ</b>　体重の行を押すと、目標の画面へ潜る。押した日を傾向の上で示し、その下で直す':'<b>B 体重の画面へ</b>　体重の行を押すと、体重の画面へ潜る。押した日の値と直す、最近4週の傾向、目標までの道のり、最近の記録。目標の画面へはここから進む';
+  $('vA').setAttribute('aria-pressed',st.v==='A');$('vB').setAttribute('aria-pressed',st.v==='B');
+  document.querySelectorAll('[data-goal]').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.goal==='1')===st.goal));
+  $('state').innerHTML='案: '+st.v+'<br>画面: '+(st.pushed?'タイムライン › '+title+'（'+label(st.sel)+'）':'タイムライン')+'<br>目標: '+(st.goal?'あり':'なし')+
+    (st.v==='A'&&!st.goal?'<br><b style="color:var(--goal)">目標がないときも目標の画面を開けるようにする必要がある（⑤ では、目標がないと目標の画面は開かない）</b>':'')+
+    '<br>潜った深さ: '+(st.pushed?2:1)+' 段';
+}
+document.addEventListener('click',e=>{
+  const w=e.target.closest('[data-w]'),a=e.target.closest('[data-act]'),g=e.target.closest('[data-goal]'),s=e.target.closest('[data-sel]'),m=e.target.closest('[data-meal]');
+  if(w){st.sel=+w.dataset.w;st.pushed=true;st.edit=false;st.toast='';render()}
+  else if(m){st.toast='食事の画面へ潜る（料理と材料。ここでは開かない）';render();setTimeout(()=>{st.toast='';render()},1600)}
+  else if(g){st.goal=g.dataset.goal==='1';render()}
+  else if(s){st.sel=+s.dataset.sel;st.edit=false;render()}
+  else if(a){const k=a.dataset.act;if(k==='back'){st.pushed=false;st.edit=false}if(k==='edit')st.edit=true;if(k==='cancel')st.edit=false;render();if(k==='edit'&&$('fv'))$('fv').focus()}
+});
+document.addEventListener('submit',e=>{e.preventDefault();const n=parseFloat($('fv').value);if(n>20&&n<300){W[st.sel]=Math.round(n*10)/10;st.edit=false;render()}});
+function setV(x){st.v=x;st.pushed=false;st.edit=false;try{history.replaceState(null,'','#'+x)}catch(_){location.hash=x}render()}
+$('vA').onclick=()=>setV('A');$('vB').onclick=()=>setV('B');
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='A'?'B':'A')});
+setV(location.hash==='#B'?'B':'A');
+</script>
