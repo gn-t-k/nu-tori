@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>推定消費量の試作</title>
+<!--
+  PROTOTYPE（捨てる前提）。#30「推定消費量の計算を実データで試す」の問いに答えるためのもの。
+  同じフォルダに data.local.js（extract.py がヘルスケアの書き出しから作る。コミットしない）があれば実データ、なければ作り物の系列で動く。
+  計算は下の <script id="logic"> の Expenditure モジュールだけにあり、DOM に触れない。ページはその薄い殻。
+-->
+<style>
+:root{
+  --bg:#F2F2F7; --surface:#FFFFFF; --ink:#000000; --muted:rgba(60,60,67,.6); --faint:rgba(60,60,67,.3);
+  --line:rgba(60,60,67,.18); --grid:rgba(60,60,67,.09); --fill:#EFEFF0; --accent:#6155F5; --on-accent:#fff;
+  --mA:#0E8A7D; --mB:#D9731A; --mC:#6155F5; --hold:#FF383C; --intake:rgba(60,60,67,.22);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1C1C1E; --ink:#FFFFFF; --muted:rgba(235,235,245,.6); --faint:rgba(235,235,245,.3);
+    --line:rgba(84,84,88,.6); --grid:rgba(84,84,88,.35); --fill:#323236; --accent:#6D7CFF;
+    --mA:#2BB3A3; --mB:#E8903A; --mC:#8F86FF; --hold:#FF4245; --intake:rgba(235,235,245,.2); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1C1C1E; --ink:#FFFFFF; --muted:rgba(235,235,245,.6); --faint:rgba(235,235,245,.3);
+  --line:rgba(84,84,88,.6); --grid:rgba(84,84,88,.35); --fill:#323236; --accent:#6D7CFF;
+  --mA:#2BB3A3; --mB:#E8903A; --mC:#8F86FF; --hold:#FF4245; --intake:rgba(235,235,245,.2); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,system-ui,"Hiragino Sans",sans-serif;padding:24px 16px 64px}
+main{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-size:22px;margin:0}
+h2{font-size:15px;margin:0 0 10px}
+p{margin:0}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border-radius:12px;padding:16px}
+.lead{display:flex;flex-direction:column;gap:8px}
+.badge{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--fill);font-size:12px}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;border-radius:8px;padding:6px 12px;background:var(--fill)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--on-accent)}
+button.done{opacity:.45}
+select,input{background:var(--fill);border:0;border-radius:8px;padding:5px 8px}
+.controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px 20px}
+.controls label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.controls label>*{color:var(--ink);font-size:14px}
+.controls .row{display:flex;gap:6px;align-items:center}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.steps .arrow{color:var(--faint)}
+.watch{margin-top:8px;padding:8px 10px;border-left:3px solid var(--accent);background:var(--fill);border-radius:0 8px 8px 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.12);display:none;z-index:2}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.mcard{border-top:4px solid;border-radius:12px;background:var(--surface);padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.mcard h3{margin:0 0 4px;font-size:14px}
+.kv{display:flex;justify-content:space-between;gap:8px}
+.kv b{font-weight:600}
+.delta{font-size:12px;color:var(--accent);margin-left:4px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--surface)}
+td:first-child,th:first-child,td.l{text-align:left}
+tr.held td.m{color:var(--hold)}
+.changed{font-weight:700}
+.small{font-size:12px}
+details summary{cursor:pointer;color:var(--muted)}
+</style>
+<body>
+<main>
+  <section class="lead">
+    <h1>推定消費量の試作 <span class="badge" id="dataLabel"></span></h1>
+    <p>体重の傾向と食べた量から推定消費量を出す候補の手法（<b style="color:var(--mA)">A 窓で逆算</b>・<b style="color:var(--mB)">B 逆算＋不確かなら見送り</b>・<b style="color:var(--mC)">C 前の値を予測のずれで少しずつ直す</b>）を同じデータに当て、推定消費量と1日の目安が週ごとにどう動くかを見比べる。</p>
+    <p class="muted small">確かめたいこと: どの手法なら、実データの日々のブレや記録の抜けに振り回されず、実際の体重の動きを当て、1日の目安を必要なときだけ動かせるか。「答え合わせ」は、各週の推定消費量と、その後 28 日に実際に食べた量から体重の傾向の変化を予測し、実際の変化とのずれを kcal/日 に直したもの（MacroFactor の精度の出し方に倣う）。</p>
+  </section>
+
+  <section class="card">
+    <h2>シナリオ</h2>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div id="scenario"></div>
+  </section>
+
+  <section class="card">
+    <h2>条件（自由に変えられる）</h2>
+    <div class="controls" id="controls"></div>
+  </section>
+
+  <section class="cards" id="summary"></section>
+
+  <section class="card">
+    <h2>体重と傾向</h2>
+    <div class="legend"><span><i style="background:var(--faint);height:6px;width:6px;border-radius:3px"></i>その日の体重</span><span><i style="background:var(--ink)"></i>体重の傾向</span><span><i style="background:var(--accent);opacity:.5"></i>目標体重</span></div>
+    <div class="chart" id="chWeight"></div>
+  </section>
+
+  <section class="card">
+    <h2>推定消費量</h2>
+    <div class="legend"><span><i style="background:var(--intake);height:8px"></i>その日に食べた量</span><span><i style="background:var(--mA)"></i>A</span><span><i style="background:repeating-linear-gradient(90deg,var(--mB) 0 5px,transparent 5px 8px)"></i>B</span><span><i style="background:var(--mC)"></i>C</span><span><i style="background:var(--hold);height:6px;width:6px;border-radius:3px"></i>見送った週</span></div>
+    <div class="chart" id="chExp"></div>
+  </section>
+
+  <section class="card">
+    <h2>1日の目安</h2>
+    <div class="legend"><span><i style="background:var(--mA)"></i>A</span><span><i style="background:repeating-linear-gradient(90deg,var(--mB) 0 5px,transparent 5px 8px)"></i>B</span><span><i style="background:var(--mC)"></i>C</span></div>
+    <div class="chart" id="chTarget"></div>
+  </section>
+
+  <section class="card">
+    <h2>週ごとの見直し</h2>
+    <p class="muted small" style="margin-bottom:8px">赤い値はその週の更新を見送り、前の値を持ち越したもの。太字は1日の目安が変わった週（＝「1日の目安の変更」の知らせが出る週）。</p>
+    <div class="tablewrap"><table id="weeks"></table></div>
+  </section>
+</main>
+
+<script src="data.local.js"></script>
+<script id="logic">
+// ---- 持ち出せる部分: 推定消費量と1日の目安の計算（DOM に触れない純粋な関数だけ） ----
+const Expenditure = (() => {
+  const DAY = 86400000;
+  const toT = s => Date.parse(s + "T00:00:00Z");
+  const toS = t => new Date(t).toISOString().slice(0, 10);
+  const addDays = (s, n) => toS(toT(s) + n * DAY);
+  const diffDays = (a, b) => Math.round((toT(b) - toT(a)) / DAY);
+  const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const median = xs => { const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+
+  const RHO_FAT = 9440, RHO_LEAN = 1816; // 39.5 MJ/kg と 7.6 MJ/kg（Hall 2008）
+  const PAL = { low: 1.4, mid: 1.6, high: 1.8 }; // 3択の活動量
+
+  function linreg(pts) {
+    const n = pts.length; if (n < 2) return null;
+    const mx = mean(pts.map(p => p[0])), my = mean(pts.map(p => p[1]));
+    let sxx = 0, sxy = 0;
+    for (const [x, y] of pts) { sxx += (x - mx) ** 2; sxy += (x - mx) * (y - my); }
+    if (sxx === 0) return null;
+    const a = sxy / sxx, b = my - a * mx;
+    let sse = 0; for (const [x, y] of pts) sse += (y - (a * x + b)) ** 2;
+    return { a, b, se: n > 2 ? Math.sqrt(sse / (n - 2) / sxx) : Infinity };
+  }
+
+  // 記録を、欠けた日を null にした日ごとの配列にする。最初の食事の記録の 30 日前から始める
+  function timeline(data) {
+    const keys = Object.keys(data.days).sort();
+    const firstFood = keys.find(k => data.days[k].kcal != null) || keys[0];
+    const first = addDays(firstFood, -30), last = keys[keys.length - 1];
+    const n = diffDays(first, last) + 1, dates = [], wt = [], kcal = [], bf = [], src = [];
+    for (let i = 0; i < n; i++) {
+      const d = addDays(first, i), r = data.days[d] || {};
+      dates.push(d); wt.push(r.wt ?? null); kcal.push(r.kcal ?? null); bf.push(r.bf ?? null);
+      src.push(r.others && Object.keys(r.others).length ? r.others : null);
+    }
+    return { dates, wt, kcal, bf, src };
+  }
+
+  // 体重の傾向: 欠けた日は線形補間（MacroFactor）し、指数移動平均でならす（Hacker's Diet、初日は体重そのもの）
+  function trend(wt, from, alpha) {
+    const T = wt.map(() => null);
+    const idx = []; for (let i = from; i < wt.length; i++) if (wt[i] != null) idx.push(i);
+    if (!idx.length) return T;
+    let t = wt[idx[0]], k = 0;
+    for (let i = idx[0]; i < wt.length; i++) {
+      while (k + 1 < idx.length && idx[k + 1] <= i) k++;
+      let w;
+      if (wt[i] != null) w = wt[i];
+      else if (k + 1 < idx.length) { const a = idx[k], b = idx[k + 1]; w = wt[a] + (wt[b] - wt[a]) * (i - a) / (b - a); }
+      else w = wt[idx[k]];
+      t = i === idx[0] ? w : t + alpha * (w - t);
+      T[i] = t;
+    }
+    return T;
+  }
+
+  // 使える食事の日: 記録があり、部分的な記録（直近 28 日の中央値の半分未満）でない日
+  function validDays(kcal, excludePartial) {
+    return kcal.map((v, i) => {
+      if (v == null) return false;
+      if (!excludePartial) return true;
+      const prev = []; for (let j = Math.max(0, i - 28); j < i; j++) if (kcal[j] != null) prev.push(kcal[j]);
+      return prev.length < 7 || v >= 0.5 * median(prev);
+    });
+  }
+
+  function rhoAt(o, tl, T, i) {
+    if (o.rho !== "forbes") return +o.rho;
+    let bf = null; for (let j = i; j >= 0 && bf == null; j--) bf = tl.bf[j];
+    const fm = (T[i] ?? 65) * (bf ?? 20) / 100, lean = 10.4 / (10.4 + fm); // Forbes: dFFM/dBW
+    return (1 - lean) * RHO_FAT + lean * RHO_LEAN;
+  }
+
+  function mifflin(p, w, date) {
+    const age = p.birth ? Math.floor(diffDays(p.birth, date) / 365.25) : 30;
+    return 10 * w + 6.25 * (p.height || 170) - 5 * age + (p.sex === "male" ? 5 : -161);
+  }
+
+  // A の中身: 窓の中の平均の食べた量 − ρ × 体重（その日の値）への直線の傾き
+  function windowEstimate(tl, valid, lo, hi, rho) {
+    const eis = [], pts = [];
+    for (let i = Math.max(0, lo); i <= hi; i++) {
+      if (valid[i]) eis.push(tl.kcal[i]);
+      if (tl.wt[i] != null) pts.push([i, tl.wt[i]]);
+    }
+    const r = linreg(pts);
+    if (eis.length < 7 || pts.length < 4 || !r || pts[pts.length - 1][0] - pts[0][0] < 7) return null;
+    return { E: mean(eis) - rho * r.a, ci: 1.96 * rho * r.se, foodDays: eis.length, wDays: pts.length };
+  }
+
+  function goalTarget(E, Tnow, date, goal, rho, st) {
+    const maintain = gw => {
+      const diff = gw - Tnow;
+      return Math.abs(diff) <= 0.7 ? E : E + Math.sign(diff) * rho * 0.0015 * Tnow / 7; // MacroFactor の維持
+    };
+    if (goal.type === "maintain") return maintain(st.maintainW);
+    if (date >= goal.deadline) { st.maintainW ??= Tnow; return maintain(st.maintainW); } // 期限のあとは今の体重を保つ
+    const days = Math.max(7, diffDays(date, goal.deadline));
+    const rate = clamp((goal.weight - Tnow) / days, -0.01 * Tnow / 7, 0.01 * Tnow / 7); // 週 1% を上限
+    return E + rho * rate;
+  }
+
+  function limitTarget(raw, prev, o) {
+    if (prev == null) return Math.round(raw / 10) * 10;
+    const d = raw - prev;
+    if (Math.abs(d) < o.deadband) return prev;
+    return Math.round((prev + clamp(d, -o.maxStep, o.maxStep)) / 10) * 10;
+  }
+
+  const METHODS = ["A", "B", "C"];
+
+  function run(data, o) {
+    const tl = timeline(data), n = tl.dates.length;
+    const s = Math.max(0, tl.dates.indexOf(o.start) >= 0 ? tl.dates.indexOf(o.start) : 0);
+    const e = o.end && tl.dates.indexOf(o.end) >= 0 ? tl.dates.indexOf(o.end) : n - 1;
+    // 過去データを使わない（式で始める）ときは、使い始めた日より前は無いものとして扱う
+    const from = o.init === "history" ? 0 : s;
+    const T = trend(tl.wt, from, o.alpha);
+    const valid = validDays(tl.kcal, o.excludePartial).map((v, i) => v && i >= from);
+    const wtOk = i => i >= from && tl.wt[i] != null;
+    const rho = i => rhoAt(o, tl, T, i);
+
+    // 初期値
+    let w0 = null; for (let j = s; j >= from && w0 == null; j--) w0 = tl.wt[j];
+    for (let j = s; w0 == null && j <= e; j++) w0 = tl.wt[j];
+    const formula = mifflin(data.profile, w0 ?? 65, tl.dates[s]) * PAL[o.pal];
+    const hist = o.init === "history" ? windowEstimate(tl, valid, s - 28, s - 1, rho(s - 1)) : null;
+    const init = { formula: Math.round(formula), history: hist ? Math.round(hist.E) : null };
+    init.E = hist ? hist.E : formula;
+    init.source = hist ? "過去 28 日の記録から逆算" : o.init === "history" ? "過去の記録が足りず、式 × 活動量" : "式 × 活動量";
+
+    const st = {}, weeks = [];
+    for (const m of METHODS) st[m] = { E: init.E, target: null, err: 0, streak: 0, goal: { maintainW: o.goal.weight ?? T[s] ?? w0 } };
+    for (const m of METHODS) st[m].target = limitTarget(goalTarget(init.E, T[s] ?? w0, tl.dates[s], o.goal, rho(s), st[m].goal), null, o);
+    const startRow = { i: s, date: tl.dates[s], start: true, m: {} };
+    for (const m of METHODS) startRow.m[m] = { E: init.E, target: st[m].target, held: false, changed: false };
+    weeks.push(startRow);
+
+    for (let c = s + 7; c <= e + 1; c += 7) {
+      const lo = c - 7, hi = c - 1, r = rho(hi);
+      let foodDays = 0, wDays = 0, eis = [];
+      for (let i = lo; i <= hi; i++) { if (valid[i]) { foodDays++; eis.push(tl.kcal[i]); } if (wtOk(i)) wDays++; }
+      const meanEI = eis.length ? mean(eis) : null;
+      const base = T[lo - 1] ?? T[lo]; // 使い始めの週は、傾向の始まりを起点にする
+      const dT = T[hi] != null && base != null ? T[hi] - base : null;
+      const reasons = [];
+      if (foodDays < o.minFoodDays) reasons.push(`食事 ${foodDays}/7 日`);
+      if (wDays < o.minWeightDays) reasons.push(`体重 ${wDays}/7 日`);
+      const hold = reasons.length > 0;
+      const row = { i: c, date: tl.dates[Math.min(c, n - 1)], foodDays, wDays, meanEI, dT, reasons, m: {} };
+
+      for (const m of METHODS) {
+        const x = st[m]; let held = hold, note = "", ci = null;
+        if (!hold) {
+          if (m === "A" || m === "B") {
+            const w = windowEstimate(tl, valid, Math.max(c - o.window, from), hi, r);
+            if (!w) { held = true; note = "窓の記録が足りない"; }
+            else {
+              ci = w.ci;
+              if (m === "B" && w.ci > o.ciMax) { held = true; note = `不確か ±${Math.round(w.ci)}`; }
+              else x.E = w.E;
+            }
+          } else {
+            if (dT == null || meanEI == null) { held = true; note = "傾向なし"; }
+            else {
+              const pred = (meanEI - x.E) * 7 / r, err = pred - dT; // kg
+              x.streak = Math.sign(err) === Math.sign(x.err) ? x.streak + 1 : 0;
+              x.err = err;
+              const k = Math.min(o.kMax, o.k0 * (foodDays / 7) * (1 + x.streak)); // 1 週目は控えめ、同じ向きが続けば大きく
+              x.E += k * r * err / 7;
+              note = `k=${k.toFixed(2)}`;
+            }
+          }
+        }
+        const prev = x.target;
+        if (!held && T[hi] != null) x.target = limitTarget(goalTarget(x.E, T[hi], tl.dates[Math.min(c, n - 1)], o.goal, r, x.goal), prev, o);
+        row.m[m] = { E: x.E, target: x.target, held, changed: x.target !== prev, note, ci };
+      }
+      weeks.push(row);
+    }
+
+    // 答え合わせ: 各週の推定消費量と、その後 28 日に実際に食べた量から、傾向の変化を予測して比べる
+    const summary = {};
+    for (const m of METHODS) {
+      const errs = [];
+      for (const w of weeks) {
+        const a = w.i, b = a + 27; if (b > e || T[a - 1] == null || T[b] == null) continue;
+        const eis = []; for (let i = a; i <= b; i++) if (valid[i]) eis.push(tl.kcal[i]);
+        if (eis.length < 14) continue;
+        const fill = mean(eis); let pred = 0;
+        for (let i = a; i <= b; i++) pred += ((valid[i] ? tl.kcal[i] : fill) - w.m[m].E) / rho(i);
+        errs.push(Math.abs(pred - (T[b] - T[a - 1])) * rho(b) / 28);
+      }
+      const ws = weeks.slice(1), ch = ws.filter(w => w.m[m].changed);
+      const steps = ch.map((w, k) => Math.abs(w.m[m].target - (weeks[weeks.indexOf(w) - 1].m[m].target)));
+      summary[m] = {
+        err: errs.length ? median(errs) : null, errN: errs.length,
+        changes: ch.length, weeks: ws.length, held: ws.filter(w => w.m[m].held).length,
+        meanStep: steps.length ? mean(steps) : 0, maxStep: steps.length ? Math.max(...steps) : 0,
+        lastE: weeks[weeks.length - 1].m[m].E, lastTarget: weeks[weeks.length - 1].m[m].target,
+      };
+    }
+    return { tl, s, e, T, valid, weeks, summary, init, rhoAt: rho };
+  }
+
+  return { run, METHODS, PAL, addDays, diffDays };
+})();
+</script>
+
+<script>
+// ---- ここから下は捨てるページ ----
+
+// 作り物の系列（data.local.js が無いとき）。実データと同じ日付の形にして、同じシナリオが動くようにする
+function syntheticData() {
+  let a = 7; const rnd = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(2 * Math.PI * rnd());
+  const days = {}; let W = 72, d = "2024-12-20";
+  while (d <= "2026-09-25") {
+    const E = 1350 + 13 * W + 60 * gauss();
+    let plan = d < "2025-05-16" ? 2250 : d < "2025-10-20" ? E - 60 : d < "2026-03-01" ? 1850 : d < "2026-05-01" ? 2500 : 2200;
+    const I = Math.max(600, plan + 380 * gauss());
+    W += (I - E) / 7700;
+    const r = {}, dow = new Date(d + "T00:00:00Z").getUTCDay();
+    const logging = !(d >= "2025-05-16" && d < "2025-10-20");
+    if (logging && rnd() > 0.08) r.wt = Math.round((W + 0.45 * gauss() + (dow === 0 || dow === 1 ? 0.3 : 0)) * 10) / 10;
+    if (logging && d >= "2024-12-31" && rnd() > 0.07) r.kcal = Math.round(rnd() < 0.03 ? I * 0.25 : I);
+    if (r.wt) r.bf = 20;
+    if (Object.keys(r).length) days[d] = r;
+    d = Expenditure.addDays(d, 1);
+  }
+  return { label: "作り物の系列（data.local.js が無いため）", profile: { sex: "male", birth: "1995-04-22", height: 172 }, days };
+}
+const DATA = window.NUTORI_DATA || syntheticData();
+document.getElementById("dataLabel").textContent = DATA.label;
+const LAST = Object.keys(DATA.days).sort().pop();
+
+const BASE = {
+  start: "2025-10-20", end: LAST, init: "formula", pal: "mid", rho: "7700", alpha: 0.1, excludePartial: true,
+  window: 28, ciMax: 250, k0: 0.25, kMax: 0.75, minFoodDays: 4, minWeightDays: 1,
+  goal: { type: "cut", weight: 64, deadline: "2026-02-28" }, maxStep: 9999, deadband: 0,
+};
+let opts = structuredClone(BASE), prevSummary = null;
+
+const CONTROLS = [
+  { key: "start", label: "使い始めた日", type: "date" },
+  { key: "end", label: "見る範囲の終わり", type: "date" },
+  { key: "init", label: "使い始めの推定消費量", options: [["formula", "式 × 活動量（過去の記録を使わない）"], ["history", "過去 28 日の記録から逆算"]] },
+  { key: "pal", label: "活動量（3択）", options: [["low", "あまり動かない（×1.4）"], ["mid", "ふつう（×1.6）"], ["high", "よく動く（×1.8）"]] },
+  { key: "rho", label: "体重 1kg のエネルギー（ρ）", options: [["7700", "7,700 kcal（3,500 kcal/lb）"], ["9100", "9,100 kcal（Hall & Chow）"], ["forbes", "体脂肪率から（Forbes）"]] },
+  { key: "alpha", label: "体重の傾向のならし方", options: [[0.2, "速い（新しい値の重み 0.2）"], [0.1, "ふつう（0.1、Hacker's Diet）"], [0.05, "遅い（0.05）"]], num: true },
+  { key: "excludePartial", label: "部分的な記録の日", options: [[true, "除く（直近の中央値の半分未満）"], [false, "そのまま使う"]], bool: true },
+  { key: "window", label: "A・B の窓", options: [[14, "14 日"], [28, "28 日"], [42, "42 日"]], num: true },
+  { key: "ciMax", label: "B が見送る不確かさ（95%）", options: [[150, "±150 kcal 超"], [250, "±250 kcal 超"], [400, "±400 kcal 超"]], num: true },
+  { key: "k0", label: "C の1週目の重み", options: [[0.15, "0.15（慎重）"], [0.25, "0.25"], [0.5, "0.5（速い）"]], num: true },
+  { key: "minFoodDays", label: "見送る: 食事の記録が 7 日中", options: [[0, "見送らない"], [4, "4 日未満"], [6, "6 日未満"]], num: true },
+  { key: "goal", label: "目標", options: [["cut", "減量: 2026-02-28 までに 64kg、その後は維持"], ["cut2", "減量: 2026-06-30 までに 62kg、その後は維持"], ["maintain", "維持: 使い始めた日の体重"]], goal: true },
+  { key: "maxStep", label: "1回に動かす目安の上限", options: [[9999, "上限なし"], [200, "200 kcal"], [100, "100 kcal"]], num: true },
+  { key: "deadband", label: "目安を動かさない小さな変化", options: [[0, "なし（10 kcal 単位で動かす）"], [50, "±50 kcal 未満"], [100, "±100 kcal 未満"]], num: true },
+];
+const GOALS = {
+  cut: { type: "cut", weight: 64, deadline: "2026-02-28" },
+  cut2: { type: "cut", weight: 62, deadline: "2026-06-30" },
+  maintain: { type: "maintain", weight: null },
+};
+const goalKey = g => Object.keys(GOALS).find(k => JSON.stringify(GOALS[k]) === JSON.stringify(g)) || "cut";
+
+function renderControls() {
+  const el = document.getElementById("controls"); el.innerHTML = "";
+  for (const c of CONTROLS) {
+    const lab = document.createElement("label"); lab.textContent = c.label;
+    let input;
+    if (c.type === "date") {
+      input = document.createElement("input"); input.type = "date"; input.value = opts[c.key];
+      input.onchange = () => { opts[c.key] = input.value; update(); };
+    } else {
+      input = document.createElement("select");
+      for (const [v, t] of c.options) { const op = document.createElement("option"); op.value = String(v); op.textContent = t; input.appendChild(op); }
+      input.value = c.goal ? goalKey(opts.goal) : String(opts[c.key]);
+      input.onchange = () => {
+        const v = input.value;
+        if (c.goal) opts.goal = structuredClone(GOALS[v]);
+        else opts[c.key] = c.num ? +v : c.bool ? v === "true" : v;
+        update();
+      };
+    }
+    lab.appendChild(input); el.appendChild(lab);
+  }
+}
+
+// ---- シナリオ ----
+const SCENARIOS = [
+  {
+    name: "記録のない人の使い始め",
+    desc: "2025-10-20 に初めて使う人として、式 × 活動量から始める。式はこの人の実際の消費量より高く出るので、そこから各手法がどれだけの週数で実際の値に寄っていくかを見る。",
+    watch: "最初の数週の推定消費量の線。A・B は窓が短いうちは荒れ、C はゆっくり寄る。活動量の3択を変えると、C の寄り方の遅さが目立つ。",
+    base: { start: "2025-10-20", end: "2026-01-31", init: "formula" },
+    steps: [
+      ["活動量を「ふつう」で始める", { pal: "mid" }],
+      ["「よく動く」を選んでいたら", { pal: "high" }],
+      ["「あまり動かない」を選んでいたら", { pal: "low" }],
+      ["C を速くする（1週目の重み 0.5）", { k0: 0.5 }],
+    ],
+  },
+  {
+    name: "過去の記録がある人",
+    desc: "2026-03-01 から使い始めた人として、ヘルスケアにある過去 28 日の体重と食べた量から初日の推定消費量を逆算する場合と、式で始める場合を比べる。",
+    watch: "カードの「使い始めの推定消費量」と、最初の 4 週の目安の動き。逆算で始めると最初から寄っているか。",
+    base: { start: "2026-03-01", end: "2026-06-30", init: "formula", goal: GOALS.maintain },
+    steps: [
+      ["式 × 活動量で始める", { init: "formula" }],
+      ["過去 28 日の記録から逆算して始める", { init: "history" }],
+    ],
+  },
+  {
+    name: "記録の空白をまたぐ",
+    desc: "2025-01-08 から使っていた人が、2025-05 中旬から 10 月まで記録をやめ、また戻ってきた場合。見送りの間は前の値を持ち越す。",
+    watch: "空白の間の赤い点（見送り）と、戻ってきた直後の推定消費量。A は窓が空なので戻ってすぐは見送り、C は5か月前の値から直し始める。",
+    base: { start: "2025-01-08", end: "2025-12-31", init: "formula", goal: GOALS.maintain },
+    steps: [
+      ["そのまま見る", {}],
+      ["見送りの条件をなくす", { minFoodDays: 0 }],
+      ["条件を厳しくする（6 日未満で見送り）", { minFoodDays: 6 }],
+    ],
+  },
+  {
+    name: "部分的な記録の日",
+    desc: "2026-08 と 2026-09 には 400 kcal 台の日がある（記録し忘れた食事がある日）。2026-09-22 は FoodNoms から MacroFactor に乗り換えた日で、1日に2つの出どころが書き込んでいる。",
+    watch: "「除く」と「そのまま使う」を切り替えたときの 8 月・9 月の推定消費量と、週の表の「食事」の日数。",
+    base: { start: "2026-06-01", end: LAST, init: "history", goal: GOALS.maintain },
+    steps: [
+      ["部分的な記録の日を除く", { excludePartial: true }],
+      ["そのまま使う", { excludePartial: false }],
+    ],
+  },
+  {
+    name: "ρ の違い",
+    desc: "減量期（2025-10-20 から 2026-02-28 まで）に、体重 1kg を何 kcal に換えるかを変える。体脂肪率から出す（Forbes）と、この人は体脂肪が少ないので約 6,000 kcal/kg になる。",
+    watch: "推定消費量の水準の差と、答え合わせの誤差。減量が速い時期ほど ρ の差が消費量の差になる。",
+    base: { start: "2025-10-20", end: "2026-02-28", init: "formula" },
+    steps: [
+      ["7,700 kcal", { rho: "7700" }],
+      ["9,100 kcal", { rho: "9100" }],
+      ["体脂肪率から（Forbes）", { rho: "forbes" }],
+    ],
+  },
+  {
+    name: "目安を揺らさない",
+    desc: "1年近くを維持の目標で見る。推定消費量が週ごとに少し動くたびに1日の目安を動かすと、「1日の目安の変更」の知らせが毎週出てしまう。上限と、動かさない幅を足していく。",
+    watch: "カードの「目安を変えた週」と「1回の変化の平均」。答え合わせの誤差がどれだけ悪くなるかも。",
+    base: { start: "2025-10-20", end: LAST, init: "formula", goal: GOALS.maintain },
+    steps: [
+      ["制限なし", { maxStep: 9999, deadband: 0 }],
+      ["1回 200 kcal まで", { maxStep: 200 }],
+      ["±50 kcal 未満は動かさない", { deadband: 50 }],
+      ["±100 kcal 未満は動かさない", { deadband: 100 }],
+    ],
+  },
+];
+let scenarioIdx = 0, stepIdx = 0;
+
+function renderScenarios() {
+  const tabs = document.getElementById("tabs"); tabs.innerHTML = "";
+  SCENARIOS.forEach((sc, i) => {
+    const b = document.createElement("button"); b.textContent = sc.name; b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", i === scenarioIdx); b.onclick = () => startScenario(i); tabs.appendChild(b);
+  });
+  const sc = SCENARIOS[scenarioIdx], el = document.getElementById("scenario");
+  el.innerHTML = `<p>${sc.desc}</p><p class="watch"><b>見るところ</b>: ${sc.watch}</p><div class="steps" id="steps"></div>`;
+  const steps = document.getElementById("steps");
+  sc.steps.forEach(([label, set], i) => {
+    if (i) { const a = document.createElement("span"); a.className = "arrow"; a.textContent = "→"; steps.appendChild(a); }
+    const b = document.createElement("button"); b.textContent = `${i + 1}. ${label}`;
+    b.className = i === stepIdx ? "primary" : i < stepIdx ? "done" : "";
+    b.onclick = () => { Object.assign(opts, structuredClone(set)); stepIdx = i + 1; renderScenarios(); renderControls(); update(); };
+    steps.appendChild(b);
+  });
+}
+function startScenario(i) {
+  scenarioIdx = i; stepIdx = 0;
+  opts = Object.assign(structuredClone(BASE), structuredClone(SCENARIOS[i].base));
+  prevSummary = null; renderScenarios(); renderControls(); update();
+}
+
+// ---- グラフ ----
+const W = 1000, PADL = 48, PADR = 12;
+function chart(elId, { x0, x1, y0, y1, h = 220, layers, hover, marks = [] }) {
+  const el = document.getElementById(elId);
+  const X = i => PADL + (i - x0) / Math.max(1, x1 - x0) * (W - PADL - PADR);
+  const Y = v => 10 + (1 - (v - y0) / (y1 - y0)) * (h - 34);
+  let svg = `<svg viewBox="0 0 ${W} ${h}" role="img">`;
+  const step = niceStep((y1 - y0) / 5);
+  for (let v = Math.ceil(y0 / step) * step; v <= y1; v += step)
+    svg += `<line x1="${PADL}" x2="${W - PADR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${PADL - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmtNum(v)}</text>`;
+  const { dates } = RES.tl;
+  for (let i = x0; i <= x1; i++) if (dates[i] && dates[i].endsWith("-01"))
+    svg += `<line x1="${X(i)}" x2="${X(i)}" y1="10" y2="${h - 24}" stroke="var(--grid)"/><text x="${X(i) + 3}" y="${h - 8}" font-size="11" fill="var(--muted)">${dates[i].slice(2, 7).replace("-", "/")}</text>`;
+  for (const m of marks) svg += `<line x1="${X(m.i)}" x2="${X(m.i)}" y1="10" y2="${h - 24}" stroke="var(--accent)" stroke-dasharray="3 3" opacity=".6"/><text x="${X(m.i) + 3}" y="20" font-size="11" fill="var(--accent)">${m.label}</text>`;
+  for (const L of layers) {
+    if (L.type === "dots") for (const [i, v] of L.pts) svg += `<circle cx="${X(i)}" cy="${Y(v)}" r="${L.r || 2}" fill="${L.color}"/>`;
+    if (L.type === "bars") { const bw = Math.max(1, (W - PADL - PADR) / (x1 - x0 + 1) - 0.5); for (const [i, v] of L.pts) { const yv = Y(Math.min(y1, Math.max(y0, v))); svg += `<rect x="${X(i) - bw / 2}" y="${yv}" width="${bw}" height="${Y(y0) - yv}" fill="${L.color}"/>`; } }
+    if (L.type === "line" || L.type === "step") {
+      let d = "", prev = null;
+      for (const [i, v] of L.pts) {
+        if (v == null) { prev = null; continue; }
+        if (prev == null) d += `M${X(i)},${Y(v)}`; else d += L.type === "step" ? `H${X(i)}V${Y(v)}` : `L${X(i)},${Y(v)}`;
+        prev = v;
+      }
+      if (L.type === "step" && L.pts.length) d += `H${X(x1)}`;
+      svg += `<path d="${d}" fill="none" stroke="${L.color}" stroke-width="${L.width || 2}" ${L.dash ? `stroke-dasharray="${L.dash}"` : ""} opacity="${L.opacity || 1}"/>`;
+    }
+  }
+  svg += `<line id="${elId}-x" y1="10" y2="${h - 24}" stroke="var(--muted)" visibility="hidden"/><rect x="${PADL}" y="0" width="${W - PADL - PADR}" height="${h}" fill="transparent"/></svg><div class="tip"></div>`;
+  el.innerHTML = svg;
+  const svgEl = el.querySelector("svg"), tip = el.querySelector(".tip"), xl = el.querySelector(`#${elId}-x`);
+  svgEl.onmousemove = ev => {
+    const r = svgEl.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+    const i = Math.round(x0 + (px - PADL) / (W - PADL - PADR) * (x1 - x0));
+    if (i < x0 || i > x1) return;
+    xl.setAttribute("x1", X(i)); xl.setAttribute("x2", X(i)); xl.setAttribute("visibility", "visible");
+    tip.innerHTML = hover(i); tip.style.display = "block";
+    const left = (ev.clientX - r.left) + 14; tip.style.left = Math.min(left, r.width - tip.offsetWidth - 4) + "px"; tip.style.top = "8px";
+  };
+  svgEl.onmouseleave = () => { tip.style.display = "none"; xl.setAttribute("visibility", "hidden"); };
+}
+const niceStep = r => { const p = 10 ** Math.floor(Math.log10(r)), f = r / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; };
+const fmtNum = v => Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : (Math.round(v * 10) / 10).toString();
+const kc = v => v == null ? "—" : Math.round(v).toLocaleString();
+
+// 週の値を日ごとの階段にする
+function stepSeries(key, m) { return RES.weeks.map(w => [w.i, w.m[m][key]]); }
+function weekAt(i) { let w = RES.weeks[0]; for (const x of RES.weeks) if (x.i <= i) w = x; return w; }
+
+let RES;
+function update() {
+  RES = Expenditure.run(DATA, opts);
+  const { tl, s, e, T, weeks, summary, init } = RES, x0 = Math.max(0, s - 14), x1 = e;
+  const { dates } = tl;
+  const colors = { A: "var(--mA)", B: "var(--mB)", C: "var(--mC)" };
+  const marks = [{ i: s, label: "使い始め" }];
+  if (opts.goal.deadline) { const di = dates.indexOf(opts.goal.deadline); if (di > x0 && di < x1) marks.push({ i: di, label: "期限" }); }
+
+  // 体重
+  const wpts = [], tpts = [];
+  for (let i = x0; i <= x1; i++) { if (tl.wt[i] != null) wpts.push([i, tl.wt[i]]); tpts.push([i, T[i]]); }
+  const wv = wpts.map(p => p[1]);
+  const gl = opts.goal.type === "cut" ? [[s, opts.goal.weight], [x1, opts.goal.weight]] : [];
+  chart("chWeight", {
+    x0, x1, y0: Math.floor(Math.min(...wv, ...(gl.length ? [opts.goal.weight] : [])) - 0.5), y1: Math.ceil(Math.max(...wv) + 0.5), h: 200, marks,
+    layers: [{ type: "dots", pts: wpts, color: "var(--faint)" }, { type: "line", pts: tpts, color: "var(--ink)", width: 2 }, { type: "line", pts: gl, color: "var(--accent)", dash: "5 4", opacity: .5 }],
+    hover: i => `${dates[i]}<br>体重 ${tl.wt[i] ?? "—"} kg<br>傾向 ${T[i] != null ? T[i].toFixed(2) : "—"} kg`,
+  });
+
+  // 推定消費量
+  const ipts = []; for (let i = x0; i <= x1; i++) if (tl.kcal[i] != null) ipts.push([i, tl.kcal[i]]);
+  const expVals = weeks.flatMap(w => Expenditure.METHODS.map(m => w.m[m].E));
+  const holdPts = m => weeks.filter(w => w.m[m].held).map(w => [w.i, w.m[m].E]);
+  const hoverWeek = i => {
+    const w = weekAt(i);
+    return `${dates[i]}　食べた量 ${kc(tl.kcal[i])} kcal${tl.kcal[i] != null && !RES.valid[i] ? "（除外）" : ""}${tl.src[i] ? `<br>ほかの出どころ: ${Object.entries(tl.src[i]).map(([k, v]) => `${k} ${v}`).join(", ")}` : ""}<br>` +
+      Expenditure.METHODS.map(m => `<span style="color:${colors[m]}">${m}</span> 消費 ${kc(w.m[m].E)}　目安 ${kc(w.m[m].target)}${w.m[m].held ? "（見送り）" : ""}`).join("<br>") + `<br><span class="muted">${w.date} の見直し時点</span>`;
+  };
+  chart("chExp", {
+    x0, x1, y0: Math.floor(Math.min(1000, ...expVals) / 250) * 250, y1: Math.ceil(Math.max(3500, ...expVals) / 250) * 250, h: 280, marks,
+    layers: [{ type: "bars", pts: ipts, color: "var(--intake)" },
+      ...Expenditure.METHODS.map(m => ({ type: "step", pts: stepSeries("E", m), color: colors[m], width: 2.2, dash: m === "B" ? "6 4" : null })),
+      ...Expenditure.METHODS.map(m => ({ type: "dots", pts: holdPts(m), color: "var(--hold)", r: 3 }))],
+    hover: hoverWeek,
+  });
+
+  // 1日の目安
+  const tv = weeks.flatMap(w => Expenditure.METHODS.map(m => w.m[m].target)).filter(v => v != null);
+  chart("chTarget", {
+    x0, x1, y0: Math.floor((Math.min(...tv) - 100) / 250) * 250, y1: Math.ceil((Math.max(...tv) + 100) / 250) * 250, h: 200, marks,
+    layers: Expenditure.METHODS.map(m => ({ type: "step", pts: stepSeries("target", m), color: colors[m], width: 2.2, dash: m === "B" ? "6 4" : null })),
+    hover: hoverWeek,
+  });
+
+  // まとめのカード
+  const names = { A: `A 窓で逆算（${opts.window} 日）`, B: `B 逆算＋不確かなら見送り`, C: `C 予測のずれで少しずつ直す` };
+  const sum = document.getElementById("summary");
+  const d = (m, k, unit = "", better = -1) => {
+    if (!prevSummary || prevSummary[m][k] == null || summary[m][k] == null) return "";
+    const x = summary[m][k] - prevSummary[m][k]; if (Math.abs(x) < 0.5) return "";
+    return `<span class="delta">${x > 0 ? "+" : ""}${Math.round(x)}${unit}</span>`;
+  };
+  sum.innerHTML = `<div class="mcard" style="border-color:var(--faint)"><h3>使い始めの推定消費量</h3>
+      <div class="kv"><span>採った値</span><b class="num">${kc(init.E)} kcal</b></div>
+      <div class="kv"><span class="muted">出し方</span><span>${init.source}</span></div>
+      <div class="kv"><span class="muted">式 × 活動量</span><span class="num">${kc(init.formula)}</span></div>
+      <div class="kv"><span class="muted">過去 28 日から逆算</span><span class="num">${kc(init.history)}</span></div>
+      <div class="kv"><span class="muted">見送った週</span><span class="num">${weeks.slice(1).filter(w => w.reasons.length).length} / ${weeks.length - 1}</span></div></div>` +
+    Expenditure.METHODS.map(m => {
+      const x = summary[m];
+      return `<div class="mcard" style="border-color:${colors[m]}"><h3>${names[m]}</h3>
+        <div class="kv"><span>答え合わせの誤差（中央値）</span><b class="num">${x.err == null ? "—" : `±${kc(x.err)} kcal/日`}${d(m, "err")}</b></div>
+        <div class="kv"><span class="muted">答え合わせした週</span><span class="num">${x.errN}</span></div>
+        <div class="kv"><span class="muted">目安を変えた週</span><span class="num">${x.changes} / ${x.weeks}${d(m, "changes")}</span></div>
+        <div class="kv"><span class="muted">1回の変化の平均・最大</span><span class="num">${kc(x.meanStep)}・${kc(x.maxStep)} kcal${d(m, "meanStep")}</span></div>
+        <div class="kv"><span class="muted">見送った週</span><span class="num">${x.held}${d(m, "held")}</span></div>
+        <div class="kv"><span class="muted">最後の推定消費量・目安</span><span class="num">${kc(x.lastE)}・${kc(x.lastTarget)}${d(m, "lastE")}</span></div></div>`;
+    }).join("");
+  prevSummary = summary;
+
+  // 週の表
+  const tb = document.getElementById("weeks");
+  tb.innerHTML = `<tr><th>見直しの日</th><th>食事</th><th>体重</th><th>平均の食べた量</th><th>傾向の変化</th>` +
+    Expenditure.METHODS.map(m => `<th style="color:${colors[m]}">${m} 消費</th><th style="color:${colors[m]}">${m} 目安</th>`).join("") + `<th class="l">メモ</th></tr>` +
+    weeks.map(w => `<tr>
+      <td class="num">${w.date}${w.start ? " 使い始め" : ""}</td>
+      <td class="num">${w.start ? "" : `${w.foodDays}/7`}</td><td class="num">${w.start ? "" : `${w.wDays}/7`}</td>
+      <td class="num">${kc(w.meanEI)}</td><td class="num">${w.dT == null ? "—" : (w.dT > 0 ? "+" : "") + w.dT.toFixed(2) + " kg"}</td>
+      ${Expenditure.METHODS.map(m => { const x = w.m[m]; return `<td class="num m" style="${x.held ? "color:var(--hold)" : ""}">${kc(x.E)}</td><td class="num ${x.changed && !w.start ? "changed" : ""}">${kc(x.target)}</td>`; }).join("")}
+      <td class="l muted">${[w.reasons?.length ? "見送り: " + w.reasons.join("、") : "", ...Expenditure.METHODS.map(m => w.m[m].note ? `${m}: ${w.m[m].note}` : "")].filter(Boolean).join("　")}</td></tr>`).join("");
+}
+
+renderControls();
+startScenario(0);
+</script>
+</body>
+</html>
