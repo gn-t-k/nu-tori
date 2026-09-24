@@ -12,13 +12,13 @@
 ### ファイルと公開するもの
 
 - 公開するものは export で数える
-- ファイル名は export する名前のケバブケースにする（`router-adapter.tsx` → `export const RouterAdapter`、`get-user-data.ts` → `export const getUserData`、`use-foo.ts` → `export const useFoo`）
+- ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export const WeightRecordStore`）
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/index.ts` のディレクトリにする
 
 ### ファイルの中はトップダウン
 
 - `export default` と `export const` をファイルの先頭の近くに置く
-- `const` には TDZ があるので、トップレベルで評価する式（`export default` の値の組み立てなど）が参照するものは、その式より前に書く。関数の本体の中で参照するものは、後ろに書いてよい
+- `const` には TDZ があるので、トップレベルで評価する式（`export default` の値の組み立てなど）が参照するものは、その式より前に書く。トップレベルで呼ばない関数の本体の中で参照するものは、後ろに書いてよい
 
 ### 状態は論理状態の数で型を作る
 
@@ -34,7 +34,7 @@ type CreateState = "empty" | "duplicate" | "creatable";
 
 ### 関数は処理の流れで分ける
 
-- 判別可能なユニオンを1つの関数で受けるときは、switch ですべての case を書く。漏れが型エラーになるのは、戻り値の型を書いた関数で各 case から return するときなので、その形にして `default` を置かない。値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
+- タグ付きユニオンを1つの関数で受けるときは、switch ですべての case を書く。漏れが型エラーになるのは、strict の下で、戻り値の型を書いた関数で各 case から return するときなので、その形にして `default` を置かない。値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
 
 ### 値が無いことを許すのは、必要な事情があるときだけ
 
@@ -86,6 +86,7 @@ describe("トークン発行に失敗したとき", () => {
 
 ### 依存の差し替え
 
+- Vitest は `restoreMocks: true` で動かし、spy が次のテストに漏れないようにする。条件を `beforeEach` だけで決める構造は、これを前提にする
 - モジュールから export された関数を差し替えるときは、mock のファイルを作る。テスト対象に渡すコールバックは、その場で `vi.fn()` を書く
 - mock のファイルでは、`import * as module` でモジュール全体を読み込み、`vi.spyOn(module, "関数名")` で差し替える
 - 成功は `mockXxxOk`、失敗は `mockXxxError` にし、`Xxx` は差し替える関数の名前に対応させる（`createDatabase` → `mockCreateDatabaseOk`）
@@ -111,11 +112,11 @@ export const mockCreateDatabaseError = (error: CreateDatabaseError) => {
 ```ts
 let createDatabaseSpy: ReturnType<typeof mockCreateDatabaseOk>;
 beforeEach(() => {
-  createDatabaseSpy = mockCreateDatabaseOk({ name: "test-db" });
+  createDatabaseSpy = mockCreateDatabaseOk();
 });
-test("指定した名前でデータベースを作ること", async () => {
-  await registerUser(input);
-  expect(createDatabaseSpy).toHaveBeenCalledWith("test-db");
+test("ユーザーの ID の名前でデータベースを作ること", async () => {
+  await registerUser({ userId: "user-1" });
+  expect(createDatabaseSpy).toHaveBeenCalledWith("user-1");
 });
 ```
 
