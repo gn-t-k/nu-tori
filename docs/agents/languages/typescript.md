@@ -73,7 +73,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 
 - まとまりは `describe`、テストは `test` で書く
 - 「各テストの前の準備」は、その条件の `describe` のすぐ下の `beforeEach` で行う
-- パラメータ化テストは `test.each`・`test.for`・`it.each`・`describe.each`・`describe.for` のこと
+- パラメータ化テストは、`test`・`it`・`describe` に `.each`・`.for` を付けたもののこと
 
 ```ts
 describe("トークン発行に失敗したとき", () => {
@@ -113,7 +113,7 @@ export const mockCreateDatabaseError = (error: CreateDatabaseError) => {
 };
 ```
 
-- 返し方は、差し替える関数に合わせる（同期の関数なら `mockReturnValue`、throw する関数の失敗なら `mockRejectedValue`、Result を返す関数なら成功・失敗の Result）
+- 返し方は、差し替える関数に合わせる。Promise を返す関数なら `mockResolvedValue`・`mockRejectedValue`、同期の関数なら `mockReturnValue`・`mockImplementation(() => { throw error; })`、Result を返す関数なら成功・失敗の Result を返す
 - 呼び出しの引数を確かめるテストは、`let spy: ReturnType<typeof mockXxxOk>` で型を付け、`beforeEach` で代入して `test` で参照する。結果だけを確かめるテストは、`beforeEach` で `mockXxxOk()` を呼ぶだけにし、spy を持たない
 
 ```ts
