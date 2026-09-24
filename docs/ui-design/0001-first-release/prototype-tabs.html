@@ -1,0 +1,229 @@
+<title>タブの分け方</title>
+<!--
+  PROTOTYPE（捨てる前提）。⑥ の問い「タブを持たない決定を覆し、タブで分けるなら、どう分けるか」に答えるためのもの。
+  タイムラインは、チャットと同じく一番新しい出来事を一番下に並べ、会話の入力欄を下に固定する（両案で同じ）。
+  #B と #C で切り替える。下の黒いバーか ← → キーでも切り替えられる。
+  B: タブ「今日」「タイムライン」。今日にファインダー・目標の要約・体重の入力・習慣トラッカー・1日の目安を集める。起動時は今日
+  C: タブ「タイムライン」「進み具合」。撮るは会話の入力欄の横のボタンから全画面のカメラで。目標の要約・習慣トラッカー・1日の目安は進み具合へ。起動時はタイムライン
+  タブのない今の構成（案A）は、ブランチ prototype/0001-timeline の prototype-timeline.html。タブの名前、文言、見た目は⑦で決める。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#e9ecef; --phone:#fbfcfd; --ink:#22272d; --muted:#69727c; --line:#c3c9d0; --soft:#eef1f4;
+  --accent:#34597f; --hi:#fff3c4; --pill:#15181b; --pill-ink:#f3f5f7; --finder:#2b3036; --finder-ink:#d9dee3;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+    --accent:#8fb2d8; --hi:#4a4220; --pill:#f3f5f7; --pill-ink:#15181b; --finder:#0d0f11; --finder-ink:#aab2ba; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --phone:#1b1f23; --ink:#e2e6ea; --muted:#9aa3ad; --line:#3a4148; --soft:#242a30;
+  --accent:#8fb2d8; --hi:#4a4220; --pill:#f3f5f7; --pill-ink:#15181b; --finder:#0d0f11; --finder-ink:#aab2ba; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:13px/1.5 "BIZ UDPGothic",system-ui,-apple-system,"Hiragino Sans",sans-serif;padding:16px 16px 96px}
+.wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:16px}
+.col{display:flex;flex-direction:column;gap:10px;width:min(390px,100%)}
+.lead{color:var(--muted);margin:0}
+.lead b{color:var(--ink)}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.link{color:var(--accent)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+.phone{position:relative;width:100%;height:760px;background:var(--phone);border:2px solid var(--line);border-radius:30px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line);min-height:46px}
+.bar h1{font-size:15px;margin:0;font-weight:700;text-align:center;flex:1}
+.bar .l,.bar .r{min-width:40px}
+.bar .r{text-align:right}
+.scroll{flex:1;overflow:auto;padding:10px 12px 16px;display:flex;flex-direction:column;gap:10px}
+.tabs{display:flex;border-top:1px solid var(--line);padding:6px 0 16px;background:var(--phone)}
+.tabs button{flex:1;text-align:center;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+.tabs button i{width:22px;height:22px;border-radius:6px;border:1.5px solid currentColor}
+.tabs button[aria-selected="true"]{color:var(--accent);font-weight:700}
+.tabs button[aria-selected="true"] i{background:currentColor}
+
+.goal{border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;justify-content:space-between;gap:8px}
+.wt{border:2px solid var(--accent);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;background:var(--phone)}
+.wt label{font-weight:700;flex:1}
+.wt input{width:72px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--phone);text-align:right}
+.btn{border:1.5px solid var(--accent);color:var(--accent);border-radius:8px;padding:4px 10px;font-weight:700;white-space:nowrap}
+.finder{background:var(--finder);color:var(--finder-ink);border-radius:14px;display:flex;flex-direction:column;justify-content:space-between;padding:10px}
+.finder .c{flex:1;display:flex;align-items:center;justify-content:center;font-size:12px}
+.finder .row{display:flex;align-items:center;justify-content:space-between}
+.finder .row button{color:var(--finder-ink);font-size:12px;min-width:76px}
+.finder .row button:last-child{text-align:right}
+.shutter{width:56px;height:56px;border-radius:50%;border:3px solid var(--finder-ink);display:flex;align-items:center;justify-content:center;min-width:0!important}
+.shutter i{width:44px;height:44px;border-radius:50%;background:var(--finder-ink)}
+.cam{position:absolute;inset:0;z-index:5;border-radius:0;padding:52px 16px 34px}
+.cam .top{position:absolute;top:14px;left:16px;right:16px;display:flex;justify-content:space-between;color:var(--finder-ink)}
+.strip{display:flex;gap:8px;overflow-x:auto}
+.strip .m{flex:none;width:84px;border:1px solid var(--line);border-radius:10px;padding:5px;display:flex;flex-direction:column;gap:3px;font-size:11px}
+.strip .m.new{background:var(--hi)}
+.strip .ph{width:100%;height:48px}
+.sec{font-weight:700;font-size:12px;color:var(--muted);letter-spacing:.06em}
+.trk{display:grid;grid-template-columns:auto repeat(7,1fr);gap:3px 4px;align-items:center;font-size:11px}
+.trk .d{text-align:center;color:var(--muted)}
+.trk i{justify-self:center;width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line)}
+.trk i.on{background:var(--ink);border-color:var(--ink)}
+.meters{display:grid;grid-template-columns:34px 1fr auto;gap:4px 8px;align-items:center;font-size:11px}
+.meters .b{height:7px;border-radius:4px;background:var(--soft);overflow:hidden}
+.meters .b span{display:block;height:100%;background:var(--ink)}
+.dayh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding:10px 0 4px;font-weight:700}
+.dayh span{font-weight:400;color:var(--muted);font-size:12px}
+.ev{display:grid;grid-template-columns:42px 1fr;gap:8px;padding:4px 0;border-radius:8px;transition:background .6s}
+.ev .t{color:var(--muted);font-size:12px;padding-top:2px}
+.ev.new{background:var(--hi)}
+.meal{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.ph{width:40px;height:40px;border-radius:6px;background:var(--soft);flex:none}
+.meal .n{flex:1}
+.wrow{display:flex;justify-content:space-between;padding:2px 0}
+.talk{display:flex;flex-direction:column;gap:6px}
+.u{align-self:flex-end;max-width:85%;background:var(--soft);border-radius:12px;padding:6px 10px}
+.a{max-width:92%;border-left:2px solid var(--line);padding:2px 0 2px 10px}
+.card{border:1px solid var(--line);border-radius:10px;padding:6px 10px;display:flex;justify-content:space-between;gap:8px}
+.dock-in{border-top:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--phone)}
+.chips{display:flex;gap:6px;overflow-x:auto}
+.chips button{border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap;font-size:12px}
+.send{display:flex;gap:6px;align-items:center}
+.send input{flex:1;min-width:0;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--phone)}
+.camb{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:700;text-align:center!important;flex:none}
+
+.state{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);display:flex;flex-direction:column;gap:4px}
+.state b{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.cmp{border-collapse:collapse;width:100%;font-size:12px}
+.cmp th,.cmp td{border-top:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+.cmp th{color:var(--muted);font-weight:400}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--phone)}
+.reset{align-self:flex-start;border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;pointer-events:none}
+.dock nav{pointer-events:auto;display:flex;gap:4px;background:var(--pill);color:var(--pill-ink);border-radius:999px;padding:5px}
+.dock button{color:var(--pill-ink);padding:7px 14px;border-radius:999px}
+.dock button[aria-pressed="true"]{background:var(--pill-ink);color:var(--pill)}
+@media (prefers-reduced-motion: reduce){.ev{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="col">
+    <p class="lead" id="lead"></p>
+    <div class="phone" id="phone"></div>
+  </div>
+  <div class="col">
+    <div class="state"><b>いまの状態</b><div id="state"></div></div>
+    <p class="lead">例は Tさんの木曜の昼（12:40）。今朝の体重はまだ。撮る、体重の記録、プリセットか送るを押し、タブを行き来して比べる。新しい出来事は黄色く光る。食事や目標は押しても開かない。</p>
+    <div class="tw"><table class="cmp">
+      <tr><th></th><th>A タブなし（今）</th><th>B 今日｜タイムライン</th><th>C タイムライン｜進み具合</th></tr>
+      <tr><th>起動して撮るまで</th><td>1タップ</td><td>1タップ</td><td>2タップ（カメラを開く、撮る）</td></tr>
+      <tr><th>撮った食事が出る所</th><td>ファインダーの下</td><td>今日の「今日の食事」。タイムラインでは一番下</td><td>タイムラインの一番下</td></tr>
+      <tr><th>AI の発言が出る所</th><td>1日の目安の下（入力欄から遠い）</td><td>入力欄のすぐ上</td><td>入力欄のすぐ上</td></tr>
+      <tr><th>1日の目安を見る</th><td>開いてすぐ</td><td>開いてすぐ</td><td>タブを切り替える</td></tr>
+    </table></div>
+    <button class="reset" id="reset">はじめに戻す</button>
+  </div>
+</div>
+<div class="dock"><nav aria-label="案の切り替え"><button id="vB">B 今日｜タイムライン</button><button id="vC">C タイムライン｜進み具合</button></nav></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const days=[{h:'9月22日（火）',sum:'1,920 / 1,850 kcal'},{h:'昨日',d:'9月23日（水）',sum:'1,790 / 1,850 kcal'},{h:'今日',d:'9月24日（木）'}];
+function base(){return [
+  {day:0,t:'06:00',k:'weekly',n:'週の振り返り 9/15〜9/21',s:'傾向 -0.4 kg・間に合うペース'},
+  {day:0,t:'06:00',k:'target',n:'1日の目安が変わりました',s:'1,900 → 1,850 kcal'},
+  {day:0,t:'07:30',k:'weight',v:'72.8'},
+  {day:0,t:'12:10',k:'meal',n:'カレーライス',kcal:880},
+  {day:0,t:'20:00',k:'meal',n:'鶏むね肉のソテー・サラダ',kcal:610},
+  {day:1,t:'07:20',k:'weight',v:'72.6'},
+  {day:1,t:'07:50',k:'meal',n:'ヨーグルト・バナナ',kcal:230},
+  {day:1,t:'12:30',k:'meal',n:'焼き魚定食',kcal:720},
+  {day:1,t:'15:10',k:'talk',u:'夜の外食、何に気をつければいい？',a:'今日は残り 900 kcal ほどです。揚げ物を1品にして、ご飯を少なめにすると収まります。'},
+  {day:1,t:'19:30',k:'meal',n:'焼き鳥・ビール 2杯',kcal:840},
+  {day:2,t:'08:10',k:'meal',n:'トースト・ゆで卵・コーヒー',kcal:390},
+  {day:2,t:'10:45',k:'talk',u:'昼はコンビニになりそう。何を選べばいい？',a:'朝のたんぱく質が 18 g なので、サラダチキンかゆで卵を足して 30 g ほどにすると、夜が楽になります。'},
+  {day:2,t:'12:20',k:'meal',n:'サラダチキン・おにぎり 2個',kcal:560}
+];}
+const st={v:'B',tab:0,cam:false,ev:base(),weight:null,now:40,last:null,seq:0,taps:0,log:'まだ何も足していない'};
+const tabsOf=v=>v==='B'?['今日','タイムライン']:['タイムライン','進み具合'];
+const tlTab=()=>st.v==='B'?1:0;
+function nowT(){const m=12*60+st.now;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
+function evHTML(e){
+  let b='';
+  if(e.k==='meal')b='<div class="meal"><span class="ph"></span><span class="n">'+(e.pending?'<span class="muted">推定しています…</span>':esc(e.n))+'</span><span class="num muted">'+(e.pending?'':e.kcal+' kcal')+'</span></div>';
+  else if(e.k==='weight')b='<div class="wrow"><span>体重</span><span class="num">'+esc(e.v)+' kg</span></div>';
+  else if(e.k==='talk')b='<div class="talk"><div class="u">'+esc(e.u)+'</div><div class="a">'+(e.a?esc(e.a):'<span class="muted">考えています…</span>')+'</div></div>';
+  else b='<div class="card"><span>'+esc(e.n)+'</span><span class="muted">'+esc(e.s)+' ›</span></div>';
+  return '<div class="ev'+(e.id===st.last?' new':'')+'" data-id="'+(e.id??'')+'"><span class="t num">'+e.t+'</span>'+b+'</div>';
+}
+const byTime=(x,y)=>x.t<y.t?-1:x.t>y.t?1:(x.id??-1)-(y.id??-1);
+function kcalToday(){return st.ev.filter(e=>e.day===2&&e.k==='meal'&&!e.pending).reduce((s,e)=>s+e.kcal,0)}
+const goalH='<div class="goal"><span><b>減量</b>　あと 3.2 kg・あと 58 日</span><span class="link">間に合うペース ›</span></div>';
+const wtH=()=>st.weight?'':'<form class="wt" id="wf"><label for="wv">今朝の体重</label><input id="wv" inputmode="decimal" value="72.6"><span>kg</span><button class="btn" type="submit">記録</button></form>';
+function trkH(){const dn=['金','土','日','月','火','水','今日'];return '<div class="trk"><span></span>'+dn.map(d=>'<span class="d">'+d+'</span>').join('')+'<span>体重</span>'+[1,1,0,1,1,1,st.weight?1:0].map(o=>'<i class="'+(o?'on':'')+'"></i>').join('')+'<span>食事</span>'+dn.map(()=>'<i class="on"></i>').join('')+'</div>'}
+function metH(){const k=kcalToday(),pct=Math.min(100,Math.round(k/1850*100));return '<div class="meters num"><span>kcal</span><span class="b"><span style="width:'+pct+'%"></span></span><span>'+k.toLocaleString()+' / 1,850</span><span>P</span><span class="b"><span style="width:48%"></span></span><span>52 / 110 g</span><span>F</span><span class="b"><span style="width:55%"></span></span><span>30 / 55 g</span><span>C</span><span class="b"><span style="width:52%"></span></span><span>120 / 230 g</span></div>'}
+const finderRow='<div class="row"><button data-act="pick">写真を選ぶ</button><button class="shutter" data-act="shoot" aria-label="撮る"><i></i></button><button data-act="text">文章で記録</button></div>';
+function timelineH(){
+  let h='';days.forEach((d,i)=>{h+='<div class="dayh"><div>'+d.h+(d.d?'　<span>'+d.d+'</span>':'')+'</div>'+(i<2?'<span class="num">'+d.sum+'</span>':'')+'</div>';h+=st.ev.filter(e=>e.day===i).sort(byTime).map(evHTML).join('')});return h}
+function composerH(withCam){
+  return '<div class="dock-in">'+(st.v==='C'?wtH():'')+'<div class="chips"><button data-preset="ここまでの食事のフィードバック">ここまでの食事のフィードバック</button><button data-preset="次の食事のアドバイス">次の食事のアドバイス</button></div><form class="send" id="f">'+(withCam?'<button type="button" class="camb" data-act="opencam" aria-label="カメラを開く">撮る</button>':'')+'<input id="msg" placeholder="なんでも書いてください" aria-label="会話の入力欄"><button class="btn" type="submit">送る</button></form></div>';
+}
+function render(scrollBottom){
+  const names=tabsOf(st.v),tab=names[st.tab];
+  let body='',foot='';
+  if(st.v==='B'&&st.tab===0){
+    const today=st.ev.filter(e=>e.day===2&&e.k==='meal').sort(byTime).reverse();
+    body=goalH+wtH()+'<div class="finder" style="height:230px"><div class="c">ファインダー</div>'+finderRow+'</div>'+
+      '<div class="sec">今日の食事</div><div class="strip">'+today.map(e=>'<div class="m'+(e.id===st.last?' new':'')+'"><span class="ph"></span><span class="num">'+e.t+'</span><span class="num muted">'+(e.pending?'推定中…':e.kcal+' kcal')+'</span></div>').join('')+'</div>'+
+      '<div class="sec">記録の続き具合</div>'+trkH()+'<div class="sec">1日の目安</div>'+metH();
+  }else if(st.v==='C'&&st.tab===1){
+    body=goalH+'<div class="sec">記録の続き具合</div>'+trkH()+'<div class="sec">1日の目安</div>'+metH()+'<div class="card"><span>週の振り返り 9/15〜9/21</span><span class="muted">›</span></div>';
+  }else{body=timelineH();foot=composerH(st.v==='C')}
+  const prev=document.querySelector('#phone .scroll'),top=prev?prev.scrollTop:0;
+  $('phone').innerHTML='<div class="bar"><span class="l"></span><h1>'+tab+'</h1><span class="r link" aria-label="アカウント">人</span></div><div class="scroll" id="sc">'+body+'</div>'+foot+
+    '<div class="tabs" role="tablist">'+names.map((n,i)=>'<button role="tab" data-tab="'+i+'" aria-selected="'+(i===st.tab)+'"><i></i>'+n+'</button>').join('')+'</div>'+
+    (st.cam?'<div class="finder cam"><div class="top"><button data-act="closecam" style="color:inherit">閉じる</button><span>カメラ</span><span></span></div><div class="c">ファインダー（全画面）</div>'+finderRow+'</div>':'');
+  const sc=$('sc');sc.scrollTop=scrollBottom?sc.scrollHeight:top;
+  $('lead').innerHTML=st.v==='B'?'<b>B タブ「今日」「タイムライン」</b>　起動時は今日。撮る・体重・目標の要約・1日の目安を今日に集め、タイムラインはチャットのように下が新しい':'<b>C タブ「タイムライン」「進み具合」</b>　起動時はタイムライン（下が新しい）。撮るは入力欄の横から全画面のカメラで。目標の要約と1日の目安は進み具合へ';
+  $('vB').setAttribute('aria-pressed',st.v==='B');$('vC').setAttribute('aria-pressed',st.v==='C');
+  $('state').innerHTML='案: '+st.v+'　タブ: '+tab+'<br>'+st.log;
+}
+function seenInTab(){const sc=$('sc'),el=sc&&sc.querySelector('.new');if(!el)return false;const a=sc.getBoundingClientRect(),b=el.getBoundingClientRect();return b.top>=a.top&&b.bottom<=a.bottom}
+function add(e,after,label){
+  e.id=++st.seq;e.day=2;st.ev.push(e);st.last=e.id;st.cam=false;
+  const onTl=st.tab===tlTab();
+  render(onTl);
+  st.log='足した: '+e.t+' '+label+'<br>いまのタブで見えるか: '+(seenInTab()?'見える':'見えない（'+(st.v==='B'&&!onTl&&e.k==='talk'?'タイムラインのタブに出る':'画面の外')+'）')+'<br>起動からここまでのタップ: '+st.taps;
+  render(onTl);
+  if(after)setTimeout(()=>{after(e);render(st.tab===tlTab())},1400);
+}
+document.addEventListener('click',ev=>{
+  const a=ev.target.closest('[data-act]'),p=ev.target.closest('[data-preset]'),t=ev.target.closest('[data-tab]');
+  if(t){st.taps++;st.tab=+t.dataset.tab;render(st.tab===tlTab());return}
+  if(a){const act=a.dataset.act;st.taps++;
+    if(act==='opencam'){st.cam=true;render(false);return}
+    if(act==='closecam'){st.cam=false;render(true);return}
+    st.now++;
+    if(act==='shoot')add({t:nowT(),k:'meal',pending:1},e=>{delete e.pending;e.n='焼き鮭弁当';e.kcal=680},'食事（撮った）');
+    if(act==='pick')add({t:'11:50',k:'meal',pending:1},e=>{delete e.pending;e.n='カフェラテ';e.kcal=130},'食事（11:50 の写真）');
+    if(act==='text')add({t:nowT(),k:'meal',pending:1},e=>{delete e.pending;e.n='残りご飯と唐揚げ';e.kcal=610},'食事（文章）');
+  }
+  if(p){st.taps++;st.now++;add({t:nowT(),k:'talk',u:p.dataset.preset},e=>{e.a=p.dataset.preset.startsWith('次')?'残りは 1,000 kcal ほどです。夜は脂の少ない肉か魚を主菜にすると、たんぱく質も目安に届きます。':'朝と昼で 950 kcal、たんぱく質は 52 g です。ペースどおりで、このままで大丈夫です。'},'会話')}
+});
+document.addEventListener('submit',ev=>{
+  ev.preventDefault();
+  if(ev.target.id==='f'){const v=$('msg').value.trim();if(!v)return;st.taps++;st.now++;add({t:nowT(),k:'talk',u:v},e=>{e.a='（ここに AI の発言が出る）'},'会話')}
+  if(ev.target.id==='wf'){const v=parseFloat($('wv').value);if(!(v>20&&v<300))return;st.weight=v.toFixed(1);st.taps++;st.now++;add({t:nowT(),k:'weight',v:st.weight},null,'体重')}
+});
+function setV(v){st.v=v;st.tab=0;st.cam=false;st.last=null;st.taps=0;st.log='まだ何も足していない';try{history.replaceState(null,'','#'+v)}catch(_){location.hash=v}render(st.tab===tlTab())}
+$('vB').onclick=()=>setV('B');$('vC').onclick=()=>setV('C');
+$('reset').onclick=()=>{st.ev=base();st.weight=null;st.now=40;setV(st.v)};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight')setV(st.v==='B'?'C':'B')});
+setV(location.hash==='#C'?'C':'B');
+</script>
