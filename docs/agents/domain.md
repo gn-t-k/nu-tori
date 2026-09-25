@@ -28,11 +28,11 @@
 ```
 /
 ├── CONTEXT-MAP.md
-├── docs/adr/                          ← システム全体の決定
+├── docs/adr/                          ← システム全体の決定の記録
 └── src/
     ├── ordering/
     │   ├── CONTEXT.md
-    │   └── docs/adr/                  ← コンテキスト固有の決定
+    │   └── docs/adr/                  ← コンテキスト固有の決定の記録
     └── billing/
         ├── CONTEXT.md
         └── docs/adr/
