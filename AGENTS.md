@@ -36,4 +36,4 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 
 ### git
 
-コミット、PR の作成、ブランチの更新をするときは `docs/agents/git.md` を読む。
+コミット、PR の作成、ブランチの更新、GitHub の Issue と PR の操作をするときは `docs/agents/git.md` を読む。
