@@ -14,7 +14,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 記録の持ち方
 
-- 記録は、サーバーの API とアプリの中のキャッシュで持つ。端末に DB を同期する仕組みは使わない
+- 記録は、サーバーの API とアプリの中のキャッシュで持つ。端末とサーバーのやりとりは API だけにし、DB を丸ごと写す仕組み（Turso Sync、Embedded Replicas）は入れない
 
 ## API
 
