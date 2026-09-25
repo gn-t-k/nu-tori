@@ -329,12 +329,12 @@ flowchart TD
 
 | 項目 | 内容 | 確かさ | 出典 |
 |---|---|---|---|
-| 設定ファイル | `wrangler.jsonc`（JSON）か `wrangler.toml`。新しいプロジェクトには JSON を勧め、新しい機能には JSON だけのものがある。D1・R2・Durable Objects・Queues などのつなぎ、Cron、環境、実行場所、必要な秘密の名前を書ける | 本文で確認 | CF40 |
-| 資源の自動作成 | デプロイのときに Wrangler が資源を作れる。対象は KV、R2、D1、Queues など | 本文で確認 | CF40 |
-| 型の生成 | `wrangler types` が設定からつなぎの型を作る | 本文で確認 | CF40 |
-| テスト | `@cloudflare/vitest-pool-workers` は Vitest のテストを Workers の実行環境の中で、Miniflare で手元だけで回す。ストレージはテストのファイルごとに分かれる。`runInDurableObject()`（Durable Object の中で動かす）、`runDurableObjectAlarm()`（アラームをすぐ鳴らす）、`applyD1Migrations()`（D1 の移行を当てる）、`reset()` などの道具がある | 本文で確認 | CF41、CF42 |
-| Durable Object のアラーム | 各 Durable Object は、一度に1つのアラームを `setAlarm()` で持てる。少なくとも1回は動くことが保証され、例外を投げると2秒からの指数的な間隔で最大6回やり直す | 本文で確認 | CF43 |
-| Durable Object の移行の設定 | 設定の移行（`exports`、以前の `migrations`）が扱うのは、クラスの作成・名前の変更・削除と、保存の方式（SQLite か）まで。Durable Object の中の SQL のスキーマの変更とデータの変換は扱わない | 本文で確認 | CF44 |
+| 設定ファイル | `wrangler.jsonc`（JSON）か `wrangler.toml`。新しいプロジェクトには JSON を勧め、新しい機能には JSON だけのものがある。D1・R2・Durable Objects・Queues などのつなぎ、Cron、環境、実行場所、必要な秘密の名前を書ける | 本文で確認（要約を通して） | CF40 |
+| 資源の自動作成 | デプロイのときに Wrangler が資源を作れる。対象は KV、R2、D1、Queues など | 本文で確認（要約を通して） | CF40 |
+| 型の生成 | `wrangler types` が設定からつなぎの型を作る | 本文で確認（要約を通して） | CF40 |
+| テスト | `@cloudflare/vitest-pool-workers` は Vitest のテストを Workers の実行環境の中で、Miniflare で手元だけで回す。ストレージはテストのファイルごとに分かれる。`runInDurableObject()`（Durable Object の中で動かす）、`runDurableObjectAlarm()`（アラームをすぐ鳴らす）、`applyD1Migrations()`（D1 の移行を当てる）、`reset()` などの道具がある | 本文で確認（要約を通して） | CF41、CF42 |
+| Durable Object のアラーム | 各 Durable Object は、一度に1つのアラームを `setAlarm()` で持てる。少なくとも1回は動くことが保証され、例外を投げると2秒からの指数的な間隔で最大6回やり直す | 本文で確認（要約を通して） | CF43 |
+| Durable Object の移行の設定 | 設定の移行（`exports`、以前の `migrations`）が扱うのは、クラスの作成・名前の変更・削除と、保存の方式（SQLite か）まで。Durable Object の中の SQL のスキーマの変更とデータの変換は扱わない | 本文で確認（要約を通して） | CF44 |
 
 ## 確かめられなかったこと
 

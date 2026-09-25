@@ -47,11 +47,11 @@
 
 ## 前提: 案の形
 
-開発者の案を、今の決定（ADR-0008、ADR-0009）と並べる。
+開発者の案を、ADR-0008 と ADR-0009 を前提にした D1 1つの案と並べる。
 
 ```mermaid
 flowchart LR
-  subgraph Now["今の決定（D1 1つ）"]
+  subgraph Now["比べた案（D1 1つ）"]
     A1[iPhone<br/>アプリ内のキャッシュ] -->|API| W1[Worker<br/>TypeScript のドメイン層]
     W1 --> D1[(D1<br/>全員の記録)]
     C1[Cron 週1] --> D1
