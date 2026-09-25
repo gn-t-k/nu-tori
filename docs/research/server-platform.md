@@ -335,6 +335,7 @@ flowchart TD
 | テスト | `@cloudflare/vitest-pool-workers` は Vitest のテストを Workers の実行環境の中で、Miniflare で手元だけで回す。ストレージはテストのファイルごとに分かれる。`runInDurableObject()`（Durable Object の中で動かす）、`runDurableObjectAlarm()`（アラームをすぐ鳴らす）、`applyD1Migrations()`（D1 の移行を当てる）、`reset()` などの道具がある | 本文で確認（要約を通して） | CF41、CF42 |
 | Durable Object のアラーム | 各 Durable Object は、一度に1つのアラームを `setAlarm()` で持てる。少なくとも1回は動くことが保証され、例外を投げると2秒からの指数的な間隔で最大6回やり直す | 本文で確認（要約を通して） | CF43 |
 | Durable Object の移行の設定 | 設定の移行（`exports`、以前の `migrations`）が扱うのは、クラスの作成・名前の変更・削除と、保存の方式（SQLite か）まで。Durable Object の中の SQL のスキーマの変更とデータの変換は扱わない | 本文で確認（要約を通して） | CF44 |
+| Durable Objects の実行時間の課金 | 実行時間は、Object が動いていて休止できない間の壁時計の時間で数え、割り当ての 128 MB で課金する（外への fetch を待つ間も数える）。有料プランに月 40 万 GB-秒が含まれ、超えた分は 100 万 GB-秒あたり $12.50。休止できる状態の Object は数えない。1,000 人が1日3回、1回 20 秒 LLM を待つと 1,000 × 3 × 30 × 20 秒 × 0.125 GB ≒ 22.5 万 GB-秒で、含まれる枠に収まる | 本文で確認（要約を通して）、計算は本文からの読み取り | CF45 |
 
 ## 確かめられなかったこと
 
@@ -379,6 +380,7 @@ flowchart TD
 - CF42: Vitest integration の Test APIs — https://developers.cloudflare.com/workers/testing/vitest-integration/test-apis/
 - CF43: Durable Objects の Alarms — https://developers.cloudflare.com/durable-objects/api/alarms/
 - CF44: Durable Objects の移行 — https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/
+- CF45: Durable Objects の料金 — https://developers.cloudflare.com/durable-objects/platform/pricing/
 
 ### Google Cloud と Neon
 - GC1: Configure request timeout for services — https://cloud.google.com/run/docs/configuring/request-timeout
