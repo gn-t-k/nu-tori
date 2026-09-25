@@ -4,6 +4,11 @@
 
 ## コーディング
 
+### 型検査の前提
+
+- Swift 6 の言語モードに、まだ既定でない upcoming features を足し、警告をエラーにする。アプリのターゲットは、既定の actor の隔離を `MainActor` にする。設定は `ios/NuToriCore/Package.swift` と `ios/NuTori.xcodeproj` のビルド設定にあり、2つをそろえる。このファイルの話はそれを前提にする
+- 非推奨の警告もエラーのままにする。SDK を上げてすぐ直せないときだけ、その宣言に `@diagnose(DeprecatedDeclaration, as: warning, reason: "…")` を付け、PR に理由を書く。`@diagnose(…, as: ignored)`、`// swiftlint:disable`、`// swift-format-ignore` を足すときも、PR に理由を書く
+
 ### ファイルと公開するもの
 
 - 公開するものは、トップレベルの private でない型か関数で数える。`private`・`fileprivate` の型と `#Preview` は数えない

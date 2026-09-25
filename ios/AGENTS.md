@@ -2,6 +2,14 @@
 
 nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
+## 構成
+
+- 対象は iPhone だけ、最低対応は iOS 27。Xcode 27（Swift 6.4）でビルドする
+- 画面を持たないロジック（下の「端末で行うもの」の計算と判定）は、ローカルの Swift パッケージ `NuToriCore/` に置き、SwiftUI・UIKit・HealthKit を import しない。Linux のエージェントと CI でも型検査とテストを回すため
+- 画面とヘルスケアなどの端末の入出力は、Xcode のプロジェクトのアプリ（`NuTori/`）に置き、UI テストは `NuToriUITests/` に置く
+- Xcode のプロジェクトはフォルダの同期（buildable folders）で組む。ファイルはフォルダに置くだけで足せるので、ファイルの出し入れで `project.pbxproj` を直さない
+- Bundle ID は仮の値。Xcode Cloud をつなぐ前に決め、`project.pbxproj` の `PRODUCT_BUNDLE_IDENTIFIER` を差し替える。最初のビルドを App Store Connect に上げたあとは変えられない
+
 ## 端末で行うもの
 
 ルートの `AGENTS.md` の「リポジトリ全体の決定」の基準に当たるものだけを端末で行う。今の一覧:
@@ -19,3 +27,31 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 ## API
 
 - クライアントは、`server/` が書き出した OpenAPI の文書から `swift-openapi-generator` で生成する
+
+## 確かめる
+
+- `scripts/check ios` が、整形、Lint、ロジックのパッケージのテストを回す。macOS では続けて `scripts/check ios-app`（アプリのビルドとテスト）も回す
+- 整形の正は、`.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS の CI では整形を確かめない
+- SwiftLint は、`docs/agents/` の好みのうち機械で見られるものだけを見る。見た目は swift-format に任せる
+- CI（`.github/workflows/check.yml`）は、Linux の `ios` ジョブを main の必須のチェックにし、それが通ってから macOS の `ios-app` ジョブを回す。`ios-app` は、`xcode-27` のランナーがプレビューのうちは必須にしない
+- ロジックのパッケージのテストを macOS でも回すのは、Linux と macOS で Foundation の振る舞いが違うことがあるため
+
+## 配布
+
+- main にマージするたびに、Xcode Cloud がビルドして TestFlight の内部テストに配る。署名とビルド番号は Apple 側に任せ、証明書を GitHub に置かない
+- Xcode Cloud の枠（月 25 時間）に収めるため、Xcode Cloud のワークフローは `ios/` が変わったときだけ動かす
+
+## 実機の確認
+
+エージェントには実機を操作する道が無いので、人が確かめる。
+
+- 確かめるのは、ヘルスケア、カメラ、通知、写真の読み込みに触れた PR をマージしたあとと、外部テストに出す前。エージェントは、該当する PR の本文に「実機の確認が要る」と書き、確かめる項目を並べる
+- ヘルスケアで確かめる項目
+  - nu-tori を閉じてヘルスケアアプリで体重を手入力すると、その日の体重の通知が取り消され、開くと体重のボタンが目立たないこと。MacroFactor で入れても同じになること
+  - nu-tori が料理ごとの食品の組で書いた栄養が、MacroFactor の Nutrition ページと消費量に届くか
+  - 他のアプリが組で書いた摂取エネルギーが、統計に一度だけ入るか
+  - nu-tori が組を同期 ID で置き換えたとき、中のサンプルが二重に残らないか。組を消したとき、中のサンプルも消えるか
+  - nu-tori で入れた体重を、FoodNoms・MacroFactor が書き戻さないか
+  - あとから読み取りを許可したとき、または読み取りの期間を広げたとき、保存したアンカーからの問い合わせで過去分が返るか
+  - 同期 ID で置き換えができ、書き直しても二重にならないか。書き直すとき（機種変更のあと、書き込みを許可された種類が増えたとき）に、ユーザーがヘルスケアアプリで消したものが戻らないか
+  - 期間を限った読み取り許可をあとで狭めたとき、アンカー付きの問い合わせが、見えなくなったサンプルを「消えた分」として返さないか
