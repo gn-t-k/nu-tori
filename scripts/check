@@ -63,6 +63,8 @@ check_ios_app() {
     step "アプリのビルドとテスト"
     local simulator results="$ios/.build/NuTori.xcresult"
     simulator="$(latest_iphone_simulator)"
+    # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
+    xcrun simctl bootstatus "$simulator" -b
     rm -rf "$results"
     xcodebuild \
         -project "$ios/NuTori.xcodeproj" \
