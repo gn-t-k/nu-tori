@@ -5,8 +5,8 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 ## 構成
 
 - 画面を持たないロジックは、ローカルの Swift パッケージ `NuToriCore/` に置き、SwiftUI・UIKit・HealthKit・SwiftData を import しない。下の「端末で行うもの」の計算と判定と、送り待ちの判断がここに入る。Linux のエージェントと CI でも型検査とテストを回すため
-- 画面、SwiftData のモデルのクラス、ヘルスケアなどの端末の入出力は、Xcode のプロジェクトのアプリ（`NuTori/`）に置き、UI テストは `NuToriUITests/` に置く
-- Xcode のプロジェクトはフォルダの同期（buildable folders）で組んである。ファイルはフォルダに置くだけで足せるので、ファイルの出し入れで `project.pbxproj` を直さない
+- ファイルを足すとき、`project.pbxproj` は直さない（フォルダの同期で拾われる）
+- 型検査の厳しさの設定は `NuToriCore/Package.swift` と `project.pbxproj` の2か所にあるので、そろえる
 - Bundle ID は仮の値。Xcode Cloud をつなぐ前に決めて差し替える。最初のビルドを App Store Connect に上げたあとは変えられない
 
 ## 端末で行うもの
