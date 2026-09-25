@@ -60,8 +60,8 @@ flowchart LR
     A2[iPhone<br/>Embedded Replica / Turso Sync] -.->|同期 push・pull| T2[(Turso<br/>アカウント A の DB)]
     A2 -->|API| W2[Worker<br/>TypeScript のドメイン層]
     W2 --> T2
-    W2 --> T3[(ユーザー B の DB)]
-    W2 --> T4[(ユーザー C の DB …)]
+    W2 --> T3[(アカウント B の DB)]
+    W2 --> T4[(アカウント C の DB …)]
     C2[Cron 週1] -->|DB ごとに1本ずつ| W2
     W2 -->|作成・削除・トークン発行| P[Turso Platform API]
   end
@@ -146,7 +146,7 @@ flowchart TD
 
 **比べる: Workers Paid + Durable Objects（アカウントごとの SQLite）+ R2**（本文からの計算）
 - リクエスト 99,000 / 990,000 回 ≤ 含まれる 100 万 → $0
-- 実行時間（1回 50 ミリ秒の置き値 × 128 MB）: 99,000 × 0.05 × 0.125 = 619 GB-秒 / 6,188 GB-秒 ≤ 含まれる 40 万 → $0
+- 実行時間（1回 50 ミリ秒の置き値 × 128 MB。LLM を Durable Object から呼んで待つ時間は含まない。含めた計算は `docs/research/server-platform.md` の「Durable Objects の実行時間の課金」）: 99,000 × 0.05 × 0.125 = 619 GB-秒 / 6,188 GB-秒 ≤ 含まれる 40 万 → $0
 - 行と保存は D1 と同じ単価と枠で、保存 0.5 / 5 GB ≤ 5 GB → $0
 - **合計 $5.18 / $8.09**（D1 と同じ）
 
@@ -326,14 +326,14 @@ flowchart TD
 
 使えなくなる制約（ハードブロッカー）は見つからなかった。判断に効く点は次のとおり。
 
-**Turso-per-user が向く点**
+**アカウントごとの Turso が向く点**
 - アカウント削除が DB を消す1回の呼び出しで済み、復元できるのは5日まで（D1 の Time Travel 30 日より短い。そのあと履歴が残るかは未確認）（TU8）
 - 有料プランは DB の数が無制限で、使っていない DB は保存量だけ（TU4）
 - 東京（AWS ap-northeast-1）を選べる（TU17、TU18）。D1 と Durable Objects はヒントだけ
 - 1つの DB の 10 GB の上限を気にしなくてよい（D1 は1つにまとめると 1,000 人で約2年）
 - DB ごと・読み取りだけ・期限つきのトークンがあり、将来、端末に同期を置く余地を残せる
 
-**Turso-per-user の弱い点**
+**アカウントごとの Turso の弱い点**
 - Swift の同期 SDK が無い。`libsql-swift` は preview で約 14 か月更新が無く、Embedded Replicas は書き込みがサーバー直行なので、オフラインで直した値を見せる課題は解けない（GH1、TU35）
 - 端末が DB に直接書く Turso Sync の形は、検証と計算を端末に持たせることになり、ADR-0011 とぶつかる（TU38）
 - スキーマの変更を全 DB に配る仕組みを自前で作ることになる（Multi-DB Schemas は廃止）（TU9）

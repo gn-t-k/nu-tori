@@ -27,7 +27,7 @@
   - Supabase: 日次バックアップを Pro で 7 日。PITR を足すと 7・14・28 日から選ぶ
   - Fly.io Managed Postgres: 10 日。変えられるかの記述は無い
   - オブジェクトストレージの削除: R2 は削除が取り消せない。Cloud Storage は既定で 7 日の soft delete が効く（0 にすれば止められる）
-- **Apple のトークンの失効（アカウント削除時に必須）を、BaaS の認証は肩代わりしない。** Apple は「Sign in with Apple を使うアプリは、REST API でユーザーのトークンを失効させる」よう求めている（本文で確認）。Supabase Auth は、ネイティブの ID トークンの流れで Apple の refresh token を返さず、失効の要望 Issue は「対応予定なし」で閉じられている。Firebase Auth は「トークンを保存しない」ので、削除の前にもう一度サインインさせて authorization code から失効させる。**どの基盤でも、失効は自前で書く前提になる**（「サーバーの役割とデータの正本」の解決コメントの決定どおり、authorization code をサーバーで交換して refresh token を保存する）。
+- **Apple のトークンの失効（アカウント削除時に必須）を、BaaS の認証は肩代わりしない。** Apple は「Sign in with Apple を使うアプリは、REST API でユーザーのトークンを失効させる」よう求めている（本文で確認）。Supabase Auth は、ネイティブの ID トークンの流れで Apple の refresh token を返さず、失効の要望 Issue は「対応予定なし」で閉じられている。Firebase Auth は「トークンを保存しない」ので、削除の前にもう一度サインインさせて authorization code から失効させる。**どの基盤でも、失効は自前で書く前提になる**。
 - **月額の見積もり（LLM 費用を除く、1年目の終わりの保存量）**: 100 人 / 1,000 人で、Cloudflare（Workers + D1 + R2）$5.2 / $8.1、Supabase Pro $25 / $27.5、AWS（Lambda + RDS + S3）$23.6 / 約 $37、Cloud Run（+ Cloud SQL + GCS）約 $10 / 最大 約 $59、Vercel Pro（+ Supabase の DB）約 $45 / 約 $57、Fly.io（+ Managed Postgres + Tigris）約 $48 / 約 $58。**固定費の大半は DB**で、DB が従量の D1 を使える Cloudflare が桁で安い。計算は下の節に書いた。
 - **ライブラリは、Node.js で動く基盤（Cloud Run、Lambda、Fly.io、Vercel の Node ランタイム）ならすべて使える。** Cloudflare Workers では `jose`・`@anthropic-ai/sdk`・`openai`・`hono` は公式に対応をうたうが、**`@google/genai` は対応ランタイムに Workers を挙げていない**（Node.js 20 以上とブラウザだけ、本文で確認）。動くかは試作で確かめる。
 - **swift-openapi-generator（1.13.1）は OpenAPI 3.0 と 3.1 に対応し、3.2 は暫定対応**（本文で確認）。`@hono/zod-openapi`（1.6.3）は `doc`（3.0）と `doc31`（3.1）で文書を出せる（本文で確認）。組み合わせとしては成り立つ。実際に生成して通るかは試していない。
