@@ -34,6 +34,10 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る
 - 工程のゲートや引き継ぎなどの大きな確認は、新しい文脈のサブエージェントにその工程のスキルの観点でレビューさせ、必ず直すものが0件になるまで直す
 
+### 公開リポジトリ
+
+このリポジトリは公開して開発する（ADR-0010）。開発者自身の健康データ（ヘルスケアの書き出しなど）は、`.gitignore` したファイル（`prototype/0001-expenditure` の `data.local.js` など）にだけ置き、コミットにも Issue・PR・コメントにも書かない。開発者が良いと言ったものは除く。
+
 ### git
 
 コミット、PR の作成、ブランチの更新、GitHub の Issue と PR の操作をするときは `docs/agents/git.md` を読む。
