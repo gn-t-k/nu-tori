@@ -27,7 +27,7 @@
   - Supabase: 日次バックアップを Pro で 7 日。PITR を足すと 7・14・28 日から選ぶ
   - Fly.io Managed Postgres: 10 日。変えられるかの記述は無い
   - オブジェクトストレージの削除: R2 は削除が取り消せない。Cloud Storage は既定で 7 日の soft delete が効く（0 にすれば止められる）
-- **Apple のトークンの失効（アカウント削除時に必須）を、BaaS の認証は肩代わりしない。** Apple は「Sign in with Apple を使うアプリは、REST API でユーザーのトークンを失効させる」よう求めている（本文で確認）。Supabase Auth は、ネイティブの ID トークンの流れで Apple の refresh token を返さず、失効の要望 Issue は「対応予定なし」で閉じられている。Firebase Auth は「トークンを保存しない」ので、削除の前にもう一度サインインさせて authorization code から失効させる。**どの基盤でも、失効は自前で書く前提になる**（ADR の決定どおり、authorization code をサーバーで交換して refresh token を保存する）。
+- **Apple のトークンの失効（アカウント削除時に必須）を、BaaS の認証は肩代わりしない。** Apple は「Sign in with Apple を使うアプリは、REST API でユーザーのトークンを失効させる」よう求めている（本文で確認）。Supabase Auth は、ネイティブの ID トークンの流れで Apple の refresh token を返さず、失効の要望 Issue は「対応予定なし」で閉じられている。Firebase Auth は「トークンを保存しない」ので、削除の前にもう一度サインインさせて authorization code から失効させる。**どの基盤でも、失効は自前で書く前提になる**（「サーバーの役割とデータの正本」の解決コメントの決定どおり、authorization code をサーバーで交換して refresh token を保存する）。
 - **月額の見積もり（LLM 費用を除く、1年目の終わりの保存量）**: 100 人 / 1,000 人で、Cloudflare（Workers + D1 + R2）$5.2 / $8.1、Supabase Pro $25 / $27.5、AWS（Lambda + RDS + S3）$23.6 / 約 $37、Cloud Run（+ Cloud SQL + GCS）約 $10 / 最大 約 $59、Vercel Pro（+ Supabase の DB）約 $45 / 約 $57、Fly.io（+ Managed Postgres + Tigris）約 $48 / 約 $58。**固定費の大半は DB**で、DB が従量の D1 を使える Cloudflare が桁で安い。計算は下の節に書いた。
 - **ライブラリは、Node.js で動く基盤（Cloud Run、Lambda、Fly.io、Vercel の Node ランタイム）ならすべて使える。** Cloudflare Workers では `jose`・`@anthropic-ai/sdk`・`openai`・`hono` は公式に対応をうたうが、**`@google/genai` は対応ランタイムに Workers を挙げていない**（Node.js 20 以上とブラウザだけ、本文で確認）。動くかは試作で確かめる。
 - **swift-openapi-generator（1.13.1）は OpenAPI 3.0 と 3.1 に対応し、3.2 は暫定対応**（本文で確認）。`@hono/zod-openapi`（1.6.3）は `doc`（3.0）と `doc31`（3.1）で文書を出せる（本文で確認）。組み合わせとしては成り立つ。実際に生成して通るかは試していない。
@@ -174,7 +174,7 @@ flowchart LR
 | バックアップの保持期間 | 日次バックアップ: Pro 7 日、Team 14 日、Enterprise 30 日。PITR（追加料金、Small 以上のコンピュートが要る）は保持 7 日 約 $100/月、14 日 約 $200/月、28 日 約 $400/月。PITR を有効にすると日次バックアップは取らない。**DB のバックアップに Storage のオブジェクトは含まれない** | 本文で確認 | SB5 |
 | 料金（小規模） | Free: DB 500 MB、ファイル 1 GB、**1週間使われないと一時停止**。日次バックアップの対象は Pro 以上とだけ書かれている。Pro: 月 $25〜（コンピュートのクレジット $10 で Micro（メモリ 1 GB）を賄う）、ディスク 8 GB、ファイル 100 GB（超過 $0.0213/GB）、転送 250 GB（超過 $0.09/GB）、MAU 10 万、Edge Functions 200 万回 | 本文で確認 | SB6、SB7、SB8 |
 | オブジェクトストレージ | Supabase Storage。プロジェクトと同じ場所に置かれるかは、本文を詳しくは読んでいない | 本文を探したが記述なし | — |
-| 実行場所 | Edge Functions は既定で**利用者に最も近いリージョン**で動く。`x-region` ヘッダーか `forceFunctionRegion` で東京（ap-northeast-1）に固定できる | 本文で確認 | SB4 |
+| 実行場所 | Edge Functions は既定で**ユーザーに最も近いリージョン**で動く。`x-region` ヘッダーか `forceFunctionRegion` で東京（ap-northeast-1）に固定できる | 本文で確認 | SB4 |
 | 秘密情報 | `supabase secrets`。1プロジェクト 100 個、1つ 48 KiB まで。ローカルでは `supabase/functions/.env` | 本文で確認 | SB2、SB14 |
 | ローカル開発 | `supabase start` で Postgres・Auth・Storage などを Docker で手元に立てる | 本文で確認 | SB15 |
 | GitHub Actions からのデプロイ | 本文を詳しくは読んでいない（CLI の `supabase functions deploy` をアクセストークン付きで実行する形になる） | 本文からの読み取り | SB15 |
@@ -190,7 +190,7 @@ Apple は「Sign in with Apple を使うアプリは、アカウントを消す�
 | iOS のネイティブの ID トークンの流れ | 対応。「iOS・macOS・watchOS・tvOS のアプリの中で、Authentication Services でネイティブにサインインできる」。`signInWithIdToken` で Supabase のセッションを得る。ネイティブだけなら client secret の 6 か月ごとの更新は要らない【本文で確認】 | 対応（公式の iOS のガイドがある）【本文で確認】 | SB10、FB1 |
 | Apple の refresh token を保存するか | **保存しない（返さない）と読める。** Swift SDK でネイティブの流れを使うと `providerRefreshToken` が nil になるという Issue #2155 が Open のまま。ネイティブだけなら client secret が要らないという記述も、authorization code を Apple と交換していないことを示す【本文からの読み取り】 | **保存しない**（"Firebase does not store user tokens when users are created with Sign in with Apple"）【本文で確認】 | SB10、SB12、FB1 |
 | ユーザー削除のときに失効させるか | **させない。** 「Sign in with Apple のトークンを失効させる」要望の Issue #1308 は「対応予定なし（not planned）」で閉じられている。supabase/auth のコードで `appleid.apple.com` を探しても、発行者の定数と ID トークンの検証だけで、失効の呼び出しは見つからない。`auth.admin.deleteUser` の説明にも Apple の失効は無い【本文で確認（Issue の状態）、本文を探したが記述なし（コード）】 | 自動ではしない。削除の前にもう一度 Apple でサインインさせ、得た authorization code で `Auth.auth().revokeToken(withAuthorizationCode:)` を呼んでから、ユーザーを消す【本文で確認】 | SB11、SB13、SB16、FB1 |
-| nu-tori で使うなら | Apple の authorization code を受け取って交換・保存・失効する部分は、Edge Function などで自前で書くことになる。また、ADR の前提（サーバーが自分のセッションとアカウント ID を発行する）とは、Supabase のセッションを使う点で形が違う | 削除のたびにもう一度サインインさせる操作が増える（ADR-0001 の「操作を増やさない」と衝突する） | 本文からの読み取り |
+| nu-tori で使うなら | Apple の authorization code を受け取って交換・保存・失効する部分は、Edge Function などで自前で書くことになる。また、「サーバーの役割とデータの正本」の解決コメントの前提（サーバーが自分のセッションとアカウント ID を発行する）とは、Supabase のセッションを使う点で形が違う | 削除のたびにもう一度サインインさせる操作が増える（ADR-0001 の「操作を増やさない」と衝突する） | 本文からの読み取り |
 
 ## 月額の見積もり（LLM の API 費用を除く）
 
@@ -284,7 +284,7 @@ flowchart TD
 
 Cloudflare Workers は、互換日付が 2026-08-04 以降なら Node.js 互換（`nodejs_compat`）が既定で有効になる（本文で確認 CF17）。Supabase Edge Functions は Deno 互換のランタイムなので、Deno を対応に挙げる `jose`・`@anthropic-ai/sdk`・`openai` は候補に入る（本文からの読み取り）。
 
-**利用者の近くで動く基盤と、LLM の提供地域の制限**: Gemini API は、提供する国と地域を列挙しており、Colab では「制限は利用者ではなくインスタンスの場所で判断する」と書く（本文で確認 LB10）。Cloudflare Workers と Supabase Edge Functions は既定で利用者に近い場所で動くので、提供地域の外（例: 香港）にいる利用者のリクエストは、LLM に提供地域の外から届く可能性がある。Placement の `region` や Supabase の `x-region` で日本に固定すれば避けられる（本文からの読み取り CF5、SB4）。
+**ユーザーの近くで動く基盤と、LLM の提供地域の制限**: Gemini API は、提供する国と地域を列挙しており、Colab では「制限はユーザーではなくインスタンスの場所で判断する」と書く（本文で確認 LB10）。Cloudflare Workers と Supabase Edge Functions は既定でユーザーに近い場所で動くので、提供地域の外（例: 香港）にいるユーザーのリクエストは、LLM に提供地域の外から届く可能性がある。Placement の `region` や Supabase の `x-region` で日本に固定すれば避けられる（本文からの読み取り CF5、SB4）。
 
 ## swift-openapi-generator との組み合わせ
 
