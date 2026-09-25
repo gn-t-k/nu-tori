@@ -7,7 +7,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす。決�
 ```mermaid
 flowchart LR
   App[アプリ] -- REST --> W[Workers（Hono）<br>HTTP の受け口]
-  W --> D1[(D1: アカウントの索引<br>アカウント ID・Apple の識別子・セッション<br>リフレッシュトークン・テストユーザー)]
+  W --> D1[(D1: アカウントの索引<br>アカウント ID・Apple の識別子・セッション<br>Apple のリフレッシュトークン・テストユーザー)]
   W --> DO[(Durable Object × アカウントの数<br>記録の正本とドメイン層)]
   W --> Apple[Apple の API]
   W --> R2[(R2: 写真の控え)]
@@ -18,7 +18,7 @@ flowchart LR
 - DB を東京に置くことは必須にせず、データを国内に置くとは約束しない。場所はヒント（D1 と R2 は `apac`、Durable Objects は `apac-ne`）で指定する
 - Workers で動かないライブラリが要る処理が出たら、その部分だけ別の基盤に置く
 - 構成の正本は `wrangler.jsonc`。環境（本番と開発用）もここに書く
-- 秘密の値は `wrangler secret` と、GitHub の main からだけ使える Environment（ADR-0010）に置く
+- 秘密の値は `wrangler secret` に置く。GitHub Actions の分は、ルートの `AGENTS.md` の「リポジトリ全体の決定」
 - Terraform は、wrangler で扱えないもの（DNS など）が要るまで使わない
 
 ## 層
