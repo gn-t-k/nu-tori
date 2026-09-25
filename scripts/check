@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
 # 確かめる手順の入口。エージェントも人も CI も、これを呼ぶ
 set -euo pipefail
-shopt -s inherit_errexit
 
 main() {
-    local targets=() arg target
+    local targets="" arg target
     for arg in "$@"; do
         case "$arg" in
             --fix) fix=true ;;
-            ios | ios-app | server) targets+=("$arg") ;;
+            ios | ios-app | server) targets="$targets $arg" ;;
             *)
                 print_usage >&2
                 exit 2
                 ;;
         esac
     done
-    if [ ${#targets[@]} -eq 0 ]; then
-        targets=(ios server)
-    fi
 
-    for target in "${targets[@]}"; do
+    for target in ${targets:-ios server}; do
         case "$target" in
             ios) check_ios ;;
             ios-app) check_ios_app ;;
@@ -36,8 +32,7 @@ check_ios() {
     swift format lint --strict --recursive --parallel "$ios"
 
     step "Lint（SwiftLint $swiftlint_version）"
-    local swiftlint
-    swiftlint="$(install_swiftlint)"
+    install_swiftlint
     if $fix; then
         (cd "$ios" && "$swiftlint" lint --fix --quiet)
     fi
@@ -103,7 +98,7 @@ step() {
     echo "==> $*"
 }
 
-# 版と SHA-256 を固定した SwiftLint を、無ければ .tools/ に落とし、そのパスを返す
+# 版と SHA-256 を固定した SwiftLint を、無ければ .tools/ に落とし、パスを swiftlint に入れる
 install_swiftlint() {
     local asset sha256
     case "$(uname -s)-$(uname -m)" in
@@ -138,7 +133,7 @@ install_swiftlint() {
         unzip -oq "$dir/$asset" -d "$dir"
         rm "$dir/$asset"
     fi
-    echo "$dir/swiftlint"
+    swiftlint="$dir/swiftlint"
 }
 
 # いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
@@ -164,6 +159,7 @@ latest_iphone_simulator() {
 root="$(cd "$(dirname "$0")/.." && pwd)"
 ios="$root/ios"
 swiftlint_version=0.65.1
+swiftlint=""
 fix=false
 
 main "$@"

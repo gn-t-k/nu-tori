@@ -62,6 +62,10 @@ jobs:
         if: failure()
         run: |
           results=ios/.build/NuTori.xcresult
+          if [ ! -d "$results" ]; then
+            echo "xcresult が無い（ビルドとテストの前に止まった）ので、ログを見る" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           mkdir -p ios/.build/report/attachments
           xcrun xcresulttool get test-results summary --path "$results" --compact > ios/.build/report/summary.json
           jq -r '.testFailures[]? | "- \(.testIdentifierString): \(.failureText)"' ios/.build/report/summary.json |
