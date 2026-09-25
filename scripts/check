@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+# 確かめる手順の入口。エージェントも人も CI も、これを呼ぶ
+set -euo pipefail
+shopt -s inherit_errexit
+
+main() {
+    local targets=() arg target
+    for arg in "$@"; do
+        case "$arg" in
+            --fix) fix=true ;;
+            ios | ios-app | server) targets+=("$arg") ;;
+            *)
+                print_usage >&2
+                exit 2
+                ;;
+        esac
+    done
+    if [ ${#targets[@]} -eq 0 ]; then
+        targets=(ios server)
+    fi
+
+    for target in "${targets[@]}"; do
+        case "$target" in
+            ios) check_ios ;;
+            ios-app) check_ios_app ;;
+            server) check_server ;;
+        esac
+    done
+}
+
+check_ios() {
+    step "整形（swift-format）"
+    if $fix; then
+        swift format format --in-place --recursive --parallel "$ios"
+    fi
+    swift format lint --strict --recursive --parallel "$ios"
+
+    step "Lint（SwiftLint $swiftlint_version）"
+    local swiftlint
+    swiftlint="$(install_swiftlint)"
+    if $fix; then
+        (cd "$ios" && "$swiftlint" lint --fix --quiet)
+    fi
+    (cd "$ios" && "$swiftlint" lint --strict --quiet)
+
+    step "Xcode のプロジェクトの依存が exactVersion か"
+    if grep -A2 'requirement = {' "$ios/NuTori.xcodeproj/project.pbxproj" |
+        grep 'kind = ' | grep -v 'kind = exactVersion'; then
+        echo "Swift Package の依存は Exact Version で固定する（docs/agents/languages/swift.md「依存パッケージ」）" >&2
+        return 1
+    fi
+
+    if command -v xcodebuild > /dev/null; then
+        check_ios_app
+    else
+        check_ios_package
+        echo "xcodebuild が無いので、アプリのビルドとテストは macOS の CI に任せる"
+    fi
+}
+
+check_ios_app() {
+    if ! command -v xcodebuild > /dev/null; then
+        echo "ios-app は macOS でだけ動く" >&2
+        return 1
+    fi
+    check_ios_package
+
+    step "アプリのビルドとテスト"
+    local simulator results="$ios/.build/NuTori.xcresult"
+    simulator="$(latest_iphone_simulator)"
+    rm -rf "$results"
+    xcodebuild \
+        -project "$ios/NuTori.xcodeproj" \
+        -scheme NuTori \
+        -destination "id=$simulator" \
+        -resultBundlePath "$results" \
+        -disableAutomaticPackageResolution \
+        build test
+}
+
+check_ios_package() {
+    step "ロジックのパッケージのテスト"
+    swift test --package-path "$ios/NuToriCore" --force-resolved-versions
+}
+
+check_server() {
+    step "サーバー"
+    echo "server/ に確かめるものがまだ無い"
+}
+
+print_usage() {
+    cat << 'USAGE'
+使い方: scripts/check [ios | ios-app | server] [--fix]
+  引数なし  ios と server
+  ios       整形、Lint、ロジックのパッケージのテスト。macOS では続けて ios-app も
+  ios-app   ロジックのパッケージのテストと、アプリのビルドとテスト（macOS だけ）
+  server    サーバー
+  --fix     直せるものを直してから確かめる
+USAGE
+}
+
+step() {
+    echo "==> $*"
+}
+
+# 版と SHA-256 を固定した SwiftLint を、無ければ .tools/ に落とし、そのパスを返す
+install_swiftlint() {
+    local asset sha256
+    case "$(uname -s)-$(uname -m)" in
+        Linux-x86_64)
+            asset=swiftlint_linux_amd64.zip
+            sha256=caeed6f4a679c35539ffaf124f6c4ab4a8416917f7d8796279dc52b74026059d
+            ;;
+        Linux-aarch64)
+            asset=swiftlint_linux_arm64.zip
+            sha256=9ffa52f478e6d8eb485d37d14715ffac90abc81c58f3370d598bf75be05605f8
+            ;;
+        Darwin-*)
+            asset=portable_swiftlint.zip
+            sha256=c1e429b0599cf1b516f369a2d9ec04eaf0e436f3c12b637df8851fa52ff694d0
+            ;;
+        *)
+            echo "SwiftLint の配布物が無い環境: $(uname -s)-$(uname -m)" >&2
+            return 1
+            ;;
+    esac
+    local dir="$root/.tools/swiftlint-$swiftlint_version"
+    # custom rules を使うので、Linux でも swiftlint-static ではなく swiftlint を使う
+    if [ ! -x "$dir/swiftlint" ]; then
+        mkdir -p "$dir"
+        curl -fsSL -o "$dir/$asset" \
+            "https://github.com/realm/SwiftLint/releases/download/$swiftlint_version/$asset"
+        if command -v sha256sum > /dev/null; then
+            echo "$sha256  $dir/$asset" | sha256sum -c - >&2
+        else
+            echo "$sha256  $dir/$asset" | shasum -a 256 -c - >&2
+        fi
+        unzip -oq "$dir/$asset" -d "$dir"
+        rm "$dir/$asset"
+    fi
+    echo "$dir/swiftlint"
+}
+
+# いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
+latest_iphone_simulator() {
+    local id
+    id="$(xcrun simctl list devices available | awk '
+        /^-- iOS / { ios = 1; picked = 0; next }
+        /^-- / { ios = 0; next }
+        ios && !picked && /iPhone/ {
+            match($0, /\([0-9A-F-]{36}\)/)
+            latest = substr($0, RSTART + 1, 36)
+            picked = 1
+        }
+        END { print latest }
+    ')"
+    if [ -z "$id" ]; then
+        echo "iPhone のシミュレータが無い" >&2
+        return 1
+    fi
+    echo "$id"
+}
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+ios="$root/ios"
+swiftlint_version=0.65.1
+fix=false
+
+main "$@"
