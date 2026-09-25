@@ -72,7 +72,7 @@ flowchart LR
 | オブジェクトストレージ | R2。Standard で保存 $0.015/GB-月、Class A（書き込み）$4.50/100 万、Class B（読み取り）$0.36/100 万、**外への転送は無料**。無料枠は月に保存 10 GB、Class A 100 万、Class B 1,000 万。使った量は次の単位に切り上げる | 本文で確認 | CF9 |
 | R2 を東京に置けるか | ヒント `apac` を出せる（保証ではない）。管轄の指定は `eu`・`fedramp`・`us` だけ | 本文で確認 | CF10 |
 | R2 の削除 | 「オブジェクトの削除は取り消せない」 | 本文で確認 | CF11 |
-| 実行場所を日本に固定できるか | 既定では、リクエストを受けたデータセンターの近くで動く（日本の利用者なら日本の近く）。Placement で `region`（例: `aws:us-east-1`、`gcp:us-east4` の形）を指定し、特定のクラウドのリージョンの近くで動かせる | 本文で確認 | CF5 |
+| 実行場所を日本に固定できるか | 既定では、リクエストを受けたデータセンターの近くで動く（日本のユーザーなら日本の近く）。Placement で `region`（例: `aws:us-east-1`、`gcp:us-east4` の形）を指定し、特定のクラウドのリージョンの近くで動かせる | 本文で確認 | CF5 |
 | 秘密情報 | Secrets（暗号化した値のバインディング）。`env` か `process.env` で読む。1つの Worker に変数と秘密を合わせて 128 個、1つ 5 KB まで | 本文で確認 | CF1、CF16 |
 | ローカル開発 | `wrangler dev`（または Vite プラグイン）で、本番と同じランタイム workerd を Miniflare 経由で動かす。D1・R2・Queues・Workflows・Hyperdrive はローカルで模擬できる | 本文で確認 | CF20 |
 | GitHub Actions からのデプロイ | API トークンとアカウント ID を GitHub の Secrets に置き、`wrangler deploy` を実行する | 本文で確認 | CF21 |
