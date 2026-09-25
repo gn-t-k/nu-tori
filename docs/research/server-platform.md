@@ -322,6 +322,19 @@ flowchart TD
 - 「東京に置く」を条件にするなら、D1（ヒントだけ）と Neon（東京なし）は外れる
 - プライバシーポリシーに「削除後に最大何日残るか」を書くとき、D1 は 30 日で固定、Fly.io MPG は 10 日（変えられるかは不明）、それ以外は自分で決められる
 
+## 追記: Cloudflare の構成の管理とテスト
+
+「サーバーの言語と実行基盤」の会話で、構成をコードで管理できるか、エージェントが試しやすいかを聞かれて足した。取得日は 2026-09-25。本文は WebFetch（ページを要約して返す道具）で読んだので、要約を通した本文の確認になる。
+
+| 項目 | 内容 | 確かさ | 出典 |
+|---|---|---|---|
+| 設定ファイル | `wrangler.jsonc`（JSON）か `wrangler.toml`。新しいプロジェクトには JSON を勧め、新しい機能には JSON だけのものがある。D1・R2・Durable Objects・Queues などのつなぎ、Cron、環境、実行場所、必要な秘密の名前を書ける | 本文で確認 | CF40 |
+| 資源の自動作成 | デプロイのときに Wrangler が資源を作れる。対象は KV、R2、D1、Queues など | 本文で確認 | CF40 |
+| 型の生成 | `wrangler types` が設定からつなぎの型を作る | 本文で確認 | CF40 |
+| テスト | `@cloudflare/vitest-pool-workers` は Vitest のテストを Workers の実行環境の中で、Miniflare で手元だけで回す。ストレージはテストのファイルごとに分かれる。`runInDurableObject()`（Durable Object の中で動かす）、`runDurableObjectAlarm()`（アラームをすぐ鳴らす）、`applyD1Migrations()`（D1 の移行を当てる）、`reset()` などの道具がある | 本文で確認 | CF41、CF42 |
+| Durable Object のアラーム | 各 Durable Object は、一度に1つのアラームを `setAlarm()` で持てる。少なくとも1回は動くことが保証され、例外を投げると2秒からの指数的な間隔で最大6回やり直す | 本文で確認 | CF43 |
+| Durable Object の移行の設定 | 設定の移行（`exports`、以前の `migrations`）が扱うのは、クラスの作成・名前の変更・削除と、保存の方式（SQLite か）まで。Durable Object の中の SQL のスキーマの変更とデータの変換は扱わない | 本文で確認 | CF44 |
+
 ## 確かめられなかったこと
 
 - Cloud SQL と Cloud Storage の東京の価格（料金ページが JavaScript で切り替わるため）
@@ -360,6 +373,11 @@ flowchart TD
 - CF20: Local development、Supported bindings per development mode — https://developers.cloudflare.com/workers/local-development/ 、https://developers.cloudflare.com/workers/local-development/bindings-per-env/
 - CF21: GitHub Actions — https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/
 - CF22: Workers Logs — https://developers.cloudflare.com/workers/observability/logs/workers-logs/
+- CF40: Wrangler の設定 — https://developers.cloudflare.com/workers/wrangler/configuration/
+- CF41: Vitest integration — https://developers.cloudflare.com/workers/testing/vitest-integration/
+- CF42: Vitest integration の Test APIs — https://developers.cloudflare.com/workers/testing/vitest-integration/test-apis/
+- CF43: Durable Objects の Alarms — https://developers.cloudflare.com/durable-objects/api/alarms/
+- CF44: Durable Objects の移行 — https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/
 
 ### Google Cloud と Neon
 - GC1: Configure request timeout for services — https://cloud.google.com/run/docs/configuring/request-timeout
