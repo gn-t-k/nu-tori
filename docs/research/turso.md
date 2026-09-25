@@ -147,7 +147,7 @@ flowchart TD
 **比べる: Workers Paid + Durable Objects（アカウントごとの SQLite）+ R2**（本文からの計算）
 - リクエスト 99,000 / 990,000 回 ≤ 含まれる 100 万 → $0
 - 実行時間（1回 50 ミリ秒の置き値 × 128 MB。LLM を Durable Object から呼んで待つ時間は含まない。含めた計算は `docs/research/server-platform.md` の「Durable Objects の実行時間の課金」）: 99,000 × 0.05 × 0.125 = 619 GB-秒 / 6,188 GB-秒 ≤ 含まれる 40 万 → $0
-- 行と保存は D1 と同じ単価と枠で、保存 0.5 / 5 GB ≤ 5 GB → $0
+- 行は D1 と同じ単価と枠。保存は 5 GB-月まで含まれ、超えた分は $0.20/GB-月（D1 は $0.75）。保存 0.5 / 5 GB ≤ 5 GB → $0
 - **合計 $5.18 / $8.09**（D1 と同じ）
 
 ```mermaid
