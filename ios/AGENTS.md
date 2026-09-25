@@ -4,7 +4,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 構成
 
-- 対象は iPhone だけ、最低対応は iOS 27。Xcode 27（Swift 6.4）でビルドする
+- 対象は iPhone だけ。Xcode 27（Swift 6.4）でビルドする
 - 画面を持たないロジック（下の「端末で行うもの」の計算と判定）は、ローカルの Swift パッケージ `NuToriCore/` に置き、SwiftUI・UIKit・HealthKit を import しない。Linux のエージェントと CI でも型検査とテストを回すため
 - 画面とヘルスケアなどの端末の入出力は、Xcode のプロジェクトのアプリ（`NuTori/`）に置き、UI テストは `NuToriUITests/` に置く
 - Xcode のプロジェクトはフォルダの同期（buildable folders）で組む。ファイルはフォルダに置くだけで足せるので、ファイルの出し入れで `project.pbxproj` を直さない
@@ -89,7 +89,7 @@ flowchart LR
 - `scripts/check ios` が、整形、Lint、ロジックのパッケージのテストを回す。macOS では続けて `scripts/check ios-app`（アプリのビルドとテスト）も回す
 - 整形の正は、`.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS の CI では整形を確かめない
 - SwiftLint は、`docs/agents/` の好みのうち機械で見られるものだけを見る。見た目は swift-format に任せる
-- CI（`.github/workflows/check.yml`）は、Linux の `ios` ジョブが通ってから macOS の `ios-app` ジョブを回す。main の必須のチェックは `changes`・`ios`・`server` にする。`changes` が落ちると後ろのジョブが飛ばされて通った扱いになるので、`changes` も必須にする。`ios-app` は、`xcode-27` のランナーがプレビューのうちは必須にしない
+- CI（`.github/workflows/check.yml`）は、Linux の `ios` ジョブが通ってから macOS の `ios-app` ジョブを回す。必須にするジョブはルートの `AGENTS.md` の「リポジトリ全体の決定」のとおりで、`ios-app` は `xcode-27` のランナーがプレビューのうちは必須にしない
 - ロジックのパッケージのテストを macOS でも回すのは、Linux と macOS で Foundation の振る舞いが違うことがあるため
 
 ## 配布
