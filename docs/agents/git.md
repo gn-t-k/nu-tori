@@ -25,5 +25,5 @@ Claude Code on the web のセッション（`CLAUDE_CODE_REMOTE=true`）では�
   - サブ Issue: `.../issues/<親>/sub_issues`（追加は `-X POST -F sub_issue_id=<子の DB ID>`）
   - 依存関係: `.../issues/<n>/dependencies/blocked_by`（追加は `-X POST -F issue_id=<ブロック元の DB ID>`）。すでに張られていると 422「already been taken」が返る
   - 担当者・ラベル・状態: `.../issues/<n>/assignees`、`.../issues/<n>/labels`、`-X PATCH .../issues/<n> -f state=closed`
-- コメントを投稿すると、リンクやコードの前後にバッククォートが足されて書式が崩れることがある（`gh api` でも `mcp__github__add_issue_comment` でも起きた。Issue の本文の更新では起きていない）。投稿したら本文を読み直し、崩れていたら `mcp__github__update_issue_comment` で同じ本文に更新して直す
+- Issue とコメントを書くと、リンクやコードの前後にバッククォートが足されたり、バッククォートが引用符に変わったりして、書式が崩れることがある（コメントの投稿でも Issue の本文の更新でも、`gh api` でも `mcp__github__*` でも起きた）。書いたら必ず読み直し、崩れていたら手元に置いた元の本文で書き直す。コメントは `mcp__github__update_issue_comment`、Issue の本文は `gh api -X PATCH .../issues/<n> -F body=@<ファイル>` で直し、もう一度読み直す
 - `mcp__github__*` のツールも使える。Issue、サブ Issue、コメント、PR は扱えるが、依存関係のツールは無いので `gh api` で張る
