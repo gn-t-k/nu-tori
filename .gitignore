@@ -3,3 +3,6 @@
 .tools/
 DerivedData/
 xcuserdata/
+node_modules/
+.wrangler/
+worker-configuration.d.ts
