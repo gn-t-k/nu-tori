@@ -1,0 +1,13 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "nu-tori",
+    "version": "1"
+  },
+  "components": {
+    "schemas": {},
+    "parameters": {}
+  },
+  "paths": {},
+  "webhooks": {}
+}

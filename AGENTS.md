@@ -61,7 +61,7 @@ flowchart LR
 - 確かめる手順の入口は `scripts/check` の1本にする。引数なしで両方、`ios`・`server` で片方を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。エージェントは、変えたらコミットの前に `scripts/check --fix` を回し、0 で終わるまで直す。CI は変わったパスでジョブを分け、main のルールセットでは `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行う。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る
 - 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。クラウドのエージェントの Linux には `scripts/install-swift` で Swift を入れる。Claude Code では SessionStart hook が裏で呼ぶ。新しいセッションの最初の40秒ほどは Swift が無い。無ければ `scripts/install-swift` を動かす（hook が入れている途中なら、入れ終わるのを待ってから戻る）
 - MCP のサーバーは、Claude Code（`.mcp.json`）・Codex（`.codex/config.toml`）・Cursor（`.cursor/mcp.json`）の3つの設定に同じものを置き、版や環境変数は起動スクリプト（`scripts/mobilebuildmcp`）の1か所に書く
-- 依存の更新は Dependabot にする。Dependabot が上げないものは手で上げる（`ios/AGENTS.md` の「版を上げる」）。Dependabot の PR にコミットを足すと、Dependabot はその PR を rebase しなくなるので、手で上げるものは別の PR にし、Dependabot の PR の CI を直したら早くマージする
+- 依存の更新は Dependabot にする。Dependabot が上げないものは手で上げる（`ios/AGENTS.md` と `server/AGENTS.md` の「版を上げる」）。Dependabot の PR にコミットを足すと、Dependabot はその PR を rebase しなくなるので、手で上げるものは別の PR にし、Dependabot の PR の CI を直したら早くマージする
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
 - 環境は本番と開発用の2つ。TestFlight と App Store の版は本番に、デバッグビルドは開発用につなぐ。DB、写真の置き場、LLM の API キー、Sign in with Apple の鍵は環境ごとに分け、開発用の LLM のキーには低い費用の上限をかける
 - 計算・判定・検証の決めごと（ドメイン知識）の正本は、既定でサーバーのドメイン層に置く。見た目の決めごと（`DESIGN.md`）と、ヘルスケアとの対応づけのような端末の入出力の変換は、ドメイン知識に含めない。端末に置くのは、サーバーに置くと次のどれかでユーザーが不利益を被るものだけにする（今の一覧は `ios/AGENTS.md`）
@@ -69,7 +69,7 @@ flowchart LR
   2. 操作についてくる速さが要る
   3. アプリが開かれていないとき、または電波がないときにも動く必要がある
 - 観測の道具（分け方は ADR-0017）のどれにも、記録の中身（写真、文章、料理と材料の名前、発言の本文、体重・体脂肪率・kcal・栄養の値）を送らず、PostHog に送る数値は数・率・差・所要時間・旗だけにする。観測は申告を待たずに気づくためのもので、人の声は TestFlight のフィードバックと問い合わせで受ける
-- 端末とサーバーの両方に置く決めごと（栄養の合計の数え方、日と週の区切り、受け付ける値の範囲）は、係数や範囲をデータにしてリポジトリの1か所に置き、両側で読む。手順は両側に書き、入力と期待値の JSON を1か所に置いて両方のテストで読む。値や検証の結果が違ったときは、サーバーを正とする。小さな純粋な計算の域を超えたら、TypeScript で1回だけ書き、端末では JavaScriptCore で動かす
+- 端末とサーバーの両方に置く決めごと（栄養の合計の数え方、日と週の区切り、受け付ける値の範囲）は、係数や範囲をデータ（JSON）にしてルートの `shared/` に置き、両側で読む。サーバーは import で読み、端末は JSON から書き出した Swift のファイルで持って、書き出しが最新かを `scripts/check` で確かめる（書き出しは、最初に係数を置くときに足す）。手順は両側に書き、入力と期待値の JSON も `shared/` に置いて両方のテストで読む。値や検証の結果が違ったときは、サーバーを正とする。小さな純粋な計算の域を超えたら、TypeScript で1回だけ書き、端末では JavaScriptCore で動かす
 
 ### 公開リポジトリ
 

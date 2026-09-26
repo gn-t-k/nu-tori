@@ -4,6 +4,11 @@
 
 ## コーディング
 
+### 道具
+
+- 型検査は `tsc`（TypeScript 7）、Lint は oxlint（型の情報を使うルールを含む）、整形は oxfmt。どれも `scripts/check` から呼ぶ
+- 好みのうち機械で確かめられるものは、oxlint のルールにして `.oxlintrc.json` で有効にする。組み込みのルールに無いものは、oxlint の JS プラグインで独自のルールを書く
+
 ### 型検査の前提
 
 - tsconfig は `@tsconfig/strictest` を継承し、`moduleResolution` は `Bundler` にする（拡張子なしの `./index` やディレクトリの import はこれを前提にする）。このファイルの型の話は、そこで有効になる `strict`、`exactOptionalPropertyTypes`、`noImplicitReturns` などを前提にする
@@ -143,3 +148,4 @@ test("ユーザーの ID の名前でデータベースを作ること", async (
 
 - `Intl.DateTimeFormat` などは、`timeZone` と locales を指定しなければ、実行環境のタイムゾーンとロケール（`TZ`、`LC_ALL`・`LANG`）で整形する
 - `TZ=UTC LC_ALL=en_US.UTF-8 pnpm exec vitest run ...` のようにタイムゾーンとロケールを変えても通ることを確かめる
+- Workers の実行環境の中で回すテスト（`server/`）では、タイムゾーンは `TZ` に寄らず UTC になり、ロケールだけが `LC_ALL`・`LANG` に従う。`LC_ALL=en_US.UTF-8` と `LC_ALL=ja_JP.UTF-8` で通ることを確かめる

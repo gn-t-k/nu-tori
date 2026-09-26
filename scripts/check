@@ -81,8 +81,40 @@ check_ios_package() {
 }
 
 check_server() {
-    step "サーバー"
-    echo "server/ に確かめるものがまだ無い"
+    step "サーバーの依存（pnpm）"
+    (cd "$server" && pnpm install --frozen-lockfile)
+
+    step "整形（oxfmt）"
+    if $fix; then
+        (cd "$server" && pnpm exec oxfmt)
+    fi
+    (cd "$server" && pnpm exec oxfmt --check)
+
+    step "Worker の型の宣言（wrangler types）"
+    (cd "$server" && pnpm exec wrangler types > /dev/null)
+
+    step "Lint（oxlint）"
+    if $fix; then
+        (cd "$server" && pnpm exec oxlint --fix)
+    fi
+    (cd "$server" && pnpm exec oxlint)
+
+    step "型検査（tsc）"
+    (cd "$server" && pnpm exec tsc)
+
+    step "OpenAPI の文書が経路のスキーマと合っているか"
+    local document
+    document="$(cd "$server" && pnpm exec tsx scripts/print-openapi-document.ts)"
+    if $fix; then
+        echo "$document" > "$server/openapi.json"
+    fi
+    if ! diff -u "$server/openapi.json" - <<< "$document"; then
+        echo "server/openapi.json が古い。scripts/check server --fix で書き出し直す" >&2
+        return 1
+    fi
+
+    step "テスト（Vitest）"
+    (cd "$server" && pnpm exec vitest run)
 }
 
 print_usage() {
@@ -91,7 +123,7 @@ print_usage() {
   引数なし  ios と server
   ios       整形、Lint、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app   ロジックのパッケージのテストと、アプリのビルドとテスト（macOS だけ）
-  server    サーバー
+  server    整形、Lint、型検査、OpenAPI の文書が最新か、テスト
   --fix     直せるものを直してから確かめる
 USAGE
 }
@@ -160,6 +192,7 @@ latest_iphone_simulator() {
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 ios="$root/ios"
+server="$root/server"
 swiftlint_version=0.65.1
 swiftlint=""
 fix=false

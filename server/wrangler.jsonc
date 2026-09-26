@@ -1,0 +1,42 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // 上の階層は開発用。本番は env.production で、つなぎは環境ごとに書き直す
+  "name": "nu-tori-development",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+  "exports": {
+    "AccountDurableObject": { "type": "durable-object", "storage": "sqlite" },
+  },
+  // 場所のヒント（apac-ne）はここに書けないので、Durable Object を得るコードで locationHint として渡す。ヒントが効くのは最初の get() だけ
+  "durable_objects": {
+    "bindings": [{ "name": "ACCOUNT", "class_name": "AccountDurableObject" }],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nu-tori-development",
+      "migrations_dir": "d1-migrations",
+    },
+  ],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "nu-tori-development-photos" }],
+  "env": {
+    "production": {
+      "name": "nu-tori-production",
+      "exports": {
+        "AccountDurableObject": { "type": "durable-object", "storage": "sqlite" },
+      },
+      "durable_objects": {
+        "bindings": [{ "name": "ACCOUNT", "class_name": "AccountDurableObject" }],
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "nu-tori-production",
+          "migrations_dir": "d1-migrations",
+        },
+      ],
+      "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "nu-tori-production-photos" }],
+    },
+  },
+}
