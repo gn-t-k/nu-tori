@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# クラウドのエージェントの Linux に、ios/.swift-version の版の Swift を入れる。入っていれば何もしない
+set -euo pipefail
+
+main() {
+    local root version
+    root="$(cd "$(dirname "$0")/.." && pwd)"
+    version="$(tr -d '[:space:]' < "$root/ios/.swift-version")"
+    local dir="/opt/swift-$version"
+    # hook とエージェントが同時に動かしたら、先のものが入れ終わるまで待つ
+    exec 9> /tmp/install-swift.lock
+    flock 9
+    if [ "$(readlink /usr/local/bin/swift)" = "$dir/usr/bin/swift" ]; then
+        return
+    fi
+
+    local platform
+    platform="$(swift_platform)"
+    local base="https://download.swift.org/swift-$version-release/${platform//./}/swift-$version-RELEASE/swift-$version-RELEASE-$platform"
+    local work
+    work="$(mktemp -d)"
+    trap "rm -rf '$work'" EXIT
+
+    echo "Swift $version を入れる" >&2
+    # 大きいので、プロキシ越しに途中で切れることがある
+    if ! curl -fsSL --retry 5 --retry-all-errors --max-time 900 -o "$work/swift.tar.gz" "$base.tar.gz"; then
+        echo "download.swift.org から落とせない。届かないなら、環境のネットワークの許可に download.swift.org を足す" >&2
+        return 1
+    fi
+    curl -fsSL --retry 5 --retry-all-errors --max-time 60 -o "$work/swift.tar.gz.sig" "$base.tar.gz.sig"
+    # swiftly は使わない。プロキシが鍵を gzip のまま渡すと swiftly の署名の検証が失敗するので、--compressed で展開して取り込む
+    curl -fsSL --max-time 60 --compressed https://www.swift.org/keys/all-keys.asc | gpg --batch --quiet --import
+    gpg --batch --verify "$work/swift.tar.gz.sig" "$work/swift.tar.gz"
+
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    tar -xzf "$work/swift.tar.gz" -C "$dir" --strip-components=1
+    # swift はリンクの名前でドライバを選ぶので、名前を変えずに PATH の上に並べる
+    ln -sf "$dir"/usr/bin/* /usr/local/bin/
+    swift --version >&2
+}
+
+# download.swift.org の配布物の名前（ubuntu24.04、ubuntu24.04-aarch64 など）
+swift_platform() {
+    local id version_id
+    id="$(. /etc/os-release && echo "$ID")"
+    version_id="$(. /etc/os-release && echo "$VERSION_ID")"
+    local platform="$id$version_id"
+    if [ "$(uname -m)" = aarch64 ]; then
+        platform="$platform-aarch64"
+    fi
+    echo "$platform"
+}
+
+main "$@"
