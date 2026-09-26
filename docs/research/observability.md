@@ -14,6 +14,8 @@
 > - 二次情報（ブログ、まとめ記事、Qiita・Zenn、Stack Overflow）は使っていない。出典の番号は末尾の「出典一覧」。
 > - **PostHog の分（末尾の「PostHog」の節、2026-09-26 に追加）**: posthog.com/docs の各ページの Markdown 版（`https://posthog.com/docs/<パス>.md`、索引は `https://posthog.com/llms.txt`）、料金ページの Markdown 版（`https://posthog.com/pricing.md`）と HTML、利用規約（`/terms`）・DPA（`/dpa`）・サブプロセッサー（`/subprocessors`）の HTML の**本文を直接取得して読んだ**。SDK の既定値と挙動は、PostHog の公式リポジトリ **posthog-ios（コミット `c99f607`、版 3.84.1）を手元に取得して、ソースを読んで**確かめた。posthog-node は posthog-js リポジトリの `packages/node`（版 5.54.1）の `package.json` と入口のソースを読んだ。あわせて Apple の User Privacy and Data Use と、Cloudflare の Durable Object の State の文書も読んだ。PostHog の出典の番号（PH）と、この節で足した AP28・CF22 は、その節の中の「PostHog の出典」に置いた。
 > - **PostHog の実アカウントは作っていない。** 設定画面、請求の画面、送った出来事の見え方、削除にかかる実際の時間は確かめていない。料金は取得日（2026-09-26）時点のもの。文書の例の SDK の版（3.56、3.59.3 など）はリポジトリの版（3.84.1）より古く、既定値はソースを正とした。
+> - **Sentry の分（末尾の「Sentry」の節、2026-09-26 に追加）**: docs.sentry.io の各ページの Markdown 版（`https://docs.sentry.io/<パス>.md`、索引は `https://docs.sentry.io/llms.txt`）、sentry.io/pricing の HTML（プランの比較表は、各欄のチェックの SVG の有無を HTML から数えて読んだ）、規約（`/terms/`）・DPA（`/legal/dpa/`）・セキュリティの方針（`/security/`）の HTML、DPA の結び方は Sentry のヘルプセンター（sentry.help）の記事の**本文を直接取得して読んだ**。docs.sentry.io は無いページにも HTTP 200 で「Page Not Found」を返すので、本文の見出しで取れたかを確かめた。SDK の既定値と挙動は、公式リポジトリ **sentry-cocoa（コミット `9655b5b`、版 9.29.2）と sentry-javascript（コミット `bd3ce5f`、版 11.0.0）を手元に取得して、ソースを読んで**確かめた。npm の最新の版は登録簿の `dist-tags` で確かめた。PostHog のエラートラッキングの通知・グループ化・dSYM の 4 ページ（PH38〜PH41）も読んだ。Sentry の出典の番号（SE）は、その節の中の「Sentry の出典」に置いた。
+> - **Sentry の実アカウントは作っていない。** 通知の画面、請求の設定（従量課金の予算を $0 にできるか）、Developer で使えない「API」の範囲、強制アンラップのクラッシュの見え方、Durable Object のアラームの終わりの送信が届くかは確かめていない。GDPR の本文（EUR-Lex）は取得できず（HTTP 202 で本文が空）、健康のデータが特別な種類に当たるかは Sentry の文書の範囲でしか書いていない。料金は取得日（2026-09-26）時点のもの。
 
 ## 結論の要約
 
@@ -39,6 +41,11 @@
 - **PostHog の削除**: 人（person）を `distinct_id` か UUID で指定し、出来事とリプレイもあわせて消す API がある（個人の API キーが要る）。出来事の削除は非同期で、PostHog Cloud では空いている時間（週末）に行われ、状態を問い合わせる API がある（本文で確認、PH18・PH19）。アカウントの削除のときに Worker から呼べる形をしている（本文からの読み取り）。保持期間を短くして消すことはできない（本文で確認、PH15）
 - **PostHog のリプレイとエラー**: iOS のリプレイは一般提供で、既定では無効。有効にすると、文字と画像を既定で隠す。**SwiftUI はスクリーンショットのモード（既定では無効、SDK が「機微な情報を含みうる」と注意する）でしか対応しない**（本文で確認、PH22〜PH24・PH6）。iOS の例外は、Mach 例外・POSIX シグナル・捕まえなかった NSException を拾い、次の起動で送る。Swift のクラッシュは `SIGTRAP` になり、メッセージが無い（本文で確認、PH25）。Workers の例外は、Hono の `app.onError` で `captureException` を呼んで送る例がある（本文で確認、PH26）
 - **PostHog と健康データ**: HIPAA の BAA は Boost（月 $250）以上だけ（本文で確認、PH11・PH35）。利用規約は、機微な個人データを集めないよう設定するのは顧客の責任とし、**既定では顧客のデータを、集約するか匿名にしたうえで PostHog の製品とモデルの開発に使う（設定で断れる）**（本文で確認、PH36）。PostHog の SDK のプライバシーマニフェストは Product Interaction と Other Usage Data を「結びつかない・トラッキングなし・Analytics」と宣言するが、アカウントの ID で identify すれば「結びつく」になる（本文で確認、PH6。本文からの読み取り、AP23）
+- **Sentry（末尾の節）の無料枠**: Developer は 1 人、プロジェクトは無制限、月にエラー 5,000・ログ 5 GB・スパン 500 万・リプレイ 50・Uptime と Cron のモニター各 1、保持はすべて 30 日。超えた分は捨てられて請求されず、Developer には従量課金が無い。新しいアカウントは 14 日の Business の試用から始まり、その間のエラーは 90 日残る。Release Health のセッションは課金しない（本文で確認、SE1・SE2・SE4・SE6・SE20）
+- **Sentry の通知**: Developer でもメールの通知が使え、新しい issue・エスカレート（急増を含む）・回帰・解決を条件にでき、件数・影響したユーザー数・セッションの割合・環境で絞れる。Slack などへの通知と「Additional Alert Types」は Team 以上（本文で確認、SE2・SE10）
+- **Sentry の iOS SDK**: SPM で入り（iOS 15 以上）、**Swift の `fatalError`・`assert`・`precondition` のメッセージを拾う**（PostHog は拾わない）。強制アンラップの記述は無い。クラッシュは次の起動で送り、送り待ちは端末に 30 件まで貯める。ハングの検出と Release Health は既定で有効、起動の計測はトレースを有効にしたときだけ。`sendDefaultPii` は既定で `false` だが**導入の手順の例は `true` にしている**。ユーザーを付けなければ、インストールごとのランダムな UUID を付ける。スクリーンショットと view hierarchy は既定で無効（本文で確認、SE11〜SE24）。dSYM は sentry-cli などで上げ、**Xcode Cloud からの手順は文書に無い**（本文を探したが記述なし、SE15・SE16）
+- **Sentry の Cloudflare SDK**: Vite のプラグインが Worker と Durable Object（`alarm` を含む）を包み、Hono には `@sentry/hono` がある。**npm の最新の 11.0.0（2026-09-23）は、`dataCollection` を書かないと HTTP の本文・IP・生成 AI の入出力を既定で集める**ので、アプリの送る健康の値や Anthropic への入力が届かないよう明示して切ることになる（既定の中身は本文で確認、SE25〜SE31。切ることになるのは本文からの読み取り）。Durable Object で送信が失われないことを保証する記述は無い（本文を探したが記述なし）
+- **Sentry の個人データ**: 一人の分だけを消す手段は無く、消せるのは issue ごとかタグに関わるデータ。保持期間で消え、バックアップは 90 日で消す。置き場は US か EU で、あとから変えられない。規約と DPA は特別な種類の個人データ（GDPR 第9条1項）を送ることを禁じる。**既定では生成 AI の学習に使わず**、製品の改善に使うかは設定で選ぶ（本文で確認、SE32〜SE39）。App Privacy は Sentry の案内で Crash Data などを申告し、SDK のマニフェストは Crash Data・Performance Data・Other Diagnostic Data を「結びつかない」と宣言する（本文で確認、SE23・SE24）
 
 ## 前提: 何が、どこで生まれ、どこへ行けるか
 
@@ -482,3 +489,181 @@ flowchart LR
 - PH37: Data Processing Agreement（付属書の Sensitive categories） — https://posthog.com/dpa
 - AP28: User Privacy and Data Use（トラッキングの定義、第三者の SDK） — https://developer.apple.com/app-store/user-privacy-and-data-use/
 - CF22: Durable Object State（`waitUntil`） — https://developers.cloudflare.com/durable-objects/api/state/
+
+## Sentry
+
+調査日: 2026-09-26。Issue #33 で「エラーの通知とデバッグは Sentry、行動分析は PostHog」と使い分ける案が出たので、Sentry を入れる判断に要る事実を集めた。取り方と限界は冒頭の「確認の方法と限界」、出典はこの節の末尾の「Sentry の出典」。4 節の「Sentry（Cocoa SDK、Cloudflare 向け SDK）」（TP1〜TP6）より詳しく調べ直したもので、食い違いはこの節の最後の「4 節の Sentry の記述との突き合わせ」に書いた。
+
+送る道と、既定で送るもののうち nu-tori で切るかを決めるものを図にした。
+
+```mermaid
+flowchart LR
+  subgraph iPhone
+    A[アプリ<br>sentry-cocoa 9.29]
+    C[(Caches の送り待ち<br>既定 30 件)]
+  end
+  subgraph CF[Cloudflare]
+    W[Worker（Hono）<br>@sentry/hono]
+    D[Durable Object とアラーム<br>instrumentDurableObjectWithSentry]
+  end
+  S[(Sentry<br>US か EU。あとから変えられない<br>Developer は 30 日)]
+  A -->|クラッシュは次の起動で| C --> S
+  W -->|v11 の既定で本文・IP も| S
+  D -->|終わりに flush| S
+  X[Xcode のビルドの Run Script<br>sentry-cli] -->|dSYM| S
+  V[vite build] -->|ソースマップ| S
+```
+
+### 無料の Developer プランの枠
+
+- **人数とプロジェクト**: Developer は $0 で「1 人だけ」、プロジェクトの数は無制限（本文で確認、SE2）
+- **月の枠**: エラー 5,000、ログ（Sentry Logs）5 GB、アプリの指標（Application Metrics）5 GB、スパン 500 万、セッションリプレイ 50、Uptime のモニター 1、Cron のモニター 1、添付 1 GB、Metric Monitors 20、カスタムのダッシュボード 10（本文で確認、SE2）。UI Profiling と Continuous Profiling は従量課金が要り、Developer では使えない（本文で確認、SE1・SE2）
+- **保持期間**: Developer はエラー・ログ・スパン・リプレイ・プロファイル・Crons・Uptime・添付・アプリの指標がすべて 30 日。Team はエラー・リプレイ・Uptime・添付が 90 日、ログとスパンは 30 日（本文で確認、SE6）。**保持は取り込んだ時点のプランで決まり、あとでプランを変えても前のデータの保持は変わらない**（本文で確認、SE6）。**新しいアカウントは 14 日の Business の試用から始まり、試用中は Team の保持（エラー 90 日）になる**（本文で確認、SE1・SE6）。試用中に送ったエラーは 90 日残る（本文からの読み取り、SE6）
+- **Release Health のセッションは課金しない**（本文で確認、SE20）。Developer でも Release Health は使える（本文で確認、SE2）
+- **枠を超えたとき**: 予約の量と従量課金の予算を使い切ったあとに送ったデータは**捨てられ、請求されない**。その請求期間の残りは監視できなくなる（本文で確認、SE1）。サーバーは HTTP 429 と `Retry-After` を返し、SDK はやり直さずにその間のイベントを捨てる（本文で確認、SE4）。Developer で枠を増やすには Team か Business に上げる必要がある（本文で確認、SE4）。Developer には従量課金が無いので、無料のまま請求が起きる道は無い（本文からの読み取り、SE1・SE4）
+- **急増の保護（Spike Protection）**: プロジェクトごとに有効にでき、過去 7 日の量から決めたしきい値を超えると捨てて、その分を数えない。エラー・スパン・添付が対象で、ログとリプレイは対象外。試用中は効かない。通知は既定で切れている（本文で確認、SE3・SE5）。しきい値の計算に「Developer プランの予約量の 1/10」が出てくるので、Developer でも効く作りに読める（本文からの読み取り、SE5）
+- **支出の上限**: 比較表で「Spend notifications」と「Set maximum spend threshold」は Developer に無く、Team 以上にある（本文で確認、SE2）。従量課金の予算は自分で決め、その額までしか請求しない。予算を途中で下げると、使った分を超える新しいデータは拒まれる（本文で確認、SE1）。**予算を $0 にできるかの明記は無い**（本文を探したが記述なし、SE1・SE3・SE4）。枠の 80% と使い切りで、組織の Owner と Billing にメールが届く（本文で確認、SE4・SE7）
+- **API**: 比較表の「API」と「Third-party integrations」は Developer に無い（本文で確認、SE2）。dSYM とソースマップを上げる sentry-cli は組織の Auth Token を使う（本文で確認、SE15）。この「API」に Auth Token での上げ下ろしが含まれるかの記述は無い（本文を探したが記述なし、SE2・SE15）
+- **本番と開発用**: プロジェクトは無制限なので、本番と開発用を別のプロジェクトに分けられる（本文からの読み取り、SE2）。1 つのプロジェクトの中でも `environment`（既定は `production`）で分け、通知を環境で絞れる（本文で確認、SE10・SE13）
+
+### 通知（Monitors と Alerts）
+
+- **仕組み**: Monitors が「いつ issue にするか」を決め、Alerts が issue の変化に応じて通知やチケットを作る（本文で確認、SE8）。プロジェクトを作ると、既定の Monitors（新しい issue を追う Issue Stream Monitor と、グループ化の規則による Error Monitor）ができる（本文で確認、SE9）
+- **無料プランのメール**: 比較表で「Alerts and notifications via email」は Developer にあり、「Alerts and notifications via integrated tools」（Slack など）と「Additional Alert Types」と「Anomaly Detection」は無い（本文で確認、SE2）。「Additional Alert Types」がどの条件を指すかの記述は無い（本文を探したが記述なし、SE2・SE10）
+- **Alerts の条件（When）**: 新しい issue ができた、issue がエスカレートした（優先度が上がった、急増と判定された）、解決した issue が再発した（回帰）、issue が解決された、イベントか issue の動きがあった（本文で確認、SE10）
+- **絞り込み（If）**: issue の古さ・担当・発生回数・種類（`error`・`mobile` など）・優先度、頻度（5 分〜30 日の件数か、過去との比の増加）、影響したユーザーの数、影響したセッションの割合（5 分〜1 時間）、イベントの属性（`environment`、`error.unhandled`、`exception.type`、`user.id` など）、タグ、レベル、最新のリリースか（本文で確認、SE10）
+- **動作（Then）**: 担当・チーム・メンバーへの通知（各人の通知の設定でメールなど）、Slack・Discord・Teams・PagerDuty など、チケットの作成（本文で確認、SE10）。通知の間隔（throttling）は毎回〜30 日から選ぶ（本文で確認、SE10）
+- **Metric Monitors**: エラー・スパン・ログ・リリース・アプリの指標にしきい値（絶対値か変化率）をかけ、例に「クラッシュ率が 1% を超えた」を挙げる。クラッシュのないセッション・ユーザーの率が下回ったら知らせる使い方も書かれている（本文で確認、SE9・SE20）。Developer で 20 個まで（本文で確認、SE2）
+- **issue を追っていなくても届くメール**: 回帰（解決した issue の再発）は、プロジェクトのチームの全員にメールが届く（本文で確認、SE7）。毎週土曜日に週の要約のメールが届く（本文で確認、SE7）
+
+### iOS（sentry-cocoa）
+
+- **入れ方**: Swift Package Manager で `https://github.com/getsentry/sentry-cocoa.git` を足し、製品は `SentrySPM`（ソースから組む。推奨）か、組み済みの `Sentry`・`Sentry-Dynamic` を 1 つだけ選ぶ（本文で確認、SE11）。`Package.swift` の最低の版は iOS 15（本文で確認、SE24）。SwiftUI では `App` の `init()` で `SentrySDK.start` を呼ぶ例がある（本文で確認、SE12）
+- **クラッシュ**: Mach 例外・シグナル・C++ 例外・Objective-C 例外に加え、**`fatalError`・`assert`・`precondition` のメッセージを拾う**（本文で確認、SE14）。SDK は Swift の実行時が `libswiftCore.dylib` の `__crash_info` に書くメッセージを読み、シグナルや Mach 例外のときに例外の値に入れる（本文で確認、SE24 の `SentryCrashDynamicLinker.c`・`SentryCrashReportConverter.m`）。**強制アンラップ（`!`）の失敗のメッセージが残るかの記述は無い**（本文を探したが記述なし、SE14・SE24）。クラッシュはディスクに書き、**次の起動で**送る。起動から 2 秒以内のクラッシュは、SDK の初期化が最大 5 秒待って送る（本文で確認、SE14）
+- **dSYM**: 記号にするには dSYM が要り、sentry-cli、Fastlane のプラグイン、Xcode のビルドの Run Script のどれかで上げる。どれも組織の Auth Token が要る（本文で確認、SE15）。Run Script では `ENABLE_USER_SCRIPT_SANDBOXING` を `NO` にする（本文で確認、SE15）。**Xcode 14 以降、App Store Connect から dSYM を落とせないので、別の方法で上げる**よう書かれている（本文で確認、SE16）。**ネイティブの iOS で Xcode Cloud から上げる手順は Sentry の文書に無い**（Xcode Cloud の記述は React Native の、ソースマップの `dist` の話だけ）（本文を探したが記述なし、SE15・SE16）。Xcode Cloud でも Run Script は動くので、sentry-cli を入れて Auth Token を渡せば同じ形で上げられるはずだが、確かめていない（本文からの読み取り、SE15）
+- **ハング**: `enableAppHangTracking` は既定で有効、2 秒で App Hang とする。完全に止まったハングとそうでないものを分ける。ただし**今のハングの検出は誤検知があり、次の大きな版（10）で外す予定で、MetricKit の連携への移行を勧めている**。MetricKit の連携（`enableMetricKit`）は既定で無効（本文で確認、SE13・SE17）。ウォッチドッグによる終了の追跡（前面にいたときだけ、推定）は既定で有効（本文で確認、SE13）
+- **起動の遅さ**: 起動の計測（コールド・ウォーム、事前起動の区別）は既定で有効だが、**トレースを有効にしたとき**だけ動く（本文で確認、SE18）。トレースは既定で無効（`tracesSampleRate` を決めて有効にする）（本文で確認、SE12・SE22）
+- **breadcrumbs**: 既定で、アプリの状態の変化、UIControl の操作、システムの出来事（電池、メモリの警告、画面の向き、キーボード、スクリーンショットを撮った、タイムゾーン）、外への HTTP 要求を自動で残す。最大 100 件（本文で確認、SE13・SE19）。Sentry は手で残すなら breadcrumbs より Logs を勧める（本文で確認、SE19）。Logs（`enableLogs`）は既定で無効（本文で確認、SE13）
+- **Release Health**: 既定で有効（`enableAutoSessionTracking`）。背面に 30 秒いたらセッションを閉じる。クラッシュのないセッションの率とユーザーの率を出す（本文で確認、SE13・SE20）
+- **既定で送る個人情報**:
+  - `sendDefaultPii` は既定で `false`。`false` のとき SDK は `infer_ip` を `never` にして、接続の IP をユーザーの IP にしないよう伝える（本文で確認、SE13・SE24 の `SentrySdkInfo.swift`・`SentrySDKSettings.swift`）。ただし**導入の手順の例は `options.sendDefaultPii = true` を書いている**ので、写すと IP を送る（本文で確認、SE12）
+  - ユーザーを設定しないと、SDK は**インストールごとのランダムな UUID を `user.id` に入れる**（本文で確認、SE24 の `SentryClient.m`・`SentryInstallation.swift`、SE23）。IDFA と端末の ID は使わない（本文で確認、SE23）。アプリの文脈には IDFV・機種・バンドル ID の SHA1 の `device_app_hash` を入れる（本文で確認、SE24 の `SentryScopeContextEnricher.swift`）
+  - 端末の文脈は、機種、OS と版、メモリ、画面の大きさ、ロケール、シミュレータか、脱獄か。**端末名を読むコードは無い**（本文で確認、SE24 を検索）
+  - 失敗した HTTP の要求（既定で 500〜599）のヘッダー（危険なものは除く）と、クエリを除いた URL を送る。切るのは `enableCaptureFailedRequests` と `enableNetworkBreadcrumbs`（本文で確認、SE13・SE22）
+- **スクリーンショットと view hierarchy**: どちらも**既定で無効**（`attachScreenshot`・`attachViewHierarchy`）（本文で確認、SE21・SE22）。スクリーンショットを有効にすると、既定で文字と同梱でない画像を黒く塗る。SwiftUI は塗りすぎることがあり、`sentryReplayMask`・`sentryReplayUnmask` で直す。ハングのイベントには付かない（本文で確認、SE21）。view hierarchy は SwiftUI ではほとんど取れない（本文で確認、SE21）。セッションリプレイも既定で無効（`sessionSampleRate`・`onErrorSampleRate` が 0）（本文で確認、SE13）
+- **電波がないとき**: 送る前のデータは端末の Caches に貯め、電波があるときに送る。貯めるのは既定で 30 件（`maxCacheItems`）で、超えると古いものから捨てる（本文で確認、SE13）
+
+### Cloudflare（@sentry/cloudflare、@sentry/hono）
+
+- **版**: npm の `latest` は 11.0.0（2026-09-23 公開）、10 系は 10.75.3（本文で確認、SE31 の npm の登録簿）
+- **Worker と Durable Object の包み方**: 推奨は Vite のプラグイン（`sentryCloudflareVitePlugin`）で、ビルドのときに Worker の入口を `withSentry` で、wrangler の設定にある Durable Object を `instrumentDurableObjectWithSentry` で包む。設定は入口の隣の `instrument.server.ts` に書くか、なければ `env` の `SENTRY_DSN` などを読む（本文で確認、SE25・SE26）。Vite を使わないなら自分で `withSentry` と `instrumentDurableObjectWithSentry` を書く（本文で確認、SE26・SE27）。`nodejs_compat` と `compatibility_date` 2024-09-23 以降が要る（本文で確認、SE25）
+- **アラーム**: `instrumentDurableObjectWithSentry` は `fetch`・`alarm`・`webSocket*`・RPC のメソッドを包み、例外を未処理（`handled: false`）として送ってから投げ直す（本文で確認、SE31 の `durableobject.ts`・`wrapMethodWithSentry.ts`）。Durable Object の storage の `get`・`put`・`delete`・`list` もスパンにする（本文で確認、SE27）
+- **Hono**: Cloudflare の Hono には専用の `@sentry/hono`（`@sentry/cloudflare` を同じ版で相方に入れる）の `sentry()` ミドルウェアを使う。Hono の `onError` の例外を拾い、3xx と 4xx の状態のものは除く（本文で確認、SE28）。Hono のミドルウェアと Vite のプラグインの自動の包みを一緒に使うときの記述は無い（本文を探したが記述なし、SE26・SE28）
+- **ソースマップ**: wrangler の設定で `upload_source_maps: true` にし、`npx @sentry/wizard@latest -i sourcemaps` で上げる設定を作る。上げるのは本番のビルド（`wrangler deploy`）だけ（本文で確認、SE25・SE29）
+- **Durable Object で送信が失われないか**: メソッドが終わると `waitUntil(teardown())` で送り切って（flush）から後始末する（本文で確認、SE31 の `wrapMethodWithSentry.ts`）。SDK のソースは「Durable Object には実行を確実に延ばす `waitUntil` の境目が無い」と書き、そのためにクライアントを isolate ごとに使い回し（`cacheClient`、既定で `true`）、flush のあとに出たデータはすぐ送るとしている（本文で確認、SE31 の `baseSdk.ts`・`client.ts`）。Cloudflare の文書は、Durable Object の `waitUntil` は効かず、進行中の入出力があるあいだ動き続けると書く（本文で確認、CF22）。**送信が失われないことを保証する記述は無い**（本文を探したが記述なし、SE25〜SE27）
+- **既定で送るもの（v11 で広がった）**: **v11 では `dataCollection` を書かないと、ユーザーの情報（受けた要求の IP など）、Cookie、HTTP のヘッダー、受けた要求と返した応答・外への要求と応答の本文、URL のクエリ、生成 AI の入力と出力、DB の問い合わせのデータを既定で集める**。v10 では `sendDefaultPii` を書かなければ、これらの多くは集めなかった（本文で確認、SE30・SE31 の `MIGRATION.md`・`resolveDataCollectionOptions.ts`）。キーの名前が `auth`・`token`・`password` などに当たる値は常に `[Filtered]` にする（本文で確認、SE30）。Vite のプラグインは同梱した `@anthropic-ai/sdk`（0.19.2 以上 1 未満）の呼び出しをビルドのときに計測する（本文で確認、SE26・SE31 の `anthropic-ai.ts`）。**nu-tori では、アプリが送る本文（体重・食事の写真・栄養の値）と Anthropic への入力・出力が既定で Sentry に届きうるので、`dataCollection` で `userInfo: false`、`httpBodies: []`、`genAI: { inputs: false, outputs: false }` などを明示することになる**（本文からの読み取り、SE30・SE31）
+
+### 個人データと消すこと
+
+- **サーバー側のスクラビング**: 既定で有効。クレジットカードの番号に見える値と、キーか値に `password`・`secret`・`passwd`・`api_key`・`apikey`・`auth`・`credentials`・`mysql_pwd`・`privatekey`・`private_key`・`token`・`bearer` を含むものを消す。プロジェクトの設定で消す語を足せ、IP アドレスを保存しない設定もある。**IP を保存しない設定でも、IP から地域の情報は取り出され、消すには別の規則が要る**（本文で確認、SE32・SE34）。スクラビングの対象は決まった欄だけ（本文で確認、SE32）
+- **一人のデータを消す手段**: **イベントを 1 件ずつは消せない。消せるのは issue ごと（その issue のすべてのイベント）**と、タグに関わるデータ（本文で確認、SE32・SE34）。API にも issue の削除はあるが、ユーザーやイベントを指定して消す口は一覧に無い（本文を探したが記述なし、SE33）。DPA は、サービスの中で届かない個人データについて、顧客の費用で本人の請求への対応を手伝うとする（本文で確認、SE37）。**アカウントの ID を `user.id` に付けると、その人の分だけを消す手段が無く、issue ごと消すか保持期間を待つことになる**（本文からの読み取り、SE32・SE33）
+- **保持期間で消えるか**: 個々のイベントは保持期間（Developer は 30 日）のあとに消え、issue はイベントがすべて消えたら消える。**本番のバックアップは作ってから 90 日で消す**（本文で確認、SE6・SE34）。消し方は「アクセスできなくなる」と「本番から消える」で書き分けられている（本文で確認、SE6・SE34）
+- **Apple の求めとの関係**: Apple はアカウントの削除のときに、アカウントに結びつくデータを消すよう求める（AP25）。Sentry に送るものにアカウントの ID を入れなければ、SDK が付けるのはインストールごとのランダムな UUID だけで、アカウントには結びつかない（本文からの読み取り、SE23・SE24・AP23）
+
+### データの置き場
+
+- **US か EU**: US はアイオワ、EU はフランクフルト。組織を作るときに選び、**あとから変えられず、変えるには組織を作り直す**。SaaS の組織のイベントを移す手段は無い（本文で確認、SE35）
+- **選んだ場所に置くもの**: エラー、スパン、ログ、指標、Release Health、リリース・デバッグシンボル・ソースマップ、リプレイ、それらのバックアップ（本文で確認、SE35）
+- **場所にかかわらず US に置くもの**: ユーザーのアカウント、組織の設定、監査ログ、**Cron の check-in**、プロジェクトのメタデータ、DSN の鍵、詳しい使用量など。サポートに渡したデータも US（本文で確認、SE35）。Uptime の確認は両方の場所に置く（本文で確認、SE35）
+- **処理の場所**: 規約は、選んだ場所に保存したうえで、米国と、関連会社・サブプロセッサーのいる国で処理しうるとする（本文で確認、SE36）
+
+### 規約・DPA（製品開発と AI の学習、機微なデータ）
+
+- **製品の改善への利用**: 規約（Terms of Service 3.0.0、2024-02-12）は、サービスの提供・維持・改善に要る範囲でサービスのデータを使う許諾を与え、**識別できない要素（Non-Identifying Data。個人データ、ソースコード、内容、添付は含まない）は、分析・ベンチマーク・新しい製品の開発などに使える**。それ以外の要素は、顧客が設定で許した範囲でだけ使う（本文で確認、SE36）
+- **AI の学習**: **既定では、許しがない限り生成 AI のモデルの学習に使わない**。設定の「Legal & Compliance」の「Service Data Usage」で、グループ化・通知などのモデルの改善に使うことを許すかを選ぶ。許した場合も PII を消してから学習に入れ、元のデータを消すと学習のデータからも消す（本文で確認、SE38・SE39）。識別できないデータは、Sentry のモデルの学習に使い、第三者のモデルの学習には使わない（本文で確認、SE38）。組織の単位で生成 AI の機能を全部切る設定がある（本文で確認、SE39）
+- **DPA**: DPA（5.1.0、2024-05-29）は、組織の「Legal & Compliance」から Owner か Billing の役割の人が受け入れる（どのプランでも）（本文で確認、SE37）。**規約は、DPA を結ばない限り個人データを送らないとする**（本文で確認、SE36）。**DPA を結んだ場合も、特別な種類の個人データ（Sensitive Data）を送ることを禁じる**（本文で確認、SE37）
+- **健康のデータ**: 規約は、GDPR 第9条1項の特別な種類のデータや PHI などの「Sensitive Personal Information」を Sentry に使わないよう求め、BAA は Business 以上のプランだけ（本文で確認、SE2・SE36）。健康・フィットネスの値を名指しした記述は無い（本文を探したが記述なし、SE36・SE37）。GDPR の本文は今回取得できなかったので、体重や体脂肪率が第9条1項に当たるかは確かめていない。**どちらにしても、健康の値・食事の内容・写真を Sentry に送らない設計にするのが規約と食い違わない道**（本文からの読み取り、SE36・SE37）
+
+### App Privacy とプライバシーマニフェスト
+
+- **SDK のプライバシーマニフェスト**: sentry-cocoa の `PrivacyInfo.xcprivacy` は、**Crash Data・Performance Data・Other Diagnostic Data の 3 つを「ユーザーに結びつかない・トラッキングなし・目的は App Functionality」**と宣言し、必要な理由の API に UserDefaults（CA92.1）、起動からの時間（35F9.1）、ファイルの時刻（C617.1）を挙げる（本文で確認、SE24・TP5）。静的に組み込むなら、この内容をアプリのマニフェストに自分で書く（本文で確認、TP5）
+- **Sentry の答え方の案内**: App Store Connect で Sentry の利用を申告する必要がある（第三者の SDK が集める）。Sentry に送るように設定したものを含めて申告し、**標準の目的は「Analytics」と「App Functionality」**。Sentry はトラッキングに使わず、IDFA を要らない（本文で確認、SE23）。マニフェストの目的（App Functionality だけ）と案内（Analytics も）は一致していない（本文からの読み取り、SE23・SE24）
+- **nu-tori の答え**: クラッシュ・ハングは Crash Data、起動やフレームは Performance Data、HTTP の失敗などは Other Diagnostic Data になる（本文からの読み取り、AP23・SE24）。アカウントの ID を `user.id` に付ければ「結びつく」で申告する（本文からの読み取り、AP23）。SDK が付けるランダムな UUID だけなら「結びつかない」の読み方が SDK のマニフェストと合う（本文からの読み取り、SE23・SE24）
+
+### PostHog のエラートラッキングとの違い
+
+一次情報で言えるものだけを並べる。PostHog の側は「PostHog」の節（PH25・PH26）と、この節で読んだ PostHog の文書（PH38〜PH41）による。
+
+- **Swift のクラッシュのメッセージ**: Sentry は `fatalError`・`assert`・`precondition` のメッセージを拾う（SE14・SE24）。PostHog は Swift のクラッシュが `SIGTRAP` として出てメッセージが無いと書く（PH25）。どちらも本文で確認
+- **クラッシュを送る時期**: どちらも次の起動で送る（本文で確認、SE14・PH25）
+- **グループ化**: Sentry は指紋、次にスタックトレース（アプリのフレームだけ）、例外の型と値、メッセージの順に使い、組み込みの指紋の規則もある（本文で確認、SE40）。PostHog も指紋で自動でまとめ、取り込みのときに属性で束ねる規則を足せるが、「グループ化のやり方を改善中」と書く（本文で確認、PH40）
+- **通知**: Sentry は新しい issue・エスカレート・回帰・解決を条件にし、Developer でもメールで届く（本文で確認、SE2・SE10）。PostHog の issue の通知は「作られた・再び開いた」と急増で、送り先は Slack・Discord・Teams・HTTP のウェブフックなど。メールは出来事の数のグラフ（trends）の通知を使う（本文で確認、PH38・PH39）
+- **シンボル化**: どちらも dSYM を上げ、Xcode の Run Script で上げるならユーザーのスクリプトのサンドボックスを切る（本文で確認、SE15・PH41）。PostHog はシステムのフレームを記号にしないと書く（PH25）。Sentry のシステムのフレームの扱いは今回確かめていない
+- **ハング・起動・Release Health**: Sentry にはハング（既定で有効）、起動の計測（トレースが要る）、クラッシュのないセッションの率がある（本文で確認、SE13・SE17・SE18・SE20）。PostHog の iOS のエラートラッキングの文書には、これらに当たる記述は無い（本文を探したが記述なし、PH25）
+- **Workers**: Sentry は Worker・Durable Object・アラームを包み、Hono の `onError` も拾う（SE25〜SE28）。PostHog は `captureException` を自分で呼ぶ（PH26）。どちらも本文で確認
+- **無料枠と保持**: Sentry の Developer はエラー月 5,000 件・30 日（SE2・SE6）、PostHog は例外が月 10 万件（PH11）。どちらも超えた分は捨てて請求しない（SE1・PH11）
+
+### 4 節の Sentry の記述との突き合わせ
+
+- **プライバシーマニフェスト**: 4 節は「Crash Data と Performance Data を……宣言している」と書くが、TP5 の例と SDK のファイルは **Other Diagnostic Data も同じ形で宣言している**（本文で確認、TP5・SE24）
+- **Cloudflare 向け SDK の既定**: 4 節には既定で送るものの記述が無い。v11（2026-09-23 公開）から既定で本文や IP を集めるようになった（上の「既定で送るもの」）
+- ほかの記述（無料枠の数、US・EU とあとから変えられないこと、`sendDefaultPii` が既定で `false`、スクリーンショット・画面の階層・トレースが既定で無効）は、この節で読んだ本文と食い違わない
+
+### この節で確かめられなかったこと
+
+- Developer の「API」が無いことが、sentry-cli の dSYM・ソースマップの上げ下ろしに効くか（SE2・SE15 に記述なし）
+- 従量課金の予算を $0 に決められるか（SE1・SE3・SE4 に明記なし）
+- 「Additional Alert Types」が指す条件（SE2 に説明なし）
+- 強制アンラップの失敗のメッセージが Sentry に残るか（SE14・SE24 に記述なし。実機で確かめていない）
+- Xcode Cloud から dSYM を上げる手順（Sentry の文書に記述なし）
+- Durable Object で、アラームの終わりの送信が確実に届くか（保証の記述なし）
+- 一人の個人が 2 つ目の組織を無料で作れるか（記述なし）
+
+### Sentry の出典
+
+取得日はすべて 2026-09-26。
+
+- SE1: Pricing & Billing — https://docs.sentry.io/pricing/
+- SE2: Sentry Pricing（HTML のプランの比較表。チェックの有無は HTML の SVG の有無で読んだ） — https://sentry.io/pricing/
+- SE3: Billing Quota Management — https://docs.sentry.io/pricing/quotas/
+- SE4: Manage Your Error Quota — https://docs.sentry.io/pricing/quotas/manage-event-stream-guide/
+- SE5: Spike Protection — https://docs.sentry.io/pricing/quotas/spike-protection/
+- SE6: Data Retention Periods — https://docs.sentry.io/security-legal-pii/security/data-retention-periods/
+- SE7: Sentry Notifications — https://docs.sentry.io/product/notifications/
+- SE8: Monitors and Alerts — https://docs.sentry.io/product/monitors-and-alerts/
+- SE9: Monitors — https://docs.sentry.io/product/monitors-and-alerts/monitors/
+- SE10: Creating an Alert — https://docs.sentry.io/product/monitors-and-alerts/alerts/create-alerts/
+- SE11: Swift Package Manager (SPM) — https://docs.sentry.io/platforms/apple/install/swift-package-manager/
+- SE12: iOS（導入の手順） — https://docs.sentry.io/platforms/apple/guides/ios/
+- SE13: Options（Apple） — https://docs.sentry.io/platforms/apple/configuration/options/
+- SE14: Features（Apple。`fatalError` のメッセージ、起動直後のクラッシュ） — https://docs.sentry.io/platforms/apple/features/ 、iOS の Features — https://docs.sentry.io/platforms/apple/guides/ios/features/
+- SE15: Uploading Debug Symbols — https://docs.sentry.io/platforms/apple/dsym/
+- SE16: Troubleshooting（Apple。App Store Connect と dSYM） — https://docs.sentry.io/platforms/apple/troubleshooting/ 、Troubleshooting（React Native。Xcode Cloud） — https://docs.sentry.io/platforms/react-native/troubleshooting/
+- SE17: App Hangs — https://docs.sentry.io/platforms/apple/configuration/app-hangs/
+- SE18: Automatic Instrumentation（App Start Tracing） — https://docs.sentry.io/platforms/apple/tracing/instrumentation/automatic-instrumentation/
+- SE19: Breadcrumbs（Apple） — https://docs.sentry.io/platforms/apple/enriching-events/breadcrumbs/
+- SE20: Releases & Health（Apple） — https://docs.sentry.io/platforms/apple/configuration/releases/ 、Release Health — https://docs.sentry.io/product/releases/health/
+- SE21: Screenshots — https://docs.sentry.io/platforms/apple/guides/ios/enriching-events/screenshots/ 、View Hierarchy — https://docs.sentry.io/platforms/apple/guides/ios/enriching-events/viewhierarchy/
+- SE22: Data Collected（Apple。TP6 と同じページ） — https://docs.sentry.io/platforms/apple/guides/ios/data-management/data-collected/
+- SE23: Data Privacy for Mobile — https://docs.sentry.io/security-legal-pii/security/mobile-privacy/
+- SE24: sentry-cocoa（公式リポジトリ、コミット `9655b5b`、版 9.29.2。`Package.swift`、`Sources/Resources/PrivacyInfo.xcprivacy`、`Sources/Swift/Options.swift`、`Sources/Swift/Helper/SentrySdkInfo.swift`、`Sources/Swift/Protocol/SentrySDKSettings.swift`、`Sources/Sentry/SentryClient.m`、`Sources/Swift/Helper/SentryInstallation.swift`、`Sources/Swift/Helper/SentryScopeContextEnricher.swift`、`Sources/SentryCrash/Recording/Tools/SentryCrashDynamicLinker.c`、`Sources/Sentry/SentryCrashReportConverter.m`） — https://github.com/getsentry/sentry-cocoa
+- SE25: Cloudflare（導入の手順、既定で送るもの） — https://docs.sentry.io/platforms/javascript/guides/cloudflare/
+- SE26: Vite Plugin（Cloudflare） — https://docs.sentry.io/platforms/javascript/guides/cloudflare/install/vite-plugin/
+- SE27: Cloudflare Durable Objects — https://docs.sentry.io/platforms/javascript/guides/cloudflare/features/durableobject/
+- SE28: Hono on Cloudflare — https://docs.sentry.io/platforms/javascript/guides/cloudflare/frameworks/hono/ 、Hono — https://docs.sentry.io/platforms/javascript/guides/hono/
+- SE29: Source Maps（Cloudflare） — https://docs.sentry.io/platforms/javascript/guides/cloudflare/sourcemaps/
+- SE30: Options（Cloudflare。`dataCollection`） — https://docs.sentry.io/platforms/javascript/guides/cloudflare/configuration/options/
+- SE31: sentry-javascript（公式リポジトリ、コミット `bd3ce5f`、版 11.0.0。`MIGRATION.md`、`packages/core/src/utils/data-collection/resolveDataCollectionOptions.ts`、`packages/cloudflare/src/baseSdk.ts`・`client.ts`・`durableobject.ts`・`wrapMethodWithSentry.ts`・`flush.ts`、`packages/server-utils/src/orchestrion/config/anthropic-ai.ts`） — https://github.com/getsentry/sentry-javascript 、npm の登録簿（`dist-tags`） — https://registry.npmjs.org/@sentry/cloudflare
+- SE32: Server-Side Data Scrubbing — https://docs.sentry.io/security-legal-pii/scrubbing/server-side-scrubbing/
+- SE33: Events & Issues（API の一覧） — https://docs.sentry.io/api/events/
+- SE34: Security Policy（Data Retention、Data Removal、PII Scrubbing） — https://sentry.io/security/
+- SE35: Data Storage Location（TP3 と同じページ） — https://docs.sentry.io/organization/data-storage-location/
+- SE36: Terms of Service（3.0.0、2024-02-12。4 Data、5.2 No Sensitive Personal Information、20 Definitions） — https://sentry.io/terms/
+- SE37: Data Processing Addendum（5.1.0、2024-05-29。Prohibition on Sensitive Data、Deletion、Cooperation; Data Subjects' Rights） — https://sentry.io/legal/dpa/ 、How do I sign your Data Processing Addendum?（Sentry Help Center） — https://www.sentry.help/en/articles/13965008-how-do-i-sign-your-data-processing-addendum
+- SE38: Service Data Usage — https://docs.sentry.io/security-legal-pii/security/service-data-usage/
+- SE39: AI Privacy Principles — https://docs.sentry.io/product/ai-in-sentry/ai-privacy-and-security/
+- SE40: Issue Grouping — https://docs.sentry.io/concepts/data-management/event-grouping/
+- PH38: Send error tracking alerts（PostHog） — https://posthog.com/docs/error-tracking/alerts
+- PH39: Detect spikes in exception volume（PostHog） — https://posthog.com/docs/error-tracking/spikes
+- PH40: Grouping exceptions into issues（PostHog） — https://posthog.com/docs/error-tracking/grouping-issues
+- PH41: Upload dSYMs for iOS（PostHog） — https://posthog.com/docs/error-tracking/upload-source-maps/ios
