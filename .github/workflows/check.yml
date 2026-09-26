@@ -33,7 +33,7 @@ jobs:
             exit 0
           fi
           for target in ios server; do
-            if grep -qE "^($target/|scripts/check\$|\.github/workflows/check\.yml\$)" <<< "$files"; then
+            if grep -qE "^($target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$)" <<< "$files"; then
               echo "$target=true" >> "$GITHUB_OUTPUT"
             else
               echo "$target=false" >> "$GITHUB_OUTPUT"
