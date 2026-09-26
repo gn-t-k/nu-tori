@@ -1,0 +1,5 @@
+schemaVersion: 1
+enabledWorkflows: ['simulator', 'ui-automation', 'debugging', 'xcode-ide']
+sessionDefaults:
+  projectPath: './ios/NuTori.xcodeproj'
+  scheme: 'NuTori'

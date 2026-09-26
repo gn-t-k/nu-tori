@@ -24,7 +24,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 ### スキルの管理
 
-mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-start.sh` で自動更新している。更新で上書きされるため、`.agents/skills/` 配下は直接編集しない。
+mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-start.sh` で自動更新している。更新で上書きされるため、`.agents/skills/` 配下は直接編集しない。Claude Code は `.claude/skills/`（`.agents/skills/` へのリンク）を、Codex は `.agents/skills/` を読む。`.claude/skills/` にだけある `model-based-ui-design` は、Codex からは見えない。
 
 ### 進め方
 
@@ -50,8 +50,9 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 ### リポジトリ全体の決定
 
 - アプリは `ios/`、サーバーは `server/` に置く（モノレポ）。`ios/`・`server/` のファイルを読み書きする前に、そのディレクトリの `AGENTS.md` を読む
-- 確かめる手順の入口は `scripts/check` の1本にする。引数なしで両方、`ios`・`server` で片方を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。CI は変わったパスでジョブを分け、main のルールセットでは `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行う。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る
+- 確かめる手順の入口は `scripts/check` の1本にする。引数なしで両方、`ios`・`server` で片方を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。エージェントは、変えたらコミットの前に `scripts/check --fix` を回し、0 で終わるまで直す。CI は変わったパスでジョブを分け、main のルールセットでは `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行う。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る
 - 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。クラウドのエージェントの Linux には `scripts/install-swift` で Swift を入れる。版を `ios/.swift-version` の1か所に置くため、環境の Setup script ではなく、Claude Code では SessionStart hook が裏で呼ぶ。新しいセッションの最初の40秒ほどは Swift が無い。無ければ `scripts/install-swift` を動かす（hook が入れている途中なら、入れ終わるのを待ってから戻る）
+- MCP のサーバーは、Claude Code（`.mcp.json`）・Codex（`.codex/config.toml`）・Cursor（`.cursor/mcp.json`）の3つの設定に同じものを置き、版や環境変数は起動スクリプト（`scripts/mobilebuildmcp`）の1か所に書く
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
 - 環境は本番と開発用の2つ。TestFlight と App Store の版は本番に、デバッグビルドは開発用につなぐ。DB、写真の置き場、LLM の API キー、Sign in with Apple の鍵は環境ごとに分け、開発用の LLM のキーには低い費用の上限をかける
 - 計算・判定・検証の決めごと（ドメイン知識）の正本は、既定でサーバーのドメイン層に置く。見た目の決めごと（`DESIGN.md`）と、ヘルスケアとの対応づけのような端末の入出力の変換は、ドメイン知識に含めない。端末に置くのは、サーバーに置くと次のどれかでユーザーが不利益を被るものだけにする（今の一覧は `ios/AGENTS.md`）

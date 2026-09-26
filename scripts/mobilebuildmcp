@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Claude Code・Codex・Cursor の MCP の設定が呼ぶ MobileBuildMCP。版とエラーの送信の設定を、ここ1か所に置く
+set -euo pipefail
+
+if [ "$(uname -s)" != Darwin ]; then
+    echo "MobileBuildMCP は macOS でだけ動く" >&2
+    exit 1
+fi
+
+# .mobilebuildmcp/config.yaml は、起動したディレクトリにだけ探しに行く
+cd "$(dirname "$0")/.."
+# 設定ファイルの sentryDisabled は Sentry を始める前に読まれないことがあるので、環境変数で止める
+export MOBILEBUILDMCP_SENTRY_DISABLED=true
+exec npx -y mobilebuildmcp@2.7.1 mcp

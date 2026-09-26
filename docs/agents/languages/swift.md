@@ -61,7 +61,7 @@ enum WeightRecordsState {
 ### 道具
 
 - UI テスト以外（単体テストと統合テスト）は Swift Testing で書く
-- UI テストは XCUITest（XCTestCase）で書く
+- UI テストは XCUITest（XCTestCase）で書き、失敗したときに画面を見られるよう、確かめた画面のスクリーンショットを `XCTAttachment` で残す
 
 ### Swift Testing の構造
 
