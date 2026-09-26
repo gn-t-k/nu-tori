@@ -145,6 +145,16 @@ flowchart LR
 - 整形の正は、`.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
 - ロジックのパッケージのテストを macOS でも回すのは、Linux と macOS で Foundation の振る舞いが違うことがあるため
 
+## 版を上げる
+
+Dependabot が上げない次のものは、月に一度、開発者に頼まれたときと Dependabot の PR を片付けるときに、最新を確かめて（`git ls-remote --tags`）手で上げる。
+
+- Swift: `ios/.swift-version` と、CI の `ios` のジョブの `container:` のタグと digest をそろえて上げる。swift-format が Swift に付いてくるので、整形だけの差分は別のコミットにする
+- SwiftLint: `scripts/check` の版と、配布物ごとの SHA-256
+- Xcode のプロジェクトの Swift Package の依存
+
+Swift のパッケージの依存を足したら、Dependabot の `swift` を足すかを決める。Dependabot の Swift は 6.3.1（2026-09-26 時点、`docs/research/agent-tools-setup.md`）で、`swift-tools-version: 6.4` の manifest を読めないおそれがある。
+
 ## 配布
 
 - main にマージするたびに、Xcode Cloud がビルドして TestFlight の内部テストに配る。署名とビルド番号は Apple 側に任せ、証明書を GitHub に置かない
