@@ -8,7 +8,7 @@
   "exports": {
     "AccountDurableObject": { "type": "durable-object", "storage": "sqlite" },
   },
-  // 場所のヒント（apac-ne）はここに書けないので、Durable Object を得るコードで locationHint として渡す。ヒントが効くのは最初の get() だけ
+  // 場所のヒントはここに書けないので、src/durable-object/get-account-durable-object.ts で渡す
   "durable_objects": {
     "bindings": [{ "name": "ACCOUNT", "class_name": "AccountDurableObject" }],
   },
@@ -20,6 +20,25 @@
     },
   ],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "nu-tori-development-photos" }],
+  // Sign in with Apple の ID トークンの aud。アプリの Bundle ID（ios/NuTori.xcodeproj の PRODUCT_BUNDLE_IDENTIFIER）
+  "vars": { "APPLE_BUNDLE_ID": "app.nu-tori" },
+  // namespace_id は Cloudflare のアカウントの中で一意にし、同じ値の Worker どうしで数を分け合う
+  "ratelimits": [
+    {
+      "name": "ACCOUNT_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 120, "period": 60 },
+    },
+  ],
+  "secrets": {
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "APPLE_TEAM_ID",
+      "APPLE_KEY_ID",
+      "APPLE_PRIVATE_KEY",
+      "APPLE_REFRESH_TOKEN_KEYS",
+    ],
+  },
   "env": {
     "production": {
       "name": "nu-tori-production",
@@ -37,6 +56,23 @@
         },
       ],
       "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "nu-tori-production-photos" }],
+      "vars": { "APPLE_BUNDLE_ID": "app.nu-tori" },
+      "ratelimits": [
+        {
+          "name": "ACCOUNT_RATE_LIMITER",
+          "namespace_id": "2001",
+          "simple": { "limit": 120, "period": 60 },
+        },
+      ],
+      "secrets": {
+        "required": [
+          "BETTER_AUTH_SECRET",
+          "APPLE_TEAM_ID",
+          "APPLE_KEY_ID",
+          "APPLE_PRIVATE_KEY",
+          "APPLE_REFRESH_TOKEN_KEYS",
+        ],
+      },
     },
   },
 }
