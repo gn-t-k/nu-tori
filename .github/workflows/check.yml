@@ -1,0 +1,87 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # 必須のチェックを保留のまま残さないよう、ワークフローの paths ではなくジョブの条件で飛ばす（ルートの AGENTS.md）
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.changed.outputs.ios }}
+      server: ${{ steps.changed.outputs.server }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: changed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! files="$(git diff --name-only "$BASE" "$GITHUB_SHA")"; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            echo "server=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for target in ios server; do
+            if grep -qE "^($target/|scripts/check\$|\.github/workflows/check\.yml\$)" <<< "$files"; then
+              echo "$target=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$target=false" >> "$GITHUB_OUTPUT"
+            fi
+          done
+
+  ios:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: ubuntu-latest
+    container: swift:6.4.0-noble@sha256:64bab762bc73a3fda6d9ebc559258bd6d7660c10a705bb25ecacad2f99d066f9
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+      - run: scripts/check ios
+
+  # 必須にしない。xcode-27 がプレビューを抜けたら、必須にするかを決め直す
+  ios-app:
+    needs: [changes, ios]
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/check ios-app
+      - name: 失敗の要約とスクリーンショットを書き出す
+        if: failure()
+        run: |
+          results=ios/.build/NuTori.xcresult
+          if [ ! -d "$results" ]; then
+            echo "xcresult が無い（ビルドとテストの前に止まった）ので、ログを見る" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          mkdir -p ios/.build/report/attachments
+          xcrun xcresulttool get test-results summary --path "$results" --compact > ios/.build/report/summary.json
+          jq -r '.testFailures[]? | "- \(.testIdentifierString): \(.failureText)"' ios/.build/report/summary.json |
+            tee ios/.build/report/failures.txt >> "$GITHUB_STEP_SUMMARY"
+          xcrun xcresulttool export attachments --path "$results" --output-path ios/.build/report/attachments
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: ios-app-report
+          path: ios/.build/report
+          retention-days: 3
+
+  server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/check server

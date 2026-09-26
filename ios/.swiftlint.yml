@@ -1,0 +1,41 @@
+# 見た目は swift-format が見る。ここは docs/agents の決まりのうち、機械で見られるものだけ
+allow_zero_lintable_files: true
+excluded:
+  - NuToriCore/.build
+  - .build
+only_rules:
+  - force_cast
+  - file_name
+  - file_types_order
+  - custom_rules
+file_types_order:
+  order: [[main_type], [extension], [supporting_type], [preview_provider]]
+custom_rules:
+  no_observable_object:
+    name: "ObservableObject を使わない"
+    regex: "(\\bObservableObject\\b|@(Published|StateObject|ObservedObject|EnvironmentObject)\\b)"
+    message: "@Observable を使う（docs/agents/languages/swift.md「新しい技術を選ぶ」）"
+    severity: error
+  xctest_only_in_ui_tests:
+    name: "XCTest は UI テストだけ"
+    regex: "^\\s*import\\s+XCTest\\b"
+    excluded: [".*UITests/.*"]
+    message: "UI テスト以外は Swift Testing で書く（docs/agents/languages/swift.md「道具」）"
+    severity: error
+  no_parameterized_test:
+    name: "@Test(arguments:) は理由があるときだけ"
+    regex: "@Test\\([^)]*arguments:"
+    message: "既定では、条件を名前にした @Suite と個別の @Test で書く。要るときは理由を PR に書いて抑止する（docs/agents/testing.md「テストの構造」）"
+    severity: error
+  test_display_name_koto:
+    name: "@Test の表示名は「〜こと」"
+    regex: "@Test(?!\\(\\s*\"[^\"]*こと\")"
+    included: [".*Tests\\.swift"]
+    message: "@Test(\"〜こと\") の形で振る舞いを書く（docs/agents/testing.md「テストの構造」）"
+    severity: error
+  exact_package_version:
+    name: "依存は exact: で固定する"
+    included: ["(^|.*/)Package\\.swift$"]
+    regex: "\\.package\\(\\s*url:[^)]*\\b(from:|branch:|revision:|\\.upToNext)"
+    message: "Swift Package の依存は exact: で固定する（docs/agents/languages/swift.md「依存パッケージ」）"
+    severity: error
