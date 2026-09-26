@@ -22,7 +22,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 対応する iOS
 
-- 最低対応版は iOS 27（理由は ADR-0013）
+- 最低対応版を変えるときは、`project.pbxproj` と `NuToriCore/Package.swift` の2か所をそろえる（今の版の理由は ADR-0013）
 
 ## 身体データ
 
