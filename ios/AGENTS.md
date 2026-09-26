@@ -75,9 +75,9 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 何をどれに送るかの分け方と、送らないものは、ルートの `AGENTS.md` の「リポジトリ全体の決定」。サーバーの側と、置き場・送る前の設定は `server/AGENTS.md` の「観測」。
 
 - 送るのは TestFlight と App Store の版だけにし、デバッグビルドは Sentry にも PostHog にも送らない
-- **Sentry**（sentry-cocoa）: クラッシュと、対処した失敗（同期、写真の送信、ヘルスケアの読み書き、キャッシュへの保存）を送る。アカウント ID を `user.id` に付ける。`sendDefaultPii` は既定の `false` のままにし（導入の手順の例は `true`）、スクリーンショットと view hierarchy は既定のまま切っておく。dSYM は Xcode Cloud のビルドのあとに Sentry へ上げる
-- クラッシュは、Xcode Organizer と TestFlight のクラッシュの報告も見る。Organizer は届くまで数日かかり、App Store の版では「App デベロッパと共有」を許可した人の分だけ
-- **PostHog**（posthog-ios）: 画面は、自動の記録を切り、画面ごとに `.postHogScreenView()` を付ける。主な操作を出来事にする（一覧は仕様で決める）。セッションリプレイと、例外・クラッシュの収集は切る（Sentry が持つ）。サインインしたらアカウント ID で `identify` し、アカウントの削除と、別のアカウントでサインインし直すときに `reset` する
+- **Sentry**（sentry-cocoa）: クラッシュと、対処した失敗（同期、写真の送信、ヘルスケアの読み書き、キャッシュへの保存）を送る。電波がないことや時間切れによる失敗は送らない（無料の月 5,000 エラーを端末とサーバーで分け合うため）。アカウント ID を `user.id` に付ける。`sendDefaultPii` は既定の `false` のままにし（導入の手順の例は `true`）、スクリーンショットと view hierarchy は既定のまま切っておく。dSYM は Xcode Cloud のビルドのあとに Sentry へ上げる
+- Apple のクラッシュの報告だけに頼らないのは、Xcode Organizer は届くまで数日かかり、App Store の版では「App デベロッパと共有」を許可した人の分しか集まらないため
+- **PostHog**（posthog-ios）: 画面は、自動の記録を切り、画面ごとに `.postHogScreenView()` を付ける。主な操作を出来事にする（一覧は仕様で決める）。セッションリプレイと、例外・クラッシュの収集は切る（Sentry が持つ）。SDK はサインインしてから始め（サインインの画面より前に、起動などの出来事を送らないため）、アカウント ID で `identify` する。アカウントの削除と、別のアカウントでサインインし直すときに `reset` し、Sentry の user も外す
 - 利用状況を集めることへの同意（App Store Review Guidelines 5.1.1(ii)）は、サインインの画面のプライバシーポリシーへのリンクで取り、送るかの切り替えはアプリに置かない。審査で求められたら、アカウントの画面に切り替えを足す
 
 ## API
