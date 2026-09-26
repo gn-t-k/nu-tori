@@ -12,6 +12,8 @@
 > - **sentry.io/pricing は、HTML から読める範囲（Developer・Team・Business の列）だけ**を根拠にしている。
 > - 料金は取得日（2026-09-25）時点のもの。**Cloudflare の Traces と OpenTelemetry の書き出しは、2026-10-01 から課金が始まる**と本文に書かれており、調査日の6日後に変わる。
 > - 二次情報（ブログ、まとめ記事、Qiita・Zenn、Stack Overflow）は使っていない。出典の番号は末尾の「出典一覧」。
+> - **PostHog の分（末尾の「PostHog」の節、2026-09-26 に追加）**: posthog.com/docs の各ページの Markdown 版（`https://posthog.com/docs/<パス>.md`、索引は `https://posthog.com/llms.txt`）、料金ページの Markdown 版（`https://posthog.com/pricing.md`）と HTML、利用規約（`/terms`）・DPA（`/dpa`）・サブプロセッサー（`/subprocessors`）の HTML の**本文を直接取得して読んだ**。SDK の既定値と挙動は、PostHog の公式リポジトリ **posthog-ios（コミット `c99f607`、版 3.84.1）を手元に取得して、ソースを読んで**確かめた。posthog-node は posthog-js リポジトリの `packages/node`（版 5.54.1）の `package.json` と入口のソースを読んだ。あわせて Apple の User Privacy and Data Use と、Cloudflare の Durable Object の State の文書も読んだ。PostHog の出典の番号（PH）と、この節で足した AP28・CF22 は、その節の中の「PostHog の出典」に置いた。
+> - **PostHog の実アカウントは作っていない。** 設定画面、請求の画面、送った出来事の見え方、削除にかかる実際の時間は確かめていない。料金は取得日（2026-09-26）時点のもの。文書の例の SDK の版（3.56、3.59.3 など）はリポジトリの版（3.84.1）より古く、既定値はソースを正とした。
 
 ## 結論の要約
 
@@ -30,6 +32,13 @@
 - **App Review Guidelines 5.1.1(ii) は、利用状況のデータを集めるなら、匿名でもユーザーの同意を得るよう求める**（本文で確認、AP24）。健康データは、5.1.2(vi)・5.1.3(i)・DPLA 3.3.3(H) で広告・マーケティング・「使用に基づくデータマイニング」に使えず、DPLA はアプリの健康・フィットネスのサービスの提供以外に使うことを禁じる。使い方をユーザーに示し、同意した範囲でだけ使う（本文で確認、AP24・AP26・AP27）。**製品の改善のための分析をはっきり許す、または禁じる記述は無い**（本文を探したが記述なし）。
 - **アカウントの削除では、法で残す必要のない、アカウントに結びつくデータを消す**（本文で確認、AP25）。匿名化して残してよいかの記述は無い（本文を探したが記述なし、AP24・AP25）。
 - **第三者のクラッシュ収集**: Sentry の無料の Developer プランは 1 人・月 5,000 エラー・30 日の遡り。保存先は US（アイオワ）か EU（フランクフルト）で、あとから変えられない（本文で確認、TP1〜TP3）。Cloudflare 向け SDK は Durable Object も包む（本文で確認、TP4）。Firebase Crashlytics は無料で、クラッシュを 90 日保持し、Google のどこの拠点でも処理しうる（本文で確認、TP7〜TP9）。どちらも使えば App Privacy で Crash Data などの申告が要る（本文からの読み取り、AP23・TP5）。
+- **PostHog（末尾の節）: iOS SDK は Swift Package Manager で入り、起動・前面・背面・インストール・更新と画面（`$screen`）を既定で自動で送る。SwiftUI では画面の自動の記録は意味のある名前にならず、`.postHogScreenView()` を画面ごとに付ける**（本文で確認、PH1・PH3）。端末の情報（機種、OS、アプリの版、画面の大きさ、ロケール、タイムゾーンなど）を付けるが、**IDFA・IDFV・ATT を参照するコードは SDK に無い**。匿名の ID は SDK が作るランダムな UUID v7（本文で確認、PH2・PH6）。電波がないときはファイルに貯め、既定で 1,000 件を超えると古いものから捨てる。**送信が 3 回続けて失敗すると、貯めた列を丸ごと捨てる**（本文で確認、PH1・PH2）
+- **PostHog のサーバーからの送り方**: 公式の Cloudflare Workers の手順は `posthog-node`（`workerd` 向けの入口があり、単体では `nodejs_compat` が要らない）を要求ごとに作り、`flushAt: 1`・`flushInterval: 0` にして `ctx.waitUntil(posthog.captureImmediate(...))` で送る（本文で確認、PH7・PH10）。HTTP の `/i/v0/e/` と `/batch/` に直接送ってもよい（本文で確認、PH9）。**Durable Object について PostHog の文書に記述は無く**（本文を探したが記述なし）、Cloudflare の文書は Durable Object では `waitUntil` が効かないと書く（本文で確認、CF22）
+- **PostHog の料金**: 無料プランは出来事が月 100 万件、モバイルのリプレイが月 2,500 件、例外が月 10 万件まで込み、超えた分は捨てられて課金されない。プロジェクトは 1 つ、出来事の保持は 1 年、リプレイは 30 日まで。従量課金のプランでは製品ごとに上限（billing limit）をかけられ、80% と 100% でメールが届く（本文で確認、PH11〜PH16）。**無料プランはプロジェクトが 1 つなので、本番と開発用を別のプロジェクトに分けられない**（本文からの読み取り、PH11・PH17）
+- **PostHog のデータの置き場**: US（バージニア）か EU（フランクフルト）。**リージョンをまたいで移すのは Scale（月 $750）以上のプランで、PostHog の技術者が行う**（本文で確認、PH11・PH17・PH21）
+- **PostHog の削除**: 人（person）を `distinct_id` か UUID で指定し、出来事とリプレイもあわせて消す API がある（個人の API キーが要る）。出来事の削除は非同期で、PostHog Cloud では空いている時間（週末）に行われ、状態を問い合わせる API がある（本文で確認、PH18・PH19）。アカウントの削除のときに Worker から呼べる形をしている（本文からの読み取り）。保持期間を短くして消すことはできない（本文で確認、PH15）
+- **PostHog のリプレイとエラー**: iOS のリプレイは一般提供で、既定では無効。有効にすると、文字と画像を既定で隠す。**SwiftUI はスクリーンショットのモード（既定では無効、SDK が「機微な情報を含みうる」と注意する）でしか対応しない**（本文で確認、PH22〜PH24・PH6）。iOS の例外は、Mach 例外・POSIX シグナル・捕まえなかった NSException を拾い、次の起動で送る。Swift のクラッシュは `SIGTRAP` になり、メッセージが無い（本文で確認、PH25）。Workers の例外は、Hono の `app.onError` で `captureException` を呼んで送る例がある（本文で確認、PH26）
+- **PostHog と健康データ**: HIPAA の BAA は Boost（月 $250）以上だけ（本文で確認、PH11・PH35）。利用規約は、機微な個人データを集めないよう設定するのは顧客の責任とし、**既定では顧客のデータを、集約するか匿名にしたうえで PostHog の製品とモデルの開発に使う（設定で断れる）**（本文で確認、PH36）。PostHog の SDK のプライバシーマニフェストは Product Interaction と Other Usage Data を「結びつかない・トラッキングなし・Analytics」と宣言するが、アカウントの ID で identify すれば「結びつく」になる（本文で確認、PH6。本文からの読み取り、AP23）
 
 ## 前提: 何が、どこで生まれ、どこへ行けるか
 
@@ -340,3 +349,136 @@ flowchart LR
 - TP7: Firebase: Data collection for Apple's App Store privacy details — https://firebase.google.com/docs/ios/app-store-data-collection
 - TP8: Firebase Privacy and Security — https://firebase.google.com/support/privacy
 - TP9: Firebase Pricing — https://firebase.google.com/pricing
+
+## PostHog
+
+調査日: 2026-09-26。Issue #33 で、ユーザーの行動の分析と、サーバーで起きる出来事（推定ごとのトークン・やり直し・結果、週ごとの見直しの旗、同期の健全性）の置き場として PostHog を使う案が出たので、判断に要る事実を集めた。取り方と限界は冒頭の「確認の方法と限界」、出典はこの節の末尾の「PostHog の出典」。
+
+### iOS SDK（posthog-ios）
+
+- **入れ方**: Swift Package Manager（`https://github.com/PostHog/posthog-ios.git`、製品名 `PostHog`）か CocoaPods で入れる（本文で確認、PH1）。`Package.swift` の最低の版は iOS 13 で、SDK の中に PLCrashReporter と WebP のライブラリを抱えている（本文で確認、PH6）。SwiftUI では `App` の `init()` で `PostHogSDK.shared.setup(config)` を呼ぶ例が示されている（本文で確認、PH1）
+- **自動で送る出来事**: `Application Opened`（起動と前面に来たとき）、`Application Backgrounded`、`Application Installed`、`Application Updated`、`$screen`（画面）、`$rageclick`（UIKit の同じ場所の連打。既定で有効）。操作の自動収集（`$autocapture`）は UIKit だけで既定では無効（本文で確認、PH3・PH5）。切り方は `captureApplicationLifecycleEvents`・`captureScreenViews`（どちらも既定で `true`）・`captureElementInteractions`（既定で `false`）・`rageClickConfig.enabled`、まとめて止めるなら `enableSwizzling = false`（本文で確認、PH2）
+- **SwiftUI の画面**: `captureScreenViews` は SwiftUI でも動くが、画面の名前が SwiftUI の内部のビューの識別子になり意味をなさないので、**切って、画面ごとに `.postHogScreenView("名前")` を付けることを勧めている**。この修飾子は `onAppear` で `$screen` を送る（本文で確認、PH3）。SwiftUI の `TextField`・`Toggle` など UIKit を下に使うビューは、操作の自動収集を有効にすると拾われうる（本文で確認、PH3）
+- **端末の情報**: 出来事に、アプリの名前・版・ビルド・バンドル ID、TestFlight か、機種、端末の種類、OS の名前と版、シミュレータか、画面の大きさ、ロケール、タイムゾーン、Wi-Fi か携帯回線かを付ける（本文で確認、PH6 の `PostHogContext.swift`）。アプリの版・OS・端末の種類は既定で人（person）の属性にも入る（`setDefaultPersonProperties`、既定で `true`）（本文で確認、PH2）
+- **IDFA・IDFV**: SDK のソース（`PostHog/` と `vendor/`）に `identifierForVendor`・`advertisingIdentifier`・`AdSupport`・`AppTrackingTransparency` を参照する箇所は無い（本文で確認、PH6 を検索）。匿名の ID は SDK が作るランダムな UUID v7 で、`getAnonymousId` で差し替えられる（本文で確認、PH2・PH6）
+- **出来事を送る前に直す・捨てる**: `setBeforeSend` で、出来事ごとに属性を書き換える、捨てる、間引ける。特定の画面の `$screen` を捨てる例もある。ただし PostHog 自身の出来事を変えると機能が壊れうると注意している（本文で確認、PH2）
+- **電波がないとき**: 出来事は端末のファイルの列に貯め、電波があるときだけ送る。列の上限（`maxQueueSize`）は既定で 1,000 件で、あふれたら古いものから捨てる（本文で確認、PH1・PH2）。既定で 20 件たまるか 30 秒ごとに、1 回 50 件まで送る（本文で確認、PH2）。**送信が 3 回続けて失敗する（キーの誤り、枠の使い切り、5xx の続発など）と、列を丸ごと捨てる**（`maxRetries`、既定で 3）（本文で確認、PH2）。`flush()` は送り始めるだけで、届いたことは保証しない（本文で確認、PH2）。`dataMode = .wifi` で Wi-Fi のときだけ送れる（本文で確認、PH2）
+- **identify と reset**: `identify("自前の ID")` で、それまでの匿名の出来事をその人に結びつける。自前の認証の安定した ID を使い、メールや表示名は使わないよう勧めている（本文で確認、PH1・PH3）。既定の `personProfiles = .identifiedOnly` では、identify するまでの出来事は人の属性を持たない匿名の出来事で、**匿名の出来事は識別された出来事より最大で 4 倍安い**（本文で確認、PH3）。サインアウトでは `reset()` を呼ぶ（本文で確認、PH4）。`reset()` は識別子・匿名の ID・スーパープロパティ・フラグ・セッションに加えて**オプトアウトの状態も消す**が、**送り待ちの列は消さず、列の出来事は積んだときの ID のまま送られる**（本文で確認、PH6 の `PostHogSDK.swift`・`PostHogStorage.swift`）
+- **オプトアウト**: `optOut()`／`optIn()`、または `config.optOut = true` で既定を止めた状態にできる。状態はアプリのサポートのディレクトリの `posthog.optOut` ファイルに残る（本文で確認、PH5）。止めるとリプレイを含むすべての収集が止まる（本文で確認、PH5）
+- **nu-tori の置き場との関係**: nu-tori は同期を自前の送り待ちで持つ（`ios/AGENTS.md` の「同期」）。PostHog の列は別に動き、3 回の失敗で捨てるので、**失ってはならないものの置き場にはならない**（本文からの読み取り、PH2）
+
+### サーバーから送る（Cloudflare Workers と Durable Object）
+
+- **公式の手順**: Cloudflare Workers の文書は `posthog-node` を使う。要求ごとにクライアントを作り、`flushAt: 1`・`flushInterval: 0` にする（まとめて送ると Worker が送り終える前に終わり、出来事を失いうるため）。出来事は `ctx.waitUntil(posthog.captureImmediate({...}))` で送り、応答を待たせない。Hono では `c.executionCtx.waitUntil()`、どこからでも使うなら `import { waitUntil } from 'cloudflare:workers'`（本文で確認、PH7）
+- **Node の互換**: `posthog-node` には `workerd` 向けの入口があり、それ単体では `nodejs_compat` を要らない（本文で確認、PH7）。`package.json` の `exports` で `workerd` の条件が `index.edge` を指している（本文で確認、PH10）
+- **HTTP の API**: `POST https://us.i.posthog.com/i/v0/e/`（EU は `eu.i.posthog.com`）に、`api_key`（書き込みだけのプロジェクトのトークン）・`event`・`distinct_id`、任意で `properties` と `timestamp`（ISO 8601）を送る。`/batch/` はまとめて送れ、本文は既定で 20 MB 未満（本文で確認、PH9）。API で送る出来事は既定で識別された出来事になり、`$process_person_profile: false` で匿名にできるが、**その `distinct_id` が一度でも識別された出来事に使われていれば、識別された出来事として扱う**（本文で確認、PH9）。プロジェクトのトークン（`phc_`）は公開してよく、個人の API キー（`phx_`）は公開してはいけない（本文で確認、PH34）
+- **Durable Object から**: PostHog の文書に Durable Object の記述は無い（本文を探したが記述なし、PH7・PH8）。Cloudflare の文書は、**Durable Object の `waitUntil` は互換のためにあるだけで効かない**、Durable Object は進行中の仕事や入出力があるあいだ動き続けると書く（本文で確認、CF22）。Durable Object の中では `captureImmediate` を `await` するか、応答を返したあとも続く `fetch` として送ることになる（本文からの読み取り、CF22）
+- **時刻**: `timestamp` を付ければ、送った時刻でなく出来事の時刻で入る（本文で確認、PH9）。推定をアラームで裏で進める（`server/AGENTS.md` の「層」）ときも、起きた時刻で記録できる（本文からの読み取り）
+- **GeoIP**: `posthog-node` の `disableGeoip` は既定で `true`（サーバーの IP で位置を付けない）（本文で確認、PH8）
+
+### 料金と無料枠
+
+- **2つのプラン**: 無料プランはカード不要で、各製品の月の無料枠まで使え、**プロジェクトは 1 つ、出来事の保持は 1 年**。枠を超えた出来事は捨てられ、請求されない。従量課金のプランは基本料 $0 で、同じ無料枠のうえで超えた分を払い、プロジェクトは 6 つ、保持は 7 年（本文で確認、PH11）
+- **出来事（Product analytics）**: 月 100 万件まで無料、100〜200 万件は 1 件 $0.00005、200〜1,500 万件は $0.0000343、以下量が増えるほど下がる（本文で確認、PH11・PH12）。識別された出来事（Identified events）は Product analytics の追加の項目として別に数え、月 100 万件まで無料、100〜200 万件は 1 件 $0.000198（本文で確認、PH11）。識別された出来事は、出来事の分と識別の分の両方で数える（本文からの読み取り、PH11 の「Extends Product analytics」と PH3 の「最大 4 倍安い」）
+- **セッションリプレイ**: ウェブは月 5,000 件まで無料。モバイルのリプレイは追加の項目で、**月 2,500 件まで無料、2,501〜15,000 件は 1 件 $0.01**、以下量が増えるほど下がる（本文で確認、PH11）。リプレイの保持は無料プランで 30 日まで、従量課金で 90 日まで（本文で確認、PH16）
+- **エラートラッキング**: `$exception` の件数で数え、**月 10 万件まで無料、10〜32.5 万件は 1 件 $0.00037**、32.5 万〜1,000 万件は $0.00014（本文で確認、PH11・PH13）。取り込む前に捨てた例外（抑止の規則、サーバー側の上限）は数えない（本文で確認、PH13）
+- **上限（billing limit）**: 製品ごとに金額の上限をかけられ、超えると取り込みを止め、その分のデータは戻らない。上限か無料枠の 80% と 100% で、組織の所有者にメールが届く（本文で確認、PH14）。上限は組織の請求の設定で製品ごとにかける（本文で確認、PH14）。無料プランは、そもそも無料枠で止まる（本文で確認、PH11）。無料プランで上限の設定が要るかの記述は無い（本文を探したが記述なし、PH11・PH14）
+- **本番と開発用**: PostHog はプロジェクトを「データの仕切り」とし、開発・ステージング・本番を別のプロジェクトにすることを勧める（本文で確認、PH17）。無料プランはプロジェクトが 1 つなので、本番と開発用を分けるには、従量課金のプランにするか、1 つのプロジェクトの中で属性（スーパープロパティなど）で分けることになる（本文からの読み取り、PH11・PH17）
+
+### データの置き場（US・EU）
+
+- **選べる場所**: US（バージニア）と EU（フランクフルト）（本文で確認、PH11）。どちらも AWS に置く（米国かドイツ）（本文で確認、PH21）。取り込みの宛先は `us.i.posthog.com` と `eu.i.posthog.com` で分かれる（本文で確認、PH9）
+- **あとから変えられるか**: 同じリージョンの中の組織どうしでプロジェクトを移すのは、どのプランでもできる。**リージョンをまたいで移すのは Scale か Enterprise のプランだけで、PostHog の技術者が行う**（本文で確認、PH17）。Scale は月 $750（本文で確認、PH11）。個人の開発で実際に移すのは難しく、最初の選択がほぼ固定になる（本文からの読み取り）
+- **IP アドレス**: プロジェクトの設定で、出来事にクライアントの IP を残さないようにできる（GeoIP で位置を付けてから捨てる）。**EU の組織では、新しいプロジェクトは既定で IP を集めない**（本文で確認、PH17・PH18）。US の既定の記述は無い（本文を探したが記述なし、PH17・PH18）
+- **GDPR の案内**: EU の利用者の個人データを扱うなら EU のクラウドを勧め、US のクラウドで EU の利用者のデータを集めるなら、保存の前の変換で匿名にすることを勧める（本文で確認、PH20）
+- **国内に置く約束との関係**: nu-tori はデータを国内に置くとは約束しない（`server/AGENTS.md` の「構成」）。PostHog には日本の置き場が無い（本文で確認、PH11 の選択肢が 2 つだけ）
+
+### 消すこと
+
+- **人とその出来事を消す API**: `POST /api/projects/{project_id}/persons/bulk_delete/` に、PostHog の人の UUID（`ids`）か `distinct_ids` を 1 回 1,000 件まで渡し、`delete_events`・`delete_recordings` で出来事とリプレイも消す。個人の API キー（`person:write`）が要る（本文で確認、PH19）。1人ずつ消す `DELETE /api/projects/:project_id/persons/:id?delete_events=true&delete_recordings=true` もある（本文で確認、PH18）
+- **消える範囲**: 要求より前に取り込んだ出来事だけを消す。リプレイは暗号の鍵を消して読めなくする（本文で確認、PH18・PH19）。匿名の出来事（人を作らずに送ったもの）が消す対象に入るかの記述は無い（本文を探したが記述なし、PH18・PH19）
+- **消えるまでの時間**: 人の記録は数分のうちに裏で消える。**出来事の削除は非同期で、PostHog Cloud では空いている時間（週末）に行われる**。`GET .../persons/deletion_status?status=pending` で、人ごとに `pending`・`completed` と完了を確かめた時刻を返す（本文で確認、PH18）。bulk_delete は `202` を返し、失敗は状態ではなく `deletion_errors` で返すので、そこを見て直す（本文で確認、PH18）
+- **同じ ID を使い回さない**: 削除の途中で同じ `distinct_id` を使うと想定しない結果になりうる（本文で確認、PH18）。nu-tori のアカウント ID は UUID で使い回さない（`server/AGENTS.md` の「同期」）ので当たらない（本文からの読み取り）
+- **保持期間では消せない**: 保持期間を短くして消すことはできず、頼んでも短くしない。消すのは人・プロジェクト・組織の削除で行う（本文で確認、PH15・PH18）
+- **アカウントの削除に使えるか**: 受け口の Worker のアカウントの削除（`server/AGENTS.md` の「層」）から、アカウント ID を `distinct_ids` に入れて bulk_delete を呼べる形をしている。ただし個人の API キーを Worker の秘密の値に置くことになり、出来事が消え終わるのは週末になりうる。Apple は「かかる時間を知らせ、終わったら知らせる」ことを求める（本文からの読み取り、PH18・PH19・AP25）
+
+### モバイルのセッションリプレイ（iOS）
+
+- **対応状況**: iOS のモバイルのリプレイは一般提供（本文で確認、PH22）。画面の状態を取り、既定は「ワイヤーフレーム」（ビューの階層を JSON にし、HTML の線画で再現する）。`screenshotMode` で実際の画面の画像を撮る（本文で確認、PH22）
+- **既定では無効**: `config.sessionReplay` は既定で `false`。プロジェクトの設定の「Record user sessions」も有効にする必要がある（本文で確認、PH2・PH23）
+- **既定の隠し方**: 文字と入力欄（`maskAllTextInputs`）と画像（`maskAllImages`）は既定で隠す。パスワードの入力は常に隠す。`PHPickerViewController` などシステムの別プロセスのビューも既定で隠す（`maskAllSandboxedViews`）（本文で確認、PH23・PH6）。通信の速さ・大きさ・状態のコード（本文は取らない）は既定で記録する。タップの位置も既定で記録する（本文で確認、PH23・PH6）
+- **SwiftUI**: **SwiftUI は `screenshotMode` を有効にしたときだけ対応する**（本文で確認、PH23）。スクリーンショットのモードは既定で無効で、SDK は「スクリーンショットは機微な情報を含みうる」と注意する（本文で確認、PH6・PH22）。SwiftUI では `.postHogMask()`・`.postHogNoMask()` で隠す範囲を決め、`SecureField` とメールの入力の種類の `TextField` は自動で隠す。Xcode 26 以降でビルドしたアプリは、`Text`・`Image`・`Button` でこれらの修飾子がぶれうるので 3.36.2 以降を使う（本文で確認、PH24）
+- **nu-tori との関係**: 画面に体重・食事の写真・栄養の値が出るので、SwiftUI で使うにはスクリーンショットのモードにし、隠す範囲を自分で漏れなく決める必要がある（本文からの読み取り、PH23・PH24）
+
+### エラートラッキング
+
+- **iOS（Swift）**: `errorTrackingConfig.autoCapture = true` で、Mach 例外（`EXC_BAD_ACCESS` など）、POSIX シグナル（`SIGSEGV` など）、捕まえなかった `NSException` を `$exception` として拾う。クラッシュはディスクに残し、**次の起動で**送る。iOS・macOS・tvOS だけ（本文で確認、PH25）。自分で捕まえたエラーは `captureException(error)` で送る（本文で確認、PH25）。記号を読める形にするには dSYM を上げる（本文で確認、PH25）
+- **iOS の限界**: システムのフレーム（UIKit、Foundation など）は記号にならない。**Swift のクラッシュは `SIGTRAP` として出て、エラーのメッセージが無い**（本文で確認、PH25）
+- **Cloudflare Workers（JavaScript）**: Workers の文書は `posthog.captureException()` で例外を送るとする（本文で確認、PH7）。Hono の手順は `app.onError` で `captureException` を呼び、`await posthog.flush()` する例を示す（本文で確認、PH26）。Node の自動の収集（`enableExceptionAutocapture`）はスタックトレースの処理にファイルシステムを使い、Workers では Node の互換を有効にする必要があると書く（本文で確認、PH27）。`workerd` 向けの入口は、Node の入口にあるソースの行やモジュールの補いを持たない（本文で確認、PH10）。Workers で自動の収集が動くかの記述は無い（本文を探したが記述なし、PH7・PH26・PH27）
+- **既存の選択肢との比べ方**: クラッシュは Xcode Organizer・MetricKit（3 節）、Workers の例外は Workers Logs（1 節）でも拾える。PostHog に送ると、同じ人の出来事・リプレイと並べて見られる（本文で確認、PH1 の identify の説明）
+
+### 分析の道具
+
+- **ファネル**: 手順の出来事を並べ、どこで離れるか、変換にかかる時間、時間を追った変化を見る。順序は「順に」「間に何も挟まない」などから選べる（本文で確認、PH28）
+- **継続率（retention）**: 始まりの出来事と戻りの出来事を決め、時・日・週・月の区切りで戻った人を数える。初回・初めての発生・繰り返しの数え方を選べる（本文で確認、PH29）。人を単位に数えるので、識別された出来事（identify）が前提になる（本文からの読み取り、PH29・PH3）
+- **SQL（HogQL）**: ClickHouse の SQL を包んだ方言で、`SELECT`・`JOIN`・`GROUP BY` などで出来事と人を任意に問い合わせられる（本文で確認、PH30）。API の `/api/projects/:project_id/query/` でも SQL を投げられ、1 回 5 万行まで、1 時間 2,400 回・1 分 240 回までだが、**書き出しの手段ではない**と明記している（本文で確認、PH31）
+- **書き出し**: 定期の書き出し（batch exports: S3、S3 互換、BigQuery、Postgres など）と、API で 1 回だけファイル（Parquet、JSON Lines）に落とす書き出し（1 回 1 週間分まで）がある（本文で確認、PH32・PH33）。batch exports は月 100 万行まで無料（本文で確認、PH11）。S3 互換の宛先に R2 が使えるかの記述は無い（本文を探したが記述なし、PH32）
+
+### App Privacy とトラッキング（ATT）
+
+- **PostHog の答え方の案内**: PostHog の文書（索引 `llms.txt` と iOS・プライバシーの各ページ）に、App Store のプライバシー表示の答え方の案内は無い（本文を探したが記述なし、PH1〜PH5）
+- **SDK のプライバシーマニフェスト**: posthog-ios の `PrivacyInfo.xcprivacy` は、Product Interaction と Other Usage Data を「ユーザーに結びつかない・トラッキングに使わない・目的は Analytics」と宣言する。同梱の PLCrashReporter のマニフェストは、Crash Data と Other Diagnostic Data を「結びつかない・トラッキングなし・App Functionality」と宣言する（本文で確認、PH6）
+- **identify したときの答え**: Apple は、アカウントなどで身元に結びつくものを「結びつく」とする（AP23）。アカウント ID で identify すれば、SDK のマニフェストの宣言にかかわらず「結びつく」で申告することになる（本文からの読み取り、AP23・PH6）
+- **ATT**: Apple は、トラッキングを「自分のアプリで集めたユーザー・端末のデータを、ほかの会社のアプリ・ウェブ・オフラインのデータと結びつけて、広告の対象の選択や広告の測定に使うこと、またはデータブローカーと共有すること」と定める。分析の SDK が集めたデータをほかの開発者のアプリの広告に使い回すなら、自分がその目的に使わなくてもトラッキングに当たる（本文で確認、AP28）。PostHog の SDK は IDFA を読まず（PH6）、PostHog は顧客のデータを製品とモデルの開発に使う場合は集約・匿名にする（PH36）。**PostHog の文書・規約に、データを広告に使う・データブローカーに渡すという記述は見当たらない**（本文を探したが記述なし、PH34・PH36・PH37）。したがってトラッキングに当たらない読み方が自然（本文からの読み取り、AP28）
+
+### 健康データとの関係
+
+- **HIPAA と BAA**: HIPAA は米国の対象事業者に適用される法律と説明している。**PostHog Cloud の BAA は Boost（月 $250）・Scale・Enterprise のプラットフォームのパッケージだけ**（本文で確認、PH11・PH34・PH35）。BAA を結んでも全機能を覆うわけではなく、PostHog AI（第三者の LLM にデータを送る）と管理された逆プロキシは覆わない（本文で確認、PH35）。nu-tori は日本の個人のアプリで、米国の対象事業者ではないので、HIPAA そのものは当たらない（本文からの読み取り、PH35）
+- **利用規約（最終更新 2026-06-29）**: 顧客は、データを適用される法に沿って扱い、必要な同意を得る責任を持つ。**機微な個人データを集めないよう、隠す・絞る機能で設定するのは顧客の責任**（13 条）（本文で確認、PH36）
+- **製品とモデルの開発への利用**: 規約 5 条で、**顧客のデータを PostHog の製品と機械学習のモデルの開発・学習に使う許諾を与える。断るには、合意するか、サービスの設定で断る**。使うときは集約か匿名にする。断ってもそれより前に使った分は戻さない（本文で確認、PH36）。健康に関わる値を送るなら、最初の送信の前に断っておく必要がある（本文からの読み取り、PH36）
+- **DPA**: DPA は無料プランを含むどのプランでも、アプリの中で自分で作って結べる（本文で確認、PH34）。DPA の付属書は、扱う特別な種類の個人データを「N/A」としている（本文で確認、PH37）
+- **Apple の決まりとの関係**: HealthKit から得た情報を第三者に渡すことと、「使用に基づくデータマイニング」に使うことの制限は 3 節の「健康データ」のとおり（AP24・AP26・AP27）。PostHog に送る出来事に、体重・体脂肪率やそこから出した値を入れるかは、その制限と、上の規約 5 条の既定を合わせて決めることになる（本文からの読み取り）
+
+### PostHog の出典
+
+取得日はすべて 2026-09-26。
+
+- PH1: iOS（PostHog の文書） — https://posthog.com/docs/libraries/ios
+- PH2: iOS SDK configuration — https://posthog.com/docs/libraries/ios/configuration
+- PH3: iOS SDK usage — https://posthog.com/docs/libraries/ios/usage
+- PH4: Identifying users（Reset on logout） — https://posthog.com/docs/product-analytics/identify
+- PH5: Controlling data collection — https://posthog.com/docs/privacy/data-collection
+- PH6: posthog-ios（公式リポジトリ、コミット `c99f607`、版 3.84.1。`Package.swift`、`PostHog/Resources/PrivacyInfo.xcprivacy`、`vendor/PHPLCrashReporter/Resources/PrivacyInfo.xcprivacy`、`PostHog/PostHogContext.swift`、`PostHog/PostHogSDK.swift`、`PostHog/PostHogStorage.swift`、`PostHog/PostHogStorageManager.swift`、`PostHog/Replay/PostHogSessionReplayConfig.swift`） — https://github.com/PostHog/posthog-ios
+- PH7: Cloudflare Workers（PostHog の文書） — https://posthog.com/docs/libraries/cloudflare-workers
+- PH8: Node.js — https://posthog.com/docs/libraries/node
+- PH9: Capture and batch API endpoints — https://posthog.com/docs/api/capture
+- PH10: posthog-node（posthog-js リポジトリの `packages/node`、版 5.54.1。`package.json` の `exports`、`src/entrypoints/index.edge.ts`・`index.node.ts`） — https://github.com/PostHog/posthog-js/tree/main/packages/node
+- PH11: PostHog Pricing（Markdown 版と HTML。プラン、各製品の単価、Platform Packages、FAQ、クラウドの選択） — https://posthog.com/pricing （Markdown 版 https://posthog.com/pricing.md ）
+- PH12: Product Analytics pricing — https://posthog.com/docs/product-analytics/pricing
+- PH13: Error Tracking pricing — https://posthog.com/docs/error-tracking/pricing
+- PH14: Billing limits and alerts — https://posthog.com/docs/billing/limits-alerts
+- PH15: Events data retention — https://posthog.com/docs/data/events-retention
+- PH16: Replay recording retention — https://posthog.com/docs/session-replay/recording-retention
+- PH17: Projects（プロジェクトの分け方、リージョンをまたぐ移動、IP の設定） — https://posthog.com/docs/settings/projects
+- PH18: Controlling data storage（Data deletion、Right to be forgotten、Asynchronous data deletion） — https://posthog.com/docs/privacy/data-storage
+- PH19: persons_bulk_delete_create（OpenAPI） — https://posthog.com/docs/open-api-spec/persons_bulk_delete_create
+- PH20: GDPR compliance — https://posthog.com/docs/privacy/gdpr-compliance
+- PH21: Subprocessors — https://posthog.com/subprocessors
+- PH22: Mobile session replay — https://posthog.com/docs/session-replay/mobile
+- PH23: iOS Session Replay installation — https://posthog.com/docs/session-replay/installation/ios
+- PH24: Session replay privacy controls（iOS、Masking in SwiftUI） — https://posthog.com/docs/session-replay/privacy
+- PH25: iOS Error Tracking installation — https://posthog.com/docs/error-tracking/installation/ios
+- PH26: Hono Error Tracking installation — https://posthog.com/docs/error-tracking/installation/hono
+- PH27: Node.js Error Tracking installation — https://posthog.com/docs/error-tracking/installation/node
+- PH28: Funnels — https://posthog.com/docs/product-analytics/funnels
+- PH29: Retention — https://posthog.com/docs/product-analytics/retention
+- PH30: SQL access in PostHog — https://posthog.com/docs/sql
+- PH31: API queries — https://posthog.com/docs/api/queries
+- PH32: Batch exports — https://posthog.com/docs/cdp/batch-exports
+- PH33: File download exports — https://posthog.com/docs/cdp/file-download-exports
+- PH34: Privacy compliance（FAQ: API キー、DPA、HIPAA） — https://posthog.com/docs/privacy
+- PH35: PostHog & HIPAA compliance — https://posthog.com/docs/privacy/hipaa-compliance
+- PH36: Terms（5 条 Product and model development、13 条 Data privacy。最終更新 2026-06-29） — https://posthog.com/terms
+- PH37: Data Processing Agreement（付属書の Sensitive categories） — https://posthog.com/dpa
+- AP28: User Privacy and Data Use（トラッキングの定義、第三者の SDK） — https://developer.apple.com/app-store/user-privacy-and-data-use/
+- CF22: Durable Object State（`waitUntil`） — https://developers.cloudflare.com/durable-objects/api/state/
