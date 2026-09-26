@@ -1,0 +1,4 @@
+[mcp_servers.mobilebuildmcp]
+command = "sh"
+args = ["-c", "exec \"$(git rev-parse --show-toplevel)/scripts/mobilebuildmcp\""]
+tool_timeout_sec = 600

@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "mobilebuildmcp": {
+      "command": "${workspaceFolder}/scripts/mobilebuildmcp"
+    }
+  }
+}

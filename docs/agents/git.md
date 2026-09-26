@@ -26,4 +26,5 @@ Claude Code on the web のセッション（`CLAUDE_CODE_REMOTE=true`）では�
   - 依存関係: `.../issues/<n>/dependencies/blocked_by`（追加は `-X POST -F issue_id=<ブロック元の DB ID>`）。すでに張られていると 422「already been taken」が返る
   - 担当者・ラベル・状態: `.../issues/<n>/assignees`、`.../issues/<n>/labels`、`-X PATCH .../issues/<n> -f state=closed`
 - Issue とコメントを書くと、リンクやコードの前後にバッククォートが足されたり、バッククォートが引用符に変わったりして、書式が崩れることがある（コメントの投稿でも Issue の本文の更新でも、`gh api` でも `mcp__github__*` でも起きた）。書いたら必ず読み直し、崩れていたら手元に置いた元の本文で書き直す。コメントは `mcp__github__update_issue_comment`、Issue の本文は `gh api -X PATCH .../issues/<n> -F body=@<ファイル>` で直し、もう一度読み直す
+- ほかのツール（Codex、Cursor、Dependabot）が作った PR の CI の失敗は、その PR のブランチで始めたセッションで直す。クラウドのセッションは、作業ブランチにだけ push できるため
 - `mcp__github__*` のツールも使える。Issue、サブ Issue、コメント、PR は扱えるが、依存関係のツールは無いので `gh api` で張る
