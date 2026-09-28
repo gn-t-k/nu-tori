@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-08-22",
   "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+  "vars": { "ENVIRONMENT": "development" },
   "exports": {
     "AccountDurableObject": { "type": "durable-object", "storage": "sqlite" },
   },
@@ -20,9 +21,11 @@
     },
   ],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "nu-tori-development-photos" }],
+  "ai": { "binding": "AI" },
   "env": {
     "production": {
       "name": "nu-tori-production",
+      "vars": { "ENVIRONMENT": "production" },
       "exports": {
         "AccountDurableObject": { "type": "durable-object", "storage": "sqlite" },
       },
@@ -37,6 +40,7 @@
         },
       ],
       "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "nu-tori-production-photos" }],
+      "ai": { "binding": "AI" },
     },
   },
 }

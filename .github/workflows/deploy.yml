@@ -1,0 +1,59 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    # 必須のチェックではないので、ワークフローの paths で飛ばしてよい
+    paths:
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # 本番のジョブは、独自ドメインの経路と一緒に足す（server/AGENTS.md の「デプロイ」）
+  development:
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+    defaults:
+      run:
+        # bash と書くと -o pipefail が付き、tee に渡した wrangler の失敗でジョブが止まる
+        shell: bash
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: server/package.json
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: server/.node-version
+          cache: pnpm
+          cache-dependency-path: server/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: D1 の移行を当てる
+        run: |
+          # 最初の移行を置くまではディレクトリが無く、wrangler は無いと失敗する
+          if [ -d d1-migrations ]; then
+            pnpm exec wrangler d1 migrations apply DB --remote
+          else
+            echo "d1-migrations が無いので飛ばす"
+          fi
+      - name: Worker を出す
+        id: deploy
+        run: |
+          pnpm exec wrangler deploy | tee "$RUNNER_TEMP/deploy.log"
+          url="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n 1 || true)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"

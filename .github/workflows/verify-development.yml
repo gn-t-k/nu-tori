@@ -1,0 +1,43 @@
+# 開発用の環境にデプロイしないと分からないことを確かめる（「デプロイと開発用の環境で確かめる」）。確かめ終えたら、server/src/http/verification-routes.ts と一緒に消す
+name: verify-development
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 開発用の Worker の URL（deploy の development の Environment の URL）
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      URL: ${{ inputs.url }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: 見守る要求（SSE）が届くたびに時刻を付ける
+        run: |
+          curl -NsS --max-time 30 "$URL/_verify/server-sent-events" |
+            while IFS= read -r line; do echo "$(date -u +%T.%3N) $line"; done
+      - name: 書いてから deleteAll し、消す前のブックマークに戻す
+        run: |
+          post() { curl -fsS -X POST -H 'content-type: application/json' "$URL/_verify/deletion/$1" ${2:+-d "$2"}; }
+          written="$(post write)"
+          echo "書いたあと: $written"
+          sleep 10
+          echo "deleteAll のあと: $(post delete-all)"
+          sleep 10
+          bookmark="$(jq -r .bookmark <<< "$written")"
+          echo "戻したあと: $(post restore "$(jq -nc --arg bookmark "$bookmark" '{bookmark: $bookmark}')")"
+      - name: Durable Object から Workers AI の Jev を呼ぶ
+        run: |
+          for text in "朝ごはんにトーストとコーヒー" "今日はなんだか疲れた"; do
+            curl -fsS -X POST -H 'content-type: application/json' "$URL/_verify/workers-ai" \
+              -d "$(jq -nc --arg text "$text" '{text: $text}')"
+            echo
+          done
