@@ -53,10 +53,15 @@ describe("アカウントの削除", () => {
       expect(rows).toEqual({ users: 0, appleRefreshTokens: 0 });
     });
 
-    test("消したあとはセッションを受け付けないこと", async () => {
-      await deleteSignedInAccount(signedIn.sessionToken);
-      const response = await deleteSignedInAccount(signedIn.sessionToken);
-      expect(response.status).toBe(401);
+    describe("消したあと", () => {
+      beforeEach(async () => {
+        await deleteSignedInAccount(signedIn.sessionToken);
+      });
+
+      test("セッションを受け付けないこと", async () => {
+        const response = await deleteSignedInAccount(signedIn.sessionToken);
+        expect(response.status).toBe(401);
+      });
     });
   });
 
