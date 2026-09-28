@@ -9,6 +9,7 @@ import {
 import { RevokeAppleRefreshTokenError } from "../../auth/revoke-apple-refresh-token";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
+import { mockDeletePostHogPersonOk } from "../../observability/delete-posthog-person/delete-posthog-person.mock";
 import { app } from "../app";
 import { signInTestAccount } from "../testing";
 
@@ -27,12 +28,12 @@ describe("アカウントの削除", () => {
     });
 
     test("Apple の refresh token を取り消すこと", async () => {
-      await deleteSignedInAccount(signedIn.sessionToken);
+      await deleteSignedInAccount(signedIn.sessionToken, env);
       expect(revokeSpy).toHaveBeenCalledWith(expect.anything(), "apple-refresh-token");
     });
 
     test("記録を消すこと", async () => {
-      await deleteSignedInAccount(signedIn.sessionToken);
+      await deleteSignedInAccount(signedIn.sessionToken, env);
       const tables = await runInDurableObject(
         getAccountDurableObject(env, signedIn.accountId),
         (_, state) =>
@@ -42,7 +43,7 @@ describe("アカウントの削除", () => {
     });
 
     test("アカウントと Apple の refresh token の行を消すこと", async () => {
-      await deleteSignedInAccount(signedIn.sessionToken);
+      await deleteSignedInAccount(signedIn.sessionToken, env);
       const rows = await env.DB.prepare(
         `SELECT
            (SELECT COUNT(*) FROM "user" WHERE "id" = ?1) AS users,
@@ -55,13 +56,40 @@ describe("アカウントの削除", () => {
 
     describe("消したあと", () => {
       beforeEach(async () => {
-        await deleteSignedInAccount(signedIn.sessionToken);
+        await deleteSignedInAccount(signedIn.sessionToken, env);
       });
 
       test("セッションを受け付けないこと", async () => {
-        const response = await deleteSignedInAccount(signedIn.sessionToken);
+        const response = await deleteSignedInAccount(signedIn.sessionToken, env);
         expect(response.status).toBe(401);
       });
+    });
+  });
+
+  describe("PostHog に送る環境（本番）でサインインしているとき", () => {
+    let accountId: string;
+    let sessionToken: string;
+    let productionEnv: Env;
+    let deletePostHogPersonSpy: ReturnType<typeof mockDeletePostHogPersonOk>;
+    beforeEach(async () => {
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      mockRevokeAppleRefreshTokenOk();
+      deletePostHogPersonSpy = mockDeletePostHogPersonOk();
+      ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+      productionEnv = {
+        ...env,
+        POSTHOG_PROJECT_ID: "12345",
+        POSTHOG_PERSONAL_API_KEY: "phx_test",
+      };
+    });
+
+    test("PostHog の人と出来事を消すこと", async () => {
+      await deleteSignedInAccount(sessionToken, productionEnv);
+      expect(deletePostHogPersonSpy).toHaveBeenCalledWith(
+        { projectId: "12345", personalApiKey: "phx_test" },
+        accountId,
+      );
     });
   });
 
@@ -72,20 +100,20 @@ describe("アカウントの削除", () => {
       mockExchangeAppleAuthorizationCodeOk();
       ({ sessionToken } = await signInTestAccount(crypto.randomUUID()));
       mockRevokeAppleRefreshTokenError(new RevokeAppleRefreshTokenError(503));
-      await deleteSignedInAccount(sessionToken);
+      await deleteSignedInAccount(sessionToken, env);
       mockRevokeAppleRefreshTokenOk();
     });
 
     test("同じセッションでやり直せること", async () => {
-      const response = await deleteSignedInAccount(sessionToken);
+      const response = await deleteSignedInAccount(sessionToken, env);
       expect(response.status).toBe(204);
     });
   });
 });
 
-const deleteSignedInAccount = (sessionToken: string) =>
+const deleteSignedInAccount = (sessionToken: string, workerEnv: Env) =>
   app.request(
     "/v1/account",
     { method: "DELETE", headers: { authorization: `Bearer ${sessionToken}` } },
-    env,
+    workerEnv,
   );

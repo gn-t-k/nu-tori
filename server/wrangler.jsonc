@@ -87,6 +87,9 @@
           "APPLE_PRIVATE_KEY",
           "APPLE_REFRESH_TOKEN_KEYS",
           "SENTRY_DSN",
+          // PostHog には本番だけが送る
+          "POSTHOG_PROJECT_ID",
+          "POSTHOG_PERSONAL_API_KEY",
         ],
       },
     },
