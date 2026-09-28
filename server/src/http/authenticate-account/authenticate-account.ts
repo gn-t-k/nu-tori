@@ -1,3 +1,4 @@
+import { setUser } from "@sentry/cloudflare";
 import { createMiddleware } from "hono/factory";
 import { createAuthentication } from "../../auth/create-authentication";
 
@@ -16,5 +17,6 @@ export const authenticateAccount = createMiddleware<{
     return c.body(null, 429);
   }
   c.set("accountId", session.user.id);
+  setUser({ id: session.user.id });
   return next();
 });

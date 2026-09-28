@@ -16,6 +16,8 @@ export default defineConfig({
           APPLE_KEY_ID: "KEY0000000",
           APPLE_PRIVATE_KEY: await generateApplePrivateKey(),
           APPLE_REFRESH_TOKEN_KEYS: `1:${btoa(String.fromCharCode(...new Uint8Array(32).fill(1)))}`,
+          // DSN が空なら Sentry は送らない
+          SENTRY_DSN: "",
         },
       },
     })),
