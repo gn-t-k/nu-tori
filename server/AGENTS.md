@@ -56,6 +56,6 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 版を上げる
 
 - npm の依存は Dependabot が上げる。Node（`.node-version`）と pnpm（`package.json` の `packageManager`）は、月に一度、開発者に頼まれたときと Dependabot の PR を片付けるときに、最新を確かめて手で上げる
-- pnpm は、Dependabot が対応する版（2026-09-26 時点で v10 まで）にとどめる。対応が広がったら上げる
+- pnpm は、Dependabot が対応する版（2026-09-28 時点で v12 まで）にとどめる。対応が広がったら上げる
 - `@cloudflare/vitest-pool-workers` が対応する Vitest の版にとどめる（2026-09-26 時点で 4.x）
 - `wrangler.jsonc` の `compatibility_date` は、`@cloudflare/vitest-pool-workers` が使う workerd が対応する日付までにする（それより後だと、テストの実行環境が起動しない）
