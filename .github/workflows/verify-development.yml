@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       URL: ${{ inputs.url }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: 見守る要求（SSE）が届くたびに時刻を付ける
         run: |

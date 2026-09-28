@@ -29,6 +29,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
     defaults:
       run:
+        # bash と書くと -o pipefail が付き、tee に渡した wrangler の失敗でジョブが止まる
+        shell: bash
         working-directory: server
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
