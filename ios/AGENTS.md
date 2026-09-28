@@ -60,7 +60,7 @@ Swift のパッケージの依存を足したら、Dependabot の `swift` を足
 ## 配布
 
 - main にマージするたびに、Xcode Cloud がビルドして TestFlight の内部テストに配る。署名とビルド番号は Apple 側に任せ、証明書を GitHub に置かない
-- Xcode Cloud の枠（月 25 時間）に収めるため、Xcode Cloud のワークフローは `ios/` が変わったときだけ動かす
+- Xcode Cloud のワークフローは「main から内部テスト」の1つ。枠（月 25 時間）に収めるため、main の `ios/` が変わったとき（と手で始めたとき）だけ動かし、アクションは Archive（Distribution Preparation は TestFlight (Internal Testing Only)）だけにする。配る先は内部テストのグループ「初回リリーステストユーザーグループ」。設定は Xcode の Report navigator の Cloud のタブで直す
 - Xcode Cloud の秘密の値は、ワークフローの Environment に Secret で置く。アーカイブのあとに `ci_scripts/ci_post_xcodebuild.sh` が dSYM を Sentry に上げ、`SENTRY_AUTH_TOKEN`（Sentry の組織のトークン）が無ければ飛ばす
 
 ## 実機の確認
