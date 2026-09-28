@@ -5,9 +5,92 @@
     "version": "1"
   },
   "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
     "schemas": {},
     "parameters": {}
   },
-  "paths": {},
+  "paths": {
+    "/v1/sessions": {
+      "post": {
+        "summary": "Sign in with Apple でサインインし、セッションを始める",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idToken": {
+                    "type": "string"
+                  },
+                  "nonce": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "authorizationCode": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "idToken",
+                  "nonce",
+                  "authorizationCode"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "サインインした。以後の要求では sessionToken を Bearer で送る",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionToken": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "sessionToken"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ID トークンか認可コードを受け付けなかった"
+          }
+        }
+      }
+    },
+    "/v1/account": {
+      "delete": {
+        "summary": "アカウントと記録をすべて消す",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "消した"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    }
+  },
   "webhooks": {}
 }

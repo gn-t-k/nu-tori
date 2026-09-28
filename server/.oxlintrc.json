@@ -13,7 +13,8 @@
   "rules": {
     "func-style": ["error", "expression"],
     "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
-    "typescript/switch-exhaustiveness-check": "error"
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/consistent-return": "off"
   },
   "ignorePatterns": ["worker-configuration.d.ts"]
 }
