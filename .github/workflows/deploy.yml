@@ -23,7 +23,6 @@ jobs:
     uses: ./.github/workflows/deploy-worker.yml
     with:
       environment: development
-      wrangler-env: ""
       url: https://api-dev.nu-tori.app
     secrets: inherit
 

@@ -1,4 +1,4 @@
-# deploy.yml から環境ごとに呼ぶ。D1 の移行を当ててから Worker を出す
+# deploy.yml から環境ごとに呼ぶ
 name: deploy-worker
 
 on:
@@ -10,7 +10,8 @@ on:
         type: string
       wrangler-env:
         description: wrangler.jsonc の環境の名前（上の階層は空）
-        required: true
+        required: false
+        default: ""
         type: string
       url:
         description: 出した Worker の URL

@@ -21,7 +21,7 @@
   ],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "nu-tori-development-photos" }],
   "ai": { "binding": "AI" },
-  // routes は環境に受け継がれるので、本番にも書く。workers.dev とプレビューの URL は使わない
+  // routes は環境に受け継がれるので、本番にも書く
   "routes": [{ "pattern": "api-dev.nu-tori.app", "custom_domain": true }],
   "workers_dev": false,
   "preview_urls": false,
