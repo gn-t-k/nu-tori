@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "NuToriCore",
     platforms: [
-        .iOS(.v27),
+        .iOS(.v26),
         // ロジックのテストを Mac の上でも回すため
         .macOS(.v26),
     ],
