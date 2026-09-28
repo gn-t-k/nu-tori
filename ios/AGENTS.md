@@ -40,8 +40,9 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 `scripts/check` を通したうえで、変えたものを動かして確かめる。
 
-- Mac では、MobileBuildMCP で、変えたら `test_sim` を回し、関係する画面を開いて `screenshot` で確かめる。SwiftUI プレビューとビルドログは、MobileBuildMCP の `xcode_ide_call_tool` で Xcode の道具を呼ぶ。Xcode の道具は、作業しているワークツリーの `NuTori.xcodeproj` を Xcode で開いているときだけ使える。computer use は、これらで確かめられないときにだけ使う
-- Xcode の MCP（`xcrun mcpbridge`）は、各ツールの MCP の設定に直接置かない。どのツールにも OS で絞る設定が無く、Xcode を開いていないセッションとクラウドで毎回失敗するため。中継が呼んだときにだけ Xcode につなぐことは、Mac で確かめるまで見込み（「[エージェントの道具の設定を実際に動かして確かめる](https://github.com/gn-t-k/nu-tori/issues/61)」）。だめなら、Xcode の MCP は各自の利用者の設定に移す
+- Mac では、MobileBuildMCP で、変えたら `test_sim` を回し、関係する画面を開いて `screenshot` で確かめる。`test_sim` が行き先を見つけられずに失敗したら、開発者に `xcodebuild -downloadPlatform iOS`（数 GB）を頼む。computer use は、これらで確かめられないときにだけ使う
+- SwiftUI プレビュー（`RenderPreview`）とビルドログ（`GetBuildLog`）は、MobileBuildMCP の `xcode_ide_call_tool` で Xcode の道具を呼ぶ。Xcode の画面は開かなくてよい。先に `XcodeOpenWorkspace` で、作業しているワークツリーの `ios/NuTori.xcodeproj` を開く。Xcode はフォルダごとに承認を求めるので、ワークツリーごとに1回、開発者に Mac で承認してもらう。Remote Control のセッションでは開発者が承認を押せないので、Xcode の道具を使わず `screenshot` で確かめる
+- Xcode の MCP（`xcrun mcpbridge`）は、各ツールの MCP の設定に直接置かず、MobileBuildMCP の中継で呼ぶ
 - Linux では、アプリのビルドと UI テストを CI の `ios-app` に任せる。失敗したら、`.github/workflows/check.yml` の `ios-app` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
 - 整形の正は、`.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
 - ロジックのパッケージのテストを macOS でも回すのは、Linux と macOS で Foundation の振る舞いが違うことがあるため
