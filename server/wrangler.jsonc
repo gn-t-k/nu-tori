@@ -5,7 +5,6 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-08-22",
   "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
-  "vars": { "ENVIRONMENT": "development" },
   "exports": {
     "AccountDurableObject": { "type": "durable-object", "storage": "sqlite" },
   },
@@ -25,7 +24,6 @@
   "env": {
     "production": {
       "name": "nu-tori-production",
-      "vars": { "ENVIRONMENT": "production" },
       "exports": {
         "AccountDurableObject": { "type": "durable-object", "storage": "sqlite" },
       },
