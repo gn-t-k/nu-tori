@@ -8,6 +8,7 @@ export const accountRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
   createRoute({
     method: "delete",
     path: "/v1/account",
+    operationId: "deleteAccount",
     summary: "アカウントと記録をすべて消す",
     security: [{ session: [] }],
     middleware: [authenticateAccount] as const,

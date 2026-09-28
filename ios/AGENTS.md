@@ -32,7 +32,8 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## API
 
-- クライアントは、`server/` が書き出した OpenAPI の文書から生成する
+- クライアントは、`server/openapi.json` から swift-openapi-generator で生成し、`NuToriCore/Sources/NuToriAPI/Generated/` にコミットする。`server/openapi.json` が変わったら `scripts/check ios --fix` で生成し直す（`scripts/check ios` が最新かを確かめる）。生成器は `OpenAPIGenerator/` のパッケージで動かし、アプリのビルドには入れない。設定は `OpenAPIGenerator/openapi-generator-config.yaml`
+- 生成したコードは `internal` にし、アプリには `NuToriAPIClient` だけを見せる。経路を足したら、`NuToriAPIClient` にメソッドを足し、応答をアプリで扱う形（文書にある状態コードごとの enum）にして返す
 
 ## 作業の分け方
 
@@ -48,6 +49,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - Linux では、アプリのビルドと UI テストを CI の `ios-app` に任せる。失敗したら、`.github/workflows/check.yml` の `ios-app` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
 - 整形の正は、`.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
 - ロジックのパッケージのテストを macOS でも回すのは、Linux と macOS で Foundation の振る舞いが違うことがあるため
+- UI テストはサーバーにつながない。API とサインイン済みの状態を差し替える（差し替えの置き場と切り替え方は `docs/agents/languages/swift.md` の「依存の差し替え」）。API とのつなぎは、`NuToriAPI` のテスト（トランスポートの差し替え）とサーバーのテストで確かめる
 
 ## 版を上げる
 
@@ -56,9 +58,7 @@ Dependabot が上げない次のものは、月に一度、開発者に頼まれ
 - Swift: `ios/.swift-version` と、CI の `ios` のジョブの `container:` のタグと digest をそろえて上げる。swift-format が Swift に付いてくるので、整形だけの差分は別のコミットにする
 - SwiftLint: `scripts/check` の版と、配布物ごとの SHA-256
 - sentry-cli: `ci_scripts/ci_post_xcodebuild.sh` の版と SHA-256（Sentry のリリースの登録簿 `release-registry.services.sentry.io/apps/sentry-cli/<版>` の `sentry-cli-Darwin-universal`）
-- Xcode のプロジェクトの Swift Package の依存
-
-Swift のパッケージの依存を足したら、Dependabot の `swift` を足すかを決める。Dependabot の Swift は 6.3.1（2026-09-26 時点、`docs/research/agent-tools-setup.md`）で、`swift-tools-version: 6.4` の manifest を読めないおそれがある。
+- Swift Package の依存: `NuToriCore/Package.swift` と `OpenAPIGenerator/Package.swift` の `exact:`。上げたら `swift package update --package-path <パッケージ>` で `Package.resolved` を書き直し、`scripts/check ios --fix` で Xcode のプロジェクトの `Package.resolved` に写し、生成したクライアントを生成し直す。生成し直しただけの差分は別のコミットにする
 
 ## 配布
 

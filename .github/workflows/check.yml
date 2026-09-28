@@ -33,7 +33,10 @@ jobs:
             exit 0
           fi
           for target in ios server; do
-            if grep -qE "^($target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$)" <<< "$files"; then
+            paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
+            # アプリの API のクライアントは、サーバーの OpenAPI の文書から生成する
+            if [ "$target" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
+            if grep -qE "^($paths)" <<< "$files"; then
               echo "$target=true" >> "$GITHUB_OUTPUT"
             else
               echo "$target=false" >> "$GITHUB_OUTPUT"
@@ -48,6 +51,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+      # API のクライアントの生成器のビルド（数分）を毎回しないため
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ios/OpenAPIGenerator/.build
+          key: openapi-generator-${{ hashFiles('ios/.swift-version', 'ios/OpenAPIGenerator/Package.resolved') }}
       - run: scripts/check ios
 
   # 必須にしない。xcode-27 がプレビューを抜けたら、必須にするかを決め直す

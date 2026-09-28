@@ -2,6 +2,8 @@
 allow_zero_lintable_files: true
 excluded:
   - NuToriCore/.build
+  - OpenAPIGenerator/.build
+  - NuToriCore/Sources/NuToriAPI/Generated
   - .build
 only_rules:
   - force_cast

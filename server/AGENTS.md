@@ -21,7 +21,8 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 ## API
 
-- REST＋OpenAPI。経路をスキーマつきで書き、書き出した OpenAPI の文書を `openapi.json` に置く。型の正本は経路のスキーマで、経路を変えたら `scripts/check server --fix` で書き出し直す（`scripts/check server` が最新かを確かめる）。文書を使う側は `ios/AGENTS.md` の「API」
+- REST＋OpenAPI。経路をスキーマつきで書き、書き出した OpenAPI の文書を `openapi.json` に置く。型の正本は経路のスキーマで、経路を変えたら `scripts/check server --fix` で書き出し直し（`scripts/check server` が最新かを確かめる）、`scripts/check ios --fix` でアプリのクライアントも生成し直す（`ios/AGENTS.md` の「API」）
+- 経路には `operationId` を付ける。アプリで生成するクライアントのメソッドの名前になる
 - 出回っている最も古い版のアプリとも動くようにする。API の変更は足すだけにし、壊す変更は新しい版のエンドポイントとして出す
 
 ## 認証
