@@ -65,7 +65,7 @@ export class AccountDurableObject extends DurableObject<Env> {
 
   async classifyForVerification(text: string) {
     const startedAt = Date.now();
-    const result = await this.env.AI.run("typesafe/jev", {
+    const runJev = this.env.AI.run("typesafe/jev", {
       state: text,
       questions: {
         kind: {
@@ -75,7 +75,15 @@ export class AccountDurableObject extends DurableObject<Env> {
         },
       },
     });
+    const runLlama = this.env.AI.run("@cf/meta/llama-3.2-1b-instruct", {
+      prompt: `次の文章は食事の記録か会話か、meal か conversation の1語で答える: ${text}`,
+    });
+    const [jev, llama] = await Promise.allSettled([runJev, runLlama]);
     // 返り値の型が unknown を含み RPC で渡せる型にならないので、文字列にして返す
-    return { result: JSON.stringify(result), milliseconds: Date.now() - startedAt };
+    return {
+      jev: jev.status === "fulfilled" ? JSON.stringify(jev.value) : String(jev.reason),
+      llama: llama.status === "fulfilled" ? JSON.stringify(llama.value) : String(llama.reason),
+      milliseconds: Date.now() - startedAt,
+    };
   }
 }
