@@ -1,0 +1,9 @@
+generate:
+  - types
+  - client
+# 生成したコードは NuToriAPI の中だけで使い、アプリには手で書いた口を見せる。public にすると、公開の宣言で使わない public import が InternalImportsByDefault の警告になるため
+accessModifier: internal
+namingStrategy: idiomatic
+# SwiftLint は ios/.swiftlint.yml の excluded で外す
+additionalFileComments:
+  - swift-format-ignore-file

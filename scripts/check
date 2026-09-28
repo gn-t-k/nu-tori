@@ -45,6 +45,37 @@ check_ios() {
         return 1
     fi
 
+    step "API のクライアントが OpenAPI の文書と合っているか"
+    local generated="$ios/NuToriCore/Sources/NuToriAPI/Generated" output log
+    output="$(mktemp -d)"
+    # 生成器は設定の一覧を毎回出すので、失敗したときだけ見せる
+    if ! log="$(swift run --package-path "$ios/OpenAPIGenerator" --force-resolved-versions -c release \
+        swift-openapi-generator generate \
+        --config "$ios/OpenAPIGenerator/openapi-generator-config.yaml" \
+        --output-directory "$output" \
+        "$server/openapi.json" 2>&1)"; then
+        echo "$log" >&2
+        return 1
+    fi
+    if $fix; then
+        rm -rf "$generated"
+        cp -R "$output" "$generated"
+    fi
+    if ! diff -ru "$generated" "$output"; then
+        echo "ios/NuToriCore/Sources/NuToriAPI/Generated が古い。scripts/check ios --fix で生成し直す" >&2
+        return 1
+    fi
+
+    step "Xcode のプロジェクトの Package.resolved が NuToriCore と同じか"
+    local resolved="$ios/NuTori.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+    if $fix; then
+        cp "$ios/NuToriCore/Package.resolved" "$resolved"
+    fi
+    if ! diff -u "$resolved" "$ios/NuToriCore/Package.resolved"; then
+        echo "Xcode のプロジェクトの Package.resolved が古い。scripts/check ios --fix で写し直す" >&2
+        return 1
+    fi
+
     if command -v xcodebuild > /dev/null; then
         check_ios_app
     else
@@ -121,7 +152,7 @@ print_usage() {
     cat << 'USAGE'
 使い方: scripts/check [ios | ios-app | server] [--fix]
   引数なし  ios と server
-  ios       整形、Lint、ロジックのパッケージのテスト。macOS では続けて ios-app も
+  ios       整形、Lint、API のクライアントが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app   ロジックのパッケージのテストと、アプリのビルドとテスト（macOS だけ）
   server    整形、Lint、型検査、OpenAPI の文書が最新か、テスト
   --fix     直せるものを直してから確かめる

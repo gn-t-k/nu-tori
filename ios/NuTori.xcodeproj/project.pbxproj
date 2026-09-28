@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0A0000000000000000000014 /* NuToriCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000013 /* NuToriCore */; };
+		0A0000000000000000000020 /* NuToriAPI in Frameworks */ = {isa = PBXBuildFile; productRef = 0A000000000000000000001F /* NuToriAPI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0A0000000000000000000014 /* NuToriCore in Frameworks */,
+				0A0000000000000000000020 /* NuToriAPI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +111,7 @@
 			name = NuTori;
 			packageProductDependencies = (
 				0A0000000000000000000013 /* NuToriCore */,
+				0A000000000000000000001F /* NuToriAPI */,
 			);
 			productName = NuTori;
 			productReference = 0A0000000000000000000006 /* NuTori.app */;
@@ -412,6 +415,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0A0000000000000000000012 /* XCLocalSwiftPackageReference "NuToriCore" */;
 			productName = NuToriCore;
+		};
+		0A000000000000000000001F /* NuToriAPI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0A0000000000000000000012 /* XCLocalSwiftPackageReference "NuToriCore" */;
+			productName = NuToriAPI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
