@@ -7,4 +7,9 @@ export class AccountDurableObject extends DurableObject<Env> {
     super(ctx, env);
     applyDurableObjectMigrations(ctx.storage, durableObjectMigrations);
   }
+
+  async deleteRecords(): Promise<void> {
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+  }
 }
