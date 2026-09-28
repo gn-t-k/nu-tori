@@ -8,6 +8,7 @@ export const sessionRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
   createRoute({
     method: "post",
     path: "/v1/sessions",
+    operationId: "createSession",
     summary: "Sign in with Apple でサインインし、セッションを始める",
     request: {
       body: {

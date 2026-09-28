@@ -17,6 +17,7 @@
   "paths": {
     "/v1/sessions": {
       "post": {
+        "operationId": "createSession",
         "summary": "Sign in with Apple でサインインし、セッションを始める",
         "requestBody": {
           "required": true,
@@ -72,6 +73,7 @@
     },
     "/v1/account": {
       "delete": {
+        "operationId": "deleteAccount",
         "summary": "アカウントと記録をすべて消す",
         "security": [
           {
