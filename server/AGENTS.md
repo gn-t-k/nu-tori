@@ -50,7 +50,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - main へのマージごとに、開発用、本番の順にデプロイする。どちらも D1 の移行を当ててから Worker を出す。TestFlight の版は main へのマージごとに配られて本番につなぐので、main にある API は本番にも出ているようにする
 - デプロイは `.github/workflows/deploy.yml`。本番のジョブは、独自ドメインの経路と一緒に「[本番を独自ドメインで出す](https://github.com/gn-t-k/nu-tori/issues/75)」で足す
-- CI の API トークンの権限は、Workers Scripts と D1 の編集だけ。CI にほかの製品を触らせるときは、開発者にトークンの権限を足してもらう
+- CI の API トークンの権限は、Workers の Admin（まだ無い Worker を作るのに要る）と D1 の編集だけ。レガシーの Workers Scripts は使わない。CI にほかの製品を触らせるときは、開発者にトークンの権限を足してもらう
 - D1 と R2 は、`wrangler.jsonc` に書く前に、開発者に場所のヒント（`--location apac`）を付けて手で作ってもらう。デプロイのときの自動作成は場所のヒントを渡せず、CI が作ると CI の近くに置かれる。`wrangler.jsonc` には名前だけを書き、CI は名前で見つける
 
 ## 版を上げる
