@@ -10,8 +10,7 @@ on:
         type: string
       wrangler-env:
         description: wrangler.jsonc の環境の名前（上の階層は空）
-        required: false
-        default: ""
+        required: true
         type: string
       url:
         description: 出した Worker の URL
