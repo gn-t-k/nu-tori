@@ -1,4 +1,4 @@
-onlyBuiltDependencies:
-  - esbuild
-  - workerd
+allowBuilds:
+  esbuild: true
+  workerd: true
 saveExact: true
