@@ -6,6 +6,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
     private(set) var pending: [PendingWrite]
     private(set) var state: SyncState?
     private(set) var appliedChanges: [PulledChanges] = []
+    private(set) var eraseAllCount = 0
 
     static func ok(
         records: [WeightRecord] = [],
@@ -65,6 +66,14 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         }
         state = changes.state
         appliedChanges.append(changes)
+    }
+
+    func eraseAll() async throws {
+        try failIfNeeded()
+        records = [:]
+        pending = []
+        state = nil
+        eraseAllCount += 1
     }
 
     private let failure: (any Error)?

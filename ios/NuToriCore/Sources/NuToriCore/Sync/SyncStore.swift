@@ -16,4 +16,7 @@ public protocol SyncStore: Sendable {
     func saveSyncState(_ state: SyncState) async throws
 
     func apply(_ changes: PulledChanges) async throws
+
+    /// キャッシュの記録、送り待ち、同期の状態（通し番号、初回の取得の印、使い始めた日）をすべて消す
+    func eraseAll() async throws
 }
