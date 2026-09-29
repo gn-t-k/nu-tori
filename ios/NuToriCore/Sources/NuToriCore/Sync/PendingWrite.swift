@@ -14,5 +14,7 @@ public struct PendingWrite: Sendable, Equatable {
     public enum Operation: Sendable, Equatable {
         case createWeightRecord(WeightRecord)
         case correctWeightRecord(WeightRecord, previous: WeightRecord)
+        /// 記録が無くても直す書き込みで送る。サーバーが無ければ作る
+        case updateAccountSettings(AccountSettings)
     }
 }

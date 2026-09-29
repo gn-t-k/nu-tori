@@ -102,6 +102,52 @@ extension NuToriAPIClientTests {
             }
         }
 
+        @Suite("アカウントの設定を直す書き込みを送るとき")
+        struct AccountSettingsWrite {
+            let writeId: UUID
+            let settingsId: UUID
+            let transport: ClientTransportMock
+            let client: NuToriAPIClient
+
+            init() {
+                writeId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")!
+                settingsId = UUID(uuidString: "00000000-0000-4000-8000-0000000000e1")!
+                transport = .ok(
+                    json: #"{"results":[{"writeId":"\#(writeId.uuidString)","result":"applied"}]}"#
+                )
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: transport,
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("記録の代わりにアカウントの設定を載せた update_account_settings として送ること")
+            func sendsUpdateAccountSettings() async throws {
+                _ = try await client.pushSyncWrites(
+                    [
+                        .updateAccountSettings(
+                            writeId: writeId,
+                            settings: SyncedAccountSettings(id: settingsId, sendsUsageData: false)
+                        )
+                    ],
+                    isFinalBatch: true,
+                    clientState: .fixture()
+                )
+
+                let sent = try #require(transport.requests.first)
+                #expect(
+                    try SentSyncWritesBody(json: sent.body ?? "").writes == [
+                        .init(
+                            id: writeId.uuidString,
+                            type: "update_account_settings",
+                            accountSettings: .init(
+                                id: settingsId.uuidString, sendsUsageData: false)
+                        )
+                    ])
+            }
+        }
+
         @Suite("ヘルスケアから取り込んだ記録を作る書き込みを送るとき")
         struct Imported {
             let createWriteId: UUID
@@ -327,9 +373,12 @@ extension NuToriAPIClientTests {
                                      "imported":{"sourceAppName":"Withings","sourceBundleId":"com.withings.wiScaleNG",
                                                  "healthkitSampleUuid":"00000000-0000-4000-8000-0000000000c1",
                                                  "bodyFat":{"percentage":18.5,"healthkitSampleUuid":"00000000-0000-4000-8000-0000000000c2"}}}},
-                          {"sequence":5,"kind":"account_settings","recordId":"x","record":{"sendsUsageData":false}},
-                          {"sequence":6,"kind":"weight_record","recordId":"y","record":{"unexpected":true}}
-                        ],"hasMore":true,"nextAfterSequence":6,"startedOn":"2026-09-29"}
+                          {"sequence":5,"kind":"account_settings","recordId":"00000000-0000-4000-8000-0000000000e1",
+                           "record":{"id":"00000000-0000-4000-8000-0000000000e1","sendsUsageData":false}},
+                          {"sequence":6,"kind":"weight_record","recordId":"y","record":{"unexpected":true}},
+                          {"sequence":7,"kind":"account_settings","recordId":"z","record":{"sendsUsageData":true}},
+                          {"sequence":8,"kind":"meal","recordId":"m","record":{}}
+                        ],"hasMore":true,"nextAfterSequence":8,"startedOn":"2026-09-29"}
                         """
                 )
                 client = NuToriAPIClient(
@@ -350,11 +399,17 @@ extension NuToriAPIClientTests {
                             SyncChangesPage(
                                 changes: [
                                     .weightRecord(expectedRecord),
-                                    .unknown(kind: "account_settings"),
+                                    .accountSettings(
+                                        SyncedAccountSettings(
+                                            id: UUID(
+                                                uuidString: "00000000-0000-4000-8000-0000000000e1")!,
+                                            sendsUsageData: false)),
                                     .unknown(kind: "weight_record"),
+                                    .unknown(kind: "account_settings"),
+                                    .unknown(kind: "meal"),
                                 ],
                                 hasMore: true,
-                                nextAfterSequence: 6,
+                                nextAfterSequence: 8,
                                 startedOn: "2026-09-29"
                             )
                         )

@@ -29,7 +29,27 @@ struct SentSyncWritesBody: Decodable, Equatable {
     struct Write: Decodable, Equatable {
         let id: String
         let type: String
-        let weightRecord: WeightRecord
+        let weightRecord: WeightRecord?
+        let accountSettings: AccountSettings?
+
+        init(id: String, type: String, weightRecord: WeightRecord) {
+            self.id = id
+            self.type = type
+            self.weightRecord = weightRecord
+            accountSettings = nil
+        }
+
+        init(id: String, type: String, accountSettings: AccountSettings) {
+            self.id = id
+            self.type = type
+            weightRecord = nil
+            self.accountSettings = accountSettings
+        }
+    }
+
+    struct AccountSettings: Decodable, Equatable {
+        let id: String
+        let sendsUsageData: Bool
     }
 
     struct WeightRecord: Decodable, Equatable {

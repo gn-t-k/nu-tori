@@ -6,6 +6,11 @@ public protocol SyncStore: Sendable {
     /// 記録の保存と送り待ちへの追加は、1つの保存で行う
     func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws
 
+    func accountSettings() async throws -> AccountSettings?
+
+    /// アカウントの設定の保存と送り待ちへの追加は、1つの保存で行う
+    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws
+
     /// 古い順
     func pendingWrites() async throws -> [PendingWrite]
 

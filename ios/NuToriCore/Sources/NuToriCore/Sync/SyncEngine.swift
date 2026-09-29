@@ -3,11 +3,12 @@ public import NuToriAPI
 
 public actor SyncEngine {
     /// 新しい種類の記録を読めるようにしたら上げる。上げると、更新して最初の同期で全部取り直す
-    public static let currentReadableKindsVersion = 1
+    public static let currentReadableKindsVersion = 2
 
     public init(
         store: any SyncStore,
         client: NuToriAPIClient,
+        accountId: String,
         device: SyncDevice,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
@@ -15,6 +16,7 @@ public actor SyncEngine {
     ) {
         self.store = store
         self.client = client
+        self.accountId = accountId
         self.device = device
         self.timeZone = timeZone
         self.now = now
@@ -44,6 +46,22 @@ public actor SyncEngine {
         }
     }
 
+    /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
+    public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
+        let settings = AccountSettings(
+            id: AccountSettings.id(forAccountId: accountId),
+            sendsUsageData: sendsUsageData
+        )
+        try await store.save(settings, enqueuing: pendingWrite(.updateAccountSettings(settings)))
+    }
+
+    public func usageDataSetting() async throws -> UsageDataSetting {
+        UsageDataSetting(
+            accountSettings: try await store.accountSettings(),
+            hasCompletedInitialPull: try await store.syncState()?.hasCompletedInitialPull ?? false
+        )
+    }
+
     public func sync() async throws -> SyncResult {
         var rejectedWrites: [RejectedWrite] = []
         let stoppedBy: SyncResult.StopReason?
@@ -68,6 +86,7 @@ public actor SyncEngine {
 
     private let store: any SyncStore
     private let client: NuToriAPIClient
+    private let accountId: String
     private let device: SyncDevice
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
@@ -139,15 +158,15 @@ public actor SyncEngine {
             case .applied, .ignoredDuplicate, .unknown:
                 break
             case .rejected(let reason):
+                // サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
+                guard let rejected = write.operation.rejectedWeightRecord else {
+                    break
+                }
                 rejectedWrites.append(
-                    RejectedWrite(
-                        writeId: write.writeId,
-                        record: write.operation.record,
-                        reason: reason
-                    )
+                    RejectedWrite(writeId: write.writeId, record: rejected.record, reason: reason)
                 )
-                if revertedRecordIds.insert(write.operation.record.id).inserted {
-                    reversions.append(write.operation.reversion)
+                if revertedRecordIds.insert(rejected.record.id).inserted {
+                    reversions.append(rejected.reversion)
                 }
             }
         }
@@ -177,7 +196,11 @@ public actor SyncEngine {
                     startedOn: page.startedOn
                 )
                 try await store.apply(
-                    PulledChanges(records: page.changes.compactMap(\.weightRecord), state: state)
+                    PulledChanges(
+                        records: page.changes.compactMap(\.weightRecord),
+                        accountSettings: page.changes.compactMap(\.accountSettings).last,
+                        state: state
+                    )
                 )
                 if !page.hasMore {
                     return nil
@@ -238,24 +261,25 @@ extension PendingWrite {
             .createWeightRecord(writeId: writeId, record: NewWeightRecord(record))
         case .correctWeightRecord(let record, previous: _):
             .updateWeightRecord(writeId: writeId, correction: WeightRecordCorrection(record))
+        case .updateAccountSettings(let settings):
+            .updateAccountSettings(
+                writeId: writeId,
+                settings: SyncedAccountSettings(
+                    id: settings.id, sendsUsageData: settings.sendsUsageData)
+            )
         }
     }
 }
 
 extension PendingWrite.Operation {
-    fileprivate var record: WeightRecord {
-        switch self {
-        case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
-            record
-        }
-    }
-
-    fileprivate var reversion: RecordReversion {
+    fileprivate var rejectedWeightRecord: (record: WeightRecord, reversion: RecordReversion)? {
         switch self {
         case .createWeightRecord(let record):
-            .remove(recordId: record.id)
-        case .correctWeightRecord(_, let previous):
-            .restore(previous)
+            (record, .remove(recordId: record.id))
+        case .correctWeightRecord(let record, let previous):
+            (record, .restore(previous))
+        case .updateAccountSettings:
+            nil
         }
     }
 }
@@ -264,7 +288,15 @@ extension SyncChange {
     fileprivate var weightRecord: WeightRecord? {
         switch self {
         case .weightRecord(let record): WeightRecord(record)
-        case .unknown: nil
+        case .accountSettings, .unknown: nil
+        }
+    }
+
+    fileprivate var accountSettings: AccountSettings? {
+        switch self {
+        case .accountSettings(let settings):
+            AccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData)
+        case .weightRecord, .unknown: nil
         }
     }
 }

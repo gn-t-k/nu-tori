@@ -5,10 +5,12 @@ import NuToriCore
 
 extension SyncEngine {
     static let fixtureNow = Date(timeIntervalSince1970: 1_767_225_600)
+    static let fixtureAccountId = "5b1f2c1e-3a58-4d5b-9c0e-8f7a6d5c4b3a"
 
     static func fixture(
         store: SyncStoreMock,
         transport: ClientTransportMock,
+        accountId: String = fixtureAccountId,
         readableKindsVersion: Int = 1
     ) -> SyncEngine {
         SyncEngine(
@@ -18,6 +20,7 @@ extension SyncEngine {
                 transport: transport,
                 sessionToken: { "session-1" }
             ),
+            accountId: accountId,
             device: SyncDevice(
                 deviceId: UUID(uuidString: "00000000-0000-4000-8000-0000000000d1")!,
                 appVersion: "1.0.0",
@@ -47,6 +50,15 @@ extension PendingWrite {
             writeId: UUID(),
             enqueuedAt: SyncEngine.fixtureNow,
             operation: .correctWeightRecord(record, previous: previous)
+        )
+    }
+}
+
+extension AccountSettings {
+    static func fixture(sendsUsageData: Bool) -> AccountSettings {
+        AccountSettings(
+            id: AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId),
+            sendsUsageData: sendsUsageData
         )
     }
 }
