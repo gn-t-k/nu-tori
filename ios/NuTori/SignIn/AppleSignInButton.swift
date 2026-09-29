@@ -1,4 +1,5 @@
 import AuthenticationServices
+import CryptoKit
 import SwiftUI
 
 struct AppleSignInButton: View {
@@ -29,7 +30,8 @@ struct AppleSignInButton: View {
         SignInWithAppleButton(.continue) { request in
             nonce = Self.randomNonce()
             request.requestedScopes = []
-            request.nonce = nonce
+            // 生の値を入れると、漏れた ID トークンから使い回せる
+            request.nonce = Self.sha256Hex(nonce)
         } onCompletion: { result in
             onResult(AppleSignInResult(result, nonce: nonce))
         }
@@ -40,5 +42,9 @@ struct AppleSignInButton: View {
 
     private static func randomNonce() -> String {
         (0..<32).map { _ in String(format: "%02x", UInt8.random(in: .min ... .max)) }.joined()
+    }
+
+    private static func sha256Hex(_ value: String) -> String {
+        SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 }
