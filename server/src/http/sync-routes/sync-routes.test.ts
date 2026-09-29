@@ -12,19 +12,10 @@ import { pushSyncWrites } from "./testing/push-sync-writes";
 import { updateWeightRecordWrite } from "./testing/update-weight-record-write";
 
 type PushResults = {
-  results: {
-    writeId: string;
-    result: string;
-    rejectionReason?: string;
-  }[];
+  results: { writeId: string; result: string; rejectionReason?: string }[];
 };
 type PullResult = {
-  changes: {
-    sequence: number;
-    kind: string;
-    recordId: string;
-    record: Record<string, unknown>;
-  }[];
+  changes: { sequence: number; kind: string; recordId: string; record: Record<string, unknown> }[];
   hasMore: boolean;
   nextAfterSequence: number;
   startedOn: string | null;
@@ -96,12 +87,18 @@ describe("同期", () => {
       expect(pulled.changes[0]?.record["imported"]).toEqual(write.weightRecord["imported"]);
     });
 
-    test("別の ID で同じサンプルの UUID の作る書き込みを捨てること", async () => {
-      const sameSample = createWeightRecordWrite({
-        weightRecord: { imported: write.weightRecord["imported"] },
+    describe("別の ID で同じサンプルの UUID の作る書き込みを送ったとき", () => {
+      let sameSample: ReturnType<typeof createWeightRecordWrite>;
+      beforeEach(() => {
+        sameSample = createWeightRecordWrite({
+          weightRecord: { imported: write.weightRecord["imported"] },
+        });
       });
-      const response = await pushSyncWrites(sessionToken, { writes: [sameSample] });
-      expect((await response.json<PushResults>()).results[0]?.result).toBe("ignored_duplicate");
+
+      test("捨てること", async () => {
+        const response = await pushSyncWrites(sessionToken, { writes: [sameSample] });
+        expect((await response.json<PushResults>()).results[0]?.result).toBe("ignored_duplicate");
+      });
     });
   });
 
@@ -133,27 +130,36 @@ describe("同期", () => {
       await pushSyncWrites(sessionToken, { writes: [existing] });
     });
 
-    test("別の書き込みの ID で作る書き込みを送ると、捨てて値を変えないこと", async () => {
-      const again = createWeightRecordWrite({
-        weightRecord: { id: existing.weightRecord["id"], weightKg: 80 },
+    describe("別の書き込みの ID で作る書き込みを送ったとき", () => {
+      let again: ReturnType<typeof createWeightRecordWrite>;
+      let response: Response;
+      beforeEach(async () => {
+        again = createWeightRecordWrite({
+          weightRecord: { id: existing.weightRecord["id"], weightKg: 80 },
+        });
+        response = await pushSyncWrites(sessionToken, { writes: [again] });
       });
-      const response = await pushSyncWrites(sessionToken, { writes: [again] });
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect({
-        result: (await response.json<PushResults>()).results[0]?.result,
-        weightKg: pulled.changes[0]?.record["weightKg"],
-      }).toEqual({ result: "ignored_duplicate", weightKg: 72.4 });
+
+      test("捨てること", async () => {
+        expect((await response.json<PushResults>()).results[0]?.result).toBe("ignored_duplicate");
+      });
+
+      test("値を変えないこと", async () => {
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes[0]?.record["weightKg"]).toBe(72.4);
+      });
     });
   });
 
   describe("同じ要求の中に同じ書き込みの ID が2回あるとき", () => {
-    test("2回目は最初の結果になること", async () => {
+    let response: Response;
+    beforeEach(async () => {
       const first = createWeightRecordWrite();
-      const second = createWeightRecordWrite({
-        id: first.id,
-        weightRecord: { weightKg: 500 },
-      });
-      const response = await pushSyncWrites(sessionToken, { writes: [first, second] });
+      const second = createWeightRecordWrite({ id: first.id, weightRecord: { weightKg: 500 } });
+      response = await pushSyncWrites(sessionToken, { writes: [first, second] });
+    });
+
+    test("2回目は最初の結果になること", async () => {
       expect((await response.json<PushResults>()).results.map(({ result }) => result)).toEqual([
         "applied",
         "applied",
@@ -161,7 +167,7 @@ describe("同期", () => {
     });
   });
 
-  describe("体重記録を直す書き込みを送ったとき", () => {
+  describe("体重記録がすでにあるとき", () => {
     let recordId: string;
     beforeEach(async () => {
       const create = createWeightRecordWrite({ weightRecord: { weightKg: 72.4 } });
@@ -169,63 +175,132 @@ describe("同期", () => {
       await pushSyncWrites(sessionToken, { writes: [create] });
     });
 
-    test("値と時刻とタイムゾーンを置き換え、版を上げて返すこと", async () => {
-      const update = updateWeightRecordWrite(recordId, {
-        weightRecord: {
-          weightKg: 71.9,
-          measuredAt: 1_767_229_200_000,
-          timeZone: "America/Los_Angeles",
-          version: 2,
-        },
-      });
-      await pushSyncWrites(sessionToken, { writes: [update] });
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(pulled.changes).toEqual([
-        expect.objectContaining({
-          record: {
-            id: recordId,
+    describe("直す書き込みを送ったとき", () => {
+      beforeEach(async () => {
+        const update = updateWeightRecordWrite(recordId, {
+          weightRecord: {
             weightKg: 71.9,
             measuredAt: 1_767_229_200_000,
             timeZone: "America/Los_Angeles",
             version: 2,
           },
-        }),
-      ]);
+        });
+        await pushSyncWrites(sessionToken, { writes: [update] });
+      });
+
+      test("値と時刻とタイムゾーンを置き換え、版を上げて返すこと", async () => {
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes).toEqual([
+          expect.objectContaining({
+            record: {
+              id: recordId,
+              weightKg: 71.9,
+              measuredAt: 1_767_229_200_000,
+              timeZone: "America/Los_Angeles",
+              version: 2,
+            },
+          }),
+        ]);
+      });
+
+      test("取りに行くと、直した記録が1件にまとまって返ること", async () => {
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes).toHaveLength(1);
+      });
     });
 
-    test("端末の時計によらず、あとに受け取ったほうの値を採ること", async () => {
-      const now = Date.now();
-      const laterOnDeviceClock = updateWeightRecordWrite(recordId, {
-        weightRecord: { weightKg: 71.0, measuredAt: now },
+    describe("端末の時計で先の時刻の直しを先に、前の時刻の直しをあとに送ったとき", () => {
+      let earlierOnDeviceClock: number;
+      beforeEach(async () => {
+        const now = Date.now();
+        earlierOnDeviceClock = now - 3_600_000;
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            updateWeightRecordWrite(recordId, {
+              weightRecord: { weightKg: 71.0, measuredAt: now },
+            }),
+          ],
+        });
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            updateWeightRecordWrite(recordId, {
+              weightRecord: { weightKg: 70.0, measuredAt: earlierOnDeviceClock },
+            }),
+          ],
+        });
       });
-      const earlierOnDeviceClock = updateWeightRecordWrite(recordId, {
-        weightRecord: { weightKg: 70.0, measuredAt: now - 3_600_000 },
+
+      test("端末の時計によらず、あとに受け取ったほうの値を採ること", async () => {
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes[0]?.record).toEqual(
+          expect.objectContaining({ weightKg: 70.0, measuredAt: earlierOnDeviceClock }),
+        );
       });
-      await pushSyncWrites(sessionToken, { writes: [laterOnDeviceClock] });
-      await pushSyncWrites(sessionToken, { writes: [earlierOnDeviceClock] });
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(pulled.changes[0]?.record).toEqual(
-        expect.objectContaining({ weightKg: 70.0, measuredAt: now - 3_600_000 }),
+    });
+
+    describe("版 3 の直しのあとに、版 2 の直しを送ったとき", () => {
+      beforeEach(async () => {
+        await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId, { weightRecord: { version: 3 } })],
+        });
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 70.0, version: 2 } }),
+          ],
+        });
+      });
+
+      test("あとに受け取った値を、前より大きい版 4 で採ること", async () => {
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes[0]?.record).toEqual(
+          expect.objectContaining({ weightKg: 70.0, version: 4 }),
+        );
+      });
+    });
+
+    describe("版が 2 未満の直す書き込みを送ったとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId, { weightRecord: { version: 1 } })],
+        });
+      });
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
+          "version_too_low",
+        );
+      });
+    });
+
+    describe("体重が範囲の外の直す書き込みを送ったとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 300.1 } })],
+        });
+      });
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
+          "out_of_range",
+        );
+      });
+    });
+  });
+
+  describe("知らない ID の体重記録を直す書き込みを送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
+        writes: [updateWeightRecordWrite(crypto.randomUUID())],
+      });
+    });
+
+    test("受け付けないこと", async () => {
+      expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
+        "record_not_found",
       );
-    });
-
-    test("2台の直しがぶつかっても、版を前より小さくしないこと", async () => {
-      const fromDeviceA = updateWeightRecordWrite(recordId, { weightRecord: { version: 3 } });
-      const fromDeviceB = updateWeightRecordWrite(recordId, {
-        weightRecord: { weightKg: 70.0, version: 2 },
-      });
-      await pushSyncWrites(sessionToken, { writes: [fromDeviceA] });
-      await pushSyncWrites(sessionToken, { writes: [fromDeviceB] });
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(pulled.changes[0]?.record).toEqual(
-        expect.objectContaining({ weightKg: 70.0, version: 4 }),
-      );
-    });
-
-    test("取りに行くと、直した記録が1件にまとまって返ること", async () => {
-      await pushSyncWrites(sessionToken, { writes: [updateWeightRecordWrite(recordId)] });
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(pulled.changes).toHaveLength(1);
     });
   });
 
@@ -247,27 +322,41 @@ describe("同期", () => {
       ]);
     });
 
-    test("受け付けなかった書き込みを送り直しても、最初の結果を返すこと", async () => {
-      const response = await pushSyncWrites(sessionToken, { writes: [tooHeavy] });
-      expect((await response.json<PushResults>()).results).toEqual([results[0]]);
-    });
-
     test("受け付けなかった記録は保存しないこと", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
       expect(pulled.changes.map(({ recordId }) => recordId)).toEqual([
         acceptable.weightRecord["id"],
       ]);
     });
+
+    describe("受け付けなかった書き込みを送り直したとき", () => {
+      let resent: Response;
+      beforeEach(async () => {
+        resent = await pushSyncWrites(sessionToken, { writes: [tooHeavy] });
+      });
+
+      test("最初の結果を返すこと", async () => {
+        expect((await resent.json<PushResults>()).results).toEqual([results[0]]);
+      });
+    });
   });
 
-  describe("範囲の外の値を送ったとき", () => {
-    test("体重が 20.0 kg 未満の作る書き込みを受け付けないこと", async () => {
-      const write = createWeightRecordWrite({ weightRecord: { weightKg: 19.9 } });
-      const response = await pushSyncWrites(sessionToken, { writes: [write] });
-      expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe("out_of_range");
+  describe("体重が 20.0 kg 未満の作る書き込みを送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
+        writes: [createWeightRecordWrite({ weightRecord: { weightKg: 19.9 } })],
+      });
     });
 
-    test("体脂肪率が範囲の外の作る書き込みを受け付けないこと", async () => {
+    test("範囲の外として受け付けないこと", async () => {
+      expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe("out_of_range");
+    });
+  });
+
+  describe("体脂肪率が範囲の外の作る書き込みを送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
       const write = createWeightRecordWrite({
         weightRecord: {
           imported: {
@@ -278,49 +367,25 @@ describe("同期", () => {
           },
         },
       });
-      const response = await pushSyncWrites(sessionToken, { writes: [write] });
-      expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe("out_of_range");
+      response = await pushSyncWrites(sessionToken, { writes: [write] });
     });
 
-    test("体重が範囲の外の直す書き込みを受け付けないこと", async () => {
-      const create = createWeightRecordWrite();
-      await pushSyncWrites(sessionToken, { writes: [create] });
-      const update = updateWeightRecordWrite(String(create.weightRecord["id"]), {
-        weightRecord: { weightKg: 300.1 },
-      });
-      const response = await pushSyncWrites(sessionToken, { writes: [update] });
+    test("範囲の外として受け付けないこと", async () => {
       expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe("out_of_range");
     });
   });
 
-  describe("IANA の名前として読めないタイムゾーンの体重記録を作る書き込みを送ったとき", () => {
+  describe("IANA の名前として読めないタイムゾーンの作る書き込みを送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
+        writes: [createWeightRecordWrite({ weightRecord: { timeZone: "Mars/Olympus" } })],
+      });
+    });
+
     test("受け付けないこと", async () => {
-      const write = createWeightRecordWrite({ weightRecord: { timeZone: "Mars/Olympus" } });
-      const response = await pushSyncWrites(sessionToken, { writes: [write] });
       expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
         "invalid_time_zone",
-      );
-    });
-  });
-
-  describe("直せない直す書き込みを送ったとき", () => {
-    test("版が 2 未満のものを受け付けないこと", async () => {
-      const create = createWeightRecordWrite();
-      await pushSyncWrites(sessionToken, { writes: [create] });
-      const update = updateWeightRecordWrite(String(create.weightRecord["id"]), {
-        weightRecord: { version: 1 },
-      });
-      const response = await pushSyncWrites(sessionToken, { writes: [update] });
-      expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
-        "version_too_low",
-      );
-    });
-
-    test("知らない ID の体重記録を直すものを受け付けないこと", async () => {
-      const update = updateWeightRecordWrite(crypto.randomUUID());
-      const response = await pushSyncWrites(sessionToken, { writes: [update] });
-      expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
-        "record_not_found",
       );
     });
   });
@@ -335,35 +400,51 @@ describe("同期", () => {
       await pushSyncWrites(sessionToken, { writes: [create] });
     });
 
-    test("作る書き込みは保存すること", async () => {
+    test("作る書き込みで保存していること", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
       expect(pulled.changes.map((change) => change.recordId)).toEqual([recordId]);
     });
 
-    test("直す書き込みを受け付けないこと", async () => {
-      const response = await pushSyncWrites(sessionToken, {
-        writes: [updateWeightRecordWrite(recordId)],
+    describe("直す書き込みを送ったとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId)],
+        });
       });
-      expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
-        "record_before_started_on",
-      );
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
+          "record_before_started_on",
+        );
+      });
     });
 
-    test("使い始めた日がまだ無いあいだは、直す書き込みを当てること", async () => {
-      await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
-        state.storage.sql.exec("DELETE FROM first_sign_ins"),
-      );
-      const response = await pushSyncWrites(sessionToken, {
-        writes: [updateWeightRecordWrite(recordId)],
+    describe("使い始めた日がまだ無いとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
+          state.storage.sql.exec("DELETE FROM first_sign_ins"),
+        );
+        response = await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId)],
+        });
       });
-      expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
+
+      test("直す書き込みを当てること", async () => {
+        expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
+      });
     });
   });
 
   describe("送る要求の書き込みが 500 件のとき", () => {
-    test("すべて当てること", async () => {
+    let response: Response;
+    beforeEach(async () => {
       const writes = Array.from({ length: 500 }, () => createWeightRecordWrite());
-      const response = await pushSyncWrites(sessionToken, { writes });
+      response = await pushSyncWrites(sessionToken, { writes });
+    });
+
+    test("すべて当てること", async () => {
       expect(
         (await response.json<PushResults>()).results.every(({ result }) => result === "applied"),
       ).toBe(true);
@@ -394,7 +475,8 @@ describe("同期", () => {
     });
   });
 
-  describe("取りに行くとき", () => {
+  describe("502 件の体重記録があるとき", () => {
+    let first: PullResult;
     beforeEach(async () => {
       await pushSyncWrites(sessionToken, {
         writes: Array.from({ length: 500 }, () => createWeightRecordWrite()),
@@ -402,60 +484,73 @@ describe("同期", () => {
       await pushSyncWrites(sessionToken, {
         writes: Array.from({ length: 2 }, () => createWeightRecordWrite()),
       });
+      first = await (await pullSyncChanges(sessionToken)).json<PullResult>();
     });
 
-    test("1回の応答を 500 件で切り、続きがあると添えること", async () => {
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect({ count: pulled.changes.length, hasMore: pulled.hasMore }).toEqual({
+    test("取りに行くと、1回の応答を 500 件で切り、続きがあると添えること", () => {
+      expect({ count: first.changes.length, hasMore: first.hasMore }).toEqual({
         count: 500,
         hasMore: true,
       });
     });
 
-    test("次の続きから取りに行くと、残りを返して続きが無いと添えること", async () => {
-      const first = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      const second = await (
-        await pullSyncChanges(sessionToken, { afterSequence: first.nextAfterSequence })
-      ).json<PullResult>();
-      expect({ count: second.changes.length, hasMore: second.hasMore }).toEqual({
-        count: 2,
-        hasMore: false,
+    describe("次の続きから取りに行ったとき", () => {
+      let second: PullResult;
+      beforeEach(async () => {
+        second = await (
+          await pullSyncChanges(sessionToken, { afterSequence: first.nextAfterSequence })
+        ).json<PullResult>();
       });
-    });
 
-    test("届いた最後の通し番号のあとには、何も返さないこと", async () => {
-      const first = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      const second = await (
-        await pullSyncChanges(sessionToken, { afterSequence: first.nextAfterSequence })
-      ).json<PullResult>();
-      const third = await (
-        await pullSyncChanges(sessionToken, { afterSequence: second.nextAfterSequence })
-      ).json<PullResult>();
-      expect(third).toEqual({
-        changes: [],
-        hasMore: false,
-        nextAfterSequence: second.nextAfterSequence,
-        startedOn: expect.any(String),
+      test("残りを返し、続きが無いと添えること", () => {
+        expect({ count: second.changes.length, hasMore: second.hasMore }).toEqual({
+          count: 2,
+          hasMore: false,
+        });
+      });
+
+      describe("最後の続きから取りに行ったとき", () => {
+        let third: PullResult;
+        beforeEach(async () => {
+          third = await (
+            await pullSyncChanges(sessionToken, { afterSequence: second.nextAfterSequence })
+          ).json<PullResult>();
+        });
+
+        test("何も返さず、続きを進めないこと", () => {
+          expect(third).toEqual({
+            changes: [],
+            hasMore: false,
+            nextAfterSequence: second.nextAfterSequence,
+            startedOn: expect.any(String),
+          });
+        });
       });
     });
   });
 
-  describe("使い始めた日", () => {
-    test("取りに行く応答に毎回載ること", async () => {
+  describe("使い始めた日が決まっているとき", () => {
+    test("取りに行く応答に載ること", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
       expect(pulled.startedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
+  });
 
-    test("まだ決まっていないときは null で返すこと", async () => {
+  describe("使い始めた日がまだ決まっていないとき", () => {
+    let pulled: PullResult;
+    beforeEach(async () => {
       await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
         state.storage.sql.exec("DELETE FROM first_sign_ins"),
       );
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+    });
+
+    test("取りに行く応答で null を返すこと", () => {
       expect(pulled.startedOn).toBeNull();
     });
   });
 
-  describe("要求に端末の状態が添えられているとき", () => {
+  describe("送る要求に端末の状態が添えられているとき", () => {
     beforeEach(async () => {
       await pushSyncWrites(sessionToken, {
         writes: [createWeightRecordWrite()],
@@ -470,18 +565,9 @@ describe("同期", () => {
           pendingPhotoCount: 2,
         },
       });
-      await pullSyncChanges(sessionToken, {
-        afterSequence: 0,
-        clientState: {
-          deviceId: "device-a",
-          timeZone: "America/Los_Angeles",
-          pendingWriteCount: 0,
-          oldestPendingWriteAgeSeconds: undefined,
-        },
-      });
     });
 
-    test("送る要求の端末の状態と送り切った印を控えること", async () => {
+    test("端末の状態と送り切った印を控えること", async () => {
       const rows = await readRows(
         accountId,
         `SELECT log.device_id, log.time_zone, log.app_version, log.os_version,
@@ -503,8 +589,21 @@ describe("同期", () => {
         },
       ]);
     });
+  });
 
-    test("取りに行く要求の端末の状態と前回の続きを、送り待ちが無いことも含めて控えること", async () => {
+  describe("取りに行く要求に、送り待ちが無い端末の状態が添えられているとき", () => {
+    beforeEach(async () => {
+      await pullSyncChanges(sessionToken, {
+        afterSequence: 0,
+        clientState: {
+          timeZone: "America/Los_Angeles",
+          pendingWriteCount: 0,
+          oldestPendingWriteAgeSeconds: undefined,
+        },
+      });
+    });
+
+    test("端末の状態と前回の続きを、経過時間なしで控えること", async () => {
       const rows = await readRows(
         accountId,
         `SELECT log.time_zone, log.pending_write_count, log.oldest_pending_write_age_seconds,
@@ -521,6 +620,13 @@ describe("同期", () => {
         },
       ]);
     });
+  });
+
+  describe("タイムゾーンの違う要求を続けて送ったとき", () => {
+    beforeEach(async () => {
+      await pushSyncWrites(sessionToken, { writes: [], clientState: { timeZone: "Asia/Tokyo" } });
+      await pullSyncChanges(sessionToken, { clientState: { timeZone: "America/Los_Angeles" } });
+    });
 
     test("ユーザーのタイムゾーンを、届いた最新の控えから出せること", async () => {
       const rows = await readRows(
@@ -532,19 +638,21 @@ describe("同期", () => {
   });
 
   describe("要求のタイムゾーンが IANA の名前として読めないとき", () => {
-    test("送る要求に 400 を返すこと", async () => {
-      const response = await pushSyncWrites(sessionToken, {
-        writes: [],
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
+        writes: [createWeightRecordWrite()],
         clientState: { timeZone: "Mars/Olympus" },
       });
-      expect(response.status).toBe(400);
     });
 
-    test("取りに行く要求に 400 を返すこと", async () => {
-      const response = await pullSyncChanges(sessionToken, {
-        clientState: { timeZone: "Mars/Olympus" },
-      });
-      expect(response.status).toBe(400);
+    test("書き込みを当てること", async () => {
+      expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
+    });
+
+    test("読めない名前を、届いたまま控えること", async () => {
+      const rows = await readRows(accountId, "SELECT time_zone FROM sync_request_logs");
+      expect(rows).toEqual([{ time_zone: "Mars/Olympus" }]);
     });
   });
 

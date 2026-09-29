@@ -14,8 +14,8 @@ const weightRecordFields = {
     .min(-maximumTimestamp)
     .max(maximumTimestamp)
     .openapi({ description: "測った時刻。UNIX 時刻のミリ秒（UTC）" }),
-  timeZone: z.string().min(1).openapi({
-    description: "記録したときの IANA のタイムゾーン名",
+  timeZone: z.string().openapi({
+    description: "記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない",
     example: "Asia/Tokyo",
   }),
 };

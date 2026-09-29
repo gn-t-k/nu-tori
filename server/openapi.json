@@ -20,23 +20,12 @@
           },
           "result": {
             "type": "string",
-            "enum": [
-              "applied",
-              "ignored_duplicate",
-              "rejected"
-            ],
-            "description": "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった"
+            "description": "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
+            "example": "applied"
           },
           "rejectionReason": {
             "type": "string",
-            "enum": [
-              "out_of_range",
-              "invalid_time_zone",
-              "version_too_low",
-              "record_not_found",
-              "record_before_started_on"
-            ],
-            "description": "result が rejected のときだけ付く"
+            "description": "result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ"
           }
         },
         "required": [
@@ -95,8 +84,7 @@
               },
               "timeZone": {
                 "type": "string",
-                "minLength": 1,
-                "description": "記録したときの IANA のタイムゾーン名",
+                "description": "記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない",
                 "example": "Asia/Tokyo"
               },
               "imported": {
@@ -185,8 +173,7 @@
               },
               "timeZone": {
                 "type": "string",
-                "minLength": 1,
-                "description": "記録したときの IANA のタイムゾーン名",
+                "description": "記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない",
                 "example": "Asia/Tokyo"
               },
               "version": {
@@ -355,7 +342,8 @@
                       },
                       "timeZone": {
                         "type": "string",
-                        "description": "端末のいまの IANA のタイムゾーン名",
+                        "minLength": 1,
+                        "description": "端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える",
                         "example": "Asia/Tokyo"
                       },
                       "appVersion": {
@@ -471,11 +459,12 @@
           {
             "schema": {
               "type": "string",
-              "description": "端末のいまの IANA のタイムゾーン名",
+              "minLength": 1,
+              "description": "端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える",
               "example": "Asia/Tokyo"
             },
             "required": true,
-            "description": "端末のいまの IANA のタイムゾーン名",
+            "description": "端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える",
             "name": "timeZone",
             "in": "query"
           },

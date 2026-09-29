@@ -52,20 +52,15 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
                   z
                     .object({
                       writeId: z.string(),
-                      result: z.enum(["applied", "ignored_duplicate", "rejected"]).openapi({
+                      result: z.string().openapi({
                         description:
-                          "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった",
+                          "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
+                        example: "applied",
                       }),
-                      rejectionReason: z
-                        .enum([
-                          "out_of_range",
-                          "invalid_time_zone",
-                          "version_too_low",
-                          "record_not_found",
-                          "record_before_started_on",
-                        ])
-                        .optional()
-                        .openapi({ description: "result が rejected のときだけ付く" }),
+                      rejectionReason: z.string().optional().openapi({
+                        description:
+                          "result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ",
+                      }),
                     })
                     .openapi("SyncWriteResult"),
                 ),

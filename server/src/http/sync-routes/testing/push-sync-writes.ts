@@ -12,9 +12,9 @@ export const pushSyncWrites = (
       method: "POST",
       headers: { authorization: `Bearer ${sessionToken}`, "content-type": "application/json" },
       body: JSON.stringify({
+        writes: body.writes,
+        isFinalBatch: body.isFinalBatch ?? false,
         clientState: createSyncClientState(body.clientState),
-        isFinalBatch: false,
-        ...body,
       }),
     },
     env,
