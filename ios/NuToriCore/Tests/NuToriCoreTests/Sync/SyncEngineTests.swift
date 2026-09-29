@@ -465,6 +465,56 @@ struct SyncEngineTests {
             }
         }
 
+        @Suite("削除の印が届いたとき")
+        struct Deletions {
+            let store: SyncStoreMock
+            let engine: SyncEngine
+            let removed: WeightRecord
+            let kept: WeightRecord
+
+            init() throws {
+                let removedId = "00000000-0000-4000-8000-0000000000b1"
+                let unknownId = "00000000-0000-4000-8000-0000000000b9"
+                removed = WeightRecord(
+                    id: try #require(UUID(uuidString: removedId)),
+                    kilograms: 70.0,
+                    instant: Date(timeIntervalSince1970: 1_767_225_600),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                    inputSource: .manual,
+                    version: 1
+                )
+                kept = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                store = .ok(records: [removed, kept])
+                engine = .fixture(
+                    store: store,
+                    transport: .ok(pullPages: [
+                        """
+                        {"changes":[
+                          {"sequence":6,"kind":"weight_record_deletion","recordId":"\(removedId)","record":{}},
+                          {"sequence":7,"kind":"weight_record_deletion","recordId":"\(unknownId)","record":{}}
+                        ],"hasMore":false,"nextAfterSequence":7,"startedOn":null}
+                        """
+                    ])
+                )
+            }
+
+            @Test("削除の印が指す記録をキャッシュから消し、ほかの記録は残すこと")
+            func removesOnlyTheRecord() async throws {
+                _ = try await engine.sync()
+
+                #expect(store.records[removed.id] == nil)
+                #expect(store.records[kept.id] == kept)
+            }
+
+            @Test("キャッシュに無い ID の削除の印は読み飛ばし、通し番号は進めること")
+            func skipsUnknownIdAndAdvances() async throws {
+                let result = try await engine.sync()
+
+                #expect(store.state?.afterSequence == 7)
+                #expect(result.ending == .finished)
+            }
+        }
+
         @Suite("知らない種類の記録や、読めない中身が届いたとき")
         struct UnknownKinds {
             let store: SyncStoreMock
