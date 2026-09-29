@@ -36,4 +36,15 @@ public struct WeightRecord: Hashable, Sendable {
         case manual
         case imported
     }
+
+    func remeasured(_ kilograms: Double, at instant: Date, in timeZone: TimeZone) -> WeightRecord {
+        WeightRecord(
+            id: id,
+            kilograms: kilograms,
+            instant: instant,
+            timeZone: timeZone,
+            inputSource: inputSource,
+            version: version + 1
+        )
+    }
 }
