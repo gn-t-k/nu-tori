@@ -147,8 +147,6 @@ extension SyncEngineTests {
                         """
                         {"changes":[
                           {"sequence":7,"kind":"account_settings","recordId":"\(settingsId)",
-                           "record":{"id":"\(settingsId)","sendsUsageData":false}},
-                          {"sequence":8,"kind":"account_settings","recordId":"\(settingsId)",
                            "record":{"id":"\(settingsId)","sendsUsageData":true}},
                           {"sequence":9,"kind":"account_settings","recordId":"\(settingsId)",
                            "record":{"id":"\(settingsId)","sendsUsageData":false}}
