@@ -6,39 +6,43 @@ import SwiftData
 nonisolated final class CachedPendingWrite {
     @Attribute(.unique) var writeId: UUID
     var enqueuedAt: Date
-    /// `create` か `correct`
-    var kindRaw: String
-    var recordJSON: Data
-    /// 直す書き込みの、直す前の記録。作る書き込みには無い
-    var previousJSON: Data?
+    /// 作る書き込みか、直す書き込みか。直すときは直す前の記録も入る
+    var operationJSON: Data
 
     init(write: PendingWrite) throws {
         writeId = write.writeId
         enqueuedAt = write.enqueuedAt
-        switch write.operation {
-        case .createWeightRecord(let record):
-            kindRaw = "create"
-            recordJSON = try StoredWeightRecord(record).encoded()
-            previousJSON = nil
-        case .correctWeightRecord(let record, let previous):
-            kindRaw = "correct"
-            recordJSON = try StoredWeightRecord(record).encoded()
-            previousJSON = try StoredWeightRecord(previous).encoded()
-        }
+        operationJSON = try JSONEncoder().encode(StoredPendingOperation(write.operation))
     }
 
     func pendingWrite() throws -> PendingWrite {
-        let record = try StoredWeightRecord.decoded(recordJSON).weightRecord()
-        let operation: PendingWrite.Operation
-        if kindRaw == "create" {
-            operation = .createWeightRecord(record)
-        } else if kindRaw == "correct" {
-            guard let previousJSON else { throw RecordStoreError.missingPrevious }
-            operation = .correctWeightRecord(
-                record, previous: try StoredWeightRecord.decoded(previousJSON).weightRecord())
-        } else {
-            throw RecordStoreError.unknownPendingWriteKind(kindRaw)
+        let operation = try JSONDecoder().decode(StoredPendingOperation.self, from: operationJSON)
+        return PendingWrite(
+            writeId: writeId, enqueuedAt: enqueuedAt, operation: try operation.pendingOperation())
+    }
+}
+
+private nonisolated enum StoredPendingOperation: Codable {
+    case create(StoredWeightRecord)
+    case correct(record: StoredWeightRecord, previous: StoredWeightRecord)
+
+    init(_ operation: PendingWrite.Operation) {
+        switch operation {
+        case .createWeightRecord(let record):
+            self = .create(StoredWeightRecord(record))
+        case .correctWeightRecord(let record, let previous):
+            self = .correct(
+                record: StoredWeightRecord(record), previous: StoredWeightRecord(previous))
         }
-        return PendingWrite(writeId: writeId, enqueuedAt: enqueuedAt, operation: operation)
+    }
+
+    func pendingOperation() throws -> PendingWrite.Operation {
+        switch self {
+        case .create(let record):
+            .createWeightRecord(try record.weightRecord())
+        case .correct(let record, let previous):
+            .correctWeightRecord(
+                try record.weightRecord(), previous: try previous.weightRecord())
+        }
     }
 }

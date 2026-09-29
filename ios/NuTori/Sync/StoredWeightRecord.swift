@@ -3,23 +3,23 @@ import NuToriCore
 
 /// 送り待ちに、記録の写しを JSON で持たせる。キャッシュの行を消しても、戻す値が残る
 nonisolated struct StoredWeightRecord: Codable {
-    var id: UUID
-    var kilograms: Double
-    var measuredAt: Date
-    var timeZoneIdentifier: String
-    var version: Int
-    var imported: StoredImported?
+    let id: UUID
+    let kilograms: Double
+    let measuredAt: Date
+    let timeZoneIdentifier: String
+    let version: Int
+    let imported: StoredImported?
 
     struct StoredImported: Codable {
-        var appName: String
-        var bundleId: String
-        var healthKitSampleId: UUID
-        var bodyFat: StoredBodyFat?
+        let appName: String
+        let bundleId: String
+        let healthKitSampleId: UUID
+        let bodyFat: StoredBodyFat?
     }
 
     struct StoredBodyFat: Codable {
-        var percentage: Double
-        var healthKitSampleId: UUID
+        let percentage: Double
+        let healthKitSampleId: UUID
     }
 
     init(_ record: WeightRecord) {
@@ -85,6 +85,4 @@ nonisolated struct StoredWeightRecord: Codable {
 
 enum RecordStoreError: Error {
     case invalidTimeZone(String)
-    case missingPrevious
-    case unknownPendingWriteKind(String)
 }

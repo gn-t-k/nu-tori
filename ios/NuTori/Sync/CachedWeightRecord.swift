@@ -9,72 +9,60 @@ nonisolated final class CachedWeightRecord {
     var measuredAt: Date
     var timeZoneIdentifier: String
     var version: Int
-    /// 手で記録したものは、出どころの3つとも無い
-    var sourceAppName: String?
-    var sourceBundleId: String?
-    var healthKitSampleId: UUID?
-    /// 体脂肪率を添えた取り込みだけ、割合とサンプルの ID を両方持つ
-    var bodyFatPercentage: Double?
-    var bodyFatSampleId: UUID?
+    /// 手で記録したものは無い。取り込みは、出どころが揃った JSON
+    var importedJSON: Data?
 
-    init(_ record: WeightRecord) {
+    init(_ record: WeightRecord) throws {
         recordId = record.id
         kilograms = record.kilograms
         measuredAt = record.instant
         timeZoneIdentifier = record.timeZone.identifier
         version = record.version
-        sourceAppName = nil
-        sourceBundleId = nil
-        healthKitSampleId = nil
-        bodyFatPercentage = nil
-        bodyFatSampleId = nil
-        apply(record)
+        importedJSON = nil
+        try apply(record)
     }
 
-    func apply(_ record: WeightRecord) {
+    func apply(_ record: WeightRecord) throws {
         kilograms = record.kilograms
         measuredAt = record.instant
         timeZoneIdentifier = record.timeZone.identifier
         version = record.version
         switch record.inputSource {
         case .manual:
-            sourceAppName = nil
-            sourceBundleId = nil
-            healthKitSampleId = nil
-            bodyFatPercentage = nil
-            bodyFatSampleId = nil
+            importedJSON = nil
         case .imported(let source):
-            sourceAppName = source.appName
-            sourceBundleId = source.bundleId
-            healthKitSampleId = source.healthKitSampleId
-            bodyFatPercentage = source.bodyFat?.percentage
-            bodyFatSampleId = source.bodyFat?.healthKitSampleId
+            importedJSON = try JSONEncoder().encode(
+                StoredWeightRecord.StoredImported(
+                    appName: source.appName,
+                    bundleId: source.bundleId,
+                    healthKitSampleId: source.healthKitSampleId,
+                    bodyFat: source.bodyFat.map {
+                        StoredWeightRecord.StoredBodyFat(
+                            percentage: $0.percentage, healthKitSampleId: $0.healthKitSampleId)
+                    }
+                )
+            )
         }
     }
 
     func weightRecord() -> WeightRecord? {
         guard let timeZone = TimeZone(identifier: timeZoneIdentifier) else { return nil }
         let inputSource: WeightRecord.InputSource
-        if let sourceAppName, let sourceBundleId, let healthKitSampleId {
-            let bodyFat: WeightRecord.ImportedSource.BodyFat?
-            switch (bodyFatPercentage, bodyFatSampleId) {
-            case (nil, nil):
-                bodyFat = nil
-            case (let percentage?, let sampleId?):
-                bodyFat = .init(percentage: percentage, healthKitSampleId: sampleId)
-            case (_, _):
-                return nil
-            }
+        if let importedJSON {
+            guard
+                let imported = try? JSONDecoder().decode(
+                    StoredWeightRecord.StoredImported.self, from: importedJSON)
+            else { return nil }
             inputSource = .imported(
                 .init(
-                    appName: sourceAppName,
-                    bundleId: sourceBundleId,
-                    healthKitSampleId: healthKitSampleId,
-                    bodyFat: bodyFat
+                    appName: imported.appName,
+                    bundleId: imported.bundleId,
+                    healthKitSampleId: imported.healthKitSampleId,
+                    bodyFat: imported.bodyFat.map {
+                        .init(percentage: $0.percentage, healthKitSampleId: $0.healthKitSampleId)
+                    }
                 )
             )
-        } else if sourceAppName != nil || sourceBundleId != nil || healthKitSampleId != nil {
-            return nil
         } else {
             inputSource = .manual
         }

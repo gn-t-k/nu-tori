@@ -144,9 +144,9 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
 
     @MainActor private static func upsert(_ record: WeightRecord, in context: ModelContext) throws {
         if let existing = try cachedRecord(id: record.id, in: context) {
-            existing.apply(record)
+            try existing.apply(record)
         } else {
-            context.insert(CachedWeightRecord(record))
+            context.insert(try CachedWeightRecord(record))
         }
     }
 
