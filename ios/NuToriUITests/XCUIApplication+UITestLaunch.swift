@@ -1,7 +1,6 @@
 import XCTest
 
 extension XCUIApplication {
-    /// サーバーにつながず、サインインの状態と Apple の結果を起動の値で差し替えて起動する
     @MainActor static func launched(
         account: String,
         appleSignIn: String = "succeeded",

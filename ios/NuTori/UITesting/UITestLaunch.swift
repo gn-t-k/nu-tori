@@ -10,7 +10,6 @@
         let appleSignIn: AppleSignIn
         let api: API
 
-        /// `UI_TEST_ACCOUNT` があるときだけ、差し替えて起動する
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
             guard let account = environment["UI_TEST_ACCOUNT"].flatMap(Account.init(rawValue:))
