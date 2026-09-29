@@ -11,7 +11,232 @@
         "scheme": "bearer"
       }
     },
-    "schemas": {},
+    "schemas": {
+      "SyncWriteResult": {
+        "type": "object",
+        "properties": {
+          "writeId": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "ignored_duplicate",
+              "rejected"
+            ],
+            "description": "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "enum": [
+              "out_of_range",
+              "invalid_time_zone",
+              "version_too_low",
+              "record_not_found",
+              "record_before_started_on"
+            ],
+            "description": "result が rejected のときだけ付く"
+          }
+        },
+        "required": [
+          "writeId",
+          "result"
+        ]
+      },
+      "SyncWrite": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CreateWeightRecordWrite"
+          },
+          {
+            "$ref": "#/components/schemas/UpdateWeightRecordWrite"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
+            "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite"
+          }
+        },
+        "description": "作る書き込みと直す書き込み。type ごとに中身が違う"
+      },
+      "CreateWeightRecordWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "書き込みごとに端末で振る ID。冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "create_weight_record"
+            ]
+          },
+          "weightRecord": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "端末で振った体重記録の ID"
+              },
+              "weightKg": {
+                "type": "number"
+              },
+              "measuredAt": {
+                "type": "integer",
+                "minimum": -8640000000000000,
+                "maximum": 8640000000000000,
+                "description": "測った時刻。UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "minLength": 1,
+                "description": "記録したときの IANA のタイムゾーン名",
+                "example": "Asia/Tokyo"
+              },
+              "imported": {
+                "type": "object",
+                "properties": {
+                  "sourceAppName": {
+                    "type": "string"
+                  },
+                  "sourceBundleId": {
+                    "type": "string"
+                  },
+                  "healthkitSampleUuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "bodyFat": {
+                    "type": "object",
+                    "properties": {
+                      "percentage": {
+                        "type": "number",
+                        "description": "% の値（25.0）"
+                      },
+                      "healthkitSampleUuid": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "percentage",
+                      "healthkitSampleUuid"
+                    ]
+                  }
+                },
+                "required": [
+                  "sourceAppName",
+                  "sourceBundleId",
+                  "healthkitSampleUuid"
+                ],
+                "description": "ヘルスケアから取り込んだ記録だけが持つ"
+              }
+            },
+            "required": [
+              "id",
+              "weightKg",
+              "measuredAt",
+              "timeZone"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "weightRecord"
+        ]
+      },
+      "UpdateWeightRecordWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "書き込みごとに端末で振る ID。冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "update_weight_record"
+            ]
+          },
+          "weightRecord": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "端末で振った体重記録の ID"
+              },
+              "weightKg": {
+                "type": "number"
+              },
+              "measuredAt": {
+                "type": "integer",
+                "minimum": -8640000000000000,
+                "maximum": 8640000000000000,
+                "description": "測った時刻。UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "minLength": 1,
+                "description": "記録したときの IANA のタイムゾーン名",
+                "example": "Asia/Tokyo"
+              },
+              "version": {
+                "type": "integer",
+                "description": "直したあとの版。2 以上。届いた版と今の版 + 1 の大きいほうに決め直す"
+              }
+            },
+            "required": [
+              "id",
+              "weightKg",
+              "measuredAt",
+              "timeZone",
+              "version"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "weightRecord"
+        ]
+      },
+      "SyncChange": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "description": "記録の種類。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）",
+            "example": "weight_record"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "record": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "kind ごとの中身。kind ごとにあとで解く"
+          }
+        },
+        "required": [
+          "sequence",
+          "kind",
+          "recordId",
+          "record"
+        ]
+      }
+    },
     "parameters": {}
   },
   "paths": {
@@ -93,6 +318,283 @@
         "responses": {
           "204": {
             "description": "消した"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/sync/writes": {
+      "post": {
+        "operationId": "pushSyncWrites",
+        "summary": "端末の送り待ちをまとめて送る",
+        "description": "書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clientState": {
+                    "type": "object",
+                    "properties": {
+                      "deviceId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "端末で振った UUID"
+                      },
+                      "timeZone": {
+                        "type": "string",
+                        "description": "端末のいまの IANA のタイムゾーン名",
+                        "example": "Asia/Tokyo"
+                      },
+                      "appVersion": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "osVersion": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "pendingWriteCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "端末の送り待ちの件数"
+                      },
+                      "oldestPendingWriteAgeSeconds": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く"
+                      },
+                      "pendingPhotoCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "写真の送り残しの数"
+                      }
+                    },
+                    "required": [
+                      "deviceId",
+                      "timeZone",
+                      "appVersion",
+                      "osVersion",
+                      "pendingWriteCount",
+                      "pendingPhotoCount"
+                    ]
+                  },
+                  "writes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SyncWrite"
+                    },
+                    "maxItems": 500,
+                    "description": "1回の要求で 500 件まで。超えたら何も当てずに 400"
+                  },
+                  "isFinalBatch": {
+                    "type": "boolean",
+                    "description": "送り待ちの最後の要求なら true"
+                  }
+                },
+                "required": [
+                  "clientState",
+                  "writes",
+                  "isFinalBatch"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "書き込みごとの結果。要求の書き込みと同じ順",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SyncWriteResult"
+                      }
+                    }
+                  },
+                  "required": [
+                    "results"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "要求の形が違うか、書き込みが 500 件を超えている。何も当てていない"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/sync/changes": {
+      "get": {
+        "operationId": "pullSyncChanges",
+        "summary": "前回の続きからの変更を取りに行く",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "端末で振った UUID"
+            },
+            "required": true,
+            "description": "端末で振った UUID",
+            "name": "deviceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "端末のいまの IANA のタイムゾーン名",
+              "example": "Asia/Tokyo"
+            },
+            "required": true,
+            "description": "端末のいまの IANA のタイムゾーン名",
+            "name": "timeZone",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "appVersion",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "osVersion",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "端末の送り待ちの件数"
+            },
+            "required": true,
+            "description": "端末の送り待ちの件数",
+            "name": "pendingWriteCount",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く"
+            },
+            "required": false,
+            "description": "いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く",
+            "name": "oldestPendingWriteAgeSeconds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "写真の送り残しの数"
+            },
+            "required": true,
+            "description": "写真の送り残しの数",
+            "name": "pendingPhotoCount",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "前回の応答の nextAfterSequence。最初は 0"
+            },
+            "required": true,
+            "description": "前回の応答の nextAfterSequence。最初は 0",
+            "name": "afterSequence",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "変更を、記録ごとにまとめて古い順に最大 500 件",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SyncChange"
+                      }
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "description": "続きがあるとき true"
+                    },
+                    "nextAfterSequence": {
+                      "type": "integer"
+                    },
+                    "startedOn": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "使い始めた日（YYYY-MM-DD）。まだ決まっていないとき null。記録の通し番号によらず毎回載る"
+                    }
+                  },
+                  "required": [
+                    "changes",
+                    "hasMore",
+                    "nextAfterSequence",
+                    "startedOn"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "要求の形が違う"
           },
           "401": {
             "description": "セッションが無いか、切れている"
