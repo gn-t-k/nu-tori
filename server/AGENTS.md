@@ -7,7 +7,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 構成の正本は `wrangler.jsonc`。上の階層が開発用で、本番は `env.production`。つなぎ（Durable Object、D1、R2 など）は環境に受け継がれないので、足すときは両方に書く
 - Worker の型の宣言（`worker-configuration.d.ts`）は `wrangler types` が `wrangler.jsonc` から書き出す。コミットせず、`scripts/check server` が毎回書き出す
 - Workers で動かないライブラリが要る処理が出たら、その部分だけ別の基盤に置く
-- 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（開発用と本番の両方）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の分は、ルートの `AGENTS.md` の「リポジトリ全体の決定」
+- 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（使う環境に。本番だけの値は本番だけ）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の分は、ルートの `AGENTS.md` の「リポジトリ全体の決定」
 
 ## 層
 
