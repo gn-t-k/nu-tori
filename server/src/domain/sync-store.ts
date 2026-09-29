@@ -39,8 +39,7 @@ export type SyncStore = {
     recordId: string;
     writeId: string;
   }) => void;
-  // 記録ごとにいちばん大きい通し番号を1つ添え、その番号の順に返す
-  findRecordChanges: (
+  findLatestChangePerRecord: (
     afterSequence: number,
     limit: number,
   ) => { sequence: number; recordType: "weight_record"; recordId: string }[];

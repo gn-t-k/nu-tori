@@ -49,9 +49,7 @@ const updateWeightRecordWriteSchema = z
     type: z.literal("update_weight_record"),
     weightRecord: z.object({
       ...weightRecordFields,
-      version: z.number().int().openapi({
-        description: "2 以上。届いた版と今の版 + 1 の大きいほうに決め直す",
-      }),
+      version: z.number().int(),
     }),
   })
   .openapi("UpdateWeightRecordWrite");

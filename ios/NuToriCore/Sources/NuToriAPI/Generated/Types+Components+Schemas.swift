@@ -247,8 +247,6 @@ extension Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/timeZone`.
                 internal var timeZone: Swift.String
-                /// 2 以上。届いた版と今の版 + 1 の大きいほうに決め直す
-                ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/version`.
                 internal var version: Swift.Int
                 /// Creates a new `WeightRecordPayload`.
@@ -258,7 +256,7 @@ extension Components {
                 ///   - weightKg:
                 ///   - measuredAt: UNIX 時刻のミリ秒（UTC）
                 ///   - timeZone: 読めない名前の書き込みは受け付けない
-                ///   - version: 2 以上。届いた版と今の版 + 1 の大きいほうに決め直す
+                ///   - version:
                 internal init(
                     id: Swift.String,
                     weightKg: Swift.Double,

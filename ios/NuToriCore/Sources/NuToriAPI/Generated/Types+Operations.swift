@@ -354,8 +354,6 @@ internal enum Operations {
     }
     /// 端末の送り待ちをまとめて送る
     ///
-    /// 書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる
-    ///
     /// - Remark: HTTP `POST /v1/sync/writes`.
     /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)`.
     internal enum PushSyncWrites {
@@ -436,8 +434,6 @@ internal enum Operations {
                     }
                     /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState`.
                     internal var clientState: Operations.PushSyncWrites.Input.Body.JsonPayload.ClientStatePayload
-                    /// 1回の要求で 500 件まで。超えたら何も当てずに 400
-                    ///
                     /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/writes`.
                     internal var writes: [Components.Schemas.SyncWrite]
                     /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/isFinalBatch`.
@@ -446,7 +442,7 @@ internal enum Operations {
                     ///
                     /// - Parameters:
                     ///   - clientState:
-                    ///   - writes: 1回の要求で 500 件まで。超えたら何も当てずに 400
+                    ///   - writes:
                     ///   - isFinalBatch:
                     internal init(
                         clientState: Operations.PushSyncWrites.Input.Body.JsonPayload.ClientStatePayload,

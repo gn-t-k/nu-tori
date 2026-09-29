@@ -19,7 +19,7 @@ export const pullSyncChanges = (
       clientState: request.clientState,
       afterSequence: request.afterSequence,
     });
-    const found = store.findRecordChanges(request.afterSequence, changesPerPull + 1);
+    const found = store.findLatestChangePerRecord(request.afterSequence, changesPerPull + 1);
     const changes = found.slice(0, changesPerPull).map(({ sequence, recordId }) => {
       const weightRecord = store.findWeightRecord(recordId);
       if (weightRecord === undefined) {

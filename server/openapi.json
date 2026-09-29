@@ -172,8 +172,7 @@
                 "example": "Asia/Tokyo"
               },
               "version": {
-                "type": "integer",
-                "description": "2 以上。届いた版と今の版 + 1 の大きいほうに決め直す"
+                "type": "integer"
               }
             },
             "required": [
@@ -313,7 +312,6 @@
       "post": {
         "operationId": "pushSyncWrites",
         "summary": "端末の送り待ちをまとめて送る",
-        "description": "書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる",
         "security": [
           {
             "session": []
@@ -375,8 +373,7 @@
                     "items": {
                       "$ref": "#/components/schemas/SyncWrite"
                     },
-                    "maxItems": 500,
-                    "description": "1回の要求で 500 件まで。超えたら何も当てずに 400"
+                    "maxItems": 500
                   },
                   "isFinalBatch": {
                     "type": "boolean"

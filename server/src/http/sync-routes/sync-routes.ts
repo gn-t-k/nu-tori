@@ -21,8 +21,6 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       path: "/v1/sync/writes",
       operationId: "pushSyncWrites",
       summary: "端末の送り待ちをまとめて送る",
-      description:
-        "書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる",
       security: [{ session: [] }],
       middleware: [authenticateAccount] as const,
       request: {
@@ -32,10 +30,7 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
             "application/json": {
               schema: z.object({
                 clientState: createSyncClientStateSchema(z.number().int().nonnegative()),
-                writes: z
-                  .array(syncWriteSchema)
-                  .max(maximumWritesPerRequest)
-                  .openapi({ description: "1回の要求で 500 件まで。超えたら何も当てずに 400" }),
+                writes: z.array(syncWriteSchema).max(maximumWritesPerRequest),
                 isFinalBatch: z.boolean(),
               }),
             },
