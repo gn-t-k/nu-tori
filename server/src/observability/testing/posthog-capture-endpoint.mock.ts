@@ -6,6 +6,9 @@ export const mockPostHogCaptureEndpointOk = (overrides?: Partial<{ status: numbe
     .mockResolvedValue(Response.json({ status: 1, ...overrides }));
 };
 
-export const mockPostHogCaptureEndpointError = (status: number) => {
-  return vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status }));
+export const mockPostHogCaptureEndpointError = (error: TypeError | number) => {
+  const spy = vi.spyOn(globalThis, "fetch");
+  return typeof error === "number"
+    ? spy.mockResolvedValue(new Response(null, { status: error }))
+    : spy.mockRejectedValue(error);
 };

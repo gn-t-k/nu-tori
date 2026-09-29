@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import type { UsageEvent } from "../domain/usage-event";
 
-// Durable Object では応答のあとに続ける仕組みが効かないので、数秒の上限を付けて待つ。失敗も時間切れも握りつぶす
+// Durable Object では応答のあとに続ける仕組みが効かないので、数秒の上限を付けて待つ。throw すると、書き込みを当てたあとの応答が失敗する
 export const sendUsageEvents = async (
   env: { POSTHOG_PROJECT_TOKEN?: string },
   accountId: string,
