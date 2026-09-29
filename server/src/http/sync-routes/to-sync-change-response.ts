@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import type { SyncChange } from "../../domain/sync/sync-change";
+import type { SyncChange } from "../../domain/sync-change";
 
 export const toSyncChangeResponse = (change: SyncChange) =>
   match(change)

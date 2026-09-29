@@ -1,5 +1,5 @@
-import { computeCalendarDay } from "../compute-calendar-day";
-import { isTimeZoneName } from "../is-time-zone-name";
+import { computeCalendarDay } from "./compute-calendar-day";
+import { isTimeZoneName } from "./is-time-zone-name";
 import type { SyncClientState } from "./sync-client-state";
 import type { SyncStore } from "./sync-store";
 import type { UsageEvent } from "./usage-event";

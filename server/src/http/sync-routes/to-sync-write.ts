@@ -1,6 +1,6 @@
 import type { z } from "@hono/zod-openapi";
 import { match } from "ts-pattern";
-import type { SyncWrite } from "../../domain/sync/sync-write";
+import type { SyncWrite } from "../../domain/sync-write";
 import type { syncWriteSchema } from "./sync-write-schema";
 
 export const toSyncWrite = (write: z.infer<typeof syncWriteSchema>): SyncWrite =>

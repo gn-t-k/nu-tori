@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import type { UsageEvent } from "../domain/sync/usage-event";
+import type { UsageEvent } from "../domain/usage-event";
 
 // Durable Object では応答のあとに続ける仕組みが効かないので、数秒の上限を付けて待つ。失敗も時間切れも握りつぶす
 export const sendUsageEvents = async (

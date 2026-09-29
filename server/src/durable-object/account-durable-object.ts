@@ -1,10 +1,10 @@
 import { instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
-import { applySyncWrites } from "../domain/sync/apply-sync-writes";
-import { pullSyncChanges } from "../domain/sync/pull-sync-changes";
-import type { SyncClientState } from "../domain/sync/sync-client-state";
-import type { SyncWrite } from "../domain/sync/sync-write";
+import { applySyncWrites } from "../domain/apply-sync-writes";
+import { pullSyncChanges } from "../domain/pull-sync-changes";
+import type { SyncClientState } from "../domain/sync-client-state";
+import type { SyncWrite } from "../domain/sync-write";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
