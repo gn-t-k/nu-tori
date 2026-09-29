@@ -12,16 +12,6 @@ import { pushSyncWrites } from "./testing/push-sync-writes";
 import { sourceDeletedWeightRecordWrite } from "./testing/source-deleted-weight-record-write";
 import { updateWeightRecordWrite } from "./testing/update-weight-record-write";
 
-type PushResults = {
-  results: { writeId: string; result: string; rejectionReason?: string }[];
-};
-type PullResult = {
-  changes: { sequence: number; kind: string; recordId: string; record: Record<string, unknown> }[];
-  hasMore: boolean;
-  nextAfterSequence: number;
-  startedOn: string | null;
-};
-
 describe("同期", () => {
   let accountId: string;
   let sessionToken: string;
@@ -940,3 +930,13 @@ const readRows = (accountId: string, query: string) =>
   runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
     state.storage.sql.exec(query).toArray(),
   );
+
+type PushResults = {
+  results: { writeId: string; result: string; rejectionReason?: string }[];
+};
+type PullResult = {
+  changes: { sequence: number; kind: string; recordId: string; record: Record<string, unknown> }[];
+  hasMore: boolean;
+  nextAfterSequence: number;
+  startedOn: string | null;
+};

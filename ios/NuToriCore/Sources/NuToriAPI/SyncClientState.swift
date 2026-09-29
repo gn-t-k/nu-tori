@@ -1,13 +1,12 @@
 public import Foundation
 
-/// 送る要求と取りに行く要求に添える、端末の状態
 public struct SyncClientState: Sendable, Equatable {
     public let deviceId: UUID
     public let timeZone: TimeZone
     public let appVersion: String
     public let osVersion: String
     public let pendingWriteCount: Int
-    /// いちばん古い送り待ちの経過時間。送り待ちが無いときは nil
+    /// 送り待ちが無いとき nil
     public let oldestPendingWriteAge: Duration?
     public let pendingPhotoCount: Int
 

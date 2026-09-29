@@ -2,8 +2,7 @@ import Foundation
 import OpenAPIRuntime
 
 extension NuToriAPIClient {
-    /// 送り待ちをまとめて送る。1回の要求で 500 件まで
-    /// - Parameter isFinalBatch: 送り待ちの最後の要求なら true
+    /// 1回の要求で送れるのは 500 件まで
     public func pushSyncWrites(
         _ writes: [SyncWrite],
         isFinalBatch: Bool,
@@ -32,7 +31,6 @@ extension NuToriAPIClient {
         }
     }
 
-    /// 前回の続きからの変更を取りに行く。最初は afterSequence を 0 にする
     public func pullSyncChanges(
         afterSequence: Int,
         clientState: SyncClientState
@@ -55,9 +53,9 @@ extension NuToriAPIClient {
     }
 
     public enum PushSyncWritesResult: Sendable, Equatable {
-        /// 送った書き込みと同じ順の、書き込みごとの結果
+        /// 送った書き込みと同じ順
         case pushed([SyncWriteResult])
-        /// 要求の形が違うか、書き込みが 500 件を超えていた。サーバーは何も当てていない
+        /// サーバーは何も当てていない
         case badRequest
         case sessionExpired
         case rateLimited
@@ -70,7 +68,6 @@ extension NuToriAPIClient {
         case rateLimited
     }
 
-    /// サーバーの応答が、文書にある形と合わなかった
     public struct MalformedResponseError: Error, Equatable {
         public let reason: String
     }
@@ -105,17 +102,17 @@ extension Components.Schemas.SyncWrite {
                     )
                 )
             )
-        case .updateWeightRecord(let writeId, let record):
+        case .updateWeightRecord(let writeId, let correction):
             self = .updateWeightRecord(
                 .init(
                     id: writeId.uuidString,
                     _type: .updateWeightRecord,
                     weightRecord: .init(
-                        id: record.id.uuidString,
-                        weightKg: record.weightKilograms,
-                        measuredAt: record.measuredAt.millisecondsSince1970,
-                        timeZone: record.timeZone.identifier,
-                        version: record.version
+                        id: correction.id.uuidString,
+                        weightKg: correction.weightKilograms,
+                        measuredAt: correction.measuredAt.millisecondsSince1970,
+                        timeZone: correction.timeZone.identifier,
+                        version: correction.version
                     )
                 )
             )
@@ -214,7 +211,6 @@ extension SyncChangesPage {
 }
 
 extension SyncChange {
-    // 中身は種類ごとに、ここで解く。知らない種類と読めない中身は、落ちずに .unknown にする
     fileprivate init(_ change: Components.Schemas.SyncChange) {
         switch change.kind {
         case "weight_record":
