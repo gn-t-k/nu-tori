@@ -5,6 +5,7 @@ import { accountRoutes } from "./account-routes";
 import { appleServerNotificationRoutes } from "./apple-server-notification-routes";
 import { observeRequest } from "./observe-request";
 import { sessionRoutes } from "./session-routes";
+import { syncRoutes } from "./sync-routes";
 
 export const app = new OpenAPIHono<{ Bindings: Env }>();
 
@@ -13,6 +14,7 @@ app
   .use(observeRequest)
   .route("/", sessionRoutes)
   .route("/", accountRoutes)
+  .route("/", syncRoutes)
   .route("/", appleServerNotificationRoutes);
 
 app.openAPIRegistry.registerComponent("securitySchemes", "session", {

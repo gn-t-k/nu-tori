@@ -1,9 +1,14 @@
 import { instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
+import { applySyncWrites } from "../domain/apply-sync-writes";
+import { pullSyncChanges } from "../domain/pull-sync-changes";
+import type { SyncClientState } from "../domain/sync-client-state";
+import type { SyncWrite } from "../domain/sync-write";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
+import { createSyncStore } from "./create-sync-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
 // 受け口は呼ぶたびに accountId を渡す。Sentry の報告に user の ID として付けるため
@@ -21,6 +26,28 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     ): void {
       setUser({ id: accountId });
       recordFirstSignIn(createFirstSignInStore(this.ctx.storage.sql), signIn);
+    }
+
+    pushSyncWrites(
+      accountId: string,
+      request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
+    ) {
+      setUser({ id: accountId });
+      return applySyncWrites(createSyncStore(this.ctx.storage), {
+        ...request,
+        receivedAt: new Date(),
+      });
+    }
+
+    pullSyncChanges(
+      accountId: string,
+      request: { clientState: SyncClientState; afterSequence: number },
+    ) {
+      setUser({ id: accountId });
+      return pullSyncChanges(createSyncStore(this.ctx.storage), {
+        ...request,
+        receivedAt: new Date(),
+      });
     }
 
     async deleteRecords(accountId: string): Promise<void> {

@@ -1,4 +1,5 @@
 import { computeCalendarDay } from "../compute-calendar-day";
+import { isTimeZoneName } from "../is-time-zone-name";
 import type { FirstSignInStore } from "./first-sign-in-store";
 
 // 使い始めた日は一度決めたら変えない。タイムゾーンが届かないか読めないときは UTC の日付にする
@@ -17,13 +18,4 @@ export const recordFirstSignIn = (
     signedInAt: signIn.signedInAt,
     timeZone,
   });
-};
-
-const isTimeZoneName = (timeZone: string): boolean => {
-  try {
-    Intl.DateTimeFormat("en-US", { timeZone });
-    return true;
-  } catch {
-    return false;
-  }
 };

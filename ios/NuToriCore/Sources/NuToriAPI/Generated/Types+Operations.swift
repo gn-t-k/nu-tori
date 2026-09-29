@@ -352,4 +352,638 @@ internal enum Operations {
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
     }
+    /// 端末の送り待ちをまとめて送る
+    ///
+    /// - Remark: HTTP `POST /v1/sync/writes`.
+    /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)`.
+    internal enum PushSyncWrites {
+        internal static let id: Swift.String = "pushSyncWrites"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/sync/writes/POST/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PushSyncWrites.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PushSyncWrites.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.PushSyncWrites.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody`.
+            internal enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json`.
+                internal struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState`.
+                    internal struct ClientStatePayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/deviceId`.
+                        internal var deviceId: Swift.String
+                        /// 読めない名前でも、届いたまま控える
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/timeZone`.
+                        internal var timeZone: Swift.String
+                        /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/appVersion`.
+                        internal var appVersion: Swift.String
+                        /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/osVersion`.
+                        internal var osVersion: Swift.String
+                        /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/pendingWriteCount`.
+                        internal var pendingWriteCount: Swift.Int
+                        /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/oldestPendingWriteAgeSeconds`.
+                        internal var oldestPendingWriteAgeSeconds: Swift.Int?
+                        /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/pendingPhotoCount`.
+                        internal var pendingPhotoCount: Swift.Int
+                        /// Creates a new `ClientStatePayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - deviceId:
+                        ///   - timeZone: 読めない名前でも、届いたまま控える
+                        ///   - appVersion:
+                        ///   - osVersion:
+                        ///   - pendingWriteCount:
+                        ///   - oldestPendingWriteAgeSeconds:
+                        ///   - pendingPhotoCount:
+                        internal init(
+                            deviceId: Swift.String,
+                            timeZone: Swift.String,
+                            appVersion: Swift.String,
+                            osVersion: Swift.String,
+                            pendingWriteCount: Swift.Int,
+                            oldestPendingWriteAgeSeconds: Swift.Int? = nil,
+                            pendingPhotoCount: Swift.Int
+                        ) {
+                            self.deviceId = deviceId
+                            self.timeZone = timeZone
+                            self.appVersion = appVersion
+                            self.osVersion = osVersion
+                            self.pendingWriteCount = pendingWriteCount
+                            self.oldestPendingWriteAgeSeconds = oldestPendingWriteAgeSeconds
+                            self.pendingPhotoCount = pendingPhotoCount
+                        }
+                        internal enum CodingKeys: String, CodingKey {
+                            case deviceId
+                            case timeZone
+                            case appVersion
+                            case osVersion
+                            case pendingWriteCount
+                            case oldestPendingWriteAgeSeconds
+                            case pendingPhotoCount
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState`.
+                    internal var clientState: Operations.PushSyncWrites.Input.Body.JsonPayload.ClientStatePayload
+                    /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/writes`.
+                    internal var writes: [Components.Schemas.SyncWrite]
+                    /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/isFinalBatch`.
+                    internal var isFinalBatch: Swift.Bool
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - clientState:
+                    ///   - writes:
+                    ///   - isFinalBatch:
+                    internal init(
+                        clientState: Operations.PushSyncWrites.Input.Body.JsonPayload.ClientStatePayload,
+                        writes: [Components.Schemas.SyncWrite],
+                        isFinalBatch: Swift.Bool
+                    ) {
+                        self.clientState = clientState
+                        self.writes = writes
+                        self.isFinalBatch = isFinalBatch
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case clientState
+                        case writes
+                        case isFinalBatch
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/content/application\/json`.
+                case json(Operations.PushSyncWrites.Input.Body.JsonPayload)
+            }
+            internal var body: Operations.PushSyncWrites.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            internal init(
+                headers: Operations.PushSyncWrites.Input.Headers = .init(),
+                body: Operations.PushSyncWrites.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/sync/writes/POST/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/sync/writes/POST/responses/200/content/json`.
+                    internal struct JsonPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/v1/sync/writes/POST/responses/200/content/json/results`.
+                        internal var results: [Components.Schemas.SyncWriteResult]
+                        /// Creates a new `JsonPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - results:
+                        internal init(results: [Components.Schemas.SyncWriteResult]) {
+                            self.results = results
+                        }
+                        internal enum CodingKeys: String, CodingKey {
+                            case results
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/sync/writes/POST/responses/200/content/application\/json`.
+                    case json(Operations.PushSyncWrites.Output.Ok.Body.JsonPayload)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Operations.PushSyncWrites.Output.Ok.Body.JsonPayload {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.PushSyncWrites.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.PushSyncWrites.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 書き込みごとの結果。要求の書き込みと同じ順
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.PushSyncWrites.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.PushSyncWrites.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                internal init() {}
+            }
+            /// 要求の形が違うか、書き込みが 500 件を超えている。何も当てていない
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.PushSyncWrites.Output.BadRequest)
+            /// 要求の形が違うか、書き込みが 500 件を超えている。何も当てていない
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            internal static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.PushSyncWrites.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.PushSyncWrites.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.PushSyncWrites.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.PushSyncWrites.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.PushSyncWrites.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// 前回の続きからの変更を取りに行く
+    ///
+    /// - Remark: HTTP `GET /v1/sync/changes`.
+    /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)`.
+    internal enum PullSyncChanges {
+        internal static let id: Swift.String = "pullSyncChanges"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query`.
+            internal struct Query: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/deviceId`.
+                internal var deviceId: Swift.String
+                /// 読めない名前でも、届いたまま控える
+                ///
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/timeZone`.
+                internal var timeZone: Swift.String
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/appVersion`.
+                internal var appVersion: Swift.String
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/osVersion`.
+                internal var osVersion: Swift.String
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/pendingWriteCount`.
+                internal var pendingWriteCount: Swift.Int
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/oldestPendingWriteAgeSeconds`.
+                internal var oldestPendingWriteAgeSeconds: Swift.Int?
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/pendingPhotoCount`.
+                internal var pendingPhotoCount: Swift.Int
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/afterSequence`.
+                internal var afterSequence: Swift.Int
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - deviceId:
+                ///   - timeZone: 読めない名前でも、届いたまま控える
+                ///   - appVersion:
+                ///   - osVersion:
+                ///   - pendingWriteCount:
+                ///   - oldestPendingWriteAgeSeconds:
+                ///   - pendingPhotoCount:
+                ///   - afterSequence:
+                internal init(
+                    deviceId: Swift.String,
+                    timeZone: Swift.String,
+                    appVersion: Swift.String,
+                    osVersion: Swift.String,
+                    pendingWriteCount: Swift.Int,
+                    oldestPendingWriteAgeSeconds: Swift.Int? = nil,
+                    pendingPhotoCount: Swift.Int,
+                    afterSequence: Swift.Int
+                ) {
+                    self.deviceId = deviceId
+                    self.timeZone = timeZone
+                    self.appVersion = appVersion
+                    self.osVersion = osVersion
+                    self.pendingWriteCount = pendingWriteCount
+                    self.oldestPendingWriteAgeSeconds = oldestPendingWriteAgeSeconds
+                    self.pendingPhotoCount = pendingPhotoCount
+                    self.afterSequence = afterSequence
+                }
+            }
+            internal var query: Operations.PullSyncChanges.Input.Query
+            /// - Remark: Generated from `#/paths/v1/sync/changes/GET/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PullSyncChanges.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PullSyncChanges.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.PullSyncChanges.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - query:
+            ///   - headers:
+            internal init(
+                query: Operations.PullSyncChanges.Input.Query,
+                headers: Operations.PullSyncChanges.Input.Headers = .init()
+            ) {
+                self.query = query
+                self.headers = headers
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json`.
+                    internal struct JsonPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json/changes`.
+                        internal var changes: [Components.Schemas.SyncChange]
+                        /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json/hasMore`.
+                        internal var hasMore: Swift.Bool
+                        /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json/nextAfterSequence`.
+                        internal var nextAfterSequence: Swift.Int
+                        /// YYYY-MM-DD。まだ決まっていないとき null。記録の通し番号によらず毎回載る
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json/startedOn`.
+                        internal var startedOn: Swift.String?
+                        /// Creates a new `JsonPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - changes:
+                        ///   - hasMore:
+                        ///   - nextAfterSequence:
+                        ///   - startedOn: YYYY-MM-DD。まだ決まっていないとき null。記録の通し番号によらず毎回載る
+                        internal init(
+                            changes: [Components.Schemas.SyncChange],
+                            hasMore: Swift.Bool,
+                            nextAfterSequence: Swift.Int,
+                            startedOn: Swift.String? = nil
+                        ) {
+                            self.changes = changes
+                            self.hasMore = hasMore
+                            self.nextAfterSequence = nextAfterSequence
+                            self.startedOn = startedOn
+                        }
+                        internal enum CodingKeys: String, CodingKey {
+                            case changes
+                            case hasMore
+                            case nextAfterSequence
+                            case startedOn
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/application\/json`.
+                    case json(Operations.PullSyncChanges.Output.Ok.Body.JsonPayload)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Operations.PullSyncChanges.Output.Ok.Body.JsonPayload {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.PullSyncChanges.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.PullSyncChanges.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 変更を、記録ごとにまとめて古い順に最大 500 件
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.PullSyncChanges.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.PullSyncChanges.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                internal init() {}
+            }
+            /// 要求の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.PullSyncChanges.Output.BadRequest)
+            /// 要求の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            internal static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.PullSyncChanges.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.PullSyncChanges.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.PullSyncChanges.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.PullSyncChanges.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.PullSyncChanges.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
 }
