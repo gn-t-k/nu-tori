@@ -45,7 +45,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         pending.append(write)
     }
 
-    func pendingWrites() async throws -> [PendingWrite] {
+    func pendingWritesOldestFirst() async throws -> [PendingWrite] {
         try failIfNeeded()
         return pending
     }
@@ -77,6 +77,9 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         try failIfNeeded()
         for record in changes.records {
             records[record.id] = record
+        }
+        for recordId in changes.removedRecordIds {
+            records[recordId] = nil
         }
         if let accountSettings = changes.accountSettings {
             settings = accountSettings

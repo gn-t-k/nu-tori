@@ -100,7 +100,7 @@ public actor SyncEngine {
         async throws -> SyncResult.StopReason?
     {
         let maxWritesPerRequest = 500
-        let pending = try await store.pendingWrites()
+        let pending = try await store.pendingWritesOldestFirst()
         // 先の要求で作る書き込みが受け付けられず消した記録を、あとの要求の直す書き込みで戻さない
         var revertedRecordIds: Set<UUID> = []
         for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
@@ -155,7 +155,7 @@ public actor SyncEngine {
             }
             resolvedWriteIds.append(write.writeId)
             switch outcome {
-            case .applied, .ignoredDuplicate, .unknown:
+            case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
                 break
             case .rejected(let reason):
                 // サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
@@ -180,7 +180,8 @@ public actor SyncEngine {
             do {
                 result = try await client.pullSyncChanges(
                     afterSequence: state.afterSequence,
-                    clientState: clientState(pendingWrites: try await store.pendingWrites()[...])
+                    clientState: clientState(
+                        pendingWrites: try await store.pendingWritesOldestFirst()[...])
                 )
             } catch is CancellationError {
                 throw CancellationError()
@@ -198,6 +199,7 @@ public actor SyncEngine {
                 try await store.apply(
                     PulledChanges(
                         records: page.changes.compactMap(\.weightRecord),
+                        removedRecordIds: page.changes.compactMap(\.removedRecordId),
                         accountSettings: page.changes.compactMap(\.accountSettings).last,
                         state: state
                     )
@@ -288,7 +290,14 @@ extension SyncChange {
     fileprivate var weightRecord: WeightRecord? {
         switch self {
         case .weightRecord(let record): WeightRecord(record)
-        case .accountSettings, .unknown: nil
+        case .accountSettings, .weightRecordDeletion, .unknown: nil
+        }
+    }
+
+    fileprivate var removedRecordId: UUID? {
+        switch self {
+        case .weightRecordDeletion(let recordId): recordId
+        case .weightRecord, .accountSettings, .unknown: nil
         }
     }
 
@@ -296,7 +305,7 @@ extension SyncChange {
         switch self {
         case .accountSettings(let settings):
             AccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData)
-        case .weightRecord, .unknown: nil
+        case .weightRecord, .weightRecordDeletion, .unknown: nil
         }
     }
 }

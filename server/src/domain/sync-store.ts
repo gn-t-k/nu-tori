@@ -25,18 +25,21 @@ export type SyncStore = {
     writeId: string;
     requestLogId: string;
     positionInRequest: number;
-    kind: "create" | "update";
+    kind: "create" | "update" | "source_deleted";
     recordType: RecordType;
     recordId: string;
     outcome: SyncWriteOutcome;
   }) => void;
   findWeightRecord: (id: string) => WeightRecord | undefined;
   existsImportedSample: (healthkitSampleUuid: string) => boolean;
+  existsWeightRecordDeletion: (recordId: string) => boolean;
   insertWeightRecord: (record: WeightRecord) => void;
   updateWeightRecord: (
     id: string,
     correction: Pick<WeightRecord, "weightKg" | "measuredAt" | "timeZone" | "version">,
   ) => void;
+  deleteWeightRecord: (id: string) => void;
+  insertWeightRecordDeletion: (writeId: string) => void;
   findAccountSettings: () => AccountSettings | undefined;
   insertAccountSettings: (settings: AccountSettings) => void;
   updateAccountSettings: (sendsUsageData: boolean) => void;

@@ -51,6 +51,14 @@ const updateWeightRecordWriteSchema = z
   })
   .openapi("UpdateWeightRecordWrite");
 
+const sourceDeletedWeightRecordWriteSchema = z
+  .object({
+    id: writeId,
+    type: z.literal("source_deleted_weight_record"),
+    weightRecordId: z.string().min(1),
+  })
+  .openapi("SourceDeletedWeightRecordWrite");
+
 const updateAccountSettingsWriteSchema = z
   .object({
     id: writeId,
@@ -69,6 +77,7 @@ export const syncWriteSchema = z
   .discriminatedUnion("type", [
     createWeightRecordWriteSchema,
     updateWeightRecordWriteSchema,
+    sourceDeletedWeightRecordWriteSchema,
     updateAccountSettingsWriteSchema,
   ])
   .openapi("SyncWrite", {

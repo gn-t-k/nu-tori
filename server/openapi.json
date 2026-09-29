@@ -42,6 +42,9 @@
             "$ref": "#/components/schemas/UpdateWeightRecordWrite"
           },
           {
+            "$ref": "#/components/schemas/SourceDeletedWeightRecordWrite"
+          },
+          {
             "$ref": "#/components/schemas/UpdateAccountSettingsWrite"
           }
         ],
@@ -50,6 +53,7 @@
           "mapping": {
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
+            "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite",
             "update_account_settings": "#/components/schemas/UpdateAccountSettingsWrite"
           }
         },
@@ -191,6 +195,31 @@
           "id",
           "type",
           "weightRecord"
+        ]
+      },
+      "SourceDeletedWeightRecordWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "source_deleted_weight_record"
+            ]
+          },
+          "weightRecordId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "weightRecordId"
         ]
       },
       "UpdateAccountSettingsWrite": {
