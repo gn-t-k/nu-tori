@@ -66,8 +66,6 @@ public actor SyncEngine {
         }
     }
 
-    private static let maxWritesPerRequest = 500
-
     private let store: any SyncStore
     private let client: NuToriAPIClient
     private let device: SyncDevice
@@ -82,11 +80,12 @@ public actor SyncEngine {
     private func pushPendingWrites(collectingRejectionsIn rejectedWrites: inout [RejectedWrite])
         async throws -> SyncResult.StopReason?
     {
+        let maxWritesPerRequest = 500
         let pending = try await store.pendingWrites()
         // 先の要求で作る書き込みが受け付けられず消した記録を、あとの要求の直す書き込みで戻さない
         var revertedRecordIds: Set<UUID> = []
-        for batchStart in stride(from: 0, to: pending.count, by: Self.maxWritesPerRequest) {
-            let batchEnd = min(batchStart + Self.maxWritesPerRequest, pending.count)
+        for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
+            let batchEnd = min(batchStart + maxWritesPerRequest, pending.count)
             let batch = Array(pending[batchStart..<batchEnd])
             let result: NuToriAPIClient.PushSyncWritesResult
             do {
