@@ -81,7 +81,7 @@ public actor SyncEngine {
         async throws -> SyncResult.StopReason?
     {
         let maxWritesPerRequest = 500
-        let pending = try await store.pendingWrites()
+        let pending = try await store.pendingWritesOldestFirst()
         // 先の要求で作る書き込みが受け付けられず消した記録を、あとの要求の直す書き込みで戻さない
         var revertedRecordIds: Set<UUID> = []
         for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
@@ -161,7 +161,8 @@ public actor SyncEngine {
             do {
                 result = try await client.pullSyncChanges(
                     afterSequence: state.afterSequence,
-                    clientState: clientState(pendingWrites: try await store.pendingWrites()[...])
+                    clientState: clientState(
+                        pendingWrites: try await store.pendingWritesOldestFirst()[...])
                 )
             } catch is CancellationError {
                 throw CancellationError()
