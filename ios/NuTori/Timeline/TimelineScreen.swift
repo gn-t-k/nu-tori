@@ -10,6 +10,16 @@ struct TimelineScreen: View {
         let today = CalendarDay(containing: .now, in: .current)
         NavigationStack {
             content(today: today)
+                .navigationDestination(for: CalendarDay.self) { day in
+                    WeightScreen(
+                        day: day,
+                        records: records,
+                        firstDay: startedDay ?? records.map(\.day).min() ?? day,
+                        today: today,
+                        rejectedLines: rejectedLines,
+                        saveWeight: saveWeight
+                    )
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(.systemGroupedBackground))
                 .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -109,8 +119,12 @@ struct TimelineScreen: View {
             ForEach(rows(on: day)) { row in
                 switch row {
                 case .record(let record):
-                    WeightRecordRow(record: record)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    NavigationLink(value: record.day) {
+                        WeightRecordRow(record: record)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("weight-row")
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 case .rejection(let line):
                     Text(line.text)
                         .font(.footnote)

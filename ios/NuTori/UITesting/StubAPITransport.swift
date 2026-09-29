@@ -7,6 +7,7 @@
     /// サインインと、記録の取得・送信だけに答える。UI テストはサーバーにつながらない
     nonisolated struct StubAPITransport: ClientTransport {
         let behavior: Behavior
+        private let weightScreenKilograms = WeightScreenKilograms()
 
         @concurrent func send(
             _ request: HTTPRequest,
@@ -50,6 +51,17 @@
                 default:
                     return (HTTPResponse(status: .notFound), nil)
                 }
+            case .weightScreen:
+                switch request.path {
+                case "/v1/sessions":
+                    return createdSession()
+                case "/v1/sync/writes":
+                    return json(.ok, try await applyWeightScreenPush(body))
+                case .some(let path) where path.hasPrefix("/v1/sync/changes"):
+                    return json(.ok, try weightScreenBody())
+                default:
+                    return (HTTPResponse(status: .notFound), nil)
+                }
             }
         }
 
@@ -62,6 +74,8 @@
             case previousDay
             case previousDayPushOffline
             case previousDayPushRejected
+            /// 今日の手の記録を返し、直す書き込みの値を次の取得に載せる
+            case weightScreen
         }
 
         private func pushResponse(_ body: HTTPBody?) async throws -> (HTTPResponse, HTTPBody?) {
@@ -70,9 +84,37 @@
                 throw URLError(.notConnectedToInternet)
             case .previousDayPushRejected:
                 return json(.ok, try await writeResults(from: body, result: .rejected))
-            case .online, .offline, .weightRecords, .hangPull, .previousDay:
+            case .online, .offline, .weightRecords, .hangPull, .previousDay, .weightScreen:
                 return json(.ok, try await writeResults(from: body, result: .applied))
             }
+        }
+
+        private func applyWeightScreenPush(_ body: HTTPBody?) async throws -> String {
+            guard let body else { return #"{"results":[]}"# }
+            let bytes = try await [UInt8](collecting: body, upTo: 1_048_576)
+            let decoded = try JSONDecoder().decode(WeightScreenPush.self, from: Data(bytes))
+            if let kilograms = decoded.writes.first(where: { $0.type == "update_weight_record" })?
+                .weightRecord?.weightKg
+            {
+                weightScreenKilograms.replace(with: kilograms)
+            }
+            let results = decoded.writes.map { #"{"writeId":"\#($0.id)","result":"applied"}"# }
+            return #"{"results":[\#(results.joined(separator: ","))]}"#
+        }
+
+        private func weightScreenBody() throws -> String {
+            let zone = TimeZone.current.identifier
+            let startedOn = TimelineDayText.startedOn(
+                for: CalendarDay(containing: .now, in: .current))
+            let measuredAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
+            let kilograms = weightScreenKilograms.current()
+            return """
+                {"changes":[{"sequence":1,"kind":"weight_record",\
+                "recordId":"11111111-1111-4111-8111-111111111111",\
+                "record":{"id":"11111111-1111-4111-8111-111111111111","weightKg":\(kilograms),\
+                "measuredAt":\(measuredAt),"timeZone":"\(zone)","version":1}}],\
+                "hasMore":false,"nextAfterSequence":1,"startedOn":"\(startedOn)"}
+                """
         }
 
         private enum WriteResult {
@@ -99,6 +141,37 @@
             let bytes = try await [UInt8](collecting: body, upTo: 1_048_576)
             let decoded = try JSONDecoder().decode(PushBody.self, from: Data(bytes))
             return decoded.writes.map(\.id)
+        }
+
+        private final class WeightScreenKilograms: @unchecked Sendable {
+            private let lock = NSLock()
+            private var value = 72.4
+
+            func current() -> Double {
+                lock.lock()
+                defer { lock.unlock() }
+                return value
+            }
+
+            func replace(with kilograms: Double) {
+                lock.lock()
+                defer { lock.unlock() }
+                value = kilograms
+            }
+        }
+
+        private struct WeightScreenPush: Decodable {
+            let writes: [Write]
+
+            struct Write: Decodable {
+                let id: String
+                let type: String
+                let weightRecord: Weight?
+
+                struct Weight: Decodable {
+                    let weightKg: Double
+                }
+            }
         }
 
         private struct PushBody: Decodable {
