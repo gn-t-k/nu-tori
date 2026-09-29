@@ -20,12 +20,12 @@
           },
           "result": {
             "type": "string",
-            "description": "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
+            "description": "値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
             "example": "applied"
           },
           "rejectionReason": {
             "type": "string",
-            "description": "result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ"
+            "description": "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ"
           }
         },
         "required": [
@@ -82,7 +82,6 @@
               },
               "timeZone": {
                 "type": "string",
-                "description": "読めない名前の書き込みは受け付けない",
                 "example": "Asia/Tokyo"
               },
               "imported": {
@@ -168,7 +167,6 @@
               },
               "timeZone": {
                 "type": "string",
-                "description": "読めない名前の書き込みは受け付けない",
                 "example": "Asia/Tokyo"
               },
               "version": {
@@ -351,8 +349,7 @@
                       },
                       "oldestPendingWriteAgeSeconds": {
                         "type": "integer",
-                        "minimum": 0,
-                        "description": "秒。送り待ちが無いときは省く"
+                        "minimum": 0
                       },
                       "pendingPhotoCount": {
                         "type": "integer",
@@ -489,11 +486,9 @@
                 "integer",
                 "null"
               ],
-              "minimum": 0,
-              "description": "秒。送り待ちが無いときは省く"
+              "minimum": 0
             },
             "required": false,
-            "description": "秒。送り待ちが無いときは省く",
             "name": "oldestPendingWriteAgeSeconds",
             "in": "query"
           },
@@ -515,11 +510,9 @@
                 "integer",
                 "null"
               ],
-              "minimum": 0,
-              "description": "前回の応答の nextAfterSequence。最初は 0"
+              "minimum": 0
             },
             "required": true,
-            "description": "前回の応答の nextAfterSequence。最初は 0",
             "name": "afterSequence",
             "in": "query"
           }

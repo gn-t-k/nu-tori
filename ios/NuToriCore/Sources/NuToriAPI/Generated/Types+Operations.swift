@@ -389,8 +389,6 @@ internal enum Operations {
                         internal var osVersion: Swift.String
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/pendingWriteCount`.
                         internal var pendingWriteCount: Swift.Int
-                        /// 秒。送り待ちが無いときは省く
-                        ///
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/oldestPendingWriteAgeSeconds`.
                         internal var oldestPendingWriteAgeSeconds: Swift.Int?
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/pendingPhotoCount`.
@@ -403,7 +401,7 @@ internal enum Operations {
                         ///   - appVersion:
                         ///   - osVersion:
                         ///   - pendingWriteCount:
-                        ///   - oldestPendingWriteAgeSeconds: 秒。送り待ちが無いときは省く
+                        ///   - oldestPendingWriteAgeSeconds:
                         ///   - pendingPhotoCount:
                         internal init(
                             deviceId: Swift.String,
@@ -700,14 +698,10 @@ internal enum Operations {
                 internal var osVersion: Swift.String
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/pendingWriteCount`.
                 internal var pendingWriteCount: Swift.Int
-                /// 秒。送り待ちが無いときは省く
-                ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/oldestPendingWriteAgeSeconds`.
                 internal var oldestPendingWriteAgeSeconds: Swift.Int?
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/pendingPhotoCount`.
                 internal var pendingPhotoCount: Swift.Int
-                /// 前回の応答の nextAfterSequence。最初は 0
-                ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/afterSequence`.
                 internal var afterSequence: Swift.Int
                 /// Creates a new `Query`.
@@ -718,9 +712,9 @@ internal enum Operations {
                 ///   - appVersion:
                 ///   - osVersion:
                 ///   - pendingWriteCount:
-                ///   - oldestPendingWriteAgeSeconds: 秒。送り待ちが無いときは省く
+                ///   - oldestPendingWriteAgeSeconds:
                 ///   - pendingPhotoCount:
-                ///   - afterSequence: 前回の応答の nextAfterSequence。最初は 0
+                ///   - afterSequence:
                 internal init(
                     deviceId: Swift.String,
                     timeZone: Swift.String,

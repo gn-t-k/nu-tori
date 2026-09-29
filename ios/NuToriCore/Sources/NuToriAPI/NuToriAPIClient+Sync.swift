@@ -31,7 +31,6 @@ extension NuToriAPIClient {
         }
     }
 
-    /// 最初は afterSequence を 0 にする
     public func pullSyncChanges(
         afterSequence: Int,
         clientState: SyncClientState

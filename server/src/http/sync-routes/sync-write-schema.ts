@@ -14,10 +14,7 @@ const weightRecordFields = {
     .min(-maximumTimestamp)
     .max(maximumTimestamp)
     .openapi({ description: "UNIX 時刻のミリ秒（UTC）" }),
-  timeZone: z.string().openapi({
-    description: "読めない名前の書き込みは受け付けない",
-    example: "Asia/Tokyo",
-  }),
+  timeZone: z.string().openapi({ example: "Asia/Tokyo" }),
 };
 
 const createWeightRecordWriteSchema = z

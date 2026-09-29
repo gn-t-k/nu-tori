@@ -17,11 +17,11 @@ extension Components {
         internal struct SyncWriteResult: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/writeId`.
             internal var writeId: Swift.String
-            /// applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
+            /// 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
             internal var result: Swift.String
-            /// result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ
+            /// result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
             internal var rejectionReason: Swift.String?
@@ -29,8 +29,8 @@ extension Components {
             ///
             /// - Parameters:
             ///   - writeId:
-            ///   - result: applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
-            ///   - rejectionReason: result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ
+            ///   - result: 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
+            ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
             internal init(
                 writeId: Swift.String,
                 result: Swift.String,
@@ -105,8 +105,6 @@ extension Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/measuredAt`.
                 internal var measuredAt: Swift.Int
-                /// 読めない名前の書き込みは受け付けない
-                ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/timeZone`.
                 internal var timeZone: Swift.String
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported`.
@@ -175,7 +173,7 @@ extension Components {
                 ///   - id:
                 ///   - weightKg:
                 ///   - measuredAt: UNIX 時刻のミリ秒（UTC）
-                ///   - timeZone: 読めない名前の書き込みは受け付けない
+                ///   - timeZone:
                 ///   - imported:
                 internal init(
                     id: Swift.String,
@@ -243,8 +241,6 @@ extension Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/measuredAt`.
                 internal var measuredAt: Swift.Int
-                /// 読めない名前の書き込みは受け付けない
-                ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/timeZone`.
                 internal var timeZone: Swift.String
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/version`.
@@ -255,7 +251,7 @@ extension Components {
                 ///   - id:
                 ///   - weightKg:
                 ///   - measuredAt: UNIX 時刻のミリ秒（UTC）
-                ///   - timeZone: 読めない名前の書き込みは受け付けない
+                ///   - timeZone:
                 ///   - version:
                 internal init(
                     id: Swift.String,
