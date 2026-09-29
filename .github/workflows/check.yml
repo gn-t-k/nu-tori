@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  # 必須のチェックを保留のまま残さないよう、ワークフローの paths ではなくジョブの条件で飛ばす（ルートの AGENTS.md）
+  # 必須のチェックを保留のまま残さないよう、ワークフローの paths ではなくジョブの条件で飛ばす（docs/agents/tooling.md）
   changes:
     runs-on: ubuntu-latest
     outputs:

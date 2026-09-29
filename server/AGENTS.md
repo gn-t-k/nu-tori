@@ -5,9 +5,11 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 構成
 
 - 構成の正本は `wrangler.jsonc`。上の階層が開発用で、本番は `env.production`。つなぎ（Durable Object、D1、R2 など）は環境に受け継がれないので、足すときは両方に書く
+- `compatibility_date` は、`@cloudflare/vitest-pool-workers` が使う workerd が対応する日付までにする（それより後だと、テストの実行環境が起動しない）
+- D1 と R2 は、`wrangler.jsonc` に書く前に、開発者に場所のヒント（`--location apac`）を付けて手で作ってもらう。デプロイのときの自動作成は場所のヒントを渡せず、CI が作ると CI の近くに置かれる。`wrangler.jsonc` には名前だけを書き、CI は名前で見つける
 - Worker の型の宣言（`worker-configuration.d.ts`）は `wrangler types` が `wrangler.jsonc` から書き出す。コミットせず、`scripts/check server` が毎回書き出す
 - Workers で動かないライブラリが要る処理が出たら、その部分だけ別の基盤に置く
-- 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（使う環境に。本番だけの値は本番だけ）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の分は、ルートの `AGENTS.md` の「リポジトリ全体の決定」
+- 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（使う環境に。本番だけの値は本番だけ）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の秘密の値を足すときは `docs/agents/tooling.md` を読む
 
 ## 層
 
@@ -30,7 +32,6 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - 認証は Better Auth に任せる（ADR-0019）。Better Auth の表は D1 の中の認証の置き場に閉じ、ほかの表と Durable Object はアカウント ID だけを見る
 - Better Auth の HTTP の口（`/api/auth/*`）は出さない。受け口の経路から Better Auth の `api` と `$context` を呼ぶ。経路をスキーマつきで OpenAPI の文書に載せ、Apple の識別子を返す口（アカウントの一覧など）を出さないため
-- Better Auth の版を上げるときは、変更履歴で中核の表の変更を確かめる（1.x の中でも入ったことがある）
 
 ## 身体データ
 
@@ -52,14 +53,5 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 ## デプロイ
 
-- main へのマージごとに、開発用、本番の順にデプロイする。どちらも D1 の移行を当ててから Worker を出す。TestFlight の版は main へのマージごとに配られて本番につなぐので、main にある API は本番にも出ているようにする
-- デプロイは `.github/workflows/deploy.yml`（環境ごとの手順は `deploy-worker.yml`）
+- main へのマージごとに、開発用、本番の順にデプロイする。どちらも D1 の移行を当ててから Worker を出す。TestFlight の版は main から配られて本番につなぐので、main にある API は本番にも出ているようにする
 - CI の API トークンの権限は、Workers の Admin（まだ無い Worker を作るのに要る）、D1 の編集、`nu-tori.app` のゾーンの Workers Routes の編集（独自ドメインを付け替えるのに要る）だけ。レガシーの Workers Scripts は使わない。CI にほかの製品を触らせるときは、開発者にトークンの権限を足してもらう
-- D1 と R2 は、`wrangler.jsonc` に書く前に、開発者に場所のヒント（`--location apac`）を付けて手で作ってもらう。デプロイのときの自動作成は場所のヒントを渡せず、CI が作ると CI の近くに置かれる。`wrangler.jsonc` には名前だけを書き、CI は名前で見つける
-
-## 版を上げる
-
-- npm の依存は Dependabot が上げる。Node（`.node-version`）と pnpm（`package.json` の `packageManager`）は、月に一度、開発者に頼まれたときと Dependabot の PR を片付けるときに、最新を確かめて手で上げる
-- pnpm は、Dependabot が対応する版（2026-09-28 時点で v12 まで）にとどめる。対応が広がったら上げる
-- `@cloudflare/vitest-pool-workers` が対応する Vitest の版にとどめる（2026-09-28 時点で 4.x）。Dependabot は `.github/dependabot.yml` の `ignore` で Vitest のメジャーの版上げを除いているので、対応が広がったら手で上げ、`ignore` を外す
-- `wrangler.jsonc` の `compatibility_date` は、`@cloudflare/vitest-pool-workers` が使う workerd が対応する日付までにする（それより後だと、テストの実行環境が起動しない）

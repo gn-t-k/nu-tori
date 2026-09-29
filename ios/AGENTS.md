@@ -37,38 +37,17 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 作業の分け方
 
-チケットと PR は、UI 以外（ロジックのパッケージ、API クライアント、テスト）と、UI の確認（画面、シミュレータ、実機）に分ける。Mac を閉じているあいだも、前者はクラウドのエージェント（Linux）で進めるため。UI の確認は Mac の上のエージェントで行い、開発者が外にいて Mac を開けて置く日は、Mac で `claude remote-control --spawn worktree` を動かし、スマホから頼む。
+チケットと PR を切り分けるときは、`docs/agents/issue-tracker.md` の「iOS のチケットと PR の分け方」を読む。
 
 ## 確かめる
 
-`scripts/check` を通したうえで、変えたものを動かして確かめる。
+`scripts/check` を通したうえで、変えたものを動かして確かめる。Mac で作業するときは `docs/agents/ios-mac.md` を読む。
 
-- Mac では、MobileBuildMCP で、変えたら `test_sim` を回し、関係する画面を開いて `screenshot` で確かめる。`test_sim` が行き先を見つけられずに失敗したら、開発者に `xcodebuild -downloadPlatform iOS`（数 GB）を頼む。computer use は、これらで確かめられないときにだけ使う
-- SwiftUI プレビュー（`RenderPreview`）とビルドログ（`GetBuildLog`）は、MobileBuildMCP の `xcode_ide_call_tool` で Xcode の道具を呼ぶ。Xcode の画面は開かなくてよい。先に `XcodeOpenWorkspace` で、作業しているワークツリーの `ios/NuTori.xcodeproj` を開く。Xcode はフォルダごとに承認を求めるので、ワークツリーごとに1回、開発者に Mac で承認してもらう。Remote Control のセッションでは開発者が承認を押せないので、Xcode の道具を使わず `screenshot` で確かめる
-- Xcode の MCP（`xcrun mcpbridge`）は、各ツールの MCP の設定に直接置かず、MobileBuildMCP の中継で呼ぶ
+- Linux で `swift` が無いときは、`scripts/install-swift` で入れる
 - Linux では、アプリのビルドと UI テストを CI の `ios-app` に任せる。失敗したら、`.github/workflows/check.yml` の `ios-app` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
-- 整形の正は、`.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
-- ロジックのパッケージのテストを macOS でも回すのは、Linux と macOS で Foundation の振る舞いが違うことがあるため
 - UI テストはサーバーにつながない。API とサインイン済みの状態を差し替える（差し替えの置き場と切り替え方は `docs/agents/languages/swift.md` の「依存の差し替え」）。API とのつなぎは、`NuToriAPI` のテスト（トランスポートの差し替え）とサーバーのテストで確かめる
 
-## 版を上げる
+## 配布と実機の確認
 
-Dependabot が上げない次のものは、月に一度、開発者に頼まれたときと Dependabot の PR を片付けるときに、最新を確かめて（`git ls-remote --tags`）手で上げる。
-
-- Swift: `ios/.swift-version` と、CI の `ios` のジョブの `container:` のタグと digest をそろえて上げる。swift-format が Swift に付いてくるので、整形だけの差分は別のコミットにする
-- SwiftLint: `scripts/check` の版と、配布物ごとの SHA-256
-- sentry-cli: `ci_scripts/ci_post_xcodebuild.sh` の版と SHA-256（Sentry のリリースの登録簿 `release-registry.services.sentry.io/apps/sentry-cli/<版>` の `sentry-cli-Darwin-universal`）
-- Swift Package の依存: `NuToriCore/Package.swift` と `OpenAPIGenerator/Package.swift` の `exact:`。上げたら `swift package update --package-path <パッケージ>` で `Package.resolved` を書き直し、`scripts/check ios --fix` で Xcode のプロジェクトの `Package.resolved` に写し、生成したクライアントを生成し直す。生成し直しただけの差分は別のコミットにする
-
-## 配布
-
-- main にマージするたびに、Xcode Cloud がビルドして TestFlight の内部テストに配る。署名とビルド番号は Apple 側に任せ、証明書を GitHub に置かない
-- Xcode Cloud のワークフローは「main から内部テスト」の1つ。枠（月 25 時間）に収めるため、main の `ios/` が変わったとき（と手で始めたとき）だけ動かし、アクションは Archive（Distribution Preparation は App Store Connect。外部テストと App Store に出せるのはこれだけ）だけにする。配る先は内部テストのグループ「初回リリーステストユーザーグループ」。設定は Xcode の Report navigator の Cloud のタブで直す
-- Xcode Cloud の秘密の値は、ワークフローの Environment に Secret で置く。アーカイブのあとに `ci_scripts/ci_post_xcodebuild.sh` が dSYM を Sentry に上げ、`SENTRY_AUTH_TOKEN`（Sentry の組織のトークン）が無ければ飛ばす
-
-## 実機の確認
-
-エージェントには実機を操作する道が無いので、人が確かめる。
-
-- 確かめるのは、ヘルスケア、カメラ、通知、写真の読み込みに触れた PR をマージしたあとと、外部テストに出す前。エージェントは、該当する PR の本文に「実機の確認が要る」と書き、確かめる項目を並べる
-- ヘルスケアは、「[ヘルスケアの読み書きの対応表](https://github.com/gn-t-k/nu-tori/issues/27)」の追記の「実機で確かめるまで見込みのもの」に加えて、他のアプリの当日の体重で通知が取り消されることを確かめる。nu-tori を閉じてヘルスケアアプリで体重を手入力すると、その日の体重の通知が取り消され、開くと体重のボタンが目立たない。MacroFactor で入れても同じになる
+- main の `ios/` が変わるたびに、Xcode Cloud がビルドして TestFlight の内部テストに配る。署名とビルド番号は Apple 側に任せ、証明書を GitHub に置かない
+- ヘルスケア、カメラ、通知、写真の読み込みに触れた PR を出すとき、外部テストに出す前、Xcode Cloud の設定か `ci_scripts/` を直すときは、`docs/agents/ios-release.md` を読む
