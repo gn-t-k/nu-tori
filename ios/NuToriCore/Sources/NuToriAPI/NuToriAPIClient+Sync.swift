@@ -308,7 +308,6 @@ extension SyncChange {
 }
 
 extension Components.Schemas.SyncChange.RecordPayload {
-    // 中身が種類ごとに違う記録を、その種類の形で読み直す
     fileprivate func decoded<Payload: Decodable>(as payload: Payload.Type) throws -> Payload {
         try JSONDecoder().decode(payload, from: JSONEncoder().encode(self))
     }

@@ -12,8 +12,7 @@ public struct AccountSettings: Sendable, Equatable {
 
     /// 2台がそれぞれ作っても、サーバーの1件の記録に当たるよう、アカウント ID から決める
     public static func id(forAccountId accountId: String) -> UUID {
-        NameBasedUUID.version5(namespace: idNamespace, name: accountId)
+        let namespace = UUID(uuidString: "7A1020F0-70CA-4480-A4CB-870A492DE746")!
+        return NameBasedUUID.version5(namespace: namespace, name: accountId)
     }
-
-    private static let idNamespace = UUID(uuidString: "7A1020F0-70CA-4480-A4CB-870A492DE746")!
 }

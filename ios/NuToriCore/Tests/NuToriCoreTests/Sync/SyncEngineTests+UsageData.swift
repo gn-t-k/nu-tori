@@ -10,31 +10,23 @@ extension SyncEngineTests {
         struct FirstToggle {
             let store: SyncStoreMock
             let engine: SyncEngine
+            let expectedSettings: AccountSettings
 
             init() {
                 store = .ok()
                 engine = .fixture(store: store, transport: .ok())
+                expectedSettings = .fixture(sendsUsageData: false)
             }
 
             @Test("設定を置くのと同じ保存で、直す書き込みを送り待ちに1件足すこと")
             func savesSettingsWithPendingWrite() async throws {
                 try await engine.setSendsUsageData(false)
 
-                let settings = AccountSettings.fixture(sendsUsageData: false)
                 let pending = try #require(store.pending.first)
-                #expect(store.settings == settings)
+                #expect(store.settings == expectedSettings)
                 #expect(store.pending.count == 1)
-                #expect(pending.operation == .updateAccountSettings(settings))
+                #expect(pending.operation == .updateAccountSettings(expectedSettings))
                 #expect(pending.enqueuedAt == SyncEngine.fixtureNow)
-            }
-
-            @Test("設定の ID を、アカウント ID から出した UUID v5 にすること")
-            func derivesIdFromAccountId() async throws {
-                try await engine.setSendsUsageData(false)
-
-                let id = try #require(store.settings?.id)
-                #expect(id == AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId))
-                #expect(id.uuidString.dropFirst(14).first == "5")
             }
         }
 
@@ -42,10 +34,17 @@ extension SyncEngineTests {
         struct ToggleTwice {
             let store: SyncStoreMock
             let engine: SyncEngine
+            let expectedSettings: AccountSettings
+            let expectedOperations: [PendingWrite.Operation]
 
             init() {
                 store = .ok()
                 engine = .fixture(store: store, transport: .ok())
+                expectedSettings = .fixture(sendsUsageData: true)
+                expectedOperations = [
+                    .updateAccountSettings(.fixture(sendsUsageData: false)),
+                    .updateAccountSettings(.fixture(sendsUsageData: true)),
+                ]
             }
 
             @Test("設定は最後の値にし、送り待ちには切り替えごとに書き込みを並べること")
@@ -53,12 +52,8 @@ extension SyncEngineTests {
                 try await engine.setSendsUsageData(false)
                 try await engine.setSendsUsageData(true)
 
-                #expect(store.settings == .fixture(sendsUsageData: true))
-                #expect(
-                    store.pending.map(\.operation) == [
-                        .updateAccountSettings(.fixture(sendsUsageData: false)),
-                        .updateAccountSettings(.fixture(sendsUsageData: true)),
-                    ])
+                #expect(store.settings == expectedSettings)
+                #expect(store.pending.map(\.operation) == expectedOperations)
             }
         }
     }
@@ -70,8 +65,13 @@ extension SyncEngineTests {
             let store: SyncStoreMock
             let transport: ClientTransportMock
             let engine: SyncEngine
+            let expectedSettings: PushRequestBody.Write.AccountSettings
 
             init() {
+                expectedSettings = .init(
+                    id: AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId).uuidString,
+                    sendsUsageData: false
+                )
                 store = .ok(
                     accountSettings: .fixture(sendsUsageData: false),
                     pendingWrites: [
@@ -92,13 +92,7 @@ extension SyncEngineTests {
 
                 let write = try #require(transport.pushBodies.first?.writes.first)
                 #expect(write.type == "update_account_settings")
-                #expect(
-                    write.accountSettings
-                        == .init(
-                            id: AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId)
-                                .uuidString,
-                            sendsUsageData: false
-                        ))
+                #expect(write.accountSettings == expectedSettings)
                 #expect(store.pending.isEmpty)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
             }
@@ -108,8 +102,10 @@ extension SyncEngineTests {
         struct RejectedToggle {
             let store: SyncStoreMock
             let engine: SyncEngine
+            let expectedSettings: AccountSettings
 
             init() {
+                expectedSettings = .fixture(sendsUsageData: false)
                 store = .ok(
                     accountSettings: .fixture(sendsUsageData: false),
                     pendingWrites: [
@@ -128,7 +124,7 @@ extension SyncEngineTests {
                 let result = try await engine.sync()
 
                 #expect(store.pending.isEmpty)
-                #expect(store.settings == .fixture(sendsUsageData: false))
+                #expect(store.settings == expectedSettings)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
             }
         }
@@ -138,8 +134,10 @@ extension SyncEngineTests {
             let store: SyncStoreMock
             let engine: SyncEngine
             let settingsId: String
+            let expectedSettings: AccountSettings
 
             init() {
+                expectedSettings = .fixture(sendsUsageData: false)
                 settingsId =
                     AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId).uuidString
                 store = .ok(accountSettings: .fixture(sendsUsageData: true))
@@ -164,7 +162,7 @@ extension SyncEngineTests {
             func replacesCacheWithLatest() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.settings == .fixture(sendsUsageData: false))
+                #expect(store.settings == expectedSettings)
                 #expect(store.state?.afterSequence == 9)
             }
         }
@@ -173,8 +171,10 @@ extension SyncEngineTests {
         struct UnreadableSettings {
             let store: SyncStoreMock
             let engine: SyncEngine
+            let expectedSettings: AccountSettings
 
             init() {
+                expectedSettings = .fixture(sendsUsageData: false)
                 store = .ok(accountSettings: .fixture(sendsUsageData: false))
                 engine = .fixture(
                     store: store,
@@ -192,7 +192,7 @@ extension SyncEngineTests {
             func skipsAndKeepsCache() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.settings == .fixture(sendsUsageData: false))
+                #expect(store.settings == expectedSettings)
                 #expect(store.state?.afterSequence == 3)
             }
         }

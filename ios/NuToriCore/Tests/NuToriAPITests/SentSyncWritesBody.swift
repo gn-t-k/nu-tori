@@ -29,21 +29,51 @@ struct SentSyncWritesBody: Decodable, Equatable {
     struct Write: Decodable, Equatable {
         let id: String
         let type: String
-        let weightRecord: WeightRecord?
-        let accountSettings: AccountSettings?
+        let payload: Payload
 
         init(id: String, type: String, weightRecord: WeightRecord) {
             self.id = id
             self.type = type
-            self.weightRecord = weightRecord
-            accountSettings = nil
+            payload = .weightRecord(weightRecord)
         }
 
         init(id: String, type: String, accountSettings: AccountSettings) {
             self.id = id
             self.type = type
-            weightRecord = nil
-            self.accountSettings = accountSettings
+            payload = .accountSettings(accountSettings)
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(String.self, forKey: .id)
+            type = try container.decode(String.self, forKey: .type)
+            payload =
+                switch type {
+                case "update_account_settings":
+                    .accountSettings(
+                        try container.decode(AccountSettings.self, forKey: .accountSettings))
+                default:
+                    .weightRecord(try container.decode(WeightRecord.self, forKey: .weightRecord))
+                }
+        }
+
+        var weightRecord: WeightRecord? {
+            guard case .weightRecord(let record) = payload else {
+                return nil
+            }
+            return record
+        }
+
+        enum Payload: Equatable {
+            case weightRecord(WeightRecord)
+            case accountSettings(AccountSettings)
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case type
+            case weightRecord
+            case accountSettings
         }
     }
 
