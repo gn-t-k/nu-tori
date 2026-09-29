@@ -1,4 +1,4 @@
-import { match, P } from "ts-pattern";
+import { match } from "ts-pattern";
 import { computeCalendarDay } from "../../compute-calendar-day";
 import { isTimeZoneName } from "../../is-time-zone-name";
 import { isWithinAcceptedRange } from "../../is-within-accepted-range";
@@ -40,11 +40,8 @@ export const applySyncWrites = (
       if (previousOutcome !== undefined) {
         return { writeId: write.id, outcome: previousOutcome };
       }
-      const { kind, recordType, recordId, outcome, changedRecordId } = applyWrite(
-        store,
-        startedOn,
-        write,
-      );
+      const { kind, recordType, recordId, outcome, changedRecordId, accountSettingChange } =
+        applyWrite(store, startedOn, write);
       store.insertWriteReceipt({
         writeId: write.id,
         requestLogId,
@@ -54,11 +51,8 @@ export const applySyncWrites = (
         recordId,
         outcome,
       });
-      if (write.type === "update_account_settings") {
-        store.insertAccountSettingChange({
-          writeId: write.id,
-          sendsUsageData: write.accountSettings.sendsUsageData,
-        });
+      if (accountSettingChange !== undefined) {
+        store.insertAccountSettingChange({ writeId: write.id, ...accountSettingChange });
       }
       if (changedRecordId !== undefined) {
         store.insertRecordChange({ recordType, recordId: changedRecordId, writeId: write.id });
@@ -90,7 +84,13 @@ type AppliedWrite = {
   recordId: string;
   outcome: SyncWriteOutcome;
   changedRecordId: string | undefined;
+  accountSettingChange: { sendsUsageData: boolean } | undefined;
 };
+
+type WeightRecordWrite = Extract<
+  SyncWrite,
+  { type: "create_weight_record" | "update_weight_record" }
+>;
 
 const applyWrite = (
   store: SyncStore,
@@ -98,18 +98,11 @@ const applyWrite = (
   write: SyncWrite,
 ): AppliedWrite =>
   match(write)
-    .with(
-      { type: P.union("create_weight_record", "update_weight_record") },
-      (weightWrite): AppliedWrite => {
-        const outcome = applyWeightRecordWrite(store, startedOn, weightWrite);
-        return {
-          kind: weightWrite.type === "create_weight_record" ? "create" : "update",
-          recordType: "weight_record",
-          recordId: weightWrite.weightRecord.id,
-          outcome,
-          changedRecordId: outcome.result === "applied" ? weightWrite.weightRecord.id : undefined,
-        };
-      },
+    .with({ type: "create_weight_record" }, (createWrite) =>
+      applyWeightRecord(store, startedOn, "create", createWrite),
+    )
+    .with({ type: "update_weight_record" }, (updateWrite) =>
+      applyWeightRecord(store, startedOn, "update", updateWrite),
     )
     .with({ type: "update_account_settings" }, ({ accountSettings }): AppliedWrite => ({
       kind: "update",
@@ -117,8 +110,26 @@ const applyWrite = (
       recordId: accountSettings.id,
       outcome: { result: "applied" },
       changedRecordId: applyAccountSettingsWrite(store, accountSettings),
+      accountSettingChange: { sendsUsageData: accountSettings.sendsUsageData },
     }))
     .exhaustive();
+
+const applyWeightRecord = (
+  store: SyncStore,
+  startedOn: string | undefined,
+  kind: "create" | "update",
+  write: WeightRecordWrite,
+): AppliedWrite => {
+  const outcome = applyWeightRecordWrite(store, startedOn, write);
+  return {
+    kind,
+    recordType: "weight_record",
+    recordId: write.weightRecord.id,
+    outcome,
+    changedRecordId: outcome.result === "applied" ? write.weightRecord.id : undefined,
+    accountSettingChange: undefined,
+  };
+};
 
 const applyAccountSettingsWrite = (store: SyncStore, accountSettings: AccountSettings): string => {
   const current = store.findAccountSettings();
@@ -133,7 +144,7 @@ const applyAccountSettingsWrite = (store: SyncStore, accountSettings: AccountSet
 const applyWeightRecordWrite = (
   store: SyncStore,
   startedOn: string | undefined,
-  write: Extract<SyncWrite, { type: "create_weight_record" | "update_weight_record" }>,
+  write: WeightRecordWrite,
 ): SyncWriteOutcome =>
   match(write)
     .with({ type: "create_weight_record" }, ({ weightRecord }): SyncWriteOutcome => {

@@ -55,7 +55,7 @@ describe("セッションと回数の歯止め", () => {
     });
   });
 
-  describe("Sentry の user", () => {
+  describe("セッションのトークンを付けて、メソッドごとに要求したとき", () => {
     let protectedApp: Hono<{ Bindings: Env; Variables: { accountId: string } }>;
     let signedIn: { accountId: string; sessionToken: string };
     let setUserSpy: ReturnType<typeof mockSetUserOk>;
@@ -68,31 +68,46 @@ describe("セッションと回数の歯止め", () => {
       setUserSpy = mockSetUserOk();
     });
 
-    test("GET の要求ではアカウント ID を付けること", async () => {
-      await protectedApp.request(
-        "/",
-        { headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
-        env,
-      );
-      expect(setUserSpy).toHaveBeenCalledWith({ id: signedIn.accountId });
+    describe("GET の要求のとき", () => {
+      beforeEach(async () => {
+        await protectedApp.request(
+          "/",
+          { headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+          env,
+        );
+      });
+
+      test("Sentry の user にアカウント ID を付けること", () => {
+        expect(setUserSpy).toHaveBeenCalledWith({ id: signedIn.accountId });
+      });
     });
 
-    test("HEAD の要求では付けないこと", async () => {
-      await protectedApp.request(
-        "/",
-        { method: "HEAD", headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
-        env,
-      );
-      expect(setUserSpy).not.toHaveBeenCalled();
+    describe("HEAD の要求のとき", () => {
+      beforeEach(async () => {
+        await protectedApp.request(
+          "/",
+          { method: "HEAD", headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+          env,
+        );
+      });
+
+      test("Sentry の user を付けないこと", () => {
+        expect(setUserSpy).not.toHaveBeenCalled();
+      });
     });
 
-    test("OPTIONS の要求では付けないこと", async () => {
-      await protectedApp.request(
-        "/",
-        { method: "OPTIONS", headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
-        env,
-      );
-      expect(setUserSpy).not.toHaveBeenCalled();
+    describe("OPTIONS の要求のとき", () => {
+      beforeEach(async () => {
+        await protectedApp.request(
+          "/",
+          { method: "OPTIONS", headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+          env,
+        );
+      });
+
+      test("Sentry の user を付けないこと", () => {
+        expect(setUserSpy).not.toHaveBeenCalled();
+      });
     });
   });
 
