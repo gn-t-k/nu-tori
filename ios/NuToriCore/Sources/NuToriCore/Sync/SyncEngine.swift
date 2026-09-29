@@ -139,15 +139,22 @@ public actor SyncEngine {
             case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
                 break
             case .rejected(let reason):
-                rejectedWrites.append(
-                    RejectedWrite(
-                        writeId: write.writeId,
-                        record: write.operation.record,
-                        reason: reason
-                    )
-                )
-                if revertedRecordIds.insert(write.operation.record.id).inserted {
-                    reversions.append(write.operation.reversion)
+                switch write.operation {
+                case .createWeightRecord(let record):
+                    rejectedWrites.append(
+                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
+                    if revertedRecordIds.insert(record.id).inserted {
+                        reversions.append(.remove(recordId: record.id))
+                    }
+                case .correctWeightRecord(let record, let previous):
+                    rejectedWrites.append(
+                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
+                    if revertedRecordIds.insert(record.id).inserted {
+                        reversions.append(.restore(previous))
+                    }
+                case .sourceDeletedWeightRecord:
+                    // 戻す記録も、画面に出す記録も無い。消すかどうかを決めるのはサーバーで、送り直さない
+                    break
                 }
             }
         }
@@ -242,24 +249,8 @@ extension PendingWrite {
             .createWeightRecord(writeId: writeId, record: NewWeightRecord(record))
         case .correctWeightRecord(let record, previous: _):
             .updateWeightRecord(writeId: writeId, correction: WeightRecordCorrection(record))
-        }
-    }
-}
-
-extension PendingWrite.Operation {
-    fileprivate var record: WeightRecord {
-        switch self {
-        case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
-            record
-        }
-    }
-
-    fileprivate var reversion: RecordReversion {
-        switch self {
-        case .createWeightRecord(let record):
-            .remove(recordId: record.id)
-        case .correctWeightRecord(_, let previous):
-            .restore(previous)
+        case .sourceDeletedWeightRecord(let recordId):
+            .sourceDeletedWeightRecord(writeId: writeId, weightRecordId: recordId)
         }
     }
 }
