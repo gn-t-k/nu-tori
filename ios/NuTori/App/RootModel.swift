@@ -4,12 +4,19 @@ import Observation
 @Observable
 final class RootModel {
     private(set) var screen: Screen = .opening
+    private(set) var rejectedLines: [RejectedWeightLine] = []
 
     init(accountSession: AccountSession, recordSync: RecordSync) {
         self.accountSession = accountSession
         self.recordSync = recordSync
         recordSync.onDestination = { [weak self] destination in
             self?.screen = Screen(destination)
+        }
+        recordSync.onRejectedWrites = { [weak self] writes in
+            self?.noteRejected(writes)
+        }
+        recordSync.onReplacingRecord = { [weak self] recordId in
+            self?.rejectedLines.removeAll { $0.record.id == recordId }
         }
     }
 
@@ -32,6 +39,19 @@ final class RootModel {
         case .opening, .signIn:
             return
         }
+    }
+
+    func saveWeight(_ write: WeightEntry.Write) async {
+        try? await recordSync.save(write)
+    }
+
+    func noteAppBackgrounded() {
+        acceptsRejectionLines = false
+        rejectedLines = []
+    }
+
+    func noteAppActive() {
+        acceptsRejectionLines = true
     }
 
     func signIn(with result: AppleSignInResult) async {
@@ -65,6 +85,16 @@ final class RootModel {
 
     private let accountSession: AccountSession
     private let recordSync: RecordSync
+    private var acceptsRejectionLines = true
+
+    private func noteRejected(_ writes: [RejectedWrite]) {
+        guard acceptsRejectionLines else { return }
+        for write in writes {
+            let line = RejectedWeightLine(write)
+            rejectedLines.removeAll { $0.record.id == line.record.id }
+            rejectedLines.append(line)
+        }
+    }
 
     private func syncIfShowingTimeline() async {
         switch screen {

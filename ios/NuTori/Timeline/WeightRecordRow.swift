@@ -21,13 +21,11 @@ struct WeightRecordRow: View {
     }
 
     private var kilograms: String {
-        let rounded = (record.kilograms * 10).rounded() / 10
-        return String(format: "%.1f kg", locale: Locale(identifier: "en_US_POSIX"), rounded)
+        WeightAmountText.kilograms(record.kilograms)
     }
 
     private var clock: String {
-        let time = record.clockTime
-        return "\(time.hour):\(String(format: "%02d", time.minute))"
+        WeightAmountText.clock(record.clockTime)
     }
 
     private var sourceAppName: String? {

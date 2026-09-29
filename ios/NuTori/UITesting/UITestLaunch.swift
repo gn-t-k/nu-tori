@@ -86,6 +86,9 @@
             case .online: return .online
             case .offline: return .offline
             case .weightRecords: return .weightRecords
+            case .previousDay: return .previousDay
+            case .previousDayPushOffline: return .previousDayPushOffline
+            case .previousDayPushRejected: return .previousDayPushRejected
             }
         }
 
@@ -163,6 +166,9 @@
             case online
             case offline
             case weightRecords = "weight-records"
+            case previousDay = "previous-day"
+            case previousDayPushOffline = "previous-day-push-offline"
+            case previousDayPushRejected = "previous-day-push-rejected"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

@@ -39,6 +39,17 @@
                 default:
                     return (HTTPResponse(status: .notFound), nil)
                 }
+            case .previousDay, .previousDayPushOffline, .previousDayPushRejected:
+                switch request.path {
+                case "/v1/sessions":
+                    return createdSession()
+                case "/v1/sync/writes":
+                    return try await pushResponse(body)
+                case .some(let path) where path.hasPrefix("/v1/sync/changes"):
+                    return json(.ok, try previousDayBody())
+                default:
+                    return (HTTPResponse(status: .notFound), nil)
+                }
             }
         }
 
@@ -47,10 +58,73 @@
             case offline
             case weightRecords
             case hangPull
+            /// 昨日の体重だけを返し、今日は未記録にする
+            case previousDay
+            case previousDayPushOffline
+            case previousDayPushRejected
+        }
+
+        private func pushResponse(_ body: HTTPBody?) async throws -> (HTTPResponse, HTTPBody?) {
+            switch behavior {
+            case .previousDayPushOffline:
+                throw URLError(.notConnectedToInternet)
+            case .previousDayPushRejected:
+                return json(.ok, try await writeResults(from: body, result: .rejected))
+            case .online, .offline, .weightRecords, .hangPull, .previousDay:
+                return json(.ok, try await writeResults(from: body, result: .applied))
+            }
+        }
+
+        private enum WriteResult {
+            case applied
+            case rejected
+        }
+
+        private func writeResults(from body: HTTPBody?, result: WriteResult) async throws -> String
+        {
+            let ids = try await writeIds(in: body)
+            let results = ids.map { id in
+                switch result {
+                case .applied:
+                    #"{"writeId":"\#(id)","result":"applied"}"#
+                case .rejected:
+                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range"}"#
+                }
+            }
+            return #"{"results":[\#(results.joined(separator: ","))]}"#
+        }
+
+        private func writeIds(in body: HTTPBody?) async throws -> [String] {
+            guard let body else { return [] }
+            let bytes = try await [UInt8](collecting: body, upTo: 1_048_576)
+            let decoded = try JSONDecoder().decode(PushBody.self, from: Data(bytes))
+            return decoded.writes.map(\.id)
+        }
+
+        private struct PushBody: Decodable {
+            let writes: [Write]
+
+            struct Write: Decodable {
+                let id: String
+            }
         }
 
         private func createdSession() -> (HTTPResponse, HTTPBody?) {
             json(.created, #"{"sessionToken":"stub-session","accountId":"stub-account"}"#)
+        }
+
+        private func previousDayBody() throws -> String {
+            let zone = TimeZone.current.identifier
+            let yesterday = CalendarDay(containing: .now, in: .current).advanced(by: -1)
+            let startedOn = TimelineDayText.startedOn(for: yesterday)
+            let measuredAt = try milliseconds(dayOffset: -1, hour: 7, minute: 12)
+            return """
+                {"changes":[{"sequence":1,"kind":"weight_record",\
+                "recordId":"44444444-4444-4444-8444-444444444444",\
+                "record":{"id":"44444444-4444-4444-8444-444444444444","weightKg":72.6,\
+                "measuredAt":\(measuredAt),"timeZone":"\(zone)","version":1}}],\
+                "hasMore":false,"nextAfterSequence":1,"startedOn":"\(startedOn)"}
+                """
         }
 
         private func emptyChangesBody() -> String {

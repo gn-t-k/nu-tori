@@ -3,12 +3,18 @@ import SwiftData
 import SwiftUI
 
 struct TimelineScreen: View {
+    var rejectedLines: [RejectedWeightLine]
+    var saveWeight: (WeightEntry.Write) async -> Void
+
     var body: some View {
         let today = CalendarDay(containing: .now, in: .current)
         NavigationStack {
             content(today: today)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(.systemGroupedBackground))
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    composer(today: today)
+                }
                 .navigationTitle(title(today: today))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -23,6 +29,12 @@ struct TimelineScreen: View {
                     }
                 }
         }
+        .sheet(isPresented: $showsWeightEntry) {
+            WeightEntrySheet(records: records) { write in
+                showsWeightEntry = false
+                Task { await saveWeight(write) }
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline")
     }
@@ -30,6 +42,7 @@ struct TimelineScreen: View {
     @Query private var cachedRecords: [CachedWeightRecord]
     @Query private var syncStates: [CachedSyncState]
     @State private var visibleDay: CalendarDay?
+    @State private var showsWeightEntry = false
 
     private var showsLoading: Bool {
         syncStates.first?.hasCompletedInitialPull != true
@@ -93,9 +106,17 @@ struct TimelineScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            ForEach(day.weightRecords, id: \.id) { record in
-                WeightRecordRow(record: record)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+            ForEach(rows(on: day)) { row in
+                switch row {
+                case .record(let record):
+                    WeightRecordRow(record: record)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                case .rejection(let line):
+                    Text(line.text)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
             }
         }
         .background {
@@ -109,6 +130,57 @@ struct TimelineScreen: View {
                 )
             }
         }
+    }
+
+    private func composer(today: CalendarDay) -> some View {
+        let unrecorded = !records.contains { $0.day == today }
+        return HStack {
+            Button {
+                showsWeightEntry = true
+            } label: {
+                Image(systemName: "scalemass.fill")
+                    .frame(width: 44, height: 44)
+                    .background(
+                        unrecorded ? Color.accentColor : Color(.tertiarySystemFill),
+                        in: Circle()
+                    )
+                    .foregroundStyle(unrecorded ? Color.white : Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("体重")
+            .accessibilityIdentifier(unrecorded ? "composer-weight-unrecorded" : "composer-weight")
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.bar)
+    }
+
+    private func rows(on day: Timeline.Day) -> [TimelineDayRow] {
+        var rows = day.weightRecords.map { TimelineDayRow.record($0) }
+        let lines = rejectedLines.filter { $0.record.day == day.day }
+            .sorted { $0.record.instant < $1.record.instant }
+        for line in lines {
+            switch line.placement {
+            case .belowRecord:
+                if let index = rows.firstIndex(where: { row in
+                    guard case .record(let record) = row else { return false }
+                    return record.id == line.record.id
+                }) {
+                    rows.insert(.rejection(line), at: index + 1)
+                } else {
+                    rows.append(.rejection(line))
+                }
+            case .insteadOfRecord:
+                let index =
+                    rows.firstIndex { row in
+                        guard case .record(let record) = row else { return false }
+                        return record.instant > line.record.instant
+                    } ?? rows.endIndex
+                rows.insert(.rejection(line), at: index)
+            }
+        }
+        return rows
     }
 
     private func timeline(today: CalendarDay) -> Timeline {
@@ -140,6 +212,18 @@ struct TimelineScreen: View {
         }
         let atTop = offsets.filter { $0.minY <= topEdge }.max { $0.minY < $1.minY }
         return atTop?.day ?? offsets.min { $0.minY < $1.minY }?.day
+    }
+}
+
+private enum TimelineDayRow: Identifiable {
+    case record(WeightRecord)
+    case rejection(RejectedWeightLine)
+
+    var id: String {
+        switch self {
+        case .record(let record): "record-\(record.id.uuidString)"
+        case .rejection(let line): "rejection-\(line.record.id.uuidString)"
+        }
     }
 }
 
