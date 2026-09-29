@@ -1,0 +1,10 @@
+{
+  "$schema": "../server/node_modules/wrangler/config-schema.json",
+  // 静的なページだけを配る。コードを持たないので、開発用の環境は置かない
+  "name": "nu-tori-site",
+  "compatibility_date": "2026-08-22",
+  "assets": { "directory": "public" },
+  "routes": [{ "pattern": "nu-tori.app", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+}
