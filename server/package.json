@@ -15,7 +15,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@cloudflare/vitest-plugin": "1.3.0",
     "@praha/byethrow-docs": "0.12.0",
     "@praha/byethrow-oxlint": "0.12.0",
     "@praha/byethrow-testing": "0.12.0",

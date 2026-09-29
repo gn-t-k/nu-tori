@@ -1,4 +1,4 @@
-import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { exportPKCS8, generateKeyPair } from "jose";
 import { defineConfig } from "vitest/config";
 

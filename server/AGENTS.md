@@ -5,7 +5,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 構成
 
 - 構成の正本は `wrangler.jsonc`。上の階層が開発用で、本番は `env.production`。つなぎ（Durable Object、D1、R2 など）は環境に受け継がれないので、足すときは両方に書く
-- `compatibility_date` は、`@cloudflare/vitest-pool-workers` が使う workerd が対応する日付までにする（それより後だと、テストの実行環境が起動しない）
+- `compatibility_date` は、`@cloudflare/vitest-plugin` が使う workerd が対応する日付までにする（それより後だと、テストの実行環境が起動しない）
 - D1 と R2 は、`wrangler.jsonc` に書く前に、開発者に場所のヒント（`--location apac`）を付けて手で作ってもらう。デプロイのときの自動作成は場所のヒントを渡せず、CI が作ると CI の近くに置かれる。`wrangler.jsonc` には名前だけを書き、CI は名前で見つける
 - Worker の型の宣言（`worker-configuration.d.ts`）は `wrangler types` が `wrangler.jsonc` から書き出す。コミットせず、`scripts/check server` が毎回書き出す
 - Workers で動かないライブラリが要る処理が出たら、その部分だけ別の基盤に置く
