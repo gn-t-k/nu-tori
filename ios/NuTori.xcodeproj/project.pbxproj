@@ -30,6 +30,7 @@
 		0A000000000000000000001E /* Exceptions for "NuTori" folder in "NuTori" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Info.plist,
 				NuTori.entitlements,
 			);
 			target = 0A0000000000000000000008 /* NuTori */;
@@ -297,6 +298,7 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と栄養を書き込みます。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_FILE = NuTori/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -327,6 +329,7 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と栄養を書き込みます。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_FILE = NuTori/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

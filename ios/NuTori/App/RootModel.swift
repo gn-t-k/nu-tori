@@ -5,8 +5,12 @@ import Observation
 final class RootModel {
     private(set) var screen: Screen = .opening
 
-    init(accountSession: AccountSession) {
+    init(accountSession: AccountSession, recordSync: RecordSync) {
         self.accountSession = accountSession
+        self.recordSync = recordSync
+        recordSync.onDestination = { [weak self] destination in
+            self?.screen = Screen(destination)
+        }
     }
 
     func open() async {
@@ -17,6 +21,7 @@ final class RootModel {
         } catch {
             screen = .signIn(.introduction, .ready)
         }
+        await syncIfShowingTimeline()
     }
 
     /// Apple ID の設定で連携を止めたあと、アプリを終了せずに戻った人にも、サインインの画面を出すため
@@ -39,6 +44,7 @@ final class RootModel {
         case .authorized(let credential):
             screen = .signIn(prompt, .signingIn)
             screen = await signInOutcomeScreen(prompt: prompt, credential: credential)
+            await syncIfShowingTimeline()
         }
     }
 
@@ -58,6 +64,16 @@ final class RootModel {
     }
 
     private let accountSession: AccountSession
+    private let recordSync: RecordSync
+
+    private func syncIfShowingTimeline() async {
+        switch screen {
+        case .loadingTimeline, .timeline:
+            _ = try? await recordSync.sync()
+        case .opening, .signIn:
+            return
+        }
+    }
 
     private func signInOutcomeScreen(
         prompt: SignInDestination.Prompt,

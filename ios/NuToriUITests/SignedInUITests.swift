@@ -13,7 +13,7 @@ final class SignedInUITests: XCTestCase {
     func test_サインインの画面を出さずにタイムラインを開くこと() {
         XCTAssertTrue(app.otherElements["timeline"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.otherElements["signIn"].exists)
-        XCTAssertFalse(app.staticTexts["記録を読み込んでいます…"].exists)
+        XCTAssertTrue(app.staticTexts["記録を読み込んでいます…"].waitForNonExistence(timeout: 5))
         attachScreenshot(of: app, named: "サインイン済みのタイムライン")
     }
 }

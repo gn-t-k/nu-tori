@@ -1,10 +1,16 @@
+import SwiftData
 import SwiftUI
 
 @main
 struct NuToriApp: App {
+    init() {
+        runtime.recordSync.registerAndWatch()
+    }
+
     var body: some Scene {
         WindowGroup {
-            RootView(model: model)
+            RootView(model: runtime.model)
+                .modelContainer(runtime.container)
                 .tint(.indigo)
                 #if DEBUG
                     .environment(
@@ -13,5 +19,5 @@ struct NuToriApp: App {
         }
     }
 
-    @State private var model = RootModel(accountSession: .forThisLaunch())
+    private let runtime = AppRuntime.forThisLaunch()
 }
