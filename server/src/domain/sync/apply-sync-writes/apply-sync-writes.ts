@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { match, P } from "ts-pattern";
 import { computeCalendarDay } from "../../compute-calendar-day";
 import { isTimeZoneName } from "../../is-time-zone-name";
 import { isWithinAcceptedRange } from "../../is-within-accepted-range";
@@ -106,11 +106,8 @@ const applyWrite = (
   write: SyncWrite,
 ): AppliedWrite =>
   match(write)
-    .with({ type: "create_weight_record" }, (createWrite) =>
-      applyWeightRecord(store, startedOn, "create", createWrite),
-    )
-    .with({ type: "update_weight_record" }, (updateWrite) =>
-      applyWeightRecord(store, startedOn, "update", updateWrite),
+    .with({ type: P.union("create_weight_record", "update_weight_record") }, (weightWrite) =>
+      applyWeightRecord(store, startedOn, weightWrite),
     )
     .with({ type: "update_account_settings" }, ({ accountSettings }): AppliedWrite => ({
       kind: "update",
@@ -125,12 +122,14 @@ const applyWrite = (
 const applyWeightRecord = (
   store: SyncStore,
   startedOn: string | undefined,
-  kind: "create" | "update",
   write: WeightRecordWrite,
 ): AppliedWrite => {
   const outcome = applyWeightRecordWrite(store, startedOn, write);
   return {
-    kind,
+    kind: match(write)
+      .with({ type: "create_weight_record" }, () => "create" as const)
+      .with({ type: "update_weight_record" }, () => "update" as const)
+      .exhaustive(),
     recordType: "weight_record",
     recordId: write.weightRecord.id,
     outcome,
