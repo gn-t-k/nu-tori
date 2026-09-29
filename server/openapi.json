@@ -208,8 +208,7 @@
           },
           "weightRecordId": {
             "type": "string",
-            "minLength": 1,
-            "description": "元のサンプルがヘルスケアで消えた体重記録の ID。消すかどうかはサーバーが決める（直した記録は残す）"
+            "minLength": 1
           }
         },
         "required": [

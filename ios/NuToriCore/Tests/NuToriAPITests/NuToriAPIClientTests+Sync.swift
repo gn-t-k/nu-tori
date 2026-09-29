@@ -161,29 +161,32 @@ extension NuToriAPIClientTests {
 
         @Suite("元のサンプルが消えたという書き込みを送るとき")
         struct SourceDeleted {
-            static let writeIds = [
-                UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")!,
-                UUID(uuidString: "00000000-0000-4000-8000-0000000000a4")!,
-                UUID(uuidString: "00000000-0000-4000-8000-0000000000a5")!,
-            ]
-            static let weightRecordId = UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!
-
+            let writeIds: [UUID]
+            let weightRecordId: UUID
             let transport: ClientTransportMock
             let client: NuToriAPIClient
             let clientState: SyncClientState
             let writes: [SyncWrite]
 
             init() {
+                let writeIds = [
+                    UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")!,
+                    UUID(uuidString: "00000000-0000-4000-8000-0000000000a4")!,
+                    UUID(uuidString: "00000000-0000-4000-8000-0000000000a5")!,
+                ]
+                let weightRecordId = UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!
+                self.writeIds = writeIds
+                self.weightRecordId = weightRecordId
                 clientState = .fixture()
-                writes = Self.writeIds.map {
-                    .sourceDeletedWeightRecord(writeId: $0, weightRecordId: Self.weightRecordId)
+                writes = writeIds.map {
+                    .sourceDeletedWeightRecord(writeId: $0, weightRecordId: weightRecordId)
                 }
                 transport = .ok(
                     json: """
                         {"results":[
-                          {"writeId":"\(Self.writeIds[0].uuidString)","result":"applied"},
-                          {"writeId":"\(Self.writeIds[1].uuidString)","result":"ignored_tombstone"},
-                          {"writeId":"\(Self.writeIds[2].uuidString)","result":"kept_corrected"}
+                          {"writeId":"\(writeIds[0].uuidString)","result":"applied"},
+                          {"writeId":"\(writeIds[1].uuidString)","result":"ignored_tombstone"},
+                          {"writeId":"\(writeIds[2].uuidString)","result":"kept_corrected"}
                         ]}
                         """
                 )
@@ -200,14 +203,14 @@ extension NuToriAPIClientTests {
                     [writes[0]], isFinalBatch: false, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
-                let body = try SentSourceDeletedWritesBody(json: try #require(sent.body))
+                let body = try JSONDecoder().decode(
+                    SentSourceDeletedWritesBody.self, from: Data((sent.body ?? "").utf8))
                 #expect(
                     body.writes == [
                         .init(
-                            id: Self.writeIds[0].uuidString,
+                            id: writeIds[0].uuidString,
                             type: "source_deleted_weight_record",
-                            weightRecordId: Self.weightRecordId.uuidString
-                        )
+                            weightRecordId: weightRecordId.uuidString)
                     ])
             }
 
@@ -219,11 +222,21 @@ extension NuToriAPIClientTests {
                 #expect(
                     result
                         == .pushed([
-                            SyncWriteResult(writeId: Self.writeIds[0], outcome: .applied),
-                            SyncWriteResult(writeId: Self.writeIds[1], outcome: .ignoredTombstone),
-                            SyncWriteResult(writeId: Self.writeIds[2], outcome: .keptCorrected),
+                            SyncWriteResult(writeId: writeIds[0], outcome: .applied),
+                            SyncWriteResult(writeId: writeIds[1], outcome: .ignoredTombstone),
+                            SyncWriteResult(writeId: writeIds[2], outcome: .keptCorrected),
                         ])
                 )
+            }
+
+            private struct SentSourceDeletedWritesBody: Decodable {
+                let writes: [Write]
+
+                struct Write: Decodable, Equatable {
+                    let id: String
+                    let type: String
+                    let weightRecordId: String
+                }
             }
         }
 

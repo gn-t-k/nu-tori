@@ -55,10 +55,7 @@ const sourceDeletedWeightRecordWriteSchema = z
   .object({
     id: writeId,
     type: z.literal("source_deleted_weight_record"),
-    weightRecordId: z.string().min(1).openapi({
-      description:
-        "元のサンプルがヘルスケアで消えた体重記録の ID。消すかどうかはサーバーが決める（直した記録は残す）",
-    }),
+    weightRecordId: z.string().min(1),
   })
   .openapi("SourceDeletedWeightRecordWrite");
 

@@ -315,8 +315,6 @@ extension Components {
             }
             /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite/type`.
             internal var _type: Components.Schemas.SourceDeletedWeightRecordWrite._TypePayload
-            /// 元のサンプルがヘルスケアで消えた体重記録の ID。消すかどうかはサーバーが決める（直した記録は残す）
-            ///
             /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite/weightRecordId`.
             internal var weightRecordId: Swift.String
             /// Creates a new `SourceDeletedWeightRecordWrite`.
@@ -324,7 +322,7 @@ extension Components {
             /// - Parameters:
             ///   - id: 冪等の鍵
             ///   - _type:
-            ///   - weightRecordId: 元のサンプルがヘルスケアで消えた体重記録の ID。消すかどうかはサーバーが決める（直した記録は残す）
+            ///   - weightRecordId:
             internal init(
                 id: Swift.String,
                 _type: Components.Schemas.SourceDeletedWeightRecordWrite._TypePayload,

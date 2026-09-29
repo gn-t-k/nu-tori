@@ -58,7 +58,7 @@ export const applySyncWrites = (
         outcome,
       });
       // 削除の印は書き込みの控えを指すので、控えを書いたあとに足す
-      if (write.type === "source_deleted_weight_record" && outcome.result === "applied") {
+      if (kind === "source_deleted" && outcome.result === "applied") {
         store.insertWeightRecordDeletion(write.id);
       }
       if (outcome.result === "applied" || outcome.result === "ignored_tombstone") {
