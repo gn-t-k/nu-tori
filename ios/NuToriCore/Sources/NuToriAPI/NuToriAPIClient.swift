@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 import OpenAPIRuntime
 import OpenAPIURLSession
 
@@ -28,19 +28,27 @@ public struct NuToriAPIClient: Sendable {
     }
 
     /// Sign in with Apple で得た値でサインインし、セッションを始める
+    /// - Parameter timeZone: 端末のタイムゾーン。最初のサインインで、使い始めた日をこの土地の日付にする
     public func startSession(
         idToken: String,
         nonce: String,
-        authorizationCode: String
+        authorizationCode: String,
+        timeZone: TimeZone
     ) async throws -> StartSessionResult {
         let output = try await client.createSession(
             body: .json(
-                .init(idToken: idToken, nonce: nonce, authorizationCode: authorizationCode)
+                .init(
+                    idToken: idToken,
+                    nonce: nonce,
+                    authorizationCode: authorizationCode,
+                    timeZone: timeZone.identifier
+                )
             )
         )
         switch output {
         case .created(let created):
-            return .started(sessionToken: try created.body.json.sessionToken)
+            let body = try created.body.json
+            return .started(sessionToken: body.sessionToken, accountId: body.accountId)
         case .unauthorized:
             return .rejected
         case .undocumented(let statusCode, _):
@@ -63,7 +71,7 @@ public struct NuToriAPIClient: Sendable {
     }
 
     public enum StartSessionResult: Sendable, Equatable {
-        case started(sessionToken: String)
+        case started(sessionToken: String, accountId: String)
         /// ID トークンか認可コードを受け付けなかった
         case rejected
     }

@@ -15,8 +15,12 @@ struct NuToriAPIClientTests {
             let client: NuToriAPIClient
 
             init() {
-                credentials = Credentials(idToken: "id-token", nonce: "nonce", code: "code")
-                transport = .ok(status: .created, json: #"{"sessionToken":"session-1"}"#)
+                credentials = Credentials(
+                    idToken: "id-token", nonce: "nonce", code: "code",
+                    timeZone: TimeZone(identifier: "Asia/Tokyo")!)
+                transport = .ok(
+                    status: .created, json: #"{"sessionToken":"session-1","accountId":"account-1"}"#
+                )
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
@@ -24,23 +28,25 @@ struct NuToriAPIClientTests {
                 )
             }
 
-            @Test("セッションのトークンを返すこと")
-            func returnsSessionToken() async throws {
+            @Test("セッションのトークンとアカウント ID を返すこと")
+            func returnsSessionTokenAndAccountId() async throws {
                 let result = try await client.startSession(
                     idToken: credentials.idToken,
                     nonce: credentials.nonce,
-                    authorizationCode: credentials.code
+                    authorizationCode: credentials.code,
+                    timeZone: credentials.timeZone
                 )
 
-                #expect(result == .started(sessionToken: "session-1"))
+                #expect(result == .started(sessionToken: "session-1", accountId: "account-1"))
             }
 
-            @Test("ID トークンと nonce と認可コードを POST /v1/sessions に送ること")
+            @Test("ID トークンと nonce と認可コードと端末のタイムゾーンを POST /v1/sessions に送ること")
             func sendsCredentials() async throws {
                 _ = try await client.startSession(
                     idToken: credentials.idToken,
                     nonce: credentials.nonce,
-                    authorizationCode: credentials.code
+                    authorizationCode: credentials.code,
+                    timeZone: credentials.timeZone
                 )
 
                 let sent = try #require(transport.requests.first)
@@ -53,6 +59,7 @@ struct NuToriAPIClientTests {
                         "idToken": credentials.idToken,
                         "nonce": credentials.nonce,
                         "authorizationCode": credentials.code,
+                        "timeZone": credentials.timeZone.identifier,
                     ]
                 )
             }
@@ -64,7 +71,9 @@ struct NuToriAPIClientTests {
             let client: NuToriAPIClient
 
             init() {
-                credentials = Credentials(idToken: "id-token", nonce: "nonce", code: "code")
+                credentials = Credentials(
+                    idToken: "id-token", nonce: "nonce", code: "code",
+                    timeZone: TimeZone(identifier: "Asia/Tokyo")!)
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .unauthorized),
@@ -77,7 +86,8 @@ struct NuToriAPIClientTests {
                 let result = try await client.startSession(
                     idToken: credentials.idToken,
                     nonce: credentials.nonce,
-                    authorizationCode: credentials.code
+                    authorizationCode: credentials.code,
+                    timeZone: credentials.timeZone
                 )
 
                 #expect(result == .rejected)
@@ -88,6 +98,7 @@ struct NuToriAPIClientTests {
             let idToken: String
             let nonce: String
             let code: String
+            let timeZone: TimeZone
         }
     }
 
