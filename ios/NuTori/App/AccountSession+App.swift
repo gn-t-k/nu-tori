@@ -6,7 +6,7 @@ extension AccountSession {
     @MainActor static func forThisLaunch() -> AccountSession {
         #if DEBUG
             if let launch = UITestLaunch.current {
-                return launch.makeAccountSession()
+                return launch.accountSessionWithStubs()
             }
         #endif
         return live()

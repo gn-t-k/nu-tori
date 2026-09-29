@@ -27,7 +27,7 @@ struct AppleSignInButton: View {
 
     private var appleButton: some View {
         SignInWithAppleButton(.continue) { request in
-            nonce = Self.makeNonce()
+            nonce = Self.randomNonce()
             request.requestedScopes = []
             request.nonce = nonce
         } onCompletion: { result in
@@ -38,7 +38,7 @@ struct AppleSignInButton: View {
         .accessibilityIdentifier("appleSignInButton")
     }
 
-    private static func makeNonce() -> String {
+    private static func randomNonce() -> String {
         (0..<32).map { _ in String(format: "%02x", UInt8.random(in: .min ... .max)) }.joined()
     }
 }

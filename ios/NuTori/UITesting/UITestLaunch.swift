@@ -41,7 +41,7 @@
             }
         }
 
-        func makeAccountSession() -> AccountSession {
+        func accountSessionWithStubs() -> AccountSession {
             let keychain = InMemorySessionKeychain(token: account.hasSession ? "stub-session" : nil)
             return AccountSession(
                 client: NuToriAPIClient(
@@ -50,7 +50,7 @@
                     sessionToken: { try? await keychain.sessionToken() }
                 ),
                 keychain: keychain,
-                deviceStore: UserDefaultsSignInDeviceStore(defaults: makeDefaults()),
+                deviceStore: UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults()),
                 syncStore: PlaceholderSyncStore(
                     queuedWrites: account.pendingWrites,
                     hasCompletedInitialPull: account.hasCompletedInitialPull
@@ -137,7 +137,7 @@
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める
-        private func makeDefaults() -> UserDefaults {
+        private func seededIsolatedDefaults() -> UserDefaults {
             let defaults = UserDefaults(suiteName: "app.nu-tori.ui-test.\(UUID().uuidString)")!
             defaults.set(true, forKey: UserDefaultsSignInDeviceStore.Key.hasOpened)
             if account.hasSession {
