@@ -23,7 +23,7 @@ extension NuToriAPIClientTests {
                     .createWeightRecord(
                         writeId: PushSyncWrites.createWriteId, record: .fixture()),
                     .updateWeightRecord(
-                        writeId: PushSyncWrites.updateWriteId, record: .fixture()),
+                        writeId: PushSyncWrites.updateWriteId, correction: .fixture()),
                 ]
                 transport = .ok(
                     json: """
@@ -122,7 +122,6 @@ extension NuToriAPIClientTests {
                 write = .createWeightRecord(
                     writeId: PushSyncWrites.createWriteId,
                     record: .fixture(
-                        version: 1,
                         imported: .init(
                             sourceAppName: "Withings",
                             sourceBundleId: "com.withings.wiScaleNG",
