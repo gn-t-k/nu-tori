@@ -52,6 +52,7 @@ type CreateState = "empty" | "duplicate" | "creatable";
 
 - 呼び出し側が失敗の種類によって振る舞いを変えるもの（受け口で状態コードを変える、など）は、`@praha/byethrow` の Result で返す。基盤の障害と設定の誤りは throw し、受け止めずに Sentry に任せる
 - byethrow は `import { R } from "@praha/byethrow"` で読み込み、`R` で書く。使い方は skill の `byethrow` で docs を引く
+- Result は `R.pipe` の中で byethrow の道具（`andThen`・`map`・`mapError`・`orElse`・`andThrough`・`do`／`bind`・`sequence`／`collect` など）でつなぐ。値と失敗を取り出すのは、受け口で応答に直すところだけにする
 - エラーのクラスは、Result の失敗にするものも throw するものも `@praha/error-factory` の `ErrorFactory` で作る。独自のクラスを作るのは、呼び出し側かテストが見分けるときだけにし、見分けないものは `new Error(...)` にする
 - `ErrorFactory` の `name` は省かない。省くと `name` の型が `string` になり、`match` の `{ name: "..." }` で絞れない
 - 自分たちのエラーは `name` で見分け、`instanceof` を使わない（Durable Object を越えると効かない。`server/AGENTS.md` の「層」）。テストで throw を確かめる `rejects.toThrow(クラス)` は除く
