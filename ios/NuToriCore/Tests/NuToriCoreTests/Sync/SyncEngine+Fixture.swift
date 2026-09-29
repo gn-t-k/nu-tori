@@ -1,7 +1,6 @@
 import Foundation
+import NuToriAPI
 import NuToriCore
-
-@testable import NuToriAPI
 
 extension SyncEngine {
     static let fixtureNow = Date(timeIntervalSince1970: 1_767_225_600)

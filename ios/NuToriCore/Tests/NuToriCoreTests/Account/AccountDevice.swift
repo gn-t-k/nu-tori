@@ -3,8 +3,6 @@ import NuToriAPI
 import NuToriCore
 import Testing
 
-@testable import NuToriAPI
-
 /// サインインの状態と、端末に残るものの差し替えをまとめたもの
 struct AccountDevice {
     static let previousAccount = SignedInAccount(
