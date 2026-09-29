@@ -1,6 +1,5 @@
 public import Foundation
 
-/// アカウントに1つ持つ、アカウント全体にかかる設定
 public struct AccountSettings: Sendable, Equatable {
     public let id: UUID
     public let sendsUsageData: Bool

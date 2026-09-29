@@ -136,7 +136,7 @@ type AppliedWrite =
       kind: "update";
       recordType: "account_settings";
       recordId: string;
-      outcome: SyncWriteOutcome;
+      outcome: { result: "applied" };
       storedRecordId: string;
       sendsUsageData: boolean;
     };
