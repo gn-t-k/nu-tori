@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { R } from "@praha/byethrow";
 import { ErrorFactory } from "@praha/error-factory";
 import { APIError } from "better-auth/api";
+import { decodeJwt } from "jose";
 import { match } from "ts-pattern";
 import { createAppleRefreshTokenStore } from "../../auth/create-apple-refresh-token-store";
 import { createAuthentication } from "../../auth/create-authentication";
@@ -84,20 +85,46 @@ const signInWithAppleIdToken = (
   idToken: string,
   nonce: string,
 ) =>
-  authentication.api
-    .signInSocial({ body: { provider: "apple", idToken: { token: idToken, nonce } } })
+  Promise.all([sha256Hex(nonce), readUnverifiedIdTokenNonce(idToken)]).then(
+    ([hashed, tokenNonce]) => {
+      if (tokenNonce !== hashed) {
+        return R.fail(new AppleIdTokenRejectedError());
+      }
+      return authentication.api
+        .signInSocial({ body: { provider: "apple", idToken: { token: idToken, nonce } } })
+        .then(
+          (signedIn) =>
+            "token" in signedIn ? R.succeed(signedIn) : R.fail(new AppleIdTokenRejectedError()),
+          (error: unknown) => {
+            if (error instanceof APIError && error.status === "UNAUTHORIZED") {
+              return R.fail(new AppleIdTokenRejectedError({ cause: error }));
+            }
+            throw error;
+          },
+        );
+    },
+  );
+
+const sha256Hex = async (value: string): Promise<string> => {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+  );
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+// 署名は見ない。署名とハッシュでの一致は、このあとの signInSocial が確かめる
+const readUnverifiedIdTokenNonce = (idToken: string): Promise<string | undefined> =>
+  Promise.resolve()
+    .then(() => decodeJwt(idToken))
     .then(
-      (signedIn) =>
-        "token" in signedIn ? R.succeed(signedIn) : R.fail(new AppleIdTokenRejectedError()),
-      (error: unknown) => {
-        if (error instanceof APIError && error.status === "UNAUTHORIZED") {
-          return R.fail(new AppleIdTokenRejectedError({ cause: error }));
-        }
-        throw error;
+      (payload) => {
+        const nonce = payload["nonce"];
+        return typeof nonce === "string" ? nonce : undefined;
       },
+      () => undefined,
     );
 
 class AppleIdTokenRejectedError extends ErrorFactory({
   name: "AppleIdTokenRejectedError",
-  message: "Better Auth が Apple の ID トークンを受け付けなかった",
+  message: "Apple の ID トークンを受け付けなかった",
 }) {}
