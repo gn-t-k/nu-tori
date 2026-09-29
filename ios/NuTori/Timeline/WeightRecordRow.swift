@@ -32,10 +32,3 @@ struct WeightRecordRow: View {
         }
     }
 }
-
-extension WeightRecord {
-    var kilogramsLabel: String {
-        let rounded = (kilograms * 10).rounded() / 10
-        return String(format: "%.1f kg", locale: Locale(identifier: "en_US_POSIX"), rounded)
-    }
-}

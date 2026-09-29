@@ -91,7 +91,7 @@ struct DayRingStrip: View {
     private func column(day: CalendarDay, ring: Ring) -> some View {
         VStack {
             ringMark(ring)
-            Text(TimelineDayText.weekdaySymbol(for: day) ?? "")
+            Text(TimelineDayText.weekdaySymbol(for: day))
                 .font(.caption2)
                 .fontWeight(day == selectedDay ? .semibold : .regular)
                 .foregroundStyle(weekdayStyle(day: day, ring: ring))

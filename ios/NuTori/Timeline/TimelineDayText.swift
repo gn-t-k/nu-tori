@@ -3,18 +3,19 @@ import NuToriCore
 
 nonisolated enum TimelineDayText {
     static func label(for day: CalendarDay) -> String {
-        guard let weekday = weekdaySymbol(for: day) else {
+        let weekday = weekdaySymbol(for: day)
+        if weekday.isEmpty {
             return "\(day.month)月\(day.day)日"
         }
         return "\(day.month)月\(day.day)日（\(weekday)）"
     }
 
-    static func weekdaySymbol(for day: CalendarDay) -> String? {
+    static func weekdaySymbol(for day: CalendarDay) -> String {
         let symbols = ["日", "月", "火", "水", "木", "金", "土"]
         guard
             let date = utcCalendar.date(
                 from: DateComponents(year: day.year, month: day.month, day: day.day))
-        else { return nil }
+        else { return "" }
         let weekday = utcCalendar.component(.weekday, from: date)
         return symbols[weekday - 1]
     }
