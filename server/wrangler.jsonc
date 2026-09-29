@@ -4,6 +4,8 @@
   "name": "nu-tori-development",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-22",
+  // Sentry の SDK が AsyncLocalStorage を使う
+  "compatibility_flags": ["nodejs_compat"],
   "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
   "exports": {
     "AccountDurableObject": { "type": "durable-object", "storage": "sqlite" },
@@ -25,8 +27,10 @@
   "routes": [{ "pattern": "api-dev.nu-tori.app", "custom_domain": true }],
   "workers_dev": false,
   "preview_urls": false,
+  // 本番にも受け継がれる
+  "observability": { "enabled": true },
   // Sign in with Apple の ID トークンの aud。アプリの Bundle ID（ios/NuTori.xcodeproj の PRODUCT_BUNDLE_IDENTIFIER）
-  "vars": { "APPLE_BUNDLE_ID": "app.nu-tori" },
+  "vars": { "APPLE_BUNDLE_ID": "app.nu-tori", "SENTRY_ENVIRONMENT": "development" },
   // namespace_id は Cloudflare のアカウントの中で一意にし、同じ値の Worker どうしで数を分け合う
   "ratelimits": [
     {
@@ -42,6 +46,7 @@
       "APPLE_KEY_ID",
       "APPLE_PRIVATE_KEY",
       "APPLE_REFRESH_TOKEN_KEYS",
+      "SENTRY_DSN",
     ],
   },
   "env": {
@@ -65,7 +70,7 @@
       "routes": [{ "pattern": "api.nu-tori.app", "custom_domain": true }],
       "workers_dev": false,
       "preview_urls": false,
-      "vars": { "APPLE_BUNDLE_ID": "app.nu-tori" },
+      "vars": { "APPLE_BUNDLE_ID": "app.nu-tori", "SENTRY_ENVIRONMENT": "production" },
       "ratelimits": [
         {
           "name": "ACCOUNT_RATE_LIMITER",
@@ -80,6 +85,10 @@
           "APPLE_KEY_ID",
           "APPLE_PRIVATE_KEY",
           "APPLE_REFRESH_TOKEN_KEYS",
+          "SENTRY_DSN",
+          // PostHog には本番だけが送る
+          "POSTHOG_PROJECT_ID",
+          "POSTHOG_PERSONAL_API_KEY",
         ],
       },
     },

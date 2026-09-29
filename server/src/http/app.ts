@@ -1,9 +1,16 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
+import { sentry } from "@sentry/hono/cloudflare";
+import { createSentryOptions } from "../observability/create-sentry-options";
 import { accountRoutes } from "./account-routes";
 import { appleServerNotificationRoutes } from "./apple-server-notification-routes";
+import { observeRequest } from "./observe-request";
 import { sessionRoutes } from "./session-routes";
 
-export const app = new OpenAPIHono<{ Bindings: Env }>()
+export const app = new OpenAPIHono<{ Bindings: Env }>();
+
+app
+  .use(sentry(app, createSentryOptions))
+  .use(observeRequest)
   .route("/", sessionRoutes)
   .route("/", accountRoutes)
   .route("/", appleServerNotificationRoutes);

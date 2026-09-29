@@ -69,6 +69,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 
 - パッケージは `pnpm add <パッケージ>@<版>`（開発用なら `pnpm add -D <パッケージ>@<版>`）で足し、`package.json` を直接書き換えない。`^` や `~` の範囲指定にしない
 - 最新の版は `npm view <パッケージ> version` で確かめる
+- 公開から1日たっていない版は、pnpm の既定の待ち時間（`minimumReleaseAge`）にかかる。その版は待ち、1日たった中で最新の版を入れる。pnpm が足す除外（`minimumReleaseAgeExclude`）は残さない（公開されたばかりの版を狙った乗っ取りを避ける守りを外すことになるため）
 
 ## テスト
 
