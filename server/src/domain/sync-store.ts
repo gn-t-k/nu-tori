@@ -1,7 +1,12 @@
 import type { AccountSettings } from "./account-settings";
 import type { RecordType } from "./record-type";
 import type { SyncClientState } from "./sync-client-state";
-import type { SyncWriteOutcome } from "./sync-write-outcome";
+import type {
+  CreateWeightRecordOutcome,
+  SourceDeletedWeightRecordOutcome,
+  SyncWriteOutcome,
+  UpdateWeightRecordOutcome,
+} from "./sync-write-outcome";
 import type { WeightRecord } from "./weight-record";
 
 export type SyncStore = {
@@ -27,10 +32,15 @@ export type SyncStore = {
       requestLogId: string;
       positionInRequest: number;
       recordId: string;
-      outcome: SyncWriteOutcome;
     } & (
-      | { kind: "create" | "update" | "source_deleted"; recordType: "weight_record" }
-      | { kind: "update"; recordType: "account_settings" }
+      | { kind: "create"; recordType: "weight_record"; outcome: CreateWeightRecordOutcome }
+      | { kind: "update"; recordType: "weight_record"; outcome: UpdateWeightRecordOutcome }
+      | {
+          kind: "source_deleted";
+          recordType: "weight_record";
+          outcome: SourceDeletedWeightRecordOutcome;
+        }
+      | { kind: "update"; recordType: "account_settings"; outcome: { result: "applied" } }
     ),
   ) => void;
   findWeightRecord: (id: string) => WeightRecord | undefined;

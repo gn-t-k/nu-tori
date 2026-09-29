@@ -1,11 +1,17 @@
-import type { SyncWriteOutcome } from "./sync-write-outcome";
+import type { CreateWeightRecordOutcome, UpdateWeightRecordOutcome } from "./sync-write-outcome";
 
 export type UsageEvent =
   | {
       name: "sync_write_rejected";
-      writeKind: "create" | "update";
+      writeKind: "create";
       recordType: "weight_record";
-      reason: Extract<SyncWriteOutcome, { result: "rejected" }>["reason"];
+      reason: Extract<CreateWeightRecordOutcome, { result: "rejected" }>["reason"];
+    }
+  | {
+      name: "sync_write_rejected";
+      writeKind: "update";
+      recordType: "weight_record";
+      reason: Extract<UpdateWeightRecordOutcome, { result: "rejected" }>["reason"];
     }
   | {
       name: "sync_pending_writes_reported";
