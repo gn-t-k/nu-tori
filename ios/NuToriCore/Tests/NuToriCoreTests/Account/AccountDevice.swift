@@ -1,6 +1,7 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import Testing
 
 @testable import NuToriAPI
 
@@ -103,6 +104,21 @@ struct AccountDevice {
         if !deviceStore.didEraseAccountBoundState { remaining.append("端末 ID") }
         if deviceStore.hasMark { remaining.append("サインインし直しの印") }
         return remaining
+    }
+}
+
+extension AccountDevice {
+    func expectNothingErased() {
+        #expect(syncStore.eraseAllCount == 0)
+        #expect(syncStore.records.count == 1)
+        #expect(syncStore.pending.count == 1)
+        #expect(keychain.token == "session-1")
+        #expect(deviceStore.account == AccountDevice.previousAccount)
+        #expect(backgroundTransfers.cancelAndDeleteCount == 0)
+        #expect(healthAnchors.deleteCount == 0)
+        #expect(!deviceStore.didEraseAccountBoundState)
+        #expect(analytics.resetCount == 0)
+        #expect(errorReporting.clearUserCount == 0)
     }
 }
 

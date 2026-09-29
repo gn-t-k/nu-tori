@@ -28,95 +28,159 @@ struct AccountSessionTests {
             }
         }
 
-        @Suite("セッションが無いとき")
-        struct WithoutSession {
-            @Test("サインインし直しの印が無ければ、説明のひとことの版にすること")
-            func showsIntroductionWithoutMark() async throws {
-                let device = AccountDevice.signedOut()
+        @Suite("セッションが無く、サインインし直しの印も無いとき")
+        struct WithoutSessionAndMark {
+            let session: AccountSession
 
-                let destination = try await device.session().destinationOnOpen()
+            init() {
+                session = AccountDevice.signedOut().session()
+            }
+
+            @Test("説明のひとことの版のサインインの画面にすること")
+            func showsIntroduction() async throws {
+                let destination = try await session.destinationOnOpen()
 
                 #expect(destination == .signIn(.introduction))
             }
+        }
 
-            @Test("サインインし直しの印があれば、送り待ちが無いときの1行の版にすること")
-            func showsSignInAgainWithoutPendingWrites() async throws {
-                let device = AccountDevice.signedOut(hasSignInAgainMark: true)
+        @Suite("セッションが無く、サインインし直しの印があるとき")
+        struct WithoutSessionWithMark {
+            let session: AccountSession
 
-                let destination = try await device.session().destinationOnOpen()
+            init() {
+                session = AccountDevice.signedOut(hasSignInAgainMark: true).session()
+            }
+
+            @Test("サインインし直しの1行の版のサインインの画面にすること")
+            func showsSignInAgain() async throws {
+                let destination = try await session.destinationOnOpen()
 
                 #expect(destination == .signIn(.signInAgain(hasPendingWrites: false)))
             }
+        }
 
-            @Test("サインインし直しの印があり送り待ちもあれば、送り待ちがあるときの1行の版にすること")
+        @Suite("セッションが無く、サインインし直しの印も送り待ちもあるとき")
+        struct WithoutSessionWithMarkAndPendingWrites {
+            let session: AccountSession
+
+            init() throws {
+                session = try AccountDevice.signedOut(
+                    hasSignInAgainMark: true, pendingWrites: [.fixtureCreating()]
+                ).session()
+            }
+
+            @Test("送り待ちがあるときの1行の版のサインインの画面にすること")
             func showsSignInAgainWithPendingWrites() async throws {
-                let device = try AccountDevice.signedOut(
-                    hasSignInAgainMark: true, pendingWrites: [.fixtureCreating()])
-
-                let destination = try await device.session().destinationOnOpen()
+                let destination = try await session.destinationOnOpen()
 
                 #expect(destination == .signIn(.signInAgain(hasPendingWrites: true)))
             }
         }
 
-        @Suite("セッションがあって Apple の資格情報が有効なとき")
-        struct WithValidCredential {
-            @Test("初回の取得を終えていれば、タイムラインにすること")
-            func showsTimeline() async throws {
-                let device = try AccountDevice.signedIn(hasCompletedInitialPull: true)
+        @Suite("セッションがあり、Apple の資格情報が有効で、初回の取得を終えているとき")
+        struct WithValidCredentialAndInitialPull {
+            let device: AccountDevice
+            let session: AccountSession
 
-                let destination = try await device.session().destinationOnOpen()
+            init() throws {
+                device = try .signedIn(hasCompletedInitialPull: true)
+                session = device.session()
+            }
+
+            @Test("保存した Apple の識別子で確かめ、タイムラインにすること")
+            func showsTimeline() async throws {
+                let destination = try await session.destinationOnOpen()
 
                 #expect(destination == .timeline)
                 #expect(device.appleCredentials.checkedAppleUserIds == ["apple-user-1"])
             }
+        }
 
-            @Test("初回の取得を終えていなければ、読み込み中のタイムラインにすること")
+        @Suite("セッションがあり、Apple の資格情報が有効で、初回の取得を終えていないとき")
+        struct WithValidCredentialWithoutInitialPull {
+            let session: AccountSession
+
+            init() throws {
+                session = try AccountDevice.signedIn(hasCompletedInitialPull: false).session()
+            }
+
+            @Test("読み込み中のタイムラインにすること")
             func showsLoadingTimeline() async throws {
-                let device = try AccountDevice.signedIn(hasCompletedInitialPull: false)
-
-                let destination = try await device.session().destinationOnOpen()
+                let destination = try await session.destinationOnOpen()
 
                 #expect(destination == .loadingTimeline)
             }
         }
 
-        @Suite("Apple の資格情報が取り消されているとき")
+        @Suite("Apple の資格情報が revoked のとき")
         struct WithRevokedCredential {
-            @Test("revoked なら、セッションを捨て、印を残し、観測の送り先を外して、サインインし直しの画面にすること")
-            func discardsSessionOnRevoked() async throws {
-                let device = try AccountDevice.signedIn(
-                    pendingWrites: [.fixtureCreating()], appleCredentials: .ok(.revoked))
+            let device: AccountDevice
+            let session: AccountSession
 
-                let destination = try await device.session().destinationOnOpen()
+            init() throws {
+                device = try .signedIn(
+                    pendingWrites: [.fixtureCreating()], appleCredentials: .ok(.revoked))
+                session = device.session()
+            }
+
+            @Test("送り待ちがあるときの、サインインし直しの画面にすること")
+            func showsSignInAgain() async throws {
+                let destination = try await session.destinationOnOpen()
 
                 #expect(destination == .signIn(.signInAgain(hasPendingWrites: true)))
+            }
+
+            @Test("セッションを捨て、印を残し、送り待ちは残すこと")
+            func discardsSessionAndKeepsPendingWrites() async throws {
+                _ = try await session.destinationOnOpen()
+
                 #expect(device.keychain.token == nil)
                 #expect(device.deviceStore.hasMark)
-                #expect(device.analytics.resetCount == 1)
-                #expect(device.errorReporting.clearUserCount == 1)
                 #expect(device.syncStore.pending.count == 1)
             }
 
-            @Test("notFound でも、サインインし直しの画面にすること")
-            func discardsSessionOnNotFound() async throws {
-                let device = try AccountDevice.signedIn(appleCredentials: .ok(.notFound))
+            @Test("PostHog をリセットし、Sentry の user を外すこと")
+            func resetsObservation() async throws {
+                _ = try await session.destinationOnOpen()
 
-                let destination = try await device.session().destinationOnOpen()
+                #expect(device.analytics.resetCount == 1)
+                #expect(device.errorReporting.clearUserCount == 1)
+            }
+        }
+
+        @Suite("Apple の資格情報が notFound のとき")
+        struct WithNotFoundCredential {
+            let device: AccountDevice
+            let session: AccountSession
+
+            init() throws {
+                device = try .signedIn(appleCredentials: .ok(.notFound))
+                session = device.session()
+            }
+
+            @Test("セッションを捨てて、サインインし直しの画面にすること")
+            func discardsSession() async throws {
+                let destination = try await session.destinationOnOpen()
 
                 #expect(destination == .signIn(.signInAgain(hasPendingWrites: false)))
                 #expect(device.keychain.token == nil)
             }
         }
 
-        @Suite("Apple の資格情報を確かめられないとき")
+        @Suite("電波が無くて Apple の資格情報を確かめられないとき")
         struct WithUnverifiableCredential {
-            @Test("電波が無くて確かめられなければ、セッションを残してタイムラインにすること")
-            func keepsSession() async throws {
-                let device = try AccountDevice.signedIn(
-                    appleCredentials: .error(URLError(.notConnectedToInternet)))
+            let device: AccountDevice
+            let session: AccountSession
 
-                let destination = try await device.session().destinationOnOpen()
+            init() throws {
+                device = try .signedIn(appleCredentials: .error(URLError(.notConnectedToInternet)))
+                session = device.session()
+            }
+
+            @Test("タイムラインにし、セッションも印も変えないこと")
+            func keepsSession() async throws {
+                let destination = try await session.destinationOnOpen()
 
                 #expect(destination == .timeline)
                 #expect(device.keychain.token == "session-1")
@@ -129,14 +193,27 @@ struct AccountSessionTests {
     struct AfterSync {
         @Suite("サーバーがセッションを受け付けなかったとき")
         struct SessionExpired {
-            @Test("セッションを捨て、印を残し、送り待ちは残して、サインインし直しの画面にすること")
-            func discardsSession() async throws {
-                let device = try AccountDevice.signedIn(pendingWrites: [.fixtureCreating()])
-                let result = SyncResult(rejectedWrites: [], ending: .stopped(.sessionExpired))
+            let device: AccountDevice
+            let session: AccountSession
+            let result: SyncResult
 
-                let destination = try await device.session().destination(afterSync: result)
+            init() throws {
+                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                session = device.session()
+                result = SyncResult(rejectedWrites: [], ending: .stopped(.sessionExpired))
+            }
+
+            @Test("送り待ちがあるときの、サインインし直しの画面にすること")
+            func showsSignInAgain() async throws {
+                let destination = try await session.destination(afterSync: result)
 
                 #expect(destination == .signIn(.signInAgain(hasPendingWrites: true)))
+            }
+
+            @Test("セッションを捨て、印を残し、送り待ちは残すこと")
+            func discardsSessionAndKeepsPendingWrites() async throws {
+                _ = try await session.destination(afterSync: result)
+
                 #expect(device.keychain.token == nil)
                 #expect(device.deviceStore.hasMark)
                 #expect(device.syncStore.pending.count == 1)
@@ -145,12 +222,19 @@ struct AccountSessionTests {
 
         @Suite("電波が無くて更新できなかったとき")
         struct Unavailable {
+            let device: AccountDevice
+            let session: AccountSession
+            let result: SyncResult
+
+            init() throws {
+                device = try .signedIn()
+                session = device.session()
+                result = SyncResult(rejectedWrites: [], ending: .stopped(.unavailable))
+            }
+
             @Test("サインインの画面を出さず、セッションも印も変えないこと")
             func keepsSession() async throws {
-                let device = try AccountDevice.signedIn()
-                let result = SyncResult(rejectedWrites: [], ending: .stopped(.unavailable))
-
-                let destination = try await device.session().destination(afterSync: result)
+                let destination = try await session.destination(afterSync: result)
 
                 #expect(destination == .timeline)
                 #expect(device.keychain.token == "session-1")
@@ -245,7 +329,7 @@ struct AccountSessionTests {
                 #expect(device.deviceStore.account?.accountId == "account-2")
             }
 
-            @Test("観測の送り先を外すこと")
+            @Test("PostHog をリセットし、Sentry の user を外すこと")
             func resetsObservation() async throws {
                 _ = try await session.signIn(with: SigningIn.credential)
 
@@ -254,7 +338,7 @@ struct AccountSessionTests {
             }
         }
 
-        @Suite("前のアカウントと同じアカウントのとき")
+        @Suite("前のアカウントと同じアカウントで、初回の取得を終えているとき")
         struct WithSameAccount {
             let device: AccountDevice
             let session: AccountSession
@@ -275,7 +359,7 @@ struct AccountSessionTests {
                 #expect(device.keychain.token == "session-2")
             }
 
-            @Test("初回の取得を終えていれば、タイムラインにすること")
+            @Test("タイムラインにすること")
             func showsTimeline() async throws {
                 let outcome = try await session.signIn(with: SigningIn.credential)
 
@@ -290,26 +374,37 @@ struct AccountSessionTests {
             }
         }
 
-        @Suite("サインインし直しの印があるとき")
+        @Suite("同じアカウントで、サインインし直しの印があるとき")
         struct WithSignInAgainMark {
-            @Test("同じアカウントでサインインできたら、印を消すこと")
-            func clearsMark() async throws {
-                let device = try AccountDevice.signedIn()
-                try await device.deviceStore.setSignInAgainMark()
+            let device: AccountDevice
+            let session: AccountSession
 
-                _ = try await device.session().signIn(with: SigningIn.credential)
+            init() async throws {
+                device = try .signedIn()
+                try await device.deviceStore.setSignInAgainMark()
+                session = device.session()
+            }
+
+            @Test("印を消すこと")
+            func clearsMark() async throws {
+                _ = try await session.signIn(with: SigningIn.credential)
 
                 #expect(!device.deviceStore.hasMark)
             }
         }
 
-        @Suite("サインインできなかったとき")
-        struct Failing {
-            @Test("サーバーがトークンかコードを受け付けなければ、その他の失敗を返し、何も保存しないこと")
-            func rejectedByServer() async throws {
-                let device = AccountDevice.signedOut(hasSignInAgainMark: true)
-                let session = device.session(transport: .account(startStatus: .unauthorized))
+        @Suite("サーバーがトークンかコードを受け付けなかったとき")
+        struct RejectedByServer {
+            let device: AccountDevice
+            let session: AccountSession
 
+            init() {
+                device = .signedOut(hasSignInAgainMark: true)
+                session = device.session(transport: .account(startStatus: .unauthorized))
+            }
+
+            @Test("その他の失敗を返し、何も保存しないこと")
+            func failsWithoutSaving() async throws {
                 let outcome = try await session.signIn(with: SigningIn.credential)
 
                 #expect(outcome == .failed(.other))
@@ -317,36 +412,62 @@ struct AccountSessionTests {
                 #expect(device.deviceStore.account == nil)
                 #expect(device.deviceStore.hasMark)
             }
+        }
 
-            @Test("電波が無ければ、つながらない失敗を返し、端末のものを消さないこと")
-            func offline() async throws {
-                let device = try AccountDevice.signedIn()
-                let session = device.session(
-                    transport: .error(URLError(.notConnectedToInternet)))
+        @Suite("電波が無いとき")
+        struct Offline {
+            let device: AccountDevice
+            let session: AccountSession
 
+            init() throws {
+                device = try .signedIn()
+                session = device.session(transport: .error(URLError(.notConnectedToInternet)))
+            }
+
+            @Test("つながらない失敗を返すこと")
+            func failsAsUnreachable() async throws {
                 let outcome = try await session.signIn(with: SigningIn.credential)
 
                 #expect(outcome == .failed(.unreachable))
+            }
+
+            @Test("端末のものを消さず、セッションも変えないこと")
+            func keepsData() async throws {
+                _ = try await session.signIn(with: SigningIn.credential)
+
                 #expect(device.syncStore.eraseAllCount == 0)
                 #expect(device.keychain.token == "session-1")
             }
+        }
 
-            @Test("時間切れでも、つながらない失敗を返すこと")
-            func timedOut() async throws {
-                let device = AccountDevice.signedOut()
-                let session = device.session(transport: .error(URLError(.timedOut)))
+        @Suite("時間切れのとき")
+        struct TimedOut {
+            let session: AccountSession
 
+            init() {
+                session = AccountDevice.signedOut().session(
+                    transport: .error(URLError(.timedOut)))
+            }
+
+            @Test("つながらない失敗を返すこと")
+            func failsAsUnreachable() async throws {
                 let outcome = try await session.signIn(with: SigningIn.credential)
 
                 #expect(outcome == .failed(.unreachable))
             }
+        }
 
-            @Test("サーバーが失敗したら、その他の失敗を返すこと")
-            func serverFailure() async throws {
-                let device = AccountDevice.signedOut()
-                let session = device.session(
+        @Suite("サーバーが失敗したとき")
+        struct ServerFailure {
+            let session: AccountSession
+
+            init() {
+                session = AccountDevice.signedOut().session(
                     transport: .account(startStatus: .internalServerError))
+            }
 
+            @Test("その他の失敗を返すこと")
+            func failsAsOther() async throws {
                 let outcome = try await session.signIn(with: SigningIn.credential)
 
                 #expect(outcome == .failed(.other))
@@ -405,11 +526,17 @@ struct AccountSessionTests {
 
         @Suite("PostHog の列が送り切れないとき")
         struct AnalyticsNeverFlushes {
+            let device: AccountDevice
+            let session: AccountSession
+
+            init() throws {
+                device = try .signedIn(analytics: { .neverFlushes(log: $0) })
+                session = device.session()
+            }
+
             @Test("諦めて、削除を進めること")
             func givesUpFlushing() async throws {
-                let device = try AccountDevice.signedIn(analytics: { .neverFlushes(log: $0) })
-
-                let outcome = try await device.session().deleteAccount()
+                let outcome = try await session.deleteAccount()
 
                 #expect(outcome == .deleted)
                 #expect(device.analytics.flushCount == 1)
@@ -417,79 +544,113 @@ struct AccountSessionTests {
             }
         }
 
-        @Suite("削除できなかったとき")
-        struct NotDeleted {
-            @Test("電波が無ければ、つながらない結果を返し、端末では何も消さないこと")
-            func offline() async throws {
-                let device = try AccountDevice.signedIn(pendingWrites: [.fixtureCreating()])
-                let session = device.session(
-                    transport: .error(URLError(.notConnectedToInternet)))
+        @Suite("電波が無いとき")
+        struct Offline {
+            let device: AccountDevice
+            let session: AccountSession
 
+            init() throws {
+                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                session = device.session(transport: .error(URLError(.notConnectedToInternet)))
+            }
+
+            @Test("つながらない結果を返すこと")
+            func returnsUnreachable() async throws {
                 let outcome = try await session.deleteAccount()
 
                 #expect(outcome == .unreachable)
-                NotDeleted.expectNothingErased(device)
             }
 
-            @Test("時間切れでも、つながらない結果を返し、端末では何も消さないこと")
-            func timedOut() async throws {
-                let device = try AccountDevice.signedIn(pendingWrites: [.fixtureCreating()])
-                let session = device.session(transport: .error(URLError(.timedOut)))
+            @Test("端末では何も消さないこと")
+            func erasesNothing() async throws {
+                _ = try await session.deleteAccount()
 
+                device.expectNothingErased()
+            }
+        }
+
+        @Suite("時間切れのとき")
+        struct TimedOut {
+            let device: AccountDevice
+            let session: AccountSession
+
+            init() throws {
+                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                session = device.session(transport: .error(URLError(.timedOut)))
+            }
+
+            @Test("つながらない結果を返し、端末では何も消さないこと")
+            func returnsUnreachableAndErasesNothing() async throws {
                 let outcome = try await session.deleteAccount()
 
                 #expect(outcome == .unreachable)
-                NotDeleted.expectNothingErased(device)
+                device.expectNothingErased()
+            }
+        }
+
+        @Suite("回数の歯止め（429）にかかったとき")
+        struct RateLimited {
+            let device: AccountDevice
+            let session: AccountSession
+
+            init() throws {
+                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                session = device.session(transport: .account(deleteStatus: .tooManyRequests))
             }
 
-            @Test("回数の歯止め（429）なら、あとでやり直す結果を返し、端末では何も消さないこと")
-            func rateLimited() async throws {
-                let device = try AccountDevice.signedIn(pendingWrites: [.fixtureCreating()])
-                let session = device.session(transport: .account(deleteStatus: .tooManyRequests))
-
+            @Test("あとでやり直す結果を返し、端末では何も消さないこと")
+            func returnsRetryLaterAndErasesNothing() async throws {
                 let outcome = try await session.deleteAccount()
 
                 #expect(outcome == .retryLater)
-                NotDeleted.expectNothingErased(device)
+                device.expectNothingErased()
+            }
+        }
+
+        @Suite("サーバーが失敗したとき")
+        struct ServerFailure {
+            let device: AccountDevice
+            let session: AccountSession
+
+            init() throws {
+                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                session = device.session(transport: .account(deleteStatus: .internalServerError))
             }
 
-            @Test("サーバーが失敗したら、あとでやり直す結果を返し、端末では何も消さないこと")
-            func serverFailure() async throws {
-                let device = try AccountDevice.signedIn(pendingWrites: [.fixtureCreating()])
-                let session = device.session(
-                    transport: .account(deleteStatus: .internalServerError))
-
+            @Test("あとでやり直す結果を返し、端末では何も消さないこと")
+            func returnsRetryLaterAndErasesNothing() async throws {
                 let outcome = try await session.deleteAccount()
 
                 #expect(outcome == .retryLater)
-                NotDeleted.expectNothingErased(device)
+                device.expectNothingErased()
+            }
+        }
+
+        @Suite("サーバーがセッションを受け付けなかったとき")
+        struct SessionExpired {
+            let device: AccountDevice
+            let session: AccountSession
+
+            init() throws {
+                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                session = device.session(transport: .account(deleteStatus: .unauthorized))
             }
 
-            @Test("セッションを受け付けなければ、サインインし直しの画面にし、記録と送り待ちは消さないこと")
-            func sessionExpired() async throws {
-                let device = try AccountDevice.signedIn(pendingWrites: [.fixtureCreating()])
-                let session = device.session(transport: .account(deleteStatus: .unauthorized))
-
+            @Test("送り待ちがあるときの、サインインし直しの画面にすること")
+            func returnsSignInRequired() async throws {
                 let outcome = try await session.deleteAccount()
 
                 #expect(outcome == .signInRequired(.signIn(.signInAgain(hasPendingWrites: true))))
+            }
+
+            @Test("セッションを捨て、印を残し、記録と送り待ちは消さないこと")
+            func discardsSessionAndKeepsRecords() async throws {
+                _ = try await session.deleteAccount()
+
                 #expect(device.keychain.token == nil)
                 #expect(device.deviceStore.hasMark)
                 #expect(device.syncStore.eraseAllCount == 0)
                 #expect(device.syncStore.pending.count == 1)
-            }
-
-            private static func expectNothingErased(_ device: AccountDevice) {
-                #expect(device.syncStore.eraseAllCount == 0)
-                #expect(device.syncStore.records.count == 1)
-                #expect(device.syncStore.pending.count == 1)
-                #expect(device.keychain.token == "session-1")
-                #expect(device.deviceStore.account == AccountDevice.previousAccount)
-                #expect(device.backgroundTransfers.cancelAndDeleteCount == 0)
-                #expect(device.healthAnchors.deleteCount == 0)
-                #expect(!device.deviceStore.didEraseAccountBoundState)
-                #expect(device.analytics.resetCount == 0)
-                #expect(device.errorReporting.clearUserCount == 0)
             }
         }
     }
