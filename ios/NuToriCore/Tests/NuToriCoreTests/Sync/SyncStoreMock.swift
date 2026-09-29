@@ -7,22 +7,33 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
     private(set) var state: SyncState?
     private(set) var appliedChanges: [PulledChanges] = []
     private(set) var eraseAllCount = 0
+    private(set) var healthState: HealthSyncState
+    private(set) var appliedHealthImports: [HealthImportBatch] = []
 
     static func ok(
         records: [WeightRecord] = [],
         pendingWrites: [PendingWrite] = [],
-        state: SyncState? = nil
+        state: SyncState? = nil,
+        healthState: HealthSyncState = .initial
     ) -> SyncStoreMock {
-        SyncStoreMock(records: records, pending: pendingWrites, state: state, failure: nil)
+        SyncStoreMock(
+            records: records, pending: pendingWrites, state: state, healthState: healthState,
+            failure: nil)
     }
 
     static func error(_ error: any Error) -> SyncStoreMock {
-        SyncStoreMock(records: [], pending: [], state: nil, failure: error)
+        SyncStoreMock(
+            records: [], pending: [], state: nil, healthState: .initial, failure: error)
     }
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {
         try failIfNeeded()
         return records[id]
+    }
+
+    func weightRecords() async throws -> [WeightRecord] {
+        try failIfNeeded()
+        return Array(records.values)
     }
 
     func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws {
@@ -31,7 +42,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         pending.append(write)
     }
 
-    func pendingWrites() async throws -> [PendingWrite] {
+    func pendingWritesOldestFirst() async throws -> [PendingWrite] {
         try failIfNeeded()
         return pending
     }
@@ -64,6 +75,9 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         for record in changes.records {
             records[record.id] = record
         }
+        for recordId in changes.removedRecordIds {
+            records[recordId] = nil
+        }
         state = changes.state
         appliedChanges.append(changes)
     }
@@ -73,7 +87,28 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         records = [:]
         pending = []
         state = nil
+        healthState = .initial
         eraseAllCount += 1
+    }
+
+    func healthSyncState() async throws -> HealthSyncState {
+        try failIfNeeded()
+        return healthState
+    }
+
+    func saveHealthSyncState(_ state: HealthSyncState) async throws {
+        try failIfNeeded()
+        healthState = state
+    }
+
+    func applyHealthImport(_ batch: HealthImportBatch) async throws {
+        try failIfNeeded()
+        for record in batch.records {
+            records[record.id] = record
+        }
+        pending.append(contentsOf: batch.pendingWrites)
+        healthState = batch.state
+        appliedHealthImports.append(batch)
     }
 
     private let failure: (any Error)?
@@ -82,11 +117,13 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         records: [WeightRecord],
         pending: [PendingWrite],
         state: SyncState?,
+        healthState: HealthSyncState,
         failure: (any Error)?
     ) {
         self.records = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
         self.pending = pending
         self.state = state
+        self.healthState = healthState
         self.failure = failure
     }
 

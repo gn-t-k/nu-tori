@@ -81,7 +81,7 @@ public actor SyncEngine {
         async throws -> SyncResult.StopReason?
     {
         let maxWritesPerRequest = 500
-        let pending = try await store.pendingWrites()
+        let pending = try await store.pendingWritesOldestFirst()
         // 先の要求で作る書き込みが受け付けられず消した記録を、あとの要求の直す書き込みで戻さない
         var revertedRecordIds: Set<UUID> = []
         for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
@@ -136,18 +136,25 @@ public actor SyncEngine {
             }
             resolvedWriteIds.append(write.writeId)
             switch outcome {
-            case .applied, .ignoredDuplicate, .unknown:
+            case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
                 break
             case .rejected(let reason):
-                rejectedWrites.append(
-                    RejectedWrite(
-                        writeId: write.writeId,
-                        record: write.operation.record,
-                        reason: reason
-                    )
-                )
-                if revertedRecordIds.insert(write.operation.record.id).inserted {
-                    reversions.append(write.operation.reversion)
+                switch write.operation {
+                case .createWeightRecord(let record):
+                    rejectedWrites.append(
+                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
+                    if revertedRecordIds.insert(record.id).inserted {
+                        reversions.append(.remove(recordId: record.id))
+                    }
+                case .correctWeightRecord(let record, let previous):
+                    rejectedWrites.append(
+                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
+                    if revertedRecordIds.insert(record.id).inserted {
+                        reversions.append(.restore(previous))
+                    }
+                case .sourceDeletedWeightRecord:
+                    // 戻す記録も、画面に出す記録も無い。消すかどうかを決めるのはサーバーで、送り直さない
+                    break
                 }
             }
         }
@@ -161,7 +168,8 @@ public actor SyncEngine {
             do {
                 result = try await client.pullSyncChanges(
                     afterSequence: state.afterSequence,
-                    clientState: clientState(pendingWrites: try await store.pendingWrites()[...])
+                    clientState: clientState(
+                        pendingWrites: try await store.pendingWritesOldestFirst()[...])
                 )
             } catch is CancellationError {
                 throw CancellationError()
@@ -177,7 +185,11 @@ public actor SyncEngine {
                     startedOn: page.startedOn
                 )
                 try await store.apply(
-                    PulledChanges(records: page.changes.compactMap(\.weightRecord), state: state)
+                    PulledChanges(
+                        records: page.changes.compactMap(\.weightRecord),
+                        removedRecordIds: page.changes.compactMap(\.removedRecordId),
+                        state: state
+                    )
                 )
                 if !page.hasMore {
                     return nil
@@ -238,24 +250,8 @@ extension PendingWrite {
             .createWeightRecord(writeId: writeId, record: NewWeightRecord(record))
         case .correctWeightRecord(let record, previous: _):
             .updateWeightRecord(writeId: writeId, correction: WeightRecordCorrection(record))
-        }
-    }
-}
-
-extension PendingWrite.Operation {
-    fileprivate var record: WeightRecord {
-        switch self {
-        case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
-            record
-        }
-    }
-
-    fileprivate var reversion: RecordReversion {
-        switch self {
-        case .createWeightRecord(let record):
-            .remove(recordId: record.id)
-        case .correctWeightRecord(_, let previous):
-            .restore(previous)
+        case .sourceDeletedWeightRecord(let recordId):
+            .sourceDeletedWeightRecord(writeId: writeId, weightRecordId: recordId)
         }
     }
 }
@@ -264,7 +260,14 @@ extension SyncChange {
     fileprivate var weightRecord: WeightRecord? {
         switch self {
         case .weightRecord(let record): WeightRecord(record)
-        case .unknown: nil
+        case .weightRecordDeletion, .unknown: nil
+        }
+    }
+
+    fileprivate var removedRecordId: UUID? {
+        switch self {
+        case .weightRecordDeletion(let recordId): recordId
+        case .weightRecord, .unknown: nil
         }
     }
 }

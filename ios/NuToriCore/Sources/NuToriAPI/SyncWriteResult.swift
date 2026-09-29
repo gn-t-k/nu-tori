@@ -12,6 +12,8 @@ public struct SyncWriteResult: Sendable, Equatable {
     public enum Outcome: Sendable, Equatable {
         case applied
         case ignoredDuplicate
+        case ignoredTombstone
+        case keptCorrected
         /// 端末は送り直さない
         case rejected(RejectionReason)
         /// このアプリが知らない結果。サーバーが結果を足しても、古い版のアプリの同期が止まらないように持つ
