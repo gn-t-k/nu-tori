@@ -16,6 +16,7 @@ export const observeRequest = createMiddleware<{
     accountId: c.get("accountId"),
     route: `${c.req.method} ${routePath(c, -1)}`,
     status: c.res.status,
+    error: c.error?.name,
     durationMs: Date.now() - startedAt,
   });
 });

@@ -18,3 +18,5 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
   },
 );
+
+export type AccountDurableObject = InstanceType<typeof AccountDurableObject>;

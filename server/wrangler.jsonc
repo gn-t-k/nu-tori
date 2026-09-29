@@ -27,7 +27,7 @@
   "routes": [{ "pattern": "api-dev.nu-tori.app", "custom_domain": true }],
   "workers_dev": false,
   "preview_urls": false,
-  // observability は環境に受け継がれないので、本番にも書く
+  // 本番にも受け継がれる
   "observability": { "enabled": true },
   // Sign in with Apple の ID トークンの aud。アプリの Bundle ID（ios/NuTori.xcodeproj の PRODUCT_BUNDLE_IDENTIFIER）
   "vars": { "APPLE_BUNDLE_ID": "app.nu-tori", "SENTRY_ENVIRONMENT": "development" },
@@ -70,7 +70,6 @@
       "routes": [{ "pattern": "api.nu-tori.app", "custom_domain": true }],
       "workers_dev": false,
       "preview_urls": false,
-      "observability": { "enabled": true },
       "vars": { "APPLE_BUNDLE_ID": "app.nu-tori", "SENTRY_ENVIRONMENT": "production" },
       "ratelimits": [
         {
