@@ -235,9 +235,9 @@ extension PendingWrite {
     fileprivate var syncWrite: SyncWrite {
         switch operation {
         case .createWeightRecord(let record):
-            .createWeightRecord(writeId: writeId, record: SyncedWeightRecord(record))
+            .createWeightRecord(writeId: writeId, record: NewWeightRecord(record))
         case .correctWeightRecord(let record, previous: _):
-            .updateWeightRecord(writeId: writeId, record: SyncedWeightRecord(record))
+            .updateWeightRecord(writeId: writeId, correction: WeightRecordCorrection(record))
         }
     }
 }
@@ -269,27 +269,38 @@ extension SyncChange {
     }
 }
 
-extension SyncedWeightRecord {
+extension NewWeightRecord {
     fileprivate init(_ record: WeightRecord) {
         self.init(
             id: record.id,
             weightKilograms: record.kilograms,
             measuredAt: record.instant,
             timeZone: record.timeZone,
-            version: record.version,
             imported: record.inputSource.importedSource.map { source in
-                Imported(
+                SyncedWeightRecord.Imported(
                     sourceAppName: source.appName,
                     sourceBundleId: source.bundleId,
                     healthKitSampleId: source.healthKitSampleId,
                     bodyFat: source.bodyFat.map {
-                        Imported.BodyFat(
+                        SyncedWeightRecord.Imported.BodyFat(
                             percentage: $0.percentage,
                             healthKitSampleId: $0.healthKitSampleId
                         )
                     }
                 )
             }
+        )
+    }
+}
+
+extension WeightRecordCorrection {
+    fileprivate init(_ record: WeightRecord) {
+        self.init(
+            id: record.id,
+            weightKilograms: record.kilograms,
+            measuredAt: record.instant,
+            timeZone: record.timeZone,
+            version: record.version
         )
     }
 }
