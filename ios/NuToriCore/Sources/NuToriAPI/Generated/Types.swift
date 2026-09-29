@@ -22,6 +22,18 @@ internal protocol APIProtocol: Sendable {
     /// - Remark: HTTP `DELETE /v1/account`.
     /// - Remark: Generated from `#/paths//v1/account/delete(deleteAccount)`.
     func deleteAccount(_ input: Operations.DeleteAccount.Input) async throws -> Operations.DeleteAccount.Output
+    /// 端末の送り待ちをまとめて送る
+    ///
+    /// 書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる
+    ///
+    /// - Remark: HTTP `POST /v1/sync/writes`.
+    /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)`.
+    func pushSyncWrites(_ input: Operations.PushSyncWrites.Input) async throws -> Operations.PushSyncWrites.Output
+    /// 前回の続きからの変更を取りに行く
+    ///
+    /// - Remark: HTTP `GET /v1/sync/changes`.
+    /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)`.
+    func pullSyncChanges(_ input: Operations.PullSyncChanges.Input) async throws -> Operations.PullSyncChanges.Output
 }
 
 /// Convenience overloads for operation inputs.
@@ -45,6 +57,34 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//v1/account/delete(deleteAccount)`.
     internal func deleteAccount() async throws -> Operations.DeleteAccount.Output {
         try await deleteAccount(Operations.DeleteAccount.Input())
+    }
+    /// 端末の送り待ちをまとめて送る
+    ///
+    /// 書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる
+    ///
+    /// - Remark: HTTP `POST /v1/sync/writes`.
+    /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)`.
+    internal func pushSyncWrites(
+        headers: Operations.PushSyncWrites.Input.Headers = .init(),
+        body: Operations.PushSyncWrites.Input.Body
+    ) async throws -> Operations.PushSyncWrites.Output {
+        try await pushSyncWrites(Operations.PushSyncWrites.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// 前回の続きからの変更を取りに行く
+    ///
+    /// - Remark: HTTP `GET /v1/sync/changes`.
+    /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)`.
+    internal func pullSyncChanges(
+        query: Operations.PullSyncChanges.Input.Query,
+        headers: Operations.PullSyncChanges.Input.Headers = .init()
+    ) async throws -> Operations.PullSyncChanges.Output {
+        try await pullSyncChanges(Operations.PullSyncChanges.Input(
+            query: query,
+            headers: headers
+        ))
     }
 }
 

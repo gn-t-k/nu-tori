@@ -86,5 +86,5 @@ public struct NuToriAPIClient: Sendable {
         public let statusCode: Int
     }
 
-    private let client: Client
+    let client: Client
 }

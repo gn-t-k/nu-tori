@@ -12,5 +12,385 @@ import struct Foundation.Date
 #endif
 extension Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
-    internal enum Schemas {}
+    internal enum Schemas {
+        /// - Remark: Generated from `#/components/schemas/SyncWriteResult`.
+        internal struct SyncWriteResult: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/writeId`.
+            internal var writeId: Swift.String
+            /// applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
+            internal enum ResultPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case applied = "applied"
+                case ignoredDuplicate = "ignored_duplicate"
+                case rejected = "rejected"
+            }
+            /// applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
+            internal var result: Components.Schemas.SyncWriteResult.ResultPayload
+            /// result が rejected のときだけ付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
+            internal enum RejectionReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case outOfRange = "out_of_range"
+                case invalidTimeZone = "invalid_time_zone"
+                case versionTooLow = "version_too_low"
+                case recordNotFound = "record_not_found"
+                case recordBeforeStartedOn = "record_before_started_on"
+            }
+            /// result が rejected のときだけ付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
+            internal var rejectionReason: Components.Schemas.SyncWriteResult.RejectionReasonPayload?
+            /// Creates a new `SyncWriteResult`.
+            ///
+            /// - Parameters:
+            ///   - writeId:
+            ///   - result: applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった
+            ///   - rejectionReason: result が rejected のときだけ付く
+            internal init(
+                writeId: Swift.String,
+                result: Components.Schemas.SyncWriteResult.ResultPayload,
+                rejectionReason: Components.Schemas.SyncWriteResult.RejectionReasonPayload? = nil
+            ) {
+                self.writeId = writeId
+                self.result = result
+                self.rejectionReason = rejectionReason
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case writeId
+                case result
+                case rejectionReason
+            }
+        }
+        /// 作る書き込みと直す書き込み。type ごとに中身が違う
+        ///
+        /// - Remark: Generated from `#/components/schemas/SyncWrite`.
+        internal enum SyncWrite: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
+            case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateWeightRecordWrite`.
+            case updateWeightRecord(Components.Schemas.UpdateWeightRecordWrite)
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+            internal init(from decoder: any Swift.Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                let discriminator = try container.decode(
+                    Swift.String.self,
+                    forKey: ._type
+                )
+                switch discriminator {
+                case "create_weight_record":
+                    self = .createWeightRecord(try .init(from: decoder))
+                case "update_weight_record":
+                    self = .updateWeightRecord(try .init(from: decoder))
+                default:
+                    throw Swift.DecodingError.unknownOneOfDiscriminator(
+                        discriminatorKey: CodingKeys._type,
+                        discriminatorValue: discriminator,
+                        codingPath: decoder.codingPath
+                    )
+                }
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .createWeightRecord(value):
+                    try value.encode(to: encoder)
+                case let .updateWeightRecord(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite`.
+        internal struct CreateWeightRecordWrite: Codable, Hashable, Sendable {
+            /// 書き込みごとに端末で振る ID。冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case createWeightRecord = "create_weight_record"
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/type`.
+            internal var _type: Components.Schemas.CreateWeightRecordWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord`.
+            internal struct WeightRecordPayload: Codable, Hashable, Sendable {
+                /// 端末で振った体重記録の ID
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/id`.
+                internal var id: Swift.String
+                /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/weightKg`.
+                internal var weightKg: Swift.Double
+                /// 測った時刻。UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/measuredAt`.
+                internal var measuredAt: Swift.Int
+                /// 記録したときの IANA のタイムゾーン名
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/timeZone`.
+                internal var timeZone: Swift.String
+                /// ヘルスケアから取り込んだ記録だけが持つ
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported`.
+                internal struct ImportedPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/sourceAppName`.
+                    internal var sourceAppName: Swift.String
+                    /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/sourceBundleId`.
+                    internal var sourceBundleId: Swift.String
+                    /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/healthkitSampleUuid`.
+                    internal var healthkitSampleUuid: Swift.String
+                    /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/bodyFat`.
+                    internal struct BodyFatPayload: Codable, Hashable, Sendable {
+                        /// % の値（25.0）
+                        ///
+                        /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/bodyFat/percentage`.
+                        internal var percentage: Swift.Double
+                        /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/bodyFat/healthkitSampleUuid`.
+                        internal var healthkitSampleUuid: Swift.String
+                        /// Creates a new `BodyFatPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - percentage: % の値（25.0）
+                        ///   - healthkitSampleUuid:
+                        internal init(
+                            percentage: Swift.Double,
+                            healthkitSampleUuid: Swift.String
+                        ) {
+                            self.percentage = percentage
+                            self.healthkitSampleUuid = healthkitSampleUuid
+                        }
+                        internal enum CodingKeys: String, CodingKey {
+                            case percentage
+                            case healthkitSampleUuid
+                        }
+                    }
+                    /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/bodyFat`.
+                    internal var bodyFat: Components.Schemas.CreateWeightRecordWrite.WeightRecordPayload.ImportedPayload.BodyFatPayload?
+                    /// Creates a new `ImportedPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - sourceAppName:
+                    ///   - sourceBundleId:
+                    ///   - healthkitSampleUuid:
+                    ///   - bodyFat:
+                    internal init(
+                        sourceAppName: Swift.String,
+                        sourceBundleId: Swift.String,
+                        healthkitSampleUuid: Swift.String,
+                        bodyFat: Components.Schemas.CreateWeightRecordWrite.WeightRecordPayload.ImportedPayload.BodyFatPayload? = nil
+                    ) {
+                        self.sourceAppName = sourceAppName
+                        self.sourceBundleId = sourceBundleId
+                        self.healthkitSampleUuid = healthkitSampleUuid
+                        self.bodyFat = bodyFat
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case sourceAppName
+                        case sourceBundleId
+                        case healthkitSampleUuid
+                        case bodyFat
+                    }
+                }
+                /// ヘルスケアから取り込んだ記録だけが持つ
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported`.
+                internal var imported: Components.Schemas.CreateWeightRecordWrite.WeightRecordPayload.ImportedPayload?
+                /// Creates a new `WeightRecordPayload`.
+                ///
+                /// - Parameters:
+                ///   - id: 端末で振った体重記録の ID
+                ///   - weightKg:
+                ///   - measuredAt: 測った時刻。UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone: 記録したときの IANA のタイムゾーン名
+                ///   - imported: ヘルスケアから取り込んだ記録だけが持つ
+                internal init(
+                    id: Swift.String,
+                    weightKg: Swift.Double,
+                    measuredAt: Swift.Int,
+                    timeZone: Swift.String,
+                    imported: Components.Schemas.CreateWeightRecordWrite.WeightRecordPayload.ImportedPayload? = nil
+                ) {
+                    self.id = id
+                    self.weightKg = weightKg
+                    self.measuredAt = measuredAt
+                    self.timeZone = timeZone
+                    self.imported = imported
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case id
+                    case weightKg
+                    case measuredAt
+                    case timeZone
+                    case imported
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord`.
+            internal var weightRecord: Components.Schemas.CreateWeightRecordWrite.WeightRecordPayload
+            /// Creates a new `CreateWeightRecordWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 書き込みごとに端末で振る ID。冪等の鍵
+            ///   - _type:
+            ///   - weightRecord:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.CreateWeightRecordWrite._TypePayload,
+                weightRecord: Components.Schemas.CreateWeightRecordWrite.WeightRecordPayload
+            ) {
+                self.id = id
+                self._type = _type
+                self.weightRecord = weightRecord
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case weightRecord
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite`.
+        internal struct UpdateWeightRecordWrite: Codable, Hashable, Sendable {
+            /// 書き込みごとに端末で振る ID。冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case updateWeightRecord = "update_weight_record"
+            }
+            /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/type`.
+            internal var _type: Components.Schemas.UpdateWeightRecordWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord`.
+            internal struct WeightRecordPayload: Codable, Hashable, Sendable {
+                /// 端末で振った体重記録の ID
+                ///
+                /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/id`.
+                internal var id: Swift.String
+                /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/weightKg`.
+                internal var weightKg: Swift.Double
+                /// 測った時刻。UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/measuredAt`.
+                internal var measuredAt: Swift.Int
+                /// 記録したときの IANA のタイムゾーン名
+                ///
+                /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/timeZone`.
+                internal var timeZone: Swift.String
+                /// 直したあとの版。2 以上。届いた版と今の版 + 1 の大きいほうに決め直す
+                ///
+                /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/version`.
+                internal var version: Swift.Int
+                /// Creates a new `WeightRecordPayload`.
+                ///
+                /// - Parameters:
+                ///   - id: 端末で振った体重記録の ID
+                ///   - weightKg:
+                ///   - measuredAt: 測った時刻。UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone: 記録したときの IANA のタイムゾーン名
+                ///   - version: 直したあとの版。2 以上。届いた版と今の版 + 1 の大きいほうに決め直す
+                internal init(
+                    id: Swift.String,
+                    weightKg: Swift.Double,
+                    measuredAt: Swift.Int,
+                    timeZone: Swift.String,
+                    version: Swift.Int
+                ) {
+                    self.id = id
+                    self.weightKg = weightKg
+                    self.measuredAt = measuredAt
+                    self.timeZone = timeZone
+                    self.version = version
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case id
+                    case weightKg
+                    case measuredAt
+                    case timeZone
+                    case version
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord`.
+            internal var weightRecord: Components.Schemas.UpdateWeightRecordWrite.WeightRecordPayload
+            /// Creates a new `UpdateWeightRecordWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 書き込みごとに端末で振る ID。冪等の鍵
+            ///   - _type:
+            ///   - weightRecord:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.UpdateWeightRecordWrite._TypePayload,
+                weightRecord: Components.Schemas.UpdateWeightRecordWrite.WeightRecordPayload
+            ) {
+                self.id = id
+                self._type = _type
+                self.weightRecord = weightRecord
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case weightRecord
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SyncChange`.
+        internal struct SyncChange: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SyncChange/sequence`.
+            internal var sequence: Swift.Int
+            /// 記録の種類。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncChange/kind`.
+            internal var kind: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SyncChange/recordId`.
+            internal var recordId: Swift.String
+            /// kind ごとの中身。kind ごとにあとで解く
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncChange/record`.
+            internal struct RecordPayload: Codable, Hashable, Sendable {
+                /// A container of undocumented properties.
+                internal var additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer]
+                /// Creates a new `RecordPayload`.
+                ///
+                /// - Parameters:
+                ///   - additionalProperties: A container of undocumented properties.
+                internal init(additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer] = .init()) {
+                    self.additionalProperties = additionalProperties
+                }
+                internal init(from decoder: any Swift.Decoder) throws {
+                    additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                }
+                internal func encode(to encoder: any Swift.Encoder) throws {
+                    try encoder.encodeAdditionalProperties(additionalProperties)
+                }
+            }
+            /// kind ごとの中身。kind ごとにあとで解く
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncChange/record`.
+            internal var record: Components.Schemas.SyncChange.RecordPayload
+            /// Creates a new `SyncChange`.
+            ///
+            /// - Parameters:
+            ///   - sequence:
+            ///   - kind: 記録の種類。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）
+            ///   - recordId:
+            ///   - record: kind ごとの中身。kind ごとにあとで解く
+            internal init(
+                sequence: Swift.Int,
+                kind: Swift.String,
+                recordId: Swift.String,
+                record: Components.Schemas.SyncChange.RecordPayload
+            ) {
+                self.sequence = sequence
+                self.kind = kind
+                self.recordId = recordId
+                self.record = record
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case sequence
+                case kind
+                case recordId
+                case record
+            }
+        }
+    }
 }
