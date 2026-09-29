@@ -20,7 +20,7 @@
           },
           "result": {
             "type": "string",
-            "description": "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
+            "description": "applied は当てた（消えたという書き込みでは消した）、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、ignored_tombstone は削除の印があって捨てた、kept_corrected は元のサンプルが消えたが直してあるので残した、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
             "example": "applied"
           },
           "rejectionReason": {
@@ -40,16 +40,20 @@
           },
           {
             "$ref": "#/components/schemas/UpdateWeightRecordWrite"
+          },
+          {
+            "$ref": "#/components/schemas/SourceDeletedWeightRecordWrite"
           }
         ],
         "discriminator": {
           "propertyName": "type",
           "mapping": {
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
-            "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite"
+            "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
+            "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite"
           }
         },
-        "description": "作る書き込みと直す書き込み。type ごとに中身が違う"
+        "description": "作る書き込み、直す書き込み、元のサンプルが消えたという書き込み。type ごとに中身が違う"
       },
       "CreateWeightRecordWrite": {
         "type": "object",
@@ -196,6 +200,32 @@
           "weightRecord"
         ]
       },
+      "SourceDeletedWeightRecordWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "書き込みごとに端末で振る ID。冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "source_deleted_weight_record"
+            ]
+          },
+          "weightRecordId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "元のサンプルがヘルスケアで消えた体重記録の ID。消すかどうかはサーバーが決める（直した記録は残す）"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "weightRecordId"
+        ]
+      },
       "SyncChange": {
         "type": "object",
         "properties": {
@@ -204,7 +234,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "記録の種類。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）",
+            "description": "変更の種類。weight_record は体重記録、weight_record_deletion は削除の印（record は空）。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）",
             "example": "weight_record"
           },
           "recordId": {

@@ -14,6 +14,8 @@ public struct SyncWriteResult: Sendable, Equatable {
         case applied
         /// 同じ ID か同じサンプルの記録がすでにあって、サーバーが捨てた
         case ignoredDuplicate
+        case ignoredTombstone
+        case keptCorrected
         /// サーバーが受け付けなかった。端末は送り直さない
         case rejected(RejectionReason)
         /// このアプリが知らない結果。サーバーが結果を足しても、古い版のアプリの同期が止まらないように持つ

@@ -57,6 +57,24 @@ const updateWeightRecordWriteSchema = z
   })
   .openapi("UpdateWeightRecordWrite");
 
+const sourceDeletedWeightRecordWriteSchema = z
+  .object({
+    id: writeId,
+    type: z.literal("source_deleted_weight_record"),
+    weightRecordId: z.string().min(1).openapi({
+      description:
+        "元のサンプルがヘルスケアで消えた体重記録の ID。消すかどうかはサーバーが決める（直した記録は残す）",
+    }),
+  })
+  .openapi("SourceDeletedWeightRecordWrite");
+
 export const syncWriteSchema = z
-  .discriminatedUnion("type", [createWeightRecordWriteSchema, updateWeightRecordWriteSchema])
-  .openapi("SyncWrite", { description: "作る書き込みと直す書き込み。type ごとに中身が違う" });
+  .discriminatedUnion("type", [
+    createWeightRecordWriteSchema,
+    updateWeightRecordWriteSchema,
+    sourceDeletedWeightRecordWriteSchema,
+  ])
+  .openapi("SyncWrite", {
+    description:
+      "作る書き込み、直す書き込み、元のサンプルが消えたという書き込み。type ごとに中身が違う",
+  });

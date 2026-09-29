@@ -9,6 +9,7 @@ import { signInTestAccount } from "../testing";
 import { createWeightRecordWrite } from "./testing/create-weight-record-write";
 import { pullSyncChanges } from "./testing/pull-sync-changes";
 import { pushSyncWrites } from "./testing/push-sync-writes";
+import { sourceDeletedWeightRecordWrite } from "./testing/source-deleted-weight-record-write";
 import { updateWeightRecordWrite } from "./testing/update-weight-record-write";
 
 type PushResults = {
@@ -525,6 +526,268 @@ describe("同期", () => {
             startedOn: expect.any(String),
           });
         });
+      });
+    });
+  });
+
+  describe("直していない取り込みの体重記録の、元のサンプルが消えたという書き込みを送ったとき", () => {
+    let imported: ReturnType<typeof createWeightRecordWrite>;
+    let recordId: string;
+    let deletion: ReturnType<typeof sourceDeletedWeightRecordWrite>;
+    let response: Response;
+    let created: PullResult;
+    beforeEach(async () => {
+      imported = createWeightRecordWrite({
+        weightRecord: {
+          imported: {
+            sourceAppName: "Withings",
+            sourceBundleId: "com.withings.wiScaleNG",
+            healthkitSampleUuid: crypto.randomUUID(),
+            bodyFat: { percentage: 18.5, healthkitSampleUuid: crypto.randomUUID() },
+          },
+        },
+      });
+      recordId = String(imported.weightRecord["id"]);
+      await pushSyncWrites(sessionToken, { writes: [imported] });
+      created = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      deletion = sourceDeletedWeightRecordWrite(recordId);
+      response = await pushSyncWrites(sessionToken, { writes: [deletion] });
+    });
+
+    test("消したと書き込みごとの結果を返すこと", async () => {
+      expect({ status: response.status, body: await response.json() }).toEqual({
+        status: 200,
+        body: { results: [{ writeId: deletion.id, result: "applied" }] },
+      });
+    });
+
+    test("前回の続きから取りに行くと、削除の印が返ること", async () => {
+      const pulled = await (
+        await pullSyncChanges(sessionToken, { afterSequence: created.nextAfterSequence })
+      ).json<PullResult>();
+      expect(pulled.changes).toEqual([
+        {
+          sequence: expect.any(Number),
+          kind: "weight_record_deletion",
+          recordId,
+          record: {},
+        },
+      ]);
+    });
+
+    test("最初から取りに行くと、記録は返らず削除の印だけが返ること", async () => {
+      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      expect(pulled.changes.map(({ kind, recordId: id }) => ({ kind, recordId: id }))).toEqual([
+        { kind: "weight_record_deletion", recordId },
+      ]);
+    });
+
+    test("取り込みの子の行も消えること", async () => {
+      const rows = await readRows(
+        accountId,
+        `SELECT
+           (SELECT COUNT(*) FROM weight_records) AS records,
+           (SELECT COUNT(*) FROM imported_weight_records) AS imported_records,
+           (SELECT COUNT(*) FROM imported_body_fat_percentages) AS body_fat_percentages`,
+      );
+      expect(rows).toEqual([{ records: 0, imported_records: 0, body_fat_percentages: 0 }]);
+    });
+
+    describe("同じ書き込みを送り直したとき", () => {
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, { writes: [deletion] });
+      });
+
+      test("最初の結果を返すこと", async () => {
+        expect((await response.json<PushResults>()).results).toEqual([
+          { writeId: deletion.id, result: "applied" },
+        ]);
+      });
+    });
+
+    describe("別の端末から、同じ記録の2つめの消えたという書き込みを送ったとき", () => {
+      let secondResponse: Response;
+      let latest: PullResult;
+      beforeEach(async () => {
+        const afterFirstDeletion = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        secondResponse = await pushSyncWrites(sessionToken, {
+          writes: [sourceDeletedWeightRecordWrite(recordId)],
+        });
+        latest = await (
+          await pullSyncChanges(sessionToken, {
+            afterSequence: afterFirstDeletion.nextAfterSequence,
+          })
+        ).json<PullResult>();
+      });
+
+      test("捨てること", async () => {
+        expect((await secondResponse.json<PushResults>()).results[0]?.result).toBe(
+          "ignored_tombstone",
+        );
+      });
+
+      test("削除の印を、次に取りに行った端末に返し直すこと", () => {
+        expect(latest.changes.map(({ kind, recordId: id }) => ({ kind, recordId: id }))).toEqual([
+          { kind: "weight_record_deletion", recordId },
+        ]);
+      });
+    });
+
+    describe("削除の印がある ID への作る書き込みを送ったとき", () => {
+      let recreateResponse: Response;
+      let latest: PullResult;
+      beforeEach(async () => {
+        const afterDeletion = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        recreateResponse = await pushSyncWrites(sessionToken, {
+          writes: [
+            createWeightRecordWrite({ weightRecord: { id: recordId, imported: undefined } }),
+          ],
+        });
+        latest = await (
+          await pullSyncChanges(sessionToken, { afterSequence: afterDeletion.nextAfterSequence })
+        ).json<PullResult>();
+      });
+
+      test("捨てること", async () => {
+        expect((await recreateResponse.json<PushResults>()).results[0]?.result).toBe(
+          "ignored_tombstone",
+        );
+      });
+
+      test("記録を生き返らせず、削除の印を返し直すこと", () => {
+        expect(latest.changes.map(({ kind, recordId: id }) => ({ kind, recordId: id }))).toEqual([
+          { kind: "weight_record_deletion", recordId },
+        ]);
+      });
+    });
+
+    describe("削除の印がある ID への直す書き込みを送ったとき", () => {
+      let updateResponse: Response;
+      let latest: PullResult;
+      beforeEach(async () => {
+        const afterDeletion = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        updateResponse = await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId)],
+        });
+        latest = await (
+          await pullSyncChanges(sessionToken, { afterSequence: afterDeletion.nextAfterSequence })
+        ).json<PullResult>();
+      });
+
+      test("捨てること", async () => {
+        expect((await updateResponse.json<PushResults>()).results[0]?.result).toBe(
+          "ignored_tombstone",
+        );
+      });
+
+      test("削除の印を返し直すこと", () => {
+        expect(latest.changes.map(({ kind, recordId: id }) => ({ kind, recordId: id }))).toEqual([
+          { kind: "weight_record_deletion", recordId },
+        ]);
+      });
+    });
+  });
+
+  describe("直した体重記録の、元のサンプルが消えたという書き込みを送ったとき", () => {
+    let recordId: string;
+    let deletion: ReturnType<typeof sourceDeletedWeightRecordWrite>;
+    let response: Response;
+    let corrected: PullResult;
+    beforeEach(async () => {
+      const create = createWeightRecordWrite({
+        weightRecord: {
+          imported: {
+            sourceAppName: "Withings",
+            sourceBundleId: "com.withings.wiScaleNG",
+            healthkitSampleUuid: crypto.randomUUID(),
+          },
+        },
+      });
+      recordId = String(create.weightRecord["id"]);
+      await pushSyncWrites(sessionToken, { writes: [create, updateWeightRecordWrite(recordId)] });
+      corrected = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      deletion = sourceDeletedWeightRecordWrite(recordId);
+      response = await pushSyncWrites(sessionToken, { writes: [deletion] });
+    });
+
+    test("残したと返すこと", async () => {
+      expect((await response.json<PushResults>()).results).toEqual([
+        { writeId: deletion.id, result: "kept_corrected" },
+      ]);
+    });
+
+    test("記録をそのまま残し、変更を増やさないこと", async () => {
+      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      expect(pulled).toEqual({ ...corrected, startedOn: expect.any(String) });
+    });
+
+    describe("同じ書き込みを送り直したとき", () => {
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, { writes: [deletion] });
+      });
+
+      test("最初の結果を返すこと", async () => {
+        expect((await response.json<PushResults>()).results[0]?.result).toBe("kept_corrected");
+      });
+    });
+  });
+
+  describe("使い始める前の体重記録の、元のサンプルが消えたという書き込みを送ったとき", () => {
+    let recordId: string;
+    let response: Response;
+    beforeEach(async () => {
+      const create = createWeightRecordWrite({
+        weightRecord: { measuredAt: Date.UTC(2020, 0, 1) },
+      });
+      recordId = String(create.weightRecord["id"]);
+      await pushSyncWrites(sessionToken, { writes: [create] });
+      response = await pushSyncWrites(sessionToken, {
+        writes: [sourceDeletedWeightRecordWrite(recordId)],
+      });
+    });
+
+    test("消すこと", async () => {
+      expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
+    });
+
+    test("削除の印を返すこと", async () => {
+      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      expect(pulled.changes.map(({ kind }) => kind)).toEqual(["weight_record_deletion"]);
+    });
+  });
+
+  describe("知らない ID の、元のサンプルが消えたという書き込みを送ったとき", () => {
+    let recordId: string;
+    let response: Response;
+    beforeEach(async () => {
+      recordId = crypto.randomUUID();
+      response = await pushSyncWrites(sessionToken, {
+        writes: [sourceDeletedWeightRecordWrite(recordId)],
+      });
+    });
+
+    test("削除の印を残すこと", async () => {
+      expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
+      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      expect(pulled.changes.map(({ kind, recordId: id }) => ({ kind, recordId: id }))).toEqual([
+        { kind: "weight_record_deletion", recordId },
+      ]);
+    });
+
+    describe("あとから、その ID の作る書き込みが届いたとき", () => {
+      let createResponse: Response;
+      beforeEach(async () => {
+        createResponse = await pushSyncWrites(sessionToken, {
+          writes: [createWeightRecordWrite({ weightRecord: { id: recordId } })],
+        });
+      });
+
+      test("捨てて、消えた体重を生き返らせないこと", async () => {
+        expect((await createResponse.json<PushResults>()).results[0]?.result).toBe(
+          "ignored_tombstone",
+        );
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes.map(({ kind }) => kind)).toEqual(["weight_record_deletion"]);
       });
     });
   });

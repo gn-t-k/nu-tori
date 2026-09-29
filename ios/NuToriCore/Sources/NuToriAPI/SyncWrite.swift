@@ -6,4 +6,6 @@ public enum SyncWrite: Sendable, Equatable {
     case createWeightRecord(writeId: UUID, record: SyncedWeightRecord)
     /// 直す書き込み。版は 2 以上。取り込んだ記録の出どころは送らない
     case updateWeightRecord(writeId: UUID, record: SyncedWeightRecord)
+    /// 消すかどうかはサーバーが決める。直した記録は残る
+    case sourceDeletedWeightRecord(writeId: UUID, weightRecordId: UUID)
 }
