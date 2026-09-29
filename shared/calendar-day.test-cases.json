@@ -1,0 +1,50 @@
+[
+  {
+    "name": "東京で朝 7 時 12 分に記録した",
+    "instant": "2026-09-28T22:12:00Z",
+    "timeZone": "Asia/Tokyo",
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "0 時ちょうどに記録した",
+    "instant": "2026-09-28T15:00:00Z",
+    "timeZone": "Asia/Tokyo",
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "0 時の 1 秒前に記録した",
+    "instant": "2026-09-28T14:59:59Z",
+    "timeZone": "Asia/Tokyo",
+    "calendarDay": "2026-09-28"
+  },
+  {
+    "name": "東京の朝 7 時 12 分と同じ時刻に、ハワイで記録した",
+    "instant": "2026-09-28T22:12:00Z",
+    "timeZone": "Pacific/Honolulu",
+    "calendarDay": "2026-09-28"
+  },
+  {
+    "name": "UTC より 14 時間進んだタイムゾーンで記録した",
+    "instant": "2026-09-28T10:30:00Z",
+    "timeZone": "Pacific/Kiritimati",
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "30 分ずれたタイムゾーンの 0 時ちょうどに記録した",
+    "instant": "2026-09-28T18:30:00Z",
+    "timeZone": "Asia/Kolkata",
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "夏時間が始まった次の日の 0 時 30 分に記録した",
+    "instant": "2026-03-09T04:30:00Z",
+    "timeZone": "America/New_York",
+    "calendarDay": "2026-03-09"
+  },
+  {
+    "name": "大みそかの次の 0 時に記録した",
+    "instant": "2026-12-31T15:00:00Z",
+    "timeZone": "Asia/Tokyo",
+    "calendarDay": "2027-01-01"
+  }
+]

@@ -1,0 +1,4 @@
+{
+  "weightKilograms": { "minimum": 20.0, "maximum": 300.0 },
+  "bodyFatPercentage": { "minimum": 1.0, "maximum": 75.0 }
+}

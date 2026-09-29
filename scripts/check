@@ -71,6 +71,23 @@ check_ios() {
         return 1
     fi
 
+    step "両方に置く決めごとの Swift のファイルが shared/ と合っているか"
+    local shared_rules="$ios/NuToriCore/Sources/NuToriCore/Generated"
+    output="$(mktemp -d)"
+    if ! log="$(swift run --package-path "$ios/SharedRulesGenerator" -c release \
+        SharedRulesGenerator "$root/shared" "$output" 2>&1)"; then
+        echo "$log" >&2
+        return 1
+    fi
+    if $fix; then
+        rm -rf "$shared_rules"
+        cp -R "$output" "$shared_rules"
+    fi
+    if ! diff -ru "$shared_rules" "$output"; then
+        echo "ios/NuToriCore/Sources/NuToriCore/Generated が古い。scripts/check ios --fix で書き出し直す" >&2
+        return 1
+    fi
+
     step "Xcode のプロジェクトの Package.resolved が NuToriCore と同じか"
     local resolved="$ios/NuTori.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
     if $fix; then
@@ -158,7 +175,7 @@ print_usage() {
     cat << 'USAGE'
 使い方: scripts/check [ios | ios-app | server] [--fix]
   引数なし  ios と server
-  ios       整形、Lint、API のクライアントが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
+  ios       整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app   ロジックのパッケージのテストと、アプリのビルドとテスト（macOS だけ）
   server    整形、Lint、型検査、OpenAPI の文書が最新か、テスト
   --fix     直せるものを直してから確かめる

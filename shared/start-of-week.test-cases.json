@@ -1,0 +1,8 @@
+[
+  { "name": "月曜", "calendarDay": "2026-09-28", "startOfWeek": "2026-09-28" },
+  { "name": "木曜", "calendarDay": "2026-09-24", "startOfWeek": "2026-09-21" },
+  { "name": "日曜", "calendarDay": "2026-10-04", "startOfWeek": "2026-09-28" },
+  { "name": "月をまたぐ週の木曜", "calendarDay": "2026-10-01", "startOfWeek": "2026-09-28" },
+  { "name": "年をまたぐ週の金曜", "calendarDay": "2027-01-01", "startOfWeek": "2026-12-28" },
+  { "name": "うるう日をまたぐ週の水曜", "calendarDay": "2028-03-01", "startOfWeek": "2028-02-28" }
+]
