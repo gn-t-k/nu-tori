@@ -13,7 +13,6 @@ public struct PendingWrite: Sendable, Equatable {
 
     public enum Operation: Sendable, Equatable {
         case createWeightRecord(WeightRecord)
-        /// previous は、直す前に手元にあった記録。サーバーが受け付けなかったときに戻す先
         case correctWeightRecord(WeightRecord, previous: WeightRecord)
     }
 }

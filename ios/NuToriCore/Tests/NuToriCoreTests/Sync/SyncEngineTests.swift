@@ -157,8 +157,8 @@ struct SyncEngineTests {
 
                 let bodies = try transport.pushBodies
                 #expect(bodies.count == 1)
-                #expect((bodies[0]["writes"] as? [Any])?.count == 3)
-                #expect(bodies[0]["isFinalBatch"] as? Bool == true)
+                #expect(bodies[0].writes.count == 3)
+                #expect(bodies[0].isFinalBatch)
                 #expect(store.pending.isEmpty)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
             }
@@ -168,13 +168,13 @@ struct SyncEngineTests {
                 _ = try await engine.sync()
 
                 let bodies = try transport.pushBodies
-                let clientState = try #require(bodies[0]["clientState"] as? NSDictionary)
-                #expect(clientState["timeZone"] as? String == "Asia/Tokyo")
-                #expect(clientState["pendingWriteCount"] as? Int == 3)
-                #expect(clientState["oldestPendingWriteAgeSeconds"] as? Int == 600)
-                #expect(clientState["pendingPhotoCount"] as? Int == 0)
+                let clientState = bodies[0].clientState
+                #expect(clientState.timeZone == "Asia/Tokyo")
+                #expect(clientState.pendingWriteCount == 3)
+                #expect(clientState.oldestPendingWriteAgeSeconds == 600)
+                #expect(clientState.pendingPhotoCount == 0)
                 #expect(
-                    clientState["deviceId"] as? String == "00000000-0000-4000-8000-0000000000D1")
+                    clientState.deviceId == "00000000-0000-4000-8000-0000000000D1")
             }
 
             @Test("送り切ってから取りに行くこと")
@@ -205,8 +205,8 @@ struct SyncEngineTests {
                 _ = try await engine.sync()
 
                 let bodies = try transport.pushBodies
-                #expect(bodies.map { ($0["writes"] as? [Any])?.count } == [500, 1])
-                #expect(bodies.map { $0["isFinalBatch"] as? Bool } == [false, true])
+                #expect(bodies.map(\.writes.count) == [500, 1])
+                #expect(bodies.map(\.isFinalBatch) == [false, true])
                 #expect(store.pending.isEmpty)
             }
         }

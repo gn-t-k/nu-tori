@@ -6,11 +6,10 @@ import Testing
 final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     private(set) var requests: [(request: HTTPRequest, body: String?)] = []
 
-    var pushBodies: [NSDictionary] {
+    var pushBodies: [PushRequestBody] {
         get throws {
             try requests.filter { $0.request.path == "/v1/sync/writes" }.map {
-                try #require(
-                    JSONSerialization.jsonObject(with: Data(($0.body ?? "").utf8)) as? NSDictionary)
+                try JSONDecoder().decode(PushRequestBody.self, from: Data(($0.body ?? "").utf8))
             }
         }
     }
@@ -90,11 +89,10 @@ final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             return (HTTPResponse(status: status), nil)
         }
         let writes =
-            (try? JSONSerialization.jsonObject(with: Data((body ?? "").utf8)) as? NSDictionary)?[
-                "writes"
-            ] as? [NSDictionary] ?? []
+            (try? JSONDecoder().decode(PushRequestBody.self, from: Data((body ?? "").utf8)))?
+            .writes ?? []
         let results = writes.enumerated().map { index, write in
-            let writeId = write["id"] as? String ?? ""
+            let writeId = write.id
             return rejectedWriteIndexes.contains(index)
                 ? #"{"writeId":"\#(writeId)","result":"rejected","rejectionReason":"out_of_range"}"#
                 : #"{"writeId":"\#(writeId)","result":"applied"}"#
