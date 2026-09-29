@@ -1,4 +1,4 @@
-/// 1回の読み取りで増えた分と消えた分。置き場は、次の3つを1つの保存で行う
+/// 置き場は、キャッシュへの記録の追加、送り待ちへの追加、アンカーの更新を、1つの保存で行う
 public struct HealthImportBatch: Sendable, Equatable {
     public let records: [WeightRecord]
     public let pendingWrites: [PendingWrite]
