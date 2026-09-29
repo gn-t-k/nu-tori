@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
-import { computeCalendarDay } from "../../compute-calendar-day";
-import { isTimeZoneName } from "../../is-time-zone-name";
-import { isWithinAcceptedRange } from "../../is-within-accepted-range";
-import type { SyncClientState } from "../sync-client-state";
-import type { SyncStore } from "../sync-store";
-import type { SyncWrite } from "../sync-write";
-import type { SyncWriteOutcome } from "../sync-write-outcome";
+import { computeCalendarDay } from "../compute-calendar-day";
+import { isTimeZoneName } from "../is-time-zone-name";
+import { isWithinAcceptedRange } from "../is-within-accepted-range";
+import type { SyncClientState } from "./sync-client-state";
+import type { SyncStore } from "./sync-store";
+import type { SyncWrite } from "./sync-write";
+import type { SyncWriteOutcome } from "./sync-write-outcome";
 
 // 書き込みを要求の中の順に、1つのトランザクションで当てる。結果は書き込みごとに返し、受け付けない書き込みがあってもほかは当てる
 export const applySyncWrites = (

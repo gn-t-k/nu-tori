@@ -15,10 +15,12 @@ extension NuToriAPIClientTests {
             let transport: ClientTransportMock
             let client: NuToriAPIClient
             let clientState: SyncClientState
+            let recordId: String
             let writes: [SyncWrite]
 
             init() {
                 clientState = .fixture()
+                recordId = "00000000-0000-4000-8000-0000000000B1"
                 writes = [
                     .createWeightRecord(
                         writeId: PushSyncWrites.createWriteId, record: .fixture()),
@@ -66,7 +68,6 @@ extension NuToriAPIClientTests {
                 #expect(sent.request.method == .post)
                 #expect(sent.request.path == "/v1/sync/writes")
                 #expect(sent.request.headerFields[.authorization] == "Bearer session-1")
-                let recordId = "00000000-0000-4000-8000-0000000000B1"
                 #expect(
                     try SentSyncWritesBody(json: sent.body ?? "")
                         == SentSyncWritesBody(
@@ -290,9 +291,24 @@ extension NuToriAPIClientTests {
             let transport: ClientTransportMock
             let client: NuToriAPIClient
             let clientState: SyncClientState
+            let expectedRecord: SyncedWeightRecord
 
             init() {
                 clientState = .fixture()
+                expectedRecord = SyncedWeightRecord.fixture(
+                    weightKilograms: 71.25,
+                    version: 3,
+                    imported: .init(
+                        sourceAppName: "Withings",
+                        sourceBundleId: "com.withings.wiScaleNG",
+                        healthKitSampleId: UUID(
+                            uuidString: "00000000-0000-4000-8000-0000000000c1")!,
+                        bodyFat: .init(
+                            percentage: 18.5,
+                            healthKitSampleId: UUID(
+                                uuidString: "00000000-0000-4000-8000-0000000000c2")!)
+                    )
+                )
                 transport = .ok(
                     json: """
                         {"changes":[
@@ -319,20 +335,6 @@ extension NuToriAPIClientTests {
                 let result = try await client.pullSyncChanges(
                     afterSequence: 3, clientState: clientState)
 
-                let expectedRecord = SyncedWeightRecord.fixture(
-                    weightKilograms: 71.25,
-                    version: 3,
-                    imported: .init(
-                        sourceAppName: "Withings",
-                        sourceBundleId: "com.withings.wiScaleNG",
-                        healthKitSampleId: UUID(
-                            uuidString: "00000000-0000-4000-8000-0000000000c1")!,
-                        bodyFat: .init(
-                            percentage: 18.5,
-                            healthKitSampleId: UUID(
-                                uuidString: "00000000-0000-4000-8000-0000000000c2")!)
-                    )
-                )
                 #expect(
                     result
                         == .pulled(
