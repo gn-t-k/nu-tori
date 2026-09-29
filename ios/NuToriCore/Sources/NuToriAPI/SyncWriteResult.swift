@@ -16,6 +16,8 @@ public struct SyncWriteResult: Sendable, Equatable {
         case ignoredDuplicate
         /// サーバーが受け付けなかった。端末は送り直さない
         case rejected(RejectionReason)
+        /// このアプリが知らない結果。サーバーが結果を足しても、古い版のアプリの同期が止まらないように持つ
+        case unknown(result: String)
     }
 
     public enum RejectionReason: Sendable, Equatable {
@@ -24,5 +26,7 @@ public struct SyncWriteResult: Sendable, Equatable {
         case versionTooLow
         case recordNotFound
         case recordBeforeStartedOn
+        /// このアプリが知らない理由
+        case unknown(reason: String)
     }
 }

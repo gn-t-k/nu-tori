@@ -7,37 +7,23 @@ import Testing
 extension NuToriAPIClientTests {
     @Suite("送り待ちを送る")
     struct PushSyncWrites {
-        static let clientState = SyncClientState(
-            deviceId: UUID(uuidString: "00000000-0000-4000-8000-0000000000d1")!,
-            timeZone: TimeZone(identifier: "Asia/Tokyo")!,
-            appVersion: "1.0.0",
-            osVersion: "26.0",
-            pendingWriteCount: 2,
-            oldestPendingWriteAge: .seconds(90),
-            pendingPhotoCount: 0
-        )
         static let createWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!
         static let updateWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a2")!
-        static let recordId = UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!
 
         @Suite("サーバーが書き込みごとの結果を返したとき")
         struct Pushed {
             let transport: ClientTransportMock
             let client: NuToriAPIClient
+            let clientState: SyncClientState
             let writes: [SyncWrite]
 
             init() {
-                let record = SyncedWeightRecord(
-                    id: PushSyncWrites.recordId,
-                    weightKilograms: 72.4,
-                    measuredAt: Date(timeIntervalSince1970: 1_767_225_600.123),
-                    timeZone: TimeZone(identifier: "Asia/Tokyo")!,
-                    version: 2,
-                    imported: nil
-                )
+                clientState = .fixture()
                 writes = [
-                    .createWeightRecord(writeId: PushSyncWrites.createWriteId, record: record),
-                    .updateWeightRecord(writeId: PushSyncWrites.updateWriteId, record: record),
+                    .createWeightRecord(
+                        writeId: PushSyncWrites.createWriteId, record: .fixture()),
+                    .updateWeightRecord(
+                        writeId: PushSyncWrites.updateWriteId, record: .fixture()),
                 ]
                 transport = .ok(
                     json: """
@@ -57,7 +43,7 @@ extension NuToriAPIClientTests {
             @Test("書き込みごとの結果を、送った順に返すこと")
             func returnsResultsPerWrite() async throws {
                 let result = try await client.pushSyncWrites(
-                    writes, isFinalBatch: true, clientState: PushSyncWrites.clientState)
+                    writes, isFinalBatch: true, clientState: clientState)
 
                 #expect(
                     result
@@ -74,7 +60,7 @@ extension NuToriAPIClientTests {
             @Test("書き込みと端末の状態と送り切った印を、セッションのトークンつきで POST /v1/sync/writes に送ること")
             func sendsWrites() async throws {
                 _ = try await client.pushSyncWrites(
-                    writes, isFinalBatch: true, clientState: PushSyncWrites.clientState)
+                    writes, isFinalBatch: true, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
                 #expect(sent.request.method == .post)
@@ -83,6 +69,19 @@ extension NuToriAPIClientTests {
                 let body = try #require(
                     JSONSerialization.jsonObject(with: Data((sent.body ?? "").utf8))
                         as? NSDictionary)
+                let record: NSDictionary = [
+                    "id": "00000000-0000-4000-8000-0000000000B1",
+                    "weightKg": 72.4,
+                    "measuredAt": 1_767_225_600_123,
+                    "timeZone": "Asia/Tokyo",
+                ]
+                let updatedRecord: NSDictionary = [
+                    "id": "00000000-0000-4000-8000-0000000000B1",
+                    "weightKg": 72.4,
+                    "measuredAt": 1_767_225_600_123,
+                    "timeZone": "Asia/Tokyo",
+                    "version": 2,
+                ]
                 let expected: NSDictionary = [
                     "clientState": [
                         "deviceId": "00000000-0000-4000-8000-0000000000D1",
@@ -98,23 +97,12 @@ extension NuToriAPIClientTests {
                         [
                             "id": PushSyncWrites.createWriteId.uuidString,
                             "type": "create_weight_record",
-                            "weightRecord": [
-                                "id": PushSyncWrites.recordId.uuidString,
-                                "weightKg": 72.4,
-                                "measuredAt": 1_767_225_600_123,
-                                "timeZone": "Asia/Tokyo",
-                            ],
+                            "weightRecord": record,
                         ],
                         [
                             "id": PushSyncWrites.updateWriteId.uuidString,
                             "type": "update_weight_record",
-                            "weightRecord": [
-                                "id": PushSyncWrites.recordId.uuidString,
-                                "weightKg": 72.4,
-                                "measuredAt": 1_767_225_600_123,
-                                "timeZone": "Asia/Tokyo",
-                                "version": 2,
-                            ],
+                            "weightRecord": updatedRecord,
                         ],
                     ],
                 ]
@@ -124,33 +112,41 @@ extension NuToriAPIClientTests {
 
         @Suite("ヘルスケアから取り込んだ記録を作る書き込みを送るとき")
         struct Imported {
-            @Test("出どころと体脂肪率を添えて送ること")
-            func sendsImportedSource() async throws {
-                let transport = ClientTransportMock.ok(json: #"{"results":[]}"#)
-                let client = NuToriAPIClient(
+            let transport: ClientTransportMock
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+            let write: SyncWrite
+
+            init() {
+                clientState = .fixture()
+                write = .createWeightRecord(
+                    writeId: PushSyncWrites.createWriteId,
+                    record: .fixture(
+                        version: 1,
+                        imported: .init(
+                            sourceAppName: "Withings",
+                            sourceBundleId: "com.withings.wiScaleNG",
+                            healthKitSampleId: UUID(
+                                uuidString: "00000000-0000-4000-8000-0000000000c1")!,
+                            bodyFat: .init(
+                                percentage: 18.5,
+                                healthKitSampleId: UUID(
+                                    uuidString: "00000000-0000-4000-8000-0000000000c2")!)
+                        )
+                    )
+                )
+                transport = .ok(json: #"{"results":[]}"#)
+                client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
                     sessionToken: { nil }
                 )
-                let sampleId = UUID(uuidString: "00000000-0000-4000-8000-0000000000c1")!
-                let bodyFatSampleId = UUID(uuidString: "00000000-0000-4000-8000-0000000000c2")!
-                let record = SyncedWeightRecord(
-                    id: PushSyncWrites.recordId,
-                    weightKilograms: 71.25,
-                    measuredAt: Date(timeIntervalSince1970: 1_767_225_600),
-                    timeZone: TimeZone(identifier: "Asia/Tokyo")!,
-                    version: 1,
-                    imported: .init(
-                        sourceAppName: "Withings",
-                        sourceBundleId: "com.withings.wiScaleNG",
-                        healthKitSampleId: sampleId,
-                        bodyFat: .init(percentage: 18.5, healthKitSampleId: bodyFatSampleId)
-                    )
-                )
+            }
 
+            @Test("出どころと体脂肪率を添えて送ること")
+            func sendsImportedSource() async throws {
                 _ = try await client.pushSyncWrites(
-                    [.createWeightRecord(writeId: PushSyncWrites.createWriteId, record: record)],
-                    isFinalBatch: false, clientState: PushSyncWrites.clientState)
+                    [write], isFinalBatch: false, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
                 let body = try #require(
@@ -162,56 +158,141 @@ extension NuToriAPIClientTests {
                     weightRecord["imported"] as? NSDictionary == [
                         "sourceAppName": "Withings",
                         "sourceBundleId": "com.withings.wiScaleNG",
-                        "healthkitSampleUuid": sampleId.uuidString,
+                        "healthkitSampleUuid": "00000000-0000-4000-8000-0000000000C1",
                         "bodyFat": [
                             "percentage": 18.5,
-                            "healthkitSampleUuid": bodyFatSampleId.uuidString,
+                            "healthkitSampleUuid": "00000000-0000-4000-8000-0000000000C2",
                         ],
                     ])
             }
         }
 
-        @Suite("サーバーが状態コードで断ったとき")
-        struct Declined {
-            @Test("書き込みが 500 件を超えたときの 400 を、要求が違うと返すこと")
-            func returnsBadRequest() async throws {
-                let client = Self.client(status: .badRequest)
+        @Suite("サーバーが知らない結果と理由を返したとき")
+        struct UnknownResult {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(
+                        json: """
+                            {"results":[
+                              {"writeId":"\(PushSyncWrites.createWriteId.uuidString)","result":"ignored_tombstone"},
+                              {"writeId":"\(PushSyncWrites.updateWriteId.uuidString)","result":"rejected","rejectionReason":"too_old"}
+                            ]}
+                            """
+                    ),
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("落ちずに、知らない結果と理由として返すこと")
+            func returnsUnknownOutcomes() async throws {
                 let result = try await client.pushSyncWrites(
-                    [], isFinalBatch: false, clientState: PushSyncWrites.clientState)
+                    [], isFinalBatch: false, clientState: clientState)
+
+                #expect(
+                    result
+                        == .pushed([
+                            SyncWriteResult(
+                                writeId: PushSyncWrites.createWriteId,
+                                outcome: .unknown(result: "ignored_tombstone")),
+                            SyncWriteResult(
+                                writeId: PushSyncWrites.updateWriteId,
+                                outcome: .rejected(.unknown(reason: "too_old"))),
+                        ])
+                )
+            }
+        }
+
+        @Suite("書き込みが 500 件を超えていたときなど、サーバーが 400 を返したとき")
+        struct BadRequest {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(status: .badRequest),
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("要求が違うと返すこと")
+            func returnsBadRequest() async throws {
+                let result = try await client.pushSyncWrites(
+                    [], isFinalBatch: false, clientState: clientState)
                 #expect(result == .badRequest)
+            }
+        }
+
+        @Suite("セッションが切れているとき")
+        struct SessionExpired {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(status: .unauthorized),
+                    sessionToken: { "session-1" }
+                )
             }
 
             @Test("セッションが切れていると返すこと")
             func returnsSessionExpired() async throws {
-                let client = Self.client(status: .unauthorized)
                 let result = try await client.pushSyncWrites(
-                    [], isFinalBatch: false, clientState: PushSyncWrites.clientState)
+                    [], isFinalBatch: false, clientState: clientState)
                 #expect(result == .sessionExpired)
+            }
+        }
+
+        @Suite("回数の歯止めにかかったとき")
+        struct RateLimited {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(status: .tooManyRequests),
+                    sessionToken: { "session-1" }
+                )
             }
 
             @Test("回数の歯止めにかかったと返すこと")
             func returnsRateLimited() async throws {
-                let client = Self.client(status: .tooManyRequests)
                 let result = try await client.pushSyncWrites(
-                    [], isFinalBatch: false, clientState: PushSyncWrites.clientState)
+                    [], isFinalBatch: false, clientState: clientState)
                 #expect(result == .rateLimited)
             }
+        }
 
-            @Test("文書に無い状態コードは、状態コードを添えて投げること")
-            func throwsUndocumentedStatus() async {
-                let client = Self.client(status: .internalServerError)
-                await #expect(throws: NuToriAPIClient.UndocumentedStatusError(statusCode: 500)) {
-                    try await client.pushSyncWrites(
-                        [], isFinalBatch: false, clientState: PushSyncWrites.clientState)
-                }
-            }
+        @Suite("文書に無い状態コードが返ったとき")
+        struct UndocumentedStatus {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
 
-            static func client(status: HTTPResponse.Status) -> NuToriAPIClient {
-                NuToriAPIClient(
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
-                    transport: ClientTransportMock.ok(status: status),
+                    transport: ClientTransportMock.ok(status: .internalServerError),
                     sessionToken: { "session-1" }
                 )
+            }
+
+            @Test("状態コードを添えて投げること")
+            func throwsWithStatusCode() async {
+                await #expect(throws: NuToriAPIClient.UndocumentedStatusError(statusCode: 500)) {
+                    try await client.pushSyncWrites(
+                        [], isFinalBatch: false, clientState: clientState)
+                }
             }
         }
     }
@@ -222,8 +303,10 @@ extension NuToriAPIClientTests {
         struct Pulled {
             let transport: ClientTransportMock
             let client: NuToriAPIClient
+            let clientState: SyncClientState
 
             init() {
+                clientState = .fixture()
                 transport = .ok(
                     json: """
                         {"changes":[
@@ -248,13 +331,10 @@ extension NuToriAPIClientTests {
             @Test("記録の種類ごとに中身を解いて返し、続きと使い始めた日を添えること")
             func returnsDecodedPage() async throws {
                 let result = try await client.pullSyncChanges(
-                    afterSequence: 3, clientState: PushSyncWrites.clientState)
+                    afterSequence: 3, clientState: clientState)
 
-                let expectedRecord = SyncedWeightRecord(
-                    id: PushSyncWrites.recordId,
+                let expectedRecord = SyncedWeightRecord.fixture(
                     weightKilograms: 71.25,
-                    measuredAt: Date(timeIntervalSince1970: 1_767_225_600.123),
-                    timeZone: TimeZone(identifier: "Asia/Tokyo")!,
                     version: 3,
                     imported: .init(
                         sourceAppName: "Withings",
@@ -286,8 +366,7 @@ extension NuToriAPIClientTests {
 
             @Test("前回の続きと端末の状態を、セッションのトークンつきで GET /v1/sync/changes に送ること")
             func sendsQuery() async throws {
-                _ = try await client.pullSyncChanges(
-                    afterSequence: 3, clientState: PushSyncWrites.clientState)
+                _ = try await client.pullSyncChanges(afterSequence: 3, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
                 let path = try #require(sent.request.path)
@@ -315,9 +394,12 @@ extension NuToriAPIClientTests {
 
         @Suite("使い始めた日がまだ決まっていないとき")
         struct WithoutStartedOn {
-            @Test("使い始めた日を nil にして返すこと")
-            func returnsNilStartedOn() async throws {
-                let client = NuToriAPIClient(
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(
                         json:
@@ -325,9 +407,12 @@ extension NuToriAPIClientTests {
                     ),
                     sessionToken: { "session-1" }
                 )
+            }
 
+            @Test("使い始めた日を nil にして返すこと")
+            func returnsNilStartedOn() async throws {
                 let result = try await client.pullSyncChanges(
-                    afterSequence: 0, clientState: PushSyncWrites.clientState)
+                    afterSequence: 0, clientState: clientState)
 
                 #expect(
                     result
@@ -338,30 +423,47 @@ extension NuToriAPIClientTests {
             }
         }
 
-        @Suite("サーバーが状態コードで断ったとき")
-        struct Declined {
+        @Suite("セッションが切れているとき")
+        struct SessionExpired {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(status: .unauthorized),
+                    sessionToken: { "session-1" }
+                )
+            }
+
             @Test("セッションが切れていると返すこと")
             func returnsSessionExpired() async throws {
-                let client = Self.client(status: .unauthorized)
                 let result = try await client.pullSyncChanges(
-                    afterSequence: 0, clientState: PushSyncWrites.clientState)
+                    afterSequence: 0, clientState: clientState)
                 #expect(result == .sessionExpired)
+            }
+        }
+
+        @Suite("回数の歯止めにかかったとき")
+        struct RateLimited {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(status: .tooManyRequests),
+                    sessionToken: { "session-1" }
+                )
             }
 
             @Test("回数の歯止めにかかったと返すこと")
             func returnsRateLimited() async throws {
-                let client = Self.client(status: .tooManyRequests)
                 let result = try await client.pullSyncChanges(
-                    afterSequence: 0, clientState: PushSyncWrites.clientState)
+                    afterSequence: 0, clientState: clientState)
                 #expect(result == .rateLimited)
-            }
-
-            static func client(status: HTTPResponse.Status) -> NuToriAPIClient {
-                NuToriAPIClient(
-                    serverURL: URL(string: "https://api.example")!,
-                    transport: ClientTransportMock.ok(status: status),
-                    sessionToken: { "session-1" }
-                )
             }
         }
     }

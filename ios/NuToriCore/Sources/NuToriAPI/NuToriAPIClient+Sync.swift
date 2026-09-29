@@ -161,23 +161,31 @@ extension SyncWriteResult {
         guard let writeId = UUID(uuidString: result.writeId) else {
             throw NuToriAPIClient.MalformedResponseError(reason: "書き込みの ID が UUID でない")
         }
-        switch (result.result, result.rejectionReason) {
-        case (.applied, _):
+        switch result.result {
+        case "applied":
             self.init(writeId: writeId, outcome: .applied)
-        case (.ignoredDuplicate, _):
+        case "ignored_duplicate":
             self.init(writeId: writeId, outcome: .ignoredDuplicate)
-        case (.rejected, .outOfRange?):
-            self.init(writeId: writeId, outcome: .rejected(.outOfRange))
-        case (.rejected, .invalidTimeZone?):
-            self.init(writeId: writeId, outcome: .rejected(.invalidTimeZone))
-        case (.rejected, .versionTooLow?):
-            self.init(writeId: writeId, outcome: .rejected(.versionTooLow))
-        case (.rejected, .recordNotFound?):
-            self.init(writeId: writeId, outcome: .rejected(.recordNotFound))
-        case (.rejected, .recordBeforeStartedOn?):
-            self.init(writeId: writeId, outcome: .rejected(.recordBeforeStartedOn))
-        case (.rejected, nil):
-            throw NuToriAPIClient.MalformedResponseError(reason: "受け付けなかった理由が無い")
+        case "rejected":
+            guard let reason = result.rejectionReason else {
+                throw NuToriAPIClient.MalformedResponseError(reason: "受け付けなかった理由が無い")
+            }
+            self.init(writeId: writeId, outcome: .rejected(RejectionReason(reason)))
+        default:
+            self.init(writeId: writeId, outcome: .unknown(result: result.result))
+        }
+    }
+}
+
+extension SyncWriteResult.RejectionReason {
+    fileprivate init(_ reason: String) {
+        switch reason {
+        case "out_of_range": self = .outOfRange
+        case "invalid_time_zone": self = .invalidTimeZone
+        case "version_too_low": self = .versionTooLow
+        case "record_not_found": self = .recordNotFound
+        case "record_before_started_on": self = .recordBeforeStartedOn
+        default: self = .unknown(reason: reason)
         }
     }
 }

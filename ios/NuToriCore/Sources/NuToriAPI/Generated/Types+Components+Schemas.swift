@@ -17,42 +17,24 @@ extension Components {
         internal struct SyncWriteResult: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/writeId`.
             internal var writeId: Swift.String
-            /// applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった
+            /// applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
-            internal enum ResultPayload: String, Codable, Hashable, Sendable, CaseIterable {
-                case applied = "applied"
-                case ignoredDuplicate = "ignored_duplicate"
-                case rejected = "rejected"
-            }
-            /// applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった
-            ///
-            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
-            internal var result: Components.Schemas.SyncWriteResult.ResultPayload
-            /// result が rejected のときだけ付く
+            internal var result: Swift.String
+            /// result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
-            internal enum RejectionReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
-                case outOfRange = "out_of_range"
-                case invalidTimeZone = "invalid_time_zone"
-                case versionTooLow = "version_too_low"
-                case recordNotFound = "record_not_found"
-                case recordBeforeStartedOn = "record_before_started_on"
-            }
-            /// result が rejected のときだけ付く
-            ///
-            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
-            internal var rejectionReason: Components.Schemas.SyncWriteResult.RejectionReasonPayload?
+            internal var rejectionReason: Swift.String?
             /// Creates a new `SyncWriteResult`.
             ///
             /// - Parameters:
             ///   - writeId:
-            ///   - result: applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった
-            ///   - rejectionReason: result が rejected のときだけ付く
+            ///   - result: applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
+            ///   - rejectionReason: result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ
             internal init(
                 writeId: Swift.String,
-                result: Components.Schemas.SyncWriteResult.ResultPayload,
-                rejectionReason: Components.Schemas.SyncWriteResult.RejectionReasonPayload? = nil
+                result: Swift.String,
+                rejectionReason: Swift.String? = nil
             ) {
                 self.writeId = writeId
                 self.result = result
@@ -127,7 +109,7 @@ extension Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/measuredAt`.
                 internal var measuredAt: Swift.Int
-                /// 記録したときの IANA のタイムゾーン名
+                /// 記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない
                 ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/timeZone`.
                 internal var timeZone: Swift.String
@@ -203,7 +185,7 @@ extension Components {
                 ///   - id: 端末で振った体重記録の ID
                 ///   - weightKg:
                 ///   - measuredAt: 測った時刻。UNIX 時刻のミリ秒（UTC）
-                ///   - timeZone: 記録したときの IANA のタイムゾーン名
+                ///   - timeZone: 記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない
                 ///   - imported: ヘルスケアから取り込んだ記録だけが持つ
                 internal init(
                     id: Swift.String,
@@ -273,7 +255,7 @@ extension Components {
                 ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/measuredAt`.
                 internal var measuredAt: Swift.Int
-                /// 記録したときの IANA のタイムゾーン名
+                /// 記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない
                 ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/timeZone`.
                 internal var timeZone: Swift.String
@@ -287,7 +269,7 @@ extension Components {
                 ///   - id: 端末で振った体重記録の ID
                 ///   - weightKg:
                 ///   - measuredAt: 測った時刻。UNIX 時刻のミリ秒（UTC）
-                ///   - timeZone: 記録したときの IANA のタイムゾーン名
+                ///   - timeZone: 記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない
                 ///   - version: 直したあとの版。2 以上。届いた版と今の版 + 1 の大きいほうに決め直す
                 internal init(
                     id: Swift.String,

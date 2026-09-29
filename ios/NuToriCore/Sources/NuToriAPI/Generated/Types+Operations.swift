@@ -383,7 +383,7 @@ internal enum Operations {
                         ///
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/deviceId`.
                         internal var deviceId: Swift.String
-                        /// 端末のいまの IANA のタイムゾーン名
+                        /// 端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える
                         ///
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/timeZone`.
                         internal var timeZone: Swift.String
@@ -407,7 +407,7 @@ internal enum Operations {
                         ///
                         /// - Parameters:
                         ///   - deviceId: 端末で振った UUID
-                        ///   - timeZone: 端末のいまの IANA のタイムゾーン名
+                        ///   - timeZone: 端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える
                         ///   - appVersion:
                         ///   - osVersion:
                         ///   - pendingWriteCount: 端末の送り待ちの件数
@@ -704,7 +704,7 @@ internal enum Operations {
                 ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/deviceId`.
                 internal var deviceId: Swift.String
-                /// 端末のいまの IANA のタイムゾーン名
+                /// 端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える
                 ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/timeZone`.
                 internal var timeZone: Swift.String
@@ -732,7 +732,7 @@ internal enum Operations {
                 ///
                 /// - Parameters:
                 ///   - deviceId: 端末で振った UUID
-                ///   - timeZone: 端末のいまの IANA のタイムゾーン名
+                ///   - timeZone: 端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える
                 ///   - appVersion:
                 ///   - osVersion:
                 ///   - pendingWriteCount: 端末の送り待ちの件数
