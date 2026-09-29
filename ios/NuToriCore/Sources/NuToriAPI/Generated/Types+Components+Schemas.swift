@@ -17,11 +17,11 @@ extension Components {
         internal struct SyncWriteResult: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/writeId`.
             internal var writeId: Swift.String
-            /// applied は当てた（消えたという書き込みでは消した）、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、ignored_tombstone は削除の印があって捨てた、kept_corrected は元のサンプルが消えたが直してあるので残した、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
+            /// 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
             internal var result: Swift.String
-            /// result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ
+            /// result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
             internal var rejectionReason: Swift.String?
@@ -29,8 +29,8 @@ extension Components {
             ///
             /// - Parameters:
             ///   - writeId:
-            ///   - result: applied は当てた（消えたという書き込みでは消した）、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、ignored_tombstone は削除の印があって捨てた、kept_corrected は元のサンプルが消えたが直してあるので残した、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
-            ///   - rejectionReason: result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ
+            ///   - result: 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
+            ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
             internal init(
                 writeId: Swift.String,
                 result: Swift.String,
@@ -46,8 +46,6 @@ extension Components {
                 case rejectionReason
             }
         }
-        /// 作る書き込み、直す書き込み、元のサンプルが消えたという書き込み。type ごとに中身が違う
-        ///
         /// - Remark: Generated from `#/components/schemas/SyncWrite`.
         internal enum SyncWrite: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
@@ -93,7 +91,7 @@ extension Components {
         }
         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite`.
         internal struct CreateWeightRecordWrite: Codable, Hashable, Sendable {
-            /// 書き込みごとに端末で振る ID。冪等の鍵
+            /// 冪等の鍵
             ///
             /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/id`.
             internal var id: Swift.String
@@ -105,22 +103,16 @@ extension Components {
             internal var _type: Components.Schemas.CreateWeightRecordWrite._TypePayload
             /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord`.
             internal struct WeightRecordPayload: Codable, Hashable, Sendable {
-                /// 端末で振った体重記録の ID
-                ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/id`.
                 internal var id: Swift.String
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/weightKg`.
                 internal var weightKg: Swift.Double
-                /// 測った時刻。UNIX 時刻のミリ秒（UTC）
+                /// UNIX 時刻のミリ秒（UTC）
                 ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/measuredAt`.
                 internal var measuredAt: Swift.Int
-                /// 記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない
-                ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/timeZone`.
                 internal var timeZone: Swift.String
-                /// ヘルスケアから取り込んだ記録だけが持つ
-                ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported`.
                 internal struct ImportedPayload: Codable, Hashable, Sendable {
                     /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/sourceAppName`.
@@ -131,8 +123,6 @@ extension Components {
                     internal var healthkitSampleUuid: Swift.String
                     /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/bodyFat`.
                     internal struct BodyFatPayload: Codable, Hashable, Sendable {
-                        /// % の値（25.0）
-                        ///
                         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/bodyFat/percentage`.
                         internal var percentage: Swift.Double
                         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported/bodyFat/healthkitSampleUuid`.
@@ -140,7 +130,7 @@ extension Components {
                         /// Creates a new `BodyFatPayload`.
                         ///
                         /// - Parameters:
-                        ///   - percentage: % の値（25.0）
+                        ///   - percentage:
                         ///   - healthkitSampleUuid:
                         internal init(
                             percentage: Swift.Double,
@@ -181,18 +171,16 @@ extension Components {
                         case bodyFat
                     }
                 }
-                /// ヘルスケアから取り込んだ記録だけが持つ
-                ///
                 /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite/weightRecord/imported`.
                 internal var imported: Components.Schemas.CreateWeightRecordWrite.WeightRecordPayload.ImportedPayload?
                 /// Creates a new `WeightRecordPayload`.
                 ///
                 /// - Parameters:
-                ///   - id: 端末で振った体重記録の ID
+                ///   - id:
                 ///   - weightKg:
-                ///   - measuredAt: 測った時刻。UNIX 時刻のミリ秒（UTC）
-                ///   - timeZone: 記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない
-                ///   - imported: ヘルスケアから取り込んだ記録だけが持つ
+                ///   - measuredAt: UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone:
+                ///   - imported:
                 internal init(
                     id: Swift.String,
                     weightKg: Swift.Double,
@@ -219,7 +207,7 @@ extension Components {
             /// Creates a new `CreateWeightRecordWrite`.
             ///
             /// - Parameters:
-            ///   - id: 書き込みごとに端末で振る ID。冪等の鍵
+            ///   - id: 冪等の鍵
             ///   - _type:
             ///   - weightRecord:
             internal init(
@@ -239,7 +227,7 @@ extension Components {
         }
         /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite`.
         internal struct UpdateWeightRecordWrite: Codable, Hashable, Sendable {
-            /// 書き込みごとに端末で振る ID。冪等の鍵
+            /// 冪等の鍵
             ///
             /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/id`.
             internal var id: Swift.String
@@ -251,32 +239,26 @@ extension Components {
             internal var _type: Components.Schemas.UpdateWeightRecordWrite._TypePayload
             /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord`.
             internal struct WeightRecordPayload: Codable, Hashable, Sendable {
-                /// 端末で振った体重記録の ID
-                ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/id`.
                 internal var id: Swift.String
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/weightKg`.
                 internal var weightKg: Swift.Double
-                /// 測った時刻。UNIX 時刻のミリ秒（UTC）
+                /// UNIX 時刻のミリ秒（UTC）
                 ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/measuredAt`.
                 internal var measuredAt: Swift.Int
-                /// 記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない
-                ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/timeZone`.
                 internal var timeZone: Swift.String
-                /// 直したあとの版。2 以上。届いた版と今の版 + 1 の大きいほうに決め直す
-                ///
                 /// - Remark: Generated from `#/components/schemas/UpdateWeightRecordWrite/weightRecord/version`.
                 internal var version: Swift.Int
                 /// Creates a new `WeightRecordPayload`.
                 ///
                 /// - Parameters:
-                ///   - id: 端末で振った体重記録の ID
+                ///   - id:
                 ///   - weightKg:
-                ///   - measuredAt: 測った時刻。UNIX 時刻のミリ秒（UTC）
-                ///   - timeZone: 記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない
-                ///   - version: 直したあとの版。2 以上。届いた版と今の版 + 1 の大きいほうに決め直す
+                ///   - measuredAt: UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone:
+                ///   - version:
                 internal init(
                     id: Swift.String,
                     weightKg: Swift.Double,
@@ -303,7 +285,7 @@ extension Components {
             /// Creates a new `UpdateWeightRecordWrite`.
             ///
             /// - Parameters:
-            ///   - id: 書き込みごとに端末で振る ID。冪等の鍵
+            ///   - id: 冪等の鍵
             ///   - _type:
             ///   - weightRecord:
             internal init(
@@ -323,7 +305,7 @@ extension Components {
         }
         /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite`.
         internal struct SourceDeletedWeightRecordWrite: Codable, Hashable, Sendable {
-            /// 書き込みごとに端末で振る ID。冪等の鍵
+            /// 冪等の鍵
             ///
             /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite/id`.
             internal var id: Swift.String
@@ -340,7 +322,7 @@ extension Components {
             /// Creates a new `SourceDeletedWeightRecordWrite`.
             ///
             /// - Parameters:
-            ///   - id: 書き込みごとに端末で振る ID。冪等の鍵
+            ///   - id: 冪等の鍵
             ///   - _type:
             ///   - weightRecordId: 元のサンプルがヘルスケアで消えた体重記録の ID。消すかどうかはサーバーが決める（直した記録は残す）
             internal init(
@@ -362,14 +344,12 @@ extension Components {
         internal struct SyncChange: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncChange/sequence`.
             internal var sequence: Swift.Int
-            /// 変更の種類。weight_record は体重記録、weight_record_deletion は削除の印（record は空）。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）
+            /// 知らない種類は読み飛ばす。種類が増えても古い版のアプリの同期が止まらないよう、文字列で持つ
             ///
             /// - Remark: Generated from `#/components/schemas/SyncChange/kind`.
             internal var kind: Swift.String
             /// - Remark: Generated from `#/components/schemas/SyncChange/recordId`.
             internal var recordId: Swift.String
-            /// kind ごとの中身。kind ごとにあとで解く
-            ///
             /// - Remark: Generated from `#/components/schemas/SyncChange/record`.
             internal struct RecordPayload: Codable, Hashable, Sendable {
                 /// A container of undocumented properties.
@@ -388,17 +368,15 @@ extension Components {
                     try encoder.encodeAdditionalProperties(additionalProperties)
                 }
             }
-            /// kind ごとの中身。kind ごとにあとで解く
-            ///
             /// - Remark: Generated from `#/components/schemas/SyncChange/record`.
             internal var record: Components.Schemas.SyncChange.RecordPayload
             /// Creates a new `SyncChange`.
             ///
             /// - Parameters:
             ///   - sequence:
-            ///   - kind: 変更の種類。weight_record は体重記録、weight_record_deletion は削除の印（record は空）。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）
+            ///   - kind: 知らない種類は読み飛ばす。種類が増えても古い版のアプリの同期が止まらないよう、文字列で持つ
             ///   - recordId:
-            ///   - record: kind ごとの中身。kind ごとにあとで解く
+            ///   - record:
             internal init(
                 sequence: Swift.Int,
                 kind: Swift.String,

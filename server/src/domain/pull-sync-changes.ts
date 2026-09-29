@@ -2,7 +2,6 @@ import type { SyncChange } from "./sync-change";
 import type { SyncClientState } from "./sync-client-state";
 import type { SyncStore } from "./sync-store";
 
-// 前回の続きからの変更を、記録ごとにまとめて古い順に返す。1回の応答は 500 件で切り、続きがあるかを添える
 export const pullSyncChanges = (
   store: SyncStore,
   request: { clientState: SyncClientState; afterSequence: number; receivedAt: Date },
@@ -20,7 +19,7 @@ export const pullSyncChanges = (
       clientState: request.clientState,
       afterSequence: request.afterSequence,
     });
-    const found = store.findRecordChanges(request.afterSequence, changesPerPull + 1);
+    const found = store.findLatestChangePerRecord(request.afterSequence, changesPerPull + 1);
     const changes = found.slice(0, changesPerPull).map(({ sequence, recordId }): SyncChange => {
       const weightRecord = store.findWeightRecord(recordId);
       if (weightRecord !== undefined) {

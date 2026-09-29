@@ -1,13 +1,11 @@
 public import Foundation
 
-/// サーバーと同期する体重記録
 public struct SyncedWeightRecord: Sendable, Equatable {
     public let id: UUID
     public let weightKilograms: Double
     public let measuredAt: Date
     public let timeZone: TimeZone
     public let version: Int
-    /// ヘルスケアから取り込んだ記録だけが持つ。nu-tori で手で記録したものは nil
     public let imported: Imported?
 
     public init(
@@ -30,7 +28,6 @@ public struct SyncedWeightRecord: Sendable, Equatable {
         public let sourceAppName: String
         public let sourceBundleId: String
         public let healthKitSampleId: UUID
-        /// 体脂肪率を添えたときだけ
         public let bodyFat: BodyFat?
 
         public init(
@@ -46,7 +43,6 @@ public struct SyncedWeightRecord: Sendable, Equatable {
         }
 
         public struct BodyFat: Sendable, Equatable {
-            /// % の値（25.0）
             public let percentage: Double
             public let healthKitSampleId: UUID
 
