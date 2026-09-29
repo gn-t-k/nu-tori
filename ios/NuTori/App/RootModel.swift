@@ -19,7 +19,7 @@ final class RootModel {
         }
     }
 
-    /// 開いたままのアプリに戻ったとき、Apple の資格情報が取り消されていないかを見直す
+    /// Apple ID の設定で連携を止めたあと、アプリを終了せずに戻った人にも、サインインの画面を出すため
     func reopenIfSignedIn() async {
         switch screen {
         case .loadingTimeline, .timeline:

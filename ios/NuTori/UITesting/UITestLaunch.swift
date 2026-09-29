@@ -68,7 +68,6 @@
         enum Account: String {
             case signedOut = "signed-out"
             case signedIn = "signed-in"
-            /// 初回の取得を終えていない
             case signedInFetching = "signed-in-fetching"
             case signInAgain = "sign-in-again"
             case signInAgainWithPendingWrites = "sign-in-again-with-pending-writes"

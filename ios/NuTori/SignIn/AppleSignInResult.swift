@@ -4,7 +4,6 @@ import NuToriCore
 
 enum AppleSignInResult: Equatable {
     case authorized(AppleSignInCredential)
-    /// iPhone の画面を閉じてやめた
     case cancelled
     case failed
 }
