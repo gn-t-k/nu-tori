@@ -30,7 +30,14 @@ extension WeightRecord {
             kilograms: kilograms,
             instant: Date(instant, strategy: .iso8601),
             timeZone: #require(TimeZone(identifier: timeZoneIdentifier)),
-            inputSource: .imported,
+            inputSource: .imported(
+                ImportedSource(
+                    appName: "体重計アプリ",
+                    bundleId: "com.example.scale",
+                    healthKitSampleId: UUID(),
+                    bodyFat: nil
+                )
+            ),
             version: 1
         )
     }
