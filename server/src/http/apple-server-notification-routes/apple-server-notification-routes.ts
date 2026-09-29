@@ -1,4 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { R } from "@praha/byethrow";
+import { match } from "ts-pattern";
 import { createAuthentication } from "../../auth/create-authentication";
 import { verifyAppleServerNotification } from "../../auth/verify-apple-server-notification";
 import { deleteAccount } from "../../domain/delete-account";
@@ -26,30 +28,32 @@ export const appleServerNotificationRoutes = new OpenAPIHono<{ Bindings: Env }>(
       c.req.valid("json").payload,
       c.env.APPLE_BUNDLE_ID,
     );
-    switch (notification.type) {
-      case "unverified":
-        return c.body(null, 400);
-      case "ignored":
-        return c.body(null, 200);
-      case "consent-revoked": {
+    if (R.isFailure(notification)) {
+      return match(notification.error)
+        .with({ name: "AppleServerNotificationUnverifiedError" }, () => c.body(null, 400))
+        .exhaustive();
+    }
+    return match(notification.value)
+      .with({ type: "ignored" }, () => c.body(null, 200))
+      .with({ type: "consent-revoked" }, async ({ appleUserId }) => {
         const authentication = createAuthentication(c.env, c.req.url);
-        const accountId = await findAccountId(authentication, notification.appleUserId);
+        const accountId = await findAccountId(authentication, appleUserId);
         if (accountId !== undefined) {
           // 記録は残し、同じ Apple ID でサインインし直せば戻れるようにする
           const { internalAdapter } = await authentication.$context;
           await internalAdapter.deleteUserSessions(accountId);
         }
         return c.body(null, 200);
-      }
-      case "account-deleted": {
+      })
+      .with({ type: "account-deleted" }, async ({ appleUserId }) => {
         const authentication = createAuthentication(c.env, c.req.url);
-        const accountId = await findAccountId(authentication, notification.appleUserId);
+        const accountId = await findAccountId(authentication, appleUserId);
         if (accountId !== undefined) {
           await deleteAccount(accountId, createAccountDeletionSteps(c.env, authentication));
         }
         return c.body(null, 200);
-      }
-    }
+      })
+      .exhaustive();
   },
 );
 

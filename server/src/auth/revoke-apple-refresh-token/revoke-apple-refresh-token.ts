@@ -1,6 +1,6 @@
+import { ErrorFactory } from "@praha/error-factory";
 import type { AppleCredentials } from "../apple-credentials";
 import { createAppleClientSecret } from "../create-apple-client-secret";
-import { RevokeAppleRefreshTokenError } from "./revoke-apple-refresh-token-error";
 
 // Apple は、取り消したときも、すでに無効だったときも 200 を返す
 export const revokeAppleRefreshToken = async (
@@ -17,6 +17,12 @@ export const revokeAppleRefreshToken = async (
     }),
   });
   if (!response.ok) {
-    throw new RevokeAppleRefreshTokenError(response.status);
+    throw new RevokeAppleRefreshTokenError({ status: response.status });
   }
 };
+
+export class RevokeAppleRefreshTokenError extends ErrorFactory({
+  name: "RevokeAppleRefreshTokenError",
+  message: ({ status }) => `Apple の refresh token の取り消しに失敗した: ${status}`,
+  fields: ErrorFactory.fields<{ status: number }>(),
+}) {}

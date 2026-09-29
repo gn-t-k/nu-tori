@@ -1,5 +1,8 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { R } from "@praha/byethrow";
+import { ErrorFactory } from "@praha/error-factory";
 import { APIError } from "better-auth/api";
+import { match } from "ts-pattern";
 import { createAppleRefreshTokenStore } from "../../auth/create-apple-refresh-token-store";
 import { createAuthentication } from "../../auth/create-authentication";
 import { exchangeAppleAuthorizationCode } from "../../auth/exchange-apple-authorization-code";
@@ -34,27 +37,50 @@ export const sessionRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
   }),
   async (c) => {
     const { idToken, nonce, authorizationCode } = c.req.valid("json");
-    const signedIn = await createAuthentication(c.env, c.req.url)
-      .api.signInSocial({ body: { provider: "apple", idToken: { token: idToken, nonce } } })
-      .catch((error: unknown) => {
-        if (error instanceof APIError && error.status === "UNAUTHORIZED") {
-          return undefined;
-        }
-        throw error;
-      });
-    if (signedIn === undefined || !("token" in signedIn)) {
-      return c.body(null, 401);
+    const signedIn = await R.pipe(
+      R.do(),
+      R.bind("session", () =>
+        signInWithAppleIdToken(createAuthentication(c.env, c.req.url), idToken, nonce),
+      ),
+      R.bind("refreshToken", () => exchangeAppleAuthorizationCode(c.env, authorizationCode)),
+    );
+    if (R.isFailure(signedIn)) {
+      return match(signedIn.error)
+        .with(
+          { name: "AppleIdTokenRejectedError" },
+          { name: "AppleAuthorizationCodeRejectedError" },
+          () => c.body(null, 401),
+        )
+        .exhaustive();
     }
-    const exchange = await exchangeAppleAuthorizationCode(c.env, authorizationCode);
-    switch (exchange.kind) {
-      case "rejected":
-        return c.body(null, 401);
-      case "exchanged":
-        await createAppleRefreshTokenStore(c.env.DB, c.env.APPLE_REFRESH_TOKEN_KEYS).save(
-          signedIn.user.id,
-          exchange.refreshToken,
-        );
-        return c.json({ sessionToken: signedIn.token }, 201);
-    }
+    const { session, refreshToken } = signedIn.value;
+    await createAppleRefreshTokenStore(c.env.DB, c.env.APPLE_REFRESH_TOKEN_KEYS).save(
+      session.user.id,
+      refreshToken,
+    );
+    return c.json({ sessionToken: session.token }, 201);
   },
 );
+
+const signInWithAppleIdToken = (
+  authentication: ReturnType<typeof createAuthentication>,
+  idToken: string,
+  nonce: string,
+) =>
+  authentication.api
+    .signInSocial({ body: { provider: "apple", idToken: { token: idToken, nonce } } })
+    .then(
+      (signedIn) =>
+        "token" in signedIn ? R.succeed(signedIn) : R.fail(new AppleIdTokenRejectedError()),
+      (error: unknown) => {
+        if (error instanceof APIError && error.status === "UNAUTHORIZED") {
+          return R.fail(new AppleIdTokenRejectedError({ cause: error }));
+        }
+        throw error;
+      },
+    );
+
+class AppleIdTokenRejectedError extends ErrorFactory({
+  name: "AppleIdTokenRejectedError",
+  message: "Better Auth が Apple の ID トークンを受け付けなかった",
+}) {}

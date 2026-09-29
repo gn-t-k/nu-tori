@@ -22,7 +22,7 @@
 
 - 公開するものは export で数える
 - ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export type WeightRecordStore`）
-- mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える
+- mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える。関数と一緒に export するエラーのクラスは「失敗の扱い」
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/` のディレクトリにし、入口の `foo/index.ts` から再 export する（`foo/foo.ts`、`foo/foo.test.ts`、`foo/foo.mock.ts` を並べる）
 
 ### ファイルの中はトップダウン
@@ -44,9 +44,46 @@ type CreateState = "empty" | "duplicate" | "creatable";
 
 ### 関数は処理の流れで分ける
 
-- タグ付きユニオンを1つの関数で受けるときは、switch ですべての case を書く
-- 各 case から値を返す switch には `default` を置かない。case を足したときの漏れが型エラーになる（undefined を含まない戻り値の型を書けば TS2366、それ以外は `noImplicitReturns` の TS7030）
-- 値を返さない switch では、`default` に `state satisfies never` だけを置いて網羅を検査する
+- タグ付きユニオンと失敗を1つの関数で受けるときは、ts-pattern の `match(...)` ですべての場合を書き、`.exhaustive()` で閉じる。場合を足したときの漏れが型エラーになる
+- 自分たちのユニオンには `.otherwise()` を使わない。外から来る値（Apple の通知の種類の文字列など）を分けるときだけ使ってよい
+- switch は使わない（`.oxlintrc.json` の `nu-tori/no-switch-statement`）
+
+### 失敗の扱い
+
+- 呼び出し側が失敗の種類によって振る舞いを変えるもの（受け口で状態コードを変える、など）は、`@praha/byethrow` の Result で返す。基盤の障害と設定の誤りは throw し、受け止めずに Sentry に任せる
+- byethrow は `import { R } from "@praha/byethrow"` で読み込み、`R` で書く。使い方は skill の `byethrow` で docs を引く
+- Result は `R.pipe` の中で byethrow の道具（`andThen`・`map`・`mapError`・`orElse`・`andThrough`・`do`／`bind`・`sequence`／`collect` など）でつなぐ。値と失敗を取り出すのは、受け口で応答に直すところだけにする
+- エラーのクラスは、Result の失敗にするものも throw するものも `@praha/error-factory` の `ErrorFactory` で作る。独自のクラスを作るのは、呼び出し側かテストが見分けるときだけにし、見分けないものは `new Error(...)` にする
+- `ErrorFactory` の `name` は省かない。省くと `name` の型が `string` になり、`match` の `{ name: "..." }` で絞れない
+- 自分たちのエラーは `name` で見分け、`instanceof` を使わない（Durable Object を越えると効かない。`server/AGENTS.md` の「層」）。テストで throw を確かめる `rejects.toThrow(クラス)` は除く
+- その関数だけが返す・投げるエラーは、関数と同じファイルの下に置き、関数と一緒に export する。「1つのファイルから1つ」を置き換える。2つ以上の関数が返すようになったら、`{エラー名のケバブケース}.ts` に切り出す
+- 関数の失敗のユニオンには名前を付けず、戻り値の型に直に書く。呼び出し側で型が要るときは `R.InferFailure<typeof 関数>` で取り出す
+
+```ts
+export const exchangeAppleAuthorizationCode = async (
+  apple: AppleCredentials,
+  authorizationCode: string,
+): R.ResultAsync<string, AppleAuthorizationCodeRejectedError> => { ... };
+
+export class AppleAuthorizationCodeRejectedError extends ErrorFactory({
+  name: "AppleAuthorizationCodeRejectedError",
+  message: "Apple が認可コードを受け付けなかった",
+}) {}
+```
+
+- 外部のライブラリが投げるもののうち一部だけを Result の失敗にするときは、Promise の `.then` の2つ目の引数で分け、ほかは throw し直す。`R.try` の `catch` の中では throw できない（`byethrow/no-throw-in-callback`）。外部のライブラリのエラーは `instanceof` で見分けてよい
+
+```ts
+authentication.api.signInSocial(...).then(
+  (signedIn) => R.succeed(signedIn),
+  (error: unknown) => {
+    if (error instanceof APIError && error.status === "UNAUTHORIZED") {
+      return R.fail(new AppleIdTokenRejectedError({ cause: error }));
+    }
+    throw error;
+  },
+);
+```
 
 ### 値が無いことを許すのは、必要な事情があるときだけ
 
@@ -76,6 +113,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 ### 道具
 
 - テストは Vitest で書く
+- Result は `@praha/byethrow-testing` の `toBeSuccess`・`toBeFailure` で確かめる（`server/test/extend-result-matchers.ts` で読み込む）
 
 ### テストの構造
 
@@ -93,7 +131,9 @@ describe("トークン発行に失敗したとき", () => {
   });
 
   test("IssueTokenError で失敗すること", async () => {
-    await expect(registerUser(input)).rejects.toThrow(IssueTokenError);
+    expect(await registerUser(input)).toBeFailure((error) => {
+      expect(error.name).toBe("IssueTokenError");
+    });
   });
 });
 ```
@@ -108,16 +148,19 @@ describe("トークン発行に失敗したとき", () => {
 - どちらもスパイを return する
 
 ```ts
+import { R } from "@praha/byethrow";
 import { vi } from "vitest";
 import * as module from "./index";
 
 export const mockCreateDatabaseOk = (overrides?: Partial<Database>) => {
   const defaultDatabase: Database = { name: "default-db" };
-  return vi.spyOn(module, "createDatabase").mockResolvedValue({ ...defaultDatabase, ...overrides });
+  return vi
+    .spyOn(module, "createDatabase")
+    .mockResolvedValue(R.succeed({ ...defaultDatabase, ...overrides }));
 };
 
 export const mockCreateDatabaseError = (error: CreateDatabaseError) => {
-  return vi.spyOn(module, "createDatabase").mockRejectedValue(error);
+  return vi.spyOn(module, "createDatabase").mockResolvedValue(R.fail(error));
 };
 ```
 

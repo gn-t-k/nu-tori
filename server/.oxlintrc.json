@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "vitest"],
+  "jsPlugins": ["@praha/byethrow-oxlint", "./oxlint-plugin.js"],
   "categories": {
     "correctness": "error",
     "suspicious": "error"
@@ -13,8 +14,17 @@
   "rules": {
     "func-style": ["error", "expression"],
     "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
-    "typescript/switch-exhaustiveness-check": "error",
-    "typescript/consistent-return": "off"
+    "typescript/consistent-return": "off",
+    "byethrow/consistent-namespace": ["error", "R"],
+    "byethrow/no-ambiguous-error-type": "error",
+    "byethrow/no-ambiguous-success-type": "error",
+    "byethrow/no-negated-type-guards": "error",
+    "byethrow/no-throw-in-callback": "error",
+    "byethrow/no-try-catch-in-callback": "error",
+    "byethrow/prefer-result-async": "error",
+    "byethrow/prefer-result-matchers": "error",
+    "byethrow/prefer-result-maybe-async": "error",
+    "nu-tori/no-switch-statement": "error"
   },
   "ignorePatterns": ["worker-configuration.d.ts"]
 }
