@@ -5,7 +5,6 @@ import Testing
 
 @testable import NuToriAPI
 
-/// サインインの状態と、端末に残るものの差し替えをまとめたもの
 struct AccountDevice {
     static let previousAccount = SignedInAccount(
         accountId: "account-1", appleUserId: "apple-user-1")
@@ -20,7 +19,6 @@ struct AccountDevice {
     let analytics: AnalyticsSessionMock
     let errorReporting: ErrorReportingSessionMock
 
-    /// サインインして、記録と送り待ちを持っている端末
     static func signedIn(
         hasOpenedBefore: Bool = true,
         pendingWrites: [PendingWrite] = [],
@@ -47,7 +45,6 @@ struct AccountDevice {
         )
     }
 
-    /// セッションも、アカウントの保存も無い端末
     static func signedOut(
         hasOpenedBefore: Bool = true,
         hasSignInAgainMark: Bool = false,
@@ -91,7 +88,6 @@ struct AccountDevice {
         )
     }
 
-    /// 端末から消すもののうち、まだ残っているものの名前
     var remainingItems: [String] {
         var remaining: [String] = []
         if !syncStore.records.isEmpty { remaining.append("キャッシュの記録") }
@@ -119,6 +115,17 @@ extension AccountDevice {
         #expect(!deviceStore.didEraseAccountBoundState)
         #expect(analytics.resetCount == 0)
         #expect(errorReporting.clearUserCount == 0)
+    }
+}
+
+extension AppleSignInCredential {
+    static func fixture() -> AppleSignInCredential {
+        AppleSignInCredential(
+            idToken: "id-token",
+            nonce: "nonce-1",
+            authorizationCode: "auth-code",
+            appleUserId: "apple-user-2"
+        )
     }
 }
 
