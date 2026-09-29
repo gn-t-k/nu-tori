@@ -41,25 +41,33 @@ internal enum Operations {
                     internal var nonce: Swift.String
                     /// - Remark: Generated from `#/paths/v1/sessions/POST/requestBody/json/authorizationCode`.
                     internal var authorizationCode: Swift.String
+                    /// 端末の IANA のタイムゾーン名。最初のサインインで、使い始めた日をこの土地の日付にする
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/sessions/POST/requestBody/json/timeZone`.
+                    internal var timeZone: Swift.String?
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
                     ///   - idToken:
                     ///   - nonce:
                     ///   - authorizationCode:
+                    ///   - timeZone: 端末の IANA のタイムゾーン名。最初のサインインで、使い始めた日をこの土地の日付にする
                     internal init(
                         idToken: Swift.String,
                         nonce: Swift.String,
-                        authorizationCode: Swift.String
+                        authorizationCode: Swift.String,
+                        timeZone: Swift.String? = nil
                     ) {
                         self.idToken = idToken
                         self.nonce = nonce
                         self.authorizationCode = authorizationCode
+                        self.timeZone = timeZone
                     }
                     internal enum CodingKeys: String, CodingKey {
                         case idToken
                         case nonce
                         case authorizationCode
+                        case timeZone
                     }
                 }
                 /// - Remark: Generated from `#/paths/v1/sessions/POST/requestBody/content/application\/json`.
@@ -87,15 +95,25 @@ internal enum Operations {
                     internal struct JsonPayload: Codable, Hashable, Sendable {
                         /// - Remark: Generated from `#/paths/v1/sessions/POST/responses/201/content/json/sessionToken`.
                         internal var sessionToken: Swift.String
+                        /// nu-tori のアカウント ID
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/sessions/POST/responses/201/content/json/accountId`.
+                        internal var accountId: Swift.String
                         /// Creates a new `JsonPayload`.
                         ///
                         /// - Parameters:
                         ///   - sessionToken:
-                        internal init(sessionToken: Swift.String) {
+                        ///   - accountId: nu-tori のアカウント ID
+                        internal init(
+                            sessionToken: Swift.String,
+                            accountId: Swift.String
+                        ) {
                             self.sessionToken = sessionToken
+                            self.accountId = accountId
                         }
                         internal enum CodingKeys: String, CodingKey {
                             case sessionToken
+                            case accountId
                         }
                     }
                     /// - Remark: Generated from `#/paths/v1/sessions/POST/responses/201/content/application\/json`.

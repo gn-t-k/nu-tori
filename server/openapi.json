@@ -35,6 +35,11 @@
                   },
                   "authorizationCode": {
                     "type": "string"
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "description": "端末の IANA のタイムゾーン名。最初のサインインで、使い始めた日をこの土地の日付にする",
+                    "example": "Asia/Tokyo"
                   }
                 },
                 "required": [
@@ -56,10 +61,15 @@
                   "properties": {
                     "sessionToken": {
                       "type": "string"
+                    },
+                    "accountId": {
+                      "type": "string",
+                      "description": "nu-tori のアカウント ID"
                     }
                   },
                   "required": [
-                    "sessionToken"
+                    "sessionToken",
+                    "accountId"
                   ]
                 }
               }

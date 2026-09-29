@@ -18,6 +18,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - ドメイン層は、実行基盤の型や API に触れない。ドメイン層が要る置き場と外への呼び出し（記録の置き場、写真の控え、LLM の提供元など）は、ドメイン層が型を定め、基盤に固有の層（Durable Object、D1・R2・LLM の提供元・Apple の API への入出力）がそれを実装する
 - 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。Durable Object のクラスは、ドメイン層を呼ぶ入口（受け口の Worker から、アラームから）と、ドメイン層が定めた記録の置き場の実装と、ほかの基盤に固有の実装をドメイン層に渡すことだけを持つ薄い層にする
 - HTTP の受け口は、記録を読み書きする要求なら、セッションを確かめ、回数の歯止めをかけてから、その人の Durable Object を呼ぶだけにする。まだセッションのないサインインと Apple のサーバー間通知は、受け口の Worker の認証で受ける。アカウントの削除は、受け口の Worker でドメイン層を呼ぶ。Durable Object の中身を消すときも、その Durable Object の入口を呼んで行う
+- 受け口は、Durable Object を呼ぶたびにアカウント ID を渡す。Durable Object の中では、その呼び出しの Sentry の報告に user の ID として付ける
 - 受け口のスキーマは要求の形だけを確かめる。受け付ける値の範囲はドメイン層で確かめる
 - 想定した失敗（`docs/agents/languages/typescript.md` の「失敗の扱い」）を状態コードに直すのは受け口で行う
 - Durable Object の RPC を越えたエラーには、`name`・独自のフィールド・`cause` が届き、`instanceof` は効かない（互換フラグ `enhanced_error_serialization`。`compatibility_date` が 2026-04-21 以降なら既定で有効）。`legacy_error_serialization` は足さない。足すと `name` が `"Error"` になり、独自のフィールドも消える
