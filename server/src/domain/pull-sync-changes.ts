@@ -2,7 +2,6 @@ import type { SyncClientState } from "./sync-client-state";
 import type { SyncStore } from "./sync-store";
 import type { WeightRecord } from "./weight-record";
 
-// 前回の続きからの変更を、記録ごとにまとめて古い順に返す。1回の応答は 500 件で切り、続きがあるかを添える
 export const pullSyncChanges = (
   store: SyncStore,
   request: { clientState: SyncClientState; afterSequence: number; receivedAt: Date },

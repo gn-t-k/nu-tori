@@ -36,7 +36,7 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
                   .array(syncWriteSchema)
                   .max(maximumWritesPerRequest)
                   .openapi({ description: "1回の要求で 500 件まで。超えたら何も当てずに 400" }),
-                isFinalBatch: z.boolean().openapi({ description: "送り待ちの最後の要求なら true" }),
+                isFinalBatch: z.boolean(),
               }),
             },
           },
@@ -122,21 +122,19 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
                       sequence: z.number().int(),
                       kind: z.string().openapi({
                         description:
-                          "記録の種類。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）",
+                          "知らない種類は読み飛ばす。種類が増えても古い版のアプリの同期が止まらないよう、文字列で持つ",
                         example: "weight_record",
                       }),
                       recordId: z.string(),
-                      record: z.record(z.string(), z.unknown()).openapi({
-                        description: "kind ごとの中身。kind ごとにあとで解く",
-                      }),
+                      record: z.record(z.string(), z.unknown()),
                     })
                     .openapi("SyncChange"),
                 ),
-                hasMore: z.boolean().openapi({ description: "続きがあるとき true" }),
+                hasMore: z.boolean(),
                 nextAfterSequence: z.number().int(),
                 startedOn: z.string().nullable().openapi({
                   description:
-                    "使い始めた日（YYYY-MM-DD）。まだ決まっていないとき null。記録の通し番号によらず毎回載る",
+                    "YYYY-MM-DD。まだ決まっていないとき null。記録の通し番号によらず毎回載る",
                 }),
               }),
             },

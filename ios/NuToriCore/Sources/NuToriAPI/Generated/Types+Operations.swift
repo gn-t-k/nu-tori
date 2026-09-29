@@ -379,11 +379,9 @@ internal enum Operations {
                 internal struct JsonPayload: Codable, Hashable, Sendable {
                     /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState`.
                     internal struct ClientStatePayload: Codable, Hashable, Sendable {
-                        /// 端末で振った UUID
-                        ///
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/deviceId`.
                         internal var deviceId: Swift.String
-                        /// 端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える
+                        /// 読めない名前でも、届いたまま控える
                         ///
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/timeZone`.
                         internal var timeZone: Swift.String
@@ -391,28 +389,24 @@ internal enum Operations {
                         internal var appVersion: Swift.String
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/osVersion`.
                         internal var osVersion: Swift.String
-                        /// 端末の送り待ちの件数
-                        ///
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/pendingWriteCount`.
                         internal var pendingWriteCount: Swift.Int
-                        /// いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く
+                        /// 秒。送り待ちが無いときは省く
                         ///
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/oldestPendingWriteAgeSeconds`.
                         internal var oldestPendingWriteAgeSeconds: Swift.Int?
-                        /// 写真の送り残しの数
-                        ///
                         /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/clientState/pendingPhotoCount`.
                         internal var pendingPhotoCount: Swift.Int
                         /// Creates a new `ClientStatePayload`.
                         ///
                         /// - Parameters:
-                        ///   - deviceId: 端末で振った UUID
-                        ///   - timeZone: 端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える
+                        ///   - deviceId:
+                        ///   - timeZone: 読めない名前でも、届いたまま控える
                         ///   - appVersion:
                         ///   - osVersion:
-                        ///   - pendingWriteCount: 端末の送り待ちの件数
-                        ///   - oldestPendingWriteAgeSeconds: いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く
-                        ///   - pendingPhotoCount: 写真の送り残しの数
+                        ///   - pendingWriteCount:
+                        ///   - oldestPendingWriteAgeSeconds: 秒。送り待ちが無いときは省く
+                        ///   - pendingPhotoCount:
                         internal init(
                             deviceId: Swift.String,
                             timeZone: Swift.String,
@@ -446,8 +440,6 @@ internal enum Operations {
                     ///
                     /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/writes`.
                     internal var writes: [Components.Schemas.SyncWrite]
-                    /// 送り待ちの最後の要求なら true
-                    ///
                     /// - Remark: Generated from `#/paths/v1/sync/writes/POST/requestBody/json/isFinalBatch`.
                     internal var isFinalBatch: Swift.Bool
                     /// Creates a new `JsonPayload`.
@@ -455,7 +447,7 @@ internal enum Operations {
                     /// - Parameters:
                     ///   - clientState:
                     ///   - writes: 1回の要求で 500 件まで。超えたら何も当てずに 400
-                    ///   - isFinalBatch: 送り待ちの最後の要求なら true
+                    ///   - isFinalBatch:
                     internal init(
                         clientState: Operations.PushSyncWrites.Input.Body.JsonPayload.ClientStatePayload,
                         writes: [Components.Schemas.SyncWrite],
@@ -700,11 +692,9 @@ internal enum Operations {
         internal struct Input: Sendable, Hashable {
             /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query`.
             internal struct Query: Sendable, Hashable {
-                /// 端末で振った UUID
-                ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/deviceId`.
                 internal var deviceId: Swift.String
-                /// 端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える
+                /// 読めない名前でも、届いたまま控える
                 ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/timeZone`.
                 internal var timeZone: Swift.String
@@ -712,16 +702,12 @@ internal enum Operations {
                 internal var appVersion: Swift.String
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/osVersion`.
                 internal var osVersion: Swift.String
-                /// 端末の送り待ちの件数
-                ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/pendingWriteCount`.
                 internal var pendingWriteCount: Swift.Int
-                /// いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く
+                /// 秒。送り待ちが無いときは省く
                 ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/oldestPendingWriteAgeSeconds`.
                 internal var oldestPendingWriteAgeSeconds: Swift.Int?
-                /// 写真の送り残しの数
-                ///
                 /// - Remark: Generated from `#/paths/v1/sync/changes/GET/query/pendingPhotoCount`.
                 internal var pendingPhotoCount: Swift.Int
                 /// 前回の応答の nextAfterSequence。最初は 0
@@ -731,13 +717,13 @@ internal enum Operations {
                 /// Creates a new `Query`.
                 ///
                 /// - Parameters:
-                ///   - deviceId: 端末で振った UUID
-                ///   - timeZone: 端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える
+                ///   - deviceId:
+                ///   - timeZone: 読めない名前でも、届いたまま控える
                 ///   - appVersion:
                 ///   - osVersion:
-                ///   - pendingWriteCount: 端末の送り待ちの件数
-                ///   - oldestPendingWriteAgeSeconds: いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く
-                ///   - pendingPhotoCount: 写真の送り残しの数
+                ///   - pendingWriteCount:
+                ///   - oldestPendingWriteAgeSeconds: 秒。送り待ちが無いときは省く
+                ///   - pendingPhotoCount:
                 ///   - afterSequence: 前回の応答の nextAfterSequence。最初は 0
                 internal init(
                     deviceId: Swift.String,
@@ -793,13 +779,11 @@ internal enum Operations {
                     internal struct JsonPayload: Codable, Hashable, Sendable {
                         /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json/changes`.
                         internal var changes: [Components.Schemas.SyncChange]
-                        /// 続きがあるとき true
-                        ///
                         /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json/hasMore`.
                         internal var hasMore: Swift.Bool
                         /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json/nextAfterSequence`.
                         internal var nextAfterSequence: Swift.Int
-                        /// 使い始めた日（YYYY-MM-DD）。まだ決まっていないとき null。記録の通し番号によらず毎回載る
+                        /// YYYY-MM-DD。まだ決まっていないとき null。記録の通し番号によらず毎回載る
                         ///
                         /// - Remark: Generated from `#/paths/v1/sync/changes/GET/responses/200/content/json/startedOn`.
                         internal var startedOn: Swift.String?
@@ -807,9 +791,9 @@ internal enum Operations {
                         ///
                         /// - Parameters:
                         ///   - changes:
-                        ///   - hasMore: 続きがあるとき true
+                        ///   - hasMore:
                         ///   - nextAfterSequence:
-                        ///   - startedOn: 使い始めた日（YYYY-MM-DD）。まだ決まっていないとき null。記録の通し番号によらず毎回載る
+                        ///   - startedOn: YYYY-MM-DD。まだ決まっていないとき null。記録の通し番号によらず毎回載る
                         internal init(
                             changes: [Components.Schemas.SyncChange],
                             hasMore: Swift.Bool,
