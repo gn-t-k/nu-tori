@@ -7,6 +7,9 @@ struct PushRequestBody: Decodable {
 
     struct Write: Decodable {
         let id: String
+        let type: String
+        /// 元のサンプルが消えたという書き込みだけが持つ
+        let weightRecordId: String?
     }
 
     struct ClientState: Decodable {
