@@ -18,10 +18,15 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-openapi-urlsession", exact: "1.3.1"),
     ],
     targets: [
-        .target(name: "NuToriCore", swiftSettings: strictSettings),
+        .target(name: "NuToriCore", dependencies: ["NuToriAPI"], swiftSettings: strictSettings),
         .testTarget(
             name: "NuToriCoreTests",
-            dependencies: ["NuToriCore"],
+            dependencies: [
+                "NuToriCore",
+                "NuToriAPI",
+                .product(name: "HTTPTypes", package: "swift-http-types"),
+                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+            ],
             swiftSettings: strictSettings
         ),
         .target(

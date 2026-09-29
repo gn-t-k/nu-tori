@@ -34,7 +34,37 @@ public struct WeightRecord: Hashable, Sendable {
 
     public enum InputSource: Hashable, Sendable {
         case manual
-        case imported
+        case imported(ImportedSource)
+    }
+
+    public struct ImportedSource: Hashable, Sendable {
+        public let appName: String
+        public let bundleId: String
+        public let healthKitSampleId: UUID
+        public let bodyFat: BodyFat?
+
+        public init(
+            appName: String,
+            bundleId: String,
+            healthKitSampleId: UUID,
+            bodyFat: BodyFat?
+        ) {
+            self.appName = appName
+            self.bundleId = bundleId
+            self.healthKitSampleId = healthKitSampleId
+            self.bodyFat = bodyFat
+        }
+
+        public struct BodyFat: Hashable, Sendable {
+            /// % の値（25.0）
+            public let percentage: Double
+            public let healthKitSampleId: UUID
+
+            public init(percentage: Double, healthKitSampleId: UUID) {
+                self.percentage = percentage
+                self.healthKitSampleId = healthKitSampleId
+            }
+        }
     }
 
     func remeasured(_ kilograms: Double, at instant: Date, in timeZone: TimeZone) -> WeightRecord {
