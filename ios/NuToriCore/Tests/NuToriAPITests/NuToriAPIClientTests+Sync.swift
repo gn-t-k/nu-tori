@@ -159,6 +159,74 @@ extension NuToriAPIClientTests {
             }
         }
 
+        @Suite("元のサンプルが消えたという書き込みを送るとき")
+        struct SourceDeleted {
+            static let writeIds = [
+                UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")!,
+                UUID(uuidString: "00000000-0000-4000-8000-0000000000a4")!,
+                UUID(uuidString: "00000000-0000-4000-8000-0000000000a5")!,
+            ]
+            static let weightRecordId = UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!
+
+            let transport: ClientTransportMock
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+            let writes: [SyncWrite]
+
+            init() {
+                clientState = .fixture()
+                writes = Self.writeIds.map {
+                    .sourceDeletedWeightRecord(writeId: $0, weightRecordId: Self.weightRecordId)
+                }
+                transport = .ok(
+                    json: """
+                        {"results":[
+                          {"writeId":"\(Self.writeIds[0].uuidString)","result":"applied"},
+                          {"writeId":"\(Self.writeIds[1].uuidString)","result":"ignored_tombstone"},
+                          {"writeId":"\(Self.writeIds[2].uuidString)","result":"kept_corrected"}
+                        ]}
+                        """
+                )
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: transport,
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("消えた体重記録の ID を添えて送ること")
+            func sendsWeightRecordId() async throws {
+                _ = try await client.pushSyncWrites(
+                    [writes[0]], isFinalBatch: false, clientState: clientState)
+
+                let sent = try #require(transport.requests.first)
+                let body = try SentSourceDeletedWritesBody(json: try #require(sent.body))
+                #expect(
+                    body.writes == [
+                        .init(
+                            id: Self.writeIds[0].uuidString,
+                            type: "source_deleted_weight_record",
+                            weightRecordId: Self.weightRecordId.uuidString
+                        )
+                    ])
+            }
+
+            @Test("消した・削除の印で捨てた・直してあるので残した結果を、送った順に返すこと")
+            func returnsOutcomes() async throws {
+                let result = try await client.pushSyncWrites(
+                    writes, isFinalBatch: false, clientState: clientState)
+
+                #expect(
+                    result
+                        == .pushed([
+                            SyncWriteResult(writeId: Self.writeIds[0], outcome: .applied),
+                            SyncWriteResult(writeId: Self.writeIds[1], outcome: .ignoredTombstone),
+                            SyncWriteResult(writeId: Self.writeIds[2], outcome: .keptCorrected),
+                        ])
+                )
+            }
+        }
+
         @Suite("サーバーが知らない結果と理由を返したとき")
         struct UnknownResult {
             let createWriteId: UUID
@@ -175,7 +243,7 @@ extension NuToriAPIClientTests {
                     transport: ClientTransportMock.ok(
                         json: """
                             {"results":[
-                              {"writeId":"\(createWriteId.uuidString)","result":"ignored_tombstone"},
+                              {"writeId":"\(createWriteId.uuidString)","result":"ignored_stale"},
                               {"writeId":"\(updateWriteId.uuidString)","result":"rejected","rejectionReason":"too_old"}
                             ]}
                             """
@@ -194,7 +262,7 @@ extension NuToriAPIClientTests {
                         == .pushed([
                             SyncWriteResult(
                                 writeId: createWriteId,
-                                outcome: .unknown(result: "ignored_tombstone")),
+                                outcome: .unknown(result: "ignored_stale")),
                             SyncWriteResult(
                                 writeId: updateWriteId,
                                 outcome: .rejected(.unknown(reason: "too_old"))),
@@ -386,6 +454,51 @@ extension NuToriAPIClientTests {
                         "pendingPhotoCount": "0",
                         "afterSequence": "3",
                     ])
+            }
+        }
+
+        @Suite("サーバーが削除の印を返したとき")
+        struct Deletion {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(
+                        json: """
+                            {"changes":[
+                              {"sequence":7,"kind":"weight_record_deletion","recordId":"00000000-0000-4000-8000-0000000000b1","record":{}},
+                              {"sequence":8,"kind":"weight_record_deletion","recordId":"not-a-uuid","record":{}}
+                            ],"hasMore":false,"nextAfterSequence":8,"startedOn":"2026-09-29"}
+                            """
+                    ),
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("削除の印を、消えた記録の ID つきで返し、ID が読めないものは読み飛ばせる形で返すこと")
+            func returnsDeletions() async throws {
+                let result = try await client.pullSyncChanges(
+                    afterSequence: 6, clientState: clientState)
+
+                #expect(
+                    result
+                        == .pulled(
+                            SyncChangesPage(
+                                changes: [
+                                    .weightRecordDeletion(
+                                        recordId: UUID(
+                                            uuidString: "00000000-0000-4000-8000-0000000000b1")!),
+                                    .unknown(kind: "weight_record_deletion"),
+                                ],
+                                hasMore: false,
+                                nextAfterSequence: 8,
+                                startedOn: "2026-09-29"
+                            )
+                        )
+                )
             }
         }
 

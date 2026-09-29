@@ -63,6 +63,9 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         for record in changes.records {
             records[record.id] = record
         }
+        for recordId in changes.removedRecordIds {
+            records[recordId] = nil
+        }
         state = changes.state
         appliedChanges.append(changes)
     }

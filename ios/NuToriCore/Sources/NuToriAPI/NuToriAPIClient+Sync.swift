@@ -119,6 +119,14 @@ extension Components.Schemas.SyncWrite {
                     )
                 )
             )
+        case .sourceDeletedWeightRecord(let writeId, let weightRecordId):
+            self = .sourceDeletedWeightRecord(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .sourceDeletedWeightRecord,
+                    weightRecordId: weightRecordId.uuidString
+                )
+            )
         }
     }
 }
@@ -166,6 +174,10 @@ extension SyncWriteResult {
             self.init(writeId: writeId, outcome: .applied)
         case "ignored_duplicate":
             self.init(writeId: writeId, outcome: .ignoredDuplicate)
+        case "ignored_tombstone":
+            self.init(writeId: writeId, outcome: .ignoredTombstone)
+        case "kept_corrected":
+            self.init(writeId: writeId, outcome: .keptCorrected)
         case "rejected":
             guard let reason = result.rejectionReason else {
                 throw NuToriAPIClient.MalformedResponseError(reason: "受け付けなかった理由が無い")
@@ -208,6 +220,12 @@ extension SyncChange {
         case "weight_record":
             if let record = try? WeightRecordPayload(change.record).syncedWeightRecord {
                 self = .weightRecord(record)
+            } else {
+                self = .unknown(kind: change.kind)
+            }
+        case "weight_record_deletion":
+            if let recordId = UUID(uuidString: change.recordId) {
+                self = .weightRecordDeletion(recordId: recordId)
             } else {
                 self = .unknown(kind: change.kind)
             }

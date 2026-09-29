@@ -33,14 +33,21 @@ export const applySyncWrites = (
       if (previousOutcome !== undefined) {
         return { writeId: write.id, outcome: previousOutcome };
       }
-      const { kind, outcome } = match(write)
+      const { kind, recordId, outcome } = match(write)
         .with({ type: "create_weight_record" }, ({ weightRecord }) => ({
           kind: "create" as const,
+          recordId: weightRecord.id,
           outcome: applyCreateWeightRecord(store, weightRecord),
         }))
         .with({ type: "update_weight_record" }, ({ weightRecord }) => ({
           kind: "update" as const,
+          recordId: weightRecord.id,
           outcome: applyUpdateWeightRecord(store, startedOn, weightRecord),
+        }))
+        .with({ type: "source_deleted_weight_record" }, ({ weightRecordId }) => ({
+          kind: "source_deleted" as const,
+          recordId: weightRecordId,
+          outcome: applySourceDeletedWeightRecord(store, weightRecordId),
         }))
         .exhaustive();
       store.insertWriteReceipt({
@@ -49,15 +56,15 @@ export const applySyncWrites = (
         positionInRequest,
         kind,
         recordType: "weight_record",
-        recordId: write.weightRecord.id,
+        recordId,
         outcome,
       });
-      if (outcome.result === "applied") {
-        store.insertRecordChange({
-          recordType: "weight_record",
-          recordId: write.weightRecord.id,
-          writeId: write.id,
-        });
+      // 削除の印は書き込みの控えを指すので、控えを書いたあとに足す
+      if (write.type === "source_deleted_weight_record" && outcome.result === "applied") {
+        store.insertWeightRecordDeletion(write.id);
+      }
+      if (outcome.result === "applied" || outcome.result === "ignored_tombstone") {
+        store.insertRecordChange({ recordType: "weight_record", recordId, writeId: write.id });
       }
       return { writeId: write.id, outcome };
     });
@@ -76,6 +83,9 @@ const applyCreateWeightRecord = (
   }
   if (!isTimeZoneName(weightRecord.timeZone)) {
     return { result: "rejected", reason: "invalid_time_zone" };
+  }
+  if (store.existsWeightRecordDeletion(weightRecord.id)) {
+    return { result: "ignored_tombstone" };
   }
   // ID の出し方に頼らず、同じサンプルを二重に取り込まない
   const isDuplicate =
@@ -104,6 +114,9 @@ const applyUpdateWeightRecord = (
   if (!isTimeZoneName(weightRecord.timeZone)) {
     return { result: "rejected", reason: "invalid_time_zone" };
   }
+  if (store.existsWeightRecordDeletion(weightRecord.id)) {
+    return { result: "ignored_tombstone" };
+  }
   const current = store.findWeightRecord(weightRecord.id);
   if (current === undefined) {
     return { result: "rejected", reason: "record_not_found" };
@@ -121,5 +134,23 @@ const applyUpdateWeightRecord = (
     timeZone: weightRecord.timeZone,
     version: Math.max(weightRecord.version, current.version + 1),
   });
+  return { result: "applied" };
+};
+
+const applySourceDeletedWeightRecord = (
+  store: SyncStore,
+  weightRecordId: string,
+): SyncWriteOutcome => {
+  if (store.existsWeightRecordDeletion(weightRecordId)) {
+    return { result: "ignored_tombstone" };
+  }
+  const current = store.findWeightRecord(weightRecordId);
+  if (current !== undefined && current.version >= 2) {
+    return { result: "kept_corrected" };
+  }
+  // 記録がまだ届いていなくても印を残し、あとから届く作る書き込みで生き返らせない
+  if (current !== undefined) {
+    store.deleteWeightRecord(weightRecordId);
+  }
   return { result: "applied" };
 };

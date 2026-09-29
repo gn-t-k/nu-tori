@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { match } from "ts-pattern";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
 import { createSyncClientStateSchema } from "./create-sync-client-state-schema";
@@ -54,7 +55,7 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
                       writeId: z.string(),
                       result: z.string().openapi({
                         description:
-                          "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
+                          "applied は当てた（消えたという書き込みでは消した）、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、ignored_tombstone は削除の印があって捨てた、kept_corrected は元のサンプルが消えたが直してあるので残した、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
                         example: "applied",
                       }),
                       rejectionReason: z.string().optional().openapi({
@@ -122,7 +123,7 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
                       sequence: z.number().int(),
                       kind: z.string().openapi({
                         description:
-                          "記録の種類。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）",
+                          "変更の種類。weight_record は体重記録、weight_record_deletion は削除の印（record は空）。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）",
                         example: "weight_record",
                       }),
                       recordId: z.string(),
@@ -155,19 +156,29 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       );
       return c.json(
         {
-          changes: pulled.changes.map(({ sequence, weightRecord }) => ({
-            sequence,
-            kind: "weight_record",
-            recordId: weightRecord.id,
-            record: {
-              id: weightRecord.id,
-              weightKg: weightRecord.weightKg,
-              measuredAt: weightRecord.measuredAt.getTime(),
-              timeZone: weightRecord.timeZone,
-              version: weightRecord.version,
-              imported: weightRecord.imported,
-            },
-          })),
+          changes: pulled.changes.map((change) =>
+            match(change)
+              .with({ type: "weight_record" }, ({ sequence, weightRecord }) => ({
+                sequence,
+                kind: "weight_record",
+                recordId: weightRecord.id,
+                record: {
+                  id: weightRecord.id,
+                  weightKg: weightRecord.weightKg,
+                  measuredAt: weightRecord.measuredAt.getTime(),
+                  timeZone: weightRecord.timeZone,
+                  version: weightRecord.version,
+                  imported: weightRecord.imported,
+                },
+              }))
+              .with({ type: "weight_record_deletion" }, ({ sequence, recordId }) => ({
+                sequence,
+                kind: "weight_record_deletion",
+                recordId,
+                record: {},
+              }))
+              .exhaustive(),
+          ),
           hasMore: pulled.hasMore,
           nextAfterSequence: pulled.nextAfterSequence,
           startedOn: pulled.startedOn ?? null,

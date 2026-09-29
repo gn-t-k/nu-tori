@@ -136,7 +136,7 @@ public actor SyncEngine {
             }
             resolvedWriteIds.append(write.writeId)
             switch outcome {
-            case .applied, .ignoredDuplicate, .unknown:
+            case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
                 break
             case .rejected(let reason):
                 rejectedWrites.append(
@@ -177,7 +177,11 @@ public actor SyncEngine {
                     startedOn: page.startedOn
                 )
                 try await store.apply(
-                    PulledChanges(records: page.changes.compactMap(\.weightRecord), state: state)
+                    PulledChanges(
+                        records: page.changes.compactMap(\.weightRecord),
+                        removedRecordIds: page.changes.compactMap(\.removedRecordId),
+                        state: state
+                    )
                 )
                 if !page.hasMore {
                     return nil
@@ -264,7 +268,14 @@ extension SyncChange {
     fileprivate var weightRecord: WeightRecord? {
         switch self {
         case .weightRecord(let record): WeightRecord(record)
-        case .unknown: nil
+        case .weightRecordDeletion, .unknown: nil
+        }
+    }
+
+    fileprivate var removedRecordId: UUID? {
+        switch self {
+        case .weightRecordDeletion(let recordId): recordId
+        case .weightRecord, .unknown: nil
         }
     }
 }
