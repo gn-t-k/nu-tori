@@ -106,12 +106,17 @@ extension NuToriAPIClientTests {
         struct AccountSettingsWrite {
             let writeId: UUID
             let settingsId: UUID
+            let write: SyncWrite
             let transport: ClientTransportMock
             let client: NuToriAPIClient
 
             init() {
                 writeId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")!
                 settingsId = UUID(uuidString: "00000000-0000-4000-8000-0000000000e1")!
+                write = .updateAccountSettings(
+                    writeId: writeId,
+                    settings: SyncedAccountSettings(id: settingsId, sendsUsageData: false)
+                )
                 transport = .ok(
                     json: #"{"results":[{"writeId":"\#(writeId.uuidString)","result":"applied"}]}"#
                 )
@@ -125,15 +130,7 @@ extension NuToriAPIClientTests {
             @Test("記録の代わりにアカウントの設定を載せた update_account_settings として送ること")
             func sendsUpdateAccountSettings() async throws {
                 _ = try await client.pushSyncWrites(
-                    [
-                        .updateAccountSettings(
-                            writeId: writeId,
-                            settings: SyncedAccountSettings(id: settingsId, sendsUsageData: false)
-                        )
-                    ],
-                    isFinalBatch: true,
-                    clientState: .fixture()
-                )
+                    [write], isFinalBatch: true, clientState: .fixture())
 
                 let sent = try #require(transport.requests.first)
                 #expect(
