@@ -1,5 +1,4 @@
 public enum WeightDecimalText {
-    /// 小数第1位まで。整数は4桁まで。それ以外の文字は落とす
     public static func sanitized(_ text: String) -> String {
         var whole = ""
         var fraction = ""

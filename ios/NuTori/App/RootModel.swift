@@ -1,10 +1,14 @@
+import Foundation
 import NuToriCore
 import Observation
 
 @Observable
 final class RootModel {
     private(set) var screen: Screen = .opening
-    private(set) var rejectedLines: [RejectedWeightLine] = []
+    var rejectedLines: [RejectedWeightLine] {
+        guard case .accepting(let lines) = rejectionLines else { return [] }
+        return lines
+    }
 
     init(accountSession: AccountSession, recordSync: RecordSync) {
         self.accountSession = accountSession
@@ -16,7 +20,7 @@ final class RootModel {
             self?.noteRejected(writes)
         }
         recordSync.onReplacingRecord = { [weak self] recordId in
-            self?.rejectedLines.removeAll { $0.record.id == recordId }
+            self?.dropRejection(for: recordId)
         }
     }
 
@@ -46,12 +50,16 @@ final class RootModel {
     }
 
     func noteAppBackgrounded() {
-        acceptsRejectionLines = false
-        rejectedLines = []
+        rejectionLines = .ignoring
     }
 
     func noteAppActive() {
-        acceptsRejectionLines = true
+        switch rejectionLines {
+        case .ignoring:
+            rejectionLines = .accepting([])
+        case .accepting:
+            break
+        }
     }
 
     func signIn(with result: AppleSignInResult) async {
@@ -85,14 +93,34 @@ final class RootModel {
 
     private let accountSession: AccountSession
     private let recordSync: RecordSync
-    private var acceptsRejectionLines = true
+    private var rejectionLines = RejectionLines.accepting([])
+
+    private enum RejectionLines {
+        case accepting([RejectedWeightLine])
+        case ignoring
+    }
+
+    private func dropRejection(for recordId: UUID) {
+        switch rejectionLines {
+        case .ignoring:
+            break
+        case .accepting(var lines):
+            lines.removeAll { $0.record.id == recordId }
+            rejectionLines = .accepting(lines)
+        }
+    }
 
     private func noteRejected(_ writes: [RejectedWrite]) {
-        guard acceptsRejectionLines else { return }
-        for write in writes {
-            let line = RejectedWeightLine(write)
-            rejectedLines.removeAll { $0.record.id == line.record.id }
-            rejectedLines.append(line)
+        switch rejectionLines {
+        case .ignoring:
+            break
+        case .accepting(var lines):
+            for write in writes {
+                let line = RejectedWeightLine(write)
+                lines.removeAll { $0.record.id == line.record.id }
+                lines.append(line)
+            }
+            rejectionLines = .accepting(lines)
         }
     }
 

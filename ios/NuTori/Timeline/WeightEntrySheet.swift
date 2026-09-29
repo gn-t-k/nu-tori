@@ -149,28 +149,30 @@ struct WeightEntrySheet: View {
 }
 
 private struct Draft {
-    var tenths: Int?
     var initialTenths: Int?
     var text: String
     var replacesOnNextInput: Bool
-    var startsWithKeyboard: Bool
 
     init(_ entry: WeightEntry) {
         switch entry.initialValue {
         case .empty:
-            tenths = nil
             initialTenths = nil
             text = ""
             replacesOnNextInput = false
-            startsWithKeyboard = true
         case .previous(let kilograms, _):
             let tenths = Int((kilograms * 10).rounded())
-            self.tenths = tenths
             initialTenths = tenths
             text = Self.decimal(tenths)
             replacesOnNextInput = false
-            startsWithKeyboard = false
         }
+    }
+
+    var tenths: Int? {
+        Self.tenths(parsing: text)
+    }
+
+    var startsWithKeyboard: Bool {
+        initialTenths == nil
     }
 
     mutating func beginTyping() {
@@ -189,7 +191,6 @@ private struct Draft {
         if text != sanitized {
             text = sanitized
         }
-        tenths = Self.tenths(parsing: sanitized)
     }
 
     mutating func step(by delta: Int) {
@@ -198,7 +199,6 @@ private struct Draft {
         if next < Self.minimumTenths && delta < 0 { return }
         if next > Self.maximumTenths && delta > 0 { return }
         replacesOnNextInput = false
-        self.tenths = next
         text = Self.decimal(next)
     }
 

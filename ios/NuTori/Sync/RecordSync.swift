@@ -15,7 +15,10 @@ import NuToriCore
 
     func save(_ write: WeightEntry.Write) async throws {
         guard await hasSession() else { return }
-        if case .correct(let record) = write {
+        switch write {
+        case .create:
+            break
+        case .correct(let record):
             onReplacingRecord(record.id)
         }
         try await engineForThisDevice().save(write)
