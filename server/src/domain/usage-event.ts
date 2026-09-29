@@ -1,11 +1,10 @@
-import type { RecordType } from "./record-type";
 import type { SyncWriteOutcome } from "./sync-write-outcome";
 
 export type UsageEvent =
   | {
       name: "sync_write_rejected";
       writeKind: "create" | "update";
-      recordType: RecordType;
+      recordType: "weight_record";
       reason: Extract<SyncWriteOutcome, { result: "rejected" }>["reason"];
     }
   | {

@@ -21,15 +21,18 @@ export type SyncStore = {
     afterSequence: number;
   }) => void;
   findWriteOutcome: (writeId: string) => SyncWriteOutcome | undefined;
-  insertWriteReceipt: (receipt: {
-    writeId: string;
-    requestLogId: string;
-    positionInRequest: number;
-    kind: "create" | "update" | "source_deleted";
-    recordType: RecordType;
-    recordId: string;
-    outcome: SyncWriteOutcome;
-  }) => void;
+  insertWriteReceipt: (
+    receipt: {
+      writeId: string;
+      requestLogId: string;
+      positionInRequest: number;
+      recordId: string;
+      outcome: SyncWriteOutcome;
+    } & (
+      | { kind: "create" | "update" | "source_deleted"; recordType: "weight_record" }
+      | { kind: "update"; recordType: "account_settings" }
+    ),
+  ) => void;
   findWeightRecord: (id: string) => WeightRecord | undefined;
   existsImportedSample: (healthkitSampleUuid: string) => boolean;
   existsWeightRecordDeletion: (recordId: string) => boolean;

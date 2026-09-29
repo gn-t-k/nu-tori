@@ -3,7 +3,7 @@ import type { UsageEvent } from "../domain/usage-event";
 
 // Durable Object では応答のあとに続ける仕組みが効かないので、数秒の上限を付けて待つ。失敗も時間切れも握りつぶす
 export const sendUsageEvents = async (
-  env: { POSTHOG_PROJECT_TOKEN?: string | undefined },
+  env: { POSTHOG_PROJECT_TOKEN?: string },
   accountId: string,
   events: readonly UsageEvent[],
 ): Promise<void> => {
