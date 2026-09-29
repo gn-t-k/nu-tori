@@ -151,8 +151,6 @@ internal struct Client: APIProtocol {
     }
     /// 端末の送り待ちをまとめて送る
     ///
-    /// 書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる
-    ///
     /// - Remark: HTTP `POST /v1/sync/writes`.
     /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)`.
     internal func pushSyncWrites(_ input: Operations.PushSyncWrites.Input) async throws -> Operations.PushSyncWrites.Output {

@@ -1,6 +1,5 @@
 import Foundation
 
-/// 送った要求の本文を、型で読み戻して比べるためのもの
 struct SentSyncWritesBody: Decodable, Equatable {
     let clientState: ClientState
     let isFinalBatch: Bool

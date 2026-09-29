@@ -191,7 +191,7 @@ export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
         writeId,
       );
     },
-    findRecordChanges: (afterSequence, limit) =>
+    findLatestChangePerRecord: (afterSequence, limit) =>
       sql
         .exec<{ sequence: number; record_type: string; record_id: string }>(
           `SELECT MAX(sequence) AS sequence, record_type, record_id
