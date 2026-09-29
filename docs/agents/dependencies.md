@@ -17,6 +17,6 @@ Dependabot の PR にコミットを足すと、Dependabot はその PR を reba
 
 - npm の依存は Dependabot が上げる。Node（`server/.node-version`）と pnpm（`server/package.json` の `packageManager`）は手で上げる
 - pnpm は、Dependabot が対応する版（2026-09-28 時点で v12 まで）にとどめる。対応が広がったら上げる
-- `@cloudflare/vitest-pool-workers` が対応する Vitest の版にとどめる（2026-09-28 時点で 4.x）。Dependabot は `.github/dependabot.yml` の `ignore` で Vitest のメジャーの版上げを除いているので、対応が広がったら手で上げ、`ignore` を外す
+- `@cloudflare/vitest-plugin` が対応する Vitest の版にとどめる（2026-09-29 時点で 4.x）。Dependabot は `.github/dependabot.yml` の `ignore` で Vitest のメジャーの版上げを除いているので、対応が広がったら手で上げ、`ignore` を外す
 - Better Auth の版を上げるとき（Dependabot の PR も）は、変更履歴で中核の表の変更を確かめる（1.x の中でも入ったことがある）
 - `@praha/byethrow`・`@praha/byethrow-testing`・`@praha/byethrow-oxlint`・`@praha/byethrow-docs` は同じ版で上げる（`@praha/byethrow-oxlint` が peer 依存で `@praha/byethrow` の版を固定する）。`@praha/byethrow-docs` を上げたら、`server/node_modules/@praha/byethrow-docs/dist/esm/cli/commands/init.js` の `instruction` と `.agents/skills/byethrow/SKILL.md` を比べ、変わった分を写す。`init claude` は動かした場所の `.claude/skills/byethrow/SKILL.md` に書き出し、リポジトリ直下ではリンクをたどって手直しした SKILL.md を上書きするので、動かさない
