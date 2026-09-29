@@ -25,6 +25,11 @@ main() {
 }
 
 check_ios() {
+    if ! command -v swift > /dev/null; then
+        echo "swift が無い。Linux では scripts/install-swift で入れる（SessionStart hook が入れている途中なら、install-swift はそれが終わるのを待つ）" >&2
+        return 1
+    fi
+
     step "整形（swift-format）"
     if $fix; then
         swift format format --in-place --recursive --parallel "$ios"
@@ -89,6 +94,7 @@ check_ios_app() {
         echo "ios-app は macOS でだけ動く" >&2
         return 1
     fi
+    # Linux と macOS で Foundation の振る舞いが違うことがあるので、macOS でも回す
     check_ios_package
 
     step "アプリのビルドとテスト"
