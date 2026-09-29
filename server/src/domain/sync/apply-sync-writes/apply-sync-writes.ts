@@ -3,7 +3,6 @@ import { computeCalendarDay } from "../../compute-calendar-day";
 import { isTimeZoneName } from "../../is-time-zone-name";
 import { isWithinAcceptedRange } from "../../is-within-accepted-range";
 import type { AccountSettings } from "../account-settings";
-import type { RecordType } from "../record-type";
 import type { SyncClientState } from "../sync-client-state";
 import type { SyncStore } from "../sync-store";
 import type { SyncWrite } from "../sync-write";
@@ -40,8 +39,8 @@ export const applySyncWrites = (
       if (previousOutcome !== undefined) {
         return { writeId: write.id, outcome: previousOutcome };
       }
-      const { kind, recordType, recordId, outcome, changedRecordId, accountSettingChange } =
-        applyWrite(store, startedOn, write);
+      const applied = applyWrite(store, startedOn, write);
+      const { kind, recordType, recordId, outcome } = applied;
       store.insertWriteReceipt({
         writeId: write.id,
         requestLogId,
@@ -51,9 +50,18 @@ export const applySyncWrites = (
         recordId,
         outcome,
       });
-      if (accountSettingChange !== undefined) {
-        store.insertAccountSettingChange({ writeId: write.id, ...accountSettingChange });
-      }
+      const changedRecordId = match(applied)
+        .with({ recordType: "weight_record" }, () =>
+          outcome.result === "applied" ? recordId : undefined,
+        )
+        .with({ recordType: "account_settings" }, (settingsWrite) => {
+          store.insertAccountSettingChange({
+            writeId: write.id,
+            sendsUsageData: settingsWrite.sendsUsageData,
+          });
+          return settingsWrite.storedRecordId;
+        })
+        .exhaustive();
       if (changedRecordId !== undefined) {
         store.insertRecordChange({ recordType, recordId: changedRecordId, writeId: write.id });
       }
@@ -80,12 +88,12 @@ export const applySyncWrites = (
 
 type AppliedWrite = {
   kind: "create" | "update";
-  recordType: RecordType;
   recordId: string;
   outcome: SyncWriteOutcome;
-  changedRecordId: string | undefined;
-  accountSettingChange: { sendsUsageData: boolean } | undefined;
-};
+} & (
+  | { recordType: "weight_record" }
+  | { recordType: "account_settings"; storedRecordId: string; sendsUsageData: boolean }
+);
 
 type WeightRecordWrite = Extract<
   SyncWrite,
@@ -109,8 +117,8 @@ const applyWrite = (
       recordType: "account_settings",
       recordId: accountSettings.id,
       outcome: { result: "applied" },
-      changedRecordId: applyAccountSettingsWrite(store, accountSettings),
-      accountSettingChange: { sendsUsageData: accountSettings.sendsUsageData },
+      storedRecordId: applyAccountSettingsWrite(store, accountSettings),
+      sendsUsageData: accountSettings.sendsUsageData,
     }))
     .exhaustive();
 
@@ -126,8 +134,6 @@ const applyWeightRecord = (
     recordType: "weight_record",
     recordId: write.weightRecord.id,
     outcome,
-    changedRecordId: outcome.result === "applied" ? write.weightRecord.id : undefined,
-    accountSettingChange: undefined,
   };
 };
 
