@@ -96,25 +96,26 @@
 
             fileprivate var pendingWrites: [PendingWrite] {
                 switch self {
-                case .signInAgainWithPendingWrites: [Self.pendingWeightWrite]
+                case .signInAgainWithPendingWrites:
+                    [
+                        PendingWrite(
+                            writeId: UUID(),
+                            enqueuedAt: .now,
+                            operation: .createWeightRecord(
+                                WeightRecord(
+                                    id: UUID(),
+                                    kilograms: 72.4,
+                                    instant: .now,
+                                    timeZone: .current,
+                                    inputSource: .manual,
+                                    version: 1
+                                )
+                            )
+                        )
+                    ]
                 case .signedOut, .signedIn, .signedInFetching, .signInAgain: []
                 }
             }
-
-            private static let pendingWeightWrite = PendingWrite(
-                writeId: UUID(),
-                enqueuedAt: .now,
-                operation: .createWeightRecord(
-                    WeightRecord(
-                        id: UUID(),
-                        kilograms: 72.4,
-                        instant: .now,
-                        timeZone: .current,
-                        inputSource: .manual,
-                        version: 1
-                    )
-                )
-            )
         }
 
         enum AppleSignIn: String {

@@ -42,6 +42,7 @@ extension AppleSignInResult {
     }
 
     private static func isCancellation(_ error: any Error) -> Bool {
+        // Result の失敗は any Error なので、キャストは避けられない
         (error as? ASAuthorizationError)?.code == .canceled
     }
 }
