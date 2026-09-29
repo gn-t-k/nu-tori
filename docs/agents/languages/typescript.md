@@ -13,10 +13,6 @@
 
 - tsconfig は `@tsconfig/strictest` を継承し、`moduleResolution` は `Bundler` にする（拡張子なしの `./index` やディレクトリの import はこれを前提にする）。このファイルの型の話は、そこで有効になる `strict`、`exactOptionalPropertyTypes`、`noImplicitReturns` などを前提にする
 
-### コードを説明する情報
-
-- ドキュメントコメント（JSDoc の `/** */`）も、名前を言い換えるだけのものは書かない。export するものでも同じ
-
 ### 関数はアロー関数で書く
 
 - 関数は `const functionName = () => {}` で書く
