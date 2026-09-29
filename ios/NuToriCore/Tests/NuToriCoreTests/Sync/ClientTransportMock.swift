@@ -44,7 +44,6 @@ final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
-    /// サインインとアカウントの削除の経路に答える。ほかの経路は 404
     static func account(
         startStatus: HTTPResponse.Status = .created,
         accountId: String = "account-1",

@@ -8,7 +8,6 @@ final class AnalyticsSessionMock: AnalyticsSession, @unchecked Sendable {
         AnalyticsSessionMock(neverFlushes: false, log: log)
     }
 
-    /// 送り切れないまま、キャンセルされるまで待つ
     static func neverFlushes(log: CallLog = CallLog()) -> AnalyticsSessionMock {
         AnalyticsSessionMock(neverFlushes: true, log: log)
     }

@@ -245,20 +245,15 @@ struct AccountSessionTests {
 
     @Suite("サインインしたとき")
     struct SigningIn {
-        static let credential = AppleSignInCredential(
-            idToken: "id-token",
-            nonce: "nonce-1",
-            authorizationCode: "auth-code",
-            appleUserId: "apple-user-2"
-        )
-
         @Suite("この端末に保存したアカウントが無いとき")
         struct WithoutSavedAccount {
             let device: AccountDevice
             let transport: ClientTransportMock
+            let credential: AppleSignInCredential
             let session: AccountSession
 
             init() {
+                credential = .fixture()
                 device = .signedOut(hasSignInAgainMark: true)
                 transport = .account(accountId: "account-2")
                 session = device.session(transport: transport)
@@ -266,7 +261,7 @@ struct AccountSessionTests {
 
             @Test("端末から消すものを消してから、新しいセッションとアカウントを保存すること")
             func erasesThenSaves() async throws {
-                _ = try await session.signIn(with: SigningIn.credential)
+                _ = try await session.signIn(with: credential)
 
                 #expect(device.syncStore.eraseAllCount == 1)
                 #expect(device.backgroundTransfers.cancelAndDeleteCount == 1)
@@ -284,7 +279,7 @@ struct AccountSessionTests {
 
             @Test("印を消し、初回の取得がまだなので読み込み中にすること")
             func clearsMarkAndShowsLoading() async throws {
-                let outcome = try await session.signIn(with: SigningIn.credential)
+                let outcome = try await session.signIn(with: credential)
 
                 #expect(outcome == .signedIn(.loadingTimeline))
                 #expect(!device.deviceStore.hasMark)
@@ -292,7 +287,7 @@ struct AccountSessionTests {
 
             @Test("Apple から得た値と端末のタイムゾーンを、セッションを作る経路に送ること")
             func sendsCredentialAndTimeZone() async throws {
-                _ = try await session.signIn(with: SigningIn.credential)
+                _ = try await session.signIn(with: credential)
 
                 let request = try #require(transport.requests.first)
                 #expect(request.request.path == "/v1/sessions")
@@ -308,16 +303,18 @@ struct AccountSessionTests {
         @Suite("前のアカウントと別のアカウントのとき")
         struct WithDifferentAccount {
             let device: AccountDevice
+            let credential: AppleSignInCredential
             let session: AccountSession
 
             init() throws {
+                credential = .fixture()
                 device = try .signedIn(pendingWrites: [.fixtureCreating()])
                 session = device.session(transport: .account(accountId: "account-2"))
             }
 
             @Test("前のアカウントのものを端末からすべて消し、新しいものを保存すること")
             func erasesPreviousAccountData() async throws {
-                _ = try await session.signIn(with: SigningIn.credential)
+                _ = try await session.signIn(with: credential)
 
                 #expect(device.syncStore.records.isEmpty)
                 #expect(device.syncStore.pending.isEmpty)
@@ -331,7 +328,7 @@ struct AccountSessionTests {
 
             @Test("PostHog をリセットし、Sentry の user を外すこと")
             func resetsObservation() async throws {
-                _ = try await session.signIn(with: SigningIn.credential)
+                _ = try await session.signIn(with: credential)
 
                 #expect(device.analytics.resetCount == 1)
                 #expect(device.errorReporting.clearUserCount == 1)
@@ -341,16 +338,18 @@ struct AccountSessionTests {
         @Suite("前のアカウントと同じアカウントで、初回の取得を終えているとき")
         struct WithSameAccount {
             let device: AccountDevice
+            let credential: AppleSignInCredential
             let session: AccountSession
 
             init() throws {
+                credential = .fixture()
                 device = try .signedIn(pendingWrites: [.fixtureCreating()])
                 session = device.session(transport: .account(accountId: "account-1"))
             }
 
             @Test("端末のものを消さず、新しいセッションだけ保存すること")
             func keepsData() async throws {
-                _ = try await session.signIn(with: SigningIn.credential)
+                _ = try await session.signIn(with: credential)
 
                 #expect(device.syncStore.eraseAllCount == 0)
                 #expect(device.syncStore.records.count == 1)
@@ -361,14 +360,14 @@ struct AccountSessionTests {
 
             @Test("タイムラインにすること")
             func showsTimeline() async throws {
-                let outcome = try await session.signIn(with: SigningIn.credential)
+                let outcome = try await session.signIn(with: credential)
 
                 #expect(outcome == .signedIn(.timeline))
             }
 
             @Test("Apple の識別子を、新しく得たものに置き換えること")
             func replacesAppleUserId() async throws {
-                _ = try await session.signIn(with: SigningIn.credential)
+                _ = try await session.signIn(with: credential)
 
                 #expect(device.deviceStore.account?.appleUserId == "apple-user-2")
             }
@@ -377,9 +376,11 @@ struct AccountSessionTests {
         @Suite("同じアカウントで、サインインし直しの印があるとき")
         struct WithSignInAgainMark {
             let device: AccountDevice
+            let credential: AppleSignInCredential
             let session: AccountSession
 
             init() async throws {
+                credential = .fixture()
                 device = try .signedIn()
                 try await device.deviceStore.setSignInAgainMark()
                 session = device.session()
@@ -387,7 +388,7 @@ struct AccountSessionTests {
 
             @Test("印を消すこと")
             func clearsMark() async throws {
-                _ = try await session.signIn(with: SigningIn.credential)
+                _ = try await session.signIn(with: credential)
 
                 #expect(!device.deviceStore.hasMark)
             }
@@ -396,16 +397,18 @@ struct AccountSessionTests {
         @Suite("サーバーがトークンかコードを受け付けなかったとき")
         struct RejectedByServer {
             let device: AccountDevice
+            let credential: AppleSignInCredential
             let session: AccountSession
 
             init() {
+                credential = .fixture()
                 device = .signedOut(hasSignInAgainMark: true)
                 session = device.session(transport: .account(startStatus: .unauthorized))
             }
 
             @Test("その他の失敗を返し、何も保存しないこと")
             func failsWithoutSaving() async throws {
-                let outcome = try await session.signIn(with: SigningIn.credential)
+                let outcome = try await session.signIn(with: credential)
 
                 #expect(outcome == .failed(.other))
                 #expect(device.keychain.token == nil)
@@ -417,23 +420,25 @@ struct AccountSessionTests {
         @Suite("電波が無いとき")
         struct Offline {
             let device: AccountDevice
+            let credential: AppleSignInCredential
             let session: AccountSession
 
             init() throws {
+                credential = .fixture()
                 device = try .signedIn()
                 session = device.session(transport: .error(URLError(.notConnectedToInternet)))
             }
 
             @Test("つながらない失敗を返すこと")
             func failsAsUnreachable() async throws {
-                let outcome = try await session.signIn(with: SigningIn.credential)
+                let outcome = try await session.signIn(with: credential)
 
                 #expect(outcome == .failed(.unreachable))
             }
 
             @Test("端末のものを消さず、セッションも変えないこと")
             func keepsData() async throws {
-                _ = try await session.signIn(with: SigningIn.credential)
+                _ = try await session.signIn(with: credential)
 
                 #expect(device.syncStore.eraseAllCount == 0)
                 #expect(device.keychain.token == "session-1")
@@ -442,16 +447,18 @@ struct AccountSessionTests {
 
         @Suite("時間切れのとき")
         struct TimedOut {
+            let credential: AppleSignInCredential
             let session: AccountSession
 
             init() {
+                credential = .fixture()
                 session = AccountDevice.signedOut().session(
                     transport: .error(URLError(.timedOut)))
             }
 
             @Test("つながらない失敗を返すこと")
             func failsAsUnreachable() async throws {
-                let outcome = try await session.signIn(with: SigningIn.credential)
+                let outcome = try await session.signIn(with: credential)
 
                 #expect(outcome == .failed(.unreachable))
             }
@@ -459,16 +466,18 @@ struct AccountSessionTests {
 
         @Suite("サーバーが失敗したとき")
         struct ServerFailure {
+            let credential: AppleSignInCredential
             let session: AccountSession
 
             init() {
+                credential = .fixture()
                 session = AccountDevice.signedOut().session(
                     transport: .account(startStatus: .internalServerError))
             }
 
             @Test("その他の失敗を返すこと")
             func failsAsOther() async throws {
-                let outcome = try await session.signIn(with: SigningIn.credential)
+                let outcome = try await session.signIn(with: credential)
 
                 #expect(outcome == .failed(.other))
             }
