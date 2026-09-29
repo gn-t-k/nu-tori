@@ -114,18 +114,24 @@ export const applySyncWrites = (
       if (changedRecordId !== undefined) {
         store.insertRecordChange({ recordType, recordId: changedRecordId, writeId: write.id });
       }
-      if (
-        applied.recordType === "weight_record" &&
-        applied.kind !== "source_deleted" &&
-        applied.outcome.result === "rejected"
-      ) {
-        rejectedWrites.push({
-          name: "sync_write_rejected",
-          writeKind: applied.kind,
-          recordType: applied.recordType,
-          reason: applied.outcome.reason,
-        });
-      }
+      match(applied)
+        .with(
+          { recordType: "weight_record", kind: "create", outcome: { result: "rejected" } },
+          { recordType: "weight_record", kind: "update", outcome: { result: "rejected" } },
+          ({ kind, outcome: rejected }) => {
+            rejectedWrites.push({
+              name: "sync_write_rejected",
+              writeKind: kind,
+              recordType: "weight_record",
+              reason: rejected.reason,
+            });
+          },
+        )
+        .with({ recordType: "weight_record", kind: "create" }, () => undefined)
+        .with({ recordType: "weight_record", kind: "update" }, () => undefined)
+        .with({ kind: "source_deleted" }, () => undefined)
+        .with({ recordType: "account_settings" }, () => undefined)
+        .exhaustive();
       return { writeId: write.id, outcome };
     });
     return {
