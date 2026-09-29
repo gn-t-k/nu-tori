@@ -125,9 +125,18 @@ struct WeightRecordTests {
             }
         }
 
-        @Test("見せている値と同じなら直さないこと")
-        func ignoresUnchangedShownValue() {
-            #expect(record.correction(replacingKilograms: 72.4) == nil)
+        @Suite("見せている値と同じとき")
+        struct ShownValue {
+            let record: WeightRecord
+
+            init() throws {
+                record = try .imported(72.44, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
+            }
+
+            @Test("直さないこと")
+            func leavesRecordUnchanged() {
+                #expect(record.correction(replacingKilograms: 72.4) == nil)
+            }
         }
     }
 }

@@ -48,7 +48,7 @@ struct WeightScreen: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("完了") {
-                    if let recordId = editingRecordId {
+                    if let recordId = correction.editing?.recordId {
                         commit(recordId: recordId)
                     }
                     focusedRecordId = nil
@@ -61,10 +61,7 @@ struct WeightScreen: View {
         }
     }
 
-    @State private var editingRecordId: UUID?
-    @State private var editingPlace: CorrectionOrigin?
-    @State private var draftText = ""
-    @State private var replacesOnNextInput = false
+    @State private var correction = Correction.notEditing
     @FocusState private var focusedRecordId: UUID?
 
     private var sameDayRecords: [WeightRecord] {
@@ -88,7 +85,7 @@ struct WeightScreen: View {
                 HStack(alignment: .firstTextBaseline) {
                     dayValue(representative)
                     Spacer(minLength: 12)
-                    if editingPlace != .dayGroup {
+                    if correction.editing?.place != .dayGroup {
                         Button("直す") {
                             beginEditing(representative, place: .dayGroup)
                         }
@@ -107,7 +104,7 @@ struct WeightScreen: View {
     }
 
     @ViewBuilder private func dayValue(_ record: WeightRecord) -> some View {
-        if editingRecordId == record.id, editingPlace == .dayGroup {
+        if correction.editing?.recordId == record.id, correction.editing?.place == .dayGroup {
             weightField(prominent: true)
         } else {
             Button {
@@ -126,7 +123,9 @@ struct WeightScreen: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 12)
-                if editingRecordId == record.id, editingPlace == .otherRecord {
+                if correction.editing?.recordId == record.id,
+                    correction.editing?.place == .otherRecord
+                {
                     weightField(prominent: false)
                 } else {
                     Button {
@@ -145,7 +144,9 @@ struct WeightScreen: View {
 
     @ViewBuilder private func recentRow(_ row: RepresentativeWeight) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            if editingRecordId == row.record.id, editingPlace == .recentRecord {
+            if correction.editing?.recordId == row.record.id,
+                correction.editing?.place == .recentRecord
+            {
                 weightField(prominent: false)
             } else {
                 Button {
@@ -183,16 +184,20 @@ struct WeightScreen: View {
     }
 
     private func weightField(prominent: Bool) -> some View {
-        TextField("体重", text: $draftText)
+        TextField("体重", text: draftText)
             .keyboardType(.decimalPad)
             .font(prominent ? .title2 : .body)
             .fontWeight(prominent ? .semibold : .regular)
             .monospacedDigit()
-            .focused($focusedRecordId, equals: editingRecordId)
+            .focused($focusedRecordId, equals: correction.editing?.recordId)
             .accessibilityLabel("体重の値")
-            .onAppear { focusedRecordId = editingRecordId }
-            .onChange(of: draftText) { previous, next in
-                applyTyped(previous: previous, next: next)
+            .onAppear { focusedRecordId = correction.editing?.recordId }
+            .onChange(of: correction.editing?.draftText) { previous, next in
+                guard let previous, let next else { return }
+                let updated = correction.applyingTyped(previous: previous, next: next)
+                if updated != correction {
+                    correction = updated
+                }
             }
     }
 
@@ -231,22 +236,51 @@ struct WeightScreen: View {
         }
     }
 
+    private var draftText: Binding<String> {
+        Binding(
+            get: { correction.editing?.draftText ?? "" },
+            set: { next in
+                switch correction {
+                case .notEditing:
+                    return
+                case .editing(let recordId, let place, let draftText, let replacesOnNextInput):
+                    guard next != draftText else { return }
+                    correction = .editing(
+                        recordId: recordId,
+                        place: place,
+                        draftText: next,
+                        replacesOnNextInput: replacesOnNextInput
+                    )
+                }
+            }
+        )
+    }
+
     private func beginEditing(_ record: WeightRecord, place: CorrectionOrigin) {
-        if let editingRecordId, editingRecordId != record.id || editingPlace != place {
-            commit(recordId: editingRecordId)
+        if let editing = correction.editing,
+            editing.recordId != record.id || editing.place != place
+        {
+            commit(recordId: editing.recordId)
         }
-        draftText = shownNumber(record.kilograms)
-        replacesOnNextInput = true
-        editingRecordId = record.id
-        editingPlace = place
+        correction = .editing(
+            recordId: record.id,
+            place: place,
+            draftText: shownNumber(record.kilograms),
+            replacesOnNextInput: true
+        )
         focusedRecordId = record.id
     }
 
     private func commit(recordId: UUID) {
-        guard editingRecordId == recordId else { return }
-        let text = draftText
-        editingRecordId = nil
-        editingPlace = nil
+        let text: String
+        switch correction {
+        case .notEditing:
+            return
+        case .editing(let editingRecordId, _, let draftText, _):
+            guard editingRecordId == recordId else { return }
+            text = draftText
+        }
+        correction = .notEditing
         guard let kilograms = kilograms(in: text),
             let record = records.first(where: { $0.id == recordId }),
             let corrected = record.correction(replacingKilograms: kilograms)
@@ -254,21 +288,60 @@ struct WeightScreen: View {
         Task { await saveWeight(.correct(corrected)) }
     }
 
-    private func applyTyped(previous: String, next: String) {
-        let raw: String
-        if replacesOnNextInput {
-            replacesOnNextInput = false
-            raw = next.count > previous.count ? inserted(from: previous, to: next) : next
+    private func kilograms(in text: String) -> Double? {
+        let core = text.hasSuffix(".") ? String(text.dropLast()) : text
+        guard !core.isEmpty, let value = Double(core) else { return nil }
+        return value
+    }
+}
+
+private enum CorrectionOrigin: Equatable {
+    case dayGroup
+    case otherRecord
+    case recentRecord
+}
+
+private enum Correction: Equatable {
+    case notEditing
+    case editing(
+        recordId: UUID,
+        place: CorrectionOrigin,
+        draftText: String,
+        replacesOnNextInput: Bool
+    )
+
+    var editing: (recordId: UUID, place: CorrectionOrigin, draftText: String)? {
+        if case .editing(let recordId, let place, let draftText, _) = self {
+            (recordId, place, draftText)
         } else {
-            raw = next
-        }
-        let sanitized = WeightDecimalText.sanitized(raw)
-        if draftText != sanitized {
-            draftText = sanitized
+            nil
         }
     }
 
-    private func inserted(from previous: String, to next: String) -> String {
+    func applyingTyped(previous: String, next: String) -> Correction {
+        switch self {
+        case .notEditing:
+            return self
+        case .editing(let recordId, let place, let draftText, let replacesOnNextInput):
+            guard draftText == next else { return self }
+            let raw: String
+            if replacesOnNextInput {
+                raw = next.count > previous.count ? Self.inserted(from: previous, to: next) : next
+            } else {
+                raw = next
+            }
+            let sanitized = WeightDecimalText.sanitized(raw)
+            if !replacesOnNextInput, sanitized == draftText { return self }
+            return .editing(
+                recordId: recordId,
+                place: place,
+                draftText: sanitized,
+                replacesOnNextInput: false
+            )
+        }
+    }
+
+    private static func inserted(from previous: String, to next: String) -> String {
         let previousCharacters = Array(previous)
         let nextCharacters = Array(next)
         var prefix = 0
@@ -286,16 +359,4 @@ struct WeightScreen: View {
         }
         return String(nextCharacters[prefix..<(nextCharacters.count - suffix)])
     }
-
-    private func kilograms(in text: String) -> Double? {
-        let core = text.hasSuffix(".") ? String(text.dropLast()) : text
-        guard !core.isEmpty, let value = Double(core) else { return nil }
-        return value
-    }
-}
-
-private enum CorrectionOrigin {
-    case dayGroup
-    case otherRecord
-    case recentRecord
 }
