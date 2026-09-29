@@ -12,8 +12,7 @@ public protocol HealthStore: Sendable {
     /// 読み取りの期間の境界。iOS 27 だけが持ち、それより前の版では nil
     func earliestAuthorizedSampleDate() async throws -> Date?
 
-    /// 前回のアンカーの続きから、増えた分と消えた分を読む。アンカーが nil なら全期間
-    /// - Parameter notBefore: nil でなければ、これより前のサンプルは読まない
+    /// アンカーが nil なら全期間
     func readWeightChanges(after anchor: HealthAnchor?, notBefore: Date?) async throws
         -> HealthChanges
 
