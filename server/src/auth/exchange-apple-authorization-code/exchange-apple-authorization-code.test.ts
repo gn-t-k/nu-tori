@@ -15,9 +15,8 @@ describe("Apple の認可コードの交換", () => {
     });
 
     test("refresh token を返すこと", async () => {
-      await expect(exchangeAppleAuthorizationCode(env, authorizationCode)).resolves.toEqual({
-        kind: "exchanged",
-        refreshToken: "apple-refresh-token",
+      expect(await exchangeAppleAuthorizationCode(env, authorizationCode)).toBeSuccess((value) => {
+        expect(value).toBe("apple-refresh-token");
       });
     });
 
@@ -51,9 +50,9 @@ describe("Apple の認可コードの交換", () => {
       mockAppleTokenEndpointError("invalid_grant");
     });
 
-    test("受け付けなかったことを返すこと", async () => {
-      await expect(exchangeAppleAuthorizationCode(env, authorizationCode)).resolves.toEqual({
-        kind: "rejected",
+    test("AppleAuthorizationCodeRejectedError で失敗すること", async () => {
+      expect(await exchangeAppleAuthorizationCode(env, authorizationCode)).toBeFailure((error) => {
+        expect(error.name).toBe("AppleAuthorizationCodeRejectedError");
       });
     });
   });

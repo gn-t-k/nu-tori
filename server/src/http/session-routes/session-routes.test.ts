@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { createAppleRefreshTokenStore } from "../../auth/create-apple-refresh-token-store";
 import { createAuthentication } from "../../auth/create-authentication";
+import { AppleAuthorizationCodeRejectedError } from "../../auth/exchange-apple-authorization-code";
 import {
   mockExchangeAppleAuthorizationCodeError,
   mockExchangeAppleAuthorizationCodeOk,
@@ -95,7 +96,7 @@ describe("サインイン", () => {
     beforeEach(() => {
       appleUserId = crypto.randomUUID();
       mockAppleKeysEndpointOk();
-      mockExchangeAppleAuthorizationCodeError();
+      mockExchangeAppleAuthorizationCodeError(new AppleAuthorizationCodeRejectedError());
     });
 
     test("401 を返すこと", async () => {

@@ -24,7 +24,7 @@ export default defineConfig({
   ],
   test: {
     restoreMocks: true,
-    setupFiles: ["./test/apply-d1-migrations.ts"],
+    setupFiles: ["./test/apply-d1-migrations.ts", "./test/extend-result-matchers.ts"],
   },
 });
 

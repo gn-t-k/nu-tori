@@ -1,2 +1,4 @@
-export { revokeAppleRefreshToken } from "./revoke-apple-refresh-token";
-export { RevokeAppleRefreshTokenError } from "./revoke-apple-refresh-token-error";
+export {
+  RevokeAppleRefreshTokenError,
+  revokeAppleRefreshToken,
+} from "./revoke-apple-refresh-token";

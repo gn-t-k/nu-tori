@@ -99,7 +99,7 @@ describe("アカウントの削除", () => {
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
       ({ sessionToken } = await signInTestAccount(crypto.randomUUID()));
-      mockRevokeAppleRefreshTokenError(new RevokeAppleRefreshTokenError(503));
+      mockRevokeAppleRefreshTokenError(new RevokeAppleRefreshTokenError({ status: 503 }));
       await deleteSignedInAccount(sessionToken, env);
       mockRevokeAppleRefreshTokenOk();
     });

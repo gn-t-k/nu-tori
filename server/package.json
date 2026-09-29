@@ -4,15 +4,21 @@
   "type": "module",
   "dependencies": {
     "@hono/zod-openapi": "1.6.3",
+    "@praha/byethrow": "0.12.0",
+    "@praha/error-factory": "1.4.1",
     "@sentry/cloudflare": "11.0.0",
     "@sentry/hono": "11.0.0",
     "better-auth": "1.7.6",
     "hono": "4.13.9",
     "jose": "6.2.12",
+    "ts-pattern": "5.9.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@praha/byethrow-docs": "0.12.0",
+    "@praha/byethrow-oxlint": "0.12.0",
+    "@praha/byethrow-testing": "0.12.0",
     "@tsconfig/strictest": "2.0.8",
     "oxfmt": "0.70.0",
     "oxlint": "1.85.0",
