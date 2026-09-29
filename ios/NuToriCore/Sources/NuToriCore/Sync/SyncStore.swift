@@ -3,7 +3,6 @@ public import Foundation
 public protocol SyncStore: Sendable {
     func weightRecord(id: UUID) async throws -> WeightRecord?
 
-    /// キャッシュにあるすべての体重記録
     func weightRecords() async throws -> [WeightRecord]
 
     /// 記録の保存と送り待ちへの追加は、1つの保存で行う

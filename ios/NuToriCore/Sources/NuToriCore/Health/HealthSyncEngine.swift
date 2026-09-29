@@ -15,12 +15,10 @@ public actor HealthSyncEngine {
         self.now = now
     }
 
-    /// 初めて体重を入れるとき。この端末でまだ求めていなければ、許可を求める
     public func requestAuthorizationOnFirstWeightEntry() async throws {
         try await requestAuthorizationIfNotYetRequested()
     }
 
-    /// 初回の取得を終えたとき。アカウントにもう体重記録があり、この端末でまだ求めていなければ、許可を求める
     public func requestAuthorizationAfterInitialPull() async throws {
         guard try await store.syncState()?.hasCompletedInitialPull == true,
             try await !store.weightRecords().isEmpty
@@ -30,7 +28,6 @@ public actor HealthSyncEngine {
         try await requestAuthorizationIfNotYetRequested()
     }
 
-    /// 前回の続きから読み、増えた分と消えた分を、送り待ちとキャッシュに1つの保存で入れる
     public func importChanges() async throws {
         let state = try await store.healthSyncState()
         let readBoundary = try await healthStore.earliestAuthorizedSampleDate()
@@ -72,7 +69,6 @@ public actor HealthSyncEngine {
         try await healthStore.writeWeight(HealthWeightWrite(record))
     }
 
-    /// アプリを開いたとき。書き込みの許可を得ていて、まとめて書き終えていなければ、キャッシュの手の記録を書く
     public func exportCachedManualRecordsOnNewWriteAuthorization() async throws {
         let state = try await store.healthSyncState()
         guard !state.hasWrittenCachedManualRecords,

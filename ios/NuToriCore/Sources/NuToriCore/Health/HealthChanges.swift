@@ -1,6 +1,5 @@
 public import Foundation
 
-/// アンカー付きの問い合わせで、前回の続きから届いた増えた分と消えた分
 public struct HealthChanges: Sendable, Equatable {
     public let weights: [WeightSample]
     public let bodyFats: [BodyFatSample]

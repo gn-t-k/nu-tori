@@ -2,7 +2,6 @@
 public struct HealthSyncState: Sendable, Equatable {
     /// 次の読み取りの続き。まだ読んでいなければ nil（最初は全期間を読む）
     public let anchor: HealthAnchor?
-    /// 書き込みの許可を得たあとに、キャッシュの手の記録をまとめて書き終えたか
     public let hasWrittenCachedManualRecords: Bool
 
     public init(anchor: HealthAnchor?, hasWrittenCachedManualRecords: Bool) {

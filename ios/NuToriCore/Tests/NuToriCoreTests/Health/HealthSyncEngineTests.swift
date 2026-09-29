@@ -16,19 +16,20 @@ struct HealthSyncEngineTests {
     struct Importing {
         @Suite("他のアプリの体重が増えたとき")
         struct AddedWeights {
-            let healthStore: HealthStoreMock
             let store: SyncStoreMock
             let engine: HealthSyncEngine
 
             init() throws {
-                healthStore = .ok(
-                    changes: .fixture(weights: [
-                        try .fixture(
-                            sampleId: HealthSyncEngineTests.firstSampleId, kilograms: 71.25)
-                    ])
-                )
                 store = .ok()
-                engine = .fixture(healthStore: healthStore, store: store)
+                engine = .fixture(
+                    healthStore: .ok(
+                        changes: .fixture(weights: [
+                            try .fixture(
+                                sampleId: HealthSyncEngineTests.firstSampleId, kilograms: 71.25)
+                        ])
+                    ),
+                    store: store
+                )
             }
 
             @Test("サンプルの UUID から作った ID で、取り込んだ記録として、キャッシュに入れること")

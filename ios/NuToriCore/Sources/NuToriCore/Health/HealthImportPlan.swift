@@ -1,6 +1,5 @@
 import Foundation
 
-/// 読み取った分から、キャッシュに入れて送る記録と、消えたと送る記録の ID を決める
 struct HealthImportPlan: Equatable {
     let newRecords: [WeightRecord]
     let deletedRecordIds: [UUID]
@@ -29,7 +28,6 @@ struct HealthImportPlan: Equatable {
         )
     }
 
-    /// 判断にキャッシュの記録が要る ID
     static func affectedRecordIds(in changes: HealthChanges) -> [UUID] {
         changes.weights.map { ImportedWeightRecordId.make(healthKitSampleId: $0.sampleId) }
             + changes.deletions.compactMap(\.weightSampleId).map {
