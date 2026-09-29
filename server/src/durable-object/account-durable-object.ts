@@ -6,6 +6,7 @@ import { pullSyncChanges } from "../domain/sync/pull-sync-changes";
 import type { SyncClientState } from "../domain/sync/sync-client-state";
 import type { SyncWrite } from "../domain/sync/sync-write";
 import { createSentryOptions } from "../observability/create-sentry-options";
+import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
 import { createSyncStore } from "./create-sync-store";
@@ -28,26 +29,30 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       recordFirstSignIn(createFirstSignInStore(this.ctx.storage.sql), signIn);
     }
 
-    pushSyncWrites(
+    async pushSyncWrites(
       accountId: string,
       request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     ) {
       setUser({ id: accountId });
-      return applySyncWrites(createSyncStore(this.ctx.storage), {
+      const { results, usageEvents } = applySyncWrites(createSyncStore(this.ctx.storage), {
         ...request,
         receivedAt: new Date(),
       });
+      await sendUsageEvents(this.env, accountId, usageEvents);
+      return results;
     }
 
-    pullSyncChanges(
+    async pullSyncChanges(
       accountId: string,
       request: { clientState: SyncClientState; afterSequence: number },
     ) {
       setUser({ id: accountId });
-      return pullSyncChanges(createSyncStore(this.ctx.storage), {
+      const { usageEvents, ...pulled } = pullSyncChanges(createSyncStore(this.ctx.storage), {
         ...request,
         receivedAt: new Date(),
       });
+      await sendUsageEvents(this.env, accountId, usageEvents);
+      return pulled;
     }
 
     async deleteRecords(accountId: string): Promise<void> {

@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
+import { mockSetUserOk } from "../../observability/set-user.mock";
 import {
   mockAccountRateLimiterError,
   mockAccountRateLimiterOk,
@@ -51,6 +52,47 @@ describe("セッションと回数の歯止め", () => {
         env,
       );
       expect(limitSpy).toHaveBeenCalledWith({ key: signedIn.accountId });
+    });
+  });
+
+  describe("Sentry の user", () => {
+    let protectedApp: Hono<{ Bindings: Env; Variables: { accountId: string } }>;
+    let signedIn: { accountId: string; sessionToken: string };
+    let setUserSpy: ReturnType<typeof mockSetUserOk>;
+    beforeEach(async () => {
+      protectedApp = createProtectedApp();
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      signedIn = await signInTestAccount(crypto.randomUUID());
+      mockAccountRateLimiterOk();
+      setUserSpy = mockSetUserOk();
+    });
+
+    test("GET の要求ではアカウント ID を付けること", async () => {
+      await protectedApp.request(
+        "/",
+        { headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+        env,
+      );
+      expect(setUserSpy).toHaveBeenCalledWith({ id: signedIn.accountId });
+    });
+
+    test("HEAD の要求では付けないこと", async () => {
+      await protectedApp.request(
+        "/",
+        { method: "HEAD", headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+        env,
+      );
+      expect(setUserSpy).not.toHaveBeenCalled();
+    });
+
+    test("OPTIONS の要求では付けないこと", async () => {
+      await protectedApp.request(
+        "/",
+        { method: "OPTIONS", headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+        env,
+      );
+      expect(setUserSpy).not.toHaveBeenCalled();
     });
   });
 
