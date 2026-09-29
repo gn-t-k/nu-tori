@@ -15,7 +15,7 @@ struct TimelineScreen: View {
                     today: today,
                     openableDays: loaded?.dayRange
                 ) { day in
-                    summary = OpenedDay(day: day)
+                    dayFocus = .summary(day)
                 }
                 Divider()
                 content(today: today, loaded: loaded)
@@ -35,11 +35,10 @@ struct TimelineScreen: View {
                     .accessibilityIdentifier("account")
                 }
             }
-            .sheet(item: $summary) { opened in
-                if let loaded {
-                    DaySummarySheet(timeline: loaded, day: opened.day) { chosen in
-                        summary = nil
-                        revealDay = chosen
+            .sheet(isPresented: summaryPresented) {
+                if case .summary(let day) = dayFocus, let loaded {
+                    DaySummarySheet(timeline: loaded, day: day) { chosen in
+                        dayFocus = .scrollingTo(chosen)
                     }
                 }
             }
@@ -51,8 +50,18 @@ struct TimelineScreen: View {
     @Query private var cachedRecords: [CachedWeightRecord]
     @Query private var syncStates: [CachedSyncState]
     @State private var visibleDay: CalendarDay?
-    @State private var summary: OpenedDay?
-    @State private var revealDay: CalendarDay?
+    @State private var dayFocus: DayFocus = .timeline
+
+    private var summaryPresented: Binding<Bool> {
+        Binding(
+            get: { if case .summary = dayFocus { true } else { false } },
+            set: { presented in
+                if !presented, case .summary = dayFocus {
+                    dayFocus = .timeline
+                }
+            }
+        )
+    }
 
     private var showsLoading: Bool {
         syncStates.first?.hasCompletedInitialPull != true
@@ -109,10 +118,10 @@ struct TimelineScreen: View {
                     visibleDay = dayInView(
                         offsets, timeline: timeline, viewportHeight: geo.size.height)
                 }
-                .onChange(of: revealDay) { _, day in
-                    guard let day else { return }
+                .onChange(of: dayFocus) { _, focus in
+                    guard case .scrollingTo(let day) = focus else { return }
                     proxy.scrollTo(day, anchor: .top)
-                    revealDay = nil
+                    dayFocus = .timeline
                 }
             }
         }
@@ -185,9 +194,10 @@ struct TimelineScreen: View {
     }
 }
 
-private struct OpenedDay: Identifiable {
-    let day: CalendarDay
-    var id: CalendarDay { day }
+private enum DayFocus: Equatable {
+    case timeline
+    case summary(CalendarDay)
+    case scrollingTo(CalendarDay)
 }
 
 private struct TimelineDayOffset: Equatable {

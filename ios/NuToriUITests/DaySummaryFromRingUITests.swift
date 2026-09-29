@@ -13,10 +13,10 @@ final class DaySummaryFromRingUITests: XCTestCase {
         started = days.started
         todayIdentifier = days.todayIdentifier
         app = .launched(account: "signed-in", api: "day-ring")
+        XCTAssertTrue(app.staticText(containing: "72.4 kg").waitForExistence(timeout: 5))
     }
 
     func test_丸を押すと日のまとめが開いてタイムラインのその日へ移ること() {
-        XCTAssertTrue(app.staticText(containing: "72.4 kg").waitForExistence(timeout: 5))
         app.buttons["ring-\(todayIdentifier)"].tap()
 
         XCTAssertTrue(app.otherElements["day-summary"].waitForExistence(timeout: 5))

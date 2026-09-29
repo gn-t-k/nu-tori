@@ -4,7 +4,7 @@ import SwiftUI
 struct DayRingStrip: View {
     let weeks: [RingStrip.Week]
     /// タイムラインで見ている日。帯は、その日の週を出す
-    let selectedDay: CalendarDay?
+    let selectedDay: CalendarDay
     let today: CalendarDay
     /// 読み込み中は、使い始めた日がまだ無いので開けない
     let openableDays: ClosedRange<CalendarDay>?
@@ -25,17 +25,17 @@ struct DayRingStrip: View {
         .scrollPosition(id: $shownMonday)
         .scrollIndicators(.hidden)
         .accessibilityIdentifier("day-ring-strip")
-        .onChange(of: selectedDay?.startOfWeek, initial: true) { _, monday in
-            guard let monday, weeks.contains(where: { $0.monday == monday }),
-                shownMonday != monday
-            else { return }
+        .onChange(of: selectedDay.startOfWeek, initial: true) { _, monday in
+            guard weeks.contains(where: { $0.monday == monday }), shownMonday != monday else {
+                return
+            }
             shownMonday = monday
         }
     }
 
     init(
         weeks: [RingStrip.Week],
-        selectedDay: CalendarDay?,
+        selectedDay: CalendarDay,
         today: CalendarDay,
         openableDays: ClosedRange<CalendarDay>?,
         onSelect: @escaping (CalendarDay) -> Void
@@ -45,7 +45,7 @@ struct DayRingStrip: View {
         self.today = today
         self.openableDays = openableDays
         self.onSelect = onSelect
-        _shownMonday = State(initialValue: selectedDay?.startOfWeek)
+        _shownMonday = State(initialValue: selectedDay.startOfWeek)
     }
 
     @State private var shownMonday: CalendarDay?
