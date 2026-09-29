@@ -26,7 +26,8 @@ export const applySyncWrites = (
       isFinalBatch: request.isFinalBatch,
     });
     const startedOn = store.findStartedOn();
-    return request.writes.map((write, positionInRequest) => {
+    const rejectedWrites: Extract<UsageEvent, { name: "sync_write_rejected" }>[] = [];
+    const results = request.writes.map((write, positionInRequest) => {
       const previousOutcome = store.findWriteOutcome(write.id);
       if (previousOutcome !== undefined) {
         return { writeId: write.id, outcome: previousOutcome };

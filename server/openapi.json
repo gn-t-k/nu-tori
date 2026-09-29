@@ -48,7 +48,8 @@
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite"
           }
-        }
+        },
+        "description": "アカウントの設定は、記録が無くても直す書き込みで送り、サーバーが無ければ作る"
       },
       "CreateWeightRecordWrite": {
         "type": "object",
@@ -186,6 +187,44 @@
           "id",
           "type",
           "weightRecord"
+        ]
+      },
+      "UpdateAccountSettingsWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "update_account_settings"
+            ]
+          },
+          "accountSettings": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ"
+              },
+              "sendsUsageData": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "sendsUsageData"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "accountSettings"
         ]
       },
       "SyncChange": {

@@ -20,13 +20,26 @@ export const pullSyncChanges = (
       afterSequence: request.afterSequence,
     });
     const found = store.findLatestChangePerRecord(request.afterSequence, changesPerPull + 1);
-    const changes = found.slice(0, changesPerPull).map(({ sequence, recordId }) => {
-      const weightRecord = store.findWeightRecord(recordId);
-      if (weightRecord === undefined) {
-        throw new Error(`変更の並びが指す体重記録が無い: ${recordId}`);
-      }
-      return { sequence, weightRecord };
-    });
+    const changes = found
+      .slice(0, changesPerPull)
+      .map(({ sequence, recordType, recordId }): SyncChange =>
+        match(recordType)
+          .with("weight_record", (): SyncChange => {
+            const weightRecord = store.findWeightRecord(recordId);
+            if (weightRecord === undefined) {
+              throw new Error(`変更の並びが指す体重記録が無い: ${recordId}`);
+            }
+            return { sequence, type: "weight_record", weightRecord };
+          })
+          .with("account_settings", (): SyncChange => {
+            const accountSettings = store.findAccountSettings();
+            if (accountSettings === undefined) {
+              throw new Error(`変更の並びが指すアカウントの設定が無い: ${recordId}`);
+            }
+            return { sequence, type: "account_settings", accountSettings };
+          })
+          .exhaustive(),
+      );
     return {
       changes,
       hasMore: found.length > changesPerPull,
