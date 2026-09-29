@@ -1,0 +1,186 @@
+import NuToriCore
+import Testing
+
+@Suite("タイムライン")
+struct TimelineTests {
+    @Suite("並べる日")
+    struct DaysInRange {
+        @Suite("記録が無いとき")
+        struct NoRecords {
+            let timeline: Timeline
+
+            init() {
+                timeline = Timeline(
+                    weightRecords: [],
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: CalendarDay(year: 2026, month: 9, day: 25)
+                )
+            }
+
+            @Test("使い始めた日から今日まで1日ずつ並べること")
+            func listsEveryDayFromFirstDayToToday() {
+                #expect(
+                    timeline.days.map(\.day) == [
+                        CalendarDay(year: 2026, month: 9, day: 23),
+                        CalendarDay(year: 2026, month: 9, day: 24),
+                        CalendarDay(year: 2026, month: 9, day: 25),
+                    ])
+            }
+
+            @Test("日のまとめで使い始めた日から今日まで送れること")
+            func daySummaryMovesFromFirstDayToToday() {
+                #expect(
+                    timeline.dayRange
+                        == CalendarDay(
+                            year: 2026, month: 9, day: 23)...CalendarDay(
+                            year: 2026, month: 9, day: 25))
+            }
+        }
+
+        @Suite("今日より先の日に記録があるとき")
+        struct RecordAfterToday {
+            let timeline: Timeline
+
+            init() throws {
+                timeline = Timeline(
+                    weightRecords: [
+                        try .manual(72.4, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo")
+                    ],
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: CalendarDay(year: 2026, month: 9, day: 24)
+                )
+            }
+
+            @Test("記録のある先の日まで並べること")
+            func listsUpToDayOfRecord() {
+                #expect(timeline.days.last?.day == CalendarDay(year: 2026, month: 9, day: 25))
+            }
+
+            @Test("日のまとめで記録のある先の日まで送れること")
+            func daySummaryMovesUpToDayOfRecord() {
+                #expect(timeline.dayRange.upperBound == CalendarDay(year: 2026, month: 9, day: 25))
+            }
+        }
+
+        @Suite("使い始める前の記録があるとき")
+        struct RecordBeforeFirstDay {
+            let timeline: Timeline
+
+            init() throws {
+                timeline = Timeline(
+                    weightRecords: [
+                        try .imported(73.0, at: "2026-09-20T06:48:00+09:00", in: "Asia/Tokyo")
+                    ],
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: CalendarDay(year: 2026, month: 9, day: 23)
+                )
+            }
+
+            @Test("使い始める前の記録を並べないこと")
+            func omitsRecordBeforeFirstDay() {
+                #expect(timeline.days.map(\.day) == [CalendarDay(year: 2026, month: 9, day: 23)])
+                #expect(timeline.days.map(\.weightRecords) == [[]])
+            }
+        }
+
+        @Suite("使い始めた日のうちに西へ移り、今日が使い始めた日より前になったとき")
+        struct TodayBeforeFirstDay {
+            let timeline: Timeline
+
+            init() {
+                timeline = Timeline(
+                    weightRecords: [],
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 24),
+                    today: CalendarDay(year: 2026, month: 9, day: 23)
+                )
+            }
+
+            @Test("使い始めた日だけを並べること")
+            func listsOnlyFirstDay() {
+                #expect(timeline.days.map(\.day) == [CalendarDay(year: 2026, month: 9, day: 24)])
+            }
+        }
+    }
+
+    @Suite("日への振り分け")
+    struct PlacingRecords {
+        @Suite("タイムゾーンの違う記録が同じ日にあるとき")
+        struct RecordsInDifferentTimeZones {
+            let tokyoMorning: WeightRecord
+            let losAngelesMorning: WeightRecord
+            let timeline: Timeline
+
+            init() throws {
+                // 時計の時刻は東京が 8:00、ロサンゼルスが 7:00 だが、実際の時刻は東京のほうが早い
+                tokyoMorning = try .manual(72.4, at: "2026-09-24T08:00:00+09:00", in: "Asia/Tokyo")
+                losAngelesMorning = try .manual(
+                    72.6, at: "2026-09-24T07:00:00-07:00", in: "America/Los_Angeles")
+                timeline = Timeline(
+                    weightRecords: [losAngelesMorning, tokyoMorning],
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: CalendarDay(year: 2026, month: 9, day: 24)
+                )
+            }
+
+            @Test("記録したときのタイムゾーンでの日に入れること")
+            func placesRecordsInDayOfRecordedTimeZone() {
+                #expect(timeline.days.map(\.weightRecords.count) == [0, 2])
+            }
+
+            @Test("同じ日の中を実際の時刻の順に並べること")
+            func sortsRecordsByInstant() {
+                #expect(timeline.days.last?.weightRecords == [tokyoMorning, losAngelesMorning])
+            }
+        }
+    }
+
+    @Suite("日の代表値")
+    struct RepresentativeWeightOfDay {
+        @Suite("記録の無い日")
+        struct DayWithoutRecords {
+            let timeline: Timeline
+
+            init() {
+                timeline = Timeline(
+                    weightRecords: [],
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 24),
+                    today: CalendarDay(year: 2026, month: 9, day: 24)
+                )
+            }
+
+            @Test("代表値が無いこと")
+            func hasNoRepresentativeWeight() {
+                #expect(timeline.days.first?.representativeWeight == nil)
+            }
+        }
+
+        @Suite("1日に3件の記録がある日")
+        struct DayWithThreeRecords {
+            let earliest: WeightRecord
+            let timeline: Timeline
+
+            init() throws {
+                earliest = try .imported(72.3, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
+                timeline = Timeline(
+                    weightRecords: [
+                        try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
+                        earliest,
+                        try .manual(72.9, at: "2026-09-24T21:30:00+09:00", in: "Asia/Tokyo"),
+                    ],
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 24),
+                    today: CalendarDay(year: 2026, month: 9, day: 24)
+                )
+            }
+
+            @Test("その日の最初の記録を代表にすること")
+            func usesEarliestRecordAsRepresentative() {
+                #expect(timeline.days.first?.representativeWeight?.record == earliest)
+            }
+
+            @Test("ほかの記録の数を2件と数えること")
+            func countsOtherRecords() {
+                #expect(timeline.days.first?.representativeWeight?.otherRecordCount == 2)
+            }
+        }
+    }
+}
