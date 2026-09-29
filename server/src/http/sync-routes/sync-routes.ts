@@ -22,8 +22,6 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       path: "/v1/sync/writes",
       operationId: "pushSyncWrites",
       summary: "端末の送り待ちをまとめて送る",
-      description:
-        "書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる",
       security: [{ session: [] }],
       middleware: [authenticateAccount] as const,
       request: {
@@ -33,11 +31,8 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
             "application/json": {
               schema: z.object({
                 clientState: createSyncClientStateSchema(z.number().int().nonnegative()),
-                writes: z
-                  .array(syncWriteSchema)
-                  .max(maximumWritesPerRequest)
-                  .openapi({ description: "1回の要求で 500 件まで。超えたら何も当てずに 400" }),
-                isFinalBatch: z.boolean().openapi({ description: "送り待ちの最後の要求なら true" }),
+                writes: z.array(syncWriteSchema).max(maximumWritesPerRequest),
+                isFinalBatch: z.boolean(),
               }),
             },
           },
@@ -55,12 +50,12 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
                       writeId: z.string(),
                       result: z.string().openapi({
                         description:
-                          "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
+                          "値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
                         example: "applied",
                       }),
                       rejectionReason: z.string().optional().openapi({
                         description:
-                          "result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ",
+                          "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ",
                       }),
                     })
                     .openapi("SyncWriteResult"),
@@ -106,9 +101,7 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       middleware: [authenticateAccount] as const,
       request: {
         query: createSyncClientStateSchema(queryCount).extend({
-          afterSequence: queryCount.openapi({
-            description: "前回の応答の nextAfterSequence。最初は 0",
-          }),
+          afterSequence: queryCount,
         }),
       },
       responses: {
@@ -123,21 +116,19 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
                       sequence: z.number().int(),
                       kind: z.string().openapi({
                         description:
-                          "記録の種類。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）",
+                          "知らない種類は読み飛ばす。種類が増えても古い版のアプリの同期が止まらないよう、文字列で持つ",
                         example: "weight_record",
                       }),
                       recordId: z.string(),
-                      record: z.record(z.string(), z.unknown()).openapi({
-                        description: "kind ごとの中身。kind ごとにあとで解く",
-                      }),
+                      record: z.record(z.string(), z.unknown()),
                     })
                     .openapi("SyncChange"),
                 ),
-                hasMore: z.boolean().openapi({ description: "続きがあるとき true" }),
+                hasMore: z.boolean(),
                 nextAfterSequence: z.number().int(),
                 startedOn: z.string().nullable().openapi({
                   description:
-                    "使い始めた日（YYYY-MM-DD）。まだ決まっていないとき null。記録の通し番号によらず毎回載る",
+                    "YYYY-MM-DD。まだ決まっていないとき null。記録の通し番号によらず毎回載る",
                 }),
               }),
             },

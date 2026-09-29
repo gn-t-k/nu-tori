@@ -11,7 +11,6 @@ import type { SyncWriteOutcome } from "./sync-write-outcome";
 import type { UsageEvent } from "./usage-event";
 import type { WeightRecord } from "./weight-record";
 
-// 書き込みを要求の中の順に、1つのトランザクションで当てる。結果は書き込みごとに返し、受け付けない書き込みがあってもほかは当てる
 export const applySyncWrites = (
   store: SyncStore,
   request: {
@@ -36,7 +35,6 @@ export const applySyncWrites = (
     const startedOn = store.findStartedOn();
     const rejectedWrites: Extract<UsageEvent, { name: "sync_write_rejected" }>[] = [];
     const results = request.writes.map((write, positionInRequest) => {
-      // 送り直された書き込みは、何も当てずに最初の結果を返す
       const previousOutcome = store.findWriteOutcome(write.id);
       if (previousOutcome !== undefined) {
         return { writeId: write.id, outcome: previousOutcome };
