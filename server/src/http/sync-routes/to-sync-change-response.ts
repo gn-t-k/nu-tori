@@ -16,6 +16,12 @@ export const toSyncChangeResponse = (change: SyncChange) =>
         imported: weightRecord.imported,
       },
     }))
+    .with({ type: "weight_record_deletion" }, ({ sequence, recordId }) => ({
+      sequence,
+      kind: "weight_record_deletion",
+      recordId,
+      record: {},
+    }))
     .with({ type: "account_settings" }, ({ sequence, accountSettings }) => ({
       sequence,
       kind: "account_settings",

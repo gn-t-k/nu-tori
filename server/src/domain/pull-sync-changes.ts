@@ -31,10 +31,13 @@ export const pullSyncChanges = (
         match(recordType)
           .with("weight_record", (): SyncChange => {
             const weightRecord = store.findWeightRecord(recordId);
-            if (weightRecord === undefined) {
-              throw new Error(`変更の並びが指す体重記録が無い: ${recordId}`);
+            if (weightRecord !== undefined) {
+              return { sequence, type: "weight_record", weightRecord };
             }
-            return { sequence, type: "weight_record", weightRecord };
+            if (store.existsWeightRecordDeletion(recordId)) {
+              return { sequence, type: "weight_record_deletion", recordId };
+            }
+            throw new Error(`変更の並びが指す体重記録も削除の印も無い: ${recordId}`);
           })
           .with("account_settings", (): SyncChange => {
             const accountSettings = store.findAccountSettings();

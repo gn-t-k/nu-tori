@@ -52,6 +52,12 @@ export const applySyncWrites = (
           recordId: weightRecord.id,
           outcome: applyUpdateWeightRecord(store, startedOn, weightRecord),
         }))
+        .with({ type: "source_deleted_weight_record" }, ({ weightRecordId }): AppliedWrite => ({
+          kind: "source_deleted",
+          recordType: "weight_record",
+          recordId: weightRecordId,
+          outcome: applySourceDeletedWeightRecord(store, weightRecordId),
+        }))
         .with({ type: "update_account_settings" }, ({ accountSettings }): AppliedWrite => ({
           kind: "update",
           recordType: "account_settings",
@@ -71,9 +77,16 @@ export const applySyncWrites = (
         recordId,
         outcome,
       });
+      // 削除の印は書き込みの控えを指すので、控えを書いたあとに足す
+      if (applied.kind === "source_deleted" && applied.outcome.result === "applied") {
+        store.insertWeightRecordDeletion(write.id);
+      }
       const changedRecordId = match(applied)
-        .with({ recordType: "weight_record" }, () =>
-          outcome.result === "applied" ? recordId : undefined,
+        .with({ recordType: "weight_record" }, (weightWrite) =>
+          weightWrite.outcome.result === "applied" ||
+          weightWrite.outcome.result === "ignored_tombstone"
+            ? weightWrite.recordId
+            : undefined,
         )
         .with({ recordType: "account_settings" }, (settingsWrite) => {
           store.insertAccountSettingChange({
@@ -86,12 +99,12 @@ export const applySyncWrites = (
       if (changedRecordId !== undefined) {
         store.insertRecordChange({ recordType, recordId: changedRecordId, writeId: write.id });
       }
-      if (outcome.result === "rejected") {
+      if (applied.kind !== "source_deleted" && applied.outcome.result === "rejected") {
         rejectedWrites.push({
           name: "sync_write_rejected",
-          writeKind: kind,
-          recordType,
-          reason: outcome.reason,
+          writeKind: applied.kind,
+          recordType: applied.recordType,
+          reason: applied.outcome.reason,
         });
       }
       return { writeId: write.id, outcome };
@@ -107,14 +120,27 @@ export const applySyncWrites = (
     };
   });
 
-type AppliedWrite = {
-  kind: "create" | "update";
-  recordId: string;
-  outcome: SyncWriteOutcome;
-} & (
-  | { recordType: "weight_record" }
-  | { recordType: "account_settings"; storedRecordId: string; sendsUsageData: boolean }
-);
+type AppliedWrite =
+  | {
+      kind: "create" | "update";
+      recordType: "weight_record";
+      recordId: string;
+      outcome: SyncWriteOutcome;
+    }
+  | {
+      kind: "source_deleted";
+      recordType: "weight_record";
+      recordId: string;
+      outcome: Exclude<SyncWriteOutcome, { result: "rejected" }>;
+    }
+  | {
+      kind: "update";
+      recordType: "account_settings";
+      recordId: string;
+      outcome: { result: "applied" };
+      storedRecordId: string;
+      sendsUsageData: boolean;
+    };
 
 const applyAccountSettings = (store: SyncStore, accountSettings: AccountSettings): string => {
   const current = store.findAccountSettings();
@@ -139,6 +165,9 @@ const applyCreateWeightRecord = (
   }
   if (!isTimeZoneName(weightRecord.timeZone)) {
     return { result: "rejected", reason: "invalid_time_zone" };
+  }
+  if (store.existsWeightRecordDeletion(weightRecord.id)) {
+    return { result: "ignored_tombstone" };
   }
   // ID の出し方に頼らず、同じサンプルを二重に取り込まない
   const isDuplicate =
@@ -167,6 +196,9 @@ const applyUpdateWeightRecord = (
   if (!isTimeZoneName(weightRecord.timeZone)) {
     return { result: "rejected", reason: "invalid_time_zone" };
   }
+  if (store.existsWeightRecordDeletion(weightRecord.id)) {
+    return { result: "ignored_tombstone" };
+  }
   const current = store.findWeightRecord(weightRecord.id);
   if (current === undefined) {
     return { result: "rejected", reason: "record_not_found" };
@@ -184,5 +216,23 @@ const applyUpdateWeightRecord = (
     timeZone: weightRecord.timeZone,
     version: Math.max(weightRecord.version, current.version + 1),
   });
+  return { result: "applied" };
+};
+
+const applySourceDeletedWeightRecord = (
+  store: SyncStore,
+  weightRecordId: string,
+): Exclude<SyncWriteOutcome, { result: "rejected" }> => {
+  if (store.existsWeightRecordDeletion(weightRecordId)) {
+    return { result: "ignored_tombstone" };
+  }
+  const current = store.findWeightRecord(weightRecordId);
+  if (current !== undefined && current.version >= 2) {
+    return { result: "kept_corrected" };
+  }
+  // 記録がまだ届いていなくても印を残し、あとから届く作る書き込みで生き返らせない
+  if (current !== undefined) {
+    store.deleteWeightRecord(weightRecordId);
+  }
   return { result: "applied" };
 };

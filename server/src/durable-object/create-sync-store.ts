@@ -104,6 +104,16 @@ export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
           healthkitSampleUuid,
         )
         .toArray().length > 0,
+    existsWeightRecordDeletion: (recordId) =>
+      sql
+        .exec(
+          `SELECT 1
+           FROM weight_record_deletions AS deletion
+           JOIN sync_write_receipts AS receipt ON receipt.id = deletion.sync_write_receipt_id
+           WHERE receipt.record_type = 'weight_record' AND receipt.record_id = ?`,
+          recordId,
+        )
+        .toArray().length > 0,
     insertWeightRecord: ({ id, weightKg, measuredAt, timeZone, version, imported }) => {
       sql.exec(
         `INSERT INTO weight_records (id, weight_kg, measured_at, time_zone, version)
@@ -149,6 +159,12 @@ export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
         version,
         id,
       );
+    },
+    deleteWeightRecord: (id) => {
+      sql.exec("DELETE FROM weight_records WHERE id = ?", id);
+    },
+    insertWeightRecordDeletion: (writeId) => {
+      sql.exec("INSERT INTO weight_record_deletions (sync_write_receipt_id) VALUES (?)", writeId);
     },
     findAccountSettings: () => {
       const [row] = sql
@@ -243,7 +259,9 @@ const insertRequestLog = (
 
 const parseOutcome = (row: { result: string; reason: string | null }): SyncWriteOutcome => {
   const outcomeSchema = z.discriminatedUnion("result", [
-    z.object({ result: z.enum(["applied", "ignored_duplicate"]) }),
+    z.object({
+      result: z.enum(["applied", "ignored_duplicate", "ignored_tombstone", "kept_corrected"]),
+    }),
     z.object({
       result: z.literal("rejected"),
       reason: z.enum([

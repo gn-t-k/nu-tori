@@ -52,6 +52,8 @@ extension Components {
         internal enum SyncWrite: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
             case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/SourceDeletedWeightRecordWrite`.
+            case sourceDeletedWeightRecord(Components.Schemas.SourceDeletedWeightRecordWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateAccountSettingsWrite`.
             case updateAccountSettings(Components.Schemas.UpdateAccountSettingsWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateWeightRecordWrite`.
@@ -68,6 +70,8 @@ extension Components {
                 switch discriminator {
                 case "create_weight_record":
                     self = .createWeightRecord(try .init(from: decoder))
+                case "source_deleted_weight_record":
+                    self = .sourceDeletedWeightRecord(try .init(from: decoder))
                 case "update_account_settings":
                     self = .updateAccountSettings(try .init(from: decoder))
                 case "update_weight_record":
@@ -83,6 +87,8 @@ extension Components {
             internal func encode(to encoder: any Swift.Encoder) throws {
                 switch self {
                 case let .createWeightRecord(value):
+                    try value.encode(to: encoder)
+                case let .sourceDeletedWeightRecord(value):
                     try value.encode(to: encoder)
                 case let .updateAccountSettings(value):
                     try value.encode(to: encoder)
@@ -303,6 +309,41 @@ extension Components {
                 case id
                 case _type = "type"
                 case weightRecord
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite`.
+        internal struct SourceDeletedWeightRecordWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case sourceDeletedWeightRecord = "source_deleted_weight_record"
+            }
+            /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite/type`.
+            internal var _type: Components.Schemas.SourceDeletedWeightRecordWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/SourceDeletedWeightRecordWrite/weightRecordId`.
+            internal var weightRecordId: Swift.String
+            /// Creates a new `SourceDeletedWeightRecordWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - weightRecordId:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.SourceDeletedWeightRecordWrite._TypePayload,
+                weightRecordId: Swift.String
+            ) {
+                self.id = id
+                self._type = _type
+                self.weightRecordId = weightRecordId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case weightRecordId
             }
         }
         /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite`.

@@ -36,7 +36,7 @@ check_ios() {
     fi
     swift format lint --strict --recursive --parallel "$ios"
 
-    step "Lint（SwiftLint $swiftlint_version）"
+    step "Lint（SwiftLint ${swiftlint_version}）"
     install_swiftlint
     if $fix; then
         (cd "$ios" && "$swiftlint" lint --fix --quiet)
