@@ -66,47 +66,37 @@ extension NuToriAPIClientTests {
                 #expect(sent.request.method == .post)
                 #expect(sent.request.path == "/v1/sync/writes")
                 #expect(sent.request.headerFields[.authorization] == "Bearer session-1")
-                let body = try #require(
-                    JSONSerialization.jsonObject(with: Data((sent.body ?? "").utf8))
-                        as? NSDictionary)
-                let record: NSDictionary = [
-                    "id": "00000000-0000-4000-8000-0000000000B1",
-                    "weightKg": 72.4,
-                    "measuredAt": 1_767_225_600_123,
-                    "timeZone": "Asia/Tokyo",
-                ]
-                let updatedRecord: NSDictionary = [
-                    "id": "00000000-0000-4000-8000-0000000000B1",
-                    "weightKg": 72.4,
-                    "measuredAt": 1_767_225_600_123,
-                    "timeZone": "Asia/Tokyo",
-                    "version": 2,
-                ]
-                let expected: NSDictionary = [
-                    "clientState": [
-                        "deviceId": "00000000-0000-4000-8000-0000000000D1",
-                        "timeZone": "Asia/Tokyo",
-                        "appVersion": "1.0.0",
-                        "osVersion": "26.0",
-                        "pendingWriteCount": 2,
-                        "oldestPendingWriteAgeSeconds": 90,
-                        "pendingPhotoCount": 0,
-                    ],
-                    "isFinalBatch": true,
-                    "writes": [
-                        [
-                            "id": PushSyncWrites.createWriteId.uuidString,
-                            "type": "create_weight_record",
-                            "weightRecord": record,
-                        ],
-                        [
-                            "id": PushSyncWrites.updateWriteId.uuidString,
-                            "type": "update_weight_record",
-                            "weightRecord": updatedRecord,
-                        ],
-                    ],
-                ]
-                #expect(body == expected)
+                let recordId = "00000000-0000-4000-8000-0000000000B1"
+                #expect(
+                    try SentSyncWritesBody(json: sent.body ?? "")
+                        == SentSyncWritesBody(
+                            clientState: .init(
+                                deviceId: "00000000-0000-4000-8000-0000000000D1",
+                                timeZone: "Asia/Tokyo",
+                                appVersion: "1.0.0",
+                                osVersion: "26.0",
+                                pendingWriteCount: 2,
+                                oldestPendingWriteAgeSeconds: 90,
+                                pendingPhotoCount: 0
+                            ),
+                            isFinalBatch: true,
+                            writes: [
+                                .init(
+                                    id: PushSyncWrites.createWriteId.uuidString,
+                                    type: "create_weight_record",
+                                    weightRecord: .init(
+                                        id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
+                                        timeZone: "Asia/Tokyo", version: nil, imported: nil)
+                                ),
+                                .init(
+                                    id: PushSyncWrites.updateWriteId.uuidString,
+                                    type: "update_weight_record",
+                                    weightRecord: .init(
+                                        id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
+                                        timeZone: "Asia/Tokyo", version: 2, imported: nil)
+                                ),
+                            ]
+                        ))
             }
         }
 
@@ -148,21 +138,18 @@ extension NuToriAPIClientTests {
                     [write], isFinalBatch: false, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
-                let body = try #require(
-                    JSONSerialization.jsonObject(with: Data((sent.body ?? "").utf8))
-                        as? [String: Any])
-                let writes = try #require(body["writes"] as? [[String: Any]])
-                let weightRecord = try #require(writes.first?["weightRecord"] as? NSDictionary)
+                let weightRecord = try #require(
+                    SentSyncWritesBody(json: sent.body ?? "").writes.first?.weightRecord)
                 #expect(
-                    weightRecord["imported"] as? NSDictionary == [
-                        "sourceAppName": "Withings",
-                        "sourceBundleId": "com.withings.wiScaleNG",
-                        "healthkitSampleUuid": "00000000-0000-4000-8000-0000000000C1",
-                        "bodyFat": [
-                            "percentage": 18.5,
-                            "healthkitSampleUuid": "00000000-0000-4000-8000-0000000000C2",
-                        ],
-                    ])
+                    weightRecord.imported
+                        == SentSyncWritesBody.Imported(
+                            sourceAppName: "Withings",
+                            sourceBundleId: "com.withings.wiScaleNG",
+                            healthkitSampleUuid: "00000000-0000-4000-8000-0000000000C1",
+                            bodyFat: .init(
+                                percentage: 18.5,
+                                healthkitSampleUuid: "00000000-0000-4000-8000-0000000000C2")
+                        ))
             }
         }
 
