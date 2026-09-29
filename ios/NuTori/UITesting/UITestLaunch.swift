@@ -86,6 +86,7 @@
             case .online: return .online
             case .offline: return .offline
             case .weightRecords: return .weightRecords
+            case .dayRing: return .dayRing
             }
         }
 
@@ -163,6 +164,7 @@
             case online
             case offline
             case weightRecords = "weight-records"
+            case dayRing = "day-ring"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

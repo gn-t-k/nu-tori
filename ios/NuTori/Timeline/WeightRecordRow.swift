@@ -6,7 +6,7 @@ struct WeightRecordRow: View {
 
     var body: some View {
         VStack(alignment: .trailing) {
-            Text("\(clock) \(kilograms)")
+            Text("\(clock) \(record.kilogramsLabel)")
                 .font(.subheadline)
                 .monospacedDigit()
             if let sourceAppName {
@@ -20,11 +20,6 @@ struct WeightRecordRow: View {
         .background(Color.accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private var kilograms: String {
-        let rounded = (record.kilograms * 10).rounded() / 10
-        return String(format: "%.1f kg", locale: Locale(identifier: "en_US_POSIX"), rounded)
-    }
-
     private var clock: String {
         let time = record.clockTime
         return "\(time.hour):\(String(format: "%02d", time.minute))"
@@ -35,5 +30,12 @@ struct WeightRecordRow: View {
         case .manual: nil
         case .imported(let source): source.appName
         }
+    }
+}
+
+extension WeightRecord {
+    var kilogramsLabel: String {
+        let rounded = (kilograms * 10).rounded() / 10
+        return String(format: "%.1f kg", locale: Locale(identifier: "en_US_POSIX"), rounded)
     }
 }
