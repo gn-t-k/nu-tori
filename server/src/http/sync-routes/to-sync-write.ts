@@ -35,4 +35,9 @@ export const toSyncWrite = (write: z.infer<typeof syncWriteSchema>): SyncWrite =
         version: weightRecord.version,
       },
     }))
+    .with({ type: "source_deleted_weight_record" }, ({ id, weightRecordId }): SyncWrite => ({
+      id,
+      type: "source_deleted_weight_record",
+      weightRecordId,
+    }))
     .exhaustive();

@@ -4,4 +4,6 @@ public import Foundation
 public enum SyncWrite: Sendable, Equatable {
     case createWeightRecord(writeId: UUID, record: NewWeightRecord)
     case updateWeightRecord(writeId: UUID, correction: WeightRecordCorrection)
+    /// 消すかどうかはサーバーが決める。直した記録は残る
+    case sourceDeletedWeightRecord(writeId: UUID, weightRecordId: UUID)
 }

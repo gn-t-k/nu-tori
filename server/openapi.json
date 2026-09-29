@@ -40,13 +40,17 @@
           },
           {
             "$ref": "#/components/schemas/UpdateWeightRecordWrite"
+          },
+          {
+            "$ref": "#/components/schemas/SourceDeletedWeightRecordWrite"
           }
         ],
         "discriminator": {
           "propertyName": "type",
           "mapping": {
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
-            "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite"
+            "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
+            "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite"
           }
         }
       },
@@ -186,6 +190,31 @@
           "id",
           "type",
           "weightRecord"
+        ]
+      },
+      "SourceDeletedWeightRecordWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "source_deleted_weight_record"
+            ]
+          },
+          "weightRecordId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "weightRecordId"
         ]
       },
       "SyncChange": {
