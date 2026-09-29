@@ -21,12 +21,32 @@ public struct CalendarDay: Hashable, Sendable {
     }
 
     public var startOfWeek: CalendarDay {
-        let calendar = Self.gregorianCalendar(in: .gmt)
-        let date = calendar.date(from: DateComponents(year: year, month: month, day: day))!
         // weekday は日曜が 1、月曜が 2
-        let daysSinceMonday = (calendar.component(.weekday, from: date) + 5) % 7
-        let monday = calendar.date(byAdding: .day, value: -daysSinceMonday, to: date)!
-        return CalendarDay(containing: monday, in: calendar.timeZone)
+        let daysSinceMonday = (Self.utcCalendar.component(.weekday, from: startInUTC) + 5) % 7
+        return advanced(by: -daysSinceMonday)
+    }
+}
+
+extension CalendarDay: Strideable {
+    public static func < (lhs: CalendarDay, rhs: CalendarDay) -> Bool {
+        (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
+    }
+
+    public func distance(to other: CalendarDay) -> Int {
+        Self.utcCalendar.dateComponents([.day], from: startInUTC, to: other.startInUTC).day!
+    }
+
+    public func advanced(by days: Int) -> CalendarDay {
+        let instant = Self.utcCalendar.date(byAdding: .day, value: days, to: startInUTC)!
+        return CalendarDay(containing: instant, in: Self.utcCalendar.timeZone)
+    }
+}
+
+extension CalendarDay {
+    private static let utcCalendar = gregorianCalendar(in: .gmt)
+
+    private var startInUTC: Date {
+        Self.utcCalendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
     private static func gregorianCalendar(in timeZone: TimeZone) -> Calendar {

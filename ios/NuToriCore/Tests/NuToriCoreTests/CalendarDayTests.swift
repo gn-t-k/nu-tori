@@ -77,6 +77,108 @@ struct CalendarDayTests {
             }
         }
     }
+
+    @Suite("日の前後")
+    struct Ordering {
+        @Suite("月をまたぐ2つの日")
+        struct AcrossMonths {
+            let earlier: CalendarDay
+            let later: CalendarDay
+
+            init() {
+                earlier = CalendarDay(year: 2026, month: 9, day: 30)
+                later = CalendarDay(year: 2026, month: 10, day: 1)
+            }
+
+            @Test("暦の順に比べること")
+            func comparesInCalendarOrder() {
+                #expect(earlier < later)
+            }
+        }
+
+        @Suite("年をまたぐ2つの日")
+        struct AcrossYears {
+            let earlier: CalendarDay
+            let later: CalendarDay
+
+            init() {
+                earlier = CalendarDay(year: 2025, month: 12, day: 31)
+                later = CalendarDay(year: 2026, month: 1, day: 1)
+            }
+
+            @Test("暦の順に比べること")
+            func comparesInCalendarOrder() {
+                #expect(earlier < later)
+            }
+        }
+    }
+
+    @Suite("日の足し引き")
+    struct Arithmetic {
+        @Suite("月の最後の日に1日足すとき")
+        struct AddingOneDayToLastDayOfMonth {
+            let day: CalendarDay
+            let days: Int
+
+            init() {
+                day = CalendarDay(year: 2026, month: 9, day: 30)
+                days = 1
+            }
+
+            @Test("次の月の1日になること")
+            func becomesFirstDayOfNextMonth() {
+                #expect(day.advanced(by: days) == CalendarDay(year: 2026, month: 10, day: 1))
+            }
+        }
+
+        @Suite("年の最初の日から1日引くとき")
+        struct SubtractingOneDayFromFirstDayOfYear {
+            let day: CalendarDay
+            let days: Int
+
+            init() {
+                day = CalendarDay(year: 2026, month: 1, day: 1)
+                days = -1
+            }
+
+            @Test("前の年の最後の日になること")
+            func becomesLastDayOfPreviousYear() {
+                #expect(day.advanced(by: days) == CalendarDay(year: 2025, month: 12, day: 31))
+            }
+        }
+
+        @Suite("うるう年の2月28日に1日足すとき")
+        struct AddingOneDayToFebruary28InLeapYear {
+            let day: CalendarDay
+            let days: Int
+
+            init() {
+                day = CalendarDay(year: 2028, month: 2, day: 28)
+                days = 1
+            }
+
+            @Test("2月29日になること")
+            func becomesLeapDay() {
+                #expect(day.advanced(by: days) == CalendarDay(year: 2028, month: 2, day: 29))
+            }
+        }
+
+        @Suite("月をまたぐ2つの日")
+        struct TwoDaysAcrossMonths {
+            let start: CalendarDay
+            let end: CalendarDay
+
+            init() {
+                start = CalendarDay(year: 2026, month: 9, day: 23)
+                end = CalendarDay(year: 2026, month: 10, day: 1)
+            }
+
+            @Test("あいだの日数を数えること")
+            func countsDaysBetween() {
+                #expect(start.distance(to: end) == 8)
+            }
+        }
+    }
 }
 
 extension KeyedDecodingContainer {
