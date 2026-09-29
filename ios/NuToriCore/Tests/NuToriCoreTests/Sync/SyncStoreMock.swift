@@ -41,7 +41,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         pending.append(write)
     }
 
-    func pendingWrites() async throws -> [PendingWrite] {
+    func pendingWritesOldestFirst() async throws -> [PendingWrite] {
         try failIfNeeded()
         return pending
     }
