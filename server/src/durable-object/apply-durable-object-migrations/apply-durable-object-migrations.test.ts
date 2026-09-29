@@ -4,8 +4,10 @@ import { applyDurableObjectMigrations, type DurableObjectMigration } from "./ind
 
 describe("Durable Object の移行", () => {
   let account: DurableObjectStub;
-  beforeEach(() => {
+  beforeEach(async () => {
     account = env.ACCOUNT.get(env.ACCOUNT.newUniqueId());
+    // 起動のときに本物の移行が当たっているので、何も当てていない状態に戻す
+    await runInDurableObject(account, (_, state) => state.storage.deleteAll());
   });
 
   describe("まだ何も当てていないとき", () => {

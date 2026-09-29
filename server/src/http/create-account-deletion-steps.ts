@@ -18,7 +18,7 @@ export const createAccountDeletionSteps = (
       await appleRefreshTokens.delete(accountId);
     },
     deleteRecords: async (accountId: string) => {
-      await getAccountDurableObject(env, accountId).deleteRecords();
+      await getAccountDurableObject(env, accountId).deleteRecords(accountId);
     },
     deleteAnalyticsEvents: async (accountId: string) => {
       // PostHog には本番だけが送るので、開発用には消すものが無い

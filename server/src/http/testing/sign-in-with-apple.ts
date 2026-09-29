@@ -3,7 +3,10 @@ import { signAppleIdToken } from "../../auth/testing";
 import { app } from "../app";
 
 // Apple の公開鍵と認可コードの交換は、呼ぶ側のテストで差し替えておく
-export const signInWithApple = async (appleUserId: string): Promise<Response> => {
+export const signInWithApple = async (
+  appleUserId: string,
+  options: { timeZone?: string } = {},
+): Promise<Response> => {
   const nonce = crypto.randomUUID();
   return app.request(
     "/v1/sessions",
@@ -14,6 +17,7 @@ export const signInWithApple = async (appleUserId: string): Promise<Response> =>
         idToken: await signAppleIdToken({ appleUserId, nonce }),
         nonce,
         authorizationCode: "authorization-code",
+        ...options,
       }),
     },
     env,
