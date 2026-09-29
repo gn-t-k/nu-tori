@@ -43,3 +43,7 @@ GitHub Issueを作る。
 - **着手可能なチケットの探し方**：マップの未クローズの子を一覧し（`gh issue list --state open` をマップのサブIssue／タスクリストに限定）、未解決のブロック元があるもの（`issue_dependencies_summary.blocked_by > 0`、または `Blocked by` 行に未クローズのIssueがあるもの）と担当者がいるものを除く。残ったうちマップ上で最初のものを選ぶ。
 - **着手宣言**：`gh issue edit <n> --add-assignee @me`。セッションで最初に行う書き込みにする。
 - **解決**：`gh issue comment <n> --body "<回答>"`、続けて `gh issue close <n>`。最後にマップの「これまでの決定事項」に要点とリンクを追記する。
+
+## iOS のチケットと PR の分け方
+
+iOS のチケットと PR は、UI 以外（ロジックのパッケージ、API クライアント、テスト）と、UI の確認（画面、シミュレータ、実機）に分ける。Mac を閉じているあいだも、前者はクラウドのエージェント（Linux）で進めるため。UI の確認は Mac の上のエージェントで行い、開発者が外にいて Mac を開けて置く日は、Mac で `claude remote-control --spawn worktree` を動かし、スマホから頼む。
