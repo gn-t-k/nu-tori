@@ -38,13 +38,11 @@ export const sessionRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
   async (c) => {
     const { idToken, nonce, authorizationCode } = c.req.valid("json");
     const signedIn = await R.pipe(
-      signInWithAppleIdToken(createAuthentication(c.env, c.req.url), idToken, nonce),
-      R.andThen((session) =>
-        R.pipe(
-          exchangeAppleAuthorizationCode(c.env, authorizationCode),
-          R.map((refreshToken) => ({ session, refreshToken })),
-        ),
+      R.do(),
+      R.bind("session", () =>
+        signInWithAppleIdToken(createAuthentication(c.env, c.req.url), idToken, nonce),
       ),
+      R.bind("refreshToken", () => exchangeAppleAuthorizationCode(c.env, authorizationCode)),
     );
     if (R.isFailure(signedIn)) {
       return match(signedIn.error)
