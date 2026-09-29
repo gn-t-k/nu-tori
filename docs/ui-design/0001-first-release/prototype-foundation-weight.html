@@ -1,0 +1,1535 @@
+<title>土台と体重の見た目</title>
+<!--
+  PROTOTYPE（捨てる前提）。「土台と体重の見た目を見比べる」（gn-t-k/nu-tori#96）の試作。
+  仕様「土台と体重」の申し送りのうち、見た目で決めるもの 11 の論点を、論点ごとに 2〜4 の案で並べる。
+  上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #consent-2）。
+  共通の見た目は 07-components/_base.css と _ring.js を埋め込んだもの（1枚で開けるように）。
+-->
+<style>
+/*
+  nu-tori のコンポーネントの共通の見た目。トークンと、iOS の標準の部品を HTML で写したもの。
+  実装では SwiftUI の標準の部品とシステムの色を使う。ここの値はその見本で、対応は README.md の「ルック&フィール」。
+*/
+
+/* ── トークン（ライト） ── */
+:root{
+  /* iOS のシステムの色 */
+  --bg:#f2f2f7;            /* systemGroupedBackground */
+  --surface:#ffffff;       /* secondarySystemGroupedBackground */
+  --surface2:#f2f2f7;      /* tertiarySystemGroupedBackground */
+  --ink:#000000;           /* label */
+  --ink2:rgb(60 60 67 / .6);   /* secondaryLabel */
+  --ink3:rgb(60 60 67 / .3);   /* tertiaryLabel */
+  --sep:rgb(60 60 67 / .29);   /* separator */
+  --fill:rgb(120 120 128 / .12); /* tertiarySystemFill */
+  --tint:#6155f5;          /* アクセント（systemIndigo） */
+  --on-tint:#ffffff;
+  --destructive:#ff383c;   /* systemRed。破壊的な操作だけに使う */
+  --scrim:rgb(0 0 0 / .2);
+  --chrome:rgb(249 249 249 / .94); /* バーの材質 */
+  /* P・F・C（3色のどの組も色覚の型を問わず見分けられる。validate_palette で確認） */
+  --p:#f07f1a; --f:#15803d; --c:#2c7be5;
+  --track:#e5e5ea;         /* 輪の地 */
+  /* グラフ */
+  --series:#6155f5; --grid:rgb(60 60 67 / .12); --guide:rgb(60 60 67 / .45);
+  /* 自分の発言 */
+  --me:#6155f5; --on-me:#ffffff;
+  /* ページ（コンポーネントの見本を並べる地） */
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+    --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+    --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+    --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+    --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+    --me:#6d7cff; --on-me:#ffffff;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+  --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+  --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+  --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+  --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+  --me:#6d7cff; --on-me:#ffffff;
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+  color-scheme:dark;
+}
+
+/* ── 文字（iOS のテキストスタイル。Dynamic Type の既定の大きさ） ── */
+:root{
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  --t-title2:22px;   /* Title 2（大きな数字） */
+  --t-title3:20px;   /* Title 3 */
+  --t-headline:17px; /* Headline（600） */
+  --t-body:17px;     /* Body */
+  --t-callout:16px;  /* Callout */
+  --t-sub:15px;      /* Subheadline */
+  --t-foot:13px;     /* Footnote */
+  --t-cap:12px;      /* Caption 1 */
+  --t-cap2:11px;     /* Caption 2 */
+}
+
+/* ── 見本を並べるページ ── */
+*{box-sizing:border-box}
+body{margin:0;padding:16px 16px 40px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.sheet-head,.page-head{max-width:1280px;margin:0 auto 14px}
+.page-head h1{font-size:17px;margin:0}
+.page-head p{margin:2px 0 0;color:var(--page-muted);max-width:720px}
+.states{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr));gap:20px;align-items:start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+figcaption{color:var(--page-muted);font-size:12.5px}
+figcaption b{color:var(--page-ink)}
+
+/* ── 電話の枠 ── */
+.phone{position:relative;height:680px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;font-size:var(--t-body);line-height:1.3}
+.phone.short{height:520px}
+.status{height:34px;flex:none}
+.home{height:22px;flex:none}
+
+/* ナビゲーションバー */
+.nav{height:44px;flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 12px;background:var(--bg)}
+.nav .l{justify-self:start;color:var(--tint);display:flex;align-items:center;gap:2px;font-size:var(--t-body)}
+.nav .l .chev{font-size:24px;line-height:1;margin-top:-2px}
+.nav .t{font-size:var(--t-headline);font-weight:600;text-align:center;white-space:nowrap}
+.nav .r{justify-self:end;color:var(--tint);font-size:var(--t-body)}
+.nav .r.b,.nav .l.b{font-weight:600}
+.nav.sep{border-bottom:.5px solid var(--sep)}
+.large-title{font-size:34px;font-weight:700;padding:2px 16px 8px}
+
+/* 本文のスクロール域 */
+.scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:24px;padding:12px 16px 16px}
+.scroll > *{flex:none}
+
+/* グループの一覧（Inset Grouped） */
+.group-h{font-size:var(--t-foot);color:var(--ink2);text-transform:none;padding:0 16px 6px;margin:0}
+.group-f{font-size:var(--t-foot);color:var(--ink2);padding:6px 16px 0;margin:0}
+.list{background:var(--surface);border-radius:10px;overflow:hidden}
+.list > .cell{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative;font-size:var(--t-body)}
+.list > .cell + .cell::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.cell .grow{flex:1;min-width:0}
+.cell .val{color:var(--ink2);text-align:right}
+.cell .disc{color:var(--ink3);font-size:18px;line-height:1;margin-left:2px}
+.cell.link{color:var(--tint)}
+.cell.danger{color:var(--destructive);justify-content:center}
+.cell .sub{display:block;color:var(--ink2);font-size:var(--t-foot)}
+
+/* 押して直せる値（iOS の編集できる値と同じく、アクセントの色で示す） */
+.edit{color:var(--tint)}
+/* 推定の印 */
+.est{display:inline-block;font-size:var(--t-cap2);color:var(--ink2);border:.5px solid var(--ink3);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:1px;line-height:1.5}
+
+/* ボタン */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font-size:var(--t-sub);font-weight:600}
+.btn.filled{background:var(--tint);color:var(--on-tint)}
+.btn.tinted{background:color-mix(in srgb,var(--tint) 15%,transparent);color:var(--tint)}
+.btn.gray{background:var(--fill);color:var(--tint)}
+.btn.large{height:50px;border-radius:12px;font-size:var(--t-body);width:100%}
+.btn.plain{height:auto;padding:0;color:var(--tint);font-weight:400;font-size:var(--t-body)}
+.btn[aria-disabled="true"]{opacity:.35}
+
+/* 値の欄 */
+.field{background:var(--fill);border-radius:10px;padding:11px 12px;font-size:var(--t-body);display:flex;justify-content:space-between;gap:8px}
+.field.focus{box-shadow:0 0 0 2px var(--tint) inset;background:var(--surface)}
+.field .ph{color:var(--ink3)}
+
+/* ステッパー（体重） */
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper .pm{width:48px;height:44px;border-radius:10px;background:var(--fill);color:var(--tint);font-size:22px;display:grid;place-items:center;flex:none}
+.stepper .v{flex:1;text-align:center;font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.stepper .v small{font-size:var(--t-sub);font-weight:400;color:var(--ink2);margin-left:3px}
+
+/* シート */
+.scrim{position:absolute;inset:0;background:var(--scrim);display:flex;flex-direction:column;justify-content:flex-end}
+.sheet{background:var(--bg);border-radius:12px 12px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -1px 0 var(--sep)}
+.sheet.large{position:absolute;inset:44px 0 0}
+.sheet .grab{width:36px;height:5px;border-radius:3px;background:var(--ink3);align-self:center;margin:6px 0 2px;flex:none}
+
+/* アクションシート・アラート */
+.action{margin:0 8px 8px;display:flex;flex-direction:column;gap:8px}
+.action .grp{background:var(--chrome);border-radius:14px;overflow:hidden;text-align:center}
+.action .msg{padding:13px 16px;font-size:var(--t-foot);color:var(--ink2)}
+.action .a{padding:17px;font-size:20px;color:var(--tint);border-top:.5px solid var(--sep)}
+.action .a.danger{color:var(--destructive)}
+.action .a.cancel{font-weight:600;border-top:0}
+.alert-wrap{position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center}
+.alert{width:270px;background:var(--chrome);border-radius:14px;overflow:hidden;text-align:center}
+.alert .ab{padding:18px 16px 16px;display:flex;flex-direction:column;gap:4px}
+.alert .ab b{font-size:var(--t-headline)}
+.alert .ab span{font-size:var(--t-foot)}
+.alert .bt{display:grid;grid-template-columns:1fr 1fr;border-top:.5px solid var(--sep)}
+.alert .bt span{padding:11px;font-size:var(--t-body);color:var(--tint)}
+.alert .bt span + span{border-left:.5px solid var(--sep)}
+.alert .bt .danger{color:var(--destructive);font-weight:600}
+
+/* 1日の丸（1本の輪を P・F・C で色分け）。SVG は ring() が描く */
+.ring{position:relative;display:inline-block;flex:none}
+.ring svg{display:block}
+.ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;text-align:center}
+
+/* P・F・C の見出しの色の印 */
+.key{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:0}
+.key.p{background:var(--p)} .key.f{background:var(--f)} .key.c{background:var(--c)}
+
+/* 推定中 */
+.loading{display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:var(--t-sub)}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink3);border-top-color:var(--ink2);animation:spin 1s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+
+/* グラフ */
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--ink2);font-size:10px;font-family:var(--font)}
+
+
+/* ── 試作のページ ── */
+body{padding-bottom:104px}
+.intro{max-width:1280px;margin:0 auto 12px;display:flex;flex-direction:column;gap:8px}
+.intro h1{font-size:20px;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--page-muted);max-width:760px}
+.topics{max-width:1280px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:6px}
+.topics button{font-size:13px;padding:6px 12px;border-radius:999px;background:var(--surface);color:var(--page-ink);box-shadow:0 0 0 .5px var(--frame)}
+.topics button[aria-current="true"]{background:var(--tint);color:var(--on-tint);box-shadow:none}
+.topic{max-width:1280px;margin:0 auto}
+.topic > h2{font-size:17px;margin:0 0 4px;text-wrap:balance}
+.topic > .q{margin:0 0 4px;max-width:760px}
+.topic > .fixed{margin:0 0 16px;max-width:760px;color:var(--page-muted);font-size:13px}
+.vhead{max-width:1280px;margin:0 auto 12px;display:flex;flex-direction:column;gap:2px}
+.vhead b{font-size:15px}
+.vhead span{color:var(--page-muted);font-size:13px;max-width:760px}
+.variant .states{margin:0}
+
+/* 切り替えのバー（試作の道具。設計の一部ではない） */
+.switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
+.switcher button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--page)}
+.switcher button:hover{background:color-mix(in srgb,var(--page) 15%,transparent)}
+.switcher .lab{padding:0 10px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lab b{font-weight:700;margin-right:6px}
+
+/* ── タイムライン（07-components/timeline から） ── */
+.nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+.band{display:flex;justify-content:space-between;padding:4px 16px 12px;border-bottom:.5px solid var(--sep);flex:none;background:var(--bg)}
+.band .day{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:var(--t-cap2);color:var(--ink2);padding:3px 4px;border-radius:10px;min-width:32px}
+.band .day.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.band .day.future{opacity:.45}
+.band .day.before{opacity:.45}
+.band .day .nor{width:28px;height:28px}
+.tl{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:12px 16px}
+.tl > *{flex:none}
+.tl.top{justify-content:flex-start}
+.dayh{text-align:center;font-size:var(--t-cap);color:var(--ink2);font-weight:600}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;background:var(--surface);border-radius:12px;padding:12px 16px;font-size:var(--t-sub)}
+.tl > .row{align-self:flex-end;width:86%;background:color-mix(in srgb,var(--tint) 10%,var(--surface))}
+.row .tm{color:var(--ink2);font-size:var(--t-foot);width:36px;flex:none}
+.row .grow{flex:1;min-width:0}
+.row .grow small{display:block;color:var(--ink2);font-size:var(--t-cap)}
+.row .val{font-variant-numeric:tabular-nums}
+.row .disc{color:var(--ink3)}
+.row.faint .tm{opacity:.45}
+.row.ghost{background:transparent!important;box-shadow:0 0 0 1px var(--sep) inset;color:var(--ink2)}
+.row.ghost .val{text-decoration:line-through}
+.aside-line{font-size:var(--t-foot);color:var(--ink2);line-height:1.4}
+.aside-line.r{align-self:flex-end;width:86%;text-align:right}
+.aside-line.c{text-align:center}
+.note{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.note .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.note .h b{font-size:var(--t-sub);font-weight:600}
+.note .h span{font-size:var(--t-cap);color:var(--ink2)}
+.note .d{font-size:var(--t-foot);color:var(--ink2);margin:0}
+.note .h + .d{margin-top:-4px}
+.note .acts{display:flex;gap:12px;justify-content:flex-end}
+.comp{display:flex;align-items:center;gap:12px;padding:8px 16px;flex:none;background:var(--bg)}
+.comp .cam{width:44px;height:44px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;flex:none}
+.comp .wt{width:44px;height:44px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center;flex:none}
+.comp .wt.hot{background:var(--tint);color:var(--on-tint)}
+.comp .in{flex:1;height:36px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);color:var(--ink3);font-size:var(--t-body);display:flex;align-items:center;padding:0 16px;min-width:0}
+.pill{margin:12px 16px 0;display:flex;align-items:center;gap:8px;min-height:36px;padding:8px 16px;border-radius:999px;background:var(--surface);font-size:var(--t-foot);box-shadow:0 0 0 .5px var(--sep);flex:none;color:var(--ink2)}
+.center-load{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink2);font-size:var(--t-sub)}
+.center-load .spinner{width:22px;height:22px}
+.skel{height:44px;border-radius:12px;background:var(--fill);align-self:flex-end;width:86%}
+.skel.s{height:14px;width:30%;align-self:center;border-radius:4px}
+.skel.w{width:100%;height:88px;align-self:stretch}
+
+/* ── サインイン（07-components/signin から） ── */
+.si{flex:1;display:flex;flex-direction:column;padding:0 16px 16px;min-height:0}
+.si .hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center}
+.si .hero.sm{flex:none;gap:8px;padding:24px 0 16px}
+.si .hero.sm .icon{width:56px;height:56px;border-radius:13px}
+.si .hero.sm .name{font-size:22px}
+.si .icon{width:88px;height:88px;border-radius:20px;background:var(--tint);color:var(--on-tint);display:grid;place-items:center}
+.si .name{font-size:28px;font-weight:700;letter-spacing:.01em}
+.si .lead{font-size:var(--t-body);color:var(--ink2);line-height:1.45;margin:0}
+.si .foot{display:flex;flex-direction:column;justify-content:flex-end;gap:16px}
+.si .consent{font-size:var(--t-foot);color:var(--ink2);line-height:1.5;margin:0}
+.si .consent a,.consent-card a,.consent-body a,.sheetc a{color:var(--tint);text-decoration:none}
+.si .err{font-size:var(--t-foot);color:var(--ink);line-height:1.45;margin:0}
+.si .why{font-size:var(--t-sub);color:var(--ink);line-height:1.45;margin:0;text-align:center}
+.apple{width:100%;height:50px;border-radius:12px;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;gap:6px;font-size:var(--t-body);font-weight:600;flex:none}
+.si .pp{font-size:var(--t-foot);color:var(--tint);text-align:center}
+.consent-card{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.consent-card b{font-size:var(--t-headline)}
+.consent-card p{margin:0;font-size:var(--t-sub);line-height:1.5}
+.consent-body{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:14px}
+.consent-body .blk{display:flex;flex-direction:column;gap:2px}
+.consent-body .blk b{font-size:var(--t-foot);color:var(--ink2);font-weight:600}
+.consent-body .blk p{margin:0;font-size:var(--t-body);line-height:1.45}
+.consent-body .last{font-size:var(--t-sub);color:var(--ink2);margin:0}
+.sheetc{padding:8px 16px 16px;display:flex;flex-direction:column;gap:16px}
+.sheetc p{margin:0;font-size:var(--t-body);line-height:1.5}
+.dim{opacity:.55}
+
+/* ── 体重の画面（07-components/weight から） ── */
+.today{display:flex;align-items:flex-start;gap:12px;padding:12px 16px}
+.today .grow{flex:1;display:flex;flex-direction:column;gap:4px}
+.today .d{font-size:var(--t-foot);color:var(--ink2)}
+.today .v{font-size:var(--t-title2);font-weight:600;font-variant-numeric:tabular-nums}
+.today .v small{font-size:var(--t-sub);font-weight:400;color:var(--ink2);margin-left:3px}
+.today .src{font-size:var(--t-foot);color:var(--ink2)}
+.today .fix{color:var(--tint);font-size:var(--t-body)}
+.big{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 4px;text-align:center}
+.big .d{font-size:var(--t-foot);color:var(--ink2)}
+.big .v{font-size:40px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.big .v small{font-size:var(--t-body);font-weight:400;color:var(--ink2);margin-left:4px}
+.big .src{font-size:var(--t-foot);color:var(--ink2)}
+.big .btn{margin-top:6px}
+.cell .num{font-variant-numeric:tabular-nums}
+.cell .sub2{color:var(--ink2);font-size:var(--t-foot);margin-left:6px}
+.cell .when{display:flex;flex-direction:column;min-width:0}
+.cell .when small{color:var(--ink2);font-size:var(--t-foot)}
+.cell.sel{background:color-mix(in srgb,var(--tint) 10%,var(--surface))}
+.cell.expand{flex-direction:column;align-items:stretch;gap:6px}
+.cell.expand .l1{display:flex;align-items:center;gap:12px}
+.cell.expand .l2{display:flex;justify-content:space-between;font-size:var(--t-foot);color:var(--ink2)}
+.cell.expand .l2 .edit{font-size:var(--t-body)}
+.cell .edit.big2{font-size:var(--t-title3);font-weight:600}
+.cell.subrow{padding-left:32px}
+.cell.subrow .grow{color:var(--ink2);font-size:var(--t-sub)}
+
+/* ── アカウント（07-components/account から） ── */
+.phone.tall{height:900px}
+.phone.mid{height:760px}
+.behind{position:absolute;inset:0;display:flex;flex-direction:column}
+.sheet .nav{background:var(--bg)}
+.list > .cell.stack{flex-direction:column;align-items:stretch;gap:4px}
+.cell .kv{font-size:var(--t-foot);color:var(--ink2);line-height:1.4}
+.cell .kv b{color:var(--ink);font-weight:400}
+.cell .ext{margin-left:auto;font-size:var(--t-foot)}
+.cell.info{gap:10px;font-size:var(--t-foot);color:var(--ink);align-items:flex-start}
+.cell.info svg{flex:none;margin-top:1px}
+.cell.danger[aria-disabled="true"]{opacity:.35}
+.alert .bt.stack{grid-template-columns:1fr}
+.alert .bt.stack span + span{border-left:0;border-top:.5px solid var(--sep)}
+.alert .bt.stack .cancel{font-weight:400}
+.alert .ab span + span{margin-top:6px}
+.toggle{width:51px;height:31px;border-radius:999px;background:var(--switch);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;top:2px;right:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgb(0 0 0 / .25)}
+.sec-err{font-size:var(--t-foot);color:var(--ink);padding:0 16px 6px;margin:0;line-height:1.4}
+.push-t{font-size:var(--t-foot);color:var(--ink2);padding:0 16px;margin:0;line-height:1.45}
+
+:root{--switch:#34c759}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--switch:#30d158}}
+:root[data-theme="dark"]{--switch:#30d158}
+code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+</style>
+<header class="intro">
+  <h1>土台と体重の見た目を見比べる</h1>
+  <p>仕様「土台と体重」の前に、見た目で決めるものを並べた試作（捨てる前提）。上の論点を選び、下のバーの ‹ › か矢印キーで案を切り替える。どの案も凍結済みの <code>07-components/</code> の部品と <code>DESIGN.md</code> のトークンで描いた。例の日付は、今日が 9月24日（木）。</p>
+</header>
+
+<nav class="topics" aria-label="論点" id="topics"></nav>
+
+<main id="main">
+
+<!-- ───────────── 1. サインインの同意 ───────────── -->
+<section class="topic" data-topic="consent" data-label="サインインの同意">
+  <h2>サインインの画面の同意</h2>
+  <p class="q">決まった同意の文を、サインインの画面にどう置くか。</p>
+  <p class="fixed">決まっていること: 文面（「プライバシーポリシーを用意する」の決めたことの4）、置き場は「Appleで続ける」のボタンの真上、ボタンは標準のまま。名前とメールアドレスは求めない。失敗したときの理由はボタンの上に出す。</p>
+
+  <div class="variant" data-v="脚注">
+    <div class="vhead"><b>脚注</b><span>今のサインインの画面の形のまま、ボタンの真上に同意の文を小さな字（Footnote）で置く。プライバシーポリシーのリンクは文の中だけにして、下の単独のリンクは消す。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div><p class="lead">毎朝の体重と、食事の写真だけ。<br>目標までの1日の目安は nu-tori が決めます。</p></div>
+            <div class="foot">
+              <p class="consent"><span data-p="consent"></span></p>
+              <span data-p="apple"></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>初め。</b>アプリの利用規約やサインインの下によくある置き方。文は5文あり、脚注の字では読み飛ばされやすい。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div><p class="lead">毎朝の体重と、食事の写真だけ。<br>目標までの1日の目安は nu-tori が決めます。</p></div>
+            <div class="foot">
+              <p class="consent"><span data-p="consent"></span></p>
+              <p class="err" role="status">サインインできませんでした。通信を確かめて、もう一度押してください。</p>
+              <span data-p="apple"></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>失敗したとき。</b>理由はボタンのすぐ上、同意の文との間に出す。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="カード">
+    <div class="vhead"><b>カード</b><span>アプリの名前を小さく上に寄せ、同意の文を白いカードに入れて本文の字（Subheadline）で読ませる。カードに「続ける前に」の見出しを付ける。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div><p class="lead">毎朝の体重と、食事の写真だけ。</p></div>
+            <div class="foot">
+              <div class="consent-card"><b>続ける前に</b><p><span data-p="consent"></span></p></div>
+              <span data-p="apple"></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>初め。</b>同意がこの画面の主な中身になる。説明のひとことは1行に縮めた。見出しの「続ける前に」は新しく足す文言。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="区切る">
+    <div class="vhead"><b>区切る</b><span>同じ文を、送り先・AI・確かめることの3つに区切り、小さな見出しを付けて本文の字（Body）で並べる。「続けると、これらに同意したことになります。」だけをボタンの真上に残す。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero sm"><span data-p="icon"></span><div class="name">nu-tori</div></div>
+            <div class="consent-body">
+              <div class="blk"><b>保存するところ</b><p>記録と写真（ヘルスケアから読んだ情報を含む）は、米国の会社のサービスで保存・処理します。</p></div>
+              <div class="blk"><b>AI に送るもの</b><p>食事の推定と返事のために AI にも送り、不具合と利用状況も送って、その分析にも AI を使います。推定の値と返事は、確かめてから使ってください。</p></div>
+              <div class="blk"><b>確かめること</b><p>送り先の国の制度と各社の措置を<a href="https://nu-tori.app/privacy">プライバシーポリシー</a>で確かめてから、続けてください。</p></div>
+            </div>
+            <div class="foot">
+              <p class="last">続けると、これらに同意したことになります。</p>
+              <span data-p="apple"></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>初め。</b>文面は変えず、区切りと見出しだけを足した（見出しは新しく足す文言）。説明のひとことは入らないので消した。Dynamic Type で字を大きくすると、この画面はスクロールが要る。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="2段">
+    <div class="vhead"><b>2段</b><span>最初の画面はアプリの名前と「始める」だけにし、押すとシートで同意の文と「Appleで続ける」を出す。1タップ増える。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div><p class="lead">毎朝の体重と、食事の写真だけ。<br>目標までの1日の目安は nu-tori が決めます。</p></div>
+            <div class="foot">
+              <span class="btn filled large">始める</span>
+              <a class="pp" href="https://nu-tori.app/privacy">プライバシーポリシー ↗</a>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>初め。</b>今のサインインの画面から Apple のボタンを「始める」に替えたもの。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="behind dim">
+            <div class="status"></div>
+            <div class="si"><div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div></div></div>
+          </div>
+          <div class="scrim">
+            <div class="sheet">
+              <span class="grab"></span>
+              <div class="nav"><span class="l">キャンセル</span><span class="t">続ける前に</span><span></span></div>
+              <div class="sheetc">
+                <p><span data-p="consent"></span></p>
+                <span data-p="apple"></span>
+              </div>
+              <div class="home"></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>「始める」を押したあと。</b>文を読む場とボタンが1つのシートにまとまる。ユーザーの操作が1つ増えるので、ADR-0001 の1つめ（操作を増やさない）とぶつかる。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 2. サインインし直すとき ───────────── -->
+<section class="topic" data-topic="resignin" data-label="サインインし直すとき">
+  <h2>サインインし直すときの画面</h2>
+  <p class="q">Apple の資格情報が取り消されていたとき（開いたときに分かる）と、サーバーがセッションを受け付けなかったとき（使わない期間 180 日で切れた、Apple からの通知で取り消した）に出すサインインの画面。</p>
+  <p class="fixed">決まっていること: どちらもサインインの画面を出す。電波がなくて更新できないときは出さない。そのあいだも送り待ちは残し、同じアカウントで入り直したら送る。記録はサーバーに残り、同じ Apple ID で入れば戻る。</p>
+
+  <div class="variant" data-v="1行">
+    <div class="vhead"><b>1行で添える</b><span>初めてのサインインの画面と同じものに、理由を分けない1行を足す。送り待ちがあるときだけ、2文目を足す。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div></div>
+            <div class="foot">
+              <p class="why">もう一度サインインしてください。同じ Apple ID で続けると、記録はそのまま戻ります。</p>
+              <p class="consent"><span data-p="consent"></span></p>
+              <span data-p="apple"></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>送り待ちがないとき。</b>同意の文は初めてのときと同じに出す（同じアカウントで入り直す人にも、別の人にも同じ画面）。説明のひとことの代わりに1行を置いた。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div></div>
+            <div class="foot">
+              <p class="why">もう一度サインインしてください。同じ Apple ID で続けると、記録はそのまま戻り、まだ送っていない記録も送ります。</p>
+              <p class="consent"><span data-p="consent"></span></p>
+              <span data-p="apple"></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>送り待ちがあるとき。</b>別の Apple ID で入ると、端末の前のアカウントのもの（送り待ちを含む）はすべて消える。そのことは書いていない。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="理由ごと">
+    <div class="vhead"><b>理由ごとに書き分ける</b><span>Apple の資格情報が取り消されたときと、セッションが切れたときで、1行を書き分ける。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div></div>
+            <div class="foot">
+              <p class="why">Apple ID の設定で、nu-tori でのサインインが止められました。続けるには、もう一度サインインしてください。</p>
+              <p class="consent"><span data-p="consent"></span></p>
+              <span data-p="apple"></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>資格情報が取り消されていたとき。</b>「設定」の Apple ID で「Appleでサインイン」の使用をやめたとき（<code>revoked</code>）。<code>notFound</code> も同じ文にする。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="si">
+            <div class="hero"><span data-p="icon"></span><div class="name">nu-tori</div></div>
+            <div class="foot">
+              <p class="why">サインインの期限が切れました。同じ Apple ID で続けると、記録はそのまま戻ります。</p>
+              <p class="consent"><span data-p="consent"></span></p>
+              <span data-p="apple"></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>セッションを受け付けなかったとき。</b>180 日使わなかったときと、Apple からの通知で取り消したときを分けない（端末はサーバーが受け付けなかったことしか知らない）。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="シート">
+    <div class="vhead"><b>記録の上にシート</b><span>全画面のサインインに置き換えず、端末にある記録（タイムライン）を後ろに残したまま、閉じられないシートでサインインを求める。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="behind">
+            <div class="status"></div>
+            <div data-p="tlnav" data-t="9月24日（木）"></div>
+            <div data-p="band" data-b="normal"></div>
+            <div class="tl top">
+              <div class="dayh">昨日 9月23日（水）</div>
+              <div class="row"><span class="tm">7:30</span><span class="grow">体重</span><span class="val">72.6 kg</span><span class="disc">›</span></div>
+              <div class="dayh">今日 9月24日（木）</div>
+              <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+            </div>
+          </div>
+          <div class="scrim">
+            <div class="sheet">
+              <div class="nav"><span></span><span class="t">サインイン</span><span></span></div>
+              <div class="sheetc">
+                <p>もう一度サインインしてください。同じ Apple ID で続けると、記録はそのまま戻ります。</p>
+                <p class="consent" style="font-size:var(--t-foot);color:var(--ink2)"><span data-p="consent"></span></p>
+                <span data-p="apple"></span>
+              </div>
+              <div class="home"></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>開いたとき。</b>記録が消えていないことが見て分かる。<code>06-layout.md</code> の「サインインは全画面」と、シートはいつでも閉じられるという iOS の習いとにぶつかる（下へ引いても閉じない作りにする）。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 3. 電波がないときのアカウントの削除 ───────────── -->
+<section class="topic" data-topic="offline-delete" data-label="電波がないときの削除">
+  <h2>電波がないときのアカウントの削除</h2>
+  <p class="q">電波がないときに「アカウントを削除」を押したときの、消せなかったことを示す1行の見せ方。</p>
+  <p class="fixed">決まっていること: アラートを閉じ、アカウントのシートの削除の行の上に、消せなかったことを1行で出す。端末では何も消さない（「端末とサーバーの同期とオフライン時の振る舞い」の追記）。</p>
+
+  <div class="variant" data-v="見出し">
+    <div class="vhead"><b>見出しの位置</b><span>削除のまとまりの見出しの位置（一覧の外、上）に、ふつうの文字の色で1行を出す。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large">
+            <span class="grab"></span>
+            <div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div>
+            <div class="scroll">
+              <div><div class="list"><div class="cell link"><span class="grow">プライバシーポリシー</span><span class="ext">↗</span></div><div class="cell link"><span class="grow">問い合わせ</span><span class="ext">↗</span></div></div></div>
+              <div>
+                <p class="sec-err" role="status">電波がないため、削除できませんでした。電波のあるところで、もう一度押してください。</p>
+                <div class="list"><div class="cell danger">アカウントを削除</div></div>
+                <p class="group-f">食事、体重、目標、会話の記録がすべて消え、元に戻せません。</p>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <figcaption><b>アラートを閉じたあと。</b>サインインの失敗（ボタンの上の1行）と同じ置き方。シートの上のほかのまとまりは略した。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="一覧の行">
+    <div class="vhead"><b>一覧の中の行</b><span>削除の行と同じ一覧の中に、印を付けた知らせの行を足す。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large">
+            <span class="grab"></span>
+            <div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div>
+            <div class="scroll">
+              <div><div class="list"><div class="cell link"><span class="grow">プライバシーポリシー</span><span class="ext">↗</span></div><div class="cell link"><span class="grow">問い合わせ</span><span class="ext">↗</span></div></div></div>
+              <div>
+                <div class="list">
+                  <div class="cell info" role="status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.5"/></svg><span>電波がないため、削除できませんでした。電波のあるところで、もう一度押してください。</span></div>
+                  <div class="cell danger">アカウントを削除</div>
+                </div>
+                <p class="group-f">食事、体重、目標、会話の記録がすべて消え、元に戻せません。</p>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <figcaption><b>アラートを閉じたあと。</b>削除の行とひとまとまりに見える。印（SF Symbols の <code>exclamationmark.circle</code>）は色を付けない。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="先回り">
+    <div class="vhead"><b>先回りして押せなくする</b><span>電波がないあいだは、押す前から削除の行を押せなくし、上に理由を出す（決まっていることとは違う振る舞い）。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large">
+            <span class="grab"></span>
+            <div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div>
+            <div class="scroll">
+              <div><div class="list"><div class="cell link"><span class="grow">プライバシーポリシー</span><span class="ext">↗</span></div><div class="cell link"><span class="grow">問い合わせ</span><span class="ext">↗</span></div></div></div>
+              <div>
+                <p class="group-h">電波のあるところで削除できます</p>
+                <div class="list"><div class="cell danger" aria-disabled="true">アカウントを削除</div></div>
+                <p class="group-f">食事、体重、目標、会話の記録がすべて消え、元に戻せません。</p>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <figcaption><b>電波がないあいだ。</b>アラートを開いてから断る往復が無くなる（ADR-0001 の「先回りして気を利かせる」）。電波の有無を端末が見張る仕組みが要り、決まりを置き換えることになる。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 4. 読み込み中 ───────────── -->
+<section class="topic" data-topic="loading" data-label="端末に記録が無いとき">
+  <h2>端末に記録が無いときの読み込み中</h2>
+  <p class="q">機種変更のあと、2台目、別のアカウントでサインインし直したあとなど、端末に記録が無いときに、記録を取り終えるまで出す読み込み中の見え方。</p>
+  <p class="fixed">決まっていること: 読み込み中はタイムラインの場所に出す（<code>DESIGN.md</code>「待っている表示」）。端末に記録があるときは読み込み中を出さず、すぐ見せる。別のアカウントで入ったら、前のアカウントのものは端末からすべて消す。</p>
+
+  <div class="variant" data-v="真ん中">
+    <div class="vhead"><b>真ん中に回る印</b><span>タイムラインの場所の真ん中に回る印と文を出す。帯と入力欄はいつもどおりで、読み込み中も体重を記録できる。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="loading"></div>
+          <div class="center-load" role="status"><span class="spinner"></span>記録を読み込んでいます…</div>
+          <div data-p="comp" data-hot="1"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>サインインのすぐあと。</b>帯の丸は空。取り終えると、丸と記録がその場で入る。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="骨組み">
+    <div class="vhead"><b>骨組み</b><span>記録が入る場所に、灰色の形（スケルトン）を並べる。回る印は出さない。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="loading"></div>
+          <div class="tl" role="status" aria-label="記録を読み込んでいます">
+            <div class="skel s"></div><div class="skel"></div><div class="skel w"></div>
+            <div class="skel s"></div><div class="skel"></div><div class="skel w"></div><div class="skel"></div>
+          </div>
+          <div data-p="comp" data-hot="1"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>サインインのすぐあと。</b>iOS の標準には無い見せ方（SwiftUI の <code>.redacted(reason: .placeholder)</code> で近いものは作れる）。取り終えると形が記録に置き換わる。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="入力を待たせる">
+    <div class="vhead"><b>入力欄も待たせる</b><span>真ん中の回る印は同じで、取り終えるまで入力欄を出さない。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="loading"></div>
+          <div class="center-load" role="status"><span class="spinner"></span>記録を読み込んでいます…</div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>サインインのすぐあと。</b>取り終える前に記録した体重が、読み込んだ今日の体重と重ならない。モードレスの原則とぶつかる。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 5. 受け付けなかった記録 ───────────── -->
+<section class="topic" data-topic="rejected" data-label="受け付けなかった記録">
+  <h2>サーバーが受け付けなかった記録に添える1行</h2>
+  <p class="q">送り待ちから送った体重をサーバーが受け付けなかったときの、1行の文言と置き方。新しい記録は消え、直した値は元に戻る。</p>
+  <p class="fixed">決まっていること: 送り直さない。記録をサーバーの状態に戻し（新しく作ったものなら消し）、記録の位置に記録できなかったことを1行で出す（「端末とサーバーの同期とオフライン時の振る舞い」）。</p>
+
+  <div class="variant" data-v="記録の位置">
+    <div class="vhead"><b>記録の位置に1行</b><span>消えた記録や戻った行と同じく右に寄せて、枠のない小さな字の1行を置く。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="noweight"></div>
+          <div class="tl">
+            <div class="dayh">昨日 9月23日（水）</div>
+            <div class="row"><span class="tm">7:05</span><span class="grow">体重</span><span class="val">72.6 kg</span><span class="disc">›</span></div>
+            <div class="dayh">今日 9月24日（木）</div>
+            <p class="aside-line r" role="status">7:12 の体重 72.4 kg は、記録できませんでした。</p>
+          </div>
+          <div data-p="comp" data-hot="1"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>新しい記録を受け付けなかったとき。</b>体重の行は消え、同じ位置に1行だけが残る。入力欄の体重は、また目立つ色に戻る。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="normal"></div>
+          <div class="tl">
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+            <p class="aside-line r" role="status">71.9 kg に直せませんでした。</p>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>直した値を受け付けなかったとき。</b>行は元の 72.4 kg に戻り、すぐ下に1行を添える。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="薄い行">
+    <div class="vhead"><b>薄い行を残す</b><span>消した記録の形を枠線だけの行で残し、値に打ち消し線を引いて、下に1行を添える。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="noweight"></div>
+          <div class="tl">
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row ghost"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span></div>
+            <p class="aside-line r" role="status">記録できませんでした。</p>
+          </div>
+          <div data-p="comp" data-hot="1"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>新しい記録を受け付けなかったとき。</b>何が記録されなかったかが形で分かる。行は押せない。いつ消すか（次に開いたとき、次の記録のとき）は決めることが増える。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="normal"></div>
+          <div class="tl">
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row"><span class="tm">7:12</span><span class="grow">体重<small><s>71.9 kg</s> に直せませんでした</small></span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>直した値を受け付けなかったとき。</b>行の中に2行目として添える。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="知らせ">
+    <div class="vhead"><b>アプリの知らせ</b><span>全幅の白いカード（アプリからの知らせ）にし、入れ直すボタンを付ける。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="noweight"></div>
+          <div class="tl">
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="note" role="status">
+              <div class="h"><b>体重を記録できませんでした</b><span>7:12</span></div>
+              <p class="d">7:12 に入れた 72.4 kg は記録されていません。</p>
+              <div class="acts"><span class="btn filled">記録し直す</span></div>
+            </div>
+          </div>
+          <div data-p="comp" data-hot="1"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>新しい記録を受け付けなかったとき。</b>「記録し直す」で体重の入力を開く。1行より大きく、責める印象になりうる。受け付けなかった理由が値でないなら、入れ直しても同じことが起きる。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 6. 電波がないときの体重 ───────────── -->
+<section class="topic" data-topic="offline-weight" data-label="電波がないときの体重">
+  <h2>電波がないときに記録した・直した体重</h2>
+  <p class="q">タイムラインと体重の画面の記録での見え方。</p>
+  <p class="fixed">決まっていること: すぐ見せる。注記を付けない（<code>DESIGN.md</code> の Don't）。待っている表示はサーバーが処理しているあいだだけで、送れていないあいだは出さない。体重の傾向とそれを使う値は同期まで前のまま（傾向は「体重の傾向と記録忘れの通知」で扱う）。</p>
+
+  <div class="variant" data-v="変えない">
+    <div class="vhead"><b>何も変えない</b><span>電波があるときとまったく同じに見せる。決まっていることのとおり。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="normal"></div>
+          <div class="tl">
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>電波がないときに記録した直後。</b>今日の丸に印が付き、入力欄の体重は目立たない色に変わる。送れたかどうかは見えない。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="時刻を薄く">
+    <div class="vhead"><b>送るまで時刻を薄く（対照）</b><span>送り終えるまで、時刻だけを薄くする。<code>DESIGN.md</code> の Don't に反するので、並べて違いを見るためだけに置いた。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="normal"></div>
+          <div class="tl">
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row faint"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>電波がないときに記録した直後。</b>分かる人にしか分からない印は、説明が要る。採るなら <code>DESIGN.md</code> を直す。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 7. 使い始めた日 ───────────── -->
+<section class="topic" data-topic="start-day" data-label="使い始めた日から">
+  <h2>1日の丸の帯とタイムラインを、使い始めた日から始める</h2>
+  <p class="q">9月23日（水）に使い始めた人の、今週の帯と、タイムラインの一番上の見え方。</p>
+  <p class="fixed">決まっていること: 使い始めた日はアカウントを作った日で、タイムラインはこの日から始まる。使い始める前の体重は推定に使うが、タイムラインには並べない（「ヘルスケアの読み書きの対応表」）。帯を使い始めた日から始めるかは、この試作で決める。</p>
+
+  <div class="variant" data-v="曜日だけ">
+    <div class="vhead"><b>前の日は曜日だけ</b><span>使い始める前の日は丸を描かず、曜日だけを薄く置く。前の週へは送れない。タイムラインの一番上に、使い始めた日を1行で書く。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="start-none"></div>
+          <div class="tl top">
+            <p class="aside-line c">9月23日（水）から記録しています</p>
+            <div class="dayh">昨日 9月23日（水）</div>
+            <div class="row"><span class="tm">7:30</span><span class="grow">体重</span><span class="val">72.6 kg</span><span class="disc">›</span></div>
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>使い始めて2日め。</b>丸が無いことで、その日が数に入らないことが分かる。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="空の丸">
+    <div class="vhead"><b>前の日も空の丸</b><span>使い始める前の日も、まだ来ていない日と同じ薄い空の丸にする。タイムラインの一番上には何も足さない。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="start-empty"></div>
+          <div class="tl top">
+            <div class="dayh">昨日 9月23日（水）</div>
+            <div class="row"><span class="tm">7:30</span><span class="grow">体重</span><span class="val">72.6 kg</span><span class="disc">›</span></div>
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>使い始めて2日め。</b>帯はいつも7つの丸で形が変わらない。月・火の空の丸が「記録を忘れた日」にも見える。押しても何も開かない。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="点線の丸">
+    <div class="vhead"><b>前の日は点線の丸</b><span>使い始める前の日は点線の丸にし、「記録を忘れた日」の空の丸と見分ける。タイムラインの最初の日の見出しに「使い始めた日」と添える。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="start-dashed"></div>
+          <div class="tl top">
+            <div class="dayh">使い始めた日 9月23日（水）</div>
+            <div class="row"><span class="tm">7:30</span><span class="grow">体重</span><span class="val">72.6 kg</span><span class="disc">›</span></div>
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>使い始めて2日め。</b>点線は <code>DESIGN.md</code> で目安と目標の道筋に使っている表し方と重なる。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 8. 1日に複数の体重 ───────────── -->
+<section class="topic" data-topic="multi-weight" data-label="1日に複数の体重">
+  <h2>1日に複数の体重記録があるとき</h2>
+  <p class="q">朝 6:48 に体重計のアプリ（例: Withings）がヘルスケアに書いた 72.3 kg を取り込み、7:12 に nu-tori で 72.4 kg を記録した日の、タイムラインと体重の画面（押した日の値、最近の記録）。</p>
+  <p class="fixed">決まっていること: 取り込みはサンプル単位なので1日に複数ありうる。日の代表値はその日の最初の記録（計算に使う）。取り込んだ体重は出どころ（書いたアプリ）を持つ。入力欄から記録したとき置き換えるか新しい記録にするかは仕様で決める（ここでは新しい記録にした）。</p>
+
+  <div class="variant" data-v="並べて代表を見せる">
+    <div class="vhead"><b>並べて、代表の値を見せる</b><span>タイムラインは1件ずつ並べる。体重の画面の上は代表の値（最初の記録）にし、その日のほかの記録を下に並べる。最近の記録は1日1行（代表の値）。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="normal"></div>
+          <div class="tl">
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row"><span class="tm">6:48</span><span class="grow">体重<small>Withings</small></span><span class="val">72.3 kg</span><span class="disc">›</span></div>
+            <div class="row"><span class="tm">7:12</span><span class="grow">体重</span><span class="val">72.4 kg</span><span class="disc">›</span></div>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>タイムライン。</b>取り込んだ記録には出どころのアプリの名前を添える。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">体重</span><span></span></div>
+          <div class="scroll">
+            <div>
+              <div class="list">
+                <div class="today"><div class="grow"><span class="d">9月24日（木）</span><span class="v">72.3<small>kg</small></span><span class="src">Withings から・6:48</span></div><span class="fix">直す</span></div>
+                <div class="cell"><span class="grow when">7:12<small>手で記録</small></span><span class="edit num">72.4 kg</span></div>
+              </div>
+              <p class="group-f">この日の最初の記録を、この日の体重として使います。</p>
+            </div>
+            <div>
+              <p class="group-h">最近の記録</p>
+              <div class="list">
+                <div class="cell"><span class="grow">9月24日（木）<span class="sub2">ほか1件</span></span><span class="edit num">72.3 kg</span></div>
+                <div class="cell"><span class="grow">9月23日（水）</span><span class="edit num">72.6 kg</span></div>
+                <div class="cell"><span class="grow">9月22日（火）</span><span class="edit num">72.7 kg</span></div>
+                <div class="cell"><span class="grow">9月21日（月）</span><span class="edit num">72.8 kg</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>体重の画面（7:12 の行から開いても同じ）。</b>計算に使う値が一番上に来る。どちらの行から開いても同じ画面になる。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="並べて押した記録">
+    <div class="vhead"><b>並べて、押した記録を見せる</b><span>タイムラインは1件ずつ並べる。体重の画面の上は押した行の記録にする。最近の記録も1件ずつ（時刻を添える）。代表の値は見せない。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">体重</span><span></span></div>
+          <div class="scroll">
+            <div class="list">
+              <div class="today"><div class="grow"><span class="d">9月24日（木）7:12</span><span class="v">72.4<small>kg</small></span><span class="src">手で記録</span></div><span class="fix">直す</span></div>
+            </div>
+            <div>
+              <p class="group-h">最近の記録</p>
+              <div class="list">
+                <div class="cell sel"><span class="grow when">9月24日（木）<small>7:12・手で記録</small></span><span class="edit num">72.4 kg</span></div>
+                <div class="cell"><span class="grow when">9月24日（木）<small>6:48・Withings</small></span><span class="edit num">72.3 kg</span></div>
+                <div class="cell"><span class="grow when">9月23日（水）<small>7:30・手で記録</small></span><span class="edit num">72.6 kg</span></div>
+                <div class="cell"><span class="grow when">9月22日（火）<small>7:02・手で記録</small></span><span class="edit num">72.7 kg</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>体重の画面（7:12 の行から開いた）。</b>見たものと開いた先が一致する。1日の丸の帯とあとの傾向のグラフが使うのは 6:48 の値で、画面の上の値とずれうる。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="まとめる">
+    <div class="vhead"><b>1日1行にまとめる</b><span>タイムラインは代表の値の1行にまとめ、件数を添える。体重の画面で、その日の記録をすべて並べる。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div data-p="tlnav" data-t="9月24日（木）"></div>
+          <div data-p="band" data-b="normal"></div>
+          <div class="tl">
+            <div class="dayh">今日 9月24日（木）</div>
+            <div class="row"><span class="tm">6:48</span><span class="grow">体重<small>ほか1件</small></span><span class="val">72.3 kg</span><span class="disc">›</span></div>
+          </div>
+          <div data-p="comp"></div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>タイムライン。</b>7:12 に入れた記録が、入れた時刻の位置に現れない（入れた直後に行が増えない）。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">体重</span><span></span></div>
+          <div class="scroll">
+            <div>
+              <p class="group-h">9月24日（木）</p>
+              <div class="list">
+                <div class="cell"><span class="grow when">6:48<small>Withings から</small></span><span class="edit num big2">72.3 kg</span></div>
+                <div class="cell"><span class="grow when">7:12<small>手で記録</small></span><span class="edit num">72.4 kg</span></div>
+              </div>
+              <p class="group-f">この日の最初の記録を、この日の体重として使います。</p>
+            </div>
+            <div>
+              <p class="group-h">最近の記録</p>
+              <div class="list">
+                <div class="cell"><span class="grow">9月23日（水）</span><span class="edit num">72.6 kg</span></div>
+                <div class="cell"><span class="grow">9月22日（火）</span><span class="edit num">72.7 kg</span></div>
+                <div class="cell"><span class="grow">9月21日（月）</span><span class="edit num">72.8 kg</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>体重の画面。</b>その日のすべての記録を並べ、どれも押してその場で直せる。「直す」は置かない。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 9. 体重の画面の一部 ───────────── -->
+<section class="topic" data-topic="weight-view" data-label="体重の画面">
+  <h2>体重の画面の一部（押した日の値と「直す」、最近の記録）</h2>
+  <p class="q">「土台と体重」の時点の体重の画面。傾向のグラフと目標までの道のりはあとの仕様で足すので、この2つだけで成り立つ形。</p>
+  <p class="fixed">決まっていること: 「直す」でその場で値の欄になる。最近の記録の行を押しても、その行がその場で値の欄になる。最近の記録は新しい順に4週分まで。取り込んだ値を直しても、ヘルスケアの値は変えない（<code>06-layout.md</code>「体重の画面」）。</p>
+
+  <div class="variant" data-v="今の設計">
+    <div class="vhead"><b>今の設計から引く</b><span><code>07-components/weight</code> から、傾向と目標のまとまりを抜いただけの形。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">体重</span><span></span></div>
+          <div class="scroll">
+            <div class="list"><div class="today"><div class="grow"><span class="d">9月24日（木）</span><span class="v">72.4<small>kg</small></span><span class="src">手で記録・7:12</span></div><span class="fix">直す</span></div></div>
+            <div><p class="group-h">最近の記録</p><div class="list" data-records="9"></div></div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>体重の画面。</b>あとで間に傾向と目標が入っても、並びは変わらない。今は上の値と最近の記録の一番上が同じ値で、重複して見える。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="大きく">
+    <div class="vhead"><b>値を大きく、週で区切る</b><span>押した日の値を真ん中に大きく出し、「直す」を灰色のボタンにする。最近の記録は週ごとの見出しで区切る。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">体重</span><span></span></div>
+          <div class="scroll">
+            <div class="big"><span class="d">9月24日（木）</span><span class="v">72.4<small>kg</small></span><span class="src">手で記録・7:12</span><span class="btn gray">直す</span></div>
+            <div><p class="group-h">9月21日〜27日</p><div class="list" data-records="4"></div></div>
+            <div><p class="group-h">9月14日〜20日</p><div class="list" data-records="6" data-skip="4"></div></div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>体重の画面。</b>週の区切りが帯と同じ月曜になる。大きな値は、あとで入る傾向のグラフと見出しの強さを取り合う。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="記録だけ">
+    <div class="vhead"><b>記録だけの一覧</b><span>上の値のまとまりを置かず、最近の記録の一覧で押した日の行を目立たせ、そこに出どころと時刻を添える。直すのはどの行も値を押す。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">体重</span><span></span></div>
+          <div class="scroll">
+            <div><p class="group-h">最近の記録</p>
+              <div class="list">
+                <div class="cell expand sel"><div class="l1"><span class="grow">9月24日（木）</span><span class="edit num big2">72.4 kg</span></div><div class="l2"><span>手で記録・7:12</span><span>値を押して直せます</span></div></div>
+                <div data-records-inline="8" data-skip="1"></div>
+              </div>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>体重の画面。</b>いちばん短い。「直す」の文字が無くなり、直せることは値の色と添え書きで示す。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 10. 使い始める前の体重 ───────────── -->
+<section class="topic" data-topic="pre-start" data-label="使い始める前の体重">
+  <h2>使い始める前の体重を、最近の記録に出すか</h2>
+  <p class="q">9月23日（水）に使い始めた人の、体重の画面の最近の記録。ヘルスケアには、その前の体重（体重計のアプリが書いたもの）がある。</p>
+  <p class="fixed">決まっていること: 使い始める前の体重は推定に使うが、タイムラインには並べない（「ヘルスケアの読み書きの対応表」）。傾向のグラフに出すかは「体重の傾向と記録忘れの通知」で決める。</p>
+
+  <div class="variant" data-v="出さない">
+    <div class="vhead"><b>出さない</b><span>タイムラインと同じく、使い始めた日からの記録だけを並べる。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone short">
+          <div class="status"></div>
+          <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">体重</span><span></span></div>
+          <div class="scroll">
+            <div class="list"><div class="today"><div class="grow"><span class="d">9月24日（木）</span><span class="v">72.4<small>kg</small></span><span class="src">手で記録・7:12</span></div><span class="fix">直す</span></div></div>
+            <div><p class="group-h">最近の記録</p><div class="list">
+              <div class="cell"><span class="grow">9月24日（木）</span><span class="edit num">72.4 kg</span></div>
+              <div class="cell"><span class="grow">9月23日（水）</span><span class="edit num">72.6 kg</span></div>
+            </div></div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>使い始めて2日め。</b>タイムラインと食い違わない。使い始めた日が少ないうちは画面が空く。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="区切って出す">
+    <div class="vhead"><b>区切って出す</b><span>使い始める前の分を、見出しで区切って続けて並べる（4週分まで）。前の分は押しても直せない。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="status"></div>
+          <div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">体重</span><span></span></div>
+          <div class="scroll">
+            <div class="list"><div class="today"><div class="grow"><span class="d">9月24日（木）</span><span class="v">72.4<small>kg</small></span><span class="src">手で記録・7:12</span></div><span class="fix">直す</span></div></div>
+            <div><p class="group-h">最近の記録</p><div class="list">
+              <div class="cell"><span class="grow">9月24日（木）</span><span class="edit num">72.4 kg</span></div>
+              <div class="cell"><span class="grow">9月23日（水）</span><span class="edit num">72.6 kg</span></div>
+            </div></div>
+            <div><p class="group-h">使い始める前（ヘルスケア）</p><div class="list">
+              <div class="cell"><span class="grow">9月22日（火）<span class="sub2">Withings</span></span><span class="val num">72.7 kg</span></div>
+              <div class="cell"><span class="grow">9月21日（月）<span class="sub2">Withings</span></span><span class="val num">72.8 kg</span></div>
+              <div class="cell"><span class="grow">9月19日（土）<span class="sub2">Withings</span></span><span class="val num">72.9 kg</span></div>
+              <div class="cell"><span class="grow">9月18日（金）<span class="sub2">Withings</span></span><span class="val num">73.0 kg</span></div>
+            </div>
+            <p class="group-f">使い始める前の体重は、目標と1日の目安の計算に使います。</p></div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <figcaption><b>使い始めて2日め。</b>計算の元が見える。前の分は灰色の字で、押して直せない（直せる値だけがアクセントの色）。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 11. アカウントの画面 ───────────── -->
+<section class="topic" data-topic="account" data-label="アカウントの画面">
+  <h2>アカウントの画面</h2>
+  <p class="q">「土台と体重」で置く行（ヘルスケア、利用状況を送る、プライバシーポリシー、問い合わせ、アカウントの削除）と、削除のアラートの文。通知とカメラの行は、あとの仕様で足す。</p>
+  <p class="fixed">決まっていること: ヘルスケアは許可の状態を出さず、用途ごとにまとめる。削除のアラートは「栄養と体重は残す」。削除を確かめるとき「記録はすぐに消え、エラーの報告と利用状況のデータは最長 90 日で消える」ことを伝える。利用状況を送るのオン・オフを置く（止める前に送った分は1年で消える）。問い合わせはアカウント ID を入れたフォームを開く。</p>
+
+  <div class="variant" data-v="用途で並べる">
+    <div class="vhead"><b>用途で並べる</b><span>ヘルスケアを「読む」「書く」の中で用途ごとの行にする。90 日のことはアラートに入れる。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone tall">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large">
+            <span class="grab"></span>
+            <div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div>
+            <div class="scroll">
+              <div>
+                <p class="group-h">ヘルスケアから読む</p>
+                <div class="list">
+                  <div class="cell stack"><span>体重、体脂肪率</span><span class="kv">ほかのアプリで記録した体重を取り込みます。</span></div>
+                  <div class="cell stack"><span>身長、生年月日、性別、歩数、摂取エネルギー</span><span class="kv">目標と1日の目安の計算に使い、保存しません。</span></div>
+                </div>
+              </div>
+              <div>
+                <p class="group-h">ヘルスケアに書く</p>
+                <div class="list">
+                  <div class="cell stack"><span>体重</span><span class="kv">nu-tori で記録した体重。</span></div>
+                  <div class="cell stack"><span>栄養</span><span class="kv">エネルギー、P・F・C、ビタミン、ミネラルなど。</span></div>
+                </div>
+                <p class="group-f">変えるときは、iPhone の「設定」の「プライバシーとセキュリティ」か、ヘルスケアアプリで変えられます。</p>
+              </div>
+              <div>
+                <div class="list"><div class="cell"><span class="grow">利用状況を送る</span><span class="toggle" role="switch" aria-checked="true"></span></div></div>
+                <p class="group-f">どの画面をどう使ったかを送り、nu-tori を良くするために使います。オフにすると、これから先は送りません。送った分は1年で消えます。</p>
+              </div>
+              <div>
+                <div class="list">
+                  <div class="cell link"><span class="grow">プライバシーポリシー</span><span class="ext">↗</span></div>
+                  <div class="cell link"><span class="grow">問い合わせ</span><span class="ext">↗</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="list"><div class="cell danger">アカウントを削除</div></div>
+                <p class="group-f">食事、体重、目標、会話の記録がすべて消え、元に戻せません。</p>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <figcaption><b>一覧。</b>ヘルスケアのまとまりが画面の半分を取る。まだ読み書きしていない種類（身長など、栄養）も並ぶ。電話を縦に長くして全体を描いた。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone mid">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large"><span class="grab"></span><div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div></div></div>
+          <div class="alert-wrap">
+            <div class="alert" role="alertdialog">
+              <div class="ab">
+                <b>アカウントを削除しますか？</b>
+                <span>食事、体重、目標、会話の記録はすぐに消え、元に戻せません。エラーの報告と利用状況のデータは、最長 90 日で消えます。</span>
+                <span>ヘルスケアに書き込んだ体重と栄養は残り、ヘルスケアアプリで消せます。</span>
+              </div>
+              <div class="bt stack"><span class="danger">アカウントを削除</span><span class="cancel">キャンセル</span></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>削除のアラート。</b>伝えることをすべてアラートに入れた。アラートとしては長い。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="ヘルスケアへ潜る">
+    <div class="vhead"><b>ヘルスケアへ潜る</b><span>一覧には「ヘルスケア ›」の1行だけを置き、押すとシートの中で潜って種類と用途を見せる。90 日のことは削除の行の下の説明に置き、アラートは短くする。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large">
+            <span class="grab"></span>
+            <div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div>
+            <div class="scroll">
+              <div><div class="list"><div class="cell"><span class="grow">ヘルスケア</span><span class="val">読む・書く</span><span class="disc">›</span></div></div></div>
+              <div>
+                <div class="list"><div class="cell"><span class="grow">利用状況を送る</span><span class="toggle" role="switch" aria-checked="true"></span></div></div>
+                <p class="group-f">オフにすると、これから先は送りません。送った分は1年で消えます。</p>
+              </div>
+              <div><div class="list">
+                <div class="cell link"><span class="grow">プライバシーポリシー</span><span class="ext">↗</span></div>
+                <div class="cell link"><span class="grow">問い合わせ</span><span class="ext">↗</span></div>
+              </div></div>
+              <div>
+                <div class="list"><div class="cell danger">アカウントを削除</div></div>
+                <p class="group-f">食事、体重、目標、会話の記録はすぐに消え、元に戻せません。エラーの報告と利用状況のデータは、最長 90 日で消えます。</p>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <figcaption><b>一覧。</b>1画面に収まる。ヘルスケアの中身を見るには1つ潜る（シートの中のプッシュ。入れ子は増えない）。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large">
+            <span class="grab"></span>
+            <div class="nav"><span class="l"><span class="chev">‹</span>アカウント</span><span class="t">ヘルスケア</span><span class="r b">完了</span></div>
+            <div class="scroll">
+              <div><p class="group-h">読む</p><div class="list">
+                <div class="cell stack"><span>体重、体脂肪率</span><span class="kv">ほかのアプリで記録した体重を取り込みます。</span></div>
+                <div class="cell stack"><span>身長、生年月日、性別、歩数、摂取エネルギー</span><span class="kv">目標と1日の目安の計算に使い、保存しません。</span></div>
+              </div></div>
+              <div><p class="group-h">書く</p><div class="list">
+                <div class="cell stack"><span>体重</span><span class="kv">nu-tori で記録した体重。</span></div>
+                <div class="cell stack"><span>栄養</span><span class="kv">エネルギー、P・F・C、ビタミン、ミネラルなど。</span></div>
+              </div>
+              <p class="group-f">変えるときは、iPhone の「設定」の「プライバシーとセキュリティ」か、ヘルスケアアプリで変えられます。</p></div>
+            </div>
+          </div></div>
+        </div>
+        <figcaption><b>ヘルスケア（潜った先）。</b>中身は「用途で並べる」と同じ。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large"><span class="grab"></span><div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div></div></div>
+          <div class="alert-wrap">
+            <div class="alert" role="alertdialog">
+              <div class="ab">
+                <b>アカウントを削除しますか？</b>
+                <span>記録はすぐに消え、元に戻せません。ヘルスケアに書き込んだ体重と栄養は残ります。</span>
+              </div>
+              <div class="bt stack"><span class="danger">アカウントを削除</span><span class="cancel">キャンセル</span></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>削除のアラート。</b>90 日のことは、押す前に見える削除の行の下に回した。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="variant" data-v="種類で並べる">
+    <div class="vhead"><b>種類で並べる</b><span>ヘルスケアを種類ごとの行にし、右に「読む」「書く」「読む・書く」を添える。用途はまとまりの下の説明に1文で書く。</span></div>
+    <div class="states">
+      <figure>
+        <div class="phone tall">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large">
+            <span class="grab"></span>
+            <div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div>
+            <div class="scroll">
+              <div>
+                <p class="group-h">ヘルスケア</p>
+                <div class="list">
+                  <div class="cell"><span class="grow">体重</span><span class="val">読む・書く</span></div>
+                  <div class="cell"><span class="grow">体脂肪率</span><span class="val">読む</span></div>
+                  <div class="cell"><span class="grow">栄養</span><span class="val">書く</span></div>
+                  <div class="cell"><span class="grow">身長、生年月日、性別、歩数、摂取エネルギー</span><span class="val">読む</span></div>
+                </div>
+                <p class="group-f">ほかのアプリの体重を取り込み、記録した体重と栄養を書き込みます。身長などは目標と1日の目安の計算に使い、保存しません。変えるときは、iPhone の「設定」の「プライバシーとセキュリティ」か、ヘルスケアアプリで変えられます。</p>
+              </div>
+              <div>
+                <div class="list"><div class="cell"><span class="grow">利用状況を送る</span><span class="toggle" role="switch" aria-checked="true"></span></div></div>
+                <p class="group-f">オフにすると、これから先は送りません。送った分は1年で消えます。</p>
+              </div>
+              <div><div class="list">
+                <div class="cell link"><span class="grow">プライバシーポリシー</span><span class="ext">↗</span></div>
+                <div class="cell link"><span class="grow">問い合わせ</span><span class="ext">↗</span></div>
+              </div></div>
+              <div>
+                <div class="list"><div class="cell danger">アカウントを削除</div></div>
+                <p class="group-f">食事、体重、目標、会話の記録がすべて消え、元に戻せません。</p>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <figcaption><b>一覧。</b>ヘルスケアアプリの「アプリ」の画面（種類ごとの切り替え）に近い見え方。切り替えは置かないので、押せるように見えないか実機で確かめる。</figcaption>
+      </figure>
+      <figure>
+        <div class="phone mid">
+          <div class="behind"><div class="status"></div><div data-p="tlnav" data-t="9月24日（木）"></div></div>
+          <div class="scrim"><div class="sheet large"><span class="grab"></span><div class="nav"><span></span><span class="t">アカウント</span><span class="r b">完了</span></div></div></div>
+          <div class="alert-wrap">
+            <div class="alert" role="alertdialog">
+              <div class="ab">
+                <b>アカウントを削除しますか？</b>
+                <span>記録はすぐに消え、元に戻せません。エラーの報告と利用状況のデータは、最長 90 日で消えます。ヘルスケアに書き込んだ体重と栄養は残り、ヘルスケアアプリで消せます。</span>
+              </div>
+              <div class="bt stack"><span class="danger">アカウントを削除</span><span class="cancel">キャンセル</span></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>削除のアラート。</b>「用途で並べる」のアラートを1段落に詰めたもの。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="switcher" id="switcher" role="group" aria-label="案の切り替え（試作の道具）">
+  <button type="button" id="prev" aria-label="前の案">‹</button>
+  <span class="lab" id="lab" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="次の案">›</button>
+</div>
+
+<script>
+// 1日の丸を描く。1本の輪を、食べた P・F・C の kcal で色分けし、一周で1日の目安にする。
+// 目安を超えた日は、輪の起点に印を付ける。目標がない日（goal なし）は P・F・C の割合で一周させる。
+// 体重を記録した日（weighed）は、丸の中に印を付ける。
+// 使い方: <span class="ring" data-ring='{"size":26,"stroke":4,"p":420,"f":560,"c":760,"goal":1850,"weighed":true}'></span>
+(function(){
+  function svg(o){
+    const size = o.size || 26, stroke = o.stroke || 4, gap = o.gap ?? (size > 60 ? 2 : 1.5);
+    const r = (size - stroke) / 2, C = 2 * Math.PI * r, m = size / 2;
+    const parts = [['p', o.p||0], ['f', o.f||0], ['c', o.c||0]];
+    const total = parts.reduce((s, x) => s + x[1], 0);
+    const base = o.goal ? Math.max(o.goal, total) : Math.max(total, 1);
+    let off = 0, segs = '';
+    for (const [k, v] of parts){
+      if (!v) continue;
+      const len = v / base * C, draw = Math.max(0, len - gap);
+      segs += `<circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="var(--${k})" stroke-width="${stroke}" stroke-dasharray="${draw} ${C}" stroke-dashoffset="${-off}"/>`;
+      off += len;
+    }
+    const over = o.goal && total > o.goal
+      ? `<circle cx="${m}" cy="${stroke/2}" r="${Math.max(2, stroke*0.6)}" fill="var(--ink)" stroke="var(--bg)" stroke-width="1.5"/>` : '';
+    const dot = o.weighed ? `<circle cx="${m}" cy="${m}" r="${Math.max(2.5, size*0.12)}" fill="var(--ink2)"/>` : '';
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><g transform="rotate(-90 ${m} ${m})"><circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="var(--track)" stroke-width="${stroke}"/>${segs}</g>${over}${dot}</svg>`;
+  }
+  function draw(root){
+    (root || document).querySelectorAll('[data-ring]').forEach(el => {
+      const o = JSON.parse(el.dataset.ring);
+      el.insertAdjacentHTML('afterbegin', svg(o));
+    });
+  }
+  window.nuRing = { svg, draw };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => draw()); else draw();
+})();
+
+</script>
+<script>
+// ── 共通の部品を差し込む ──
+const ICON_PERSON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>';
+const ICON_APP = '<span class="icon" aria-hidden="true"><svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="14" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="60 88" transform="rotate(-90 22 22)"/><circle cx="22" cy="22" r="4" fill="currentColor"/></svg></span>';
+const APPLE = '<span class="apple"><svg width="16" height="19" viewBox="0 0 16 19" fill="currentColor" aria-hidden="true"><path d="M13.2 10.1c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.9-.8-3.1-.8C3.6 4.9 2.1 5.8 1.3 7.2c-1.7 2.9-.4 7.2 1.2 9.6.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.3-.9-2.3-4zM10.9 3.3c.6-.8 1.1-1.8 1-2.9-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.7-1 2.8 1 .1 2.1-.5 2.7-1.3z"/></svg>Appleで続ける</span>';
+// 同意の文（「プライバシーポリシーを用意する」の決めたことの4）
+const CONSENT = '記録と写真（ヘルスケアから読んだ情報を含む）は、米国の会社のサービスで保存・処理します。食事の推定と返事のために AI にも送り、不具合と利用状況も送って、その分析にも AI を使います。推定の値と返事は、確かめてから使ってください。送り先の国の制度と各社の措置を<a href="https://nu-tori.app/privacy">プライバシーポリシー</a>で確かめてから、続けてください。続けると、これらに同意したことになります。';
+const CAM = '<span class="cam" aria-label="撮る"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>';
+const WT = hot => `<span class="wt${hot ? ' hot' : ''}" aria-label="体重"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg></span>`;
+
+// 帯。「土台と体重」の時点では食事が無いので、丸は地の輪と体重の印だけ
+const DAYS = ['月','火','水','今日','金','土','日'];
+function band(mode){
+  return DAYS.map((d, i) => {
+    const today = d === '今日', future = i > 3;
+    const before = mode.startsWith('start') && i < 2;
+    let ring, cls = '';
+    if (future) { ring = nuRing.svg({size:28, stroke:4.5}); cls = ' future'; }
+    else if (before && mode === 'start-none') { ring = '<span class="nor"></span>'; cls = ' before'; }
+    else if (before && mode === 'start-empty') { ring = nuRing.svg({size:28, stroke:4.5}); cls = ' before'; }
+    else if (before && mode === 'start-dashed') {
+      ring = '<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="11.75" fill="none" stroke="var(--ink3)" stroke-width="1.5" stroke-dasharray="3 3"/></svg>';
+    }
+    else if (mode === 'loading') ring = nuRing.svg({size:28, stroke:4.5});
+    else ring = nuRing.svg({size:28, stroke:4.5, weighed: !(today && mode === 'noweight')});
+    return `<div class="day${today ? ' sel' : ''}${cls}">${ring}<span>${d}</span></div>`;
+  }).join('');
+}
+
+const PARTS = {
+  icon: () => ICON_APP,
+  apple: () => APPLE,
+  consent: () => CONSENT,
+  tlnav: el => `<div class="nav"><span></span><span class="t">${el.dataset.t}</span><span class="r"><span class="person" aria-label="アカウント">${ICON_PERSON}</span></span></div>`,
+  band: el => `<div class="band">${band(el.dataset.b)}</div>`,
+  comp: el => `<div class="comp">${CAM}${WT(!!el.dataset.hot)}<span class="in">書く</span></div>`,
+};
+document.querySelectorAll('[data-p]').forEach(el => { el.outerHTML = PARTS[el.dataset.p](el); });
+
+// 最近の記録（新しい順。07-components/weight と同じ値）
+const W = [
+  [9,24,'木',72.4],[9,23,'水',72.6],[9,22,'火',72.7],[9,21,'月',72.8],
+  [9,19,'土',72.9],[9,18,'金',73.0],[9,17,'木',73.2],[9,16,'水',73.1],[9,15,'火',73.3],[9,14,'月',73.4],
+];
+const cell = ([m,d,w,v]) => `<div class="cell"><span class="grow">${m}月${d}日（${w}）</span><span class="edit num">${v.toFixed(1)} kg</span></div>`;
+document.querySelectorAll('[data-records]').forEach(el => {
+  const skip = +(el.dataset.skip || 0);
+  el.innerHTML = W.slice(skip, skip + +el.dataset.records).map(cell).join('');
+});
+document.querySelectorAll('[data-records-inline]').forEach(el => {
+  const skip = +(el.dataset.skip || 0);
+  el.outerHTML = W.slice(skip, skip + +el.dataset.recordsInline).map(cell).join('');
+});
+
+// ── 論点と案の切り替え（試作の道具） ──
+const topics = [...document.querySelectorAll('.topic')];
+const nav = document.getElementById('topics');
+let ti = 0, vi = 0;
+topics.forEach((t, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = `${i + 1}. ${t.dataset.label}`;
+  b.addEventListener('click', () => show(i, 0, true));
+  nav.appendChild(b);
+});
+function variants(){ return [...topics[ti].querySelectorAll('.variant')]; }
+function show(t, v, scroll){
+  ti = (t + topics.length) % topics.length;
+  const vs = variants();
+  vi = (v + vs.length) % vs.length;
+  topics.forEach((x, i) => { x.hidden = i !== ti; });
+  vs.forEach((x, i) => { x.hidden = i !== vi; });
+  [...nav.children].forEach((b, i) => b.setAttribute('aria-current', String(i === ti)));
+  document.getElementById('lab').innerHTML = `<b>${String.fromCharCode(65 + vi)}</b>${vs[vi].dataset.v}（${vi + 1}/${vs.length}）`;
+  try { history.replaceState(null, '', `#${topics[ti].dataset.topic}-${vi + 1}`); } catch (e) {}
+  if (scroll) topics[ti].scrollIntoView({block: 'start'});
+}
+document.getElementById('prev').addEventListener('click', () => show(ti, vi - 1));
+document.getElementById('next').addEventListener('click', () => show(ti, vi + 1));
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') show(ti, vi - 1);
+  if (e.key === 'ArrowRight') show(ti, vi + 1);
+});
+(() => {
+  const m = location.hash.match(/^#([a-z-]+?)-(\d+)$/);
+  const t = m ? topics.findIndex(x => x.dataset.topic === m[1]) : -1;
+  show(t < 0 ? 0 : t, m && t >= 0 ? +m[2] - 1 : 0);
+})();
+
+</script>
