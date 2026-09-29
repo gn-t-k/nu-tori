@@ -30,9 +30,6 @@ final class ClientTransportMock: ClientTransport, @unchecked Sendable {
 
     static let emptyPage = #"{"changes":[],"hasMore":false,"nextAfterSequence":0,"startedOn":null}"#
 
-    /// - Parameters:
-    ///   - rejectedWriteIndexes: 送った書き込みの、要求の中の位置。範囲の外として受け付けない
-    ///   - pullPages: 取りに行くたびに、順に返す応答。使い切ったら最後のものを返し続ける
     static func ok(
         pushStatus: HTTPResponse.Status = .ok,
         rejectedWriteIndexes: Set<Int> = [],

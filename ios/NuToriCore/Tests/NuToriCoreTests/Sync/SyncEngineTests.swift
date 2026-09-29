@@ -12,21 +12,22 @@ struct SyncEngineTests {
         struct Creating {
             let store: SyncStoreMock
             let engine: SyncEngine
+            let firstWrite: WeightEntry.Write
+            let secondWrite: WeightEntry.Write
 
-            init() {
+            init() throws {
+                let timeZone = try #require(TimeZone(identifier: "Asia/Tokyo"))
+                firstWrite = .create(
+                    kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: timeZone)
+                secondWrite = .create(
+                    kilograms: 72.5, instant: SyncEngine.fixtureNow, timeZone: timeZone)
                 store = .ok()
                 engine = .fixture(store: store, transport: .ok())
             }
 
             @Test("手で記録した版 1 の記録を、送り待ちに1件足す保存と同じ保存で置くこと")
             func savesRecordWithPendingWrite() async throws {
-                try await engine.save(
-                    .create(
-                        kilograms: 72.4,
-                        instant: Date(timeIntervalSince1970: 1_767_225_600),
-                        timeZone: #require(TimeZone(identifier: "Asia/Tokyo"))
-                    )
-                )
+                try await engine.save(firstWrite)
 
                 let pending = try #require(store.pending.first)
                 let record = try #require(store.records.values.first)
@@ -40,11 +41,8 @@ struct SyncEngineTests {
 
             @Test("記録の ID と書き込みの ID に、書き込みごとに違う UUID v4 を振ること")
             func assignsVersion4IdsPerWrite() async throws {
-                let timeZone = try #require(TimeZone(identifier: "Asia/Tokyo"))
-                try await engine.save(
-                    .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: timeZone))
-                try await engine.save(
-                    .create(kilograms: 72.5, instant: SyncEngine.fixtureNow, timeZone: timeZone))
+                try await engine.save(firstWrite)
+                try await engine.save(secondWrite)
 
                 let ids = store.pending.map(\.writeId) + Array(store.records.keys)
                 #expect(Set(ids).count == 4)
@@ -111,21 +109,17 @@ struct SyncEngineTests {
             struct Failure: Error, Equatable {}
 
             let engine: SyncEngine
+            let write: WeightEntry.Write
 
             init() {
+                write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
                 engine = .fixture(store: .error(Failure()), transport: .ok())
             }
 
             @Test("置き場のエラーをそのまま投げること")
             func throwsStoreError() async throws {
                 await #expect(throws: Failure()) {
-                    try await engine.save(
-                        .create(
-                            kilograms: 72.4,
-                            instant: SyncEngine.fixtureNow,
-                            timeZone: .gmt
-                        )
-                    )
+                    try await engine.save(write)
                 }
             }
         }
