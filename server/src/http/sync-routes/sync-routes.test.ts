@@ -7,7 +7,6 @@ import { getAccountDurableObject } from "../../durable-object/get-account-durabl
 import {
   mockPostHogCaptureEndpointError,
   mockPostHogCaptureEndpointOk,
-  mockPostHogCaptureEndpointUnreachable,
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { app } from "../app";
@@ -500,7 +499,7 @@ describe("同期", () => {
     let response: Response;
     beforeEach(async () => {
       await enableUsageEventSending(accountId);
-      mockPostHogCaptureEndpointUnreachable();
+      mockPostHogCaptureEndpointError(new TypeError("Network connection lost"));
       response = await pushSyncWrites(sessionToken, {
         writes: [
           createWeightRecordWrite(),

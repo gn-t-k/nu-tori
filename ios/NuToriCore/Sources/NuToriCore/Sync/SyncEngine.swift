@@ -158,15 +158,25 @@ public actor SyncEngine {
             case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
                 break
             case .rejected(let reason):
-                // サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
-                guard let rejected = write.operation.rejectedWeightRecord else {
+                switch write.operation {
+                case .createWeightRecord(let record):
+                    rejectedWrites.append(
+                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
+                    if revertedRecordIds.insert(record.id).inserted {
+                        reversions.append(.remove(recordId: record.id))
+                    }
+                case .correctWeightRecord(let record, let previous):
+                    rejectedWrites.append(
+                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
+                    if revertedRecordIds.insert(record.id).inserted {
+                        reversions.append(.restore(previous))
+                    }
+                case .sourceDeletedWeightRecord:
+                    // 戻す記録も、画面に出す記録も無い。消すかどうかを決めるのはサーバーで、送り直さない
                     break
-                }
-                rejectedWrites.append(
-                    RejectedWrite(writeId: write.writeId, record: rejected.record, reason: reason)
-                )
-                if revertedRecordIds.insert(rejected.record.id).inserted {
-                    reversions.append(rejected.reversion)
+                case .updateAccountSettings:
+                    // サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
+                    break
                 }
             }
         }
@@ -263,25 +273,14 @@ extension PendingWrite {
             .createWeightRecord(writeId: writeId, record: NewWeightRecord(record))
         case .correctWeightRecord(let record, previous: _):
             .updateWeightRecord(writeId: writeId, correction: WeightRecordCorrection(record))
+        case .sourceDeletedWeightRecord(let recordId):
+            .sourceDeletedWeightRecord(writeId: writeId, weightRecordId: recordId)
         case .updateAccountSettings(let settings):
             .updateAccountSettings(
                 writeId: writeId,
                 settings: SyncedAccountSettings(
                     id: settings.id, sendsUsageData: settings.sendsUsageData)
             )
-        }
-    }
-}
-
-extension PendingWrite.Operation {
-    fileprivate var rejectedWeightRecord: (record: WeightRecord, reversion: RecordReversion)? {
-        switch self {
-        case .createWeightRecord(let record):
-            (record, .remove(recordId: record.id))
-        case .correctWeightRecord(let record, let previous):
-            (record, .restore(previous))
-        case .updateAccountSettings:
-            nil
         }
     }
 }

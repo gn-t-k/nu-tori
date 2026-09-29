@@ -7,7 +7,12 @@ import { isWithinAcceptedRange } from "./is-within-accepted-range";
 import type { SyncClientState } from "./sync-client-state";
 import type { SyncStore } from "./sync-store";
 import type { SyncWrite } from "./sync-write";
-import type { SyncWriteOutcome } from "./sync-write-outcome";
+import type {
+  CreateWeightRecordOutcome,
+  SourceDeletedWeightRecordOutcome,
+  SyncWriteOutcome,
+  UpdateWeightRecordOutcome,
+} from "./sync-write-outcome";
 import type { UsageEvent } from "./usage-event";
 import type { WeightRecord } from "./weight-record";
 
@@ -67,24 +72,59 @@ export const applySyncWrites = (
           sendsUsageData: accountSettings.sendsUsageData,
         }))
         .exhaustive();
-      const { kind, recordType, recordId, outcome } = applied;
-      store.insertWriteReceipt({
+      const { recordType, outcome } = applied;
+      const receipt = {
         writeId: write.id,
         requestLogId,
         positionInRequest,
-        kind,
-        recordType,
-        recordId,
-        outcome,
-      });
+      };
+      match(applied)
+        .with({ kind: "create" }, (createWrite) => {
+          store.insertWriteReceipt({
+            ...receipt,
+            kind: createWrite.kind,
+            recordType: createWrite.recordType,
+            recordId: createWrite.recordId,
+            outcome: createWrite.outcome,
+          });
+        })
+        .with({ kind: "update", recordType: "weight_record" }, (updateWrite) => {
+          store.insertWriteReceipt({
+            ...receipt,
+            kind: updateWrite.kind,
+            recordType: updateWrite.recordType,
+            recordId: updateWrite.recordId,
+            outcome: updateWrite.outcome,
+          });
+        })
+        .with({ kind: "source_deleted" }, (deletedWrite) => {
+          store.insertWriteReceipt({
+            ...receipt,
+            kind: deletedWrite.kind,
+            recordType: deletedWrite.recordType,
+            recordId: deletedWrite.recordId,
+            outcome: deletedWrite.outcome,
+          });
+        })
+        .with({ recordType: "account_settings" }, (settingsWrite) => {
+          store.insertWriteReceipt({
+            ...receipt,
+            kind: settingsWrite.kind,
+            recordType: settingsWrite.recordType,
+            recordId: settingsWrite.recordId,
+            outcome: settingsWrite.outcome,
+          });
+        })
+        .exhaustive();
       // 削除の印は書き込みの控えを指すので、控えを書いたあとに足す
-      if (kind === "source_deleted" && outcome.result === "applied") {
+      if (applied.kind === "source_deleted" && applied.outcome.result === "applied") {
         store.insertWeightRecordDeletion(write.id);
       }
       const changedRecordId = match(applied)
-        .with({ recordType: "weight_record" }, () =>
-          outcome.result === "applied" || outcome.result === "ignored_tombstone"
-            ? recordId
+        .with({ recordType: "weight_record" }, (weightWrite) =>
+          weightWrite.outcome.result === "applied" ||
+          weightWrite.outcome.result === "ignored_tombstone"
+            ? weightWrite.recordId
             : undefined,
         )
         .with({ recordType: "account_settings" }, (settingsWrite) => {
@@ -98,20 +138,34 @@ export const applySyncWrites = (
       if (changedRecordId !== undefined) {
         store.insertRecordChange({ recordType, recordId: changedRecordId, writeId: write.id });
       }
-      if (outcome.result === "rejected") {
-        const { reason } = outcome;
-        match(applied)
-          .with({ kind: "create" }, { kind: "update" }, (accepted) => {
+      match(applied)
+        .with(
+          { recordType: "weight_record", kind: "create", outcome: { result: "rejected" } },
+          ({ outcome: rejected }) => {
             rejectedWrites.push({
               name: "sync_write_rejected",
-              writeKind: accepted.kind,
-              recordType: accepted.recordType,
-              reason,
+              writeKind: "create",
+              recordType: "weight_record",
+              reason: rejected.reason,
             });
-          })
-          .with({ kind: "source_deleted" }, () => undefined)
-          .exhaustive();
-      }
+          },
+        )
+        .with(
+          { recordType: "weight_record", kind: "update", outcome: { result: "rejected" } },
+          ({ outcome: rejected }) => {
+            rejectedWrites.push({
+              name: "sync_write_rejected",
+              writeKind: "update",
+              recordType: "weight_record",
+              reason: rejected.reason,
+            });
+          },
+        )
+        .with({ kind: "create" }, () => undefined)
+        .with({ kind: "update", recordType: "weight_record" }, () => undefined)
+        .with({ kind: "source_deleted" }, () => undefined)
+        .with({ recordType: "account_settings" }, () => undefined)
+        .exhaustive();
       return { writeId: write.id, outcome };
     });
     return {
@@ -127,10 +181,22 @@ export const applySyncWrites = (
 
 type AppliedWrite =
   | {
-      kind: "create" | "update" | "source_deleted";
+      kind: "create";
       recordType: "weight_record";
       recordId: string;
-      outcome: SyncWriteOutcome;
+      outcome: CreateWeightRecordOutcome;
+    }
+  | {
+      kind: "update";
+      recordType: "weight_record";
+      recordId: string;
+      outcome: UpdateWeightRecordOutcome;
+    }
+  | {
+      kind: "source_deleted";
+      recordType: "weight_record";
+      recordId: string;
+      outcome: SourceDeletedWeightRecordOutcome;
     }
   | {
       kind: "update";
@@ -154,7 +220,7 @@ const applyAccountSettings = (store: SyncStore, accountSettings: AccountSettings
 const applyCreateWeightRecord = (
   store: SyncStore,
   weightRecord: Omit<WeightRecord, "version">,
-): SyncWriteOutcome => {
+): CreateWeightRecordOutcome => {
   if (!isWithinAcceptedRange("weightKilograms", weightRecord.weightKg)) {
     return { result: "rejected", reason: "out_of_range" };
   }
@@ -184,7 +250,7 @@ const applyUpdateWeightRecord = (
   store: SyncStore,
   startedOn: string | undefined,
   weightRecord: Omit<WeightRecord, "imported">,
-): SyncWriteOutcome => {
+): UpdateWeightRecordOutcome => {
   // 版を上げ忘れる不具合が、受け付けなかった1件として見えるようにする
   if (weightRecord.version < 2) {
     return { result: "rejected", reason: "version_too_low" };
@@ -221,7 +287,7 @@ const applyUpdateWeightRecord = (
 const applySourceDeletedWeightRecord = (
   store: SyncStore,
   weightRecordId: string,
-): SyncWriteOutcome => {
+): SourceDeletedWeightRecordOutcome => {
   if (store.existsWeightRecordDeletion(weightRecordId)) {
     return { result: "ignored_tombstone" };
   }
