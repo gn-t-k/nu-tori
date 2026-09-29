@@ -12,6 +12,8 @@ nonisolated enum TimelineDayText {
 
     static func weekdaySymbol(for day: CalendarDay) -> String {
         let symbols = ["日", "月", "火", "水", "木", "金", "土"]
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
         guard
             let date = utcCalendar.date(
                 from: DateComponents(year: day.year, month: day.month, day: day.day))
@@ -33,11 +35,5 @@ nonisolated enum TimelineDayText {
             return nil
         }
         return CalendarDay(year: year, month: month, day: day)
-    }
-
-    private static var utcCalendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        return calendar
     }
 }
