@@ -105,17 +105,17 @@ extension Components.Schemas.SyncWrite {
                     )
                 )
             )
-        case .updateWeightRecord(let writeId, let record):
+        case .updateWeightRecord(let writeId, let correction):
             self = .updateWeightRecord(
                 .init(
                     id: writeId.uuidString,
                     _type: .updateWeightRecord,
                     weightRecord: .init(
-                        id: record.id.uuidString,
-                        weightKg: record.weightKilograms,
-                        measuredAt: record.measuredAt.millisecondsSince1970,
-                        timeZone: record.timeZone.identifier,
-                        version: record.version
+                        id: correction.id.uuidString,
+                        weightKg: correction.weightKilograms,
+                        measuredAt: correction.measuredAt.millisecondsSince1970,
+                        timeZone: correction.timeZone.identifier,
+                        version: correction.version
                     )
                 )
             )

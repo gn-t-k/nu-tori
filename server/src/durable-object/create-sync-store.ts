@@ -1,7 +1,7 @@
 import { z } from "zod";
-import type { SyncStore } from "../domain/sync/sync-store";
-import type { SyncWriteOutcome } from "../domain/sync/sync-write-outcome";
-import type { WeightRecord } from "../domain/sync/weight-record";
+import type { SyncStore } from "../domain/sync-store";
+import type { SyncWriteOutcome } from "../domain/sync-write-outcome";
+import type { WeightRecord } from "../domain/weight-record";
 
 export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
   const sql = storage.sql;
@@ -205,22 +205,22 @@ const insertRequestLog = (
   );
 };
 
-const outcomeSchema = z.discriminatedUnion("result", [
-  z.object({ result: z.enum(["applied", "ignored_duplicate"]) }),
-  z.object({
-    result: z.literal("rejected"),
-    reason: z.enum([
-      "out_of_range",
-      "invalid_time_zone",
-      "version_too_low",
-      "record_not_found",
-      "record_before_started_on",
-    ]),
-  }),
-]);
-
-const parseOutcome = (row: { result: string; reason: string | null }): SyncWriteOutcome =>
-  outcomeSchema.parse({ result: row.result, reason: row.reason ?? undefined });
+const parseOutcome = (row: { result: string; reason: string | null }): SyncWriteOutcome => {
+  const outcomeSchema = z.discriminatedUnion("result", [
+    z.object({ result: z.enum(["applied", "ignored_duplicate"]) }),
+    z.object({
+      result: z.literal("rejected"),
+      reason: z.enum([
+        "out_of_range",
+        "invalid_time_zone",
+        "version_too_low",
+        "record_not_found",
+        "record_before_started_on",
+      ]),
+    }),
+  ]);
+  return outcomeSchema.parse({ result: row.result, reason: row.reason ?? undefined });
+};
 
 const parseRecordType = (recordType: string): "weight_record" => {
   if (recordType !== "weight_record") {
