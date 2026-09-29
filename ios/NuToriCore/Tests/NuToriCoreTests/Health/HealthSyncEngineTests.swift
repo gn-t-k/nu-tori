@@ -550,16 +550,17 @@ struct HealthSyncEngineTests {
         struct Unauthorized {
             let healthStore: HealthStoreMock
             let engine: HealthSyncEngine
+            let manual: WeightRecord
 
             init() throws {
+                manual = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 healthStore = .ok(isWriteAuthorized: false)
                 engine = .fixture(healthStore: healthStore, store: .ok())
             }
 
             @Test("書かないこと")
             func doesNotWrite() async throws {
-                try await engine.exportWeightRecord(
-                    .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"))
+                try await engine.exportWeightRecord(manual)
 
                 #expect(healthStore.writes.isEmpty)
             }
@@ -642,79 +643,135 @@ struct HealthSyncEngineTests {
 
     @Suite("許可を求める時機")
     struct RequestingAuthorization {
-        @Suite("初めて体重を入れるとき")
-        struct FirstWeightEntry {
-            @Test("この端末でまだ求めていなければ、求めること")
-            func requestsWhenNotYetRequested() async throws {
-                let healthStore = HealthStoreMock.ok(requestStatus: .notYetRequested)
-                let engine = HealthSyncEngine.fixture(healthStore: healthStore, store: .ok())
+        @Suite("初めて体重を入れるとき、この端末でまだ求めていなければ")
+        struct FirstWeightEntryNotYetRequested {
+            let healthStore: HealthStoreMock
+            let engine: HealthSyncEngine
 
+            init() {
+                healthStore = .ok(requestStatus: .notYetRequested)
+                engine = .fixture(healthStore: healthStore, store: .ok())
+            }
+
+            @Test("求めること")
+            func requests() async throws {
                 try await engine.requestAuthorizationOnFirstWeightEntry()
 
                 #expect(healthStore.authorizationRequests == 1)
             }
+        }
 
-            @Test("この端末でもう求めていれば、求めないこと")
-            func doesNotRequestWhenAlreadyRequested() async throws {
-                let healthStore = HealthStoreMock.ok(requestStatus: .alreadyRequested)
-                let engine = HealthSyncEngine.fixture(healthStore: healthStore, store: .ok())
+        @Suite("初めて体重を入れるとき、この端末でもう求めていれば")
+        struct FirstWeightEntryAlreadyRequested {
+            let healthStore: HealthStoreMock
+            let engine: HealthSyncEngine
 
+            init() {
+                healthStore = .ok(requestStatus: .alreadyRequested)
+                engine = .fixture(healthStore: healthStore, store: .ok())
+            }
+
+            @Test("求めないこと")
+            func doesNotRequest() async throws {
                 try await engine.requestAuthorizationOnFirstWeightEntry()
 
                 #expect(healthStore.authorizationRequests == 0)
             }
         }
 
-        @Suite("初回の取得を終えたとき")
-        struct AfterInitialPull {
-            @Test("アカウントに体重記録があり、この端末でまだ求めていなければ、求めること")
-            func requestsWhenAccountHasRecords() async throws {
-                let healthStore = HealthStoreMock.ok(requestStatus: .notYetRequested)
-                let store = SyncStoreMock.ok(
-                    records: [try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")],
-                    state: .fixture(hasCompletedInitialPull: true)
-                )
-                let engine = HealthSyncEngine.fixture(healthStore: healthStore, store: store)
+        @Suite("初回の取得を終え、アカウントに体重記録があり、この端末でまだ求めていなければ")
+        struct AfterInitialPullWithRecords {
+            let healthStore: HealthStoreMock
+            let engine: HealthSyncEngine
 
+            init() throws {
+                healthStore = .ok(requestStatus: .notYetRequested)
+                engine = .fixture(
+                    healthStore: healthStore,
+                    store: .ok(
+                        records: [
+                            try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                        ],
+                        state: .fixture(hasCompletedInitialPull: true)
+                    )
+                )
+            }
+
+            @Test("求めること")
+            func requests() async throws {
                 try await engine.requestAuthorizationAfterInitialPull()
 
                 #expect(healthStore.authorizationRequests == 1)
             }
+        }
 
-            @Test("アカウントに体重記録が無ければ、初めて体重を入れるときまで求めないこと")
-            func doesNotRequestWithoutRecords() async throws {
-                let healthStore = HealthStoreMock.ok(requestStatus: .notYetRequested)
-                let store = SyncStoreMock.ok(state: .fixture(hasCompletedInitialPull: true))
-                let engine = HealthSyncEngine.fixture(healthStore: healthStore, store: store)
+        @Suite("初回の取得を終えたが、アカウントに体重記録が無ければ")
+        struct AfterInitialPullWithoutRecords {
+            let healthStore: HealthStoreMock
+            let engine: HealthSyncEngine
 
+            init() {
+                healthStore = .ok(requestStatus: .notYetRequested)
+                engine = .fixture(
+                    healthStore: healthStore,
+                    store: .ok(state: .fixture(hasCompletedInitialPull: true))
+                )
+            }
+
+            @Test("初めて体重を入れるときまで求めないこと")
+            func doesNotRequest() async throws {
                 try await engine.requestAuthorizationAfterInitialPull()
 
                 #expect(healthStore.authorizationRequests == 0)
             }
+        }
 
-            @Test("初回の取得をまだ終えていなければ、求めないこと")
-            func doesNotRequestBeforeInitialPull() async throws {
-                let healthStore = HealthStoreMock.ok(requestStatus: .notYetRequested)
-                let store = SyncStoreMock.ok(
-                    records: [try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")],
-                    state: .fixture(hasCompletedInitialPull: false)
+        @Suite("初回の取得をまだ終えていなければ")
+        struct BeforeInitialPull {
+            let healthStore: HealthStoreMock
+            let engine: HealthSyncEngine
+
+            init() throws {
+                healthStore = .ok(requestStatus: .notYetRequested)
+                engine = .fixture(
+                    healthStore: healthStore,
+                    store: .ok(
+                        records: [
+                            try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                        ],
+                        state: .fixture(hasCompletedInitialPull: false)
+                    )
                 )
-                let engine = HealthSyncEngine.fixture(healthStore: healthStore, store: store)
+            }
 
+            @Test("求めないこと")
+            func doesNotRequest() async throws {
                 try await engine.requestAuthorizationAfterInitialPull()
 
                 #expect(healthStore.authorizationRequests == 0)
             }
+        }
 
-            @Test("この端末でもう求めていれば、求めないこと")
-            func doesNotRequestWhenAlreadyRequested() async throws {
-                let healthStore = HealthStoreMock.ok(requestStatus: .alreadyRequested)
-                let store = SyncStoreMock.ok(
-                    records: [try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")],
-                    state: .fixture(hasCompletedInitialPull: true)
+        @Suite("初回の取得を終えたが、この端末でもう求めていれば")
+        struct AfterInitialPullAlreadyRequested {
+            let healthStore: HealthStoreMock
+            let engine: HealthSyncEngine
+
+            init() throws {
+                healthStore = .ok(requestStatus: .alreadyRequested)
+                engine = .fixture(
+                    healthStore: healthStore,
+                    store: .ok(
+                        records: [
+                            try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                        ],
+                        state: .fixture(hasCompletedInitialPull: true)
+                    )
                 )
-                let engine = HealthSyncEngine.fixture(healthStore: healthStore, store: store)
+            }
 
+            @Test("求めないこと")
+            func doesNotRequest() async throws {
                 try await engine.requestAuthorizationAfterInitialPull()
 
                 #expect(healthStore.authorizationRequests == 0)

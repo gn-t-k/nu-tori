@@ -511,17 +511,16 @@ struct SyncEngineTests {
 
         @Suite("削除の印が届いたとき")
         struct Deletions {
-            static let removedId = "00000000-0000-4000-8000-0000000000b1"
-            static let unknownId = "00000000-0000-4000-8000-0000000000b9"
-
             let store: SyncStoreMock
             let engine: SyncEngine
             let removed: WeightRecord
             let kept: WeightRecord
 
             init() throws {
+                let removedId = "00000000-0000-4000-8000-0000000000b1"
+                let unknownId = "00000000-0000-4000-8000-0000000000b9"
                 removed = WeightRecord(
-                    id: try #require(UUID(uuidString: Self.removedId)),
+                    id: try #require(UUID(uuidString: removedId)),
                     kilograms: 70.0,
                     instant: Date(timeIntervalSince1970: 1_767_225_600),
                     timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
@@ -535,8 +534,8 @@ struct SyncEngineTests {
                     transport: .ok(pullPages: [
                         """
                         {"changes":[
-                          {"sequence":6,"kind":"weight_record_deletion","recordId":"\(Self.removedId)","record":{}},
-                          {"sequence":7,"kind":"weight_record_deletion","recordId":"\(Self.unknownId)","record":{}}
+                          {"sequence":6,"kind":"weight_record_deletion","recordId":"\(removedId)","record":{}},
+                          {"sequence":7,"kind":"weight_record_deletion","recordId":"\(unknownId)","record":{}}
                         ],"hasMore":false,"nextAfterSequence":7,"startedOn":null}
                         """
                     ])
