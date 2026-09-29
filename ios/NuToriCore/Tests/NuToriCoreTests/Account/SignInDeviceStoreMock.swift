@@ -8,7 +8,7 @@ final class SignInDeviceStoreMock: SignInDeviceStore, @unchecked Sendable {
 
     static func ok(
         hasOpenedBefore: Bool = true,
-        account: SignedInAccount? = nil,
+        account: SignedInAccount?,
         hasSignInAgainMark: Bool = false,
         log: CallLog = CallLog()
     ) -> SignInDeviceStoreMock {

@@ -3,7 +3,7 @@ import NuToriCore
 final class SessionKeychainMock: SessionKeychain, @unchecked Sendable {
     private(set) var token: String?
 
-    static func ok(token: String? = nil, log: CallLog = CallLog()) -> SessionKeychainMock {
+    static func ok(token: String?, log: CallLog = CallLog()) -> SessionKeychainMock {
         SessionKeychainMock(token: token, log: log, failure: nil)
     }
 
