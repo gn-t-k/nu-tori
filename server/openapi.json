@@ -20,12 +20,12 @@
           },
           "result": {
             "type": "string",
-            "description": "applied は当てた、ignored_duplicate は同じ ID か同じサンプルがあって捨てた、rejected は受け付けなかった。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
+            "description": "値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う",
             "example": "applied"
           },
           "rejectionReason": {
             "type": "string",
-            "description": "result が rejected のときだけ付く。out_of_range、invalid_time_zone、version_too_low、record_not_found、record_before_started_on のどれか。値が増えても読めるよう文字列で持つ"
+            "description": "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ"
           }
         },
         "required": [
@@ -48,8 +48,7 @@
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite"
           }
-        },
-        "description": "作る書き込みと直す書き込み。type ごとに中身が違う"
+        }
       },
       "CreateWeightRecordWrite": {
         "type": "object",
@@ -57,7 +56,7 @@
           "id": {
             "type": "string",
             "minLength": 1,
-            "description": "書き込みごとに端末で振る ID。冪等の鍵"
+            "description": "冪等の鍵"
           },
           "type": {
             "type": "string",
@@ -70,8 +69,7 @@
             "properties": {
               "id": {
                 "type": "string",
-                "minLength": 1,
-                "description": "端末で振った体重記録の ID"
+                "minLength": 1
               },
               "weightKg": {
                 "type": "number"
@@ -80,11 +78,10 @@
                 "type": "integer",
                 "minimum": -8640000000000000,
                 "maximum": 8640000000000000,
-                "description": "測った時刻。UNIX 時刻のミリ秒（UTC）"
+                "description": "UNIX 時刻のミリ秒（UTC）"
               },
               "timeZone": {
                 "type": "string",
-                "description": "記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない",
                 "example": "Asia/Tokyo"
               },
               "imported": {
@@ -104,8 +101,7 @@
                     "type": "object",
                     "properties": {
                       "percentage": {
-                        "type": "number",
-                        "description": "% の値（25.0）"
+                        "type": "number"
                       },
                       "healthkitSampleUuid": {
                         "type": "string",
@@ -122,8 +118,7 @@
                   "sourceAppName",
                   "sourceBundleId",
                   "healthkitSampleUuid"
-                ],
-                "description": "ヘルスケアから取り込んだ記録だけが持つ"
+                ]
               }
             },
             "required": [
@@ -146,7 +141,7 @@
           "id": {
             "type": "string",
             "minLength": 1,
-            "description": "書き込みごとに端末で振る ID。冪等の鍵"
+            "description": "冪等の鍵"
           },
           "type": {
             "type": "string",
@@ -159,8 +154,7 @@
             "properties": {
               "id": {
                 "type": "string",
-                "minLength": 1,
-                "description": "端末で振った体重記録の ID"
+                "minLength": 1
               },
               "weightKg": {
                 "type": "number"
@@ -169,16 +163,14 @@
                 "type": "integer",
                 "minimum": -8640000000000000,
                 "maximum": 8640000000000000,
-                "description": "測った時刻。UNIX 時刻のミリ秒（UTC）"
+                "description": "UNIX 時刻のミリ秒（UTC）"
               },
               "timeZone": {
                 "type": "string",
-                "description": "記録したときの IANA のタイムゾーン名。読めない名前の書き込みは受け付けない",
                 "example": "Asia/Tokyo"
               },
               "version": {
-                "type": "integer",
-                "description": "直したあとの版。2 以上。届いた版と今の版 + 1 の大きいほうに決め直す"
+                "type": "integer"
               }
             },
             "required": [
@@ -204,7 +196,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "記録の種類。知らない種類は読み飛ばす（種類が増えても古い版のアプリの同期が止まらないように、文字列で持つ）",
+            "description": "知らない種類は読み飛ばす。種類が増えても古い版のアプリの同期が止まらないよう、文字列で持つ",
             "example": "weight_record"
           },
           "recordId": {
@@ -212,8 +204,7 @@
           },
           "record": {
             "type": "object",
-            "additionalProperties": {},
-            "description": "kind ごとの中身。kind ごとにあとで解く"
+            "additionalProperties": {}
           }
         },
         "required": [
@@ -319,7 +310,6 @@
       "post": {
         "operationId": "pushSyncWrites",
         "summary": "端末の送り待ちをまとめて送る",
-        "description": "書き込みを要求の中の順に当てる。書き込みごとの ID で冪等にする。受け付けない書き込みがあっても、ほかは当てる",
         "security": [
           {
             "session": []
@@ -337,13 +327,12 @@
                     "properties": {
                       "deviceId": {
                         "type": "string",
-                        "minLength": 1,
-                        "description": "端末で振った UUID"
+                        "minLength": 1
                       },
                       "timeZone": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える",
+                        "description": "読めない名前でも、届いたまま控える",
                         "example": "Asia/Tokyo"
                       },
                       "appVersion": {
@@ -356,18 +345,15 @@
                       },
                       "pendingWriteCount": {
                         "type": "integer",
-                        "minimum": 0,
-                        "description": "端末の送り待ちの件数"
+                        "minimum": 0
                       },
                       "oldestPendingWriteAgeSeconds": {
                         "type": "integer",
-                        "minimum": 0,
-                        "description": "いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く"
+                        "minimum": 0
                       },
                       "pendingPhotoCount": {
                         "type": "integer",
-                        "minimum": 0,
-                        "description": "写真の送り残しの数"
+                        "minimum": 0
                       }
                     },
                     "required": [
@@ -384,12 +370,10 @@
                     "items": {
                       "$ref": "#/components/schemas/SyncWrite"
                     },
-                    "maxItems": 500,
-                    "description": "1回の要求で 500 件まで。超えたら何も当てずに 400"
+                    "maxItems": 500
                   },
                   "isFinalBatch": {
-                    "type": "boolean",
-                    "description": "送り待ちの最後の要求なら true"
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -448,11 +432,9 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "description": "端末で振った UUID"
+              "minLength": 1
             },
             "required": true,
-            "description": "端末で振った UUID",
             "name": "deviceId",
             "in": "query"
           },
@@ -460,11 +442,11 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える",
+              "description": "読めない名前でも、届いたまま控える",
               "example": "Asia/Tokyo"
             },
             "required": true,
-            "description": "端末のいまの IANA のタイムゾーン名。読めない名前でも、届いたまま控える",
+            "description": "読めない名前でも、届いたまま控える",
             "name": "timeZone",
             "in": "query"
           },
@@ -492,11 +474,9 @@
                 "integer",
                 "null"
               ],
-              "minimum": 0,
-              "description": "端末の送り待ちの件数"
+              "minimum": 0
             },
             "required": true,
-            "description": "端末の送り待ちの件数",
             "name": "pendingWriteCount",
             "in": "query"
           },
@@ -506,11 +486,9 @@
                 "integer",
                 "null"
               ],
-              "minimum": 0,
-              "description": "いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く"
+              "minimum": 0
             },
             "required": false,
-            "description": "いちばん古い送り待ちの経過時間（秒）。送り待ちが無いときは省く",
             "name": "oldestPendingWriteAgeSeconds",
             "in": "query"
           },
@@ -520,11 +498,9 @@
                 "integer",
                 "null"
               ],
-              "minimum": 0,
-              "description": "写真の送り残しの数"
+              "minimum": 0
             },
             "required": true,
-            "description": "写真の送り残しの数",
             "name": "pendingPhotoCount",
             "in": "query"
           },
@@ -534,11 +510,9 @@
                 "integer",
                 "null"
               ],
-              "minimum": 0,
-              "description": "前回の応答の nextAfterSequence。最初は 0"
+              "minimum": 0
             },
             "required": true,
-            "description": "前回の応答の nextAfterSequence。最初は 0",
             "name": "afterSequence",
             "in": "query"
           }
@@ -558,8 +532,7 @@
                       }
                     },
                     "hasMore": {
-                      "type": "boolean",
-                      "description": "続きがあるとき true"
+                      "type": "boolean"
                     },
                     "nextAfterSequence": {
                       "type": "integer"
@@ -569,7 +542,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "使い始めた日（YYYY-MM-DD）。まだ決まっていないとき null。記録の通し番号によらず毎回載る"
+                      "description": "YYYY-MM-DD。まだ決まっていないとき null。記録の通し番号によらず毎回載る"
                     }
                   },
                   "required": [

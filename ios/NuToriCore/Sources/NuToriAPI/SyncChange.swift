@@ -1,6 +1,5 @@
-/// 取りに行って届いた変更1件
 public enum SyncChange: Sendable, Equatable {
     case weightRecord(SyncedWeightRecord)
-    /// 知らない種類、または知っている種類でも中身を読めなかったもの。読み飛ばして通し番号を進める
+    /// 知らない種類と読めない中身。サーバーが種類を足しても、古い版のアプリの同期が止まらないように、落とさずに持つ
     case unknown(kind: String)
 }
