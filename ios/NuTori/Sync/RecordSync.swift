@@ -108,12 +108,12 @@ import NuToriCore
 
     private func runSync() async throws -> SyncResult? {
         guard await hasSession() else { return nil }
-        let result = try await makeEngine().sync()
+        let result = try await engineForThisDevice().sync()
         onDestination(try await accountSession.destination(afterSync: result))
         return result
     }
 
-    private func makeEngine() -> SyncEngine {
+    private func engineForThisDevice() -> SyncEngine {
         let version = ProcessInfo.processInfo.operatingSystemVersion
         return SyncEngine(
             store: store,

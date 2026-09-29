@@ -8,7 +8,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
     let container: ModelContainer
 
     init(inMemory: Bool) throws {
-        container = try Self.makeContainer(inMemory: inMemory)
+        container = try Self.openContainer(inMemory: inMemory)
     }
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {
@@ -168,7 +168,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
         }
     }
 
-    private static func makeContainer(inMemory: Bool) throws -> ModelContainer {
+    private static func openContainer(inMemory: Bool) throws -> ModelContainer {
         let schema = Schema(versionedSchema: RecordStoreSchemaV1.self)
         if inMemory {
             return try ModelContainer(
