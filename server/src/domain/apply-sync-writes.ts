@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
-import { computeCalendarDay } from "../compute-calendar-day";
-import { isTimeZoneName } from "../is-time-zone-name";
-import { isWithinAcceptedRange } from "../is-within-accepted-range";
+import { computeCalendarDay } from "./compute-calendar-day";
+import { isTimeZoneName } from "./is-time-zone-name";
+import { isWithinAcceptedRange } from "./is-within-accepted-range";
 import type { SyncClientState } from "./sync-client-state";
 import type { SyncStore } from "./sync-store";
 import type { SyncWrite } from "./sync-write";

@@ -1,5 +1,5 @@
 import type { z } from "@hono/zod-openapi";
-import type { SyncClientState } from "../../domain/sync/sync-client-state";
+import type { SyncClientState } from "../../domain/sync-client-state";
 import type { createSyncClientStateSchema } from "./create-sync-client-state-schema";
 
 export const toSyncClientState = (

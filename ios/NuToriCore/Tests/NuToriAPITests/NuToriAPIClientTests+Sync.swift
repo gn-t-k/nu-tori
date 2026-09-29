@@ -7,11 +7,10 @@ import Testing
 extension NuToriAPIClientTests {
     @Suite("送り待ちを送る")
     struct PushSyncWrites {
-        static let createWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!
-        static let updateWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a2")!
-
         @Suite("サーバーが書き込みごとの結果を返したとき")
         struct Pushed {
+            let createWriteId: UUID
+            let updateWriteId: UUID
             let transport: ClientTransportMock
             let client: NuToriAPIClient
             let clientState: SyncClientState
@@ -19,19 +18,21 @@ extension NuToriAPIClientTests {
             let writes: [SyncWrite]
 
             init() {
+                createWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!
+                updateWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a2")!
                 clientState = .fixture()
                 recordId = "00000000-0000-4000-8000-0000000000B1"
                 writes = [
                     .createWeightRecord(
-                        writeId: PushSyncWrites.createWriteId, record: .fixture()),
+                        writeId: createWriteId, record: .fixture()),
                     .updateWeightRecord(
-                        writeId: PushSyncWrites.updateWriteId, correction: .fixture()),
+                        writeId: updateWriteId, correction: .fixture()),
                 ]
                 transport = .ok(
                     json: """
                         {"results":[
-                          {"writeId":"\(PushSyncWrites.createWriteId.uuidString)","result":"applied"},
-                          {"writeId":"\(PushSyncWrites.updateWriteId.uuidString)","result":"rejected","rejectionReason":"out_of_range"}
+                          {"writeId":"\(createWriteId.uuidString)","result":"applied"},
+                          {"writeId":"\(updateWriteId.uuidString)","result":"rejected","rejectionReason":"out_of_range"}
                         ]}
                         """
                 )
@@ -51,9 +52,9 @@ extension NuToriAPIClientTests {
                     result
                         == .pushed([
                             SyncWriteResult(
-                                writeId: PushSyncWrites.createWriteId, outcome: .applied),
+                                writeId: createWriteId, outcome: .applied),
                             SyncWriteResult(
-                                writeId: PushSyncWrites.updateWriteId,
+                                writeId: updateWriteId,
                                 outcome: .rejected(.outOfRange)),
                         ])
                 )
@@ -83,14 +84,14 @@ extension NuToriAPIClientTests {
                             isFinalBatch: true,
                             writes: [
                                 .init(
-                                    id: PushSyncWrites.createWriteId.uuidString,
+                                    id: createWriteId.uuidString,
                                     type: "create_weight_record",
                                     weightRecord: .init(
                                         id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
                                         timeZone: "Asia/Tokyo", version: nil, imported: nil)
                                 ),
                                 .init(
-                                    id: PushSyncWrites.updateWriteId.uuidString,
+                                    id: updateWriteId.uuidString,
                                     type: "update_weight_record",
                                     weightRecord: .init(
                                         id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
@@ -103,15 +104,19 @@ extension NuToriAPIClientTests {
 
         @Suite("ヘルスケアから取り込んだ記録を作る書き込みを送るとき")
         struct Imported {
+            let createWriteId: UUID
+            let updateWriteId: UUID
             let transport: ClientTransportMock
             let client: NuToriAPIClient
             let clientState: SyncClientState
             let write: SyncWrite
 
             init() {
+                createWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!
+                updateWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a2")!
                 clientState = .fixture()
                 write = .createWeightRecord(
-                    writeId: PushSyncWrites.createWriteId,
+                    writeId: createWriteId,
                     record: .fixture(
                         imported: .init(
                             sourceAppName: "Withings",
@@ -156,18 +161,22 @@ extension NuToriAPIClientTests {
 
         @Suite("サーバーが知らない結果と理由を返したとき")
         struct UnknownResult {
+            let createWriteId: UUID
+            let updateWriteId: UUID
             let client: NuToriAPIClient
             let clientState: SyncClientState
 
             init() {
+                createWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!
+                updateWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a2")!
                 clientState = .fixture()
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(
                         json: """
                             {"results":[
-                              {"writeId":"\(PushSyncWrites.createWriteId.uuidString)","result":"ignored_tombstone"},
-                              {"writeId":"\(PushSyncWrites.updateWriteId.uuidString)","result":"rejected","rejectionReason":"too_old"}
+                              {"writeId":"\(createWriteId.uuidString)","result":"ignored_tombstone"},
+                              {"writeId":"\(updateWriteId.uuidString)","result":"rejected","rejectionReason":"too_old"}
                             ]}
                             """
                     ),
@@ -184,10 +193,10 @@ extension NuToriAPIClientTests {
                     result
                         == .pushed([
                             SyncWriteResult(
-                                writeId: PushSyncWrites.createWriteId,
+                                writeId: createWriteId,
                                 outcome: .unknown(result: "ignored_tombstone")),
                             SyncWriteResult(
-                                writeId: PushSyncWrites.updateWriteId,
+                                writeId: updateWriteId,
                                 outcome: .rejected(.unknown(reason: "too_old"))),
                         ])
                 )
