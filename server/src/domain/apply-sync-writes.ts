@@ -1,11 +1,14 @@
 import { match } from "ts-pattern";
+import type { AccountSettings } from "./account-settings";
 import { computeCalendarDay } from "./compute-calendar-day";
+import { computeUsageEvents } from "./compute-usage-events";
 import { isTimeZoneName } from "./is-time-zone-name";
 import { isWithinAcceptedRange } from "./is-within-accepted-range";
 import type { SyncClientState } from "./sync-client-state";
 import type { SyncStore } from "./sync-store";
 import type { SyncWrite } from "./sync-write";
 import type { SyncWriteOutcome } from "./sync-write-outcome";
+import type { UsageEvent } from "./usage-event";
 import type { WeightRecord } from "./weight-record";
 
 // 書き込みを要求の中の順に、1つのトランザクションで当てる。結果は書き込みごとに返し、受け付けない書き込みがあってもほかは当てる
@@ -17,9 +20,13 @@ export const applySyncWrites = (
     isFinalBatch: boolean;
     receivedAt: Date;
   },
-): { writeId: string; outcome: SyncWriteOutcome }[] =>
+): {
+  results: { writeId: string; outcome: SyncWriteOutcome }[];
+  usageEvents: UsageEvent[];
+} =>
   store.transaction(() => {
     const requestLogId = crypto.randomUUID();
+    const previousRequestReceivedAt = store.findLatestRequestReceivedAt();
     store.insertPushRequestLog({
       id: requestLogId,
       receivedAt: request.receivedAt,
@@ -27,41 +34,99 @@ export const applySyncWrites = (
       isFinalBatch: request.isFinalBatch,
     });
     const startedOn = store.findStartedOn();
-    return request.writes.map((write, positionInRequest) => {
+    const rejectedWrites: Extract<UsageEvent, { name: "sync_write_rejected" }>[] = [];
+    const results = request.writes.map((write, positionInRequest) => {
       // 送り直された書き込みは、何も当てずに最初の結果を返す
       const previousOutcome = store.findWriteOutcome(write.id);
       if (previousOutcome !== undefined) {
         return { writeId: write.id, outcome: previousOutcome };
       }
-      const { kind, outcome } = match(write)
-        .with({ type: "create_weight_record" }, ({ weightRecord }) => ({
-          kind: "create" as const,
+      const applied = match(write)
+        .with({ type: "create_weight_record" }, ({ weightRecord }): AppliedWrite => ({
+          kind: "create",
+          recordType: "weight_record",
+          recordId: weightRecord.id,
           outcome: applyCreateWeightRecord(store, weightRecord),
         }))
-        .with({ type: "update_weight_record" }, ({ weightRecord }) => ({
-          kind: "update" as const,
+        .with({ type: "update_weight_record" }, ({ weightRecord }): AppliedWrite => ({
+          kind: "update",
+          recordType: "weight_record",
+          recordId: weightRecord.id,
           outcome: applyUpdateWeightRecord(store, startedOn, weightRecord),
         }))
+        .with({ type: "update_account_settings" }, ({ accountSettings }): AppliedWrite => ({
+          kind: "update",
+          recordType: "account_settings",
+          recordId: accountSettings.id,
+          outcome: { result: "applied" },
+          storedRecordId: applyAccountSettings(store, accountSettings),
+          sendsUsageData: accountSettings.sendsUsageData,
+        }))
         .exhaustive();
+      const { kind, recordType, recordId, outcome } = applied;
       store.insertWriteReceipt({
         writeId: write.id,
         requestLogId,
         positionInRequest,
         kind,
-        recordType: "weight_record",
-        recordId: write.weightRecord.id,
+        recordType,
+        recordId,
         outcome,
       });
-      if (outcome.result === "applied") {
-        store.insertRecordChange({
-          recordType: "weight_record",
-          recordId: write.weightRecord.id,
-          writeId: write.id,
+      const changedRecordId = match(applied)
+        .with({ recordType: "weight_record" }, () =>
+          outcome.result === "applied" ? recordId : undefined,
+        )
+        .with({ recordType: "account_settings" }, (settingsWrite) => {
+          store.insertAccountSettingChange({
+            writeId: write.id,
+            sendsUsageData: settingsWrite.sendsUsageData,
+          });
+          return settingsWrite.storedRecordId;
+        })
+        .exhaustive();
+      if (changedRecordId !== undefined) {
+        store.insertRecordChange({ recordType, recordId: changedRecordId, writeId: write.id });
+      }
+      if (outcome.result === "rejected") {
+        rejectedWrites.push({
+          name: "sync_write_rejected",
+          writeKind: kind,
+          recordType,
+          reason: outcome.reason,
         });
       }
       return { writeId: write.id, outcome };
     });
+    return {
+      results,
+      usageEvents: computeUsageEvents(store, {
+        clientState: request.clientState,
+        receivedAt: request.receivedAt,
+        previousRequestReceivedAt,
+        rejectedWrites,
+      }),
+    };
   });
+
+type AppliedWrite = {
+  kind: "create" | "update";
+  recordId: string;
+  outcome: SyncWriteOutcome;
+} & (
+  | { recordType: "weight_record" }
+  | { recordType: "account_settings"; storedRecordId: string; sendsUsageData: boolean }
+);
+
+const applyAccountSettings = (store: SyncStore, accountSettings: AccountSettings): string => {
+  const current = store.findAccountSettings();
+  if (current === undefined) {
+    store.insertAccountSettings(accountSettings);
+  } else {
+    store.updateAccountSettings(accountSettings.sendsUsageData);
+  }
+  return current?.id ?? accountSettings.id;
+};
 
 const applyCreateWeightRecord = (
   store: SyncStore,

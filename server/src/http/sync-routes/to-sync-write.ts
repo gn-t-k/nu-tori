@@ -35,4 +35,9 @@ export const toSyncWrite = (write: z.infer<typeof syncWriteSchema>): SyncWrite =
         version: weightRecord.version,
       },
     }))
+    .with({ type: "update_account_settings" }, ({ id, accountSettings }): SyncWrite => ({
+      id,
+      type: "update_account_settings",
+      accountSettings: { id: accountSettings.id, sendsUsageData: accountSettings.sendsUsageData },
+    }))
     .exhaustive();

@@ -17,6 +17,9 @@ export const authenticateAccount = createMiddleware<{
     return c.body(null, 429);
   }
   c.set("accountId", session.user.id);
-  setUser({ id: session.user.id });
+  // Sentry は HEAD と OPTIONS の要求を要求ごとの scope で包まないので、user を付けると同じ isolate のほかの要求に混ざる
+  if (c.req.method !== "HEAD" && c.req.method !== "OPTIONS") {
+    setUser({ id: session.user.id });
+  }
   return next();
 });
