@@ -40,13 +40,17 @@
           },
           {
             "$ref": "#/components/schemas/UpdateWeightRecordWrite"
+          },
+          {
+            "$ref": "#/components/schemas/UpdateAccountSettingsWrite"
           }
         ],
         "discriminator": {
           "propertyName": "type",
           "mapping": {
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
-            "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite"
+            "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
+            "update_account_settings": "#/components/schemas/UpdateAccountSettingsWrite"
           }
         },
         "description": "アカウントの設定は、記録が無くても直す書き込みで送り、サーバーが無ければ作る"

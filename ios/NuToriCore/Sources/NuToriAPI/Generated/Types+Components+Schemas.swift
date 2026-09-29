@@ -52,6 +52,8 @@ extension Components {
         internal enum SyncWrite: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
             case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateAccountSettingsWrite`.
+            case updateAccountSettings(Components.Schemas.UpdateAccountSettingsWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateWeightRecordWrite`.
             case updateWeightRecord(Components.Schemas.UpdateWeightRecordWrite)
             internal enum CodingKeys: String, CodingKey {
@@ -66,6 +68,8 @@ extension Components {
                 switch discriminator {
                 case "create_weight_record":
                     self = .createWeightRecord(try .init(from: decoder))
+                case "update_account_settings":
+                    self = .updateAccountSettings(try .init(from: decoder))
                 case "update_weight_record":
                     self = .updateWeightRecord(try .init(from: decoder))
                 default:
@@ -79,6 +83,8 @@ extension Components {
             internal func encode(to encoder: any Swift.Encoder) throws {
                 switch self {
                 case let .createWeightRecord(value):
+                    try value.encode(to: encoder)
+                case let .updateAccountSettings(value):
                     try value.encode(to: encoder)
                 case let .updateWeightRecord(value):
                     try value.encode(to: encoder)
