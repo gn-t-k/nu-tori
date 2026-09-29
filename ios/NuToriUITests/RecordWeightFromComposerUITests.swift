@@ -10,7 +10,7 @@ final class RecordWeightFromComposerUITests: XCTestCase {
         app = .launched(account: "signed-in", api: "previous-day")
     }
 
-    func test_入力欄から体重を記録するとタイムラインに出て未記録の見た目が戻ること() {
+    func test_入力欄から体重を記録するとタイムラインに出て記録した見た目になること() {
         XCTAssertTrue(app.staticText(containing: "72.6 kg").waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["composer-weight-unrecorded"].exists)
         app.recordWeightTwoTenthsLower()
