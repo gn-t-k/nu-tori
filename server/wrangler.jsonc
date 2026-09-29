@@ -74,7 +74,7 @@
       "vars": {
         "APPLE_BUNDLE_ID": "app.nu-tori",
         "SENTRY_ENVIRONMENT": "production",
-        "POSTHOG_PROJECT_TOKEN": "phc_REPLACE_WITH_PROJECT_TOKEN",
+        "POSTHOG_PROJECT_TOKEN": "phc_yYuKJmqxpHM77An2fa7NYoL8SK2RkbbEXgpVUQQ2fjze",
       },
       "ratelimits": [
         {
