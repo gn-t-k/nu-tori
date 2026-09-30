@@ -28,7 +28,7 @@ struct AccountDevice {
         hasOpenedBefore: Bool = true,
         pendingWrites: [PendingWrite] = [],
         hasCompletedInitialPull: Bool = true,
-        accountSettings: AccountSettings? = nil,
+        accountSettings: AccountSettings = seededSettings,
         appleCredentials: AppleCredentialCheckerMock = .ok(),
         analytics: (CallLog) -> AnalyticsSessionMock = { .ok(log: $0) },
         log: CallLog = CallLog()
@@ -40,7 +40,7 @@ struct AccountDevice {
                 hasOpenedBefore: hasOpenedBefore, account: previousAccount, log: log),
             syncStore: .ok(
                 records: [try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")],
-                accountSettings: accountSettings ?? seededSettings,
+                accountSettings: accountSettings,
                 pendingWrites: pendingWrites,
                 state: .fixture(
                     afterSequence: 12, hasCompletedInitialPull: hasCompletedInitialPull),
