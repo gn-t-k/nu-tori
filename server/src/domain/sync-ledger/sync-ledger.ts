@@ -155,7 +155,17 @@ export const createSyncLedger = <
 
 // 控えの ID。作れるのは帳簿だけ（値を export していないので、ほかは組み立てられない）
 class WriteReceiptId {
-  private constructor(readonly value: string) {}
+  // TypeScript の型は構造で比べるので、公開の欄だけだと `{ value: "..." }` のオブジェクトも控えの ID として通る。
+  // 値を ES の private の欄に持たせ、帳簿が作ったものだけを通す
+  readonly #value: string;
+
+  private constructor(value: string) {
+    this.#value = value;
+  }
+
+  get value(): string {
+    return this.#value;
+  }
 
   static issue(writeId: string): WriteReceiptId {
     return new WriteReceiptId(writeId);

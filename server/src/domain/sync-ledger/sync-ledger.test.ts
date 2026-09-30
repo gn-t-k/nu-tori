@@ -206,5 +206,11 @@ describe("同期の帳簿", () => {
       // @ts-expect-error 文字列から控えの ID は作れない（作れるとコンパイルが通ってしまう）
       acceptReceiptId("write-1");
     });
+
+    // oxlint-disable-next-line vitest/expect-expect
+    test("控えの ID は、同じ形のオブジェクトから作れないこと", () => {
+      // @ts-expect-error 帳簿が作っていないオブジェクトは控えの ID にならない（`as` での作り方は lint が止める）
+      acceptReceiptId({ value: "write-1" });
+    });
   });
 });

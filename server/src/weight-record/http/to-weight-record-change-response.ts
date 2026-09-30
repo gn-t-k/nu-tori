@@ -11,7 +11,7 @@ export const toWeightRecordChangeResponse = (
     .with({ status: "value" }, ({ value }) => ({
       sequence,
       kind: "weight_record",
-      recordId: value.id,
+      recordId,
       record: {
         id: value.id,
         weightKg: value.weightKg,

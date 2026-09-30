@@ -29,13 +29,3 @@ export type WriteDecision = {
   // 帳簿が控えを書いたあとに呼ぶ。控えの ID は帳簿しか作れないので、控えより先に自分の行を書けない
   commit: (receiptId: WriteReceiptId) => void;
 };
-
-// 登録簿の種類から、書き込みの型を導く
-export type WriteOfKind<TKind> = TKind extends {
-  writes: KindWrites<infer TWrite extends WriteBase> | undefined;
-}
-  ? TWrite
-  : never;
-
-// 登録簿の種類から、種類の名前を導く
-export type NameOfKind<TKind> = TKind extends { name: infer TName extends string } ? TName : never;
