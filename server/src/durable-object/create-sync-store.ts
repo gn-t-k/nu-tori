@@ -1,54 +1,61 @@
-import { z } from "zod";
-import type { RecordType } from "../domain/record-type";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
+import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import { accountSettingsTables } from "../account-settings/durable-object/account-settings-tables";
 import type { SyncStore } from "../domain/sync-store";
 import type { SyncWriteOutcome } from "../domain/sync-write-outcome";
-import type { WeightRecord } from "../domain/weight-record";
+import type { WeightRecord } from "../weight-record/domain/weight-record";
+import { weightRecordTables } from "../weight-record/durable-object/weight-record-tables";
+import { firstSignInTables } from "./first-sign-in-tables";
+import { syncLedgerTables } from "./sync-ledger-tables";
+
+const { firstSignIns } = firstSignInTables;
+const {
+  syncRequestLogs,
+  syncPushLogs,
+  syncPullLogs,
+  syncWriteReceipts,
+  syncWriteRejections,
+  recordChanges,
+  syncWriteRecordChanges,
+} = syncLedgerTables;
+const { weightRecords, importedWeightRecords, importedBodyFatPercentages, weightRecordDeletions } =
+  weightRecordTables;
+const { accountSettings, accountSettingChanges } = accountSettingsTables;
 
 export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
-  const sql = storage.sql;
+  const db = drizzle(storage);
   return {
     transaction: (run) => storage.transactionSync(run),
-    findStartedOn: () => {
-      const [row] = sql
-        .exec<{ started_on: string }>("SELECT started_on FROM first_sign_ins")
-        .toArray();
-      return row?.started_on;
-    },
-    findLatestRequestReceivedAt: () => {
-      const [row] = sql
-        .exec<{ received_at: number }>(
-          "SELECT received_at FROM sync_request_logs ORDER BY received_at DESC LIMIT 1",
-        )
-        .toArray();
-      return row === undefined ? undefined : new Date(row.received_at);
-    },
+    findStartedOn: () =>
+      db.select({ startedOn: firstSignIns.startedOn }).from(firstSignIns).get()?.startedOn,
+    findLatestRequestReceivedAt: () =>
+      db
+        .select({ receivedAt: syncRequestLogs.receivedAt })
+        .from(syncRequestLogs)
+        .orderBy(desc(syncRequestLogs.receivedAt))
+        .limit(1)
+        .get()?.receivedAt,
     insertPushRequestLog: ({ id, receivedAt, clientState, isFinalBatch }) => {
-      insertRequestLog(sql, { id, receivedAt, clientState });
-      sql.exec(
-        "INSERT INTO sync_push_logs (sync_request_log_id, is_final_batch) VALUES (?, ?)",
-        id,
-        isFinalBatch ? 1 : 0,
-      );
+      insertRequestLog(db, { id, receivedAt, clientState });
+      db.insert(syncPushLogs).values({ syncRequestLogId: id, isFinalBatch }).run();
     },
     insertPullRequestLog: ({ id, receivedAt, clientState, afterSequence }) => {
-      insertRequestLog(sql, { id, receivedAt, clientState });
-      sql.exec(
-        "INSERT INTO sync_pull_logs (sync_request_log_id, after_change_sequence) VALUES (?, ?)",
-        id,
-        afterSequence,
-      );
+      insertRequestLog(db, { id, receivedAt, clientState });
+      db.insert(syncPullLogs)
+        .values({ syncRequestLogId: id, afterChangeSequence: afterSequence })
+        .run();
     },
     findWriteOutcome: (writeId) => {
-      const [row] = sql
-        .exec<{ result: string; reason: string | null }>(
-          `SELECT receipt.result, rejection.reason
-           FROM sync_write_receipts AS receipt
-           LEFT JOIN sync_write_rejections AS rejection ON rejection.sync_write_receipt_id = receipt.id
-           WHERE receipt.id = ?`,
-          writeId,
+      const row = db
+        .select({ result: syncWriteReceipts.result, reason: syncWriteRejections.reason })
+        .from(syncWriteReceipts)
+        .leftJoin(
+          syncWriteRejections,
+          eq(syncWriteRejections.syncWriteReceiptId, syncWriteReceipts.id),
         )
-        .toArray();
-      return row === undefined ? undefined : parseOutcome(row);
+        .where(eq(syncWriteReceipts.id, writeId))
+        .get();
+      return row === undefined ? undefined : toOutcome(row);
     },
     insertWriteReceipt: ({
       writeId,
@@ -59,177 +66,143 @@ export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
       recordId,
       outcome,
     }) => {
-      sql.exec(
-        `INSERT INTO sync_write_receipts
-           (id, sync_request_log_id, position_in_request, kind, record_type, record_id, result)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        writeId,
-        requestLogId,
-        positionInRequest,
-        kind,
-        recordType,
-        recordId,
-        outcome.result,
-      );
+      db.insert(syncWriteReceipts)
+        .values({
+          id: writeId,
+          syncRequestLogId: requestLogId,
+          positionInRequest,
+          kind,
+          recordType,
+          recordId,
+          result: outcome.result,
+        })
+        .run();
       if (outcome.result === "rejected") {
-        sql.exec(
-          "INSERT INTO sync_write_rejections (sync_write_receipt_id, reason) VALUES (?, ?)",
-          writeId,
-          outcome.reason,
-        );
+        db.insert(syncWriteRejections)
+          .values({ syncWriteReceiptId: writeId, reason: outcome.reason })
+          .run();
       }
     },
     findWeightRecord: (id) => {
-      const [row] = sql
-        .exec<WeightRecordRow>(
-          `SELECT
-             record.id, record.weight_kg, record.measured_at, record.time_zone, record.version,
-             imported.source_app_name, imported.source_bundle_id,
-             imported.healthkit_sample_uuid AS weight_sample_uuid,
-             body_fat.body_fat_percentage,
-             body_fat.healthkit_sample_uuid AS body_fat_sample_uuid
-           FROM weight_records AS record
-           LEFT JOIN imported_weight_records AS imported ON imported.weight_record_id = record.id
-           LEFT JOIN imported_body_fat_percentages AS body_fat ON body_fat.weight_record_id = record.id
-           WHERE record.id = ?`,
-          id,
+      const row = db
+        .select({
+          record: weightRecords,
+          imported: importedWeightRecords,
+          bodyFat: importedBodyFatPercentages,
+        })
+        .from(weightRecords)
+        .leftJoin(importedWeightRecords, eq(importedWeightRecords.weightRecordId, weightRecords.id))
+        .leftJoin(
+          importedBodyFatPercentages,
+          eq(importedBodyFatPercentages.weightRecordId, weightRecords.id),
         )
-        .toArray();
+        .where(eq(weightRecords.id, id))
+        .get();
       return row === undefined ? undefined : toWeightRecord(row);
     },
     existsImportedSample: (healthkitSampleUuid) =>
-      sql
-        .exec(
-          "SELECT 1 FROM imported_weight_records WHERE healthkit_sample_uuid = ?",
-          healthkitSampleUuid,
-        )
-        .toArray().length > 0,
+      db
+        .select({ weightRecordId: importedWeightRecords.weightRecordId })
+        .from(importedWeightRecords)
+        .where(eq(importedWeightRecords.healthkitSampleUuid, healthkitSampleUuid))
+        .all().length > 0,
     existsWeightRecordDeletion: (recordId) =>
-      sql
-        .exec(
-          `SELECT 1
-           FROM weight_record_deletions AS deletion
-           JOIN sync_write_receipts AS receipt ON receipt.id = deletion.sync_write_receipt_id
-           WHERE receipt.record_type = 'weight_record' AND receipt.record_id = ?`,
-          recordId,
+      db
+        .select({ id: weightRecordDeletions.syncWriteReceiptId })
+        .from(weightRecordDeletions)
+        .innerJoin(
+          syncWriteReceipts,
+          eq(syncWriteReceipts.id, weightRecordDeletions.syncWriteReceiptId),
         )
-        .toArray().length > 0,
+        .where(
+          and(
+            eq(syncWriteReceipts.recordType, "weight_record"),
+            eq(syncWriteReceipts.recordId, recordId),
+          ),
+        )
+        .all().length > 0,
     insertWeightRecord: ({ id, weightKg, measuredAt, timeZone, version, imported }) => {
-      sql.exec(
-        `INSERT INTO weight_records (id, weight_kg, measured_at, time_zone, version)
-         VALUES (?, ?, ?, ?, ?)`,
-        id,
-        weightKg,
-        measuredAt.getTime(),
-        timeZone,
-        version,
-      );
+      db.insert(weightRecords).values({ id, weightKg, measuredAt, timeZone, version }).run();
       if (imported === undefined) {
         return;
       }
-      sql.exec(
-        `INSERT INTO imported_weight_records
-           (weight_record_id, source_app_name, source_bundle_id, healthkit_sample_uuid)
-         VALUES (?, ?, ?, ?)`,
-        id,
-        imported.sourceAppName,
-        imported.sourceBundleId,
-        imported.healthkitSampleUuid,
-      );
+      db.insert(importedWeightRecords)
+        .values({
+          weightRecordId: id,
+          sourceAppName: imported.sourceAppName,
+          sourceBundleId: imported.sourceBundleId,
+          healthkitSampleUuid: imported.healthkitSampleUuid,
+        })
+        .run();
       if (imported.bodyFat === undefined) {
         return;
       }
-      sql.exec(
-        `INSERT INTO imported_body_fat_percentages
-           (weight_record_id, body_fat_percentage, healthkit_sample_uuid)
-         VALUES (?, ?, ?)`,
-        id,
-        imported.bodyFat.percentage,
-        imported.bodyFat.healthkitSampleUuid,
-      );
+      db.insert(importedBodyFatPercentages)
+        .values({
+          weightRecordId: id,
+          bodyFatPercentage: imported.bodyFat.percentage,
+          healthkitSampleUuid: imported.bodyFat.healthkitSampleUuid,
+        })
+        .run();
     },
     updateWeightRecord: (id, { weightKg, measuredAt, timeZone, version }) => {
-      sql.exec(
-        `UPDATE weight_records
-         SET weight_kg = ?, measured_at = ?, time_zone = ?, version = ?
-         WHERE id = ?`,
-        weightKg,
-        measuredAt.getTime(),
-        timeZone,
-        version,
-        id,
-      );
+      db.update(weightRecords)
+        .set({ weightKg, measuredAt, timeZone, version })
+        .where(eq(weightRecords.id, id))
+        .run();
     },
     deleteWeightRecord: (id) => {
-      sql.exec("DELETE FROM weight_records WHERE id = ?", id);
+      db.delete(weightRecords).where(eq(weightRecords.id, id)).run();
     },
     insertWeightRecordDeletion: (writeId) => {
-      sql.exec("INSERT INTO weight_record_deletions (sync_write_receipt_id) VALUES (?)", writeId);
+      db.insert(weightRecordDeletions).values({ syncWriteReceiptId: writeId }).run();
     },
-    findAccountSettings: () => {
-      const [row] = sql
-        .exec<{ id: string; sends_usage_data: number }>(
-          "SELECT id, sends_usage_data FROM account_settings",
-        )
-        .toArray();
-      return row === undefined
-        ? undefined
-        : { id: row.id, sendsUsageData: row.sends_usage_data === 1 };
-    },
+    findAccountSettings: () =>
+      db
+        .select({ id: accountSettings.id, sendsUsageData: accountSettings.sendsUsageData })
+        .from(accountSettings)
+        .get(),
     insertAccountSettings: ({ id, sendsUsageData }) => {
-      sql.exec(
-        "INSERT INTO account_settings (id, sends_usage_data) VALUES (?, ?)",
-        id,
-        sendsUsageData ? 1 : 0,
-      );
+      db.insert(accountSettings).values({ id, sendsUsageData }).run();
     },
     updateAccountSettings: (sendsUsageData) => {
-      sql.exec("UPDATE account_settings SET sends_usage_data = ?", sendsUsageData ? 1 : 0);
+      db.update(accountSettings).set({ sendsUsageData }).run();
     },
     insertAccountSettingChange: ({ writeId, sendsUsageData }) => {
-      sql.exec(
-        "INSERT INTO account_setting_changes (sync_write_receipt_id, sends_usage_data) VALUES (?, ?)",
-        writeId,
-        sendsUsageData ? 1 : 0,
-      );
+      db.insert(accountSettingChanges)
+        .values({ syncWriteReceiptId: writeId, sendsUsageData })
+        .run();
     },
     insertRecordChange: ({ recordType, recordId, writeId }) => {
-      const { sequence } = sql
-        .exec<{ sequence: number }>(
-          "INSERT INTO record_changes (record_type, record_id) VALUES (?, ?) RETURNING sequence",
-          recordType,
-          recordId,
-        )
-        .one();
-      sql.exec(
-        "INSERT INTO sync_write_record_changes (record_change_sequence, sync_write_receipt_id) VALUES (?, ?)",
-        sequence,
-        writeId,
-      );
+      const change = db
+        .insert(recordChanges)
+        .values({ recordType, recordId })
+        .returning({ sequence: recordChanges.sequence })
+        .get();
+      db.insert(syncWriteRecordChanges)
+        .values({ recordChangeSequence: change.sequence, syncWriteReceiptId: writeId })
+        .run();
     },
-    findLatestChangePerRecord: (afterSequence, limit) =>
-      sql
-        .exec<{ sequence: number; record_type: string; record_id: string }>(
-          `SELECT MAX(sequence) AS sequence, record_type, record_id
-           FROM record_changes
-           WHERE sequence > ?
-           GROUP BY record_type, record_id
-           ORDER BY MAX(sequence)
-           LIMIT ?`,
-          afterSequence,
-          limit,
-        )
-        .toArray()
-        .map((row) => ({
-          sequence: row.sequence,
-          recordType: parseRecordType(row.record_type),
-          recordId: row.record_id,
-        })),
+    findLatestChangePerRecord: (afterSequence, limit) => {
+      const latestSequence = sql<number>`max(${recordChanges.sequence})`;
+      return db
+        .select({
+          sequence: latestSequence,
+          recordType: recordChanges.recordType,
+          recordId: recordChanges.recordId,
+        })
+        .from(recordChanges)
+        .where(gt(recordChanges.sequence, afterSequence))
+        .groupBy(recordChanges.recordType, recordChanges.recordId)
+        .orderBy(latestSequence)
+        .limit(limit)
+        .all();
+    },
   };
 };
 
 const insertRequestLog = (
-  sql: SqlStorage,
+  db: DrizzleSqliteDODatabase,
   {
     id,
     receivedAt,
@@ -240,81 +213,61 @@ const insertRequestLog = (
     clientState: Parameters<SyncStore["insertPushRequestLog"]>[0]["clientState"];
   },
 ): void => {
-  sql.exec(
-    `INSERT INTO sync_request_logs
-       (id, device_id, received_at, time_zone, app_version, os_version,
-        pending_write_count, oldest_pending_write_age_seconds, pending_photo_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    id,
-    clientState.deviceId,
-    receivedAt.getTime(),
-    clientState.timeZone,
-    clientState.appVersion,
-    clientState.osVersion,
-    clientState.pendingWriteCount,
-    clientState.oldestPendingWriteAgeSeconds ?? null,
-    clientState.pendingPhotoCount,
-  );
+  db.insert(syncRequestLogs)
+    .values({
+      id,
+      deviceId: clientState.deviceId,
+      receivedAt,
+      timeZone: clientState.timeZone,
+      appVersion: clientState.appVersion,
+      osVersion: clientState.osVersion,
+      pendingWriteCount: clientState.pendingWriteCount,
+      oldestPendingWriteAgeSeconds: clientState.oldestPendingWriteAgeSeconds ?? null,
+      pendingPhotoCount: clientState.pendingPhotoCount,
+    })
+    .run();
 };
 
-const parseOutcome = (row: { result: string; reason: string | null }): SyncWriteOutcome => {
-  const outcomeSchema = z.discriminatedUnion("result", [
-    z.object({
-      result: z.enum(["applied", "ignored_duplicate", "ignored_tombstone", "kept_corrected"]),
-    }),
-    z.object({
-      result: z.literal("rejected"),
-      reason: z.enum([
-        "out_of_range",
-        "invalid_time_zone",
-        "version_too_low",
-        "record_not_found",
-        "record_before_started_on",
-      ]),
-    }),
-  ]);
-  return outcomeSchema.parse({ result: row.result, reason: row.reason ?? undefined });
-};
-
-const parseRecordType = (recordType: string): RecordType => {
-  if (recordType !== "weight_record" && recordType !== "account_settings") {
-    throw new Error(`知らない記録の種類: ${recordType}`);
+const toOutcome = (row: {
+  result: typeof syncWriteReceipts.$inferSelect.result;
+  reason: typeof syncWriteRejections.$inferSelect.reason | null;
+}): SyncWriteOutcome => {
+  if (row.result !== "rejected") {
+    return { result: row.result };
   }
-  return recordType;
+  if (row.reason === null) {
+    throw new Error("拒んだ書き込みに理由が無い");
+  }
+  return { result: "rejected", reason: row.reason };
 };
 
-type WeightRecordRow = {
-  id: string;
-  weight_kg: number;
-  measured_at: number;
-  time_zone: string;
-  version: number;
-  source_app_name: string | null;
-  source_bundle_id: string | null;
-  weight_sample_uuid: string | null;
-  body_fat_percentage: number | null;
-  body_fat_sample_uuid: string | null;
-};
-
-const toWeightRecord = (row: WeightRecordRow): WeightRecord => ({
-  id: row.id,
-  weightKg: row.weight_kg,
-  measuredAt: new Date(row.measured_at),
-  timeZone: row.time_zone,
-  version: row.version,
+const toWeightRecord = ({
+  record,
+  imported,
+  bodyFat,
+}: {
+  record: typeof weightRecords.$inferSelect;
+  imported: typeof importedWeightRecords.$inferSelect | null;
+  bodyFat: typeof importedBodyFatPercentages.$inferSelect | null;
+}): WeightRecord => ({
+  id: record.id,
+  weightKg: record.weightKg,
+  measuredAt: record.measuredAt,
+  timeZone: record.timeZone,
+  version: record.version,
   imported:
-    row.source_app_name === null || row.source_bundle_id === null || row.weight_sample_uuid === null
+    imported === null
       ? undefined
       : {
-          sourceAppName: row.source_app_name,
-          sourceBundleId: row.source_bundle_id,
-          healthkitSampleUuid: row.weight_sample_uuid,
+          sourceAppName: imported.sourceAppName,
+          sourceBundleId: imported.sourceBundleId,
+          healthkitSampleUuid: imported.healthkitSampleUuid,
           bodyFat:
-            row.body_fat_percentage === null || row.body_fat_sample_uuid === null
+            bodyFat === null
               ? undefined
               : {
-                  percentage: row.body_fat_percentage,
-                  healthkitSampleUuid: row.body_fat_sample_uuid,
+                  percentage: bodyFat.bodyFatPercentage,
+                  healthkitSampleUuid: bodyFat.healthkitSampleUuid,
                 },
         },
 });

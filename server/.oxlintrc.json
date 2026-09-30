@@ -13,7 +13,12 @@
   },
   "rules": {
     "func-style": ["error", "expression"],
-    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
+    "typescript/consistent-type-assertions": [
+      "error",
+      {
+        "assertionStyle": "never"
+      }
+    ],
     "typescript/consistent-return": "off",
     "byethrow/consistent-namespace": ["error", "R"],
     "byethrow/no-ambiguous-error-type": "error",
@@ -26,5 +31,35 @@
     "byethrow/prefer-result-maybe-async": "error",
     "nu-tori/no-switch-statement": "error"
   },
-  "ignorePatterns": ["worker-configuration.d.ts"]
+  "ignorePatterns": ["worker-configuration.d.ts"],
+  "overrides": [
+    {
+      "files": ["src/domain/**/*.ts", "src/*/domain/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/http", "**/http/**"],
+                "message": "ドメイン層から HTTP の受け口を import しない。ドメイン層は、受け口・Durable Object・実行基盤の型や API に触れない（server/AGENTS.md の「層」）"
+              },
+              {
+                "group": ["**/durable-object", "**/durable-object/**"],
+                "message": "ドメイン層から Durable Object を import しない。ドメイン層は、受け口・Durable Object・実行基盤の型や API に触れない（server/AGENTS.md の「層」）"
+              },
+              {
+                "group": ["cloudflare:*"],
+                "message": "ドメイン層から cloudflare:* を import しない。ドメイン層は、受け口・Durable Object・実行基盤の型や API に触れない（server/AGENTS.md の「層」）"
+              },
+              {
+                "group": ["hono", "hono/**", "@hono/**"],
+                "message": "ドメイン層から hono を import しない。ドメイン層は、受け口・Durable Object・実行基盤の型や API に触れない（server/AGENTS.md の「層」）"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

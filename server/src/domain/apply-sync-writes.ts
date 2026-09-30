@@ -1,9 +1,9 @@
 import { match } from "ts-pattern";
-import type { AccountSettings } from "./account-settings";
+import type { AccountSettings } from "../account-settings/domain/account-settings";
 import { computeCalendarDay } from "./compute-calendar-day";
 import { computeUsageEvents } from "./compute-usage-events";
 import { isTimeZoneName } from "./is-time-zone-name";
-import { isWithinAcceptedRange } from "./is-within-accepted-range";
+import { isWithinAcceptedRange } from "../weight-record/domain/is-within-accepted-range";
 import type { SyncClientState } from "./sync-client-state";
 import type { SyncStore } from "./sync-store";
 import type { SyncWrite } from "./sync-write";
@@ -14,7 +14,7 @@ import type {
   UpdateWeightRecordOutcome,
 } from "./sync-write-outcome";
 import type { UsageEvent } from "./usage-event";
-import type { WeightRecord } from "./weight-record";
+import type { WeightRecord } from "../weight-record/domain/weight-record";
 
 export const applySyncWrites = (
   store: SyncStore,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import testCases from "../../../../shared/accepted-ranges.test-cases.json";
+import testCases from "../../../../../shared/accepted-ranges.test-cases.json";
 import { isWithinAcceptedRange } from "./index";
 
 describe("受け付ける値の範囲", () => {

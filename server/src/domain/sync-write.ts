@@ -1,5 +1,5 @@
-import type { AccountSettings } from "./account-settings";
-import type { WeightRecord } from "./weight-record";
+import type { AccountSettings } from "../account-settings/domain/account-settings";
+import type { WeightRecord } from "../weight-record/domain/weight-record";
 
 export type SyncWrite = { id: string } & (
   | { type: "create_weight_record"; weightRecord: Omit<WeightRecord, "version"> }

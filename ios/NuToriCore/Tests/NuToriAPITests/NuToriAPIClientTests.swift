@@ -1,5 +1,6 @@
 import Foundation
 import HTTPTypes
+import NuToriTestSupport
 import Testing
 
 @testable import NuToriAPI

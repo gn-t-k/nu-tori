@@ -26,7 +26,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       signIn: { signedInAt: Date; timeZone: string | undefined },
     ): void {
       setUser({ id: accountId });
-      recordFirstSignIn(createFirstSignInStore(this.ctx.storage.sql), signIn);
+      recordFirstSignIn(createFirstSignInStore(this.ctx.storage), signIn);
     }
 
     async pushSyncWrites(
