@@ -186,8 +186,9 @@ public actor SyncEngine {
                 continue
             }
             resolvedWriteIds.append(entry.writeId)
-            // 登録簿の種類の受け付けなかった書き込みは、サーバーの今の値を当てる形で戻す（#182）
-            guard !registeredNames.contains(entry.kind) else {
+            // 登録簿の種類の受け付けなかった書き込みは、種類が決める。体重記録の戻し方はここに残す（#185 で消す）
+            guard entry.kind == Self.weightRecordKind || !registeredNames.contains(entry.kind)
+            else {
                 continue
             }
             let write = try PendingWrite(entry: entry)
@@ -250,8 +251,9 @@ public actor SyncEngine {
                 let legacyChanges = page.changes.filter { change in
                     !kinds.contains { $0.owns(change) }
                 }
-                let incoming = legacyChanges.compactMap(\.weightRecord)
-                let revised = try await revisedManualRecords(in: incoming)
+                // ヘルスケアへの書き直しは、登録簿の種類と今の道のどちらで届いた体重記録にも行う
+                let revised = try await revisedManualRecords(
+                    in: page.changes.compactMap(\.weightRecord))
                 state = SyncState(
                     afterSequence: page.nextAfterSequence,
                     hasCompletedInitialPull: state.hasCompletedInitialPull || !page.hasMore,
@@ -263,7 +265,7 @@ public actor SyncEngine {
                         SyncBoxResult(
                             kindChanges: ownedChanges,
                             pulled: PulledChanges(
-                                records: incoming,
+                                records: legacyChanges.compactMap(\.weightRecord),
                                 removedRecordIds: legacyChanges.compactMap(\.removedRecordId),
                                 accountSettings: legacyChanges.compactMap(\.accountSettings).last,
                                 state: state
@@ -407,78 +409,6 @@ extension SyncChange {
         case .accountSettings(let settings):
             AccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData)
         case .weightRecord, .weightRecordDeletion, .unknown: nil
-        }
-    }
-}
-
-extension NewWeightRecord {
-    fileprivate init(_ record: WeightRecord) {
-        self.init(
-            id: record.id,
-            weightKilograms: record.kilograms,
-            measuredAt: record.instant,
-            timeZone: record.timeZone,
-            imported: record.inputSource.importedSource.map { source in
-                SyncedWeightRecord.Imported(
-                    sourceAppName: source.appName,
-                    sourceBundleId: source.bundleId,
-                    healthKitSampleId: source.healthKitSampleId,
-                    bodyFat: source.bodyFat.map {
-                        SyncedWeightRecord.Imported.BodyFat(
-                            percentage: $0.percentage,
-                            healthKitSampleId: $0.healthKitSampleId
-                        )
-                    }
-                )
-            }
-        )
-    }
-}
-
-extension WeightRecordCorrection {
-    fileprivate init(_ record: WeightRecord) {
-        self.init(
-            id: record.id,
-            weightKilograms: record.kilograms,
-            measuredAt: record.instant,
-            timeZone: record.timeZone,
-            version: record.version
-        )
-    }
-}
-
-extension WeightRecord {
-    fileprivate init(_ record: SyncedWeightRecord) {
-        self.init(
-            id: record.id,
-            kilograms: record.weightKilograms,
-            instant: record.measuredAt,
-            timeZone: record.timeZone,
-            inputSource: record.imported.map { imported in
-                .imported(
-                    ImportedSource(
-                        appName: imported.sourceAppName,
-                        bundleId: imported.sourceBundleId,
-                        healthKitSampleId: imported.healthKitSampleId,
-                        bodyFat: imported.bodyFat.map {
-                            ImportedSource.BodyFat(
-                                percentage: $0.percentage,
-                                healthKitSampleId: $0.healthKitSampleId
-                            )
-                        }
-                    )
-                )
-            } ?? .manual,
-            version: record.version
-        )
-    }
-}
-
-extension WeightRecord.InputSource {
-    fileprivate var importedSource: WeightRecord.ImportedSource? {
-        switch self {
-        case .manual: nil
-        case .imported(let source): source
         }
     }
 }
