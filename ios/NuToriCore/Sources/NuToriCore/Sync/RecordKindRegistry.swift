@@ -18,18 +18,8 @@ public struct RecordKindRegistry<Cache>: Sendable {
         Set(kinds.map(\.name))
     }
 
-    /// サーバーの種類の名前の列挙（`ServerRecordKindNames.names`）との食い違い。名前は `RecordKindName.serverName` で寄せる。
-    /// 端末に無い名前の変更は pull で黙って読み飛ばされるので、テストで見張る
-    public func mismatch(withServerNames serverNames: Set<String>) -> RecordKindNameMismatch {
-        let deviceNames = Set(names.map(\.serverName))
-        return RecordKindNameMismatch(
-            onlyOnServer: serverNames.subtracting(deviceNames),
-            onlyOnDevice: deviceNames.subtracting(serverNames)
-        )
-    }
-
     /// 同期の働きに見せる形
     public var synced: [any SyncedRecordKind] {
-        kinds.map { $0 as any SyncedRecordKind }
+        kinds.map(\.synced)
     }
 }

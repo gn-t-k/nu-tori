@@ -9,7 +9,6 @@ import NuToriTestSupport
 struct RecordKindMock: RecordKind {
     struct Failure: Error, Equatable {}
 
-    let name = RecordKindName.accountSettings
     static let changeKind = "note"
     let failure: Failure?
 
@@ -32,23 +31,7 @@ struct RecordKindMock: RecordKind {
         )
     }
 
-    func owns(_ change: SyncChange) -> Bool {
-        if case .unknown(let kind) = change { kind == Self.changeKind } else { false }
-    }
-
-    func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        if let failure { throw failure }
-        let recordId = UUID(uuidString: String(decoding: entry.content, as: UTF8.self))!
-        return .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: recordId)
-    }
-
-    func rejection(
-        of entry: PendingEntry,
-        reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
-    ) throws -> KindRejection {
-        KindRejection.none
-    }
+    var synced: any SyncedRecordKind { Synced(failure: failure) }
 
     func apply(_ changes: [SyncChange], to cache: RecordCacheMock) throws {
         if let failure { throw failure }
@@ -58,5 +41,29 @@ struct RecordKindMock: RecordKind {
     func erase(_ cache: RecordCacheMock) throws {
         if let failure { throw failure }
         cache.clearApplied(forKind: name)
+    }
+
+    /// キャッシュに依らない部分
+    private struct Synced: SyncedRecordKind {
+        let name = RecordKindName.accountSettings
+        let failure: Failure?
+
+        func owns(_ change: SyncChange) -> Bool {
+            if case .unknown(let kind) = change { kind == RecordKindMock.changeKind } else { false }
+        }
+
+        func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
+            if let failure { throw failure }
+            let recordId = UUID(uuidString: String(decoding: entry.content, as: UTF8.self))!
+            return .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: recordId)
+        }
+
+        func rejection(
+            of entry: PendingEntry,
+            reason: SyncWriteResult.RejectionReason,
+            current: SyncWriteResult.Current?
+        ) throws -> KindRejection {
+            KindRejection.none
+        }
     }
 }

@@ -6,7 +6,7 @@ public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
     case weightRecord = "weight-record"
 
     /// サーバーの種類の名前の列挙（`server/openapi.json` の `RecordKindName`。snake_case）での書き方。
-    /// 端末とサーバーの名前の対応はここだけに書く（`RecordKindNameMismatch` がサーバーの列挙と突き合わせる）
+    /// 端末とサーバーの名前の対応はここだけに書く（サーバーの列挙との突き合わせはテストが行う）
     public var serverName: String {
         switch self {
         case .accountSettings: "account_settings"

@@ -1,36 +1,19 @@
+import NuToriAPI
 import NuToriCore
 import NuToriTestSupport
 import Testing
 
 @Suite("サーバーと端末の種類の名前")
 struct RecordKindNameTests {
-    @Suite("片方にだけある名前があるとき")
-    struct Mismatching {
-        let registry: RecordKindRegistry<RecordCacheMock>
+    // 端末が登録を忘れたときは onlyOnServer に、サーバーの列挙に無い名前を端末が登録したときは onlyOnDevice に出る
+    @Test("メモリの登録簿の名前が、サーバーの列挙と過不足なく揃っていること")
+    func matchesServerKindNames() {
+        let deviceNames = Set(RecordKindRegistry<RecordCacheMock>.ok().names.map(\.serverName))
 
-        init() {
-            registry = .ok()
-        }
+        let onlyOnServer = ServerRecordKindNames.names.subtracting(deviceNames)
+        let onlyOnDevice = deviceNames.subtracting(ServerRecordKindNames.names)
 
-        // 端末が登録を忘れたとき
-        @Test("サーバーにだけある名前を見つけること")
-        func findsNameOnlyOnServer() {
-            let mismatch = registry.mismatch(
-                withServerNames: Set(registry.names.map(\.serverName)).union(["meal_photo"]))
-
-            #expect(mismatch.onlyOnServer == ["meal_photo"])
-            #expect(mismatch.onlyOnDevice.isEmpty)
-            #expect(!mismatch.isEmpty)
-        }
-
-        // サーバーの列挙に無い名前を、端末が登録したとき
-        @Test("端末にだけある名前を見つけること")
-        func findsNameOnlyOnDevice() {
-            let mismatch = registry.mismatch(withServerNames: ["weight_record"])
-
-            #expect(mismatch.onlyOnDevice == ["account_settings"])
-            #expect(mismatch.onlyOnServer.isEmpty)
-            #expect(!mismatch.isEmpty)
-        }
+        #expect(onlyOnServer.isEmpty, "サーバーにだけ: \(onlyOnServer)")
+        #expect(onlyOnDevice.isEmpty, "端末にだけ: \(onlyOnDevice)")
     }
 }

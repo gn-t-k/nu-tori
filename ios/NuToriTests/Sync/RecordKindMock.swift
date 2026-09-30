@@ -22,7 +22,6 @@ nonisolated struct RecordKindMock: RecordKind {
         private let erased = Mutex(0)
     }
 
-    let name = RecordKindName.accountSettings
     static let changeKind = "note"
     let log: Log
     let failure: Failure?
@@ -44,21 +43,7 @@ nonisolated struct RecordKindMock: RecordKind {
 
     static let change = SyncChange.unknown(kind: Self.changeKind)
 
-    func owns(_ change: SyncChange) -> Bool {
-        if case .unknown(let kind) = change { kind == Self.changeKind } else { false }
-    }
-
-    func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: UUID())
-    }
-
-    func rejection(
-        of entry: PendingEntry,
-        reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
-    ) throws -> KindRejection {
-        KindRejection.none
-    }
+    var synced: any SyncedRecordKind { Synced() }
 
     func apply(_ changes: [SyncChange], to cache: ModelContext) throws {
         if let failure { throw failure }
@@ -68,5 +53,26 @@ nonisolated struct RecordKindMock: RecordKind {
     func erase(_ cache: ModelContext) throws {
         if let failure { throw failure }
         log.didErase()
+    }
+
+    /// キャッシュに依らない部分
+    private nonisolated struct Synced: SyncedRecordKind {
+        let name = RecordKindName.accountSettings
+
+        func owns(_ change: SyncChange) -> Bool {
+            if case .unknown(let kind) = change { kind == RecordKindMock.changeKind } else { false }
+        }
+
+        func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
+            .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: UUID())
+        }
+
+        func rejection(
+            of entry: PendingEntry,
+            reason: SyncWriteResult.RejectionReason,
+            current: SyncWriteResult.Current?
+        ) throws -> KindRejection {
+            KindRejection.none
+        }
     }
 }

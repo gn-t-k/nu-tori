@@ -5,23 +5,7 @@ public import NuToriCore
 public struct WeightRecordKindMock: RecordKind {
     public init() {}
 
-    public var name: RecordKindName { syncing.name }
-
-    public func owns(_ change: SyncChange) -> Bool {
-        syncing.owns(change)
-    }
-
-    public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        try syncing.syncWrite(for: entry)
-    }
-
-    public func rejection(
-        of entry: PendingEntry,
-        reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
-    ) throws -> KindRejection {
-        try syncing.rejection(of: entry, reason: reason, current: current)
-    }
+    public var synced: any SyncedRecordKind { syncing }
 
     public func apply(_ changes: [SyncChange], to cache: RecordCacheMock) throws {
         let current = syncing.current(from: changes)
