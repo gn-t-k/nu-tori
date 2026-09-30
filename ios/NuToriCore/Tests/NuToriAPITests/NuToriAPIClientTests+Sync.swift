@@ -1,5 +1,6 @@
 import Foundation
 import HTTPTypes
+import NuToriTestSupport
 import Testing
 
 @testable import NuToriAPI
@@ -70,8 +71,8 @@ extension NuToriAPIClientTests {
                 #expect(sent.request.path == "/v1/sync/writes")
                 #expect(sent.request.headerFields[.authorization] == "Bearer session-1")
                 #expect(
-                    try SentSyncWritesBody(json: sent.body ?? "")
-                        == SentSyncWritesBody(
+                    try SentWritesBody(json: sent.body ?? "")
+                        == SentWritesBody(
                             clientState: .init(
                                 deviceId: "00000000-0000-4000-8000-0000000000D1",
                                 timeZone: "Asia/Tokyo",
@@ -83,17 +84,15 @@ extension NuToriAPIClientTests {
                             ),
                             isFinalBatch: true,
                             writes: [
-                                .init(
+                                .createWeightRecord(
                                     id: createWriteId.uuidString,
-                                    type: "create_weight_record",
-                                    weightRecord: .init(
+                                    .init(
                                         id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
                                         timeZone: "Asia/Tokyo", version: nil, imported: nil)
                                 ),
-                                .init(
+                                .updateWeightRecord(
                                     id: updateWriteId.uuidString,
-                                    type: "update_weight_record",
-                                    weightRecord: .init(
+                                    .init(
                                         id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
                                         timeZone: "Asia/Tokyo", version: 2, imported: nil)
                                 ),
@@ -138,11 +137,10 @@ extension NuToriAPIClientTests {
 
                 let sent = try #require(transport.requests.first)
                 #expect(
-                    try SentSyncWritesBody(json: sent.body ?? "").writes == [
-                        .init(
+                    try SentWritesBody(json: sent.body ?? "").writes == [
+                        .updateAccountSettings(
                             id: writeId.uuidString,
-                            accountSettings: .init(
-                                id: settingsId.uuidString, sendsUsageData: false)
+                            .init(id: settingsId.uuidString, sendsUsageData: false)
                         )
                     ])
             }
@@ -191,10 +189,10 @@ extension NuToriAPIClientTests {
 
                 let sent = try #require(transport.requests.first)
                 let weightRecord = try #require(
-                    SentSyncWritesBody(json: sent.body ?? "").writes.first?.weightRecord)
+                    SentWritesBody(json: sent.body ?? "").writes.first?.weightRecord)
                 #expect(
                     weightRecord.imported
-                        == SentSyncWritesBody.Imported(
+                        == SentWritesBody.Imported(
                             sourceAppName: "Withings",
                             sourceBundleId: "com.withings.wiScaleNG",
                             healthkitSampleUuid: "00000000-0000-4000-8000-0000000000C1",
@@ -249,13 +247,10 @@ extension NuToriAPIClientTests {
                     [writes[0]], isFinalBatch: false, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
-                let body = try JSONDecoder().decode(
-                    SentSourceDeletedWritesBody.self, from: Data((sent.body ?? "").utf8))
                 #expect(
-                    body.writes == [
-                        .init(
+                    try SentWritesBody(json: sent.body ?? "").writes == [
+                        .sourceDeletedWeightRecord(
                             id: writeIds[0].uuidString,
-                            type: "source_deleted_weight_record",
                             weightRecordId: weightRecordId.uuidString)
                     ])
             }
@@ -273,16 +268,6 @@ extension NuToriAPIClientTests {
                             SyncWriteResult(writeId: writeIds[2], outcome: .keptCorrected),
                         ])
                 )
-            }
-
-            private struct SentSourceDeletedWritesBody: Decodable {
-                let writes: [Write]
-
-                struct Write: Decodable, Equatable {
-                    let id: String
-                    let type: String
-                    let weightRecordId: String
-                }
             }
         }
 

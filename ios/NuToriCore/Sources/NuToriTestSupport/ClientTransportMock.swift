@@ -1,24 +1,31 @@
-import Foundation
-import HTTPTypes
-import OpenAPIRuntime
-import Testing
+public import Foundation
+public import HTTPTypes
+public import OpenAPIRuntime
 
-final class ClientTransportMock: ClientTransport, @unchecked Sendable {
-    private(set) var requests: [(request: HTTPRequest, body: String?)] = []
+/// API のトランスポートの差し替え。送った要求を記録する
+///
+/// 作り方は、答え方ごとに `ok`（どの要求にも同じ答え）、`sync`（同期の書き込みと取得）、
+/// `account`（サインインと削除）、`error`（投げる）の4つ
+public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
+    public private(set) var requests: [(request: HTTPRequest, body: String?)] = []
 
-    var pushBodies: [PushRequestBody] {
+    /// 送り待ちを送った要求の本文。知らない種類の書き込みがあれば投げる
+    public var pushBodies: [SentWritesBody] {
         get throws {
             try requests.filter { $0.request.path == "/v1/sync/writes" }.map {
-                try JSONDecoder().decode(PushRequestBody.self, from: Data(($0.body ?? "").utf8))
+                try SentWritesBody(json: $0.body ?? "")
             }
         }
     }
 
-    var pullQueries: [[String: String]] {
+    /// 変更の取得の要求のクエリ
+    public var pullQueries: [[String: String]] {
         get throws {
             try requests.filter { $0.request.path?.hasPrefix("/v1/sync/changes") == true }.map {
-                let components = try #require(
-                    URLComponents(string: "https://api.example\($0.request.path ?? "")"))
+                guard
+                    let components = URLComponents(
+                        string: "https://api.example\($0.request.path ?? "")")
+                else { throw URLError(.badURL) }
                 return Dictionary(
                     uniqueKeysWithValues: (components.queryItems ?? []).map {
                         ($0.name, $0.value ?? "")
@@ -27,9 +34,21 @@ final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
-    static let emptyPage = #"{"changes":[],"hasMore":false,"nextAfterSequence":0,"startedOn":null}"#
+    public static let emptyPage =
+        #"{"changes":[],"hasMore":false,"nextAfterSequence":0,"startedOn":null}"#
 
-    static func ok(
+    /// どの要求にも同じ状態コードと本文で答える
+    public static func ok(status: HTTPResponse.Status = .ok, json: String? = nil)
+        -> ClientTransportMock
+    {
+        ClientTransportMock { _, _ in
+            guard let json else { return (HTTPResponse(status: status), nil) }
+            return jsonResponse(status: status, json: json)
+        }
+    }
+
+    /// 書き込みには受け付けたか断ったかを送った順に返し、取得には `pullPages` を1ページずつ返す
+    public static func sync(
         pushStatus: HTTPResponse.Status = .ok,
         rejectedWriteIndexes: Set<Int> = [],
         pullPages: [String] = [emptyPage]
@@ -37,14 +56,14 @@ final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         let pulls = Pulls(pages: pullPages)
         return ClientTransportMock { request, body in
             if request.path == "/v1/sync/writes" {
-                return pushResponse(
+                return try pushResponse(
                     status: pushStatus, body: body, rejectedWriteIndexes: rejectedWriteIndexes)
             }
             return jsonResponse(status: .ok, json: pulls.next())
         }
     }
 
-    static func account(
+    public static func account(
         startStatus: HTTPResponse.Status = .created,
         accountId: String = "account-1",
         deleteStatus: HTTPResponse.Status = .noContent,
@@ -68,11 +87,11 @@ final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
-    static func error(_ error: any Error) -> ClientTransportMock {
+    public static func error(_ error: any Error) -> ClientTransportMock {
         ClientTransportMock { _, _ in throw error }
     }
 
-    @concurrent func send(
+    @concurrent public func send(
         _ request: HTTPRequest,
         body: HTTPBody?,
         baseURL: URL,
@@ -108,13 +127,11 @@ final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         status: HTTPResponse.Status,
         body: String?,
         rejectedWriteIndexes: Set<Int>
-    ) -> (HTTPResponse, HTTPBody?) {
+    ) throws -> (HTTPResponse, HTTPBody?) {
         guard status == .ok else {
             return (HTTPResponse(status: status), nil)
         }
-        let writes =
-            (try? JSONDecoder().decode(PushRequestBody.self, from: Data((body ?? "").utf8)))?
-            .writes ?? []
+        let writes = try SentWritesBody(json: body ?? "").writes
         let results = writes.enumerated().map { index, write in
             let writeId = write.id
             return rejectedWriteIndexes.contains(index)
