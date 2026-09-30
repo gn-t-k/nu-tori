@@ -6,13 +6,15 @@ public actor HealthSyncEngine {
         store: any SyncStore,
         ownBundleId: String,
         timeZone: @escaping @Sendable () -> TimeZone,
-        now: @escaping @Sendable () -> Date
+        now: @escaping @Sendable () -> Date,
+        errorReporting: any ErrorReportingSession
     ) {
         self.healthStore = healthStore
         self.store = store
         self.ownBundleId = ownBundleId
         self.timeZone = timeZone
         self.now = now
+        self.errorReporting = errorReporting
     }
 
     public func requestAuthorizationOnFirstWeightEntry() async throws {
@@ -30,11 +32,15 @@ public actor HealthSyncEngine {
 
     public func importChanges() async throws {
         let state = try await store.healthSyncState()
-        let readBoundary = try await healthStore.earliestAuthorizedSampleDate()
-        let changes = try await healthStore.readWeightChanges(
-            after: state.anchor,
-            notBefore: readBoundary
-        )
+        let readBoundary = try await reporting(.healthRead) {
+            try await healthStore.earliestAuthorizedSampleDate()
+        }
+        let changes = try await reporting(.healthRead) {
+            try await healthStore.readWeightChanges(
+                after: state.anchor,
+                notBefore: readBoundary
+            )
+        }
         var cachedRecords: [UUID: WeightRecord] = [:]
         for recordId in HealthImportPlan.affectedRecordIds(in: changes) {
             cachedRecords[recordId] = try await store.weightRecord(id: recordId)
@@ -66,7 +72,9 @@ public actor HealthSyncEngine {
         guard record.isManual, try await healthStore.isWeightWriteAuthorized() else {
             return
         }
-        try await healthStore.writeWeight(HealthWeightWrite(record))
+        try await reporting(.healthWrite) {
+            try await healthStore.writeWeight(HealthWeightWrite(record))
+        }
     }
 
     public func exportCachedManualRecordsOnNewWriteAuthorization() async throws {
@@ -77,7 +85,9 @@ public actor HealthSyncEngine {
             return
         }
         for record in try await store.weightRecords() where record.isManual {
-            try await healthStore.writeWeight(HealthWeightWrite(record))
+            try await reporting(.healthWrite) {
+                try await healthStore.writeWeight(HealthWeightWrite(record))
+            }
         }
         try await store.saveHealthSyncState(
             HealthSyncState(anchor: state.anchor, hasWrittenCachedManualRecords: true)
@@ -89,6 +99,21 @@ public actor HealthSyncEngine {
     private let ownBundleId: String
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
+    private let errorReporting: any ErrorReportingSession
+
+    private func reporting<T: Sendable>(
+        _ area: HandledFailure,
+        _ body: () async throws -> T
+    ) async throws -> T {
+        do {
+            return try await body()
+        } catch {
+            if let failure = HandledFailure.reported(error, as: area) {
+                await errorReporting.report(failure)
+            }
+            throw error
+        }
+    }
 
     private func requestAuthorizationIfNotYetRequested() async throws {
         guard try await healthStore.authorizationRequestStatus() == .notYetRequested else {

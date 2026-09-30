@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		0A0000000000000000000014 /* NuToriCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000013 /* NuToriCore */; };
 		0A0000000000000000000020 /* NuToriAPI in Frameworks */ = {isa = PBXBuildFile; productRef = 0A000000000000000000001F /* NuToriAPI */; };
+		0A0000000000000000000034 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000032 /* PostHog */; };
+		0A0000000000000000000035 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000033 /* Sentry */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +61,8 @@
 			files = (
 				0A0000000000000000000014 /* NuToriCore in Frameworks */,
 				0A0000000000000000000020 /* NuToriAPI in Frameworks */,
+				0A0000000000000000000034 /* PostHog in Frameworks */,
+				0A0000000000000000000035 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +116,8 @@
 			packageProductDependencies = (
 				0A0000000000000000000013 /* NuToriCore */,
 				0A000000000000000000001F /* NuToriAPI */,
+				0A0000000000000000000032 /* PostHog */,
+				0A0000000000000000000033 /* Sentry */,
 			);
 			productName = NuTori;
 			productReference = 0A0000000000000000000006 /* NuTori.app */;
@@ -168,6 +174,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				0A0000000000000000000012 /* XCLocalSwiftPackageReference "NuToriCore" */,
+				0A0000000000000000000030 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+				0A0000000000000000000031 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0A0000000000000000000003 /* Products */;
@@ -410,6 +418,25 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		0A0000000000000000000030 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = exactVersion;
+				version = 3.85.3;
+			};
+		};
+		0A0000000000000000000031 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa.git";
+			requirement = {
+				kind = exactVersion;
+				version = 9.29.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		0A0000000000000000000013 /* NuToriCore */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -420,6 +447,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0A0000000000000000000012 /* XCLocalSwiftPackageReference "NuToriCore" */;
 			productName = NuToriAPI;
+		};
+		0A0000000000000000000032 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0A0000000000000000000030 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+		0A0000000000000000000033 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0A0000000000000000000031 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

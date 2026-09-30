@@ -12,7 +12,8 @@ public actor SyncEngine {
         device: SyncDevice,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
-        readableKindsVersion: Int
+        readableKindsVersion: Int,
+        errorReporting: any ErrorReportingSession
     ) {
         self.store = store
         self.client = client
@@ -21,6 +22,7 @@ public actor SyncEngine {
         self.timeZone = timeZone
         self.now = now
         self.readableKindsVersion = readableKindsVersion
+        self.errorReporting = errorReporting
     }
 
     public func save(_ write: WeightEntry.Write) async throws {
@@ -91,6 +93,7 @@ public actor SyncEngine {
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
     private let readableKindsVersion: Int
+    private let errorReporting: any ErrorReportingSession
 
     private func pendingWrite(_ operation: PendingWrite.Operation) -> PendingWrite {
         PendingWrite(writeId: UUID(), enqueuedAt: now(), operation: operation)
@@ -116,6 +119,9 @@ public actor SyncEngine {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                if let failure = HandledFailure.reported(error, as: .sync) {
+                    await errorReporting.report(failure)
+                }
                 return .unavailable
             }
             switch result {
@@ -196,6 +202,9 @@ public actor SyncEngine {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                if let failure = HandledFailure.reported(error, as: .sync) {
+                    await errorReporting.report(failure)
+                }
                 return .unavailable
             }
             switch result {

@@ -11,7 +11,8 @@ extension SyncEngine {
         store: SyncStoreMock,
         transport: ClientTransportMock,
         accountId: String = fixtureAccountId,
-        readableKindsVersion: Int = 1
+        readableKindsVersion: Int = 1,
+        errorReporting: ErrorReportingSessionMock = .ok()
     ) -> SyncEngine {
         SyncEngine(
             store: store,
@@ -28,7 +29,8 @@ extension SyncEngine {
             ),
             timeZone: { TimeZone(identifier: "Asia/Tokyo")! },
             now: { fixtureNow },
-            readableKindsVersion: readableKindsVersion
+            readableKindsVersion: readableKindsVersion,
+            errorReporting: errorReporting
         )
     }
 }
