@@ -1,48 +1,11 @@
 import type { AccountSettings } from "../account-settings/domain/account-settings";
 import type { RecordType } from "./record-type";
-import type { SyncClientState } from "./sync-client-state";
-import type {
-  CreateWeightRecordOutcome,
-  SourceDeletedWeightRecordOutcome,
-  SyncWriteOutcome,
-  UpdateWeightRecordOutcome,
-} from "./sync-write-outcome";
+import type { LedgerStore } from "./sync-ledger/ledger-store";
 import type { WeightRecord } from "../weight-record/domain/weight-record";
 
-export type SyncStore = {
-  transaction: <T>(run: () => T) => T;
+// 帳簿の置き場に、今の道で当てる種類（体重記録、アカウントの設定）の置き場を足したもの
+export type SyncStore = LedgerStore<RecordType> & {
   findStartedOn: () => string | undefined;
-  findLatestRequestReceivedAt: () => Date | undefined;
-  insertPushRequestLog: (log: {
-    id: string;
-    receivedAt: Date;
-    clientState: SyncClientState;
-    isFinalBatch: boolean;
-  }) => void;
-  insertPullRequestLog: (log: {
-    id: string;
-    receivedAt: Date;
-    clientState: SyncClientState;
-    afterSequence: number;
-  }) => void;
-  findWriteOutcome: (writeId: string) => SyncWriteOutcome | undefined;
-  insertWriteReceipt: (
-    receipt: {
-      writeId: string;
-      requestLogId: string;
-      positionInRequest: number;
-      recordId: string;
-    } & (
-      | { kind: "create"; recordType: "weight_record"; outcome: CreateWeightRecordOutcome }
-      | { kind: "update"; recordType: "weight_record"; outcome: UpdateWeightRecordOutcome }
-      | {
-          kind: "source_deleted";
-          recordType: "weight_record";
-          outcome: SourceDeletedWeightRecordOutcome;
-        }
-      | { kind: "update"; recordType: "account_settings"; outcome: { result: "applied" } }
-    ),
-  ) => void;
   findWeightRecord: (id: string) => WeightRecord | undefined;
   existsImportedSample: (healthkitSampleUuid: string) => boolean;
   existsWeightRecordDeletion: (recordId: string) => boolean;
@@ -57,13 +20,4 @@ export type SyncStore = {
   insertAccountSettings: (settings: AccountSettings) => void;
   updateAccountSettings: (sendsUsageData: boolean) => void;
   insertAccountSettingChange: (change: { writeId: string; sendsUsageData: boolean }) => void;
-  insertRecordChange: (change: {
-    recordType: RecordType;
-    recordId: string;
-    writeId: string;
-  }) => void;
-  findLatestChangePerRecord: (
-    afterSequence: number,
-    limit: number,
-  ) => { sequence: number; recordType: RecordType; recordId: string }[];
 };

@@ -1,5 +1,6 @@
 import { instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
+import { createRecordKinds } from "../domain/create-record-kinds";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
 import { applySyncWrites } from "../domain/apply-sync-writes";
 import { pullSyncChanges } from "../domain/pull-sync-changes";
@@ -9,6 +10,7 @@ import { createSentryOptions } from "../observability/create-sentry-options";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
+import { createRecordKindStores } from "./create-record-kind-stores";
 import { createSyncStore } from "./create-sync-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
@@ -34,10 +36,14 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     ) {
       setUser({ id: accountId });
-      const { results, usageEvents } = applySyncWrites(createSyncStore(this.ctx.storage), {
-        ...request,
-        receivedAt: new Date(),
-      });
+      const { results, usageEvents } = applySyncWrites(
+        createSyncStore(this.ctx.storage),
+        createRecordKinds(createRecordKindStores(this.ctx.storage)),
+        {
+          ...request,
+          receivedAt: new Date(),
+        },
+      );
       await sendUsageEvents(this.env, accountId, usageEvents);
       return results;
     }
@@ -47,10 +53,14 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: { clientState: SyncClientState; afterSequence: number },
     ) {
       setUser({ id: accountId });
-      const { usageEvents, ...pulled } = pullSyncChanges(createSyncStore(this.ctx.storage), {
-        ...request,
-        receivedAt: new Date(),
-      });
+      const { usageEvents, ...pulled } = pullSyncChanges(
+        createSyncStore(this.ctx.storage),
+        createRecordKinds(createRecordKindStores(this.ctx.storage)),
+        {
+          ...request,
+          receivedAt: new Date(),
+        },
+      );
       await sendUsageEvents(this.env, accountId, usageEvents);
       return pulled;
     }
