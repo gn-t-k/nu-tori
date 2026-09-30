@@ -10,7 +10,7 @@ struct SwiftDataSyncStoreBoxTests {
         afterSequence: 9, hasCompletedInitialPull: true, readableKinds: ["note"], startedOn: nil)
 
     static func pulled(_ state: SyncState) -> PulledChanges {
-        PulledChanges(records: [], removedRecordIds: [], accountSettings: nil, state: state)
+        PulledChanges(records: [], removedRecordIds: [], state: state)
     }
 
     @Suite("登録簿の種類の送り待ちと変更を一緒に当てるとき")

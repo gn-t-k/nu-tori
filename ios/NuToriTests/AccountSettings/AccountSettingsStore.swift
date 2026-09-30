@@ -1,4 +1,5 @@
 import Foundation
+import NuToriAPI
 import NuToriCore
 import Testing
 
@@ -36,8 +37,8 @@ struct AccountSettingsStore {
     struct ArrivedThenMissing {
         let store: SwiftDataSyncStore
         let arrived: AccountSettings
-        let arrivedChanges: PulledChanges
-        let missingChanges: PulledChanges
+        let arrivedResult: SyncBoxResult
+        let missingResult: SyncBoxResult
 
         init() async throws {
             store = try SwiftDataSyncStore(inMemory: true)
@@ -52,34 +53,45 @@ struct AccountSettingsStore {
                 )
             )
             arrived = AccountSettings(id: AccountSettingsStore.settingsId, sendsUsageData: true)
-            arrivedChanges = PulledChanges(
-                records: [],
-                removedRecordIds: [],
-                accountSettings: arrived,
-                state: SyncState(
-                    afterSequence: 1,
-                    hasCompletedInitialPull: true,
-                    readableKinds: ["weight-record"],
-                    startedOn: nil
+            arrivedResult = SyncBoxResult(
+                kindChanges: [
+                    KindChanges(
+                        kind: AccountSettingsSyncKind.kindName,
+                        changes: [
+                            .accountSettings(
+                                SyncedAccountSettings(
+                                    id: arrived.id, sendsUsageData: arrived.sendsUsageData))
+                        ])
+                ],
+                pulled: PulledChanges(
+                    records: [],
+                    removedRecordIds: [],
+                    state: SyncState(
+                        afterSequence: 1,
+                        hasCompletedInitialPull: true,
+                        readableKinds: ["weight-record"],
+                        startedOn: nil
+                    )
                 )
             )
-            missingChanges = PulledChanges(
-                records: [],
-                removedRecordIds: [],
-                accountSettings: nil,
-                state: SyncState(
-                    afterSequence: 2,
-                    hasCompletedInitialPull: true,
-                    readableKinds: ["weight-record"],
-                    startedOn: nil
+            missingResult = SyncBoxResult(
+                pulled: PulledChanges(
+                    records: [],
+                    removedRecordIds: [],
+                    state: SyncState(
+                        afterSequence: 2,
+                        hasCompletedInitialPull: true,
+                        readableKinds: ["weight-record"],
+                        startedOn: nil
+                    )
                 )
             )
         }
 
         @Test("届いた設定が残ること")
         func keepsArrivedSettings() async throws {
-            try await store.apply(arrivedChanges)
-            try await store.apply(missingChanges)
+            try await store.apply(arrivedResult)
+            try await store.apply(missingResult)
             #expect(try await store.accountSettings() == arrived)
         }
     }

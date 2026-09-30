@@ -87,15 +87,17 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         try failWriteIfNeeded()
         entries.append(contentsOf: result.enqueuing)
         appliedKindChanges.append(contentsOf: result.kindChanges)
+        for group in result.kindChanges where group.kind == AccountSettingsSyncKind.kindName {
+            if let latest = AccountSettingsSyncKind.latestSettings(in: group.changes) {
+                settings = latest
+            }
+        }
         if let changes = result.pulled {
             for record in changes.records {
                 records[record.id] = record
             }
             for recordId in changes.removedRecordIds {
                 records[recordId] = nil
-            }
-            if let accountSettings = changes.accountSettings {
-                settings = accountSettings
             }
             state = changes.state
             appliedChanges.append(changes)
@@ -171,7 +173,8 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         self.entries = entries
         self.state = state
         self.healthState = healthState
-        self.recordKinds = recordKinds
+        // アカウントの設定は、アプリでは登録簿の1行。ここでも登録簿の種類として持つ
+        self.recordKinds = [AccountSettingsSyncKind()] + recordKinds
         self.failure = failure
         self.writeFailure = writeFailure
     }

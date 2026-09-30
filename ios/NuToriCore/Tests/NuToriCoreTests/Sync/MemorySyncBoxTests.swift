@@ -85,7 +85,7 @@ struct MemorySyncBoxTests {
                         changes: Array(repeating: .unknown(kind: "note"), count: 250))
                 ],
                 pulled: PulledChanges(
-                    records: [], removedRecordIds: [], accountSettings: nil,
+                    records: [], removedRecordIds: [],
                     state: .fixture(afterSequence: 7))
             )
         }
@@ -117,7 +117,7 @@ struct MemorySyncBoxTests {
             result = SyncBoxResult(
                 kindChanges: [KindChanges(kind: "note", changes: [.unknown(kind: "note")])],
                 pulled: PulledChanges(
-                    records: [], removedRecordIds: [], accountSettings: nil,
+                    records: [], removedRecordIds: [],
                     state: .fixture(afterSequence: 9))
             )
         }
