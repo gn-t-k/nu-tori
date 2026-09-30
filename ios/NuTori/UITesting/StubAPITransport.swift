@@ -56,7 +56,7 @@
                 case "/v1/sessions":
                     return createdSession()
                 case "/v1/sync/writes":
-                    return json(.ok, try await answerWeightScreenPush(body))
+                    return json(.ok, try await applyOrRejectWeightScreenPush(body))
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
                     return json(.ok, try weightScreenBody())
                 default:
@@ -127,7 +127,7 @@
             return #"{"results":[\#(results.joined(separator: ","))]}"#
         }
 
-        private func answerWeightScreenPush(_ body: HTTPBody?) async throws -> String {
+        private func applyOrRejectWeightScreenPush(_ body: HTTPBody?) async throws -> String {
             switch behavior {
             case .weightScreenPushRejected:
                 let current =
