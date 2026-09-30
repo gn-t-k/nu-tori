@@ -3,8 +3,7 @@ public struct RingStrip: Sendable {
     public let weeks: [Week]
 
     public init(timeline: Timeline) {
-        let daysWithWeightRecord = Set(
-            timeline.days.filter { !$0.weightRecords.isEmpty }.map(\.day))
+        let ringsByDay = Dictionary(uniqueKeysWithValues: timeline.days.map { ($0.day, $0.ring) })
         let firstDay = timeline.dayRange.lowerBound
         let mondays = stride(
             from: firstDay.startOfWeek,
@@ -17,7 +16,7 @@ public struct RingStrip: Sendable {
                     let day = monday.advanced(by: offset)
                     return day < firstDay
                         ? .beforeFirstDay(day)
-                        : .ring(day, hasWeightRecord: daysWithWeightRecord.contains(day))
+                        : .ring(day, ringsByDay[day] ?? DayRing(hasWeightRecord: false))
                 }
             )
         }
@@ -26,12 +25,16 @@ public struct RingStrip: Sendable {
     public struct Week: Hashable, Sendable {
         /// 月曜から日曜まで
         public let slots: [Slot]
+
+        public init(slots: [Slot]) {
+            self.slots = slots
+        }
     }
 
     public enum Slot: Hashable, Sendable {
         /// 丸を描かない
         case beforeFirstDay(CalendarDay)
-        case ring(CalendarDay, hasWeightRecord: Bool)
+        case ring(CalendarDay, DayRing)
 
         public var day: CalendarDay {
             switch self {

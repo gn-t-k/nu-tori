@@ -1,6 +1,7 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 extension SyncEngineTests {
@@ -14,7 +15,7 @@ extension SyncEngineTests {
 
             init() {
                 store = .ok()
-                engine = .fixture(store: store, transport: .ok())
+                engine = .fixture(store: store, transport: .sync())
                 expectedSettings = .fixture(sendsUsageData: false)
             }
 
@@ -39,7 +40,7 @@ extension SyncEngineTests {
 
             init() {
                 store = .ok()
-                engine = .fixture(store: store, transport: .ok())
+                engine = .fixture(store: store, transport: .sync())
                 expectedSettings = .fixture(sendsUsageData: true)
                 expectedOperations = [
                     .updateAccountSettings(.fixture(sendsUsageData: false)),
@@ -65,7 +66,7 @@ extension SyncEngineTests {
             let store: SyncStoreMock
             let transport: ClientTransportMock
             let engine: SyncEngine
-            let expectedSettings: PushRequestBody.Write.AccountSettings
+            let expectedSettings: SentWritesBody.AccountSettings
 
             init() {
                 expectedSettings = .init(
@@ -82,7 +83,7 @@ extension SyncEngineTests {
                         )
                     ]
                 )
-                transport = .ok()
+                transport = .sync()
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -116,7 +117,7 @@ extension SyncEngineTests {
                         )
                     ]
                 )
-                engine = .fixture(store: store, transport: .ok(rejectedWriteIndexes: [0]))
+                engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0]))
             }
 
             @Test("送り待ちから外し、設定は変えず、受け付けなかった記録として返さないこと")
@@ -143,7 +144,7 @@ extension SyncEngineTests {
                 store = .ok(accountSettings: .fixture(sendsUsageData: true))
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":7,"kind":"account_settings","recordId":"\(settingsId)",
@@ -176,7 +177,7 @@ extension SyncEngineTests {
                 store = .ok(accountSettings: .fixture(sendsUsageData: false))
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":3,"kind":"account_settings","recordId":"x","record":{"sendsUsageData":true}}
@@ -203,7 +204,7 @@ extension SyncEngineTests {
             let engine: SyncEngine
 
             init() {
-                engine = .fixture(store: .ok(), transport: .ok())
+                engine = .fixture(store: .ok(), transport: .sync())
             }
 
             @Test("既定のオンとみなし、PostHog を始めてよいと判定すること")
@@ -221,7 +222,7 @@ extension SyncEngineTests {
             let engine: SyncEngine
 
             init() {
-                engine = .fixture(store: .ok(), transport: .ok())
+                engine = .fixture(store: .ok(), transport: .sync())
             }
 
             @Test("オフとして読み、PostHog を始めないと判定すること")
@@ -264,7 +265,7 @@ extension SyncEngineTests {
                     .uuidString
                 engine = .fixture(
                     store: .ok(),
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[{"sequence":1,"kind":"account_settings","recordId":"\(settingsId)",
                           "record":{"id":"\(settingsId)","sendsUsageData":false}}],
