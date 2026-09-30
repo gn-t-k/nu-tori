@@ -26,6 +26,7 @@ private nonisolated enum StoredPendingOperation: Codable {
     case create(StoredWeightRecord)
     case correct(record: StoredWeightRecord, previous: StoredWeightRecord)
     case sourceDeleted(recordId: UUID)
+    case updateAccountSettings(StoredAccountSettings)
 
     init(_ operation: PendingWrite.Operation) {
         switch operation {
@@ -36,6 +37,8 @@ private nonisolated enum StoredPendingOperation: Codable {
                 record: StoredWeightRecord(record), previous: StoredWeightRecord(previous))
         case .sourceDeletedWeightRecord(let recordId):
             self = .sourceDeleted(recordId: recordId)
+        case .updateAccountSettings(let settings):
+            self = .updateAccountSettings(StoredAccountSettings(settings))
         }
     }
 
@@ -48,6 +51,22 @@ private nonisolated enum StoredPendingOperation: Codable {
                 try record.weightRecord(), previous: try previous.weightRecord())
         case .sourceDeleted(let recordId):
             .sourceDeletedWeightRecord(recordId: recordId)
+        case .updateAccountSettings(let settings):
+            .updateAccountSettings(settings.accountSettings())
         }
+    }
+}
+
+private nonisolated struct StoredAccountSettings: Codable {
+    var id: UUID
+    var sendsUsageData: Bool
+
+    init(_ settings: AccountSettings) {
+        id = settings.id
+        sendsUsageData = settings.sendsUsageData
+    }
+
+    func accountSettings() -> AccountSettings {
+        AccountSettings(id: id, sendsUsageData: sendsUsageData)
     }
 }

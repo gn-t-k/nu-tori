@@ -6,6 +6,11 @@ import Testing
 struct AccountDevice {
     static let previousAccount = SignedInAccount(
         accountId: "account-1", appleUserId: "apple-user-1")
+    static let seededSettings = AccountSettings.fixture(sendsUsageData: true)
+    static let seededHealthState = HealthSyncState(
+        anchor: HealthAnchor(data: Data([0x01])),
+        hasWrittenCachedManualRecords: true
+    )
 
     let log: CallLog
     let keychain: SessionKeychainMock
@@ -32,8 +37,11 @@ struct AccountDevice {
                 hasOpenedBefore: hasOpenedBefore, account: previousAccount, log: log),
             syncStore: .ok(
                 records: [try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")],
+                accountSettings: seededSettings,
                 pendingWrites: pendingWrites,
-                state: .fixture(afterSequence: 12, hasCompletedInitialPull: hasCompletedInitialPull)
+                state: .fixture(
+                    afterSequence: 12, hasCompletedInitialPull: hasCompletedInitialPull),
+                healthState: seededHealthState
             ),
             appleCredentials: appleCredentials,
             backgroundTransfers: .ok(),
@@ -51,9 +59,10 @@ struct AccountDevice {
     ) -> AccountDevice {
         AccountDevice(
             log: log,
-            keychain: .ok(log: log),
+            keychain: .ok(token: nil, log: log),
             deviceStore: .ok(
                 hasOpenedBefore: hasOpenedBefore,
+                account: nil,
                 hasSignInAgainMark: hasSignInAgainMark,
                 log: log
             ),
@@ -89,8 +98,10 @@ struct AccountDevice {
     var remainingItems: [String] {
         var remaining: [String] = []
         if !syncStore.records.isEmpty { remaining.append("キャッシュの記録") }
+        if syncStore.settings != nil { remaining.append("アカウントの設定") }
         if !syncStore.pending.isEmpty { remaining.append("送り待ち") }
         if syncStore.state != nil { remaining.append("同期の状態") }
+        if syncStore.healthState != .initial { remaining.append("ヘルスケアの同期の進み具合") }
         if backgroundTransfers.cancelAndDeleteCount == 0 { remaining.append("バックグラウンドの送信") }
         if keychain.token != nil { remaining.append("セッション") }
         if deviceStore.account != nil { remaining.append("アカウント ID と Apple の識別子") }
@@ -105,7 +116,9 @@ extension AccountDevice {
     func expectNothingErased() {
         #expect(syncStore.eraseAllCount == 0)
         #expect(syncStore.records.count == 1)
+        #expect(syncStore.settings == AccountDevice.seededSettings)
         #expect(syncStore.pending.count == 1)
+        #expect(syncStore.healthState == AccountDevice.seededHealthState)
         #expect(keychain.token == "session-1")
         #expect(deviceStore.account == AccountDevice.previousAccount)
         #expect(backgroundTransfers.cancelAndDeleteCount == 0)

@@ -21,7 +21,8 @@ import NuToriCore
         case .correct(let record):
             onReplacingRecord(record.id)
         }
-        let record = try await engineForThisDevice().save(write)
+        guard let engine = try await engineForThisDevice() else { return }
+        let record = try await engine.save(write)
         await health.export(record)
         // 開いたときの同期が先に送り待ちを読んでいたら、それが終わってから送り直す
         if let inFlight {
@@ -41,6 +42,7 @@ import NuToriCore
         accountSession: AccountSession,
         health: HealthSyncSession,
         deviceId: @escaping @MainActor () -> UUID,
+        accountId: @escaping @MainActor () async throws -> String?,
         hasSession: @escaping @MainActor () async -> Bool
     ) {
         self.store = store
@@ -48,6 +50,7 @@ import NuToriCore
         self.accountSession = accountSession
         self.health = health
         self.deviceId = deviceId
+        self.accountId = accountId
         self.hasSession = hasSession
     }
 
@@ -90,6 +93,7 @@ import NuToriCore
     private let accountSession: AccountSession
     private let health: HealthSyncSession
     private let deviceId: @MainActor () -> UUID
+    private let accountId: @MainActor () async throws -> String?
     private let hasSession: @MainActor () async -> Bool
     private var didRegisterRefresh = false
     private var inFlight: Task<SyncResult?, any Error>?
@@ -134,8 +138,8 @@ import NuToriCore
     }
 
     private func runSync() async throws -> SyncResult? {
-        guard await hasSession() else { return nil }
-        let result = try await engineForThisDevice().sync()
+        guard await hasSession(), let engine = try await engineForThisDevice() else { return nil }
+        let result = try await engine.sync()
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }
@@ -143,11 +147,13 @@ import NuToriCore
         return result
     }
 
-    private func engineForThisDevice() -> SyncEngine {
+    private func engineForThisDevice() async throws -> SyncEngine? {
+        guard let signedInAccountId = try await accountId() else { return nil }
         let version = ProcessInfo.processInfo.operatingSystemVersion
         return SyncEngine(
             store: store,
             client: client,
+            accountId: signedInAccountId,
             device: SyncDevice(
                 deviceId: deviceId(),
                 appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")

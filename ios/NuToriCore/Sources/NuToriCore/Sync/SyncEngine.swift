@@ -3,11 +3,12 @@ public import NuToriAPI
 
 public actor SyncEngine {
     /// 新しい種類の記録を読めるようにしたら上げる。上げると、更新して最初の同期で全部取り直す
-    public static let currentReadableKindsVersion = 1
+    public static let currentReadableKindsVersion = 2
 
     public init(
         store: any SyncStore,
         client: NuToriAPIClient,
+        accountId: String,
         device: SyncDevice,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
@@ -16,6 +17,7 @@ public actor SyncEngine {
     ) {
         self.store = store
         self.client = client
+        self.accountId = accountId
         self.device = device
         self.timeZone = timeZone
         self.now = now
@@ -49,6 +51,22 @@ public actor SyncEngine {
         }
     }
 
+    /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
+    public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
+        let settings = AccountSettings(
+            id: AccountSettings.id(forAccountId: accountId),
+            sendsUsageData: sendsUsageData
+        )
+        try await store.save(settings, enqueuing: pendingWrite(.updateAccountSettings(settings)))
+    }
+
+    public func usageDataSetting() async throws -> UsageDataSetting {
+        UsageDataSetting(
+            accountSettings: try await store.accountSettings(),
+            hasCompletedInitialPull: try await store.syncState()?.hasCompletedInitialPull ?? false
+        )
+    }
+
     public func sync() async throws -> SyncResult {
         var rejectedWrites: [RejectedWrite] = []
         let stoppedBy: SyncResult.StopReason?
@@ -73,6 +91,7 @@ public actor SyncEngine {
 
     private let store: any SyncStore
     private let client: NuToriAPIClient
+    private let accountId: String
     private let device: SyncDevice
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
@@ -161,6 +180,9 @@ public actor SyncEngine {
                 case .sourceDeletedWeightRecord:
                     // 戻す記録も、画面に出す記録も無い。消すかどうかを決めるのはサーバーで、送り直さない
                     break
+                case .updateAccountSettings:
+                    // サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
+                    break
                 }
             }
         }
@@ -196,6 +218,7 @@ public actor SyncEngine {
                     PulledChanges(
                         records: incoming,
                         removedRecordIds: page.changes.compactMap(\.removedRecordId),
+                        accountSettings: page.changes.compactMap(\.accountSettings).last,
                         state: state
                     )
                 )
@@ -290,6 +313,12 @@ extension PendingWrite {
             .updateWeightRecord(writeId: writeId, correction: WeightRecordCorrection(record))
         case .sourceDeletedWeightRecord(let recordId):
             .sourceDeletedWeightRecord(writeId: writeId, weightRecordId: recordId)
+        case .updateAccountSettings(let settings):
+            .updateAccountSettings(
+                writeId: writeId,
+                settings: SyncedAccountSettings(
+                    id: settings.id, sendsUsageData: settings.sendsUsageData)
+            )
         }
     }
 }
@@ -298,14 +327,22 @@ extension SyncChange {
     fileprivate var weightRecord: WeightRecord? {
         switch self {
         case .weightRecord(let record): WeightRecord(record)
-        case .weightRecordDeletion, .unknown: nil
+        case .accountSettings, .weightRecordDeletion, .unknown: nil
         }
     }
 
     fileprivate var removedRecordId: UUID? {
         switch self {
         case .weightRecordDeletion(let recordId): recordId
-        case .weightRecord, .unknown: nil
+        case .weightRecord, .accountSettings, .unknown: nil
+        }
+    }
+
+    fileprivate var accountSettings: AccountSettings? {
+        switch self {
+        case .accountSettings(let settings):
+            AccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData)
+        case .weightRecord, .weightRecordDeletion, .unknown: nil
         }
     }
 }

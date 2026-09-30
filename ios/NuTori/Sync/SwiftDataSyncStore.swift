@@ -3,7 +3,7 @@ import Foundation
 import NuToriCore
 import SwiftData
 
-/// 記録、送り待ち、同期の状態を1つの SwiftData に置く。保存はメインのコンテキストでだけ行う。
+/// 記録、アカウントの設定、送り待ち、同期の状態を1つの SwiftData に置く。保存はメインのコンテキストでだけ行う。
 /// バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
 nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unchecked Sendable {
     let container: ModelContainer
@@ -33,6 +33,20 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws {
         try await onMain { context in
             try Self.upsert(record, in: context)
+            context.insert(try CachedPendingWrite(write: write))
+            try context.save()
+        }
+    }
+
+    func accountSettings() async throws -> AccountSettings? {
+        try await onMain { context in
+            try Self.cachedAccountSettings(in: context)?.accountSettings()
+        }
+    }
+
+    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {
+        try await onMain { context in
+            try Self.write(settings, in: context)
             context.insert(try CachedPendingWrite(write: write))
             try context.save()
         }
@@ -96,6 +110,9 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             let batchSize = 100
             if changes.records.isEmpty {
                 try Self.remove(changes.removedRecordIds, in: context)
+                if let settings = changes.accountSettings {
+                    try Self.write(settings, in: context)
+                }
                 try Self.write(changes.state, in: context)
                 try context.save()
                 return
@@ -108,6 +125,9 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
                 }
                 if end == changes.records.count {
                     try Self.remove(changes.removedRecordIds, in: context)
+                    if let settings = changes.accountSettings {
+                        try Self.write(settings, in: context)
+                    }
                     try Self.write(changes.state, in: context)
                 }
                 try context.save()
@@ -122,6 +142,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             try context.delete(model: CachedPendingWrite.self)
             try context.delete(model: CachedSyncState.self)
             try context.delete(model: CachedHealthSyncState.self)
+            try context.delete(model: CachedAccountSettings.self)
             try context.save()
         }
     }
@@ -172,6 +193,8 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
                     try Self.upsert(record, in: context)
                 case .sourceDeletedWeightRecord:
                     break
+                case .updateAccountSettings(let settings):
+                    try Self.write(settings, in: context)
                 }
             }
             if state != nil || !pendingWrites.isEmpty {
@@ -254,8 +277,28 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         }
     }
 
+    @MainActor private static func cachedAccountSettings(in context: ModelContext) throws
+        -> CachedAccountSettings?
+    {
+        let key = CachedAccountSettings.onlyKey
+        var descriptor = FetchDescriptor<CachedAccountSettings>(
+            predicate: #Predicate { $0.singletonKey == key })
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
+    }
+
+    @MainActor private static func write(_ settings: AccountSettings, in context: ModelContext)
+        throws
+    {
+        if let existing = try cachedAccountSettings(in: context) {
+            existing.apply(settings)
+        } else {
+            context.insert(CachedAccountSettings(settings))
+        }
+    }
+
     private static func memoryContainer() throws -> ModelContainer {
-        let schema = Schema(versionedSchema: RecordStoreSchemaV2.self)
+        let schema = Schema(versionedSchema: RecordStoreSchemaV3.self)
         return try ModelContainer(
             for: schema,
             migrationPlan: RecordStoreMigrationPlan.self,
@@ -268,7 +311,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     }
 
     private static func openDiskContainer(in directory: URL) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: RecordStoreSchemaV2.self)
+        let schema = Schema(versionedSchema: RecordStoreSchemaV3.self)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appending(path: "RecordStore.store")
         do {

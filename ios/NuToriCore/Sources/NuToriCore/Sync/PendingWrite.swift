@@ -16,5 +16,7 @@ public struct PendingWrite: Sendable, Equatable {
         case correctWeightRecord(WeightRecord, previous: WeightRecord)
         /// ヘルスケアで元のサンプルが消えた体重記録。消すかどうかはサーバーが決める
         case sourceDeletedWeightRecord(recordId: UUID)
+        /// 記録が無くても直す書き込みで送る。サーバーが無ければ作る
+        case updateAccountSettings(AccountSettings)
     }
 }
