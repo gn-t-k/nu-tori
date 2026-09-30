@@ -26,16 +26,16 @@ import NuToriCore
         _ = try await syncAfterInFlight()
     }
 
-    /// 保存し終えたら返し、送るのは待たない。送れなかった分は送り待ちに残る
+    /// 送れなかった分は送り待ちに残る
     func turnOnUsageData() async throws {
         guard let accountId = await signedInAccountId() else { return }
         try await engineForThisDevice(accountId: accountId).setSendsUsageData(true)
         // 始めてよいかは、保存した設定を読んで決める
         await accountSession.beginObservationIfSignedIn()
-        sendSettingsInBackground()
+        syncInBackground()
     }
 
-    /// 保存し終えたら返し、送るのは待たない。送れなかった分は送り待ちに残る
+    /// 送れなかった分は送り待ちに残る
     func turnOffUsageData() async throws {
         guard let accountId = await signedInAccountId() else { return }
         // オフにした1件は、オフの設定が効くと送れなくなる
@@ -47,7 +47,7 @@ import NuToriCore
             await accountSession.beginObservationIfSignedIn()
             throw error
         }
-        sendSettingsInBackground()
+        syncInBackground()
     }
 
     func importHealthAndSendPending() async {
@@ -124,7 +124,7 @@ import NuToriCore
     private var networkMonitor: NWPathMonitor?
     private var networkWasUnavailable = false
 
-    private func sendSettingsInBackground() {
+    private func syncInBackground() {
         Task { _ = try? await self.syncAfterInFlight() }
     }
 
