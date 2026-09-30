@@ -34,12 +34,51 @@
           "rejectionReason": {
             "type": "string",
             "description": "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ"
+          },
+          "current": {
+            "$ref": "#/components/schemas/SyncWriteCurrent"
           }
         },
         "required": [
           "writeId",
           "result"
         ]
+      },
+      "SyncWriteCurrent": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "value（値）、deleted（削除の印）、absent（記録も削除の印も無い）のどれか。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が何も当てない",
+            "example": "value"
+          },
+          "change": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "example": "weight_record"
+              },
+              "recordId": {
+                "type": "string"
+              },
+              "record": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "kind",
+              "recordId",
+              "record"
+            ],
+            "description": "status が value か deleted のときだけ付く"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "description": "result が rejected のときだけ付く。その記録のサーバーの今の値で、要求の書き込みを全部当て終えた時点のもの。同じ書き込みの ID が再び届いたときも、最初の結果に、当て終えた時点の値を添える"
       },
       "SyncWrite": {
         "oneOf": [

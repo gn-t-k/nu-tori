@@ -1,7 +1,7 @@
 import type { SyncClientState } from "../sync-client-state";
-import type { RejectionReason } from "../sync-write-outcome";
+import type { RejectionReason, SyncWriteOutcome } from "../sync-write-outcome";
 import type { LedgerStore } from "./ledger-store";
-import type { PresentRecord, RecordKind, WriteBase, WriteKind } from "./record-kind";
+import type { CurrentRecord, PresentRecord, RecordKind, WriteBase, WriteKind } from "./record-kind";
 
 // 控えの ID は帳簿しか作れない。クラスの値は export せず型だけ出すので、外からは作れない
 class WriteReceiptId {
@@ -24,6 +24,20 @@ export type LedgerChange<TRecordType extends string, TValue> = {
   recordType: TRecordType;
   recordId: string;
   current: PresentRecord<TValue>;
+};
+
+// 受け付けなかった書き込みに添える、その記録のサーバーの今の値
+export type RejectedRecord<TRecordType extends string, TValue> = {
+  recordType: TRecordType;
+  recordId: string;
+  current: CurrentRecord<TValue>;
+};
+
+export type PushedResult<TRecordType extends string, TValue> = {
+  writeId: string;
+  outcome: SyncWriteOutcome;
+  // outcome が rejected のときだけ付く。要求の書き込みを全部当て終えた時点の値
+  rejectedRecord: RejectedRecord<TRecordType, TValue> | undefined;
 };
 
 // 登録簿にない種類の書き込み・変更は、型で来ない。実行時に来たら不具合として投げる
@@ -54,10 +68,14 @@ export const createSyncLedger = <
         isFinalBatch: request.isFinalBatch,
       });
       const rejectedWrites: RejectedWrite<TRecordType>[] = [];
-      const results = request.writes.map((write, positionInRequest) => {
-        const previousOutcome = store.findWriteOutcome(write.id);
-        if (previousOutcome !== undefined) {
-          return { writeId: write.id, outcome: previousOutcome };
+      const settled = request.writes.map((write, positionInRequest) => {
+        const previousReceipt = store.findWriteReceipt(write.id);
+        if (previousReceipt !== undefined) {
+          return {
+            writeId: write.id,
+            outcome: previousReceipt.outcome,
+            target: { recordType: previousReceipt.recordType, recordId: previousReceipt.recordId },
+          };
         }
         const owner = kinds.find((kind) => kind.writes?.isWrite(write) === true);
         if (owner?.writes === undefined) {
@@ -88,10 +106,37 @@ export const createSyncLedger = <
             reason: decision.outcome.reason,
           });
         }
-        return { writeId: write.id, outcome: decision.outcome };
+        return {
+          writeId: write.id,
+          outcome: decision.outcome,
+          target: { recordType: owner.name, recordId: decision.recordId },
+        };
       });
+      // 今の値は、要求の書き込みを全部当て終えてから読む。同じ書き込みの ID が再び届いたときも同じ（控えには持たない）
+      const results = settled.map(
+        ({ writeId, outcome, target }): PushedResult<TRecordType, TValue> => ({
+          writeId,
+          outcome,
+          rejectedRecord:
+            outcome.result === "rejected"
+              ? {
+                  recordType: target.recordType,
+                  recordId: target.recordId,
+                  current: readCurrentOf(target.recordType, target.recordId),
+                }
+              : undefined,
+        }),
+      );
       return { results, rejectedWrites, previousRequestReceivedAt };
     });
+
+  const readCurrentOf = (recordType: TRecordType, recordId: string): CurrentRecord<TValue> => {
+    const owner = kinds.find((kind) => kind.name === recordType);
+    if (owner === undefined) {
+      throw new Error(`登録簿に無い種類の控え: ${recordType}`);
+    }
+    return owner.readCurrent(recordId);
+  };
 
   const pull = (request: {
     clientState: SyncClientState;

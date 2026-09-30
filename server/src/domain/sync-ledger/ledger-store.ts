@@ -18,7 +18,10 @@ export type LedgerStore<TRecordType extends string> = {
     clientState: SyncClientState;
     afterSequence: number;
   }) => void;
-  findWriteOutcome: (writeId: string) => SyncWriteOutcome | undefined;
+  // 同じ書き込みの ID が再び届いたときに、最初の結果と、その書き込みが指した記録を返す
+  findWriteReceipt: (
+    writeId: string,
+  ) => { outcome: SyncWriteOutcome; recordType: TRecordType; recordId: string } | undefined;
   insertWriteReceipt: (receipt: {
     writeId: string;
     requestLogId: string;

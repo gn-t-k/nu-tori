@@ -361,7 +361,12 @@ describe("同期", () => {
 
     test("受け付けない書き込みに理由を添え、ほかの書き込みは当てること", () => {
       expect(results).toEqual([
-        { writeId: tooHeavy.id, result: "rejected", rejectionReason: "out_of_range" },
+        {
+          writeId: tooHeavy.id,
+          result: "rejected",
+          rejectionReason: "out_of_range",
+          current: { status: "absent" },
+        },
         { writeId: acceptable.id, result: "applied" },
       ]);
     });

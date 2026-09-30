@@ -4,8 +4,8 @@ import type { RecordKindStores } from "./record-kind-stores";
 import type { RecordType } from "./record-type";
 import type { SyncClientState } from "./sync-client-state";
 import type { LedgerStore } from "./sync-ledger/ledger-store";
+import type { PushedResult } from "./sync-ledger/sync-ledger";
 import type { SyncWrite } from "./sync-write";
-import type { SyncWriteOutcome } from "./sync-write-outcome";
 import type { UsageEvent } from "./usage-event";
 
 export const applySyncWrites = (
@@ -18,7 +18,7 @@ export const applySyncWrites = (
     receivedAt: Date;
   },
 ): {
-  results: { writeId: string; outcome: SyncWriteOutcome }[];
+  results: PushedResult<RecordType, unknown>[];
   usageEvents: UsageEvent[];
 } => {
   const pushed = createRecordLedger(ledgerStore, stores).push(request);

@@ -244,6 +244,132 @@ describe("体重記録の同期", () => {
     });
   });
 
+  describe("受け付けなかった書き込みに添える、サーバーの今の値", () => {
+    let recordId: string;
+    let measuredAt: number;
+    beforeEach(async () => {
+      // 使い始めた日より前の記録は直せないので、今の時刻で作る
+      measuredAt = Date.now();
+      const created = createWeightRecordWrite({
+        weightRecord: { weightKg: 72.4, measuredAt, timeZone: "Asia/Tokyo" },
+      });
+      recordId = String(created.weightRecord["id"]);
+      await pushSyncWrites(sessionToken, { writes: [created] });
+    });
+
+    describe("記録がある直す書き込みが受け付けられなかったとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId, { weightRecord: { version: 1 } })],
+        });
+      });
+
+      test("その記録の今の値を、取りに行く変更と同じ形で添えること", async () => {
+        expect((await response.json<PushResults>()).results[0]?.current).toEqual({
+          status: "value",
+          change: {
+            kind: "weight_record",
+            recordId,
+            record: {
+              id: recordId,
+              weightKg: 72.4,
+              measuredAt,
+              timeZone: "Asia/Tokyo",
+              version: 1,
+            },
+          },
+        });
+      });
+    });
+
+    describe("元のサンプルが消えて削除の印がある記録の直す書き込みが受け付けられなかったとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        await pushSyncWrites(sessionToken, { writes: [sourceDeletedWeightRecordWrite(recordId)] });
+        response = await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId, { weightRecord: { version: 1 } })],
+        });
+      });
+
+      test("削除の印を、取りに行く変更と同じ形で添えること", async () => {
+        expect((await response.json<PushResults>()).results[0]?.current).toEqual({
+          status: "deleted",
+          change: { kind: "weight_record_deletion", recordId, record: {} },
+        });
+      });
+    });
+
+    describe("記録の無い作る書き込みが受け付けられなかったとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [createWeightRecordWrite({ weightRecord: { weightKg: 19.9 } })],
+        });
+      });
+
+      test("無いことを、値とも削除の印とも見分けられる形で添えること", async () => {
+        expect((await response.json<PushResults>()).results[0]?.current).toEqual({
+          status: "absent",
+        });
+      });
+    });
+
+    describe("同じ要求で、同じ記録の直しが受け付けない、受け付けるの順に並んだとき", () => {
+      let results: PushResults["results"];
+      beforeEach(async () => {
+        const response = await pushSyncWrites(sessionToken, {
+          writes: [
+            updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 300.1 } }),
+            updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 70.0, version: 2 } }),
+          ],
+        });
+        ({ results } = await response.json<PushResults>());
+      });
+
+      test("受け付けなかった書き込みには、あとの書き込みを当て終えた値を添えること", () => {
+        expect(
+          results.map(({ result, current }) => ({ result, current: current?.change?.record })),
+        ).toEqual([
+          {
+            result: "rejected",
+            current: expect.objectContaining({ id: recordId, weightKg: 70.0, version: 2 }),
+          },
+          { result: "applied", current: undefined },
+        ]);
+      });
+    });
+
+    describe("受け付けなかった書き込みの ID が、あとの直しのあとに再び届いたとき", () => {
+      let rejected: ReturnType<typeof updateWeightRecordWrite>;
+      let resent: PushResults["results"];
+      beforeEach(async () => {
+        rejected = updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 300.1 } });
+        await pushSyncWrites(sessionToken, { writes: [rejected] });
+        await pushSyncWrites(sessionToken, {
+          writes: [updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 69.5 } })],
+        });
+        const response = await pushSyncWrites(sessionToken, { writes: [rejected] });
+        ({ results: resent } = await response.json<PushResults>());
+      });
+
+      test("最初の結果の種類と理由を返すこと", () => {
+        expect(resent[0]).toEqual(
+          expect.objectContaining({
+            result: "rejected",
+            rejectionReason: "out_of_range",
+          }),
+        );
+      });
+
+      test("今の値は、この要求を当て終えた時点のものを添えること", () => {
+        expect(resent[0]?.current?.change?.record).toEqual(
+          expect.objectContaining({ weightKg: 69.5, version: 2 }),
+        );
+      });
+    });
+  });
+
   describe("知らない ID の体重記録を直す書き込みを送ったとき", () => {
     let response: Response;
     beforeEach(async () => {
