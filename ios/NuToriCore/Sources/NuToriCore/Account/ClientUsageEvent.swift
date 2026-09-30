@@ -49,11 +49,16 @@ public enum ClientUsageEvent: Sendable, Equatable {
     }
 
     public var screenToken: String? {
-        guard case .screen(let screen) = self else { return nil }
-        switch screen {
-        case .timeline: return "timeline"
-        case .weight: return "weight"
-        case .weightEntry: return "weight_entry"
+        switch self {
+        case .weightRecorded, .weightCorrected, .weightInputCancelled, .usageDataTurnedOff,
+            .initialPullDuration:
+            nil
+        case .screen(.timeline):
+            "timeline"
+        case .screen(.weight):
+            "weight"
+        case .screen(.weightEntry):
+            "weight_entry"
         }
     }
 

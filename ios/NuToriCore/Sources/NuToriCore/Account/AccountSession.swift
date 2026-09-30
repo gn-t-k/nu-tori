@@ -115,11 +115,15 @@ public actor AccountSession {
     }
 
     public func noteInitialPull(_ pull: InitialPull) async {
-        guard case .firstCompletion(let startedAt, let endedAt) = pull else { return }
-        await beginObservationIfSignedIn()
-        guard (try? await usageSetting())?.canStartPostHog == true else { return }
-        let elapsed = max(0, endedAt.timeIntervalSince(startedAt))
-        await analytics.capture(.initialPullDuration(.seconds(elapsed)))
+        switch pull {
+        case .unfinished, .notYetComplete, .alreadyComplete:
+            return
+        case .firstCompletion(let startedAt, let endedAt):
+            await beginObservationIfSignedIn()
+            guard (try? await usageSetting())?.canStartPostHog == true else { return }
+            let elapsed = max(0, endedAt.timeIntervalSince(startedAt))
+            await analytics.capture(.initialPullDuration(.seconds(elapsed)))
+        }
     }
 
     /// オフの設定が届く前に、オフにしたことだけを1件送る

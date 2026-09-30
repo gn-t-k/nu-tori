@@ -22,10 +22,22 @@ extension AccountSessionTests {
                 #expect(device.errorReporting.identifiedAccountIds == ["account-1"])
                 #expect(device.analytics.identifiedAccountIds == ["account-1"])
             }
+        }
+
+        @Suite("サインイン済みで、初めて取得を終え、利用状況がオンのとき")
+        struct FirstCompletion {
+            let device: AccountDevice
+            let session: AccountSession
+            let started: Date
+
+            init() throws {
+                device = try .signedIn()
+                session = device.session()
+                started = Date(timeIntervalSince1970: 1_700_000_000)
+            }
 
             @Test("初回の取得にかかった時間を、PostHog を始めたあとに送ること")
             func sendsInitialPullDuration() async throws {
-                let started = Date(timeIntervalSince1970: 1_700_000_000)
                 await session.noteInitialPull(
                     .firstCompletion(startedAt: started, endedAt: started.addingTimeInterval(12))
                 )
