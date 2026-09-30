@@ -7,7 +7,7 @@ main() {
     for arg in "$@"; do
         case "$arg" in
             --fix) fix=true ;;
-            ios | ios-app | server) targets="$targets $arg" ;;
+            ios | ios-app | ios-ui-test | server) targets="$targets $arg" ;;
             *)
                 print_usage >&2
                 exit 2
@@ -19,6 +19,7 @@ main() {
         case "$target" in
             ios) check_ios ;;
             ios-app) check_ios_app ;;
+            ios-ui-test) check_ios_ui_test ;;
             server) check_server ;;
         esac
     done
@@ -114,19 +115,35 @@ check_ios_app() {
     # Linux と macOS で Foundation の振る舞いが違うことがあるので、macOS でも回す
     check_ios_package
 
-    step "アプリのビルドとテスト"
+    step "アプリと UI テストのビルド"
+    local simulator
+    simulator="$(latest_iphone_simulator)"
+    xcodebuild \
+        -project "$ios/NuTori.xcodeproj" \
+        -scheme NuTori \
+        -destination "id=$simulator" \
+        -disableAutomaticPackageResolution \
+        build-for-testing
+}
+
+# いつ回すかは docs/agents/tooling.md の CI の節
+check_ios_ui_test() {
+    check_ios_app
+
+    step "UI テスト"
     local simulator results="$ios/.build/NuTori.xcresult"
     simulator="$(latest_iphone_simulator)"
     # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
     xcrun simctl bootstatus "$simulator" -b
     rm -rf "$results"
+    # テストの診断をシミュレータから集めると、テストが通った回でも時間切れの10分まで待つことがある。落ちた理由は xcresult で足りる
     xcodebuild \
         -project "$ios/NuTori.xcodeproj" \
         -scheme NuTori \
         -destination "id=$simulator" \
         -resultBundlePath "$results" \
-        -disableAutomaticPackageResolution \
-        build test
+        -collect-test-diagnostics never \
+        test-without-building
 }
 
 check_ios_package() {
@@ -173,12 +190,13 @@ check_server() {
 
 print_usage() {
     cat << 'USAGE'
-使い方: scripts/check [ios | ios-app | server] [--fix]
-  引数なし  ios と server
-  ios       整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
-  ios-app   ロジックのパッケージのテストと、アプリのビルドとテスト（macOS だけ）
-  server    整形、Lint、型検査、OpenAPI の文書が最新か、テスト
-  --fix     直せるものを直してから確かめる
+使い方: scripts/check [ios | ios-app | ios-ui-test | server] [--fix]
+  引数なし     ios と server
+  ios          整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
+  ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
+  ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
+  server       整形、Lint、型検査、OpenAPI の文書が最新か、テスト
+  --fix        直せるものを直してから確かめる
 USAGE
 }
 
