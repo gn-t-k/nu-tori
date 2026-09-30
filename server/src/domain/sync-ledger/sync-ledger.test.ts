@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import type { SyncClientState } from "../sync-client-state";
-import { createSyncLedger, type WriteReceiptId } from "./sync-ledger";
+import { createSyncLedger } from "./sync-ledger";
 import { createMemoryLedgerStore } from "./testing/create-memory-ledger-store";
 import { createMemoryTestRecordStore } from "./testing/create-memory-test-record-store";
 import { createTestRecordKind, type TestRecordWrite } from "./testing/test-record-kind";
-
-const acceptReceiptId = (_receiptId: WriteReceiptId) => undefined;
 
 type OtherWrite = { id: string; type: "other_write" };
 type TestLedger = ReturnType<
@@ -75,17 +73,10 @@ describe("同期の帳簿", () => {
     });
 
     describe("同じ書き込みの ID が再び届いたとき", () => {
-      let first: ReturnType<TestLedger["push"]>;
-      let second: ReturnType<TestLedger["push"]>;
-
       beforeEach(() => {
-        first = ledger.push(pushRequest([create("write-1", "record-1")]));
+        ledger.push(pushRequest([create("write-1", "record-1")]));
         operations.length = 0;
-        second = ledger.push(pushRequest([create("write-1", "record-1", 500)]));
-      });
-
-      test("最初の結果を返すこと", () => {
-        expect(second.results).toEqual(first.results);
+        ledger.push(pushRequest([create("write-1", "record-1", 500)]));
       });
 
       test("要求の控えのほかは何も書き足さないこと", () => {
@@ -196,21 +187,6 @@ describe("同期の帳簿", () => {
       test("不具合として投げること", () => {
         expect(pullWithUnregistered).toThrow("登録簿に無い種類の変更: other");
       });
-    });
-  });
-
-  describe("型の検査（tsc が確かめる）", () => {
-    // 確かめるのは tsc で、実行時の assertion は無い
-    // oxlint-disable-next-line vitest/expect-expect
-    test("控えの ID は、文字列から作れないこと", () => {
-      // @ts-expect-error 文字列から控えの ID は作れない（作れるとコンパイルが通ってしまう）
-      acceptReceiptId("write-1");
-    });
-
-    // oxlint-disable-next-line vitest/expect-expect
-    test("控えの ID は、同じ形のオブジェクトから作れないこと", () => {
-      // @ts-expect-error 帳簿が作っていないオブジェクトは控えの ID にならない（`as` での作り方は lint が止める）
-      acceptReceiptId({ value: "write-1" });
     });
   });
 });

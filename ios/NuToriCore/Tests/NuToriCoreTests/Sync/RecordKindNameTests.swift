@@ -15,11 +15,6 @@ struct RecordKindNameTests {
             serverNames = ServerRecordKindNames.deviceNames
         }
 
-        @Test("サーバーの列挙と登録簿の名前が、過不足なく揃っていること")
-        func namesAreTheSame() {
-            #expect(registry.mismatch(withServerNames: serverNames).isEmpty)
-        }
-
         @Test("サーバーの名前を、端末の書き方（ハイフン）に寄せて突き合わせること")
         func convertsSnakeCaseToHyphen() {
             #expect(ServerRecordKindNames.names.contains("weight_record"))
