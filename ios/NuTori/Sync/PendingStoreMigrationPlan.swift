@@ -13,16 +13,14 @@ nonisolated enum PendingStoreMigrationPlan: SchemaMigrationPlan {
     }
 
     /// 版 1 から移すときに、中身から種類の名前を読めなかった送り待ちの印。空の名前の種類は無いので、ほかと紛れない。
-    /// 読めない行を種類の名前つきで残すと、送るたびに `UnknownRecordKindError` で同期が止まるので、開くときに `dropUnreadableRows` が捨てる
+    /// 読めない行を残すと、送り待ちを読むたびに失敗するので、開くときに `dropUnreadableRows` が捨てる
     static let unreadableKind = ""
 
-    /// 中身から種類の名前を読めなかった送り待ちを捨てる。捨てたものがあれば true（呼び出し側が `storeRecovery` に残す）。
-    /// 捨てた中身は記録に残さない（観測には数も送らない）
+    /// 種類の名前を読めない送り待ちを捨てる。`unreadableKind` の印の行と、今の `RecordKindName` に無い名前（新しい版が書いたものなど）の行。
+    /// 捨てたものがあれば true（呼び出し側が `storeRecovery` に残す）。捨てた中身は記録に残さない（観測には数も送らない）
     @MainActor static func dropUnreadableRows(in context: ModelContext) throws -> Bool {
-        let marker = unreadableKind
-        let rows = try context.fetch(
-            FetchDescriptor<PendingStoreSchemaV2.PendingWriteRow>(
-                predicate: #Predicate { $0.kind == marker }))
+        let rows = try context.fetch(FetchDescriptor<PendingStoreSchemaV2.PendingWriteRow>())
+            .filter { RecordKindName(rawValue: $0.kind) == nil }
         for row in rows {
             context.delete(row)
         }

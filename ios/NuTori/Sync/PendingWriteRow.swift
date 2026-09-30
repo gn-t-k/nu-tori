@@ -19,10 +19,10 @@ extension PendingWriteRow {
         self.init(entry: try write.entry())
     }
 
-    /// 保存した文字列を `RecordKindName` に読む。読めない名前（新しい版が書いたものなど）は `UnknownRecordKindError.unreadableName`
-    func entry() throws -> PendingEntry {
+    /// 保存した文字列を `RecordKindName` に読む。読めない名前の行は、開くときに捨てる（`PendingStoreMigrationPlan.dropUnreadableRows`）ので、ここには来ない
+    func entry() -> PendingEntry {
         guard let kindName = RecordKindName(rawValue: kind) else {
-            throw UnknownRecordKindError.unreadableName(kind)
+            preconditionFailure("読めない種類の名前の送り待ちは、開くときに捨てている: \(kind)")
         }
         return PendingEntry(
             writeId: writeId, enqueuedAt: enqueuedAt, kind: kindName, content: content)

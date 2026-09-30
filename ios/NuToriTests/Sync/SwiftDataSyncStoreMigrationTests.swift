@@ -196,6 +196,32 @@ struct SwiftDataSyncStoreMigrationTests {
         }
     }
 
+    @Suite("送り待ちの置き場が今の版で、知らない種類の名前の送り待ちがあるとき")
+    @MainActor
+    struct PendingStoreWithUnknownKindName {
+        let store: SwiftDataSyncStore
+
+        init() throws {
+            let directory = SwiftDataSyncStoreTests.makeDirectory()
+            try SwiftDataSyncStoreMigrationTests.writeCurrentPendingStoreWithUnknownKindName(
+                in: directory)
+            store = try SwiftDataSyncStore(directory: directory)
+        }
+
+        @Test("知らない名前の送り待ちだけを捨て、読めるものは残すこと")
+        func dropsOnlyUnknownKindRow() async throws {
+            #expect(
+                try await store.pendingEntries().map(\.writeId) == [
+                    SwiftDataSyncStoreMigrationTests.correction.writeId
+                ])
+        }
+
+        @Test("対処した失敗として残すこと")
+        func keepsRecovery() {
+            #expect(store.takeRecoveries() == [.storeRecovery])
+        }
+    }
+
     @Suite("更新して最初に開くとき、今の1つの置き場に中身を読めない送り待ちがあるとき")
     @MainActor
     struct LegacyStoreWithUnreadableRow {
@@ -285,6 +311,29 @@ struct SwiftDataSyncStoreMigrationTests {
                 writeId: unreadableWriteId,
                 enqueuedAt: correction.enqueuedAt,
                 operationJSON: Data("読めない中身".utf8)
+            ))
+        try context.save()
+    }
+
+    /// 今の版のスキーマで、知らない種類の名前（新しい版が書いたもの）の送り待ちも入れて、送り待ちの置き場のファイルを書く
+    @MainActor
+    private static func writeCurrentPendingStoreWithUnknownKindName(in directory: URL) throws {
+        let folder = directory.appending(path: "PendingStore", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let container = try StoreFiles.container(
+            schema: Schema(versionedSchema: PendingStoreSchemaV2.self),
+            plan: PendingStoreMigrationPlan.self,
+            name: "PendingStore",
+            at: folder.appending(path: "PendingStore.store")
+        )
+        let context = container.mainContext
+        context.insert(PendingWriteRow(entry: try correction.entry()))
+        context.insert(
+            PendingWriteRow(
+                writeId: unreadableWriteId,
+                enqueuedAt: correction.enqueuedAt,
+                kind: "meal-photo",
+                content: Data([0x01])
             ))
         try context.save()
     }
