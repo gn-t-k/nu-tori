@@ -12,7 +12,7 @@ Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する
 
 ### ドメインドキュメント
 
-単一コンテキスト構成：リポジトリ直下に `CONTEXT.md` と `docs/adr/` を1つずつ置く。詳細は `docs/agents/domain.md` を参照。
+単一コンテキスト構成：リポジトリ直下に `GLOSSARY.md` と `docs/adr/` を1つずつ置く。詳細は `docs/agents/domain.md` を参照。
 
 ### デザイン
 

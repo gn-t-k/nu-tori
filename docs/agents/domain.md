@@ -4,8 +4,8 @@
 
 ## 調べる前にこれを読む
 
-- リポジトリ直下の **`CONTEXT.md`**、または
-- リポジトリ直下に **`CONTEXT-MAP.md`** があればそれ：コンテキストごとの `CONTEXT.md` を指しているので、話題に関係するものをそれぞれ読む。
+- リポジトリ直下の **`GLOSSARY.md`**、または
+- リポジトリ直下に **`GLOSSARY-MAP.md`** があればそれ：コンテキストごとの `GLOSSARY.md` を指しているので、話題に関係するものをそれぞれ読む。
 - **今の決定と `docs/adr/`**：どこから読むかは、`docs/agents/decisions.md` に従う。
 
 これらのファイルがなくても**何も言わずに進める**。ないことを指摘したり、先回りして作成を提案したりしない。用語や決定が実際に固まった時点で、`/domain-modeling` スキル（`/grill-with-docs` や `/improve-codebase-architecture` から呼ばれる）が作る。
@@ -16,25 +16,25 @@
 
 ```
 /
-├── CONTEXT.md
+├── GLOSSARY.md
 ├── docs/adr/
 │   ├── 0001-event-sourced-orders.md
 │   └── 0002-postgres-for-write-model.md
 └── src/
 ```
 
-複数コンテキスト構成（リポジトリ直下に `CONTEXT-MAP.md` がある場合）：
+複数コンテキスト構成（リポジトリ直下に `GLOSSARY-MAP.md` がある場合）：
 
 ```
 /
-├── CONTEXT-MAP.md
+├── GLOSSARY-MAP.md
 ├── docs/adr/                          ← システム全体の決定の記録
 └── src/
     ├── ordering/
-    │   ├── CONTEXT.md
+    │   ├── GLOSSARY.md
     │   └── docs/adr/                  ← コンテキスト固有の決定の記録
     └── billing/
-        ├── CONTEXT.md
+        ├── GLOSSARY.md
         └── docs/adr/
 ```
 
@@ -44,7 +44,7 @@
 
 ## 用語集の言葉を使う
 
-出力の中でドメインの概念に名前を付けるとき（Issueのタイトル、リファクタリング案、仮説、テスト名など）は、`CONTEXT.md` で定義された用語を使う。用語集が明示的に避けている同義語に流れない。
+出力の中でドメインの概念に名前を付けるとき（Issueのタイトル、リファクタリング案、仮説、テスト名など）は、`GLOSSARY.md` で定義された用語を使う。用語集が明示的に避けている同義語に流れない。
 
 必要な概念が用語集にまだないなら、それは合図だ。プロジェクトで使っていない言葉を作り出しているのか（考え直す）、本当に抜けがあるのか（`/domain-modeling` 用にメモしておく）のどちらかである。
 
