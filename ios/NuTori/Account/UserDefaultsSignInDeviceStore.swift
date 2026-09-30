@@ -1,0 +1,54 @@
+import Foundation
+import NuToriCore
+
+// UserDefaults はスレッドセーフだが、この SDK では Sendable の宣言が無い
+nonisolated struct UserDefaultsSignInDeviceStore: SignInDeviceStore, @unchecked Sendable {
+    let defaults: UserDefaults
+
+    func hasOpenedBefore() async throws -> Bool {
+        defaults.bool(forKey: Key.hasOpened)
+    }
+
+    func markOpened() async throws {
+        defaults.set(true, forKey: Key.hasOpened)
+    }
+
+    func signedInAccount() async throws -> SignedInAccount? {
+        guard let accountId = defaults.string(forKey: Key.accountId),
+            let appleUserId = defaults.string(forKey: Key.appleUserId)
+        else {
+            return nil
+        }
+        return SignedInAccount(accountId: accountId, appleUserId: appleUserId)
+    }
+
+    func save(_ account: SignedInAccount) async throws {
+        defaults.set(account.accountId, forKey: Key.accountId)
+        defaults.set(account.appleUserId, forKey: Key.appleUserId)
+    }
+
+    func hasSignInAgainMark() async throws -> Bool {
+        defaults.bool(forKey: Key.signInAgainMark)
+    }
+
+    func setSignInAgainMark() async throws {
+        defaults.set(true, forKey: Key.signInAgainMark)
+    }
+
+    func clearSignInAgainMark() async throws {
+        defaults.removeObject(forKey: Key.signInAgainMark)
+    }
+
+    func eraseAccountBoundState() async throws {
+        defaults.removeObject(forKey: Key.accountId)
+        defaults.removeObject(forKey: Key.appleUserId)
+        defaults.removeObject(forKey: Key.signInAgainMark)
+    }
+
+    enum Key {
+        static let hasOpened = "signIn.hasOpened"
+        static let accountId = "signIn.accountId"
+        static let appleUserId = "signIn.appleUserId"
+        static let signInAgainMark = "signIn.signInAgainMark"
+    }
+}

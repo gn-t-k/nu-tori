@@ -4,9 +4,14 @@ import SwiftUI
 struct NuToriApp: App {
     var body: some Scene {
         WindowGroup {
-            Text("nu-tori")
+            RootView(model: model)
+                .tint(.indigo)
+                #if DEBUG
+                    .environment(
+                        \.stubbedAppleSignInResult, UITestLaunch.current?.appleSignInResult)
+                #endif
         }
     }
 
-    private let observation = ObservationSessions.live()
+    @State private var model = RootModel(session: .forThisLaunch())
 }
