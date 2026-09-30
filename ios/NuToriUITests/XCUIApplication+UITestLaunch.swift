@@ -5,7 +5,7 @@ extension XCUIApplication {
         account: String,
         appleSignIn: String = "succeeded",
         api: String = "online",
-        timeZone: String? = nil
+        timeZone: String?
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
