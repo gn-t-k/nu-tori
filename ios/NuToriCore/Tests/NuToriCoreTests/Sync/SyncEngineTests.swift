@@ -22,7 +22,7 @@ struct SyncEngineTests {
                     kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: timeZone)
                 secondWrite = .create(
                     kilograms: 72.5, instant: SyncEngine.fixtureNow, timeZone: timeZone)
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(store: store, transport: .sync())
             }
 
@@ -68,7 +68,7 @@ struct SyncEngineTests {
                     inputSource: .manual,
                     version: 2
                 )
-                store = .ok(records: [original])
+                store = try .ok(records: [original])
                 engine = .fixture(store: store, transport: .sync())
             }
 
@@ -91,7 +91,7 @@ struct SyncEngineTests {
 
             init() throws {
                 unknown = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(store: store, transport: .sync())
             }
 
@@ -189,7 +189,7 @@ struct SyncEngineTests {
                     WeightRecord.manual(72.5, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo"),
                     WeightRecord.manual(72.6, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
                 ]
-                store = .ok(
+                store = try .ok(
                     records: records,
                     pendingWrites: [
                         .creating(records[0], ageSeconds: 600),
@@ -245,7 +245,7 @@ struct SyncEngineTests {
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(pendingWrites: (0..<501).map { _ in .creating(record) })
+                store = try .ok(pendingWrites: (0..<501).map { _ in .creating(record) })
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
             }
@@ -270,7 +270,7 @@ struct SyncEngineTests {
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(records: [record], pendingWrites: [.creating(record)])
+                store = try .ok(records: [record], pendingWrites: [.creating(record)])
                 transport = .sync(pushStatus: .tooManyRequests)
                 engine = .fixture(store: store, transport: transport)
             }
@@ -294,7 +294,7 @@ struct SyncEngineTests {
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(records: [record], pendingWrites: [.creating(record)])
+                store = try .ok(records: [record], pendingWrites: [.creating(record)])
                 engine = .fixture(
                     store: store, transport: .error(URLError(.notConnectedToInternet)))
             }
@@ -331,7 +331,7 @@ struct SyncEngineTests {
                 )
                 createWrite = .creating(created)
                 correctWrite = .correcting(corrected)
-                store = .ok(
+                store = try .ok(
                     records: [created, corrected],
                     pendingWrites: [createWrite, correctWrite]
                 )
@@ -387,7 +387,7 @@ struct SyncEngineTests {
                 corrected = try .manual(
                     72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
                 correctWrite = .correcting(corrected)
-                store = .ok(records: [corrected], pendingWrites: [correctWrite])
+                store = try .ok(records: [corrected], pendingWrites: [correctWrite])
                 engine = .fixture(
                     store: store,
                     transport: .sync(
@@ -412,7 +412,7 @@ struct SyncEngineTests {
 
             init() throws {
                 created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(records: [created], pendingWrites: [.creating(created)])
+                store = try .ok(records: [created], pendingWrites: [.creating(created)])
                 engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0]))
             }
 
@@ -436,7 +436,7 @@ struct SyncEngineTests {
             init() throws {
                 recordId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1"))
                 kept = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(
+                store = try .ok(
                     records: [kept],
                     pendingWrites: [
                         PendingWrite(
@@ -489,7 +489,7 @@ struct SyncEngineTests {
                 serverRecord = WeightRecord(
                     id: original.id, kilograms: 70.5, instant: original.instant,
                     timeZone: original.timeZone, inputSource: .manual, version: 4)
-                store = .ok(
+                store = try .ok(
                     records: [accepted],
                     pendingWrites: [.correcting(rejected), .correcting(accepted)]
                 )
@@ -519,8 +519,8 @@ struct SyncEngineTests {
             let transport: ClientTransportMock
             let engine: SyncEngine
 
-            init() {
-                store = .ok()
+            init() throws {
+                store = try .ok()
                 transport = .sync(pullPages: [
                     """
                     {"changes":[{"sequence":1,"kind":"weight_record","recordId":"00000000-0000-4000-8000-0000000000b1",
@@ -577,7 +577,7 @@ struct SyncEngineTests {
                     inputSource: .manual,
                     version: 1
                 )
-                store = .ok(records: [local])
+                store = try .ok(records: [local])
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [
@@ -640,7 +640,7 @@ struct SyncEngineTests {
                     version: 1
                 )
                 kept = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(records: [removed, kept])
+                store = try .ok(records: [removed, kept])
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [
@@ -676,8 +676,8 @@ struct SyncEngineTests {
             let store: MemoryStore
             let engine: SyncEngine
 
-            init() {
-                store = .ok()
+            init() throws {
+                store = try .ok()
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [
@@ -710,7 +710,7 @@ struct SyncEngineTests {
 
             init() throws {
                 cached = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(
+                store = try .ok(
                     records: [cached],
                     state: .fixture(
                         afterSequence: 42, hasCompletedInitialPull: true,
@@ -739,8 +739,8 @@ struct SyncEngineTests {
             let transport: ClientTransportMock
             let engine: SyncEngine
 
-            init() {
-                store = .ok(
+            init() throws {
+                store = try .ok(
                     state: .fixture(
                         afterSequence: 42, hasCompletedInitialPull: true,
                         readableKinds: ["weight-record"])
@@ -766,10 +766,10 @@ struct SyncEngineTests {
             let transport: ClientTransportMock
             let engine: SyncEngine
 
-            init() {
+            init() throws {
                 transport = .sync()
                 engine = .fixture(
-                    store: .ok(
+                    store: try .ok(
                         state: .fixture(
                             afterSequence: 42, hasCompletedInitialPull: true,
                             readableKinds: ["weight-record"]
@@ -819,7 +819,7 @@ struct SyncEngineTests {
                 )
                 export = .ok()
                 engine = .fixture(
-                    store: .ok(records: [cachedManual, cachedImported]),
+                    store: try .ok(records: [cachedManual, cachedImported]),
                     transport: .sync(pullPages: [
                         """
                         {"changes":[
@@ -860,7 +860,7 @@ struct SyncEngineTests {
             init() throws {
                 revised = try WeightRecord.manual(
                     70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
-                store = .ok(records: [revised])
+                store = try .ok(records: [revised])
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [

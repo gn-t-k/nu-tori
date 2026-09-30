@@ -208,11 +208,9 @@ struct SwiftDataSyncStoreMigrationTests {
 
     /// 以前の版が書いた、直す前の値（`previous`）を持つ中身。今の中身に `previous` を足して作る
     fileprivate static func contentWithPrevious(_ content: Data) throws -> Data {
-        var root = try #require(JSONSerialization.jsonObject(with: content) as? [String: Any])
-        var correct = try #require(root["correct"] as? [String: Any])
-        correct["previous"] = correct["record"]
-        root["correct"] = correct
-        return try JSONSerialization.data(withJSONObject: root)
+        var stored = try JSONDecoder().decode(VersionOneCorrectionContent.self, from: content)
+        stored.correct.previous = stored.correct.record
+        return try JSONEncoder().encode(stored)
     }
 
     /// 版 1 のスキーマで、送り待ちの置き場のファイルを書く
@@ -280,5 +278,23 @@ struct SwiftDataSyncStoreMigrationTests {
                 startedOn: nil
             ))
         try context.save()
+    }
+}
+
+/// 版 1 が書いた、手で入れた記録を直す書き込みの JSON の形（固めた写し。今の中身の型は使わない）
+private struct VersionOneCorrectionContent: Codable {
+    var correct: Body
+
+    struct Body: Codable {
+        let record: Record
+        var previous: Record?
+    }
+
+    struct Record: Codable {
+        let id: UUID
+        let kilograms: Double
+        let measuredAt: Date
+        let timeZoneIdentifier: String
+        let version: Int
     }
 }

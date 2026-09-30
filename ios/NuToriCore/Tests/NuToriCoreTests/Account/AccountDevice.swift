@@ -31,13 +31,13 @@ struct AccountDevice {
         analytics: (CallLog) -> AnalyticsSessionMock = { .ok(log: $0) },
         log: CallLog = CallLog()
     ) throws -> AccountDevice {
-        AccountDevice(
+        try AccountDevice(
             log: log,
             keychain: .ok(token: "session-1", log: log),
             deviceStore: .ok(
                 hasOpenedBefore: hasOpenedBefore, account: previousAccount, log: log),
             syncStore: .ok(
-                records: [try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")],
+                records: [.manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")],
                 accountSettings: seededSettings,
                 pendingWrites: pendingWrites,
                 state: .fixture(
@@ -57,8 +57,8 @@ struct AccountDevice {
         hasSignInAgainMark: Bool = false,
         pendingWrites: [PendingWrite] = [],
         log: CallLog = CallLog()
-    ) -> AccountDevice {
-        AccountDevice(
+    ) throws -> AccountDevice {
+        try AccountDevice(
             log: log,
             keychain: .ok(token: nil, log: log),
             deviceStore: .ok(
