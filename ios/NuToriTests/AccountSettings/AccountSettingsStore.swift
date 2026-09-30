@@ -66,7 +66,7 @@ struct AccountSettingsStore {
                 syncState: SyncState(
                     afterSequence: 1,
                     hasCompletedInitialPull: true,
-                    readableKinds: ["weight-record"],
+                    readableKinds: [.weightRecord],
                     startedOn: nil
                 )
             )
@@ -74,7 +74,7 @@ struct AccountSettingsStore {
                 syncState: SyncState(
                     afterSequence: 2,
                     hasCompletedInitialPull: true,
-                    readableKinds: ["weight-record"],
+                    readableKinds: [.weightRecord],
                     startedOn: nil
                 )
             )

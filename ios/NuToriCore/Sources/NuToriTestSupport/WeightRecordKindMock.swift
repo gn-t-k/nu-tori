@@ -5,7 +5,7 @@ public import NuToriCore
 public struct WeightRecordKindMock: RecordKind {
     public init() {}
 
-    public var name: String { syncing.name }
+    public var name: RecordKindName { syncing.name }
 
     public func owns(_ change: SyncChange) -> Bool {
         syncing.owns(change)

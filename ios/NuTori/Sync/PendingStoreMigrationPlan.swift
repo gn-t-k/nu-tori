@@ -45,7 +45,8 @@ nonisolated enum PendingStoreMigrationPlan: SchemaMigrationPlan {
                     FetchDescriptor<PendingStoreSchemaV2.PendingWriteRow>())
                 for row in rows {
                     row.kind =
-                        PendingWrite.kindName(ofVersion1Content: row.content) ?? unreadableKind
+                        PendingWrite.kindName(ofVersion1Content: row.content)?.rawValue
+                        ?? unreadableKind
                 }
                 try context.save()
             }

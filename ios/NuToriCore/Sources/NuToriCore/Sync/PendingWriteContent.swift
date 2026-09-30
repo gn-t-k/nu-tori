@@ -22,14 +22,14 @@ enum PendingWriteContent: Codable {
         }
     }
 
-    var kindName: String {
+    var kindName: RecordKindName {
         switch self {
         case .create, .correct, .sourceDeleted: WeightRecordSyncing.kindName
         case .updateAccountSettings: AccountSettingsSyncKind.kindName
         }
     }
 
-    func operation(kind: String) throws -> PendingWrite.Operation {
+    func operation(kind: RecordKindName) throws -> PendingWrite.Operation {
         switch self {
         case .create(let record):
             .createWeightRecord(try record.weightRecord(kind: kind))
@@ -84,7 +84,7 @@ enum PendingWriteContent: Codable {
             }
         }
 
-        func weightRecord(kind: String) throws -> WeightRecord {
+        func weightRecord(kind: RecordKindName) throws -> WeightRecord {
             guard let timeZone = TimeZone(identifier: timeZoneIdentifier) else {
                 throw PendingWrite.InvalidEntryError(kind: kind)
             }

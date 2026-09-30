@@ -80,7 +80,7 @@ extension SyncEngineTests {
             func handsChangesToBox() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.appliedKindChanges.map(\.kind) == ["weight-record"])
+                #expect(store.appliedKindChanges.map(\.kind) == [.weightRecord])
                 #expect(store.appliedKindChanges.first?.changes.count == 2)
                 #expect(store.appliedSyncStates.map(\.afterSequence) == [2])
             }

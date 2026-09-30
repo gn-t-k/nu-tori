@@ -15,8 +15,8 @@ public final class RecordCacheMock: Sendable {
         storage.withLock { $0.settings }
     }
 
-    /// 名前の種類が当てられた変更の数。テスト用の種類（`note` など）が数えるのに使う
-    public func appliedCount(of kind: String) -> Int {
+    /// 名前の種類が当てられた変更の数。テスト用の種類が数えるのに使う
+    public func appliedCount(of kind: RecordKindName) -> Int {
         storage.withLock { $0.appliedCounts[kind, default: 0] }
     }
 
@@ -32,7 +32,7 @@ public final class RecordCacheMock: Sendable {
         storage.withLock { $0.settings = settings }
     }
 
-    public func didApply(_ count: Int, forKind kind: String) {
+    public func didApply(_ count: Int, forKind kind: RecordKindName) {
         storage.withLock { $0.appliedCounts[kind, default: 0] += count }
     }
 
@@ -44,14 +44,14 @@ public final class RecordCacheMock: Sendable {
         storage.withLock { $0.settings = nil }
     }
 
-    public func clearApplied(forKind kind: String) {
+    public func clearApplied(forKind kind: RecordKindName) {
         storage.withLock { $0.appliedCounts[kind] = nil }
     }
 
     private struct Storage {
         var records: [UUID: WeightRecord] = [:]
         var settings: AccountSettings?
-        var appliedCounts: [String: Int] = [:]
+        var appliedCounts: [RecordKindName: Int] = [:]
     }
 
     private let storage = Mutex(Storage())

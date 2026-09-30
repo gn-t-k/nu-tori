@@ -4,7 +4,8 @@ import NuToriCore
 import SwiftData
 import Synchronization
 
-/// 種類の名前が `note` の、テスト用の登録簿の1行。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
+/// テスト用の登録簿の1行。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
+/// 種類の名前は、テストのために列挙へ case を足さず、本物の `accountSettings` を借りる（この種類だけの登録簿で使う）。
 /// キャッシュには何も書かず、当てられた数を数える
 nonisolated struct RecordKindMock: RecordKind {
     nonisolated struct Failure: Error, Equatable {}
@@ -21,7 +22,8 @@ nonisolated struct RecordKindMock: RecordKind {
         private let erased = Mutex(0)
     }
 
-    let name = "note"
+    let name = RecordKindName.accountSettings
+    static let changeKind = "note"
     let log: Log
     let failure: Failure?
 
@@ -36,13 +38,14 @@ nonisolated struct RecordKindMock: RecordKind {
     static func entry(writeId: UUID = UUID(), enqueuedAt: Date = Date(timeIntervalSince1970: 0))
         -> PendingEntry
     {
-        PendingEntry(writeId: writeId, enqueuedAt: enqueuedAt, kind: "note", content: Data([0x01]))
+        PendingEntry(
+            writeId: writeId, enqueuedAt: enqueuedAt, kind: .accountSettings, content: Data([0x01]))
     }
 
-    static let change = SyncChange.unknown(kind: "note")
+    static let change = SyncChange.unknown(kind: Self.changeKind)
 
     func owns(_ change: SyncChange) -> Bool {
-        if case .unknown(let kind) = change { kind == name } else { false }
+        if case .unknown(let kind) = change { kind == Self.changeKind } else { false }
     }
 
     func syncWrite(for entry: PendingEntry) throws -> SyncWrite {

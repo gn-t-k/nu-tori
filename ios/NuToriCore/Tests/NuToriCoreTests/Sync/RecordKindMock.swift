@@ -3,12 +3,14 @@ import NuToriAPI
 import NuToriCore
 import NuToriTestSupport
 
-/// 種類の名前が `note` の、テスト用の登録簿の1行。当てられた変更の数を、メモリのキャッシュに数える。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
+/// テスト用の登録簿の1行。当てられた変更の数を、メモリのキャッシュに数える。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
+/// 種類の名前は、テストのために列挙へ case を足さず、本物の `accountSettings` を借りる（`RecordKindRegistry.ok(extra:)` は同じ名前の本物を替える）。
 /// 送り待ちの中身は、消す体重記録の ID の文字列
 struct RecordKindMock: RecordKind {
     struct Failure: Error, Equatable {}
 
-    let name = "note"
+    let name = RecordKindName.accountSettings
+    static let changeKind = "note"
     let failure: Failure?
 
     static func ok() -> RecordKindMock {
@@ -25,13 +27,13 @@ struct RecordKindMock: RecordKind {
         PendingEntry(
             writeId: writeId,
             enqueuedAt: SyncEngine.fixtureNow.addingTimeInterval(-ageSeconds),
-            kind: "note",
+            kind: .accountSettings,
             content: Data(recordId.uuidString.utf8)
         )
     }
 
     func owns(_ change: SyncChange) -> Bool {
-        if case .unknown(let kind) = change { kind == name } else { false }
+        if case .unknown(let kind) = change { kind == Self.changeKind } else { false }
     }
 
     func syncWrite(for entry: PendingEntry) throws -> SyncWrite {

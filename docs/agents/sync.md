@@ -41,7 +41,8 @@
 - サーバー: `server/AGENTS.md` の「同期の記録の種類の足し方」に従う。受け付けなかった書き込みの今の値は、種類の `readCurrent` と受け口の `toChangeResponse` から作るので、種類に足すものは無い
 - サーバーの帳簿が書く順は、要求の控え → 書き込みの控え → 種類の行（記録・削除の印・設定の変更。`decide` が返す `commit` の中）→ 変更の並び。記録も控えのあとに書くのは、控えの ID を帳簿しか作れない型にして、控えより先に書く形をコンパイルで止めるため（外部キーは控えを指すものだけで満たされる）
 - サーバーの登録簿の行は5か所（`create-record-kinds.ts`、`record-kind-stores.ts`、`create-record-kind-stores.ts`、`http-record-kinds.ts`、`registered-write-schemas.ts`）。ドメイン層は Durable Object と受け口を import できず、層ごとに登録簿が分かれるため。足し忘れは型検査が止める
-- 端末: NuToriCore に `SyncedRecordKind`（`name`・`owns`・`syncWrite`・`rejection`）、アプリのターゲットに `RecordKind<ModelContext>`（`apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す
-  - `name` は送り待ちに保存する書き方（ハイフン）。サーバーの `RecordKindName`（snake_case）とは `ServerRecordKindNames.deviceNames` で突き合わせる。片方にだけ足すと `RecordKindNameTests`・`AppRecordKindsTests` が落ちる
+- 端末: NuToriCore の `RecordKindName` に case を足し（rawValue は送り待ちに保存する書き方のハイフン）、`serverName` の switch にサーバーの列挙の名前（snake_case）を書く。そのうえで NuToriCore に `SyncedRecordKind`（`name`・`owns`・`syncWrite`・`rejection`）、アプリのターゲットに `RecordKind<ModelContext>`（`apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す
+  - `name` は `RecordKindName`。`serverName` の switch が網羅なので、case を足して書き忘れるとビルドが落ちる。サーバーの列挙（`ServerRecordKindNames.names`）とは `AppRecordKindsTests` が突き合わせ、片方にだけ足すと落ちる
+  - rawValue は保存した文字列なので、変えると送り待ちの置き場の移行が要る
 - 受け付けられないことがある書き込みを持つ種類は、`rejection` で画面に出す行と、サーバーに記録も削除の印も無いときの外す変更（`removingChanges`）を返す。サーバーの今の値が `absent` のときの外し方は、種類が決める。持たない種類は `KindRejection.none` を返す
 - テストのために、`NuToriTestSupport` の `RecordKindRegistry.ok(extra:)`（キャッシュが `RecordCacheMock` の登録簿）に、メモリのキャッシュに当てる版の種類（`WeightRecordKindMock` など）を足す

@@ -1,8 +1,7 @@
-/// 箱が、登録簿に無い種類の変更を渡された
-public struct UnknownRecordKindError: Error, Equatable {
-    public let kind: String
-
-    public init(kind: String) {
-        self.kind = kind
-    }
+/// 登録簿に無い種類、または読めない種類の名前を渡された
+public enum UnknownRecordKindError: Error, Equatable {
+    /// 名前は読めたが、箱や同期の働きの登録簿に無い
+    case notRegistered(RecordKindName)
+    /// 置き場に保存された文字列が、どの `RecordKindName` にも読めない（新しい版が書いた名前など）
+    case unreadableName(String)
 }

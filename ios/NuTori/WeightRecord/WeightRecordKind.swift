@@ -6,7 +6,7 @@ import SwiftData
 /// 体重記録の、登録簿の1行。取りに行った変更と今の値をキャッシュに当てる。
 /// 送る書き込みの形と、変更の見分け方は `WeightRecordSyncing`（NuToriCore）に置く
 nonisolated struct WeightRecordKind: RecordKind {
-    var name: String { syncing.name }
+    var name: RecordKindName { syncing.name }
 
     func owns(_ change: SyncChange) -> Bool {
         syncing.owns(change)

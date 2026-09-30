@@ -5,7 +5,7 @@ public import NuToriCore
 public struct AccountSettingsRecordKindMock: RecordKind {
     public init() {}
 
-    public var name: String { core.name }
+    public var name: RecordKindName { core.name }
 
     public func owns(_ change: SyncChange) -> Bool {
         core.owns(change)

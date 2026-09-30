@@ -11,7 +11,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
   - 送り待ち（`PendingStore`）: 送り待ちとヘルスケアの同期の進み具合。`PendingStoreMigrationPlan` の版つきのスキーマで移行し、版ごとのモデルの写し（`PendingStoreSchemaV1`・`PendingStoreSchemaV2` の中）を固める。形を変えるときは、写しを固めたまま次の版を足す。送り待ちは「種類の名前＋中身」（`PendingEntry`）で持つので、種類を足しても形は変わらない
   - 送り待ちの箱（`SyncBox`）、記録の種類（`RecordKind`）、登録簿（`AppRecordKinds.registry`）が同期の入口。それぞれの役割と種類の足し方は `docs/agents/sync.md`。メモリの箱は `NuToriTestSupport` の `SyncBoxMock`（キャッシュが `RecordCacheMock` のものを、テストが `SyncBoxMock.ok(...)`・`.error(...)` で作る）
   - 同期の働きの、送り待ちの積みと結果の畳みに、種類ごとの分岐は無い。体重記録専用の保存、ヘルスケアへの書き直し、利用状況の設定の切り替えは、`SyncEngine` に体重記録・アカウントの設定のまま残っていて、種類に寄せていない
-  - 種類の名前: 送り待ちに保存する書き方（ハイフン。`weight-record`、`account-settings`）を、端末の登録簿の名前にする。サーバーの列挙（`server/openapi.json` の `RecordKindName`。snake_case）は、`ServerRecordKindNames.deviceNames` でハイフンに寄せて登録簿と突き合わせる（`RecordKindNameTests`・`AppRecordKindsTests`）。保存した名前を変えると、送り待ちの置き場の移行が要る
+  - 種類の名前: NuToriCore の `RecordKindName`（enum。rawValue は送り待ちに保存するハイフンの書き方。`weight-record`、`account-settings`）で、送り待ち・変更・登録簿・読める種類を渡す。足すときは case を足す。SwiftData のモデルは文字列のまま持ち、読み書きの口で `RecordKindName` に変える（読めない文字列は `UnknownRecordKindError.unreadableName`）。サーバーの列挙（`server/openapi.json` の `RecordKindName`。snake_case）との対応は `RecordKindName.serverName` の switch だけに書き、`ServerRecordKindNames.names` と突き合わせる（`AppRecordKindsTests`）。保存した名前（rawValue）を変えると、送り待ちの置き場の移行が要る
   - 保存の順: 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。全消去は、送り待ちを1つの保存で空にしてから、キャッシュを空にする
   - 置き場を分ける前の1つの置き場（`RecordStore`）は、更新して最初に開いたときに、送り待ちとヘルスケアの同期の進み具合を送り待ちの置き場へ移して消す（`LegacyRecordStore`）。開けない形のときは送り待ちを捨て、`HandledFailure.storeRecovery` として Sentry に送る
 - ファイルを足すとき、`project.pbxproj` は直さない（フォルダの同期で拾われる）

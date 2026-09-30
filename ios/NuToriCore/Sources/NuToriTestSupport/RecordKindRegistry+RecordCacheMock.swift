@@ -1,13 +1,15 @@
 public import NuToriCore
 
 extension RecordKindRegistry where Cache == RecordCacheMock {
-    /// アプリの登録簿（`AppRecordKinds.registry`）と同じ種類のメモリ版。`extra` は、テスト用の種類を足す
+    /// アプリの登録簿（`AppRecordKinds.registry`）と同じ種類のメモリ版。`extra` は、テスト用の種類を足す。同じ名前の本物の種類があれば、その1行をテスト用の種類に替える
     public static func ok(extra: [any RecordKind<RecordCacheMock>] = [])
         -> RecordKindRegistry<RecordCacheMock>
     {
         let base: [any RecordKind<RecordCacheMock>] = [
             AccountSettingsRecordKindMock(), WeightRecordKindMock(),
         ]
-        return RecordKindRegistry((base + extra).sorted { $0.name < $1.name })
+        let replaced = Set(extra.map(\.name))
+        let kept = base.filter { !replaced.contains($0.name) }
+        return RecordKindRegistry((kept + extra).sorted { $0.name < $1.name })
     }
 }

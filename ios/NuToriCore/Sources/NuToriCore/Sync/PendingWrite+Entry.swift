@@ -4,9 +4,9 @@ public import Foundation
 /// 中身は、送り待ちの置き場の版 1 の JSON と同じ形（直す前の値 `previous` は持たない。残った送り待ちにあっても読み飛ばす）
 extension PendingWrite {
     public struct InvalidEntryError: Error, Equatable {
-        public let kind: String
+        public let kind: RecordKindName
 
-        public init(kind: String) {
+        public init(kind: RecordKindName) {
             self.kind = kind
         }
     }
@@ -36,7 +36,7 @@ extension PendingWrite {
     }
 
     /// 版 1 の中身（種類の名前を持たない）から、種類の名前を読む。読めなければ nil
-    public static func kindName(ofVersion1Content content: Data) -> String? {
+    public static func kindName(ofVersion1Content content: Data) -> RecordKindName? {
         try? JSONDecoder().decode(PendingWriteContent.self, from: content).kindName
     }
 }

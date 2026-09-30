@@ -88,7 +88,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         try await onMain { stores in
             let descriptor = FetchDescriptor<PendingWriteRow>(
                 sortBy: [SortDescriptor(\.enqueuedAt)])
-            return try stores.pending.fetch(descriptor).map { $0.entry() }
+            return try stores.pending.fetch(descriptor).map { try $0.entry() }
         }
     }
 
@@ -255,7 +255,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         var batches: [(kind: any RecordKind<ModelContext>, changes: [SyncChange])] = []
         for group in result.kindChanges {
             guard let kind = kinds.kind(named: group.kind) else {
-                throw UnknownRecordKindError(kind: group.kind)
+                throw UnknownRecordKindError.notRegistered(group.kind)
             }
             for start in stride(from: 0, to: group.changes.count, by: batchSize) {
                 let end = min(start + batchSize, group.changes.count)

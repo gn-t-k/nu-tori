@@ -5,9 +5,9 @@ public import NuToriAPI
 /// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込みを作る
 public struct WeightRecordSyncing: SyncedRecordKind {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った体重記録が読めなくなる
-    public static let kindName = "weight-record"
+    public static let kindName = RecordKindName.weightRecord
 
-    public var name: String { Self.kindName }
+    public var name: RecordKindName { Self.kindName }
 
     /// 取りに行った変更のうち、当てる今の値と、消す記録の ID
     public struct Current: Sendable, Equatable {

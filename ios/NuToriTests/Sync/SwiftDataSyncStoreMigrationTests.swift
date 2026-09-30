@@ -126,7 +126,7 @@ struct SwiftDataSyncStoreMigrationTests {
                 SyncState(
                     afterSequence: 1,
                     hasCompletedInitialPull: false,
-                    readableKinds: ["weight-record"],
+                    readableKinds: [.weightRecord],
                     startedOn: nil
                 ))
 
@@ -157,7 +157,7 @@ struct SwiftDataSyncStoreMigrationTests {
         @Test("送り待ちを種類の名前つきで引き継ぎ、中身に直す前の値が残っていても読めること")
         func carriesWritesWithKindNames() async throws {
             #expect(try await store.pendingWritesOldestFirst() == [correction])
-            #expect(try await store.pendingEntries().map(\.kind) == ["weight-record"])
+            #expect(try await store.pendingEntries().map(\.kind) == [.weightRecord])
             #expect(store.takeRecoveries().isEmpty)
         }
 

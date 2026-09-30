@@ -120,7 +120,7 @@ struct WeightRecordSyncingTests {
                 operation: .updateAccountSettings(.fixture(sendsUsageData: true))
             ).entry()
 
-            #expect(throws: PendingWrite.InvalidEntryError(kind: "account-settings")) {
+            #expect(throws: PendingWrite.InvalidEntryError(kind: .accountSettings)) {
                 try syncing.syncWrite(for: entry)
             }
         }

@@ -1,4 +1,4 @@
-/// サーバーの種類の名前と、端末の登録簿の名前の食い違い
+/// サーバーの種類の名前と、端末の登録簿の名前の食い違い（どちらもサーバーの書き方 snake_case）
 public struct RecordKindNameMismatch: Sendable, Equatable {
     /// サーバーにあって、端末の登録簿に無い名前
     public let onlyOnServer: Set<String>

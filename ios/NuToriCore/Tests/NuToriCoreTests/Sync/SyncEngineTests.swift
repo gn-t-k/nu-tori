@@ -714,12 +714,12 @@ struct SyncEngineTests {
                     records: [cached],
                     state: .fixture(
                         afterSequence: 42, hasCompletedInitialPull: true,
-                        readableKinds: ["weight-record"])
+                        readableKinds: [.weightRecord])
                 )
                 transport = .sync()
                 engine = .fixture(
                     store: store, transport: transport,
-                    readableKinds: ["account-settings", "weight-record"])
+                    readableKinds: [.accountSettings, .weightRecord])
             }
 
             @Test("通し番号を最初に戻して取り直し、キャッシュは捨てず、初回の取得を終えた印は戻さないこと")
@@ -729,7 +729,7 @@ struct SyncEngineTests {
                 #expect(try transport.pullQueries.map { $0["afterSequence"] } == ["0"])
                 #expect(store.records[cached.id] == cached)
                 #expect(store.state?.hasCompletedInitialPull == true)
-                #expect(store.state?.readableKinds == ["account-settings", "weight-record"])
+                #expect(store.state?.readableKinds == [.accountSettings, .weightRecord])
             }
         }
 
@@ -742,13 +742,12 @@ struct SyncEngineTests {
             init() throws {
                 store = try .ok(
                     state: .fixture(
-                        afterSequence: 42, hasCompletedInitialPull: true,
-                        readableKinds: ["weight-record"])
+                        afterSequence: 42, hasCompletedInitialPull: true, readableKinds: [])
                 )
                 transport = .sync()
                 engine = .fixture(
                     store: store, transport: transport,
-                    readableKinds: ["account-settings", "meal", "weight-record"])
+                    readableKinds: [.accountSettings, .weightRecord])
             }
 
             @Test("通し番号を最初に戻して取り直し、読めた種類に両方を残すこと")
@@ -756,8 +755,7 @@ struct SyncEngineTests {
                 _ = try await engine.sync()
 
                 #expect(try transport.pullQueries.map { $0["afterSequence"] } == ["0"])
-                #expect(
-                    store.state?.readableKinds == ["account-settings", "meal", "weight-record"])
+                #expect(store.state?.readableKinds == [.accountSettings, .weightRecord])
             }
         }
 
@@ -772,7 +770,7 @@ struct SyncEngineTests {
                     store: try .ok(
                         state: .fixture(
                             afterSequence: 42, hasCompletedInitialPull: true,
-                            readableKinds: ["weight-record"]
+                            readableKinds: [.weightRecord]
                         )
                     ),
                     transport: transport

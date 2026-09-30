@@ -6,7 +6,7 @@ import SwiftData
 /// アカウントの設定の、登録簿の1行。取りに行った設定をキャッシュに当てる。
 /// 送る書き込みの形と、変更の見分け方は `AccountSettingsSyncKind`（NuToriCore）
 nonisolated struct AccountSettingsRecordKind: RecordKind {
-    var name: String { core.name }
+    var name: RecordKindName { core.name }
 
     func owns(_ change: SyncChange) -> Bool {
         core.owns(change)
