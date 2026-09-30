@@ -4,7 +4,7 @@ import type { RecordKindStores } from "./record-kind-stores";
 import type { RecordType } from "./record-type";
 import type { SyncClientState } from "./sync-client-state";
 import type { LedgerStore } from "./sync-ledger/ledger-store";
-import type { PushedResult } from "./sync-ledger/sync-ledger";
+import type { PushedResult } from "./sync-ledger/pushed-result";
 import type { SyncWrite } from "./sync-write";
 import type { UsageEvent } from "./usage-event";
 

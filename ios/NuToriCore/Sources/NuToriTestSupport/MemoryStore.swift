@@ -13,7 +13,7 @@ extension MemorySyncBox where Cache == MemoryRecordCache {
         recordKinds: [any RecordKind<MemoryRecordCache>] = [],
         state: SyncState? = nil,
         healthState: HealthSyncState = .initial
-    ) -> MemoryStore {
+    ) throws -> MemoryStore {
         let cache = MemoryRecordCache()
         for record in records {
             cache.upsert(record)
@@ -23,7 +23,7 @@ extension MemorySyncBox where Cache == MemoryRecordCache {
         }
         return MemorySyncBox(
             kinds: .memory(extra: recordKinds), cache: cache,
-            pendingEntries: pendingWrites.map { try! $0.entry() } + pendingEntries,
+            pendingEntries: try pendingWrites.map { try $0.entry() } + pendingEntries,
             state: state, healthState: healthState)
     }
 

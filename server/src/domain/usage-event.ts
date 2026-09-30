@@ -1,6 +1,6 @@
 import type { RecordType } from "./record-type";
-import type { RejectionReason } from "./sync-write-outcome";
-import type { WriteKind } from "./sync-ledger/record-kind";
+import type { RejectionReason } from "./rejection-reason";
+import type { WriteKind } from "./sync-ledger/write-kind";
 
 export type UsageEvent =
   | {

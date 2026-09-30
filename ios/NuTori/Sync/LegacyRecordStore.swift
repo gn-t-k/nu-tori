@@ -7,7 +7,8 @@ nonisolated enum LegacyRecordStore {
     enum Outcome: Equatable {
         /// 今の置き場が無い（新しく入れたか、もう移した）
         case absent
-        case carriedOver
+        /// `droppedUnreadable`: 中身から種類の名前を読めない送り待ちを捨てた
+        case carriedOver(droppedUnreadable: Bool)
         /// 移行できない形で開けず、送り待ちを捨てた
         case discarded
     }
@@ -30,19 +31,21 @@ nonisolated enum LegacyRecordStore {
                 StoreFiles.isUnmigratableShape(
                     error, schema: schema, plan: nil, name: storeName, at: url)
             else {
-                throw SwiftDataSyncStore.NotOpened()
+                throw SwiftDataSyncStore.NotOpened(cause: error)
             }
             try remove(at: url)
             return .discarded
         }
         try write(contents, into: pending)
         try remove(at: url)
-        return .carriedOver
+        return .carriedOver(droppedUnreadable: contents.droppedUnreadable)
     }
 
     private struct Contents {
         let pendingWrites: [PendingWriteRow]
         let healthSyncState: HealthSyncStateRow?
+        /// 中身から種類の名前を読めない送り待ちを、移さずに捨てた
+        let droppedUnreadable: Bool
     }
 
     private static let storeName = "RecordStore"
@@ -55,16 +58,22 @@ nonisolated enum LegacyRecordStore {
         let container = try StoreFiles.container(
             schema: schema, plan: nil, name: storeName, at: url)
         let context = ModelContext(container)
-        let writes = try context.fetch(
-            FetchDescriptor<LegacyRecordStoreSchemaV2.CachedPendingWrite>()
-        )
-        .map {
-            PendingWriteRow(
-                writeId: $0.writeId,
-                enqueuedAt: $0.enqueuedAt,
-                kind: PendingWrite.kindName(ofVersion1Content: $0.operationJSON) ?? "",
-                content: $0.operationJSON
-            )
+        var writes: [PendingWriteRow] = []
+        var droppedUnreadable = false
+        for legacy in try context.fetch(
+            FetchDescriptor<LegacyRecordStoreSchemaV2.CachedPendingWrite>())
+        {
+            guard let kind = PendingWrite.kindName(ofVersion1Content: legacy.operationJSON) else {
+                droppedUnreadable = true
+                continue
+            }
+            writes.append(
+                PendingWriteRow(
+                    writeId: legacy.writeId,
+                    enqueuedAt: legacy.enqueuedAt,
+                    kind: kind,
+                    content: legacy.operationJSON
+                ))
         }
         let health = try context.fetch(
             FetchDescriptor<LegacyRecordStoreSchemaV2.CachedHealthSyncState>()
@@ -75,7 +84,8 @@ nonisolated enum LegacyRecordStore {
                 hasWrittenCachedManualRecords: $0.hasWrittenCachedManualRecords
             )
         }
-        return Contents(pendingWrites: writes, healthSyncState: health)
+        return Contents(
+            pendingWrites: writes, healthSyncState: health, droppedUnreadable: droppedUnreadable)
     }
 
     @MainActor private static func write(_ contents: Contents, into context: ModelContext) throws {
@@ -98,7 +108,7 @@ nonisolated enum LegacyRecordStore {
         do {
             try StoreFiles.remove(at: url)
         } catch {
-            throw SwiftDataSyncStore.NotOpened()
+            throw SwiftDataSyncStore.NotOpened(cause: error)
         }
     }
 }

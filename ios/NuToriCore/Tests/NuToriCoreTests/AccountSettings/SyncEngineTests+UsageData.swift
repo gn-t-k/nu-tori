@@ -13,8 +13,8 @@ extension SyncEngineTests {
             let engine: SyncEngine
             let expectedSettings: AccountSettings
 
-            init() {
-                store = .ok()
+            init() throws {
+                store = try .ok()
                 engine = .fixture(store: store, transport: .sync())
                 expectedSettings = .fixture(sendsUsageData: false)
             }
@@ -38,8 +38,8 @@ extension SyncEngineTests {
             let expectedSettings: AccountSettings
             let expectedOperations: [PendingWrite.Operation]
 
-            init() {
-                store = .ok()
+            init() throws {
+                store = try .ok()
                 engine = .fixture(store: store, transport: .sync())
                 expectedSettings = .fixture(sendsUsageData: true)
                 expectedOperations = [
@@ -68,12 +68,12 @@ extension SyncEngineTests {
             let engine: SyncEngine
             let expectedSettings: SentWritesBody.AccountSettings
 
-            init() {
+            init() throws {
                 expectedSettings = .init(
                     id: AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId).uuidString,
                     sendsUsageData: false
                 )
-                store = .ok(
+                store = try .ok(
                     accountSettings: .fixture(sendsUsageData: false),
                     pendingWrites: [
                         PendingWrite(
@@ -105,9 +105,9 @@ extension SyncEngineTests {
             let engine: SyncEngine
             let expectedSettings: AccountSettings
 
-            init() {
+            init() throws {
                 expectedSettings = .fixture(sendsUsageData: false)
-                store = .ok(
+                store = try .ok(
                     accountSettings: .fixture(sendsUsageData: false),
                     pendingWrites: [
                         PendingWrite(
@@ -137,11 +137,11 @@ extension SyncEngineTests {
             let settingsId: String
             let expectedSettings: AccountSettings
 
-            init() {
+            init() throws {
                 expectedSettings = .fixture(sendsUsageData: false)
                 settingsId =
                     AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId).uuidString
-                store = .ok(accountSettings: .fixture(sendsUsageData: true))
+                store = try .ok(accountSettings: .fixture(sendsUsageData: true))
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [
@@ -172,9 +172,9 @@ extension SyncEngineTests {
             let engine: SyncEngine
             let expectedSettings: AccountSettings
 
-            init() {
+            init() throws {
                 expectedSettings = .fixture(sendsUsageData: false)
-                store = .ok(accountSettings: .fixture(sendsUsageData: false))
+                store = try .ok(accountSettings: .fixture(sendsUsageData: false))
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [
@@ -203,8 +203,8 @@ extension SyncEngineTests {
         struct NoSettingsPulled {
             let engine: SyncEngine
 
-            init() {
-                engine = .fixture(store: .ok(), transport: .sync())
+            init() throws {
+                engine = .fixture(store: try .ok(), transport: .sync())
             }
 
             @Test("既定のオンとみなし、PostHog を始めてよいと判定すること")
@@ -221,8 +221,8 @@ extension SyncEngineTests {
         struct ToggledOffBeforeInitialPull {
             let engine: SyncEngine
 
-            init() {
-                engine = .fixture(store: .ok(), transport: .sync())
+            init() throws {
+                engine = .fixture(store: try .ok(), transport: .sync())
             }
 
             @Test("オフとして読み、PostHog を始めないと判定すること")
@@ -239,9 +239,9 @@ extension SyncEngineTests {
         struct BeforeInitialPull {
             let engine: SyncEngine
 
-            init() {
+            init() throws {
                 engine = .fixture(
-                    store: .ok(),
+                    store: try .ok(),
                     transport: .error(URLError(.notConnectedToInternet))
                 )
             }
@@ -260,11 +260,11 @@ extension SyncEngineTests {
         struct OffPulled {
             let engine: SyncEngine
 
-            init() {
+            init() throws {
                 let settingsId = AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId)
                     .uuidString
                 engine = .fixture(
-                    store: .ok(),
+                    store: try .ok(),
                     transport: .sync(pullPages: [
                         """
                         {"changes":[{"sequence":1,"kind":"account_settings","recordId":"\(settingsId)",

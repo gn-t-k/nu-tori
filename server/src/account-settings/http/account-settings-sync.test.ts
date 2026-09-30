@@ -4,7 +4,8 @@ import { signInTestAccount } from "../../http/testing";
 import { pullSyncChanges } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
-import type { PullResult, PushResults } from "../../http/sync-routes/testing/sync-response";
+import type { PullResult } from "../../http/sync-routes/testing/pull-result";
+import type { PushResults } from "../../http/sync-routes/testing/push-results";
 import { updateAccountSettingsWrite } from "./testing/update-account-settings-write";
 import { beforeEach, describe, expect, test } from "vitest";
 

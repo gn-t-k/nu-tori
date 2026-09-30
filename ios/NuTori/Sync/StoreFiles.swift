@@ -16,12 +16,12 @@ nonisolated enum StoreFiles {
         } catch {
             guard isUnmigratableShape(error, schema: schema, plan: plan, name: name, at: url)
             else {
-                throw SwiftDataSyncStore.NotOpened()
+                throw SwiftDataSyncStore.NotOpened(cause: error)
             }
             do {
                 try archive(at: url)
             } catch {
-                throw SwiftDataSyncStore.NotOpened()
+                throw SwiftDataSyncStore.NotOpened(cause: error)
             }
             return (try container(schema: schema, plan: plan, name: name, at: url), true)
         }
@@ -101,7 +101,7 @@ nonisolated enum StoreFiles {
         if nsError.domain == NSCocoaErrorDomain, migrationMismatchCodes.contains(nsError.code) {
             return true
         }
-        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? any Error {
+        if let underlying = underlyingError(of: nsError) {
             return errorIndicatesMigrationMismatch(underlying)
         }
         return false
@@ -139,11 +139,21 @@ nonisolated enum StoreFiles {
         guard
             let metadata = try? NSPersistentStoreCoordinator.metadataForPersistentStore(
                 ofType: NSSQLiteStoreType, at: url),
-            let hashes = metadata[NSStoreModelVersionHashesKey] as? [String: Data]
+            let hashes = versionHashes(in: metadata)
         else {
             return nil
         }
         return hashes
+    }
+
+    /// `NSError.userInfo` と永続ストアのメタデータは `[String: Any]` で、値の型はキーごとに Foundation が決めている。
+    /// 型付きの取り出し口が無いので、`as?` で確かめて取り出す口をここに閉じ込める
+    private static func underlyingError(of error: NSError) -> (any Error)? {
+        error.userInfo[NSUnderlyingErrorKey] as? any Error
+    }
+
+    private static func versionHashes(in metadata: [String: Any]) -> [String: Data]? {
+        metadata[NSStoreModelVersionHashesKey] as? [String: Data]
     }
 
     private static func archive(at url: URL) throws {

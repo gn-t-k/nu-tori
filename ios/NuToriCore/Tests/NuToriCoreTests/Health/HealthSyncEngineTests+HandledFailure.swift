@@ -13,11 +13,11 @@ extension HealthSyncEngineTests {
             let reporting: ErrorReportingSessionMock
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 reporting = .ok()
                 engine = .fixture(
                     healthStore: .error(URLError(.timedOut)),
-                    store: .ok(),
+                    store: try .ok(),
                     errorReporting: reporting
                 )
             }
@@ -36,11 +36,11 @@ extension HealthSyncEngineTests {
             let reporting: ErrorReportingSessionMock
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 reporting = .ok()
                 engine = .fixture(
                     healthStore: .error(SampleError()),
-                    store: .ok(),
+                    store: try .ok(),
                     errorReporting: reporting
                 )
             }

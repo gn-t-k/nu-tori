@@ -13,10 +13,3 @@ export const toWeightRecordChangeResponse = (sequence: number, weightRecord: Wei
     imported: weightRecord.imported,
   },
 });
-
-export const toWeightRecordDeletionChangeResponse = (sequence: number, recordId: string) => ({
-  sequence,
-  kind: "weight_record_deletion",
-  recordId,
-  record: {},
-});

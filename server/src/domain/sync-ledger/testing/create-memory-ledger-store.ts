@@ -4,7 +4,7 @@ import type { LedgerStore } from "../ledger-store";
 // 帳簿の単体テスト用のメモリの置き場。operations に書いた順を残す
 export const createMemoryLedgerStore = <TRecordType extends string>(
   operations: string[],
-): LedgerStore<TRecordType> & { receiptCount: () => number } => {
+): LedgerStore<TRecordType> => {
   const requestReceivedAts: Date[] = [];
   const receipts = new Map<
     string,
@@ -38,6 +38,5 @@ export const createMemoryLedgerStore = <TRecordType extends string>(
       }
       return [...latest.values()].toSorted((a, b) => a.sequence - b.sequence).slice(0, limit);
     },
-    receiptCount: () => receipts.size,
   };
 };

@@ -1,5 +1,7 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
+const recordTypes = ["weight_record", "account_settings"] as const;
+
 const syncRequestLogs = sqliteTable(
   "sync_request_logs",
   {
@@ -39,7 +41,7 @@ const syncWriteReceipts = sqliteTable(
       .references(() => syncPushLogs.syncRequestLogId),
     positionInRequest: integer("position_in_request").notNull(),
     kind: text("kind", { enum: ["create", "update", "source_deleted"] }).notNull(),
-    recordType: text("record_type", { enum: ["weight_record", "account_settings"] }).notNull(),
+    recordType: text("record_type", { enum: recordTypes }).notNull(),
     recordId: text("record_id").notNull(),
     result: text("result", {
       enum: ["applied", "ignored_duplicate", "ignored_tombstone", "kept_corrected", "rejected"],
@@ -68,7 +70,7 @@ const syncWriteRejections = sqliteTable("sync_write_rejections", {
 
 const recordChanges = sqliteTable("record_changes", {
   sequence: integer("sequence").primaryKey({ autoIncrement: true }),
-  recordType: text("record_type", { enum: ["weight_record", "account_settings"] }).notNull(),
+  recordType: text("record_type", { enum: recordTypes }).notNull(),
   recordId: text("record_id").notNull(),
 });
 

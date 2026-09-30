@@ -24,7 +24,7 @@ extension SyncEngineTests {
                 rejectedCreated = .creating(
                     try .manual(72.0, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo"),
                     ageSeconds: 10)
-                store = .ok(
+                store = try .ok(
                     records: [
                         created.operation.weightRecord, rejectedCreated.operation.weightRecord,
                     ],
@@ -67,9 +67,9 @@ extension SyncEngineTests {
         struct PushingUnknownKind {
             let engine: SyncEngine
 
-            init() {
+            init() throws {
                 engine = .fixture(
-                    store: .ok(pendingEntries: [RecordKindMock.entry(recordId: UUID())]),
+                    store: try .ok(pendingEntries: [RecordKindMock.entry(recordId: UUID())]),
                     transport: .sync())
             }
 
@@ -85,9 +85,9 @@ extension SyncEngineTests {
         struct BuildingWriteFailing {
             let engine: SyncEngine
 
-            init() {
+            init() throws {
                 engine = .fixture(
-                    store: .ok(
+                    store: try .ok(
                         pendingEntries: [RecordKindMock.entry(recordId: UUID())],
                         recordKinds: [RecordKindMock.error(.init())]),
                     transport: .sync())
@@ -106,8 +106,8 @@ extension SyncEngineTests {
             let store: MemoryStore
             let engine: SyncEngine
 
-            init() {
-                store = .ok(recordKinds: [RecordKindMock.ok()])
+            init() throws {
+                store = try .ok(recordKinds: [RecordKindMock.ok()])
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [

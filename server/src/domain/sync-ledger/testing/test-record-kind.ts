@@ -1,18 +1,7 @@
-import type { CurrentRecord, RecordKind } from "../record-kind";
-
-export type TestRecordStore = {
-  find: (id: string) => number | undefined;
-  hasDeletion: (recordId: string) => boolean;
-  insert: (id: string, value: number) => void;
-  update: (id: string, value: number) => void;
-  remove: (id: string) => void;
-  insertDeletion: (receiptId: string, recordId: string) => void;
-};
-
-export type TestRecordWrite =
-  | { id: string; type: "create_test_record"; recordId: string; value: number }
-  | { id: string; type: "update_test_record"; recordId: string; value: number }
-  | { id: string; type: "delete_test_record"; recordId: string };
+import type { CurrentRecord } from "../current-record";
+import type { RecordKind } from "../record-kind";
+import type { TestRecordStore } from "./test-record-store";
+import type { TestRecordWrite } from "./test-record-write";
 
 // 帳簿のテスト用の種類。100 を超える値は受け付けない
 export const createTestRecordKind = (

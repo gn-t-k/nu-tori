@@ -2,15 +2,11 @@ import type { z } from "@hono/zod-openapi";
 import { match } from "ts-pattern";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import type { WeightRecord } from "../domain/weight-record";
-import {
-  toWeightRecordChangeResponse,
-  toWeightRecordDeletionChangeResponse,
-} from "./to-weight-record-change-response";
-import {
-  toCreateWeightRecordWrite,
-  toSourceDeletedWeightRecordWrite,
-  toUpdateWeightRecordWrite,
-} from "./to-weight-record-write";
+import { toWeightRecordChangeResponse } from "./to-weight-record-change-response";
+import { toWeightRecordDeletionChangeResponse } from "./to-weight-record-deletion-change-response";
+import { toCreateWeightRecordWrite } from "./to-create-weight-record-write";
+import { toSourceDeletedWeightRecordWrite } from "./to-source-deleted-weight-record-write";
+import { toUpdateWeightRecordWrite } from "./to-update-weight-record-write";
 import type { weightRecordWriteSchemas } from "./weight-record-write-schemas";
 
 export const weightRecordHttpKind: HttpRecordKind<

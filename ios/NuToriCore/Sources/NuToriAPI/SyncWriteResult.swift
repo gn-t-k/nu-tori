@@ -6,7 +6,7 @@ public struct SyncWriteResult: Sendable, Equatable {
     /// 受け付けなかったときだけ付く、その記録のサーバーの今の値。読めなかったとき、知らない状態のときは nil
     public let current: Current?
 
-    public init(writeId: UUID, outcome: Outcome, current: Current? = nil) {
+    public init(writeId: UUID, outcome: Outcome, current: Current?) {
         self.writeId = writeId
         self.outcome = outcome
         self.current = current

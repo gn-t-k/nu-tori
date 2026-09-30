@@ -1,23 +1,15 @@
 import { match } from "ts-pattern";
 import { computeCalendarDay } from "../../domain/compute-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
-import type {
-  CurrentRecord,
-  RecordKind,
-  WriteDecision,
-  WriteKind,
-} from "../../domain/sync-ledger/record-kind";
+import type { RecordKind } from "../../domain/sync-ledger/record-kind";
+import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import type { WriteDecision } from "../../domain/sync-ledger/write-decision";
+import type { WriteKind } from "../../domain/sync-ledger/write-kind";
 import type { SyncWriteOutcome } from "../../domain/sync-write-outcome";
 import { isWithinAcceptedRange } from "./is-within-accepted-range";
 import type { WeightRecord } from "./weight-record";
 import type { WeightRecordStore } from "./weight-record-store";
 import type { WeightRecordWrite } from "./weight-record-write";
-
-const weightRecordWriteTypes: readonly string[] = [
-  "create_weight_record",
-  "update_weight_record",
-  "source_deleted_weight_record",
-];
 
 export const createWeightRecordKind = (
   store: WeightRecordStore,
@@ -46,6 +38,12 @@ export const createWeightRecordKind = (
     return store.hasDeletion(recordId) ? { status: "deleted" } : { status: "absent" };
   },
 });
+
+const weightRecordWriteTypes: readonly string[] = [
+  "create_weight_record",
+  "update_weight_record",
+  "source_deleted_weight_record",
+];
 
 const decideCreate = (
   store: WeightRecordStore,

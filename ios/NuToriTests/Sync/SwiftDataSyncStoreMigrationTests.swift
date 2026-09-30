@@ -20,6 +20,7 @@ struct SwiftDataSyncStoreMigrationTests {
         enqueuedAt: Date(timeIntervalSince1970: 1_700_000_000),
         operation: .createWeightRecord(record)
     )
+    static let unreadableWriteId = UUID(uuidString: "00000000-0000-4000-8000-000000000104")!
     static let healthState = HealthSyncState(
         anchor: HealthAnchor(data: Data([0x07])),
         hasWrittenCachedManualRecords: true
@@ -35,7 +36,8 @@ struct SwiftDataSyncStoreMigrationTests {
         init() throws {
             directory = SwiftDataSyncStoreTests.makeDirectory()
             legacyURL = LegacyRecordStore.url(in: directory)
-            try SwiftDataSyncStoreMigrationTests.writeLegacyStore(at: legacyURL)
+            try SwiftDataSyncStoreMigrationTests.writeLegacyStore(
+                at: legacyURL, unreadableRow: false)
             store = try SwiftDataSyncStore(directory: directory)
         }
 
@@ -149,7 +151,8 @@ struct SwiftDataSyncStoreMigrationTests {
 
         init() throws {
             let directory = SwiftDataSyncStoreTests.makeDirectory()
-            try SwiftDataSyncStoreMigrationTests.writeVersion1PendingStore(in: directory)
+            try SwiftDataSyncStoreMigrationTests.writeVersion1PendingStore(
+                in: directory, unreadableRow: false)
             store = try SwiftDataSyncStore(directory: directory)
         }
 
@@ -167,6 +170,58 @@ struct SwiftDataSyncStoreMigrationTests {
         }
 
         private let correction = SwiftDataSyncStoreMigrationTests.correction
+    }
+
+    @Suite("送り待ちの置き場が版 1 で、中身を読めない送り待ちがあるとき")
+    @MainActor
+    struct PendingStoreVersion1WithUnreadableRow {
+        let store: SwiftDataSyncStore
+
+        init() throws {
+            let directory = SwiftDataSyncStoreTests.makeDirectory()
+            try SwiftDataSyncStoreMigrationTests.writeVersion1PendingStore(
+                in: directory, unreadableRow: true)
+            store = try SwiftDataSyncStore(directory: directory)
+        }
+
+        @Test("読めない送り待ちだけを捨て、読めるものは残すこと")
+        func dropsOnlyUnreadableRow() async throws {
+            #expect(
+                try await store.pendingEntries().map(\.writeId) == [
+                    SwiftDataSyncStoreMigrationTests.correction.writeId
+                ])
+        }
+
+        @Test("対処した失敗として残すこと")
+        func keepsRecovery() {
+            #expect(store.takeRecoveries() == [.storeRecovery])
+        }
+    }
+
+    @Suite("更新して最初に開くとき、今の1つの置き場に中身を読めない送り待ちがあるとき")
+    @MainActor
+    struct LegacyStoreWithUnreadableRow {
+        let store: SwiftDataSyncStore
+
+        init() throws {
+            let directory = SwiftDataSyncStoreTests.makeDirectory()
+            try SwiftDataSyncStoreMigrationTests.writeLegacyStore(
+                at: LegacyRecordStore.url(in: directory), unreadableRow: true)
+            store = try SwiftDataSyncStore(directory: directory)
+        }
+
+        @Test("読めない送り待ちは移さず、読めるものは移すこと")
+        func carriesOnlyReadableRow() async throws {
+            #expect(
+                try await store.pendingEntries().map(\.writeId) == [
+                    SwiftDataSyncStoreMigrationTests.write.writeId
+                ])
+        }
+
+        @Test("対処した失敗として残すこと")
+        func keepsRecovery() {
+            #expect(store.takeRecoveries() == [.storeRecovery])
+        }
     }
 
     @Suite("送り待ちの置き場に、直す前の値を持つ中身が残っているとき")
@@ -209,16 +264,14 @@ struct SwiftDataSyncStoreMigrationTests {
 
     /// 以前の版が書いた、直す前の値（`previous`）を持つ中身。今の中身に `previous` を足して作る
     fileprivate static func contentWithPrevious(_ content: Data) throws -> Data {
-        var root = try #require(JSONSerialization.jsonObject(with: content) as? [String: Any])
-        var correct = try #require(root["correct"] as? [String: Any])
-        correct["previous"] = correct["record"]
-        root["correct"] = correct
-        return try JSONSerialization.data(withJSONObject: root)
+        var stored = try JSONDecoder().decode(VersionOneCorrectionContent.self, from: content)
+        stored.correct.previous = stored.correct.record
+        return try JSONEncoder().encode(stored)
     }
 
     /// 版 1 のスキーマで、送り待ちの置き場のファイルを書く
     @MainActor
-    private static func writeVersion1PendingStore(in directory: URL) throws {
+    private static func writeVersion1PendingStore(in directory: URL, unreadableRow: Bool) throws {
         let folder = directory.appending(path: "PendingStore", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let container = try StoreFiles.container(
@@ -234,6 +287,14 @@ struct SwiftDataSyncStoreMigrationTests {
                 enqueuedAt: correction.enqueuedAt,
                 operationJSON: try contentWithPrevious(correction.entry().content)
             ))
+        if unreadableRow {
+            context.insert(
+                PendingStoreSchemaV1.PendingWriteRow(
+                    writeId: unreadableWriteId,
+                    enqueuedAt: correction.enqueuedAt,
+                    operationJSON: Data("読めない中身".utf8)
+                ))
+        }
         context.insert(
             PendingStoreSchemaV1.HealthSyncStateRow(
                 singletonKey: "health-sync-state",
@@ -244,7 +305,7 @@ struct SwiftDataSyncStoreMigrationTests {
     }
 
     @MainActor
-    private static func writeLegacyStore(at url: URL) throws {
+    private static func writeLegacyStore(at url: URL, unreadableRow: Bool) throws {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let schema = Schema(versionedSchema: LegacyRecordStoreSchemaV2.self)
@@ -257,6 +318,14 @@ struct SwiftDataSyncStoreMigrationTests {
                 enqueuedAt: write.enqueuedAt,
                 operationJSON: try write.entry().content
             ))
+        if unreadableRow {
+            context.insert(
+                LegacyRecordStoreSchemaV2.CachedPendingWrite(
+                    writeId: unreadableWriteId,
+                    enqueuedAt: write.enqueuedAt,
+                    operationJSON: Data("読めない中身".utf8)
+                ))
+        }
         context.insert(
             LegacyRecordStoreSchemaV2.CachedHealthSyncState(
                 singletonKey: "health-sync-state",
@@ -281,5 +350,23 @@ struct SwiftDataSyncStoreMigrationTests {
                 startedOn: nil
             ))
         try context.save()
+    }
+}
+
+/// 版 1 が書いた、手で入れた記録を直す書き込みの JSON の形（固めた写し。今の中身の型は使わない）
+private struct VersionOneCorrectionContent: Codable {
+    var correct: Body
+
+    struct Body: Codable {
+        let record: Record
+        var previous: Record?
+    }
+
+    struct Record: Codable {
+        let id: UUID
+        let kilograms: Double
+        let measuredAt: Date
+        let timeZoneIdentifier: String
+        let version: Int
     }
 }

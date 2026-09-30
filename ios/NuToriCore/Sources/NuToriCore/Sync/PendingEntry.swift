@@ -4,7 +4,7 @@ public import Foundation
 public struct PendingEntry: Sendable, Equatable {
     public let writeId: UUID
     public let enqueuedAt: Date
-    /// 記録の種類の名前。登録簿に無い名前は、今の道（`PendingWrite`）で読む
+    /// 記録の種類の名前。登録簿に無い名前の送り待ちを送ろうとすると、`UnknownRecordKindError` になる
     public let kind: String
     /// 種類が決める中身。置き場は読まない
     public let content: Data

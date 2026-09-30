@@ -1,6 +1,7 @@
 import { desc, eq, gt, sql } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordType } from "../domain/record-type";
+import type { SyncClientState } from "../domain/sync-client-state";
 import type { LedgerStore } from "../domain/sync-ledger/ledger-store";
 import type { SyncWriteOutcome } from "../domain/sync-write-outcome";
 import { syncLedgerTables } from "./sync-ledger-tables";
@@ -15,7 +16,6 @@ const {
   syncWriteRecordChanges,
 } = syncLedgerTables;
 
-// 帳簿の置き場。種類の中身は知らず、要求の控え・書き込みの控え・変更の並びだけを持つ
 export const createLedgerStore = (storage: DurableObjectStorage): LedgerStore<RecordType> => {
   const db = drizzle(storage);
   return {
@@ -119,7 +119,7 @@ const insertRequestLog = (
   }: {
     id: string;
     receivedAt: Date;
-    clientState: Parameters<LedgerStore<RecordType>["insertPushRequestLog"]>[0]["clientState"];
+    clientState: SyncClientState;
   },
 ): void => {
   db.insert(syncRequestLogs)

@@ -179,13 +179,13 @@ extension SyncWriteResult {
         }
         switch result.result {
         case "applied":
-            self.init(writeId: writeId, outcome: .applied)
+            self.init(writeId: writeId, outcome: .applied, current: nil)
         case "ignored_duplicate":
-            self.init(writeId: writeId, outcome: .ignoredDuplicate)
+            self.init(writeId: writeId, outcome: .ignoredDuplicate, current: nil)
         case "ignored_tombstone":
-            self.init(writeId: writeId, outcome: .ignoredTombstone)
+            self.init(writeId: writeId, outcome: .ignoredTombstone, current: nil)
         case "kept_corrected":
-            self.init(writeId: writeId, outcome: .keptCorrected)
+            self.init(writeId: writeId, outcome: .keptCorrected, current: nil)
         case "rejected":
             guard let reason = result.rejectionReason else {
                 throw NuToriAPIClient.MalformedResponseError(reason: "受け付けなかった理由が無い")
@@ -196,7 +196,7 @@ extension SyncWriteResult {
                 current: result.current.flatMap(Current.init)
             )
         default:
-            self.init(writeId: writeId, outcome: .unknown(result: result.result))
+            self.init(writeId: writeId, outcome: .unknown(result: result.result), current: nil)
         }
     }
 }

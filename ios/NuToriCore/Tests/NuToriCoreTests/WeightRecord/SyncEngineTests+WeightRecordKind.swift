@@ -21,7 +21,7 @@ extension SyncEngineTests {
                 corrected = WeightRecord(
                     id: serverRecord.id, kilograms: 71.0, instant: serverRecord.instant,
                     timeZone: serverRecord.timeZone, inputSource: .manual, version: 2)
-                store = .ok(
+                store = try .ok(
                     records: [created, corrected],
                     pendingWrites: [
                         .creating(created, ageSeconds: 20),
@@ -55,7 +55,7 @@ extension SyncEngineTests {
             init() throws {
                 revisedId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1"))
                 export = .ok()
-                store = .ok(
+                store = try .ok(
                     records: [
                         try .manual(
                             70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", id: revisedId)

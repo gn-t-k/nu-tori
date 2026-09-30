@@ -1,8 +1,7 @@
 import type { SyncClientState } from "../sync-client-state";
 import type { SyncWriteOutcome } from "../sync-write-outcome";
-import type { WriteKind } from "./record-kind";
+import type { WriteKind } from "./write-kind";
 
-// 帳簿の置き場。種類の中身は知らず、要求の控え・書き込みの控え・変更の並びだけを持つ
 export type LedgerStore<TRecordType extends string> = {
   transaction: <T>(run: () => T) => T;
   findLatestRequestReceivedAt: () => Date | undefined;

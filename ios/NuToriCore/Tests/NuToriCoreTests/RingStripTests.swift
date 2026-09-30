@@ -11,10 +11,11 @@ struct RingStripTests {
             // 2026-09-23 は水曜
             strip = RingStrip(
                 timeline: Timeline(
-                    input: Timeline.Input(weightRecords: [
-                        try .imported(73.0, at: "2026-09-22T06:48:00+09:00", in: "Asia/Tokyo"),
-                        try .imported(72.8, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo"),
-                    ]),
+                    input: Timeline.Input(
+                        weightRecords: [
+                            try .imported(73.0, at: "2026-09-22T06:48:00+09:00", in: "Asia/Tokyo"),
+                            try .imported(72.8, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo"),
+                        ], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -53,7 +54,7 @@ struct RingStripTests {
         init() {
             strip = RingStrip(
                 timeline: Timeline(
-                    input: Timeline.Input(weightRecords: []),
+                    input: Timeline.Input(weightRecords: [], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 10, day: 7)
                 )
@@ -79,9 +80,10 @@ struct RingStripTests {
             // 今日は日曜で、記録は次の週の月曜
             strip = RingStrip(
                 timeline: Timeline(
-                    input: Timeline.Input(weightRecords: [
-                        try .manual(72.4, at: "2026-09-28T07:12:00+09:00", in: "Asia/Tokyo")
-                    ]),
+                    input: Timeline.Input(
+                        weightRecords: [
+                            try .manual(72.4, at: "2026-09-28T07:12:00+09:00", in: "Asia/Tokyo")
+                        ], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 21),
                     today: CalendarDay(year: 2026, month: 9, day: 27)
                 )

@@ -1,6 +1,6 @@
 import type { z } from "@hono/zod-openapi";
 import type { RecordType } from "../../domain/record-type";
-import type { RejectedRecord } from "../../domain/sync-ledger/sync-ledger";
+import type { RejectedRecord } from "../../domain/sync-ledger/rejected-record";
 import { httpRecordKinds } from "./http-record-kinds";
 import type { syncWriteCurrentSchema } from "./sync-write-current-schema";
 

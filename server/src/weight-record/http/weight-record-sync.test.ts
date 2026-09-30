@@ -5,7 +5,8 @@ import { getAccountDurableObject } from "../../durable-object/get-account-durabl
 import { pullSyncChanges } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
-import type { PullResult, PushResults } from "../../http/sync-routes/testing/sync-response";
+import type { PullResult } from "../../http/sync-routes/testing/pull-result";
+import type { PushResults } from "../../http/sync-routes/testing/push-results";
 import { createWeightRecordWrite } from "./testing/create-weight-record-write";
 import { sourceDeletedWeightRecordWrite } from "./testing/source-deleted-weight-record-write";
 import { updateWeightRecordWrite } from "./testing/update-weight-record-write";

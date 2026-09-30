@@ -21,7 +21,7 @@ struct HealthSyncEngineTests {
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(weights: [
@@ -78,10 +78,10 @@ struct HealthSyncEngineTests {
             let engine: HealthSyncEngine
             let previousAnchor: HealthAnchor
 
-            init() {
+            init() throws {
                 previousAnchor = HealthAnchor(data: Data("anchor-1".utf8))
                 healthStore = .ok(earliestAuthorizedSampleDate: Date(timeIntervalSince1970: 1_000))
-                store = .ok(
+                store = try .ok(
                     healthState: HealthSyncState(
                         anchor: previousAnchor, hasWrittenCachedManualRecords: true)
                 )
@@ -112,9 +112,9 @@ struct HealthSyncEngineTests {
             let store: MemoryStore
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 healthStore = .ok()
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(healthStore: healthStore, store: store)
             }
 
@@ -132,7 +132,7 @@ struct HealthSyncEngineTests {
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(
@@ -171,7 +171,7 @@ struct HealthSyncEngineTests {
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(
@@ -226,7 +226,7 @@ struct HealthSyncEngineTests {
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(
@@ -291,7 +291,7 @@ struct HealthSyncEngineTests {
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(weights: [
@@ -348,7 +348,7 @@ struct HealthSyncEngineTests {
                     ),
                     version: 3
                 )
-                store = .ok(records: [cached])
+                store = try .ok(records: [cached])
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(weights: [
@@ -384,7 +384,7 @@ struct HealthSyncEngineTests {
                     inputSource: .manual,
                     version: 1
                 )
-                store = .ok(records: [cached])
+                store = try .ok(records: [cached])
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(deletions: [
@@ -455,7 +455,7 @@ struct HealthSyncEngineTests {
                     inputSource: .manual,
                     version: 1
                 )
-                store = .ok(records: [before, after])
+                store = try .ok(records: [before, after])
                 engine = .fixture(
                     healthStore: .ok(
                         earliestAuthorizedSampleDate: boundary,
@@ -492,8 +492,8 @@ struct HealthSyncEngineTests {
             let store: MemoryStore
             let engine: HealthSyncEngine
 
-            init() {
-                store = .ok()
+            init() throws {
+                store = try .ok()
                 engine = .fixture(healthStore: .error(Failure()), store: store)
             }
 
@@ -521,7 +521,7 @@ struct HealthSyncEngineTests {
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 3)
                 imported = try .imported(70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 healthStore = .ok()
-                engine = .fixture(healthStore: healthStore, store: .ok())
+                engine = .fixture(healthStore: healthStore, store: try .ok())
             }
 
             @Test("手で記録した体重を、体重記録の ID を同期 ID、版をヘルスケアの版にして書くこと")
@@ -557,7 +557,7 @@ struct HealthSyncEngineTests {
             init() throws {
                 manual = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 healthStore = .ok(isWriteAuthorized: false)
-                engine = .fixture(healthStore: healthStore, store: .ok())
+                engine = .fixture(healthStore: healthStore, store: try .ok())
             }
 
             @Test("書かないこと")
@@ -581,7 +581,7 @@ struct HealthSyncEngineTests {
                 secondManual = try .manual(
                     72.0, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
                 healthStore = .ok()
-                store = .ok(
+                store = try .ok(
                     records: [
                         firstManual, secondManual,
                         try .imported(70.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo"),
@@ -628,7 +628,7 @@ struct HealthSyncEngineTests {
 
             init() throws {
                 healthStore = .ok(isWriteAuthorized: false)
-                store = .ok(
+                store = try .ok(
                     records: [try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")])
                 engine = .fixture(healthStore: healthStore, store: store)
             }
@@ -650,9 +650,9 @@ struct HealthSyncEngineTests {
             let healthStore: HealthStoreMock
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 healthStore = .ok(requestStatus: .notYetRequested)
-                engine = .fixture(healthStore: healthStore, store: .ok())
+                engine = .fixture(healthStore: healthStore, store: try .ok())
             }
 
             @Test("求めること")
@@ -668,9 +668,9 @@ struct HealthSyncEngineTests {
             let healthStore: HealthStoreMock
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 healthStore = .ok(requestStatus: .alreadyRequested)
-                engine = .fixture(healthStore: healthStore, store: .ok())
+                engine = .fixture(healthStore: healthStore, store: try .ok())
             }
 
             @Test("求めないこと")
@@ -690,7 +690,7 @@ struct HealthSyncEngineTests {
                 healthStore = .ok(requestStatus: .notYetRequested)
                 engine = .fixture(
                     healthStore: healthStore,
-                    store: .ok(
+                    store: try .ok(
                         records: [
                             try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                         ],
@@ -712,11 +712,11 @@ struct HealthSyncEngineTests {
             let healthStore: HealthStoreMock
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 healthStore = .ok(requestStatus: .notYetRequested)
                 engine = .fixture(
                     healthStore: healthStore,
-                    store: .ok(state: .fixture(hasCompletedInitialPull: true))
+                    store: try .ok(state: .fixture(hasCompletedInitialPull: true))
                 )
             }
 
@@ -737,7 +737,7 @@ struct HealthSyncEngineTests {
                 healthStore = .ok(requestStatus: .notYetRequested)
                 engine = .fixture(
                     healthStore: healthStore,
-                    store: .ok(
+                    store: try .ok(
                         records: [
                             try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                         ],
@@ -763,7 +763,7 @@ struct HealthSyncEngineTests {
                 healthStore = .ok(requestStatus: .alreadyRequested)
                 engine = .fixture(
                     healthStore: healthStore,
-                    store: .ok(
+                    store: try .ok(
                         records: [
                             try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                         ],

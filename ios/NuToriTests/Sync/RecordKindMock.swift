@@ -54,7 +54,7 @@ nonisolated struct RecordKindMock: RecordKind {
         reason: SyncWriteResult.RejectionReason,
         current: SyncWriteResult.Current?
     ) throws -> KindRejection {
-        KindRejection()
+        KindRejection.none
     }
 
     func apply(_ changes: [SyncChange], to cache: ModelContext) throws {

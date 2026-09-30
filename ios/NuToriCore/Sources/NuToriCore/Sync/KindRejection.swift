@@ -8,7 +8,10 @@ public struct KindRejection: Sendable, Equatable {
     /// サーバーに記録も削除の印も無いとき、この書き込みが指す記録をキャッシュから外す変更
     public let removingChanges: [SyncChange]
 
-    public init(rejectedWrite: RejectedWrite? = nil, removingChanges: [SyncChange] = []) {
+    /// 画面にも出さず、キャッシュも直さない
+    public static let none = KindRejection(rejectedWrite: nil, removingChanges: [])
+
+    public init(rejectedWrite: RejectedWrite?, removingChanges: [SyncChange]) {
         self.rejectedWrite = rejectedWrite
         self.removingChanges = removingChanges
     }

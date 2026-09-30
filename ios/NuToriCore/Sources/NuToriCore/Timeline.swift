@@ -27,7 +27,7 @@ public struct Timeline: Sendable {
         /// サーバーが受け付けなかった体重記録の行
         public let rejectedLines: [RejectedWeightLine]
 
-        public init(weightRecords: [WeightRecord], rejectedLines: [RejectedWeightLine] = []) {
+        public init(weightRecords: [WeightRecord], rejectedLines: [RejectedWeightLine]) {
             self.weightRecords = weightRecords
             self.rejectedLines = rejectedLines
         }
