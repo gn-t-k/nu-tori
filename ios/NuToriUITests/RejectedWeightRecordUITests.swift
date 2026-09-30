@@ -14,7 +14,7 @@ final class RejectedWeightRecordUITests: XCTestCase {
     func test_受け付けなかった記録の位置に1行出て未記録の見た目に戻ること() {
         XCTAssertTrue(app.staticText(containing: "72.6 kg").waitForExistence(timeout: 5))
         app.recordWeightTwoTenthsLower()
-        XCTAssertTrue(app.staticText(containing: "記録できませんでした").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["rejected-weight-line"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["composer-weight-unrecorded"].exists)
         XCTAssertTrue(app.staticText(containing: "72.6 kg").exists)
         attachScreenshot(of: app, named: "受け付けなかった体重の1行")
