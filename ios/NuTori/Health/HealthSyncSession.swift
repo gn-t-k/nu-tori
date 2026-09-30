@@ -41,7 +41,6 @@ import NuToriCore
         delivery = .bound(handler)
     }
 
-    /// 許可済みなら同期の前に読み、初回の取得で記録が見つかったらそのあとに許可を求める
     func aroundTimelineSync(_ sync: () async throws -> Void) async {
         if await isAlreadyRequested() {
             await importAndExportCached()

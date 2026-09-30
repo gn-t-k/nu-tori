@@ -75,8 +75,8 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
     /// 許可を求め終えたあとに呼ぶ。起こされたときは `onWake` が、読み取りと送り待ちの送信を行う
     func startDeliveringUpdates(onWake: @escaping @Sendable () async -> Void) async {
         let shouldStart = deliveryState.withLock { state -> Bool in
-            if state.didStart { return false }
-            state.didStart = true
+            if case .started = state { return false }
+            state = .started([])
             return true
         }
         guard shouldStart else { return }
@@ -93,13 +93,17 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
                     finish()
                 }
             }
-            deliveryState.withLock { $0.queries.append(query) }
+            deliveryState.withLock { state in
+                guard case .started(var queries) = state else { return }
+                queries.append(query)
+                state = .started(queries)
+            }
             store.execute(query)
         }
     }
 
     private let store = HKHealthStore()
-    private let deliveryState = OSAllocatedUnfairLock(initialState: DeliveryState())
+    private let deliveryState = OSAllocatedUnfairLock(initialState: DeliveryState.notStarted)
     private static let bodyMass = HKQuantityType(.bodyMass)
     private static let bodyFatPercentage = HKQuantityType(.bodyFatPercentage)
     private static let kilogram = HKUnit.gramUnit(with: .kilo)
@@ -181,9 +185,9 @@ nonisolated private struct ObserverCompletion: @unchecked Sendable {
     private let completion: HKObserverQueryCompletionHandler
 }
 
-nonisolated private struct DeliveryState {
-    var didStart = false
-    var queries: [HKQuery] = []
+nonisolated private enum DeliveryState {
+    case notStarted
+    case started([HKQuery])
 }
 
 /// 体重と体脂肪率で別のアンカーを、1つの `HealthAnchor` に入れる
