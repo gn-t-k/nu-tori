@@ -23,16 +23,14 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
             healthState: healthState, failure: nil, writeFailure: nil)
     }
 
-    static func error(_ error: any Error) -> SyncStoreMock {
-        SyncStoreMock(
-            records: [], settings: nil, pending: [], state: nil, healthState: .initial,
-            failure: error, writeFailure: nil)
-    }
-
-    static func errorOnWrite(_ error: any Error, records: [WeightRecord]) -> SyncStoreMock {
+    static func error(
+        _ error: any Error,
+        records: [WeightRecord] = [],
+        writesOnly: Bool = false
+    ) -> SyncStoreMock {
         SyncStoreMock(
             records: records, settings: nil, pending: [], state: nil, healthState: .initial,
-            failure: nil, writeFailure: error)
+            failure: writesOnly ? nil : error, writeFailure: writesOnly ? error : nil)
     }
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {

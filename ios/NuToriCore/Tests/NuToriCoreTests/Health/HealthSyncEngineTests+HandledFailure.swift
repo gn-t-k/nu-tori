@@ -67,7 +67,7 @@ extension HealthSyncEngineTests {
                 72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
             engine = .fixture(
                 healthStore: .ok(),
-                store: .errorOnWrite(SampleError(), records: [record]),
+                store: .error(SampleError(), records: [record], writesOnly: true),
                 errorReporting: reporting
             )
         }
