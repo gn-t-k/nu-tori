@@ -1,4 +1,4 @@
-import type { AccountSettings } from "./account-settings";
+import type { AccountSettings } from "../account-settings/domain/account-settings";
 import type { RecordType } from "./record-type";
 import type { SyncClientState } from "./sync-client-state";
 import type {
@@ -7,7 +7,7 @@ import type {
   SyncWriteOutcome,
   UpdateWeightRecordOutcome,
 } from "./sync-write-outcome";
-import type { WeightRecord } from "./weight-record";
+import type { WeightRecord } from "../weight-record/domain/weight-record";
 
 export type SyncStore = {
   transaction: <T>(run: () => T) => T;
