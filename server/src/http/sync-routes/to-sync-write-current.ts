@@ -12,10 +12,7 @@ export const toSyncWriteCurrent = ({
   if (current.status === "absent") {
     return { status: "absent" };
   }
-  const kind = httpRecordKinds.find(({ name }) => name === recordType);
-  if (kind === undefined) {
-    throw new Error(`受け口の登録簿に無い種類の今の値: ${recordType}`);
-  }
+  const kind = httpRecordKinds[recordType];
   // 取りに行く変更と同じ変換を通し、通し番号だけを外す
   const change = kind.toChangeResponse(0, current, recordId);
   return {

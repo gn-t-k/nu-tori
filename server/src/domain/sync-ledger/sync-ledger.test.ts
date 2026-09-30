@@ -163,7 +163,11 @@ describe("同期の帳簿", () => {
           ),
         );
         firstPage = ledger.pull(pullRequest(0));
-        secondPage = ledger.pull(pullRequest(firstPage.lastSequence ?? 0));
+        const { lastSequence } = firstPage;
+        if (lastSequence === undefined) {
+          throw new Error("1ページ目に最後の通し番号が無い");
+        }
+        secondPage = ledger.pull(pullRequest(lastSequence));
       });
 
       test("500 件で区切り、続きがあると知らせること", () => {
