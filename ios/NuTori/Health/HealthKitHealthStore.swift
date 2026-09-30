@@ -3,7 +3,6 @@ import HealthKit
 import NuToriCore
 import os
 
-/// 体重（読む・書く）と体脂肪率（読む）を、アンカー付きの問い合わせで HealthKit とやりとりする
 nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
     func authorizationRequestStatus() async throws -> HealthAuthorizationRequestStatus {
         guard HKHealthStore.isHealthDataAvailable() else { return .notYetRequested }
@@ -49,8 +48,8 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         )
         let next = StoredQueryAnchors(bodyMass: weights.anchor, bodyFat: bodyFats.anchor)
         return HealthChanges(
-            weights: weights.samples.compactMap(weightSample),
-            bodyFats: bodyFats.samples.compactMap(bodyFatSample),
+            weights: weights.samples.map(weightSample),
+            bodyFats: bodyFats.samples.map(bodyFatSample),
             deletions: weights.deletions.map { .weight(sampleId: $0.uuid) }
                 + bodyFats.deletions.map { .bodyFat(sampleId: $0.uuid) },
             anchor: HealthAnchor(data: next.encoded())
@@ -137,7 +136,7 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         return (result.addedSamples, result.deletedObjects, result.newAnchor)
     }
 
-    private func weightSample(_ sample: HKQuantitySample) -> HealthChanges.WeightSample? {
+    private func weightSample(_ sample: HKQuantitySample) -> HealthChanges.WeightSample {
         let source = sample.sourceRevision.source
         let zoneName = sample.metadata?[HKMetadataKeyTimeZone] as? String
         return HealthChanges.WeightSample(
@@ -150,7 +149,7 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         )
     }
 
-    private func bodyFatSample(_ sample: HKQuantitySample) -> HealthChanges.BodyFatSample? {
+    private func bodyFatSample(_ sample: HKQuantitySample) -> HealthChanges.BodyFatSample {
         HealthChanges.BodyFatSample(
             sampleId: sample.uuid,
             fraction: sample.quantity.doubleValue(for: .percent()),

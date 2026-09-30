@@ -30,9 +30,9 @@ struct TimelineScreen: View {
                     }
                 }
         }
-        .sheet(isPresented: $showsWeightEntry) {
+        .sheet(isPresented: showsWeightEntry) {
             WeightEntrySheet(records: records) { write in
-                showsWeightEntry = false
+                weightEntryPhase = .closed
                 Task { await saveWeight(write) }
             }
         }
@@ -43,8 +43,24 @@ struct TimelineScreen: View {
     @Query private var cachedRecords: [CachedWeightRecord]
     @Query private var syncStates: [CachedSyncState]
     @State private var visibleDay: CalendarDay?
-    @State private var showsWeightEntry = false
-    @State private var isPreparingWeightEntry = false
+    @State private var weightEntryPhase = WeightEntryPhase.closed
+
+    private var showsWeightEntry: Binding<Bool> {
+        Binding(
+            get: { weightEntryPhase == .showing },
+            set: { isPresented in
+                if !isPresented {
+                    weightEntryPhase = .closed
+                }
+            }
+        )
+    }
+
+    private enum WeightEntryPhase {
+        case closed
+        case preparing
+        case showing
+    }
 
     private var showsLoading: Bool {
         syncStates.first?.hasCompletedInitialPull != true
@@ -138,12 +154,11 @@ struct TimelineScreen: View {
         let unrecorded = !records.contains { $0.day == today }
         return HStack {
             Button {
-                guard !isPreparingWeightEntry else { return }
-                isPreparingWeightEntry = true
+                guard weightEntryPhase == .closed else { return }
+                weightEntryPhase = .preparing
                 Task {
                     await prepareWeightEntry()
-                    isPreparingWeightEntry = false
-                    showsWeightEntry = true
+                    weightEntryPhase = .showing
                 }
             } label: {
                 Image(systemName: "scalemass.fill")
@@ -155,7 +170,7 @@ struct TimelineScreen: View {
                     .foregroundStyle(unrecorded ? Color.white : Color.accentColor)
             }
             .buttonStyle(.plain)
-            .disabled(isPreparingWeightEntry)
+            .disabled(weightEntryPhase == .preparing)
             .accessibilityLabel("体重")
             .accessibilityIdentifier(unrecorded ? "composer-weight-unrecorded" : "composer-weight")
             Spacer(minLength: 0)

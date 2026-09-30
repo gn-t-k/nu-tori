@@ -1,6 +1,6 @@
 public import Foundation
 
-/// ヘルスケアに触れる層。HealthKit の実装と、UI テストの起動の値による差し替えが、これを実装する
+/// UI テストは HealthKit を呼ばず、起動の値でこれを差し替える
 public protocol HealthStore: Sendable {
     func authorizationRequestStatus() async throws -> HealthAuthorizationRequestStatus
 

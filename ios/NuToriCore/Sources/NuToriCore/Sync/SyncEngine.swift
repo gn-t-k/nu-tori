@@ -239,11 +239,15 @@ public actor SyncEngine {
     private func revisedManualRecords(in incoming: [WeightRecord]) async throws -> [WeightRecord] {
         var revised: [WeightRecord] = []
         for record in incoming {
-            guard case .manual = record.inputSource else { continue }
-            guard let cached = try await store.weightRecord(id: record.id),
-                record.version > cached.version
-            else { continue }
-            revised.append(record)
+            switch record.inputSource {
+            case .imported:
+                continue
+            case .manual:
+                guard let cached = try await store.weightRecord(id: record.id),
+                    record.version > cached.version
+                else { continue }
+                revised.append(record)
+            }
         }
         return revised
     }
