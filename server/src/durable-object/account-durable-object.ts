@@ -1,6 +1,5 @@
 import { instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
-import { createRecordKinds } from "../domain/create-record-kinds";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
 import { applySyncWrites } from "../domain/apply-sync-writes";
 import { pullSyncChanges } from "../domain/pull-sync-changes";
@@ -11,7 +10,7 @@ import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
 import { createRecordKindStores } from "./create-record-kind-stores";
-import { createSyncStore } from "./create-sync-store";
+import { createLedgerStore } from "./create-ledger-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
 // 受け口は呼ぶたびに accountId を渡す。Sentry の報告に user の ID として付けるため
@@ -37,8 +36,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     ) {
       setUser({ id: accountId });
       const { results, usageEvents } = applySyncWrites(
-        createSyncStore(this.ctx.storage),
-        createRecordKinds(createRecordKindStores(this.ctx.storage)),
+        createLedgerStore(this.ctx.storage),
+        createRecordKindStores(this.ctx.storage),
         {
           ...request,
           receivedAt: new Date(),
@@ -54,8 +53,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     ) {
       setUser({ id: accountId });
       const { usageEvents, ...pulled } = pullSyncChanges(
-        createSyncStore(this.ctx.storage),
-        createRecordKinds(createRecordKindStores(this.ctx.storage)),
+        createLedgerStore(this.ctx.storage),
+        createRecordKindStores(this.ctx.storage),
         {
           ...request,
           receivedAt: new Date(),

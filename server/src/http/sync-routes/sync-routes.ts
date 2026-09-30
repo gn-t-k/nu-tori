@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
+import { recordKindNameSchema } from "./record-kind-name-schema";
 import { createSyncClientStateSchema } from "./create-sync-client-state-schema";
 import { syncWriteSchema } from "./sync-write-schema";
 import { toSyncChangeResponse } from "./to-sync-change-response";
@@ -15,7 +16,7 @@ const queryCount = z.coerce
   .nonnegative()
   .openapi({ param: { required: true } });
 
-export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
+const routes = new OpenAPIHono<{ Bindings: Env }>()
   .openapi(
     createRoute({
       method: "post",
@@ -156,3 +157,8 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       );
     },
   );
+
+// 応答のスキーマからは指さない。端末が、自分の登録簿と突き合わせるために読む
+routes.openAPIRegistry.register("RecordKindName", recordKindNameSchema);
+
+export const syncRoutes = routes;

@@ -1,18 +1,15 @@
-import { match } from "ts-pattern";
-import type { createRecordKinds } from "./create-record-kinds";
 import { computeUsageEvents } from "./compute-usage-events";
+import { createRecordLedger } from "./create-record-ledger";
+import type { RecordKindStores } from "./record-kind-stores";
 import type { RecordType } from "./record-type";
-import type { RegisteredRecordType } from "./sync-change";
-import type { LegacySyncChange, SyncChange } from "./sync-change";
+import type { SyncChange } from "./sync-change";
 import type { SyncClientState } from "./sync-client-state";
-import { createSyncLedger } from "./sync-ledger/sync-ledger";
-import type { SyncStore } from "./sync-store";
-import type { SyncWrite } from "./sync-write";
+import type { LedgerStore } from "./sync-ledger/ledger-store";
 import type { UsageEvent } from "./usage-event";
 
 export const pullSyncChanges = (
-  store: SyncStore,
-  kinds: ReturnType<typeof createRecordKinds>,
+  ledgerStore: LedgerStore<RecordType>,
+  stores: RecordKindStores,
   request: { clientState: SyncClientState; afterSequence: number; receivedAt: Date },
 ): {
   changes: SyncChange[];
@@ -21,52 +18,18 @@ export const pullSyncChanges = (
   startedOn: string | undefined;
   usageEvents: UsageEvent[];
 } => {
-  const ledger = createSyncLedger<RecordType, RegisteredRecordType, SyncWrite, unknown>(
-    store,
-    kinds,
-  );
-  const pulled = ledger.pull(request, ({ sequence, recordType, recordId }) =>
-    pullLegacyChange(store, { sequence, recordType, recordId }),
-  );
+  const pulled = createRecordLedger(ledgerStore, stores).pull(request);
   return {
     changes: pulled.changes,
     hasMore: pulled.hasMore,
     nextAfterSequence: pulled.lastSequence ?? request.afterSequence,
-    startedOn: store.findStartedOn(),
-    usageEvents: computeUsageEvents(store, {
+    startedOn: stores.weightRecord.findStartedOn(),
+    usageEvents: computeUsageEvents({
       clientState: request.clientState,
       receivedAt: request.receivedAt,
       previousRequestReceivedAt: pulled.previousRequestReceivedAt,
+      sendsUsageData: stores.accountSettings.find()?.sendsUsageData ?? true,
       rejectedWrites: [],
     }),
   };
 };
-
-// 登録簿にない種類の変更を、今の道で読む
-const pullLegacyChange = (
-  store: SyncStore,
-  {
-    sequence,
-    recordType,
-    recordId,
-  }: { sequence: number; recordType: RecordType; recordId: string },
-): LegacySyncChange =>
-  match(recordType)
-    .with("weight_record", (): LegacySyncChange => {
-      const weightRecord = store.findWeightRecord(recordId);
-      if (weightRecord !== undefined) {
-        return { sequence, type: "weight_record", weightRecord };
-      }
-      if (store.existsWeightRecordDeletion(recordId)) {
-        return { sequence, type: "weight_record_deletion", recordId };
-      }
-      throw new Error(`変更の並びが指す体重記録も削除の印も無い: ${recordId}`);
-    })
-    .with("account_settings", (): LegacySyncChange => {
-      const accountSettings = store.findAccountSettings();
-      if (accountSettings === undefined) {
-        throw new Error(`変更の並びが指すアカウントの設定が無い: ${recordId}`);
-      }
-      return { sequence, type: "account_settings", accountSettings };
-    })
-    .exhaustive();

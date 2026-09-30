@@ -1,5 +1,5 @@
 import type { SyncClientState } from "../sync-client-state";
-import type { RejectionReason, SyncWriteOutcome } from "../sync-write-outcome";
+import type { RejectionReason } from "../sync-write-outcome";
 import type { LedgerStore } from "./ledger-store";
 import type { PresentRecord, RecordKind, WriteBase, WriteKind } from "./record-kind";
 
@@ -26,7 +26,7 @@ export type LedgerChange<TRecordType extends string, TValue> = {
   current: PresentRecord<TValue>;
 };
 
-// 登録簿にない種類の書き込み・変更は、呼び出し側の今の道が当てる
+// 登録簿にない種類の書き込み・変更は、型で来ない。実行時に来たら不具合として投げる
 export const createSyncLedger = <
   TRecordType extends string,
   TKindName extends TRecordType,
@@ -38,18 +38,12 @@ export const createSyncLedger = <
 ) => {
   const changesPerPull = 500;
 
-  const push = (
-    request: {
-      clientState: SyncClientState;
-      writes: readonly TWrite[];
-      isFinalBatch: boolean;
-      receivedAt: Date;
-    },
-    applyUnregistered: (
-      write: TWrite,
-      position: { requestLogId: string; positionInRequest: number },
-    ) => { outcome: SyncWriteOutcome; rejection: RejectedWrite<TRecordType> | undefined },
-  ) =>
+  const push = (request: {
+    clientState: SyncClientState;
+    writes: readonly TWrite[];
+    isFinalBatch: boolean;
+    receivedAt: Date;
+  }) =>
     store.transaction(() => {
       const previousRequestReceivedAt = store.findLatestRequestReceivedAt();
       const requestLogId = crypto.randomUUID();
@@ -67,11 +61,7 @@ export const createSyncLedger = <
         }
         const owner = kinds.find((kind) => kind.writes?.isWrite(write) === true);
         if (owner?.writes === undefined) {
-          const applied = applyUnregistered(write, { requestLogId, positionInRequest });
-          if (applied.rejection !== undefined) {
-            rejectedWrites.push(applied.rejection);
-          }
-          return { writeId: write.id, outcome: applied.outcome };
+          throw new Error(`登録簿に無い書き込み: ${write.type}`);
         }
         const decision = owner.writes.decide(write);
         store.insertWriteReceipt({
@@ -103,14 +93,11 @@ export const createSyncLedger = <
       return { results, rejectedWrites, previousRequestReceivedAt };
     });
 
-  const pull = <TUnregisteredChange>(
-    request: { clientState: SyncClientState; afterSequence: number; receivedAt: Date },
-    pullUnregistered: (found: {
-      sequence: number;
-      recordType: TRecordType;
-      recordId: string;
-    }) => TUnregisteredChange,
-  ) =>
+  const pull = (request: {
+    clientState: SyncClientState;
+    afterSequence: number;
+    receivedAt: Date;
+  }) =>
     store.transaction(() => {
       const previousRequestReceivedAt = store.findLatestRequestReceivedAt();
       store.insertPullRequestLog({
@@ -122,10 +109,10 @@ export const createSyncLedger = <
       const found = store.findLatestChangePerRecord(request.afterSequence, changesPerPull + 1);
       const changes = found
         .slice(0, changesPerPull)
-        .map((change): LedgerChange<TKindName, TValue> | TUnregisteredChange => {
+        .map((change): LedgerChange<TKindName, TValue> => {
           const owner = kinds.find((kind) => kind.name === change.recordType);
           if (owner === undefined) {
-            return pullUnregistered(change);
+            throw new Error(`登録簿に無い種類の変更: ${change.recordType}`);
           }
           const current = owner.readCurrent(change.recordId);
           if (current.status === "absent") {
