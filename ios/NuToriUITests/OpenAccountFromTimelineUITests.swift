@@ -13,7 +13,7 @@ final class OpenAccountFromTimelineUITests: XCTestCase {
 
     func test_ヘルスケアの行から読み書きする種類へ潜ること() {
         attachScreenshot(of: app, named: "アカウントの画面")
-        app.buttons["ヘルスケア"].tap()
+        app.buttons["ヘルスケア、読む・書く"].tap()
         XCTAssertTrue(app.navigationBars["ヘルスケア"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticText(containing: "体重、体脂肪率").exists)
         XCTAssertTrue(app.staticText(containing: "nu-tori で記録した体重。").exists)

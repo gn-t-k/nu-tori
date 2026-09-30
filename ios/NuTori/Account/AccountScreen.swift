@@ -133,7 +133,6 @@ struct AccountScreen: View {
         } label: {
             HStack {
                 Text(title)
-                    .foregroundStyle(.primary)
                 Spacer()
                 Image(systemName: "arrow.up.right")
                     .font(.footnote)
