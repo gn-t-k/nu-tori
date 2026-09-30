@@ -5,13 +5,18 @@ extension HealthSyncEngine {
     static let fixtureNow = Date(timeIntervalSince1970: 1_767_225_600)
     static let ownBundleId = "app.nu-tori.example"
 
-    static func fixture(healthStore: HealthStoreMock, store: SyncStoreMock) -> HealthSyncEngine {
+    static func fixture(
+        healthStore: HealthStoreMock,
+        store: SyncStoreMock,
+        errorReporting: ErrorReportingSessionMock = .ok()
+    ) -> HealthSyncEngine {
         HealthSyncEngine(
             healthStore: healthStore,
             store: store,
             ownBundleId: ownBundleId,
             timeZone: { TimeZone(identifier: "Asia/Tokyo")! },
-            now: { fixtureNow }
+            now: { fixtureNow },
+            errorReporting: errorReporting
         )
     }
 }

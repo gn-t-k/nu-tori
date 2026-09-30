@@ -17,6 +17,9 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-openapi-runtime", exact: "1.12.1"),
         .package(url: "https://github.com/apple/swift-openapi-urlsession", exact: "1.3.1"),
         .package(url: "https://github.com/apple/swift-crypto", exact: "5.0.0"),
+        // 版の正本をここに置く。アプリのターゲットだけが import し、このパッケージのターゲットは依存しない
+        .package(url: "https://github.com/PostHog/posthog-ios.git", exact: "3.85.3"),
+        .package(url: "https://github.com/getsentry/sentry-cocoa.git", exact: "9.29.2"),
     ],
     targets: [
         .target(

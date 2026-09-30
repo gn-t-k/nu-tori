@@ -13,6 +13,7 @@ public actor SyncEngine {
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
         readableKindsVersion: Int,
+        errorReporting: any ErrorReportingSession,
         weightHealthExport: any WeightHealthExport
     ) {
         self.store = store
@@ -22,6 +23,7 @@ public actor SyncEngine {
         self.timeZone = timeZone
         self.now = now
         self.readableKindsVersion = readableKindsVersion
+        self.errorReporting = errorReporting
         self.weightHealthExport = weightHealthExport
     }
 
@@ -37,16 +39,20 @@ public actor SyncEngine {
                 inputSource: .manual,
                 version: 1
             )
-            try await store.save(record, enqueuing: pendingWrite(.createWeightRecord(record)))
+            try await writingCache {
+                try await store.save(record, enqueuing: pendingWrite(.createWeightRecord(record)))
+            }
             return record
         case .correct(let record):
             guard let previous = try await store.weightRecord(id: record.id) else {
                 throw UnknownRecordError(recordId: record.id)
             }
-            try await store.save(
-                record,
-                enqueuing: pendingWrite(.correctWeightRecord(record, previous: previous))
-            )
+            try await writingCache {
+                try await store.save(
+                    record,
+                    enqueuing: pendingWrite(.correctWeightRecord(record, previous: previous))
+                )
+            }
             return record
         }
     }
@@ -57,7 +63,10 @@ public actor SyncEngine {
             id: AccountSettings.id(forAccountId: accountId),
             sendsUsageData: sendsUsageData
         )
-        try await store.save(settings, enqueuing: pendingWrite(.updateAccountSettings(settings)))
+        try await writingCache {
+            try await store.save(
+                settings, enqueuing: pendingWrite(.updateAccountSettings(settings)))
+        }
     }
 
     public func usageDataSetting() async throws -> UsageDataSetting {
@@ -96,6 +105,7 @@ public actor SyncEngine {
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
     private let readableKindsVersion: Int
+    private let errorReporting: any ErrorReportingSession
     private let weightHealthExport: any WeightHealthExport
 
     private func pendingWrite(_ operation: PendingWrite.Operation) -> PendingWrite {
@@ -122,6 +132,9 @@ public actor SyncEngine {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                if let failure = HandledFailure.reported(error, as: .sync) {
+                    await errorReporting.report(failure)
+                }
                 return .unavailable
             }
             switch result {
@@ -186,7 +199,9 @@ public actor SyncEngine {
                 }
             }
         }
-        try await store.removePendingWrites(resolvedWriteIds, reverting: reversions)
+        try await writingCache {
+            try await store.removePendingWrites(resolvedWriteIds, reverting: reversions)
+        }
     }
 
     private func pullChanges() async throws -> SyncResult.StopReason? {
@@ -202,6 +217,9 @@ public actor SyncEngine {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                if let failure = HandledFailure.reported(error, as: .sync) {
+                    await errorReporting.report(failure)
+                }
                 return .unavailable
             }
             switch result {
@@ -214,14 +232,16 @@ public actor SyncEngine {
                     readableKindsVersion: readableKindsVersion,
                     startedOn: page.startedOn
                 )
-                try await store.apply(
-                    PulledChanges(
-                        records: incoming,
-                        removedRecordIds: page.changes.compactMap(\.removedRecordId),
-                        accountSettings: page.changes.compactMap(\.accountSettings).last,
-                        state: state
+                try await writingCache {
+                    try await store.apply(
+                        PulledChanges(
+                            records: incoming,
+                            removedRecordIds: page.changes.compactMap(\.removedRecordId),
+                            accountSettings: page.changes.compactMap(\.accountSettings).last,
+                            state: state
+                        )
                     )
-                )
+                }
                 try await exportRevisedRecords(revised)
                 if !page.hasMore {
                     return nil
@@ -255,8 +275,23 @@ public actor SyncEngine {
             readableKindsVersion: readableKindsVersion,
             startedOn: saved.startedOn
         )
-        try await store.saveSyncState(restarted)
+        try await writingCache {
+            try await store.saveSyncState(restarted)
+        }
         return restarted
+    }
+
+    private func writingCache<T: Sendable>(_ work: () async throws -> T) async throws -> T {
+        do {
+            return try await work()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if let failure = HandledFailure.reported(error, as: .cacheSave) {
+                await errorReporting.report(failure)
+            }
+            throw error
+        }
     }
 
     private func revisedManualRecords(in incoming: [WeightRecord]) async throws -> [WeightRecord] {

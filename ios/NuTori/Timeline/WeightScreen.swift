@@ -7,6 +7,7 @@ struct WeightScreen: View {
     let firstDay: CalendarDay
     let today: CalendarDay
     let rejectedLines: [RejectedWeightLine]
+    let capture: (ClientUsageEvent) async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
 
     var body: some View {
@@ -58,6 +59,12 @@ struct WeightScreen: View {
         .onChange(of: focusedRecordId) { previous, current in
             guard let previous, current == nil else { return }
             commit(recordId: previous)
+        }
+        .onAppear {
+            Task { await capture(.screen(.weight)) }
+        }
+        .onDisappear {
+            Task { await capture(.screen(.timeline)) }
         }
     }
 
@@ -273,19 +280,24 @@ struct WeightScreen: View {
 
     private func commit(recordId: UUID) {
         let text: String
+        let place: CorrectionOrigin
         switch correction {
         case .notEditing:
             return
-        case .editing(let editingRecordId, _, let draftText, _):
+        case .editing(let editingRecordId, let editingPlace, let draftText, _):
             guard editingRecordId == recordId else { return }
             text = draftText
+            place = editingPlace
         }
         correction = .notEditing
         guard let kilograms = kilograms(in: text),
             let record = records.first(where: { $0.id == recordId }),
             let corrected = record.correction(replacingKilograms: kilograms)
         else { return }
-        Task { await saveWeight(.correct(corrected)) }
+        Task {
+            await capture(.weightCorrected(place.usagePlace))
+            await saveWeight(.correct(corrected))
+        }
     }
 
     private func kilograms(in text: String) -> Double? {
@@ -299,6 +311,14 @@ private enum CorrectionOrigin: Equatable {
     case dayGroup
     case otherRecord
     case recentRecord
+
+    var usagePlace: ClientUsageEvent.WeightCorrectionPlace {
+        switch self {
+        case .dayGroup: .daySummary
+        case .otherRecord: .otherRecords
+        case .recentRecord: .recentRecords
+        }
+    }
 }
 
 private enum Correction: Equatable {

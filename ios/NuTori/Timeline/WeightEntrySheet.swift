@@ -7,13 +7,11 @@ struct WeightEntrySheet: View {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
                     WeightStepButton(title: "−", label: "0.1 kg 減らす", enabled: canDecrease) {
-                        draft.step(by: -1)
-                        typing = false
+                        step(by: -1)
                     }
                     value
                     WeightStepButton(title: "+", label: "0.1 kg 増やす", enabled: canIncrease) {
-                        draft.step(by: 1)
-                        typing = false
+                        step(by: 1)
                     }
                 }
                 if let previousText {
@@ -49,23 +47,46 @@ struct WeightEntrySheet: View {
             if draft.startsWithKeyboard {
                 typing = true
             }
+            Task { await capture(.screen(.weightEntry)) }
+        }
+        .onDisappear {
+            guard !didRecord else { return }
+            Task { await capture(.weightInputCancelled) }
+        }
+        .onChange(of: typoText != nil, initial: true) { _, isShowing in
+            if isShowing {
+                observation.noteTypoHintShown()
+            }
         }
     }
 
     @State private var draft: Draft
     @State private var entry: WeightEntry
+    @State private var observation: WeightEntryObservation
+    @State private var didRecord = false
+    /// ステッパーが入れた文字列。キーボードの変更通知が、その変更を打鍵と数えないため
+    @State private var textFromStep: String?
     @State private var detent: PresentationDetent
     @FocusState private var typing: Bool
     @Environment(\.dismiss) private var dismiss
+    private let capture: (ClientUsageEvent) async -> Void
     private let onRecord: (WeightEntry.Write) -> Void
 
-    init(records: [WeightRecord], onRecord: @escaping (WeightEntry.Write) -> Void) {
+    init(
+        records: [WeightRecord],
+        capture: @escaping (ClientUsageEvent) async -> Void,
+        onRecord: @escaping (WeightEntry.Write) -> Void
+    ) {
         let entry = WeightEntry(
             weightRecords: records, today: CalendarDay(containing: .now, in: .current))
+        self.capture = capture
         self.onRecord = onRecord
         let draft = Draft(entry)
         _entry = State(initialValue: entry)
         _draft = State(initialValue: draft)
+        _observation = State(
+            initialValue: WeightEntryObservation(
+                startsWithKeyboard: draft.startsWithKeyboard, openedAt: .now))
         _detent = State(initialValue: draft.startsWithKeyboard ? .large : .medium)
     }
 
@@ -79,7 +100,12 @@ struct WeightEntrySheet: View {
                 .focused($typing)
                 .frame(minWidth: 88)
                 .onChange(of: draft.text) { previous, next in
+                    if next == textFromStep {
+                        textFromStep = nil
+                        return
+                    }
                     draft.applyTyped(previous: previous, next: next)
+                    observation.typed()
                 }
                 .accessibilityLabel("体重の値")
         } else {
@@ -142,9 +168,22 @@ struct WeightEntrySheet: View {
         return "前回（\(day)）より \(difference) \(direction)値です"
     }
 
+    private func step(by delta: Int) {
+        let before = draft.tenths
+        draft.step(by: delta)
+        if draft.tenths != before {
+            observation.stepped()
+            textFromStep = draft.text
+        }
+        typing = false
+    }
+
     private func record() {
         guard let kilograms else { return }
+        didRecord = true
+        let event = observation.recordedEvent(at: .now)
         onRecord(entry.write(recording: kilograms, at: .now, in: .current))
+        Task { await capture(event) }
     }
 }
 

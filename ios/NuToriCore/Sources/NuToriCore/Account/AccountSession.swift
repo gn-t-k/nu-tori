@@ -1,6 +1,5 @@
 public import Foundation
 public import NuToriAPI
-import OpenAPIRuntime
 
 public actor AccountSession {
     public init(
@@ -107,6 +106,64 @@ public actor AccountSession {
         }
     }
 
+    public func beginObservationIfSignedIn() async {
+        guard let account = try? await deviceStore.signedInAccount() else { return }
+        if (try? await deviceStore.hasSignInAgainMark()) == true { return }
+        await errorReporting.identify(accountId: account.accountId)
+        guard (try? await usageSetting())?.canStartPostHog == true else { return }
+        await analytics.identify(accountId: account.accountId)
+    }
+
+    public func noteInitialPull(_ pull: InitialPull) async {
+        switch pull {
+        case .unfinished, .notYetComplete, .alreadyComplete:
+            return
+        case .firstCompletion(let startedAt, let endedAt):
+            await beginObservationIfSignedIn()
+            guard (try? await usageSetting())?.canStartPostHog == true else { return }
+            let elapsed = max(0, endedAt.timeIntervalSince(startedAt))
+            await analytics.capture(.initialPullDuration(.seconds(elapsed)))
+        }
+    }
+
+    public func capture(_ event: ClientUsageEvent) async {
+        await analytics.capture(event)
+    }
+
+    /// 始める前に終えていれば、同期が止まっていてもすでに終えたとする
+    public static func initialPullNotice(
+        completedBefore: Bool,
+        completedAfter: Bool,
+        ending: SyncResult.Ending,
+        startedAt: Date,
+        endedAt: Date
+    ) -> InitialPull {
+        if completedBefore {
+            return .alreadyComplete
+        }
+        switch ending {
+        case .stopped:
+            return .unfinished
+        case .finished:
+            guard completedAfter else { return .notYetComplete }
+            return .firstCompletion(startedAt: startedAt, endedAt: endedAt)
+        }
+    }
+
+    /// オフの設定が届く前に、オフにしたことだけを1件送る
+    public func turnOffUsageData() async {
+        await analytics.capture(.usageDataTurnedOff)
+        await analytics.reset()
+    }
+
+    /// 取得の途中でも sync は終わる。初めて終えたときだけ、かかった時間を持つ
+    public enum InitialPull: Sendable, Equatable {
+        case unfinished
+        case notYetComplete
+        case alreadyComplete
+        case firstCompletion(startedAt: Date, endedAt: Date)
+    }
+
     public enum SignInOutcome: Sendable, Equatable {
         case signedIn(SignInDestination)
         case failed(FailureReason)
@@ -167,6 +224,14 @@ public actor AccountSession {
         return .signIn(.signInAgain(hasPendingWrites: !pendingWrites.isEmpty))
     }
 
+    private func usageSetting() async throws -> UsageDataSetting {
+        UsageDataSetting(
+            accountSettings: try await syncStore.accountSettings(),
+            hasCompletedInitialPull: try await syncStore.syncState()?.hasCompletedInitialPull
+                ?? false
+        )
+    }
+
     private func timelineDestination() async throws -> SignInDestination {
         let hasCompletedInitialPull = try await syncStore.syncState()?.hasCompletedInitialPull
         return hasCompletedInitialPull == true ? .timeline : .loadingTimeline
@@ -205,18 +270,6 @@ public actor AccountSession {
 
 extension Error {
     fileprivate var isInternetUnreachable: Bool {
-        switch self {
-        case let error as ClientError:
-            return error.underlyingError.isInternetUnreachable
-        case let error as URLError:
-            let unreachableCodes: Set<URLError.Code> = [
-                .notConnectedToInternet, .timedOut, .networkConnectionLost,
-                .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
-                .dataNotAllowed, .internationalRoamingOff, .callIsActive,
-            ]
-            return unreachableCodes.contains(error.code)
-        default:
-            return false
-        }
+        isUnreachableOrTimedOut
     }
 }

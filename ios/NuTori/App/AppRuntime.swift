@@ -39,10 +39,12 @@ import SwiftData
             environment: .forThisBuild,
             sessionToken: { try? await keychain.sessionToken() }
         )
+        let observation = ObservationSessions.live()
         let healthStore = HealthKitHealthStore()
         let health = HealthSyncSession.live(
             syncStore: store,
             healthStore: healthStore,
+            errorReporting: observation.errorReporting,
             startBackgroundDelivery: { onWake in
                 await healthStore.startDeliveringUpdates(onWake: onWake)
             }
@@ -55,8 +57,8 @@ import SwiftData
             appleCredentials: AppleIDCredentialChecker(),
             backgroundTransfers: PlaceholderBackgroundTransferStore(),
             healthAnchors: store,
-            analytics: PlaceholderAnalyticsSession(),
-            errorReporting: PlaceholderErrorReportingSession(),
+            analytics: observation.analytics,
+            errorReporting: observation.errorReporting,
             timeZone: { .current },
             analyticsFlushTimeout: .seconds(3)
         )
@@ -67,7 +69,8 @@ import SwiftData
             health: health,
             deviceId: { deviceStore.loadOrCreateDeviceId() },
             hasSession: { (try? await keychain.sessionToken()) != nil },
-            signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId }
+            signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
+            errorReporting: observation.errorReporting
         )
         health.bindWakeHandler { [weak sync] in
             await sync?.importHealthAndSendPending()

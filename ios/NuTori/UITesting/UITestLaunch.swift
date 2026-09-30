@@ -58,6 +58,8 @@
                 transport: StubAPITransport(behavior: transportBehavior),
                 sessionToken: { try? await keychain.sessionToken() }
             )
+            let analytics = PlaceholderAnalyticsSession()
+            let errorReporting = PlaceholderErrorReportingSession()
             let health = HealthSyncSession.live(
                 syncStore: store,
                 healthStore: UITestHealthStore(
@@ -65,6 +67,7 @@
                     latestKilograms: healthLatestKilograms,
                     writeAuthorized: healthWriteAuthorized
                 ),
+                errorReporting: errorReporting,
                 startBackgroundDelivery: { _ in }
             )
             let session = AccountSession(
@@ -75,8 +78,8 @@
                 appleCredentials: AuthorizedAppleCredentialChecker(),
                 backgroundTransfers: PlaceholderBackgroundTransferStore(),
                 healthAnchors: store,
-                analytics: PlaceholderAnalyticsSession(),
-                errorReporting: PlaceholderErrorReportingSession(),
+                analytics: analytics,
+                errorReporting: errorReporting,
                 timeZone: { .current },
                 analyticsFlushTimeout: .seconds(3)
             )
@@ -87,7 +90,8 @@
                 health: health,
                 deviceId: { deviceStore.loadOrCreateDeviceId() },
                 hasSession: { (try? await keychain.sessionToken()) != nil },
-                signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId }
+                signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
+                errorReporting: errorReporting
             )
             return AppRuntime(
                 container: store.container,

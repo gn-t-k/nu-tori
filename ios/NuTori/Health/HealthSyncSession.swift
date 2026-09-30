@@ -19,6 +19,7 @@ import NuToriCore
     static func live(
         syncStore: any SyncStore,
         healthStore: any HealthStore,
+        errorReporting: any ErrorReportingSession,
         startBackgroundDelivery:
             @escaping @Sendable (@escaping @Sendable () async -> Void) async ->
             Void
@@ -29,7 +30,8 @@ import NuToriCore
                 store: syncStore,
                 ownBundleId: Bundle.main.bundleIdentifier ?? "app.nu-tori",
                 timeZone: { .current },
-                now: { .now }
+                now: { .now },
+                errorReporting: errorReporting
             ),
             store: healthStore,
             startBackgroundDelivery: startBackgroundDelivery
