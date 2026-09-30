@@ -3,6 +3,7 @@ import { getAccountDurableObject } from "../../durable-object/get-account-durabl
 import { authenticateAccount } from "../authenticate-account";
 import { createSyncClientStateSchema } from "./create-sync-client-state-schema";
 import { syncWriteSchema } from "./sync-write-schema";
+import { toSyncChangeResponse } from "./to-sync-change-response";
 import { toSyncClientState } from "./to-sync-client-state";
 import { toSyncWrite } from "./to-sync-write";
 
@@ -146,19 +147,7 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       );
       return c.json(
         {
-          changes: pulled.changes.map(({ sequence, weightRecord }) => ({
-            sequence,
-            kind: "weight_record",
-            recordId: weightRecord.id,
-            record: {
-              id: weightRecord.id,
-              weightKg: weightRecord.weightKg,
-              measuredAt: weightRecord.measuredAt.getTime(),
-              timeZone: weightRecord.timeZone,
-              version: weightRecord.version,
-              imported: weightRecord.imported,
-            },
-          })),
+          changes: pulled.changes.map(toSyncChangeResponse),
           hasMore: pulled.hasMore,
           nextAfterSequence: pulled.nextAfterSequence,
           startedOn: pulled.startedOn ?? null,

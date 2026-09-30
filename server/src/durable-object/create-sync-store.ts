@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RecordType } from "../domain/record-type";
 import type { SyncStore } from "../domain/sync-store";
 import type { SyncWriteOutcome } from "../domain/sync-write-outcome";
 import type { WeightRecord } from "../domain/weight-record";
@@ -12,6 +13,14 @@ export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
         .exec<{ started_on: string }>("SELECT started_on FROM first_sign_ins")
         .toArray();
       return row?.started_on;
+    },
+    findLatestRequestReceivedAt: () => {
+      const [row] = sql
+        .exec<{ received_at: number }>(
+          "SELECT received_at FROM sync_request_logs ORDER BY received_at DESC LIMIT 1",
+        )
+        .toArray();
+      return row === undefined ? undefined : new Date(row.received_at);
     },
     insertPushRequestLog: ({ id, receivedAt, clientState, isFinalBatch }) => {
       insertRequestLog(sql, { id, receivedAt, clientState });
@@ -95,6 +104,16 @@ export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
           healthkitSampleUuid,
         )
         .toArray().length > 0,
+    existsWeightRecordDeletion: (recordId) =>
+      sql
+        .exec(
+          `SELECT 1
+           FROM weight_record_deletions AS deletion
+           JOIN sync_write_receipts AS receipt ON receipt.id = deletion.sync_write_receipt_id
+           WHERE receipt.record_type = 'weight_record' AND receipt.record_id = ?`,
+          recordId,
+        )
+        .toArray().length > 0,
     insertWeightRecord: ({ id, weightKg, measuredAt, timeZone, version, imported }) => {
       sql.exec(
         `INSERT INTO weight_records (id, weight_kg, measured_at, time_zone, version)
@@ -139,6 +158,39 @@ export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
         timeZone,
         version,
         id,
+      );
+    },
+    deleteWeightRecord: (id) => {
+      sql.exec("DELETE FROM weight_records WHERE id = ?", id);
+    },
+    insertWeightRecordDeletion: (writeId) => {
+      sql.exec("INSERT INTO weight_record_deletions (sync_write_receipt_id) VALUES (?)", writeId);
+    },
+    findAccountSettings: () => {
+      const [row] = sql
+        .exec<{ id: string; sends_usage_data: number }>(
+          "SELECT id, sends_usage_data FROM account_settings",
+        )
+        .toArray();
+      return row === undefined
+        ? undefined
+        : { id: row.id, sendsUsageData: row.sends_usage_data === 1 };
+    },
+    insertAccountSettings: ({ id, sendsUsageData }) => {
+      sql.exec(
+        "INSERT INTO account_settings (id, sends_usage_data) VALUES (?, ?)",
+        id,
+        sendsUsageData ? 1 : 0,
+      );
+    },
+    updateAccountSettings: (sendsUsageData) => {
+      sql.exec("UPDATE account_settings SET sends_usage_data = ?", sendsUsageData ? 1 : 0);
+    },
+    insertAccountSettingChange: ({ writeId, sendsUsageData }) => {
+      sql.exec(
+        "INSERT INTO account_setting_changes (sync_write_receipt_id, sends_usage_data) VALUES (?, ?)",
+        writeId,
+        sendsUsageData ? 1 : 0,
       );
     },
     insertRecordChange: ({ recordType, recordId, writeId }) => {
@@ -207,7 +259,9 @@ const insertRequestLog = (
 
 const parseOutcome = (row: { result: string; reason: string | null }): SyncWriteOutcome => {
   const outcomeSchema = z.discriminatedUnion("result", [
-    z.object({ result: z.enum(["applied", "ignored_duplicate"]) }),
+    z.object({
+      result: z.enum(["applied", "ignored_duplicate", "ignored_tombstone", "kept_corrected"]),
+    }),
     z.object({
       result: z.literal("rejected"),
       reason: z.enum([
@@ -222,8 +276,8 @@ const parseOutcome = (row: { result: string; reason: string | null }): SyncWrite
   return outcomeSchema.parse({ result: row.result, reason: row.reason ?? undefined });
 };
 
-const parseRecordType = (recordType: string): "weight_record" => {
-  if (recordType !== "weight_record") {
+const parseRecordType = (recordType: string): RecordType => {
+  if (recordType !== "weight_record" && recordType !== "account_settings") {
     throw new Error(`知らない記録の種類: ${recordType}`);
   }
   return recordType;

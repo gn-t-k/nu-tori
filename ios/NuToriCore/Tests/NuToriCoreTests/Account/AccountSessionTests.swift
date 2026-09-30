@@ -113,7 +113,7 @@ struct AccountSessionTests {
             }
         }
 
-        @Suite("Apple の資格情報が revoked のとき")
+        @Suite("Apple の資格情報が取り消されているとき")
         struct WithRevokedCredential {
             let device: AccountDevice
             let session: AccountSession
@@ -149,7 +149,7 @@ struct AccountSessionTests {
             }
         }
 
-        @Suite("Apple の資格情報が notFound のとき")
+        @Suite("Apple の資格情報が見つからないとき")
         struct WithNotFoundCredential {
             let device: AccountDevice
             let session: AccountSession
@@ -317,8 +317,10 @@ struct AccountSessionTests {
                 _ = try await session.signIn(with: credential)
 
                 #expect(device.syncStore.records.isEmpty)
+                #expect(device.syncStore.settings == nil)
                 #expect(device.syncStore.pending.isEmpty)
                 #expect(device.syncStore.state == nil)
+                #expect(device.syncStore.healthState == .initial)
                 #expect(device.backgroundTransfers.cancelAndDeleteCount == 1)
                 #expect(device.healthAnchors.deleteCount == 1)
                 #expect(device.deviceStore.didEraseAccountBoundState)

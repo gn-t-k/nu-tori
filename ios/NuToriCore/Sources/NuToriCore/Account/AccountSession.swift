@@ -48,7 +48,6 @@ public actor AccountSession {
         }
     }
 
-    /// 同期の結果から、サインインの画面を出すかを決める。電波が無くてセッションを更新できないだけのときは出さない
     public func destination(afterSync result: SyncResult) async throws -> SignInDestination {
         switch result.ending {
         case .stopped(.sessionExpired):
@@ -87,7 +86,6 @@ public actor AccountSession {
         }
     }
 
-    /// 消せなかったときは、端末では何も消さない
     public func deleteAccount() async throws -> DeleteAccountOutcome {
         await flushAnalyticsEvents()
         let result: NuToriAPIClient.DeleteAccountResult
@@ -165,7 +163,7 @@ public actor AccountSession {
     }
 
     private func signInAgainDestination() async throws -> SignInDestination {
-        let pendingWrites = try await syncStore.pendingWrites()
+        let pendingWrites = try await syncStore.pendingWritesOldestFirst()
         return .signIn(.signInAgain(hasPendingWrites: !pendingWrites.isEmpty))
     }
 

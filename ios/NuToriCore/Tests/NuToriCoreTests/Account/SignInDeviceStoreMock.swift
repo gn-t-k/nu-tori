@@ -8,44 +8,62 @@ final class SignInDeviceStoreMock: SignInDeviceStore, @unchecked Sendable {
 
     static func ok(
         hasOpenedBefore: Bool = true,
-        account: SignedInAccount? = nil,
+        account: SignedInAccount?,
         hasSignInAgainMark: Bool = false,
         log: CallLog = CallLog()
     ) -> SignInDeviceStoreMock {
         SignInDeviceStoreMock(
-            hasOpened: hasOpenedBefore, account: account, hasMark: hasSignInAgainMark, log: log)
+            hasOpened: hasOpenedBefore,
+            account: account,
+            hasMark: hasSignInAgainMark,
+            log: log,
+            failure: nil
+        )
+    }
+
+    static func error(_ error: any Error) -> SignInDeviceStoreMock {
+        SignInDeviceStoreMock(
+            hasOpened: false, account: nil, hasMark: false, log: CallLog(), failure: error)
     }
 
     func hasOpenedBefore() async throws -> Bool {
-        hasOpened
+        try failIfNeeded()
+        return hasOpened
     }
 
     func markOpened() async throws {
+        try failIfNeeded()
         hasOpened = true
     }
 
     func signedInAccount() async throws -> SignedInAccount? {
-        account
+        try failIfNeeded()
+        return account
     }
 
     func save(_ account: SignedInAccount) async throws {
+        try failIfNeeded()
         log.record("deviceStore.save")
         self.account = account
     }
 
     func hasSignInAgainMark() async throws -> Bool {
-        hasMark
+        try failIfNeeded()
+        return hasMark
     }
 
     func setSignInAgainMark() async throws {
+        try failIfNeeded()
         hasMark = true
     }
 
     func clearSignInAgainMark() async throws {
+        try failIfNeeded()
         hasMark = false
     }
 
     func eraseAccountBoundState() async throws {
+        try failIfNeeded()
         log.record("deviceStore.erase")
         account = nil
         hasMark = false
@@ -53,11 +71,23 @@ final class SignInDeviceStoreMock: SignInDeviceStore, @unchecked Sendable {
     }
 
     private let log: CallLog
+    private let failure: (any Error)?
 
-    private init(hasOpened: Bool, account: SignedInAccount?, hasMark: Bool, log: CallLog) {
+    private init(
+        hasOpened: Bool,
+        account: SignedInAccount?,
+        hasMark: Bool,
+        log: CallLog,
+        failure: (any Error)?
+    ) {
         self.hasOpened = hasOpened
         self.account = account
         self.hasMark = hasMark
         self.log = log
+        self.failure = failure
+    }
+
+    private func failIfNeeded() throws {
+        if let failure { throw failure }
     }
 }

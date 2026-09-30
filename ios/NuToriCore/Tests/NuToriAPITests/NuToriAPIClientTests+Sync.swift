@@ -102,6 +102,52 @@ extension NuToriAPIClientTests {
             }
         }
 
+        @Suite("アカウントの設定を直す書き込みを送るとき")
+        struct AccountSettingsWrite {
+            let writeId: UUID
+            let settingsId: UUID
+            let writes: [SyncWrite]
+            let clientState: SyncClientState
+            let transport: ClientTransportMock
+            let client: NuToriAPIClient
+
+            init() {
+                writeId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")!
+                settingsId = UUID(uuidString: "00000000-0000-4000-8000-0000000000e1")!
+                writes = [
+                    .updateAccountSettings(
+                        writeId: writeId,
+                        settings: SyncedAccountSettings(id: settingsId, sendsUsageData: false)
+                    )
+                ]
+                clientState = .fixture()
+                transport = .ok(
+                    json: #"{"results":[{"writeId":"\#(writeId.uuidString)","result":"applied"}]}"#
+                )
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: transport,
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("記録の代わりにアカウントの設定を載せた update_account_settings として送ること")
+            func sendsUpdateAccountSettings() async throws {
+                _ = try await client.pushSyncWrites(
+                    writes, isFinalBatch: true, clientState: clientState)
+
+                let sent = try #require(transport.requests.first)
+                #expect(
+                    try SentSyncWritesBody(json: sent.body ?? "").writes == [
+                        .init(
+                            id: writeId.uuidString,
+                            accountSettings: .init(
+                                id: settingsId.uuidString, sendsUsageData: false)
+                        )
+                    ])
+            }
+        }
+
         @Suite("ヘルスケアから取り込んだ記録を作る書き込みを送るとき")
         struct Imported {
             let createWriteId: UUID
@@ -159,6 +205,87 @@ extension NuToriAPIClientTests {
             }
         }
 
+        @Suite("元のサンプルが消えたという書き込みを送るとき")
+        struct SourceDeleted {
+            let writeIds: [UUID]
+            let weightRecordId: UUID
+            let transport: ClientTransportMock
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+            let writes: [SyncWrite]
+
+            init() {
+                let writeIds = [
+                    UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")!,
+                    UUID(uuidString: "00000000-0000-4000-8000-0000000000a4")!,
+                    UUID(uuidString: "00000000-0000-4000-8000-0000000000a5")!,
+                ]
+                let weightRecordId = UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!
+                self.writeIds = writeIds
+                self.weightRecordId = weightRecordId
+                clientState = .fixture()
+                writes = writeIds.map {
+                    .sourceDeletedWeightRecord(writeId: $0, weightRecordId: weightRecordId)
+                }
+                transport = .ok(
+                    json: """
+                        {"results":[
+                          {"writeId":"\(writeIds[0].uuidString)","result":"applied"},
+                          {"writeId":"\(writeIds[1].uuidString)","result":"ignored_tombstone"},
+                          {"writeId":"\(writeIds[2].uuidString)","result":"kept_corrected"}
+                        ]}
+                        """
+                )
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: transport,
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("消えた体重記録の ID を添えて送ること")
+            func sendsWeightRecordId() async throws {
+                _ = try await client.pushSyncWrites(
+                    [writes[0]], isFinalBatch: false, clientState: clientState)
+
+                let sent = try #require(transport.requests.first)
+                let body = try JSONDecoder().decode(
+                    SentSourceDeletedWritesBody.self, from: Data((sent.body ?? "").utf8))
+                #expect(
+                    body.writes == [
+                        .init(
+                            id: writeIds[0].uuidString,
+                            type: "source_deleted_weight_record",
+                            weightRecordId: weightRecordId.uuidString)
+                    ])
+            }
+
+            @Test("消した・削除の印で捨てた・直してあるので残した結果を、送った順に返すこと")
+            func returnsOutcomes() async throws {
+                let result = try await client.pushSyncWrites(
+                    writes, isFinalBatch: false, clientState: clientState)
+
+                #expect(
+                    result
+                        == .pushed([
+                            SyncWriteResult(writeId: writeIds[0], outcome: .applied),
+                            SyncWriteResult(writeId: writeIds[1], outcome: .ignoredTombstone),
+                            SyncWriteResult(writeId: writeIds[2], outcome: .keptCorrected),
+                        ])
+                )
+            }
+
+            private struct SentSourceDeletedWritesBody: Decodable {
+                let writes: [Write]
+
+                struct Write: Decodable, Equatable {
+                    let id: String
+                    let type: String
+                    let weightRecordId: String
+                }
+            }
+        }
+
         @Suite("サーバーが知らない結果と理由を返したとき")
         struct UnknownResult {
             let createWriteId: UUID
@@ -175,7 +302,7 @@ extension NuToriAPIClientTests {
                     transport: ClientTransportMock.ok(
                         json: """
                             {"results":[
-                              {"writeId":"\(createWriteId.uuidString)","result":"ignored_tombstone"},
+                              {"writeId":"\(createWriteId.uuidString)","result":"ignored_stale"},
                               {"writeId":"\(updateWriteId.uuidString)","result":"rejected","rejectionReason":"too_old"}
                             ]}
                             """
@@ -194,7 +321,7 @@ extension NuToriAPIClientTests {
                         == .pushed([
                             SyncWriteResult(
                                 writeId: createWriteId,
-                                outcome: .unknown(result: "ignored_tombstone")),
+                                outcome: .unknown(result: "ignored_stale")),
                             SyncWriteResult(
                                 writeId: updateWriteId,
                                 outcome: .rejected(.unknown(reason: "too_old"))),
@@ -327,9 +454,12 @@ extension NuToriAPIClientTests {
                                      "imported":{"sourceAppName":"Withings","sourceBundleId":"com.withings.wiScaleNG",
                                                  "healthkitSampleUuid":"00000000-0000-4000-8000-0000000000c1",
                                                  "bodyFat":{"percentage":18.5,"healthkitSampleUuid":"00000000-0000-4000-8000-0000000000c2"}}}},
-                          {"sequence":5,"kind":"account_settings","recordId":"x","record":{"sendsUsageData":false}},
-                          {"sequence":6,"kind":"weight_record","recordId":"y","record":{"unexpected":true}}
-                        ],"hasMore":true,"nextAfterSequence":6,"startedOn":"2026-09-29"}
+                          {"sequence":5,"kind":"account_settings","recordId":"00000000-0000-4000-8000-0000000000e1",
+                           "record":{"id":"00000000-0000-4000-8000-0000000000e1","sendsUsageData":false}},
+                          {"sequence":6,"kind":"weight_record","recordId":"y","record":{"unexpected":true}},
+                          {"sequence":7,"kind":"account_settings","recordId":"z","record":{"sendsUsageData":true}},
+                          {"sequence":8,"kind":"meal","recordId":"m","record":{}}
+                        ],"hasMore":true,"nextAfterSequence":8,"startedOn":"2026-09-29"}
                         """
                 )
                 client = NuToriAPIClient(
@@ -350,11 +480,17 @@ extension NuToriAPIClientTests {
                             SyncChangesPage(
                                 changes: [
                                     .weightRecord(expectedRecord),
-                                    .unknown(kind: "account_settings"),
+                                    .accountSettings(
+                                        SyncedAccountSettings(
+                                            id: UUID(
+                                                uuidString: "00000000-0000-4000-8000-0000000000e1")!,
+                                            sendsUsageData: false)),
                                     .unknown(kind: "weight_record"),
+                                    .unknown(kind: "account_settings"),
+                                    .unknown(kind: "meal"),
                                 ],
                                 hasMore: true,
-                                nextAfterSequence: 6,
+                                nextAfterSequence: 8,
                                 startedOn: "2026-09-29"
                             )
                         )
@@ -386,6 +522,51 @@ extension NuToriAPIClientTests {
                         "pendingPhotoCount": "0",
                         "afterSequence": "3",
                     ])
+            }
+        }
+
+        @Suite("サーバーが削除の印を返したとき")
+        struct Deletion {
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+
+            init() {
+                clientState = .fixture()
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(
+                        json: """
+                            {"changes":[
+                              {"sequence":7,"kind":"weight_record_deletion","recordId":"00000000-0000-4000-8000-0000000000b1","record":{}},
+                              {"sequence":8,"kind":"weight_record_deletion","recordId":"not-a-uuid","record":{}}
+                            ],"hasMore":false,"nextAfterSequence":8,"startedOn":"2026-09-29"}
+                            """
+                    ),
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("削除の印を、消えた記録の ID つきで返し、ID が読めないものは読み飛ばせる形で返すこと")
+            func returnsDeletions() async throws {
+                let result = try await client.pullSyncChanges(
+                    afterSequence: 6, clientState: clientState)
+
+                #expect(
+                    result
+                        == .pulled(
+                            SyncChangesPage(
+                                changes: [
+                                    .weightRecordDeletion(
+                                        recordId: UUID(
+                                            uuidString: "00000000-0000-4000-8000-0000000000b1")!),
+                                    .unknown(kind: "weight_record_deletion"),
+                                ],
+                                hasMore: false,
+                                nextAfterSequence: 8,
+                                startedOn: "2026-09-29"
+                            )
+                        )
+                )
             }
         }
 
