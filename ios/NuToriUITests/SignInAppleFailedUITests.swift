@@ -7,7 +7,8 @@ final class SignInAppleFailedUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-out", appleSignIn: "failed", timeZone: nil)
+        app = .launched(
+            account: "signed-out", appleSignIn: "failed", healthLatestKilograms: nil, timeZone: nil)
         app.buttons["appleSignInButton"].tap()
     }
 

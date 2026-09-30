@@ -21,7 +21,8 @@ import NuToriCore
         case .correct(let record):
             onReplacingRecord(record.id)
         }
-        try await engineForThisDevice(accountId: accountId).save(write)
+        let record = try await engineForThisDevice(accountId: accountId).save(write)
+        await health.export(record)
         // 開いたときの同期が先に送り待ちを読んでいたら、それが終わってから送り直す
         if let inFlight {
             _ = try? await inFlight.value
@@ -29,10 +30,16 @@ import NuToriCore
         _ = try await sync()
     }
 
+    func importHealthAndSendPending() async {
+        await health.importChanges()
+        _ = try? await sync()
+    }
+
     init(
         store: SwiftDataSyncStore,
         client: NuToriAPIClient,
         accountSession: AccountSession,
+        health: HealthSyncSession,
         deviceId: @escaping @MainActor () -> UUID,
         hasSession: @escaping @MainActor () async -> Bool,
         signedInAccountId: @escaping @MainActor () async -> String?,
@@ -41,6 +48,7 @@ import NuToriCore
         self.store = store
         self.client = client
         self.accountSession = accountSession
+        self.health = health
         self.deviceId = deviceId
         self.hasSession = hasSession
         self.signedInAccountId = signedInAccountId
@@ -84,6 +92,7 @@ import NuToriCore
     private let store: SwiftDataSyncStore
     private let client: NuToriAPIClient
     private let accountSession: AccountSession
+    private let health: HealthSyncSession
     private let deviceId: @MainActor () -> UUID
     private let hasSession: @MainActor () async -> Bool
     private let signedInAccountId: @MainActor () async -> String?
@@ -183,7 +192,8 @@ import NuToriCore
             timeZone: { .current },
             now: { .now },
             readableKindsVersion: SyncEngine.currentReadableKindsVersion,
-            errorReporting: errorReporting
+            errorReporting: errorReporting,
+            weightHealthExport: health.engine
         )
     }
 }

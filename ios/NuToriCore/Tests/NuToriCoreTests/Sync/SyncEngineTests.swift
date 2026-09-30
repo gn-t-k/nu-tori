@@ -692,5 +692,106 @@ struct SyncEngineTests {
                 #expect(try transport.pullQueries.map { $0["afterSequence"] } == ["42"])
             }
         }
+
+        @Suite("手の記録の版がキャッシュより大きいとき")
+        struct RevisedManualRecord {
+            let export: WeightHealthExportMock
+            let engine: SyncEngine
+            let revisedId: UUID
+
+            init() throws {
+                revisedId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1"))
+                let freshId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b2"))
+                let importedId = try #require(
+                    UUID(uuidString: "00000000-0000-4000-8000-0000000000b3"))
+                let cachedManual = try WeightRecord.manual(
+                    70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", id: revisedId,
+                    version: 1)
+                let cachedImported = WeightRecord(
+                    id: importedId,
+                    kilograms: 71.0,
+                    instant: try Date("2026-09-24T08:00:00+09:00", strategy: .iso8601),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                    inputSource: .imported(
+                        WeightRecord.ImportedSource(
+                            appName: "体重計アプリ",
+                            bundleId: "com.example.scale",
+                            healthKitSampleId: try #require(
+                                UUID(uuidString: "00000000-0000-4000-8000-0000000000c9")),
+                            bodyFat: nil
+                        )
+                    ),
+                    version: 1
+                )
+                export = .ok()
+                engine = .fixture(
+                    store: .ok(records: [cachedManual, cachedImported]),
+                    transport: .ok(pullPages: [
+                        """
+                        {"changes":[
+                          {"sequence":8,"kind":"weight_record","recordId":"\(revisedId.uuidString)",
+                            "record":{"id":"\(revisedId.uuidString)","weightKg":73.1,
+                              "measuredAt":1767225600000,"timeZone":"Asia/Tokyo","version":4}},
+                          {"sequence":9,"kind":"weight_record","recordId":"\(freshId.uuidString)",
+                            "record":{"id":"\(freshId.uuidString)","weightKg":69.0,
+                              "measuredAt":1767312000000,"timeZone":"Asia/Tokyo","version":1}},
+                          {"sequence":10,"kind":"weight_record","recordId":"\(importedId.uuidString)",
+                            "record":{"id":"\(importedId.uuidString)","weightKg":71.4,
+                              "measuredAt":1767312000000,"timeZone":"Asia/Tokyo","version":5,
+                              "imported":{"sourceAppName":"体重計アプリ","sourceBundleId":"com.example.scale",
+                                "healthkitSampleUuid":"00000000-0000-4000-8000-0000000000c9"}}}
+                        ],"hasMore":false,"nextAfterSequence":10,"startedOn":null}
+                        """
+                    ]),
+                    weightHealthExport: export
+                )
+            }
+
+            @Test("その手の記録だけをヘルスケアに書き直すこと")
+            func exportsOnlyTheRevisedManualRecord() async throws {
+                _ = try await engine.sync()
+
+                #expect(export.writes.map(\.id) == [revisedId])
+                #expect(export.writes.map(\.version) == [4])
+                #expect(export.writes.map(\.kilograms) == [73.1])
+            }
+        }
+
+        @Suite("ヘルスケアへの書き直しが失敗したとき")
+        struct ExportFails {
+            let store: SyncStoreMock
+            let engine: SyncEngine
+            let revised: WeightRecord
+
+            init() throws {
+                revised = try WeightRecord.manual(
+                    70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
+                store = .ok(records: [revised])
+                engine = .fixture(
+                    store: store,
+                    transport: .ok(pullPages: [
+                        """
+                        {"changes":[
+                          {"sequence":8,"kind":"weight_record","recordId":"\(revised.id.uuidString)",
+                            "record":{"id":"\(revised.id.uuidString)","weightKg":73.1,
+                              "measuredAt":1767225600000,"timeZone":"Asia/Tokyo","version":4}}
+                        ],"hasMore":false,"nextAfterSequence":8,"startedOn":null}
+                        """
+                    ]),
+                    weightHealthExport: WeightHealthExportMock.error(ExportFailure())
+                )
+            }
+
+            @Test("届いた記録はキャッシュに入れ、同期は終えること")
+            func keepsThePulledRecord() async throws {
+                let result = try await engine.sync()
+
+                #expect(result.ending == .finished)
+                #expect(store.records[revised.id]?.version == 4)
+                #expect(store.records[revised.id]?.kilograms == 73.1)
+            }
+
+            private struct ExportFailure: Error {}
+        }
     }
 }

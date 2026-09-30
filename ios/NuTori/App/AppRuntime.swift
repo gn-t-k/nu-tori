@@ -40,6 +40,15 @@ import SwiftData
             sessionToken: { try? await keychain.sessionToken() }
         )
         let observation = ObservationSessions.live()
+        let healthStore = HealthKitHealthStore()
+        let health = HealthSyncSession.live(
+            syncStore: store,
+            healthStore: healthStore,
+            errorReporting: observation.errorReporting,
+            startBackgroundDelivery: { onWake in
+                await healthStore.startDeliveringUpdates(onWake: onWake)
+            }
+        )
         let session = AccountSession(
             client: client,
             keychain: keychain,
@@ -47,7 +56,7 @@ import SwiftData
             syncStore: store,
             appleCredentials: AppleIDCredentialChecker(),
             backgroundTransfers: PlaceholderBackgroundTransferStore(),
-            healthAnchors: PlaceholderHealthAnchorStore(),
+            healthAnchors: store,
             analytics: observation.analytics,
             errorReporting: observation.errorReporting,
             timeZone: { .current },
@@ -57,12 +66,16 @@ import SwiftData
             store: store,
             client: client,
             accountSession: session,
+            health: health,
             deviceId: { deviceStore.loadOrCreateDeviceId() },
             hasSession: { (try? await keychain.sessionToken()) != nil },
             signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
             errorReporting: observation.errorReporting
         )
-        let model = RootModel(accountSession: session, recordSync: sync)
+        health.bindWakeHandler { [weak sync] in
+            await sync?.importHealthAndSendPending()
+        }
+        let model = RootModel(accountSession: session, recordSync: sync, health: health)
         return AppRuntime(container: store.container, recordSync: sync, model: model)
     }
 }

@@ -12,7 +12,9 @@ final class DaySummaryFromRingUITests: XCTestCase {
         let days = try Self.days()
         started = days.started
         todayIdentifier = days.todayIdentifier
-        app = .launched(account: "signed-in", api: "day-ring", timeZone: Self.timeZoneIdentifier)
+        app = .launched(
+            account: "signed-in", api: "day-ring", healthLatestKilograms: nil,
+            timeZone: Self.timeZoneIdentifier)
         XCTAssertTrue(app.staticText(containing: "72.4 kg").waitForExistence(timeout: 5))
     }
 

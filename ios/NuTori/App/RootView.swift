@@ -34,7 +34,10 @@ struct RootView: View {
             TimelineScreen(
                 rejectedLines: model.rejectedLines,
                 capture: { await model.capture($0) },
-                saveWeight: { await model.saveWeight($0) }
+                prepareWeightEntry: { await model.prepareWeightEntry() },
+                saveWeight: { write in
+                    await model.saveWeight(write)
+                }
             )
         }
     }
