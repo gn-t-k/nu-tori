@@ -114,28 +114,11 @@ check_ios_app() {
     # Linux と macOS で Foundation の振る舞いが違うことがあるので、macOS でも回す
     check_ios_package
 
-    local simulator boot_log boot_pid results="$ios/.build/NuTori.xcresult"
+    step "アプリのビルドとテスト"
+    local simulator results="$ios/.build/NuTori.xcresult"
     simulator="$(latest_iphone_simulator)"
-    # 起動をテストの中でさせると、アプリの起動が時間切れになることがある。起動に数分かかるので、アプリのビルドのあいだに裏で済ませる
-    boot_log="$(mktemp)"
-    xcrun simctl bootstatus "$simulator" -b > "$boot_log" 2>&1 &
-    boot_pid=$!
-
-    step "アプリのビルド"
-    xcodebuild \
-        -project "$ios/NuTori.xcodeproj" \
-        -scheme NuTori \
-        -destination "id=$simulator" \
-        -disableAutomaticPackageResolution \
-        build-for-testing
-
-    step "シミュレータの起動を待つ"
-    if ! wait "$boot_pid"; then
-        cat "$boot_log" >&2
-        return 1
-    fi
-
-    step "アプリのテスト"
+    # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
+    xcrun simctl bootstatus "$simulator" -b
     rm -rf "$results"
     # 落ちたテストの診断をシミュレータから集めると、時間切れの10分まで待つことがある。落ちた理由は xcresult で足りる
     xcodebuild \
@@ -145,7 +128,7 @@ check_ios_app() {
         -resultBundlePath "$results" \
         -disableAutomaticPackageResolution \
         -collect-test-diagnostics never \
-        test-without-building
+        build test
 }
 
 check_ios_package() {
