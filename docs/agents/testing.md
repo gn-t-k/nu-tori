@@ -1,6 +1,6 @@
 # テストの好み
 
-テストを書く・直すときに従う。テストもコードなので `docs/agents/coding-style.md` も当てる。言語ごとの当てはめは `docs/agents/languages/<言語>.md` にあり、そこで置き換えると書いた箇所はそちらに従う。
+テストの好み。テストもコードなので `docs/agents/coding-style.md` も当てる。言語ごとの当てはめは `docs/agents/languages/<言語>.md` にあり、そこで置き換えると書いた箇所はそちらに従う。
 
 ## テストの粒度
 
