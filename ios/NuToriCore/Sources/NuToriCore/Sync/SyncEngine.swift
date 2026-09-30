@@ -2,8 +2,8 @@ public import Foundation
 public import NuToriAPI
 
 public actor SyncEngine {
-    /// 新しい種類の記録を読めるようにしたら上げる。上げると、更新して最初の同期で全部取り直す
-    public static let currentReadableKindsVersion = 2
+    /// 今読める種類の名前。種類を足したら、ここに名前を足す。前に読めた種類に無い名前があると、全部取り直す
+    public static let currentReadableKinds: Set<String> = ["account-settings", "weight-record"]
 
     public init(
         store: any SyncStore,
@@ -12,7 +12,7 @@ public actor SyncEngine {
         device: SyncDevice,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
-        readableKindsVersion: Int,
+        readableKinds: Set<String>,
         errorReporting: any ErrorReportingSession,
         weightHealthExport: any WeightHealthExport
     ) {
@@ -22,7 +22,7 @@ public actor SyncEngine {
         self.device = device
         self.timeZone = timeZone
         self.now = now
-        self.readableKindsVersion = readableKindsVersion
+        self.readableKinds = readableKinds
         self.errorReporting = errorReporting
         self.weightHealthExport = weightHealthExport
     }
@@ -104,7 +104,7 @@ public actor SyncEngine {
     private let device: SyncDevice
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
-    private let readableKindsVersion: Int
+    private let readableKinds: Set<String>
     private let errorReporting: any ErrorReportingSession
     private let weightHealthExport: any WeightHealthExport
 
@@ -229,7 +229,7 @@ public actor SyncEngine {
                 state = SyncState(
                     afterSequence: page.nextAfterSequence,
                     hasCompletedInitialPull: state.hasCompletedInitialPull || !page.hasMore,
-                    readableKindsVersion: readableKindsVersion,
+                    readableKinds: readableKinds,
                     startedOn: page.startedOn
                 )
                 try await writingCache {
@@ -261,18 +261,18 @@ public actor SyncEngine {
             return SyncState(
                 afterSequence: 0,
                 hasCompletedInitialPull: false,
-                readableKindsVersion: readableKindsVersion,
+                readableKinds: readableKinds,
                 startedOn: nil
             )
         }
-        guard saved.readableKindsVersion != readableKindsVersion else {
+        if readableKinds.isSubset(of: saved.readableKinds) {
             return saved
         }
         // 途中で終わっても、次は戻した通し番号の続きから取れるよう、すぐ保存する
         let restarted = SyncState(
             afterSequence: 0,
             hasCompletedInitialPull: saved.hasCompletedInitialPull,
-            readableKindsVersion: readableKindsVersion,
+            readableKinds: readableKinds,
             startedOn: saved.startedOn
         )
         try await writingCache {

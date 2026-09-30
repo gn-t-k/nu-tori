@@ -7,7 +7,8 @@ nonisolated final class CachedSyncState {
     @Attribute(.unique) var singletonKey: String
     var afterSequence: Int
     var hasCompletedInitialPull: Bool
-    var readableKindsVersion: Int
+    /// 名前の順。SwiftData の集合の扱いに頼らないため配列で持つ
+    var readableKinds: [String]
     /// サーバーで決まるまで無い
     var startedOn: String?
 
@@ -15,7 +16,7 @@ nonisolated final class CachedSyncState {
         singletonKey = Self.onlyKey
         afterSequence = state.afterSequence
         hasCompletedInitialPull = state.hasCompletedInitialPull
-        readableKindsVersion = state.readableKindsVersion
+        readableKinds = state.readableKinds.sorted()
         startedOn = state.startedOn
     }
 
@@ -23,7 +24,7 @@ nonisolated final class CachedSyncState {
         SyncState(
             afterSequence: afterSequence,
             hasCompletedInitialPull: hasCompletedInitialPull,
-            readableKindsVersion: readableKindsVersion,
+            readableKinds: Set(readableKinds),
             startedOn: startedOn
         )
     }
@@ -31,7 +32,7 @@ nonisolated final class CachedSyncState {
     func apply(_ state: SyncState) {
         afterSequence = state.afterSequence
         hasCompletedInitialPull = state.hasCompletedInitialPull
-        readableKindsVersion = state.readableKindsVersion
+        readableKinds = state.readableKinds.sorted()
         startedOn = state.startedOn
     }
 
