@@ -16,9 +16,17 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-types", exact: "1.8.0"),
         .package(url: "https://github.com/apple/swift-openapi-runtime", exact: "1.12.1"),
         .package(url: "https://github.com/apple/swift-openapi-urlsession", exact: "1.3.1"),
+        .package(url: "https://github.com/apple/swift-crypto", exact: "5.0.0"),
     ],
     targets: [
-        .target(name: "NuToriCore", dependencies: ["NuToriAPI"], swiftSettings: strictSettings),
+        .target(
+            name: "NuToriCore",
+            dependencies: [
+                "NuToriAPI",
+                .product(name: "Crypto", package: "swift-crypto"),
+            ],
+            swiftSettings: strictSettings
+        ),
         .testTarget(
             name: "NuToriCoreTests",
             dependencies: [
