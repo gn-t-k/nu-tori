@@ -9,7 +9,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - 端末の SwiftData は2つの置き場に分ける（[ADR-0022](../docs/adr/0022-device-cache-and-pending-writes-in-separate-stores.md)）。`SwiftDataSyncStore` が両方を持つ
   - キャッシュ（`CacheStore`）: 記録、アカウントの設定、同期の状態（通し番号など）。サーバーの写しなので移行を持たず、形が合わず開けないときは置き場ごと消して全部取り直す（取り終えるまでタイムラインは初回の取得と同じ読み込み中）。モデルは `CacheStoreSchema` に並べる
   - 送り待ち（`PendingStore`）: 送り待ちとヘルスケアの同期の進み具合。`PendingStoreMigrationPlan` の版つきのスキーマで移行し、版ごとのモデルの写し（`PendingStoreSchemaV1`・`PendingStoreSchemaV2` の中）を固める。形を変えるときは、写しを固めたまま次の版を足す。送り待ちは「種類の名前＋中身」（`PendingEntry`）で持つので、種類を足しても形は変わらない
-  - 送り待ちの箱（`SyncBox`。`SyncStore` が今の道の口を足したもの）: 入口は、送り待ちを読む（`pendingEntries`）、結果を当てる（`apply(SyncBoxResult)`。push の結果も pull の頁もローカルの変更も同じ）、全消去（`eraseAll`）の3つ。記録の種類は `RecordKind`（取りに行った変更と今の値をキャッシュに当てる `apply`、送る書き込みを作る `syncWrite`）を、アプリの登録簿 `AppRecordKinds.registry`（名前の順に手で1行ずつ）に書く。登録簿にある種類は箱の道、無い種類（今はアカウントの設定）は今の道で当てる。メモリの箱は `NuToriTestSupport` の `MemorySyncBox`
+  - 送り待ちの箱（`SyncBox`。`SyncStore` が今の道の口を足したもの）: 入口は、送り待ちを読む（`pendingEntries`）、結果を当てる（`apply(SyncBoxResult)`。push の結果も pull の頁もローカルの変更も同じ）、全消去（`eraseAll`）の3つ。記録の種類は `RecordKind`（取りに行った変更と今の値をキャッシュに当てる `apply`、送る書き込みを作る `syncWrite`）を、アプリの登録簿 `AppRecordKinds.registry`（名前の順に手で1行ずつ）に書く。登録簿にある種類（今は体重記録とアカウントの設定）は箱の道、無い種類（今は無い）は今の道で当てる。メモリの箱は `NuToriTestSupport` の `MemorySyncBox`
   - 保存の順: 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。全消去は、送り待ちを1つの保存で空にしてから、キャッシュを空にする
   - 置き場を分ける前の1つの置き場（`RecordStore`）は、更新して最初に開いたときに、送り待ちとヘルスケアの同期の進み具合を送り待ちの置き場へ移して消す（`LegacyRecordStore`）。開けない形のときは送り待ちを捨て、`HandledFailure.storeRecovery` として Sentry に送る
 - ファイルを足すとき、`project.pbxproj` は直さない（フォルダの同期で拾われる）

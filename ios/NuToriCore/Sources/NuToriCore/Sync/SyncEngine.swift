@@ -5,7 +5,7 @@ public actor SyncEngine {
     /// 今読める種類の名前。種類を足したら、ここに名前を足す。前に読めた種類に無い名前があると、全部取り直す
     public static let currentReadableKinds: Set<String> = [accountSettingsKind, weightRecordKind]
 
-    static let accountSettingsKind = "account-settings"
+    static let accountSettingsKind = AccountSettingsSyncKind.kindName
     static let weightRecordKind = "weight-record"
 
     public init(
@@ -267,7 +267,6 @@ public actor SyncEngine {
                             pulled: PulledChanges(
                                 records: legacyChanges.compactMap(\.weightRecord),
                                 removedRecordIds: legacyChanges.compactMap(\.removedRecordId),
-                                accountSettings: legacyChanges.compactMap(\.accountSettings).last,
                                 state: state
                             )
                         )
@@ -380,11 +379,7 @@ extension PendingWrite {
         case .sourceDeletedWeightRecord(let recordId):
             .sourceDeletedWeightRecord(writeId: writeId, weightRecordId: recordId)
         case .updateAccountSettings(let settings):
-            .updateAccountSettings(
-                writeId: writeId,
-                settings: SyncedAccountSettings(
-                    id: settings.id, sendsUsageData: settings.sendsUsageData)
-            )
+            AccountSettingsSyncKind.syncWrite(writeId: writeId, settings: settings)
         }
     }
 }
@@ -401,14 +396,6 @@ extension SyncChange {
         switch self {
         case .weightRecordDeletion(let recordId): recordId
         case .weightRecord, .accountSettings, .unknown: nil
-        }
-    }
-
-    fileprivate var accountSettings: AccountSettings? {
-        switch self {
-        case .accountSettings(let settings):
-            AccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData)
-        case .weightRecord, .weightRecordDeletion, .unknown: nil
         }
     }
 }

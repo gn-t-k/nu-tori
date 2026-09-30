@@ -18,7 +18,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         kinds.synced
     }
 
-    /// 登録簿の種類は送り待ちの箱の道で、無い種類は今の道で当てる
+    /// 登録簿の種類（今は体重記録とアカウントの設定）は送り待ちの箱の道で、無い種類は今の道で当てる
     @MainActor init(
         inMemory: Bool,
         kinds: RecordKindRegistry<ModelContext> = AppRecordKinds.registry
@@ -82,14 +82,14 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
 
     func accountSettings() async throws -> AccountSettings? {
         try await onMain { stores in
-            try Self.cachedAccountSettings(in: stores.cache)?.accountSettings()
+            try CachedAccountSettings.current(in: stores.cache)?.accountSettings()
         }
     }
 
     func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {
         try await onMain { stores in
             try Self.enqueue(write, in: stores.pending)
-            try Self.write(settings, in: stores.cache)
+            try CachedAccountSettings.write(settings, in: stores.cache)
             try stores.cache.save()
         }
     }
@@ -174,7 +174,6 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             try stores.pending.delete(model: HealthSyncStateRow.self)
             try stores.pending.save()
             try stores.cache.delete(model: CachedWeightRecord.self)
-            try stores.cache.delete(model: CachedAccountSettings.self)
             try stores.cache.delete(model: CachedSyncState.self)
             for kind in kinds.kinds {
                 try kind.erase(stores.cache)
@@ -204,7 +203,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
                 case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
                     try CachedWeightRecord.upsert(record, in: stores.cache)
                 case .updateAccountSettings(let settings):
-                    try Self.write(settings, in: stores.cache)
+                    try CachedAccountSettings.write(settings, in: stores.cache)
                 case .sourceDeletedWeightRecord:
                     break
                 }
@@ -328,30 +327,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
                 context.delete(row)
             }
         }
-        if let settings = changes.accountSettings {
-            try write(settings, in: context)
-        }
         try write(changes.state, in: context)
-    }
-
-    @MainActor private static func cachedAccountSettings(in context: ModelContext) throws
-        -> CachedAccountSettings?
-    {
-        let key = CachedAccountSettings.onlyKey
-        var descriptor = FetchDescriptor<CachedAccountSettings>(
-            predicate: #Predicate { $0.singletonKey == key })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
-    }
-
-    @MainActor private static func write(_ settings: AccountSettings, in context: ModelContext)
-        throws
-    {
-        if let existing = try cachedAccountSettings(in: context) {
-            existing.apply(settings)
-        } else {
-            context.insert(CachedAccountSettings(settings))
-        }
     }
 
     @MainActor private static func healthSyncStateRow(in context: ModelContext) throws
