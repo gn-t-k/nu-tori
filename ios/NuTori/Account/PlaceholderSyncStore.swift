@@ -1,7 +1,7 @@
 import Foundation
 import NuToriCore
 
-/// SwiftData の保存ができるまでの置き場。記録を持てないので、書き込みは投げる
+/// SwiftData の保存ができるまでの置き場。記録は持てないので、記録の書き込みは投げる。アカウントの設定とヘルスケアの取り込みは、置き場が無いので書いても残らない
 nonisolated struct PlaceholderSyncStore: SyncStore {
     let queuedWrites: [PendingWrite]
     let hasCompletedInitialPull: Bool
@@ -22,9 +22,7 @@ nonisolated struct PlaceholderSyncStore: SyncStore {
         nil
     }
 
-    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {
-        throw StoreNotAvailableError()
-    }
+    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {}
 
     func pendingWritesOldestFirst() async throws -> [PendingWrite] {
         queuedWrites
@@ -57,13 +55,9 @@ nonisolated struct PlaceholderSyncStore: SyncStore {
         .initial
     }
 
-    func saveHealthSyncState(_ state: HealthSyncState) async throws {
-        throw StoreNotAvailableError()
-    }
+    func saveHealthSyncState(_ state: HealthSyncState) async throws {}
 
-    func applyHealthImport(_ batch: HealthImportBatch) async throws {
-        throw StoreNotAvailableError()
-    }
+    func applyHealthImport(_ batch: HealthImportBatch) async throws {}
 
     func eraseAll() async throws {}
 
