@@ -7,7 +7,8 @@ final class RecordWeightOfflineUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in", api: "previous-day-push-offline")
+        app = .launched(
+            account: "signed-in", api: "previous-day-push-offline", healthLatestKilograms: nil)
     }
 
     func test_電波が無くても記録した体重がタイムラインに出ること() {

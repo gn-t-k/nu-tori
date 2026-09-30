@@ -36,10 +36,11 @@
             guard anchor == nil, let latestKilograms else {
                 return HealthChanges(weights: [], bodyFats: [], deletions: [], anchor: next)
             }
+            let sampleId = UUID(uuidString: "00000000-0000-4000-8000-0000000000c1")!
             return HealthChanges(
                 weights: [
                     HealthChanges.WeightSample(
-                        sampleId: Self.sampleId,
+                        sampleId: sampleId,
                         kilograms: latestKilograms,
                         instant: .now,
                         sourceAppName: "体重計アプリ",
@@ -60,7 +61,6 @@
             case alreadyRequested
         }
 
-        private static let sampleId = UUID(uuidString: "00000000-0000-4000-8000-0000000000c1")!
         private var authorization: Authorization
         private let latestKilograms: Double?
         private let writeAuthorized: Bool

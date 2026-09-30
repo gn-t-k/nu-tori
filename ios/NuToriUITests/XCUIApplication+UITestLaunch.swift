@@ -6,7 +6,7 @@ extension XCUIApplication {
         appleSignIn: String = "succeeded",
         api: String = "online",
         healthAuthorization: String = "already-requested",
-        healthLatestKilograms: String? = nil,
+        healthLatestKilograms: String?,
         healthWrite: String = "authorized"
     ) -> XCUIApplication {
         let app = XCUIApplication()

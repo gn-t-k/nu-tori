@@ -7,7 +7,7 @@ final class SignInAgainWithPendingWritesUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "sign-in-again-with-pending-writes")
+        app = .launched(account: "sign-in-again-with-pending-writes", healthLatestKilograms: nil)
     }
 
     func test_まだ送っていない記録も送ることを添えること() {

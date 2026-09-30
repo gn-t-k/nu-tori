@@ -25,6 +25,6 @@ public protocol SyncStore: Sendable {
     func healthSyncState() async throws -> HealthSyncState
     func saveHealthSyncState(_ state: HealthSyncState) async throws
 
-    /// 記録のキャッシュへの追加と、送り待ちへの追加と、アンカーの更新は、1つの保存で行う
+    /// 記録と送り待ちとアンカーが分かれて残ると、送り忘れるか、同じ変化を次に取りこぼす
     func applyHealthImport(_ batch: HealthImportBatch) async throws
 }

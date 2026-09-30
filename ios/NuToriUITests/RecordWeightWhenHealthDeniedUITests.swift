@@ -11,6 +11,7 @@ final class RecordWeightWhenHealthDeniedUITests: XCTestCase {
             account: "signed-in",
             api: "previous-day",
             healthAuthorization: "not-yet-requested",
+            healthLatestKilograms: nil,
             healthWrite: "denied"
         )
     }

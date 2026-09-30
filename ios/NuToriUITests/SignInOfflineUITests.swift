@@ -7,7 +7,7 @@ final class SignInOfflineUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-out", api: "offline")
+        app = .launched(account: "signed-out", api: "offline", healthLatestKilograms: nil)
         app.buttons["appleSignInButton"].tap()
     }
 
