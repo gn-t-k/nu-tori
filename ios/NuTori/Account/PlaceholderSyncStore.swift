@@ -10,7 +10,19 @@ nonisolated struct PlaceholderSyncStore: SyncStore {
         nil
     }
 
+    func weightRecords() async throws -> [WeightRecord] {
+        []
+    }
+
     func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws {
+        throw StoreNotAvailableError()
+    }
+
+    func accountSettings() async throws -> AccountSettings? {
+        nil
+    }
+
+    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {
         throw StoreNotAvailableError()
     }
 
@@ -38,6 +50,18 @@ nonisolated struct PlaceholderSyncStore: SyncStore {
     }
 
     func apply(_ changes: PulledChanges) async throws {
+        throw StoreNotAvailableError()
+    }
+
+    func healthSyncState() async throws -> HealthSyncState {
+        .initial
+    }
+
+    func saveHealthSyncState(_ state: HealthSyncState) async throws {
+        throw StoreNotAvailableError()
+    }
+
+    func applyHealthImport(_ batch: HealthImportBatch) async throws {
         throw StoreNotAvailableError()
     }
 
