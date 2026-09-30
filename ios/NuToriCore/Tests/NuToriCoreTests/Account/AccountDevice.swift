@@ -51,9 +51,10 @@ struct AccountDevice {
     ) -> AccountDevice {
         AccountDevice(
             log: log,
-            keychain: .ok(log: log),
+            keychain: .ok(token: nil, log: log),
             deviceStore: .ok(
                 hasOpenedBefore: hasOpenedBefore,
+                account: nil,
                 hasSignInAgainMark: hasSignInAgainMark,
                 log: log
             ),

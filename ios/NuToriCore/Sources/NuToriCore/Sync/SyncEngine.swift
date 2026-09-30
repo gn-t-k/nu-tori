@@ -81,7 +81,7 @@ public actor SyncEngine {
         async throws -> SyncResult.StopReason?
     {
         let maxWritesPerRequest = 500
-        let pending = try await store.pendingWrites()
+        let pending = try await store.pendingWritesOldestFirst()
         // 先の要求で作る書き込みが受け付けられず消した記録を、あとの要求の直す書き込みで戻さない
         var revertedRecordIds: Set<UUID> = []
         for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
@@ -136,7 +136,7 @@ public actor SyncEngine {
             }
             resolvedWriteIds.append(write.writeId)
             switch outcome {
-            case .applied, .ignoredDuplicate, .unknown:
+            case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
                 break
             case .rejected(let reason):
                 rejectedWrites.append(
@@ -161,7 +161,8 @@ public actor SyncEngine {
             do {
                 result = try await client.pullSyncChanges(
                     afterSequence: state.afterSequence,
-                    clientState: clientState(pendingWrites: try await store.pendingWrites()[...])
+                    clientState: clientState(
+                        pendingWrites: try await store.pendingWritesOldestFirst()[...])
                 )
             } catch is CancellationError {
                 throw CancellationError()
@@ -177,7 +178,11 @@ public actor SyncEngine {
                     startedOn: page.startedOn
                 )
                 try await store.apply(
-                    PulledChanges(records: page.changes.compactMap(\.weightRecord), state: state)
+                    PulledChanges(
+                        records: page.changes.compactMap(\.weightRecord),
+                        removedRecordIds: page.changes.compactMap(\.removedRecordId),
+                        state: state
+                    )
                 )
                 if !page.hasMore {
                     return nil
@@ -264,7 +269,14 @@ extension SyncChange {
     fileprivate var weightRecord: WeightRecord? {
         switch self {
         case .weightRecord(let record): WeightRecord(record)
-        case .unknown: nil
+        case .weightRecordDeletion, .unknown: nil
+        }
+    }
+
+    fileprivate var removedRecordId: UUID? {
+        switch self {
+        case .weightRecordDeletion(let recordId): recordId
+        case .weightRecord, .unknown: nil
         }
     }
 }

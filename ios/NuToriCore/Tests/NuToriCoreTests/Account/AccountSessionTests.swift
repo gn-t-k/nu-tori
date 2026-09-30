@@ -113,7 +113,7 @@ struct AccountSessionTests {
             }
         }
 
-        @Suite("Apple の資格情報が revoked のとき")
+        @Suite("Apple の資格情報が取り消されているとき")
         struct WithRevokedCredential {
             let device: AccountDevice
             let session: AccountSession
@@ -149,7 +149,7 @@ struct AccountSessionTests {
             }
         }
 
-        @Suite("Apple の資格情報が notFound のとき")
+        @Suite("Apple の資格情報が見つからないとき")
         struct WithNotFoundCredential {
             let device: AccountDevice
             let session: AccountSession

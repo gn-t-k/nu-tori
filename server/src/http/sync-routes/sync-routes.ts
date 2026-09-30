@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { match } from "ts-pattern";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
 import { createSyncClientStateSchema } from "./create-sync-client-state-schema";
@@ -146,19 +147,29 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       );
       return c.json(
         {
-          changes: pulled.changes.map(({ sequence, weightRecord }) => ({
-            sequence,
-            kind: "weight_record",
-            recordId: weightRecord.id,
-            record: {
-              id: weightRecord.id,
-              weightKg: weightRecord.weightKg,
-              measuredAt: weightRecord.measuredAt.getTime(),
-              timeZone: weightRecord.timeZone,
-              version: weightRecord.version,
-              imported: weightRecord.imported,
-            },
-          })),
+          changes: pulled.changes.map((change) =>
+            match(change)
+              .with({ type: "weight_record" }, ({ sequence, weightRecord }) => ({
+                sequence,
+                kind: "weight_record",
+                recordId: weightRecord.id,
+                record: {
+                  id: weightRecord.id,
+                  weightKg: weightRecord.weightKg,
+                  measuredAt: weightRecord.measuredAt.getTime(),
+                  timeZone: weightRecord.timeZone,
+                  version: weightRecord.version,
+                  imported: weightRecord.imported,
+                },
+              }))
+              .with({ type: "weight_record_deletion" }, ({ sequence, recordId }) => ({
+                sequence,
+                kind: "weight_record_deletion",
+                recordId,
+                record: {},
+              }))
+              .exhaustive(),
+          ),
           hasMore: pulled.hasMore,
           nextAfterSequence: pulled.nextAfterSequence,
           startedOn: pulled.startedOn ?? null,
