@@ -39,6 +39,17 @@
                ReferencedContainer = "container:NuTori.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "0A0000000000000000000023"
+               BuildableName = "NuToriTests.xctest"
+               BlueprintName = "NuToriTests"
+               ReferencedContainer = "container:NuTori.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
