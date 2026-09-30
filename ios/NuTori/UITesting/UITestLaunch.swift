@@ -107,6 +107,9 @@
             switch api {
             case .online: return .online
             case .offline: return .offline
+            case .rateLimited: return .rateLimited
+            case .unauthorized: return .unauthorized
+            case .serverError: return .serverError
             case .weightRecords: return .weightRecords
             case .previousDay: return .previousDay
             case .previousDayPushOffline: return .previousDayPushOffline
@@ -189,6 +192,9 @@
         enum API: String {
             case online
             case offline
+            case rateLimited = "rate-limited"
+            case unauthorized
+            case serverError = "server-error"
             case weightRecords = "weight-records"
             case previousDay = "previous-day"
             case previousDayPushOffline = "previous-day-push-offline"

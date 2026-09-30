@@ -25,7 +25,10 @@
                 // テストが見ているあいだ、初回の取得を終えない
                 try await Task.sleep(for: .seconds(60))
                 throw URLError(.timedOut)
-            case .online, .weightRecords, .dayRing:
+            case .online, .weightRecords, .dayRing, .rateLimited, .unauthorized, .serverError:
+                if request.path == "/v1/account" {
+                    return deleteAccountResponse()
+                }
                 // 取得の path にはクエリが付く
                 switch request.path {
                 case "/v1/sessions":
@@ -73,6 +76,22 @@
             case previousDayPushOffline
             case previousDayPushRejected
             case weightScreen
+            case rateLimited
+            case unauthorized
+            case serverError
+        }
+
+        private func deleteAccountResponse() -> (HTTPResponse, HTTPBody?) {
+            let status: HTTPResponse.Status =
+                switch behavior {
+                case .rateLimited: .tooManyRequests
+                case .unauthorized: .unauthorized
+                case .serverError: .internalServerError
+                case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
+                    .previousDayPushOffline, .previousDayPushRejected, .weightScreen:
+                    .noContent
+                }
+            return (HTTPResponse(status: status), nil)
         }
 
         private func pushResponse(_ body: HTTPBody?) async throws -> (HTTPResponse, HTTPBody?) {
@@ -82,7 +101,7 @@
             case .previousDayPushRejected:
                 return json(.ok, try await writeResults(from: body, result: .rejected))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
-                .weightScreen:
+                .weightScreen, .rateLimited, .unauthorized, .serverError:
                 return json(.ok, try await writeResults(from: body, result: .applied))
             }
         }
@@ -203,7 +222,7 @@
             case .weightRecords: return try weightRecordsBody()
             case .dayRing: return try dayRingBody()
             case .online, .offline, .hangPull, .previousDay, .previousDayPushOffline,
-                .previousDayPushRejected, .weightScreen:
+                .previousDayPushRejected, .weightScreen, .rateLimited, .unauthorized, .serverError:
                 return emptyChangesBody()
             }
         }

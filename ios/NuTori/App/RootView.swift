@@ -32,11 +32,15 @@ struct RootView: View {
             }
         case .loadingTimeline, .timeline:
             TimelineScreen(
+                session: model.accountSession,
                 rejectedLines: model.rejectedLines,
                 capture: { await model.capture($0) },
                 prepareWeightEntry: { await model.prepareWeightEntry() },
                 saveWeight: { write in
                     await model.saveWeight(write)
+                },
+                onLeftTimeline: { destination in
+                    model.leaveTimeline(for: destination)
                 }
             )
         }

@@ -3,10 +3,12 @@ import SwiftData
 import SwiftUI
 
 struct TimelineScreen: View {
+    var session: AccountSession
     var rejectedLines: [RejectedWeightLine]
     var capture: (ClientUsageEvent) async -> Void
     var prepareWeightEntry: () async -> Void
     var saveWeight: (WeightEntry.Write) async -> Void
+    var onLeftTimeline: (SignInDestination) -> Void
 
     var body: some View {
         let today = CalendarDay(containing: .now, in: .current)
@@ -43,15 +45,26 @@ struct TimelineScreen: View {
             }
             .navigationTitle(title(today: today, loaded: loaded))
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("timeline")
             .toolbar {
-                // 開く先のアカウントの画面は #123
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        showsAccount = true
                     } label: {
                         Image(systemName: "person.crop.circle")
                     }
                     .accessibilityLabel("アカウント")
                     .accessibilityIdentifier("account")
+                }
+            }
+            .sheet(isPresented: $showsAccount) {
+                NavigationStack {
+                    AccountScreen(
+                        session: session,
+                        onClose: { showsAccount = false },
+                        onLeftTimeline: onLeftTimeline
+                    )
                 }
             }
             .sheet(isPresented: summaryPresented) {
@@ -80,12 +93,11 @@ struct TimelineScreen: View {
         .onAppear {
             Task { await capture(.screen(.timeline)) }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("timeline")
     }
 
     @Query private var cachedRecords: [CachedWeightRecord]
     @Query private var syncStates: [CachedSyncState]
+    @State private var showsAccount = false
     @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
     @State private var dayFocus: DayFocus = .timeline

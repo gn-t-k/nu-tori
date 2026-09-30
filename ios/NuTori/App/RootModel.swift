@@ -72,6 +72,10 @@ final class RootModel {
         }
     }
 
+    func leaveTimeline(for destination: SignInDestination) {
+        screen = Screen(destination)
+    }
+
     func signIn(with result: AppleSignInResult) async {
         guard case .signIn(let prompt, _) = screen else { return }
         switch result {
@@ -102,7 +106,7 @@ final class RootModel {
         }
     }
 
-    private let accountSession: AccountSession
+    let accountSession: AccountSession
     private let recordSync: RecordSync
     private let health: HealthSyncSession
     private var rejectionLines = RejectionLines.accepting([])
