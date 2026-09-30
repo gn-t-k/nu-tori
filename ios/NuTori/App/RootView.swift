@@ -7,8 +7,14 @@ struct RootView: View {
         content
             .task { await model.open() }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active {
+                switch phase {
+                case .background:
+                    model.noteAppBackgrounded()
+                case .active:
+                    model.noteAppActive()
                     Task { await model.reopenIfSignedIn() }
+                default:
+                    break
                 }
             }
     }
@@ -24,10 +30,10 @@ struct RootView: View {
             SignInView(prompt: prompt, status: status) { result in
                 Task { await model.signIn(with: result) }
             }
-        case .loadingTimeline:
-            TimelineScreen(isLoadingRecords: true)
-        case .timeline:
-            TimelineScreen(isLoadingRecords: false)
+        case .loadingTimeline, .timeline:
+            TimelineScreen(rejectedLines: model.rejectedLines) { write in
+                await model.saveWeight(write)
+            }
         }
     }
 }

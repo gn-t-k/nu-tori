@@ -7,7 +7,7 @@ final class SignInFirstLaunchUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-out")
+        app = .launched(account: "signed-out", timeZone: nil)
     }
 
     func test_説明のひとことと同意のカードとAppleのボタンが出ること() {
@@ -25,7 +25,8 @@ final class SignInFirstLaunchUITests: XCTestCase {
 
         XCTAssertTrue(app.otherElements["timeline"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.otherElements["signIn"].exists)
-        XCTAssertFalse(app.navigationBars.buttons.firstMatch.exists)
+        XCTAssertFalse(app.navigationBars.buttons["戻る"].exists)
+        XCTAssertTrue(app.buttons["アカウント"].exists)
         attachScreenshot(of: app, named: "サインインのあとのタイムライン")
     }
 }

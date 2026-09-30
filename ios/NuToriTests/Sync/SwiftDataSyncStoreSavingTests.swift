@@ -1,0 +1,219 @@
+import Foundation
+import NuToriCore
+import Testing
+
+@testable import NuTori
+
+@Suite("記録の置き場に、アカウントの設定とヘルスケアを書く")
+struct SwiftDataSyncStoreSavingTests {
+    @Suite("アカウントの設定を、送り待ちと一緒に書いたとき")
+    @MainActor
+    struct SavingAccountSettings {
+        let store: SwiftDataSyncStore
+        let settings: AccountSettings
+        let write: PendingWrite
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            settings = AccountSettings(
+                id: UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!,
+                sendsUsageData: false
+            )
+            write = PendingWrite(
+                writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!,
+                enqueuedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                operation: .updateAccountSettings(settings)
+            )
+        }
+
+        @Test("設定と送り待ちが残ること")
+        func keepsSettingsAndPendingWrite() async throws {
+            try await store.save(settings, enqueuing: write)
+
+            #expect(try await store.accountSettings() == settings)
+            #expect(try await store.pendingWritesOldestFirst() == [write])
+        }
+    }
+
+    @Suite("ヘルスケアの取り込みを書いたとき")
+    @MainActor
+    struct ApplyingHealthImport {
+        let store: SwiftDataSyncStore
+        let record: WeightRecord
+        let write: PendingWrite
+        let batch: HealthImportBatch
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            record = WeightRecord(
+                id: UUID(uuidString: "00000000-0000-4000-8000-0000000000c1")!,
+                kilograms: 70,
+                instant: Date(timeIntervalSince1970: 1_700_000_000),
+                timeZone: TimeZone(identifier: "Asia/Tokyo")!,
+                inputSource: .manual,
+                version: 1
+            )
+            write = PendingWrite(
+                writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000d1")!,
+                enqueuedAt: record.instant,
+                operation: .createWeightRecord(record)
+            )
+            batch = HealthImportBatch(
+                records: [record],
+                pendingWrites: [write],
+                state: HealthSyncState(
+                    anchor: HealthAnchor(data: Data([0x01])),
+                    hasWrittenCachedManualRecords: true
+                )
+            )
+        }
+
+        @Test("まだ書いていなければ、最初の状態であること")
+        func startsInitial() async throws {
+            #expect(try await store.healthSyncState() == .initial)
+            #expect(try await store.weightRecords().isEmpty)
+        }
+
+        @Test("記録と送り待ちとアンカーが残ること")
+        func keepsRecordsPendingWritesAndAnchor() async throws {
+            try await store.applyHealthImport(batch)
+
+            #expect(try await store.weightRecords() == [record])
+            #expect(try await store.pendingWritesOldestFirst() == [write])
+            #expect(try await store.healthSyncState() == batch.state)
+        }
+    }
+
+    @Suite("届いた変更に、アカウントの設定と削除の印があるとき")
+    @MainActor
+    struct ApplyingPulledChanges {
+        let store: SwiftDataSyncStore
+        let kept: WeightRecord
+        let removed: WeightRecord
+        let settings: AccountSettings
+
+        init() async throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            kept = WeightRecord(
+                id: UUID(uuidString: "00000000-0000-4000-8000-0000000000e1")!,
+                kilograms: 71,
+                instant: Date(timeIntervalSince1970: 1_700_000_100),
+                timeZone: TimeZone(identifier: "Asia/Tokyo")!,
+                inputSource: .manual,
+                version: 1
+            )
+            removed = WeightRecord(
+                id: UUID(uuidString: "00000000-0000-4000-8000-0000000000e2")!,
+                kilograms: 72,
+                instant: Date(timeIntervalSince1970: 1_700_000_200),
+                timeZone: TimeZone(identifier: "Asia/Tokyo")!,
+                inputSource: .manual,
+                version: 1
+            )
+            settings = AccountSettings(
+                id: UUID(uuidString: "00000000-0000-4000-8000-0000000000a2")!,
+                sendsUsageData: true
+            )
+            try await store.save(
+                kept,
+                enqueuing: PendingWrite(
+                    writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b5")!,
+                    enqueuedAt: kept.instant,
+                    operation: .createWeightRecord(kept)
+                )
+            )
+            try await store.save(
+                removed,
+                enqueuing: PendingWrite(
+                    writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b6")!,
+                    enqueuedAt: removed.instant,
+                    operation: .createWeightRecord(removed)
+                )
+            )
+        }
+
+        @Test("設定が残り、印の付いた記録が消えること")
+        func keepsSettingsAndRemovesRecord() async throws {
+            try await store.apply(
+                PulledChanges(
+                    records: [],
+                    removedRecordIds: [removed.id],
+                    accountSettings: settings,
+                    state: SyncState(
+                        afterSequence: 4,
+                        hasCompletedInitialPull: true,
+                        readableKindsVersion: 1,
+                        startedOn: nil
+                    )
+                )
+            )
+
+            #expect(try await store.accountSettings() == settings)
+            #expect(try await store.weightRecord(id: removed.id) == nil)
+            #expect(try await store.weightRecord(id: kept.id) == kept)
+        }
+    }
+
+    @Suite("すべて消すとき")
+    @MainActor
+    struct Erasing {
+        let store: SwiftDataSyncStore
+
+        init() async throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            let record = WeightRecord(
+                id: UUID(uuidString: "00000000-0000-4000-8000-0000000000f1")!,
+                kilograms: 73,
+                instant: Date(timeIntervalSince1970: 1_700_000_300),
+                timeZone: TimeZone(identifier: "Asia/Tokyo")!,
+                inputSource: .manual,
+                version: 1
+            )
+            let settings = AccountSettings(
+                id: UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")!,
+                sendsUsageData: false
+            )
+            try await store.save(
+                record,
+                enqueuing: PendingWrite(
+                    writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b3")!,
+                    enqueuedAt: record.instant,
+                    operation: .createWeightRecord(record)
+                )
+            )
+            try await store.save(
+                settings,
+                enqueuing: PendingWrite(
+                    writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b4")!,
+                    enqueuedAt: record.instant,
+                    operation: .updateAccountSettings(settings)
+                )
+            )
+            try await store.saveSyncState(
+                SyncState(
+                    afterSequence: 8,
+                    hasCompletedInitialPull: true,
+                    readableKindsVersion: 1,
+                    startedOn: nil
+                )
+            )
+            try await store.saveHealthSyncState(
+                HealthSyncState(
+                    anchor: HealthAnchor(data: Data([0x02])),
+                    hasWrittenCachedManualRecords: true
+                )
+            )
+        }
+
+        @Test("記録、アカウントの設定、送り待ち、同期の状態、ヘルスケアの同期の進み具合が空になること")
+        func clearsStoredContents() async throws {
+            try await store.eraseAll()
+
+            #expect(try await store.weightRecords().isEmpty)
+            #expect(try await store.accountSettings() == nil)
+            #expect(try await store.pendingWritesOldestFirst().isEmpty)
+            #expect(try await store.syncState() == nil)
+            #expect(try await store.healthSyncState() == .initial)
+        }
+    }
+}
