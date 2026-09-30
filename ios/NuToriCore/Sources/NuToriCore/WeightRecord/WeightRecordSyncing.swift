@@ -29,7 +29,7 @@ public struct WeightRecordSyncing: SyncedRecordKind {
         switch write.operation {
         case .createWeightRecord(let record):
             return .createWeightRecord(writeId: write.writeId, record: NewWeightRecord(record))
-        case .correctWeightRecord(let record, previous: _):
+        case .correctWeightRecord(let record):
             return .updateWeightRecord(
                 writeId: write.writeId, correction: WeightRecordCorrection(record))
         case .sourceDeletedWeightRecord(let recordId):
@@ -39,31 +39,26 @@ public struct WeightRecordSyncing: SyncedRecordKind {
         }
     }
 
-    /// 受け付けなかった作る・直す書き込みは、画面に出す行にして、作った記録は消し、直した記録は直す前に戻す。
-    /// 同じ記録を戻すのは1回だけ。先の書き込みで消した記録を、あとの直す書き込みで戻さない
+    /// 受け付けなかった作る・直す書き込みは、画面に出す行にする。記録の値と削除の印は、サーバーの今の値を同期の働きが当てる。
+    /// サーバーに記録が無いときは、端末にだけあった記録を外す。元のサンプルが消えた書き込みは、戻す記録も出す記録も無い
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        revertedRecordIds: inout Set<UUID>
+        current: SyncWriteResult.Current?
     ) throws -> KindRejection {
         let write = try PendingWrite(entry: entry)
+        let serverHasValue: Bool
+        if case .value = current { serverHasValue = true } else { serverHasValue = false }
         switch write.operation {
-        case .createWeightRecord(let record):
+        case .createWeightRecord(let record), .correctWeightRecord(let record):
             return KindRejection(
                 rejectedWrite: RejectedWrite(
-                    writeId: write.writeId, record: record, reason: reason),
-                revertingChanges: revertedRecordIds.insert(record.id).inserted
-                    ? [.weightRecordDeletion(recordId: record.id)] : []
-            )
-        case .correctWeightRecord(let record, let previous):
-            return KindRejection(
-                rejectedWrite: RejectedWrite(
-                    writeId: write.writeId, record: record, reason: reason),
-                revertingChanges: revertedRecordIds.insert(record.id).inserted
-                    ? [.weightRecord(SyncedWeightRecord(previous))] : []
+                    writeId: write.writeId, record: record, reason: reason,
+                    serverHasValue: serverHasValue),
+                removingChanges: [.weightRecordDeletion(recordId: record.id)]
             )
         case .sourceDeletedWeightRecord:
-            // 戻す記録も、画面に出す記録も無い。消すかどうかを決めるのはサーバーで、送り直さない
+            // 消すかどうかを決めるのはサーバーで、送り直さない
             return KindRejection()
         case .updateAccountSettings:
             throw PendingWrite.InvalidEntryError(kind: entry.kind)

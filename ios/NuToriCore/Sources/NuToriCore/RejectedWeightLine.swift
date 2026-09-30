@@ -1,18 +1,21 @@
 /// サーバーが受け付けなかった体重記録を、タイムラインに一時的に出す1行
 public struct RejectedWeightLine: Hashable, Sendable {
     public let record: WeightRecord
+    /// サーバーにその記録の値があるか。位置は、これで決める
+    public let serverHasValue: Bool
 
     public init(_ rejected: RejectedWrite) {
         record = rejected.record
+        serverHasValue = rejected.serverHasValue
     }
 
     public var placement: Placement {
-        record.version >= 2 ? .belowRecord : .insteadOfRecord
+        serverHasValue ? .belowRecord : .insteadOfRecord
     }
 
     public var text: String {
         let kilograms = WeightAmountText.kilograms(record.kilograms)
-        if record.version >= 2 {
+        if serverHasValue {
             return "\(kilograms) に直せませんでした。"
         }
         let clock = WeightAmountText.clock(record.clockTime)
@@ -20,9 +23,9 @@ public struct RejectedWeightLine: Hashable, Sendable {
     }
 
     public enum Placement: Equatable, Sendable {
-        /// 新しい記録を消した位置
+        /// サーバーに値が無いので、記録を外した位置（作った記録の時刻）
         case insteadOfRecord
-        /// 直す前の値に戻した行のすぐ下
+        /// サーバーの値に戻した記録のすぐ下
         case belowRecord
     }
 }

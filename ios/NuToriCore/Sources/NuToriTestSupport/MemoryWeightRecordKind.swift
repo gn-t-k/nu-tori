@@ -1,4 +1,3 @@
-public import Foundation
 public import NuToriAPI
 public import NuToriCore
 
@@ -19,9 +18,9 @@ public struct MemoryWeightRecordKind: RecordKind {
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        revertedRecordIds: inout Set<UUID>
+        current: SyncWriteResult.Current?
     ) throws -> KindRejection {
-        try syncing.rejection(of: entry, reason: reason, revertedRecordIds: &revertedRecordIds)
+        try syncing.rejection(of: entry, reason: reason, current: current)
     }
 
     public func apply(_ changes: [SyncChange], to cache: MemoryRecordCache) throws {

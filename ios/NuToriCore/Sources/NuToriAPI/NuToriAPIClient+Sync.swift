@@ -190,9 +190,31 @@ extension SyncWriteResult {
             guard let reason = result.rejectionReason else {
                 throw NuToriAPIClient.MalformedResponseError(reason: "受け付けなかった理由が無い")
             }
-            self.init(writeId: writeId, outcome: .rejected(RejectionReason(reason)))
+            self.init(
+                writeId: writeId,
+                outcome: .rejected(RejectionReason(reason)),
+                current: result.current.flatMap(Current.init)
+            )
         default:
             self.init(writeId: writeId, outcome: .unknown(result: result.result))
+        }
+    }
+}
+
+extension SyncWriteResult.Current {
+    /// 知らない状態と、読めない中身は nil にする。サーバーが状態を足しても、古い版のアプリの同期が止まらないように
+    fileprivate init?(_ current: Components.Schemas.SyncWriteCurrent) {
+        switch current.status {
+        case "value":
+            guard let change = current.change.map(SyncChange.init) else { return nil }
+            self = .value(change)
+        case "deleted":
+            guard let change = current.change.map(SyncChange.init) else { return nil }
+            self = .deleted(change)
+        case "absent":
+            self = .absent
+        default:
+            return nil
         }
     }
 }
@@ -223,31 +245,40 @@ extension SyncChangesPage {
 
 extension SyncChange {
     fileprivate init(_ change: Components.Schemas.SyncChange) {
-        switch change.kind {
+        self.init(kind: change.kind, recordId: change.recordId, record: change.record)
+    }
+
+    /// 受け付けなかった書き込みに添えられた今の値も、取りに行く変更と同じ道で読む
+    fileprivate init(_ change: Components.Schemas.SyncWriteCurrent.ChangePayload) {
+        self.init(kind: change.kind, recordId: change.recordId, record: change.record)
+    }
+
+    private init(kind: String, recordId: String, record: some Encodable) {
+        switch kind {
         case "weight_record":
-            if let record = try? change.record.decoded(as: WeightRecordPayload.self)
+            if let record = try? record.decoded(as: WeightRecordPayload.self)
                 .syncedWeightRecord
             {
                 self = .weightRecord(record)
             } else {
-                self = .unknown(kind: change.kind)
+                self = .unknown(kind: kind)
             }
         case "account_settings":
-            if let settings = try? change.record.decoded(as: AccountSettingsPayload.self)
+            if let settings = try? record.decoded(as: AccountSettingsPayload.self)
                 .syncedAccountSettings
             {
                 self = .accountSettings(settings)
             } else {
-                self = .unknown(kind: change.kind)
+                self = .unknown(kind: kind)
             }
         case "weight_record_deletion":
-            if let recordId = UUID(uuidString: change.recordId) {
+            if let recordId = UUID(uuidString: recordId) {
                 self = .weightRecordDeletion(recordId: recordId)
             } else {
-                self = .unknown(kind: change.kind)
+                self = .unknown(kind: kind)
             }
         default:
-            self = .unknown(kind: change.kind)
+            self = .unknown(kind: kind)
         }
     }
 
@@ -321,7 +352,7 @@ extension SyncChange {
     }
 }
 
-extension Components.Schemas.SyncChange.RecordPayload {
+extension Encodable {
     fileprivate func decoded<Payload: Decodable>(as payload: Payload.Type) throws -> Payload {
         try JSONDecoder().decode(payload, from: JSONEncoder().encode(self))
     }

@@ -30,7 +30,7 @@ extension SyncEngineTests {
                     ],
                     pendingWrites: [created, rejectedCreated], pendingEntries: [note],
                     recordKinds: [RecordKindMock.ok()])
-                transport = .sync(rejectedWriteIndexes: [2])
+                transport = .sync(rejectedWriteIndexes: [2], currents: [2: .absent])
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -150,7 +150,7 @@ extension SyncEngineTests {
 extension PendingWrite.Operation {
     fileprivate var weightRecord: WeightRecord {
         switch self {
-        case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
+        case .createWeightRecord(let record), .correctWeightRecord(let record):
             record
         case .sourceDeletedWeightRecord, .updateAccountSettings:
             preconditionFailure("体重記録を作る書き込みではない")

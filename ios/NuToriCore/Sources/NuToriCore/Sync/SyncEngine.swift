@@ -44,14 +44,14 @@ public actor SyncEngine {
             }
             return record
         case .correct(let record):
-            guard let previous = try await store.weightRecord(id: record.id) else {
+            guard try await store.weightRecord(id: record.id) != nil else {
                 throw UnknownRecordError(recordId: record.id)
             }
             try await writingCache {
                 try await store.apply(
                     WeightRecordSyncing().saving(
                         record,
-                        enqueuing: pendingWrite(.correctWeightRecord(record, previous: previous))
+                        enqueuing: pendingWrite(.correctWeightRecord(record))
                     )
                 )
             }
@@ -120,8 +120,6 @@ public actor SyncEngine {
     {
         let maxWritesPerRequest = 500
         let pending = try await store.pendingEntries()
-        // 先の要求で作る書き込みが受け付けられず消した記録を、あとの要求の直す書き込みで戻さない
-        var revertedRecordIds: Set<UUID> = []
         for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
             let batchEnd = min(batchStart + maxWritesPerRequest, pending.count)
             let batch = Array(pending[batchStart..<batchEnd])
@@ -143,12 +141,7 @@ public actor SyncEngine {
             }
             switch result {
             case .pushed(let results):
-                try await resolve(
-                    batch,
-                    with: results,
-                    revertedRecordIds: &revertedRecordIds,
-                    rejectedWrites: &rejectedWrites
-                )
+                try await resolve(batch, with: results, rejectedWrites: &rejectedWrites)
             case .badRequest:
                 return .badRequest
             case .sessionExpired:
@@ -172,41 +165,46 @@ public actor SyncEngine {
         try kind(named: entry.kind).syncWrite(for: entry)
     }
 
+    /// 結果を、受け付けた・受け付けなかったの2つに畳んで読む。細かい結果はサーバーの控えと観測にだけ使う。
+    /// 受け付けなかったら送り待ちから外し、添えられたサーバーの今の値を、取りに行った変更と同じ道で当てる
     private func resolve(
         _ batch: [PendingEntry],
         with results: [SyncWriteResult],
-        revertedRecordIds: inout Set<UUID>,
         rejectedWrites: inout [RejectedWrite]
     ) async throws {
-        let outcomes = Dictionary(
-            results.map { ($0.writeId, $0.outcome) },
+        let resultsByWriteId = Dictionary(
+            results.map { ($0.writeId, $0) },
             uniquingKeysWith: { first, _ in first }
         )
         var resolvedWriteIds: [UUID] = []
-        var revertingChanges: [String: [SyncChange]] = [:]
+        var currentChanges: [String: [SyncChange]] = [:]
         for entry in batch {
-            guard let outcome = outcomes[entry.writeId] else {
+            guard let result = resultsByWriteId[entry.writeId] else {
                 continue
             }
             resolvedWriteIds.append(entry.writeId)
-            switch outcome {
-            case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
+            guard case .rejected(let reason) = result.outcome else {
+                continue
+            }
+            let kind = try kind(named: entry.kind)
+            let rejection = try kind.rejection(of: entry, reason: reason, current: result.current)
+            if let rejected = rejection.rejectedWrite {
+                rejectedWrites.append(rejected)
+            }
+            switch result.current {
+            case .value(let change), .deleted(let change):
+                currentChanges[kind.name, default: []].append(change)
+            case .absent:
+                currentChanges[kind.name, default: []] += rejection.removingChanges
+            case nil:
                 break
-            case .rejected(let reason):
-                let kind = try kind(named: entry.kind)
-                let rejection = try kind.rejection(
-                    of: entry, reason: reason, revertedRecordIds: &revertedRecordIds)
-                if let rejected = rejection.rejectedWrite {
-                    rejectedWrites.append(rejected)
-                }
-                revertingChanges[kind.name, default: []] += rejection.revertingChanges
             }
         }
         try await writingCache {
             try await store.apply(
                 SyncBoxResult(
                     resolvedWriteIds: resolvedWriteIds,
-                    kindChanges: revertingChanges.filter { !$0.value.isEmpty }
+                    kindChanges: currentChanges.filter { !$0.value.isEmpty }
                         .sorted { $0.key < $1.key }
                         .map { KindChanges(kind: $0.key, changes: $0.value) }
                 ))

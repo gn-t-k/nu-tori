@@ -12,31 +12,35 @@ extension SyncEngineTests {
             let store: MemoryStore
             let engine: SyncEngine
             let created: WeightRecord
-            let previous: WeightRecord
+            let serverRecord: WeightRecord
             let corrected: WeightRecord
 
             init() throws {
                 created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                previous = try .manual(70.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+                serverRecord = try .manual(70.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
                 corrected = WeightRecord(
-                    id: previous.id, kilograms: 71.0, instant: previous.instant,
-                    timeZone: previous.timeZone, inputSource: .manual, version: 2)
+                    id: serverRecord.id, kilograms: 71.0, instant: serverRecord.instant,
+                    timeZone: serverRecord.timeZone, inputSource: .manual, version: 2)
                 store = .ok(
                     records: [created, corrected],
                     pendingWrites: [
                         .creating(created, ageSeconds: 20),
-                        .correcting(corrected, previous: previous),
+                        .correcting(corrected),
                     ])
-                engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0, 1]))
+                engine = .fixture(
+                    store: store,
+                    transport: .sync(
+                        rejectedWriteIndexes: [0, 1],
+                        currents: [0: .absent, 1: .weightRecord(serverRecord)]))
             }
 
-            @Test("受け付けなかった行を返し、作った記録は消し、直した記録は直す前に戻すこと")
+            @Test("受け付けなかった行を返し、サーバーに無い記録は消し、値がある記録はその値に合わせること")
             func revertsWeightRecords() async throws {
                 let result = try await engine.sync()
 
-                #expect(result.rejectedWrites.map(\.record.id) == [created.id, previous.id])
+                #expect(result.rejectedWrites.map(\.record.id) == [created.id, serverRecord.id])
                 #expect(store.records[created.id] == nil)
-                #expect(store.records[previous.id] == previous)
+                #expect(store.records[serverRecord.id] == serverRecord)
                 #expect(store.entries.isEmpty)
             }
         }

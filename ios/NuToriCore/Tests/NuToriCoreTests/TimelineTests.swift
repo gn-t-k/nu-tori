@@ -143,8 +143,8 @@ struct TimelineTests {
     struct PlacingRejectedLines {
         static let day = CalendarDay(year: 2026, month: 9, day: 24)
 
-        @Suite("新しく作った記録を受け付けなかったとき")
-        struct CreatedRecordRejected {
+        @Suite("サーバーに記録が無いとき")
+        struct NoValueOnServer {
             let before: WeightRecord
             let after: WeightRecord
             let line: RejectedWeightLine
@@ -156,7 +156,9 @@ struct TimelineTests {
                 let rejected = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
                 line = RejectedWeightLine(
-                    RejectedWrite(writeId: UUID(), record: rejected, reason: .outOfRange))
+                    RejectedWrite(
+                        writeId: UUID(), record: rejected, reason: .outOfRange,
+                        serverHasValue: false))
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [after, before], rejectedLines: [line]),
                     firstDay: PlacingRejectedLines.day,
@@ -164,7 +166,7 @@ struct TimelineTests {
                 )
             }
 
-            @Test("記録できなかった時刻の位置に、行を置くこと")
+            @Test("作った記録の時刻の位置に、行を置くこと")
             func placesLineAtItsInstant() {
                 #expect(
                     timeline.days.first?.items == [
@@ -173,8 +175,8 @@ struct TimelineTests {
             }
         }
 
-        @Suite("直した値を受け付けなかったとき")
-        struct CorrectionRejected {
+        @Suite("サーバーに記録の値があるとき")
+        struct ValueOnServer {
             let first: WeightRecord
             let restored: WeightRecord
             let line: RejectedWeightLine
@@ -185,7 +187,9 @@ struct TimelineTests {
                 restored = try .manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
                 line = RejectedWeightLine(
-                    RejectedWrite(writeId: UUID(), record: restored, reason: .versionTooLow))
+                    RejectedWrite(
+                        writeId: UUID(), record: restored, reason: .versionTooLow,
+                        serverHasValue: true))
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [restored, first], rejectedLines: [line]),
                     firstDay: PlacingRejectedLines.day,
@@ -193,11 +197,43 @@ struct TimelineTests {
                 )
             }
 
-            @Test("戻した記録のすぐ下に、行を置くこと")
+            @Test("その値の記録のすぐ下に、行を置くこと")
             func placesLineBelowRestoredRecord() {
                 #expect(
                     timeline.days.first?.items == [
                         .weightRecord(first), .weightRecord(restored), .rejectedWeightLine(line),
+                    ])
+            }
+        }
+
+        @Suite("直した記録の版が 2 でも、サーバーに記録が無いとき")
+        struct CorrectedVersionButNoValueOnServer {
+            let before: WeightRecord
+            let after: WeightRecord
+            let line: RejectedWeightLine
+            let timeline: Timeline
+
+            init() throws {
+                before = try .manual(72.0, at: "2026-09-24T06:00:00+09:00", in: "Asia/Tokyo")
+                after = try .manual(72.8, at: "2026-09-24T21:00:00+09:00", in: "Asia/Tokyo")
+                let corrected = try WeightRecord.manual(
+                    72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
+                line = RejectedWeightLine(
+                    RejectedWrite(
+                        writeId: UUID(), record: corrected, reason: .recordNotFound,
+                        serverHasValue: false))
+                timeline = Timeline(
+                    input: Timeline.Input(weightRecords: [after, before], rejectedLines: [line]),
+                    firstDay: PlacingRejectedLines.day,
+                    today: PlacingRejectedLines.day
+                )
+            }
+
+            @Test("版でなく、サーバーの値の有無で決めて、記録の時刻の位置に行を置くこと")
+            func placesLineAtItsInstant() {
+                #expect(
+                    timeline.days.first?.items == [
+                        .weightRecord(before), .rejectedWeightLine(line), .weightRecord(after),
                     ])
             }
         }
@@ -210,7 +246,9 @@ struct TimelineTests {
                 let rejected = try WeightRecord.manual(
                     72.4, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
                 let line = RejectedWeightLine(
-                    RejectedWrite(writeId: UUID(), record: rejected, reason: .outOfRange))
+                    RejectedWrite(
+                        writeId: UUID(), record: rejected, reason: .outOfRange,
+                        serverHasValue: false))
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [], rejectedLines: [line]),
                     firstDay: PlacingRejectedLines.day,
@@ -263,7 +301,8 @@ struct TimelineTests {
                         rejectedLines: [
                             RejectedWeightLine(
                                 RejectedWrite(
-                                    writeId: UUID(), record: rejected, reason: .outOfRange))
+                                    writeId: UUID(), record: rejected, reason: .outOfRange,
+                                    serverHasValue: false))
                         ]),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)

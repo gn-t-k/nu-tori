@@ -12,7 +12,7 @@ nonisolated enum PendingStoreMigrationPlan: SchemaMigrationPlan {
     }
 
     /// 版 1 の書き込みの中身（`operationJSON`）を `content` として引き継ぎ、種類の名前を中身から読んで書く。
-    /// 中身は変えないので、直す前の値（`previous`）も残る
+    /// 中身は変えない。直す前の値（`previous`）が残っていても、中身を読むときに読み飛ばす（`PendingWriteContent`）
     private static var versionOneToTwo: MigrationStage {
         .custom(
             fromVersion: PendingStoreSchemaV1.self,

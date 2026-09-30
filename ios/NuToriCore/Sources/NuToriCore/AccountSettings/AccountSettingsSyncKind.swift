@@ -1,4 +1,4 @@
-public import Foundation
+import Foundation
 public import NuToriAPI
 
 /// アカウントの設定の、送りと受け取りの入口（キャッシュに依らない部分）。
@@ -27,7 +27,7 @@ public struct AccountSettingsSyncKind: SyncedRecordKind {
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        revertedRecordIds: inout Set<UUID>
+        current: SyncWriteResult.Current?
     ) throws -> KindRejection {
         KindRejection()
     }

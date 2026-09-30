@@ -9,22 +9,63 @@ struct PendingWriteEntryTests {
         let write: PendingWrite
 
         init() throws {
-            let previous = try WeightRecord.manual(
+            let original = try WeightRecord.manual(
                 72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
             let corrected = WeightRecord(
-                id: previous.id, kilograms: 72.0, instant: previous.instant,
-                timeZone: previous.timeZone, inputSource: .manual, version: 2)
+                id: original.id, kilograms: 72.0, instant: original.instant,
+                timeZone: original.timeZone, inputSource: .manual, version: 2)
             write = PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .correctWeightRecord(corrected, previous: previous))
+                operation: .correctWeightRecord(corrected))
         }
 
-        @Test("種類の名前を weight-record にし、直す前の値も中身に残すこと")
-        func keepsPreviousInContent() throws {
+        @Test("種類の名前を weight-record にし、直す前の値は中身に持たないこと")
+        func hasNoPreviousInContent() throws {
             let entry = try write.entry()
 
             #expect(entry.kind == "weight-record")
             #expect(try PendingWrite(entry: entry) == write)
+            #expect(!String(decoding: entry.content, as: UTF8.self).contains("previous"))
+        }
+    }
+
+    @Suite("直す前の値（previous）を持つ、残った送り待ちの中身を読むとき")
+    struct LeftoverContentWithPrevious {
+        let entry: PendingEntry
+        let recordId: UUID
+
+        init() {
+            recordId = UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!
+            // 以前の版が書いた形。measuredAt は 2001-01-01 からの秒数
+            let content = Data(
+                """
+                {"correct":{
+                  "record":{"id":"\(recordId.uuidString)","kilograms":72,"measuredAt":780000000,
+                    "timeZoneIdentifier":"Asia/Tokyo","version":2},
+                  "previous":{"id":"\(recordId.uuidString)","kilograms":71,"measuredAt":780000000,
+                    "timeZoneIdentifier":"Asia/Tokyo","version":1}}}
+                """.utf8)
+            entry = PendingEntry(
+                writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
+                kind: "weight-record", content: content)
+        }
+
+        @Test("直す前の値は読み飛ばし、直した値の書き込みとして読めること")
+        func readsAsCorrection() throws {
+            let operation = try PendingWrite(entry: entry).operation
+
+            guard case .correctWeightRecord(let record) = operation else {
+                Issue.record("直す書き込みになっていない: \(operation)")
+                return
+            }
+            #expect(record.id == recordId)
+            #expect(record.kilograms == 72)
+            #expect(record.version == 2)
+        }
+
+        @Test("種類の名前も読めること")
+        func readsKindName() {
+            #expect(PendingWrite.kindName(ofVersion1Content: entry.content) == "weight-record")
         }
     }
 

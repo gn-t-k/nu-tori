@@ -1,7 +1,7 @@
 public import Foundation
 
 /// 今の道の送り待ち（`PendingWrite`）と、「種類の名前＋中身」の相互変換。
-/// 中身は、送り待ちの置き場の版 1 の JSON と同じ形。直す前の値（`previous`）は #185 まで中身に残す
+/// 中身は、送り待ちの置き場の版 1 の JSON と同じ形（直す前の値 `previous` は持たない。残った送り待ちにあっても読み飛ばす）
 extension PendingWrite {
     public struct InvalidEntryError: Error, Equatable {
         public let kind: String

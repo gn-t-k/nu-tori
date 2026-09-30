@@ -1,14 +1,15 @@
 public import NuToriAPI
 
-/// 受け付けなかった書き込み1件への、種類の扱い
+/// 受け付けなかった書き込み1件への、種類の扱い。
+/// サーバーの今の値は、種類ごとの戻し方を持たずに、取りに行った変更と同じ道で当てる（`SyncEngine`）
 public struct KindRejection: Sendable, Equatable {
     /// 画面に出す、受け付けなかった行。出さないときは nil
     public let rejectedWrite: RejectedWrite?
-    /// 書き込む前の姿に戻す変更。その種類のキャッシュに、取りに行った変更と同じ形で当てる
-    public let revertingChanges: [SyncChange]
+    /// サーバーに記録も削除の印も無いとき、この書き込みが指す記録をキャッシュから外す変更
+    public let removingChanges: [SyncChange]
 
-    public init(rejectedWrite: RejectedWrite? = nil, revertingChanges: [SyncChange] = []) {
+    public init(rejectedWrite: RejectedWrite? = nil, removingChanges: [SyncChange] = []) {
         self.rejectedWrite = rejectedWrite
-        self.revertingChanges = revertingChanges
+        self.removingChanges = removingChanges
     }
 }
