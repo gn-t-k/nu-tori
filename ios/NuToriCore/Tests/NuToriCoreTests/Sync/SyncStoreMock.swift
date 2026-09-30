@@ -4,23 +4,34 @@ import NuToriCore
 final class SyncStoreMock: SyncStore, @unchecked Sendable {
     private(set) var records: [UUID: WeightRecord]
     private(set) var settings: AccountSettings?
-    private(set) var pending: [PendingWrite]
+    private(set) var entries: [PendingEntry]
+    /// 登録簿の種類に当てるよう渡された変更
+    private(set) var appliedKindChanges: [KindChanges] = []
+    let recordKinds: [any SyncedRecordKind]
     private(set) var state: SyncState?
     private(set) var appliedChanges: [PulledChanges] = []
     private(set) var healthState: HealthSyncState
     private(set) var appliedHealthImports: [HealthImportBatch] = []
     private(set) var eraseAllCount = 0
 
+    /// 今の道の送り待ち。登録簿の種類の送り待ちは含まない
+    var pending: [PendingWrite] {
+        entries.compactMap { try? PendingWrite(entry: $0) }
+    }
+
     static func ok(
         records: [WeightRecord] = [],
         accountSettings: AccountSettings? = nil,
         pendingWrites: [PendingWrite] = [],
+        pendingEntries: [PendingEntry] = [],
+        recordKinds: [any SyncedRecordKind] = [],
         state: SyncState? = nil,
         healthState: HealthSyncState = .initial
     ) -> SyncStoreMock {
         SyncStoreMock(
-            records: records, settings: accountSettings, pending: pendingWrites, state: state,
-            healthState: healthState, failure: nil, writeFailure: nil)
+            records: records, settings: accountSettings,
+            entries: pendingWrites.map { try! $0.entry() } + pendingEntries, state: state,
+            healthState: healthState, recordKinds: recordKinds, failure: nil, writeFailure: nil)
     }
 
     static func error(
@@ -29,7 +40,8 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         writesOnly: Bool = false
     ) -> SyncStoreMock {
         SyncStoreMock(
-            records: records, settings: nil, pending: [], state: nil, healthState: .initial,
+            records: records, settings: nil, entries: [], state: nil, healthState: .initial,
+            recordKinds: [],
             failure: writesOnly ? nil : error, writeFailure: writesOnly ? error : nil)
     }
 
@@ -47,7 +59,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         try failIfNeeded()
         try failWriteIfNeeded()
         records[record.id] = record
-        pending.append(write)
+        entries.append(try write.entry())
     }
 
     func accountSettings() async throws -> AccountSettings? {
@@ -59,21 +71,37 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         try failIfNeeded()
         try failWriteIfNeeded()
         self.settings = settings
-        pending.append(write)
+        entries.append(try write.entry())
     }
 
-    func pendingWritesOldestFirst() async throws -> [PendingWrite] {
+    func pendingEntries() async throws -> [PendingEntry] {
         try failIfNeeded()
-        return pending
+        // 古い順。同じ時刻は足した順
+        return entries.enumerated().sorted {
+            ($0.element.enqueuedAt, $0.offset) < ($1.element.enqueuedAt, $1.offset)
+        }.map(\.element)
     }
 
-    func removePendingWrites(_ writeIds: [UUID], reverting reversions: [RecordReversion])
-        async throws
-    {
+    func apply(_ result: SyncBoxResult) async throws {
         try failIfNeeded()
         try failWriteIfNeeded()
-        pending.removeAll { writeIds.contains($0.writeId) }
-        for reversion in reversions {
+        entries.append(contentsOf: result.enqueuing)
+        appliedKindChanges.append(contentsOf: result.kindChanges)
+        if let changes = result.pulled {
+            for record in changes.records {
+                records[record.id] = record
+            }
+            for recordId in changes.removedRecordIds {
+                records[recordId] = nil
+            }
+            if let accountSettings = changes.accountSettings {
+                settings = accountSettings
+            }
+            state = changes.state
+            appliedChanges.append(changes)
+        }
+        entries.removeAll { result.resolvedWriteIds.contains($0.writeId) }
+        for reversion in result.reversions {
             switch reversion {
             case .restore(let record): records[record.id] = record
             case .remove(let recordId): records[recordId] = nil
@@ -90,22 +118,6 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         try failIfNeeded()
         try failWriteIfNeeded()
         self.state = state
-    }
-
-    func apply(_ changes: PulledChanges) async throws {
-        try failIfNeeded()
-        try failWriteIfNeeded()
-        for record in changes.records {
-            records[record.id] = record
-        }
-        for recordId in changes.removedRecordIds {
-            records[recordId] = nil
-        }
-        if let accountSettings = changes.accountSettings {
-            settings = accountSettings
-        }
-        state = changes.state
-        appliedChanges.append(changes)
     }
 
     func healthSyncState() async throws -> HealthSyncState {
@@ -125,7 +137,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         for record in batch.records {
             records[record.id] = record
         }
-        pending.append(contentsOf: batch.pendingWrites)
+        entries.append(contentsOf: try batch.pendingWrites.map { try $0.entry() })
         healthState = batch.state
         appliedHealthImports.append(batch)
     }
@@ -135,7 +147,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         try failWriteIfNeeded()
         records = [:]
         settings = nil
-        pending = []
+        entries = []
         state = nil
         healthState = .initial
         eraseAllCount += 1
@@ -147,17 +159,19 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
     private init(
         records: [WeightRecord],
         settings: AccountSettings?,
-        pending: [PendingWrite],
+        entries: [PendingEntry],
         state: SyncState?,
         healthState: HealthSyncState,
+        recordKinds: [any SyncedRecordKind],
         failure: (any Error)?,
         writeFailure: (any Error)?
     ) {
         self.records = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
         self.settings = settings
-        self.pending = pending
+        self.entries = entries
         self.state = state
         self.healthState = healthState
+        self.recordKinds = recordKinds
         self.failure = failure
         self.writeFailure = writeFailure
     }
