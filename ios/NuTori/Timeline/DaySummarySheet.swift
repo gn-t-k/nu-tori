@@ -9,7 +9,7 @@ struct DaySummarySheet: View {
         NavigationStack {
             List {
                 Section {
-                    if let weight = shown?.representativeWeight {
+                    if let weight = shown.representativeWeight {
                         LabeledContent("この日の体重") {
                             VStack(alignment: .trailing) {
                                 Text(weight.record.kilogramsLabel)
@@ -86,8 +86,10 @@ struct DaySummarySheet: View {
         }
     }
 
-    private var shown: Timeline.Day? {
-        timeline.days.first { $0.day == shownDay }
+    // 見ている日は並べる範囲の中だけ動き、days はその範囲のすべての日を持つ
+    private var shown: Timeline.Day {
+        let index = timeline.dayRange.lowerBound.distance(to: shownDay)
+        return timeline.days[index]
     }
 
     private var previous: CalendarDay? {
