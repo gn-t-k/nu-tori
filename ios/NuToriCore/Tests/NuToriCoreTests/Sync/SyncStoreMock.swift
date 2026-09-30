@@ -9,6 +9,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
     private(set) var appliedChanges: [PulledChanges] = []
     private(set) var healthState: HealthSyncState
     private(set) var appliedHealthImports: [HealthImportBatch] = []
+    private(set) var eraseAllCount = 0
 
     static func ok(
         records: [WeightRecord] = [],
@@ -116,6 +117,16 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         pending.append(contentsOf: batch.pendingWrites)
         healthState = batch.state
         appliedHealthImports.append(batch)
+    }
+
+    func eraseAll() async throws {
+        try failIfNeeded()
+        records = [:]
+        settings = nil
+        pending = []
+        state = nil
+        healthState = .initial
+        eraseAllCount += 1
     }
 
     private let failure: (any Error)?

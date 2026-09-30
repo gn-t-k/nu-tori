@@ -44,6 +44,30 @@ final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
+    static func account(
+        startStatus: HTTPResponse.Status = .created,
+        accountId: String = "account-1",
+        deleteStatus: HTTPResponse.Status = .noContent,
+        onRequest: @escaping @Sendable (String) -> Void = { _ in }
+    ) -> ClientTransportMock {
+        ClientTransportMock { request, _ in
+            let path = request.path ?? ""
+            onRequest(path)
+            switch path {
+            case "/v1/sessions" where startStatus == .created:
+                return jsonResponse(
+                    status: .created,
+                    json: #"{"sessionToken":"session-2","accountId":"\#(accountId)"}"#)
+            case "/v1/sessions":
+                return (HTTPResponse(status: startStatus), nil)
+            case "/v1/account":
+                return (HTTPResponse(status: deleteStatus), nil)
+            default:
+                return (HTTPResponse(status: .notFound), nil)
+            }
+        }
+    }
+
     static func error(_ error: any Error) -> ClientTransportMock {
         ClientTransportMock { _, _ in throw error }
     }

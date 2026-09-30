@@ -28,4 +28,7 @@ public protocol SyncStore: Sendable {
 
     /// 記録のキャッシュへの追加と、送り待ちへの追加と、アンカーの更新は、1つの保存で行う
     func applyHealthImport(_ batch: HealthImportBatch) async throws
+
+    /// キャッシュの記録、アカウントの設定、送り待ち、同期の状態（通し番号、初回の取得の印、使い始めた日）、ヘルスケアの同期の進み具合を、1つの保存で空にする。片方だけ残ると、別のアカウントのものが混ざる
+    func eraseAll() async throws
 }
