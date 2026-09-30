@@ -4,8 +4,6 @@ import type { createRecordKinds } from "./create-record-kinds";
 import type { WriteOfKind } from "./sync-ledger/record-kind";
 
 // 書き込みは、登録簿の種類の分と、今の道で当てる分を合わせたもの
-// 登録簿が空のあいだ、登録簿の分は never になる
-// oxlint-disable-next-line typescript/no-redundant-type-constituents
 export type SyncWrite = RegisteredSyncWrite | LegacySyncWrite;
 
 type RegisteredSyncWrite = WriteOfKind<ReturnType<typeof createRecordKinds>[number]>;

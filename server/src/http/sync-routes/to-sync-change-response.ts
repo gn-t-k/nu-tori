@@ -12,7 +12,7 @@ export const toSyncChangeResponse = (change: SyncChange) =>
     .with({ recordType: P.string }, ({ sequence, recordType, current }) => {
       const kind = httpRecordKinds.find(({ name }) => name === recordType);
       if (kind === undefined) {
-        throw new Error(`受け口の登録簿に無い種類の変更: ${String(recordType)}`);
+        throw new Error(`受け口の登録簿に無い種類の変更: ${recordType}`);
       }
       return kind.toChangeResponse(sequence, current);
     })

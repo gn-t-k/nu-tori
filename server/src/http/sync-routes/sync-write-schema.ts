@@ -1,5 +1,4 @@
 import { z } from "@hono/zod-openapi";
-import { updateAccountSettingsWriteSchema } from "../../account-settings/http/account-settings-write-schema";
 import {
   createWeightRecordWriteSchema,
   sourceDeletedWeightRecordWriteSchema,
@@ -12,8 +11,10 @@ const legacyWriteSchemas = [
   createWeightRecordWriteSchema,
   updateWeightRecordWriteSchema,
   sourceDeletedWeightRecordWriteSchema,
-  updateAccountSettingsWriteSchema,
 ] as const;
+
+// 登録簿に移した種類の書き込みは含まない
+export type LegacyWrite = z.infer<(typeof legacyWriteSchemas)[number]>;
 
 export const syncWriteSchema = z
   .discriminatedUnion("type", [...legacyWriteSchemas, ...registeredWriteSchemas])
