@@ -640,7 +640,7 @@ struct SyncEngineTests {
             }
         }
 
-        @Suite("新しい種類を読めるようになった版で、更新して最初に同期するとき")
+        @Suite("読める種類が前より増えて、更新して最初に同期するとき")
         struct NewReadableKinds {
             let store: SyncStoreMock
             let transport: ClientTransportMock
@@ -652,10 +652,13 @@ struct SyncEngineTests {
                 store = .ok(
                     records: [cached],
                     state: .fixture(
-                        afterSequence: 42, hasCompletedInitialPull: true, readableKindsVersion: 1)
+                        afterSequence: 42, hasCompletedInitialPull: true,
+                        readableKinds: ["weight-record"])
                 )
                 transport = .sync()
-                engine = .fixture(store: store, transport: transport, readableKindsVersion: 2)
+                engine = .fixture(
+                    store: store, transport: transport,
+                    readableKinds: ["account-settings", "weight-record"])
             }
 
             @Test("通し番号を最初に戻して取り直し、キャッシュは捨てず、初回の取得を終えた印は戻さないこと")
@@ -665,11 +668,39 @@ struct SyncEngineTests {
                 #expect(try transport.pullQueries.map { $0["afterSequence"] } == ["0"])
                 #expect(store.records[cached.id] == cached)
                 #expect(store.state?.hasCompletedInitialPull == true)
-                #expect(store.state?.readableKindsVersion == 2)
+                #expect(store.state?.readableKinds == ["account-settings", "weight-record"])
             }
         }
 
-        @Suite("同じ版で2回目に同期するとき")
+        @Suite("2つの種類を同時に読めるようになって、更新して最初に同期するとき")
+        struct TwoNewReadableKinds {
+            let store: SyncStoreMock
+            let transport: ClientTransportMock
+            let engine: SyncEngine
+
+            init() {
+                store = .ok(
+                    state: .fixture(
+                        afterSequence: 42, hasCompletedInitialPull: true,
+                        readableKinds: ["weight-record"])
+                )
+                transport = .sync()
+                engine = .fixture(
+                    store: store, transport: transport,
+                    readableKinds: ["account-settings", "meal", "weight-record"])
+            }
+
+            @Test("通し番号を最初に戻して取り直し、読めた種類に両方を残すこと")
+            func restartsAndRemembersBoth() async throws {
+                _ = try await engine.sync()
+
+                #expect(try transport.pullQueries.map { $0["afterSequence"] } == ["0"])
+                #expect(
+                    store.state?.readableKinds == ["account-settings", "meal", "weight-record"])
+            }
+        }
+
+        @Suite("同じ種類で2回目に同期するとき")
         struct SameReadableKinds {
             let transport: ClientTransportMock
             let engine: SyncEngine
@@ -680,7 +711,7 @@ struct SyncEngineTests {
                     store: .ok(
                         state: .fixture(
                             afterSequence: 42, hasCompletedInitialPull: true,
-                            readableKindsVersion: 1
+                            readableKinds: ["weight-record"]
                         )
                     ),
                     transport: transport

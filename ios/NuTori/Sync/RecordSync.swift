@@ -227,7 +227,7 @@ import NuToriCore
             ),
             timeZone: { .current },
             now: { .now },
-            readableKindsVersion: SyncEngine.currentReadableKindsVersion,
+            readableKinds: SyncEngine.currentReadableKinds,
             errorReporting: errorReporting,
             weightHealthExport: health.engine
         )

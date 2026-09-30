@@ -142,7 +142,7 @@ struct SwiftDataSyncStoreSavingTests {
                     state: SyncState(
                         afterSequence: 4,
                         hasCompletedInitialPull: true,
-                        readableKindsVersion: 1,
+                        readableKinds: ["weight-record"],
                         startedOn: nil
                     )
                 )
@@ -193,7 +193,7 @@ struct SwiftDataSyncStoreSavingTests {
                 SyncState(
                     afterSequence: 8,
                     hasCompletedInitialPull: true,
-                    readableKindsVersion: 1,
+                    readableKinds: ["weight-record"],
                     startedOn: nil
                 )
             )

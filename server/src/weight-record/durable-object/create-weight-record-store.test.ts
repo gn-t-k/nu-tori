@@ -12,7 +12,7 @@ type Seed = (factory: ReturnType<typeof durableObjectFactory>) => Promise<void>;
 const withStore = <T>(seed: Seed, read: (store: WeightRecordStore) => T): Promise<T> =>
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), async (_, state) => {
     await seed(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
-    return read(createWeightRecordStore(state.storage));
+    return read(createWeightRecordStore(drizzle(state.storage)));
   });
 
 describe("体重記録の置き場", () => {
