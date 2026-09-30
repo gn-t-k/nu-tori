@@ -311,10 +311,11 @@ private enum Correction: Equatable {
     )
 
     var editing: (recordId: UUID, place: CorrectionOrigin, draftText: String)? {
-        if case .editing(let recordId, let place, let draftText, _) = self {
-            (recordId, place, draftText)
-        } else {
+        switch self {
+        case .notEditing:
             nil
+        case .editing(let recordId, let place, let draftText, _):
+            (recordId, place, draftText)
         }
     }
 

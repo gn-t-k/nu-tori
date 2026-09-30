@@ -51,14 +51,16 @@ struct WeightRecordTests {
     @Suite("値を直す")
     struct CorrectingKilograms {
         let record: WeightRecord
+        let replacingKilograms: Double
 
         init() throws {
             record = try .imported(72.44, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
+            replacingKilograms = 71.86
         }
 
         @Test("取り込んだまま版を上げて0.1 kgに丸めること")
         func keepsImportedSourceAndBumpsVersion() throws {
-            let corrected = try #require(record.correction(replacingKilograms: 71.86))
+            let corrected = try #require(record.correction(replacingKilograms: replacingKilograms))
             #expect(corrected.kilograms == 71.9)
             #expect(corrected.version == record.version + 1)
             #expect(corrected.id == record.id)
@@ -70,42 +72,49 @@ struct WeightRecordTests {
         @Suite("範囲の下を外すとき")
         struct BelowRange {
             let record: WeightRecord
+            let replacingKilograms: Double
 
             init() throws {
                 record = try .imported(72.44, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
+                replacingKilograms = 19.94
             }
 
             @Test("直さないこと")
             func rejects() {
-                #expect(record.correction(replacingKilograms: 19.94) == nil)
+                #expect(record.correction(replacingKilograms: replacingKilograms) == nil)
             }
         }
 
         @Suite("範囲の上を外すとき")
         struct AboveRange {
             let record: WeightRecord
+            let replacingKilograms: Double
 
             init() throws {
                 record = try .imported(72.44, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
+                replacingKilograms = 300.1
             }
 
             @Test("直さないこと")
             func rejects() {
-                #expect(record.correction(replacingKilograms: 300.1) == nil)
+                #expect(record.correction(replacingKilograms: replacingKilograms) == nil)
             }
         }
 
         @Suite("丸めると範囲の下端に入るとき")
         struct RoundsOntoLowerBound {
             let record: WeightRecord
+            let replacingKilograms: Double
 
             init() throws {
                 record = try .imported(72.44, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
+                replacingKilograms = 19.96
             }
 
             @Test("20.0 kg に直ること")
             func correctsToLowerBound() throws {
-                let corrected = try #require(record.correction(replacingKilograms: 19.96))
+                let corrected = try #require(
+                    record.correction(replacingKilograms: replacingKilograms))
                 #expect(corrected.kilograms == 20)
             }
         }
@@ -113,14 +122,17 @@ struct WeightRecordTests {
         @Suite("範囲の上端のとき")
         struct UpperBound {
             let record: WeightRecord
+            let replacingKilograms: Double
 
             init() throws {
                 record = try .imported(72.44, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
+                replacingKilograms = 300
             }
 
             @Test("300.0 kg に直ること")
             func correctsToUpperBound() throws {
-                let corrected = try #require(record.correction(replacingKilograms: 300))
+                let corrected = try #require(
+                    record.correction(replacingKilograms: replacingKilograms))
                 #expect(corrected.kilograms == 300)
             }
         }
@@ -128,14 +140,16 @@ struct WeightRecordTests {
         @Suite("見せている値と同じとき")
         struct ShownValue {
             let record: WeightRecord
+            let replacingKilograms: Double
 
             init() throws {
                 record = try .imported(72.44, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
+                replacingKilograms = 72.4
             }
 
             @Test("直さないこと")
             func leavesRecordUnchanged() {
-                #expect(record.correction(replacingKilograms: 72.4) == nil)
+                #expect(record.correction(replacingKilograms: replacingKilograms) == nil)
             }
         }
     }
