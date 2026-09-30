@@ -32,7 +32,12 @@ final class RootModel {
         } catch {
             screen = .signIn(.introduction, .ready)
         }
+        await accountSession.beginObservationIfSignedIn()
         await syncIfShowingTimeline()
+    }
+
+    func capture(_ event: ClientUsageEvent) async {
+        await accountSession.capture(event)
     }
 
     /// Apple ID の設定で連携を止めたあと、アプリを終了せずに戻った人にも、サインインの画面を出すため
@@ -72,6 +77,7 @@ final class RootModel {
         case .authorized(let credential):
             screen = .signIn(prompt, .signingIn)
             screen = await signInOutcomeScreen(prompt: prompt, credential: credential)
+            await accountSession.beginObservationIfSignedIn()
             await syncIfShowingTimeline()
         }
     }

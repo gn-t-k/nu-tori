@@ -53,4 +53,31 @@ extension HealthSyncEngineTests {
             }
         }
     }
+
+    @Suite("キャッシュの保存に失敗したとき")
+    struct CacheSaveFailure {
+        struct SampleError: Error {}
+
+        let reporting: ErrorReportingSessionMock
+        let engine: HealthSyncEngine
+
+        init() throws {
+            reporting = .ok()
+            let record = try WeightRecord.manual(
+                72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+            engine = .fixture(
+                healthStore: .ok(),
+                store: .errorOnWrite(SampleError(), records: [record]),
+                errorReporting: reporting
+            )
+        }
+
+        @Test("キャッシュの保存の失敗として送り、失敗を呼び出し側に返すこと")
+        func reportsCacheSave() async {
+            await #expect(throws: SampleError.self) {
+                try await engine.exportCachedManualRecordsOnNewWriteAuthorization()
+            }
+            #expect(reporting.reported == [.cacheSave])
+        }
+    }
 }

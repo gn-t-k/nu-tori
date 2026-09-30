@@ -39,6 +39,7 @@ import SwiftData
             environment: .forThisBuild,
             sessionToken: { try? await keychain.sessionToken() }
         )
+        let observation = ObservationSessions.live()
         let session = AccountSession(
             client: client,
             keychain: keychain,
@@ -47,8 +48,8 @@ import SwiftData
             appleCredentials: AppleIDCredentialChecker(),
             backgroundTransfers: PlaceholderBackgroundTransferStore(),
             healthAnchors: PlaceholderHealthAnchorStore(),
-            analytics: PlaceholderAnalyticsSession(),
-            errorReporting: PlaceholderErrorReportingSession(),
+            analytics: observation.analytics,
+            errorReporting: observation.errorReporting,
             timeZone: { .current },
             analyticsFlushTimeout: .seconds(3)
         )
@@ -58,7 +59,8 @@ import SwiftData
             accountSession: session,
             deviceId: { deviceStore.loadOrCreateDeviceId() },
             hasSession: { (try? await keychain.sessionToken()) != nil },
-            signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId }
+            signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
+            errorReporting: observation.errorReporting
         )
         let model = RootModel(accountSession: session, recordSync: sync)
         return AppRuntime(container: store.container, recordSync: sync, model: model)

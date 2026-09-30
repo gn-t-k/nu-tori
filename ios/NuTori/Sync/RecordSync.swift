@@ -35,7 +35,8 @@ import NuToriCore
         accountSession: AccountSession,
         deviceId: @escaping @MainActor () -> UUID,
         hasSession: @escaping @MainActor () async -> Bool,
-        signedInAccountId: @escaping @MainActor () async -> String?
+        signedInAccountId: @escaping @MainActor () async -> String?,
+        errorReporting: any ErrorReportingSession
     ) {
         self.store = store
         self.client = client
@@ -43,6 +44,7 @@ import NuToriCore
         self.deviceId = deviceId
         self.hasSession = hasSession
         self.signedInAccountId = signedInAccountId
+        self.errorReporting = errorReporting
     }
 
     func registerAndWatch() {
@@ -85,6 +87,9 @@ import NuToriCore
     private let deviceId: @MainActor () -> UUID
     private let hasSession: @MainActor () async -> Bool
     private let signedInAccountId: @MainActor () async -> String?
+    private let errorReporting: any ErrorReportingSession
+    /// 初めての取得を測り始めた時刻。測る前と、終えたあとは無い
+    private var initialPullStartedAt: Date?
     private var didRegisterRefresh = false
     private var inFlight: Task<SyncResult?, any Error>?
     private var networkMonitor: NWPathMonitor?
@@ -129,7 +134,33 @@ import NuToriCore
 
     private func runSync() async throws -> SyncResult? {
         guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
-        let result = try await engineForThisDevice(accountId: accountId).sync()
+        let completedBefore = try await store.syncState()?.hasCompletedInitialPull ?? false
+        if !completedBefore, initialPullStartedAt == nil {
+            initialPullStartedAt = .now
+        }
+        let startedAt = initialPullStartedAt ?? .now
+        let result: SyncResult
+        do {
+            result = try await engineForThisDevice(accountId: accountId).sync()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            await accountSession.noteInitialPull(.unfinished)
+            throw error
+        }
+        let completedAfter = try await store.syncState()?.hasCompletedInitialPull ?? false
+        await accountSession.noteInitialPull(
+            AccountSession.initialPullNotice(
+                completedBefore: completedBefore,
+                completedAfter: completedAfter,
+                ending: result.ending,
+                startedAt: startedAt,
+                endedAt: .now
+            )
+        )
+        if completedAfter {
+            initialPullStartedAt = nil
+        }
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }
@@ -151,7 +182,8 @@ import NuToriCore
             ),
             timeZone: { .current },
             now: { .now },
-            readableKindsVersion: SyncEngine.currentReadableKindsVersion
+            readableKindsVersion: SyncEngine.currentReadableKindsVersion,
+            errorReporting: errorReporting
         )
     }
 }

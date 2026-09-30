@@ -4,6 +4,7 @@ import SwiftUI
 
 struct TimelineScreen: View {
     var rejectedLines: [RejectedWeightLine]
+    var capture: (ClientUsageEvent) async -> Void
     var saveWeight: (WeightEntry.Write) async -> Void
 
     var body: some View {
@@ -31,6 +32,7 @@ struct TimelineScreen: View {
                     firstDay: startedDay ?? records.map(\.day).min() ?? day,
                     today: today,
                     rejectedLines: rejectedLines,
+                    capture: capture,
                     saveWeight: saveWeight
                 )
             }
@@ -60,10 +62,22 @@ struct TimelineScreen: View {
             }
         }
         .sheet(isPresented: $showsWeightEntry) {
-            WeightEntrySheet(records: records) { write in
-                showsWeightEntry = false
-                Task { await saveWeight(write) }
+            WeightEntrySheet(
+                records: records,
+                capture: capture,
+                onRecord: { write in
+                    showsWeightEntry = false
+                    Task { await saveWeight(write) }
+                }
+            )
+        }
+        .onChange(of: showsWeightEntry) { _, showing in
+            if !showing {
+                Task { await capture(.screen(.timeline)) }
             }
+        }
+        .onAppear {
+            Task { await capture(.screen(.timeline)) }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline")

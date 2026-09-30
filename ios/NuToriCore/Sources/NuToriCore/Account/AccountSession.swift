@@ -126,6 +126,30 @@ public actor AccountSession {
         }
     }
 
+    public func capture(_ event: ClientUsageEvent) async {
+        await analytics.capture(event)
+    }
+
+    /// 始める前に終えていれば、同期が止まっていてもすでに終えたとする
+    public static func initialPullNotice(
+        completedBefore: Bool,
+        completedAfter: Bool,
+        ending: SyncResult.Ending,
+        startedAt: Date,
+        endedAt: Date
+    ) -> InitialPull {
+        if completedBefore {
+            return .alreadyComplete
+        }
+        switch ending {
+        case .stopped:
+            return .unfinished
+        case .finished:
+            guard completedAfter else { return .notYetComplete }
+            return .firstCompletion(startedAt: startedAt, endedAt: endedAt)
+        }
+    }
+
     /// オフの設定が届く前に、オフにしたことだけを1件送る
     public func turnOffUsageData() async {
         await analytics.capture(.usageDataTurnedOff)

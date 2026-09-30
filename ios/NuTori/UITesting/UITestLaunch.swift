@@ -51,6 +51,8 @@
                 transport: StubAPITransport(behavior: transportBehavior),
                 sessionToken: { try? await keychain.sessionToken() }
             )
+            let analytics = PlaceholderAnalyticsSession()
+            let errorReporting = PlaceholderErrorReportingSession()
             let session = AccountSession(
                 client: client,
                 keychain: keychain,
@@ -59,8 +61,8 @@
                 appleCredentials: AuthorizedAppleCredentialChecker(),
                 backgroundTransfers: PlaceholderBackgroundTransferStore(),
                 healthAnchors: PlaceholderHealthAnchorStore(),
-                analytics: PlaceholderAnalyticsSession(),
-                errorReporting: PlaceholderErrorReportingSession(),
+                analytics: analytics,
+                errorReporting: errorReporting,
                 timeZone: { .current },
                 analyticsFlushTimeout: .seconds(3)
             )
@@ -70,7 +72,8 @@
                 accountSession: session,
                 deviceId: { deviceStore.loadOrCreateDeviceId() },
                 hasSession: { (try? await keychain.sessionToken()) != nil },
-                signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId }
+                signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
+                errorReporting: errorReporting
             )
             return AppRuntime(
                 container: store.container,

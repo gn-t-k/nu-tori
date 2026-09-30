@@ -52,19 +52,21 @@ public actor HealthSyncEngine {
             readBoundary: readBoundary,
             cachedRecords: cachedRecords
         )
-        try await store.applyHealthImport(
-            HealthImportBatch(
-                records: plan.newRecords,
-                pendingWrites: plan.newRecords.map { pendingWrite(.createWeightRecord($0)) }
-                    + plan.deletedRecordIds.map {
-                        pendingWrite(.sourceDeletedWeightRecord(recordId: $0))
-                    },
-                state: HealthSyncState(
-                    anchor: changes.anchor,
-                    hasWrittenCachedManualRecords: state.hasWrittenCachedManualRecords
+        try await writingCache {
+            try await store.applyHealthImport(
+                HealthImportBatch(
+                    records: plan.newRecords,
+                    pendingWrites: plan.newRecords.map { pendingWrite(.createWeightRecord($0)) }
+                        + plan.deletedRecordIds.map {
+                            pendingWrite(.sourceDeletedWeightRecord(recordId: $0))
+                        },
+                    state: HealthSyncState(
+                        anchor: changes.anchor,
+                        hasWrittenCachedManualRecords: state.hasWrittenCachedManualRecords
+                    )
                 )
             )
-        )
+        }
     }
 
     /// 記録を作った・直したとき、取りに行って版が上がった手の記録が届いたときに、その場で書く
@@ -89,9 +91,11 @@ public actor HealthSyncEngine {
                 try await healthStore.writeWeight(HealthWeightWrite(record))
             }
         }
-        try await store.saveHealthSyncState(
-            HealthSyncState(anchor: state.anchor, hasWrittenCachedManualRecords: true)
-        )
+        try await writingCache {
+            try await store.saveHealthSyncState(
+                HealthSyncState(anchor: state.anchor, hasWrittenCachedManualRecords: true)
+            )
+        }
     }
 
     private let healthStore: any HealthStore
@@ -100,6 +104,19 @@ public actor HealthSyncEngine {
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
     private let errorReporting: any ErrorReportingSession
+
+    private func writingCache<T: Sendable>(_ work: () async throws -> T) async throws -> T {
+        do {
+            return try await work()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if let failure = HandledFailure.reported(error, as: .cacheSave) {
+                await errorReporting.report(failure)
+            }
+            throw error
+        }
+    }
 
     private func reporting<T: Sendable>(
         _ area: HandledFailure,

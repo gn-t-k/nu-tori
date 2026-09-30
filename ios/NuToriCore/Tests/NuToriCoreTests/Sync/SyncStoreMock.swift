@@ -20,13 +20,19 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
     ) -> SyncStoreMock {
         SyncStoreMock(
             records: records, settings: accountSettings, pending: pendingWrites, state: state,
-            healthState: healthState, failure: nil)
+            healthState: healthState, failure: nil, writeFailure: nil)
     }
 
     static func error(_ error: any Error) -> SyncStoreMock {
         SyncStoreMock(
             records: [], settings: nil, pending: [], state: nil, healthState: .initial,
-            failure: error)
+            failure: error, writeFailure: nil)
+    }
+
+    static func errorOnWrite(_ error: any Error, records: [WeightRecord]) -> SyncStoreMock {
+        SyncStoreMock(
+            records: records, settings: nil, pending: [], state: nil, healthState: .initial,
+            failure: nil, writeFailure: error)
     }
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {
@@ -41,6 +47,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
 
     func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws {
         try failIfNeeded()
+        try failWriteIfNeeded()
         records[record.id] = record
         pending.append(write)
     }
@@ -52,6 +59,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
 
     func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {
         try failIfNeeded()
+        try failWriteIfNeeded()
         self.settings = settings
         pending.append(write)
     }
@@ -65,6 +73,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         async throws
     {
         try failIfNeeded()
+        try failWriteIfNeeded()
         pending.removeAll { writeIds.contains($0.writeId) }
         for reversion in reversions {
             switch reversion {
@@ -81,11 +90,13 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
 
     func saveSyncState(_ state: SyncState) async throws {
         try failIfNeeded()
+        try failWriteIfNeeded()
         self.state = state
     }
 
     func apply(_ changes: PulledChanges) async throws {
         try failIfNeeded()
+        try failWriteIfNeeded()
         for record in changes.records {
             records[record.id] = record
         }
@@ -106,11 +117,13 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
 
     func saveHealthSyncState(_ state: HealthSyncState) async throws {
         try failIfNeeded()
+        try failWriteIfNeeded()
         healthState = state
     }
 
     func applyHealthImport(_ batch: HealthImportBatch) async throws {
         try failIfNeeded()
+        try failWriteIfNeeded()
         for record in batch.records {
             records[record.id] = record
         }
@@ -121,6 +134,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
 
     func eraseAll() async throws {
         try failIfNeeded()
+        try failWriteIfNeeded()
         records = [:]
         settings = nil
         pending = []
@@ -130,6 +144,7 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
     }
 
     private let failure: (any Error)?
+    private let writeFailure: (any Error)?
 
     private init(
         records: [WeightRecord],
@@ -137,7 +152,8 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         pending: [PendingWrite],
         state: SyncState?,
         healthState: HealthSyncState,
-        failure: (any Error)?
+        failure: (any Error)?,
+        writeFailure: (any Error)?
     ) {
         self.records = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
         self.settings = settings
@@ -145,9 +161,14 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         self.state = state
         self.healthState = healthState
         self.failure = failure
+        self.writeFailure = writeFailure
     }
 
     private func failIfNeeded() throws {
         if let failure { throw failure }
+    }
+
+    private func failWriteIfNeeded() throws {
+        if let writeFailure { throw writeFailure }
     }
 }

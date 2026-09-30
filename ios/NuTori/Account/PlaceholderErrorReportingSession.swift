@@ -1,6 +1,10 @@
 import NuToriCore
 
-/// Sentry を組み込むまでの置き場
+/// UI テストは観測に送らない
 nonisolated struct PlaceholderErrorReportingSession: ErrorReportingSession {
+    func identify(accountId: String) async {}
+
+    func report(_ failure: HandledFailure) async {}
+
     func clearUser() async {}
 }

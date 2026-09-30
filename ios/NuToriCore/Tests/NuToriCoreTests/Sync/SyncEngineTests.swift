@@ -108,19 +108,68 @@ struct SyncEngineTests {
         struct StoreFailing {
             struct Failure: Error, Equatable {}
 
+            let reporting: ErrorReportingSessionMock
             let engine: SyncEngine
             let write: WeightEntry.Write
 
             init() {
                 write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
-                engine = .fixture(store: .error(Failure()), transport: .ok())
+                reporting = .ok()
+                engine = .fixture(
+                    store: .error(Failure()), transport: .ok(), errorReporting: reporting)
             }
 
-            @Test("置き場のエラーをそのまま投げること")
+            @Test("置き場のエラーをそのまま投げ、キャッシュの保存の失敗として送ること")
             func throwsStoreError() async throws {
                 await #expect(throws: Failure()) {
                     try await engine.save(write)
                 }
+                #expect(reporting.reported == [.cacheSave])
+            }
+        }
+
+        @Suite("置き場の保存が時間切れのとき")
+        struct StoreTimedOut {
+            let reporting: ErrorReportingSessionMock
+            let engine: SyncEngine
+            let write: WeightEntry.Write
+
+            init() {
+                write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
+                reporting = .ok()
+                engine = .fixture(
+                    store: .error(URLError(.timedOut)), transport: .ok(), errorReporting: reporting)
+            }
+
+            @Test("送らず、失敗を呼び出し側に返すこと")
+            func doesNotReport() async {
+                await #expect(throws: URLError.self) {
+                    try await engine.save(write)
+                }
+                #expect(reporting.reported.isEmpty)
+            }
+        }
+
+        @Suite("置き場の保存がキャンセルされたとき")
+        struct StoreCancelled {
+            let reporting: ErrorReportingSessionMock
+            let engine: SyncEngine
+            let write: WeightEntry.Write
+
+            init() {
+                write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
+                reporting = .ok()
+                engine = .fixture(
+                    store: .error(CancellationError()), transport: .ok(),
+                    errorReporting: reporting)
+            }
+
+            @Test("送らないこと")
+            func doesNotReport() async {
+                await #expect(throws: CancellationError.self) {
+                    try await engine.save(write)
+                }
+                #expect(reporting.reported.isEmpty)
             }
         }
     }
