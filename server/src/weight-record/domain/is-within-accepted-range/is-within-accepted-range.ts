@@ -1,4 +1,4 @@
-import acceptedRanges from "../../../../shared/accepted-ranges.json";
+import acceptedRanges from "../../../../../shared/accepted-ranges.json";
 
 export type AcceptedRange = keyof typeof acceptedRanges;
 

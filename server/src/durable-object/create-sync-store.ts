@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { RecordType } from "../domain/record-type";
 import type { SyncStore } from "../domain/sync-store";
 import type { SyncWriteOutcome } from "../domain/sync-write-outcome";
-import type { WeightRecord } from "../domain/weight-record";
+import type { WeightRecord } from "../weight-record/domain/weight-record";
 
 export const createSyncStore = (storage: DurableObjectStorage): SyncStore => {
   const sql = storage.sql;
