@@ -1,7 +1,7 @@
 import XCTest
 
 @MainActor
-final class AccountDeletedUITests: XCTestCase {
+final class DeleteAccountUITests: XCTestCase {
     private var app = XCUIApplication()
 
     override func setUp() async throws {
@@ -11,7 +11,7 @@ final class AccountDeletedUITests: XCTestCase {
         app.openAccountScreen()
     }
 
-    func test_サインインの画面に戻ること() {
+    func test_消したらサインインの画面に戻ること() {
         app.confirmAccountDeletion()
         XCTAssertTrue(app.otherElements["signIn"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["毎朝の体重と、食事の写真だけ。"].exists)

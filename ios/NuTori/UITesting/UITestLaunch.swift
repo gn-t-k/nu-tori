@@ -107,14 +107,13 @@
             switch api {
             case .online: return .online
             case .offline: return .offline
-            case .rateLimited: return .rateLimited
-            case .unauthorized: return .unauthorized
-            case .serverError: return .serverError
             case .weightRecords: return .weightRecords
             case .previousDay: return .previousDay
             case .previousDayPushOffline: return .previousDayPushOffline
             case .previousDayPushRejected: return .previousDayPushRejected
             case .weightScreen: return .weightScreen
+            case .accountDeletionRateLimited: return .accountDeletionRateLimited
+            case .accountDeletionUnauthorized: return .accountDeletionUnauthorized
             case .dayRing: return .dayRing
             }
         }
@@ -192,15 +191,14 @@
         enum API: String {
             case online
             case offline
-            case rateLimited = "rate-limited"
-            case unauthorized
-            case serverError = "server-error"
             case weightRecords = "weight-records"
             case previousDay = "previous-day"
             case previousDayPushOffline = "previous-day-push-offline"
             case previousDayPushRejected = "previous-day-push-rejected"
             case weightScreen = "weight-screen"
             case dayRing = "day-ring"
+            case accountDeletionRateLimited = "account-deletion-rate-limited"
+            case accountDeletionUnauthorized = "account-deletion-unauthorized"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

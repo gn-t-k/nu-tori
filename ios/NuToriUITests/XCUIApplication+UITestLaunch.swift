@@ -43,7 +43,7 @@ extension XCUIApplication {
     @MainActor func openAccountScreen() {
         XCTAssertTrue(buttons["account"].waitForExistence(timeout: 5))
         buttons["account"].tap()
-        XCTAssertTrue(buttons["アカウントを削除"].waitForExistence(timeout: 5))
+        XCTAssertTrue(otherElements["account-screen"].waitForExistence(timeout: 5))
     }
 
     @MainActor func confirmAccountDeletion() {

@@ -3,12 +3,11 @@ import SwiftData
 import SwiftUI
 
 struct TimelineScreen: View {
-    var session: AccountSession
     var rejectedLines: [RejectedWeightLine]
     var capture: (ClientUsageEvent) async -> Void
     var prepareWeightEntry: () async -> Void
     var saveWeight: (WeightEntry.Write) async -> Void
-    var onLeftTimeline: (SignInDestination) -> Void
+    var accountActions: AccountActions
 
     var body: some View {
         let today = CalendarDay(containing: .now, in: .current)
@@ -45,8 +44,6 @@ struct TimelineScreen: View {
             }
             .navigationTitle(title(today: today, loaded: loaded))
             .navigationBarTitleDisplayMode(.inline)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("timeline")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -60,12 +57,11 @@ struct TimelineScreen: View {
             }
             .sheet(isPresented: $showsAccount) {
                 NavigationStack {
-                    AccountScreen(
-                        session: session,
-                        onClose: { showsAccount = false },
-                        onLeftTimeline: onLeftTimeline
-                    )
+                    AccountScreen(actions: accountActions) {
+                        showsAccount = false
+                    }
                 }
+                .accessibilityIdentifier("account-screen")
             }
             .sheet(isPresented: summaryPresented) {
                 if case .summary(let day) = dayFocus, let loaded {
@@ -93,6 +89,8 @@ struct TimelineScreen: View {
         .onAppear {
             Task { await capture(.screen(.timeline)) }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("timeline")
     }
 
     @Query private var cachedRecords: [CachedWeightRecord]

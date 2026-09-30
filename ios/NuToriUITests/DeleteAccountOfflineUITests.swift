@@ -1,7 +1,7 @@
 import XCTest
 
 @MainActor
-final class AccountDeleteUnreachableUITests: XCTestCase {
+final class DeleteAccountOfflineUITests: XCTestCase {
     private var app = XCUIApplication()
 
     override func setUp() async throws {
@@ -12,15 +12,14 @@ final class AccountDeleteUnreachableUITests: XCTestCase {
         app.openAccountScreen()
     }
 
-    func test_インターネットにつながらない1行を出すこと() {
+    func test_アカウントの画面のまま削除できなかった1行を出すこと() {
         app.confirmAccountDeletion()
         XCTAssertTrue(
             app.staticTexts[
                 "インターネットにつながらないため、削除できませんでした。つながるところで、もう一度押してください。"
             ].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["account-screen"].exists)
         XCTAssertFalse(app.otherElements["signIn"].exists)
-        XCTAssertTrue(app.navigationBars["アカウント"].exists)
-        XCTAssertTrue(app.buttons["アカウントを削除"].exists)
-        attachScreenshot(of: app, named: "削除できないとき")
+        attachScreenshot(of: app, named: "電波が無くて削除できなかったとき")
     }
 }

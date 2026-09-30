@@ -156,35 +156,8 @@ public actor AccountSession {
         await analytics.reset()
     }
 
-    public func sendsUsageData() async -> Bool {
-        (try? await usageSetting())?.sendsUsageData ?? true
-    }
-
-    public func currentAccountId() async -> String? {
+    public func signedInAccountId() async -> String? {
         try? await deviceStore.signedInAccount()?.accountId
-    }
-
-    /// オフにした1件は PostHog を止める前に送る。設定の保存はそのあと（オンに戻すときは保存してから始める）
-    public func changeSendsUsageData(to sendsUsageData: Bool) async throws {
-        guard let account = try await deviceStore.signedInAccount() else { return }
-        if !sendsUsageData {
-            await turnOffUsageData()
-        }
-        let settings = AccountSettings(
-            id: AccountSettings.id(forAccountId: account.accountId),
-            sendsUsageData: sendsUsageData
-        )
-        try await syncStore.save(
-            settings,
-            enqueuing: PendingWrite(
-                writeId: UUID(),
-                enqueuedAt: Date(),
-                operation: .updateAccountSettings(settings)
-            )
-        )
-        if sendsUsageData {
-            await beginObservationIfSignedIn()
-        }
     }
 
     /// 取得の途中でも sync は終わる。初めて終えたときだけ、かかった時間を持つ

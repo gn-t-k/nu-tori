@@ -30,6 +30,22 @@ import NuToriCore
         _ = try await sync()
     }
 
+    /// オフは、オフにした1件を送って PostHog を止めてから保存する。オンは、保存してから始める
+    func setSendsUsageData(_ sendsUsageData: Bool) async throws {
+        guard let accountId = await signedInAccountId() else { return }
+        if !sendsUsageData {
+            await accountSession.turnOffUsageData()
+        }
+        try await engineForThisDevice(accountId: accountId).setSendsUsageData(sendsUsageData)
+        if sendsUsageData {
+            await accountSession.beginObservationIfSignedIn()
+        }
+        if let inFlight {
+            _ = try? await inFlight.value
+        }
+        _ = try await sync()
+    }
+
     func importHealthAndSendPending() async {
         await health.importChanges()
         _ = try? await sync()

@@ -4,7 +4,7 @@
     import NuToriCore
     import OpenAPIRuntime
 
-    /// サインインと、記録の取得・送信だけに答える。UI テストはサーバーにつながらない
+    /// サインイン、記録の取得・送信、アカウントの削除だけに答える。UI テストはサーバーにつながらない
     nonisolated struct StubAPITransport: ClientTransport {
         let behavior: Behavior
         private let weightScreenKilograms = WeightScreenKilograms()
@@ -25,14 +25,14 @@
                 // テストが見ているあいだ、初回の取得を終えない
                 try await Task.sleep(for: .seconds(60))
                 throw URLError(.timedOut)
-            case .online, .weightRecords, .dayRing, .rateLimited, .unauthorized, .serverError:
-                if request.path == "/v1/account" {
-                    return deleteAccountResponse()
-                }
+            case .online, .weightRecords, .dayRing, .accountDeletionRateLimited,
+                .accountDeletionUnauthorized:
                 // 取得の path にはクエリが付く
                 switch request.path {
                 case "/v1/sessions":
                     return createdSession()
+                case "/v1/account":
+                    return deleteAccountResponse()
                 case "/v1/sync/writes":
                     return json(.ok, #"{"results":[]}"#)
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
@@ -76,17 +76,17 @@
             case previousDayPushOffline
             case previousDayPushRejected
             case weightScreen
-            case rateLimited
-            case unauthorized
-            case serverError
+            /// アカウントの削除だけに 429 を返す
+            case accountDeletionRateLimited
+            /// アカウントの削除だけに 401 を返す
+            case accountDeletionUnauthorized
         }
 
         private func deleteAccountResponse() -> (HTTPResponse, HTTPBody?) {
             let status: HTTPResponse.Status =
                 switch behavior {
-                case .rateLimited: .tooManyRequests
-                case .unauthorized: .unauthorized
-                case .serverError: .internalServerError
+                case .accountDeletionRateLimited: .tooManyRequests
+                case .accountDeletionUnauthorized: .unauthorized
                 case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
                     .previousDayPushOffline, .previousDayPushRejected, .weightScreen:
                     .noContent
@@ -101,7 +101,7 @@
             case .previousDayPushRejected:
                 return json(.ok, try await writeResults(from: body, result: .rejected))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
-                .weightScreen, .rateLimited, .unauthorized, .serverError:
+                .weightScreen, .accountDeletionRateLimited, .accountDeletionUnauthorized:
                 return json(.ok, try await writeResults(from: body, result: .applied))
             }
         }
@@ -222,7 +222,8 @@
             case .weightRecords: return try weightRecordsBody()
             case .dayRing: return try dayRingBody()
             case .online, .offline, .hangPull, .previousDay, .previousDayPushOffline,
-                .previousDayPushRejected, .weightScreen, .rateLimited, .unauthorized, .serverError:
+                .previousDayPushRejected, .weightScreen, .accountDeletionRateLimited,
+                .accountDeletionUnauthorized:
                 return emptyChangesBody()
             }
         }

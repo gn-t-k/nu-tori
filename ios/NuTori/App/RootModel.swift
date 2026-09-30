@@ -72,8 +72,38 @@ final class RootModel {
         }
     }
 
-    func leaveTimeline(for destination: SignInDestination) {
-        screen = Screen(destination)
+    func signedInAccountId() async -> String? {
+        await accountSession.signedInAccountId()
+    }
+
+    func setSendsUsageData(_ sendsUsageData: Bool) async {
+        try? await recordSync.setSendsUsageData(sendsUsageData)
+    }
+
+    /// 消せたときと、サーバーがセッションを受け付けなかったときは、サインインの画面に置き換えて nil を返す
+    func deleteAccount() async -> AccountDeletionFailure? {
+        let outcome: AccountSession.DeleteAccountOutcome
+        do {
+            outcome = try await accountSession.deleteAccount()
+        } catch is CancellationError {
+            return nil
+        } catch {
+            // 投げるのは端末の記録を消すところだけで、サーバーではもう消えているか、セッションが切れている
+            screen = .signIn(.introduction, .ready)
+            return nil
+        }
+        switch outcome {
+        case .deleted:
+            screen = .signIn(.introduction, .ready)
+            return nil
+        case .signInRequired(let destination):
+            screen = Screen(destination)
+            return nil
+        case .unreachable:
+            return .unreachable
+        case .retryLater:
+            return .retryLater
+        }
     }
 
     func signIn(with result: AppleSignInResult) async {
@@ -106,7 +136,7 @@ final class RootModel {
         }
     }
 
-    let accountSession: AccountSession
+    private let accountSession: AccountSession
     private let recordSync: RecordSync
     private let health: HealthSyncSession
     private var rejectionLines = RejectionLines.accepting([])
