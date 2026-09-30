@@ -297,7 +297,7 @@ struct SwiftDataSyncStoreMigrationTests {
     @MainActor
     private static func writeVersion1PendingStore(in directory: URL) throws {
         try writeStore(
-            version1PendingStoreContainer(in: directory), rows: insertVersion1Rows(into:))
+            version1PendingStoreContainer(in: directory), insertRows: insertVersion1Rows(into:))
     }
 
     /// 版 1 のスキーマで、中身を読めない送り待ちも入れて、送り待ちの置き場のファイルを書く
@@ -367,7 +367,7 @@ struct SwiftDataSyncStoreMigrationTests {
 
     @MainActor
     private static func writeLegacyStore(at url: URL) throws {
-        try writeStore(legacyStoreContainer(at: url), rows: insertLegacyRows(into:))
+        try writeStore(legacyStoreContainer(at: url), insertRows: insertLegacyRows(into:))
     }
 
     /// 中身を読めない送り待ちも入れて、今の1つの置き場のファイルを書く
@@ -390,17 +390,6 @@ struct SwiftDataSyncStoreMigrationTests {
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let schema = Schema(versionedSchema: LegacyRecordStoreSchemaV2.self)
         return try StoreFiles.container(schema: schema, plan: nil, name: "RecordStore", at: url)
-    }
-
-    /// 行を入れて保存する。コンテキストはコンテナを保たず、コンテナが先に解放されると行を入れたときに落ちるので、保存し終えるまでコンテナを生かす
-    @MainActor
-    private static func writeStore(
-        _ container: ModelContainer, rows: @MainActor (ModelContext) throws -> Void
-    ) throws {
-        try withExtendedLifetime(container) {
-            try rows(container.mainContext)
-            try container.mainContext.save()
-        }
     }
 
     @MainActor
@@ -434,6 +423,17 @@ struct SwiftDataSyncStoreMigrationTests {
                 readableKindsVersion: 1,
                 startedOn: nil
             ))
+    }
+
+    /// コンテキストはコンテナを保たず、コンテナが先に解放されると行を入れたときに落ちるので、保存し終えるまでコンテナを生かす
+    @MainActor
+    private static func writeStore(
+        _ container: ModelContainer, insertRows: @MainActor (ModelContext) throws -> Void
+    ) throws {
+        try withExtendedLifetime(container) {
+            try insertRows(container.mainContext)
+            try container.mainContext.save()
+        }
     }
 }
 

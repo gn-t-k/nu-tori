@@ -13,7 +13,7 @@ nonisolated enum PendingStoreMigrationPlan: SchemaMigrationPlan {
     }
 
     /// 版 1 から移すときに、中身から種類の名前を読めなかった送り待ちの印。空の名前の種類は無いので、ほかと紛れない。
-    /// 読めない行は送れず、残すと置き場に溜まり続けるので、開くときに `dropUnreadableRows` が捨てて `storeRecovery` に残す。
+    /// 読めない行は送れず、残すと置き場に溜まり続けるので、開くときに `dropUnreadableRows` で捨て、開く側が `storeRecovery` に残す。
     /// 種類を名前の型（`RecordKindName`）にせず印の文字列にするのは、SwiftData の移行（`MigrationStage`）の処理がアプリへ結果を返せず、読めなかったことを行に書いて残すしかないため
     static let unreadableKind = ""
 
