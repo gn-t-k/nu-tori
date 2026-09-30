@@ -75,8 +75,9 @@ struct SwiftDataSyncStoreMigrationTests {
             legacyURL = LegacyRecordStore.url(in: directory)
             try FileManager.default.createDirectory(
                 at: legacyURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            // 今の置き場にもある項目（体重記録の kilograms）の型を変える。無い項目だけだと、空の置き場は移行できてしまう
             try SwiftDataSyncStoreTests.writeIncompatibleStore(
-                entityName: "CachedPendingWrite", at: legacyURL)
+                entityName: "CachedWeightRecord", at: legacyURL)
             store = try SwiftDataSyncStore(directory: directory)
         }
 
