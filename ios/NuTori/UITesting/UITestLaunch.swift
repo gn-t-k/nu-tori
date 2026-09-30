@@ -90,6 +90,7 @@
             case .previousDayPushOffline: return .previousDayPushOffline
             case .previousDayPushRejected: return .previousDayPushRejected
             case .weightScreen: return .weightScreen
+            case .dayRing: return .dayRing
             }
         }
 
@@ -171,6 +172,7 @@
             case previousDayPushOffline = "previous-day-push-offline"
             case previousDayPushRejected = "previous-day-push-rejected"
             case weightScreen = "weight-screen"
+            case dayRing = "day-ring"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

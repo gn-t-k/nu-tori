@@ -7,7 +7,7 @@ final class SignInAgainUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "sign-in-again")
+        app = .launched(account: "sign-in-again", timeZone: nil)
     }
 
     func test_説明のひとことの代わりにサインインし直しの1行を出すこと() {

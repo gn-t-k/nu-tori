@@ -4,12 +4,16 @@ extension XCUIApplication {
     @MainActor static func launched(
         account: String,
         appleSignIn: String = "succeeded",
-        api: String = "online"
+        api: String = "online",
+        timeZone: String?
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
         app.launchEnvironment["UI_TEST_APPLE_SIGN_IN"] = appleSignIn
         app.launchEnvironment["UI_TEST_API"] = api
+        if let timeZone {
+            app.launchEnvironment["TZ"] = timeZone
+        }
         app.launch()
         return app
     }
