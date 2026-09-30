@@ -1,4 +1,4 @@
-/// 記録の種類の登録簿。名前の順に、手で1行ずつ書く。無い種類は今の道で当てる
+/// 記録の種類の登録簿。名前の順に、手で1行ずつ書く
 public struct RecordKindRegistry<Cache>: Sendable {
     public let kinds: [any RecordKind<Cache>]
 
@@ -11,6 +11,20 @@ public struct RecordKindRegistry<Cache>: Sendable {
 
     public func kind(named name: String) -> (any RecordKind<Cache>)? {
         kinds.first { $0.name == name }
+    }
+
+    /// 登録簿の名前の集合。今読める種類として、前に取りに行ったときの集合と比べる
+    public var names: Set<String> {
+        Set(kinds.map(\.name))
+    }
+
+    /// サーバーの種類の名前（端末の書き方にしたもの、`ServerRecordKindNames.deviceNames`）との食い違い。
+    /// 端末に無い名前の変更は pull で黙って読み飛ばされるので、テストで見張る
+    public func mismatch(withServerNames serverNames: Set<String>) -> RecordKindNameMismatch {
+        RecordKindNameMismatch(
+            onlyOnServer: serverNames.subtracting(names),
+            onlyOnDevice: names.subtracting(serverNames)
+        )
     }
 
     /// 同期の働きに見せる形

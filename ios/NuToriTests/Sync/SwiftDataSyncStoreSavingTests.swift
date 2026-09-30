@@ -144,17 +144,16 @@ struct SwiftDataSyncStoreSavingTests {
                                 .accountSettings(
                                     SyncedAccountSettings(
                                         id: settings.id, sendsUsageData: settings.sendsUsageData))
-                            ])
+                            ]),
+                        KindChanges(
+                            kind: WeightRecordSyncing.kindName,
+                            changes: [.weightRecordDeletion(recordId: removed.id)]),
                     ],
-                    pulled: PulledChanges(
-                        records: [],
-                        removedRecordIds: [removed.id],
-                        state: SyncState(
-                            afterSequence: 4,
-                            hasCompletedInitialPull: true,
-                            readableKinds: ["weight-record"],
-                            startedOn: nil
-                        )
+                    syncState: SyncState(
+                        afterSequence: 4,
+                        hasCompletedInitialPull: true,
+                        readableKinds: ["weight-record"],
+                        startedOn: nil
                     )
                 )
             )

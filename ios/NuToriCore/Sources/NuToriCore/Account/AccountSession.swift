@@ -6,7 +6,7 @@ public actor AccountSession {
         client: NuToriAPIClient,
         keychain: any SessionKeychain,
         deviceStore: any SignInDeviceStore,
-        syncStore: any SyncStore,
+        syncStore: any SyncBox & RecordCacheReading,
         appleCredentials: any AppleCredentialChecker,
         backgroundTransfers: any BackgroundTransferStore,
         healthAnchors: any HealthAnchorStore,
@@ -194,7 +194,7 @@ public actor AccountSession {
     private let client: NuToriAPIClient
     private let keychain: any SessionKeychain
     private let deviceStore: any SignInDeviceStore
-    private let syncStore: any SyncStore
+    private let syncStore: any SyncBox & RecordCacheReading
     private let appleCredentials: any AppleCredentialChecker
     private let backgroundTransfers: any BackgroundTransferStore
     private let healthAnchors: any HealthAnchorStore

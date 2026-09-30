@@ -1,5 +1,6 @@
 import Foundation
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 extension HealthSyncEngineTests {

@@ -49,6 +49,14 @@ nonisolated struct RecordKindMock: RecordKind {
         .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: UUID())
     }
 
+    func rejection(
+        of entry: PendingEntry,
+        reason: SyncWriteResult.RejectionReason,
+        revertedRecordIds: inout Set<UUID>
+    ) throws -> KindRejection {
+        KindRejection()
+    }
+
     func apply(_ changes: [SyncChange], to cache: ModelContext) throws {
         if let failure { throw failure }
         log.didApply(changes.count)

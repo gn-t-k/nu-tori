@@ -7,31 +7,34 @@ import Testing
 extension SyncEngineTests {
     @Suite("記録の種類の登録簿で振り分ける")
     struct RecordKinds {
-        @Suite("登録簿にある種類と無い種類の送り待ちを送るとき")
+        @Suite("複数の種類の送り待ちを送るとき")
         struct Pushing {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let transport: ClientTransportMock
             let engine: SyncEngine
-            let registered: PendingEntry
-            let legacy: PendingWrite
-            let rejectedLegacy: PendingWrite
+            let note: PendingEntry
+            let created: PendingWrite
+            let rejectedCreated: PendingWrite
 
             init() throws {
-                registered = RecordKindMock.entry(recordId: UUID(), ageSeconds: 30)
-                legacy = .creating(
+                note = RecordKindMock.entry(recordId: UUID(), ageSeconds: 30)
+                created = .creating(
                     try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
                     ageSeconds: 20)
-                rejectedLegacy = .creating(
+                rejectedCreated = .creating(
                     try .manual(72.0, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo"),
                     ageSeconds: 10)
                 store = .ok(
-                    pendingWrites: [legacy, rejectedLegacy], pendingEntries: [registered],
+                    records: [
+                        created.operation.weightRecord, rejectedCreated.operation.weightRecord,
+                    ],
+                    pendingWrites: [created, rejectedCreated], pendingEntries: [note],
                     recordKinds: [RecordKindMock.ok()])
                 transport = .sync(rejectedWriteIndexes: [2])
                 engine = .fixture(store: store, transport: transport)
             }
 
-            @Test("登録簿の種類は種類が、無い種類は今の道で、送る書き込みにすること")
+            @Test("種類ごとに、送る書き込みにすること")
             func buildsWritesByKind() async throws {
                 _ = try await engine.sync()
 
@@ -50,12 +53,31 @@ extension SyncEngineTests {
                 #expect(store.entries.isEmpty)
             }
 
-            @Test("巻き戻しは、登録簿に無い種類の受け付けなかった書き込みにだけ行うこと")
-            func revertsOnlyLegacy() async throws {
+            @Test("受け付けなかった書き込みの扱いは、その書き込みの種類が決めること")
+            func rejectionIsDecidedByKind() async throws {
                 let result = try await engine.sync()
 
-                #expect(result.rejectedWrites.map(\.writeId) == [rejectedLegacy.writeId])
-                #expect(store.records[legacy.operation.recordId] == nil)
+                #expect(result.rejectedWrites.map(\.writeId) == [rejectedCreated.writeId])
+                #expect(store.records[rejectedCreated.operation.weightRecord.id] == nil)
+                #expect(store.records[created.operation.weightRecord.id] != nil)
+            }
+        }
+
+        @Suite("登録簿に無い種類の送り待ちがあるとき")
+        struct PushingUnknownKind {
+            let engine: SyncEngine
+
+            init() {
+                engine = .fixture(
+                    store: .ok(pendingEntries: [RecordKindMock.entry(recordId: UUID())]),
+                    transport: .sync())
+            }
+
+            @Test("送らずに、登録簿に無い種類として投げること")
+            func throwsUnknownKind() async throws {
+                await #expect(throws: UnknownRecordKindError(kind: "note")) {
+                    _ = try await engine.sync()
+                }
             }
         }
 
@@ -79,9 +101,9 @@ extension SyncEngineTests {
             }
         }
 
-        @Suite("登録簿にある種類と無い種類の変更を取りに行くとき")
+        @Suite("複数の種類の変更を取りに行くとき")
         struct Pulling {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
 
             init() {
@@ -95,43 +117,43 @@ extension SyncEngineTests {
                           {"sequence":2,"kind":"weight_record","recordId":"00000000-0000-4000-8000-0000000000b1",
                             "record":{"id":"00000000-0000-4000-8000-0000000000b1","weightKg":72.4,
                               "measuredAt":1767225600000,"timeZone":"Asia/Tokyo","version":1}},
-                          {"sequence":3,"kind":"note","recordId":"n2","record":{}}
-                        ],"hasMore":false,"nextAfterSequence":3,"startedOn":null}
+                          {"sequence":3,"kind":"note","recordId":"n2","record":{}},
+                          {"sequence":4,"kind":"unregistered","recordId":"u1","record":{}}
+                        ],"hasMore":false,"nextAfterSequence":4,"startedOn":null}
                         """
                     ])
                 )
             }
 
-            @Test("登録簿の種類の変更を、種類の名前ごとに1つの結果で箱に渡すこと")
+            @Test("変更を、種類の名前ごとに、通し番号と同じ結果で箱に渡すこと")
             func handsOwnedChangesToBox() async throws {
                 _ = try await engine.sync()
 
                 #expect(
-                    store.appliedKindChanges == [
-                        KindChanges(
-                            kind: "note",
-                            changes: [.unknown(kind: "note"), .unknown(kind: "note")])
-                    ])
+                    store.appliedKindChanges.map(\.kind) == ["note", "weight-record"])
+                #expect(store.cache.appliedCount(of: "note") == 2)
+                #expect(store.records.count == 1)
+                #expect(store.appliedSyncStates.map(\.afterSequence) == [4])
             }
 
-            @Test("無い種類の変更は今の道で当て、通し番号を同じ結果で進めること")
-            func appliesRestByLegacyPath() async throws {
+            @Test("登録簿に無い種類の変更は、読み飛ばして同期を進めること")
+            func skipsUnregisteredKind() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.records.count == 1)
-                #expect(store.appliedChanges.map(\.state.afterSequence) == [3])
+                #expect(store.appliedKindChanges.flatMap(\.changes).count == 3)
+                #expect(store.state?.afterSequence == 4)
             }
         }
     }
 }
 
 extension PendingWrite.Operation {
-    fileprivate var recordId: UUID {
+    fileprivate var weightRecord: WeightRecord {
         switch self {
         case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
-            record.id
-        case .sourceDeletedWeightRecord(let recordId): recordId
-        case .updateAccountSettings(let settings): settings.id
+            record
+        case .sourceDeletedWeightRecord, .updateAccountSettings:
+            preconditionFailure("体重記録を作る書き込みではない")
         }
     }
 }

@@ -17,7 +17,7 @@ import NuToriCore
     }
 
     static func live(
-        syncStore: any SyncStore,
+        syncStore: any SyncBox & RecordCacheReading & HealthSyncStoring,
         healthStore: any HealthStore,
         errorReporting: any ErrorReportingSession,
         startBackgroundDelivery:

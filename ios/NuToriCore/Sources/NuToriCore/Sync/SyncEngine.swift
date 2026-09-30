@@ -2,14 +2,9 @@ public import Foundation
 public import NuToriAPI
 
 public actor SyncEngine {
-    /// 今読める種類の名前。種類を足したら、ここに名前を足す。前に読めた種類に無い名前があると、全部取り直す
-    public static let currentReadableKinds: Set<String> = [accountSettingsKind, weightRecordKind]
-
-    static let accountSettingsKind = AccountSettingsSyncKind.kindName
-    static let weightRecordKind = "weight-record"
-
+    /// `readableKinds` は今読める種類の名前（登録簿の名前の集合）。前に読めた種類に無い名前があると、全部取り直す
     public init(
-        store: any SyncStore,
+        store: any SyncBox & RecordCacheReading,
         client: NuToriAPIClient,
         accountId: String,
         device: SyncDevice,
@@ -43,7 +38,9 @@ public actor SyncEngine {
                 version: 1
             )
             try await writingCache {
-                try await store.save(record, enqueuing: pendingWrite(.createWeightRecord(record)))
+                try await store.apply(
+                    WeightRecordSyncing().saving(
+                        record, enqueuing: pendingWrite(.createWeightRecord(record))))
             }
             return record
         case .correct(let record):
@@ -51,9 +48,11 @@ public actor SyncEngine {
                 throw UnknownRecordError(recordId: record.id)
             }
             try await writingCache {
-                try await store.save(
-                    record,
-                    enqueuing: pendingWrite(.correctWeightRecord(record, previous: previous))
+                try await store.apply(
+                    WeightRecordSyncing().saving(
+                        record,
+                        enqueuing: pendingWrite(.correctWeightRecord(record, previous: previous))
+                    )
                 )
             }
             return record
@@ -67,8 +66,9 @@ public actor SyncEngine {
             sendsUsageData: sendsUsageData
         )
         try await writingCache {
-            try await store.save(
-                settings, enqueuing: pendingWrite(.updateAccountSettings(settings)))
+            try await store.apply(
+                AccountSettingsSyncKind().saving(
+                    settings, enqueuing: pendingWrite(.updateAccountSettings(settings))))
         }
     }
 
@@ -101,7 +101,7 @@ public actor SyncEngine {
         }
     }
 
-    private let store: any SyncStore
+    private let store: any SyncBox & RecordCacheReading
     private let client: NuToriAPIClient
     private let accountId: String
     private let device: SyncDevice
@@ -160,12 +160,16 @@ public actor SyncEngine {
         return nil
     }
 
-    /// 登録簿の種類は種類が、無い種類は今の道で、送る書き込みにする
-    private func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        if let kind = store.recordKinds.first(where: { $0.name == entry.kind }) {
-            return try kind.syncWrite(for: entry)
+    private func kind(named name: String) throws -> any SyncedRecordKind {
+        guard let kind = store.recordKinds.first(where: { $0.name == name }) else {
+            throw UnknownRecordKindError(kind: name)
         }
-        return try PendingWrite(entry: entry).syncWrite
+        return kind
+    }
+
+    /// 種類が、送る書き込みにする
+    private func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
+        try kind(named: entry.kind).syncWrite(for: entry)
     }
 
     private func resolve(
@@ -178,49 +182,34 @@ public actor SyncEngine {
             results.map { ($0.writeId, $0.outcome) },
             uniquingKeysWith: { first, _ in first }
         )
-        let registeredNames = Set(store.recordKinds.map(\.name))
         var resolvedWriteIds: [UUID] = []
-        var reversions: [RecordReversion] = []
+        var revertingChanges: [String: [SyncChange]] = [:]
         for entry in batch {
             guard let outcome = outcomes[entry.writeId] else {
                 continue
             }
             resolvedWriteIds.append(entry.writeId)
-            // 登録簿の種類の受け付けなかった書き込みは、種類が決める。体重記録の戻し方はここに残す（#185 で消す）
-            guard entry.kind == Self.weightRecordKind || !registeredNames.contains(entry.kind)
-            else {
-                continue
-            }
-            let write = try PendingWrite(entry: entry)
             switch outcome {
             case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
                 break
             case .rejected(let reason):
-                switch write.operation {
-                case .createWeightRecord(let record):
-                    rejectedWrites.append(
-                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
-                    if revertedRecordIds.insert(record.id).inserted {
-                        reversions.append(.remove(recordId: record.id))
-                    }
-                case .correctWeightRecord(let record, let previous):
-                    rejectedWrites.append(
-                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
-                    if revertedRecordIds.insert(record.id).inserted {
-                        reversions.append(.restore(previous))
-                    }
-                case .sourceDeletedWeightRecord:
-                    // 戻す記録も、画面に出す記録も無い。消すかどうかを決めるのはサーバーで、送り直さない
-                    break
-                case .updateAccountSettings:
-                    // サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
-                    break
+                let kind = try kind(named: entry.kind)
+                let rejection = try kind.rejection(
+                    of: entry, reason: reason, revertedRecordIds: &revertedRecordIds)
+                if let rejected = rejection.rejectedWrite {
+                    rejectedWrites.append(rejected)
                 }
+                revertingChanges[kind.name, default: []] += rejection.revertingChanges
             }
         }
         try await writingCache {
             try await store.apply(
-                SyncBoxResult(resolvedWriteIds: resolvedWriteIds, reversions: reversions))
+                SyncBoxResult(
+                    resolvedWriteIds: resolvedWriteIds,
+                    kindChanges: revertingChanges.filter { !$0.value.isEmpty }
+                        .sorted { $0.key < $1.key }
+                        .map { KindChanges(kind: $0.key, changes: $0.value) }
+                ))
         }
     }
 
@@ -245,15 +234,13 @@ public actor SyncEngine {
             switch result {
             case .pulled(let page):
                 let kinds = store.recordKinds
+                // 登録簿に無い種類の変更は読み飛ばす。名前がサーバーとそろっているかは、テストで見張る
                 let ownedChanges = kinds.map { kind in
                     KindChanges(kind: kind.name, changes: page.changes.filter { kind.owns($0) })
                 }.filter { !$0.changes.isEmpty }
-                let legacyChanges = page.changes.filter { change in
-                    !kinds.contains { $0.owns(change) }
-                }
-                // ヘルスケアへの書き直しは、登録簿の種類と今の道のどちらで届いた体重記録にも行う
+                // ヘルスケアへの書き直しは、届いた体重記録に行う
                 let revised = try await revisedManualRecords(
-                    in: page.changes.compactMap(\.weightRecord))
+                    in: WeightRecordSyncing().current(from: page.changes).records)
                 state = SyncState(
                     afterSequence: page.nextAfterSequence,
                     hasCompletedInitialPull: state.hasCompletedInitialPull || !page.hasMore,
@@ -262,15 +249,7 @@ public actor SyncEngine {
                 )
                 try await writingCache {
                     try await store.apply(
-                        SyncBoxResult(
-                            kindChanges: ownedChanges,
-                            pulled: PulledChanges(
-                                records: legacyChanges.compactMap(\.weightRecord),
-                                removedRecordIds: legacyChanges.compactMap(\.removedRecordId),
-                                state: state
-                            )
-                        )
-                    )
+                        SyncBoxResult(kindChanges: ownedChanges, syncState: state))
                 }
                 try await exportRevisedRecords(revised)
                 if !page.hasMore {
@@ -306,7 +285,7 @@ public actor SyncEngine {
             startedOn: saved.startedOn
         )
         try await writingCache {
-            try await store.saveSyncState(restarted)
+            try await store.apply(SyncBoxResult(syncState: restarted))
         }
         return restarted
     }
@@ -366,36 +345,5 @@ public actor SyncEngine {
             },
             pendingPhotoCount: 0
         )
-    }
-}
-
-extension PendingWrite {
-    fileprivate var syncWrite: SyncWrite {
-        switch operation {
-        case .createWeightRecord(let record):
-            .createWeightRecord(writeId: writeId, record: NewWeightRecord(record))
-        case .correctWeightRecord(let record, previous: _):
-            .updateWeightRecord(writeId: writeId, correction: WeightRecordCorrection(record))
-        case .sourceDeletedWeightRecord(let recordId):
-            .sourceDeletedWeightRecord(writeId: writeId, weightRecordId: recordId)
-        case .updateAccountSettings(let settings):
-            AccountSettingsSyncKind.syncWrite(writeId: writeId, settings: settings)
-        }
-    }
-}
-
-extension SyncChange {
-    fileprivate var weightRecord: WeightRecord? {
-        switch self {
-        case .weightRecord(let record): WeightRecord(record)
-        case .accountSettings, .weightRecordDeletion, .unknown: nil
-        }
-    }
-
-    fileprivate var removedRecordId: UUID? {
-        switch self {
-        case .weightRecordDeletion(let recordId): recordId
-        case .weightRecord, .accountSettings, .unknown: nil
-        }
     }
 }

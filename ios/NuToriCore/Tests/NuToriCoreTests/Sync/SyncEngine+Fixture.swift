@@ -8,7 +8,7 @@ extension SyncEngine {
     static let fixtureAccountId = "5b1f2c1e-3a58-4d5b-9c0e-8f7a6d5c4b3a"
 
     static func fixture(
-        store: SyncStoreMock,
+        store: MemoryStore,
         transport: ClientTransportMock,
         accountId: String = fixtureAccountId,
         readableKinds: Set<String> = ["weight-record"],

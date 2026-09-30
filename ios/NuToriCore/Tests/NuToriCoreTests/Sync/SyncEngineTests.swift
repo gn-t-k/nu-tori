@@ -11,7 +11,7 @@ struct SyncEngineTests {
     struct SaveWeightRecord {
         @Suite("新しく作るとき")
         struct Creating {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let firstWrite: WeightEntry.Write
             let secondWrite: WeightEntry.Write
@@ -53,7 +53,7 @@ struct SyncEngineTests {
 
         @Suite("手元にある記録を直すとき")
         struct Correcting {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let original: WeightRecord
             let corrected: WeightRecord
@@ -86,7 +86,7 @@ struct SyncEngineTests {
 
         @Suite("手元に無い記録を直そうとしたとき")
         struct CorrectingUnknownRecord {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let unknown: WeightRecord
 
@@ -180,7 +180,7 @@ struct SyncEngineTests {
     struct PushPendingWrites {
         @Suite("送り待ちが3件あるとき")
         struct ThreePending {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let transport: ClientTransportMock
             let engine: SyncEngine
 
@@ -239,7 +239,7 @@ struct SyncEngineTests {
 
         @Suite("送り待ちが501件あるとき")
         struct MoreThanOneRequest {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let transport: ClientTransportMock
             let engine: SyncEngine
 
@@ -264,7 +264,7 @@ struct SyncEngineTests {
 
         @Suite("回数の歯止めにかかったとき")
         struct RateLimited {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let transport: ClientTransportMock
             let engine: SyncEngine
 
@@ -289,7 +289,7 @@ struct SyncEngineTests {
 
         @Suite("インターネットにつながらないとき")
         struct Offline {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
 
             init() throws {
@@ -311,7 +311,7 @@ struct SyncEngineTests {
 
         @Suite("サーバーが書き込みを受け付けなかったとき")
         struct Rejected {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let created: WeightRecord
             let previous: WeightRecord
@@ -375,7 +375,7 @@ struct SyncEngineTests {
 
         @Suite("ヘルスケアで元のサンプルが消えた書き込みが送り待ちにあるとき")
         struct SourceDeleted {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let transport: ClientTransportMock
             let engine: SyncEngine
             let recordId: UUID
@@ -419,7 +419,7 @@ struct SyncEngineTests {
 
         @Suite("同じ記録の直しが2回続けて受け付けられなかったとき")
         struct RejectedTwiceForOneRecord {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let original: WeightRecord
 
@@ -454,7 +454,7 @@ struct SyncEngineTests {
     struct PullChanges {
         @Suite("続きがあるとき")
         struct HasMore {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let transport: ClientTransportMock
             let engine: SyncEngine
 
@@ -488,22 +488,22 @@ struct SyncEngineTests {
             func completesInitialPullOnlyAtTheEnd() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.appliedChanges.map(\.state.hasCompletedInitialPull) == [false, true])
+                #expect(store.appliedSyncStates.map(\.hasCompletedInitialPull) == [false, true])
             }
 
             @Test("通し番号と使い始めた日を、記録と同じ保存で進めること")
             func advancesStateWithRecords() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.appliedChanges.map(\.records.count) == [1, 1])
-                #expect(store.appliedChanges.map(\.state.afterSequence) == [1, 2])
+                #expect(store.appliedKindChanges.map(\.changes.count) == [1, 1])
+                #expect(store.appliedSyncStates.map(\.afterSequence) == [1, 2])
                 #expect(store.state?.startedOn == "2026-09-01")
             }
         }
 
         @Suite("手元の記録と同じ ID の記録が届いたとき")
         struct ReplacingCache {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let local: WeightRecord
 
@@ -562,7 +562,7 @@ struct SyncEngineTests {
 
         @Suite("削除の印が届いたとき")
         struct Deletions {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let removed: WeightRecord
             let kept: WeightRecord
@@ -612,7 +612,7 @@ struct SyncEngineTests {
 
         @Suite("知らない種類の記録や、読めない中身が届いたとき")
         struct UnknownKinds {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
 
             init() {
@@ -642,7 +642,7 @@ struct SyncEngineTests {
 
         @Suite("読める種類が前より増えて、更新して最初に同期するとき")
         struct NewReadableKinds {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let transport: ClientTransportMock
             let engine: SyncEngine
             let cached: WeightRecord
@@ -674,7 +674,7 @@ struct SyncEngineTests {
 
         @Suite("2つの種類を同時に読めるようになって、更新して最初に同期するとき")
         struct TwoNewReadableKinds {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let transport: ClientTransportMock
             let engine: SyncEngine
 
@@ -792,7 +792,7 @@ struct SyncEngineTests {
 
         @Suite("ヘルスケアへの書き直しが失敗したとき")
         struct ExportFails {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let revised: WeightRecord
 

@@ -63,27 +63,19 @@ struct AccountSettingsStore {
                                     id: arrived.id, sendsUsageData: arrived.sendsUsageData))
                         ])
                 ],
-                pulled: PulledChanges(
-                    records: [],
-                    removedRecordIds: [],
-                    state: SyncState(
-                        afterSequence: 1,
-                        hasCompletedInitialPull: true,
-                        readableKinds: ["weight-record"],
-                        startedOn: nil
-                    )
+                syncState: SyncState(
+                    afterSequence: 1,
+                    hasCompletedInitialPull: true,
+                    readableKinds: ["weight-record"],
+                    startedOn: nil
                 )
             )
             missingResult = SyncBoxResult(
-                pulled: PulledChanges(
-                    records: [],
-                    removedRecordIds: [],
-                    state: SyncState(
-                        afterSequence: 2,
-                        hasCompletedInitialPull: true,
-                        readableKinds: ["weight-record"],
-                        startedOn: nil
-                    )
+                syncState: SyncState(
+                    afterSequence: 2,
+                    hasCompletedInitialPull: true,
+                    readableKinds: ["weight-record"],
+                    startedOn: nil
                 )
             )
         }

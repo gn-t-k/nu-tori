@@ -1,3 +1,4 @@
+import Foundation
 import NuToriAPI
 import NuToriCore
 import SwiftData
@@ -13,6 +14,14 @@ nonisolated struct AccountSettingsRecordKind: RecordKind {
 
     func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         try core.syncWrite(for: entry)
+    }
+
+    func rejection(
+        of entry: PendingEntry,
+        reason: SyncWriteResult.RejectionReason,
+        revertedRecordIds: inout Set<UUID>
+    ) throws -> KindRejection {
+        try core.rejection(of: entry, reason: reason, revertedRecordIds: &revertedRecordIds)
     }
 
     /// 届いたなかでいちばん新しい設定を置く。設定の無い取得は、今の設定を変えない

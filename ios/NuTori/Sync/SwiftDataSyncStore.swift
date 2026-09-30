@@ -1,4 +1,5 @@
 import Foundation
+import NuToriAPI
 import NuToriCore
 import SwiftData
 import Synchronization
@@ -8,7 +9,9 @@ import Synchronization
 /// 送り待ちとヘルスケアの同期の進み具合は失えないので、版つきのスキーマで移行する。
 /// 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。
 /// 保存はメインのコンテキストでだけ行う。バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
-nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unchecked Sendable {
+nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthSyncStoring,
+    HealthAnchorStore, @unchecked Sendable
+{
     /// 画面の `@Query` が読むキャッシュの置き場
     let container: ModelContainer
 
@@ -18,7 +21,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         kinds.synced
     }
 
-    /// 登録簿の種類（今は体重記録とアカウントの設定）は送り待ちの箱の道で、無い種類は今の道で当てる
+    /// 記録の種類は登録簿（既定はアプリの `AppRecordKinds.registry`）に書く
     @MainActor init(
         inMemory: Bool,
         kinds: RecordKindRegistry<ModelContext> = AppRecordKinds.registry
@@ -72,25 +75,9 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         }
     }
 
-    func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws {
-        try await onMain { stores in
-            try Self.enqueue(write, in: stores.pending)
-            try CachedWeightRecord.upsert(record, in: stores.cache)
-            try stores.cache.save()
-        }
-    }
-
     func accountSettings() async throws -> AccountSettings? {
         try await onMain { stores in
             try CachedAccountSettings.current(in: stores.cache)?.accountSettings()
-        }
-    }
-
-    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {
-        try await onMain { stores in
-            try Self.enqueue(write, in: stores.pending)
-            try CachedAccountSettings.write(settings, in: stores.cache)
-            try stores.cache.save()
         }
     }
 
@@ -103,7 +90,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     }
 
     /// 送り待ちに足すものを先に保存し、キャッシュをそのあとに保存し、結果を受け取った送り待ちを最後に消す。
-    /// 巻き戻しを先に保存するのは、間で落ちても、送り待ちが残るので次に送って同じ巻き戻しに戻るため
+    /// 受け付けなかった書き込みの戻しは、キャッシュに当てたあとに送り待ちを消す。間で落ちても、送り待ちが残るので次に送って同じ戻しに戻る
     func apply(_ result: SyncBoxResult) async throws {
         let kinds = kinds
         try await onMain { stores in
@@ -128,13 +115,6 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     func syncState() async throws -> SyncState? {
         try await onMain { stores in
             try Self.cachedSyncState(in: stores.cache)?.syncState()
-        }
-    }
-
-    func saveSyncState(_ state: SyncState) async throws {
-        try await onMain { stores in
-            try Self.write(state, in: stores.cache)
-            try stores.cache.save()
         }
     }
 
@@ -173,7 +153,6 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             try stores.pending.delete(model: PendingWriteRow.self)
             try stores.pending.delete(model: HealthSyncStateRow.self)
             try stores.pending.save()
-            try stores.cache.delete(model: CachedWeightRecord.self)
             try stores.cache.delete(model: CachedSyncState.self)
             for kind in kinds.kinds {
                 try kind.erase(stores.cache)
@@ -262,72 +241,35 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         }
     }
 
-    /// 巻き戻しと登録簿の種類の変更を先に保存し、取りに行った記録と通し番号をそのあとに保存する
+    /// 登録簿の種類の変更を100件ずつ保存し、通し番号は最後の保存で書く。途中で落ちても、書いていない変更を追い越さない
     @MainActor private static func applyToCache(
         _ result: SyncBoxResult,
         kinds: RecordKindRegistry<ModelContext>,
         in context: ModelContext
     ) throws {
-        if !result.reversions.isEmpty {
-            for reversion in result.reversions {
-                switch reversion {
-                case .restore(let record):
-                    try CachedWeightRecord.upsert(record, in: context)
-                case .remove(let recordId):
-                    if let row = try CachedWeightRecord.find(id: recordId, in: context) {
-                        context.delete(row)
-                    }
-                }
-            }
-            try context.save()
-        }
-        // メインのコンテキストを長く止めない。通し番号は最後の保存で書くので、途中で落ちても取り直しで揃う
+        // メインのコンテキストを長く止めないよう、分けて保存する
         let batchSize = 100
+        var batches: [(kind: any RecordKind<ModelContext>, changes: [SyncChange])] = []
         for group in result.kindChanges {
             guard let kind = kinds.kind(named: group.kind) else {
                 throw UnknownRecordKindError(kind: group.kind)
             }
             for start in stride(from: 0, to: group.changes.count, by: batchSize) {
                 let end = min(start + batchSize, group.changes.count)
-                try kind.apply(Array(group.changes[start..<end]), to: context)
-                try context.save()
+                batches.append((kind, Array(group.changes[start..<end])))
             }
         }
-        if let changes = result.pulled {
-            try applyPulled(changes, in: context, batchSize: batchSize)
-        }
-    }
-
-    @MainActor private static func applyPulled(
-        _ changes: PulledChanges, in context: ModelContext, batchSize: Int
-    ) throws {
-        if changes.records.isEmpty {
-            try finish(changes, in: context)
-            try context.save()
-            return
-        }
-        var start = 0
-        while start < changes.records.count {
-            let end = min(start + batchSize, changes.records.count)
-            for record in changes.records[start..<end] {
-                try CachedWeightRecord.upsert(record, in: context)
-            }
-            if end == changes.records.count {
-                try finish(changes, in: context)
+        for (index, batch) in batches.enumerated() {
+            try batch.kind.apply(batch.changes, to: context)
+            if index == batches.count - 1, let state = result.syncState {
+                try write(state, in: context)
             }
             try context.save()
-            start = end
         }
-    }
-
-    @MainActor private static func finish(_ changes: PulledChanges, in context: ModelContext) throws
-    {
-        for recordId in changes.removedRecordIds {
-            if let row = try CachedWeightRecord.find(id: recordId, in: context) {
-                context.delete(row)
-            }
+        if batches.isEmpty, let state = result.syncState {
+            try write(state, in: context)
+            try context.save()
         }
-        try write(changes.state, in: context)
     }
 
     @MainActor private static func healthSyncStateRow(in context: ModelContext) throws

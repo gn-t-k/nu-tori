@@ -1,5 +1,6 @@
 import Foundation
 import NuToriCore
+import NuToriTestSupport
 
 extension HealthSyncEngine {
     static let fixtureNow = Date(timeIntervalSince1970: 1_767_225_600)
@@ -7,7 +8,7 @@ extension HealthSyncEngine {
 
     static func fixture(
         healthStore: HealthStoreMock,
-        store: SyncStoreMock,
+        store: MemoryStore,
         errorReporting: ErrorReportingSessionMock = .ok()
     ) -> HealthSyncEngine {
         HealthSyncEngine(

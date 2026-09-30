@@ -22,8 +22,8 @@ enum PendingWriteContent: Codable {
 
     var kindName: String {
         switch self {
-        case .create, .correct, .sourceDeleted: SyncEngine.weightRecordKind
-        case .updateAccountSettings: SyncEngine.accountSettingsKind
+        case .create, .correct, .sourceDeleted: WeightRecordSyncing.kindName
+        case .updateAccountSettings: AccountSettingsSyncKind.kindName
         }
     }
 

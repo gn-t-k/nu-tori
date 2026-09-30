@@ -1,8 +1,9 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 
-/// 種類の名前が `note` の、テスト用の登録簿の1行。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
+/// 種類の名前が `note` の、テスト用の登録簿の1行。当てられた変更の数を、メモリのキャッシュに数える。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
 /// 送り待ちの中身は、消す体重記録の ID の文字列
 struct RecordKindMock: RecordKind {
     struct Failure: Error, Equatable {}
@@ -39,13 +40,21 @@ struct RecordKindMock: RecordKind {
         return .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: recordId)
     }
 
-    func apply(_ changes: [SyncChange], to cache: NoteCache) throws {
-        if let failure { throw failure }
-        cache.didApply(changes.count)
+    func rejection(
+        of entry: PendingEntry,
+        reason: SyncWriteResult.RejectionReason,
+        revertedRecordIds: inout Set<UUID>
+    ) throws -> KindRejection {
+        KindRejection()
     }
 
-    func erase(_ cache: NoteCache) throws {
+    func apply(_ changes: [SyncChange], to cache: MemoryRecordCache) throws {
         if let failure { throw failure }
-        cache.clear()
+        cache.didApply(changes.count, forKind: name)
+    }
+
+    func erase(_ cache: MemoryRecordCache) throws {
+        if let failure { throw failure }
+        cache.clearApplied(forKind: name)
     }
 }
