@@ -2,7 +2,6 @@ import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { WeightRecord } from "./weight-record";
 
 export type WeightRecordStore = {
-  findStartedOn: () => string | undefined;
   find: (id: string) => WeightRecord | undefined;
   existsImportedSample: (healthkitSampleUuid: string) => boolean;
   hasDeletion: (recordId: string) => boolean;

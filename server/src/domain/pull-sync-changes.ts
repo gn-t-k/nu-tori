@@ -23,7 +23,7 @@ export const pullSyncChanges = (
     changes: pulled.changes,
     hasMore: pulled.hasMore,
     nextAfterSequence: pulled.lastSequence ?? request.afterSequence,
-    startedOn: stores.weightRecord.findStartedOn(),
+    startedOn: stores.firstSignIn.findStartedOn(),
     usageEvents: computeUsageEvents({
       clientState: request.clientState,
       receivedAt: request.receivedAt,

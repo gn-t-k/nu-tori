@@ -8,5 +8,5 @@ import type { WriteBase } from "./sync-ledger/write-base";
 export const createRecordKinds = (stores: RecordKindStores) =>
   [
     createAccountSettingsKind(stores.accountSettings),
-    createWeightRecordKind(stores.weightRecord),
+    createWeightRecordKind(stores.weightRecord, stores.firstSignIn.findStartedOn),
   ] as const satisfies readonly RecordKind<string, WriteBase, unknown>[];
