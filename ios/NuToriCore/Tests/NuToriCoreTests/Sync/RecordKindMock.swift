@@ -8,6 +8,8 @@ import NuToriTestSupport
 /// 送り待ちの中身は、消す体重記録の ID の文字列
 struct RecordKindMock: RecordKind {
     struct Failure: Error, Equatable {}
+    /// 送り待ちの中身が、体重記録の ID の文字列に読めない
+    struct UnreadableContent: Error {}
 
     static let changeKind = "note"
     let failure: Failure?
@@ -54,7 +56,8 @@ struct RecordKindMock: RecordKind {
 
         func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
             if let failure { throw failure }
-            let recordId = UUID(uuidString: String(decoding: entry.content, as: UTF8.self))!
+            guard let recordId = UUID(uuidString: String(decoding: entry.content, as: UTF8.self))
+            else { throw UnreadableContent() }
             return .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: recordId)
         }
 

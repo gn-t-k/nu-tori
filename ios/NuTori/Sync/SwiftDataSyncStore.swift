@@ -88,7 +88,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         try await onMain { stores in
             let descriptor = FetchDescriptor<PendingWriteRow>(
                 sortBy: [SortDescriptor(\.enqueuedAt)])
-            return try stores.pending.fetch(descriptor).map { try $0.entry() }
+            return try stores.pending.fetch(descriptor).compactMap(\.entry)
         }
     }
 

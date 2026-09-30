@@ -8,8 +8,9 @@ export type WeightRecordWrite = { id: string } & (
 );
 
 // 書き込みの type の一覧。ドメインの種類の見分けと、受け口の見分けが、ここを使う
-export const weightRecordWriteTypes: readonly string[] = [
-  "create_weight_record",
-  "update_weight_record",
-  "source_deleted_weight_record",
-];
+export const weightRecordWriteTypes: readonly string[] = Object.keys({
+  create_weight_record: true,
+  update_weight_record: true,
+  source_deleted_weight_record: true,
+  // キーを書き込みの型に合わせ、type を足したときの足し忘れを型エラーにする
+} satisfies Record<WeightRecordWrite["type"], true>);

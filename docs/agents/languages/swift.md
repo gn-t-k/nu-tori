@@ -72,6 +72,7 @@ enum WeightRecordsState {
 - まとまりは `@Suite`、テストは `@Test` で書き、名前は表示名の文字列に書く
 - 「各テストの前の準備」は、条件の `@Suite` の `init()` で行う。Swift Testing は `@Test` ごとに Suite を作り直すので、`init()` が各テストの前に走る
 - パラメータ化テストは `@Test(arguments:)` のこと
+- 前提にする値は `#require` で取り出してから使う
 
 ```swift
 @Suite("体重の傾向の計算")

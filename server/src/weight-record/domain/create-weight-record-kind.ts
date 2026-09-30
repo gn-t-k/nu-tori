@@ -10,7 +10,7 @@ import type { WeightRecord } from "./weight-record";
 import type { WeightRecordStore } from "./weight-record-store";
 import { type WeightRecordWrite, weightRecordWriteTypes } from "./weight-record-write";
 
-// findStartedOn は、使い始めた日を読む関数。この日より前の日付の記録は、直す書き込みを受け付けない
+// 使い始めた日より前の日付の記録は、直す書き込みを受け付けない
 export const createWeightRecordKind = (
   store: WeightRecordStore,
   findStartedOn: () => string | undefined,
