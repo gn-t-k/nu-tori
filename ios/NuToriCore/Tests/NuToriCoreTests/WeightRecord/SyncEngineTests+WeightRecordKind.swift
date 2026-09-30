@@ -9,7 +9,7 @@ extension SyncEngineTests {
     struct WeightRecordKind {
         @Suite("受け付けなかった書き込みを送ったとき")
         struct Pushing {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let created: WeightRecord
             let serverRecord: WeightRecord
@@ -47,7 +47,7 @@ extension SyncEngineTests {
 
         @Suite("体重記録の変更を取りに行ったとき")
         struct Pulling {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let export: WeightHealthExportMock
             let engine: SyncEngine
             let revisedId: UUID

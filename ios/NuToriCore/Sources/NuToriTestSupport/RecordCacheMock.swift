@@ -2,9 +2,9 @@ public import Foundation
 public import NuToriCore
 import Synchronization
 
-/// メモリのキャッシュ。体重記録とアカウントの設定を持つ。登録簿の種類（`MemoryWeightRecordKind` など）が当てる。
+/// メモリのキャッシュ。体重記録とアカウントの設定を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
 /// 同期の働きの単体テストで、アプリの SwiftData のキャッシュの代わりに使う
-public final class MemoryRecordCache: Sendable {
+public final class RecordCacheMock: Sendable {
     public init() {}
 
     public var records: [UUID: WeightRecord] {

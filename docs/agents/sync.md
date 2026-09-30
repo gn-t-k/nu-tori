@@ -44,4 +44,4 @@
 - 端末: NuToriCore に `SyncedRecordKind`（`name`・`owns`・`syncWrite`・`rejection`）、アプリのターゲットに `RecordKind<ModelContext>`（`apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す
   - `name` は送り待ちに保存する書き方（ハイフン）。サーバーの `RecordKindName`（snake_case）とは `ServerRecordKindNames.deviceNames` で突き合わせる。片方にだけ足すと `RecordKindNameTests`・`AppRecordKindsTests` が落ちる
 - 受け付けられないことがある書き込みを持つ種類は、`rejection` で画面に出す行と、サーバーに記録も削除の印も無いときの外す変更（`removingChanges`）を返す。サーバーの今の値が `absent` のときの外し方は、種類が決める。持たない種類は `KindRejection.none` を返す
-- テストのために、`NuToriTestSupport` の `RecordKindRegistry.memory(extra:)` に、メモリのキャッシュに当てる版の種類を足す
+- テストのために、`NuToriTestSupport` の `RecordKindRegistry.ok(extra:)`（キャッシュが `RecordCacheMock` の登録簿）に、メモリのキャッシュに当てる版の種類（`WeightRecordKindMock` など）を足す

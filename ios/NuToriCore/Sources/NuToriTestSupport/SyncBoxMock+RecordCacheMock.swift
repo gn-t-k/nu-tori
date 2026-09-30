@@ -1,28 +1,26 @@
 public import NuToriCore
 
 /// 体重記録とアカウントの設定を持つ、メモリの置き場（同期の働きの単体テスト用）
-public typealias MemoryStore = MemorySyncBox<MemoryRecordCache>
-
-extension MemorySyncBox where Cache == MemoryRecordCache {
+extension SyncBoxMock where Cache == RecordCacheMock {
     /// 体重記録とアカウントの設定を持つ、成功する置き場。`recordKinds` は、テスト用の種類を足す
     public static func ok(
         records: [WeightRecord] = [],
         accountSettings: AccountSettings? = nil,
         pendingWrites: [PendingWrite] = [],
         pendingEntries: [PendingEntry] = [],
-        recordKinds: [any RecordKind<MemoryRecordCache>] = [],
+        recordKinds: [any RecordKind<RecordCacheMock>] = [],
         state: SyncState? = nil,
         healthState: HealthSyncState = .initial
-    ) throws -> MemoryStore {
-        let cache = MemoryRecordCache()
+    ) throws -> SyncBoxMock<RecordCacheMock> {
+        let cache = RecordCacheMock()
         for record in records {
             cache.upsert(record)
         }
         if let accountSettings {
             cache.write(accountSettings)
         }
-        return MemorySyncBox(
-            kinds: .memory(extra: recordKinds), cache: cache,
+        return SyncBoxMock(
+            kinds: .ok(extra: recordKinds), cache: cache,
             pendingEntries: try pendingWrites.map { try $0.entry() } + pendingEntries,
             state: state, healthState: healthState)
     }
@@ -32,13 +30,13 @@ extension MemorySyncBox where Cache == MemoryRecordCache {
         _ error: any Error,
         records: [WeightRecord] = [],
         writesOnly: Bool = false
-    ) -> MemoryStore {
-        let cache = MemoryRecordCache()
+    ) -> SyncBoxMock<RecordCacheMock> {
+        let cache = RecordCacheMock()
         for record in records {
             cache.upsert(record)
         }
-        return MemorySyncBox(
-            kinds: .memory(), cache: cache,
+        return SyncBoxMock(
+            kinds: .ok(), cache: cache,
             failure: writesOnly ? nil : error, writeFailure: writesOnly ? error : nil)
     }
 }

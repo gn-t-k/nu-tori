@@ -5,17 +5,17 @@ import NuToriTestSupport
 import Testing
 
 @Suite("メモリの送り待ちの箱")
-struct MemorySyncBoxTests {
-    typealias Box = MemorySyncBox<MemoryRecordCache>
+struct SyncBoxMockTests {
+    typealias Box = SyncBoxMock<RecordCacheMock>
 
     @Suite("記録の変更と送り待ちへの追加を当てるとき")
     struct Enqueuing {
         let box: Box
-        let cache: MemoryRecordCache
+        let cache: RecordCacheMock
         let entry: PendingEntry
 
         init() {
-            cache = MemoryRecordCache()
+            cache = RecordCacheMock()
             box = Box(kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: cache)
             entry = RecordKindMock.entry(recordId: UUID())
         }
@@ -48,7 +48,7 @@ struct MemorySyncBoxTests {
             resolved = RecordKindMock.entry(recordId: UUID(), ageSeconds: 10)
             waiting = RecordKindMock.entry(recordId: UUID())
             box = Box(
-                kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: MemoryRecordCache(),
+                kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: RecordCacheMock(),
                 pendingEntries: [resolved, waiting])
         }
 
@@ -72,11 +72,11 @@ struct MemorySyncBoxTests {
     @Suite("250 件の変更を含む頁を当てるとき")
     struct PullingManyChanges {
         let box: Box
-        let cache: MemoryRecordCache
+        let cache: RecordCacheMock
         let result: SyncBoxResult
 
         init() {
-            cache = MemoryRecordCache()
+            cache = RecordCacheMock()
             box = Box(kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: cache)
             result = SyncBoxResult(
                 kindChanges: [
@@ -111,7 +111,7 @@ struct MemorySyncBoxTests {
         init() {
             box = Box(
                 kinds: RecordKindRegistry([RecordKindMock.error(.init())]),
-                cache: MemoryRecordCache(),
+                cache: RecordCacheMock(),
                 state: .fixture(afterSequence: 3))
             result = SyncBoxResult(
                 kindChanges: [KindChanges(kind: "note", changes: [.unknown(kind: "note")])],
@@ -134,7 +134,7 @@ struct MemorySyncBoxTests {
         let box: Box
 
         init() {
-            box = Box(kinds: RecordKindRegistry([]), cache: MemoryRecordCache())
+            box = Box(kinds: RecordKindRegistry([]), cache: RecordCacheMock())
         }
 
         @Test("知らない種類だと投げること")
@@ -151,10 +151,10 @@ struct MemorySyncBoxTests {
     @Suite("全消去するとき")
     struct Erasing {
         let box: Box
-        let cache: MemoryRecordCache
+        let cache: RecordCacheMock
 
         init() {
-            cache = MemoryRecordCache()
+            cache = RecordCacheMock()
             cache.didApply(3, forKind: "note")
             box = Box(
                 kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: cache,

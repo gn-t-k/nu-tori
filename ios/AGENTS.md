@@ -9,7 +9,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - 端末の SwiftData は2つの置き場に分ける（[ADR-0022](../docs/adr/0022-device-cache-and-pending-writes-in-separate-stores.md)）。`SwiftDataSyncStore` が両方を持つ
   - キャッシュ（`CacheStore`）: 記録、アカウントの設定、同期の状態（通し番号など）。サーバーの写しなので移行を持たず、形が合わず開けないときは置き場ごと消して全部取り直す（取り終えるまでタイムラインは初回の取得と同じ読み込み中）。モデルは `CacheStoreSchema` に並べる
   - 送り待ち（`PendingStore`）: 送り待ちとヘルスケアの同期の進み具合。`PendingStoreMigrationPlan` の版つきのスキーマで移行し、版ごとのモデルの写し（`PendingStoreSchemaV1`・`PendingStoreSchemaV2` の中）を固める。形を変えるときは、写しを固めたまま次の版を足す。送り待ちは「種類の名前＋中身」（`PendingEntry`）で持つので、種類を足しても形は変わらない
-  - 送り待ちの箱（`SyncBox`）、記録の種類（`RecordKind`）、登録簿（`AppRecordKinds.registry`）が同期の入口。それぞれの役割と種類の足し方は `docs/agents/sync.md`。メモリの箱は `NuToriTestSupport` の `MemorySyncBox`（`MemoryStore` は、テストが `.ok(...)`・`.error(...)` で作る）
+  - 送り待ちの箱（`SyncBox`）、記録の種類（`RecordKind`）、登録簿（`AppRecordKinds.registry`）が同期の入口。それぞれの役割と種類の足し方は `docs/agents/sync.md`。メモリの箱は `NuToriTestSupport` の `SyncBoxMock`（キャッシュが `RecordCacheMock` のものを、テストが `SyncBoxMock.ok(...)`・`.error(...)` で作る）
   - 同期の働きの、送り待ちの積みと結果の畳みに、種類ごとの分岐は無い。体重記録専用の保存、ヘルスケアへの書き直し、利用状況の設定の切り替えは、`SyncEngine` に体重記録・アカウントの設定のまま残っていて、種類に寄せていない
   - 種類の名前: 送り待ちに保存する書き方（ハイフン。`weight-record`、`account-settings`）を、端末の登録簿の名前にする。サーバーの列挙（`server/openapi.json` の `RecordKindName`。snake_case）は、`ServerRecordKindNames.deviceNames` でハイフンに寄せて登録簿と突き合わせる（`RecordKindNameTests`・`AppRecordKindsTests`）。保存した名前を変えると、送り待ちの置き場の移行が要る
   - 保存の順: 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。全消去は、送り待ちを1つの保存で空にしてから、キャッシュを空にする

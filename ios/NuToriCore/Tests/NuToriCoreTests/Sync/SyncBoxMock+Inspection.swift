@@ -2,7 +2,7 @@ import Foundation
 import NuToriCore
 import NuToriTestSupport
 
-extension MemoryStore {
+extension SyncBoxMock where Cache == RecordCacheMock {
     var records: [UUID: WeightRecord] { cache.records }
     var settings: AccountSettings? { cache.settings }
 

@@ -6,7 +6,7 @@ import Synchronization
 /// メモリの送り待ちの箱。送り待ちの箱の約束（保存の順、通し番号、全消去）を、保存の記録で確かめるために使う。
 /// キャッシュは `Cache` を渡し、種類が当てる。保存のたびに `saves` へ足す。
 /// 失敗を渡すと、読み書きの失敗を確かめられる
-public final class MemorySyncBox<Cache: Sendable>: SyncBox {
+public final class SyncBoxMock<Cache: Sendable>: SyncBox {
     /// 1回の保存
     public enum Save: Sendable, Equatable {
         /// 送り待ちの置き場への保存
@@ -171,7 +171,7 @@ public final class MemorySyncBox<Cache: Sendable>: SyncBox {
     }
 }
 
-extension MemorySyncBox: RecordCacheReading where Cache == MemoryRecordCache {
+extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
     public func weightRecord(id: UUID) async throws -> WeightRecord? {
         try failIfNeeded()
         return cache.records[id]
@@ -188,7 +188,7 @@ extension MemorySyncBox: RecordCacheReading where Cache == MemoryRecordCache {
     }
 }
 
-extension MemorySyncBox: HealthSyncStoring where Cache == MemoryRecordCache {
+extension SyncBoxMock: HealthSyncStoring where Cache == RecordCacheMock {
     public func healthSyncState() async throws -> HealthSyncState {
         try failIfNeeded()
         return healthState

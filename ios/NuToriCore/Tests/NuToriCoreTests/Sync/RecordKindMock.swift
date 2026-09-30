@@ -48,12 +48,12 @@ struct RecordKindMock: RecordKind {
         KindRejection.none
     }
 
-    func apply(_ changes: [SyncChange], to cache: MemoryRecordCache) throws {
+    func apply(_ changes: [SyncChange], to cache: RecordCacheMock) throws {
         if let failure { throw failure }
         cache.didApply(changes.count, forKind: name)
     }
 
-    func erase(_ cache: MemoryRecordCache) throws {
+    func erase(_ cache: RecordCacheMock) throws {
         if let failure { throw failure }
         cache.clearApplied(forKind: name)
     }
