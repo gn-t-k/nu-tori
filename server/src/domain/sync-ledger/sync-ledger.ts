@@ -22,6 +22,7 @@ export type RejectedWrite<TRecordType extends string> = {
 export type LedgerChange<TRecordType extends string, TValue> = {
   sequence: number;
   recordType: TRecordType;
+  recordId: string;
   current: PresentRecord<TValue>;
 };
 
@@ -132,7 +133,12 @@ export const createSyncLedger = <
               `変更の並びが指す記録も削除の印も無い: ${owner.name} ${change.recordId}`,
             );
           }
-          return { sequence: change.sequence, recordType: owner.name, current };
+          return {
+            sequence: change.sequence,
+            recordType: owner.name,
+            recordId: change.recordId,
+            current,
+          };
         });
       return {
         changes,

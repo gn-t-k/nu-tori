@@ -122,8 +122,18 @@ describe("同期の帳簿", () => {
       );
       const pulled = ledger.pull(pullRequest(0), pullOther);
       expect(pulled.changes).toEqual([
-        { sequence: 2, recordType: "test_record", current: { status: "value", value: 2 } },
-        { sequence: 4, recordType: "test_record", current: { status: "deleted" } },
+        {
+          sequence: 2,
+          recordType: "test_record",
+          recordId: "record-1",
+          current: { status: "value", value: 2 },
+        },
+        {
+          sequence: 4,
+          recordType: "test_record",
+          recordId: "record-2",
+          current: { status: "deleted" },
+        },
       ]);
     });
 

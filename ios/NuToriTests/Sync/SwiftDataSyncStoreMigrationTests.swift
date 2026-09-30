@@ -239,7 +239,7 @@ struct SwiftDataSyncStoreMigrationTests {
                 singletonKey: "sync-state",
                 afterSequence: 5,
                 hasCompletedInitialPull: true,
-                readableKinds: ["weight-record"],
+                readableKindsVersion: 1,
                 startedOn: nil
             ))
         try context.save()
