@@ -45,4 +45,4 @@
   - `name` は `RecordKindName`。`serverName` の switch が網羅なので、case を足して書き忘れるとビルドが落ちる。サーバーの列挙（`ServerRecordKindNames.names`）とは `AppRecordKindsTests` が突き合わせ、片方にだけ足すと落ちる
   - rawValue は保存した文字列なので、変えると送り待ちの置き場の移行が要る
 - 受け付けられないことがある書き込みを持つ種類は、`rejection` で画面に出す行と、サーバーに記録も削除の印も無いときの外す変更（`removingChanges`）を返す。サーバーの今の値が `absent` のときの外し方は、種類が決める。持たない種類は `KindRejection.none` を返す
-- テストのために、`NuToriTestSupport` の `RecordKindRegistry.ok(extra:)`（キャッシュが `RecordCacheMock` の登録簿）に、メモリのキャッシュに当てる版の種類（`WeightRecordKindMock` など）を足す
+- テストのために、`NuToriTestSupport` の `RecordKindRegistry.ok(extra:)`（キャッシュが `RecordCacheMock` の登録簿）の本物の種類はメモリのキャッシュに当てる版（`WeightRecordKindMock` など）で持つ。`extra:` はテスト用の種類を足し、同じ名前の本物があれば替える（列挙にテスト用の case を足さず、本物の名前を借りるため）

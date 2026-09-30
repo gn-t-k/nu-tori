@@ -31,7 +31,7 @@ struct WeightRecordKindTests {
             try await store.apply(
                 SyncBoxResult(kindChanges: [
                     KindChanges(
-                        kind: "weight-record",
+                        kind: .weightRecord,
                         changes: [
                             .weightRecord(syncedRecord(id: kept, kilograms: 70, version: 1)),
                             .weightRecord(syncedRecord(id: revised, kilograms: 71, version: 1)),
@@ -51,7 +51,7 @@ struct WeightRecordKindTests {
             try await store.apply(
                 SyncBoxResult(kindChanges: [
                     KindChanges(
-                        kind: "weight-record",
+                        kind: .weightRecord,
                         changes: [
                             .weightRecord(
                                 WeightRecordKindTests.syncedRecord(
@@ -70,7 +70,7 @@ struct WeightRecordKindTests {
             try await store.apply(
                 SyncBoxResult(kindChanges: [
                     KindChanges(
-                        kind: "weight-record",
+                        kind: .weightRecord,
                         changes: [
                             .weightRecordDeletion(recordId: removed),
                             .weightRecordDeletion(recordId: UUID()),
