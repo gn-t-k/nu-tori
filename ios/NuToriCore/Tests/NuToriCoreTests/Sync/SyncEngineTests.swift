@@ -571,7 +571,7 @@ struct SyncEngineTests {
                     transport: .ok(pullPages: [
                         """
                         {"changes":[
-                          {"sequence":4,"kind":"account_settings","recordId":"x","record":{"sendsUsageData":false}},
+                          {"sequence":4,"kind":"meal","recordId":"x","record":{"calories":500}},
                           {"sequence":5,"kind":"weight_record","recordId":"y","record":{"unexpected":true}}
                         ],"hasMore":false,"nextAfterSequence":5,"startedOn":null}
                         """

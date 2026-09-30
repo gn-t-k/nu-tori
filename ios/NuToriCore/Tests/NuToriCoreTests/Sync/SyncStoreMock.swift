@@ -3,6 +3,7 @@ import NuToriCore
 
 final class SyncStoreMock: SyncStore, @unchecked Sendable {
     private(set) var records: [UUID: WeightRecord]
+    private(set) var settings: AccountSettings?
     private(set) var pending: [PendingWrite]
     private(set) var state: SyncState?
     private(set) var appliedChanges: [PulledChanges] = []
@@ -11,18 +12,20 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
 
     static func ok(
         records: [WeightRecord] = [],
+        accountSettings: AccountSettings? = nil,
         pendingWrites: [PendingWrite] = [],
         state: SyncState? = nil,
         healthState: HealthSyncState = .initial
     ) -> SyncStoreMock {
         SyncStoreMock(
-            records: records, pending: pendingWrites, state: state, healthState: healthState,
-            failure: nil)
+            records: records, settings: accountSettings, pending: pendingWrites, state: state,
+            healthState: healthState, failure: nil)
     }
 
     static func error(_ error: any Error) -> SyncStoreMock {
         SyncStoreMock(
-            records: [], pending: [], state: nil, healthState: .initial, failure: error)
+            records: [], settings: nil, pending: [], state: nil, healthState: .initial,
+            failure: error)
     }
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {
@@ -38,6 +41,17 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
     func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws {
         try failIfNeeded()
         records[record.id] = record
+        pending.append(write)
+    }
+
+    func accountSettings() async throws -> AccountSettings? {
+        try failIfNeeded()
+        return settings
+    }
+
+    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {
+        try failIfNeeded()
+        self.settings = settings
         pending.append(write)
     }
 
@@ -77,6 +91,9 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
         for recordId in changes.removedRecordIds {
             records[recordId] = nil
         }
+        if let accountSettings = changes.accountSettings {
+            settings = accountSettings
+        }
         state = changes.state
         appliedChanges.append(changes)
     }
@@ -105,12 +122,14 @@ final class SyncStoreMock: SyncStore, @unchecked Sendable {
 
     private init(
         records: [WeightRecord],
+        settings: AccountSettings?,
         pending: [PendingWrite],
         state: SyncState?,
         healthState: HealthSyncState,
         failure: (any Error)?
     ) {
         self.records = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
+        self.settings = settings
         self.pending = pending
         self.state = state
         self.healthState = healthState
