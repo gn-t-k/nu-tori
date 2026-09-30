@@ -56,7 +56,7 @@
                 case "/v1/sessions":
                     return createdSession()
                 case "/v1/sync/writes":
-                    return json(.ok, try await weightScreenPushResponse(body))
+                    return json(.ok, try await weightScreenPushResults(body))
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
                     return json(.ok, try weightScreenBody())
                 default:
@@ -127,10 +127,9 @@
             return #"{"results":[\#(results.joined(separator: ","))]}"#
         }
 
-        private func weightScreenPushResponse(_ body: HTTPBody?) async throws -> String {
+        private func weightScreenPushResults(_ body: HTTPBody?) async throws -> String {
             switch behavior {
             case .weightScreenPushRejected:
-                // 断った記録の、サーバーの今の値（直す前の値）を添える
                 let current =
                     #"{"status":"value","change":{"kind":"weight_record","recordId":"\#(Self.weightScreenRecordId)","record":\#(try weightScreenRecord())}}"#
                 return try await writeResults(from: body, result: .rejected(current: current))
