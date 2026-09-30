@@ -14,11 +14,20 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
 
     struct NotOpened: Error {}
 
-    @MainActor init(inMemory: Bool) throws {
+    var recordKinds: [any SyncedRecordKind] {
+        kinds.synced
+    }
+
+    /// 登録簿の種類は送り待ちの箱の道で、無い種類は今の道で当てる。今の登録簿は空
+    @MainActor init(
+        inMemory: Bool,
+        kinds: RecordKindRegistry<ModelContext> = AppRecordKinds.registry
+    ) throws {
+        self.kinds = kinds
         if inMemory {
             container = try Self.memoryContainer(CacheStoreSchema.schema, plan: nil)
             pendingContainer = try Self.memoryContainer(
-                Schema(versionedSchema: PendingStoreSchemaV1.self),
+                Schema(versionedSchema: PendingStoreSchemaV2.self),
                 plan: PendingStoreMigrationPlan.self)
             recoveries = Mutex([])
         } else {
@@ -30,7 +39,11 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     }
 
     /// `directory` の下に、キャッシュと送り待ちの置き場を作る
-    @MainActor init(directory: URL) throws {
+    @MainActor init(
+        directory: URL,
+        kinds: RecordKindRegistry<ModelContext> = AppRecordKinds.registry
+    ) throws {
+        self.kinds = kinds
         let opened = try Self.openOnDisk(in: directory)
         container = opened.cache
         pendingContainer = opened.pending
@@ -81,38 +94,34 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         }
     }
 
-    func pendingWritesOldestFirst() async throws -> [PendingWrite] {
+    func pendingEntries() async throws -> [PendingEntry] {
         try await onMain { stores in
             let descriptor = FetchDescriptor<PendingWriteRow>(
                 sortBy: [SortDescriptor(\.enqueuedAt)])
-            return try stores.pending.fetch(descriptor).map { try $0.pendingWrite() }
+            return try stores.pending.fetch(descriptor).map { $0.entry() }
         }
     }
 
-    func removePendingWrites(_ writeIds: [UUID], reverting reversions: [RecordReversion])
-        async throws
-    {
+    /// 送り待ちに足すものを先に保存し、キャッシュをそのあとに保存し、結果を受け取った送り待ちを最後に消す。
+    /// 巻き戻しを先に保存するのは、間で落ちても、送り待ちが残るので次に送って同じ巻き戻しに戻るため
+    func apply(_ result: SyncBoxResult) async throws {
+        let kinds = kinds
         try await onMain { stores in
-            // 巻き戻しを先に保存する。間で落ちても、送り待ちが残るので、次に送って同じ巻き戻しに戻る
-            if !reversions.isEmpty {
-                for reversion in reversions {
-                    switch reversion {
-                    case .restore(let record):
-                        try Self.upsert(record, in: stores.cache)
-                    case .remove(let recordId):
-                        if let row = try Self.cachedRecord(id: recordId, in: stores.cache) {
-                            stores.cache.delete(row)
-                        }
-                    }
+            if !result.enqueuing.isEmpty {
+                for entry in result.enqueuing {
+                    stores.pending.insert(PendingWriteRow(entry: entry))
                 }
-                try stores.cache.save()
+                try stores.pending.save()
             }
-            let removing = Set(writeIds)
-            for row in try stores.pending.fetch(FetchDescriptor<PendingWriteRow>())
-            where removing.contains(row.writeId) {
-                stores.pending.delete(row)
+            try Self.applyToCache(result, kinds: kinds, in: stores.cache)
+            if !result.resolvedWriteIds.isEmpty {
+                let removing = Set(result.resolvedWriteIds)
+                for row in try stores.pending.fetch(FetchDescriptor<PendingWriteRow>())
+                where removing.contains(row.writeId) {
+                    stores.pending.delete(row)
+                }
+                try stores.pending.save()
             }
-            try stores.pending.save()
         }
     }
 
@@ -126,31 +135,6 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         try await onMain { stores in
             try Self.write(state, in: stores.cache)
             try stores.cache.save()
-        }
-    }
-
-    func apply(_ changes: PulledChanges) async throws {
-        try await onMain { stores in
-            let context = stores.cache
-            // メインのコンテキストを長く止めない。最後の保存で通し番号も書くので、途中で落ちても取り直しで揃う
-            let batchSize = 100
-            if changes.records.isEmpty {
-                try Self.finish(changes, in: context)
-                try context.save()
-                return
-            }
-            var start = 0
-            while start < changes.records.count {
-                let end = min(start + batchSize, changes.records.count)
-                for record in changes.records[start..<end] {
-                    try Self.upsert(record, in: context)
-                }
-                if end == changes.records.count {
-                    try Self.finish(changes, in: context)
-                }
-                try context.save()
-                start = end
-            }
         }
     }
 
@@ -184,6 +168,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
 
     /// 送り待ちの置き場を1つの保存で空にしてから、キャッシュの置き場を空にする
     func eraseAll() async throws {
+        let kinds = kinds
         try await onMain { stores in
             try stores.pending.delete(model: PendingWriteRow.self)
             try stores.pending.delete(model: HealthSyncStateRow.self)
@@ -191,6 +176,9 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             try stores.cache.delete(model: CachedWeightRecord.self)
             try stores.cache.delete(model: CachedAccountSettings.self)
             try stores.cache.delete(model: CachedSyncState.self)
+            for kind in kinds.kinds {
+                try kind.erase(stores.cache)
+            }
             try stores.cache.save()
         }
     }
@@ -233,6 +221,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     }
 
     private let pendingContainer: ModelContainer
+    private let kinds: RecordKindRegistry<ModelContext>
     private let recoveries: Mutex<[HandledFailure]>
 
     private func onMain<T: Sendable>(_ body: @MainActor (Contexts) throws -> T) async throws -> T {
@@ -285,6 +274,64 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             existing.apply(state)
         } else {
             context.insert(CachedSyncState(state))
+        }
+    }
+
+    /// 巻き戻しと登録簿の種類の変更を先に保存し、取りに行った記録と通し番号をそのあとに保存する
+    @MainActor private static func applyToCache(
+        _ result: SyncBoxResult,
+        kinds: RecordKindRegistry<ModelContext>,
+        in context: ModelContext
+    ) throws {
+        if !result.reversions.isEmpty {
+            for reversion in result.reversions {
+                switch reversion {
+                case .restore(let record):
+                    try upsert(record, in: context)
+                case .remove(let recordId):
+                    if let row = try cachedRecord(id: recordId, in: context) {
+                        context.delete(row)
+                    }
+                }
+            }
+            try context.save()
+        }
+        // メインのコンテキストを長く止めない。通し番号は最後の保存で書くので、途中で落ちても取り直しで揃う
+        let batchSize = 100
+        for group in result.kindChanges {
+            guard let kind = kinds.kind(named: group.kind) else {
+                throw UnknownRecordKindError(kind: group.kind)
+            }
+            for start in stride(from: 0, to: group.changes.count, by: batchSize) {
+                let end = min(start + batchSize, group.changes.count)
+                try kind.apply(Array(group.changes[start..<end]), to: context)
+                try context.save()
+            }
+        }
+        if let changes = result.pulled {
+            try applyPulled(changes, in: context, batchSize: batchSize)
+        }
+    }
+
+    @MainActor private static func applyPulled(
+        _ changes: PulledChanges, in context: ModelContext, batchSize: Int
+    ) throws {
+        if changes.records.isEmpty {
+            try finish(changes, in: context)
+            try context.save()
+            return
+        }
+        var start = 0
+        while start < changes.records.count {
+            let end = min(start + batchSize, changes.records.count)
+            for record in changes.records[start..<end] {
+                try upsert(record, in: context)
+            }
+            if end == changes.records.count {
+                try finish(changes, in: context)
+            }
+            try context.save()
+            start = end
         }
     }
 
@@ -383,7 +430,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     ) {
         let url = try storeURL(named: "PendingStore", in: directory)
         return try StoreFiles.openArchivingUnmigratable(
-            schema: Schema(versionedSchema: PendingStoreSchemaV1.self),
+            schema: Schema(versionedSchema: PendingStoreSchemaV2.self),
             plan: PendingStoreMigrationPlan.self,
             name: "PendingStore",
             at: url

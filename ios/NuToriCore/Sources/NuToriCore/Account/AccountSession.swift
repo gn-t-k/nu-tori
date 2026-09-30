@@ -224,7 +224,7 @@ public actor AccountSession {
     }
 
     private func signInAgainDestination() async throws -> SignInDestination {
-        let pendingWrites = try await syncStore.pendingWritesOldestFirst()
+        let pendingWrites = try await syncStore.pendingEntries()
         return .signIn(.signInAgain(hasPendingWrites: !pendingWrites.isEmpty))
     }
 

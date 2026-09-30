@@ -3,7 +3,10 @@ public import NuToriAPI
 
 public actor SyncEngine {
     /// 今読める種類の名前。種類を足したら、ここに名前を足す。前に読めた種類に無い名前があると、全部取り直す
-    public static let currentReadableKinds: Set<String> = ["account-settings", "weight-record"]
+    public static let currentReadableKinds: Set<String> = [accountSettingsKind, weightRecordKind]
+
+    static let accountSettingsKind = "account-settings"
+    static let weightRecordKind = "weight-record"
 
     public init(
         store: any SyncStore,
@@ -116,16 +119,17 @@ public actor SyncEngine {
         async throws -> SyncResult.StopReason?
     {
         let maxWritesPerRequest = 500
-        let pending = try await store.pendingWritesOldestFirst()
+        let pending = try await store.pendingEntries()
         // 先の要求で作る書き込みが受け付けられず消した記録を、あとの要求の直す書き込みで戻さない
         var revertedRecordIds: Set<UUID> = []
         for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
             let batchEnd = min(batchStart + maxWritesPerRequest, pending.count)
             let batch = Array(pending[batchStart..<batchEnd])
+            let writes = try batch.map(syncWrite)
             let result: NuToriAPIClient.PushSyncWritesResult
             do {
                 result = try await client.pushSyncWrites(
-                    batch.map(\.syncWrite),
+                    writes,
                     isFinalBatch: batchEnd == pending.count,
                     clientState: clientState(pendingWrites: pending[batchStart...])
                 )
@@ -156,8 +160,16 @@ public actor SyncEngine {
         return nil
     }
 
+    /// 登録簿の種類は種類が、無い種類は今の道で、送る書き込みにする
+    private func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
+        if let kind = store.recordKinds.first(where: { $0.name == entry.kind }) {
+            return try kind.syncWrite(for: entry)
+        }
+        return try PendingWrite(entry: entry).syncWrite
+    }
+
     private func resolve(
-        _ batch: [PendingWrite],
+        _ batch: [PendingEntry],
         with results: [SyncWriteResult],
         revertedRecordIds: inout Set<UUID>,
         rejectedWrites: inout [RejectedWrite]
@@ -166,13 +178,19 @@ public actor SyncEngine {
             results.map { ($0.writeId, $0.outcome) },
             uniquingKeysWith: { first, _ in first }
         )
+        let registeredNames = Set(store.recordKinds.map(\.name))
         var resolvedWriteIds: [UUID] = []
         var reversions: [RecordReversion] = []
-        for write in batch {
-            guard let outcome = outcomes[write.writeId] else {
+        for entry in batch {
+            guard let outcome = outcomes[entry.writeId] else {
                 continue
             }
-            resolvedWriteIds.append(write.writeId)
+            resolvedWriteIds.append(entry.writeId)
+            // 登録簿の種類の受け付けなかった書き込みは、サーバーの今の値を当てる形で戻す（#182）
+            guard !registeredNames.contains(entry.kind) else {
+                continue
+            }
+            let write = try PendingWrite(entry: entry)
             switch outcome {
             case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
                 break
@@ -200,7 +218,8 @@ public actor SyncEngine {
             }
         }
         try await writingCache {
-            try await store.removePendingWrites(resolvedWriteIds, reverting: reversions)
+            try await store.apply(
+                SyncBoxResult(resolvedWriteIds: resolvedWriteIds, reversions: reversions))
         }
     }
 
@@ -212,7 +231,7 @@ public actor SyncEngine {
                 result = try await client.pullSyncChanges(
                     afterSequence: state.afterSequence,
                     clientState: clientState(
-                        pendingWrites: try await store.pendingWritesOldestFirst()[...])
+                        pendingWrites: try await store.pendingEntries()[...])
                 )
             } catch is CancellationError {
                 throw CancellationError()
@@ -224,7 +243,14 @@ public actor SyncEngine {
             }
             switch result {
             case .pulled(let page):
-                let incoming = page.changes.compactMap(\.weightRecord)
+                let kinds = store.recordKinds
+                let ownedChanges = kinds.map { kind in
+                    KindChanges(kind: kind.name, changes: page.changes.filter { kind.owns($0) })
+                }.filter { !$0.changes.isEmpty }
+                let legacyChanges = page.changes.filter { change in
+                    !kinds.contains { $0.owns(change) }
+                }
+                let incoming = legacyChanges.compactMap(\.weightRecord)
                 let revised = try await revisedManualRecords(in: incoming)
                 state = SyncState(
                     afterSequence: page.nextAfterSequence,
@@ -234,11 +260,14 @@ public actor SyncEngine {
                 )
                 try await writingCache {
                     try await store.apply(
-                        PulledChanges(
-                            records: incoming,
-                            removedRecordIds: page.changes.compactMap(\.removedRecordId),
-                            accountSettings: page.changes.compactMap(\.accountSettings).last,
-                            state: state
+                        SyncBoxResult(
+                            kindChanges: ownedChanges,
+                            pulled: PulledChanges(
+                                records: incoming,
+                                removedRecordIds: legacyChanges.compactMap(\.removedRecordId),
+                                accountSettings: legacyChanges.compactMap(\.accountSettings).last,
+                                state: state
+                            )
                         )
                     )
                 }
@@ -323,7 +352,7 @@ public actor SyncEngine {
         }
     }
 
-    private func clientState(pendingWrites: ArraySlice<PendingWrite>) -> SyncClientState {
+    private func clientState(pendingWrites: ArraySlice<PendingEntry>) -> SyncClientState {
         let currentTime = now()
         return SyncClientState(
             deviceId: device.deviceId,

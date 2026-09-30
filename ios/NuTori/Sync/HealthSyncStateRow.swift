@@ -2,7 +2,7 @@ import Foundation
 import NuToriCore
 import SwiftData
 
-typealias HealthSyncStateRow = PendingStoreSchemaV1.HealthSyncStateRow
+typealias HealthSyncStateRow = PendingStoreSchemaV2.HealthSyncStateRow
 
 extension HealthSyncStateRow {
     convenience init(_ state: HealthSyncState) {

@@ -41,10 +41,11 @@ let package = Package(
             ],
             swiftSettings: strictSettings
         ),
-        // テストが使う差し替え（API のトランスポート、送った本文を読む型）。アプリのターゲットは依存しない
+        // テストが使う差し替え（API のトランスポート、送った本文を読む型、メモリの送り待ちの箱）。アプリのターゲットは依存しない
         .target(
             name: "NuToriTestSupport",
             dependencies: [
+                "NuToriCore",
                 "NuToriAPI",
                 .product(name: "HTTPTypes", package: "swift-http-types"),
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),

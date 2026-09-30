@@ -1,6 +1,7 @@
 public import Foundation
 
-public protocol SyncStore: Sendable {
+/// 箱に、今の道（登録簿に無い種類）の口を足したもの。登録簿へ種類を移すたびに、口が減っていく
+public protocol SyncStore: SyncBox {
     func weightRecord(id: UUID) async throws -> WeightRecord?
 
     func weightRecords() async throws -> [WeightRecord]
@@ -13,23 +14,29 @@ public protocol SyncStore: Sendable {
     /// 片方だけ残ると、送り忘れるか、保存していない設定を送る
     func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws
 
-    /// 古い順
-    func pendingWritesOldestFirst() async throws -> [PendingWrite]
-
-    func removePendingWrites(_ writeIds: [UUID], reverting reversions: [RecordReversion])
-        async throws
-
     func syncState() async throws -> SyncState?
     func saveSyncState(_ state: SyncState) async throws
-
-    func apply(_ changes: PulledChanges) async throws
 
     func healthSyncState() async throws -> HealthSyncState
     func saveHealthSyncState(_ state: HealthSyncState) async throws
 
     /// 記録と送り待ちとアンカーが分かれて残ると、送り忘れるか、同じ変化を次に取りこぼす
     func applyHealthImport(_ batch: HealthImportBatch) async throws
+}
 
-    /// キャッシュの記録、アカウントの設定、送り待ち、同期の状態（通し番号、初回の取得の印、使い始めた日）、ヘルスケアの同期の進み具合を、1つの保存で空にする。片方だけ残ると、別のアカウントのものが混ざる
-    func eraseAll() async throws
+extension SyncStore {
+    /// 古い順。登録簿に無い種類の送り待ちを読む
+    public func pendingWritesOldestFirst() async throws -> [PendingWrite] {
+        try await pendingEntries().map { try PendingWrite(entry: $0) }
+    }
+
+    public func removePendingWrites(_ writeIds: [UUID], reverting reversions: [RecordReversion])
+        async throws
+    {
+        try await apply(SyncBoxResult(resolvedWriteIds: writeIds, reversions: reversions))
+    }
+
+    public func apply(_ changes: PulledChanges) async throws {
+        try await apply(SyncBoxResult(pulled: changes))
+    }
 }
