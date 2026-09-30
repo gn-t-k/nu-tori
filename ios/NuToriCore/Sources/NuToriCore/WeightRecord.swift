@@ -32,6 +32,35 @@ public struct WeightRecord: Hashable, Sendable {
         ClockTime(containing: instant, in: timeZone)
     }
 
+    public var sourceAndTimeLabel: String {
+        let clock = WeightAmountText.clock(clockTime)
+        switch inputSource {
+        case .manual:
+            return "手で記録・\(clock)"
+        case .imported(let source):
+            return "\(source.appName) から・\(clock)"
+        }
+    }
+
+    public func correction(replacingKilograms kilograms: Double) -> WeightRecord? {
+        let nextTenths = Self.tenths(of: kilograms)
+        let rounded = Double(nextTenths) / 10
+        guard AcceptedRange.weightKilograms.bounds.contains(rounded) else {
+            return nil
+        }
+        guard nextTenths != Self.tenths(of: self.kilograms) else {
+            return nil
+        }
+        return WeightRecord(
+            id: id,
+            kilograms: rounded,
+            instant: instant,
+            timeZone: timeZone,
+            inputSource: inputSource,
+            version: version + 1
+        )
+    }
+
     public enum InputSource: Hashable, Sendable {
         case manual
         case imported(ImportedSource)
@@ -65,6 +94,10 @@ public struct WeightRecord: Hashable, Sendable {
                 self.healthKitSampleId = healthKitSampleId
             }
         }
+    }
+
+    private static func tenths(of kilograms: Double) -> Int {
+        Int((kilograms * 10).rounded())
     }
 
     func remeasured(_ kilograms: Double, at instant: Date, in timeZone: TimeZone) -> WeightRecord {
