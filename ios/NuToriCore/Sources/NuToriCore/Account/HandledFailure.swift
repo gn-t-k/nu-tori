@@ -17,19 +17,18 @@ public enum HandledFailure: Sendable, Equatable {
 
 extension Error {
     var isUnreachableOrTimedOut: Bool {
+        let unreachableOrTimedOutCodes: Set<URLError.Code> = [
+            .notConnectedToInternet, .timedOut, .networkConnectionLost,
+            .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
+            .dataNotAllowed, .internationalRoamingOff, .callIsActive,
+        ]
         switch self {
         case let error as ClientError:
-            error.underlyingError.isUnreachableOrTimedOut
+            return error.underlyingError.isUnreachableOrTimedOut
         case let error as URLError:
-            unreachableOrTimedOutCodes.contains(error.code)
+            return unreachableOrTimedOutCodes.contains(error.code)
         default:
-            false
+            return false
         }
     }
 }
-
-private let unreachableOrTimedOutCodes: Set<URLError.Code> = [
-    .notConnectedToInternet, .timedOut, .networkConnectionLost,
-    .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
-    .dataNotAllowed, .internationalRoamingOff, .callIsActive,
-]
