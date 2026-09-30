@@ -190,7 +190,6 @@ nonisolated private enum DeliveryState {
     case started([HKQuery])
 }
 
-/// 体重と体脂肪率で別のアンカーを、1つの `HealthAnchor` に入れる
 nonisolated private struct StoredQueryAnchors: Codable {
     var bodyMass: Data?
     var bodyFat: Data?
