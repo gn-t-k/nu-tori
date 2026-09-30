@@ -112,6 +112,8 @@
             case .previousDayPushOffline: return .previousDayPushOffline
             case .previousDayPushRejected: return .previousDayPushRejected
             case .weightScreen: return .weightScreen
+            case .accountDeletionRateLimited: return .accountDeletionRateLimited
+            case .accountDeletionUnauthorized: return .accountDeletionUnauthorized
             case .dayRing: return .dayRing
             }
         }
@@ -195,6 +197,8 @@
             case previousDayPushRejected = "previous-day-push-rejected"
             case weightScreen = "weight-screen"
             case dayRing = "day-ring"
+            case accountDeletionRateLimited = "account-deletion-rate-limited"
+            case accountDeletionUnauthorized = "account-deletion-unauthorized"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

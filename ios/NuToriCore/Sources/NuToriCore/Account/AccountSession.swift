@@ -156,6 +156,10 @@ public actor AccountSession {
         await analytics.reset()
     }
 
+    public func signedInAccountId() async -> String? {
+        try? await deviceStore.signedInAccount()?.accountId
+    }
+
     /// 取得の途中でも sync は終わる。初めて終えたときだけ、かかった時間を持つ
     public enum InitialPull: Sendable, Equatable {
         case unfinished

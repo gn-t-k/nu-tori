@@ -39,4 +39,17 @@ extension XCUIApplication {
         decrease.tap()
         buttons["記録"].tap()
     }
+
+    @MainActor func openAccountScreen() {
+        XCTAssertTrue(buttons["account"].waitForExistence(timeout: 5))
+        buttons["account"].tap()
+        XCTAssertTrue(otherElements["account-screen"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func confirmAccountDeletion() {
+        buttons["アカウントを削除"].tap()
+        let delete = alerts["アカウントを削除しますか？"].buttons["アカウントを削除"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        delete.tap()
+    }
 }

@@ -7,6 +7,7 @@ struct TimelineScreen: View {
     var capture: (ClientUsageEvent) async -> Void
     var prepareWeightEntry: () async -> Void
     var saveWeight: (WeightEntry.Write) async -> Void
+    var accountActions: AccountActions
 
     var body: some View {
         let today = CalendarDay(containing: .now, in: .current)
@@ -44,15 +45,23 @@ struct TimelineScreen: View {
             .navigationTitle(title(today: today, loaded: loaded))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // 開く先のアカウントの画面は #123
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        showsAccount = true
                     } label: {
                         Image(systemName: "person.crop.circle")
                     }
                     .accessibilityLabel("アカウント")
                     .accessibilityIdentifier("account")
                 }
+            }
+            .sheet(isPresented: $showsAccount) {
+                NavigationStack {
+                    AccountScreen(actions: accountActions) {
+                        showsAccount = false
+                    }
+                }
+                .accessibilityIdentifier("account-screen")
             }
             .sheet(isPresented: summaryPresented) {
                 if case .summary(let day) = dayFocus, let loaded {
@@ -86,6 +95,7 @@ struct TimelineScreen: View {
 
     @Query private var cachedRecords: [CachedWeightRecord]
     @Query private var syncStates: [CachedSyncState]
+    @State private var showsAccount = false
     @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
     @State private var dayFocus: DayFocus = .timeline

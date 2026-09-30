@@ -37,7 +37,13 @@ struct RootView: View {
                 prepareWeightEntry: { await model.prepareWeightEntry() },
                 saveWeight: { write in
                     await model.saveWeight(write)
-                }
+                },
+                accountActions: AccountActions(
+                    signedInAccountId: { await model.signedInAccountId() },
+                    turnOnUsageData: { await model.turnOnUsageData() },
+                    turnOffUsageData: { await model.turnOffUsageData() },
+                    deleteAccount: { await model.deleteAccount() }
+                )
             )
         }
     }

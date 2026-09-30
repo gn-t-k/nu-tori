@@ -5,8 +5,12 @@ public struct UsageDataSetting: Sendable, Equatable {
     public let hasCompletedInitialPull: Bool
 
     public init(accountSettings: AccountSettings?, hasCompletedInitialPull: Bool) {
-        sendsUsageData = accountSettings?.sendsUsageData ?? true
+        sendsUsageData = Self.sendsUsageData(accountSettings)
         self.hasCompletedInitialPull = hasCompletedInitialPull
+    }
+
+    public static func sendsUsageData(_ accountSettings: AccountSettings?) -> Bool {
+        accountSettings?.sendsUsageData ?? true
     }
 
     /// 新しい端末では、ほかの端末で切ったオフが届くまで始めない
