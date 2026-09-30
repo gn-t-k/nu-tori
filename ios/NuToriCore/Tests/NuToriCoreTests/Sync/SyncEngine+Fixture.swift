@@ -11,7 +11,7 @@ extension SyncEngine {
         store: SyncStoreMock,
         transport: ClientTransportMock,
         accountId: String = fixtureAccountId,
-        readableKindsVersion: Int = 1,
+        readableKinds: Set<String> = ["weight-record"],
         errorReporting: ErrorReportingSessionMock = .ok(),
         weightHealthExport: any WeightHealthExport = WeightHealthExportMock.ok()
     ) -> SyncEngine {
@@ -30,7 +30,7 @@ extension SyncEngine {
             ),
             timeZone: { TimeZone(identifier: "Asia/Tokyo")! },
             now: { fixtureNow },
-            readableKindsVersion: readableKindsVersion,
+            readableKinds: readableKinds,
             errorReporting: errorReporting,
             weightHealthExport: weightHealthExport
         )
@@ -71,12 +71,12 @@ extension SyncState {
     static func fixture(
         afterSequence: Int = 0,
         hasCompletedInitialPull: Bool = false,
-        readableKindsVersion: Int = 1
+        readableKinds: Set<String> = ["weight-record"]
     ) -> SyncState {
         SyncState(
             afterSequence: afterSequence,
             hasCompletedInitialPull: hasCompletedInitialPull,
-            readableKindsVersion: readableKindsVersion,
+            readableKinds: readableKinds,
             startedOn: nil
         )
     }

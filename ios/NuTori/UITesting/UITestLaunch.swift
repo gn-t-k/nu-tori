@@ -104,7 +104,7 @@
             return SyncState(
                 afterSequence: 0,
                 hasCompletedInitialPull: true,
-                readableKindsVersion: SyncEngine.currentReadableKindsVersion,
+                readableKinds: SyncEngine.currentReadableKinds,
                 startedOn: TimelineDayText.startedOn(for: today)
             )
         }
