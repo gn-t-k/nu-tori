@@ -1,17 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "eslint",
-    "typescript",
-    "unicorn",
-    "oxc",
-    "import",
-    "vitest"
-  ],
-  "jsPlugins": [
-    "@praha/byethrow-oxlint",
-    "./oxlint-plugin.js"
-  ],
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "vitest"],
+  "jsPlugins": ["@praha/byethrow-oxlint", "./oxlint-plugin.js"],
   "categories": {
     "correctness": "error",
     "suspicious": "error"
@@ -22,10 +12,7 @@
     "reportUnusedDisableDirectives": "error"
   },
   "rules": {
-    "func-style": [
-      "error",
-      "expression"
-    ],
+    "func-style": ["error", "expression"],
     "typescript/consistent-type-assertions": [
       "error",
       {
@@ -33,10 +20,7 @@
       }
     ],
     "typescript/consistent-return": "off",
-    "byethrow/consistent-namespace": [
-      "error",
-      "R"
-    ],
+    "byethrow/consistent-namespace": ["error", "R"],
     "byethrow/no-ambiguous-error-type": "error",
     "byethrow/no-ambiguous-success-type": "error",
     "byethrow/no-negated-type-guards": "error",
@@ -47,46 +31,29 @@
     "byethrow/prefer-result-maybe-async": "error",
     "nu-tori/no-switch-statement": "error"
   },
-  "ignorePatterns": [
-    "worker-configuration.d.ts"
-  ],
+  "ignorePatterns": ["worker-configuration.d.ts"],
   "overrides": [
     {
-      "files": [
-        "src/domain/**/*.ts",
-        "src/*/domain/**/*.ts"
-      ],
+      "files": ["src/domain/**/*.ts", "src/*/domain/**/*.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": [
-                  "**/http",
-                  "**/http/**"
-                ],
+                "group": ["**/http", "**/http/**"],
                 "message": "ドメイン層から HTTP の受け口を import しない。ドメイン層は、受け口・Durable Object・実行基盤の型や API に触れない（server/AGENTS.md の「層」）"
               },
               {
-                "group": [
-                  "**/durable-object",
-                  "**/durable-object/**"
-                ],
+                "group": ["**/durable-object", "**/durable-object/**"],
                 "message": "ドメイン層から Durable Object を import しない。ドメイン層は、受け口・Durable Object・実行基盤の型や API に触れない（server/AGENTS.md の「層」）"
               },
               {
-                "group": [
-                  "cloudflare:*"
-                ],
+                "group": ["cloudflare:*"],
                 "message": "ドメイン層から cloudflare:* を import しない。ドメイン層は、受け口・Durable Object・実行基盤の型や API に触れない（server/AGENTS.md の「層」）"
               },
               {
-                "group": [
-                  "hono",
-                  "hono/**",
-                  "@hono/**"
-                ],
+                "group": ["hono", "hono/**", "@hono/**"],
                 "message": "ドメイン層から hono を import しない。ドメイン層は、受け口・Durable Object・実行基盤の型や API に触れない（server/AGENTS.md の「層」）"
               }
             ]
