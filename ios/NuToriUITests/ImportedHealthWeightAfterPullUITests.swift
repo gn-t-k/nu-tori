@@ -11,7 +11,8 @@ final class ImportedHealthWeightAfterPullUITests: XCTestCase {
             account: "signed-in",
             api: "previous-day",
             healthAuthorization: "not-yet-requested",
-            healthLatestKilograms: "68.0"
+            healthLatestKilograms: "68.0",
+            timeZone: nil
         )
     }
 

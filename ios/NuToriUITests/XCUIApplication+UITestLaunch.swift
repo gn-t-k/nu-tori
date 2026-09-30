@@ -7,7 +7,8 @@ extension XCUIApplication {
         api: String = "online",
         healthAuthorization: String = "already-requested",
         healthLatestKilograms: String?,
-        healthWrite: String = "authorized"
+        healthWrite: String = "authorized",
+        timeZone: String?
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
@@ -18,6 +19,9 @@ extension XCUIApplication {
             app.launchEnvironment["UI_TEST_HEALTH_LATEST_KG"] = healthLatestKilograms
         }
         app.launchEnvironment["UI_TEST_HEALTH_WRITE"] = healthWrite
+        if let timeZone {
+            app.launchEnvironment["TZ"] = timeZone
+        }
         app.launch()
         return app
     }

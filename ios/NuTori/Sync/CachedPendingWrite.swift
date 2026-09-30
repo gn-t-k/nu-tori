@@ -6,7 +6,7 @@ import SwiftData
 nonisolated final class CachedPendingWrite {
     @Attribute(.unique) var writeId: UUID
     var enqueuedAt: Date
-    /// 作る書き込みか、直す書き込みか。直すときは直す前の記録も入る
+    /// 書き込みの中身。記録の行を消しても、送る値が残る
     var operationJSON: Data
 
     init(write: PendingWrite) throws {
@@ -26,7 +26,7 @@ private nonisolated enum StoredPendingOperation: Codable {
     case create(StoredWeightRecord)
     case correct(record: StoredWeightRecord, previous: StoredWeightRecord)
     case sourceDeleted(recordId: UUID)
-    case updateAccountSettings(StoredAccountSettings)
+    case updateAccountSettings(id: UUID, sendsUsageData: Bool)
 
     init(_ operation: PendingWrite.Operation) {
         switch operation {
@@ -38,7 +38,7 @@ private nonisolated enum StoredPendingOperation: Codable {
         case .sourceDeletedWeightRecord(let recordId):
             self = .sourceDeleted(recordId: recordId)
         case .updateAccountSettings(let settings):
-            self = .updateAccountSettings(StoredAccountSettings(settings))
+            self = .updateAccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData)
         }
     }
 
@@ -51,22 +51,8 @@ private nonisolated enum StoredPendingOperation: Codable {
                 try record.weightRecord(), previous: try previous.weightRecord())
         case .sourceDeleted(let recordId):
             .sourceDeletedWeightRecord(recordId: recordId)
-        case .updateAccountSettings(let settings):
-            .updateAccountSettings(settings.accountSettings())
+        case .updateAccountSettings(let id, let sendsUsageData):
+            .updateAccountSettings(AccountSettings(id: id, sendsUsageData: sendsUsageData))
         }
-    }
-}
-
-private nonisolated struct StoredAccountSettings: Codable {
-    var id: UUID
-    var sendsUsageData: Bool
-
-    init(_ settings: AccountSettings) {
-        id = settings.id
-        sendsUsageData = settings.sendsUsageData
-    }
-
-    func accountSettings() -> AccountSettings {
-        AccountSettings(id: id, sendsUsageData: sendsUsageData)
     }
 }

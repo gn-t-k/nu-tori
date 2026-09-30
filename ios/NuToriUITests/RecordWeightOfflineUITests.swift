@@ -8,7 +8,8 @@ final class RecordWeightOfflineUITests: XCTestCase {
         try await super.setUp()
         continueAfterFailure = false
         app = .launched(
-            account: "signed-in", api: "previous-day-push-offline", healthLatestKilograms: nil)
+            account: "signed-in", api: "previous-day-push-offline", healthLatestKilograms: nil,
+            timeZone: nil)
     }
 
     func test_電波が無くても記録した体重がタイムラインに出ること() {

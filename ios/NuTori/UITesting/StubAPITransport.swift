@@ -7,6 +7,7 @@
     /// サインインと、記録の取得・送信だけに答える。UI テストはサーバーにつながらない
     nonisolated struct StubAPITransport: ClientTransport {
         let behavior: Behavior
+        private let weightScreenKilograms = WeightScreenKilograms()
 
         @concurrent func send(
             _ request: HTTPRequest,
@@ -24,7 +25,7 @@
                 // テストが見ているあいだ、初回の取得を終えない
                 try await Task.sleep(for: .seconds(60))
                 throw URLError(.timedOut)
-            case .online, .weightRecords:
+            case .online, .weightRecords, .dayRing:
                 // 取得の path にはクエリが付く
                 switch request.path {
                 case "/v1/sessions":
@@ -32,10 +33,7 @@
                 case "/v1/sync/writes":
                     return json(.ok, #"{"results":[]}"#)
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
-                    return json(
-                        .ok,
-                        behavior == .weightRecords ? try weightRecordsBody() : emptyChangesBody()
-                    )
+                    return json(.ok, try changesBody())
                 default:
                     return (HTTPResponse(status: .notFound), nil)
                 }
@@ -50,6 +48,17 @@
                 default:
                     return (HTTPResponse(status: .notFound), nil)
                 }
+            case .weightScreen:
+                switch request.path {
+                case "/v1/sessions":
+                    return createdSession()
+                case "/v1/sync/writes":
+                    return json(.ok, try await applyWeightScreenPush(body))
+                case .some(let path) where path.hasPrefix("/v1/sync/changes"):
+                    return json(.ok, try weightScreenBody())
+                default:
+                    return (HTTPResponse(status: .notFound), nil)
+                }
             }
         }
 
@@ -57,11 +66,13 @@
             case online
             case offline
             case weightRecords
+            case dayRing
             case hangPull
             /// 昨日の体重だけを返し、今日は未記録にする
             case previousDay
             case previousDayPushOffline
             case previousDayPushRejected
+            case weightScreen
         }
 
         private func pushResponse(_ body: HTTPBody?) async throws -> (HTTPResponse, HTTPBody?) {
@@ -70,9 +81,38 @@
                 throw URLError(.notConnectedToInternet)
             case .previousDayPushRejected:
                 return json(.ok, try await writeResults(from: body, result: .rejected))
-            case .online, .offline, .weightRecords, .hangPull, .previousDay:
+            case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
+                .weightScreen:
                 return json(.ok, try await writeResults(from: body, result: .applied))
             }
+        }
+
+        private func applyWeightScreenPush(_ body: HTTPBody?) async throws -> String {
+            guard let body else { return #"{"results":[]}"# }
+            let bytes = try await [UInt8](collecting: body, upTo: 1_048_576)
+            let decoded = try JSONDecoder().decode(WeightScreenPush.self, from: Data(bytes))
+            if let kilograms = decoded.writes.first(where: { $0.type == "update_weight_record" })?
+                .weightRecord?.weightKg
+            {
+                weightScreenKilograms.replace(with: kilograms)
+            }
+            let results = decoded.writes.map { #"{"writeId":"\#($0.id)","result":"applied"}"# }
+            return #"{"results":[\#(results.joined(separator: ","))]}"#
+        }
+
+        private func weightScreenBody() throws -> String {
+            let zone = TimeZone.current.identifier
+            let startedOn = TimelineDayText.startedOn(
+                for: CalendarDay(containing: .now, in: .current))
+            let measuredAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
+            let kilograms = weightScreenKilograms.current()
+            return """
+                {"changes":[{"sequence":1,"kind":"weight_record",\
+                "recordId":"11111111-1111-4111-8111-111111111111",\
+                "record":{"id":"11111111-1111-4111-8111-111111111111","weightKg":\(kilograms),\
+                "measuredAt":\(measuredAt),"timeZone":"\(zone)","version":1}}],\
+                "hasMore":false,"nextAfterSequence":1,"startedOn":"\(startedOn)"}
+                """
         }
 
         private enum WriteResult {
@@ -101,6 +141,37 @@
             return decoded.writes.map(\.id)
         }
 
+        private final class WeightScreenKilograms: @unchecked Sendable {
+            private let lock = NSLock()
+            private var value = 72.4
+
+            func current() -> Double {
+                lock.lock()
+                defer { lock.unlock() }
+                return value
+            }
+
+            func replace(with kilograms: Double) {
+                lock.lock()
+                defer { lock.unlock() }
+                value = kilograms
+            }
+        }
+
+        private struct WeightScreenPush: Decodable {
+            let writes: [Write]
+
+            struct Write: Decodable {
+                let id: String
+                let type: String
+                let weightRecord: Weight?
+
+                struct Weight: Decodable {
+                    let weightKg: Double
+                }
+            }
+        }
+
         private struct PushBody: Decodable {
             let writes: [Write]
 
@@ -127,6 +198,16 @@
                 """
         }
 
+        private func changesBody() throws -> String {
+            switch behavior {
+            case .weightRecords: return try weightRecordsBody()
+            case .dayRing: return try dayRingBody()
+            case .online, .offline, .hangPull, .previousDay, .previousDayPushOffline,
+                .previousDayPushRejected, .weightScreen:
+                return emptyChangesBody()
+            }
+        }
+
         private func emptyChangesBody() -> String {
             let startedOn = TimelineDayText.startedOn(
                 for: CalendarDay(containing: .now, in: .current))
@@ -151,6 +232,47 @@
                 "imported":{"sourceAppName":"Withings","sourceBundleId":"com.withings.wiScaleNG",\
                 "healthkitSampleUuid":"33333333-3333-4333-8333-333333333333"}}}\
                 ],"hasMore":false,"nextAfterSequence":2,"startedOn":"\(startedOn)"}
+                """
+        }
+
+        /// 使い始めた日を3週間前にし、その日に記録を2件置く。帯を週単位で送って、画面の外の日へ移れる
+        private func dayRingBody() throws -> String {
+            let zone = TimeZone.current.identifier
+            let startedOn = TimelineDayText.startedOn(
+                for: CalendarDay(containing: .now, in: .current).advanced(by: -21))
+            let early = try milliseconds(dayOffset: -21, hour: 6, minute: 0)
+            let late = try milliseconds(dayOffset: -21, hour: 21, minute: 0)
+            let manualAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
+            let importedAt = try milliseconds(dayOffset: 1, hour: 8, minute: 0)
+            let withings =
+                #"{"sourceAppName":"Withings","sourceBundleId":"com.withings.wiScaleNG","healthkitSampleUuid":"33333333-3333-4333-8333-333333333333"}"#
+            let changes = [
+                weightChange(
+                    sequence: 1, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1", kilograms: 70.0,
+                    at: early, zone: zone, imported: nil),
+                weightChange(
+                    sequence: 2, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2", kilograms: 70.5,
+                    at: late, zone: zone, imported: nil),
+                weightChange(
+                    sequence: 3, id: "11111111-1111-4111-8111-111111111111", kilograms: 72.4,
+                    at: manualAt, zone: zone, imported: nil),
+                weightChange(
+                    sequence: 4, id: "22222222-2222-4222-8222-222222222222", kilograms: 71.8,
+                    at: importedAt, zone: zone, imported: withings),
+            ]
+            return
+                #"{"changes":[\#(changes.joined(separator: ","))],"hasMore":false,"nextAfterSequence":4,"startedOn":"\#(startedOn)"}"#
+        }
+
+        private func weightChange(
+            sequence: Int, id: String, kilograms: Double, at milliseconds: Int, zone: String,
+            imported: String?
+        ) -> String {
+            let importedField = imported.map { #","imported":\#($0)"# } ?? ""
+            return """
+                {"sequence":\(sequence),"kind":"weight_record","recordId":"\(id)",\
+                "record":{"id":"\(id)","weightKg":\(kilograms),\
+                "measuredAt":\(milliseconds),"timeZone":"\(zone)","version":1\(importedField)}}
                 """
         }
 

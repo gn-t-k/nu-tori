@@ -86,8 +86,8 @@
                 accountSession: session,
                 health: health,
                 deviceId: { deviceStore.loadOrCreateDeviceId() },
-                accountId: { try await deviceStore.signedInAccount()?.accountId },
-                hasSession: { (try? await keychain.sessionToken()) != nil }
+                hasSession: { (try? await keychain.sessionToken()) != nil },
+                signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId }
             )
             return AppRuntime(
                 container: store.container,
@@ -107,6 +107,8 @@
             case .previousDay: return .previousDay
             case .previousDayPushOffline: return .previousDayPushOffline
             case .previousDayPushRejected: return .previousDayPushRejected
+            case .weightScreen: return .weightScreen
+            case .dayRing: return .dayRing
             }
         }
 
@@ -187,6 +189,8 @@
             case previousDay = "previous-day"
             case previousDayPushOffline = "previous-day-push-offline"
             case previousDayPushRejected = "previous-day-push-rejected"
+            case weightScreen = "weight-screen"
+            case dayRing = "day-ring"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

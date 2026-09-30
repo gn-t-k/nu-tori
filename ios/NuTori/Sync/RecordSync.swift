@@ -14,15 +14,14 @@ import NuToriCore
     var onReplacingRecord: (UUID) -> Void = { _ in }
 
     func save(_ write: WeightEntry.Write) async throws {
-        guard await hasSession() else { return }
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
         switch write {
         case .create:
             break
         case .correct(let record):
             onReplacingRecord(record.id)
         }
-        guard let engine = try await engineForThisDevice() else { return }
-        let record = try await engine.save(write)
+        let record = try await engineForThisDevice(accountId: accountId).save(write)
         await health.export(record)
         // 開いたときの同期が先に送り待ちを読んでいたら、それが終わってから送り直す
         if let inFlight {
@@ -42,16 +41,16 @@ import NuToriCore
         accountSession: AccountSession,
         health: HealthSyncSession,
         deviceId: @escaping @MainActor () -> UUID,
-        accountId: @escaping @MainActor () async throws -> String?,
-        hasSession: @escaping @MainActor () async -> Bool
+        hasSession: @escaping @MainActor () async -> Bool,
+        signedInAccountId: @escaping @MainActor () async -> String?
     ) {
         self.store = store
         self.client = client
         self.accountSession = accountSession
         self.health = health
         self.deviceId = deviceId
-        self.accountId = accountId
         self.hasSession = hasSession
+        self.signedInAccountId = signedInAccountId
     }
 
     func registerAndWatch() {
@@ -93,8 +92,8 @@ import NuToriCore
     private let accountSession: AccountSession
     private let health: HealthSyncSession
     private let deviceId: @MainActor () -> UUID
-    private let accountId: @MainActor () async throws -> String?
     private let hasSession: @MainActor () async -> Bool
+    private let signedInAccountId: @MainActor () async -> String?
     private var didRegisterRefresh = false
     private var inFlight: Task<SyncResult?, any Error>?
     private var networkMonitor: NWPathMonitor?
@@ -138,8 +137,8 @@ import NuToriCore
     }
 
     private func runSync() async throws -> SyncResult? {
-        guard await hasSession(), let engine = try await engineForThisDevice() else { return nil }
-        let result = try await engine.sync()
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        let result = try await engineForThisDevice(accountId: accountId).sync()
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }
@@ -147,13 +146,12 @@ import NuToriCore
         return result
     }
 
-    private func engineForThisDevice() async throws -> SyncEngine? {
-        guard let signedInAccountId = try await accountId() else { return nil }
+    private func engineForThisDevice(accountId: String) -> SyncEngine {
         let version = ProcessInfo.processInfo.operatingSystemVersion
         return SyncEngine(
             store: store,
             client: client,
-            accountId: signedInAccountId,
+            accountId: accountId,
             device: SyncDevice(
                 deviceId: deviceId(),
                 appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")

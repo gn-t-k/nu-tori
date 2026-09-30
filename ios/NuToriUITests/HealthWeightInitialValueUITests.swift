@@ -10,7 +10,8 @@ final class HealthWeightInitialValueUITests: XCTestCase {
         app = .launched(
             account: "signed-in",
             healthAuthorization: "not-yet-requested",
-            healthLatestKilograms: "71.25"
+            healthLatestKilograms: "71.25",
+            timeZone: nil
         )
     }
 

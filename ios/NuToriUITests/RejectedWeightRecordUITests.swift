@@ -8,7 +8,8 @@ final class RejectedWeightRecordUITests: XCTestCase {
         try await super.setUp()
         continueAfterFailure = false
         app = .launched(
-            account: "signed-in", api: "previous-day-push-rejected", healthLatestKilograms: nil)
+            account: "signed-in", api: "previous-day-push-rejected", healthLatestKilograms: nil,
+            timeZone: nil)
     }
 
     func test_受け付けなかった記録の位置に1行出て未記録の見た目に戻ること() {

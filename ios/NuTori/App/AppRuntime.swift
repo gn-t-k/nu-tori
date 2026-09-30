@@ -66,8 +66,8 @@ import SwiftData
             accountSession: session,
             health: health,
             deviceId: { deviceStore.loadOrCreateDeviceId() },
-            accountId: { try await deviceStore.signedInAccount()?.accountId },
-            hasSession: { (try? await keychain.sessionToken()) != nil }
+            hasSession: { (try? await keychain.sessionToken()) != nil },
+            signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId }
         )
         health.bindWakeHandler { [weak sync] in
             await sync?.importHealthAndSendPending()

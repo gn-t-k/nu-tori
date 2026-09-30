@@ -9,26 +9,56 @@ struct TimelineScreen: View {
 
     var body: some View {
         let today = CalendarDay(containing: .now, in: .current)
+        let loaded = showsLoading ? nil : timeline(today: today)
+        let selectedDay = visibleDay ?? loaded?.days.last?.day ?? today
         NavigationStack {
-            content(today: today)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemGroupedBackground))
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    composer(today: today)
+            VStack(spacing: 0) {
+                DayRingStrip(
+                    weeks: stripWeeks(today: today, loaded: loaded),
+                    selectedDay: selectedDay,
+                    today: today,
+                    openableDays: loaded?.dayRange
+                ) { day in
+                    dayFocus = .summary(day)
                 }
-                .navigationTitle(title(today: today))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    // 開く先のアカウントの画面は #123
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                        } label: {
-                            Image(systemName: "person.crop.circle")
-                        }
-                        .accessibilityLabel("アカウント")
-                        .accessibilityIdentifier("account")
+                Divider()
+                content(today: today, loaded: loaded)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .navigationDestination(for: CalendarDay.self) { day in
+                WeightScreen(
+                    day: day,
+                    records: records,
+                    firstDay: startedDay ?? records.map(\.day).min() ?? day,
+                    today: today,
+                    rejectedLines: rejectedLines,
+                    saveWeight: saveWeight
+                )
+            }
+            .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                composer(today: today)
+            }
+            .navigationTitle(title(today: today, loaded: loaded))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // 開く先のアカウントの画面は #123
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                    } label: {
+                        Image(systemName: "person.crop.circle")
+                    }
+                    .accessibilityLabel("アカウント")
+                    .accessibilityIdentifier("account")
+                }
+            }
+            .sheet(isPresented: summaryPresented) {
+                if case .summary(let day) = dayFocus, let loaded {
+                    DaySummarySheet(timeline: loaded, day: day) { chosen in
+                        dayFocus = .scrollingTo(chosen)
                     }
                 }
+            }
         }
         .sheet(isPresented: showsWeightEntry) {
             WeightEntrySheet(records: records) { write in
@@ -44,6 +74,7 @@ struct TimelineScreen: View {
     @Query private var syncStates: [CachedSyncState]
     @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
+    @State private var dayFocus: DayFocus = .timeline
 
     private var showsWeightEntry: Binding<Bool> {
         Binding(
@@ -56,10 +87,15 @@ struct TimelineScreen: View {
         )
     }
 
-    private enum WeightEntryPhase {
-        case closed
-        case preparing
-        case showing
+    private var summaryPresented: Binding<Bool> {
+        Binding(
+            get: { if case .summary = dayFocus { true } else { false } },
+            set: { presented in
+                if !presented, case .summary = dayFocus {
+                    dayFocus = .timeline
+                }
+            }
+        )
     }
 
     private var showsLoading: Bool {
@@ -74,8 +110,8 @@ struct TimelineScreen: View {
         syncStates.first?.startedOn.flatMap(TimelineDayText.day(from:))
     }
 
-    @ViewBuilder private func content(today: CalendarDay) -> some View {
-        if showsLoading {
+    @ViewBuilder private func content(today: CalendarDay, loaded: Timeline?) -> some View {
+        if loaded == nil {
             VStack {
                 ProgressView()
                 Text("記録を読み込んでいます…")
@@ -90,30 +126,38 @@ struct TimelineScreen: View {
     private func timelineList(today: CalendarDay) -> some View {
         let timeline = timeline(today: today)
         return GeometryReader { geo in
-            ScrollView {
-                // 中身が画面より短いときは下に寄せ、長いときは下端から開く
-                VStack(alignment: .leading) {
-                    Spacer(minLength: 0)
-                    LazyVStack(alignment: .leading) {
-                        if let startedDay {
-                            Text("\(TimelineDayText.label(for: startedDay))から記録しています")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    // 中身が画面より短いときは下に寄せ、長いときは下端から開く
+                    VStack(alignment: .leading) {
+                        Spacer(minLength: 0)
+                        LazyVStack(alignment: .leading) {
+                            if let startedDay {
+                                Text("\(TimelineDayText.label(for: startedDay))から記録しています")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            ForEach(timeline.days, id: \.day) { day in
+                                daySection(day)
+                                    .id(day.day)
+                            }
                         }
-                        ForEach(timeline.days, id: \.day) { day in
-                            daySection(day)
-                        }
+                        .padding()
                     }
-                    .padding()
+                    .frame(maxWidth: .infinity, minHeight: geo.size.height)
                 }
-                .frame(maxWidth: .infinity, minHeight: geo.size.height)
-            }
-            .defaultScrollAnchor(.bottom)
-            .coordinateSpace(.named("timeline"))
-            .onPreferenceChange(TimelineDayOffsetsKey.self) { offsets in
-                visibleDay = dayInView(
-                    offsets, timeline: timeline, viewportHeight: geo.size.height)
+                .defaultScrollAnchor(.bottom)
+                .coordinateSpace(.named("timeline"))
+                .onPreferenceChange(TimelineDayOffsetsKey.self) { offsets in
+                    visibleDay = dayInView(
+                        offsets, timeline: timeline, viewportHeight: geo.size.height)
+                }
+                .onChange(of: dayFocus) { _, focus in
+                    guard case .scrollingTo(let day) = focus else { return }
+                    proxy.scrollTo(day, anchor: .top)
+                    dayFocus = .timeline
+                }
             }
         }
     }
@@ -127,8 +171,12 @@ struct TimelineScreen: View {
             ForEach(rows(on: day)) { row in
                 switch row {
                 case .record(let record):
-                    WeightRecordRow(record: record)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    NavigationLink(value: record.day) {
+                        WeightRecordRow(record: record)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("weight-row")
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 case .rejection(let line):
                     Text(line.text)
                         .font(.footnote)
@@ -138,6 +186,9 @@ struct TimelineScreen: View {
                 }
             }
         }
+        // 中の行が自分の識別子を保つよう、区切りは入れ物にしてから名前を付ける
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("day-section-\(TimelineDayText.startedOn(for: day.day))")
         .background {
             GeometryReader { geo in
                 Color.clear.preference(
@@ -208,17 +259,27 @@ struct TimelineScreen: View {
         return rows
     }
 
+    /// 読み込み中は、今日の週を空の丸にする。使い始めた日は、取り終えてから入る
+    private func stripWeeks(today: CalendarDay, loaded: Timeline?) -> [RingStrip.Week] {
+        if let loaded {
+            return RingStrip(timeline: loaded).weeks
+        }
+        let monday = today.startOfWeek
+        return RingStrip(
+            timeline: Timeline(weightRecords: [], firstDay: monday, today: today)
+        ).weeks
+    }
+
     private func timeline(today: CalendarDay) -> Timeline {
         let first = startedDay ?? records.map(\.day).min() ?? today
         return Timeline(weightRecords: records, firstDay: first, today: today)
     }
 
-    private func title(today: CalendarDay) -> String {
-        if showsLoading {
+    private func title(today: CalendarDay, loaded: Timeline?) -> String {
+        guard let loaded else {
             return TimelineDayText.label(for: today)
         }
-        let timeline = timeline(today: today)
-        let day = visibleDay ?? timeline.days.last?.day ?? today
+        let day = visibleDay ?? loaded.days.last?.day ?? today
         return TimelineDayText.label(for: day)
     }
 
@@ -250,6 +311,18 @@ private enum TimelineDayRow: Identifiable {
         case .rejection(let line): "rejection-\(line.record.id.uuidString)"
         }
     }
+}
+
+private enum WeightEntryPhase {
+    case closed
+    case preparing
+    case showing
+}
+
+private enum DayFocus: Equatable {
+    case timeline
+    case summary(CalendarDay)
+    case scrollingTo(CalendarDay)
 }
 
 private struct TimelineDayOffset: Equatable {

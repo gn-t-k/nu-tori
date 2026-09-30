@@ -14,38 +14,23 @@ nonisolated enum RecordStoreSchemaV2: VersionedSchema {
     static var models: [any PersistentModel.Type] {
         [
             CachedWeightRecord.self, CachedPendingWrite.self, CachedSyncState.self,
-            CachedHealthSyncState.self,
-        ]
-    }
-}
-
-nonisolated enum RecordStoreSchemaV3: VersionedSchema {
-    static var versionIdentifier: Schema.Version { Schema.Version(3, 0, 0) }
-
-    static var models: [any PersistentModel.Type] {
-        [
-            CachedWeightRecord.self, CachedPendingWrite.self, CachedSyncState.self,
-            CachedHealthSyncState.self, CachedAccountSettings.self,
+            CachedAccountSettings.self, CachedHealthSyncState.self,
         ]
     }
 }
 
 nonisolated enum RecordStoreMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [RecordStoreSchemaV1.self, RecordStoreSchemaV2.self, RecordStoreSchemaV3.self]
+        [RecordStoreSchemaV1.self, RecordStoreSchemaV2.self]
     }
 
-    static var stages: [MigrationStage] { [lightweightV1ToV2, lightweightV2ToV3] }
-
-    static let lightweightV1ToV2 = MigrationStage.lightweight(
-        fromVersion: RecordStoreSchemaV1.self,
-        toVersion: RecordStoreSchemaV2.self
-    )
-
-    static let lightweightV2ToV3 = MigrationStage.lightweight(
-        fromVersion: RecordStoreSchemaV2.self,
-        toVersion: RecordStoreSchemaV3.self
-    )
+    /// 足したモデルは空で始まる。送り待ちを消す段にはしない
+    static var stages: [MigrationStage] {
+        [
+            .lightweight(
+                fromVersion: RecordStoreSchemaV1.self, toVersion: RecordStoreSchemaV2.self)
+        ]
+    }
 
     /// 項目を移せない次の版は、この段を `stages` に足す。記録と同期の状態だけ消え、送り待ちは残る。
     /// 通し番号が無くなるので、次に開いたときに全部取り直す

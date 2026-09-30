@@ -7,7 +7,7 @@ final class SignedInUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in", healthLatestKilograms: nil)
+        app = .launched(account: "signed-in", healthLatestKilograms: nil, timeZone: nil)
     }
 
     func test_サインインの画面を出さずにタイムラインを開くこと() {
