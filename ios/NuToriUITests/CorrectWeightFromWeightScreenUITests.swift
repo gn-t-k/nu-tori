@@ -18,7 +18,7 @@ final class CorrectWeightFromWeightScreenUITests: XCTestCase {
         app.buttons["直す"].tap()
         let field = app.textFields["体重の値"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
-        typeSeventy()
+        app.typeSeventyKilograms()
         app.buttons["完了"].tap()
         XCTAssertTrue(app.staticTexts["70.0"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "体重の画面で直した値")
@@ -32,17 +32,5 @@ final class CorrectWeightFromWeightScreenUITests: XCTestCase {
                 NSPredicate(format: "label CONTAINS %@", "72.4 kg")
             ).firstMatch.exists)
         attachScreenshot(of: app, named: "体重の画面で直したあとのタイムライン")
-    }
-
-    private func typeSeventy() {
-        app.keys["7"].tap()
-        app.keys["0"].tap()
-        let decimal = app.keys["."]
-        if decimal.exists {
-            decimal.tap()
-        } else {
-            app.keys[","].tap()
-        }
-        app.keys["0"].tap()
     }
 }

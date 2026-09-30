@@ -51,10 +51,12 @@
                 default:
                     return (HTTPResponse(status: .notFound), nil)
                 }
-            case .weightScreen:
+            case .weightScreen, .weightScreenPushRejected:
                 switch request.path {
                 case "/v1/sessions":
                     return createdSession()
+                case "/v1/sync/writes" where behavior == .weightScreenPushRejected:
+                    return json(.ok, try await rejectWeightScreenPush(body))
                 case "/v1/sync/writes":
                     return json(.ok, try await applyWeightScreenPush(body))
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
@@ -76,6 +78,8 @@
             case previousDayPushOffline
             case previousDayPushRejected
             case weightScreen
+            /// 直す書き込みを受け付けず、サーバーの今の値（直す前の記録）を添える
+            case weightScreenPushRejected
             /// アカウントの削除だけに 429 を返す
             case accountDeletionRateLimited
             /// アカウントの削除だけに 401 を返す
@@ -88,7 +92,8 @@
                 case .accountDeletionRateLimited: .tooManyRequests
                 case .accountDeletionUnauthorized: .unauthorized
                 case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
-                    .previousDayPushOffline, .previousDayPushRejected, .weightScreen:
+                    .previousDayPushOffline, .previousDayPushRejected, .weightScreen,
+                    .weightScreenPushRejected:
                     .noContent
                 }
             return (HTTPResponse(status: status), nil)
@@ -101,7 +106,8 @@
             case .previousDayPushRejected:
                 return json(.ok, try await writeResults(from: body, result: .rejected))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
-                .weightScreen, .accountDeletionRateLimited, .accountDeletionUnauthorized:
+                .weightScreen, .weightScreenPushRejected, .accountDeletionRateLimited,
+                .accountDeletionUnauthorized:
                 return json(.ok, try await writeResults(from: body, result: .applied))
             }
         }
@@ -119,18 +125,34 @@
             return #"{"results":[\#(results.joined(separator: ","))]}"#
         }
 
+        private func rejectWeightScreenPush(_ body: HTTPBody?) async throws -> String {
+            let current =
+                #"{"status":"value","change":{"kind":"weight_record","recordId":"\#(weightScreenRecordId)","record":\#(try weightScreenRecord())}}"#
+            let results = try await writeIds(in: body).map { id in
+                #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"record_before_started_on","current":\#(current)}"#
+            }
+            return #"{"results":[\#(results.joined(separator: ","))]}"#
+        }
+
         private func weightScreenBody() throws -> String {
-            let zone = TimeZone.current.identifier
             let startedOn = TimelineDayText.startedOn(
                 for: CalendarDay(containing: .now, in: .current))
+            return """
+                {"changes":[{"sequence":1,"kind":"weight_record",\
+                "recordId":"\(weightScreenRecordId)","record":\(try weightScreenRecord())}],\
+                "hasMore":false,"nextAfterSequence":1,"startedOn":"\(startedOn)"}
+                """
+        }
+
+        private var weightScreenRecordId: String { "11111111-1111-4111-8111-111111111111" }
+
+        private func weightScreenRecord() throws -> String {
+            let zone = TimeZone.current.identifier
             let measuredAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
             let kilograms = weightScreenKilograms.current()
             return """
-                {"changes":[{"sequence":1,"kind":"weight_record",\
-                "recordId":"11111111-1111-4111-8111-111111111111",\
-                "record":{"id":"11111111-1111-4111-8111-111111111111","weightKg":\(kilograms),\
-                "measuredAt":\(measuredAt),"timeZone":"\(zone)","version":1}}],\
-                "hasMore":false,"nextAfterSequence":1,"startedOn":"\(startedOn)"}
+                {"id":"\(weightScreenRecordId)","weightKg":\(kilograms),\
+                "measuredAt":\(measuredAt),"timeZone":"\(zone)","version":1}
                 """
         }
 
@@ -223,8 +245,8 @@
             case .weightRecords: return try weightRecordsBody()
             case .dayRing: return try dayRingBody()
             case .online, .offline, .hangPull, .previousDay, .previousDayPushOffline,
-                .previousDayPushRejected, .weightScreen, .accountDeletionRateLimited,
-                .accountDeletionUnauthorized:
+                .previousDayPushRejected, .weightScreen, .weightScreenPushRejected,
+                .accountDeletionRateLimited, .accountDeletionUnauthorized:
                 return emptyChangesBody()
             }
         }

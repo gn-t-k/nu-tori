@@ -91,6 +91,7 @@
             case .previousDayPushOffline: return .previousDayPushOffline
             case .previousDayPushRejected: return .previousDayPushRejected
             case .weightScreen: return .weightScreen
+            case .weightScreenPushRejected: return .weightScreenPushRejected
             case .accountDeletionRateLimited: return .accountDeletionRateLimited
             case .accountDeletionUnauthorized: return .accountDeletionUnauthorized
             case .dayRing: return .dayRing
@@ -175,6 +176,7 @@
             case previousDayPushOffline = "previous-day-push-offline"
             case previousDayPushRejected = "previous-day-push-rejected"
             case weightScreen = "weight-screen"
+            case weightScreenPushRejected = "weight-screen-push-rejected"
             case dayRing = "day-ring"
             case accountDeletionRateLimited = "account-deletion-rate-limited"
             case accountDeletionUnauthorized = "account-deletion-unauthorized"
