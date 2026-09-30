@@ -322,6 +322,50 @@ struct SyncEngineTests {
             }
         }
 
+        @Suite("ヘルスケアで元のサンプルが消えた書き込みが送り待ちにあるとき")
+        struct SourceDeleted {
+            let store: SyncStoreMock
+            let transport: ClientTransportMock
+            let engine: SyncEngine
+            let recordId: UUID
+            let kept: WeightRecord
+
+            init() throws {
+                recordId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1"))
+                kept = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                store = .ok(
+                    records: [kept],
+                    pendingWrites: [
+                        PendingWrite(
+                            writeId: UUID(),
+                            enqueuedAt: SyncEngine.fixtureNow,
+                            operation: .sourceDeletedWeightRecord(recordId: recordId)
+                        )
+                    ]
+                )
+                transport = .ok(rejectedWriteIndexes: [0])
+                engine = .fixture(store: store, transport: transport)
+            }
+
+            @Test("消えた体重記録の ID を名指して送ること")
+            func sendsRecordId() async throws {
+                _ = try await engine.sync()
+
+                let write = try #require(transport.pushBodies.first?.writes.first)
+                #expect(write.type == "source_deleted_weight_record")
+                #expect(write.weightRecordId == recordId.uuidString)
+            }
+
+            @Test("サーバーが受け付けなくても、送り待ちから外して送り直さず、記録は戻さず、結果にも出さないこと")
+            func dropsWithoutRevertingOrReporting() async throws {
+                let result = try await engine.sync()
+
+                #expect(store.pending.isEmpty)
+                #expect(store.records[kept.id] == kept)
+                #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
+            }
+        }
+
         @Suite("同じ記録の直しが2回続けて受け付けられなかったとき")
         struct RejectedTwiceForOneRecord {
             let store: SyncStoreMock
@@ -527,7 +571,7 @@ struct SyncEngineTests {
                     transport: .ok(pullPages: [
                         """
                         {"changes":[
-                          {"sequence":4,"kind":"account_settings","recordId":"x","record":{"sendsUsageData":false}},
+                          {"sequence":4,"kind":"meal","recordId":"x","record":{"calories":500}},
                           {"sequence":5,"kind":"weight_record","recordId":"y","record":{"unexpected":true}}
                         ],"hasMore":false,"nextAfterSequence":5,"startedOn":null}
                         """

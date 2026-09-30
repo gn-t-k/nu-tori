@@ -317,8 +317,10 @@ struct AccountSessionTests {
                 _ = try await session.signIn(with: credential)
 
                 #expect(device.syncStore.records.isEmpty)
+                #expect(device.syncStore.settings == nil)
                 #expect(device.syncStore.pending.isEmpty)
                 #expect(device.syncStore.state == nil)
+                #expect(device.syncStore.healthState == .initial)
                 #expect(device.backgroundTransfers.cancelAndDeleteCount == 1)
                 #expect(device.healthAnchors.deleteCount == 1)
                 #expect(device.deviceStore.didEraseAccountBoundState)
