@@ -1,5 +1,5 @@
 import type { RecordType } from "../../domain/record-type";
-import type { PresentRecord } from "../../domain/sync-ledger/present-record";
+import type { PresentRecord } from "../../domain/sync-ledger/current-record";
 import type { WriteBase } from "../../domain/sync-ledger/write-base";
 import type { SyncWrite } from "../../domain/sync-write";
 

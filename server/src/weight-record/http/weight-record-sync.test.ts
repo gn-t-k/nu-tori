@@ -2,11 +2,9 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
-import { pullSyncChanges } from "../../http/sync-routes/testing/pull-sync-changes";
-import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
+import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
+import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
-import type { PullResult } from "../../http/sync-routes/testing/pull-result";
-import type { PushResults } from "../../http/sync-routes/testing/push-results";
 import { createWeightRecordWrite } from "./testing/create-weight-record-write";
 import { sourceDeletedWeightRecordWrite } from "./testing/source-deleted-weight-record-write";
 import { updateWeightRecordWrite } from "./testing/update-weight-record-write";

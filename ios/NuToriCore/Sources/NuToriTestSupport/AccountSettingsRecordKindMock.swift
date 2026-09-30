@@ -2,7 +2,7 @@ public import NuToriAPI
 public import NuToriCore
 
 /// アカウントの設定の、メモリのキャッシュに当てる登録簿の1行。アプリの `AccountSettingsRecordKind` と同じ振る舞い
-public struct MemoryAccountSettingsKind: RecordKind {
+public struct AccountSettingsRecordKindMock: RecordKind {
     public init() {}
 
     public var name: String { core.name }
@@ -23,13 +23,13 @@ public struct MemoryAccountSettingsKind: RecordKind {
         try core.rejection(of: entry, reason: reason, current: current)
     }
 
-    public func apply(_ changes: [SyncChange], to cache: MemoryRecordCache) throws {
+    public func apply(_ changes: [SyncChange], to cache: RecordCacheMock) throws {
         if let settings = AccountSettingsSyncKind.latestSettings(in: changes) {
             cache.write(settings)
         }
     }
 
-    public func erase(_ cache: MemoryRecordCache) throws {
+    public func erase(_ cache: RecordCacheMock) throws {
         cache.clearSettings()
     }
 

@@ -9,7 +9,7 @@ extension SyncEngineTests {
     struct SaveUsageDataSetting {
         @Suite("切り替えたことがまだ無いとき")
         struct FirstToggle {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let expectedSettings: AccountSettings
 
@@ -33,7 +33,7 @@ extension SyncEngineTests {
 
         @Suite("続けて切り替えたとき")
         struct ToggleTwice {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let expectedSettings: AccountSettings
             let expectedOperations: [PendingWrite.Operation]
@@ -63,7 +63,7 @@ extension SyncEngineTests {
     struct SyncAccountSettings {
         @Suite("切り替えが送り待ちにあるとき")
         struct PendingToggle {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
             let expectedSettings: SentWritesBody.AccountSettings
@@ -101,7 +101,7 @@ extension SyncEngineTests {
 
         @Suite("サーバーが切り替えを受け付けなかったとき")
         struct RejectedToggle {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let expectedSettings: AccountSettings
 
@@ -132,7 +132,7 @@ extension SyncEngineTests {
 
         @Suite("設定の記録が届いたとき")
         struct PulledSettings {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let settingsId: String
             let expectedSettings: AccountSettings
@@ -168,7 +168,7 @@ extension SyncEngineTests {
 
         @Suite("設定の記録の中身が読めないとき")
         struct UnreadableSettings {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let expectedSettings: AccountSettings
 

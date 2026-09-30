@@ -1,4 +1,4 @@
-import type { PresentRecord } from "./present-record";
+import type { PresentRecord } from "./current-record";
 
 export type LedgerChange<TRecordType extends string, TValue> = {
   sequence: number;

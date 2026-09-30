@@ -7,11 +7,11 @@ import Testing
 struct RecordKindNameTests {
     @Suite("端末の登録簿を、サーバーの種類の名前の列挙と突き合わせるとき")
     struct MatchingServer {
-        let registry: RecordKindRegistry<MemoryRecordCache>
+        let registry: RecordKindRegistry<RecordCacheMock>
         let serverNames: Set<String>
 
         init() {
-            registry = .memory()
+            registry = .ok()
             serverNames = ServerRecordKindNames.deviceNames
         }
 
@@ -29,10 +29,10 @@ struct RecordKindNameTests {
 
     @Suite("片方にだけある名前があるとき")
     struct Mismatching {
-        let registry: RecordKindRegistry<MemoryRecordCache>
+        let registry: RecordKindRegistry<RecordCacheMock>
 
         init() {
-            registry = .memory()
+            registry = .ok()
         }
 
         // 端末が登録を忘れたとき

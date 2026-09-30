@@ -9,7 +9,7 @@ extension SyncEngineTests {
     struct RecordKinds {
         @Suite("複数の種類の送り待ちを送るとき")
         struct Pushing {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
             let note: PendingEntry
@@ -103,7 +103,7 @@ extension SyncEngineTests {
 
         @Suite("複数の種類の変更を取りに行くとき")
         struct Pulling {
-            let store: MemoryStore
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
 
             init() throws {

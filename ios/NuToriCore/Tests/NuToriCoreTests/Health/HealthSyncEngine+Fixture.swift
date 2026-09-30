@@ -8,7 +8,7 @@ extension HealthSyncEngine {
 
     static func fixture(
         healthStore: HealthStoreMock,
-        store: MemoryStore,
+        store: SyncBoxMock<RecordCacheMock>,
         errorReporting: ErrorReportingSessionMock = .ok()
     ) -> HealthSyncEngine {
         HealthSyncEngine(

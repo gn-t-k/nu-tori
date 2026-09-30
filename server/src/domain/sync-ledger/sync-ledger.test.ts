@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import type { SyncClientState } from "../sync-client-state";
-import { createSyncLedger } from "./sync-ledger";
+import { createSyncLedger, type WriteReceiptId } from "./sync-ledger";
 import { createMemoryLedgerStore } from "./testing/create-memory-ledger-store";
 import { createMemoryTestRecordStore } from "./testing/create-memory-test-record-store";
-import { createTestRecordKind } from "./testing/test-record-kind";
-import type { TestRecordWrite } from "./testing/test-record-write";
-import type { WriteReceiptId } from "./write-receipt-id";
+import { createTestRecordKind, type TestRecordWrite } from "./testing/test-record-kind";
+
+const acceptReceiptId = (_receiptId: WriteReceiptId) => undefined;
 
 type OtherWrite = { id: string; type: "other_write" };
 type TestLedger = ReturnType<
@@ -199,11 +199,18 @@ describe("同期の帳簿", () => {
     });
   });
 
-  describe("型の検査（tsc が確かめる。実行時には何も確かめない）", () => {
+  describe("型の検査（tsc が確かめる）", () => {
+    // 確かめるのは tsc で、実行時の assertion は無い
+    // oxlint-disable-next-line vitest/expect-expect
     test("控えの ID は、文字列から作れないこと", () => {
       // @ts-expect-error 文字列から控えの ID は作れない（作れるとコンパイルが通ってしまう）
-      const forged: WriteReceiptId = "write-1";
-      expect(forged).toBe("write-1");
+      acceptReceiptId("write-1");
+    });
+
+    // oxlint-disable-next-line vitest/expect-expect
+    test("控えの ID は、同じ形のオブジェクトから作れないこと", () => {
+      // @ts-expect-error 帳簿が作っていないオブジェクトは控えの ID にならない（`as` での作り方は lint が止める）
+      acceptReceiptId({ value: "write-1" });
     });
   });
 });
