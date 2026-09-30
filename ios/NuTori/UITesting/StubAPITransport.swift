@@ -74,7 +74,6 @@
             case previousDay
             case previousDayPushOffline
             case previousDayPushRejected
-            /// 今日の手の記録を返し、直す書き込みの値を次の取得に載せる
             case weightScreen
         }
 
