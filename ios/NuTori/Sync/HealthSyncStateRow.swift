@@ -2,16 +2,15 @@ import Foundation
 import NuToriCore
 import SwiftData
 
-@Model
-nonisolated final class CachedHealthSyncState {
-    @Attribute(.unique) var singletonKey: String
-    var anchorData: Data?
-    var hasWrittenCachedManualRecords: Bool
+typealias HealthSyncStateRow = PendingStoreSchemaV1.HealthSyncStateRow
 
-    init(_ state: HealthSyncState) {
-        singletonKey = Self.onlyKey
-        anchorData = state.anchor?.data
-        hasWrittenCachedManualRecords = state.hasWrittenCachedManualRecords
+extension HealthSyncStateRow {
+    convenience init(_ state: HealthSyncState) {
+        self.init(
+            singletonKey: Self.onlyKey,
+            anchorData: state.anchor?.data,
+            hasWrittenCachedManualRecords: state.hasWrittenCachedManualRecords
+        )
     }
 
     func healthSyncState() -> HealthSyncState {
@@ -26,5 +25,5 @@ nonisolated final class CachedHealthSyncState {
         hasWrittenCachedManualRecords = state.hasWrittenCachedManualRecords
     }
 
-    static let onlyKey = "health-sync-state"
+    static var onlyKey: String { "health-sync-state" }
 }
