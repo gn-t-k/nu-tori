@@ -30,11 +30,18 @@
 ## 置き場の約束
 
 - 端末の置き場（保存の順、送り待ちの箱の入口、種類の名前）は `ios/AGENTS.md` の「構成」、サーバーの帳簿（控えを書く順、冪等、500 件の区切り）は `server/AGENTS.md` の「同期の記録の種類の足し方」にある
-- 送り待ちの中身は、置き場の版ごとの固めた写し（`PendingStoreSchemaV1`・`V2`）には触れず、種類の側の JSON（`PendingWriteContent`）で持つ。中身のキーを消すときは、残った送り待ちの JSON にそのキーがあっても読み飛ばせる形にして、置き場の版を上げずに済ませる（Codable は知らないキーを読み飛ばす）。キーを足すときは、無くても読める形（省略できる値）にする。残った送り待ちが読めることを、古い形の JSON を使うテストで確かめる（`PendingWriteEntryTests`）
+- 送り待ちの中身は、置き場の版ごとの固めた写し（`PendingStoreSchemaV1`・`V2`）には触れず、種類の側の JSON（`PendingWriteContent`）で持つ
+  - 中身のキーを消すときは、残った送り待ちの JSON にそのキーがあっても読み飛ばせる形にして、置き場の版を上げずに済ませる（Codable は知らないキーを読み飛ばす）
+  - キーを足すときは、無くても読める形（省略できる値）にする
+  - 残った送り待ちが読めることを、古い形の JSON を使うテストで確かめる（`PendingWriteEntryTests`）
+- 版 1 から移すときに、中身から種類の名前を読めない送り待ちは、開くときに捨てて `storeRecovery` に残す（残すと、送るたびに `UnknownRecordKindError` で同期が止まる）
 
 ## 記録の種類の足し方
 
 - サーバー: `server/AGENTS.md` の「同期の記録の種類の足し方」に従う。受け付けなかった書き込みの今の値は、種類の `readCurrent` と受け口の `toChangeResponse` から作るので、種類に足すものは無い
-- 端末: NuToriCore に `SyncedRecordKind`（`name`・`owns`・`syncWrite`・`rejection`）、アプリのターゲットに `RecordKind<ModelContext>`（`apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す。`name` は送り待ちに保存する書き方（ハイフン）で、サーバーの `RecordKindName`（snake_case）とは `ServerRecordKindNames.deviceNames` で突き合わせる。片方にだけ足すと `RecordKindNameTests`・`AppRecordKindsTests` が落ちる
-- 受け付けられないことがある書き込みを持つ種類は、`rejection` で行と、サーバーに記録が無いときの外す変更を返す。持たない種類は空の `KindRejection()` を返す
+- サーバーの帳簿が書く順は、要求の控え → 書き込みの控え → 種類の行（記録・削除の印・設定の変更。`decide` が返す `commit` の中）→ 変更の並び。記録も控えのあとに書くのは、控えの ID を帳簿しか作れない型にして、控えより先に書く形をコンパイルで止めるため（外部キーは控えを指すものだけで満たされる）
+- サーバーの登録簿の行は5か所（`create-record-kinds.ts`、`record-kind-stores.ts`、`create-record-kind-stores.ts`、`http-record-kinds.ts`、`registered-write-schemas.ts`）。ドメイン層は Durable Object と受け口を import できず、層ごとに登録簿が分かれるため。足し忘れは型検査が止める
+- 端末: NuToriCore に `SyncedRecordKind`（`name`・`owns`・`syncWrite`・`rejection`）、アプリのターゲットに `RecordKind<ModelContext>`（`apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す
+  - `name` は送り待ちに保存する書き方（ハイフン）。サーバーの `RecordKindName`（snake_case）とは `ServerRecordKindNames.deviceNames` で突き合わせる。片方にだけ足すと `RecordKindNameTests`・`AppRecordKindsTests` が落ちる
+- 受け付けられないことがある書き込みを持つ種類は、`rejection` で画面に出す行と、サーバーに記録も削除の印も無いときの外す変更（`removingChanges`）を返す。サーバーの今の値が `absent` のときの外し方は、種類が決める。持たない種類は `KindRejection.none` を返す
 - テストのために、`NuToriTestSupport` の `RecordKindRegistry.memory(extra:)` に、メモリのキャッシュに当てる版の種類を足す
