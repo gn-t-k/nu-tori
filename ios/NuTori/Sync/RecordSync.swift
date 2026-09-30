@@ -10,6 +10,24 @@ import NuToriCore
     static let refreshTaskIdentifier = "app.nu-tori.refresh"
 
     var onDestination: (SignInDestination) -> Void = { _ in }
+    var onRejectedWrites: ([RejectedWrite]) -> Void = { _ in }
+    var onReplacingRecord: (UUID) -> Void = { _ in }
+
+    func save(_ write: WeightEntry.Write) async throws {
+        guard await hasSession() else { return }
+        switch write {
+        case .create:
+            break
+        case .correct(let record):
+            onReplacingRecord(record.id)
+        }
+        try await engineForThisDevice().save(write)
+        // 開いたときの同期が先に送り待ちを読んでいたら、それが終わってから送り直す
+        if let inFlight {
+            _ = try? await inFlight.value
+        }
+        _ = try await sync()
+    }
 
     init(
         store: SwiftDataSyncStore,
@@ -109,6 +127,9 @@ import NuToriCore
     private func runSync() async throws -> SyncResult? {
         guard await hasSession() else { return nil }
         let result = try await engineForThisDevice().sync()
+        if !result.rejectedWrites.isEmpty {
+            onRejectedWrites(result.rejectedWrites)
+        }
         onDestination(try await accountSession.destination(afterSync: result))
         return result
     }

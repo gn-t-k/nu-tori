@@ -5,15 +5,21 @@ struct WeightRecordRow: View {
     let record: WeightRecord
 
     var body: some View {
-        VStack(alignment: .trailing) {
-            Text("\(clock) \(kilograms)")
-                .font(.subheadline)
-                .monospacedDigit()
-            if let sourceAppName {
-                Text(sourceAppName)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .trailing) {
+                Text("\(clock) \(kilograms)")
+                    .font(.subheadline)
+                    .monospacedDigit()
+                if let sourceAppName {
+                    Text(sourceAppName)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .padding()
         // DESIGN.md は「薄く」とだけ言う。Primary をこの濃さで敷く。角はタイムラインのカード（12）
@@ -21,13 +27,11 @@ struct WeightRecordRow: View {
     }
 
     private var kilograms: String {
-        let rounded = (record.kilograms * 10).rounded() / 10
-        return String(format: "%.1f kg", locale: Locale(identifier: "en_US_POSIX"), rounded)
+        WeightAmountText.kilograms(record.kilograms)
     }
 
     private var clock: String {
-        let time = record.clockTime
-        return "\(time.hour):\(String(format: "%02d", time.minute))"
+        WeightAmountText.clock(record.clockTime)
     }
 
     private var sourceAppName: String? {
