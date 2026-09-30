@@ -4,7 +4,8 @@ import NuToriCore
 import SwiftData
 import Synchronization
 
-/// 種類の名前が `note` の、テスト用の登録簿の1行。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
+/// テスト用の登録簿の1行。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
+/// 種類の名前は、テストのために列挙へ case を足さず、本物の `accountSettings` を借りる（この種類だけの登録簿で使う）。
 /// キャッシュには何も書かず、当てられた数を数える
 nonisolated struct RecordKindMock: RecordKind {
     nonisolated struct Failure: Error, Equatable {}
@@ -21,7 +22,7 @@ nonisolated struct RecordKindMock: RecordKind {
         private let erased = Mutex(0)
     }
 
-    let name = "note"
+    static let changeKind = "note"
     let log: Log
     let failure: Failure?
 
@@ -36,26 +37,13 @@ nonisolated struct RecordKindMock: RecordKind {
     static func entry(writeId: UUID = UUID(), enqueuedAt: Date = Date(timeIntervalSince1970: 0))
         -> PendingEntry
     {
-        PendingEntry(writeId: writeId, enqueuedAt: enqueuedAt, kind: "note", content: Data([0x01]))
+        PendingEntry(
+            writeId: writeId, enqueuedAt: enqueuedAt, kind: .accountSettings, content: Data([0x01]))
     }
 
-    static let change = SyncChange.unknown(kind: "note")
+    static let change = SyncChange.unknown(kind: Self.changeKind)
 
-    func owns(_ change: SyncChange) -> Bool {
-        if case .unknown(let kind) = change { kind == name } else { false }
-    }
-
-    func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: UUID())
-    }
-
-    func rejection(
-        of entry: PendingEntry,
-        reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
-    ) throws -> KindRejection {
-        KindRejection.none
-    }
+    var synced: any SyncedRecordKind { Synced() }
 
     func apply(_ changes: [SyncChange], to cache: ModelContext) throws {
         if let failure { throw failure }
@@ -65,5 +53,26 @@ nonisolated struct RecordKindMock: RecordKind {
     func erase(_ cache: ModelContext) throws {
         if let failure { throw failure }
         log.didErase()
+    }
+
+    /// キャッシュに依らない部分
+    private nonisolated struct Synced: SyncedRecordKind {
+        let name = RecordKindName.accountSettings
+
+        func owns(_ change: SyncChange) -> Bool {
+            if case .unknown(let kind) = change { kind == RecordKindMock.changeKind } else { false }
+        }
+
+        func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
+            .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: UUID())
+        }
+
+        func rejection(
+            of entry: PendingEntry,
+            reason: SyncWriteResult.RejectionReason,
+            current: SyncWriteResult.Current?
+        ) throws -> KindRejection {
+            KindRejection.none
+        }
     }
 }

@@ -7,7 +7,8 @@ import Testing
 @Suite("送り待ちの箱として結果を当てる")
 struct SwiftDataSyncStoreBoxTests {
     static let pulledState = SyncState(
-        afterSequence: 9, hasCompletedInitialPull: true, readableKinds: ["note"], startedOn: nil)
+        afterSequence: 9, hasCompletedInitialPull: true, readableKinds: [.accountSettings],
+        startedOn: nil)
 
     @Suite("登録簿の種類の送り待ちと変更を一緒に当てるとき")
     @MainActor
@@ -28,7 +29,9 @@ struct SwiftDataSyncStoreBoxTests {
             try await store.apply(
                 SyncBoxResult(
                     enqueuing: [entry],
-                    kindChanges: [KindChanges(kind: "note", changes: [RecordKindMock.change])]
+                    kindChanges: [
+                        KindChanges(kind: .accountSettings, changes: [RecordKindMock.change])
+                    ]
                 ))
 
             #expect(try await store.pendingEntries() == [entry])
@@ -50,7 +53,9 @@ struct SwiftDataSyncStoreBoxTests {
             entry = RecordKindMock.entry()
             result = SyncBoxResult(
                 enqueuing: [entry],
-                kindChanges: [KindChanges(kind: "note", changes: [RecordKindMock.change])],
+                kindChanges: [
+                    KindChanges(kind: .accountSettings, changes: [RecordKindMock.change])
+                ],
                 syncState: SwiftDataSyncStoreBoxTests.pulledState
             )
         }
@@ -115,7 +120,7 @@ struct SwiftDataSyncStoreBoxTests {
                 SyncBoxResult(
                     kindChanges: [
                         KindChanges(
-                            kind: "note",
+                            kind: .accountSettings,
                             changes: Array(repeating: RecordKindMock.change, count: 250))
                     ],
                     syncState: SwiftDataSyncStoreBoxTests.pulledState

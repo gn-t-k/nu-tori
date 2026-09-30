@@ -7,7 +7,6 @@ import { toAccountSettingsChangeResponse } from "./to-account-settings-change-re
 import { toUpdateAccountSettingsWrite } from "./to-account-settings-write";
 
 export const accountSettingsHttpKind: HttpRecordKind = {
-  name: "account_settings",
   writeTypes: ["update_account_settings"],
   toWrite: (write: z.infer<(typeof accountSettingsWriteSchemas)[number]>) =>
     toUpdateAccountSettingsWrite(write),

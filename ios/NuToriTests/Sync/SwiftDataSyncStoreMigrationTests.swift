@@ -36,8 +36,7 @@ struct SwiftDataSyncStoreMigrationTests {
         init() throws {
             directory = SwiftDataSyncStoreTests.makeDirectory()
             legacyURL = LegacyRecordStore.url(in: directory)
-            try SwiftDataSyncStoreMigrationTests.writeLegacyStore(
-                at: legacyURL, unreadableRow: false)
+            try SwiftDataSyncStoreMigrationTests.writeLegacyStore(at: legacyURL)
             store = try SwiftDataSyncStore(directory: directory)
         }
 
@@ -127,7 +126,7 @@ struct SwiftDataSyncStoreMigrationTests {
                 SyncState(
                     afterSequence: 1,
                     hasCompletedInitialPull: false,
-                    readableKinds: ["weight-record"],
+                    readableKinds: [.weightRecord],
                     startedOn: nil
                 ))
 
@@ -151,15 +150,14 @@ struct SwiftDataSyncStoreMigrationTests {
 
         init() throws {
             let directory = SwiftDataSyncStoreTests.makeDirectory()
-            try SwiftDataSyncStoreMigrationTests.writeVersion1PendingStore(
-                in: directory, unreadableRow: false)
+            try SwiftDataSyncStoreMigrationTests.writeVersion1PendingStore(in: directory)
             store = try SwiftDataSyncStore(directory: directory)
         }
 
         @Test("送り待ちを種類の名前つきで引き継ぎ、中身に直す前の値が残っていても読めること")
         func carriesWritesWithKindNames() async throws {
             #expect(try await store.pendingWritesOldestFirst() == [correction])
-            #expect(try await store.pendingEntries().map(\.kind) == ["weight-record"])
+            #expect(try await store.pendingEntries().map(\.kind) == [.weightRecord])
             #expect(store.takeRecoveries().isEmpty)
         }
 
@@ -179,13 +177,39 @@ struct SwiftDataSyncStoreMigrationTests {
 
         init() throws {
             let directory = SwiftDataSyncStoreTests.makeDirectory()
-            try SwiftDataSyncStoreMigrationTests.writeVersion1PendingStore(
-                in: directory, unreadableRow: true)
+            try SwiftDataSyncStoreMigrationTests.writeVersion1PendingStoreWithUnreadableRow(
+                in: directory)
             store = try SwiftDataSyncStore(directory: directory)
         }
 
         @Test("読めない送り待ちだけを捨て、読めるものは残すこと")
         func dropsOnlyUnreadableRow() async throws {
+            #expect(
+                try await store.pendingEntries().map(\.writeId) == [
+                    SwiftDataSyncStoreMigrationTests.correction.writeId
+                ])
+        }
+
+        @Test("対処した失敗として残すこと")
+        func keepsRecovery() {
+            #expect(store.takeRecoveries() == [.storeRecovery])
+        }
+    }
+
+    @Suite("送り待ちの置き場が今の版で、知らない種類の名前の送り待ちがあるとき")
+    @MainActor
+    struct PendingStoreWithUnknownKindName {
+        let store: SwiftDataSyncStore
+
+        init() throws {
+            let directory = SwiftDataSyncStoreTests.makeDirectory()
+            try SwiftDataSyncStoreMigrationTests.writeCurrentPendingStoreWithUnknownKindName(
+                in: directory)
+            store = try SwiftDataSyncStore(directory: directory)
+        }
+
+        @Test("知らない名前の送り待ちだけを捨て、読めるものは残すこと")
+        func dropsOnlyUnknownKindRow() async throws {
             #expect(
                 try await store.pendingEntries().map(\.writeId) == [
                     SwiftDataSyncStoreMigrationTests.correction.writeId
@@ -205,8 +229,8 @@ struct SwiftDataSyncStoreMigrationTests {
 
         init() throws {
             let directory = SwiftDataSyncStoreTests.makeDirectory()
-            try SwiftDataSyncStoreMigrationTests.writeLegacyStore(
-                at: LegacyRecordStore.url(in: directory), unreadableRow: true)
+            try SwiftDataSyncStoreMigrationTests.writeLegacyStoreWithUnreadableRow(
+                at: LegacyRecordStore.url(in: directory))
             store = try SwiftDataSyncStore(directory: directory)
         }
 
@@ -271,7 +295,51 @@ struct SwiftDataSyncStoreMigrationTests {
 
     /// 版 1 のスキーマで、送り待ちの置き場のファイルを書く
     @MainActor
-    private static func writeVersion1PendingStore(in directory: URL, unreadableRow: Bool) throws {
+    private static func writeVersion1PendingStore(in directory: URL) throws {
+        let context = try version1PendingStoreContext(in: directory)
+        try insertVersion1Rows(into: context)
+        try context.save()
+    }
+
+    /// 版 1 のスキーマで、中身を読めない送り待ちも入れて、送り待ちの置き場のファイルを書く
+    @MainActor
+    private static func writeVersion1PendingStoreWithUnreadableRow(in directory: URL) throws {
+        let context = try version1PendingStoreContext(in: directory)
+        try insertVersion1Rows(into: context)
+        context.insert(
+            PendingStoreSchemaV1.PendingWriteRow(
+                writeId: unreadableWriteId,
+                enqueuedAt: correction.enqueuedAt,
+                operationJSON: Data("読めない中身".utf8)
+            ))
+        try context.save()
+    }
+
+    /// 今の版のスキーマで、知らない種類の名前（新しい版が書いたもの）の送り待ちも入れて、送り待ちの置き場のファイルを書く
+    @MainActor
+    private static func writeCurrentPendingStoreWithUnknownKindName(in directory: URL) throws {
+        let folder = directory.appending(path: "PendingStore", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let container = try StoreFiles.container(
+            schema: Schema(versionedSchema: PendingStoreSchemaV2.self),
+            plan: PendingStoreMigrationPlan.self,
+            name: "PendingStore",
+            at: folder.appending(path: "PendingStore.store")
+        )
+        let context = container.mainContext
+        context.insert(PendingWriteRow(entry: try correction.entry()))
+        context.insert(
+            PendingWriteRow(
+                writeId: unreadableWriteId,
+                enqueuedAt: correction.enqueuedAt,
+                kind: "meal-photo",
+                content: Data([0x01])
+            ))
+        try context.save()
+    }
+
+    @MainActor
+    private static func version1PendingStoreContext(in directory: URL) throws -> ModelContext {
         let folder = directory.appending(path: "PendingStore", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let container = try StoreFiles.container(
@@ -280,52 +348,64 @@ struct SwiftDataSyncStoreMigrationTests {
             name: "PendingStore",
             at: folder.appending(path: "PendingStore.store")
         )
-        let context = container.mainContext
+        return container.mainContext
+    }
+
+    @MainActor
+    private static func insertVersion1Rows(into context: ModelContext) throws {
         context.insert(
             PendingStoreSchemaV1.PendingWriteRow(
                 writeId: correction.writeId,
                 enqueuedAt: correction.enqueuedAt,
                 operationJSON: try contentWithPrevious(correction.entry().content)
             ))
-        if unreadableRow {
-            context.insert(
-                PendingStoreSchemaV1.PendingWriteRow(
-                    writeId: unreadableWriteId,
-                    enqueuedAt: correction.enqueuedAt,
-                    operationJSON: Data("読めない中身".utf8)
-                ))
-        }
         context.insert(
             PendingStoreSchemaV1.HealthSyncStateRow(
                 singletonKey: "health-sync-state",
                 anchorData: healthState.anchor?.data,
                 hasWrittenCachedManualRecords: healthState.hasWrittenCachedManualRecords
             ))
+    }
+
+    @MainActor
+    private static func writeLegacyStore(at url: URL) throws {
+        let context = try legacyStoreContext(at: url)
+        try insertLegacyRows(into: context)
+        try context.save()
+    }
+
+    /// 中身を読めない送り待ちも入れて、今の1つの置き場のファイルを書く
+    @MainActor
+    private static func writeLegacyStoreWithUnreadableRow(at url: URL) throws {
+        let context = try legacyStoreContext(at: url)
+        try insertLegacyRows(into: context)
+        context.insert(
+            LegacyRecordStoreSchemaV2.CachedPendingWrite(
+                writeId: unreadableWriteId,
+                enqueuedAt: write.enqueuedAt,
+                operationJSON: Data("読めない中身".utf8)
+            ))
         try context.save()
     }
 
     @MainActor
-    private static func writeLegacyStore(at url: URL, unreadableRow: Bool) throws {
+    private static func legacyStoreContext(at url: URL) throws -> ModelContext {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let schema = Schema(versionedSchema: LegacyRecordStoreSchemaV2.self)
         let container = try StoreFiles.container(
             schema: schema, plan: nil, name: "RecordStore", at: url)
-        let context = container.mainContext
+        return container.mainContext
+    }
+
+    @MainActor
+    private static func insertLegacyRows(into context: ModelContext) throws {
         context.insert(
             LegacyRecordStoreSchemaV2.CachedPendingWrite(
                 writeId: write.writeId,
                 enqueuedAt: write.enqueuedAt,
                 operationJSON: try write.entry().content
             ))
-        if unreadableRow {
-            context.insert(
-                LegacyRecordStoreSchemaV2.CachedPendingWrite(
-                    writeId: unreadableWriteId,
-                    enqueuedAt: write.enqueuedAt,
-                    operationJSON: Data("読めない中身".utf8)
-                ))
-        }
         context.insert(
             LegacyRecordStoreSchemaV2.CachedHealthSyncState(
                 singletonKey: "health-sync-state",
@@ -349,7 +429,6 @@ struct SwiftDataSyncStoreMigrationTests {
                 readableKindsVersion: 1,
                 startedOn: nil
             ))
-        try context.save()
     }
 }
 

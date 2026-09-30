@@ -71,7 +71,7 @@ nonisolated enum LegacyRecordStore {
                 PendingWriteRow(
                     writeId: legacy.writeId,
                     enqueuedAt: legacy.enqueuedAt,
-                    kind: kind,
+                    kind: kind.rawValue,
                     content: legacy.operationJSON
                 ))
         }

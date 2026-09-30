@@ -8,10 +8,12 @@ import type { SyncWriteOutcome } from "../../domain/sync-write-outcome";
 import { isWithinAcceptedRange } from "./is-within-accepted-range";
 import type { WeightRecord } from "./weight-record";
 import type { WeightRecordStore } from "./weight-record-store";
-import type { WeightRecordWrite } from "./weight-record-write";
+import { type WeightRecordWrite, weightRecordWriteTypes } from "./weight-record-write";
 
+// findStartedOn は、使い始めた日を読む関数。この日より前の日付の記録は、直す書き込みを受け付けない
 export const createWeightRecordKind = (
   store: WeightRecordStore,
+  findStartedOn: () => string | undefined,
 ): RecordKind<"weight_record", WeightRecordWrite, WeightRecord> => ({
   name: "weight_record",
   writes: {
@@ -22,7 +24,7 @@ export const createWeightRecordKind = (
           decideCreate(store, weightRecord),
         )
         .with({ type: "update_weight_record" }, ({ weightRecord }) =>
-          decideUpdate(store, weightRecord),
+          decideUpdate(store, findStartedOn, weightRecord),
         )
         .with({ type: "source_deleted_weight_record" }, ({ weightRecordId }) =>
           decideSourceDeleted(store, weightRecordId),
@@ -37,12 +39,6 @@ export const createWeightRecordKind = (
     return store.hasDeletion(recordId) ? { status: "deleted" } : { status: "absent" };
   },
 });
-
-const weightRecordWriteTypes: readonly string[] = [
-  "create_weight_record",
-  "update_weight_record",
-  "source_deleted_weight_record",
-];
 
 const decideCreate = (
   store: WeightRecordStore,
@@ -76,6 +72,7 @@ const decideCreate = (
 
 const decideUpdate = (
   store: WeightRecordStore,
+  findStartedOn: () => string | undefined,
   weightRecord: Omit<WeightRecord, "imported">,
 ): WriteDecision => {
   // 版を上げ忘れる不具合が、受け付けなかった1件として見えるようにする
@@ -95,7 +92,7 @@ const decideUpdate = (
   if (current === undefined) {
     return settled("update", weightRecord.id, { result: "rejected", reason: "record_not_found" });
   }
-  const startedOn = store.findStartedOn();
+  const startedOn = findStartedOn();
   if (
     startedOn !== undefined &&
     computeCalendarDay(current.measuredAt, current.timeZone) < startedOn

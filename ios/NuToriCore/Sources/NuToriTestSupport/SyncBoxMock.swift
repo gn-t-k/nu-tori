@@ -143,7 +143,7 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
         var chunks: [(kind: any RecordKind<Cache>, changes: [SyncChange])] = []
         for group in result.kindChanges {
             guard let kind = kinds.kind(named: group.kind) else {
-                throw UnknownRecordKindError(kind: group.kind)
+                throw UnknownRecordKindError.notRegistered(group.kind)
             }
             storage.appliedKindChanges.append(group)
             for start in stride(from: 0, to: group.changes.count, by: Self.batchSize) {

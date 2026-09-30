@@ -102,7 +102,8 @@ XCTestCase はまとまりを入れ子にできず、クラス名が識別子に
 
 ### 依存の差し替え
 
-- 差し替え用の型は `{依存の名前}Mock` の class にし（`WeightRecordStore` → `WeightRecordStoreMock`）、テストターゲットの `{依存の名前}Mock.swift` に置く。class にするのは、渡した先での呼び出しの記録をテストから見るため
+- 差し替え用の型は `{依存の名前}Mock`（`WeightRecordStore` → `WeightRecordStoreMock`）にし、テストターゲットの `{依存の名前}Mock.swift` に置く
+- 呼び出しを記録する差し替えは class にする。struct は渡した先で写されるので、テスト対象が記録してもテストの手元に残らない
 - 成功と失敗の作り方は、その型の static 関数 `.ok(...)` と `.error(_:)` にする
 - 引数を確かめるテストは、差し替え用の型を Suite のプロパティに持って `@Test` で参照する
 - 複数のテストターゲットが使う差し替えは、`NuToriCore/Sources/NuToriTestSupport/`（テスト用のターゲット。アプリのターゲットは依存しない）に1つずつ置く。今は API のトランスポートの差し替え（`ClientTransportMock`）、送り待ちの箱の差し替え（`SyncBoxMock`。キャッシュは `RecordCacheMock`。登録簿の1行は `WeightRecordKindMock`・`AccountSettingsRecordKindMock`、登録簿は `RecordKindRegistry.ok(extra:)`）、送り待ちを送った本文を読む型（`SentWritesBody`）。同じ差し替えを、テストターゲットごとに作らない

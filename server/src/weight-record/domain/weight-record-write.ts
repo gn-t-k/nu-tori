@@ -6,3 +6,10 @@ export type WeightRecordWrite = { id: string } & (
   | { type: "update_weight_record"; weightRecord: Omit<WeightRecord, "imported"> }
   | { type: "source_deleted_weight_record"; weightRecordId: string }
 );
+
+// 書き込みの type の一覧。ドメインの種類の見分けと、受け口の見分けが、ここを使う
+export const weightRecordWriteTypes: readonly string[] = [
+  "create_weight_record",
+  "update_weight_record",
+  "source_deleted_weight_record",
+];

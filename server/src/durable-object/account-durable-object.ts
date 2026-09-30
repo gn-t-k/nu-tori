@@ -1,3 +1,4 @@
+import { drizzle } from "drizzle-orm/durable-sqlite";
 import { instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
@@ -27,7 +28,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       signIn: { signedInAt: Date; timeZone: string | undefined },
     ): void {
       setUser({ id: accountId });
-      recordFirstSignIn(createFirstSignInStore(this.ctx.storage), signIn);
+      recordFirstSignIn(createFirstSignInStore(drizzle(this.ctx.storage)), signIn);
     }
 
     async pushSyncWrites(

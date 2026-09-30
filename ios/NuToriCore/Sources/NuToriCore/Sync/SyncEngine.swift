@@ -10,7 +10,7 @@ public actor SyncEngine {
         device: SyncDevice,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
-        readableKinds: Set<String>,
+        readableKinds: Set<RecordKindName>,
         errorReporting: any ErrorReportingSession,
         weightHealthExport: any WeightHealthExport
     ) {
@@ -107,7 +107,7 @@ public actor SyncEngine {
     private let device: SyncDevice
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
-    private let readableKinds: Set<String>
+    private let readableKinds: Set<RecordKindName>
     private let errorReporting: any ErrorReportingSession
     private let weightHealthExport: any WeightHealthExport
 
@@ -153,9 +153,9 @@ public actor SyncEngine {
         return nil
     }
 
-    private func kind(named name: String) throws -> any SyncedRecordKind {
+    private func kind(named name: RecordKindName) throws -> any SyncedRecordKind {
         guard let kind = store.recordKinds.first(where: { $0.name == name }) else {
-            throw UnknownRecordKindError(kind: name)
+            throw UnknownRecordKindError.notRegistered(name)
         }
         return kind
     }
@@ -177,7 +177,7 @@ public actor SyncEngine {
             uniquingKeysWith: { first, _ in first }
         )
         var resolvedWriteIds: [UUID] = []
-        var currentChanges: [String: [SyncChange]] = [:]
+        var currentChanges: [RecordKindName: [SyncChange]] = [:]
         for entry in batch {
             guard let result = resultsByWriteId[entry.writeId] else {
                 continue

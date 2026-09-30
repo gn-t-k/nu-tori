@@ -37,10 +37,10 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 同期の記録の種類の足し方
 
 - 同期の共通の仕組み（帳簿）は `src/domain/sync-ledger/`。種類は帳簿に `RecordKind`（名前、書き込みを受け付けるかの決定、今の値を読む口）を渡す。冪等、控え、変更の並び、500 件の区切りは帳簿が持つので、種類に書き写さない
-- 種類のまとまりを `src/<種類>/` に作り、種類、置き場、受け口の入口を置いたら、登録簿に1行ずつ足す（名前の順）: `domain/create-record-kinds.ts`、`domain/record-kind-stores.ts`、`durable-object/create-record-kind-stores.ts`、`http/sync-routes/http-record-kinds.ts`、`http/sync-routes/registered-write-schemas.ts`（書き込みの `oneOf` の並びを決めるので、並びが変わるのを受け入れる）
+- 種類のまとまりを `src/<種類>/` に作り、種類、置き場、受け口の入口を置いたら、登録簿に1行ずつ足す（名前の順）: `domain/create-record-kinds.ts`、`domain/record-kind-stores.ts`、`durable-object/create-record-kind-stores.ts`、`http/sync-routes/http-record-kinds.ts`、`http/sync-routes/registered-write-schemas.ts`。ドメイン層は Durable Object と受け口を import できず、層ごとに登録簿が分かれるため5か所になる。受け口の2つは `RecordType` をキーにした表なので、足し忘れはコンパイルが止める。書き込みの `oneOf` の並びは表の順で決まるので、並びが変わるのを受け入れる
 - 書き込みと変更の union（`SyncWrite`、`SyncChange`）、`RecordType`、受け口のスキーマ、`openapi.json` の `RecordKindName` の列挙は、登録簿から導く。手で足すのは、表の宣言の `text({ enum })`（`durable-object/sync-ledger-tables.ts`。型検査が足し忘れを止める）と、`scripts/check server --fix` での `openapi.json` の書き出し直し
 - `RecordKindName` は端末が自分の登録簿と突き合わせるためのもので、応答の `kind` を解くのには使わない（`kind` は文字列のまま。知らない種類は端末が読み飛ばす）
-- 種類の行（記録・削除の印・設定の変更）は、`decide` が返す `commit(receiptId)` の中で書く。控えの ID は帳簿しか作れない
+- 種類の行（記録・削除の印・設定の変更）は、`decide` が返す `commit(receiptId)` の中で書く。控えの ID を帳簿しか作れない型にして、控えより先に書く形をコンパイルで止めるため
 
 ## 認証
 

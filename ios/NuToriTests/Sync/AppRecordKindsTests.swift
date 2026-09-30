@@ -8,10 +8,12 @@ import Testing
 struct AppRecordKindsTests {
     @Test("サーバーの種類の名前の列挙と、過不足なく揃っていること")
     func matchesServerKindNames() {
-        let mismatch = AppRecordKinds.registry.mismatch(
-            withServerNames: ServerRecordKindNames.deviceNames)
+        let deviceNames = Set(AppRecordKinds.registry.names.map(\.serverName))
 
-        #expect(
-            mismatch.isEmpty, "サーバーにだけ: \(mismatch.onlyOnServer)、端末にだけ: \(mismatch.onlyOnDevice)")
+        let onlyOnServer = ServerRecordKindNames.names.subtracting(deviceNames)
+        let onlyOnDevice = deviceNames.subtracting(ServerRecordKindNames.names)
+
+        #expect(onlyOnServer.isEmpty, "サーバーにだけ: \(onlyOnServer)")
+        #expect(onlyOnDevice.isEmpty, "端末にだけ: \(onlyOnDevice)")
     }
 }

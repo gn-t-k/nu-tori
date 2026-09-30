@@ -25,7 +25,9 @@ struct SyncBoxMockTests {
             try await box.apply(
                 SyncBoxResult(
                     enqueuing: [entry],
-                    kindChanges: [KindChanges(kind: "note", changes: [.unknown(kind: "note")])]
+                    kindChanges: [
+                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
+                    ]
                 ))
 
             #expect(
@@ -34,7 +36,7 @@ struct SyncBoxMockTests {
                     .cache(changes: 1, afterSequence: nil),
                 ])
             #expect(try await box.pendingEntries() == [entry])
-            #expect(cache.appliedCount(of: "note") == 1)
+            #expect(cache.appliedCount(of: .accountSettings) == 1)
         }
     }
 
@@ -57,7 +59,9 @@ struct SyncBoxMockTests {
             try await box.apply(
                 SyncBoxResult(
                     resolvedWriteIds: [resolved.writeId],
-                    kindChanges: [KindChanges(kind: "note", changes: [.unknown(kind: "note")])]
+                    kindChanges: [
+                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
+                    ]
                 ))
 
             #expect(
@@ -81,7 +85,7 @@ struct SyncBoxMockTests {
             result = SyncBoxResult(
                 kindChanges: [
                     KindChanges(
-                        kind: "note",
+                        kind: .accountSettings,
                         changes: Array(repeating: .unknown(kind: "note"), count: 250))
                 ],
                 syncState: .fixture(afterSequence: 7)
@@ -98,7 +102,7 @@ struct SyncBoxMockTests {
                     .cache(changes: 100, afterSequence: nil),
                     .cache(changes: 50, afterSequence: 7),
                 ])
-            #expect(cache.appliedCount(of: "note") == 250)
+            #expect(cache.appliedCount(of: .accountSettings) == 250)
             #expect(box.state?.afterSequence == 7)
         }
     }
@@ -114,7 +118,9 @@ struct SyncBoxMockTests {
                 cache: RecordCacheMock(),
                 state: .fixture(afterSequence: 3))
             result = SyncBoxResult(
-                kindChanges: [KindChanges(kind: "note", changes: [.unknown(kind: "note")])],
+                kindChanges: [
+                    KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
+                ],
                 syncState: .fixture(afterSequence: 9)
             )
         }
@@ -139,10 +145,12 @@ struct SyncBoxMockTests {
 
         @Test("知らない種類だと投げること")
         func throwsUnknownKind() async throws {
-            await #expect(throws: UnknownRecordKindError(kind: "note")) {
+            await #expect(throws: UnknownRecordKindError.notRegistered(.accountSettings)) {
                 try await box.apply(
                     SyncBoxResult(
-                        kindChanges: [KindChanges(kind: "note", changes: [.unknown(kind: "note")])]
+                        kindChanges: [
+                            KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
+                        ]
                     ))
             }
         }
@@ -155,7 +163,7 @@ struct SyncBoxMockTests {
 
         init() {
             cache = RecordCacheMock()
-            cache.didApply(3, forKind: "note")
+            cache.didApply(3, forKind: .accountSettings)
             box = Box(
                 kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: cache,
                 pendingEntries: (0..<250).map { _ in RecordKindMock.entry(recordId: UUID()) },
@@ -169,7 +177,7 @@ struct SyncBoxMockTests {
             #expect(box.saves == [.pendingCleared(count: 250), .cacheCleared])
             #expect(try await box.pendingEntries().isEmpty)
             #expect(box.state == nil)
-            #expect(cache.appliedCount(of: "note") == 0)
+            #expect(cache.appliedCount(of: .accountSettings) == 0)
         }
     }
 }

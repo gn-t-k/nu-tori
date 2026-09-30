@@ -23,7 +23,7 @@ struct PendingWriteEntryTests {
         func hasNoPreviousInContent() throws {
             let entry = try write.entry()
 
-            #expect(entry.kind == "weight-record")
+            #expect(entry.kind == .weightRecord)
             #expect(try PendingWrite(entry: entry) == write)
             #expect(!String(decoding: entry.content, as: UTF8.self).contains("previous"))
         }
@@ -47,7 +47,7 @@ struct PendingWriteEntryTests {
                 """.utf8)
             entry = PendingEntry(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                kind: "weight-record", content: content)
+                kind: .weightRecord, content: content)
         }
 
         @Test("直す前の値は読み飛ばし、直した値の書き込みとして読めること")
@@ -65,7 +65,7 @@ struct PendingWriteEntryTests {
 
         @Test("種類の名前も読めること")
         func readsKindName() {
-            #expect(PendingWrite.kindName(ofVersion1Content: entry.content) == "weight-record")
+            #expect(PendingWrite.kindName(ofVersion1Content: entry.content) == .weightRecord)
         }
     }
 
@@ -83,7 +83,7 @@ struct PendingWriteEntryTests {
         func namesKind() throws {
             let entry = try write.entry()
 
-            #expect(entry.kind == "account-settings")
+            #expect(entry.kind == .accountSettings)
             #expect(try PendingWrite(entry: entry) == write)
         }
     }
@@ -109,7 +109,7 @@ struct PendingWriteEntryTests {
                 kind: try #require(PendingWrite.kindName(ofVersion1Content: content)),
                 content: content)
 
-            #expect(entry.kind == "weight-record")
+            #expect(entry.kind == .weightRecord)
             #expect(
                 try PendingWrite(entry: entry).operation
                     == .sourceDeletedWeightRecord(recordId: recordId))
@@ -122,10 +122,11 @@ struct PendingWriteEntryTests {
         func failsToRead() {
             let content = Data("{}".utf8)
             let entry = PendingEntry(
-                writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: "meal", content: content)
+                writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: .weightRecord,
+                content: content)
 
             #expect(PendingWrite.kindName(ofVersion1Content: content) == nil)
-            #expect(throws: PendingWrite.InvalidEntryError(kind: "meal")) {
+            #expect(throws: PendingWrite.InvalidEntryError(kind: .weightRecord)) {
                 try PendingWrite(entry: entry)
             }
         }

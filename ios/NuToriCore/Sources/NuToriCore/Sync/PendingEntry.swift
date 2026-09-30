@@ -5,11 +5,11 @@ public struct PendingEntry: Sendable, Equatable {
     public let writeId: UUID
     public let enqueuedAt: Date
     /// 記録の種類の名前。登録簿に無い名前の送り待ちを送ろうとすると、`UnknownRecordKindError` になる
-    public let kind: String
+    public let kind: RecordKindName
     /// 種類が決める中身。置き場は読まない
     public let content: Data
 
-    public init(writeId: UUID, enqueuedAt: Date, kind: String, content: Data) {
+    public init(writeId: UUID, enqueuedAt: Date, kind: RecordKindName, content: Data) {
         self.writeId = writeId
         self.enqueuedAt = enqueuedAt
         self.kind = kind

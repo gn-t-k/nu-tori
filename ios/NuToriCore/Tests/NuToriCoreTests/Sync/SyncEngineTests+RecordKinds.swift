@@ -69,13 +69,16 @@ extension SyncEngineTests {
 
             init() throws {
                 engine = .fixture(
-                    store: try .ok(pendingEntries: [RecordKindMock.entry(recordId: UUID())]),
+                    store: SyncBoxMock(
+                        kinds: RecordKindRegistry([WeightRecordKindMock()]),
+                        cache: RecordCacheMock(),
+                        pendingEntries: [RecordKindMock.entry(recordId: UUID())]),
                     transport: .sync())
             }
 
             @Test("送らずに、登録簿に無い種類として投げること")
             func throwsUnknownKind() async throws {
-                await #expect(throws: UnknownRecordKindError(kind: "note")) {
+                await #expect(throws: UnknownRecordKindError.notRegistered(.accountSettings)) {
                     _ = try await engine.sync()
                 }
             }
@@ -130,8 +133,8 @@ extension SyncEngineTests {
                 _ = try await engine.sync()
 
                 #expect(
-                    store.appliedKindChanges.map(\.kind) == ["note", "weight-record"])
-                #expect(store.cache.appliedCount(of: "note") == 2)
+                    store.appliedKindChanges.map(\.kind) == [.accountSettings, .weightRecord])
+                #expect(store.cache.appliedCount(of: .accountSettings) == 2)
                 #expect(store.records.count == 1)
                 #expect(store.appliedSyncStates.map(\.afterSequence) == [4])
             }

@@ -1,19 +1,15 @@
 import { and, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import { firstSignInTables } from "../../durable-object/first-sign-in-tables";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { WeightRecord } from "../domain/weight-record";
 import type { WeightRecordStore } from "../domain/weight-record-store";
 import { weightRecordTables } from "./weight-record-tables";
 
-const { firstSignIns } = firstSignInTables;
 const { syncWriteReceipts } = syncLedgerTables;
 const { weightRecords, importedWeightRecords, importedBodyFatPercentages, weightRecordDeletions } =
   weightRecordTables;
 
 export const createWeightRecordStore = (db: DrizzleSqliteDODatabase): WeightRecordStore => ({
-  findStartedOn: () =>
-    db.select({ startedOn: firstSignIns.startedOn }).from(firstSignIns).get()?.startedOn,
   find: (id) => {
     const row = db
       .select({
