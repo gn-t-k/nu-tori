@@ -136,11 +136,13 @@ check_ios_ui_test() {
     # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
     xcrun simctl bootstatus "$simulator" -b
     rm -rf "$results"
+    # テストの診断をシミュレータから集めると、テストが通った回でも時間切れの10分まで待つことがある。落ちた理由は xcresult で足りる
     xcodebuild \
         -project "$ios/NuTori.xcodeproj" \
         -scheme NuTori \
         -destination "id=$simulator" \
         -resultBundlePath "$results" \
+        -collect-test-diagnostics never \
         test-without-building
 }
 
