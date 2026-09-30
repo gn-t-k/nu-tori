@@ -1,9 +1,13 @@
 import { match } from "ts-pattern";
+import type { createRecordKinds } from "./create-record-kinds";
 import type { AccountSettings } from "../account-settings/domain/account-settings";
 import { computeCalendarDay } from "./compute-calendar-day";
 import { computeUsageEvents } from "./compute-usage-events";
 import { isTimeZoneName } from "./is-time-zone-name";
 import { isWithinAcceptedRange } from "../weight-record/domain/is-within-accepted-range";
+import type { RecordType } from "./record-type";
+import type { RegisteredRecordType } from "./sync-change";
+import { createSyncLedger, type RejectedWrite } from "./sync-ledger/sync-ledger";
 import type { SyncClientState } from "./sync-client-state";
 import type { SyncStore } from "./sync-store";
 import type { SyncWrite } from "./sync-write";
@@ -18,6 +22,7 @@ import type { WeightRecord } from "../weight-record/domain/weight-record";
 
 export const applySyncWrites = (
   store: SyncStore,
+  kinds: ReturnType<typeof createRecordKinds>,
   request: {
     clientState: SyncClientState;
     writes: readonly SyncWrite[];
@@ -27,157 +32,107 @@ export const applySyncWrites = (
 ): {
   results: { writeId: string; outcome: SyncWriteOutcome }[];
   usageEvents: UsageEvent[];
-} =>
-  store.transaction(() => {
-    const requestLogId = crypto.randomUUID();
-    const previousRequestReceivedAt = store.findLatestRequestReceivedAt();
-    store.insertPushRequestLog({
-      id: requestLogId,
-      receivedAt: request.receivedAt,
+} => {
+  const ledger = createSyncLedger<RecordType, RegisteredRecordType, SyncWrite, unknown>(
+    store,
+    kinds,
+  );
+  const startedOn = store.findStartedOn();
+  const pushed = ledger.push(request, (write, position) =>
+    applyLegacyWrite(store, startedOn, write, position),
+  );
+  return {
+    results: pushed.results,
+    usageEvents: computeUsageEvents(store, {
       clientState: request.clientState,
-      isFinalBatch: request.isFinalBatch,
-    });
-    const startedOn = store.findStartedOn();
-    const rejectedWrites: Extract<UsageEvent, { name: "sync_write_rejected" }>[] = [];
-    const results = request.writes.map((write, positionInRequest) => {
-      const previousOutcome = store.findWriteOutcome(write.id);
-      if (previousOutcome !== undefined) {
-        return { writeId: write.id, outcome: previousOutcome };
-      }
-      const applied = match(write)
-        .with({ type: "create_weight_record" }, ({ weightRecord }): AppliedWrite => ({
-          kind: "create",
-          recordType: "weight_record",
-          recordId: weightRecord.id,
-          outcome: applyCreateWeightRecord(store, weightRecord),
-        }))
-        .with({ type: "update_weight_record" }, ({ weightRecord }): AppliedWrite => ({
-          kind: "update",
-          recordType: "weight_record",
-          recordId: weightRecord.id,
-          outcome: applyUpdateWeightRecord(store, startedOn, weightRecord),
-        }))
-        .with({ type: "source_deleted_weight_record" }, ({ weightRecordId }): AppliedWrite => ({
-          kind: "source_deleted",
-          recordType: "weight_record",
-          recordId: weightRecordId,
-          outcome: applySourceDeletedWeightRecord(store, weightRecordId),
-        }))
-        .with({ type: "update_account_settings" }, ({ accountSettings }): AppliedWrite => ({
-          kind: "update",
-          recordType: "account_settings",
-          recordId: accountSettings.id,
-          outcome: { result: "applied" },
-          storedRecordId: applyAccountSettings(store, accountSettings),
-          sendsUsageData: accountSettings.sendsUsageData,
-        }))
-        .exhaustive();
-      const { recordType, outcome } = applied;
-      const receipt = {
-        writeId: write.id,
-        requestLogId,
-        positionInRequest,
-      };
-      match(applied)
-        .with({ kind: "create" }, (createWrite) => {
-          store.insertWriteReceipt({
-            ...receipt,
-            kind: createWrite.kind,
-            recordType: createWrite.recordType,
-            recordId: createWrite.recordId,
-            outcome: createWrite.outcome,
-          });
-        })
-        .with({ kind: "update", recordType: "weight_record" }, (updateWrite) => {
-          store.insertWriteReceipt({
-            ...receipt,
-            kind: updateWrite.kind,
-            recordType: updateWrite.recordType,
-            recordId: updateWrite.recordId,
-            outcome: updateWrite.outcome,
-          });
-        })
-        .with({ kind: "source_deleted" }, (deletedWrite) => {
-          store.insertWriteReceipt({
-            ...receipt,
-            kind: deletedWrite.kind,
-            recordType: deletedWrite.recordType,
-            recordId: deletedWrite.recordId,
-            outcome: deletedWrite.outcome,
-          });
-        })
-        .with({ recordType: "account_settings" }, (settingsWrite) => {
-          store.insertWriteReceipt({
-            ...receipt,
-            kind: settingsWrite.kind,
-            recordType: settingsWrite.recordType,
-            recordId: settingsWrite.recordId,
-            outcome: settingsWrite.outcome,
-          });
-        })
-        .exhaustive();
-      // 削除の印は書き込みの控えを指すので、控えを書いたあとに足す
-      if (applied.kind === "source_deleted" && applied.outcome.result === "applied") {
-        store.insertWeightRecordDeletion(write.id);
-      }
-      const changedRecordId = match(applied)
-        .with({ recordType: "weight_record" }, (weightWrite) =>
-          weightWrite.outcome.result === "applied" ||
-          weightWrite.outcome.result === "ignored_tombstone"
-            ? weightWrite.recordId
-            : undefined,
-        )
-        .with({ recordType: "account_settings" }, (settingsWrite) => {
-          store.insertAccountSettingChange({
-            writeId: write.id,
-            sendsUsageData: settingsWrite.sendsUsageData,
-          });
-          return settingsWrite.storedRecordId;
-        })
-        .exhaustive();
-      if (changedRecordId !== undefined) {
-        store.insertRecordChange({ recordType, recordId: changedRecordId, writeId: write.id });
-      }
-      match(applied)
-        .with(
-          { recordType: "weight_record", kind: "create", outcome: { result: "rejected" } },
-          ({ outcome: rejected }) => {
-            rejectedWrites.push({
-              name: "sync_write_rejected",
-              writeKind: "create",
-              recordType: "weight_record",
-              reason: rejected.reason,
-            });
-          },
-        )
-        .with(
-          { recordType: "weight_record", kind: "update", outcome: { result: "rejected" } },
-          ({ outcome: rejected }) => {
-            rejectedWrites.push({
-              name: "sync_write_rejected",
-              writeKind: "update",
-              recordType: "weight_record",
-              reason: rejected.reason,
-            });
-          },
-        )
-        .with({ kind: "create" }, () => undefined)
-        .with({ kind: "update", recordType: "weight_record" }, () => undefined)
-        .with({ kind: "source_deleted" }, () => undefined)
-        .with({ recordType: "account_settings" }, () => undefined)
-        .exhaustive();
-      return { writeId: write.id, outcome };
-    });
-    return {
-      results,
-      usageEvents: computeUsageEvents(store, {
-        clientState: request.clientState,
-        receivedAt: request.receivedAt,
-        previousRequestReceivedAt,
-        rejectedWrites,
-      }),
-    };
+      receivedAt: request.receivedAt,
+      previousRequestReceivedAt: pushed.previousRequestReceivedAt,
+      rejectedWrites: pushed.rejectedWrites.map((rejected) => ({
+        name: "sync_write_rejected",
+        ...rejected,
+      })),
+    }),
+  };
+};
+
+// 登録簿にない種類の書き込みを、今の道で当てる。冪等は帳簿が見る
+const applyLegacyWrite = (
+  store: SyncStore,
+  startedOn: string | undefined,
+  write: SyncWrite,
+  position: { requestLogId: string; positionInRequest: number },
+): { outcome: SyncWriteOutcome; rejection: RejectedWrite<RecordType> | undefined } => {
+  const applied = match(write)
+    .with({ type: "create_weight_record" }, ({ weightRecord }): AppliedWrite => ({
+      kind: "create",
+      recordType: "weight_record",
+      recordId: weightRecord.id,
+      outcome: applyCreateWeightRecord(store, weightRecord),
+    }))
+    .with({ type: "update_weight_record" }, ({ weightRecord }): AppliedWrite => ({
+      kind: "update",
+      recordType: "weight_record",
+      recordId: weightRecord.id,
+      outcome: applyUpdateWeightRecord(store, startedOn, weightRecord),
+    }))
+    .with({ type: "source_deleted_weight_record" }, ({ weightRecordId }): AppliedWrite => ({
+      kind: "source_deleted",
+      recordType: "weight_record",
+      recordId: weightRecordId,
+      outcome: applySourceDeletedWeightRecord(store, weightRecordId),
+    }))
+    .with({ type: "update_account_settings" }, ({ accountSettings }): AppliedWrite => ({
+      kind: "update",
+      recordType: "account_settings",
+      recordId: accountSettings.id,
+      outcome: { result: "applied" },
+      storedRecordId: applyAccountSettings(store, accountSettings),
+      sendsUsageData: accountSettings.sendsUsageData,
+    }))
+    .exhaustive();
+  const { recordType } = applied;
+  store.insertWriteReceipt({
+    writeId: write.id,
+    requestLogId: position.requestLogId,
+    positionInRequest: position.positionInRequest,
+    kind: applied.kind,
+    recordType: applied.recordType,
+    recordId: applied.recordId,
+    outcome: applied.outcome,
   });
+  // 削除の印は書き込みの控えを指すので、控えを書いたあとに足す
+  if (applied.kind === "source_deleted" && applied.outcome.result === "applied") {
+    store.insertWeightRecordDeletion(write.id);
+  }
+  const changedRecordId = match(applied)
+    .with({ recordType: "weight_record" }, (weightWrite) =>
+      weightWrite.outcome.result === "applied" || weightWrite.outcome.result === "ignored_tombstone"
+        ? weightWrite.recordId
+        : undefined,
+    )
+    .with({ recordType: "account_settings" }, (settingsWrite) => {
+      store.insertAccountSettingChange({
+        writeId: write.id,
+        sendsUsageData: settingsWrite.sendsUsageData,
+      });
+      return settingsWrite.storedRecordId;
+    })
+    .exhaustive();
+  if (changedRecordId !== undefined) {
+    store.insertRecordChange({ recordType, recordId: changedRecordId, writeId: write.id });
+  }
+  const rejection: RejectedWrite<RecordType> | undefined =
+    applied.outcome.result === "rejected" &&
+    applied.recordType === "weight_record" &&
+    applied.kind !== "source_deleted"
+      ? {
+          writeKind: applied.kind,
+          recordType: applied.recordType,
+          reason: applied.outcome.reason,
+        }
+      : undefined;
+  return { outcome: applied.outcome, rejection };
+};
 
 type AppliedWrite =
   | {

@@ -7,12 +7,18 @@ import {
   toSourceDeletedWeightRecordWrite,
   toUpdateWeightRecordWrite,
 } from "../../weight-record/http/to-weight-record-write";
+import { httpRecordKinds } from "./http-record-kinds";
 import type { syncWriteSchema } from "./sync-write-schema";
 
-export const toSyncWrite = (write: z.infer<typeof syncWriteSchema>): SyncWrite =>
-  match(write)
+export const toSyncWrite = (write: z.infer<typeof syncWriteSchema>): SyncWrite => {
+  const registered = httpRecordKinds.find((kind) => kind.writeTypes.includes(write.type));
+  if (registered !== undefined) {
+    return registered.toWrite(write);
+  }
+  return match(write)
     .with({ type: "create_weight_record" }, toCreateWeightRecordWrite)
     .with({ type: "update_weight_record" }, toUpdateWeightRecordWrite)
     .with({ type: "source_deleted_weight_record" }, toSourceDeletedWeightRecordWrite)
     .with({ type: "update_account_settings" }, toUpdateAccountSettingsWrite)
     .exhaustive();
+};
