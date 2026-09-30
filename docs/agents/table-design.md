@@ -14,6 +14,7 @@
 - 同期の約束: 「[端末とサーバーの同期とオフライン時の振る舞い](https://github.com/gn-t-k/nu-tori/issues/26)」の追記の「同期」
 - その仕様の決定チケット: 「仕様の分け方」の解決コメントの「仕様ごとに読む決定チケット」
 - 既存の表と、DB と移行の決まり: `server/AGENTS.md` の「DB」
+- 表の形の考え方（値が無いことの表し方、イベントの表、時刻の列の名付け）: `.claude/skills/erd-design/references/table-design-rules.md`。種類ごとの表（サブセットの表）にするかは、同じフォルダの `phase3-representation.md` の「ステップ1」。行数や SQL が減ることは、表をまとめる理由にしない
 
 ## `/erd-design` の既定と違う前提
 
