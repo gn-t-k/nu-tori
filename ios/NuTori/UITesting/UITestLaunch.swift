@@ -9,6 +9,9 @@
         let account: Account
         let appleSignIn: AppleSignIn
         let api: API
+        let healthAuthorization: UITestHealthStore.Authorization
+        let healthLatestKilograms: Double?
+        let healthWriteAuthorized: Bool
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -20,7 +23,11 @@
                 account: account,
                 appleSignIn: environment["UI_TEST_APPLE_SIGN_IN"].flatMap(
                     AppleSignIn.init(rawValue:)) ?? .succeeded,
-                api: environment["UI_TEST_API"].flatMap(API.init(rawValue:)) ?? .online
+                api: environment["UI_TEST_API"].flatMap(API.init(rawValue:)) ?? .online,
+                healthAuthorization: environment["UI_TEST_HEALTH_AUTHORIZATION"]
+                    == "not-yet-requested" ? .notYetRequested : .alreadyRequested,
+                healthLatestKilograms: environment["UI_TEST_HEALTH_LATEST_KG"].flatMap(Double.init),
+                healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied"
             )
         }
 
@@ -51,6 +58,14 @@
                 transport: StubAPITransport(behavior: transportBehavior),
                 sessionToken: { try? await keychain.sessionToken() }
             )
+            let health = HealthSyncSession.live(
+                syncStore: store,
+                healthStore: UITestHealthStore(
+                    authorization: healthAuthorization,
+                    latestKilograms: healthLatestKilograms,
+                    writeAuthorized: healthWriteAuthorized
+                )
+            )
             let session = AccountSession(
                 client: client,
                 keychain: keychain,
@@ -58,7 +73,7 @@
                 syncStore: store,
                 appleCredentials: AuthorizedAppleCredentialChecker(),
                 backgroundTransfers: PlaceholderBackgroundTransferStore(),
-                healthAnchors: PlaceholderHealthAnchorStore(),
+                healthAnchors: store,
                 analytics: PlaceholderAnalyticsSession(),
                 errorReporting: PlaceholderErrorReportingSession(),
                 timeZone: { .current },
@@ -68,13 +83,14 @@
                 store: store,
                 client: client,
                 accountSession: session,
+                health: health,
                 deviceId: { deviceStore.loadOrCreateDeviceId() },
                 hasSession: { (try? await keychain.sessionToken()) != nil }
             )
             return AppRuntime(
                 container: store.container,
                 recordSync: sync,
-                model: RootModel(accountSession: session, recordSync: sync)
+                model: RootModel(accountSession: session, recordSync: sync, health: health)
             )
         }
 

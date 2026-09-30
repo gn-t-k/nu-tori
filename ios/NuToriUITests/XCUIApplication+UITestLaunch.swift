@@ -4,12 +4,20 @@ extension XCUIApplication {
     @MainActor static func launched(
         account: String,
         appleSignIn: String = "succeeded",
-        api: String = "online"
+        api: String = "online",
+        healthAuthorization: String = "already-requested",
+        healthLatestKilograms: String? = nil,
+        healthWrite: String = "authorized"
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
         app.launchEnvironment["UI_TEST_APPLE_SIGN_IN"] = appleSignIn
         app.launchEnvironment["UI_TEST_API"] = api
+        app.launchEnvironment["UI_TEST_HEALTH_AUTHORIZATION"] = healthAuthorization
+        if let healthLatestKilograms {
+            app.launchEnvironment["UI_TEST_HEALTH_LATEST_KG"] = healthLatestKilograms
+        }
+        app.launchEnvironment["UI_TEST_HEALTH_WRITE"] = healthWrite
         app.launch()
         return app
     }

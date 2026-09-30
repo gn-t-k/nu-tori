@@ -4,7 +4,7 @@ import SwiftData
 
 /// 記録、送り待ち、同期の状態を1つの SwiftData に置く。保存はメインのコンテキストでだけ行う。
 /// バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
-nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
+nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unchecked Sendable {
     let container: ModelContainer
 
     init(inMemory: Bool) throws {
@@ -25,7 +25,15 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
         }
     }
 
-    func pendingWrites() async throws -> [PendingWrite] {
+    func weightRecords() async throws -> [WeightRecord] {
+        try await onMain { context in
+            try context.fetch(FetchDescriptor<CachedWeightRecord>()).compactMap {
+                $0.weightRecord()
+            }
+        }
+    }
+
+    func pendingWritesOldestFirst() async throws -> [PendingWrite] {
         try await onMain { context in
             let descriptor = FetchDescriptor<CachedPendingWrite>(
                 sortBy: [SortDescriptor(\.enqueuedAt)])
@@ -74,6 +82,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
             // メインのコンテキストを長く止めない。最後の保存で通し番号も書くので、途中で落ちても取り直しで揃う
             let batchSize = 100
             if changes.records.isEmpty {
+                try Self.remove(changes.removedRecordIds, in: context)
                 try Self.write(changes.state, in: context)
                 try context.save()
                 return
@@ -85,6 +94,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
                     try Self.upsert(record, in: context)
                 }
                 if end == changes.records.count {
+                    try Self.remove(changes.removedRecordIds, in: context)
                     try Self.write(changes.state, in: context)
                 }
                 try context.save()
@@ -98,6 +108,40 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
             try context.delete(model: CachedWeightRecord.self)
             try context.delete(model: CachedPendingWrite.self)
             try context.delete(model: CachedSyncState.self)
+            try context.delete(model: CachedHealthSyncState.self)
+            try context.save()
+        }
+    }
+
+    func healthSyncState() async throws -> HealthSyncState {
+        try await onMain { context in
+            try Self.cachedHealthSyncState(in: context)?.healthSyncState() ?? .initial
+        }
+    }
+
+    func saveHealthSyncState(_ state: HealthSyncState) async throws {
+        try await onMain { context in
+            try Self.write(state, in: context)
+            try context.save()
+        }
+    }
+
+    func applyHealthImport(_ batch: HealthImportBatch) async throws {
+        try await onMain { context in
+            for record in batch.records {
+                try Self.upsert(record, in: context)
+            }
+            for write in batch.pendingWrites {
+                context.insert(try CachedPendingWrite(write: write))
+            }
+            try Self.write(batch.state, in: context)
+            try context.save()
+        }
+    }
+
+    func deleteAll() async throws {
+        try await onMain { context in
+            try context.delete(model: CachedHealthSyncState.self)
             try context.save()
         }
     }
@@ -113,6 +157,8 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
                 switch write.operation {
                 case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
                     try Self.upsert(record, in: context)
+                case .sourceDeletedWeightRecord:
+                    break
                 }
             }
             if state != nil || !pendingWrites.isEmpty {
@@ -168,8 +214,35 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
         }
     }
 
+    @MainActor private static func remove(_ recordIds: [UUID], in context: ModelContext) throws {
+        for recordId in recordIds {
+            if let row = try cachedRecord(id: recordId, in: context) {
+                context.delete(row)
+            }
+        }
+    }
+
+    @MainActor private static func cachedHealthSyncState(in context: ModelContext) throws
+        -> CachedHealthSyncState?
+    {
+        let key = CachedHealthSyncState.onlyKey
+        var descriptor = FetchDescriptor<CachedHealthSyncState>(
+            predicate: #Predicate { $0.singletonKey == key })
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
+    }
+
+    @MainActor private static func write(_ state: HealthSyncState, in context: ModelContext) throws
+    {
+        if let existing = try cachedHealthSyncState(in: context) {
+            existing.apply(state)
+        } else {
+            context.insert(CachedHealthSyncState(state))
+        }
+    }
+
     private static func openContainer(inMemory: Bool) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: RecordStoreSchemaV1.self)
+        let schema = Schema(versionedSchema: RecordStoreSchemaV2.self)
         if inMemory {
             return try ModelContainer(
                 for: schema,

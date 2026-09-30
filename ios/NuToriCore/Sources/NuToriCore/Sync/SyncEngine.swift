@@ -11,7 +11,8 @@ public actor SyncEngine {
         device: SyncDevice,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
-        readableKindsVersion: Int
+        readableKindsVersion: Int,
+        weightHealthExport: any WeightHealthExport
     ) {
         self.store = store
         self.client = client
@@ -19,9 +20,11 @@ public actor SyncEngine {
         self.timeZone = timeZone
         self.now = now
         self.readableKindsVersion = readableKindsVersion
+        self.weightHealthExport = weightHealthExport
     }
 
-    public func save(_ write: WeightEntry.Write) async throws {
+    @discardableResult
+    public func save(_ write: WeightEntry.Write) async throws -> WeightRecord {
         switch write {
         case .create(let kilograms, let instant, let timeZone):
             let record = WeightRecord(
@@ -33,6 +36,7 @@ public actor SyncEngine {
                 version: 1
             )
             try await store.save(record, enqueuing: pendingWrite(.createWeightRecord(record)))
+            return record
         case .correct(let record):
             guard let previous = try await store.weightRecord(id: record.id) else {
                 throw UnknownRecordError(recordId: record.id)
@@ -41,6 +45,7 @@ public actor SyncEngine {
                 record,
                 enqueuing: pendingWrite(.correctWeightRecord(record, previous: previous))
             )
+            return record
         }
     }
 
@@ -72,6 +77,7 @@ public actor SyncEngine {
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
     private let readableKindsVersion: Int
+    private let weightHealthExport: any WeightHealthExport
 
     private func pendingWrite(_ operation: PendingWrite.Operation) -> PendingWrite {
         PendingWrite(writeId: UUID(), enqueuedAt: now(), operation: operation)
@@ -178,6 +184,8 @@ public actor SyncEngine {
             }
             switch result {
             case .pulled(let page):
+                let incoming = page.changes.compactMap(\.weightRecord)
+                let revised = try await revisedManualRecords(in: incoming)
                 state = SyncState(
                     afterSequence: page.nextAfterSequence,
                     hasCompletedInitialPull: state.hasCompletedInitialPull || !page.hasMore,
@@ -186,11 +194,12 @@ public actor SyncEngine {
                 )
                 try await store.apply(
                     PulledChanges(
-                        records: page.changes.compactMap(\.weightRecord),
+                        records: incoming,
                         removedRecordIds: page.changes.compactMap(\.removedRecordId),
                         state: state
                     )
                 )
+                try await exportRevisedRecords(revised)
                 if !page.hasMore {
                     return nil
                 }
@@ -225,6 +234,31 @@ public actor SyncEngine {
         )
         try await store.saveSyncState(restarted)
         return restarted
+    }
+
+    private func revisedManualRecords(in incoming: [WeightRecord]) async throws -> [WeightRecord] {
+        var revised: [WeightRecord] = []
+        for record in incoming {
+            guard case .manual = record.inputSource else { continue }
+            guard let cached = try await store.weightRecord(id: record.id),
+                record.version > cached.version
+            else { continue }
+            revised.append(record)
+        }
+        return revised
+    }
+
+    /// 書き直しに失敗しても、届いた記録はキャッシュに残す。次に版が上がったときに書き直す
+    private func exportRevisedRecords(_ records: [WeightRecord]) async throws {
+        for record in records {
+            do {
+                try await weightHealthExport.exportWeightRecord(record)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                continue
+            }
+        }
     }
 
     private func clientState(pendingWrites: ArraySlice<PendingWrite>) -> SyncClientState {

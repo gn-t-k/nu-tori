@@ -4,6 +4,7 @@ import SwiftUI
 
 struct TimelineScreen: View {
     var rejectedLines: [RejectedWeightLine]
+    var prepareWeightEntry: () async -> Void
     var saveWeight: (WeightEntry.Write) async -> Void
 
     var body: some View {
@@ -43,6 +44,7 @@ struct TimelineScreen: View {
     @Query private var syncStates: [CachedSyncState]
     @State private var visibleDay: CalendarDay?
     @State private var showsWeightEntry = false
+    @State private var isPreparingWeightEntry = false
 
     private var showsLoading: Bool {
         syncStates.first?.hasCompletedInitialPull != true
@@ -136,7 +138,13 @@ struct TimelineScreen: View {
         let unrecorded = !records.contains { $0.day == today }
         return HStack {
             Button {
-                showsWeightEntry = true
+                guard !isPreparingWeightEntry else { return }
+                isPreparingWeightEntry = true
+                Task {
+                    await prepareWeightEntry()
+                    isPreparingWeightEntry = false
+                    showsWeightEntry = true
+                }
             } label: {
                 Image(systemName: "scalemass.fill")
                     .frame(width: 44, height: 44)
@@ -147,6 +155,7 @@ struct TimelineScreen: View {
                     .foregroundStyle(unrecorded ? Color.white : Color.accentColor)
             }
             .buttonStyle(.plain)
+            .disabled(isPreparingWeightEntry)
             .accessibilityLabel("体重")
             .accessibilityIdentifier(unrecorded ? "composer-weight-unrecorded" : "composer-weight")
             Spacer(minLength: 0)

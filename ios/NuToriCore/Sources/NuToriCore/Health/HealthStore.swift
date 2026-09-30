@@ -1,6 +1,6 @@
 public import Foundation
 
-/// ヘルスケアに触れる層。本物（HealthKit）は #121 でつなぎ、ここでは差し替えられる形だけを決める
+/// ヘルスケアに触れる層。HealthKit の実装と、UI テストの起動の値による差し替えが、これを実装する
 public protocol HealthStore: Sendable {
     func authorizationRequestStatus() async throws -> HealthAuthorizationRequestStatus
 

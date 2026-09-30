@@ -111,6 +111,8 @@ extension WeightRecord {
     }
 }
 
+extension HealthSyncEngine: WeightHealthExport {}
+
 extension HealthWeightWrite {
     fileprivate init(_ record: WeightRecord) {
         self.init(

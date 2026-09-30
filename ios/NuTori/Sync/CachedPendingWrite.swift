@@ -25,6 +25,7 @@ nonisolated final class CachedPendingWrite {
 private nonisolated enum StoredPendingOperation: Codable {
     case create(StoredWeightRecord)
     case correct(record: StoredWeightRecord, previous: StoredWeightRecord)
+    case sourceDeleted(recordId: UUID)
 
     init(_ operation: PendingWrite.Operation) {
         switch operation {
@@ -33,6 +34,8 @@ private nonisolated enum StoredPendingOperation: Codable {
         case .correctWeightRecord(let record, let previous):
             self = .correct(
                 record: StoredWeightRecord(record), previous: StoredWeightRecord(previous))
+        case .sourceDeletedWeightRecord(let recordId):
+            self = .sourceDeleted(recordId: recordId)
         }
     }
 
@@ -43,6 +46,8 @@ private nonisolated enum StoredPendingOperation: Codable {
         case .correct(let record, let previous):
             .correctWeightRecord(
                 try record.weightRecord(), previous: try previous.weightRecord())
+        case .sourceDeleted(let recordId):
+            .sourceDeletedWeightRecord(recordId: recordId)
         }
     }
 }

@@ -10,9 +10,10 @@ final class RootModel {
         return lines
     }
 
-    init(accountSession: AccountSession, recordSync: RecordSync) {
+    init(accountSession: AccountSession, recordSync: RecordSync, health: HealthSyncSession) {
         self.accountSession = accountSession
         self.recordSync = recordSync
+        self.health = health
         recordSync.onDestination = { [weak self] destination in
             self?.screen = Screen(destination)
         }
@@ -47,6 +48,10 @@ final class RootModel {
 
     func saveWeight(_ write: WeightEntry.Write) async {
         try? await recordSync.save(write)
+    }
+
+    func prepareWeightEntry() async {
+        await health.prepareForFirstWeightEntry()
     }
 
     func noteAppBackgrounded() {
@@ -93,6 +98,7 @@ final class RootModel {
 
     private let accountSession: AccountSession
     private let recordSync: RecordSync
+    private let health: HealthSyncSession
     private var rejectionLines = RejectionLines.accepting([])
 
     private enum RejectionLines {
@@ -127,7 +133,9 @@ final class RootModel {
     private func syncIfShowingTimeline() async {
         switch screen {
         case .loadingTimeline, .timeline:
-            _ = try? await recordSync.sync()
+            await health.aroundTimelineSync {
+                _ = try await self.recordSync.sync()
+            }
         case .opening, .signIn:
             return
         }
