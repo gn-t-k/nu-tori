@@ -111,15 +111,15 @@ check_ios_app() {
         echo "ios-app は macOS でだけ動く" >&2
         return 1
     fi
+    # Linux と macOS で Foundation の振る舞いが違うことがあるので、macOS でも回す
+    check_ios_package
+
     local simulator boot_log boot_pid results="$ios/.build/NuTori.xcresult"
     simulator="$(latest_iphone_simulator)"
-    # 起動をテストの中でさせると、アプリの起動が時間切れになることがある。起動に数分かかるので、パッケージのテストとビルドのあいだに裏で済ませる
+    # 起動をテストの中でさせると、アプリの起動が時間切れになることがある。起動に数分かかるので、アプリのビルドのあいだに裏で済ませる
     boot_log="$(mktemp)"
     xcrun simctl bootstatus "$simulator" -b > "$boot_log" 2>&1 &
     boot_pid=$!
-
-    # Linux と macOS で Foundation の振る舞いが違うことがあるので、macOS でも回す
-    check_ios_package
 
     step "アプリのビルド"
     xcodebuild \
