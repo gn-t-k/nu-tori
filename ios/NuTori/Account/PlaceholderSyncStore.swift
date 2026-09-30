@@ -14,7 +14,7 @@ nonisolated struct PlaceholderSyncStore: SyncStore {
         throw StoreNotAvailableError()
     }
 
-    func pendingWrites() async throws -> [PendingWrite] {
+    func pendingWritesOldestFirst() async throws -> [PendingWrite] {
         queuedWrites
     }
 
