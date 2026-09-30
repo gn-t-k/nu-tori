@@ -18,7 +18,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         kinds.synced
     }
 
-    /// 登録簿の種類（今はアカウントの設定）は送り待ちの箱の道で、無い種類は今の道で当てる
+    /// 登録簿の種類（今は体重記録とアカウントの設定）は送り待ちの箱の道で、無い種類は今の道で当てる
     @MainActor init(
         inMemory: Bool,
         kinds: RecordKindRegistry<ModelContext> = AppRecordKinds.registry
@@ -60,7 +60,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {
         try await onMain { stores in
-            try Self.cachedRecord(id: id, in: stores.cache)?.weightRecord()
+            try CachedWeightRecord.find(id: id, in: stores.cache)?.weightRecord()
         }
     }
 
@@ -75,7 +75,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws {
         try await onMain { stores in
             try Self.enqueue(write, in: stores.pending)
-            try Self.upsert(record, in: stores.cache)
+            try CachedWeightRecord.upsert(record, in: stores.cache)
             try stores.cache.save()
         }
     }
@@ -160,7 +160,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             try Self.write(batch.state, in: stores.pending)
             try stores.pending.save()
             for record in batch.records {
-                try Self.upsert(record, in: stores.cache)
+                try CachedWeightRecord.upsert(record, in: stores.cache)
             }
             try stores.cache.save()
         }
@@ -201,7 +201,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             for write in pendingWrites {
                 switch write.operation {
                 case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
-                    try Self.upsert(record, in: stores.cache)
+                    try CachedWeightRecord.upsert(record, in: stores.cache)
                 case .updateAccountSettings(let settings):
                     try CachedAccountSettings.write(settings, in: stores.cache)
                 case .sourceDeletedWeightRecord:
@@ -244,20 +244,6 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         try context.save()
     }
 
-    @MainActor private static func cachedRecord(id: UUID, in context: ModelContext) throws
-        -> CachedWeightRecord?
-    {
-        try context.fetch(FetchDescriptor<CachedWeightRecord>()).first { $0.recordId == id }
-    }
-
-    @MainActor private static func upsert(_ record: WeightRecord, in context: ModelContext) throws {
-        if let existing = try cachedRecord(id: record.id, in: context) {
-            try existing.apply(record)
-        } else {
-            context.insert(try CachedWeightRecord(record))
-        }
-    }
-
     @MainActor private static func cachedSyncState(in context: ModelContext) throws
         -> CachedSyncState?
     {
@@ -286,9 +272,9 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
             for reversion in result.reversions {
                 switch reversion {
                 case .restore(let record):
-                    try upsert(record, in: context)
+                    try CachedWeightRecord.upsert(record, in: context)
                 case .remove(let recordId):
-                    if let row = try cachedRecord(id: recordId, in: context) {
+                    if let row = try CachedWeightRecord.find(id: recordId, in: context) {
                         context.delete(row)
                     }
                 }
@@ -324,7 +310,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         while start < changes.records.count {
             let end = min(start + batchSize, changes.records.count)
             for record in changes.records[start..<end] {
-                try upsert(record, in: context)
+                try CachedWeightRecord.upsert(record, in: context)
             }
             if end == changes.records.count {
                 try finish(changes, in: context)
@@ -337,7 +323,7 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
     @MainActor private static func finish(_ changes: PulledChanges, in context: ModelContext) throws
     {
         for recordId in changes.removedRecordIds {
-            if let row = try cachedRecord(id: recordId, in: context) {
+            if let row = try CachedWeightRecord.find(id: recordId, in: context) {
                 context.delete(row)
             }
         }

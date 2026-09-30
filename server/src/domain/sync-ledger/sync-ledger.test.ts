@@ -17,7 +17,6 @@ const clientState: SyncClientState = {
 const receivedAt = new Date("2026-01-01T00:00:00Z");
 
 const pullRequest = (afterSequence: number) => ({ clientState, afterSequence, receivedAt });
-const pullOther = () => "unregistered" as const;
 
 type OtherWrite = { id: string; type: "other_write" };
 const pushRequest = (writes: (TestRecordWrite | OtherWrite)[]) => ({
@@ -44,14 +43,8 @@ describe("同期の帳簿", () => {
       number
     >
   >;
-  let unregisteredWrites: string[];
-  const applyUnregistered = (write: TestRecordWrite | OtherWrite) => {
-    unregisteredWrites.push(write.id);
-    return { outcome: { result: "applied" as const }, rejection: undefined };
-  };
   beforeEach(() => {
     operations = [];
-    unregisteredWrites = [];
     ledgerStore = createMemoryLedgerStore(operations);
     ledger = createSyncLedger<
       "test_record" | "other",
@@ -63,34 +56,27 @@ describe("同期の帳簿", () => {
 
   describe("書き込みを送るとき", () => {
     test("要求の控え、書き込みの控え、種類の行、変更の並びの順に書くこと", () => {
-      ledger.push(pushRequest([create("write-1", "record-1")]), applyUnregistered);
+      ledger.push(pushRequest([create("write-1", "record-1")]));
       expect(operations).toEqual(["request_log", "receipt", "record", "change"]);
     });
 
     test("削除の印は、控えのあとに書くこと", () => {
       ledger.push(
         pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
-        applyUnregistered,
       );
       expect(operations).toEqual(["request_log", "receipt", "record", "deletion", "change"]);
     });
 
     test("同じ書き込みの ID が再び届いたら、最初の結果を返し、何も書き足さないこと", () => {
-      const first = ledger.push(pushRequest([create("write-1", "record-1")]), applyUnregistered);
+      const first = ledger.push(pushRequest([create("write-1", "record-1")]));
       operations.length = 0;
-      const second = ledger.push(
-        pushRequest([create("write-1", "record-1", 500)]),
-        applyUnregistered,
-      );
+      const second = ledger.push(pushRequest([create("write-1", "record-1", 500)]));
       expect(second.results).toEqual(first.results);
       expect(operations).toEqual(["request_log"]);
     });
 
     test("受け付けなかった書き込みは、変更の並びに載せず、受け付けなかった1件として返すこと", () => {
-      const pushed = ledger.push(
-        pushRequest([create("write-1", "record-1", 500)]),
-        applyUnregistered,
-      );
+      const pushed = ledger.push(pushRequest([create("write-1", "record-1", 500)]));
       expect(pushed.rejectedWrites).toEqual([
         { writeKind: "create", recordType: "test_record", reason: "out_of_range" },
       ]);
@@ -99,13 +85,12 @@ describe("同期の帳簿", () => {
   });
 
   describe("登録簿にない書き込みが混ざるとき", () => {
-    test("登録簿の書き込みは帳簿の道、そうでない書き込みは今の道で当てること", () => {
-      ledger.push(
-        pushRequest([create("write-1", "record-1"), { id: "write-2", type: "other_write" }]),
-        applyUnregistered,
-      );
-      expect(unregisteredWrites).toEqual(["write-2"]);
-      expect(operations).toEqual(["request_log", "receipt", "record", "change"]);
+    test("不具合として投げること", () => {
+      expect(() =>
+        ledger.push(
+          pushRequest([create("write-1", "record-1"), { id: "write-2", type: "other_write" }]),
+        ),
+      ).toThrow("登録簿に無い書き込み: other_write");
     });
   });
 
@@ -118,9 +103,8 @@ describe("同期の帳簿", () => {
           create("write-3", "record-2"),
           { id: "write-4", type: "delete_test_record", recordId: "record-2" },
         ]),
-        applyUnregistered,
       );
-      const pulled = ledger.pull(pullRequest(0), pullOther);
+      const pulled = ledger.pull(pullRequest(0));
       expect(pulled.changes).toEqual([
         {
           sequence: 2,
@@ -141,9 +125,9 @@ describe("同期の帳簿", () => {
       const writes = Array.from({ length: 501 }, (_, index) =>
         create(`write-${index}`, `record-${index}`),
       );
-      ledger.push(pushRequest(writes), applyUnregistered);
-      const firstPage = ledger.pull(pullRequest(0), pullOther);
-      const secondPage = ledger.pull(pullRequest(firstPage.lastSequence ?? 0), pullOther);
+      ledger.push(pushRequest(writes));
+      const firstPage = ledger.pull(pullRequest(0));
+      const secondPage = ledger.pull(pullRequest(firstPage.lastSequence ?? 0));
       expect([
         firstPage.changes.length,
         firstPage.hasMore,
@@ -152,10 +136,9 @@ describe("同期の帳簿", () => {
       ]).toEqual([500, true, 1, false]);
     });
 
-    test("登録簿にない種類の変更は今の道で読むこと", () => {
+    test("登録簿にない種類の変更は、不具合として投げること", () => {
       ledgerStore.insertRecordChange({ recordType: "other", recordId: "x", writeId: "w" });
-      const pulled = ledger.pull(pullRequest(0), pullOther);
-      expect(pulled.changes).toEqual(["unregistered"]);
+      expect(() => ledger.pull(pullRequest(0))).toThrow("登録簿に無い種類の変更: other");
     });
   });
 
