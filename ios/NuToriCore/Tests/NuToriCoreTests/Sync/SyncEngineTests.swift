@@ -2,6 +2,7 @@ import Foundation
 import HTTPTypes
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 @Suite("同期の働き")
@@ -22,7 +23,7 @@ struct SyncEngineTests {
                 secondWrite = .create(
                     kilograms: 72.5, instant: SyncEngine.fixtureNow, timeZone: timeZone)
                 store = .ok()
-                engine = .fixture(store: store, transport: .ok())
+                engine = .fixture(store: store, transport: .sync())
             }
 
             @Test("手で記録した版 1 の記録を、送り待ちに1件足す保存と同じ保存で置くこと")
@@ -68,7 +69,7 @@ struct SyncEngineTests {
                     version: 2
                 )
                 store = .ok(records: [original])
-                engine = .fixture(store: store, transport: .ok())
+                engine = .fixture(store: store, transport: .sync())
             }
 
             @Test("直した記録を置き、直す前の記録を添えた送り待ちを1件足すこと")
@@ -92,7 +93,7 @@ struct SyncEngineTests {
             init() throws {
                 unknown = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 store = .ok()
-                engine = .fixture(store: store, transport: .ok())
+                engine = .fixture(store: store, transport: .sync())
             }
 
             @Test("送り待ちに足さず、知らない記録だと投げること")
@@ -116,7 +117,7 @@ struct SyncEngineTests {
                 write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
                 reporting = .ok()
                 engine = .fixture(
-                    store: .error(Failure()), transport: .ok(), errorReporting: reporting)
+                    store: .error(Failure()), transport: .sync(), errorReporting: reporting)
             }
 
             @Test("置き場のエラーをそのまま投げ、キャッシュの保存の失敗として送ること")
@@ -138,7 +139,8 @@ struct SyncEngineTests {
                 write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
                 reporting = .ok()
                 engine = .fixture(
-                    store: .error(URLError(.timedOut)), transport: .ok(), errorReporting: reporting)
+                    store: .error(URLError(.timedOut)), transport: .sync(),
+                    errorReporting: reporting)
             }
 
             @Test("送らず、失敗を呼び出し側に返すこと")
@@ -160,7 +162,7 @@ struct SyncEngineTests {
                 write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
                 reporting = .ok()
                 engine = .fixture(
-                    store: .error(CancellationError()), transport: .ok(),
+                    store: .error(CancellationError()), transport: .sync(),
                     errorReporting: reporting)
             }
 
@@ -196,7 +198,7 @@ struct SyncEngineTests {
                         .creating(records[2]),
                     ]
                 )
-                transport = .ok()
+                transport = .sync()
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -245,7 +247,7 @@ struct SyncEngineTests {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 store = .ok(pendingWrites: (0..<501).map { _ in .creating(record) })
-                transport = .ok()
+                transport = .sync()
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -270,7 +272,7 @@ struct SyncEngineTests {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 store = .ok(records: [record], pendingWrites: [.creating(record)])
-                transport = .ok(pushStatus: .tooManyRequests)
+                transport = .sync(pushStatus: .tooManyRequests)
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -336,7 +338,7 @@ struct SyncEngineTests {
                 )
                 engine = .fixture(
                     store: store,
-                    transport: .ok(rejectedWriteIndexes: [0, 1])
+                    transport: .sync(rejectedWriteIndexes: [0, 1])
                 )
             }
 
@@ -392,7 +394,7 @@ struct SyncEngineTests {
                         )
                     ]
                 )
-                transport = .ok(rejectedWriteIndexes: [0])
+                transport = .sync(rejectedWriteIndexes: [0])
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -436,7 +438,7 @@ struct SyncEngineTests {
                         .correcting(second, previous: first),
                     ]
                 )
-                engine = .fixture(store: store, transport: .ok(rejectedWriteIndexes: [0, 1]))
+                engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0, 1]))
             }
 
             @Test("サーバーにある、いちばん前の状態に戻すこと")
@@ -458,7 +460,7 @@ struct SyncEngineTests {
 
             init() {
                 store = .ok()
-                transport = .ok(pullPages: [
+                transport = .sync(pullPages: [
                     """
                     {"changes":[{"sequence":1,"kind":"weight_record","recordId":"00000000-0000-4000-8000-0000000000b1",
                       "record":{"id":"00000000-0000-4000-8000-0000000000b1","weightKg":72.4,
@@ -517,7 +519,7 @@ struct SyncEngineTests {
                 store = .ok(records: [local])
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[{"sequence":3,"kind":"weight_record","recordId":"00000000-0000-4000-8000-0000000000b1",
                           "record":{"id":"00000000-0000-4000-8000-0000000000b1","weightKg":71.25,
@@ -580,7 +582,7 @@ struct SyncEngineTests {
                 store = .ok(records: [removed, kept])
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":6,"kind":"weight_record_deletion","recordId":"\(removedId)","record":{}},
@@ -617,7 +619,7 @@ struct SyncEngineTests {
                 store = .ok()
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":4,"kind":"meal","recordId":"x","record":{"calories":500}},
@@ -652,7 +654,7 @@ struct SyncEngineTests {
                     state: .fixture(
                         afterSequence: 42, hasCompletedInitialPull: true, readableKindsVersion: 1)
                 )
-                transport = .ok()
+                transport = .sync()
                 engine = .fixture(store: store, transport: transport, readableKindsVersion: 2)
             }
 
@@ -673,7 +675,7 @@ struct SyncEngineTests {
             let engine: SyncEngine
 
             init() {
-                transport = .ok()
+                transport = .sync()
                 engine = .fixture(
                     store: .ok(
                         state: .fixture(
@@ -726,7 +728,7 @@ struct SyncEngineTests {
                 export = .ok()
                 engine = .fixture(
                     store: .ok(records: [cachedManual, cachedImported]),
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":8,"kind":"weight_record","recordId":"\(revisedId.uuidString)",
@@ -769,7 +771,7 @@ struct SyncEngineTests {
                 store = .ok(records: [revised])
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":8,"kind":"weight_record","recordId":"\(revised.id.uuidString)",
