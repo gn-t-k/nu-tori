@@ -11,11 +11,9 @@ import {
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 import { app } from "../app";
 import { enableUsageEventSending } from "./testing/enable-usage-event-sending";
-import { pullSyncChanges } from "./testing/pull-sync-changes";
-import { pushSyncWrites } from "./testing/push-sync-writes";
+import { pullSyncChanges, type PullResult } from "./testing/pull-sync-changes";
+import { pushSyncWrites, type PushResults } from "./testing/push-sync-writes";
 import { readRows } from "./testing/read-rows";
-import type { PullResult } from "./testing/pull-result";
-import type { PushResults } from "./testing/push-results";
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";

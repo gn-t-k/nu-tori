@@ -1,9 +1,8 @@
 import { match } from "ts-pattern";
 import { computeCalendarDay } from "../../domain/compute-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
-import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
-import type { WriteDecision } from "../../domain/sync-ledger/write-decision";
+import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import type { WriteKind } from "../../domain/sync-ledger/write-kind";
 import type { SyncWriteOutcome } from "../../domain/sync-write-outcome";
 import { isWithinAcceptedRange } from "./is-within-accepted-range";

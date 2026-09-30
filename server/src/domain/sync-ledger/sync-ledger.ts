@@ -1,12 +1,14 @@
 import type { SyncClientState } from "../sync-client-state";
+import type { RejectionReason } from "../rejection-reason";
 import type { CurrentRecord } from "./current-record";
+import type { LedgerChange } from "./ledger-change";
 import type { LedgerStore } from "./ledger-store";
 import type { PushedResult } from "./pushed-result";
 import type { RecordKind } from "./record-kind";
-import type { RejectedWrite } from "./rejected-write";
-import type { LedgerChange } from "./ledger-change";
 import type { WriteBase } from "./write-base";
-import { WriteReceiptId } from "./write-receipt-id";
+import type { WriteKind } from "./write-kind";
+
+export type { WriteReceiptId };
 
 // 登録簿にない種類の書き込み・変更は、型で来ない。実行時に来たら不具合として投げる
 export const createSyncLedger = <
@@ -149,4 +151,19 @@ export const createSyncLedger = <
     });
 
   return { push, pull };
+};
+
+// 控えの ID。作れるのは帳簿だけ（値を export していないので、ほかは組み立てられない）
+class WriteReceiptId {
+  private constructor(readonly value: string) {}
+
+  static issue(writeId: string): WriteReceiptId {
+    return new WriteReceiptId(writeId);
+  }
+}
+
+type RejectedWrite<TRecordType extends string> = {
+  writeKind: WriteKind;
+  recordType: TRecordType;
+  reason: RejectionReason;
 };

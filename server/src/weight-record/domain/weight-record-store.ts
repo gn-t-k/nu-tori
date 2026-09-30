@@ -1,4 +1,4 @@
-import type { WriteReceiptId } from "../../domain/sync-ledger/write-receipt-id";
+import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { WeightRecord } from "./weight-record";
 
 export type WeightRecordStore = {

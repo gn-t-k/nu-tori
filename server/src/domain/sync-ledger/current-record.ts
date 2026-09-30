@@ -3,3 +3,5 @@ export type CurrentRecord<TValue> =
   | { status: "value"; value: TValue }
   | { status: "deleted" }
   | { status: "absent" };
+
+export type PresentRecord<TValue> = Exclude<CurrentRecord<TValue>, { status: "absent" }>;
