@@ -192,16 +192,16 @@ struct TimelineScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            ForEach(rows(on: day)) { row in
-                switch row {
-                case .record(let record):
+            ForEach(day.items) { item in
+                switch item {
+                case .weightRecord(let record):
                     NavigationLink(value: record.day) {
                         WeightRecordRow(record: record)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("weight-row")
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                case .rejection(let line):
+                case .rejectedWeightLine(let line):
                     Text(line.text)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -256,33 +256,6 @@ struct TimelineScreen: View {
         .background(.bar)
     }
 
-    private func rows(on day: Timeline.Day) -> [TimelineDayRow] {
-        var rows = day.weightRecords.map { TimelineDayRow.record($0) }
-        let lines = rejectedLines.filter { $0.record.day == day.day }
-            .sorted { $0.record.instant < $1.record.instant }
-        for line in lines {
-            switch line.placement {
-            case .belowRecord:
-                if let index = rows.firstIndex(where: { row in
-                    guard case .record(let record) = row else { return false }
-                    return record.id == line.record.id
-                }) {
-                    rows.insert(.rejection(line), at: index + 1)
-                } else {
-                    rows.append(.rejection(line))
-                }
-            case .insteadOfRecord:
-                let index =
-                    rows.firstIndex { row in
-                        guard case .record(let record) = row else { return false }
-                        return record.instant > line.record.instant
-                    } ?? rows.endIndex
-                rows.insert(.rejection(line), at: index)
-            }
-        }
-        return rows
-    }
-
     /// 読み込み中は、今日の週を空の丸にする。使い始めた日は、取り終えてから入る
     private func stripWeeks(today: CalendarDay, loaded: Timeline?) -> [RingStrip.Week] {
         if let loaded {
@@ -290,13 +263,16 @@ struct TimelineScreen: View {
         }
         let monday = today.startOfWeek
         return RingStrip(
-            timeline: Timeline(weightRecords: [], firstDay: monday, today: today)
+            timeline: Timeline(
+                input: Timeline.Input(weightRecords: []), firstDay: monday, today: today)
         ).weeks
     }
 
     private func timeline(today: CalendarDay) -> Timeline {
         let first = startedDay ?? records.map(\.day).min() ?? today
-        return Timeline(weightRecords: records, firstDay: first, today: today)
+        return Timeline(
+            input: Timeline.Input(weightRecords: records, rejectedLines: rejectedLines),
+            firstDay: first, today: today)
     }
 
     private func title(today: CalendarDay, loaded: Timeline?) -> String {
@@ -322,18 +298,6 @@ struct TimelineScreen: View {
         }
         let atTop = offsets.filter { $0.minY <= topEdge }.max { $0.minY < $1.minY }
         return atTop?.day ?? offsets.min { $0.minY < $1.minY }?.day
-    }
-}
-
-private enum TimelineDayRow: Identifiable {
-    case record(WeightRecord)
-    case rejection(RejectedWeightLine)
-
-    var id: String {
-        switch self {
-        case .record(let record): "record-\(record.id.uuidString)"
-        case .rejection(let line): "rejection-\(line.record.id.uuidString)"
-        }
     }
 }
 

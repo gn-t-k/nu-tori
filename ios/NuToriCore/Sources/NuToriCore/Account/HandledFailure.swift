@@ -6,6 +6,8 @@ public enum HandledFailure: Sendable, Equatable {
     case healthRead
     case healthWrite
     case cacheSave
+    /// 端末の置き場を開けず、送り待ちを捨てたか、退避して作り直した
+    case storeRecovery
 
     public static func reported(_ error: any Error, as area: HandledFailure) -> HandledFailure? {
         if error is CancellationError || error.isUnreachableOrTimedOut {

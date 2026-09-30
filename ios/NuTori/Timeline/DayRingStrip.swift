@@ -66,7 +66,8 @@ struct DayRingStrip: View {
             column(day: day, ring: .hidden)
                 .accessibilityLabel(TimelineDayText.label(for: day))
                 .accessibilityIdentifier(identifier("day-label", day))
-        case .ring(let day, let hasWeightRecord):
+        case .ring(let day, let dayRing):
+            let hasWeightRecord = dayRing.hasWeightRecord
             let ring: Ring = hasWeightRecord ? .marked : .empty
             if openableDays?.contains(day) == true {
                 Button {

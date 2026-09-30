@@ -1,5 +1,5 @@
 /// サーバーが受け付けなかった体重記録を、タイムラインに一時的に出す1行
-public struct RejectedWeightLine: Equatable, Sendable {
+public struct RejectedWeightLine: Hashable, Sendable {
     public let record: WeightRecord
 
     public init(_ rejected: RejectedWrite) {
