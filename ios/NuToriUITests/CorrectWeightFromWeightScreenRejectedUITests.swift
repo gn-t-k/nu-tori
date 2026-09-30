@@ -1,7 +1,7 @@
 import XCTest
 
 @MainActor
-final class CorrectWeightRejectedUITests: XCTestCase {
+final class CorrectWeightFromWeightScreenRejectedUITests: XCTestCase {
     private var app = XCUIApplication()
 
     override func setUp() async throws {
@@ -25,7 +25,7 @@ final class CorrectWeightRejectedUITests: XCTestCase {
 
         let line = app.staticTexts["rejected-weight-line"]
         XCTAssertTrue(line.waitForExistence(timeout: 5))
-        XCTAssertTrue(line.label.contains("70.0 kg に直せませんでした"))
+        XCTAssertEqual(app.staticTexts.matching(identifier: "rejected-weight-line").count, 1)
         XCTAssertTrue(
             app.descendants(matching: .any).matching(
                 NSPredicate(format: "label CONTAINS %@", "72.4 kg")

@@ -55,10 +55,8 @@
                 switch request.path {
                 case "/v1/sessions":
                     return createdSession()
-                case "/v1/sync/writes" where behavior == .weightScreenPushRejected:
-                    return json(.ok, try await rejectWeightScreenPush(body))
                 case "/v1/sync/writes":
-                    return json(.ok, try await applyWeightScreenPush(body))
+                    return json(.ok, try await weightScreenPushResponse(body))
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
                     return json(.ok, try weightScreenBody())
                 default:
@@ -104,7 +102,11 @@
             case .previousDayPushOffline:
                 throw URLError(.notConnectedToInternet)
             case .previousDayPushRejected:
-                return json(.ok, try await writeResults(from: body, result: .rejected))
+                // サーバーにその記録は無い（作る書き込みが受け付けられなかった）
+                return json(
+                    .ok,
+                    try await writeResults(
+                        from: body, result: .rejected(current: #"{"status":"absent"}"#)))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
                 .weightScreen, .weightScreenPushRejected, .accountDeletionRateLimited,
                 .accountDeletionUnauthorized:
@@ -125,13 +127,18 @@
             return #"{"results":[\#(results.joined(separator: ","))]}"#
         }
 
-        private func rejectWeightScreenPush(_ body: HTTPBody?) async throws -> String {
-            let current =
-                #"{"status":"value","change":{"kind":"weight_record","recordId":"\#(weightScreenRecordId)","record":\#(try weightScreenRecord())}}"#
-            let results = try await writeIds(in: body).map { id in
-                #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"record_before_started_on","current":\#(current)}"#
+        private func weightScreenPushResponse(_ body: HTTPBody?) async throws -> String {
+            switch behavior {
+            case .weightScreenPushRejected:
+                // 断った記録の、サーバーの今の値（直す前の値）を添える
+                let current =
+                    #"{"status":"value","change":{"kind":"weight_record","recordId":"\#(Self.weightScreenRecordId)","record":\#(try weightScreenRecord())}}"#
+                return try await writeResults(from: body, result: .rejected(current: current))
+            case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
+                .previousDayPushOffline, .previousDayPushRejected, .weightScreen,
+                .accountDeletionRateLimited, .accountDeletionUnauthorized:
+                return try await applyWeightScreenPush(body)
             }
-            return #"{"results":[\#(results.joined(separator: ","))]}"#
         }
 
         private func weightScreenBody() throws -> String {
@@ -139,26 +146,27 @@
                 for: CalendarDay(containing: .now, in: .current))
             return """
                 {"changes":[{"sequence":1,"kind":"weight_record",\
-                "recordId":"\(weightScreenRecordId)","record":\(try weightScreenRecord())}],\
+                "recordId":"\(Self.weightScreenRecordId)","record":\(try weightScreenRecord())}],\
                 "hasMore":false,"nextAfterSequence":1,"startedOn":"\(startedOn)"}
                 """
         }
 
-        private var weightScreenRecordId: String { "11111111-1111-4111-8111-111111111111" }
+        private static let weightScreenRecordId = "11111111-1111-4111-8111-111111111111"
 
         private func weightScreenRecord() throws -> String {
             let zone = TimeZone.current.identifier
             let measuredAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
             let kilograms = weightScreenKilograms.current()
             return """
-                {"id":"\(weightScreenRecordId)","weightKg":\(kilograms),\
+                {"id":"\(Self.weightScreenRecordId)","weightKg":\(kilograms),\
                 "measuredAt":\(measuredAt),"timeZone":"\(zone)","version":1}
                 """
         }
 
         private enum WriteResult {
             case applied
-            case rejected
+            /// current は、断った記録のサーバーの今の値（`SyncWriteCurrent` の JSON）
+            case rejected(current: String)
         }
 
         private func writeResults(from body: HTTPBody?, result: WriteResult) async throws -> String
@@ -168,9 +176,9 @@
                 switch result {
                 case .applied:
                     #"{"writeId":"\#(id)","result":"applied"}"#
-                case .rejected:
-                    // サーバーにその記録は無い（作る書き込みが受け付けられなかった）
-                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range","current":{"status":"absent"}}"#
+                case .rejected(let current):
+                    // 理由は画面の文言に出ないので、1つに決める
+                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range","current":\#(current)}"#
                 }
             }
             return #"{"results":[\#(results.joined(separator: ","))]}"#
