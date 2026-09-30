@@ -48,6 +48,8 @@ extension XCUIApplication {
 
     @MainActor func confirmAccountDeletion() {
         buttons["アカウントを削除"].tap()
-        alerts["アカウントを削除しますか？"].buttons["アカウントを削除"].tap()
+        let delete = alerts["アカウントを削除しますか？"].buttons["アカウントを削除"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        delete.tap()
     }
 }

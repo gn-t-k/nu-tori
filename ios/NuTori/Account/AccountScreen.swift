@@ -49,8 +49,11 @@ struct AccountScreen: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("完了", action: onClose)
+                    .disabled(isDeleting)
             }
         }
+        // 消している途中で閉じると、消せなかったときの1行を出す先が無くなる
+        .interactiveDismissDisabled(isDeleting)
         .alert("アカウントを削除しますか？", isPresented: $confirmingDeletion) {
             Button("アカウントを削除", role: .destructive) {
                 Task { await deleteAccount() }
@@ -79,6 +82,13 @@ struct AccountScreen: View {
     }
 
     private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!
+
+    private var isDeleting: Bool {
+        switch deletion {
+        case .deleting: true
+        case .idle, .failed: false
+        }
+    }
 
     private var deletionFailure: AccountDeletionFailure? {
         switch deletion {
@@ -133,7 +143,7 @@ struct AccountScreen: View {
     }
 
     private func deleteAccount() async {
-        if case .deleting = deletion { return }
+        if isDeleting { return }
         deletion = .deleting
         if let failure = await actions.deleteAccount() {
             deletion = .failed(failure)
