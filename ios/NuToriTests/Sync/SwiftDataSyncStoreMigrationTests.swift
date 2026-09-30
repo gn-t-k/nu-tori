@@ -296,15 +296,16 @@ struct SwiftDataSyncStoreMigrationTests {
     /// 版 1 のスキーマで、送り待ちの置き場のファイルを書く
     @MainActor
     private static func writeVersion1PendingStore(in directory: URL) throws {
-        let context = try version1PendingStoreContext(in: directory)
-        try insertVersion1Rows(into: context)
-        try context.save()
+        let container = try version1PendingStoreContainer(in: directory)
+        try insertVersion1Rows(into: container.mainContext)
+        try container.mainContext.save()
     }
 
     /// 版 1 のスキーマで、中身を読めない送り待ちも入れて、送り待ちの置き場のファイルを書く
     @MainActor
     private static func writeVersion1PendingStoreWithUnreadableRow(in directory: URL) throws {
-        let context = try version1PendingStoreContext(in: directory)
+        let container = try version1PendingStoreContainer(in: directory)
+        let context = container.mainContext
         try insertVersion1Rows(into: context)
         context.insert(
             PendingStoreSchemaV1.PendingWriteRow(
@@ -338,17 +339,17 @@ struct SwiftDataSyncStoreMigrationTests {
         try context.save()
     }
 
+    /// コンテキストはコンテナを保たず、コンテナが先に解放されると行を入れたときに落ちるので、コンテナを返して書き終えるまで持たせる
     @MainActor
-    private static func version1PendingStoreContext(in directory: URL) throws -> ModelContext {
+    private static func version1PendingStoreContainer(in directory: URL) throws -> ModelContainer {
         let folder = directory.appending(path: "PendingStore", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let container = try StoreFiles.container(
+        return try StoreFiles.container(
             schema: Schema(versionedSchema: PendingStoreSchemaV1.self),
             plan: nil,
             name: "PendingStore",
             at: folder.appending(path: "PendingStore.store")
         )
-        return container.mainContext
     }
 
     @MainActor
@@ -369,15 +370,16 @@ struct SwiftDataSyncStoreMigrationTests {
 
     @MainActor
     private static func writeLegacyStore(at url: URL) throws {
-        let context = try legacyStoreContext(at: url)
-        try insertLegacyRows(into: context)
-        try context.save()
+        let container = try legacyStoreContainer(at: url)
+        try insertLegacyRows(into: container.mainContext)
+        try container.mainContext.save()
     }
 
     /// 中身を読めない送り待ちも入れて、今の1つの置き場のファイルを書く
     @MainActor
     private static func writeLegacyStoreWithUnreadableRow(at url: URL) throws {
-        let context = try legacyStoreContext(at: url)
+        let container = try legacyStoreContainer(at: url)
+        let context = container.mainContext
         try insertLegacyRows(into: context)
         context.insert(
             LegacyRecordStoreSchemaV2.CachedPendingWrite(
@@ -389,13 +391,11 @@ struct SwiftDataSyncStoreMigrationTests {
     }
 
     @MainActor
-    private static func legacyStoreContext(at url: URL) throws -> ModelContext {
+    private static func legacyStoreContainer(at url: URL) throws -> ModelContainer {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let schema = Schema(versionedSchema: LegacyRecordStoreSchemaV2.self)
-        let container = try StoreFiles.container(
-            schema: schema, plan: nil, name: "RecordStore", at: url)
-        return container.mainContext
+        return try StoreFiles.container(schema: schema, plan: nil, name: "RecordStore", at: url)
     }
 
     @MainActor
