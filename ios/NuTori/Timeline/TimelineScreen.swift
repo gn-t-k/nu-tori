@@ -130,6 +130,7 @@ struct TimelineScreen: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
+                        .accessibilityIdentifier("rejected-weight-line")
                 }
             }
         }

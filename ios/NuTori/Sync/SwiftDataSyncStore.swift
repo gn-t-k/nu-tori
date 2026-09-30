@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import NuToriCore
 import SwiftData
@@ -7,8 +8,20 @@ import SwiftData
 nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
     let container: ModelContainer
 
+    struct NotOpened: Error {}
+
     init(inMemory: Bool) throws {
-        container = try Self.openContainer(inMemory: inMemory)
+        if inMemory {
+            container = try Self.memoryContainer()
+        } else {
+            let directory = URL.applicationSupportDirectory.appending(
+                path: "RecordStore", directoryHint: .isDirectory)
+            container = try Self.openDiskContainer(in: directory)
+        }
+    }
+
+    init(directory: URL) throws {
+        container = try Self.openDiskContainer(in: directory)
     }
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {
@@ -168,26 +181,150 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
         }
     }
 
-    private static func openContainer(inMemory: Bool) throws -> ModelContainer {
+    private static func memoryContainer() throws -> ModelContainer {
         let schema = Schema(versionedSchema: RecordStoreSchemaV1.self)
-        if inMemory {
-            return try ModelContainer(
-                for: schema,
-                migrationPlan: RecordStoreMigrationPlan.self,
-                configurations: ModelConfiguration(
-                    schema: schema,
-                    isStoredInMemoryOnly: true,
-                    cloudKitDatabase: .none
-                )
+        return try ModelContainer(
+            for: schema,
+            migrationPlan: RecordStoreMigrationPlan.self,
+            configurations: ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
             )
-        }
-        let url = try storeFileURL()
+        )
+    }
+
+    private static func openDiskContainer(in directory: URL) throws -> ModelContainer {
+        let schema = Schema(versionedSchema: RecordStoreSchemaV1.self)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appending(path: "RecordStore.store")
         do {
             return try diskContainer(schema: schema, url: url)
         } catch {
-            // この版の移行の段では開けないファイル。記録を捨てて取り直す。送り待ちも同じファイルなので、このときは残らない
-            try removeStore(at: url)
+            // 移行できない形は SwiftDataError の backwardMigration・unknownSchema・unknownDataStoreSchema と、Core Data の NSPersistentStoreIncompatibleVersionHashError・NSMigrationError・NSMigrationMissingSourceModelError・NSMigrationMissingMappingModelError・NSInferredMappingModelError・NSStagedMigrationBackwardMigrationError。loadIssueModelContainer はコードを落とすので、版ハッシュが今のスキーマと違うときも同じとみなす
+            guard isUnmigratableStoreShape(error, at: url, schema: schema) else {
+                throw NotOpened()
+            }
+            do {
+                try archiveStore(at: url)
+            } catch {
+                throw NotOpened()
+            }
             return try diskContainer(schema: schema, url: url)
+        }
+    }
+
+    private static func isUnmigratableStoreShape(_ error: any Error, at url: URL, schema: Schema)
+        -> Bool
+    {
+        if errorIndicatesMigrationMismatch(error) {
+            return true
+        }
+        guard isLoadIssueModelContainer(error) else {
+            return false
+        }
+        return versionHashesDifferFromCurrentSchema(at: url, schema: schema)
+    }
+
+    private static func errorIndicatesMigrationMismatch(_ error: any Error) -> Bool {
+        switch error {
+        case SwiftDataError.backwardMigration, SwiftDataError.unknownSchema:
+            return true
+        default:
+            break
+        }
+        if #available(iOS 27, *) {
+            if case SwiftDataError.unknownDataStoreSchema = error {
+                return true
+            }
+        }
+        let nsError = error as NSError
+        let migrationMismatchCodes: Set<Int> = [
+            NSPersistentStoreIncompatibleVersionHashError,
+            NSMigrationError,
+            NSMigrationMissingSourceModelError,
+            NSMigrationMissingMappingModelError,
+            NSInferredMappingModelError,
+            NSStagedMigrationBackwardMigrationError,
+        ]
+        if nsError.domain == NSCocoaErrorDomain, migrationMismatchCodes.contains(nsError.code) {
+            return true
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? any Error {
+            return errorIndicatesMigrationMismatch(underlying)
+        }
+        return false
+    }
+
+    private static func isLoadIssueModelContainer(_ error: any Error) -> Bool {
+        switch error {
+        case SwiftDataError.loadIssueModelContainer:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func versionHashesDifferFromCurrentSchema(at url: URL, schema: Schema) -> Bool {
+        guard let onDisk = storeVersionHashes(at: url) else { return false }
+        let reference = FileManager.default.temporaryDirectory.appending(
+            path: "RecordStore-schema-\(UUID().uuidString).store")
+        defer { removeTemporaryStore(at: reference) }
+        do {
+            _ = try diskContainer(schema: schema, url: reference)
+        } catch {
+            return false
+        }
+        guard let current = storeVersionHashes(at: reference) else { return false }
+        return onDisk != current
+    }
+
+    private static func storeVersionHashes(at url: URL) -> [String: Data]? {
+        guard
+            let metadata = try? NSPersistentStoreCoordinator.metadataForPersistentStore(
+                ofType: NSSQLiteStoreType, at: url),
+            let hashes = metadata[NSStoreModelVersionHashesKey] as? [String: Data]
+        else {
+            return nil
+        }
+        return hashes
+    }
+
+    private static func archiveStore(at url: URL) throws {
+        let stamp = archiveStamp(Date())
+        let manager = FileManager.default
+        var moved: [(URL, URL)] = []
+        do {
+            for suffix in ["-shm", "-wal", ""] {
+                let file = URL(filePath: url.path(percentEncoded: false) + suffix)
+                let path = file.path(percentEncoded: false)
+                guard manager.fileExists(atPath: path) else { continue }
+                let destination = URL(filePath: path + "." + stamp)
+                try manager.moveItem(at: file, to: destination)
+                moved.append((file, destination))
+            }
+        } catch {
+            for (file, destination) in moved.reversed() {
+                try? manager.moveItem(at: destination, to: file)
+            }
+            throw error
+        }
+    }
+
+    private static func archiveStamp(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+        return formatter.string(from: date)
+    }
+
+    private static func removeTemporaryStore(at url: URL) {
+        let manager = FileManager.default
+        for suffix in ["", "-shm", "-wal"] {
+            let file = URL(filePath: url.path(percentEncoded: false) + suffix)
+            try? manager.removeItem(at: file)
         }
     }
 
@@ -203,22 +340,5 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
                 cloudKitDatabase: .none
             )
         )
-    }
-
-    private static func storeFileURL() throws -> URL {
-        let directory = URL.applicationSupportDirectory.appending(
-            path: "RecordStore", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory.appending(path: "RecordStore.store")
-    }
-
-    private static func removeStore(at url: URL) throws {
-        let manager = FileManager.default
-        for suffix in ["", "-shm", "-wal"] {
-            let file = URL(filePath: url.path(percentEncoded: false) + suffix)
-            if manager.fileExists(atPath: file.path(percentEncoded: false)) {
-                try manager.removeItem(at: file)
-            }
-        }
     }
 }
