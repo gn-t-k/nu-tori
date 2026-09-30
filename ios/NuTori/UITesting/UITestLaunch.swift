@@ -64,7 +64,8 @@
                     authorization: healthAuthorization,
                     latestKilograms: healthLatestKilograms,
                     writeAuthorized: healthWriteAuthorized
-                )
+                ),
+                startBackgroundDelivery: { _ in }
             )
             let session = AccountSession(
                 client: client,

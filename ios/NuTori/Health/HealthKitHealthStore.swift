@@ -23,7 +23,7 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
 
     func isWeightWriteAuthorized() async throws -> Bool {
         guard HKHealthStore.isHealthDataAvailable() else { return false }
-        return store.authorizationStatus(for: bodyMass) == .sharingAuthorized
+        return store.authorizationStatus(for: Self.bodyMass) == .sharingAuthorized
     }
 
     func earliestAuthorizedSampleDate() async throws -> Date? {
@@ -37,12 +37,12 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         let stored = StoredQueryAnchors(anchor)
         let boundaries = try await authorizedBoundaries()
         let weights = try await readQuantity(
-            bodyMass,
+            Self.bodyMass,
             anchor: stored.bodyMassAnchor,
             notBefore: laterDate(notBefore, boundaries.bodyMass)
         )
         let bodyFats = try await readQuantity(
-            bodyFatPercentage,
+            Self.bodyFatPercentage,
             anchor: stored.bodyFatAnchor,
             notBefore: laterDate(notBefore, boundaries.bodyFat)
         )
@@ -59,8 +59,8 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
     func writeWeight(_ write: HealthWeightWrite) async throws {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         let sample = HKQuantitySample(
-            type: bodyMass,
-            quantity: HKQuantity(unit: kilogram, doubleValue: write.kilograms),
+            type: Self.bodyMass,
+            quantity: HKQuantity(unit: Self.kilogram, doubleValue: write.kilograms),
             start: write.instant,
             end: write.instant,
             metadata: [
@@ -80,7 +80,7 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
             return true
         }
         guard shouldStart else { return }
-        for type in [bodyMass, bodyFatPercentage] {
+        for type in [Self.bodyMass, Self.bodyFatPercentage] {
             try? await store.enableBackgroundDelivery(for: type, frequency: .immediate)
             let wake = onWake
             let query = HKObserverQuery(sampleType: type, predicate: nil) { _, completion, error in
@@ -99,13 +99,13 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
     }
 
     private let store = HKHealthStore()
-    private let bodyMass = HKQuantityType(.bodyMass)
-    private let bodyFatPercentage = HKQuantityType(.bodyFatPercentage)
-    private let kilogram = HKUnit.gramUnit(with: .kilo)
     private let deliveryState = OSAllocatedUnfairLock(initialState: DeliveryState())
+    private static let bodyMass = HKQuantityType(.bodyMass)
+    private static let bodyFatPercentage = HKQuantityType(.bodyFatPercentage)
+    private static let kilogram = HKUnit.gramUnit(with: .kilo)
 
-    private var shareTypes: Set<HKSampleType> { [bodyMass] }
-    private var readTypes: Set<HKObjectType> { [bodyMass, bodyFatPercentage] }
+    private var shareTypes: Set<HKSampleType> { [Self.bodyMass] }
+    private var readTypes: Set<HKObjectType> { [Self.bodyMass, Self.bodyFatPercentage] }
 
     private func authorizedBoundaries() async throws -> (bodyMass: Date?, bodyFat: Date?) {
         guard #available(iOS 27, *), HKHealthStore.isHealthDataAvailable() else {
@@ -113,8 +113,8 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         }
         let dates = try await store.earliestAuthorizedSampleDate(for: readTypes)
         return (
-            dates.first { $0.key.identifier == bodyMass.identifier }?.value,
-            dates.first { $0.key.identifier == bodyFatPercentage.identifier }?.value
+            dates.first { $0.key.identifier == Self.bodyMass.identifier }?.value,
+            dates.first { $0.key.identifier == Self.bodyFatPercentage.identifier }?.value
         )
     }
 
@@ -141,7 +141,7 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         let zoneName = sample.metadata?[HKMetadataKeyTimeZone] as? String
         return HealthChanges.WeightSample(
             sampleId: sample.uuid,
-            kilograms: sample.quantity.doubleValue(for: kilogram),
+            kilograms: sample.quantity.doubleValue(for: Self.kilogram),
             instant: sample.startDate,
             sourceAppName: source.name,
             sourceBundleId: source.bundleIdentifier,
@@ -170,8 +170,6 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
 
 /// 完了ハンドラは Sendable でないので、問い合わせの外へ送るときに包む
 nonisolated private struct ObserverCompletion: @unchecked Sendable {
-    private let completion: HKObserverQueryCompletionHandler
-
     init(_ completion: @escaping HKObserverQueryCompletionHandler) {
         self.completion = completion
     }
@@ -179,6 +177,8 @@ nonisolated private struct ObserverCompletion: @unchecked Sendable {
     func callAsFunction() {
         completion()
     }
+
+    private let completion: HKObserverQueryCompletionHandler
 }
 
 nonisolated private struct DeliveryState {

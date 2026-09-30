@@ -1,7 +1,6 @@
 import Foundation
 import NuToriCore
 
-/// 許可を求める時機と、読み書きの呼び出しを、画面と同期のあいだでつなぐ
 @MainActor final class HealthSyncSession {
     let engine: HealthSyncEngine
 
@@ -10,7 +9,7 @@ import NuToriCore
         store: any HealthStore,
         startBackgroundDelivery:
             @escaping @Sendable (@escaping @Sendable () async -> Void) async ->
-            Void = { _ in }
+            Void
     ) {
         self.engine = engine
         self.store = store
@@ -22,7 +21,7 @@ import NuToriCore
         healthStore: any HealthStore,
         startBackgroundDelivery:
             @escaping @Sendable (@escaping @Sendable () async -> Void) async ->
-            Void = { _ in }
+            Void
     ) -> HealthSyncSession {
         HealthSyncSession(
             engine: HealthSyncEngine(
@@ -38,7 +37,8 @@ import NuToriCore
     }
 
     func bindWakeHandler(_ handler: @escaping @Sendable () async -> Void) {
-        onWake = handler
+        if case .started = delivery { return }
+        delivery = .bound(handler)
     }
 
     /// 許可済みなら同期の前に読み、初回の取得で記録が見つかったらそのあとに許可を求める
@@ -75,8 +75,13 @@ import NuToriCore
     private let startBackgroundDelivery:
         @Sendable (@escaping @Sendable () async -> Void) async ->
             Void
-    private var onWake: (@Sendable () async -> Void)?
-    private var didStartDelivery = false
+    private var delivery = Delivery.unbound
+
+    private enum Delivery {
+        case unbound
+        case bound(@Sendable () async -> Void)
+        case started
+    }
 
     private func isAlreadyRequested() async -> Bool {
         (try? await store.authorizationRequestStatus()) == .alreadyRequested
@@ -98,8 +103,8 @@ import NuToriCore
     }
 
     private func startDeliveryIfNeeded() async {
-        guard !didStartDelivery, await isAlreadyRequested(), let onWake else { return }
-        didStartDelivery = true
+        guard case .bound(let onWake) = delivery, await isAlreadyRequested() else { return }
+        delivery = .started
         await startBackgroundDelivery(onWake)
     }
 }
