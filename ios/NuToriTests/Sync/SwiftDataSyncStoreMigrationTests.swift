@@ -141,6 +141,70 @@ struct SwiftDataSyncStoreMigrationTests {
         }
     }
 
+    @Suite("送り待ちの置き場が、版 1（種類の名前を持たない）のとき")
+    @MainActor
+    struct PendingStoreVersion1 {
+        let store: SwiftDataSyncStore
+
+        init() throws {
+            let directory = SwiftDataSyncStoreTests.makeDirectory()
+            try SwiftDataSyncStoreMigrationTests.writeVersion1PendingStore(in: directory)
+            store = try SwiftDataSyncStore(directory: directory)
+        }
+
+        @Test("送り待ちを種類の名前つきで引き継ぎ、直す前の値も残ること")
+        func carriesWritesWithKindNames() async throws {
+            #expect(try await store.pendingWritesOldestFirst() == [correction])
+            #expect(try await store.pendingEntries().map(\.kind) == ["weight-record"])
+            #expect(store.takeRecoveries().isEmpty)
+        }
+
+        @Test("ヘルスケアの同期の進み具合も残ること")
+        func keepsHealthState() async throws {
+            #expect(
+                try await store.healthSyncState() == SwiftDataSyncStoreMigrationTests.healthState)
+        }
+
+        private let correction = SwiftDataSyncStoreMigrationTests.correction
+    }
+
+    static let correction = PendingWrite(
+        writeId: UUID(uuidString: "00000000-0000-4000-8000-000000000103")!,
+        enqueuedAt: Date(timeIntervalSince1970: 1_700_000_100),
+        operation: .correctWeightRecord(
+            WeightRecord(
+                id: record.id, kilograms: 69.5, instant: record.instant, timeZone: record.timeZone,
+                inputSource: .manual, version: 2),
+            previous: record)
+    )
+
+    /// 版 1 のスキーマで、送り待ちの置き場のファイルを書く
+    @MainActor
+    private static func writeVersion1PendingStore(in directory: URL) throws {
+        let folder = directory.appending(path: "PendingStore", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let container = try StoreFiles.container(
+            schema: Schema(versionedSchema: PendingStoreSchemaV1.self),
+            plan: nil,
+            name: "PendingStore",
+            at: folder.appending(path: "PendingStore.store")
+        )
+        let context = container.mainContext
+        context.insert(
+            PendingStoreSchemaV1.PendingWriteRow(
+                writeId: correction.writeId,
+                enqueuedAt: correction.enqueuedAt,
+                operationJSON: try correction.entry().content
+            ))
+        context.insert(
+            PendingStoreSchemaV1.HealthSyncStateRow(
+                singletonKey: "health-sync-state",
+                anchorData: healthState.anchor?.data,
+                hasWrittenCachedManualRecords: healthState.hasWrittenCachedManualRecords
+            ))
+        try context.save()
+    }
+
     @MainActor
     private static func writeLegacyStore(at url: URL) throws {
         try FileManager.default.createDirectory(
@@ -153,7 +217,7 @@ struct SwiftDataSyncStoreMigrationTests {
             LegacyRecordStoreSchemaV2.CachedPendingWrite(
                 writeId: write.writeId,
                 enqueuedAt: write.enqueuedAt,
-                operationJSON: try PendingWriteRow(write: write).operationJSON
+                operationJSON: try write.entry().content
             ))
         context.insert(
             LegacyRecordStoreSchemaV2.CachedHealthSyncState(

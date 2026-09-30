@@ -1,4 +1,5 @@
 import Foundation
+import NuToriCore
 import SwiftData
 
 /// 置き場を分ける前の、1つの置き場（ADR-0022）。更新して最初に開いたときに、送り待ちとヘルスケアの同期の進み具合を送り待ちの置き場へ移し、この置き場を消す
@@ -59,7 +60,11 @@ nonisolated enum LegacyRecordStore {
         )
         .map {
             PendingWriteRow(
-                writeId: $0.writeId, enqueuedAt: $0.enqueuedAt, operationJSON: $0.operationJSON)
+                writeId: $0.writeId,
+                enqueuedAt: $0.enqueuedAt,
+                kind: PendingWrite.kindName(ofVersion1Content: $0.operationJSON) ?? "",
+                content: $0.operationJSON
+            )
         }
         let health = try context.fetch(
             FetchDescriptor<LegacyRecordStoreSchemaV2.CachedHealthSyncState>()
