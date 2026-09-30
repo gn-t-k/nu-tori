@@ -15,7 +15,7 @@ final class RootModel {
         self.recordSync = recordSync
         self.health = health
         recordSync.onDestination = { [weak self] destination in
-            self?.screen = Screen(destination)
+            self?.replaceScreen(with: destination)
         }
         recordSync.onRejectedWrites = { [weak self] writes in
             self?.noteRejected(writes)
@@ -27,11 +27,11 @@ final class RootModel {
 
     func open() async {
         do {
-            screen = Screen(try await accountSession.destinationOnOpen())
+            replaceScreen(with: try await accountSession.destinationOnOpen())
         } catch is CancellationError {
             return
         } catch {
-            screen = .signIn(.introduction, .ready)
+            replaceScreen(with: .signIn(.introduction))
         }
         await accountSession.beginObservationIfSignedIn()
         await syncIfShowingTimeline()
@@ -76,8 +76,12 @@ final class RootModel {
         await accountSession.signedInAccountId()
     }
 
-    func setSendsUsageData(_ sendsUsageData: Bool) async {
-        try? await recordSync.setSendsUsageData(sendsUsageData)
+    func turnOnUsageData() async {
+        try? await recordSync.turnOnUsageData()
+    }
+
+    func turnOffUsageData() async {
+        try? await recordSync.turnOffUsageData()
     }
 
     func deleteAccount() async -> AccountDeletionFailure? {
@@ -88,15 +92,15 @@ final class RootModel {
             return nil
         } catch {
             // 投げるのは端末の記録を消すところだけで、サーバーではもう消えているか、セッションが切れている
-            leaveTimeline(for: .signIn(.introduction))
+            replaceScreen(with: .signIn(.introduction))
             return nil
         }
         switch outcome {
         case .deleted:
-            leaveTimeline(for: .signIn(.introduction))
+            replaceScreen(with: .signIn(.introduction))
             return nil
         case .signInRequired(let destination):
-            leaveTimeline(for: destination)
+            replaceScreen(with: destination)
             return nil
         case .unreachable:
             return .unreachable
@@ -145,9 +149,14 @@ final class RootModel {
         case ignoring
     }
 
-    /// 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
-    private func leaveTimeline(for destination: SignInDestination) {
-        rejectionLines = .accepting([])
+    private func replaceScreen(with destination: SignInDestination) {
+        switch destination {
+        case .signIn:
+            // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
+            rejectionLines = .accepting([])
+        case .loadingTimeline, .timeline:
+            break
+        }
         screen = Screen(destination)
     }
 

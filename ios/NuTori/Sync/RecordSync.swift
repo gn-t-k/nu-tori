@@ -26,25 +26,28 @@ import NuToriCore
         _ = try await syncAfterInFlight()
     }
 
-    /// 投げるのは保存に失敗したときだけ。送れなかった分は送り待ちに残る
-    func setSendsUsageData(_ sendsUsageData: Bool) async throws {
+    /// 保存し終えたら返し、送るのは待たない。送れなかった分は送り待ちに残る
+    func turnOnUsageData() async throws {
+        guard let accountId = await signedInAccountId() else { return }
+        try await engineForThisDevice(accountId: accountId).setSendsUsageData(true)
+        // 始めてよいかは、保存した設定を読んで決める
+        await accountSession.beginObservationIfSignedIn()
+        sendSettingsInBackground()
+    }
+
+    /// 保存し終えたら返し、送るのは待たない。送れなかった分は送り待ちに残る
+    func turnOffUsageData() async throws {
         guard let accountId = await signedInAccountId() else { return }
         // オフにした1件は、オフの設定が効くと送れなくなる
-        if !sendsUsageData {
-            await accountSession.turnOffUsageData()
-        }
+        await accountSession.turnOffUsageData()
         do {
-            try await engineForThisDevice(accountId: accountId).setSendsUsageData(sendsUsageData)
+            try await engineForThisDevice(accountId: accountId).setSendsUsageData(false)
         } catch {
             // オフにできなかったので、止めた PostHog を始め直す
             await accountSession.beginObservationIfSignedIn()
             throw error
         }
-        // 始めてよいかは、保存した設定を読んで決める
-        if sendsUsageData {
-            await accountSession.beginObservationIfSignedIn()
-        }
-        _ = try? await syncAfterInFlight()
+        sendSettingsInBackground()
     }
 
     func importHealthAndSendPending() async {
@@ -120,6 +123,10 @@ import NuToriCore
     private var inFlight: Task<SyncResult?, any Error>?
     private var networkMonitor: NWPathMonitor?
     private var networkWasUnavailable = false
+
+    private func sendSettingsInBackground() {
+        Task { _ = try? await self.syncAfterInFlight() }
+    }
 
     /// 開いたときの同期が先に送り待ちを読んでいたら、それが終わってから送り直す
     private func syncAfterInFlight() async throws -> SyncResult? {

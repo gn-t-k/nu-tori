@@ -40,7 +40,8 @@ struct RootView: View {
                 },
                 accountActions: AccountActions(
                     signedInAccountId: { await model.signedInAccountId() },
-                    setSendsUsageData: { await model.setSendsUsageData($0) },
+                    turnOnUsageData: { await model.turnOnUsageData() },
+                    turnOffUsageData: { await model.turnOffUsageData() },
                     deleteAccount: { await model.deleteAccount() }
                 )
             )

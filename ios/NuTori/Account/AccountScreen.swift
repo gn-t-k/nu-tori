@@ -107,7 +107,11 @@ struct AccountScreen: View {
             set: { sendsUsageData in
                 requestedSendsUsageData = sendsUsageData
                 Task {
-                    await actions.setSendsUsageData(sendsUsageData)
+                    if sendsUsageData {
+                        await actions.turnOnUsageData()
+                    } else {
+                        await actions.turnOffUsageData()
+                    }
                     requestedSendsUsageData = nil
                 }
             }
