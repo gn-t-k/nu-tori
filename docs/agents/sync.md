@@ -17,7 +17,7 @@
 - 同じ書き込みの ID が再び届いたときは、最初の結果の種類と理由を返し、今の値は、その要求を当て終えた時点のものを添える。控えには今の値を持たない
 - 端末は `status` を文字列で読み、知らない値と添え忘れは何も当てない（API は足すだけにして、古い版のアプリが読み飛ばして動くため）
 - 端末は、`value` と `deleted` の変更をそのまま種類のキャッシュに当てる。`absent` のときだけ、種類が返す「外す変更」（`KindRejection.removingChanges`）を当てる。画面に出す行も種類が返す（`SyncedRecordKind.rejection`）
-- 受け付けなかった行の位置は、サーバーに値があるか（`RejectedWrite.serverHasValue`）で決める。値があれば、その値の記録の位置に「直せなかった」行を出す。削除の印か無ければ、作った記録の時刻の位置に「記録できなかった」行を出す。決め方を変えるときは `Timeline.items(records:rejectedLines:)` と `RejectedWeightLine.placement` を直す
+- 受け付けなかった行の位置は、サーバーに値があるか（`RejectedWrite.serverHasValue`）で決める。値があれば、その値の記録の位置に「直せなかった」行を出す。削除の印か無ければ、作った記録の時刻の位置に「記録できなかった」行を出す
 
 ## 受け付けられないことが無い書き込み
 
@@ -34,15 +34,12 @@
   - 中身のキーを消すときは、残った送り待ちの JSON にそのキーがあっても読み飛ばせる形にして、置き場の版を上げずに済ませる（Codable は知らないキーを読み飛ばす）
   - キーを足すときは、無くても読める形（省略できる値）にする
   - 残った送り待ちが読めることを、古い形の JSON を使うテストで確かめる（`PendingWriteEntryTests`）
-- 種類の名前を `RecordKindName` に読めない送り待ちは、開くときに捨てて `storeRecovery` に残す（版 1 から移すときに中身から名前を読めなかった行の印と、新しい版が書いた知らない名前の行）。残すと、送り待ちを読むたびに失敗する
+- 種類の名前を読めない送り待ちは、開くときに捨てて `storeRecovery` に残す。残すと、送り待ちを読むたびに失敗するため
 
 ## 記録の種類の足し方
 
 - サーバー: `server/AGENTS.md` の「同期の記録の種類の足し方」に従う。受け付けなかった書き込みの今の値は、種類の `readCurrent` と受け口の `toChangeResponse` から作るので、種類に足すものは無い
-- サーバーの帳簿が書く順は、要求の控え → 書き込みの控え → 種類の行（記録・削除の印・設定の変更。`decide` が返す `commit` の中）→ 変更の並び。記録も控えのあとに書くのは、控えの ID を帳簿しか作れない型にして、控えより先に書く形をコンパイルで止めるため（外部キーは控えを指すものだけで満たされる）
-- サーバーの登録簿の行は5か所（`create-record-kinds.ts`、`record-kind-stores.ts`、`create-record-kind-stores.ts`、`http-record-kinds.ts`、`registered-write-schemas.ts`）。ドメイン層は Durable Object と受け口を import できず、層ごとに登録簿が分かれるため。足し忘れは型検査が止める
-- 端末: NuToriCore の `RecordKindName` に case を足し（rawValue は送り待ちに保存する書き方のハイフン）、`serverName` の switch にサーバーの列挙の名前（snake_case）を書く。そのうえで NuToriCore に `SyncedRecordKind`（`name`・`owns`・`syncWrite`・`rejection`）、アプリのターゲットに `RecordKind<ModelContext>`（`apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す
-  - `name` は `RecordKindName`。`serverName` の switch が網羅なので、case を足して書き忘れるとビルドが落ちる。サーバーの列挙（`ServerRecordKindNames.names`）とは `AppRecordKindsTests` が突き合わせ、片方にだけ足すと落ちる
-  - rawValue は保存した文字列なので、変えると送り待ちの置き場の移行が要る
-- 受け付けられないことがある書き込みを持つ種類は、`rejection` で画面に出す行と、サーバーに記録も削除の印も無いときの外す変更（`removingChanges`）を返す。サーバーの今の値が `absent` のときの外し方は、種類が決める。持たない種類は `KindRejection.none` を返す
-- テストのために、`NuToriTestSupport` の `RecordKindRegistry.ok(extra:)`（キャッシュが `RecordCacheMock` の登録簿）の本物の種類はメモリのキャッシュに当てる版（`WeightRecordKindMock` など）で持つ。`extra:` はテスト用の種類を足し、同じ名前の本物があれば替える（列挙にテスト用の case を足さず、本物の名前を借りるため）
+- 端末: NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く。NuToriCore に `SyncedRecordKind`、アプリのターゲットに `RecordKind<ModelContext>`（`synced` と `apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
+  - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る
+- 受け付けられないことがある書き込みを持つ種類は、サーバーに記録も削除の印も無いとき（`absent`）の外し方を `rejection` で決める。持たない種類は `KindRejection.none` を返す
+- `RecordKindRegistry.ok(extra:)` は、同じ名前の本物の種類があれば、足さずにテスト用の種類に替える。列挙にテスト用の case を足さず、本物の名前を借りるため
