@@ -6,24 +6,20 @@ public struct SyncBoxResult: Sendable, Equatable {
     public let enqueuing: [PendingEntry]
     /// サーバーから結果を受け取った送り待ち。キャッシュに当てたあとに消す
     public let resolvedWriteIds: [UUID]
-    /// 登録簿の種類に当てる変更と今の値
+    /// 種類ごとに当てる変更と今の値。ローカルの記録の変更も、受け付けなかった書き込みの戻しも、この形で渡す
     public let kindChanges: [KindChanges]
-    /// 登録簿に無い種類の巻き戻し（今の道。#182 で無くす）
-    public let reversions: [RecordReversion]
-    /// 登録簿に無い種類の取りに行った変更（今の道。#183 で無くす）。通し番号を持つので、あれば最後の保存で書く
-    public let pulled: PulledChanges?
+    /// 書く同期の状態。通し番号を含むので、キャッシュへの最後の保存で書く（変更を追い越さない）
+    public let syncState: SyncState?
 
     public init(
         enqueuing: [PendingEntry] = [],
         resolvedWriteIds: [UUID] = [],
         kindChanges: [KindChanges] = [],
-        reversions: [RecordReversion] = [],
-        pulled: PulledChanges? = nil
+        syncState: SyncState? = nil
     ) {
         self.enqueuing = enqueuing
         self.resolvedWriteIds = resolvedWriteIds
         self.kindChanges = kindChanges
-        self.reversions = reversions
-        self.pulled = pulled
+        self.syncState = syncState
     }
 }

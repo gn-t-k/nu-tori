@@ -16,7 +16,7 @@ struct AccountDevice {
     let log: CallLog
     let keychain: SessionKeychainMock
     let deviceStore: SignInDeviceStoreMock
-    let syncStore: SyncStoreMock
+    let syncStore: MemoryStore
     let appleCredentials: AppleCredentialCheckerMock
     let backgroundTransfers: BackgroundTransferStoreMock
     let healthAnchors: HealthAnchorStoreMock

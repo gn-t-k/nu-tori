@@ -4,7 +4,10 @@ public import NuToriAPI
 /// 体重記録の同期の形。記録の種類の入口のうち、キャッシュの型に依らない部分。
 /// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込みを作る
 public struct WeightRecordSyncing: SyncedRecordKind {
-    public var name: String { SyncEngine.weightRecordKind }
+    /// 送り待ちの種類の名前。変えると、送り待ちに残った体重記録が読めなくなる
+    public static let kindName = "weight-record"
+
+    public var name: String { Self.kindName }
 
     /// 取りに行った変更のうち、当てる今の値と、消す記録の ID
     public struct Current: Sendable, Equatable {
@@ -34,6 +37,49 @@ public struct WeightRecordSyncing: SyncedRecordKind {
         case .updateAccountSettings:
             throw PendingWrite.InvalidEntryError(kind: entry.kind)
         }
+    }
+
+    /// 受け付けなかった作る・直す書き込みは、画面に出す行にして、作った記録は消し、直した記録は直す前に戻す。
+    /// 同じ記録を戻すのは1回だけ。先の書き込みで消した記録を、あとの直す書き込みで戻さない
+    public func rejection(
+        of entry: PendingEntry,
+        reason: SyncWriteResult.RejectionReason,
+        revertedRecordIds: inout Set<UUID>
+    ) throws -> KindRejection {
+        let write = try PendingWrite(entry: entry)
+        switch write.operation {
+        case .createWeightRecord(let record):
+            return KindRejection(
+                rejectedWrite: RejectedWrite(
+                    writeId: write.writeId, record: record, reason: reason),
+                revertingChanges: revertedRecordIds.insert(record.id).inserted
+                    ? [.weightRecordDeletion(recordId: record.id)] : []
+            )
+        case .correctWeightRecord(let record, let previous):
+            return KindRejection(
+                rejectedWrite: RejectedWrite(
+                    writeId: write.writeId, record: record, reason: reason),
+                revertingChanges: revertedRecordIds.insert(record.id).inserted
+                    ? [.weightRecord(SyncedWeightRecord(previous))] : []
+            )
+        case .sourceDeletedWeightRecord:
+            // 戻す記録も、画面に出す記録も無い。消すかどうかを決めるのはサーバーで、送り直さない
+            return KindRejection()
+        case .updateAccountSettings:
+            throw PendingWrite.InvalidEntryError(kind: entry.kind)
+        }
+    }
+
+    /// 記録を作った・直したときの結果。送り待ちに足し、今の値を、取りに行った変更と同じ形でキャッシュに当てる
+    public func saving(_ record: WeightRecord, enqueuing write: PendingWrite) throws
+        -> SyncBoxResult
+    {
+        SyncBoxResult(
+            enqueuing: [try write.entry()],
+            kindChanges: [
+                KindChanges(kind: name, changes: [.weightRecord(SyncedWeightRecord(record))])
+            ]
+        )
     }
 
     /// 取りに行った変更を、今の値の並びにする。削除の印は、置き場に無い ID でも読み飛ばせるよう ID だけを返す
@@ -71,6 +117,20 @@ extension NewWeightRecord {
                     }
                 )
             }
+        )
+    }
+}
+
+extension SyncedWeightRecord {
+    init(_ record: WeightRecord) {
+        let new = NewWeightRecord(record)
+        self.init(
+            id: record.id,
+            weightKilograms: record.kilograms,
+            measuredAt: record.instant,
+            timeZone: record.timeZone,
+            version: record.version,
+            imported: new.imported
         )
     }
 }

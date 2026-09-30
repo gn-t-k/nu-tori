@@ -1,3 +1,4 @@
+import Foundation
 import NuToriAPI
 import NuToriCore
 import SwiftData
@@ -13,6 +14,14 @@ nonisolated struct WeightRecordKind: RecordKind {
 
     func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         try syncing.syncWrite(for: entry)
+    }
+
+    func rejection(
+        of entry: PendingEntry,
+        reason: SyncWriteResult.RejectionReason,
+        revertedRecordIds: inout Set<UUID>
+    ) throws -> KindRejection {
+        try syncing.rejection(of: entry, reason: reason, revertedRecordIds: &revertedRecordIds)
     }
 
     /// 今の値を書いてから、削除の印の記録を消す。置き場に無い記録の削除の印は読み飛ばす（返し直されるため）

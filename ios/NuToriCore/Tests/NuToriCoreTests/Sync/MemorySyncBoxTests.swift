@@ -6,16 +6,16 @@ import Testing
 
 @Suite("メモリの送り待ちの箱")
 struct MemorySyncBoxTests {
-    typealias Box = MemorySyncBox<NoteCache>
+    typealias Box = MemorySyncBox<MemoryRecordCache>
 
     @Suite("記録の変更と送り待ちへの追加を当てるとき")
     struct Enqueuing {
         let box: Box
-        let cache: NoteCache
+        let cache: MemoryRecordCache
         let entry: PendingEntry
 
         init() {
-            cache = NoteCache()
+            cache = MemoryRecordCache()
             box = Box(kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: cache)
             entry = RecordKindMock.entry(recordId: UUID())
         }
@@ -29,12 +29,12 @@ struct MemorySyncBoxTests {
                 ))
 
             #expect(
-                await box.saves == [
+                box.saves == [
                     .pending(added: 1, removed: 0),
                     .cache(changes: 1, afterSequence: nil),
                 ])
-            #expect(await box.pendingEntries() == [entry])
-            #expect(cache.appliedChangeCount == 1)
+            #expect(try await box.pendingEntries() == [entry])
+            #expect(cache.appliedCount(of: "note") == 1)
         }
     }
 
@@ -48,7 +48,7 @@ struct MemorySyncBoxTests {
             resolved = RecordKindMock.entry(recordId: UUID(), ageSeconds: 10)
             waiting = RecordKindMock.entry(recordId: UUID())
             box = Box(
-                kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: NoteCache(),
+                kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: MemoryRecordCache(),
                 pendingEntries: [resolved, waiting])
         }
 
@@ -61,22 +61,22 @@ struct MemorySyncBoxTests {
                 ))
 
             #expect(
-                await box.saves == [
+                box.saves == [
                     .cache(changes: 1, afterSequence: nil),
                     .pending(added: 0, removed: 1),
                 ])
-            #expect(await box.pendingEntries() == [waiting])
+            #expect(try await box.pendingEntries() == [waiting])
         }
     }
 
     @Suite("250 件の変更を含む頁を当てるとき")
     struct PullingManyChanges {
         let box: Box
-        let cache: NoteCache
+        let cache: MemoryRecordCache
         let result: SyncBoxResult
 
         init() {
-            cache = NoteCache()
+            cache = MemoryRecordCache()
             box = Box(kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: cache)
             result = SyncBoxResult(
                 kindChanges: [
@@ -84,9 +84,7 @@ struct MemorySyncBoxTests {
                         kind: "note",
                         changes: Array(repeating: .unknown(kind: "note"), count: 250))
                 ],
-                pulled: PulledChanges(
-                    records: [], removedRecordIds: [],
-                    state: .fixture(afterSequence: 7))
+                syncState: .fixture(afterSequence: 7)
             )
         }
 
@@ -95,13 +93,13 @@ struct MemorySyncBoxTests {
             try await box.apply(result)
 
             #expect(
-                await box.saves == [
+                box.saves == [
                     .cache(changes: 100, afterSequence: nil),
                     .cache(changes: 100, afterSequence: nil),
                     .cache(changes: 50, afterSequence: 7),
                 ])
-            #expect(cache.appliedChangeCount == 250)
-            #expect(await box.state?.afterSequence == 7)
+            #expect(cache.appliedCount(of: "note") == 250)
+            #expect(box.state?.afterSequence == 7)
         }
     }
 
@@ -112,13 +110,12 @@ struct MemorySyncBoxTests {
 
         init() {
             box = Box(
-                kinds: RecordKindRegistry([RecordKindMock.error(.init())]), cache: NoteCache(),
+                kinds: RecordKindRegistry([RecordKindMock.error(.init())]),
+                cache: MemoryRecordCache(),
                 state: .fixture(afterSequence: 3))
             result = SyncBoxResult(
                 kindChanges: [KindChanges(kind: "note", changes: [.unknown(kind: "note")])],
-                pulled: PulledChanges(
-                    records: [], removedRecordIds: [],
-                    state: .fixture(afterSequence: 9))
+                syncState: .fixture(afterSequence: 9)
             )
         }
 
@@ -128,7 +125,7 @@ struct MemorySyncBoxTests {
                 try await box.apply(result)
             }
 
-            #expect(await box.state?.afterSequence == 3)
+            #expect(box.state?.afterSequence == 3)
         }
     }
 
@@ -137,7 +134,7 @@ struct MemorySyncBoxTests {
         let box: Box
 
         init() {
-            box = Box(kinds: RecordKindRegistry([]), cache: NoteCache())
+            box = Box(kinds: RecordKindRegistry([]), cache: MemoryRecordCache())
         }
 
         @Test("知らない種類だと投げること")
@@ -154,11 +151,11 @@ struct MemorySyncBoxTests {
     @Suite("全消去するとき")
     struct Erasing {
         let box: Box
-        let cache: NoteCache
+        let cache: MemoryRecordCache
 
         init() {
-            cache = NoteCache()
-            cache.didApply(3)
+            cache = MemoryRecordCache()
+            cache.didApply(3, forKind: "note")
             box = Box(
                 kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: cache,
                 pendingEntries: (0..<250).map { _ in RecordKindMock.entry(recordId: UUID()) },
@@ -169,10 +166,10 @@ struct MemorySyncBoxTests {
         func clearsPendingInOneSave() async throws {
             try await box.eraseAll()
 
-            #expect(await box.saves == [.pendingCleared(count: 250), .cacheCleared])
-            #expect(await box.pendingEntries().isEmpty)
-            #expect(await box.state == nil)
-            #expect(cache.appliedChangeCount == 0)
+            #expect(box.saves == [.pendingCleared(count: 250), .cacheCleared])
+            #expect(try await box.pendingEntries().isEmpty)
+            #expect(box.state == nil)
+            #expect(cache.appliedCount(of: "note") == 0)
         }
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 import NuToriCore
 import SwiftData
 
-/// キャッシュの体重記録の読み書き。登録簿の種類（`WeightRecordKind`）と、今の道の口（`SwiftDataSyncStore`）が使う。
+/// キャッシュの体重記録の読み書き。登録簿の種類（`WeightRecordKind`）と、`SwiftDataSyncStore` の読む口・ヘルスケアの取り込みが使う。
 /// 保存は呼び出し側が行う
 extension CachedWeightRecord {
     nonisolated static func find(id: UUID, in context: ModelContext) throws -> CachedWeightRecord? {

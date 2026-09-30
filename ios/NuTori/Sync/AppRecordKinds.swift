@@ -2,7 +2,7 @@ import NuToriCore
 import SwiftData
 
 /// 記録の種類の登録簿（アプリ）。名前の順に、手で1行ずつ書く。
-/// 登録簿にある種類（今は体重記録とアカウントの設定）は送り待ちの箱の道で、無い種類（今は無い）は今の道で当てる
+/// 種類を足すときは、ここに1行足す。名前は、サーバーの種類の名前の列挙（`ServerRecordKindNames`）とそろえる（`AppRecordKindsTests` が見張る）
 nonisolated enum AppRecordKinds {
     static var registry: RecordKindRegistry<ModelContext> {
         RecordKindRegistry([

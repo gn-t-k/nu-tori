@@ -5,11 +5,11 @@ import NuToriTestSupport
 import Testing
 
 extension SyncEngineTests {
-    @Suite("体重記録が登録簿にあるとき")
+    @Suite("体重記録の同期")
     struct WeightRecordKind {
         @Suite("受け付けなかった書き込みを送ったとき")
         struct Pushing {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: SyncEngine
             let created: WeightRecord
             let previous: WeightRecord
@@ -26,8 +26,7 @@ extension SyncEngineTests {
                     pendingWrites: [
                         .creating(created, ageSeconds: 20),
                         .correcting(corrected, previous: previous),
-                    ],
-                    recordKinds: [WeightRecordSyncing()])
+                    ])
                 engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0, 1]))
             }
 
@@ -44,7 +43,7 @@ extension SyncEngineTests {
 
         @Suite("体重記録の変更を取りに行ったとき")
         struct Pulling {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let export: WeightHealthExportMock
             let engine: SyncEngine
             let revisedId: UUID
@@ -56,8 +55,7 @@ extension SyncEngineTests {
                     records: [
                         try .manual(
                             70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", id: revisedId)
-                    ],
-                    recordKinds: [WeightRecordSyncing()])
+                    ])
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [
@@ -74,15 +72,13 @@ extension SyncEngineTests {
                     weightHealthExport: export)
             }
 
-            @Test("体重記録の変更を、種類の名前ごとに箱に渡し、今の道には渡さないこと")
+            @Test("体重記録の変更を、種類の名前ごとに、通し番号と同じ結果で箱に渡すこと")
             func handsChangesToBox() async throws {
                 _ = try await engine.sync()
 
                 #expect(store.appliedKindChanges.map(\.kind) == ["weight-record"])
                 #expect(store.appliedKindChanges.first?.changes.count == 2)
-                #expect(store.appliedChanges.map(\.records.count) == [0])
-                #expect(store.appliedChanges.map(\.removedRecordIds.count) == [0])
-                #expect(store.appliedChanges.map(\.state.afterSequence) == [2])
+                #expect(store.appliedSyncStates.map(\.afterSequence) == [2])
             }
 
             @Test("版が上がった手の記録を、ヘルスケアに書き直すこと")

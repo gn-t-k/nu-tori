@@ -1,5 +1,6 @@
 import Foundation
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 @Suite("ヘルスケアとの同期の働き")
@@ -16,7 +17,7 @@ struct HealthSyncEngineTests {
     struct Importing {
         @Suite("他のアプリの体重が増えたとき")
         struct AddedWeights {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() throws {
@@ -73,7 +74,7 @@ struct HealthSyncEngineTests {
         @Suite("前回のアンカーがあるとき")
         struct WithAnchor {
             let healthStore: HealthStoreMock
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
             let previousAnchor: HealthAnchor
 
@@ -108,7 +109,7 @@ struct HealthSyncEngineTests {
         @Suite("初めて読むとき")
         struct FirstRead {
             let healthStore: HealthStoreMock
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() {
@@ -127,7 +128,7 @@ struct HealthSyncEngineTests {
 
         @Suite("nu-tori 自身が書いた体重と、他のアプリの体重が混ざるとき")
         struct OwnSamples {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() throws {
@@ -166,7 +167,7 @@ struct HealthSyncEngineTests {
 
         @Suite("範囲の外のサンプルが混ざるとき")
         struct OutOfRange {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() throws {
@@ -221,7 +222,7 @@ struct HealthSyncEngineTests {
 
         @Suite("体重と体脂肪率が届いたとき")
         struct BodyFatPairing {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() throws {
@@ -286,7 +287,7 @@ struct HealthSyncEngineTests {
 
         @Suite("サンプルの時間帯のメタデータがあるものと無いものが届いたとき")
         struct TimeZones {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() throws {
@@ -325,7 +326,7 @@ struct HealthSyncEngineTests {
 
         @Suite("キャッシュにもう同じ ID の記録があるサンプルを読み直したとき")
         struct AlreadyCached {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
             let cached: WeightRecord
 
@@ -369,7 +370,7 @@ struct HealthSyncEngineTests {
 
         @Suite("ヘルスケアで元のサンプルが消えたとき")
         struct Deleted {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
             let cached: WeightRecord
 
@@ -431,7 +432,7 @@ struct HealthSyncEngineTests {
 
         @Suite("読み取りの期間の境界より前の記録が、消えた分として返ったとき")
         struct DeletedBeforeBoundary {
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() throws {
@@ -488,7 +489,7 @@ struct HealthSyncEngineTests {
         struct ReadFailure {
             struct Failure: Error, Equatable {}
 
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() {
@@ -570,7 +571,7 @@ struct HealthSyncEngineTests {
         @Suite("書き込みの許可を得て、まとめて書いていないとき")
         struct NewlyAuthorized {
             let healthStore: HealthStoreMock
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
             let firstManual: WeightRecord
             let secondManual: WeightRecord
@@ -622,7 +623,7 @@ struct HealthSyncEngineTests {
         @Suite("書き込みの許可がまだ無いとき")
         struct NotYetAuthorized {
             let healthStore: HealthStoreMock
-            let store: SyncStoreMock
+            let store: MemoryStore
             let engine: HealthSyncEngine
 
             init() throws {
