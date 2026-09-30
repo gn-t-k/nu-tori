@@ -1,33 +1,38 @@
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+import { appleRefreshTokens } from "../apple-refresh-token-tables";
+
 // 鍵は APPLE_REFRESH_TOKEN_KEYS に「版:base64 の鍵」をカンマで並べて置き、いちばん大きい版で暗号化する
-export const createAppleRefreshTokenStore = (db: D1Database, encryptionKeys: string) => {
+export const createAppleRefreshTokenStore = (d1: D1Database, encryptionKeys: string) => {
+  const db = drizzle(d1);
   const keys = parseEncryptionKeys(encryptionKeys);
   return {
     save: async (accountId: string, refreshToken: string): Promise<void> => {
       const { version, key } = await keys.current();
       const ciphertext = await encrypt(key, accountId, refreshToken);
       await db
-        .prepare(
-          `INSERT INTO apple_refresh_tokens (account_id, key_version, ciphertext) VALUES (?, ?, ?)
-           ON CONFLICT (account_id) DO UPDATE SET key_version = excluded.key_version, ciphertext = excluded.ciphertext`,
-        )
-        .bind(accountId, version, ciphertext)
-        .run();
+        .insert(appleRefreshTokens)
+        .values({ accountId, keyVersion: version, ciphertext })
+        .onConflictDoUpdate({
+          target: appleRefreshTokens.accountId,
+          set: { keyVersion: version, ciphertext },
+        });
     },
     find: async (accountId: string): Promise<string | undefined> => {
-      const row = await db
-        .prepare("SELECT key_version, ciphertext FROM apple_refresh_tokens WHERE account_id = ?")
-        .bind(accountId)
-        .first<{ key_version: number; ciphertext: string }>();
-      if (row === null) {
+      const [row] = await db
+        .select({
+          keyVersion: appleRefreshTokens.keyVersion,
+          ciphertext: appleRefreshTokens.ciphertext,
+        })
+        .from(appleRefreshTokens)
+        .where(eq(appleRefreshTokens.accountId, accountId));
+      if (row === undefined) {
         return undefined;
       }
-      return decrypt(await keys.of(row.key_version), accountId, row.ciphertext);
+      return decrypt(await keys.of(row.keyVersion), accountId, row.ciphertext);
     },
     delete: async (accountId: string): Promise<void> => {
-      await db
-        .prepare("DELETE FROM apple_refresh_tokens WHERE account_id = ?")
-        .bind(accountId)
-        .run();
+      await db.delete(appleRefreshTokens).where(eq(appleRefreshTokens.accountId, accountId));
     },
   };
 };

@@ -48,10 +48,12 @@ import SwiftData
 
     private static func live() throws -> AppRuntime {
         let healthStore = HealthKitHealthStore()
+        // Sendable のクロージャからは MainActor の値を読めないので、先に取り出す
+        let environment = APIEnvironment.forThisBuild
         return assemble(
             Parts(
                 store: try SwiftDataSyncStore(inMemory: false),
-                makeClient: { NuToriAPIClient(environment: .forThisBuild, sessionToken: $0) },
+                makeClient: { NuToriAPIClient(environment: environment, sessionToken: $0) },
                 keychain: KeychainSessionKeychain(),
                 deviceStore: UserDefaultsSignInDeviceStore(defaults: .standard),
                 healthStore: healthStore,
