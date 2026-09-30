@@ -7,7 +7,7 @@ final class RecordWeightFromComposerUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in", api: "previous-day")
+        app = .launched(account: "signed-in", api: "previous-day", timeZone: nil)
     }
 
     func test_入力欄から体重を記録するとタイムラインに出て記録した見た目になること() {

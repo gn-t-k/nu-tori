@@ -69,7 +69,8 @@
                 client: client,
                 accountSession: session,
                 deviceId: { deviceStore.loadOrCreateDeviceId() },
-                hasSession: { (try? await keychain.sessionToken()) != nil }
+                hasSession: { (try? await keychain.sessionToken()) != nil },
+                signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId }
             )
             return AppRuntime(
                 container: store.container,

@@ -14,14 +14,14 @@ import NuToriCore
     var onReplacingRecord: (UUID) -> Void = { _ in }
 
     func save(_ write: WeightEntry.Write) async throws {
-        guard await hasSession() else { return }
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
         switch write {
         case .create:
             break
         case .correct(let record):
             onReplacingRecord(record.id)
         }
-        try await engineForThisDevice().save(write)
+        try await engineForThisDevice(accountId: accountId).save(write)
         // 開いたときの同期が先に送り待ちを読んでいたら、それが終わってから送り直す
         if let inFlight {
             _ = try? await inFlight.value
@@ -34,13 +34,15 @@ import NuToriCore
         client: NuToriAPIClient,
         accountSession: AccountSession,
         deviceId: @escaping @MainActor () -> UUID,
-        hasSession: @escaping @MainActor () async -> Bool
+        hasSession: @escaping @MainActor () async -> Bool,
+        signedInAccountId: @escaping @MainActor () async -> String?
     ) {
         self.store = store
         self.client = client
         self.accountSession = accountSession
         self.deviceId = deviceId
         self.hasSession = hasSession
+        self.signedInAccountId = signedInAccountId
     }
 
     func registerAndWatch() {
@@ -82,6 +84,7 @@ import NuToriCore
     private let accountSession: AccountSession
     private let deviceId: @MainActor () -> UUID
     private let hasSession: @MainActor () async -> Bool
+    private let signedInAccountId: @MainActor () async -> String?
     private var didRegisterRefresh = false
     private var inFlight: Task<SyncResult?, any Error>?
     private var networkMonitor: NWPathMonitor?
@@ -125,8 +128,8 @@ import NuToriCore
     }
 
     private func runSync() async throws -> SyncResult? {
-        guard await hasSession() else { return nil }
-        let result = try await engineForThisDevice().sync()
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        let result = try await engineForThisDevice(accountId: accountId).sync()
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }
@@ -134,11 +137,12 @@ import NuToriCore
         return result
     }
 
-    private func engineForThisDevice() -> SyncEngine {
+    private func engineForThisDevice(accountId: String) -> SyncEngine {
         let version = ProcessInfo.processInfo.operatingSystemVersion
         return SyncEngine(
             store: store,
             client: client,
+            accountId: accountId,
             device: SyncDevice(
                 deviceId: deviceId(),
                 appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
