@@ -174,6 +174,8 @@ struct TimelineScreen: View {
                 }
             }
         }
+        // 中の行が自分の識別子を保つよう、区切りは入れ物にしてから名前を付ける
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("day-section-\(TimelineDayText.startedOn(for: day.day))")
         .background {
             GeometryReader { geo in
