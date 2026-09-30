@@ -13,7 +13,7 @@ struct TimelineTests {
 
             init() {
                 timeline = Timeline(
-                    input: Timeline.Input(weightRecords: []),
+                    input: Timeline.Input(weightRecords: [], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 25)
                 )
@@ -47,7 +47,7 @@ struct TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [
                         try .manual(72.4, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo")
-                    ]),
+                    ], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -72,7 +72,7 @@ struct TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [
                         try .imported(73.0, at: "2026-09-20T06:48:00+09:00", in: "Asia/Tokyo")
-                    ]),
+                    ], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 23)
                 )
@@ -91,7 +91,7 @@ struct TimelineTests {
 
             init() {
                 timeline = Timeline(
-                    input: Timeline.Input(weightRecords: []),
+                    input: Timeline.Input(weightRecords: [], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 23)
                 )
@@ -118,7 +118,7 @@ struct TimelineTests {
                 losAngelesMorning = try .manual(
                     72.6, at: "2026-09-24T07:00:00-07:00", in: "America/Los_Angeles")
                 timeline = Timeline(
-                    input: Timeline.Input(weightRecords: [losAngelesMorning, tokyoMorning]),
+                    input: Timeline.Input(weightRecords: [losAngelesMorning, tokyoMorning], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -273,7 +273,7 @@ struct TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [
                         try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                    ]),
+                    ], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -324,7 +324,7 @@ struct TimelineTests {
 
             init() {
                 timeline = Timeline(
-                    input: Timeline.Input(weightRecords: []),
+                    input: Timeline.Input(weightRecords: [], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -348,7 +348,7 @@ struct TimelineTests {
                         try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
                         earliest,
                         try .manual(72.9, at: "2026-09-24T21:30:00+09:00", in: "Asia/Tokyo"),
-                    ]),
+                    ], rejectedLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )

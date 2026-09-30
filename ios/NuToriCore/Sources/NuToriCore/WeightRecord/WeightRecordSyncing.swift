@@ -59,7 +59,7 @@ public struct WeightRecordSyncing: SyncedRecordKind {
             )
         case .sourceDeletedWeightRecord:
             // 消すかどうかを決めるのはサーバーで、送り直さない
-            return KindRejection()
+            return KindRejection.none
         case .updateAccountSettings:
             throw PendingWrite.InvalidEntryError(kind: entry.kind)
         }

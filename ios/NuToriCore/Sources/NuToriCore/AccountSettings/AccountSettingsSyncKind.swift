@@ -29,7 +29,7 @@ public struct AccountSettingsSyncKind: SyncedRecordKind {
         reason: SyncWriteResult.RejectionReason,
         current: SyncWriteResult.Current?
     ) throws -> KindRejection {
-        KindRejection()
+        KindRejection.none
     }
 
     /// 設定を直したときの結果。送り待ちに足し、今の値を、取りに行った変更と同じ形でキャッシュに当てる

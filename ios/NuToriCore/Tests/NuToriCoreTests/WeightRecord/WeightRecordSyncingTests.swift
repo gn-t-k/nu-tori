@@ -182,7 +182,7 @@ struct WeightRecordSyncingTests {
             let rejection = try syncing.rejection(
                 of: sourceDeleted, reason: .recordNotFound, current: .absent)
 
-            #expect(rejection == KindRejection())
+            #expect(rejection == KindRejection.none)
         }
     }
 }

@@ -53,10 +53,10 @@ extension NuToriAPIClientTests {
                     result
                         == .pushed([
                             SyncWriteResult(
-                                writeId: createWriteId, outcome: .applied),
+                                writeId: createWriteId, outcome: .applied, current: nil),
                             SyncWriteResult(
                                 writeId: updateWriteId,
-                                outcome: .rejected(.outOfRange)),
+                                outcome: .rejected(.outOfRange), current: nil),
                         ])
                 )
             }
@@ -263,9 +263,9 @@ extension NuToriAPIClientTests {
                 #expect(
                     result
                         == .pushed([
-                            SyncWriteResult(writeId: writeIds[0], outcome: .applied),
-                            SyncWriteResult(writeId: writeIds[1], outcome: .ignoredTombstone),
-                            SyncWriteResult(writeId: writeIds[2], outcome: .keptCorrected),
+                            SyncWriteResult(writeId: writeIds[0], outcome: .applied, current: nil),
+                            SyncWriteResult(writeId: writeIds[1], outcome: .ignoredTombstone, current: nil),
+                            SyncWriteResult(writeId: writeIds[2], outcome: .keptCorrected, current: nil),
                         ])
                 )
             }
@@ -306,10 +306,10 @@ extension NuToriAPIClientTests {
                         == .pushed([
                             SyncWriteResult(
                                 writeId: createWriteId,
-                                outcome: .unknown(result: "ignored_stale")),
+                                outcome: .unknown(result: "ignored_stale"), current: nil),
                             SyncWriteResult(
                                 writeId: updateWriteId,
-                                outcome: .rejected(.unknown(reason: "too_old"))),
+                                outcome: .rejected(.unknown(reason: "too_old")), current: nil),
                         ])
                 )
             }
