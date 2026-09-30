@@ -96,8 +96,10 @@ struct SwiftDataSyncStoreTests {
         entity.properties = [kilograms]
         model.entities = [entity]
         let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
-        try coordinator.addPersistentStore(
+        let store = try coordinator.addPersistentStore(
             ofType: NSSQLiteStoreType, configurationName: nil, at: url)
+        // 閉じてから返す。開いたままだと、テストが開くときにまだ書き終えておらず、消すときに使用中のファイルを消すことになる
+        try coordinator.remove(store)
     }
 
     static func fileBytes(in directory: URL) throws -> [String: Data] {
