@@ -1,4 +1,4 @@
-import type { TestRecordStore } from "./test-record-kind";
+import type { TestRecordStore } from "./test-record-store";
 
 export const createMemoryTestRecordStore = (operations: string[]): TestRecordStore => {
   const values = new Map<string, number>();

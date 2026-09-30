@@ -1,12 +1,7 @@
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import type { AccountSettings } from "./account-settings";
 import type { AccountSettingsStore } from "./account-settings-store";
-
-export type AccountSettingsWrite = {
-  id: string;
-  type: "update_account_settings";
-  accountSettings: AccountSettings;
-};
+import type { AccountSettingsWrite } from "./account-settings-write";
 
 // アカウントの設定の種類。記録が無くても直す書き込みで送り、無ければ作る。受け付けない値は無い
 export const createAccountSettingsKind = (

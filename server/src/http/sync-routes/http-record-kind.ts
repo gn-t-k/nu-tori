@@ -1,5 +1,6 @@
 import type { RecordType } from "../../domain/record-type";
-import type { PresentRecord, WriteBase } from "../../domain/sync-ledger/record-kind";
+import type { PresentRecord } from "../../domain/sync-ledger/present-record";
+import type { WriteBase } from "../../domain/sync-ledger/write-base";
 import type { SyncWrite } from "../../domain/sync-write";
 
 // 記録の種類が受け口に見せる入口。ドメインの登録簿の種類と、名前を揃えて1行ずつ並べる

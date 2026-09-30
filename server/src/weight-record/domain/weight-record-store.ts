@@ -1,7 +1,6 @@
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
+import type { WriteReceiptId } from "../../domain/sync-ledger/write-receipt-id";
 import type { WeightRecord } from "./weight-record";
 
-// 体重記録の置き場。削除の印は体重記録の削除の印の表のまま持つ
 export type WeightRecordStore = {
   findStartedOn: () => string | undefined;
   find: (id: string) => WeightRecord | undefined;

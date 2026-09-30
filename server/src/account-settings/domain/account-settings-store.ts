@@ -1,7 +1,6 @@
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
+import type { WriteReceiptId } from "../../domain/sync-ledger/write-receipt-id";
 import type { AccountSettings } from "./account-settings";
 
-// アカウントの設定の置き場。アカウントに1件の記録として持つ
 export type AccountSettingsStore = {
   find: () => AccountSettings | undefined;
   insert: (settings: AccountSettings) => void;

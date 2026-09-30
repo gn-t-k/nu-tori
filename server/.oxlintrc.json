@@ -13,12 +13,7 @@
   },
   "rules": {
     "func-style": ["error", "expression"],
-    "typescript/consistent-type-assertions": [
-      "error",
-      {
-        "assertionStyle": "never"
-      }
-    ],
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
     "typescript/consistent-return": "off",
     "byethrow/consistent-namespace": ["error", "R"],
     "byethrow/no-ambiguous-error-type": "error",

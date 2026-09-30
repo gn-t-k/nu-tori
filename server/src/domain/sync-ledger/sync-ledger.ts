@@ -1,44 +1,12 @@
 import type { SyncClientState } from "../sync-client-state";
-import type { RejectionReason, SyncWriteOutcome } from "../sync-write-outcome";
+import type { CurrentRecord } from "./current-record";
 import type { LedgerStore } from "./ledger-store";
-import type { CurrentRecord, PresentRecord, RecordKind, WriteBase, WriteKind } from "./record-kind";
-
-// 控えの ID は帳簿しか作れない。クラスの値は export せず型だけ出すので、外からは作れない
-class WriteReceiptId {
-  private constructor(readonly value: string) {}
-
-  static issue(writeId: string): WriteReceiptId {
-    return new WriteReceiptId(writeId);
-  }
-}
-export type { WriteReceiptId };
-
-export type RejectedWrite<TRecordType extends string> = {
-  writeKind: WriteKind;
-  recordType: TRecordType;
-  reason: RejectionReason;
-};
-
-export type LedgerChange<TRecordType extends string, TValue> = {
-  sequence: number;
-  recordType: TRecordType;
-  recordId: string;
-  current: PresentRecord<TValue>;
-};
-
-// 受け付けなかった書き込みに添える、その記録のサーバーの今の値
-export type RejectedRecord<TRecordType extends string, TValue> = {
-  recordType: TRecordType;
-  recordId: string;
-  current: CurrentRecord<TValue>;
-};
-
-export type PushedResult<TRecordType extends string, TValue> = {
-  writeId: string;
-  outcome: SyncWriteOutcome;
-  // outcome が rejected のときだけ付く。要求の書き込みを全部当て終えた時点の値
-  rejectedRecord: RejectedRecord<TRecordType, TValue> | undefined;
-};
+import type { PushedResult } from "./pushed-result";
+import type { RecordKind } from "./record-kind";
+import type { RejectedWrite } from "./rejected-write";
+import type { LedgerChange } from "./ledger-change";
+import type { WriteBase } from "./write-base";
+import { WriteReceiptId } from "./write-receipt-id";
 
 // 登録簿にない種類の書き込み・変更は、型で来ない。実行時に来たら不具合として投げる
 export const createSyncLedger = <
