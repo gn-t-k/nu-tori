@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
+import { mockSetUserOk } from "../../observability/set-user.mock";
 import {
   mockAccountRateLimiterError,
   mockAccountRateLimiterOk,
@@ -51,6 +52,62 @@ describe("セッションと回数の歯止め", () => {
         env,
       );
       expect(limitSpy).toHaveBeenCalledWith({ key: signedIn.accountId });
+    });
+  });
+
+  describe("セッションのトークンを付けて、メソッドごとに要求したとき", () => {
+    let protectedApp: Hono<{ Bindings: Env; Variables: { accountId: string } }>;
+    let signedIn: { accountId: string; sessionToken: string };
+    let setUserSpy: ReturnType<typeof mockSetUserOk>;
+    beforeEach(async () => {
+      protectedApp = createProtectedApp();
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      signedIn = await signInTestAccount(crypto.randomUUID());
+      mockAccountRateLimiterOk();
+      setUserSpy = mockSetUserOk();
+    });
+
+    describe("GET の要求のとき", () => {
+      beforeEach(async () => {
+        await protectedApp.request(
+          "/",
+          { headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+          env,
+        );
+      });
+
+      test("Sentry の user にアカウント ID を付けること", () => {
+        expect(setUserSpy).toHaveBeenCalledWith({ id: signedIn.accountId });
+      });
+    });
+
+    describe("HEAD の要求のとき", () => {
+      beforeEach(async () => {
+        await protectedApp.request(
+          "/",
+          { method: "HEAD", headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+          env,
+        );
+      });
+
+      test("Sentry の user を付けないこと", () => {
+        expect(setUserSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("OPTIONS の要求のとき", () => {
+      beforeEach(async () => {
+        await protectedApp.request(
+          "/",
+          { method: "OPTIONS", headers: { authorization: `Bearer ${signedIn.sessionToken}` } },
+          env,
+        );
+      });
+
+      test("Sentry の user を付けないこと", () => {
+        expect(setUserSpy).not.toHaveBeenCalled();
+      });
     });
   });
 

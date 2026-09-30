@@ -59,10 +59,27 @@ const sourceDeletedWeightRecordWriteSchema = z
   })
   .openapi("SourceDeletedWeightRecordWrite");
 
+const updateAccountSettingsWriteSchema = z
+  .object({
+    id: writeId,
+    type: z.literal("update_account_settings"),
+    accountSettings: z.object({
+      id: z.string().min(1).openapi({
+        description:
+          "端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ",
+      }),
+      sendsUsageData: z.boolean(),
+    }),
+  })
+  .openapi("UpdateAccountSettingsWrite");
+
 export const syncWriteSchema = z
   .discriminatedUnion("type", [
     createWeightRecordWriteSchema,
     updateWeightRecordWriteSchema,
     sourceDeletedWeightRecordWriteSchema,
+    updateAccountSettingsWriteSchema,
   ])
-  .openapi("SyncWrite");
+  .openapi("SyncWrite", {
+    description: "アカウントの設定は、記録が無くても直す書き込みで送り、サーバーが無ければ作る",
+  });

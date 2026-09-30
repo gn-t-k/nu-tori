@@ -70,7 +70,12 @@
       "routes": [{ "pattern": "api.nu-tori.app", "custom_domain": true }],
       "workers_dev": false,
       "preview_urls": false,
-      "vars": { "APPLE_BUNDLE_ID": "app.nu-tori", "SENTRY_ENVIRONMENT": "production" },
+      // PostHog のプロジェクトのトークン（公開してよい phc_ の値）。PostHog には本番だけが送る
+      "vars": {
+        "APPLE_BUNDLE_ID": "app.nu-tori",
+        "SENTRY_ENVIRONMENT": "production",
+        "POSTHOG_PROJECT_TOKEN": "phc_yYuKJmqxpHM77An2fa7NYoL8SK2RkbbEXgpVUQQ2fjze",
+      },
       "ratelimits": [
         {
           "name": "ACCOUNT_RATE_LIMITER",

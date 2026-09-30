@@ -3,8 +3,15 @@ public import Foundation
 public protocol SyncStore: Sendable {
     func weightRecord(id: UUID) async throws -> WeightRecord?
 
+    func weightRecords() async throws -> [WeightRecord]
+
     /// 片方だけ残ると、送り忘れるか、無い記録を送る
     func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws
+
+    func accountSettings() async throws -> AccountSettings?
+
+    /// アカウントの設定の保存と送り待ちへの追加は、1つの保存で行う
+    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws
 
     func pendingWritesOldestFirst() async throws -> [PendingWrite]
 
@@ -16,6 +23,12 @@ public protocol SyncStore: Sendable {
 
     func apply(_ changes: PulledChanges) async throws
 
-    /// キャッシュの記録、送り待ち、同期の状態（通し番号、初回の取得の印、使い始めた日）をすべて消す
+    func healthSyncState() async throws -> HealthSyncState
+    func saveHealthSyncState(_ state: HealthSyncState) async throws
+
+    /// 記録のキャッシュへの追加と、送り待ちへの追加と、アンカーの更新は、1つの保存で行う
+    func applyHealthImport(_ batch: HealthImportBatch) async throws
+
+    /// キャッシュの記録、アカウントの設定、送り待ち、同期の状態（通し番号、初回の取得の印、使い始めた日）、ヘルスケアの同期の進み具合を、1つの保存で空にする。片方だけ残ると、別のアカウントのものが混ざる
     func eraseAll() async throws
 }

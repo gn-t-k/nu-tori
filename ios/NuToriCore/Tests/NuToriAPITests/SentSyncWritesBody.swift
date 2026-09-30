@@ -27,8 +27,64 @@ struct SentSyncWritesBody: Decodable, Equatable {
 
     struct Write: Decodable, Equatable {
         let id: String
-        let type: String
-        let weightRecord: WeightRecord
+
+        var type: String {
+            switch payload {
+            case .weightRecord(let type, _): type
+            case .accountSettings: "update_account_settings"
+            }
+        }
+
+        var weightRecord: WeightRecord? {
+            guard case .weightRecord(_, let record) = payload else {
+                return nil
+            }
+            return record
+        }
+
+        init(id: String, type: String, weightRecord: WeightRecord) {
+            self.id = id
+            payload = .weightRecord(type: type, record: weightRecord)
+        }
+
+        init(id: String, accountSettings: AccountSettings) {
+            self.id = id
+            payload = .accountSettings(accountSettings)
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(String.self, forKey: .id)
+            let type = try container.decode(String.self, forKey: .type)
+            switch type {
+            case "update_account_settings":
+                payload = .accountSettings(
+                    try container.decode(AccountSettings.self, forKey: .accountSettings))
+            default:
+                payload = .weightRecord(
+                    type: type,
+                    record: try container.decode(WeightRecord.self, forKey: .weightRecord))
+            }
+        }
+
+        private let payload: Payload
+
+        private enum Payload: Equatable {
+            case weightRecord(type: String, record: WeightRecord)
+            case accountSettings(AccountSettings)
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case type
+            case weightRecord
+            case accountSettings
+        }
+    }
+
+    struct AccountSettings: Decodable, Equatable {
+        let id: String
+        let sendsUsageData: Bool
     }
 
     struct WeightRecord: Decodable, Equatable {
