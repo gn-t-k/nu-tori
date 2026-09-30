@@ -2,17 +2,15 @@ import Foundation
 import NuToriCore
 import SwiftData
 
-@Model
-nonisolated final class CachedPendingWrite {
-    @Attribute(.unique) var writeId: UUID
-    var enqueuedAt: Date
-    /// 書き込みの中身。記録の行を消しても、送る値が残る
-    var operationJSON: Data
+typealias PendingWriteRow = PendingStoreSchemaV1.PendingWriteRow
 
-    init(write: PendingWrite) throws {
-        writeId = write.writeId
-        enqueuedAt = write.enqueuedAt
-        operationJSON = try JSONEncoder().encode(StoredPendingOperation(write.operation))
+extension PendingWriteRow {
+    convenience init(write: PendingWrite) throws {
+        self.init(
+            writeId: write.writeId,
+            enqueuedAt: write.enqueuedAt,
+            operationJSON: try JSONEncoder().encode(StoredPendingOperation(write.operation))
+        )
     }
 
     func pendingWrite() throws -> PendingWrite {

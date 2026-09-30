@@ -11,45 +11,34 @@ struct SwiftDataSyncStoreTests {
     @MainActor
     struct UnmigratableShape {
         let directory: URL
+        let pendingDirectory: URL
         let originalFiles: [String: Data]
 
         init() throws {
-            directory = FileManager.default.temporaryDirectory.appending(
-                path: "record-store-\(UUID().uuidString)", directoryHint: .isDirectory)
+            directory = SwiftDataSyncStoreTests.makeDirectory()
+            pendingDirectory = directory.appending(
+                path: "PendingStore", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true)
-            try Self.writeIncompatibleStore(at: directory.appending(path: "RecordStore.store"))
-            originalFiles = try SwiftDataSyncStoreTests.fileBytes(in: directory)
+                at: pendingDirectory, withIntermediateDirectories: true)
+            try SwiftDataSyncStoreTests.writeIncompatibleStore(
+                entityName: "PendingWriteRow",
+                at: pendingDirectory.appending(path: "PendingStore.store"))
+            originalFiles = try SwiftDataSyncStoreTests.fileBytes(in: pendingDirectory)
         }
 
-        @Test("元のファイルを日時つきの別名に移し、空で作り直すこと")
+        @Test("元のファイルを日時つきの別名に移し、空で作り直し、対処した失敗として残すこと")
         func archivesAndRecreates() throws {
-            _ = try SwiftDataSyncStore(directory: directory)
+            let store = try SwiftDataSyncStore(directory: directory)
 
-            let after = try SwiftDataSyncStoreTests.fileBytes(in: directory)
+            #expect(store.takeRecoveries() == [.storeRecovery])
+            let after = try SwiftDataSyncStoreTests.fileBytes(in: pendingDirectory)
             for (name, bytes) in originalFiles {
                 let archived = after.filter { key, value in
                     key.hasPrefix(name + ".") && value == bytes
                 }
                 #expect(archived.count == 1)
             }
-            #expect(after["RecordStore.store"] != originalFiles["RecordStore.store"])
-        }
-
-        private static func writeIncompatibleStore(at url: URL) throws {
-            let model = NSManagedObjectModel()
-            let entity = NSEntityDescription()
-            entity.name = "CachedWeightRecord"
-            entity.managedObjectClassName = "CachedWeightRecord"
-            let kilograms = NSAttributeDescription()
-            kilograms.name = "kilograms"
-            kilograms.attributeType = .stringAttributeType
-            kilograms.isOptional = false
-            entity.properties = [kilograms]
-            model.entities = [entity]
-            let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
-            try coordinator.addPersistentStore(
-                ofType: NSSQLiteStoreType, configurationName: nil, at: url)
+            #expect(after["PendingStore.store"] != originalFiles["PendingStore.store"])
         }
     }
 
@@ -57,20 +46,22 @@ struct SwiftDataSyncStoreTests {
     @MainActor
     struct OtherOpenFailure {
         let directory: URL
+        let pendingDirectory: URL
         let originalFiles: [String: Data]
 
         init() throws {
-            directory = FileManager.default.temporaryDirectory.appending(
-                path: "record-store-\(UUID().uuidString)", directoryHint: .isDirectory)
+            directory = SwiftDataSyncStoreTests.makeDirectory()
+            pendingDirectory = directory.appending(
+                path: "PendingStore", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true)
-            let store = directory.appending(path: "RecordStore.store")
+                at: pendingDirectory, withIntermediateDirectories: true)
+            let store = pendingDirectory.appending(path: "PendingStore.store")
             try Data("not a database".utf8).write(to: store)
             try Data("shm".utf8).write(
                 to: URL(filePath: store.path(percentEncoded: false) + "-shm"))
             try Data("wal".utf8).write(
                 to: URL(filePath: store.path(percentEncoded: false) + "-wal"))
-            originalFiles = try SwiftDataSyncStoreTests.fileBytes(in: directory)
+            originalFiles = try SwiftDataSyncStoreTests.fileBytes(in: pendingDirectory)
         }
 
         @Test("作り直さず、元のファイルが残ること")
@@ -78,8 +69,8 @@ struct SwiftDataSyncStoreTests {
             #expect(throws: SwiftDataSyncStore.NotOpened.self) {
                 _ = try SwiftDataSyncStore(directory: directory)
             }
-            let after = try SwiftDataSyncStoreTests.fileBytes(in: directory)
-            #expect(after["RecordStore.store"] == originalFiles["RecordStore.store"])
+            let after = try SwiftDataSyncStoreTests.fileBytes(in: pendingDirectory)
+            #expect(after["PendingStore.store"] == originalFiles["PendingStore.store"])
             let archived = after.keys.filter { name in
                 originalFiles.keys.contains { name.hasPrefix($0 + ".") }
             }
@@ -87,7 +78,29 @@ struct SwiftDataSyncStoreTests {
         }
     }
 
-    private static func fileBytes(in directory: URL) throws -> [String: Data] {
+    static func makeDirectory() -> URL {
+        FileManager.default.temporaryDirectory.appending(
+            path: "record-store-\(UUID().uuidString)", directoryHint: .isDirectory)
+    }
+
+    /// 今の形と合わない SQLite のファイル。`entityName` のモデルが1つだけあり、項目の型が違う
+    static func writeIncompatibleStore(entityName: String, at url: URL) throws {
+        let model = NSManagedObjectModel()
+        let entity = NSEntityDescription()
+        entity.name = entityName
+        entity.managedObjectClassName = entityName
+        let kilograms = NSAttributeDescription()
+        kilograms.name = "kilograms"
+        kilograms.attributeType = .stringAttributeType
+        kilograms.isOptional = false
+        entity.properties = [kilograms]
+        model.entities = [entity]
+        let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
+        try coordinator.addPersistentStore(
+            ofType: NSSQLiteStoreType, configurationName: nil, at: url)
+    }
+
+    static func fileBytes(in directory: URL) throws -> [String: Data] {
         var files: [String: Data] = [:]
         let urls = try FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: nil)

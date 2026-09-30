@@ -28,6 +28,7 @@ actor SentryErrorReportingSession: ErrorReportingSession {
             case .healthRead: "health_read"
             case .healthWrite: "health_write"
             case .cacheSave: "cache_save"
+            case .storeRecovery: "store_recovery"
             }
         await MainActor.run {
             _ = SentrySDK.capture(message: message)
