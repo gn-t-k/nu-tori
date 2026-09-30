@@ -7,7 +7,7 @@ final class SignInFirstLaunchUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-out", timeZone: nil)
+        app = .launched(account: "signed-out", healthLatestKilograms: nil, timeZone: nil)
     }
 
     func test_説明のひとことと同意のカードとAppleのボタンが出ること() {

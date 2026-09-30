@@ -7,7 +7,7 @@ final class SignedInFetchingUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in-fetching", timeZone: nil)
+        app = .launched(account: "signed-in-fetching", healthLatestKilograms: nil, timeZone: nil)
     }
 
     func test_タイムラインの場所に読み込み中を出すこと() {

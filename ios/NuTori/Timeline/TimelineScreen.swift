@@ -4,6 +4,7 @@ import SwiftUI
 
 struct TimelineScreen: View {
     var rejectedLines: [RejectedWeightLine]
+    var prepareWeightEntry: () async -> Void
     var saveWeight: (WeightEntry.Write) async -> Void
 
     var body: some View {
@@ -59,9 +60,9 @@ struct TimelineScreen: View {
                 }
             }
         }
-        .sheet(isPresented: $showsWeightEntry) {
+        .sheet(isPresented: showsWeightEntry) {
             WeightEntrySheet(records: records) { write in
-                showsWeightEntry = false
+                weightEntryPhase = .closed
                 Task { await saveWeight(write) }
             }
         }
@@ -72,8 +73,19 @@ struct TimelineScreen: View {
     @Query private var cachedRecords: [CachedWeightRecord]
     @Query private var syncStates: [CachedSyncState]
     @State private var visibleDay: CalendarDay?
-    @State private var showsWeightEntry = false
+    @State private var weightEntryPhase = WeightEntryPhase.closed
     @State private var dayFocus: DayFocus = .timeline
+
+    private var showsWeightEntry: Binding<Bool> {
+        Binding(
+            get: { weightEntryPhase == .showing },
+            set: { isPresented in
+                if !isPresented {
+                    weightEntryPhase = .closed
+                }
+            }
+        )
+    }
 
     private var summaryPresented: Binding<Bool> {
         Binding(
@@ -194,7 +206,12 @@ struct TimelineScreen: View {
         let unrecorded = !records.contains { $0.day == today }
         return HStack {
             Button {
-                showsWeightEntry = true
+                guard weightEntryPhase == .closed else { return }
+                weightEntryPhase = .preparing
+                Task {
+                    await prepareWeightEntry()
+                    weightEntryPhase = .showing
+                }
             } label: {
                 Image(systemName: "scalemass.fill")
                     .frame(width: 44, height: 44)
@@ -205,6 +222,7 @@ struct TimelineScreen: View {
                     .foregroundStyle(unrecorded ? Color.white : Color.accentColor)
             }
             .buttonStyle(.plain)
+            .disabled(weightEntryPhase == .preparing)
             .accessibilityLabel("体重")
             .accessibilityIdentifier(unrecorded ? "composer-weight-unrecorded" : "composer-weight")
             Spacer(minLength: 0)
@@ -293,6 +311,12 @@ private enum TimelineDayRow: Identifiable {
         case .rejection(let line): "rejection-\(line.record.id.uuidString)"
         }
     }
+}
+
+private enum WeightEntryPhase {
+    case closed
+    case preparing
+    case showing
 }
 
 private enum DayFocus: Equatable {

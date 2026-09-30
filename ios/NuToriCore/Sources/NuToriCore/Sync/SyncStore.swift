@@ -10,9 +10,10 @@ public protocol SyncStore: Sendable {
 
     func accountSettings() async throws -> AccountSettings?
 
-    /// アカウントの設定の保存と送り待ちへの追加は、1つの保存で行う
+    /// 片方だけ残ると、送り忘れるか、保存していない設定を送る
     func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws
 
+    /// 古い順
     func pendingWritesOldestFirst() async throws -> [PendingWrite]
 
     func removePendingWrites(_ writeIds: [UUID], reverting reversions: [RecordReversion])
@@ -26,7 +27,7 @@ public protocol SyncStore: Sendable {
     func healthSyncState() async throws -> HealthSyncState
     func saveHealthSyncState(_ state: HealthSyncState) async throws
 
-    /// 記録のキャッシュへの追加と、送り待ちへの追加と、アンカーの更新は、1つの保存で行う
+    /// 記録と送り待ちとアンカーが分かれて残ると、送り忘れるか、同じ変化を次に取りこぼす
     func applyHealthImport(_ batch: HealthImportBatch) async throws
 
     /// キャッシュの記録、アカウントの設定、送り待ち、同期の状態（通し番号、初回の取得の印、使い始めた日）、ヘルスケアの同期の進み具合を、1つの保存で空にする。片方だけ残ると、別のアカウントのものが混ざる

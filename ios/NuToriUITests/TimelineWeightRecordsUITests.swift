@@ -7,7 +7,8 @@ final class TimelineWeightRecordsUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in", api: "weight-records", timeZone: nil)
+        app = .launched(
+            account: "signed-in", api: "weight-records", healthLatestKilograms: nil, timeZone: nil)
     }
 
     func test_取りに行った体重がタイムラインに並ぶこと() {

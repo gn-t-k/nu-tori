@@ -5,7 +5,7 @@ import SwiftData
 
 /// 記録、送り待ち、同期の状態を1つの SwiftData に置く。保存はメインのコンテキストでだけ行う。
 /// バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
-nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
+nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unchecked Sendable {
     let container: ModelContainer
 
     struct NotOpened: Error {}
@@ -160,6 +160,13 @@ nonisolated final class SwiftDataSyncStore: SyncStore, @unchecked Sendable {
             try context.delete(model: CachedAccountSettings.self)
             try context.delete(model: CachedPendingWrite.self)
             try context.delete(model: CachedSyncState.self)
+            try context.delete(model: CachedHealthSyncState.self)
+            try context.save()
+        }
+    }
+
+    func deleteAll() async throws {
+        try await onMain { context in
             try context.delete(model: CachedHealthSyncState.self)
             try context.save()
         }

@@ -7,7 +7,8 @@ final class CorrectWeightFromWeightScreenUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in", api: "weight-screen", timeZone: nil)
+        app = .launched(
+            account: "signed-in", api: "weight-screen", healthLatestKilograms: nil, timeZone: nil)
     }
 
     func test_体重の画面で直すとタイムラインの値が変わること() {
