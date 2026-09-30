@@ -1,6 +1,11 @@
+import { createWeightRecordKind } from "../weight-record/domain/create-weight-record-kind";
 import type { RecordKindStores } from "./record-kind-stores";
 import type { RecordKind, WriteBase } from "./sync-ledger/record-kind";
 
 // 種類の登録簿。名前の順に、手で1行ずつ書く（生成しない）。ここにある種類は帳簿の道、無い種類は今の道で当てる
-export const createRecordKinds = (_stores: RecordKindStores) =>
-  [] as const satisfies readonly RecordKind<string, WriteBase, unknown>[];
+export const createRecordKinds = (stores: RecordKindStores) =>
+  [createWeightRecordKind(stores.weightRecord)] as const satisfies readonly RecordKind<
+    string,
+    WriteBase,
+    unknown
+  >[];
