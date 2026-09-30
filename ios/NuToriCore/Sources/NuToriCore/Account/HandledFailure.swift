@@ -1,7 +1,6 @@
 import Foundation
 import OpenAPIRuntime
 
-/// 対処した失敗。電波が無いことと時間切れは送らない
 public enum HandledFailure: Sendable, Equatable {
     case sync
     case healthRead

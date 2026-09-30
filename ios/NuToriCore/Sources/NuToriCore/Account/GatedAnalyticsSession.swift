@@ -1,4 +1,3 @@
-/// サインインして identify するまで送らない。reset のあとも、次の identify まで送らない
 public actor GatedAnalyticsSession: AnalyticsSession {
     public init(forwarding: any AnalyticsSession) {
         self.forwarding = forwarding

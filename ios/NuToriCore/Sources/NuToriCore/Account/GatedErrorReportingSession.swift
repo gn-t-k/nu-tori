@@ -1,4 +1,3 @@
-/// サインインして identify するまで送らない。user を外したあとも、次の identify まで送らない
 public actor GatedErrorReportingSession: ErrorReportingSession {
     public init(forwarding: any ErrorReportingSession) {
         self.forwarding = forwarding

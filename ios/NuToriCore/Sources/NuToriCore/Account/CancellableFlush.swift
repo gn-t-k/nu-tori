@@ -1,4 +1,3 @@
-/// 呼び出し側がキャンセルしたら、送り切りを待たずに戻る
 public enum CancellableFlush {
     public static func run(_ work: @escaping @Sendable () async -> Void) async {
         if Task.isCancelled { return }
@@ -19,8 +18,6 @@ public enum CancellableFlush {
 }
 
 private actor FinishFlag {
-    private var finished = false
-
     func markFinished() {
         finished = true
     }
@@ -28,4 +25,6 @@ private actor FinishFlag {
     func isFinished() -> Bool {
         finished
     }
+
+    private var finished = false
 }

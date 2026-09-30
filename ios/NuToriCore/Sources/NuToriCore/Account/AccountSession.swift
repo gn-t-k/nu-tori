@@ -114,18 +114,11 @@ public actor AccountSession {
         await analytics.identify(accountId: account.accountId)
     }
 
-    /// 取得の途中でも sync は終わる。初めて終えた1回だけ、かかった時間を送る
-    public func noteInitialPull(
-        beforeComplete: Bool,
-        afterComplete: Bool,
-        finished: Bool,
-        startedAt: Date,
-        now: Date
-    ) async {
-        guard !beforeComplete, afterComplete, finished else { return }
+    public func noteInitialPull(_ pull: InitialPull) async {
+        guard case .firstCompletion(let startedAt, let endedAt) = pull else { return }
         await beginObservationIfSignedIn()
         guard (try? await usageSetting())?.canStartPostHog == true else { return }
-        let elapsed = max(0, now.timeIntervalSince(startedAt))
+        let elapsed = max(0, endedAt.timeIntervalSince(startedAt))
         await analytics.capture(.initialPullDuration(.seconds(elapsed)))
     }
 
@@ -133,6 +126,14 @@ public actor AccountSession {
     public func turnOffUsageData() async {
         await analytics.capture(.usageDataTurnedOff)
         await analytics.reset()
+    }
+
+    /// 取得の途中でも sync は終わる。初めて終えたときだけ、かかった時間を持つ
+    public enum InitialPull: Sendable, Equatable {
+        case unfinished
+        case notYetComplete
+        case alreadyComplete
+        case firstCompletion(startedAt: Date, endedAt: Date)
     }
 
     public enum SignInOutcome: Sendable, Equatable {

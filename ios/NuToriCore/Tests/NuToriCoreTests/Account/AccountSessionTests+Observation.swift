@@ -27,11 +27,7 @@ extension AccountSessionTests {
             func sendsInitialPullDuration() async throws {
                 let started = Date(timeIntervalSince1970: 1_700_000_000)
                 await session.noteInitialPull(
-                    beforeComplete: false,
-                    afterComplete: true,
-                    finished: true,
-                    startedAt: started,
-                    now: started.addingTimeInterval(12)
+                    .firstCompletion(startedAt: started, endedAt: started.addingTimeInterval(12))
                 )
 
                 #expect(device.analytics.identifiedAccountIds == ["account-1"])
@@ -56,13 +52,7 @@ extension AccountSessionTests {
             @Test("Sentry だけを始め、初回の取得の時間は送らないこと")
             func startsSentryOnly() async {
                 await session.beginObservationIfSignedIn()
-                await session.noteInitialPull(
-                    beforeComplete: false,
-                    afterComplete: false,
-                    finished: true,
-                    startedAt: .now,
-                    now: .now
-                )
+                await session.noteInitialPull(.notYetComplete)
 
                 #expect(device.errorReporting.identifiedAccountIds == ["account-1"])
                 #expect(device.analytics.identifiedAccountIds.isEmpty)
@@ -92,11 +82,7 @@ extension AccountSessionTests {
             @Test("PostHog を始めず、初回の取得の時間も送らないこと")
             func doesNotStartPostHog() async throws {
                 await session.noteInitialPull(
-                    beforeComplete: false,
-                    afterComplete: true,
-                    finished: true,
-                    startedAt: .now,
-                    now: .now
+                    .firstCompletion(startedAt: .now, endedAt: .now)
                 )
 
                 #expect(device.errorReporting.identifiedAccountIds == ["account-1"])
