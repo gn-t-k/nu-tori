@@ -141,7 +141,6 @@ extension NuToriAPIClientTests {
                     try SentSyncWritesBody(json: sent.body ?? "").writes == [
                         .init(
                             id: writeId.uuidString,
-                            type: "update_account_settings",
                             accountSettings: .init(
                                 id: settingsId.uuidString, sendsUsageData: false)
                         )

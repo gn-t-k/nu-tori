@@ -27,44 +27,50 @@ struct SentSyncWritesBody: Decodable, Equatable {
 
     struct Write: Decodable, Equatable {
         let id: String
-        let type: String
-        let payload: Payload
+
+        var type: String {
+            switch payload {
+            case .weightRecord(let type, _): type
+            case .accountSettings: "update_account_settings"
+            }
+        }
+
+        var weightRecord: WeightRecord? {
+            guard case .weightRecord(_, let record) = payload else {
+                return nil
+            }
+            return record
+        }
 
         init(id: String, type: String, weightRecord: WeightRecord) {
             self.id = id
-            self.type = type
-            payload = .weightRecord(weightRecord)
+            payload = .weightRecord(type: type, record: weightRecord)
         }
 
-        init(id: String, type: String, accountSettings: AccountSettings) {
+        init(id: String, accountSettings: AccountSettings) {
             self.id = id
-            self.type = type
             payload = .accountSettings(accountSettings)
         }
 
         init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             id = try container.decode(String.self, forKey: .id)
-            type = try container.decode(String.self, forKey: .type)
-            payload =
-                switch type {
-                case "update_account_settings":
-                    .accountSettings(
-                        try container.decode(AccountSettings.self, forKey: .accountSettings))
-                default:
-                    .weightRecord(try container.decode(WeightRecord.self, forKey: .weightRecord))
-                }
-        }
-
-        var weightRecord: WeightRecord? {
-            guard case .weightRecord(let record) = payload else {
-                return nil
+            let type = try container.decode(String.self, forKey: .type)
+            switch type {
+            case "update_account_settings":
+                payload = .accountSettings(
+                    try container.decode(AccountSettings.self, forKey: .accountSettings))
+            default:
+                payload = .weightRecord(
+                    type: type,
+                    record: try container.decode(WeightRecord.self, forKey: .weightRecord))
             }
-            return record
         }
 
-        enum Payload: Equatable {
-            case weightRecord(WeightRecord)
+        private let payload: Payload
+
+        private enum Payload: Equatable {
+            case weightRecord(type: String, record: WeightRecord)
             case accountSettings(AccountSettings)
         }
 
