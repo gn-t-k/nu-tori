@@ -39,6 +39,55 @@ struct GatedAnalyticsSessionTests {
             #expect(forwarding.identifiedAccountIds == ["account-1"])
             #expect(forwarding.captured == [.weightInputCancelled])
         }
+
+        @Test("画面を送ること")
+        func forwardsScreen() async {
+            await session.capture(.screen(.weight))
+
+            #expect(forwarding.captured == [.screen(.weight)])
+        }
+    }
+
+    @Suite("identify の前に開いていた画面")
+    struct ScreenBeforeIdentify {
+        let forwarding: AnalyticsSessionMock
+        let session: GatedAnalyticsSession
+
+        init() {
+            forwarding = .ok()
+            session = GatedAnalyticsSession(forwarding: forwarding)
+        }
+
+        @Test("始めたときに、最後に開いていた画面を1件送ること")
+        func sendsTheVisibleScreen() async {
+            await session.capture(.screen(.timeline))
+            await session.capture(.screen(.weightEntry))
+
+            #expect(forwarding.captured.isEmpty)
+
+            await session.identify(accountId: "account-1")
+
+            #expect(forwarding.captured == [.screen(.weightEntry)])
+        }
+
+        @Test("画面以外は、始めても送らないこと")
+        func doesNotReplayOtherEvents() async {
+            await session.capture(.weightInputCancelled)
+
+            await session.identify(accountId: "account-1")
+
+            #expect(forwarding.captured.isEmpty)
+        }
+
+        @Test("reset したあとに始めても、その前の画面は送らないこと")
+        func dropsTheScreenAfterReset() async {
+            await session.capture(.screen(.timeline))
+            await session.reset()
+
+            await session.identify(accountId: "account-1")
+
+            #expect(forwarding.captured.isEmpty)
+        }
     }
 
     @Suite("reset のあと")

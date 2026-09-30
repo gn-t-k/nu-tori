@@ -7,7 +7,8 @@ final class AccountDeleteUnreachableUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in", api: "offline")
+        app = .launched(
+            account: "signed-in", api: "offline", healthLatestKilograms: nil, timeZone: nil)
         app.openAccountScreen()
     }
 

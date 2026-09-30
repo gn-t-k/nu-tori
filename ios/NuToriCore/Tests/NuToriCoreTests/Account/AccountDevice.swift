@@ -3,8 +3,6 @@ import NuToriAPI
 import NuToriCore
 import Testing
 
-@testable import NuToriAPI
-
 struct AccountDevice {
     static let previousAccount = SignedInAccount(
         accountId: "account-1", appleUserId: "apple-user-1")

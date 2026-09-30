@@ -10,7 +10,7 @@
 ## 要件として読むもの
 
 - 概念モデル: `docs/ui-design/0001-first-release/03-concept-model.md`
-- 用語: `CONTEXT.md`
+- 用語: `GLOSSARY.md`
 - 同期の約束: 「[端末とサーバーの同期とオフライン時の振る舞い](https://github.com/gn-t-k/nu-tori/issues/26)」の追記の「同期」
 - その仕様の決定チケット: 「仕様の分け方」の解決コメントの「仕様ごとに読む決定チケット」
 - 既存の表と、DB と移行の決まり: `server/AGENTS.md` の「DB」

@@ -7,7 +7,7 @@ final class AccountDeletedUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in")
+        app = .launched(account: "signed-in", healthLatestKilograms: nil, timeZone: nil)
         app.openAccountScreen()
     }
 

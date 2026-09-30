@@ -1,0 +1,114 @@
+# UI テストは画面が増えるほど延びるので、PR では ui-test のラベルを付けたときだけ回す（docs/agents/tooling.md）
+name: ios-ui-test
+
+on:
+  push:
+    branches: [main]
+    # 必須のチェックではないので、ワークフローの paths で飛ばしてよい。check.yml の changes の ios と同じパス
+    paths:
+      - "ios/**"
+      - "shared/**"
+      - "server/openapi.json"
+      - "scripts/check"
+      - ".github/workflows/ios-ui-test.yml"
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - "ios/**"
+      - "shared/**"
+      - "server/openapi.json"
+      - "scripts/check"
+      - ".github/workflows/ios-ui-test.yml"
+  workflow_dispatch:
+
+concurrency:
+  # ほかのラベルを付けただけの回が、回っている UI テストを止めないよう、別の組にする
+  group: >-
+    ${{ github.event.action == 'labeled' && github.event.label.name != 'ui-test' && github.run_id
+    || format('ios-ui-test-{0}', github.event.pull_request.number || github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  ios-ui-test:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (contains(github.event.pull_request.labels.*.name, 'ui-test') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ui-test'))
+    runs-on: xcode-27
+    outputs:
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/check ios-ui-test
+      - name: 失敗の要約とスクリーンショットを書き出す
+        if: failure()
+        run: |
+          results=ios/.build/NuTori.xcresult
+          if [ ! -d "$results" ]; then
+            echo "xcresult が無い（UI テストの前に止まった）ので、ログを見る" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          mkdir -p ios/.build/report/attachments
+          xcrun xcresulttool get test-results summary --path "$results" --compact > ios/.build/report/summary.json
+          jq -r '.testFailures[]? | "- \(.testIdentifierString): \(.failureText)"' ios/.build/report/summary.json |
+            tee ios/.build/report/failures.txt >> "$GITHUB_STEP_SUMMARY"
+          xcrun xcresulttool export attachments --path "$results" --output-path ios/.build/report/attachments
+      - id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: ios-ui-test-report
+          path: ios/.build/report
+          retention-days: 3
+
+  # main で落ちたら Issue を1つ立て、緑に戻ったら閉じる。PR とほかのブランチの回は、その場で見る人がいるので立てない
+  track-main-failure:
+    needs: ios-ui-test
+    if: >-
+      always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' &&
+      (needs.ios-ui-test.result == 'success' || needs.ios-ui-test.result == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      REPORT: ${{ needs.ios-ui-test.outputs.artifact-url || '無い（UI テストの前に止まったので、ログを見る）' }}
+      TITLE: main の ios-ui-test が落ちている
+    steps:
+      - id: open-issue
+        name: 開いている Issue を探す
+        run: |
+          number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select(.title == env.TITLE and .pull_request == null) | .number' | head -n 1)"
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+      - name: 緑に戻ったので Issue を閉じる
+        if: needs.ios-ui-test.result == 'success' && steps.open-issue.outputs.number != ''
+        env:
+          NUMBER: ${{ steps.open-issue.outputs.number }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="main の ios-ui-test が緑に戻った: $RUN_URL" > /dev/null
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/$NUMBER" -f state=closed -f state_reason=completed > /dev/null
+      - name: 開いている Issue に、また落ちたことを書き足す
+        if: needs.ios-ui-test.result == 'failure' && steps.open-issue.outputs.number != ''
+        env:
+          NUMBER: ${{ steps.open-issue.outputs.number }}
+        run: |
+          body="$(printf 'また落ちた: %s\n失敗の要約とスクリーンショット: %s' "$RUN_URL" "$REPORT")"
+          gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="$body" > /dev/null
+      - name: Issue を立てる
+        if: needs.ios-ui-test.result == 'failure' && steps.open-issue.outputs.number == ''
+        run: |
+          body="$(cat << BODY
+          main の ios-ui-test（パッケージのテスト、アプリのビルド、UI テスト）が落ちた。次の PR より先に直す。
+
+          - 落ちた回: $RUN_URL
+          - 失敗の要約とスクリーンショット: $REPORT
+
+          main で ios-ui-test が緑に戻ると、ワークフローがこの Issue を閉じる。
+          BODY
+          )"
+          gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$TITLE" -f body="$body" -f "labels[]=ready-for-agent" > /dev/null

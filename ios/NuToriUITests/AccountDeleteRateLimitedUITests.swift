@@ -7,7 +7,8 @@ final class AccountDeleteRateLimitedUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        app = .launched(account: "signed-in", api: "rate-limited")
+        app = .launched(
+            account: "signed-in", api: "rate-limited", healthLatestKilograms: nil, timeZone: nil)
         app.openAccountScreen()
     }
 

@@ -1,7 +1,6 @@
 import Foundation
+import NuToriAPI
 import NuToriCore
-
-@testable import NuToriAPI
 
 extension SyncEngine {
     static let fixtureNow = Date(timeIntervalSince1970: 1_767_225_600)
@@ -12,7 +11,8 @@ extension SyncEngine {
         transport: ClientTransportMock,
         accountId: String = fixtureAccountId,
         readableKindsVersion: Int = 1,
-        errorReporting: ErrorReportingSessionMock = .ok()
+        errorReporting: ErrorReportingSessionMock = .ok(),
+        weightHealthExport: any WeightHealthExport = WeightHealthExportMock.ok()
     ) -> SyncEngine {
         SyncEngine(
             store: store,
@@ -30,7 +30,8 @@ extension SyncEngine {
             timeZone: { TimeZone(identifier: "Asia/Tokyo")! },
             now: { fixtureNow },
             readableKindsVersion: readableKindsVersion,
-            errorReporting: errorReporting
+            errorReporting: errorReporting,
+            weightHealthExport: weightHealthExport
         )
     }
 }

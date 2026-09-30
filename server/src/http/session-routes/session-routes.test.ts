@@ -12,6 +12,7 @@ import { mockAppleKeysEndpointOk, signAppleIdToken } from "../../auth/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { app } from "../app";
 import { signInTestAccount, signInWithApple } from "../testing";
+import { sha256Hex } from "../testing/sha256-hex";
 
 describe("サインイン", () => {
   describe("ID トークンと認可コードを受け付けたとき", () => {
@@ -101,6 +102,55 @@ describe("サインイン", () => {
         env,
       );
       expect(response.status).toBe(401);
+    });
+  });
+
+  describe("ID トークンの nonce が送った nonce そのもののとき", () => {
+    let body: string;
+    beforeEach(async () => {
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      const nonce = "nonce-1";
+      body = JSON.stringify({
+        idToken: await signAppleIdToken({ appleUserId: crypto.randomUUID(), nonce }),
+        nonce,
+        authorizationCode: "authorization-code",
+      });
+    });
+
+    test("401 を返すこと", async () => {
+      const response = await app.request(
+        "/v1/sessions",
+        { method: "POST", headers: { "content-type": "application/json" }, body },
+        env,
+      );
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe("ID トークンの nonce が送った nonce の SHA-256 の小文字の16進のとき", () => {
+    let body: string;
+    beforeEach(async () => {
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      const nonce = "nonce-1";
+      body = JSON.stringify({
+        idToken: await signAppleIdToken({
+          appleUserId: crypto.randomUUID(),
+          nonce: await sha256Hex(nonce),
+        }),
+        nonce,
+        authorizationCode: "authorization-code",
+      });
+    });
+
+    test("201 を返すこと", async () => {
+      const response = await app.request(
+        "/v1/sessions",
+        { method: "POST", headers: { "content-type": "application/json" }, body },
+        env,
+      );
+      expect(response.status).toBe(201);
     });
   });
 

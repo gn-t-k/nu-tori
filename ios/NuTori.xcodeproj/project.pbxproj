@@ -21,17 +21,26 @@
 			remoteGlobalIDString = 0A0000000000000000000008;
 			remoteInfo = NuTori;
 		};
+		0A0000000000000000000027 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0A0000000000000000000008;
+			remoteInfo = NuTori;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		0A0000000000000000000006 /* NuTori.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NuTori.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A0000000000000000000007 /* NuToriUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NuToriUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A0000000000000000000021 /* NuToriTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NuToriTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		0A000000000000000000001E /* Exceptions for "NuTori" folder in "NuTori" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Info.plist,
 				NuTori.entitlements,
 			);
 			target = 0A0000000000000000000008 /* NuTori */;
@@ -50,6 +59,11 @@
 		0A0000000000000000000005 /* NuToriUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = NuToriUITests;
+			sourceTree = "<group>";
+		};
+		0A0000000000000000000022 /* NuToriTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NuToriTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -73,6 +87,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		0A0000000000000000000025 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -81,6 +102,7 @@
 			children = (
 				0A0000000000000000000004 /* NuTori */,
 				0A0000000000000000000005 /* NuToriUITests */,
+				0A0000000000000000000022 /* NuToriTests */,
 				0A0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +112,7 @@
 			children = (
 				0A0000000000000000000006 /* NuTori.app */,
 				0A0000000000000000000007 /* NuToriUITests.xctest */,
+				0A0000000000000000000021 /* NuToriTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -144,6 +167,27 @@
 			productReference = 0A0000000000000000000007 /* NuToriUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		0A0000000000000000000023 /* NuToriTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0A0000000000000000000029 /* Build configuration list for PBXNativeTarget "NuToriTests" */;
+			buildPhases = (
+				0A0000000000000000000024 /* Sources */,
+				0A0000000000000000000025 /* Frameworks */,
+				0A0000000000000000000026 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0A0000000000000000000028 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				0A0000000000000000000022 /* NuToriTests */,
+			);
+			name = NuToriTests;
+			productName = NuToriTests;
+			productReference = 0A0000000000000000000021 /* NuToriTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -158,6 +202,10 @@
 						CreatedOnToolsVersion = 27.0;
 					};
 					0A0000000000000000000009 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 0A0000000000000000000008;
+					};
+					0A0000000000000000000023 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 0A0000000000000000000008;
 					};
@@ -184,6 +232,7 @@
 			targets = (
 				0A0000000000000000000008 /* NuTori */,
 				0A0000000000000000000009 /* NuToriUITests */,
+				0A0000000000000000000023 /* NuToriTests */,
 			);
 		};
 /* End PBXProject section */
@@ -197,6 +246,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		0A000000000000000000000F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0A0000000000000000000026 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -220,6 +276,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		0A0000000000000000000024 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -227,6 +290,11 @@
 			isa = PBXTargetDependency;
 			target = 0A0000000000000000000008 /* NuTori */;
 			targetProxy = 0A0000000000000000000010 /* PBXContainerItemProxy */;
+		};
+		0A0000000000000000000028 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0A0000000000000000000008 /* NuTori */;
+			targetProxy = 0A0000000000000000000027 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -301,10 +369,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "nu-tori";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "他のアプリで記録した体重を取り込み、目標と推定消費量の計算に使います。";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と栄養を書き込みます。";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "他のアプリで記録した体重と体脂肪率を取り込みます。身長・生年月日・性別・歩数・摂取エネルギーは、目標と推定消費量の計算に使い、保存しません。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と、食事の栄養（エネルギー、たんぱく質・脂質・炭水化物、ビタミン・ミネラルなど）を書き込みます。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_FILE = NuTori/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -331,10 +400,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "nu-tori";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "他のアプリで記録した体重を取り込み、目標と推定消費量の計算に使います。";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と栄養を書き込みます。";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "他のアプリで記録した体重と体脂肪率を取り込みます。身長・生年月日・性別・歩数・摂取エネルギーは、目標と推定消費量の計算に使い、保存しません。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と、食事の栄養（エネルギー、たんぱく質・脂質・炭水化物、ビタミン・ミネラルなど）を書き込みます。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_FILE = NuTori/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -379,6 +449,38 @@
 			};
 			name = Release;
 		};
+		0A000000000000000000002A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M962QB54YW;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.nu-tori.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NuTori.app/NuTori";
+			};
+			name = Debug;
+		};
+		0A000000000000000000002B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M962QB54YW;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.nu-tori.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NuTori.app/NuTori";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -405,6 +507,15 @@
 			buildConfigurations = (
 				0A000000000000000000001C /* Debug */,
 				0A000000000000000000001D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0A0000000000000000000029 /* Build configuration list for PBXNativeTarget "NuToriTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A000000000000000000002A /* Debug */,
+				0A000000000000000000002B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

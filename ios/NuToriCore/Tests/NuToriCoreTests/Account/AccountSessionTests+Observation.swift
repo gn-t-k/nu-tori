@@ -146,4 +146,99 @@ extension AccountSessionTests {
             }
         }
     }
+
+    @Suite("初回の取得の区分")
+    struct ClassifyingInitialPull {
+        @Suite("始める前に終えているとき")
+        struct AlreadyComplete {
+            let startedAt: Date
+            let endedAt: Date
+
+            init() {
+                startedAt = Date(timeIntervalSince1970: 1_700_000_000)
+                endedAt = startedAt.addingTimeInterval(12)
+            }
+
+            @Test("同期が止まっていても、すでに終えたとすること")
+            func staysAlreadyComplete() {
+                let notice = AccountSession.initialPullNotice(
+                    completedBefore: true,
+                    completedAfter: true,
+                    ending: .stopped(.unavailable),
+                    startedAt: startedAt,
+                    endedAt: endedAt
+                )
+                #expect(notice == .alreadyComplete)
+            }
+        }
+
+        @Suite("同期が止まったとき")
+        struct Stopped {
+            let startedAt: Date
+            let endedAt: Date
+
+            init() {
+                startedAt = Date(timeIntervalSince1970: 1_700_000_000)
+                endedAt = startedAt.addingTimeInterval(12)
+            }
+
+            @Test("途中で終わったとすること")
+            func unfinished() {
+                let notice = AccountSession.initialPullNotice(
+                    completedBefore: false,
+                    completedAfter: false,
+                    ending: .stopped(.rateLimited),
+                    startedAt: startedAt,
+                    endedAt: endedAt
+                )
+                #expect(notice == .unfinished)
+            }
+        }
+
+        @Suite("同期が終わっても取得が終わっていないとき")
+        struct FinishedBeforeComplete {
+            let startedAt: Date
+            let endedAt: Date
+
+            init() {
+                startedAt = Date(timeIntervalSince1970: 1_700_000_000)
+                endedAt = startedAt.addingTimeInterval(12)
+            }
+
+            @Test("まだとすること")
+            func notYetComplete() {
+                let notice = AccountSession.initialPullNotice(
+                    completedBefore: false,
+                    completedAfter: false,
+                    ending: .finished,
+                    startedAt: startedAt,
+                    endedAt: endedAt
+                )
+                #expect(notice == .notYetComplete)
+            }
+        }
+
+        @Suite("初めて終えたとき")
+        struct FirstCompletion {
+            let startedAt: Date
+            let endedAt: Date
+
+            init() {
+                startedAt = Date(timeIntervalSince1970: 1_700_000_000)
+                endedAt = startedAt.addingTimeInterval(12)
+            }
+
+            @Test("その所要時間を持つこと")
+            func keepsTheInterval() {
+                let notice = AccountSession.initialPullNotice(
+                    completedBefore: false,
+                    completedAfter: true,
+                    ending: .finished,
+                    startedAt: startedAt,
+                    endedAt: endedAt
+                )
+                #expect(notice == .firstCompletion(startedAt: startedAt, endedAt: endedAt))
+            }
+        }
+    }
 }

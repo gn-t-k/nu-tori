@@ -1,4 +1,3 @@
-import NuToriCore
 import SwiftUI
 
 struct RootView: View {
@@ -8,8 +7,14 @@ struct RootView: View {
         content
             .task { await model.open() }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active {
+                switch phase {
+                case .background:
+                    model.noteAppBackgrounded()
+                case .active:
+                    model.noteAppActive()
                     Task { await model.reopenIfSignedIn() }
+                default:
+                    break
                 }
             }
     }
@@ -25,14 +30,19 @@ struct RootView: View {
             SignInView(prompt: prompt, status: status) { result in
                 Task { await model.signIn(with: result) }
             }
-        case .loadingTimeline:
-            TimelineScreen(isLoadingRecords: true, session: model.session) { destination in
-                model.replaceScreen(with: destination)
-            }
-        case .timeline:
-            TimelineScreen(isLoadingRecords: false, session: model.session) { destination in
-                model.replaceScreen(with: destination)
-            }
+        case .loadingTimeline, .timeline:
+            TimelineScreen(
+                session: model.accountSession,
+                rejectedLines: model.rejectedLines,
+                capture: { await model.capture($0) },
+                prepareWeightEntry: { await model.prepareWeightEntry() },
+                saveWeight: { write in
+                    await model.saveWeight(write)
+                },
+                onLeftTimeline: { destination in
+                    model.leaveTimeline(for: destination)
+                }
+            )
         }
     }
 }
