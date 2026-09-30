@@ -1,9 +1,11 @@
 import Foundation
 
-/// 送り待ちの中身（送り待ちの置き場の版 1 の JSON と同じ形）。今の道の書き込みを持つ
+/// 送り待ちの中身（送り待ちの置き場の版 1 の JSON と同じ形）。今の道の書き込みを持つ。
+/// 直す書き込みは、以前は直す前の値（`previous`）も JSON に持っていた。今は持たないが、残った送り待ちの JSON にある
+/// `previous` は、デコードのときに読み飛ばす（Codable は知らないキーを無視する）ので、置き場の版を上げずに読める
 enum PendingWriteContent: Codable {
     case create(Record)
-    case correct(record: Record, previous: Record)
+    case correct(record: Record)
     case sourceDeleted(recordId: UUID)
     case updateAccountSettings(id: UUID, sendsUsageData: Bool)
 
@@ -11,8 +13,8 @@ enum PendingWriteContent: Codable {
         switch operation {
         case .createWeightRecord(let record):
             self = .create(Record(record))
-        case .correctWeightRecord(let record, let previous):
-            self = .correct(record: Record(record), previous: Record(previous))
+        case .correctWeightRecord(let record):
+            self = .correct(record: Record(record))
         case .sourceDeletedWeightRecord(let recordId):
             self = .sourceDeleted(recordId: recordId)
         case .updateAccountSettings(let settings):
@@ -31,10 +33,8 @@ enum PendingWriteContent: Codable {
         switch self {
         case .create(let record):
             .createWeightRecord(try record.weightRecord(kind: kind))
-        case .correct(let record, let previous):
-            .correctWeightRecord(
-                try record.weightRecord(kind: kind), previous: try previous.weightRecord(kind: kind)
-            )
+        case .correct(let record):
+            .correctWeightRecord(try record.weightRecord(kind: kind))
         case .sourceDeleted(let recordId):
             .sourceDeletedWeightRecord(recordId: recordId)
         case .updateAccountSettings(let id, let sendsUsageData):

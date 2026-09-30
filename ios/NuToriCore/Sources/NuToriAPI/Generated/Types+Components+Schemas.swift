@@ -32,25 +32,109 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
             internal var rejectionReason: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/current`.
+            internal var current: Components.Schemas.SyncWriteCurrent?
             /// Creates a new `SyncWriteResult`.
             ///
             /// - Parameters:
             ///   - writeId:
             ///   - result: 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
             ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
+            ///   - current:
             internal init(
                 writeId: Swift.String,
                 result: Swift.String,
-                rejectionReason: Swift.String? = nil
+                rejectionReason: Swift.String? = nil,
+                current: Components.Schemas.SyncWriteCurrent? = nil
             ) {
                 self.writeId = writeId
                 self.result = result
                 self.rejectionReason = rejectionReason
+                self.current = current
             }
             internal enum CodingKeys: String, CodingKey {
                 case writeId
                 case result
                 case rejectionReason
+                case current
+            }
+        }
+        /// result が rejected のときだけ付く。その記録のサーバーの今の値で、要求の書き込みを全部当て終えた時点のもの。同じ書き込みの ID が再び届いたときも、最初の結果に、当て終えた時点の値を添える
+        ///
+        /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent`.
+        internal struct SyncWriteCurrent: Codable, Hashable, Sendable {
+            /// value（値）、deleted（削除の印）、absent（記録も削除の印も無い）のどれか。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が何も当てない
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/status`.
+            internal var status: Swift.String
+            /// status が value か deleted のときだけ付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change`.
+            internal struct ChangePayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change/kind`.
+                internal var kind: Swift.String
+                /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change/recordId`.
+                internal var recordId: Swift.String
+                /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change/record`.
+                internal struct RecordPayload: Codable, Hashable, Sendable {
+                    /// A container of undocumented properties.
+                    internal var additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer]
+                    /// Creates a new `RecordPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - additionalProperties: A container of undocumented properties.
+                    internal init(additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer] = .init()) {
+                        self.additionalProperties = additionalProperties
+                    }
+                    internal init(from decoder: any Swift.Decoder) throws {
+                        additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                    }
+                    internal func encode(to encoder: any Swift.Encoder) throws {
+                        try encoder.encodeAdditionalProperties(additionalProperties)
+                    }
+                }
+                /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change/record`.
+                internal var record: Components.Schemas.SyncWriteCurrent.ChangePayload.RecordPayload
+                /// Creates a new `ChangePayload`.
+                ///
+                /// - Parameters:
+                ///   - kind:
+                ///   - recordId:
+                ///   - record:
+                internal init(
+                    kind: Swift.String,
+                    recordId: Swift.String,
+                    record: Components.Schemas.SyncWriteCurrent.ChangePayload.RecordPayload
+                ) {
+                    self.kind = kind
+                    self.recordId = recordId
+                    self.record = record
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case kind
+                    case recordId
+                    case record
+                }
+            }
+            /// status が value か deleted のときだけ付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change`.
+            internal var change: Components.Schemas.SyncWriteCurrent.ChangePayload?
+            /// Creates a new `SyncWriteCurrent`.
+            ///
+            /// - Parameters:
+            ///   - status: value（値）、deleted（削除の印）、absent（記録も削除の印も無い）のどれか。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が何も当てない
+            ///   - change: status が value か deleted のときだけ付く
+            internal init(
+                status: Swift.String,
+                change: Components.Schemas.SyncWriteCurrent.ChangePayload? = nil
+            ) {
+                self.status = status
+                self.change = change
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case status
+                case change
             }
         }
         /// アカウントの設定は、記録が無くても直す書き込みで送り、サーバーが無ければ作る

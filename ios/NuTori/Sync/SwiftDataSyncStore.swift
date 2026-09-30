@@ -179,7 +179,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
             }
             for write in pendingWrites {
                 switch write.operation {
-                case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
+                case .createWeightRecord(let record), .correctWeightRecord(let record):
                     try CachedWeightRecord.upsert(record, in: stores.cache)
                 case .updateAccountSettings(let settings):
                     try CachedAccountSettings.write(settings, in: stores.cache)

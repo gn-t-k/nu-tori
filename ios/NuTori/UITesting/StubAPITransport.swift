@@ -147,7 +147,8 @@
                 case .applied:
                     #"{"writeId":"\#(id)","result":"applied"}"#
                 case .rejected:
-                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range"}"#
+                    // サーバーにその記録は無い（作る書き込みが受け付けられなかった）
+                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range","current":{"status":"absent"}}"#
                 }
             }
             return #"{"results":[\#(results.joined(separator: ","))]}"#

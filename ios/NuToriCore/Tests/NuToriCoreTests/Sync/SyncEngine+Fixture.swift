@@ -46,14 +46,11 @@ extension PendingWrite {
         )
     }
 
-    static func correcting(
-        _ record: WeightRecord,
-        previous: WeightRecord
-    ) -> PendingWrite {
+    static func correcting(_ record: WeightRecord) -> PendingWrite {
         PendingWrite(
             writeId: UUID(),
             enqueuedAt: SyncEngine.fixtureNow,
-            operation: .correctWeightRecord(record, previous: previous)
+            operation: .correctWeightRecord(record)
         )
     }
 }

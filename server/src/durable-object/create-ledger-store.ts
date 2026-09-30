@@ -37,9 +37,14 @@ export const createLedgerStore = (storage: DurableObjectStorage): LedgerStore<Re
         .values({ syncRequestLogId: id, afterChangeSequence: afterSequence })
         .run();
     },
-    findWriteOutcome: (writeId) => {
+    findWriteReceipt: (writeId) => {
       const row = db
-        .select({ result: syncWriteReceipts.result, reason: syncWriteRejections.reason })
+        .select({
+          result: syncWriteReceipts.result,
+          reason: syncWriteRejections.reason,
+          recordType: syncWriteReceipts.recordType,
+          recordId: syncWriteReceipts.recordId,
+        })
         .from(syncWriteReceipts)
         .leftJoin(
           syncWriteRejections,
@@ -47,7 +52,9 @@ export const createLedgerStore = (storage: DurableObjectStorage): LedgerStore<Re
         )
         .where(eq(syncWriteReceipts.id, writeId))
         .get();
-      return row === undefined ? undefined : toOutcome(row);
+      return row === undefined
+        ? undefined
+        : { outcome: toOutcome(row), recordType: row.recordType, recordId: row.recordId };
     },
     insertWriteReceipt: ({
       writeId,

@@ -6,7 +6,10 @@ export const createMemoryLedgerStore = <TRecordType extends string>(
   operations: string[],
 ): LedgerStore<TRecordType> & { receiptCount: () => number } => {
   const requestReceivedAts: Date[] = [];
-  const outcomes = new Map<string, SyncWriteOutcome>();
+  const receipts = new Map<
+    string,
+    { outcome: SyncWriteOutcome; recordType: TRecordType; recordId: string }
+  >();
   const changes: { sequence: number; recordType: TRecordType; recordId: string }[] = [];
   return {
     transaction: (run) => run(),
@@ -19,10 +22,10 @@ export const createMemoryLedgerStore = <TRecordType extends string>(
       operations.push("request_log");
       requestReceivedAts.push(receivedAt);
     },
-    findWriteOutcome: (writeId) => outcomes.get(writeId),
-    insertWriteReceipt: ({ writeId, outcome }) => {
+    findWriteReceipt: (writeId) => receipts.get(writeId),
+    insertWriteReceipt: ({ writeId, outcome, recordType, recordId }) => {
       operations.push("receipt");
-      outcomes.set(writeId, outcome);
+      receipts.set(writeId, { outcome, recordType, recordId });
     },
     insertRecordChange: ({ recordType, recordId }) => {
       operations.push("change");
@@ -35,6 +38,6 @@ export const createMemoryLedgerStore = <TRecordType extends string>(
       }
       return [...latest.values()].toSorted((a, b) => a.sequence - b.sequence).slice(0, limit);
     },
-    receiptCount: () => outcomes.size,
+    receiptCount: () => receipts.size,
   };
 };

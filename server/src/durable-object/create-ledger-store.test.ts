@@ -34,8 +34,8 @@ describe("帳簿の置き場", () => {
       });
 
       test("理由を含めて読むこと", async () => {
-        const outcome = await withStore(seed, (store) => store.findWriteOutcome("write-1"));
-        expect(outcome).toEqual({ result: "rejected", reason: "version_too_low" });
+        const receipt = await withStore(seed, (store) => store.findWriteReceipt("write-1"));
+        expect(receipt?.outcome).toEqual({ result: "rejected", reason: "version_too_low" });
       });
     });
 
@@ -48,8 +48,8 @@ describe("帳簿の置き場", () => {
       });
 
       test("結果だけを読むこと", async () => {
-        const outcome = await withStore(seed, (store) => store.findWriteOutcome("write-1"));
-        expect(outcome).toEqual({ result: "kept_corrected" });
+        const receipt = await withStore(seed, (store) => store.findWriteReceipt("write-1"));
+        expect(receipt?.outcome).toEqual({ result: "kept_corrected" });
       });
     });
   });

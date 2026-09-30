@@ -72,15 +72,14 @@ struct SyncEngineTests {
                 engine = .fixture(store: store, transport: .sync())
             }
 
-            @Test("直した記録を置き、直す前の記録を添えた送り待ちを1件足すこと")
-            func savesCorrectionWithPreviousRecord() async throws {
+            @Test("直した記録を置き、送り待ちを1件足すこと")
+            func savesCorrection() async throws {
                 try await engine.save(.correct(corrected))
 
                 #expect(store.records[original.id] == corrected)
                 let pending = try #require(store.pending.first)
                 #expect(store.pending.count == 1)
-                #expect(
-                    pending.operation == .correctWeightRecord(corrected, previous: original))
+                #expect(pending.operation == .correctWeightRecord(corrected))
             }
         }
 
@@ -314,31 +313,33 @@ struct SyncEngineTests {
             let store: MemoryStore
             let engine: SyncEngine
             let created: WeightRecord
-            let previous: WeightRecord
+            let serverRecord: WeightRecord
             let corrected: WeightRecord
             let createWrite: PendingWrite
             let correctWrite: PendingWrite
 
             init() throws {
                 created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                previous = try .manual(71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+                serverRecord = try .manual(71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
                 corrected = WeightRecord(
-                    id: previous.id,
+                    id: serverRecord.id,
                     kilograms: 500,
-                    instant: previous.instant,
-                    timeZone: previous.timeZone,
+                    instant: serverRecord.instant,
+                    timeZone: serverRecord.timeZone,
                     inputSource: .manual,
                     version: 2
                 )
                 createWrite = .creating(created)
-                correctWrite = .correcting(corrected, previous: previous)
+                correctWrite = .correcting(corrected)
                 store = .ok(
                     records: [created, corrected],
                     pendingWrites: [createWrite, correctWrite]
                 )
                 engine = .fixture(
                     store: store,
-                    transport: .sync(rejectedWriteIndexes: [0, 1])
+                    transport: .sync(
+                        rejectedWriteIndexes: [0, 1],
+                        currents: [0: .absent, 1: .weightRecord(serverRecord)])
                 )
             }
 
@@ -349,27 +350,78 @@ struct SyncEngineTests {
                 #expect(store.pending.isEmpty)
             }
 
-            @Test("新しく作った記録は消し、直した記録は直す前の状態に戻すこと")
-            func revertsRecords() async throws {
+            @Test("サーバーに無い記録は外し、サーバーに値がある記録はその値に合わせること")
+            func appliesServerCurrent() async throws {
                 _ = try await engine.sync()
 
                 #expect(store.records[created.id] == nil)
-                #expect(store.records[previous.id] == previous)
+                #expect(store.records[serverRecord.id] == serverRecord)
             }
 
-            @Test("画面に出すために、記録と理由を結果に返すこと")
+            @Test("画面に出すために、記録と理由と、サーバーに値があるかを結果に返すこと")
             func returnsRejectedWrites() async throws {
                 let result = try await engine.sync()
 
                 #expect(
                     result.rejectedWrites == [
                         RejectedWrite(
-                            writeId: createWrite.writeId, record: created, reason: .outOfRange),
+                            writeId: createWrite.writeId, record: created, reason: .outOfRange,
+                            serverHasValue: false),
                         RejectedWrite(
-                            writeId: correctWrite.writeId, record: corrected, reason: .outOfRange),
+                            writeId: correctWrite.writeId, record: corrected, reason: .outOfRange,
+                            serverHasValue: true),
                     ]
                 )
                 #expect(result.ending == .finished)
+            }
+        }
+
+        @Suite("サーバーの記録が削除の印になっている直しを受け付けなかったとき")
+        struct RejectedForDeletedRecord {
+            let store: MemoryStore
+            let engine: SyncEngine
+            let corrected: WeightRecord
+            let correctWrite: PendingWrite
+
+            init() throws {
+                corrected = try .manual(
+                    72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
+                correctWrite = .correcting(corrected)
+                store = .ok(records: [corrected], pendingWrites: [correctWrite])
+                engine = .fixture(
+                    store: store,
+                    transport: .sync(
+                        rejectedWriteIndexes: [0], currents: [0: .deleted(recordId: corrected.id)])
+                )
+            }
+
+            @Test("削除の印を当てて記録を外し、作った記録の時刻の位置に出す行にすること")
+            func removesRecordAndPlacesAtItsInstant() async throws {
+                let result = try await engine.sync()
+
+                #expect(store.records[corrected.id] == nil)
+                #expect(result.rejectedWrites.map(\.serverHasValue) == [false])
+            }
+        }
+
+        @Suite("サーバーの今の値が添えられなかったとき")
+        struct RejectedWithoutCurrent {
+            let store: MemoryStore
+            let engine: SyncEngine
+            let created: WeightRecord
+
+            init() throws {
+                created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                store = .ok(records: [created], pendingWrites: [.creating(created)])
+                engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0]))
+            }
+
+            @Test("送り待ちから外し、記録には何も当てないこと")
+            func dropsPendingAndKeepsRecord() async throws {
+                _ = try await engine.sync()
+
+                #expect(store.pending.isEmpty)
+                #expect(store.records[created.id] == created)
             }
         }
 
@@ -417,35 +469,44 @@ struct SyncEngineTests {
             }
         }
 
-        @Suite("同じ記録の直しが2回続けて受け付けられなかったとき")
-        struct RejectedTwiceForOneRecord {
+        @Suite("同じ要求で、同じ記録の直しが受け付けない、受け付けるの順に並んだとき")
+        struct RejectedThenAcceptedForOneRecord {
             let store: MemoryStore
             let engine: SyncEngine
-            let original: WeightRecord
+            let accepted: WeightRecord
+            let serverRecord: WeightRecord
 
             init() throws {
-                original = try .manual(71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
-                let first = WeightRecord(
+                let original = try WeightRecord.manual(
+                    71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+                let rejected = WeightRecord(
                     id: original.id, kilograms: 500, instant: original.instant,
                     timeZone: original.timeZone, inputSource: .manual, version: 2)
-                let second = WeightRecord(
-                    id: original.id, kilograms: 501, instant: original.instant,
+                accepted = WeightRecord(
+                    id: original.id, kilograms: 70.5, instant: original.instant,
                     timeZone: original.timeZone, inputSource: .manual, version: 3)
+                // サーバーは、あとに受け取った版を前より大きくして採る
+                serverRecord = WeightRecord(
+                    id: original.id, kilograms: 70.5, instant: original.instant,
+                    timeZone: original.timeZone, inputSource: .manual, version: 4)
                 store = .ok(
-                    records: [second],
-                    pendingWrites: [
-                        .correcting(first, previous: original),
-                        .correcting(second, previous: first),
-                    ]
+                    records: [accepted],
+                    pendingWrites: [.correcting(rejected), .correcting(accepted)]
                 )
-                engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0, 1]))
+                engine = .fixture(
+                    store: store,
+                    transport: .sync(
+                        rejectedWriteIndexes: [0], currents: [0: .weightRecord(serverRecord)])
+                )
             }
 
-            @Test("サーバーにある、いちばん前の状態に戻すこと")
-            func revertsToEarliestPrevious() async throws {
-                _ = try await engine.sync()
+            @Test("送り待ちを両方外し、端末の値をサーバーの値にそろえること")
+            func matchesServerValue() async throws {
+                let result = try await engine.sync()
 
-                #expect(store.records[original.id] == original)
+                #expect(store.pending.isEmpty)
+                #expect(store.records[accepted.id] == serverRecord)
+                #expect(result.rejectedWrites.map(\.serverHasValue) == [true])
             }
         }
     }

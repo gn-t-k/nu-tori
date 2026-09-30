@@ -152,7 +152,7 @@ struct SwiftDataSyncStoreMigrationTests {
             store = try SwiftDataSyncStore(directory: directory)
         }
 
-        @Test("送り待ちを種類の名前つきで引き継ぎ、直す前の値も残ること")
+        @Test("送り待ちを種類の名前つきで引き継ぎ、中身に直す前の値が残っていても読めること")
         func carriesWritesWithKindNames() async throws {
             #expect(try await store.pendingWritesOldestFirst() == [correction])
             #expect(try await store.pendingEntries().map(\.kind) == ["weight-record"])
@@ -168,15 +168,52 @@ struct SwiftDataSyncStoreMigrationTests {
         private let correction = SwiftDataSyncStoreMigrationTests.correction
     }
 
+    @Suite("送り待ちの置き場に、直す前の値を持つ中身が残っているとき")
+    @MainActor
+    struct LeftoverPreviousInContent {
+        let store: SwiftDataSyncStore
+        let entry: PendingEntry
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            let correction = SwiftDataSyncStoreMigrationTests.correction
+            entry = PendingEntry(
+                writeId: correction.writeId,
+                enqueuedAt: correction.enqueuedAt,
+                kind: WeightRecordSyncing.kindName,
+                content: try SwiftDataSyncStoreMigrationTests.contentWithPrevious(
+                    correction.entry().content)
+            )
+        }
+
+        @Test("置き場の版を上げずに、直す書き込みとして読めること")
+        func readsAsCorrection() async throws {
+            try await store.apply(SyncBoxResult(enqueuing: [entry]))
+
+            #expect(
+                try await store.pendingWritesOldestFirst() == [
+                    SwiftDataSyncStoreMigrationTests.correction
+                ])
+        }
+    }
+
     static let correction = PendingWrite(
         writeId: UUID(uuidString: "00000000-0000-4000-8000-000000000103")!,
         enqueuedAt: Date(timeIntervalSince1970: 1_700_000_100),
         operation: .correctWeightRecord(
             WeightRecord(
                 id: record.id, kilograms: 69.5, instant: record.instant, timeZone: record.timeZone,
-                inputSource: .manual, version: 2),
-            previous: record)
+                inputSource: .manual, version: 2))
     )
+
+    /// 以前の版が書いた、直す前の値（`previous`）を持つ中身。今の中身に `previous` を足して作る
+    fileprivate static func contentWithPrevious(_ content: Data) throws -> Data {
+        var root = try #require(JSONSerialization.jsonObject(with: content) as? [String: Any])
+        var correct = try #require(root["correct"] as? [String: Any])
+        correct["previous"] = correct["record"]
+        root["correct"] = correct
+        return try JSONSerialization.data(withJSONObject: root)
+    }
 
     /// 版 1 のスキーマで、送り待ちの置き場のファイルを書く
     @MainActor
@@ -194,7 +231,7 @@ struct SwiftDataSyncStoreMigrationTests {
             PendingStoreSchemaV1.PendingWriteRow(
                 writeId: correction.writeId,
                 enqueuedAt: correction.enqueuedAt,
-                operationJSON: try correction.entry().content
+                operationJSON: try contentWithPrevious(correction.entry().content)
             ))
         context.insert(
             PendingStoreSchemaV1.HealthSyncStateRow(

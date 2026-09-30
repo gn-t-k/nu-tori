@@ -43,7 +43,7 @@ struct RecordKindMock: RecordKind {
     func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        revertedRecordIds: inout Set<UUID>
+        current: SyncWriteResult.Current?
     ) throws -> KindRejection {
         KindRejection()
     }

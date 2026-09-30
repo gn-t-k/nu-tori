@@ -315,6 +315,67 @@ extension NuToriAPIClientTests {
             }
         }
 
+        @Suite("サーバーが受け付けなかった書き込みに今の値を添えたとき")
+        struct RejectedWithCurrent {
+            let ids: [UUID]
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+            let recordId = "00000000-0000-4000-8000-0000000000b1"
+
+            init() {
+                ids = (1...5).map { UUID(uuidString: "00000000-0000-4000-8000-0000000000a\($0)")! }
+                clientState = .fixture()
+                let id = recordId
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(
+                        json: """
+                            {"results":[
+                              {"writeId":"\(ids[0].uuidString)","result":"rejected","rejectionReason":"version_too_low",
+                                "current":{"status":"value","change":{"kind":"weight_record","recordId":"\(id)",
+                                  "record":{"id":"\(id)","weightKg":71,"measuredAt":1767225600000,
+                                    "timeZone":"Asia/Tokyo","version":1}}}},
+                              {"writeId":"\(ids[1].uuidString)","result":"rejected","rejectionReason":"version_too_low",
+                                "current":{"status":"deleted","change":{"kind":"weight_record_deletion",
+                                  "recordId":"\(id)","record":{}}}},
+                              {"writeId":"\(ids[2].uuidString)","result":"rejected","rejectionReason":"out_of_range",
+                                "current":{"status":"absent"}},
+                              {"writeId":"\(ids[3].uuidString)","result":"rejected","rejectionReason":"out_of_range",
+                                "current":{"status":"archived"}},
+                              {"writeId":"\(ids[4].uuidString)","result":"rejected","rejectionReason":"out_of_range"}
+                            ]}
+                            """
+                    ),
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("値・削除の印・無いを、取りに行く変更と同じ形で返し、知らない状態と添え忘れは nil にすること")
+            func returnsCurrent() async throws {
+                let result = try await client.pushSyncWrites(
+                    [], isFinalBatch: false, clientState: clientState)
+
+                guard case .pushed(let results) = result else {
+                    Issue.record("結果が返っていない: \(result)")
+                    return
+                }
+                let recordUUID = try #require(UUID(uuidString: recordId))
+                let weightRecord = SyncedWeightRecord(
+                    id: recordUUID, weightKilograms: 71,
+                    measuredAt: Date(timeIntervalSince1970: 1_767_225_600),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), version: 1,
+                    imported: nil)
+                #expect(
+                    results.map(\.current) == [
+                        .value(.weightRecord(weightRecord)),
+                        .deleted(.weightRecordDeletion(recordId: recordUUID)),
+                        .absent,
+                        nil,
+                        nil,
+                    ])
+            }
+        }
+
         @Suite("書き込みが 500 件を超えていたときなど、サーバーが 400 を返したとき")
         struct BadRequest {
             let client: NuToriAPIClient

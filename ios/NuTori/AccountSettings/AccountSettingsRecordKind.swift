@@ -19,9 +19,9 @@ nonisolated struct AccountSettingsRecordKind: RecordKind {
     func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        revertedRecordIds: inout Set<UUID>
+        current: SyncWriteResult.Current?
     ) throws -> KindRejection {
-        try core.rejection(of: entry, reason: reason, revertedRecordIds: &revertedRecordIds)
+        try core.rejection(of: entry, reason: reason, current: current)
     }
 
     /// 届いたなかでいちばん新しい設定を置く。設定の無い取得は、今の設定を変えない

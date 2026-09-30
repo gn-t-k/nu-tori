@@ -1,5 +1,6 @@
 public import Foundation
 public import HTTPTypes
+public import NuToriCore
 public import OpenAPIRuntime
 
 /// API のトランスポートの差し替え。送った要求を記録する
@@ -47,17 +48,48 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
-    /// 書き込みには受け付けたか断ったかを送った順に返し、取得には `pullPages` を1ページずつ返す
+    /// 受け付けなかった書き込みに添える、サーバーの今の値の JSON（サーバーの API の `current`）
+    public enum Current: Sendable {
+        case absent
+        case deleted(recordId: UUID)
+        /// 体重記録の今の値
+        case weightRecord(WeightRecord)
+
+        var json: String {
+            switch self {
+            case .absent:
+                #"{"status":"absent"}"#
+            case .deleted(let recordId):
+                """
+                {"status":"deleted","change":{"kind":"weight_record_deletion",\
+                "recordId":"\(recordId.uuidString)","record":{}}}
+                """
+            case .weightRecord(let record):
+                """
+                {"status":"value","change":{"kind":"weight_record",\
+                "recordId":"\(record.id.uuidString)",\
+                "record":{"id":"\(record.id.uuidString)","weightKg":\(record.kilograms),\
+                "measuredAt":\(Int((record.instant.timeIntervalSince1970 * 1000).rounded())),\
+                "timeZone":"\(record.timeZone.identifier)","version":\(record.version)}}}
+                """
+            }
+        }
+    }
+
+    /// 書き込みには受け付けたか断ったかを送った順に返し、取得には `pullPages` を1ページずつ返す。
+    /// 断った書き込みには、`currents` にあれば、サーバーの今の値を添える
     public static func sync(
         pushStatus: HTTPResponse.Status = .ok,
         rejectedWriteIndexes: Set<Int> = [],
+        currents: [Int: Current] = [:],
         pullPages: [String] = [emptyPage]
     ) -> ClientTransportMock {
         let pulls = Pulls(pages: pullPages)
         return ClientTransportMock { request, body in
             if request.path == "/v1/sync/writes" {
                 return try pushResponse(
-                    status: pushStatus, body: body, rejectedWriteIndexes: rejectedWriteIndexes)
+                    status: pushStatus, body: body, rejectedWriteIndexes: rejectedWriteIndexes,
+                    currents: currents)
             }
             return jsonResponse(status: .ok, json: pulls.next())
         }
@@ -126,7 +158,8 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     private static func pushResponse(
         status: HTTPResponse.Status,
         body: String?,
-        rejectedWriteIndexes: Set<Int>
+        rejectedWriteIndexes: Set<Int>,
+        currents: [Int: Current]
     ) throws -> (HTTPResponse, HTTPBody?) {
         guard status == .ok else {
             return (HTTPResponse(status: status), nil)
@@ -134,9 +167,12 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         let writes = try SentWritesBody(json: body ?? "").writes
         let results = writes.enumerated().map { index, write in
             let writeId = write.id
-            return rejectedWriteIndexes.contains(index)
-                ? #"{"writeId":"\#(writeId)","result":"rejected","rejectionReason":"out_of_range"}"#
-                : #"{"writeId":"\#(writeId)","result":"applied"}"#
+            guard rejectedWriteIndexes.contains(index) else {
+                return #"{"writeId":"\#(writeId)","result":"applied"}"#
+            }
+            let current = currents[index].map { #","current":\#($0.json)"# } ?? ""
+            return
+                #"{"writeId":"\#(writeId)","result":"rejected","rejectionReason":"out_of_range"\#(current)}"#
         }
         return jsonResponse(status: .ok, json: #"{"results":[\#(results.joined(separator: ","))]}"#)
     }
