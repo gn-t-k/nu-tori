@@ -24,5 +24,6 @@ final class OpenAccountFromTimelineUITests: XCTestCase {
         app.navigationBars["アカウント"].buttons["完了"].tap()
         XCTAssertTrue(app.buttons["account"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.otherElements["account-screen"].exists)
+        attachScreenshot(of: app, named: "アカウントの画面を閉じたあとのタイムライン")
     }
 }

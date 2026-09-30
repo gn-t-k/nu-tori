@@ -1,5 +1,4 @@
-/// 消せなかったときは、端末では何も消さず、削除のまとまりの上に1行を出す
-enum AccountDeletionFailure: Equatable {
+enum AccountDeletionFailure {
     /// 電波が無いときと時間切れ
     case unreachable
     /// 回数の歯止め（429）とサーバーの失敗

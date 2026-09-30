@@ -2,6 +2,6 @@
 struct AccountActions {
     let signedInAccountId: () async -> String?
     let setSendsUsageData: (Bool) async -> Void
-    /// 消せたときは、サインインの画面に置き換えて nil を返す
+    /// 消せなかったときだけ理由を返す。消せたときとセッションが切れていたときは、サインインの画面に置き換わる
     let deleteAccount: () async -> AccountDeletionFailure?
 }

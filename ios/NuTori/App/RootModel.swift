@@ -80,7 +80,6 @@ final class RootModel {
         try? await recordSync.setSendsUsageData(sendsUsageData)
     }
 
-    /// 消せたときと、サーバーがセッションを受け付けなかったときは、サインインの画面に置き換えて nil を返す
     func deleteAccount() async -> AccountDeletionFailure? {
         let outcome: AccountSession.DeleteAccountOutcome
         do {
@@ -89,15 +88,15 @@ final class RootModel {
             return nil
         } catch {
             // 投げるのは端末の記録を消すところだけで、サーバーではもう消えているか、セッションが切れている
-            screen = .signIn(.introduction, .ready)
+            leaveTimeline(for: .signIn(.introduction))
             return nil
         }
         switch outcome {
         case .deleted:
-            screen = .signIn(.introduction, .ready)
+            leaveTimeline(for: .signIn(.introduction))
             return nil
         case .signInRequired(let destination):
-            screen = Screen(destination)
+            leaveTimeline(for: destination)
             return nil
         case .unreachable:
             return .unreachable
@@ -144,6 +143,12 @@ final class RootModel {
     private enum RejectionLines {
         case accepting([RejectedWeightLine])
         case ignoring
+    }
+
+    /// 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
+    private func leaveTimeline(for destination: SignInDestination) {
+        rejectionLines = .accepting([])
+        screen = Screen(destination)
     }
 
     private func dropRejection(for recordId: UUID) {

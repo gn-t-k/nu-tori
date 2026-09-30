@@ -17,6 +17,8 @@ struct AccountScreen: View {
             }
             Section {
                 Toggle("利用状況を送る", isOn: sendsUsageData)
+                    // 続けて押すと、先に押した分の保存があとから届き、最後に押した値を上書きしうる
+                    .disabled(requestedSendsUsageData != nil)
             } footer: {
                 Text("オフにすると、これから先は送りません。送った分は1年で消えます。")
             }
@@ -89,10 +91,8 @@ struct AccountScreen: View {
         Binding(
             get: {
                 requestedSendsUsageData
-                    ?? UsageDataSetting(
-                        accountSettings: cachedSettings.first?.accountSettings(),
-                        hasCompletedInitialPull: false
-                    ).sendsUsageData
+                    ?? UsageDataSetting.sendsUsageData(
+                        cachedSettings.first?.accountSettings())
             },
             set: { sendsUsageData in
                 requestedSendsUsageData = sendsUsageData
