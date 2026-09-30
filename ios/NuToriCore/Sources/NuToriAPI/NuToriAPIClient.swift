@@ -1,5 +1,5 @@
 public import Foundation
-import OpenAPIRuntime
+public import OpenAPIRuntime
 import OpenAPIURLSession
 
 public struct NuToriAPIClient: Sendable {
@@ -15,7 +15,8 @@ public struct NuToriAPIClient: Sendable {
         )
     }
 
-    init(
+    /// UI テストなどで、トランスポートを差し替えるための初期化
+    public init(
         serverURL: URL,
         transport: any ClientTransport,
         sessionToken: @escaping @Sendable () async -> String?
