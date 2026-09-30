@@ -264,7 +264,8 @@ struct TimelineScreen: View {
         let monday = today.startOfWeek
         return RingStrip(
             timeline: Timeline(
-                input: Timeline.Input(weightRecords: [], rejectedLines: []), firstDay: monday, today: today)
+                input: Timeline.Input(weightRecords: [], rejectedLines: []), firstDay: monday,
+                today: today)
         ).weeks
     }
 

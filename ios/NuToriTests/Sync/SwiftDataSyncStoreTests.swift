@@ -76,6 +76,14 @@ struct SwiftDataSyncStoreTests {
             }
             #expect(archived.isEmpty)
         }
+
+        @Test("開けなかった元のエラーを持つこと")
+        func carriesCause() throws {
+            let notOpened = try #require(throws: SwiftDataSyncStore.NotOpened.self) {
+                _ = try SwiftDataSyncStore(directory: directory)
+            }
+            #expect(!(notOpened.cause is SwiftDataSyncStore.NotOpened))
+        }
     }
 
     static func makeDirectory() -> URL {

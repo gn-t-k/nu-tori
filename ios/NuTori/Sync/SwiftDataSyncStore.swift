@@ -15,7 +15,10 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
     /// 画面の `@Query` が読むキャッシュの置き場
     let container: ModelContainer
 
-    struct NotOpened: Error {}
+    /// 置き場を開けなかった。`cause` は開けなかった元のエラー（SwiftData と Foundation のもので、記録の中身は含まない）
+    struct NotOpened: Error {
+        let cause: any Error
+    }
 
     var recordKinds: [any SyncedRecordKind] {
         kinds.synced
@@ -319,10 +322,17 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         if pending.archived {
             recoveries.append(.storeRecovery)
         }
+        // 版 1 から移したときに、種類の名前を読めなかった送り待ちは、送る前に捨てる（残すと送るたびに同期が止まる）
+        if try PendingStoreMigrationPlan.dropUnreadableRows(in: pending.container.mainContext) {
+            recoveries.append(.storeRecovery)
+        }
         // 今の1つの置き場からは、送り待ちを移してから、キャッシュを開く（キャッシュは空から取り直す）
         let outcome = try LegacyRecordStore.carryOver(
             from: LegacyRecordStore.url(in: directory), into: pending.container.mainContext)
-        if outcome == .discarded {
+        switch outcome {
+        case .absent, .carriedOver(droppedUnreadable: false):
+            break
+        case .discarded, .carriedOver(droppedUnreadable: true):
             recoveries.append(.storeRecovery)
         }
         let cache = try openCache(in: directory)
@@ -354,7 +364,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
                 return try StoreFiles.container(
                     schema: CacheStoreSchema.schema, plan: nil, name: name, at: url)
             } catch {
-                throw NotOpened()
+                throw NotOpened(cause: error)
             }
         }
     }

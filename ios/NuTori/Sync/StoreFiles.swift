@@ -16,12 +16,12 @@ nonisolated enum StoreFiles {
         } catch {
             guard isUnmigratableShape(error, schema: schema, plan: plan, name: name, at: url)
             else {
-                throw SwiftDataSyncStore.NotOpened()
+                throw SwiftDataSyncStore.NotOpened(cause: error)
             }
             do {
                 try archive(at: url)
             } catch {
-                throw SwiftDataSyncStore.NotOpened()
+                throw SwiftDataSyncStore.NotOpened(cause: error)
             }
             return (try container(schema: schema, plan: plan, name: name, at: url), true)
         }

@@ -264,8 +264,10 @@ extension NuToriAPIClientTests {
                     result
                         == .pushed([
                             SyncWriteResult(writeId: writeIds[0], outcome: .applied, current: nil),
-                            SyncWriteResult(writeId: writeIds[1], outcome: .ignoredTombstone, current: nil),
-                            SyncWriteResult(writeId: writeIds[2], outcome: .keptCorrected, current: nil),
+                            SyncWriteResult(
+                                writeId: writeIds[1], outcome: .ignoredTombstone, current: nil),
+                            SyncWriteResult(
+                                writeId: writeIds[2], outcome: .keptCorrected, current: nil),
                         ])
                 )
             }

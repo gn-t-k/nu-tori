@@ -14,7 +14,7 @@ extension PendingWriteRow {
         )
     }
 
-    /// 登録簿に無い種類（今の道）の書き込みを、「種類の名前＋中身」にして持つ
+    /// 体重記録・アカウントの設定の書き込み（`PendingWrite`）を、「種類の名前＋中身」にして持つ
     convenience init(write: PendingWrite) throws {
         self.init(entry: try write.entry())
     }
