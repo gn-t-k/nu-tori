@@ -13,6 +13,13 @@ import struct Foundation.Date
 extension Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
     internal enum Schemas {
+        /// サーバーが同期で扱う記録の種類の名前。応答の kind を解くのには使わない（知らない種類を読み飛ばすため、応答では文字列で持つ）
+        ///
+        /// - Remark: Generated from `#/components/schemas/RecordKindName`.
+        internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
+            case accountSettings = "account_settings"
+            case weightRecord = "weight_record"
+        }
         /// - Remark: Generated from `#/components/schemas/SyncWriteResult`.
         internal struct SyncWriteResult: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/writeId`.
