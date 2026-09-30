@@ -1,26 +1,157 @@
+import NuToriCore
+import SwiftData
 import SwiftUI
 
 struct TimelineScreen: View {
-    let isLoadingRecords: Bool
-
     var body: some View {
+        let today = CalendarDay(containing: .now, in: .current)
         NavigationStack {
-            content
+            content(today: today)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(.systemGroupedBackground))
+                .navigationTitle(title(today: today))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    // 開く先のアカウントの画面は #123
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                        } label: {
+                            Image(systemName: "person.crop.circle")
+                        }
+                        .accessibilityLabel("アカウント")
+                        .accessibilityIdentifier("account")
+                    }
+                }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline")
     }
 
-    @ViewBuilder private var content: some View {
-        if isLoadingRecords {
-            VStack(spacing: 8) {
+    @Query private var cachedRecords: [CachedWeightRecord]
+    @Query private var syncStates: [CachedSyncState]
+    @State private var visibleDay: CalendarDay?
+
+    private var showsLoading: Bool {
+        syncStates.first?.hasCompletedInitialPull != true
+    }
+
+    private var records: [WeightRecord] {
+        cachedRecords.compactMap { $0.weightRecord() }
+    }
+
+    private var startedDay: CalendarDay? {
+        syncStates.first?.startedOn.flatMap(TimelineDayText.day(from:))
+    }
+
+    @ViewBuilder private func content(today: CalendarDay) -> some View {
+        if showsLoading {
+            VStack {
                 ProgressView()
                 Text("記録を読み込んでいます…")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+        } else {
+            timelineList(today: today)
         }
+    }
+
+    private func timelineList(today: CalendarDay) -> some View {
+        let timeline = timeline(today: today)
+        return GeometryReader { geo in
+            ScrollView {
+                // 中身が画面より短いときは下に寄せ、長いときは下端から開く
+                VStack(alignment: .leading) {
+                    Spacer(minLength: 0)
+                    LazyVStack(alignment: .leading) {
+                        if let startedDay {
+                            Text("\(TimelineDayText.label(for: startedDay))から記録しています")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        ForEach(timeline.days, id: \.day) { day in
+                            daySection(day)
+                        }
+                    }
+                    .padding()
+                }
+                .frame(maxWidth: .infinity, minHeight: geo.size.height)
+            }
+            .defaultScrollAnchor(.bottom)
+            .coordinateSpace(.named("timeline"))
+            .onPreferenceChange(TimelineDayOffsetsKey.self) { offsets in
+                visibleDay = dayInView(
+                    offsets, timeline: timeline, viewportHeight: geo.size.height)
+            }
+        }
+    }
+
+    private func daySection(_ day: Timeline.Day) -> some View {
+        VStack(alignment: .leading) {
+            Text(TimelineDayText.label(for: day.day))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            ForEach(day.weightRecords, id: \.id) { record in
+                WeightRecordRow(record: record)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .background {
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: TimelineDayOffsetsKey.self,
+                    value: [
+                        TimelineDayOffset(
+                            day: day.day, minY: geo.frame(in: .named("timeline")).minY)
+                    ]
+                )
+            }
+        }
+    }
+
+    private func timeline(today: CalendarDay) -> Timeline {
+        let first = startedDay ?? records.map(\.day).min() ?? today
+        return Timeline(weightRecords: records, firstDay: first, today: today)
+    }
+
+    private func title(today: CalendarDay) -> String {
+        if showsLoading {
+            return TimelineDayText.label(for: today)
+        }
+        let timeline = timeline(today: today)
+        let day = visibleDay ?? timeline.days.last?.day ?? today
+        return TimelineDayText.label(for: day)
+    }
+
+    /// いちばん新しい日が画面に入っていればその日。遡っているときは、上端にかかっている日
+    private func dayInView(
+        _ offsets: [TimelineDayOffset], timeline: Timeline, viewportHeight: CGFloat
+    ) -> CalendarDay? {
+        // 開いた位置は下端。最終日が少し上にはみ出していても、その日を題にする
+        let newestStillVisible: CGFloat = -40
+        let topEdge: CGFloat = 8
+        if let last = timeline.days.last?.day,
+            let offset = offsets.first(where: { $0.day == last }),
+            offset.minY < viewportHeight, offset.minY > newestStillVisible
+        {
+            return last
+        }
+        let atTop = offsets.filter { $0.minY <= topEdge }.max { $0.minY < $1.minY }
+        return atTop?.day ?? offsets.min { $0.minY < $1.minY }?.day
+    }
+}
+
+private struct TimelineDayOffset: Equatable {
+    let day: CalendarDay
+    let minY: CGFloat
+}
+
+private struct TimelineDayOffsetsKey: PreferenceKey {
+    static var defaultValue: [TimelineDayOffset] = []
+
+    static func reduce(value: inout [TimelineDayOffset], nextValue: () -> [TimelineDayOffset]) {
+        value.append(contentsOf: nextValue())
     }
 }

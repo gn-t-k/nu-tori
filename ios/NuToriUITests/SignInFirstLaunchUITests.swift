@@ -25,7 +25,8 @@ final class SignInFirstLaunchUITests: XCTestCase {
 
         XCTAssertTrue(app.otherElements["timeline"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.otherElements["signIn"].exists)
-        XCTAssertFalse(app.navigationBars.buttons.firstMatch.exists)
+        XCTAssertFalse(app.navigationBars.buttons["戻る"].exists)
+        XCTAssertTrue(app.buttons["アカウント"].exists)
         attachScreenshot(of: app, named: "サインインのあとのタイムライン")
     }
 }

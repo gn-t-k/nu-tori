@@ -24,10 +24,8 @@ struct RootView: View {
             SignInView(prompt: prompt, status: status) { result in
                 Task { await model.signIn(with: result) }
             }
-        case .loadingTimeline:
-            TimelineScreen(isLoadingRecords: true)
-        case .timeline:
-            TimelineScreen(isLoadingRecords: false)
+        case .loadingTimeline, .timeline:
+            TimelineScreen()
         }
     }
 }

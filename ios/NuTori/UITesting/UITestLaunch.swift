@@ -40,20 +40,22 @@
             }
         }
 
-        func accountSessionWithStubs() -> AccountSession {
+        func runtime() throws -> AppRuntime {
+            let store = try SwiftDataSyncStore(inMemory: true)
+            try store.prepareForUITest(
+                state: seededSyncState(), pendingWrites: account.pendingWrites)
             let keychain = InMemorySessionKeychain(token: account.hasSession ? "stub-session" : nil)
-            return AccountSession(
-                client: NuToriAPIClient(
-                    serverURL: APIEnvironment.development.serverURL,
-                    transport: StubAPITransport(behavior: api.transportBehavior),
-                    sessionToken: { try? await keychain.sessionToken() }
-                ),
+            let deviceStore = UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults())
+            let client = NuToriAPIClient(
+                serverURL: APIEnvironment.development.serverURL,
+                transport: StubAPITransport(behavior: transportBehavior),
+                sessionToken: { try? await keychain.sessionToken() }
+            )
+            let session = AccountSession(
+                client: client,
                 keychain: keychain,
-                deviceStore: UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults()),
-                syncStore: PlaceholderSyncStore(
-                    queuedWrites: account.pendingWrites,
-                    hasCompletedInitialPull: account.hasCompletedInitialPull
-                ),
+                deviceStore: deviceStore,
+                syncStore: store,
                 appleCredentials: AuthorizedAppleCredentialChecker(),
                 backgroundTransfers: PlaceholderBackgroundTransferStore(),
                 healthAnchors: PlaceholderHealthAnchorStore(),
@@ -61,6 +63,41 @@
                 errorReporting: PlaceholderErrorReportingSession(),
                 timeZone: { .current },
                 analyticsFlushTimeout: .seconds(3)
+            )
+            let sync = RecordSync(
+                store: store,
+                client: client,
+                accountSession: session,
+                deviceId: { deviceStore.loadOrCreateDeviceId() },
+                hasSession: { (try? await keychain.sessionToken()) != nil }
+            )
+            return AppRuntime(
+                container: store.container,
+                recordSync: sync,
+                model: RootModel(accountSession: session, recordSync: sync)
+            )
+        }
+
+        private var transportBehavior: StubAPITransport.Behavior {
+            if account == .signedInFetching {
+                return .hangPull
+            }
+            switch api {
+            case .online: return .online
+            case .offline: return .offline
+            case .weightRecords: return .weightRecords
+            }
+        }
+
+        /// サインイン済みで初回の取得を終えているときだけ、読み込み中を出さない
+        private func seededSyncState() -> SyncState? {
+            guard account.hasSession, account.hasCompletedInitialPull else { return nil }
+            let today = CalendarDay(containing: .now, in: .current)
+            return SyncState(
+                afterSequence: 0,
+                hasCompletedInitialPull: true,
+                readableKindsVersion: SyncEngine.currentReadableKindsVersion,
+                startedOn: TimelineDayText.startedOn(for: today)
             )
         }
 
@@ -125,13 +162,7 @@
         enum API: String {
             case online
             case offline
-
-            fileprivate var transportBehavior: StubAPITransport.Behavior {
-                switch self {
-                case .online: .online
-                case .offline: .offline
-                }
-            }
+            case weightRecords = "weight-records"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める
