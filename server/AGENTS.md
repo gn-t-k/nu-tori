@@ -12,6 +12,16 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（使う環境に。本番だけの値は本番だけ）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の秘密の値を足すときは `docs/agents/tooling.md` を読む
 - 推定の提供元（Anthropic）の API キーは、秘密の値 `ANTHROPIC_API_KEY` に置く。環境ごとの Anthropic のワークスペース（開発用は `nu-tori-development`、本番は `nu-tori-production`）のキーを、それぞれの環境に置く。`wrangler.jsonc` の `secrets.required` には両方の環境に書き、テストの値は `vitest.config.ts` にある（テストは提供元を偽物に差し替えるので、この値は本物に届かない）
 
+## 確かめのジョブのためのサインインの口
+
+- 開発用の環境で主な流れを確かめるジョブ（`docs/agents/tooling.md` の「CI」）は、Apple を通せないので、`POST /v1/e2e/sessions`（`src/http/e2e-session-routes/`）でサインインする。毎回新しいアカウントを作り、`sessionToken` と `accountId` を返す。OpenAPI の文書には載せない（アプリのクライアントに入れない）
+- 本番で開くと誰でも入れてしまうので、次のすべてが揃ったときだけ開き、ほかは口が無いのと同じ 404 にする
+  1. `SENTRY_ENVIRONMENT` が `development`（許可する名前を挙げる。本番や綴りの違う名前は閉じる）
+  2. 秘密の値 `E2E_SIGN_IN_SECRET` が置かれていて、32 文字以上
+  3. `x-e2e-sign-in-secret` ヘッダーがその秘密の値と一致する（一致しなければ 401。ハッシュにして定数時間で比べる）
+- `E2E_SIGN_IN_SECRET` は開発用の Worker にだけ置き、本番の `wrangler.jsonc` と本番の Worker に書かない。置かなくても動き、口が閉じるだけなので、`secrets.required` には書かない（書くと、置くまで開発用のデプロイが失敗し、本番のデプロイも止まる）。型は `src/e2e-sign-in-secret.d.ts` で足す。本番の設定に名前を書いていないことは、`e2e-session-routes.test.ts` が `wrangler.jsonc` の文字列で確かめる
+- 確かめる流れは `e2e/run-main-flow.ts`（Workers の実行環境のテストで、偽の提供元を差して通る）、実行の入口は `e2e/verify-development.ts`（Node で `pnpm exec tsx` で動かす）、送る写真と出典は `e2e/photos/`
+
 ## 層
 
 - 置き場: HTTP の受け口は `src/http/`、Durable Object は `src/durable-object/`、ドメイン層は `src/domain/`、認証（Better Auth と、Apple の API への入出力）は `src/auth/`、観測（Sentry の設定と、PostHog の API への入出力）は `src/observability/`
