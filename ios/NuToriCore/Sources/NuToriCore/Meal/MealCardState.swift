@@ -23,3 +23,16 @@ public enum MealCardState: Hashable, Sendable {
         }
     }
 }
+
+extension MealCardState {
+    /// カードの名前の場所に置く、状態の1行。推定できた食事は料理の名前を置くので、1行を持たない
+    public var statusLine: String? {
+        switch self {
+        case .notSent, .awaitingPhotos, .estimated: nil
+        case .estimating: "推定しています…"
+        case .noDishes: "写真に料理が見つかりませんでした"
+        case .deferredToNextDay: "今日はもう推定できないため、明日推定します"
+        case .failed: "推定できませんでした"
+        }
+    }
+}
