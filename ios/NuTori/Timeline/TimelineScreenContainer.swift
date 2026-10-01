@@ -1,3 +1,4 @@
+import Foundation
 import NuToriCore
 import SwiftData
 import SwiftUI
@@ -10,6 +11,9 @@ struct TimelineScreenContainer: View {
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
     let accountActions: AccountActions
+    let mealActions: MealActions
+    /// この端末で記録した（元の大きさの写真を持っている）食事か
+    let holdsMealOriginals: (_ mealId: UUID) async -> Bool
 
     var body: some View {
         TimelineScreen(
@@ -19,20 +23,56 @@ struct TimelineScreenContainer: View {
             now: { .now },
             rejectedLines: rejectedLines,
             rejectedMealLines: rejectedMealLines,
+            meals: mealCards,
             capture: capture,
             prepareWeightEntry: prepareWeightEntry,
             saveWeight: saveWeight,
-            accountActions: accountActions
+            accountActions: accountActions,
+            mealActions: mealActions
         )
+        .task(id: cachedMeals.map(\.mealId)) {
+            await readMealsRecordedHere()
+        }
     }
 
     @Query private var cachedRecords: [CachedWeightRecord]
     @Query private var syncStates: [CachedSyncState]
+    @Query private var cachedMeals: [CachedMeal]
+    @Query private var cachedEstimationStatuses: [CachedMealEstimationStatus]
+    /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
+    @State private var mealsRecordedHere: Set<UUID> = []
 
     private var initialPull: TimelineScreen.InitialPull {
         guard let state = syncStates.first, state.hasCompletedInitialPull else {
             return .inProgress
         }
         return .completed(startedDay: state.startedOn.flatMap(TimelineDayText.day(from:)))
+    }
+
+    /// 推定の状態は食事と別の種類で、食事より先にも後にも届く
+    private var mealCards: [MealCard] {
+        var statuses: [UUID: MealEstimationStatus] = [:]
+        for row in cachedEstimationStatuses {
+            statuses[row.mealId] = row.estimationStatus()
+        }
+        return cachedMeals.compactMap { row in
+            row.meal().map { meal in
+                MealCard(
+                    meal: meal,
+                    status: statuses[meal.id],
+                    recordedOnThisDevice: mealsRecordedHere.contains(meal.id)
+                )
+            }
+        }
+    }
+
+    private func readMealsRecordedHere() async {
+        var recordedHere: Set<UUID> = []
+        for mealId in cachedMeals.map(\.mealId) {
+            if await holdsMealOriginals(mealId) {
+                recordedHere.insert(mealId)
+            }
+        }
+        mealsRecordedHere = recordedHere
     }
 }
