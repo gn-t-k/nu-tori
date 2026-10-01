@@ -1,9 +1,12 @@
-import type { AccountSettings } from "./account-settings";
-import type { WeightRecord } from "./weight-record";
+import type { createRecordKinds } from "./create-record-kinds";
+import type { KindWrites } from "./sync-ledger/record-kind";
+import type { WriteBase } from "./sync-ledger/write-base";
 
-export type SyncWrite = { id: string } & (
-  | { type: "create_weight_record"; weightRecord: Omit<WeightRecord, "version"> }
-  | { type: "update_weight_record"; weightRecord: Omit<WeightRecord, "imported"> }
-  | { type: "source_deleted_weight_record"; weightRecordId: string }
-  | { type: "update_account_settings"; accountSettings: AccountSettings }
-);
+// 書き込みは、登録簿の種類が宣言する書き込みの union
+export type SyncWrite = WriteOfKind<ReturnType<typeof createRecordKinds>[number]>;
+
+type WriteOfKind<TKind> = TKind extends {
+  writes: KindWrites<infer TWrite extends WriteBase> | undefined;
+}
+  ? TWrite
+  : never;

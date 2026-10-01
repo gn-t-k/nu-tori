@@ -1,14 +1,16 @@
+import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { FirstSignInStore } from "../domain/record-first-sign-in";
+import { firstSignInTables } from "./first-sign-in-tables";
 
-export const createFirstSignInStore = (sql: SqlStorage): FirstSignInStore => ({
-  exists: () => sql.exec("SELECT 1 FROM first_sign_ins LIMIT 1").toArray().length > 0,
+const { firstSignIns } = firstSignInTables;
+
+export const createFirstSignInStore = (db: DrizzleSqliteDODatabase): FirstSignInStore => ({
+  exists: () => db.select({ id: firstSignIns.id }).from(firstSignIns).limit(1).all().length > 0,
+  findStartedOn: () =>
+    db.select({ startedOn: firstSignIns.startedOn }).from(firstSignIns).get()?.startedOn,
   insert: ({ id, startedOn, signedInAt, timeZone }) => {
-    sql.exec(
-      "INSERT INTO first_sign_ins (id, started_on, signed_in_at, time_zone) VALUES (?, ?, ?, ?)",
-      id,
-      startedOn,
-      signedInAt.getTime(),
-      timeZone ?? null,
-    );
+    db.insert(firstSignIns)
+      .values({ id, startedOn, signedInAt, timeZone: timeZone ?? null })
+      .run();
   },
 });

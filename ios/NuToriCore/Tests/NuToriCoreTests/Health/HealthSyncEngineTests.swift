@@ -1,5 +1,6 @@
 import Foundation
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 @Suite("ヘルスケアとの同期の働き")
@@ -16,11 +17,11 @@ struct HealthSyncEngineTests {
     struct Importing {
         @Suite("他のアプリの体重が増えたとき")
         struct AddedWeights {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(weights: [
@@ -73,14 +74,14 @@ struct HealthSyncEngineTests {
         @Suite("前回のアンカーがあるとき")
         struct WithAnchor {
             let healthStore: HealthStoreMock
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
             let previousAnchor: HealthAnchor
 
-            init() {
+            init() throws {
                 previousAnchor = HealthAnchor(data: Data("anchor-1".utf8))
                 healthStore = .ok(earliestAuthorizedSampleDate: Date(timeIntervalSince1970: 1_000))
-                store = .ok(
+                store = try .ok(
                     healthState: HealthSyncState(
                         anchor: previousAnchor, hasWrittenCachedManualRecords: true)
                 )
@@ -108,12 +109,12 @@ struct HealthSyncEngineTests {
         @Suite("初めて読むとき")
         struct FirstRead {
             let healthStore: HealthStoreMock
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 healthStore = .ok()
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(healthStore: healthStore, store: store)
             }
 
@@ -127,11 +128,11 @@ struct HealthSyncEngineTests {
 
         @Suite("nu-tori 自身が書いた体重と、他のアプリの体重が混ざるとき")
         struct OwnSamples {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(
@@ -166,11 +167,11 @@ struct HealthSyncEngineTests {
 
         @Suite("範囲の外のサンプルが混ざるとき")
         struct OutOfRange {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(
@@ -221,11 +222,11 @@ struct HealthSyncEngineTests {
 
         @Suite("体重と体脂肪率が届いたとき")
         struct BodyFatPairing {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(
@@ -286,11 +287,11 @@ struct HealthSyncEngineTests {
 
         @Suite("サンプルの時間帯のメタデータがあるものと無いものが届いたとき")
         struct TimeZones {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
             init() throws {
-                store = .ok()
+                store = try .ok()
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(weights: [
@@ -325,7 +326,7 @@ struct HealthSyncEngineTests {
 
         @Suite("キャッシュにもう同じ ID の記録があるサンプルを読み直したとき")
         struct AlreadyCached {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
             let cached: WeightRecord
 
@@ -347,7 +348,7 @@ struct HealthSyncEngineTests {
                     ),
                     version: 3
                 )
-                store = .ok(records: [cached])
+                store = try .ok(records: [cached])
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(weights: [
@@ -369,7 +370,7 @@ struct HealthSyncEngineTests {
 
         @Suite("ヘルスケアで元のサンプルが消えたとき")
         struct Deleted {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
             let cached: WeightRecord
 
@@ -383,7 +384,7 @@ struct HealthSyncEngineTests {
                     inputSource: .manual,
                     version: 1
                 )
-                store = .ok(records: [cached])
+                store = try .ok(records: [cached])
                 engine = .fixture(
                     healthStore: .ok(
                         changes: .fixture(deletions: [
@@ -431,7 +432,7 @@ struct HealthSyncEngineTests {
 
         @Suite("読み取りの期間の境界より前の記録が、消えた分として返ったとき")
         struct DeletedBeforeBoundary {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
             init() throws {
@@ -454,7 +455,7 @@ struct HealthSyncEngineTests {
                     inputSource: .manual,
                     version: 1
                 )
-                store = .ok(records: [before, after])
+                store = try .ok(records: [before, after])
                 engine = .fixture(
                     healthStore: .ok(
                         earliestAuthorizedSampleDate: boundary,
@@ -488,11 +489,11 @@ struct HealthSyncEngineTests {
         struct ReadFailure {
             struct Failure: Error, Equatable {}
 
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
-            init() {
-                store = .ok()
+            init() throws {
+                store = try .ok()
                 engine = .fixture(healthStore: .error(Failure()), store: store)
             }
 
@@ -520,7 +521,7 @@ struct HealthSyncEngineTests {
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 3)
                 imported = try .imported(70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 healthStore = .ok()
-                engine = .fixture(healthStore: healthStore, store: .ok())
+                engine = .fixture(healthStore: healthStore, store: try .ok())
             }
 
             @Test("手で記録した体重を、体重記録の ID を同期 ID、版をヘルスケアの版にして書くこと")
@@ -556,7 +557,7 @@ struct HealthSyncEngineTests {
             init() throws {
                 manual = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 healthStore = .ok(isWriteAuthorized: false)
-                engine = .fixture(healthStore: healthStore, store: .ok())
+                engine = .fixture(healthStore: healthStore, store: try .ok())
             }
 
             @Test("書かないこと")
@@ -570,7 +571,7 @@ struct HealthSyncEngineTests {
         @Suite("書き込みの許可を得て、まとめて書いていないとき")
         struct NewlyAuthorized {
             let healthStore: HealthStoreMock
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
             let firstManual: WeightRecord
             let secondManual: WeightRecord
@@ -580,7 +581,7 @@ struct HealthSyncEngineTests {
                 secondManual = try .manual(
                     72.0, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
                 healthStore = .ok()
-                store = .ok(
+                store = try .ok(
                     records: [
                         firstManual, secondManual,
                         try .imported(70.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo"),
@@ -622,12 +623,12 @@ struct HealthSyncEngineTests {
         @Suite("書き込みの許可がまだ無いとき")
         struct NotYetAuthorized {
             let healthStore: HealthStoreMock
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
 
             init() throws {
                 healthStore = .ok(isWriteAuthorized: false)
-                store = .ok(
+                store = try .ok(
                     records: [try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")])
                 engine = .fixture(healthStore: healthStore, store: store)
             }
@@ -649,9 +650,9 @@ struct HealthSyncEngineTests {
             let healthStore: HealthStoreMock
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 healthStore = .ok(requestStatus: .notYetRequested)
-                engine = .fixture(healthStore: healthStore, store: .ok())
+                engine = .fixture(healthStore: healthStore, store: try .ok())
             }
 
             @Test("求めること")
@@ -667,9 +668,9 @@ struct HealthSyncEngineTests {
             let healthStore: HealthStoreMock
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 healthStore = .ok(requestStatus: .alreadyRequested)
-                engine = .fixture(healthStore: healthStore, store: .ok())
+                engine = .fixture(healthStore: healthStore, store: try .ok())
             }
 
             @Test("求めないこと")
@@ -689,7 +690,7 @@ struct HealthSyncEngineTests {
                 healthStore = .ok(requestStatus: .notYetRequested)
                 engine = .fixture(
                     healthStore: healthStore,
-                    store: .ok(
+                    store: try .ok(
                         records: [
                             try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                         ],
@@ -711,11 +712,11 @@ struct HealthSyncEngineTests {
             let healthStore: HealthStoreMock
             let engine: HealthSyncEngine
 
-            init() {
+            init() throws {
                 healthStore = .ok(requestStatus: .notYetRequested)
                 engine = .fixture(
                     healthStore: healthStore,
-                    store: .ok(state: .fixture(hasCompletedInitialPull: true))
+                    store: try .ok(state: .fixture(hasCompletedInitialPull: true))
                 )
             }
 
@@ -736,7 +737,7 @@ struct HealthSyncEngineTests {
                 healthStore = .ok(requestStatus: .notYetRequested)
                 engine = .fixture(
                     healthStore: healthStore,
-                    store: .ok(
+                    store: try .ok(
                         records: [
                             try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                         ],
@@ -762,7 +763,7 @@ struct HealthSyncEngineTests {
                 healthStore = .ok(requestStatus: .alreadyRequested)
                 engine = .fixture(
                     healthStore: healthStore,
-                    store: .ok(
+                    store: try .ok(
                         records: [
                             try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                         ],

@@ -7,7 +7,9 @@ nonisolated final class CachedSyncState {
     @Attribute(.unique) var singletonKey: String
     var afterSequence: Int
     var hasCompletedInitialPull: Bool
-    var readableKindsVersion: Int
+    /// `RecordKindName` の rawValue。名前の順。SwiftData の集合の扱いに頼らないため配列で持つ。
+    /// 今の `RecordKindName` に読めない名前は、読むときに捨てる
+    var readableKinds: [String]
     /// サーバーで決まるまで無い
     var startedOn: String?
 
@@ -15,7 +17,7 @@ nonisolated final class CachedSyncState {
         singletonKey = Self.onlyKey
         afterSequence = state.afterSequence
         hasCompletedInitialPull = state.hasCompletedInitialPull
-        readableKindsVersion = state.readableKindsVersion
+        readableKinds = Self.names(of: state.readableKinds)
         startedOn = state.startedOn
     }
 
@@ -23,7 +25,7 @@ nonisolated final class CachedSyncState {
         SyncState(
             afterSequence: afterSequence,
             hasCompletedInitialPull: hasCompletedInitialPull,
-            readableKindsVersion: readableKindsVersion,
+            readableKinds: Set(readableKinds.compactMap(RecordKindName.init(rawValue:))),
             startedOn: startedOn
         )
     }
@@ -31,8 +33,13 @@ nonisolated final class CachedSyncState {
     func apply(_ state: SyncState) {
         afterSequence = state.afterSequence
         hasCompletedInitialPull = state.hasCompletedInitialPull
-        readableKindsVersion = state.readableKindsVersion
+        readableKinds = Self.names(of: state.readableKinds)
         startedOn = state.startedOn
+    }
+
+    /// 保存する文字列（名前の順）。`RecordKindName` の rawValue なので、保存の形は今と同じ
+    private static func names(of kinds: Set<RecordKindName>) -> [String] {
+        kinds.map(\.rawValue).sorted()
     }
 
     static let onlyKey = "sync-state"

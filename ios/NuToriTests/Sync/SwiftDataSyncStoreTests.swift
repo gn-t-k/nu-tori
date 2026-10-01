@@ -11,45 +11,34 @@ struct SwiftDataSyncStoreTests {
     @MainActor
     struct UnmigratableShape {
         let directory: URL
+        let pendingDirectory: URL
         let originalFiles: [String: Data]
 
         init() throws {
-            directory = FileManager.default.temporaryDirectory.appending(
-                path: "record-store-\(UUID().uuidString)", directoryHint: .isDirectory)
+            directory = SwiftDataSyncStoreTests.makeDirectory()
+            pendingDirectory = directory.appending(
+                path: "PendingStore", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true)
-            try Self.writeIncompatibleStore(at: directory.appending(path: "RecordStore.store"))
-            originalFiles = try SwiftDataSyncStoreTests.fileBytes(in: directory)
+                at: pendingDirectory, withIntermediateDirectories: true)
+            try SwiftDataSyncStoreTests.writeIncompatibleStore(
+                entityName: "PendingWriteRow",
+                at: pendingDirectory.appending(path: "PendingStore.store"))
+            originalFiles = try SwiftDataSyncStoreTests.fileBytes(in: pendingDirectory)
         }
 
-        @Test("元のファイルを日時つきの別名に移し、空で作り直すこと")
+        @Test("元のファイルを日時つきの別名に移し、空で作り直し、対処した失敗として残すこと")
         func archivesAndRecreates() throws {
-            _ = try SwiftDataSyncStore(directory: directory)
+            let store = try SwiftDataSyncStore(directory: directory)
 
-            let after = try SwiftDataSyncStoreTests.fileBytes(in: directory)
+            #expect(store.takeRecoveries() == [.storeRecovery])
+            let after = try SwiftDataSyncStoreTests.fileBytes(in: pendingDirectory)
             for (name, bytes) in originalFiles {
                 let archived = after.filter { key, value in
                     key.hasPrefix(name + ".") && value == bytes
                 }
                 #expect(archived.count == 1)
             }
-            #expect(after["RecordStore.store"] != originalFiles["RecordStore.store"])
-        }
-
-        private static func writeIncompatibleStore(at url: URL) throws {
-            let model = NSManagedObjectModel()
-            let entity = NSEntityDescription()
-            entity.name = "CachedWeightRecord"
-            entity.managedObjectClassName = "CachedWeightRecord"
-            let kilograms = NSAttributeDescription()
-            kilograms.name = "kilograms"
-            kilograms.attributeType = .stringAttributeType
-            kilograms.isOptional = false
-            entity.properties = [kilograms]
-            model.entities = [entity]
-            let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
-            try coordinator.addPersistentStore(
-                ofType: NSSQLiteStoreType, configurationName: nil, at: url)
+            #expect(after["PendingStore.store"] != originalFiles["PendingStore.store"])
         }
     }
 
@@ -57,20 +46,22 @@ struct SwiftDataSyncStoreTests {
     @MainActor
     struct OtherOpenFailure {
         let directory: URL
+        let pendingDirectory: URL
         let originalFiles: [String: Data]
 
         init() throws {
-            directory = FileManager.default.temporaryDirectory.appending(
-                path: "record-store-\(UUID().uuidString)", directoryHint: .isDirectory)
+            directory = SwiftDataSyncStoreTests.makeDirectory()
+            pendingDirectory = directory.appending(
+                path: "PendingStore", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true)
-            let store = directory.appending(path: "RecordStore.store")
+                at: pendingDirectory, withIntermediateDirectories: true)
+            let store = pendingDirectory.appending(path: "PendingStore.store")
             try Data("not a database".utf8).write(to: store)
             try Data("shm".utf8).write(
                 to: URL(filePath: store.path(percentEncoded: false) + "-shm"))
             try Data("wal".utf8).write(
                 to: URL(filePath: store.path(percentEncoded: false) + "-wal"))
-            originalFiles = try SwiftDataSyncStoreTests.fileBytes(in: directory)
+            originalFiles = try SwiftDataSyncStoreTests.fileBytes(in: pendingDirectory)
         }
 
         @Test("作り直さず、元のファイルが残ること")
@@ -78,16 +69,48 @@ struct SwiftDataSyncStoreTests {
             #expect(throws: SwiftDataSyncStore.NotOpened.self) {
                 _ = try SwiftDataSyncStore(directory: directory)
             }
-            let after = try SwiftDataSyncStoreTests.fileBytes(in: directory)
-            #expect(after["RecordStore.store"] == originalFiles["RecordStore.store"])
+            let after = try SwiftDataSyncStoreTests.fileBytes(in: pendingDirectory)
+            #expect(after["PendingStore.store"] == originalFiles["PendingStore.store"])
             let archived = after.keys.filter { name in
                 originalFiles.keys.contains { name.hasPrefix($0 + ".") }
             }
             #expect(archived.isEmpty)
         }
+
+        @Test("開けなかった元のエラーを持つこと")
+        func carriesCause() throws {
+            let notOpened = try #require(throws: SwiftDataSyncStore.NotOpened.self) {
+                _ = try SwiftDataSyncStore(directory: directory)
+            }
+            #expect(!(notOpened.cause is SwiftDataSyncStore.NotOpened))
+        }
     }
 
-    private static func fileBytes(in directory: URL) throws -> [String: Data] {
+    static func makeDirectory() -> URL {
+        FileManager.default.temporaryDirectory.appending(
+            path: "record-store-\(UUID().uuidString)", directoryHint: .isDirectory)
+    }
+
+    /// 今の形と合わない SQLite のファイル。`entityName` のモデルが1つだけあり、項目の型が違う
+    static func writeIncompatibleStore(entityName: String, at url: URL) throws {
+        let model = NSManagedObjectModel()
+        let entity = NSEntityDescription()
+        entity.name = entityName
+        entity.managedObjectClassName = entityName
+        let kilograms = NSAttributeDescription()
+        kilograms.name = "kilograms"
+        kilograms.attributeType = .stringAttributeType
+        kilograms.isOptional = false
+        entity.properties = [kilograms]
+        model.entities = [entity]
+        let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
+        let store = try coordinator.addPersistentStore(
+            ofType: NSSQLiteStoreType, configurationName: nil, at: url)
+        // 閉じてから返す。開いたままだと、テストが開くときにまだ書き終えておらず、消すときに使用中のファイルを消すことになる
+        try coordinator.remove(store)
+    }
+
+    static func fileBytes(in directory: URL) throws -> [String: Data] {
         var files: [String: Data] = [:]
         let urls = try FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: nil)
@@ -96,116 +119,4 @@ struct SwiftDataSyncStoreTests {
         }
         return files
     }
-}
-
-@Suite("アカウントの設定")
-struct AccountSettingsStore {
-    @Suite("保存したとき")
-    @MainActor
-    struct Saved {
-        let store: SwiftDataSyncStore
-        let settings: AccountSettings
-        let write: PendingWrite
-
-        init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            settings = AccountSettings(id: AccountSettingsStore.settingsId, sendsUsageData: false)
-            write = PendingWrite(
-                writeId: AccountSettingsStore.writeId,
-                enqueuedAt: AccountSettingsStore.enqueuedAt,
-                operation: .updateAccountSettings(settings)
-            )
-        }
-
-        @Test("設定と送り待ちが残ること")
-        func keepsSettingsAndPendingWrite() async throws {
-            try await store.save(settings, enqueuing: write)
-            #expect(try await store.accountSettings() == settings)
-            #expect(try await store.pendingWritesOldestFirst() == [write])
-        }
-    }
-
-    @Suite("設定が届いたあとに、設定の無い取得が来たとき")
-    @MainActor
-    struct ArrivedThenMissing {
-        let store: SwiftDataSyncStore
-        let arrived: AccountSettings
-        let arrivedChanges: PulledChanges
-        let missingChanges: PulledChanges
-
-        init() async throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            let previous = AccountSettings(
-                id: AccountSettingsStore.settingsId, sendsUsageData: false)
-            try await store.save(
-                previous,
-                enqueuing: PendingWrite(
-                    writeId: AccountSettingsStore.writeId,
-                    enqueuedAt: AccountSettingsStore.enqueuedAt,
-                    operation: .updateAccountSettings(previous)
-                )
-            )
-            arrived = AccountSettings(id: AccountSettingsStore.settingsId, sendsUsageData: true)
-            arrivedChanges = PulledChanges(
-                records: [],
-                removedRecordIds: [],
-                accountSettings: arrived,
-                state: SyncState(
-                    afterSequence: 1,
-                    hasCompletedInitialPull: true,
-                    readableKindsVersion: 1,
-                    startedOn: nil
-                )
-            )
-            missingChanges = PulledChanges(
-                records: [],
-                removedRecordIds: [],
-                accountSettings: nil,
-                state: SyncState(
-                    afterSequence: 2,
-                    hasCompletedInitialPull: true,
-                    readableKindsVersion: 1,
-                    startedOn: nil
-                )
-            )
-        }
-
-        @Test("届いた設定が残ること")
-        func keepsArrivedSettings() async throws {
-            try await store.apply(arrivedChanges)
-            try await store.apply(missingChanges)
-            #expect(try await store.accountSettings() == arrived)
-        }
-    }
-
-    @Suite("すべて消したとき")
-    @MainActor
-    struct Erased {
-        let store: SwiftDataSyncStore
-
-        init() async throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            let settings = AccountSettings(
-                id: AccountSettingsStore.settingsId, sendsUsageData: false)
-            try await store.save(
-                settings,
-                enqueuing: PendingWrite(
-                    writeId: AccountSettingsStore.writeId,
-                    enqueuedAt: AccountSettingsStore.enqueuedAt,
-                    operation: .updateAccountSettings(settings)
-                )
-            )
-        }
-
-        @Test("設定も送り待ちも残らないこと")
-        func clearsSettingsAndPendingWrites() async throws {
-            try await store.eraseAll()
-            #expect(try await store.accountSettings() == nil)
-            #expect(try await store.pendingWritesOldestFirst().isEmpty)
-        }
-    }
-
-    private static let settingsId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!
-    private static let writeId = UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!
-    private static let enqueuedAt = Date(timeIntervalSince1970: 1_700_000_000)
 }

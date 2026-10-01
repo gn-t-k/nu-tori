@@ -1,4 +1,5 @@
 import Foundation
+import NuToriAPI
 import NuToriCore
 import Testing
 
@@ -135,14 +136,23 @@ struct SwiftDataSyncStoreSavingTests {
         @Test("設定が残り、印の付いた記録が消えること")
         func keepsSettingsAndRemovesRecord() async throws {
             try await store.apply(
-                PulledChanges(
-                    records: [],
-                    removedRecordIds: [removed.id],
-                    accountSettings: settings,
-                    state: SyncState(
+                SyncBoxResult(
+                    kindChanges: [
+                        KindChanges(
+                            kind: AccountSettingsSyncKind.kindName,
+                            changes: [
+                                .accountSettings(
+                                    SyncedAccountSettings(
+                                        id: settings.id, sendsUsageData: settings.sendsUsageData))
+                            ]),
+                        KindChanges(
+                            kind: WeightRecordSyncing.kindName,
+                            changes: [.weightRecordDeletion(recordId: removed.id)]),
+                    ],
+                    syncState: SyncState(
                         afterSequence: 4,
                         hasCompletedInitialPull: true,
-                        readableKindsVersion: 1,
+                        readableKinds: [.weightRecord],
                         startedOn: nil
                     )
                 )
@@ -193,7 +203,7 @@ struct SwiftDataSyncStoreSavingTests {
                 SyncState(
                     afterSequence: 8,
                     hasCompletedInitialPull: true,
-                    readableKindsVersion: 1,
+                    readableKinds: [.weightRecord],
                     startedOn: nil
                 )
             )

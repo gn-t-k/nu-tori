@@ -2,6 +2,7 @@ import Foundation
 import HTTPTypes
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 @Suite("アカウントのサインインの状態")
@@ -32,8 +33,8 @@ struct AccountSessionTests {
         struct WithoutSessionAndMark {
             let session: AccountSession
 
-            init() {
-                session = AccountDevice.signedOut().session()
+            init() throws {
+                session = try AccountDevice.signedOut().session()
             }
 
             @Test("説明のひとことの版のサインインの画面にすること")
@@ -48,8 +49,8 @@ struct AccountSessionTests {
         struct WithoutSessionWithMark {
             let session: AccountSession
 
-            init() {
-                session = AccountDevice.signedOut(hasSignInAgainMark: true).session()
+            init() throws {
+                session = try AccountDevice.signedOut(hasSignInAgainMark: true).session()
             }
 
             @Test("サインインし直しの1行の版のサインインの画面にすること")
@@ -252,9 +253,9 @@ struct AccountSessionTests {
             let credential: AppleSignInCredential
             let session: AccountSession
 
-            init() {
+            init() throws {
                 credential = .fixture()
-                device = .signedOut(hasSignInAgainMark: true)
+                device = try .signedOut(hasSignInAgainMark: true)
                 transport = .account(accountId: "account-2")
                 session = device.session(transport: transport)
             }
@@ -402,9 +403,9 @@ struct AccountSessionTests {
             let credential: AppleSignInCredential
             let session: AccountSession
 
-            init() {
+            init() throws {
                 credential = .fixture()
-                device = .signedOut(hasSignInAgainMark: true)
+                device = try .signedOut(hasSignInAgainMark: true)
                 session = device.session(transport: .account(startStatus: .unauthorized))
             }
 
@@ -452,9 +453,9 @@ struct AccountSessionTests {
             let credential: AppleSignInCredential
             let session: AccountSession
 
-            init() {
+            init() throws {
                 credential = .fixture()
-                session = AccountDevice.signedOut().session(
+                session = try AccountDevice.signedOut().session(
                     transport: .error(URLError(.timedOut)))
             }
 
@@ -471,9 +472,9 @@ struct AccountSessionTests {
             let credential: AppleSignInCredential
             let session: AccountSession
 
-            init() {
+            init() throws {
                 credential = .fixture()
-                session = AccountDevice.signedOut().session(
+                session = try AccountDevice.signedOut().session(
                     transport: .account(startStatus: .internalServerError))
             }
 

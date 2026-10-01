@@ -1,8 +1,5 @@
-import type { AccountSettings } from "./account-settings";
-import type { WeightRecord } from "./weight-record";
+import type { RecordType } from "./record-type";
+import type { LedgerChange } from "./sync-ledger/ledger-change";
 
-export type SyncChange = { sequence: number } & (
-  | { type: "weight_record"; weightRecord: WeightRecord }
-  | { type: "weight_record_deletion"; recordId: string }
-  | { type: "account_settings"; accountSettings: AccountSettings }
-);
+// 変更は、登録簿の種類の分だけ。値の型は種類ごとに違い、受け口が種類の名前で引いて変換する
+export type SyncChange = LedgerChange<RecordType, unknown>;

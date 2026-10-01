@@ -3,7 +3,7 @@ public import Foundation
 public actor HealthSyncEngine {
     public init(
         healthStore: any HealthStore,
-        store: any SyncStore,
+        store: any SyncBox & RecordCacheReading & HealthSyncStoring,
         ownBundleId: String,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
@@ -99,7 +99,7 @@ public actor HealthSyncEngine {
     }
 
     private let healthStore: any HealthStore
-    private let store: any SyncStore
+    private let store: any SyncBox & RecordCacheReading & HealthSyncStoring
     private let ownBundleId: String
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date

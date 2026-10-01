@@ -51,53 +51,32 @@
             let store = try SwiftDataSyncStore(inMemory: true)
             try store.prepareForUITest(
                 state: seededSyncState(), pendingWrites: account.pendingWrites)
-            let keychain = InMemorySessionKeychain(token: account.hasSession ? "stub-session" : nil)
-            let deviceStore = UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults())
-            let client = NuToriAPIClient(
-                serverURL: APIEnvironment.development.serverURL,
-                transport: StubAPITransport(behavior: transportBehavior),
-                sessionToken: { try? await keychain.sessionToken() }
-            )
-            let analytics = PlaceholderAnalyticsSession()
-            let errorReporting = PlaceholderErrorReportingSession()
-            let health = HealthSyncSession.live(
-                syncStore: store,
-                healthStore: UITestHealthStore(
-                    authorization: healthAuthorization,
-                    latestKilograms: healthLatestKilograms,
-                    writeAuthorized: healthWriteAuthorized
-                ),
-                errorReporting: errorReporting,
-                startBackgroundDelivery: { _ in }
-            )
-            let session = AccountSession(
-                client: client,
-                keychain: keychain,
-                deviceStore: deviceStore,
-                syncStore: store,
-                appleCredentials: AuthorizedAppleCredentialChecker(),
-                backgroundTransfers: PlaceholderBackgroundTransferStore(),
-                healthAnchors: store,
-                analytics: analytics,
-                errorReporting: errorReporting,
-                timeZone: { .current },
-                analyticsFlushTimeout: .seconds(3)
-            )
-            let sync = RecordSync(
-                store: store,
-                client: client,
-                accountSession: session,
-                health: health,
-                deviceId: { deviceStore.loadOrCreateDeviceId() },
-                hasSession: { (try? await keychain.sessionToken()) != nil },
-                signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
-                errorReporting: errorReporting
-            )
-            return AppRuntime(
-                container: store.container,
-                recordSync: sync,
-                model: RootModel(accountSession: session, recordSync: sync, health: health)
-            )
+            let behavior = transportBehavior
+            return AppRuntime.assemble(
+                AppRuntime.Parts(
+                    store: store,
+                    makeClient: { sessionToken in
+                        NuToriAPIClient(
+                            serverURL: APIEnvironment.development.serverURL,
+                            transport: StubAPITransport(behavior: behavior),
+                            sessionToken: sessionToken
+                        )
+                    },
+                    keychain: InMemorySessionKeychain(
+                        token: account.hasSession ? "stub-session" : nil),
+                    deviceStore: UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults()),
+                    healthStore: UITestHealthStore(
+                        authorization: healthAuthorization,
+                        latestKilograms: healthLatestKilograms,
+                        writeAuthorized: healthWriteAuthorized
+                    ),
+                    startBackgroundDelivery: { _ in },
+                    appleCredentials: AuthorizedAppleCredentialChecker(),
+                    observation: ObservationSessions(
+                        analytics: PlaceholderAnalyticsSession(),
+                        errorReporting: PlaceholderErrorReportingSession()
+                    )
+                ))
         }
 
         private var transportBehavior: StubAPITransport.Behavior {
@@ -112,6 +91,7 @@
             case .previousDayPushOffline: return .previousDayPushOffline
             case .previousDayPushRejected: return .previousDayPushRejected
             case .weightScreen: return .weightScreen
+            case .weightScreenPushRejected: return .weightScreenPushRejected
             case .accountDeletionRateLimited: return .accountDeletionRateLimited
             case .accountDeletionUnauthorized: return .accountDeletionUnauthorized
             case .dayRing: return .dayRing
@@ -125,7 +105,7 @@
             return SyncState(
                 afterSequence: 0,
                 hasCompletedInitialPull: true,
-                readableKindsVersion: SyncEngine.currentReadableKindsVersion,
+                readableKinds: AppRecordKinds.registry.names,
                 startedOn: TimelineDayText.startedOn(for: today)
             )
         }
@@ -196,6 +176,7 @@
             case previousDayPushOffline = "previous-day-push-offline"
             case previousDayPushRejected = "previous-day-push-rejected"
             case weightScreen = "weight-screen"
+            case weightScreenPushRejected = "weight-screen-push-rejected"
             case dayRing = "day-ring"
             case accountDeletionRateLimited = "account-deletion-rate-limited"
             case accountDeletionUnauthorized = "account-deletion-unauthorized"

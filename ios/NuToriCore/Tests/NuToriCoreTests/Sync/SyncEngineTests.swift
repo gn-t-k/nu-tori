@@ -2,6 +2,7 @@ import Foundation
 import HTTPTypes
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 @Suite("同期の働き")
@@ -10,7 +11,7 @@ struct SyncEngineTests {
     struct SaveWeightRecord {
         @Suite("新しく作るとき")
         struct Creating {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let firstWrite: WeightEntry.Write
             let secondWrite: WeightEntry.Write
@@ -21,8 +22,8 @@ struct SyncEngineTests {
                     kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: timeZone)
                 secondWrite = .create(
                     kilograms: 72.5, instant: SyncEngine.fixtureNow, timeZone: timeZone)
-                store = .ok()
-                engine = .fixture(store: store, transport: .ok())
+                store = try .ok()
+                engine = .fixture(store: store, transport: .sync())
             }
 
             @Test("手で記録した版 1 の記録を、送り待ちに1件足す保存と同じ保存で置くこと")
@@ -52,7 +53,7 @@ struct SyncEngineTests {
 
         @Suite("手元にある記録を直すとき")
         struct Correcting {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let original: WeightRecord
             let corrected: WeightRecord
@@ -67,32 +68,31 @@ struct SyncEngineTests {
                     inputSource: .manual,
                     version: 2
                 )
-                store = .ok(records: [original])
-                engine = .fixture(store: store, transport: .ok())
+                store = try .ok(records: [original])
+                engine = .fixture(store: store, transport: .sync())
             }
 
-            @Test("直した記録を置き、直す前の記録を添えた送り待ちを1件足すこと")
-            func savesCorrectionWithPreviousRecord() async throws {
+            @Test("直した記録を置き、送り待ちを1件足すこと")
+            func savesCorrection() async throws {
                 try await engine.save(.correct(corrected))
 
                 #expect(store.records[original.id] == corrected)
                 let pending = try #require(store.pending.first)
                 #expect(store.pending.count == 1)
-                #expect(
-                    pending.operation == .correctWeightRecord(corrected, previous: original))
+                #expect(pending.operation == .correctWeightRecord(corrected))
             }
         }
 
         @Suite("手元に無い記録を直そうとしたとき")
         struct CorrectingUnknownRecord {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let unknown: WeightRecord
 
             init() throws {
                 unknown = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok()
-                engine = .fixture(store: store, transport: .ok())
+                store = try .ok()
+                engine = .fixture(store: store, transport: .sync())
             }
 
             @Test("送り待ちに足さず、知らない記録だと投げること")
@@ -116,7 +116,7 @@ struct SyncEngineTests {
                 write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
                 reporting = .ok()
                 engine = .fixture(
-                    store: .error(Failure()), transport: .ok(), errorReporting: reporting)
+                    store: .error(Failure()), transport: .sync(), errorReporting: reporting)
             }
 
             @Test("置き場のエラーをそのまま投げ、キャッシュの保存の失敗として送ること")
@@ -138,7 +138,8 @@ struct SyncEngineTests {
                 write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
                 reporting = .ok()
                 engine = .fixture(
-                    store: .error(URLError(.timedOut)), transport: .ok(), errorReporting: reporting)
+                    store: .error(URLError(.timedOut)), transport: .sync(),
+                    errorReporting: reporting)
             }
 
             @Test("送らず、失敗を呼び出し側に返すこと")
@@ -160,7 +161,7 @@ struct SyncEngineTests {
                 write = .create(kilograms: 72.4, instant: SyncEngine.fixtureNow, timeZone: .gmt)
                 reporting = .ok()
                 engine = .fixture(
-                    store: .error(CancellationError()), transport: .ok(),
+                    store: .error(CancellationError()), transport: .sync(),
                     errorReporting: reporting)
             }
 
@@ -178,7 +179,7 @@ struct SyncEngineTests {
     struct PushPendingWrites {
         @Suite("送り待ちが3件あるとき")
         struct ThreePending {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
 
@@ -188,7 +189,7 @@ struct SyncEngineTests {
                     WeightRecord.manual(72.5, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo"),
                     WeightRecord.manual(72.6, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
                 ]
-                store = .ok(
+                store = try .ok(
                     records: records,
                     pendingWrites: [
                         .creating(records[0], ageSeconds: 600),
@@ -196,7 +197,7 @@ struct SyncEngineTests {
                         .creating(records[2]),
                     ]
                 )
-                transport = .ok()
+                transport = .sync()
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -237,15 +238,15 @@ struct SyncEngineTests {
 
         @Suite("送り待ちが501件あるとき")
         struct MoreThanOneRequest {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
 
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(pendingWrites: (0..<501).map { _ in .creating(record) })
-                transport = .ok()
+                store = try .ok(pendingWrites: (0..<501).map { _ in .creating(record) })
+                transport = .sync()
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -262,15 +263,15 @@ struct SyncEngineTests {
 
         @Suite("回数の歯止めにかかったとき")
         struct RateLimited {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
 
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(records: [record], pendingWrites: [.creating(record)])
-                transport = .ok(pushStatus: .tooManyRequests)
+                store = try .ok(records: [record], pendingWrites: [.creating(record)])
+                transport = .sync(pushStatus: .tooManyRequests)
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -287,13 +288,13 @@ struct SyncEngineTests {
 
         @Suite("インターネットにつながらないとき")
         struct Offline {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
 
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(records: [record], pendingWrites: [.creating(record)])
+                store = try .ok(records: [record], pendingWrites: [.creating(record)])
                 engine = .fixture(
                     store: store, transport: .error(URLError(.notConnectedToInternet)))
             }
@@ -309,34 +310,36 @@ struct SyncEngineTests {
 
         @Suite("サーバーが書き込みを受け付けなかったとき")
         struct Rejected {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let created: WeightRecord
-            let previous: WeightRecord
+            let serverRecord: WeightRecord
             let corrected: WeightRecord
             let createWrite: PendingWrite
             let correctWrite: PendingWrite
 
             init() throws {
                 created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                previous = try .manual(71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+                serverRecord = try .manual(71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
                 corrected = WeightRecord(
-                    id: previous.id,
+                    id: serverRecord.id,
                     kilograms: 500,
-                    instant: previous.instant,
-                    timeZone: previous.timeZone,
+                    instant: serverRecord.instant,
+                    timeZone: serverRecord.timeZone,
                     inputSource: .manual,
                     version: 2
                 )
                 createWrite = .creating(created)
-                correctWrite = .correcting(corrected, previous: previous)
-                store = .ok(
+                correctWrite = .correcting(corrected)
+                store = try .ok(
                     records: [created, corrected],
                     pendingWrites: [createWrite, correctWrite]
                 )
                 engine = .fixture(
                     store: store,
-                    transport: .ok(rejectedWriteIndexes: [0, 1])
+                    transport: .sync(
+                        rejectedWriteIndexes: [0, 1],
+                        currents: [0: .absent, 1: .weightRecord(serverRecord)])
                 )
             }
 
@@ -347,33 +350,84 @@ struct SyncEngineTests {
                 #expect(store.pending.isEmpty)
             }
 
-            @Test("新しく作った記録は消し、直した記録は直す前の状態に戻すこと")
-            func revertsRecords() async throws {
+            @Test("サーバーに無い記録は外し、サーバーに値がある記録はその値に合わせること")
+            func appliesServerCurrent() async throws {
                 _ = try await engine.sync()
 
                 #expect(store.records[created.id] == nil)
-                #expect(store.records[previous.id] == previous)
+                #expect(store.records[serverRecord.id] == serverRecord)
             }
 
-            @Test("画面に出すために、記録と理由を結果に返すこと")
+            @Test("画面に出すために、記録と理由と、サーバーに値があるかを結果に返すこと")
             func returnsRejectedWrites() async throws {
                 let result = try await engine.sync()
 
                 #expect(
                     result.rejectedWrites == [
                         RejectedWrite(
-                            writeId: createWrite.writeId, record: created, reason: .outOfRange),
+                            writeId: createWrite.writeId, record: created, reason: .outOfRange,
+                            serverHasValue: false),
                         RejectedWrite(
-                            writeId: correctWrite.writeId, record: corrected, reason: .outOfRange),
+                            writeId: correctWrite.writeId, record: corrected, reason: .outOfRange,
+                            serverHasValue: true),
                     ]
                 )
                 #expect(result.ending == .finished)
             }
         }
 
+        @Suite("サーバーの記録が削除の印になっている直しを受け付けなかったとき")
+        struct RejectedForDeletedRecord {
+            let store: SyncBoxMock<RecordCacheMock>
+            let engine: SyncEngine
+            let corrected: WeightRecord
+            let correctWrite: PendingWrite
+
+            init() throws {
+                corrected = try .manual(
+                    72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
+                correctWrite = .correcting(corrected)
+                store = try .ok(records: [corrected], pendingWrites: [correctWrite])
+                engine = .fixture(
+                    store: store,
+                    transport: .sync(
+                        rejectedWriteIndexes: [0], currents: [0: .deleted(recordId: corrected.id)])
+                )
+            }
+
+            @Test("削除の印を当てて記録を外し、作った記録の時刻の位置に出す行にすること")
+            func removesRecordAndPlacesAtItsInstant() async throws {
+                let result = try await engine.sync()
+
+                #expect(store.records[corrected.id] == nil)
+                #expect(result.rejectedWrites.map(\.serverHasValue) == [false])
+            }
+        }
+
+        @Suite("サーバーの今の値が添えられなかったとき")
+        struct RejectedWithoutCurrent {
+            let store: SyncBoxMock<RecordCacheMock>
+            let engine: SyncEngine
+            let created: WeightRecord
+
+            init() throws {
+                created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                store = try .ok(records: [created], pendingWrites: [.creating(created)])
+                engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0]))
+            }
+
+            @Test("送り待ちから外し、記録には何も当てないこと")
+            func dropsPendingAndKeepsRecord() async throws {
+                _ = try await engine.sync()
+
+                #expect(store.pending.isEmpty)
+                #expect(store.records[created.id] == created)
+            }
+        }
+
         @Suite("ヘルスケアで元のサンプルが消えた書き込みが送り待ちにあるとき")
         struct SourceDeleted {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
             let recordId: UUID
@@ -382,7 +436,7 @@ struct SyncEngineTests {
             init() throws {
                 recordId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1"))
                 kept = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(
+                store = try .ok(
                     records: [kept],
                     pendingWrites: [
                         PendingWrite(
@@ -392,7 +446,7 @@ struct SyncEngineTests {
                         )
                     ]
                 )
-                transport = .ok(rejectedWriteIndexes: [0])
+                transport = .sync(rejectedWriteIndexes: [0])
                 engine = .fixture(store: store, transport: transport)
             }
 
@@ -415,35 +469,44 @@ struct SyncEngineTests {
             }
         }
 
-        @Suite("同じ記録の直しが2回続けて受け付けられなかったとき")
-        struct RejectedTwiceForOneRecord {
-            let store: SyncStoreMock
+        @Suite("同じ要求で、同じ記録の直しが受け付けない、受け付けるの順に並んだとき")
+        struct RejectedThenAcceptedForOneRecord {
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
-            let original: WeightRecord
+            let accepted: WeightRecord
+            let serverRecord: WeightRecord
 
             init() throws {
-                original = try .manual(71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
-                let first = WeightRecord(
+                let original = try WeightRecord.manual(
+                    71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+                let rejected = WeightRecord(
                     id: original.id, kilograms: 500, instant: original.instant,
                     timeZone: original.timeZone, inputSource: .manual, version: 2)
-                let second = WeightRecord(
-                    id: original.id, kilograms: 501, instant: original.instant,
+                accepted = WeightRecord(
+                    id: original.id, kilograms: 70.5, instant: original.instant,
                     timeZone: original.timeZone, inputSource: .manual, version: 3)
-                store = .ok(
-                    records: [second],
-                    pendingWrites: [
-                        .correcting(first, previous: original),
-                        .correcting(second, previous: first),
-                    ]
+                // サーバーは、あとに受け取った版を前より大きくして採る
+                serverRecord = WeightRecord(
+                    id: original.id, kilograms: 70.5, instant: original.instant,
+                    timeZone: original.timeZone, inputSource: .manual, version: 4)
+                store = try .ok(
+                    records: [accepted],
+                    pendingWrites: [.correcting(rejected), .correcting(accepted)]
                 )
-                engine = .fixture(store: store, transport: .ok(rejectedWriteIndexes: [0, 1]))
+                engine = .fixture(
+                    store: store,
+                    transport: .sync(
+                        rejectedWriteIndexes: [0], currents: [0: .weightRecord(serverRecord)])
+                )
             }
 
-            @Test("サーバーにある、いちばん前の状態に戻すこと")
-            func revertsToEarliestPrevious() async throws {
-                _ = try await engine.sync()
+            @Test("送り待ちを両方外し、端末の値をサーバーの値にそろえること")
+            func matchesServerValue() async throws {
+                let result = try await engine.sync()
 
-                #expect(store.records[original.id] == original)
+                #expect(store.pending.isEmpty)
+                #expect(store.records[accepted.id] == serverRecord)
+                #expect(result.rejectedWrites.map(\.serverHasValue) == [true])
             }
         }
     }
@@ -452,13 +515,13 @@ struct SyncEngineTests {
     struct PullChanges {
         @Suite("続きがあるとき")
         struct HasMore {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
 
-            init() {
-                store = .ok()
-                transport = .ok(pullPages: [
+            init() throws {
+                store = try .ok()
+                transport = .sync(pullPages: [
                     """
                     {"changes":[{"sequence":1,"kind":"weight_record","recordId":"00000000-0000-4000-8000-0000000000b1",
                       "record":{"id":"00000000-0000-4000-8000-0000000000b1","weightKg":72.4,
@@ -486,22 +549,22 @@ struct SyncEngineTests {
             func completesInitialPullOnlyAtTheEnd() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.appliedChanges.map(\.state.hasCompletedInitialPull) == [false, true])
+                #expect(store.appliedSyncStates.map(\.hasCompletedInitialPull) == [false, true])
             }
 
             @Test("通し番号と使い始めた日を、記録と同じ保存で進めること")
             func advancesStateWithRecords() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.appliedChanges.map(\.records.count) == [1, 1])
-                #expect(store.appliedChanges.map(\.state.afterSequence) == [1, 2])
+                #expect(store.appliedKindChanges.map(\.changes.count) == [1, 1])
+                #expect(store.appliedSyncStates.map(\.afterSequence) == [1, 2])
                 #expect(store.state?.startedOn == "2026-09-01")
             }
         }
 
         @Suite("手元の記録と同じ ID の記録が届いたとき")
         struct ReplacingCache {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let local: WeightRecord
 
@@ -514,10 +577,10 @@ struct SyncEngineTests {
                     inputSource: .manual,
                     version: 1
                 )
-                store = .ok(records: [local])
+                store = try .ok(records: [local])
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[{"sequence":3,"kind":"weight_record","recordId":"00000000-0000-4000-8000-0000000000b1",
                           "record":{"id":"00000000-0000-4000-8000-0000000000b1","weightKg":71.25,
@@ -560,7 +623,7 @@ struct SyncEngineTests {
 
         @Suite("削除の印が届いたとき")
         struct Deletions {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let removed: WeightRecord
             let kept: WeightRecord
@@ -577,10 +640,10 @@ struct SyncEngineTests {
                     version: 1
                 )
                 kept = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(records: [removed, kept])
+                store = try .ok(records: [removed, kept])
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":6,"kind":"weight_record_deletion","recordId":"\(removedId)","record":{}},
@@ -610,14 +673,14 @@ struct SyncEngineTests {
 
         @Suite("知らない種類の記録や、読めない中身が届いたとき")
         struct UnknownKinds {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
 
-            init() {
-                store = .ok()
+            init() throws {
+                store = try .ok()
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":4,"kind":"meal","recordId":"x","record":{"calories":500}},
@@ -638,22 +701,25 @@ struct SyncEngineTests {
             }
         }
 
-        @Suite("新しい種類を読めるようになった版で、更新して最初に同期するとき")
+        @Suite("読める種類が前より増えて、更新して最初に同期するとき")
         struct NewReadableKinds {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
             let cached: WeightRecord
 
             init() throws {
                 cached = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = .ok(
+                store = try .ok(
                     records: [cached],
                     state: .fixture(
-                        afterSequence: 42, hasCompletedInitialPull: true, readableKindsVersion: 1)
+                        afterSequence: 42, hasCompletedInitialPull: true,
+                        readableKinds: [.weightRecord])
                 )
-                transport = .ok()
-                engine = .fixture(store: store, transport: transport, readableKindsVersion: 2)
+                transport = .sync()
+                engine = .fixture(
+                    store: store, transport: transport,
+                    readableKinds: [.accountSettings, .weightRecord])
             }
 
             @Test("通し番号を最初に戻して取り直し、キャッシュは捨てず、初回の取得を終えた印は戻さないこと")
@@ -663,22 +729,48 @@ struct SyncEngineTests {
                 #expect(try transport.pullQueries.map { $0["afterSequence"] } == ["0"])
                 #expect(store.records[cached.id] == cached)
                 #expect(store.state?.hasCompletedInitialPull == true)
-                #expect(store.state?.readableKindsVersion == 2)
+                #expect(store.state?.readableKinds == [.accountSettings, .weightRecord])
             }
         }
 
-        @Suite("同じ版で2回目に同期するとき")
+        @Suite("2つの種類を同時に読めるようになって、更新して最初に同期するとき")
+        struct TwoNewReadableKinds {
+            let store: SyncBoxMock<RecordCacheMock>
+            let transport: ClientTransportMock
+            let engine: SyncEngine
+
+            init() throws {
+                store = try .ok(
+                    state: .fixture(
+                        afterSequence: 42, hasCompletedInitialPull: true, readableKinds: [])
+                )
+                transport = .sync()
+                engine = .fixture(
+                    store: store, transport: transport,
+                    readableKinds: [.accountSettings, .weightRecord])
+            }
+
+            @Test("通し番号を最初に戻して取り直し、読めた種類に両方を残すこと")
+            func restartsAndRemembersBoth() async throws {
+                _ = try await engine.sync()
+
+                #expect(try transport.pullQueries.map { $0["afterSequence"] } == ["0"])
+                #expect(store.state?.readableKinds == [.accountSettings, .weightRecord])
+            }
+        }
+
+        @Suite("同じ種類で2回目に同期するとき")
         struct SameReadableKinds {
             let transport: ClientTransportMock
             let engine: SyncEngine
 
-            init() {
-                transport = .ok()
+            init() throws {
+                transport = .sync()
                 engine = .fixture(
-                    store: .ok(
+                    store: try .ok(
                         state: .fixture(
                             afterSequence: 42, hasCompletedInitialPull: true,
-                            readableKindsVersion: 1
+                            readableKinds: [.weightRecord]
                         )
                     ),
                     transport: transport
@@ -725,8 +817,8 @@ struct SyncEngineTests {
                 )
                 export = .ok()
                 engine = .fixture(
-                    store: .ok(records: [cachedManual, cachedImported]),
-                    transport: .ok(pullPages: [
+                    store: try .ok(records: [cachedManual, cachedImported]),
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":8,"kind":"weight_record","recordId":"\(revisedId.uuidString)",
@@ -759,17 +851,17 @@ struct SyncEngineTests {
 
         @Suite("ヘルスケアへの書き直しが失敗したとき")
         struct ExportFails {
-            let store: SyncStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let revised: WeightRecord
 
             init() throws {
                 revised = try WeightRecord.manual(
                     70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
-                store = .ok(records: [revised])
+                store = try .ok(records: [revised])
                 engine = .fixture(
                     store: store,
-                    transport: .ok(pullPages: [
+                    transport: .sync(pullPages: [
                         """
                         {"changes":[
                           {"sequence":8,"kind":"weight_record","recordId":"\(revised.id.uuidString)",

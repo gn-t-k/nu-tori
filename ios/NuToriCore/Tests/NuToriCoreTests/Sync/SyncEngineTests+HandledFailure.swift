@@ -1,5 +1,6 @@
 import Foundation
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 extension SyncEngineTests {
@@ -12,10 +13,10 @@ extension SyncEngineTests {
             let reporting: ErrorReportingSessionMock
             let engine: SyncEngine
 
-            init() {
+            init() throws {
                 reporting = .ok()
                 engine = .fixture(
-                    store: .ok(),
+                    store: try .ok(),
                     transport: .error(URLError(.timedOut)),
                     errorReporting: reporting
                 )
@@ -35,10 +36,10 @@ extension SyncEngineTests {
             let reporting: ErrorReportingSessionMock
             let engine: SyncEngine
 
-            init() {
+            init() throws {
                 reporting = .ok()
                 engine = .fixture(
-                    store: .ok(),
+                    store: try .ok(),
                     transport: .error(SampleError()),
                     errorReporting: reporting
                 )

@@ -13,6 +13,13 @@ import struct Foundation.Date
 extension Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
     internal enum Schemas {
+        /// サーバーが同期で扱う記録の種類の名前。応答の kind を解くのには使わない（知らない種類を読み飛ばすため、応答では文字列で持つ）
+        ///
+        /// - Remark: Generated from `#/components/schemas/RecordKindName`.
+        internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
+            case accountSettings = "account_settings"
+            case weightRecord = "weight_record"
+        }
         /// - Remark: Generated from `#/components/schemas/SyncWriteResult`.
         internal struct SyncWriteResult: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/writeId`.
@@ -25,25 +32,109 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
             internal var rejectionReason: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/SyncWriteResult/current`.
+            internal var current: Components.Schemas.SyncWriteCurrent?
             /// Creates a new `SyncWriteResult`.
             ///
             /// - Parameters:
             ///   - writeId:
             ///   - result: 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
             ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
+            ///   - current:
             internal init(
                 writeId: Swift.String,
                 result: Swift.String,
-                rejectionReason: Swift.String? = nil
+                rejectionReason: Swift.String? = nil,
+                current: Components.Schemas.SyncWriteCurrent? = nil
             ) {
                 self.writeId = writeId
                 self.result = result
                 self.rejectionReason = rejectionReason
+                self.current = current
             }
             internal enum CodingKeys: String, CodingKey {
                 case writeId
                 case result
                 case rejectionReason
+                case current
+            }
+        }
+        /// result が rejected のときだけ付く。その記録のサーバーの今の値で、要求の書き込みを全部当て終えた時点のもの。同じ書き込みの ID が再び届いたときも、最初の結果に、当て終えた時点の値を添える
+        ///
+        /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent`.
+        internal struct SyncWriteCurrent: Codable, Hashable, Sendable {
+            /// value（値）、deleted（削除の印）、absent（記録も削除の印も無い）のどれか。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が何も当てない
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/status`.
+            internal var status: Swift.String
+            /// status が value か deleted のときだけ付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change`.
+            internal struct ChangePayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change/kind`.
+                internal var kind: Swift.String
+                /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change/recordId`.
+                internal var recordId: Swift.String
+                /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change/record`.
+                internal struct RecordPayload: Codable, Hashable, Sendable {
+                    /// A container of undocumented properties.
+                    internal var additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer]
+                    /// Creates a new `RecordPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - additionalProperties: A container of undocumented properties.
+                    internal init(additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer] = .init()) {
+                        self.additionalProperties = additionalProperties
+                    }
+                    internal init(from decoder: any Swift.Decoder) throws {
+                        additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                    }
+                    internal func encode(to encoder: any Swift.Encoder) throws {
+                        try encoder.encodeAdditionalProperties(additionalProperties)
+                    }
+                }
+                /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change/record`.
+                internal var record: Components.Schemas.SyncWriteCurrent.ChangePayload.RecordPayload
+                /// Creates a new `ChangePayload`.
+                ///
+                /// - Parameters:
+                ///   - kind:
+                ///   - recordId:
+                ///   - record:
+                internal init(
+                    kind: Swift.String,
+                    recordId: Swift.String,
+                    record: Components.Schemas.SyncWriteCurrent.ChangePayload.RecordPayload
+                ) {
+                    self.kind = kind
+                    self.recordId = recordId
+                    self.record = record
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case kind
+                    case recordId
+                    case record
+                }
+            }
+            /// status が value か deleted のときだけ付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/SyncWriteCurrent/change`.
+            internal var change: Components.Schemas.SyncWriteCurrent.ChangePayload?
+            /// Creates a new `SyncWriteCurrent`.
+            ///
+            /// - Parameters:
+            ///   - status: value（値）、deleted（削除の印）、absent（記録も削除の印も無い）のどれか。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が何も当てない
+            ///   - change: status が value か deleted のときだけ付く
+            internal init(
+                status: Swift.String,
+                change: Components.Schemas.SyncWriteCurrent.ChangePayload? = nil
+            ) {
+                self.status = status
+                self.change = change
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case status
+                case change
             }
         }
         /// アカウントの設定は、記録が無くても直す書き込みで送り、サーバーが無ければ作る
@@ -95,6 +186,66 @@ extension Components {
                 case let .updateWeightRecord(value):
                     try value.encode(to: encoder)
                 }
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite`.
+        internal struct UpdateAccountSettingsWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case updateAccountSettings = "update_account_settings"
+            }
+            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/type`.
+            internal var _type: Components.Schemas.UpdateAccountSettingsWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/accountSettings`.
+            internal struct AccountSettingsPayload: Codable, Hashable, Sendable {
+                /// 端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ
+                ///
+                /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/accountSettings/id`.
+                internal var id: Swift.String
+                /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/accountSettings/sendsUsageData`.
+                internal var sendsUsageData: Swift.Bool
+                /// Creates a new `AccountSettingsPayload`.
+                ///
+                /// - Parameters:
+                ///   - id: 端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ
+                ///   - sendsUsageData:
+                internal init(
+                    id: Swift.String,
+                    sendsUsageData: Swift.Bool
+                ) {
+                    self.id = id
+                    self.sendsUsageData = sendsUsageData
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case id
+                    case sendsUsageData
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/accountSettings`.
+            internal var accountSettings: Components.Schemas.UpdateAccountSettingsWrite.AccountSettingsPayload
+            /// Creates a new `UpdateAccountSettingsWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - accountSettings:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.UpdateAccountSettingsWrite._TypePayload,
+                accountSettings: Components.Schemas.UpdateAccountSettingsWrite.AccountSettingsPayload
+            ) {
+                self.id = id
+                self._type = _type
+                self.accountSettings = accountSettings
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case accountSettings
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite`.
@@ -344,66 +495,6 @@ extension Components {
                 case id
                 case _type = "type"
                 case weightRecordId
-            }
-        }
-        /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite`.
-        internal struct UpdateAccountSettingsWrite: Codable, Hashable, Sendable {
-            /// 冪等の鍵
-            ///
-            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/id`.
-            internal var id: Swift.String
-            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/type`.
-            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
-                case updateAccountSettings = "update_account_settings"
-            }
-            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/type`.
-            internal var _type: Components.Schemas.UpdateAccountSettingsWrite._TypePayload
-            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/accountSettings`.
-            internal struct AccountSettingsPayload: Codable, Hashable, Sendable {
-                /// 端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ
-                ///
-                /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/accountSettings/id`.
-                internal var id: Swift.String
-                /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/accountSettings/sendsUsageData`.
-                internal var sendsUsageData: Swift.Bool
-                /// Creates a new `AccountSettingsPayload`.
-                ///
-                /// - Parameters:
-                ///   - id: 端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ
-                ///   - sendsUsageData:
-                internal init(
-                    id: Swift.String,
-                    sendsUsageData: Swift.Bool
-                ) {
-                    self.id = id
-                    self.sendsUsageData = sendsUsageData
-                }
-                internal enum CodingKeys: String, CodingKey {
-                    case id
-                    case sendsUsageData
-                }
-            }
-            /// - Remark: Generated from `#/components/schemas/UpdateAccountSettingsWrite/accountSettings`.
-            internal var accountSettings: Components.Schemas.UpdateAccountSettingsWrite.AccountSettingsPayload
-            /// Creates a new `UpdateAccountSettingsWrite`.
-            ///
-            /// - Parameters:
-            ///   - id: 冪等の鍵
-            ///   - _type:
-            ///   - accountSettings:
-            internal init(
-                id: Swift.String,
-                _type: Components.Schemas.UpdateAccountSettingsWrite._TypePayload,
-                accountSettings: Components.Schemas.UpdateAccountSettingsWrite.AccountSettingsPayload
-            ) {
-                self.id = id
-                self._type = _type
-                self.accountSettings = accountSettings
-            }
-            internal enum CodingKeys: String, CodingKey {
-                case id
-                case _type = "type"
-                case accountSettings
             }
         }
         /// - Remark: Generated from `#/components/schemas/SyncChange`.

@@ -1,3 +1,4 @@
+import { drizzle } from "drizzle-orm/durable-sqlite";
 import { instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
@@ -9,7 +10,8 @@ import { createSentryOptions } from "../observability/create-sentry-options";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
-import { createSyncStore } from "./create-sync-store";
+import { createRecordKindStores } from "./create-record-kind-stores";
+import { createLedgerStore } from "./create-ledger-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
 // 受け口は呼ぶたびに accountId を渡す。Sentry の報告に user の ID として付けるため
@@ -26,7 +28,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       signIn: { signedInAt: Date; timeZone: string | undefined },
     ): void {
       setUser({ id: accountId });
-      recordFirstSignIn(createFirstSignInStore(this.ctx.storage.sql), signIn);
+      recordFirstSignIn(createFirstSignInStore(drizzle(this.ctx.storage)), signIn);
     }
 
     async pushSyncWrites(
@@ -34,10 +36,14 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     ) {
       setUser({ id: accountId });
-      const { results, usageEvents } = applySyncWrites(createSyncStore(this.ctx.storage), {
-        ...request,
-        receivedAt: new Date(),
-      });
+      const { results, usageEvents } = applySyncWrites(
+        createLedgerStore(this.ctx.storage),
+        createRecordKindStores(this.ctx.storage),
+        {
+          ...request,
+          receivedAt: new Date(),
+        },
+      );
       await sendUsageEvents(this.env, accountId, usageEvents);
       return results;
     }
@@ -47,10 +53,14 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: { clientState: SyncClientState; afterSequence: number },
     ) {
       setUser({ id: accountId });
-      const { usageEvents, ...pulled } = pullSyncChanges(createSyncStore(this.ctx.storage), {
-        ...request,
-        receivedAt: new Date(),
-      });
+      const { usageEvents, ...pulled } = pullSyncChanges(
+        createLedgerStore(this.ctx.storage),
+        createRecordKindStores(this.ctx.storage),
+        {
+          ...request,
+          receivedAt: new Date(),
+        },
+      );
       await sendUsageEvents(this.env, accountId, usageEvents);
       return pulled;
     }

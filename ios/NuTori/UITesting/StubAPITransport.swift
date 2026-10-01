@@ -51,12 +51,12 @@
                 default:
                     return (HTTPResponse(status: .notFound), nil)
                 }
-            case .weightScreen:
+            case .weightScreen, .weightScreenPushRejected:
                 switch request.path {
                 case "/v1/sessions":
                     return createdSession()
                 case "/v1/sync/writes":
-                    return json(.ok, try await applyWeightScreenPush(body))
+                    return json(.ok, try await applyOrRejectWeightScreenPush(body))
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
                     return json(.ok, try weightScreenBody())
                 default:
@@ -76,6 +76,8 @@
             case previousDayPushOffline
             case previousDayPushRejected
             case weightScreen
+            /// 直す書き込みを受け付けず、サーバーの今の値（直す前の記録）を添える
+            case weightScreenPushRejected
             /// アカウントの削除だけに 429 を返す
             case accountDeletionRateLimited
             /// アカウントの削除だけに 401 を返す
@@ -88,7 +90,8 @@
                 case .accountDeletionRateLimited: .tooManyRequests
                 case .accountDeletionUnauthorized: .unauthorized
                 case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
-                    .previousDayPushOffline, .previousDayPushRejected, .weightScreen:
+                    .previousDayPushOffline, .previousDayPushRejected, .weightScreen,
+                    .weightScreenPushRejected:
                     .noContent
                 }
             return (HTTPResponse(status: status), nil)
@@ -99,9 +102,14 @@
             case .previousDayPushOffline:
                 throw URLError(.notConnectedToInternet)
             case .previousDayPushRejected:
-                return json(.ok, try await writeResults(from: body, result: .rejected))
+                // サーバーにその記録は無い（作る書き込みが受け付けられなかった）
+                return json(
+                    .ok,
+                    try await writeResults(
+                        from: body, result: .rejected(current: #"{"status":"absent"}"#)))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
-                .weightScreen, .accountDeletionRateLimited, .accountDeletionUnauthorized:
+                .weightScreen, .weightScreenPushRejected, .accountDeletionRateLimited,
+                .accountDeletionUnauthorized:
                 return json(.ok, try await writeResults(from: body, result: .applied))
             }
         }
@@ -119,24 +127,45 @@
             return #"{"results":[\#(results.joined(separator: ","))]}"#
         }
 
+        private func applyOrRejectWeightScreenPush(_ body: HTTPBody?) async throws -> String {
+            switch behavior {
+            case .weightScreenPushRejected:
+                let current =
+                    #"{"status":"value","change":{"kind":"weight_record","recordId":"\#(Self.weightScreenRecordId)","record":\#(try weightScreenRecord())}}"#
+                return try await writeResults(from: body, result: .rejected(current: current))
+            case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
+                .previousDayPushOffline, .previousDayPushRejected, .weightScreen,
+                .accountDeletionRateLimited, .accountDeletionUnauthorized:
+                return try await applyWeightScreenPush(body)
+            }
+        }
+
         private func weightScreenBody() throws -> String {
-            let zone = TimeZone.current.identifier
             let startedOn = TimelineDayText.startedOn(
                 for: CalendarDay(containing: .now, in: .current))
+            return """
+                {"changes":[{"sequence":1,"kind":"weight_record",\
+                "recordId":"\(Self.weightScreenRecordId)","record":\(try weightScreenRecord())}],\
+                "hasMore":false,"nextAfterSequence":1,"startedOn":"\(startedOn)"}
+                """
+        }
+
+        private static let weightScreenRecordId = "11111111-1111-4111-8111-111111111111"
+
+        private func weightScreenRecord() throws -> String {
+            let zone = TimeZone.current.identifier
             let measuredAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
             let kilograms = weightScreenKilograms.current()
             return """
-                {"changes":[{"sequence":1,"kind":"weight_record",\
-                "recordId":"11111111-1111-4111-8111-111111111111",\
-                "record":{"id":"11111111-1111-4111-8111-111111111111","weightKg":\(kilograms),\
-                "measuredAt":\(measuredAt),"timeZone":"\(zone)","version":1}}],\
-                "hasMore":false,"nextAfterSequence":1,"startedOn":"\(startedOn)"}
+                {"id":"\(Self.weightScreenRecordId)","weightKg":\(kilograms),\
+                "measuredAt":\(measuredAt),"timeZone":"\(zone)","version":1}
                 """
         }
 
         private enum WriteResult {
             case applied
-            case rejected
+            /// current は、断った記録のサーバーの今の値（`SyncWriteCurrent` の JSON）
+            case rejected(current: String)
         }
 
         private func writeResults(from body: HTTPBody?, result: WriteResult) async throws -> String
@@ -146,8 +175,9 @@
                 switch result {
                 case .applied:
                     #"{"writeId":"\#(id)","result":"applied"}"#
-                case .rejected:
-                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range"}"#
+                case .rejected(let current):
+                    // 理由は画面の文言に出ないので、1つに決める
+                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range","current":\#(current)}"#
                 }
             }
             return #"{"results":[\#(results.joined(separator: ","))]}"#
@@ -222,8 +252,8 @@
             case .weightRecords: return try weightRecordsBody()
             case .dayRing: return try dayRingBody()
             case .online, .offline, .hangPull, .previousDay, .previousDayPushOffline,
-                .previousDayPushRejected, .weightScreen, .accountDeletionRateLimited,
-                .accountDeletionUnauthorized:
+                .previousDayPushRejected, .weightScreen, .weightScreenPushRejected,
+                .accountDeletionRateLimited, .accountDeletionUnauthorized:
                 return emptyChangesBody()
             }
         }

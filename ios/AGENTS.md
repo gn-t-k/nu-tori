@@ -5,6 +5,14 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 ## 構成
 
 - 画面を持たないロジックは、ローカルの Swift パッケージ `NuToriCore/` に置き、SwiftUI・UIKit・HealthKit・SwiftData を import しない。下の「端末で行うもの」の計算と判定と、送り待ちの判断がここに入る。Linux のエージェントと CI でも型検査とテストを回すため
+- 記録の種類（今は体重記録とアカウントの設定）ごとに、フォルダを切る。`NuToriCore/Sources/NuToriCore/`・`NuToriCore/Sources/NuToriAPI/`・`NuTori/`（アプリのターゲット）のそれぞれに `WeightRecord/`、`AccountSettings/` を置き、その種類だけにかかる型・判断・SwiftData のモデル・画面を入れる。テストのターゲットも同じフォルダ名でそろえる。同期の共通のもの（同期の働き、同期の置き場の型、送り待ち）は `Sync/`、タイムラインは `Timeline/` に残す。機能を第一の軸にする切り方を採らなかった理由は「[コードの置き方を、機能ごとに縦に切るかを決める](https://github.com/gn-t-k/nu-tori/issues/153)」の解決コメント
+- 端末の SwiftData は2つの置き場に分ける（[ADR-0022](../docs/adr/0022-device-cache-and-pending-writes-in-separate-stores.md)）。`SwiftDataSyncStore` が両方を持つ
+  - キャッシュ（`CacheStore`）: 記録、アカウントの設定、同期の状態（通し番号など）。サーバーの写しなので移行を持たず、形が合わず開けないときは置き場ごと消して全部取り直す（取り終えるまでタイムラインは初回の取得と同じ読み込み中）。モデルは `CacheStoreSchema` に並べる
+  - 送り待ち（`PendingStore`）: 送り待ちとヘルスケアの同期の進み具合。`PendingStoreMigrationPlan` の版つきのスキーマで移行し、版ごとのモデルの写し（`PendingStoreSchemaV1`・`PendingStoreSchemaV2` の中）を固める。形を変えるときは、写しを固めたまま次の版を足す。送り待ちは「種類の名前＋中身」（`PendingEntry`）で持つので、種類を足しても形は変わらない
+  - 送り待ちの箱（`SyncBox`）、記録の種類（`RecordKind`。`synced` に NuToriCore の種類を1つ持ち、キャッシュへの `apply`・`erase` だけを書く）、登録簿（`AppRecordKinds.registry`）が同期の入口。それぞれの役割と種類の足し方は `docs/agents/sync.md`。メモリの箱は `NuToriTestSupport` の `SyncBoxMock`（キャッシュが `RecordCacheMock` のものを、テストが `SyncBoxMock.ok(...)`・`.error(...)` で作る）
+  - 種類の名前: NuToriCore の `RecordKindName`（enum。rawValue は送り待ちに保存するハイフンの書き方。`weight-record`、`account-settings`）で、送り待ち・変更・登録簿・読める種類を渡す。足すときは case を足す。SwiftData のモデルは文字列のまま持ち、読み書きの口で `RecordKindName` に変える（読めない名前の送り待ちは開くときに捨てて `storeRecovery` に残す）。サーバーの列挙（`server/openapi.json` の `RecordKindName`。snake_case）との対応は `RecordKindName.serverName` の switch だけに書き、`ServerRecordKindNames.names` と突き合わせる（`AppRecordKindsTests`）。保存した名前（rawValue）を変えると、送り待ちの置き場の移行が要る
+  - 保存の順: 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。全消去は、送り待ちを1つの保存で空にしてから、キャッシュを空にする
+  - 置き場を分ける前の1つの置き場（`RecordStore`）は、更新して最初に開いたときに、送り待ちとヘルスケアの同期の進み具合を送り待ちの置き場へ移して消す（`LegacyRecordStore`）。開けない形のときは送り待ちを捨て、`HandledFailure.storeRecovery` として Sentry に送る
 - ファイルを足すとき、`project.pbxproj` は直さない（フォルダの同期で拾われる）
 - 型検査の厳しさの設定は `NuToriCore/Package.swift`、`SharedRulesGenerator/Package.swift`、`project.pbxproj` の3か所にあるので、そろえる
 - Bundle ID は変えない。App Store Connect に上げたあとは変えられず、サーバーの Sign in with Apple の `aud` もこの値を見る
@@ -46,6 +54,11 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 - Linux で `swift` が無いときは、`scripts/install-swift` で入れる
 - Linux では、アプリのビルドを CI の `ios-app` に、UI テストを `ios-ui-test` に任せる。UI テストか画面の経路を変える PR には、`ui-test` のラベルを付けて UI テストを回す。PR の無いブランチでは、`gh workflow run ios-ui-test.yml --ref <ブランチ>` で回す。落ちたら、`.github/workflows/ios-ui-test.yml` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
+- PR で UI テストを回すときは、あわせて開発者に、そのコミットの SHA を添えて、Mac で `scripts/check ios-ui-test` を回すよう頼む。開発者が張り付いていればすぐ返り、CI の待ち時間を飛ばせる
+  - 開発者の結果が CI より先に返ればそれを使い、CI の結果は待たない。返る前に CI が終われば CI の結果を使う
+  - Mac で落ちたら、落ちたテストの名前と失敗の要約を貼ってもらって読む
+  - Mac の結果を使ったあとに CI が落ちたら、CI の結果に従って直す（Mac と CI で Xcode やシミュレーターの版がずれていることがある）
+  - Mac の結果を使ったときは、PR の本文にコミットと結果を書く
 - UI テストはサーバーにつながない。API とサインイン済みの状態を差し替える（差し替えの置き場と切り替え方は `docs/agents/languages/swift.md` の「依存の差し替え」）。API とのつなぎは、`NuToriAPI` のテスト（トランスポートの差し替え）とサーバーのテストで確かめる
 
 ## 配布と実機の確認
