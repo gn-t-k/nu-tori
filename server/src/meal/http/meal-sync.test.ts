@@ -560,6 +560,26 @@ describe("食事の同期", () => {
     });
   });
 
+  describe("写真の ID がとても多い作る書き込みを送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
+        writes: [
+          createMealWrite({
+            meal: { photos: Array.from({ length: 300 }, () => ({ id: crypto.randomUUID() })) },
+          }),
+        ],
+      });
+    });
+
+    test("要求ごと失敗せず、範囲の外として受け付けないこと", async () => {
+      expect({
+        status: response.status,
+        reason: (await response.json<PushResults>()).results[0]?.rejectionReason,
+      }).toEqual({ status: 200, reason: "out_of_range" });
+    });
+  });
+
   describe("時差が +14:00 より東の作る書き込みを送ったとき", () => {
     let response: Response;
     beforeEach(async () => {

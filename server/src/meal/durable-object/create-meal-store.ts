@@ -30,19 +30,21 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       .innerJoin(syncWriteReceipts, eq(syncWriteReceipts.id, mealDeletions.syncWriteReceiptId))
       .where(and(eq(syncWriteReceipts.recordType, "meal"), eq(syncWriteReceipts.recordId, id)))
       .all().length > 0,
-  findUsedPhotoIds: (photoIds) => {
-    const declared = db
-      .select({ id: mealPhotos.id })
-      .from(mealPhotos)
-      .where(inArray(mealPhotos.id, [...photoIds]))
-      .all();
-    const deleted = db
-      .select({ id: mealPhotoDeletions.mealPhotoId })
-      .from(mealPhotoDeletions)
-      .where(inArray(mealPhotoDeletions.mealPhotoId, [...photoIds]))
-      .all();
-    return [...declared, ...deleted].map((photo) => photo.id);
-  },
+  findUsedPhotoIds: (photoIds) =>
+    splitIntoQueryableChunks(photoIds).flatMap((chunk) => [
+      ...db
+        .select({ id: mealPhotos.id })
+        .from(mealPhotos)
+        .where(inArray(mealPhotos.id, chunk))
+        .all()
+        .map((photo) => photo.id),
+      ...db
+        .select({ id: mealPhotoDeletions.mealPhotoId })
+        .from(mealPhotoDeletions)
+        .where(inArray(mealPhotoDeletions.mealPhotoId, chunk))
+        .all()
+        .map((photo) => photo.id),
+    ]),
   findEatenTimesBetween: (from, to) =>
     db
       .select({
@@ -66,11 +68,19 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
     db.insert(mealDeletions).values({ syncWriteReceiptId: receiptId.value }).run();
   },
   insertPhotoDeletions: (photoIds, receiptId) => {
-    if (photoIds.length === 0) {
-      return;
+    // 1行ずつ書き、受け付けなかった書き込みの写真の ID がいくつあっても、変数の上限を超えないようにする
+    for (const mealPhotoId of photoIds) {
+      db.insert(mealPhotoDeletions)
+        .values({ mealPhotoId, syncWriteReceiptId: receiptId.value })
+        .run();
     }
-    db.insert(mealPhotoDeletions)
-      .values(photoIds.map((mealPhotoId) => ({ mealPhotoId, syncWriteReceiptId: receiptId.value })))
-      .run();
   },
 });
+
+// Durable Object の SQLite は、1つのクエリに渡せる変数が 100 まで。受け付けなかった書き込みの写真の ID は、いくつでも届きうる
+const splitIntoQueryableChunks = (ids: readonly string[]): string[][] => {
+  const maximumVariablesPerQuery = 100;
+  return Array.from({ length: Math.ceil(ids.length / maximumVariablesPerQuery) }, (_, index) =>
+    ids.slice(index * maximumVariablesPerQuery, (index + 1) * maximumVariablesPerQuery),
+  );
+};

@@ -112,8 +112,7 @@ const countMealsOnEatenDay = (store: MealStore, meal: Meal): number => {
     ).length;
 };
 
-// 食事を書かずに終わる。この写真の ID は、もう食事に付かない印を書く（先に届いていた写真は消し残しになり、あとから届いた写真は置かない）。
-// ほかの食事の写真と、もう印のある写真には書かない。削除の印で捨てたときだけ、変更の並びに載せる
+// 食事を書かずに終わる。写真の削除の印は、先に届いた写真を消し残しにし、あとから届く写真を置かせないために、まだ宣言にも印にも無い ID にだけ書く
 const discarded = (
   store: MealStore,
   newMeal: NewMeal,
