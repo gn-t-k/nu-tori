@@ -1,50 +1,86 @@
 [
   {
-    "name": "東京で朝 7 時 12 分に記録した",
+    "name": "時差 +09:00 で朝 7 時 12 分の時刻",
     "instant": "2026-09-28T22:12:00Z",
-    "timeZone": "Asia/Tokyo",
+    "utcOffsetSeconds": 32400,
     "calendarDay": "2026-09-29"
   },
   {
-    "name": "0 時ちょうどに記録した",
+    "name": "時差 +09:00 の 0 時ちょうどの時刻",
     "instant": "2026-09-28T15:00:00Z",
-    "timeZone": "Asia/Tokyo",
+    "utcOffsetSeconds": 32400,
     "calendarDay": "2026-09-29"
   },
   {
-    "name": "0 時の 1 秒前に記録した",
+    "name": "時差 +09:00 の 0 時の 1 秒前の時刻",
     "instant": "2026-09-28T14:59:59Z",
-    "timeZone": "Asia/Tokyo",
+    "utcOffsetSeconds": 32400,
     "calendarDay": "2026-09-28"
   },
   {
-    "name": "東京の朝 7 時 12 分と同じ時刻に、ハワイで記録した",
+    "name": "時差 +09:00 の朝 7 時 12 分と同じ時刻を、時差 -10:00 で数える",
     "instant": "2026-09-28T22:12:00Z",
-    "timeZone": "Pacific/Honolulu",
+    "utcOffsetSeconds": -36000,
     "calendarDay": "2026-09-28"
   },
   {
-    "name": "UTC より 14 時間進んだタイムゾーンで記録した",
+    "name": "時差 +14:00 の時刻",
     "instant": "2026-09-28T10:30:00Z",
-    "timeZone": "Pacific/Kiritimati",
+    "utcOffsetSeconds": 50400,
     "calendarDay": "2026-09-29"
   },
   {
-    "name": "30 分ずれたタイムゾーンの 0 時ちょうどに記録した",
+    "name": "時差 +05:30 の 0 時ちょうどの時刻",
     "instant": "2026-09-28T18:30:00Z",
-    "timeZone": "Asia/Kolkata",
+    "utcOffsetSeconds": 19800,
     "calendarDay": "2026-09-29"
   },
   {
-    "name": "夏時間が始まった次の日の 0 時 30 分に記録した",
+    "name": "時差 +05:30 の 0 時の 1 秒前の時刻",
+    "instant": "2026-09-28T18:29:59Z",
+    "utcOffsetSeconds": 19800,
+    "calendarDay": "2026-09-28"
+  },
+  {
+    "name": "時差 +05:45 の 0 時ちょうどの時刻",
+    "instant": "2026-09-28T18:15:00Z",
+    "utcOffsetSeconds": 20700,
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "時差 +05:45 の 0 時の 1 秒前の時刻",
+    "instant": "2026-09-28T18:14:59Z",
+    "utcOffsetSeconds": 20700,
+    "calendarDay": "2026-09-28"
+  },
+  {
+    "name": "時差 -09:30 の 0 時ちょうどの時刻",
+    "instant": "2026-09-29T09:30:00Z",
+    "utcOffsetSeconds": -34200,
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "時差 -09:30 の 0 時の 1 秒前の時刻",
+    "instant": "2026-09-29T09:29:59Z",
+    "utcOffsetSeconds": -34200,
+    "calendarDay": "2026-09-28"
+  },
+  {
+    "name": "時差 -04:00 の、3 月の次の日の 0 時 30 分の時刻",
     "instant": "2026-03-09T04:30:00Z",
-    "timeZone": "America/New_York",
+    "utcOffsetSeconds": -14400,
     "calendarDay": "2026-03-09"
   },
   {
-    "name": "大みそかの次の 0 時に記録した",
+    "name": "時差 +09:00 の、大みそかの次の 0 時の時刻",
     "instant": "2026-12-31T15:00:00Z",
-    "timeZone": "Asia/Tokyo",
+    "utcOffsetSeconds": 32400,
     "calendarDay": "2027-01-01"
+  },
+  {
+    "name": "時差 0 の 0 時ちょうどの時刻",
+    "instant": "2026-09-29T00:00:00Z",
+    "utcOffsetSeconds": 0,
+    "calendarDay": "2026-09-29"
   }
 ]

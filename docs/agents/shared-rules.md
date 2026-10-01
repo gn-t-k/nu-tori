@@ -6,3 +6,12 @@
 - 手順は両側に書き、入力と期待値の JSON も `shared/` に置いて両方のテストで読む
 - 値や検証の結果が違ったときは、サーバーを正とする
 - 小さな純粋な計算の域を超えたら、TypeScript で1回だけ書き、端末では JavaScriptCore で動かす
+
+## 日の区切り
+
+日の区切りは、時刻と、その時刻の UTC との時差から日を出す1本にそろえる。日は、時刻に時差を足した UTC の日付。
+
+- サーバーは `computeCalendarDay(時刻, 時差の秒)`（`server/src/domain/compute-calendar-day/`）、端末は `CalendarDay(containing:utcOffsetSeconds:)`（NuToriCore）。入力と期待値は `shared/calendar-day.test-cases.json` で、時差は秒の整数で持つ。+05:30 や +05:45 のような分の端数の時差の場面を含む
+- 時差でなく IANA 名で持つ値（体重記録の日、使い始めた日、利用状況を数える日）は、IANA 名からその時刻の時差を出して渡す。サーバーは `computeCalendarDayInTimeZone`（中で `computeUtcOffsetSeconds` を呼ぶ）、端末は `CalendarDay(containing:in:)`（中で `TimeZone.secondsFromGMT(for:)` を呼ぶ）。夏時間の切り替わりの前後の場面を含む入力と期待値は `shared/calendar-day-in-time-zone.test-cases.json` で、時差も期待値に持つ
+- 写真の食事のように IANA 名が分からず時差だけを持つ値は、その時差をそのまま渡す
+- いまの端末のタイムゾーンで決めるのは、どの日が今日で、どの週が今週かだけ

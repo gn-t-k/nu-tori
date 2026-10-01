@@ -11,13 +11,19 @@ public struct CalendarDay: Hashable, Sendable {
         self.day = day
     }
 
-    public init(containing instant: Date, in timeZone: TimeZone) {
-        let calendar = Self.gregorianCalendar(in: timeZone)
+    /// 時刻に、その時刻の UTC との時差を足した UTC の日付の日
+    public init(containing instant: Date, utcOffsetSeconds: Int) {
+        let localInstant = instant.addingTimeInterval(TimeInterval(utcOffsetSeconds))
+        let calendar = Self.utcCalendar
         self.init(
-            year: calendar.component(.year, from: instant),
-            month: calendar.component(.month, from: instant),
-            day: calendar.component(.day, from: instant)
+            year: calendar.component(.year, from: localInstant),
+            month: calendar.component(.month, from: localInstant),
+            day: calendar.component(.day, from: localInstant)
         )
+    }
+
+    public init(containing instant: Date, in timeZone: TimeZone) {
+        self.init(containing: instant, utcOffsetSeconds: timeZone.secondsFromGMT(for: instant))
     }
 
     public var startOfWeek: CalendarDay {
@@ -38,7 +44,7 @@ extension CalendarDay: Strideable {
 
     public func advanced(by days: Int) -> CalendarDay {
         let instant = Self.utcCalendar.date(byAdding: .day, value: days, to: startInUTC)!
-        return CalendarDay(containing: instant, in: Self.utcCalendar.timeZone)
+        return CalendarDay(containing: instant, utcOffsetSeconds: 0)
     }
 }
 

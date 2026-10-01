@@ -1,0 +1,121 @@
+[
+  {
+    "name": "東京で朝 7 時 12 分に記録した",
+    "instant": "2026-09-28T22:12:00Z",
+    "timeZone": "Asia/Tokyo",
+    "utcOffsetSeconds": 32400,
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "東京の朝 7 時 12 分と同じ時刻に、ハワイで記録した",
+    "instant": "2026-09-28T22:12:00Z",
+    "timeZone": "Pacific/Honolulu",
+    "utcOffsetSeconds": -36000,
+    "calendarDay": "2026-09-28"
+  },
+  {
+    "name": "UTC より 14 時間進んだタイムゾーンで記録した",
+    "instant": "2026-09-28T10:30:00Z",
+    "timeZone": "Pacific/Kiritimati",
+    "utcOffsetSeconds": 50400,
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "30 分ずれたタイムゾーンの 0 時ちょうどに記録した",
+    "instant": "2026-09-28T18:30:00Z",
+    "timeZone": "Asia/Kolkata",
+    "utcOffsetSeconds": 19800,
+    "calendarDay": "2026-09-29"
+  },
+  {
+    "name": "45 分ずれたタイムゾーンの 0 時の 1 秒前に記録した",
+    "instant": "2026-09-28T18:14:59Z",
+    "timeZone": "Asia/Kathmandu",
+    "utcOffsetSeconds": 20700,
+    "calendarDay": "2026-09-28"
+  },
+  {
+    "name": "夏時間が始まる 1 秒前に記録した",
+    "instant": "2026-03-08T06:59:59Z",
+    "timeZone": "America/New_York",
+    "utcOffsetSeconds": -18000,
+    "calendarDay": "2026-03-08"
+  },
+  {
+    "name": "夏時間が始まった瞬間に記録した",
+    "instant": "2026-03-08T07:00:00Z",
+    "timeZone": "America/New_York",
+    "utcOffsetSeconds": -14400,
+    "calendarDay": "2026-03-08"
+  },
+  {
+    "name": "夏時間が始まった次の日の 0 時 30 分に記録した",
+    "instant": "2026-03-09T04:30:00Z",
+    "timeZone": "America/New_York",
+    "utcOffsetSeconds": -14400,
+    "calendarDay": "2026-03-09"
+  },
+  {
+    "name": "夏時間が終わる日の 0 時の 1 秒前に記録した",
+    "instant": "2026-11-01T03:59:59Z",
+    "timeZone": "America/New_York",
+    "utcOffsetSeconds": -14400,
+    "calendarDay": "2026-10-31"
+  },
+  {
+    "name": "夏時間が終わる日の 0 時ちょうどに記録した",
+    "instant": "2026-11-01T04:00:00Z",
+    "timeZone": "America/New_York",
+    "utcOffsetSeconds": -14400,
+    "calendarDay": "2026-11-01"
+  },
+  {
+    "name": "夏時間が終わる 1 秒前に記録した",
+    "instant": "2026-11-01T05:59:59Z",
+    "timeZone": "America/New_York",
+    "utcOffsetSeconds": -14400,
+    "calendarDay": "2026-11-01"
+  },
+  {
+    "name": "夏時間が終わった瞬間に記録した",
+    "instant": "2026-11-01T06:00:00Z",
+    "timeZone": "America/New_York",
+    "utcOffsetSeconds": -18000,
+    "calendarDay": "2026-11-01"
+  },
+  {
+    "name": "0 時に夏時間が始まる土地で、始まる 1 秒前に記録した",
+    "instant": "2026-03-28T21:59:59Z",
+    "timeZone": "Asia/Beirut",
+    "utcOffsetSeconds": 7200,
+    "calendarDay": "2026-03-28"
+  },
+  {
+    "name": "0 時に夏時間が始まる土地で、始まった瞬間に記録した",
+    "instant": "2026-03-28T22:00:00Z",
+    "timeZone": "Asia/Beirut",
+    "utcOffsetSeconds": 10800,
+    "calendarDay": "2026-03-29"
+  },
+  {
+    "name": "0 時に夏時間が終わる土地で、終わる 1 秒前に記録した",
+    "instant": "2026-10-24T20:59:59Z",
+    "timeZone": "Asia/Beirut",
+    "utcOffsetSeconds": 10800,
+    "calendarDay": "2026-10-24"
+  },
+  {
+    "name": "0 時に夏時間が終わる土地で、終わった瞬間に記録した（時計が前の日の 23 時に戻る）",
+    "instant": "2026-10-24T21:00:00Z",
+    "timeZone": "Asia/Beirut",
+    "utcOffsetSeconds": 7200,
+    "calendarDay": "2026-10-24"
+  },
+  {
+    "name": "0 時に夏時間が終わる土地で、戻った時計が 0 時になる瞬間に記録した",
+    "instant": "2026-10-24T22:00:00Z",
+    "timeZone": "Asia/Beirut",
+    "utcOffsetSeconds": 7200,
+    "calendarDay": "2026-10-25"
+  }
+]
