@@ -38,6 +38,11 @@ public struct SyncWriteResult: Sendable, Equatable {
         case versionTooLow
         case recordNotFound
         case recordBeforeStartedOn
+        case invalidEntryMethod
+        /// 1つの書き込みに同じ写真の ID が2つある
+        case duplicatePhotoIds
+        /// 写真の ID が、ほかの食事の写真か写真の削除の印にある
+        case photoAlreadyUsed
         case unknown(reason: String)
     }
 }

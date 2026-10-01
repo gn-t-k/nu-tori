@@ -20,7 +20,9 @@ public struct WeightRecordSyncing: SyncedRecordKind {
     public func owns(_ change: SyncChange) -> Bool {
         switch change {
         case .weightRecord, .weightRecordDeletion: true
-        case .accountSettings, .unknown: false
+        case .accountSettings, .meal, .mealDeletion, .mealEstimationStatus,
+            .mealEstimationStatusDeletion, .unknown:
+            false
         }
     }
 
@@ -85,7 +87,9 @@ public struct WeightRecordSyncing: SyncedRecordKind {
             switch change {
             case .weightRecord(let record): records.append(WeightRecord(record))
             case .weightRecordDeletion(let recordId): removedRecordIds.append(recordId)
-            case .accountSettings, .unknown: break
+            case .accountSettings, .meal, .mealDeletion, .mealEstimationStatus,
+                .mealEstimationStatusDeletion, .unknown:
+                break
             }
         }
         return Current(records: records, removedRecordIds: removedRecordIds)

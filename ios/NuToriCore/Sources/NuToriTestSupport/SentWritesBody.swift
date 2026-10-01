@@ -52,11 +52,14 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
         case updateWeightRecord(id: String, WeightRecord)
         case sourceDeletedWeightRecord(id: String, weightRecordId: String)
         case updateAccountSettings(id: String, AccountSettings)
+        case createMeal(id: String, Meal)
+        case deleteMeal(id: String, mealId: String)
 
         public var id: String {
             switch self {
             case .createWeightRecord(let id, _), .updateWeightRecord(let id, _),
-                .sourceDeletedWeightRecord(let id, _), .updateAccountSettings(let id, _):
+                .sourceDeletedWeightRecord(let id, _), .updateAccountSettings(let id, _),
+                .createMeal(let id, _), .deleteMeal(let id, _):
                 id
             }
         }
@@ -68,13 +71,15 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
             case .updateWeightRecord: "update_weight_record"
             case .sourceDeletedWeightRecord: "source_deleted_weight_record"
             case .updateAccountSettings: "update_account_settings"
+            case .createMeal: "create_meal"
+            case .deleteMeal: "delete_meal"
             }
         }
 
         public var weightRecord: WeightRecord? {
             switch self {
             case .createWeightRecord(_, let record), .updateWeightRecord(_, let record): record
-            case .sourceDeletedWeightRecord, .updateAccountSettings: nil
+            case .sourceDeletedWeightRecord, .updateAccountSettings, .createMeal, .deleteMeal: nil
             }
         }
 
@@ -107,6 +112,10 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
             case "update_account_settings":
                 self = .updateAccountSettings(
                     id: id, try container.decode(AccountSettings.self, forKey: .accountSettings))
+            case "create_meal":
+                self = .createMeal(id: id, try container.decode(Meal.self, forKey: .meal))
+            case "delete_meal":
+                self = .deleteMeal(id: id, mealId: try container.decode(String.self, forKey: .mealId))
             case let type:
                 throw DecodingError.dataCorruptedError(
                     forKey: .type, in: container,
@@ -121,6 +130,39 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
             case weightRecord
             case weightRecordId
             case accountSettings
+            case meal
+            case mealId
+        }
+    }
+
+    public struct Meal: Decodable, Equatable, Sendable {
+        public let id: String
+        public let eatenAt: Int
+        public let eatenAtUtcOffsetSeconds: Int
+        public let sentAt: Int
+        public let sentTimeZone: String
+        public let entryMethod: String
+        public let photos: [Photo]
+
+        public init(
+            id: String, eatenAt: Int, eatenAtUtcOffsetSeconds: Int, sentAt: Int,
+            sentTimeZone: String, entryMethod: String, photos: [Photo]
+        ) {
+            self.id = id
+            self.eatenAt = eatenAt
+            self.eatenAtUtcOffsetSeconds = eatenAtUtcOffsetSeconds
+            self.sentAt = sentAt
+            self.sentTimeZone = sentTimeZone
+            self.entryMethod = entryMethod
+            self.photos = photos
+        }
+
+        public struct Photo: Decodable, Equatable, Sendable {
+            public let id: String
+
+            public init(id: String) {
+                self.id = id
+            }
         }
     }
 
