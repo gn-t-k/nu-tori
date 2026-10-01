@@ -6,17 +6,21 @@ import Testing
 struct NutritionTextTests {
     @Suite("栄養の合計の値")
     struct Amount {
-        @Test(
-            "数と単位の間を空け、整数に丸めること",
-            arguments: [
-                (NutrientAmount.exactly(510.4), Nutrient.energyKcal, "510 kcal"),
-                (.exactly(31.5), .proteinG, "32 g"),
-                (.exactly(0.2), .fatG, "0 g"),
-                (.exactly(1850), .energyKcal, "1,850 kcal"),
-                (.exactly(12_345.6), .energyKcal, "12,346 kcal"),
-            ])
-        func roundsToWhole(amount: NutrientAmount, nutrient: Nutrient, text: String) {
-            #expect(NutritionText.amount(amount, of: nutrient) == text)
+        @Test("kcal を、数との間を空けて整数に丸めること")
+        func roundsKilocalories() {
+            #expect(NutritionText.amount(.exactly(510.4), of: .energyKcal) == "510 kcal")
+        }
+
+        @Test("g を整数に丸めること")
+        func roundsGrams() {
+            #expect(NutritionText.amount(.exactly(31.5), of: .proteinG) == "32 g")
+            #expect(NutritionText.amount(.exactly(0.2), of: .fatG) == "0 g")
+        }
+
+        @Test("千を超える値を3桁ごとに区切ること")
+        func groupsThousands() {
+            #expect(NutritionText.amount(.exactly(1850), of: .energyKcal) == "1,850 kcal")
+            #expect(NutritionText.amount(.exactly(12_345.6), of: .energyKcal) == "12,346 kcal")
         }
 
         @Test("「不明」の材料が混じる値には「以上」を付けること")
@@ -38,18 +42,22 @@ struct NutritionTextTests {
 
     @Suite("料理と材料の量")
     struct Quantity {
-        @Test(
-            "英字の単位は数との間を空け、日本語の単位は続けること",
-            arguments: [
-                (110.0, "g", "110 g"),
-                (2.0, "個", "2個"),
-                (1.5, "杯", "1.5杯"),
-                (0.25, "ml", "0.3 ml"),
-                (200.04, "ml", "200 ml"),
-                (3.0, "µg", "3 µg"),
-            ])
-        func formatsQuantity(quantity: Double, unit: String, text: String) {
-            #expect(NutritionText.quantity(quantity, unit: unit) == text)
+        @Test("英字の単位は、数との間を空けること")
+        func spacesLatinUnit() {
+            #expect(NutritionText.quantity(110, unit: "g") == "110 g")
+            #expect(NutritionText.quantity(3, unit: "µg") == "3 µg")
+        }
+
+        @Test("日本語の単位は、数に続けること")
+        func joinsJapaneseUnit() {
+            #expect(NutritionText.quantity(2, unit: "個") == "2個")
+        }
+
+        @Test("小数は1桁まで出し、端数が無ければ整数にすること")
+        func roundsToTenths() {
+            #expect(NutritionText.quantity(1.5, unit: "杯") == "1.5杯")
+            #expect(NutritionText.quantity(0.25, unit: "ml") == "0.3 ml")
+            #expect(NutritionText.quantity(200.04, unit: "ml") == "200 ml")
         }
     }
 

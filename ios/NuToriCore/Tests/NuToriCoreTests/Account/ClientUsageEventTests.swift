@@ -156,25 +156,27 @@ struct ClientUsageEventTests {
 
     @Suite("推定の状態ごとに食事を消したとき")
     struct MealDeletedInEachState {
-        @Test(
-            "推定の状態を名前にすること",
-            arguments: [
-                (MealEstimationStatus?.none, true, "not_sent"),
-                (.awaitingPhotos, false, "awaiting_photos"),
-                (.estimating, true, "estimating"),
-                (.noDishes, true, "no_dishes"),
-                (.deferredToNextDay, true, "deferred_to_next_day"),
-                (.failed, true, "failed"),
-            ])
-        func namesTheState(
-            status: MealEstimationStatus?, recordedOnThisDevice: Bool, token: String
-        ) throws {
+        @Test("カードの状態を名前にすること")
+        func namesTheState() throws {
+            #expect(
+                try Self.stateToken(status: nil, recordedOnThisDevice: true) == .token("not_sent"))
+            #expect(
+                try Self.stateToken(status: .awaitingPhotos, recordedOnThisDevice: false)
+                    == .token("awaiting_photos"))
+            #expect(try Self.stateToken(status: .estimating) == .token("estimating"))
+            #expect(try Self.stateToken(status: .noDishes) == .token("no_dishes"))
+            #expect(
+                try Self.stateToken(status: .deferredToNextDay) == .token("deferred_to_next_day"))
+            #expect(try Self.stateToken(status: .failed) == .token("failed"))
+        }
+
+        private static func stateToken(
+            status: MealEstimationStatus?, recordedOnThisDevice: Bool = true
+        ) throws -> ClientUsageEvent.Field? {
             let card = try MealCard.fixture(
                 status: status, recordedOnThisDevice: recordedOnThisDevice)
-
-            let event = ClientUsageEvent.mealDeleted(card, at: card.meal.sentAt)
-
-            #expect(event.fields["estimation_state"] == .token(token))
+            return ClientUsageEvent.mealDeleted(card, at: card.meal.sentAt)
+                .fields["estimation_state"]
         }
     }
 
@@ -193,14 +195,10 @@ struct ClientUsageEventTests {
 
     @Suite("食事の画面と栄養の出典を開いたとき")
     struct MealScreens {
-        @Test(
-            "画面の名前を送ること",
-            arguments: [
-                (ClientUsageEvent.Screen.meal, "meal"),
-                (.nutrientCitation, "nutrient_citation"),
-            ])
-        func namesTheScreen(screen: ClientUsageEvent.Screen, token: String) {
-            #expect(ClientUsageEvent.screen(screen).screenToken == token)
+        @Test("画面の名前を送ること")
+        func namesTheScreen() {
+            #expect(ClientUsageEvent.screen(.meal).screenToken == "meal")
+            #expect(ClientUsageEvent.screen(.nutrientCitation).screenToken == "nutrient_citation")
         }
     }
 }
