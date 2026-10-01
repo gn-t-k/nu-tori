@@ -1,3 +1,4 @@
+import Foundation
 import NuToriCore
 import Testing
 
@@ -126,6 +127,80 @@ struct ClientUsageEventTests {
             #expect(event.name == "camera_permission_notice_shown")
             #expect(event.fields.isEmpty)
             #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("推定できた食事を、送ってから 30 分 30 秒後に消したとき")
+    struct EstimatedMealDeleted {
+        let event: ClientUsageEvent
+
+        init() throws {
+            let card = try MealCard.fixture(
+                eatenAt: "2026-09-24T12:10:00+09:00", sentAt: "2026-09-24T12:11:00+09:00",
+                status: .estimated, nutrients: [.energyKcal: 510])
+            event = .mealDeleted(
+                card, at: try Date("2026-09-24T12:41:30+09:00", strategy: .iso8601))
+        }
+
+        @Test("推定の状態と、送ってから消すまでの秒を載せること")
+        func carriesStateAndAge() {
+            #expect(event.name == "meal_deleted")
+            #expect(
+                event.fields == [
+                    "estimation_state": .token("estimated"),
+                    "seconds_since_recorded": .wholeSeconds(1830),
+                ])
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("推定の状態ごとに食事を消したとき")
+    struct MealDeletedInEachState {
+        @Test(
+            "推定の状態を名前にすること",
+            arguments: [
+                (MealEstimationStatus?.none, true, "not_sent"),
+                (.awaitingPhotos, false, "awaiting_photos"),
+                (.estimating, true, "estimating"),
+                (.noDishes, true, "no_dishes"),
+                (.deferredToNextDay, true, "deferred_to_next_day"),
+                (.failed, true, "failed"),
+            ])
+        func namesTheState(
+            status: MealEstimationStatus?, recordedOnThisDevice: Bool, token: String
+        ) throws {
+            let card = try MealCard.fixture(
+                status: status, recordedOnThisDevice: recordedOnThisDevice)
+
+            let event = ClientUsageEvent.mealDeleted(card, at: card.meal.sentAt)
+
+            #expect(event.fields["estimation_state"] == .token(token))
+        }
+    }
+
+    @Suite("端末の時計が送った時刻より前のとき")
+    struct MealDeletedBeforeSentAt {
+        @Test("消すまでの秒を 0 にすること")
+        func clampsToZero() throws {
+            let card = try MealCard.fixture(status: .estimating)
+
+            let event = ClientUsageEvent.mealDeleted(
+                card, at: card.meal.sentAt.addingTimeInterval(-90))
+
+            #expect(event.fields["seconds_since_recorded"] == .wholeSeconds(0))
+        }
+    }
+
+    @Suite("食事の画面と栄養の出典を開いたとき")
+    struct MealScreens {
+        @Test(
+            "画面の名前を送ること",
+            arguments: [
+                (ClientUsageEvent.Screen.meal, "meal"),
+                (.nutrientCitation, "nutrient_citation"),
+            ])
+        func namesTheScreen(screen: ClientUsageEvent.Screen, token: String) {
+            #expect(ClientUsageEvent.screen(screen).screenToken == token)
         }
     }
 }

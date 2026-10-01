@@ -54,6 +54,35 @@ public enum DayFood: Hashable, Sendable {
     public var figures: Figures? {
         if case .figures(let figures) = self { figures } else { nil }
     }
+
+    /// 日のまとめの「食事と栄養」の下に添える文。食事の無い日はまとまりを出さないので空
+    public var notes: [String] {
+        let ring = "目標がないので、丸は P・F・C の割合で一周します。"
+        switch self {
+        case .noMeals:
+            return []
+        case .allPending:
+            return [
+                ring,
+                "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。",
+            ]
+        case .unavailable(let pendingMealCount):
+            return [
+                ring,
+                Self.pendingNote(pendingMealCount)
+                    ?? "この日の食事からは、kcal と P・F・C を出せませんでした。",
+            ]
+        case .figures(let figures):
+            return [ring] + [Self.pendingNote(figures.pendingMealCount)].compactMap(\.self)
+        }
+    }
+
+    /// 推定が済んでいない食事があるときの文。無ければ nil
+    private static func pendingNote(_ pendingMealCount: Int) -> String? {
+        guard pendingMealCount > 0 else { return nil }
+        return
+            "まだ推定が済んでいない食事が\(pendingMealCount)つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。"
+    }
 }
 
 /// 丸を一周した長さのうち、たんぱく質・脂質・炭水化物が占める割合（合計は 1）。

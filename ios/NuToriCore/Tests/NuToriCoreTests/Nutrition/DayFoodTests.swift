@@ -216,4 +216,64 @@ struct DayFoodTests {
             #expect(food == .unavailable(pendingMealCount: 0))
         }
     }
+
+    @Suite("日のまとめに添える文")
+    struct Note {
+        static let ringNote = "目標がないので、丸は P・F・C の割合で一周します。"
+
+        @Test("推定が済んだ食事だけの日は、丸の説明だけを添えること")
+        func onlyRingNote() throws {
+            let food = DayFood(meals: [
+                try .fixture(status: .estimated, nutrients: DayFoodTests.lunchNutrients)
+            ])
+
+            #expect(food.notes == [Self.ringNote])
+        }
+
+        @Test("どれも済んでいない日は、推定しているところだと添えること")
+        func allPending() {
+            #expect(
+                DayFood.allPending.notes == [
+                    Self.ringNote,
+                    "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。",
+                ])
+        }
+
+        @Test("一部が済んでいない日は、済んでいない食事の数を添えること")
+        func somePending() throws {
+            let food = DayFood(meals: [
+                try .fixture(status: .estimated, nutrients: DayFoodTests.lunchNutrients),
+                try .fixture(status: .estimating),
+                try .fixture(status: .deferredToNextDay),
+            ])
+
+            #expect(
+                food.notes == [
+                    Self.ringNote,
+                    "まだ推定が済んでいない食事が2つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+                ])
+        }
+
+        @Test("kcal が出ず、済んでいない食事がある日は、済んでいない食事の数を添えること")
+        func unavailableWithPending() {
+            #expect(
+                DayFood.unavailable(pendingMealCount: 1).notes == [
+                    Self.ringNote,
+                    "まだ推定が済んでいない食事が1つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+                ])
+        }
+
+        @Test("料理なしと推定できなかった食事だけの日は、出せなかったと添えること")
+        func unavailable() {
+            #expect(
+                DayFood.unavailable(pendingMealCount: 0).notes == [
+                    Self.ringNote, "この日の食事からは、kcal と P・F・C を出せませんでした。",
+                ])
+        }
+
+        @Test("食事の無い日は、何も添えないこと")
+        func noMeals() {
+            #expect(DayFood.noMeals.notes.isEmpty)
+        }
+    }
 }
