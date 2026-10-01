@@ -5,6 +5,7 @@ import { DurableObject } from "cloudflare:workers";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
 import { applySyncWrites } from "../domain/apply-sync-writes";
 import { computeNextAlarmAt } from "../domain/compute-next-alarm-at";
+import { computeNextAlarmAtExceptLeftoverPhotos } from "../domain/compute-next-alarm-at-except-leftover-photos";
 import { pullSyncChanges } from "../domain/pull-sync-changes";
 import { receiveMealPhoto } from "../domain/receive-meal-photo";
 import type { SyncClientState } from "../domain/sync-client-state";
@@ -137,13 +138,21 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         },
         new Date(),
       );
-      let alarmError = advanced.stoppedError;
-      try {
-        await deleteLeftoverMealPhotoFiles(stores.mealPhoto, archive, new Date());
-      } catch (error) {
-        alarmError ??= error;
-      }
-      await this.armAlarm();
+      const deletionError: unknown = await deleteLeftoverMealPhotoFiles(
+        stores.mealPhoto,
+        archive,
+        new Date(),
+      ).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      // 消し直しに失敗したら、今に張り直さず Cloudflare のアラームのやり直しに任せる。使い切ったら、次に予定を入れたときに消し直す
+      await this.setAlarm(
+        deletionError === undefined
+          ? computeNextAlarmAt(stores, new Date())
+          : computeNextAlarmAtExceptLeftoverPhotos(stores),
+      );
+      const alarmError = advanced.stoppedError ?? deletionError;
       for (const providerError of advanced.providerErrors) {
         captureException(providerError);
       }
@@ -165,7 +174,10 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     // 送る要求と写真の要求の入口で、表から出したいちばん早い時刻に張り直す
     private async armAlarm(): Promise<void> {
-      const alarmAt = computeNextAlarmAt(createRecordKindStores(this.ctx.storage), new Date());
+      await this.setAlarm(computeNextAlarmAt(createRecordKindStores(this.ctx.storage), new Date()));
+    }
+
+    private async setAlarm(alarmAt: Date | undefined): Promise<void> {
       if (alarmAt !== undefined) {
         await this.ctx.storage.setAlarm(alarmAt);
       }

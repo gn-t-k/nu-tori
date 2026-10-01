@@ -60,7 +60,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 ## 推定
 
-- 推定はアラームで進める。入口は `src/estimation/domain/advance-estimations.ts`: 待っている予定から推定を始め、次に試みる時刻が来た推定の試みを書いてから（`begin-estimation-attempts.ts`）、提供元を呼び（`run-estimation-attempt.ts`）、結果を書く（`record-estimation-attempt-outcome.ts`）。次に試みる時刻（待ちを広げる式と、試みの時間の上限）はドメイン層の `compute-next-estimation-attempt-at` が出し、`compute-next-alarm-at.ts` もそれでアラームを合わせる
+- 推定はアラームで進める。入口は `src/estimation/domain/advance-estimations.ts`: 待っている予定から推定を始め、次に試みる時刻が来た推定の試みを書いてから（`begin-estimation-attempts.ts`）、提供元を呼び（`run-estimation-attempt.ts`）、結果を書く（`record-estimation-attempt-outcome.ts`）。次に試みる時刻（待ちを広げる式と、試みの時間の上限）はドメイン層の `compute-next-estimation-attempt-at` が出し、`compute-next-alarm-at-except-leftover-photos.ts` もそれでアラームを合わせる
 - 推定の回数は、アカウントごとに1日 `maximumDailyEstimations`（30）まで。`beginEstimationAttempts` が、予定から推定を始める前に、予定の数える日（`counted_on`）の `estimations` を数え、上限なら見送る（`estimation_deferrals`、次の日の 0:00 の予定とつなぎ、推定の状態の変更、PostHog の `estimation_deferred`）。次の日の 0:00 は、ユーザーの最新のタイムゾーン（読めなければ食事を送ったときのもの）で `computeNextDayStart` が出し、その日の分に数える。日ごとの回数の行は持たず、食事を消しても推定の行は残るので回数は戻らない。見送ったあとの予定から始めたときだけ、推定の状態の変更を足す（翌日に推定 → 推定中）。テストは `src/estimation/http/testing/insert-counted-estimations.ts` で、食事につながらない推定を書いて回数を満たす
 - 提供元（LLM）は、ドメイン層の型 `EstimationProvider`（`src/estimation/domain/estimation-provider.ts`）を、`src/estimation/durable-object/create-estimation-provider/` が作る。Durable Object は推定のたびにここから得る。本物は Anthropic の API（`@anthropic-ai/sdk`。再試行は SDK でなくドメイン層が持つので切る）で、`create-anthropic-estimation-provider.ts` が組む。モデルは Claude Sonnet 5（`request-structured-output.ts` の1か所）、思考は `thinking: { type: "disabled" }` で切り、`metadata.user_id` にアカウント ID の SHA-256 を入れ、構造化出力（`output_config.format`）で答えさせる。呼び出し1回の時間の上限は ① が 90 秒、② が 60 秒（試み全体の 3 分の中に収まる）。HTTP 400 は 400 の失敗、時間切れは時間切れの失敗、そのほかの SDK のエラーは提供元のエラー（`errorType` は応答のエラーの種類、無ければ `http_<状態コード>`、つなげなければ `connection_error`）、構造化出力が読めない・出力の上限で切れた・答えなかったは読めない応答の失敗（使ったトークンつき）にする。提供元の応答のテキストは残さない。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（料理あり・料理なし・確かめに通らない・答える前に待つは `mockCreateEstimationProviderOk`、エラー・400・時間切れ・② だけ落ちるは `mockCreateEstimationProviderError`）。提供元そのものの要求の組み立てと応答の読み取りは、Anthropic の API の手前（SDK の `fetch`）を差し替えて確かめる（`testing/stub-anthropic-api.ts`）
 - 提供元の失敗と、確かめに通らない応答は、試みの結果（`estimation_attempt_results.result`）にする。R2 と成分表の段で止まったら投げ、試みを結果の無いまま残して、途中で止まった試みとして数える
@@ -95,7 +95,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - あとで `meals`・`dishes`・`ingredients` の子の表を足すとき、自分の削除の印を持たない子（文章の食事のサブセット、直した印、料理が対象の予定のつなぎ、料理を作った推定など）は `ON DELETE CASCADE` にする。1つ前の版のコードは、あとで足した子を知らずに親を消すので、NO ACTION だと食事を消す書き込みが外部キーの違反で送り直され続ける
 - 索引は、同期の要求ごとに走る引き方に加え、アラームや推定の開始ごと、記録を受け取るごとに走る引き方にも置く。行が食事の数ほど増え続ける表（予定・推定・試み・料理・材料など）が対象になる。引く道が無いもの（控えから削除の印を引く）や、索引が効かない引き方（待っている予定を、推定も見送りも無いことで出す）には置かない
 - Durable Object のアラームは一度に1つしか張れない。アラームで動かすもの（推定など）は、予定を DB に持ち、いちばん早い予定にアラームを合わせる
-  - いちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が表から出し、送る要求と写真の要求の入口で張る。アラームで動かすものを足すときは、その時刻をここに足す（足さないと、入口で張り直したときに遅い時刻で上書きする）
+  - いちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が表から出し、送る要求と写真の要求の入口で張る。写真の控えの消し残しを除いた時刻は `src/domain/compute-next-alarm-at-except-leftover-photos.ts` が出し、消し直しに失敗したアラームはこちらで張り直す（今に張り直さず、Cloudflare のアラームのやり直しに任せる）。アラームで動かすものを足すときは、その時刻を後者に足す（足さないと、入口で張り直したときに遅い時刻で上書きする）
   - アラームの中のアカウント ID は `ctx.id.name`（`idFromName` で付けた名前）から得る。テストの実行環境でも、張ったアラームはひとりでに動くので、アラームの結果を確かめるテストは `runDurableObjectAlarm` で動かしたうえで `vi.waitFor` で待つ
 - 記録に対しては、全員をまたぐ SQL は書けない。全員をまたぐ分析は、記録を書くときに分析用の出来事を PostHog に送って行う
 
