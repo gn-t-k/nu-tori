@@ -21,15 +21,18 @@ struct MealCardView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                     if let nutritionText {
-                        Text(
-                            "\(Text(nutritionText.kilocalories).fontWeight(.semibold))\(nutritionText.pfc)"
-                        )
+                        ItemWrappingLayout(spacing: 8, lineSpacing: 0) {
+                            Text(nutritionText.kilocalories).fontWeight(.semibold)
+                            ForEach(nutritionText.pfc, id: \.self) { Text($0) }
+                        }
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                     }
                 }
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // 大きな文字でも、名前と状態の行を切らずに折り返す
+                .fixedSize(horizontal: false, vertical: true)
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -104,12 +107,12 @@ struct MealCardView: View {
     }
 
     /// kcal と P・F・C は、推定できたときだけ出す。「不明」の材料が混じる栄養には「以上」が付く
-    private var nutritionText: (kilocalories: String, pfc: String)? {
+    private var nutritionText: (kilocalories: String, pfc: [String])? {
         guard case .estimated(let totals) = card.nutrition else { return nil }
         let pfc = PFC.allCases.map { pfc in
-            "  \(pfc.letter) \(NutritionText.amount(totals[pfc.nutrient], of: pfc.nutrient))"
+            "\(pfc.letter) \(NutritionText.amount(totals[pfc.nutrient], of: pfc.nutrient))"
         }
-        return (NutritionText.amount(totals[.energyKcal], of: .energyKcal), pfc.joined())
+        return (NutritionText.amount(totals[.energyKcal], of: .energyKcal), pfc)
     }
 
     private var shownPhotoIds: [UUID] {
@@ -130,7 +133,7 @@ struct MealCardView: View {
     }
 
     private var accessibilityText: String {
-        let nutrition = nutritionText.map { "\($0.kilocalories)\($0.pfc)" }
+        let nutrition = nutritionText.map { ([$0.kilocalories] + $0.pfc).joined(separator: " ") }
         return ["食事", dishNames ?? card.state.statusLine, eatenTimeText, nutrition]
             .compactMap(\.self).joined(separator: "、")
     }

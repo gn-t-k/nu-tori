@@ -37,9 +37,7 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
         attachScreenshot(of: app, named: "食事の画面の下")
 
         delete.tap()
-        let confirm = app.buttons.matching(
-            NSPredicate(format: "label == %@ AND identifier != %@", "食事を削除", "meal-delete")
-        ).firstMatch
+        let confirm = app.buttons["meal-delete-confirm"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "食事を削除する確かめ")
         confirm.tap()

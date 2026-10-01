@@ -41,15 +41,18 @@ struct TimelineComposer: View {
         }
     }
 
-    /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする
-    @ScaledMetric private var buttonSize: CGFloat = 44
+    /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする。3つの丸が画面の幅に収まるところで止める
+    @ScaledMetric private var scaledButtonSize: CGFloat = 44
+    private var buttonSize: CGFloat { min(scaledButtonSize, 88) }
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// 今日の体重が未記録のあいだは、文字のカプセルに広げる。記録すると丸（体重計）に戻る
+    /// 今日の体重が未記録のあいだは、文字のカプセルに広げる。記録すると丸（体重計）に戻る。
+    /// 大きな文字ではカプセルが文字を収めきれないので、未記録でも丸にし、名前は accessibilityLabel で残す
     private var weightButton: some View {
         Button(action: onWeight) {
-            if weightRecordedToday {
-                circle(systemName: "scalemass.fill", filled: false)
+            if weightRecordedToday || dynamicTypeSize.isAccessibilitySize {
+                circle(systemName: "scalemass.fill", filled: !weightRecordedToday)
             } else {
                 Text("体重を記録")
                     .font(.subheadline.weight(.semibold))

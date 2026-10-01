@@ -60,7 +60,16 @@ struct DaySummarySheet: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var shownDay: CalendarDay
+    /// 丸の中の kcal の大きさに合わせて、丸と輪の太さも大きくする
+    @ScaledMetric(relativeTo: .title2) private var ringDiameter: CGFloat = 128
+    @ScaledMetric(relativeTo: .title2) private var ringLineWidth: CGFloat = 14
+
+    private var foodLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 16)) : AnyLayout(HStackLayout(spacing: 16))
+    }
 
     private var dayNavigation: some View {
         HStack {
@@ -89,22 +98,27 @@ struct DaySummarySheet: View {
         }
     }
 
-    /// 目標が無いあいだは、丸は P・F・C の割合で一周し、食べた量だけを書く
+    /// 目標が無いあいだは、丸は P・F・C の割合で一周し、食べた量だけを書く。
+    /// 大きな文字では、丸を文字に合わせて広げ、丸の下に値を並べる
     private func foodSection(_ food: DayFood) -> some View {
-        Section {
-            HStack(spacing: 16) {
-                DayRingView(shares: food.figures?.shares, diameter: 128, lineWidth: 14)
-                    .overlay {
-                        ringCenter(food.figures)
-                    }
-                VStack(spacing: 8) {
-                    ForEach(PFC.allCases, id: \.self) { pfc in
-                        if pfc != .protein {
-                            Divider()
-                        }
-                        pfcFact(pfc, figures: food.figures)
-                    }
+        let ring = DayRingView(
+            shares: food.figures?.shares, diameter: ringDiameter, lineWidth: ringLineWidth
+        )
+        .overlay {
+            ringCenter(food.figures)
+        }
+        let facts = VStack(spacing: 8) {
+            ForEach(PFC.allCases, id: \.self) { pfc in
+                if pfc != .protein {
+                    Divider()
                 }
+                pfcFact(pfc, figures: food.figures)
+            }
+        }
+        return Section {
+            foodLayout {
+                ring
+                facts
             }
             .padding(.vertical, 8)
             .accessibilityElement(children: .combine)
@@ -135,18 +149,32 @@ struct DaySummarySheet: View {
         }
     }
 
+    /// 名前と値が1行に収まらないときは、値を名前の下に置く。名前と値の途中では改行しない
     private func pfcFact(_ pfc: PFC, figures: DayFood.Figures?) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
+        let name = HStack(alignment: .firstTextBaseline, spacing: 6) {
             pfc.key
             Text("\(pfc.letter) \(pfc.name)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
-            Text(NutritionText.amount(figures?.totals[pfc.nutrient] ?? .unknown, of: pfc.nutrient))
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .monospacedDigit()
-                .contentTransition(.numericText())
+        }
+        let amount = Text(
+            NutritionText.amount(figures?.totals[pfc.nutrient] ?? .unknown, of: pfc.nutrient)
+        )
+        .font(.subheadline)
+        .fontWeight(.semibold)
+        .monospacedDigit()
+        .contentTransition(.numericText())
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                name.fixedSize()
+                Spacer(minLength: 0)
+                amount.fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                name
+                amount
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
