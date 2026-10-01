@@ -5,7 +5,8 @@ options:
     iOS: "26.0"
 settings:
   base:
-    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
     GENERATE_INFOPLIST_FILE: "YES"
     INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
     ENABLE_PREVIEWS: "YES"
@@ -26,6 +27,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.nutori.lab.PreviewLab
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
+        CODE_SIGN_ENTITLEMENTS: Sources/PreviewLab.entitlements
         INFOPLIST_KEY_NSHealthShareUsageDescription: "lab"
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: "lab"
   PreviewLabTests:
