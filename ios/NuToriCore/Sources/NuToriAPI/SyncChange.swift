@@ -5,6 +5,10 @@ public enum SyncChange: Sendable, Equatable {
     /// サーバーは削除の印を返し直すので、同じ ID で2度届くことがある
     case weightRecordDeletion(recordId: UUID)
     case accountSettings(SyncedAccountSettings)
+    case dish(SyncedDish)
+    case dishDeletion(dishId: UUID)
+    case ingredient(SyncedIngredient)
+    case ingredientDeletion(ingredientId: UUID)
     case meal(SyncedMeal)
     case mealDeletion(mealId: UUID)
     case mealEstimationStatus(SyncedMealEstimationStatus)

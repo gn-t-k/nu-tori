@@ -39,6 +39,8 @@ struct TimelineScreenContainer: View {
     @Query private var syncStates: [CachedSyncState]
     @Query private var cachedMeals: [CachedMeal]
     @Query private var cachedEstimationStatuses: [CachedMealEstimationStatus]
+    @Query private var cachedDishes: [CachedDish]
+    @Query private var cachedIngredients: [CachedIngredient]
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 
@@ -49,18 +51,25 @@ struct TimelineScreenContainer: View {
         return .completed(startedDay: state.startedOn.flatMap(TimelineDayText.day(from:)))
     }
 
-    /// 推定の状態は食事と別の種類で、食事より先にも後にも届く
+    /// 推定の状態・料理・材料は食事と別の種類で、食事より先にも後にも届く
     private var mealCards: [MealCard] {
         var statuses: [UUID: MealEstimationStatus] = [:]
         for row in cachedEstimationStatuses {
             statuses[row.mealId] = row.estimationStatus()
         }
+        // 食事ごとに全部を舐めないよう、親ごとにまとめてから渡す
+        let dishesByMeal = Dictionary(grouping: cachedDishes.map { $0.dish() }, by: \.mealId)
+        let ingredientsByDish = Dictionary(
+            grouping: cachedIngredients.compactMap { $0.ingredient() }, by: \.dishId)
         return cachedMeals.compactMap { row in
             row.meal().map { meal in
-                MealCard(
+                let dishes = dishesByMeal[meal.id] ?? []
+                return MealCard(
                     meal: meal,
                     status: statuses[meal.id],
-                    recordedOnThisDevice: mealsRecordedHere.contains(meal.id)
+                    recordedOnThisDevice: mealsRecordedHere.contains(meal.id),
+                    dishes: dishes,
+                    ingredients: dishes.flatMap { ingredientsByDish[$0.id] ?? [] }
                 )
             }
         }

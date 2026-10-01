@@ -27,7 +27,8 @@ public struct MealEstimationStatusSyncing: SyncedRecordKind {
     public func owns(_ change: SyncChange) -> Bool {
         switch change {
         case .mealEstimationStatus, .mealEstimationStatusDeletion: true
-        case .weightRecord, .weightRecordDeletion, .accountSettings, .meal, .mealDeletion,
+        case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
+            .ingredient, .ingredientDeletion, .meal, .mealDeletion,
             .unknown:
             false
         }
@@ -44,7 +45,8 @@ public struct MealEstimationStatusSyncing: SyncedRecordKind {
                     Status(mealId: synced.mealId, status: MealEstimationStatus(synced.status)))
             case .mealEstimationStatusDeletion(let mealId):
                 removedMealIds.append(mealId)
-            case .weightRecord, .weightRecordDeletion, .accountSettings, .meal, .mealDeletion,
+            case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
+                .ingredient, .ingredientDeletion, .meal, .mealDeletion,
                 .unknown:
                 break
             }

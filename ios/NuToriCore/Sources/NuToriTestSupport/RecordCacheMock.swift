@@ -2,7 +2,7 @@ public import Foundation
 public import NuToriCore
 import Synchronization
 
-/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
+/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、材料を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
 /// 同期の働きの単体テストで、アプリの SwiftData のキャッシュの代わりに使う
 public final class RecordCacheMock: Sendable {
     public init() {}
@@ -22,6 +22,16 @@ public final class RecordCacheMock: Sendable {
     /// 食事の ID ごとの推定の状態
     public var estimationStatuses: [UUID: MealEstimationStatus] {
         storage.withLock { $0.estimationStatuses }
+    }
+
+    /// 料理の ID ごとの料理。親の食事がまだ無くても置く
+    public var dishes: [UUID: Dish] {
+        storage.withLock { $0.dishes }
+    }
+
+    /// 材料の ID ごとの材料。親の料理がまだ無くても置く
+    public var ingredients: [UUID: Ingredient] {
+        storage.withLock { $0.ingredients }
     }
 
     /// 名前の種類が当てられた変更の数。テスト用の種類が数えるのに使う
@@ -57,6 +67,30 @@ public final class RecordCacheMock: Sendable {
         storage.withLock { $0.estimationStatuses[mealId] = nil }
     }
 
+    public func upsert(_ dish: Dish) {
+        storage.withLock { $0.dishes[dish.id] = dish }
+    }
+
+    public func remove(dishId: UUID) {
+        storage.withLock { $0.dishes[dishId] = nil }
+    }
+
+    public func upsert(_ ingredient: Ingredient) {
+        storage.withLock { $0.ingredients[ingredient.id] = ingredient }
+    }
+
+    public func remove(ingredientId: UUID) {
+        storage.withLock { $0.ingredients[ingredientId] = nil }
+    }
+
+    public func clearDishes() {
+        storage.withLock { $0.dishes = [:] }
+    }
+
+    public func clearIngredients() {
+        storage.withLock { $0.ingredients = [:] }
+    }
+
     public func clearMeals() {
         storage.withLock { $0.meals = [:] }
     }
@@ -86,6 +120,8 @@ public final class RecordCacheMock: Sendable {
         var settings: AccountSettings?
         var meals: [UUID: Meal] = [:]
         var estimationStatuses: [UUID: MealEstimationStatus] = [:]
+        var dishes: [UUID: Dish] = [:]
+        var ingredients: [UUID: Ingredient] = [:]
         var appliedCounts: [RecordKindName: Int] = [:]
     }
 
