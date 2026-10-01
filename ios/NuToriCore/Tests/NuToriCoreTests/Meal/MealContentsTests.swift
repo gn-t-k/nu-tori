@@ -68,104 +68,143 @@ struct MealContentsTests {
 
     @Suite("栄養の出どころの1行")
     struct SourceLine {
-        @Test("栄養成分表示・成分表・推定の順に、材料の数を並べ、0 のものは書かないこと")
-        func listsCountsInOrder() throws {
-            let contents = MealContents(
-                mealId: MealContentsTests.mealId,
-                dishes: [.fixture(id: MealContentsTests.dishA, mealId: MealContentsTests.mealId)],
-                ingredients: [
-                    .fixture(dishId: MealContentsTests.dishA, nutrientSource: .estimated),
-                    .fixture(
-                        dishId: MealContentsTests.dishA,
-                        nutrientSource: .foodComposition(foodNumber: "11225")),
-                    .fixture(
-                        dishId: MealContentsTests.dishA,
-                        nutrientSource: .foodComposition(foodNumber: "01088")),
-                    .fixture(
-                        dishId: MealContentsTests.dishA,
-                        nutrientSource: .nutritionLabel(basisGrams: 250)),
-                ])
+        @Suite("栄養成分表示・成分表・推定の材料が混じる食事")
+        struct MixedSources {
+            let contents: MealContents
 
-            let line = try #require(contents.nutrientSourceLine)
+            init() {
+                contents = MealContents(
+                    mealId: MealContentsTests.mealId,
+                    dishes: [
+                        .fixture(id: MealContentsTests.dishA, mealId: MealContentsTests.mealId)
+                    ],
+                    ingredients: [
+                        .fixture(dishId: MealContentsTests.dishA, nutrientSource: .estimated),
+                        .fixture(
+                            dishId: MealContentsTests.dishA,
+                            nutrientSource: .foodComposition(foodNumber: "11225")),
+                        .fixture(
+                            dishId: MealContentsTests.dishA,
+                            nutrientSource: .foodComposition(foodNumber: "01088")),
+                        .fixture(
+                            dishId: MealContentsTests.dishA,
+                            nutrientSource: .nutritionLabel(basisGrams: 250)),
+                    ])
+            }
 
-            #expect(
-                line.entries == [
-                    .init(kind: .nutritionLabel, count: 1),
-                    .init(kind: .foodComposition, count: 2),
-                    .init(kind: .estimated, count: 1),
-                ])
-            #expect(line.showsCounts)
+            @Test("栄養成分表示・成分表・推定の順に材料の数を並べ、0 のものは書かないこと")
+            func listsCountsInOrder() throws {
+                let line = try #require(contents.nutrientSourceLine)
+
+                #expect(
+                    line.entries == [
+                        .init(kind: .nutritionLabel, count: 1),
+                        .init(kind: .foodComposition, count: 2),
+                        .init(kind: .estimated, count: 1),
+                    ])
+                #expect(line.showsCounts)
+            }
         }
 
-        @Test("1種類だけなら、数を書かないこと")
-        func hidesCountsForSingleKind() throws {
-            let contents = MealContents(
-                mealId: MealContentsTests.mealId,
-                dishes: [.fixture(id: MealContentsTests.dishA, mealId: MealContentsTests.mealId)],
-                ingredients: [
-                    .fixture(
-                        dishId: MealContentsTests.dishA,
-                        nutrientSource: .foodComposition(foodNumber: "11225")),
-                    .fixture(
-                        dishId: MealContentsTests.dishA,
-                        nutrientSource: .foodComposition(foodNumber: "01088")),
-                ])
+        @Suite("成分表の材料だけの食事")
+        struct SingleSource {
+            let contents: MealContents
 
-            let line = try #require(contents.nutrientSourceLine)
+            init() {
+                contents = MealContents(
+                    mealId: MealContentsTests.mealId,
+                    dishes: [
+                        .fixture(id: MealContentsTests.dishA, mealId: MealContentsTests.mealId)
+                    ],
+                    ingredients: [
+                        .fixture(
+                            dishId: MealContentsTests.dishA,
+                            nutrientSource: .foodComposition(foodNumber: "11225")),
+                        .fixture(
+                            dishId: MealContentsTests.dishA,
+                            nutrientSource: .foodComposition(foodNumber: "01088")),
+                    ])
+            }
 
-            #expect(line.entries == [.init(kind: .foodComposition, count: 2)])
-            #expect(!line.showsCounts)
+            @Test("数を書かないこと")
+            func hidesCounts() throws {
+                let line = try #require(contents.nutrientSourceLine)
+
+                #expect(line.entries == [.init(kind: .foodComposition, count: 2)])
+                #expect(!line.showsCounts)
+            }
         }
 
-        @Test("材料が無い食事には出さないこと")
-        func hasNoLineWithoutIngredients() {
+        @Suite("材料が無い食事")
+        struct WithoutIngredients {
             let contents = MealContents(
                 mealId: MealContentsTests.mealId, dishes: [], ingredients: [])
 
-            #expect(contents.nutrientSourceLine == nil)
+            @Test("1行を出さないこと")
+            func hasNoLine() {
+                #expect(contents.nutrientSourceLine == nil)
+            }
         }
     }
 
     @Suite("栄養の出典")
     struct Citation {
-        @Test("成分表を使った材料が1つでもあれば出すこと")
-        func showsWhenFoodCompositionUsed() {
-            let contents = MealContents(
-                mealId: MealContentsTests.mealId,
-                dishes: [.fixture(id: MealContentsTests.dishA, mealId: MealContentsTests.mealId)],
-                ingredients: [
-                    .fixture(dishId: MealContentsTests.dishA, nutrientSource: .estimated),
-                    .fixture(
-                        dishId: MealContentsTests.dishA,
-                        nutrientSource: .foodComposition(foodNumber: "11225")),
-                ])
+        @Suite("成分表を使った材料が1つでもある食事")
+        struct WithFoodComposition {
+            let contents: MealContents
 
-            #expect(contents.showsNutrientCitation)
+            init() {
+                contents = MealContents(
+                    mealId: MealContentsTests.mealId,
+                    dishes: [
+                        .fixture(id: MealContentsTests.dishA, mealId: MealContentsTests.mealId)
+                    ],
+                    ingredients: [
+                        .fixture(dishId: MealContentsTests.dishA, nutrientSource: .estimated),
+                        .fixture(
+                            dishId: MealContentsTests.dishA,
+                            nutrientSource: .foodComposition(foodNumber: "11225")),
+                    ])
+            }
+
+            @Test("出すこと")
+            func shows() {
+                #expect(contents.showsNutrientCitation)
+            }
         }
 
-        @Test("成分表を使った材料が1つも無ければ出さないこと")
-        func hidesWithoutFoodComposition() {
-            let contents = MealContents(
-                mealId: MealContentsTests.mealId,
-                dishes: [.fixture(id: MealContentsTests.dishA, mealId: MealContentsTests.mealId)],
-                ingredients: [
-                    .fixture(dishId: MealContentsTests.dishA, nutrientSource: .estimated),
-                    .fixture(
-                        dishId: MealContentsTests.dishA,
-                        nutrientSource: .nutritionLabel(basisGrams: 250)),
-                ])
+        @Suite("成分表を使った材料が1つも無い食事")
+        struct WithoutFoodComposition {
+            let contents: MealContents
 
-            #expect(!contents.showsNutrientCitation)
+            init() {
+                contents = MealContents(
+                    mealId: MealContentsTests.mealId,
+                    dishes: [
+                        .fixture(id: MealContentsTests.dishA, mealId: MealContentsTests.mealId)
+                    ],
+                    ingredients: [
+                        .fixture(dishId: MealContentsTests.dishA, nutrientSource: .estimated),
+                        .fixture(
+                            dishId: MealContentsTests.dishA,
+                            nutrientSource: .nutritionLabel(basisGrams: 250)),
+                    ])
+            }
+
+            @Test("出さないこと")
+            func hides() {
+                #expect(!contents.showsNutrientCitation)
+            }
         }
     }
 
     @Suite("料理がまだ無い食事")
     struct WithoutDishes {
+        let contents = MealContents(mealId: MealContentsTests.mealId, dishes: [], ingredients: [])
+
         @Test("カードの名前を持たないこと")
         func hasNoName() {
-            #expect(
-                MealContents(mealId: MealContentsTests.mealId, dishes: [], ingredients: []).name
-                    == nil)
+            #expect(contents.name == nil)
         }
     }
 }
