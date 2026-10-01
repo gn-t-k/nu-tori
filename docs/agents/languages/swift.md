@@ -85,6 +85,7 @@ enum WeightRecordsState {
 
 - UI テスト以外（単体テストと統合テスト）は Swift Testing で書く
 - UI テストは XCUITest（XCTestCase）で書き、失敗したときに画面を見られるよう、確かめた画面のスクリーンショットを `XCTAttachment` で残す
+- List や ScrollView の中の要素は、画面の外にあると作られず `exists` が false になる。送って画面に出してから確かめる（`RecordMealFromPickedPhotosUITests` の `scrollUntilExists`）
 
 ### Swift Testing の構造
 
