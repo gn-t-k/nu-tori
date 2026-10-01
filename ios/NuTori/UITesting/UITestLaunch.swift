@@ -12,6 +12,8 @@
         let healthAuthorization: UITestHealthStore.Authorization
         let healthLatestKilograms: Double?
         let healthWriteAuthorized: Bool
+        /// 入力欄の「写真」で、選ぶ画面を開かずに選んだことにする写真の枚数。nil なら標準の選ぶ画面を出す
+        let pickedMealPhotoCount: Int?
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -27,7 +29,8 @@
                 healthAuthorization: environment["UI_TEST_HEALTH_AUTHORIZATION"]
                     == "not-yet-requested" ? .notYetRequested : .alreadyRequested,
                 healthLatestKilograms: environment["UI_TEST_HEALTH_LATEST_KG"].flatMap(Double.init),
-                healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied"
+                healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied",
+                pickedMealPhotoCount: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init)
             )
         }
 
@@ -105,6 +108,7 @@
             case .accountDeletionRateLimited: return .accountDeletionRateLimited
             case .accountDeletionUnauthorized: return .accountDeletionUnauthorized
             case .dayRing: return .dayRing
+            case .mealEstimation: return .mealEstimation
             }
         }
 
@@ -188,6 +192,7 @@
             case weightScreen = "weight-screen"
             case weightScreenPushRejected = "weight-screen-push-rejected"
             case dayRing = "day-ring"
+            case mealEstimation = "meal-estimation"
             case accountDeletionRateLimited = "account-deletion-rate-limited"
             case accountDeletionUnauthorized = "account-deletion-unauthorized"
         }

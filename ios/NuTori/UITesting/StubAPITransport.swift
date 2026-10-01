@@ -51,6 +51,17 @@
                 default:
                     return (HTTPResponse(status: .notFound), nil)
                 }
+            case .mealEstimation:
+                switch request.path {
+                case "/v1/sessions":
+                    return createdSession()
+                case "/v1/sync/writes":
+                    return json(.ok, try await applyMealWrites(body))
+                case .some(let path) where path.hasPrefix("/v1/sync/changes"):
+                    return json(.ok, Self.estimatedMeals.changesBody())
+                default:
+                    return (HTTPResponse(status: .notFound), nil)
+                }
             case .weightScreen, .weightScreenPushRejected:
                 switch request.path {
                 case "/v1/sessions":
@@ -82,6 +93,9 @@
             case accountDeletionRateLimited
             /// アカウントの削除だけに 401 を返す
             case accountDeletionUnauthorized
+            /// 作る書き込みで届いた食事を、最初に取りに行かれたときは推定中、次からは推定できた（料理と材料つき）で返す。
+            /// 消す書き込みが届いた食事は返さない
+            case mealEstimation
         }
 
         private func deleteAccountResponse() -> (HTTPResponse, HTTPBody?) {
@@ -91,7 +105,7 @@
                 case .accountDeletionUnauthorized: .unauthorized
                 case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
                     .previousDayPushOffline, .previousDayPushRejected, .weightScreen,
-                    .weightScreenPushRejected:
+                    .weightScreenPushRejected, .mealEstimation:
                     .noContent
                 }
             return (HTTPResponse(status: status), nil)
@@ -109,7 +123,7 @@
                         from: body, result: .rejected(current: #"{"status":"absent"}"#)))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
                 .weightScreen, .weightScreenPushRejected, .accountDeletionRateLimited,
-                .accountDeletionUnauthorized:
+                .accountDeletionUnauthorized, .mealEstimation:
                 return json(.ok, try await writeResults(from: body, result: .applied))
             }
         }
@@ -135,7 +149,7 @@
                 return try await writeResults(from: body, result: .rejected(current: current))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
                 .previousDayPushOffline, .previousDayPushRejected, .weightScreen,
-                .accountDeletionRateLimited, .accountDeletionUnauthorized:
+                .accountDeletionRateLimited, .accountDeletionUnauthorized, .mealEstimation:
                 return try await applyWeightScreenPush(body)
             }
         }
@@ -221,6 +235,134 @@
             }
         }
 
+        /// UI テストのプロセスごとに1つ。アプリを起動し直すと空から始まる
+        private static let estimatedMeals = EstimatedMeals()
+
+        private func applyMealWrites(_ body: HTTPBody?) async throws -> String {
+            guard let body else { return #"{"results":[]}"# }
+            let bytes = try await [UInt8](collecting: body, upTo: 1_048_576)
+            let decoded = try JSONDecoder().decode(MealPush.self, from: Data(bytes))
+            for write in decoded.writes {
+                switch write.type {
+                case "create_meal":
+                    if let mealId = write.meal?.id {
+                        Self.estimatedMeals.record(mealId: mealId)
+                    }
+                case "delete_meal":
+                    if let mealId = write.mealId {
+                        Self.estimatedMeals.delete(mealId: mealId)
+                    }
+                default:
+                    break
+                }
+            }
+            let results = decoded.writes.map { #"{"writeId":"\#($0.id)","result":"applied"}"# }
+            return #"{"results":[\#(results.joined(separator: ","))]}"#
+        }
+
+        private struct MealPush: Decodable {
+            let writes: [Write]
+
+            struct Write: Decodable {
+                let id: String
+                let type: String
+                let meal: Meal?
+                let mealId: String?
+
+                struct Meal: Decodable {
+                    let id: String
+                }
+            }
+        }
+
+        /// 届いた食事と、それぞれを取りに行かれた回数。料理と材料の ID は、食事が届いたときに振る
+        private final class EstimatedMeals: @unchecked Sendable {
+            private let lock = NSLock()
+            private var meals: [Estimated] = []
+            private var sequence = 0
+
+            private struct Estimated {
+                let mealId: String
+                let dishId = UUID().uuidString
+                let ingredientIds = [UUID().uuidString, UUID().uuidString]
+                var pulls = 0
+            }
+
+            func record(mealId: String) {
+                lock.lock()
+                defer { lock.unlock() }
+                guard !meals.contains(where: { $0.mealId == mealId }) else { return }
+                meals.append(Estimated(mealId: mealId))
+            }
+
+            func delete(mealId: String) {
+                lock.lock()
+                defer { lock.unlock() }
+                meals.removeAll { $0.mealId == mealId }
+            }
+
+            func changesBody() -> String {
+                lock.lock()
+                defer { lock.unlock() }
+                var changes: [String] = []
+                for index in meals.indices {
+                    changes += changesOf(meals[index])
+                    meals[index].pulls += 1
+                }
+                let startedOn = TimelineDayText.startedOn(
+                    for: CalendarDay(containing: .now, in: .current))
+                return
+                    #"{"changes":[\#(changes.joined(separator: ","))],"hasMore":false,"nextAfterSequence":\#(sequence),"startedOn":"\#(startedOn)"}"#
+            }
+
+            /// 親子丼（鶏もも肉 80 g・ご飯 200 g。どちらも成分表）
+            private func changesOf(_ meal: Estimated) -> [String] {
+                let status = meal.pulls == 0 ? "estimating" : "estimated"
+                var changes = [
+                    change(
+                        "meal_estimation_status", meal.mealId,
+                        #"{"mealId":"\#(meal.mealId)","status":"\#(status)"}"#)
+                ]
+                guard status == "estimated" else { return changes }
+                changes.append(
+                    change(
+                        "dish", meal.dishId,
+                        #"{"id":"\#(meal.dishId)","mealId":"\#(meal.mealId)","name":"親子丼","quantity":1,"unit":"杯","positionInMeal":0,"version":1}"#
+                    ))
+                changes.append(
+                    ingredient(
+                        meal.ingredientIds[0], dishId: meal.dishId, name: "鶏もも肉", grams: 80,
+                        position: 0, foodNumber: "11221",
+                        nutrients:
+                            #"{"energy_kcal":190,"protein_g":16.6,"fat_g":14.2,"carbohydrate_g":0}"#
+                    ))
+                changes.append(
+                    ingredient(
+                        meal.ingredientIds[1], dishId: meal.dishId, name: "ご飯", grams: 200,
+                        position: 1, foodNumber: "01088",
+                        nutrients:
+                            #"{"energy_kcal":156,"protein_g":2.5,"fat_g":0.3,"carbohydrate_g":37.1}"#
+                    ))
+                return changes
+            }
+
+            private func ingredient(
+                _ id: String, dishId: String, name: String, grams: Int, position: Int,
+                foodNumber: String, nutrients: String
+            ) -> String {
+                change(
+                    "ingredient", id,
+                    #"{"id":"\#(id)","dishId":"\#(dishId)","name":"\#(name)","quantity":\#(grams),"unit":"g","edibleGramsPerUnit":1,"positionInDish":\#(position),"nutrientSource":{"type":"food_composition","foodNumber":"\#(foodNumber)"},"nutrients":\#(nutrients)}"#
+                )
+            }
+
+            private func change(_ kind: String, _ recordId: String, _ record: String) -> String {
+                sequence += 1
+                return
+                    #"{"sequence":\#(sequence),"kind":"\#(kind)","recordId":"\#(recordId)","record":\#(record)}"#
+            }
+        }
+
         private struct PushBody: Decodable {
             let writes: [Write]
 
@@ -253,7 +395,7 @@
             case .dayRing: return try dayRingBody()
             case .online, .offline, .hangPull, .previousDay, .previousDayPushOffline,
                 .previousDayPushRejected, .weightScreen, .weightScreenPushRejected,
-                .accountDeletionRateLimited, .accountDeletionUnauthorized:
+                .accountDeletionRateLimited, .accountDeletionUnauthorized, .mealEstimation:
                 return emptyChangesBody()
             }
         }
