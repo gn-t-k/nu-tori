@@ -2,7 +2,7 @@
 
 ## スキル
 
-mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-start.sh` で自動更新している。更新で上書きされるため、lock にある skill は直接編集しない。Claude Code は `.claude/skills/`（`.agents/skills/` へのリンク）を、Codex は `.agents/skills/` を読む。`.claude/skills/` にだけある `model-based-ui-design` は、Codex からは見えない。
+mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-start.sh` がクラウドのセッションの開始時に更新を確かめる。更新は、作業ツリーに触れずに別の worktree に当て、作業の PR とは別の PR（ブランチ `claude/update-mattpocock-skills-<日付>`）で取り込む。更新で上書きされるため、lock にある skill は直接編集しない。Claude Code は `.claude/skills/`（`.agents/skills/` へのリンク）を、Codex は `.agents/skills/` を読む。`.claude/skills/` にだけある `model-based-ui-design` は、Codex からは見えない。
 
 - lock の外の skill は、`.agents/skills/<名前>/` に置いて `.claude/skills/` からリンクする。自動更新は lock にある名前だけを入れ直し、ほかは触らない。この決まりより前に置いた `model-based-ui-design` は `.claude/skills/` にだけあり、移すかは決めていない
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
@@ -12,7 +12,7 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
 
-- `session-start.sh`（クラウドで始めたとき）: Swift を入れ、mattpocock/skills を更新する
+- `session-start.sh`（クラウドで始めたとき）: Swift を入れ、mattpocock/skills の更新を確かめる
 - `warn-behind-main.sh`（クラウドで続けたとき。resume・compact・clear）: 作業ツリーが origin/main より遅れていたら知らせる。長いセッションのあいだに main が進み、古い版の働き方の文書を読んでチケットを切り違えたため
 
 ## MCP
