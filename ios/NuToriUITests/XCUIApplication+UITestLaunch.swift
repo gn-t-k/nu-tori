@@ -26,8 +26,9 @@ extension XCUIApplication {
         return app
     }
 
+    /// containing は静的なテキストごとに子孫まで問い合わせ、画面の要素が多いと探す途中で時間切れになるので、ラベルだけを見る
     @MainActor func staticText(containing text: String) -> XCUIElement {
-        staticTexts.containing(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+        staticTexts.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
     /// 昨日の値から 0.2 kg 下げて記録する。初期値が 72.6 kg のとき、72.4 kg になる
