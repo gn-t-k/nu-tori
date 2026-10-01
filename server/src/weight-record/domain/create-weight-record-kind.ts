@@ -5,7 +5,7 @@ import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import type { WriteKind } from "../../domain/sync-ledger/write-kind";
 import type { SyncWriteOutcome } from "../../domain/sync-write-outcome";
-import { isWithinAcceptedRange } from "./is-within-accepted-range";
+import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { WeightRecord } from "./weight-record";
 import type { WeightRecordStore } from "./weight-record-store";
 import { type WeightRecordWrite, weightRecordWriteTypes } from "./weight-record-write";

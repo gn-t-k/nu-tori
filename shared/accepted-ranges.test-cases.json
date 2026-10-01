@@ -14,5 +14,19 @@
     { "name": "上限より重い 75.1%", "value": 75.1, "accepted": false },
     { "name": "ヘルスケアの割合のままの 0.25", "value": 0.25, "accepted": false },
     { "name": "% の値の 25.0%", "value": 25.0, "accepted": true }
+  ],
+  "mealPhotoCount": [
+    { "name": "下限の 1 枚", "value": 1, "accepted": true },
+    { "name": "写真の無い 0 枚", "value": 0, "accepted": false },
+    { "name": "上限の 4 枚", "value": 4, "accepted": true },
+    { "name": "上限より多い 5 枚", "value": 5, "accepted": false }
+  ],
+  "mealUtcOffsetSeconds": [
+    { "name": "下限の -12:00（-43200 秒）", "value": -43200, "accepted": true },
+    { "name": "下限より 1 分西の -12:01（-43260 秒）", "value": -43260, "accepted": false },
+    { "name": "上限の +14:00（50400 秒）", "value": 50400, "accepted": true },
+    { "name": "上限より 1 分東の +14:01（50460 秒）", "value": 50460, "accepted": false },
+    { "name": "分の端数のある +05:45（20700 秒）", "value": 20700, "accepted": true },
+    { "name": "時差の無い 0 秒", "value": 0, "accepted": true }
   ]
 }

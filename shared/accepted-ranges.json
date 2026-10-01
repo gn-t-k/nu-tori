@@ -1,4 +1,6 @@
 {
   "weightKilograms": { "minimum": 20.0, "maximum": 300.0 },
-  "bodyFatPercentage": { "minimum": 1.0, "maximum": 75.0 }
+  "bodyFatPercentage": { "minimum": 1.0, "maximum": 75.0 },
+  "mealPhotoCount": { "minimum": 1, "maximum": 4 },
+  "mealUtcOffsetSeconds": { "minimum": -43200, "maximum": 50400 }
 }
