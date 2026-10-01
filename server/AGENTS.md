@@ -42,6 +42,11 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - `RecordKindName` は端末が自分の登録簿と突き合わせるためのもので、応答の `kind` を解くのには使わない（`kind` は文字列のまま。知らない種類は端末が読み飛ばす）
 - 種類の行（記録・削除の印・設定の変更）は、`decide` が返す `commit(receiptId)` の中で書く。控えの ID を帳簿しか作れない型にして、控えより先に書く形をコンパイルで止めるため
 
+## 成分表のデータファイル
+
+- 成分表のデータファイル（`src/domain/food-composition/food-composition-table.json`）は、文部科学省の本表の Excel から `scripts/build-food-composition-table.ts` が作る。手で書き換えず、成分表の版を上げるときや読み方を直したときに、`server/` で `pnpm exec tsx scripts/build-food-composition-table.ts` を回して作り直す。出典はファイルの `source`
+- 栄養の項目の名前は `shared/nutrients.json`、成分表の列との対応は `src/domain/food-composition/nutrient-source-columns.ts`。項目を足すときは JSON に1行足し、対応を足して、データファイルを作り直す
+
 ## 認証
 
 - 認証は Better Auth に任せる（ADR-0019）。Better Auth の表は D1 の中の認証の置き場に閉じ、ほかの表と Durable Object はアカウント ID だけを見る
