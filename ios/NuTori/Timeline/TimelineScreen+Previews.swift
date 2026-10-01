@@ -93,10 +93,7 @@
             private static func rejectedLine(_ record: WeightRecord, serverHasValue: Bool)
                 -> RejectedWeightLine
             {
-                RejectedWeightLine(
-                    RejectedWrite(
-                        writeId: UUID(), record: record, reason: .outOfRange,
-                        serverHasValue: serverHasValue))
+                RejectedWeightLine(record: record, serverHasValue: serverHasValue)
             }
         }
     }

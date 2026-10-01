@@ -59,6 +59,26 @@ public actor SyncEngine {
         }
     }
 
+    /// 食事を記録する。食事の ID はここで振る。電波が無くても受け付け、送り待ちに並べる
+    @discardableResult
+    public func recordMeal(_ draft: MealDraft) async throws -> Meal {
+        let meal = Meal(id: UUID(), draft: draft)
+        try await writingCache {
+            try await store.apply(
+                MealSyncing().recording(meal, enqueuing: pendingMealWrite(.create(meal))))
+        }
+        return meal
+    }
+
+    /// 食事を消す。電波が無くても、その場でキャッシュから消し、消す書き込みを送り待ちに並べる
+    public func deleteMeal(id mealId: UUID) async throws {
+        try await writingCache {
+            try await store.apply(
+                MealSyncing().deleting(
+                    mealId: mealId, enqueuing: pendingMealWrite(.delete(mealId: mealId))))
+        }
+    }
+
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
     public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
         let settings = AccountSettings(
@@ -115,6 +135,10 @@ public actor SyncEngine {
         PendingWrite(writeId: UUID(), enqueuedAt: now(), operation: operation)
     }
 
+    private func pendingMealWrite(_ write: PendingMealWrite.Write) -> PendingMealWrite {
+        PendingMealWrite(writeId: UUID(), enqueuedAt: now(), write: write)
+    }
+
     private func pushPendingWrites(collectingRejectionsIn rejectedWrites: inout [RejectedWrite])
         async throws -> SyncResult.StopReason?
     {
@@ -160,9 +184,17 @@ public actor SyncEngine {
         return kind
     }
 
+    /// 送り待ちの種類の、書き込みの扱い。サーバーだけが書く種類の送り待ちは、送れない
+    private func writes(for entry: PendingEntry) throws -> any RecordKindWrites {
+        guard let writes = try kind(named: entry.kind).writes else {
+            throw UnknownRecordKindError.serverOnly(entry.kind)
+        }
+        return writes
+    }
+
     /// 種類が、送る書き込みにする
     private func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        try kind(named: entry.kind).syncWrite(for: entry)
+        try writes(for: entry).syncWrite(for: entry)
     }
 
     /// 結果を、受け付けた・受け付けなかったの2つに畳んで読む。細かい結果はサーバーの控えと観測にだけ使う。
@@ -186,16 +218,16 @@ public actor SyncEngine {
             guard case .rejected(let reason) = result.outcome else {
                 continue
             }
-            let kind = try kind(named: entry.kind)
-            let rejection = try kind.rejection(of: entry, reason: reason, current: result.current)
+            let rejection = try writes(for: entry).rejection(
+                of: entry, reason: reason, current: result.current)
             if let rejected = rejection.rejectedWrite {
                 rejectedWrites.append(rejected)
             }
             switch result.current {
             case .value(let change), .deleted(let change):
-                currentChanges[kind.name, default: []].append(change)
+                currentChanges[entry.kind, default: []].append(change)
             case .absent:
-                currentChanges[kind.name, default: []] += rejection.removingChanges
+                currentChanges[entry.kind, default: []] += rejection.removingChanges
             case nil:
                 break
             }

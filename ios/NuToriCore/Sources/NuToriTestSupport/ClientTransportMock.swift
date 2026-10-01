@@ -51,9 +51,12 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     /// 受け付けなかった書き込みに添える、サーバーの今の値の JSON（サーバーの API の `current`）
     public enum Current: Sendable {
         case absent
+        /// 体重記録の削除の印
         case deleted(recordId: UUID)
         /// 体重記録の今の値
         case weightRecord(WeightRecord)
+        /// 食事の削除の印
+        case deletedMeal(mealId: UUID)
 
         var json: String {
             switch self {
@@ -63,6 +66,11 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
                 """
                 {"status":"deleted","change":{"kind":"weight_record_deletion",\
                 "recordId":"\(recordId.uuidString)","record":{}}}
+                """
+            case .deletedMeal(let mealId):
+                """
+                {"status":"deleted","change":{"kind":"meal_deletion",\
+                "recordId":"\(mealId.uuidString)","record":{}}}
                 """
             case .weightRecord(let record):
                 """

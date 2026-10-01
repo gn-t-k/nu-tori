@@ -150,8 +150,7 @@ struct WeightRecordSyncingTests {
             let rejection = try syncing.rejection(
                 of: entry, reason: .versionTooLow, current: .value(.weightRecord(server)))
 
-            #expect(rejection.rejectedWrite?.serverHasValue == true)
-            #expect(rejection.rejectedWrite?.record == corrected)
+            #expect(rejection.rejectedWrite?.record == .weightRecord(corrected, serverHasValue: true))
         }
 
         @Test("サーバーの記録が削除の印なら、値の無い行にすること")
@@ -160,7 +159,7 @@ struct WeightRecordSyncingTests {
                 of: entry, reason: .versionTooLow,
                 current: .deleted(.weightRecordDeletion(recordId: corrected.id)))
 
-            #expect(rejection.rejectedWrite?.serverHasValue == false)
+            #expect(rejection.rejectedWrite?.record == .weightRecord(corrected, serverHasValue: false))
         }
 
         @Test("サーバーに無ければ、値の無い行にし、端末の記録を外す変更を返すこと")
@@ -168,7 +167,7 @@ struct WeightRecordSyncingTests {
             let rejection = try syncing.rejection(
                 of: entry, reason: .recordNotFound, current: .absent)
 
-            #expect(rejection.rejectedWrite?.serverHasValue == false)
+            #expect(rejection.rejectedWrite?.record == .weightRecord(corrected, serverHasValue: false))
             #expect(rejection.removingChanges == [.weightRecordDeletion(recordId: corrected.id)])
         }
 

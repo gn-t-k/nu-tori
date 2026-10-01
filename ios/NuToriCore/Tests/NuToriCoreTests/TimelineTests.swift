@@ -158,10 +158,7 @@ struct TimelineTests {
                 after = try .manual(72.8, at: "2026-09-24T21:00:00+09:00", in: "Asia/Tokyo")
                 let rejected = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
-                line = RejectedWeightLine(
-                    RejectedWrite(
-                        writeId: UUID(), record: rejected, reason: .outOfRange,
-                        serverHasValue: false))
+                line = RejectedWeightLine(record: rejected, serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [after, before], rejectedLines: [line]),
                     firstDay: PlacingRejectedLines.day,
@@ -189,10 +186,7 @@ struct TimelineTests {
                 first = try .manual(72.0, at: "2026-09-24T06:00:00+09:00", in: "Asia/Tokyo")
                 restored = try .manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
-                line = RejectedWeightLine(
-                    RejectedWrite(
-                        writeId: UUID(), record: restored, reason: .versionTooLow,
-                        serverHasValue: true))
+                line = RejectedWeightLine(record: restored, serverHasValue: true)
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [restored, first], rejectedLines: [line]),
                     firstDay: PlacingRejectedLines.day,
@@ -221,10 +215,7 @@ struct TimelineTests {
                 after = try .manual(72.8, at: "2026-09-24T21:00:00+09:00", in: "Asia/Tokyo")
                 let corrected = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
-                line = RejectedWeightLine(
-                    RejectedWrite(
-                        writeId: UUID(), record: corrected, reason: .recordNotFound,
-                        serverHasValue: false))
+                line = RejectedWeightLine(record: corrected, serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [after, before], rejectedLines: [line]),
                     firstDay: PlacingRejectedLines.day,
@@ -248,10 +239,7 @@ struct TimelineTests {
             init() throws {
                 let rejected = try WeightRecord.manual(
                     72.4, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
-                let line = RejectedWeightLine(
-                    RejectedWrite(
-                        writeId: UUID(), record: rejected, reason: .outOfRange,
-                        serverHasValue: false))
+                let line = RejectedWeightLine(record: rejected, serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(weightRecords: [], rejectedLines: [line]),
                     firstDay: PlacingRejectedLines.day,
@@ -303,10 +291,7 @@ struct TimelineTests {
                     input: Timeline.Input(
                         weightRecords: [],
                         rejectedLines: [
-                            RejectedWeightLine(
-                                RejectedWrite(
-                                    writeId: UUID(), record: rejected, reason: .outOfRange,
-                                    serverHasValue: false))
+                            RejectedWeightLine(record: rejected, serverHasValue: false)
                         ]),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)

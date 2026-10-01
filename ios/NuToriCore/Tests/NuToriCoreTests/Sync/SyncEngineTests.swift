@@ -365,11 +365,11 @@ struct SyncEngineTests {
                 #expect(
                     result.rejectedWrites == [
                         RejectedWrite(
-                            writeId: createWrite.writeId, record: created, reason: .outOfRange,
-                            serverHasValue: false),
+                            writeId: createWrite.writeId, reason: .outOfRange,
+                            record: .weightRecord(created, serverHasValue: false)),
                         RejectedWrite(
-                            writeId: correctWrite.writeId, record: corrected, reason: .outOfRange,
-                            serverHasValue: true),
+                            writeId: correctWrite.writeId, reason: .outOfRange,
+                            record: .weightRecord(corrected, serverHasValue: true)),
                     ]
                 )
                 #expect(result.ending == .finished)
@@ -400,7 +400,10 @@ struct SyncEngineTests {
                 let result = try await engine.sync()
 
                 #expect(store.records[corrected.id] == nil)
-                #expect(result.rejectedWrites.map(\.serverHasValue) == [false])
+                #expect(
+                    result.rejectedWrites.map(\.record) == [
+                        .weightRecord(corrected, serverHasValue: false)
+                    ])
             }
         }
 
@@ -473,13 +476,14 @@ struct SyncEngineTests {
         struct RejectedThenAcceptedForOneRecord {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
+            let rejected: WeightRecord
             let accepted: WeightRecord
             let serverRecord: WeightRecord
 
             init() throws {
                 let original = try WeightRecord.manual(
                     71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
-                let rejected = WeightRecord(
+                rejected = WeightRecord(
                     id: original.id, kilograms: 500, instant: original.instant,
                     timeZone: original.timeZone, inputSource: .manual, version: 2)
                 accepted = WeightRecord(
@@ -506,7 +510,10 @@ struct SyncEngineTests {
 
                 #expect(store.pending.isEmpty)
                 #expect(store.records[accepted.id] == serverRecord)
-                #expect(result.rejectedWrites.map(\.serverHasValue) == [true])
+                #expect(
+                    result.rejectedWrites.map(\.record) == [
+                        .weightRecord(rejected, serverHasValue: true)
+                    ])
             }
         }
     }

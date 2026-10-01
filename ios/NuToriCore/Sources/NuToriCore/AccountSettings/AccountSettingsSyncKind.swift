@@ -3,13 +3,15 @@ public import NuToriAPI
 
 /// アカウントの設定の、送りと受け取りの入口（キャッシュに依らない部分）。
 /// 登録簿の1行（アプリの `AccountSettingsRecordKind`）が、これを使ってキャッシュに当てる
-public struct AccountSettingsSyncKind: SyncedRecordKind {
+public struct AccountSettingsSyncKind: SyncedRecordKind, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った設定が読めなくなる
     public static let kindName = RecordKindName.accountSettings
 
     public init() {}
 
     public var name: RecordKindName { Self.kindName }
+
+    public var writes: (any RecordKindWrites)? { self }
 
     public func owns(_ change: SyncChange) -> Bool {
         if case .accountSettings = change { true } else { false }
