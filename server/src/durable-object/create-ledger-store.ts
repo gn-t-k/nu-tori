@@ -88,9 +88,11 @@ export const createLedgerStore = (storage: DurableObjectStorage): LedgerStore<Re
         .values({ recordType, recordId })
         .returning({ sequence: recordChanges.sequence })
         .get();
-      db.insert(syncWriteRecordChanges)
-        .values({ recordChangeSequence: change.sequence, syncWriteReceiptId: writeId })
-        .run();
+      if (writeId !== undefined) {
+        db.insert(syncWriteRecordChanges)
+          .values({ recordChangeSequence: change.sequence, syncWriteReceiptId: writeId })
+          .run();
+      }
     },
     findLatestChangePerRecord: (afterSequence, limit) => {
       const latestSequence = sql<number>`max(${recordChanges.sequence})`;
