@@ -3,6 +3,7 @@ import { sentry } from "@sentry/hono/cloudflare";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { accountRoutes } from "./account-routes";
 import { appleServerNotificationRoutes } from "./apple-server-notification-routes";
+import { mealPhotoRoutes } from "./meal-photo-routes";
 import { observeRequest } from "./observe-request";
 import { sessionRoutes } from "./session-routes";
 import { syncRoutes } from "./sync-routes";
@@ -15,6 +16,7 @@ app
   .route("/", sessionRoutes)
   .route("/", accountRoutes)
   .route("/", syncRoutes)
+  .route("/", mealPhotoRoutes)
   .route("/", appleServerNotificationRoutes);
 
 app.openAPIRegistry.registerComponent("securitySchemes", "session", {

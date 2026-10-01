@@ -801,6 +801,110 @@
           }
         }
       }
+    },
+    "/v1/meal-photos/{photoId}": {
+      "put": {
+        "operationId": "putMealPhoto",
+        "summary": "食事の写真の縮小版を送る",
+        "description": "食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "端末が振った写真の ID"
+            },
+            "required": true,
+            "description": "端末が振った写真の ID",
+            "name": "photoId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "EXIF の無い JPEG"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "受け取った"
+          },
+          "400": {
+            "description": "経路の形が違う"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "413": {
+            "description": "3 MiB を超えている"
+          },
+          "415": {
+            "description": "JPEG でない"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          },
+          "500": {
+            "description": "受け取れなかった。送り直す"
+          }
+        }
+      },
+      "get": {
+        "operationId": "getMealPhoto",
+        "summary": "食事の写真の縮小版を取りに行く",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "端末が振った写真の ID"
+            },
+            "required": true,
+            "description": "端末が振った写真の ID",
+            "name": "photoId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "受け取っていて、消していない写真",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "404": {
+            "description": "まだ受け取っていないか、消した"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
     }
   },
   "webhooks": {}

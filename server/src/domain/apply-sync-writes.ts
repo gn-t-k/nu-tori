@@ -21,7 +21,7 @@ export const applySyncWrites = (
   results: PushedResult<RecordType, unknown>[];
   usageEvents: UsageEvent[];
 } => {
-  const pushed = createRecordLedger(ledgerStore, stores).push(request);
+  const pushed = createRecordLedger(ledgerStore, stores, request.receivedAt).push(request);
   return {
     results: pushed.results,
     usageEvents: computeUsageEvents({
