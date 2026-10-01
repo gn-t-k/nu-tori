@@ -1,11 +1,12 @@
-import { R } from "@praha/byethrow";
+import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
+import { match, P } from "ts-pattern";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordType } from "../../domain/record-type";
 import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { MealPhotoArchive } from "../../meal/domain/meal-photo-archive";
 import { beginEstimationAttempts } from "./begin-estimation-attempts";
-import type { EstimationAttemptResult } from "./estimation-attempt-result";
+import type { EstimationAttemptOutcome } from "./estimation-attempt-outcome";
 import type { EstimationProvider } from "./estimation-provider";
 import { recordEstimationAttemptOutcome } from "./record-estimation-attempt-outcome";
 import { runEstimationAttempt } from "./run-estimation-attempt";
@@ -27,7 +28,7 @@ export const advanceEstimations = async (
   usageEvents: UsageEvent[];
   // アラームの呼び出しごとのログに出す、試みごとの結果と失敗した段
   attempts: AttemptReport[];
-  // Sentry に送る、提供元が返したエラー（提供元のエラーと 400）
+  // Sentry に包まずに送る、提供元の応答のエラー（提供元のエラーと 400）
   providerErrors: unknown[];
   stoppedError: unknown;
 }> => {
@@ -50,7 +51,6 @@ export const advanceEstimations = async (
       };
     }),
   );
-  const sendsUsageData = stores.accountSettings.find()?.sendsUsageData ?? true;
   const usageEvents = [
     ...begun.usageEvents,
     ...settled.flatMap((attempt) =>
@@ -58,30 +58,33 @@ export const advanceEstimations = async (
     ),
   ];
   return {
-    usageEvents: sendsUsageData ? usageEvents : [],
+    usageEvents: sendsUsageData(stores.accountSettings) ? usageEvents : [],
     attempts: settled.map(toAttemptReport),
     providerErrors: settled.flatMap((attempt) =>
-      attempt.status === "fulfilled" &&
-      R.isFailure(attempt.value.outcome) &&
-      attempt.value.outcome.error.errorType !== undefined
-        ? [attempt.value.outcome.error.cause]
+      attempt.status === "fulfilled" && "providerError" in attempt.value.outcome
+        ? [attempt.value.outcome.providerError]
         : [],
     ),
     stoppedError: settled.find((attempt) => attempt.status === "rejected")?.reason,
   };
 };
 
-type AttemptReport = {
-  // 途中で止まった試みは undefined
-  result: EstimationAttemptResult | undefined;
-  failedStage: string | undefined;
-  providerErrorType: string | undefined;
-};
+type AttemptReport =
+  | { result: "succeeded" }
+  | {
+      result: "timed_out" | "invalid_response";
+      failedStage: "identify_dishes" | "match_ingredients";
+    }
+  | {
+      result: "provider_error" | "bad_request";
+      failedStage: "identify_dishes" | "match_ingredients";
+      errorType: string;
+    }
+  // 途中で止まった試みは結果が無い
+  | { result: undefined; failedStage: string | undefined };
 
 const toAttemptReport = (
-  settled: PromiseSettledResult<{
-    outcome: Awaited<ReturnType<typeof runEstimationAttempt>>;
-  }>,
+  settled: PromiseSettledResult<{ outcome: EstimationAttemptOutcome }>,
 ): AttemptReport => {
   if (settled.status === "rejected") {
     const reason: unknown = settled.reason;
@@ -91,15 +94,18 @@ const toAttemptReport = (
         reason instanceof Error && "stage" in reason && typeof reason.stage === "string"
           ? reason.stage
           : undefined,
-      providerErrorType: undefined,
     };
   }
-  const { outcome } = settled.value;
-  return R.isSuccess(outcome)
-    ? { result: "succeeded", failedStage: undefined, providerErrorType: undefined }
-    : {
-        result: outcome.error.result,
-        failedStage: outcome.error.failedStage,
-        providerErrorType: outcome.error.errorType,
-      };
+  return match(settled.value.outcome)
+    .returnType<AttemptReport>()
+    .with({ result: "succeeded" }, ({ result }) => ({ result }))
+    .with({ result: P.union("timed_out", "invalid_response") }, ({ result, failedStage }) => ({
+      result,
+      failedStage,
+    }))
+    .with(
+      { result: P.union("provider_error", "bad_request") },
+      ({ result, failedStage, errorType }) => ({ result, failedStage, errorType }),
+    )
+    .exhaustive();
 };

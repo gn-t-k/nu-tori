@@ -3,8 +3,6 @@ import { nutrientSourceColumns } from "../../src/domain/food-composition/nutrien
 import { readAliases } from "./read-aliases";
 import { readNutrientValues } from "./read-nutrient-values";
 
-type Row = readonly unknown[];
-
 // 本表の「表全体」シートの行から、食品の一覧を作る
 // 列は、見出しの文字（食品番号・食品名・備考）と成分識別子の行から探す。並びが変わっていたら、読み違えずに投げる
 export const buildFoodCompositionEntries = (rows: readonly Row[]): FoodCompositionEntry[] => {
@@ -54,6 +52,8 @@ export const buildFoodCompositionEntries = (rows: readonly Row[]): FoodCompositi
     ];
   });
 };
+
+type Row = readonly unknown[];
 
 // 見出しは字の間に全角スペースが入っている（食品番号が「食 品 番 号」の形）ので、空白を除いて比べる
 const findHeaderColumn = (headerRows: readonly Row[], label: string): number => {

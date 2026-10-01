@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import type { MealStore } from "../../meal/domain/meal-store";
@@ -29,12 +30,18 @@ const computeMealEstimationStatus = (
   if (latest === undefined) {
     return "awaiting_photos";
   }
-  if (!latest.isStarted) {
-    // 見送ると次の日の予定を足すので、見送ったのはいちばん新しい予定より前の予定
-    return schedules.some(({ isDeferred }) => isDeferred) ? "deferred_to_next_day" : "estimating";
-  }
-  if (latest.completion !== undefined) {
-    return latest.completion;
-  }
-  return latest.isAbandoned ? "failed" : "estimating";
+  return match(latest.progress)
+    .returnType<MealEstimationStatus>()
+    .with("waiting", () =>
+      // 見送ると次の日の予定を足すので、見送ったのはいちばん新しい予定より前の予定
+      schedules.some(({ progress }) => progress === "deferred")
+        ? "deferred_to_next_day"
+        : "estimating",
+    )
+    .with("deferred", () => "deferred_to_next_day")
+    .with("estimating", () => "estimating")
+    .with("estimated", () => "estimated")
+    .with("no_dishes", () => "no_dishes")
+    .with("abandoned", () => "failed")
+    .exhaustive();
 };

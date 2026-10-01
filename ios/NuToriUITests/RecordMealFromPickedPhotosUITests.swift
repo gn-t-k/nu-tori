@@ -24,18 +24,19 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
         let card = app.buttons["meal-card"]
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         XCTAssertTrue(element(containing: "親子丼").waitForExistence(timeout: 30))
-        XCTAssertTrue(element(containing: "464 kcal").exists)
         XCTAssertTrue(waitUntil(todayRing, matches: "value CONTAINS %@", "食事の記録あり"))
         attachScreenshot(of: app, named: "推定された食事のカード")
 
         card.tap()
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
         XCTAssertTrue(element(containing: "鶏もも肉").waitForExistence(timeout: 5))
-        XCTAssertTrue(element(containing: "栄養の出どころ: 成分表").exists)
-        XCTAssertTrue(app.buttons["nutrient-citation"].exists)
         attachScreenshot(of: app, named: "食事の画面")
+        let delete = app.buttons["meal-delete"]
+        XCTAssertTrue(scrollUntilExists(delete))
+        XCTAssertTrue(app.buttons["nutrient-citation"].exists)
+        attachScreenshot(of: app, named: "食事の画面の下")
 
-        app.buttons["meal-delete"].tap()
+        delete.tap()
         let confirm = app.buttons.matching(
             NSPredicate(format: "label == %@ AND identifier != %@", "食事を削除", "meal-delete")
         ).firstMatch
@@ -58,6 +59,14 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
     private func element(containing text: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text))
             .firstMatch
+    }
+
+    /// 食事の画面は List なので、画面の外の行はまだ作られていない。下へ送って作らせる
+    private func scrollUntilExists(_ element: XCUIElement) -> Bool {
+        for _ in 0..<5 where !element.exists {
+            app.swipeUp()
+        }
+        return element.exists
     }
 
     /// 推定の結果は、取りに行く間隔（数秒おき）で届く

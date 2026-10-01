@@ -1,8 +1,9 @@
-import { runDurableObjectAlarm } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
+import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
 import { deleteMealWrite } from "../../meal/http/testing/delete-meal-write";
 import {
@@ -433,7 +434,10 @@ describe("食事の写真", () => {
   describe("R2 から消せないあいだに、受け取った写真の食事を消したとき", () => {
     let photoId: string;
     let deleteSpy: ReturnType<typeof mockPhotosBucketDeleteError>;
+    let alarmFailure: unknown;
     beforeEach(async () => {
+      // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
+      useFakeClock(Date.now() + 86_400_000);
       photoId = crypto.randomUUID();
       const mealId = crypto.randomUUID();
       await pushSyncWrites(sessionToken, {
@@ -442,16 +446,26 @@ describe("食事の写真", () => {
       await putMealPhoto(sessionToken, photoId);
       deleteSpy = mockPhotosBucketDeleteError(new Error("R2 に届かない"));
       await pushSyncWrites(sessionToken, { writes: [deleteMealWrite(mealId)] });
-      await runDurableObjectAlarm(getAccountDurableObject(env, accountId)).catch(() => false);
-      await vi.waitFor(() => {
-        if (deleteSpy.mock.calls.length === 0) {
-          throw new Error("まだアラームが R2 から消そうとしていない");
-        }
-      });
+      alarmFailure = await runDurableObjectAlarm(getAccountDurableObject(env, accountId)).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
     });
 
     test("R2 から消した事実を控えないこと", async () => {
       expect(await readRows(accountId, "SELECT * FROM meal_photo_file_deletions")).toEqual([]);
+    });
+
+    test("Cloudflare のアラームのやり直しに任せるよう、アラームから例外を投げること", () => {
+      expect(alarmFailure).toEqual(expect.objectContaining({ message: "R2 に届かない" }));
+    });
+
+    test("消し直しのために、アラームを今に張り直さないこと", async () => {
+      expect(
+        await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
+          state.storage.getAlarm(),
+        ),
+      ).toBeNull();
     });
 
     describe("そのあと R2 に届くようになり、送る要求が届いたとき", () => {
@@ -462,9 +476,7 @@ describe("食事の写真", () => {
       });
 
       test("アラームで R2 から消し直すこと", async () => {
-        await vi.waitFor(async () => {
-          expect(await readPhotoFile(photoId)).toBeNull();
-        });
+        expect(await readPhotoFile(photoId)).toBeNull();
       });
     });
   });

@@ -1,5 +1,8 @@
 import { and, asc, count, eq, isNull } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import { match, P } from "ts-pattern";
+import type { EstimationAttemptConclusion } from "../domain/estimation-attempt-conclusion";
+import type { EstimationAttemptResult } from "../domain/estimation-attempt-result";
 import type { EstimationAttempt, EstimationStore } from "../domain/estimation-store";
 import { estimationTables } from "./estimation-tables";
 
@@ -40,7 +43,7 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
         ended:
           endedAt === null || result === null
             ? undefined
-            : { endedAt, result, errorType: errorType ?? undefined },
+            : { endedAt, conclusion: toConclusion(result, errorType) },
       }));
 
   return {
@@ -112,13 +115,13 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
         )
         .get()?.estimationId,
     findAttempts,
-    insertAttemptResult: ({ attemptId, endedAt, result, errorType }) => {
+    insertAttemptResult: ({ attemptId, endedAt, conclusion }) => {
       db.insert(estimationAttemptResults)
-        .values({ estimationAttemptId: attemptId, endedAt, result })
+        .values({ estimationAttemptId: attemptId, endedAt, result: conclusion.result })
         .run();
-      if (errorType !== undefined) {
+      if ("errorType" in conclusion) {
         db.insert(estimationAttemptErrors)
-          .values({ estimationAttemptId: attemptId, errorType })
+          .values({ estimationAttemptId: attemptId, errorType: conclusion.errorType })
           .run();
       }
     },
@@ -130,3 +133,20 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
     },
   };
 };
+
+// 提供元のエラーと 400 の結果には、同じトランザクションでエラーの種類を書いている
+const toConclusion = (
+  result: EstimationAttemptResult,
+  errorType: string | null,
+): EstimationAttemptConclusion =>
+  match(result)
+    .with(P.union("provider_error", "bad_request"), (providerResult) => {
+      if (errorType === null) {
+        throw new Error(`提供元のエラーの試みに、エラーの種類が無い: ${providerResult}`);
+      }
+      return { result: providerResult, errorType };
+    })
+    .with(P.union("succeeded", "timed_out", "invalid_response"), (otherResult) => ({
+      result: otherResult,
+    }))
+    .exhaustive();

@@ -1,15 +1,15 @@
 public import Foundation
 
-/// タイムラインに置く食事のカード。食事と、カードに見せる状態、料理と材料、栄養の合計を持つ
+/// タイムラインに置く食事のカード。食事と、推定の状態、料理と材料を持ち、カードに見せる状態と栄養の合計を出す
 public struct MealCard: Hashable, Sendable {
     public let meal: Meal
-    public let state: MealCardState
+    /// キャッシュの推定の状態。まだ届いていなければ nil
+    public let status: MealEstimationStatus?
+    /// この端末で記録した（送った端末の）食事か
+    public let recordedOnThisDevice: Bool
     /// 食事の料理と材料。まだ届いていないものは入らない
     public let contents: MealContents
-    public let nutrition: MealNutrition
 
-    /// `status` はキャッシュの推定の状態で、まだ届いていなければ nil。
-    /// `recordedOnThisDevice` は、この端末で記録した（送った端末の）食事か。
     /// `dishes` と `ingredients` は、キャッシュの全部の料理・材料でよい（この食事のものを取り出す）
     public init(
         meal: Meal,
@@ -19,11 +19,9 @@ public struct MealCard: Hashable, Sendable {
         ingredients: [Ingredient]
     ) {
         self.meal = meal
-        let state = MealCardState(status: status, recordedOnThisDevice: recordedOnThisDevice)
-        self.state = state
-        let contents = MealContents(mealId: meal.id, dishes: dishes, ingredients: ingredients)
-        self.contents = contents
-        nutrition = MealNutrition(state: state, contents: contents)
+        self.status = status
+        self.recordedOnThisDevice = recordedOnThisDevice
+        contents = MealContents(mealId: meal.id, dishes: dishes, ingredients: ingredients)
     }
 
     /// 料理と材料がまだ届いていない食事のカード
@@ -31,6 +29,14 @@ public struct MealCard: Hashable, Sendable {
         self.init(
             meal: meal, status: status, recordedOnThisDevice: recordedOnThisDevice, dishes: [],
             ingredients: [])
+    }
+
+    public var state: MealCardState {
+        MealCardState(status: status, recordedOnThisDevice: recordedOnThisDevice)
+    }
+
+    public var nutrition: MealNutrition {
+        MealNutrition(state: state, contents: contents)
     }
 
     /// カードに出す時刻。撮った日がカードを置く日と違えば（前の日の写真を選んだ）、撮った日を添える

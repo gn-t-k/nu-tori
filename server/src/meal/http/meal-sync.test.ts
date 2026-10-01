@@ -145,7 +145,7 @@ describe("食事の同期", () => {
       });
     });
 
-    describe("同じ ID の食事の作る書き込みが範囲の外で受け付けられなかったとき", () => {
+    describe("同じ ID で、範囲の外の作る書き込みを送ったとき", () => {
       let response: Response;
       beforeEach(async () => {
         response = await pushSyncWrites(sessionToken, {
@@ -153,11 +153,8 @@ describe("食事の同期", () => {
         });
       });
 
-      test("その食事の今の値を、取りに行く変更と同じ形で添えること", async () => {
-        expect((await response.json<PushResults>()).results[0]?.current).toEqual({
-          status: "value",
-          change: { kind: "meal", recordId: mealId, record: existing.meal },
-        });
+      test("範囲を確かめる前に、同じ ID の食事として捨てること", async () => {
+        expect((await response.json<PushResults>()).results[0]?.result).toBe("ignored_duplicate");
       });
     });
   });
@@ -301,6 +298,21 @@ describe("食事の同期", () => {
           "meal_estimation_status_deletion",
           "meal_deletion",
         ]);
+      });
+    });
+
+    describe("消した食事の ID で、範囲の外の作る書き込みを送ったとき", () => {
+      let recreateResponse: Response;
+      beforeEach(async () => {
+        recreateResponse = await pushSyncWrites(sessionToken, {
+          writes: [createMealWrite({ meal: { id: mealId, photos: [] } })],
+        });
+      });
+
+      test("範囲を確かめる前に、削除の印で捨てること", async () => {
+        expect((await recreateResponse.json<PushResults>()).results[0]?.result).toBe(
+          "ignored_tombstone",
+        );
       });
     });
 

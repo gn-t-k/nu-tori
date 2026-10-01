@@ -11,15 +11,14 @@ describe("次に試みる時刻", () => {
           attemptedAt: new Date("2026-10-01T03:00:00Z"),
           ended: {
             endedAt: new Date("2026-10-01T03:00:20Z"),
-            result: "provider_error",
-            errorType: "overloaded_error",
+            conclusion: { result: "provider_error", errorType: "overloaded_error" },
           },
         },
       ];
     });
 
-    test("終わった時刻の 15 秒後であること", () => {
-      expect(computeNextEstimationAttemptAt(attempts)).toEqual(new Date("2026-10-01T03:00:35Z"));
+    test("始めた時刻の 15 秒後であること", () => {
+      expect(computeNextEstimationAttemptAt(attempts)).toEqual(new Date("2026-10-01T03:00:15Z"));
     });
   });
 
@@ -33,15 +32,14 @@ describe("次に試みる時刻", () => {
           attemptedAt: new Date("2026-10-01T03:08:00Z"),
           ended: {
             endedAt: new Date("2026-10-01T03:08:10Z"),
-            result: "timed_out",
-            errorType: undefined,
+            conclusion: { result: "timed_out" },
           },
         },
       ];
     });
 
-    test("待ちを広げ、終わった時刻の 60 秒後であること", () => {
-      expect(computeNextEstimationAttemptAt(attempts)).toEqual(new Date("2026-10-01T03:09:10Z"));
+    test("待ちを広げ、始めた時刻の 60 秒後であること", () => {
+      expect(computeNextEstimationAttemptAt(attempts)).toEqual(new Date("2026-10-01T03:09:00Z"));
     });
   });
 
@@ -53,8 +51,7 @@ describe("次に試みる時刻", () => {
           attemptedAt: new Date("2026-10-01T03:00:00Z"),
           ended: {
             endedAt: new Date("2026-10-01T03:00:20Z"),
-            result: "invalid_response",
-            errorType: undefined,
+            conclusion: { result: "invalid_response" },
           },
         },
         { attemptedAt: new Date("2026-10-01T03:01:00Z"), ended: undefined },

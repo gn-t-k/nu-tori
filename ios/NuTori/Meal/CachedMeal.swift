@@ -20,7 +20,7 @@ nonisolated final class CachedMeal {
         eatenUtcOffsetSeconds = meal.eatenUtcOffsetSeconds
         sentAt = meal.sentAt
         sentTimeZoneIdentifier = meal.sentTimeZone.identifier
-        entry = Self.storedEntry(meal.entry)
+        entry = meal.entry.rawValue
         photoIds = meal.photoIds
     }
 
@@ -30,17 +30,15 @@ nonisolated final class CachedMeal {
         eatenUtcOffsetSeconds = meal.eatenUtcOffsetSeconds
         sentAt = meal.sentAt
         sentTimeZoneIdentifier = meal.sentTimeZone.identifier
-        entry = Self.storedEntry(meal.entry)
+        entry = meal.entry.rawValue
         photoIds = meal.photoIds
     }
 
     func meal() -> Meal? {
-        guard let sentTimeZone = TimeZone(identifier: sentTimeZoneIdentifier) else { return nil }
-        let mealEntry: MealDraft.Entry
-        switch entry {
-        case "captured": mealEntry = .captured
-        case "picked": mealEntry = .picked
-        default: return nil
+        guard let sentTimeZone = TimeZone(identifier: sentTimeZoneIdentifier),
+            let mealEntry = MealDraft.Entry(rawValue: entry)
+        else {
+            return nil
         }
         return Meal(
             id: mealId,
@@ -51,12 +49,5 @@ nonisolated final class CachedMeal {
             entry: mealEntry,
             photoIds: photoIds
         )
-    }
-
-    private static func storedEntry(_ entry: MealDraft.Entry) -> String {
-        switch entry {
-        case .captured: "captured"
-        case .picked: "picked"
-        }
     }
 }

@@ -57,13 +57,17 @@ struct DayFoodTests {
 
     @Suite("「不明」の材料が混じる栄養があるとき")
     struct WithUnknownNutrient {
-        @Test("その栄養の合計に「以上」が付くこと")
-        func totalIsAtLeast() throws {
-            let food = DayFood(meals: [
+        let food: DayFood
+
+        init() throws {
+            food = DayFood(meals: [
                 try .fixture(status: .estimated, nutrients: [.energyKcal: 300, .proteinG: 12]),
                 try .fixture(status: .estimated, nutrients: [.energyKcal: 200]),
             ])
+        }
 
+        @Test("その栄養の合計に「以上」が付くこと")
+        func totalIsAtLeast() throws {
             let figures = try #require(food.figures)
 
             #expect(figures.totals[.energyKcal] == .exactly(500))
@@ -179,25 +183,33 @@ struct DayFoodTests {
 
     @Suite("料理なしと推定できなかった食事と、推定が済んでいない食事だけの日")
     struct WithoutFoodAndPending {
-        @Test("kcal のある食事が無いので、「—」にして、済んでいない食事の数を持つこと")
-        func isUnavailableWithPendingCount() throws {
-            let food = DayFood(meals: [
+        let food: DayFood
+
+        init() throws {
+            food = DayFood(meals: [
                 try .fixture(status: .noDishes), try .fixture(status: .estimating),
             ])
+        }
 
+        @Test("kcal のある食事が無いので、「—」にして、済んでいない食事の数を持つこと")
+        func isUnavailableWithPendingCount() {
             #expect(food == .unavailable(pendingMealCount: 1))
         }
     }
 
     @Suite("料理なしの食事と、推定できた食事が混じる日")
     struct WithoutFoodAndEstimated {
-        @Test("料理なしの食事は合計にも注記にも影響しないこと")
-        func ignoresMealsWithoutFood() throws {
-            let food = DayFood(meals: [
+        let food: DayFood
+
+        init() throws {
+            food = DayFood(meals: [
                 try .fixture(status: .estimated, nutrients: DayFoodTests.lunchNutrients),
                 try .fixture(status: .failed),
             ])
+        }
 
+        @Test("料理なしの食事は合計にも注記にも影響しないこと")
+        func ignoresMealsWithoutFood() throws {
             let figures = try #require(food.figures)
 
             #expect(figures.totals[.energyKcal] == .exactly(520))
@@ -207,12 +219,16 @@ struct DayFoodTests {
 
     @Suite("推定できたのに kcal を持つ材料が1つも無い日")
     struct EstimatedWithoutKilocalories {
-        @Test("kcal が出せない日として扱うこと")
-        func isUnavailable() throws {
-            let food = DayFood(meals: [
+        let food: DayFood
+
+        init() throws {
+            food = DayFood(meals: [
                 try .fixture(status: .estimated, nutrients: [.proteinG: 10])
             ])
+        }
 
+        @Test("kcal が出せない日として扱うこと")
+        func isUnavailable() {
             #expect(food == .unavailable(pendingMealCount: 0))
         }
     }
@@ -221,59 +237,93 @@ struct DayFoodTests {
     struct Note {
         static let ringNote = "目標がないので、丸は P・F・C の割合で一周します。"
 
-        @Test("推定が済んだ食事だけの日は、丸の説明だけを添えること")
-        func onlyRingNote() throws {
-            let food = DayFood(meals: [
-                try .fixture(status: .estimated, nutrients: DayFoodTests.lunchNutrients)
-            ])
+        @Suite("推定が済んだ食事だけの日")
+        struct OnlyEstimated {
+            let food: DayFood
 
-            #expect(food.notes == [Self.ringNote])
-        }
-
-        @Test("どれも済んでいない日は、推定しているところだと添えること")
-        func allPending() {
-            #expect(
-                DayFood.allPending.notes == [
-                    Self.ringNote,
-                    "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。",
+            init() throws {
+                food = DayFood(meals: [
+                    try .fixture(status: .estimated, nutrients: DayFoodTests.lunchNutrients)
                 ])
+            }
+
+            @Test("丸の説明だけを添えること")
+            func onlyRingNote() {
+                #expect(food.notes == [Note.ringNote])
+            }
         }
 
-        @Test("一部が済んでいない日は、済んでいない食事の数を添えること")
-        func somePending() throws {
-            let food = DayFood(meals: [
-                try .fixture(status: .estimated, nutrients: DayFoodTests.lunchNutrients),
-                try .fixture(status: .estimating),
-                try .fixture(status: .deferredToNextDay),
-            ])
+        @Suite("どれも済んでいない日")
+        struct AllPending {
+            let food = DayFood.allPending
 
-            #expect(
-                food.notes == [
-                    Self.ringNote,
-                    "まだ推定が済んでいない食事が2つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+            @Test("推定しているところだと添えること")
+            func saysEstimating() {
+                #expect(
+                    food.notes == [
+                        Note.ringNote,
+                        "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。",
+                    ])
+            }
+        }
+
+        @Suite("一部が済んでいない日")
+        struct SomePending {
+            let food: DayFood
+
+            init() throws {
+                food = DayFood(meals: [
+                    try .fixture(status: .estimated, nutrients: DayFoodTests.lunchNutrients),
+                    try .fixture(status: .estimating),
+                    try .fixture(status: .deferredToNextDay),
                 ])
+            }
+
+            @Test("済んでいない食事の数を添えること")
+            func countsPendingMeals() {
+                #expect(
+                    food.notes == [
+                        Note.ringNote,
+                        "まだ推定が済んでいない食事が2つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+                    ])
+            }
         }
 
-        @Test("kcal が出ず、済んでいない食事がある日は、済んでいない食事の数を添えること")
-        func unavailableWithPending() {
-            #expect(
-                DayFood.unavailable(pendingMealCount: 1).notes == [
-                    Self.ringNote,
-                    "まだ推定が済んでいない食事が1つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
-                ])
+        @Suite("kcal が出ず、済んでいない食事がある日")
+        struct UnavailableWithPending {
+            let food = DayFood.unavailable(pendingMealCount: 1)
+
+            @Test("済んでいない食事の数を添えること")
+            func countsPendingMeals() {
+                #expect(
+                    food.notes == [
+                        Note.ringNote,
+                        "まだ推定が済んでいない食事が1つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+                    ])
+            }
         }
 
-        @Test("料理なしと推定できなかった食事だけの日は、出せなかったと添えること")
-        func unavailable() {
-            #expect(
-                DayFood.unavailable(pendingMealCount: 0).notes == [
-                    Self.ringNote, "この日の食事からは、kcal と P・F・C を出せませんでした。",
-                ])
+        @Suite("料理なしと推定できなかった食事だけの日")
+        struct Unavailable {
+            let food = DayFood.unavailable(pendingMealCount: 0)
+
+            @Test("出せなかったと添えること")
+            func saysUnavailable() {
+                #expect(
+                    food.notes == [
+                        Note.ringNote, "この日の食事からは、kcal と P・F・C を出せませんでした。",
+                    ])
+            }
         }
 
-        @Test("食事の無い日は、何も添えないこと")
-        func noMeals() {
-            #expect(DayFood.noMeals.notes.isEmpty)
+        @Suite("食事の無い日")
+        struct NoMeals {
+            let food = DayFood.noMeals
+
+            @Test("何も添えないこと")
+            func addsNothing() {
+                #expect(food.notes.isEmpty)
+            }
         }
     }
 }

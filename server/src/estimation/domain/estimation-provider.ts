@@ -1,6 +1,9 @@
 import type { R } from "@praha/byethrow";
-import { ErrorFactory } from "@praha/error-factory";
 import type { NutrientName } from "../../domain/food-composition/nutrient-name";
+import type { EstimationProviderBadRequestError } from "./estimation-provider-bad-request-error";
+import type { EstimationProviderError } from "./estimation-provider-error";
+import type { EstimationProviderInvalidResponseError } from "./estimation-provider-invalid-response-error";
+import type { EstimationProviderTimedOutError } from "./estimation-provider-timed-out-error";
 
 // 推定を頼む提供元（LLM）。① で写真から料理と材料を読み取り、② で材料ごとに成分表の候補から選ぶか主な栄養を推定する。
 // 本物は Anthropic の API を呼ぶ（基盤に固有の層が実装する）。応答は残さず、推定の結果だけをドメイン層が書く。
@@ -9,11 +12,23 @@ export type EstimationProvider = {
   identifyDishes(
     request: { photos: readonly ArrayBuffer[] },
     signal: AbortSignal,
-  ): R.ResultAsync<EstimationProviderReply<IdentifiedDishes>, EstimationProviderFailure>;
+  ): R.ResultAsync<
+    EstimationProviderReply<IdentifiedDishes>,
+    | EstimationProviderError
+    | EstimationProviderBadRequestError
+    | EstimationProviderTimedOutError
+    | EstimationProviderInvalidResponseError
+  >;
   matchIngredients(
     request: IngredientMatchRequest,
     signal: AbortSignal,
-  ): R.ResultAsync<EstimationProviderReply<MatchedIngredients>, EstimationProviderFailure>;
+  ): R.ResultAsync<
+    EstimationProviderReply<MatchedIngredients>,
+    | EstimationProviderError
+    | EstimationProviderBadRequestError
+    | EstimationProviderTimedOutError
+    | EstimationProviderInvalidResponseError
+  >;
 };
 
 export type EstimationProviderReply<TOutput> = {
@@ -69,35 +84,3 @@ export type MainNutrientName = Extract<
   NutrientName,
   "energy_kcal" | "protein_g" | "fat_g" | "carbohydrate_g" | "fiber_g" | "salt_equivalent_g"
 >;
-
-export type EstimationProviderFailure =
-  | EstimationProviderError
-  | EstimationProviderBadRequestError
-  | EstimationProviderTimedOutError
-  | EstimationProviderInvalidResponseError;
-
-// 提供元が返したエラー（400 のほか）。errorType は提供元のエラーの種類。cause に応答のエラーの内容を持たせる
-export class EstimationProviderError extends ErrorFactory({
-  name: "EstimationProviderError",
-  message: "提供元がエラーを返した",
-  fields: ErrorFactory.fields<{ errorType: string }>(),
-}) {}
-
-// HTTP 400。やり直さずに諦める（ワークスペースの月の支出の上限に当たったときも 400）
-export class EstimationProviderBadRequestError extends ErrorFactory({
-  name: "EstimationProviderBadRequestError",
-  message: "提供元が要求を受け付けなかった（400）",
-  fields: ErrorFactory.fields<{ errorType: string }>(),
-}) {}
-
-export class EstimationProviderTimedOutError extends ErrorFactory({
-  name: "EstimationProviderTimedOutError",
-  message: "提供元の呼び出しが時間の上限を超えた",
-}) {}
-
-// 応答を決めた形に読めなかった（構造化出力が途中で切れたなど）。使ったトークンは数える
-export class EstimationProviderInvalidResponseError extends ErrorFactory({
-  name: "EstimationProviderInvalidResponseError",
-  message: "提供元の応答を読めなかった",
-  fields: ErrorFactory.fields<{ usage: TokenUsage }>(),
-}) {}

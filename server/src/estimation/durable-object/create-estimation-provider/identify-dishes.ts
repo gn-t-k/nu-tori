@@ -2,10 +2,10 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
 import { z } from "zod";
 import nutrients from "../../../../../shared/nutrients.json";
-import {
-  type EstimationProviderFailure,
-  type EstimationProviderReply,
-  type IdentifiedDishes,
+import type {
+  EstimationProvider,
+  EstimationProviderReply,
+  IdentifiedDishes,
 } from "../../domain/estimation-provider";
 import { requestStructuredOutput } from "./request-structured-output";
 
@@ -15,7 +15,10 @@ export const identifyDishes = async (
   userId: string,
   request: { photos: readonly ArrayBuffer[] },
   signal: AbortSignal,
-): R.ResultAsync<EstimationProviderReply<IdentifiedDishes>, EstimationProviderFailure> => {
+): R.ResultAsync<
+  EstimationProviderReply<IdentifiedDishes>,
+  R.InferFailure<EstimationProvider["identifyDishes"]>
+> => {
   // 写真を読むので長めにする。試み全体の上限（3 分）に、② の上限と合わせて収まる長さにする
   const timeLimitMs = 90_000;
   const requested = await requestStructuredOutput(

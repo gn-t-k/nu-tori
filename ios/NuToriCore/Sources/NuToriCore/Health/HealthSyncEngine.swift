@@ -116,9 +116,9 @@ public actor HealthSyncEngine {
     public func exportNutrition() async throws {
         let authorized = try await healthStore.writeAuthorizedNutrients()
         guard !authorized.isEmpty else { return }
-        let cached = try await CachedNutrition(store: store)
+        let changes = try await HealthDishChanges(store: store)
         var firstFailure: (any Error)?
-        for dishId in cached.writtenDishIdsToDelete {
+        for dishId in changes.writtenDishIdsToDelete {
             do {
                 try await healthStore.deleteNutrition(syncId: dishId)
             } catch is CancellationError {
@@ -129,10 +129,12 @@ public actor HealthSyncEngine {
             }
             try await writingCache { try await store.unmarkDishWrittenToHealth(dishId: dishId) }
         }
-        for contents in cached.dishesToWrite {
+        for toWrite in changes.dishesToWrite {
+            let contents = toWrite.contents
+            // 書く値が1つも無い料理は書かない
             guard
-                let meal = cached.meal(of: contents.dish),
-                let write = HealthNutritionWrite(dish: contents, of: meal, authorized: authorized)
+                let write = HealthNutritionWrite(
+                    dish: contents, of: toWrite.meal, authorized: authorized)
             else {
                 continue
             }

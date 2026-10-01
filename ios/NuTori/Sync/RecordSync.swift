@@ -30,7 +30,8 @@ import NuToriCore
     let mealPhotos: MealPhotos
 
     /// 1回の撮る・選ぶでできた食事を記録する。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている。
-    /// 写真はアプリの中に置いて裏で送り始め、食事の書き込みは送り待ちから送る。送れなかった分は送り待ちに残る。
+    /// 写真はアプリの中に置いて裏で送り始め、食事の書き込みは送り待ちから裏で送る。送れなかった分は送り待ちに残る。
+    /// 同期の往復を待たずに返す（呼び出し側が、タイムラインに戻ってすぐ栄養の許可を求めるため）。
     /// 送れたら、推定中の食事があるあいだ、裏で取りに行く。サインインしていなければ記録せず空。
     /// 記録できなかった食事があれば投げる（それより前の食事は記録してある）
     @discardableResult
@@ -41,25 +42,22 @@ import NuToriCore
         for draft in drafts {
             meals.append(try await engine.recordMeal(draft, originals: originals))
         }
+        Task { await self.followEstimationAfterSending() }
+        return meals
+    }
+
+    /// 食事を記録したあとと、食事の写真を送り終えたあと。送り待ちを送り、送り終えたら、推定中の食事があるあいだ裏で取りに行く
+    func followEstimationAfterSending() async {
         guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
-            return meals
+            return
         }
         followEstimationInBackground(sentAt: .now)
-        return meals
     }
 
     /// App スイッチャーで閉じると裏の送信が取り消されるので、開いたときに写真の送り残しを送り直す
     func resendPendingPhotos() async {
         guard await hasSession() else { return }
         await mealPhotos.resendPendingUploads()
-    }
-
-    /// 食事の写真を送り終えたあとも、食事を送ったあとと同じく、推定中の食事があるあいだ裏で取りに行く
-    func followEstimationAfterPhotosDelivered() async {
-        guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
-            return
-        }
-        followEstimationInBackground(sentAt: .now)
     }
 
     /// 電波が無くても、その場でキャッシュとアプリの中の写真から消える。消す書き込みは送り待ちに並ぶ

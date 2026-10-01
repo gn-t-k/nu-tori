@@ -2,8 +2,6 @@ import { Hono } from "hono";
 import { createAuthentication } from "../../auth/create-authentication";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 
-const minimumSecretLength = 32;
-
 // 開発用の環境で主な流れを確かめるジョブ（.github/workflows/deploy.yml）のための、Apple を通さないサインインの口。
 // 開いてはいけない環境（本番）で開くと誰でも入れてしまうので、次のすべてが揃ったときだけ開き、ほかは口が無いのと同じ 404 にする。
 // 1. 環境の名前（SENTRY_ENVIRONMENT）が development。許可する名前を挙げ、本番や綴りの違う名前は閉じる
@@ -13,6 +11,7 @@ const minimumSecretLength = 32;
 export const e2eSessionRoutes = new Hono<{ Bindings: Env }>().post(
   "/v1/e2e/sessions",
   async (c) => {
+    const minimumSecretLength = 32;
     const secret = c.env.E2E_SIGN_IN_SECRET;
     if (
       c.env.SENTRY_ENVIRONMENT !== "development" ||

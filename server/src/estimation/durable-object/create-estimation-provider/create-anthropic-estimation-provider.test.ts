@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { EstimationProvider, IngredientMatchRequest } from "../../domain/estimation-provider";
 import { createAnthropicEstimationProvider } from "./create-anthropic-estimation-provider";
-import { replyWithError, replyWithText, stubAnthropicApi } from "./testing/stub-anthropic-api";
+import { replyWithError } from "./testing/reply-with-error";
+import { replyWithText } from "./testing/reply-with-text";
+import { stubAnthropicApi } from "./testing/stub-anthropic-api";
 
 // "account-1" の SHA-256（16 進）。ハッシュの正しさは、独立に計算した値で確かめる
 const hashOfAccount1 = "07e998012c1137decdf3efbbb1c3ee6d79b015638cbc197bdbcce1875de4faad";

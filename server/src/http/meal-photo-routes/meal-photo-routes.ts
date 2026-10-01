@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { R } from "@praha/byethrow";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
@@ -57,10 +58,14 @@ export const mealPhotoRoutes = new OpenAPIHono<{ Bindings: Env }>()
       if (mediaType !== photoContentType) {
         return c.body(null, 415);
       }
-      await getAccountDurableObject(c.env, c.var.accountId).receiveMealPhoto(c.var.accountId, {
-        photoId: c.req.valid("param").photoId,
-        photo: await c.req.arrayBuffer(),
-      });
+      const received = await getAccountDurableObject(c.env, c.var.accountId).receiveMealPhoto(
+        c.var.accountId,
+        { photoId: c.req.valid("param").photoId, photo: await c.req.arrayBuffer() },
+      );
+      // 受け取れなかったら投げて 500 にし、要求ごとのログに失敗した段を出す
+      if (R.isFailure(received)) {
+        throw received.error;
+      }
       return c.body(null, 204);
     },
   )

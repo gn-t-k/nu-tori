@@ -19,13 +19,14 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case cameraCancelled
     /// カメラを許可していない人が「撮る」を押し、入力欄の上に知らせを出した
     case cameraPermissionNoticeShown
-    /// 食事の画面で食事を消した。消したときのカードの状態と、送ってから消すまでの時間
-    case mealDeleted(state: MealCardState, sinceRecorded: Duration)
+    /// 食事の画面で食事を消した。消したときの推定の状態と、送ってから消すまでの時間
+    case mealDeleted(status: MealEstimationStatus, sinceRecorded: Duration)
 
-    /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする
+    /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
+    /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
     public static func mealDeleted(_ card: MealCard, at now: Date) -> ClientUsageEvent {
         .mealDeleted(
-            state: card.state,
+            status: card.status ?? .awaitingPhotos,
             sinceRecorded: .seconds(max(now.timeIntervalSince(card.meal.sentAt), 0)))
     }
 
@@ -112,9 +113,9 @@ public enum ClientUsageEvent: Sendable, Equatable {
                 "photo_count": .count(photoCount),
                 "meal_count": .count(mealCount),
             ]
-        case .mealDeleted(let state, let sinceRecorded):
+        case .mealDeleted(let status, let sinceRecorded):
             [
-                "estimation_state": .token(state.token),
+                "estimation_state": .token(status.token),
                 "seconds_since_recorded": .wholeSeconds(Self.wholeSeconds(sinceRecorded)),
             ]
         }
@@ -154,10 +155,9 @@ extension MealDraft.Entry {
     }
 }
 
-extension MealCardState {
+extension MealEstimationStatus {
     fileprivate var token: String {
         switch self {
-        case .notSent: "not_sent"
         case .awaitingPhotos: "awaiting_photos"
         case .estimating: "estimating"
         case .estimated: "estimated"

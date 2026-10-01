@@ -40,9 +40,24 @@ export const createMealEstimationStatusStore = (
       .all()
       .map(({ dueAt, deferral, estimation, completion, abandonment }) => ({
         dueAt,
-        isDeferred: deferral !== null,
-        isStarted: estimation !== null,
-        completion: completion ?? undefined,
-        isAbandoned: abandonment !== null,
+        progress: toProgress({ deferral, estimation, completion, abandonment }),
       })),
 });
+
+const toProgress = (events: {
+  deferral: string | null;
+  estimation: string | null;
+  completion: "estimated" | "no_dishes" | null;
+  abandonment: string | null;
+}): ReturnType<MealEstimationStatusStore["findSchedulesOfMeal"]>[number]["progress"] => {
+  if (events.deferral !== null) {
+    return "deferred";
+  }
+  if (events.estimation === null) {
+    return "waiting";
+  }
+  if (events.completion !== null) {
+    return events.completion;
+  }
+  return events.abandonment === null ? "estimating" : "abandoned";
+};

@@ -12,7 +12,8 @@
                 },
                 now: { .now },
                 capture: { _ in },
-                deleteMeal: { _, _ in }
+                deleteMeal: { _, _ in },
+                confirmsDeletion: sample.confirmsDeletion
             )
         }
     }
@@ -37,6 +38,8 @@
             case deferredToNextDay
             /// 推定できなかった。0 kcal
             case failed
+            /// 推定できた食事で「食事を削除」を押し、画面の下に確かめを出している
+            case confirmingDeletion
 
             var card: MealCard {
                 switch self {
@@ -68,6 +71,18 @@
                 case .failed:
                     MealCard(
                         meal: lunch(photoCount: 1), status: .failed, recordedOnThisDevice: true)
+                case .confirmingDeletion:
+                    .sampleEstimated(lunch(photoCount: 1))
+                }
+            }
+
+            var confirmsDeletion: Bool {
+                switch self {
+                case .confirmingDeletion: true
+                case .notSent, .awaitingPhotosOnAnotherDevice, .estimating, .estimated,
+                    .estimatedWithoutFoodComposition, .estimatedBeforeDishesArrive, .noDishes,
+                    .deferredToNextDay, .failed:
+                    false
                 }
             }
 
@@ -76,7 +91,8 @@
                 switch self {
                 case .awaitingPhotosOnAnotherDevice: false
                 case .notSent, .estimating, .estimated, .estimatedWithoutFoodComposition,
-                    .estimatedBeforeDishesArrive, .noDishes, .deferredToNextDay, .failed:
+                    .estimatedBeforeDishesArrive, .noDishes, .deferredToNextDay, .failed,
+                    .confirmingDeletion:
                     true
                 }
             }

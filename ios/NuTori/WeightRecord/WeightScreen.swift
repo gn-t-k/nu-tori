@@ -63,9 +63,6 @@ struct WeightScreen: View {
         .onAppear {
             Task { await capture(.screen(.weight)) }
         }
-        .onDisappear {
-            Task { await capture(.screen(.timeline)) }
-        }
     }
 
     @State private var correction = Correction.notEditing

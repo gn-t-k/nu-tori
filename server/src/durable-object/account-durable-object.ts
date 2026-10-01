@@ -2,11 +2,13 @@ import { R } from "@praha/byethrow";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { captureException, instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
+import { sendsUsageData } from "../account-settings/domain/sends-usage-data";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
 import { applySyncWrites } from "../domain/apply-sync-writes";
 import { computeNextAlarmAt } from "../domain/compute-next-alarm-at";
+import { computeNextAlarmAtExceptLeftoverPhotos } from "../domain/compute-next-alarm-at-except-leftover-photos";
 import { pullSyncChanges } from "../domain/pull-sync-changes";
-import { receiveMealPhoto } from "../domain/receive-meal-photo";
+import { receiveMealPhoto, type MealPhotoReceiptFailedError } from "../domain/receive-meal-photo";
 import type { SyncClientState } from "../domain/sync-client-state";
 import type { SyncWrite } from "../domain/sync-write";
 import { advanceEstimations } from "../estimation/domain/advance-estimations";
@@ -74,31 +76,31 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       return pulled;
     }
 
-    // 失敗したら PostHog に送り、例外を受け口に返す。受け口は 500 にし、要求ごとのログに失敗した段を出す
+    // 失敗したら PostHog に送り、失敗を受け口に返す。受け口は 500 にし、要求ごとのログに失敗した段を出す
     async receiveMealPhoto(
       accountId: string,
       request: { photoId: string; photo: ArrayBuffer },
-    ): Promise<void> {
+    ): R.ResultAsync<void, MealPhotoReceiptFailedError> {
       setUser({ id: accountId });
       const stores = createRecordKindStores(this.ctx.storage);
-      const received = await receiveMealPhoto(
-        createLedgerStore(this.ctx.storage),
-        stores,
-        createMealPhotoArchive(this.env.PHOTOS, accountId),
-        { ...request, receivedAt: new Date() },
+      return R.pipe(
+        receiveMealPhoto(
+          createLedgerStore(this.ctx.storage),
+          stores,
+          createMealPhotoArchive(this.env.PHOTOS, accountId),
+          { ...request, receivedAt: new Date() },
+        ),
+        R.inspect(() => this.armAlarm()),
+        R.inspectError(({ stage }) =>
+          sendUsageEvents(
+            this.env,
+            accountId,
+            sendsUsageData(stores.accountSettings)
+              ? [{ name: "meal_photo_receipt_failed", stage }]
+              : [],
+          ),
+        ),
       );
-      if (R.isFailure(received)) {
-        const sendsUsageData = stores.accountSettings.find()?.sendsUsageData ?? true;
-        await sendUsageEvents(
-          this.env,
-          accountId,
-          sendsUsageData
-            ? [{ name: "meal_photo_receipt_failed", stage: received.error.stage }]
-            : [],
-        );
-        throw received.error;
-      }
-      await this.armAlarm();
     }
 
     async readMealPhoto(accountId: string, photoId: string): Promise<ArrayBuffer | undefined> {
@@ -137,13 +139,21 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         },
         new Date(),
       );
-      let alarmError = advanced.stoppedError;
-      try {
-        await deleteLeftoverMealPhotoFiles(stores.mealPhoto, archive, new Date());
-      } catch (error) {
-        alarmError ??= error;
-      }
-      await this.armAlarm();
+      const deletionError: unknown = await deleteLeftoverMealPhotoFiles(
+        stores.mealPhoto,
+        archive,
+        new Date(),
+      ).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      // 消し直しに失敗したら、今に張り直さず Cloudflare のアラームのやり直しに任せる。使い切ったら、次に予定を入れたときに消し直す
+      await this.setAlarm(
+        deletionError === undefined
+          ? computeNextAlarmAt(stores, new Date())
+          : computeNextAlarmAtExceptLeftoverPhotos(stores),
+      );
+      const alarmError = advanced.stoppedError ?? deletionError;
       for (const providerError of advanced.providerErrors) {
         captureException(providerError);
       }
@@ -165,7 +175,10 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     // 送る要求と写真の要求の入口で、表から出したいちばん早い時刻に張り直す
     private async armAlarm(): Promise<void> {
-      const alarmAt = computeNextAlarmAt(createRecordKindStores(this.ctx.storage), new Date());
+      await this.setAlarm(computeNextAlarmAt(createRecordKindStores(this.ctx.storage), new Date()));
+    }
+
+    private async setAlarm(alarmAt: Date | undefined): Promise<void> {
       if (alarmAt !== undefined) {
         await this.ctx.storage.setAlarm(alarmAt);
       }

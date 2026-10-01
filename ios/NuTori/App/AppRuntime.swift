@@ -126,7 +126,7 @@ import SwiftData
         Task {
             for await (upload, result) in finishedUploads {
                 if await mealPhotos.finishUpload(upload, with: result) {
-                    await sync.followEstimationAfterPhotosDelivered()
+                    await sync.followEstimationAfterSending()
                 }
             }
         }

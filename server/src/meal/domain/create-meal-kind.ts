@@ -21,14 +21,7 @@ import { type MealWrite, mealWriteTypes } from "./meal-write";
 
 // receivedAt は要求を受け取った時刻。写真がそろった食事の推定の予定の時刻と、数える日に使う
 export const createMealKind = (
-  stores: {
-    meal: MealStore;
-    mealPhoto: MealPhotoStore;
-    estimationSchedule: EstimationScheduleStore;
-    estimation: EstimationStore;
-    dish: DishStore;
-    ingredient: IngredientStore;
-  },
+  stores: MealKindStores,
   receivedAt: Date,
 ): RecordKind<"meal", MealWrite, Meal, AddedRecordType> => ({
   name: "meal",
@@ -52,30 +45,25 @@ export const createMealKind = (
 // 食事の書き込みが、食事のほかに変える記録の種類
 type AddedRecordType = "meal_estimation_status" | "dish" | "ingredient";
 
+// 食事の書き込みが読み書きする置き場
+type MealKindStores = {
+  meal: MealStore;
+  mealPhoto: MealPhotoStore;
+  estimationSchedule: EstimationScheduleStore;
+  estimation: EstimationStore;
+  dish: DishStore;
+  ingredient: IngredientStore;
+};
+
 type NewMeal = Extract<MealWrite, { type: "create_meal" }>["meal"];
 
 const decideCreate = (
-  stores: Parameters<typeof createMealKind>[0],
+  stores: MealKindStores,
   newMeal: NewMeal,
   receivedAt: Date,
 ): WriteDecision<AddedRecordType> => {
   const store = stores.meal;
   const { entryMethod, photoIds } = newMeal;
-  if (
-    !isWithinAcceptedRange("mealPhotoCount", photoIds.length) ||
-    !isWithinAcceptedRange("mealUtcOffsetSeconds", newMeal.eatenAtUtcOffsetSeconds)
-  ) {
-    return discarded(store, newMeal, { result: "rejected", reason: "out_of_range" });
-  }
-  if (new Set(photoIds).size !== photoIds.length) {
-    return discarded(store, newMeal, { result: "rejected", reason: "duplicate_photo_ids" });
-  }
-  if (!isMealEntryMethod(entryMethod)) {
-    return discarded(store, newMeal, { result: "rejected", reason: "invalid_entry_method" });
-  }
-  if (!isTimeZoneName(newMeal.sentTimeZone)) {
-    return discarded(store, newMeal, { result: "rejected", reason: "invalid_time_zone" });
-  }
   if (store.hasDeletion(newMeal.id)) {
     return discarded(store, newMeal, { result: "ignored_tombstone" });
   }
@@ -90,6 +78,21 @@ const decideCreate = (
       usageEvents: [],
       commit: () => undefined,
     };
+  }
+  if (
+    !isWithinAcceptedRange("mealPhotoCount", photoIds.length) ||
+    !isWithinAcceptedRange("mealUtcOffsetSeconds", newMeal.eatenAtUtcOffsetSeconds)
+  ) {
+    return discarded(store, newMeal, { result: "rejected", reason: "out_of_range" });
+  }
+  if (new Set(photoIds).size !== photoIds.length) {
+    return discarded(store, newMeal, { result: "rejected", reason: "duplicate_photo_ids" });
+  }
+  if (!isMealEntryMethod(entryMethod)) {
+    return discarded(store, newMeal, { result: "rejected", reason: "invalid_entry_method" });
+  }
+  if (!isTimeZoneName(newMeal.sentTimeZone)) {
+    return discarded(store, newMeal, { result: "rejected", reason: "invalid_time_zone" });
   }
   // 写真の宣言の一意の違反で要求ごと戻ると、送り直し続けるので、書く前に確かめる
   if (store.findUsedPhotoIds(photoIds).length > 0) {
@@ -163,7 +166,7 @@ const discarded = (
 // 料理・材料・写真の宣言を子から消し、それぞれの削除の印を残す。料理と材料の変更は1つずつ足す。
 // 推定中の食事なら、つなぎが CASCADE で消える前に推定を読み、推定ごとの出来事を「食事が消えた」で送る
 const decideDelete = (
-  stores: Parameters<typeof createMealKind>[0],
+  stores: MealKindStores,
   mealId: string,
   receivedAt: Date,
 ): WriteDecision<AddedRecordType> => {
@@ -209,7 +212,7 @@ const decideDelete = (
 };
 
 const computeMealDeletedEstimationEvents = (
-  stores: Parameters<typeof createMealKind>[0],
+  stores: MealKindStores,
   mealId: string,
   deletedAt: Date,
 ): UsageEvent[] => {

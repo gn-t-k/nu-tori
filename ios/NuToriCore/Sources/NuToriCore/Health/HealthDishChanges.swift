@@ -1,12 +1,12 @@
 import Foundation
 
-/// ヘルスケアに栄養を書く・消すかを決めるための、キャッシュの食事・料理・材料と、書いた料理の控え
-struct CachedNutrition {
+/// キャッシュの食事・料理・材料と、書いた料理の控えから出した、ヘルスケアに書く料理と消す料理
+struct HealthDishChanges {
     /// ヘルスケアに書いてあるが、料理か親の食事がキャッシュから無くなった料理の ID（ID の順）
     let writtenDishIdsToDelete: [UUID]
     /// 推定できた食事の料理で、まだ書いていないか、書いた版より新しいもの（食事の時刻、並び順の順）。
     /// 食事がまだ届いていない料理と、推定できていない食事の料理は入れない
-    let dishesToWrite: [DishContents]
+    let dishesToWrite: [DishToWrite]
 
     init(store: any RecordCacheReading & HealthDishWriteStoring) async throws {
         let dishes = try await store.dishes()
@@ -42,15 +42,16 @@ struct CachedNutrition {
                     < ($1.meal.eatenAt, $1.dish.positionInMeal, $1.dish.id.uuidString)
             }
             .map {
-                DishContents(
-                    dish: $0.dish, ingredientsInAnyOrder: ingredientsByDish[$0.dish.id] ?? [])
+                DishToWrite(
+                    contents: DishContents(
+                        dish: $0.dish, ingredientsInAnyOrder: ingredientsByDish[$0.dish.id] ?? []),
+                    meal: $0.meal)
             }
-        self.mealsById = mealsById
     }
 
-    func meal(of dish: Dish) -> Meal? {
-        mealsById[dish.mealId]
+    /// 書く料理と、時刻を取る親の食事
+    struct DishToWrite {
+        let contents: DishContents
+        let meal: Meal
     }
-
-    private let mealsById: [UUID: Meal]
 }

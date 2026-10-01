@@ -65,20 +65,33 @@ extension SyncEngineTests {
             }
         }
 
-        @Suite("料理と材料の種類の送り待ちがあるとき")
-        struct PendingServerOnlyKinds {
-            // swiftlint:disable:next no_parameterized_test
-            @Test("サーバーだけが書く種類として、送らずに投げること", arguments: [RecordKindName.dish, .ingredient])
-            func throwsServerOnly(kind: RecordKindName) async throws {
-                let engine = SyncEngine.fixture(
-                    store: try .ok(pendingEntries: [
-                        PendingEntry(
-                            writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: kind,
-                            content: Data())
-                    ]),
-                    transport: .sync())
+        @Suite("料理の種類の送り待ちがあるとき")
+        struct PendingDish {
+            let engine: SyncEngine
 
-                await #expect(throws: UnknownRecordKindError.serverOnly(kind)) {
+            init() throws {
+                engine = try .withPendingEntry(of: .dish)
+            }
+
+            @Test("サーバーだけが書く種類として、送らずに投げること")
+            func throwsServerOnly() async throws {
+                await #expect(throws: UnknownRecordKindError.serverOnly(.dish)) {
+                    _ = try await engine.sync()
+                }
+            }
+        }
+
+        @Suite("材料の種類の送り待ちがあるとき")
+        struct PendingIngredient {
+            let engine: SyncEngine
+
+            init() throws {
+                engine = try .withPendingEntry(of: .ingredient)
+            }
+
+            @Test("サーバーだけが書く種類として、送らずに投げること")
+            func throwsServerOnly() async throws {
+                await #expect(throws: UnknownRecordKindError.serverOnly(.ingredient)) {
                     _ = try await engine.sync()
                 }
             }
@@ -101,5 +114,18 @@ extension SyncEngineTests {
                "nutrients":{"energy_kcal":204,"future_nutrient_g":1.5}}}
             """
         }
+    }
+}
+
+extension SyncEngine {
+    /// 種類が `kind` の送り待ちが1つある同期の働き
+    fileprivate static func withPendingEntry(of kind: RecordKindName) throws -> SyncEngine {
+        .fixture(
+            store: try .ok(pendingEntries: [
+                PendingEntry(
+                    writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: kind,
+                    content: Data())
+            ]),
+            transport: .sync())
     }
 }

@@ -67,24 +67,37 @@ struct MealScreen: View {
         }
         .navigationTitle("食事")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: PhotoRequest(photoIds: card.meal.photoIds, state: card.state)) {
-            await loadPhotos()
-        }
+        .modifier(
+            MealPhotosLoading(
+                photoIds: card.meal.photoIds, state: card.state, images: $images,
+                loadPhoto: loadPhoto)
+        )
         .onAppear {
             Task { await capture(.screen(.meal)) }
         }
     }
 
+    /// confirmsDeletion は開いたときに、消す確かめを出しているか
+    init(
+        card: MealCard,
+        loadPhoto: @escaping (_ photoId: UUID) async -> UIImage?,
+        now: @escaping () -> Date,
+        capture: @escaping (ClientUsageEvent) async -> Void,
+        deleteMeal: @escaping (_ card: MealCard, _ deletedAt: Date) async -> Void,
+        confirmsDeletion: Bool
+    ) {
+        self.card = card
+        self.loadPhoto = loadPhoto
+        self.now = now
+        self.capture = capture
+        self.deleteMeal = deleteMeal
+        _confirmsDeletion = State(initialValue: confirmsDeletion)
+    }
+
     @Environment(\.dismiss) private var dismiss
-    @State private var confirmsDeletion = false
+    @State private var confirmsDeletion: Bool
     /// 読み終えた写真。写真をまだ持っていない端末では、届くまで回る印を出す
     @State private var images: [UUID: UIImage] = [:]
-
-    /// 写真がサーバーに届くと推定の状態が変わるので、状態が変わったら取りに行き直す
-    private struct PhotoRequest: Equatable {
-        let photoIds: [UUID]
-        let state: MealCardState
-    }
 
     /// 切り抜かずに出し、2枚以上なら横に送る。押しても何も起きない
     private var photos: some View {
@@ -157,7 +170,7 @@ struct MealScreen: View {
         case .estimated(let totals):
             (
                 NutritionText.number(totals[.energyKcal], of: .energyKcal),
-                totals[.energyKcal].isLowerBound ? "kcal 以上" : "kcal"
+                NutritionText.unit(totals[.energyKcal], of: .energyKcal)
             )
         }
     }
@@ -257,14 +270,6 @@ struct MealScreen: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .accessibilityElement(children: .combine)
-        }
-    }
-
-    private func loadPhotos() async {
-        for photoId in card.meal.photoIds where images[photoId] == nil {
-            if let image = await loadPhoto(photoId) {
-                images[photoId] = image
-            }
         }
     }
 }

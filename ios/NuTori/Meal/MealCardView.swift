@@ -42,25 +42,19 @@ struct MealCardView: View {
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .containerRelativeFrame(.horizontal) { width, _ in
-            width * Self.widthRatio
+            let widthRatio: CGFloat = 0.72
+            return width * widthRatio
         }
-        .task(id: PhotoRequest(photoIds: shownPhotoIds, state: card.state)) {
-            await loadPhotos()
-        }
+        .modifier(
+            MealPhotosLoading(
+                photoIds: shownPhotoIds, state: card.state, images: $images, loadPhoto: loadPhoto)
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityText)
     }
 
-    private static let widthRatio: CGFloat = 0.72
-
     /// 読み終えた写真。写真をまだ持っていない端末では、届くまで回る印を出す
     @State private var images: [UUID: UIImage] = [:]
-
-    /// 写真がサーバーに届くと推定の状態が変わるので、状態が変わったら取りに行き直す
-    private struct PhotoRequest: Equatable {
-        let photoIds: [UUID]
-        let state: MealCardState
-    }
 
     @ViewBuilder private var photos: some View {
         switch card.photos {
@@ -167,13 +161,5 @@ struct MealCardView: View {
                 .foregroundStyle(.white)
         }
         .accessibilityHidden(true)
-    }
-
-    private func loadPhotos() async {
-        for photoId in shownPhotoIds where images[photoId] == nil {
-            if let image = await loadPhoto(photoId) {
-                images[photoId] = image
-            }
-        }
     }
 }

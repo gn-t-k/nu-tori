@@ -34,6 +34,7 @@ export type UsageEvent =
   | {
       // 推定し終えた・諦めたとき。推定中に食事を消したときは、食事を消す書き込みで送る
       name: "estimation_ended";
+      // 推定のきっかけ。仕様（#188）が送るものに挙げ、あとで文章からの推定を足したときに PostHog で分けて見るため、今は写真だけでも送る
       trigger: "photo";
       finalStatus: "estimated" | "no_dishes" | "failed" | "meal_deleted";
       // 自動のやり直しの回数（試みの数 - 1）
