@@ -1,0 +1,52 @@
+name: PreviewLab
+options:
+  bundleIdPrefix: dev.nutori.lab
+  deploymentTarget:
+    iOS: "26.0"
+settings:
+  base:
+    CODE_SIGNING_ALLOWED: "NO"
+    GENERATE_INFOPLIST_FILE: "YES"
+    INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+    ENABLE_PREVIEWS: "YES"
+packages:
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    exactVersion: 1.19.6
+  SnapshotPreviews:
+    url: https://github.com/EmergeTools/SnapshotPreviews
+    exactVersion: 0.19.0
+targets:
+  PreviewLab:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.nutori.lab.PreviewLab
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "lab"
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "lab"
+  PreviewLabTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: PreviewLab
+      - package: SnapshotTesting
+        product: SnapshotTesting
+      - package: SnapshotPreviews
+        product: SnapshottingTests
+    settings:
+      base:
+        SWIFT_VERSION: "5.0"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.nutori.lab.PreviewLabTests
+schemes:
+  PreviewLab:
+    build:
+      targets:
+        PreviewLab: all
+        PreviewLabTests: [test]
+    test:
+      targets: [PreviewLabTests]
