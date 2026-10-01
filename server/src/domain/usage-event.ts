@@ -49,6 +49,10 @@ export type UsageEvent =
       providerErrorTypes: string[];
     }
   | {
+      // 1日の回数の上限に達していて、予定を次の日に回したとき
+      name: "estimation_deferred";
+    }
+  | {
       name: "sync_pending_writes_reported";
       pendingWriteCount: number;
       oldestPendingWriteAgeSeconds: number;

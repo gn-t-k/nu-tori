@@ -9,7 +9,8 @@ extension Meal {
         utcOffsetSeconds: Int = 9 * 3600,
         sentAt: String,
         in sentTimeZoneIdentifier: String = "Asia/Tokyo",
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        photoIds: [UUID] = [UUID()]
     ) throws -> Meal {
         try Meal(
             id: id,
@@ -18,7 +19,7 @@ extension Meal {
             sentAt: Date(sentAt, strategy: .iso8601),
             sentTimeZone: #require(TimeZone(identifier: sentTimeZoneIdentifier)),
             entry: .picked,
-            photoIds: [UUID()]
+            photoIds: photoIds
         )
     }
 }

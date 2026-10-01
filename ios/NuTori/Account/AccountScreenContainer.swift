@@ -11,6 +11,7 @@ struct AccountScreenContainer: View {
         AccountScreen(
             sendsUsageData: UsageDataSetting.sendsUsageData(
                 cachedSettings.first?.accountSettings()),
+            cameraAccess: CameraAccess.current(),
             deletion: .idle,
             actions: actions,
             onClose: onClose

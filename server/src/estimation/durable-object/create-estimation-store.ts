@@ -1,9 +1,10 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, count, eq, isNull } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { EstimationAttempt, EstimationStore } from "../domain/estimation-store";
 import { estimationTables } from "./estimation-tables";
 
 const {
+  estimationSchedules,
   mealEstimationSchedules,
   estimations,
   estimationAttempts,
@@ -46,6 +47,16 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
     insertEstimation: ({ id, scheduleId, startedAt }) => {
       db.insert(estimations).values({ id, estimationScheduleId: scheduleId, startedAt }).run();
     },
+    countEstimationsCountedOn: (countedOn) =>
+      db
+        .select({ total: count() })
+        .from(estimations)
+        .innerJoin(
+          estimationSchedules,
+          eq(estimationSchedules.id, estimations.estimationScheduleId),
+        )
+        .where(eq(estimationSchedules.countedOn, countedOn))
+        .get()?.total ?? 0,
     insertAttempt: (attempt) => {
       db.insert(estimationAttempts).values(attempt).run();
     },

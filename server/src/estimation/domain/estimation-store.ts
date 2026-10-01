@@ -4,6 +4,8 @@ import type { EstimationAttemptResult } from "./estimation-attempt-result";
 export type EstimationStore = {
   // 予定から推定を始める。同じ予定から二度始めないことは、表の一意で守る
   insertEstimation: (estimation: { id: string; scheduleId: string; startedAt: Date }) => void;
+  // 数える日の推定の数。食事を消しても減らない
+  countEstimationsCountedOn: (countedOn: string) => number;
   // 提供元を呼ぶ前に書く
   insertAttempt: (attempt: { id: string; estimationId: string; attemptedAt: Date }) => void;
   // 続いている推定（完了も断念も無く、食事につながっている）と、その試みを古い順に

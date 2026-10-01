@@ -72,6 +72,10 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         provider_error_types: ended.providerErrorTypes,
       },
     }))
+    .with({ name: "estimation_deferred" }, (deferred) => ({
+      name: deferred.name,
+      properties: {},
+    }))
     .with({ name: "sync_pending_writes_reported" }, (reported) => ({
       name: reported.name,
       properties: {

@@ -1,8 +1,11 @@
+import Foundation
 import SwiftUI
+import UIKit
 
 struct AccountScreen: View {
     /// 保存してある「利用状況を送る」
     let sendsUsageData: Bool
+    let cameraAccess: CameraAccess
     let actions: AccountActions
     let onClose: () -> Void
 
@@ -14,6 +17,11 @@ struct AccountScreen: View {
                 } label: {
                     LabeledContent("ヘルスケア", value: "読む・書く")
                 }
+            }
+            Section("カメラ") {
+                LabeledContent("食事を撮る", value: cameraAccess.label)
+                    .accessibilityIdentifier("camera-access")
+                externalLink("iPhone の設定を開く", url: Self.appSettingsURL)
             }
             Section {
                 Toggle("利用状況を送る", isOn: shownSendsUsageData)
@@ -79,11 +87,13 @@ struct AccountScreen: View {
     /// deletion は開いたときの状態。削除は画面の中で進むので、あとから渡し直しても変わらない
     init(
         sendsUsageData: Bool,
+        cameraAccess: CameraAccess,
         deletion: Deletion,
         actions: AccountActions,
         onClose: @escaping () -> Void
     ) {
         self.sendsUsageData = sendsUsageData
+        self.cameraAccess = cameraAccess
         self.actions = actions
         self.onClose = onClose
         _deletion = State(initialValue: deletion)
@@ -103,6 +113,8 @@ struct AccountScreen: View {
     @State private var confirmingDeletion = false
 
     private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!
+    /// このアプリの iPhone の設定
+    private static let appSettingsURL = URL(string: UIApplication.openSettingsURLString)!
 
     private var isDeleting: Bool {
         switch deletion {

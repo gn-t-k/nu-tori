@@ -60,6 +60,52 @@ final class RootModel {
         try? await recordSync.save(write)
     }
 
+    /// 撮った写真は、1枚で1つの食事にする。食事の時刻は撮った時刻（付帯情報に無ければ「写真を使用」を押した時刻）
+    func recordCapturedMeal(original: Data, exif: PhotoExif, sentAt: Date) async {
+        let timeZone = TimeZone.current
+        let photoId = UUID()
+        let takenAt = PhotoTakenTime(exif: exif, pickedAt: sentAt, deviceTimeZone: timeZone)
+        let draft = MealDraft.captured(
+            photoId: photoId, takenAt: takenAt.instant, sentAt: sentAt, deviceTimeZone: timeZone)
+        await recordMeals([draft], originals: [photoId: original], entry: .captured)
+    }
+
+    /// 選んだ写真を、撮影時刻の近いものごとの食事にまとめて記録する。`pickedAt` は選び終えた時刻
+    func recordPickedMeals(originals: [Data], pickedAt: Date) async {
+        let timeZone = TimeZone.current
+        let photos = originals.map { (id: UUID(), original: $0) }
+        let picked = photos.map { photo in
+            PickedPhoto(
+                id: photo.id,
+                takenTime: PhotoTakenTime(
+                    exif: PhotoMetadata.exif(ofImageData: photo.original),
+                    pickedAt: pickedAt,
+                    deviceTimeZone: timeZone
+                )
+            )
+        }
+        // 選ぶ画面は 10 枚までしか選ばせないので、多すぎることは無い
+        guard !picked.isEmpty,
+            let drafts = try? MealDraft.picked(picked, sentAt: pickedAt, deviceTimeZone: timeZone)
+        else {
+            return
+        }
+        await recordMeals(
+            drafts,
+            originals: Dictionary(uniqueKeysWithValues: photos.map { ($0.id, $0.original) }),
+            entry: .picked
+        )
+    }
+
+    /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil
+    func mealPhotoFile(mealId: UUID, photoId: UUID) async -> URL? {
+        await recordSync.mealPhotos.photoFile(mealId: mealId, photoId: photoId)
+    }
+
+    func holdsMealOriginals(_ mealId: UUID) async -> Bool {
+        await recordSync.mealPhotos.holdsOriginals(ofMeal: mealId)
+    }
+
     func prepareWeightEntry() async {
         await health.prepareForFirstWeightEntry()
     }
@@ -198,6 +244,18 @@ final class RootModel {
             }
             rejectionLines = .accepting(lines)
         }
+    }
+
+    private func recordMeals(
+        _ drafts: [MealDraft], originals: [UUID: Data], entry: MealDraft.Entry
+    ) async {
+        guard let meals = try? await recordSync.recordMeals(drafts, originals: originals),
+            !meals.isEmpty
+        else {
+            return
+        }
+        await accountSession.capture(
+            .mealRecorded(entry: entry, photoCount: originals.count, mealCount: meals.count))
     }
 
     private func syncIfShowingTimeline() async {
