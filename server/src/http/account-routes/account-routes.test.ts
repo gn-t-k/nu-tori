@@ -23,7 +23,7 @@ describe("アカウントの削除", () => {
       revokeSpy = mockRevokeAppleRefreshTokenOk();
       signedIn = await signInTestAccount(crypto.randomUUID());
       await runInDurableObject(getAccountDurableObject(env, signedIn.accountId), (_, state) => {
-        state.storage.sql.exec("CREATE TABLE meals (id TEXT PRIMARY KEY)");
+        state.storage.sql.exec("CREATE TABLE deletion_check_records (id TEXT PRIMARY KEY)");
       });
     });
 
@@ -37,7 +37,9 @@ describe("アカウントの削除", () => {
       const tables = await runInDurableObject(
         getAccountDurableObject(env, signedIn.accountId),
         (_, state) =>
-          state.storage.sql.exec("SELECT name FROM sqlite_master WHERE name = 'meals'").toArray(),
+          state.storage.sql
+            .exec("SELECT name FROM sqlite_master WHERE name = 'deletion_check_records'")
+            .toArray(),
       );
       expect(tables).toEqual([]);
     });
