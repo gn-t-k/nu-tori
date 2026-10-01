@@ -2,17 +2,15 @@ public import Foundation
 public import NuToriAPI
 
 public actor SyncEngine {
-    /// 新しい種類の記録を読めるようにしたら上げる。上げると、更新して最初の同期で全部取り直す
-    public static let currentReadableKindsVersion = 2
-
+    /// `readableKinds` は今読める種類の名前（登録簿の名前の集合）。前に読めた種類に無い名前があると、全部取り直す
     public init(
-        store: any SyncStore,
+        store: any SyncBox & RecordCacheReading,
         client: NuToriAPIClient,
         accountId: String,
         device: SyncDevice,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
-        readableKindsVersion: Int,
+        readableKinds: Set<RecordKindName>,
         errorReporting: any ErrorReportingSession,
         weightHealthExport: any WeightHealthExport
     ) {
@@ -22,7 +20,7 @@ public actor SyncEngine {
         self.device = device
         self.timeZone = timeZone
         self.now = now
-        self.readableKindsVersion = readableKindsVersion
+        self.readableKinds = readableKinds
         self.errorReporting = errorReporting
         self.weightHealthExport = weightHealthExport
     }
@@ -40,17 +38,21 @@ public actor SyncEngine {
                 version: 1
             )
             try await writingCache {
-                try await store.save(record, enqueuing: pendingWrite(.createWeightRecord(record)))
+                try await store.apply(
+                    WeightRecordSyncing().saving(
+                        record, enqueuing: pendingWrite(.createWeightRecord(record))))
             }
             return record
         case .correct(let record):
-            guard let previous = try await store.weightRecord(id: record.id) else {
+            guard try await store.weightRecord(id: record.id) != nil else {
                 throw UnknownRecordError(recordId: record.id)
             }
             try await writingCache {
-                try await store.save(
-                    record,
-                    enqueuing: pendingWrite(.correctWeightRecord(record, previous: previous))
+                try await store.apply(
+                    WeightRecordSyncing().saving(
+                        record,
+                        enqueuing: pendingWrite(.correctWeightRecord(record))
+                    )
                 )
             }
             return record
@@ -64,8 +66,9 @@ public actor SyncEngine {
             sendsUsageData: sendsUsageData
         )
         try await writingCache {
-            try await store.save(
-                settings, enqueuing: pendingWrite(.updateAccountSettings(settings)))
+            try await store.apply(
+                AccountSettingsSyncKind().saving(
+                    settings, enqueuing: pendingWrite(.updateAccountSettings(settings))))
         }
     }
 
@@ -98,13 +101,13 @@ public actor SyncEngine {
         }
     }
 
-    private let store: any SyncStore
+    private let store: any SyncBox & RecordCacheReading
     private let client: NuToriAPIClient
     private let accountId: String
     private let device: SyncDevice
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
-    private let readableKindsVersion: Int
+    private let readableKinds: Set<RecordKindName>
     private let errorReporting: any ErrorReportingSession
     private let weightHealthExport: any WeightHealthExport
 
@@ -116,16 +119,15 @@ public actor SyncEngine {
         async throws -> SyncResult.StopReason?
     {
         let maxWritesPerRequest = 500
-        let pending = try await store.pendingWritesOldestFirst()
-        // 先の要求で作る書き込みが受け付けられず消した記録を、あとの要求の直す書き込みで戻さない
-        var revertedRecordIds: Set<UUID> = []
+        let pending = try await store.pendingEntries()
         for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
             let batchEnd = min(batchStart + maxWritesPerRequest, pending.count)
             let batch = Array(pending[batchStart..<batchEnd])
+            let writes = try batch.map(syncWrite)
             let result: NuToriAPIClient.PushSyncWritesResult
             do {
                 result = try await client.pushSyncWrites(
-                    batch.map(\.syncWrite),
+                    writes,
                     isFinalBatch: batchEnd == pending.count,
                     clientState: clientState(pendingWrites: pending[batchStart...])
                 )
@@ -139,12 +141,7 @@ public actor SyncEngine {
             }
             switch result {
             case .pushed(let results):
-                try await resolve(
-                    batch,
-                    with: results,
-                    revertedRecordIds: &revertedRecordIds,
-                    rejectedWrites: &rejectedWrites
-                )
+                try await resolve(batch, with: results, rejectedWrites: &rejectedWrites)
             case .badRequest:
                 return .badRequest
             case .sessionExpired:
@@ -156,51 +153,61 @@ public actor SyncEngine {
         return nil
     }
 
+    private func kind(named name: RecordKindName) throws -> any SyncedRecordKind {
+        guard let kind = store.recordKinds.first(where: { $0.name == name }) else {
+            throw UnknownRecordKindError.notRegistered(name)
+        }
+        return kind
+    }
+
+    /// 種類が、送る書き込みにする
+    private func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
+        try kind(named: entry.kind).syncWrite(for: entry)
+    }
+
+    /// 結果を、受け付けた・受け付けなかったの2つに畳んで読む。細かい結果はサーバーの控えと観測にだけ使う。
+    /// 受け付けなかったら送り待ちから外し、添えられたサーバーの今の値を、取りに行った変更と同じ道で当てる
     private func resolve(
-        _ batch: [PendingWrite],
+        _ batch: [PendingEntry],
         with results: [SyncWriteResult],
-        revertedRecordIds: inout Set<UUID>,
         rejectedWrites: inout [RejectedWrite]
     ) async throws {
-        let outcomes = Dictionary(
-            results.map { ($0.writeId, $0.outcome) },
+        let resultsByWriteId = Dictionary(
+            results.map { ($0.writeId, $0) },
             uniquingKeysWith: { first, _ in first }
         )
         var resolvedWriteIds: [UUID] = []
-        var reversions: [RecordReversion] = []
-        for write in batch {
-            guard let outcome = outcomes[write.writeId] else {
+        var currentChanges: [RecordKindName: [SyncChange]] = [:]
+        for entry in batch {
+            guard let result = resultsByWriteId[entry.writeId] else {
                 continue
             }
-            resolvedWriteIds.append(write.writeId)
-            switch outcome {
-            case .applied, .ignoredDuplicate, .ignoredTombstone, .keptCorrected, .unknown:
+            resolvedWriteIds.append(entry.writeId)
+            guard case .rejected(let reason) = result.outcome else {
+                continue
+            }
+            let kind = try kind(named: entry.kind)
+            let rejection = try kind.rejection(of: entry, reason: reason, current: result.current)
+            if let rejected = rejection.rejectedWrite {
+                rejectedWrites.append(rejected)
+            }
+            switch result.current {
+            case .value(let change), .deleted(let change):
+                currentChanges[kind.name, default: []].append(change)
+            case .absent:
+                currentChanges[kind.name, default: []] += rejection.removingChanges
+            case nil:
                 break
-            case .rejected(let reason):
-                switch write.operation {
-                case .createWeightRecord(let record):
-                    rejectedWrites.append(
-                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
-                    if revertedRecordIds.insert(record.id).inserted {
-                        reversions.append(.remove(recordId: record.id))
-                    }
-                case .correctWeightRecord(let record, let previous):
-                    rejectedWrites.append(
-                        RejectedWrite(writeId: write.writeId, record: record, reason: reason))
-                    if revertedRecordIds.insert(record.id).inserted {
-                        reversions.append(.restore(previous))
-                    }
-                case .sourceDeletedWeightRecord:
-                    // 戻す記録も、画面に出す記録も無い。消すかどうかを決めるのはサーバーで、送り直さない
-                    break
-                case .updateAccountSettings:
-                    // サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
-                    break
-                }
             }
         }
         try await writingCache {
-            try await store.removePendingWrites(resolvedWriteIds, reverting: reversions)
+            try await store.apply(
+                SyncBoxResult(
+                    resolvedWriteIds: resolvedWriteIds,
+                    kindChanges: currentChanges.filter { !$0.value.isEmpty }
+                        .sorted { $0.key < $1.key }
+                        .map { KindChanges(kind: $0.key, changes: $0.value) }
+                ))
         }
     }
 
@@ -212,7 +219,7 @@ public actor SyncEngine {
                 result = try await client.pullSyncChanges(
                     afterSequence: state.afterSequence,
                     clientState: clientState(
-                        pendingWrites: try await store.pendingWritesOldestFirst()[...])
+                        pendingWrites: try await store.pendingEntries()[...])
                 )
             } catch is CancellationError {
                 throw CancellationError()
@@ -224,23 +231,23 @@ public actor SyncEngine {
             }
             switch result {
             case .pulled(let page):
-                let incoming = page.changes.compactMap(\.weightRecord)
-                let revised = try await revisedManualRecords(in: incoming)
+                let kinds = store.recordKinds
+                // 登録簿に無い種類の変更は読み飛ばす。名前がサーバーとそろっているかは、テストで見張る
+                let ownedChanges = kinds.map { kind in
+                    KindChanges(kind: kind.name, changes: page.changes.filter { kind.owns($0) })
+                }.filter { !$0.changes.isEmpty }
+                // ヘルスケアへの書き直しは、届いた体重記録に行う
+                let revised = try await revisedManualRecords(
+                    in: WeightRecordSyncing().current(from: page.changes).records)
                 state = SyncState(
                     afterSequence: page.nextAfterSequence,
                     hasCompletedInitialPull: state.hasCompletedInitialPull || !page.hasMore,
-                    readableKindsVersion: readableKindsVersion,
+                    readableKinds: readableKinds,
                     startedOn: page.startedOn
                 )
                 try await writingCache {
                     try await store.apply(
-                        PulledChanges(
-                            records: incoming,
-                            removedRecordIds: page.changes.compactMap(\.removedRecordId),
-                            accountSettings: page.changes.compactMap(\.accountSettings).last,
-                            state: state
-                        )
-                    )
+                        SyncBoxResult(kindChanges: ownedChanges, syncState: state))
                 }
                 try await exportRevisedRecords(revised)
                 if !page.hasMore {
@@ -261,22 +268,22 @@ public actor SyncEngine {
             return SyncState(
                 afterSequence: 0,
                 hasCompletedInitialPull: false,
-                readableKindsVersion: readableKindsVersion,
+                readableKinds: readableKinds,
                 startedOn: nil
             )
         }
-        guard saved.readableKindsVersion != readableKindsVersion else {
+        if readableKinds.isSubset(of: saved.readableKinds) {
             return saved
         }
         // 途中で終わっても、次は戻した通し番号の続きから取れるよう、すぐ保存する
         let restarted = SyncState(
             afterSequence: 0,
             hasCompletedInitialPull: saved.hasCompletedInitialPull,
-            readableKindsVersion: readableKindsVersion,
+            readableKinds: readableKinds,
             startedOn: saved.startedOn
         )
         try await writingCache {
-            try await store.saveSyncState(restarted)
+            try await store.apply(SyncBoxResult(syncState: restarted))
         }
         return restarted
     }
@@ -323,7 +330,7 @@ public actor SyncEngine {
         }
     }
 
-    private func clientState(pendingWrites: ArraySlice<PendingWrite>) -> SyncClientState {
+    private func clientState(pendingWrites: ArraySlice<PendingEntry>) -> SyncClientState {
         let currentTime = now()
         return SyncClientState(
             deviceId: device.deviceId,
@@ -336,120 +343,5 @@ public actor SyncEngine {
             },
             pendingPhotoCount: 0
         )
-    }
-}
-
-extension PendingWrite {
-    fileprivate var syncWrite: SyncWrite {
-        switch operation {
-        case .createWeightRecord(let record):
-            .createWeightRecord(writeId: writeId, record: NewWeightRecord(record))
-        case .correctWeightRecord(let record, previous: _):
-            .updateWeightRecord(writeId: writeId, correction: WeightRecordCorrection(record))
-        case .sourceDeletedWeightRecord(let recordId):
-            .sourceDeletedWeightRecord(writeId: writeId, weightRecordId: recordId)
-        case .updateAccountSettings(let settings):
-            .updateAccountSettings(
-                writeId: writeId,
-                settings: SyncedAccountSettings(
-                    id: settings.id, sendsUsageData: settings.sendsUsageData)
-            )
-        }
-    }
-}
-
-extension SyncChange {
-    fileprivate var weightRecord: WeightRecord? {
-        switch self {
-        case .weightRecord(let record): WeightRecord(record)
-        case .accountSettings, .weightRecordDeletion, .unknown: nil
-        }
-    }
-
-    fileprivate var removedRecordId: UUID? {
-        switch self {
-        case .weightRecordDeletion(let recordId): recordId
-        case .weightRecord, .accountSettings, .unknown: nil
-        }
-    }
-
-    fileprivate var accountSettings: AccountSettings? {
-        switch self {
-        case .accountSettings(let settings):
-            AccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData)
-        case .weightRecord, .weightRecordDeletion, .unknown: nil
-        }
-    }
-}
-
-extension NewWeightRecord {
-    fileprivate init(_ record: WeightRecord) {
-        self.init(
-            id: record.id,
-            weightKilograms: record.kilograms,
-            measuredAt: record.instant,
-            timeZone: record.timeZone,
-            imported: record.inputSource.importedSource.map { source in
-                SyncedWeightRecord.Imported(
-                    sourceAppName: source.appName,
-                    sourceBundleId: source.bundleId,
-                    healthKitSampleId: source.healthKitSampleId,
-                    bodyFat: source.bodyFat.map {
-                        SyncedWeightRecord.Imported.BodyFat(
-                            percentage: $0.percentage,
-                            healthKitSampleId: $0.healthKitSampleId
-                        )
-                    }
-                )
-            }
-        )
-    }
-}
-
-extension WeightRecordCorrection {
-    fileprivate init(_ record: WeightRecord) {
-        self.init(
-            id: record.id,
-            weightKilograms: record.kilograms,
-            measuredAt: record.instant,
-            timeZone: record.timeZone,
-            version: record.version
-        )
-    }
-}
-
-extension WeightRecord {
-    fileprivate init(_ record: SyncedWeightRecord) {
-        self.init(
-            id: record.id,
-            kilograms: record.weightKilograms,
-            instant: record.measuredAt,
-            timeZone: record.timeZone,
-            inputSource: record.imported.map { imported in
-                .imported(
-                    ImportedSource(
-                        appName: imported.sourceAppName,
-                        bundleId: imported.sourceBundleId,
-                        healthKitSampleId: imported.healthKitSampleId,
-                        bodyFat: imported.bodyFat.map {
-                            ImportedSource.BodyFat(
-                                percentage: $0.percentage,
-                                healthKitSampleId: $0.healthKitSampleId
-                            )
-                        }
-                    )
-                )
-            } ?? .manual,
-            version: record.version
-        )
-    }
-}
-
-extension WeightRecord.InputSource {
-    fileprivate var importedSource: WeightRecord.ImportedSource? {
-        switch self {
-        case .manual: nil
-        case .imported(let source): source
-        }
     }
 }

@@ -175,6 +175,10 @@ import NuToriCore
 
     private func runSync() async throws -> SyncResult? {
         guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        // 開くときに対処した失敗は、報告の送り先が使えるようになるサインイン後に報告する
+        for failure in store.takeRecoveries() {
+            await errorReporting.report(failure)
+        }
         let completedBefore = try await store.syncState()?.hasCompletedInitialPull ?? false
         if !completedBefore, initialPullStartedAt == nil {
             initialPullStartedAt = .now
@@ -223,7 +227,7 @@ import NuToriCore
             ),
             timeZone: { .current },
             now: { .now },
-            readableKindsVersion: SyncEngine.currentReadableKindsVersion,
+            readableKinds: AppRecordKinds.registry.names,
             errorReporting: errorReporting,
             weightHealthExport: health.engine
         )

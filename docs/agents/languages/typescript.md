@@ -120,6 +120,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 - まとまりは `describe`、テストは `test` で書く
 - 「各テストの前の準備」は、その条件の `describe` のすぐ下の `beforeEach` で行う
 - パラメータ化テストは、`test`・`it`・`describe` に `.each`・`.for` を付けたもののこと
+- 前提にする値は、無ければ投げて型を絞ってから使う
 
 ```ts
 describe("トークン発行に失敗したとき", () => {

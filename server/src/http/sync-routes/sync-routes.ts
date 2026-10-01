@@ -1,10 +1,13 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
+import { recordKindNameSchema } from "./record-kind-name-schema";
 import { createSyncClientStateSchema } from "./create-sync-client-state-schema";
+import { syncWriteCurrentSchema } from "./sync-write-current-schema";
 import { syncWriteSchema } from "./sync-write-schema";
 import { toSyncChangeResponse } from "./to-sync-change-response";
 import { toSyncClientState } from "./to-sync-client-state";
+import { toSyncWriteCurrent } from "./to-sync-write-current";
 import { toSyncWrite } from "./to-sync-write";
 
 const maximumWritesPerRequest = 500;
@@ -15,7 +18,7 @@ const queryCount = z.coerce
   .nonnegative()
   .openapi({ param: { required: true } });
 
-export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
+const routes = new OpenAPIHono<{ Bindings: Env }>()
   .openapi(
     createRoute({
       method: "post",
@@ -57,6 +60,10 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
                         description:
                           "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ",
                       }),
+                      current: syncWriteCurrentSchema.optional().openapi({
+                        description:
+                          "result が rejected のときだけ付く。その記録のサーバーの今の値で、要求の書き込みを全部当て終えた時点のもの。同じ書き込みの ID が再び届いたときも、最初の結果に、当て終えた時点の値を添える",
+                      }),
                     })
                     .openapi("SyncWriteResult"),
                 ),
@@ -81,10 +88,11 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       );
       return c.json(
         {
-          results: results.map(({ writeId, outcome }) => ({
+          results: results.map(({ writeId, outcome, rejectedRecord }) => ({
             writeId,
             result: outcome.result,
             rejectionReason: outcome.result === "rejected" ? outcome.reason : undefined,
+            current: rejectedRecord === undefined ? undefined : toSyncWriteCurrent(rejectedRecord),
           })),
         },
         200,
@@ -156,3 +164,8 @@ export const syncRoutes = new OpenAPIHono<{ Bindings: Env }>()
       );
     },
   );
+
+// 応答のスキーマからは指さない。端末が、自分の登録簿と突き合わせるために読む
+routes.openAPIRegistry.register("RecordKindName", recordKindNameSchema);
+
+export const syncRoutes = routes;

@@ -14,6 +14,9 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 層
 
 - 置き場: HTTP の受け口は `src/http/`、Durable Object は `src/durable-object/`、ドメイン層は `src/domain/`、認証（Better Auth と、Apple の API への入出力）は `src/auth/`、観測（Sentry の設定と、PostHog の API への入出力）は `src/observability/`
+- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/` と `src/account-settings/`。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
+- 層は oxlint の `no-restricted-imports`（`.oxlintrc.json` の `overrides`）で守る。`src/domain/` と `src/<種類>/domain/` からは、受け口（`http`）、Durable Object（`durable-object`）、`cloudflare:*`、`hono` を import できない。import の文字列だけを見るので、別名の import を使い始めたら dependency-cruiser を考える
+- 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
 - ドメイン層は、実行基盤の型や API に触れない。ドメイン層が要る置き場と外への呼び出し（記録の置き場、写真の控え、LLM の提供元など）は、ドメイン層が型を定め、基盤に固有の層（Durable Object、D1・R2・LLM の提供元・Apple の API への入出力）がそれを実装する
 - 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。Durable Object のクラスは、ドメイン層を呼ぶ入口（受け口の Worker から、アラームから）と、ドメイン層が定めた記録の置き場の実装と、ほかの基盤に固有の実装をドメイン層に渡すことだけを持つ薄い層にする
@@ -31,6 +34,14 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 経路には `operationId` を付ける。アプリで生成するクライアントのメソッドの名前になる
 - 出回っている最も古い版のアプリとも動くようにする。API の変更は足すだけにし、壊す変更は新しい版のエンドポイントとして出す
 
+## 同期の記録の種類の足し方
+
+- 同期の共通の仕組み（帳簿）は `src/domain/sync-ledger/`。種類は帳簿に `RecordKind`（名前、書き込みを受け付けるかの決定、今の値を読む口）を渡す。冪等、控え、変更の並び、500 件の区切りは帳簿が持つので、種類に書き写さない
+- 種類のまとまりを `src/<種類>/` に作り、種類、置き場、受け口の入口を置いたら、登録簿に1行ずつ足す（名前の順）: `domain/create-record-kinds.ts`、`domain/record-kind-stores.ts`、`durable-object/create-record-kind-stores.ts`、`http/sync-routes/http-record-kinds.ts`、`http/sync-routes/registered-write-schemas.ts`。ドメイン層は Durable Object と受け口を import できず、層ごとに登録簿が分かれるため5か所になる。受け口の2つは `RecordType` をキーにした表なので、足し忘れはコンパイルが止める。書き込みの `oneOf` の並びは表の順で決まるので、並びが変わるのを受け入れる
+- 書き込みと変更の union（`SyncWrite`、`SyncChange`）、`RecordType`、受け口のスキーマ、`openapi.json` の `RecordKindName` の列挙は、登録簿から導く。手で足すのは、表の宣言の `text({ enum })`（`durable-object/sync-ledger-tables.ts`。型検査が足し忘れを止める）と、`scripts/check server --fix` での `openapi.json` の書き出し直し
+- `RecordKindName` は端末が自分の登録簿と突き合わせるためのもので、応答の `kind` を解くのには使わない（`kind` は文字列のまま。知らない種類は端末が読み飛ばす）
+- 種類の行（記録・削除の印・設定の変更）は、`decide` が返す `commit(receiptId)` の中で書く。控えの ID を帳簿しか作れない型にして、控えより先に書く形をコンパイルで止めるため
+
 ## 認証
 
 - 認証は Better Auth に任せる（ADR-0019）。Better Auth の表は D1 の中の認証の置き場に閉じ、ほかの表と Durable Object はアカウント ID だけを見る
@@ -42,7 +53,11 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 ## DB
 
-- スキーマは素の SQLite で書く
+- スキーマは素の SQLite で書く。表は Drizzle ORM で宣言して読み書きし、移行は手書きの SQL で持つ（ADR-0021）。Drizzle Kit は使わない
+- Drizzle の宣言は、今の表の形に合わせて手で書く。記録の種類の表は `src/<種類>/durable-object/` に、帳簿の表と種類をまたぐ表は `src/durable-object/` に置き、全部を `durable-object-tables.ts` に集める。宣言は1ファイル1つの表の束を export する。移行を足すときは、SQL と宣言の両方を書く
+- 置き場の実装のクエリは Drizzle で書く。`sql.raw()` と、自分で文字列を組み立てる SQL は使わない（`sql` のテンプレートに列を渡すのはよい）。DB から読んだ区分の文字列は、宣言の `text({ enum })` から導いた型で受け、読み戻す関数を書かない
+- 宣言と移行がずれていないかは、`src/durable-object/durable-object-tables.test.ts` が、移行を当てた DB の実際の列（`pragma_table_info`）と宣言（`getTableConfig`）を比べて確かめる。比べる関数は `src/testing/find-table-declaration-mismatches.ts`（表と実際の列を渡すと、ずれの説明を返す。D1 の表にも使う）。表の宣言に無い表が DB にあっても落ちる
+- 置き場のテストの行は `@praha/drizzle-factory` で作る（`src/durable-object/testing/durable-object-factory.ts`）。`create()` は Promise を返すので、テストで `await` して使い、同期の `transactionSync` の中では使わない。`drizzle(storage, { schema: durableObjectTables })` の `schema` を渡した db を factory に渡す
 - D1 のスキーマの変更は、`d1-migrations/` の移行の SQL ファイルで行う
 - Durable Object の中のスキーマの変更は、`durable-object-migrations/` に版つきの SQL ファイルを置き、`src/durable-object/durable-object-migrations.ts` の並びに足す。各 Durable Object が起動するときに、まだ当てていない版を、版の小さい順に自分の DB に当てる。並んだ PR の移行は版の大きいほうが先に当たることがあるので、並んで足す移行どうしは互いに頼らない形にする
 - どちらの移行も足すだけにし、1つ前の版のコードでも動く形にする（下の「デプロイ」で、移行を当ててからコードを出すため）

@@ -1,5 +1,6 @@
 import Foundation
 import HTTPTypes
+import NuToriTestSupport
 import Testing
 
 @testable import NuToriAPI
@@ -52,10 +53,10 @@ extension NuToriAPIClientTests {
                     result
                         == .pushed([
                             SyncWriteResult(
-                                writeId: createWriteId, outcome: .applied),
+                                writeId: createWriteId, outcome: .applied, current: nil),
                             SyncWriteResult(
                                 writeId: updateWriteId,
-                                outcome: .rejected(.outOfRange)),
+                                outcome: .rejected(.outOfRange), current: nil),
                         ])
                 )
             }
@@ -70,8 +71,8 @@ extension NuToriAPIClientTests {
                 #expect(sent.request.path == "/v1/sync/writes")
                 #expect(sent.request.headerFields[.authorization] == "Bearer session-1")
                 #expect(
-                    try SentSyncWritesBody(json: sent.body ?? "")
-                        == SentSyncWritesBody(
+                    try SentWritesBody(json: sent.body ?? "")
+                        == SentWritesBody(
                             clientState: .init(
                                 deviceId: "00000000-0000-4000-8000-0000000000D1",
                                 timeZone: "Asia/Tokyo",
@@ -83,17 +84,15 @@ extension NuToriAPIClientTests {
                             ),
                             isFinalBatch: true,
                             writes: [
-                                .init(
+                                .createWeightRecord(
                                     id: createWriteId.uuidString,
-                                    type: "create_weight_record",
-                                    weightRecord: .init(
+                                    .init(
                                         id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
                                         timeZone: "Asia/Tokyo", version: nil, imported: nil)
                                 ),
-                                .init(
+                                .updateWeightRecord(
                                     id: updateWriteId.uuidString,
-                                    type: "update_weight_record",
-                                    weightRecord: .init(
+                                    .init(
                                         id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
                                         timeZone: "Asia/Tokyo", version: 2, imported: nil)
                                 ),
@@ -138,11 +137,10 @@ extension NuToriAPIClientTests {
 
                 let sent = try #require(transport.requests.first)
                 #expect(
-                    try SentSyncWritesBody(json: sent.body ?? "").writes == [
-                        .init(
+                    try SentWritesBody(json: sent.body ?? "").writes == [
+                        .updateAccountSettings(
                             id: writeId.uuidString,
-                            accountSettings: .init(
-                                id: settingsId.uuidString, sendsUsageData: false)
+                            .init(id: settingsId.uuidString, sendsUsageData: false)
                         )
                     ])
             }
@@ -191,10 +189,10 @@ extension NuToriAPIClientTests {
 
                 let sent = try #require(transport.requests.first)
                 let weightRecord = try #require(
-                    SentSyncWritesBody(json: sent.body ?? "").writes.first?.weightRecord)
+                    SentWritesBody(json: sent.body ?? "").writes.first?.weightRecord)
                 #expect(
                     weightRecord.imported
-                        == SentSyncWritesBody.Imported(
+                        == SentWritesBody.Imported(
                             sourceAppName: "Withings",
                             sourceBundleId: "com.withings.wiScaleNG",
                             healthkitSampleUuid: "00000000-0000-4000-8000-0000000000C1",
@@ -249,13 +247,10 @@ extension NuToriAPIClientTests {
                     [writes[0]], isFinalBatch: false, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
-                let body = try JSONDecoder().decode(
-                    SentSourceDeletedWritesBody.self, from: Data((sent.body ?? "").utf8))
                 #expect(
-                    body.writes == [
-                        .init(
+                    try SentWritesBody(json: sent.body ?? "").writes == [
+                        .sourceDeletedWeightRecord(
                             id: writeIds[0].uuidString,
-                            type: "source_deleted_weight_record",
                             weightRecordId: weightRecordId.uuidString)
                     ])
             }
@@ -268,21 +263,13 @@ extension NuToriAPIClientTests {
                 #expect(
                     result
                         == .pushed([
-                            SyncWriteResult(writeId: writeIds[0], outcome: .applied),
-                            SyncWriteResult(writeId: writeIds[1], outcome: .ignoredTombstone),
-                            SyncWriteResult(writeId: writeIds[2], outcome: .keptCorrected),
+                            SyncWriteResult(writeId: writeIds[0], outcome: .applied, current: nil),
+                            SyncWriteResult(
+                                writeId: writeIds[1], outcome: .ignoredTombstone, current: nil),
+                            SyncWriteResult(
+                                writeId: writeIds[2], outcome: .keptCorrected, current: nil),
                         ])
                 )
-            }
-
-            private struct SentSourceDeletedWritesBody: Decodable {
-                let writes: [Write]
-
-                struct Write: Decodable, Equatable {
-                    let id: String
-                    let type: String
-                    let weightRecordId: String
-                }
             }
         }
 
@@ -321,12 +308,73 @@ extension NuToriAPIClientTests {
                         == .pushed([
                             SyncWriteResult(
                                 writeId: createWriteId,
-                                outcome: .unknown(result: "ignored_stale")),
+                                outcome: .unknown(result: "ignored_stale"), current: nil),
                             SyncWriteResult(
                                 writeId: updateWriteId,
-                                outcome: .rejected(.unknown(reason: "too_old"))),
+                                outcome: .rejected(.unknown(reason: "too_old")), current: nil),
                         ])
                 )
+            }
+        }
+
+        @Suite("サーバーが受け付けなかった書き込みに今の値を添えたとき")
+        struct RejectedWithCurrent {
+            let ids: [UUID]
+            let client: NuToriAPIClient
+            let clientState: SyncClientState
+            let recordId = "00000000-0000-4000-8000-0000000000b1"
+
+            init() {
+                ids = (1...5).map { UUID(uuidString: "00000000-0000-4000-8000-0000000000a\($0)")! }
+                clientState = .fixture()
+                let id = recordId
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(
+                        json: """
+                            {"results":[
+                              {"writeId":"\(ids[0].uuidString)","result":"rejected","rejectionReason":"version_too_low",
+                                "current":{"status":"value","change":{"kind":"weight_record","recordId":"\(id)",
+                                  "record":{"id":"\(id)","weightKg":71,"measuredAt":1767225600000,
+                                    "timeZone":"Asia/Tokyo","version":1}}}},
+                              {"writeId":"\(ids[1].uuidString)","result":"rejected","rejectionReason":"version_too_low",
+                                "current":{"status":"deleted","change":{"kind":"weight_record_deletion",
+                                  "recordId":"\(id)","record":{}}}},
+                              {"writeId":"\(ids[2].uuidString)","result":"rejected","rejectionReason":"out_of_range",
+                                "current":{"status":"absent"}},
+                              {"writeId":"\(ids[3].uuidString)","result":"rejected","rejectionReason":"out_of_range",
+                                "current":{"status":"archived"}},
+                              {"writeId":"\(ids[4].uuidString)","result":"rejected","rejectionReason":"out_of_range"}
+                            ]}
+                            """
+                    ),
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("値・削除の印・無いを、取りに行く変更と同じ形で返し、知らない状態と添え忘れは nil にすること")
+            func returnsCurrent() async throws {
+                let result = try await client.pushSyncWrites(
+                    [], isFinalBatch: false, clientState: clientState)
+
+                guard case .pushed(let results) = result else {
+                    Issue.record("結果が返っていない: \(result)")
+                    return
+                }
+                let recordUUID = try #require(UUID(uuidString: recordId))
+                let weightRecord = SyncedWeightRecord(
+                    id: recordUUID, weightKilograms: 71,
+                    measuredAt: Date(timeIntervalSince1970: 1_767_225_600),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), version: 1,
+                    imported: nil)
+                #expect(
+                    results.map(\.current) == [
+                        .value(.weightRecord(weightRecord)),
+                        .deleted(.weightRecordDeletion(recordId: recordUUID)),
+                        .absent,
+                        nil,
+                        nil,
+                    ])
             }
         }
 

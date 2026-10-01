@@ -1,16 +1,17 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 
 extension SyncEngine {
     static let fixtureNow = Date(timeIntervalSince1970: 1_767_225_600)
     static let fixtureAccountId = "5b1f2c1e-3a58-4d5b-9c0e-8f7a6d5c4b3a"
 
     static func fixture(
-        store: SyncStoreMock,
+        store: SyncBoxMock<RecordCacheMock>,
         transport: ClientTransportMock,
         accountId: String = fixtureAccountId,
-        readableKindsVersion: Int = 1,
+        readableKinds: Set<RecordKindName> = [.weightRecord],
         errorReporting: ErrorReportingSessionMock = .ok(),
         weightHealthExport: any WeightHealthExport = WeightHealthExportMock.ok()
     ) -> SyncEngine {
@@ -29,7 +30,7 @@ extension SyncEngine {
             ),
             timeZone: { TimeZone(identifier: "Asia/Tokyo")! },
             now: { fixtureNow },
-            readableKindsVersion: readableKindsVersion,
+            readableKinds: readableKinds,
             errorReporting: errorReporting,
             weightHealthExport: weightHealthExport
         )
@@ -45,14 +46,11 @@ extension PendingWrite {
         )
     }
 
-    static func correcting(
-        _ record: WeightRecord,
-        previous: WeightRecord
-    ) -> PendingWrite {
+    static func correcting(_ record: WeightRecord) -> PendingWrite {
         PendingWrite(
             writeId: UUID(),
             enqueuedAt: SyncEngine.fixtureNow,
-            operation: .correctWeightRecord(record, previous: previous)
+            operation: .correctWeightRecord(record)
         )
     }
 }
@@ -70,12 +68,12 @@ extension SyncState {
     static func fixture(
         afterSequence: Int = 0,
         hasCompletedInitialPull: Bool = false,
-        readableKindsVersion: Int = 1
+        readableKinds: Set<RecordKindName> = [.weightRecord]
     ) -> SyncState {
         SyncState(
             afterSequence: afterSequence,
             hasCompletedInitialPull: hasCompletedInitialPull,
-            readableKindsVersion: readableKindsVersion,
+            readableKinds: readableKinds,
             startedOn: nil
         )
     }

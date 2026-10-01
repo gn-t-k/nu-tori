@@ -1,5 +1,6 @@
 import Foundation
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 extension AccountSessionTests {
@@ -81,12 +82,14 @@ extension AccountSessionTests {
                 device = try .signedIn()
                 session = device.session()
                 let settings = AccountSettings.fixture(sendsUsageData: false)
-                try await device.syncStore.save(
-                    settings,
-                    enqueuing: PendingWrite(
-                        writeId: UUID(),
-                        enqueuedAt: .now,
-                        operation: .updateAccountSettings(settings)
+                try await device.syncStore.apply(
+                    AccountSettingsSyncKind().saving(
+                        settings,
+                        enqueuing: PendingWrite(
+                            writeId: UUID(),
+                            enqueuedAt: .now,
+                            operation: .updateAccountSettings(settings)
+                        )
                     )
                 )
             }

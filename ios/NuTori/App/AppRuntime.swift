@@ -31,30 +31,58 @@ import SwiftData
         }
     }
 
+    /// 本番と UI テストで違う部品。配線は `assemble(_:)` が1つだけ持つ
+    struct Parts {
+        let store: SwiftDataSyncStore
+        /// セッショントークンを受け取って API クライアントを作る（API のトランスポートが違う）
+        let makeClient:
+            @Sendable (_ sessionToken: @escaping @Sendable () async -> String?) ->
+                NuToriAPIClient
+        let keychain: any SessionKeychain
+        let deviceStore: UserDefaultsSignInDeviceStore
+        let healthStore: any HealthStore
+        let startBackgroundDelivery: @Sendable (@escaping @Sendable () async -> Void) async -> Void
+        let appleCredentials: any AppleCredentialChecker
+        let observation: ObservationSessions
+    }
+
     private static func live() throws -> AppRuntime {
-        let store = try SwiftDataSyncStore(inMemory: false)
-        let keychain = KeychainSessionKeychain()
-        let deviceStore = UserDefaultsSignInDeviceStore(defaults: .standard)
-        let client = NuToriAPIClient(
-            environment: .forThisBuild,
-            sessionToken: { try? await keychain.sessionToken() }
-        )
-        let observation = ObservationSessions.live()
         let healthStore = HealthKitHealthStore()
+        // Sendable のクロージャからは MainActor の値を読めないので、先に取り出す
+        let environment = APIEnvironment.forThisBuild
+        return assemble(
+            Parts(
+                store: try SwiftDataSyncStore(inMemory: false),
+                makeClient: { NuToriAPIClient(environment: environment, sessionToken: $0) },
+                keychain: KeychainSessionKeychain(),
+                deviceStore: UserDefaultsSignInDeviceStore(defaults: .standard),
+                healthStore: healthStore,
+                startBackgroundDelivery: { onWake in
+                    await healthStore.startDeliveringUpdates(onWake: onWake)
+                },
+                appleCredentials: AppleIDCredentialChecker(),
+                observation: ObservationSessions.live()
+            ))
+    }
+
+    static func assemble(_ parts: Parts) -> AppRuntime {
+        let store = parts.store
+        let keychain = parts.keychain
+        let deviceStore = parts.deviceStore
+        let observation = parts.observation
+        let client = parts.makeClient { try? await keychain.sessionToken() }
         let health = HealthSyncSession.live(
             syncStore: store,
-            healthStore: healthStore,
+            healthStore: parts.healthStore,
             errorReporting: observation.errorReporting,
-            startBackgroundDelivery: { onWake in
-                await healthStore.startDeliveringUpdates(onWake: onWake)
-            }
+            startBackgroundDelivery: parts.startBackgroundDelivery
         )
         let session = AccountSession(
             client: client,
             keychain: keychain,
             deviceStore: deviceStore,
             syncStore: store,
-            appleCredentials: AppleIDCredentialChecker(),
+            appleCredentials: parts.appleCredentials,
             backgroundTransfers: PlaceholderBackgroundTransferStore(),
             healthAnchors: store,
             analytics: observation.analytics,

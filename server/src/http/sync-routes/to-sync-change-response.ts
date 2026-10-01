@@ -1,31 +1,7 @@
-import { match } from "ts-pattern";
 import type { SyncChange } from "../../domain/sync-change";
+import { httpRecordKinds } from "./http-record-kinds";
 
-export const toSyncChangeResponse = (change: SyncChange) =>
-  match(change)
-    .with({ type: "weight_record" }, ({ sequence, weightRecord }) => ({
-      sequence,
-      kind: "weight_record",
-      recordId: weightRecord.id,
-      record: {
-        id: weightRecord.id,
-        weightKg: weightRecord.weightKg,
-        measuredAt: weightRecord.measuredAt.getTime(),
-        timeZone: weightRecord.timeZone,
-        version: weightRecord.version,
-        imported: weightRecord.imported,
-      },
-    }))
-    .with({ type: "weight_record_deletion" }, ({ sequence, recordId }) => ({
-      sequence,
-      kind: "weight_record_deletion",
-      recordId,
-      record: {},
-    }))
-    .with({ type: "account_settings" }, ({ sequence, accountSettings }) => ({
-      sequence,
-      kind: "account_settings",
-      recordId: accountSettings.id,
-      record: { id: accountSettings.id, sendsUsageData: accountSettings.sendsUsageData },
-    }))
-    .exhaustive();
+export const toSyncChangeResponse = ({ sequence, recordType, recordId, current }: SyncChange) => {
+  const kind = httpRecordKinds[recordType];
+  return kind.toChangeResponse(sequence, current, recordId);
+};

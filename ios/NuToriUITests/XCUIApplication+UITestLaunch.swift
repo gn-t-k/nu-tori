@@ -40,6 +40,19 @@ extension XCUIApplication {
         buttons["記録"].tap()
     }
 
+    /// 小数点のキーは、地域の設定で「.」か「,」になる
+    @MainActor func typeSeventyKilograms() {
+        keys["7"].tap()
+        keys["0"].tap()
+        let decimal = keys["."]
+        if decimal.exists {
+            decimal.tap()
+        } else {
+            keys[","].tap()
+        }
+        keys["0"].tap()
+    }
+
     @MainActor func openAccountScreen() {
         XCTAssertTrue(buttons["account"].waitForExistence(timeout: 5))
         buttons["account"].tap()

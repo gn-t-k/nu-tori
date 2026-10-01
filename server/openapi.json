@@ -12,6 +12,14 @@
       }
     },
     "schemas": {
+      "RecordKindName": {
+        "type": "string",
+        "enum": [
+          "account_settings",
+          "weight_record"
+        ],
+        "description": "サーバーが同期で扱う記録の種類の名前。応答の kind を解くのには使わない（知らない種類を読み飛ばすため、応答では文字列で持つ）"
+      },
       "SyncWriteResult": {
         "type": "object",
         "properties": {
@@ -26,6 +34,9 @@
           "rejectionReason": {
             "type": "string",
             "description": "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ"
+          },
+          "current": {
+            "$ref": "#/components/schemas/SyncWriteCurrent"
           }
         },
         "required": [
@@ -33,8 +44,47 @@
           "result"
         ]
       },
+      "SyncWriteCurrent": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "value（値）、deleted（削除の印）、absent（記録も削除の印も無い）のどれか。値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が何も当てない",
+            "example": "value"
+          },
+          "change": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "example": "weight_record"
+              },
+              "recordId": {
+                "type": "string"
+              },
+              "record": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "kind",
+              "recordId",
+              "record"
+            ],
+            "description": "status が value か deleted のときだけ付く"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "description": "result が rejected のときだけ付く。その記録のサーバーの今の値で、要求の書き込みを全部当て終えた時点のもの。同じ書き込みの ID が再び届いたときも、最初の結果に、当て終えた時点の値を添える"
+      },
       "SyncWrite": {
         "oneOf": [
+          {
+            "$ref": "#/components/schemas/UpdateAccountSettingsWrite"
+          },
           {
             "$ref": "#/components/schemas/CreateWeightRecordWrite"
           },
@@ -43,21 +93,56 @@
           },
           {
             "$ref": "#/components/schemas/SourceDeletedWeightRecordWrite"
-          },
-          {
-            "$ref": "#/components/schemas/UpdateAccountSettingsWrite"
           }
         ],
         "discriminator": {
           "propertyName": "type",
           "mapping": {
+            "update_account_settings": "#/components/schemas/UpdateAccountSettingsWrite",
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
-            "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite",
-            "update_account_settings": "#/components/schemas/UpdateAccountSettingsWrite"
+            "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite"
           }
         },
         "description": "アカウントの設定は、記録が無くても直す書き込みで送り、サーバーが無ければ作る"
+      },
+      "UpdateAccountSettingsWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "update_account_settings"
+            ]
+          },
+          "accountSettings": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ"
+              },
+              "sendsUsageData": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "sendsUsageData"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "accountSettings"
+        ]
       },
       "CreateWeightRecordWrite": {
         "type": "object",
@@ -220,44 +305,6 @@
           "id",
           "type",
           "weightRecordId"
-        ]
-      },
-      "UpdateAccountSettingsWrite": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "冪等の鍵"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "update_account_settings"
-            ]
-          },
-          "accountSettings": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "minLength": 1,
-                "description": "端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ"
-              },
-              "sendsUsageData": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "id",
-              "sendsUsageData"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "type",
-          "accountSettings"
         ]
       },
       "SyncChange": {

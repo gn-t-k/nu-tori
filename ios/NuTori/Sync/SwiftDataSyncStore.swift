@@ -1,227 +1,229 @@
-import CoreData
 import Foundation
+import NuToriAPI
 import NuToriCore
 import SwiftData
+import Synchronization
 
-/// 記録、送り待ち、同期の状態を1つの SwiftData に置く。保存はメインのコンテキストでだけ行う。
-/// バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
-nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unchecked Sendable {
+/// 端末の記録を2つの SwiftData の置き場に持つ（ADR-0022）。
+/// キャッシュ（記録、アカウントの設定、通し番号）はサーバーの写しで、移行を持たない。
+/// 送り待ちとヘルスケアの同期の進み具合は失えないので、版つきのスキーマで移行する。
+/// 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。
+/// 保存はメインのコンテキストでだけ行う。バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
+nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthSyncStoring,
+    HealthAnchorStore, @unchecked Sendable
+{
+    /// 画面の `@Query` が読むキャッシュの置き場
     let container: ModelContainer
 
-    struct NotOpened: Error {}
+    /// 置き場を開けなかった。`cause` は開けなかった元のエラー（SwiftData と Foundation のもので、記録の中身は含まない）
+    struct NotOpened: Error {
+        let cause: any Error
+    }
 
-    init(inMemory: Bool) throws {
+    var recordKinds: [any SyncedRecordKind] {
+        kinds.synced
+    }
+
+    /// 記録の種類は登録簿（既定はアプリの `AppRecordKinds.registry`）に書く
+    @MainActor init(
+        inMemory: Bool,
+        kinds: RecordKindRegistry<ModelContext> = AppRecordKinds.registry
+    ) throws {
+        self.kinds = kinds
         if inMemory {
-            container = try Self.memoryContainer()
+            container = try Self.memoryContainer(CacheStoreSchema.schema, plan: nil)
+            pendingContainer = try Self.memoryContainer(
+                Schema(versionedSchema: PendingStoreSchemaV2.self),
+                plan: PendingStoreMigrationPlan.self)
+            recoveries = Mutex([])
         } else {
-            let directory = URL.applicationSupportDirectory.appending(
-                path: "RecordStore", directoryHint: .isDirectory)
-            container = try Self.openDiskContainer(in: directory)
+            let opened = try Self.openOnDisk(in: .applicationSupportDirectory)
+            container = opened.cache
+            pendingContainer = opened.pending
+            recoveries = Mutex(opened.recoveries)
         }
     }
 
-    init(directory: URL) throws {
-        container = try Self.openDiskContainer(in: directory)
+    /// `directory` の下に、キャッシュと送り待ちの置き場を作る
+    @MainActor init(
+        directory: URL,
+        kinds: RecordKindRegistry<ModelContext> = AppRecordKinds.registry
+    ) throws {
+        self.kinds = kinds
+        let opened = try Self.openOnDisk(in: directory)
+        container = opened.cache
+        pendingContainer = opened.pending
+        recoveries = Mutex(opened.recoveries)
+    }
+
+    /// 開くときに対処した失敗。渡したら空になる
+    func takeRecoveries() -> [HandledFailure] {
+        recoveries.withLock { failures in
+            defer { failures = [] }
+            return failures
+        }
     }
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {
-        try await onMain { context in
-            try Self.cachedRecord(id: id, in: context)?.weightRecord()
+        try await onMain { stores in
+            try CachedWeightRecord.find(id: id, in: stores.cache)?.weightRecord()
         }
     }
 
     func weightRecords() async throws -> [WeightRecord] {
-        try await onMain { context in
-            try context.fetch(FetchDescriptor<CachedWeightRecord>()).compactMap {
+        try await onMain { stores in
+            try stores.cache.fetch(FetchDescriptor<CachedWeightRecord>()).compactMap {
                 $0.weightRecord()
             }
         }
     }
 
-    func save(_ record: WeightRecord, enqueuing write: PendingWrite) async throws {
-        try await onMain { context in
-            try Self.upsert(record, in: context)
-            context.insert(try CachedPendingWrite(write: write))
-            try context.save()
-        }
-    }
-
     func accountSettings() async throws -> AccountSettings? {
-        try await onMain { context in
-            try Self.cachedAccountSettings(in: context)?.accountSettings()
+        try await onMain { stores in
+            try CachedAccountSettings.current(in: stores.cache)?.accountSettings()
         }
     }
 
-    func save(_ settings: AccountSettings, enqueuing write: PendingWrite) async throws {
-        try await onMain { context in
-            try Self.write(settings, in: context)
-            context.insert(try CachedPendingWrite(write: write))
-            try context.save()
-        }
-    }
-
-    func pendingWritesOldestFirst() async throws -> [PendingWrite] {
-        try await onMain { context in
-            let descriptor = FetchDescriptor<CachedPendingWrite>(
+    func pendingEntries() async throws -> [PendingEntry] {
+        try await onMain { stores in
+            let descriptor = FetchDescriptor<PendingWriteRow>(
                 sortBy: [SortDescriptor(\.enqueuedAt)])
-            return try context.fetch(descriptor).map { try $0.pendingWrite() }
+            return try stores.pending.fetch(descriptor).compactMap(\.entry)
         }
     }
 
-    func removePendingWrites(_ writeIds: [UUID], reverting reversions: [RecordReversion])
-        async throws
-    {
-        try await onMain { context in
-            let removing = Set(writeIds)
-            let descriptor = FetchDescriptor<CachedPendingWrite>()
-            for row in try context.fetch(descriptor) where removing.contains(row.writeId) {
-                context.delete(row)
-            }
-            for reversion in reversions {
-                switch reversion {
-                case .restore(let record):
-                    try Self.upsert(record, in: context)
-                case .remove(let recordId):
-                    if let row = try Self.cachedRecord(id: recordId, in: context) {
-                        context.delete(row)
-                    }
+    /// 送り待ちに足すものを先に保存し、キャッシュをそのあとに保存し、結果を受け取った送り待ちを最後に消す。
+    /// 受け付けなかった書き込みの戻しは、キャッシュに当てたあとに送り待ちを消す。間で落ちても、送り待ちが残るので次に送って同じ戻しに戻る
+    func apply(_ result: SyncBoxResult) async throws {
+        let kinds = kinds
+        try await onMain { stores in
+            if !result.enqueuing.isEmpty {
+                for entry in result.enqueuing {
+                    stores.pending.insert(PendingWriteRow(entry: entry))
                 }
+                try stores.pending.save()
             }
-            try context.save()
+            try Self.applyToCache(result, kinds: kinds, in: stores.cache)
+            if !result.resolvedWriteIds.isEmpty {
+                let removing = Set(result.resolvedWriteIds)
+                for row in try stores.pending.fetch(FetchDescriptor<PendingWriteRow>())
+                where removing.contains(row.writeId) {
+                    stores.pending.delete(row)
+                }
+                try stores.pending.save()
+            }
         }
     }
 
     func syncState() async throws -> SyncState? {
-        try await onMain { context in
-            try Self.cachedSyncState(in: context)?.syncState()
-        }
-    }
-
-    func saveSyncState(_ state: SyncState) async throws {
-        try await onMain { context in
-            try Self.write(state, in: context)
-            try context.save()
-        }
-    }
-
-    func apply(_ changes: PulledChanges) async throws {
-        try await onMain { context in
-            // メインのコンテキストを長く止めない。最後の保存で通し番号も書くので、途中で落ちても取り直しで揃う
-            let batchSize = 100
-            if changes.records.isEmpty {
-                try Self.finish(changes, in: context)
-                try context.save()
-                return
-            }
-            var start = 0
-            while start < changes.records.count {
-                let end = min(start + batchSize, changes.records.count)
-                for record in changes.records[start..<end] {
-                    try Self.upsert(record, in: context)
-                }
-                if end == changes.records.count {
-                    try Self.finish(changes, in: context)
-                }
-                try context.save()
-                start = end
-            }
+        try await onMain { stores in
+            try Self.cachedSyncState(in: stores.cache)?.syncState()
         }
     }
 
     func healthSyncState() async throws -> HealthSyncState {
-        try await onMain { context in
-            try Self.cachedHealthSyncState(in: context)?.healthSyncState() ?? .initial
+        try await onMain { stores in
+            try Self.healthSyncStateRow(in: stores.pending)?.healthSyncState() ?? .initial
         }
     }
 
     func saveHealthSyncState(_ state: HealthSyncState) async throws {
-        try await onMain { context in
-            try Self.write(state, in: context)
-            try context.save()
+        try await onMain { stores in
+            try Self.write(state, in: stores.pending)
+            try stores.pending.save()
         }
     }
 
     func applyHealthImport(_ batch: HealthImportBatch) async throws {
-        try await onMain { context in
-            for record in batch.records {
-                try Self.upsert(record, in: context)
-            }
+        try await onMain { stores in
+            // 送り待ちと進み具合を先に保存する。間で落ちても、取り込んだ分は送り待ちに残る
             for write in batch.pendingWrites {
-                context.insert(try CachedPendingWrite(write: write))
+                stores.pending.insert(try PendingWriteRow(write: write))
             }
-            try Self.write(batch.state, in: context)
-            try context.save()
+            try Self.write(batch.state, in: stores.pending)
+            try stores.pending.save()
+            for record in batch.records {
+                try CachedWeightRecord.upsert(record, in: stores.cache)
+            }
+            try stores.cache.save()
         }
     }
 
+    /// 送り待ちの置き場を1つの保存で空にしてから、キャッシュの置き場を空にする
     func eraseAll() async throws {
-        try await onMain { context in
-            try context.delete(model: CachedWeightRecord.self)
-            try context.delete(model: CachedAccountSettings.self)
-            try context.delete(model: CachedPendingWrite.self)
-            try context.delete(model: CachedSyncState.self)
-            try context.delete(model: CachedHealthSyncState.self)
-            try context.save()
+        let kinds = kinds
+        try await onMain { stores in
+            try stores.pending.delete(model: PendingWriteRow.self)
+            try stores.pending.delete(model: HealthSyncStateRow.self)
+            try stores.pending.save()
+            try stores.cache.delete(model: CachedSyncState.self)
+            for kind in kinds.kinds {
+                try kind.erase(stores.cache)
+            }
+            try stores.cache.save()
         }
     }
 
     func deleteAll() async throws {
-        try await onMain { context in
-            try context.delete(model: CachedHealthSyncState.self)
-            try context.save()
+        try await onMain { stores in
+            try stores.pending.delete(model: HealthSyncStateRow.self)
+            try stores.pending.save()
         }
     }
 
     #if DEBUG
         @MainActor func prepareForUITest(state: SyncState?, pendingWrites: [PendingWrite]) throws {
-            let context = context()
+            let stores = contexts()
+            for write in pendingWrites {
+                try Self.enqueue(write, in: stores.pending)
+            }
             if let state {
-                try Self.write(state, in: context)
+                try Self.write(state, in: stores.cache)
             }
             for write in pendingWrites {
-                context.insert(try CachedPendingWrite(write: write))
                 switch write.operation {
-                case .createWeightRecord(let record), .correctWeightRecord(let record, previous: _):
-                    try Self.upsert(record, in: context)
+                case .createWeightRecord(let record), .correctWeightRecord(let record):
+                    try CachedWeightRecord.upsert(record, in: stores.cache)
                 case .updateAccountSettings(let settings):
-                    try Self.write(settings, in: context)
+                    try CachedAccountSettings.write(settings, in: stores.cache)
                 case .sourceDeletedWeightRecord:
                     break
                 }
             }
             if state != nil || !pendingWrites.isEmpty {
-                try context.save()
+                try stores.cache.save()
             }
         }
     #endif
 
-    private func onMain<T: Sendable>(_ body: @MainActor (ModelContext) throws -> T) async throws
-        -> T
-    {
+    private struct Contexts {
+        let cache: ModelContext
+        let pending: ModelContext
+    }
+
+    private let pendingContainer: ModelContainer
+    private let kinds: RecordKindRegistry<ModelContext>
+    private let recoveries: Mutex<[HandledFailure]>
+
+    private func onMain<T: Sendable>(_ body: @MainActor (Contexts) throws -> T) async throws -> T {
         try await MainActor.run {
-            try body(self.context())
+            try body(self.contexts())
         }
     }
 
-    @MainActor private func context() -> ModelContext {
-        let context = container.mainContext
-        // 呼び出しのあいだに自動で保存すると、記録と送り待ちが別の保存に分かれる
-        context.autosaveEnabled = false
-        return context
+    @MainActor private func contexts() -> Contexts {
+        // 呼び出しのあいだに自動で保存すると、1つの操作が別の保存に分かれる
+        let cache = container.mainContext
+        cache.autosaveEnabled = false
+        let pending = pendingContainer.mainContext
+        pending.autosaveEnabled = false
+        return Contexts(cache: cache, pending: pending)
     }
 
-    @MainActor private static func cachedRecord(id: UUID, in context: ModelContext) throws
-        -> CachedWeightRecord?
-    {
-        try context.fetch(FetchDescriptor<CachedWeightRecord>()).first { $0.recordId == id }
-    }
-
-    @MainActor private static func upsert(_ record: WeightRecord, in context: ModelContext) throws {
-        if let existing = try cachedRecord(id: record.id, in: context) {
-            try existing.apply(record)
-        } else {
-            context.insert(try CachedWeightRecord(record))
-        }
+    /// 送り待ちを保存する（キャッシュより先）
+    @MainActor private static func enqueue(_ write: PendingWrite, in context: ModelContext) throws {
+        context.insert(try PendingWriteRow(write: write))
+        try context.save()
     }
 
     @MainActor private static func cachedSyncState(in context: ModelContext) throws
@@ -242,63 +244,64 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         }
     }
 
-    @MainActor private static func finish(_ changes: PulledChanges, in context: ModelContext) throws
-    {
-        for recordId in changes.removedRecordIds {
-            if let row = try cachedRecord(id: recordId, in: context) {
-                context.delete(row)
+    /// 登録簿の種類の変更を100件ずつ保存し、通し番号は最後の保存で書く。途中で落ちても、書いていない変更を追い越さない
+    @MainActor private static func applyToCache(
+        _ result: SyncBoxResult,
+        kinds: RecordKindRegistry<ModelContext>,
+        in context: ModelContext
+    ) throws {
+        // メインのコンテキストを長く止めないよう、分けて保存する
+        let batchSize = 100
+        var batches: [(kind: any RecordKind<ModelContext>, changes: [SyncChange])] = []
+        for group in result.kindChanges {
+            guard let kind = kinds.kind(named: group.kind) else {
+                throw UnknownRecordKindError.notRegistered(group.kind)
+            }
+            for start in stride(from: 0, to: group.changes.count, by: batchSize) {
+                let end = min(start + batchSize, group.changes.count)
+                batches.append((kind, Array(group.changes[start..<end])))
             }
         }
-        if let settings = changes.accountSettings {
-            try write(settings, in: context)
+        for (index, batch) in batches.enumerated() {
+            try batch.kind.apply(batch.changes, to: context)
+            if index == batches.count - 1, let state = result.syncState {
+                try write(state, in: context)
+            }
+            try context.save()
         }
-        try write(changes.state, in: context)
+        if batches.isEmpty, let state = result.syncState {
+            try write(state, in: context)
+            try context.save()
+        }
     }
 
-    @MainActor private static func cachedAccountSettings(in context: ModelContext) throws
-        -> CachedAccountSettings?
+    @MainActor private static func healthSyncStateRow(in context: ModelContext) throws
+        -> HealthSyncStateRow?
     {
-        let key = CachedAccountSettings.onlyKey
-        var descriptor = FetchDescriptor<CachedAccountSettings>(
+        let key = HealthSyncStateRow.onlyKey
+        var descriptor = FetchDescriptor<HealthSyncStateRow>(
             predicate: #Predicate { $0.singletonKey == key })
         descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first
     }
 
-    @MainActor private static func write(_ settings: AccountSettings, in context: ModelContext)
-        throws
-    {
-        if let existing = try cachedAccountSettings(in: context) {
-            existing.apply(settings)
-        } else {
-            context.insert(CachedAccountSettings(settings))
-        }
-    }
-
-    @MainActor private static func cachedHealthSyncState(in context: ModelContext) throws
-        -> CachedHealthSyncState?
-    {
-        let key = CachedHealthSyncState.onlyKey
-        var descriptor = FetchDescriptor<CachedHealthSyncState>(
-            predicate: #Predicate { $0.singletonKey == key })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
-    }
-
+    /// 保存は呼び出し側が行う
     @MainActor private static func write(_ state: HealthSyncState, in context: ModelContext) throws
     {
-        if let existing = try cachedHealthSyncState(in: context) {
+        if let existing = try healthSyncStateRow(in: context) {
             existing.apply(state)
         } else {
-            context.insert(CachedHealthSyncState(state))
+            context.insert(HealthSyncStateRow(state))
         }
     }
 
-    private static func memoryContainer() throws -> ModelContainer {
-        let schema = Schema(versionedSchema: RecordStoreSchemaV2.self)
-        return try ModelContainer(
+    private static func memoryContainer(
+        _ schema: Schema,
+        plan: (any SchemaMigrationPlan.Type)?
+    ) throws -> ModelContainer {
+        try ModelContainer(
             for: schema,
-            migrationPlan: RecordStoreMigrationPlan.self,
+            migrationPlan: plan,
             configurations: ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: true,
@@ -307,151 +310,68 @@ nonisolated final class SwiftDataSyncStore: SyncStore, HealthAnchorStore, @unche
         )
     }
 
-    private static func openDiskContainer(in directory: URL) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: RecordStoreSchemaV2.self)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let url = directory.appending(path: "RecordStore.store")
-        do {
-            return try diskContainer(schema: schema, url: url)
-        } catch {
-            // 移行できない形は SwiftDataError の backwardMigration・unknownSchema・unknownDataStoreSchema と、Core Data の NSPersistentStoreIncompatibleVersionHashError・NSMigrationError・NSMigrationMissingSourceModelError・NSMigrationMissingMappingModelError・NSInferredMappingModelError・NSStagedMigrationBackwardMigrationError。loadIssueModelContainer はコードを落とすので、版ハッシュが今のスキーマと違うときも同じとみなす
-            guard isUnmigratableStoreShape(error, at: url, schema: schema) else {
-                throw NotOpened()
-            }
-            do {
-                try archiveStore(at: url)
-            } catch {
-                throw NotOpened()
-            }
-            return try diskContainer(schema: schema, url: url)
-        }
+    private struct Opened {
+        let cache: ModelContainer
+        let pending: ModelContainer
+        let recoveries: [HandledFailure]
     }
 
-    private static func isUnmigratableStoreShape(_ error: any Error, at url: URL, schema: Schema)
-        -> Bool
-    {
-        if errorIndicatesMigrationMismatch(error) {
-            return true
+    @MainActor private static func openOnDisk(in directory: URL) throws -> Opened {
+        var recoveries: [HandledFailure] = []
+        let pending = try openPending(in: directory)
+        if pending.archived {
+            recoveries.append(.storeRecovery)
         }
-        guard isLoadIssueModelContainer(error) else {
-            return false
+        // 版 1 から移したときに、種類の名前を読めなかった送り待ちは、送る前に捨てる（残すと送るたびに同期が止まる）
+        if try PendingStoreMigrationPlan.dropUnreadableRows(in: pending.container.mainContext) {
+            recoveries.append(.storeRecovery)
         }
-        return versionHashesDifferFromCurrentSchema(at: url, schema: schema)
-    }
-
-    private static func errorIndicatesMigrationMismatch(_ error: any Error) -> Bool {
-        switch error {
-        case SwiftDataError.backwardMigration, SwiftDataError.unknownSchema:
-            return true
-        default:
+        // 今の1つの置き場からは、送り待ちを移してから、キャッシュを開く（キャッシュは空から取り直す）
+        let outcome = try LegacyRecordStore.carryOver(
+            from: LegacyRecordStore.url(in: directory), into: pending.container.mainContext)
+        switch outcome {
+        case .absent, .carriedOver(droppedUnreadable: false):
             break
+        case .discarded, .carriedOver(droppedUnreadable: true):
+            recoveries.append(.storeRecovery)
         }
-        if #available(iOS 27, *) {
-            if case SwiftDataError.unknownDataStoreSchema = error {
-                return true
-            }
-        }
-        let nsError = error as NSError
-        let migrationMismatchCodes: Set<Int> = [
-            NSPersistentStoreIncompatibleVersionHashError,
-            NSMigrationError,
-            NSMigrationMissingSourceModelError,
-            NSMigrationMissingMappingModelError,
-            NSInferredMappingModelError,
-            NSStagedMigrationBackwardMigrationError,
-        ]
-        if nsError.domain == NSCocoaErrorDomain, migrationMismatchCodes.contains(nsError.code) {
-            return true
-        }
-        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? any Error {
-            return errorIndicatesMigrationMismatch(underlying)
-        }
-        return false
+        let cache = try openCache(in: directory)
+        return Opened(cache: cache, pending: pending.container, recoveries: recoveries)
     }
 
-    private static func isLoadIssueModelContainer(_ error: any Error) -> Bool {
-        switch error {
-        case SwiftDataError.loadIssueModelContainer:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private static func versionHashesDifferFromCurrentSchema(at url: URL, schema: Schema) -> Bool {
-        guard let onDisk = storeVersionHashes(at: url) else { return false }
-        let reference = FileManager.default.temporaryDirectory.appending(
-            path: "RecordStore-schema-\(UUID().uuidString).store")
-        defer { removeTemporaryStore(at: reference) }
-        do {
-            _ = try diskContainer(schema: schema, url: reference)
-        } catch {
-            return false
-        }
-        guard let current = storeVersionHashes(at: reference) else { return false }
-        return onDisk != current
-    }
-
-    private static func storeVersionHashes(at url: URL) -> [String: Data]? {
-        guard
-            let metadata = try? NSPersistentStoreCoordinator.metadataForPersistentStore(
-                ofType: NSSQLiteStoreType, at: url),
-            let hashes = metadata[NSStoreModelVersionHashesKey] as? [String: Data]
-        else {
-            return nil
-        }
-        return hashes
-    }
-
-    private static func archiveStore(at url: URL) throws {
-        let stamp = archiveStamp(Date())
-        let manager = FileManager.default
-        var moved: [(URL, URL)] = []
-        do {
-            for suffix in ["-shm", "-wal", ""] {
-                let file = URL(filePath: url.path(percentEncoded: false) + suffix)
-                let path = file.path(percentEncoded: false)
-                guard manager.fileExists(atPath: path) else { continue }
-                let destination = URL(filePath: path + "." + stamp)
-                try manager.moveItem(at: file, to: destination)
-                moved.append((file, destination))
-            }
-        } catch {
-            for (file, destination) in moved.reversed() {
-                try? manager.moveItem(at: destination, to: file)
-            }
-            throw error
-        }
-    }
-
-    private static func archiveStamp(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
-        return formatter.string(from: date)
-    }
-
-    private static func removeTemporaryStore(at url: URL) {
-        let manager = FileManager.default
-        for suffix in ["", "-shm", "-wal"] {
-            let file = URL(filePath: url.path(percentEncoded: false) + suffix)
-            try? manager.removeItem(at: file)
-        }
-    }
-
-    private static func diskContainer(schema: Schema, url: URL) throws -> ModelContainer {
-        // ファイルの保護は指定しない。iOS の既定（初回のロック解除のあとは、バックグラウンド更新からも読める）
-        try ModelContainer(
-            for: schema,
-            migrationPlan: RecordStoreMigrationPlan.self,
-            configurations: ModelConfiguration(
-                "RecordStore",
-                schema: schema,
-                url: url,
-                cloudKitDatabase: .none
-            )
+    private static func openPending(in directory: URL) throws -> (
+        container: ModelContainer, archived: Bool
+    ) {
+        let url = try storeURL(named: "PendingStore", in: directory)
+        return try StoreFiles.openArchivingUnmigratable(
+            schema: Schema(versionedSchema: PendingStoreSchemaV2.self),
+            plan: PendingStoreMigrationPlan.self,
+            name: "PendingStore",
+            at: url
         )
+    }
+
+    /// 開けないときは、置き場ごと消して作り直す。空のキャッシュは、次の同期で全部取り直す
+    private static func openCache(in directory: URL) throws -> ModelContainer {
+        let name = "CacheStore"
+        let url = try storeURL(named: name, in: directory)
+        do {
+            return try StoreFiles.container(
+                schema: CacheStoreSchema.schema, plan: nil, name: name, at: url)
+        } catch {
+            do {
+                try StoreFiles.remove(at: url)
+                return try StoreFiles.container(
+                    schema: CacheStoreSchema.schema, plan: nil, name: name, at: url)
+            } catch {
+                throw NotOpened(cause: error)
+            }
+        }
+    }
+
+    private static func storeURL(named name: String, in directory: URL) throws -> URL {
+        let folder = directory.appending(path: name, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder.appending(path: "\(name).store")
     }
 }

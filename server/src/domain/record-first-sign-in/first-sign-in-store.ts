@@ -1,5 +1,6 @@
 export type FirstSignInStore = {
   exists: () => boolean;
+  findStartedOn: () => string | undefined;
   insert: (firstSignIn: {
     id: string;
     startedOn: string;
