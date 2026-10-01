@@ -9,8 +9,9 @@ import type { SyncWrite } from "./sync-write";
 export const createRecordLedger = (
   ledgerStore: LedgerStore<RecordType>,
   stores: RecordKindStores,
+  receivedAt: Date,
 ) =>
   createSyncLedger<RecordType, RecordType, SyncWrite, unknown>(
     ledgerStore,
-    createRecordKinds(stores),
+    createRecordKinds(stores, receivedAt),
   );

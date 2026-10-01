@@ -1,4 +1,6 @@
 import { match } from "ts-pattern";
+import { scheduleMealEstimation } from "../../estimation/domain/schedule-meal-estimation";
+import type { EstimationScheduleStore } from "../../estimation/domain/estimation-schedule-store";
 import { computeCalendarDay } from "../../domain/compute-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
@@ -7,36 +9,45 @@ import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import type { Meal } from "./meal";
 import { isMealEntryMethod } from "./meal-entry-method";
+import type { MealPhotoStore } from "./meal-photo-store";
 import type { MealStore } from "./meal-store";
 import { type MealWrite, mealWriteTypes } from "./meal-write";
 
+// receivedAt は要求を受け取った時刻。写真がそろった食事の推定の予定の時刻と、数える日に使う
 export const createMealKind = (
-  store: MealStore,
+  stores: {
+    meal: MealStore;
+    mealPhoto: MealPhotoStore;
+    estimationSchedule: EstimationScheduleStore;
+  },
+  receivedAt: Date,
 ): RecordKind<"meal", MealWrite, Meal, "meal_estimation_status"> => ({
   name: "meal",
   writes: {
     isWrite: (write): write is MealWrite => mealWriteTypes.includes(write.type),
     decide: (write) =>
       match(write)
-        .with({ type: "create_meal" }, ({ meal }) => decideCreate(store, meal))
-        .with({ type: "delete_meal" }, ({ mealId }) => decideDelete(store, mealId))
+        .with({ type: "create_meal" }, ({ meal }) => decideCreate(stores, meal, receivedAt))
+        .with({ type: "delete_meal" }, ({ mealId }) => decideDelete(stores.meal, mealId))
         .exhaustive(),
   },
   readCurrent: (recordId): CurrentRecord<Meal> => {
-    const meal = store.find(recordId);
+    const meal = stores.meal.find(recordId);
     if (meal !== undefined) {
       return { status: "value", value: meal };
     }
-    return store.hasDeletion(recordId) ? { status: "deleted" } : { status: "absent" };
+    return stores.meal.hasDeletion(recordId) ? { status: "deleted" } : { status: "absent" };
   },
 });
 
 type NewMeal = Extract<MealWrite, { type: "create_meal" }>["meal"];
 
 const decideCreate = (
-  store: MealStore,
+  stores: Parameters<typeof createMealKind>[0],
   newMeal: NewMeal,
+  receivedAt: Date,
 ): WriteDecision<"meal_estimation_status"> => {
+  const store = stores.meal;
   const { entryMethod, photoIds } = newMeal;
   if (
     !isWithinAcceptedRange("mealPhotoCount", photoIds.length) ||
@@ -73,6 +84,7 @@ const decideCreate = (
     return discarded(store, newMeal, { result: "rejected", reason: "photo_already_used" });
   }
   const meal: Meal = { ...newMeal, entryMethod };
+  // 推定の状態の変更は、写真がそろって予定に入れても1つでよい
   return {
     writeKind: "create",
     recordId: meal.id,
@@ -91,6 +103,7 @@ const decideCreate = (
     ],
     commit: () => {
       store.insert(meal);
+      scheduleMealEstimation(stores, meal, receivedAt);
     },
   };
 };

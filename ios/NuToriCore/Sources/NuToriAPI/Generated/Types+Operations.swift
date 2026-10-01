@@ -986,4 +986,534 @@ internal enum Operations {
             }
         }
     }
+    /// 食事の写真の縮小版を取りに行く
+    ///
+    /// - Remark: HTTP `GET /v1/meal-photos/{photoId}`.
+    /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)`.
+    internal enum GetMealPhoto {
+        internal static let id: Swift.String = "getMealPhoto"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/GET/path`.
+            internal struct Path: Sendable, Hashable {
+                /// 端末が振った写真の ID
+                ///
+                /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/GET/path/photoId`.
+                internal var photoId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - photoId: 端末が振った写真の ID
+                internal init(photoId: Swift.String) {
+                    self.photoId = photoId
+                }
+            }
+            internal var path: Operations.GetMealPhoto.Input.Path
+            /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/GET/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetMealPhoto.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetMealPhoto.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.GetMealPhoto.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            internal init(
+                path: Operations.GetMealPhoto.Input.Path,
+                headers: Operations.GetMealPhoto.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/GET/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/GET/responses/200/content/image\/jpeg`.
+                    case jpeg(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.jpeg`.
+                    ///
+                    /// - Throws: An error if `self` is not `.jpeg`.
+                    /// - SeeAlso: `.jpeg`.
+                    internal var jpeg: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .jpeg(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.GetMealPhoto.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.GetMealPhoto.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 受け取っていて、消していない写真
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetMealPhoto.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.GetMealPhoto.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.GetMealPhoto.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.GetMealPhoto.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct NotFound: Sendable, Hashable {
+                /// Creates a new `NotFound`.
+                internal init() {}
+            }
+            /// まだ受け取っていないか、消した
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.GetMealPhoto.Output.NotFound)
+            /// まだ受け取っていないか、消した
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            internal static var notFound: Self {
+                .notFound(.init())
+            }
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            internal var notFound: Operations.GetMealPhoto.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.GetMealPhoto.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.GetMealPhoto.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case jpeg
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "image/jpeg":
+                    self = .jpeg
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .jpeg:
+                    return "image/jpeg"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .jpeg
+                ]
+            }
+        }
+    }
+    /// 食事の写真の縮小版を送る
+    ///
+    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える
+    ///
+    /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
+    /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
+    internal enum PutMealPhoto {
+        internal static let id: Swift.String = "putMealPhoto"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/PUT/path`.
+            internal struct Path: Sendable, Hashable {
+                /// 端末が振った写真の ID
+                ///
+                /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/PUT/path/photoId`.
+                internal var photoId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - photoId: 端末が振った写真の ID
+                internal init(photoId: Swift.String) {
+                    self.photoId = photoId
+                }
+            }
+            internal var path: Operations.PutMealPhoto.Input.Path
+            /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/PUT/requestBody`.
+            internal enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/meal-photos/{photoId}/PUT/requestBody/content/image\/jpeg`.
+                case jpeg(OpenAPIRuntime.HTTPBody)
+            }
+            internal var body: Operations.PutMealPhoto.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - body:
+            internal init(
+                path: Operations.PutMealPhoto.Input.Path,
+                body: Operations.PutMealPhoto.Input.Body
+            ) {
+                self.path = path
+                self.body = body
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                internal init() {}
+            }
+            /// 受け取った
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.PutMealPhoto.Output.NoContent)
+            /// 受け取った
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            internal static var noContent: Self {
+                .noContent(.init())
+            }
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            internal var noContent: Operations.PutMealPhoto.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                internal init() {}
+            }
+            /// 経路の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.PutMealPhoto.Output.BadRequest)
+            /// 経路の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            internal static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.PutMealPhoto.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.PutMealPhoto.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.PutMealPhoto.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct ContentTooLarge: Sendable, Hashable {
+                /// Creates a new `ContentTooLarge`.
+                internal init() {}
+            }
+            /// 3 MiB を超えている
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/413`.
+            ///
+            /// HTTP response code: `413 contentTooLarge`.
+            case contentTooLarge(Operations.PutMealPhoto.Output.ContentTooLarge)
+            /// 3 MiB を超えている
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/413`.
+            ///
+            /// HTTP response code: `413 contentTooLarge`.
+            internal static var contentTooLarge: Self {
+                .contentTooLarge(.init())
+            }
+            /// The associated value of the enum case if `self` is `.contentTooLarge`.
+            ///
+            /// - Throws: An error if `self` is not `.contentTooLarge`.
+            /// - SeeAlso: `.contentTooLarge`.
+            internal var contentTooLarge: Operations.PutMealPhoto.Output.ContentTooLarge {
+                get throws {
+                    switch self {
+                    case let .contentTooLarge(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "contentTooLarge",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct UnsupportedMediaType: Sendable, Hashable {
+                /// Creates a new `UnsupportedMediaType`.
+                internal init() {}
+            }
+            /// JPEG でない
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/415`.
+            ///
+            /// HTTP response code: `415 unsupportedMediaType`.
+            case unsupportedMediaType(Operations.PutMealPhoto.Output.UnsupportedMediaType)
+            /// JPEG でない
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/415`.
+            ///
+            /// HTTP response code: `415 unsupportedMediaType`.
+            internal static var unsupportedMediaType: Self {
+                .unsupportedMediaType(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unsupportedMediaType`.
+            ///
+            /// - Throws: An error if `self` is not `.unsupportedMediaType`.
+            /// - SeeAlso: `.unsupportedMediaType`.
+            internal var unsupportedMediaType: Operations.PutMealPhoto.Output.UnsupportedMediaType {
+                get throws {
+                    switch self {
+                    case let .unsupportedMediaType(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unsupportedMediaType",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.PutMealPhoto.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.PutMealPhoto.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct InternalServerError: Sendable, Hashable {
+                /// Creates a new `InternalServerError`.
+                internal init() {}
+            }
+            /// 受け取れなかった。送り直す
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            case internalServerError(Operations.PutMealPhoto.Output.InternalServerError)
+            /// 受け取れなかった。送り直す
+            ///
+            /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            internal static var internalServerError: Self {
+                .internalServerError(.init())
+            }
+            /// The associated value of the enum case if `self` is `.internalServerError`.
+            ///
+            /// - Throws: An error if `self` is not `.internalServerError`.
+            /// - SeeAlso: `.internalServerError`.
+            internal var internalServerError: Operations.PutMealPhoto.Output.InternalServerError {
+                get throws {
+                    switch self {
+                    case let .internalServerError(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "internalServerError",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+    }
 }
