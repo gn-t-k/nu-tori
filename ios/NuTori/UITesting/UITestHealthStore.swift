@@ -56,6 +56,22 @@
 
         func writeWeight(_ write: HealthWeightWrite) async throws {}
 
+        /// UI テストは栄養の許可の画面を出さない
+        func nutritionAuthorizationRequestStatus() async throws -> HealthAuthorizationRequestStatus
+        {
+            .alreadyRequested
+        }
+
+        func requestNutritionAuthorization() async throws {}
+
+        func writeAuthorizedNutrients() async throws -> Set<HealthNutrient> {
+            writeAuthorized ? Set(HealthNutrient.allCases) : []
+        }
+
+        func writeNutrition(_ write: HealthNutritionWrite) async throws {}
+
+        func deleteNutrition(syncId: UUID) async throws {}
+
         enum Authorization {
             case notYetRequested
             case alreadyRequested

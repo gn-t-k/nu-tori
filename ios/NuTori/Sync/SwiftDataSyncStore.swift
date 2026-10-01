@@ -10,7 +10,7 @@ import Synchronization
 /// 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。
 /// 保存はメインのコンテキストでだけ行う。バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
 nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthSyncStoring,
-    HealthAnchorStore, @unchecked Sendable
+    HealthDishWriteStoring, HealthAnchorStore, @unchecked Sendable
 {
     /// 画面の `@Query` が読むキャッシュの置き場
     let container: ModelContainer
@@ -94,6 +94,48 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
+    func meals() async throws -> [Meal] {
+        try await onMain { stores in
+            try stores.cache.fetch(FetchDescriptor<CachedMeal>()).compactMap { $0.meal() }
+        }
+    }
+
+    func dishes() async throws -> [Dish] {
+        try await onMain { stores in
+            try stores.cache.fetch(FetchDescriptor<CachedDish>()).map { $0.dish() }
+        }
+    }
+
+    func ingredients() async throws -> [Ingredient] {
+        try await onMain { stores in
+            try stores.cache.fetch(FetchDescriptor<CachedIngredient>()).compactMap {
+                $0.ingredient()
+            }
+        }
+    }
+
+    func dishVersionsWrittenToHealth() async throws -> [UUID: Int] {
+        try await onMain { stores in
+            let rows = try stores.cache.fetch(FetchDescriptor<CachedHealthDishWrite>())
+            return Dictionary(
+                rows.map { ($0.dishId, $0.version) }, uniquingKeysWith: { first, _ in first })
+        }
+    }
+
+    func markDishWrittenToHealth(dishId: UUID, version: Int) async throws {
+        try await onMain { stores in
+            try CachedHealthDishWrite.mark(dishId: dishId, version: version, in: stores.cache)
+            try stores.cache.save()
+        }
+    }
+
+    func unmarkDishWrittenToHealth(dishId: UUID) async throws {
+        try await onMain { stores in
+            try CachedHealthDishWrite.unmark(dishId: dishId, in: stores.cache)
+            try stores.cache.save()
+        }
+    }
+
     func pendingEntries() async throws -> [PendingEntry] {
         try await onMain { stores in
             let descriptor = FetchDescriptor<PendingWriteRow>(
@@ -167,6 +209,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
             try stores.pending.delete(model: HealthSyncStateRow.self)
             try stores.pending.save()
             try stores.cache.delete(model: CachedSyncState.self)
+            try stores.cache.delete(model: CachedHealthDishWrite.self)
             for kind in kinds.kinds {
                 try kind.erase(stores.cache)
             }

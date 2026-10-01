@@ -285,6 +285,7 @@ import NuToriCore
             readableKinds: AppRecordKinds.registry.names,
             errorReporting: errorReporting,
             weightHealthExport: health.engine,
+            nutritionHealthExport: health.engine,
             mealPhotos: mealPhotos
         )
     }
