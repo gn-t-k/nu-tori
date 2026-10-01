@@ -99,17 +99,25 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
             })
     }
 
-    /// 食品の組（食品名は `HKMetadataKeyFoodType`）で書く。組は、中の種類の書き込みが許可されていないと保存できない
+    /// 食品の組（食品名は `HKMetadataKeyFoodType`）で書く。組は、中の種類の書き込みが許可されていないと保存できない。
+    /// 中のサンプルにも時間帯と版を付け、同期 ID は組の同期 ID に種類を足して分ける。版を上げて書き直したとき、中のサンプルも置き換わるため
     func writeNutrition(_ write: HealthNutritionWrite) async throws {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         let samples = Set(
             write.values.map { value -> HKSample in
-                HKQuantitySample(
-                    type: Self.quantityType(for: value.nutrient),
+                let type = Self.quantityType(for: value.nutrient)
+                return HKQuantitySample(
+                    type: type,
                     quantity: HKQuantity(
                         unit: Self.unit(for: value.nutrient), doubleValue: value.amount),
                     start: write.instant,
-                    end: write.instant
+                    end: write.instant,
+                    metadata: [
+                        HKMetadataKeySyncIdentifier: Self.sampleSyncIdentifier(
+                            syncId: write.syncId, type: type),
+                        HKMetadataKeySyncVersion: NSNumber(value: write.syncVersion),
+                        HKMetadataKeyTimeZone: write.timeZoneName,
+                    ]
                 )
             })
         let food = HKCorrelation(
@@ -130,42 +138,27 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
     /// 同期 ID の組と、中のサンプルを消す。組を消しても中のサンプルが残るかは、実機で確かめる
     func deleteNutrition(syncId: UUID) async throws {
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        let handle = StoreHandle(store: store)
-        try await withCheckedThrowingContinuation {
-            (continuation: CheckedContinuation<Void, any Error>) in
-            let predicate = HKQuery.predicateForObjects(
-                withMetadataKey: HKMetadataKeySyncIdentifier,
-                allowedValues: [syncId.uuidString]
-            )
-            let query = HKCorrelationQuery(
-                type: Self.food, predicate: predicate, samplePredicates: nil
-            ) { _, correlations, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                var objects: [HKObject] = []
-                for correlation in correlations ?? [] {
-                    objects.append(correlation)
-                    for sample in correlation.objects {
-                        objects.append(sample)
-                    }
-                }
-                // 空の配列は消せない（`errorInvalidArgument`）ので、見つからなければ何もしない
-                guard !objects.isEmpty else {
-                    continuation.resume()
-                    return
-                }
-                handle.store.delete(objects) { _, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume()
-                    }
-                }
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [
+                .correlation(
+                    type: Self.food,
+                    predicate: HKQuery.predicateForObjects(
+                        withMetadataKey: HKMetadataKeySyncIdentifier,
+                        allowedValues: [syncId.uuidString]
+                    ))
+            ],
+            sortDescriptors: []
+        )
+        var objects: [HKObject] = []
+        for correlation in try await descriptor.result(for: store) {
+            objects.append(correlation)
+            for sample in correlation.objects {
+                objects.append(sample)
             }
-            handle.store.execute(query)
         }
+        // 空の配列は消せない（`errorInvalidArgument`）ので、見つからなければ何もしない
+        guard !objects.isEmpty else { return }
+        try await store.delete(objects)
     }
 
     /// 許可を求め終えたあとに呼ぶ。起こされたときは `onWake` が、読み取りと送り待ちの送信を行う
@@ -267,6 +260,10 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         )
     }
 
+    private static func sampleSyncIdentifier(syncId: UUID, type: HKQuantityType) -> String {
+        "\(syncId.uuidString)/\(type.identifier)"
+    }
+
     private static func quantityType(for nutrient: HealthNutrient) -> HKQuantityType {
         HKQuantityType(identifier(for: nutrient))
     }
@@ -338,11 +335,6 @@ nonisolated private struct ObserverCompletion: @unchecked Sendable {
     }
 
     private let completion: HKObserverQueryCompletionHandler
-}
-
-/// 問い合わせの完了ハンドラの中で使うため、`Sendable` でない `HKHealthStore` を包む
-nonisolated private struct StoreHandle: @unchecked Sendable {
-    let store: HKHealthStore
 }
 
 nonisolated private enum DeliveryState {

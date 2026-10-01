@@ -154,29 +154,93 @@ struct ClientUsageEventTests {
         }
     }
 
-    @Suite("推定の状態ごとに食事を消したとき")
-    struct MealDeletedInEachState {
-        @Test("カードの状態を名前にすること")
-        func namesTheState() throws {
-            #expect(
-                try Self.stateToken(status: nil, recordedOnThisDevice: true) == .token("not_sent"))
-            #expect(
-                try Self.stateToken(status: .awaitingPhotos, recordedOnThisDevice: false)
-                    == .token("awaiting_photos"))
-            #expect(try Self.stateToken(status: .estimating) == .token("estimating"))
-            #expect(try Self.stateToken(status: .noDishes) == .token("no_dishes"))
-            #expect(
-                try Self.stateToken(status: .deferredToNextDay) == .token("deferred_to_next_day"))
-            #expect(try Self.stateToken(status: .failed) == .token("failed"))
+    @Suite("送った端末で、推定の状態がまだ届いていない食事を消したとき")
+    struct MealDeletedBeforeStatusArrives {
+        let event: ClientUsageEvent
+
+        init() throws {
+            let card = try MealCard.fixture(status: nil, recordedOnThisDevice: true)
+            event = .mealDeleted(card, at: card.meal.sentAt)
         }
 
-        private static func stateToken(
-            status: MealEstimationStatus?, recordedOnThisDevice: Bool = true
-        ) throws -> ClientUsageEvent.Field? {
-            let card = try MealCard.fixture(
-                status: status, recordedOnThisDevice: recordedOnThisDevice)
-            return ClientUsageEvent.mealDeleted(card, at: card.meal.sentAt)
-                .fields["estimation_state"]
+        @Test("カードの状態でなく、推定の状態の写真を待っているを載せること")
+        func namesTheStatus() {
+            #expect(event.fields["estimation_state"] == .token("awaiting_photos"))
+        }
+    }
+
+    @Suite("ほかの端末で、写真を待っている食事を消したとき")
+    struct MealDeletedAwaitingPhotos {
+        let event: ClientUsageEvent
+
+        init() throws {
+            let card = try MealCard.fixture(status: .awaitingPhotos, recordedOnThisDevice: false)
+            event = .mealDeleted(card, at: card.meal.sentAt)
+        }
+
+        @Test("写真を待っているを載せること")
+        func namesTheStatus() {
+            #expect(event.fields["estimation_state"] == .token("awaiting_photos"))
+        }
+    }
+
+    @Suite("推定中の食事を消したとき")
+    struct MealDeletedWhileEstimating {
+        let event: ClientUsageEvent
+
+        init() throws {
+            let card = try MealCard.fixture(status: .estimating)
+            event = .mealDeleted(card, at: card.meal.sentAt)
+        }
+
+        @Test("推定中を載せること")
+        func namesTheStatus() {
+            #expect(event.fields["estimation_state"] == .token("estimating"))
+        }
+    }
+
+    @Suite("料理なしの食事を消したとき")
+    struct MealDeletedWithoutDishes {
+        let event: ClientUsageEvent
+
+        init() throws {
+            let card = try MealCard.fixture(status: .noDishes)
+            event = .mealDeleted(card, at: card.meal.sentAt)
+        }
+
+        @Test("料理なしを載せること")
+        func namesTheStatus() {
+            #expect(event.fields["estimation_state"] == .token("no_dishes"))
+        }
+    }
+
+    @Suite("翌日に推定する食事を消したとき")
+    struct MealDeletedDeferred {
+        let event: ClientUsageEvent
+
+        init() throws {
+            let card = try MealCard.fixture(status: .deferredToNextDay)
+            event = .mealDeleted(card, at: card.meal.sentAt)
+        }
+
+        @Test("翌日に推定を載せること")
+        func namesTheStatus() {
+            #expect(event.fields["estimation_state"] == .token("deferred_to_next_day"))
+        }
+    }
+
+    @Suite("推定できなかった食事を消したとき")
+    struct MealDeletedFailed {
+        let event: ClientUsageEvent
+
+        init() throws {
+            let card = try MealCard.fixture(status: .failed)
+            event = .mealDeleted(card, at: card.meal.sentAt)
+        }
+
+        @Test("推定できなかったを載せること")
+        func namesTheStatus() {
+            #expect(event.fields["estimation_state"] == .token("failed"))
         }
     }
 

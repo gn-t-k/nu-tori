@@ -29,8 +29,7 @@ struct TimelineScreen: View {
                     today: today,
                     openableDays: loaded?.dayRange
                 ) { day in
-                    showsCameraNotice = false
-                    dayFocus = .summary(day)
+                    hidingCameraNotice { dayFocus = .summary(day) }()
                 }
                 Divider()
                 content(loaded: loaded)
@@ -64,6 +63,10 @@ struct TimelineScreen: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 composer()
             }
+            // 体重や食事の画面から戻ったときも、タイムラインを見たとして送る
+            .onAppear {
+                Task { await capture(.screen(.timeline)) }
+            }
             // 体重の画面に潜ったら、戻ったときには知らせを残さない
             .onDisappear {
                 showsCameraNotice = false
@@ -72,10 +75,7 @@ struct TimelineScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsCameraNotice = false
-                        showsAccount = true
-                    } label: {
+                    Button(action: hidingCameraNotice { showsAccount = true }) {
                         Image(systemName: "person.crop.circle")
                     }
                     .accessibilityLabel("アカウント")
@@ -146,8 +146,10 @@ struct TimelineScreen: View {
                 Task { await capture(.screen(.timeline)) }
             }
         }
-        .onAppear {
-            Task { await capture(.screen(.timeline)) }
+        .onChange(of: cameraPhase) { previous, phase in
+            if previous == .showing, phase == .closed {
+                Task { await capture(.screen(.timeline)) }
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline")
@@ -337,9 +339,8 @@ struct TimelineScreen: View {
             weightRecordedToday: records.contains { $0.day == today },
             preparingWeightEntry: weightEntryPhase == .preparing,
             showsCameraNotice: showsCameraNotice,
-            onCapture: openCamera,
-            onPickPhotos: {
-                showsCameraNotice = false
+            onCapture: hidingCameraNotice(openCamera),
+            onPickPhotos: hidingCameraNotice {
                 switch mealActions.photoSelection {
                 case .picker:
                     showsPhotoPicker = true
@@ -348,8 +349,7 @@ struct TimelineScreen: View {
                     Task { await record(pickedAt) }
                 }
             },
-            onWeight: {
-                showsCameraNotice = false
+            onWeight: hidingCameraNotice {
                 guard weightEntryPhase == .closed else { return }
                 weightEntryPhase = .preparing
                 Task {
@@ -360,9 +360,16 @@ struct TimelineScreen: View {
         )
     }
 
+    /// ほかを押したら、カメラの許可の知らせを消してから動く
+    private func hidingCameraNotice(_ action: @escaping () -> Void) -> () -> Void {
+        {
+            showsCameraNotice = false
+            action()
+        }
+    }
+
     /// 初めてのときは、カメラを開く前に iOS の許可の画面で求める。許可していなければ、開かずに知らせる
     private func openCamera() {
-        showsCameraNotice = false
         guard cameraPhase == .closed else { return }
         cameraPhase = .preparing
         Task {
