@@ -47,6 +47,19 @@ struct TimelineScreen: View {
                     saveWeight: saveWeight
                 )
             }
+            .navigationDestination(for: MealRoute.self) { route in
+                MealDestination(card: meals.first { $0.meal.id == route.mealId }) { card in
+                    MealScreen(
+                        card: card,
+                        loadPhoto: { photoId in
+                            await mealActions.loadPhoto(card.meal.id, photoId)
+                        },
+                        now: now,
+                        capture: capture,
+                        deleteMeal: mealActions.deleteMeal
+                    )
+                }
+            }
             .background(Color(.systemGroupedBackground))
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 composer()
@@ -285,9 +298,14 @@ struct TimelineScreen: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .accessibilityIdentifier("rejected-weight-line")
                 case .meal(let card):
-                    MealCardView(card: card) { photoId in
-                        await mealActions.loadPhoto(card.meal.id, photoId)
+                    // どの状態のカードも、押すと食事の画面へ潜る
+                    NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                        MealCardView(card: card) { photoId in
+                            await mealActions.loadPhoto(card.meal.id, photoId)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("meal-card")
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 case .rejectedMealLine(let line):
                     Text(line.text)
@@ -322,7 +340,13 @@ struct TimelineScreen: View {
             onCapture: openCamera,
             onPickPhotos: {
                 showsCameraNotice = false
-                showsPhotoPicker = true
+                switch mealActions.photoSelection {
+                case .picker:
+                    showsPhotoPicker = true
+                case .fixed(let record):
+                    let pickedAt = now()
+                    Task { await record(pickedAt) }
+                }
             },
             onWeight: {
                 showsCameraNotice = false
@@ -403,6 +427,30 @@ struct TimelineScreen: View {
         let atTop = offsets.filter { $0.minY <= topEdge }.max { $0.minY < $1.minY }
         return atTop?.day ?? offsets.min { $0.minY < $1.minY }?.day
     }
+}
+
+/// 食事の画面へ潜る行き先。画面は、そのときのカードを食事の ID で引いて描く
+nonisolated private struct MealRoute: Hashable {
+    let mealId: UUID
+}
+
+/// 開いている食事が消えたら（ほかの端末で消して同期で届いた）、タイムラインに戻る
+private struct MealDestination: View {
+    let card: MealCard?
+    let screen: (MealCard) -> MealScreen
+
+    var body: some View {
+        if let card {
+            screen(card)
+        } else {
+            Color(.systemGroupedBackground)
+                .onAppear {
+                    dismiss()
+                }
+        }
+    }
+
+    @Environment(\.dismiss) private var dismiss
 }
 
 private enum WeightEntryPhase: Equatable {

@@ -42,6 +42,11 @@ struct MealContentsTests {
             )
         }
 
+        @Test("カードの名前は、料理の名前を並び順に「・」でつなぐこと")
+        func joinsDishNames() {
+            #expect(contents.name == "サラダ・親子丼・味噌汁")
+        }
+
         @Test("この食事の料理だけを、並び順（同じなら ID の順）で並べること")
         func ordersDishesOfMeal() {
             #expect(contents.dishes.map(\.dish.name) == ["サラダ", "親子丼", "味噌汁"])
@@ -151,6 +156,16 @@ struct MealContentsTests {
                 ])
 
             #expect(!contents.showsNutrientCitation)
+        }
+    }
+
+    @Suite("料理がまだ無い食事")
+    struct WithoutDishes {
+        @Test("カードの名前を持たないこと")
+        func hasNoName() {
+            #expect(
+                MealContents(mealId: MealContentsTests.mealId, dishes: [], ingredients: []).name
+                    == nil)
         }
     }
 }

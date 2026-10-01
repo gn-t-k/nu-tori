@@ -22,7 +22,8 @@ public actor GatedAnalyticsSession: AnalyticsSession {
             }
             await forwarding.capture(event)
         case .weightRecorded, .weightCorrected, .weightInputCancelled, .usageDataTurnedOff,
-            .initialPullDuration, .mealRecorded, .cameraCancelled, .cameraPermissionNoticeShown:
+            .initialPullDuration, .mealRecorded, .cameraCancelled, .cameraPermissionNoticeShown,
+            .mealDeleted:
             guard identified else { return }
             await forwarding.capture(event)
         }

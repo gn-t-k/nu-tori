@@ -12,6 +12,11 @@ public struct MealContents: Hashable, Sendable {
     /// 「栄養の出典 ›」の行を置くか。成分表を使った材料が1つでもあるとき
     public let showsNutrientCitation: Bool
 
+    /// カードの名前の場所に置く、料理の名前を並び順に「・」でつないだもの。料理が無ければ nil
+    public var name: String? {
+        dishes.isEmpty ? nil : dishes.map(\.dish.name).joined(separator: "・")
+    }
+
     /// `dishes` と `ingredients` は、全部の食事・全部の料理のものを渡してよい（この食事のものだけを取り出す）
     public init(mealId: UUID, dishes: [Dish], ingredients: [Ingredient]) {
         let ingredientsByDish = Dictionary(grouping: ingredients, by: \.dishId)

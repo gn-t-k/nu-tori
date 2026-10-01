@@ -34,7 +34,7 @@
             case startedDayUndecided
             /// 作った記録と直した記録と食事を、サーバーが受け付けなかった
             case rejected
-            /// 今日撮った食事が推定の途中で、撮っておいた昨日の写真を選んだばかり
+            /// 朝の食事は推定できて今日の丸が塗られ、昼の食事は推定の途中で、撮っておいた昨日の写真を選んだばかり
             case meals
 
             var initialPull: TimelineScreen.InitialPull {
@@ -99,9 +99,8 @@
                     []
                 case .meals:
                     [
-                        MealCard(
-                            meal: .sample(on: .sampleToday, at: 7, 40), status: .estimated,
-                            recordedOnThisDevice: true),
+                        // 推定できた食事で、帯の今日の丸が P・F・C の割合で塗られる
+                        .sampleEstimated(.sample(on: .sampleToday, at: 7, 40)),
                         MealCard(
                             meal: .sample(on: .sampleToday, at: 12, 10, photoCount: 2),
                             status: .estimating, recordedOnThisDevice: true),

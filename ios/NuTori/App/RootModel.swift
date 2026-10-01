@@ -97,6 +97,17 @@ final class RootModel {
         )
     }
 
+    /// 食事を消す。インターネットにつながらなくても、その場でキャッシュとアプリの中の写真から消える。
+    /// 消せたら、PostHog に推定の状態と、送ってから消すまでの時間を送る
+    func deleteMeal(_ card: MealCard, deletedAt: Date) async {
+        do {
+            try await recordSync.deleteMeal(id: card.meal.id)
+        } catch {
+            return
+        }
+        await accountSession.capture(.mealDeleted(card, at: deletedAt))
+    }
+
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil
     func mealPhotoFile(mealId: UUID, photoId: UUID) async -> URL? {
         await recordSync.mealPhotos.photoFile(mealId: mealId, photoId: photoId)

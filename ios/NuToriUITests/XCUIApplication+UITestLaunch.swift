@@ -8,6 +8,7 @@ extension XCUIApplication {
         healthAuthorization: String = "already-requested",
         healthLatestKilograms: String?,
         healthWrite: String = "authorized",
+        pickedPhotoCount: Int = 0,
         timeZone: String?
     ) -> XCUIApplication {
         let app = XCUIApplication()
@@ -19,6 +20,10 @@ extension XCUIApplication {
             app.launchEnvironment["UI_TEST_HEALTH_LATEST_KG"] = healthLatestKilograms
         }
         app.launchEnvironment["UI_TEST_HEALTH_WRITE"] = healthWrite
+        // 入力欄の「写真」で、選ぶ画面を開かずに、この枚数の写真を選んだことにする
+        if pickedPhotoCount > 0 {
+            app.launchEnvironment["UI_TEST_PICKED_PHOTOS"] = String(pickedPhotoCount)
+        }
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
         }

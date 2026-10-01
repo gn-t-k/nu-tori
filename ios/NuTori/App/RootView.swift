@@ -21,6 +21,19 @@ struct RootView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
+    /// UI テストは、標準の選ぶ画面を開かずに、決まった写真を選んだことにする
+    private var photoSelection: MealPhotoSelection {
+        #if DEBUG
+            if let count = UITestLaunch.current?.pickedMealPhotoCount {
+                return .fixed(record: { pickedAt in
+                    await model.recordPickedMeals(
+                        originals: UITestMealPhotos.jpegs(count: count), pickedAt: pickedAt)
+                })
+            }
+        #endif
+        return .picker
+    }
+
     @ViewBuilder private var content: some View {
         switch model.screen {
         case .opening:
@@ -56,6 +69,7 @@ struct RootView: View {
                             originals: await PickedMealPhotos.originals(of: items),
                             pickedAt: pickedAt)
                     },
+                    photoSelection: photoSelection,
                     loadPhoto: { mealId, photoId in
                         guard
                             let file = await model.mealPhotoFile(mealId: mealId, photoId: photoId)
@@ -63,6 +77,9 @@ struct RootView: View {
                             return nil
                         }
                         return await MealPhotoImage.thumbnail(at: file)
+                    },
+                    deleteMeal: { card, deletedAt in
+                        await model.deleteMeal(card, deletedAt: deletedAt)
                     }
                 ),
                 holdsMealOriginals: { await model.holdsMealOriginals($0) }

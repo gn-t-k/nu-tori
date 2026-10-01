@@ -70,7 +70,7 @@ struct DayRingStrip: View {
                 .accessibilityIdentifier(identifier("day-label", day))
         case .ring(let day, let dayRing):
             let hasWeightRecord = dayRing.hasWeightRecord
-            let ring: Ring = hasWeightRecord ? .marked : .empty
+            let ring = Ring.shown(shares: dayRing.shares, hasWeightRecord: hasWeightRecord)
             if openableDays?.contains(day) == true {
                 Button {
                     onSelect(day)
@@ -79,7 +79,13 @@ struct DayRingStrip: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(TimelineDayText.label(for: day))
-                .accessibilityValue(hasWeightRecord ? "体重の記録あり" : "体重の記録なし")
+                .accessibilityValue(
+                    [
+                        hasWeightRecord ? "体重の記録あり" : "体重の記録なし",
+                        dayRing.hasRecordedFood ? "食事の記録あり" : nil,
+                    ]
+                    .compactMap(\.self).joined(separator: "、")
+                )
                 .accessibilityAddTraits(day == selectedDay ? .isSelected : [])
                 .accessibilityIdentifier(identifier("ring", day))
             } else {
@@ -113,16 +119,14 @@ struct DayRingStrip: View {
 
     @ViewBuilder private func ringMark(_ ring: Ring) -> some View {
         let diameter: CGFloat = 28
-        let lineWidth: CGFloat = 4.5
         switch ring {
         case .hidden:
             Color.clear.frame(width: diameter, height: diameter)
-        case .empty, .marked:
-            Circle()
-                .stroke(Color(.systemGray5), lineWidth: lineWidth)
-                .frame(width: diameter, height: diameter)
+        case .shown(let shares, let hasWeightRecord):
+            DayRingView(shares: shares, diameter: diameter, lineWidth: 4.5)
                 .overlay {
-                    if ring == .marked {
+                    // 体重を記録した日は、丸の中に灰色の点を付ける
+                    if hasWeightRecord {
                         Circle()
                             .fill(Color.secondary)
                             .frame(width: 7, height: 7)
@@ -147,8 +151,8 @@ struct DayRingStrip: View {
 
     private enum Ring: Equatable {
         case hidden
-        case empty
-        case marked
+        /// 割合が無い日は空の輪
+        case shown(shares: PFCShares?, hasWeightRecord: Bool)
     }
 }
 
