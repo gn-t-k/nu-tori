@@ -1,0 +1,40 @@
+import type { NutrientName } from "./nutrient-name";
+
+// 栄養の項目ごとに、成分表の本表の列（成分識別子）を優先する順に並べる。先に「-」でない列があれば、あとの列は見ない
+// 並べた列がすべて「-」なら不明。列の対応の正本はこれで、端末は持たない
+// 炭水化物の CHOAVLM（単糖当量）は使わない。質量計（CHOAVL）を使う
+export const nutrientSourceColumns: Record<NutrientName, readonly [string, ...string[]]> = {
+  energy_kcal: ["ENERC_KCAL"],
+  protein_g: ["PROTCAA", "PROT-"],
+  fat_g: ["FATNLEA", "FAT-"],
+  carbohydrate_g: ["CHOAVL", "CHOAVLDF-", "CHOCDF-"],
+  fiber_g: ["FIB-"],
+  salt_equivalent_g: ["NACL_EQ"],
+  cholesterol_mg: ["CHOLE"],
+  potassium_mg: ["K"],
+  calcium_mg: ["CA"],
+  magnesium_mg: ["MG"],
+  phosphorus_mg: ["P"],
+  iron_mg: ["FE"],
+  zinc_mg: ["ZN"],
+  copper_mg: ["CU"],
+  manganese_mg: ["MN"],
+  iodine_ug: ["ID"],
+  selenium_ug: ["SE"],
+  chromium_ug: ["CR"],
+  molybdenum_ug: ["MO"],
+  vitamin_a_ug: ["VITA_RAE"],
+  vitamin_d_ug: ["VITD"],
+  vitamin_e_mg: ["TOCPHA"],
+  vitamin_k_ug: ["VITK"],
+  vitamin_b1_mg: ["THIA"],
+  vitamin_b2_mg: ["RIBF"],
+  niacin_mg: ["NIA"],
+  vitamin_b6_mg: ["VITB6A"],
+  vitamin_b12_ug: ["VITB12"],
+  folate_ug: ["FOL"],
+  pantothenic_acid_mg: ["PANTAC"],
+  biotin_ug: ["BIOT"],
+  vitamin_c_mg: ["VITC"],
+  water_g: ["WATER"],
+};

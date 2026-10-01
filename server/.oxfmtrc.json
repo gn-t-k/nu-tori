@@ -1,4 +1,8 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["worker-configuration.d.ts", "openapi.json"]
+  "ignorePatterns": [
+    "worker-configuration.d.ts",
+    "openapi.json",
+    "src/domain/food-composition/food-composition-table.json"
+  ]
 }
