@@ -285,7 +285,8 @@
                 """
         }
 
-        /// 使い始めた日を3週間前にし、その日に記録を2件置く。帯を週単位で送って、画面の外の日へ移れる
+        /// 使い始めた日を3週間前にし、その日に記録を2件置く。帯を週単位で送って、画面の外の日へ移れる。
+        /// 使い始めた次の日を除く間の日にも1件ずつ置き、タイムラインが画面に収まらないようにする
         private func dayRingBody() throws -> String {
             let zone = TimeZone.current.identifier
             let startedOn = TimelineDayText.startedOn(
@@ -296,6 +297,13 @@
             let importedAt = try milliseconds(dayOffset: 1, hour: 8, minute: 0)
             let withings =
                 #"{"sourceAppName":"Withings","sourceBundleId":"com.withings.wiScaleNG","healthkitSampleUuid":"33333333-3333-4333-8333-333333333333"}"#
+            let between = try (-19 ... -1).enumerated().map { index, dayOffset in
+                weightChange(
+                    sequence: 5 + index,
+                    id: String(format: "bbbbbbbb-bbbb-4bbb-8bbb-%012d", index),
+                    kilograms: 71.0, at: try milliseconds(dayOffset: dayOffset, hour: 7, minute: 0),
+                    zone: zone, imported: nil)
+            }
             let changes = [
                 weightChange(
                     sequence: 1, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1", kilograms: 70.0,
@@ -311,7 +319,7 @@
                     at: importedAt, zone: zone, imported: withings),
             ]
             return
-                #"{"changes":[\#(changes.joined(separator: ","))],"hasMore":false,"nextAfterSequence":4,"startedOn":"\#(startedOn)"}"#
+                #"{"changes":[\#((changes + between).joined(separator: ","))],"hasMore":false,"nextAfterSequence":\#(4 + between.count),"startedOn":"\#(startedOn)"}"#
         }
 
         private func weightChange(
