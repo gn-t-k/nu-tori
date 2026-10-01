@@ -6,12 +6,11 @@ import { isNutrientName } from "../../domain/food-composition/nutrient-name";
 import type { IngredientNutrientSource } from "../../ingredient/domain/ingredient";
 import type { MealPhotoArchive } from "../../meal/domain/meal-photo-archive";
 import type { EstimatedDish } from "./estimated-dish";
-import type { EstimationAttemptResult } from "./estimation-attempt-result";
+import type { EstimationAttemptOutcome } from "./estimation-attempt-outcome";
 import { estimationAttemptTimeLimitMs } from "./estimation-attempt-time-limit-ms";
 import type { EstimationAttemptUsage } from "./estimation-attempt-usage";
 import type {
   EstimationProvider,
-  EstimationProviderFailure,
   EstimationProviderReply,
   IdentifiedDishes,
   IdentifiedIngredient,
@@ -21,18 +20,15 @@ import type {
 } from "./estimation-provider";
 
 // 試み1回分。写真を R2 から読み、①（写真から料理と材料）→ 成分表の候補 → ②（候補から選ぶか主な栄養を推定）と進め、応答を確かめる。
-// 提供元の失敗と、確かめに通らない応答は、試みの結果として Result の失敗で返す。
+// 提供元の失敗と、確かめに通らない応答は、試みの結果として返す。
 // R2 と成分表の読み込みの失敗は投げる（試みは結果の無いまま、途中で止まった試みとして数える）
 export const runEstimationAttempt = async (
   deps: { archive: MealPhotoArchive; provider: EstimationProvider },
   photoIds: readonly string[],
-): R.ResultAsync<
-  { dishes: EstimatedDish[]; usage: EstimationAttemptUsage },
-  EstimationAttemptFailedError
-> => {
+): Promise<EstimationAttemptOutcome> => {
   const photos = await readPhotos(deps.archive, photoIds);
   const signal = AbortSignal.timeout(estimationAttemptTimeLimitMs);
-  return R.pipe(
+  const attempted = await R.pipe(
     deps.provider.identifyDishes({ photos }, signal),
     R.mapError((error) =>
       toAttemptFailed(error, "identify_dishes", {
@@ -45,35 +41,38 @@ export const runEstimationAttempt = async (
         ? R.succeed(identified)
         : R.fail(
             new EstimationAttemptFailedError({
-              result: "invalid_response",
-              failedStage: "identify_dishes",
-              usage: { identifyDishes: identified.usage, matchIngredients: undefined },
-              errorType: undefined,
+              outcome: {
+                result: "invalid_response",
+                failedStage: "identify_dishes",
+                usage: { identifyDishes: identified.usage, matchIngredients: undefined },
+              },
             }),
           ),
     ),
     R.andThen((identified) => matchIngredients(deps.provider, identified, signal)),
   );
+  // 通らなかった試みも結果として書くので、ここで提供元の Result を試みの結果に直す
+  return R.isSuccess(attempted)
+    ? { result: "succeeded", ...attempted.value }
+    : attempted.error.outcome;
 };
-
-// 試みの結果のうち、通らなかったもの。提供元のエラーと 400 のとき、cause に応答のエラーの内容を包まずに持ち、そのまま Sentry に送る
-export class EstimationAttemptFailedError extends ErrorFactory({
-  name: "EstimationAttemptFailedError",
-  message: "推定の試みが通らなかった",
-  fields: ErrorFactory.fields<{
-    result: Exclude<EstimationAttemptResult, "succeeded">;
-    failedStage: "identify_dishes" | "match_ingredients";
-    usage: EstimationAttemptUsage;
-    // 提供元のエラーの種類。provider_error と bad_request のときだけ持つ
-    errorType: string | undefined;
-  }>(),
-}) {}
 
 // R2 と成分表の段で止まった。stage は、アラームの呼び出しごとのログに出す失敗した段
 export class EstimationAttemptStoppedError extends ErrorFactory({
   name: "EstimationAttemptStoppedError",
   message: "推定の試みが途中で止まった",
   fields: ErrorFactory.fields<{ stage: "read_photos" | "find_candidates" }>(),
+}) {}
+
+type FailedOutcome = Exclude<EstimationAttemptOutcome, { result: "succeeded" }>;
+
+type ProviderFailure = R.InferFailure<EstimationProvider["identifyDishes"]>;
+
+// 提供元の失敗と、確かめに通らない応答。試みの結果に直すまで、提供元の Result の失敗としてつなぐ
+class EstimationAttemptFailedError extends ErrorFactory({
+  name: "EstimationAttemptFailedError",
+  message: "推定の試みが通らなかった",
+  fields: ErrorFactory.fields<{ outcome: FailedOutcome }>(),
 }) {}
 
 const readPhotos = async (
@@ -128,10 +127,7 @@ const matchIngredients = (
         ? R.succeed({ dishes: composeDishes(identified.output, matched.output.ingredients), usage })
         : R.fail(
             new EstimationAttemptFailedError({
-              result: "invalid_response",
-              failedStage: "match_ingredients",
-              usage,
-              errorType: undefined,
+              outcome: { result: "invalid_response", failedStage: "match_ingredients", usage },
             }),
           );
     }),
@@ -218,57 +214,44 @@ const toMatchedNutrients = (
 };
 
 const toAttemptFailed = (
-  error: EstimationProviderFailure,
+  error: ProviderFailure,
   failedStage: "identify_dishes" | "match_ingredients",
   usage: EstimationAttemptUsage,
 ): EstimationAttemptFailedError =>
-  match(error)
-    .with(
-      { name: "EstimationProviderError" },
-      ({ errorType }) =>
-        new EstimationAttemptFailedError({
-          result: "provider_error",
-          failedStage,
-          usage,
-          errorType,
-          cause: error.cause,
-        }),
-    )
-    .with(
-      { name: "EstimationProviderBadRequestError" },
-      ({ errorType }) =>
-        new EstimationAttemptFailedError({
+  new EstimationAttemptFailedError({
+    outcome: match(error)
+      .with({ name: "EstimationProviderError" }, ({ errorType, cause }): FailedOutcome => ({
+        result: "provider_error",
+        failedStage,
+        usage,
+        errorType,
+        providerError: cause,
+      }))
+      .with(
+        { name: "EstimationProviderBadRequestError" },
+        ({ errorType, cause }): FailedOutcome => ({
           result: "bad_request",
           failedStage,
           usage,
           errorType,
-          cause: error.cause,
+          providerError: cause,
         }),
-    )
-    .with(
-      { name: "EstimationProviderTimedOutError" },
-      () =>
-        new EstimationAttemptFailedError({
-          result: "timed_out",
-          failedStage,
-          usage,
-          errorType: undefined,
-        }),
-    )
-    .with(
-      { name: "EstimationProviderInvalidResponseError" },
-      () =>
-        new EstimationAttemptFailedError({
-          result: "invalid_response",
-          failedStage,
-          usage,
-          errorType: undefined,
-        }),
-    )
-    .exhaustive();
+      )
+      .with({ name: "EstimationProviderTimedOutError" }, (): FailedOutcome => ({
+        result: "timed_out",
+        failedStage,
+        usage,
+      }))
+      .with({ name: "EstimationProviderInvalidResponseError" }, (): FailedOutcome => ({
+        result: "invalid_response",
+        failedStage,
+        usage,
+      }))
+      .exhaustive(),
+  });
 
 // 読めなかった応答でも、使ったトークンは分かる
-const usageOf = (error: EstimationProviderFailure) =>
+const usageOf = (error: ProviderFailure) =>
   error.name === "EstimationProviderInvalidResponseError" ? error.usage : undefined;
 
 // Claude の構造化出力は数値の範囲を使えないので、量が 0 より大きいことなどをここで確かめる

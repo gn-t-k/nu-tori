@@ -11,6 +11,8 @@ export const computeNextEstimationAttemptAt = (attempts: readonly EstimationAtte
   }
   const waitMs = 15_000 * 2 ** (attempts.length - 1);
   return new Date(
-    last.attemptedAt.getTime() + (last.ended === undefined ? estimationAttemptTimeLimitMs : 0) + waitMs,
+    last.attemptedAt.getTime() +
+      (last.ended === undefined ? estimationAttemptTimeLimitMs : 0) +
+      waitMs,
   );
 };

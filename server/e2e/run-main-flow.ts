@@ -1,19 +1,5 @@
 import { z } from "zod";
 
-type MainFlowOptions = {
-  baseUrl: string;
-  signInSecret: string;
-  photo: Uint8Array;
-  send: (url: string, init: RequestInit) => Promise<Response>;
-  estimationTimeoutMs: number;
-  pollIntervalMs: number;
-  log: (message: string) => void;
-};
-
-type Session = { sessionToken: string; accountId: string };
-
-type Change = { sequence: number; kind: string; recordId: string; record: Record<string, unknown> };
-
 // 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから推定、アカウントの削除までを通す。
 // 失敗したら、どの段で何が起きたかを書いて投げる。サインインしたあとは、失敗してもアカウントを消してから投げる
 export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
@@ -259,3 +245,17 @@ const syncChangesPath = (afterSequence: number): string => {
 
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+type MainFlowOptions = {
+  baseUrl: string;
+  signInSecret: string;
+  photo: Uint8Array;
+  send: (url: string, init: RequestInit) => Promise<Response>;
+  estimationTimeoutMs: number;
+  pollIntervalMs: number;
+  log: (message: string) => void;
+};
+
+type Session = { sessionToken: string; accountId: string };
+
+type Change = { sequence: number; kind: string; recordId: string; record: Record<string, unknown> };

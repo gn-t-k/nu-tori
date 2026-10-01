@@ -1,47 +1,48 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
 import { z } from "zod";
-import {
-  type EstimationProviderFailure,
-  type EstimationProviderReply,
-  EstimationProviderInvalidResponseError,
-  type IngredientMatch,
-  type IngredientMatchRequest,
-  type MatchedIngredients,
+import type {
+  EstimationProvider,
+  EstimationProviderReply,
+  IngredientMatch,
+  IngredientMatchRequest,
+  MatchedIngredients,
 } from "../../domain/estimation-provider";
+import { EstimationProviderInvalidResponseError } from "../../domain/estimation-provider-invalid-response-error";
 import { requestStructuredOutput } from "./request-structured-output";
 
 // ②: 栄養成分表示の無い材料ごとに、成分表の候補から食品番号を選ぶ。選べなければ主な栄養を推定する（文字だけの呼び出し）
-export const matchIngredients = async (
+export const matchIngredients = (
   client: Anthropic,
   userId: string,
   request: IngredientMatchRequest,
   signal: AbortSignal,
-): R.ResultAsync<EstimationProviderReply<MatchedIngredients>, EstimationProviderFailure> => {
-  // 文字だけで答えも短いので、① より短くする
-  const timeLimitMs = 60_000;
-  const requested = await requestStructuredOutput(
-    client,
-    {
-      system,
-      content: [{ type: "text", text: describeIngredients(request) }],
-      schema: matchedIngredientsSchema,
-      userId,
-      timeLimitMs,
-    },
-    signal,
+): R.ResultAsync<
+  EstimationProviderReply<MatchedIngredients>,
+  R.InferFailure<EstimationProvider["matchIngredients"]>
+> =>
+  R.pipe(
+    requestStructuredOutput(
+      client,
+      {
+        system,
+        content: [{ type: "text", text: describeIngredients(request) }],
+        schema: matchedIngredientsSchema,
+        userId,
+        // 文字だけで答えも短いので、① より短くする
+        timeLimitMs: 60_000,
+      },
+      signal,
+    ),
+    R.andThen(({ output, usage }) => {
+      const matches = output.ingredients.map(toIngredientMatch);
+      const ingredients = matches.filter((match) => match !== undefined);
+      // 食品番号も推定した栄養も無い答えは、読めない応答にする
+      return ingredients.length === matches.length
+        ? R.succeed({ output: { ingredients }, usage })
+        : R.fail(new EstimationProviderInvalidResponseError({ usage }));
+    }),
   );
-  if (R.isFailure(requested)) {
-    return requested;
-  }
-  const { output, usage } = requested.value;
-  const matches = output.ingredients.map(toIngredientMatch);
-  const ingredients = matches.filter((match) => match !== undefined);
-  // 食品番号も推定した栄養も無い答えは、読めない応答にする
-  return ingredients.length === matches.length
-    ? R.succeed({ output: { ingredients }, usage })
-    : R.fail(new EstimationProviderInvalidResponseError({ usage }));
-};
 
 const matchedIngredientsSchema = z.object({
   ingredients: z.array(

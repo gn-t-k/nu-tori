@@ -11,8 +11,7 @@ describe("次に試みる時刻", () => {
           attemptedAt: new Date("2026-10-01T03:00:00Z"),
           ended: {
             endedAt: new Date("2026-10-01T03:00:20Z"),
-            result: "provider_error",
-            errorType: "overloaded_error",
+            conclusion: { result: "provider_error", errorType: "overloaded_error" },
           },
         },
       ];
@@ -33,8 +32,7 @@ describe("次に試みる時刻", () => {
           attemptedAt: new Date("2026-10-01T03:08:00Z"),
           ended: {
             endedAt: new Date("2026-10-01T03:08:10Z"),
-            result: "timed_out",
-            errorType: undefined,
+            conclusion: { result: "timed_out" },
           },
         },
       ];
@@ -53,8 +51,7 @@ describe("次に試みる時刻", () => {
           attemptedAt: new Date("2026-10-01T03:00:00Z"),
           ended: {
             endedAt: new Date("2026-10-01T03:00:20Z"),
-            result: "invalid_response",
-            errorType: undefined,
+            conclusion: { result: "invalid_response" },
           },
         },
         { attemptedAt: new Date("2026-10-01T03:01:00Z"), ended: undefined },

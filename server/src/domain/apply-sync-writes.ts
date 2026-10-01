@@ -1,3 +1,4 @@
+import { sendsUsageData } from "../account-settings/domain/sends-usage-data";
 import { computeUsageEvents } from "./compute-usage-events";
 import { createRecordLedger } from "./create-record-ledger";
 import type { RecordKindStores } from "./record-kind-stores";
@@ -28,7 +29,7 @@ export const applySyncWrites = (
       clientState: request.clientState,
       receivedAt: request.receivedAt,
       previousRequestReceivedAt: pushed.previousRequestReceivedAt,
-      sendsUsageData: stores.accountSettings.find()?.sendsUsageData ?? true,
+      sendsUsageData: sendsUsageData(stores.accountSettings),
       writeEvents: [
         ...pushed.rejectedWrites.map((rejected): UsageEvent => ({
           name: "sync_write_rejected",

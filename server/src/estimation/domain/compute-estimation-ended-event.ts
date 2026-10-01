@@ -29,7 +29,9 @@ export const computeEstimationEndedEvent = (ended: {
     providerErrorTypes: [
       ...new Set(
         ended.attempts.flatMap(({ ended: attemptEnded }) =>
-          attemptEnded?.errorType === undefined ? [] : [attemptEnded.errorType],
+          attemptEnded !== undefined && "errorType" in attemptEnded.conclusion
+            ? [attemptEnded.conclusion.errorType]
+            : [],
         ),
       ),
     ],

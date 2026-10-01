@@ -2,7 +2,6 @@ import { R } from "@praha/byethrow";
 import { vi } from "vitest";
 import type {
   EstimationProvider,
-  EstimationProviderFailure,
   IdentifiedDishes,
   IngredientMatchRequest,
   MatchedIngredients,
@@ -39,7 +38,7 @@ export const mockCreateEstimationProviderOk = (overrides?: Partial<FakeReplies>)
 
 // 失敗で答える偽の提供元。failingCall が match_ingredients なら、① は既定の料理で通り、② で落ちる
 export const mockCreateEstimationProviderError = (
-  error: EstimationProviderFailure,
+  error: R.InferFailure<EstimationProvider["identifyDishes"]>,
   options: { failingCall: "identify_dishes" | "match_ingredients" } = {
     failingCall: "identify_dishes",
   },

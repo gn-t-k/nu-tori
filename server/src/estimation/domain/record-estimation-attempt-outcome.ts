@@ -1,4 +1,3 @@
-import { R } from "@praha/byethrow";
 import type { Dish } from "../../dish/domain/dish";
 import { createRecordLedger } from "../../domain/create-record-ledger";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -9,10 +8,9 @@ import type { Ingredient } from "../../ingredient/domain/ingredient";
 import type { BegunEstimationAttempt } from "./begin-estimation-attempts";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimatedDish } from "./estimated-dish";
-import type { EstimationAttemptUsage } from "./estimation-attempt-usage";
+import type { EstimationAttemptOutcome } from "./estimation-attempt-outcome";
 import { findMealReceivedAt } from "./find-meal-received-at";
 import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
-import type { EstimationAttemptFailedError } from "./run-estimation-attempt";
 
 // 呼び出しから戻ったときに、1つのトランザクションで試みの結果を書く。
 // 食事とのつなぎが無ければ（呼び出し中に食事が消えた）結果だけで終え、二度と呼ばない。
@@ -22,28 +20,21 @@ export const recordEstimationAttemptOutcome = (
   ledgerStore: LedgerStore<RecordType>,
   stores: RecordKindStores,
   attempt: BegunEstimationAttempt,
-  outcome: R.Result<
-    { dishes: EstimatedDish[]; usage: EstimationAttemptUsage },
-    EstimationAttemptFailedError
-  >,
+  outcome: EstimationAttemptOutcome,
   endedAt: Date,
 ): UsageEvent[] =>
   createRecordLedger(ledgerStore, stores, endedAt).changeOutsideWrites((addChange) => {
     const { estimationId } = attempt;
-    const ended = R.isSuccess(outcome)
-      ? { result: "succeeded" as const, errorType: undefined, usage: outcome.value.usage }
-      : outcome.error;
     stores.estimation.insertAttemptResult({
       attemptId: attempt.attemptId,
       endedAt,
-      result: ended.result,
-      errorType: ended.errorType,
+      conclusion: outcome,
     });
     const attemptEnded: UsageEvent = {
       name: "estimation_attempt_ended",
-      result: ended.result,
-      identifyDishesUsage: ended.usage.identifyDishes,
-      matchIngredientsUsage: ended.usage.matchIngredients,
+      result: outcome.result,
+      identifyDishesUsage: outcome.usage.identifyDishes,
+      matchIngredientsUsage: outcome.usage.matchIngredients,
     };
     const mealId = stores.estimation.findMealIdOfEstimation(estimationId);
     if (mealId === undefined) {
@@ -64,8 +55,8 @@ export const recordEstimationAttemptOutcome = (
         ingredients,
       });
 
-    if (R.isSuccess(outcome)) {
-      const { dishes, ingredients } = toRecords(mealId, outcome.value.dishes);
+    if (outcome.result === "succeeded") {
+      const { dishes, ingredients } = toRecords(mealId, outcome.dishes);
       const result = dishes.length === 0 ? "no_dishes" : "estimated";
       stores.estimation.insertCompletion({ estimationId, completedAt: endedAt, result });
       for (const dish of dishes) {
@@ -83,7 +74,7 @@ export const recordEstimationAttemptOutcome = (
       addChange({ recordType: "meal_estimation_status", recordId: mealId });
       return [attemptEnded, computeEnded(result, dishes, ingredients)];
     }
-    if (outcome.error.result === "bad_request" || attempts.length >= maximumEstimationAttempts) {
+    if (outcome.result === "bad_request" || attempts.length >= maximumEstimationAttempts) {
       stores.estimation.insertAbandonment({ estimationId, abandonedAt: endedAt });
       addChange({ recordType: "meal_estimation_status", recordId: mealId });
       return [attemptEnded, computeEnded("failed", [], [])];
