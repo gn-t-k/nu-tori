@@ -519,6 +519,17 @@ struct AccountSessionTests {
                 #expect(device.errorReporting.clearUserCount == 1)
             }
 
+            @Test("削除の経路を呼ぶ前に、裏で送っている写真を取り消すこと")
+            func cancelsUploadsBeforeRequest() async throws {
+                _ = try await session.deleteAccount()
+
+                let events = log.events
+                let cancel = try #require(
+                    events.firstIndex(of: "backgroundTransfers.cancelUploads"))
+                let request = try #require(events.firstIndex(of: "request /v1/account"))
+                #expect(cancel < request)
+            }
+
             @Test("端末から消すものをすべて消すこと")
             func erasesEverything() async throws {
                 _ = try await session.deleteAccount()

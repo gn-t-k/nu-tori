@@ -31,7 +31,7 @@ struct MealDraftTests {
         @Test("送った時刻を送る操作をした時刻にし、送ったときのタイムゾーンを端末の IANA 名にすること")
         func sentAtAndTimeZone() throws {
             #expect(draft.sentAt == (try Date("2026-09-23T10:41:00Z", strategy: .iso8601)))
-            #expect(draft.sentTimeZoneIdentifier == "Asia/Tokyo")
+            #expect(draft.sentTimeZone.identifier == "Asia/Tokyo")
         }
 
         @Test("入口を撮ったにし、写真を1枚にすること")
@@ -196,7 +196,7 @@ struct MealDraftTests {
                     photos, sentAt: sentAt,
                     deviceTimeZone: #require(TimeZone(identifier: "Asia/Tokyo")))
                 #expect(drafts.map(\.sentAt) == [sentAt, sentAt])
-                #expect(drafts.map(\.sentTimeZoneIdentifier) == ["Asia/Tokyo", "Asia/Tokyo"])
+                #expect(drafts.map(\.sentTimeZone.identifier) == ["Asia/Tokyo", "Asia/Tokyo"])
             }
         }
 

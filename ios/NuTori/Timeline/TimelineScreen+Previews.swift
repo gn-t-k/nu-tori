@@ -10,6 +10,7 @@
             today: .sampleToday,
             now: { .now },
             rejectedLines: sample.rejectedLines,
+            rejectedMealLines: sample.rejectedMealLines,
             capture: { _ in },
             prepareWeightEntry: {},
             saveWeight: { _ in },
@@ -29,7 +30,7 @@
             case recordedToday
             /// 取り終えたが、使い始めた日がサーバーでまだ決まっていない
             case startedDayUndecided
-            /// 作った記録と直した記録を、サーバーが受け付けなかった
+            /// 作った記録と直した記録と食事を、サーバーが受け付けなかった
             case rejected
 
             var initialPull: TimelineScreen.InitialPull {
@@ -76,6 +77,13 @@
                 }
             }
 
+            var rejectedMealLines: [RejectedMealLine] {
+                switch self {
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided: []
+                case .rejected: [RejectedMealLine(meal: .sample(on: .sampleToday, at: 12, 10))]
+                }
+            }
+
             private static let startedDay = CalendarDay.sampleToday.advanced(by: -10)
 
             private static let pastRecords: [WeightRecord] = [
@@ -93,10 +101,7 @@
             private static func rejectedLine(_ record: WeightRecord, serverHasValue: Bool)
                 -> RejectedWeightLine
             {
-                RejectedWeightLine(
-                    RejectedWrite(
-                        writeId: UUID(), record: record, reason: .outOfRange,
-                        serverHasValue: serverHasValue))
+                RejectedWeightLine(record: record, serverHasValue: serverHasValue)
             }
         }
     }

@@ -9,6 +9,8 @@ import {
 import { RevokeAppleRefreshTokenError } from "../../auth/revoke-apple-refresh-token";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
+import { mockPhotosBucketDeleteError } from "../../meal/durable-object/testing/photos-bucket.mock";
+import { mockCaptureExceptionOk } from "../../observability/capture-exception.mock";
 import { mockDeletePostHogPersonOk } from "../../observability/delete-posthog-person/delete-posthog-person.mock";
 import { app } from "../app";
 import { signInTestAccount } from "../testing";
@@ -95,6 +97,111 @@ describe("アカウントの削除", () => {
     });
   });
 
+  describe("写真の控えのあるアカウントでサインインしているとき", () => {
+    let signedIn: { accountId: string; sessionToken: string };
+    let otherAccountId: string;
+    beforeEach(async () => {
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      mockRevokeAppleRefreshTokenOk();
+      signedIn = await signInTestAccount(crypto.randomUUID());
+      otherAccountId = crypto.randomUUID();
+      await env.PHOTOS.put(`${signedIn.accountId}/meal-photos/photo-1`, "jpeg");
+      await env.PHOTOS.put(`${otherAccountId}/meal-photos/photo-1`, "jpeg");
+    });
+
+    test("そのアカウントの接頭辞の写真の控えを消し、ほかのアカウントの控えは消さないこと", async () => {
+      await deleteSignedInAccount(signedIn.sessionToken, env);
+      expect(await listPhotoKeys(signedIn.accountId)).toEqual([]);
+      expect(await listPhotoKeys(otherAccountId)).toEqual([
+        `${otherAccountId}/meal-photos/photo-1`,
+      ]);
+    });
+
+    test("一覧の1頁に収まらない数の写真の控えも消すこと", async () => {
+      await Promise.all(
+        Array.from({ length: 1001 }, (_, index) =>
+          env.PHOTOS.put(`${signedIn.accountId}/meal-photos/many-${index}`, "jpeg"),
+        ),
+      );
+      await deleteSignedInAccount(signedIn.sessionToken, env);
+      expect(await listPhotoKeys(signedIn.accountId)).toEqual([]);
+    });
+  });
+
+  describe("Better Auth の行を消す前後に、記録と写真の控えが入り込むとき", () => {
+    let accountId: string;
+    let sessionToken: string;
+    let productionEnv: Env;
+    beforeEach(async () => {
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      mockRevokeAppleRefreshTokenOk();
+      ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+      productionEnv = {
+        ...env,
+        POSTHOG_PROJECT_ID: "12345",
+        POSTHOG_PERSONAL_API_KEY: "phx_test",
+      };
+      // 1回目の Durable Object と R2 の削除が終わったあとの段で、別の端末の同期の要求と裏で送っていた写真が届いた形にする
+      mockDeletePostHogPersonOk().mockImplementation(async () => {
+        await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) => {
+          state.storage.sql.exec("CREATE TABLE deletion_check_late_records (id TEXT PRIMARY KEY)");
+        });
+        await env.PHOTOS.put(`${accountId}/meal-photos/late-photo`, "jpeg");
+      });
+    });
+
+    test("2回目の削除で、入り込んだ記録を消すこと", async () => {
+      await deleteSignedInAccount(sessionToken, productionEnv);
+      const tables = await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
+        state.storage.sql
+          .exec("SELECT name FROM sqlite_master WHERE name = 'deletion_check_late_records'")
+          .toArray(),
+      );
+      expect(tables).toEqual([]);
+    });
+
+    test("2回目の削除で、入り込んだ写真の控えを消すこと", async () => {
+      await deleteSignedInAccount(sessionToken, productionEnv);
+      expect(await listPhotoKeys(accountId)).toEqual([]);
+    });
+  });
+
+  describe("2回目の写真の控えの削除に失敗したとき", () => {
+    let accountId: string;
+    let sessionToken: string;
+    let productionEnv: Env;
+    let captureExceptionSpy: ReturnType<typeof mockCaptureExceptionOk>;
+    beforeEach(async () => {
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      mockRevokeAppleRefreshTokenOk();
+      captureExceptionSpy = mockCaptureExceptionOk();
+      ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+      productionEnv = {
+        ...env,
+        POSTHOG_PROJECT_ID: "12345",
+        POSTHOG_PERSONAL_API_KEY: "phx_test",
+      };
+      mockDeletePostHogPersonOk().mockImplementation(async () => {
+        await env.PHOTOS.put(`${accountId}/meal-photos/late-photo`, "jpeg");
+        mockPhotosBucketDeleteError(new Error("R2 が落ちている"));
+      });
+    });
+
+    test("Sentry に送り、削除は終えること", async () => {
+      const response = await deleteSignedInAccount(sessionToken, productionEnv);
+      expect(response.status).toBe(204);
+      expect(captureExceptionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "AccountDeletionRetryFailedError",
+          stage: "delete_meal_photo_files",
+        }),
+      );
+    });
+  });
+
   describe("Apple の取り消しに一度失敗したとき", () => {
     let sessionToken: string;
     beforeEach(async () => {
@@ -119,3 +226,6 @@ const deleteSignedInAccount = (sessionToken: string, workerEnv: Env) =>
     { method: "DELETE", headers: { authorization: `Bearer ${sessionToken}` } },
     workerEnv,
   );
+
+const listPhotoKeys = async (accountId: string) =>
+  (await env.PHOTOS.list({ prefix: `${accountId}/meal-photos/` })).objects.map(({ key }) => key);

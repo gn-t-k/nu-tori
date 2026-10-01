@@ -15,7 +15,7 @@ struct RingStripTests {
                         weightRecords: [
                             try .imported(73.0, at: "2026-09-22T06:48:00+09:00", in: "Asia/Tokyo"),
                             try .imported(72.8, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo"),
-                        ], rejectedLines: []),
+                        ], rejectedLines: [], meals: [], rejectedMealLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -54,7 +54,8 @@ struct RingStripTests {
         init() {
             strip = RingStrip(
                 timeline: Timeline(
-                    input: Timeline.Input(weightRecords: [], rejectedLines: []),
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], rejectedMealLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 10, day: 7)
                 )
@@ -83,7 +84,7 @@ struct RingStripTests {
                     input: Timeline.Input(
                         weightRecords: [
                             try .manual(72.4, at: "2026-09-28T07:12:00+09:00", in: "Asia/Tokyo")
-                        ], rejectedLines: []),
+                        ], rejectedLines: [], meals: [], rejectedMealLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 21),
                     today: CalendarDay(year: 2026, month: 9, day: 27)
                 )

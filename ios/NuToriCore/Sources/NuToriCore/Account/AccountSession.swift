@@ -87,6 +87,8 @@ public actor AccountSession {
 
     public func deleteAccount() async throws -> DeleteAccountOutcome {
         await flushAnalyticsEvents()
+        // 削除のあいだに届いた写真が、消したアカウントの写真の控えとして残らないよう、先に止める。消せなかったら、次に開いたときに送り直す
+        await backgroundTransfers.cancelUploads()
         let result: NuToriAPIClient.DeleteAccountResult
         do {
             result = try await client.deleteAccount()

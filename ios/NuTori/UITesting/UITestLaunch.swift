@@ -49,6 +49,9 @@
 
         func runtime() throws -> AppRuntime {
             let store = try SwiftDataSyncStore(inMemory: true)
+            let photoUploader = UITestMealPhotoUploader()
+            let photoRoot = FileManager.default.temporaryDirectory.appending(
+                path: "ui-test-meal-photos-\(UUID().uuidString)")
             try store.prepareForUITest(
                 state: seededSyncState(), pendingWrites: account.pendingWrites)
             let behavior = transportBehavior
@@ -75,7 +78,14 @@
                     observation: ObservationSessions(
                         analytics: PlaceholderAnalyticsSession(),
                         errorReporting: PlaceholderErrorReportingSession()
-                    )
+                    ),
+                    mealPhotoFolders: MealPhotos.Folders(
+                        originals: photoRoot.appending(path: "originals"),
+                        uploads: photoRoot.appending(path: "uploads"),
+                        fetched: photoRoot.appending(path: "fetched")
+                    ),
+                    mealPhotoUploader: photoUploader,
+                    finishedMealPhotoUploads: photoUploader.finishedUploads
                 ))
         }
 

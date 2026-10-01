@@ -135,6 +135,25 @@ extension Components.Schemas.SyncWrite {
                     weightRecordId: weightRecordId.uuidString
                 )
             )
+        case .createMeal(let writeId, let meal):
+            self = .createMeal(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .createMeal,
+                    meal: .init(
+                        id: meal.id.uuidString,
+                        eatenAt: meal.eatenAt.millisecondsSince1970,
+                        eatenAtUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
+                        sentAt: meal.sentAt.millisecondsSince1970,
+                        sentTimeZone: meal.sentTimeZone.identifier,
+                        entryMethod: meal.entryMethod.rawValue,
+                        photos: meal.photoIds.map { .init(id: $0.uuidString) }
+                    )
+                )
+            )
+        case .deleteMeal(let writeId, let mealId):
+            self = .deleteMeal(
+                .init(id: writeId.uuidString, _type: .deleteMeal, mealId: mealId.uuidString))
         }
     }
 }
@@ -227,6 +246,9 @@ extension SyncWriteResult.RejectionReason {
         case "version_too_low": self = .versionTooLow
         case "record_not_found": self = .recordNotFound
         case "record_before_started_on": self = .recordBeforeStartedOn
+        case "invalid_entry_method": self = .invalidEntryMethod
+        case "duplicate_photo_ids": self = .duplicatePhotoIds
+        case "photo_already_used": self = .photoAlreadyUsed
         default: self = .unknown(reason: reason)
         }
     }
@@ -274,6 +296,32 @@ extension SyncChange {
         case "weight_record_deletion":
             if let recordId = UUID(uuidString: recordId) {
                 self = .weightRecordDeletion(recordId: recordId)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "meal":
+            if let meal = try? record.decoded(as: MealPayload.self).syncedMeal {
+                self = .meal(meal)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "meal_deletion":
+            if let mealId = UUID(uuidString: recordId) {
+                self = .mealDeletion(mealId: mealId)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "meal_estimation_status":
+            if let status = try? record.decoded(as: MealEstimationStatusPayload.self)
+                .syncedStatus
+            {
+                self = .mealEstimationStatus(status)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "meal_estimation_status_deletion":
+            if let mealId = UUID(uuidString: recordId) {
+                self = .mealEstimationStatusDeletion(mealId: mealId)
             } else {
                 self = .unknown(kind: kind)
             }
@@ -348,6 +396,58 @@ extension SyncChange {
             UUID(uuidString: id).map {
                 SyncedAccountSettings(id: $0, sendsUsageData: sendsUsageData)
             }
+        }
+    }
+}
+
+extension SyncChange {
+    /// 知らない入口と、読めない ID・タイムゾーンは nil にする
+    fileprivate struct MealPayload: Decodable {
+        let id: String
+        let eatenAt: Int
+        let eatenAtUtcOffsetSeconds: Int
+        let sentAt: Int
+        let sentTimeZone: String
+        let entryMethod: String
+        let photos: [Photo]
+
+        struct Photo: Decodable {
+            let id: String
+        }
+
+        var syncedMeal: SyncedMeal? {
+            guard let id = UUID(uuidString: id),
+                let sentTimeZone = TimeZone(identifier: sentTimeZone),
+                let entryMethod = SyncedMeal.EntryMethod(rawValue: entryMethod)
+            else {
+                return nil
+            }
+            let photoIds = photos.compactMap { UUID(uuidString: $0.id) }
+            guard photoIds.count == photos.count else { return nil }
+            return SyncedMeal(
+                id: id,
+                eatenAt: Date(timeIntervalSince1970: Double(eatenAt) / 1000),
+                eatenUtcOffsetSeconds: eatenAtUtcOffsetSeconds,
+                sentAt: Date(timeIntervalSince1970: Double(sentAt) / 1000),
+                sentTimeZone: sentTimeZone,
+                entryMethod: entryMethod,
+                photoIds: photoIds
+            )
+        }
+    }
+
+    /// 知らない状態は nil にする。サーバーが状態を足しても、古い版のアプリは前の状態のまま同期を続ける
+    fileprivate struct MealEstimationStatusPayload: Decodable {
+        let mealId: String
+        let status: String
+
+        var syncedStatus: SyncedMealEstimationStatus? {
+            guard let mealId = UUID(uuidString: mealId),
+                let status = SyncedMealEstimationStatus.Status(rawValue: status)
+            else {
+                return nil
+            }
+            return SyncedMealEstimationStatus(mealId: mealId, status: status)
         }
     }
 }

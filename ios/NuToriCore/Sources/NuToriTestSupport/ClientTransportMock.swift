@@ -6,7 +6,7 @@ public import OpenAPIRuntime
 /// API のトランスポートの差し替え。送った要求を記録する
 ///
 /// 作り方は、答え方ごとに `ok`（どの要求にも同じ答え）、`sync`（同期の書き込みと取得）、
-/// `account`（サインインと削除）、`error`（投げる）の4つ
+/// `account`（サインインと削除）、`mealPhotos`（縮小版を取りに行く）、`error`（投げる）の5つ
 public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     public private(set) var requests: [(request: HTTPRequest, body: String?)] = []
 
@@ -51,9 +51,12 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     /// 受け付けなかった書き込みに添える、サーバーの今の値の JSON（サーバーの API の `current`）
     public enum Current: Sendable {
         case absent
+        /// 体重記録の削除の印
         case deleted(recordId: UUID)
         /// 体重記録の今の値
         case weightRecord(WeightRecord)
+        /// 食事の削除の印
+        case deletedMeal(mealId: UUID)
 
         var json: String {
             switch self {
@@ -63,6 +66,11 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
                 """
                 {"status":"deleted","change":{"kind":"weight_record_deletion",\
                 "recordId":"\(recordId.uuidString)","record":{}}}
+                """
+            case .deletedMeal(let mealId):
+                """
+                {"status":"deleted","change":{"kind":"meal_deletion",\
+                "recordId":"\(mealId.uuidString)","record":{}}}
                 """
             case .weightRecord(let record):
                 """
@@ -116,6 +124,23 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             default:
                 return (HTTPResponse(status: .notFound), nil)
             }
+        }
+    }
+
+    /// 縮小版を取りに行く要求に、`photos` にある写真は JPEG で、無い写真は 404 で答える
+    public static func mealPhotos(_ photos: [UUID: Data]) -> ClientTransportMock {
+        ClientTransportMock { request, _ in
+            let path = request.path ?? ""
+            let prefix = "/v1/meal-photos/"
+            guard path.hasPrefix(prefix),
+                let photoId = UUID(uuidString: String(path.dropFirst(prefix.count))),
+                let photo = photos[photoId]
+            else {
+                return (HTTPResponse(status: .notFound), nil)
+            }
+            var response = HTTPResponse(status: .ok)
+            response.headerFields[.contentType] = "image/jpeg"
+            return (response, HTTPBody(photo))
         }
     }
 

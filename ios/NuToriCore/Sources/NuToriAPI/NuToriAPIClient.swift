@@ -21,6 +21,8 @@ public struct NuToriAPIClient: Sendable {
         transport: any ClientTransport,
         sessionToken: @escaping @Sendable () async -> String?
     ) {
+        self.serverURL = serverURL
+        self.sessionToken = sessionToken
         client = Client(
             serverURL: serverURL,
             transport: transport,
@@ -88,4 +90,7 @@ public struct NuToriAPIClient: Sendable {
     }
 
     let client: Client
+    /// 生成したクライアントを通さずに組む要求（バックグラウンドの URLSession で送る写真）のため
+    let serverURL: URL
+    let sessionToken: @Sendable () async -> String?
 }

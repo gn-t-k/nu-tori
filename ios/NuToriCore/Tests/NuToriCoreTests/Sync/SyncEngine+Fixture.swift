@@ -13,7 +13,8 @@ extension SyncEngine {
         accountId: String = fixtureAccountId,
         readableKinds: Set<RecordKindName> = [.weightRecord],
         errorReporting: ErrorReportingSessionMock = .ok(),
-        weightHealthExport: any WeightHealthExport = WeightHealthExportMock.ok()
+        weightHealthExport: any WeightHealthExport = WeightHealthExportMock.ok(),
+        mealPhotos: MealPhotos = .fixture()
     ) -> SyncEngine {
         SyncEngine(
             store: store,
@@ -32,7 +33,8 @@ extension SyncEngine {
             now: { fixtureNow },
             readableKinds: readableKinds,
             errorReporting: errorReporting,
-            weightHealthExport: weightHealthExport
+            weightHealthExport: weightHealthExport,
+            mealPhotos: mealPhotos
         )
     }
 }

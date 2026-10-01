@@ -8,15 +8,7 @@ public protocol SyncedRecordKind: Sendable {
     /// 取りに行った変更が、この種類のものか
     func owns(_ change: SyncChange) -> Bool
 
-    /// 送り待ちの中身から、サーバーに送る書き込みを作る
-    func syncWrite(for entry: PendingEntry) throws -> SyncWrite
-
-    /// サーバーが受け付けなかった書き込みの扱い。画面に出す行と、サーバーに記録が無いときにキャッシュから外す変更を返す。
-    /// 値と削除の印は、同期の働きが取りに行った変更と同じ道で当てるので、ここでは戻さない。
-    /// `current` は、その記録のサーバーの今の値。読めなかったときは nil
-    func rejection(
-        of entry: PendingEntry,
-        reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
-    ) throws -> KindRejection
+    /// 端末が書く種類の、送る書き込みと受け付けなかったときの扱い。
+    /// サーバーだけが書く種類（推定の状態）は nil。送り待ちに入らず、受け付けられないことも無い
+    var writes: (any RecordKindWrites)? { get }
 }
