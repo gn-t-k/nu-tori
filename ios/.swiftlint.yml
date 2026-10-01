@@ -42,3 +42,8 @@ custom_rules:
     regex: "\\.package\\(\\s*url:[^)]*\\b(from:|branch:|revision:|\\.upToNext)"
     message: "Swift Package の依存は exact: で固定する（docs/agents/languages/swift.md「依存パッケージ」）"
     severity: error
+  no_context_without_container:
+    name: "ModelContext だけを返さない"
+    regex: "->\\s*ModelContext\\b"
+    message: "コンテキストはコンテナを保たず、コンテナが先に解放されると落ちる。コンテナを返すか、withExtendedLifetime(container) の中で使う"
+    severity: error
