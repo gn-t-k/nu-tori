@@ -39,6 +39,7 @@
 ## 記録の種類の足し方
 
 - サーバー: `server/AGENTS.md` の「同期の記録の種類の足し方」に従う。受け付けなかった書き込みの今の値は、種類の `readCurrent` と受け口の `toChangeResponse` から作るので、種類に足すものは無い
+  - サーバーだけが書く種類の変更と、書き込みがほかの種類の記録も変えるときの変更は、帳簿の口から足す（同じ節）。通し番号は足した順に付き、取りに行く応答もその順に並ぶ
 - 端末: NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く。NuToriCore に `SyncedRecordKind`、アプリのターゲットに `RecordKind<ModelContext>`（`synced` と `apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
   - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る
 - 受け付けられないことがある書き込みを持つ種類は、サーバーに記録も削除の印も無いとき（`absent`）の外し方を `rejection` で決める。持たない種類は `KindRejection.none` を返す
