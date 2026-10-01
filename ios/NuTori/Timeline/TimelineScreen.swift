@@ -278,7 +278,7 @@ struct TimelineScreen: View {
         let monday = today.startOfWeek
         return RingStrip(
             timeline: Timeline(
-                input: Timeline.Input(weightRecords: [], rejectedLines: []), firstDay: monday,
+                input: Timeline.Input(weightRecords: [], rejectedLines: [], meals: [], rejectedMealLines: []), firstDay: monday,
                 today: today)
         ).weeks
     }
@@ -286,7 +286,7 @@ struct TimelineScreen: View {
     private func timeline() -> Timeline {
         let first = startedDay ?? records.map(\.day).min() ?? today
         return Timeline(
-            input: Timeline.Input(weightRecords: records, rejectedLines: rejectedLines),
+            input: Timeline.Input(weightRecords: records, rejectedLines: rejectedLines, meals: [], rejectedMealLines: []),
             firstDay: first, today: today)
     }
 
