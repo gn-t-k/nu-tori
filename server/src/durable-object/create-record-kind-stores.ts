@@ -1,7 +1,10 @@
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { createAccountSettingsStore } from "../account-settings/durable-object/create-account-settings-store";
+import { createDishStore } from "../dish/durable-object/create-dish-store";
 import type { RecordKindStores } from "../domain/record-kind-stores";
 import { createEstimationScheduleStore } from "../estimation/durable-object/create-estimation-schedule-store";
+import { createEstimationStore } from "../estimation/durable-object/create-estimation-store";
+import { createIngredientStore } from "../ingredient/durable-object/create-ingredient-store";
 import { createMealPhotoStore } from "../meal/durable-object/create-meal-photo-store";
 import { createMealStore } from "../meal/durable-object/create-meal-store";
 import { createMealEstimationStatusStore } from "../meal-estimation-status/durable-object/create-meal-estimation-status-store";
@@ -13,11 +16,14 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
   const db = drizzle(storage);
   return {
     accountSettings: createAccountSettingsStore(db),
+    dish: createDishStore(db),
+    ingredient: createIngredientStore(db),
     meal: createMealStore(db),
     mealEstimationStatus: createMealEstimationStatusStore(db),
     weightRecord: createWeightRecordStore(db),
     firstSignIn: createFirstSignInStore(db),
     mealPhoto: createMealPhotoStore(db),
     estimationSchedule: createEstimationScheduleStore(db),
+    estimation: createEstimationStore(db),
   };
 };

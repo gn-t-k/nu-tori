@@ -14,7 +14,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 層
 
 - 置き場: HTTP の受け口は `src/http/`、Durable Object は `src/durable-object/`、ドメイン層は `src/domain/`、認証（Better Auth と、Apple の API への入出力）は `src/auth/`、観測（Sentry の設定と、PostHog の API への入出力）は `src/observability/`
-- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
+- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/ingredient/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
 - 層は oxlint の `no-restricted-imports`（`.oxlintrc.json` の `overrides`）で守る。`src/domain/` と `src/<種類>/domain/` からは、受け口（`http`）、Durable Object（`durable-object`）、`cloudflare:*`、`hono` を import できない。import の文字列だけを見るので、別名の import を使い始めたら dependency-cruiser を考える
 - 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
@@ -46,6 +46,15 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
   - 書き込みが、自分の記録のほかに変える記録（食事を消すときの料理など）は、`decide` が返す `addedChanges` に載せる。帳簿は、`changedRecordId` の変更のあとに、控えと結ばずに並びの順で足す。載せられる種類は `RecordKind` の4つ目の型引数で宣言し、登録簿に無い種類は型検査が止める
   - 端末の書き込みの外（受け口の要求、アラーム）で記録を変えるときは、帳簿の `changeOutsideWrites(run)` の `run` の中で行を書き、変えた記録を `addChange` で渡す。`run` の書き込みと変更は1つのトランザクションに入り、変更には渡した順に通し番号が付く。帳簿は `createRecordLedger` で組む
 - 書き込みを当てたときに PostHog に送る出来事（食事を受け取った、など）は、`decide` が返す `usageEvents` に載せる。帳簿は、その要求で初めて決めた書き込みの分だけを返し、同じ書き込みの ID が再び届いたときは返さない。送るかどうか（利用状況の設定）は、要求を当て終えたあとに `computeUsageEvents` が決める
+
+## 推定
+
+- 推定はアラームで進める。入口は `src/estimation/domain/advance-estimations.ts`: 待っている予定から推定を始め、次に試みる時刻が来た推定の試みを書いてから（`begin-estimation-attempts.ts`）、提供元を呼び（`run-estimation-attempt.ts`）、結果を書く（`record-estimation-attempt-outcome.ts`）。次に試みる時刻（待ちを広げる式と、試みの時間の上限）はドメイン層の `compute-next-estimation-attempt-at` が出し、`compute-next-alarm-at.ts` もそれでアラームを合わせる
+- 推定の回数は、アカウントごとに1日 `maximumDailyEstimations`（30）まで。`beginEstimationAttempts` が、予定から推定を始める前に、予定の数える日（`counted_on`）の `estimations` を数え、上限なら見送る（`estimation_deferrals`、次の日の 0:00 の予定とつなぎ、推定の状態の変更、PostHog の `estimation_deferred`）。次の日の 0:00 は、ユーザーの最新のタイムゾーン（読めなければ食事を送ったときのもの）で `computeNextDayStart` が出し、その日の分に数える。日ごとの回数の行は持たず、食事を消しても推定の行は残るので回数は戻らない。見送ったあとの予定から始めたときだけ、推定の状態の変更を足す（翌日に推定 → 推定中）。テストは `src/estimation/http/testing/insert-counted-estimations.ts` で、食事につながらない推定を書いて回数を満たす
+- 提供元（LLM）は、ドメイン層の型 `EstimationProvider`（`src/estimation/domain/estimation-provider.ts`）を、`src/estimation/durable-object/create-estimation-provider/` が作る。Durable Object は推定のたびにここから得る。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（料理あり・料理なし・確かめに通らない・答える前に待つは `mockCreateEstimationProviderOk`、エラー・400・時間切れ・② だけ落ちるは `mockCreateEstimationProviderError`）
+- 提供元の失敗と、確かめに通らない応答は、試みの結果（`estimation_attempt_results.result`）にする。R2 と成分表の段で止まったら投げ、試みを結果の無いまま残して、途中で止まった試みとして数える
+- アラームの中は受け口の要求ごとのログを通らないので、アラームが呼び出しごとに `route: "alarm"` のログを出す（試みごとの結果・失敗した段・提供元のエラーの種類）
+- 推定のテストは、`src/estimation/http/testing/use-fake-clock.ts` で Date だけを先の時刻にして、アラームがひとりでに動かないようにし、`runDurableObjectAlarm` で動かす。やり直しは時計を進めてから動かす
 
 ## 成分表のデータファイル
 

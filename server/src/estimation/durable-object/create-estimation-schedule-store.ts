@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, min } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lte, min } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { EstimationScheduleStore } from "../domain/estimation-schedule-store";
@@ -35,6 +35,55 @@ export const createEstimationScheduleStore = (
         eq(estimationDeferrals.estimationScheduleId, estimationSchedules.id),
       )
       .where(and(isNull(estimations.id), isNull(estimationDeferrals.estimationScheduleId)))
+      .get()?.dueAt ?? undefined,
+  findDueWaitingSchedules: (now) =>
+    db
+      .select({
+        scheduleId: estimationSchedules.id,
+        mealId: mealEstimationSchedules.mealId,
+        countedOn: estimationSchedules.countedOn,
+      })
+      .from(estimationSchedules)
+      .innerJoin(
+        mealEstimationSchedules,
+        eq(mealEstimationSchedules.estimationScheduleId, estimationSchedules.id),
+      )
+      .leftJoin(estimations, eq(estimations.estimationScheduleId, estimationSchedules.id))
+      .leftJoin(
+        estimationDeferrals,
+        eq(estimationDeferrals.estimationScheduleId, estimationSchedules.id),
+      )
+      .where(
+        and(
+          isNull(estimations.id),
+          isNull(estimationDeferrals.estimationScheduleId),
+          lte(estimationSchedules.dueAt, now),
+        ),
+      )
+      .orderBy(asc(estimationSchedules.dueAt))
+      .all(),
+  insertDeferral: ({ scheduleId, deferredAt }) => {
+    db.insert(estimationDeferrals).values({ estimationScheduleId: scheduleId, deferredAt }).run();
+  },
+  hasDeferralOfMeal: (mealId) =>
+    db
+      .select({ id: estimationDeferrals.estimationScheduleId })
+      .from(mealEstimationSchedules)
+      .innerJoin(
+        estimationDeferrals,
+        eq(estimationDeferrals.estimationScheduleId, mealEstimationSchedules.estimationScheduleId),
+      )
+      .where(eq(mealEstimationSchedules.mealId, mealId))
+      .get() !== undefined,
+  findEarliestDueAtOfMeal: (mealId) =>
+    db
+      .select({ dueAt: min(estimationSchedules.dueAt) })
+      .from(estimationSchedules)
+      .innerJoin(
+        mealEstimationSchedules,
+        eq(mealEstimationSchedules.estimationScheduleId, estimationSchedules.id),
+      )
+      .where(eq(mealEstimationSchedules.mealId, mealId))
       .get()?.dueAt ?? undefined,
   findLatestTimeZone: () =>
     db
