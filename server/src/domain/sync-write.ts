@@ -6,7 +6,7 @@ import type { WriteBase } from "./sync-ledger/write-base";
 export type SyncWrite = WriteOfKind<ReturnType<typeof createRecordKinds>[number]>;
 
 type WriteOfKind<TKind> = TKind extends {
-  writes: KindWrites<infer TWrite extends WriteBase> | undefined;
+  writes: KindWrites<infer TWrite extends WriteBase, string> | undefined;
 }
   ? TWrite
   : never;
