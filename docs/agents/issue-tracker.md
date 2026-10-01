@@ -7,6 +7,7 @@
 操作にはすべて `gh api` の REST を使う（`gh issue ...` は GraphQL を使い、クラウドのセッションでは 403 で通らないため）。クラウドのセッションでの認証、書いたあとの読み直し、サブ Issue と依存関係の API は `docs/agents/git.md` の「クラウドのセッションで GitHub を操作する」。
 
 - **Issueを作る**：本文をファイルに書き、`jq -n --rawfile b <ファイル> '{title:"...", body:$b, labels:["..."]}' | gh api repos/gn-t-k/nu-tori/issues -X POST --input -`
+- **本文の長さ**：Issue の本文とコメントは 65,536 文字まで（バイトではなく文字）。仕様のような長い本文は、投稿の前に `python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read()))' <ファイル>` で数え、6 万文字を超えたら、ほかの節と重なる図や付録をコメントに分ける
 - **Issueを読む**：`gh api repos/gn-t-k/nu-tori/issues/<番号>`（ラベルは `.labels[].name`）と、コメントは `gh api repos/gn-t-k/nu-tori/issues/<番号>/comments`
 - **Issueを一覧する**：`gh api 'repos/gn-t-k/nu-tori/issues?state=open&per_page=100'`。`labels=<名前>` と `state` で絞り込む。PR も混ざるので、`pull_request` のあるものを除く
 - **Issueにコメントする**：`gh api repos/gn-t-k/nu-tori/issues/<番号>/comments -X POST -F body=@<ファイル>`
@@ -43,6 +44,12 @@ GitHub Issueを作る。
 - **着手可能なチケットの探し方**：マップの未クローズの子を一覧し（`gh api repos/gn-t-k/nu-tori/issues/<マップ>/sub_issues` のうち `state` が `open` のもの、またはタスクリストの子）、未解決のブロック元があるもの（`issue_dependencies_summary.blocked_by > 0`、または `Blocked by` 行に未クローズのIssueがあるもの）と担当者がいるものを除く。残ったうちマップ上で最初のものを選ぶ。
 - **着手宣言**：`gh api repos/gn-t-k/nu-tori/issues/<n>/assignees -X POST -f 'assignees[]=<自分の GitHub のユーザー名>'`。セッションで最初に行う書き込みにする。
 - **解決**：上の「Issueにコメントする」で回答を書き、続けて「クローズする」。最後にマップの「これまでの決定事項」に要点とリンクを追記する。
+
+## 仕様をチケットに切る前に
+
+仕様が、まだ main に入っていない仕様や PR の上に書かれているとき（本文に「#n が main に入ってから始める」とあるときなど）は、チケットを切る前に、その仕様が前提にしている名前・書く順・口を main のコードと突き合わせる。ずれていたら、仕様の本文を直してから切る。
+
+**Why:** 「[仕様: 食事を撮って推定する](https://github.com/gn-t-k/nu-tori/issues/188)」は、帳簿を作り直す仕様がマージされる前に書いたため、帳簿の書く順を古い形で書き、要る口も足りていなかった。
 
 ## 表の移行のチケットの分け方
 
