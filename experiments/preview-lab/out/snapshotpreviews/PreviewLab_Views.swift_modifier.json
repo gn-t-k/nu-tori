@@ -1,0 +1,20 @@
+{
+  "context" : {
+    "accessibility_enabled" : false,
+    "preview" : {
+      "container_display_name" : "Views",
+      "container_type_name" : "PreviewLab.$s10PreviewLab0016Viewsswift_eCJAcfMX100_0_33_5B241063B0CC7CCFB8895CDE0A26EEC6Ll0A0fMf1_15PreviewRegistryfMu_",
+      "display_name" : "modifier",
+      "index" : 0,
+      "line" : 101,
+      "orientation" : "portrait"
+    },
+    "simulator" : {
+      "device_name" : "preview-lab-a",
+      "model_identifier" : "iPhone18,3"
+    },
+    "test_name" : "-[LabPreviewSnapshots portrait-Views-0-3]"
+  },
+  "display_name" : "modifier",
+  "group" : "PreviewLab\/Views.swift"
+}

@@ -1,0 +1,20 @@
+{
+  "context" : {
+    "accessibility_enabled" : false,
+    "preview" : {
+      "container_display_name" : "Health Probe",
+      "container_type_name" : "PreviewLab.$s10PreviewLab0022HealthProbeswift_tiAIefMX30_0_33_608845B837661BF90F9C7C72ABC030BELl0A0fMf_15PreviewRegistryfMu_",
+      "display_name" : "health",
+      "index" : 0,
+      "line" : 31,
+      "orientation" : "portrait"
+    },
+    "simulator" : {
+      "device_name" : "preview-lab-a",
+      "model_identifier" : "iPhone18,3"
+    },
+    "test_name" : "-[LabPreviewSnapshots portrait-Health Probe-0-0]"
+  },
+  "display_name" : "health",
+  "group" : "PreviewLab\/HealthProbe.swift"
+}
