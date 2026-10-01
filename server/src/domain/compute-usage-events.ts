@@ -1,4 +1,4 @@
-import { computeCalendarDay } from "./compute-calendar-day";
+import { computeCalendarDayInTimeZone } from "./compute-calendar-day-in-time-zone";
 import { isTimeZoneName } from "./is-time-zone-name";
 import type { SyncClientState } from "./sync-client-state";
 import type { UsageEvent } from "./usage-event";
@@ -43,8 +43,8 @@ const computePendingWritesReported = ({
   }
   const isFirstRequestOfDay =
     previousRequestReceivedAt === undefined ||
-    computeCalendarDay(previousRequestReceivedAt, clientState.timeZone) !==
-      computeCalendarDay(receivedAt, clientState.timeZone);
+    computeCalendarDayInTimeZone(previousRequestReceivedAt, clientState.timeZone) !==
+      computeCalendarDayInTimeZone(receivedAt, clientState.timeZone);
   return isFirstRequestOfDay
     ? {
         name: "sync_pending_writes_reported",

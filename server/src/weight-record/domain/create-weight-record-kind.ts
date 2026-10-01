@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { computeCalendarDay } from "../../domain/compute-calendar-day";
+import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
@@ -95,7 +95,7 @@ const decideUpdate = (
   const startedOn = findStartedOn();
   if (
     startedOn !== undefined &&
-    computeCalendarDay(current.measuredAt, current.timeZone) < startedOn
+    computeCalendarDayInTimeZone(current.measuredAt, current.timeZone) < startedOn
   ) {
     return settled("update", weightRecord.id, {
       result: "rejected",
