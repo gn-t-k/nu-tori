@@ -4,6 +4,7 @@ import type { WriteReceiptId } from "./sync-ledger";
 import type { WriteBase } from "./write-base";
 import type { WriteKind } from "./write-kind";
 import type { SyncWriteOutcome } from "../sync-write-outcome";
+import type { UsageEvent } from "../usage-event";
 
 // 記録の種類が帳簿に見せる入口。置き場は種類が閉じ込めて持つ
 // TAddedName は、書き込みが変更を足せるほかの種類の名前。帳簿は登録簿にある種類だけを受け取る
@@ -35,6 +36,8 @@ export type WriteDecision<TAddedName extends string = never> = {
   changedRecordId: string | undefined;
   // 書き込みが直接変えた記録の外で、commit が変える記録。控えと結ばずに、changedRecordId の変更のあとに、並びの順で載せる
   addedChanges: readonly RecordChangeTarget<TAddedName>[];
+  // 書き込みを当てたときに、分析用に送る出来事。同じ書き込みの ID が再び届いたときは送らない
+  usageEvents: readonly UsageEvent[];
   // 帳簿が控えを書いたあとに呼ぶ。控えの ID は帳簿しか作れないので、控えより先に自分の行を書けない
   commit: (receiptId: WriteReceiptId) => void;
 };

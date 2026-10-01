@@ -29,7 +29,7 @@ export const pullSyncChanges = (
       receivedAt: request.receivedAt,
       previousRequestReceivedAt: pulled.previousRequestReceivedAt,
       sendsUsageData: stores.accountSettings.find()?.sendsUsageData ?? true,
-      rejectedWrites: [],
+      writeEvents: [],
     }),
   };
 };

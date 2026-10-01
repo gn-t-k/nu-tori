@@ -3,4 +3,7 @@ export type RejectionReason =
   | "invalid_time_zone"
   | "version_too_low"
   | "record_not_found"
-  | "record_before_started_on";
+  | "record_before_started_on"
+  | "invalid_entry_method"
+  | "duplicate_photo_ids"
+  | "photo_already_used";

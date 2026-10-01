@@ -1,5 +1,6 @@
 import type { SyncClientState } from "../sync-client-state";
 import type { RejectionReason } from "../rejection-reason";
+import type { UsageEvent } from "../usage-event";
 import type { CurrentRecord } from "./current-record";
 import type { LedgerChange } from "./ledger-change";
 import type { LedgerStore } from "./ledger-store";
@@ -39,6 +40,7 @@ export const createSyncLedger = <
         isFinalBatch: request.isFinalBatch,
       });
       const rejectedWrites: RejectedWrite<TRecordType>[] = [];
+      const usageEvents: UsageEvent[] = [];
       const settled = request.writes.map((write, positionInRequest) => {
         const previousReceipt = store.findWriteReceipt(write.id);
         if (previousReceipt !== undefined) {
@@ -73,6 +75,7 @@ export const createSyncLedger = <
         for (const added of decision.addedChanges) {
           store.insertRecordChange({ ...added, writeId: undefined });
         }
+        usageEvents.push(...decision.usageEvents);
         if (decision.outcome.result === "rejected") {
           rejectedWrites.push({
             writeKind: decision.writeKind,
@@ -101,7 +104,7 @@ export const createSyncLedger = <
               : undefined,
         }),
       );
-      return { results, rejectedWrites, previousRequestReceivedAt };
+      return { results, rejectedWrites, usageEvents, previousRequestReceivedAt };
     });
 
   const readCurrentOf = (recordType: TRecordType, recordId: string): CurrentRecord<TValue> => {

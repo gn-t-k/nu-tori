@@ -39,6 +39,7 @@ export const createTestRecordKind = (
             recordType: "test_child",
             recordId: childId,
           })),
+          usageEvents: [],
           commit: (receiptId) => {
             store.remove(write.recordId);
             store.insertDeletion(receiptId.value, write.recordId);
@@ -56,6 +57,7 @@ export const createTestRecordKind = (
           outcome: { result: "rejected", reason: "out_of_range" },
           changedRecordId: undefined,
           addedChanges: [],
+          usageEvents: [],
           commit: () => undefined,
         };
       }
@@ -66,6 +68,7 @@ export const createTestRecordKind = (
           outcome: { result: "ignored_tombstone" },
           changedRecordId: write.recordId,
           addedChanges: [],
+          usageEvents: [],
           commit: () => undefined,
         };
       }
@@ -75,6 +78,7 @@ export const createTestRecordKind = (
         outcome: { result: "applied" },
         changedRecordId: write.recordId,
         addedChanges: [],
+        usageEvents: [],
         commit: () =>
           writeKind === "create"
             ? store.insert(write.recordId, write.value)

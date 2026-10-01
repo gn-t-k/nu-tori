@@ -18,6 +18,8 @@ extension Components {
         /// - Remark: Generated from `#/components/schemas/RecordKindName`.
         internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
             case accountSettings = "account_settings"
+            case meal = "meal"
+            case mealEstimationStatus = "meal_estimation_status"
             case weightRecord = "weight_record"
         }
         /// - Remark: Generated from `#/components/schemas/SyncWriteResult`.
@@ -141,8 +143,12 @@ extension Components {
         ///
         /// - Remark: Generated from `#/components/schemas/SyncWrite`.
         internal enum SyncWrite: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateMealWrite`.
+            case createMeal(Components.Schemas.CreateMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
             case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteMealWrite`.
+            case deleteMeal(Components.Schemas.DeleteMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/SourceDeletedWeightRecordWrite`.
             case sourceDeletedWeightRecord(Components.Schemas.SourceDeletedWeightRecordWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateAccountSettingsWrite`.
@@ -159,8 +165,12 @@ extension Components {
                     forKey: ._type
                 )
                 switch discriminator {
+                case "create_meal":
+                    self = .createMeal(try .init(from: decoder))
                 case "create_weight_record":
                     self = .createWeightRecord(try .init(from: decoder))
+                case "delete_meal":
+                    self = .deleteMeal(try .init(from: decoder))
                 case "source_deleted_weight_record":
                     self = .sourceDeletedWeightRecord(try .init(from: decoder))
                 case "update_account_settings":
@@ -177,7 +187,11 @@ extension Components {
             }
             internal func encode(to encoder: any Swift.Encoder) throws {
                 switch self {
+                case let .createMeal(value):
+                    try value.encode(to: encoder)
                 case let .createWeightRecord(value):
+                    try value.encode(to: encoder)
+                case let .deleteMeal(value):
                     try value.encode(to: encoder)
                 case let .sourceDeletedWeightRecord(value):
                     try value.encode(to: encoder)
@@ -246,6 +260,158 @@ extension Components {
                 case id
                 case _type = "type"
                 case accountSettings
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CreateMealWrite`.
+        internal struct CreateMealWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateMealWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateMealWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case createMeal = "create_meal"
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateMealWrite/type`.
+            internal var _type: Components.Schemas.CreateMealWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal`.
+            internal struct MealPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/id`.
+                internal var id: Swift.String
+                /// UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/eatenAt`.
+                internal var eatenAt: Swift.Int
+                /// 撮った時刻の UTC との時差の秒
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/eatenAtUtcOffsetSeconds`.
+                internal var eatenAtUtcOffsetSeconds: Swift.Int
+                /// UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/sentAt`.
+                internal var sentAt: Swift.Int
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/sentTimeZone`.
+                internal var sentTimeZone: Swift.String
+                /// 入口。撮った（captured）か、撮っておいた写真を選んだ（picked）か
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/entryMethod`.
+                internal var entryMethod: Swift.String
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/PhotosPayload`.
+                internal struct PhotosPayloadPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/PhotosPayload/id`.
+                    internal var id: Swift.String
+                    /// Creates a new `PhotosPayloadPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - id:
+                    internal init(id: Swift.String) {
+                        self.id = id
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case id
+                    }
+                }
+                /// 並びが写真の並び順
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/photos`.
+                internal typealias PhotosPayload = [Components.Schemas.CreateMealWrite.MealPayload.PhotosPayloadPayload]
+                /// 並びが写真の並び順
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal/photos`.
+                internal var photos: Components.Schemas.CreateMealWrite.MealPayload.PhotosPayload
+                /// Creates a new `MealPayload`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                ///   - eatenAt: UNIX 時刻のミリ秒（UTC）
+                ///   - eatenAtUtcOffsetSeconds: 撮った時刻の UTC との時差の秒
+                ///   - sentAt: UNIX 時刻のミリ秒（UTC）
+                ///   - sentTimeZone:
+                ///   - entryMethod: 入口。撮った（captured）か、撮っておいた写真を選んだ（picked）か
+                ///   - photos: 並びが写真の並び順
+                internal init(
+                    id: Swift.String,
+                    eatenAt: Swift.Int,
+                    eatenAtUtcOffsetSeconds: Swift.Int,
+                    sentAt: Swift.Int,
+                    sentTimeZone: Swift.String,
+                    entryMethod: Swift.String,
+                    photos: Components.Schemas.CreateMealWrite.MealPayload.PhotosPayload
+                ) {
+                    self.id = id
+                    self.eatenAt = eatenAt
+                    self.eatenAtUtcOffsetSeconds = eatenAtUtcOffsetSeconds
+                    self.sentAt = sentAt
+                    self.sentTimeZone = sentTimeZone
+                    self.entryMethod = entryMethod
+                    self.photos = photos
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case id
+                    case eatenAt
+                    case eatenAtUtcOffsetSeconds
+                    case sentAt
+                    case sentTimeZone
+                    case entryMethod
+                    case photos
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateMealWrite/meal`.
+            internal var meal: Components.Schemas.CreateMealWrite.MealPayload
+            /// Creates a new `CreateMealWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - meal:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.CreateMealWrite._TypePayload,
+                meal: Components.Schemas.CreateMealWrite.MealPayload
+            ) {
+                self.id = id
+                self._type = _type
+                self.meal = meal
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case meal
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/DeleteMealWrite`.
+        internal struct DeleteMealWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteMealWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/DeleteMealWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case deleteMeal = "delete_meal"
+            }
+            /// - Remark: Generated from `#/components/schemas/DeleteMealWrite/type`.
+            internal var _type: Components.Schemas.DeleteMealWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/DeleteMealWrite/mealId`.
+            internal var mealId: Swift.String
+            /// Creates a new `DeleteMealWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - mealId:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.DeleteMealWrite._TypePayload,
+                mealId: Swift.String
+            ) {
+                self.id = id
+                self._type = _type
+                self.mealId = mealId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case mealId
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite`.

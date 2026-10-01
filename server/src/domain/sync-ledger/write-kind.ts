@@ -1,1 +1,1 @@
-export type WriteKind = "create" | "update" | "source_deleted";
+export type WriteKind = "create" | "update" | "source_deleted" | "delete";
