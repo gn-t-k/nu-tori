@@ -9,6 +9,10 @@ public struct Timeline: Sendable {
             grouping: input.weightRecords.filter { $0.day >= firstDay }, by: \.day)
         let mealsByDay = Dictionary(
             grouping: input.meals.filter { $0.meal.cardDay >= firstDay }, by: \.meal.cardDay)
+        // 1日の丸と日のまとめには、カードを置く日でなく、食事の日（撮った時刻と食事の時差から出した日）に入れる。
+        // 食事の日が使い始めた日より前の食事は、カードは並べても、丸にも日のまとめにも入れない
+        let mealsByEatenDay = Dictionary(
+            grouping: input.meals.filter { $0.meal.day >= firstDay }, by: \.meal.day)
         let lastDay = ([today] + weightRecordsByDay.keys + mealsByDay.keys).max()!
         let range = firstDay...max(firstDay, lastDay)
         dayRange = range
@@ -20,7 +24,8 @@ public struct Timeline: Sendable {
                     rejectedLines: input.rejectedLines.filter { $0.record.day == day },
                     meals: mealsByDay[day] ?? [],
                     rejectedMealLines: input.rejectedMealLines.filter { $0.meal.cardDay == day }
-                )
+                ),
+                food: DayFood(meals: mealsByEatenDay[day] ?? [])
             )
         }
     }
@@ -54,10 +59,13 @@ public struct Timeline: Sendable {
         public let day: CalendarDay
         /// 体重記録は時刻、食事は送った時刻の順。受け付けなかった行は、その位置に入る
         public let items: [Item]
+        /// この日の食べた量。この日に食べた（食事の日がこの日の）食事から出す。カードを置く日の食事とは限らない
+        public let food: DayFood
 
-        public init(day: CalendarDay, items: [Item]) {
+        public init(day: CalendarDay, items: [Item], food: DayFood) {
             self.day = day
             self.items = items
+            self.food = food
         }
 
         public var representativeWeight: RepresentativeWeight? {
@@ -72,7 +80,8 @@ public struct Timeline: Sendable {
             DayRing(
                 hasWeightRecord: items.contains {
                     if case .weightRecord = $0 { true } else { false }
-                })
+                },
+                food: food)
         }
     }
 

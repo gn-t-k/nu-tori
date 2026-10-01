@@ -90,7 +90,7 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
             case .meal(let meal): meals.append(Meal(meal))
             case .mealDeletion(let mealId): removedMealIds.append(mealId)
             case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
-            .ingredient, .ingredientDeletion, .mealEstimationStatus,
+                .ingredient, .ingredientDeletion, .mealEstimationStatus,
                 .mealEstimationStatusDeletion, .unknown:
                 break
             }

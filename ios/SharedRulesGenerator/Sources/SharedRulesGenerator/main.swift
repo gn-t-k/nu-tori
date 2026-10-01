@@ -25,16 +25,36 @@ try renderNutrient(
 )
 .write(to: output.appending(path: "Nutrient.swift"), atomically: true, encoding: .utf8)
 
+private struct Bounds: Decodable {
+    let minimum: Double
+    let maximum: Double
+}
+
 private struct NutrientItem: Decodable {
     let unit: String
 }
 
-/// 名前（単位を含む snake_case）を、先頭を小文字にした camelCase の case 名にする（`vitamin_b12_ug` → `vitaminB12Ug`）
-private func caseName(of name: String) -> String {
-    name.split(separator: "_").enumerated().map { index, word in
-        index == 0 ? String(word) : word.prefix(1).uppercased() + word.dropFirst()
+private func renderAcceptedRange(_ ranges: [String: Bounds]) -> String {
+    let names = ranges.keys.sorted()
+    let cases = names.map { "    case \($0)" }
+    let boundsCases = names.map { name in
+        let range = ranges[name]!
+        return "        case .\(name): \(range.minimum)...\(range.maximum)"
     }
-    .joined()
+    return """
+        // shared/accepted-ranges.json から書き出した。直すときは JSON を直し、scripts/check ios --fix で書き出し直す
+
+        public enum AcceptedRange {
+        \(cases.joined(separator: "\n"))
+
+            public var bounds: ClosedRange<Double> {
+                switch self {
+        \(boundsCases.joined(separator: "\n"))
+                }
+            }
+        }
+
+        """
 }
 
 private func renderNutrient(_ nutrients: [String: NutrientItem]) -> String {
@@ -61,30 +81,10 @@ private func renderNutrient(_ nutrients: [String: NutrientItem]) -> String {
         """
 }
 
-private struct Bounds: Decodable {
-    let minimum: Double
-    let maximum: Double
-}
-
-private func renderAcceptedRange(_ ranges: [String: Bounds]) -> String {
-    let names = ranges.keys.sorted()
-    let cases = names.map { "    case \($0)" }
-    let boundsCases = names.map { name in
-        let range = ranges[name]!
-        return "        case .\(name): \(range.minimum)...\(range.maximum)"
+/// 名前（単位を含む snake_case）を、先頭を小文字にした camelCase の case 名にする（`vitamin_b12_ug` → `vitaminB12Ug`）
+private func caseName(of name: String) -> String {
+    name.split(separator: "_").enumerated().map { index, word in
+        index == 0 ? String(word) : word.prefix(1).uppercased() + word.dropFirst()
     }
-    return """
-        // shared/accepted-ranges.json から書き出した。直すときは JSON を直し、scripts/check ios --fix で書き出し直す
-
-        public enum AcceptedRange {
-        \(cases.joined(separator: "\n"))
-
-            public var bounds: ClosedRange<Double> {
-                switch self {
-        \(boundsCases.joined(separator: "\n"))
-                }
-            }
-        }
-
-        """
+    .joined()
 }

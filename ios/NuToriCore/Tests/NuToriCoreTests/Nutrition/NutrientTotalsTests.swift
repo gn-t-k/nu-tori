@@ -16,7 +16,7 @@ struct NutrientTotalsTests {
             #expect(ingredient.amount(of: .energyKcal) == 408)
         }
 
-        @Test("1単位あたりの可食部の g を掛けること（卵 2 個、1 個の可食部 50 g）")
+        @Test("卵 2 個（1 個の可食部 50 g）のように、1単位あたりの可食部の g を掛けること")
         func multipliesByEdibleGramsPerUnit() {
             let ingredient = Ingredient.fixture(
                 name: "卵", quantity: 2, unit: "個", edibleGramsPerUnit: 50,
@@ -26,7 +26,7 @@ struct NutrientTotalsTests {
             #expect(ingredient.amount(of: .energyKcal) == 142)
         }
 
-        @Test("栄養成分表示の材料は、表示の単位あたりの g で割ること（250 g あたり 40 kcal の 500 g）")
+        @Test("栄養成分表示の材料は、250 g あたり 40 kcal の 500 g を 80 kcal と数えるように、表示の単位あたりの g で割ること")
         func nutritionLabelIsPerLabelBasis() {
             let ingredient = Ingredient.fixture(
                 name: "緑茶", quantity: 1, unit: "本", edibleGramsPerUnit: 500,
@@ -45,7 +45,7 @@ struct NutrientTotalsTests {
             #expect(ingredient.amount(of: .energyKcal) == 234)
         }
 
-        @Test("値を持たない項目は不明（0 にしない）")
+        @Test("値を持たない項目は、0 にせず不明にすること")
         func missingNutrientIsUnknown() {
             let ingredient = Ingredient.fixture(nutrients: [.energyKcal: 204])
 

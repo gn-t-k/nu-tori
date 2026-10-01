@@ -41,7 +41,8 @@ struct DishRecordKindTests {
                     KindChanges(
                         kind: .dish,
                         changes: [
-                            .dish(DishRecordKindTests.syncedDish(id: DishRecordKindTests.keptDishId)),
+                            .dish(
+                                DishRecordKindTests.syncedDish(id: DishRecordKindTests.keptDishId)),
                             .dish(
                                 DishRecordKindTests.syncedDish(
                                     id: DishRecordKindTests.removedDishId)),
@@ -65,7 +66,10 @@ struct DishRecordKindTests {
         func storesDishes() throws {
             let dishes = try store.container.mainContext.fetch(FetchDescriptor<CachedDish>())
 
-            #expect(Set(dishes.map(\.dishId)) == [DishRecordKindTests.keptDishId, DishRecordKindTests.removedDishId])
+            #expect(
+                Set(dishes.map(\.dishId)) == [
+                    DishRecordKindTests.keptDishId, DishRecordKindTests.removedDishId,
+                ])
         }
 
         @Test("知らない栄養の項目を読み飛ばし、出どころと栄養の値を保って材料がキャッシュに入ること")
@@ -75,8 +79,10 @@ struct DishRecordKindTests {
             )
             .compactMap { $0.ingredient() }
 
-            let kept = try #require(ingredients.first { $0.id == DishRecordKindTests.keptIngredientId })
-            let labeled = try #require(ingredients.first { $0.id == DishRecordKindTests.removedIngredientId })
+            let kept = try #require(
+                ingredients.first { $0.id == DishRecordKindTests.keptIngredientId })
+            let labeled = try #require(
+                ingredients.first { $0.id == DishRecordKindTests.removedIngredientId })
             #expect(kept.nutrientSource == .foodComposition(foodNumber: "11225"))
             #expect(kept.nutrients == [.energyKcal: 204, .proteinG: 16.6])
             #expect(labeled.nutrientSource == .nutritionLabel(basisGrams: 250))
@@ -86,10 +92,15 @@ struct DishRecordKindTests {
         func removesDeleted() async throws {
             try await store.apply(
                 SyncBoxResult(kindChanges: [
-                    KindChanges(kind: .dish, changes: [.dishDeletion(dishId: DishRecordKindTests.removedDishId)]),
+                    KindChanges(
+                        kind: .dish,
+                        changes: [.dishDeletion(dishId: DishRecordKindTests.removedDishId)]),
                     KindChanges(
                         kind: .ingredient,
-                        changes: [.ingredientDeletion(ingredientId: DishRecordKindTests.removedIngredientId)]),
+                        changes: [
+                            .ingredientDeletion(
+                                ingredientId: DishRecordKindTests.removedIngredientId)
+                        ]),
                 ]))
 
             let dishes = try store.container.mainContext.fetch(FetchDescriptor<CachedDish>())

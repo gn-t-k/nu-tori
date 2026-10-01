@@ -40,7 +40,8 @@ struct IngredientSyncingTests {
         let synced = SyncedIngredient.fixture(
             nutrientSource: .nutritionLabel(basisGrams: 250), nutrients: [:])
 
-        let ingredient = try #require(syncing.current(from: [.ingredient(synced)]).ingredients.first)
+        let ingredient = try #require(
+            syncing.current(from: [.ingredient(synced)]).ingredients.first)
 
         #expect(ingredient.id == Self.ingredientId)
         #expect(ingredient.dishId == Self.dishId)

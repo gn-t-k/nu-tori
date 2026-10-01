@@ -6,7 +6,8 @@ import Testing
 struct NutrientTests {
     @Test("shared/nutrients.json の項目と単位が、過不足なく端末の項目になっていること")
     func matchesSharedJSON() throws {
-        let shared = try SharedTestCases.decode([String: Item].self, fromFileNamed: "nutrients.json")
+        let shared = try SharedTestCases.decode(
+            [String: Item].self, fromFileNamed: "nutrients.json")
 
         let device = Dictionary(
             uniqueKeysWithValues: Nutrient.allCases.map { ($0.rawValue, $0.unit) })

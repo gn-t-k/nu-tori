@@ -46,7 +46,7 @@ public struct MealEstimationStatusSyncing: SyncedRecordKind {
             case .mealEstimationStatusDeletion(let mealId):
                 removedMealIds.append(mealId)
             case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
-            .ingredient, .ingredientDeletion, .meal, .mealDeletion,
+                .ingredient, .ingredientDeletion, .meal, .mealDeletion,
                 .unknown:
                 break
             }
