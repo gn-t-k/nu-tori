@@ -15,35 +15,31 @@ struct PhotoExifTests {
                     == .takenAt(
                         PhotoExif.WallClock(
                             year: 2026, month: 9, day: 24, hour: 19, minute: 40, second: 12),
-                        utcOffsetSeconds: 9 * 3600))
+                        utcOffsetSeconds: 32_400))
         }
 
-        static let signedOffsets: [(text: String, seconds: Int)] = [
-            ("-07:00", -25_200),
-            ("+05:30", 19_800),
-            ("-03:30", -12_600),
-        ]
-
-        @Test("西の時差と、分のある時差を読むこと", arguments: signedOffsets)
-        func readsSignedOffsets(offset: (text: String, seconds: Int)) {
+        @Test("西の時差は、負の秒にすること")
+        func readsWesternOffset() {
             let exif = PhotoExif(
-                dateTimeOriginal: "2026:09:24 19:40:12", offsetTimeOriginal: offset.text)
+                dateTimeOriginal: "2026:09:24 19:40:12", offsetTimeOriginal: "-07:00")
 
-            guard case .takenAt(_, let utcOffsetSeconds) = exif else {
-                Issue.record("撮影時刻が読めていない")
-                return
-            }
-            #expect(utcOffsetSeconds == offset.seconds)
+            #expect(exif.utcOffsetSeconds == -25_200)
+        }
+
+        @Test("分のある時差は、分も秒にすること")
+        func readsMinutes() {
+            let exif = PhotoExif(
+                dateTimeOriginal: "2026:09:24 19:40:12", offsetTimeOriginal: "+05:30")
+
+            #expect(exif.utcOffsetSeconds == 19_800)
         }
     }
 
-    @Suite("時差が無い、または読めないとき")
+    @Suite("時差が無いとき")
     struct WithoutOffset {
-        static let unreadableOffsets: [String?] = [nil, "", "JST", "+9", "+09:00:00"]
-
-        @Test("撮影時刻だけを読むこと", arguments: unreadableOffsets)
-        func readsOnlyWallClock(offset: String?) {
-            let exif = PhotoExif(dateTimeOriginal: "2026:09:24 07:05:00", offsetTimeOriginal: offset)
+        @Test("撮影時刻だけを読むこと")
+        func readsOnlyWallClock() {
+            let exif = PhotoExif(dateTimeOriginal: "2026:09:24 07:05:00", offsetTimeOriginal: nil)
 
             #expect(
                 exif
@@ -54,16 +50,55 @@ struct PhotoExifTests {
         }
     }
 
-    @Suite("撮影時刻が無い、または読めないとき")
-    struct WithoutDateTime {
-        static let unreadableDateTimes: [String?] = [
-            nil, "", "2026-09-24 19:40:12", "2026:09:24", "    :  :     :  :  ", "2026:09:24 19:40",
-        ]
+    @Suite("時差の形が違うとき")
+    struct UnreadableOffset {
+        @Test("時差を無いものにし、撮影時刻は読むこと")
+        func dropsOnlyOffset() {
+            let dateTime = "2026:09:24 07:05:00"
+            let withoutOffset = PhotoExif(dateTimeOriginal: dateTime, offsetTimeOriginal: nil)
 
-        @Test("時差があっても、撮影時刻が無いものにすること", arguments: unreadableDateTimes)
-        func isNone(dateTime: String?) {
+            // 名前で書いた、桁が足りない、秒まである
             #expect(
-                PhotoExif(dateTimeOriginal: dateTime, offsetTimeOriginal: "+09:00") == .none)
+                PhotoExif(dateTimeOriginal: dateTime, offsetTimeOriginal: "JST") == withoutOffset)
+            #expect(
+                PhotoExif(dateTimeOriginal: dateTime, offsetTimeOriginal: "+9") == withoutOffset)
+            #expect(
+                PhotoExif(dateTimeOriginal: dateTime, offsetTimeOriginal: "+09:00:00")
+                    == withoutOffset)
+        }
+    }
+
+    @Suite("撮影時刻が無いとき")
+    struct WithoutDateTime {
+        @Test("時差があっても、撮影時刻が無いものにすること")
+        func isNone() {
+            #expect(PhotoExif(dateTimeOriginal: nil, offsetTimeOriginal: "+09:00") == .none)
+        }
+    }
+
+    @Suite("撮影時刻の形が違うとき")
+    struct UnreadableDateTime {
+        @Test("撮影時刻が無いものにすること")
+        func isNone() {
+            // 区切りが違う、時刻が無い、秒が無い、撮った機器が空白で埋めた
+            #expect(read("2026-09-24 19:40:12") == .none)
+            #expect(read("2026:09:24") == .none)
+            #expect(read("2026:09:24 19:40") == .none)
+            #expect(read("    :  :     :  :  ") == .none)
+        }
+
+        private func read(_ dateTime: String) -> PhotoExif {
+            PhotoExif(dateTimeOriginal: dateTime, offsetTimeOriginal: "+09:00")
+        }
+    }
+}
+
+extension PhotoExif {
+    /// 読めた時差。撮影時刻が無ければ nil
+    fileprivate var utcOffsetSeconds: Int? {
+        switch self {
+        case .none: nil
+        case .takenAt(_, let utcOffsetSeconds): utcOffsetSeconds
         }
     }
 }

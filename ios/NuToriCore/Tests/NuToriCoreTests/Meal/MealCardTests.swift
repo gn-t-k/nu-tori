@@ -67,23 +67,31 @@ struct MealCardTests {
 
     @Suite("名前の場所に置く状態の1行")
     struct StatusLine {
-        static let statesWithLine: [(state: MealCardState, text: String)] = [
-            (.estimating, "推定しています…"),
-            (.noDishes, "写真に料理が見つかりませんでした"),
-            (.deferredToNextDay, "今日はもう推定できないため、明日推定します"),
-            (.failed, "推定できませんでした"),
-        ]
-
-        @Test("推定中・料理なし・翌日に推定・推定できなかったは、その旨を書くこと", arguments: statesWithLine)
-        func describesState(entry: (state: MealCardState, text: String)) {
-            #expect(entry.state.statusLine == entry.text)
+        @Test("推定中は、推定していることを書くこと")
+        func estimating() {
+            #expect(MealCardState.estimating.statusLine == "推定しています…")
         }
 
-        @Test("まだ送れていない・写真を待っているは、何も置かないこと", arguments: [
-            MealCardState.notSent, .awaitingPhotos,
-        ])
-        func leavesEmpty(state: MealCardState) {
-            #expect(state.statusLine == nil)
+        @Test("料理なしは、料理が見つからなかったことを書くこと")
+        func noDishes() {
+            #expect(MealCardState.noDishes.statusLine == "写真に料理が見つかりませんでした")
+        }
+
+        @Test("翌日に推定は、明日推定することを書くこと")
+        func deferredToNextDay() {
+            #expect(
+                MealCardState.deferredToNextDay.statusLine == "今日はもう推定できないため、明日推定します")
+        }
+
+        @Test("推定できなかったは、推定できなかったことを書くこと")
+        func failed() {
+            #expect(MealCardState.failed.statusLine == "推定できませんでした")
+        }
+
+        @Test("まだ送れていない・写真を待っているは、何も置かないこと")
+        func leavesEmpty() {
+            #expect(MealCardState.notSent.statusLine == nil)
+            #expect(MealCardState.awaitingPhotos.statusLine == nil)
         }
 
         @Test("推定できた食事は、状態の1行の代わりに料理の名前を置くので、1行を持たないこと")
