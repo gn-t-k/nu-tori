@@ -29,10 +29,13 @@ export const applySyncWrites = (
       receivedAt: request.receivedAt,
       previousRequestReceivedAt: pushed.previousRequestReceivedAt,
       sendsUsageData: stores.accountSettings.find()?.sendsUsageData ?? true,
-      rejectedWrites: pushed.rejectedWrites.map((rejected) => ({
-        name: "sync_write_rejected",
-        ...rejected,
-      })),
+      writeEvents: [
+        ...pushed.rejectedWrites.map((rejected): UsageEvent => ({
+          name: "sync_write_rejected",
+          ...rejected,
+        })),
+        ...pushed.usageEvents,
+      ],
     }),
   };
 };

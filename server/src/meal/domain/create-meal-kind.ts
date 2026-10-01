@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import { computeCalendarDay } from "../../domain/compute-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RejectionReason } from "../../domain/rejection-reason";
@@ -63,6 +64,7 @@ const decideCreate = (
       outcome: { result: "ignored_duplicate" },
       changedRecordId: undefined,
       addedChanges: [],
+      usageEvents: [],
       commit: () => undefined,
     };
   }
@@ -77,10 +79,37 @@ const decideCreate = (
     outcome: { result: "applied" },
     changedRecordId: meal.id,
     addedChanges: [{ recordType: "meal_estimation_status", recordId: meal.id }],
+    usageEvents: [
+      {
+        name: "meal_received",
+        entryMethod,
+        minutesFromEatenToSent: Math.round(
+          (meal.sentAt.getTime() - meal.eatenAt.getTime()) / 60_000,
+        ),
+        mealCountOfDay: countMealsOnEatenDay(store, meal) + 1,
+      },
+    ],
     commit: () => {
       store.insert(meal);
     },
   };
+};
+
+// 食べた日の、いまある食事の数。消した食事は行が無いので数えない
+const countMealsOnEatenDay = (store: MealStore, meal: Meal): number => {
+  const eatenDay = computeCalendarDay(meal.eatenAt, meal.eatenAtUtcOffsetSeconds);
+  const dayLengthMs = 86_400_000;
+  // 時差の範囲は1日より狭いので、UTC でその日の前後1日を引けば、食べた日がその日の食事は漏れない
+  const startOfDayInUtc = Date.parse(`${eatenDay}T00:00:00Z`);
+  return store
+    .findEatenTimesBetween(
+      new Date(startOfDayInUtc - dayLengthMs),
+      new Date(startOfDayInUtc + 2 * dayLengthMs),
+    )
+    .filter(
+      ({ eatenAt, eatenAtUtcOffsetSeconds }) =>
+        computeCalendarDay(eatenAt, eatenAtUtcOffsetSeconds) === eatenDay,
+    ).length;
 };
 
 // 食事を書かずに終わる。この写真の ID は、もう食事に付かない印を書く（先に届いていた写真は消し残しになり、あとから届いた写真は置かない）。
@@ -100,6 +129,7 @@ const discarded = (
     outcome,
     changedRecordId: outcome.result === "ignored_tombstone" ? newMeal.id : undefined,
     addedChanges: [],
+    usageEvents: [],
     commit: (receiptId) => {
       store.insertPhotoDeletions(unusedPhotoIds, receiptId);
     },
@@ -117,6 +147,7 @@ const decideDelete = (
       outcome: { result: "ignored_tombstone" },
       changedRecordId: mealId,
       addedChanges: [],
+      usageEvents: [],
       commit: () => undefined,
     };
   }
@@ -128,6 +159,7 @@ const decideDelete = (
     outcome: { result: "applied" },
     changedRecordId: mealId,
     addedChanges: [{ recordType: "meal_estimation_status", recordId: mealId }],
+    usageEvents: [],
     commit: (receiptId) => {
       if (meal !== undefined) {
         store.remove(mealId);

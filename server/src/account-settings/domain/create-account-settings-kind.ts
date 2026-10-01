@@ -19,6 +19,7 @@ export const createAccountSettingsKind = (
         // 記録は1件なので、あればその ID で変更を並べる
         changedRecordId: current?.id ?? accountSettings.id,
         addedChanges: [],
+        usageEvents: [],
         commit: (receiptId) => {
           if (current === undefined) {
             store.insert(accountSettings);

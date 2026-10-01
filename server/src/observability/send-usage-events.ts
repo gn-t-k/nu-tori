@@ -35,6 +35,14 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         reason: rejected.reason,
       },
     }))
+    .with({ name: "meal_received" }, (received) => ({
+      name: received.name,
+      properties: {
+        entry_method: received.entryMethod,
+        minutes_from_eaten_to_sent: received.minutesFromEatenToSent,
+        meal_count_of_day: received.mealCountOfDay,
+      },
+    }))
     .with({ name: "sync_pending_writes_reported" }, (reported) => ({
       name: reported.name,
       properties: {

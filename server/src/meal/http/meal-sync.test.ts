@@ -3,7 +3,12 @@ import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
+import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
+import {
+  mockPostHogCaptureEndpointOk,
+  readPostHogCapturedEvents,
+} from "../../observability/testing";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 import { createMealWrite } from "./testing/create-meal-write";
 import { deleteMealWrite } from "./testing/delete-meal-write";
@@ -351,6 +356,163 @@ describe("食事の同期", () => {
       test("その写真の ID に写真の削除の印を書くこと", async () => {
         const rows = await readRows(accountId, "SELECT meal_photo_id FROM meal_photo_deletions");
         expect(rows).toEqual([{ meal_photo_id: photoId }]);
+      });
+    });
+  });
+
+  describe("本番のサーバーで", () => {
+    let fetchSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
+    beforeEach(async () => {
+      await enableUsageEventSending(accountId);
+      fetchSpy = mockPostHogCaptureEndpointOk();
+    });
+
+    describe("食事を作る書き込みを送ったとき", () => {
+      let write: ReturnType<typeof createMealWrite>;
+      beforeEach(async () => {
+        write = createMealWrite({
+          meal: {
+            eatenAt: Date.UTC(2026, 8, 30, 3, 0),
+            eatenAtUtcOffsetSeconds: 32_400,
+            sentAt: Date.UTC(2026, 8, 30, 3, 25, 20),
+            entryMethod: "picked",
+          },
+        });
+        await pushSyncWrites(sessionToken, { writes: [write] });
+      });
+
+      test("入口と、撮った時刻から送った時刻までの分と、その日の何回目かを PostHog に送ること", () => {
+        expect(readPostHogCapturedEvents(fetchSpy)).toEqual([
+          {
+            event: "meal_received",
+            distinct_id: accountId,
+            properties: {
+              entry_method: "picked",
+              minutes_from_eaten_to_sent: 25,
+              meal_count_of_day: 1,
+              $geoip_disable: true,
+            },
+          },
+        ]);
+      });
+
+      describe("同じ書き込みを送り直したとき", () => {
+        beforeEach(async () => {
+          fetchSpy.mockClear();
+          await pushSyncWrites(sessionToken, { writes: [write] });
+        });
+
+        test("もう一度は送らないこと", () => {
+          expect(readPostHogCapturedEvents(fetchSpy)).toEqual([]);
+        });
+      });
+
+      describe("同じ食事の作る書き込みを、別の書き込みの ID でもう一度送ったとき", () => {
+        beforeEach(async () => {
+          fetchSpy.mockClear();
+          await pushSyncWrites(sessionToken, {
+            writes: [createMealWrite({ meal: { id: write.meal["id"] } })],
+          });
+        });
+
+        test("もう一度は送らないこと", () => {
+          expect(readPostHogCapturedEvents(fetchSpy)).toEqual([]);
+        });
+      });
+    });
+
+    describe("時差は違うが、食べた日が同じ食事があるとき", () => {
+      beforeEach(async () => {
+        // ロサンゼルスの 9月30日 13:00 と、東京の 9月30日 19:00
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            createMealWrite({
+              meal: { eatenAt: Date.UTC(2026, 8, 30, 20, 0), eatenAtUtcOffsetSeconds: -25_200 },
+            }),
+          ],
+        });
+        fetchSpy.mockClear();
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            createMealWrite({
+              meal: { eatenAt: Date.UTC(2026, 8, 30, 10, 0), eatenAtUtcOffsetSeconds: 32_400 },
+            }),
+          ],
+        });
+      });
+
+      test("その日の2回目として送ること", () => {
+        expect(readPostHogCapturedEvents(fetchSpy)[0]?.properties["meal_count_of_day"]).toBe(2);
+      });
+    });
+
+    describe("UTC の日付は同じだが、時差で出した食べた日が違う食事があるとき", () => {
+      beforeEach(async () => {
+        // 東京の 10月1日 01:00 と、東京の 9月30日 19:00
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            createMealWrite({
+              meal: { eatenAt: Date.UTC(2026, 8, 30, 16, 0), eatenAtUtcOffsetSeconds: 32_400 },
+            }),
+          ],
+        });
+        fetchSpy.mockClear();
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            createMealWrite({
+              meal: { eatenAt: Date.UTC(2026, 8, 30, 10, 0), eatenAtUtcOffsetSeconds: 32_400 },
+            }),
+          ],
+        });
+      });
+
+      test("その日の1回目として送ること", () => {
+        expect(readPostHogCapturedEvents(fetchSpy)[0]?.properties["meal_count_of_day"]).toBe(1);
+      });
+    });
+
+    describe("同じ食べた日の食事を消したあとに、食事を作る書き込みを送ったとき", () => {
+      beforeEach(async () => {
+        const earlier = createMealWrite({
+          meal: { eatenAt: Date.UTC(2026, 8, 30, 3, 0), eatenAtUtcOffsetSeconds: 32_400 },
+        });
+        await pushSyncWrites(sessionToken, {
+          writes: [earlier, deleteMealWrite(String(earlier.meal["id"]))],
+        });
+        fetchSpy.mockClear();
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            createMealWrite({
+              meal: { eatenAt: Date.UTC(2026, 8, 30, 10, 0), eatenAtUtcOffsetSeconds: 32_400 },
+            }),
+          ],
+        });
+      });
+
+      test("消した食事を数えないこと", () => {
+        expect(readPostHogCapturedEvents(fetchSpy)[0]?.properties["meal_count_of_day"]).toBe(1);
+      });
+    });
+
+    describe("受け付けなかった作る書き込みを送ったとき", () => {
+      beforeEach(async () => {
+        await pushSyncWrites(sessionToken, {
+          writes: [createMealWrite({ meal: { photos: [] } })],
+        });
+      });
+
+      test("食事を受け取った出来事を送らず、受け付けなかった種類と理由を送ること", () => {
+        expect(readPostHogCapturedEvents(fetchSpy)).toEqual([
+          expect.objectContaining({
+            event: "sync_write_rejected",
+            properties: {
+              write_kind: "create",
+              record_type: "meal",
+              reason: "out_of_range",
+              $geoip_disable: true,
+            },
+          }),
+        ]);
       });
     });
   });
