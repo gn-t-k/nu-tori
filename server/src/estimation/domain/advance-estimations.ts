@@ -61,9 +61,7 @@ export const advanceEstimations = async (
     usageEvents: sendsUsageData(stores.accountSettings) ? usageEvents : [],
     attempts: settled.map(toAttemptReport),
     providerErrors: settled.flatMap((attempt) =>
-      attempt.status === "fulfilled" && "providerError" in attempt.value.outcome
-        ? [attempt.value.outcome.providerError]
-        : [],
+      attempt.status === "fulfilled" ? toProviderErrors(attempt.value.outcome) : [],
     ),
     stoppedError: settled.find((attempt) => attempt.status === "rejected")?.reason,
   };
@@ -82,6 +80,15 @@ type AttemptReport =
     }
   // 途中で止まった試みは結果が無い
   | { result: undefined; failedStage: string | undefined };
+
+const toProviderErrors = (outcome: EstimationAttemptOutcome): unknown[] =>
+  match(outcome)
+    .returnType<unknown[]>()
+    .with({ result: P.union("succeeded", "timed_out", "invalid_response") }, () => [])
+    .with({ result: P.union("provider_error", "bad_request") }, ({ providerError }) => [
+      providerError,
+    ])
+    .exhaustive();
 
 const toAttemptReport = (
   settled: PromiseSettledResult<{ outcome: EstimationAttemptOutcome }>,

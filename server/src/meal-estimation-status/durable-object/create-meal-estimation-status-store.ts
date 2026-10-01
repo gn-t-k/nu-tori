@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
+import type { MealEstimationScheduleProgress } from "../domain/meal-estimation-schedule-progress";
 import type { MealEstimationStatusStore } from "../domain/meal-estimation-status-store";
 
 const {
@@ -49,7 +50,7 @@ const toProgress = (events: {
   estimation: string | null;
   completion: "estimated" | "no_dishes" | null;
   abandonment: string | null;
-}): ReturnType<MealEstimationStatusStore["findSchedulesOfMeal"]>[number]["progress"] => {
+}): MealEstimationScheduleProgress => {
   if (events.deferral !== null) {
     return "deferred";
   }

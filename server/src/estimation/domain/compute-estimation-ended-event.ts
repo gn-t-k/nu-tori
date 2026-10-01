@@ -1,5 +1,7 @@
+import { match, P } from "ts-pattern";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { Ingredient } from "../../ingredient/domain/ingredient";
+import type { EstimationAttemptConclusion } from "./estimation-attempt-conclusion";
 import type { EstimationAttempt } from "./estimation-store";
 
 // 推定ごとの出来事。料理と材料は、推定できたときだけ数える（料理なし・諦めた・食事が消えたは 0）
@@ -29,11 +31,16 @@ export const computeEstimationEndedEvent = (ended: {
     providerErrorTypes: [
       ...new Set(
         ended.attempts.flatMap(({ ended: attemptEnded }) =>
-          attemptEnded !== undefined && "errorType" in attemptEnded.conclusion
-            ? [attemptEnded.conclusion.errorType]
-            : [],
+          attemptEnded === undefined ? [] : toErrorTypes(attemptEnded.conclusion),
         ),
       ),
     ],
   };
 };
+
+const toErrorTypes = (conclusion: EstimationAttemptConclusion): string[] =>
+  match(conclusion)
+    .returnType<string[]>()
+    .with({ result: P.union("succeeded", "timed_out", "invalid_response") }, () => [])
+    .with({ result: P.union("provider_error", "bad_request") }, ({ errorType }) => [errorType])
+    .exhaustive();

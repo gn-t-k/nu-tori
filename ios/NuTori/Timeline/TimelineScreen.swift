@@ -29,7 +29,8 @@ struct TimelineScreen: View {
                     today: today,
                     openableDays: loaded?.dayRange
                 ) { day in
-                    hidingCameraNotice { dayFocus = .summary(day) }()
+                    showsCameraNotice = false
+                    dayFocus = .summary(day)
                 }
                 Divider()
                 content(loaded: loaded)

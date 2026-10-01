@@ -119,11 +119,14 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
       db.insert(estimationAttemptResults)
         .values({ estimationAttemptId: attemptId, endedAt, result: conclusion.result })
         .run();
-      if ("errorType" in conclusion) {
-        db.insert(estimationAttemptErrors)
-          .values({ estimationAttemptId: attemptId, errorType: conclusion.errorType })
-          .run();
-      }
+      match(conclusion)
+        .with({ result: P.union("succeeded", "timed_out", "invalid_response") }, () => undefined)
+        .with({ result: P.union("provider_error", "bad_request") }, ({ errorType }) => {
+          db.insert(estimationAttemptErrors)
+            .values({ estimationAttemptId: attemptId, errorType })
+            .run();
+        })
+        .exhaustive();
     },
     insertCompletion: (completion) => {
       db.insert(estimationCompletions).values(completion).run();
