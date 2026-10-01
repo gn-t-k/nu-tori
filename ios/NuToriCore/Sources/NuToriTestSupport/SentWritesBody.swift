@@ -115,7 +115,8 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
             case "create_meal":
                 self = .createMeal(id: id, try container.decode(Meal.self, forKey: .meal))
             case "delete_meal":
-                self = .deleteMeal(id: id, mealId: try container.decode(String.self, forKey: .mealId))
+                self = .deleteMeal(
+                    id: id, mealId: try container.decode(String.self, forKey: .mealId))
             case let type:
                 throw DecodingError.dataCorruptedError(
                     forKey: .type, in: container,

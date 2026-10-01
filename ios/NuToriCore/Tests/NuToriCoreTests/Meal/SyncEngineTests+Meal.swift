@@ -26,7 +26,10 @@ extension SyncEngineTests {
                 let meal = try await engine.recordMeal(.lunch(photoId: photoId))
 
                 #expect(store.entries.map(\.kind) == [.meal])
-                #expect(store.saves == [.pending(added: 1, removed: 0), .cache(changes: 1, afterSequence: nil)])
+                #expect(
+                    store.saves == [
+                        .pending(added: 1, removed: 0), .cache(changes: 1, afterSequence: nil),
+                    ])
                 #expect(store.cache.meals[meal.id] == meal)
             }
 
@@ -66,7 +69,8 @@ extension SyncEngineTests {
 
             init() async throws {
                 store = try .ok()
-                engine = .fixture(store: store, transport: .error(URLError(.notConnectedToInternet)))
+                engine = .fixture(
+                    store: store, transport: .error(URLError(.notConnectedToInternet)))
                 meal = try await engine.recordMeal(.lunch(photoId: UUID()))
                 try await store.apply(
                     SyncBoxResult(kindChanges: [
@@ -74,7 +78,8 @@ extension SyncEngineTests {
                             kind: .mealEstimationStatus,
                             changes: [
                                 .mealEstimationStatus(
-                                    SyncedMealEstimationStatus(mealId: meal.id, status: .awaitingPhotos))
+                                    SyncedMealEstimationStatus(
+                                        mealId: meal.id, status: .awaitingPhotos))
                             ])
                     ]))
             }
@@ -117,7 +122,10 @@ extension SyncEngineTests {
 
                 let writes = try #require(transport.pushBodies.first).writes
                 #expect(writes.map(\.type) == ["create_meal", "delete_meal"])
-                #expect(writes.last == .deleteMeal(id: try #require(writes.last).id, mealId: meal.id.uuidString))
+                #expect(
+                    writes.last
+                        == .deleteMeal(id: try #require(writes.last).id, mealId: meal.id.uuidString)
+                )
             }
         }
 

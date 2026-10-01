@@ -7,7 +7,12 @@ final class RootModel {
     private(set) var screen: Screen = .opening
     var rejectedLines: [RejectedWeightLine] {
         guard case .accepting(let lines) = rejectionLines else { return [] }
-        return lines
+        return lines.weight
+    }
+
+    var rejectedMealLines: [RejectedMealLine] {
+        guard case .accepting(let lines) = rejectionLines else { return [] }
+        return lines.meal
     }
 
     init(accountSession: AccountSession, recordSync: RecordSync, health: HealthSyncSession) {
@@ -66,7 +71,7 @@ final class RootModel {
     func noteAppActive() {
         switch rejectionLines {
         case .ignoring:
-            rejectionLines = .accepting([])
+            rejectionLines = .accepting(Lines())
         case .accepting:
             break
         }
@@ -142,18 +147,23 @@ final class RootModel {
     private let accountSession: AccountSession
     private let recordSync: RecordSync
     private let health: HealthSyncSession
-    private var rejectionLines = RejectionLines.accepting([])
+    private var rejectionLines = RejectionLines.accepting(Lines())
 
     private enum RejectionLines {
-        case accepting([RejectedWeightLine])
+        case accepting(Lines)
         case ignoring
+    }
+
+    private struct Lines {
+        var weight: [RejectedWeightLine] = []
+        var meal: [RejectedMealLine] = []
     }
 
     private func replaceScreen(with destination: SignInDestination) {
         switch destination {
         case .signIn:
             // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
-            rejectionLines = .accepting([])
+            rejectionLines = .accepting(Lines())
         case .loadingTimeline, .timeline:
             break
         }
@@ -165,7 +175,7 @@ final class RootModel {
         case .ignoring:
             break
         case .accepting(var lines):
-            lines.removeAll { $0.record.id == recordId }
+            lines.weight.removeAll { $0.record.id == recordId }
             rejectionLines = .accepting(lines)
         }
     }
@@ -176,9 +186,15 @@ final class RootModel {
             break
         case .accepting(var lines):
             for write in writes {
-                let line = RejectedWeightLine(write)
-                lines.removeAll { $0.record.id == line.record.id }
-                lines.append(line)
+                switch write.record {
+                case .weightRecord(let record, let serverHasValue):
+                    lines.weight.removeAll { $0.record.id == record.id }
+                    lines.weight.append(
+                        RejectedWeightLine(record: record, serverHasValue: serverHasValue))
+                case .meal(let meal):
+                    lines.meal.removeAll { $0.meal.id == meal.id }
+                    lines.meal.append(RejectedMealLine(meal: meal))
+                }
             }
             rejectionLines = .accepting(lines)
         }

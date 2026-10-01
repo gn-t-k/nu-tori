@@ -54,7 +54,8 @@ struct RingStripTests {
         init() {
             strip = RingStrip(
                 timeline: Timeline(
-                    input: Timeline.Input(weightRecords: [], rejectedLines: [], meals: [], rejectedMealLines: []),
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], rejectedMealLines: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 10, day: 7)
                 )

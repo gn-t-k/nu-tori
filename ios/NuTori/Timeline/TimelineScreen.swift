@@ -8,6 +8,7 @@ struct TimelineScreen: View {
     /// 記録した時刻と、操作にかかった時間を測るための今
     let now: () -> Date
     let rejectedLines: [RejectedWeightLine]
+    let rejectedMealLines: [RejectedMealLine]
     let capture: (ClientUsageEvent) async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
@@ -221,6 +222,15 @@ struct TimelineScreen: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .accessibilityIdentifier("rejected-weight-line")
+                case .meal:
+                    // 食事のカードは、まだタイムラインに渡していない
+                    EmptyView()
+                case .rejectedMealLine(let line):
+                    Text(line.text)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .accessibilityIdentifier("rejected-meal-line")
                 }
             }
         }
@@ -278,7 +288,9 @@ struct TimelineScreen: View {
         let monday = today.startOfWeek
         return RingStrip(
             timeline: Timeline(
-                input: Timeline.Input(weightRecords: [], rejectedLines: [], meals: [], rejectedMealLines: []), firstDay: monday,
+                input: Timeline.Input(
+                    weightRecords: [], rejectedLines: [], meals: [], rejectedMealLines: []),
+                firstDay: monday,
                 today: today)
         ).weeks
     }
@@ -286,7 +298,9 @@ struct TimelineScreen: View {
     private func timeline() -> Timeline {
         let first = startedDay ?? records.map(\.day).min() ?? today
         return Timeline(
-            input: Timeline.Input(weightRecords: records, rejectedLines: rejectedLines, meals: [], rejectedMealLines: []),
+            input: Timeline.Input(
+                weightRecords: records, rejectedLines: rejectedLines, meals: [],
+                rejectedMealLines: rejectedMealLines),
             firstDay: first, today: today)
     }
 
