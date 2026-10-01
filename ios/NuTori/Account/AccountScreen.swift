@@ -1,8 +1,8 @@
-import NuToriCore
-import SwiftData
 import SwiftUI
 
 struct AccountScreen: View {
+    /// 保存してある「利用状況を送る」
+    let sendsUsageData: Bool
     let actions: AccountActions
     let onClose: () -> Void
 
@@ -16,7 +16,7 @@ struct AccountScreen: View {
                 }
             }
             Section {
-                Toggle("利用状況を送る", isOn: sendsUsageData)
+                Toggle("利用状況を送る", isOn: shownSendsUsageData)
                     // 続けて押すと、先に押した分の保存があとから届き、最後に押した値を上書きしうる
                     .disabled(requestedSendsUsageData != nil)
             } footer: {
@@ -67,19 +67,31 @@ struct AccountScreen: View {
         }
     }
 
-    @Environment(\.openURL) private var openURL
-    @Query private var cachedSettings: [CachedAccountSettings]
-    /// 切り替えてから保存し終えるまで、スイッチを押した側に置いておく
-    @State private var requestedSendsUsageData: Bool?
-    @State private var accountId: String?
-    @State private var deletion = Deletion.idle
-    @State private var confirmingDeletion = false
+    /// deletion は開いたときの状態。削除は画面の中で進むので、あとから渡し直しても変わらない
+    init(
+        sendsUsageData: Bool,
+        deletion: Deletion,
+        actions: AccountActions,
+        onClose: @escaping () -> Void
+    ) {
+        self.sendsUsageData = sendsUsageData
+        self.actions = actions
+        self.onClose = onClose
+        _deletion = State(initialValue: deletion)
+    }
 
-    private enum Deletion {
+    enum Deletion {
         case idle
         case deleting
         case failed(AccountDeletionFailure)
     }
+
+    @Environment(\.openURL) private var openURL
+    /// 切り替えてから保存し終えるまで、スイッチを押した側に置いておく
+    @State private var requestedSendsUsageData: Bool?
+    @State private var accountId: String?
+    @State private var deletion: Deletion
+    @State private var confirmingDeletion = false
 
     private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!
 
@@ -97,17 +109,13 @@ struct AccountScreen: View {
         }
     }
 
-    private var sendsUsageData: Binding<Bool> {
+    private var shownSendsUsageData: Binding<Bool> {
         Binding(
-            get: {
-                requestedSendsUsageData
-                    ?? UsageDataSetting.sendsUsageData(
-                        cachedSettings.first?.accountSettings())
-            },
-            set: { sendsUsageData in
-                requestedSendsUsageData = sendsUsageData
+            get: { requestedSendsUsageData ?? sendsUsageData },
+            set: { requested in
+                requestedSendsUsageData = requested
                 Task {
-                    if sendsUsageData {
+                    if requested {
                         await actions.turnOnUsageData()
                     } else {
                         await actions.turnOffUsageData()

@@ -74,11 +74,11 @@ struct WeightEntrySheet: View {
 
     init(
         records: [WeightRecord],
+        today: CalendarDay,
         capture: @escaping (ClientUsageEvent) async -> Void,
         onRecord: @escaping (WeightEntry.Write) -> Void
     ) {
-        let entry = WeightEntry(
-            weightRecords: records, today: CalendarDay(containing: .now, in: .current))
+        let entry = WeightEntry(weightRecords: records, today: today)
         self.capture = capture
         self.onRecord = onRecord
         let draft = Draft(entry)
