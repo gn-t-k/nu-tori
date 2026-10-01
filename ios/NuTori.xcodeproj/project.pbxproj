@@ -370,6 +370,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "nu-tori";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "食事を撮って、料理と栄養を推定するために使います。";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "他のアプリで記録した体重と体脂肪率を取り込みます。身長・生年月日・性別・歩数・摂取エネルギーは、目標と推定消費量の計算に使い、保存しません。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と、食事の栄養（エネルギー、たんぱく質・脂質・炭水化物、ビタミン・ミネラルなど）を書き込みます。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -402,6 +403,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "nu-tori";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "食事を撮って、料理と栄養を推定するために使います。";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "他のアプリで記録した体重と体脂肪率を取り込みます。身長・生年月日・性別・歩数・摂取エネルギーは、目標と推定消費量の計算に使い、保存しません。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と、食事の栄養（エネルギー、たんぱく質・脂質・炭水化物、ビタミン・ミネラルなど）を書き込みます。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
