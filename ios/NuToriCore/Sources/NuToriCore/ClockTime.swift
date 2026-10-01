@@ -14,4 +14,13 @@ public struct ClockTime: Hashable, Sendable {
             in: timeZone, from: instant)
         self.init(hour: components.hour!, minute: components.minute!)
     }
+
+    /// 時刻に時差を足した UTC の時計の時刻。時差しか分からない食事の時刻に使う
+    public init(containing instant: Date, utcOffsetSeconds: Int) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        let components = calendar.dateComponents(
+            [.hour, .minute], from: instant.addingTimeInterval(TimeInterval(utcOffsetSeconds)))
+        self.init(hour: components.hour!, minute: components.minute!)
+    }
 }

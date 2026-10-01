@@ -26,6 +26,21 @@ import NuToriCore
         _ = try await syncAfterInFlight()
     }
 
+    /// 送れなかった分は送り待ちに残る。送れたら、推定中の食事があるあいだ、裏で取りに行く
+    func recordMeal(_ draft: MealDraft) async throws {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        try await engineForThisDevice(accountId: accountId).recordMeal(draft)
+        guard let result = try await syncAfterInFlight(), result.ending == .finished else { return }
+        followEstimationInBackground(sentAt: .now)
+    }
+
+    /// 電波が無くても、その場でキャッシュから消える。消す書き込みは送り待ちに並ぶ
+    func deleteMeal(id mealId: UUID) async throws {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        try await engineForThisDevice(accountId: accountId).deleteMeal(id: mealId)
+        syncInBackground()
+    }
+
     /// 送れなかった分は送り待ちに残る
     func turnOnUsageData() async throws {
         guard let accountId = await signedInAccountId() else { return }
@@ -126,6 +141,16 @@ import NuToriCore
 
     private func syncInBackground() {
         Task { _ = try? await self.syncAfterInFlight() }
+    }
+
+    private func followEstimationInBackground(sentAt: Date) {
+        let followUp = EstimationFollowUp(
+            sentAt: sentAt,
+            cache: store,
+            now: { .now },
+            wait: { try await Task.sleep(for: $0) }
+        )
+        Task { try? await followUp.run { try await self.sync() } }
     }
 
     /// 開いたときの同期が先に送り待ちを読んでいたら、それが終わってから送り直す

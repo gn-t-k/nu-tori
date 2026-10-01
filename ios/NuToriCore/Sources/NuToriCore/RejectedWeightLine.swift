@@ -4,9 +4,9 @@ public struct RejectedWeightLine: Hashable, Sendable {
     /// サーバーにその記録の値があるか。位置は、これで決める
     public let serverHasValue: Bool
 
-    public init(_ rejected: RejectedWrite) {
-        record = rejected.record
-        serverHasValue = rejected.serverHasValue
+    public init(record: WeightRecord, serverHasValue: Bool) {
+        self.record = record
+        self.serverHasValue = serverHasValue
     }
 
     public var placement: Placement {
