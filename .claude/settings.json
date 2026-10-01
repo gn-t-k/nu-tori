@@ -10,6 +10,15 @@
             "async": true
           }
         ]
+      },
+      {
+        "matcher": "resume|compact|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/warn-behind-main.sh"
+          }
+        ]
       }
     ]
   }
