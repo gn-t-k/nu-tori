@@ -45,6 +45,11 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
   - 書き込みが、自分の記録のほかに変える記録（食事を消すときの料理など）は、`decide` が返す `addedChanges` に載せる。帳簿は、`changedRecordId` の変更のあとに、控えと結ばずに並びの順で足す。載せられる種類は `RecordKind` の4つ目の型引数で宣言し、登録簿に無い種類は型検査が止める
   - 端末の書き込みの外（受け口の要求、アラーム）で記録を変えるときは、帳簿の `changeOutsideWrites(run)` の `run` の中で行を書き、変えた記録を `addChange` で渡す。`run` の書き込みと変更は1つのトランザクションに入り、変更には渡した順に通し番号が付く。帳簿は `createRecordLedger` で組む
 
+## 成分表のデータファイル
+
+- 成分表のデータファイル（`src/domain/food-composition/food-composition-table.json`）は、文部科学省の本表の Excel から `scripts/build-food-composition-table.ts` が作る。手で書き換えず、成分表の版を上げるときや読み方を直したときに、`server/` で `pnpm exec tsx scripts/build-food-composition-table.ts` を回して作り直す。出典はファイルの `source`
+- 栄養の項目の名前は `shared/nutrients.json`、成分表の列との対応は `src/domain/food-composition/nutrient-source-columns.ts`。項目を足すときは JSON に1行足し、対応を足して、データファイルを作り直す
+
 ## 認証
 
 - 認証は Better Auth に任せる（ADR-0019）。Better Auth の表は D1 の中の認証の置き場に閉じ、ほかの表と Durable Object はアカウント ID だけを見る
