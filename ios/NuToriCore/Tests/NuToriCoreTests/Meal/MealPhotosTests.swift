@@ -104,9 +104,10 @@ struct MealPhotosTests {
 
             #expect(
                 Set(uploader.started.dropFirst(before).map(\.upload))
-                    == Set(interrupted.photoIds.map {
-                        MealPhotoUpload(mealId: interrupted.id, photoId: $0)
-                    }))
+                    == Set(
+                        interrupted.photoIds.map {
+                            MealPhotoUpload(mealId: interrupted.id, photoId: $0)
+                        }))
         }
     }
 

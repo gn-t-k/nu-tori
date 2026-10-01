@@ -524,7 +524,8 @@ struct AccountSessionTests {
                 _ = try await session.deleteAccount()
 
                 let events = log.events
-                let cancel = try #require(events.firstIndex(of: "backgroundTransfers.cancelUploads"))
+                let cancel = try #require(
+                    events.firstIndex(of: "backgroundTransfers.cancelUploads"))
                 let request = try #require(events.firstIndex(of: "request /v1/account"))
                 #expect(cancel < request)
             }

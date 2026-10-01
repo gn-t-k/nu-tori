@@ -238,7 +238,8 @@ public actor MealPhotos: BackgroundTransferStore {
 
     /// 元の写真は、撮った・選んだときの形式（JPEG・HEIC）のまま置くので、拡張子を付けない
     private func originalFile(of upload: MealPhotoUpload) -> URL {
-        folders.originals.appending(path: "\(upload.mealId.uuidString)/\(upload.photoId.uuidString)")
+        folders.originals.appending(
+            path: "\(upload.mealId.uuidString)/\(upload.photoId.uuidString)")
     }
 
     private func uploadFile(of upload: MealPhotoUpload) -> URL {

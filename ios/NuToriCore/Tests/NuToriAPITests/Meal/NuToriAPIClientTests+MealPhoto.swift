@@ -79,7 +79,9 @@ extension NuToriAPIClientTests {
                     request
                         == MealPhotoUploadRequest(
                             url: try #require(
-                                URL(string: "https://api.example/v1/meal-photos/\(MealPhoto.photoId)")
+                                URL(
+                                    string:
+                                        "https://api.example/v1/meal-photos/\(MealPhoto.photoId)")
                             ),
                             method: "PUT",
                             headerFields: [

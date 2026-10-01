@@ -26,15 +26,38 @@ import NuToriCore
         _ = try await syncAfterInFlight()
     }
 
-    /// 送れなかった分は送り待ちに残る。送れたら、推定中の食事があるあいだ、裏で取りに行く
-    func recordMeal(_ draft: MealDraft) async throws {
-        guard await hasSession(), let accountId = await signedInAccountId() else { return }
-        try await engineForThisDevice(accountId: accountId).recordMeal(draft)
-        guard let result = try await syncAfterInFlight(), result.ending == .finished else { return }
+    /// アプリの中の食事の写真と写真の送り残し。画面は `photoFile(mealId:photoId:)` で写真を読む
+    let mealPhotos: MealPhotos
+
+    /// `originals` は写真の ID ごとの元の写真。写真はアプリの中に置いて裏で送り始め、食事の書き込みは送り待ちから送る。
+    /// 送れなかった分は送り待ちに残る。送れたら、推定中の食事があるあいだ、裏で取りに行く。サインインしていなければ記録せず nil
+    @discardableResult
+    func recordMeal(_ draft: MealDraft, originals: [UUID: Data]) async throws -> Meal? {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        let meal = try await engineForThisDevice(accountId: accountId).recordMeal(
+            draft, originals: originals)
+        guard let result = try await syncAfterInFlight(), result.ending == .finished else {
+            return meal
+        }
+        followEstimationInBackground(sentAt: .now)
+        return meal
+    }
+
+    /// App スイッチャーで閉じると裏の送信が取り消されるので、開いたときに写真の送り残しを送り直す
+    func resendPendingPhotos() async {
+        guard await hasSession() else { return }
+        await mealPhotos.resendPendingUploads()
+    }
+
+    /// 食事の写真を送り終えたあとも、食事を送ったあとと同じく、推定中の食事があるあいだ裏で取りに行く
+    func followEstimationAfterPhotosDelivered() async {
+        guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
+            return
+        }
         followEstimationInBackground(sentAt: .now)
     }
 
-    /// 電波が無くても、その場でキャッシュから消える。消す書き込みは送り待ちに並ぶ
+    /// 電波が無くても、その場でキャッシュとアプリの中の写真から消える。消す書き込みは送り待ちに並ぶ
     func deleteMeal(id mealId: UUID) async throws {
         guard await hasSession(), let accountId = await signedInAccountId() else { return }
         try await engineForThisDevice(accountId: accountId).deleteMeal(id: mealId)
@@ -78,7 +101,8 @@ import NuToriCore
         deviceId: @escaping @MainActor () -> UUID,
         hasSession: @escaping @MainActor () async -> Bool,
         signedInAccountId: @escaping @MainActor () async -> String?,
-        errorReporting: any ErrorReportingSession
+        errorReporting: any ErrorReportingSession,
+        mealPhotos: MealPhotos
     ) {
         self.store = store
         self.client = client
@@ -88,6 +112,7 @@ import NuToriCore
         self.hasSession = hasSession
         self.signedInAccountId = signedInAccountId
         self.errorReporting = errorReporting
+        self.mealPhotos = mealPhotos
     }
 
     func registerAndWatch() {
@@ -254,7 +279,8 @@ import NuToriCore
             now: { .now },
             readableKinds: AppRecordKinds.registry.names,
             errorReporting: errorReporting,
-            weightHealthExport: health.engine
+            weightHealthExport: health.engine,
+            mealPhotos: mealPhotos
         )
     }
 }
