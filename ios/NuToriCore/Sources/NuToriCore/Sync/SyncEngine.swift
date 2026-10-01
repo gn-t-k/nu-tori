@@ -13,6 +13,7 @@ public actor SyncEngine {
         readableKinds: Set<RecordKindName>,
         errorReporting: any ErrorReportingSession,
         weightHealthExport: any WeightHealthExport,
+        nutritionHealthExport: any NutritionHealthExport,
         mealPhotos: MealPhotos
     ) {
         self.store = store
@@ -24,6 +25,7 @@ public actor SyncEngine {
         self.readableKinds = readableKinds
         self.errorReporting = errorReporting
         self.weightHealthExport = weightHealthExport
+        self.nutritionHealthExport = nutritionHealthExport
         self.mealPhotos = mealPhotos
     }
 
@@ -83,6 +85,7 @@ public actor SyncEngine {
                     mealId: mealId, enqueuing: pendingMealWrite(.delete(mealId: mealId))))
         }
         await mealPhotos.discardPhotos(ofMeal: mealId)
+        try await exportNutritionBestEffort()
     }
 
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
@@ -136,6 +139,7 @@ public actor SyncEngine {
     private let readableKinds: Set<RecordKindName>
     private let errorReporting: any ErrorReportingSession
     private let weightHealthExport: any WeightHealthExport
+    private let nutritionHealthExport: any NutritionHealthExport
     private let mealPhotos: MealPhotos
 
     private func pendingWrite(_ operation: PendingWrite.Operation) -> PendingWrite {
@@ -301,6 +305,8 @@ public actor SyncEngine {
                 await discardPhotos(ofDeletedMealsIn: page.changes)
                 try await exportRevisedRecords(revised)
                 if !page.hasMore {
+                    // 頁の途中では、料理と材料がそろっていないことがあるので、取り切ってから書く
+                    try await exportNutritionBestEffort()
                     return nil
                 }
             case .badRequest:
@@ -377,6 +383,17 @@ public actor SyncEngine {
             } catch {
                 continue
             }
+        }
+    }
+
+    /// 書き込みの許可が無いなどで書けなくても、同期と食事を消すことは止めない。書けなかった料理は、次の同期で改めて試す
+    private func exportNutritionBestEffort() async throws {
+        do {
+            try await nutritionHealthExport.exportNutrition()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return
         }
     }
 

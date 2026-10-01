@@ -72,6 +72,102 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         try await store.save(sample)
     }
 
+    func nutritionAuthorizationRequestStatus() async throws -> HealthAuthorizationRequestStatus {
+        guard HKHealthStore.isHealthDataAvailable() else { return .alreadyRequested }
+        switch try await store.statusForAuthorizationRequest(
+            toShare: nutritionShareTypes, read: [])
+        {
+        case .shouldRequest, .unknown:
+            return .notYetRequested
+        case .unnecessary:
+            return .alreadyRequested
+        @unknown default:
+            return .notYetRequested
+        }
+    }
+
+    func requestNutritionAuthorization() async throws {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        try await store.requestAuthorization(toShare: nutritionShareTypes, read: [])
+    }
+
+    func writeAuthorizedNutrients() async throws -> Set<HealthNutrient> {
+        guard HKHealthStore.isHealthDataAvailable() else { return [] }
+        return Set(
+            HealthNutrient.allCases.filter {
+                store.authorizationStatus(for: Self.quantityType(for: $0)) == .sharingAuthorized
+            })
+    }
+
+    /// 食品の組（食品名は `HKMetadataKeyFoodType`）で書く。組は、中の種類の書き込みが許可されていないと保存できない
+    func writeNutrition(_ write: HealthNutritionWrite) async throws {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let samples = Set(
+            write.values.map { value -> HKSample in
+                HKQuantitySample(
+                    type: Self.quantityType(for: value.nutrient),
+                    quantity: HKQuantity(
+                        unit: Self.unit(for: value.nutrient), doubleValue: value.amount),
+                    start: write.instant,
+                    end: write.instant
+                )
+            })
+        let food = HKCorrelation(
+            type: Self.food,
+            start: write.instant,
+            end: write.instant,
+            objects: samples,
+            metadata: [
+                HKMetadataKeyFoodType: write.foodName,
+                HKMetadataKeySyncIdentifier: write.syncId.uuidString,
+                HKMetadataKeySyncVersion: NSNumber(value: write.syncVersion),
+                HKMetadataKeyTimeZone: write.timeZoneName,
+            ]
+        )
+        try await store.save(food)
+    }
+
+    /// 同期 ID の組と、中のサンプルを消す。組を消しても中のサンプルが残るかは、実機で確かめる
+    func deleteNutrition(syncId: UUID) async throws {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let handle = StoreHandle(store: store)
+        try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Void, any Error>) in
+            let predicate = HKQuery.predicateForObjects(
+                withMetadataKey: HKMetadataKeySyncIdentifier,
+                allowedValues: [syncId.uuidString]
+            )
+            let query = HKCorrelationQuery(
+                type: Self.food, predicate: predicate, samplePredicates: nil
+            ) { _, correlations, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                var objects: [HKObject] = []
+                for correlation in correlations ?? [] {
+                    objects.append(correlation)
+                    for sample in correlation.objects {
+                        objects.append(sample)
+                    }
+                }
+                // 空の配列は消せない（`errorInvalidArgument`）ので、見つからなければ何もしない
+                guard !objects.isEmpty else {
+                    continuation.resume()
+                    return
+                }
+                handle.store.delete(objects) { _, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume()
+                    }
+                }
+            }
+            handle.store.execute(query)
+        }
+    }
+
     /// 許可を求め終えたあとに呼ぶ。起こされたときは `onWake` が、読み取りと送り待ちの送信を行う
     func startDeliveringUpdates(onWake: @escaping @Sendable () async -> Void) async {
         let shouldStart = deliveryState.withLock { state -> Bool in
@@ -107,9 +203,18 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
     private static let bodyMass = HKQuantityType(.bodyMass)
     private static let bodyFatPercentage = HKQuantityType(.bodyFatPercentage)
     private static let kilogram = HKUnit.gramUnit(with: .kilo)
+    private static let food = HKCorrelationType(.food)
 
     private var shareTypes: Set<HKSampleType> { [Self.bodyMass] }
     private var readTypes: Set<HKObjectType> { [Self.bodyMass, Self.bodyFatPercentage] }
+
+    /// 水分を除いた栄養の種類。食品の組そのものは、許可を求められない
+    private var nutritionShareTypes: Set<HKSampleType> {
+        Set(
+            HealthNutrient.allCases.map { nutrient -> HKSampleType in
+                Self.quantityType(for: nutrient)
+            })
+    }
 
     private func authorizedBoundaries() async throws -> (bodyMass: Date?, bodyFat: Date?) {
         guard #available(iOS 27, *), HKHealthStore.isHealthDataAvailable() else {
@@ -162,6 +267,56 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         )
     }
 
+    private static func quantityType(for nutrient: HealthNutrient) -> HKQuantityType {
+        HKQuantityType(identifier(for: nutrient))
+    }
+
+    private static func identifier(for nutrient: HealthNutrient) -> HKQuantityTypeIdentifier {
+        switch nutrient {
+        case .energy: .dietaryEnergyConsumed
+        case .protein: .dietaryProtein
+        case .fat: .dietaryFatTotal
+        case .carbohydrates: .dietaryCarbohydrates
+        case .fiber: .dietaryFiber
+        case .sodium: .dietarySodium
+        case .cholesterol: .dietaryCholesterol
+        case .potassium: .dietaryPotassium
+        case .calcium: .dietaryCalcium
+        case .magnesium: .dietaryMagnesium
+        case .phosphorus: .dietaryPhosphorus
+        case .iron: .dietaryIron
+        case .zinc: .dietaryZinc
+        case .copper: .dietaryCopper
+        case .manganese: .dietaryManganese
+        case .iodine: .dietaryIodine
+        case .selenium: .dietarySelenium
+        case .chromium: .dietaryChromium
+        case .molybdenum: .dietaryMolybdenum
+        case .vitaminA: .dietaryVitaminA
+        case .vitaminD: .dietaryVitaminD
+        case .vitaminE: .dietaryVitaminE
+        case .vitaminK: .dietaryVitaminK
+        case .thiamin: .dietaryThiamin
+        case .riboflavin: .dietaryRiboflavin
+        case .niacin: .dietaryNiacin
+        case .vitaminB6: .dietaryVitaminB6
+        case .vitaminB12: .dietaryVitaminB12
+        case .folate: .dietaryFolate
+        case .pantothenicAcid: .dietaryPantothenicAcid
+        case .biotin: .dietaryBiotin
+        case .vitaminC: .dietaryVitaminC
+        }
+    }
+
+    private static func unit(for nutrient: HealthNutrient) -> HKUnit {
+        switch nutrient.unit {
+        case .kilocalorie: .kilocalorie()
+        case .gram: .gram()
+        case .milligram: .gramUnit(with: .milli)
+        case .microgram: .gramUnit(with: .micro)
+        }
+    }
+
     private func laterDate(_ requested: Date?, _ authorized: Date?) -> Date? {
         switch (requested, authorized) {
         case (let requested?, let authorized?): max(requested, authorized)
@@ -183,6 +338,11 @@ nonisolated private struct ObserverCompletion: @unchecked Sendable {
     }
 
     private let completion: HKObserverQueryCompletionHandler
+}
+
+/// 問い合わせの完了ハンドラの中で使うため、`Sendable` でない `HKHealthStore` を包む
+nonisolated private struct StoreHandle: @unchecked Sendable {
+    let store: HKHealthStore
 }
 
 nonisolated private enum DeliveryState {

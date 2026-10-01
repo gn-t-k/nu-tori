@@ -17,7 +17,7 @@ import NuToriCore
     }
 
     static func live(
-        syncStore: any SyncBox & RecordCacheReading & HealthSyncStoring,
+        syncStore: any SyncBox & RecordCacheReading & HealthSyncStoring & HealthDishWriteStoring,
         healthStore: any HealthStore,
         errorReporting: any ErrorReportingSession,
         startBackgroundDelivery:
@@ -60,6 +60,14 @@ import NuToriCore
         try? await engine.requestAuthorizationOnFirstWeightEntry()
         await importAndExportCached()
         await startDeliveryIfNeeded()
+    }
+
+    /// 食事を記録し、カメラや写真を選ぶ画面が閉じてタイムラインに戻ったあと。
+    /// この端末で初めてなら、栄養の書き込みの許可を iPhone の画面で求め、閉じたあとにキャッシュの料理を書く
+    func requestNutritionAuthorizationAfterMealRecorded() async {
+        // 画面が閉じる動きの途中で許可の画面を出すと、出ないことがあるので、閉じ終わるのを待つ
+        try? await Task.sleep(for: .milliseconds(600))
+        try? await engine.requestNutritionAuthorizationAfterMealRecorded()
     }
 
     func export(_ record: WeightRecord) async {

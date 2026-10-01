@@ -256,6 +256,8 @@ final class RootModel {
         }
         await accountSession.capture(
             .mealRecorded(entry: entry, photoCount: originals.count, mealCount: meals.count))
+        // 撮る・選ぶ画面が閉じてタイムラインに戻ってから、栄養の書き込みの許可を求める
+        await health.requestNutritionAuthorizationAfterMealRecorded()
     }
 
     private func syncIfShowingTimeline() async {

@@ -14,6 +14,7 @@ extension SyncEngine {
         readableKinds: Set<RecordKindName> = [.weightRecord],
         errorReporting: ErrorReportingSessionMock = .ok(),
         weightHealthExport: any WeightHealthExport = WeightHealthExportMock.ok(),
+        nutritionHealthExport: any NutritionHealthExport = NutritionHealthExportMock.ok(),
         mealPhotos: MealPhotos = .fixture()
     ) -> SyncEngine {
         SyncEngine(
@@ -34,6 +35,7 @@ extension SyncEngine {
             readableKinds: readableKinds,
             errorReporting: errorReporting,
             weightHealthExport: weightHealthExport,
+            nutritionHealthExport: nutritionHealthExport,
             mealPhotos: mealPhotos
         )
     }

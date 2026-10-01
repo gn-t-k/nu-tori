@@ -58,6 +58,8 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
     public var appliedHealthImports: [HealthImportBatch] {
         storage.withLock { $0.appliedHealthImports }
     }
+    /// ヘルスケアに書いた料理の ID ごとの、書いた版
+    public var healthDishWrites: [UUID: Int] { storage.withLock { $0.healthDishWrites } }
 
     public func pendingEntries() async throws -> [PendingEntry] {
         try failIfNeeded()
@@ -102,6 +104,7 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
             storage.saves.append(.pendingCleared(count: storage.entries.count))
             storage.entries = []
             storage.healthState = .initial
+            storage.healthDishWrites = [:]
             for kind in kinds.kinds {
                 try kind.erase(cache)
             }
@@ -131,6 +134,7 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
         var appliedKindChanges: [KindChanges] = []
         var appliedSyncStates: [SyncState] = []
         var appliedHealthImports: [HealthImportBatch] = []
+        var healthDishWrites: [UUID: Int] = [:]
         var eraseAllCount = 0
     }
 
@@ -190,6 +194,40 @@ extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
     public func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
         try failIfNeeded()
         return cache.estimationStatuses
+    }
+
+    public func meals() async throws -> [Meal] {
+        try failIfNeeded()
+        return Array(cache.meals.values)
+    }
+
+    public func dishes() async throws -> [Dish] {
+        try failIfNeeded()
+        return Array(cache.dishes.values)
+    }
+
+    public func ingredients() async throws -> [Ingredient] {
+        try failIfNeeded()
+        return Array(cache.ingredients.values)
+    }
+}
+
+extension SyncBoxMock: HealthDishWriteStoring where Cache == RecordCacheMock {
+    public func dishVersionsWrittenToHealth() async throws -> [UUID: Int] {
+        try failIfNeeded()
+        return healthDishWrites
+    }
+
+    public func markDishWrittenToHealth(dishId: UUID, version: Int) async throws {
+        try failIfNeeded()
+        try failWriteIfNeeded()
+        withStorage { $0.healthDishWrites[dishId] = version }
+    }
+
+    public func unmarkDishWrittenToHealth(dishId: UUID) async throws {
+        try failIfNeeded()
+        try failWriteIfNeeded()
+        withStorage { $0.healthDishWrites[dishId] = nil }
     }
 }
 
