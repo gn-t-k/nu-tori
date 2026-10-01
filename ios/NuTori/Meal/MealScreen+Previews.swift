@@ -38,7 +38,7 @@
             case deferredToNextDay
             /// 推定できなかった。0 kcal
             case failed
-            /// 推定できた食事で「食事を削除」を押し、画面の下に確かめを出している
+            /// 推定できた食事で「食事を削除」を押し、その行に確かめを出している
             case confirmingDeletion
 
             var card: MealCard {

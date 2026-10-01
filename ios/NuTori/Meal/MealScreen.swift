@@ -16,6 +16,40 @@ struct MealScreen: View {
     let deleteMeal: (_ card: MealCard, _ deletedAt: Date) async -> Void
 
     var body: some View {
+        ScrollViewReader { scroll in
+            list
+                .onChange(of: confirmsDeletion) { _, confirms in
+                    // 展開した確かめが画面の下に隠れないようにする
+                    if confirms {
+                        withAnimation { scroll.scrollTo(Self.deletionEnd, anchor: .bottom) }
+                    }
+                }
+        }
+    }
+
+    /// confirmsDeletion は開いたときに、消す確かめを出しているか
+    init(
+        card: MealCard,
+        loadPhoto: @escaping (_ photoId: UUID) async -> UIImage?,
+        now: @escaping () -> Date,
+        capture: @escaping (ClientUsageEvent) async -> Void,
+        deleteMeal: @escaping (_ card: MealCard, _ deletedAt: Date) async -> Void,
+        confirmsDeletion: Bool
+    ) {
+        self.card = card
+        self.loadPhoto = loadPhoto
+        self.now = now
+        self.capture = capture
+        self.deleteMeal = deleteMeal
+        _confirmsDeletion = State(initialValue: confirmsDeletion)
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmsDeletion: Bool
+    /// 読み終えた写真。写真をまだ持っていない端末では、届くまで回る印を出す
+    @State private var images: [UUID: UIImage] = [:]
+
+    private var list: some View {
         List {
             if !card.meal.photoIds.isEmpty {
                 Section {
@@ -44,28 +78,7 @@ struct MealScreen: View {
                     .accessibilityIdentifier("nutrient-citation")
                 }
             }
-            Section {
-                Button("食事を削除", role: .destructive) {
-                    confirmsDeletion = true
-                }
-                .accessibilityIdentifier("meal-delete")
-            }
-        }
-        // 仕様どおり、画面の下から確かめる（「食事を削除」と「キャンセル」）
-        .sheet(isPresented: $confirmsDeletion) {
-            BottomConfirmationSheet(
-                message: "この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。",
-                destructiveTitle: "食事を削除",
-                identifierPrefix: "meal-delete",
-                onConfirm: {
-                    confirmsDeletion = false
-                    let deletedAt = now()
-                    // 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
-                    dismiss()
-                    Task { await deleteMeal(card, deletedAt) }
-                },
-                onCancel: { confirmsDeletion = false }
-            )
+            deletionSection
         }
         .navigationTitle("食事")
         .navigationBarTitleDisplayMode(.inline)
@@ -79,27 +92,36 @@ struct MealScreen: View {
         }
     }
 
-    /// confirmsDeletion は開いたときに、消す確かめを出しているか
-    init(
-        card: MealCard,
-        loadPhoto: @escaping (_ photoId: UUID) async -> UIImage?,
-        now: @escaping () -> Date,
-        capture: @escaping (ClientUsageEvent) async -> Void,
-        deleteMeal: @escaping (_ card: MealCard, _ deletedAt: Date) async -> Void,
-        confirmsDeletion: Bool
-    ) {
-        self.card = card
-        self.loadPhoto = loadPhoto
-        self.now = now
-        self.capture = capture
-        self.deleteMeal = deleteMeal
-        _confirmsDeletion = State(initialValue: confirmsDeletion)
+    /// 「食事を削除」を押すと、その行が説明と「食事を削除」「キャンセル」に変わる。
+    /// 画面は覆わず、ほかの操作や戻るはそのまま使え、画面を離れれば確かめはなかったことになる
+    @ViewBuilder private var deletionSection: some View {
+        Section {
+            if confirmsDeletion {
+                Text("この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("食事を削除", role: .destructive) {
+                    let deletedAt = now()
+                    // 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
+                    dismiss()
+                    Task { await deleteMeal(card, deletedAt) }
+                }
+                .accessibilityIdentifier("meal-delete-confirm")
+                Button("キャンセル", role: .cancel) {
+                    withAnimation { confirmsDeletion = false }
+                }
+                .accessibilityIdentifier("meal-delete-cancel")
+                .id(Self.deletionEnd)
+            } else {
+                Button("食事を削除", role: .destructive) {
+                    withAnimation { confirmsDeletion = true }
+                }
+                .accessibilityIdentifier("meal-delete")
+            }
+        }
     }
 
-    @Environment(\.dismiss) private var dismiss
-    @State private var confirmsDeletion: Bool
-    /// 読み終えた写真。写真をまだ持っていない端末では、届くまで回る印を出す
-    @State private var images: [UUID: UIImage] = [:]
+    private static let deletionEnd = "deletion-end"
 
     /// 切り抜かずに出し、2枚以上なら横に送る。押しても何も起きない
     private var photos: some View {
@@ -215,19 +237,35 @@ struct MealScreen: View {
         "\(TimelineDayText.label(for: card.meal.day))\(WeightAmountText.clock(card.meal.eatenClockTime))"
     }
 
-    /// 料理の行（名前、量、kcal）の下に材料の行（名前、量）を並べる。この仕様の量はすべて推定したまま
+    /// 料理の行（名前、量、kcal）の下に材料の行（名前、量）を並べる。この仕様の量はすべて推定したまま。
+    /// 1行に収まらない大きな文字では、項目ごとに次の行へ送る
     @ViewBuilder private func dishRows(_ contents: DishContents) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(contents.dish.name)
-                .fontWeight(.semibold)
-            Text(NutritionText.quantity(contents.dish.quantity, unit: contents.dish.unit))
-                .monospacedDigit()
-            estimateBadge
-            Spacer(minLength: 0)
-            Text(NutritionText.amount(contents.totals[.energyKcal], of: .energyKcal))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+        let name = Text(contents.dish.name)
+            .fontWeight(.semibold)
+        let quantity = Text(
+            NutritionText.quantity(contents.dish.quantity, unit: contents.dish.unit)
+        )
+        .monospacedDigit()
+        let dishKilocalories = Text(
+            NutritionText.amount(contents.totals[.energyKcal], of: .energyKcal)
+        )
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .monospacedDigit()
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                name.fixedSize()
+                quantity.fixedSize()
+                estimateBadge.fixedSize()
+                Spacer(minLength: 0)
+                dishKilocalories.fixedSize()
+            }
+            ItemWrappingLayout(spacing: 8, lineSpacing: 2) {
+                name
+                quantity
+                estimateBadge
+                dishKilocalories
+            }
         }
         .accessibilityElement(children: .combine)
         ForEach(contents.ingredients, id: \.id) { ingredient in
