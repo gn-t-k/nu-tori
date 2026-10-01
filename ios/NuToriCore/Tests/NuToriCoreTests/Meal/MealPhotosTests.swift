@@ -313,6 +313,26 @@ struct MealPhotosTests {
         }
     }
 
+    @Suite("この端末で記録した食事かを見るとき")
+    struct RecordedOnThisDevice {
+        let photos: MealPhotos
+        let recorded: Meal
+        let fromAnotherDevice: Meal
+
+        init() async throws {
+            photos = .fixture()
+            recorded = try .withPhotos(count: 1)
+            fromAnotherDevice = try .withPhotos(count: 1)
+            try await photos.keep(.originals(of: recorded), of: recorded)
+        }
+
+        @Test("元の大きさの写真を置いた食事だけを、この端末で記録した食事とすること")
+        func holdsOnlyRecorded() async throws {
+            #expect(await photos.holdsOriginals(ofMeal: recorded.id))
+            #expect(await !photos.holdsOriginals(ofMeal: fromAnotherDevice.id))
+        }
+    }
+
     @Suite("写真を持たない端末で、写真を見せるとき")
     struct ShowingOnAnotherDevice {
         let folders: MealPhotos.Folders

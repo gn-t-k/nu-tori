@@ -61,6 +61,11 @@ public actor MealPhotos: BackgroundTransferStore {
         }
     }
 
+    /// この端末で記録した（元の大きさの写真を持っている）食事か。`MealCard` の `recordedOnThisDevice` に渡す
+    public func holdsOriginals(ofMeal mealId: UUID) -> Bool {
+        Self.exists(folders.originals.appending(path: mealId.uuidString))
+    }
+
     /// 写真の送り残しの数
     public func pendingUploadCount() -> Int {
         pendingUploads().count
