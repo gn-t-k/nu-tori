@@ -8,6 +8,8 @@ import { weightRecordWriteSchemas } from "../../weight-record/http/weight-record
 // 種類ごとの型を保つため、各行は as const の並び
 const writeSchemasByRecordType = {
   account_settings: accountSettingsWriteSchemas,
+  dish: [],
+  ingredient: [],
   meal: mealWriteSchemas,
   meal_estimation_status: [],
   weight_record: weightRecordWriteSchemas,

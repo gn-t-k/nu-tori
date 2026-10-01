@@ -5,6 +5,8 @@ const recordTypes = [
   "account_settings",
   "meal",
   "meal_estimation_status",
+  "dish",
+  "ingredient",
 ] as const;
 
 const syncRequestLogs = sqliteTable(
