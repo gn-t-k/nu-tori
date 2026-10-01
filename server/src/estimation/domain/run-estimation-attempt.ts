@@ -56,7 +56,7 @@ export const runEstimationAttempt = async (
   );
 };
 
-// 試みの結果のうち、通らなかったもの。cause に提供元のエラー（提供元のエラーと 400 のとき、応答のエラーの内容）を持つ
+// 試みの結果のうち、通らなかったもの。提供元のエラーと 400 のとき、cause に応答のエラーの内容を包まずに持ち、そのまま Sentry に送る
 export class EstimationAttemptFailedError extends ErrorFactory({
   name: "EstimationAttemptFailedError",
   message: "推定の試みが通らなかった",
@@ -231,7 +231,7 @@ const toAttemptFailed = (
           failedStage,
           usage,
           errorType,
-          cause: error,
+          cause: error.cause,
         }),
     )
     .with(
@@ -242,7 +242,7 @@ const toAttemptFailed = (
           failedStage,
           usage,
           errorType,
-          cause: error,
+          cause: error.cause,
         }),
     )
     .with(

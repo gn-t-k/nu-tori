@@ -263,12 +263,14 @@ describe("推定", () => {
 
   describe("提供元がエラーを返したとき", () => {
     let mealId: string;
+    let providerResponseError: Error;
     let setUserSpy: ReturnType<typeof mockSetUserOk>;
     let captureExceptionSpy: ReturnType<typeof mockCaptureExceptionOk>;
     let logSpy: ReturnType<typeof vi.spyOn>;
     beforeEach(async () => {
+      providerResponseError = new Error("Overloaded");
       mockCreateEstimationProviderError(
-        new EstimationProviderError({ errorType: "overloaded_error" }),
+        new EstimationProviderError({ errorType: "overloaded_error", cause: providerResponseError }),
       );
       mealId = await recordPhotographedMeal(sessionToken);
       setUserSpy = mockSetUserOk();
@@ -290,13 +292,11 @@ describe("推定", () => {
       ).toEqual([{ result: "provider_error", error_type: "overloaded_error" }]);
     });
 
-    test("提供元のエラーを、アカウント ID を付けて Sentry に送ること", () => {
+    test("提供元の応答のエラーを、包まずにアカウント ID を付けて Sentry に送ること", () => {
       expect({
         user: setUserSpy.mock.calls.at(-1)?.[0],
-        exceptions: captureExceptionSpy.mock.calls.map(([error]) =>
-          error instanceof Error ? error.name : error,
-        ),
-      }).toEqual({ user: { id: accountId }, exceptions: ["EstimationProviderError"] });
+        exceptions: captureExceptionSpy.mock.calls.map(([error]) => error),
+      }).toEqual({ user: { id: accountId }, exceptions: [providerResponseError] });
     });
 
     test("アラームの呼び出しのログに、失敗した段と提供元のエラーの種類を出すこと", () => {
