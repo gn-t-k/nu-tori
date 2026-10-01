@@ -4,7 +4,7 @@ name: ios-ui-test
 on:
   push:
     branches: [main]
-    # 必須のチェックではないので、ワークフローの paths で飛ばしてよい。check.yml の changes の ios と同じパスから、文書（*.md）を除く
+    # 必須のチェックではないので、ワークフローの paths で飛ばしてよい。check.yml の changes の ios と同じパス（文書の *.md を除く）
     paths:
       - "ios/**"
       - "shared/**"

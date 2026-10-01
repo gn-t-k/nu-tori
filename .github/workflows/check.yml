@@ -32,6 +32,8 @@ jobs:
             echo "server=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # 文書（*.md）だけの変更では、確かめるものが無いのでジョブを飛ばす
+          files="$(grep -vE '\.md$' <<< "$files" || true)"
           for target in ios server; do
             paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
             # アプリの API のクライアントは、サーバーの OpenAPI の文書から生成する
