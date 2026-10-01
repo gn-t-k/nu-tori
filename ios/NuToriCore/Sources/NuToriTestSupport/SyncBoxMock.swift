@@ -186,6 +186,11 @@ extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
         try failIfNeeded()
         return cache.settings
     }
+
+    public func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
+        try failIfNeeded()
+        return cache.estimationStatuses
+    }
 }
 
 extension SyncBoxMock: HealthSyncStoring where Cache == RecordCacheMock {
