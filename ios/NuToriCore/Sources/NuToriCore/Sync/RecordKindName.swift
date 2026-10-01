@@ -3,6 +3,8 @@
 /// 種類を足すときは case を足し、`serverName` の switch にサーバーの列挙の名前を書く
 public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
     case accountSettings = "account-settings"
+    case dish = "dish"
+    case ingredient = "ingredient"
     case meal = "meal"
     case mealEstimationStatus = "meal-estimation-status"
     case weightRecord = "weight-record"
@@ -12,6 +14,8 @@ public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
     public var serverName: String {
         switch self {
         case .accountSettings: "account_settings"
+        case .dish: "dish"
+        case .ingredient: "ingredient"
         case .meal: "meal"
         case .mealEstimationStatus: "meal_estimation_status"
         case .weightRecord: "weight_record"

@@ -256,7 +256,7 @@ extension SyncEngineTests {
             }
         }
 
-        @Suite("読める種類に食事と推定の状態が増えた版で、更新して最初に開いたとき")
+        @Suite("読める種類に食事・推定の状態・料理・材料が増えた版で、更新して最初に開いたとき")
         struct AfterUpdateAddingMealKinds {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
@@ -273,14 +273,17 @@ extension SyncEngineTests {
                     readableKinds: RecordKindRegistry<RecordCacheMock>.ok().names)
             }
 
-            @Test("通し番号を 0 に戻して全部取り直し、読める種類に食事と推定の状態を足すこと")
+            @Test("通し番号を 0 に戻して全部取り直し、読める種類に食事・推定の状態・料理・材料を足すこと")
             func pullsEverythingAgain() async throws {
                 _ = try await engine.sync()
 
                 #expect(try transport.pullQueries.first?["afterSequence"] == "0")
                 #expect(
                     store.state?.readableKinds
-                        == [.accountSettings, .meal, .mealEstimationStatus, .weightRecord])
+                        == [
+                            .accountSettings, .dish, .ingredient, .meal, .mealEstimationStatus,
+                            .weightRecord,
+                        ])
             }
         }
     }

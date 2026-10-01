@@ -299,6 +299,30 @@ extension SyncChange {
             } else {
                 self = .unknown(kind: kind)
             }
+        case "dish":
+            if let dish = try? record.decoded(as: DishPayload.self).syncedDish {
+                self = .dish(dish)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "dish_deletion":
+            if let dishId = UUID(uuidString: recordId) {
+                self = .dishDeletion(dishId: dishId)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "ingredient":
+            if let ingredient = try? record.decoded(as: IngredientPayload.self).syncedIngredient {
+                self = .ingredient(ingredient)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "ingredient_deletion":
+            if let ingredientId = UUID(uuidString: recordId) {
+                self = .ingredientDeletion(ingredientId: ingredientId)
+            } else {
+                self = .unknown(kind: kind)
+            }
         case "meal":
             if let meal = try? record.decoded(as: MealPayload.self).syncedMeal {
                 self = .meal(meal)
@@ -448,6 +472,71 @@ extension SyncChange {
                 return nil
             }
             return SyncedMealEstimationStatus(mealId: mealId, status: status)
+        }
+    }
+}
+
+extension SyncChange {
+    fileprivate struct DishPayload: Decodable {
+        let id: String
+        let mealId: String
+        let name: String
+        let quantity: Double
+        let unit: String
+        let positionInMeal: Int
+        let version: Int
+
+        var syncedDish: SyncedDish? {
+            guard let id = UUID(uuidString: id), let mealId = UUID(uuidString: mealId) else {
+                return nil
+            }
+            return SyncedDish(
+                id: id, mealId: mealId, name: name, quantity: quantity, unit: unit,
+                positionInMeal: positionInMeal, version: version)
+        }
+    }
+
+    /// 知らない出どころと、読めない ID は nil にする。知らない栄養の項目の名前は、そのまま持つ
+    fileprivate struct IngredientPayload: Decodable {
+        let id: String
+        let dishId: String
+        let name: String
+        let quantity: Double
+        let unit: String
+        let edibleGramsPerUnit: Double
+        let positionInDish: Int
+        let nutrientSource: NutrientSourcePayload
+        let nutrients: [String: Double]
+
+        struct NutrientSourcePayload: Decodable {
+            let type: String
+            let labelBasisGrams: Double?
+            let foodNumber: String?
+
+            var syncedSource: SyncedIngredient.NutrientSource? {
+                switch type {
+                case "nutrition_label":
+                    labelBasisGrams.map { .nutritionLabel(basisGrams: $0) }
+                case "food_composition":
+                    foodNumber.map { .foodComposition(foodNumber: $0) }
+                case "estimated":
+                    .estimated
+                default:
+                    nil
+                }
+            }
+        }
+
+        var syncedIngredient: SyncedIngredient? {
+            guard let id = UUID(uuidString: id), let dishId = UUID(uuidString: dishId),
+                let source = nutrientSource.syncedSource
+            else {
+                return nil
+            }
+            return SyncedIngredient(
+                id: id, dishId: dishId, name: name, quantity: quantity, unit: unit,
+                edibleGramsPerUnit: edibleGramsPerUnit, positionInDish: positionInDish,
+                nutrientSource: source, nutrients: nutrients)
         }
     }
 }

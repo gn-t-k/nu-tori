@@ -5,7 +5,8 @@ nonisolated enum CacheStoreSchema {
     static var schema: Schema {
         Schema([
             CachedWeightRecord.self, CachedAccountSettings.self, CachedMeal.self,
-            CachedMealEstimationStatus.self, CachedSyncState.self,
+            CachedMealEstimationStatus.self, CachedDish.self, CachedIngredient.self,
+            CachedSyncState.self,
         ])
     }
 }
