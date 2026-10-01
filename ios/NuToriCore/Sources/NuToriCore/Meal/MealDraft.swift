@@ -7,7 +7,8 @@ public struct MealDraft: Hashable, Sendable {
     /// 食事の時刻の UTC との時差。IANA 名でないのは、写真には時差しか残らないことがあるため
     public let eatenUtcOffsetSeconds: Int
     public let sentAt: Date
-    public let sentTimeZoneIdentifier: String
+    /// 送ったときの端末のタイムゾーン。サーバーには IANA 名で送る
+    public let sentTimeZone: TimeZone
     public let entry: Entry
     /// 撮影時刻の順
     public let photoIds: [UUID]
@@ -73,7 +74,7 @@ public struct MealDraft: Hashable, Sendable {
         eatenAt = eatenTime.instant
         eatenUtcOffsetSeconds = eatenTime.utcOffsetSeconds
         self.sentAt = sentAt
-        sentTimeZoneIdentifier = sentTimeZone.identifier
+        self.sentTimeZone = sentTimeZone
         self.entry = entry
         self.photoIds = photoIds
     }

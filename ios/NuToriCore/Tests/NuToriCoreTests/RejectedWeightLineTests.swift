@@ -12,9 +12,7 @@ struct RejectedWeightLineTests {
         init() throws {
             let record = try WeightRecord.manual(
                 72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
-            line = RejectedWeightLine(
-                RejectedWrite(
-                    writeId: UUID(), record: record, reason: .outOfRange, serverHasValue: false))
+            line = RejectedWeightLine(record: record, serverHasValue: false)
         }
 
         @Test("記録の時刻の位置に、時刻と値の文を出すこと")
@@ -31,9 +29,7 @@ struct RejectedWeightLineTests {
         init() throws {
             let record = try WeightRecord.manual(
                 71.9, at: "2026-09-24T08:00:00+09:00", in: "Asia/Tokyo", version: 2)
-            line = RejectedWeightLine(
-                RejectedWrite(
-                    writeId: UUID(), record: record, reason: .versionTooLow, serverHasValue: true))
+            line = RejectedWeightLine(record: record, serverHasValue: true)
         }
 
         @Test("その値の記録のすぐ下に、直せなかった値の文を出すこと")

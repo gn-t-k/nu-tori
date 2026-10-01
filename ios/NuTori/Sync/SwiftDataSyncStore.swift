@@ -84,6 +84,16 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
+    func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
+        try await onMain { stores in
+            var statuses: [UUID: MealEstimationStatus] = [:]
+            for row in try stores.cache.fetch(FetchDescriptor<CachedMealEstimationStatus>()) {
+                statuses[row.mealId] = row.estimationStatus()
+            }
+            return statuses
+        }
+    }
+
     func pendingEntries() async throws -> [PendingEntry] {
         try await onMain { stores in
             let descriptor = FetchDescriptor<PendingWriteRow>(

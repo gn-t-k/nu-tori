@@ -27,8 +27,7 @@
                         .sample(72.9, on: .sampleToday, at: 22, 5, from: .manual),
                         .sample(72.5, on: startedDay.advanced(by: 2), at: 7, 15, from: .manual),
                     ],
-                    rejectedLines: []
-                ),
+                    rejectedLines: [], meals: [], rejectedMealLines: []),
                 firstDay: startedDay,
                 today: .sampleToday
             )

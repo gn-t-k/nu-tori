@@ -38,7 +38,11 @@ extension SyncEngineTests {
             func revertsWeightRecords() async throws {
                 let result = try await engine.sync()
 
-                #expect(result.rejectedWrites.map(\.record.id) == [created.id, serverRecord.id])
+                #expect(
+                    result.rejectedWrites.map(\.record) == [
+                        .weightRecord(created, serverHasValue: false),
+                        .weightRecord(corrected, serverHasValue: true),
+                    ])
                 #expect(store.records[created.id] == nil)
                 #expect(store.records[serverRecord.id] == serverRecord)
                 #expect(store.entries.isEmpty)

@@ -6,7 +6,8 @@ extension RecordKindRegistry where Cache == RecordCacheMock {
         -> RecordKindRegistry<RecordCacheMock>
     {
         let base: [any RecordKind<RecordCacheMock>] = [
-            AccountSettingsRecordKindMock(), WeightRecordKindMock(),
+            AccountSettingsRecordKindMock(), MealRecordKindMock(),
+            MealEstimationStatusRecordKindMock(), WeightRecordKindMock(),
         ]
         let replaced = Set(extra.map(\.name))
         let kept = base.filter { !replaced.contains($0.name) }
