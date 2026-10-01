@@ -12,7 +12,6 @@ struct NuToriApp: App {
             if let runtime {
                 RootView(model: runtime.model)
                     .modelContainer(runtime.container)
-                    .tint(.indigo)
                     #if DEBUG
                         .environment(
                             \.stubbedAppleSignInResult, UITestLaunch.current?.appleSignInResult)

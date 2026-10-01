@@ -292,7 +292,7 @@ private struct WeightStepButton: View {
             Text(title)
                 .font(.title2)
                 .frame(width: 44, height: 44)
-                .background(Color(.tertiarySystemFill), in: Circle())
+                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10))
                 .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)

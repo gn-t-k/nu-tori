@@ -22,8 +22,10 @@ struct WeightRecordRow: View {
                 .accessibilityHidden(true)
         }
         .padding()
-        // DESIGN.md は「薄く」とだけ言う。Primary をこの濃さで敷く。角はタイムラインのカード（12）
-        .background(Color.accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+        // DESIGN.md の own-record-card。Surface に Primary を 10% 混ぜる。角はタイムラインのカード（12）
+        .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        .background(
+            Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var kilograms: String {
