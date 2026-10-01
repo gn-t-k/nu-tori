@@ -203,6 +203,7 @@ final class RootModel {
     private func syncIfShowingTimeline() async {
         switch screen {
         case .loadingTimeline, .timeline:
+            await recordSync.resendPendingPhotos()
             await health.aroundTimelineSync {
                 _ = try await self.recordSync.sync()
             }
