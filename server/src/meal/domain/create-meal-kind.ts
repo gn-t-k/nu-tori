@@ -61,21 +61,6 @@ const decideCreate = (
 ): WriteDecision<AddedRecordType> => {
   const store = stores.meal;
   const { entryMethod, photoIds } = newMeal;
-  if (
-    !isWithinAcceptedRange("mealPhotoCount", photoIds.length) ||
-    !isWithinAcceptedRange("mealUtcOffsetSeconds", newMeal.eatenAtUtcOffsetSeconds)
-  ) {
-    return discarded(store, newMeal, { result: "rejected", reason: "out_of_range" });
-  }
-  if (new Set(photoIds).size !== photoIds.length) {
-    return discarded(store, newMeal, { result: "rejected", reason: "duplicate_photo_ids" });
-  }
-  if (!isMealEntryMethod(entryMethod)) {
-    return discarded(store, newMeal, { result: "rejected", reason: "invalid_entry_method" });
-  }
-  if (!isTimeZoneName(newMeal.sentTimeZone)) {
-    return discarded(store, newMeal, { result: "rejected", reason: "invalid_time_zone" });
-  }
   if (store.hasDeletion(newMeal.id)) {
     return discarded(store, newMeal, { result: "ignored_tombstone" });
   }
@@ -90,6 +75,21 @@ const decideCreate = (
       usageEvents: [],
       commit: () => undefined,
     };
+  }
+  if (
+    !isWithinAcceptedRange("mealPhotoCount", photoIds.length) ||
+    !isWithinAcceptedRange("mealUtcOffsetSeconds", newMeal.eatenAtUtcOffsetSeconds)
+  ) {
+    return discarded(store, newMeal, { result: "rejected", reason: "out_of_range" });
+  }
+  if (new Set(photoIds).size !== photoIds.length) {
+    return discarded(store, newMeal, { result: "rejected", reason: "duplicate_photo_ids" });
+  }
+  if (!isMealEntryMethod(entryMethod)) {
+    return discarded(store, newMeal, { result: "rejected", reason: "invalid_entry_method" });
+  }
+  if (!isTimeZoneName(newMeal.sentTimeZone)) {
+    return discarded(store, newMeal, { result: "rejected", reason: "invalid_time_zone" });
   }
   // 写真の宣言の一意の違反で要求ごと戻ると、送り直し続けるので、書く前に確かめる
   if (store.findUsedPhotoIds(photoIds).length > 0) {
