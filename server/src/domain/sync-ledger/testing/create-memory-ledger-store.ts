@@ -1,7 +1,7 @@
 import type { SyncWriteOutcome } from "../../sync-write-outcome";
 import type { LedgerStore } from "../ledger-store";
 
-// 帳簿の単体テスト用のメモリの置き場。operations に書いた順を残す
+// 帳簿の単体テスト用のメモリの置き場。operations に書いた順を残す（控えと結ばない変更は added_change）
 export const createMemoryLedgerStore = <TRecordType extends string>(
   operations: string[],
 ): LedgerStore<TRecordType> => {
@@ -27,8 +27,8 @@ export const createMemoryLedgerStore = <TRecordType extends string>(
       operations.push("receipt");
       receipts.set(writeId, { outcome, recordType, recordId });
     },
-    insertRecordChange: ({ recordType, recordId }) => {
-      operations.push("change");
+    insertRecordChange: ({ recordType, recordId, writeId }) => {
+      operations.push(writeId === undefined ? "added_change" : "change");
       changes.push({ sequence: changes.length + 1, recordType, recordId });
     },
     findLatestChangePerRecord: (afterSequence, limit) => {
