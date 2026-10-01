@@ -7,24 +7,49 @@ struct SignInView: View {
     let onAppleResult: (AppleSignInResult) -> Void
 
     var body: some View {
+        // 文字を大きくして入りきらないときだけ、同意の文が切れないよう全体を送れるようにする
+        ViewThatFits(in: .vertical) {
+            content
+            ScrollView {
+                content
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("signIn")
+    }
+
+    private var content: some View {
         VStack(spacing: 24) {
             header
                 .frame(maxHeight: .infinity)
             VStack(spacing: 12) {
                 SignInConsentCard()
-                if case .failed(let reason) = status {
-                    Text(failureMessage(for: reason))
-                        .font(.footnote)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                statusLine
                 AppleSignInButton(onResult: onAppleResult)
                     .disabled(status == .signingIn)
             }
         }
         .padding()
-        .background(Color(.systemGroupedBackground))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("signIn")
+    }
+
+    @ViewBuilder private var statusLine: some View {
+        switch status {
+        case .ready:
+            EmptyView()
+        case .signingIn:
+            HStack {
+                ProgressView()
+                Text("サインインしています…")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.footnote)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case .failed(let reason):
+            Text(failureMessage(for: reason))
+                .font(.footnote)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var header: some View {

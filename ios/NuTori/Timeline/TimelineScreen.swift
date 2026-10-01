@@ -1,22 +1,25 @@
 import NuToriCore
-import SwiftData
 import SwiftUI
 
 struct TimelineScreen: View {
-    var rejectedLines: [RejectedWeightLine]
-    var capture: (ClientUsageEvent) async -> Void
-    var prepareWeightEntry: () async -> Void
-    var saveWeight: (WeightEntry.Write) async -> Void
-    var accountActions: AccountActions
+    let records: [WeightRecord]
+    let initialPull: InitialPull
+    let today: CalendarDay
+    /// 記録した時刻と、操作にかかった時間を測るための今
+    let now: () -> Date
+    let rejectedLines: [RejectedWeightLine]
+    let capture: (ClientUsageEvent) async -> Void
+    let prepareWeightEntry: () async -> Void
+    let saveWeight: (WeightEntry.Write) async -> Void
+    let accountActions: AccountActions
 
     var body: some View {
-        let today = CalendarDay(containing: .now, in: .current)
-        let loaded = showsLoading ? nil : timeline(today: today)
+        let loaded = showsLoading ? nil : timeline()
         let selectedDay = visibleDay ?? loaded?.days.last?.day ?? today
         NavigationStack {
             VStack(spacing: 0) {
                 DayRingStrip(
-                    weeks: stripWeeks(today: today, loaded: loaded),
+                    weeks: stripWeeks(loaded: loaded),
                     selectedDay: selectedDay,
                     today: today,
                     openableDays: loaded?.dayRange
@@ -24,7 +27,7 @@ struct TimelineScreen: View {
                     dayFocus = .summary(day)
                 }
                 Divider()
-                content(today: today, loaded: loaded)
+                content(loaded: loaded)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationDestination(for: CalendarDay.self) { day in
@@ -40,9 +43,9 @@ struct TimelineScreen: View {
             }
             .background(Color(.systemGroupedBackground))
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                composer(today: today)
+                composer()
             }
-            .navigationTitle(title(today: today, loaded: loaded))
+            .navigationTitle(title(loaded: loaded))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -57,7 +60,7 @@ struct TimelineScreen: View {
             }
             .sheet(isPresented: $showsAccount) {
                 NavigationStack {
-                    AccountScreen(actions: accountActions) {
+                    AccountScreenContainer(actions: accountActions) {
                         showsAccount = false
                     }
                 }
@@ -74,6 +77,8 @@ struct TimelineScreen: View {
         .sheet(isPresented: showsWeightEntry) {
             WeightEntrySheet(
                 records: records,
+                today: today,
+                now: now,
                 capture: capture,
                 onRecord: { write in
                     weightEntryPhase = .closed
@@ -93,8 +98,15 @@ struct TimelineScreen: View {
         .accessibilityIdentifier("timeline")
     }
 
-    @Query private var cachedRecords: [CachedWeightRecord]
-    @Query private var syncStates: [CachedSyncState]
+    /// 初回の取得を終えるまでは、記録がそろっていないので並べない
+    enum InitialPull {
+        case inProgress
+        /// 使い始めた日は、サーバーで決まるまで無い
+        case completed(startedDay: CalendarDay?)
+    }
+
+    /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする
+    @ScaledMetric private var composerButtonSize: CGFloat = 44
     @State private var showsAccount = false
     @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
@@ -123,18 +135,20 @@ struct TimelineScreen: View {
     }
 
     private var showsLoading: Bool {
-        syncStates.first?.hasCompletedInitialPull != true
-    }
-
-    private var records: [WeightRecord] {
-        cachedRecords.compactMap { $0.weightRecord() }
+        switch initialPull {
+        case .inProgress: true
+        case .completed: false
+        }
     }
 
     private var startedDay: CalendarDay? {
-        syncStates.first?.startedOn.flatMap(TimelineDayText.day(from:))
+        switch initialPull {
+        case .inProgress: nil
+        case .completed(let startedDay): startedDay
+        }
     }
 
-    @ViewBuilder private func content(today: CalendarDay, loaded: Timeline?) -> some View {
+    @ViewBuilder private func content(loaded: Timeline?) -> some View {
         if loaded == nil {
             VStack {
                 ProgressView()
@@ -143,12 +157,12 @@ struct TimelineScreen: View {
                     .foregroundStyle(.secondary)
             }
         } else {
-            timelineList(today: today)
+            timelineList()
         }
     }
 
-    private func timelineList(today: CalendarDay) -> some View {
-        let timeline = timeline(today: today)
+    private func timelineList() -> some View {
+        let timeline = timeline()
         return GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView {
@@ -169,7 +183,7 @@ struct TimelineScreen: View {
                         }
                         .padding()
                     }
-                    .frame(maxWidth: .infinity, minHeight: geo.size.height)
+                    .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                 }
                 .defaultScrollAnchor(.bottom)
                 .coordinateSpace(.named("timeline"))
@@ -226,7 +240,7 @@ struct TimelineScreen: View {
         }
     }
 
-    private func composer(today: CalendarDay) -> some View {
+    private func composer() -> some View {
         let unrecorded = !records.contains { $0.day == today }
         return HStack {
             Button {
@@ -238,7 +252,7 @@ struct TimelineScreen: View {
                 }
             } label: {
                 Image(systemName: "scalemass.fill")
-                    .frame(width: 44, height: 44)
+                    .frame(width: composerButtonSize, height: composerButtonSize)
                     .background(
                         unrecorded ? Color.accentColor : Color(.tertiarySystemFill),
                         in: Circle()
@@ -257,7 +271,7 @@ struct TimelineScreen: View {
     }
 
     /// 読み込み中は、今日の週を空の丸にする。使い始めた日は、取り終えてから入る
-    private func stripWeeks(today: CalendarDay, loaded: Timeline?) -> [RingStrip.Week] {
+    private func stripWeeks(loaded: Timeline?) -> [RingStrip.Week] {
         if let loaded {
             return RingStrip(timeline: loaded).weeks
         }
@@ -269,14 +283,14 @@ struct TimelineScreen: View {
         ).weeks
     }
 
-    private func timeline(today: CalendarDay) -> Timeline {
+    private func timeline() -> Timeline {
         let first = startedDay ?? records.map(\.day).min() ?? today
         return Timeline(
             input: Timeline.Input(weightRecords: records, rejectedLines: rejectedLines),
             firstDay: first, today: today)
     }
 
-    private func title(today: CalendarDay, loaded: Timeline?) -> String {
+    private func title(loaded: Timeline?) -> String {
         guard let loaded else {
             return TimelineDayText.label(for: today)
         }

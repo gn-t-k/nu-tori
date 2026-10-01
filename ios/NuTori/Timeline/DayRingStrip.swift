@@ -24,6 +24,8 @@ struct DayRingStrip: View {
         .scrollTargetBehavior(.paging)
         .scrollPosition(id: $shownMonday)
         .scrollIndicators(.hidden)
+        // 横に送る ScrollView は縦にも広がるので、丸と曜日の高さに詰める
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityIdentifier("day-ring-strip")
         .onChange(of: selectedDay.startOfWeek, initial: true) { _, monday in
             guard weeks.contains(where: { $0.monday == monday }), shownMonday != monday else {
@@ -57,7 +59,7 @@ struct DayRingStrip: View {
             }
         }
         .padding(.horizontal)
-        .padding(.bottom, 12)
+        .padding(.vertical, 12)
     }
 
     @ViewBuilder private func slotView(_ slot: RingStrip.Slot) -> some View {

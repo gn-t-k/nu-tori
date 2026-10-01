@@ -31,7 +31,7 @@ struct RootView: View {
                 Task { await model.signIn(with: result) }
             }
         case .loadingTimeline, .timeline:
-            TimelineScreen(
+            TimelineScreenContainer(
                 rejectedLines: model.rejectedLines,
                 capture: { await model.capture($0) },
                 prepareWeightEntry: { await model.prepareWeightEntry() },

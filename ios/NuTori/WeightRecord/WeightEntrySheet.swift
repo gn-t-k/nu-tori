@@ -18,6 +18,7 @@ struct WeightEntrySheet: View {
                     Text(previousText)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
                 if let typoText {
                     Text(typoText)
@@ -69,16 +70,19 @@ struct WeightEntrySheet: View {
     @State private var detent: PresentationDetent
     @FocusState private var typing: Bool
     @Environment(\.dismiss) private var dismiss
+    private let now: () -> Date
     private let capture: (ClientUsageEvent) async -> Void
     private let onRecord: (WeightEntry.Write) -> Void
 
     init(
         records: [WeightRecord],
+        today: CalendarDay,
+        now: @escaping () -> Date,
         capture: @escaping (ClientUsageEvent) async -> Void,
         onRecord: @escaping (WeightEntry.Write) -> Void
     ) {
-        let entry = WeightEntry(
-            weightRecords: records, today: CalendarDay(containing: .now, in: .current))
+        let entry = WeightEntry(weightRecords: records, today: today)
+        self.now = now
         self.capture = capture
         self.onRecord = onRecord
         let draft = Draft(entry)
@@ -86,7 +90,7 @@ struct WeightEntrySheet: View {
         _draft = State(initialValue: draft)
         _observation = State(
             initialValue: WeightEntryObservation(
-                startsWithKeyboard: draft.startsWithKeyboard, openedAt: .now))
+                startsWithKeyboard: draft.startsWithKeyboard, openedAt: now()))
         _detent = State(initialValue: draft.startsWithKeyboard ? .large : .medium)
     }
 
@@ -99,6 +103,9 @@ struct WeightEntrySheet: View {
                 .multilineTextAlignment(.center)
                 .focused($typing)
                 .frame(minWidth: 88)
+                .padding(12)
+                .background(Color(.secondarySystemGroupedBackground), in: weightControlShape)
+                .overlay(weightControlShape.stroke(Color.accentColor))
                 .onChange(of: draft.text) { previous, next in
                     if next == textFromStep {
                         textFromStep = nil
@@ -124,6 +131,8 @@ struct WeightEntrySheet: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(minWidth: 88)
+                .padding(12)
+                .background(Color(.tertiarySystemFill), in: weightControlShape)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(WeightAmountText.kilograms(kilograms ?? 0))
@@ -181,11 +190,15 @@ struct WeightEntrySheet: View {
     private func record() {
         guard let kilograms else { return }
         didRecord = true
-        let event = observation.recordedEvent(at: .now)
-        onRecord(entry.write(recording: kilograms, at: .now, in: .current))
+        let recordedAt = now()
+        let event = observation.recordedEvent(at: recordedAt)
+        onRecord(entry.write(recording: kilograms, at: recordedAt, in: .current))
         Task { await capture(event) }
     }
 }
+
+/// 値の欄とステッパーの角（DESIGN.md の value-field と stepper-button）
+private let weightControlShape = RoundedRectangle(cornerRadius: 10)
 
 private struct Draft {
     var initialTenths: Int?
@@ -292,7 +305,7 @@ private struct WeightStepButton: View {
             Text(title)
                 .font(.title2)
                 .frame(width: 44, height: 44)
-                .background(Color(.tertiarySystemFill), in: Circle())
+                .background(Color(.tertiarySystemFill), in: weightControlShape)
                 .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)

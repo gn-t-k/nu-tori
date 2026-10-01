@@ -60,6 +60,25 @@ enum WeightRecordsState {
 - Swift Package の依存は `exact:`（Xcode では「Exact Version」）で固定する。`from:` や「Up to Next Major」の範囲指定にしない
 - 最新の版は `git ls-remote --tags <パッケージのリポジトリの URL>` で確かめる
 
+## 画面の状態とプレビュー
+
+### 値を受け取って描く View と、薄い外側に分ける
+
+- 画面は、値を受け取って描く View と、それに値を渡す外側（`<画面>Container`）に分ける。描く View は `@Query`・`.now`・`modelContext` を読まず、状態と今日を値で、操作を閉包で受け取る
+- 外側は、読んだものを描く View に渡す値に変えるだけにし、判断を置かない
+- 操作した時刻を残す画面は、今を返す閉包（`now: () -> Date`）を受け取る
+- 画面の中で進む状態（削除の途中、削除できなかった）は、始めの状態を init で受け取り、外側は最初の状態を渡す。プレビューでその状態を描くため
+- ヘルスケアには触れない。許可を求める操作は閉包で、許可の状態は値で受け取る。プレビューの中で許可を求めると、プレビューごと落ちる
+
+### 状態ごとのプレビュー
+
+- 画面ごとに `<View>+Previews.swift` を置き、ファイルごと `#if DEBUG` で囲む
+- 状態の見本（ある状態の画面を描くのに渡す値一式）を、同じファイルの `extension <View>` の中の `fileprivate enum Sample: CaseIterable` にし、`#Preview("状態ごと", arguments: <View>.Sample.allCases)` で並べる。描く View が受け取る状態の型の場合を、すべて見本に入れる。状態を持たない画面は `#Preview` を1つ置く
+- 見本の日は `CalendarDay.sampleToday` に固定する。複数の画面の見本で使う値は、`<型>+PreviewSample.swift`（`#if DEBUG`）に置く
+- ダーク・大きい文字・向きはコードに書かず、キャンバスの Variants（RenderPreview の `previewVariantOverrides`）で見る
+- シートで出す画面は、シートに載せず中身を直接描く。載せると、出てくる途中の動きが描かれる
+- 見本は画面に渡す値で、`UITestLaunch` はアプリ全体の場面なので、まとめない
+
 ## テスト
 
 ### 道具
