@@ -18,8 +18,8 @@ describe("次に試みる時刻", () => {
       ];
     });
 
-    test("終わった時刻の 15 秒後であること", () => {
-      expect(computeNextEstimationAttemptAt(attempts)).toEqual(new Date("2026-10-01T03:00:35Z"));
+    test("始めた時刻の 15 秒後であること", () => {
+      expect(computeNextEstimationAttemptAt(attempts)).toEqual(new Date("2026-10-01T03:00:15Z"));
     });
   });
 
@@ -40,8 +40,8 @@ describe("次に試みる時刻", () => {
       ];
     });
 
-    test("待ちを広げ、終わった時刻の 60 秒後であること", () => {
-      expect(computeNextEstimationAttemptAt(attempts)).toEqual(new Date("2026-10-01T03:09:10Z"));
+    test("待ちを広げ、始めた時刻の 60 秒後であること", () => {
+      expect(computeNextEstimationAttemptAt(attempts)).toEqual(new Date("2026-10-01T03:09:00Z"));
     });
   });
 
