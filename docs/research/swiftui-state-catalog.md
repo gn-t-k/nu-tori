@@ -20,6 +20,8 @@
 
 ## 結論の要約
 
+> 2026-10-01 に Mac で動かして確かめた結果は、末尾の「追記」にある。実機のプレビューは動き、カタログ画面は要らない。SnapshotPreviews は `#Preview(arguments:)` を描けず、`PreviewModifier` も当てなかった。swift-snapshot-testing は同じ OS なら機種をまたいで一致したが、iOS 26 と 27 では一致しなかった。
+
 - **Apple の答えは「画面には表示に要るデータだけを値で渡せ。データを取ってくるものを渡すな」**。Xcode の文書が、プレビューとテストを楽にする作り方としてこう書き、例に `enum ConnectionStatus { case online, offline }` を受け取るセルを状態ごとに並べている（本文で確認）。WWDC20 は「リッチなモデルから単純な値への変換を早くするほど、再利用でき、テストでき、プレビューできる」と言う（本文で確認）。状態を値で受け取る画面を作れば、以下の道具はすべて同じ状態の見本から回せる（本文からの読み取り）。
 - **プレビューは Xcode 27 で「状態の一覧」に近づいた**。`#Preview(arguments:)` に値の配列を渡すと、キャンバスが値ごとの格子で並べ、押すとその状態を操作できる（本文で確認、Xcode 27 の新機能。API の対応版は iOS 26 から）。キャンバスの Variants で、ライト・ダーク、コントラスト、向き、文字サイズ違いを横に並べられ、Xcode 27 で言語も切り替えられる（本文で確認）。共有の環境やサンプルデータは `PreviewModifier`、`@State` などは `@Previewable` で入れる（本文で確認）。`PreviewProvider` の系統は Xcode 27 で非推奨（本文で確認）。
 - **実機で状態を並べて見る道は3つある**（本文で確認）。(1) **プレビューを実機で動かす**: キャンバスの機器の選択に、Mac につないだ iPhone が出る。選ぶとシミュレータを使わず実機でプレビューが動き、コードの変更がすぐ実機に出る（WWDC23）。(2) **DEBUG のビルドにだけカタログ画面を持つ**: 自前で作るか、SnapshotPreviews の `PreviewGallery`（アプリ内に全プレビューの一覧を出す）を使う。(3) **起動の値で状態を作る**: Xcode のスキームの環境変数、または `devicectl device process launch --environment-variables` で実機のアプリに値を渡す。nu-tori には UI テスト用の `UITestLaunch`（`#if DEBUG`）が既にあり、これをそのまま使える（本文からの読み取り）。
@@ -224,6 +226,8 @@ flowchart TD
 
 ## 確かめられなかったこと
 
+このうちいくつかは、2026-10-01 に Mac で動かして確かめた（末尾の「追記: Mac で動かして確かめた結果」）。
+
 本文を探したが記述が無かったもの:
 
 - プレビューでヘルスケア（HealthKit）を使えるか、権限のシートがどう出るか
@@ -240,6 +244,46 @@ flowchart TD
 - `#Preview(arguments:)` を最低対応版 iOS 26 のアプリで Xcode 27 から使えるか、キャンバスと RenderPreview でどう描かれるか
 - プレビューを実機（Wi-Fi でペアリングした iPhone を含む）で動かせるか、nu-tori の依存（Sentry・PostHog）があっても速く動くか
 - SnapshotPreviews の `PreviewGallery` と Prefire が、`#Preview(arguments:)` と `PreviewModifier` を使うプレビューをどう扱うか
+
+## 追記: Mac で動かして確かめた結果（2026-10-01）
+
+上の「確かめられなかったこと」のうちいくつかを、開発者の Mac（Xcode 27、シミュレータは iOS 27.0 の iPhone 17・iPhone 17 Pro Max と iOS 26.5 の iPhone 17）と iPhone の実機で試した。試しのプロジェクト（XcodeGen で作る小さなアプリ。同期の状態の見本 `SyncSample` の4つの場合を描く `SyncBanner` など）と、出力の画像・ログは、コミット 4cad54e の `experiments/preview-lab/` にある（このノートを main に入れるときに、フォルダは消した）。確かさの書き方は「動かして確認」とする。
+
+**プレビュー（キャンバス）**
+
+- `#Preview(arguments:)` は、最低対応版 iOS 26・Swift 6（並行の厳しい検査）のアプリで、Xcode 27 からビルドできた（動かして確認）
+- キャンバスは `arguments:` の4つの値を格子で並べ、1つを押すとそれだけが Interactive で開いた。Variants の Color Scheme と Dynamic Type は、4つの値と組み合わさって並んだ（動かして確認）
+- `PreviewModifier` の trait（環境の値を赤にするもの）は、キャンバスでは当たった（動かして確認）
+- プレビューの中で `HKHealthStore().requestAuthorization` を呼ぶと、プレビューが落ち（Preview Crashed）、同じシミュレータのほかのプロセスも「予期しない理由で終了」した（動かして確認）。プレビューにはヘルスケアに触れない、値を受け取って描く画面だけを置くのがよい（本文からの読み取りに加え、動かして確認）
+
+**実機でのプレビュー**
+
+- ケーブルでつないだ iPhone は、キャンバスの機器の選択に出て、選ぶと実機にプレビューが出た。コードの書き換えはすぐ実機に出た（動かして確認）
+- ケーブルを抜き、Wi-Fi でつないだ iPhone でもプレビューが出た。書き換えが出るまでには時間がかかった（動かして確認）
+- つまり、実機での見え方は、DEBUG のカタログ画面を作らなくてもプレビューで見られる
+
+**プレビューからスナップショットを作る OSS（SnapshotPreviews 0.19.0）**
+
+- 5つのプレビューを見つけて画像にしたが、`#Preview(arguments:)` は「Unhandled SwiftUI case in DefaultPreviewSource」の文字だけの画像になり、描けなかった（動かして確認）
+- `PreviewModifier` の trait は当たらず、灰色で描かれた（動かして確認。上の「ソースからの読み取り」と合う）
+- したがって、`#Preview(arguments:)` と `PreviewModifier` を使うなら、SnapshotPreviews（と `PreviewGallery`）は今のままでは使えない
+
+**swift-snapshot-testing 1.19.6**
+
+- iOS 27.0 の iPhone 17 で基準を撮り、同じシミュレータで2回比べると、どちらも一致した（動かして確認）
+- 同じ iOS 27.0 の iPhone 17 Pro Max で比べても一致した。描く大きさを `.sizeThatFits`（幅 390 に固定）と `.device(config: .iPhone13)` で決めているので、機種の違いは効かなかった（動かして確認。README の「同じシミュレータで比べよ」より緩い結果）
+- iOS 26.5 の iPhone 17 で比べると、5枚すべてが一致しなかった。違う画素は 0.11〜0.30%（文字の縁などで、見た目では区別できない）で、色の差は最大 255（動かして確認）。OS の版をまたぐなら、`precision`・`perceptualPrecision` で許す幅を決めるか、基準を版ごとに撮り直す必要がある
+
+**そのほか**
+
+- `ImageRenderer` は `List` を描けず、黄色の地に禁止の印の代わりの画像を出した（動かして確認。A15 の記述と合う）
+- `xcrun simctl privacy <機器> grant health <Bundle ID>`（`healthkit` も）は「Failed to create TCC authorization record / Operation not permitted」で失敗した（動かして確認）。シミュレータでヘルスケアの許可を前もって与える手段は、これでは得られない
+- 回線の絞り（Mac の pf・dnctl がシミュレータに効くか）と、エージェントの RenderPreview は試していない。RenderPreview は Issue #189 の作業で使う
+
+**おすすめへの影響**
+
+- 「おすすめ」の 3 のうち、DEBUG のカタログ画面は要らない。実機での見え方はプレビューを実機で動かして見る
+- 「おすすめ」の 5（スナップショットテストは今は入れない）は変えない。入れるなら OS の版ごとの基準か許す幅の決めが要り、SnapshotPreviews は `arguments:` を描けないので、swift-snapshot-testing で見本を直接撮る形になる
 
 ## 出典一覧
 
