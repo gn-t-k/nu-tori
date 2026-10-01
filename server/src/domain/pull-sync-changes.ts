@@ -18,7 +18,7 @@ export const pullSyncChanges = (
   startedOn: string | undefined;
   usageEvents: UsageEvent[];
 } => {
-  const pulled = createRecordLedger(ledgerStore, stores).pull(request);
+  const pulled = createRecordLedger(ledgerStore, stores, request.receivedAt).pull(request);
   return {
     changes: pulled.changes,
     hasMore: pulled.hasMore,

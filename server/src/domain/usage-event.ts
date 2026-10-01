@@ -1,4 +1,5 @@
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
+import type { MealPhotoReceiptFailedError } from "./receive-meal-photo";
 import type { RecordType } from "./record-type";
 import type { RejectionReason } from "./rejection-reason";
 import type { WriteKind } from "./sync-ledger/write-kind";
@@ -16,6 +17,10 @@ export type UsageEvent =
       minutesFromEatenToSent: number;
       // 食べた日の、消していない食事のうち何回目に受け取ったか
       mealCountOfDay: number;
+    }
+  | {
+      name: "meal_photo_receipt_failed";
+      stage: MealPhotoReceiptFailedError["stage"];
     }
   | {
       name: "sync_pending_writes_reported";

@@ -43,6 +43,10 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         meal_count_of_day: received.mealCountOfDay,
       },
     }))
+    .with({ name: "meal_photo_receipt_failed" }, (failed) => ({
+      name: failed.name,
+      properties: { stage: failed.stage },
+    }))
     .with({ name: "sync_pending_writes_reported" }, (reported) => ({
       name: reported.name,
       properties: {
