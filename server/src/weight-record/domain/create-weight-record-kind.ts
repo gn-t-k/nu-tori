@@ -140,6 +140,7 @@ const settled = (
   recordId,
   outcome,
   changedRecordId: outcome.result === "ignored_tombstone" ? recordId : undefined,
+  addedChanges: [],
   commit: () => undefined,
 });
 
@@ -152,5 +153,6 @@ const applied = (
   recordId,
   outcome: { result: "applied" },
   changedRecordId: recordId,
+  addedChanges: [],
   commit,
 });
