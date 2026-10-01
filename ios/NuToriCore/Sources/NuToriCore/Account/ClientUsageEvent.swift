@@ -11,6 +11,12 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case usageDataTurnedOff
     case initialPullDuration(Duration)
     case screen(Screen)
+    /// 1回の撮る・選ぶで記録した食事。選んだ写真は、近い時刻ごとに複数の食事にまとまることがある
+    case mealRecorded(entry: MealDraft.Entry, photoCount: Int, mealCount: Int)
+    /// 標準のカメラを開いて、撮らずに閉じた
+    case cameraCancelled
+    /// カメラを許可していない人が「撮る」を押し、入力欄の上に知らせを出した
+    case cameraPermissionNoticeShown
 
     public enum WeightInputMethod: Sendable, Equatable {
         case stepper
@@ -45,13 +51,16 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .usageDataTurnedOff: "usage_data_turned_off"
         case .initialPullDuration: "initial_pull_duration"
         case .screen: "screen"
+        case .mealRecorded: "meal_recorded"
+        case .cameraCancelled: "camera_cancelled"
+        case .cameraPermissionNoticeShown: "camera_permission_notice_shown"
         }
     }
 
     public var screenToken: String? {
         switch self {
         case .weightRecorded, .weightCorrected, .weightInputCancelled, .usageDataTurnedOff,
-            .initialPullDuration:
+            .initialPullDuration, .mealRecorded, .cameraCancelled, .cameraPermissionNoticeShown:
             nil
         case .screen(.timeline):
             "timeline"
@@ -73,10 +82,17 @@ public enum ClientUsageEvent: Sendable, Equatable {
             ]
         case .weightCorrected(let place):
             ["place": .token(place.token)]
-        case .weightInputCancelled, .usageDataTurnedOff, .screen:
+        case .weightInputCancelled, .usageDataTurnedOff, .screen, .cameraCancelled,
+            .cameraPermissionNoticeShown:
             [:]
         case .initialPullDuration(let duration):
             ["duration_seconds": .wholeSeconds(Self.wholeSeconds(duration))]
+        case .mealRecorded(let entry, let photoCount, let mealCount):
+            [
+                "entry": .token(entry.token),
+                "photo_count": .count(photoCount),
+                "meal_count": .count(mealCount),
+            ]
         }
     }
 
@@ -101,6 +117,15 @@ extension ClientUsageEvent.WeightCorrectionPlace {
         case .daySummary: "day_summary"
         case .otherRecords: "other_records"
         case .recentRecords: "recent_records"
+        }
+    }
+}
+
+extension MealDraft.Entry {
+    fileprivate var token: String {
+        switch self {
+        case .captured: "captured"
+        case .picked: "picked"
         }
     }
 }

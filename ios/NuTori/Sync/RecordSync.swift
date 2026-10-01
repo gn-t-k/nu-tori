@@ -29,18 +29,23 @@ import NuToriCore
     /// アプリの中の食事の写真と写真の送り残し。画面は `photoFile(mealId:photoId:)` で写真を読む
     let mealPhotos: MealPhotos
 
-    /// `originals` は写真の ID ごとの元の写真。写真はアプリの中に置いて裏で送り始め、食事の書き込みは送り待ちから送る。
-    /// 送れなかった分は送り待ちに残る。送れたら、推定中の食事があるあいだ、裏で取りに行く。サインインしていなければ記録せず nil
+    /// 1回の撮る・選ぶでできた食事を記録する。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている。
+    /// 写真はアプリの中に置いて裏で送り始め、食事の書き込みは送り待ちから送る。送れなかった分は送り待ちに残る。
+    /// 送れたら、推定中の食事があるあいだ、裏で取りに行く。サインインしていなければ記録せず空。
+    /// 記録できなかった食事があれば投げる（それより前の食事は記録してある）
     @discardableResult
-    func recordMeal(_ draft: MealDraft, originals: [UUID: Data]) async throws -> Meal? {
-        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
-        let meal = try await engineForThisDevice(accountId: accountId).recordMeal(
-            draft, originals: originals)
-        guard let result = try await syncAfterInFlight(), result.ending == .finished else {
-            return meal
+    func recordMeals(_ drafts: [MealDraft], originals: [UUID: Data]) async throws -> [Meal] {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return [] }
+        let engine = engineForThisDevice(accountId: accountId)
+        var meals: [Meal] = []
+        for draft in drafts {
+            meals.append(try await engine.recordMeal(draft, originals: originals))
+        }
+        guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
+            return meals
         }
         followEstimationInBackground(sentAt: .now)
-        return meal
+        return meals
     }
 
     /// App スイッチャーで閉じると裏の送信が取り消されるので、開いたときに写真の送り残しを送り直す

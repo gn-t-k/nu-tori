@@ -44,7 +44,28 @@ struct RootView: View {
                     turnOnUsageData: { await model.turnOnUsageData() },
                     turnOffUsageData: { await model.turnOffUsageData() },
                     deleteAccount: { await model.deleteAccount() }
-                )
+                ),
+                mealActions: MealActions(
+                    prepareCamera: { await CameraReadiness.prepare() },
+                    recordCapturedPhoto: { original, exif, sentAt in
+                        await model.recordCapturedMeal(
+                            original: original, exif: exif, sentAt: sentAt)
+                    },
+                    recordPickedPhotos: { items, pickedAt in
+                        await model.recordPickedMeals(
+                            originals: await PickedMealPhotos.originals(of: items),
+                            pickedAt: pickedAt)
+                    },
+                    loadPhoto: { mealId, photoId in
+                        guard
+                            let file = await model.mealPhotoFile(mealId: mealId, photoId: photoId)
+                        else {
+                            return nil
+                        }
+                        return await MealPhotoImage.thumbnail(at: file)
+                    }
+                ),
+                holdsMealOriginals: { await model.holdsMealOriginals($0) }
             )
         }
     }
