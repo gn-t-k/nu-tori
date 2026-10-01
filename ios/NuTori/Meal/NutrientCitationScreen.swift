@@ -16,6 +16,5 @@ struct NutrientCitationScreen: View {
         .onAppear {
             Task { await capture(.screen(.nutrientCitation)) }
         }
-        .accessibilityIdentifier("nutrient-citation-screen")
     }
 }

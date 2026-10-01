@@ -49,30 +49,30 @@ struct MealScreen: View {
                     confirmsDeletion = true
                 }
                 .accessibilityIdentifier("meal-delete")
+                // 押したボタンから、画面の下に確かめを出す
+                .confirmationDialog(
+                    "この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。",
+                    isPresented: $confirmsDeletion,
+                    titleVisibility: .visible
+                ) {
+                    Button("食事を削除", role: .destructive) {
+                        let deletedAt = now()
+                        // 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
+                        dismiss()
+                        Task { await deleteMeal(card, deletedAt) }
+                    }
+                    Button("キャンセル", role: .cancel) {}
+                }
             }
         }
         .navigationTitle("食事")
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog(
-            "この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。",
-            isPresented: $confirmsDeletion,
-            titleVisibility: .visible
-        ) {
-            Button("食事を削除", role: .destructive) {
-                let deletedAt = now()
-                // 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
-                dismiss()
-                Task { await deleteMeal(card, deletedAt) }
-            }
-            Button("キャンセル", role: .cancel) {}
-        }
         .task(id: PhotoRequest(photoIds: card.meal.photoIds, state: card.state)) {
             await loadPhotos()
         }
         .onAppear {
             Task { await capture(.screen(.meal)) }
         }
-        .accessibilityIdentifier("meal-screen")
     }
 
     @Environment(\.dismiss) private var dismiss
