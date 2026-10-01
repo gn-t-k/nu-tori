@@ -9,4 +9,4 @@ export const createRecordKinds = (stores: RecordKindStores) =>
   [
     createAccountSettingsKind(stores.accountSettings),
     createWeightRecordKind(stores.weightRecord, stores.firstSignIn.findStartedOn),
-  ] as const satisfies readonly RecordKind<string, WriteBase, unknown>[];
+  ] as const satisfies readonly RecordKind<string, WriteBase, unknown, string>[];
