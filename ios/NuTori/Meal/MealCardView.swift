@@ -20,6 +20,14 @@ struct MealCardView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                    if let nutritionText {
+                        Text(
+                            "\(Text(nutritionText.kilocalories).fontWeight(.semibold))\(nutritionText.pfc)"
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
@@ -41,7 +49,6 @@ struct MealCardView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityText)
-        .accessibilityIdentifier("meal-card")
     }
 
     private static let widthRatio: CGFloat = 0.72
@@ -75,9 +82,14 @@ struct MealCardView: View {
     }
 
     /// まだ送れていない・写真を待っているあいだは、何も置かない（写真と時刻だけ）。
-    /// 推定できた食事の料理の名前と kcal・P・F・C は、料理が端末に届くようになってから置く
+    /// 推定できた食事は料理の名前を置く（料理がまだ届いていなければ、届くまで何も置かない）
     @ViewBuilder private var namePlace: some View {
-        if let statusLine = card.state.statusLine {
+        if let dishNames {
+            Text(dishNames)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .lineLimit(2)
+        } else if let statusLine = card.state.statusLine {
             HStack(spacing: 6) {
                 // 推定の待っている表示。サーバーが処理しているあいだだけ出す
                 if card.state == .estimating {
@@ -89,6 +101,21 @@ struct MealCardView: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
         }
+    }
+
+    /// 推定できて、料理が届いている食事の名前
+    private var dishNames: String? {
+        guard case .estimated = card.nutrition else { return nil }
+        return card.contents.name
+    }
+
+    /// kcal と P・F・C は、推定できたときだけ出す。「不明」の材料が混じる栄養には「以上」が付く
+    private var nutritionText: (kilocalories: String, pfc: String)? {
+        guard case .estimated(let totals) = card.nutrition else { return nil }
+        let pfc = PFC.allCases.map { pfc in
+            "  \(pfc.letter) \(NutritionText.amount(totals[pfc.nutrient], of: pfc.nutrient))"
+        }
+        return (NutritionText.amount(totals[.energyKcal], of: .energyKcal), pfc.joined())
     }
 
     private var shownPhotoIds: [UUID] {
@@ -109,7 +136,9 @@ struct MealCardView: View {
     }
 
     private var accessibilityText: String {
-        ["食事", card.state.statusLine, eatenTimeText].compactMap(\.self).joined(separator: "、")
+        let nutrition = nutritionText.map { "\($0.kilocalories)\($0.pfc)" }
+        return ["食事", dishNames ?? card.state.statusLine, eatenTimeText, nutrition]
+            .compactMap(\.self).joined(separator: "、")
     }
 
     /// 写真の場所は先に Fill で大きさを決め、写真はその枠いっぱいに切り抜く。届くまでは回る印を出す

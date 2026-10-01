@@ -20,8 +20,10 @@
             case awaitingPhotosOnAnotherDevice
             /// 2枚の写真を選び、サーバーが推定している
             case estimating
-            /// 推定できた（料理の名前は、料理が端末に届くようになってから置く）
+            /// 推定できた。料理の名前を「・」でつなぎ、kcal と P・F・C を出す（P は「以上」）
             case estimated
+            /// 推定できたが、料理と材料がまだ届いていない。名前の場所は空
+            case estimatedBeforeDishesArrive
             /// 3枚の写真に、料理が写っていなかった
             case noDishes
             /// 4枚の写真の食事を、その日の回数を使い切ったので明日推定する
@@ -46,6 +48,8 @@
                         meal: lunch(photoCount: 2), status: .estimating,
                         recordedOnThisDevice: true)
                 case .estimated:
+                    .sampleEstimated(lunch(photoCount: 1))
+                case .estimatedBeforeDishesArrive:
                     MealCard(
                         meal: lunch(photoCount: 1), status: .estimated,
                         recordedOnThisDevice: true)
@@ -77,8 +81,8 @@
             var holdsPhotos: Bool {
                 switch self {
                 case .awaitingPhotosOnAnotherDevice, .fetchingOnAnotherDevice: false
-                case .notSent, .estimating, .estimated, .noDishes, .deferredToNextDay, .failed,
-                    .pickedFromEarlierDay:
+                case .notSent, .estimating, .estimated, .estimatedBeforeDishesArrive, .noDishes,
+                    .deferredToNextDay, .failed, .pickedFromEarlierDay:
                     true
                 }
             }

@@ -8,7 +8,9 @@
                 prepareCamera: { .noCamera },
                 recordCapturedPhoto: { _, _, _ in },
                 recordPickedPhotos: { _, _ in },
-                loadPhoto: { _, photoId in UIImage.sampleMealPhoto(for: photoId) }
+                photoSelection: .picker,
+                loadPhoto: { _, photoId in UIImage.sampleMealPhoto(for: photoId) },
+                deleteMeal: { _, _ in }
             )
         }
     }
