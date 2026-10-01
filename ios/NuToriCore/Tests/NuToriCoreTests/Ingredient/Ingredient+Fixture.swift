@@ -33,10 +33,11 @@ extension Dish {
         id: UUID = UUID(),
         mealId: UUID = UUID(),
         name: String = "親子丼",
-        positionInMeal: Int = 0
+        positionInMeal: Int = 0,
+        version: Int = 1
     ) -> Dish {
         Dish(
             id: id, mealId: mealId, name: name, quantity: 1, unit: "杯",
-            positionInMeal: positionInMeal, version: 1)
+            positionInMeal: positionInMeal, version: version)
     }
 }

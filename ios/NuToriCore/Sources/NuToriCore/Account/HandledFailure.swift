@@ -5,6 +5,8 @@ public enum HandledFailure: Sendable, Equatable {
     case sync
     case healthRead
     case healthWrite
+    /// 栄養をヘルスケアに書く・消すことに失敗した
+    case healthNutritionWrite
     case cacheSave
     /// 端末の置き場を開けず、送り待ちを捨てたか、退避して作り直した
     case storeRecovery

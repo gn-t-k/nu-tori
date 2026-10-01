@@ -21,16 +21,7 @@ public struct MealContents: Hashable, Sendable {
             .sorted {
                 ($0.positionInMeal, $0.id.uuidString) < ($1.positionInMeal, $1.id.uuidString)
             }
-            .map { dish in
-                DishContents(
-                    dish: dish,
-                    ingredients: (ingredientsByDish[dish.id] ?? []).sorted {
-                        ($0.positionInDish, $0.id.uuidString) < (
-                            $1.positionInDish, $1.id.uuidString
-                        )
-                    }
-                )
-            }
+            .map { DishContents(dish: $0, ingredientsInAnyOrder: ingredientsByDish[$0.id] ?? []) }
         let ingredientsOfMeal = self.dishes.flatMap(\.ingredients)
         totals = NutrientTotals(combining: self.dishes.map(\.totals))
         nutrientSourceLine = NutrientSourceLine(ingredients: ingredientsOfMeal)
@@ -50,6 +41,16 @@ public struct DishContents: Hashable, Sendable {
         self.dish = dish
         self.ingredients = ingredients
         totals = NutrientTotals(ingredients: ingredients)
+    }
+
+    /// 料理の材料を、並び順（同じなら ID の順）に並べて持つ。画面とヘルスケアが、同じ順で足した同じ合計を出すため
+    public init(dish: Dish, ingredientsInAnyOrder ingredients: [Ingredient]) {
+        self.init(
+            dish: dish,
+            ingredients: ingredients.sorted {
+                ($0.positionInDish, $0.id.uuidString) < ($1.positionInDish, $1.id.uuidString)
+            }
+        )
     }
 }
 
