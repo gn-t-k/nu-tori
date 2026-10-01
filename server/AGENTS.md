@@ -10,6 +10,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - Worker の型の宣言（`worker-configuration.d.ts`）は `wrangler types` が `wrangler.jsonc` から書き出す。コミットせず、`scripts/check server` が毎回書き出す
 - Workers で動かないライブラリが要る処理が出たら、その部分だけ別の基盤に置く
 - 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（使う環境に。本番だけの値は本番だけ）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の秘密の値を足すときは `docs/agents/tooling.md` を読む
+- 推定の提供元（Anthropic）の API キーは、秘密の値 `ANTHROPIC_API_KEY` に置く。環境ごとの Anthropic のワークスペース（開発用は `nu-tori-development`、本番は `nu-tori-production`）のキーを、それぞれの環境に置く。`wrangler.jsonc` の `secrets.required` には両方の環境に書き、テストの値は `vitest.config.ts` にある（テストは提供元を偽物に差し替えるので、この値は本物に届かない）
 
 ## 層
 
@@ -51,7 +52,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - 推定はアラームで進める。入口は `src/estimation/domain/advance-estimations.ts`: 待っている予定から推定を始め、次に試みる時刻が来た推定の試みを書いてから（`begin-estimation-attempts.ts`）、提供元を呼び（`run-estimation-attempt.ts`）、結果を書く（`record-estimation-attempt-outcome.ts`）。次に試みる時刻（待ちを広げる式と、試みの時間の上限）はドメイン層の `compute-next-estimation-attempt-at` が出し、`compute-next-alarm-at.ts` もそれでアラームを合わせる
 - 推定の回数は、アカウントごとに1日 `maximumDailyEstimations`（30）まで。`beginEstimationAttempts` が、予定から推定を始める前に、予定の数える日（`counted_on`）の `estimations` を数え、上限なら見送る（`estimation_deferrals`、次の日の 0:00 の予定とつなぎ、推定の状態の変更、PostHog の `estimation_deferred`）。次の日の 0:00 は、ユーザーの最新のタイムゾーン（読めなければ食事を送ったときのもの）で `computeNextDayStart` が出し、その日の分に数える。日ごとの回数の行は持たず、食事を消しても推定の行は残るので回数は戻らない。見送ったあとの予定から始めたときだけ、推定の状態の変更を足す（翌日に推定 → 推定中）。テストは `src/estimation/http/testing/insert-counted-estimations.ts` で、食事につながらない推定を書いて回数を満たす
-- 提供元（LLM）は、ドメイン層の型 `EstimationProvider`（`src/estimation/domain/estimation-provider.ts`）を、`src/estimation/durable-object/create-estimation-provider/` が作る。Durable Object は推定のたびにここから得る。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（料理あり・料理なし・確かめに通らない・答える前に待つは `mockCreateEstimationProviderOk`、エラー・400・時間切れ・② だけ落ちるは `mockCreateEstimationProviderError`）
+- 提供元（LLM）は、ドメイン層の型 `EstimationProvider`（`src/estimation/domain/estimation-provider.ts`）を、`src/estimation/durable-object/create-estimation-provider/` が作る。Durable Object は推定のたびにここから得る。本物は Anthropic の API（`@anthropic-ai/sdk`。再試行は SDK でなくドメイン層が持つので切る）で、`create-anthropic-estimation-provider.ts` が組む。モデルは Claude Sonnet 5（`request-structured-output.ts` の1か所）、思考は `thinking: { type: "disabled" }` で切り、`metadata.user_id` にアカウント ID の SHA-256 を入れ、構造化出力（`output_config.format`）で答えさせる。呼び出し1回の時間の上限は ① が 90 秒、② が 60 秒（試み全体の 3 分の中に収まる）。HTTP 400 は 400 の失敗、時間切れは時間切れの失敗、そのほかの SDK のエラーは提供元のエラー（`errorType` は応答のエラーの種類、無ければ `http_<状態コード>`、つなげなければ `connection_error`）、構造化出力が読めない・出力の上限で切れた・答えなかったは読めない応答の失敗（使ったトークンつき）にする。提供元の応答のテキストは残さない。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（料理あり・料理なし・確かめに通らない・答える前に待つは `mockCreateEstimationProviderOk`、エラー・400・時間切れ・② だけ落ちるは `mockCreateEstimationProviderError`）。提供元そのものの要求の組み立てと応答の読み取りは、Anthropic の API の手前（SDK の `fetch`）を差し替えて確かめる（`testing/stub-anthropic-api.ts`）
 - 提供元の失敗と、確かめに通らない応答は、試みの結果（`estimation_attempt_results.result`）にする。R2 と成分表の段で止まったら投げ、試みを結果の無いまま残して、途中で止まった試みとして数える
 - アラームの中は受け口の要求ごとのログを通らないので、アラームが呼び出しごとに `route: "alarm"` のログを出す（試みごとの結果・失敗した段・提供元のエラーの種類）
 - 推定のテストは、`src/estimation/http/testing/use-fake-clock.ts` で Date だけを先の時刻にして、アラームがひとりでに動かないようにし、`runDurableObjectAlarm` で動かす。やり直しは時計を進めてから動かす

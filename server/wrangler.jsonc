@@ -47,6 +47,8 @@
       "APPLE_PRIVATE_KEY",
       "APPLE_REFRESH_TOKEN_KEYS",
       "SENTRY_DSN",
+      // 推定の提供元（Anthropic）の API キー。環境ごとのワークスペース（nu-tori-development）のもの
+      "ANTHROPIC_API_KEY",
     ],
   },
   "env": {
@@ -91,6 +93,8 @@
           "APPLE_PRIVATE_KEY",
           "APPLE_REFRESH_TOKEN_KEYS",
           "SENTRY_DSN",
+          // 推定の提供元（Anthropic）の API キー。本番のワークスペース（nu-tori-production）のもの
+          "ANTHROPIC_API_KEY",
           // PostHog には本番だけが送る
           "POSTHOG_PROJECT_ID",
           "POSTHOG_PERSONAL_API_KEY",
