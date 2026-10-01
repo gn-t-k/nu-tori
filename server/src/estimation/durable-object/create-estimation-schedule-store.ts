@@ -41,6 +41,7 @@ export const createEstimationScheduleStore = (
       .select({
         scheduleId: estimationSchedules.id,
         mealId: mealEstimationSchedules.mealId,
+        countedOn: estimationSchedules.countedOn,
       })
       .from(estimationSchedules)
       .innerJoin(
@@ -61,6 +62,19 @@ export const createEstimationScheduleStore = (
       )
       .orderBy(asc(estimationSchedules.dueAt))
       .all(),
+  insertDeferral: ({ scheduleId, deferredAt }) => {
+    db.insert(estimationDeferrals).values({ estimationScheduleId: scheduleId, deferredAt }).run();
+  },
+  hasDeferralOfMeal: (mealId) =>
+    db
+      .select({ id: estimationDeferrals.estimationScheduleId })
+      .from(mealEstimationSchedules)
+      .innerJoin(
+        estimationDeferrals,
+        eq(estimationDeferrals.estimationScheduleId, mealEstimationSchedules.estimationScheduleId),
+      )
+      .where(eq(mealEstimationSchedules.mealId, mealId))
+      .get() !== undefined,
   findEarliestDueAtOfMeal: (mealId) =>
     db
       .select({ dueAt: min(estimationSchedules.dueAt) })
