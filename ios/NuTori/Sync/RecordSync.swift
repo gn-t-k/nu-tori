@@ -36,7 +36,7 @@ import NuToriCore
 
     /// 電波が無くても、その場でキャッシュから消える。消す書き込みは送り待ちに並ぶ
     func deleteMeal(id mealId: UUID) async throws {
-        guard let accountId = await signedInAccountId() else { return }
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
         try await engineForThisDevice(accountId: accountId).deleteMeal(id: mealId)
         syncInBackground()
     }
