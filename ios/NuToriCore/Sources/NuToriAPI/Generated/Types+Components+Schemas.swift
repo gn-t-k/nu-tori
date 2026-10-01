@@ -18,6 +18,8 @@ extension Components {
         /// - Remark: Generated from `#/components/schemas/RecordKindName`.
         internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
             case accountSettings = "account_settings"
+            case dish = "dish"
+            case ingredient = "ingredient"
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
             case weightRecord = "weight_record"

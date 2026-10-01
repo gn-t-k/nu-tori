@@ -1,0 +1,114 @@
+import { R } from "@praha/byethrow";
+import type { Dish } from "../../dish/domain/dish";
+import { createRecordLedger } from "../../domain/create-record-ledger";
+import type { RecordKindStores } from "../../domain/record-kind-stores";
+import type { RecordType } from "../../domain/record-type";
+import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
+import type { UsageEvent } from "../../domain/usage-event";
+import type { Ingredient } from "../../ingredient/domain/ingredient";
+import type { BegunEstimationAttempt } from "./begin-estimation-attempts";
+import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
+import type { EstimatedDish } from "./estimated-dish";
+import type { EstimationAttemptUsage } from "./estimation-attempt-usage";
+import { findMealReceivedAt } from "./find-meal-received-at";
+import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
+import type { EstimationAttemptFailedError } from "./run-estimation-attempt";
+
+// 呼び出しから戻ったときに、1つのトランザクションで試みの結果を書く。
+// 食事とのつなぎが無ければ（呼び出し中に食事が消えた）結果だけで終え、二度と呼ばない。
+// 通ったら料理・材料・完了を書き、料理と材料の変更のあとに推定の状態の変更を足す。400 か、試みが上限に達したら諦める。
+// 返すのは PostHog に送る出来事
+export const recordEstimationAttemptOutcome = (
+  ledgerStore: LedgerStore<RecordType>,
+  stores: RecordKindStores,
+  attempt: BegunEstimationAttempt,
+  outcome: R.Result<
+    { dishes: EstimatedDish[]; usage: EstimationAttemptUsage },
+    EstimationAttemptFailedError
+  >,
+  endedAt: Date,
+): UsageEvent[] =>
+  createRecordLedger(ledgerStore, stores, endedAt).changeOutsideWrites((addChange) => {
+    const { estimationId } = attempt;
+    const ended = R.isSuccess(outcome)
+      ? { result: "succeeded" as const, errorType: undefined, usage: outcome.value.usage }
+      : outcome.error;
+    stores.estimation.insertAttemptResult({
+      attemptId: attempt.attemptId,
+      endedAt,
+      result: ended.result,
+      errorType: ended.errorType,
+    });
+    const attemptEnded: UsageEvent = {
+      name: "estimation_attempt_ended",
+      result: ended.result,
+      identifyDishesUsage: ended.usage.identifyDishes,
+      matchIngredientsUsage: ended.usage.matchIngredients,
+    };
+    const mealId = stores.estimation.findMealIdOfEstimation(estimationId);
+    if (mealId === undefined) {
+      return [attemptEnded];
+    }
+    const attempts = stores.estimation.findAttempts(estimationId);
+    const computeEnded = (
+      finalStatus: "estimated" | "no_dishes" | "failed",
+      dishes: readonly Dish[],
+      ingredients: readonly Ingredient[],
+    ) =>
+      computeEstimationEndedEvent({
+        finalStatus,
+        attempts,
+        receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),
+        endedAt,
+        dishCount: dishes.length,
+        ingredients,
+      });
+
+    if (R.isSuccess(outcome)) {
+      const { dishes, ingredients } = toRecords(mealId, outcome.value.dishes);
+      const result = dishes.length === 0 ? "no_dishes" : "estimated";
+      stores.estimation.insertCompletion({ estimationId, completedAt: endedAt, result });
+      for (const dish of dishes) {
+        stores.dish.insert(dish);
+      }
+      for (const ingredient of ingredients) {
+        stores.ingredient.insert(ingredient);
+      }
+      for (const { id } of dishes) {
+        addChange({ recordType: "dish", recordId: id });
+      }
+      for (const { id } of ingredients) {
+        addChange({ recordType: "ingredient", recordId: id });
+      }
+      addChange({ recordType: "meal_estimation_status", recordId: mealId });
+      return [attemptEnded, computeEnded(result, dishes, ingredients)];
+    }
+    if (outcome.error.result === "bad_request" || attempts.length >= maximumEstimationAttempts) {
+      stores.estimation.insertAbandonment({ estimationId, abandonedAt: endedAt });
+      addChange({ recordType: "meal_estimation_status", recordId: mealId });
+      return [attemptEnded, computeEnded("failed", [], [])];
+    }
+    return [attemptEnded];
+  });
+
+const toRecords = (
+  mealId: string,
+  estimated: readonly EstimatedDish[],
+): { dishes: Dish[]; ingredients: Ingredient[] } => {
+  const withIds = estimated.map(({ ingredients, ...dish }, positionInMeal) => {
+    const dishId = crypto.randomUUID();
+    return {
+      dish: { ...dish, id: dishId, mealId, positionInMeal, version: 1 },
+      ingredients: ingredients.map((ingredient, positionInDish) => ({
+        ...ingredient,
+        id: crypto.randomUUID(),
+        dishId,
+        positionInDish,
+      })),
+    };
+  });
+  return {
+    dishes: withIds.map(({ dish }) => dish),
+    ingredients: withIds.flatMap(({ ingredients }) => ingredients),
+  };
+};

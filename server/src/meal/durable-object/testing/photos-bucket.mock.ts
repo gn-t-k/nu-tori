@@ -8,3 +8,7 @@ export const mockPhotosBucketPutError = (error: Error) => {
 export const mockPhotosBucketDeleteError = (error: Error) => {
   return vi.spyOn(env.PHOTOS, "delete").mockRejectedValue(error);
 };
+
+export const mockPhotosBucketGetError = (error: Error) => {
+  return vi.spyOn(env.PHOTOS, "get").mockRejectedValue(error);
+};

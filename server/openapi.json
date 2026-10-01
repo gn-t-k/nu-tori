@@ -16,6 +16,8 @@
         "type": "string",
         "enum": [
           "account_settings",
+          "dish",
+          "ingredient",
           "meal",
           "meal_estimation_status",
           "weight_record"
