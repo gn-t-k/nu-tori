@@ -7,6 +7,7 @@
         WeightEntrySheet(
             records: sample.records,
             today: .sampleToday,
+            now: { .now },
             capture: { _ in },
             onRecord: { _ in }
         )

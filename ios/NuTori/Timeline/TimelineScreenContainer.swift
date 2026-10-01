@@ -15,6 +15,7 @@ struct TimelineScreenContainer: View {
             records: cachedRecords.compactMap { $0.weightRecord() },
             initialPull: initialPull,
             today: CalendarDay(containing: .now, in: .current),
+            now: { .now },
             rejectedLines: rejectedLines,
             capture: capture,
             prepareWeightEntry: prepareWeightEntry,

@@ -194,7 +194,6 @@ struct WeightScreen: View {
         TextField("体重", text: draftText)
             .keyboardType(.decimalPad)
             .font(prominent ? .title2 : .body)
-            .fontWeight(prominent ? .semibold : .regular)
             .monospacedDigit()
             .focused($focusedRecordId, equals: correction.editing?.recordId)
             .accessibilityLabel("体重の値")
@@ -212,7 +211,6 @@ struct WeightScreen: View {
         return HStack(alignment: .firstTextBaseline, spacing: 4) {
             Text(shownNumber(kilograms))
                 .font(.title2)
-                .fontWeight(.semibold)
                 .monospacedDigit()
                 .foregroundStyle(Color.accentColor)
             Text("kg")

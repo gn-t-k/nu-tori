@@ -27,9 +27,18 @@ struct AccountScreen: View {
                 externalLink("問い合わせ", url: inquiryURL)
             }
             Section {
-                Button("アカウントを削除", role: .destructive) {
+                Button(role: .destructive) {
                     confirmingDeletion = true
+                } label: {
+                    HStack {
+                        Text("アカウントを削除")
+                        if isDeleting {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
                 }
+                .disabled(isDeleting)
             } header: {
                 if let deletionFailure {
                     Text(deletionFailure.message)

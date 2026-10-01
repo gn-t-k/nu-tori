@@ -8,6 +8,7 @@
             records: sample.records,
             initialPull: sample.initialPull,
             today: .sampleToday,
+            now: { .now },
             rejectedLines: sample.rejectedLines,
             capture: { _ in },
             prepareWeightEntry: {},

@@ -5,6 +5,8 @@ struct TimelineScreen: View {
     let records: [WeightRecord]
     let initialPull: InitialPull
     let today: CalendarDay
+    /// 記録した時刻と、操作にかかった時間を測るための今
+    let now: () -> Date
     let rejectedLines: [RejectedWeightLine]
     let capture: (ClientUsageEvent) async -> Void
     let prepareWeightEntry: () async -> Void
@@ -76,6 +78,7 @@ struct TimelineScreen: View {
             WeightEntrySheet(
                 records: records,
                 today: today,
+                now: now,
                 capture: capture,
                 onRecord: { write in
                     weightEntryPhase = .closed
@@ -102,6 +105,8 @@ struct TimelineScreen: View {
         case completed(startedDay: CalendarDay?)
     }
 
+    /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする
+    @ScaledMetric private var composerButtonSize: CGFloat = 44
     @State private var showsAccount = false
     @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
@@ -178,7 +183,7 @@ struct TimelineScreen: View {
                         }
                         .padding()
                     }
-                    .frame(maxWidth: .infinity, minHeight: geo.size.height)
+                    .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                 }
                 .defaultScrollAnchor(.bottom)
                 .coordinateSpace(.named("timeline"))
@@ -247,7 +252,7 @@ struct TimelineScreen: View {
                 }
             } label: {
                 Image(systemName: "scalemass.fill")
-                    .frame(width: 44, height: 44)
+                    .frame(width: composerButtonSize, height: composerButtonSize)
                     .background(
                         unrecorded ? Color.accentColor : Color(.tertiarySystemFill),
                         in: Circle()
