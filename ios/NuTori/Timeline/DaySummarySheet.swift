@@ -129,7 +129,7 @@ struct DaySummarySheet: View {
                 .fontWeight(.semibold)
                 .monospacedDigit()
                 .contentTransition(.numericText())
-            Text(kilocalories.isLowerBound ? "kcal 以上" : "kcal")
+            Text(NutritionText.unit(kilocalories, of: .energyKcal))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

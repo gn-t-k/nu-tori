@@ -55,7 +55,8 @@ struct TimelineScreen: View {
                         },
                         now: now,
                         capture: capture,
-                        deleteMeal: mealActions.deleteMeal
+                        deleteMeal: mealActions.deleteMeal,
+                        confirmsDeletion: false
                     )
                 }
             }
@@ -344,9 +345,11 @@ struct TimelineScreen: View {
                 switch mealActions.photoSelection {
                 case .picker:
                     showsPhotoPicker = true
-                case .fixed(let record):
-                    let pickedAt = now()
-                    Task { await record(pickedAt) }
+                #if DEBUG
+                    case .fixed(let record):
+                        let pickedAt = now()
+                        Task { await record(pickedAt) }
+                #endif
                 }
             },
             onWeight: hidingCameraNotice {

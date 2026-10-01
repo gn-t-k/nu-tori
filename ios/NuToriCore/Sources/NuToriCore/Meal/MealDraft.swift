@@ -13,7 +13,8 @@ public struct MealDraft: Hashable, Sendable {
     /// 撮影時刻の順
     public let photoIds: [UUID]
 
-    public enum Entry: Hashable, Sendable {
+    /// rawValue は、キャッシュと送り待ちに保存する書き方。変えると、送り待ちの置き場の移行が要る
+    public enum Entry: String, Hashable, Sendable {
         case captured
         case picked
     }

@@ -40,6 +40,29 @@ struct NutritionTextTests {
         }
     }
 
+    @Suite("数と別に置く単位")
+    struct Unit {
+        @Suite("分かる値")
+        struct Exactly {
+            let amount = NutrientAmount.exactly(510)
+
+            @Test("単位だけにすること")
+            func isUnitOnly() {
+                #expect(NutritionText.unit(amount, of: .energyKcal) == "kcal")
+            }
+        }
+
+        @Suite("「不明」の材料が混じる値")
+        struct AtLeast {
+            let amount = NutrientAmount.atLeast(510)
+
+            @Test("単位に「以上」を付けること")
+            func marksLowerBound() {
+                #expect(NutritionText.unit(amount, of: .energyKcal) == "kcal 以上")
+            }
+        }
+    }
+
     @Suite("料理と材料の量")
     struct Quantity {
         @Test("英字の単位は、数との間を空けること")

@@ -14,6 +14,11 @@ public enum NutritionText {
         amount.value.map(wholeNumber) ?? "—"
     }
 
+    /// 数と別に置く単位（丸の中や食事の合計の kcal）。「不明」の材料が混じる値には「以上」を付ける
+    public static func unit(_ amount: NutrientAmount, of nutrient: Nutrient) -> String {
+        amount.isLowerBound ? "\(nutrient.unit) 以上" : nutrient.unit
+    }
+
     /// 「110 g」「2個」。小数は1桁まで。英字の単位だけ数との間を空ける（「個」「杯」は続ける）
     public static func quantity(_ quantity: Double, unit: String) -> String {
         let tenths = Int((quantity * 10).rounded())

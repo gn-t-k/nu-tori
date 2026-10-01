@@ -9,6 +9,8 @@ nonisolated enum MealPhotoImage {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
             return nil
         }
+        // カードは画面の幅の 72%。3倍の画面でも粗く見えない大きさ
+        let maxPixelSize = 900
         // 向きは画素に当てるので、向きの付帯情報が無くても正しく見える
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -21,7 +23,4 @@ nonisolated enum MealPhotoImage {
         }
         return UIImage(cgImage: image)
     }
-
-    /// カードは画面の幅の 72%。3倍の画面でも粗く見えない大きさ
-    private static let maxPixelSize = 900
 }

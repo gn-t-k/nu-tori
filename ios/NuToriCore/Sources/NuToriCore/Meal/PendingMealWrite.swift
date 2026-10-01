@@ -76,23 +76,15 @@ public struct PendingMealWrite: Sendable, Equatable {
             eatenUtcOffsetSeconds = meal.eatenUtcOffsetSeconds
             sentAt = meal.sentAt
             sentTimeZoneIdentifier = meal.sentTimeZone.identifier
-            entry =
-                switch meal.entry {
-                case .captured: "captured"
-                case .picked: "picked"
-                }
+            entry = meal.entry.rawValue
             photoIds = meal.photoIds
         }
 
         func meal(kind: RecordKindName) throws -> Meal {
-            guard let sentTimeZone = TimeZone(identifier: sentTimeZoneIdentifier) else {
+            guard let sentTimeZone = TimeZone(identifier: sentTimeZoneIdentifier),
+                let mealEntry = MealDraft.Entry(rawValue: entry)
+            else {
                 throw PendingWrite.InvalidEntryError(kind: kind)
-            }
-            let mealEntry: MealDraft.Entry
-            switch entry {
-            case "captured": mealEntry = .captured
-            case "picked": mealEntry = .picked
-            default: throw PendingWrite.InvalidEntryError(kind: kind)
             }
             return Meal(
                 id: id,
