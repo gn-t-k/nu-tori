@@ -346,4 +346,133 @@ internal struct Client: APIProtocol {
             }
         )
     }
+    /// 食事の写真の縮小版を取りに行く
+    ///
+    /// - Remark: HTTP `GET /v1/meal-photos/{photoId}`.
+    /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)`.
+    internal func getMealPhoto(_ input: Operations.GetMealPhoto.Input) async throws -> Operations.GetMealPhoto.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.GetMealPhoto.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/meal-photos/{}",
+                    parameters: [
+                        input.path.photoId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.GetMealPhoto.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "image/jpeg"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "image/jpeg":
+                        body = try converter.getResponseBodyAsBinary(
+                            OpenAPIRuntime.HTTPBody.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .jpeg(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 401:
+                    return .unauthorized(.init())
+                case 404:
+                    return .notFound(.init())
+                case 429:
+                    return .tooManyRequests(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// 食事の写真の縮小版を送る
+    ///
+    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える
+    ///
+    /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
+    /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
+    internal func putMealPhoto(_ input: Operations.PutMealPhoto.Input) async throws -> Operations.PutMealPhoto.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.PutMealPhoto.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/meal-photos/{}",
+                    parameters: [
+                        input.path.photoId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .put
+                )
+                suppressMutabilityWarning(&request)
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .jpeg(value):
+                    body = try converter.setRequiredRequestBodyAsBinary(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "image/jpeg"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 204:
+                    return .noContent(.init())
+                case 400:
+                    return .badRequest(.init())
+                case 401:
+                    return .unauthorized(.init())
+                case 413:
+                    return .contentTooLarge(.init())
+                case 415:
+                    return .unsupportedMediaType(.init())
+                case 429:
+                    return .tooManyRequests(.init())
+                case 500:
+                    return .internalServerError(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
 }
