@@ -23,7 +23,7 @@ extension SyncEngineTests {
 
             @Test("送り待ちに食事の種類の名前で入れてから、キャッシュに食事を置くこと")
             func enqueuesThenCaches() async throws {
-                let meal = try await engine.recordMeal(.lunch(photoId: photoId))
+                let meal = try await engine.recordLunch(photoId: photoId)
 
                 #expect(store.entries.map(\.kind) == [.meal])
                 #expect(
@@ -35,7 +35,7 @@ extension SyncEngineTests {
 
             @Test("送ると、食事の時刻・時差・送った時刻・タイムゾーン・入口・写真を、作る書き込みで送ること")
             func sendsCreateMeal() async throws {
-                let meal = try await engine.recordMeal(.lunch(photoId: photoId))
+                let meal = try await engine.recordLunch(photoId: photoId)
 
                 _ = try await engine.sync()
 
@@ -71,7 +71,7 @@ extension SyncEngineTests {
                 store = try .ok()
                 engine = .fixture(
                     store: store, transport: .error(URLError(.notConnectedToInternet)))
-                meal = try await engine.recordMeal(.lunch(photoId: UUID()))
+                meal = try await engine.recordLunch(photoId: UUID())
                 try await store.apply(
                     SyncBoxResult(kindChanges: [
                         KindChanges(
@@ -112,7 +112,7 @@ extension SyncEngineTests {
                 store = try .ok()
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
-                meal = try await engine.recordMeal(.lunch(photoId: UUID()))
+                meal = try await engine.recordLunch(photoId: UUID())
                 try await engine.deleteMeal(id: meal.id)
             }
 
@@ -140,7 +140,7 @@ extension SyncEngineTests {
                 engine = .fixture(
                     store: store,
                     transport: .sync(rejectedWriteIndexes: [0], currents: [0: .absent]))
-                meal = try await engine.recordMeal(.lunch(photoId: UUID()))
+                meal = try await engine.recordLunch(photoId: UUID())
             }
 
             @Test("食事をキャッシュから外し、記録できなかった食事として返すこと")
@@ -283,6 +283,13 @@ extension SyncEngineTests {
                         == [.accountSettings, .meal, .mealEstimationStatus, .weightRecord])
             }
         }
+    }
+}
+
+extension SyncEngine {
+    /// 昼の食事を、元の写真を添えて記録する
+    fileprivate func recordLunch(photoId: UUID) async throws -> Meal {
+        try await recordMeal(.lunch(photoId: photoId), originals: [photoId: Data([0x01])])
     }
 }
 
