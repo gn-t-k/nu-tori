@@ -18,6 +18,8 @@ export default defineConfig({
           APPLE_REFRESH_TOKEN_KEYS: `1:${btoa(String.fromCharCode(...new Uint8Array(32).fill(1)))}`,
           // DSN が空なら Sentry は送らない
           SENTRY_DSN: "",
+          // 提供元（Anthropic）はテストで偽物に差し替え、本物には届かない
+          ANTHROPIC_API_KEY: "test-anthropic-api-key",
         },
       },
     })),
