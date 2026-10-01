@@ -46,9 +46,11 @@ struct RecordKindMock: RecordKind {
     }
 
     /// キャッシュに依らない部分
-    private struct Synced: SyncedRecordKind {
+    private struct Synced: SyncedRecordKind, RecordKindWrites {
         let name = RecordKindName.accountSettings
         let failure: Failure?
+
+        var writes: (any RecordKindWrites)? { self }
 
         func owns(_ change: SyncChange) -> Bool {
             if case .unknown(let kind) = change { kind == RecordKindMock.changeKind } else { false }

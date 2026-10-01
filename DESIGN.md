@@ -148,6 +148,11 @@ components:
     textColor: "{colors.on-primary}"
     rounded: "{rounded.full}"
     size: 44px
+  composer-photos:
+    backgroundColor: "{colors.fill}"
+    textColor: "{colors.primary}"
+    rounded: "{rounded.full}"
+    size: 44px
   composer-weight:
     backgroundColor: "{colors.fill}"
     textColor: "{colors.primary}"
@@ -156,6 +161,9 @@ components:
   composer-weight-unrecorded:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
+    typography: "{typography.subheadline-emphasized}"
+    rounded: "{rounded.full}"
+    height: 44px
   composer-send:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
@@ -247,7 +255,7 @@ HIG は余白の値を表で決めず、余白をそろえること、セーフ�
 spacing のトークンは、見本を描くときの値。画面の端とカードの内側は 16、カードの間は 12、まとまりの間は 24。
 
 - **押せる範囲は 44 以上**: 見た目が小さい部品（プリセットのチップ、文字のボタン）も、押せる範囲は `contentShape` で 44 以上に広げる
-- **枠のある部品の間は 12 以上**: ステッパーの − と ＋ と値、入力欄のカメラ・体重・書く欄、並べたボタンの間。枠のない部品（文字のボタン）のまわりは 24 ほど空ける
+- **枠のある部品の間は 12 以上**: ステッパーの − と ＋ と値、入力欄のカメラ・写真・体重・書く欄、並べたボタンの間。枠のない部品（文字のボタン）のまわりは 24 ほど空ける
 
 ## Elevation & Depth
 
@@ -265,16 +273,15 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - **ボタン（button-primary、button-secondary）**: 主な操作（記録、始める、この目標で始める）は塗ったボタン（`.borderedProminent`）、並べる副の操作（あとで）は灰色のボタン（`.bordered`）。灰色のボタンの文字は Fill の地で 4.43:1 と 4.5:1 にわずかに届かないが、SwiftUI の標準の見た目を優先してそのまま使う。同じ組み合わせのステッパーの − と ＋、入力欄の体重のボタンは記号なので、記号の基準（3:1）で足りる
 - **削除（button-destructive）**: `role: .destructive`。ボタンには削除するものの名前を入れる（「食事を削除」）
 - **一覧（list、list-row）**: 押して潜れる行には `chevron.right` を付ける。押してその場で直せる値は Primary で書く（list-row-editable-value）。行を左へ送ると削除が出る（`swipeActions`）
-- **タイムラインのカード（timeline-card）**: 食事、知らせ、週の振り返り。アプリからの知らせは全幅の白いカード
-- **入力欄（composer-field、composer-camera、composer-weight、composer-send）**: タイムラインの下に固定する。カメラと体重は丸いアイコンのボタンで、その日の体重が未記録のあいだだけ体重を Primary で塗る（composer-weight-unrecorded）。書く欄は1行から始まり5行まで伸び、「送る」は文字を入れたときだけ欄の右端に出す
+- **タイムラインのカード（timeline-card）**: 知らせ、週の振り返り。アプリからの知らせは全幅の白いカード
+- **入力欄（composer-field、composer-camera、composer-photos、composer-weight、composer-send）**: タイムラインの下に固定する。左から「撮る」「写真」「体重」の丸いアイコンのボタンを左に寄せる。「撮る」はいつも Primary で塗り、「写真」と記録済みの「体重」は灰色の丸にする。その日の体重が未記録のあいだは、「体重」を Primary で塗った文字のカプセル「体重を記録」（高さ 44、アイコンなし）に広げ、記録すると丸に戻す（composer-weight-unrecorded）。書く欄は1行から始まり5行まで伸び、「送る」は文字を入れたときだけ欄の右端に出す
 - **プリセット（preset-chip）**: 入力欄の上に並べる、角の丸いチップ。押せる範囲は 44 に広げる
-- **自分の記録（own-record-card）と自分の発言（own-message-bubble）**: 自分が記録した食事と体重は右に寄せ、Primary を薄く敷いたカードにする。自分が書いた文は Primary の吹き出しで右に寄せる
+- **自分の記録（own-record-card）と自分の発言（own-message-bubble）**: 自分が記録した食事と体重は右に寄せ、Primary を薄く敷いたカードにする。食事のカードは画面の幅の 72% にし、写真を上に大きく出す（1枚は 4:3、2枚以上は正方形を2枚並べ、3枚以上は2枚目に残りの枚数を重ねる）。自分が書いた文は Primary の吹き出しで右に寄せる
 - **返ってきた発言（reply-message）**: 吹き出しにせず、左の地の上に文で置く
 - **値の欄（value-field、value-field-focused）**: 数の値は数字のキーボードを出す。選んでいるときは Surface の地に Primary の枠を付ける
 - **押せないボタン**: システムの無効の表示（`.disabled`）に任せる
 - **推定の印（estimate-badge）**: 推定したままの料理の量に添える、枠線だけの小さな印。直すと外す
 - **待っている表示**: 画面全体をふさがず、待っているもののその場に出す。いつ出すかは「[端末とサーバーの同期とオフライン時の振る舞い](https://github.com/gn-t-k/nu-tori/issues/26)」の追記の「待っている表示」
-  - 推定中: その食事のカードに、回る印と「推定しています…」を出す。推定できなかったときは、その旨と「料理を足す」を出す
   - 送った文章の応答待ち: 食事とも会話とも取れる回る印を出す（置き方と文言は仕様で決める）
   - 読み込み中: タイムラインの場所に出す
   - 押した操作の応答待ち（サインイン、アカウントの削除）: ボタンの文字は消さず、そのそばに回る印を出す。何を待っているかが分かるように
@@ -282,7 +289,7 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - **1日の丸（day-ring-strip、day-ring-large）**: 目安を超えた日は輪の起点に文字の色の点を付ける。目標がないあいだは P・F・C の割合で一周させる。体重を記録した日は、帯の丸の中に灰色の点を付ける。帯の丸には曜日、大きな丸には kcal と P・F・C の名前を添える
 - **P・F・C の印（nutrient-key-protein、nutrient-key-fat、nutrient-key-carbohydrate）**: 見出しや内訳の P・F・C の名前の前に置く色の四角
 - **グラフ**: Swift Charts。系列は Primary の1色、目安と目標の道筋は点線、グリッドは薄く。系列が2本あるときは線の端に名前を添える。押した週・日の値は `chartXSelection` で出す
-- **アイコン**: SF Symbols の `camera.fill`（撮る）、`scalemass.fill`（体重）、`person.crop.circle`（アカウント）、`chevron.right`（潜れる行）。文字で足りるところにはアイコンを付けない
+- **アイコン**: SF Symbols の `camera.fill`（撮る）、`photo.on.rectangle`（撮っておいた写真を選ぶ）、`scalemass.fill`（体重）、`person.crop.circle`（アカウント）、`chevron.right`（潜れる行）。文字で足りるところにはアイコンを付けない
 
 ## Do's and Don'ts
 
@@ -298,6 +305,7 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - Do: P・F・C は色だけで示さず、いつも「P」「F」「C」か栄養の名前を添える
 - Do: 量は数と単位の間を空ける（「72.4 kg」「510 kcal」）。日付は「9月24日（木）」、期間は「9月18日〜24日」と書く
 - Do: ボタンは押すと起きることを動詞で書く（記録、始める、撮る）
+- Do: 大きな文字でも、操作の名前が読めるようにする
 - Don't: カスタムフォントを使う
 - Don't: 画面に「AI」「質問」「相談」という言葉を出す。推定であることは、推定の印と待っている表示で伝える（規約のために出す AI の返事の1行と、サインインの画面の同意は除く。ADR-0018）
 - Don't: 間に合わない週を責める。事実だけを書く（「このままだと期限に 0.8 kg 届きません」）

@@ -10,10 +10,13 @@
             today: .sampleToday,
             now: { .now },
             rejectedLines: sample.rejectedLines,
+            rejectedMealLines: sample.rejectedMealLines,
+            meals: sample.meals,
             capture: { _ in },
             prepareWeightEntry: {},
             saveWeight: { _ in },
-            accountActions: .noop
+            accountActions: .noop,
+            mealActions: .noop
         )
     }
 
@@ -29,14 +32,16 @@
             case recordedToday
             /// 取り終えたが、使い始めた日がサーバーでまだ決まっていない
             case startedDayUndecided
-            /// 作った記録と直した記録を、サーバーが受け付けなかった
+            /// 作った記録と直した記録と食事を、サーバーが受け付けなかった
             case rejected
+            /// 朝の食事は推定できて今日の丸が塗られ、昼の食事は推定の途中で、撮っておいた昨日の写真を選んだばかり
+            case meals
 
             var initialPull: TimelineScreen.InitialPull {
                 switch self {
                 case .loading: .inProgress
                 case .firstDay: .completed(startedDay: .sampleToday)
-                case .unrecordedToday, .recordedToday, .rejected:
+                case .unrecordedToday, .recordedToday, .rejected, .meals:
                     .completed(startedDay: Self.startedDay)
                 case .startedDayUndecided: .completed(startedDay: nil)
                 }
@@ -46,7 +51,7 @@
                 switch self {
                 case .loading, .firstDay: []
                 case .unrecordedToday, .startedDayUndecided: Self.pastRecords
-                case .recordedToday:
+                case .recordedToday, .meals:
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 7, 5, from: .manual)]
                 case .rejected: [Self.correctedRecord]
                 }
@@ -54,7 +59,9 @@
 
             var rejectedLines: [RejectedWeightLine] {
                 switch self {
-                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided: []
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .meals:
+                    []
                 case .rejected:
                     [
                         Self.rejectedLine(
@@ -76,6 +83,36 @@
                 }
             }
 
+            var rejectedMealLines: [RejectedMealLine] {
+                switch self {
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .meals:
+                    []
+                case .rejected: [RejectedMealLine(meal: .sample(on: .sampleToday, at: 12, 10))]
+                }
+            }
+
+            var meals: [MealCard] {
+                switch self {
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .rejected:
+                    []
+                case .meals:
+                    [
+                        // 推定できた食事で、帯の今日の丸が P・F・C の割合で塗られる
+                        .sampleEstimated(.sample(on: .sampleToday, at: 7, 40)),
+                        MealCard(
+                            meal: .sample(on: .sampleToday, at: 12, 10, photoCount: 2),
+                            status: .estimating, recordedOnThisDevice: true),
+                        MealCard(
+                            meal: .samplePicked(
+                                eatenOn: CalendarDay.sampleToday.advanced(by: -1), at: 19, 40,
+                                sentOn: .sampleToday, photoCount: 3),
+                            status: nil, recordedOnThisDevice: true),
+                    ]
+                }
+            }
+
             private static let startedDay = CalendarDay.sampleToday.advanced(by: -10)
 
             private static let pastRecords: [WeightRecord] = [
@@ -93,10 +130,7 @@
             private static func rejectedLine(_ record: WeightRecord, serverHasValue: Bool)
                 -> RejectedWeightLine
             {
-                RejectedWeightLine(
-                    RejectedWrite(
-                        writeId: UUID(), record: record, reason: .outOfRange,
-                        serverHasValue: serverHasValue))
+                RejectedWeightLine(record: record, serverHasValue: serverHasValue)
             }
         }
     }

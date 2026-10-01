@@ -7,7 +7,12 @@ final class RootModel {
     private(set) var screen: Screen = .opening
     var rejectedLines: [RejectedWeightLine] {
         guard case .accepting(let lines) = rejectionLines else { return [] }
-        return lines
+        return lines.weight
+    }
+
+    var rejectedMealLines: [RejectedMealLine] {
+        guard case .accepting(let lines) = rejectionLines else { return [] }
+        return lines.meal
     }
 
     init(accountSession: AccountSession, recordSync: RecordSync, health: HealthSyncSession) {
@@ -55,6 +60,63 @@ final class RootModel {
         try? await recordSync.save(write)
     }
 
+    /// 撮った写真は、1枚で1つの食事にする。食事の時刻は撮った時刻（付帯情報に無ければ「写真を使用」を押した時刻）
+    func recordCapturedMeal(original: Data, exif: PhotoExif, sentAt: Date) async {
+        let timeZone = TimeZone.current
+        let photoId = UUID()
+        let takenAt = PhotoTakenTime(exif: exif, pickedAt: sentAt, deviceTimeZone: timeZone)
+        let draft = MealDraft.captured(
+            photoId: photoId, takenAt: takenAt.instant, sentAt: sentAt, deviceTimeZone: timeZone)
+        await recordMeals([draft], originals: [photoId: original], entry: .captured)
+    }
+
+    /// 選んだ写真を、撮影時刻の近いものごとの食事にまとめて記録する。`pickedAt` は選び終えた時刻
+    func recordPickedMeals(originals: [Data], pickedAt: Date) async {
+        let timeZone = TimeZone.current
+        let photos = originals.map { (id: UUID(), original: $0) }
+        let picked = photos.map { photo in
+            PickedPhoto(
+                id: photo.id,
+                takenTime: PhotoTakenTime(
+                    exif: PhotoMetadata.exif(ofImageData: photo.original),
+                    pickedAt: pickedAt,
+                    deviceTimeZone: timeZone
+                )
+            )
+        }
+        // 選ぶ画面は 10 枚までしか選ばせないので、多すぎることは無い
+        guard !picked.isEmpty,
+            let drafts = try? MealDraft.picked(picked, sentAt: pickedAt, deviceTimeZone: timeZone)
+        else {
+            return
+        }
+        await recordMeals(
+            drafts,
+            originals: Dictionary(uniqueKeysWithValues: photos.map { ($0.id, $0.original) }),
+            entry: .picked
+        )
+    }
+
+    /// 食事を消す。インターネットにつながらなくても、その場でキャッシュとアプリの中の写真から消える。
+    /// 消せたら、PostHog に推定の状態と、送ってから消すまでの時間を送る
+    func deleteMeal(_ card: MealCard, deletedAt: Date) async {
+        do {
+            try await recordSync.deleteMeal(id: card.meal.id)
+        } catch {
+            return
+        }
+        await accountSession.capture(.mealDeleted(card, at: deletedAt))
+    }
+
+    /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil
+    func mealPhotoFile(mealId: UUID, photoId: UUID) async -> URL? {
+        await recordSync.mealPhotos.photoFile(mealId: mealId, photoId: photoId)
+    }
+
+    func holdsMealOriginals(_ mealId: UUID) async -> Bool {
+        await recordSync.mealPhotos.holdsOriginals(ofMeal: mealId)
+    }
+
     func prepareWeightEntry() async {
         await health.prepareForFirstWeightEntry()
     }
@@ -66,7 +128,7 @@ final class RootModel {
     func noteAppActive() {
         switch rejectionLines {
         case .ignoring:
-            rejectionLines = .accepting([])
+            rejectionLines = .accepting(Lines())
         case .accepting:
             break
         }
@@ -142,18 +204,23 @@ final class RootModel {
     private let accountSession: AccountSession
     private let recordSync: RecordSync
     private let health: HealthSyncSession
-    private var rejectionLines = RejectionLines.accepting([])
+    private var rejectionLines = RejectionLines.accepting(Lines())
 
     private enum RejectionLines {
-        case accepting([RejectedWeightLine])
+        case accepting(Lines)
         case ignoring
+    }
+
+    private struct Lines {
+        var weight: [RejectedWeightLine] = []
+        var meal: [RejectedMealLine] = []
     }
 
     private func replaceScreen(with destination: SignInDestination) {
         switch destination {
         case .signIn:
             // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
-            rejectionLines = .accepting([])
+            rejectionLines = .accepting(Lines())
         case .loadingTimeline, .timeline:
             break
         }
@@ -165,7 +232,7 @@ final class RootModel {
         case .ignoring:
             break
         case .accepting(var lines):
-            lines.removeAll { $0.record.id == recordId }
+            lines.weight.removeAll { $0.record.id == recordId }
             rejectionLines = .accepting(lines)
         }
     }
@@ -176,17 +243,38 @@ final class RootModel {
             break
         case .accepting(var lines):
             for write in writes {
-                let line = RejectedWeightLine(write)
-                lines.removeAll { $0.record.id == line.record.id }
-                lines.append(line)
+                switch write.record {
+                case .weightRecord(let record, let serverHasValue):
+                    lines.weight.removeAll { $0.record.id == record.id }
+                    lines.weight.append(
+                        RejectedWeightLine(record: record, serverHasValue: serverHasValue))
+                case .meal(let meal):
+                    lines.meal.removeAll { $0.meal.id == meal.id }
+                    lines.meal.append(RejectedMealLine(meal: meal))
+                }
             }
             rejectionLines = .accepting(lines)
         }
     }
 
+    private func recordMeals(
+        _ drafts: [MealDraft], originals: [UUID: Data], entry: MealDraft.Entry
+    ) async {
+        guard let meals = try? await recordSync.recordMeals(drafts, originals: originals),
+            !meals.isEmpty
+        else {
+            return
+        }
+        await accountSession.capture(
+            .mealRecorded(entry: entry, photoCount: originals.count, mealCount: meals.count))
+        // 撮る・選ぶ画面が閉じてタイムラインに戻ってから、栄養の書き込みの許可を求める
+        await health.requestNutritionAuthorizationAfterMealRecorded()
+    }
+
     private func syncIfShowingTimeline() async {
         switch screen {
         case .loadingTimeline, .timeline:
+            await recordSync.resendPendingPhotos()
             await health.aroundTimelineSync {
                 _ = try await self.recordSync.sync()
             }

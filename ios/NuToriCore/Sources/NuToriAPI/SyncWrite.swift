@@ -8,4 +8,8 @@ public enum SyncWrite: Sendable, Equatable {
     case sourceDeletedWeightRecord(writeId: UUID, weightRecordId: UUID)
     /// アカウントの設定は、記録が無くても直す書き込みで送る。サーバーが無ければ作る
     case updateAccountSettings(writeId: UUID, settings: SyncedAccountSettings)
+    /// 写真の宣言を含む。写真のファイルは別の経路で送る
+    case createMeal(writeId: UUID, meal: SyncedMeal)
+    /// サーバーは受け付けないことが無い。知らない ID でも削除の印を残す
+    case deleteMeal(writeId: UUID, mealId: UUID)
 }

@@ -12,6 +12,8 @@
         let healthAuthorization: UITestHealthStore.Authorization
         let healthLatestKilograms: Double?
         let healthWriteAuthorized: Bool
+        /// 入力欄の「写真」で、選ぶ画面を開かずに選んだことにする写真の枚数。nil なら標準の選ぶ画面を出す
+        let pickedMealPhotoCount: Int?
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -27,7 +29,8 @@
                 healthAuthorization: environment["UI_TEST_HEALTH_AUTHORIZATION"]
                     == "not-yet-requested" ? .notYetRequested : .alreadyRequested,
                 healthLatestKilograms: environment["UI_TEST_HEALTH_LATEST_KG"].flatMap(Double.init),
-                healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied"
+                healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied",
+                pickedMealPhotoCount: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init)
             )
         }
 
@@ -49,6 +52,9 @@
 
         func runtime() throws -> AppRuntime {
             let store = try SwiftDataSyncStore(inMemory: true)
+            let photoUploader = UITestMealPhotoUploader()
+            let photoRoot = FileManager.default.temporaryDirectory.appending(
+                path: "ui-test-meal-photos-\(UUID().uuidString)")
             try store.prepareForUITest(
                 state: seededSyncState(), pendingWrites: account.pendingWrites)
             let behavior = transportBehavior
@@ -75,7 +81,14 @@
                     observation: ObservationSessions(
                         analytics: PlaceholderAnalyticsSession(),
                         errorReporting: PlaceholderErrorReportingSession()
-                    )
+                    ),
+                    mealPhotoFolders: MealPhotos.Folders(
+                        originals: photoRoot.appending(path: "originals"),
+                        uploads: photoRoot.appending(path: "uploads"),
+                        fetched: photoRoot.appending(path: "fetched")
+                    ),
+                    mealPhotoUploader: photoUploader,
+                    finishedMealPhotoUploads: photoUploader.finishedUploads
                 ))
         }
 
@@ -95,6 +108,7 @@
             case .accountDeletionRateLimited: return .accountDeletionRateLimited
             case .accountDeletionUnauthorized: return .accountDeletionUnauthorized
             case .dayRing: return .dayRing
+            case .mealEstimation: return .mealEstimation
             }
         }
 
@@ -178,6 +192,7 @@
             case weightScreen = "weight-screen"
             case weightScreenPushRejected = "weight-screen-push-rejected"
             case dayRing = "day-ring"
+            case mealEstimation = "meal-estimation"
             case accountDeletionRateLimited = "account-deletion-rate-limited"
             case accountDeletionUnauthorized = "account-deletion-unauthorized"
         }

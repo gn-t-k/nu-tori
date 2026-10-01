@@ -1,3 +1,4 @@
+import { sendsUsageData } from "../account-settings/domain/sends-usage-data";
 import { computeUsageEvents } from "./compute-usage-events";
 import { createRecordLedger } from "./create-record-ledger";
 import type { RecordKindStores } from "./record-kind-stores";
@@ -18,7 +19,7 @@ export const pullSyncChanges = (
   startedOn: string | undefined;
   usageEvents: UsageEvent[];
 } => {
-  const pulled = createRecordLedger(ledgerStore, stores).pull(request);
+  const pulled = createRecordLedger(ledgerStore, stores, request.receivedAt).pull(request);
   return {
     changes: pulled.changes,
     hasMore: pulled.hasMore,
@@ -28,8 +29,8 @@ export const pullSyncChanges = (
       clientState: request.clientState,
       receivedAt: request.receivedAt,
       previousRequestReceivedAt: pulled.previousRequestReceivedAt,
-      sendsUsageData: stores.accountSettings.find()?.sendsUsageData ?? true,
-      rejectedWrites: [],
+      sendsUsageData: sendsUsageData(stores.accountSettings),
+      writeEvents: [],
     }),
   };
 };

@@ -2,14 +2,16 @@ import { beforeEach, describe, expect, test } from "vitest";
 import type { SyncClientState } from "../sync-client-state";
 import { createSyncLedger } from "./sync-ledger";
 import { createMemoryLedgerStore } from "./testing/create-memory-ledger-store";
+import { createMemoryTestChildStore } from "./testing/create-memory-test-child-store";
 import { createMemoryTestRecordStore } from "./testing/create-memory-test-record-store";
+import { createTestChildKind, type TestChildStore } from "./testing/test-child-kind";
 import { createTestRecordKind, type TestRecordWrite } from "./testing/test-record-kind";
 
 type OtherWrite = { id: string; type: "other_write" };
 type TestLedger = ReturnType<
   typeof createSyncLedger<
-    "test_record" | "other",
-    "test_record",
+    "test_record" | "test_child" | "other",
+    "test_record" | "test_child",
     TestRecordWrite | OtherWrite,
     number
   >
@@ -17,7 +19,10 @@ type TestLedger = ReturnType<
 
 describe("同期の帳簿", () => {
   let operations: string[];
-  let ledgerStore: ReturnType<typeof createMemoryLedgerStore<"test_record" | "other">>;
+  let ledgerStore: ReturnType<
+    typeof createMemoryLedgerStore<"test_record" | "test_child" | "other">
+  >;
+  let childStore: TestChildStore;
   let ledger: TestLedger;
   let clientState: SyncClientState;
   let receivedAt: Date;
@@ -28,12 +33,16 @@ describe("同期の帳簿", () => {
   beforeEach(() => {
     operations = [];
     ledgerStore = createMemoryLedgerStore(operations);
+    childStore = createMemoryTestChildStore(operations);
     ledger = createSyncLedger<
-      "test_record" | "other",
-      "test_record",
+      "test_record" | "test_child" | "other",
+      "test_record" | "test_child",
       TestRecordWrite | OtherWrite,
       number
-    >(ledgerStore, [createTestRecordKind(createMemoryTestRecordStore(operations))]);
+    >(ledgerStore, [
+      createTestRecordKind(createMemoryTestRecordStore(operations), childStore),
+      createTestChildKind(childStore),
+    ]);
     clientState = {
       deviceId: "device-1",
       timeZone: "Asia/Tokyo",
@@ -69,6 +78,28 @@ describe("同期の帳簿", () => {
 
       test("削除の印は、控えのあとに書くこと", () => {
         expect(operations).toEqual(["request_log", "receipt", "record", "deletion", "change"]);
+      });
+    });
+
+    describe("子のある記録を消す書き込みを送ったとき", () => {
+      beforeEach(() => {
+        childStore.insert({ id: "child-1", parentId: "record-1", value: 1 });
+        operations.length = 0;
+        ledger.push(
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+        );
+      });
+
+      test("子の変更は、書き込みの記録の変更のあとに、控えと結ばずに書くこと", () => {
+        expect(operations).toEqual([
+          "request_log",
+          "receipt",
+          "record",
+          "deletion",
+          "child",
+          "change",
+          "added_change",
+        ]);
       });
     });
 
@@ -147,6 +178,73 @@ describe("同期の帳簿", () => {
             recordType: "test_record",
             recordId: "record-2",
             current: { status: "deleted" },
+          },
+        ]);
+      });
+    });
+
+    describe("書き込みがほかの種類の記録の変更を足したとき", () => {
+      let pulled: ReturnType<TestLedger["pull"]>;
+
+      beforeEach(() => {
+        childStore.insert({ id: "child-1", parentId: "record-1", value: 1 });
+        childStore.insert({ id: "child-2", parentId: "record-1", value: 2 });
+        ledger.push(
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+        );
+        pulled = ledger.pull(pullRequest(0));
+      });
+
+      test("書き込みの記録のあとに、足した変更を通し番号の順で返すこと", () => {
+        expect(pulled.changes).toEqual([
+          {
+            sequence: 1,
+            recordType: "test_record",
+            recordId: "record-1",
+            current: { status: "deleted" },
+          },
+          {
+            sequence: 2,
+            recordType: "test_child",
+            recordId: "child-1",
+            current: { status: "deleted" },
+          },
+          {
+            sequence: 3,
+            recordType: "test_child",
+            recordId: "child-2",
+            current: { status: "deleted" },
+          },
+        ]);
+      });
+    });
+
+    describe("書き込みの外から変更を足したとき", () => {
+      let pulled: ReturnType<TestLedger["pull"]>;
+
+      beforeEach(() => {
+        ledger.changeOutsideWrites((addChange) => {
+          childStore.insert({ id: "child-2", parentId: "record-1", value: 2 });
+          addChange({ recordType: "test_child", recordId: "child-2" });
+          childStore.insert({ id: "child-1", parentId: "record-1", value: 1 });
+          addChange({ recordType: "test_child", recordId: "child-1" });
+        });
+        pulled = ledger.pull(pullRequest(0));
+      });
+
+      test("足した順の通し番号で返すこと", () => {
+        expect(pulled.changes).toEqual([
+          {
+            sequence: 1,
+            recordType: "test_child",
+            recordId: "child-2",
+            current: { status: "value", value: 2 },
+          },
+          {
+            sequence: 2,
+            recordType: "test_child",
+            recordId: "child-1",
+            current: { status: "value", value: 1 },
           },
         ]);
       });

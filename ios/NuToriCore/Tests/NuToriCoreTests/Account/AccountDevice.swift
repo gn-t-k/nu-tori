@@ -45,7 +45,7 @@ struct AccountDevice {
                 healthState: seededHealthState
             ),
             appleCredentials: appleCredentials,
-            backgroundTransfers: .ok(),
+            backgroundTransfers: .ok(log: log),
             healthAnchors: .ok(),
             analytics: analytics(log),
             errorReporting: .ok()

@@ -135,6 +135,25 @@ extension Components.Schemas.SyncWrite {
                     weightRecordId: weightRecordId.uuidString
                 )
             )
+        case .createMeal(let writeId, let meal):
+            self = .createMeal(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .createMeal,
+                    meal: .init(
+                        id: meal.id.uuidString,
+                        eatenAt: meal.eatenAt.millisecondsSince1970,
+                        eatenAtUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
+                        sentAt: meal.sentAt.millisecondsSince1970,
+                        sentTimeZone: meal.sentTimeZone.identifier,
+                        entryMethod: meal.entryMethod.rawValue,
+                        photos: meal.photoIds.map { .init(id: $0.uuidString) }
+                    )
+                )
+            )
+        case .deleteMeal(let writeId, let mealId):
+            self = .deleteMeal(
+                .init(id: writeId.uuidString, _type: .deleteMeal, mealId: mealId.uuidString))
         }
     }
 }
@@ -227,6 +246,9 @@ extension SyncWriteResult.RejectionReason {
         case "version_too_low": self = .versionTooLow
         case "record_not_found": self = .recordNotFound
         case "record_before_started_on": self = .recordBeforeStartedOn
+        case "invalid_entry_method": self = .invalidEntryMethod
+        case "duplicate_photo_ids": self = .duplicatePhotoIds
+        case "photo_already_used": self = .photoAlreadyUsed
         default: self = .unknown(reason: reason)
         }
     }
@@ -274,6 +296,56 @@ extension SyncChange {
         case "weight_record_deletion":
             if let recordId = UUID(uuidString: recordId) {
                 self = .weightRecordDeletion(recordId: recordId)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "dish":
+            if let dish = try? record.decoded(as: DishPayload.self).syncedDish {
+                self = .dish(dish)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "dish_deletion":
+            if let dishId = UUID(uuidString: recordId) {
+                self = .dishDeletion(dishId: dishId)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "ingredient":
+            if let ingredient = try? record.decoded(as: IngredientPayload.self).syncedIngredient {
+                self = .ingredient(ingredient)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "ingredient_deletion":
+            if let ingredientId = UUID(uuidString: recordId) {
+                self = .ingredientDeletion(ingredientId: ingredientId)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "meal":
+            if let meal = try? record.decoded(as: MealPayload.self).syncedMeal {
+                self = .meal(meal)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "meal_deletion":
+            if let mealId = UUID(uuidString: recordId) {
+                self = .mealDeletion(mealId: mealId)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "meal_estimation_status":
+            if let status = try? record.decoded(as: MealEstimationStatusPayload.self)
+                .syncedStatus
+            {
+                self = .mealEstimationStatus(status)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "meal_estimation_status_deletion":
+            if let mealId = UUID(uuidString: recordId) {
+                self = .mealEstimationStatusDeletion(mealId: mealId)
             } else {
                 self = .unknown(kind: kind)
             }
@@ -348,6 +420,123 @@ extension SyncChange {
             UUID(uuidString: id).map {
                 SyncedAccountSettings(id: $0, sendsUsageData: sendsUsageData)
             }
+        }
+    }
+}
+
+extension SyncChange {
+    /// 知らない入口と、読めない ID・タイムゾーンは nil にする
+    fileprivate struct MealPayload: Decodable {
+        let id: String
+        let eatenAt: Int
+        let eatenAtUtcOffsetSeconds: Int
+        let sentAt: Int
+        let sentTimeZone: String
+        let entryMethod: String
+        let photos: [Photo]
+
+        struct Photo: Decodable {
+            let id: String
+        }
+
+        var syncedMeal: SyncedMeal? {
+            guard let id = UUID(uuidString: id),
+                let sentTimeZone = TimeZone(identifier: sentTimeZone),
+                let entryMethod = SyncedMeal.EntryMethod(rawValue: entryMethod)
+            else {
+                return nil
+            }
+            let photoIds = photos.compactMap { UUID(uuidString: $0.id) }
+            guard photoIds.count == photos.count else { return nil }
+            return SyncedMeal(
+                id: id,
+                eatenAt: Date(timeIntervalSince1970: Double(eatenAt) / 1000),
+                eatenUtcOffsetSeconds: eatenAtUtcOffsetSeconds,
+                sentAt: Date(timeIntervalSince1970: Double(sentAt) / 1000),
+                sentTimeZone: sentTimeZone,
+                entryMethod: entryMethod,
+                photoIds: photoIds
+            )
+        }
+    }
+
+    /// 知らない状態は nil にする。サーバーが状態を足しても、古い版のアプリは前の状態のまま同期を続ける
+    fileprivate struct MealEstimationStatusPayload: Decodable {
+        let mealId: String
+        let status: String
+
+        var syncedStatus: SyncedMealEstimationStatus? {
+            guard let mealId = UUID(uuidString: mealId),
+                let status = SyncedMealEstimationStatus.Status(rawValue: status)
+            else {
+                return nil
+            }
+            return SyncedMealEstimationStatus(mealId: mealId, status: status)
+        }
+    }
+}
+
+extension SyncChange {
+    fileprivate struct DishPayload: Decodable {
+        let id: String
+        let mealId: String
+        let name: String
+        let quantity: Double
+        let unit: String
+        let positionInMeal: Int
+        let version: Int
+
+        var syncedDish: SyncedDish? {
+            guard let id = UUID(uuidString: id), let mealId = UUID(uuidString: mealId) else {
+                return nil
+            }
+            return SyncedDish(
+                id: id, mealId: mealId, name: name, quantity: quantity, unit: unit,
+                positionInMeal: positionInMeal, version: version)
+        }
+    }
+
+    /// 知らない出どころと、読めない ID は nil にする。知らない栄養の項目の名前は、そのまま持つ
+    fileprivate struct IngredientPayload: Decodable {
+        let id: String
+        let dishId: String
+        let name: String
+        let quantity: Double
+        let unit: String
+        let edibleGramsPerUnit: Double
+        let positionInDish: Int
+        let nutrientSource: NutrientSourcePayload
+        let nutrients: [String: Double]
+
+        struct NutrientSourcePayload: Decodable {
+            let type: String
+            let labelBasisGrams: Double?
+            let foodNumber: String?
+
+            var syncedSource: SyncedIngredient.NutrientSource? {
+                switch type {
+                case "nutrition_label":
+                    labelBasisGrams.map { .nutritionLabel(basisGrams: $0) }
+                case "food_composition":
+                    foodNumber.map { .foodComposition(foodNumber: $0) }
+                case "estimated":
+                    .estimated
+                default:
+                    nil
+                }
+            }
+        }
+
+        var syncedIngredient: SyncedIngredient? {
+            guard let id = UUID(uuidString: id), let dishId = UUID(uuidString: dishId),
+                let source = nutrientSource.syncedSource
+            else {
+                return nil
+            }
+            return SyncedIngredient(
+                id: id, dishId: dishId, name: name, quantity: quantity, unit: unit,
+                edibleGramsPerUnit: edibleGramsPerUnit, positionInDish: positionInDish,
+                nutrientSource: source, nutrients: nutrients)
         }
     }
 }

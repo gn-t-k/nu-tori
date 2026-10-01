@@ -30,10 +30,11 @@ export type LedgerStore<TRecordType extends string> = {
     recordId: string;
     outcome: SyncWriteOutcome;
   }) => void;
+  // 書き込みが直接変えた記録の変更だけを、その書き込みの控えと結ぶ。ほかは writeId を undefined にする
   insertRecordChange: (change: {
     recordType: TRecordType;
     recordId: string;
-    writeId: string;
+    writeId: string | undefined;
   }) => void;
   findLatestChangePerRecord: (
     afterSequence: number,

@@ -26,6 +26,47 @@ import NuToriCore
         _ = try await syncAfterInFlight()
     }
 
+    /// アプリの中の食事の写真と写真の送り残し。画面は `photoFile(mealId:photoId:)` で写真を読む
+    let mealPhotos: MealPhotos
+
+    /// 1回の撮る・選ぶでできた食事を記録する。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている。
+    /// 写真はアプリの中に置いて裏で送り始め、食事の書き込みは送り待ちから裏で送る。送れなかった分は送り待ちに残る。
+    /// 同期の往復を待たずに返す（呼び出し側が、タイムラインに戻ってすぐ栄養の許可を求めるため）。
+    /// 送れたら、推定中の食事があるあいだ、裏で取りに行く。サインインしていなければ記録せず空。
+    /// 記録できなかった食事があれば投げる（それより前の食事は記録してある）
+    @discardableResult
+    func recordMeals(_ drafts: [MealDraft], originals: [UUID: Data]) async throws -> [Meal] {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return [] }
+        let engine = engineForThisDevice(accountId: accountId)
+        var meals: [Meal] = []
+        for draft in drafts {
+            meals.append(try await engine.recordMeal(draft, originals: originals))
+        }
+        Task { await self.followEstimationAfterSending() }
+        return meals
+    }
+
+    /// 食事を記録したあとと、食事の写真を送り終えたあと。送り待ちを送り、送り終えたら、推定中の食事があるあいだ裏で取りに行く
+    func followEstimationAfterSending() async {
+        guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
+            return
+        }
+        followEstimationInBackground(sentAt: .now)
+    }
+
+    /// App スイッチャーで閉じると裏の送信が取り消されるので、開いたときに写真の送り残しを送り直す
+    func resendPendingPhotos() async {
+        guard await hasSession() else { return }
+        await mealPhotos.resendPendingUploads()
+    }
+
+    /// 電波が無くても、その場でキャッシュとアプリの中の写真から消える。消す書き込みは送り待ちに並ぶ
+    func deleteMeal(id mealId: UUID) async throws {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        try await engineForThisDevice(accountId: accountId).deleteMeal(id: mealId)
+        syncInBackground()
+    }
+
     /// 送れなかった分は送り待ちに残る
     func turnOnUsageData() async throws {
         guard let accountId = await signedInAccountId() else { return }
@@ -63,7 +104,8 @@ import NuToriCore
         deviceId: @escaping @MainActor () -> UUID,
         hasSession: @escaping @MainActor () async -> Bool,
         signedInAccountId: @escaping @MainActor () async -> String?,
-        errorReporting: any ErrorReportingSession
+        errorReporting: any ErrorReportingSession,
+        mealPhotos: MealPhotos
     ) {
         self.store = store
         self.client = client
@@ -73,6 +115,7 @@ import NuToriCore
         self.hasSession = hasSession
         self.signedInAccountId = signedInAccountId
         self.errorReporting = errorReporting
+        self.mealPhotos = mealPhotos
     }
 
     func registerAndWatch() {
@@ -126,6 +169,16 @@ import NuToriCore
 
     private func syncInBackground() {
         Task { _ = try? await self.syncAfterInFlight() }
+    }
+
+    private func followEstimationInBackground(sentAt: Date) {
+        let followUp = EstimationFollowUp(
+            sentAt: sentAt,
+            cache: store,
+            now: { .now },
+            wait: { try await Task.sleep(for: $0) }
+        )
+        Task { try? await followUp.run { try await self.sync() } }
     }
 
     /// 開いたときの同期が先に送り待ちを読んでいたら、それが終わってから送り直す
@@ -229,7 +282,9 @@ import NuToriCore
             now: { .now },
             readableKinds: AppRecordKinds.registry.names,
             errorReporting: errorReporting,
-            weightHealthExport: health.engine
+            weightHealthExport: health.engine,
+            nutritionHealthExport: health.engine,
+            mealPhotos: mealPhotos
         )
     }
 }

@@ -8,13 +8,14 @@ struct CalendarDayTests {
     struct ContainingInstant {
         // swiftlint:disable:next no_parameterized_test
         @Test(
-            "記録したときのタイムゾーンでの日付の日に入れること",
+            "時刻に時差を足した UTC の日付の日に入れること",
             arguments: try SharedTestCases.decode(
                 [TestCase].self, fromFileNamed: "calendar-day.test-cases.json")
         )
-        func placesInstantInDayOfRecordedTimeZone(testCase: TestCase) {
+        func placesInstantInDayOfUTCOffset(testCase: TestCase) {
             #expect(
-                CalendarDay(containing: testCase.instant, in: testCase.timeZone)
+                CalendarDay(
+                    containing: testCase.instant, utcOffsetSeconds: testCase.utcOffsetSeconds)
                     == testCase.calendarDay
             )
         }
@@ -22,7 +23,61 @@ struct CalendarDayTests {
         struct TestCase: Decodable, Sendable, CustomTestStringConvertible {
             let name: String
             let instant: Date
+            let utcOffsetSeconds: Int
+            let calendarDay: CalendarDay
+
+            var testDescription: String { name }
+
+            init(from decoder: any Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                name = try container.decode(String.self, forKey: .name)
+                instant = try container.decode(Date.self, forKey: .instant)
+                utcOffsetSeconds = try container.decode(Int.self, forKey: .utcOffsetSeconds)
+                calendarDay = try container.decodeCalendarDay(forKey: .calendarDay)
+            }
+
+            private enum CodingKeys: String, CodingKey {
+                case name
+                case instant
+                case utcOffsetSeconds
+                case calendarDay
+            }
+        }
+    }
+
+    @Suite("タイムゾーンから出す日の区切り")
+    struct ContainingInstantInTimeZone {
+        // swiftlint:disable:next no_parameterized_test
+        @Test(
+            "その時刻の時差から出した日に入れること",
+            arguments: try SharedTestCases.decode(
+                [TestCase].self, fromFileNamed: "calendar-day-in-time-zone.test-cases.json")
+        )
+        func placesInstantInDayOfUTCOffsetInTimeZone(testCase: TestCase) {
+            #expect(
+                CalendarDay(containing: testCase.instant, in: testCase.timeZone)
+                    == testCase.calendarDay
+            )
+        }
+
+        // swiftlint:disable:next no_parameterized_test
+        @Test(
+            "その時刻の UTC との時差を秒で返すこと",
+            arguments: try SharedTestCases.decode(
+                [TestCase].self, fromFileNamed: "calendar-day-in-time-zone.test-cases.json")
+        )
+        func returnsUTCOffsetAtInstant(testCase: TestCase) {
+            #expect(
+                testCase.timeZone.secondsFromGMT(for: testCase.instant)
+                    == testCase.utcOffsetSeconds
+            )
+        }
+
+        struct TestCase: Decodable, Sendable, CustomTestStringConvertible {
+            let name: String
+            let instant: Date
             let timeZone: TimeZone
+            let utcOffsetSeconds: Int
             let calendarDay: CalendarDay
 
             var testDescription: String { name }
@@ -32,6 +87,7 @@ struct CalendarDayTests {
                 name = try container.decode(String.self, forKey: .name)
                 instant = try container.decode(Date.self, forKey: .instant)
                 timeZone = try container.decodeTimeZone(forKey: .timeZone)
+                utcOffsetSeconds = try container.decode(Int.self, forKey: .utcOffsetSeconds)
                 calendarDay = try container.decodeCalendarDay(forKey: .calendarDay)
             }
 
@@ -39,6 +95,7 @@ struct CalendarDayTests {
                 case name
                 case instant
                 case timeZone
+                case utcOffsetSeconds
                 case calendarDay
             }
         }

@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
-import { computeCalendarDay } from "../../domain/compute-calendar-day";
+import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import type { WriteKind } from "../../domain/sync-ledger/write-kind";
 import type { SyncWriteOutcome } from "../../domain/sync-write-outcome";
-import { isWithinAcceptedRange } from "./is-within-accepted-range";
+import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { WeightRecord } from "./weight-record";
 import type { WeightRecordStore } from "./weight-record-store";
 import { type WeightRecordWrite, weightRecordWriteTypes } from "./weight-record-write";
@@ -95,7 +95,7 @@ const decideUpdate = (
   const startedOn = findStartedOn();
   if (
     startedOn !== undefined &&
-    computeCalendarDay(current.measuredAt, current.timeZone) < startedOn
+    computeCalendarDayInTimeZone(current.measuredAt, current.timeZone) < startedOn
   ) {
     return settled("update", weightRecord.id, {
       result: "rejected",
@@ -140,6 +140,8 @@ const settled = (
   recordId,
   outcome,
   changedRecordId: outcome.result === "ignored_tombstone" ? recordId : undefined,
+  addedChanges: [],
+  usageEvents: [],
   commit: () => undefined,
 });
 
@@ -152,5 +154,7 @@ const applied = (
   recordId,
   outcome: { result: "applied" },
   changedRecordId: recordId,
+  addedChanges: [],
+  usageEvents: [],
   commit,
 });

@@ -1,11 +1,21 @@
+import { R } from "@praha/byethrow";
 import { drizzle } from "drizzle-orm/durable-sqlite";
-import { instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
+import { captureException, instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
+import { sendsUsageData } from "../account-settings/domain/sends-usage-data";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
 import { applySyncWrites } from "../domain/apply-sync-writes";
+import { computeNextAlarmAt } from "../domain/compute-next-alarm-at";
+import { computeNextAlarmAtExceptLeftoverPhotos } from "../domain/compute-next-alarm-at-except-leftover-photos";
 import { pullSyncChanges } from "../domain/pull-sync-changes";
+import { receiveMealPhoto, type MealPhotoReceiptFailedError } from "../domain/receive-meal-photo";
 import type { SyncClientState } from "../domain/sync-client-state";
 import type { SyncWrite } from "../domain/sync-write";
+import { advanceEstimations } from "../estimation/domain/advance-estimations";
+import { createEstimationProvider } from "../estimation/durable-object/create-estimation-provider";
+import { deleteLeftoverMealPhotoFiles } from "../meal/domain/delete-leftover-meal-photo-files";
+import { readKeptMealPhoto } from "../meal/domain/read-kept-meal-photo";
+import { createMealPhotoArchive } from "../meal/durable-object/create-meal-photo-archive";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
@@ -44,6 +54,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
           receivedAt: new Date(),
         },
       );
+      await this.armAlarm();
       await sendUsageEvents(this.env, accountId, usageEvents);
       return results;
     }
@@ -65,10 +76,112 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       return pulled;
     }
 
+    // 失敗したら PostHog に送り、失敗を受け口に返す。受け口は 500 にし、要求ごとのログに失敗した段を出す
+    async receiveMealPhoto(
+      accountId: string,
+      request: { photoId: string; photo: ArrayBuffer },
+    ): R.ResultAsync<void, MealPhotoReceiptFailedError> {
+      setUser({ id: accountId });
+      const stores = createRecordKindStores(this.ctx.storage);
+      return R.pipe(
+        receiveMealPhoto(
+          createLedgerStore(this.ctx.storage),
+          stores,
+          createMealPhotoArchive(this.env.PHOTOS, accountId),
+          { ...request, receivedAt: new Date() },
+        ),
+        R.inspect(() => this.armAlarm()),
+        R.inspectError(({ stage }) =>
+          sendUsageEvents(
+            this.env,
+            accountId,
+            sendsUsageData(stores.accountSettings)
+              ? [{ name: "meal_photo_receipt_failed", stage }]
+              : [],
+          ),
+        ),
+      );
+    }
+
+    async readMealPhoto(accountId: string, photoId: string): Promise<ArrayBuffer | undefined> {
+      setUser({ id: accountId });
+      return readKeptMealPhoto(
+        createRecordKindStores(this.ctx.storage).mealPhoto,
+        createMealPhotoArchive(this.env.PHOTOS, accountId),
+        photoId,
+      );
+    }
+
     async deleteRecords(accountId: string): Promise<void> {
       setUser({ id: accountId });
       await this.ctx.storage.deleteAlarm();
       await this.ctx.storage.deleteAll();
+    }
+
+    // アラームには受け口が無いので、アカウント ID は idFromName で付けた名前から得る。
+    // 推定を進め、写真の控えの消し残しを消し、張り直す。受け口の要求ごとのログと同じ形で、呼び出しごとにログを出す
+    override async alarm(): Promise<void> {
+      const accountId = this.ctx.id.name;
+      if (accountId === undefined) {
+        throw new Error("アラームの中でアカウント ID が読めない");
+      }
+      setUser({ id: accountId });
+      const startedAt = Date.now();
+      const stores = createRecordKindStores(this.ctx.storage);
+      const archive = createMealPhotoArchive(this.env.PHOTOS, accountId);
+      const advanced = await advanceEstimations(
+        createLedgerStore(this.ctx.storage),
+        stores,
+        {
+          archive,
+          provider: createEstimationProvider(this.env, accountId),
+          armAlarm: () => this.armAlarm(),
+        },
+        new Date(),
+      );
+      const deletionError: unknown = await deleteLeftoverMealPhotoFiles(
+        stores.mealPhoto,
+        archive,
+        new Date(),
+      ).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      // 消し直しに失敗したら、今に張り直さず Cloudflare のアラームのやり直しに任せる。使い切ったら、次に予定を入れたときに消し直す
+      await this.setAlarm(
+        deletionError === undefined
+          ? computeNextAlarmAt(stores, new Date())
+          : computeNextAlarmAtExceptLeftoverPhotos(stores),
+      );
+      const alarmError = advanced.stoppedError ?? deletionError;
+      for (const providerError of advanced.providerErrors) {
+        captureException(providerError);
+      }
+      await sendUsageEvents(this.env, accountId, advanced.usageEvents);
+      console.log({
+        accountId,
+        route: "alarm",
+        error: alarmError instanceof Error ? alarmError.name : undefined,
+        failedStage:
+          alarmError instanceof Error && "stage" in alarmError ? alarmError.stage : undefined,
+        estimationAttempts: advanced.attempts,
+        durationMs: Date.now() - startedAt,
+      });
+      // Sentry に届け、Cloudflare のアラームのやり直しに任せる。止まった試みは結果の無いまま数える
+      if (alarmError !== undefined) {
+        throw alarmError;
+      }
+    }
+
+    // 送る要求と写真の要求の入口で、表から出したいちばん早い時刻に張り直す
+    private async armAlarm(): Promise<void> {
+      await this.setAlarm(computeNextAlarmAt(createRecordKindStores(this.ctx.storage), new Date()));
+    }
+
+    private async setAlarm(alarmAt: Date | undefined): Promise<void> {
+      if (alarmAt !== undefined) {
+        await this.ctx.storage.setAlarm(alarmAt);
+      }
     }
   },
 );

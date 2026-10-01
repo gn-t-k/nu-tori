@@ -54,6 +54,32 @@ describe("帳簿の置き場", () => {
     });
   });
 
+  describe("書き込みの控えと結ばない変更を書くとき", () => {
+    let rows: { recordChanges: unknown[]; links: unknown[] };
+    beforeEach(async () => {
+      rows = await runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), (_, state) => {
+        createLedgerStore(state.storage).insertRecordChange({
+          recordType: "weight_record",
+          recordId: "weight-1",
+          writeId: undefined,
+        });
+        return {
+          recordChanges: state.storage.sql
+            .exec("SELECT sequence, record_type, record_id FROM record_changes")
+            .toArray(),
+          links: state.storage.sql.exec("SELECT * FROM sync_write_record_changes").toArray(),
+        };
+      });
+    });
+
+    test("変更の並びに書き、控えとのつなぎを書かないこと", () => {
+      expect(rows).toEqual({
+        recordChanges: [{ sequence: 1, record_type: "weight_record", record_id: "weight-1" }],
+        links: [],
+      });
+    });
+  });
+
   describe("記録ごとの最後の変更を読むとき", () => {
     let seed: Seed;
     beforeEach(() => {

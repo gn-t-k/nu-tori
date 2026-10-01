@@ -1,5 +1,6 @@
 import type { CurrentRecord } from "../current-record";
 import type { RecordKind } from "../record-kind";
+import type { TestChildStore } from "./test-child-kind";
 
 export type TestRecordStore = {
   find: (id: string) => number | undefined;
@@ -15,10 +16,11 @@ export type TestRecordWrite =
   | { id: string; type: "update_test_record"; recordId: string; value: number }
   | { id: string; type: "delete_test_record"; recordId: string };
 
-// 帳簿のテスト用の種類。100 を超える値は受け付けない
+// 帳簿のテスト用の種類。100 を超える値は受け付けない。消すと子も消す
 export const createTestRecordKind = (
   store: TestRecordStore,
-): RecordKind<"test_record", TestRecordWrite, number> => ({
+  childStore: TestChildStore,
+): RecordKind<"test_record", TestRecordWrite, number, "test_child"> => ({
   name: "test_record",
   writes: {
     isWrite: (write): write is TestRecordWrite =>
@@ -27,14 +29,23 @@ export const createTestRecordKind = (
       write.type === "delete_test_record",
     decide: (write) => {
       if (write.type === "delete_test_record") {
+        const childIds = childStore.findIdsOfParent(write.recordId);
         return {
           writeKind: "source_deleted",
           recordId: write.recordId,
           outcome: { result: "applied" },
           changedRecordId: write.recordId,
+          addedChanges: childIds.map((childId) => ({
+            recordType: "test_child",
+            recordId: childId,
+          })),
+          usageEvents: [],
           commit: (receiptId) => {
             store.remove(write.recordId);
             store.insertDeletion(receiptId.value, write.recordId);
+            for (const childId of childIds) {
+              childStore.removeWithDeletion(childId);
+            }
           },
         };
       }
@@ -45,6 +56,8 @@ export const createTestRecordKind = (
           recordId: write.recordId,
           outcome: { result: "rejected", reason: "out_of_range" },
           changedRecordId: undefined,
+          addedChanges: [],
+          usageEvents: [],
           commit: () => undefined,
         };
       }
@@ -54,6 +67,8 @@ export const createTestRecordKind = (
           recordId: write.recordId,
           outcome: { result: "ignored_tombstone" },
           changedRecordId: write.recordId,
+          addedChanges: [],
+          usageEvents: [],
           commit: () => undefined,
         };
       }
@@ -62,6 +77,8 @@ export const createTestRecordKind = (
         recordId: write.recordId,
         outcome: { result: "applied" },
         changedRecordId: write.recordId,
+        addedChanges: [],
+        usageEvents: [],
         commit: () =>
           writeKind === "create"
             ? store.insert(write.recordId, write.value)

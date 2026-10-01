@@ -3,7 +3,7 @@ public import Foundation
 public actor HealthSyncEngine {
     public init(
         healthStore: any HealthStore,
-        store: any SyncBox & RecordCacheReading & HealthSyncStoring,
+        store: any SyncBox & RecordCacheReading & HealthSyncStoring & HealthDishWriteStoring,
         ownBundleId: String,
         timeZone: @escaping @Sendable () -> TimeZone,
         now: @escaping @Sendable () -> Date,
@@ -98,8 +98,69 @@ public actor HealthSyncEngine {
         }
     }
 
+    /// この端末で初めて食事を記録したあと、水分を除いた栄養の書き込みの許可を求める。
+    /// 求めたら、許可の画面が閉じたあとに、キャッシュにある料理をまとめて書く。求め済みなら何もしない
+    public func requestNutritionAuthorizationAfterMealRecorded() async throws {
+        guard try await healthStore.nutritionAuthorizationRequestStatus() == .notYetRequested
+        else {
+            return
+        }
+        try await healthStore.requestNutritionAuthorization()
+        try await exportNutrition()
+    }
+
+    /// 書き込みを許可された種類があるとき、推定できた食事の料理でまだ書いていない（書いた版より新しい）ものを書き、
+    /// 食事や料理が無くなった料理を消す。書いた料理は、許可された種類が増えても書き直さない。
+    /// 食事がまだ無い料理と、推定できていない食事の料理は、そろうまで待つ。
+    /// ヘルスケアに書く・消すことの失敗は、残りの料理を試してから、1回だけ Sentry に送り、最初の失敗を投げる
+    public func exportNutrition() async throws {
+        let authorized = try await healthStore.writeAuthorizedNutrients()
+        guard !authorized.isEmpty else { return }
+        let changes = try await HealthDishChanges(store: store)
+        var firstFailure: (any Error)?
+        for dishId in changes.writtenDishIdsToDelete {
+            do {
+                try await healthStore.deleteNutrition(syncId: dishId)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                firstFailure = firstFailure ?? error
+                continue
+            }
+            try await writingCache { try await store.unmarkDishWrittenToHealth(dishId: dishId) }
+        }
+        for toWrite in changes.dishesToWrite {
+            let contents = toWrite.contents
+            // 書く値が1つも無い料理は書かない
+            guard
+                let write = HealthNutritionWrite(
+                    dish: contents, of: toWrite.meal, authorized: authorized)
+            else {
+                continue
+            }
+            do {
+                try await healthStore.writeNutrition(write)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                firstFailure = firstFailure ?? error
+                continue
+            }
+            try await writingCache {
+                try await store.markDishWrittenToHealth(
+                    dishId: contents.dish.id, version: contents.dish.version)
+            }
+        }
+        if let firstFailure {
+            if let failure = HandledFailure.reported(firstFailure, as: .healthNutritionWrite) {
+                await errorReporting.report(failure)
+            }
+            throw firstFailure
+        }
+    }
+
     private let healthStore: any HealthStore
-    private let store: any SyncBox & RecordCacheReading & HealthSyncStoring
+    private let store: any SyncBox & RecordCacheReading & HealthSyncStoring & HealthDishWriteStoring
     private let ownBundleId: String
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
@@ -154,6 +215,8 @@ extension WeightRecord {
 }
 
 extension HealthSyncEngine: WeightHealthExport {}
+
+extension HealthSyncEngine: NutritionHealthExport {}
 
 extension HealthWeightWrite {
     fileprivate init(_ record: WeightRecord) {

@@ -32,6 +32,18 @@ internal protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /v1/sync/changes`.
     /// - Remark: Generated from `#/paths//v1/sync/changes/get(pullSyncChanges)`.
     func pullSyncChanges(_ input: Operations.PullSyncChanges.Input) async throws -> Operations.PullSyncChanges.Output
+    /// 食事の写真の縮小版を取りに行く
+    ///
+    /// - Remark: HTTP `GET /v1/meal-photos/{photoId}`.
+    /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)`.
+    func getMealPhoto(_ input: Operations.GetMealPhoto.Input) async throws -> Operations.GetMealPhoto.Output
+    /// 食事の写真の縮小版を送る
+    ///
+    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える
+    ///
+    /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
+    /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
+    func putMealPhoto(_ input: Operations.PutMealPhoto.Input) async throws -> Operations.PutMealPhoto.Output
 }
 
 /// Convenience overloads for operation inputs.
@@ -80,6 +92,34 @@ extension APIProtocol {
         try await pullSyncChanges(Operations.PullSyncChanges.Input(
             query: query,
             headers: headers
+        ))
+    }
+    /// 食事の写真の縮小版を取りに行く
+    ///
+    /// - Remark: HTTP `GET /v1/meal-photos/{photoId}`.
+    /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/get(getMealPhoto)`.
+    internal func getMealPhoto(
+        path: Operations.GetMealPhoto.Input.Path,
+        headers: Operations.GetMealPhoto.Input.Headers = .init()
+    ) async throws -> Operations.GetMealPhoto.Output {
+        try await getMealPhoto(Operations.GetMealPhoto.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// 食事の写真の縮小版を送る
+    ///
+    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える
+    ///
+    /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
+    /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
+    internal func putMealPhoto(
+        path: Operations.PutMealPhoto.Input.Path,
+        body: Operations.PutMealPhoto.Input.Body
+    ) async throws -> Operations.PutMealPhoto.Output {
+        try await putMealPhoto(Operations.PutMealPhoto.Input(
+            path: path,
+            body: body
         ))
     }
 }

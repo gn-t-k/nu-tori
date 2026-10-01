@@ -3,11 +3,13 @@ public import NuToriAPI
 
 /// 体重記録の同期の形。記録の種類の入口のうち、キャッシュの型に依らない部分。
 /// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込みを作る
-public struct WeightRecordSyncing: SyncedRecordKind {
+public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った体重記録が読めなくなる
     public static let kindName = RecordKindName.weightRecord
 
     public var name: RecordKindName { Self.kindName }
+
+    public var writes: (any RecordKindWrites)? { self }
 
     /// 取りに行った変更のうち、当てる今の値と、消す記録の ID
     public struct Current: Sendable, Equatable {
@@ -20,7 +22,10 @@ public struct WeightRecordSyncing: SyncedRecordKind {
     public func owns(_ change: SyncChange) -> Bool {
         switch change {
         case .weightRecord, .weightRecordDeletion: true
-        case .accountSettings, .unknown: false
+        case .accountSettings, .dish, .dishDeletion, .ingredient,
+            .ingredientDeletion, .meal, .mealDeletion, .mealEstimationStatus,
+            .mealEstimationStatusDeletion, .unknown:
+            false
         }
     }
 
@@ -53,8 +58,8 @@ public struct WeightRecordSyncing: SyncedRecordKind {
         case .createWeightRecord(let record), .correctWeightRecord(let record):
             return KindRejection(
                 rejectedWrite: RejectedWrite(
-                    writeId: write.writeId, record: record, reason: reason,
-                    serverHasValue: serverHasValue),
+                    writeId: write.writeId, reason: reason,
+                    record: .weightRecord(record, serverHasValue: serverHasValue)),
                 removingChanges: [.weightRecordDeletion(recordId: record.id)]
             )
         case .sourceDeletedWeightRecord:
@@ -85,7 +90,10 @@ public struct WeightRecordSyncing: SyncedRecordKind {
             switch change {
             case .weightRecord(let record): records.append(WeightRecord(record))
             case .weightRecordDeletion(let recordId): removedRecordIds.append(recordId)
-            case .accountSettings, .unknown: break
+            case .accountSettings, .dish, .dishDeletion, .ingredient,
+                .ingredientDeletion, .meal, .mealDeletion, .mealEstimationStatus,
+                .mealEstimationStatusDeletion, .unknown:
+                break
             }
         }
         return Current(records: records, removedRecordIds: removedRecordIds)

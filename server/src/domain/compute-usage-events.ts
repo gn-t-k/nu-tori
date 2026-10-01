@@ -1,4 +1,4 @@
-import { computeCalendarDay } from "./compute-calendar-day";
+import { computeCalendarDayInTimeZone } from "./compute-calendar-day-in-time-zone";
 import { isTimeZoneName } from "./is-time-zone-name";
 import type { SyncClientState } from "./sync-client-state";
 import type { UsageEvent } from "./usage-event";
@@ -9,15 +9,16 @@ export const computeUsageEvents = (request: {
   sendsUsageData: boolean;
   receivedAt: Date;
   previousRequestReceivedAt: Date | undefined;
-  rejectedWrites: Extract<UsageEvent, { name: "sync_write_rejected" }>[];
+  // 書き込みを当てたときの出来事（受け付けなかった書き込みと、種類が送るもの）
+  writeEvents: UsageEvent[];
 }): UsageEvent[] => {
   if (!request.sendsUsageData) {
     return [];
   }
   const pendingWritesReported = computePendingWritesReported(request);
   return pendingWritesReported === undefined
-    ? request.rejectedWrites
-    : [...request.rejectedWrites, pendingWritesReported];
+    ? request.writeEvents
+    : [...request.writeEvents, pendingWritesReported];
 };
 
 const computePendingWritesReported = ({
@@ -43,8 +44,8 @@ const computePendingWritesReported = ({
   }
   const isFirstRequestOfDay =
     previousRequestReceivedAt === undefined ||
-    computeCalendarDay(previousRequestReceivedAt, clientState.timeZone) !==
-      computeCalendarDay(receivedAt, clientState.timeZone);
+    computeCalendarDayInTimeZone(previousRequestReceivedAt, clientState.timeZone) !==
+      computeCalendarDayInTimeZone(receivedAt, clientState.timeZone);
   return isFirstRequestOfDay
     ? {
         name: "sync_pending_writes_reported",

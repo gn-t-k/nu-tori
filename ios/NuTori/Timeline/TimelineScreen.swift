@@ -1,4 +1,6 @@
+import Foundation
 import NuToriCore
+import PhotosUI
 import SwiftUI
 
 struct TimelineScreen: View {
@@ -8,10 +10,13 @@ struct TimelineScreen: View {
     /// 記録した時刻と、操作にかかった時間を測るための今
     let now: () -> Date
     let rejectedLines: [RejectedWeightLine]
+    let rejectedMealLines: [RejectedMealLine]
+    let meals: [MealCard]
     let capture: (ClientUsageEvent) async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
     let accountActions: AccountActions
+    let mealActions: MealActions
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
@@ -24,6 +29,7 @@ struct TimelineScreen: View {
                     today: today,
                     openableDays: loaded?.dayRange
                 ) { day in
+                    showsCameraNotice = false
                     dayFocus = .summary(day)
                 }
                 Divider()
@@ -41,17 +47,37 @@ struct TimelineScreen: View {
                     saveWeight: saveWeight
                 )
             }
+            .navigationDestination(for: MealRoute.self) { route in
+                MealDestination(card: meals.first { $0.meal.id == route.mealId }) { card in
+                    MealScreen(
+                        card: card,
+                        loadPhoto: { photoId in
+                            await mealActions.loadPhoto(card.meal.id, photoId)
+                        },
+                        now: now,
+                        capture: capture,
+                        deleteMeal: mealActions.deleteMeal,
+                        confirmsDeletion: false
+                    )
+                }
+            }
             .background(Color(.systemGroupedBackground))
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 composer()
+            }
+            // 体重や食事の画面から戻ったときも、タイムラインを見たとして送る
+            .onAppear {
+                Task { await capture(.screen(.timeline)) }
+            }
+            // 体重の画面に潜ったら、戻ったときには知らせを残さない
+            .onDisappear {
+                showsCameraNotice = false
             }
             .navigationTitle(title(loaded: loaded))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsAccount = true
-                    } label: {
+                    Button(action: hidingCameraNotice { showsAccount = true }) {
                         Image(systemName: "person.crop.circle")
                     }
                     .accessibilityLabel("アカウント")
@@ -86,13 +112,46 @@ struct TimelineScreen: View {
                 }
             )
         }
+        .fullScreenCover(isPresented: showsCamera) {
+            MealCamera(
+                onUse: { original, exif in
+                    let sentAt = now()
+                    capturedCount += 1
+                    cameraPhase = .closed
+                    Task { await mealActions.recordCapturedPhoto(original, exif, sentAt) }
+                },
+                onCancel: {
+                    cameraPhase = .closed
+                    Task { await capture(.cameraCancelled) }
+                }
+            )
+            .ignoresSafeArea()
+        }
+        // 「写真を使用」で、カメラを閉じながら触覚で知らせる
+        .sensoryFeedback(.success, trigger: capturedCount)
+        .photosPicker(
+            isPresented: $showsPhotoPicker,
+            selection: $pickedPhotos,
+            maxSelectionCount: MealDraft.maxPhotosPerSelection,
+            matching: .images,
+            // 撮影時刻と時差を読むため、付帯情報つきの元の形式で受け取る
+            preferredItemEncoding: .current
+        )
+        .onChange(of: pickedPhotos) { _, items in
+            guard !items.isEmpty else { return }
+            let pickedAt = now()
+            pickedPhotos = []
+            Task { await mealActions.recordPickedPhotos(items, pickedAt) }
+        }
         .onChange(of: weightEntryPhase) { previous, phase in
             if previous == .showing, phase == .closed {
                 Task { await capture(.screen(.timeline)) }
             }
         }
-        .onAppear {
-            Task { await capture(.screen(.timeline)) }
+        .onChange(of: cameraPhase) { previous, phase in
+            if previous == .showing, phase == .closed {
+                Task { await capture(.screen(.timeline)) }
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline")
@@ -105,12 +164,28 @@ struct TimelineScreen: View {
         case completed(startedDay: CalendarDay?)
     }
 
-    /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする
-    @ScaledMetric private var composerButtonSize: CGFloat = 44
     @State private var showsAccount = false
     @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
     @State private var dayFocus: DayFocus = .timeline
+    @State private var cameraPhase = CameraPhase.closed
+    /// カメラを許可していない人に出す知らせ。ほかを押すか、タイムラインを動かすと消える
+    @State private var showsCameraNotice = false
+    /// 「写真を使用」を押した回数。触覚を鳴らす合図
+    @State private var capturedCount = 0
+    @State private var showsPhotoPicker = false
+    @State private var pickedPhotos: [PhotosPickerItem] = []
+
+    private var showsCamera: Binding<Bool> {
+        Binding(
+            get: { cameraPhase == .showing },
+            set: { isPresented in
+                if !isPresented {
+                    cameraPhase = .closed
+                }
+            }
+        )
+    }
 
     private var showsWeightEntry: Binding<Bool> {
         Binding(
@@ -186,6 +261,11 @@ struct TimelineScreen: View {
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                 }
                 .defaultScrollAnchor(.bottom)
+                .onScrollPhaseChange { _, phase in
+                    if phase != .idle {
+                        showsCameraNotice = false
+                    }
+                }
                 .coordinateSpace(.named("timeline"))
                 .onPreferenceChange(TimelineDayOffsetsKey.self) { offsets in
                     visibleDay = dayInView(
@@ -221,6 +301,22 @@ struct TimelineScreen: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .accessibilityIdentifier("rejected-weight-line")
+                case .meal(let card):
+                    // どの状態のカードも、押すと食事の画面へ潜る
+                    NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                        MealCardView(card: card) { photoId in
+                            await mealActions.loadPhoto(card.meal.id, photoId)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("meal-card")
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                case .rejectedMealLine(let line):
+                    Text(line.text)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .accessibilityIdentifier("rejected-meal-line")
                 }
             }
         }
@@ -241,33 +337,57 @@ struct TimelineScreen: View {
     }
 
     private func composer() -> some View {
-        let unrecorded = !records.contains { $0.day == today }
-        return HStack {
-            Button {
+        TimelineComposer(
+            weightRecordedToday: records.contains { $0.day == today },
+            preparingWeightEntry: weightEntryPhase == .preparing,
+            showsCameraNotice: showsCameraNotice,
+            onCapture: hidingCameraNotice(openCamera),
+            onPickPhotos: hidingCameraNotice {
+                switch mealActions.photoSelection {
+                case .picker:
+                    showsPhotoPicker = true
+                #if DEBUG
+                    case .fixed(let record):
+                        let pickedAt = now()
+                        Task { await record(pickedAt) }
+                #endif
+                }
+            },
+            onWeight: hidingCameraNotice {
                 guard weightEntryPhase == .closed else { return }
                 weightEntryPhase = .preparing
                 Task {
                     await prepareWeightEntry()
                     weightEntryPhase = .showing
                 }
-            } label: {
-                Image(systemName: "scalemass.fill")
-                    .frame(width: composerButtonSize, height: composerButtonSize)
-                    .background(
-                        unrecorded ? Color.accentColor : Color(.tertiarySystemFill),
-                        in: Circle()
-                    )
-                    .foregroundStyle(unrecorded ? Color.white : Color.accentColor)
             }
-            .buttonStyle(.plain)
-            .disabled(weightEntryPhase == .preparing)
-            .accessibilityLabel("体重")
-            .accessibilityIdentifier(unrecorded ? "composer-weight-unrecorded" : "composer-weight")
-            Spacer(minLength: 0)
+        )
+    }
+
+    /// ほかを押したら、カメラの許可の知らせを消してから動く
+    private func hidingCameraNotice(_ action: @escaping () -> Void) -> () -> Void {
+        {
+            showsCameraNotice = false
+            action()
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(.bar)
+    }
+
+    /// 初めてのときは、カメラを開く前に iOS の許可の画面で求める。許可していなければ、開かずに知らせる
+    private func openCamera() {
+        guard cameraPhase == .closed else { return }
+        cameraPhase = .preparing
+        Task {
+            switch await mealActions.prepareCamera() {
+            case .ready:
+                cameraPhase = .showing
+            case .notPermitted:
+                cameraPhase = .closed
+                showsCameraNotice = true
+                await capture(.cameraPermissionNoticeShown)
+            case .noCamera:
+                cameraPhase = .closed
+            }
+        }
     }
 
     /// 読み込み中は、今日の週を空の丸にする。使い始めた日は、取り終えてから入る
@@ -278,7 +398,9 @@ struct TimelineScreen: View {
         let monday = today.startOfWeek
         return RingStrip(
             timeline: Timeline(
-                input: Timeline.Input(weightRecords: [], rejectedLines: []), firstDay: monday,
+                input: Timeline.Input(
+                    weightRecords: [], rejectedLines: [], meals: [], rejectedMealLines: []),
+                firstDay: monday,
                 today: today)
         ).weeks
     }
@@ -286,7 +408,9 @@ struct TimelineScreen: View {
     private func timeline() -> Timeline {
         let first = startedDay ?? records.map(\.day).min() ?? today
         return Timeline(
-            input: Timeline.Input(weightRecords: records, rejectedLines: rejectedLines),
+            input: Timeline.Input(
+                weightRecords: records, rejectedLines: rejectedLines, meals: meals,
+                rejectedMealLines: rejectedMealLines),
             firstDay: first, today: today)
     }
 
@@ -316,8 +440,39 @@ struct TimelineScreen: View {
     }
 }
 
+/// 食事の画面へ潜る行き先。画面は、そのときのカードを食事の ID で引いて描く
+nonisolated private struct MealRoute: Hashable {
+    let mealId: UUID
+}
+
+/// 開いている食事が消えたら（ほかの端末で消して同期で届いた）、タイムラインに戻る
+private struct MealDestination: View {
+    let card: MealCard?
+    let screen: (MealCard) -> MealScreen
+
+    var body: some View {
+        if let card {
+            screen(card)
+        } else {
+            Color(.systemGroupedBackground)
+                .onAppear {
+                    dismiss()
+                }
+        }
+    }
+
+    @Environment(\.dismiss) private var dismiss
+}
+
 private enum WeightEntryPhase: Equatable {
     case closed
+    case preparing
+    case showing
+}
+
+private enum CameraPhase: Equatable {
+    case closed
+    /// 許可を確かめている（初めてなら、iOS の許可の画面を出している）
     case preparing
     case showing
 }

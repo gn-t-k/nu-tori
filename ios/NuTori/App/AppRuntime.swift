@@ -44,10 +44,15 @@ import SwiftData
         let startBackgroundDelivery: @Sendable (@escaping @Sendable () async -> Void) async -> Void
         let appleCredentials: any AppleCredentialChecker
         let observation: ObservationSessions
+        let mealPhotoFolders: MealPhotos.Folders
+        /// 写真の縮小版を送るもの（本番はバックグラウンドの URLSession、UI テストはつながない差し替え）と、その結果
+        let mealPhotoUploader: any MealPhotoUploader
+        let finishedMealPhotoUploads: AsyncStream<(MealPhotoUpload, MealPhotoUploadResult)>
     }
 
     private static func live() throws -> AppRuntime {
         let healthStore = HealthKitHealthStore()
+        let photoUploader = BackgroundMealPhotoUploader()
         // Sendable のクロージャからは MainActor の値を読めないので、先に取り出す
         let environment = APIEnvironment.forThisBuild
         return assemble(
@@ -61,7 +66,16 @@ import SwiftData
                     await healthStore.startDeliveringUpdates(onWake: onWake)
                 },
                 appleCredentials: AppleIDCredentialChecker(),
-                observation: ObservationSessions.live()
+                observation: ObservationSessions.live(),
+                // 元の写真と送る縮小版はバックアップの対象に、取りに行った縮小版はシステムが空けてよい場所に置く
+                mealPhotoFolders: MealPhotos.Folders(
+                    originals: .applicationSupportDirectory.appending(
+                        path: "meal-photos/originals"),
+                    uploads: .applicationSupportDirectory.appending(path: "meal-photos/uploads"),
+                    fetched: .cachesDirectory.appending(path: "meal-photos")
+                ),
+                mealPhotoUploader: photoUploader,
+                finishedMealPhotoUploads: photoUploader.finishedUploads
             ))
     }
 
@@ -77,13 +91,20 @@ import SwiftData
             errorReporting: observation.errorReporting,
             startBackgroundDelivery: parts.startBackgroundDelivery
         )
+        let mealPhotos = MealPhotos(
+            folders: parts.mealPhotoFolders,
+            uploader: parts.mealPhotoUploader,
+            downscale: { try MealPhotoThumbnail.jpeg(from: $0) },
+            client: client,
+            errorReporting: observation.errorReporting
+        )
         let session = AccountSession(
             client: client,
             keychain: keychain,
             deviceStore: deviceStore,
             syncStore: store,
             appleCredentials: parts.appleCredentials,
-            backgroundTransfers: PlaceholderBackgroundTransferStore(),
+            backgroundTransfers: mealPhotos,
             healthAnchors: store,
             analytics: observation.analytics,
             errorReporting: observation.errorReporting,
@@ -98,8 +119,17 @@ import SwiftData
             deviceId: { deviceStore.loadOrCreateDeviceId() },
             hasSession: { (try? await keychain.sessionToken()) != nil },
             signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
-            errorReporting: observation.errorReporting
+            errorReporting: observation.errorReporting,
+            mealPhotos: mealPhotos
         )
+        let finishedUploads = parts.finishedMealPhotoUploads
+        Task {
+            for await (upload, result) in finishedUploads {
+                if await mealPhotos.finishUpload(upload, with: result) {
+                    await sync.followEstimationAfterSending()
+                }
+            }
+        }
         health.bindWakeHandler { [weak sync] in
             await sync?.importHealthAndSendPending()
         }

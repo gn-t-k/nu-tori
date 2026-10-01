@@ -17,6 +17,47 @@ struct WeightRecordTests {
         }
     }
 
+    @Suite("日")
+    struct DayOfRecord {
+        @Suite("夏時間が始まる前後に記録したとき")
+        struct AroundDaylightSavingStart {
+            let before: WeightRecord
+            let after: WeightRecord
+
+            init() throws {
+                before = try .manual(72.4, at: "2026-03-08T06:59:59Z", in: "America/New_York")
+                after = try .manual(72.4, at: "2026-03-08T07:00:00Z", in: "America/New_York")
+            }
+
+            @Test("どちらも記録したときのタイムゾーンでの同じ日になること")
+            func staysOnSameDay() {
+                #expect(before.day == CalendarDay(year: 2026, month: 3, day: 8))
+                #expect(after.day == CalendarDay(year: 2026, month: 3, day: 8))
+            }
+        }
+
+        @Suite("夏時間が終わる前後に記録したとき")
+        struct AroundDaylightSavingEnd {
+            let beforeMidnight: WeightRecord
+            let beforeEnd: WeightRecord
+            let afterEnd: WeightRecord
+
+            init() throws {
+                beforeMidnight = try .manual(
+                    72.4, at: "2026-11-01T03:59:59Z", in: "America/New_York")
+                beforeEnd = try .manual(72.4, at: "2026-11-01T05:59:59Z", in: "America/New_York")
+                afterEnd = try .manual(72.4, at: "2026-11-01T06:00:00Z", in: "America/New_York")
+            }
+
+            @Test("記録したときのタイムゾーンでの日になること")
+            func usesDayOfRecordedTimeZone() {
+                #expect(beforeMidnight.day == CalendarDay(year: 2026, month: 10, day: 31))
+                #expect(beforeEnd.day == CalendarDay(year: 2026, month: 11, day: 1))
+                #expect(afterEnd.day == CalendarDay(year: 2026, month: 11, day: 1))
+            }
+        }
+    }
+
     @Suite("出どころと時刻")
     struct SourceAndTimeLabel {
         @Suite("手で記録したとき")

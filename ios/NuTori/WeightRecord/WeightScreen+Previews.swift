@@ -60,19 +60,16 @@
                 case .rejected:
                     [
                         RejectedWeightLine(
-                            RejectedWrite(
-                                writeId: UUID(),
-                                record: WeightRecord(
-                                    id: Self.dayRecord[0].id,
-                                    kilograms: 7.2,
-                                    instant: Self.dayRecord[0].instant,
-                                    timeZone: Self.dayRecord[0].timeZone,
-                                    inputSource: .manual,
-                                    version: 2
-                                ),
-                                reason: .outOfRange,
-                                serverHasValue: true
-                            ))
+                            record: WeightRecord(
+                                id: Self.dayRecord[0].id,
+                                kilograms: 7.2,
+                                instant: Self.dayRecord[0].instant,
+                                timeZone: Self.dayRecord[0].timeZone,
+                                inputSource: .manual,
+                                version: 2
+                            ),
+                            serverHasValue: true
+                        )
                     ]
                 }
             }

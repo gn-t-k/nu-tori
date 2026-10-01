@@ -12,7 +12,9 @@ public actor SyncEngine {
         now: @escaping @Sendable () -> Date,
         readableKinds: Set<RecordKindName>,
         errorReporting: any ErrorReportingSession,
-        weightHealthExport: any WeightHealthExport
+        weightHealthExport: any WeightHealthExport,
+        nutritionHealthExport: any NutritionHealthExport,
+        mealPhotos: MealPhotos
     ) {
         self.store = store
         self.client = client
@@ -23,6 +25,8 @@ public actor SyncEngine {
         self.readableKinds = readableKinds
         self.errorReporting = errorReporting
         self.weightHealthExport = weightHealthExport
+        self.nutritionHealthExport = nutritionHealthExport
+        self.mealPhotos = mealPhotos
     }
 
     @discardableResult
@@ -57,6 +61,31 @@ public actor SyncEngine {
             }
             return record
         }
+    }
+
+    /// 食事を記録する。食事の ID はここで振る。電波が無くても受け付け、送り待ちに並べる。
+    /// `originals` は写真の ID ごとの元の写真で、アプリの中に置いてから、縮小版を裏で送り始める
+    @discardableResult
+    public func recordMeal(_ draft: MealDraft, originals: [UUID: Data]) async throws -> Meal {
+        let meal = Meal(id: UUID(), draft: draft)
+        // 写真を置けなかった食事を送ると、サーバーで写真を待ったまま残るので、写真を先に置く
+        try await mealPhotos.keep(originals, of: meal)
+        try await writingCache {
+            try await store.apply(
+                MealSyncing().recording(meal, enqueuing: pendingMealWrite(.create(meal))))
+        }
+        return meal
+    }
+
+    /// 食事を消す。電波が無くても、その場でキャッシュから消し、消す書き込みを送り待ちに並べ、アプリの中の写真を消す
+    public func deleteMeal(id mealId: UUID) async throws {
+        try await writingCache {
+            try await store.apply(
+                MealSyncing().deleting(
+                    mealId: mealId, enqueuing: pendingMealWrite(.delete(mealId: mealId))))
+        }
+        await mealPhotos.discardPhotos(ofMeal: mealId)
+        try await exportNutritionBestEffort()
     }
 
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
@@ -110,9 +139,15 @@ public actor SyncEngine {
     private let readableKinds: Set<RecordKindName>
     private let errorReporting: any ErrorReportingSession
     private let weightHealthExport: any WeightHealthExport
+    private let nutritionHealthExport: any NutritionHealthExport
+    private let mealPhotos: MealPhotos
 
     private func pendingWrite(_ operation: PendingWrite.Operation) -> PendingWrite {
         PendingWrite(writeId: UUID(), enqueuedAt: now(), operation: operation)
+    }
+
+    private func pendingMealWrite(_ write: PendingMealWrite.Write) -> PendingMealWrite {
+        PendingMealWrite(writeId: UUID(), enqueuedAt: now(), write: write)
     }
 
     private func pushPendingWrites(collectingRejectionsIn rejectedWrites: inout [RejectedWrite])
@@ -124,12 +159,13 @@ public actor SyncEngine {
             let batchEnd = min(batchStart + maxWritesPerRequest, pending.count)
             let batch = Array(pending[batchStart..<batchEnd])
             let writes = try batch.map(syncWrite)
+            let clientState = await clientState(pendingWrites: pending[batchStart...])
             let result: NuToriAPIClient.PushSyncWritesResult
             do {
                 result = try await client.pushSyncWrites(
                     writes,
                     isFinalBatch: batchEnd == pending.count,
-                    clientState: clientState(pendingWrites: pending[batchStart...])
+                    clientState: clientState
                 )
             } catch is CancellationError {
                 throw CancellationError()
@@ -160,9 +196,17 @@ public actor SyncEngine {
         return kind
     }
 
+    /// 送り待ちの種類の、書き込みの扱い。サーバーだけが書く種類の送り待ちは、送れない
+    private func writes(for entry: PendingEntry) throws -> any RecordKindWrites {
+        guard let writes = try kind(named: entry.kind).writes else {
+            throw UnknownRecordKindError.serverOnly(entry.kind)
+        }
+        return writes
+    }
+
     /// 種類が、送る書き込みにする
     private func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        try kind(named: entry.kind).syncWrite(for: entry)
+        try writes(for: entry).syncWrite(for: entry)
     }
 
     /// 結果を、受け付けた・受け付けなかったの2つに畳んで読む。細かい結果はサーバーの控えと観測にだけ使う。
@@ -186,16 +230,16 @@ public actor SyncEngine {
             guard case .rejected(let reason) = result.outcome else {
                 continue
             }
-            let kind = try kind(named: entry.kind)
-            let rejection = try kind.rejection(of: entry, reason: reason, current: result.current)
+            let rejection = try writes(for: entry).rejection(
+                of: entry, reason: reason, current: result.current)
             if let rejected = rejection.rejectedWrite {
                 rejectedWrites.append(rejected)
             }
             switch result.current {
             case .value(let change), .deleted(let change):
-                currentChanges[kind.name, default: []].append(change)
+                currentChanges[entry.kind, default: []].append(change)
             case .absent:
-                currentChanges[kind.name, default: []] += rejection.removingChanges
+                currentChanges[entry.kind, default: []] += rejection.removingChanges
             case nil:
                 break
             }
@@ -209,17 +253,26 @@ public actor SyncEngine {
                         .map { KindChanges(kind: $0.key, changes: $0.value) }
                 ))
         }
+        await discardPhotos(ofDeletedMealsIn: currentChanges[MealSyncing.kindName] ?? [])
+    }
+
+    /// 削除の印が届いた食事と、受け付けられずにキャッシュから外した食事の写真は、ほかの端末で消したときも残らないよう、アプリの中から消す
+    private func discardPhotos(ofDeletedMealsIn changes: [SyncChange]) async {
+        for mealId in MealSyncing().current(from: changes).removedMealIds {
+            await mealPhotos.discardPhotos(ofMeal: mealId)
+        }
     }
 
     private func pullChanges() async throws -> SyncResult.StopReason? {
         var state = try await syncStateReadingCurrentKinds()
         while true {
+            let clientState = await clientState(
+                pendingWrites: try await store.pendingEntries()[...])
             let result: NuToriAPIClient.PullSyncChangesResult
             do {
                 result = try await client.pullSyncChanges(
                     afterSequence: state.afterSequence,
-                    clientState: clientState(
-                        pendingWrites: try await store.pendingEntries()[...])
+                    clientState: clientState
                 )
             } catch is CancellationError {
                 throw CancellationError()
@@ -249,8 +302,11 @@ public actor SyncEngine {
                     try await store.apply(
                         SyncBoxResult(kindChanges: ownedChanges, syncState: state))
                 }
+                await discardPhotos(ofDeletedMealsIn: page.changes)
                 try await exportRevisedRecords(revised)
                 if !page.hasMore {
+                    // 頁の途中では、料理と材料がそろっていないことがあるので、取り切ってから書く
+                    try await exportNutritionBestEffort()
                     return nil
                 }
             case .badRequest:
@@ -330,7 +386,19 @@ public actor SyncEngine {
         }
     }
 
-    private func clientState(pendingWrites: ArraySlice<PendingEntry>) -> SyncClientState {
+    /// 書き込みの許可が無いなどで書けなくても、同期と食事を消すことは止めない。書けなかった料理は、次の同期で改めて試す
+    private func exportNutritionBestEffort() async throws {
+        do {
+            try await nutritionHealthExport.exportNutrition()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return
+        }
+    }
+
+    private func clientState(pendingWrites: ArraySlice<PendingEntry>) async -> SyncClientState {
+        let pendingPhotoCount = await mealPhotos.pendingUploadCount()
         let currentTime = now()
         return SyncClientState(
             deviceId: device.deviceId,
@@ -341,7 +409,7 @@ public actor SyncEngine {
             oldestPendingWriteAge: pendingWrites.map(\.enqueuedAt).min().map {
                 .seconds(max(0, currentTime.timeIntervalSince($0)))
             },
-            pendingPhotoCount: 0
+            pendingPhotoCount: pendingPhotoCount
         )
     }
 }

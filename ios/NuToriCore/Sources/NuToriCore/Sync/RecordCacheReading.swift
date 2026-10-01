@@ -8,4 +8,15 @@ public protocol RecordCacheReading: Sendable {
     func weightRecords() async throws -> [WeightRecord]
 
     func accountSettings() async throws -> AccountSettings?
+
+    /// 食事の ID ごとの推定の状態。食事より先に届いた状態も含む
+    func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus]
+
+    func meals() async throws -> [Meal]
+
+    /// 親の食事がまだ届いていない料理も含む
+    func dishes() async throws -> [Dish]
+
+    /// 親の料理がまだ届いていない材料も含む
+    func ingredients() async throws -> [Ingredient]
 }

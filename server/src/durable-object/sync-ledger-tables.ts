@@ -1,6 +1,13 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
-const recordTypes = ["weight_record", "account_settings"] as const;
+const recordTypes = [
+  "weight_record",
+  "account_settings",
+  "meal",
+  "meal_estimation_status",
+  "dish",
+  "ingredient",
+] as const;
 
 const syncRequestLogs = sqliteTable(
   "sync_request_logs",
@@ -40,7 +47,7 @@ const syncWriteReceipts = sqliteTable(
       .notNull()
       .references(() => syncPushLogs.syncRequestLogId),
     positionInRequest: integer("position_in_request").notNull(),
-    kind: text("kind", { enum: ["create", "update", "source_deleted"] }).notNull(),
+    kind: text("kind", { enum: ["create", "update", "source_deleted", "delete"] }).notNull(),
     recordType: text("record_type", { enum: recordTypes }).notNull(),
     recordId: text("record_id").notNull(),
     result: text("result", {
@@ -64,6 +71,9 @@ const syncWriteRejections = sqliteTable("sync_write_rejections", {
       "version_too_low",
       "record_not_found",
       "record_before_started_on",
+      "invalid_entry_method",
+      "duplicate_photo_ids",
+      "photo_already_used",
     ],
   }).notNull(),
 });

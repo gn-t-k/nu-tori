@@ -8,6 +8,7 @@ extension XCUIApplication {
         healthAuthorization: String = "already-requested",
         healthLatestKilograms: String?,
         healthWrite: String = "authorized",
+        pickedPhotoCount: Int = 0,
         timeZone: String?
     ) -> XCUIApplication {
         let app = XCUIApplication()
@@ -19,6 +20,10 @@ extension XCUIApplication {
             app.launchEnvironment["UI_TEST_HEALTH_LATEST_KG"] = healthLatestKilograms
         }
         app.launchEnvironment["UI_TEST_HEALTH_WRITE"] = healthWrite
+        // 入力欄の「写真」で、選ぶ画面を開かずに、この枚数の写真を選んだことにする
+        if pickedPhotoCount > 0 {
+            app.launchEnvironment["UI_TEST_PICKED_PHOTOS"] = String(pickedPhotoCount)
+        }
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
         }
@@ -33,7 +38,9 @@ extension XCUIApplication {
 
     /// 昨日の値から 0.2 kg 下げて記録する。初期値が 72.6 kg のとき、72.4 kg になる
     @MainActor func recordWeightTwoTenthsLower() {
-        buttons["体重"].tap()
+        // 今日の体重が未記録なら「体重を記録」のカプセル、記録済みなら丸い「体重」
+        let unrecorded = buttons["composer-weight-unrecorded"]
+        (unrecorded.exists ? unrecorded : buttons["composer-weight"]).tap()
         let decrease = buttons["0.1 kg 減らす"]
         XCTAssertTrue(decrease.waitForExistence(timeout: 5))
         decrease.tap()

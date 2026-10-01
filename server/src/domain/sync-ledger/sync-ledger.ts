@@ -1,9 +1,11 @@
 import type { SyncClientState } from "../sync-client-state";
 import type { RejectionReason } from "../rejection-reason";
+import type { UsageEvent } from "../usage-event";
 import type { CurrentRecord } from "./current-record";
 import type { LedgerChange } from "./ledger-change";
 import type { LedgerStore } from "./ledger-store";
 import type { PushedResult } from "./pushed-result";
+import type { RecordChangeTarget } from "./record-change-target";
 import type { RecordKind } from "./record-kind";
 import type { WriteBase } from "./write-base";
 import type { WriteKind } from "./write-kind";
@@ -18,7 +20,7 @@ export const createSyncLedger = <
   TValue,
 >(
   store: LedgerStore<TRecordType>,
-  kinds: readonly RecordKind<TKindName, TWrite, TValue>[],
+  kinds: readonly RecordKind<TKindName, TWrite, TValue, TKindName>[],
 ) => {
   const changesPerPull = 500;
 
@@ -38,6 +40,7 @@ export const createSyncLedger = <
         isFinalBatch: request.isFinalBatch,
       });
       const rejectedWrites: RejectedWrite<TRecordType>[] = [];
+      const usageEvents: UsageEvent[] = [];
       const settled = request.writes.map((write, positionInRequest) => {
         const previousReceipt = store.findWriteReceipt(write.id);
         if (previousReceipt !== undefined) {
@@ -69,6 +72,10 @@ export const createSyncLedger = <
             writeId: write.id,
           });
         }
+        for (const added of decision.addedChanges) {
+          store.insertRecordChange({ ...added, writeId: undefined });
+        }
+        usageEvents.push(...decision.usageEvents);
         if (decision.outcome.result === "rejected") {
           rejectedWrites.push({
             writeKind: decision.writeKind,
@@ -97,7 +104,7 @@ export const createSyncLedger = <
               : undefined,
         }),
       );
-      return { results, rejectedWrites, previousRequestReceivedAt };
+      return { results, rejectedWrites, usageEvents, previousRequestReceivedAt };
     });
 
   const readCurrentOf = (recordType: TRecordType, recordId: string): CurrentRecord<TValue> => {
@@ -150,7 +157,18 @@ export const createSyncLedger = <
       };
     });
 
-  return { push, pull };
+  // 受け口の要求やアラームが、端末の書き込みの外で記録を変えるときの入口。run が記録を書き、変えた記録を addChange で足す。
+  // 変更は足した順に通し番号が付き、run の書き込みと1つのトランザクションに入る
+  const changeOutsideWrites = <T>(
+    run: (addChange: (change: RecordChangeTarget<TKindName>) => void) => T,
+  ): T =>
+    store.transaction(() =>
+      run((change) => {
+        store.insertRecordChange({ ...change, writeId: undefined });
+      }),
+    );
+
+  return { push, pull, changeOutsideWrites };
 };
 
 // 控えの ID。作れるのは帳簿だけ（値を export していないので、ほかは組み立てられない）

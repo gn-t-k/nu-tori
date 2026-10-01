@@ -35,6 +35,47 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         reason: rejected.reason,
       },
     }))
+    .with({ name: "meal_received" }, (received) => ({
+      name: received.name,
+      properties: {
+        entry_method: received.entryMethod,
+        minutes_from_eaten_to_sent: received.minutesFromEatenToSent,
+        meal_count_of_day: received.mealCountOfDay,
+      },
+    }))
+    .with({ name: "meal_photo_receipt_failed" }, (failed) => ({
+      name: failed.name,
+      properties: { stage: failed.stage },
+    }))
+    .with({ name: "estimation_attempt_ended" }, (ended) => ({
+      name: ended.name,
+      properties: {
+        result: ended.result,
+        identify_dishes_input_tokens: ended.identifyDishesUsage?.inputTokens,
+        identify_dishes_output_tokens: ended.identifyDishesUsage?.outputTokens,
+        match_ingredients_input_tokens: ended.matchIngredientsUsage?.inputTokens,
+        match_ingredients_output_tokens: ended.matchIngredientsUsage?.outputTokens,
+      },
+    }))
+    .with({ name: "estimation_ended" }, (ended) => ({
+      name: ended.name,
+      properties: {
+        trigger: ended.trigger,
+        final_status: ended.finalStatus,
+        retry_count: ended.retryCount,
+        dish_count: ended.dishCount,
+        ingredient_count: ended.ingredientCount,
+        nutrition_label_ingredient_count: ended.nutritionLabelIngredientCount,
+        food_composition_ingredient_count: ended.foodCompositionIngredientCount,
+        estimated_ingredient_count: ended.estimatedIngredientCount,
+        seconds_from_received_to_ended: ended.secondsFromReceivedToEnded,
+        provider_error_types: ended.providerErrorTypes,
+      },
+    }))
+    .with({ name: "estimation_deferred" }, (deferred) => ({
+      name: deferred.name,
+      properties: {},
+    }))
     .with({ name: "sync_pending_writes_reported" }, (reported) => ({
       name: reported.name,
       properties: {
