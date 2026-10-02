@@ -6,7 +6,8 @@ struct WeightScreen: View {
     let records: [WeightRecord]
     let firstDay: CalendarDay
     let today: CalendarDay
-    let rejectedLines: [RejectedWeightLine]
+    /// 体重と食事の受け付けなかった1行。この画面は体重の1行だけを出す
+    let rejectedLines: [RejectedLine]
     let capture: (ClientUsageEvent) async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
 
@@ -217,11 +218,18 @@ struct WeightScreen: View {
     }
 
     @ViewBuilder private func rejectionLine(for recordId: UUID) -> some View {
-        if let text = rejectedLines.first(where: { $0.record.id == recordId })?.text {
+        if let text = rejectedWeightLine(for: recordId)?.text {
             Text(text)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func rejectedWeightLine(for recordId: UUID) -> RejectedWeightLine? {
+        for case .weight(let line) in rejectedLines where line.record.id == recordId {
+            return line
+        }
+        return nil
     }
 
     private func shownNumber(_ kilograms: Double) -> String {

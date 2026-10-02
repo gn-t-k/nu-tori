@@ -19,7 +19,7 @@ extension TimelineTests {
                     status: .estimated, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [meal], rejectedMealLines: []),
+                        weightRecords: [], rejectedLines: [], meals: [meal]),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: PlacingMeals.day
                 )
@@ -42,7 +42,7 @@ extension TimelineTests {
                     status: nil, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [meal], rejectedMealLines: []),
+                        weightRecords: [], rejectedLines: [], meals: [meal]),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -71,8 +71,7 @@ extension TimelineTests {
                     status: .estimating, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [evening, morning], rejectedLines: [], meals: [lunch],
-                        rejectedMealLines: []),
+                        weightRecords: [evening, morning], rejectedLines: [], meals: [lunch]),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -107,8 +106,7 @@ extension TimelineTests {
                     status: nil, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [dinner, breakfast, lunch],
-                        rejectedMealLines: []),
+                        weightRecords: [], rejectedLines: [], meals: [dinner, breakfast, lunch]),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -141,8 +139,7 @@ extension TimelineTests {
                         eatenAt: "2026-09-24T06:10:00+09:00", sentAt: "2026-09-24T12:11:00+09:00"))
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [morning], rejectedLines: [], meals: [before],
-                        rejectedMealLines: [line]),
+                        weightRecords: [morning], rejectedLines: [.meal(line)], meals: [before]),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -173,8 +170,7 @@ extension TimelineTests {
                     serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [line], meals: [lunch],
-                        rejectedMealLines: []),
+                        weightRecords: [], rejectedLines: [.weight(line)], meals: [lunch]),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
