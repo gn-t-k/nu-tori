@@ -1,13 +1,18 @@
-import { integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 
-const weightRecords = sqliteTable("weight_records", {
-  id: text("id").primaryKey(),
-  weightKg: real("weight_kg").notNull(),
-  measuredAt: integer("measured_at", { mode: "timestamp_ms" }).notNull(),
-  timeZone: text("time_zone").notNull(),
-  version: integer("version").notNull(),
-});
+const weightRecords = sqliteTable(
+  "weight_records",
+  {
+    id: text("id").primaryKey(),
+    weightKg: real("weight_kg").notNull(),
+    measuredAt: integer("measured_at", { mode: "timestamp_ms" }).notNull(),
+    timeZone: text("time_zone").notNull(),
+    version: integer("version").notNull(),
+  },
+  // 体重の傾向の計算と、いつもの時刻の学び直しで、時刻の順に読むため
+  (table) => [index("weight_records_measured_at").on(table.measuredAt)],
+);
 
 const importedWeightRecords = sqliteTable(
   "imported_weight_records",
