@@ -135,6 +135,8 @@ check_ios_ui_test() {
     simulator="$(latest_iphone_simulator)"
     # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
     xcrun simctl bootstatus "$simulator" -b
+    # Simulator.app でハードウェアキーボードを一度つなぐと、シミュレータがそれを覚えてソフトウェアキーボードを画面の外へ最小化し、キーを押すテストが落ちる。まっさらなシミュレータ（CI）では起きないので、Mac でもそろえる
+    xcrun simctl spawn "$simulator" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
     rm -rf "$results"
     # テストの診断をシミュレータから集めると、テストが通った回でも時間切れの10分まで待つことがある。落ちた理由は xcresult で足りる
     xcodebuild \
