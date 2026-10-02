@@ -23,6 +23,12 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case mealDeleted(status: MealEstimationStatus, sinceRecorded: Duration)
     /// 帯の下の、答えていない知らせの1行を押した
     case unansweredNoticeLineTapped
+    /// 記録忘れの通知を押して開いた。着いたときに、その日の体重の知らせがあったか
+    case missedWeightReminderOpened(hadNotice: Bool)
+    /// この端末で初めて体重を記録したあとに、通知の許可を求めた
+    case notificationPermissionRequested(granted: Bool)
+    /// アカウントの画面の通知の行から、iPhone の設定を開いた
+    case notificationSettingsOpened
 
     /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
     /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
@@ -74,6 +80,9 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .cameraPermissionNoticeShown: "camera_permission_notice_shown"
         case .mealDeleted: "meal_deleted"
         case .unansweredNoticeLineTapped: "unanswered_notice_line_tapped"
+        case .missedWeightReminderOpened: "missed_weight_reminder_opened"
+        case .notificationPermissionRequested: "notification_permission_requested"
+        case .notificationSettingsOpened: "notification_settings_opened"
         }
     }
 
@@ -81,7 +90,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         switch self {
         case .weightRecorded, .weightCorrected, .weightInputCancelled, .usageDataTurnedOff,
             .initialPullDuration, .mealRecorded, .cameraCancelled, .cameraPermissionNoticeShown,
-            .mealDeleted, .unansweredNoticeLineTapped:
+            .mealDeleted, .unansweredNoticeLineTapped, .missedWeightReminderOpened,
+            .notificationPermissionRequested, .notificationSettingsOpened:
             nil
         case .screen(.timeline):
             "timeline"
@@ -108,8 +118,12 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .weightCorrected(let place):
             ["place": .token(place.token)]
         case .weightInputCancelled, .usageDataTurnedOff, .screen, .cameraCancelled,
-            .cameraPermissionNoticeShown, .unansweredNoticeLineTapped:
+            .cameraPermissionNoticeShown, .unansweredNoticeLineTapped, .notificationSettingsOpened:
             [:]
+        case .missedWeightReminderOpened(let hadNotice):
+            ["had_notice": .flag(hadNotice)]
+        case .notificationPermissionRequested(let granted):
+            ["granted": .flag(granted)]
         case .initialPullDuration(let duration):
             ["duration_seconds": .wholeSeconds(Self.wholeSeconds(duration))]
         case .mealRecorded(let entry, let photoCount, let mealCount):
