@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# Swift Package の依存を、今の major の中の最新の正式な版に上げる。新しい major は書き出すだけで上げない
+# GitHub への書き込みはしない。PR と Issue は .github/workflows/update-swift-packages.yml が出す
+set -euo pipefail
+
+main() {
+    if [ $# -ne 1 ]; then
+        print_usage >&2
+        exit 2
+    fi
+    local out="$1"
+    mkdir -p "$out"
+    rm -f "$out/pull-request.md" "$out/majors.tsv"
+
+    local manifest url current name held found updated updates="" majors=""
+    local same_major_latest same_major_latest_tag newer_major_latest newer_major_latest_tag
+    for manifest in "$ios/NuToriCore/Package.swift" "$ios/OpenAPIGenerator/Package.swift"; do
+        updated=false
+        while IFS=$'\t' read -r url current; do
+            name="$(dependency_name "$url")"
+            held="$(held_versions "$name")"
+            found="$(release_tags "$url" | pick_newer_versions "$current" "$held")"
+            IFS="|" read -r same_major_latest same_major_latest_tag newer_major_latest newer_major_latest_tag <<< "$found"
+            if [ -n "$same_major_latest" ]; then
+                echo "$name: $current → $same_major_latest" >&2
+                replace_exact_version "$manifest" "$url" "$current" "$same_major_latest"
+                replace_xcode_project_version "$url" "$same_major_latest"
+                updated=true
+                updates="$updates$name"$'\t'"$url"$'\t'"$current"$'\t'"$same_major_latest"$'\t'"$same_major_latest_tag"$'\n'
+            fi
+            if [ -n "$newer_major_latest" ]; then
+                echo "$name: 新しい major の $newer_major_latest がある（上げない）" >&2
+                majors="$majors$name"$'\t'"$current"$'\t'"$newer_major_latest"$'\t'"$(release_url "$url" "$newer_major_latest_tag")"$'\n'
+            fi
+        done < <(exact_dependencies "$manifest")
+        if $updated; then
+            swift package update --package-path "$(dirname "$manifest")"
+        fi
+    done
+
+    if [ -n "$majors" ]; then
+        printf '%s' "$majors" > "$out/majors.tsv"
+    fi
+    if [ -z "$updates" ]; then
+        echo "今の major の中で上げるものは無い" >&2
+        return
+    fi
+
+    local check_result=passed
+    # 落ちても PR は出し、PR の check で落ちた依存の PR として扱う（落ちた PR の Issue が立つ）
+    if ! "$root/scripts/check" ios --fix; then
+        check_result=failed
+    fi
+    write_pull_request_body "$updates" "$check_result" > "$out/pull-request.md"
+}
+
+print_usage() {
+    cat << 'USAGE'
+使い方: scripts/update-swift-packages <書き出すフォルダ>
+  ios/NuToriCore と ios/OpenAPIGenerator のマニフェストの exact: の依存と、Xcode のプロジェクトの同じ依存の版を、
+  今の major の中の最新の正式な版に書き換え、Package.resolved と生成したクライアントを揃える（scripts/check ios --fix）
+  上げたものがあれば <書き出すフォルダ>/pull-request.md に PR の本文を、
+  新しい major があれば <書き出すフォルダ>/majors.tsv に「名前 今の版 新しい版 リリースのページ」をタブ区切りで書き出す
+  .github/swift-package-ignore にある依存と版は飛ばす
+USAGE
+}
+
+# マニフェストの .package(url: "...", exact: "...") を「URL<タブ>版」で並べる
+exact_dependencies() {
+    sed -nE 's/.*\.package\(url: "([^"]+)", exact: "([^"]+)"\).*/\1\t\2/p' "$1"
+}
+
+# 「上げない版」の一覧や Issue の題で使う名前。URL の最後の部分から .git を除いたもの
+dependency_name() {
+    local name="${1##*/}"
+    echo "${name%.git}"
+}
+
+# 「上げない版」の一覧にある、その依存の版を、前後を空白で挟んで並べる
+held_versions() {
+    local versions
+    versions="$(sed 's/#.*//' "$ignore_list" | awk -v name="$1" '$1 == name { printf " %s", $2 }')"
+    echo "$versions "
+}
+
+# プレリリースでない版のタグを「版<タブ>タグ」で並べる。v を前に付けたタグも版として読む
+release_tags() {
+    git ls-remote --tags --refs "$1" |
+        sed -nE 's#.*refs/tags/(v?([0-9]+\.[0-9]+\.[0-9]+))$#\2\t\1#p'
+}
+
+# 標準入力の版のうち今の版より新しいものから、今の major の中の最新と、上の major の中の最新を
+# 「版|タグ|版|タグ」で返す。無いほうは空。区切りをタブにしないのは、read が続くタブを1つにまとめ、空の欄が詰まるため
+pick_newer_versions() {
+    awk -F '\t' -v current="$1" -v held="$2" '
+        function compare(a, b,  x, y, i) {
+            split(a, x, ".")
+            split(b, y, ".")
+            for (i = 1; i <= 3; i++) {
+                if (x[i] + 0 != y[i] + 0) {
+                    return x[i] + 0 < y[i] + 0 ? -1 : 1
+                }
+            }
+            return 0
+        }
+        BEGIN { split(current, c, ".") }
+        index(held, " " $1 " ") > 0 { next }
+        compare($1, current) > 0 {
+            split($1, v, ".")
+            if (v[1] + 0 == c[1] + 0) {
+                if (sameMajorLatest == "" || compare($1, sameMajorLatest) > 0) {
+                    sameMajorLatest = $1; sameMajorLatestTag = $2
+                }
+            } else if (newerMajorLatest == "" || compare($1, newerMajorLatest) > 0) {
+                newerMajorLatest = $1; newerMajorLatestTag = $2
+            }
+        }
+        END { printf "%s|%s|%s|%s\n", sameMajorLatest, sameMajorLatestTag, newerMajorLatest, newerMajorLatestTag }
+    '
+}
+
+replace_exact_version() {
+    local manifest="$1" url="$2" current="$3" new="$4"
+    rewrite_file "$manifest" replace_literal \
+        ".package(url: \"$url\", exact: \"$current\")" \
+        ".package(url: \"$url\", exact: \"$new\")"
+}
+
+# Xcode のプロジェクトにも同じ依存の参照があれば、版を揃える。版の正本はマニフェスト
+replace_xcode_project_version() {
+    rewrite_file "$ios/NuTori.xcodeproj/project.pbxproj" set_xcode_package_version "$1" "$2"
+}
+
+# ファイルを、標準入力から読んで標準出力に書くコマンドに通して書き換える
+rewrite_file() {
+    local file="$1" work
+    shift
+    work="$(mktemp)"
+    "$@" < "$file" > "$work"
+    cat "$work" > "$file"
+    rm "$work"
+}
+
+# 文字列をそのまま置き換える。sed の正規表現で URL の . や / を逃がさずに済むため
+replace_literal() {
+    awk -v old="$1" -v new="$2" '{
+        rest = $0
+        line = ""
+        while ((i = index(rest, old)) > 0) {
+            line = line substr(rest, 1, i - 1) new
+            rest = substr(rest, i + length(old))
+        }
+        print line rest
+    }'
+}
+
+# repositoryURL のあとの requirement の version を書き換える
+set_xcode_package_version() {
+    awk -v url="$1" -v new="$2" '
+        index($0, "repositoryURL = \"" url "\";") > 0 { found = 1 }
+        found && /version = / {
+            sub(/version = [^;]*;/, "version = " new ";")
+            found = 0
+        }
+        { print }
+    '
+}
+
+release_url() {
+    echo "${1%.git}/releases/tag/$2"
+}
+
+write_pull_request_body() {
+    local updates="$1" check_result="$2" name url current new tag
+    echo "Swift Package の依存を、今の major の中の最新の正式な版に上げる。\`.github/workflows/update-swift-packages.yml\` が毎週出し、開いているあいだは毎週この PR を上書きする。"
+    echo
+    while IFS=$'\t' read -r name url current new tag; do
+        [ -n "$name" ] || continue
+        echo "- [$name](${url%.git}): $current → $new（[リリース]($(release_url "$url" "$tag"))）"
+    done <<< "$updates"
+    echo
+    echo "Xcode のプロジェクトの参照の版もマニフェストに揃え、パッケージの \`Package.resolved\` を書き直して（\`swift package update\`）Xcode のプロジェクトの \`Package.resolved\` に写し、生成したクライアントも生成し直した（\`scripts/check ios --fix\`）。"
+    if [ "$check_result" = failed ]; then
+        echo
+        echo "PR を作るときに回した \`scripts/check ios --fix\` が落ちた。この PR の check を見る。"
+    fi
+}
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+ios="$root/ios"
+ignore_list="$root/.github/swift-package-ignore"
+
+main "$@"

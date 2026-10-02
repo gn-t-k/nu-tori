@@ -1,0 +1,3 @@
+# Swift を上げるワークフロー（scripts/update-swift-packages）が飛ばす依存と版。Dependabot の ignore と同じ役目で、revert した版を翌週に出し直さないため
+# 1行に「依存の名前 版」を書く。名前はリポジトリの URL の最後の部分から .git を除いたもの。# から行の終わりまではコメントで、上げ直す Issue へのリンクを添える
+# 例: sentry-cocoa 9.30.0 # 上げ直す: https://github.com/gn-t-k/nu-tori/issues/<番号>

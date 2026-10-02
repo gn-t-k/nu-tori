@@ -27,8 +27,23 @@ jobs:
       url: https://api-dev.nu-tori.app
     secrets: inherit
 
-  production:
+  # 開発用に出した Worker が応答し、D1 を読めるかだけを確かめる（server/src/http/health-routes/）。
+  # 依存の更新などで Worker が動かなくなったら、ここで落として本番に出さない。
+  # 出した直後のつながりの揺れで落ちないよう、200 が返るまで間を空けて数回だけやり直す。main へのすべてのマージで動かす
+  shallow-check:
     needs: development
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 浅い確認の経路を呼ぶ
+        run: >-
+          curl --fail --silent --show-error --max-time 10
+          --retry 5 --retry-delay 10 --retry-all-errors
+          https://api-dev.nu-tori.app/health
+
+  # 開発用のデプロイと浅い確認の両方が通ったときだけ出す
+  production:
+    needs: [development, shallow-check]
     uses: ./.github/workflows/deploy-worker.yml
     with:
       environment: production

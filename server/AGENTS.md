@@ -107,5 +107,8 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## デプロイ
 
 - main へのマージごとに、開発用、本番の順にデプロイする。どちらも D1 の移行を当ててから Worker を出す。TestFlight の版は main から配られて本番につなぐので、main にある API は本番にも出ているようにする
+- 本番の前に、浅い確認（開発用に出した Worker が応答し、D1 を読めるかだけを見る）を挟む。`deploy.yml` の `shallow-check` が開発用の `GET /health`（`src/http/health-routes/`）を呼び、本番のデプロイは、開発用のデプロイと浅い確認の両方が通ったときだけ動く。主な流れを通す `verify-development` は本番を待たせない
+- `GET /health` は認証なしで呼べるので、本文に記録の中身もアカウントの情報も入れない（ADR-0017）。アプリの API の版（`/v1`）の外に置き、OpenAPI の文書に載せず、強制アップデートの判定にもかけない
 - 出したあとに壊れたら、前の版のコードに戻さず、直した新しい版を出す（roll forward）。移行は足すだけでも、既存の列に新しい値（記録の種類 `meal` など）が入るので、前の版のコードがそれを読めず、そのアカウントの取りに行く要求が失敗し続けうる
+  - 例外は、依存だけを上げた PR の revert。依存だけの PR は DB に書く値を変えないので、前の版のコードに戻しても読めない値が無い。戻し方は `docs/agents/dependencies.md` の「壊れたときの戻し方」
 - CI の API トークンの権限は、Workers の Admin（まだ無い Worker を作るのに要る）、D1 の編集、`nu-tori.app` のゾーンの Workers Routes の編集（独自ドメインを付け替えるのに要る）だけ。レガシーの Workers Scripts は使わない。CI にほかの製品を触らせるときは、開発者にトークンの権限を足してもらう

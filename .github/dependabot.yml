@@ -1,19 +1,28 @@
 version: 2
 updates:
+  # patch/minor を1つの PR にまとめ、check が全部通ったら dependency-pr.yml がマージする。major は依存ごとの PR になり、人が手でマージする
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
     groups:
       github-actions:
         patterns: ["*"]
+        update-types: [patch, minor]
   - package-ecosystem: npm
     directory: /server
     schedule:
-      interval: monthly
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
     groups:
       npm:
         patterns: ["*"]
+        update-types: [patch, minor]
     ignore:
       - dependency-name: vitest
         update-types: ["version-update:semver-major"]

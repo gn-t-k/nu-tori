@@ -1,0 +1,249 @@
+# 依存の PR（作者が Dependabot か、依存を上げるこのリポジトリの GitHub App）を、check が PR のために走り終わったときと、PR が閉じたときに扱う（docs/agents/dependencies.md）
+# GitHub の auto-merge は使わない。auto-merge は必須のチェックしか待たず、必須の ios は Linux で動くので posthog-ios と sentry-cocoa をビルドしない。
+# アプリのビルド（ios-app）は必須でないので、auto-merge ではアプリのビルドを壊す更新もマージされる。ios-app が必須になったら auto-merge に戻せる
+name: dependency-pr
+
+on:
+  # main の文脈で動くので、Dependabot が起こした check のあとでも、main からだけ使える Environment の秘密の値を読める
+  workflow_run:
+    workflows: [check]
+    types: [completed]
+  # 落ちた PR の Issue を閉じる。base の文脈で動くので、main からだけ使える Environment の秘密の値を読める
+  pull_request_target:
+    types: [closed]
+
+# PR のコードは checkout せず、GitHub の API は App のトークンで呼ぶ
+permissions: {}
+
+jobs:
+  # 対象の PR を見分ける。check が通ったか落ちたかに関わらず動き、対象でなければ number が空になる
+  identify-pr:
+    # ほかの人のフォークからの PR を、依存の PR に見せかけて扱わせない
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: dependency-updates
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+      author: ${{ steps.pr.outputs.author }}
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DEPENDENCY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDENCY_APP_PRIVATE_KEY }}
+          permission-pull-requests: read
+      - id: pr
+        name: 作者が Dependabot か App の、開いている PR を探す
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          # App のボットの名前は、App の名前を変えても追えるよう、トークンを発行した App の slug から組み立てる
+          APP_BOT: ${{ steps.app-token.outputs.app-slug }}[bot]
+        run: |
+          pulls="$(gh api -X GET "repos/$GITHUB_REPOSITORY/pulls" \
+            -f state=open -f head="$GITHUB_REPOSITORY_OWNER:$HEAD_BRANCH" \
+            --jq '.[] | select(.user.login == "dependabot[bot]" or .user.login == env.APP_BOT) | "\(.user.login) \(.number)"')"
+          read -r login number <<< "$pulls"
+          if [ -z "$number" ]; then
+            echo "依存の PR ではないので、何もしない"
+            exit 0
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          if [ "$login" = "dependabot[bot]" ]; then
+            echo "author=dependabot" >> "$GITHUB_OUTPUT"
+          else
+            echo "author=app" >> "$GITHUB_OUTPUT"
+          fi
+
+  # check が通った patch/minor の PR を、check が走ったときの先頭のコミットのまま、merge コミットでマージする。
+  # GITHUB_TOKEN でマージすると deploy と ios-ui-test が動かないので、App のトークンでマージする
+  merge:
+    needs: identify-pr
+    if: needs.identify-pr.outputs.number != '' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: dependency-updates
+    env:
+      NUMBER: ${{ needs.identify-pr.outputs.number }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DEPENDENCY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDENCY_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: read
+          # GitHub Actions の更新はワークフローのファイルを変えるので、マージに要る
+          permission-workflows: write
+      # 人が足したコミットは読まず、Dependabot のコミットのメッセージにある update-type（fetch-metadata が読むものと同じ）の最大のものを取る。
+      # 依存のうち1つでも update-type が無ければ unknown にして、マージしない
+      - id: update-type
+        name: Dependabot の PR の update-type を読む
+        if: needs.identify-pr.outputs.author == 'dependabot'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          commits="$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls/$NUMBER/commits?per_page=100")"
+          update_type="$(jq -r '
+            add
+            | [.[] | select(.author.login == "dependabot[bot]") | .commit.message
+              | (capture("(?m)^---\\n(?<deps>[\\s\\S]*?)\\n\\.\\.\\.$").deps // "")
+              | [scan("(?m)^- dependency-name: ")] as $names
+              | [scan("(?m)^  update-type: version-update:semver-(patch|minor|major)$") | .[0]] as $types
+              | if ($names | length) > 0 and ($types | length) == ($names | length) then $types[] else "unknown" end]
+            | if length == 0 or any(. == "unknown") then "unknown"
+              elif any(. == "major") then "major"
+              elif any(. == "minor") then "minor"
+              else "patch" end' <<< "$commits")"
+          echo "update-type: $update_type"
+          echo "value=$update_type" >> "$GITHUB_OUTPUT"
+      # App の PR（Swift を上げるワークフロー）は patch/minor しか入れないので、update-type を読まずにマージする。major と、読めないものは人が見る
+      - name: マージする
+        if: >-
+          needs.identify-pr.outputs.author == 'app' ||
+          steps.update-type.outputs.value == 'patch' || steps.update-type.outputs.value == 'minor'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          current_head_sha="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$NUMBER" --jq .head.sha)"
+          if [ "$current_head_sha" != "$HEAD_SHA" ]; then
+            echo "check が走ったあとに先頭のコミットが変わったので、マージしない。新しい先頭の check が終わったら、また動く"
+            exit 0
+          fi
+          # sha を渡し、確かめてからマージするまでのあいだに先頭が変わっていたら、GitHub にマージを断らせる
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/pulls/$NUMBER/merge" -f merge_method=merge -f sha="$HEAD_SHA" > /dev/null
+
+  # check が落ちた PR ごとに、Issue を1つ立てる。開いていれば、また落ちた回をコメントで足す。
+  # 探し方（開いている Issue を題で探す）と書き方は、ios-ui-test の track-main-failure にそろえる
+  # 時間切れ（timed_out）や起動の失敗（startup_failure）なども、マージされずに残るので落ちたものとして扱う
+  track-failure:
+    needs: identify-pr
+    if: >-
+      needs.identify-pr.outputs.number != '' &&
+      !contains(fromJSON('["success", "cancelled", "skipped", "neutral"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    environment: dependency-updates
+    env:
+      NUMBER: ${{ needs.identify-pr.outputs.number }}
+      PR_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.identify-pr.outputs.number }}
+      RUN_URL: ${{ github.event.workflow_run.html_url }}
+      # PR の題は Dependabot が上げる版に合わせて書き換えるので、探すときは PR の番号を含むこの部分だけで探す。close-failure-issue と同じ形
+      TITLE_KEY: 依存の PR #${{ needs.identify-pr.outputs.number }} の check が落ちている
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DEPENDENCY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDENCY_APP_PRIVATE_KEY }}
+          permission-issues: write
+          permission-pull-requests: read
+          # セキュリティの更新かを、Dependabot のアラートと照らして見分けるのに要る
+          permission-vulnerability-alerts: read
+      - id: open-issue
+        name: 開いている Issue を探す
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select((.title | contains(env.TITLE_KEY)) and .pull_request == null) | .number' | head -n 1)"
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+      - name: 開いている Issue に、また落ちたことを書き足す
+        if: steps.open-issue.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ISSUE: ${{ steps.open-issue.outputs.number }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -f body="また落ちた: $RUN_URL" > /dev/null
+      # Dependabot のセキュリティの PR は、Dependabot がアラートに結びつける（GraphQL の RepositoryVulnerabilityAlert.dependabotUpdate.pullRequest）。
+      # App の PR（Swift を上げるワークフロー）はアラートに結びつかないので見ない
+      - id: security
+        name: 開いているアラートが、この PR に結びついているかを見る
+        if: steps.open-issue.outputs.number == '' && needs.identify-pr.outputs.author == 'dependabot'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # 見分けられなくても Issue は立てたいので、ここでは落とさず、題に印を付けないだけにする。
+          # クエリの $owner などは GraphQL の変数なので、シェルに展開させない
+          # shellcheck disable=SC2016
+          if ! numbers="$(gh api graphql --paginate \
+            -f owner="$GITHUB_REPOSITORY_OWNER" -f name="${GITHUB_REPOSITORY#*/}" -f query='
+              query($owner: String!, $name: String!, $endCursor: String) {
+                repository(owner: $owner, name: $name) {
+                  vulnerabilityAlerts(states: [OPEN], first: 100, after: $endCursor) {
+                    nodes { dependabotUpdate { pullRequest { number } } }
+                    pageInfo { hasNextPage endCursor }
+                  }
+                }
+              }' \
+            --jq '.data.repository.vulnerabilityAlerts.nodes[].dependabotUpdate.pullRequest.number // empty')"; then
+            echo "::warning::Dependabot のアラートを読めなかったので、セキュリティの更新かを見分けずに Issue を立てる"
+            exit 0
+          fi
+          if grep -qx "$NUMBER" <<< "$numbers"; then
+            echo "prefix=[セキュリティ] " >> "$GITHUB_OUTPUT"
+          fi
+      - name: Issue を立てる
+        if: steps.open-issue.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PREFIX: ${{ steps.security.outputs.prefix }}
+        run: |
+          pr_title="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$NUMBER" --jq .title)"
+          body="$(cat << BODY
+          依存の PR の check が落ちた。直して check が通ると、patch/minor ならワークフローがマージする（major は人がマージする）。
+
+          - PR: $PR_URL
+          - 落ちた回: $RUN_URL
+
+          直すときは、PR のブランチで始めたセッションで直す（docs/agents/git.md）。クラウドのセッションは、作業ブランチにだけ push できるため。
+
+          Dependabot の PR に直したコミットを足すと、Dependabot はその PR を rebase しなくなる。Dependabot の recreate のコマンド（PR へのコメント）を使うと、足したコミットが消える。
+
+          PR がマージされるか閉じられると、ワークフローがこの Issue を閉じる。
+          BODY
+          )"
+          gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$PREFIX$TITLE_KEY（$pr_title）" -f body="$body" -f "labels[]=ready-for-agent" > /dev/null
+
+  # PR がマージされるか閉じられたら、落ちた PR の Issue に、そのことをコメントして閉じる。
+  # 依存の PR の作者はボットなので、人の PR では動かさない。Environment は main からだけ使えるので、main に向けた PR に限る
+  close-failure-issue:
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch &&
+      github.event.pull_request.user.type == 'Bot'
+    runs-on: ubuntu-latest
+    environment: dependency-updates
+    env:
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      MERGED: ${{ github.event.pull_request.merged }}
+      # track-failure と同じ形
+      TITLE_KEY: 依存の PR #${{ github.event.pull_request.number }} の check が落ちている
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DEPENDENCY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDENCY_APP_PRIVATE_KEY }}
+          permission-issues: write
+      - name: 開いている Issue を探して閉じる
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select((.title | contains(env.TITLE_KEY)) and .pull_request == null) | .number' | head -n 1)"
+          if [ -z "$number" ]; then
+            echo "この PR の Issue は開いていないので、何もしない"
+            exit 0
+          fi
+          if [ "$MERGED" = "true" ]; then
+            body="PR がマージされた: $PR_URL"
+            reason=completed
+          else
+            body="PR がマージされずに閉じられた: $PR_URL"
+            reason=not_planned
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/issues/$number/comments" -f body="$body" > /dev/null
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/$number" -f state=closed -f state_reason="$reason" > /dev/null
