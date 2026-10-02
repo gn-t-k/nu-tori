@@ -70,7 +70,7 @@ jobs:
       - id: token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ vars.DEPENDENCY_APP_ID }}
+          client-id: ${{ vars.DEPENDENCY_APP_CLIENT_ID }}
           private-key: ${{ secrets.DEPENDENCY_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
@@ -89,10 +89,10 @@ jobs:
         run: |
           while IFS=$'\t' read -r name current latest release; do
             export ISSUE_TITLE="Swift Package の $name に新しい major の版 ${latest%%.*} が出た"
-            number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=all&per_page=100" \
               --jq '.[] | select(.title == env.ISSUE_TITLE and .pull_request == null) | .number' | head -n 1)"
             if [ -n "$number" ]; then
-              echo "#$number が開いているので立てない: $ISSUE_TITLE"
+              echo "#$number があるので立てない（閉じていても）: $ISSUE_TITLE"
               continue
             fi
             body="$(cat << BODY
@@ -101,7 +101,7 @@ jobs:
           - リリース: $release
           - 上げるときは、変更履歴で API の変わったところを確かめ、docs/agents/dependencies.md の手順で上げる
 
-          同じ題の Issue が開いているあいだは、ワークフローは新しく立てない。
+          同じ題の Issue があれば、閉じていても、ワークフローは新しく立てない（上げないと決めて閉じたものを、毎週立て直さないため）。次の major が出たら、題が変わるので新しく立つ。
           BODY
             )"
             gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$ISSUE_TITLE" -f body="$body" -f "labels[]=needs-triage" > /dev/null
