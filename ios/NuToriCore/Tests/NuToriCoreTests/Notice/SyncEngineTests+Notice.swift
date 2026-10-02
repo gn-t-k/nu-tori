@@ -10,19 +10,17 @@ extension SyncEngineTests {
         @Suite("知らせを出したとき")
         struct Issuing {
             let store: SyncBoxMock<RecordCacheMock>
-            let transport: ClientTransportMock
             let engine: SyncEngine
+            let notice: Notice
 
             init() throws {
                 store = try .ok()
-                transport = .sync()
-                engine = .fixture(store: store, transport: transport)
+                engine = .fixture(store: store, transport: .sync())
+                notice = try Notice.fixture()
             }
 
             @Test("送り待ちに知らせの種類の名前で入れてから、キャッシュに答えていない知らせを置くこと")
             func enqueuesThenCaches() async throws {
-                let notice = try Notice.fixture()
-
                 try await engine.issueNotice(notice)
 
                 #expect(store.entries.map(\.kind) == [.notice])
@@ -32,12 +30,25 @@ extension SyncEngineTests {
                     ])
                 #expect(store.cache.notices[notice.id] == notice)
             }
+        }
 
-            @Test("送ると、種類・出した時刻・タイムゾーン・対象の日付を、作る書き込みで送ること")
-            func sendsCreateNotice() async throws {
-                let notice = try Notice.fixture()
+        @Suite("知らせを出して送ったとき")
+        struct IssuingThenSending {
+            let store: SyncBoxMock<RecordCacheMock>
+            let transport: ClientTransportMock
+            let engine: SyncEngine
+            let notice: Notice
+
+            init() async throws {
+                store = try .ok()
+                transport = .sync()
+                engine = .fixture(store: store, transport: transport)
+                notice = try Notice.fixture()
                 try await engine.issueNotice(notice)
+            }
 
+            @Test("種類・出した時刻・タイムゾーン・対象の日付を、作る書き込みで送ること")
+            func sendsCreateNotice() async throws {
                 _ = try await engine.sync()
 
                 #expect(

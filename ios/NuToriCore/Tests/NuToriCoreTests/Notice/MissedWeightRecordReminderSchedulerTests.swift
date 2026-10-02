@@ -127,6 +127,34 @@ struct MissedWeightRecordReminderSchedulerTests {
                 #expect(errorReporting.reported == [.reminderSchedule])
             }
         }
+
+        @Suite("キャッシュを読めないとき")
+        struct CacheUnreadable {
+            let center: MissedWeightRecordReminderCenterMock
+            let errorReporting: ErrorReportingSessionMock
+            let scheduler: MissedWeightRecordReminderScheduler
+
+            init() throws {
+                center = .ok(scheduled: [MissedWeightRecordReminderSchedulerTests.id(21)])
+                errorReporting = .ok()
+                scheduler = try MissedWeightRecordReminderSchedulerTests.scheduler(
+                    center: center, store: .error(SampleError()), errorReporting: errorReporting)
+            }
+
+            @Test("キャッシュを読めなかった失敗として1回送ること")
+            func reportsReadFailure() async {
+                await scheduler.reschedule()
+
+                #expect(errorReporting.reported == [.cacheRead])
+            }
+
+            @Test("前に置いた予約を残すこと")
+            func keepsPreviousReminders() async {
+                await scheduler.reschedule()
+
+                #expect(center.scheduled == [MissedWeightRecordReminderSchedulerTests.id(21)])
+            }
+        }
     }
 
     @Suite("サインアウトとアカウントの削除で外すとき")
@@ -166,9 +194,9 @@ struct MissedWeightRecordReminderSchedulerTests {
 
             @Test("許可したことを返すこと")
             func returnsGranted() async {
-                let granted = await scheduler.requestPermissionIfNotYetRequested()
+                let outcome = await scheduler.requestPermissionIfNotYetRequested()
 
-                #expect(granted == true)
+                #expect(outcome == .granted)
             }
 
             @Test("予約し直すこと")
@@ -190,11 +218,11 @@ struct MissedWeightRecordReminderSchedulerTests {
                     center: center, store: .ok())
             }
 
-            @Test("求めず、nil を返すこと")
+            @Test("求めず、求めたことがあると返すこと")
             func doesNotAsk() async {
-                let granted = await scheduler.requestPermissionIfNotYetRequested()
+                let outcome = await scheduler.requestPermissionIfNotYetRequested()
 
-                #expect(granted == nil)
+                #expect(outcome == .alreadyRequested)
                 #expect(center.permissionRequestCount == 0)
             }
         }
