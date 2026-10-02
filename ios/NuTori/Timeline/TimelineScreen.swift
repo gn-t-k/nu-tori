@@ -5,6 +5,8 @@ import SwiftUI
 
 struct TimelineScreen: View {
     let records: [WeightRecord]
+    /// 同期で届いた体重の傾向。体重記録が無ければ nil
+    let weightTrend: WeightTrend?
     let initialPull: InitialPull
     let today: CalendarDay
     /// 記録した時刻と、操作にかかった時間を測るための今
@@ -43,11 +45,19 @@ struct TimelineScreen: View {
                     }
             }
             .navigationDestination(for: CalendarDay.self) { day in
+                let firstDay = startedDay ?? records.map(\.day).min() ?? day
                 WeightScreen(
                     day: day,
                     records: records,
-                    firstDay: startedDay ?? records.map(\.day).min() ?? day,
+                    firstDay: firstDay,
                     today: today,
+                    trendChart: WeightTrendChart(
+                        weightRecords: records,
+                        trend: weightTrend,
+                        firstDay: firstDay,
+                        now: now(),
+                        timeZone: .current
+                    ),
                     rejectedLines: rejectedLines,
                     capture: capture,
                     saveWeight: saveWeight
@@ -100,7 +110,10 @@ struct TimelineScreen: View {
             }
             .sheet(isPresented: summaryPresented) {
                 if case .summary(let day) = dayFocus, let loaded {
-                    DaySummarySheet(timeline: loaded, day: day) { chosen in
+                    DaySummarySheet(
+                        timeline: loaded, day: day, weightRecords: records,
+                        weightTrend: weightTrend
+                    ) { chosen in
                         dayFocus = .scrollingTo(chosen)
                     }
                 }

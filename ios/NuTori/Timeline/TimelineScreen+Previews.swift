@@ -6,6 +6,7 @@
     #Preview("状態ごと", arguments: TimelineScreen.Sample.allCases) { sample in
         TimelineScreen(
             records: sample.records,
+            weightTrend: nil,
             initialPull: sample.initialPull,
             today: .sampleToday,
             now: { .now },
