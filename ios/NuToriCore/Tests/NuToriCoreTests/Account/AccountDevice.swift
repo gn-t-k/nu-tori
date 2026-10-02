@@ -81,9 +81,8 @@ struct AccountDevice {
             client: NuToriAPIClient(
                 serverURL: URL(string: "https://api.example")!,
                 transport: transport,
-                appBuild: 1,
-                sessionToken: { "session-1" },
-                appBuildVerdict: { _ in }
+                appBuildGate: .sample,
+                sessionToken: { "session-1" }
             ),
             keychain: keychain,
             deviceStore: deviceStore,

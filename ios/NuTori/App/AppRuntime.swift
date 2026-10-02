@@ -40,12 +40,11 @@ import SwiftData
     /// 本番と UI テストで違う部品。配線は `assemble(_:)` が1つだけ持つ
     struct Parts {
         let store: SwiftDataSyncStore
-        /// ビルド番号とセッショントークンと、ビルドを受け付けたかを知らせる先を受け取って、API クライアントを作る（API のトランスポートが違う）
+        /// ビルド番号とビルドを受け付けたかを知らせる先、セッショントークンを受け取って、API クライアントを作る（API のトランスポートが違う）
         let makeClient:
             @Sendable (
-                _ appBuild: Int,
-                _ sessionToken: @escaping @Sendable () async -> String?,
-                _ appBuildVerdict: @escaping @Sendable (AppBuildVerdict) async -> Void
+                _ appBuildGate: AppBuildGate,
+                _ sessionToken: @escaping @Sendable () async -> String?
             ) -> NuToriAPIClient
         let appLockoutStore: any AppLockoutStore
         let keychain: any SessionKeychain
@@ -69,9 +68,7 @@ import SwiftData
             Parts(
                 store: try SwiftDataSyncStore(inMemory: false),
                 makeClient: {
-                    NuToriAPIClient(
-                        environment: environment, appBuild: $0, sessionToken: $1,
-                        appBuildVerdict: $2)
+                    NuToriAPIClient(environment: environment, appBuildGate: $0, sessionToken: $1)
                 },
                 appLockoutStore: UserDefaultsAppLockoutStore(defaults: .standard),
                 keychain: KeychainSessionKeychain(),
@@ -102,9 +99,8 @@ import SwiftData
         let appBuild = Bundle.main.appBuild
         let appLockout = AppLockout(currentBuild: appBuild, store: parts.appLockoutStore)
         let client = parts.makeClient(
-            appBuild,
-            { try? await keychain.sessionToken() },
-            { await appLockout.receive($0) }
+            AppBuildGate(build: appBuild) { await appLockout.receive($0) },
+            { try? await keychain.sessionToken() }
         )
         let health = HealthSyncSession.live(
             syncStore: store,

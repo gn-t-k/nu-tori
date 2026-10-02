@@ -4,21 +4,18 @@ import OpenAPIURLSession
 
 public struct NuToriAPIClient: Sendable {
     /// - Parameters:
-    ///   - appBuild: アプリのビルド番号（`CFBundleVersion`）。すべての要求に `X-App-Build` で付ける
+    ///   - appBuildGate: すべての要求に付けるビルド番号と、応答を受け取るたびにこのビルドを受け付けたかを知らせる先
     ///   - sessionToken: 今のセッションのトークン。サインインしていなければ nil を返す
-    ///   - appBuildVerdict: 応答を受け取るたびに、サーバーがこのビルドを受け付けたかを知らせる先
     public init(
         environment: APIEnvironment,
-        appBuild: Int,
-        sessionToken: @escaping @Sendable () async -> String?,
-        appBuildVerdict: @escaping @Sendable (AppBuildVerdict) async -> Void
+        appBuildGate: AppBuildGate,
+        sessionToken: @escaping @Sendable () async -> String?
     ) {
         self.init(
             serverURL: environment.serverURL,
             transport: URLSessionTransport(),
-            appBuild: appBuild,
-            sessionToken: sessionToken,
-            appBuildVerdict: appBuildVerdict
+            appBuildGate: appBuildGate,
+            sessionToken: sessionToken
         )
     }
 
@@ -26,19 +23,18 @@ public struct NuToriAPIClient: Sendable {
     public init(
         serverURL: URL,
         transport: any ClientTransport,
-        appBuild: Int,
-        sessionToken: @escaping @Sendable () async -> String?,
-        appBuildVerdict: @escaping @Sendable (AppBuildVerdict) async -> Void
+        appBuildGate: AppBuildGate,
+        sessionToken: @escaping @Sendable () async -> String?
     ) {
         self.serverURL = serverURL
-        self.appBuild = appBuild
+        self.appBuildGate = appBuildGate
         self.sessionToken = sessionToken
         client = Client(
             serverURL: serverURL,
             transport: transport,
             middlewares: [
                 SessionTokenMiddleware(sessionToken: sessionToken),
-                AppBuildMiddleware(appBuild: appBuild, verdict: appBuildVerdict),
+                AppBuildMiddleware(gate: appBuildGate),
             ]
         )
     }
@@ -105,6 +101,6 @@ public struct NuToriAPIClient: Sendable {
     let client: Client
     /// 生成したクライアントを通さずに組む要求（バックグラウンドの URLSession で送る写真）のため
     let serverURL: URL
-    let appBuild: Int
+    let appBuildGate: AppBuildGate
     let sessionToken: @Sendable () async -> String?
 }

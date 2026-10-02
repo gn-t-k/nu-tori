@@ -1,6 +1,7 @@
 #if DEBUG
     import Foundation
     import HTTPTypes
+    import NuToriAPI
     import NuToriCore
     import OpenAPIRuntime
 
@@ -19,7 +20,9 @@
             case .offline:
                 throw URLError(.notConnectedToInternet)
             case .appBuildUnsupported:
-                return json(.init(code: 426), #"{"code":"app_build_unsupported"}"#)
+                return json(
+                    .init(code: AppBuildVerdict.unsupportedStatusCode),
+                    #"{"code":"app_build_unsupported"}"#)
             case .hangPull:
                 if request.path == "/v1/sessions" {
                     return createdSession()

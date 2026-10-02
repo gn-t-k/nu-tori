@@ -50,9 +50,8 @@ extension NuToriAPIClientTests {
                             ],"hasMore":false,"nextAfterSequence":7,"startedOn":"2026-09-29"}
                             """
                     ),
-                    appBuild: 1,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
                 )
             }
 

@@ -156,9 +156,8 @@ extension NuToriAPIClient {
         NuToriAPIClient(
             serverURL: URL(string: "https://api.example")!,
             transport: transport,
-            appBuild: 41,
-            sessionToken: { "session-1" },
-            appBuildVerdict: { await lockout.receive($0) }
+            appBuildGate: AppBuildGate(build: 41) { await lockout.receive($0) },
+            sessionToken: { "session-1" }
         )
     }
 }

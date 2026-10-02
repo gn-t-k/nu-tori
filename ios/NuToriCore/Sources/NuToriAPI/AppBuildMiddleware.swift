@@ -6,10 +6,8 @@ import OpenAPIRuntime
 /// 経路ごとのスキーマと OpenAPI の各操作には載せない
 struct AppBuildMiddleware: ClientMiddleware {
     static let headerName = "X-App-Build"
-    static let upgradeRequired = 426
 
-    let appBuild: Int
-    let verdict: @Sendable (AppBuildVerdict) async -> Void
+    let gate: AppBuildGate
 
     @concurrent func intercept(
         _ request: HTTPRequest,
@@ -22,13 +20,13 @@ struct AppBuildMiddleware: ClientMiddleware {
             )
     ) async throws -> (HTTPResponse, HTTPBody?) {
         var request = request
-        request.headerFields[HTTPField.Name(Self.headerName)!] = String(appBuild)
+        request.headerFields[HTTPField.Name(Self.headerName)!] = String(gate.build)
         let (response, responseBody) = try await next(request, body, baseURL)
-        if response.status.code == Self.upgradeRequired {
-            await verdict(.unsupported)
+        switch await gate.receive(statusCode: response.status.code) {
+        case .unsupported:
             throw AppBuildUnsupportedError()
+        case .supported:
+            return (response, responseBody)
         }
-        await verdict(.supported)
-        return (response, responseBody)
     }
 }

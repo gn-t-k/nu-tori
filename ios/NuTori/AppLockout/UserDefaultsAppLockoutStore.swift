@@ -6,7 +6,8 @@ nonisolated struct UserDefaultsAppLockoutStore: AppLockoutStore, @unchecked Send
     let defaults: UserDefaults
 
     func lockedOutBuild() -> Int? {
-        defaults.object(forKey: Key.lockedOutBuild) as? Int
+        defaults.object(forKey: Key.lockedOutBuild) == nil
+            ? nil : defaults.integer(forKey: Key.lockedOutBuild)
     }
 
     func remember(lockedOutBuild build: Int) {

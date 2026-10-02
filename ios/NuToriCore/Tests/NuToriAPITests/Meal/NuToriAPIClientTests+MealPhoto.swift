@@ -22,9 +22,8 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
-                    appBuild: 1,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
                 )
             }
 
@@ -48,9 +47,8 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.mealPhotos([:]),
-                    appBuild: 1,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
                 )
             }
 
@@ -70,9 +68,8 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.mealPhotos([:]),
-                    appBuild: 42,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: AppBuildGateMock.ok(build: 42).gate,
+                    sessionToken: { "session-1" }
                 )
             }
 

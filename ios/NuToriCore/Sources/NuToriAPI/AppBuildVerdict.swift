@@ -4,4 +4,11 @@ public enum AppBuildVerdict: Sendable, Equatable {
     case supported
     /// 426（最低バージョンより古い）
     case unsupported
+
+    /// サーバーが最低バージョンより古いビルドを締め出すときの状態コード（426 Upgrade Required）
+    public static let unsupportedStatusCode = 426
+
+    public init(statusCode: Int) {
+        self = statusCode == Self.unsupportedStatusCode ? .unsupported : .supported
+    }
 }

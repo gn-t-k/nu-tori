@@ -24,7 +24,7 @@ public final class AppLockout {
         }
     }
 
-    /// API のクライアントが応答を受け取るたびに呼ぶ（`NuToriAPIClient` の `appBuildVerdict`）。
+    /// API のクライアントが応答を受け取るたびに呼ぶ（`NuToriAPIClient` に渡す `AppBuildGate` の `verdict`）。
     /// 426 なら覚え、426 でない応答なら忘れる（最低バージョンを下げた日のため）
     public func receive(_ verdict: AppBuildVerdict) {
         switch verdict {

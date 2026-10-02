@@ -25,9 +25,8 @@ struct NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
-                    appBuild: 1,
-                    sessionToken: { nil },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { nil }
                 )
             }
 
@@ -80,9 +79,8 @@ struct NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .unauthorized),
-                    appBuild: 1,
-                    sessionToken: { nil },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { nil }
                 )
             }
 
@@ -119,9 +117,8 @@ struct NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
-                    appBuild: 1,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
                 )
             }
 
@@ -149,9 +146,8 @@ struct NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .unauthorized),
-                    appBuild: 1,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
                 )
             }
 
@@ -169,9 +165,8 @@ struct NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .tooManyRequests),
-                    appBuild: 1,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
                 )
             }
 
@@ -191,9 +186,8 @@ struct NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
-                    appBuild: 1,
-                    sessionToken: { nil },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { nil }
                 )
             }
 
@@ -214,9 +208,8 @@ struct NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .internalServerError),
-                    appBuild: 1,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
                 )
             }
 

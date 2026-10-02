@@ -65,13 +65,12 @@
             return AppRuntime.assemble(
                 AppRuntime.Parts(
                     store: store,
-                    makeClient: { appBuild, sessionToken, appBuildVerdict in
+                    makeClient: { appBuildGate, sessionToken in
                         NuToriAPIClient(
                             serverURL: APIEnvironment.development.serverURL,
                             transport: StubAPITransport(behavior: behavior),
-                            appBuild: appBuild,
-                            sessionToken: sessionToken,
-                            appBuildVerdict: appBuildVerdict
+                            appBuildGate: appBuildGate,
+                            sessionToken: sessionToken
                         )
                     },
                     appLockoutStore: UserDefaultsAppLockoutStore(

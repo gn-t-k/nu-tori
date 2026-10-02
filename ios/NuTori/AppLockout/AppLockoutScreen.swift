@@ -3,7 +3,10 @@ import SwiftUI
 
 /// 締め出しの画面。すべての画面に替えて全面に出し、説明と更新のボタンだけを載せる
 struct AppLockoutScreen: View {
+    /// ボタンの名前に出す、更新する場所
     let destination: AppUpdateDestination
+    /// 更新する場所を開く
+    let openUpdate: () async -> Void
 
     var body: some View {
         // 文字を大きくして入りきらないときだけ、全体を送れるようにする
@@ -18,14 +21,12 @@ struct AppLockoutScreen: View {
         .accessibilityIdentifier("app-lockout")
     }
 
-    @Environment(\.openURL) private var openURL
-
     private var content: some View {
         VStack(spacing: 24) {
             message
                 .frame(maxHeight: .infinity)
             Button {
-                openURL(destination.url)
+                Task { await openUpdate() }
             } label: {
                 Text(buttonTitle)
                     .frame(maxWidth: .infinity)

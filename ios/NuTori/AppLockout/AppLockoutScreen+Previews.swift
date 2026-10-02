@@ -3,7 +3,7 @@
     import SwiftUI
 
     #Preview("状態ごと", arguments: AppLockoutScreen.Sample.allCases) { sample in
-        AppLockoutScreen(destination: sample.destination)
+        AppLockoutScreen(destination: sample.destination, openUpdate: {})
     }
 
     extension AppLockoutScreen {

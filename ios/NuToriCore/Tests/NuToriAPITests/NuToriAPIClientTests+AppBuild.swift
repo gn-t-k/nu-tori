@@ -18,9 +18,8 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
-                    appBuild: 42,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { _ in }
+                    appBuildGate: AppBuildGateMock.ok(build: 42).gate,
+                    sessionToken: { "session-1" }
                 )
             }
 
@@ -43,46 +42,23 @@ extension NuToriAPIClientTests {
 
         @Suite("サーバーが 426 を返したとき")
         struct Unsupported {
-            let verdicts: VerdictLog
+            let gate: AppBuildGateMock
             let client: NuToriAPIClient
 
             init() {
-                let verdicts = VerdictLog()
-                self.verdicts = verdicts
+                gate = .ok(build: 41)
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(
                         status: HTTPResponse.Status(code: 426),
                         json: #"{"code":"app_build_unsupported"}"#),
-                    appBuild: 41,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { verdicts.append($0) }
+                    appBuildGate: gate.gate,
+                    sessionToken: { "session-1" }
                 )
             }
 
-            @Test("同期の取得が、締め出しのエラーを投げること")
-            func pullThrows() async {
-                await #expect {
-                    _ = try await client.pullSyncChanges(
-                        afterSequence: 0, clientState: .fixture())
-                } throws: {
-                    $0.isAppBuildUnsupported
-                }
-            }
-
-            @Test("サインインが、締め出しのエラーを投げること")
-            func startSessionThrows() async {
-                await #expect {
-                    _ = try await client.startSession(
-                        idToken: "id-token", nonce: "nonce", authorizationCode: "code",
-                        timeZone: TimeZone(identifier: "Asia/Tokyo")!)
-                } throws: {
-                    $0.isAppBuildUnsupported
-                }
-            }
-
-            @Test("アカウントの削除が、締め出しのエラーを投げること")
-            func deleteAccountThrows() async {
+            @Test("応答を解釈せずに、締め出しのエラーを投げること")
+            func throwsUnsupported() async {
                 await #expect {
                     _ = try await client.deleteAccount()
                 } throws: {
@@ -94,24 +70,22 @@ extension NuToriAPIClientTests {
             func reportsUnsupported() async {
                 _ = try? await client.deleteAccount()
 
-                #expect(verdicts.values == [.unsupported])
+                #expect(gate.verdicts == [.unsupported])
             }
         }
 
         @Suite("サーバーが 426 でない応答を返したとき")
         struct Supported {
-            let verdicts: VerdictLog
+            let gate: AppBuildGateMock
             let client: NuToriAPIClient
 
             init() {
-                let verdicts = VerdictLog()
-                self.verdicts = verdicts
+                gate = .ok(build: 42)
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .unauthorized),
-                    appBuild: 42,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { verdicts.append($0) }
+                    appBuildGate: gate.gate,
+                    sessionToken: { "session-1" }
                 )
             }
 
@@ -119,24 +93,22 @@ extension NuToriAPIClientTests {
             func reportsSupported() async throws {
                 _ = try await client.deleteAccount()
 
-                #expect(verdicts.values == [.supported])
+                #expect(gate.verdicts == [.supported])
             }
         }
 
         @Suite("要求が届かなかったとき")
         struct Unreachable {
-            let verdicts: VerdictLog
+            let gate: AppBuildGateMock
             let client: NuToriAPIClient
 
             init() {
-                let verdicts = VerdictLog()
-                self.verdicts = verdicts
+                gate = .ok(build: 42)
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.error(URLError(.notConnectedToInternet)),
-                    appBuild: 42,
-                    sessionToken: { "session-1" },
-                    appBuildVerdict: { verdicts.append($0) }
+                    appBuildGate: gate.gate,
+                    sessionToken: { "session-1" }
                 )
             }
 
@@ -144,16 +116,8 @@ extension NuToriAPIClientTests {
             func reportsNothing() async {
                 _ = try? await client.deleteAccount()
 
-                #expect(verdicts.values.isEmpty)
+                #expect(gate.verdicts.isEmpty)
             }
-        }
-    }
-
-    final class VerdictLog: @unchecked Sendable {
-        private(set) var values: [AppBuildVerdict] = []
-
-        func append(_ verdict: AppBuildVerdict) {
-            values.append(verdict)
         }
     }
 }

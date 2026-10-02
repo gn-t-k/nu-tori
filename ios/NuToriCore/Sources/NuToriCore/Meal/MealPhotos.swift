@@ -87,10 +87,14 @@ public actor MealPhotos: BackgroundTransferStore {
         }
     }
 
-    /// 裏で送った結果を当てる。その食事の写真の送り残しが無くなったら true を返す
+    /// 裏で送った結果を当てる。その食事の写真の送り残しが無くなったら true を返す。
+    /// 応答を受け取ったときは、ほかの要求と同じく、締め出しの記憶にビルドを受け付けたかを知らせる
     public func finishUpload(_ upload: MealPhotoUpload, with result: MealPhotoUploadResult) async
         -> Bool
     {
+        if case .responded(let statusCode) = result {
+            await client.receiveMealPhotoUploadResponse(statusCode: statusCode)
+        }
         if let failure = Self.reportedFailure(of: result) {
             await errorReporting.report(failure)
         }
@@ -176,7 +180,7 @@ public actor MealPhotos: BackgroundTransferStore {
         switch result {
         case .responded(let statusCode) where (200..<300).contains(statusCode):
             return nil
-        case .responded(401), .responded(426), .responded(429):
+        case .responded(401), .responded(AppBuildVerdict.unsupportedStatusCode), .responded(429):
             return nil
         case .responded:
             return .photoUpload
