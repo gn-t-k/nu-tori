@@ -7,31 +7,31 @@
     "@hono/zod-openapi": "1.6.3",
     "@praha/byethrow": "0.12.0",
     "@praha/error-factory": "1.4.1",
-    "@sentry/cloudflare": "11.0.0",
-    "@sentry/hono": "11.0.0",
+    "@sentry/cloudflare": "11.1.0",
+    "@sentry/hono": "11.1.0",
     "better-auth": "1.7.6",
     "drizzle-orm": "0.45.3",
-    "hono": "4.13.9",
+    "hono": "4.13.10",
     "jose": "6.2.12",
     "ts-pattern": "5.9.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "1.3.0",
+    "@cloudflare/vitest-plugin": "1.3.1",
     "@praha/byethrow-docs": "0.12.0",
     "@praha/byethrow-oxlint": "0.12.0",
     "@praha/byethrow-testing": "0.12.0",
     "@praha/drizzle-factory": "1.4.2",
     "@tsconfig/strictest": "2.0.8",
     "@types/node": "26.6.3",
-    "oxfmt": "0.70.0",
-    "oxlint": "1.85.0",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",
     "read-excel-file": "9.3.10",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vitest": "4.1.11",
-    "wrangler": "4.141.0"
+    "wrangler": "4.143.0"
   },
   "packageManager": "pnpm@12.6.0"
 }
