@@ -3,6 +3,9 @@ import SwiftUI
 
 struct DaySummarySheet: View {
     let timeline: Timeline
+    /// 速さの出す条件（記録のある日の数）を数えるための、キャッシュの体重記録（送り待ちを含む）
+    let weightRecords: [WeightRecord]
+    let weightTrend: WeightTrend?
     let onSeeOnTimeline: (CalendarDay) -> Void
 
     var body: some View {
@@ -28,6 +31,15 @@ struct DaySummarySheet: View {
                     } else {
                         Text("記録なし")
                     }
+                    if let speed = WeightTrendSpeed(
+                        on: shownDay, trend: weightTrend, weightRecords: weightRecords)
+                    {
+                        LabeledContent("体重の傾向") {
+                            Text(speed.text)
+                                .monospacedDigit()
+                                .contentTransition(.numericText())
+                        }
+                    }
                 }
                 Section {
                     Button("タイムラインでこの日を見る") {
@@ -52,9 +64,12 @@ struct DaySummarySheet: View {
     }
 
     init(
-        timeline: Timeline, day: CalendarDay, onSeeOnTimeline: @escaping (CalendarDay) -> Void
+        timeline: Timeline, day: CalendarDay, weightRecords: [WeightRecord],
+        weightTrend: WeightTrend?, onSeeOnTimeline: @escaping (CalendarDay) -> Void
     ) {
         self.timeline = timeline
+        self.weightRecords = weightRecords
+        self.weightTrend = weightTrend
         self.onSeeOnTimeline = onSeeOnTimeline
         _shownDay = State(initialValue: day)
     }

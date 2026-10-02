@@ -17,6 +17,7 @@ struct TimelineScreenContainer: View {
     var body: some View {
         TimelineScreen(
             records: cachedRecords.compactMap { $0.weightRecord() },
+            weightTrend: weightTrend,
             initialPull: initialPull,
             today: CalendarDay(containing: .now, in: .current),
             now: { .now },
@@ -39,6 +40,7 @@ struct TimelineScreenContainer: View {
     @Query private var cachedEstimationStatuses: [CachedMealEstimationStatus]
     @Query private var cachedDishes: [CachedDish]
     @Query private var cachedIngredients: [CachedIngredient]
+    @Query private var cachedWeightTrendDays: [CachedWeightTrendDay]
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 
@@ -47,6 +49,12 @@ struct TimelineScreenContainer: View {
             return .inProgress
         }
         return .completed(startedDay: state.startedOn.flatMap(TimelineDayText.day(from:)))
+    }
+
+    /// 並び全体が届くたびに置き換わる。行が無ければ傾向は無い
+    private var weightTrend: WeightTrend? {
+        let days = cachedWeightTrendDays.compactMap { $0.trendDay() }.sorted { $0.day < $1.day }
+        return days.isEmpty ? nil : WeightTrend(days: days)
     }
 
     /// 推定の状態・料理・材料は食事と別の種類で、食事より先にも後にも届く
