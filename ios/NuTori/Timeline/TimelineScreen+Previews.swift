@@ -10,7 +10,6 @@
             today: .sampleToday,
             now: { .now },
             rejectedLines: sample.rejectedLines,
-            rejectedMealLines: sample.rejectedMealLines,
             meals: sample.meals,
             capture: { _ in },
             prepareWeightEntry: {},
@@ -57,7 +56,7 @@
                 }
             }
 
-            var rejectedLines: [RejectedWeightLine] {
+            var rejectedLines: [RejectedLine] {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .meals:
@@ -79,16 +78,8 @@
                                 version: 2
                             ),
                             serverHasValue: true),
+                        .meal(RejectedMealLine(meal: .sample(on: .sampleToday, at: 12, 10))),
                     ]
-                }
-            }
-
-            var rejectedMealLines: [RejectedMealLine] {
-                switch self {
-                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .meals:
-                    []
-                case .rejected: [RejectedMealLine(meal: .sample(on: .sampleToday, at: 12, 10))]
                 }
             }
 
@@ -128,9 +119,9 @@
                 72.2, on: CalendarDay.sampleToday.advanced(by: -2), at: 7, 0, from: .manual)
 
             private static func rejectedLine(_ record: WeightRecord, serverHasValue: Bool)
-                -> RejectedWeightLine
+                -> RejectedLine
             {
-                RejectedWeightLine(record: record, serverHasValue: serverHasValue)
+                .weight(RejectedWeightLine(record: record, serverHasValue: serverHasValue))
             }
         }
     }

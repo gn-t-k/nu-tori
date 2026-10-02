@@ -47,9 +47,6 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
       }));
 
   return {
-    insertEstimation: ({ id, scheduleId, startedAt }) => {
-      db.insert(estimations).values({ id, estimationScheduleId: scheduleId, startedAt }).run();
-    },
     countEstimationsCountedOn: (countedOn) =>
       db
         .select({ total: count() })
@@ -60,9 +57,6 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
         )
         .where(eq(estimationSchedules.countedOn, countedOn))
         .get()?.total ?? 0,
-    insertAttempt: (attempt) => {
-      db.insert(estimationAttempts).values(attempt).run();
-    },
     findContinuingEstimations: () => {
       const continuing = db
         .select({ estimationId: estimations.id, mealId: mealEstimationSchedules.mealId })
@@ -115,25 +109,6 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
         )
         .get()?.estimationId,
     findAttempts,
-    insertAttemptResult: ({ attemptId, endedAt, conclusion }) => {
-      db.insert(estimationAttemptResults)
-        .values({ estimationAttemptId: attemptId, endedAt, result: conclusion.result })
-        .run();
-      match(conclusion)
-        .with({ result: P.union("succeeded", "timed_out", "invalid_response") }, () => undefined)
-        .with({ result: P.union("provider_error", "bad_request") }, ({ errorType }) => {
-          db.insert(estimationAttemptErrors)
-            .values({ estimationAttemptId: attemptId, errorType })
-            .run();
-        })
-        .exhaustive();
-    },
-    insertCompletion: (completion) => {
-      db.insert(estimationCompletions).values(completion).run();
-    },
-    insertAbandonment: (abandonment) => {
-      db.insert(estimationAbandonments).values(abandonment).run();
-    },
   };
 };
 

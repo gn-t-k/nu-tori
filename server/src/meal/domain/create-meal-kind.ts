@@ -5,6 +5,7 @@ import type { EstimationStore } from "../../estimation/domain/estimation-store";
 import { findMealReceivedAt } from "../../estimation/domain/find-meal-received-at";
 import { scheduleMealEstimation } from "../../estimation/domain/schedule-meal-estimation";
 import type { EstimationScheduleStore } from "../../estimation/domain/estimation-schedule-store";
+import type { RecordKindStores } from "../../domain/record-kind-stores";
 import { computeCalendarDay } from "../../domain/compute-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
@@ -51,6 +52,7 @@ type MealKindStores = {
   mealPhoto: MealPhotoStore;
   estimationSchedule: EstimationScheduleStore;
   estimation: EstimationStore;
+  writeEstimationEvents: RecordKindStores["writeEstimationEvents"];
   dish: DishStore;
   ingredient: IngredientStore;
 };
@@ -99,7 +101,6 @@ const decideCreate = (
     return discarded(store, newMeal, { result: "rejected", reason: "photo_already_used" });
   }
   const meal: Meal = { ...newMeal, entryMethod };
-  // 推定の状態の変更は、写真がそろって予定に入れても1つでよい
   return {
     writeKind: "create",
     recordId: meal.id,
@@ -118,10 +119,16 @@ const decideCreate = (
     ],
     commit: () => {
       store.insert(meal);
-      scheduleMealEstimation(stores, meal, receivedAt);
+      stores.writeEstimationEvents(discardStatusChangeAddedWithMeal, (writes) =>
+        scheduleMealEstimation(stores, writes, meal, receivedAt),
+      );
     },
   };
 };
+
+// 推定の状態の変更は、食事ができたことに付いて addedChanges で1つ足す。写真がそろって予定に入れても1つでよいので、
+// 推定の書き込みの口が足す変更は捨てる
+const discardStatusChangeAddedWithMeal = (): void => undefined;
 
 // 食べた日の、いまある食事の数。消した食事は行が無いので数えない
 const countMealsOnEatenDay = (store: MealStore, meal: Meal): number => {

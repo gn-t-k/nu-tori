@@ -9,8 +9,7 @@ struct TimelineScreen: View {
     let today: CalendarDay
     /// 記録した時刻と、操作にかかった時間を測るための今
     let now: () -> Date
-    let rejectedLines: [RejectedWeightLine]
-    let rejectedMealLines: [RejectedMealLine]
+    let rejectedLines: [RejectedLine]
     let meals: [MealCard]
     let capture: (ClientUsageEvent) async -> Void
     let prepareWeightEntry: () async -> Void
@@ -398,8 +397,7 @@ struct TimelineScreen: View {
         let monday = today.startOfWeek
         return RingStrip(
             timeline: Timeline(
-                input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], rejectedMealLines: []),
+                input: Timeline.Input(weightRecords: [], rejectedLines: [], meals: []),
                 firstDay: monday,
                 today: today)
         ).weeks
@@ -409,8 +407,7 @@ struct TimelineScreen: View {
         let first = startedDay ?? records.map(\.day).min() ?? today
         return Timeline(
             input: Timeline.Input(
-                weightRecords: records, rejectedLines: rejectedLines, meals: meals,
-                rejectedMealLines: rejectedMealLines),
+                weightRecords: records, rejectedLines: rejectedLines, meals: meals),
             firstDay: first, today: today)
     }
 

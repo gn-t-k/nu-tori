@@ -20,13 +20,7 @@ public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
     public init() {}
 
     public func owns(_ change: SyncChange) -> Bool {
-        switch change {
-        case .weightRecord, .weightRecordDeletion: true
-        case .accountSettings, .dish, .dishDeletion, .ingredient,
-            .ingredientDeletion, .meal, .mealDeletion, .mealEstimationStatus,
-            .mealEstimationStatusDeletion, .unknown:
-            false
-        }
+        change.kindName == name
     }
 
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
@@ -87,13 +81,10 @@ public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
         var records: [WeightRecord] = []
         var removedRecordIds: [UUID] = []
         for change in changes {
-            switch change {
-            case .weightRecord(let record): records.append(WeightRecord(record))
-            case .weightRecordDeletion(let recordId): removedRecordIds.append(recordId)
-            case .accountSettings, .dish, .dishDeletion, .ingredient,
-                .ingredientDeletion, .meal, .mealDeletion, .mealEstimationStatus,
-                .mealEstimationStatusDeletion, .unknown:
-                break
+            if case .weightRecord(let record) = change {
+                records.append(WeightRecord(record))
+            } else if case .weightRecordDeletion(let recordId) = change {
+                removedRecordIds.append(recordId)
             }
         }
         return Current(records: records, removedRecordIds: removedRecordIds)

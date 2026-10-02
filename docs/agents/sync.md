@@ -49,6 +49,7 @@
   - サーバーだけが書く種類の変更と、書き込みがほかの種類の記録も変えるときの変更は、帳簿の口から足す（同じ節）。通し番号は足した順に付き、取りに行く応答もその順に並ぶ
 - 端末: NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く。NuToriCore に `SyncedRecordKind`、アプリのターゲットに `RecordKind<ModelContext>`（`synced` と `apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
   - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る
+  - 同期の変更（NuToriAPI の `SyncChange`）に case を足したら、どの種類のものかを決める1か所（NuToriCore の `SyncChange.kindName`）に書く。種類の中では、自分の変更かを `kindName` と自分の名前で決め、自分の case を `if case` で取り出す（ほかの種類の case を並べない）
   - 端末が書く種類は、`SyncedRecordKind.writes` に、送る書き込み（`syncWrite`）と受け付けなかったときの扱い（`rejection`）を持つ `RecordKindWrites` を返す。送り待ちの中身は種類が決める JSON で、`PendingEntry` に種類の名前と一緒に入れる（見本は食事の `PendingMealWrite`）
   - サーバーだけが書く種類（推定の状態、料理、材料）は `writes` に nil を返す。送り待ちに入らないので、送る書き込みも受け付けなかったときの扱いも持たない。そういう種類の名前の送り待ちがあれば、同期の働きは送らずに `UnknownRecordKindError.serverOnly` を投げる
   - 端末で記録を消す書き込みは、その場で削除の印と同じ変更をキャッシュに当て、消す書き込みを送り待ちに入れる。ほかの種類の記録も一緒に消えるとき（食事と推定の状態）は、その種類の削除の印の変更も同じ結果に入れる

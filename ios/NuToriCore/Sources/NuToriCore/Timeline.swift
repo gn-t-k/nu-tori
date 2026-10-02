@@ -13,6 +13,8 @@ public struct Timeline: Sendable {
         // 食事の日が使い始めた日より前の食事は、カードは並べても、丸にも日のまとめにも入れない
         let mealsByEatenDay = Dictionary(
             grouping: input.meals.filter { $0.meal.day >= firstDay }, by: \.meal.day)
+        let rejectedWeightLines = input.rejectedLines.compactMap(\.weightLine)
+        let rejectedMealLines = input.rejectedLines.compactMap(\.mealLine)
         let lastDay = ([today] + weightRecordsByDay.keys + mealsByDay.keys).max()!
         let range = firstDay...max(firstDay, lastDay)
         dayRange = range
@@ -21,9 +23,9 @@ public struct Timeline: Sendable {
                 day: day,
                 items: Self.items(
                     records: weightRecordsByDay[day] ?? [],
-                    rejectedLines: input.rejectedLines.filter { $0.record.day == day },
+                    rejectedLines: rejectedWeightLines.filter { $0.record.day == day },
                     meals: mealsByDay[day] ?? [],
-                    rejectedMealLines: input.rejectedMealLines.filter { $0.meal.cardDay == day }
+                    rejectedMealLines: rejectedMealLines.filter { $0.meal.cardDay == day }
                 ),
                 food: DayFood(meals: mealsByEatenDay[day] ?? [])
             )
@@ -36,22 +38,18 @@ public struct Timeline: Sendable {
     /// タイムラインに並べる元になるもの。種類が増えたら欄を足す
     public struct Input: Sendable {
         public let weightRecords: [WeightRecord]
-        /// サーバーが受け付けなかった体重記録の行
-        public let rejectedLines: [RejectedWeightLine]
+        /// サーバーが受け付けなかった体重記録と食事の行
+        public let rejectedLines: [RejectedLine]
         public let meals: [MealCard]
-        /// サーバーが受け付けなかった食事の行
-        public let rejectedMealLines: [RejectedMealLine]
 
         public init(
             weightRecords: [WeightRecord],
-            rejectedLines: [RejectedWeightLine],
-            meals: [MealCard],
-            rejectedMealLines: [RejectedMealLine]
+            rejectedLines: [RejectedLine],
+            meals: [MealCard]
         ) {
             self.weightRecords = weightRecords
             self.rejectedLines = rejectedLines
             self.meals = meals
-            self.rejectedMealLines = rejectedMealLines
         }
     }
 
