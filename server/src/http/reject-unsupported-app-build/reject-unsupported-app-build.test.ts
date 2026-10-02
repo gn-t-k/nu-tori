@@ -1,13 +1,13 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { mockExchangeAppleAuthorizationCodeOk } from "../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
-import { mockAppleKeysEndpointOk } from "../auth/testing";
-import { createWeightRecordWrite } from "../weight-record/http/testing/create-weight-record-write";
-import { app } from "./app";
-import { pullSyncChanges } from "./sync-routes/testing/pull-sync-changes";
-import { pushSyncWrites } from "./sync-routes/testing/push-sync-writes";
-import { readRows } from "./sync-routes/testing/read-rows";
-import { setMinimumAppBuild, signInTestAccount } from "./testing";
+import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
+import { mockAppleKeysEndpointOk } from "../../auth/testing";
+import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
+import { app } from "../app";
+import { pullSyncChanges } from "../sync-routes/testing/pull-sync-changes";
+import { pushSyncWrites } from "../sync-routes/testing/push-sync-writes";
+import { readRows } from "../sync-routes/testing/read-rows";
+import { setMinimumAppBuild, signInTestAccount } from "../testing";
 
 describe("古いビルドの締め出し", () => {
   let accountId: string;

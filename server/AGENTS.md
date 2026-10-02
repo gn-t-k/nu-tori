@@ -45,7 +45,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - REST＋OpenAPI。経路をスキーマつきで書き、書き出した OpenAPI の文書を `openapi.json` に置く。型の正本は経路のスキーマで、経路を変えたら `scripts/check server --fix` で書き出し直し（`scripts/check server` が最新かを確かめる）、`scripts/check ios --fix` でアプリのクライアントも生成し直す（`ios/AGENTS.md` の「API」）
 - 経路には `operationId` を付ける。アプリで生成するクライアントのメソッドの名前になる
 - 出回っている最も古い版のアプリとも動くようにする。API の変更は足すだけにし、壊す変更は新しい版のエンドポイントとして出す。最低バージョン（本番の `vars` の `MINIMUM_APP_BUILD`）より古いビルドは締め出すので、この「最も古い版」から外れる。締め出すかの線引きと上げる手順は `docs/agents/ios-release.md`
-- 締め出しは受け口の入口（`src/http/reject-unsupported-app-build.ts`）で扱う。アプリが付けるビルド番号のヘッダー `X-App-Build` と、締め出したときの 426（本文は `{ "code": "app_build_unsupported" }`）は、経路のスキーマと OpenAPI の文書に載せない。`/v1` の経路は Apple のサーバー間通知を除いてすべて判定にかかるので、アプリから来ない経路を足すときは入口の外す経路に名前を足す
+- 締め出しは受け口の入口（`src/http/reject-unsupported-app-build/`）で扱う。アプリが付けるビルド番号のヘッダー `X-App-Build` と、締め出したときの 426（本文は `{ "code": "app_build_unsupported" }`）は、経路のスキーマと OpenAPI の文書に載せない。`/v1` の経路は Apple のサーバー間通知を除いてすべて判定にかかるので、アプリから来ない経路を足すときは入口の外す経路に名前を足す
 
 ## 同期の記録の種類の足し方
 
