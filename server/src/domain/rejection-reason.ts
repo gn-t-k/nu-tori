@@ -6,4 +6,6 @@ export type RejectionReason =
   | "record_before_started_on"
   | "invalid_entry_method"
   | "duplicate_photo_ids"
-  | "photo_already_used";
+  | "photo_already_used"
+  | "invalid_notice_type"
+  | "invalid_target_on";
