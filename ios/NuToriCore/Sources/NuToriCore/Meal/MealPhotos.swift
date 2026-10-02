@@ -170,12 +170,13 @@ public actor MealPhotos: BackgroundTransferStore {
         }
     }
 
-    /// セッション切れと回数の歯止めは、送り直せば届くので送らない。つながらない・時間切れ・取り消しも送らない
+    /// セッション切れと回数の歯止めは、送り直せば届くので送らない。締め出し（426）は想定した結果で、更新した版が送り直すので送らない。
+    /// つながらない・時間切れ・取り消しも送らない
     private static func reportedFailure(of result: MealPhotoUploadResult) -> HandledFailure? {
         switch result {
         case .responded(let statusCode) where (200..<300).contains(statusCode):
             return nil
-        case .responded(401), .responded(429):
+        case .responded(401), .responded(426), .responded(429):
             return nil
         case .responded:
             return .photoUpload

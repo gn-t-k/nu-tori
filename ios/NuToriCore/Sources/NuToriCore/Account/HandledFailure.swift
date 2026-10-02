@@ -1,4 +1,5 @@
 import Foundation
+import NuToriAPI
 import OpenAPIRuntime
 
 public enum HandledFailure: Sendable, Equatable {
@@ -13,8 +14,11 @@ public enum HandledFailure: Sendable, Equatable {
     /// 写真の縮小版を送れなかった
     case photoUpload
 
+    /// 取り消し、つながらない・時間切れ、締め出し（426。想定した結果）は送らない
     public static func reported(_ error: any Error, as area: HandledFailure) -> HandledFailure? {
-        if error is CancellationError || error.isUnreachableOrTimedOut {
+        if error is CancellationError || error.isUnreachableOrTimedOut
+            || error.isAppBuildUnsupported
+        {
             return nil
         }
         return area

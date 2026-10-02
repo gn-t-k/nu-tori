@@ -17,5 +17,7 @@ public struct SyncResult: Sendable, Equatable {
         case sessionExpired
         case unavailable
         case badRequest
+        /// サーバーが 426 を返した（締め出された）。送り待ちは結果を受け取っていないので残す
+        case appBuildUnsupported
     }
 }

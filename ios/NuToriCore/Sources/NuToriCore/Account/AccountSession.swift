@@ -51,7 +51,9 @@ public actor AccountSession {
         switch result.ending {
         case .stopped(.sessionExpired):
             return try await discardSessionAndAskToSignInAgain()
-        case .finished, .stopped(.rateLimited), .stopped(.unavailable), .stopped(.badRequest):
+        // 締め出されたときは、締め出しの記憶（`AppLockout`）を見て画面が全面を覆う
+        case .finished, .stopped(.rateLimited), .stopped(.unavailable), .stopped(.badRequest),
+            .stopped(.appBuildUnsupported):
             return try await timelineDestination()
         }
     }
