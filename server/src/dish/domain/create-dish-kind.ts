@@ -7,6 +7,7 @@ import type { DishStore } from "./dish-store";
 export const createDishKind = (store: DishStore): RecordKind<"dish", never, Dish> => ({
   name: "dish",
   writes: undefined,
+  deliversAbsence: false,
   readCurrent: (dishId): CurrentRecord<Dish> => {
     const dish = store.find(dishId);
     if (dish !== undefined) {

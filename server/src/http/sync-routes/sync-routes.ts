@@ -10,6 +10,7 @@ import { toSyncChangeResponse } from "./to-sync-change-response";
 import { toSyncClientState } from "./to-sync-client-state";
 import { toSyncWriteCurrent } from "./to-sync-write-current";
 import { toSyncWrite } from "./to-sync-write";
+import { weightTrendRecordSchema } from "../../weight-trend/http/weight-trend-record-schema";
 
 const maximumWritesPerRequest = 500;
 // coerce は入力の型が不明になり、OpenAPI の文書ではクエリが省略できることになってしまうので、必須と書く
@@ -170,5 +171,6 @@ const routes = new OpenAPIHono<{ Bindings: Env }>()
 routes.openAPIRegistry.register("RecordKindName", recordKindNameSchema);
 // 取りに行く変更の record は種類によらない形なので、種類ごとの値の形を部品として書き出す
 routes.openAPIRegistry.register("NoticeRecord", noticeRecordSchema);
+routes.openAPIRegistry.register("WeightTrendRecord", weightTrendRecordSchema);
 
 export const syncRoutes = routes;

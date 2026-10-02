@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { WeightRecord } from "../domain/weight-record";
@@ -27,6 +27,17 @@ export const createWeightRecordStore = (db: DrizzleSqliteDODatabase): WeightReco
       .get();
     return row === undefined ? undefined : toWeightRecord(row);
   },
+  findAllInMeasuredOrder: () =>
+    db
+      .select({
+        id: weightRecords.id,
+        weightKg: weightRecords.weightKg,
+        measuredAt: weightRecords.measuredAt,
+        timeZone: weightRecords.timeZone,
+      })
+      .from(weightRecords)
+      .orderBy(asc(weightRecords.measuredAt))
+      .all(),
   existsImportedSample: (healthkitSampleUuid) =>
     db
       .select({ weightRecordId: importedWeightRecords.weightRecordId })

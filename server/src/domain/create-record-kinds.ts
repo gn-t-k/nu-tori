@@ -5,6 +5,7 @@ import { createMealKind } from "../meal/domain/create-meal-kind";
 import { createMealEstimationStatusKind } from "../meal-estimation-status/domain/create-meal-estimation-status-kind";
 import { createNoticeKind } from "../notice/domain/create-notice-kind";
 import { createWeightRecordKind } from "../weight-record/domain/create-weight-record-kind";
+import { createWeightTrendKind } from "../weight-trend/domain/create-weight-trend-kind";
 import type { RecordKindStores } from "./record-kind-stores";
 import type { RecordKind } from "./sync-ledger/record-kind";
 import type { WriteBase } from "./sync-ledger/write-base";
@@ -20,4 +21,5 @@ export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
     createMealEstimationStatusKind(stores.meal, stores.mealEstimationStatus),
     createNoticeKind(stores.notice),
     createWeightRecordKind(stores.weightRecord, stores.firstSignIn.findStartedOn),
+    createWeightTrendKind(stores.weightRecord),
   ] as const satisfies readonly RecordKind<string, WriteBase, unknown, string>[];

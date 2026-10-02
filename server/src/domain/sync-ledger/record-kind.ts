@@ -18,6 +18,9 @@ export type RecordKind<
   // サーバーだけが書く種類は、端末からの書き込みを宣言しない
   writes: KindWrites<TWrite, TAddedName> | undefined;
   readCurrent(recordId: string): CurrentRecord<TValue>;
+  // 記録が無くなったこと（absent）も変更として届けるか。削除の印を持たず、ほかの記録から計算する種類（体重の傾向）だけが届ける。
+  // 届けない種類では、変更の並びが指す記録も削除の印も無いのは不具合なので、取りに行くときに投げる
+  deliversAbsence: boolean;
 };
 
 // 端末からの書き込みを受ける種類が宣言するもの。メソッドの書き方は、登録簿の配列に型の違う種類を並べるため（引数を双変にする）

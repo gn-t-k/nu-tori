@@ -278,6 +278,54 @@ describe("同期の帳簿", () => {
       });
     });
 
+    describe("変更の並びが指す記録も削除の印も無いとき", () => {
+      let pullWithoutRecord: () => unknown;
+
+      beforeEach(() => {
+        ledger.changeOutsideWrites((addChange) => {
+          addChange({ recordType: "test_child", recordId: "child-1" });
+        });
+        pullWithoutRecord = () => ledger.pull(pullRequest(0));
+      });
+
+      test("不具合として投げること", () => {
+        expect(pullWithoutRecord).toThrow(
+          "変更の並びが指す記録も削除の印も無い: test_child child-1",
+        );
+      });
+    });
+
+    describe("記録が無くなったことを届ける種類で、記録も削除の印も無いとき", () => {
+      let pulled: ReturnType<TestLedger["pull"]>;
+
+      beforeEach(() => {
+        const ledgerDeliveringAbsence = createSyncLedger<
+          "test_record" | "test_child" | "other",
+          "test_record" | "test_child",
+          TestRecordWrite | OtherWrite,
+          number
+        >(ledgerStore, [
+          createTestRecordKind(createMemoryTestRecordStore(operations), childStore),
+          { ...createTestChildKind(childStore), deliversAbsence: true },
+        ]);
+        ledgerDeliveringAbsence.changeOutsideWrites((addChange) => {
+          addChange({ recordType: "test_child", recordId: "child-1" });
+        });
+        pulled = ledgerDeliveringAbsence.pull(pullRequest(0));
+      });
+
+      test("記録が無いことを変更として返すこと", () => {
+        expect(pulled.changes).toEqual([
+          {
+            sequence: 1,
+            recordType: "test_child",
+            recordId: "child-1",
+            current: { status: "absent" },
+          },
+        ]);
+      });
+    });
+
     describe("登録簿にない種類の変更があるとき", () => {
       let pullWithUnregistered: () => unknown;
 

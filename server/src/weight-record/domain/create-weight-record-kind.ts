@@ -6,6 +6,7 @@ import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-
 import type { WriteKind } from "../../domain/sync-ledger/write-kind";
 import type { SyncWriteOutcome } from "../../domain/sync-write-outcome";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
+import { weightTrendRecordId } from "../../weight-trend/domain/weight-trend-record-id";
 import type { WeightRecord } from "./weight-record";
 import type { WeightRecordStore } from "./weight-record-store";
 import { type WeightRecordWrite, weightRecordWriteTypes } from "./weight-record-write";
@@ -14,7 +15,7 @@ import { type WeightRecordWrite, weightRecordWriteTypes } from "./weight-record-
 export const createWeightRecordKind = (
   store: WeightRecordStore,
   findStartedOn: () => string | undefined,
-): RecordKind<"weight_record", WeightRecordWrite, WeightRecord> => ({
+): RecordKind<"weight_record", WeightRecordWrite, WeightRecord, AddedRecordType> => ({
   name: "weight_record",
   writes: {
     isWrite: (write): write is WeightRecordWrite => weightRecordWriteTypes.includes(write.type),
@@ -31,6 +32,7 @@ export const createWeightRecordKind = (
         )
         .exhaustive(),
   },
+  deliversAbsence: false,
   readCurrent: (recordId): CurrentRecord<WeightRecord> => {
     const weightRecord = store.find(recordId);
     if (weightRecord !== undefined) {
@@ -40,10 +42,13 @@ export const createWeightRecordKind = (
   },
 });
 
+// 体重記録の書き込みを当てると、体重の傾向が変わる
+type AddedRecordType = "weight_trend";
+
 const decideCreate = (
   store: WeightRecordStore,
   weightRecord: Omit<WeightRecord, "version">,
-): WriteDecision => {
+): WriteDecision<AddedRecordType> => {
   if (!isWithinAcceptedRange("weightKilograms", weightRecord.weightKg)) {
     return settled("create", weightRecord.id, { result: "rejected", reason: "out_of_range" });
   }
@@ -74,7 +79,7 @@ const decideUpdate = (
   store: WeightRecordStore,
   findStartedOn: () => string | undefined,
   weightRecord: Omit<WeightRecord, "imported">,
-): WriteDecision => {
+): WriteDecision<AddedRecordType> => {
   // 版を上げ忘れる不具合が、受け付けなかった1件として見えるようにする
   if (weightRecord.version < 2) {
     return settled("update", weightRecord.id, { result: "rejected", reason: "version_too_low" });
@@ -113,7 +118,10 @@ const decideUpdate = (
   });
 };
 
-const decideSourceDeleted = (store: WeightRecordStore, weightRecordId: string): WriteDecision => {
+const decideSourceDeleted = (
+  store: WeightRecordStore,
+  weightRecordId: string,
+): WriteDecision<AddedRecordType> => {
   if (store.hasDeletion(weightRecordId)) {
     return settled("source_deleted", weightRecordId, { result: "ignored_tombstone" });
   }
@@ -135,7 +143,7 @@ const settled = (
   writeKind: WriteKind,
   recordId: string,
   outcome: Exclude<SyncWriteOutcome, { result: "applied" }>,
-): WriteDecision => ({
+): WriteDecision<AddedRecordType> => ({
   writeKind,
   recordId,
   outcome,
@@ -148,13 +156,14 @@ const settled = (
 const applied = (
   writeKind: WriteKind,
   recordId: string,
-  commit: WriteDecision["commit"],
-): WriteDecision => ({
+  commit: WriteDecision<AddedRecordType>["commit"],
+): WriteDecision<AddedRecordType> => ({
   writeKind,
   recordId,
   outcome: { result: "applied" },
   changedRecordId: recordId,
-  addedChanges: [],
+  // 傾向は取りに行くときに体重記録から計算するので、変わったことだけを並びに載せる
+  addedChanges: [{ recordType: "weight_trend", recordId: weightTrendRecordId }],
   usageEvents: [],
   commit,
 });

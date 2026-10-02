@@ -6,6 +6,7 @@ import { mealHttpKind } from "../../meal/http/meal-http-kind";
 import { mealEstimationStatusHttpKind } from "../../meal-estimation-status/http/meal-estimation-status-http-kind";
 import { noticeHttpKind } from "../../notice/http/notice-http-kind";
 import { weightRecordHttpKind } from "../../weight-record/http/weight-record-http-kind";
+import { weightTrendHttpKind } from "../../weight-trend/http/weight-trend-http-kind";
 import type { HttpRecordKind } from "./http-record-kind";
 
 // 受け口から見た種類の登録簿。RecordType をキーにするので、種類を足して行を足し忘れるとコンパイルが落ちる
@@ -17,4 +18,5 @@ export const httpRecordKinds: { [K in RecordType]: HttpRecordKind } = {
   meal_estimation_status: mealEstimationStatusHttpKind,
   notice: noticeHttpKind,
   weight_record: weightRecordHttpKind,
+  weight_trend: weightTrendHttpKind,
 };
