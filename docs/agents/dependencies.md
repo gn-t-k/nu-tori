@@ -31,7 +31,7 @@ flowchart TD
 
 ## 落ちた PR の Issue
 
-依存の PR の check が落ちると、`dependency-pr.yml` が PR ごとに Issue を1つ立てる（ラベルは `ready-for-agent`）。題は `依存の PR #<番号> の check が落ちている（<PR の題>）` で、セキュリティの更新なら先頭に `[セキュリティ]` が付く。`[セキュリティ]` の Issue は、ほかより先に拾う。同じ PR がまた落ちると、開いている Issue に落ちた回のリンクがコメントで足される。PR がマージされるか閉じられると、Issue は閉じる。
+依存の PR の check が落ちると（時間切れや起動の失敗も含む。取り消されたときは除く）、`dependency-pr.yml` が PR ごとに Issue を1つ立てる（ラベルは `ready-for-agent`）。題は `依存の PR #<番号> の check が落ちている（<PR の題>）` で、セキュリティの更新なら先頭に `[セキュリティ]` が付く。`[セキュリティ]` の Issue は、ほかより先に拾う。同じ PR がまた落ちると、開いている Issue に落ちた回のリンクがコメントで足される。PR がマージされるか閉じられると、Issue は閉じる。
 
 - Issue の本文の PR と落ちた回から読み始める。直すのは、PR のブランチで始めたセッションにする（`docs/agents/git.md`）
 - 直したコミットを足して check が通れば、patch/minor ならワークフローがマージする。major は落ちたときも Issue が立つが、直したあとのマージは人がする
@@ -81,5 +81,5 @@ flowchart TD
 
 ## npm の依存ごとの注意
 
-- Better Auth は 1.x の中でも中核の表を変えたことがある。`server/src/auth/create-authentication-options.test.ts` が、アプリと同じ設定で Better Auth に移行を当てた D1 を見させ、足りない表・列・索引や食い違いがあれば落ちる。落ちたら、変更履歴で表の変更を確かめ、`server/d1-migrations/` に移行を足し、`server/src/auth/authentication-tables.ts` の宣言も合わせる（`server/AGENTS.md` の「DB」）。列の型の違いと、今ある列に付ける索引（列ごとの `index: true`）の抜けは、Better Auth が警告を出すだけなので、テストでは落ちない
+- Better Auth は 1.x の中でも中核の表を変えたことがある。`server/src/auth/create-authentication-options/create-authentication-options.test.ts` が、アプリと同じ設定で Better Auth に移行を当てた D1 を見させ、足りない表・列・索引や食い違いがあれば落ちる。落ちたら、変更履歴で表の変更を確かめ、`server/d1-migrations/` に移行を足し、`server/src/auth/authentication-tables.ts` の宣言も合わせる（`server/AGENTS.md` の「DB」）。列の型の違いと、今ある列に付ける索引（列ごとの `index: true`）の抜けは、Better Auth が警告を出すだけなので、テストでは落ちない
 - `@praha/byethrow`・`@praha/byethrow-testing`・`@praha/byethrow-oxlint`・`@praha/byethrow-docs` は同じ版で上げる（`@praha/byethrow-oxlint` が peer 依存で `@praha/byethrow` の版を固定する）。`.agents/skills/byethrow/SKILL.md` は、`@praha/byethrow-docs` の `instruction`（`server/node_modules/@praha/byethrow-docs/dist/esm/cli/commands/init.js`）を手直ししたもので、手直しする前の写しを `.agents/skills/byethrow/upstream-instruction.md` に置く。上げて `instruction` が変わると、`scripts/check server` が差分を出して落ちる。落ちたら、変わった分を SKILL.md に写し、写しを新しくする（コマンドは check が出す）。`--fix` は写しを書き換えない。`init claude` は動かした場所の `.claude/skills/byethrow/SKILL.md` に書き出し、リポジトリ直下ではリンクをたどって手直しした SKILL.md を上書きするので、動かさない

@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-// 入っている @praha/byethrow-docs の init が SKILL.md に書き出す instruction を出す。
-// scripts/check が、.agents/skills/byethrow/upstream-instruction.md の写しと比べる。
 // instruction は export されていないので、ソースのテンプレートリテラルから取り出す
 const source = readFileSync(
   join(import.meta.dirname, "../node_modules/@praha/byethrow-docs/dist/esm/cli/commands/init.js"),

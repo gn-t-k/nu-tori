@@ -117,9 +117,12 @@ jobs:
 
   # check が落ちた PR ごとに、Issue を1つ立てる。開いていれば、また落ちた回をコメントで足す。
   # 探し方（開いている Issue を題で探す）と書き方は、ios-ui-test の track-main-failure にそろえる
+  # 時間切れ（timed_out）や起動の失敗（startup_failure）なども、マージされずに残るので落ちたものとして扱う
   track-failure:
     needs: identify-pr
-    if: needs.identify-pr.outputs.number != '' && github.event.workflow_run.conclusion == 'failure'
+    if: >-
+      needs.identify-pr.outputs.number != '' &&
+      !contains(fromJSON('["success", "cancelled", "skipped", "neutral"]'), github.event.workflow_run.conclusion)
     runs-on: ubuntu-latest
     environment: dependency-updates
     env:
