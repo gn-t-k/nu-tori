@@ -5,12 +5,17 @@ import { createSyncClientState } from "./create-sync-client-state";
 export const pushSyncWrites = (
   sessionToken: string,
   body: { writes: unknown[]; isFinalBatch?: boolean; clientState?: Record<string, unknown> },
+  headers: Record<string, string> = {},
 ) =>
   app.request(
     "/v1/sync/writes",
     {
       method: "POST",
-      headers: { authorization: `Bearer ${sessionToken}`, "content-type": "application/json" },
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+        "content-type": "application/json",
+        ...headers,
+      },
       body: JSON.stringify({
         writes: body.writes,
         isFinalBatch: body.isFinalBatch ?? false,
