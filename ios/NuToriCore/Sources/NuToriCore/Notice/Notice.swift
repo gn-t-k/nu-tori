@@ -30,6 +30,15 @@ public struct Notice: Hashable, Sendable {
         self.response = response
     }
 
+    /// 種類と対象の日付から決まる UUID v5。2台目も同じ日に同じ ID になり、記録忘れの通知の予約の ID にも使う
+    public static func id(kind: Kind, targetDay: CalendarDay) -> UUID {
+        NameBasedUUID.version5(
+            namespace: idNamespace, name: "\(kind.rawValue):\(targetDay.yearMonthDay)")
+    }
+
+    // 知らせの ID にだけ使う名前空間。変えると、同じ日の知らせが端末の版ごとに別の ID になる
+    private static let idNamespace = UUID(uuidString: "C6E6CE2F-84F0-460C-BC4D-142C0B227A3A")!
+
     /// 知らせの種類。rawValue は送り待ちに保存する
     public enum Kind: String, Sendable {
         /// 体重の記録忘れ
