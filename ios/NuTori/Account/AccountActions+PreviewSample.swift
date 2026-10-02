@@ -1,4 +1,6 @@
 #if DEBUG
+    import NuToriCore
+
     extension AccountActions {
         /// プレビューで押しても何もしない操作
         static var noop: AccountActions {
