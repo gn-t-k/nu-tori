@@ -13,6 +13,24 @@
 - ヘルスケアは、「[ヘルスケアの読み書きの対応表](https://github.com/gn-t-k/nu-tori/issues/27)」の追記の「実機で確かめるまで見込みのもの」に加えて、他のアプリの当日の体重で通知が取り消されることを確かめる。nu-tori を閉じてヘルスケアアプリで体重を手入力すると、その日の体重の通知が取り消され、開くと体重のボタンが目立たない。MacroFactor で入れても同じになる
 - 栄養は、ヘルスケアアプリに nu-tori の食品の組として入っていれば合格にする。MacroFactor・FoodNoms が取り込むかは確かめない。どちらも取り込み方がアプリ側の決まりに左右される（MacroFactor は日の合計を Nutrition のページにだけ出し、その日に MacroFactor で記録があると取り込まない。`docs/research/healthkit-foodnoms-macrofactor.md`）
 
+## クラッシュを調べる
+
+クラッシュの知らせ（TestFlight の「クラッシュしました」、Sentry の新しいエラー、問い合わせ）を受けたら、次の順にクラッシュログを探す。
+
+1. Sentry: `scripts/sentry` で課題を探し、スタック・版・OS・件数を読む（使い方は `docs/agents/tooling.md` の「Sentry を読む」）。クラッシュは、落ちた次にアプリを開いたときに送られる
+2. 開発者の iPhone が Mac につながっているとき: 端末のクラッシュログを直接取る。Sentry に届く前でも読める
+
+   ```bash
+   xcrun devicectl list devices
+   xcrun devicectl device info files -d <UDID> --domain-type systemCrashLogs | grep -i nutori
+   xcrun devicectl device copy from -d <UDID> --domain-type systemCrashLogs --source <パス> --destination <置き場>
+   ```
+
+   `.ips` は1行目が要約の JSON、2行目からが本体の JSON。本体の `faultingThread` の `frames` と、スレッドの `queue` を読む
+3. 一般の利用者で Sentry に無いとき: 利用者に、設定 → プライバシーとセキュリティ → 解析と改善 → 解析データ から `NuTori-*.ips` を共有してもらう。App Store Connect のクラッシュ（「App デベロッパと共有」をオンにした人の分）も見る
+
+原因が分かったら直す PR を出す。シミュレーターで確かめられないもの（バックグラウンドの起動など）は、このファイルの「実機の確認」に従い、確かめる手順と合格の条件を `ready-for-human` の Issue に書けば、PR は実機の確認を待たずにマージしてよい。手順は、TestFlight の版をふつうに使ったあとに、エージェントが 2 のクラッシュログを見れば済む形を先に考える。
+
 ## 古いビルドの締め出し
 
 サーバーは、最低バージョン（受け付けるいちばん古いアプリのビルド番号。本番の `server/wrangler.jsonc` の `vars` の `MINIMUM_APP_BUILD`）より古いビルドの要求を 426 で断り、アプリは締め出しの画面を出す。開発用の環境は最低バージョンを持たず、締め出さない。仕組みの正本は「[強制アップデートの仕様（#223）](https://github.com/gn-t-k/nu-tori/issues/223)」。
