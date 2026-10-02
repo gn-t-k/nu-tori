@@ -8,7 +8,7 @@ import type { RecordType } from "./record-type";
 import type { LedgerStore } from "./sync-ledger/ledger-store";
 
 // 写真のファイルを R2 に置き、受け取りを控える。同じ写真が再び届いたときと、消した食事の写真が届いたときは、何もせずに受け取った形で終える。
-// 食事の写真がこれでそろったら、推定の予定に入れ、推定の状態の変更を足す。
+// 食事の写真がこれでそろったら、推定の書き込みの口を通して推定の予定に入れる。
 // 失敗は、呼び出し側が PostHog と要求ごとのログに失敗した段を出すために、Result で返す
 export const receiveMealPhoto = (
   ledgerStore: LedgerStore<RecordType>,
@@ -56,8 +56,10 @@ const recordReceipt = (
     stores.mealPhoto.insertReceipt(photoId, receivedAt);
     const mealId = stores.mealPhoto.findMealIdOfPhoto(photoId);
     const meal = mealId === undefined ? undefined : stores.meal.find(mealId);
-    if (meal !== undefined && scheduleMealEstimation(stores, meal, receivedAt)) {
-      addChange({ recordType: "meal_estimation_status", recordId: meal.id });
+    if (meal !== undefined) {
+      stores.writeEstimationEvents(addChange, (writes) =>
+        scheduleMealEstimation(stores, writes, meal, receivedAt),
+      );
     }
   });
 };

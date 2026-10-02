@@ -141,6 +141,69 @@ const accountSettings = defineFactory({
   }),
 });
 
+const meals = defineFactory({
+  schema,
+  table: "meals",
+  resolver: ({ sequence }) => ({
+    id: `meal-${sequence}`,
+    eatenAt: new Date("2026-01-01T00:00:00Z"),
+    eatenAtUtcOffsetSeconds: 32_400,
+    sentAt: new Date("2026-01-01T00:00:00Z"),
+    sentTimeZone: "Asia/Tokyo",
+    entryMethod: "captured" as const,
+  }),
+});
+
+const estimationSchedules = defineFactory({
+  schema,
+  table: "estimationSchedules",
+  resolver: ({ sequence }) => ({
+    id: `estimation-schedule-${sequence}`,
+    dueAt: new Date("2026-01-01T00:00:00Z"),
+    countedOn: "2026-01-01",
+  }),
+});
+
+const mealEstimationSchedules = defineFactory({
+  schema,
+  table: "mealEstimationSchedules",
+  resolver: ({ use }) => ({
+    estimationScheduleId: () =>
+      use(estimationSchedules)
+        .create()
+        .then((schedule) => schedule.id),
+    mealId: () =>
+      use(meals)
+        .create()
+        .then((meal) => meal.id),
+  }),
+});
+
+const estimationDeferrals = defineFactory({
+  schema,
+  table: "estimationDeferrals",
+  resolver: ({ use }) => ({
+    estimationScheduleId: () =>
+      use(estimationSchedules)
+        .create()
+        .then((schedule) => schedule.id),
+    deferredAt: new Date("2026-01-01T00:00:00Z"),
+  }),
+});
+
+const estimations = defineFactory({
+  schema,
+  table: "estimations",
+  resolver: ({ sequence, use }) => ({
+    id: `estimation-${sequence}`,
+    estimationScheduleId: () =>
+      use(estimationSchedules)
+        .create()
+        .then((schedule) => schedule.id),
+    startedAt: new Date("2026-01-01T00:00:00Z"),
+  }),
+});
+
 // 置き場のテストで行を作る。create() は Promise を返すので、テストで await する。transactionSync の中では使わない
 export const durableObjectFactory = composeFactory({
   firstSignIns,
@@ -154,4 +217,9 @@ export const durableObjectFactory = composeFactory({
   importedBodyFatPercentages,
   weightRecordDeletions,
   accountSettings,
+  meals,
+  estimationSchedules,
+  mealEstimationSchedules,
+  estimationDeferrals,
+  estimations,
 });

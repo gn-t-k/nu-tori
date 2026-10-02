@@ -14,7 +14,7 @@ import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 
 // 呼び出しから戻ったときに、1つのトランザクションで試みの結果を書く。
 // 食事とのつなぎが無ければ（呼び出し中に食事が消えた）結果だけで終え、二度と呼ばない。
-// 通ったら料理・材料・完了を書き、料理と材料の変更のあとに推定の状態の変更を足す。400 か、試みが上限に達したら諦める。
+// 通ったら料理・材料・完了を書く。料理と材料の変更は run の中で足すので、推定の書き込みの口が足す推定の状態の変更より前に並ぶ。400 か、試みが上限に達したら諦める。
 // 返すのは PostHog に送る出来事
 export const recordEstimationAttemptOutcome = (
   ledgerStore: LedgerStore<RecordType>,
@@ -23,64 +23,60 @@ export const recordEstimationAttemptOutcome = (
   outcome: EstimationAttemptOutcome,
   endedAt: Date,
 ): UsageEvent[] =>
-  createRecordLedger(ledgerStore, stores, endedAt).changeOutsideWrites((addChange) => {
-    const { estimationId } = attempt;
-    stores.estimation.insertAttemptResult({
-      attemptId: attempt.attemptId,
-      endedAt,
-      conclusion: outcome,
-    });
-    const attemptEnded: UsageEvent = {
-      name: "estimation_attempt_ended",
-      result: outcome.result,
-      identifyDishesUsage: outcome.usage.identifyDishes,
-      matchIngredientsUsage: outcome.usage.matchIngredients,
-    };
-    const mealId = stores.estimation.findMealIdOfEstimation(estimationId);
-    if (mealId === undefined) {
-      return [attemptEnded];
-    }
-    const attempts = stores.estimation.findAttempts(estimationId);
-    const computeEnded = (
-      finalStatus: "estimated" | "no_dishes" | "failed",
-      dishes: readonly Dish[],
-      ingredients: readonly Ingredient[],
-    ) =>
-      computeEstimationEndedEvent({
-        finalStatus,
-        attempts,
-        receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),
-        endedAt,
-        dishCount: dishes.length,
-        ingredients,
-      });
+  createRecordLedger(ledgerStore, stores, endedAt).changeOutsideWrites((addChange) =>
+    stores.writeEstimationEvents(addChange, (writes) => {
+      const { estimationId } = attempt;
+      writes.recordAttemptResult({ attemptId: attempt.attemptId, endedAt, conclusion: outcome });
+      const attemptEnded: UsageEvent = {
+        name: "estimation_attempt_ended",
+        result: outcome.result,
+        identifyDishesUsage: outcome.usage.identifyDishes,
+        matchIngredientsUsage: outcome.usage.matchIngredients,
+      };
+      const mealId = stores.estimation.findMealIdOfEstimation(estimationId);
+      if (mealId === undefined) {
+        return [attemptEnded];
+      }
+      const attempts = stores.estimation.findAttempts(estimationId);
+      const computeEnded = (
+        finalStatus: "estimated" | "no_dishes" | "failed",
+        dishes: readonly Dish[],
+        ingredients: readonly Ingredient[],
+      ) =>
+        computeEstimationEndedEvent({
+          finalStatus,
+          attempts,
+          receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),
+          endedAt,
+          dishCount: dishes.length,
+          ingredients,
+        });
 
-    if (outcome.result === "succeeded") {
-      const { dishes, ingredients } = toRecords(mealId, outcome.dishes);
-      const result = dishes.length === 0 ? "no_dishes" : "estimated";
-      stores.estimation.insertCompletion({ estimationId, completedAt: endedAt, result });
-      for (const dish of dishes) {
-        stores.dish.insert(dish);
+      if (outcome.result === "succeeded") {
+        const { dishes, ingredients } = toRecords(mealId, outcome.dishes);
+        const result = dishes.length === 0 ? "no_dishes" : "estimated";
+        writes.complete({ estimationId, mealId, completedAt: endedAt, result });
+        for (const dish of dishes) {
+          stores.dish.insert(dish);
+        }
+        for (const ingredient of ingredients) {
+          stores.ingredient.insert(ingredient);
+        }
+        for (const { id } of dishes) {
+          addChange({ recordType: "dish", recordId: id });
+        }
+        for (const { id } of ingredients) {
+          addChange({ recordType: "ingredient", recordId: id });
+        }
+        return [attemptEnded, computeEnded(result, dishes, ingredients)];
       }
-      for (const ingredient of ingredients) {
-        stores.ingredient.insert(ingredient);
+      if (outcome.result === "bad_request" || attempts.length >= maximumEstimationAttempts) {
+        writes.abandon({ estimationId, mealId, abandonedAt: endedAt });
+        return [attemptEnded, computeEnded("failed", [], [])];
       }
-      for (const { id } of dishes) {
-        addChange({ recordType: "dish", recordId: id });
-      }
-      for (const { id } of ingredients) {
-        addChange({ recordType: "ingredient", recordId: id });
-      }
-      addChange({ recordType: "meal_estimation_status", recordId: mealId });
-      return [attemptEnded, computeEnded(result, dishes, ingredients)];
-    }
-    if (outcome.result === "bad_request" || attempts.length >= maximumEstimationAttempts) {
-      stores.estimation.insertAbandonment({ estimationId, abandonedAt: endedAt });
-      addChange({ recordType: "meal_estimation_status", recordId: mealId });
-      return [attemptEnded, computeEnded("failed", [], [])];
-    }
-    return [attemptEnded];
-  });
+      return [attemptEnded];
+    }),
+  );
 
 const toRecords = (
   mealId: string,
