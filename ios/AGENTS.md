@@ -15,7 +15,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
   - 置き場を分ける前の1つの置き場（`RecordStore`）は、更新して最初に開いたときに、送り待ちとヘルスケアの同期の進み具合を送り待ちの置き場へ移して消す（`LegacyRecordStore`）。開けない形のときは送り待ちを捨て、`HandledFailure.storeRecovery` として Sentry に送る
 - 食事の写真のファイル（`MealPhotos`。置き場は `AppRuntime` が渡す）: 元の写真と送る縮小版は Application Support（バックアップの対象）に、この端末に元の写真が無い食事（ほかの端末で記録した、機種変更のあと）のために取りに行った縮小版は Caches に置く。取りに行った縮小版は、食事かアカウントを消すまで持ち、それより前にシステムが空けたら、次に見るときに取りに行き直す
 - ファイルを足すとき、`project.pbxproj` は直さない（フォルダの同期で拾われる）
-- `ios` の下を探すときは、Grep の道具か `git grep` を使う。`NuToriCore/.build` などのビルドの置き場が数 GB ある
+- `ios` の下を探すときは、Grep の道具か `git grep` を使う。`NuToriCore/.build` などのビルドの置き場が数 GB ある。ビルドの置き場は worktree ごとにできるので、worktree を並べて作業するときは、使い終えたものから消す
 - 型検査の厳しさの設定は `NuToriCore/Package.swift`、`SharedRulesGenerator/Package.swift`、`project.pbxproj` の3か所にあるので、そろえる
 - Bundle ID は変えない。App Store Connect に上げたあとは変えられず、サーバーの Sign in with Apple の `aud` もこの値を見る
 
@@ -48,7 +48,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 作業の分け方
 
-チケットと PR を切り分けるときは、`docs/agents/issue-tracker.md` の「iOS のチケットと PR の分け方」を読む。
+チケットを切り分けるときは、`docs/agents/issue-tracker.md` の「iOS のチケットの分け方」を読む。
 
 ## 確かめる
 
