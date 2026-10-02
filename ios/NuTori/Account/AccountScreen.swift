@@ -1,4 +1,5 @@
 import Foundation
+import NuToriCore
 import SwiftUI
 import UIKit
 
@@ -6,6 +7,8 @@ struct AccountScreen: View {
     /// 保存してある「利用状況を送る」
     let sendsUsageData: Bool
     let cameraAccess: CameraAccess
+    /// 読み終えるまでは nil で、値を出さない
+    let notificationPermission: NotificationPermission?
     let actions: AccountActions
     let onClose: () -> Void
 
@@ -16,6 +19,16 @@ struct AccountScreen: View {
                     HealthAccessScreen()
                 } label: {
                     LabeledContent("ヘルスケア", value: "読む・書く")
+                }
+            }
+            Section("通知") {
+                LabeledContent("記録忘れ（体重）", value: notificationPermission?.label ?? "")
+                    .accessibilityIdentifier("notification-permission")
+                Button {
+                    openURL(Self.notificationSettingsURL)
+                    Task { await actions.openedNotificationSettings() }
+                } label: {
+                    externalLinkLabel("iPhone の設定を開く")
                 }
             }
             Section("カメラ") {
@@ -88,12 +101,14 @@ struct AccountScreen: View {
     init(
         sendsUsageData: Bool,
         cameraAccess: CameraAccess,
+        notificationPermission: NotificationPermission?,
         deletion: Deletion,
         actions: AccountActions,
         onClose: @escaping () -> Void
     ) {
         self.sendsUsageData = sendsUsageData
         self.cameraAccess = cameraAccess
+        self.notificationPermission = notificationPermission
         self.actions = actions
         self.onClose = onClose
         _deletion = State(initialValue: deletion)
@@ -115,6 +130,9 @@ struct AccountScreen: View {
     private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!
     /// このアプリの iPhone の設定
     private static let appSettingsURL = URL(string: UIApplication.openSettingsURLString)!
+    /// iPhone の設定の、このアプリの通知の設定
+    private static let notificationSettingsURL = URL(
+        string: UIApplication.openNotificationSettingsURLString)!
 
     private var isDeleting: Bool {
         switch deletion {
@@ -164,13 +182,17 @@ struct AccountScreen: View {
         Button {
             openURL(url)
         } label: {
-            HStack {
-                Text(title)
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            externalLinkLabel(title)
+        }
+    }
+
+    private func externalLinkLabel(_ title: String) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Image(systemName: "arrow.up.right")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -181,6 +203,16 @@ struct AccountScreen: View {
             deletion = .failed(failure)
         } else {
             deletion = .idle
+        }
+    }
+}
+
+extension NotificationPermission {
+    fileprivate var label: String {
+        switch self {
+        case .permitted: "許可している"
+        case .notPermitted: "許可していない"
+        case .notYetRequested: "まだ求めていない"
         }
     }
 }

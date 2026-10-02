@@ -7,6 +7,9 @@ import SwiftUI
 struct TimelineScreenContainer: View {
     let rejectedLines: [RejectedLine]
     let capture: (ClientUsageEvent) async -> Void
+    let reminderLanding: ReminderLanding?
+    let noteReminderLanded: () -> Void
+    let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
     let accountActions: AccountActions
@@ -25,6 +28,9 @@ struct TimelineScreenContainer: View {
             meals: mealCards,
             notices: cachedNotices.compactMap { $0.notice() },
             capture: capture,
+            reminderLanding: reminderLanding,
+            noteReminderLanded: noteReminderLanded,
+            requestNotificationPermission: requestNotificationPermission,
             prepareWeightEntry: prepareWeightEntry,
             saveWeight: saveWeight,
             accountActions: accountActions,

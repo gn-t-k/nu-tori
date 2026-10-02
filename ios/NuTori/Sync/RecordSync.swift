@@ -25,6 +25,7 @@ import NuToriCore
         let record = try await engine.save(write)
         // 知らせの中で記録したときも、送るのを待たずに知らせを答えた形にする
         _ = try? await engine.issueOrRespondToMissedWeightRecordNotices()
+        await reminders.reschedule()
         await health.export(record)
         _ = try await syncAfterInFlight()
     }
@@ -36,6 +37,19 @@ import NuToriCore
         if (try? await engine.issueOrRespondToMissedWeightRecordNotices()) == true {
             syncInBackground()
         }
+        await reminders.reschedule()
+    }
+
+    /// 記録忘れの通知を、キャッシュの体重記録といつもの時刻で置き直す。サインインしていなければ置かない
+    func rescheduleReminders() async {
+        guard await hasSession(), await signedInAccountId() != nil else { return }
+        await reminders.reschedule()
+    }
+
+    /// キャッシュにその ID の知らせがあるか（答えていても）
+    func hasNotice(id noticeId: UUID) async -> Bool {
+        let notices = (try? await store.notices()) ?? []
+        return notices.contains { $0.id == noticeId }
     }
 
     /// 今日の知らせを出す時刻がまだ来ていなければ、その時刻。今日の体重記録があれば nil
@@ -125,6 +139,8 @@ import NuToriCore
 
     func importHealthAndSendPending() async {
         await health.importChanges()
+        // 送れなくても、取り込んだ体重記録で置き直す
+        await rescheduleReminders()
         _ = try? await sync()
     }
 
@@ -137,7 +153,8 @@ import NuToriCore
         hasSession: @escaping @MainActor () async -> Bool,
         signedInAccountId: @escaping @MainActor () async -> String?,
         errorReporting: any ErrorReportingSession,
-        mealPhotos: MealPhotos
+        mealPhotos: MealPhotos,
+        reminders: MissedWeightRecordReminderScheduler
     ) {
         self.store = store
         self.client = client
@@ -148,6 +165,7 @@ import NuToriCore
         self.signedInAccountId = signedInAccountId
         self.errorReporting = errorReporting
         self.mealPhotos = mealPhotos
+        self.reminders = reminders
     }
 
     func registerAndWatch() {
@@ -167,6 +185,7 @@ import NuToriCore
             }
         }
         watchNetwork()
+        watchClock()
         scheduleBackgroundRefresh()
     }
 
@@ -192,12 +211,14 @@ import NuToriCore
     private let hasSession: @MainActor () async -> Bool
     private let signedInAccountId: @MainActor () async -> String?
     private let errorReporting: any ErrorReportingSession
+    private let reminders: MissedWeightRecordReminderScheduler
     /// 初めての取得を測り始めた時刻。測る前と、終えたあとは無い
     private var initialPullStartedAt: Date?
     private var didRegisterRefresh = false
     private var inFlight: Task<SyncResult?, any Error>?
     private var networkMonitor: NWPathMonitor?
     private var networkWasUnavailable = false
+    private var clockObservers: [any NSObjectProtocol] = []
 
     private func syncInBackground() {
         Task { _ = try? await self.syncAfterInFlight() }
@@ -251,6 +272,19 @@ import NuToriCore
         networkMonitor = monitor
     }
 
+    /// 端末のタイムゾーンが変わったとき、日付が変わったときに、記録忘れの通知を置き直す
+    private func watchClock() {
+        guard clockObservers.isEmpty else { return }
+        clockObservers = [Notification.Name.NSSystemTimeZoneDidChange, .NSCalendarDayChanged].map {
+            NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) {
+                [weak self] _ in
+                Task { @MainActor in
+                    await self?.rescheduleReminders()
+                }
+            }
+        }
+    }
+
     private func networkChanged(satisfied: Bool) {
         if satisfied && networkWasUnavailable {
             Task { try? await self.sync() }
@@ -296,6 +330,8 @@ import NuToriCore
         }
         // 届いた体重記録で答える。答えは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
         _ = try? await engine.issueOrRespondToMissedWeightRecordNotices()
+        // 届いた体重記録といつもの時刻で置き直す
+        await reminders.reschedule()
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }

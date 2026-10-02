@@ -16,6 +16,11 @@ struct TimelineScreen: View {
     /// 答えた知らせも含む
     let notices: [Notice]
     let capture: (ClientUsageEvent) async -> Void
+    /// 記録忘れの通知を押して開いたときの着き先。着いたら `noteReminderLanded` を呼ぶ
+    let reminderLanding: ReminderLanding?
+    let noteReminderLanded: () -> Void
+    /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ求める
+    let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
     let accountActions: AccountActions
@@ -119,13 +124,22 @@ struct TimelineScreen: View {
                 }
             }
         }
-        .sheet(isPresented: showsWeightEntry) {
+        // 通知の許可は、記録したシートが閉じてから求める。シートの上に重ねない
+        .sheet(
+            isPresented: showsWeightEntry,
+            onDismiss: {
+                guard recordedInWeightEntry else { return }
+                recordedInWeightEntry = false
+                Task { await requestNotificationPermission() }
+            }
+        ) {
             WeightEntrySheet(
                 records: records,
                 today: today,
                 now: now,
                 capture: capture,
                 onRecord: { write in
+                    recordedInWeightEntry = true
                     weightEntryPhase = .closed
                     Task { await saveWeight(write) }
                 }
@@ -187,6 +201,8 @@ struct TimelineScreen: View {
     @State private var showsAccount = false
     @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
+    /// 体重のシートで記録したか。シートが閉じたら通知の許可を求める合図
+    @State private var recordedInWeightEntry = false
     @State private var dayFocus: DayFocus = .timeline
     @State private var cameraPhase = CameraPhase.closed
     /// カメラを許可していない人に出す知らせ。ほかを押すか、タイムラインを動かすと消える
@@ -306,10 +322,18 @@ struct TimelineScreen: View {
                         withAnimation {
                             proxy.scrollTo(itemId, anchor: .top)
                         }
+                    case .scrollingToEnd(let day):
+                        proxy.scrollTo(day, anchor: .bottom)
                     case .timeline, .summary:
                         return
                     }
                     dayFocus = .timeline
+                }
+                // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く
+                .onChange(of: reminderLanding, initial: true) { _, landing in
+                    guard let landing else { return }
+                    dayFocus = landingFocus(landing, in: timeline)
+                    noteReminderLanded()
                 }
             }
         }
@@ -361,7 +385,11 @@ struct TimelineScreen: View {
                         capture: capture,
                         onRecord: { write in
                             noticeRecordedCount += 1
-                            Task { await saveWeight(write) }
+                            Task {
+                                await saveWeight(write)
+                                // 知らせの中で記録したときは、記録した直後に通知の許可を求める
+                                await requestNotificationPermission()
+                            }
                         }
                     )
                     .id(item.id)
@@ -390,6 +418,21 @@ struct TimelineScreen: View {
                     ]
                 )
             }
+        }
+    }
+
+    /// 記録忘れの通知を押して開いたときの着き先。知らせが並んでいなければ、いちばん下
+    private func landingFocus(_ landing: ReminderLanding, in timeline: Timeline) -> DayFocus {
+        let lastDay = timeline.days.last?.day ?? today
+        switch landing {
+        case .notice(let noticeId):
+            let item = timeline.days.flatMap(\.items).first(where: { item in
+                if case .notice(let card) = item { card.notice.id == noticeId } else { false }
+            })
+            guard let item else { return .scrollingToEnd(lastDay) }
+            return .scrollingToItem(item.id)
+        case .timelineEnd:
+            return .scrollingToEnd(lastDay)
         }
     }
 
@@ -563,8 +606,10 @@ private enum DayFocus: Equatable {
     case timeline
     case summary(CalendarDay)
     case scrollingTo(CalendarDay)
-    /// 答えていない知らせの1行から、その知らせのカードへ
+    /// 答えていない知らせの1行と、記録忘れの通知から、その知らせのカードへ
     case scrollingToItem(Timeline.Item.ID)
+    /// 記録忘れの通知から、その日（今日）のいちばん下へ
+    case scrollingToEnd(CalendarDay)
 }
 
 private struct TimelineDayOffset: Equatable {

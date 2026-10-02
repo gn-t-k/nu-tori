@@ -5,15 +5,23 @@ import Observation
 @Observable
 final class RootModel {
     private(set) var screen: Screen = .opening
+    /// 記録忘れの通知を押して開いたときの着き先。タイムラインが着いたら `noteReminderLanded()` で消す
+    private(set) var reminderLanding: ReminderLanding?
     var rejectedLines: [RejectedLine] {
         guard case .accepting(let rejected) = rejectionAcceptance else { return [] }
         return rejected.lines
     }
 
-    init(accountSession: AccountSession, recordSync: RecordSync, health: HealthSyncSession) {
+    init(
+        accountSession: AccountSession,
+        recordSync: RecordSync,
+        health: HealthSyncSession,
+        reminders: MissedWeightRecordReminderScheduler
+    ) {
         self.accountSession = accountSession
         self.recordSync = recordSync
         self.health = health
+        self.reminders = reminders
         recordSync.onDestination = { [weak self] destination in
             self?.replaceScreen(with: destination)
         }
@@ -34,7 +42,46 @@ final class RootModel {
             replaceScreen(with: .signIn(.introduction))
         }
         await accountSession.beginObservationIfSignedIn()
+        hasBegunObservation = true
+        if let noticeId = reminderTapWhileOpening {
+            reminderTapWhileOpening = nil
+            Task { await self.openFromReminder(noticeId: noticeId) }
+        }
         await syncIfShowingTimeline()
+    }
+
+    /// 記録忘れの通知を押して開いた。ヘルスケアを読み、知らせを出すかを決めてから、
+    /// その日の知らせがあればその位置に、無ければ今日のいちばん下に着く
+    func openFromReminder(noticeId: UUID) async {
+        // 起動して初めて開き終え、観測を始めてから決める。始める前の出来事は送られないため
+        guard hasBegunObservation else {
+            reminderTapWhileOpening = noticeId
+            return
+        }
+        switch screen {
+        case .loadingTimeline, .timeline:
+            await health.importChanges()
+            await recordSync.issueOrRespondToNotices()
+            let hadNotice = await recordSync.hasNotice(id: noticeId)
+            reminderLanding = hadNotice ? .notice(id: noticeId) : .timelineEnd
+            await accountSession.capture(.missedWeightReminderOpened(hadNotice: hadNotice))
+        case .opening, .signIn:
+            return
+        }
+    }
+
+    func noteReminderLanded() {
+        reminderLanding = nil
+    }
+
+    /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ、iPhone の画面で求める
+    func requestNotificationPermissionAfterWeightRecorded() async {
+        guard let granted = await reminders.requestPermissionIfNotYetRequested() else { return }
+        await accountSession.capture(.notificationPermissionRequested(granted: granted))
+    }
+
+    func notificationPermission() async -> NotificationPermission {
+        await reminders.permission()
     }
 
     func capture(_ event: ClientUsageEvent) async {
@@ -203,6 +250,11 @@ final class RootModel {
     private let accountSession: AccountSession
     private let recordSync: RecordSync
     private let health: HealthSyncSession
+    private let reminders: MissedWeightRecordReminderScheduler
+    /// 開いている途中に押された記録忘れの通知の ID
+    private var reminderTapWhileOpening: UUID?
+    /// 起動して初めて開き終えたか
+    private var hasBegunObservation = false
     private var rejectionAcceptance = RejectionAcceptance.accepting(RejectedLines())
     /// 開いているあいだに今日の知らせの時刻が来るのを待つ
     private var noticeTimer: Task<Void, Never>?
@@ -217,6 +269,8 @@ final class RootModel {
         case .signIn:
             // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
             discardRejectedLines()
+            // サインアウトとアカウントの削除で、予約した通知と通知センターに残った通知を外す
+            Task { [reminders] in await reminders.removeAll() }
         case .loadingTimeline, .timeline:
             break
         }
@@ -275,6 +329,8 @@ final class RootModel {
             await health.aroundTimelineSync {
                 _ = try await self.recordSync.sync()
             }
+            // 送れなくても、開いたとき・前面に戻ったときに置き直す
+            await recordSync.rescheduleReminders()
             waitForNoticeTime()
         case .opening, .signIn:
             return

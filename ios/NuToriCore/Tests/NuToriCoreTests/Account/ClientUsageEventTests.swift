@@ -142,6 +142,50 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("記録忘れの通知を押して開き、体重の知らせがあったとき")
+    struct MissedWeightReminderOpenedWithNotice {
+        let event: ClientUsageEvent
+
+        init() {
+            event = .missedWeightReminderOpened(hadNotice: true)
+        }
+
+        @Test("知らせがあったかの旗だけを載せること")
+        func carriesTheFlag() {
+            #expect(event.name == "missed_weight_reminder_opened")
+            #expect(event.fields == ["had_notice": .flag(true)])
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("通知の許可を求め、許可しなかったとき")
+    struct NotificationPermissionDenied {
+        let event: ClientUsageEvent
+
+        init() {
+            event = .notificationPermissionRequested(granted: false)
+        }
+
+        @Test("許可したかの旗だけを載せること")
+        func carriesTheFlag() {
+            #expect(event.name == "notification_permission_requested")
+            #expect(event.fields == ["granted": .flag(false)])
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("アカウントの通知の行から設定を開いたとき")
+    struct NotificationSettingsOpened {
+        @Test("中身を持たない出来事にすること")
+        func hasNoFields() {
+            let event = ClientUsageEvent.notificationSettingsOpened
+
+            #expect(event.name == "notification_settings_opened")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("推定できた食事を、送ってから 30 分 30 秒後に消したとき")
     struct EstimatedMealDeleted {
         let event: ClientUsageEvent

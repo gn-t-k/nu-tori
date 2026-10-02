@@ -6,7 +6,9 @@
                 signedInAccountId: { nil },
                 turnOnUsageData: {},
                 turnOffUsageData: {},
-                deleteAccount: { nil }
+                deleteAccount: { nil },
+                notificationPermission: { .permitted },
+                openedNotificationSettings: {}
             )
         }
     }
