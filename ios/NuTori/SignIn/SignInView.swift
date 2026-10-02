@@ -7,30 +7,36 @@ struct SignInView: View {
     let onAppleResult: (AppleSignInResult) -> Void
 
     var body: some View {
-        // 文字を大きくして入りきらないときだけ、同意の文が切れないよう全体を送れるようにする
-        ViewThatFits(in: .vertical) {
-            content
-            ScrollView {
-                content
+        VStack(spacing: 12) {
+            // 文字を大きくして入りきらないときは、サインインのボタンをいつも画面の下に見せるため、見出しと同意の文だけを送る
+            ViewThatFits(in: .vertical) {
+                introduction
+                    .frame(maxHeight: .infinity)
+                ScrollView {
+                    introduction
+                }
             }
+            VStack(spacing: 12) {
+                statusLine
+                    // 下に残す欄では送る側より先に縮められるので、文字を大きくしても文を途中で切らない
+                    .fixedSize(horizontal: false, vertical: true)
+                AppleSignInButton(onResult: onAppleResult)
+                    .disabled(status == .signingIn)
+            }
+            .padding([.horizontal, .bottom])
         }
         .background(Color(.systemGroupedBackground))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("signIn")
     }
 
-    private var content: some View {
+    private var introduction: some View {
         VStack(spacing: 24) {
             header
                 .frame(maxHeight: .infinity)
-            VStack(spacing: 12) {
-                SignInConsentCard()
-                statusLine
-                AppleSignInButton(onResult: onAppleResult)
-                    .disabled(status == .signingIn)
-            }
+            SignInConsentCard()
         }
-        .padding()
+        .padding([.horizontal, .top])
     }
 
     @ViewBuilder private var statusLine: some View {
