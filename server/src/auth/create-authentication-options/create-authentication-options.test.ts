@@ -1,7 +1,7 @@
 import { getMigrations } from "better-auth/db/migration";
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import { createAuthenticationOptions } from "./create-authentication-options";
+import { createAuthenticationOptions } from "./index";
 
 // Better Auth の版を上げて中核の表が変わったら、ここで落ちる（docs/agents/dependencies.md「npm の依存ごとの注意」）
 describe("Better Auth の設定", () => {
