@@ -2,6 +2,7 @@ import type { z } from "@hono/zod-openapi";
 import { accountSettingsWriteSchemas } from "../../account-settings/http/account-settings-write-schemas";
 import type { RecordType } from "../../domain/record-type";
 import { mealWriteSchemas } from "../../meal/http/meal-write-schemas";
+import { noticeWriteSchemas } from "../../notice/http/notice-write-schemas";
 import { weightRecordWriteSchemas } from "../../weight-record/http/weight-record-write-schemas";
 
 // 種類ごとの書き込みのスキーマ。RecordType をキーにするので、種類を足して行を足し忘れるとコンパイルが落ちる。
@@ -12,6 +13,7 @@ const writeSchemasByRecordType = {
   ingredient: [],
   meal: mealWriteSchemas,
   meal_estimation_status: [],
+  notice: noticeWriteSchemas,
   weight_record: weightRecordWriteSchemas,
 } as const satisfies { [K in RecordType]: readonly z.ZodType[] };
 

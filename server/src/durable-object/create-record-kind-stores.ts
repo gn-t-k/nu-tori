@@ -10,6 +10,7 @@ import { createIngredientStore } from "../ingredient/durable-object/create-ingre
 import { createMealPhotoStore } from "../meal/durable-object/create-meal-photo-store";
 import { createMealStore } from "../meal/durable-object/create-meal-store";
 import { createMealEstimationStatusStore } from "../meal-estimation-status/durable-object/create-meal-estimation-status-store";
+import { createNoticeStore } from "../notice/durable-object/create-notice-store";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
 import { createWeightRecordStore } from "../weight-record/durable-object/create-weight-record-store";
 
@@ -25,6 +26,7 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     ingredient: createIngredientStore(db),
     meal,
     mealEstimationStatus,
+    notice: createNoticeStore(db),
     weightRecord: createWeightRecordStore(db),
     firstSignIn: createFirstSignInStore(db),
     mealPhoto: createMealPhotoStore(db),
