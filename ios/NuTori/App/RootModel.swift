@@ -114,10 +114,14 @@ final class RootModel {
 
     func prepareWeightEntry() async {
         await health.prepareForFirstWeightEntry()
+        // ヘルスケアから今日の体重を読み込んでいれば、知らせに答える
+        await recordSync.issueOrRespondToNotices()
     }
 
     func noteAppBackgrounded() {
         rejectionAcceptance = .ignoring
+        noticeTimer?.cancel()
+        noticeTimer = nil
     }
 
     func noteAppActive() {
@@ -200,6 +204,8 @@ final class RootModel {
     private let recordSync: RecordSync
     private let health: HealthSyncSession
     private var rejectionAcceptance = RejectionAcceptance.accepting(RejectedLines())
+    /// 開いているあいだに今日の知らせの時刻が来るのを待つ
+    private var noticeTimer: Task<Void, Never>?
 
     private enum RejectionAcceptance {
         case accepting(RejectedLines)
@@ -269,8 +275,20 @@ final class RootModel {
             await health.aroundTimelineSync {
                 _ = try await self.recordSync.sync()
             }
+            waitForNoticeTime()
         case .opening, .signIn:
             return
+        }
+    }
+
+    /// 開いているあいだに今日の知らせの時刻が来たら、知らせを出すかを決める
+    private func waitForNoticeTime() {
+        noticeTimer?.cancel()
+        noticeTimer = Task { [recordSync] in
+            guard let noticeTime = await recordSync.upcomingNoticeTime() else { return }
+            try? await Task.sleep(for: .seconds(max(0, noticeTime.timeIntervalSinceNow)))
+            guard !Task.isCancelled else { return }
+            await recordSync.issueOrRespondToNotices()
         }
     }
 

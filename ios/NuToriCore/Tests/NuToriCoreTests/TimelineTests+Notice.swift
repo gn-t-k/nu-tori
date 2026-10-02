@@ -41,7 +41,9 @@ extension TimelineTests {
 
             @Test("答えていない知らせの1行で示す知らせになること")
             func showsUnansweredLine() {
-                #expect(timeline.noticeAwaitingAnswer == notice)
+                #expect(
+                    timeline.noticeAwaitingAnswer
+                        == NoticeCard(notice: notice, form: .awaitingAnswer))
             }
 
             @Test("1行目に出す時刻を、出したときのタイムゾーンの時計の時刻にすること")

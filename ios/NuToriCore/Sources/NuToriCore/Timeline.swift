@@ -34,16 +34,19 @@ public struct Timeline: Sendable {
                 food: DayFood(meals: mealsByEatenDay[day] ?? [])
             )
         }
-        noticeAwaitingAnswer = input.notices.first {
-            $0.response == nil && $0.targetDay == today && $0.targetDay >= firstDay
-        }
+        noticeAwaitingAnswer =
+            days.last { $0.day == today }?.items.lazy
+            .compactMap { item -> NoticeCard? in
+                if case .notice(let card) = item, card.form == .awaitingAnswer { card } else { nil }
+            }
+            .first
     }
 
     /// 古い日から新しい日へ
     public let days: [Day]
 
     /// 今日の答えていない知らせ。画面の上へ流れて見えないときに、帯の下の1行で示す
-    public let noticeAwaitingAnswer: Notice?
+    public let noticeAwaitingAnswer: NoticeCard?
 
     /// タイムラインに並べる元になるもの。種類が増えたら欄を足す
     public struct Input: Sendable {

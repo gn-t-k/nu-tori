@@ -164,7 +164,8 @@ struct TimelineTests {
                 line = RejectedWeightLine(record: rejected, serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [after, before], rejectedLines: [.weight(line)], meals: [], notices: []),
+                        weightRecords: [after, before], rejectedLines: [.weight(line)], meals: [],
+                        notices: []),
                     firstDay: PlacingRejectedLines.day,
                     today: PlacingRejectedLines.day
                 )
@@ -193,7 +194,8 @@ struct TimelineTests {
                 line = RejectedWeightLine(record: restored, serverHasValue: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [restored, first], rejectedLines: [.weight(line)], meals: [], notices: []),
+                        weightRecords: [restored, first], rejectedLines: [.weight(line)], meals: [],
+                        notices: []),
                     firstDay: PlacingRejectedLines.day,
                     today: PlacingRejectedLines.day
                 )
@@ -223,7 +225,8 @@ struct TimelineTests {
                 line = RejectedWeightLine(record: corrected, serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [after, before], rejectedLines: [.weight(line)], meals: [], notices: []),
+                        weightRecords: [after, before], rejectedLines: [.weight(line)], meals: [],
+                        notices: []),
                     firstDay: PlacingRejectedLines.day,
                     today: PlacingRejectedLines.day
                 )

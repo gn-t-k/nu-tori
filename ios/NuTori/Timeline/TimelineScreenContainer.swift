@@ -22,6 +22,7 @@ struct TimelineScreenContainer: View {
             now: { .now },
             rejectedLines: rejectedLines,
             meals: mealCards,
+            notices: cachedNotices.compactMap { $0.notice() },
             capture: capture,
             prepareWeightEntry: prepareWeightEntry,
             saveWeight: saveWeight,
@@ -39,6 +40,7 @@ struct TimelineScreenContainer: View {
     @Query private var cachedEstimationStatuses: [CachedMealEstimationStatus]
     @Query private var cachedDishes: [CachedDish]
     @Query private var cachedIngredients: [CachedIngredient]
+    @Query private var cachedNotices: [CachedNotice]
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 

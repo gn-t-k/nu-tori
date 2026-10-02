@@ -21,9 +21,41 @@ import NuToriCore
         case .correct(let record):
             onReplacingRecord(record.id)
         }
-        let record = try await engineForThisDevice(accountId: accountId).save(write)
+        let engine = engineForThisDevice(accountId: accountId)
+        let record = try await engine.save(write)
+        // 知らせの中で記録したときも、送るのを待たずに知らせを答えた形にする
+        _ = try? await engine.issueOrRespondToMissedWeightRecordNotices()
         await health.export(record)
         _ = try await syncAfterInFlight()
+    }
+
+    /// 体重の知らせを出すか・答えるかを決める。書き込みを並べたら、裏で送る
+    func issueOrRespondToNotices() async {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        let engine = engineForThisDevice(accountId: accountId)
+        if (try? await engine.issueOrRespondToMissedWeightRecordNotices()) == true {
+            syncInBackground()
+        }
+    }
+
+    /// 今日の知らせを出す時刻がまだ来ていなければ、その時刻。今日の体重記録があれば nil
+    func upcomingNoticeTime() async -> Date? {
+        let now = Date.now
+        let timeZone = TimeZone.current
+        let usualWeighingTime: UsualWeighingTime?
+        let weightRecords: [WeightRecord]
+        do {
+            usualWeighingTime = try await store.usualWeighingTime()
+            weightRecords = try await store.weightRecords()
+        } catch {
+            return nil
+        }
+        let today = CalendarDay(containing: now, in: timeZone)
+        return MissedWeightRecordReminder.plan(
+            usualWeighingTime: usualWeighingTime, now: now, timeZone: timeZone,
+            weightRecords: weightRecords
+        )
+        .first { $0.day == today }?.fireDate
     }
 
     /// アプリの中の食事の写真と写真の送り残し。画面は `photoFile(mealId:photoId:)` で写真を読む
@@ -237,9 +269,12 @@ import NuToriCore
             initialPullStartedAt = .now
         }
         let startedAt = initialPullStartedAt ?? .now
+        let engine = engineForThisDevice(accountId: accountId)
+        // ヘルスケアから取り込んだあとの体重記録で決め、出した知らせと答えをこの同期で送る
+        _ = try? await engine.issueOrRespondToMissedWeightRecordNotices()
         let result: SyncResult
         do {
-            result = try await engineForThisDevice(accountId: accountId).sync()
+            result = try await engine.sync()
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -259,6 +294,8 @@ import NuToriCore
         if completedAfter {
             initialPullStartedAt = nil
         }
+        // 届いた体重記録で答える。答えは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
+        _ = try? await engine.issueOrRespondToMissedWeightRecordNotices()
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }

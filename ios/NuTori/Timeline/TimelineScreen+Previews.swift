@@ -11,6 +11,7 @@
             now: { .now },
             rejectedLines: sample.rejectedLines,
             meals: sample.meals,
+            notices: sample.notices,
             capture: { _ in },
             prepareWeightEntry: {},
             saveWeight: { _ in },
@@ -35,12 +36,17 @@
             case rejected
             /// 朝の食事は推定できて今日の丸が塗られ、昼の食事は推定の途中で、撮っておいた昨日の写真を選んだばかり
             case meals
+            /// 今日はまだ量っておらず、8:00 に体重の知らせが出た。一昨日の知らせには答えていない
+            case awaitingNotice
+            /// 今日の体重の知らせの中で記録した
+            case answeredNotice
 
             var initialPull: TimelineScreen.InitialPull {
                 switch self {
                 case .loading: .inProgress
                 case .firstDay: .completed(startedDay: .sampleToday)
-                case .unrecordedToday, .recordedToday, .rejected, .meals:
+                case .unrecordedToday, .recordedToday, .rejected, .meals, .awaitingNotice,
+                    .answeredNotice:
                     .completed(startedDay: Self.startedDay)
                 case .startedDayUndecided: .completed(startedDay: nil)
                 }
@@ -49,9 +55,11 @@
             var records: [WeightRecord] {
                 switch self {
                 case .loading, .firstDay: []
-                case .unrecordedToday, .startedDayUndecided: Self.pastRecords
+                case .unrecordedToday, .startedDayUndecided, .awaitingNotice: Self.pastRecords
                 case .recordedToday, .meals:
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 7, 5, from: .manual)]
+                case .answeredNotice:
+                    Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 9, 30, from: .manual)]
                 case .rejected: [Self.correctedRecord]
                 }
             }
@@ -59,7 +67,7 @@
             var rejectedLines: [RejectedLine] {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .meals:
+                    .meals, .awaitingNotice, .answeredNotice:
                     []
                 case .rejected:
                     [
@@ -86,7 +94,7 @@
             var meals: [MealCard] {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected:
+                    .rejected, .awaitingNotice, .answeredNotice:
                     []
                 case .meals:
                     [
@@ -100,6 +108,25 @@
                                 eatenOn: CalendarDay.sampleToday.advanced(by: -1), at: 19, 40,
                                 sentOn: .sampleToday, photoCount: 3),
                             status: nil, recordedOnThisDevice: true),
+                    ]
+                }
+            }
+
+            var notices: [Notice] {
+                switch self {
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .rejected, .meals:
+                    []
+                case .awaitingNotice:
+                    [
+                        .sampleMissedWeightRecord(
+                            on: CalendarDay.sampleToday.advanced(by: -2), respondedAt: nil),
+                        .sampleMissedWeightRecord(on: .sampleToday, respondedAt: nil),
+                    ]
+                case .answeredNotice:
+                    [
+                        .sampleMissedWeightRecord(
+                            on: .sampleToday, respondedAt: (hour: 9, minute: 30))
                     ]
                 }
             }
