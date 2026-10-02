@@ -2,7 +2,7 @@
 # エージェントと人が Sentry の課題・イベント・スタックを読む `sentry` CLI。版と設定を、ここ1か所に置く
 set -euo pipefail
 
-# CLI 自身の失敗の報告と、裏の更新の確認を止める
+# 読んだ課題の中身が CLI 自身の失敗の報告に乗って送られないよう、報告を止める。版は下で固定するので、更新の確認も止める
 export SENTRY_CLI_NO_TELEMETRY=1
 export SENTRY_CLI_NO_UPDATE_CHECK=1
 export SENTRY_ORG="${SENTRY_ORG:-nu-tori-fv}"
@@ -10,8 +10,10 @@ export SENTRY_ORG="${SENTRY_ORG:-nu-tori-fv}"
 # 読むだけのトークンは、dSYM を上げる組織のトークン（Xcode Cloud の SENTRY_AUTH_TOKEN）と混ざらない名前で受け取る
 if [ -n "${NU_TORI_SENTRY_READ_TOKEN:-}" ]; then
     export SENTRY_AUTH_TOKEN="$NU_TORI_SENTRY_READ_TOKEN"
+    # 保存したログインがあると環境変数より先に使われるので、環境変数を先にする
     export SENTRY_FORCE_ENV_TOKEN=1
 else
+    # シェルに残った dSYM 用の組織のトークンを使わず、保存した読むだけのログインを使う
     unset SENTRY_AUTH_TOKEN SENTRY_TOKEN
 fi
 
