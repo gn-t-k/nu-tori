@@ -171,7 +171,7 @@ importers:
         version: 0.129.0(zod@4.6.5)
       '@hono/zod-openapi':
         specifier: 1.6.3
-        version: 1.6.3(hono@4.13.10)(zod@4.6.5)
+        version: 1.6.3(hono@4.13.11)(zod@4.6.5)
       '@praha/byethrow':
         specifier: 0.12.0
         version: 0.12.0(typescript@7.0.2)
@@ -183,7 +183,7 @@ importers:
         version: 11.1.0(wrangler@4.143.0(@types/node@26.6.3))
       '@sentry/hono':
         specifier: 11.1.0
-        version: 11.1.0(@sentry/cloudflare@11.1.0(wrangler@4.143.0(@types/node@26.6.3)))(hono@4.13.10)
+        version: 11.1.0(@sentry/cloudflare@11.1.0(wrangler@4.143.0(@types/node@26.6.3)))(hono@4.13.11)
       better-auth:
         specifier: 1.7.6
         version: 1.7.6(@opentelemetry/api@1.9.1)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(kysely@0.29.6)(sqlite3@6.0.1))(vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
@@ -191,8 +191,8 @@ importers:
         specifier: 0.45.3
         version: 0.45.3(@opentelemetry/api@1.9.1)(kysely@0.29.6)(sqlite3@6.0.1)
       hono:
-        specifier: 4.13.10
-        version: 4.13.10
+        specifier: 4.13.11
+        version: 4.13.11
       jose:
         specifier: 6.2.12
         version: 6.2.12
@@ -1907,8 +1907,8 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  hono@4.13.10:
-    resolution: {integrity: sha512-dQuLsa5oO+47QVMVMaaD9cIv8ctmVtK1iRvwWngkfloFJMeFeuoUFDswIqZGxmGX3hrRzREgEArjkK9OgsQEhA==}
+  hono@4.13.11:
+    resolution: {integrity: sha512-/SMX/RQNJn7oNmFwH6DtwDqcrzZU2otm1FD6OJe2cWF6cfy/F8hq0XVBv7xW3FTJshRQwuBnXHDq2kNsdZnshg==}
     engines: {node: '>=16.9.0'}
 
   ieee754@1.2.1:
@@ -2821,17 +2821,17 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@hono/zod-openapi@1.6.3(hono@4.13.10)(zod@4.6.5)':
+  '@hono/zod-openapi@1.6.3(hono@4.13.11)(zod@4.6.5)':
     dependencies:
       '@asteasolutions/zod-to-openapi': 9.1.0(zod@4.6.5)
-      '@hono/zod-validator': 0.9.1(hono@4.13.10)(zod@4.6.5)
-      hono: 4.13.10
+      '@hono/zod-validator': 0.9.1(hono@4.13.11)(zod@4.6.5)
+      hono: 4.13.11
       openapi3-ts: 4.6.1
       zod: 4.6.5
 
-  '@hono/zod-validator@0.9.1(hono@4.13.10)(zod@4.6.5)':
+  '@hono/zod-validator@0.9.1(hono@4.13.11)(zod@4.6.5)':
     dependencies:
-      hono: 4.13.10
+      hono: 4.13.11
       zod: 4.6.5
 
   '@img/colour@1.1.0': {}
@@ -3206,12 +3206,12 @@ snapshots:
     dependencies:
       '@sentry/conventions': 0.24.0
 
-  '@sentry/hono@11.1.0(@sentry/cloudflare@11.1.0(wrangler@4.143.0(@types/node@26.6.3)))(hono@4.13.10)':
+  '@sentry/hono@11.1.0(@sentry/cloudflare@11.1.0(wrangler@4.143.0(@types/node@26.6.3)))(hono@4.13.11)':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@sentry/conventions': 0.24.0
       '@sentry/core': 11.1.0
-      hono: 4.13.10
+      hono: 4.13.11
     optionalDependencies:
       '@sentry/cloudflare': 11.1.0(wrangler@4.143.0(@types/node@26.6.3))
 
@@ -3575,7 +3575,7 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  hono@4.13.10: {}
+  hono@4.13.11: {}
 
   ieee754@1.2.1: {}
 
