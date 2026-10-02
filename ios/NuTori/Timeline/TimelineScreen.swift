@@ -13,6 +13,8 @@ struct TimelineScreen: View {
     let now: () -> Date
     let rejectedLines: [RejectedLine]
     let meals: [MealCard]
+    /// 答えた知らせも含む
+    let notices: [Notice]
     let capture: (ClientUsageEvent) async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
@@ -36,6 +38,11 @@ struct TimelineScreen: View {
                 Divider()
                 content(loaded: loaded)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(alignment: .top) {
+                        if let card = loaded?.noticeAwaitingAnswer, awaitingNoticeIsAbove {
+                            unansweredNoticeLine(card)
+                        }
+                    }
             }
             .navigationDestination(for: CalendarDay.self) { day in
                 let firstDay = startedDay ?? records.map(\.day).min() ?? day
@@ -141,6 +148,7 @@ struct TimelineScreen: View {
         }
         // 「写真を使用」で、カメラを閉じながら触覚で知らせる
         .sensoryFeedback(.success, trigger: capturedCount)
+        .sensoryFeedback(.success, trigger: noticeRecordedCount)
         .photosPicker(
             isPresented: $showsPhotoPicker,
             selection: $pickedPhotos,
@@ -186,6 +194,10 @@ struct TimelineScreen: View {
     /// 「写真を使用」を押した回数。触覚を鳴らす合図
     @State private var capturedCount = 0
     @State private var showsPhotoPicker = false
+    /// 体重の知らせの中で記録した回数。触覚を鳴らす合図
+    @State private var noticeRecordedCount = 0
+    /// 今日の答えていない知らせのカードが、画面の上へ流れて見えないか。カードが並んでいなければ false
+    @State private var awaitingNoticeIsAbove = false
     @State private var pickedPhotos: [PhotosPickerItem] = []
 
     private var showsCamera: Binding<Bool> {
@@ -283,9 +295,20 @@ struct TimelineScreen: View {
                     visibleDay = dayInView(
                         offsets, timeline: timeline, viewportHeight: geo.size.height)
                 }
+                .onPreferenceChange(AwaitingNoticeMaxYKey.self) { maxY in
+                    awaitingNoticeIsAbove = maxY.map { $0 <= 0 } ?? false
+                }
                 .onChange(of: dayFocus) { _, focus in
-                    guard case .scrollingTo(let day) = focus else { return }
-                    proxy.scrollTo(day, anchor: .top)
+                    switch focus {
+                    case .scrollingTo(let day):
+                        proxy.scrollTo(day, anchor: .top)
+                    case .scrollingToItem(let itemId):
+                        withAnimation {
+                            proxy.scrollTo(itemId, anchor: .top)
+                        }
+                    case .timeline, .summary:
+                        return
+                    }
                     dayFocus = .timeline
                 }
             }
@@ -329,6 +352,28 @@ struct TimelineScreen: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .accessibilityIdentifier("rejected-meal-line")
+                case .notice(let card):
+                    WeightNoticeCard(
+                        card: card,
+                        records: records,
+                        today: today,
+                        now: now,
+                        capture: capture,
+                        onRecord: { write in
+                            noticeRecordedCount += 1
+                            Task { await saveWeight(write) }
+                        }
+                    )
+                    .id(item.id)
+                    .background {
+                        if card.form == .awaitingAnswer {
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: AwaitingNoticeMaxYKey.self,
+                                    value: geo.frame(in: .named("timeline")).maxY)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -346,6 +391,32 @@ struct TimelineScreen: View {
                 )
             }
         }
+    }
+
+    /// 帯の下の1行。押すと、その知らせまで戻る
+    private func unansweredNoticeLine(_ card: NoticeCard) -> some View {
+        Button {
+            dayFocus = .scrollingToItem(Timeline.Item.notice(card).id)
+            Task { await capture(.unansweredNoticeLineTapped) }
+        } label: {
+            HStack(spacing: 12) {
+                Text("今日の体重がまだです")
+                    .foregroundStyle(.primary)
+                Spacer()
+                Text("見る")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.accentColor)
+            }
+            .font(.footnote)
+            .padding(.horizontal)
+            .frame(minHeight: 44)
+            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+            .overlay(Capsule().stroke(Color(.separator), lineWidth: 0.5))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding([.horizontal, .top])
+        .accessibilityIdentifier("unanswered-notice-line")
     }
 
     private func composer() -> some View {
@@ -410,7 +481,7 @@ struct TimelineScreen: View {
         let monday = today.startOfWeek
         return RingStrip(
             timeline: Timeline(
-                input: Timeline.Input(weightRecords: [], rejectedLines: [], meals: []),
+                input: Timeline.Input(weightRecords: [], rejectedLines: [], meals: [], notices: []),
                 firstDay: monday,
                 today: today)
         ).weeks
@@ -420,7 +491,8 @@ struct TimelineScreen: View {
         let first = startedDay ?? records.map(\.day).min() ?? today
         return Timeline(
             input: Timeline.Input(
-                weightRecords: records, rejectedLines: rejectedLines, meals: meals),
+                weightRecords: records, rejectedLines: rejectedLines, meals: meals,
+                notices: notices),
             firstDay: first, today: today)
     }
 
@@ -491,6 +563,8 @@ private enum DayFocus: Equatable {
     case timeline
     case summary(CalendarDay)
     case scrollingTo(CalendarDay)
+    /// 答えていない知らせの1行から、その知らせのカードへ
+    case scrollingToItem(Timeline.Item.ID)
 }
 
 private struct TimelineDayOffset: Equatable {
@@ -503,5 +577,14 @@ private struct TimelineDayOffsetsKey: PreferenceKey {
 
     static func reduce(value: inout [TimelineDayOffset], nextValue: () -> [TimelineDayOffset]) {
         value.append(contentsOf: nextValue())
+    }
+}
+
+/// 今日の答えていない知らせのカードの下端。カードが並んでいなければ nil
+private struct AwaitingNoticeMaxYKey: PreferenceKey {
+    static let defaultValue: CGFloat? = nil
+
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        value = nextValue() ?? value
     }
 }
