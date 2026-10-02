@@ -8,6 +8,7 @@ const recordTypes = [
   "dish",
   "ingredient",
   "notice",
+  "usual_weighing_time",
   "weight_trend",
 ] as const;
 

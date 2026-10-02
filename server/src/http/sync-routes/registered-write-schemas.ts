@@ -14,6 +14,7 @@ const writeSchemasByRecordType = {
   meal: mealWriteSchemas,
   meal_estimation_status: [],
   notice: noticeWriteSchemas,
+  usual_weighing_time: [],
   weight_record: weightRecordWriteSchemas,
   weight_trend: [],
 } as const satisfies { [K in RecordType]: readonly z.ZodType[] };

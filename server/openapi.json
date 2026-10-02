@@ -21,6 +21,7 @@
           "meal",
           "meal_estimation_status",
           "notice",
+          "usual_weighing_time",
           "weight_record",
           "weight_trend"
         ],
@@ -74,6 +75,22 @@
           "timeZone",
           "targetOn"
         ]
+      },
+      "UsualWeighingTimeRecord": {
+        "type": "object",
+        "properties": {
+          "minuteOfDay": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1435,
+            "description": "その日の何分目（5 分単位）。例: 7:15 は 435",
+            "example": 435
+          }
+        },
+        "required": [
+          "minuteOfDay"
+        ],
+        "description": "kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない"
       },
       "WeightTrendRecord": {
         "type": "object",

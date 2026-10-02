@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte, lt } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { WeightRecord } from "../domain/weight-record";
@@ -36,6 +36,17 @@ export const createWeightRecordStore = (db: DrizzleSqliteDODatabase): WeightReco
         timeZone: weightRecords.timeZone,
       })
       .from(weightRecords)
+      .orderBy(asc(weightRecords.measuredAt))
+      .all(),
+  findMeasuredBetween: (from, to) =>
+    db
+      .select({
+        id: weightRecords.id,
+        measuredAt: weightRecords.measuredAt,
+        timeZone: weightRecords.timeZone,
+      })
+      .from(weightRecords)
+      .where(and(gte(weightRecords.measuredAt, from), lt(weightRecords.measuredAt, to)))
       .orderBy(asc(weightRecords.measuredAt))
       .all(),
   existsImportedSample: (healthkitSampleUuid) =>
