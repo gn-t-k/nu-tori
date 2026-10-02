@@ -26,6 +26,22 @@ public struct CalendarDay: Hashable, Sendable {
         self.init(containing: instant, utcOffsetSeconds: timeZone.secondsFromGMT(for: instant))
     }
 
+    /// `YYYY-MM-DD`（サーバーとの受け渡しの形）から読む。読めなければ nil
+    public init?(yearMonthDay text: String) {
+        let parts = text.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 3, let year = Int(parts[0]), let month = Int(parts[1]),
+            let day = Int(parts[2]), (1...12).contains(month), (1...31).contains(day)
+        else {
+            return nil
+        }
+        self.init(year: year, month: month, day: day)
+    }
+
+    /// `YYYY-MM-DD`（サーバーとの受け渡しの形）
+    public var yearMonthDay: String {
+        String(format: "%04d-%02d-%02d", year, month, day)
+    }
+
     public var startOfWeek: CalendarDay {
         // weekday は日曜が 1、月曜が 2
         let daysSinceMonday = (Self.utcCalendar.component(.weekday, from: startInUTC) + 5) % 7
