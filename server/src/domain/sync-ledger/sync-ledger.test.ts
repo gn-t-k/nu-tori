@@ -289,7 +289,9 @@ describe("同期の帳簿", () => {
       });
 
       test("不具合として投げること", () => {
-        expect(pullWithoutRecord).toThrow("変更の並びが指す記録も削除の印も無い: test_child child-1");
+        expect(pullWithoutRecord).toThrow(
+          "変更の並びが指す記録も削除の印も無い: test_child child-1",
+        );
       });
     });
 

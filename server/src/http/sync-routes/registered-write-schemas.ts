@@ -13,6 +13,7 @@ const writeSchemasByRecordType = {
   meal: mealWriteSchemas,
   meal_estimation_status: [],
   weight_record: weightRecordWriteSchemas,
+  weight_trend: [],
 } as const satisfies { [K in RecordType]: readonly z.ZodType[] };
 
 // z.discriminatedUnion に渡す並び（表から導く）。先頭の1つを分けるのは、型を空でない並びにするため

@@ -8,7 +8,10 @@ export const computeDailyRepresentativeWeights = <
 ): { calendarDay: string; weightRecord: TWeightRecord }[] => {
   const representatives = new Map<string, TWeightRecord>();
   for (const weightRecord of weightRecords) {
-    const calendarDay = computeCalendarDayInTimeZone(weightRecord.measuredAt, weightRecord.timeZone);
+    const calendarDay = computeCalendarDayInTimeZone(
+      weightRecord.measuredAt,
+      weightRecord.timeZone,
+    );
     const current = representatives.get(calendarDay);
     if (current === undefined || isEarlier(weightRecord, current)) {
       representatives.set(calendarDay, weightRecord);

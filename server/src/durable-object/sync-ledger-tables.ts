@@ -7,6 +7,7 @@ const recordTypes = [
   "meal_estimation_status",
   "dish",
   "ingredient",
+  "weight_trend",
 ] as const;
 
 const syncRequestLogs = sqliteTable(

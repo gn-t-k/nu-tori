@@ -37,7 +37,9 @@ const fillMissingDays = (
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
 const daysBetween = (from: string, to: string): number =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / millisecondsPerDay);
+  Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / millisecondsPerDay,
+  );
 
 const addDays = (calendarDay: string, days: number): string =>
   new Date(Date.parse(`${calendarDay}T00:00:00Z`) + days * millisecondsPerDay)
