@@ -184,6 +184,19 @@ check_server() {
         return 1
     fi
 
+    # SKILL.md への写しは人かエージェントが判断するので、--fix でも写しを書き換えない
+    step "byethrow の skill の元の instruction が、入っている @praha/byethrow-docs と合っているか"
+    local instruction copy=".agents/skills/byethrow/upstream-instruction.md"
+    instruction="$(cd "$server" && pnpm exec tsx scripts/print-byethrow-docs-instruction.ts)"
+    if ! diff -u "$root/$copy" - <<< "$instruction"; then
+        cat >&2 << MESSAGE
+@praha/byethrow-docs の instruction が、写し（$copy）から変わった。--fix では直さない
+1. 上の差分（- が写し、+ が入っている版）のうち変わった分を、.agents/skills/byethrow/SKILL.md に写す（このリポジトリの書き方に合わせて直す）
+2. リポジトリのルートで、写しを新しくする: pnpm --dir server exec tsx scripts/print-byethrow-docs-instruction.ts > $copy
+MESSAGE
+        return 1
+    fi
+
     step "テスト（Vitest）"
     (cd "$server" && pnpm exec vitest run)
 }
@@ -195,7 +208,7 @@ print_usage() {
   ios          整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
-  server       整形、Lint、型検査、OpenAPI の文書が最新か、テスト
+  server       整形、Lint、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   --fix        直せるものを直してから確かめる
 USAGE
 }
