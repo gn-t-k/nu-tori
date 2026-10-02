@@ -13,24 +13,24 @@ main() {
     rm -f "$out/pull-request.md" "$out/majors.tsv"
 
     local manifest url current name held found updated updates="" majors=""
-    local same same_tag upper upper_tag
+    local same_major_latest same_major_latest_tag newer_major_latest newer_major_latest_tag
     for manifest in "$ios/NuToriCore/Package.swift" "$ios/OpenAPIGenerator/Package.swift"; do
         updated=false
         while IFS=$'\t' read -r url current; do
             name="$(dependency_name "$url")"
             held="$(held_versions "$name")"
             found="$(release_tags "$url" | pick_newer_versions "$current" "$held")"
-            IFS="|" read -r same same_tag upper upper_tag <<< "$found"
-            if [ -n "$same" ]; then
-                echo "$name: $current → $same" >&2
-                replace_exact_version "$manifest" "$url" "$current" "$same"
-                replace_xcode_project_version "$url" "$same"
+            IFS="|" read -r same_major_latest same_major_latest_tag newer_major_latest newer_major_latest_tag <<< "$found"
+            if [ -n "$same_major_latest" ]; then
+                echo "$name: $current → $same_major_latest" >&2
+                replace_exact_version "$manifest" "$url" "$current" "$same_major_latest"
+                replace_xcode_project_version "$url" "$same_major_latest"
                 updated=true
-                updates="$updates$name"$'\t'"$url"$'\t'"$current"$'\t'"$same"$'\t'"$same_tag"$'\n'
+                updates="$updates$name"$'\t'"$url"$'\t'"$current"$'\t'"$same_major_latest"$'\t'"$same_major_latest_tag"$'\n'
             fi
-            if [ -n "$upper" ]; then
-                echo "$name: 新しい major の $upper がある（上げない）" >&2
-                majors="$majors$name"$'\t'"$current"$'\t'"$upper"$'\t'"$(release_url "$url" "$upper_tag")"$'\n'
+            if [ -n "$newer_major_latest" ]; then
+                echo "$name: 新しい major の $newer_major_latest がある（上げない）" >&2
+                majors="$majors$name"$'\t'"$current"$'\t'"$newer_major_latest"$'\t'"$(release_url "$url" "$newer_major_latest_tag")"$'\n'
             fi
         done < <(exact_dependencies "$manifest")
         if $updated; then
@@ -108,12 +108,14 @@ pick_newer_versions() {
         compare($1, current) > 0 {
             split($1, v, ".")
             if (v[1] + 0 == c[1] + 0) {
-                if (same == "" || compare($1, same) > 0) { same = $1; sameTag = $2 }
-            } else if (upper == "" || compare($1, upper) > 0) {
-                upper = $1; upperTag = $2
+                if (sameMajorLatest == "" || compare($1, sameMajorLatest) > 0) {
+                    sameMajorLatest = $1; sameMajorLatestTag = $2
+                }
+            } else if (newerMajorLatest == "" || compare($1, newerMajorLatest) > 0) {
+                newerMajorLatest = $1; newerMajorLatestTag = $2
             }
         }
-        END { printf "%s|%s|%s|%s\n", same, sameTag, upper, upperTag }
+        END { printf "%s|%s|%s|%s\n", sameMajorLatest, sameMajorLatestTag, newerMajorLatest, newerMajorLatestTag }
     '
 }
 

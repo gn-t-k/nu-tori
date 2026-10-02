@@ -186,13 +186,13 @@ check_server() {
 
     # SKILL.md への写しは人かエージェントが判断するので、--fix でも写しを書き換えない
     step "byethrow の skill の元の instruction が、入っている @praha/byethrow-docs と合っているか"
-    local instruction copy=".agents/skills/byethrow/upstream-instruction.md"
+    local instruction instruction_copy=".agents/skills/byethrow/upstream-instruction.md"
     instruction="$(cd "$server" && pnpm exec tsx scripts/print-byethrow-docs-instruction.ts)"
-    if ! diff -u "$root/$copy" - <<< "$instruction"; then
+    if ! diff -u "$root/$instruction_copy" - <<< "$instruction"; then
         cat >&2 << MESSAGE
-@praha/byethrow-docs の instruction が、写し（$copy）から変わった。--fix では直さない
+@praha/byethrow-docs の instruction が、写し（$instruction_copy）から変わった。--fix では直さない
 1. 上の差分（- が写し、+ が入っている版）のうち変わった分を、.agents/skills/byethrow/SKILL.md に写す（このリポジトリの書き方に合わせて直す）
-2. リポジトリのルートで、写しを新しくする: pnpm --dir server exec tsx scripts/print-byethrow-docs-instruction.ts > $copy
+2. リポジトリのルートで、写しを新しくする: pnpm --dir server exec tsx scripts/print-byethrow-docs-instruction.ts > $instruction_copy
 MESSAGE
         return 1
     fi
