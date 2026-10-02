@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
+import { noticeRecordSchema } from "../../notice/http/notice-record-schema";
 import { recordKindNameSchema } from "./record-kind-name-schema";
 import { createSyncClientStateSchema } from "./create-sync-client-state-schema";
 import { syncWriteCurrentSchema } from "./sync-write-current-schema";
@@ -168,7 +169,8 @@ const routes = new OpenAPIHono<{ Bindings: Env }>()
 
 // 応答のスキーマからは指さない。端末が、自分の登録簿と突き合わせるために読む
 routes.openAPIRegistry.register("RecordKindName", recordKindNameSchema);
-// 応答の record は種類によらず任意のオブジェクトで持つので、種類ごとの record の形は応答のスキーマから指さずに載せる
+// 取りに行く変更の record は種類によらない形なので、種類ごとの値の形を部品として書き出す
+routes.openAPIRegistry.register("NoticeRecord", noticeRecordSchema);
 routes.openAPIRegistry.register("WeightTrendRecord", weightTrendRecordSchema);
 
 export const syncRoutes = routes;

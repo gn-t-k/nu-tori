@@ -53,7 +53,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 種類のまとまりを `src/<種類>/` に作り、種類、置き場、受け口の入口を置いたら、登録簿に1行ずつ足す（名前の順）: `domain/create-record-kinds.ts`、`domain/record-kind-stores.ts`、`durable-object/create-record-kind-stores.ts`、`http/sync-routes/http-record-kinds.ts`、`http/sync-routes/registered-write-schemas.ts`。ドメイン層は Durable Object と受け口を import できず、層ごとに登録簿が分かれるため5か所になる。受け口の2つは `RecordType` をキーにした表なので、足し忘れはコンパイルが止める。書き込みの `oneOf` の並びは表の順で決まるので、並びが変わるのを受け入れる
 - 書き込みと変更の union（`SyncWrite`、`SyncChange`）、`RecordType`、受け口のスキーマ、`openapi.json` の `RecordKindName` の列挙は、登録簿から導く。手で足すのは、表の宣言の `text({ enum })`（`durable-object/sync-ledger-tables.ts`。型検査が足し忘れを止める）と、`scripts/check server --fix` での `openapi.json` の書き出し直し
 - 削除の印を持たず、ほかの記録から計算する種類（体重の傾向）は、記録が無くなったことも変更として届ける（`RecordKind` の `deliversAbsence`）。取りに行く応答では、種類によらず `kind` が `<種類>_absence` で `record` が空の変更になる。ほかの種類は、変更の並びが指す記録も削除の印も無いと、不具合として投げる
-- 取りに行く応答の `record` は種類によらず任意のオブジェクトで持つ。種類ごとの `record` の形は、スキーマに名前を付けて `sync-routes.ts` で `openAPIRegistry.register` し、`openapi.json` に載せる（例 `WeightTrendRecord`）
+- 取りに行く変更の `record` は種類によらず文字列をキーにした値なので、種類の値の形は、受け口のスキーマ（見本は `src/notice/http/notice-record-schema.ts`）を `sync-routes.ts` で `openAPIRegistry.register` して部品として書き出し、`toChangeResponse` の値をそのスキーマの型で作る
 - `RecordKindName` は端末が自分の登録簿と突き合わせるためのもので、応答の `kind` を解くのには使わない（`kind` は文字列のまま。知らない種類は端末が読み飛ばす）
 - 種類の行（記録・削除の印・設定の変更）は、`decide` が返す `commit(receiptId)` の中で書く。控えの ID を帳簿しか作れない型にして、控えより先に書く形をコンパイルで止めるため
 - 変更の並びの表（`record_changes`）に書くのは帳簿だけにする。種類と置き場は、変えた記録を帳簿に渡す

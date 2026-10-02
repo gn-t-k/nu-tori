@@ -20,10 +20,60 @@
           "ingredient",
           "meal",
           "meal_estimation_status",
+          "notice",
           "weight_record",
           "weight_trend"
         ],
         "description": "サーバーが同期で扱う記録の種類の名前。応答の kind を解くのには使わない（知らない種類を読み飛ばすため、応答では文字列で持つ）"
+      },
+      "NoticeRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "noticeType": {
+            "type": "string",
+            "example": "missed_weight_record"
+          },
+          "issuedAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Asia/Tokyo"
+          },
+          "targetOn": {
+            "type": "string",
+            "description": "YYYY-MM-DD"
+          },
+          "response": {
+            "type": "object",
+            "properties": {
+              "respondedAt": {
+                "type": "integer",
+                "description": "UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "example": "Asia/Tokyo"
+              }
+            },
+            "required": [
+              "respondedAt",
+              "timeZone"
+            ],
+            "description": "答えていれば付く"
+          }
+        },
+        "required": [
+          "id",
+          "noticeType",
+          "issuedAt",
+          "timeZone",
+          "targetOn"
+        ]
       },
       "WeightTrendRecord": {
         "type": "object",
@@ -128,6 +178,12 @@
             "$ref": "#/components/schemas/DeleteMealWrite"
           },
           {
+            "$ref": "#/components/schemas/CreateNoticeWrite"
+          },
+          {
+            "$ref": "#/components/schemas/RespondNoticeWrite"
+          },
+          {
             "$ref": "#/components/schemas/CreateWeightRecordWrite"
           },
           {
@@ -143,6 +199,8 @@
             "update_account_settings": "#/components/schemas/UpdateAccountSettingsWrite",
             "create_meal": "#/components/schemas/CreateMealWrite",
             "delete_meal": "#/components/schemas/DeleteMealWrite",
+            "create_notice": "#/components/schemas/CreateNoticeWrite",
+            "respond_notice": "#/components/schemas/RespondNoticeWrite",
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
             "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite"
@@ -292,6 +350,108 @@
           "id",
           "type",
           "mealId"
+        ]
+      },
+      "CreateNoticeWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "create_notice"
+            ]
+          },
+          "notice": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "noticeType": {
+                "type": "string",
+                "description": "missed_weight_record（体重の記録忘れ）。知らない値は受け付けない",
+                "example": "missed_weight_record"
+              },
+              "issuedAt": {
+                "type": "integer",
+                "minimum": -8640000000000000,
+                "maximum": 8640000000000000,
+                "description": "UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "example": "Asia/Tokyo"
+              },
+              "targetOn": {
+                "type": "string",
+                "description": "YYYY-MM-DD",
+                "example": "2026-01-01"
+              }
+            },
+            "required": [
+              "id",
+              "noticeType",
+              "issuedAt",
+              "timeZone",
+              "targetOn"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "notice"
+        ]
+      },
+      "RespondNoticeWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "respond_notice"
+            ]
+          },
+          "noticeId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "response": {
+            "type": "object",
+            "properties": {
+              "respondedAt": {
+                "type": "integer",
+                "minimum": -8640000000000000,
+                "maximum": 8640000000000000,
+                "description": "UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "example": "Asia/Tokyo"
+              }
+            },
+            "required": [
+              "respondedAt",
+              "timeZone"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "noticeId",
+          "response"
         ]
       },
       "CreateWeightRecordWrite": {

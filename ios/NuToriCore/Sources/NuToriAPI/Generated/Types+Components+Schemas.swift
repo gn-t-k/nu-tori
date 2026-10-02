@@ -22,8 +22,89 @@ extension Components {
             case ingredient = "ingredient"
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
+            case notice = "notice"
             case weightRecord = "weight_record"
             case weightTrend = "weight_trend"
+        }
+        /// - Remark: Generated from `#/components/schemas/NoticeRecord`.
+        internal struct NoticeRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/NoticeRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/NoticeRecord/noticeType`.
+            internal var noticeType: Swift.String
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/NoticeRecord/issuedAt`.
+            internal var issuedAt: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/NoticeRecord/timeZone`.
+            internal var timeZone: Swift.String
+            /// YYYY-MM-DD
+            ///
+            /// - Remark: Generated from `#/components/schemas/NoticeRecord/targetOn`.
+            internal var targetOn: Swift.String
+            /// 答えていれば付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/NoticeRecord/response`.
+            internal struct ResponsePayload: Codable, Hashable, Sendable {
+                /// UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/NoticeRecord/response/respondedAt`.
+                internal var respondedAt: Swift.Int
+                /// - Remark: Generated from `#/components/schemas/NoticeRecord/response/timeZone`.
+                internal var timeZone: Swift.String
+                /// Creates a new `ResponsePayload`.
+                ///
+                /// - Parameters:
+                ///   - respondedAt: UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone:
+                internal init(
+                    respondedAt: Swift.Int,
+                    timeZone: Swift.String
+                ) {
+                    self.respondedAt = respondedAt
+                    self.timeZone = timeZone
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case respondedAt
+                    case timeZone
+                }
+            }
+            /// 答えていれば付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/NoticeRecord/response`.
+            internal var response: Components.Schemas.NoticeRecord.ResponsePayload?
+            /// Creates a new `NoticeRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - noticeType:
+            ///   - issuedAt: UNIX 時刻のミリ秒（UTC）
+            ///   - timeZone:
+            ///   - targetOn: YYYY-MM-DD
+            ///   - response: 答えていれば付く
+            internal init(
+                id: Swift.String,
+                noticeType: Swift.String,
+                issuedAt: Swift.Int,
+                timeZone: Swift.String,
+                targetOn: Swift.String,
+                response: Components.Schemas.NoticeRecord.ResponsePayload? = nil
+            ) {
+                self.id = id
+                self.noticeType = noticeType
+                self.issuedAt = issuedAt
+                self.timeZone = timeZone
+                self.targetOn = targetOn
+                self.response = response
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case noticeType
+                case issuedAt
+                case timeZone
+                case targetOn
+                case response
+            }
         }
         /// kind が weight_trend の変更の record。recordId は weight_trend の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く
         ///
@@ -198,10 +279,14 @@ extension Components {
         internal enum SyncWrite: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateMealWrite`.
             case createMeal(Components.Schemas.CreateMealWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateNoticeWrite`.
+            case createNotice(Components.Schemas.CreateNoticeWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
             case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteMealWrite`.
             case deleteMeal(Components.Schemas.DeleteMealWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/RespondNoticeWrite`.
+            case respondNotice(Components.Schemas.RespondNoticeWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/SourceDeletedWeightRecordWrite`.
             case sourceDeletedWeightRecord(Components.Schemas.SourceDeletedWeightRecordWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateAccountSettingsWrite`.
@@ -220,10 +305,14 @@ extension Components {
                 switch discriminator {
                 case "create_meal":
                     self = .createMeal(try .init(from: decoder))
+                case "create_notice":
+                    self = .createNotice(try .init(from: decoder))
                 case "create_weight_record":
                     self = .createWeightRecord(try .init(from: decoder))
                 case "delete_meal":
                     self = .deleteMeal(try .init(from: decoder))
+                case "respond_notice":
+                    self = .respondNotice(try .init(from: decoder))
                 case "source_deleted_weight_record":
                     self = .sourceDeletedWeightRecord(try .init(from: decoder))
                 case "update_account_settings":
@@ -242,9 +331,13 @@ extension Components {
                 switch self {
                 case let .createMeal(value):
                     try value.encode(to: encoder)
+                case let .createNotice(value):
+                    try value.encode(to: encoder)
                 case let .createWeightRecord(value):
                     try value.encode(to: encoder)
                 case let .deleteMeal(value):
+                    try value.encode(to: encoder)
+                case let .respondNotice(value):
                     try value.encode(to: encoder)
                 case let .sourceDeletedWeightRecord(value):
                     try value.encode(to: encoder)
@@ -465,6 +558,154 @@ extension Components {
                 case id
                 case _type = "type"
                 case mealId
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite`.
+        internal struct CreateNoticeWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case createNotice = "create_notice"
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/type`.
+            internal var _type: Components.Schemas.CreateNoticeWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice`.
+            internal struct NoticePayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/id`.
+                internal var id: Swift.String
+                /// missed_weight_record（体重の記録忘れ）。知らない値は受け付けない
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/noticeType`.
+                internal var noticeType: Swift.String
+                /// UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/issuedAt`.
+                internal var issuedAt: Swift.Int
+                /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/timeZone`.
+                internal var timeZone: Swift.String
+                /// YYYY-MM-DD
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/targetOn`.
+                internal var targetOn: Swift.String
+                /// Creates a new `NoticePayload`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                ///   - noticeType: missed_weight_record（体重の記録忘れ）。知らない値は受け付けない
+                ///   - issuedAt: UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone:
+                ///   - targetOn: YYYY-MM-DD
+                internal init(
+                    id: Swift.String,
+                    noticeType: Swift.String,
+                    issuedAt: Swift.Int,
+                    timeZone: Swift.String,
+                    targetOn: Swift.String
+                ) {
+                    self.id = id
+                    self.noticeType = noticeType
+                    self.issuedAt = issuedAt
+                    self.timeZone = timeZone
+                    self.targetOn = targetOn
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case id
+                    case noticeType
+                    case issuedAt
+                    case timeZone
+                    case targetOn
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice`.
+            internal var notice: Components.Schemas.CreateNoticeWrite.NoticePayload
+            /// Creates a new `CreateNoticeWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - notice:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.CreateNoticeWrite._TypePayload,
+                notice: Components.Schemas.CreateNoticeWrite.NoticePayload
+            ) {
+                self.id = id
+                self._type = _type
+                self.notice = notice
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case notice
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite`.
+        internal struct RespondNoticeWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case respondNotice = "respond_notice"
+            }
+            /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite/type`.
+            internal var _type: Components.Schemas.RespondNoticeWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite/noticeId`.
+            internal var noticeId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite/response`.
+            internal struct ResponsePayload: Codable, Hashable, Sendable {
+                /// UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite/response/respondedAt`.
+                internal var respondedAt: Swift.Int
+                /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite/response/timeZone`.
+                internal var timeZone: Swift.String
+                /// Creates a new `ResponsePayload`.
+                ///
+                /// - Parameters:
+                ///   - respondedAt: UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone:
+                internal init(
+                    respondedAt: Swift.Int,
+                    timeZone: Swift.String
+                ) {
+                    self.respondedAt = respondedAt
+                    self.timeZone = timeZone
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case respondedAt
+                    case timeZone
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/RespondNoticeWrite/response`.
+            internal var response: Components.Schemas.RespondNoticeWrite.ResponsePayload
+            /// Creates a new `RespondNoticeWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - noticeId:
+            ///   - response:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.RespondNoticeWrite._TypePayload,
+                noticeId: Swift.String,
+                response: Components.Schemas.RespondNoticeWrite.ResponsePayload
+            ) {
+                self.id = id
+                self._type = _type
+                self.noticeId = noticeId
+                self.response = response
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case noticeId
+                case response
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite`.

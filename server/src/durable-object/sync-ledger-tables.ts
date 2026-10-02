@@ -7,6 +7,7 @@ const recordTypes = [
   "meal_estimation_status",
   "dish",
   "ingredient",
+  "notice",
   "weight_trend",
 ] as const;
 
@@ -77,6 +78,8 @@ const syncWriteRejections = sqliteTable("sync_write_rejections", {
       "invalid_entry_method",
       "duplicate_photo_ids",
       "photo_already_used",
+      "invalid_notice_type",
+      "invalid_target_on",
     ],
   }).notNull(),
 });
