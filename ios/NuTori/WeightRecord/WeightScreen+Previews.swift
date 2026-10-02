@@ -14,8 +14,7 @@
                     weightRecords: sample.records,
                     trend: sample.trend,
                     firstDay: sample.startedDay,
-                    now: .sampleNow,
-                    timeZone: .sampleTokyo
+                    today: .sampleToday
                 ),
                 rejectedLines: sample.rejectedLines,
                 capture: { _ in },

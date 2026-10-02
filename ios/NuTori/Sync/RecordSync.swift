@@ -24,8 +24,8 @@ import NuToriCore
         let engine = engineForThisDevice(accountId: accountId)
         let record = try await engine.save(write)
         // 知らせの中で記録したときも、送るのを待たずに知らせを答えた形にする
-        _ = try? await engine.issueOrRespondToMissedWeightRecordNotices()
-        await reminders.reschedule()
+        await engine.issueOrRespondToMissedWeightRecordNotices()
+        await rescheduleRemindersAndNoticeTime()
         await health.export(record)
         _ = try await syncAfterInFlight()
     }
@@ -34,42 +34,50 @@ import NuToriCore
     func issueOrRespondToNotices() async {
         guard await hasSession(), let accountId = await signedInAccountId() else { return }
         let engine = engineForThisDevice(accountId: accountId)
-        if (try? await engine.issueOrRespondToMissedWeightRecordNotices()) == true {
+        if await engine.issueOrRespondToMissedWeightRecordNotices() {
             syncInBackground()
         }
-        await reminders.reschedule()
+        await rescheduleRemindersAndNoticeTime()
+    }
+
+    /// 体重の知らせに答えるかだけを決め、知らせは出さない（体重のシートを開くとき）。書き込みを並べたら、裏で送る
+    func respondToNotices() async {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        let engine = engineForThisDevice(accountId: accountId)
+        if await engine.respondToMissedWeightRecordNotices() {
+            syncInBackground()
+        }
+        // ヘルスケアから読み込んだ体重記録で置き直す
+        await rescheduleRemindersAndNoticeTime()
     }
 
     /// 記録忘れの通知を、キャッシュの体重記録といつもの時刻で置き直す。サインインしていなければ置かない
     func rescheduleReminders() async {
         guard await hasSession(), await signedInAccountId() != nil else { return }
-        await reminders.reschedule()
+        await rescheduleRemindersAndNoticeTime()
+    }
+
+    /// 開いているあいだ、次に知らせを出すかを決める時刻を待ち、来たら決める。
+    /// 通知を置き直すたびに（日付やタイムゾーンが変わった、いつもの時刻が届いた、など）待ち直す
+    func startWaitingForNoticeTime() {
+        waitForNoticeTime()
+    }
+
+    /// 裏へ回ったら待たない。前面に戻ったときに待ち直す
+    func stopWaitingForNoticeTime() {
+        switch noticeTimer {
+        case .stopped:
+            break
+        case .waiting(let task):
+            task.cancel()
+        }
+        noticeTimer = .stopped
     }
 
     /// キャッシュにその ID の知らせがあるか（答えていても）
     func hasNotice(id noticeId: UUID) async -> Bool {
         let notices = (try? await store.notices()) ?? []
         return notices.contains { $0.id == noticeId }
-    }
-
-    /// 今日の知らせを出す時刻がまだ来ていなければ、その時刻。今日の体重記録があれば nil
-    func upcomingNoticeTime() async -> Date? {
-        let now = Date.now
-        let timeZone = TimeZone.current
-        let usualWeighingTime: UsualWeighingTime?
-        let weightRecords: [WeightRecord]
-        do {
-            usualWeighingTime = try await store.usualWeighingTime()
-            weightRecords = try await store.weightRecords()
-        } catch {
-            return nil
-        }
-        let today = CalendarDay(containing: now, in: timeZone)
-        return MissedWeightRecordReminder.plan(
-            usualWeighingTime: usualWeighingTime, now: now, timeZone: timeZone,
-            weightRecords: weightRecords
-        )
-        .first { $0.day == today }?.fireDate
     }
 
     /// アプリの中の食事の写真と写真の送り残し。画面は `photoFile(mealId:photoId:)` で写真を読む
@@ -219,6 +227,56 @@ import NuToriCore
     private var networkMonitor: NWPathMonitor?
     private var networkWasUnavailable = false
     private var clockObservers: [any NSObjectProtocol] = []
+    private var noticeTimer = NoticeTimer.stopped
+
+    private enum NoticeTimer {
+        case stopped
+        case waiting(Task<Void, Never>)
+    }
+
+    private func rescheduleRemindersAndNoticeTime() async {
+        await reminders.reschedule()
+        switch noticeTimer {
+        case .stopped:
+            break
+        case .waiting:
+            waitForNoticeTime()
+        }
+    }
+
+    private func waitForNoticeTime() {
+        stopWaitingForNoticeTime()
+        noticeTimer = .waiting(
+            Task { [weak self] in
+                guard let noticeTime = await self?.nextNoticeTime() else { return }
+                do {
+                    try await Task.sleep(for: .seconds(max(0, noticeTime.timeIntervalSinceNow)))
+                } catch {
+                    // 待ち直すか、裏へ回って取り消した
+                    return
+                }
+                // 決めたあとの置き直しで、次の時刻を待ち直す
+                await self?.issueOrRespondToNotices()
+            })
+    }
+
+    /// 読めなければ、報告して待たない
+    private func nextNoticeTime() async -> Date? {
+        let usualWeighingTime: UsualWeighingTime?
+        let weightRecords: [WeightRecord]
+        do {
+            usualWeighingTime = try await store.usualWeighingTime()
+            weightRecords = try await store.weightRecords()
+        } catch {
+            if let failure = HandledFailure.reported(error, as: .cacheRead) {
+                await errorReporting.report(failure)
+            }
+            return nil
+        }
+        return MissedWeightRecordNoticeDecision.nextNoticeTime(
+            usualWeighingTime: usualWeighingTime, now: .now, timeZone: .current,
+            weightRecords: weightRecords)
+    }
 
     private func syncInBackground() {
         Task { _ = try? await self.syncAfterInFlight() }
@@ -272,7 +330,7 @@ import NuToriCore
         networkMonitor = monitor
     }
 
-    /// 端末のタイムゾーンが変わったとき、日付が変わったときに、記録忘れの通知を置き直す
+    /// 端末のタイムゾーンが変わったとき、日付が変わったときに、記録忘れの通知を置き直し、開いていれば知らせを出す時刻を待ち直す
     private func watchClock() {
         guard clockObservers.isEmpty else { return }
         clockObservers = [Notification.Name.NSSystemTimeZoneDidChange, .NSCalendarDayChanged].map {
@@ -305,7 +363,7 @@ import NuToriCore
         let startedAt = initialPullStartedAt ?? .now
         let engine = engineForThisDevice(accountId: accountId)
         // ヘルスケアから取り込んだあとの体重記録で決め、出した知らせと答えをこの同期で送る
-        _ = try? await engine.issueOrRespondToMissedWeightRecordNotices()
+        await engine.issueOrRespondToMissedWeightRecordNotices()
         let result: SyncResult
         do {
             result = try await engine.sync()
@@ -329,9 +387,9 @@ import NuToriCore
             initialPullStartedAt = nil
         }
         // 届いた体重記録で答える。答えは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
-        _ = try? await engine.issueOrRespondToMissedWeightRecordNotices()
+        await engine.issueOrRespondToMissedWeightRecordNotices()
         // 届いた体重記録といつもの時刻で置き直す
-        await reminders.reschedule()
+        await rescheduleRemindersAndNoticeTime()
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }

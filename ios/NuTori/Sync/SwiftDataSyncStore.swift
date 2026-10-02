@@ -128,10 +128,8 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
 
     func weightTrend() async throws -> WeightTrend? {
         try await onMain { stores in
-            let days = try stores.cache.fetch(FetchDescriptor<CachedWeightTrendDay>())
-                .compactMap { $0.trendDay() }
-                .sorted { $0.day < $1.day }
-            return days.isEmpty ? nil : WeightTrend(days: days)
+            CachedWeightTrendDay.weightTrend(
+                of: try stores.cache.fetch(FetchDescriptor<CachedWeightTrendDay>()))
         }
     }
 

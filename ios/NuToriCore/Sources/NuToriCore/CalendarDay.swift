@@ -26,12 +26,24 @@ public struct CalendarDay: Hashable, Sendable {
         self.init(containing: instant, utcOffsetSeconds: timeZone.secondsFromGMT(for: instant))
     }
 
-    /// `YYYY-MM-DD`（サーバーとの受け渡しの形）から読む。読めなければ nil
+    /// `YYYY-MM-DD`（サーバーとの受け渡しの形）から読む。形が違うときと、暦に無い日（2月31日など）は nil
     public init?(yearMonthDay text: String) {
         let parts = text.split(separator: "-", omittingEmptySubsequences: false)
         guard parts.count == 3, let year = Int(parts[0]), let month = Int(parts[1]),
-            let day = Int(parts[2]), (1...12).contains(month), (1...31).contains(day)
+            let day = Int(parts[2])
         else {
+            return nil
+        }
+        // Calendar は暦に無い日を次の月へ繰り越すので、日付に戻して同じ年月日かで確かめる。
+        // == は Strideable の既定（日数の差が 0 か）で、繰り越した日と等しくなるので使わない
+        guard
+            let instant = Self.utcCalendar.date(
+                from: DateComponents(year: year, month: month, day: day))
+        else {
+            return nil
+        }
+        let carried = CalendarDay(containing: instant, utcOffsetSeconds: 0)
+        guard (carried.year, carried.month, carried.day) == (year, month, day) else {
             return nil
         }
         self.init(year: year, month: month, day: day)

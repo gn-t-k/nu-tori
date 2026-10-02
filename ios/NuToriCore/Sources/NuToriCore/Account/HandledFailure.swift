@@ -15,6 +15,10 @@ public enum HandledFailure: Sendable, Equatable {
     case photoUpload
     /// 記録忘れの通知を予約できなかった
     case reminderSchedule
+    /// キャッシュを読めなかった
+    case cacheRead
+    /// 通知の許可を求められなかった
+    case notificationPermissionRequest
 
     /// 取り消し、つながらない・時間切れ、締め出し（426。想定した結果）は送らない
     public static func reported(_ error: any Error, as area: HandledFailure) -> HandledFailure? {

@@ -22,23 +22,27 @@ public struct MissedWeightRecordReminder: Hashable, Sendable {
         return (0...6)
             .map { today.advanced(by: $0) }
             .filter { !recordedDays.contains($0) }
-            .map {
+            .compactMap {
                 MissedWeightRecordReminder(
                     day: $0, usualWeighingTime: usualWeighingTime, in: timeZone)
             }
             .filter { $0.fireDate > now }
     }
 
-    /// その日の通知の時刻（今のタイムゾーン）
-    init(day: CalendarDay, usualWeighingTime: UsualWeighingTime?, in timeZone: TimeZone) {
+    /// その日の通知の時刻（今のタイムゾーン）。Calendar が時刻を出せなければ nil
+    init?(day: CalendarDay, usualWeighingTime: UsualWeighingTime?, in timeZone: TimeZone) {
         let clockTime = Self.clockTime(after: usualWeighingTime)
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         // 夏時間で飛んだ時計の時刻は、Calendar がそのあとの時刻に寄せる
-        let fireDate = calendar.date(
-            from: DateComponents(
-                year: day.year, month: day.month, day: day.day,
-                hour: clockTime.hour, minute: clockTime.minute))!
+        guard
+            let fireDate = calendar.date(
+                from: DateComponents(
+                    year: day.year, month: day.month, day: day.day,
+                    hour: clockTime.hour, minute: clockTime.minute))
+        else {
+            return nil
+        }
         self.init(
             id: Notice.id(kind: .missedWeightRecord, targetDay: day),
             day: day,

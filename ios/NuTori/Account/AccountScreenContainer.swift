@@ -17,13 +17,10 @@ struct AccountScreenContainer: View {
             actions: actions,
             onClose: onClose
         )
-        .task {
+        // 通知の許可を設定で変えても、カメラと違ってアプリは終わらないので、前面に戻ったときに読み直す
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
             notificationPermission = await actions.notificationPermission()
-        }
-        // 通知の許可を設定で変えても、カメラと違ってアプリは終わらないので、戻ったときに読み直す
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            Task { notificationPermission = await actions.notificationPermission() }
         }
     }
 

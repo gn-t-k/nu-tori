@@ -166,8 +166,7 @@ import SwiftData
         }
         let model = RootModel(
             accountSession: session, recordSync: sync, health: health, reminders: reminders)
-        let reminderTaps = MissedWeightReminderTapReceiver()
-        reminderTaps.onTap = { [weak model] noticeId in
+        let reminderTaps = MissedWeightReminderTapReceiver { [weak model] noticeId in
             Task { await model?.openFromReminder(noticeId: noticeId) }
         }
         return AppRuntime(

@@ -34,15 +34,29 @@ public actor MissedWeightRecordReminderScheduler {
     }
 
     /// この端末でまだ許可を求めていなければ、求めて許可したかを返す。許可したら予約し直す。
-    /// 求めたことがあれば、求めずに nil
+    /// 求められなかったら、報告して許可しなかったものとして扱う
     @discardableResult
-    public func requestPermissionIfNotYetRequested() async -> Bool? {
-        guard await center.permission() == .notYetRequested else { return nil }
-        let granted = (try? await center.requestPermission()) ?? false
-        if granted {
-            await reschedule()
+    public func requestPermissionIfNotYetRequested() async -> PermissionRequestOutcome {
+        guard await center.permission() == .notYetRequested else { return .alreadyRequested }
+        let granted: Bool
+        do {
+            granted = try await center.requestPermission()
+        } catch {
+            if let failure = HandledFailure.reported(error, as: .notificationPermissionRequest) {
+                await errorReporting.report(failure)
+            }
+            granted = false
         }
-        return granted
+        guard granted else { return .notGranted }
+        await reschedule()
+        return .granted
+    }
+
+    public enum PermissionRequestOutcome: Sendable, Equatable {
+        case granted
+        case notGranted
+        /// この端末で前に求めたので、求めなかった
+        case alreadyRequested
     }
 
     private let center: any MissedWeightRecordReminderCenter
@@ -71,6 +85,10 @@ public actor MissedWeightRecordReminderScheduler {
             weightRecords = try await cache.weightRecords()
             usualWeighingTime = try await cache.usualWeighingTime()
         } catch {
+            // 計画を立てられないので、前の予約を残す
+            if let failure = HandledFailure.reported(error, as: .cacheRead) {
+                await errorReporting.report(failure)
+            }
             return
         }
         await center.removeScheduled(ids: await center.scheduledIds())

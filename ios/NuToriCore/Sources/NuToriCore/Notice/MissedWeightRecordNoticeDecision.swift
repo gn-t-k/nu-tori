@@ -12,9 +12,10 @@ public enum MissedWeightRecordNoticeDecision {
         notices: [Notice]
     ) -> Notice? {
         let today = CalendarDay(containing: now, in: timeZone)
-        let reminder = MissedWeightRecordReminder(
-            day: today, usualWeighingTime: usualWeighingTime, in: timeZone)
-        guard reminder.fireDate <= now,
+        guard
+            let reminder = MissedWeightRecordReminder(
+                day: today, usualWeighingTime: usualWeighingTime, in: timeZone),
+            reminder.fireDate <= now,
             !weightRecords.contains(where: { $0.day == today }),
             !notices.contains(where: { $0.id == reminder.id })
         else {
@@ -28,6 +29,21 @@ public enum MissedWeightRecordNoticeDecision {
             targetDay: today,
             response: nil
         )
+    }
+
+    /// アプリを開いているあいだに、次に知らせを出すかを決める時刻。今より後の、体重記録の無い日の通知の時刻のうち、いちばん早いもの。
+    /// 今日の時刻を過ぎたか今日の体重記録があれば、明日以降の時刻になる（開いたまま日付が変わったときのため）
+    public static func nextNoticeTime(
+        usualWeighingTime: UsualWeighingTime?,
+        now: Date,
+        timeZone: TimeZone,
+        weightRecords: [WeightRecord]
+    ) -> Date? {
+        MissedWeightRecordReminder.plan(
+            usualWeighingTime: usualWeighingTime, now: now, timeZone: timeZone,
+            weightRecords: weightRecords
+        )
+        .first?.fireDate
     }
 
     /// 答えていない知らせのうち、対象の日付の体重記録があるものの ID。
