@@ -177,7 +177,7 @@ write_pull_request_body() {
         echo "- [$name](${url%.git}): $current → $new（[リリース]($(release_url "$url" "$tag"))）"
     done <<< "$updates"
     echo
-    echo "\`Package.resolved\` と、Xcode のプロジェクトの参照と \`Package.resolved\` と、生成したクライアントも揃えた（\`scripts/check ios --fix\`）。"
+    echo "Xcode のプロジェクトの参照の版もマニフェストに揃え、パッケージの \`Package.resolved\` を書き直して（\`swift package update\`）Xcode のプロジェクトの \`Package.resolved\` に写し、生成したクライアントも生成し直した（\`scripts/check ios --fix\`）。"
     if [ "$check_result" = failed ]; then
         echo
         echo "PR を作るときに回した \`scripts/check ios --fix\` が落ちた。この PR の check を見る。"
