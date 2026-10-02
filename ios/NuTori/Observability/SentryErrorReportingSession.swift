@@ -31,6 +31,7 @@ actor SentryErrorReportingSession: ErrorReportingSession {
             case .cacheSave: "cache_save"
             case .storeRecovery: "store_recovery"
             case .photoUpload: "photo_upload"
+            case .reminderSchedule: "reminder_schedule"
             }
         await MainActor.run {
             _ = SentrySDK.capture(message: message)

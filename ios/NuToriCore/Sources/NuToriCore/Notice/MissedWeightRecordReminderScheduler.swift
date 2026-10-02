@@ -28,6 +28,11 @@ public actor MissedWeightRecordReminderScheduler {
         await inOrder { await $0.removeReminders() }
     }
 
+    /// アカウントの画面の通知の行に出す、今の許可
+    public func permission() async -> NotificationPermission {
+        await center.permission()
+    }
+
     /// この端末でまだ許可を求めていなければ、求めて許可したかを返す。許可したら予約し直す。
     /// 求めたことがあれば、求めずに nil
     @discardableResult

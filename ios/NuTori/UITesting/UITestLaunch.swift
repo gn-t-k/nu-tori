@@ -97,7 +97,8 @@
                         fetched: photoRoot.appending(path: "fetched")
                     ),
                     mealPhotoUploader: photoUploader,
-                    finishedMealPhotoUploads: photoUploader.finishedUploads
+                    finishedMealPhotoUploads: photoUploader.finishedUploads,
+                    reminderCenter: UITestReminderCenter()
                 ))
         }
 

@@ -88,7 +88,12 @@ extension XCUIApplication {
     }
 
     @MainActor func confirmAccountDeletion() {
-        buttons["アカウントを削除"].tap()
+        let deleteButton = buttons["アカウントを削除"]
+        // 一覧のいちばん下にあり、画面の外にあると作られないので、送って出す
+        for _ in 0..<3 where !deleteButton.exists {
+            swipeUp()
+        }
+        deleteButton.tap()
         let delete = alerts["アカウントを削除しますか？"].buttons["アカウントを削除"]
         XCTAssertTrue(delete.waitForExistence(timeout: 5))
         delete.tap()
