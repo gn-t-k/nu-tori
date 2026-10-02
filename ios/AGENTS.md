@@ -46,7 +46,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 - クライアントは、`server/openapi.json` から swift-openapi-generator で生成し、`NuToriCore/Sources/NuToriAPI/Generated/` にコミットする。`server/openapi.json` が変わったら `scripts/check ios --fix` で生成し直す（`scripts/check ios` が最新かを確かめる）。生成器は `OpenAPIGenerator/` のパッケージで動かし、アプリのビルドには入れない。設定は `OpenAPIGenerator/openapi-generator-config.yaml`
 - 生成したコードは `internal` にし、アプリには `NuToriAPIClient` だけを見せる。経路を足したら、`NuToriAPIClient` にメソッドを足し、応答をアプリで扱う形（文書にある状態コードごとの enum）にして返す
-- ビルド番号のヘッダー（`X-App-Build`、値は `CFBundleVersion`）と 426 は、生成したクライアントのミドルウェア（`AppBuildMiddleware`）で扱い、OpenAPI の各操作と経路ごとの enum には載せない。どの操作でも、426 なら応答の解釈より前に `AppBuildUnsupportedError` を投げ（生成したクライアントが `ClientError` に包むので、`isAppBuildUnsupported` で見分ける）、受け付けたかどうかを `AppBuildGate`（ビルド番号と知らせる先の組）の `verdict` で `AppLockout` に知らせる。426 は想定した結果なので Sentry に送らず（`HandledFailure.reported`）、同期では送り待ちを残して `appBuildUnsupported` で止める。生成したクライアントを通さない要求（写真の縮小版を送る要求）にも、同じヘッダーを付け、応答を受け取ったら同じく知らせる（`MealPhotos.finishUpload`）。仕様の正本は [#223](https://github.com/gn-t-k/nu-tori/issues/223)
+- ビルド番号のヘッダー（`X-App-Build`、値は `CFBundleVersion`）と 426 は、生成したクライアントのミドルウェア（`AppBuildMiddleware`）で扱い、OpenAPI の各操作と経路ごとの enum には載せない。どの操作でも、426 なら応答の解釈より前に `AppBuildUnsupportedError` を投げ（生成したクライアントが `ClientError` に包むので、`isAppBuildUnsupported` で見分ける）、受け付けたかどうかを `AppBuildGate`（ビルド番号と知らせる先の組）の `reportVerdict` で `AppLockout` に知らせる。426 は想定した結果なので Sentry に送らず（`HandledFailure.reported`）、同期では送り待ちを残して `appBuildUnsupported` で止める。生成したクライアントを通さない要求（写真の縮小版を送る要求）にも、同じヘッダーを付け、応答を受け取ったら同じく知らせる（`MealPhotos.finishUpload`）。仕様の正本は [#223](https://github.com/gn-t-k/nu-tori/issues/223)
 
 ## 作業の分け方
 

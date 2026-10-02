@@ -1,9 +1,14 @@
 public import NuToriAPI
+import Synchronization
 
 /// ビルド番号の扱いの差し替え。サーバーがこのビルドを受け付けたかの知らせを記録する
-public final class AppBuildGateMock: @unchecked Sendable {
+public final class AppBuildGateMock: Sendable {
     public let build: Int
-    public private(set) var verdicts: [AppBuildVerdict] = []
+
+    /// 受け取った知らせ。ミドルウェアと写真のアクターから並んで届くので、鍵をかけて持つ
+    public var verdicts: [AppBuildVerdict] {
+        recorded.withLock { $0 }
+    }
 
     public static func ok(build: Int) -> AppBuildGateMock {
         AppBuildGateMock(build: build)
@@ -11,8 +16,12 @@ public final class AppBuildGateMock: @unchecked Sendable {
 
     /// API のクライアントに渡すもの。知らせをこの差し替えに記録する
     public var gate: AppBuildGate {
-        AppBuildGate(build: build) { self.verdicts.append($0) }
+        AppBuildGate(build: build) { verdict in
+            self.recorded.withLock { $0.append(verdict) }
+        }
     }
+
+    private let recorded = Mutex<[AppBuildVerdict]>([])
 
     private init(build: Int) {
         self.build = build
