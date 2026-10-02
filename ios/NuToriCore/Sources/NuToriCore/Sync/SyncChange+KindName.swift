@@ -12,6 +12,9 @@ extension SyncChange {
         case .ingredient, .ingredientDeletion: .ingredient
         case .meal, .mealDeletion: .meal
         case .mealEstimationStatus, .mealEstimationStatusDeletion: .mealEstimationStatus
+        case .notice, .noticeRemoval: .notice
+        case .usualWeighingTime: .usualWeighingTime
+        case .weightTrend, .weightTrendAbsence: .weightTrend
         case .unknown: nil
         }
     }

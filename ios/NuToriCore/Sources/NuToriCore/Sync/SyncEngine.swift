@@ -88,6 +88,33 @@ public actor SyncEngine {
         try await exportNutritionBestEffort()
     }
 
+    /// 知らせを出す。電波が無くても受け付け、作る書き込みを送り待ちに並べる。
+    /// ID と出した時刻は呼び出し側が決める（出すかの判断も呼び出し側）
+    public func issueNotice(_ notice: Notice) async throws {
+        try await writingCache {
+            try await store.apply(
+                NoticeSyncing().issuing(
+                    notice, enqueuing: pendingNoticeWrite(.create(notice))))
+        }
+    }
+
+    /// 知らせに答える。答えた時刻とタイムゾーンは今。電波が無くても受け付け、答える書き込みを送り待ちに並べる。
+    /// すでに答えた知らせには何もしない
+    public func respondToNotice(id noticeId: UUID) async throws {
+        guard let notice = try await store.notices().first(where: { $0.id == noticeId }) else {
+            throw UnknownRecordError(recordId: noticeId)
+        }
+        guard notice.response == nil else { return }
+        let response = Notice.Response(respondedAt: now(), timeZone: timeZone())
+        try await writingCache {
+            try await store.apply(
+                NoticeSyncing().responding(
+                    to: notice, with: response,
+                    enqueuing: pendingNoticeWrite(
+                        .respond(noticeId: noticeId, response: response))))
+        }
+    }
+
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
     public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
         let settings = AccountSettings(
@@ -148,6 +175,10 @@ public actor SyncEngine {
 
     private func pendingMealWrite(_ write: PendingMealWrite.Write) -> PendingMealWrite {
         PendingMealWrite(writeId: UUID(), enqueuedAt: now(), write: write)
+    }
+
+    private func pendingNoticeWrite(_ write: PendingNoticeWrite.Write) -> PendingNoticeWrite {
+        PendingNoticeWrite(writeId: UUID(), enqueuedAt: now(), write: write)
     }
 
     private func pushPendingWrites(collectingRejectionsIn rejectedWrites: inout [RejectedWrite])

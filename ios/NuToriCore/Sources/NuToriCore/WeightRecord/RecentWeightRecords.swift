@@ -7,13 +7,9 @@ public struct RecentWeightRecords: Sendable {
     public init(weightRecords: [WeightRecord], firstDay: CalendarDay, today: CalendarDay) {
         let recentDayCount = 28
         let windowStart = today.advanced(by: 1 - recentDayCount)
-        let representativeWeights = Dictionary(
-            grouping: weightRecords.filter { $0.day >= windowStart },
-            by: \.day
-        )
-        .values
-        .compactMap { RepresentativeWeight(sameDayRecords: $0) }
-        .sorted { $0.day > $1.day }
+        let representativeWeights = RepresentativeWeight.daily(
+            of: weightRecords.filter { $0.day >= windowStart }
+        ).reversed()
         sinceFirstDay = representativeWeights.filter { $0.day >= firstDay }
         beforeFirstDay = representativeWeights.filter { $0.day < firstDay }
     }

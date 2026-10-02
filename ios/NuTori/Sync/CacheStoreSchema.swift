@@ -6,6 +6,7 @@ nonisolated enum CacheStoreSchema {
         Schema([
             CachedWeightRecord.self, CachedAccountSettings.self, CachedMeal.self,
             CachedMealEstimationStatus.self, CachedDish.self, CachedIngredient.self,
+            CachedNotice.self, CachedUsualWeighingTime.self, CachedWeightTrendDay.self,
             CachedSyncState.self, CachedHealthDishWrite.self,
         ])
     }
