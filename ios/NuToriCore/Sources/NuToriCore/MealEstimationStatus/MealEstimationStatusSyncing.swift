@@ -24,14 +24,13 @@ public struct MealEstimationStatusSyncing: SyncedRecordKind {
 
     public init() {}
 
+    /// 食事を消したときに、その食事の推定の状態を、削除の印と同じ形でキャッシュから消す変更
+    static func removing(mealId: UUID) -> KindChanges {
+        KindChanges(kind: kindName, changes: [.mealEstimationStatusDeletion(mealId: mealId)])
+    }
+
     public func owns(_ change: SyncChange) -> Bool {
-        switch change {
-        case .mealEstimationStatus, .mealEstimationStatusDeletion: true
-        case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
-            .ingredient, .ingredientDeletion, .meal, .mealDeletion,
-            .unknown:
-            false
-        }
+        change.kindName == name
     }
 
     /// 取りに行った変更を、今の状態の並びにする。食事より先に届いた状態も返す（届く順は約束しない）
@@ -39,16 +38,11 @@ public struct MealEstimationStatusSyncing: SyncedRecordKind {
         var statuses: [Status] = []
         var removedMealIds: [UUID] = []
         for change in changes {
-            switch change {
-            case .mealEstimationStatus(let synced):
+            if case .mealEstimationStatus(let synced) = change {
                 statuses.append(
                     Status(mealId: synced.mealId, status: MealEstimationStatus(synced.status)))
-            case .mealEstimationStatusDeletion(let mealId):
+            } else if case .mealEstimationStatusDeletion(let mealId) = change {
                 removedMealIds.append(mealId)
-            case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
-                .ingredient, .ingredientDeletion, .meal, .mealDeletion,
-                .unknown:
-                break
             }
         }
         return Current(statuses: statuses, removedMealIds: removedMealIds)
