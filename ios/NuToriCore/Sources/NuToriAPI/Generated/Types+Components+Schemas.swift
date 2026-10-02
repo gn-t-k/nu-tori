@@ -23,6 +23,7 @@ extension Components {
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
             case notice = "notice"
+            case usualWeighingTime = "usual_weighing_time"
             case weightRecord = "weight_record"
             case weightTrend = "weight_trend"
         }
@@ -104,6 +105,25 @@ extension Components {
                 case timeZone
                 case targetOn
                 case response
+            }
+        }
+        /// kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/UsualWeighingTimeRecord`.
+        internal struct UsualWeighingTimeRecord: Codable, Hashable, Sendable {
+            /// その日の何分目（5 分単位）。例: 7:15 は 435
+            ///
+            /// - Remark: Generated from `#/components/schemas/UsualWeighingTimeRecord/minuteOfDay`.
+            internal var minuteOfDay: Swift.Int
+            /// Creates a new `UsualWeighingTimeRecord`.
+            ///
+            /// - Parameters:
+            ///   - minuteOfDay: その日の何分目（5 分単位）。例: 7:15 は 435
+            internal init(minuteOfDay: Swift.Int) {
+                self.minuteOfDay = minuteOfDay
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case minuteOfDay
             }
         }
         /// kind が weight_trend の変更の record。recordId は weight_trend の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く
