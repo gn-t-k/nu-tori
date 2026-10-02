@@ -5,6 +5,14 @@
 - UI を変えたら、状態ごとのプレビューを RenderPreview で描いて確かめる。ライトのほか、ダーク（`Color Scheme`）と最大の文字（`Dynamic Type` の `AX 5`）も `previewVariantOverrides` で描く
 - 整形の正は、`ios/.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
 
+## UI テストのシミュレータ
+
+`scripts/check ios-ui-test` は、回すたびにシミュレータの複製（`nu-tori ui-test <pid>`）を作り、終わったら消す。ほかのワークツリーや本体のチェックアウトで同時に回しても、別の端末で動くのでぶつからない。
+
+- 複製の元（`nu-tori ui-test-base`）は、初めて回したときに作られて残る（数百 MB）。UI テストを回すたびに落とされるので、Xcode・Simulator.app・MobileBuildMCP で選ばない。要らなくなったら、UI テストが回っていないときに `xcrun simctl delete <UDID>` で消す。次に回したときに作り直される
+- kill -9 などで止めると、複製が残る。次に回したときに、名前の pid のプロセスが居なければ消える
+- MobileBuildMCP と Xcode は、今までどおり共有の iPhone を使う。`scripts/check` とはぶつからないが、MobileBuildMCP や Xcode どうしでは同じ端末を取り合う
+
 ## 置き場の移行を実機で確かめる
 
 送り待ちの置き場の形を変えた PR は、merge の前に、前の版が書いた本物のファイルから移せることを開発者に実機で確かめてもらう。移行の手順そのものはテストで確かめ、ここでは本物のファイルで動くことだけを見る。開発者に頼むときは、次の手順をそのまま渡す。
