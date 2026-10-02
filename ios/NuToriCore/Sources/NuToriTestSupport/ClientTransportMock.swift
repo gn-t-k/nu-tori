@@ -57,6 +57,8 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         case weightRecord(WeightRecord)
         /// 食事の削除の印
         case deletedMeal(mealId: UUID)
+        /// 答えていない知らせの今の値
+        case unansweredNotice(Notice)
 
         var json: String {
             switch self {
@@ -71,6 +73,15 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
                 """
                 {"status":"deleted","change":{"kind":"meal_deletion",\
                 "recordId":"\(mealId.uuidString)","record":{}}}
+                """
+            case .unansweredNotice(let notice):
+                """
+                {"status":"value","change":{"kind":"notice",\
+                "recordId":"\(notice.id.uuidString)",\
+                "record":{"id":"\(notice.id.uuidString)","noticeType":"missed_weight_record",\
+                "issuedAt":\(Int((notice.issuedAt.timeIntervalSince1970 * 1000).rounded())),\
+                "timeZone":"\(notice.timeZone.identifier)",\
+                "targetOn":"\(notice.targetDay.yearMonthDay)"}}}
                 """
             case .weightRecord(let record):
                 """

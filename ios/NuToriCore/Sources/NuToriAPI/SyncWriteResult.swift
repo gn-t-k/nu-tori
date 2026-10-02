@@ -43,6 +43,10 @@ public struct SyncWriteResult: Sendable, Equatable {
         case duplicatePhotoIds
         /// 写真の ID が、ほかの食事の写真か写真の削除の印にある
         case photoAlreadyUsed
+        /// 知らせの種類が、サーバーの知らない値
+        case invalidNoticeType
+        /// 知らせの対象の日付が、日付の形でない
+        case invalidTargetOn
         case unknown(reason: String)
     }
 }

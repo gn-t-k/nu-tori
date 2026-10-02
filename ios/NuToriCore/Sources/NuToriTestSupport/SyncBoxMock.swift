@@ -210,6 +210,21 @@ extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
         try failIfNeeded()
         return Array(cache.ingredients.values)
     }
+
+    public func notices() async throws -> [Notice] {
+        try failIfNeeded()
+        return Array(cache.notices.values)
+    }
+
+    public func usualWeighingTime() async throws -> UsualWeighingTime? {
+        try failIfNeeded()
+        return cache.usualWeighingTime
+    }
+
+    public func weightTrend() async throws -> WeightTrend? {
+        try failIfNeeded()
+        return cache.weightTrend
+    }
 }
 
 extension SyncBoxMock: HealthDishWriteStoring where Cache == RecordCacheMock {

@@ -11,7 +11,10 @@ nonisolated enum AppRecordKinds {
             IngredientRecordKind(),
             MealRecordKind(),
             MealEstimationStatusRecordKind(),
+            NoticeRecordKind(),
+            UsualWeighingTimeRecordKind(),
             WeightRecordKind(),
+            WeightTrendRecordKind(),
         ])
     }
 }

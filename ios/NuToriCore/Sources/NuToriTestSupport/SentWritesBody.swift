@@ -54,12 +54,15 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
         case updateAccountSettings(id: String, AccountSettings)
         case createMeal(id: String, Meal)
         case deleteMeal(id: String, mealId: String)
+        case createNotice(id: String, Notice)
+        case respondNotice(id: String, noticeId: String, NoticeResponse)
 
         public var id: String {
             switch self {
             case .createWeightRecord(let id, _), .updateWeightRecord(let id, _),
                 .sourceDeletedWeightRecord(let id, _), .updateAccountSettings(let id, _),
-                .createMeal(let id, _), .deleteMeal(let id, _):
+                .createMeal(let id, _), .deleteMeal(let id, _), .createNotice(let id, _),
+                .respondNotice(let id, _, _):
                 id
             }
         }
@@ -73,13 +76,17 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
             case .updateAccountSettings: "update_account_settings"
             case .createMeal: "create_meal"
             case .deleteMeal: "delete_meal"
+            case .createNotice: "create_notice"
+            case .respondNotice: "respond_notice"
             }
         }
 
         public var weightRecord: WeightRecord? {
             switch self {
             case .createWeightRecord(_, let record), .updateWeightRecord(_, let record): record
-            case .sourceDeletedWeightRecord, .updateAccountSettings, .createMeal, .deleteMeal: nil
+            case .sourceDeletedWeightRecord, .updateAccountSettings, .createMeal, .deleteMeal,
+                .createNotice, .respondNotice:
+                nil
             }
         }
 
@@ -117,6 +124,12 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
             case "delete_meal":
                 self = .deleteMeal(
                     id: id, mealId: try container.decode(String.self, forKey: .mealId))
+            case "create_notice":
+                self = .createNotice(id: id, try container.decode(Notice.self, forKey: .notice))
+            case "respond_notice":
+                self = .respondNotice(
+                    id: id, noticeId: try container.decode(String.self, forKey: .noticeId),
+                    try container.decode(NoticeResponse.self, forKey: .response))
             case let type:
                 throw DecodingError.dataCorruptedError(
                     forKey: .type, in: container,
@@ -133,6 +146,9 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
             case accountSettings
             case meal
             case mealId
+            case notice
+            case noticeId
+            case response
         }
     }
 
@@ -164,6 +180,34 @@ public struct SentWritesBody: Decodable, Equatable, Sendable {
             public init(id: String) {
                 self.id = id
             }
+        }
+    }
+
+    public struct Notice: Decodable, Equatable, Sendable {
+        public let id: String
+        public let noticeType: String
+        public let issuedAt: Int
+        public let timeZone: String
+        public let targetOn: String
+
+        public init(
+            id: String, noticeType: String, issuedAt: Int, timeZone: String, targetOn: String
+        ) {
+            self.id = id
+            self.noticeType = noticeType
+            self.issuedAt = issuedAt
+            self.timeZone = timeZone
+            self.targetOn = targetOn
+        }
+    }
+
+    public struct NoticeResponse: Decodable, Equatable, Sendable {
+        public let respondedAt: Int
+        public let timeZone: String
+
+        public init(respondedAt: Int, timeZone: String) {
+            self.respondedAt = respondedAt
+            self.timeZone = timeZone
         }
     }
 

@@ -13,7 +13,7 @@ struct RecordKindRegistryNamesTests {
         #expect(
             deviceNames == [
                 "account_settings", "dish", "ingredient", "meal", "meal_estimation_status",
-                "weight_record",
+                "notice", "usual_weighing_time", "weight_record", "weight_trend",
             ])
     }
 

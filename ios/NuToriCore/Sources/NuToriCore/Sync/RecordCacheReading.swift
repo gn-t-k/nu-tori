@@ -19,4 +19,13 @@ public protocol RecordCacheReading: Sendable {
 
     /// 親の料理がまだ届いていない材料も含む
     func ingredients() async throws -> [Ingredient]
+
+    /// 答えた知らせも含む
+    func notices() async throws -> [Notice]
+
+    /// まだ学んでいなければ nil
+    func usualWeighingTime() async throws -> UsualWeighingTime?
+
+    /// 体重記録が1つも無ければ nil
+    func weightTrend() async throws -> WeightTrend?
 }
