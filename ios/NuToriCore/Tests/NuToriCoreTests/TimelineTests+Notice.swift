@@ -1,0 +1,136 @@
+import Foundation
+import NuToriCore
+import Testing
+
+extension TimelineTests {
+    @Suite("体重の知らせ")
+    struct PlacingNotices {
+        static let today = CalendarDay(year: 2026, month: 9, day: 24)
+
+        @Suite("今日の答えていない知らせがあるとき")
+        struct UnansweredToday {
+            let morning: WeightRecord
+            let notice: Notice
+            let meal: MealCard
+            let timeline: Timeline
+
+            init() throws {
+                morning = try .imported(72.4, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+                notice = try .missedWeightRecord(issuedAt: "2026-09-24T08:15:00+09:00")
+                meal = MealCard(
+                    meal: try .fixture(
+                        eatenAt: "2026-09-24T07:40:00+09:00", sentAt: "2026-09-24T07:40:00+09:00"),
+                    status: .estimated, recordedOnThisDevice: true)
+                timeline = Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [morning], rejectedLines: [], meals: [meal],
+                        notices: [notice]),
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: PlacingNotices.today
+                )
+            }
+
+            @Test("出した時刻の位置に、答えていない形で置くこと")
+            func placesAwaitingAnswerAtIssuedTime() {
+                #expect(
+                    timeline.days.last?.items == [
+                        .meal(meal),
+                        .notice(NoticeCard(notice: notice, form: .awaitingAnswer)),
+                    ])
+            }
+
+            @Test("答えていない知らせの1行で示す知らせになること")
+            func showsUnansweredLine() {
+                #expect(timeline.noticeAwaitingAnswer == notice)
+            }
+
+            @Test("1行目に出す時刻を、出したときのタイムゾーンの時計の時刻にすること")
+            func clockTimeInIssuedTimeZone() throws {
+                let card = try #require(
+                    timeline.days.last?.items.compactMap { item -> NoticeCard? in
+                        if case .notice(let card) = item { card } else { nil }
+                    }.first)
+                #expect(card.clockTime == ClockTime(hour: 8, minute: 15))
+            }
+        }
+
+        @Suite("今日の知らせに答えたとき")
+        struct AnsweredToday {
+            let notice: Notice
+            let timeline: Timeline
+
+            init() throws {
+                notice = try Notice.missedWeightRecord(issuedAt: "2026-09-24T08:15:00+09:00")
+                    .responded(
+                        Notice.Response(
+                            respondedAt: try Date("2026-09-24T09:00:00+09:00", strategy: .iso8601),
+                            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))))
+                timeline = Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], notices: [notice]),
+                    firstDay: PlacingNotices.today,
+                    today: PlacingNotices.today
+                )
+            }
+
+            @Test("答えた形で置くこと")
+            func placesAnswered() {
+                #expect(
+                    timeline.days.last?.items == [
+                        .notice(NoticeCard(notice: notice, form: .answered))
+                    ])
+            }
+
+            @Test("答えていない知らせの1行を出さないこと")
+            func hidesUnansweredLine() {
+                #expect(timeline.noticeAwaitingAnswer == nil)
+            }
+        }
+
+        @Suite("前の日の答えていない知らせがあるとき")
+        struct UnansweredPastDay {
+            let notice: Notice
+            let timeline: Timeline
+
+            init() throws {
+                notice = try .missedWeightRecord(issuedAt: "2026-09-23T08:15:00+09:00")
+                timeline = Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], notices: [notice]),
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: PlacingNotices.today
+                )
+            }
+
+            @Test("その日に、前の日の形で置くこと")
+            func placesPastDayForm() {
+                #expect(
+                    timeline.days.map(\.items) == [
+                        [.notice(NoticeCard(notice: notice, form: .unansweredPastDay))], [],
+                    ])
+            }
+
+            @Test("答えていない知らせの1行を出さないこと")
+            func hidesUnansweredLine() {
+                #expect(timeline.noticeAwaitingAnswer == nil)
+            }
+        }
+    }
+}
+
+extension Notice {
+    /// issuedAt は ISO 8601 の時刻。東京で出した、その日の体重の知らせ
+    fileprivate static func missedWeightRecord(issuedAt: String) throws -> Notice {
+        let timeZone = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        let issued = try Date(issuedAt, strategy: .iso8601)
+        let day = CalendarDay(containing: issued, in: timeZone)
+        return Notice(
+            id: Notice.id(kind: .missedWeightRecord, targetDay: day),
+            kind: .missedWeightRecord,
+            issuedAt: issued,
+            timeZone: timeZone,
+            targetDay: day,
+            response: nil
+        )
+    }
+}

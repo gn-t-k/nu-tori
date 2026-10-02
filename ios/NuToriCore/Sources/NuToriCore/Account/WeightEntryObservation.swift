@@ -1,26 +1,29 @@
 public import Foundation
 
-/// 記録の中身と体重の値は送らない
+/// 体重のシートと、体重の知らせの中の手数。記録の中身と体重の値は送らない
 public struct WeightEntryObservation: Sendable, Equatable {
     public private(set) var method: ClientUsageEvent.WeightInputMethod
     public private(set) var stepperPressCount: Int
     public private(set) var showedTypoHint: Bool
     public let openedAt: Date
 
+    /// 体重のシートを開いたとき
     public init(startsWithKeyboard: Bool, openedAt: Date) {
-        method = startsWithKeyboard ? .keyboard : .stepper
-        stepperPressCount = 0
-        showedTypoHint = false
-        self.openedAt = openedAt
+        self.init(method: startsWithKeyboard ? .keyboard : .stepper, openedAt: openedAt)
+    }
+
+    /// 体重の知らせの中。所要時間は、カードが見えてから記録までにする
+    public static func inNotice(shownAt: Date) -> WeightEntryObservation {
+        WeightEntryObservation(method: .notice, openedAt: shownAt)
     }
 
     public mutating func stepped() {
-        method = .stepper
+        switchMethod(to: .stepper)
         stepperPressCount += 1
     }
 
     public mutating func typed() {
-        method = .keyboard
+        switchMethod(to: .keyboard)
     }
 
     public mutating func noteTypoHintShown() {
@@ -35,5 +38,22 @@ public struct WeightEntryObservation: Sendable, Equatable {
             duration: .seconds(elapsed),
             showedTypoHint: showedTypoHint
         )
+    }
+
+    private init(method: ClientUsageEvent.WeightInputMethod, openedAt: Date) {
+        self.method = method
+        stepperPressCount = 0
+        showedTypoHint = false
+        self.openedAt = openedAt
+    }
+
+    /// 知らせの中では、ステッパーとキーボードのどちらで入れても、入れ方は知らせの中のままにする
+    private mutating func switchMethod(to sheetMethod: ClientUsageEvent.WeightInputMethod) {
+        switch method {
+        case .notice:
+            return
+        case .stepper, .keyboard:
+            method = sheetMethod
+        }
     }
 }
