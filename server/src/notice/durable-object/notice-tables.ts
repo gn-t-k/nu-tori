@@ -1,9 +1,10 @@
 import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
+import { noticeTypes } from "../domain/notice";
 
 const notices = sqliteTable("notices", {
   id: text("id").primaryKey(),
-  noticeType: text("notice_type", { enum: ["missed_weight_record"] }).notNull(),
+  noticeType: text("notice_type", { enum: noticeTypes }).notNull(),
   issuedAt: integer("issued_at", { mode: "timestamp_ms" }).notNull(),
   timeZone: text("time_zone").notNull(),
 });

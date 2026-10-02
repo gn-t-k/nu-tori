@@ -1,5 +1,7 @@
+import { addDays } from "../../../domain/add-days";
 import { computeCalendarDayInTimeZone } from "../../../domain/compute-calendar-day-in-time-zone";
 import { computeUtcOffsetSeconds } from "../../../domain/compute-utc-offset-seconds";
+import { millisecondsPerDay } from "../../../domain/milliseconds-per-day";
 import { computeDailyRepresentativeWeights } from "../../../weight-record/domain/compute-daily-representative-weights";
 
 // 体重記録から、いつもの時刻（その日の何分目）を学ぶ。範囲の中で記録のある日が3日そろわなければ undefined。
@@ -10,7 +12,7 @@ export const learnUsualWeighingTime = (input: {
   timeZone: string;
 }): number | undefined => {
   const today = computeCalendarDayInTimeZone(input.now, input.timeZone);
-  const firstDay = addDays(today, -(daysInRange - 1));
+  const firstDay = addDays(today, -(usualWeighingTimeRangeDays - 1));
   const minutes = computeDailyRepresentativeWeights(input.weightRecords)
     .filter(({ calendarDay }) => firstDay <= calendarDay && calendarDay <= today)
     .map(({ weightRecord }) => computeMinuteOfDay(weightRecord.measuredAt, weightRecord.timeZone))
@@ -21,12 +23,13 @@ export const learnUsualWeighingTime = (input: {
   return roundToStep(computeMedian(minutes));
 };
 
-const daysInRange = 28;
+// 学ぶ範囲の日数（基準の今日を含む）
+export const usualWeighingTimeRangeDays = 28;
+
 const minimumDays = 3;
 const stepMinutes = 5;
 const minutesPerDay = 24 * 60;
 const millisecondsPerMinute = 60 * 1000;
-const millisecondsPerDay = minutesPerDay * millisecondsPerMinute;
 
 // 記録したときのタイムゾーンの時計の時刻。秒は切り捨てる（時計に見える分）
 const computeMinuteOfDay = (instant: Date, timeZone: string): number => {
@@ -50,8 +53,3 @@ const computeMedian = (sorted: readonly number[]): number => {
 // 近いほうへ。ちょうど真ん中なら遅いほうへ。24:00 になるときは 23:55
 const roundToStep = (minute: number): number =>
   Math.min(Math.floor(minute / stepMinutes + 0.5) * stepMinutes, minutesPerDay - stepMinutes);
-
-const addDays = (calendarDay: string, days: number): string =>
-  new Date(Date.parse(`${calendarDay}T00:00:00Z`) + days * millisecondsPerDay)
-    .toISOString()
-    .slice(0, "YYYY-MM-DD".length);

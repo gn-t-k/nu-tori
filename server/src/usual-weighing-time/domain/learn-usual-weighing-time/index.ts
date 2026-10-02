@@ -1,1 +1,1 @@
-export { learnUsualWeighingTime } from "./learn-usual-weighing-time";
+export { learnUsualWeighingTime, usualWeighingTimeRangeDays } from "./learn-usual-weighing-time";

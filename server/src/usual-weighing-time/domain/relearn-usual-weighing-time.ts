@@ -1,6 +1,7 @@
+import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
 import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
-import { learnUsualWeighingTime } from "./learn-usual-weighing-time";
+import { learnUsualWeighingTime, usualWeighingTimeRangeDays } from "./learn-usual-weighing-time";
 import type { UsualWeighingTimeStore } from "./usual-weighing-time-store";
 
 // 体重記録の書き込みを当てたあとの体重記録で、いつもの時刻を学び直す。読むだけで、書かない。
@@ -23,12 +24,17 @@ export const relearnUsualWeighingTime = (
       commit: (receiptId: WriteReceiptId) => void;
     }
   | undefined => {
-  // 範囲（基準の今日とその前の 27 日）に入りうる記録だけを読む。日付は記録ごとのタイムゾーンで決まるので、時差の分だけ広く読む
+  // 範囲（基準の今日とその前の日）に入りうる記録だけを読む。日付は記録ごとのタイムゾーンで決まるので、時差の分だけ広く読む
+  const timeZoneMarginDays = 2;
   const weightRecords = input
     .applyWrite(
       input.findWeightRecordsMeasuredBetween(
-        new Date(input.now.getTime() - 30 * dayMilliseconds),
-        new Date(input.now.getTime() + 3 * dayMilliseconds),
+        new Date(
+          input.now.getTime() -
+            (usualWeighingTimeRangeDays + timeZoneMarginDays) * millisecondsPerDay,
+        ),
+        // 基準の今日の終わりまでの1日と、時差の分
+        new Date(input.now.getTime() + (1 + timeZoneMarginDays) * millisecondsPerDay),
       ),
     )
     .toSorted((a, b) => a.measuredAt.getTime() - b.measuredAt.getTime());
@@ -60,5 +66,3 @@ export const relearnUsualWeighingTime = (
 };
 
 type WeightRecordTime = { id: string; measuredAt: Date; timeZone: string };
-
-const dayMilliseconds = 24 * 60 * 60 * 1000;
