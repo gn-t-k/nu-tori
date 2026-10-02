@@ -4,8 +4,7 @@ import Testing
 
 @Suite("体重の傾向のグラフ")
 struct WeightTrendChartTests {
-    /// 今日の 2026-09-24（東京）
-    static let now = "2026-09-24T12:00:00+09:00"
+    static let today = CalendarDay(year: 2026, month: 9, day: 24)
 
     /// 東京の朝7時の手の記録を、並べた日ごとに1つ作る
     static func morningRecords(_ days: [String]) throws -> [WeightRecord] {
@@ -15,16 +14,13 @@ struct WeightTrendChartTests {
     static func chart(
         weightRecords: [WeightRecord],
         trend: WeightTrend?,
-        firstDay: CalendarDay,
-        now: String = now,
-        timeZone: String = "Asia/Tokyo"
-    ) throws -> WeightTrendChart {
+        firstDay: CalendarDay
+    ) -> WeightTrendChart {
         WeightTrendChart(
             weightRecords: weightRecords,
             trend: trend,
             firstDay: firstDay,
-            now: try Date(now, strategy: .iso8601),
-            timeZone: try #require(TimeZone(identifier: timeZone))
+            today: today
         )
     }
 
@@ -33,7 +29,7 @@ struct WeightTrendChartTests {
         let chart: WeightTrendChart
 
         init() throws {
-            chart = try WeightTrendChartTests.chart(
+            chart = WeightTrendChartTests.chart(
                 weightRecords: [
                     try .manual(73.1, at: "2026-09-22T21:30:00+09:00", in: "Asia/Tokyo"),
                     try .imported(72.7, at: "2026-09-22T06:48:00+09:00", in: "Asia/Tokyo"),
@@ -64,7 +60,7 @@ struct WeightTrendChartTests {
 
         init() throws {
             // 傾向は 09-22 で終わり、09-24 の記録はまだサーバーに届いていない
-            chart = try WeightTrendChartTests.chart(
+            chart = WeightTrendChartTests.chart(
                 weightRecords: try WeightTrendChartTests.morningRecords([
                     "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20",
                     "2026-09-21", "2026-09-22", "2026-09-24",
@@ -101,7 +97,7 @@ struct WeightTrendChartTests {
         let chart: WeightTrendChart
 
         init() throws {
-            chart = try WeightTrendChartTests.chart(
+            chart = WeightTrendChartTests.chart(
                 weightRecords: try WeightTrendChartTests.morningRecords([
                     "2026-09-05", "2026-09-12",
                 ]),
@@ -126,7 +122,7 @@ struct WeightTrendChartTests {
         let chart: WeightTrendChart
 
         init() throws {
-            chart = try WeightTrendChartTests.chart(
+            chart = WeightTrendChartTests.chart(
                 weightRecords: [], trend: nil,
                 firstDay: CalendarDay(year: 2026, month: 8, day: 28))
         }
@@ -142,7 +138,7 @@ struct WeightTrendChartTests {
         let chart: WeightTrendChart
 
         init() throws {
-            chart = try WeightTrendChartTests.chart(
+            chart = WeightTrendChartTests.chart(
                 weightRecords: [], trend: nil,
                 firstDay: CalendarDay(year: 2026, month: 8, day: 27))
         }
@@ -158,7 +154,7 @@ struct WeightTrendChartTests {
         let chart: WeightTrendChart
 
         init() throws {
-            chart = try WeightTrendChartTests.chart(
+            chart = WeightTrendChartTests.chart(
                 weightRecords: try WeightTrendChartTests.morningRecords([
                     "2026-09-19", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23",
                     "2026-09-24",
@@ -187,7 +183,7 @@ struct WeightTrendChartTests {
 
         init() throws {
             // 08-20 は4週の外、09-15 は使い始める前
-            chart = try WeightTrendChartTests.chart(
+            chart = WeightTrendChartTests.chart(
                 weightRecords: try WeightTrendChartTests.morningRecords([
                     "2026-08-20", "2026-09-15", "2026-09-20", "2026-09-21", "2026-09-22",
                     "2026-09-23", "2026-09-24",
@@ -214,7 +210,7 @@ struct WeightTrendChartTests {
         let chart: WeightTrendChart
 
         init() throws {
-            chart = try WeightTrendChartTests.chart(
+            chart = WeightTrendChartTests.chart(
                 weightRecords: try WeightTrendChartTests.morningRecords([
                     "2026-08-21", "2026-08-22", "2026-08-23", "2026-08-24", "2026-08-25",
                     "2026-08-26", "2026-08-27", "2026-08-28",
@@ -248,24 +244,6 @@ struct WeightTrendChartTests {
                         WeightTrend.Day(
                             day: CalendarDay(year: 2026, month: 8, day: 28), kilograms: 71.8)
                     ]))
-        }
-    }
-
-    @Suite("今のタイムゾーンでは、東京より日付が先に進んでいるとき")
-    struct TodayInCurrentTimeZone {
-        let chart: WeightTrendChart
-
-        init() throws {
-            // 東京の 09-24 23:30 は、キリバス（+14:00）の 09-25 04:30
-            chart = try WeightTrendChartTests.chart(
-                weightRecords: [], trend: nil,
-                firstDay: CalendarDay(year: 2026, month: 8, day: 1),
-                now: "2026-09-24T23:30:00+09:00", timeZone: "Pacific/Kiritimati")
-        }
-
-        @Test("今のタイムゾーンの日付を今日にすること")
-        func usesTodayInCurrentTimeZone() {
-            #expect(chart.days.upperBound == CalendarDay(year: 2026, month: 9, day: 25))
         }
     }
 }

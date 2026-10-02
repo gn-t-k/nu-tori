@@ -88,55 +88,96 @@ describe("知らせの同期", () => {
   });
 
   describe("受け付けない作る書き込みを送ったとき", () => {
-    test.for([
-      {
-        name: "知らない種類",
-        notice: { noticeType: "missed_meal_record" },
-        reason: "invalid_notice_type",
-      },
-      {
-        name: "IANA の名前として読めないタイムゾーン",
-        notice: { timeZone: "Mars/Olympus" },
-        reason: "invalid_time_zone",
-      },
-      {
-        name: "時差の形のタイムゾーン",
-        notice: { timeZone: "+09:00" },
-        reason: "invalid_time_zone",
-      },
-      {
-        name: "日付の形でない対象の日付",
-        notice: { targetOn: "2026/01/01" },
-        reason: "invalid_target_on",
-      },
-      {
-        name: "暦に無い対象の日付",
-        notice: { targetOn: "2026-02-30" },
-        reason: "invalid_target_on",
-      },
-    ])("$name は受け付けないこと", async ({ notice, reason }) => {
-      const response = await pushSyncWrites(sessionToken, {
-        writes: [createNoticeWrite({ notice })],
+    describe("知らない種類のとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [createNoticeWrite({ notice: { noticeType: "missed_meal_record" } })],
+        });
       });
-      expect((await response.json<PushResults>()).results[0]).toEqual(
-        expect.objectContaining({ result: "rejected", rejectionReason: reason }),
-      );
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]).toEqual(
+          expect.objectContaining({ result: "rejected", rejectionReason: "invalid_notice_type" }),
+        );
+      });
+
+      test("知らせを残さないこと", async () => {
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes).toEqual([]);
+      });
     });
 
-    test("知らせを残さないこと", async () => {
-      await pushSyncWrites(sessionToken, {
-        writes: [createNoticeWrite({ notice: { noticeType: "missed_meal_record" } })],
+    describe("IANA の名前として読めないタイムゾーンのとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [createNoticeWrite({ notice: { timeZone: "Mars/Olympus" } })],
+        });
       });
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(pulled.changes).toEqual([]);
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]).toEqual(
+          expect.objectContaining({ result: "rejected", rejectionReason: "invalid_time_zone" }),
+        );
+      });
+    });
+
+    describe("時差の形のタイムゾーンのとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [createNoticeWrite({ notice: { timeZone: "+09:00" } })],
+        });
+      });
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]).toEqual(
+          expect.objectContaining({ result: "rejected", rejectionReason: "invalid_time_zone" }),
+        );
+      });
+    });
+
+    describe("日付の形でない対象の日付のとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [createNoticeWrite({ notice: { targetOn: "2026/01/01" } })],
+        });
+      });
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]).toEqual(
+          expect.objectContaining({ result: "rejected", rejectionReason: "invalid_target_on" }),
+        );
+      });
+    });
+
+    describe("暦に無い対象の日付のとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [createNoticeWrite({ notice: { targetOn: "2026-02-30" } })],
+        });
+      });
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]).toEqual(
+          expect.objectContaining({ result: "rejected", rejectionReason: "invalid_target_on" }),
+        );
+      });
     });
   });
 
   describe("ID が種類と日付からの v5 でない作る書き込みを送ったとき", () => {
-    test("当てること", async () => {
-      const response = await pushSyncWrites(sessionToken, {
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
         writes: [createNoticeWrite({ notice: { id: "not-a-v5-uuid" } })],
       });
+    });
+
+    test("当てること", async () => {
       expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
     });
   });
@@ -248,10 +289,14 @@ describe("知らせの同期", () => {
     });
 
     describe("IANA の名前として読めないタイムゾーンで答える書き込みを送ったとき", () => {
-      test("受け付けないこと", async () => {
-        const response = await pushSyncWrites(sessionToken, {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
           writes: [respondNoticeWrite(noticeId, { response: { timeZone: "Mars/Olympus" } })],
         });
+      });
+
+      test("受け付けないこと", async () => {
         expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
           "invalid_time_zone",
         );

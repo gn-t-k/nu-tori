@@ -1,4 +1,4 @@
-public import Foundation
+import Foundation
 
 /// 体重の画面の傾向のグラフに描くもの。横軸は今日までの最近4週で固定する
 public struct WeightTrendChart: Hashable, Sendable {
@@ -17,10 +17,8 @@ public struct WeightTrendChart: Hashable, Sendable {
         weightRecords: [WeightRecord],
         trend: WeightTrend?,
         firstDay: CalendarDay,
-        now: Date,
-        timeZone: TimeZone
+        today: CalendarDay
     ) {
-        let today = CalendarDay(containing: now, in: timeZone)
         let days = today.advanced(by: -27)...today
         let representativeWeights = RepresentativeWeight.daily(of: weightRecords)
         self.days = days

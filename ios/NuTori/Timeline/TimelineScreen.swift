@@ -44,7 +44,9 @@ struct TimelineScreen: View {
                 content(loaded: loaded)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .overlay(alignment: .top) {
-                        if let card = loaded?.noticeAwaitingAnswer, awaitingNoticeIsAbove {
+                        if let card = loaded?.noticeAwaitingAnswer,
+                            unansweredNoticeLineVisibility.shows(for: card)
+                        {
                             unansweredNoticeLine(card)
                         }
                     }
@@ -60,8 +62,7 @@ struct TimelineScreen: View {
                         weightRecords: records,
                         trend: weightTrend,
                         firstDay: firstDay,
-                        now: now(),
-                        timeZone: .current
+                        today: today
                     ),
                     rejectedLines: rejectedLines,
                     capture: capture,
@@ -212,8 +213,8 @@ struct TimelineScreen: View {
     @State private var showsPhotoPicker = false
     /// 体重の知らせの中で記録した回数。触覚を鳴らす合図
     @State private var noticeRecordedCount = 0
-    /// 今日の答えていない知らせのカードが、画面の上へ流れて見えないか。カードが並んでいなければ false
-    @State private var awaitingNoticeIsAbove = false
+    /// 今日の答えていない知らせのカードが、画面の上へ流れて見えないか
+    @State private var unansweredNoticeLineVisibility = UnansweredNoticeLine()
     @State private var pickedPhotos: [PhotosPickerItem] = []
 
     private var showsCamera: Binding<Bool> {
@@ -311,8 +312,8 @@ struct TimelineScreen: View {
                     visibleDay = dayInView(
                         offsets, timeline: timeline, viewportHeight: geo.size.height)
                 }
-                .onPreferenceChange(AwaitingNoticeMaxYKey.self) { maxY in
-                    awaitingNoticeIsAbove = maxY.map { $0 <= 0 } ?? false
+                .onPreferenceChange(AwaitingNoticePositionKey.self) { position in
+                    unansweredNoticeLineVisibility.note(position)
                 }
                 .onChange(of: dayFocus) { _, focus in
                     switch focus {
@@ -397,8 +398,10 @@ struct TimelineScreen: View {
                         if card.form == .awaitingAnswer {
                             GeometryReader { geo in
                                 Color.clear.preference(
-                                    key: AwaitingNoticeMaxYKey.self,
-                                    value: geo.frame(in: .named("timeline")).maxY)
+                                    key: AwaitingNoticePositionKey.self,
+                                    value: UnansweredNoticeLine.CardPosition(
+                                        noticeId: card.notice.id,
+                                        maxY: Double(geo.frame(in: .named("timeline")).maxY)))
                             }
                         }
                     }
@@ -625,11 +628,14 @@ private struct TimelineDayOffsetsKey: PreferenceKey {
     }
 }
 
-/// 今日の答えていない知らせのカードの下端。カードが並んでいなければ nil
-private struct AwaitingNoticeMaxYKey: PreferenceKey {
-    static let defaultValue: CGFloat? = nil
+/// 今日の答えていない知らせのカードの位置。カードを描いていなければ nil
+private struct AwaitingNoticePositionKey: PreferenceKey {
+    static let defaultValue: UnansweredNoticeLine.CardPosition? = nil
 
-    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+    static func reduce(
+        value: inout UnansweredNoticeLine.CardPosition?,
+        nextValue: () -> UnansweredNoticeLine.CardPosition?
+    ) {
         value = nextValue() ?? value
     }
 }

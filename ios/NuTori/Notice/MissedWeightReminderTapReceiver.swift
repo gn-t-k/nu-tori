@@ -4,7 +4,10 @@ import UserNotifications
 /// 記録忘れの通知を押したことを受け取り、押した通知の ID（その日の体重の知らせの ID）を渡す。
 /// 開いているあいだに届いた通知は出さない。同じ時刻にタイムラインに知らせが出るため
 final class MissedWeightReminderTapReceiver: NSObject, UNUserNotificationCenterDelegate {
-    var onTap: (UUID) -> Void = { _ in }
+    init(onTap: @escaping (UUID) -> Void) {
+        self.onTap = onTap
+        super.init()
+    }
 
     /// 通知を押してアプリが起動されたときにも受け取れるよう、起動の中で呼ぶ
     func startReceiving() {
@@ -25,6 +28,8 @@ final class MissedWeightReminderTapReceiver: NSObject, UNUserNotificationCenterD
         }
         await receive(noticeId)
     }
+
+    private let onTap: (UUID) -> Void
 
     private func receive(_ noticeId: UUID) {
         onTap(noticeId)

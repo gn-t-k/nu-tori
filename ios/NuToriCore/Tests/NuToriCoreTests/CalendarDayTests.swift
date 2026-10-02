@@ -236,6 +236,38 @@ struct CalendarDayTests {
             }
         }
     }
+
+    @Suite("YYYY-MM-DD から読む")
+    struct YearMonthDay {
+        @Suite("うるう年の2月29日のとき")
+        struct LeapDay {
+            let text: String
+
+            init() {
+                text = "2028-02-29"
+            }
+
+            @Test("その日として読むこと")
+            func readsTheDay() {
+                #expect(
+                    CalendarDay(yearMonthDay: text) == CalendarDay(year: 2028, month: 2, day: 29))
+            }
+        }
+
+        @Suite("暦に無い日のとき")
+        struct NonexistentDay {
+            let text: String
+
+            init() {
+                text = "2026-02-31"
+            }
+
+            @Test("読めないこと")
+            func cannotRead() {
+                #expect(CalendarDay(yearMonthDay: text) == nil)
+            }
+        }
+    }
 }
 
 extension KeyedDecodingContainer {

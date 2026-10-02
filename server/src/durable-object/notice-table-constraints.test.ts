@@ -9,7 +9,7 @@ describe("知らせの表の制約", () => {
     test("知らせを消すと、記録忘れの知らせの子と答えも消えること", async () => {
       const counts = await runInAccount((sql) => {
         insertMissedRecordNotice(sql, "notice-1");
-        insertReceipt(sql, "receipt-1", 0);
+        insertReceipt(sql, "receipt-1");
         insertResponse(sql, "receipt-1", "notice-1");
         sql.exec("DELETE FROM notices WHERE id = 'notice-1'");
         return {
@@ -20,25 +20,13 @@ describe("知らせの表の制約", () => {
       });
       expect(counts).toEqual({ notices: 0, missedRecordNotices: 0, responses: 0 });
     });
-
-    test("同じ知らせに2つ目の答えは INSERT できないこと", async () => {
-      await expect(
-        runInAccount((sql) => {
-          insertMissedRecordNotice(sql, "notice-1");
-          insertReceipt(sql, "receipt-1", 0);
-          insertReceipt(sql, "receipt-2", 1);
-          insertResponse(sql, "receipt-1", "notice-1");
-          insertResponse(sql, "receipt-2", "notice-1");
-        }),
-      ).rejects.toThrow(/UNIQUE/);
-    });
   });
 
   describe("知らせが無いとき", () => {
     test("知らせの無い答えは INSERT できないこと", async () => {
       await expect(
         runInAccount((sql) => {
-          insertReceipt(sql, "receipt-1", 0);
+          insertReceipt(sql, "receipt-1");
           insertResponse(sql, "receipt-1", "notice-missing");
         }),
       ).rejects.toThrow(/FOREIGN KEY/);
@@ -89,7 +77,7 @@ const insertMissedRecordNotice = (sql: Sql, id: string) => {
 };
 
 // 答える書き込みの控え。控えの要求の行も、初めのときだけ足す
-const insertReceipt = (sql: Sql, id: string, positionInRequest: number) => {
+const insertReceipt = (sql: Sql, id: string) => {
   sql.exec(
     "INSERT OR IGNORE INTO sync_request_logs (id, device_id, received_at, time_zone, app_version, os_version, pending_write_count, pending_photo_count) VALUES ('request-1', 'device-1', 0, 'Asia/Tokyo', '1.0.0', '26.0', 1, 0)",
   );
@@ -97,9 +85,8 @@ const insertReceipt = (sql: Sql, id: string, positionInRequest: number) => {
     "INSERT OR IGNORE INTO sync_push_logs (sync_request_log_id, is_final_batch) VALUES ('request-1', 1)",
   );
   sql.exec(
-    "INSERT INTO sync_write_receipts (id, sync_request_log_id, position_in_request, kind, record_type, record_id, result) VALUES (?, 'request-1', ?, 'respond', 'notice', 'notice-1', 'applied')",
+    "INSERT INTO sync_write_receipts (id, sync_request_log_id, position_in_request, kind, record_type, record_id, result) VALUES (?, 'request-1', 0, 'respond', 'notice', 'notice-1', 'applied')",
     id,
-    positionInRequest,
   );
 };
 

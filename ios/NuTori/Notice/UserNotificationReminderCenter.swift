@@ -3,9 +3,7 @@ import NuToriCore
 import UserNotifications
 
 /// `UNUserNotificationCenter` に、記録忘れの通知を置き、外す。この機能で置いた通知は、分類の ID で見分ける
-nonisolated final class UserNotificationReminderCenter: MissedWeightRecordReminderCenter,
-    @unchecked Sendable
-{
+nonisolated struct UserNotificationReminderCenter: MissedWeightRecordReminderCenter {
     /// 記録忘れの通知に付ける分類の ID
     static let categoryIdentifier = "missed-weight-record"
 
@@ -65,5 +63,6 @@ nonisolated final class UserNotificationReminderCenter: MissedWeightRecordRemind
         center.removeDeliveredNotifications(withIdentifiers: ids.map(\.uuidString))
     }
 
-    private let center = UNUserNotificationCenter.current()
+    /// 持たずに都度取る。アプリで1つの置き場なので、どこから取っても同じもの
+    private var center: UNUserNotificationCenter { .current() }
 }

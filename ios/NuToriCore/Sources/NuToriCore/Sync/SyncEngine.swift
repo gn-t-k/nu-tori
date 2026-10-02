@@ -116,28 +116,33 @@ public actor SyncEngine {
     }
 
     /// キャッシュの体重記録と知らせから、体重の知らせに答えるか・今日の知らせを出すかを決め、書き込みを送り待ちに並べる。
-    /// 初回の取得を終えるまでは、記録がそろっていないので何もしない。並べたら true
+    /// 初回の取得を終えるまでは、記録がそろっていないので何もしない。並べたら true。
+    /// 読めなかった・書けなかったら、報告して false
     @discardableResult
-    public func issueOrRespondToMissedWeightRecordNotices() async throws -> Bool {
-        guard try await store.syncState()?.hasCompletedInitialPull ?? false else { return false }
-        let weightRecords = try await store.weightRecords()
-        let notices = try await store.notices()
-        let idsToRespond = MissedWeightRecordNoticeDecision.noticeIdsToRespond(
-            notices: notices, weightRecords: weightRecords)
-        for noticeId in idsToRespond {
-            try await respondToNotice(id: noticeId)
+    public func issueOrRespondToMissedWeightRecordNotices() async -> Bool {
+        await decidingMissedWeightRecordNotices { inputs in
+            let responded = try await respondToMissedWeightRecordNotices(with: inputs)
+            let noticeToIssue = MissedWeightRecordNoticeDecision.noticeToIssue(
+                usualWeighingTime: inputs.usualWeighingTime,
+                now: now(),
+                timeZone: timeZone(),
+                weightRecords: inputs.weightRecords,
+                notices: inputs.notices
+            )
+            if let noticeToIssue {
+                try await issueNotice(noticeToIssue)
+            }
+            return responded || noticeToIssue != nil
         }
-        let noticeToIssue = MissedWeightRecordNoticeDecision.noticeToIssue(
-            usualWeighingTime: try await store.usualWeighingTime(),
-            now: now(),
-            timeZone: timeZone(),
-            weightRecords: weightRecords,
-            notices: notices
-        )
-        if let noticeToIssue {
-            try await issueNotice(noticeToIssue)
+    }
+
+    /// 体重の知らせに答えるかだけを決め、答える書き込みを送り待ちに並べる。今日の知らせは出さない。
+    /// 初回の取得を終えるまでは何もしない。並べたら true。読めなかった・書けなかったら、報告して false
+    @discardableResult
+    public func respondToMissedWeightRecordNotices() async -> Bool {
+        await decidingMissedWeightRecordNotices { inputs in
+            try await respondToMissedWeightRecordNotices(with: inputs)
         }
-        return !idsToRespond.isEmpty || noticeToIssue != nil
     }
 
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
@@ -402,6 +407,60 @@ public actor SyncEngine {
             try await store.apply(SyncBoxResult(syncState: restarted))
         }
         return restarted
+    }
+
+    /// 体重の知らせを出すか・答えるかを決める材料
+    private struct MissedWeightRecordNoticeInputs {
+        let weightRecords: [WeightRecord]
+        let notices: [Notice]
+        let usualWeighingTime: UsualWeighingTime?
+    }
+
+    /// 初回の取得を終えていれば、材料を読んで決める。読めなかった失敗は readingCache が、
+    /// 書けなかった失敗は writingCache が報告しているので、ここでは重ねて送らない
+    private func decidingMissedWeightRecordNotices(
+        _ decide: (MissedWeightRecordNoticeInputs) async throws -> Bool
+    ) async -> Bool {
+        do {
+            let inputs = try await readingCache { () -> MissedWeightRecordNoticeInputs? in
+                guard try await store.syncState()?.hasCompletedInitialPull ?? false else {
+                    return nil
+                }
+                return MissedWeightRecordNoticeInputs(
+                    weightRecords: try await store.weightRecords(),
+                    notices: try await store.notices(),
+                    usualWeighingTime: try await store.usualWeighingTime()
+                )
+            }
+            guard let inputs else { return false }
+            return try await decide(inputs)
+        } catch {
+            return false
+        }
+    }
+
+    private func respondToMissedWeightRecordNotices(with inputs: MissedWeightRecordNoticeInputs)
+        async throws -> Bool
+    {
+        let idsToRespond = MissedWeightRecordNoticeDecision.noticeIdsToRespond(
+            notices: inputs.notices, weightRecords: inputs.weightRecords)
+        for noticeId in idsToRespond {
+            try await respondToNotice(id: noticeId)
+        }
+        return !idsToRespond.isEmpty
+    }
+
+    private func readingCache<T: Sendable>(_ work: () async throws -> T) async throws -> T {
+        do {
+            return try await work()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if let failure = HandledFailure.reported(error, as: .cacheRead) {
+                await errorReporting.report(failure)
+            }
+            throw error
+        }
     }
 
     private func writingCache<T: Sendable>(_ work: () async throws -> T) async throws -> T {

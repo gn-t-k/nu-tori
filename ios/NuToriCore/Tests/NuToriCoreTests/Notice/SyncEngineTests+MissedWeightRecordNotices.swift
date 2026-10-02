@@ -21,7 +21,7 @@ extension SyncEngineTests {
 
             @Test("今日の知らせを、通知の時刻に出したものとして作り、送り待ちに入れること")
             func issuesTodayNotice() async throws {
-                let enqueued = try await engine.issueOrRespondToMissedWeightRecordNotices()
+                let enqueued = await engine.issueOrRespondToMissedWeightRecordNotices()
 
                 let noticeId = Notice.id(
                     kind: .missedWeightRecord, targetDay: MissedWeightRecordNotices.today)
@@ -34,9 +34,9 @@ extension SyncEngineTests {
 
             @Test("2回呼んでも、知らせを1つだけ作ること")
             func issuesOnce() async throws {
-                try await engine.issueOrRespondToMissedWeightRecordNotices()
+                await engine.issueOrRespondToMissedWeightRecordNotices()
 
-                let enqueued = try await engine.issueOrRespondToMissedWeightRecordNotices()
+                let enqueued = await engine.issueOrRespondToMissedWeightRecordNotices()
 
                 #expect(!enqueued)
                 #expect(store.entries.map(\.kind) == [.notice])
@@ -55,7 +55,7 @@ extension SyncEngineTests {
 
             @Test("記録がそろっていないので、知らせを出さないこと")
             func issuesNothing() async throws {
-                let enqueued = try await engine.issueOrRespondToMissedWeightRecordNotices()
+                let enqueued = await engine.issueOrRespondToMissedWeightRecordNotices()
 
                 #expect(!enqueued)
                 #expect(store.entries.isEmpty)
@@ -72,7 +72,7 @@ extension SyncEngineTests {
             init() async throws {
                 store = try .ok(state: .fixture(hasCompletedInitialPull: true))
                 engine = .fixture(store: store, transport: .sync())
-                try await engine.issueOrRespondToMissedWeightRecordNotices()
+                await engine.issueOrRespondToMissedWeightRecordNotices()
                 noticeId = Notice.id(
                     kind: .missedWeightRecord, targetDay: MissedWeightRecordNotices.today)
                 store.cache.upsert(
@@ -82,11 +82,84 @@ extension SyncEngineTests {
 
             @Test("知らせを答えた形にし、答える書き込みを送り待ちに入れること")
             func respondsToNotice() async throws {
-                let enqueued = try await engine.issueOrRespondToMissedWeightRecordNotices()
+                let enqueued = await engine.issueOrRespondToMissedWeightRecordNotices()
 
                 #expect(enqueued)
                 #expect(store.entries.map(\.kind) == [.notice, .notice])
                 #expect(store.cache.notices[noticeId]?.response != nil)
+            }
+        }
+
+        @Suite("キャッシュを読めないとき")
+        struct CacheUnreadable {
+            struct SampleError: Error {}
+
+            let errorReporting: ErrorReportingSessionMock
+            let engine: SyncEngine
+
+            init() {
+                errorReporting = .ok()
+                engine = .fixture(
+                    store: .error(SampleError()), transport: .sync(),
+                    errorReporting: errorReporting)
+            }
+
+            @Test("並べず、キャッシュを読めなかった失敗として1回送ること")
+            func reportsReadFailure() async {
+                let enqueued = await engine.issueOrRespondToMissedWeightRecordNotices()
+
+                #expect(!enqueued)
+                #expect(errorReporting.reported == [.cacheRead])
+            }
+        }
+
+        @Suite("体重のシートを開くときの、答えるだけの判断")
+        struct RespondingOnly {
+            @Suite("通知の時刻を過ぎ、今日の体重記録も知らせも無いとき")
+            struct DueToday {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+
+                init() throws {
+                    store = try .ok(state: .fixture(hasCompletedInitialPull: true))
+                    engine = .fixture(store: store, transport: .sync())
+                }
+
+                @Test("知らせを作らないこと")
+                func issuesNothing() async {
+                    let enqueued = await engine.respondToMissedWeightRecordNotices()
+
+                    #expect(!enqueued)
+                    #expect(store.entries.isEmpty)
+                    #expect(store.cache.notices.isEmpty)
+                }
+            }
+
+            @Suite("答えていない今日の知らせがあり、今日の体重記録がキャッシュに入ったとき")
+            struct RecordedAfterNotice {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let noticeId: UUID
+
+                init() async throws {
+                    store = try .ok(state: .fixture(hasCompletedInitialPull: true))
+                    engine = .fixture(store: store, transport: .sync())
+                    await engine.issueOrRespondToMissedWeightRecordNotices()
+                    noticeId = Notice.id(
+                        kind: .missedWeightRecord, targetDay: MissedWeightRecordNotices.today)
+                    store.cache.upsert(
+                        try WeightRecord.imported(
+                            72.4, at: "2026-01-01T08:50:00+09:00", in: "Asia/Tokyo"))
+                }
+
+                @Test("知らせを答えた形にし、答える書き込みを送り待ちに入れること")
+                func respondsToNotice() async {
+                    let enqueued = await engine.respondToMissedWeightRecordNotices()
+
+                    #expect(enqueued)
+                    #expect(store.entries.map(\.kind) == [.notice, .notice])
+                    #expect(store.cache.notices[noticeId]?.response != nil)
+                }
             }
         }
     }

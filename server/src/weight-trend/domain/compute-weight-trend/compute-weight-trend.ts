@@ -1,3 +1,5 @@
+import { addDays } from "../../../domain/add-days";
+import { millisecondsPerDay } from "../../../domain/milliseconds-per-day";
 import type { WeightTrend } from "../weight-trend";
 
 // 日の代表値を日の順に受け取る。無い日を線形に埋めてから、指数移動平均でならす
@@ -34,14 +36,7 @@ const fillMissingDays = (
     }));
   });
 
-const millisecondsPerDay = 24 * 60 * 60 * 1000;
-
 const daysBetween = (from: string, to: string): number =>
   Math.round(
     (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / millisecondsPerDay,
   );
-
-const addDays = (calendarDay: string, days: number): string =>
-  new Date(Date.parse(`${calendarDay}T00:00:00Z`) + days * millisecondsPerDay)
-    .toISOString()
-    .slice(0, 10);

@@ -179,4 +179,67 @@ struct MissedWeightRecordNoticeDecisionTests {
             #expect(noticeIds == [unansweredWithRecord.id])
         }
     }
+
+    /// いつもの時刻は 7:15 なので、通知の時刻は 8:15
+    @Suite("開いているあいだに、次に出すかを決める時刻")
+    struct NextNoticeTime {
+        @Suite("今日の通知の時刻の前で、今日の体重記録が無いとき")
+        struct BeforeTodaysTime {
+            let nextTime: Date?
+
+            init() throws {
+                nextTime = MissedWeightRecordNoticeDecision.nextNoticeTime(
+                    usualWeighingTime: UsualWeighingTime(id: UUID(), minuteOfDay: 435),
+                    now: try Date("2026-09-22T08:14:00+09:00", strategy: .iso8601),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                    weightRecords: []
+                )
+            }
+
+            @Test("今日の通知の時刻であること")
+            func isTodaysTime() throws {
+                #expect(nextTime == (try Date("2026-09-22T08:15:00+09:00", strategy: .iso8601)))
+            }
+        }
+
+        @Suite("今日の通知の時刻を過ぎたとき")
+        struct AfterTodaysTime {
+            let nextTime: Date?
+
+            init() throws {
+                nextTime = MissedWeightRecordNoticeDecision.nextNoticeTime(
+                    usualWeighingTime: UsualWeighingTime(id: UUID(), minuteOfDay: 435),
+                    now: try Date("2026-09-22T09:30:00+09:00", strategy: .iso8601),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                    weightRecords: []
+                )
+            }
+
+            @Test("開いたまま日付が変わったときのために、明日の通知の時刻であること")
+            func isTomorrowsTime() throws {
+                #expect(nextTime == (try Date("2026-09-23T08:15:00+09:00", strategy: .iso8601)))
+            }
+        }
+
+        @Suite("今日の通知の時刻の前で、今日の体重記録があるとき")
+        struct RecordedToday {
+            let nextTime: Date?
+
+            init() throws {
+                nextTime = MissedWeightRecordNoticeDecision.nextNoticeTime(
+                    usualWeighingTime: UsualWeighingTime(id: UUID(), minuteOfDay: 435),
+                    now: try Date("2026-09-22T08:00:00+09:00", strategy: .iso8601),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                    weightRecords: [
+                        try .manual(60.0, at: "2026-09-22T07:10:00+09:00", in: "Asia/Tokyo")
+                    ]
+                )
+            }
+
+            @Test("明日の通知の時刻であること")
+            func isTomorrowsTime() throws {
+                #expect(nextTime == (try Date("2026-09-23T08:15:00+09:00", strategy: .iso8601)))
+            }
+        }
+    }
 }

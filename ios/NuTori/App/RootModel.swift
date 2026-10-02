@@ -42,10 +42,14 @@ final class RootModel {
             replaceScreen(with: .signIn(.introduction))
         }
         await accountSession.beginObservationIfSignedIn()
-        hasBegunObservation = true
-        if let noticeId = reminderTapWhileOpening {
-            reminderTapWhileOpening = nil
-            Task { await self.openFromReminder(noticeId: noticeId) }
+        let tapWhileOpening: UUID? =
+            switch opening {
+            case .opening(let pendingTap): pendingTap
+            case .begun: nil
+            }
+        opening = .begun
+        if let tapWhileOpening {
+            Task { await self.openFromReminder(noticeId: tapWhileOpening) }
         }
         await syncIfShowingTimeline()
     }
@@ -54,9 +58,12 @@ final class RootModel {
     /// その日の知らせがあればその位置に、無ければ今日のいちばん下に着く
     func openFromReminder(noticeId: UUID) async {
         // 起動して初めて開き終え、観測を始めてから決める。始める前の出来事は送られないため
-        guard hasBegunObservation else {
-            reminderTapWhileOpening = noticeId
+        switch opening {
+        case .opening:
+            opening = .opening(pendingTap: noticeId)
             return
+        case .begun:
+            break
         }
         switch screen {
         case .loadingTimeline, .timeline:
@@ -76,8 +83,14 @@ final class RootModel {
 
     /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ、iPhone の画面で求める
     func requestNotificationPermissionAfterWeightRecorded() async {
-        guard let granted = await reminders.requestPermissionIfNotYetRequested() else { return }
-        await accountSession.capture(.notificationPermissionRequested(granted: granted))
+        switch await reminders.requestPermissionIfNotYetRequested() {
+        case .granted:
+            await accountSession.capture(.notificationPermissionRequested(granted: true))
+        case .notGranted:
+            await accountSession.capture(.notificationPermissionRequested(granted: false))
+        case .alreadyRequested:
+            return
+        }
     }
 
     func notificationPermission() async -> NotificationPermission {
@@ -161,14 +174,13 @@ final class RootModel {
 
     func prepareWeightEntry() async {
         await health.prepareForFirstWeightEntry()
-        // ヘルスケアから今日の体重を読み込んでいれば、知らせに答える
-        await recordSync.issueOrRespondToNotices()
+        // ヘルスケアから今日の体重を読み込んでいれば、知らせに答える。知らせを出す時機ではないので出さない
+        await recordSync.respondToNotices()
     }
 
     func noteAppBackgrounded() {
         rejectionAcceptance = .ignoring
-        noticeTimer?.cancel()
-        noticeTimer = nil
+        recordSync.stopWaitingForNoticeTime()
     }
 
     func noteAppActive() {
@@ -251,13 +263,15 @@ final class RootModel {
     private let recordSync: RecordSync
     private let health: HealthSyncSession
     private let reminders: MissedWeightRecordReminderScheduler
-    /// 開いている途中に押された記録忘れの通知の ID
-    private var reminderTapWhileOpening: UUID?
-    /// 起動して初めて開き終えたか
-    private var hasBegunObservation = false
+    private var opening = Opening.opening(pendingTap: nil)
     private var rejectionAcceptance = RejectionAcceptance.accepting(RejectedLines())
-    /// 開いているあいだに今日の知らせの時刻が来るのを待つ
-    private var noticeTimer: Task<Void, Never>?
+
+    /// 起動して初めて開き終え、観測を始めたか
+    private enum Opening {
+        /// 開いている途中。`pendingTap` は、その途中に押された記録忘れの通知の ID
+        case opening(pendingTap: UUID?)
+        case begun
+    }
 
     private enum RejectionAcceptance {
         case accepting(RejectedLines)
@@ -331,20 +345,9 @@ final class RootModel {
             }
             // 送れなくても、開いたとき・前面に戻ったときに置き直す
             await recordSync.rescheduleReminders()
-            waitForNoticeTime()
+            recordSync.startWaitingForNoticeTime()
         case .opening, .signIn:
             return
-        }
-    }
-
-    /// 開いているあいだに今日の知らせの時刻が来たら、知らせを出すかを決める
-    private func waitForNoticeTime() {
-        noticeTimer?.cancel()
-        noticeTimer = Task { [recordSync] in
-            guard let noticeTime = await recordSync.upcomingNoticeTime() else { return }
-            try? await Task.sleep(for: .seconds(max(0, noticeTime.timeIntervalSinceNow)))
-            guard !Task.isCancelled else { return }
-            await recordSync.issueOrRespondToNotices()
         }
     }
 

@@ -19,4 +19,10 @@ nonisolated final class CachedWeightTrendDay {
     func trendDay() -> WeightTrend.Day? {
         CalendarDay(yearMonthDay: day).map { WeightTrend.Day(day: $0, kilograms: kilograms) }
     }
+
+    /// 並び全体が届くたびに置き換わるので、行をすべて日の順に並べる。行が無ければ傾向は無い
+    static func weightTrend(of rows: [CachedWeightTrendDay]) -> WeightTrend? {
+        let days = rows.compactMap { $0.trendDay() }.sorted { $0.day < $1.day }
+        return days.isEmpty ? nil : WeightTrend(days: days)
+    }
 }
