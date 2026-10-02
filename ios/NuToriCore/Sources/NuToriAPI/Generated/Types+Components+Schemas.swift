@@ -23,6 +23,57 @@ extension Components {
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
             case weightRecord = "weight_record"
+            case weightTrend = "weight_trend"
+        }
+        /// kind が weight_trend の変更の record。recordId は weight_trend の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く
+        ///
+        /// - Remark: Generated from `#/components/schemas/WeightTrendRecord`.
+        internal struct WeightTrendRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/WeightTrendRecord/DaysPayload`.
+            internal struct DaysPayloadPayload: Codable, Hashable, Sendable {
+                /// YYYY-MM-DD
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeightTrendRecord/DaysPayload/calendarDay`.
+                internal var calendarDay: Swift.String
+                /// 丸めない。見せるときに丸める
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeightTrendRecord/DaysPayload/trendKg`.
+                internal var trendKg: Swift.Double
+                /// Creates a new `DaysPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - calendarDay: YYYY-MM-DD
+                ///   - trendKg: 丸めない。見せるときに丸める
+                internal init(
+                    calendarDay: Swift.String,
+                    trendKg: Swift.Double
+                ) {
+                    self.calendarDay = calendarDay
+                    self.trendKg = trendKg
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case calendarDay
+                    case trendKg
+                }
+            }
+            /// 始まり（最初の体重記録の日）から最後の体重記録の日まで、1日ずつ日の順に並ぶ。取りに行くたびに並び全体が届くので、端末はキャッシュを置き換える
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeightTrendRecord/days`.
+            internal typealias DaysPayload = [Components.Schemas.WeightTrendRecord.DaysPayloadPayload]
+            /// 始まり（最初の体重記録の日）から最後の体重記録の日まで、1日ずつ日の順に並ぶ。取りに行くたびに並び全体が届くので、端末はキャッシュを置き換える
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeightTrendRecord/days`.
+            internal var days: Components.Schemas.WeightTrendRecord.DaysPayload
+            /// Creates a new `WeightTrendRecord`.
+            ///
+            /// - Parameters:
+            ///   - days: 始まり（最初の体重記録の日）から最後の体重記録の日まで、1日ずつ日の順に並ぶ。取りに行くたびに並び全体が届くので、端末はキャッシュを置き換える
+            internal init(days: Components.Schemas.WeightTrendRecord.DaysPayload) {
+                self.days = days
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case days
+            }
         }
         /// - Remark: Generated from `#/components/schemas/SyncWriteResult`.
         internal struct SyncWriteResult: Codable, Hashable, Sendable {
