@@ -9,7 +9,7 @@ public struct MissedWeightRecordReminder: Hashable, Sendable {
     public let clockTime: ClockTime
     public let fireDate: Date
 
-    /// 今日から7日先まで1日1つ。今日の時刻が過ぎた分と、その日付の体重記録がある日の分は外す。
+    /// 今日から6日先までの7日分、1日1つ。今日の時刻が過ぎた分と、その日付の体重記録がある日の分は外す。
     /// 体重記録の日付は記録したときのタイムゾーンで数えるので、西へ移った日は、移る前の土地の同じ日付の記録で外れる（受け入れる限界）
     public static func plan(
         usualWeighingTime: UsualWeighingTime?,
@@ -19,7 +19,7 @@ public struct MissedWeightRecordReminder: Hashable, Sendable {
     ) -> [MissedWeightRecordReminder] {
         let recordedDays = Set(weightRecords.map(\.day))
         let today = CalendarDay(containing: now, in: timeZone)
-        return (0...7)
+        return (0...6)
             .map { today.advanced(by: $0) }
             .filter { !recordedDays.contains($0) }
             .map {

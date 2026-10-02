@@ -17,7 +17,7 @@ struct MissedWeightRecordReminderTests {
             )
         }
 
-        @Test("今日から7日先まで、1日1つ予約すること")
+        @Test("今日から6日先までの7日分、1日1つ予約すること")
         func oneReminderPerDayForAWeek() {
             #expect(
                 reminders.map(\.day) == [
@@ -28,7 +28,6 @@ struct MissedWeightRecordReminderTests {
                     CalendarDay(year: 2026, month: 9, day: 26),
                     CalendarDay(year: 2026, month: 9, day: 27),
                     CalendarDay(year: 2026, month: 9, day: 28),
-                    CalendarDay(year: 2026, month: 9, day: 29),
                 ])
         }
 
@@ -61,7 +60,7 @@ struct MissedWeightRecordReminderTests {
             )
         }
 
-        @Test("今日を外し、明日から7日先までを予約すること")
+        @Test("今日を外し、明日から6日先までを予約すること")
         func skipsToday() {
             #expect(
                 reminders.map(\.day) == [
@@ -71,7 +70,6 @@ struct MissedWeightRecordReminderTests {
                     CalendarDay(year: 2026, month: 9, day: 26),
                     CalendarDay(year: 2026, month: 9, day: 27),
                     CalendarDay(year: 2026, month: 9, day: 28),
-                    CalendarDay(year: 2026, month: 9, day: 29),
                 ])
         }
     }
@@ -101,7 +99,6 @@ struct MissedWeightRecordReminderTests {
                     CalendarDay(year: 2026, month: 9, day: 26),
                     CalendarDay(year: 2026, month: 9, day: 27),
                     CalendarDay(year: 2026, month: 9, day: 28),
-                    CalendarDay(year: 2026, month: 9, day: 29),
                 ])
         }
     }
@@ -139,7 +136,6 @@ struct MissedWeightRecordReminderTests {
                     CalendarDay(year: 2026, month: 9, day: 25),
                     CalendarDay(year: 2026, month: 9, day: 26),
                     CalendarDay(year: 2026, month: 9, day: 27),
-                    CalendarDay(year: 2026, month: 9, day: 28),
                 ])
         }
     }
