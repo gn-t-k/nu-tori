@@ -10,10 +10,10 @@ struct SignInView: View {
         VStack(spacing: 12) {
             // 文字を大きくして入りきらないときは、サインインのボタンをいつも画面の下に見せるため、見出しと同意の文だけを送る
             ViewThatFits(in: .vertical) {
-                introduction
+                headerAndConsent
                     .frame(maxHeight: .infinity)
                 ScrollView {
-                    introduction
+                    headerAndConsent
                 }
             }
             VStack(spacing: 12) {
@@ -30,7 +30,7 @@ struct SignInView: View {
         .accessibilityIdentifier("signIn")
     }
 
-    private var introduction: some View {
+    private var headerAndConsent: some View {
         VStack(spacing: 24) {
             header
                 .frame(maxHeight: .infinity)
