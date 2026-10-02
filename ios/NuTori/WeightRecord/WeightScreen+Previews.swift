@@ -54,22 +54,23 @@
                 }
             }
 
-            var rejectedLines: [RejectedWeightLine] {
+            var rejectedLines: [RejectedLine] {
                 switch self {
                 case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay: []
                 case .rejected:
                     [
-                        RejectedWeightLine(
-                            record: WeightRecord(
-                                id: Self.dayRecord[0].id,
-                                kilograms: 7.2,
-                                instant: Self.dayRecord[0].instant,
-                                timeZone: Self.dayRecord[0].timeZone,
-                                inputSource: .manual,
-                                version: 2
-                            ),
-                            serverHasValue: true
-                        )
+                        .weight(
+                            RejectedWeightLine(
+                                record: WeightRecord(
+                                    id: Self.dayRecord[0].id,
+                                    kilograms: 7.2,
+                                    instant: Self.dayRecord[0].instant,
+                                    timeZone: Self.dayRecord[0].timeZone,
+                                    inputSource: .manual,
+                                    version: 2
+                                ),
+                                serverHasValue: true
+                            ))
                     ]
                 }
             }

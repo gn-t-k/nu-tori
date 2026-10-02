@@ -46,7 +46,6 @@ struct RootView: View {
         case .loadingTimeline, .timeline:
             TimelineScreenContainer(
                 rejectedLines: model.rejectedLines,
-                rejectedMealLines: model.rejectedMealLines,
                 capture: { await model.capture($0) },
                 prepareWeightEntry: { await model.prepareWeightEntry() },
                 saveWeight: { write in
