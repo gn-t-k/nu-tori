@@ -240,6 +240,30 @@ struct MealPhotosTests {
             }
         }
 
+        @Suite("締め出されていたとき（サーバーが 426 を返したとき）")
+        struct AppBuildUnsupported {
+            let errorReporting: ErrorReportingSessionMock
+            let photos: MealPhotos
+            let upload: MealPhotoUpload
+
+            init() async throws {
+                let uploader = MealPhotoUploaderMock.ok()
+                errorReporting = .ok()
+                photos = .fixture(uploader: uploader, errorReporting: errorReporting)
+                let meal = try Meal.withPhotos(count: 1)
+                try await photos.keep(.originals(of: meal), of: meal)
+                upload = try #require(uploader.started.first).upload
+            }
+
+            @Test("送り残しに残し、Sentry に送らないこと")
+            func keepsWithoutReport() async throws {
+                _ = await photos.finishUpload(upload, with: .responded(statusCode: 426))
+
+                #expect(await photos.pendingUploadCount() == 1)
+                #expect(errorReporting.reported.isEmpty)
+            }
+        }
+
         @Suite("つながらないとき")
         struct Unreachable {
             let errorReporting: ErrorReportingSessionMock

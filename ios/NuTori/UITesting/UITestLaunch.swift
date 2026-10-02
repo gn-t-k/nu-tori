@@ -61,13 +61,18 @@
             return AppRuntime.assemble(
                 AppRuntime.Parts(
                     store: store,
-                    makeClient: { sessionToken in
+                    makeClient: { appBuild, sessionToken, appBuildVerdict in
                         NuToriAPIClient(
                             serverURL: APIEnvironment.development.serverURL,
                             transport: StubAPITransport(behavior: behavior),
-                            sessionToken: sessionToken
+                            appBuild: appBuild,
+                            sessionToken: sessionToken,
+                            appBuildVerdict: appBuildVerdict
                         )
                     },
+                    appLockoutStore: UserDefaultsAppLockoutStore(
+                        defaults: UserDefaults(
+                            suiteName: "app.nu-tori.ui-test.lockout.\(UUID().uuidString)")!),
                     keychain: InMemorySessionKeychain(
                         token: account.hasSession ? "stub-session" : nil),
                     deviceStore: UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults()),

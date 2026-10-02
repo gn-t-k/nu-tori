@@ -22,7 +22,9 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
-                    sessionToken: { "session-1" }
+                    appBuild: 1,
+                    sessionToken: { "session-1" },
+                    appBuildVerdict: { _ in }
                 )
             }
 
@@ -46,7 +48,9 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.mealPhotos([:]),
-                    sessionToken: { "session-1" }
+                    appBuild: 1,
+                    sessionToken: { "session-1" },
+                    appBuildVerdict: { _ in }
                 )
             }
 
@@ -66,11 +70,13 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.mealPhotos([:]),
-                    sessionToken: { "session-1" }
+                    appBuild: 42,
+                    sessionToken: { "session-1" },
+                    appBuildVerdict: { _ in }
                 )
             }
 
-            @Test("写真の ID の経路に、セッションと JPEG の見出しを付けて PUT すること")
+            @Test("写真の ID の経路に、セッションと JPEG とビルド番号の見出しを付けて PUT すること")
             func buildsPut() async throws {
                 let request = await client.mealPhotoUploadRequest(
                     photoId: try #require(UUID(uuidString: MealPhoto.photoId)))
@@ -87,6 +93,7 @@ extension NuToriAPIClientTests {
                             headerFields: [
                                 "Authorization": "Bearer session-1",
                                 "Content-Type": "image/jpeg",
+                                "X-App-Build": "42",
                             ]
                         ))
             }

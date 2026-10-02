@@ -3,15 +3,22 @@ public import OpenAPIRuntime
 import OpenAPIURLSession
 
 public struct NuToriAPIClient: Sendable {
-    /// - Parameter sessionToken: 今のセッションのトークン。サインインしていなければ nil を返す
+    /// - Parameters:
+    ///   - appBuild: アプリのビルド番号（`CFBundleVersion`）。すべての要求に `X-App-Build` で付ける
+    ///   - sessionToken: 今のセッションのトークン。サインインしていなければ nil を返す
+    ///   - appBuildVerdict: 応答を受け取るたびに、サーバーがこのビルドを受け付けたかを知らせる先
     public init(
         environment: APIEnvironment,
-        sessionToken: @escaping @Sendable () async -> String?
+        appBuild: Int,
+        sessionToken: @escaping @Sendable () async -> String?,
+        appBuildVerdict: @escaping @Sendable (AppBuildVerdict) async -> Void
     ) {
         self.init(
             serverURL: environment.serverURL,
             transport: URLSessionTransport(),
-            sessionToken: sessionToken
+            appBuild: appBuild,
+            sessionToken: sessionToken,
+            appBuildVerdict: appBuildVerdict
         )
     }
 
@@ -19,14 +26,20 @@ public struct NuToriAPIClient: Sendable {
     public init(
         serverURL: URL,
         transport: any ClientTransport,
-        sessionToken: @escaping @Sendable () async -> String?
+        appBuild: Int,
+        sessionToken: @escaping @Sendable () async -> String?,
+        appBuildVerdict: @escaping @Sendable (AppBuildVerdict) async -> Void
     ) {
         self.serverURL = serverURL
+        self.appBuild = appBuild
         self.sessionToken = sessionToken
         client = Client(
             serverURL: serverURL,
             transport: transport,
-            middlewares: [SessionTokenMiddleware(sessionToken: sessionToken)]
+            middlewares: [
+                SessionTokenMiddleware(sessionToken: sessionToken),
+                AppBuildMiddleware(appBuild: appBuild, verdict: appBuildVerdict),
+            ]
         )
     }
 
@@ -92,5 +105,6 @@ public struct NuToriAPIClient: Sendable {
     let client: Client
     /// 生成したクライアントを通さずに組む要求（バックグラウンドの URLSession で送る写真）のため
     let serverURL: URL
+    let appBuild: Int
     let sessionToken: @Sendable () async -> String?
 }

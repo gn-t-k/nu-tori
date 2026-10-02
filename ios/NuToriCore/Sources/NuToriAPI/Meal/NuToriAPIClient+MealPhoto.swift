@@ -23,7 +23,9 @@ extension NuToriAPIClient {
 
     /// 縮小版を送る要求。経路と状態コードは `server/openapi.json` の `putMealPhoto`。本文は縮小版の JPEG のファイルそのまま
     public func mealPhotoUploadRequest(photoId: UUID) async -> MealPhotoUploadRequest {
-        var headerFields = ["Content-Type": "image/jpeg"]
+        var headerFields = [
+            "Content-Type": "image/jpeg", AppBuildMiddleware.headerName: String(appBuild),
+        ]
         if let token = await sessionToken() {
             headerFields["Authorization"] = "Bearer \(token)"
         }

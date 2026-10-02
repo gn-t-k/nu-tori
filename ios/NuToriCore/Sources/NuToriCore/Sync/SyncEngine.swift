@@ -169,6 +169,8 @@ public actor SyncEngine {
                 )
             } catch is CancellationError {
                 throw CancellationError()
+            } catch  where error.isAppBuildUnsupported {
+                return .appBuildUnsupported
             } catch {
                 if let failure = HandledFailure.reported(error, as: .sync) {
                     await errorReporting.report(failure)
@@ -276,6 +278,8 @@ public actor SyncEngine {
                 )
             } catch is CancellationError {
                 throw CancellationError()
+            } catch  where error.isAppBuildUnsupported {
+                return .appBuildUnsupported
             } catch {
                 if let failure = HandledFailure.reported(error, as: .sync) {
                     await errorReporting.report(failure)
