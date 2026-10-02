@@ -31,6 +31,7 @@ export const createWeightRecordKind = (
         )
         .exhaustive(),
   },
+  deliversAbsence: false,
   readCurrent: (recordId): CurrentRecord<WeightRecord> => {
     const weightRecord = store.find(recordId);
     if (weightRecord !== undefined) {

@@ -34,6 +34,7 @@ export const createMealKind = (
         .with({ type: "delete_meal" }, ({ mealId }) => decideDelete(stores, mealId, receivedAt))
         .exhaustive(),
   },
+  deliversAbsence: false,
   readCurrent: (recordId): CurrentRecord<Meal> => {
     const meal = stores.meal.find(recordId);
     if (meal !== undefined) {
