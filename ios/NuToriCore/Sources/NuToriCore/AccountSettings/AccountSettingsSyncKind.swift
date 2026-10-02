@@ -14,7 +14,7 @@ public struct AccountSettingsSyncKind: SyncedRecordKind, RecordKindWrites {
     public var writes: (any RecordKindWrites)? { self }
 
     public func owns(_ change: SyncChange) -> Bool {
-        if case .accountSettings = change { true } else { false }
+        change.kindName == name
     }
 
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {

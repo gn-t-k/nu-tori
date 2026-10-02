@@ -20,13 +20,7 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
     public init() {}
 
     public func owns(_ change: SyncChange) -> Bool {
-        switch change {
-        case .meal, .mealDeletion: true
-        case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
-            .ingredient, .ingredientDeletion, .mealEstimationStatus,
-            .mealEstimationStatusDeletion, .unknown:
-            false
-        }
+        change.kindName == name
     }
 
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
@@ -74,9 +68,7 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
             enqueuing: [try write.entry()],
             kindChanges: [
                 KindChanges(kind: name, changes: [.mealDeletion(mealId: mealId)]),
-                KindChanges(
-                    kind: MealEstimationStatusSyncing.kindName,
-                    changes: [.mealEstimationStatusDeletion(mealId: mealId)]),
+                MealEstimationStatusSyncing.removing(mealId: mealId),
             ]
         )
     }
@@ -86,13 +78,10 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
         var meals: [Meal] = []
         var removedMealIds: [UUID] = []
         for change in changes {
-            switch change {
-            case .meal(let meal): meals.append(Meal(meal))
-            case .mealDeletion(let mealId): removedMealIds.append(mealId)
-            case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
-                .ingredient, .ingredientDeletion, .mealEstimationStatus,
-                .mealEstimationStatusDeletion, .unknown:
-                break
+            if case .meal(let meal) = change {
+                meals.append(Meal(meal))
+            } else if case .mealDeletion(let mealId) = change {
+                removedMealIds.append(mealId)
             }
         }
         return Current(meals: meals, removedMealIds: removedMealIds)

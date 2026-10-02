@@ -18,12 +18,7 @@ public struct IngredientSyncing: SyncedRecordKind {
     public init() {}
 
     public func owns(_ change: SyncChange) -> Bool {
-        switch change {
-        case .ingredient, .ingredientDeletion: true
-        case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion, .meal,
-            .mealDeletion, .mealEstimationStatus, .mealEstimationStatusDeletion, .unknown:
-            false
-        }
+        change.kindName == name
     }
 
     /// 取りに行った変更を、今の値の並びにする。料理より先に届いた材料も返す（届く順は約束しない）
@@ -31,13 +26,10 @@ public struct IngredientSyncing: SyncedRecordKind {
         var ingredients: [Ingredient] = []
         var removedIngredientIds: [UUID] = []
         for change in changes {
-            switch change {
-            case .ingredient(let synced): ingredients.append(Ingredient(synced))
-            case .ingredientDeletion(let ingredientId): removedIngredientIds.append(ingredientId)
-            case .weightRecord, .weightRecordDeletion, .accountSettings, .dish, .dishDeletion,
-                .meal, .mealDeletion, .mealEstimationStatus, .mealEstimationStatusDeletion,
-                .unknown:
-                break
+            if case .ingredient(let synced) = change {
+                ingredients.append(Ingredient(synced))
+            } else if case .ingredientDeletion(let ingredientId) = change {
+                removedIngredientIds.append(ingredientId)
             }
         }
         return Current(ingredients: ingredients, removedIngredientIds: removedIngredientIds)
