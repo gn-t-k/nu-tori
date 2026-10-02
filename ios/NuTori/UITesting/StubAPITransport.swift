@@ -18,6 +18,8 @@
             switch behavior {
             case .offline:
                 throw URLError(.notConnectedToInternet)
+            case .appBuildUnsupported:
+                return json(.init(code: 426), #"{"code":"app_build_unsupported"}"#)
             case .hangPull:
                 if request.path == "/v1/sessions" {
                     return createdSession()
@@ -96,6 +98,8 @@
             /// 作る書き込みで届いた食事を、最初に取りに行かれたときは推定中、次からは推定できた（料理と材料つき）で返す。
             /// 消す書き込みが届いた食事は返さない
             case mealEstimation
+            /// どの要求にも 426 を返す（最低バージョンより古いビルド）
+            case appBuildUnsupported
         }
 
         private func deleteAccountResponse() -> (HTTPResponse, HTTPBody?) {
@@ -105,7 +109,7 @@
                 case .accountDeletionUnauthorized: .unauthorized
                 case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
                     .previousDayPushOffline, .previousDayPushRejected, .weightScreen,
-                    .weightScreenPushRejected, .mealEstimation:
+                    .weightScreenPushRejected, .mealEstimation, .appBuildUnsupported:
                     .noContent
                 }
             return (HTTPResponse(status: status), nil)
@@ -123,7 +127,7 @@
                         from: body, result: .rejected(current: #"{"status":"absent"}"#)))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
                 .weightScreen, .weightScreenPushRejected, .accountDeletionRateLimited,
-                .accountDeletionUnauthorized, .mealEstimation:
+                .accountDeletionUnauthorized, .mealEstimation, .appBuildUnsupported:
                 return json(.ok, try await writeResults(from: body, result: .applied))
             }
         }
@@ -149,7 +153,8 @@
                 return try await writeResults(from: body, result: .rejected(current: current))
             case .online, .offline, .weightRecords, .dayRing, .hangPull, .previousDay,
                 .previousDayPushOffline, .previousDayPushRejected, .weightScreen,
-                .accountDeletionRateLimited, .accountDeletionUnauthorized, .mealEstimation:
+                .accountDeletionRateLimited, .accountDeletionUnauthorized, .mealEstimation,
+                .appBuildUnsupported:
                 return try await applyWeightScreenPush(body)
             }
         }
@@ -395,7 +400,8 @@
             case .dayRing: return try dayRingBody()
             case .online, .offline, .hangPull, .previousDay, .previousDayPushOffline,
                 .previousDayPushRejected, .weightScreen, .weightScreenPushRejected,
-                .accountDeletionRateLimited, .accountDeletionUnauthorized, .mealEstimation:
+                .accountDeletionRateLimited, .accountDeletionUnauthorized, .mealEstimation,
+                .appBuildUnsupported:
                 return emptyChangesBody()
             }
         }

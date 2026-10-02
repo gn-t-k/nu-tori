@@ -9,6 +9,7 @@ extension XCUIApplication {
         healthLatestKilograms: String?,
         healthWrite: String = "authorized",
         pickedPhotoCount: Int = 0,
+        lockoutDefaults: String? = nil,
         timeZone: String?
     ) -> XCUIApplication {
         let app = XCUIApplication()
@@ -24,11 +25,24 @@ extension XCUIApplication {
         if pickedPhotoCount > 0 {
             app.launchEnvironment["UI_TEST_PICKED_PHOTOS"] = String(pickedPhotoCount)
         }
+        // 同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている
+        if let lockoutDefaults {
+            app.launchEnvironment["UI_TEST_LOCKOUT_DEFAULTS"] = lockoutDefaults
+        }
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
         }
         app.launch()
         return app
+    }
+
+    /// サインイン済みで開いて 426 を受け取り、締め出されたことを lockoutDefaults に覚えさせてから閉じる
+    @MainActor static func rememberLockout(in lockoutDefaults: String) {
+        let app = launched(
+            account: "signed-in", api: "app-build-unsupported", healthLatestKilograms: nil,
+            lockoutDefaults: lockoutDefaults, timeZone: nil)
+        XCTAssertTrue(app.otherElements["app-lockout"].waitForExistence(timeout: 5))
+        app.terminate()
     }
 
     /// containing は静的なテキストごとに子孫まで問い合わせ、画面の要素が多いと探す途中で時間切れになるので、ラベルだけを見る

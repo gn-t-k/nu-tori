@@ -10,7 +10,7 @@ struct NuToriApp: App {
     var body: some Scene {
         WindowGroup {
             if let runtime {
-                RootView(model: runtime.model)
+                RootView(model: runtime.model, appLockout: runtime.appLockout)
                     .modelContainer(runtime.container)
                     #if DEBUG
                         .environment(
