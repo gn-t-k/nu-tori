@@ -47,7 +47,9 @@ const syncWriteReceipts = sqliteTable(
       .notNull()
       .references(() => syncPushLogs.syncRequestLogId),
     positionInRequest: integer("position_in_request").notNull(),
-    kind: text("kind", { enum: ["create", "update", "source_deleted", "delete"] }).notNull(),
+    kind: text("kind", {
+      enum: ["create", "update", "source_deleted", "delete", "respond"],
+    }).notNull(),
     recordType: text("record_type", { enum: recordTypes }).notNull(),
     recordId: text("record_id").notNull(),
     result: text("result", {
