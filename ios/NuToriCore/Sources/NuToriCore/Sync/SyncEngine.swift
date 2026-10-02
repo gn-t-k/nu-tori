@@ -115,6 +115,31 @@ public actor SyncEngine {
         }
     }
 
+    /// キャッシュの体重記録と知らせから、体重の知らせに答えるか・今日の知らせを出すかを決め、書き込みを送り待ちに並べる。
+    /// 初回の取得を終えるまでは、記録がそろっていないので何もしない。並べたら true
+    @discardableResult
+    public func issueOrRespondToMissedWeightRecordNotices() async throws -> Bool {
+        guard try await store.syncState()?.hasCompletedInitialPull ?? false else { return false }
+        let weightRecords = try await store.weightRecords()
+        let notices = try await store.notices()
+        let idsToRespond = MissedWeightRecordNoticeDecision.noticeIdsToRespond(
+            notices: notices, weightRecords: weightRecords)
+        for noticeId in idsToRespond {
+            try await respondToNotice(id: noticeId)
+        }
+        let noticeToIssue = MissedWeightRecordNoticeDecision.noticeToIssue(
+            usualWeighingTime: try await store.usualWeighingTime(),
+            now: now(),
+            timeZone: timeZone(),
+            weightRecords: weightRecords,
+            notices: notices
+        )
+        if let noticeToIssue {
+            try await issueNotice(noticeToIssue)
+        }
+        return !idsToRespond.isEmpty || noticeToIssue != nil
+    }
+
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
     public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
         let settings = AccountSettings(

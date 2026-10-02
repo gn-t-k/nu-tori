@@ -118,6 +118,18 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("答えていない知らせの1行を押したとき")
+    struct UnansweredNoticeLineTapped {
+        @Test("中身を持たない出来事にすること")
+        func hasNoFields() {
+            let event = ClientUsageEvent.unansweredNoticeLineTapped
+
+            #expect(event.name == "unanswered_notice_line_tapped")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("カメラの許可の知らせを出したとき")
     struct CameraPermissionNoticeShown {
         @Test("中身を持たない出来事にすること")

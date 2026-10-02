@@ -21,7 +21,7 @@ final class RecordWeightWhenHealthDeniedUITests: XCTestCase {
         XCTAssertTrue(app.staticText(containing: "72.6 kg").waitForExistence(timeout: 5))
         app.recordWeightTwoTenthsLower()
         XCTAssertTrue(app.staticText(containing: "72.4 kg").waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["記録"].exists)
+        XCTAssertFalse(app.weightEntryRecordButton.exists)
         attachScreenshot(of: app, named: "ヘルスケアを断っても記録した体重")
     }
 }
