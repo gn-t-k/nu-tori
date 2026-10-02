@@ -6,8 +6,8 @@ import Observation
 final class RootModel {
     private(set) var screen: Screen = .opening
     var rejectedLines: [RejectedLine] {
-        guard case .accepting(let lines) = rejectionLines else { return [] }
-        return lines.lines
+        guard case .accepting(let rejected) = rejectionAcceptance else { return [] }
+        return rejected.lines
     }
 
     init(accountSession: AccountSession, recordSync: RecordSync, health: HealthSyncSession) {
@@ -117,13 +117,13 @@ final class RootModel {
     }
 
     func noteAppBackgrounded() {
-        rejectionLines = .ignoring
+        rejectionAcceptance = .ignoring
     }
 
     func noteAppActive() {
-        switch rejectionLines {
+        switch rejectionAcceptance {
         case .ignoring:
-            rejectionLines = .accepting(RejectedLines())
+            rejectionAcceptance = .accepting(RejectedLines())
         case .accepting:
             break
         }
@@ -199,9 +199,9 @@ final class RootModel {
     private let accountSession: AccountSession
     private let recordSync: RecordSync
     private let health: HealthSyncSession
-    private var rejectionLines = RejectionLines.accepting(RejectedLines())
+    private var rejectionAcceptance = RejectionAcceptance.accepting(RejectedLines())
 
-    private enum RejectionLines {
+    private enum RejectionAcceptance {
         case accepting(RejectedLines)
         case ignoring
     }
@@ -218,33 +218,33 @@ final class RootModel {
     }
 
     private func dropRejection(for recordId: UUID) {
-        switch rejectionLines {
+        switch rejectionAcceptance {
         case .ignoring:
             break
-        case .accepting(var lines):
-            lines.remove(recordId: recordId)
-            rejectionLines = .accepting(lines)
+        case .accepting(var rejected):
+            rejected.remove(recordId: recordId)
+            rejectionAcceptance = .accepting(rejected)
         }
     }
 
     /// 受け付けない状態のあいだにサインインの画面に戻っても、次のサインインからは受け付ける
     private func discardRejectedLines() {
-        switch rejectionLines {
+        switch rejectionAcceptance {
         case .ignoring:
-            rejectionLines = .accepting(RejectedLines())
-        case .accepting(var lines):
-            lines.removeAll()
-            rejectionLines = .accepting(lines)
+            rejectionAcceptance = .accepting(RejectedLines())
+        case .accepting(var rejected):
+            rejected.removeAll()
+            rejectionAcceptance = .accepting(rejected)
         }
     }
 
     private func noteRejected(_ writes: [RejectedWrite]) {
-        switch rejectionLines {
+        switch rejectionAcceptance {
         case .ignoring:
             break
-        case .accepting(var lines):
-            lines.add(writes)
-            rejectionLines = .accepting(lines)
+        case .accepting(var rejected):
+            rejected.add(writes)
+            rejectionAcceptance = .accepting(rejected)
         }
     }
 

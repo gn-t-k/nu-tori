@@ -101,8 +101,6 @@ const decideCreate = (
     return discarded(store, newMeal, { result: "rejected", reason: "photo_already_used" });
   }
   const meal: Meal = { ...newMeal, entryMethod };
-  // 推定の状態の変更は、食事ができたことに付いて addedChanges で1つ足す。写真がそろって予定に入れても1つでよいので、
-  // 推定の書き込みの口が足す変更は捨てる
   return {
     writeKind: "create",
     recordId: meal.id,
@@ -121,13 +119,16 @@ const decideCreate = (
     ],
     commit: () => {
       store.insert(meal);
-      stores.writeEstimationEvents(
-        () => undefined,
-        (writes) => scheduleMealEstimation(stores, writes, meal, receivedAt),
+      stores.writeEstimationEvents(discardStatusChangeAddedWithMeal, (writes) =>
+        scheduleMealEstimation(stores, writes, meal, receivedAt),
       );
     },
   };
 };
+
+// 推定の状態の変更は、食事ができたことに付いて addedChanges で1つ足す。写真がそろって予定に入れても1つでよいので、
+// 推定の書き込みの口が足す変更は捨てる
+const discardStatusChangeAddedWithMeal = (): void => undefined;
 
 // 食べた日の、いまある食事の数。消した食事は行が無いので数えない
 const countMealsOnEatenDay = (store: MealStore, meal: Meal): number => {

@@ -23,14 +23,10 @@ struct RejectedLinesTests {
         }
 
         @Test("サーバーに値が無い記録は記録の代わりに、値がある記録はそのすぐ下に1行を出すこと")
-        func addsWeightLines() {
+        func addsWeightLines() throws {
             #expect(rejected.lines.count == 2)
-            guard case .weight(let createdLine) = rejected.lines.first,
-                case .weight(let correctedLine) = rejected.lines.last
-            else {
-                Issue.record("体重の1行が2つ並んでいない")
-                return
-            }
+            let createdLine = try #require(rejected.lines.first?.weightLine)
+            let correctedLine = try #require(rejected.lines.last?.weightLine)
             #expect(createdLine.record == created)
             #expect(createdLine.placement == .insteadOfRecord)
             #expect(correctedLine.record == corrected)

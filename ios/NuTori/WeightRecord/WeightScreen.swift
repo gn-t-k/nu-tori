@@ -226,10 +226,7 @@ struct WeightScreen: View {
     }
 
     private func rejectedWeightLine(for recordId: UUID) -> RejectedWeightLine? {
-        for case .weight(let line) in rejectedLines where line.record.id == recordId {
-            return line
-        }
-        return nil
+        rejectedLines.lazy.compactMap(\.weightLine).first { $0.record.id == recordId }
     }
 
     private func shownNumber(_ kilograms: Double) -> String {

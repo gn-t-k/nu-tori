@@ -13,12 +13,8 @@ public struct Timeline: Sendable {
         // 食事の日が使い始めた日より前の食事は、カードは並べても、丸にも日のまとめにも入れない
         let mealsByEatenDay = Dictionary(
             grouping: input.meals.filter { $0.meal.day >= firstDay }, by: \.meal.day)
-        let rejectedWeightLines = input.rejectedLines.compactMap {
-            if case .weight(let line) = $0 { line } else { nil }
-        }
-        let rejectedMealLines = input.rejectedLines.compactMap {
-            if case .meal(let line) = $0 { line } else { nil }
-        }
+        let rejectedWeightLines = input.rejectedLines.compactMap(\.weightLine)
+        let rejectedMealLines = input.rejectedLines.compactMap(\.mealLine)
         let lastDay = ([today] + weightRecordsByDay.keys + mealsByDay.keys).max()!
         let range = firstDay...max(firstDay, lastDay)
         dayRange = range
