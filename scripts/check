@@ -300,7 +300,7 @@ clone_ui_test_simulator() {
     base="$(list_simulators_with_runtime | jq -r --arg name "$base_name" --arg type "$device_type" --arg runtime "$runtime" \
         'first(.[] | select(.name == $name and .deviceTypeIdentifier == $type and .runtime == $runtime) | .udid) // empty')"
     if [ -z "$base" ]; then
-        echo "UI テストの複製の元（$base_name）を作る" >&2
+        echo "UI テストの複製の元（${base_name}）を作る" >&2
         # Xcode を上げてランタイムが変わったら、前の元は使わない
         list_simulators_with_runtime | jq -r --arg name "$base_name" '.[] | select(.name == $name) | .udid' |
             xargs -n 1 xcrun simctl delete
