@@ -13,7 +13,10 @@ struct WeightTrendChartView: View {
                 RuleMark(x: .value("日", offset(of: divider)))
                     .foregroundStyle(Color(.tertiaryLabel))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .annotation(position: .trailing, alignment: .top, spacing: 4) {
+                    .annotation(
+                        position: .trailing, alignment: .top, spacing: 4,
+                        overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                    ) {
                         Text("使い始め")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -47,17 +50,9 @@ struct WeightTrendChartView: View {
         }
         .chartXScale(domain: 0...lastOffset)
         .chartYScale(domain: yDomain)
-        .chartXAxis {
-            AxisMarks(values: xTicks) { value in
-                AxisGridLine()
-                AxisValueLabel {
-                    if let offset = value.as(Int.self) {
-                        Text(monthDay(chart.days.lowerBound.advanced(by: offset)))
-                            .font(.caption2)
-                    }
-                }
-            }
-        }
+        // Charts の AxisValueLabel は目盛りの右にずれ、今日のラベルが消えるので、横軸のラベルは自前で描く
+        .chartXAxis(.hidden)
+        .chartOverlay { xAxisLabels(proxy: $0) }
         .chartYAxis {
             AxisMarks(position: .leading, values: yTicks) { value in
                 AxisGridLine()
@@ -70,7 +65,34 @@ struct WeightTrendChartView: View {
                 }
             }
         }
+        // 下は横軸のラベルの行、左右は両端のラベルがはみ出さない余白
+        .chartPlotStyle { plot in
+            plot.padding(.horizontal, Self.edgeInset).padding(.bottom, Self.xAxisLabelRowHeight)
+        }
         .frame(height: 200)
+        // 高さが固定なので、目盛りと注釈の文字は xxxLarge で止める。値は点の accessibilityValue でも読める
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+
+    private static let edgeInset: CGFloat = 16
+    private static let xAxisLabelRowHeight: CGFloat = 24
+
+    /// 目盛り（今日から1週ずつさかのぼった日）の真下に、日付を描く。VoiceOver には点の読み上げがあるので隠す
+    private func xAxisLabels(proxy: ChartProxy) -> some View {
+        GeometryReader { geometry in
+            if let plotFrame = proxy.plotFrame {
+                let plot = geometry[plotFrame]
+                ForEach(xTicks, id: \.self) { tick in
+                    if let x = proxy.position(forX: tick) {
+                        Text(monthDay(chart.days.lowerBound.advanced(by: tick)))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .position(x: plot.minX + x, y: plot.maxY + Self.xAxisLabelRowHeight / 2)
+                    }
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 
     private var lineDays: [WeightTrend.Day] {
