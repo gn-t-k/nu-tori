@@ -12,3 +12,9 @@ export const mockPhotosBucketDeleteError = (error: Error) => {
 export const mockPhotosBucketGetError = (error: Error) => {
   return vi.spyOn(env.PHOTOS, "get").mockRejectedValue(error);
 };
+
+// 一覧の1頁の件数を絞り、少ない数の控えで頁をまたがせる
+export const mockPhotosBucketListPageSize = (limit: number) => {
+  const list = env.PHOTOS.list.bind(env.PHOTOS);
+  return vi.spyOn(env.PHOTOS, "list").mockImplementation((options) => list({ ...options, limit }));
+};
