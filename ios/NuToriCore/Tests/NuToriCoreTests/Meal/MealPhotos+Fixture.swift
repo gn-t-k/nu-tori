@@ -9,6 +9,7 @@ extension MealPhotos {
         folders: Folders = .temporary(),
         uploader: MealPhotoUploaderMock = .ok(),
         transport: ClientTransportMock = .mealPhotos([:]),
+        appBuildGate: AppBuildGate = .sample,
         errorReporting: ErrorReportingSessionMock = .ok()
     ) -> MealPhotos {
         MealPhotos(
@@ -18,6 +19,7 @@ extension MealPhotos {
             client: NuToriAPIClient(
                 serverURL: URL(string: "https://api.example")!,
                 transport: transport,
+                appBuildGate: appBuildGate,
                 sessionToken: { "session-1" }
             ),
             errorReporting: errorReporting

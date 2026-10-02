@@ -28,6 +28,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - 入力の検証: 受け付ける値の範囲、体重の打ち間違いの判定
 - 観測を始めてよいかの判定: PostHog を始めてよいか（利用状況を送るがオンで、初回の取得を終えた）。オフへの切り替えが電波が無くてもその場で効くため
 - 選んだ写真のまとめ方: 複数枚を一度に選んだとき、撮影時刻が近いものを1つの食事にまとめる（基準1）
+- 締め出しの記憶: サーバーが 426 を返したら、締め出されたことをそのときのビルド番号と一緒に覚え、開いたときに覚えたビルド番号が今と同じなら、要求を待たずに締め出された状態で始める（基準1。電波が無いと締め出されたことが見えず、古い版で記録を書き足してしまうため）。ビルド番号が変わっていたら、または 426 でない応答を受けたら忘れる。NuToriCore の `AppLockout`（置き場は `AppLockoutStore`）
 
 材料の量の比例は端末だけが持ち、比例させた結果をサーバーに送る。目標と目安の計算、いつもの時刻の学習、写真と文章からの推定はサーバーで行い、端末は結果（材料の栄養の値まで）を受け取る。
 
@@ -45,6 +46,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 - クライアントは、`server/openapi.json` から swift-openapi-generator で生成し、`NuToriCore/Sources/NuToriAPI/Generated/` にコミットする。`server/openapi.json` が変わったら `scripts/check ios --fix` で生成し直す（`scripts/check ios` が最新かを確かめる）。生成器は `OpenAPIGenerator/` のパッケージで動かし、アプリのビルドには入れない。設定は `OpenAPIGenerator/openapi-generator-config.yaml`
 - 生成したコードは `internal` にし、アプリには `NuToriAPIClient` だけを見せる。経路を足したら、`NuToriAPIClient` にメソッドを足し、応答をアプリで扱う形（文書にある状態コードごとの enum）にして返す
+- ビルド番号のヘッダー（`X-App-Build`、値は `CFBundleVersion`）と 426 は、生成したクライアントのミドルウェア（`AppBuildMiddleware`）で扱い、OpenAPI の各操作と経路ごとの enum には載せない。どの操作でも、426 なら応答の解釈より前に `AppBuildUnsupportedError` を投げ（生成したクライアントが `ClientError` に包むので、`isAppBuildUnsupported` で見分ける）、受け付けたかどうかを `AppBuildGate`（ビルド番号と知らせる先の組）の `reportVerdict` で `AppLockout` に知らせる。426 は想定した結果なので Sentry に送らず（`HandledFailure.reported`）、同期では送り待ちを残して `appBuildUnsupported` で止める。生成したクライアントを通さない要求（写真の縮小版を送る要求）にも、同じヘッダーを付け、応答を受け取ったら同じく知らせる（`MealPhotos.finishUpload`）。仕様の正本は [#223](https://github.com/gn-t-k/nu-tori/issues/223)
 
 ## 作業の分け方
 

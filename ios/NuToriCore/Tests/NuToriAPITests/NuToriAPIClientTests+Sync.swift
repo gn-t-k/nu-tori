@@ -40,6 +40,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -126,6 +127,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -178,6 +180,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
+                    appBuildGate: .sample,
                     sessionToken: { nil }
                 )
             }
@@ -237,6 +240,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -294,6 +298,7 @@ extension NuToriAPIClientTests {
                             ]}
                             """
                     ),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -348,6 +353,7 @@ extension NuToriAPIClientTests {
                             ]}
                             """
                     ),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -388,6 +394,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .badRequest),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -410,6 +417,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .unauthorized),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -432,6 +440,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .tooManyRequests),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -454,6 +463,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .internalServerError),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -513,6 +523,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -590,6 +601,7 @@ extension NuToriAPIClientTests {
                             ],"hasMore":false,"nextAfterSequence":8,"startedOn":"2026-09-29"}
                             """
                     ),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -631,6 +643,7 @@ extension NuToriAPIClientTests {
                         json:
                             #"{"changes":[],"hasMore":false,"nextAfterSequence":0,"startedOn":null}"#
                     ),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -659,6 +672,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .unauthorized),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -681,6 +695,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: ClientTransportMock.ok(status: .tooManyRequests),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }

@@ -39,6 +39,7 @@ extension NuToriAPIClientTests {
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
                     transport: transport,
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }
@@ -110,6 +111,7 @@ extension NuToriAPIClientTests {
                             ],"hasMore":false,"nextAfterSequence":6,"startedOn":"2026-09-29"}
                             """
                     ),
+                    appBuildGate: .sample,
                     sessionToken: { "session-1" }
                 )
             }

@@ -3,14 +3,18 @@ public import OpenAPIRuntime
 import OpenAPIURLSession
 
 public struct NuToriAPIClient: Sendable {
-    /// - Parameter sessionToken: 今のセッションのトークン。サインインしていなければ nil を返す
+    /// - Parameters:
+    ///   - appBuildGate: すべての要求に付けるビルド番号と、応答を受け取るたびにこのビルドを受け付けたかを知らせる先
+    ///   - sessionToken: 今のセッションのトークン。サインインしていなければ nil を返す
     public init(
         environment: APIEnvironment,
+        appBuildGate: AppBuildGate,
         sessionToken: @escaping @Sendable () async -> String?
     ) {
         self.init(
             serverURL: environment.serverURL,
             transport: URLSessionTransport(),
+            appBuildGate: appBuildGate,
             sessionToken: sessionToken
         )
     }
@@ -19,14 +23,19 @@ public struct NuToriAPIClient: Sendable {
     public init(
         serverURL: URL,
         transport: any ClientTransport,
+        appBuildGate: AppBuildGate,
         sessionToken: @escaping @Sendable () async -> String?
     ) {
         self.serverURL = serverURL
+        self.appBuildGate = appBuildGate
         self.sessionToken = sessionToken
         client = Client(
             serverURL: serverURL,
             transport: transport,
-            middlewares: [SessionTokenMiddleware(sessionToken: sessionToken)]
+            middlewares: [
+                SessionTokenMiddleware(sessionToken: sessionToken),
+                AppBuildMiddleware(gate: appBuildGate),
+            ]
         )
     }
 
@@ -92,5 +101,6 @@ public struct NuToriAPIClient: Sendable {
     let client: Client
     /// 生成したクライアントを通さずに組む要求（バックグラウンドの URLSession で送る写真）のため
     let serverURL: URL
+    let appBuildGate: AppBuildGate
     let sessionToken: @Sendable () async -> String?
 }

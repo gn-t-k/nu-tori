@@ -1,22 +1,32 @@
+import NuToriCore
 import SwiftUI
 
 struct RootView: View {
     let model: RootModel
+    let appLockout: AppLockout
 
     var body: some View {
-        content
-            .task { await model.open() }
-            .onChange(of: scenePhase) { _, phase in
-                switch phase {
-                case .background:
-                    model.noteAppBackgrounded()
-                case .active:
-                    model.noteAppActive()
-                    Task { await model.reopenIfSignedIn() }
-                default:
-                    break
-                }
+        // 締め出されたら、上に重ねずに画面ごと替える。重ねると、開いていたシートや確かめのダイアログが上に残って押せてしまう。
+        // 開いたときと前に出たときの同期は、締め出しの画面のあいだも続けて、その結果で確かめ直す
+        ZStack {
+            if appLockout.isLockedOut {
+                AppLockoutScreenContainer()
+            } else {
+                content
             }
+        }
+        .task { await model.open() }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                model.noteAppBackgrounded()
+            case .active:
+                model.noteAppActive()
+                Task { await model.reopenIfSignedIn() }
+            default:
+                break
+            }
+        }
     }
 
     @Environment(\.scenePhase) private var scenePhase

@@ -14,6 +14,9 @@
         let healthWriteAuthorized: Bool
         /// 入力欄の「写真」で、選ぶ画面を開かずに選んだことにする写真の枚数。nil なら標準の選ぶ画面を出す
         let pickedMealPhotoCount: Int?
+        /// 締め出しの記憶を置く UserDefaults の名前。同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている。
+        /// nil なら、ほかの記憶と同じく、起動のたびに空から始める
+        let lockoutDefaultsName: String?
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -30,7 +33,8 @@
                     == "not-yet-requested" ? .notYetRequested : .alreadyRequested,
                 healthLatestKilograms: environment["UI_TEST_HEALTH_LATEST_KG"].flatMap(Double.init),
                 healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied",
-                pickedMealPhotoCount: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init)
+                pickedMealPhotoCount: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init),
+                lockoutDefaultsName: environment["UI_TEST_LOCKOUT_DEFAULTS"]
             )
         }
 
@@ -61,13 +65,18 @@
             return AppRuntime.assemble(
                 AppRuntime.Parts(
                     store: store,
-                    makeClient: { sessionToken in
+                    makeClient: { appBuildGate, sessionToken in
                         NuToriAPIClient(
                             serverURL: APIEnvironment.development.serverURL,
                             transport: StubAPITransport(behavior: behavior),
+                            appBuildGate: appBuildGate,
                             sessionToken: sessionToken
                         )
                     },
+                    appLockoutStore: UserDefaultsAppLockoutStore(
+                        defaults: UserDefaults(
+                            suiteName: lockoutDefaultsName
+                                ?? "app.nu-tori.ui-test.lockout.\(UUID().uuidString)")!),
                     keychain: InMemorySessionKeychain(
                         token: account.hasSession ? "stub-session" : nil),
                     deviceStore: UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults()),
@@ -109,6 +118,7 @@
             case .accountDeletionUnauthorized: return .accountDeletionUnauthorized
             case .dayRing: return .dayRing
             case .mealEstimation: return .mealEstimation
+            case .appBuildUnsupported: return .appBuildUnsupported
             }
         }
 
@@ -195,6 +205,7 @@
             case mealEstimation = "meal-estimation"
             case accountDeletionRateLimited = "account-deletion-rate-limited"
             case accountDeletionUnauthorized = "account-deletion-unauthorized"
+            case appBuildUnsupported = "app-build-unsupported"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

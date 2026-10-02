@@ -22,6 +22,7 @@ extension SyncEngine {
             client: NuToriAPIClient(
                 serverURL: URL(string: "https://api.example")!,
                 transport: transport,
+                appBuildGate: .sample,
                 sessionToken: { "session-1" }
             ),
             accountId: accountId,

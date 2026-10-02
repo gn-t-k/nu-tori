@@ -7,11 +7,17 @@ import SwiftData
     let container: ModelContainer
     let recordSync: RecordSync
     let model: RootModel
+    /// 締め出しの記憶。締め出しの画面はこれを見て、すべての画面の上に出る
+    let appLockout: AppLockout
 
-    init(container: ModelContainer, recordSync: RecordSync, model: RootModel) {
+    init(
+        container: ModelContainer, recordSync: RecordSync, model: RootModel,
+        appLockout: AppLockout
+    ) {
         self.container = container
         self.recordSync = recordSync
         self.model = model
+        self.appLockout = appLockout
     }
 
     static func forThisLaunch() -> AppRuntime? {
@@ -34,10 +40,13 @@ import SwiftData
     /// 本番と UI テストで違う部品。配線は `assemble(_:)` が1つだけ持つ
     struct Parts {
         let store: SwiftDataSyncStore
-        /// セッショントークンを受け取って API クライアントを作る（API のトランスポートが違う）
+        /// ビルド番号とビルドを受け付けたかを知らせる先、セッショントークンを受け取って、API クライアントを作る（API のトランスポートが違う）
         let makeClient:
-            @Sendable (_ sessionToken: @escaping @Sendable () async -> String?) ->
-                NuToriAPIClient
+            @Sendable (
+                _ appBuildGate: AppBuildGate,
+                _ sessionToken: @escaping @Sendable () async -> String?
+            ) -> NuToriAPIClient
+        let appLockoutStore: any AppLockoutStore
         let keychain: any SessionKeychain
         let deviceStore: UserDefaultsSignInDeviceStore
         let healthStore: any HealthStore
@@ -58,7 +67,10 @@ import SwiftData
         return assemble(
             Parts(
                 store: try SwiftDataSyncStore(inMemory: false),
-                makeClient: { NuToriAPIClient(environment: environment, sessionToken: $0) },
+                makeClient: {
+                    NuToriAPIClient(environment: environment, appBuildGate: $0, sessionToken: $1)
+                },
+                appLockoutStore: UserDefaultsAppLockoutStore(defaults: .standard),
                 keychain: KeychainSessionKeychain(),
                 deviceStore: UserDefaultsSignInDeviceStore(defaults: .standard),
                 healthStore: healthStore,
@@ -84,7 +96,12 @@ import SwiftData
         let keychain = parts.keychain
         let deviceStore = parts.deviceStore
         let observation = parts.observation
-        let client = parts.makeClient { try? await keychain.sessionToken() }
+        let appBuild = Bundle.main.appBuild
+        let appLockout = AppLockout(currentBuild: appBuild, store: parts.appLockoutStore)
+        let client = parts.makeClient(
+            AppBuildGate(build: appBuild) { await appLockout.receive($0) },
+            { try? await keychain.sessionToken() }
+        )
         let health = HealthSyncSession.live(
             syncStore: store,
             healthStore: parts.healthStore,
@@ -134,6 +151,7 @@ import SwiftData
             await sync?.importHealthAndSendPending()
         }
         let model = RootModel(accountSession: session, recordSync: sync, health: health)
-        return AppRuntime(container: store.container, recordSync: sync, model: model)
+        return AppRuntime(
+            container: store.container, recordSync: sync, model: model, appLockout: appLockout)
     }
 }

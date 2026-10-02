@@ -5,6 +5,7 @@ import { createSyncClientState } from "./create-sync-client-state";
 export const pullSyncChanges = (
   sessionToken: string,
   query: { afterSequence?: number; clientState?: Record<string, unknown> } = {},
+  headers: Record<string, string> = {},
 ) => {
   const params = new URLSearchParams(
     Object.entries({
@@ -14,7 +15,7 @@ export const pullSyncChanges = (
   );
   return app.request(
     `/v1/sync/changes?${params.toString()}`,
-    { headers: { authorization: `Bearer ${sessionToken}` } },
+    { headers: { authorization: `Bearer ${sessionToken}`, ...headers } },
     env,
   );
 };

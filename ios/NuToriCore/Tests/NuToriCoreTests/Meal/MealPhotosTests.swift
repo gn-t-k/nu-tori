@@ -219,13 +219,16 @@ struct MealPhotosTests {
         @Suite("セッションが切れていたとき")
         struct SessionExpired {
             let errorReporting: ErrorReportingSessionMock
+            let gate: AppBuildGateMock
             let photos: MealPhotos
             let upload: MealPhotoUpload
 
             init() async throws {
                 let uploader = MealPhotoUploaderMock.ok()
                 errorReporting = .ok()
-                photos = .fixture(uploader: uploader, errorReporting: errorReporting)
+                gate = .ok(build: 1)
+                photos = .fixture(
+                    uploader: uploader, appBuildGate: gate.gate, errorReporting: errorReporting)
                 let meal = try Meal.withPhotos(count: 1)
                 try await photos.keep(.originals(of: meal), of: meal)
                 upload = try #require(uploader.started.first).upload
@@ -237,6 +240,47 @@ struct MealPhotosTests {
 
                 #expect(await photos.pendingUploadCount() == 1)
                 #expect(errorReporting.reported.isEmpty)
+            }
+
+            @Test("426 でない応答なので、受け付けられたと知らせること")
+            func reportsSupported() async {
+                _ = await photos.finishUpload(upload, with: .responded(statusCode: 401))
+
+                #expect(gate.verdicts == [.supported])
+            }
+        }
+
+        @Suite("締め出されていたとき（サーバーが 426 を返したとき）")
+        struct AppBuildUnsupported {
+            let errorReporting: ErrorReportingSessionMock
+            let gate: AppBuildGateMock
+            let photos: MealPhotos
+            let upload: MealPhotoUpload
+
+            init() async throws {
+                let uploader = MealPhotoUploaderMock.ok()
+                errorReporting = .ok()
+                gate = .ok(build: 1)
+                photos = .fixture(
+                    uploader: uploader, appBuildGate: gate.gate, errorReporting: errorReporting)
+                let meal = try Meal.withPhotos(count: 1)
+                try await photos.keep(.originals(of: meal), of: meal)
+                upload = try #require(uploader.started.first).upload
+            }
+
+            @Test("送り残しに残し、Sentry に送らないこと")
+            func keepsWithoutReport() async throws {
+                _ = await photos.finishUpload(upload, with: .responded(statusCode: 426))
+
+                #expect(await photos.pendingUploadCount() == 1)
+                #expect(errorReporting.reported.isEmpty)
+            }
+
+            @Test("締め出されたと知らせること")
+            func reportsUnsupported() async {
+                _ = await photos.finishUpload(upload, with: .responded(statusCode: 426))
+
+                #expect(gate.verdicts == [.unsupported])
             }
         }
 

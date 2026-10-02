@@ -7,6 +7,7 @@ import { e2eSessionRoutes } from "./e2e-session-routes";
 import { healthRoutes } from "./health-routes";
 import { mealPhotoRoutes } from "./meal-photo-routes";
 import { observeRequest } from "./observe-request";
+import { rejectUnsupportedAppBuild } from "./reject-unsupported-app-build";
 import { sessionRoutes } from "./session-routes";
 import { syncRoutes } from "./sync-routes";
 
@@ -15,6 +16,7 @@ export const app = new OpenAPIHono<{ Bindings: Env }>();
 app
   .use(sentry(app, createSentryOptions))
   .use(observeRequest)
+  .use("/v1/*", rejectUnsupportedAppBuild)
   .route("/", sessionRoutes)
   .route("/", e2eSessionRoutes)
   .route("/", healthRoutes)
