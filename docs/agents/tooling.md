@@ -20,6 +20,19 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - MCP のサーバーは、Claude Code（`.mcp.json`）・Codex（`.codex/config.toml`）・Cursor（`.cursor/mcp.json`）の3つの設定に同じものを置き、版や環境変数は起動スクリプト（`scripts/mobilebuildmcp`）の1か所に書く。Codex はプロジェクトを信頼したとき、Cursor は Customize でサーバーを一度オンにしたときに読む
 - Xcode の MCP（`xcrun mcpbridge`）は、各ツールの MCP の設定に直接置かず、MobileBuildMCP の中継で呼ぶ
 
+## Sentry を読む
+
+Sentry の課題・イベント・スタック・端末・版・件数は、`scripts/sentry`（Sentry の公式の CLI、npm の `sentry`）で読む。版・テレメトリの停止・組織（`nu-tori-fv`）は、このスクリプトの1か所に書く。MCP の設定には Sentry を置かない。調べた経緯は `docs/research/sentry-agent-access.md`。
+
+- 読む: `scripts/sentry issue list <org/project> --json`、`scripts/sentry issue view <短い ID> --json`（課題と最新のイベント）、`scripts/sentry issue events <短い ID> --full`（イベントごとのスタック）
+- 書き込みのコマンド（`resolve`、`archive`、`merge` など）と、Seer を使うコマンド（`explain`、`plan`）は使わない
+- 読んだイベントの中身（端末の ID、利用者、要求のヘッダー）は、公開の Issue・PR・コメントに貼らない。貼るのはスタックの関数名と、版・OS・件数まで
+- 認証は読むだけにする
+  - Mac: 開発者が `scripts/sentry auth login --read-only` を一度走らせる
+  - Claude Code on the web と Cursor の Cloud Agents: 読むだけの個人のトークン（スコープ `org:read`・`project:read`・`team:read`・`event:read`・`member:read`）を、環境変数 `NU_TORI_SENTRY_READ_TOKEN` に置く。Claude Code on the web は個人の環境に置き、ネットを Custom にして `sentry.io` と `*.sentry.io` を足す（既定の一覧も残す）。Cursor は Cloud Agents の Secrets に置く
+  - dSYM を上げる組織のトークン（Xcode Cloud の `SENTRY_AUTH_TOKEN`）は課題を読めないので、使い回さない
+- 認証の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどれかを頼む
+
 ## CI
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
