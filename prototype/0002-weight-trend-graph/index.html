@@ -1,0 +1,369 @@
+<title>体重の傾向のグラフの試作</title>
+<style>
+/* 試作（捨てる）: 体重の画面の「最近4週の傾向」を、問いごとに案を切り替えて見比べる。色と文字は DESIGN.md の値。 */
+:root {
+  --bg: #F2F2F7; --surface: #FFFFFF; --fg: #000000;
+  --fg2: rgba(60,60,67,0.6); --fg3: rgba(60,60,67,0.3);
+  --fill: #EFEFF0; --sep: rgba(60,60,67,0.29);
+  --accent: #6155F5; --on-accent: #FFFFFF;
+  --note-bg: #FFF7E0; --note-fg: #6B4E00;
+  --bar-bg: #1C1C1E; --bar-fg: #FFFFFF;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,0.6); --fg3: rgba(235,235,245,0.3);
+  --fill: #323236; --sep: rgba(84,84,88,0.6);
+  --accent: #6D7CFF; --on-accent: #FFFFFF;
+  --note-bg: #2E2614; --note-fg: #F3D68A;
+  --bar-bg: #F2F2F7; --bar-fg: #000000; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,0.6); --fg3: rgba(235,235,245,0.3);
+  --fill: #323236; --sep: rgba(84,84,88,0.6);
+  --accent: #6D7CFF; --on-accent: #FFFFFF;
+  --note-bg: #2E2614; --note-fg: #F3D68A;
+  --bar-bg: #F2F2F7; --bar-fg: #000000; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 120px; display: grid; gap: 20px; }
+h1 { font-size: 22px; font-weight: 600; margin: 0; text-wrap: balance; }
+.lead { color: var(--fg2); margin: 4px 0 0; font-size: 13px; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab { border: 0; background: var(--fill); color: var(--accent); font: 600 15px/20px var(--font); padding: 8px 14px; border-radius: 9999px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+.tab:focus-visible, .sw button:focus-visible, .toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.main { display: grid; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.phone { background: var(--bg); border: 1px solid var(--sep); border-radius: 28px; padding: 16px 0 24px; overflow: hidden; }
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 10px; }
+.nav .back { color: var(--accent); font-size: 17px; }
+.nav .ttl { font-weight: 600; font-size: 17px; }
+.nav span:last-child { width: 48px; }
+.sec-h { color: var(--fg2); font-size: 13px; padding: 14px 32px 6px; }
+.list { background: var(--surface); border-radius: 10px; margin: 0 16px; }
+.row { display: flex; justify-content: space-between; align-items: baseline; padding: 11px 16px; border-bottom: 0.5px solid var(--sep); gap: 12px; }
+.row:last-child { border-bottom: 0; }
+.big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.big small { font-size: 17px; font-weight: 400; color: var(--fg2); margin-left: 2px; }
+.edit { color: var(--accent); font-size: 17px; }
+.sub { color: var(--fg2); font-size: 13px; }
+.chartbox { padding: 12px 8px 10px 4px; }
+.chartbox svg { width: 100%; height: auto; display: block; }
+.cap { color: var(--fg2); font-size: 13px; padding: 0 16px 12px; }
+.foot { color: var(--fg2); font-size: 13px; padding: 6px 32px 0; }
+.note { background: var(--note-bg); color: var(--note-fg); border-radius: 8px; padding: 6px 10px; margin: 0 16px 12px; font-size: 13px; }
+.side { display: grid; gap: 14px; min-width: 0; }
+.card { background: var(--surface); border-radius: 12px; padding: 16px; display: grid; gap: 8px; }
+.card h2 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; }
+.card h3 { font-size: 15px; margin: 0; font-weight: 600; }
+.card p, .card li { margin: 0; color: var(--fg); }
+.card ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.muted { color: var(--fg2); font-size: 13px; }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; background: var(--fill); color: var(--accent); }
+.toggle { display: inline-flex; background: var(--fill); border-radius: 9999px; padding: 2px; }
+.toggle button { border: 0; background: transparent; color: var(--fg); font: 15px var(--font); padding: 6px 12px; border-radius: 9999px; cursor: pointer; }
+.toggle button[aria-pressed="true"] { background: var(--surface); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.sw { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bar-bg); color: var(--bar-fg); border-radius: 9999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.3); max-width: calc(100% - 32px); }
+.sw button { border: 0; background: transparent; color: inherit; font-size: 20px; width: 40px; height: 40px; border-radius: 9999px; cursor: pointer; }
+.sw .lbl { font-weight: 600; font-size: 14px; padding: 0 8px; text-align: center; min-width: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>体重の傾向のグラフの試作</h1>
+    <p class="lead">仕様「体重の傾向と記録忘れの通知」の前に見比べる、捨てる前提の試作です。今日は 10月2日（金）とします。体重はすべて作った値です。下の黒い帯（← →、またはキーボードの矢印キー）で案を切り替えます。</p>
+  </header>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-q="a" id="tab-a">a. 電波がないとき</button>
+    <button class="tab" role="tab" data-q="b" id="tab-b">b. 1日に複数の記録</button>
+    <button class="tab" role="tab" data-q="c" id="tab-c">c. 使い始める前の記録</button>
+    <button class="tab" role="tab" data-q="d" id="tab-d">d. 線を引き始める</button>
+    <button class="tab" role="tab" data-q="e" id="tab-e">e. 日のまとめの傾向</button>
+  </div>
+  <div class="main">
+    <div class="phone" aria-label="体重の画面">
+      <div class="nav"><span class="back">‹ 戻る</span><span class="ttl">体重</span><span></span></div>
+      <div class="sec-h" id="dayhead"></div>
+      <div class="list" id="dayblock"></div>
+      <div id="graphwrap">
+      <div class="sec-h">最近4週の傾向</div>
+      <div class="list">
+        <div class="chartbox" id="chart"></div>
+        <div class="note" id="chartnote" hidden></div>
+        <div class="cap" id="cap">点は測った体重、線は傾向。</div>
+      </div>
+      <div class="foot" id="trendline"></div>
+      </div>
+      <div id="summary" hidden></div>
+    </div>
+    <div class="side">
+      <div class="card" id="scenario"></div>
+      <div class="card" id="variant"></div>
+    </div>
+  </div>
+</div>
+<div class="sw" role="group" aria-label="案の切り替え">
+  <button id="prev" aria-label="前の案">←</button>
+  <span class="lbl" id="swlbl"></span>
+  <button id="next" aria-label="次の案">→</button>
+</div>
+
+<script>
+// ---- 作った体重（開発者の値ではない） ----
+const TODAY = new Date(Date.UTC(2026, 9, 2));
+const DAY = 86400000;
+const d = (offset) => new Date(TODAY.getTime() + offset * DAY);
+const md = (dt) => `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}`;
+const wd = (dt) => "日月火水木金土"[dt.getUTCDay()];
+function noise(i) { const x = Math.sin(i * 12.9898) * 43758.5453; return (x - Math.floor(x)) - 0.5; }
+// 90日前から今日まで。だいたい毎朝、ときどき抜ける。
+function makeSeries(startOffset, skip) {
+  const out = [];
+  for (let o = startOffset; o <= 0; o++) {
+    if (skip(o)) continue;
+    out.push({ day: o, value: Math.round((72.6 - o * 0.02 + noise(o + 100) * 0.9) * 10) / 10 });
+  }
+  return out;
+}
+const skipSome = (o) => [ -3, -9, -10, -16, -22, -23, -27, -33, -40, -41, -55, -61, -62, -70, -80 ].includes(o);
+
+// 傾向: 日の代表値（その日の最初）→ 欠けた日を線形に埋める → 指数移動平均（0.1）。始まりは最初の記録の日。
+function trendFrom(reps, lastDay) {
+  if (!reps.length) return [];
+  reps = [...reps].sort((a, b) => a.day - b.day);
+  const filled = [];
+  for (let i = 0; i < reps.length; i++) {
+    filled.push(reps[i]);
+    const n = reps[i + 1];
+    if (n) for (let k = reps[i].day + 1; k < n.day; k++) {
+      const t = (k - reps[i].day) / (n.day - reps[i].day);
+      filled.push({ day: k, value: reps[i].value + (n.value - reps[i].value) * t });
+    }
+  }
+  const last = reps[reps.length - 1];
+  for (let k = last.day + 1; k <= lastDay; k++) filled.push({ day: k, value: last.value });
+  let ema = filled[0].value; const out = [];
+  for (const p of filled) { ema = ema + 0.1 * (p.value - ema); out.push({ day: p.day, value: ema }); }
+  return out;
+}
+
+// ---- グラフ ----
+function chart({ from = -27, to = 0, dots, trend, startDay = null, preStartStyle = "same", trendFromDay = null }) {
+  const W = 360, H = 200, L = 36, R = 18, T = 12, B = 26;
+  const all = dots.map(p => p.value).concat(trend.map(p => p.value));
+  let lo = Math.floor(Math.min(...all) - 0.3), hi = Math.ceil(Math.max(...all) + 0.3);
+  if (hi - lo < 2) hi = lo + 2;
+  const x = (day) => L + (day - from) / (to - from) * (W - L - R);
+  const y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="最近4週の体重と傾向">`;
+  const step = (hi - lo) > 4 ? 2 : 1;
+  for (let v = lo; v <= hi; v += step) {
+    s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--sep)" stroke-width="0.5"/>`;
+    s += `<text x="${L - 6}" y="${y(v) + 4}" font-size="10" text-anchor="end" fill="var(--fg2)">${v}</text>`;
+  }
+  const span = to - from;
+  const tickEvery = span > 20 ? 7 : span > 8 ? 3 : 1;
+  for (let o = to; o >= from; o -= tickEvery) {
+    s += `<text x="${x(o)}" y="${H - 8}" font-size="10" text-anchor="middle" fill="var(--fg2)">${md(d(o))}</text>`;
+  }
+  if (startDay !== null && startDay > from && preStartStyle === "marked") {
+    s += `<line x1="${x(startDay - 0.5)}" x2="${x(startDay - 0.5)}" y1="${T}" y2="${H - B}" stroke="var(--fg3)" stroke-dasharray="3 3"/>`;
+    s += `<text x="${x(startDay - 0.5) + 4}" y="${T + 10}" font-size="10" fill="var(--fg2)">使い始め</text>`;
+  }
+  const tr = trend.filter(p => p.day >= from && p.day <= to && (trendFromDay === null || p.day >= trendFromDay));
+  if (tr.length > 1) s += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" points="${tr.map(p => `${x(p.day)},${y(p.value)}`).join(" ")}"/>`;
+  for (const p of dots.filter(p => p.day >= from && p.day <= to)) {
+    const cx = x(p.day + (p.dx || 0)), cy = y(p.value);
+    if (p.kind === "pre" && preStartStyle === "marked") s += `<circle cx="${cx}" cy="${cy}" r="2.6" fill="var(--fg3)"/>`;
+    else if (p.kind === "hollow") s += `<circle cx="${cx}" cy="${cy}" r="3" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    else if (p.kind === "minor") s += `<circle cx="${cx}" cy="${cy}" r="2.2" fill="var(--fg3)"/>`;
+    else s += `<circle cx="${cx}" cy="${cy}" r="3" fill="var(--fg2)"/>`;
+    if (p.label) s += `<text x="${cx}" y="${cy - 9}" font-size="10" text-anchor="middle" fill="var(--fg)">${p.label}</text>`;
+  }
+  return s + `</svg>`;
+}
+
+// ---- 場面と案 ----
+const base = makeSeries(-90, skipSome);
+const todayVal = 72.3;
+
+const Q = {
+  a: {
+    title: "a. 電波がないときに記録した体重",
+    scenario: `<h2>場面</h2><p>9月から毎朝記録している。今朝は地下鉄の中で 10月2日の体重 <b>${todayVal} kg</b> を記録した。まだサーバーに届いていない。</p><p class="muted">決まっていること: 記録はすぐ見せる。傾向はサーバーが計算するので、同期するまで前のまま。注記は付けない（同期の決定）。ここで決めるのは、グラフの点と線の見え方。</p><div><span class="muted">同期の状態　</span><span class="toggle" id="synctoggle"><button data-s="off">送る前</button><button data-s="on">送ったあと</button></span></div>`,
+    variants: [
+      { key: "A1", name: "点は出す、線は前のまま", desc: "【決定】今日の点はほかの点と同じに出す。傾向の線は昨日（最後に計算した日）で止まる。送ると、線が今日まで延びる。", rec: true },
+      { key: "A2", name: "点を白抜きにする", desc: "送る前の点だけ白抜きにする。線は前のまま。違いは形だけで、文の注記は付けない。" },
+      { key: "A3", name: "送るまで点も出さない", desc: "グラフはサーバーが返したものだけで描く。今日の点は、送ってから出る。上の「今日」の行には値が出る。" },
+    ],
+    render(v, state) {
+      const synced = state.sync === "on";
+      const pts = base.filter(p => p.day < 0).map(p => ({ ...p }));
+      const all = [...pts, { day: 0, value: todayVal }];
+      const trend = synced ? trendFrom(all, 0) : trendFrom(pts, -1);
+      const dots = [...pts];
+      if (synced || v.key !== "A3") dots.push({ day: 0, value: todayVal, kind: !synced && v.key === "A2" ? "hollow" : undefined });
+      return {
+        dayhead: `10月2日（金）`,
+        dayblock: `<div class="row"><span class="big">${todayVal}<small>kg</small></span><span class="edit">直す</span></div><div class="row"><span class="sub">nu-tori・7:12</span></div>`,
+        chart: chart({ dots, trend }),
+        trendline: weekRate(trend),
+      };
+    },
+  },
+  b: {
+    title: "b. 1日に複数の体重記録",
+    scenario: `<h2>場面</h2><p>9月26日は朝 7:05 に体重計の連携で <b>72.6 kg</b>、夜 22:40 に nu-tori で <b>73.4 kg</b> を記録した。9月30日は、nu-tori で書いた体重を別のアプリが書き戻したので、同じ値（72.9 kg）が2件ある。</p><p class="muted">決まっていること: 傾向はその日の最初の記録（日の代表値）で計算する。体重の画面の「最近の記録」とタイムラインは、代表値に「ほか1件」を添える。ここで決めるのは、グラフに点をいくつ打つか。</p>`,
+    variants: [
+      { key: "B1", name: "代表値だけ", desc: "【決定】1日1点。点は「この日の体重」で、傾向の計算に入る値と同じ。夜の 73.4 kg はグラフに出ない（その日を押せば見える）。", rec: true },
+      { key: "B2", name: "全部、代表値を強く", desc: "代表値は濃い点、ほかは小さな薄い点で同じ日の縦に並べる。重なった書き戻しは1点に見える。" },
+      { key: "B3", name: "全部、同じ点", desc: "記録をすべて同じ点で出す。夜の値も朝の値と同じ重みに見える。" },
+    ],
+    render(v) {
+      const pts = base.filter(p => p.day >= -40).map(p => ({ ...p }));
+      const i26 = pts.findIndex(p => p.day === -6); pts[i26].value = 72.6;
+      const i30 = pts.findIndex(p => p.day === -2); pts[i30].value = 72.9;
+      const extras = [{ day: -6, value: 73.4 }, { day: -2, value: 72.9 }];
+      const trend = trendFrom(pts, 0);
+      let dots;
+      if (v.key === "B1") dots = pts;
+      else if (v.key === "B2") dots = [...pts, ...extras.map(e => ({ ...e, kind: "minor" }))];
+      else dots = [...pts, ...extras];
+      return {
+        dayhead: `9月26日（土）`,
+        dayblock: `<div class="row"><span class="big">72.6<small>kg</small></span><span class="edit">直す</span></div><div class="row"><span class="sub">体重計のアプリ・7:05</span></div><div class="row"><span>73.4 kg</span><span class="sub">nu-tori・22:40</span></div>`,
+        chart: chart({ dots, trend }),
+        trendline: weekRate(trend),
+      };
+    },
+  },
+  c: {
+    title: "c. 使い始める前の記録",
+    scenario: `<h2>場面</h2><p>9月22日に nu-tori を使い始めた。ヘルスケアには、体重計の連携で7月から毎朝の体重が入っていた。</p><p class="muted">決まっていること: 使い始める前の記録も取り込み、傾向の計算に使う（始まりは最初の記録の日）。体重の画面の「最近の記録」には「使い始める前（ヘルスケア）」の見出しで分けて出す。タイムラインには出さない。ここで決めるのは、グラフに出すか。</p>`,
+    variants: [
+      { key: "C1", name: "同じに出す", desc: "4週の枠の中なら、使い始める前の点も線も同じに出す。使い始めた日は見えない。" },
+      { key: "C2", name: "出して、区切りを引く", desc: "【決定】使い始める前の点は薄くし、使い始めた日に縦の点線を引く。線は通して出す。「最近の記録」の見出しの分け方とそろう。", rec: true },
+      { key: "C3", name: "使い始めた日から", desc: "横軸を使い始めた日から始める。線の始まりの値は前の記録も入れて計算したもの。4週たつと、ほかの人と同じ枠になる。" },
+    ],
+    render(v) {
+      const start = -10;
+      const pts = base.map(p => ({ ...p, kind: p.day < start ? "pre" : undefined }));
+      const trend = trendFrom(pts, 0);
+      const style = v.key === "C2" ? "marked" : "same";
+      const from = v.key === "C3" ? start : -27;
+      return {
+        dayhead: `10月2日（金）`,
+        dayblock: `<div class="row"><span class="big">${pts.find(p => p.day === 0).value}<small>kg</small></span><span class="edit">直す</span></div><div class="row"><span class="sub">体重計のアプリ・6:58</span></div>`,
+        chart: chart({ from, dots: pts, trend, startDay: start, preStartStyle: style }),
+        trendline: weekRate(trend),
+        cap: v.key === "C3" ? "点は測った体重、線は傾向。使い始めた 9月22日から。" : null,
+      };
+    },
+  },
+  d: {
+    title: "d. 線を引き始める",
+    scenario: `<h2>場面</h2><p>ヘルスケアに体重が無い人が、使い始めてから毎朝記録している。下で、今日が何日目かを切り替えられる。</p><p class="muted">決まっていること: 傾向は最初の記録の日から計算できる（1日目は記録の値そのもの）。凍結した設計は「記録が少ないあいだは線を引かず点だけ。何日で引くかは実装で決める」。横軸は記録が少なくても4週で固定（試作の仮置き）。日のまとめの傾向も、線を引くまでは出さない。</p><div><span class="muted">記録した日数　</span><span class="toggle" id="daystoggle"><button data-n="3">3日</button><button data-n="7">7日</button><button data-n="14">14日</button></span></div>`,
+    variants: [
+      { key: "D1", name: "2日目から引く", desc: "記録が2日あれば線を引く。始めのうちは線が点にほぼ重なり、指数移動平均の重み 0.1 のせいで、線は最初の値に引っぱられたまま動きにくい。" },
+      { key: "D2", name: "記録のある日が7日で引く", desc: "【決定】記録のある日が7日になるまで点だけ。日のまとめの「1週間で」の速さも、7日そろうと出せる。", rec: true },
+      { key: "D3", name: "記録のある日が14日で引く", desc: "14日になるまで点だけ。線が落ち着いてから出すが、使い始めて2週間は傾向が見えない。" },
+    ],
+    render(v, state) {
+      const n = Number(state.days || 3);
+      const pts = base.filter(p => p.day > -n).map(p => ({ ...p }));
+      while (pts.length < n && pts.length) { pts.unshift({ day: pts[0].day - 1, value: pts[0].value + 0.1 }); }
+      const need = v.key === "D1" ? 2 : v.key === "D2" ? 7 : 14;
+      const trend = pts.length >= need ? trendFrom(pts, 0) : [];
+      return {
+        dayhead: `10月2日（金）`,
+        dayblock: `<div class="row"><span class="big">${pts[pts.length - 1].value}<small>kg</small></span><span class="edit">直す</span></div><div class="row"><span class="sub">nu-tori・7:02</span></div>`,
+        chart: chart({ dots: pts, trend }),
+        trendline: trend.length ? weekRate(trend) : "傾向の線はまだ引かない",
+        cap: trend.length ? null : "点は測った体重。記録が増えると、傾向の線を引きます。",
+      };
+    },
+  },
+  e: {
+    title: "e. 日のまとめの傾向",
+    summary: true,
+    scenario: `<h2>場面</h2><p>タイムラインで 10月2日の帯の丸を押し、日のまとめを開いた。今は「この日の体重」と「ほかN件」だけが出ている。そこに体重の傾向を足す。</p><p class="muted">決まっていること: 傾向の値はサーバーが日ごとに返す。用語集の「速さ」は、体重の傾向が1週間に変わる量。凍結した設計は「体重の傾向 最近4週 −0.5 kg／週」。過去の日を開いたときは、その日までの傾向で出す。</p>`,
+    variants: [
+      { key: "E1", name: "傾向の値", desc: "その日の傾向の体重を kg で出す。「この日の体重」と並ぶので、測った値とならした値の違いが見える。" },
+      { key: "E2", name: "速さ", desc: "【決定】その日の傾向と7日前の傾向の差を「1週間で −0.2 kg」と出す。増えているか減っているかが一目で分かる。", rec: true },
+      { key: "E3", name: "値と速さ", desc: "「72.6 kg（1週間で −0.2 kg）」と両方を1行に出す。" },
+    ],
+    render(v) {
+      const pts = base.map(p => ({ ...p }));
+      const trend = trendFrom(pts, 0);
+      const t = trend[trend.length - 1].value, w = trend.find(p => p.day === -7).value, r = t - w;
+      const rate = `1週間で ${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(1)} kg`;
+      const val = v.key === "E1" ? `${t.toFixed(1)} kg` : v.key === "E2" ? rate : `${t.toFixed(1)} kg（${rate}）`;
+      const today = pts.find(p => p.day === 0).value;
+      return {
+        summary: `<div class="nav"><span class="back">‹</span><span class="ttl">10月2日（金）</span><span class="back">› 完了</span></div>
+          <div class="sec-h">食事と栄養</div><div class="list"><div class="row"><span class="sub">（1日の丸と P・F・C。この試作では省く）</span></div></div>
+          <div class="sec-h">体重</div><div class="list"><div class="row"><span>この日の体重</span><span>${today} kg</span></div><div class="row"><span>体重の傾向</span><span>${val}</span></div></div>
+          <div class="list" style="margin-top:24px"><div class="row"><span class="edit">タイムラインでこの日を見る</span></div></div>`,
+      };
+    },
+  },
+
+};
+
+function weekRate(trend) {
+  const last = trend[trend.length - 1], prev = trend.find(p => p.day === last.day - 7);
+  if (!prev) return "";
+  const r = last.value - prev.value;
+  return `この1週間の傾向 ${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(1)} kg（日のまとめにも出す値）`;
+}
+
+// ---- 切り替え ----
+const state = { q: "a", idx: { a: 0, b: 0, c: 0, d: 0, e: 0 }, sync: "off", days: "3" };
+try { const h = location.hash.slice(1); if (Q[h]) state.q = h; } catch (e) {}
+
+function render() {
+  const q = Q[state.q], v = q.variants[state.idx[state.q]];
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.q === state.q)));
+  document.getElementById("scenario").innerHTML = q.scenario;
+  document.getElementById("variant").innerHTML =
+    `<h2>${v.key}. ${v.name} ${v.rec ? '<span class="pill">おすすめ</span>' : ""}</h2><p>${v.desc}</p>` +
+    `<h3>ほかの案</h3><ul>${q.variants.filter(o => o !== v).map(o => `<li><b>${o.key}</b> ${o.name}${o.rec ? "（おすすめ）" : ""}</li>`).join("")}</ul>`;
+  const out = q.render(v, state);
+  const isSum = !!q.summary;
+  document.getElementById("graphwrap").hidden = isSum;
+  document.querySelector(".phone > .nav").hidden = isSum;
+  document.getElementById("dayhead").hidden = isSum;
+  document.getElementById("dayblock").hidden = isSum;
+  document.getElementById("summary").hidden = !isSum;
+  if (isSum) { document.getElementById("summary").innerHTML = out.summary; }
+  else {
+  document.getElementById("dayhead").textContent = out.dayhead;
+  document.getElementById("dayblock").innerHTML = out.dayblock;
+  document.getElementById("chart").innerHTML = out.chart;
+  document.getElementById("trendline").textContent = out.trendline;
+  document.getElementById("cap").textContent = out.cap || "点は測った体重、線は傾向。";
+  }
+  document.getElementById("swlbl").textContent = `${v.key}（${v.name}）  ${state.idx[state.q] + 1}/${q.variants.length}`;
+  const dg = document.getElementById("daystoggle");
+  if (dg) dg.querySelectorAll("button").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.n === state.days));
+    b.onclick = () => { state.days = b.dataset.n; render(); };
+  });
+  const tg = document.getElementById("synctoggle");
+  if (tg) tg.querySelectorAll("button").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.s === state.sync));
+    b.onclick = () => { state.sync = b.dataset.s; render(); };
+  });
+}
+function cycle(n) { const len = Q[state.q].variants.length; state.idx[state.q] = (state.idx[state.q] + n + len) % len; render(); }
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => { state.q = t.dataset.q; try { history.replaceState(null, "", "#" + state.q); } catch (e) {} render(); });
+document.addEventListener("keydown", (e) => {
+  const el = document.activeElement;
+  if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+  if (e.key === "ArrowLeft") cycle(-1);
+  if (e.key === "ArrowRight") cycle(1);
+});
+render();
+</script>
