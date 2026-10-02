@@ -9,22 +9,15 @@ struct AppLockoutScreen: View {
     let openUpdate: () async -> Void
 
     var body: some View {
-        // 文字を大きくして入りきらないときだけ、全体を送れるようにする
-        ViewThatFits(in: .vertical) {
-            content
-            ScrollView {
-                content
+        VStack(spacing: 0) {
+            // 文字を大きくして入りきらないときは、更新のボタンをいつも画面の下に見せるため、説明だけを送る
+            ViewThatFits(in: .vertical) {
+                message
+                    .frame(maxHeight: .infinity)
+                ScrollView {
+                    message
+                }
             }
-        }
-        .background(Color(.systemGroupedBackground))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("app-lockout")
-    }
-
-    private var content: some View {
-        VStack(spacing: 24) {
-            message
-                .frame(maxHeight: .infinity)
             Button {
                 Task { await openUpdate() }
             } label: {
@@ -32,8 +25,11 @@ struct AppLockoutScreen: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .padding([.horizontal, .bottom])
         }
-        .padding()
+        .background(Color(.systemGroupedBackground))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("app-lockout")
     }
 
     private var message: some View {
@@ -50,6 +46,7 @@ struct AppLockoutScreen: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
+        .padding()
     }
 
     private var buttonTitle: String {
