@@ -99,10 +99,13 @@ public actor SyncEngine {
     }
 
     /// 知らせに答える。答えた時刻とタイムゾーンは今。電波が無くても受け付け、答える書き込みを送り待ちに並べる。
-    /// すでに答えた知らせには何もしない
+    /// すでに答えた知らせには何もしない。キャッシュを読めない・知らせが無いときは、キャッシュを読めなかった失敗として報告して投げる
     public func respondToNotice(id noticeId: UUID) async throws {
-        guard let notice = try await store.notices().first(where: { $0.id == noticeId }) else {
-            throw UnknownRecordError(recordId: noticeId)
+        let notice = try await readingCache {
+            guard let notice = try await store.notices().first(where: { $0.id == noticeId }) else {
+                throw UnknownRecordError(recordId: noticeId)
+            }
+            return notice
         }
         guard notice.response == nil else { return }
         let response = Notice.Response(respondedAt: now(), timeZone: timeZone())
@@ -416,7 +419,7 @@ public actor SyncEngine {
         let usualWeighingTime: UsualWeighingTime?
     }
 
-    /// 初回の取得を終えていれば、材料を読んで決める。読めなかった失敗は readingCache が、
+    /// 初回の取得を終えていれば、材料を読んで決める。読めなかった失敗（答えるときに知らせが無いことを含む）は readingCache が、
     /// 書けなかった失敗は writingCache が報告しているので、ここでは重ねて送らない
     private func decidingMissedWeightRecordNotices(
         _ decide: (MissedWeightRecordNoticeInputs) async throws -> Bool

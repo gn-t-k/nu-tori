@@ -129,16 +129,37 @@ extension SyncEngineTests {
 
         @Suite("キャッシュに無い知らせに答えようとしたとき")
         struct RespondingToUnknown {
-            @Test("知らない記録として投げ、送り待ちに入れないこと")
+            @Test("知らない記録として投げ、送り待ちに入れず、キャッシュを読めなかった失敗として1回送ること")
             func throwsUnknownRecord() async throws {
                 let store = try SyncBoxMock.ok()
-                let engine = SyncEngine.fixture(store: store, transport: .sync())
+                let errorReporting = ErrorReportingSessionMock.ok()
+                let engine = SyncEngine.fixture(
+                    store: store, transport: .sync(), errorReporting: errorReporting)
                 let noticeId = UUID()
 
                 await #expect(throws: SyncEngine.UnknownRecordError(recordId: noticeId)) {
                     try await engine.respondToNotice(id: noticeId)
                 }
                 #expect(store.entries.isEmpty)
+                #expect(errorReporting.reported == [.cacheRead])
+            }
+        }
+
+        @Suite("キャッシュを読めないときに知らせに答えようとしたとき")
+        struct RespondingWithUnreadableCache {
+            struct SampleError: Error {}
+
+            @Test("投げ、キャッシュを読めなかった失敗として1回送ること")
+            func reportsReadFailure() async {
+                let errorReporting = ErrorReportingSessionMock.ok()
+                let engine = SyncEngine.fixture(
+                    store: .error(SampleError()), transport: .sync(),
+                    errorReporting: errorReporting)
+
+                await #expect(throws: SampleError.self) {
+                    try await engine.respondToNotice(id: UUID())
+                }
+                #expect(errorReporting.reported == [.cacheRead])
             }
         }
 
