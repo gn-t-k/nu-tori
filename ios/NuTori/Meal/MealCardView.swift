@@ -152,6 +152,8 @@ struct MealCardView: View {
                 }
             }
             .clipped()
+            // clipped は見た目だけを切り抜く。枠からはみ出した写真が、上下の行を押したのを取らないよう、押せる所も枠に合わせる
+            .contentShape(Rectangle())
             .accessibilityHidden(true)
     }
 
