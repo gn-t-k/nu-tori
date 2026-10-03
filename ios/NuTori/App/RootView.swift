@@ -57,6 +57,11 @@ struct RootView: View {
             TimelineScreenContainer(
                 rejectedLines: model.rejectedLines,
                 capture: { await model.capture($0) },
+                reminderLanding: model.reminderLanding,
+                noteReminderLanded: { model.noteReminderLanded() },
+                requestNotificationPermission: {
+                    await model.requestNotificationPermissionAfterWeightRecorded()
+                },
                 prepareWeightEntry: { await model.prepareWeightEntry() },
                 saveWeight: { write in
                     await model.saveWeight(write)
@@ -65,7 +70,11 @@ struct RootView: View {
                     signedInAccountId: { await model.signedInAccountId() },
                     turnOnUsageData: { await model.turnOnUsageData() },
                     turnOffUsageData: { await model.turnOffUsageData() },
-                    deleteAccount: { await model.deleteAccount() }
+                    deleteAccount: { await model.deleteAccount() },
+                    notificationPermission: { await model.notificationPermission() },
+                    openedNotificationSettings: {
+                        await model.capture(.notificationSettingsOpened)
+                    }
                 ),
                 mealActions: MealActions(
                     prepareCamera: { await CameraReadiness.prepare() },

@@ -17,7 +17,7 @@ final class RecordWeightFromComposerUITests: XCTestCase {
         app.recordWeightTwoTenthsLower()
         XCTAssertTrue(app.staticText(containing: "72.4 kg").waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["composer-weight"].exists)
-        XCTAssertFalse(app.buttons["記録"].exists)
+        XCTAssertFalse(app.weightEntryRecordButton.exists)
         XCTAssertFalse(app.staticTexts["rejected-weight-line"].exists)
         attachScreenshot(of: app, named: "入力欄から記録した体重")
     }

@@ -6,6 +6,8 @@ struct WeightScreen: View {
     let records: [WeightRecord]
     let firstDay: CalendarDay
     let today: CalendarDay
+    /// 最近4週の傾向のグラフ。点はキャッシュの記録からその場で出し、線は同期で届いた傾向から引く
+    let trendChart: WeightTrendChart
     /// 体重と食事の受け付けなかった1行。この画面は体重の1行だけを出す
     let rejectedLines: [RejectedLine]
     let capture: (ClientUsageEvent) async -> Void
@@ -20,6 +22,16 @@ struct WeightScreen: View {
                 }
             } footer: {
                 Text("この日の最初の記録を、この日の体重として使います。")
+            }
+            Section {
+                WeightTrendChartView(chart: trendChart)
+                    .padding(.vertical, 8)
+            } header: {
+                Text("最近4週の傾向")
+            } footer: {
+                if let note = trendChart.note {
+                    Text(note)
+                }
             }
             if !recent.sinceFirstDay.isEmpty {
                 Section {

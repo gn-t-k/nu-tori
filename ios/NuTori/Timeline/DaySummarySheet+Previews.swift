@@ -4,12 +4,18 @@
 
     #Preview("状態ごと", arguments: DaySummarySheet.Sample.allCases) { sample in
         // シートに載せると、出てくる途中の動きを描いてしまう
-        DaySummarySheet(timeline: DaySummarySheet.Sample.timeline, day: sample.day) { _ in }
+        DaySummarySheet(
+            timeline: DaySummarySheet.Sample.timeline, day: sample.day,
+            weightRecords: DaySummarySheet.Sample.weightRecords,
+            weightTrend: DaySummarySheet.Sample.weightTrend
+        ) { _ in }
     }
 
     extension DaySummarySheet {
+        /// 体重は、使い始める前のヘルスケアの記録が5日ある。記録のある日が7日にそろう weighedOnce の日から、
+        /// 体重の傾向の速さを出す。それより前の日（firstDay、unrecorded）には出さない
         fileprivate enum Sample: CaseIterable {
-            /// 体重を1回量った日
+            /// 体重を1回量った日。傾向の速さを出す
             case weighedOnce
             /// 体重を3回量った日
             case weighedSeveralTimes
@@ -32,13 +38,7 @@
 
             static let timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [
-                        .sample(72.8, on: startedDay, at: 7, 2, from: .manual),
-                        .sample(72.4, on: .sampleToday, at: 7, 12, from: .manual),
-                        .sample(72.6, on: .sampleToday, at: 12, 40, from: .sampleScaleApp),
-                        .sample(72.9, on: .sampleToday, at: 22, 5, from: .manual),
-                        .sample(72.5, on: startedDay.advanced(by: 2), at: 7, 15, from: .manual),
-                    ],
+                    weightRecords: weightRecords,
                     rejectedLines: [],
                     meals: [
                         .sampleEstimated(.sample(on: Self.day(of: .foodEstimated), at: 12, 10)),
@@ -67,10 +67,29 @@
                             meal: .sample(on: Self.day(of: .foodUnavailableWithPending), at: 19, 0),
                             status: .deferredToNextDay, recordedOnThisDevice: true),
                         .sampleBlackCoffee(.sample(on: Self.day(of: .foodWithoutMacros), at: 9, 0)),
-                    ]),
+                    ], notices: []),
                 firstDay: startedDay,
                 today: .sampleToday
             )
+
+            static let weightRecords: [WeightRecord] =
+                [
+                    .sample(72.8, on: startedDay, at: 7, 2, from: .manual),
+                    .sample(72.4, on: .sampleToday, at: 7, 12, from: .manual),
+                    .sample(72.6, on: .sampleToday, at: 12, 40, from: .sampleScaleApp),
+                    .sample(72.9, on: .sampleToday, at: 22, 5, from: .manual),
+                    .sample(72.5, on: startedDay.advanced(by: 2), at: 7, 15, from: .manual),
+                ]
+                + [-12, -11, -10, -9, -8].map { offset in
+                    WeightRecord.sample(
+                        73.2 + 0.05 * Double(offset + 8), on: startedDay.advanced(by: offset),
+                        at: 6, 50, from: .sampleScaleApp)
+                }
+
+            /// 最初の記録の日（使い始める 12 日前）から、最後の記録の日（今日）まで
+            static let weightTrend = WeightTrend.sample(
+                from: startedDay.advanced(by: -12), through: .sampleToday, startingAt: 73.4,
+                perDay: -0.04)
 
             var day: CalendarDay {
                 Self.day(of: self)

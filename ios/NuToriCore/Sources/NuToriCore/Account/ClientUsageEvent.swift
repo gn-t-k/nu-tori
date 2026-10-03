@@ -21,6 +21,14 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case cameraPermissionNoticeShown
     /// 食事の画面で食事を消した。消したときの推定の状態と、送ってから消すまでの時間
     case mealDeleted(status: MealEstimationStatus, sinceRecorded: Duration)
+    /// 帯の下の、答えていない知らせの1行を押した
+    case unansweredNoticeLineTapped
+    /// 記録忘れの通知を押して開いた。着いたときに、その日の体重の知らせがあったか
+    case missedWeightReminderOpened(hadNotice: Bool)
+    /// この端末で初めて体重を記録したあとに、通知の許可を求めた
+    case notificationPermissionRequested(granted: Bool)
+    /// アカウントの画面の通知の行から、iPhone の設定を開いた
+    case notificationSettingsOpened
 
     /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
     /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
@@ -33,6 +41,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
     public enum WeightInputMethod: Sendable, Equatable {
         case stepper
         case keyboard
+        /// 体重の知らせの中で記録した
+        case notice
     }
 
     /// 体重の画面で確定したときの場所
@@ -69,6 +79,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .cameraCancelled: "camera_cancelled"
         case .cameraPermissionNoticeShown: "camera_permission_notice_shown"
         case .mealDeleted: "meal_deleted"
+        case .unansweredNoticeLineTapped: "unanswered_notice_line_tapped"
+        case .missedWeightReminderOpened: "missed_weight_reminder_opened"
+        case .notificationPermissionRequested: "notification_permission_requested"
+        case .notificationSettingsOpened: "notification_settings_opened"
         }
     }
 
@@ -76,7 +90,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         switch self {
         case .weightRecorded, .weightCorrected, .weightInputCancelled, .usageDataTurnedOff,
             .initialPullDuration, .mealRecorded, .cameraCancelled, .cameraPermissionNoticeShown,
-            .mealDeleted:
+            .mealDeleted, .unansweredNoticeLineTapped, .missedWeightReminderOpened,
+            .notificationPermissionRequested, .notificationSettingsOpened:
             nil
         case .screen(.timeline):
             "timeline"
@@ -103,8 +118,12 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .weightCorrected(let place):
             ["place": .token(place.token)]
         case .weightInputCancelled, .usageDataTurnedOff, .screen, .cameraCancelled,
-            .cameraPermissionNoticeShown:
+            .cameraPermissionNoticeShown, .unansweredNoticeLineTapped, .notificationSettingsOpened:
             [:]
+        case .missedWeightReminderOpened(let hadNotice):
+            ["had_notice": .flag(hadNotice)]
+        case .notificationPermissionRequested(let granted):
+            ["granted": .flag(granted)]
         case .initialPullDuration(let duration):
             ["duration_seconds": .wholeSeconds(Self.wholeSeconds(duration))]
         case .mealRecorded(let entry, let photoCount, let mealCount):
@@ -132,6 +151,7 @@ extension ClientUsageEvent.WeightInputMethod {
         switch self {
         case .stepper: "stepper"
         case .keyboard: "keyboard"
+        case .notice: "notice"
         }
     }
 }

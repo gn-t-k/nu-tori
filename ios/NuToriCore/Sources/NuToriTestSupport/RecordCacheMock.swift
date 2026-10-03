@@ -2,7 +2,7 @@ public import Foundation
 public import NuToriCore
 import Synchronization
 
-/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、材料を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
+/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、材料、知らせ、いつもの時刻、体重の傾向を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
 /// 同期の働きの単体テストで、アプリの SwiftData のキャッシュの代わりに使う
 public final class RecordCacheMock: Sendable {
     public init() {}
@@ -32,6 +32,41 @@ public final class RecordCacheMock: Sendable {
     /// 材料の ID ごとの材料。親の料理がまだ無くても置く
     public var ingredients: [UUID: Ingredient] {
         storage.withLock { $0.ingredients }
+    }
+
+    /// 知らせの ID ごとの知らせ
+    public var notices: [UUID: Notice] {
+        storage.withLock { $0.notices }
+    }
+
+    public var usualWeighingTime: UsualWeighingTime? {
+        storage.withLock { $0.usualWeighingTime }
+    }
+
+    public var weightTrend: WeightTrend? {
+        storage.withLock { $0.weightTrend }
+    }
+
+    public func upsert(_ notice: Notice) {
+        storage.withLock { $0.notices[notice.id] = notice }
+    }
+
+    public func remove(noticeId: UUID) {
+        storage.withLock { $0.notices[noticeId] = nil }
+    }
+
+    public func clearNotices() {
+        storage.withLock { $0.notices = [:] }
+    }
+
+    /// nil で空にする
+    public func setUsualWeighingTime(_ usualWeighingTime: UsualWeighingTime?) {
+        storage.withLock { $0.usualWeighingTime = usualWeighingTime }
+    }
+
+    /// nil で空にする
+    public func setWeightTrend(_ weightTrend: WeightTrend?) {
+        storage.withLock { $0.weightTrend = weightTrend }
     }
 
     /// 名前の種類が当てられた変更の数。テスト用の種類が数えるのに使う
@@ -122,6 +157,9 @@ public final class RecordCacheMock: Sendable {
         var estimationStatuses: [UUID: MealEstimationStatus] = [:]
         var dishes: [UUID: Dish] = [:]
         var ingredients: [UUID: Ingredient] = [:]
+        var notices: [UUID: Notice] = [:]
+        var usualWeighingTime: UsualWeighingTime?
+        var weightTrend: WeightTrend?
         var appliedCounts: [RecordKindName: Int] = [:]
     }
 

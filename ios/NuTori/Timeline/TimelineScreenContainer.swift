@@ -7,6 +7,9 @@ import SwiftUI
 struct TimelineScreenContainer: View {
     let rejectedLines: [RejectedLine]
     let capture: (ClientUsageEvent) async -> Void
+    let reminderLanding: ReminderLanding?
+    let noteReminderLanded: () -> Void
+    let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
     let accountActions: AccountActions
@@ -17,12 +20,17 @@ struct TimelineScreenContainer: View {
     var body: some View {
         TimelineScreen(
             records: cachedRecords.compactMap { $0.weightRecord() },
+            weightTrend: CachedWeightTrendDay.weightTrend(of: cachedWeightTrendDays),
             initialPull: initialPull,
             today: CalendarDay(containing: .now, in: .current),
             now: { .now },
             rejectedLines: rejectedLines,
             meals: mealCards,
+            notices: cachedNotices.compactMap { $0.notice() },
             capture: capture,
+            reminderLanding: reminderLanding,
+            noteReminderLanded: noteReminderLanded,
+            requestNotificationPermission: requestNotificationPermission,
             prepareWeightEntry: prepareWeightEntry,
             saveWeight: saveWeight,
             accountActions: accountActions,
@@ -39,6 +47,8 @@ struct TimelineScreenContainer: View {
     @Query private var cachedEstimationStatuses: [CachedMealEstimationStatus]
     @Query private var cachedDishes: [CachedDish]
     @Query private var cachedIngredients: [CachedIngredient]
+    @Query private var cachedNotices: [CachedNotice]
+    @Query private var cachedWeightTrendDays: [CachedWeightTrendDay]
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 
@@ -46,7 +56,7 @@ struct TimelineScreenContainer: View {
         guard let state = syncStates.first, state.hasCompletedInitialPull else {
             return .inProgress
         }
-        return .completed(startedDay: state.startedOn.flatMap(TimelineDayText.day(from:)))
+        return .completed(startedDay: state.startedOn.flatMap(CalendarDay.init(yearMonthDay:)))
     }
 
     /// 推定の状態・料理・材料は食事と別の種類で、食事より先にも後にも届く

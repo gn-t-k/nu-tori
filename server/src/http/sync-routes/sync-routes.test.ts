@@ -44,7 +44,7 @@ describe("同期", () => {
 
     test("記録も変更も増えないこと", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(pulled.changes).toHaveLength(1);
+      expect(pulled.changes.map(({ kind }) => kind)).toEqual(["weight_record", "weight_trend"]);
     });
   });
 
@@ -374,6 +374,7 @@ describe("同期", () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
       expect(pulled.changes.map(({ recordId }) => recordId)).toEqual([
         acceptable.weightRecord["id"],
+        "weight_trend",
       ]);
     });
 
@@ -455,8 +456,9 @@ describe("同期", () => {
       });
 
       test("残りを返し、続きが無いと添えること", () => {
+        // 残りの体重記録2件と、体重の傾向の1件
         expect({ count: second.changes.length, hasMore: second.hasMore }).toEqual({
-          count: 2,
+          count: 3,
           hasMore: false,
         });
       });

@@ -5,6 +5,7 @@ import SwiftUI
 struct NuToriApp: App {
     init() {
         runtime?.recordSync.registerAndWatch()
+        runtime?.reminderTaps.startReceiving()
     }
 
     var body: some Scene {

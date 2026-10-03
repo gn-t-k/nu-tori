@@ -4,6 +4,8 @@ import { estimationTables } from "../estimation/durable-object/estimation-tables
 import { ingredientTables } from "../ingredient/durable-object/ingredient-tables";
 import { mealPhotoTables } from "../meal/durable-object/meal-photo-tables";
 import { mealTables } from "../meal/durable-object/meal-tables";
+import { noticeTables } from "../notice/durable-object/notice-tables";
+import { usualWeighingTimeTables } from "../usual-weighing-time/durable-object/usual-weighing-time-tables";
 import { weightRecordTables } from "../weight-record/durable-object/weight-record-tables";
 import { firstSignInTables } from "./first-sign-in-tables";
 import { syncLedgerTables } from "./sync-ledger-tables";
@@ -19,4 +21,6 @@ export const durableObjectTables = {
   ...estimationTables,
   ...dishTables,
   ...ingredientTables,
+  ...noticeTables,
+  ...usualWeighingTimeTables,
 };

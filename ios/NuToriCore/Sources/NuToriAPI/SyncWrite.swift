@@ -12,4 +12,8 @@ public enum SyncWrite: Sendable, Equatable {
     case createMeal(writeId: UUID, meal: SyncedMeal)
     /// サーバーは受け付けないことが無い。知らない ID でも削除の印を残す
     case deleteMeal(writeId: UUID, mealId: UUID)
+    /// 同じ ID の知らせがすでにあれば、サーバーは捨てる
+    case createNotice(writeId: UUID, notice: NewNotice)
+    /// すでに答えがあれば、サーバーは捨てる（先に受け取ったほうが残る）
+    case respondNotice(writeId: UUID, noticeId: UUID, response: SyncedNotice.Response)
 }

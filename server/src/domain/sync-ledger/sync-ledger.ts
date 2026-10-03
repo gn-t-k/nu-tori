@@ -137,7 +137,7 @@ export const createSyncLedger = <
             throw new Error(`登録簿に無い種類の変更: ${change.recordType}`);
           }
           const current = owner.readCurrent(change.recordId);
-          if (current.status === "absent") {
+          if (current.status === "absent" && !owner.deliversAbsence) {
             throw new Error(
               `変更の並びが指す記録も削除の印も無い: ${owner.name} ${change.recordId}`,
             );

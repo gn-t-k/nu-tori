@@ -154,6 +154,32 @@ extension Components.Schemas.SyncWrite {
         case .deleteMeal(let writeId, let mealId):
             self = .deleteMeal(
                 .init(id: writeId.uuidString, _type: .deleteMeal, mealId: mealId.uuidString))
+        case .createNotice(let writeId, let notice):
+            self = .createNotice(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .createNotice,
+                    notice: .init(
+                        id: notice.id.uuidString,
+                        noticeType: notice.noticeType.rawValue,
+                        issuedAt: notice.issuedAt.millisecondsSince1970,
+                        timeZone: notice.timeZone.identifier,
+                        targetOn: notice.targetOn
+                    )
+                )
+            )
+        case .respondNotice(let writeId, let noticeId, let response):
+            self = .respondNotice(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .respondNotice,
+                    noticeId: noticeId.uuidString,
+                    response: .init(
+                        respondedAt: response.respondedAt.millisecondsSince1970,
+                        timeZone: response.timeZone.identifier
+                    )
+                )
+            )
         }
     }
 }
@@ -249,6 +275,8 @@ extension SyncWriteResult.RejectionReason {
         case "invalid_entry_method": self = .invalidEntryMethod
         case "duplicate_photo_ids": self = .duplicatePhotoIds
         case "photo_already_used": self = .photoAlreadyUsed
+        case "invalid_notice_type": self = .invalidNoticeType
+        case "invalid_target_on": self = .invalidTargetOn
         default: self = .unknown(reason: reason)
         }
     }
@@ -349,6 +377,29 @@ extension SyncChange {
             } else {
                 self = .unknown(kind: kind)
             }
+        case "notice":
+            if let notice = try? record.decoded(as: NoticePayload.self).syncedNotice {
+                self = .notice(notice)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "usual_weighing_time":
+            if let id = UUID(uuidString: recordId),
+                let payload = try? record.decoded(as: UsualWeighingTimePayload.self)
+            {
+                self = .usualWeighingTime(
+                    SyncedUsualWeighingTime(id: id, minuteOfDay: payload.minuteOfDay))
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "weight_trend":
+            if let trend = try? record.decoded(as: WeightTrendPayload.self).syncedWeightTrend {
+                self = .weightTrend(trend)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "weight_trend_absence":
+            self = .weightTrendAbsence
         default:
             self = .unknown(kind: kind)
         }
@@ -537,6 +588,69 @@ extension SyncChange {
                 id: id, dishId: dishId, name: name, quantity: quantity, unit: unit,
                 edibleGramsPerUnit: edibleGramsPerUnit, positionInDish: positionInDish,
                 nutrientSource: source, nutrients: nutrients)
+        }
+    }
+}
+
+extension SyncChange {
+    /// 知らない種類と、読めない ID・タイムゾーンは nil にする
+    fileprivate struct NoticePayload: Decodable {
+        let id: String
+        let noticeType: String
+        let issuedAt: Int
+        let timeZone: String
+        let targetOn: String
+        let response: Response?
+
+        struct Response: Decodable {
+            let respondedAt: Int
+            let timeZone: String
+        }
+
+        var syncedNotice: SyncedNotice? {
+            guard let id = UUID(uuidString: id),
+                let noticeType = SyncedNotice.NoticeType(rawValue: noticeType),
+                let timeZone = TimeZone(identifier: timeZone)
+            else {
+                return nil
+            }
+            var syncedResponse: SyncedNotice.Response?
+            if let response {
+                guard let responseTimeZone = TimeZone(identifier: response.timeZone) else {
+                    return nil
+                }
+                syncedResponse = SyncedNotice.Response(
+                    respondedAt: Date(timeIntervalSince1970: Double(response.respondedAt) / 1000),
+                    timeZone: responseTimeZone)
+            }
+            return SyncedNotice(
+                id: id,
+                noticeType: noticeType,
+                issuedAt: Date(timeIntervalSince1970: Double(issuedAt) / 1000),
+                timeZone: timeZone,
+                targetOn: targetOn,
+                response: syncedResponse
+            )
+        }
+    }
+
+    fileprivate struct UsualWeighingTimePayload: Decodable {
+        let minuteOfDay: Int
+    }
+
+    fileprivate struct WeightTrendPayload: Decodable {
+        let days: [Day]
+
+        struct Day: Decodable {
+            let calendarDay: String
+            let trendKg: Double
+        }
+
+        var syncedWeightTrend: SyncedWeightTrend {
+            SyncedWeightTrend(
+                days: days.map {
+                    SyncedWeightTrend.Day(calendarDay: $0.calendarDay, trendKilograms: $0.trendKg)
+                })
         }
     }
 }

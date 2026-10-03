@@ -7,7 +7,9 @@ import type { IngredientStore } from "../ingredient/domain/ingredient-store";
 import type { MealPhotoStore } from "../meal/domain/meal-photo-store";
 import type { MealStore } from "../meal/domain/meal-store";
 import type { MealEstimationStatusStore } from "../meal-estimation-status/domain/meal-estimation-status-store";
+import type { NoticeStore } from "../notice/domain/notice-store";
 import type { FirstSignInStore } from "./record-first-sign-in";
+import type { UsualWeighingTimeStore } from "../usual-weighing-time/domain/usual-weighing-time-store";
 import type { RecordChangeTarget } from "./sync-ledger/record-change-target";
 import type { WeightRecordStore } from "../weight-record/domain/weight-record-store";
 
@@ -18,6 +20,8 @@ export type RecordKindStores = {
   ingredient: IngredientStore;
   meal: MealStore;
   mealEstimationStatus: MealEstimationStatusStore;
+  notice: NoticeStore;
+  usualWeighingTime: UsualWeighingTimeStore;
   weightRecord: WeightRecordStore;
   // 使い始めた日を読むために、体重記録の種類と応答の startedOn が使う
   firstSignIn: FirstSignInStore;

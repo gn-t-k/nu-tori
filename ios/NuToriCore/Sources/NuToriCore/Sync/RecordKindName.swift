@@ -7,7 +7,10 @@ public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
     case ingredient = "ingredient"
     case meal = "meal"
     case mealEstimationStatus = "meal-estimation-status"
+    case notice = "notice"
+    case usualWeighingTime = "usual-weighing-time"
     case weightRecord = "weight-record"
+    case weightTrend = "weight-trend"
 
     /// サーバーの種類の名前の列挙（`server/openapi.json` の `RecordKindName`。snake_case）での書き方。
     /// 端末とサーバーの名前の対応はここだけに書く（サーバーの列挙との突き合わせはテストが行う）
@@ -18,7 +21,10 @@ public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
         case .ingredient: "ingredient"
         case .meal: "meal"
         case .mealEstimationStatus: "meal_estimation_status"
+        case .notice: "notice"
+        case .usualWeighingTime: "usual_weighing_time"
         case .weightRecord: "weight_record"
+        case .weightTrend: "weight_trend"
         }
     }
 

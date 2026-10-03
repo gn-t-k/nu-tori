@@ -31,6 +31,7 @@ export const createAccountSettingsKind = (
       };
     },
   },
+  deliversAbsence: false,
   readCurrent: () => {
     const current = store.find();
     return current === undefined ? { status: "absent" } : { status: "value", value: current };

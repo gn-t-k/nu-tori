@@ -16,7 +16,7 @@ Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する
 
 ### デザイン
 
-UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（見た目のトークンとガードレール）があれば従う。`docs/ui-design/` は凍結済みの設計記録で、読むときは `docs/agents/decisions.md` を読む。
+UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（見た目のトークンとガードレール）があれば従う。従えないところは `DESIGN.md` に例外を書かず、そのコードになぜかをコメントで書く（`docs/agents/coding-style.md` の「コードを説明する情報」）。`docs/ui-design/` は凍結済みの設計記録で、読むときは `docs/agents/decisions.md` を読む。
 
 ### コーディングの好み
 

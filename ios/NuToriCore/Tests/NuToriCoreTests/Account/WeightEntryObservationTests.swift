@@ -2,7 +2,7 @@ import Foundation
 import NuToriCore
 import Testing
 
-@Suite("体重のシートの手数")
+@Suite("体重のシートと知らせの中の手数")
 struct WeightEntryObservationTests {
     @Suite("空欄からキーボードで開いたとき")
     struct StartsWithKeyboard {
@@ -79,6 +79,34 @@ struct WeightEntryObservationTests {
         func clampsNegativeDuration() {
             let event = observation.recordedEvent(at: openedAt.addingTimeInterval(-5))
             #expect(event.fields["duration_seconds"] == .wholeSeconds(0))
+        }
+    }
+
+    @Suite("体重の知らせのカードが見えてから記録したとき")
+    struct InNotice {
+        let shownAt: Date
+        let observation: WeightEntryObservation
+
+        init() {
+            shownAt = Date(timeIntervalSince1970: 1_700_000_000)
+            observation = .inNotice(shownAt: shownAt)
+        }
+
+        @Test("ステッパーやキーボードを使っても入れ方を notice にし、カードが見えてからの手数と所要時間を載せること")
+        func recordsAsNotice() {
+            var observation = observation
+            observation.stepped()
+            observation.typed()
+            observation.stepped()
+
+            let event = observation.recordedEvent(at: shownAt.addingTimeInterval(12))
+            #expect(
+                event.fields == [
+                    "method": .token("notice"),
+                    "stepper_press_count": .count(2),
+                    "duration_seconds": .wholeSeconds(12),
+                    "showed_typo_hint": .flag(false),
+                ])
         }
     }
 }

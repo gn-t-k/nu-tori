@@ -279,11 +279,10 @@ extension SyncEngineTests {
 
                 #expect(try transport.pullQueries.first?["afterSequence"] == "0")
                 #expect(
-                    store.state?.readableKinds
-                        == [
-                            .accountSettings, .dish, .ingredient, .meal, .mealEstimationStatus,
-                            .weightRecord,
-                        ])
+                    store.state?.readableKinds.isSuperset(of: [
+                        .accountSettings, .dish, .ingredient, .meal, .mealEstimationStatus,
+                        .weightRecord,
+                    ]) == true)
             }
         }
     }

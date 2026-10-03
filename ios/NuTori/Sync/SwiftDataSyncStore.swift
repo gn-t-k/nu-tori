@@ -114,6 +114,25 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
+    func notices() async throws -> [Notice] {
+        try await onMain { stores in
+            try stores.cache.fetch(FetchDescriptor<CachedNotice>()).compactMap { $0.notice() }
+        }
+    }
+
+    func usualWeighingTime() async throws -> UsualWeighingTime? {
+        try await onMain { stores in
+            try CachedUsualWeighingTime.current(in: stores.cache)?.usualWeighingTime()
+        }
+    }
+
+    func weightTrend() async throws -> WeightTrend? {
+        try await onMain { stores in
+            CachedWeightTrendDay.weightTrend(
+                of: try stores.cache.fetch(FetchDescriptor<CachedWeightTrendDay>()))
+        }
+    }
+
     func dishVersionsWrittenToHealth() async throws -> [UUID: Int] {
         try await onMain { stores in
             let rows = try stores.cache.fetch(FetchDescriptor<CachedHealthDishWrite>())

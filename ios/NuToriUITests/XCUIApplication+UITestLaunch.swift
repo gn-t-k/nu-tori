@@ -55,11 +55,17 @@ extension XCUIApplication {
         // 今日の体重が未記録なら「体重を記録」のカプセル、記録済みなら丸い「体重」
         let unrecorded = buttons["composer-weight-unrecorded"]
         (unrecorded.exists ? unrecorded : buttons["composer-weight"]).tap()
-        let decrease = buttons["0.1 kg 減らす"]
+        // タイムラインの体重の知らせにも同じステッパーと「記録」があるので、シートの中を探す
+        let decrease = otherElements["weight-entry-sheet"].buttons["0.1 kg 減らす"]
         XCTAssertTrue(decrease.waitForExistence(timeout: 5))
         decrease.tap()
         decrease.tap()
-        buttons["記録"].tap()
+        weightEntryRecordButton.tap()
+    }
+
+    /// 体重のシートの「記録」。タイムラインの体重の知らせの「記録」とは別に探す
+    @MainActor var weightEntryRecordButton: XCUIElement {
+        navigationBars["体重"].buttons["記録"]
     }
 
     /// 小数点のキーは、地域の設定で「.」か「,」になる
@@ -82,7 +88,12 @@ extension XCUIApplication {
     }
 
     @MainActor func confirmAccountDeletion() {
-        buttons["アカウントを削除"].tap()
+        let deleteButton = buttons["アカウントを削除"]
+        // 一覧のいちばん下にあり、画面の外にあると作られないので、送って出す
+        for _ in 0..<3 where !deleteButton.exists {
+            swipeUp()
+        }
+        deleteButton.tap()
         let delete = alerts["アカウントを削除しますか？"].buttons["アカウントを削除"]
         XCTAssertTrue(delete.waitForExistence(timeout: 5))
         delete.tap()

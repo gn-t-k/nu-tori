@@ -7,6 +7,9 @@ const recordTypes = [
   "meal_estimation_status",
   "dish",
   "ingredient",
+  "notice",
+  "usual_weighing_time",
+  "weight_trend",
 ] as const;
 
 const syncRequestLogs = sqliteTable(
@@ -47,7 +50,9 @@ const syncWriteReceipts = sqliteTable(
       .notNull()
       .references(() => syncPushLogs.syncRequestLogId),
     positionInRequest: integer("position_in_request").notNull(),
-    kind: text("kind", { enum: ["create", "update", "source_deleted", "delete"] }).notNull(),
+    kind: text("kind", {
+      enum: ["create", "update", "source_deleted", "delete", "respond"],
+    }).notNull(),
     recordType: text("record_type", { enum: recordTypes }).notNull(),
     recordId: text("record_id").notNull(),
     result: text("result", {
@@ -74,6 +79,8 @@ const syncWriteRejections = sqliteTable("sync_write_rejections", {
       "invalid_entry_method",
       "duplicate_photo_ids",
       "photo_already_used",
+      "invalid_notice_type",
+      "invalid_target_on",
     ],
   }).notNull(),
 });

@@ -86,6 +86,7 @@ export const createTestRecordKind = (
       };
     },
   },
+  deliversAbsence: false,
   readCurrent: (recordId): CurrentRecord<number> => {
     const value = store.find(recordId);
     if (value !== undefined) {

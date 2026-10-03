@@ -9,15 +9,18 @@ import SwiftData
     let model: RootModel
     /// 締め出しの記憶。締め出しの画面はこれを見て、すべての画面の上に出る
     let appLockout: AppLockout
+    /// 記録忘れの通知を押したことを受け取る。通知の置き場は受け取り手を強く持たないので、ここで持つ
+    let reminderTaps: MissedWeightReminderTapReceiver
 
     init(
         container: ModelContainer, recordSync: RecordSync, model: RootModel,
-        appLockout: AppLockout
+        appLockout: AppLockout, reminderTaps: MissedWeightReminderTapReceiver
     ) {
         self.container = container
         self.recordSync = recordSync
         self.model = model
         self.appLockout = appLockout
+        self.reminderTaps = reminderTaps
     }
 
     static func forThisLaunch() -> AppRuntime? {
@@ -57,6 +60,8 @@ import SwiftData
         /// 写真の縮小版を送るもの（本番はバックグラウンドの URLSession、UI テストはつながない差し替え）と、その結果
         let mealPhotoUploader: any MealPhotoUploader
         let finishedMealPhotoUploads: AsyncStream<(MealPhotoUpload, MealPhotoUploadResult)>
+        /// 記録忘れの通知の置き場（本番は `UNUserNotificationCenter`、UI テストは置かない差し替え）
+        let reminderCenter: any MissedWeightRecordReminderCenter
     }
 
     private static func live() throws -> AppRuntime {
@@ -87,7 +92,8 @@ import SwiftData
                     fetched: .cachesDirectory.appending(path: "meal-photos")
                 ),
                 mealPhotoUploader: photoUploader,
-                finishedMealPhotoUploads: photoUploader.finishedUploads
+                finishedMealPhotoUploads: photoUploader.finishedUploads,
+                reminderCenter: UserNotificationReminderCenter()
             ))
     }
 
@@ -128,6 +134,13 @@ import SwiftData
             timeZone: { .current },
             analyticsFlushTimeout: .seconds(3)
         )
+        let reminders = MissedWeightRecordReminderScheduler(
+            center: parts.reminderCenter,
+            cache: store,
+            timeZone: { .current },
+            now: { .now },
+            errorReporting: observation.errorReporting
+        )
         let sync = RecordSync(
             store: store,
             client: client,
@@ -137,7 +150,8 @@ import SwiftData
             hasSession: { (try? await keychain.sessionToken()) != nil },
             signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
             errorReporting: observation.errorReporting,
-            mealPhotos: mealPhotos
+            mealPhotos: mealPhotos,
+            reminders: reminders
         )
         let finishedUploads = parts.finishedMealPhotoUploads
         Task {
@@ -150,8 +164,13 @@ import SwiftData
         health.bindWakeHandler { [weak sync] in
             await sync?.importHealthAndSendPending()
         }
-        let model = RootModel(accountSession: session, recordSync: sync, health: health)
+        let model = RootModel(
+            accountSession: session, recordSync: sync, health: health, reminders: reminders)
+        let reminderTaps = MissedWeightReminderTapReceiver { [weak model] noticeId in
+            Task { await model?.openFromReminder(noticeId: noticeId) }
+        }
         return AppRuntime(
-            container: store.container, recordSync: sync, model: model, appLockout: appLockout)
+            container: store.container, recordSync: sync, model: model, appLockout: appLockout,
+            reminderTaps: reminderTaps)
     }
 }

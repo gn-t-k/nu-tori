@@ -2,10 +2,11 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
-import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
+import type { PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { createWeightRecordWrite } from "./testing/create-weight-record-write";
+import { pullWeightRecordChanges } from "./testing/pull-weight-record-changes";
 import { sourceDeletedWeightRecordWrite } from "./testing/source-deleted-weight-record-write";
 import { updateWeightRecordWrite } from "./testing/update-weight-record-write";
 import { runInDurableObject } from "cloudflare:test";
@@ -39,7 +40,7 @@ describe("体重記録の同期", () => {
     });
 
     test("取りに行くと、端末が送った値のまま体重記録が返ること", async () => {
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      const pulled = await pullWeightRecordChanges(sessionToken);
       expect(pulled.changes).toEqual([
         {
           sequence: expect.any(Number),
@@ -74,7 +75,7 @@ describe("体重記録の同期", () => {
     });
 
     test("出どころと体脂肪率も返ること", async () => {
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      const pulled = await pullWeightRecordChanges(sessionToken);
       expect(pulled.changes[0]?.record["imported"]).toEqual(write.weightRecord["imported"]);
     });
 
@@ -115,7 +116,7 @@ describe("体重記録の同期", () => {
       });
 
       test("値を変えないこと", async () => {
-        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const pulled = await pullWeightRecordChanges(sessionToken);
         expect(pulled.changes[0]?.record["weightKg"]).toBe(72.4);
       });
     });
@@ -143,7 +144,7 @@ describe("体重記録の同期", () => {
       });
 
       test("値と時刻とタイムゾーンを置き換え、版を上げて返すこと", async () => {
-        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const pulled = await pullWeightRecordChanges(sessionToken);
         expect(pulled.changes).toEqual([
           expect.objectContaining({
             record: {
@@ -158,7 +159,7 @@ describe("体重記録の同期", () => {
       });
 
       test("取りに行くと、直した記録が1件にまとまって返ること", async () => {
-        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const pulled = await pullWeightRecordChanges(sessionToken);
         expect(pulled.changes).toHaveLength(1);
       });
     });
@@ -185,7 +186,7 @@ describe("体重記録の同期", () => {
       });
 
       test("端末の時計によらず、あとに受け取ったほうの値を採ること", async () => {
-        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const pulled = await pullWeightRecordChanges(sessionToken);
         expect(pulled.changes[0]?.record).toEqual(
           expect.objectContaining({ weightKg: 70.0, measuredAt: earlierOnDeviceClock }),
         );
@@ -205,7 +206,7 @@ describe("体重記録の同期", () => {
       });
 
       test("あとに受け取った値を、前より大きい版 4 で採ること", async () => {
-        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const pulled = await pullWeightRecordChanges(sessionToken);
         expect(pulled.changes[0]?.record).toEqual(
           expect.objectContaining({ weightKg: 70.0, version: 4 }),
         );
@@ -444,7 +445,7 @@ describe("体重記録の同期", () => {
     });
 
     test("作る書き込みで保存していること", async () => {
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      const pulled = await pullWeightRecordChanges(sessionToken);
       expect(pulled.changes.map((change) => change.recordId)).toEqual([recordId]);
     });
 
@@ -499,7 +500,7 @@ describe("体重記録の同期", () => {
       });
       recordId = String(imported.weightRecord["id"]);
       await pushSyncWrites(sessionToken, { writes: [imported] });
-      created = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      created = await pullWeightRecordChanges(sessionToken);
       deletion = sourceDeletedWeightRecordWrite(recordId);
       response = await pushSyncWrites(sessionToken, { writes: [deletion] });
     });
@@ -512,9 +513,9 @@ describe("体重記録の同期", () => {
     });
 
     test("前回の続きから取りに行くと、削除の印が返ること", async () => {
-      const pulled = await (
-        await pullSyncChanges(sessionToken, { afterSequence: created.nextAfterSequence })
-      ).json<PullResult>();
+      const pulled = await pullWeightRecordChanges(sessionToken, {
+        afterSequence: created.nextAfterSequence,
+      });
       expect(pulled.changes).toEqual([
         {
           sequence: expect.any(Number),
@@ -526,7 +527,7 @@ describe("体重記録の同期", () => {
     });
 
     test("最初から取りに行くと、記録は返らず削除の印だけが返ること", async () => {
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      const pulled = await pullWeightRecordChanges(sessionToken);
       expect(pulled.changes.map(({ kind, recordId: id }) => ({ kind, recordId: id }))).toEqual([
         { kind: "weight_record_deletion", recordId },
       ]);
@@ -559,15 +560,13 @@ describe("体重記録の同期", () => {
       let secondResponse: Response;
       let latest: PullResult;
       beforeEach(async () => {
-        const afterFirstDeletion = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const afterFirstDeletion = await pullWeightRecordChanges(sessionToken);
         secondResponse = await pushSyncWrites(sessionToken, {
           writes: [sourceDeletedWeightRecordWrite(recordId)],
         });
-        latest = await (
-          await pullSyncChanges(sessionToken, {
-            afterSequence: afterFirstDeletion.nextAfterSequence,
-          })
-        ).json<PullResult>();
+        latest = await pullWeightRecordChanges(sessionToken, {
+          afterSequence: afterFirstDeletion.nextAfterSequence,
+        });
       });
 
       test("捨てること", async () => {
@@ -587,15 +586,15 @@ describe("体重記録の同期", () => {
       let recreateResponse: Response;
       let latest: PullResult;
       beforeEach(async () => {
-        const afterDeletion = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const afterDeletion = await pullWeightRecordChanges(sessionToken);
         recreateResponse = await pushSyncWrites(sessionToken, {
           writes: [
             createWeightRecordWrite({ weightRecord: { id: recordId, imported: undefined } }),
           ],
         });
-        latest = await (
-          await pullSyncChanges(sessionToken, { afterSequence: afterDeletion.nextAfterSequence })
-        ).json<PullResult>();
+        latest = await pullWeightRecordChanges(sessionToken, {
+          afterSequence: afterDeletion.nextAfterSequence,
+        });
       });
 
       test("捨てること", async () => {
@@ -615,13 +614,13 @@ describe("体重記録の同期", () => {
       let updateResponse: Response;
       let latest: PullResult;
       beforeEach(async () => {
-        const afterDeletion = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const afterDeletion = await pullWeightRecordChanges(sessionToken);
         updateResponse = await pushSyncWrites(sessionToken, {
           writes: [updateWeightRecordWrite(recordId)],
         });
-        latest = await (
-          await pullSyncChanges(sessionToken, { afterSequence: afterDeletion.nextAfterSequence })
-        ).json<PullResult>();
+        latest = await pullWeightRecordChanges(sessionToken, {
+          afterSequence: afterDeletion.nextAfterSequence,
+        });
       });
 
       test("捨てること", async () => {
@@ -655,7 +654,7 @@ describe("体重記録の同期", () => {
       });
       recordId = String(create.weightRecord["id"]);
       await pushSyncWrites(sessionToken, { writes: [create, updateWeightRecordWrite(recordId)] });
-      corrected = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      corrected = await pullWeightRecordChanges(sessionToken);
       deletion = sourceDeletedWeightRecordWrite(recordId);
       response = await pushSyncWrites(sessionToken, { writes: [deletion] });
     });
@@ -667,7 +666,7 @@ describe("体重記録の同期", () => {
     });
 
     test("記録をそのまま残し、変更を増やさないこと", async () => {
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      const pulled = await pullWeightRecordChanges(sessionToken);
       expect(pulled).toEqual({ ...corrected, startedOn: expect.any(String) });
     });
 
@@ -701,7 +700,7 @@ describe("体重記録の同期", () => {
     });
 
     test("削除の印を返すこと", async () => {
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      const pulled = await pullWeightRecordChanges(sessionToken);
       expect(pulled.changes.map(({ kind }) => kind)).toEqual(["weight_record_deletion"]);
     });
   });
@@ -718,7 +717,7 @@ describe("体重記録の同期", () => {
 
     test("削除の印を残すこと", async () => {
       expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
-      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      const pulled = await pullWeightRecordChanges(sessionToken);
       expect(pulled.changes.map(({ kind, recordId: id }) => ({ kind, recordId: id }))).toEqual([
         { kind: "weight_record_deletion", recordId },
       ]);
@@ -736,7 +735,7 @@ describe("体重記録の同期", () => {
         expect((await createResponse.json<PushResults>()).results[0]?.result).toBe(
           "ignored_tombstone",
         );
-        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        const pulled = await pullWeightRecordChanges(sessionToken);
         expect(pulled.changes.map(({ kind }) => kind)).toEqual(["weight_record_deletion"]);
       });
     });

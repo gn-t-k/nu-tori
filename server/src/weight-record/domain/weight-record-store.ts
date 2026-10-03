@@ -3,6 +3,13 @@ import type { WeightRecord } from "./weight-record";
 
 export type WeightRecordStore = {
   find: (id: string) => WeightRecord | undefined;
+  // 体重の傾向の計算に使う。取り込みの情報は読まない
+  findAllInMeasuredOrder: () => Pick<WeightRecord, "id" | "weightKg" | "measuredAt" | "timeZone">[];
+  // いつもの時刻の学び直しに使う。from 以上 to 未満の時刻の記録を、時刻の順に読む
+  findMeasuredBetween: (
+    from: Date,
+    to: Date,
+  ) => Pick<WeightRecord, "id" | "measuredAt" | "timeZone">[];
   existsImportedSample: (healthkitSampleUuid: string) => boolean;
   hasDeletion: (recordId: string) => boolean;
   insert: (record: WeightRecord) => void;

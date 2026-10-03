@@ -118,6 +118,18 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("答えていない知らせの1行を押したとき")
+    struct UnansweredNoticeLineTapped {
+        @Test("中身を持たない出来事にすること")
+        func hasNoFields() {
+            let event = ClientUsageEvent.unansweredNoticeLineTapped
+
+            #expect(event.name == "unanswered_notice_line_tapped")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("カメラの許可の知らせを出したとき")
     struct CameraPermissionNoticeShown {
         @Test("中身を持たない出来事にすること")
@@ -125,6 +137,50 @@ struct ClientUsageEventTests {
             let event = ClientUsageEvent.cameraPermissionNoticeShown
 
             #expect(event.name == "camera_permission_notice_shown")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("記録忘れの通知を押して開き、体重の知らせがあったとき")
+    struct MissedWeightReminderOpenedWithNotice {
+        let event: ClientUsageEvent
+
+        init() {
+            event = .missedWeightReminderOpened(hadNotice: true)
+        }
+
+        @Test("知らせがあったかの旗だけを載せること")
+        func carriesTheFlag() {
+            #expect(event.name == "missed_weight_reminder_opened")
+            #expect(event.fields == ["had_notice": .flag(true)])
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("通知の許可を求め、許可しなかったとき")
+    struct NotificationPermissionDenied {
+        let event: ClientUsageEvent
+
+        init() {
+            event = .notificationPermissionRequested(granted: false)
+        }
+
+        @Test("許可したかの旗だけを載せること")
+        func carriesTheFlag() {
+            #expect(event.name == "notification_permission_requested")
+            #expect(event.fields == ["granted": .flag(false)])
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("アカウントの通知の行から設定を開いたとき")
+    struct NotificationSettingsOpened {
+        @Test("中身を持たない出来事にすること")
+        func hasNoFields() {
+            let event = ClientUsageEvent.notificationSettingsOpened
+
+            #expect(event.name == "notification_settings_opened")
             #expect(event.fields.isEmpty)
             #expect(event.screenToken == nil)
         }
