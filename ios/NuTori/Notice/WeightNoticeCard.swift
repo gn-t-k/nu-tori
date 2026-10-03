@@ -63,6 +63,7 @@ private struct NoticeWeightEntry: View {
                 draft: $draft,
                 observation: $observation,
                 typing: $typing,
+                startsTyping: false,
                 onBeginTyping: {}
             )
             .frame(maxWidth: .infinity)
