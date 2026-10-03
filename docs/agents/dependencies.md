@@ -73,6 +73,10 @@ flowchart TD
 - SwiftLint: `scripts/check` の版と、配布物ごとの SHA-256
 - sentry-cli: `ios/ci_scripts/ci_post_xcodebuild.sh` の版と SHA-256（Sentry のリリースの登録簿 `release-registry.services.sentry.io/apps/sentry-cli/<版>` の `sentry-cli-Darwin-universal`）
 
+### エージェントの道具
+
+- Sentry の CLI（npm の `sentry`）: `scripts/sentry` の版。0.x なので、上げたら `scripts/sentry issue view <短い ID> --json` の欄の名前が変わっていないかを確かめる
+
 ### server
 
 - Node（`server/.node-version`）と pnpm（`server/package.json` の `packageManager`）

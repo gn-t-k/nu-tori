@@ -191,15 +191,17 @@ import NuToriCore
     func registerAndWatch() {
         if !didRegisterRefresh {
             didRegisterRefresh = true
+            // この閉包は MainActor に隔離されるので、メインのキューで呼ばせる。nil だとほかのキューで呼ばれ、隔離の確かめで落ちる
             BGTaskScheduler.shared.register(
                 forTaskWithIdentifier: Self.refreshTaskIdentifier,
-                using: nil
+                using: .main
             ) { [weak self] task in
                 guard let refresh = task as? BGAppRefreshTask else { return }
                 let job = Task { @MainActor in
                     await self?.handle(refresh)
                 }
-                refresh.expirationHandler = {
+                // 期限切れはどのキューで呼ばれるか決まっていないので、MainActor に隔離しない
+                refresh.expirationHandler = { @Sendable in
                     job.cancel()
                 }
             }

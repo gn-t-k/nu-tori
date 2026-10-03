@@ -14,6 +14,20 @@
 - **ラベルを付ける／外す**：`gh api repos/gn-t-k/nu-tori/issues/<番号>/labels -X POST -f 'labels[]=...'` ／ `gh api repos/gn-t-k/nu-tori/issues/<番号>/labels/<名前> -X DELETE`
 - **クローズする**：コメントを付けてから、`gh api repos/gn-t-k/nu-tori/issues/<番号> -X PATCH -f state=closed -f state_reason=completed`
 
+## 画像や動画を添付する
+
+Issue・PR の本文とコメントに画像や動画を添付するときだけは、REST ではなく `gh` の `--attach` を使う（`gh issue create`・`gh issue edit`・`gh issue comment`・`gh pr create`・`gh pr edit`・`gh pr comment`）。REST の API には添付する口が無い。
+
+- `gh` は v2.99.0 以上が要る。古ければ上げる（macOS は `brew upgrade gh`）
+- 本文では `![alt](./ファイル)` の形で参照し、同じパスを `--attach` に渡す。その参照が、上げた画像の URL に書き換わる。`<img src="./ファイル">` で書くと書き換わらず、画像は末尾に足される
+- 書いたら読み直し、本文に `./` のパスが残っていないか確かめる。残っていたら、末尾に足された URL で本文を直す
+- 添付してよいのは、開発者の健康データが写っていないものだけ（ルートの `AGENTS.md` の「公開リポジトリ」）
+- クラウドのセッションで通るかは、まだ確かめていない。確かめたらここに書き足す
+
+例: `gh issue comment 233 --repo gn-t-k/nu-tori --body-file comment.md --attach ./lockout.png`（`comment.md` に `![締め出しの画面](./lockout.png)` を書いておく）
+
+**Why:** REST だけを使う決まりに従うと、添付できないと判断して止まった（#233）。
+
 ## PRをtriage対象にするか
 
 **PRを要望の受付窓口として扱う：いいえ。**（外部からのPRを機能要望として扱う場合は「はい」にする。`/triage` がこの設定を読む）

@@ -68,4 +68,4 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 ## 配布と実機の確認
 
 - main の `ios/` が変わるたびに、Xcode Cloud がビルドして TestFlight の内部テストに配る。署名とビルド番号は Apple 側に任せ、証明書を GitHub に置かない
-- ヘルスケア、カメラ、通知、写真の読み込みに触れた PR を出すとき、外部テストに出す前、Xcode Cloud の設定か `ci_scripts/` を直すときは、`docs/agents/ios-release.md` を読む
+- ヘルスケア、カメラ、通知、写真の読み込みに触れた PR を出すとき、外部テストに出す前、Xcode Cloud の設定か `ci_scripts/` を直すとき、アプリのクラッシュを調べるときは、`docs/agents/ios-release.md` を読む

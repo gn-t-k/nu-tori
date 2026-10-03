@@ -131,18 +131,20 @@ check_ios_ui_test() {
     check_ios_app
 
     step "UI テスト"
-    local simulator results="$ios/.build/NuTori.xcresult"
-    simulator="$(latest_iphone_simulator)"
+    local results="$ios/.build/NuTori.xcresult"
+    # 1台のシミュレータでは同じアプリの UI テストを同時に回せないので、ほかのチェックアウトとぶつからないよう、回すたびに複製を作って消す
+    clone_ui_test_simulator
+    trap 'xcrun simctl delete "$ui_test_simulator"' EXIT
     # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
-    xcrun simctl bootstatus "$simulator" -b
+    xcrun simctl bootstatus "$ui_test_simulator" -b
     # Simulator.app でハードウェアキーボードを一度つなぐと、シミュレータがそれを覚えてソフトウェアキーボードを画面の外へ最小化し、キーを押すテストが落ちる。まっさらなシミュレータ（CI）では起きないので、Mac でもそろえる
-    xcrun simctl spawn "$simulator" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
+    xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
     rm -rf "$results"
     # テストの診断をシミュレータから集めると、テストが通った回でも時間切れの10分まで待つことがある。落ちた理由は xcresult で足りる
     xcodebuild \
         -project "$ios/NuTori.xcodeproj" \
         -scheme NuTori \
-        -destination "id=$simulator" \
+        -destination "id=$ui_test_simulator" \
         -resultBundlePath "$results" \
         -collect-test-diagnostics never \
         test-without-building
@@ -192,7 +194,7 @@ check_server() {
     instruction="$(cd "$server" && pnpm exec tsx scripts/print-byethrow-docs-instruction.ts)"
     if ! diff -u "$root/$instruction_copy" - <<< "$instruction"; then
         cat >&2 << MESSAGE
-@praha/byethrow-docs の instruction が、写し（$instruction_copy）から変わった。--fix では直さない
+@praha/byethrow-docs の instruction が、写し（${instruction_copy}）から変わった。--fix では直さない
 1. 上の差分（- が写し、+ が入っている版）のうち変わった分を、.agents/skills/byethrow/SKILL.md に写す（このリポジトリの書き方に合わせて直す）
 2. リポジトリのルートで、写しを新しくする: pnpm --dir server exec tsx scripts/print-byethrow-docs-instruction.ts > $instruction_copy
 MESSAGE
@@ -263,7 +265,7 @@ latest_iphone_simulator() {
     id="$(xcrun simctl list devices available | awk '
         /^-- iOS / { ios = 1; picked = 0; next }
         /^-- / { ios = 0; next }
-        ios && !picked && /iPhone/ {
+        ios && !picked && /^ +iPhone/ {
             match($0, /\([0-9A-F-]{36}\)/)
             latest = substr($0, RSTART + 1, 36)
             picked = 1
@@ -277,11 +279,63 @@ latest_iphone_simulator() {
     echo "$id"
 }
 
+# UI テストに使う複製を、複製の元から作って ID を ui_test_simulator に入れる
+# 起動中のシミュレータは複製できず、共有の iPhone はほかのセッションが起動していることがあるので、テストに使わない複製の元を持つ
+clone_ui_test_simulator() {
+    local prefix="nu-tori ui-test" base_name="nu-tori ui-test-base" latest device_type runtime base lock
+    latest="$(latest_iphone_simulator)"
+    read -r device_type runtime < <(list_simulators_with_runtime | jq -r --arg id "$latest" \
+        '.[] | select(.udid == $id) | "\(.deviceTypeIdentifier) \(.runtime)"') || true
+    if [ -z "$device_type" ] || [ -z "$runtime" ]; then
+        echo "シミュレータ $latest の機種とランタイムが取れない" >&2
+        return 1
+    fi
+
+    # 2つのチェックアウトが同時に複製の元を作ったり、同じ置き去りの複製を消したりしないよう、ロックを持つ
+    lock="${TMPDIR:-/tmp}/nu-tori-ui-test-base.lock"
+    until shlock -f "$lock" -p $$; do
+        sleep 1
+    done
+    delete_abandoned_ui_test_simulators "$prefix"
+    base="$(list_simulators_with_runtime | jq -r --arg name "$base_name" --arg type "$device_type" --arg runtime "$runtime" \
+        'first(.[] | select(.name == $name and .deviceTypeIdentifier == $type and .runtime == $runtime) | .udid) // empty')"
+    if [ -z "$base" ]; then
+        echo "UI テストの複製の元（${base_name}）を作る" >&2
+        # Xcode を上げてランタイムが変わったら、前の元は使わない
+        list_simulators_with_runtime | jq -r --arg name "$base_name" '.[] | select(.name == $name) | .udid' |
+            xargs -n 1 xcrun simctl delete
+        base="$(xcrun simctl create "$base_name" "$device_type" "$runtime")"
+        # 初めての起動は数十秒かかるので、元で一度済ませ、複製の起動を数秒にする
+        xcrun simctl bootstatus "$base" -b > /dev/null
+    fi
+    # 作る途中で止まった元や、人が起動した元も複製できるよう、落としてから複製する。落ちている元では失敗するので、失敗は見ない
+    xcrun simctl shutdown "$base" 2> /dev/null || true
+    ui_test_simulator="$(xcrun simctl clone "$base" "$prefix $$")"
+    rm -f "$lock"
+}
+
+# kill -9 などで消し損ねた UI テストの複製を、名前の pid のプロセスが居なければ消す
+delete_abandoned_ui_test_simulators() {
+    local prefix="$1" udid pid
+    list_simulators_with_runtime | jq -r --arg prefix "$prefix " \
+        '.[] | select(.name | startswith($prefix)) | "\(.udid) \(.name | ltrimstr($prefix))"' |
+        while read -r udid pid; do
+            if [[ "$pid" =~ ^[0-9]+$ ]] && ! kill -0 "$pid" 2> /dev/null; then
+                xcrun simctl delete "$udid"
+            fi
+        done
+}
+
+list_simulators_with_runtime() {
+    xcrun simctl list devices -j | jq '[.devices | to_entries[] | .key as $runtime | .value[] | . + {runtime: $runtime}]'
+}
+
 root="$(cd "$(dirname "$0")/.." && pwd)"
 ios="$root/ios"
 server="$root/server"
 swiftlint_version=0.65.1
 swiftlint=""
+ui_test_simulator=""
 fix=false
 
 main "$@"
