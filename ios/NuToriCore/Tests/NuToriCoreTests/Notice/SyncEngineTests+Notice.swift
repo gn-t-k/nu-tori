@@ -129,19 +129,25 @@ extension SyncEngineTests {
 
         @Suite("キャッシュに無い知らせに答えようとしたとき")
         struct RespondingToUnknown {
-            @Test("知らない記録として投げ、送り待ちに入れず、キャッシュを読めなかった失敗として1回送ること")
-            func throwsUnknownRecord() async throws {
-                let store = try SyncBoxMock.ok()
-                let errorReporting = ErrorReportingSessionMock.ok()
-                let engine = SyncEngine.fixture(
-                    store: store, transport: .sync(), errorReporting: errorReporting)
-                let noticeId = UUID()
+            let store: SyncBoxMock<RecordCacheMock>
+            let errorReporting: ErrorReportingSessionMock
+            let engine: SyncEngine
+            let noticeId: UUID
 
+            init() throws {
+                store = try .ok()
+                errorReporting = .ok()
+                engine = .fixture(store: store, transport: .sync(), errorReporting: errorReporting)
+                noticeId = UUID()
+            }
+
+            @Test("知らない記録として投げ、送り待ちに入れず、失敗として送らないこと")
+            func throwsUnknownRecord() async {
                 await #expect(throws: SyncEngine.UnknownRecordError(recordId: noticeId)) {
                     try await engine.respondToNotice(id: noticeId)
                 }
                 #expect(store.entries.isEmpty)
-                #expect(errorReporting.reported == [.cacheRead])
+                #expect(errorReporting.reported.isEmpty)
             }
         }
 
@@ -149,15 +155,22 @@ extension SyncEngineTests {
         struct RespondingWithUnreadableCache {
             struct SampleError: Error {}
 
+            let errorReporting: ErrorReportingSessionMock
+            let engine: SyncEngine
+            let noticeId: UUID
+
+            init() {
+                errorReporting = .ok()
+                engine = .fixture(
+                    store: .error(SampleError()), transport: .sync(), errorReporting: errorReporting
+                )
+                noticeId = UUID()
+            }
+
             @Test("投げ、キャッシュを読めなかった失敗として1回送ること")
             func reportsReadFailure() async {
-                let errorReporting = ErrorReportingSessionMock.ok()
-                let engine = SyncEngine.fixture(
-                    store: .error(SampleError()), transport: .sync(),
-                    errorReporting: errorReporting)
-
                 await #expect(throws: SampleError.self) {
-                    try await engine.respondToNotice(id: UUID())
+                    try await engine.respondToNotice(id: noticeId)
                 }
                 #expect(errorReporting.reported == [.cacheRead])
             }

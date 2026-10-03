@@ -25,22 +25,22 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
         delivered: [UUID] = []
     ) -> MissedWeightRecordReminderCenterMock {
         MissedWeightRecordReminderCenterMock(
-            permission: permission, grantsPermission: grantsPermission, scheduleFailure: nil,
-            permissionRequestFailure: nil, scheduled: scheduled, delivered: delivered)
+            permission: permission, permissionRequest: .grants(grantsPermission),
+            scheduleFailure: nil, scheduled: scheduled, delivered: delivered)
     }
 
     /// 予約が失敗する置き場
     static func error(_ error: any Error) -> MissedWeightRecordReminderCenterMock {
         MissedWeightRecordReminderCenterMock(
-            permission: .permitted, grantsPermission: true, scheduleFailure: error,
-            permissionRequestFailure: nil, scheduled: [], delivered: [])
+            permission: .permitted, permissionRequest: .grants(true), scheduleFailure: error,
+            scheduled: [], delivered: [])
     }
 
     /// まだ許可を求めておらず、求めると失敗する置き場
     static func permissionRequestError(_ error: any Error) -> MissedWeightRecordReminderCenterMock {
         MissedWeightRecordReminderCenterMock(
-            permission: .notYetRequested, grantsPermission: true, scheduleFailure: nil,
-            permissionRequestFailure: error, scheduled: [], delivered: [])
+            permission: .notYetRequested, permissionRequest: .fails(error), scheduleFailure: nil,
+            scheduled: [], delivered: [])
     }
 
     func permission() async -> NotificationPermission {
@@ -50,11 +50,13 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
     func requestPermission() async throws -> Bool {
         try storage.withLock {
             $0.permissionRequestCount += 1
-            if let failure = $0.permissionRequestFailure {
-                throw failure
+            switch $0.permissionRequest {
+            case .grants(let granted):
+                $0.permission = granted ? .permitted : .notPermitted
+                return granted
+            case .fails(let error):
+                throw error
             }
-            $0.permission = $0.grantsPermission ? .permitted : .notPermitted
-            return $0.grantsPermission
         }
     }
 
@@ -83,11 +85,16 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
         storage.withLock { $0.delivered.subtract(ids) }
     }
 
+    /// 許可を求めた結果
+    private enum PermissionRequest {
+        case grants(Bool)
+        case fails(any Error)
+    }
+
     private struct Storage {
         var permission: NotificationPermission
-        let grantsPermission: Bool
+        let permissionRequest: PermissionRequest
         let scheduleFailure: (any Error)?
-        let permissionRequestFailure: (any Error)?
         var scheduled: Set<UUID>
         var delivered: Set<UUID>
         var permissionRequestCount = 0
@@ -97,18 +104,16 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
 
     private init(
         permission: NotificationPermission,
-        grantsPermission: Bool,
+        permissionRequest: PermissionRequest,
         scheduleFailure: (any Error)?,
-        permissionRequestFailure: (any Error)?,
         scheduled: [UUID],
         delivered: [UUID]
     ) {
         storage = Mutex(
             Storage(
                 permission: permission,
-                grantsPermission: grantsPermission,
+                permissionRequest: permissionRequest,
                 scheduleFailure: scheduleFailure,
-                permissionRequestFailure: permissionRequestFailure,
                 scheduled: Set(scheduled),
                 delivered: Set(delivered)
             ))
