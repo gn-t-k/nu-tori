@@ -417,8 +417,7 @@ public actor SyncEngine {
         let usualWeighingTime: UsualWeighingTime?
     }
 
-    /// 初回の取得を終えていれば、材料を読んで決める。読めなかった失敗は readingCache が、
-    /// 書けなかった失敗は writingCache が報告しているので、ここでは重ねて送らない
+    /// 初回の取得を終えていれば、材料を読んで決める。読めなかった失敗は readingCache が、書けなかった失敗は writingCache が報告しているので、ここでは重ねて送らない
     private func decidingMissedWeightRecordNotices(
         _ decide: (MissedWeightRecordNoticeInputs) async throws -> Bool
     ) async -> Bool {
