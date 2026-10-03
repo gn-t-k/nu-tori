@@ -39,7 +39,9 @@
                 case "/v1/account":
                     return deleteAccountResponse()
                 case "/v1/sync/writes":
-                    return json(.ok, #"{"results":[]}"#)
+                    // サーバーと同じく、届いた書き込みをすべて受け付ける。開いたときに出した体重の知らせ
+                    // （いつもの時刻を過ぎて開くと出る）を送り待ちに残さず、送り待ちの有無を開いた時刻によらないようにする
+                    return try await pushResponse(body)
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
                     return json(.ok, try changesBody())
                 default:
