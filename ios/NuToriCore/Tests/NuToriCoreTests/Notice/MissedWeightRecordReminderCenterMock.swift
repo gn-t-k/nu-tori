@@ -26,14 +26,21 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
     ) -> MissedWeightRecordReminderCenterMock {
         MissedWeightRecordReminderCenterMock(
             permission: permission, grantsPermission: grantsPermission, scheduleFailure: nil,
-            scheduled: scheduled, delivered: delivered)
+            permissionRequestFailure: nil, scheduled: scheduled, delivered: delivered)
     }
 
     /// 予約が失敗する置き場
     static func error(_ error: any Error) -> MissedWeightRecordReminderCenterMock {
         MissedWeightRecordReminderCenterMock(
             permission: .permitted, grantsPermission: true, scheduleFailure: error,
-            scheduled: [], delivered: [])
+            permissionRequestFailure: nil, scheduled: [], delivered: [])
+    }
+
+    /// まだ許可を求めておらず、求めると失敗する置き場
+    static func permissionRequestError(_ error: any Error) -> MissedWeightRecordReminderCenterMock {
+        MissedWeightRecordReminderCenterMock(
+            permission: .notYetRequested, grantsPermission: true, scheduleFailure: nil,
+            permissionRequestFailure: error, scheduled: [], delivered: [])
     }
 
     func permission() async -> NotificationPermission {
@@ -41,8 +48,11 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
     }
 
     func requestPermission() async throws -> Bool {
-        storage.withLock {
+        try storage.withLock {
             $0.permissionRequestCount += 1
+            if let failure = $0.permissionRequestFailure {
+                throw failure
+            }
             $0.permission = $0.grantsPermission ? .permitted : .notPermitted
             return $0.grantsPermission
         }
@@ -77,6 +87,7 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
         var permission: NotificationPermission
         let grantsPermission: Bool
         let scheduleFailure: (any Error)?
+        let permissionRequestFailure: (any Error)?
         var scheduled: Set<UUID>
         var delivered: Set<UUID>
         var permissionRequestCount = 0
@@ -88,6 +99,7 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
         permission: NotificationPermission,
         grantsPermission: Bool,
         scheduleFailure: (any Error)?,
+        permissionRequestFailure: (any Error)?,
         scheduled: [UUID],
         delivered: [UUID]
     ) {
@@ -96,6 +108,7 @@ final class MissedWeightRecordReminderCenterMock: MissedWeightRecordReminderCent
                 permission: permission,
                 grantsPermission: grantsPermission,
                 scheduleFailure: scheduleFailure,
+                permissionRequestFailure: permissionRequestFailure,
                 scheduled: Set(scheduled),
                 delivered: Set(delivered)
             ))

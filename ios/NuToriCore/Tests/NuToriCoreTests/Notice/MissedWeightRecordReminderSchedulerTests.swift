@@ -226,5 +226,32 @@ struct MissedWeightRecordReminderSchedulerTests {
                 #expect(center.permissionRequestCount == 0)
             }
         }
+
+        @Suite("まだ求めておらず、許可を求められないとき")
+        struct RequestFails {
+            let errorReporting: ErrorReportingSessionMock
+            let scheduler: MissedWeightRecordReminderScheduler
+
+            init() throws {
+                errorReporting = .ok()
+                scheduler = try MissedWeightRecordReminderSchedulerTests.scheduler(
+                    center: .permissionRequestError(SampleError()), store: .ok(),
+                    errorReporting: errorReporting)
+            }
+
+            @Test("許可しなかったことを返すこと")
+            func returnsNotGranted() async {
+                let outcome = await scheduler.requestPermissionIfNotYetRequested()
+
+                #expect(outcome == .notGranted)
+            }
+
+            @Test("通知の許可を求められなかった失敗として1回送ること")
+            func reportsOnce() async {
+                await scheduler.requestPermissionIfNotYetRequested()
+
+                #expect(errorReporting.reported == [.notificationPermissionRequest])
+            }
+        }
     }
 }
