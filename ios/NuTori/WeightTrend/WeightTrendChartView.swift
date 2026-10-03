@@ -3,7 +3,7 @@ import NuToriCore
 import SwiftUI
 
 /// 体重の画面の、最近4週の傾向のグラフ。点は測った体重（日の代表値）、線はサーバーから届いた傾向。
-/// 色は DESIGN.md の「グラフ」: 線は Primary、点は文字の灰色、使い始める前の点はさらに薄く、グリッドは横線だけ薄く
+/// 色は DESIGN.md の「グラフ」: 線は Primary、点は文字の灰色、使い始める前の点はさらに薄く、グリッドは薄く
 struct WeightTrendChartView: View {
     let chart: WeightTrendChart
 
@@ -50,8 +50,7 @@ struct WeightTrendChartView: View {
         }
         .chartXScale(domain: 0...lastOffset)
         .chartYScale(domain: yDomain)
-        // Charts の AxisValueLabel は目盛りの右にずれ、今日のラベルが消えるので、横軸のラベルは自前で描く
-        // 縦のグリッドも引かない（DESIGN.md の「グラフ」の「グリッドは薄く」を横線だけにした）。縦の線は使い始めの点線と紛れ、試作も横線だけ
+        // Charts の AxisValueLabel は目盛りの右にずれ、今日のラベルが消えるので、横軸のラベルは自前で描く。縦のグリッドも引かない。今日から1週ずつの目盛りの線が、使い始めの点線と並んで紛れるため
         .chartXAxis(.hidden)
         .chartOverlay { xAxisLabels(proxy: $0) }
         .chartYAxis {
@@ -66,16 +65,15 @@ struct WeightTrendChartView: View {
                 }
             }
         }
-        // 下は横軸のラベルの行、左右は両端のラベルがはみ出さない余白
+        // 下は横軸のラベルの行、左右は両端のラベルがはみ出さない余白。DESIGN.md の Layout は自前の数値を持たないとするが、Charts の描く範囲を空ける標準の余白が無いので、文字を xxxLarge で止めたときに収まる値を持つ
         .chartPlotStyle { plot in
             plot.padding(.horizontal, Self.edgeInset).padding(.bottom, Self.xAxisLabelRowHeight)
         }
         .frame(height: 200)
-        // DESIGN.md の Typography の「Dynamic Type に従う」の例外。高さ 200 の固定の枠に AX 5 の軸の文字が収まらないので、目盛りと注釈の文字は xxxLarge で止める。値は点の accessibilityValue でも読める
+        // DESIGN.md の Typography は Dynamic Type に従うとするが、目盛りと注釈の文字は xxxLarge で止める。高さと余白を文字に合わせて伸ばすと、AX 5 で画面の2倍近くの高さになり、横軸の日付が重なって読めないため。値は点の accessibilityValue でも読める
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
-    // DESIGN.md の Layout の「自前の数値を持たない」の例外。自前で描く横軸のラベルが枠からはみ出さないよう、左右の余白とラベルの行の高さを固定の値で取る。16 は「画面の端は 16」のトークンに合わせた
     private static let edgeInset: CGFloat = 16
     private static let xAxisLabelRowHeight: CGFloat = 24
 
