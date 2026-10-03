@@ -123,7 +123,13 @@
         private func pushResponse(_ body: HTTPBody?) async throws -> (HTTPResponse, HTTPBody?) {
             switch behavior {
             case .previousDayPushOffline:
-                throw URLError(.notConnectedToInternet)
+                // 開いたときに出した体重の知らせ（いつもの時刻を過ぎて開くと出る）だけの送信は受け付ける。
+                // 送れずに残ると、同期が取りに行く前に止まり、前の日の体重が開いた時刻によって出なくなる
+                let writes = try await pushedWrites(in: body)
+                guard writes.allSatisfy(\.isNotice) else {
+                    throw URLError(.notConnectedToInternet)
+                }
+                return json(.ok, results(for: writes, result: .applied))
             case .previousDayPushRejected:
                 // サーバーにその記録は無い（作る書き込みが受け付けられなかった）
                 return json(
@@ -194,24 +200,26 @@
 
         private func writeResults(from body: HTTPBody?, result: WriteResult) async throws -> String
         {
-            let ids = try await writeIds(in: body)
-            let results = ids.map { id in
+            results(for: try await pushedWrites(in: body), result: result)
+        }
+
+        private func results(for writes: [PushBody.Write], result: WriteResult) -> String {
+            let results = writes.map { write in
                 switch result {
                 case .applied:
-                    #"{"writeId":"\#(id)","result":"applied"}"#
+                    #"{"writeId":"\#(write.id)","result":"applied"}"#
                 case .rejected(let current):
                     // 理由は画面の文言に出ないので、1つに決める
-                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range","current":\#(current)}"#
+                    #"{"writeId":"\#(write.id)","result":"rejected","rejectionReason":"out_of_range","current":\#(current)}"#
                 }
             }
             return #"{"results":[\#(results.joined(separator: ","))]}"#
         }
 
-        private func writeIds(in body: HTTPBody?) async throws -> [String] {
+        private func pushedWrites(in body: HTTPBody?) async throws -> [PushBody.Write] {
             guard let body else { return [] }
             let bytes = try await [UInt8](collecting: body, upTo: 1_048_576)
-            let decoded = try JSONDecoder().decode(PushBody.self, from: Data(bytes))
-            return decoded.writes.map(\.id)
+            return try JSONDecoder().decode(PushBody.self, from: Data(bytes)).writes
         }
 
         private final class WeightScreenKilograms: @unchecked Sendable {
@@ -378,6 +386,11 @@
 
             struct Write: Decodable {
                 let id: String
+                let type: String
+
+                var isNotice: Bool {
+                    type == "create_notice" || type == "respond_notice"
+                }
             }
         }
 

@@ -9,6 +9,7 @@ struct WeightEntrySheet: View {
                 draft: $draft,
                 observation: $observation,
                 typing: $typing,
+                startsTyping: draft.startsWithKeyboard,
                 onBeginTyping: { detent = .large }
             )
             // タイムラインの体重の知らせにも同じステッパーがあるので、UI テストはシートの中を探す
@@ -32,9 +33,6 @@ struct WeightEntrySheet: View {
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(draft.tenths != draft.initialTenths)
         .onAppear {
-            if draft.startsWithKeyboard {
-                typing = true
-            }
             Task { await capture(.screen(.weightEntry)) }
         }
         .onDisappear {

@@ -7,6 +7,8 @@ struct WeightEntryControls: View {
     @Binding var draft: WeightDraft
     @Binding var observation: WeightEntryObservation
     let typing: FocusState<Bool>.Binding
+    /// 開いたときから、値の欄をキーボードで入れる形にする（前回の値が無い体重のシート）
+    let startsTyping: Bool
     /// 値を押してキーボードで入れ始めたとき
     let onBeginTyping: () -> Void
 
@@ -39,13 +41,21 @@ struct WeightEntryControls: View {
                 observation.noteTypoHintShown()
             }
         }
+        .onAppear {
+            if startsTyping {
+                showsField = true
+            }
+        }
     }
+
+    /// 値の欄を入れる欄にしているか。フォーカスは欄が出てから当てる（欄が無いうちに当てると、すぐ外れて欄が出ない）
+    @State private var showsField = false
 
     /// ステッパーが入れた文字列。キーボードの変更通知が、その変更を打鍵と数えないため
     @State private var textFromStep: String?
 
     @ViewBuilder private var value: some View {
-        if typing.wrappedValue {
+        if showsField {
             TextField("", text: $draft.text)
                 .keyboardType(.decimalPad)
                 .font(.title2)
@@ -65,10 +75,16 @@ struct WeightEntryControls: View {
                     observation.typed()
                 }
                 .accessibilityLabel("体重の値")
+                .onAppear { typing.wrappedValue = true }
+                .onChange(of: typing.wrappedValue) { _, focused in
+                    if !focused {
+                        showsField = false
+                    }
+                }
         } else {
             Button {
                 draft.beginTyping()
-                typing.wrappedValue = true
+                showsField = true
                 onBeginTyping()
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -86,7 +102,8 @@ struct WeightEntryControls: View {
                 .background(Color(.tertiarySystemFill), in: weightControlShape)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(WeightAmountText.kilograms(draft.kilograms ?? 0))
+            // まだ入れていないときは、見た目の「–」に合わせて値を読まず、入れる欄だと伝える
+            .accessibilityLabel(draft.kilograms.map(WeightAmountText.kilograms) ?? "体重の値")
             .animation(.default, value: draft.tenths)
         }
     }
