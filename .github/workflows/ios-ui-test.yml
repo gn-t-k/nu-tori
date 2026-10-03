@@ -113,4 +113,6 @@ jobs:
           main で ios-ui-test が緑に戻ると、ワークフローがこの Issue を閉じる。
           BODY
           )"
-          gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$TITLE" -f body="$body" -f "labels[]=ready-for-agent" > /dev/null
+          number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$TITLE" -f body="$body" -f "labels[]=ready-for-agent" --jq .number)"
+          # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
