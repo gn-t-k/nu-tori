@@ -121,7 +121,7 @@ public actor SyncEngine {
     @discardableResult
     public func issueOrRespondToMissedWeightRecordNotices() async -> Bool {
         await decidingMissedWeightRecordNotices { inputs in
-            let responded = try await respondToMissedWeightRecordNotices(with: inputs)
+            let responded = try await enqueueMissedWeightRecordNoticeResponses(with: inputs)
             let noticeToIssue = MissedWeightRecordNoticeDecision.noticeToIssue(
                 usualWeighingTime: inputs.usualWeighingTime,
                 now: now(),
@@ -141,7 +141,7 @@ public actor SyncEngine {
     @discardableResult
     public func respondToMissedWeightRecordNotices() async -> Bool {
         await decidingMissedWeightRecordNotices { inputs in
-            try await respondToMissedWeightRecordNotices(with: inputs)
+            try await enqueueMissedWeightRecordNoticeResponses(with: inputs)
         }
     }
 
@@ -439,7 +439,9 @@ public actor SyncEngine {
         }
     }
 
-    private func respondToMissedWeightRecordNotices(with inputs: MissedWeightRecordNoticeInputs)
+    private func enqueueMissedWeightRecordNoticeResponses(
+        with inputs: MissedWeightRecordNoticeInputs
+    )
         async throws -> Bool
     {
         let idsToRespond = MissedWeightRecordNoticeDecision.noticeIdsToRespond(

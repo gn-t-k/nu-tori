@@ -40,9 +40,9 @@ public struct Timeline: Sendable {
     public let days: [Day]
 
     /// 今日の答えていない知らせ。画面の上へ流れて見えないときに、帯の下の1行で示す。
-    /// 答えていない形のカードは、対象の日付が今日の知らせにだけあり、今日の日に並ぶ
+    /// 答えていない形のカードは、対象の日付が今日の知らせにだけあり、今日の日に並ぶので、新しい日から探す
     public var noticeAwaitingAnswer: NoticeCard? {
-        days.lazy.flatMap(\.items)
+        days.reversed().lazy.flatMap(\.items)
             .compactMap { item -> NoticeCard? in
                 if case .notice(let card) = item, card.form == .awaitingAnswer { card } else { nil }
             }

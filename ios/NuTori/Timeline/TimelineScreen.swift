@@ -213,8 +213,8 @@ struct TimelineScreen: View {
     @State private var showsPhotoPicker = false
     /// 体重の知らせの中で記録した回数。触覚を鳴らす合図
     @State private var noticeRecordedCount = 0
-    /// 今日の答えていない知らせのカードが、画面の上へ流れて見えないか
-    @State private var unansweredNoticeLineVisibility = UnansweredNoticeLine()
+    /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
+    @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
 
     private var showsCamera: Binding<Bool> {
@@ -399,7 +399,7 @@ struct TimelineScreen: View {
                             GeometryReader { geo in
                                 Color.clear.preference(
                                     key: AwaitingNoticePositionKey.self,
-                                    value: UnansweredNoticeLine.CardPosition(
+                                    value: UnansweredNoticeLineVisibility.CardPosition(
                                         noticeId: card.notice.id,
                                         maxY: Double(geo.frame(in: .named("timeline")).maxY)))
                             }
@@ -630,11 +630,11 @@ private struct TimelineDayOffsetsKey: PreferenceKey {
 
 /// 今日の答えていない知らせのカードの位置。カードを描いていなければ nil
 private struct AwaitingNoticePositionKey: PreferenceKey {
-    static let defaultValue: UnansweredNoticeLine.CardPosition? = nil
+    static let defaultValue: UnansweredNoticeLineVisibility.CardPosition? = nil
 
     static func reduce(
-        value: inout UnansweredNoticeLine.CardPosition?,
-        nextValue: () -> UnansweredNoticeLine.CardPosition?
+        value: inout UnansweredNoticeLineVisibility.CardPosition?,
+        nextValue: () -> UnansweredNoticeLineVisibility.CardPosition?
     ) {
         value = nextValue() ?? value
     }

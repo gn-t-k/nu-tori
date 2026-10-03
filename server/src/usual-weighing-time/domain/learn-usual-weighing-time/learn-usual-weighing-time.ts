@@ -3,6 +3,7 @@ import { computeCalendarDayInTimeZone } from "../../../domain/compute-calendar-d
 import { computeUtcOffsetSeconds } from "../../../domain/compute-utc-offset-seconds";
 import { millisecondsPerDay } from "../../../domain/milliseconds-per-day";
 import { computeDailyRepresentativeWeights } from "../../../weight-record/domain/compute-daily-representative-weights";
+import { usualWeighingTimeRangeDays } from "./usual-weighing-time-range-days";
 
 // 体重記録から、いつもの時刻（その日の何分目）を学ぶ。範囲の中で記録のある日が3日そろわなければ undefined。
 // 範囲は、timeZone での now の日（基準の今日）とその前の 27 日。timeZone は isTimeZoneName で確かめた IANA 名を渡す
@@ -22,9 +23,6 @@ export const learnUsualWeighingTime = (input: {
   }
   return roundToStep(computeMedian(minutes));
 };
-
-// 学ぶ範囲の日数（基準の今日を含む）
-export const usualWeighingTimeRangeDays = 28;
 
 const minimumDays = 3;
 const stepMinutes = 5;

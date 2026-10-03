@@ -60,7 +60,19 @@ import NuToriCore
     /// 開いているあいだ、次に知らせを出すかを決める時刻を待ち、来たら決める。
     /// 通知を置き直すたびに（日付やタイムゾーンが変わった、いつもの時刻が届いた、など）待ち直す
     func startWaitingForNoticeTime() {
-        waitForNoticeTime()
+        stopWaitingForNoticeTime()
+        noticeTimer = .waiting(
+            Task { [weak self] in
+                guard let noticeTime = await self?.nextNoticeTime() else { return }
+                do {
+                    try await Task.sleep(for: .seconds(max(0, noticeTime.timeIntervalSinceNow)))
+                } catch {
+                    // 待ち直すか、裏へ回って取り消した
+                    return
+                }
+                // 決めたあとの置き直しで、次の時刻を待ち直す
+                await self?.issueOrRespondToNotices()
+            })
     }
 
     /// 裏へ回ったら待たない。前面に戻ったときに待ち直す
@@ -240,24 +252,8 @@ import NuToriCore
         case .stopped:
             break
         case .waiting:
-            waitForNoticeTime()
+            startWaitingForNoticeTime()
         }
-    }
-
-    private func waitForNoticeTime() {
-        stopWaitingForNoticeTime()
-        noticeTimer = .waiting(
-            Task { [weak self] in
-                guard let noticeTime = await self?.nextNoticeTime() else { return }
-                do {
-                    try await Task.sleep(for: .seconds(max(0, noticeTime.timeIntervalSinceNow)))
-                } catch {
-                    // 待ち直すか、裏へ回って取り消した
-                    return
-                }
-                // 決めたあとの置き直しで、次の時刻を待ち直す
-                await self?.issueOrRespondToNotices()
-            })
     }
 
     /// 読めなければ、報告して待たない

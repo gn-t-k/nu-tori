@@ -43,11 +43,11 @@ final class RootModel {
         }
         await accountSession.beginObservationIfSignedIn()
         let tapWhileOpening: UUID? =
-            switch opening {
-            case .opening(let pendingTap): pendingTap
+            switch observationStart {
+            case .pending(let tapWhileOpening): tapWhileOpening
             case .begun: nil
             }
-        opening = .begun
+        observationStart = .begun
         if let tapWhileOpening {
             Task { await self.openFromReminder(noticeId: tapWhileOpening) }
         }
@@ -58,9 +58,9 @@ final class RootModel {
     /// その日の知らせがあればその位置に、無ければ今日のいちばん下に着く
     func openFromReminder(noticeId: UUID) async {
         // 起動して初めて開き終え、観測を始めてから決める。始める前の出来事は送られないため
-        switch opening {
-        case .opening:
-            opening = .opening(pendingTap: noticeId)
+        switch observationStart {
+        case .pending:
+            observationStart = .pending(tapWhileOpening: noticeId)
             return
         case .begun:
             break
@@ -263,13 +263,13 @@ final class RootModel {
     private let recordSync: RecordSync
     private let health: HealthSyncSession
     private let reminders: MissedWeightRecordReminderScheduler
-    private var opening = Opening.opening(pendingTap: nil)
+    private var observationStart = ObservationStart.pending(tapWhileOpening: nil)
     private var rejectionAcceptance = RejectionAcceptance.accepting(RejectedLines())
 
     /// 起動して初めて開き終え、観測を始めたか
-    private enum Opening {
-        /// 開いている途中。`pendingTap` は、その途中に押された記録忘れの通知の ID
-        case opening(pendingTap: UUID?)
+    private enum ObservationStart {
+        /// 開いている途中で、まだ始めていない。`tapWhileOpening` は、その途中に押された記録忘れの通知の ID
+        case pending(tapWhileOpening: UUID?)
         case begun
     }
 

@@ -24,7 +24,7 @@ export const relearnUsualWeighingTime = (
       commit: (receiptId: WriteReceiptId) => void;
     }
   | undefined => {
-  // 範囲（基準の今日とその前の日）に入りうる記録だけを読む。日付は記録ごとのタイムゾーンで決まるので、時差の分だけ広く読む
+  // 学ぶ範囲（基準の今日と、その前の usualWeighingTimeRangeDays - 1 日）に入りうる記録だけを読む。日付は記録ごとのタイムゾーンで決まるので、時差の分だけ広く読む
   const timeZoneMarginDays = 2;
   const weightRecords = input
     .applyWrite(

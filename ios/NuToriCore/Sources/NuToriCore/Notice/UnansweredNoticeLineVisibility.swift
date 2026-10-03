@@ -2,7 +2,7 @@ public import Foundation
 
 /// 答えていない知らせの1行を、帯の下に出すか。タイムラインはカードを遠くへ送ると描かなくなり、位置が届かなくなるので、
 /// 最後に届いた位置で、上へ流れたかを覚えておく
-public struct UnansweredNoticeLine: Equatable, Sendable {
+public struct UnansweredNoticeLineVisibility: Equatable, Sendable {
     public init() {
         noticeIdAbove = nil
     }
