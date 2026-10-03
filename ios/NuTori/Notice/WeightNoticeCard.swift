@@ -31,7 +31,11 @@ struct WeightNoticeCard: View {
             case .awaitingAnswer:
                 NoticeWeightEntry(
                     records: records, today: today, now: now, capture: capture,
-                    onRecord: onRecord)
+                    onRecord: onRecord
+                )
+                // 値は作ったときの記録で決まる。カードが出たあとに前回の体重が届いたら（開いたときの取得、
+                // ほかの端末の記録）、その値から始め直す
+                .id(WeightEntry(weightRecords: records, today: today).initialValue)
             case .answered, .unansweredPastDay:
                 EmptyView()
             }
