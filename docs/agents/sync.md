@@ -13,7 +13,7 @@
 
 ## 受け付けなかった書き込みに添える今の値
 
-- push の応答の `rejected` の結果に `current` を添える。要求の書き込みを全部当て終えた時点の、その記録の今の値で、`value`（値）・`deleted`（削除の印）・`absent`（記録も削除の印も無い）のどれか。値と削除の印は、取りに行く変更と同じ形（通し番号を除く）で、サーバーは同じ変換（`HttpRecordKind.toChangeResponse`）で作る
+- push の応答の `rejected` の結果に `current` を添える。要求の書き込みを全部当て終えた時点の、その記録の今の値で、`value`（値）・`deleted`（削除の印）・`absent`（記録も削除の印も無い）のどれか。値と削除の印は、取りに行く変更と同じ形（通し番号を除く）で、サーバーは同じ変換（`to-change-body.ts`）で作る
 - 同じ書き込みの ID が再び届いたときは、最初の結果の種類と理由を返し、今の値は、その要求を当て終えた時点のものを添える。控えには今の値を持たない
 - 端末は `status` を文字列で読み、知らない値と添え忘れは何も当てない（API は足すだけにして、古い版のアプリが読み飛ばして動くため）
 - 端末は、`value` と `deleted` の変更をそのまま種類のキャッシュに当てる。`absent` のときだけ、種類が返す「外す変更」（`KindRejection.removingChanges`）を当てる。画面に出す行も種類が返す（`SyncedRecordKind.rejection`）
@@ -49,7 +49,7 @@
 
 ## 記録の種類の足し方
 
-- サーバー: `server/AGENTS.md` の「同期の記録の種類の足し方」に従う。受け付けなかった書き込みの今の値は、種類の `readCurrent` と受け口の `toChangeResponse` から作るので、種類に足すものは無い
+- サーバー: `server/AGENTS.md` の「同期の記録の種類の足し方」に従う。受け付けなかった書き込みの今の値は、種類の `readCurrent` と受け口の `toRecord` から作るので、種類に足すものは無い
   - サーバーだけが書く種類の変更と、書き込みがほかの種類の記録も変えるときの変更は、帳簿の口から足す（同じ節）。通し番号は足した順に付き、取りに行く応答もその順に並ぶ
 - 端末: NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く。NuToriCore に `SyncedRecordKind`、アプリのターゲットに `RecordKind<ModelContext>`（`synced` と `apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
   - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る

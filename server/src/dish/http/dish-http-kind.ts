@@ -1,10 +1,12 @@
-import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import type { Dish } from "../domain/dish";
-import { toDishChangeResponse } from "./to-dish-change-response";
+import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
+import { dishRecordSchema } from "./dish-record-schema";
+import { toDishRecord } from "./to-dish-record";
 
-// サーバーだけが書く種類なので、端末からの書き込みは届かない（書き込みの型が never）
-export const dishHttpKind: HttpRecordKind<Dish, never> = {
-  writeTypes: [],
-  toWrite: (write) => write,
-  toChangeResponse: toDishChangeResponse,
+// サーバーだけが書く種類なので、端末からの書き込みは届かない
+export const dishHttpKind: HttpRecordKind<Dish, never, typeof dishRecordSchema> = {
+  writes: undefined,
+  keepsDeletionMarks: true,
+  recordSchema: dishRecordSchema,
+  toRecord: toDishRecord,
 };

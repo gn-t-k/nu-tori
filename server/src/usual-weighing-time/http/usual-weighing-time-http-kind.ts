@@ -1,10 +1,16 @@
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import type { UsualWeighingTime } from "../domain/usual-weighing-time";
-import { toUsualWeighingTimeChangeResponse } from "./to-usual-weighing-time-change-response";
+import { toUsualWeighingTimeRecord } from "./to-usual-weighing-time-record";
+import { usualWeighingTimeRecordSchema } from "./usual-weighing-time-record-schema";
 
-// サーバーだけが書く種類なので、端末からの書き込みは届かない（書き込みの型が never）
-export const usualWeighingTimeHttpKind: HttpRecordKind<UsualWeighingTime, never> = {
-  writeTypes: [],
-  toWrite: (write) => write,
-  toChangeResponse: toUsualWeighingTimeChangeResponse,
+// サーバーだけが書く種類なので、端末からの書き込みは届かない
+export const usualWeighingTimeHttpKind: HttpRecordKind<
+  UsualWeighingTime,
+  never,
+  typeof usualWeighingTimeRecordSchema
+> = {
+  writes: undefined,
+  keepsDeletionMarks: false,
+  recordSchema: usualWeighingTimeRecordSchema,
+  toRecord: toUsualWeighingTimeRecord,
 };
