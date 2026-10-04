@@ -12,6 +12,7 @@ export const createMealEstimationStatusKind = (
 ): RecordKind<"meal_estimation_status", never, MealEstimationStatus> => ({
   name: "meal_estimation_status",
   writes: undefined,
+  follows: undefined,
   deliversAbsence: false,
   readCurrent: (mealId): CurrentRecord<MealEstimationStatus> => {
     if (mealStore.find(mealId) === undefined) {

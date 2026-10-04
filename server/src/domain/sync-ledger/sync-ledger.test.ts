@@ -5,13 +5,14 @@ import { createMemoryLedgerStore } from "./testing/create-memory-ledger-store";
 import { createMemoryTestChildStore } from "./testing/create-memory-test-child-store";
 import { createMemoryTestRecordStore } from "./testing/create-memory-test-record-store";
 import { createTestChildKind, type TestChildStore } from "./testing/test-child-kind";
+import { createTestFollowerKind, testFollowerRecordId } from "./testing/test-follower-kind";
 import { createTestRecordKind, type TestRecordWrite } from "./testing/test-record-kind";
 
 type OtherWrite = { id: string; type: "other_write" };
 type TestLedger = ReturnType<
   typeof createSyncLedger<
-    "test_record" | "test_child" | "other",
-    "test_record" | "test_child",
+    "test_record" | "test_child" | "test_follower" | "other",
+    "test_record" | "test_child" | "test_follower",
     TestRecordWrite | OtherWrite,
     number
   >
@@ -20,7 +21,7 @@ type TestLedger = ReturnType<
 describe("同期の帳簿", () => {
   let operations: string[];
   let ledgerStore: ReturnType<
-    typeof createMemoryLedgerStore<"test_record" | "test_child" | "other">
+    typeof createMemoryLedgerStore<"test_record" | "test_child" | "test_follower" | "other">
   >;
   let childStore: TestChildStore;
   let ledger: TestLedger;
@@ -35,8 +36,8 @@ describe("同期の帳簿", () => {
     ledgerStore = createMemoryLedgerStore(operations);
     childStore = createMemoryTestChildStore(operations);
     ledger = createSyncLedger<
-      "test_record" | "test_child" | "other",
-      "test_record" | "test_child",
+      "test_record" | "test_child" | "test_follower" | "other",
+      "test_record" | "test_child" | "test_follower",
       TestRecordWrite | OtherWrite,
       number
     >(ledgerStore, [
@@ -145,6 +146,69 @@ describe("同期の帳簿", () => {
 
       test("不具合として投げること", () => {
         expect(pushWithUnregistered).toThrow("登録簿に無い書き込み: other_write");
+      });
+    });
+  });
+
+  describe("ほかの種類の記録から計算する種類があるとき", () => {
+    beforeEach(() => {
+      ledger = createSyncLedger<
+        "test_record" | "test_child" | "test_follower" | "other",
+        "test_record" | "test_child" | "test_follower",
+        TestRecordWrite | OtherWrite,
+        number
+      >(ledgerStore, [
+        createTestRecordKind(createMemoryTestRecordStore(operations), childStore),
+        createTestChildKind(childStore),
+        createTestFollowerKind(operations),
+      ]);
+    });
+
+    describe("元の種類の書き込みを当てたとき", () => {
+      let pulled: ReturnType<TestLedger["pull"]>;
+
+      beforeEach(() => {
+        ledger.push(pushRequest([create("write-1", "record-1")]));
+        pulled = ledger.pull(pullRequest(0));
+      });
+
+      test("元の書き込みの行と変更を書いたあとに、計算する種類を呼ぶこと", () => {
+        expect(operations).toEqual([
+          "request_log",
+          "receipt",
+          "record",
+          "change",
+          "follower",
+          "added_change",
+          "request_log",
+        ]);
+      });
+
+      test("元の書き込みの変更のあとに、計算する種類の変更を返すこと", () => {
+        expect(pulled.changes).toEqual([
+          {
+            sequence: 1,
+            recordType: "test_record",
+            recordId: "record-1",
+            current: { status: "value", value: 1 },
+          },
+          {
+            sequence: 2,
+            recordType: "test_follower",
+            recordId: testFollowerRecordId,
+            current: { status: "value", value: 1 },
+          },
+        ]);
+      });
+    });
+
+    describe("元の種類の書き込みを受け付けなかったとき", () => {
+      beforeEach(() => {
+        ledger.push(pushRequest([create("write-1", "record-1", 500)]));
+      });
+
+      test("計算する種類を呼ばないこと", () => {
+        expect(operations).toEqual(["request_log", "receipt"]);
       });
     });
   });
@@ -300,8 +364,8 @@ describe("同期の帳簿", () => {
 
       beforeEach(() => {
         const ledgerDeliveringAbsence = createSyncLedger<
-          "test_record" | "test_child" | "other",
-          "test_record" | "test_child",
+          "test_record" | "test_child" | "test_follower" | "other",
+          "test_record" | "test_child" | "test_follower",
           TestRecordWrite | OtherWrite,
           number
         >(ledgerStore, [

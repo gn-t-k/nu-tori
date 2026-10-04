@@ -15,6 +15,7 @@ export const createTestChildKind = (
 ): RecordKind<"test_child", never, number> => ({
   name: "test_child",
   writes: undefined,
+  follows: undefined,
   deliversAbsence: false,
   readCurrent: (recordId): CurrentRecord<number> => {
     const value = store.find(recordId);
