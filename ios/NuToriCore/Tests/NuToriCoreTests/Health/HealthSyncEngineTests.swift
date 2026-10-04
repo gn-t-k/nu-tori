@@ -60,12 +60,11 @@ struct HealthSyncEngineTests {
             func enqueuesCreateWriteAndAdvancesAnchor() async throws {
                 try await engine.importChanges()
 
-                let batch = try #require(store.appliedHealthImports.first)
-                let record = try #require(batch.records.first)
-                #expect(store.appliedHealthImports.count == 1)
-                #expect(batch.pendingWrites.map(\.operation) == [.createWeightRecord(record)])
-                #expect(batch.pendingWrites.map(\.enqueuedAt) == [HealthSyncEngine.fixtureNow])
-                #expect(batch.state.anchor == HealthChanges.fixtureAnchor)
+                let record = try #require(store.records.values.first)
+                #expect(store.saves.first == .pending(added: 1, removed: 0))
+                #expect(store.pending.map(\.write) == [.createWeightRecord(record)])
+                #expect(store.pending.map(\.enqueuedAt) == [HealthSyncEngine.fixtureNow])
+                #expect(store.healthState.anchor == HealthChanges.fixtureAnchor)
             }
 
             private var firstSampleId: String { HealthSyncEngineTests.firstSampleId }
@@ -411,7 +410,7 @@ struct HealthSyncEngineTests {
                 try await engine.importChanges()
 
                 #expect(
-                    store.pending.map(\.operation) == [
+                    store.pending.map(\.write) == [
                         .sourceDeletedWeightRecord(
                             recordId: try HealthSyncEngineTests.recordId(
                                 ofSample: HealthSyncEngineTests.firstSampleId)),
@@ -477,7 +476,7 @@ struct HealthSyncEngineTests {
                 try await engine.importChanges()
 
                 #expect(
-                    store.pending.map(\.operation) == [
+                    store.pending.map(\.write) == [
                         .sourceDeletedWeightRecord(
                             recordId: try HealthSyncEngineTests.recordId(
                                 ofSample: HealthSyncEngineTests.secondSampleId))
@@ -502,7 +501,7 @@ struct HealthSyncEngineTests {
                 await #expect(throws: Failure()) {
                     try await engine.importChanges()
                 }
-                #expect(store.appliedHealthImports.isEmpty)
+                #expect(store.saves.isEmpty)
             }
         }
     }

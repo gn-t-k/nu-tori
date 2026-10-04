@@ -26,7 +26,7 @@ extension SyncEngineTests {
                     ageSeconds: 10)
                 store = try .ok(
                     records: [
-                        created.operation.weightRecord, rejectedCreated.operation.weightRecord,
+                        created.write.weightRecord, rejectedCreated.write.weightRecord,
                     ],
                     pendingWrites: [created, rejectedCreated], pendingEntries: [note],
                     recordKinds: [RecordKindMock.ok()])
@@ -58,8 +58,8 @@ extension SyncEngineTests {
                 let result = try await engine.sync()
 
                 #expect(result.rejectedWrites.map(\.writeId) == [rejectedCreated.writeId])
-                #expect(store.records[rejectedCreated.operation.weightRecord.id] == nil)
-                #expect(store.records[created.operation.weightRecord.id] != nil)
+                #expect(store.records[rejectedCreated.write.weightRecord.id] == nil)
+                #expect(store.records[created.write.weightRecord.id] != nil)
             }
         }
 
@@ -150,7 +150,7 @@ extension SyncEngineTests {
     }
 }
 
-extension PendingWrite.Operation {
+extension WeightOrSettingsWrite {
     fileprivate var weightRecord: WeightRecord {
         switch self {
         case .createWeightRecord(let record), .correctWeightRecord(let record):

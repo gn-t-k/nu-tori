@@ -88,7 +88,7 @@ extension AccountSessionTests {
                         enqueuing: PendingWrite(
                             writeId: UUID(),
                             enqueuedAt: .now,
-                            operation: .updateAccountSettings(settings)
+                            write: .updateAccountSettings(settings)
                         )
                     )
                 )

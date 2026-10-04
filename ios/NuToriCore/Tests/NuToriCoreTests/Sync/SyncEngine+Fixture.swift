@@ -47,7 +47,7 @@ extension PendingWrite {
         PendingWrite(
             writeId: UUID(),
             enqueuedAt: SyncEngine.fixtureNow.addingTimeInterval(-ageSeconds),
-            operation: .createWeightRecord(record)
+            write: .createWeightRecord(record)
         )
     }
 
@@ -55,7 +55,7 @@ extension PendingWrite {
         PendingWrite(
             writeId: UUID(),
             enqueuedAt: SyncEngine.fixtureNow,
-            operation: .correctWeightRecord(record)
+            write: .correctWeightRecord(record)
         )
     }
 }

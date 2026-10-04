@@ -18,11 +18,11 @@ public struct AccountSettingsSyncKind: SyncedRecordKind, RecordKindWrites {
     }
 
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        let write = try PendingWrite(entry: entry)
-        guard case .updateAccountSettings(let settings) = write.operation else {
-            throw PendingWrite.InvalidEntryError(kind: entry.kind)
+        let pending = try PendingWrite(entry: entry)
+        guard case .updateAccountSettings(let settings) = pending.write else {
+            throw PendingEntry.InvalidContentError(kind: entry.kind)
         }
-        return Self.syncWrite(writeId: write.writeId, settings: settings)
+        return Self.syncWrite(writeId: pending.writeId, settings: settings)
     }
 
     /// サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い

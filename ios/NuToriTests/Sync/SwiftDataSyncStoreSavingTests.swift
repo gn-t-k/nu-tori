@@ -23,7 +23,7 @@ struct SwiftDataSyncStoreSavingTests {
             write = PendingWrite(
                 writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!,
                 enqueuedAt: Date(timeIntervalSince1970: 1_700_000_000),
-                operation: .updateAccountSettings(settings)
+                write: .updateAccountSettings(settings)
             )
         }
 
@@ -36,13 +36,12 @@ struct SwiftDataSyncStoreSavingTests {
         }
     }
 
-    @Suite("ヘルスケアの取り込みを書いたとき")
+    @Suite("ヘルスケアの取り込みを当てたとき")
     @MainActor
     struct ApplyingHealthImport {
         let store: SwiftDataSyncStore
         let record: WeightRecord
-        let write: PendingWrite
-        let batch: HealthImportBatch
+        let state: HealthSyncState
 
         init() throws {
             store = try SwiftDataSyncStore(inMemory: true)
@@ -54,18 +53,9 @@ struct SwiftDataSyncStoreSavingTests {
                 inputSource: .manual,
                 version: 1
             )
-            write = PendingWrite(
-                writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000d1")!,
-                enqueuedAt: record.instant,
-                operation: .createWeightRecord(record)
-            )
-            batch = HealthImportBatch(
-                records: [record],
-                pendingWrites: [write],
-                state: HealthSyncState(
-                    anchor: HealthAnchor(data: Data([0x01])),
-                    hasWrittenCachedManualRecords: true
-                )
+            state = HealthSyncState(
+                anchor: HealthAnchor(data: Data([0x01])),
+                hasWrittenCachedManualRecords: true
             )
         }
 
@@ -77,11 +67,17 @@ struct SwiftDataSyncStoreSavingTests {
 
         @Test("記録と送り待ちとアンカーが残ること")
         func keepsRecordsPendingWritesAndAnchor() async throws {
-            try await store.applyHealthImport(batch)
+            try await store.apply(
+                WeightRecordSyncing().importing(
+                    [record], sourceDeletedRecordIds: [], enqueuedAt: record.instant,
+                    healthSyncState: state))
 
             #expect(try await store.weightRecords() == [record])
-            #expect(try await store.pendingWritesOldestFirst() == [write])
-            #expect(try await store.healthSyncState() == batch.state)
+            #expect(
+                try await store.pendingWritesOldestFirst().map(\.write) == [
+                    .createWeightRecord(record)
+                ])
+            #expect(try await store.healthSyncState() == state)
         }
     }
 
@@ -120,7 +116,7 @@ struct SwiftDataSyncStoreSavingTests {
                 enqueuing: PendingWrite(
                     writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b5")!,
                     enqueuedAt: kept.instant,
-                    operation: .createWeightRecord(kept)
+                    write: .createWeightRecord(kept)
                 )
             )
             try await store.save(
@@ -128,7 +124,7 @@ struct SwiftDataSyncStoreSavingTests {
                 enqueuing: PendingWrite(
                     writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b6")!,
                     enqueuedAt: removed.instant,
-                    operation: .createWeightRecord(removed)
+                    write: .createWeightRecord(removed)
                 )
             )
         }
@@ -188,7 +184,7 @@ struct SwiftDataSyncStoreSavingTests {
                 enqueuing: PendingWrite(
                     writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b3")!,
                     enqueuedAt: record.instant,
-                    operation: .createWeightRecord(record)
+                    write: .createWeightRecord(record)
                 )
             )
             try await store.save(
@@ -196,7 +192,7 @@ struct SwiftDataSyncStoreSavingTests {
                 enqueuing: PendingWrite(
                     writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b4")!,
                     enqueuedAt: record.instant,
-                    operation: .updateAccountSettings(settings)
+                    write: .updateAccountSettings(settings)
                 )
             )
             try await store.saveSyncState(
@@ -207,10 +203,12 @@ struct SwiftDataSyncStoreSavingTests {
                     startedOn: nil
                 )
             )
-            try await store.saveHealthSyncState(
-                HealthSyncState(
-                    anchor: HealthAnchor(data: Data([0x02])),
-                    hasWrittenCachedManualRecords: true
+            try await store.apply(
+                SyncBoxResult(
+                    healthSyncState: HealthSyncState(
+                        anchor: HealthAnchor(data: Data([0x02])),
+                        hasWrittenCachedManualRecords: true
+                    )
                 )
             )
         }

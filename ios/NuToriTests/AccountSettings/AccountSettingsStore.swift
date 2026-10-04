@@ -20,7 +20,7 @@ struct AccountSettingsStore {
             write = PendingWrite(
                 writeId: AccountSettingsStore.writeId,
                 enqueuedAt: AccountSettingsStore.enqueuedAt,
-                operation: .updateAccountSettings(settings)
+                write: .updateAccountSettings(settings)
             )
         }
 
@@ -49,7 +49,7 @@ struct AccountSettingsStore {
                 enqueuing: PendingWrite(
                     writeId: AccountSettingsStore.writeId,
                     enqueuedAt: AccountSettingsStore.enqueuedAt,
-                    operation: .updateAccountSettings(previous)
+                    write: .updateAccountSettings(previous)
                 )
             )
             arrived = AccountSettings(id: AccountSettingsStore.settingsId, sendsUsageData: true)
@@ -102,7 +102,7 @@ struct AccountSettingsStore {
                 enqueuing: PendingWrite(
                     writeId: AccountSettingsStore.writeId,
                     enqueuedAt: AccountSettingsStore.enqueuedAt,
-                    operation: .updateAccountSettings(settings)
+                    write: .updateAccountSettings(settings)
                 )
             )
         }

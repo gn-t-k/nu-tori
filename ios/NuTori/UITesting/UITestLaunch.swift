@@ -59,8 +59,7 @@
             let photoUploader = UITestMealPhotoUploader()
             let photoRoot = FileManager.default.temporaryDirectory.appending(
                 path: "ui-test-meal-photos-\(UUID().uuidString)")
-            try store.prepareForUITest(
-                state: seededSyncState(), pendingWrites: account.pendingWrites)
+            try store.prepareForUITest(seededResults())
             let behavior = transportBehavior
             return AppRuntime.assemble(
                 AppRuntime.Parts(
@@ -123,6 +122,14 @@
             }
         }
 
+        /// 始める前の同期の状態と、送り待ちに残した記録
+        private func seededResults() throws -> [SyncBoxResult] {
+            try account.pendingRecords.map {
+                try WeightRecordSyncing().saving(
+                    $0, enqueuing: PendingWrite(enqueuedAt: .now, write: .createWeightRecord($0)))
+            } + [SyncBoxResult(syncState: seededSyncState())]
+        }
+
         /// サインイン済みで初回の取得を終えているときだけ、読み込み中を出さない
         private func seededSyncState() -> SyncState? {
             guard account.hasSession, account.hasCompletedInitialPull else { return nil }
@@ -163,23 +170,18 @@
                 }
             }
 
-            fileprivate var pendingWrites: [PendingWrite] {
+            /// 送り待ちに残したまま始める、手で記録した体重
+            fileprivate var pendingRecords: [WeightRecord] {
                 switch self {
                 case .signInAgainWithPendingWrites:
                     [
-                        PendingWrite(
-                            writeId: UUID(),
-                            enqueuedAt: .now,
-                            operation: .createWeightRecord(
-                                WeightRecord(
-                                    id: UUID(),
-                                    kilograms: 72.4,
-                                    instant: .now,
-                                    timeZone: .current,
-                                    inputSource: .manual,
-                                    version: 1
-                                )
-                            )
+                        WeightRecord(
+                            id: UUID(),
+                            kilograms: 72.4,
+                            instant: .now,
+                            timeZone: .current,
+                            inputSource: .manual,
+                            version: 1
                         )
                     ]
                 case .signedOut, .signedIn, .signedInFetching, .signInAgain: []

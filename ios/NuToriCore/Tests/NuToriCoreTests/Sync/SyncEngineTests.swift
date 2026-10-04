@@ -36,7 +36,7 @@ struct SyncEngineTests {
                 #expect(record.inputSource == .manual)
                 #expect(record.version == 1)
                 #expect(record.kilograms == 72.4)
-                #expect(pending.operation == .createWeightRecord(record))
+                #expect(pending.write == .createWeightRecord(record))
                 #expect(pending.enqueuedAt == SyncEngine.fixtureNow)
             }
 
@@ -79,7 +79,7 @@ struct SyncEngineTests {
                 #expect(store.records[original.id] == corrected)
                 let pending = try #require(store.pending.first)
                 #expect(store.pending.count == 1)
-                #expect(pending.operation == .correctWeightRecord(corrected))
+                #expect(pending.write == .correctWeightRecord(corrected))
             }
         }
 
@@ -445,7 +445,7 @@ struct SyncEngineTests {
                         PendingWrite(
                             writeId: UUID(),
                             enqueuedAt: SyncEngine.fixtureNow,
-                            operation: .sourceDeletedWeightRecord(recordId: recordId)
+                            write: .sourceDeletedWeightRecord(recordId: recordId)
                         )
                     ]
                 )

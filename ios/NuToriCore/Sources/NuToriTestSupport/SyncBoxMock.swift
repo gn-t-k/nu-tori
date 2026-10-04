@@ -9,7 +9,7 @@ import Synchronization
 public final class SyncBoxMock<Cache: Sendable>: SyncBox {
     /// 1回の保存
     public enum Save: Sendable, Equatable {
-        /// 送り待ちの置き場への保存
+        /// 送り待ちの置き場への保存（ヘルスケアの同期の進み具合を書く保存も含む）
         case pending(added: Int, removed: Int)
         /// 送り待ちの置き場を空にする保存
         case pendingCleared(count: Int)
@@ -55,9 +55,6 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
     public var appliedSyncStates: [SyncState] { storage.withLock { $0.appliedSyncStates } }
     public var eraseAllCount: Int { storage.withLock { $0.eraseAllCount } }
     public var healthState: HealthSyncState { storage.withLock { $0.healthState } }
-    public var appliedHealthImports: [HealthImportBatch] {
-        storage.withLock { $0.appliedHealthImports }
-    }
     /// ヘルスケアに書いた料理の ID ごとの、書いた版
     public var healthDishWrites: [UUID: Int] { storage.withLock { $0.healthDishWrites } }
 
@@ -80,9 +77,12 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
         try failIfNeeded()
         try failWriteIfNeeded()
         try storage.withLock { storage in
-            // 送り待ちを先に保存し、キャッシュをそのあとに保存する
-            if !result.enqueuing.isEmpty {
+            // 送り待ちと進み具合を先に1つの保存で書き、キャッシュをそのあとに保存する
+            if !result.enqueuing.isEmpty || result.healthSyncState != nil {
                 storage.entries.append(contentsOf: result.enqueuing)
+                if let healthSyncState = result.healthSyncState {
+                    storage.healthState = healthSyncState
+                }
                 storage.saves.append(.pending(added: result.enqueuing.count, removed: 0))
             }
             if let syncState = result.syncState {
@@ -133,7 +133,6 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
         var saves: [Save] = []
         var appliedKindChanges: [KindChanges] = []
         var appliedSyncStates: [SyncState] = []
-        var appliedHealthImports: [HealthImportBatch] = []
         var healthDishWrites: [UUID: Int] = [:]
         var eraseAllCount = 0
     }
@@ -250,25 +249,5 @@ extension SyncBoxMock: HealthSyncStoring where Cache == RecordCacheMock {
     public func healthSyncState() async throws -> HealthSyncState {
         try failIfNeeded()
         return healthState
-    }
-
-    public func saveHealthSyncState(_ state: HealthSyncState) async throws {
-        try failIfNeeded()
-        try failWriteIfNeeded()
-        withStorage { $0.healthState = state }
-    }
-
-    public func applyHealthImport(_ batch: HealthImportBatch) async throws {
-        try failIfNeeded()
-        try failWriteIfNeeded()
-        let entries = try batch.pendingWrites.map { try $0.entry() }
-        for record in batch.records {
-            cache.upsert(record)
-        }
-        withStorage {
-            $0.entries.append(contentsOf: entries)
-            $0.healthState = batch.state
-            $0.appliedHealthImports.append(batch)
-        }
     }
 }

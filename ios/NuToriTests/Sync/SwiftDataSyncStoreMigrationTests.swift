@@ -18,7 +18,7 @@ struct SwiftDataSyncStoreMigrationTests {
     static let write = PendingWrite(
         writeId: UUID(uuidString: "00000000-0000-4000-8000-000000000102")!,
         enqueuedAt: Date(timeIntervalSince1970: 1_700_000_000),
-        operation: .createWeightRecord(record)
+        write: .createWeightRecord(record)
     )
     static let unreadableWriteId = UUID(uuidString: "00000000-0000-4000-8000-000000000104")!
     static let healthState = HealthSyncState(
@@ -280,7 +280,7 @@ struct SwiftDataSyncStoreMigrationTests {
     static let correction = PendingWrite(
         writeId: UUID(uuidString: "00000000-0000-4000-8000-000000000103")!,
         enqueuedAt: Date(timeIntervalSince1970: 1_700_000_100),
-        operation: .correctWeightRecord(
+        write: .correctWeightRecord(
             WeightRecord(
                 id: record.id, kilograms: 69.5, instant: record.instant, timeZone: record.timeZone,
                 inputSource: .manual, version: 2))

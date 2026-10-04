@@ -26,7 +26,7 @@ extension SyncEngineTests {
                 let pending = try #require(store.pending.first)
                 #expect(store.settings == expectedSettings)
                 #expect(store.pending.count == 1)
-                #expect(pending.operation == .updateAccountSettings(expectedSettings))
+                #expect(pending.write == .updateAccountSettings(expectedSettings))
                 #expect(pending.enqueuedAt == SyncEngine.fixtureNow)
             }
         }
@@ -36,7 +36,7 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let expectedSettings: AccountSettings
-            let expectedOperations: [PendingWrite.Operation]
+            let expectedOperations: [WeightOrSettingsWrite]
 
             init() throws {
                 store = try .ok()
@@ -54,7 +54,7 @@ extension SyncEngineTests {
                 try await engine.setSendsUsageData(true)
 
                 #expect(store.settings == expectedSettings)
-                #expect(store.pending.map(\.operation) == expectedOperations)
+                #expect(store.pending.map(\.write) == expectedOperations)
             }
         }
     }
@@ -79,7 +79,7 @@ extension SyncEngineTests {
                         PendingWrite(
                             writeId: UUID(),
                             enqueuedAt: SyncEngine.fixtureNow,
-                            operation: .updateAccountSettings(.fixture(sendsUsageData: false))
+                            write: .updateAccountSettings(.fixture(sendsUsageData: false))
                         )
                     ]
                 )
@@ -113,7 +113,7 @@ extension SyncEngineTests {
                         PendingWrite(
                             writeId: UUID(),
                             enqueuedAt: SyncEngine.fixtureNow,
-                            operation: .updateAccountSettings(.fixture(sendsUsageData: false))
+                            write: .updateAccountSettings(.fixture(sendsUsageData: false))
                         )
                     ]
                 )

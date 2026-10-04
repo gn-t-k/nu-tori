@@ -70,7 +70,7 @@ struct WeightRecordSyncingTests {
         func createsNewRecord() throws {
             let write = PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .createWeightRecord(original))
+                write: .createWeightRecord(original))
 
             let built = try syncing.syncWrite(for: write.entry())
 
@@ -87,7 +87,7 @@ struct WeightRecordSyncingTests {
         func sendsCorrection() throws {
             let write = PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .correctWeightRecord(corrected))
+                write: .correctWeightRecord(corrected))
 
             let built = try syncing.syncWrite(for: write.entry())
 
@@ -103,7 +103,7 @@ struct WeightRecordSyncingTests {
         func sendsSourceDeletion() throws {
             let write = PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .sourceDeletedWeightRecord(recordId: original.id))
+                write: .sourceDeletedWeightRecord(recordId: original.id))
 
             let built = try syncing.syncWrite(for: write.entry())
 
@@ -117,10 +117,10 @@ struct WeightRecordSyncingTests {
         func rejectsAccountSettings() throws {
             let entry = try PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .updateAccountSettings(.fixture(sendsUsageData: true))
+                write: .updateAccountSettings(.fixture(sendsUsageData: true))
             ).entry()
 
-            #expect(throws: PendingWrite.InvalidEntryError(kind: .accountSettings)) {
+            #expect(throws: PendingEntry.InvalidContentError(kind: .accountSettings)) {
                 try syncing.syncWrite(for: entry)
             }
         }
@@ -137,7 +137,7 @@ struct WeightRecordSyncingTests {
                 72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
             entry = try PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .correctWeightRecord(corrected)
+                write: .correctWeightRecord(corrected)
             ).entry()
         }
 
@@ -178,13 +178,63 @@ struct WeightRecordSyncingTests {
         func sourceDeleted() throws {
             let sourceDeleted = try PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .sourceDeletedWeightRecord(recordId: corrected.id)
+                write: .sourceDeletedWeightRecord(recordId: corrected.id)
             ).entry()
 
             let rejection = try syncing.rejection(
                 of: sourceDeleted, reason: .recordNotFound, current: .absent)
 
             #expect(rejection == KindRejection.none)
+        }
+    }
+
+    @Suite("ヘルスケアから取り込んだとき")
+    struct Importing {
+        let syncing = WeightRecordSyncing()
+        let added: WeightRecord
+        let deletedId: UUID
+        let state: HealthSyncState
+        let result: SyncBoxResult
+
+        init() throws {
+            added = try .imported(70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+            deletedId = UUID()
+            state = HealthSyncState(
+                anchor: HealthChanges.fixtureAnchor, hasWrittenCachedManualRecords: true)
+            result = try syncing.importing(
+                [added], sourceDeletedRecordIds: [deletedId],
+                enqueuedAt: SyncEngine.fixtureNow, healthSyncState: state)
+        }
+
+        @Test("作る書き込みと元のサンプルが消えた書き込みを、この順に送り待ちに足すこと")
+        func enqueuesCreateThenSourceDeleted() throws {
+            #expect(
+                try result.enqueuing.map { try PendingWrite(entry: $0).write } == [
+                    .createWeightRecord(added), .sourceDeletedWeightRecord(recordId: deletedId),
+                ])
+            #expect(
+                result.enqueuing.map(\.enqueuedAt) == [
+                    SyncEngine.fixtureNow, SyncEngine.fixtureNow,
+                ])
+            #expect(Set(result.enqueuing.map(\.writeId)).count == 2)
+        }
+
+        @Test("増えた記録だけをキャッシュに当て、進み具合を載せること")
+        func appliesAddedRecordsWithState() {
+            #expect(
+                syncing.current(from: result.kindChanges.flatMap(\.changes)).records == [added])
+            #expect(result.kindChanges.map(\.kind) == [.weightRecord])
+            #expect(result.healthSyncState == state)
+        }
+
+        @Test("増えた記録が無ければ、キャッシュに当てる変更を持たないこと")
+        func hasNoChangesWithoutAddedRecords() throws {
+            let result = try syncing.importing(
+                [], sourceDeletedRecordIds: [deletedId],
+                enqueuedAt: SyncEngine.fixtureNow, healthSyncState: state)
+
+            #expect(result.kindChanges.isEmpty)
+            #expect(result.enqueuing.count == 1)
         }
     }
 }

@@ -1,52 +1,36 @@
 public import Foundation
 
-/// 知らせの送り待ち。送り待ちの置き場には、知らせの種類の名前と、この中身の JSON で入る
-public struct PendingNoticeWrite: Sendable, Equatable {
-    public let writeId: UUID
-    public let enqueuedAt: Date
-    public let write: Write
+/// 知らせの書き込み。直す・消す書き込みは無い。送り待ちの置き場には、知らせの種類の名前と、この中身の JSON で入る
+public enum NoticeWrite: PendingWriteBody {
+    /// 答えていない形の知らせを作る
+    case create(Notice)
+    case respond(noticeId: UUID, response: Notice.Response)
 
-    public init(writeId: UUID, enqueuedAt: Date, write: Write) {
-        self.writeId = writeId
-        self.enqueuedAt = enqueuedAt
-        self.write = write
-    }
-
-    /// 直す・消す書き込みは無い
-    public enum Write: Sendable, Equatable {
-        /// 答えていない形の知らせを作る
-        case create(Notice)
-        case respond(noticeId: UUID, response: Notice.Response)
-
-        /// 書き込みが指す知らせの ID
-        public var noticeId: UUID {
-            switch self {
-            case .create(let notice): notice.id
-            case .respond(let noticeId, _): noticeId
-            }
+    /// 書き込みが指す知らせの ID
+    public var noticeId: UUID {
+        switch self {
+        case .create(let notice): notice.id
+        case .respond(let noticeId, _): noticeId
         }
     }
 
-    public init(entry: PendingEntry) throws {
-        let content: Content
+    public var kindName: RecordKindName { NoticeSyncing.kindName }
+
+    public func content() throws -> Data {
+        try JSONEncoder().encode(Content(self))
+    }
+
+    public init(kind: RecordKindName, content: Data) throws {
+        let stored: Content
         do {
-            content = try JSONDecoder().decode(Content.self, from: entry.content)
+            stored = try JSONDecoder().decode(Content.self, from: content)
         } catch {
-            throw PendingWrite.InvalidEntryError(kind: entry.kind)
+            throw PendingEntry.InvalidContentError(kind: kind)
         }
-        guard let write = content.write() else {
-            throw PendingWrite.InvalidEntryError(kind: entry.kind)
+        guard let write = stored.write() else {
+            throw PendingEntry.InvalidContentError(kind: kind)
         }
-        self.init(writeId: entry.writeId, enqueuedAt: entry.enqueuedAt, write: write)
-    }
-
-    public func entry() throws -> PendingEntry {
-        PendingEntry(
-            writeId: writeId,
-            enqueuedAt: enqueuedAt,
-            kind: NoticeSyncing.kindName,
-            content: try JSONEncoder().encode(Content(write))
-        )
+        self = write
     }
 
     /// 送り待ちに保存する JSON。キーを足すときは、無くても読める形にする（`docs/agents/sync.md`「置き場の約束」）
@@ -54,7 +38,7 @@ public struct PendingNoticeWrite: Sendable, Equatable {
         case create(StoredNotice)
         case respond(noticeId: UUID, response: StoredResponse)
 
-        init(_ write: Write) {
+        init(_ write: NoticeWrite) {
             switch write {
             case .create(let notice):
                 self = .create(StoredNotice(notice))
@@ -63,7 +47,7 @@ public struct PendingNoticeWrite: Sendable, Equatable {
             }
         }
 
-        func write() -> Write? {
+        func write() -> NoticeWrite? {
             switch self {
             case .create(let stored):
                 stored.notice().map { .create($0) }

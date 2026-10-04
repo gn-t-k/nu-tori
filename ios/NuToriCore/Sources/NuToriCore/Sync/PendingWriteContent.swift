@@ -1,6 +1,6 @@
 import Foundation
 
-/// 送り待ちの中身（送り待ちの置き場の版 1 の JSON と同じ形）。今の道の書き込みを持つ。
+/// 送り待ちの中身（送り待ちの置き場の版 1 の JSON と同じ形）。体重記録とアカウントの設定の書き込みを持つ。
 /// 直す書き込みは、以前は直す前の値（`previous`）も JSON に持っていた。今は持たないが、残った送り待ちの JSON にある
 /// `previous` は、デコードのときに読み飛ばす（Codable は知らないキーを無視する）ので、置き場の版を上げずに読める
 enum PendingWriteContent: Codable {
@@ -9,8 +9,8 @@ enum PendingWriteContent: Codable {
     case sourceDeleted(recordId: UUID)
     case updateAccountSettings(id: UUID, sendsUsageData: Bool)
 
-    init(_ operation: PendingWrite.Operation) {
-        switch operation {
+    init(_ write: WeightOrSettingsWrite) {
+        switch write {
         case .createWeightRecord(let record):
             self = .create(Record(record))
         case .correctWeightRecord(let record):
@@ -29,7 +29,7 @@ enum PendingWriteContent: Codable {
         }
     }
 
-    func operation(kind: RecordKindName) throws -> PendingWrite.Operation {
+    func write(kind: RecordKindName) throws -> WeightOrSettingsWrite {
         switch self {
         case .create(let record):
             .createWeightRecord(try record.weightRecord(kind: kind))
@@ -86,7 +86,7 @@ enum PendingWriteContent: Codable {
 
         func weightRecord(kind: RecordKindName) throws -> WeightRecord {
             guard let timeZone = TimeZone(identifier: timeZoneIdentifier) else {
-                throw PendingWrite.InvalidEntryError(kind: kind)
+                throw PendingEntry.InvalidContentError(kind: kind)
             }
             let inputSource: WeightRecord.InputSource =
                 if let imported {

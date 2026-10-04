@@ -1,43 +1,24 @@
 public import Foundation
 
-/// 食事の送り待ち。送り待ちの置き場には、食事の種類の名前と、この中身の JSON で入る
-public struct PendingMealWrite: Sendable, Equatable {
-    public let writeId: UUID
-    public let enqueuedAt: Date
-    public let write: Write
+/// 食事の書き込み。送り待ちの置き場には、食事の種類の名前と、この中身の JSON で入る
+public enum MealWrite: PendingWriteBody {
+    case create(Meal)
+    case delete(mealId: UUID)
 
-    public init(writeId: UUID, enqueuedAt: Date, write: Write) {
-        self.writeId = writeId
-        self.enqueuedAt = enqueuedAt
-        self.write = write
+    public var kindName: RecordKindName { MealSyncing.kindName }
+
+    public func content() throws -> Data {
+        try JSONEncoder().encode(Content(self))
     }
 
-    public enum Write: Sendable, Equatable {
-        case create(Meal)
-        case delete(mealId: UUID)
-    }
-
-    public init(entry: PendingEntry) throws {
-        let content: Content
+    public init(kind: RecordKindName, content: Data) throws {
+        let stored: Content
         do {
-            content = try JSONDecoder().decode(Content.self, from: entry.content)
+            stored = try JSONDecoder().decode(Content.self, from: content)
         } catch {
-            throw PendingWrite.InvalidEntryError(kind: entry.kind)
+            throw PendingEntry.InvalidContentError(kind: kind)
         }
-        self.init(
-            writeId: entry.writeId,
-            enqueuedAt: entry.enqueuedAt,
-            write: try content.write(kind: entry.kind)
-        )
-    }
-
-    public func entry() throws -> PendingEntry {
-        PendingEntry(
-            writeId: writeId,
-            enqueuedAt: enqueuedAt,
-            kind: MealSyncing.kindName,
-            content: try JSONEncoder().encode(Content(write))
-        )
+        self = try stored.write(kind: kind)
     }
 
     /// 送り待ちに保存する JSON。キーを足すときは、無くても読める形にする（`docs/agents/sync.md`「置き場の約束」）
@@ -45,14 +26,14 @@ public struct PendingMealWrite: Sendable, Equatable {
         case create(StoredMeal)
         case delete(mealId: UUID)
 
-        init(_ write: Write) {
+        init(_ write: MealWrite) {
             switch write {
             case .create(let meal): self = .create(StoredMeal(meal))
             case .delete(let mealId): self = .delete(mealId: mealId)
             }
         }
 
-        func write(kind: RecordKindName) throws -> Write {
+        func write(kind: RecordKindName) throws -> MealWrite {
             switch self {
             case .create(let stored): .create(try stored.meal(kind: kind))
             case .delete(let mealId): .delete(mealId: mealId)
@@ -84,7 +65,7 @@ public struct PendingMealWrite: Sendable, Equatable {
             guard let sentTimeZone = TimeZone(identifier: sentTimeZoneIdentifier),
                 let mealEntry = MealDraft.Entry(rawValue: entry)
             else {
-                throw PendingWrite.InvalidEntryError(kind: kind)
+                throw PendingEntry.InvalidContentError(kind: kind)
             }
             return Meal(
                 id: id,

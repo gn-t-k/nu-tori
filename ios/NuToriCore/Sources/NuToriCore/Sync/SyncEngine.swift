@@ -44,7 +44,7 @@ public actor SyncEngine {
             try await writingCache {
                 try await store.apply(
                     WeightRecordSyncing().saving(
-                        record, enqueuing: pendingWrite(.createWeightRecord(record))))
+                        record, enqueuing: pending(.createWeightRecord(record))))
             }
             return record
         case .correct(let record):
@@ -55,7 +55,7 @@ public actor SyncEngine {
                 try await store.apply(
                     WeightRecordSyncing().saving(
                         record,
-                        enqueuing: pendingWrite(.correctWeightRecord(record))
+                        enqueuing: pending(.correctWeightRecord(record))
                     )
                 )
             }
@@ -72,7 +72,7 @@ public actor SyncEngine {
         try await mealPhotos.keep(originals, of: meal)
         try await writingCache {
             try await store.apply(
-                MealSyncing().recording(meal, enqueuing: pendingMealWrite(.create(meal))))
+                MealSyncing().recording(meal, enqueuing: pending(.create(meal))))
         }
         return meal
     }
@@ -82,7 +82,7 @@ public actor SyncEngine {
         try await writingCache {
             try await store.apply(
                 MealSyncing().deleting(
-                    mealId: mealId, enqueuing: pendingMealWrite(.delete(mealId: mealId))))
+                    mealId: mealId, enqueuing: pending(.delete(mealId: mealId))))
         }
         await mealPhotos.discardPhotos(ofMeal: mealId)
         try await exportNutritionBestEffort()
@@ -94,7 +94,7 @@ public actor SyncEngine {
         try await writingCache {
             try await store.apply(
                 NoticeSyncing().issuing(
-                    notice, enqueuing: pendingNoticeWrite(.create(notice))))
+                    notice, enqueuing: pending(.create(notice))))
         }
     }
 
@@ -111,7 +111,7 @@ public actor SyncEngine {
             try await store.apply(
                 NoticeSyncing().responding(
                     to: notice, with: response,
-                    enqueuing: pendingNoticeWrite(
+                    enqueuing: pending(
                         .respond(noticeId: noticeId, response: response))))
         }
     }
@@ -155,7 +155,7 @@ public actor SyncEngine {
         try await writingCache {
             try await store.apply(
                 AccountSettingsSyncKind().saving(
-                    settings, enqueuing: pendingWrite(.updateAccountSettings(settings))))
+                    settings, enqueuing: pending(.updateAccountSettings(settings))))
         }
     }
 
@@ -200,16 +200,9 @@ public actor SyncEngine {
     private let nutritionHealthExport: any NutritionHealthExport
     private let mealPhotos: MealPhotos
 
-    private func pendingWrite(_ operation: PendingWrite.Operation) -> PendingWrite {
-        PendingWrite(writeId: UUID(), enqueuedAt: now(), operation: operation)
-    }
-
-    private func pendingMealWrite(_ write: PendingMealWrite.Write) -> PendingMealWrite {
-        PendingMealWrite(writeId: UUID(), enqueuedAt: now(), write: write)
-    }
-
-    private func pendingNoticeWrite(_ write: PendingNoticeWrite.Write) -> PendingNoticeWrite {
-        PendingNoticeWrite(writeId: UUID(), enqueuedAt: now(), write: write)
+    /// 今の時刻で送り待ちに並べる書き込み
+    private func pending<Write>(_ write: Write) -> Pending<Write> {
+        Pending(enqueuedAt: now(), write: write)
     }
 
     private func pushPendingWrites(collectingRejectionsIn rejectedWrites: inout [RejectedWrite])

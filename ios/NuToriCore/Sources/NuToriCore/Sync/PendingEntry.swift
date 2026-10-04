@@ -15,4 +15,13 @@ public struct PendingEntry: Sendable, Equatable {
         self.kind = kind
         self.content = content
     }
+
+    /// 中身を、その種類の書き込みとして読めなかった
+    public struct InvalidContentError: Error, Equatable {
+        public let kind: RecordKindName
+
+        public init(kind: RecordKindName) {
+            self.kind = kind
+        }
+    }
 }

@@ -12,7 +12,7 @@ struct AccountSettingsSyncKindTests {
         init() {
             write = PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .updateAccountSettings(.fixture(sendsUsageData: false)))
+                write: .updateAccountSettings(.fixture(sendsUsageData: false)))
         }
 
         @Test("設定を直す書き込みにし、書き込みの ID を引き継ぐこと")
@@ -32,9 +32,9 @@ struct AccountSettingsSyncKindTests {
         func rejectsOtherKind() throws {
             let weight = PendingWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .sourceDeletedWeightRecord(recordId: UUID()))
+                write: .sourceDeletedWeightRecord(recordId: UUID()))
 
-            #expect(throws: PendingWrite.InvalidEntryError.self) {
+            #expect(throws: PendingEntry.InvalidContentError.self) {
                 try AccountSettingsSyncKind().syncWrite(for: try weight.entry())
             }
         }
