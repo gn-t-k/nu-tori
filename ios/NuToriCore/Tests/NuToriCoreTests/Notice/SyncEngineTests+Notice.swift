@@ -7,31 +7,6 @@ import Testing
 extension SyncEngineTests {
     @Suite("知らせの同期")
     struct NoticeKind {
-        @Suite("知らせを出したとき")
-        struct Issuing {
-            let store: SyncBoxMock<RecordCacheMock>
-            let engine: SyncEngine
-            let notice: Notice
-
-            init() throws {
-                store = try .ok()
-                engine = .fixture(store: store, transport: .sync())
-                notice = try Notice.fixture()
-            }
-
-            @Test("送り待ちに知らせの種類の名前で入れてから、キャッシュに答えていない知らせを置くこと")
-            func enqueuesThenCaches() async throws {
-                try await engine.issueNotice(notice)
-
-                #expect(store.entries.map(\.kind) == [.notice])
-                #expect(
-                    store.saves == [
-                        .pending(added: 1, removed: 0), .cache(changes: 1, afterSequence: nil),
-                    ])
-                #expect(store.cache.notices[notice.id] == notice)
-            }
-        }
-
         @Suite("知らせを出して送ったとき")
         struct IssuingThenSending {
             let store: SyncBoxMock<RecordCacheMock>
@@ -44,7 +19,7 @@ extension SyncEngineTests {
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
                 notice = try Notice.fixture()
-                try await engine.issueNotice(notice)
+                try await store.issue(notice)
             }
 
             @Test("種類・出した時刻・タイムゾーン・対象の日付を、作る書き込みで送ること")
@@ -75,8 +50,8 @@ extension SyncEngineTests {
             }
         }
 
-        @Suite("出した知らせに答えたとき")
-        struct Responding {
+        @Suite("出した知らせに答えて送ったとき")
+        struct RespondingThenSending {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
@@ -87,25 +62,12 @@ extension SyncEngineTests {
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
                 notice = try Notice.fixture()
-                try await engine.issueNotice(notice)
-            }
-
-            @Test("キャッシュの知らせを、今の時刻とタイムゾーンで答えた形にすること")
-            func cachesRespondedNotice() async throws {
-                try await engine.respondToNotice(id: notice.id)
-
-                #expect(
-                    store.cache.notices[notice.id]?.response
-                        == Notice.Response(
-                            respondedAt: SyncEngine.fixtureNow,
-                            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))))
-                #expect(store.entries.map(\.kind) == [.notice, .notice])
+                try await store.issue(notice)
+                try await store.respond(to: notice)
             }
 
             @Test("作る書き込みのあとに、知らせの ID と答えた時刻・タイムゾーンを添えた答える書き込みを送ること")
             func sendsRespondAfterCreate() async throws {
-                try await engine.respondToNotice(id: notice.id)
-
                 _ = try await engine.sync()
 
                 let writes = try #require(transport.pushBodies.first).writes
@@ -115,64 +77,6 @@ extension SyncEngineTests {
                         == .respondNotice(
                             id: try #require(writes.last).id, noticeId: notice.id.uuidString,
                             .init(respondedAt: 1_767_225_600_000, timeZone: "Asia/Tokyo")))
-            }
-
-            @Test("すでに答えた知らせには、答える書き込みを足さないこと")
-            func ignoresSecondResponse() async throws {
-                try await engine.respondToNotice(id: notice.id)
-
-                try await engine.respondToNotice(id: notice.id)
-
-                #expect(store.entries.map(\.kind) == [.notice, .notice])
-            }
-        }
-
-        @Suite("キャッシュに無い知らせに答えようとしたとき")
-        struct RespondingToUnknown {
-            let store: SyncBoxMock<RecordCacheMock>
-            let errorReporting: ErrorReportingSessionMock
-            let engine: SyncEngine
-            let noticeId: UUID
-
-            init() throws {
-                store = try .ok()
-                errorReporting = .ok()
-                engine = .fixture(store: store, transport: .sync(), errorReporting: errorReporting)
-                noticeId = UUID()
-            }
-
-            @Test("知らない記録として投げ、送り待ちに入れず、失敗として送らないこと")
-            func throwsUnknownRecord() async {
-                await #expect(throws: SyncEngine.UnknownRecordError(recordId: noticeId)) {
-                    try await engine.respondToNotice(id: noticeId)
-                }
-                #expect(store.entries.isEmpty)
-                #expect(errorReporting.reported.isEmpty)
-            }
-        }
-
-        @Suite("キャッシュを読めないときに知らせに答えようとしたとき")
-        struct RespondingWithUnreadableCache {
-            struct SampleError: Error {}
-
-            let errorReporting: ErrorReportingSessionMock
-            let engine: SyncEngine
-            let noticeId: UUID
-
-            init() {
-                errorReporting = .ok()
-                engine = .fixture(
-                    store: .error(SampleError()), transport: .sync(), errorReporting: errorReporting
-                )
-                noticeId = UUID()
-            }
-
-            @Test("投げ、キャッシュを読めなかった失敗として1回送ること")
-            func reportsReadFailure() async {
-                await #expect(throws: SampleError.self) {
-                    try await engine.respondToNotice(id: noticeId)
-                }
-                #expect(errorReporting.reported == [.cacheRead])
             }
         }
 
@@ -189,8 +93,8 @@ extension SyncEngineTests {
                     store: store,
                     transport: .sync(
                         rejectedWriteIndexes: [1], currents: [1: .unansweredNotice(notice)]))
-                try await engine.issueNotice(notice)
-                try await engine.respondToNotice(id: notice.id)
+                try await store.issue(notice)
+                try await store.respond(to: notice)
             }
 
             @Test("キャッシュの知らせをサーバーの今の値（答えていない形）に戻し、受け付けなかった行は出さないこと")
@@ -215,7 +119,7 @@ extension SyncEngineTests {
                 engine = .fixture(
                     store: store,
                     transport: .sync(rejectedWriteIndexes: [0], currents: [0: .absent]))
-                try await engine.issueNotice(notice)
+                try await store.issue(notice)
             }
 
             @Test("知らせをキャッシュから外し、受け付けなかった行は出さないこと")
@@ -317,5 +221,28 @@ extension Notice {
             targetDay: CalendarDay(year: 2026, month: 9, day: 22),
             response: nil
         )
+    }
+}
+
+extension SyncBoxMock where Cache == RecordCacheMock {
+    /// 知らせを出した形にする。出すかの判断は、記録忘れの見張りのテストで確かめる
+    fileprivate func issue(_ notice: Notice) async throws {
+        try await apply(
+            NoticeSyncing().issuing(
+                notice,
+                enqueuing: Pending(enqueuedAt: SyncEngine.fixtureNow, write: .create(notice))))
+    }
+
+    /// 知らせに、今（東京）答えた形にする
+    fileprivate func respond(to notice: Notice) async throws {
+        let response = Notice.Response(
+            respondedAt: SyncEngine.fixtureNow,
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))
+        try await apply(
+            NoticeSyncing().responding(
+                to: notice, with: response,
+                enqueuing: Pending(
+                    enqueuedAt: SyncEngine.fixtureNow,
+                    write: .respond(noticeId: notice.id, response: response))))
     }
 }
