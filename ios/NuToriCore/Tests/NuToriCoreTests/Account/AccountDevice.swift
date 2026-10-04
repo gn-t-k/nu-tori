@@ -101,7 +101,7 @@ struct AccountDevice {
         var remaining: [String] = []
         if !syncStore.records.isEmpty { remaining.append("キャッシュの記録") }
         if syncStore.settings != nil { remaining.append("アカウントの設定") }
-        if !syncStore.pendingWeightRecords.isEmpty { remaining.append("送り待ち") }
+        if !syncStore.entries.isEmpty { remaining.append("送り待ち") }
         if syncStore.state != nil { remaining.append("同期の状態") }
         if syncStore.healthState != .initial { remaining.append("ヘルスケアの同期の進み具合") }
         if backgroundTransfers.cancelAndDeleteCount == 0 { remaining.append("バックグラウンドの送信") }

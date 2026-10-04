@@ -487,7 +487,7 @@ struct HealthSyncEngineTests {
 
         @Suite("体重が増え、別のサンプルが消えたとき")
         struct AddedAndDeleted {
-            /// 読むたびに1秒進む時計
+            /// 送り待ちに足した順と、書き込みごとに時刻を取ったことを見分けるため、読むたびに進める
             final class TickingClock: Sendable {
                 func now() -> Date {
                     ticks.withLock { ticks in

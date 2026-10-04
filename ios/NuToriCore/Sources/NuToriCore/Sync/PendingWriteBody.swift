@@ -1,4 +1,4 @@
-public import Foundation
+import Foundation
 
 /// 送り待ちの中身。種類の名前と、送り待ちの置き場に入れる JSON の形（`Stored`）を決める。
 /// JSON への変換と、読めないときのエラーは、ここの既定の実装だけが持つ。
@@ -17,12 +17,12 @@ public protocol PendingWriteBody: Sendable, Equatable {
 }
 
 extension PendingWriteBody {
-    public func content() throws -> Data {
+    func content() throws -> Data {
         try JSONEncoder().encode(stored)
     }
 
-    /// 送り待ちの中身を読む。読めなければ `PendingEntry.InvalidContentError`
-    public init(content: Data) throws {
+    /// 種類の名前は突き合わせないので、外からは種類の名前も見る `Pending.init(entry:)` で読む
+    init(content: Data) throws {
         guard let stored = try? JSONDecoder().decode(Stored.self, from: content),
             let write = Self(stored: stored)
         else {
