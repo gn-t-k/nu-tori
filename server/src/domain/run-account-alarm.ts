@@ -8,7 +8,6 @@ import type { RecordKindStores } from "./record-kind-stores";
 import type { RecordType } from "./record-type";
 import type { LedgerStore } from "./sync-ledger/ledger-store";
 
-// アラーム1回分。推定を進め、写真の控えの消し残しを消し、次に張る時刻を決める。
 // 呼び出し側は、次の時刻に張り、提供元のエラーを Sentry に送り、利用状況を送り、error があれば投げて Cloudflare のアラームのやり直しに任せる
 export const runAccountAlarm = async (
   ledgerStore: LedgerStore<RecordType>,
@@ -34,10 +33,11 @@ export const runAccountAlarm = async (
       deletionError === undefined
         ? computeNextAlarmAt(stores, new Date())
         : computeNextAlarmAtExceptLeftoverPhotos(stores),
-    // 推定が止まったことを、消し直しの失敗より先に報告する。止まった試みは結果の無いまま数える
+    // 推定が止まったことを、消し直しの失敗より先に報告する
     error: advanced.stoppedError ?? deletionError,
     providerErrors: advanced.providerErrors,
     usageEvents: advanced.usageEvents,
+    // 止まった試みは結果の無いまま数える
     attempts: advanced.attempts,
   };
 };

@@ -125,7 +125,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       }
       setUser({ id: accountId });
       const startedAt = Date.now();
-      const alarm = await runAccountAlarm(
+      const ran = await runAccountAlarm(
         createLedgerStore(this.ctx.storage),
         createRecordKindStores(this.ctx.storage),
         {
@@ -134,23 +134,23 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
           armAlarm: () => this.armAlarm(),
         },
       );
-      await this.setAlarm(alarm.nextAlarmAt);
-      for (const providerError of alarm.providerErrors) {
+      await this.setAlarm(ran.nextAlarmAt);
+      for (const providerError of ran.providerErrors) {
         captureException(providerError);
       }
-      await sendUsageEvents(this.env, accountId, alarm.usageEvents);
+      await sendUsageEvents(this.env, accountId, ran.usageEvents);
       console.log({
         accountId,
         route: "alarm",
-        error: alarm.error instanceof Error ? alarm.error.name : undefined,
+        error: ran.error instanceof Error ? ran.error.name : undefined,
         failedStage:
-          alarm.error instanceof Error && "stage" in alarm.error ? alarm.error.stage : undefined,
-        estimationAttempts: alarm.attempts,
+          ran.error instanceof Error && "stage" in ran.error ? ran.error.stage : undefined,
+        estimationAttempts: ran.attempts,
         durationMs: Date.now() - startedAt,
       });
       // Sentry に届け、Cloudflare のアラームのやり直しに任せる
-      if (alarm.error !== undefined) {
-        throw alarm.error;
+      if (ran.error !== undefined) {
+        throw ran.error;
       }
     }
 
