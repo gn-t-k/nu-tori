@@ -37,7 +37,6 @@ export const runAccountAlarm = async (
     error: advanced.stoppedError ?? deletionError,
     providerErrors: advanced.providerErrors,
     usageEvents: advanced.usageEvents,
-    // 止まった試みは結果の無いまま数える
     attempts: advanced.attempts,
   };
 };
