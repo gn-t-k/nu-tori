@@ -1,7 +1,6 @@
 import type { CurrentRecord } from "../current-record";
 import type { RecordKind } from "../record-kind";
-
-export const testFollowerRecordId = "test_follower";
+import { testFollowerRecordId } from "./test-follower-record-id";
 
 // 帳簿のテスト用の、テスト用の記録から計算する種類。元の書き込みを当てた回数を値に持つ
 export const createTestFollowerKind = (

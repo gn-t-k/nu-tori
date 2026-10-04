@@ -77,7 +77,6 @@ export const createSyncLedger = <
           store.insertRecordChange({ ...added, writeId: undefined });
         }
         if (decision.outcome.result === "applied") {
-          // 計算する種類は、登録簿の順に呼ぶ
           for (const follower of kinds) {
             if (follower.follows?.source !== owner.name) {
               continue;

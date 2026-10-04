@@ -5,7 +5,8 @@ import { createMemoryLedgerStore } from "./testing/create-memory-ledger-store";
 import { createMemoryTestChildStore } from "./testing/create-memory-test-child-store";
 import { createMemoryTestRecordStore } from "./testing/create-memory-test-record-store";
 import { createTestChildKind, type TestChildStore } from "./testing/test-child-kind";
-import { createTestFollowerKind, testFollowerRecordId } from "./testing/test-follower-kind";
+import { createTestFollowerKind } from "./testing/test-follower-kind";
+import { testFollowerRecordId } from "./testing/test-follower-record-id";
 import { createTestRecordKind, type TestRecordWrite } from "./testing/test-record-kind";
 
 type OtherWrite = { id: string; type: "other_write" };
