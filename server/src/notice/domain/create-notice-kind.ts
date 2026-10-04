@@ -24,6 +24,7 @@ export const createNoticeKind = (
         )
         .exhaustive(),
   },
+  follows: undefined,
   deliversAbsence: false,
   readCurrent: (recordId): CurrentRecord<Notice> => {
     const notice = store.find(recordId);

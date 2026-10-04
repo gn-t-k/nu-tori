@@ -20,7 +20,7 @@ export const createSyncLedger = <
   TValue,
 >(
   store: LedgerStore<TRecordType>,
-  kinds: readonly RecordKind<TKindName, TWrite, TValue, TKindName>[],
+  kinds: readonly RecordKind<TKindName, TWrite, TValue, TKindName, TKindName>[],
 ) => {
   const changesPerPull = 500;
 
@@ -64,7 +64,8 @@ export const createSyncLedger = <
           recordId: decision.recordId,
           outcome: decision.outcome,
         });
-        decision.commit(WriteReceiptId.issue(write.id));
+        const receiptId = WriteReceiptId.issue(write.id);
+        decision.commit(receiptId);
         if (decision.changedRecordId !== undefined) {
           store.insertRecordChange({
             recordType: owner.name,
@@ -74,6 +75,16 @@ export const createSyncLedger = <
         }
         for (const added of decision.addedChanges) {
           store.insertRecordChange({ ...added, writeId: undefined });
+        }
+        if (decision.outcome.result === "applied") {
+          for (const follower of kinds) {
+            if (follower.follows?.source !== owner.name) {
+              continue;
+            }
+            for (const recordId of follower.follows.afterSourceApplied(receiptId)) {
+              store.insertRecordChange({ recordType: follower.name, recordId, writeId: undefined });
+            }
+          }
         }
         usageEvents.push(...decision.usageEvents);
         if (decision.outcome.result === "rejected") {

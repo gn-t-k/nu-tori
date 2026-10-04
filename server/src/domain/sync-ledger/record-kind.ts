@@ -7,16 +7,19 @@ import type { SyncWriteOutcome } from "../sync-write-outcome";
 import type { UsageEvent } from "../usage-event";
 
 // 記録の種類が帳簿に見せる入口。置き場は種類が閉じ込めて持つ
-// TAddedName は、書き込みが変更を足せるほかの種類の名前。帳簿は登録簿にある種類だけを受け取る
+// TAddedName は、書き込みが変更を足せるほかの種類の名前。TSourceName は、計算の元にするほかの種類の名前。帳簿は登録簿にある種類だけを受け取る
 export type RecordKind<
   TName extends string,
   TWrite extends WriteBase,
   TValue,
   TAddedName extends string = never,
+  TSourceName extends string = never,
 > = {
   name: TName;
   // サーバーだけが書く種類は、端末からの書き込みを宣言しない
   writes: KindWrites<TWrite, TAddedName> | undefined;
+  // ほかの種類の記録から計算する種類だけが宣言する
+  follows: KindFollows<TSourceName> | undefined;
   readCurrent(recordId: string): CurrentRecord<TValue>;
   // 記録が無くなったこと（absent）も変更として届けるか。削除の印を持たず、ほかの記録から計算する種類（体重の傾向）だけが届ける。
   // 届けない種類では、変更の並びが指す記録も削除の印も無いのは不具合なので、取りに行くときに投げる
@@ -28,6 +31,13 @@ export type KindWrites<TWrite extends WriteBase, TAddedName extends string = nev
   isWrite(write: WriteBase): write is TWrite;
   // 受け付けるかを決める。読むだけで、書かない
   decide(write: TWrite): WriteDecision<TAddedName>;
+};
+
+// ほかの種類の記録から計算する種類が宣言するもの。元の種類は、計算する種類を知らない
+export type KindFollows<TSourceName extends string> = {
+  source: TSourceName;
+  // 帳簿が、元の種類の書き込みを当てて行を書いたあとに、同じトランザクションの中で呼ぶ。書いたあとの記録を読み、自分の行を書き、変えた記録の ID を返す。帳簿は、元の書き込みの変更のあとに、控えと結ばずに並びに載せる
+  afterSourceApplied: (receiptId: WriteReceiptId) => readonly string[];
 };
 
 export type WriteDecision<TAddedName extends string = never> = {
