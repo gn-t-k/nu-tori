@@ -8,7 +8,7 @@ export const usualWeighingTimeRecordSchema = z
       example: 435,
     }),
   })
-  .openapi("UsualWeighingTimeRecord", {
+  .openapi({
     description:
       "kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない",
   });

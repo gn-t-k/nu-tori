@@ -1,26 +1,13 @@
-import type { z } from "@hono/zod-openapi";
-import { accountSettingsWriteSchemas } from "../../account-settings/http/account-settings-write-schemas";
-import type { RecordType } from "../../domain/record-type";
-import { mealWriteSchemas } from "../../meal/http/meal-write-schemas";
-import { noticeWriteSchemas } from "../../notice/http/notice-write-schemas";
-import { weightRecordWriteSchemas } from "../../weight-record/http/weight-record-write-schemas";
+import { httpRecordKinds } from "./http-record-kinds";
 
-// 種類ごとの書き込みのスキーマ。RecordType をキーにするので、種類を足して行を足し忘れるとコンパイルが落ちる。
-// 種類ごとの型を保つため、各行は as const の並び
-const writeSchemasByRecordType = {
-  account_settings: accountSettingsWriteSchemas,
-  dish: [],
-  ingredient: [],
-  meal: mealWriteSchemas,
-  meal_estimation_status: [],
-  notice: noticeWriteSchemas,
-  usual_weighing_time: [],
-  weight_record: weightRecordWriteSchemas,
-  weight_trend: [],
-} as const satisfies { [K in RecordType]: readonly z.ZodType[] };
+type RegisteredWriteSchema = NonNullable<
+  (typeof httpRecordKinds)[keyof typeof httpRecordKinds]["writes"]
+>["schemas"][number];
 
-// z.discriminatedUnion に渡す並び（表から導く）。先頭の1つを分けるのは、型を空でない並びにするため
-const [first, ...rest] = Object.values(writeSchemasByRecordType).flat();
+// z.discriminatedUnion に渡す並び（登録簿から導く）。並びの順は登録簿の順。先頭の1つを分けるのは、型を空でない並びにするため
+const [first, ...rest] = Object.values(httpRecordKinds).flatMap(
+  (kind): readonly RegisteredWriteSchema[] => kind.writes?.schemas ?? [],
+);
 if (first === undefined) {
   throw new Error("書き込みのスキーマが1つも登録されていない");
 }

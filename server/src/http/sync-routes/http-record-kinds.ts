@@ -10,8 +10,9 @@ import { weightRecordHttpKind } from "../../weight-record/http/weight-record-htt
 import { weightTrendHttpKind } from "../../weight-trend/http/weight-trend-http-kind";
 import type { HttpRecordKind } from "./http-record-kind";
 
-// 受け口から見た種類の登録簿。RecordType をキーにするので、種類を足して行を足し忘れるとコンパイルが落ちる
-export const httpRecordKinds: { [K in RecordType]: HttpRecordKind } = {
+// 受け口から見た種類の登録簿。RecordType をキーにするので、種類を足して行を足し忘れるとコンパイルが落ちる。
+// 書き込みのスキーマの型を保つため、注釈でなく satisfies で確かめる
+export const httpRecordKinds = {
   account_settings: accountSettingsHttpKind,
   dish: dishHttpKind,
   ingredient: ingredientHttpKind,
@@ -21,4 +22,4 @@ export const httpRecordKinds: { [K in RecordType]: HttpRecordKind } = {
   usual_weighing_time: usualWeighingTimeHttpKind,
   weight_record: weightRecordHttpKind,
   weight_trend: weightTrendHttpKind,
-};
+} as const satisfies { [K in RecordType]: HttpRecordKind };

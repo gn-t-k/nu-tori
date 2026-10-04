@@ -15,7 +15,7 @@ export const weightTrendRecordSchema = z
           "始まり（最初の体重記録の日）から最後の体重記録の日まで、1日ずつ日の順に並ぶ。取りに行くたびに並び全体が届くので、端末はキャッシュを置き換える",
       }),
   })
-  .openapi("WeightTrendRecord", {
+  .openapi({
     description:
       "kind が weight_trend の変更の record。recordId は weight_trend の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く",
   });

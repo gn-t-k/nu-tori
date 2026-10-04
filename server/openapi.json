@@ -27,6 +27,226 @@
         ],
         "description": "サーバーが同期で扱う記録の種類の名前。応答の kind を解くのには使わない（知らない種類を読み飛ばすため、応答では文字列で持つ）"
       },
+      "AccountSettingsRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sendsUsageData": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "sendsUsageData"
+        ],
+        "description": "kind が account_settings の変更の record。アカウントに1つで、削除の印は無い"
+      },
+      "DishRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "mealId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "positionInMeal": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "mealId",
+          "name",
+          "quantity",
+          "unit",
+          "positionInMeal",
+          "version"
+        ],
+        "description": "kind が dish の変更の record。消えたら kind が dish_deletion で record が空の変更が届く"
+      },
+      "IngredientRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "dishId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "edibleGramsPerUnit": {
+            "type": "number"
+          },
+          "positionInDish": {
+            "type": "integer"
+          },
+          "nutrientSource": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "nutrition_label"
+                    ]
+                  },
+                  "labelBasisGrams": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "type",
+                  "labelBasisGrams"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "food_composition"
+                    ]
+                  },
+                  "foodNumber": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "foodNumber"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "estimated"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
+            ]
+          },
+          "nutrients": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "項目の名前は shared/nutrients.json。不明の項目はキーを持たない"
+          }
+        },
+        "required": [
+          "id",
+          "dishId",
+          "name",
+          "quantity",
+          "unit",
+          "edibleGramsPerUnit",
+          "positionInDish",
+          "nutrientSource",
+          "nutrients"
+        ],
+        "description": "kind が ingredient の変更の record。消えたら kind が ingredient_deletion で record が空の変更が届く"
+      },
+      "MealRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "eatenAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "eatenAtUtcOffsetSeconds": {
+            "type": "integer"
+          },
+          "sentAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "sentTimeZone": {
+            "type": "string",
+            "example": "Asia/Tokyo"
+          },
+          "entryMethod": {
+            "type": "string",
+            "example": "captured"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id"
+              ]
+            },
+            "description": "写真の並び順"
+          }
+        },
+        "required": [
+          "id",
+          "eatenAt",
+          "eatenAtUtcOffsetSeconds",
+          "sentAt",
+          "sentTimeZone",
+          "entryMethod",
+          "photos"
+        ],
+        "description": "kind が meal の変更の record。消えたら kind が meal_deletion で record が空の変更が届く"
+      },
+      "MealEstimationStatusRecord": {
+        "type": "object",
+        "properties": {
+          "mealId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "example": "estimating"
+          }
+        },
+        "required": [
+          "mealId",
+          "status"
+        ],
+        "description": "kind が meal_estimation_status の変更の record。recordId は食事の ID。食事が消えたら kind が meal_estimation_status_deletion で record が空の変更が届く"
+      },
       "NoticeRecord": {
         "type": "object",
         "properties": {
@@ -91,6 +311,71 @@
           "minuteOfDay"
         ],
         "description": "kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない"
+      },
+      "WeightRecordRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "weightKg": {
+            "type": "number"
+          },
+          "measuredAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Asia/Tokyo"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "imported": {
+            "type": "object",
+            "properties": {
+              "sourceAppName": {
+                "type": "string"
+              },
+              "sourceBundleId": {
+                "type": "string"
+              },
+              "healthkitSampleUuid": {
+                "type": "string"
+              },
+              "bodyFat": {
+                "type": "object",
+                "properties": {
+                  "percentage": {
+                    "type": "number"
+                  },
+                  "healthkitSampleUuid": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "percentage",
+                  "healthkitSampleUuid"
+                ]
+              }
+            },
+            "required": [
+              "sourceAppName",
+              "sourceBundleId",
+              "healthkitSampleUuid"
+            ],
+            "description": "ヘルスケアから取り込んだ記録だけに付く"
+          }
+        },
+        "required": [
+          "id",
+          "weightKg",
+          "measuredAt",
+          "timeZone",
+          "version"
+        ],
+        "description": "kind が weight_record の変更の record。消えたら kind が weight_record_deletion で record が空の変更が届く"
       },
       "WeightTrendRecord": {
         "type": "object",
