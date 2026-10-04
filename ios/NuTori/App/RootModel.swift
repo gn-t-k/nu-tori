@@ -287,7 +287,8 @@ final class RootModel {
         case .signIn:
             // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
             discardRejectedLines()
-            // サインアウトとアカウントの削除で、予約した通知と通知センターに残った通知を外す
+            // サインアウトとアカウントの削除で、予約した通知と通知センターに残った通知を外し、前の時刻で待たない
+            recordSync.stopWaitingForNoticeTime()
             Task { [missedWeightRecordWatch] in await missedWeightRecordWatch.removeAll() }
         case .loadingTimeline, .timeline:
             break

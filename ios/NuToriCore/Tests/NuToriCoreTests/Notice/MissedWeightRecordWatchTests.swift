@@ -48,9 +48,9 @@ struct MissedWeightRecordWatchTests {
 
             @Test("今日の知らせを、通知の時刻に出したものとして作り、送り待ちに積んでからキャッシュに置くこと")
             func issuesTodayNotice() async throws {
-                let outcome = await watch.refresh(after: .reminderTapped)
+                let enqueued = await watch.refresh(after: .reminderTapped)
 
-                #expect(outcome.enqueuedWrites)
+                #expect(enqueued)
                 #expect(store.entries.map(\.kind) == [.notice])
                 #expect(
                     store.saves == [
@@ -71,10 +71,10 @@ struct MissedWeightRecordWatchTests {
 
             @Test("次に知らせを出すかを決める時刻として、明日の通知の時刻を返すこと")
             func returnsTomorrowNoticeTime() async throws {
-                let outcome = await watch.refresh(after: .reminderTapped)
+                await watch.refresh(after: .reminderTapped)
 
                 #expect(
-                    outcome.nextNoticeTime
+                    await watch.nextNoticeTime()
                         == (try Date("2026-09-23T08:00:00+09:00", strategy: .iso8601)))
             }
         }
@@ -93,9 +93,9 @@ struct MissedWeightRecordWatchTests {
 
             @Test("もう一度決めても、知らせを足さないこと")
             func issuesOnce() async {
-                let outcome = await watch.refresh(after: .synced)
+                let enqueued = await watch.refresh(after: .synced)
 
-                #expect(!outcome.enqueuedWrites)
+                #expect(!enqueued)
                 #expect(store.entries.map(\.kind) == [.notice])
             }
         }
@@ -137,9 +137,9 @@ struct MissedWeightRecordWatchTests {
 
             @Test("記録がそろっていないので、知らせを出さないこと")
             func issuesNothing() async {
-                let outcome = await watch.refresh(after: .reminderTapped)
+                let enqueued = await watch.refresh(after: .reminderTapped)
 
-                #expect(!outcome.enqueuedWrites)
+                #expect(!enqueued)
                 #expect(store.entries.isEmpty)
                 #expect(store.cache.notices.isEmpty)
             }
@@ -169,9 +169,9 @@ struct MissedWeightRecordWatchTests {
 
             @Test("知らせを今の時刻とタイムゾーンで答えた形にし、答える書き込みを送り待ちに積むこと")
             func respondsToNotice() async throws {
-                let outcome = await watch.refresh(after: .synced)
+                let enqueued = await watch.refresh(after: .synced)
 
-                #expect(outcome.enqueuedWrites)
+                #expect(enqueued)
                 #expect(store.entries.map(\.kind) == [.notice, .notice])
                 #expect(
                     store.cache.notices[MissedWeightRecordWatchTests.id(22)]?.response
@@ -199,9 +199,9 @@ struct MissedWeightRecordWatchTests {
 
             @Test("もう一度決めても、答える書き込みを足さないこと")
             func respondsOnce() async {
-                let outcome = await watch.refresh(after: .synced)
+                let enqueued = await watch.refresh(after: .synced)
 
-                #expect(!outcome.enqueuedWrites)
+                #expect(!enqueued)
                 #expect(store.entries.map(\.kind) == [.notice, .notice])
             }
         }
@@ -222,9 +222,9 @@ struct MissedWeightRecordWatchTests {
 
             @Test("知らせを作らないこと")
             func issuesNothing() async {
-                let outcome = await watch.refresh(after: .weightEntryOpening)
+                let enqueued = await watch.refresh(after: .weightEntryOpening)
 
-                #expect(!outcome.enqueuedWrites)
+                #expect(!enqueued)
                 #expect(store.entries.isEmpty)
                 #expect(store.cache.notices.isEmpty)
             }
@@ -247,9 +247,9 @@ struct MissedWeightRecordWatchTests {
 
             @Test("知らせを答えた形にし、答える書き込みを送り待ちに積むこと")
             func respondsToNotice() async {
-                let outcome = await watch.refresh(after: .weightEntryOpening)
+                let enqueued = await watch.refresh(after: .weightEntryOpening)
 
-                #expect(outcome.enqueuedWrites)
+                #expect(enqueued)
                 #expect(store.entries.map(\.kind) == [.notice, .notice])
                 #expect(store.cache.notices[MissedWeightRecordWatchTests.id(22)]?.response != nil)
             }
@@ -275,17 +275,17 @@ struct MissedWeightRecordWatchTests {
 
             @Test("時計が変わっても、答える書き込みを積まないこと")
             func clockChangedDoesNotRespond() async {
-                let outcome = await watch.refresh(after: .clockChanged)
+                let enqueued = await watch.refresh(after: .clockChanged)
 
-                #expect(!outcome.enqueuedWrites)
+                #expect(!enqueued)
                 #expect(store.entries.map(\.kind) == [.notice])
             }
 
             @Test("ヘルスケアから取り込んでも、答える書き込みを積まないこと")
             func healthImportedDoesNotRespond() async {
-                let outcome = await watch.refresh(after: .healthImported)
+                let enqueued = await watch.refresh(after: .healthImported)
 
-                #expect(!outcome.enqueuedWrites)
+                #expect(!enqueued)
                 #expect(store.entries.map(\.kind) == [.notice])
             }
         }
@@ -326,10 +326,10 @@ struct MissedWeightRecordWatchTests {
 
             @Test("次に知らせを出すかを決める時刻として、今日の通知の時刻を返すこと")
             func returnsTodayNoticeTime() async throws {
-                let outcome = await watch.refresh(after: .clockChanged)
+                await watch.refresh(after: .clockChanged)
 
                 #expect(
-                    outcome.nextNoticeTime
+                    await watch.nextNoticeTime()
                         == (try Date("2026-09-22T08:00:00+09:00", strategy: .iso8601)))
             }
         }
@@ -380,9 +380,9 @@ struct MissedWeightRecordWatchTests {
 
             @Test("次に知らせを出すかを決める時刻は返すこと")
             func returnsNoticeTime() async {
-                let outcome = await watch.refresh(after: .clockChanged)
+                await watch.refresh(after: .clockChanged)
 
-                #expect(outcome.nextNoticeTime != nil)
+                #expect(await watch.nextNoticeTime() != nil)
             }
         }
 
@@ -425,10 +425,10 @@ struct MissedWeightRecordWatchTests {
 
         @Test("積まず、次の時刻も返さないこと")
         func decidesNothing() async {
-            let outcome = await watch.refresh(after: .reminderTapped)
+            let enqueued = await watch.refresh(after: .reminderTapped)
 
-            #expect(!outcome.enqueuedWrites)
-            #expect(outcome.nextNoticeTime == nil)
+            #expect(!enqueued)
+            #expect(await watch.nextNoticeTime() == nil)
         }
 
         @Test("キャッシュを読めなかった失敗として1回送ること")
@@ -466,6 +466,25 @@ struct MissedWeightRecordWatchTests {
 
             #expect(center.scheduled.isEmpty)
             #expect(center.delivered.isEmpty)
+        }
+
+        @Suite("前に次の時刻を決めていたとき")
+        struct AfterDecidingNoticeTime {
+            let watch: MissedWeightRecordWatch
+
+            init() async throws {
+                watch = try MissedWeightRecordWatchTests.watch(
+                    store: SyncBoxMock<RecordCacheMock>.ok(), now: "2026-09-22T07:00:00+09:00")
+                await watch.refresh(after: .clockChanged)
+                try #require(await watch.nextNoticeTime() != nil)
+            }
+
+            @Test("サインアウトしたあとに前の時刻で待たないよう、次の時刻を忘れること")
+            func forgetsNoticeTime() async {
+                await watch.removeAll()
+
+                #expect(await watch.nextNoticeTime() == nil)
+            }
         }
     }
 
