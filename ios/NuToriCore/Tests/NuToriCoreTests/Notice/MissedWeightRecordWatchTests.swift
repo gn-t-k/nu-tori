@@ -273,7 +273,7 @@ struct MissedWeightRecordWatchTests {
                         72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
             }
 
-            @Test("時計が変わっても、答えず置き直すだけにすること")
+            @Test("時計が変わっても、答える書き込みを積まないこと")
             func clockChangedDoesNotRespond() async {
                 let outcome = await watch.refresh(after: .clockChanged)
 
@@ -281,7 +281,7 @@ struct MissedWeightRecordWatchTests {
                 #expect(store.entries.map(\.kind) == [.notice])
             }
 
-            @Test("ヘルスケアから取り込んでも、答えず置き直すだけにすること")
+            @Test("ヘルスケアから取り込んでも、答える書き込みを積まないこと")
             func healthImportedDoesNotRespond() async {
                 let outcome = await watch.refresh(after: .healthImported)
 

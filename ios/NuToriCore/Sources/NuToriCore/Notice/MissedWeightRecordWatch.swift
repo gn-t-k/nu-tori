@@ -76,7 +76,7 @@ public actor MissedWeightRecordWatch {
         }
         guard granted else { return .notGranted }
         // 許可を求めるのは体重を記録した直後で、知らせは記録したときにもう決めている
-        _ = await inOrder { await $0.decideAndReschedule(.none) }
+        _ = await inOrder { await $0.decideAndReschedule(.rescheduleOnly) }
         return .granted
     }
 
@@ -99,8 +99,7 @@ public actor MissedWeightRecordWatch {
     fileprivate enum NoticeDecision {
         case issueOrRespond
         case respondOnly
-        /// 通知を置き直すだけにする
-        case none
+        case rescheduleOnly
     }
 
     /// 知らせを決め、通知を置き直す材料
@@ -141,15 +140,14 @@ public actor MissedWeightRecordWatch {
         let timeZone = timeZone()
         let enqueued: Bool
         switch decision {
-        case .issueOrRespond, .respondOnly:
-            enqueued =
-                materials.hasCompletedInitialPull
-                ? await enqueueNoticeWrites(
-                    from: materials, issuing: decision == .issueOrRespond, now: now,
-                    timeZone: timeZone)
-                : false
-        case .none:
+        case _ where !materials.hasCompletedInitialPull, .rescheduleOnly:
             enqueued = false
+        case .issueOrRespond:
+            enqueued = await enqueueNoticeWrites(
+                from: materials, issuing: true, now: now, timeZone: timeZone)
+        case .respondOnly:
+            enqueued = await enqueueNoticeWrites(
+                from: materials, issuing: false, now: now, timeZone: timeZone)
         }
         let plan = MissedWeightRecordReminder.plan(
             usualWeighingTime: materials.usualWeighingTime, now: now, timeZone: timeZone,
@@ -240,7 +238,7 @@ extension MissedWeightRecordWatch.Event {
         case .reminderTapped, .noticeTimeReached, .weightRecorded, .syncStarting, .synced:
             .issueOrRespond
         case .weightEntryOpening: .respondOnly
-        case .clockChanged, .healthImported: .none
+        case .clockChanged, .healthImported: .rescheduleOnly
         }
     }
 }
