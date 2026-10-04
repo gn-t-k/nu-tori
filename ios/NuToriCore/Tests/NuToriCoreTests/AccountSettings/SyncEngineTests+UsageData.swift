@@ -66,11 +66,11 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
-            let expectedSettings: SentWritesBody.AccountSettings
+            let expectedSettings: SyncedAccountSettings
 
             init() throws {
-                expectedSettings = .init(
-                    id: AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId).uuidString,
+                expectedSettings = SyncedAccountSettings(
+                    id: AccountSettings.id(forAccountId: SyncEngine.fixtureAccountId),
                     sendsUsageData: false
                 )
                 store = try .ok(
@@ -87,13 +87,15 @@ extension SyncEngineTests {
                 engine = .fixture(store: store, transport: transport)
             }
 
-            @Test("記録が無くても、update_account_settings の書き込みとして送り、送り待ちを空にすること")
+            @Test("記録が無くても、アカウントの設定を直す書き込みとして送り、送り待ちを空にすること")
             func pushesUpdateWrite() async throws {
                 let result = try await engine.sync()
 
                 let write = try #require(transport.pushBodies.first?.writes.first)
-                #expect(write.type == "update_account_settings")
-                #expect(write.accountSettings == expectedSettings)
+                #expect(
+                    write
+                        == .updateAccountSettings(
+                            writeId: write.writeId, settings: expectedSettings))
                 #expect(store.pendingAccountSettings.isEmpty)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
             }

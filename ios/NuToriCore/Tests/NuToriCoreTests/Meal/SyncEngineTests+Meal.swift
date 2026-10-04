@@ -40,23 +40,13 @@ extension SyncEngineTests {
                 _ = try await engine.sync()
 
                 let writes = try #require(transport.pushBodies.first).writes
+                let write = try #require(writes.first)
                 #expect(
-                    writes.map(\.type) == ["create_meal"])
-                guard case .createMeal(_, let sent) = try #require(writes.first) else {
-                    Issue.record("作る書き込みでない: \(writes)")
-                    return
-                }
-                #expect(
-                    sent
-                        == SentWritesBody.Meal(
-                            id: meal.id.uuidString,
-                            eatenAt: 1_790_046_600_000,
-                            eatenAtUtcOffsetSeconds: 32_400,
-                            sentAt: 1_790_046_660_000,
-                            sentTimeZone: "Asia/Tokyo",
-                            entryMethod: "captured",
-                            photos: [.init(id: photoId.uuidString)]
-                        ))
+                    writes == [
+                        .createMeal(
+                            writeId: write.writeId,
+                            meal: try .lunch(id: meal.id, photoId: photoId))
+                    ])
                 #expect(store.entries.isEmpty)
             }
         }
@@ -107,12 +97,14 @@ extension SyncEngineTests {
             let transport: ClientTransportMock
             let engine: SyncEngine
             let meal: Meal
+            let photoId: UUID
 
             init() async throws {
                 store = try .ok()
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
-                meal = try await engine.recordLunch(photoId: UUID())
+                photoId = UUID()
+                meal = try await engine.recordLunch(photoId: photoId)
                 try await engine.deleteMeal(id: meal.id)
             }
 
@@ -121,11 +113,14 @@ extension SyncEngineTests {
                 _ = try await engine.sync()
 
                 let writes = try #require(transport.pushBodies.first).writes
-                #expect(writes.map(\.type) == ["create_meal", "delete_meal"])
+                try #require(writes.count == 2)
                 #expect(
-                    writes.last
-                        == .deleteMeal(id: try #require(writes.last).id, mealId: meal.id.uuidString)
-                )
+                    writes == [
+                        .createMeal(
+                            writeId: writes[0].writeId,
+                            meal: try .lunch(id: meal.id, photoId: photoId)),
+                        .deleteMeal(writeId: writes[1].writeId, mealId: meal.id),
+                    ])
             }
         }
 
@@ -303,5 +298,20 @@ extension MealDraft {
             takenAt: Date(timeIntervalSince1970: 1_790_046_600),
             sentAt: Date(timeIntervalSince1970: 1_790_046_660),
             deviceTimeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))
+    }
+}
+
+extension SyncedMeal {
+    /// `MealDraft.lunch` で記録した食事を、作る書き込みで送るときの中身
+    fileprivate static func lunch(id: UUID, photoId: UUID) throws -> SyncedMeal {
+        SyncedMeal(
+            id: id,
+            eatenAt: Date(timeIntervalSince1970: 1_790_046_600),
+            eatenUtcOffsetSeconds: 32_400,
+            sentAt: Date(timeIntervalSince1970: 1_790_046_660),
+            sentTimeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+            entryMethod: .captured,
+            photoIds: [photoId]
+        )
     }
 }

@@ -127,8 +127,9 @@ XCTestCase はまとまりを入れ子にできず、クラス名が識別子に
 - 呼び出しを記録する差し替えは class にする。struct は渡した先で写されるので、テスト対象が記録してもテストの手元に残らない
 - 成功と失敗の作り方は、その型の static 関数 `.ok(...)` と `.error(_:)` にする
 - 引数を確かめるテストは、差し替え用の型を Suite のプロパティに持って `@Test` で参照する
-- 複数のテストターゲットが使う差し替えは、`NuToriCore/Sources/NuToriTestSupport/`（テスト用のターゲット。アプリのターゲットは依存しない）に1つずつ置く。今は API のトランスポートの差し替え（`ClientTransportMock`）、送り待ちの箱の差し替え（`SyncBoxMock`。キャッシュは `RecordCacheMock`。登録簿の1行は `WeightRecordKindMock`・`AccountSettingsRecordKindMock`・`MealRecordKindMock`・`MealEstimationStatusRecordKindMock`・`DishRecordKindMock`・`IngredientRecordKindMock`、登録簿は `RecordKindRegistry.ok(extra:)`）、送り待ちを送った本文を読む型（`SentWritesBody`）。同じ差し替えを、テストターゲットごとに作らない
-- `SentWritesBody` は、知らない種類の書き込みを読むと投げて、テストを落とす。書き込みの種類を足したら、`SentWritesBody.Write` に足す
+- 複数のテストターゲットが使う差し替えは、`NuToriCore/Sources/NuToriTestSupport/`（テスト用のターゲット。アプリのターゲットは依存しない）に1つずつ置く。今は API のトランスポートの差し替え（`ClientTransportMock`）、送り待ちの箱の差し替え（`SyncBoxMock`。キャッシュは `RecordCacheMock`。登録簿の1行は `WeightRecordKindMock`・`AccountSettingsRecordKindMock`・`MealRecordKindMock`・`MealEstimationStatusRecordKindMock`・`DishRecordKindMock`・`IngredientRecordKindMock`、登録簿は `RecordKindRegistry.ok(extra:)`）。同じ差し替えを、テストターゲットごとに作らない
+- 端末が送り待ちを送った本文は、`NuToriAPI` の `#if DEBUG` の読み口（`SentSyncWrites`）1つで読む。生成した型で読んで `SyncWrite` と `SyncClientState` に戻すので、線上の名前は生成した型だけが持ち、テストには書かない。書き込みの種類を足したら、読み口の網羅の switch に case を足す（足さないと型検査で落ちる）。偽の同期サーバーと `ClientTransportMock.pushBodies` がこれを使い、同期の働きのテストは `SyncWrite` で比べる
+- `NuToriAPI` のエンコードのテストは、読み口を通さず、生成した型（`@testable` で見える）で読んで線上の値（ミリ秒の整数など）を比べる。送ると読むが同じ取り違えをしたとき、往復させると通ってしまうため
 - UI テストのための差し替え（API、サインイン済みの状態など）は、UI テストがアプリと別のプロセスで動くので、テストターゲットではなくアプリのターゲットに `#if DEBUG` で囲んで置き（API は次の項目の例外）、Release のビルドに入れない。UI テストは起動の値（`launchEnvironment`）で切り替える
 - API の差し替えは、メモリ上の偽の同期サーバー（`FakeSyncServer`。呼び出しを記録する差し替えではないので `Mock` を付けない）1つにする。書き込みを生成した型で読むため、`NuToriAPI` の中に `#if DEBUG` で囲んで置き、振る舞いを `NuToriAPITests` で確かめる。場面は「初めに置く記録と方針」のデータ（`UITestLaunch.syncScenario()`）で書き、場面を足すときは偽のサーバーに分岐を足さない
 

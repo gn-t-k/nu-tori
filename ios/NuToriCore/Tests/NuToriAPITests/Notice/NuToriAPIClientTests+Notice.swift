@@ -66,21 +66,27 @@ extension NuToriAPIClientTests {
 
                 let sent = try #require(transport.requests.first)
                 #expect(
-                    try SentWritesBody(json: sent.body ?? "").writes == [
+                    try PushSyncWritesPayload(sentBody: sent.body).writes == [
                         .createNotice(
-                            id: createWriteId.uuidString,
                             .init(
-                                id: NoticeSync.noticeId,
-                                noticeType: "missed_weight_record",
-                                issuedAt: 1_767_225_600_123,
-                                timeZone: "Asia/Tokyo",
-                                targetOn: "2026-01-01"
-                            )
+                                id: createWriteId.uuidString,
+                                _type: .createNotice,
+                                notice: .init(
+                                    id: NoticeSync.noticeId,
+                                    noticeType: "missed_weight_record",
+                                    issuedAt: 1_767_225_600_123,
+                                    timeZone: "Asia/Tokyo",
+                                    targetOn: "2026-01-01"
+                                ))
                         ),
                         .respondNotice(
-                            id: respondWriteId.uuidString,
-                            noticeId: NoticeSync.noticeId,
-                            .init(respondedAt: 1_767_229_200_000, timeZone: "America/Los_Angeles")
+                            .init(
+                                id: respondWriteId.uuidString,
+                                _type: .respondNotice,
+                                noticeId: NoticeSync.noticeId,
+                                response: .init(
+                                    respondedAt: 1_767_229_200_000,
+                                    timeZone: "America/Los_Angeles"))
                         ),
                     ])
             }

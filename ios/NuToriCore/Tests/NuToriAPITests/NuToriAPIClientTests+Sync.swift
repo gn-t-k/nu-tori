@@ -72,8 +72,8 @@ extension NuToriAPIClientTests {
                 #expect(sent.request.path == "/v1/sync/writes")
                 #expect(sent.request.headerFields[.authorization] == "Bearer session-1")
                 #expect(
-                    try SentWritesBody(json: sent.body ?? "")
-                        == SentWritesBody(
+                    try PushSyncWritesPayload(sentBody: sent.body)
+                        == PushSyncWritesPayload(
                             clientState: .init(
                                 deviceId: "00000000-0000-4000-8000-0000000000D1",
                                 timeZone: "Asia/Tokyo",
@@ -83,21 +83,26 @@ extension NuToriAPIClientTests {
                                 oldestPendingWriteAgeSeconds: 90,
                                 pendingPhotoCount: 0
                             ),
-                            isFinalBatch: true,
                             writes: [
                                 .createWeightRecord(
-                                    id: createWriteId.uuidString,
                                     .init(
-                                        id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
-                                        timeZone: "Asia/Tokyo", version: nil, imported: nil)
+                                        id: createWriteId.uuidString,
+                                        _type: .createWeightRecord,
+                                        weightRecord: .init(
+                                            id: recordId, weightKg: 72.4,
+                                            measuredAt: 1_767_225_600_123, timeZone: "Asia/Tokyo"))
                                 ),
                                 .updateWeightRecord(
-                                    id: updateWriteId.uuidString,
                                     .init(
-                                        id: recordId, weightKg: 72.4, measuredAt: 1_767_225_600_123,
-                                        timeZone: "Asia/Tokyo", version: 2, imported: nil)
+                                        id: updateWriteId.uuidString,
+                                        _type: .updateWeightRecord,
+                                        weightRecord: .init(
+                                            id: recordId, weightKg: 72.4,
+                                            measuredAt: 1_767_225_600_123, timeZone: "Asia/Tokyo",
+                                            version: 2))
                                 ),
-                            ]
+                            ],
+                            isFinalBatch: true
                         ))
             }
         }
@@ -132,17 +137,21 @@ extension NuToriAPIClientTests {
                 )
             }
 
-            @Test("記録の代わりにアカウントの設定を載せた update_account_settings として送ること")
+            @Test("記録の代わりにアカウントの設定を載せた、アカウントの設定を直す書き込みとして送ること")
             func sendsUpdateAccountSettings() async throws {
                 _ = try await client.pushSyncWrites(
                     writes, isFinalBatch: true, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
                 #expect(
-                    try SentWritesBody(json: sent.body ?? "").writes == [
+                    try PushSyncWritesPayload(sentBody: sent.body).writes == [
                         .updateAccountSettings(
-                            id: writeId.uuidString,
-                            .init(id: settingsId.uuidString, sendsUsageData: false)
+                            .init(
+                                id: writeId.uuidString,
+                                _type: .updateAccountSettings,
+                                accountSettings: .init(
+                                    id: settingsId.uuidString, sendsUsageData: false)
+                            )
                         )
                     ])
             }
@@ -191,11 +200,17 @@ extension NuToriAPIClientTests {
                     [write], isFinalBatch: false, clientState: clientState)
 
                 let sent = try #require(transport.requests.first)
-                let weightRecord = try #require(
-                    SentWritesBody(json: sent.body ?? "").writes.first?.weightRecord)
+                guard
+                    case .createWeightRecord(let write) = try PushSyncWritesPayload(
+                        sentBody: sent.body
+                    ).writes.first
+                else {
+                    Issue.record("体重記録を作る書き込みでない")
+                    return
+                }
                 #expect(
-                    weightRecord.imported
-                        == SentWritesBody.Imported(
+                    write.weightRecord.imported
+                        == .init(
                             sourceAppName: "Withings",
                             sourceBundleId: "com.withings.wiScaleNG",
                             healthkitSampleUuid: "00000000-0000-4000-8000-0000000000C1",
@@ -252,10 +267,12 @@ extension NuToriAPIClientTests {
 
                 let sent = try #require(transport.requests.first)
                 #expect(
-                    try SentWritesBody(json: sent.body ?? "").writes == [
+                    try PushSyncWritesPayload(sentBody: sent.body).writes == [
                         .sourceDeletedWeightRecord(
-                            id: writeIds[0].uuidString,
-                            weightRecordId: weightRecordId.uuidString)
+                            .init(
+                                id: writeIds[0].uuidString,
+                                _type: .sourceDeletedWeightRecord,
+                                weightRecordId: weightRecordId.uuidString))
                     ])
             }
 

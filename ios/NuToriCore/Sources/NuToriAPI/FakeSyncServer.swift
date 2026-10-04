@@ -7,7 +7,7 @@
     /// メモリ上の偽の同期サーバー。UI テストのアプリが、サーバーにつながずに使うトランスポート
     ///
     /// 種類ごとの記録と通し番号を持ち、届いた書き込みを当てて、取りに行かれたら前の通し番号より後の変更を返す。
-    /// 場面ごとの違いは、初めに置く記録と方針（`Scenario`）だけで出す。書き込みは生成した型で読む
+    /// 場面ごとの違いは、初めに置く記録と方針（`Scenario`）だけで出す。書き込みは `SentSyncWrites` で読む
     public final class FakeSyncServer: ClientTransport, Sendable {
         /// セッションを始める要求に返すトークン
         public static let sessionToken = "stub-session"
@@ -140,11 +140,9 @@
         private func push(_ body: HTTPBody?) async throws
             -> Operations.PushSyncWrites.Output.Ok.Body.JsonPayload
         {
-            guard let body else { throw MalformedRequestError(reason: "書き込みの本文が無い") }
-            let payload = try JSONDecoder().decode(
-                Operations.PushSyncWrites.Input.Body.JsonPayload.self,
-                from: try await Data(collecting: body, upTo: 1_048_576))
-            let writes = try payload.writes.map(SyncWrite.init)
+            guard let body else { throw MissingBodyError() }
+            let writes = try SentSyncWrites(json: try await Data(collecting: body, upTo: 1_048_576))
+                .writes
             let rejects = try writes.map { write in
                 switch writePolicies[write.recordKey.kind] ?? .apply {
                 case .apply: false
@@ -207,9 +205,7 @@
             return (response, HTTPBody(try JSONEncoder().encode(payload)))
         }
 
-        struct MalformedRequestError: Error {
-            let reason: String
-        }
+        struct MissingBodyError: Error {}
 
         /// 記録の種類と ID の組。削除の印は、消した記録と同じ組に置く
         struct RecordKey: Hashable {

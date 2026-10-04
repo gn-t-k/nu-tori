@@ -219,12 +219,13 @@ struct SyncEngineTests {
 
                 let bodies = try transport.pushBodies
                 let clientState = bodies[0].clientState
-                #expect(clientState.timeZone == "Asia/Tokyo")
+                #expect(clientState.timeZone.identifier == "Asia/Tokyo")
                 #expect(clientState.pendingWriteCount == 3)
-                #expect(clientState.oldestPendingWriteAgeSeconds == 600)
+                #expect(clientState.oldestPendingWriteAge == .seconds(600))
                 #expect(clientState.pendingPhotoCount == 0)
                 #expect(
-                    clientState.deviceId == "00000000-0000-4000-8000-0000000000D1")
+                    clientState.deviceId
+                        == UUID(uuidString: "00000000-0000-4000-8000-0000000000D1"))
             }
 
             @Test("送り切ってから取りに行くこと")
@@ -458,8 +459,10 @@ struct SyncEngineTests {
                 _ = try await engine.sync()
 
                 let write = try #require(transport.pushBodies.first?.writes.first)
-                #expect(write.type == "source_deleted_weight_record")
-                #expect(write.weightRecordId == recordId.uuidString)
+                #expect(
+                    write
+                        == .sourceDeletedWeightRecord(
+                            writeId: write.writeId, weightRecordId: recordId))
             }
 
             @Test("サーバーが受け付けなくても、送り待ちから外して送り直さず、記録は戻さず、結果にも出さないこと")
