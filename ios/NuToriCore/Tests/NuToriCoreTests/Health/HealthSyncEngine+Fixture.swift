@@ -9,14 +9,15 @@ extension HealthSyncEngine {
     static func fixture(
         healthStore: HealthStoreMock,
         store: SyncBoxMock<RecordCacheMock>,
-        errorReporting: ErrorReportingSessionMock = .ok()
+        errorReporting: ErrorReportingSessionMock = .ok(),
+        now: @escaping @Sendable () -> Date = { fixtureNow }
     ) -> HealthSyncEngine {
         HealthSyncEngine(
             healthStore: healthStore,
             store: store,
             ownBundleId: ownBundleId,
             timeZone: { TimeZone(identifier: "Asia/Tokyo")! },
-            now: { fixtureNow },
+            now: now,
             errorReporting: errorReporting
         )
     }

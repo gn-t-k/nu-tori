@@ -8,7 +8,7 @@ public protocol PendingWriteBody: Sendable, Equatable {
     associatedtype Stored: Codable
 
     /// この中身を入れる送り待ちの種類の名前
-    var kindName: RecordKindName { get }
+    static var kindName: RecordKindName { get }
 
     var stored: Stored { get }
 
@@ -22,11 +22,11 @@ extension PendingWriteBody {
     }
 
     /// 送り待ちの中身を読む。読めなければ `PendingEntry.InvalidContentError`
-    public init(kind: RecordKindName, content: Data) throws {
+    public init(content: Data) throws {
         guard let stored = try? JSONDecoder().decode(Stored.self, from: content),
             let write = Self(stored: stored)
         else {
-            throw PendingEntry.InvalidContentError(kind: kind)
+            throw PendingEntry.InvalidContentError(kind: Self.kindName)
         }
         self = write
     }

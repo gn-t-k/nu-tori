@@ -28,7 +28,7 @@ extension SyncEngineTests {
                     records: [
                         created.write.weightRecord, rejectedCreated.write.weightRecord,
                     ],
-                    pendingWrites: [created, rejectedCreated], pendingEntries: [note],
+                    pendingWeightRecordWrites: [created, rejectedCreated], pendingEntries: [note],
                     recordKinds: [RecordKindMock.ok()])
                 transport = .sync(rejectedWriteIndexes: [2], currents: [2: .absent])
                 engine = .fixture(store: store, transport: transport)

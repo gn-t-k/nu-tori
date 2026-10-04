@@ -14,7 +14,7 @@ public enum NoticeWrite: PendingWriteBody {
         }
     }
 
-    public var kindName: RecordKindName { NoticeSyncing.kindName }
+    public static var kindName: RecordKindName { NoticeSyncing.kindName }
 
     public var stored: Stored { Stored(self) }
 

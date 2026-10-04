@@ -7,7 +7,7 @@ public enum WeightRecordWrite: PendingWriteBody {
     /// ヘルスケアで元のサンプルが消えた体重記録。消すかどうかはサーバーが決める
     case sourceDeletedWeightRecord(recordId: UUID)
 
-    public var kindName: RecordKindName { WeightRecordSyncing.kindName }
+    public static var kindName: RecordKindName { WeightRecordSyncing.kindName }
 
     public var stored: PendingWriteContent {
         switch self {

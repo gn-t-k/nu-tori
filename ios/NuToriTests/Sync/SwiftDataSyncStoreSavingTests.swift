@@ -74,7 +74,7 @@ struct SwiftDataSyncStoreSavingTests {
 
             #expect(try await store.weightRecords() == [record])
             #expect(
-                try await store.pendingWritesOldestFirst().map(\.write) == [
+                try await store.pendingWeightRecordWritesOldestFirst().map(\.write) == [
                     .createWeightRecord(record)
                 ])
             #expect(try await store.healthSyncState() == state)

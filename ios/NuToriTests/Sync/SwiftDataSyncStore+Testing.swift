@@ -21,7 +21,7 @@ extension SwiftDataSyncStore {
     }
 
     /// 古い順。送り待ちを体重記録の書き込みとして読む（ほかの種類があると投げる）
-    func pendingWritesOldestFirst() async throws -> [PendingWeightRecordWrite] {
+    func pendingWeightRecordWritesOldestFirst() async throws -> [PendingWeightRecordWrite] {
         try await pendingEntries().map { try PendingWeightRecordWrite(entry: $0) }
     }
 

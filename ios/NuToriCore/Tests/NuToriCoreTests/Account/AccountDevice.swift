@@ -25,7 +25,7 @@ struct AccountDevice {
 
     static func signedIn(
         hasOpenedBefore: Bool = true,
-        pendingWrites: [PendingWeightRecordWrite] = [],
+        pendingWeightRecordWrites: [PendingWeightRecordWrite] = [],
         hasCompletedInitialPull: Bool = true,
         appleCredentials: AppleCredentialCheckerMock = .ok(),
         analytics: (CallLog) -> AnalyticsSessionMock = { .ok(log: $0) },
@@ -39,7 +39,7 @@ struct AccountDevice {
             syncStore: .ok(
                 records: [.manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")],
                 accountSettings: seededSettings,
-                pendingWrites: pendingWrites,
+                pendingWeightRecordWrites: pendingWeightRecordWrites,
                 state: .fixture(
                     afterSequence: 12, hasCompletedInitialPull: hasCompletedInitialPull),
                 healthState: seededHealthState
@@ -55,7 +55,7 @@ struct AccountDevice {
     static func signedOut(
         hasOpenedBefore: Bool = true,
         hasSignInAgainMark: Bool = false,
-        pendingWrites: [PendingWeightRecordWrite] = [],
+        pendingWeightRecordWrites: [PendingWeightRecordWrite] = [],
         log: CallLog = CallLog()
     ) throws -> AccountDevice {
         try AccountDevice(
@@ -67,7 +67,7 @@ struct AccountDevice {
                 hasSignInAgainMark: hasSignInAgainMark,
                 log: log
             ),
-            syncStore: .ok(pendingWrites: pendingWrites),
+            syncStore: .ok(pendingWeightRecordWrites: pendingWeightRecordWrites),
             appleCredentials: .ok(),
             backgroundTransfers: .ok(),
             healthAnchors: .ok(),
@@ -101,7 +101,7 @@ struct AccountDevice {
         var remaining: [String] = []
         if !syncStore.records.isEmpty { remaining.append("キャッシュの記録") }
         if syncStore.settings != nil { remaining.append("アカウントの設定") }
-        if !syncStore.pending.isEmpty { remaining.append("送り待ち") }
+        if !syncStore.pendingWeightRecords.isEmpty { remaining.append("送り待ち") }
         if syncStore.state != nil { remaining.append("同期の状態") }
         if syncStore.healthState != .initial { remaining.append("ヘルスケアの同期の進み具合") }
         if backgroundTransfers.cancelAndDeleteCount == 0 { remaining.append("バックグラウンドの送信") }
@@ -119,7 +119,7 @@ extension AccountDevice {
         #expect(syncStore.eraseAllCount == 0)
         #expect(syncStore.records.count == 1)
         #expect(syncStore.settings == AccountDevice.seededSettings)
-        #expect(syncStore.pending.count == 1)
+        #expect(syncStore.pendingWeightRecords.count == 1)
         #expect(syncStore.healthState == AccountDevice.seededHealthState)
         #expect(keychain.token == "session-1")
         #expect(deviceStore.account == AccountDevice.previousAccount)

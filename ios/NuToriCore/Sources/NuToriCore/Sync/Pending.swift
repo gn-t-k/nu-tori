@@ -13,12 +13,16 @@ public struct Pending<Write: PendingWriteBody>: Sendable, Equatable {
         self.write = write
     }
 
-    /// 送り待ちの中身を読む。読めなければ `PendingEntry.InvalidContentError`
+    /// 送り待ちの中身を読む。ほかの種類の送り待ちと、読めない中身は `PendingEntry.InvalidContentError`
     public init(entry: PendingEntry) throws {
+        // 体重記録とアカウントの設定は JSON の形を分け合うので、中身でなく種類の名前で見分ける
+        guard entry.kind == Write.kindName else {
+            throw PendingEntry.InvalidContentError(kind: entry.kind)
+        }
         self.init(
             writeId: entry.writeId,
             enqueuedAt: entry.enqueuedAt,
-            write: try Write(kind: entry.kind, content: entry.content)
+            write: try Write(content: entry.content)
         )
     }
 
@@ -26,7 +30,7 @@ public struct Pending<Write: PendingWriteBody>: Sendable, Equatable {
         PendingEntry(
             writeId: writeId,
             enqueuedAt: enqueuedAt,
-            kind: write.kindName,
+            kind: Write.kindName,
             content: try write.content()
         )
     }

@@ -5,7 +5,7 @@ public enum MealWrite: PendingWriteBody {
     case create(Meal)
     case delete(mealId: UUID)
 
-    public var kindName: RecordKindName { MealSyncing.kindName }
+    public static var kindName: RecordKindName { MealSyncing.kindName }
 
     public var stored: Stored { Stored(self) }
 

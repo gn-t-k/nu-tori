@@ -74,7 +74,7 @@ public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
 
     /// ヘルスケアから取り込んだときの結果。増えた記録を作る書き込みと、元のサンプルが消えた書き込みを送り待ちに足し、
     /// 増えた記録をキャッシュに当て、進み具合を送り待ちと同じ保存で書く。
-    /// 送り待ちは時刻の順に読むので、書き込みごとに `now` を取り、足した順に読めるようにする
+    /// 送り待ちは時刻の順に読むので、書き込みごとに `now` を取る。時刻が進む限り、足した順に読める
     public func importing(
         _ records: [WeightRecord],
         sourceDeletedRecordIds: [UUID],

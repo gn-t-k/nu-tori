@@ -7,7 +7,7 @@ extension SyncBoxMock where Cache == RecordCacheMock {
     var settings: AccountSettings? { cache.settings }
 
     /// 送り待ちのうち、体重記録の書き込みとして読めたもの
-    var pending: [PendingWeightRecordWrite] {
+    var pendingWeightRecords: [PendingWeightRecordWrite] {
         entries.compactMap { try? PendingWeightRecordWrite(entry: $0) }
     }
 

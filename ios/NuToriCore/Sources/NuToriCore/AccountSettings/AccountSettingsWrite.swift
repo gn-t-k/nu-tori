@@ -3,7 +3,7 @@ public enum AccountSettingsWrite: PendingWriteBody {
     /// 記録が無くても直す書き込みで送る。サーバーが無ければ作る
     case updateAccountSettings(AccountSettings)
 
-    public var kindName: RecordKindName { AccountSettingsSyncKind.kindName }
+    public static var kindName: RecordKindName { AccountSettingsSyncKind.kindName }
 
     public var stored: PendingWriteContent {
         switch self {
