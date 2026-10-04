@@ -14,7 +14,7 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
         todayIdentifier = try Self.todayIdentifier()
         app = .launched(
             account: "signed-in", api: "meal-estimation", healthLatestKilograms: nil,
-            pickedPhotoCount: 1, timeZone: Self.timeZoneIdentifier)
+            pickedPhotoCount: 1, now: Self.now, timeZone: Self.timeZoneIdentifier)
         XCTAssertTrue(app.buttons["composer-photos"].waitForExistence(timeout: 5))
     }
 
@@ -48,6 +48,7 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
         attachScreenshot(of: app, named: "食事を消したタイムライン")
     }
 
+    private static let now = UITestNow.morningBeforeNotice
     private static let timeZoneIdentifier = "Asia/Tokyo"
 
     private var todayRing: XCUIElement {
@@ -78,8 +79,11 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
 
     private static func todayIdentifier() throws -> String {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: timeZoneIdentifier))
-        let parts = calendar.dateComponents([.year, .month, .day], from: .now)
+        let timeZone = try XCTUnwrap(TimeZone(identifier: timeZoneIdentifier))
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents(
+            [.year, .month, .day],
+            from: try now.date(in: timeZone))
         return String(
             format: "%04d-%02d-%02d", try XCTUnwrap(parts.year), try XCTUnwrap(parts.month),
             try XCTUnwrap(parts.day))

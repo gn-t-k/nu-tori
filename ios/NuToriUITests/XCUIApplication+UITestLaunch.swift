@@ -10,6 +10,7 @@ extension XCUIApplication {
         healthWrite: String = "authorized",
         pickedPhotoCount: Int = 0,
         lockoutDefaults: String? = nil,
+        now: UITestNow = .morningBeforeNotice,
         timeZone: String?
     ) -> XCUIApplication {
         let app = XCUIApplication()
@@ -29,6 +30,8 @@ extension XCUIApplication {
         if let lockoutDefaults {
             app.launchEnvironment["UI_TEST_LOCKOUT_DEFAULTS"] = lockoutDefaults
         }
+        // アプリの時計をこの時刻（TZ のタイムゾーンの時計の時刻）で止める
+        app.launchEnvironment["UI_TEST_NOW"] = now.rawValue
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
         }

@@ -7,7 +7,8 @@
             card: sample.card,
             records: sample.records,
             today: .sampleToday,
-            now: { .now },
+            now: DeviceClock.live.now,
+            timeZone: DeviceClock.live.timeZone,
             capture: { _ in },
             onRecord: { _ in }
         )

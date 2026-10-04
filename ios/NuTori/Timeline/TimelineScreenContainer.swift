@@ -5,6 +5,7 @@ import SwiftUI
 
 /// キャッシュの記録と同期の状態、今日の日付を読んで、タイムラインの画面に渡す
 struct TimelineScreenContainer: View {
+    let clock: DeviceClock
     let rejectedLines: [RejectedLine]
     let capture: (ClientUsageEvent) async -> Void
     let reminderLanding: ReminderLanding?
@@ -22,8 +23,9 @@ struct TimelineScreenContainer: View {
             records: cachedRecords.compactMap { $0.weightRecord() },
             weightTrend: CachedWeightTrendDay.weightTrend(of: cachedWeightTrendDays),
             initialPull: initialPull,
-            today: CalendarDay(containing: .now, in: .current),
-            now: { .now },
+            today: clock.today(),
+            now: clock.now,
+            timeZone: clock.timeZone,
             rejectedLines: rejectedLines,
             meals: mealCards,
             notices: cachedNotices.compactMap { $0.notice() },

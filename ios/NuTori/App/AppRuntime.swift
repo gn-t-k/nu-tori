@@ -62,6 +62,8 @@ import SwiftData
         let finishedMealPhotoUploads: AsyncStream<(MealPhotoUpload, MealPhotoUploadResult)>
         /// 記録忘れの通知の置き場（本番は `UNUserNotificationCenter`、UI テストは置かない差し替え）
         let reminderCenter: any MissedWeightRecordReminderCenter
+        /// 今とタイムゾーン（本番は端末の時計、UI テストは起動の値で止めた時計）
+        let clock: DeviceClock
     }
 
     private static func live() throws -> AppRuntime {
@@ -93,7 +95,8 @@ import SwiftData
                 ),
                 mealPhotoUploader: photoUploader,
                 finishedMealPhotoUploads: photoUploader.finishedUploads,
-                reminderCenter: UserNotificationReminderCenter()
+                reminderCenter: UserNotificationReminderCenter(),
+                clock: .live
             ))
     }
 
@@ -102,6 +105,7 @@ import SwiftData
         let keychain = parts.keychain
         let deviceStore = parts.deviceStore
         let observation = parts.observation
+        let clock = parts.clock
         let appBuild = Bundle.main.appBuild
         let appLockout = AppLockout(currentBuild: appBuild, store: parts.appLockoutStore)
         let client = parts.makeClient(
@@ -112,7 +116,8 @@ import SwiftData
             syncStore: store,
             healthStore: parts.healthStore,
             errorReporting: observation.errorReporting,
-            startBackgroundDelivery: parts.startBackgroundDelivery
+            startBackgroundDelivery: parts.startBackgroundDelivery,
+            clock: clock
         )
         let mealPhotos = MealPhotos(
             folders: parts.mealPhotoFolders,
@@ -131,14 +136,14 @@ import SwiftData
             healthAnchors: store,
             analytics: observation.analytics,
             errorReporting: observation.errorReporting,
-            timeZone: { .current },
+            timeZone: clock.timeZone,
             analyticsFlushTimeout: .seconds(3)
         )
         let reminders = MissedWeightRecordReminderScheduler(
             center: parts.reminderCenter,
             cache: store,
-            timeZone: { .current },
-            now: { .now },
+            timeZone: clock.timeZone,
+            now: clock.now,
             errorReporting: observation.errorReporting
         )
         let sync = RecordSync(
@@ -151,7 +156,8 @@ import SwiftData
             signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
             errorReporting: observation.errorReporting,
             mealPhotos: mealPhotos,
-            reminders: reminders
+            reminders: reminders,
+            clock: clock
         )
         let finishedUploads = parts.finishedMealPhotoUploads
         Task {
@@ -165,7 +171,8 @@ import SwiftData
             await sync?.importHealthAndSendPending()
         }
         let model = RootModel(
-            accountSession: session, recordSync: sync, health: health, reminders: reminders)
+            accountSession: session, recordSync: sync, health: health, reminders: reminders,
+            clock: clock)
         let reminderTaps = MissedWeightReminderTapReceiver { [weak model] noticeId in
             Task { await model?.openFromReminder(noticeId: noticeId) }
         }
