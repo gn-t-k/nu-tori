@@ -9,6 +9,7 @@ export const createIngredientKind = (
 ): RecordKind<"ingredient", never, Ingredient> => ({
   name: "ingredient",
   writes: undefined,
+  follows: undefined,
   deliversAbsence: false,
   readCurrent: (ingredientId): CurrentRecord<Ingredient> => {
     const ingredient = store.find(ingredientId);
