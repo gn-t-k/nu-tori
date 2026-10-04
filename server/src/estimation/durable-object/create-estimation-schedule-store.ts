@@ -1,10 +1,8 @@
-import { and, asc, desc, eq, isNull, lte, min } from "drizzle-orm";
+import { and, asc, eq, isNull, lte, min } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { EstimationScheduleStore } from "../domain/estimation-schedule-store";
 import { estimationTables } from "./estimation-tables";
 
-const { syncRequestLogs } = syncLedgerTables;
 const { estimationSchedules, mealEstimationSchedules, estimationDeferrals, estimations } =
   estimationTables;
 
@@ -68,11 +66,4 @@ export const createEstimationScheduleStore = (
       )
       .where(eq(mealEstimationSchedules.mealId, mealId))
       .get()?.dueAt ?? undefined,
-  findLatestTimeZone: () =>
-    db
-      .select({ timeZone: syncRequestLogs.timeZone })
-      .from(syncRequestLogs)
-      .orderBy(desc(syncRequestLogs.receivedAt))
-      .limit(1)
-      .get()?.timeZone,
 });

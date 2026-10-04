@@ -12,6 +12,7 @@ import { createMealStore } from "../meal/durable-object/create-meal-store";
 import { createMealEstimationStatusStore } from "../meal-estimation-status/durable-object/create-meal-estimation-status-store";
 import { createNoticeStore } from "../notice/durable-object/create-notice-store";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
+import { createLatestTimeZoneStore } from "./create-latest-time-zone-store";
 import { createUsualWeighingTimeStore } from "../usual-weighing-time/durable-object/create-usual-weighing-time-store";
 import { createWeightRecordStore } from "../weight-record/durable-object/create-weight-record-store";
 
@@ -31,6 +32,7 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     usualWeighingTime: createUsualWeighingTimeStore(db),
     weightRecord: createWeightRecordStore(db),
     firstSignIn: createFirstSignInStore(db),
+    latestTimeZone: createLatestTimeZoneStore(db),
     mealPhoto: createMealPhotoStore(db),
     estimationSchedule: createEstimationScheduleStore(db),
     estimation: createEstimationStore(db),

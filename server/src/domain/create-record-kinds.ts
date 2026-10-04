@@ -1,6 +1,5 @@
 import { createAccountSettingsKind } from "../account-settings/domain/create-account-settings-kind";
 import { createDishKind } from "../dish/domain/create-dish-kind";
-import { findLatestValidTimeZone } from "../estimation/domain/find-latest-valid-time-zone";
 import { createIngredientKind } from "../ingredient/domain/create-ingredient-kind";
 import { createMealKind } from "../meal/domain/create-meal-kind";
 import { createMealEstimationStatusKind } from "../meal-estimation-status/domain/create-meal-estimation-status-kind";
@@ -8,6 +7,7 @@ import { createNoticeKind } from "../notice/domain/create-notice-kind";
 import { createUsualWeighingTimeKind } from "../usual-weighing-time/domain/create-usual-weighing-time-kind";
 import { createWeightRecordKind } from "../weight-record/domain/create-weight-record-kind";
 import { createWeightTrendKind } from "../weight-trend/domain/create-weight-trend-kind";
+import { findLatestValidTimeZone } from "./find-latest-valid-time-zone";
 import type { RecordKindStores } from "./record-kind-stores";
 import type { RecordKind } from "./sync-ledger/record-kind";
 import type { WriteBase } from "./sync-ledger/write-base";
@@ -25,7 +25,7 @@ export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
     createUsualWeighingTimeKind({
       store: stores.usualWeighingTime,
       weightRecordStore: stores.weightRecord,
-      findLatestTimeZone: () => findLatestValidTimeZone(stores.estimationSchedule),
+      findLatestTimeZone: () => findLatestValidTimeZone(stores.latestTimeZone),
       receivedAt,
     }),
     createWeightRecordKind({
