@@ -129,7 +129,8 @@ XCTestCase はまとまりを入れ子にできず、クラス名が識別子に
 - 引数を確かめるテストは、差し替え用の型を Suite のプロパティに持って `@Test` で参照する
 - 複数のテストターゲットが使う差し替えは、`NuToriCore/Sources/NuToriTestSupport/`（テスト用のターゲット。アプリのターゲットは依存しない）に1つずつ置く。今は API のトランスポートの差し替え（`ClientTransportMock`）、送り待ちの箱の差し替え（`SyncBoxMock`。キャッシュは `RecordCacheMock`。登録簿の1行は `WeightRecordKindMock`・`AccountSettingsRecordKindMock`・`MealRecordKindMock`・`MealEstimationStatusRecordKindMock`・`DishRecordKindMock`・`IngredientRecordKindMock`、登録簿は `RecordKindRegistry.ok(extra:)`）、送り待ちを送った本文を読む型（`SentWritesBody`）。同じ差し替えを、テストターゲットごとに作らない
 - `SentWritesBody` は、知らない種類の書き込みを読むと投げて、テストを落とす。書き込みの種類を足したら、`SentWritesBody.Write` に足す
-- UI テストのための差し替え（API、サインイン済みの状態など）は、UI テストがアプリと別のプロセスで動くので、テストターゲットではなくアプリのターゲットに `#if DEBUG` で囲んで置き、Release のビルドに入れない。UI テストは起動の値（`launchEnvironment`）で切り替える
+- UI テストのための差し替え（API、サインイン済みの状態など）は、UI テストがアプリと別のプロセスで動くので、テストターゲットではなくアプリのターゲットに `#if DEBUG` で囲んで置き（API は次の項目の例外）、Release のビルドに入れない。UI テストは起動の値（`launchEnvironment`）で切り替える
+- API の差し替えは、メモリ上の偽の同期サーバー（`FakeSyncServer`。呼び出しを記録する差し替えではないので `Mock` を付けない）1つにする。書き込みを生成した型で読むため、`NuToriAPI` の中に `#if DEBUG` で囲んで置き、振る舞いを `NuToriAPITests` で確かめる。場面は「初めに置く記録と方針」のデータ（`UITestLaunch.syncScenario()`）で書き、場面を足すときは偽のサーバーに分岐を足さない
 
 ### ファイルの置き場所
 
