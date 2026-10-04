@@ -18,14 +18,14 @@ final class RootModel {
         accountSession: AccountSession,
         recordSync: RecordSync,
         health: HealthSyncSession,
-        reminders: MissedWeightRecordReminderScheduler,
+        missedWeightRecordWatch: MissedWeightRecordWatch,
         clock: DeviceClock
     ) {
         self.clock = clock
         self.accountSession = accountSession
         self.recordSync = recordSync
         self.health = health
-        self.reminders = reminders
+        self.missedWeightRecordWatch = missedWeightRecordWatch
         recordSync.onDestination = { [weak self] destination in
             self?.replaceScreen(with: destination)
         }
@@ -72,7 +72,7 @@ final class RootModel {
         switch screen {
         case .loadingTimeline, .timeline:
             await health.importChanges()
-            await recordSync.issueOrRespondToNotices()
+            await recordSync.refreshMissedWeightRecordWatch(after: .reminderTapped)
             let hadNotice = await recordSync.hasNotice(id: noticeId)
             reminderLanding = hadNotice ? .notice(id: noticeId) : .timelineEnd
             await accountSession.capture(.missedWeightReminderOpened(hadNotice: hadNotice))
@@ -87,7 +87,7 @@ final class RootModel {
 
     /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ、iPhone の画面で求める
     func requestNotificationPermissionAfterWeightRecorded() async {
-        switch await reminders.requestPermissionIfNotYetRequested() {
+        switch await missedWeightRecordWatch.requestPermissionIfNotYetRequested() {
         case .granted:
             await accountSession.capture(.notificationPermissionRequested(granted: true))
         case .notGranted:
@@ -98,7 +98,7 @@ final class RootModel {
     }
 
     func notificationPermission() async -> NotificationPermission {
-        await reminders.permission()
+        await missedWeightRecordWatch.permission()
     }
 
     func capture(_ event: ClientUsageEvent) async {
@@ -178,8 +178,8 @@ final class RootModel {
 
     func prepareWeightEntry() async {
         await health.prepareForFirstWeightEntry()
-        // ヘルスケアから今日の体重を読み込んでいれば、知らせに答える。知らせを出す時機ではないので出さない
-        await recordSync.respondToNotices()
+        // ヘルスケアから今日の体重を読み込んでいれば、知らせに答える
+        await recordSync.refreshMissedWeightRecordWatch(after: .weightEntryOpening)
     }
 
     func noteAppBackgrounded() {
@@ -266,7 +266,7 @@ final class RootModel {
     private let accountSession: AccountSession
     private let recordSync: RecordSync
     private let health: HealthSyncSession
-    private let reminders: MissedWeightRecordReminderScheduler
+    private let missedWeightRecordWatch: MissedWeightRecordWatch
     private var observationStart = ObservationStart.pending(tapWhileOpening: nil)
     private var rejectionAcceptance = RejectionAcceptance.accepting(RejectedLines())
 
@@ -288,7 +288,7 @@ final class RootModel {
             // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
             discardRejectedLines()
             // サインアウトとアカウントの削除で、予約した通知と通知センターに残った通知を外す
-            Task { [reminders] in await reminders.removeAll() }
+            Task { [missedWeightRecordWatch] in await missedWeightRecordWatch.removeAll() }
         case .loadingTimeline, .timeline:
             break
         }
@@ -347,8 +347,7 @@ final class RootModel {
             await health.aroundTimelineSync {
                 _ = try await self.recordSync.sync()
             }
-            // 送れなくても、開いたとき・前面に戻ったときに置き直す
-            await recordSync.rescheduleReminders()
+            // 送れなくても、同期の前に記録忘れの見張りが決めて返した時刻を待つ
             recordSync.startWaitingForNoticeTime()
         case .opening, .signIn:
             return

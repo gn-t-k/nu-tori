@@ -139,9 +139,9 @@ import SwiftData
             timeZone: clock.timeZone,
             analyticsFlushTimeout: .seconds(3)
         )
-        let reminders = MissedWeightRecordReminderScheduler(
-            center: parts.reminderCenter,
+        let missedWeightRecordWatch = MissedWeightRecordWatch(
             cache: store,
+            center: parts.reminderCenter,
             timeZone: clock.timeZone,
             now: clock.now,
             errorReporting: observation.errorReporting
@@ -156,7 +156,7 @@ import SwiftData
             signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
             errorReporting: observation.errorReporting,
             mealPhotos: mealPhotos,
-            reminders: reminders,
+            missedWeightRecordWatch: missedWeightRecordWatch,
             clock: clock
         )
         let finishedUploads = parts.finishedMealPhotoUploads
@@ -171,8 +171,8 @@ import SwiftData
             await sync?.importHealthAndSendPending()
         }
         let model = RootModel(
-            accountSession: session, recordSync: sync, health: health, reminders: reminders,
-            clock: clock)
+            accountSession: session, recordSync: sync, health: health,
+            missedWeightRecordWatch: missedWeightRecordWatch, clock: clock)
         let reminderTaps = MissedWeightReminderTapReceiver { [weak model] noticeId in
             Task { await model?.openFromReminder(noticeId: noticeId) }
         }
