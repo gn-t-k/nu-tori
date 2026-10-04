@@ -26,26 +26,12 @@ extension SyncEngineTests {
             func sendsCreateNotice() async throws {
                 _ = try await engine.sync()
 
+                let writes = try #require(transport.pushBodies.first).writes
+                let write = try #require(writes.first)
                 #expect(
-                    try #require(transport.pushBodies.first).writes.map(\.type) == [
-                        "create_notice"
+                    writes == [
+                        .createNotice(writeId: write.writeId, notice: try .fixture(id: notice.id))
                     ])
-                guard
-                    case .createNotice(_, let sent) = try #require(
-                        transport.pushBodies.first?.writes.first)
-                else {
-                    Issue.record("作る書き込みでない")
-                    return
-                }
-                #expect(
-                    sent
-                        == SentWritesBody.Notice(
-                            id: notice.id.uuidString,
-                            noticeType: "missed_weight_record",
-                            issuedAt: 1_790_028_900_000,
-                            timeZone: "Asia/Tokyo",
-                            targetOn: "2026-09-22"
-                        ))
                 #expect(store.entries.isEmpty)
             }
         }
@@ -71,12 +57,15 @@ extension SyncEngineTests {
                 _ = try await engine.sync()
 
                 let writes = try #require(transport.pushBodies.first).writes
-                #expect(writes.map(\.type) == ["create_notice", "respond_notice"])
+                try #require(writes.count == 2)
                 #expect(
-                    writes.last
-                        == .respondNotice(
-                            id: try #require(writes.last).id, noticeId: notice.id.uuidString,
-                            .init(respondedAt: 1_767_225_600_000, timeZone: "Asia/Tokyo")))
+                    writes == [
+                        .createNotice(
+                            writeId: writes[0].writeId, notice: try .fixture(id: notice.id)),
+                        .respondNotice(
+                            writeId: writes[1].writeId, noticeId: notice.id,
+                            response: try .respondedNow()),
+                    ])
             }
         }
 
@@ -221,6 +210,28 @@ extension Notice {
             targetDay: CalendarDay(year: 2026, month: 9, day: 22),
             response: nil
         )
+    }
+}
+
+extension NewNotice {
+    /// `Notice.fixture()` を、作る書き込みで送るときの中身
+    fileprivate static func fixture(id: UUID) throws -> NewNotice {
+        NewNotice(
+            id: id,
+            noticeType: .missedWeightRecord,
+            issuedAt: Date(timeIntervalSince1970: 1_790_028_900),
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+            targetOn: "2026-09-22"
+        )
+    }
+}
+
+extension SyncedNotice.Response {
+    /// `respond(to:)` で答えたときに、答える書き込みで送る中身
+    fileprivate static func respondedNow() throws -> SyncedNotice.Response {
+        SyncedNotice.Response(
+            respondedAt: SyncEngine.fixtureNow,
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))
     }
 }
 

@@ -51,23 +51,28 @@ extension NuToriAPIClientTests {
 
                 let sent = try #require(transport.requests.first)
                 #expect(
-                    try SentWritesBody(json: sent.body ?? "").writes == [
+                    try PushSyncWritesPayload(sentBody: sent.body).writes == [
                         .createMeal(
-                            id: createWriteId.uuidString,
                             .init(
-                                id: MealSync.mealId,
-                                eatenAt: 1_767_225_600_123,
-                                eatenAtUtcOffsetSeconds: 32_400,
-                                sentAt: 1_767_225_660_000,
-                                sentTimeZone: "Asia/Tokyo",
-                                entryMethod: "picked",
-                                photos: [
-                                    .init(id: "00000000-0000-4000-8000-0000000000C1"),
-                                    .init(id: "00000000-0000-4000-8000-0000000000C2"),
-                                ]
-                            )
+                                id: createWriteId.uuidString,
+                                _type: .createMeal,
+                                meal: .init(
+                                    id: MealSync.mealId,
+                                    eatenAt: 1_767_225_600_123,
+                                    eatenAtUtcOffsetSeconds: 32_400,
+                                    sentAt: 1_767_225_660_000,
+                                    sentTimeZone: "Asia/Tokyo",
+                                    entryMethod: "picked",
+                                    photos: [
+                                        .init(id: "00000000-0000-4000-8000-0000000000C1"),
+                                        .init(id: "00000000-0000-4000-8000-0000000000C2"),
+                                    ]
+                                ))
                         ),
-                        .deleteMeal(id: deleteWriteId.uuidString, mealId: MealSync.mealId),
+                        .deleteMeal(
+                            .init(
+                                id: deleteWriteId.uuidString, _type: .deleteMeal,
+                                mealId: MealSync.mealId)),
                     ])
             }
 

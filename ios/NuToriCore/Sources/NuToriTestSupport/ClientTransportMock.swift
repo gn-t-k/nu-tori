@@ -1,6 +1,6 @@
 public import Foundation
 public import HTTPTypes
-import NuToriAPI
+public import NuToriAPI
 public import NuToriCore
 public import OpenAPIRuntime
 
@@ -12,10 +12,10 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     public private(set) var requests: [(request: HTTPRequest, body: String?)] = []
 
     /// 送り待ちを送った要求の本文。知らない種類の書き込みがあれば投げる
-    public var pushBodies: [SentWritesBody] {
+    public var pushBodies: [SentSyncWrites] {
         get throws {
             try requests.filter { $0.request.path == "/v1/sync/writes" }.map {
-                try SentWritesBody(json: $0.body ?? "")
+                try Self.sentWrites($0.body)
             }
         }
     }
@@ -190,9 +190,9 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         guard status == .ok else {
             return (HTTPResponse(status: status), nil)
         }
-        let writes = try SentWritesBody(json: body ?? "").writes
+        let writes = try sentWrites(body).writes
         let results = try writes.enumerated().map { index, write in
-            let writeId = write.id
+            let writeId = write.writeId.uuidString
             guard rejectedWriteIndexes.contains(index) else {
                 return #"{"writeId":"\#(writeId)","result":"applied"}"#
             }
@@ -203,6 +203,13 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
         return jsonResponse(status: .ok, json: #"{"results":[\#(results.joined(separator: ","))]}"#)
     }
+
+    private static func sentWrites(_ body: String?) throws -> SentSyncWrites {
+        guard let body else { throw MissingBodyError() }
+        return try SentSyncWrites(json: Data(body.utf8))
+    }
+
+    private struct MissingBodyError: Error {}
 
     private static func jsonResponse(status: HTTPResponse.Status, json: String) -> (
         HTTPResponse, HTTPBody?

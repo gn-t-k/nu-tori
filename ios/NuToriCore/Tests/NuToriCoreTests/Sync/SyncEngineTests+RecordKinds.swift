@@ -12,12 +12,14 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
+            let noteRecordId: UUID
             let note: PendingEntry
             let created: PendingWeightRecordWrite
             let rejectedCreated: PendingWeightRecordWrite
 
             init() throws {
-                note = RecordKindMock.entry(recordId: UUID(), ageSeconds: 30)
+                noteRecordId = UUID()
+                note = RecordKindMock.entry(recordId: noteRecordId, ageSeconds: 30)
                 created = .creating(
                     try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
                     ageSeconds: 20)
@@ -40,9 +42,14 @@ extension SyncEngineTests {
 
                 let writes = try #require(transport.pushBodies.first).writes
                 #expect(
-                    writes.map(\.type) == [
-                        "source_deleted_weight_record", "create_weight_record",
-                        "create_weight_record",
+                    writes == [
+                        .sourceDeletedWeightRecord(
+                            writeId: note.writeId, weightRecordId: noteRecordId),
+                        .createWeightRecord(
+                            writeId: created.writeId, record: .manual(created.write.weightRecord)),
+                        .createWeightRecord(
+                            writeId: rejectedCreated.writeId,
+                            record: .manual(rejectedCreated.write.weightRecord)),
                     ])
             }
 
@@ -158,5 +165,14 @@ extension WeightRecordWrite {
         case .sourceDeletedWeightRecord:
             preconditionFailure("体重記録を作る書き込みではない")
         }
+    }
+}
+
+extension NewWeightRecord {
+    /// 手で入れた体重記録を作る書き込みの中身
+    fileprivate static func manual(_ record: WeightRecord) -> NewWeightRecord {
+        NewWeightRecord(
+            id: record.id, weightKilograms: record.kilograms, measuredAt: record.instant,
+            timeZone: record.timeZone, imported: nil)
     }
 }
