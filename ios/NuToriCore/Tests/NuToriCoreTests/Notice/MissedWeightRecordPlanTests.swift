@@ -86,8 +86,10 @@ struct MissedWeightRecordPlanTests {
     struct AfterTodaysTimeWithOtherDays {
         let plan: MissedWeightRecordPlan
         let unansweredWithRecord: Notice
+        let delivered: [UUID]
 
         init() throws {
+            delivered = [19, 21, 22, 24].map(MissedWeightRecordPlanTests.id)
             unansweredWithRecord = try MissedWeightRecordPlanTests.notice(
                 on: 21, respondedAt: nil)
             plan = MissedWeightRecordPlan(
@@ -143,12 +145,8 @@ struct MissedWeightRecordPlanTests {
         @Test("通知センターに残った通知のうち、答える知らせと同じ体重記録のある日の分だけを外すこと")
         func removesDeliveredOnRecordedDays() {
             #expect(
-                plan.deliveredIdsToRemove(from: [
-                    MissedWeightRecordPlanTests.id(19),
-                    MissedWeightRecordPlanTests.id(21),
-                    MissedWeightRecordPlanTests.id(22),
-                    MissedWeightRecordPlanTests.id(24),
-                ]) == [MissedWeightRecordPlanTests.id(21), MissedWeightRecordPlanTests.id(24)])
+                plan.deliveredIdsToRemove(from: delivered)
+                    == [MissedWeightRecordPlanTests.id(21), MissedWeightRecordPlanTests.id(24)])
         }
 
         @Test("開いたまま日付が変わったときのために、次に決める時刻が最初の予約の明日の通知の時刻であること")
@@ -192,8 +190,10 @@ struct MissedWeightRecordPlanTests {
         @Suite("今日の通知の時刻の前のとき")
         struct BeforeTodaysTime {
             let plan: MissedWeightRecordPlan
+            let delivered: [UUID]
 
             init() throws {
+                delivered = [MissedWeightRecordPlanTests.id(22)]
                 plan = MissedWeightRecordPlan(
                     weightRecords: [
                         try .manual(60.0, at: "2026-09-22T07:10:00+09:00", in: "Asia/Tokyo")
@@ -216,7 +216,7 @@ struct MissedWeightRecordPlanTests {
             @Test("通知センターに残った今日の通知を外すこと")
             func removesTodaysDelivered() {
                 #expect(
-                    plan.deliveredIdsToRemove(from: [MissedWeightRecordPlanTests.id(22)])
+                    plan.deliveredIdsToRemove(from: delivered)
                         == [MissedWeightRecordPlanTests.id(22)])
             }
         }
@@ -244,26 +244,50 @@ struct MissedWeightRecordPlanTests {
         }
     }
 
-    @Suite("今日の通知の時刻を過ぎ、今日の知らせにもう答えたとき")
+    @Suite("今日の通知の時刻を過ぎ、今日の知らせがすでにあるとき")
     struct WithTodaysNotice {
-        let plan: MissedWeightRecordPlan
+        @Suite("答えていないとき")
+        struct Unanswered {
+            let plan: MissedWeightRecordPlan
 
-        init() throws {
-            plan = MissedWeightRecordPlan(
-                weightRecords: [],
-                notices: [
-                    try MissedWeightRecordPlanTests.notice(
-                        on: 22, respondedAt: "2026-09-22T08:40:00+09:00")
-                ],
-                usualWeighingTime: UsualWeighingTime(id: UUID(), minuteOfDay: 435),
-                now: try Date("2026-09-22T09:30:00+09:00", strategy: .iso8601),
-                timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))
-            )
+            init() throws {
+                plan = MissedWeightRecordPlan(
+                    weightRecords: [],
+                    notices: [try MissedWeightRecordPlanTests.notice(on: 22, respondedAt: nil)],
+                    usualWeighingTime: UsualWeighingTime(id: UUID(), minuteOfDay: 435),
+                    now: try Date("2026-09-22T09:30:00+09:00", strategy: .iso8601),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))
+                )
+            }
+
+            @Test("同じ知らせをもう一度出さず、答えもしないこと")
+            func neitherIssuesNorResponds() {
+                #expect(plan.noticeToIssue == nil)
+                #expect(plan.noticesToRespond.isEmpty)
+            }
         }
 
-        @Test("知らせを出さないこと")
-        func issuesNothing() {
-            #expect(plan.noticeToIssue == nil)
+        @Suite("もう答えたとき")
+        struct Answered {
+            let plan: MissedWeightRecordPlan
+
+            init() throws {
+                plan = MissedWeightRecordPlan(
+                    weightRecords: [],
+                    notices: [
+                        try MissedWeightRecordPlanTests.notice(
+                            on: 22, respondedAt: "2026-09-22T08:40:00+09:00")
+                    ],
+                    usualWeighingTime: UsualWeighingTime(id: UUID(), minuteOfDay: 435),
+                    now: try Date("2026-09-22T09:30:00+09:00", strategy: .iso8601),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))
+                )
+            }
+
+            @Test("知らせを出さないこと")
+            func issuesNothing() {
+                #expect(plan.noticeToIssue == nil)
+            }
         }
     }
 

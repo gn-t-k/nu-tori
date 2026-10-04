@@ -46,10 +46,10 @@ public actor MissedWeightRecordWatch {
         await inOrder { await $0.decideAndReschedule(event.noticeDecision) }
     }
 
-    /// 開いているあいだに、次に知らせを出すかを決める時刻。最後に決めたときのもので、
+    /// 開いているあいだに、次に知らせを出すかを決める時刻。先に呼んだ出来事と外すことを済ませてから、最後に決めたものを返す。
     /// キャッシュを読めなかったときと、外したあと（サインアウト）は無い
-    public func nextNoticeTime() -> Date? {
-        lastNoticeTime
+    public func nextNoticeTime() async -> Date? {
+        await inOrder { await $0.decidedNoticeTime }
     }
 
     /// サインアウトとアカウントの削除のとき。予約した通知と、通知センターに残った通知を外し、次の時刻を忘れる
@@ -95,7 +95,7 @@ public actor MissedWeightRecordWatch {
     /// 呼んだ順に並べた仕事の、いちばん後ろ
     private var lastInOrder: Task<Void, Never>?
     /// 最後に決めた、次に知らせを出すかを決める時刻
-    private var lastNoticeTime: Date?
+    private var decidedNoticeTime: Date?
 
     /// 出来事のあとに、知らせについて決めること
     fileprivate enum NoticeDecision {
@@ -136,7 +136,7 @@ public actor MissedWeightRecordWatch {
             )
         } catch {
             await report(error, as: .cacheRead)
-            lastNoticeTime = nil
+            decidedNoticeTime = nil
             return false
         }
         let now = now()
@@ -157,7 +157,7 @@ public actor MissedWeightRecordWatch {
                 responding: plan.noticesToRespond, issuing: nil, now: now, timeZone: timeZone)
         }
         await replaceReminders(with: plan)
-        lastNoticeTime = plan.nextNoticeTime
+        decidedNoticeTime = plan.nextNoticeTime
         return enqueued
     }
 
@@ -209,7 +209,7 @@ public actor MissedWeightRecordWatch {
     }
 
     private func removeReminders() async {
-        lastNoticeTime = nil
+        decidedNoticeTime = nil
         await center.removeScheduled(ids: await center.scheduledIds())
         await center.removeDelivered(ids: await center.deliveredIds())
     }

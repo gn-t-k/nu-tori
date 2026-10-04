@@ -53,7 +53,7 @@ import NuToriCore
                     // 待ち直すか、裏へ回って取り消した
                     return
                 }
-                // 決めたあとに返る次の時刻で、待ち直す
+                // 決めたあとに見張りに次の時刻を聞き直して、待ち直す
                 await self?.refreshMissedWeightRecordWatch(after: .noticeTimeReached)
             })
     }
