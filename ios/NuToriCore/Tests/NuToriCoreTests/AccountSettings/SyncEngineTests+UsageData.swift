@@ -36,13 +36,13 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let expectedSettings: AccountSettings
-            let expectedOperations: [WeightOrSettingsWrite]
+            let expectedWrites: [WeightOrSettingsWrite]
 
             init() throws {
                 store = try .ok()
                 engine = .fixture(store: store, transport: .sync())
                 expectedSettings = .fixture(sendsUsageData: true)
-                expectedOperations = [
+                expectedWrites = [
                     .updateAccountSettings(.fixture(sendsUsageData: false)),
                     .updateAccountSettings(.fixture(sendsUsageData: true)),
                 ]
@@ -54,7 +54,7 @@ extension SyncEngineTests {
                 try await engine.setSendsUsageData(true)
 
                 #expect(store.settings == expectedSettings)
-                #expect(store.pending.map(\.write) == expectedOperations)
+                #expect(store.pending.map(\.write) == expectedWrites)
             }
         }
     }

@@ -239,9 +239,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         return Contexts(cache: cache, pending: pending)
     }
 
-    /// 送り待ちに足すものと進み具合を先に1つの保存で書き、キャッシュをそのあとに保存し、結果を受け取った送り待ちを最後に消す。
-    /// 取り込みの間で落ちても、取り込んだ分は送り待ちに残る。
-    /// 受け付けなかった書き込みの戻しは、キャッシュに当てたあとに送り待ちを消す。間で落ちても、送り待ちが残るので次に送って同じ戻しに戻る
+    /// 結果を受け取った送り待ちを最後に消すのは、間で落ちても送り待ちが残り、次に送って同じ戻しに戻るため
     @MainActor private static func apply(
         _ result: SyncBoxResult,
         kinds: RecordKindRegistry<ModelContext>,

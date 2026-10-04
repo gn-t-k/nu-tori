@@ -206,7 +206,7 @@ struct WeightRecordSyncingTests {
                 enqueuedAt: SyncEngine.fixtureNow, healthSyncState: state)
         }
 
-        @Test("作る書き込みと元のサンプルが消えた書き込みを、この順に送り待ちに足すこと")
+        @Test("作る書き込みと元のサンプルが消えた書き込みを、同じ時刻で送り待ちに足すこと")
         func enqueuesCreateThenSourceDeleted() throws {
             #expect(
                 try result.enqueuing.map { try PendingWrite(entry: $0).write } == [
@@ -226,13 +226,21 @@ struct WeightRecordSyncingTests {
             #expect(result.kindChanges.map(\.kind) == [.weightRecord])
             #expect(result.healthSyncState == state)
         }
+    }
 
-        @Test("増えた記録が無ければ、キャッシュに当てる変更を持たないこと")
-        func hasNoChangesWithoutAddedRecords() throws {
-            let result = try syncing.importing(
-                [], sourceDeletedRecordIds: [deletedId],
-                enqueuedAt: SyncEngine.fixtureNow, healthSyncState: state)
+    @Suite("ヘルスケアから取り込んで、増えた記録が無いとき")
+    struct ImportingOnlySourceDeleted {
+        let result: SyncBoxResult
 
+        init() throws {
+            result = try WeightRecordSyncing().importing(
+                [], sourceDeletedRecordIds: [UUID()], enqueuedAt: SyncEngine.fixtureNow,
+                healthSyncState: HealthSyncState(
+                    anchor: HealthChanges.fixtureAnchor, hasWrittenCachedManualRecords: true))
+        }
+
+        @Test("キャッシュに当てる変更を持たず、元のサンプルが消えた書き込みだけを送り待ちに足すこと")
+        func hasNoChanges() {
             #expect(result.kindChanges.isEmpty)
             #expect(result.enqueuing.count == 1)
         }

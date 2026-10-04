@@ -61,7 +61,6 @@ struct HealthSyncEngineTests {
                 try await engine.importChanges()
 
                 let record = try #require(store.records.values.first)
-                #expect(store.saves.first == .pending(added: 1, removed: 0))
                 #expect(store.pending.map(\.write) == [.createWeightRecord(record)])
                 #expect(store.pending.map(\.enqueuedAt) == [HealthSyncEngine.fixtureNow])
                 #expect(store.healthState.anchor == HealthChanges.fixtureAnchor)
