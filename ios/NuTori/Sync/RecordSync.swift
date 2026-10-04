@@ -36,22 +36,24 @@ import NuToriCore
         }
     }
 
-    /// 開いているあいだ、次に知らせを出すかを決める時刻を待ち、来たら決める。
-    /// 記録忘れの見張りが次の時刻を返すたびに（日付やタイムゾーンが変わった、いつもの時刻が届いた、など）待ち直す
+    /// 開いているあいだ、記録忘れの見張りに次に知らせを出すかを決める時刻を聞いて待ち、来たら決める。
+    /// 見張りに出来事を知らせるたびに（日付やタイムゾーンが変わった、いつもの時刻が届いた、など）聞き直して待ち直す
     func startWaitingForNoticeTime() {
         stopWaitingForNoticeTime()
         let now = clock.now
-        let noticeTime = nextNoticeTime
         noticeTimer = .waiting(
-            Task { [weak self] in
-                guard let noticeTime else { return }
+            Task { [weak self, missedWeightRecordWatch] in
+                // サインアウトのあとは、見張りが時刻を忘れているので待たない
+                guard let noticeTime = await missedWeightRecordWatch.nextNoticeTime() else {
+                    return
+                }
                 do {
                     try await Task.sleep(for: .seconds(max(0, noticeTime.timeIntervalSince(now()))))
                 } catch {
                     // 待ち直すか、裏へ回って取り消した
                     return
                 }
-                // 決めたあとに返る次の時刻で、待ち直す
+                // 決めたあとに見張りに次の時刻を聞き直して、待ち直す
                 await self?.refreshMissedWeightRecordWatch(after: .noticeTimeReached)
             })
     }
@@ -226,27 +228,24 @@ import NuToriCore
     private var networkWasUnavailable = false
     private var clockObservers: [any NSObjectProtocol] = []
     private var noticeTimer = NoticeTimer.stopped
-    /// 記録忘れの見張りが最後に返した、次に知らせを出すかを決める時刻
-    private var nextNoticeTime: Date?
 
     private enum NoticeTimer {
         case stopped
         case waiting(Task<Void, Never>)
     }
 
-    /// 次の時刻を覚えて待ち直し、知らせの書き込みを積んだかを返す。送るかは呼び出し側が決める
+    /// 待っていたら次の時刻を聞き直して待ち直し、知らせの書き込みを積んだかを返す。送るかは呼び出し側が決める
     private func noteToMissedWeightRecordWatch(
         after event: MissedWeightRecordWatch.Event
     ) async -> Bool {
-        let outcome = await missedWeightRecordWatch.refresh(after: event)
-        nextNoticeTime = outcome.nextNoticeTime
+        let enqueued = await missedWeightRecordWatch.refresh(after: event)
         switch noticeTimer {
         case .stopped:
             break
         case .waiting:
             startWaitingForNoticeTime()
         }
-        return outcome.enqueuedWrites
+        return enqueued
     }
 
     private func syncInBackground() {

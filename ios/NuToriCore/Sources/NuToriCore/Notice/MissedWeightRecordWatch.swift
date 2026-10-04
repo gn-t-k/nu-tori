@@ -1,7 +1,7 @@
 public import Foundation
 
-/// 記録忘れの見張り。出来事のたびに、キャッシュから材料を1回だけ読み、体重の知らせを出すか・答えるかを決めて送り待ちに積み、
-/// 記録忘れの通知を予約の計画（`MissedWeightRecordReminder.plan`）どおりに置き直し、次に知らせを出すかを決める時刻を返す。
+/// 記録忘れの見張り。出来事のたびに、キャッシュから材料を1回だけ読んで記録忘れの計画（`MissedWeightRecordPlan`）を作り、
+/// 計画どおりに体重の知らせの書き込みを送り待ちに積み、記録忘れの通知を置き直し、次に知らせを出すかを決める時刻を覚える。
 /// 出来事と外すことは、呼んだ順に1つずつ扱う。並べて扱うと、同じ知らせの書き込みを二重に積み、前の計画の予約があとから残りうるため
 public actor MissedWeightRecordWatch {
     public init(
@@ -37,22 +37,22 @@ public actor MissedWeightRecordWatch {
         case healthImported
     }
 
-    public struct Outcome: Sendable, Equatable {
-        /// 知らせの書き込みを送り待ちに積んだか
-        public let enqueuedWrites: Bool
-        /// 開いているあいだに、次に知らせを出すかを決める時刻。キャッシュを読めなかったときは無い
-        public let nextNoticeTime: Date?
-    }
-
     /// 初回の取得を終えるまでは、記録がそろっていないので知らせを決めない。
     /// 通知は、この機能で予約したものをすべて外してから置き直し、通知センターに残った通知のうち体重記録のある日の分も外す。
-    /// 許可していなければ予約しない。キャッシュを読めなければ、報告して前の予約を残す
+    /// 許可していなければ予約しない。キャッシュを読めなければ、報告して前の予約を残す。
+    /// 知らせの書き込みを送り待ちに積んだかを返す
     @discardableResult
-    public func refresh(after event: Event) async -> Outcome {
+    public func refresh(after event: Event) async -> Bool {
         await inOrder { await $0.decideAndReschedule(event.noticeDecision) }
     }
 
-    /// サインアウトとアカウントの削除のとき。予約した通知と、通知センターに残った通知を外す
+    /// 開いているあいだに、次に知らせを出すかを決める時刻。先に呼んだ出来事と外すことを済ませてから、最後に決めたものを返す。
+    /// キャッシュを読めなかったときと、外したあと（サインアウト）は無い
+    public func nextNoticeTime() async -> Date? {
+        await inOrder { await $0.decidedNoticeTime }
+    }
+
+    /// サインアウトとアカウントの削除のとき。予約した通知と、通知センターに残った通知を外し、次の時刻を忘れる
     public func removeAll() async {
         await inOrder { await $0.removeReminders() }
     }
@@ -94,6 +94,8 @@ public actor MissedWeightRecordWatch {
     private let errorReporting: any ErrorReportingSession
     /// 呼んだ順に並べた仕事の、いちばん後ろ
     private var lastInOrder: Task<Void, Never>?
+    /// 最後に決めた、次に知らせを出すかを決める時刻
+    private var decidedNoticeTime: Date?
 
     /// 出来事のあとに、知らせについて決めること
     fileprivate enum NoticeDecision {
@@ -122,7 +124,7 @@ public actor MissedWeightRecordWatch {
         return await task.value
     }
 
-    private func decideAndReschedule(_ decision: NoticeDecision) async -> Outcome {
+    private func decideAndReschedule(_ decision: NoticeDecision) async -> Bool {
         let materials: Materials
         do {
             materials = Materials(
@@ -134,49 +136,40 @@ public actor MissedWeightRecordWatch {
             )
         } catch {
             await report(error, as: .cacheRead)
-            return Outcome(enqueuedWrites: false, nextNoticeTime: nil)
+            decidedNoticeTime = nil
+            return false
         }
         let now = now()
         let timeZone = timeZone()
+        let plan = MissedWeightRecordPlan(
+            weightRecords: materials.weightRecords, notices: materials.notices,
+            usualWeighingTime: materials.usualWeighingTime, now: now, timeZone: timeZone)
         let enqueued: Bool
         switch decision {
         case _ where !materials.hasCompletedInitialPull, .rescheduleOnly:
             enqueued = false
         case .issueOrRespond:
             enqueued = await enqueueNoticeWrites(
-                from: materials, issuing: true, now: now, timeZone: timeZone)
+                responding: plan.noticesToRespond, issuing: plan.noticeToIssue, now: now,
+                timeZone: timeZone)
         case .respondOnly:
             enqueued = await enqueueNoticeWrites(
-                from: materials, issuing: false, now: now, timeZone: timeZone)
+                responding: plan.noticesToRespond, issuing: nil, now: now, timeZone: timeZone)
         }
-        let plan = MissedWeightRecordReminder.plan(
-            usualWeighingTime: materials.usualWeighingTime, now: now, timeZone: timeZone,
-            weightRecords: materials.weightRecords)
-        await replaceReminders(with: plan, weightRecords: materials.weightRecords)
-        return Outcome(
-            enqueuedWrites: enqueued,
-            nextNoticeTime: MissedWeightRecordNoticeDecision.nextNoticeTime(
-                usualWeighingTime: materials.usualWeighingTime, now: now, timeZone: timeZone,
-                weightRecords: materials.weightRecords))
+        await replaceReminders(with: plan)
+        decidedNoticeTime = plan.nextNoticeTime
+        return enqueued
     }
 
     /// 答える書き込みを先に、出す書き込みをあとに積む。積めなかったら報告し、それより前に積めたかを返す
     private func enqueueNoticeWrites(
-        from materials: Materials, issuing: Bool, now: Date, timeZone: TimeZone
+        responding noticesToRespond: [Notice], issuing noticeToIssue: Notice?, now: Date,
+        timeZone: TimeZone
     ) async -> Bool {
-        let idsToRespond = Set(
-            MissedWeightRecordNoticeDecision.noticeIdsToRespond(
-                notices: materials.notices, weightRecords: materials.weightRecords))
         let response = Notice.Response(respondedAt: now, timeZone: timeZone)
-        let noticeToIssue =
-            issuing
-            ? MissedWeightRecordNoticeDecision.noticeToIssue(
-                usualWeighingTime: materials.usualWeighingTime, now: now, timeZone: timeZone,
-                weightRecords: materials.weightRecords, notices: materials.notices)
-            : nil
         var enqueued = false
         do {
-            for notice in materials.notices where idsToRespond.contains(notice.id) {
+            for notice in noticesToRespond {
                 try await cache.apply(
                     NoticeSyncing().responding(
                         to: notice, with: response,
@@ -198,18 +191,14 @@ public actor MissedWeightRecordWatch {
         return enqueued
     }
 
-    private func replaceReminders(
-        with plan: [MissedWeightRecordReminder], weightRecords: [WeightRecord]
-    ) async {
+    private func replaceReminders(with plan: MissedWeightRecordPlan) async {
         await center.removeScheduled(ids: await center.scheduledIds())
-        let recordedDayIds = Set(
-            weightRecords.map { Notice.id(kind: .missedWeightRecord, targetDay: $0.day) })
-        let deliveredOnRecordedDays = await center.deliveredIds().filter(recordedDayIds.contains)
-        if !deliveredOnRecordedDays.isEmpty {
-            await center.removeDelivered(ids: deliveredOnRecordedDays)
+        let deliveredToRemove = plan.deliveredIdsToRemove(from: await center.deliveredIds())
+        if !deliveredToRemove.isEmpty {
+            await center.removeDelivered(ids: deliveredToRemove)
         }
         guard await center.permission() == .permitted else { return }
-        for reminder in plan {
+        for reminder in plan.reminders {
             do {
                 try await center.schedule(reminder)
             } catch {
@@ -220,6 +209,7 @@ public actor MissedWeightRecordWatch {
     }
 
     private func removeReminders() async {
+        decidedNoticeTime = nil
         await center.removeScheduled(ids: await center.scheduledIds())
         await center.removeDelivered(ids: await center.deliveredIds())
     }
