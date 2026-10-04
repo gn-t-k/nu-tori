@@ -23,7 +23,7 @@ import NuToriCore
         }
         let record = try await engineForThisDevice(accountId: accountId).save(write)
         // 積んだ答えは、このあとの同期で送る
-        _ = await refreshMissedWeightRecordWatchAndNoticeTime(after: .weightRecorded)
+        _ = await noteToMissedWeightRecordWatch(after: .weightRecorded)
         await health.export(record)
         _ = try await syncAfterInFlight()
     }
@@ -31,7 +31,7 @@ import NuToriCore
     /// 記録忘れの見張りに出来事を知らせる。知らせの書き込みを積んだら、裏で送る。サインインしていなければ何もしない
     func refreshMissedWeightRecordWatch(after event: MissedWeightRecordWatch.Event) async {
         guard await hasSession(), await signedInAccountId() != nil else { return }
-        if await refreshMissedWeightRecordWatchAndNoticeTime(after: event) {
+        if await noteToMissedWeightRecordWatch(after: event) {
             syncInBackground()
         }
     }
@@ -234,8 +234,8 @@ import NuToriCore
         case waiting(Task<Void, Never>)
     }
 
-    /// 知らせの書き込みを積んだかを返す
-    private func refreshMissedWeightRecordWatchAndNoticeTime(
+    /// 次の時刻を覚えて待ち直し、知らせの書き込みを積んだかを返す。送るかは呼び出し側が決める
+    private func noteToMissedWeightRecordWatch(
         after event: MissedWeightRecordWatch.Event
     ) async -> Bool {
         let outcome = await missedWeightRecordWatch.refresh(after: event)
@@ -333,7 +333,7 @@ import NuToriCore
         }
         let startedAt = initialPullStartedAt ?? clock.now()
         // 出した知らせと答えは、この同期で送る
-        _ = await refreshMissedWeightRecordWatchAndNoticeTime(after: .syncStarting)
+        _ = await noteToMissedWeightRecordWatch(after: .syncStarting)
         let result: SyncResult
         do {
             result = try await engineForThisDevice(accountId: accountId).sync()
@@ -357,7 +357,7 @@ import NuToriCore
             initialPullStartedAt = nil
         }
         // 答えは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
-        _ = await refreshMissedWeightRecordWatchAndNoticeTime(after: .synced)
+        _ = await noteToMissedWeightRecordWatch(after: .synced)
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }

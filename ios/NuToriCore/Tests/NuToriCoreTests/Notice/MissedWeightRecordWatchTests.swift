@@ -48,7 +48,7 @@ struct MissedWeightRecordWatchTests {
 
             @Test("今日の知らせを、通知の時刻に出したものとして作り、送り待ちに積んでからキャッシュに置くこと")
             func issuesTodayNotice() async throws {
-                let outcome = await watch.refresh(after: .opened)
+                let outcome = await watch.refresh(after: .reminderTapped)
 
                 #expect(outcome.enqueuedWrites)
                 #expect(store.entries.map(\.kind) == [.notice])
@@ -63,7 +63,7 @@ struct MissedWeightRecordWatchTests {
 
             @Test("時刻を過ぎた今日の通知は予約せず、明日から予約すること")
             func schedulesFromTomorrow() async {
-                await watch.refresh(after: .opened)
+                await watch.refresh(after: .reminderTapped)
 
                 #expect(!center.scheduled.contains(MissedWeightRecordWatchTests.id(22)))
                 #expect(center.scheduled.contains(MissedWeightRecordWatchTests.id(23)))
@@ -71,17 +71,28 @@ struct MissedWeightRecordWatchTests {
 
             @Test("次に知らせを出すかを決める時刻として、明日の通知の時刻を返すこと")
             func returnsTomorrowNoticeTime() async throws {
-                let outcome = await watch.refresh(after: .opened)
+                let outcome = await watch.refresh(after: .reminderTapped)
 
                 #expect(
                     outcome.nextNoticeTime
                         == (try Date("2026-09-23T08:00:00+09:00", strategy: .iso8601)))
             }
+        }
 
-            @Test("2回続けても、知らせを1つだけ作ること")
+        @Suite("今日の知らせをもう出したとき")
+        struct AlreadyIssued {
+            let store: SyncBoxMock<RecordCacheMock>
+            let watch: MissedWeightRecordWatch
+
+            init() async throws {
+                store = try .ok(state: .fixture(hasCompletedInitialPull: true))
+                watch = try MissedWeightRecordWatchTests.watch(
+                    store: store, now: "2026-09-22T09:00:00+09:00")
+                await watch.refresh(after: .reminderTapped)
+            }
+
+            @Test("もう一度決めても、知らせを足さないこと")
             func issuesOnce() async {
-                await watch.refresh(after: .opened)
-
                 let outcome = await watch.refresh(after: .synced)
 
                 #expect(!outcome.enqueuedWrites)
@@ -126,7 +137,7 @@ struct MissedWeightRecordWatchTests {
 
             @Test("記録がそろっていないので、知らせを出さないこと")
             func issuesNothing() async {
-                let outcome = await watch.refresh(after: .opened)
+                let outcome = await watch.refresh(after: .reminderTapped)
 
                 #expect(!outcome.enqueuedWrites)
                 #expect(store.entries.isEmpty)
@@ -135,7 +146,7 @@ struct MissedWeightRecordWatchTests {
 
             @Test("通知は予約すること")
             func schedulesReminders() async {
-                await watch.refresh(after: .opened)
+                await watch.refresh(after: .reminderTapped)
 
                 #expect(center.scheduled.contains(MissedWeightRecordWatchTests.id(23)))
             }
@@ -150,7 +161,7 @@ struct MissedWeightRecordWatchTests {
                 store = try .ok(state: .fixture(hasCompletedInitialPull: true))
                 watch = try MissedWeightRecordWatchTests.watch(
                     store: store, now: "2026-09-22T09:00:00+09:00")
-                await watch.refresh(after: .opened)
+                await watch.refresh(after: .reminderTapped)
                 store.cache.upsert(
                     try WeightRecord.imported(
                         72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
@@ -168,13 +179,29 @@ struct MissedWeightRecordWatchTests {
                             respondedAt: try Date("2026-09-22T09:00:00+09:00", strategy: .iso8601),
                             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))))
             }
+        }
 
-            @Test("答えた知らせには、答える書き込みを足さないこと")
+        @Suite("今日の体重記録で、今日の知らせにもう答えたとき")
+        struct AlreadyResponded {
+            let store: SyncBoxMock<RecordCacheMock>
+            let watch: MissedWeightRecordWatch
+
+            init() async throws {
+                store = try .ok(state: .fixture(hasCompletedInitialPull: true))
+                watch = try MissedWeightRecordWatchTests.watch(
+                    store: store, now: "2026-09-22T09:00:00+09:00")
+                await watch.refresh(after: .reminderTapped)
+                store.cache.upsert(
+                    try WeightRecord.imported(
+                        72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
+                await watch.refresh(after: .synced)
+            }
+
+            @Test("もう一度決めても、答える書き込みを足さないこと")
             func respondsOnce() async {
-                await watch.refresh(after: .synced)
+                let outcome = await watch.refresh(after: .synced)
 
-                await watch.refresh(after: .synced)
-
+                #expect(!outcome.enqueuedWrites)
                 #expect(store.entries.map(\.kind) == [.notice, .notice])
             }
         }
@@ -212,7 +239,7 @@ struct MissedWeightRecordWatchTests {
                 store = try .ok(state: .fixture(hasCompletedInitialPull: true))
                 watch = try MissedWeightRecordWatchTests.watch(
                     store: store, now: "2026-09-22T09:00:00+09:00")
-                await watch.refresh(after: .opened)
+                await watch.refresh(after: .reminderTapped)
                 store.cache.upsert(
                     try WeightRecord.imported(
                         72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
@@ -225,6 +252,41 @@ struct MissedWeightRecordWatchTests {
                 #expect(outcome.enqueuedWrites)
                 #expect(store.entries.map(\.kind) == [.notice, .notice])
                 #expect(store.cache.notices[MissedWeightRecordWatchTests.id(22)]?.response != nil)
+            }
+        }
+    }
+
+    @Suite("時計が変わったときと、ヘルスケアから取り込んだとき")
+    struct RescheduleOnly {
+        @Suite("答えていない今日の知らせがあり、今日の体重記録が入ったとき")
+        struct RecordedAfterNotice {
+            let store: SyncBoxMock<RecordCacheMock>
+            let watch: MissedWeightRecordWatch
+
+            init() async throws {
+                store = try .ok(state: .fixture(hasCompletedInitialPull: true))
+                watch = try MissedWeightRecordWatchTests.watch(
+                    store: store, now: "2026-09-22T09:00:00+09:00")
+                await watch.refresh(after: .reminderTapped)
+                store.cache.upsert(
+                    try WeightRecord.imported(
+                        72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
+            }
+
+            @Test("時計が変わっても、答えず置き直すだけにすること")
+            func clockChangedDoesNotRespond() async {
+                let outcome = await watch.refresh(after: .clockChanged)
+
+                #expect(!outcome.enqueuedWrites)
+                #expect(store.entries.map(\.kind) == [.notice])
+            }
+
+            @Test("ヘルスケアから取り込んでも、答えず置き直すだけにすること")
+            func healthImportedDoesNotRespond() async {
+                let outcome = await watch.refresh(after: .healthImported)
+
+                #expect(!outcome.enqueuedWrites)
+                #expect(store.entries.map(\.kind) == [.notice])
             }
         }
     }
@@ -363,7 +425,7 @@ struct MissedWeightRecordWatchTests {
 
         @Test("積まず、次の時刻も返さないこと")
         func decidesNothing() async {
-            let outcome = await watch.refresh(after: .opened)
+            let outcome = await watch.refresh(after: .reminderTapped)
 
             #expect(!outcome.enqueuedWrites)
             #expect(outcome.nextNoticeTime == nil)
@@ -371,14 +433,14 @@ struct MissedWeightRecordWatchTests {
 
         @Test("キャッシュを読めなかった失敗として1回送ること")
         func reportsReadFailure() async {
-            await watch.refresh(after: .opened)
+            await watch.refresh(after: .reminderTapped)
 
             #expect(errorReporting.reported == [.cacheRead])
         }
 
         @Test("前に置いた予約を残すこと")
         func keepsPreviousReminders() async {
-            await watch.refresh(after: .opened)
+            await watch.refresh(after: .reminderTapped)
 
             #expect(center.scheduled == [MissedWeightRecordWatchTests.id(21)])
         }

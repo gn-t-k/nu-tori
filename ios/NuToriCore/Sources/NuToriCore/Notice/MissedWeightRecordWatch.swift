@@ -19,8 +19,8 @@ public actor MissedWeightRecordWatch {
     }
 
     public enum Event: Sendable {
-        /// 開いた・前面に戻った、記録忘れの通知を押した
-        case opened
+        /// 記録忘れの通知を押して開いた。ヘルスケアを読んでから決める
+        case reminderTapped
         /// 開いているあいだに、次に知らせを出すかを決める時刻が来た
         case noticeTimeReached
         /// 知らせの中で記録したときも、送るのを待たずに答えた形にする
@@ -33,6 +33,7 @@ public actor MissedWeightRecordWatch {
         case weightEntryOpening
         /// 端末の日付かタイムゾーンが変わった
         case clockChanged
+        /// ヘルスケアから体重記録を取り込んだ。このあとの同期の前に決める
         case healthImported
     }
 
@@ -48,7 +49,7 @@ public actor MissedWeightRecordWatch {
     /// 許可していなければ予約しない。キャッシュを読めなければ、報告して前の予約を残す
     @discardableResult
     public func refresh(after event: Event) async -> Outcome {
-        await inOrder { await $0.decideAndReschedule(issuing: event.mayIssueNotice) }
+        await inOrder { await $0.decideAndReschedule(event.noticeDecision) }
     }
 
     /// サインアウトとアカウントの削除のとき。予約した通知と、通知センターに残った通知を外す
@@ -74,8 +75,8 @@ public actor MissedWeightRecordWatch {
             granted = false
         }
         guard granted else { return .notGranted }
-        // 積んだ答えは次の同期で送る。許可を求めるのは体重を記録した直後で、記録したときにもう答えている
-        _ = await inOrder { await $0.decideAndReschedule(issuing: false) }
+        // 許可を求めるのは体重を記録した直後で、知らせは記録したときにもう決めている
+        _ = await inOrder { await $0.decideAndReschedule(.none) }
         return .granted
     }
 
@@ -91,7 +92,16 @@ public actor MissedWeightRecordWatch {
     private let timeZone: @Sendable () -> TimeZone
     private let now: @Sendable () -> Date
     private let errorReporting: any ErrorReportingSession
-    private var last: Task<Void, Never>?
+    /// 呼んだ順に並べた仕事の、いちばん後ろ
+    private var lastInOrder: Task<Void, Never>?
+
+    /// 出来事のあとに、知らせについて決めること
+    fileprivate enum NoticeDecision {
+        case issueOrRespond
+        case respondOnly
+        /// 通知を置き直すだけにする
+        case none
+    }
 
     /// 知らせを決め、通知を置き直す材料
     private struct Materials {
@@ -104,16 +114,16 @@ public actor MissedWeightRecordWatch {
     private func inOrder<T: Sendable>(
         _ work: @escaping @Sendable (MissedWeightRecordWatch) async -> T
     ) async -> T {
-        let previous = last
+        let previous = lastInOrder
         let task = Task {
             await previous?.value
             return await work(self)
         }
-        last = Task { _ = await task.value }
+        lastInOrder = Task { _ = await task.value }
         return await task.value
     }
 
-    private func decideAndReschedule(issuing: Bool) async -> Outcome {
+    private func decideAndReschedule(_ decision: NoticeDecision) async -> Outcome {
         let materials: Materials
         do {
             materials = Materials(
@@ -129,11 +139,18 @@ public actor MissedWeightRecordWatch {
         }
         let now = now()
         let timeZone = timeZone()
-        let enqueued =
-            materials.hasCompletedInitialPull
-            ? await enqueueNoticeWrites(
-                from: materials, issuing: issuing, now: now, timeZone: timeZone)
-            : false
+        let enqueued: Bool
+        switch decision {
+        case .issueOrRespond, .respondOnly:
+            enqueued =
+                materials.hasCompletedInitialPull
+                ? await enqueueNoticeWrites(
+                    from: materials, issuing: decision == .issueOrRespond, now: now,
+                    timeZone: timeZone)
+                : false
+        case .none:
+            enqueued = false
+        }
         let plan = MissedWeightRecordReminder.plan(
             usualWeighingTime: materials.usualWeighingTime, now: now, timeZone: timeZone,
             weightRecords: materials.weightRecords)
@@ -217,11 +234,13 @@ public actor MissedWeightRecordWatch {
 }
 
 extension MissedWeightRecordWatch.Event {
-    /// 知らせを出す時機か。体重のシートを開くときは出す時機でなく、時計とヘルスケアの変化は開いたことを表さない
-    fileprivate var mayIssueNotice: Bool {
+    /// 体重のシートを開くときは、知らせを出す時機でない。時計とヘルスケアの変化のあとは、次の同期の前に決める
+    fileprivate var noticeDecision: MissedWeightRecordWatch.NoticeDecision {
         switch self {
-        case .opened, .noticeTimeReached, .weightRecorded, .syncStarting, .synced: true
-        case .weightEntryOpening, .clockChanged, .healthImported: false
+        case .reminderTapped, .noticeTimeReached, .weightRecorded, .syncStarting, .synced:
+            .issueOrRespond
+        case .weightEntryOpening: .respondOnly
+        case .clockChanged, .healthImported: .none
         }
     }
 }

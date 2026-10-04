@@ -72,7 +72,7 @@ final class RootModel {
         switch screen {
         case .loadingTimeline, .timeline:
             await health.importChanges()
-            await recordSync.refreshMissedWeightRecordWatch(after: .opened)
+            await recordSync.refreshMissedWeightRecordWatch(after: .reminderTapped)
             let hadNotice = await recordSync.hasNotice(id: noticeId)
             reminderLanding = hadNotice ? .notice(id: noticeId) : .timelineEnd
             await accountSession.capture(.missedWeightReminderOpened(hadNotice: hadNotice))
@@ -347,8 +347,7 @@ final class RootModel {
             await health.aroundTimelineSync {
                 _ = try await self.recordSync.sync()
             }
-            // 送れなくても、開いたとき・前面に戻ったときに決め直し、次の時刻を待つ
-            await recordSync.refreshMissedWeightRecordWatch(after: .opened)
+            // 送れなくても、同期の前に記録忘れの見張りが決めて返した時刻を待つ
             recordSync.startWaitingForNoticeTime()
         case .opening, .signIn:
             return
