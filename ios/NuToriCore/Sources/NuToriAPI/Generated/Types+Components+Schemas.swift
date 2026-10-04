@@ -27,6 +27,398 @@ extension Components {
             case weightRecord = "weight_record"
             case weightTrend = "weight_trend"
         }
+        /// kind が account_settings の変更の record。アカウントに1つで、削除の印は無い
+        ///
+        /// - Remark: Generated from `#/components/schemas/AccountSettingsRecord`.
+        internal struct AccountSettingsRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/AccountSettingsRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/AccountSettingsRecord/sendsUsageData`.
+            internal var sendsUsageData: Swift.Bool
+            /// Creates a new `AccountSettingsRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - sendsUsageData:
+            internal init(
+                id: Swift.String,
+                sendsUsageData: Swift.Bool
+            ) {
+                self.id = id
+                self.sendsUsageData = sendsUsageData
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case sendsUsageData
+            }
+        }
+        /// kind が dish の変更の record。消えたら kind が dish_deletion で record が空の変更が届く
+        ///
+        /// - Remark: Generated from `#/components/schemas/DishRecord`.
+        internal struct DishRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/DishRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/DishRecord/mealId`.
+            internal var mealId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/DishRecord/name`.
+            internal var name: Swift.String
+            /// - Remark: Generated from `#/components/schemas/DishRecord/quantity`.
+            internal var quantity: Swift.Double
+            /// - Remark: Generated from `#/components/schemas/DishRecord/unit`.
+            internal var unit: Swift.String
+            /// - Remark: Generated from `#/components/schemas/DishRecord/positionInMeal`.
+            internal var positionInMeal: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/DishRecord/version`.
+            internal var version: Swift.Int
+            /// Creates a new `DishRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - mealId:
+            ///   - name:
+            ///   - quantity:
+            ///   - unit:
+            ///   - positionInMeal:
+            ///   - version:
+            internal init(
+                id: Swift.String,
+                mealId: Swift.String,
+                name: Swift.String,
+                quantity: Swift.Double,
+                unit: Swift.String,
+                positionInMeal: Swift.Int,
+                version: Swift.Int
+            ) {
+                self.id = id
+                self.mealId = mealId
+                self.name = name
+                self.quantity = quantity
+                self.unit = unit
+                self.positionInMeal = positionInMeal
+                self.version = version
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case mealId
+                case name
+                case quantity
+                case unit
+                case positionInMeal
+                case version
+            }
+        }
+        /// kind が ingredient の変更の record。消えたら kind が ingredient_deletion で record が空の変更が届く
+        ///
+        /// - Remark: Generated from `#/components/schemas/IngredientRecord`.
+        internal struct IngredientRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/dishId`.
+            internal var dishId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/name`.
+            internal var name: Swift.String
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/quantity`.
+            internal var quantity: Swift.Double
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/unit`.
+            internal var unit: Swift.String
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/edibleGramsPerUnit`.
+            internal var edibleGramsPerUnit: Swift.Double
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/positionInDish`.
+            internal var positionInDish: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource`.
+            internal enum NutrientSourcePayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case1`.
+                internal struct Case1Payload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case1/type`.
+                    internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                        case nutritionLabel = "nutrition_label"
+                    }
+                    /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case1/type`.
+                    internal var _type: Components.Schemas.IngredientRecord.NutrientSourcePayload.Case1Payload._TypePayload
+                    /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case1/labelBasisGrams`.
+                    internal var labelBasisGrams: Swift.Double
+                    /// Creates a new `Case1Payload`.
+                    ///
+                    /// - Parameters:
+                    ///   - _type:
+                    ///   - labelBasisGrams:
+                    internal init(
+                        _type: Components.Schemas.IngredientRecord.NutrientSourcePayload.Case1Payload._TypePayload,
+                        labelBasisGrams: Swift.Double
+                    ) {
+                        self._type = _type
+                        self.labelBasisGrams = labelBasisGrams
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case _type = "type"
+                        case labelBasisGrams
+                    }
+                }
+                /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case1`.
+                case case1(Components.Schemas.IngredientRecord.NutrientSourcePayload.Case1Payload)
+                /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case2`.
+                internal struct Case2Payload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case2/type`.
+                    internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                        case foodComposition = "food_composition"
+                    }
+                    /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case2/type`.
+                    internal var _type: Components.Schemas.IngredientRecord.NutrientSourcePayload.Case2Payload._TypePayload
+                    /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case2/foodNumber`.
+                    internal var foodNumber: Swift.String
+                    /// Creates a new `Case2Payload`.
+                    ///
+                    /// - Parameters:
+                    ///   - _type:
+                    ///   - foodNumber:
+                    internal init(
+                        _type: Components.Schemas.IngredientRecord.NutrientSourcePayload.Case2Payload._TypePayload,
+                        foodNumber: Swift.String
+                    ) {
+                        self._type = _type
+                        self.foodNumber = foodNumber
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case _type = "type"
+                        case foodNumber
+                    }
+                }
+                /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case2`.
+                case case2(Components.Schemas.IngredientRecord.NutrientSourcePayload.Case2Payload)
+                /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case3`.
+                internal struct Case3Payload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case3/type`.
+                    internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                        case estimated = "estimated"
+                    }
+                    /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case3/type`.
+                    internal var _type: Components.Schemas.IngredientRecord.NutrientSourcePayload.Case3Payload._TypePayload
+                    /// Creates a new `Case3Payload`.
+                    ///
+                    /// - Parameters:
+                    ///   - _type:
+                    internal init(_type: Components.Schemas.IngredientRecord.NutrientSourcePayload.Case3Payload._TypePayload) {
+                        self._type = _type
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case _type = "type"
+                    }
+                }
+                /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource/case3`.
+                case case3(Components.Schemas.IngredientRecord.NutrientSourcePayload.Case3Payload)
+                internal init(from decoder: any Swift.Decoder) throws {
+                    var errors: [any Swift.Error] = []
+                    do {
+                        self = .case1(try .init(from: decoder))
+                        return
+                    } catch {
+                        errors.append(error)
+                    }
+                    do {
+                        self = .case2(try .init(from: decoder))
+                        return
+                    } catch {
+                        errors.append(error)
+                    }
+                    do {
+                        self = .case3(try .init(from: decoder))
+                        return
+                    } catch {
+                        errors.append(error)
+                    }
+                    throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                        type: Self.self,
+                        codingPath: decoder.codingPath,
+                        errors: errors
+                    )
+                }
+                internal func encode(to encoder: any Swift.Encoder) throws {
+                    switch self {
+                    case let .case1(value):
+                        try value.encode(to: encoder)
+                    case let .case2(value):
+                        try value.encode(to: encoder)
+                    case let .case3(value):
+                        try value.encode(to: encoder)
+                    }
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrientSource`.
+            internal var nutrientSource: Components.Schemas.IngredientRecord.NutrientSourcePayload
+            /// 項目の名前は shared/nutrients.json。不明の項目はキーを持たない
+            ///
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrients`.
+            internal struct NutrientsPayload: Codable, Hashable, Sendable {
+                /// A container of undocumented properties.
+                internal var additionalProperties: [String: Swift.Double]
+                /// Creates a new `NutrientsPayload`.
+                ///
+                /// - Parameters:
+                ///   - additionalProperties: A container of undocumented properties.
+                internal init(additionalProperties: [String: Swift.Double] = .init()) {
+                    self.additionalProperties = additionalProperties
+                }
+                internal init(from decoder: any Swift.Decoder) throws {
+                    additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                }
+                internal func encode(to encoder: any Swift.Encoder) throws {
+                    try encoder.encodeAdditionalProperties(additionalProperties)
+                }
+            }
+            /// 項目の名前は shared/nutrients.json。不明の項目はキーを持たない
+            ///
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/nutrients`.
+            internal var nutrients: Components.Schemas.IngredientRecord.NutrientsPayload
+            /// Creates a new `IngredientRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - dishId:
+            ///   - name:
+            ///   - quantity:
+            ///   - unit:
+            ///   - edibleGramsPerUnit:
+            ///   - positionInDish:
+            ///   - nutrientSource:
+            ///   - nutrients: 項目の名前は shared/nutrients.json。不明の項目はキーを持たない
+            internal init(
+                id: Swift.String,
+                dishId: Swift.String,
+                name: Swift.String,
+                quantity: Swift.Double,
+                unit: Swift.String,
+                edibleGramsPerUnit: Swift.Double,
+                positionInDish: Swift.Int,
+                nutrientSource: Components.Schemas.IngredientRecord.NutrientSourcePayload,
+                nutrients: Components.Schemas.IngredientRecord.NutrientsPayload
+            ) {
+                self.id = id
+                self.dishId = dishId
+                self.name = name
+                self.quantity = quantity
+                self.unit = unit
+                self.edibleGramsPerUnit = edibleGramsPerUnit
+                self.positionInDish = positionInDish
+                self.nutrientSource = nutrientSource
+                self.nutrients = nutrients
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case dishId
+                case name
+                case quantity
+                case unit
+                case edibleGramsPerUnit
+                case positionInDish
+                case nutrientSource
+                case nutrients
+            }
+        }
+        /// kind が meal の変更の record。消えたら kind が meal_deletion で record が空の変更が届く
+        ///
+        /// - Remark: Generated from `#/components/schemas/MealRecord`.
+        internal struct MealRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/MealRecord/id`.
+            internal var id: Swift.String
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/MealRecord/eatenAt`.
+            internal var eatenAt: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MealRecord/eatenAtUtcOffsetSeconds`.
+            internal var eatenAtUtcOffsetSeconds: Swift.Int
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/MealRecord/sentAt`.
+            internal var sentAt: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MealRecord/sentTimeZone`.
+            internal var sentTimeZone: Swift.String
+            /// - Remark: Generated from `#/components/schemas/MealRecord/entryMethod`.
+            internal var entryMethod: Swift.String
+            /// - Remark: Generated from `#/components/schemas/MealRecord/PhotosPayload`.
+            internal struct PhotosPayloadPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/MealRecord/PhotosPayload/id`.
+                internal var id: Swift.String
+                /// Creates a new `PhotosPayloadPayload`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                internal init(id: Swift.String) {
+                    self.id = id
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case id
+                }
+            }
+            /// 写真の並び順
+            ///
+            /// - Remark: Generated from `#/components/schemas/MealRecord/photos`.
+            internal typealias PhotosPayload = [Components.Schemas.MealRecord.PhotosPayloadPayload]
+            /// 写真の並び順
+            ///
+            /// - Remark: Generated from `#/components/schemas/MealRecord/photos`.
+            internal var photos: Components.Schemas.MealRecord.PhotosPayload
+            /// Creates a new `MealRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - eatenAt: UNIX 時刻のミリ秒（UTC）
+            ///   - eatenAtUtcOffsetSeconds:
+            ///   - sentAt: UNIX 時刻のミリ秒（UTC）
+            ///   - sentTimeZone:
+            ///   - entryMethod:
+            ///   - photos: 写真の並び順
+            internal init(
+                id: Swift.String,
+                eatenAt: Swift.Int,
+                eatenAtUtcOffsetSeconds: Swift.Int,
+                sentAt: Swift.Int,
+                sentTimeZone: Swift.String,
+                entryMethod: Swift.String,
+                photos: Components.Schemas.MealRecord.PhotosPayload
+            ) {
+                self.id = id
+                self.eatenAt = eatenAt
+                self.eatenAtUtcOffsetSeconds = eatenAtUtcOffsetSeconds
+                self.sentAt = sentAt
+                self.sentTimeZone = sentTimeZone
+                self.entryMethod = entryMethod
+                self.photos = photos
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case eatenAt
+                case eatenAtUtcOffsetSeconds
+                case sentAt
+                case sentTimeZone
+                case entryMethod
+                case photos
+            }
+        }
+        /// kind が meal_estimation_status の変更の record。recordId は食事の ID。食事が消えたら kind が meal_estimation_status_deletion で record が空の変更が届く
+        ///
+        /// - Remark: Generated from `#/components/schemas/MealEstimationStatusRecord`.
+        internal struct MealEstimationStatusRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/MealEstimationStatusRecord/mealId`.
+            internal var mealId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/MealEstimationStatusRecord/status`.
+            internal var status: Swift.String
+            /// Creates a new `MealEstimationStatusRecord`.
+            ///
+            /// - Parameters:
+            ///   - mealId:
+            ///   - status:
+            internal init(
+                mealId: Swift.String,
+                status: Swift.String
+            ) {
+                self.mealId = mealId
+                self.status = status
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case mealId
+                case status
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/NoticeRecord`.
         internal struct NoticeRecord: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/NoticeRecord/id`.
@@ -124,6 +516,119 @@ extension Components {
             }
             internal enum CodingKeys: String, CodingKey {
                 case minuteOfDay
+            }
+        }
+        /// kind が weight_record の変更の record。消えたら kind が weight_record_deletion で record が空の変更が届く
+        ///
+        /// - Remark: Generated from `#/components/schemas/WeightRecordRecord`.
+        internal struct WeightRecordRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/weightKg`.
+            internal var weightKg: Swift.Double
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/measuredAt`.
+            internal var measuredAt: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/timeZone`.
+            internal var timeZone: Swift.String
+            /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/version`.
+            internal var version: Swift.Int
+            /// ヘルスケアから取り込んだ記録だけに付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported`.
+            internal struct ImportedPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported/sourceAppName`.
+                internal var sourceAppName: Swift.String
+                /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported/sourceBundleId`.
+                internal var sourceBundleId: Swift.String
+                /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported/healthkitSampleUuid`.
+                internal var healthkitSampleUuid: Swift.String
+                /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported/bodyFat`.
+                internal struct BodyFatPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported/bodyFat/percentage`.
+                    internal var percentage: Swift.Double
+                    /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported/bodyFat/healthkitSampleUuid`.
+                    internal var healthkitSampleUuid: Swift.String
+                    /// Creates a new `BodyFatPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - percentage:
+                    ///   - healthkitSampleUuid:
+                    internal init(
+                        percentage: Swift.Double,
+                        healthkitSampleUuid: Swift.String
+                    ) {
+                        self.percentage = percentage
+                        self.healthkitSampleUuid = healthkitSampleUuid
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case percentage
+                        case healthkitSampleUuid
+                    }
+                }
+                /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported/bodyFat`.
+                internal var bodyFat: Components.Schemas.WeightRecordRecord.ImportedPayload.BodyFatPayload?
+                /// Creates a new `ImportedPayload`.
+                ///
+                /// - Parameters:
+                ///   - sourceAppName:
+                ///   - sourceBundleId:
+                ///   - healthkitSampleUuid:
+                ///   - bodyFat:
+                internal init(
+                    sourceAppName: Swift.String,
+                    sourceBundleId: Swift.String,
+                    healthkitSampleUuid: Swift.String,
+                    bodyFat: Components.Schemas.WeightRecordRecord.ImportedPayload.BodyFatPayload? = nil
+                ) {
+                    self.sourceAppName = sourceAppName
+                    self.sourceBundleId = sourceBundleId
+                    self.healthkitSampleUuid = healthkitSampleUuid
+                    self.bodyFat = bodyFat
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case sourceAppName
+                    case sourceBundleId
+                    case healthkitSampleUuid
+                    case bodyFat
+                }
+            }
+            /// ヘルスケアから取り込んだ記録だけに付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeightRecordRecord/imported`.
+            internal var imported: Components.Schemas.WeightRecordRecord.ImportedPayload?
+            /// Creates a new `WeightRecordRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - weightKg:
+            ///   - measuredAt: UNIX 時刻のミリ秒（UTC）
+            ///   - timeZone:
+            ///   - version:
+            ///   - imported: ヘルスケアから取り込んだ記録だけに付く
+            internal init(
+                id: Swift.String,
+                weightKg: Swift.Double,
+                measuredAt: Swift.Int,
+                timeZone: Swift.String,
+                version: Swift.Int,
+                imported: Components.Schemas.WeightRecordRecord.ImportedPayload? = nil
+            ) {
+                self.id = id
+                self.weightKg = weightKg
+                self.measuredAt = measuredAt
+                self.timeZone = timeZone
+                self.version = version
+                self.imported = imported
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case weightKg
+                case measuredAt
+                case timeZone
+                case version
+                case imported
             }
         }
         /// kind が weight_trend の変更の record。recordId は weight_trend の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く
