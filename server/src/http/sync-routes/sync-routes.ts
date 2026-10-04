@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
-import { noticeRecordSchema } from "../../notice/http/notice-record-schema";
+import { httpRecordKinds } from "./http-record-kinds";
 import { recordKindNameSchema } from "./record-kind-name-schema";
 import { createSyncClientStateSchema } from "./create-sync-client-state-schema";
 import { syncWriteCurrentSchema } from "./sync-write-current-schema";
@@ -10,8 +10,6 @@ import { toSyncChangeResponse } from "./to-sync-change-response";
 import { toSyncClientState } from "./to-sync-client-state";
 import { toSyncWriteCurrent } from "./to-sync-write-current";
 import { toSyncWrite } from "./to-sync-write";
-import { usualWeighingTimeRecordSchema } from "../../usual-weighing-time/http/usual-weighing-time-record-schema";
-import { weightTrendRecordSchema } from "../../weight-trend/http/weight-trend-record-schema";
 
 const maximumWritesPerRequest = 500;
 // coerce は入力の型が不明になり、OpenAPI の文書ではクエリが省略できることになってしまうので、必須と書く
@@ -170,9 +168,13 @@ const routes = new OpenAPIHono<{ Bindings: Env }>()
 
 // 応答のスキーマからは指さない。端末が、自分の登録簿と突き合わせるために読む
 routes.openAPIRegistry.register("RecordKindName", recordKindNameSchema);
-// 取りに行く変更の record は種類によらない形なので、種類ごとの値の形を部品として書き出す
-routes.openAPIRegistry.register("NoticeRecord", noticeRecordSchema);
-routes.openAPIRegistry.register("UsualWeighingTimeRecord", usualWeighingTimeRecordSchema);
-routes.openAPIRegistry.register("WeightTrendRecord", weightTrendRecordSchema);
+// 取りに行く変更の record は種類によらない形なので、種類ごとの値の形を、種類の名前から作った名前の部品として書き出す
+for (const [name, kind] of Object.entries(httpRecordKinds)) {
+  const pascalName = name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+  routes.openAPIRegistry.register(`${pascalName}Record`, kind.recordSchema);
+}
 
 export const syncRoutes = routes;
