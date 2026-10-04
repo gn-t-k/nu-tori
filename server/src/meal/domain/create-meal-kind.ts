@@ -6,6 +6,7 @@ import { findMealReceivedAt } from "../../estimation/domain/find-meal-received-a
 import { scheduleMealEstimation } from "../../estimation/domain/schedule-meal-estimation";
 import type { EstimationScheduleStore } from "../../estimation/domain/estimation-schedule-store";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
+import type { LatestTimeZoneStore } from "../../domain/latest-time-zone-store";
 import { computeCalendarDay } from "../../domain/compute-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
@@ -53,6 +54,7 @@ type MealKindStores = {
   meal: MealStore;
   mealPhoto: MealPhotoStore;
   estimationSchedule: EstimationScheduleStore;
+  latestTimeZone: LatestTimeZoneStore;
   estimation: EstimationStore;
   writeEstimationEvents: RecordKindStores["writeEstimationEvents"];
   dish: DishStore;

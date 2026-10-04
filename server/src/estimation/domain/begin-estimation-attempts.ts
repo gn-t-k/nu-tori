@@ -1,4 +1,5 @@
 import { createRecordLedger } from "../../domain/create-record-ledger";
+import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordType } from "../../domain/record-type";
 import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
@@ -7,7 +8,6 @@ import type { Meal } from "../../meal/domain/meal";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import { computeNextDayStart } from "./compute-next-day-start";
 import { computeNextEstimationAttemptAt } from "./compute-next-estimation-attempt-at";
-import { findLatestValidTimeZone } from "./find-latest-valid-time-zone";
 import { findMealReceivedAt } from "./find-meal-received-at";
 import { maximumDailyEstimations } from "./maximum-daily-estimations";
 import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
@@ -47,7 +47,7 @@ export const beginEstimationAttempts = (
         if (stores.estimation.countEstimationsCountedOn(countedOn) >= maximumDailyEstimations) {
           const nextDay = computeNextDayStart(
             countedOn,
-            findLatestValidTimeZone(stores.estimationSchedule) ??
+            findLatestValidTimeZone(stores.latestTimeZone) ??
               findScheduledMeal(stores, mealId).sentTimeZone,
           );
           writes.deferToNextDay({

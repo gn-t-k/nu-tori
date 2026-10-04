@@ -8,6 +8,7 @@ import type { MealPhotoStore } from "../meal/domain/meal-photo-store";
 import type { MealStore } from "../meal/domain/meal-store";
 import type { MealEstimationStatusStore } from "../meal-estimation-status/domain/meal-estimation-status-store";
 import type { NoticeStore } from "../notice/domain/notice-store";
+import type { LatestTimeZoneStore } from "./latest-time-zone-store";
 import type { FirstSignInStore } from "./record-first-sign-in";
 import type { UsualWeighingTimeStore } from "../usual-weighing-time/domain/usual-weighing-time-store";
 import type { RecordChangeTarget } from "./sync-ledger/record-change-target";
@@ -25,6 +26,8 @@ export type RecordKindStores = {
   weightRecord: WeightRecordStore;
   // 使い始めた日を読むために、体重記録の種類と応答の startedOn が使う
   firstSignIn: FirstSignInStore;
+  // 日を決めるために、いつもの時刻の学び直しと、推定の数える日・見送りの次の日が使う
+  latestTimeZone: LatestTimeZoneStore;
   // 食事の写真がそろったかを見て、推定の予定に入れるために、食事の種類と写真の要求が使う
   mealPhoto: MealPhotoStore;
   estimationSchedule: EstimationScheduleStore;
