@@ -8,6 +8,7 @@ struct WeightNoticeCard: View {
     let records: [WeightRecord]
     let today: CalendarDay
     let now: () -> Date
+    let timeZone: () -> TimeZone
     let capture: (ClientUsageEvent) async -> Void
     let onRecord: (WeightEntry.Write) -> Void
 
@@ -30,7 +31,7 @@ struct WeightNoticeCard: View {
             switch card.form {
             case .awaitingAnswer:
                 NoticeWeightEntry(
-                    records: records, today: today, now: now, capture: capture,
+                    records: records, today: today, now: now, timeZone: timeZone, capture: capture,
                     onRecord: onRecord
                 )
                 // 値は作ったときの記録で決まる。カードが出たあとに前回の体重が届いたら（開いたときの取得、
@@ -83,6 +84,7 @@ private struct NoticeWeightEntry: View {
     @State private var observation: WeightEntryObservation
     @FocusState private var typing: Bool
     private let now: () -> Date
+    private let timeZone: () -> TimeZone
     private let capture: (ClientUsageEvent) async -> Void
     private let onRecord: (WeightEntry.Write) -> Void
 
@@ -90,11 +92,13 @@ private struct NoticeWeightEntry: View {
         records: [WeightRecord],
         today: CalendarDay,
         now: @escaping () -> Date,
+        timeZone: @escaping () -> TimeZone,
         capture: @escaping (ClientUsageEvent) async -> Void,
         onRecord: @escaping (WeightEntry.Write) -> Void
     ) {
         let entry = WeightEntry(weightRecords: records, today: today)
         self.now = now
+        self.timeZone = timeZone
         self.capture = capture
         self.onRecord = onRecord
         _entry = State(initialValue: entry)
@@ -113,7 +117,7 @@ private struct NoticeWeightEntry: View {
         typing = false
         let recordedAt = now()
         let event = observation.recordedEvent(at: recordedAt)
-        onRecord(entry.write(recording: kilograms, at: recordedAt, in: .current))
+        onRecord(entry.write(recording: kilograms, at: recordedAt, in: timeZone()))
         Task { await capture(event) }
     }
 }

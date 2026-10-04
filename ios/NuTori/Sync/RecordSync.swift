@@ -61,11 +61,12 @@ import NuToriCore
     /// 通知を置き直すたびに（日付やタイムゾーンが変わった、いつもの時刻が届いた、など）待ち直す
     func startWaitingForNoticeTime() {
         stopWaitingForNoticeTime()
+        let now = clock.now
         noticeTimer = .waiting(
             Task { [weak self] in
                 guard let noticeTime = await self?.nextNoticeTime() else { return }
                 do {
-                    try await Task.sleep(for: .seconds(max(0, noticeTime.timeIntervalSinceNow)))
+                    try await Task.sleep(for: .seconds(max(0, noticeTime.timeIntervalSince(now()))))
                 } catch {
                     // 待ち直すか、裏へ回って取り消した
                     return
@@ -117,7 +118,7 @@ import NuToriCore
         guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
             return
         }
-        followEstimationInBackground(sentAt: .now)
+        followEstimationInBackground(sentAt: clock.now())
     }
 
     /// App スイッチャーで閉じると裏の送信が取り消されるので、開いたときに写真の送り残しを送り直す
@@ -174,7 +175,8 @@ import NuToriCore
         signedInAccountId: @escaping @MainActor () async -> String?,
         errorReporting: any ErrorReportingSession,
         mealPhotos: MealPhotos,
-        reminders: MissedWeightRecordReminderScheduler
+        reminders: MissedWeightRecordReminderScheduler,
+        clock: DeviceClock
     ) {
         self.store = store
         self.client = client
@@ -186,6 +188,7 @@ import NuToriCore
         self.errorReporting = errorReporting
         self.mealPhotos = mealPhotos
         self.reminders = reminders
+        self.clock = clock
     }
 
     func registerAndWatch() {
@@ -234,6 +237,7 @@ import NuToriCore
     private let signedInAccountId: @MainActor () async -> String?
     private let errorReporting: any ErrorReportingSession
     private let reminders: MissedWeightRecordReminderScheduler
+    private let clock: DeviceClock
     /// 初めての取得を測り始めた時刻。測る前と、終えたあとは無い
     private var initialPullStartedAt: Date?
     private var didRegisterRefresh = false
@@ -272,7 +276,7 @@ import NuToriCore
             return nil
         }
         return MissedWeightRecordNoticeDecision.nextNoticeTime(
-            usualWeighingTime: usualWeighingTime, now: .now, timeZone: .current,
+            usualWeighingTime: usualWeighingTime, now: clock.now(), timeZone: clock.timeZone(),
             weightRecords: weightRecords)
     }
 
@@ -284,7 +288,7 @@ import NuToriCore
         let followUp = EstimationFollowUp(
             sentAt: sentAt,
             cache: store,
-            now: { .now },
+            now: clock.now,
             wait: { try await Task.sleep(for: $0) }
         )
         Task { try? await followUp.run { try await self.sync() } }
@@ -310,7 +314,7 @@ import NuToriCore
 
     private func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: Self.refreshTaskIdentifier)
-        // システムがこれより早く起こすことはほぼ無い
+        // システムがこれより早く起こすことはほぼ無い。システムが端末の本当の時計と比べるので、時計を通さずに今から数える
         let earliestDelay: TimeInterval = 15 * 60
         request.earliestBeginDate = Date(timeIntervalSinceNow: earliestDelay)
         try? BGTaskScheduler.shared.submit(request)
@@ -356,9 +360,9 @@ import NuToriCore
         }
         let completedBefore = try await store.syncState()?.hasCompletedInitialPull ?? false
         if !completedBefore, initialPullStartedAt == nil {
-            initialPullStartedAt = .now
+            initialPullStartedAt = clock.now()
         }
-        let startedAt = initialPullStartedAt ?? .now
+        let startedAt = initialPullStartedAt ?? clock.now()
         let engine = engineForThisDevice(accountId: accountId)
         // ヘルスケアから取り込んだあとの体重記録で決め、出した知らせと答えをこの同期で送る
         await engine.issueOrRespondToMissedWeightRecordNotices()
@@ -378,7 +382,7 @@ import NuToriCore
                 completedAfter: completedAfter,
                 ending: result.ending,
                 startedAt: startedAt,
-                endedAt: .now
+                endedAt: clock.now()
             )
         )
         if completedAfter {
@@ -407,8 +411,8 @@ import NuToriCore
                     as? String ?? "0",
                 osVersion: "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
             ),
-            timeZone: { .current },
-            now: { .now },
+            timeZone: clock.timeZone,
+            now: clock.now,
             readableKinds: AppRecordKinds.registry.names,
             errorReporting: errorReporting,
             weightHealthExport: health.engine,

@@ -22,15 +22,16 @@ import NuToriCore
         errorReporting: any ErrorReportingSession,
         startBackgroundDelivery:
             @escaping @Sendable (@escaping @Sendable () async -> Void) async ->
-            Void
+            Void,
+        clock: DeviceClock
     ) -> HealthSyncSession {
         HealthSyncSession(
             engine: HealthSyncEngine(
                 healthStore: healthStore,
                 store: syncStore,
                 ownBundleId: Bundle.main.bundleIdentifier ?? "app.nu-tori",
-                timeZone: { .current },
-                now: { .now },
+                timeZone: clock.timeZone,
+                now: clock.now,
                 errorReporting: errorReporting
             ),
             store: healthStore,

@@ -55,6 +55,7 @@ struct RootView: View {
             }
         case .loadingTimeline, .timeline:
             TimelineScreenContainer(
+                clock: model.clock,
                 rejectedLines: model.rejectedLines,
                 capture: { await model.capture($0) },
                 reminderLanding: model.reminderLanding,

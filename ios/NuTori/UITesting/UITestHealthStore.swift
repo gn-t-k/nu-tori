@@ -4,10 +4,14 @@
 
     /// UI テストが起動の値で渡す、ヘルスケアの許可と読み書き
     nonisolated final class UITestHealthStore: HealthStore, @unchecked Sendable {
-        init(authorization: Authorization, latestKilograms: Double?, writeAuthorized: Bool) {
+        init(
+            authorization: Authorization, latestKilograms: Double?, writeAuthorized: Bool,
+            clock: DeviceClock
+        ) {
             self.authorization = authorization
             self.latestKilograms = latestKilograms
             self.writeAuthorized = writeAuthorized
+            self.clock = clock
         }
 
         func authorizationRequestStatus() async throws -> HealthAuthorizationRequestStatus {
@@ -42,10 +46,10 @@
                     HealthChanges.WeightSample(
                         sampleId: sampleId,
                         kilograms: latestKilograms,
-                        instant: .now,
+                        instant: clock.now(),
                         sourceAppName: "体重計アプリ",
                         sourceBundleId: "com.example.scale",
-                        timeZone: .current
+                        timeZone: clock.timeZone()
                     )
                 ],
                 bodyFats: [],
@@ -80,5 +84,6 @@
         private var authorization: Authorization
         private let latestKilograms: Double?
         private let writeAuthorized: Bool
+        private let clock: DeviceClock
     }
 #endif

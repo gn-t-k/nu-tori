@@ -157,6 +157,7 @@ nonisolated enum StoreFiles {
     }
 
     private static func archive(at url: URL) throws {
+        // 退避したファイルの名前に付ける印で、記録の日付には使わないので、時計を通さない（置き場を開く前で、時計を受け取れない）
         let stamp = archiveStamp(Date())
         let manager = FileManager.default
         var moved: [(URL, URL)] = []

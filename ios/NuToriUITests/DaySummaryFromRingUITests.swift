@@ -14,7 +14,7 @@ final class DaySummaryFromRingUITests: XCTestCase {
         todayIdentifier = days.todayIdentifier
         app = .launched(
             account: "signed-in", api: "day-ring", healthLatestKilograms: nil,
-            timeZone: Self.timeZoneIdentifier)
+            now: Self.now, timeZone: Self.timeZoneIdentifier)
         XCTAssertTrue(app.staticText(containing: "72.4 kg").waitForExistence(timeout: 5))
     }
 
@@ -52,12 +52,14 @@ final class DaySummaryFromRingUITests: XCTestCase {
         let label: String
     }
 
+    private static let now = UITestNow.morningBeforeNotice
     private static let timeZoneIdentifier = "Asia/Tokyo"
 
     private static func days() throws -> (started: StartedDay, todayIdentifier: String) {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: timeZoneIdentifier))
-        let today = calendar.startOfDay(for: .now)
+        let timeZone = try XCTUnwrap(TimeZone(identifier: timeZoneIdentifier))
+        calendar.timeZone = timeZone
+        let today = calendar.startOfDay(for: try now.date(in: timeZone))
         let started = try XCTUnwrap(calendar.date(byAdding: .day, value: -21, to: today))
         return (
             started: try startedDay(started, calendar: calendar),

@@ -7,6 +7,8 @@ final class RootModel {
     private(set) var screen: Screen = .opening
     /// 記録忘れの通知を押して開いたときの着き先。タイムラインが着いたら `noteReminderLanded()` で消す
     private(set) var reminderLanding: ReminderLanding?
+    /// 画面が今日と操作した時刻を読む時計
+    let clock: DeviceClock
     var rejectedLines: [RejectedLine] {
         guard case .accepting(let rejected) = rejectionAcceptance else { return [] }
         return rejected.lines
@@ -16,8 +18,10 @@ final class RootModel {
         accountSession: AccountSession,
         recordSync: RecordSync,
         health: HealthSyncSession,
-        reminders: MissedWeightRecordReminderScheduler
+        reminders: MissedWeightRecordReminderScheduler,
+        clock: DeviceClock
     ) {
+        self.clock = clock
         self.accountSession = accountSession
         self.recordSync = recordSync
         self.health = health
@@ -117,7 +121,7 @@ final class RootModel {
 
     /// 撮った写真は、1枚で1つの食事にする。食事の時刻は撮った時刻（付帯情報に無ければ「写真を使用」を押した時刻）
     func recordCapturedMeal(original: Data, exif: PhotoExif, sentAt: Date) async {
-        let timeZone = TimeZone.current
+        let timeZone = clock.timeZone()
         let photoId = UUID()
         let takenAt = PhotoTakenTime(exif: exif, pickedAt: sentAt, deviceTimeZone: timeZone)
         let draft = MealDraft.captured(
@@ -127,7 +131,7 @@ final class RootModel {
 
     /// 選んだ写真を、撮影時刻の近いものごとの食事にまとめて記録する。`pickedAt` は選び終えた時刻
     func recordPickedMeals(originals: [Data], pickedAt: Date) async {
-        let timeZone = TimeZone.current
+        let timeZone = clock.timeZone()
         let photos = originals.map { (id: UUID(), original: $0) }
         let picked = photos.map { photo in
             PickedPhoto(
