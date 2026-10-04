@@ -1,25 +1,18 @@
-import Foundation
+public import Foundation
 
-/// 送り待ちの中身（送り待ちの置き場の版 1 の JSON と同じ形）。今の道の書き込みを持つ。
+/// 体重記録とアカウントの設定の送り待ちの JSON の形（送り待ちの置き場の版 1 と同じ形）。
+/// 版 1 は種類の名前を持たず、2つの種類が1つの形を分け合っていたので、今も `WeightRecordWrite` と `AccountSettingsWrite` がこの形を共有する。
 /// 直す書き込みは、以前は直す前の値（`previous`）も JSON に持っていた。今は持たないが、残った送り待ちの JSON にある
 /// `previous` は、デコードのときに読み飛ばす（Codable は知らないキーを無視する）ので、置き場の版を上げずに読める
-enum PendingWriteContent: Codable {
+public enum PendingWriteContent: Codable {
     case create(Record)
     case correct(record: Record)
     case sourceDeleted(recordId: UUID)
     case updateAccountSettings(id: UUID, sendsUsageData: Bool)
 
-    init(_ operation: PendingWrite.Operation) {
-        switch operation {
-        case .createWeightRecord(let record):
-            self = .create(Record(record))
-        case .correctWeightRecord(let record):
-            self = .correct(record: Record(record))
-        case .sourceDeletedWeightRecord(let recordId):
-            self = .sourceDeleted(recordId: recordId)
-        case .updateAccountSettings(let settings):
-            self = .updateAccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData)
-        }
+    /// 版 1 の中身（種類の名前を持たない）から、種類の名前を読む。読めなければ nil
+    public static func kindName(ofVersion1Content content: Data) -> RecordKindName? {
+        try? JSONDecoder().decode(PendingWriteContent.self, from: content).kindName
     }
 
     var kindName: RecordKindName {
@@ -29,20 +22,7 @@ enum PendingWriteContent: Codable {
         }
     }
 
-    func operation(kind: RecordKindName) throws -> PendingWrite.Operation {
-        switch self {
-        case .create(let record):
-            .createWeightRecord(try record.weightRecord(kind: kind))
-        case .correct(let record):
-            .correctWeightRecord(try record.weightRecord(kind: kind))
-        case .sourceDeleted(let recordId):
-            .sourceDeletedWeightRecord(recordId: recordId)
-        case .updateAccountSettings(let id, let sendsUsageData):
-            .updateAccountSettings(AccountSettings(id: id, sendsUsageData: sendsUsageData))
-        }
-    }
-
-    struct Record: Codable {
+    public struct Record: Codable {
         let id: UUID
         let kilograms: Double
         let measuredAt: Date
@@ -50,14 +30,14 @@ enum PendingWriteContent: Codable {
         let version: Int
         let imported: StoredImported?
 
-        struct StoredImported: Codable {
+        public struct StoredImported: Codable {
             let appName: String
             let bundleId: String
             let healthKitSampleId: UUID
             let bodyFat: StoredBodyFat?
         }
 
-        struct StoredBodyFat: Codable {
+        public struct StoredBodyFat: Codable {
             let percentage: Double
             let healthKitSampleId: UUID
         }
@@ -84,9 +64,9 @@ enum PendingWriteContent: Codable {
             }
         }
 
-        func weightRecord(kind: RecordKindName) throws -> WeightRecord {
+        func weightRecord() -> WeightRecord? {
             guard let timeZone = TimeZone(identifier: timeZoneIdentifier) else {
-                throw PendingWrite.InvalidEntryError(kind: kind)
+                return nil
             }
             let inputSource: WeightRecord.InputSource =
                 if let imported {

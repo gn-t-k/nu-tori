@@ -63,8 +63,7 @@
             let photoUploader = UITestMealPhotoUploader()
             let photoRoot = FileManager.default.temporaryDirectory.appending(
                 path: "ui-test-meal-photos-\(UUID().uuidString)")
-            try store.prepareForUITest(
-                state: seededSyncState(), pendingWrites: account.pendingWrites(at: clock))
+            try store.prepareForUITest(seededResults())
             let behavior = transportBehavior
             let clock = self.clock
             return AppRuntime.assemble(
@@ -130,6 +129,16 @@
             }
         }
 
+        /// 始める前の同期の状態と、送り待ちに残した記録
+        private func seededResults() throws -> [SyncBoxResult] {
+            try account.pendingRecords(at: clock).map {
+                try WeightRecordSyncing().saving(
+                    $0,
+                    enqueuing: PendingWeightRecordWrite(
+                        enqueuedAt: clock.now(), write: .createWeightRecord($0)))
+            } + [SyncBoxResult(syncState: seededSyncState())]
+        }
+
         /// 本物の時計に戻すと、結果が開いた時刻でまた変わるので、渡し忘れと読めない値はその場で止める
         private static func frozenClock(_ value: String?) -> DeviceClock {
             guard let value, let clock = DeviceClock.frozen(atLaunchValue: value, in: .current)
@@ -179,23 +188,18 @@
                 }
             }
 
-            fileprivate func pendingWrites(at clock: DeviceClock) -> [PendingWrite] {
+            /// 送り待ちに残したまま始める、手で記録した体重
+            fileprivate func pendingRecords(at clock: DeviceClock) -> [WeightRecord] {
                 switch self {
                 case .signInAgainWithPendingWrites:
                     [
-                        PendingWrite(
-                            writeId: UUID(),
-                            enqueuedAt: clock.now(),
-                            operation: .createWeightRecord(
-                                WeightRecord(
-                                    id: UUID(),
-                                    kilograms: 72.4,
-                                    instant: clock.now(),
-                                    timeZone: clock.timeZone(),
-                                    inputSource: .manual,
-                                    version: 1
-                                )
-                            )
+                        WeightRecord(
+                            id: UUID(),
+                            kilograms: 72.4,
+                            instant: clock.now(),
+                            timeZone: clock.timeZone(),
+                            inputSource: .manual,
+                            version: 1
                         )
                     ]
                 case .signedOut, .signedIn, .signedInFetching, .signInAgain: []

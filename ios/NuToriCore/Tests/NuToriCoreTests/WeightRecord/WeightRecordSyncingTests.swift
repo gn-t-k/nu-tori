@@ -68,9 +68,9 @@ struct WeightRecordSyncingTests {
 
         @Test("作る書き込みは、版を持たない新しい記録を送ること")
         func createsNewRecord() throws {
-            let write = PendingWrite(
+            let write = PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .createWeightRecord(original))
+                write: .createWeightRecord(original))
 
             let built = try syncing.syncWrite(for: write.entry())
 
@@ -85,9 +85,9 @@ struct WeightRecordSyncingTests {
 
         @Test("直す書き込みは、直した値と版を送ること")
         func sendsCorrection() throws {
-            let write = PendingWrite(
+            let write = PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .correctWeightRecord(corrected))
+                write: .correctWeightRecord(corrected))
 
             let built = try syncing.syncWrite(for: write.entry())
 
@@ -101,9 +101,9 @@ struct WeightRecordSyncingTests {
 
         @Test("ヘルスケアで消えた記録の書き込みは、記録の ID を送ること")
         func sendsSourceDeletion() throws {
-            let write = PendingWrite(
+            let write = PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .sourceDeletedWeightRecord(recordId: original.id))
+                write: .sourceDeletedWeightRecord(recordId: original.id))
 
             let built = try syncing.syncWrite(for: write.entry())
 
@@ -115,12 +115,12 @@ struct WeightRecordSyncingTests {
 
         @Test("アカウントの設定の送り待ちは、作れないこと")
         func rejectsAccountSettings() throws {
-            let entry = try PendingWrite(
+            let entry = try PendingAccountSettingsWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .updateAccountSettings(.fixture(sendsUsageData: true))
+                write: .updateAccountSettings(.fixture(sendsUsageData: true))
             ).entry()
 
-            #expect(throws: PendingWrite.InvalidEntryError(kind: .accountSettings)) {
+            #expect(throws: PendingEntry.InvalidContentError(kind: .accountSettings)) {
                 try syncing.syncWrite(for: entry)
             }
         }
@@ -135,9 +135,9 @@ struct WeightRecordSyncingTests {
         init() throws {
             corrected = try .manual(
                 72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
-            entry = try PendingWrite(
+            entry = try PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .correctWeightRecord(corrected)
+                write: .correctWeightRecord(corrected)
             ).entry()
         }
 
@@ -176,9 +176,9 @@ struct WeightRecordSyncingTests {
 
         @Test("元のサンプルが消えた書き込みは、行も外す変更も返さないこと")
         func sourceDeleted() throws {
-            let sourceDeleted = try PendingWrite(
+            let sourceDeleted = try PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .sourceDeletedWeightRecord(recordId: corrected.id)
+                write: .sourceDeletedWeightRecord(recordId: corrected.id)
             ).entry()
 
             let rejection = try syncing.rejection(

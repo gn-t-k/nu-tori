@@ -85,10 +85,10 @@ extension AccountSessionTests {
                 try await device.syncStore.apply(
                     AccountSettingsSyncKind().saving(
                         settings,
-                        enqueuing: PendingWrite(
+                        enqueuing: PendingAccountSettingsWrite(
                             writeId: UUID(),
                             enqueuedAt: .now,
-                            operation: .updateAccountSettings(settings)
+                            write: .updateAccountSettings(settings)
                         )
                     )
                 )

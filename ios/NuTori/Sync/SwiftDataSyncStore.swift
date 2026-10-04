@@ -163,26 +163,10 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
-    /// 送り待ちに足すものを先に保存し、キャッシュをそのあとに保存し、結果を受け取った送り待ちを最後に消す。
-    /// 受け付けなかった書き込みの戻しは、キャッシュに当てたあとに送り待ちを消す。間で落ちても、送り待ちが残るので次に送って同じ戻しに戻る
     func apply(_ result: SyncBoxResult) async throws {
         let kinds = kinds
         try await onMain { stores in
-            if !result.enqueuing.isEmpty {
-                for entry in result.enqueuing {
-                    stores.pending.insert(PendingWriteRow(entry: entry))
-                }
-                try stores.pending.save()
-            }
-            try Self.applyToCache(result, kinds: kinds, in: stores.cache)
-            if !result.resolvedWriteIds.isEmpty {
-                let removing = Set(result.resolvedWriteIds)
-                for row in try stores.pending.fetch(FetchDescriptor<PendingWriteRow>())
-                where removing.contains(row.writeId) {
-                    stores.pending.delete(row)
-                }
-                try stores.pending.save()
-            }
+            try Self.apply(result, kinds: kinds, to: stores)
         }
     }
 
@@ -195,28 +179,6 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
     func healthSyncState() async throws -> HealthSyncState {
         try await onMain { stores in
             try Self.healthSyncStateRow(in: stores.pending)?.healthSyncState() ?? .initial
-        }
-    }
-
-    func saveHealthSyncState(_ state: HealthSyncState) async throws {
-        try await onMain { stores in
-            try Self.write(state, in: stores.pending)
-            try stores.pending.save()
-        }
-    }
-
-    func applyHealthImport(_ batch: HealthImportBatch) async throws {
-        try await onMain { stores in
-            // 送り待ちと進み具合を先に保存する。間で落ちても、取り込んだ分は送り待ちに残る
-            for write in batch.pendingWrites {
-                stores.pending.insert(try PendingWriteRow(write: write))
-            }
-            try Self.write(batch.state, in: stores.pending)
-            try stores.pending.save()
-            for record in batch.records {
-                try CachedWeightRecord.upsert(record, in: stores.cache)
-            }
-            try stores.cache.save()
         }
     }
 
@@ -244,26 +206,11 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
     }
 
     #if DEBUG
-        @MainActor func prepareForUITest(state: SyncState?, pendingWrites: [PendingWrite]) throws {
+        /// UI テストが始める前の置き場を、箱と同じ道（`apply`）で作る
+        @MainActor func prepareForUITest(_ results: [SyncBoxResult]) throws {
             let stores = contexts()
-            for write in pendingWrites {
-                try Self.enqueue(write, in: stores.pending)
-            }
-            if let state {
-                try Self.write(state, in: stores.cache)
-            }
-            for write in pendingWrites {
-                switch write.operation {
-                case .createWeightRecord(let record), .correctWeightRecord(let record):
-                    try CachedWeightRecord.upsert(record, in: stores.cache)
-                case .updateAccountSettings(let settings):
-                    try CachedAccountSettings.write(settings, in: stores.cache)
-                case .sourceDeletedWeightRecord:
-                    break
-                }
-            }
-            if state != nil || !pendingWrites.isEmpty {
-                try stores.cache.save()
+            for result in results {
+                try Self.apply(result, kinds: kinds, to: stores)
             }
         }
     #endif
@@ -292,10 +239,30 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         return Contexts(cache: cache, pending: pending)
     }
 
-    /// 送り待ちを保存する（キャッシュより先）
-    @MainActor private static func enqueue(_ write: PendingWrite, in context: ModelContext) throws {
-        context.insert(try PendingWriteRow(write: write))
-        try context.save()
+    /// 結果を受け取った送り待ちを最後に消すのは、間で落ちても送り待ちが残り、次に送って同じ戻しに戻るため
+    @MainActor private static func apply(
+        _ result: SyncBoxResult,
+        kinds: RecordKindRegistry<ModelContext>,
+        to stores: Contexts
+    ) throws {
+        if !result.enqueuing.isEmpty || result.healthSyncState != nil {
+            for entry in result.enqueuing {
+                stores.pending.insert(PendingWriteRow(entry: entry))
+            }
+            if let healthSyncState = result.healthSyncState {
+                try write(healthSyncState, in: stores.pending)
+            }
+            try stores.pending.save()
+        }
+        try applyToCache(result, kinds: kinds, in: stores.cache)
+        if !result.resolvedWriteIds.isEmpty {
+            let removing = Set(result.resolvedWriteIds)
+            for row in try stores.pending.fetch(FetchDescriptor<PendingWriteRow>())
+            where removing.contains(row.writeId) {
+                stores.pending.delete(row)
+            }
+            try stores.pending.save()
+        }
     }
 
     @MainActor private static func cachedSyncState(in context: ModelContext) throws

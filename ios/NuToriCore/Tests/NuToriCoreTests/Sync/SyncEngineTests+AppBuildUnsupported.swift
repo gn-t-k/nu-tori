@@ -13,13 +13,13 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let reporting: ErrorReportingSessionMock
             let engine: SyncEngine
-            let pending: PendingWrite
+            let pending: PendingWeightRecordWrite
 
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 pending = .creating(record)
-                store = try .ok(records: [record], pendingWrites: [pending])
+                store = try .ok(records: [record], pendingWeightRecordWrites: [pending])
                 reporting = .ok()
                 engine = .fixture(
                     store: store,
@@ -32,7 +32,7 @@ extension SyncEngineTests {
             func keepsPending() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.pending == [pending])
+                #expect(store.pendingWeightRecords == [pending])
             }
 
             @Test("受け付けなかった行を出さず、締め出されたとして同期を止めること")

@@ -5,8 +5,8 @@ import Testing
 @Suite("送り待ちの種類の名前と中身")
 struct PendingWriteEntryTests {
     @Suite("体重記録の送り待ちを変換するとき")
-    struct WeightRecordWrite {
-        let write: PendingWrite
+    struct WeightRecordConversion {
+        let write: PendingWeightRecordWrite
 
         init() throws {
             let original = try WeightRecord.manual(
@@ -14,9 +14,9 @@ struct PendingWriteEntryTests {
             let corrected = WeightRecord(
                 id: original.id, kilograms: 72.0, instant: original.instant,
                 timeZone: original.timeZone, inputSource: .manual, version: 2)
-            write = PendingWrite(
+            write = PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .correctWeightRecord(corrected))
+                write: .correctWeightRecord(corrected))
         }
 
         @Test("種類の名前を weight-record にし、直す前の値は中身に持たないこと")
@@ -24,7 +24,7 @@ struct PendingWriteEntryTests {
             let entry = try write.entry()
 
             #expect(entry.kind == .weightRecord)
-            #expect(try PendingWrite(entry: entry) == write)
+            #expect(try PendingWeightRecordWrite(entry: entry) == write)
             #expect(!String(decoding: entry.content, as: UTF8.self).contains("previous"))
         }
     }
@@ -52,10 +52,10 @@ struct PendingWriteEntryTests {
 
         @Test("直す前の値は読み飛ばし、直した値の書き込みとして読めること")
         func readsAsCorrection() throws {
-            let operation = try PendingWrite(entry: entry).operation
+            let write = try PendingWeightRecordWrite(entry: entry).write
 
-            guard case .correctWeightRecord(let record) = operation else {
-                Issue.record("直す書き込みになっていない: \(operation)")
+            guard case .correctWeightRecord(let record) = write else {
+                Issue.record("直す書き込みになっていない: \(write)")
                 return
             }
             #expect(record.id == recordId)
@@ -65,18 +65,19 @@ struct PendingWriteEntryTests {
 
         @Test("種類の名前も読めること")
         func readsKindName() {
-            #expect(PendingWrite.kindName(ofVersion1Content: entry.content) == .weightRecord)
+            #expect(
+                PendingWriteContent.kindName(ofVersion1Content: entry.content) == .weightRecord)
         }
     }
 
     @Suite("アカウントの設定の送り待ちを変換するとき")
-    struct AccountSettingsWrite {
-        let write: PendingWrite
+    struct AccountSettingsConversion {
+        let write: PendingAccountSettingsWrite
 
         init() {
-            write = PendingWrite(
+            write = PendingAccountSettingsWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
-                operation: .updateAccountSettings(.fixture(sendsUsageData: false)))
+                write: .updateAccountSettings(.fixture(sendsUsageData: false)))
         }
 
         @Test("種類の名前を account-settings にすること")
@@ -84,7 +85,7 @@ struct PendingWriteEntryTests {
             let entry = try write.entry()
 
             #expect(entry.kind == .accountSettings)
-            #expect(try PendingWrite(entry: entry) == write)
+            #expect(try PendingAccountSettingsWrite(entry: entry) == write)
         }
     }
 
@@ -106,12 +107,12 @@ struct PendingWriteEntryTests {
             let writeId = UUID()
             let entry = PendingEntry(
                 writeId: writeId, enqueuedAt: SyncEngine.fixtureNow,
-                kind: try #require(PendingWrite.kindName(ofVersion1Content: content)),
+                kind: try #require(PendingWriteContent.kindName(ofVersion1Content: content)),
                 content: content)
 
             #expect(entry.kind == .weightRecord)
             #expect(
-                try PendingWrite(entry: entry).operation
+                try PendingWeightRecordWrite(entry: entry).write
                     == .sourceDeletedWeightRecord(recordId: recordId))
         }
     }
@@ -125,9 +126,32 @@ struct PendingWriteEntryTests {
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: .weightRecord,
                 content: content)
 
-            #expect(PendingWrite.kindName(ofVersion1Content: content) == nil)
-            #expect(throws: PendingWrite.InvalidEntryError(kind: .weightRecord)) {
-                try PendingWrite(entry: entry)
+            #expect(PendingWriteContent.kindName(ofVersion1Content: content) == nil)
+            #expect(throws: PendingEntry.InvalidContentError(kind: .weightRecord)) {
+                try PendingWeightRecordWrite(entry: entry)
+            }
+        }
+    }
+
+    @Suite("ほかの種類の名前の送り待ちのとき")
+    struct OtherKind {
+        let entry: PendingEntry
+
+        init() throws {
+            let record = try WeightRecord.manual(
+                72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+            let content = try PendingWeightRecordWrite(
+                enqueuedAt: SyncEngine.fixtureNow, write: .createWeightRecord(record)
+            ).entry().content
+            entry = PendingEntry(
+                writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: .accountSettings,
+                content: content)
+        }
+
+        @Test("中身が読める形でも、種類の名前が違えば読まないこと")
+        func rejectsByKindName() {
+            #expect(throws: PendingEntry.InvalidContentError(kind: .accountSettings)) {
+                try PendingWeightRecordWrite(entry: entry)
             }
         }
     }

@@ -23,7 +23,7 @@ extension SyncEngineTests {
                     timeZone: serverRecord.timeZone, inputSource: .manual, version: 2)
                 store = try .ok(
                     records: [created, corrected],
-                    pendingWrites: [
+                    pendingWeightRecordWrites: [
                         .creating(created, ageSeconds: 20),
                         .correcting(corrected),
                     ])

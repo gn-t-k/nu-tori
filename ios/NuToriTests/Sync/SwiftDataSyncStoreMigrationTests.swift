@@ -15,10 +15,10 @@ struct SwiftDataSyncStoreMigrationTests {
         inputSource: .manual,
         version: 1
     )
-    static let write = PendingWrite(
+    static let write = PendingWeightRecordWrite(
         writeId: UUID(uuidString: "00000000-0000-4000-8000-000000000102")!,
         enqueuedAt: Date(timeIntervalSince1970: 1_700_000_000),
-        operation: .createWeightRecord(record)
+        write: .createWeightRecord(record)
     )
     static let unreadableWriteId = UUID(uuidString: "00000000-0000-4000-8000-000000000104")!
     static let healthState = HealthSyncState(
@@ -43,7 +43,7 @@ struct SwiftDataSyncStoreMigrationTests {
         @Test("送り待ちとヘルスケアの同期の進み具合が、送り待ちの置き場に移ること")
         func carriesPendingWritesAndHealthState() async throws {
             #expect(
-                try await store.pendingWritesOldestFirst() == [
+                try await store.pendingWeightRecordWritesOldestFirst() == [
                     SwiftDataSyncStoreMigrationTests.write
                 ])
             #expect(
@@ -82,7 +82,7 @@ struct SwiftDataSyncStoreMigrationTests {
 
         @Test("送り待ちを捨てて、空で始め、今の置き場を消すこと")
         func discardsAndStartsEmpty() async throws {
-            #expect(try await store.pendingWritesOldestFirst().isEmpty)
+            #expect(try await store.pendingWeightRecordWritesOldestFirst().isEmpty)
             #expect(try await store.weightRecords().isEmpty)
             #expect(!StoreFiles.exists(at: legacyURL))
         }
@@ -113,7 +113,7 @@ struct SwiftDataSyncStoreMigrationTests {
         @Test("送り待ちは残り、キャッシュは空になって取り直しになること")
         func keepsPendingWritesAndEmptiesCache() async throws {
             #expect(
-                try await store.pendingWritesOldestFirst() == [
+                try await store.pendingWeightRecordWritesOldestFirst() == [
                     SwiftDataSyncStoreMigrationTests.write
                 ])
             #expect(try await store.weightRecords().isEmpty)
@@ -156,7 +156,7 @@ struct SwiftDataSyncStoreMigrationTests {
 
         @Test("送り待ちを種類の名前つきで引き継ぎ、中身に直す前の値が残っていても読めること")
         func carriesWritesWithKindNames() async throws {
-            #expect(try await store.pendingWritesOldestFirst() == [correction])
+            #expect(try await store.pendingWeightRecordWritesOldestFirst() == [correction])
             #expect(try await store.pendingEntries().map(\.kind) == [.weightRecord])
             #expect(store.takeRecoveries().isEmpty)
         }
@@ -271,16 +271,16 @@ struct SwiftDataSyncStoreMigrationTests {
             try await store.apply(SyncBoxResult(enqueuing: [entry]))
 
             #expect(
-                try await store.pendingWritesOldestFirst() == [
+                try await store.pendingWeightRecordWritesOldestFirst() == [
                     SwiftDataSyncStoreMigrationTests.correction
                 ])
         }
     }
 
-    static let correction = PendingWrite(
+    static let correction = PendingWeightRecordWrite(
         writeId: UUID(uuidString: "00000000-0000-4000-8000-000000000103")!,
         enqueuedAt: Date(timeIntervalSince1970: 1_700_000_100),
-        operation: .correctWeightRecord(
+        write: .correctWeightRecord(
             WeightRecord(
                 id: record.id, kilograms: 69.5, instant: record.instant, timeZone: record.timeZone,
                 inputSource: .manual, version: 2))

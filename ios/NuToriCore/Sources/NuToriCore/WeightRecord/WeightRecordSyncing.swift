@@ -24,17 +24,15 @@ public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
     }
 
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        let write = try PendingWrite(entry: entry)
-        switch write.operation {
+        let pending = try PendingWeightRecordWrite(entry: entry)
+        switch pending.write {
         case .createWeightRecord(let record):
-            return .createWeightRecord(writeId: write.writeId, record: NewWeightRecord(record))
+            return .createWeightRecord(writeId: pending.writeId, record: NewWeightRecord(record))
         case .correctWeightRecord(let record):
             return .updateWeightRecord(
-                writeId: write.writeId, correction: WeightRecordCorrection(record))
+                writeId: pending.writeId, correction: WeightRecordCorrection(record))
         case .sourceDeletedWeightRecord(let recordId):
-            return .sourceDeletedWeightRecord(writeId: write.writeId, weightRecordId: recordId)
-        case .updateAccountSettings:
-            throw PendingWrite.InvalidEntryError(kind: entry.kind)
+            return .sourceDeletedWeightRecord(writeId: pending.writeId, weightRecordId: recordId)
         }
     }
 
@@ -45,27 +43,25 @@ public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
         reason: SyncWriteResult.RejectionReason,
         current: SyncWriteResult.Current?
     ) throws -> KindRejection {
-        let write = try PendingWrite(entry: entry)
+        let pending = try PendingWeightRecordWrite(entry: entry)
         let serverHasValue: Bool
         if case .value = current { serverHasValue = true } else { serverHasValue = false }
-        switch write.operation {
+        switch pending.write {
         case .createWeightRecord(let record), .correctWeightRecord(let record):
             return KindRejection(
                 rejectedWrite: RejectedWrite(
-                    writeId: write.writeId, reason: reason,
+                    writeId: pending.writeId, reason: reason,
                     record: .weightRecord(record, serverHasValue: serverHasValue)),
                 removingChanges: [.weightRecordDeletion(recordId: record.id)]
             )
         case .sourceDeletedWeightRecord:
             // 消すかどうかを決めるのはサーバーで、送り直さない
             return KindRejection.none
-        case .updateAccountSettings:
-            throw PendingWrite.InvalidEntryError(kind: entry.kind)
         }
     }
 
     /// 記録を作った・直したときの結果。送り待ちに足し、今の値を、取りに行った変更と同じ形でキャッシュに当てる
-    public func saving(_ record: WeightRecord, enqueuing write: PendingWrite) throws
+    public func saving(_ record: WeightRecord, enqueuing write: PendingWeightRecordWrite) throws
         -> SyncBoxResult
     {
         SyncBoxResult(
@@ -73,6 +69,32 @@ public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
             kindChanges: [
                 KindChanges(kind: name, changes: [.weightRecord(SyncedWeightRecord(record))])
             ]
+        )
+    }
+
+    /// ヘルスケアから取り込んだときの結果。増えた記録を作る書き込みと、元のサンプルが消えた書き込みを送り待ちに足し、
+    /// 増えた記録をキャッシュに当て、進み具合を送り待ちと同じ保存で書く。
+    /// 送り待ちは時刻の順に読むので、書き込みごとに `now` を取る。時刻が進む限り、足した順に読める
+    public func importing(
+        _ records: [WeightRecord],
+        sourceDeletedRecordIds: [UUID],
+        now: () -> Date,
+        healthSyncState: HealthSyncState
+    ) throws -> SyncBoxResult {
+        let writes: [WeightRecordWrite] =
+            records.map { .createWeightRecord($0) }
+            + sourceDeletedRecordIds.map { .sourceDeletedWeightRecord(recordId: $0) }
+        return SyncBoxResult(
+            enqueuing: try writes.map {
+                try PendingWeightRecordWrite(enqueuedAt: now(), write: $0).entry()
+            },
+            kindChanges: records.isEmpty
+                ? []
+                : [
+                    KindChanges(
+                        kind: name, changes: records.map { .weightRecord(SyncedWeightRecord($0)) })
+                ],
+            healthSyncState: healthSyncState
         )
     }
 

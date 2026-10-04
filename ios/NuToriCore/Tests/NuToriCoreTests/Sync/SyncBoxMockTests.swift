@@ -40,6 +40,46 @@ struct SyncBoxMockTests {
         }
     }
 
+    @Suite("ヘルスケアの同期の進み具合を当てるとき")
+    struct WritingHealthSyncState {
+        let box: Box
+        let state: HealthSyncState
+
+        init() {
+            box = Box(kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: RecordCacheMock())
+            state = HealthSyncState(
+                anchor: HealthAnchor(data: Data("anchor".utf8)), hasWrittenCachedManualRecords: true
+            )
+        }
+
+        @Test("送り待ちと同じ保存で、キャッシュより先に書くこと")
+        func savesWithPendingBeforeCache() async throws {
+            try await box.apply(
+                SyncBoxResult(
+                    enqueuing: [RecordKindMock.entry(recordId: UUID())],
+                    kindChanges: [
+                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
+                    ],
+                    healthSyncState: state
+                ))
+
+            #expect(
+                box.saves == [
+                    .pending(added: 1, removed: 0),
+                    .cache(changes: 1, afterSequence: nil),
+                ])
+            #expect(box.healthState == state)
+        }
+
+        @Test("送り待ちに足すものが無くても、送り待ちの置き場に書くこと")
+        func savesWithoutEnqueuing() async throws {
+            try await box.apply(SyncBoxResult(healthSyncState: state))
+
+            #expect(box.saves == [.pending(added: 0, removed: 0)])
+            #expect(box.healthState == state)
+        }
+    }
+
     @Suite("結果を受け取った送り待ちを当てるとき")
     struct Resolving {
         let box: Box

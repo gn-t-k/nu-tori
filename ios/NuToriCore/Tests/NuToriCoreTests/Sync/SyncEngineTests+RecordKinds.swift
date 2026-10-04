@@ -13,8 +13,8 @@ extension SyncEngineTests {
             let transport: ClientTransportMock
             let engine: SyncEngine
             let note: PendingEntry
-            let created: PendingWrite
-            let rejectedCreated: PendingWrite
+            let created: PendingWeightRecordWrite
+            let rejectedCreated: PendingWeightRecordWrite
 
             init() throws {
                 note = RecordKindMock.entry(recordId: UUID(), ageSeconds: 30)
@@ -26,9 +26,9 @@ extension SyncEngineTests {
                     ageSeconds: 10)
                 store = try .ok(
                     records: [
-                        created.operation.weightRecord, rejectedCreated.operation.weightRecord,
+                        created.write.weightRecord, rejectedCreated.write.weightRecord,
                     ],
-                    pendingWrites: [created, rejectedCreated], pendingEntries: [note],
+                    pendingWeightRecordWrites: [created, rejectedCreated], pendingEntries: [note],
                     recordKinds: [RecordKindMock.ok()])
                 transport = .sync(rejectedWriteIndexes: [2], currents: [2: .absent])
                 engine = .fixture(store: store, transport: transport)
@@ -58,8 +58,8 @@ extension SyncEngineTests {
                 let result = try await engine.sync()
 
                 #expect(result.rejectedWrites.map(\.writeId) == [rejectedCreated.writeId])
-                #expect(store.records[rejectedCreated.operation.weightRecord.id] == nil)
-                #expect(store.records[created.operation.weightRecord.id] != nil)
+                #expect(store.records[rejectedCreated.write.weightRecord.id] == nil)
+                #expect(store.records[created.write.weightRecord.id] != nil)
             }
         }
 
@@ -150,12 +150,12 @@ extension SyncEngineTests {
     }
 }
 
-extension PendingWrite.Operation {
+extension WeightRecordWrite {
     fileprivate var weightRecord: WeightRecord {
         switch self {
         case .createWeightRecord(let record), .correctWeightRecord(let record):
             record
-        case .sourceDeletedWeightRecord, .updateAccountSettings:
+        case .sourceDeletedWeightRecord:
             preconditionFailure("体重記録を作る書き込みではない")
         }
     }

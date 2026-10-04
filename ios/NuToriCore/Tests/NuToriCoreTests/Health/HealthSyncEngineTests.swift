@@ -1,6 +1,7 @@
 import Foundation
 import NuToriCore
 import NuToriTestSupport
+import Synchronization
 import Testing
 
 @Suite("ヘルスケアとの同期の働き")
@@ -60,12 +61,11 @@ struct HealthSyncEngineTests {
             func enqueuesCreateWriteAndAdvancesAnchor() async throws {
                 try await engine.importChanges()
 
-                let batch = try #require(store.appliedHealthImports.first)
-                let record = try #require(batch.records.first)
-                #expect(store.appliedHealthImports.count == 1)
-                #expect(batch.pendingWrites.map(\.operation) == [.createWeightRecord(record)])
-                #expect(batch.pendingWrites.map(\.enqueuedAt) == [HealthSyncEngine.fixtureNow])
-                #expect(batch.state.anchor == HealthChanges.fixtureAnchor)
+                let record = try #require(store.records.values.first)
+                #expect(store.pendingWeightRecords.map(\.write) == [.createWeightRecord(record)])
+                #expect(
+                    store.pendingWeightRecords.map(\.enqueuedAt) == [HealthSyncEngine.fixtureNow])
+                #expect(store.healthState.anchor == HealthChanges.fixtureAnchor)
             }
 
             private var firstSampleId: String { HealthSyncEngineTests.firstSampleId }
@@ -204,7 +204,7 @@ struct HealthSyncEngineTests {
                         try HealthSyncEngineTests.recordId(
                             ofSample: HealthSyncEngineTests.firstSampleId)]
                         == nil)
-                #expect(store.pending.count == 1)
+                #expect(store.pendingWeightRecords.count == 1)
             }
 
             @Test("体脂肪率だけが範囲の外なら、体脂肪率だけを落として体重は送ること")
@@ -364,7 +364,7 @@ struct HealthSyncEngineTests {
                 try await engine.importChanges()
 
                 #expect(store.records[cached.id] == cached)
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingWeightRecords.isEmpty)
             }
         }
 
@@ -411,7 +411,7 @@ struct HealthSyncEngineTests {
                 try await engine.importChanges()
 
                 #expect(
-                    store.pending.map(\.operation) == [
+                    store.pendingWeightRecords.map(\.write) == [
                         .sourceDeletedWeightRecord(
                             recordId: try HealthSyncEngineTests.recordId(
                                 ofSample: HealthSyncEngineTests.firstSampleId)),
@@ -426,7 +426,7 @@ struct HealthSyncEngineTests {
             func discardsBodyFatDeletions() async throws {
                 try await engine.importChanges()
 
-                #expect(store.pending.count == 2)
+                #expect(store.pendingWeightRecords.count == 2)
             }
         }
 
@@ -477,10 +477,65 @@ struct HealthSyncEngineTests {
                 try await engine.importChanges()
 
                 #expect(
-                    store.pending.map(\.operation) == [
+                    store.pendingWeightRecords.map(\.write) == [
                         .sourceDeletedWeightRecord(
                             recordId: try HealthSyncEngineTests.recordId(
                                 ofSample: HealthSyncEngineTests.secondSampleId))
+                    ])
+            }
+        }
+
+        @Suite("体重が増え、別のサンプルが消えたとき")
+        struct AddedAndDeleted {
+            /// 送り待ちに足した順と、書き込みごとに時刻を取ったことを見分けるため、読むたびに進める
+            final class TickingClock: Sendable {
+                func now() -> Date {
+                    ticks.withLock { ticks in
+                        ticks += 1
+                        return HealthSyncEngine.fixtureNow.addingTimeInterval(ticks)
+                    }
+                }
+
+                private let ticks = Mutex(0.0)
+            }
+
+            let store: SyncBoxMock<RecordCacheMock>
+            let engine: HealthSyncEngine
+
+            init() throws {
+                store = try .ok()
+                let clock = TickingClock()
+                engine = .fixture(
+                    healthStore: .ok(
+                        changes: .fixture(
+                            weights: [try .fixture(sampleId: HealthSyncEngineTests.secondSampleId)],
+                            deletions: [
+                                .weight(
+                                    sampleId: try #require(
+                                        UUID(uuidString: HealthSyncEngineTests.firstSampleId)))
+                            ]
+                        )
+                    ),
+                    store: store,
+                    now: { clock.now() }
+                )
+            }
+
+            @Test("作る書き込みを先に、消えた書き込みを後に、書き込みごとの時刻で送り待ちに足すこと")
+            func enqueuesInOrderWithOwnTimes() async throws {
+                try await engine.importChanges()
+
+                #expect(
+                    store.pendingWeightRecords.map(\.write) == [
+                        .createWeightRecord(try #require(store.records.values.first)),
+                        .sourceDeletedWeightRecord(
+                            recordId: try HealthSyncEngineTests.recordId(
+                                ofSample: HealthSyncEngineTests.firstSampleId)),
+                    ])
+                #expect(
+                    store.pendingWeightRecords.map(\.enqueuedAt) == [
+                        HealthSyncEngine.fixtureNow.addingTimeInterval(1),
+                        HealthSyncEngine.fixtureNow.addingTimeInterval(2),
                     ])
             }
         }
@@ -502,7 +557,7 @@ struct HealthSyncEngineTests {
                 await #expect(throws: Failure()) {
                     try await engine.importChanges()
                 }
-                #expect(store.appliedHealthImports.isEmpty)
+                #expect(store.saves.isEmpty)
             }
         }
     }

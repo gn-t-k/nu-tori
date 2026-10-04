@@ -42,20 +42,22 @@ extension SyncEngine {
     }
 }
 
-extension PendingWrite {
-    static func creating(_ record: WeightRecord, ageSeconds: TimeInterval = 0) -> PendingWrite {
-        PendingWrite(
+extension PendingWeightRecordWrite {
+    static func creating(_ record: WeightRecord, ageSeconds: TimeInterval = 0)
+        -> PendingWeightRecordWrite
+    {
+        PendingWeightRecordWrite(
             writeId: UUID(),
             enqueuedAt: SyncEngine.fixtureNow.addingTimeInterval(-ageSeconds),
-            operation: .createWeightRecord(record)
+            write: .createWeightRecord(record)
         )
     }
 
-    static func correcting(_ record: WeightRecord) -> PendingWrite {
-        PendingWrite(
+    static func correcting(_ record: WeightRecord) -> PendingWeightRecordWrite {
+        PendingWeightRecordWrite(
             writeId: UUID(),
             enqueuedAt: SyncEngine.fixtureNow,
-            operation: .correctWeightRecord(record)
+            write: .correctWeightRecord(record)
         )
     }
 }

@@ -30,13 +30,13 @@ struct SyncEngineTests {
             func savesRecordWithPendingWrite() async throws {
                 try await engine.save(firstWrite)
 
-                let pending = try #require(store.pending.first)
+                let pending = try #require(store.pendingWeightRecords.first)
                 let record = try #require(store.records.values.first)
-                #expect(store.pending.count == 1)
+                #expect(store.pendingWeightRecords.count == 1)
                 #expect(record.inputSource == .manual)
                 #expect(record.version == 1)
                 #expect(record.kilograms == 72.4)
-                #expect(pending.operation == .createWeightRecord(record))
+                #expect(pending.write == .createWeightRecord(record))
                 #expect(pending.enqueuedAt == SyncEngine.fixtureNow)
             }
 
@@ -45,7 +45,7 @@ struct SyncEngineTests {
                 try await engine.save(firstWrite)
                 try await engine.save(secondWrite)
 
-                let ids = store.pending.map(\.writeId) + Array(store.records.keys)
+                let ids = store.pendingWeightRecords.map(\.writeId) + Array(store.records.keys)
                 #expect(Set(ids).count == 4)
                 #expect(ids.allSatisfy { $0.uuidString.dropFirst(14).first == "4" })
             }
@@ -77,9 +77,9 @@ struct SyncEngineTests {
                 try await engine.save(.correct(corrected))
 
                 #expect(store.records[original.id] == corrected)
-                let pending = try #require(store.pending.first)
-                #expect(store.pending.count == 1)
-                #expect(pending.operation == .correctWeightRecord(corrected))
+                let pending = try #require(store.pendingWeightRecords.first)
+                #expect(store.pendingWeightRecords.count == 1)
+                #expect(pending.write == .correctWeightRecord(corrected))
             }
         }
 
@@ -100,7 +100,7 @@ struct SyncEngineTests {
                 await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknown.id)) {
                     try await engine.save(.correct(unknown))
                 }
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingWeightRecords.isEmpty)
             }
         }
 
@@ -191,7 +191,7 @@ struct SyncEngineTests {
                 ]
                 store = try .ok(
                     records: records,
-                    pendingWrites: [
+                    pendingWeightRecordWrites: [
                         .creating(records[0], ageSeconds: 600),
                         .creating(records[1], ageSeconds: 30),
                         .creating(records[2]),
@@ -209,7 +209,7 @@ struct SyncEngineTests {
                 #expect(bodies.count == 1)
                 #expect(bodies[0].writes.count == 3)
                 #expect(bodies[0].isFinalBatch)
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingWeightRecords.isEmpty)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
             }
 
@@ -245,7 +245,7 @@ struct SyncEngineTests {
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = try .ok(pendingWrites: (0..<501).map { _ in .creating(record) })
+                store = try .ok(pendingWeightRecordWrites: (0..<501).map { _ in .creating(record) })
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
             }
@@ -257,7 +257,7 @@ struct SyncEngineTests {
                 let bodies = try transport.pushBodies
                 #expect(bodies.map(\.writes.count) == [500, 1])
                 #expect(bodies.map(\.isFinalBatch) == [false, true])
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingWeightRecords.isEmpty)
             }
         }
 
@@ -270,7 +270,7 @@ struct SyncEngineTests {
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = try .ok(records: [record], pendingWrites: [.creating(record)])
+                store = try .ok(records: [record], pendingWeightRecordWrites: [.creating(record)])
                 transport = .sync(pushStatus: .tooManyRequests)
                 engine = .fixture(store: store, transport: transport)
             }
@@ -279,7 +279,7 @@ struct SyncEngineTests {
             func keepsPendingAndStops() async throws {
                 let result = try await engine.sync()
 
-                #expect(store.pending.count == 1)
+                #expect(store.pendingWeightRecords.count == 1)
                 #expect(store.records.count == 1)
                 #expect(transport.requests.count == 1)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .stopped(.rateLimited)))
@@ -294,7 +294,7 @@ struct SyncEngineTests {
             init() throws {
                 let record = try WeightRecord.manual(
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = try .ok(records: [record], pendingWrites: [.creating(record)])
+                store = try .ok(records: [record], pendingWeightRecordWrites: [.creating(record)])
                 engine = .fixture(
                     store: store, transport: .error(URLError(.notConnectedToInternet)))
             }
@@ -303,7 +303,7 @@ struct SyncEngineTests {
             func keepsPendingAndStops() async throws {
                 let result = try await engine.sync()
 
-                #expect(store.pending.count == 1)
+                #expect(store.pendingWeightRecords.count == 1)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .stopped(.unavailable)))
             }
         }
@@ -315,8 +315,8 @@ struct SyncEngineTests {
             let created: WeightRecord
             let serverRecord: WeightRecord
             let corrected: WeightRecord
-            let createWrite: PendingWrite
-            let correctWrite: PendingWrite
+            let createWrite: PendingWeightRecordWrite
+            let correctWrite: PendingWeightRecordWrite
 
             init() throws {
                 created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
@@ -333,7 +333,7 @@ struct SyncEngineTests {
                 correctWrite = .correcting(corrected)
                 store = try .ok(
                     records: [created, corrected],
-                    pendingWrites: [createWrite, correctWrite]
+                    pendingWeightRecordWrites: [createWrite, correctWrite]
                 )
                 engine = .fixture(
                     store: store,
@@ -347,7 +347,7 @@ struct SyncEngineTests {
             func removesFromPending() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingWeightRecords.isEmpty)
             }
 
             @Test("サーバーに無い記録は外し、サーバーに値がある記録はその値に合わせること")
@@ -381,13 +381,13 @@ struct SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let corrected: WeightRecord
-            let correctWrite: PendingWrite
+            let correctWrite: PendingWeightRecordWrite
 
             init() throws {
                 corrected = try .manual(
                     72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
                 correctWrite = .correcting(corrected)
-                store = try .ok(records: [corrected], pendingWrites: [correctWrite])
+                store = try .ok(records: [corrected], pendingWeightRecordWrites: [correctWrite])
                 engine = .fixture(
                     store: store,
                     transport: .sync(
@@ -415,7 +415,7 @@ struct SyncEngineTests {
 
             init() throws {
                 created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                store = try .ok(records: [created], pendingWrites: [.creating(created)])
+                store = try .ok(records: [created], pendingWeightRecordWrites: [.creating(created)])
                 engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0]))
             }
 
@@ -423,7 +423,7 @@ struct SyncEngineTests {
             func dropsPendingAndKeepsRecord() async throws {
                 _ = try await engine.sync()
 
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingWeightRecords.isEmpty)
                 #expect(store.records[created.id] == created)
             }
         }
@@ -441,11 +441,11 @@ struct SyncEngineTests {
                 kept = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 store = try .ok(
                     records: [kept],
-                    pendingWrites: [
-                        PendingWrite(
+                    pendingWeightRecordWrites: [
+                        PendingWeightRecordWrite(
                             writeId: UUID(),
                             enqueuedAt: SyncEngine.fixtureNow,
-                            operation: .sourceDeletedWeightRecord(recordId: recordId)
+                            write: .sourceDeletedWeightRecord(recordId: recordId)
                         )
                     ]
                 )
@@ -466,7 +466,7 @@ struct SyncEngineTests {
             func dropsWithoutRevertingOrReporting() async throws {
                 let result = try await engine.sync()
 
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingWeightRecords.isEmpty)
                 #expect(store.records[kept.id] == kept)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
             }
@@ -495,7 +495,7 @@ struct SyncEngineTests {
                     timeZone: original.timeZone, inputSource: .manual, version: 4)
                 store = try .ok(
                     records: [accepted],
-                    pendingWrites: [.correcting(rejected), .correcting(accepted)]
+                    pendingWeightRecordWrites: [.correcting(rejected), .correcting(accepted)]
                 )
                 engine = .fixture(
                     store: store,
@@ -508,7 +508,7 @@ struct SyncEngineTests {
             func matchesServerValue() async throws {
                 let result = try await engine.sync()
 
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingWeightRecords.isEmpty)
                 #expect(store.records[accepted.id] == serverRecord)
                 #expect(
                     result.rejectedWrites.map(\.record) == [

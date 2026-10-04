@@ -23,10 +23,10 @@ extension SyncEngineTests {
             func savesSettingsWithPendingWrite() async throws {
                 try await engine.setSendsUsageData(false)
 
-                let pending = try #require(store.pending.first)
+                let pending = try #require(store.pendingAccountSettings.first)
                 #expect(store.settings == expectedSettings)
-                #expect(store.pending.count == 1)
-                #expect(pending.operation == .updateAccountSettings(expectedSettings))
+                #expect(store.pendingAccountSettings.count == 1)
+                #expect(pending.write == .updateAccountSettings(expectedSettings))
                 #expect(pending.enqueuedAt == SyncEngine.fixtureNow)
             }
         }
@@ -36,13 +36,13 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let expectedSettings: AccountSettings
-            let expectedOperations: [PendingWrite.Operation]
+            let expectedWrites: [AccountSettingsWrite]
 
             init() throws {
                 store = try .ok()
                 engine = .fixture(store: store, transport: .sync())
                 expectedSettings = .fixture(sendsUsageData: true)
-                expectedOperations = [
+                expectedWrites = [
                     .updateAccountSettings(.fixture(sendsUsageData: false)),
                     .updateAccountSettings(.fixture(sendsUsageData: true)),
                 ]
@@ -54,7 +54,7 @@ extension SyncEngineTests {
                 try await engine.setSendsUsageData(true)
 
                 #expect(store.settings == expectedSettings)
-                #expect(store.pending.map(\.operation) == expectedOperations)
+                #expect(store.pendingAccountSettings.map(\.write) == expectedWrites)
             }
         }
     }
@@ -75,12 +75,12 @@ extension SyncEngineTests {
                 )
                 store = try .ok(
                     accountSettings: .fixture(sendsUsageData: false),
-                    pendingWrites: [
-                        PendingWrite(
+                    pendingEntries: [
+                        try PendingAccountSettingsWrite(
                             writeId: UUID(),
                             enqueuedAt: SyncEngine.fixtureNow,
-                            operation: .updateAccountSettings(.fixture(sendsUsageData: false))
-                        )
+                            write: .updateAccountSettings(.fixture(sendsUsageData: false))
+                        ).entry()
                     ]
                 )
                 transport = .sync()
@@ -94,7 +94,7 @@ extension SyncEngineTests {
                 let write = try #require(transport.pushBodies.first?.writes.first)
                 #expect(write.type == "update_account_settings")
                 #expect(write.accountSettings == expectedSettings)
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingAccountSettings.isEmpty)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
             }
         }
@@ -109,12 +109,12 @@ extension SyncEngineTests {
                 expectedSettings = .fixture(sendsUsageData: false)
                 store = try .ok(
                     accountSettings: .fixture(sendsUsageData: false),
-                    pendingWrites: [
-                        PendingWrite(
+                    pendingEntries: [
+                        try PendingAccountSettingsWrite(
                             writeId: UUID(),
                             enqueuedAt: SyncEngine.fixtureNow,
-                            operation: .updateAccountSettings(.fixture(sendsUsageData: false))
-                        )
+                            write: .updateAccountSettings(.fixture(sendsUsageData: false))
+                        ).entry()
                     ]
                 )
                 engine = .fixture(store: store, transport: .sync(rejectedWriteIndexes: [0]))
@@ -124,7 +124,7 @@ extension SyncEngineTests {
             func dropsWriteQuietly() async throws {
                 let result = try await engine.sync()
 
-                #expect(store.pending.isEmpty)
+                #expect(store.pendingAccountSettings.isEmpty)
                 #expect(store.settings == expectedSettings)
                 #expect(result == SyncResult(rejectedWrites: [], ending: .finished))
             }

@@ -53,14 +53,12 @@ public actor HealthSyncEngine {
             cachedRecords: cachedRecords
         )
         try await writingCache {
-            try await store.applyHealthImport(
-                HealthImportBatch(
-                    records: plan.newRecords,
-                    pendingWrites: plan.newRecords.map { pendingWrite(.createWeightRecord($0)) }
-                        + plan.deletedRecordIds.map {
-                            pendingWrite(.sourceDeletedWeightRecord(recordId: $0))
-                        },
-                    state: HealthSyncState(
+            try await store.apply(
+                WeightRecordSyncing().importing(
+                    plan.newRecords,
+                    sourceDeletedRecordIds: plan.deletedRecordIds,
+                    now: now,
+                    healthSyncState: HealthSyncState(
                         anchor: changes.anchor,
                         hasWrittenCachedManualRecords: state.hasWrittenCachedManualRecords
                     )
@@ -92,8 +90,11 @@ public actor HealthSyncEngine {
             }
         }
         try await writingCache {
-            try await store.saveHealthSyncState(
-                HealthSyncState(anchor: state.anchor, hasWrittenCachedManualRecords: true)
+            try await store.apply(
+                SyncBoxResult(
+                    healthSyncState: HealthSyncState(
+                        anchor: state.anchor, hasWrittenCachedManualRecords: true)
+                )
             )
         }
     }
@@ -198,10 +199,6 @@ public actor HealthSyncEngine {
             return
         }
         try await healthStore.requestAuthorization()
-    }
-
-    private func pendingWrite(_ operation: PendingWrite.Operation) -> PendingWrite {
-        PendingWrite(writeId: UUID(), enqueuedAt: now(), operation: operation)
     }
 }
 

@@ -67,7 +67,7 @@ struct AccountSessionTests {
 
             init() throws {
                 session = try AccountDevice.signedOut(
-                    hasSignInAgainMark: true, pendingWrites: [.fixtureCreating()]
+                    hasSignInAgainMark: true, pendingWeightRecordWrites: [.fixtureCreating()]
                 ).session()
             }
 
@@ -121,7 +121,8 @@ struct AccountSessionTests {
 
             init() throws {
                 device = try .signedIn(
-                    pendingWrites: [.fixtureCreating()], appleCredentials: .ok(.revoked))
+                    pendingWeightRecordWrites: [.fixtureCreating()], appleCredentials: .ok(.revoked)
+                )
                 session = device.session()
             }
 
@@ -138,7 +139,7 @@ struct AccountSessionTests {
 
                 #expect(device.keychain.token == nil)
                 #expect(device.deviceStore.hasMark)
-                #expect(device.syncStore.pending.count == 1)
+                #expect(device.syncStore.pendingWeightRecords.count == 1)
             }
 
             @Test("PostHog をリセットし、Sentry の user を外すこと")
@@ -199,7 +200,7 @@ struct AccountSessionTests {
             let result: SyncResult
 
             init() throws {
-                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()])
                 session = device.session()
                 result = SyncResult(rejectedWrites: [], ending: .stopped(.sessionExpired))
             }
@@ -217,7 +218,7 @@ struct AccountSessionTests {
 
                 #expect(device.keychain.token == nil)
                 #expect(device.deviceStore.hasMark)
-                #expect(device.syncStore.pending.count == 1)
+                #expect(device.syncStore.pendingWeightRecords.count == 1)
             }
         }
 
@@ -309,7 +310,7 @@ struct AccountSessionTests {
 
             init() throws {
                 credential = .fixture()
-                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()])
                 session = device.session(transport: .account(accountId: "account-2"))
             }
 
@@ -319,7 +320,7 @@ struct AccountSessionTests {
 
                 #expect(device.syncStore.records.isEmpty)
                 #expect(device.syncStore.settings == nil)
-                #expect(device.syncStore.pending.isEmpty)
+                #expect(device.syncStore.pendingWeightRecords.isEmpty)
                 #expect(device.syncStore.state == nil)
                 #expect(device.syncStore.healthState == .initial)
                 #expect(device.backgroundTransfers.cancelAndDeleteCount == 1)
@@ -346,7 +347,7 @@ struct AccountSessionTests {
 
             init() throws {
                 credential = .fixture()
-                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()])
                 session = device.session(transport: .account(accountId: "account-1"))
             }
 
@@ -356,7 +357,7 @@ struct AccountSessionTests {
 
                 #expect(device.syncStore.eraseAllCount == 0)
                 #expect(device.syncStore.records.count == 1)
-                #expect(device.syncStore.pending.count == 1)
+                #expect(device.syncStore.pendingWeightRecords.count == 1)
                 #expect(!device.deviceStore.didEraseAccountBoundState)
                 #expect(device.keychain.token == "session-2")
             }
@@ -498,7 +499,7 @@ struct AccountSessionTests {
             init() throws {
                 let log = CallLog()
                 self.log = log
-                device = try .signedIn(pendingWrites: [.fixtureCreating()], log: log)
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()], log: log)
                 session = device.session(
                     transport: .account(onRequest: { log.record("request \($0)") }))
             }
@@ -573,7 +574,7 @@ struct AccountSessionTests {
             let session: AccountSession
 
             init() throws {
-                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()])
                 session = device.session(transport: .error(URLError(.notConnectedToInternet)))
             }
 
@@ -598,7 +599,7 @@ struct AccountSessionTests {
             let session: AccountSession
 
             init() throws {
-                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()])
                 session = device.session(transport: .error(URLError(.timedOut)))
             }
 
@@ -617,7 +618,7 @@ struct AccountSessionTests {
             let session: AccountSession
 
             init() throws {
-                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()])
                 session = device.session(transport: .account(deleteStatus: .tooManyRequests))
             }
 
@@ -636,7 +637,7 @@ struct AccountSessionTests {
             let session: AccountSession
 
             init() throws {
-                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()])
                 session = device.session(transport: .account(deleteStatus: .internalServerError))
             }
 
@@ -655,7 +656,7 @@ struct AccountSessionTests {
             let session: AccountSession
 
             init() throws {
-                device = try .signedIn(pendingWrites: [.fixtureCreating()])
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()])
                 session = device.session(transport: .account(deleteStatus: .unauthorized))
             }
 
@@ -673,7 +674,7 @@ struct AccountSessionTests {
                 #expect(device.keychain.token == nil)
                 #expect(device.deviceStore.hasMark)
                 #expect(device.syncStore.eraseAllCount == 0)
-                #expect(device.syncStore.pending.count == 1)
+                #expect(device.syncStore.pendingWeightRecords.count == 1)
             }
         }
     }

@@ -9,6 +9,8 @@ struct SwiftDataSyncStoreBoxTests {
     static let pulledState = SyncState(
         afterSequence: 9, hasCompletedInitialPull: true, readableKinds: [.accountSettings],
         startedOn: nil)
+    static let importedHealthState = HealthSyncState(
+        anchor: HealthAnchor(data: Data([0x01])), hasWrittenCachedManualRecords: true)
 
     @Suite("登録簿の種類の送り待ちと変更を一緒に当てるとき")
     @MainActor
@@ -56,17 +58,20 @@ struct SwiftDataSyncStoreBoxTests {
                 kindChanges: [
                     KindChanges(kind: .accountSettings, changes: [RecordKindMock.change])
                 ],
-                syncState: SwiftDataSyncStoreBoxTests.pulledState
+                syncState: SwiftDataSyncStoreBoxTests.pulledState,
+                healthSyncState: SwiftDataSyncStoreBoxTests.importedHealthState
             )
         }
 
-        @Test("送り待ちは先に保存されていること")
+        @Test("送り待ちとヘルスケアの同期の進み具合は先に保存されていること")
         func pendingIsSavedBeforeCache() async throws {
             await #expect(throws: RecordKindMock.Failure()) {
                 try await store.apply(result)
             }
 
             #expect(try await store.pendingEntries() == [entry])
+            #expect(
+                try await store.healthSyncState() == SwiftDataSyncStoreBoxTests.importedHealthState)
         }
 
         @Test("通し番号は進まないこと")
