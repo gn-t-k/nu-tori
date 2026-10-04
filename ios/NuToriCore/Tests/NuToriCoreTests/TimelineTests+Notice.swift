@@ -120,6 +120,77 @@ extension TimelineTests {
     }
 }
 
+extension TimelineTests {
+    @Suite("記録忘れの通知から着く先")
+    struct ReminderLandings {
+        static let today = CalendarDay(year: 2026, month: 9, day: 24)
+
+        @Suite("その知らせが並んでいるとき")
+        struct NoticeListed {
+            let notice: Notice
+            let timeline: Timeline
+
+            init() throws {
+                notice = try .missedWeightRecord(issuedAt: "2026-09-24T08:15:00+09:00")
+                timeline = Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], notices: [notice]),
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: ReminderLandings.today)
+            }
+
+            @Test("そのカードに着くこと")
+            func landsOnNoticeCard() {
+                #expect(
+                    timeline.landing(for: .notice(id: notice.id))
+                        == .item(
+                            Timeline.Item.notice(NoticeCard(notice: notice, form: .awaitingAnswer))
+                                .id))
+            }
+        }
+
+        @Suite("知らせが無いと決まって開いたとき")
+        struct TimelineEnd {
+            let timeline: Timeline
+
+            init() throws {
+                timeline = Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [],
+                        notices: [try .missedWeightRecord(issuedAt: "2026-09-24T08:15:00+09:00")]),
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: ReminderLandings.today)
+            }
+
+            @Test("並んでいる知らせがあっても、いちばん新しい日の下に着くこと")
+            func landsOnEnd() {
+                #expect(timeline.landing(for: .timelineEnd) == .end(ReminderLandings.today))
+            }
+        }
+
+        @Suite("その知らせが並んでいないとき")
+        struct NoticeNotListed {
+            let noticeId: UUID
+            let timeline: Timeline
+
+            init() {
+                noticeId = UUID()
+                timeline = Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], notices: []),
+                    firstDay: CalendarDay(year: 2026, month: 9, day: 23),
+                    today: ReminderLandings.today)
+            }
+
+            @Test("いちばん新しい日の下に着くこと")
+            func landsOnEnd() {
+                #expect(
+                    timeline.landing(for: .notice(id: noticeId)) == .end(ReminderLandings.today))
+            }
+        }
+    }
+}
+
 extension Notice {
     /// issuedAt は ISO 8601 の時刻。東京で出した、その日の体重の知らせ
     fileprivate static func missedWeightRecord(issuedAt: String) throws -> Notice {

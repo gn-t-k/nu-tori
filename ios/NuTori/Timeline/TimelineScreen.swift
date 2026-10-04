@@ -54,7 +54,6 @@ struct TimelineScreen: View {
                     }
             }
             .navigationDestination(for: CalendarDay.self) { day in
-                let firstDay = startedDay ?? records.map(\.day).min() ?? day
                 WeightScreen(
                     day: day,
                     records: records,
@@ -267,22 +266,26 @@ struct TimelineScreen: View {
         }
     }
 
+    /// 体重の画面とタイムラインで同じ日を使う
+    private var firstDay: CalendarDay {
+        Timeline.firstDay(startedDay: startedDay, weightRecords: records, today: today)
+    }
+
     @ViewBuilder private func content(loaded: Timeline?) -> some View {
-        if loaded == nil {
+        if let loaded {
+            timelineList(loaded)
+        } else {
             VStack {
                 ProgressView()
                 Text("記録を読み込んでいます…")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-        } else {
-            timelineList()
         }
     }
 
-    private func timelineList() -> some View {
-        let timeline = timeline()
-        return GeometryReader { geo in
+    private func timelineList(_ timeline: Timeline) -> some View {
+        GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView {
                     // 中身が画面より短いときは下に寄せ、長いときは下端から開く
@@ -336,7 +339,7 @@ struct TimelineScreen: View {
                 // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く
                 .onChange(of: reminderLanding, initial: true) { _, landing in
                     guard let landing else { return }
-                    dayFocus = landingFocus(landing, in: timeline)
+                    dayFocus = DayFocus(timeline.landing(for: landing))
                     noteReminderLanded()
                 }
             }
@@ -425,21 +428,6 @@ struct TimelineScreen: View {
                     ]
                 )
             }
-        }
-    }
-
-    /// 記録忘れの通知を押して開いたときの着き先。知らせが並んでいなければ、いちばん下
-    private func landingFocus(_ landing: ReminderLanding, in timeline: Timeline) -> DayFocus {
-        let lastDay = timeline.days.last?.day ?? today
-        switch landing {
-        case .notice(let noticeId):
-            let item = timeline.days.flatMap(\.items).first(where: { item in
-                if case .notice(let card) = item { card.notice.id == noticeId } else { false }
-            })
-            guard let item else { return .scrollingToEnd(lastDay) }
-            return .scrollingToItem(item.id)
-        case .timelineEnd:
-            return .scrollingToEnd(lastDay)
         }
     }
 
@@ -538,12 +526,11 @@ struct TimelineScreen: View {
     }
 
     private func timeline() -> Timeline {
-        let first = startedDay ?? records.map(\.day).min() ?? today
-        return Timeline(
+        Timeline(
             input: Timeline.Input(
                 weightRecords: records, rejectedLines: rejectedLines, meals: meals,
                 notices: notices),
-            firstDay: first, today: today)
+            firstDay: firstDay, today: today)
     }
 
     private func title(loaded: Timeline?) -> String {
@@ -617,6 +604,13 @@ private enum DayFocus: Equatable {
     case scrollingToItem(Timeline.Item.ID)
     /// 記録忘れの通知から、その日（今日）のいちばん下へ
     case scrollingToEnd(CalendarDay)
+
+    init(_ landing: Timeline.Landing) {
+        switch landing {
+        case .item(let itemId): self = .scrollingToItem(itemId)
+        case .end(let day): self = .scrollingToEnd(day)
+        }
+    }
 }
 
 private struct TimelineDayOffset: Equatable {
