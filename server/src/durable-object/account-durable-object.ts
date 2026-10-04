@@ -6,14 +6,12 @@ import { sendsUsageData } from "../account-settings/domain/sends-usage-data";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
 import { applySyncWrites } from "../domain/apply-sync-writes";
 import { computeNextAlarmAt } from "../domain/compute-next-alarm-at";
-import { computeNextAlarmAtExceptLeftoverPhotos } from "../domain/compute-next-alarm-at-except-leftover-photos";
 import { pullSyncChanges } from "../domain/pull-sync-changes";
 import { receiveMealPhoto, type MealPhotoReceiptFailedError } from "../domain/receive-meal-photo";
+import { runAccountAlarm } from "../domain/run-account-alarm";
 import type { SyncClientState } from "../domain/sync-client-state";
 import type { SyncWrite } from "../domain/sync-write";
-import { advanceEstimations } from "../estimation/domain/advance-estimations";
 import { createEstimationProvider } from "../estimation/durable-object/create-estimation-provider";
-import { deleteLeftoverMealPhotoFiles } from "../meal/domain/delete-leftover-meal-photo-files";
 import { readKeptMealPhoto } from "../meal/domain/read-kept-meal-photo";
 import { createMealPhotoArchive } from "../meal/durable-object/create-meal-photo-archive";
 import { createSentryOptions } from "../observability/create-sentry-options";
@@ -119,7 +117,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     // アラームには受け口が無いので、アカウント ID は idFromName で付けた名前から得る。
-    // 推定を進め、写真の控えの消し残しを消し、張り直す。受け口の要求ごとのログと同じ形で、呼び出しごとにログを出す
+    // 受け口の要求ごとのログと同じ形で、呼び出しごとにログを出す
     override async alarm(): Promise<void> {
       const accountId = this.ctx.id.name;
       if (accountId === undefined) {
@@ -127,49 +125,32 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       }
       setUser({ id: accountId });
       const startedAt = Date.now();
-      const stores = createRecordKindStores(this.ctx.storage);
-      const archive = createMealPhotoArchive(this.env.PHOTOS, accountId);
-      const advanced = await advanceEstimations(
+      const ran = await runAccountAlarm(
         createLedgerStore(this.ctx.storage),
-        stores,
+        createRecordKindStores(this.ctx.storage),
         {
-          archive,
+          archive: createMealPhotoArchive(this.env.PHOTOS, accountId),
           provider: createEstimationProvider(this.env, accountId),
           armAlarm: () => this.armAlarm(),
         },
-        new Date(),
       );
-      const deletionError: unknown = await deleteLeftoverMealPhotoFiles(
-        stores.mealPhoto,
-        archive,
-        new Date(),
-      ).then(
-        () => undefined,
-        (error: unknown) => error,
-      );
-      // 消し直しに失敗したら、今に張り直さず Cloudflare のアラームのやり直しに任せる。使い切ったら、次に予定を入れたときに消し直す
-      await this.setAlarm(
-        deletionError === undefined
-          ? computeNextAlarmAt(stores, new Date())
-          : computeNextAlarmAtExceptLeftoverPhotos(stores),
-      );
-      const alarmError = advanced.stoppedError ?? deletionError;
-      for (const providerError of advanced.providerErrors) {
+      await this.setAlarm(ran.nextAlarmAt);
+      for (const providerError of ran.providerErrors) {
         captureException(providerError);
       }
-      await sendUsageEvents(this.env, accountId, advanced.usageEvents);
+      await sendUsageEvents(this.env, accountId, ran.usageEvents);
       console.log({
         accountId,
         route: "alarm",
-        error: alarmError instanceof Error ? alarmError.name : undefined,
+        error: ran.error instanceof Error ? ran.error.name : undefined,
         failedStage:
-          alarmError instanceof Error && "stage" in alarmError ? alarmError.stage : undefined,
-        estimationAttempts: advanced.attempts,
+          ran.error instanceof Error && "stage" in ran.error ? ran.error.stage : undefined,
+        estimationAttempts: ran.attempts,
         durationMs: Date.now() - startedAt,
       });
-      // Sentry に届け、Cloudflare のアラームのやり直しに任せる。止まった試みは結果の無いまま数える
-      if (alarmError !== undefined) {
-        throw alarmError;
+      // Sentry に届け、Cloudflare のアラームのやり直しに任せる
+      if (ran.error !== undefined) {
+        throw ran.error;
       }
     }
 
