@@ -32,7 +32,7 @@ export const createUsualWeighingTimeKind = (dependencies: {
       return relearnedId === undefined ? [] : [relearnedId];
     },
   },
-  deliversAbsence: false,
+  whenGone: "never",
   readCurrent: (recordId): CurrentRecord<UsualWeighingTime> => {
     const usualWeighingTime = dependencies.store.find();
     return usualWeighingTime?.id === recordId

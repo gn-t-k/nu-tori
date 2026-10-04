@@ -10,7 +10,6 @@ export const mealEstimationStatusHttpKind: HttpRecordKind<
   typeof mealEstimationStatusRecordSchema
 > = {
   writes: undefined,
-  keepsDeletionMarks: true,
   recordSchema: mealEstimationStatusRecordSchema,
   toRecord: toMealEstimationStatusRecord,
 };

@@ -36,7 +36,7 @@ export const createMealKind = (
         .exhaustive(),
   },
   follows: undefined,
-  deliversAbsence: false,
+  whenGone: "deletion_mark",
   readCurrent: (recordId): CurrentRecord<Meal> => {
     const meal = stores.meal.find(recordId);
     if (meal !== undefined) {

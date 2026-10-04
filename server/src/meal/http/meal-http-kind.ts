@@ -11,7 +11,6 @@ export const mealHttpKind: HttpRecordKind<
   typeof mealRecordSchema
 > = {
   writes: { schemas: mealWriteSchemas, toWrite: toMealWrite },
-  keepsDeletionMarks: true,
   recordSchema: mealRecordSchema,
   toRecord: toMealRecord,
 };

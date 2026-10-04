@@ -32,7 +32,7 @@ export const createAccountSettingsKind = (
     },
   },
   follows: undefined,
-  deliversAbsence: false,
+  whenGone: "never",
   readCurrent: () => {
     const current = store.find();
     return current === undefined ? { status: "absent" } : { status: "value", value: current };

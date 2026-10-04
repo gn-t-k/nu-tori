@@ -11,7 +11,6 @@ export const noticeHttpKind: HttpRecordKind<
   typeof noticeRecordSchema
 > = {
   writes: { schemas: noticeWriteSchemas, toWrite: toNoticeWrite },
-  keepsDeletionMarks: false,
   recordSchema: noticeRecordSchema,
   toRecord: toNoticeRecord,
 };

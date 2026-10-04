@@ -8,7 +8,7 @@ export const createDishKind = (store: DishStore): RecordKind<"dish", never, Dish
   name: "dish",
   writes: undefined,
   follows: undefined,
-  deliversAbsence: false,
+  whenGone: "deletion_mark",
   readCurrent: (dishId): CurrentRecord<Dish> => {
     const dish = store.find(dishId);
     if (dish !== undefined) {

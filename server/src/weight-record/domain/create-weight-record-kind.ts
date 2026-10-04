@@ -31,7 +31,7 @@ export const createWeightRecordKind = (
         .exhaustive(),
   },
   follows: undefined,
-  deliversAbsence: false,
+  whenGone: "deletion_mark",
   readCurrent: (recordId): CurrentRecord<WeightRecord> => {
     const weightRecord = dependencies.store.find(recordId);
     if (weightRecord !== undefined) {

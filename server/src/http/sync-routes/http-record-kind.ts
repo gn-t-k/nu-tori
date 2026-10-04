@@ -10,8 +10,6 @@ export type HttpRecordKind<
 > = {
   // サーバーだけが書く種類は、端末からの書き込みを宣言しない
   writes: HttpKindWrites<TWriteSchema> | undefined;
-  // 削除の印を持つか。持たない種類で削除の印を読んだら、不具合として投げる
-  keepsDeletionMarks: boolean;
   // 取りに行く変更の record の形。openapi.json に、種類の名前から作った名前（weight_trend なら WeightTrendRecord）の部品として書き出す
   recordSchema: TRecordSchema;
   toRecord(value: TValue, recordId: string): z.input<TRecordSchema>;

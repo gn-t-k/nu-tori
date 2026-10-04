@@ -14,12 +14,7 @@ export const toChangeBody = (
   const kind: HttpRecordKind = httpRecordKinds[recordType];
   return match(current)
     .with({ status: "absent" }, () => ({ kind: `${recordType}_absence`, recordId, record: {} }))
-    .with({ status: "deleted" }, () => {
-      if (!kind.keepsDeletionMarks) {
-        throw new Error(`削除の印を持たない種類の削除の印: ${recordType} ${recordId}`);
-      }
-      return { kind: `${recordType}_deletion`, recordId, record: {} };
-    })
+    .with({ status: "deleted" }, () => ({ kind: `${recordType}_deletion`, recordId, record: {} }))
     .with({ status: "value" }, ({ value }) => ({
       kind: recordType,
       recordId,

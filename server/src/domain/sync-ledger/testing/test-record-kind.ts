@@ -87,7 +87,7 @@ export const createTestRecordKind = (
     },
   },
   follows: undefined,
-  deliversAbsence: false,
+  whenGone: "deletion_mark",
   readCurrent: (recordId): CurrentRecord<number> => {
     const value = store.find(recordId);
     if (value !== undefined) {

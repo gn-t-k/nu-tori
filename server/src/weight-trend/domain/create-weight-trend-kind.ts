@@ -15,7 +15,7 @@ export const createWeightTrendKind = (
   writes: undefined,
   // 行を持たないので書かず、変わったことだけを並びに載せる
   follows: { source: "weight_record", afterSourceApplied: () => [weightTrendRecordId] },
-  deliversAbsence: true,
+  whenGone: "absence",
   readCurrent: (): CurrentRecord<WeightTrend> => {
     const representatives = computeDailyRepresentativeWeights(
       weightRecordStore.findAllInMeasuredOrder(),

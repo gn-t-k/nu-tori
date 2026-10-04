@@ -10,7 +10,6 @@ export const weightTrendHttpKind: HttpRecordKind<
   typeof weightTrendRecordSchema
 > = {
   writes: undefined,
-  keepsDeletionMarks: false,
   recordSchema: weightTrendRecordSchema,
   toRecord: toWeightTrendRecord,
 };

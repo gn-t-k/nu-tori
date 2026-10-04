@@ -25,7 +25,7 @@ export const createNoticeKind = (
         .exhaustive(),
   },
   follows: undefined,
-  deliversAbsence: false,
+  whenGone: "never",
   readCurrent: (recordId): CurrentRecord<Notice> => {
     const notice = store.find(recordId);
     return notice === undefined ? { status: "absent" } : { status: "value", value: notice };
