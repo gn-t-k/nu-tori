@@ -7,6 +7,7 @@ import { toIngredientRecord } from "./to-ingredient-record";
 export const ingredientHttpKind: HttpRecordKind<Ingredient, never, typeof ingredientRecordSchema> =
   {
     writes: undefined,
+    keepsDeletionMarks: true,
     recordSchema: ingredientRecordSchema,
     toRecord: toIngredientRecord,
   };

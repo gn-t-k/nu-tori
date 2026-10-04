@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import type { RecordType } from "../../domain/record-type";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { HttpRecordKind } from "./http-record-kind";
@@ -10,12 +11,19 @@ export const toChangeBody = (
   recordId: string,
   current: CurrentRecord<unknown>,
 ) => {
-  if (current.status === "absent") {
-    return { kind: `${recordType}_absence`, recordId, record: {} };
-  }
-  if (current.status === "deleted") {
-    return { kind: `${recordType}_deletion`, recordId, record: {} };
-  }
   const kind: HttpRecordKind = httpRecordKinds[recordType];
-  return { kind: recordType, recordId, record: kind.toRecord(current.value, recordId) };
+  return match(current)
+    .with({ status: "absent" }, () => ({ kind: `${recordType}_absence`, recordId, record: {} }))
+    .with({ status: "deleted" }, () => {
+      if (!kind.keepsDeletionMarks) {
+        throw new Error(`削除の印を持たない種類の削除の印: ${recordType} ${recordId}`);
+      }
+      return { kind: `${recordType}_deletion`, recordId, record: {} };
+    })
+    .with({ status: "value" }, ({ value }) => ({
+      kind: recordType,
+      recordId,
+      record: kind.toRecord(value, recordId),
+    }))
+    .exhaustive();
 };

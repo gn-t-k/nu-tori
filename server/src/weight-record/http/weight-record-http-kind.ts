@@ -11,6 +11,7 @@ export const weightRecordHttpKind: HttpRecordKind<
   typeof weightRecordRecordSchema
 > = {
   writes: { schemas: weightRecordWriteSchemas, toWrite: toWeightRecordWrite },
+  keepsDeletionMarks: true,
   recordSchema: weightRecordRecordSchema,
   toRecord: toWeightRecordRecord,
 };

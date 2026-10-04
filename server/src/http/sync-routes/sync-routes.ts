@@ -3,6 +3,7 @@ import { getAccountDurableObject } from "../../durable-object/get-account-durabl
 import { authenticateAccount } from "../authenticate-account";
 import { httpRecordKinds } from "./http-record-kinds";
 import { recordKindNameSchema } from "./record-kind-name-schema";
+import { toRecordComponentName } from "./to-record-component-name";
 import { createSyncClientStateSchema } from "./create-sync-client-state-schema";
 import { syncWriteCurrentSchema } from "./sync-write-current-schema";
 import { syncWriteSchema } from "./sync-write-schema";
@@ -170,11 +171,7 @@ const routes = new OpenAPIHono<{ Bindings: Env }>()
 routes.openAPIRegistry.register("RecordKindName", recordKindNameSchema);
 // 取りに行く変更の record は種類によらない形なので、種類ごとの値の形を、種類の名前から作った名前の部品として書き出す
 for (const [name, kind] of Object.entries(httpRecordKinds)) {
-  const pascalName = name
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join("");
-  routes.openAPIRegistry.register(`${pascalName}Record`, kind.recordSchema);
+  routes.openAPIRegistry.register(toRecordComponentName(name), kind.recordSchema);
 }
 
 export const syncRoutes = routes;

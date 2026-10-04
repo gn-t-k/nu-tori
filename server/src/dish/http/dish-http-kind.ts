@@ -6,6 +6,7 @@ import { toDishRecord } from "./to-dish-record";
 // サーバーだけが書く種類なので、端末からの書き込みは届かない
 export const dishHttpKind: HttpRecordKind<Dish, never, typeof dishRecordSchema> = {
   writes: undefined,
+  keepsDeletionMarks: true,
   recordSchema: dishRecordSchema,
   toRecord: toDishRecord,
 };

@@ -10,6 +10,7 @@ export const usualWeighingTimeHttpKind: HttpRecordKind<
   typeof usualWeighingTimeRecordSchema
 > = {
   writes: undefined,
+  keepsDeletionMarks: false,
   recordSchema: usualWeighingTimeRecordSchema,
   toRecord: toUsualWeighingTimeRecord,
 };
