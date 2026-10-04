@@ -8,6 +8,8 @@
     /// サインイン、記録の取得・送信、アカウントの削除だけに答える。UI テストはサーバーにつながらない
     nonisolated struct StubAPITransport: ClientTransport {
         let behavior: Behavior
+        /// 返す記録の日付と時刻を、アプリと同じ止めた時計で決める
+        let clock: DeviceClock
         private let weightScreenKilograms = WeightScreenKilograms()
 
         @concurrent func send(
@@ -39,8 +41,7 @@
                 case "/v1/account":
                     return deleteAccountResponse()
                 case "/v1/sync/writes":
-                    // サーバーと同じく、届いた書き込みをすべて受け付ける。開いたときに出した体重の知らせ
-                    // （いつもの時刻を過ぎて開くと出る）を送り待ちに残さず、送り待ちの有無を開いた時刻によらないようにする
+                    // サーバーと同じく、届いた書き込みをすべて受け付ける
                     return try await pushResponse(body)
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
                     return json(.ok, try changesBody())
@@ -65,7 +66,7 @@
                 case "/v1/sync/writes":
                     return json(.ok, try await applyMealWrites(body))
                 case .some(let path) where path.hasPrefix("/v1/sync/changes"):
-                    return json(.ok, Self.estimatedMeals.changesBody())
+                    return json(.ok, Self.estimatedMeals.changesBody(today: clock.today()))
                 default:
                     return (HTTPResponse(status: .notFound), nil)
                 }
@@ -123,13 +124,7 @@
         private func pushResponse(_ body: HTTPBody?) async throws -> (HTTPResponse, HTTPBody?) {
             switch behavior {
             case .previousDayPushOffline:
-                // 開いたときに出した体重の知らせ（いつもの時刻を過ぎて開くと出る）だけの送信は受け付ける。
-                // 送れずに残ると、同期が取りに行く前に止まり、前の日の体重が開いた時刻によって出なくなる
-                let writes = try await pushedWrites(in: body)
-                guard writes.allSatisfy(\.isNotice) else {
-                    throw URLError(.notConnectedToInternet)
-                }
-                return json(.ok, results(for: writes, result: .applied))
+                throw URLError(.notConnectedToInternet)
             case .previousDayPushRejected:
                 // サーバーにその記録は無い（作る書き込みが受け付けられなかった）
                 return json(
@@ -172,7 +167,7 @@
 
         private func weightScreenBody() throws -> String {
             let startedOn = TimelineDayText.startedOn(
-                for: CalendarDay(containing: .now, in: .current))
+                for: clock.today())
             return """
                 {"changes":[{"sequence":1,"kind":"weight_record",\
                 "recordId":"\(Self.weightScreenRecordId)","record":\(try weightScreenRecord())}],\
@@ -183,7 +178,7 @@
         private static let weightScreenRecordId = "11111111-1111-4111-8111-111111111111"
 
         private func weightScreenRecord() throws -> String {
-            let zone = TimeZone.current.identifier
+            let zone = clock.timeZone().identifier
             let measuredAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
             let kilograms = weightScreenKilograms.current()
             return """
@@ -200,26 +195,24 @@
 
         private func writeResults(from body: HTTPBody?, result: WriteResult) async throws -> String
         {
-            results(for: try await pushedWrites(in: body), result: result)
-        }
-
-        private func results(for writes: [PushBody.Write], result: WriteResult) -> String {
-            let results = writes.map { write in
+            let ids = try await writeIds(in: body)
+            let results = ids.map { id in
                 switch result {
                 case .applied:
-                    #"{"writeId":"\#(write.id)","result":"applied"}"#
+                    #"{"writeId":"\#(id)","result":"applied"}"#
                 case .rejected(let current):
                     // 理由は画面の文言に出ないので、1つに決める
-                    #"{"writeId":"\#(write.id)","result":"rejected","rejectionReason":"out_of_range","current":\#(current)}"#
+                    #"{"writeId":"\#(id)","result":"rejected","rejectionReason":"out_of_range","current":\#(current)}"#
                 }
             }
             return #"{"results":[\#(results.joined(separator: ","))]}"#
         }
 
-        private func pushedWrites(in body: HTTPBody?) async throws -> [PushBody.Write] {
+        private func writeIds(in body: HTTPBody?) async throws -> [String] {
             guard let body else { return [] }
             let bytes = try await [UInt8](collecting: body, upTo: 1_048_576)
-            return try JSONDecoder().decode(PushBody.self, from: Data(bytes)).writes
+            let decoded = try JSONDecoder().decode(PushBody.self, from: Data(bytes))
+            return decoded.writes.map(\.id)
         }
 
         private final class WeightScreenKilograms: @unchecked Sendable {
@@ -319,7 +312,7 @@
                 meals.removeAll { $0.mealId == mealId }
             }
 
-            func changesBody() -> String {
+            func changesBody(today: CalendarDay) -> String {
                 lock.lock()
                 defer { lock.unlock() }
                 var changes: [String] = []
@@ -327,8 +320,7 @@
                     changes += changesOf(meals[index])
                     meals[index].pulls += 1
                 }
-                let startedOn = TimelineDayText.startedOn(
-                    for: CalendarDay(containing: .now, in: .current))
+                let startedOn = TimelineDayText.startedOn(for: today)
                 return
                     #"{"changes":[\#(changes.joined(separator: ","))],"hasMore":false,"nextAfterSequence":\#(sequence),"startedOn":"\#(startedOn)"}"#
             }
@@ -386,11 +378,6 @@
 
             struct Write: Decodable {
                 let id: String
-                let type: String
-
-                var isNotice: Bool {
-                    type == "create_notice" || type == "respond_notice"
-                }
             }
         }
 
@@ -399,8 +386,8 @@
         }
 
         private func previousDayBody() throws -> String {
-            let zone = TimeZone.current.identifier
-            let yesterday = CalendarDay(containing: .now, in: .current).advanced(by: -1)
+            let zone = clock.timeZone().identifier
+            let yesterday = clock.today().advanced(by: -1)
             let startedOn = TimelineDayText.startedOn(for: yesterday)
             let measuredAt = try milliseconds(dayOffset: -1, hour: 7, minute: 12)
             return """
@@ -426,15 +413,15 @@
 
         private func emptyChangesBody() -> String {
             let startedOn = TimelineDayText.startedOn(
-                for: CalendarDay(containing: .now, in: .current))
+                for: clock.today())
             return
                 #"{"changes":[],"hasMore":false,"nextAfterSequence":0,"startedOn":"\#(startedOn)"}"#
         }
 
         private func weightRecordsBody() throws -> String {
-            let zone = TimeZone.current.identifier
+            let zone = clock.timeZone().identifier
             let startedOn = TimelineDayText.startedOn(
-                for: CalendarDay(containing: .now, in: .current))
+                for: clock.today())
             let manualAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
             let importedAt = try milliseconds(dayOffset: 1, hour: 8, minute: 0)
             return """
@@ -454,9 +441,9 @@
         /// 使い始めた日を3週間前にし、その日に記録を2件置く。帯を週単位で送って、画面の外の日へ移れる。
         /// 使い始めた次の日を除く間の日にも1件ずつ置き、タイムラインが画面に収まらないようにする
         private func dayRingBody() throws -> String {
-            let zone = TimeZone.current.identifier
+            let zone = clock.timeZone().identifier
             let startedOn = TimelineDayText.startedOn(
-                for: CalendarDay(containing: .now, in: .current).advanced(by: -21))
+                for: clock.today().advanced(by: -21))
             let early = try milliseconds(dayOffset: -21, hour: 6, minute: 0)
             let late = try milliseconds(dayOffset: -21, hour: 21, minute: 0)
             let manualAt = try milliseconds(dayOffset: 0, hour: 7, minute: 12)
@@ -502,8 +489,8 @@
 
         private func milliseconds(dayOffset: Int, hour: Int, minute: Int) throws -> Int {
             var calendar = Calendar(identifier: .gregorian)
-            calendar.timeZone = .current
-            let start = calendar.startOfDay(for: .now)
+            calendar.timeZone = clock.timeZone()
+            let start = calendar.startOfDay(for: clock.now())
             guard let day = calendar.date(byAdding: .day, value: dayOffset, to: start),
                 let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day)
             else {

@@ -49,6 +49,7 @@ struct WeightEntrySheet: View {
     @FocusState private var typing: Bool
     @Environment(\.dismiss) private var dismiss
     private let now: () -> Date
+    private let timeZone: () -> TimeZone
     private let capture: (ClientUsageEvent) async -> Void
     private let onRecord: (WeightEntry.Write) -> Void
 
@@ -56,11 +57,13 @@ struct WeightEntrySheet: View {
         records: [WeightRecord],
         today: CalendarDay,
         now: @escaping () -> Date,
+        timeZone: @escaping () -> TimeZone,
         capture: @escaping (ClientUsageEvent) async -> Void,
         onRecord: @escaping (WeightEntry.Write) -> Void
     ) {
         let entry = WeightEntry(weightRecords: records, today: today)
         self.now = now
+        self.timeZone = timeZone
         self.capture = capture
         self.onRecord = onRecord
         let draft = WeightDraft(entry)
@@ -82,7 +85,7 @@ struct WeightEntrySheet: View {
         didRecord = true
         let recordedAt = now()
         let event = observation.recordedEvent(at: recordedAt)
-        onRecord(entry.write(recording: kilograms, at: recordedAt, in: .current))
+        onRecord(entry.write(recording: kilograms, at: recordedAt, in: timeZone()))
         Task { await capture(event) }
     }
 }

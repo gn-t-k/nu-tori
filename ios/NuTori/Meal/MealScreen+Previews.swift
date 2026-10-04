@@ -10,7 +10,7 @@
                 loadPhoto: { photoId in
                     sample.holdsPhotos ? UIImage.sampleMealPhoto(for: photoId) : nil
                 },
-                now: { .now },
+                now: DeviceClock.live.now,
                 capture: { _ in },
                 deleteMeal: { _, _ in },
                 confirmsDeletion: sample.confirmsDeletion

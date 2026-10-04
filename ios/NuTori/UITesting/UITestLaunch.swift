@@ -17,6 +17,8 @@
         /// 締め出しの記憶を置く UserDefaults の名前。同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている。
         /// nil なら、ほかの記憶と同じく、起動のたびに空から始める
         let lockoutDefaultsName: String?
+        /// `UI_TEST_NOW` の時刻で止めた時計
+        let clock: DeviceClock
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -34,7 +36,9 @@
                 healthLatestKilograms: environment["UI_TEST_HEALTH_LATEST_KG"].flatMap(Double.init),
                 healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied",
                 pickedMealPhotoCount: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init),
-                lockoutDefaultsName: environment["UI_TEST_LOCKOUT_DEFAULTS"]
+                lockoutDefaultsName: environment["UI_TEST_LOCKOUT_DEFAULTS"],
+                // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
+                clock: frozenClock(environment["UI_TEST_NOW"])
             )
         }
 
@@ -60,15 +64,16 @@
             let photoRoot = FileManager.default.temporaryDirectory.appending(
                 path: "ui-test-meal-photos-\(UUID().uuidString)")
             try store.prepareForUITest(
-                state: seededSyncState(), pendingWrites: account.pendingWrites)
+                state: seededSyncState(), pendingWrites: account.pendingWrites(at: clock))
             let behavior = transportBehavior
+            let clock = self.clock
             return AppRuntime.assemble(
                 AppRuntime.Parts(
                     store: store,
                     makeClient: { appBuildGate, sessionToken in
                         NuToriAPIClient(
                             serverURL: APIEnvironment.development.serverURL,
-                            transport: StubAPITransport(behavior: behavior),
+                            transport: StubAPITransport(behavior: behavior, clock: clock),
                             appBuildGate: appBuildGate,
                             sessionToken: sessionToken
                         )
@@ -83,7 +88,8 @@
                     healthStore: UITestHealthStore(
                         authorization: healthAuthorization,
                         latestKilograms: healthLatestKilograms,
-                        writeAuthorized: healthWriteAuthorized
+                        writeAuthorized: healthWriteAuthorized,
+                        clock: clock
                     ),
                     startBackgroundDelivery: { _ in },
                     appleCredentials: AuthorizedAppleCredentialChecker(),
@@ -98,7 +104,8 @@
                     ),
                     mealPhotoUploader: photoUploader,
                     finishedMealPhotoUploads: photoUploader.finishedUploads,
-                    reminderCenter: UITestReminderCenter()
+                    reminderCenter: UITestReminderCenter(),
+                    clock: clock
                 ))
         }
 
@@ -123,10 +130,19 @@
             }
         }
 
+        /// 本物の時計に戻すと、結果が開いた時刻でまた変わるので、渡し忘れと読めない値はその場で止める
+        private static func frozenClock(_ value: String?) -> DeviceClock {
+            guard let value, let clock = DeviceClock.frozen(atLaunchValue: value, in: .current)
+            else {
+                preconditionFailure("UI_TEST_NOW を yyyy-MM-ddTHH:mm の形で渡す")
+            }
+            return clock
+        }
+
         /// サインイン済みで初回の取得を終えているときだけ、読み込み中を出さない
         private func seededSyncState() -> SyncState? {
             guard account.hasSession, account.hasCompletedInitialPull else { return nil }
-            let today = CalendarDay(containing: .now, in: .current)
+            let today = clock.today()
             return SyncState(
                 afterSequence: 0,
                 hasCompletedInitialPull: true,
@@ -163,19 +179,19 @@
                 }
             }
 
-            fileprivate var pendingWrites: [PendingWrite] {
+            fileprivate func pendingWrites(at clock: DeviceClock) -> [PendingWrite] {
                 switch self {
                 case .signInAgainWithPendingWrites:
                     [
                         PendingWrite(
                             writeId: UUID(),
-                            enqueuedAt: .now,
+                            enqueuedAt: clock.now(),
                             operation: .createWeightRecord(
                                 WeightRecord(
                                     id: UUID(),
                                     kilograms: 72.4,
-                                    instant: .now,
-                                    timeZone: .current,
+                                    instant: clock.now(),
+                                    timeZone: clock.timeZone(),
                                     inputSource: .manual,
                                     version: 1
                                 )

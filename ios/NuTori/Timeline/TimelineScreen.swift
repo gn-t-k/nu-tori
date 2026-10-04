@@ -11,6 +11,8 @@ struct TimelineScreen: View {
     let today: CalendarDay
     /// 記録した時刻と、操作にかかった時間を測るための今
     let now: () -> Date
+    /// 記録した体重を、どのタイムゾーンの記録にするか
+    let timeZone: () -> TimeZone
     let rejectedLines: [RejectedLine]
     let meals: [MealCard]
     /// 答えた知らせも含む
@@ -138,6 +140,7 @@ struct TimelineScreen: View {
                 records: records,
                 today: today,
                 now: now,
+                timeZone: timeZone,
                 capture: capture,
                 onRecord: { write in
                     recordedInWeightEntry = true
@@ -383,6 +386,7 @@ struct TimelineScreen: View {
                         records: records,
                         today: today,
                         now: now,
+                        timeZone: timeZone,
                         capture: capture,
                         onRecord: { write in
                             noticeRecordedCount += 1
