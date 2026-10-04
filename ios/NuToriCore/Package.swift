@@ -63,7 +63,11 @@ let package = Package(
         ),
         .testTarget(
             name: "NuToriAPITests",
-            dependencies: ["NuToriAPI", "NuToriTestSupport"],
+            dependencies: [
+                "NuToriAPI",
+                "NuToriTestSupport",
+                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+            ],
             swiftSettings: strictSettings
         ),
     ],

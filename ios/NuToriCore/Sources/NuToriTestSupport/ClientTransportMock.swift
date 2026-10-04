@@ -1,5 +1,6 @@
 public import Foundation
 public import HTTPTypes
+import NuToriAPI
 public import NuToriCore
 public import OpenAPIRuntime
 
@@ -60,37 +61,26 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         /// 答えていない知らせの今の値
         case unansweredNotice(Notice)
 
-        var json: String {
+        /// 偽の同期サーバーと同じ道で、線上の形にする
+        var syncWriteCurrent: SyncWriteResult.Current {
             switch self {
-            case .absent:
-                #"{"status":"absent"}"#
-            case .deleted(let recordId):
-                """
-                {"status":"deleted","change":{"kind":"weight_record_deletion",\
-                "recordId":"\(recordId.uuidString)","record":{}}}
-                """
-            case .deletedMeal(let mealId):
-                """
-                {"status":"deleted","change":{"kind":"meal_deletion",\
-                "recordId":"\(mealId.uuidString)","record":{}}}
-                """
+            case .absent: .absent
+            case .deleted(let recordId): .deleted(.weightRecordDeletion(recordId: recordId))
+            case .deletedMeal(let mealId): .deleted(.mealDeletion(mealId: mealId))
             case .unansweredNotice(let notice):
-                """
-                {"status":"value","change":{"kind":"notice",\
-                "recordId":"\(notice.id.uuidString)",\
-                "record":{"id":"\(notice.id.uuidString)","noticeType":"missed_weight_record",\
-                "issuedAt":\(Int((notice.issuedAt.timeIntervalSince1970 * 1000).rounded())),\
-                "timeZone":"\(notice.timeZone.identifier)",\
-                "targetOn":"\(notice.targetDay.yearMonthDay)"}}}
-                """
+                .value(
+                    .notice(
+                        SyncedNotice(
+                            id: notice.id, noticeType: .missedWeightRecord,
+                            issuedAt: notice.issuedAt, timeZone: notice.timeZone,
+                            targetOn: notice.targetDay.yearMonthDay, response: nil)))
             case .weightRecord(let record):
-                """
-                {"status":"value","change":{"kind":"weight_record",\
-                "recordId":"\(record.id.uuidString)",\
-                "record":{"id":"\(record.id.uuidString)","weightKg":\(record.kilograms),\
-                "measuredAt":\(Int((record.instant.timeIntervalSince1970 * 1000).rounded())),\
-                "timeZone":"\(record.timeZone.identifier)","version":\(record.version)}}}
-                """
+                .value(
+                    .weightRecord(
+                        SyncedWeightRecord(
+                            id: record.id, weightKilograms: record.kilograms,
+                            measuredAt: record.instant, timeZone: record.timeZone,
+                            version: record.version, imported: nil)))
             }
         }
     }
@@ -201,12 +191,13 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             return (HTTPResponse(status: status), nil)
         }
         let writes = try SentWritesBody(json: body ?? "").writes
-        let results = writes.enumerated().map { index, write in
+        let results = try writes.enumerated().map { index, write in
             let writeId = write.id
             guard rejectedWriteIndexes.contains(index) else {
                 return #"{"writeId":"\#(writeId)","result":"applied"}"#
             }
-            let current = currents[index].map { #","current":\#($0.json)"# } ?? ""
+            let current =
+                try currents[index].map { #","current":\#(try $0.syncWriteCurrent.json())"# } ?? ""
             return
                 #"{"writeId":"\#(writeId)","result":"rejected","rejectionReason":"out_of_range"\#(current)}"#
         }

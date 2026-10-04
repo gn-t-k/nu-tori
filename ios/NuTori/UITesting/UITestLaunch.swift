@@ -64,7 +64,8 @@
             let photoRoot = FileManager.default.temporaryDirectory.appending(
                 path: "ui-test-meal-photos-\(UUID().uuidString)")
             try store.prepareForUITest(seededResults())
-            let behavior = transportBehavior
+            // 同じ偽の同期サーバーを、セッションが変わって作り直すクライアントでも使う
+            let server = FakeSyncServer(syncScenario())
             let clock = self.clock
             return AppRuntime.assemble(
                 AppRuntime.Parts(
@@ -72,7 +73,7 @@
                     makeClient: { appBuildGate, sessionToken in
                         NuToriAPIClient(
                             serverURL: APIEnvironment.development.serverURL,
-                            transport: StubAPITransport(behavior: behavior, clock: clock),
+                            transport: server,
                             appBuildGate: appBuildGate,
                             sessionToken: sessionToken
                         )
@@ -82,7 +83,7 @@
                             suiteName: lockoutDefaultsName
                                 ?? "app.nu-tori.ui-test.lockout.\(UUID().uuidString)")!),
                     keychain: InMemorySessionKeychain(
-                        token: account.hasSession ? "stub-session" : nil),
+                        token: account.hasSession ? FakeSyncServer.sessionToken : nil),
                     deviceStore: UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults()),
                     healthStore: UITestHealthStore(
                         authorization: healthAuthorization,
@@ -106,27 +107,6 @@
                     reminderCenter: UITestReminderCenter(),
                     clock: clock
                 ))
-        }
-
-        private var transportBehavior: StubAPITransport.Behavior {
-            if account == .signedInFetching {
-                return .hangPull
-            }
-            switch api {
-            case .online: return .online
-            case .offline: return .offline
-            case .weightRecords: return .weightRecords
-            case .previousDay: return .previousDay
-            case .previousDayPushOffline: return .previousDayPushOffline
-            case .previousDayPushRejected: return .previousDayPushRejected
-            case .weightScreen: return .weightScreen
-            case .weightScreenPushRejected: return .weightScreenPushRejected
-            case .accountDeletionRateLimited: return .accountDeletionRateLimited
-            case .accountDeletionUnauthorized: return .accountDeletionUnauthorized
-            case .dayRing: return .dayRing
-            case .mealEstimation: return .mealEstimation
-            case .appBuildUnsupported: return .appBuildUnsupported
-            }
         }
 
         /// 始める前の同期の状態と、送り待ちに残した記録
@@ -234,7 +214,8 @@
             let defaults = UserDefaults(suiteName: "app.nu-tori.ui-test.\(UUID().uuidString)")!
             defaults.set(true, forKey: UserDefaultsSignInDeviceStore.Key.hasOpened)
             if account.hasSession {
-                defaults.set("stub-account", forKey: UserDefaultsSignInDeviceStore.Key.accountId)
+                defaults.set(
+                    FakeSyncServer.accountId, forKey: UserDefaultsSignInDeviceStore.Key.accountId)
                 defaults.set(
                     "stub-apple-user", forKey: UserDefaultsSignInDeviceStore.Key.appleUserId)
             }
