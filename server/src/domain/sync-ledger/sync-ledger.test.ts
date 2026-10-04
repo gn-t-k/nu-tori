@@ -165,6 +165,45 @@ describe("同期の帳簿", () => {
       });
     });
 
+    describe("控えの種類が登録簿から外れたあとに、同じ書き込みの ID が再び届いたとき", () => {
+      let resendWithoutKind: (write: TestRecordWrite) => ReturnType<TestLedger["push"]>;
+      let resend: () => ReturnType<TestLedger["push"]>;
+
+      beforeEach(() => {
+        const ledgerWithoutRecordKind = createSyncLedger<
+          "test_record" | "test_child" | "test_follower" | "other",
+          "test_record" | "test_child" | "test_follower",
+          TestRecordWrite | OtherWrite,
+          number
+        >(ledgerStore, [createTestChildKind(childStore)]);
+        resendWithoutKind = (write) => ledgerWithoutRecordKind.push(pushRequest([write]));
+      });
+
+      describe("受け付けた書き込みなら", () => {
+        beforeEach(() => {
+          ledger.push(pushRequest([create("write-1", "record-1")]));
+          resend = () => resendWithoutKind(create("write-1", "record-1"));
+        });
+
+        test("控えの結果を返すこと", () => {
+          expect(resend().results).toEqual([
+            { writeId: "write-1", outcome: { result: "applied" }, rejectedRecord: undefined },
+          ]);
+        });
+      });
+
+      describe("受け付けなかった書き込みなら", () => {
+        beforeEach(() => {
+          ledger.push(pushRequest([create("write-1", "record-1", 500)]));
+          resend = () => resendWithoutKind(create("write-1", "record-1", 500));
+        });
+
+        test("不具合として投げること", () => {
+          expect(resend).toThrow("登録簿に無い種類の控え: test_record");
+        });
+      });
+    });
+
     describe("登録簿にない書き込みが混ざるとき", () => {
       let pushWithUnregistered: () => unknown;
 
