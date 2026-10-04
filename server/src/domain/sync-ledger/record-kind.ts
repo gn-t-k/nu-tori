@@ -21,10 +21,14 @@ export type RecordKind<
   // ほかの種類の記録から計算する種類だけが宣言する
   follows: KindFollows<TSourceName> | undefined;
   readCurrent(recordId: string): CurrentRecord<TValue>;
-  // 記録が無くなったこと（absent）も変更として届けるか。削除の印を持たず、ほかの記録から計算する種類（体重の傾向）だけが届ける。
-  // 届けない種類では、変更の並びが指す記録も削除の印も無いのは不具合なので、取りに行くときに投げる
-  deliversAbsence: boolean;
+  whenGone: WhenGone;
 };
+
+// 記録が消えたことを端末にどう届けるか。食い違う今の値を読んだら、帳簿が不具合として投げる（受け付けなかった書き込みの記録が無いのは除く。まだ作られていないことがあるため）
+// - deletion_mark: 削除の印を残して届ける
+// - absence: 削除の印を持たず、記録が無くなったこと（absent）を変更として届ける。ほかの記録から計算する種類（体重の傾向）
+// - never: 記録は消えない。変更の並びが指す記録が無いのも、削除の印も不具合
+export type WhenGone = "deletion_mark" | "absence" | "never";
 
 // 端末からの書き込みを受ける種類が宣言するもの。メソッドの書き方は、登録簿の配列に型の違う種類を並べるため（引数を双変にする）
 export type KindWrites<TWrite extends WriteBase, TAddedName extends string = never> = {

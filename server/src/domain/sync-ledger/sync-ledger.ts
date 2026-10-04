@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import type { SyncClientState } from "../sync-client-state";
 import type { RejectionReason } from "../rejection-reason";
 import type { UsageEvent } from "../usage-event";
@@ -6,7 +7,7 @@ import type { LedgerChange } from "./ledger-change";
 import type { LedgerStore } from "./ledger-store";
 import type { PushedResult } from "./pushed-result";
 import type { RecordChangeTarget } from "./record-change-target";
-import type { RecordKind } from "./record-kind";
+import type { RecordKind, WhenGone } from "./record-kind";
 import type { WriteBase } from "./write-base";
 import type { WriteKind } from "./write-kind";
 
@@ -22,6 +23,7 @@ export const createSyncLedger = <
   store: LedgerStore<TRecordType>,
   kinds: readonly RecordKind<TKindName, TWrite, TValue, TKindName, TKindName>[],
 ) => {
+  type Kind = (typeof kinds)[number];
   const changesPerPull = 500;
 
   const push = (request: {
@@ -110,21 +112,13 @@ export const createSyncLedger = <
               ? {
                   recordType: target.recordType,
                   recordId: target.recordId,
-                  current: readCurrentOf(target.recordType, target.recordId),
+                  current: readRejectedCurrent(target.recordType, target.recordId),
                 }
               : undefined,
         }),
       );
       return { results, rejectedWrites, usageEvents, previousRequestReceivedAt };
     });
-
-  const readCurrentOf = (recordType: TRecordType, recordId: string): CurrentRecord<TValue> => {
-    const owner = kinds.find((kind) => kind.name === recordType);
-    if (owner === undefined) {
-      throw new Error(`登録簿に無い種類の控え: ${recordType}`);
-    }
-    return owner.readCurrent(recordId);
-  };
 
   const pull = (request: {
     clientState: SyncClientState;
@@ -143,21 +137,12 @@ export const createSyncLedger = <
       const changes = found
         .slice(0, changesPerPull)
         .map((change): LedgerChange<TKindName, TValue> => {
-          const owner = kinds.find((kind) => kind.name === change.recordType);
-          if (owner === undefined) {
-            throw new Error(`登録簿に無い種類の変更: ${change.recordType}`);
-          }
-          const current = owner.readCurrent(change.recordId);
-          if (current.status === "absent" && !owner.deliversAbsence) {
-            throw new Error(
-              `変更の並びが指す記録も削除の印も無い: ${owner.name} ${change.recordId}`,
-            );
-          }
+          const owner = findOwner(change.recordType, "登録簿に無い種類の変更");
           return {
             sequence: change.sequence,
             recordType: owner.name,
             recordId: change.recordId,
-            current,
+            current: readPulledCurrent(owner, change.recordId),
           };
         });
       return {
@@ -179,8 +164,63 @@ export const createSyncLedger = <
       }),
     );
 
+  const findOwner = (recordType: TRecordType, missingMessage: string) => {
+    const owner = kinds.find((kind) => kind.name === recordType);
+    if (owner === undefined) {
+      throw new Error(`${missingMessage}: ${recordType}`);
+    }
+    return owner;
+  };
+
+  // 受け付けなかった書き込みの記録は、まだ作られていないことがあるので、どの種類でも無いこと（absent）を返す
+  const readRejectedCurrent = (
+    recordType: TRecordType,
+    recordId: string,
+  ): CurrentRecord<TValue> => {
+    const owner = findOwner(recordType, "登録簿に無い種類の控え");
+    const current = owner.readCurrent(recordId);
+    match(current.status)
+      .with("value", "absent", () => undefined)
+      .with("deleted", () => ensureKeepsDeletionMarks(owner, recordId))
+      .exhaustive();
+    return current;
+  };
+
+  const readPulledCurrent = (owner: Kind, recordId: string): CurrentRecord<TValue> => {
+    const current = owner.readCurrent(recordId);
+    match(current.status)
+      .with("value", () => undefined)
+      .with("deleted", () => ensureKeepsDeletionMarks(owner, recordId))
+      .with("absent", () => ensureDeliversAbsence(owner, recordId))
+      .exhaustive();
+    return current;
+  };
+
   return { push, pull, changeOutsideWrites };
 };
+
+// 今の値が種類の whenGone と食い違うのは不具合なので投げる
+const ensureKeepsDeletionMarks = (
+  owner: { name: string; whenGone: WhenGone },
+  recordId: string,
+): void =>
+  match(owner.whenGone)
+    .with("deletion_mark", () => undefined)
+    .with("absence", "never", () => {
+      throw new Error(`削除の印を持たない種類の削除の印: ${owner.name} ${recordId}`);
+    })
+    .exhaustive();
+
+const ensureDeliversAbsence = (
+  owner: { name: string; whenGone: WhenGone },
+  recordId: string,
+): void =>
+  match(owner.whenGone)
+    .with("absence", () => undefined)
+    .with("deletion_mark", "never", () => {
+      throw new Error(`変更の並びが指す記録も削除の印も無い: ${owner.name} ${recordId}`);
+    })
+    .exhaustive();
 
 // 控えの ID。作れるのは帳簿だけ（値を export していないので、ほかは組み立てられない）
 class WriteReceiptId {

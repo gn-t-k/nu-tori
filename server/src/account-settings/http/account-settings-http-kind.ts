@@ -11,7 +11,6 @@ export const accountSettingsHttpKind: HttpRecordKind<
   typeof accountSettingsRecordSchema
 > = {
   writes: { schemas: accountSettingsWriteSchemas, toWrite: toUpdateAccountSettingsWrite },
-  keepsDeletionMarks: false,
   recordSchema: accountSettingsRecordSchema,
   toRecord: toAccountSettingsRecord,
 };

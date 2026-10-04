@@ -13,7 +13,7 @@ export const createMealEstimationStatusKind = (
   name: "meal_estimation_status",
   writes: undefined,
   follows: undefined,
-  deliversAbsence: false,
+  whenGone: "deletion_mark",
   readCurrent: (mealId): CurrentRecord<MealEstimationStatus> => {
     if (mealStore.find(mealId) === undefined) {
       return mealStore.hasDeletion(mealId) ? { status: "deleted" } : { status: "absent" };

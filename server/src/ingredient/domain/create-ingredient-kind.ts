@@ -10,7 +10,7 @@ export const createIngredientKind = (
   name: "ingredient",
   writes: undefined,
   follows: undefined,
-  deliversAbsence: false,
+  whenGone: "deletion_mark",
   readCurrent: (ingredientId): CurrentRecord<Ingredient> => {
     const ingredient = store.find(ingredientId);
     if (ingredient !== undefined) {

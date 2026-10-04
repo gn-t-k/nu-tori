@@ -135,6 +135,36 @@ describe("同期の帳簿", () => {
       });
     });
 
+    describe("削除の印を持たない種類で、受け付けない書き込みの記録に削除の印があるとき", () => {
+      let pushToDeletedRecord: () => unknown;
+
+      beforeEach(() => {
+        const ledgerWithoutDeletionMarks = createSyncLedger<
+          "test_record" | "test_child" | "test_follower" | "other",
+          "test_record" | "test_child" | "test_follower",
+          TestRecordWrite | OtherWrite,
+          number
+        >(ledgerStore, [
+          {
+            ...createTestRecordKind(createMemoryTestRecordStore(operations), childStore),
+            whenGone: "never",
+          },
+          createTestChildKind(childStore),
+        ]);
+        ledgerWithoutDeletionMarks.push(
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+        );
+        pushToDeletedRecord = () =>
+          ledgerWithoutDeletionMarks.push(pushRequest([create("write-2", "record-1", 500)]));
+      });
+
+      test("不具合として投げること", () => {
+        expect(pushToDeletedRecord).toThrow(
+          "削除の印を持たない種類の削除の印: test_record record-1",
+        );
+      });
+    });
+
     describe("登録簿にない書き込みが混ざるとき", () => {
       let pushWithUnregistered: () => unknown;
 
@@ -371,7 +401,7 @@ describe("同期の帳簿", () => {
           number
         >(ledgerStore, [
           createTestRecordKind(createMemoryTestRecordStore(operations), childStore),
-          { ...createTestChildKind(childStore), deliversAbsence: true },
+          { ...createTestChildKind(childStore), whenGone: "absence" },
         ]);
         ledgerDeliveringAbsence.changeOutsideWrites((addChange) => {
           addChange({ recordType: "test_child", recordId: "child-1" });
@@ -388,6 +418,31 @@ describe("同期の帳簿", () => {
             current: { status: "absent" },
           },
         ]);
+      });
+    });
+
+    describe("削除の印を持たない種類で、変更の並びが指す記録に削除の印があるとき", () => {
+      let pullDeletedRecord: () => unknown;
+
+      beforeEach(() => {
+        const ledgerWithoutDeletionMarks = createSyncLedger<
+          "test_record" | "test_child" | "test_follower" | "other",
+          "test_record" | "test_child" | "test_follower",
+          TestRecordWrite | OtherWrite,
+          number
+        >(ledgerStore, [
+          createTestRecordKind(createMemoryTestRecordStore(operations), childStore),
+          { ...createTestChildKind(childStore), whenGone: "never" },
+        ]);
+        childStore.insert({ id: "child-1", parentId: "record-1", value: 1 });
+        ledgerWithoutDeletionMarks.push(
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+        );
+        pullDeletedRecord = () => ledgerWithoutDeletionMarks.pull(pullRequest(0));
+      });
+
+      test("不具合として投げること", () => {
+        expect(pullDeletedRecord).toThrow("削除の印を持たない種類の削除の印: test_child child-1");
       });
     });
 

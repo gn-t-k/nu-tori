@@ -18,7 +18,7 @@ export const createTestFollowerKind = (
         return [testFollowerRecordId];
       },
     },
-    deliversAbsence: false,
+    whenGone: "never",
     readCurrent: (recordId): CurrentRecord<number> =>
       recordId === testFollowerRecordId && appliedCount > 0
         ? { status: "value", value: appliedCount }
