@@ -49,6 +49,34 @@ public struct Timeline: Sendable {
             .first
     }
 
+    /// 体重の画面とタイムラインで同じ日を使う
+    public static func firstDay(
+        startedDay: CalendarDay?, weightRecords: [WeightRecord], today: CalendarDay
+    ) -> CalendarDay {
+        startedDay ?? weightRecords.map(\.day).min() ?? today
+    }
+
+    /// 記録忘れの通知を押して開いたときに着く位置。その知らせが並んでいなければ、いちばん新しい日の下
+    public func landing(for reminder: ReminderLanding) -> Landing {
+        switch reminder {
+        case .notice(let noticeId):
+            let item = days.lazy.flatMap(\.items).first { item in
+                if case .notice(let card) = item { card.notice.id == noticeId } else { false }
+            }
+            guard let item else { return .end(dayRange.upperBound) }
+            return .item(item.id)
+        case .timelineEnd:
+            return .end(dayRange.upperBound)
+        }
+    }
+
+    public enum Landing: Equatable, Sendable {
+        /// そのカードの位置
+        case item(Item.ID)
+        /// その日のいちばん下
+        case end(CalendarDay)
+    }
+
     /// タイムラインに並べる元になるもの。種類が増えたら欄を足す
     public struct Input: Sendable {
         public let weightRecords: [WeightRecord]
