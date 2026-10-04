@@ -31,12 +31,3 @@ public struct Pending<Write: PendingWriteBody>: Sendable, Equatable {
         )
     }
 }
-
-/// 体重記録・アカウントの設定の送り待ち
-public typealias PendingWrite = Pending<WeightOrSettingsWrite>
-
-/// 食事の送り待ち
-public typealias PendingMealWrite = Pending<MealWrite>
-
-/// 知らせの送り待ち
-public typealias PendingNoticeWrite = Pending<NoticeWrite>

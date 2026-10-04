@@ -68,7 +68,7 @@ struct WeightRecordSyncingTests {
 
         @Test("作る書き込みは、版を持たない新しい記録を送ること")
         func createsNewRecord() throws {
-            let write = PendingWrite(
+            let write = PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
                 write: .createWeightRecord(original))
 
@@ -85,7 +85,7 @@ struct WeightRecordSyncingTests {
 
         @Test("直す書き込みは、直した値と版を送ること")
         func sendsCorrection() throws {
-            let write = PendingWrite(
+            let write = PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
                 write: .correctWeightRecord(corrected))
 
@@ -101,7 +101,7 @@ struct WeightRecordSyncingTests {
 
         @Test("ヘルスケアで消えた記録の書き込みは、記録の ID を送ること")
         func sendsSourceDeletion() throws {
-            let write = PendingWrite(
+            let write = PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
                 write: .sourceDeletedWeightRecord(recordId: original.id))
 
@@ -115,7 +115,7 @@ struct WeightRecordSyncingTests {
 
         @Test("アカウントの設定の送り待ちは、作れないこと")
         func rejectsAccountSettings() throws {
-            let entry = try PendingWrite(
+            let entry = try PendingAccountSettingsWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
                 write: .updateAccountSettings(.fixture(sendsUsageData: true))
             ).entry()
@@ -135,7 +135,7 @@ struct WeightRecordSyncingTests {
         init() throws {
             corrected = try .manual(
                 72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 2)
-            entry = try PendingWrite(
+            entry = try PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
                 write: .correctWeightRecord(corrected)
             ).entry()
@@ -176,7 +176,7 @@ struct WeightRecordSyncingTests {
 
         @Test("元のサンプルが消えた書き込みは、行も外す変更も返さないこと")
         func sourceDeleted() throws {
-            let sourceDeleted = try PendingWrite(
+            let sourceDeleted = try PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
                 write: .sourceDeletedWeightRecord(recordId: corrected.id)
             ).entry()
@@ -201,20 +201,27 @@ struct WeightRecordSyncingTests {
             deletedId = UUID()
             state = HealthSyncState(
                 anchor: HealthChanges.fixtureAnchor, hasWrittenCachedManualRecords: true)
+            // 呼ぶたびに1秒進む時計
+            var ticks = 0.0
             result = try syncing.importing(
                 [added], sourceDeletedRecordIds: [deletedId],
-                enqueuedAt: SyncEngine.fixtureNow, healthSyncState: state)
+                now: {
+                    ticks += 1
+                    return SyncEngine.fixtureNow.addingTimeInterval(ticks)
+                },
+                healthSyncState: state)
         }
 
-        @Test("作る書き込みと元のサンプルが消えた書き込みを、同じ時刻で送り待ちに足すこと")
+        @Test("作る書き込みと元のサンプルが消えた書き込みを、この順に、書き込みごとの時刻で送り待ちに足すこと")
         func enqueuesCreateThenSourceDeleted() throws {
             #expect(
-                try result.enqueuing.map { try PendingWrite(entry: $0).write } == [
+                try result.enqueuing.map { try PendingWeightRecordWrite(entry: $0).write } == [
                     .createWeightRecord(added), .sourceDeletedWeightRecord(recordId: deletedId),
                 ])
             #expect(
                 result.enqueuing.map(\.enqueuedAt) == [
-                    SyncEngine.fixtureNow, SyncEngine.fixtureNow,
+                    SyncEngine.fixtureNow.addingTimeInterval(1),
+                    SyncEngine.fixtureNow.addingTimeInterval(2),
                 ])
             #expect(Set(result.enqueuing.map(\.writeId)).count == 2)
         }
@@ -234,7 +241,7 @@ struct WeightRecordSyncingTests {
 
         init() throws {
             result = try WeightRecordSyncing().importing(
-                [], sourceDeletedRecordIds: [UUID()], enqueuedAt: SyncEngine.fixtureNow,
+                [], sourceDeletedRecordIds: [UUID()], now: { SyncEngine.fixtureNow },
                 healthSyncState: HealthSyncState(
                     anchor: HealthChanges.fixtureAnchor, hasWrittenCachedManualRecords: true))
         }

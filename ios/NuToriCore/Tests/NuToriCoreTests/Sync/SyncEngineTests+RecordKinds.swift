@@ -13,8 +13,8 @@ extension SyncEngineTests {
             let transport: ClientTransportMock
             let engine: SyncEngine
             let note: PendingEntry
-            let created: PendingWrite
-            let rejectedCreated: PendingWrite
+            let created: PendingWeightRecordWrite
+            let rejectedCreated: PendingWeightRecordWrite
 
             init() throws {
                 note = RecordKindMock.entry(recordId: UUID(), ageSeconds: 30)
@@ -150,12 +150,12 @@ extension SyncEngineTests {
     }
 }
 
-extension WeightOrSettingsWrite {
+extension WeightRecordWrite {
     fileprivate var weightRecord: WeightRecord {
         switch self {
         case .createWeightRecord(let record), .correctWeightRecord(let record):
             record
-        case .sourceDeletedWeightRecord, .updateAccountSettings:
+        case .sourceDeletedWeightRecord:
             preconditionFailure("体重記録を作る書き込みではない")
         }
     }

@@ -15,7 +15,7 @@ struct SwiftDataSyncStoreMigrationTests {
         inputSource: .manual,
         version: 1
     )
-    static let write = PendingWrite(
+    static let write = PendingWeightRecordWrite(
         writeId: UUID(uuidString: "00000000-0000-4000-8000-000000000102")!,
         enqueuedAt: Date(timeIntervalSince1970: 1_700_000_000),
         write: .createWeightRecord(record)
@@ -277,7 +277,7 @@ struct SwiftDataSyncStoreMigrationTests {
         }
     }
 
-    static let correction = PendingWrite(
+    static let correction = PendingWeightRecordWrite(
         writeId: UUID(uuidString: "00000000-0000-4000-8000-000000000103")!,
         enqueuedAt: Date(timeIntervalSince1970: 1_700_000_100),
         write: .correctWeightRecord(

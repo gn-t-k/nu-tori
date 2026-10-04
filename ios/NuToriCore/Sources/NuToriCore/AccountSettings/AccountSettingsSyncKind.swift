@@ -18,11 +18,11 @@ public struct AccountSettingsSyncKind: SyncedRecordKind, RecordKindWrites {
     }
 
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
-        let pending = try PendingWrite(entry: entry)
-        guard case .updateAccountSettings(let settings) = pending.write else {
-            throw PendingEntry.InvalidContentError(kind: entry.kind)
+        let pending = try PendingAccountSettingsWrite(entry: entry)
+        switch pending.write {
+        case .updateAccountSettings(let settings):
+            return Self.syncWrite(writeId: pending.writeId, settings: settings)
         }
-        return Self.syncWrite(writeId: pending.writeId, settings: settings)
     }
 
     /// サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
@@ -35,7 +35,8 @@ public struct AccountSettingsSyncKind: SyncedRecordKind, RecordKindWrites {
     }
 
     /// 設定を直したときの結果。送り待ちに足し、今の値を、取りに行った変更と同じ形でキャッシュに当てる
-    public func saving(_ settings: AccountSettings, enqueuing write: PendingWrite) throws
+    public func saving(_ settings: AccountSettings, enqueuing write: PendingAccountSettingsWrite)
+        throws
         -> SyncBoxResult
     {
         SyncBoxResult(

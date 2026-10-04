@@ -6,7 +6,7 @@ extension SyncBoxMock where Cache == RecordCacheMock {
     public static func ok(
         records: [WeightRecord] = [],
         accountSettings: AccountSettings? = nil,
-        pendingWrites: [PendingWrite] = [],
+        pendingWrites: [PendingWeightRecordWrite] = [],
         pendingEntries: [PendingEntry] = [],
         recordKinds: [any RecordKind<RecordCacheMock>] = [],
         state: SyncState? = nil,

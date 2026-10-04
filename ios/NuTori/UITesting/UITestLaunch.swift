@@ -126,7 +126,9 @@
         private func seededResults() throws -> [SyncBoxResult] {
             try account.pendingRecords.map {
                 try WeightRecordSyncing().saving(
-                    $0, enqueuing: PendingWrite(enqueuedAt: .now, write: .createWeightRecord($0)))
+                    $0,
+                    enqueuing: PendingWeightRecordWrite(
+                        enqueuedAt: .now, write: .createWeightRecord($0)))
             } + [SyncBoxResult(syncState: seededSyncState())]
         }
 

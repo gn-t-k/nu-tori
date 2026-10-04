@@ -7,22 +7,15 @@ public enum MealWrite: PendingWriteBody {
 
     public var kindName: RecordKindName { MealSyncing.kindName }
 
-    public func content() throws -> Data {
-        try JSONEncoder().encode(Content(self))
-    }
+    public var stored: Stored { Stored(self) }
 
-    public init(kind: RecordKindName, content: Data) throws {
-        let stored: Content
-        do {
-            stored = try JSONDecoder().decode(Content.self, from: content)
-        } catch {
-            throw PendingEntry.InvalidContentError(kind: kind)
-        }
-        self = try stored.write(kind: kind)
+    public init?(stored: Stored) {
+        guard let write = stored.write() else { return nil }
+        self = write
     }
 
     /// 送り待ちに保存する JSON。キーを足すときは、無くても読める形にする（`docs/agents/sync.md`「置き場の約束」）
-    private enum Content: Codable {
+    public enum Stored: Codable {
         case create(StoredMeal)
         case delete(mealId: UUID)
 
@@ -33,15 +26,15 @@ public enum MealWrite: PendingWriteBody {
             }
         }
 
-        func write(kind: RecordKindName) throws -> MealWrite {
+        func write() -> MealWrite? {
             switch self {
-            case .create(let stored): .create(try stored.meal(kind: kind))
+            case .create(let stored): stored.meal().map { .create($0) }
             case .delete(let mealId): .delete(mealId: mealId)
             }
         }
     }
 
-    private struct StoredMeal: Codable {
+    public struct StoredMeal: Codable {
         let id: UUID
         let eatenAt: Date
         let eatenUtcOffsetSeconds: Int
@@ -61,11 +54,11 @@ public enum MealWrite: PendingWriteBody {
             photoIds = meal.photoIds
         }
 
-        func meal(kind: RecordKindName) throws -> Meal {
+        func meal() -> Meal? {
             guard let sentTimeZone = TimeZone(identifier: sentTimeZoneIdentifier),
                 let mealEntry = MealDraft.Entry(rawValue: entry)
             else {
-                throw PendingEntry.InvalidContentError(kind: kind)
+                return nil
             }
             return Meal(
                 id: id,
@@ -79,3 +72,6 @@ public enum MealWrite: PendingWriteBody {
         }
     }
 }
+
+/// 食事の送り待ち
+public typealias PendingMealWrite = Pending<MealWrite>

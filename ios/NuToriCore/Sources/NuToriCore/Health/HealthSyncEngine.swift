@@ -57,7 +57,7 @@ public actor HealthSyncEngine {
                 WeightRecordSyncing().importing(
                     plan.newRecords,
                     sourceDeletedRecordIds: plan.deletedRecordIds,
-                    enqueuedAt: now(),
+                    now: now,
                     healthSyncState: HealthSyncState(
                         anchor: changes.anchor,
                         hasWrittenCachedManualRecords: state.hasWrittenCachedManualRecords

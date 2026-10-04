@@ -12,7 +12,7 @@ struct SwiftDataSyncStoreSavingTests {
     struct SavingAccountSettings {
         let store: SwiftDataSyncStore
         let settings: AccountSettings
-        let write: PendingWrite
+        let write: PendingAccountSettingsWrite
 
         init() throws {
             store = try SwiftDataSyncStore(inMemory: true)
@@ -20,7 +20,7 @@ struct SwiftDataSyncStoreSavingTests {
                 id: UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!,
                 sendsUsageData: false
             )
-            write = PendingWrite(
+            write = PendingAccountSettingsWrite(
                 writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")!,
                 enqueuedAt: Date(timeIntervalSince1970: 1_700_000_000),
                 write: .updateAccountSettings(settings)
@@ -32,7 +32,7 @@ struct SwiftDataSyncStoreSavingTests {
             try await store.save(settings, enqueuing: write)
 
             #expect(try await store.accountSettings() == settings)
-            #expect(try await store.pendingWritesOldestFirst() == [write])
+            #expect(try await store.pendingAccountSettingsWritesOldestFirst() == [write])
         }
     }
 
@@ -69,7 +69,7 @@ struct SwiftDataSyncStoreSavingTests {
         func keepsRecordsPendingWritesAndAnchor() async throws {
             try await store.apply(
                 WeightRecordSyncing().importing(
-                    [record], sourceDeletedRecordIds: [], enqueuedAt: record.instant,
+                    [record], sourceDeletedRecordIds: [], now: { record.instant },
                     healthSyncState: state))
 
             #expect(try await store.weightRecords() == [record])
@@ -113,7 +113,7 @@ struct SwiftDataSyncStoreSavingTests {
             )
             try await store.save(
                 kept,
-                enqueuing: PendingWrite(
+                enqueuing: PendingWeightRecordWrite(
                     writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b5")!,
                     enqueuedAt: kept.instant,
                     write: .createWeightRecord(kept)
@@ -121,7 +121,7 @@ struct SwiftDataSyncStoreSavingTests {
             )
             try await store.save(
                 removed,
-                enqueuing: PendingWrite(
+                enqueuing: PendingWeightRecordWrite(
                     writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b6")!,
                     enqueuedAt: removed.instant,
                     write: .createWeightRecord(removed)
@@ -181,7 +181,7 @@ struct SwiftDataSyncStoreSavingTests {
             )
             try await store.save(
                 record,
-                enqueuing: PendingWrite(
+                enqueuing: PendingWeightRecordWrite(
                     writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b3")!,
                     enqueuedAt: record.instant,
                     write: .createWeightRecord(record)
@@ -189,7 +189,7 @@ struct SwiftDataSyncStoreSavingTests {
             )
             try await store.save(
                 settings,
-                enqueuing: PendingWrite(
+                enqueuing: PendingAccountSettingsWrite(
                     writeId: UUID(uuidString: "00000000-0000-4000-8000-0000000000b4")!,
                     enqueuedAt: record.instant,
                     write: .updateAccountSettings(settings)
@@ -219,7 +219,7 @@ struct SwiftDataSyncStoreSavingTests {
 
             #expect(try await store.weightRecords().isEmpty)
             #expect(try await store.accountSettings() == nil)
-            #expect(try await store.pendingWritesOldestFirst().isEmpty)
+            #expect(try await store.pendingEntries().isEmpty)
             #expect(try await store.syncState() == nil)
             #expect(try await store.healthSyncState() == .initial)
         }

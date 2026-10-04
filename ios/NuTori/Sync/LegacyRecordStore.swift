@@ -63,7 +63,7 @@ nonisolated enum LegacyRecordStore {
         for legacy in try context.fetch(
             FetchDescriptor<LegacyRecordStoreSchemaV2.CachedPendingWrite>())
         {
-            guard let kind = WeightOrSettingsWrite.kindName(ofVersion1Content: legacy.operationJSON)
+            guard let kind = PendingWriteContent.kindName(ofVersion1Content: legacy.operationJSON)
             else {
                 droppedUnreadable = true
                 continue

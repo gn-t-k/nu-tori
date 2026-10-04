@@ -7,10 +7,10 @@ import Testing
 struct AccountSettingsSyncKindTests {
     @Suite("送り待ちから送る書き込みを作るとき")
     struct MakingWrite {
-        let write: PendingWrite
+        let write: PendingAccountSettingsWrite
 
         init() {
-            write = PendingWrite(
+            write = PendingAccountSettingsWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
                 write: .updateAccountSettings(.fixture(sendsUsageData: false)))
         }
@@ -30,7 +30,7 @@ struct AccountSettingsSyncKindTests {
 
         @Test("体重記録の送り待ちは、作れないこと")
         func rejectsOtherKind() throws {
-            let weight = PendingWrite(
+            let weight = PendingWeightRecordWrite(
                 writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow,
                 write: .sourceDeletedWeightRecord(recordId: UUID()))
 

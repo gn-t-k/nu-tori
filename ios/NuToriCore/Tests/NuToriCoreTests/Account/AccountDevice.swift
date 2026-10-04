@@ -25,7 +25,7 @@ struct AccountDevice {
 
     static func signedIn(
         hasOpenedBefore: Bool = true,
-        pendingWrites: [PendingWrite] = [],
+        pendingWrites: [PendingWeightRecordWrite] = [],
         hasCompletedInitialPull: Bool = true,
         appleCredentials: AppleCredentialCheckerMock = .ok(),
         analytics: (CallLog) -> AnalyticsSessionMock = { .ok(log: $0) },
@@ -55,7 +55,7 @@ struct AccountDevice {
     static func signedOut(
         hasOpenedBefore: Bool = true,
         hasSignInAgainMark: Bool = false,
-        pendingWrites: [PendingWrite] = [],
+        pendingWrites: [PendingWeightRecordWrite] = [],
         log: CallLog = CallLog()
     ) throws -> AccountDevice {
         try AccountDevice(
@@ -142,8 +142,8 @@ extension AppleSignInCredential {
     }
 }
 
-extension PendingWrite {
-    static func fixtureCreating() throws -> PendingWrite {
+extension PendingWeightRecordWrite {
+    static func fixtureCreating() throws -> PendingWeightRecordWrite {
         .creating(try .manual(72.0, at: "2026-09-25T07:00:00+09:00", in: "Asia/Tokyo"))
     }
 }

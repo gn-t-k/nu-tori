@@ -13,7 +13,7 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let reporting: ErrorReportingSessionMock
             let engine: SyncEngine
-            let pending: PendingWrite
+            let pending: PendingWeightRecordWrite
 
             init() throws {
                 let record = try WeightRecord.manual(

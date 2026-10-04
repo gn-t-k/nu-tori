@@ -315,8 +315,8 @@ struct SyncEngineTests {
             let created: WeightRecord
             let serverRecord: WeightRecord
             let corrected: WeightRecord
-            let createWrite: PendingWrite
-            let correctWrite: PendingWrite
+            let createWrite: PendingWeightRecordWrite
+            let correctWrite: PendingWeightRecordWrite
 
             init() throws {
                 created = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
@@ -381,7 +381,7 @@ struct SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let corrected: WeightRecord
-            let correctWrite: PendingWrite
+            let correctWrite: PendingWeightRecordWrite
 
             init() throws {
                 corrected = try .manual(
@@ -442,7 +442,7 @@ struct SyncEngineTests {
                 store = try .ok(
                     records: [kept],
                     pendingWrites: [
-                        PendingWrite(
+                        PendingWeightRecordWrite(
                             writeId: UUID(),
                             enqueuedAt: SyncEngine.fixtureNow,
                             write: .sourceDeletedWeightRecord(recordId: recordId)

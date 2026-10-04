@@ -12,12 +12,12 @@ struct AccountSettingsStore {
     struct Saved {
         let store: SwiftDataSyncStore
         let settings: AccountSettings
-        let write: PendingWrite
+        let write: PendingAccountSettingsWrite
 
         init() throws {
             store = try SwiftDataSyncStore(inMemory: true)
             settings = AccountSettings(id: AccountSettingsStore.settingsId, sendsUsageData: false)
-            write = PendingWrite(
+            write = PendingAccountSettingsWrite(
                 writeId: AccountSettingsStore.writeId,
                 enqueuedAt: AccountSettingsStore.enqueuedAt,
                 write: .updateAccountSettings(settings)
@@ -28,7 +28,7 @@ struct AccountSettingsStore {
         func keepsSettingsAndPendingWrite() async throws {
             try await store.save(settings, enqueuing: write)
             #expect(try await store.accountSettings() == settings)
-            #expect(try await store.pendingWritesOldestFirst() == [write])
+            #expect(try await store.pendingAccountSettingsWritesOldestFirst() == [write])
         }
     }
 
@@ -46,7 +46,7 @@ struct AccountSettingsStore {
                 id: AccountSettingsStore.settingsId, sendsUsageData: false)
             try await store.save(
                 previous,
-                enqueuing: PendingWrite(
+                enqueuing: PendingAccountSettingsWrite(
                     writeId: AccountSettingsStore.writeId,
                     enqueuedAt: AccountSettingsStore.enqueuedAt,
                     write: .updateAccountSettings(previous)
@@ -99,7 +99,7 @@ struct AccountSettingsStore {
                 id: AccountSettingsStore.settingsId, sendsUsageData: false)
             try await store.save(
                 settings,
-                enqueuing: PendingWrite(
+                enqueuing: PendingAccountSettingsWrite(
                     writeId: AccountSettingsStore.writeId,
                     enqueuedAt: AccountSettingsStore.enqueuedAt,
                     write: .updateAccountSettings(settings)
@@ -111,7 +111,7 @@ struct AccountSettingsStore {
         func clearsSettingsAndPendingWrites() async throws {
             try await store.eraseAll()
             #expect(try await store.accountSettings() == nil)
-            #expect(try await store.pendingWritesOldestFirst().isEmpty)
+            #expect(try await store.pendingEntries().isEmpty)
         }
     }
 

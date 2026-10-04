@@ -16,25 +16,15 @@ public enum NoticeWrite: PendingWriteBody {
 
     public var kindName: RecordKindName { NoticeSyncing.kindName }
 
-    public func content() throws -> Data {
-        try JSONEncoder().encode(Content(self))
-    }
+    public var stored: Stored { Stored(self) }
 
-    public init(kind: RecordKindName, content: Data) throws {
-        let stored: Content
-        do {
-            stored = try JSONDecoder().decode(Content.self, from: content)
-        } catch {
-            throw PendingEntry.InvalidContentError(kind: kind)
-        }
-        guard let write = stored.write() else {
-            throw PendingEntry.InvalidContentError(kind: kind)
-        }
+    public init?(stored: Stored) {
+        guard let write = stored.write() else { return nil }
         self = write
     }
 
     /// 送り待ちに保存する JSON。キーを足すときは、無くても読める形にする（`docs/agents/sync.md`「置き場の約束」）
-    private enum Content: Codable {
+    public enum Stored: Codable {
         case create(StoredNotice)
         case respond(noticeId: UUID, response: StoredResponse)
 
@@ -57,7 +47,7 @@ public enum NoticeWrite: PendingWriteBody {
         }
     }
 
-    private struct StoredNotice: Codable {
+    public struct StoredNotice: Codable {
         let id: UUID
         /// `Notice.Kind` の rawValue
         let kind: String
@@ -88,7 +78,7 @@ public enum NoticeWrite: PendingWriteBody {
         }
     }
 
-    private struct StoredResponse: Codable {
+    public struct StoredResponse: Codable {
         let respondedAt: Date
         let timeZoneIdentifier: String
 
@@ -104,3 +94,6 @@ public enum NoticeWrite: PendingWriteBody {
         }
     }
 }
+
+/// 知らせの送り待ち
+public typealias PendingNoticeWrite = Pending<NoticeWrite>
