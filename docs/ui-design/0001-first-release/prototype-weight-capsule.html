@@ -1,0 +1,202 @@
+<title>体重を記録の大きな文字</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!--
+  PROTOTYPE（捨てる前提）。#221: 入力欄の未記録の「体重を記録」を、大きな文字（Dynamic Type）でどう見せるか。
+  A（入らないときカプセルを次の行へ）、B（カプセルを折り返す）、C（今の実装: AX では塗った丸）を並べる。main には入れない。
+  文字の大きさは Apple の Dynamic Type の表（subheadline・body・headline）、丸は @ScaledMetric 44（body 基準、88 で止める）を写した。
+  文字の幅はブラウザのフォントで測るので、iPhone のヒラギノとは少しずれる。
+-->
+<style>
+/* 電話の枠を3つ横に並べ、上の操作で文字の大きさ・幅・記録の状態を切り替える */
+:root{
+  --bg:#f2f2f7; --surface:#ffffff; --ink:#000000; --ink2:rgb(60 60 67 / .6);
+  --fill:rgb(120 120 128 / .12); --tint:#6155f5; --on-tint:#ffffff;
+  --chrome:rgb(249 249 249 / .94); --sep:rgb(60 60 67 / .29);
+  --me-card:color-mix(in srgb, #6155f5 10%, #ffffff);
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#5d5d63; --frame:#c7c7cc;
+  --over:#c4271c;
+  --font:system-ui,-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:rgb(235 235 245 / .6);
+    --fill:rgb(118 118 128 / .24); --tint:#6d7cff; --on-tint:#ffffff;
+    --chrome:rgb(22 22 24 / .94); --sep:rgb(84 84 88 / .6);
+    --me-card:color-mix(in srgb, #6d7cff 18%, #1c1c1e);
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#a1a1a8; --frame:#3a3a3c; --over:#ff6b60;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:rgb(235 235 245 / .6);
+  --fill:rgb(118 118 128 / .24); --tint:#6d7cff; --on-tint:#ffffff;
+  --chrome:rgb(22 22 24 / .94); --sep:rgb(84 84 88 / .6);
+  --me-card:color-mix(in srgb, #6d7cff 18%, #1c1c1e);
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#a1a1a8; --frame:#3a3a3c; --over:#ff6b60;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;padding-inline:16px;padding-block:16px 40px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+.wrap{max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:17px;margin:0;text-wrap:balance}
+.lead{margin:2px 0 0;color:var(--page-muted);max-width:72ch}
+.controls{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center}
+.seg{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.seg > span{color:var(--page-muted);font-size:12.5px;margin-right:4px}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{padding:4px 10px;border-radius:999px;border:1px solid var(--frame);cursor:pointer;font-size:13px;font-variant-numeric:tabular-nums}
+.seg input:checked + label{background:var(--page-ink);color:var(--page);border-color:var(--page-ink)}
+.seg input:focus-visible + label{outline:2px solid var(--tint);outline-offset:2px}
+.readout{font-size:12.5px;color:var(--page-muted);font-variant-numeric:tabular-nums}
+.phones{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0;max-width:100%}
+figcaption{font-size:12.5px;color:var(--page-muted);max-width:44ch}
+figcaption b{color:var(--page-ink)}
+figcaption .warn{color:var(--over);font-weight:600}
+.scroller{overflow-x:auto;max-width:100%}
+
+.phone{position:relative;height:560px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column}
+.status{height:44px;flex:none}
+.nav{flex:none;text-align:center;font-weight:600;padding:6px 16px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:12px 16px}
+.card{align-self:flex-end;max-width:80%;background:var(--me-card);border-radius:12px;padding:12px 16px}
+.card small{display:block;color:var(--ink2)}
+.composer{flex:none;background:var(--chrome);border-top:.5px solid var(--sep);padding:8px 16px calc(8px + 22px)}
+.row{display:flex;gap:12px;align-items:center}
+.stack{display:flex;flex-direction:column;gap:12px}
+.circle{flex:none;display:grid;place-items:center;border-radius:50%;background:var(--fill);color:var(--tint)}
+.circle.filled{background:var(--tint);color:var(--on-tint)}
+.circle svg{width:1.1em;height:1.1em}
+.capsule{flex:none;display:flex;align-items:center;justify-content:center;text-align:center;background:var(--tint);color:var(--on-tint);font-weight:600;border-radius:9999px;padding-inline:16px;white-space:nowrap}
+.capsule.full{width:100%}
+.capsule.wrap{white-space:normal;flex:0 1 auto;min-width:0;padding-block:8px;line-height:1.2}
+.overflowing{outline:2px dashed var(--over);outline-offset:2px}
+
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>#221 未記録の「体重を記録」を、大きな文字でどう見せるか</h1>
+    <p class="lead">入力欄だけを写した見本です。文字の大きさと画面の幅を変えて、3案を見比べてください。赤い点線は、画面の幅からはみ出していることを示します。文字の幅はこのブラウザのフォントで測るので、iPhone とは少しずれます。</p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" id="sizes"><span>文字の大きさ</span></div>
+    <div class="seg" id="widths"><span>画面の幅</span></div>
+    <div class="seg" id="states"><span>今日の体重</span></div>
+  </div>
+  <div class="readout" id="readout"></div>
+
+  <div class="phones" id="phones"></div>
+</div>
+
+<script>
+// Dynamic Type の大きさ（pt）。Apple HIG の表から
+const SIZES = [
+  {k:'L',   name:'既定', sub:15, body:17, head:17},
+  {k:'xL',  name:'xL',  sub:17, body:19, head:19},
+  {k:'xxL', name:'xxL', sub:19, body:21, head:21},
+  {k:'xxxL',name:'xxxL',sub:21, body:23, head:23},
+  {k:'AX1', name:'AX1', sub:25, body:28, head:28, ax:true},
+  {k:'AX2', name:'AX2', sub:30, body:33, head:33, ax:true},
+  {k:'AX3', name:'AX3', sub:36, body:40, head:40, ax:true},
+  {k:'AX4', name:'AX4', sub:42, body:47, head:47, ax:true},
+  {k:'AX5', name:'AX5', sub:49, body:53, head:53, ax:true},
+];
+const WIDTHS = [
+  {k:'375', name:'375（mini・SE）'},
+  {k:'402', name:'402（17）'},
+  {k:'440', name:'440（Pro Max）'},
+];
+const STATES = [{k:'un', name:'未記録'}, {k:'done', name:'記録済み'}];
+
+const ICON = {
+  camera:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 4h6l1.6 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.4zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>',
+  photo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="6" y="3" width="15" height="13" rx="2"/><path d="M3 7v12a2 2 0 0 0 2 2h12"/><path d="M8 14l4-4 3 3 2-2 4 4"/></svg>',
+  scale:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3h14a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zm7 3a6 6 0 0 0-5.6 3.9l3.1 1.1 2.2-2.6.6.5-1.5 2.9h6.6A6 6 0 0 0 12 6z"/></svg>',
+};
+
+const state = {size:'L', width:'375', st:'un'};
+try{ Object.assign(state, JSON.parse(localStorage.getItem('p221')||'{}')); }catch(e){}
+
+function seg(id, items, key){
+  const el = document.getElementById(id);
+  items.forEach(it=>{
+    const inp = document.createElement('input');
+    inp.type='radio'; inp.name=key; inp.id=key+'-'+it.k; inp.value=it.k;
+    inp.checked = state[key]===it.k;
+    inp.addEventListener('change',()=>{ state[key]=it.k; try{localStorage.setItem('p221',JSON.stringify(state))}catch(e){} render(); });
+    const lb = document.createElement('label'); lb.htmlFor=inp.id; lb.textContent=it.name;
+    el.append(inp, lb);
+  });
+}
+seg('sizes', SIZES, 'size'); seg('widths', WIDTHS, 'width'); seg('states', STATES, 'st');
+
+// 文字の幅を測る
+const ctx = document.createElement('canvas').getContext('2d');
+function textWidth(text, px){ ctx.font = `600 ${px}px ${getComputedStyle(document.body).fontFamily}`; return ctx.measureText(text).width; }
+
+function circle(icon, filled, btn, body){
+  return `<span class="circle${filled?' filled':''}" style="width:${btn}px;height:${btn}px;font-size:${body}px">${ICON[icon]}</span>`;
+}
+function capsule(btn, sub, cls){
+  return `<span class="capsule ${cls||''}" style="min-height:${btn}px;${cls&&cls.includes('wrap')?'':`height:${btn}px;`}font-size:${sub}px">体重を記録</span>`;
+}
+
+function phone(variant, s, W, recorded){
+  const btn = Math.min(44 * s.body / 17, 88);
+  const inner = W - 32;
+  const avail = inner - btn*2 - 12*2;           // 撮る・写真の丸と間を除いた残り
+  const capW = textWidth('体重を記録', s.sub) + 32;
+  const cam = circle('camera', true, btn, s.body), pho = circle('photo', false, btn, s.body);
+  let html, note, over = false;
+  if (recorded){
+    html = `<div class="row">${cam}${pho}${circle('scale', false, btn, s.body)}</div>`;
+    note = '記録済み: 3案とも灰色の丸に戻る。';
+  } else if (variant==='A'){
+    if (capW <= avail){
+      html = `<div class="row">${cam}${pho}${capsule(btn, s.sub)}</div>`;
+      note = '1行に入るので、今と同じ形。';
+    } else {
+      over = capW > inner;
+      html = `<div class="stack"><div class="row">${cam}${pho}</div>${capsule(btn, s.sub, 'full'+(over?' overflowing':''))}</div>`;
+      note = '1行に入らないので、カプセルを次の行に全幅で送る。入力欄が丸1つ分高くなる。';
+    }
+  } else if (variant==='B'){
+    const lines = Math.ceil(capW - 32 > 0 ? (capW-32) / Math.max(avail-32, 1) : 1);
+    over = avail - 32 < s.sub * 1.05;          // 1文字も入らない
+    html = `<div class="row">${cam}${pho}${capsule(btn, s.sub, 'wrap'+(over?' overflowing':''))}</div>`;
+    note = capW <= avail ? '1行に入るので、今と同じ形。' : `入らないので折り返す（およそ ${lines} 行）。高さは 44 を超え、文の切れ目は選べない。`;
+  } else {
+    if (s.ax){
+      html = `<div class="row">${cam}${pho}${circle('scale', true, btn, s.body)}</div>`;
+      note = 'AX の大きさなので、塗った丸。「体重を記録」は VoiceOver にしか出ない。';
+    } else {
+      over = capW > avail;
+      html = `<div class="row">${cam}${pho}${capsule(btn, s.sub, over?'overflowing':'')}</div>`;
+      note = '既定〜xxxL はカプセル。';
+    }
+  }
+  const title = {A:'A 入らないとき次の行へ', B:'B カプセルを折り返す', C:'C 今の実装（AX では丸）'}[variant];
+  return `<figure>
+    <figcaption><b>${title}</b><br>${note}${over?' <span class="warn">画面からはみ出す。</span>':''}</figcaption>
+    <div class="scroller"><div class="phone" style="width:${W}px">
+      <div class="status"></div>
+      <div class="nav" style="font-size:17px">10月5日（日）</div>
+      <div class="tl" style="font-size:${s.sub}px">
+        <div class="card">鮭の塩焼き定食<small>620 kcal</small></div>
+      </div>
+      <div class="composer">${html}</div>
+    </div></div>
+  </figure>`;
+}
+
+function render(){
+  const s = SIZES.find(x=>x.k===state.size), W = +state.width, rec = state.st==='done';
+  const btn = Math.min(44 * s.body / 17, 88), avail = W - 32 - btn*2 - 24;
+  document.getElementById('readout').textContent =
+    `文字 ${s.sub}pt（subheadline 太字）・丸 ${Math.round(btn)}pt・カプセルに使える幅 ${Math.round(avail)}pt・「体重を記録」に要る幅 ${Math.round(textWidth('体重を記録', s.sub)+32)}pt`;
+  document.getElementById('phones').innerHTML = ['A','B','C'].map(v=>phone(v, s, W, rec)).join('');
+}
+render();
+</script>
