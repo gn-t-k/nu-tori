@@ -1,0 +1,144 @@
+<title>サインインの回る印</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!--
+  PROTOTYPE（捨てる前提）。#222: サインインの応答待ちの回る印を、Apple のボタンのどこに置くか。
+  A（今の実装: ボタンのすぐ上）、B（ボタンの真下）、C（ボタンの中。Apple のボタンでは作れないので参考）を並べる。main には入れない。
+  文字の大きさは Apple の Dynamic Type の表（footnote・subheadline・headline・body・title2）を写した。Apple のボタンは文字を大きくしても大きくならない。
+-->
+<style>
+/* 電話の枠を3つ横に並べ、上の操作で文字の大きさ・幅・サインインの状態を切り替える */
+:root{
+  --bg:#f2f2f7; --surface:#ffffff; --ink:#000000; --ink2:rgb(60 60 67 / .6);
+  --tint:#6155f5; --on-tint:#ffffff; --apple:#000000; --on-apple:#ffffff;
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#5d5d63; --frame:#c7c7cc; --warn:#c4271c;
+  --font:system-ui,-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:rgb(235 235 245 / .6);
+    --tint:#6d7cff; --apple:#ffffff; --on-apple:#000000;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#a1a1a8; --frame:#3a3a3c; --warn:#ff6b60;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:rgb(235 235 245 / .6);
+  --tint:#6d7cff; --apple:#ffffff; --on-apple:#000000;
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#a1a1a8; --frame:#3a3a3c; --warn:#ff6b60;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;padding-inline:16px;padding-block:16px 40px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+.wrap{max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:17px;margin:0;text-wrap:balance}
+.lead{margin:2px 0 0;color:var(--page-muted);max-width:72ch}
+.controls{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center}
+.seg{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.seg > span{color:var(--page-muted);font-size:12.5px;margin-right:4px}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{padding:4px 10px;border-radius:999px;border:1px solid var(--frame);cursor:pointer;font-size:13px}
+.seg input:checked + label{background:var(--page-ink);color:var(--page);border-color:var(--page-ink)}
+.seg input:focus-visible + label{outline:2px solid var(--tint);outline-offset:2px}
+.phones{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0;max-width:100%}
+figcaption{font-size:12.5px;color:var(--page-muted);max-width:44ch;min-height:5.6em}
+figcaption b{color:var(--page-ink)}
+figcaption .warn{color:var(--warn);font-weight:600}
+.scroller{overflow-x:auto;max-width:100%}
+
+.phone{height:720px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column}
+.top{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:24px;padding:60px 16px 0}
+.header{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
+.mark{width:56px;height:56px;border-radius:13px;background:var(--tint)}
+.name{font-weight:700}
+.leadtext{color:var(--ink2)}
+.consent{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.consent b{font-weight:600}
+.bottom{flex:none;display:flex;flex-direction:column;gap:12px;padding:12px 16px calc(16px + 22px)}
+.status{display:flex;gap:8px;align-items:center}
+.status .t{color:var(--ink2)}
+.fail{color:var(--ink)}
+.apple{position:relative;height:50px;border-radius:12px;background:var(--apple);color:var(--on-apple);display:flex;align-items:center;justify-content:center;gap:6px;font-size:19px;font-weight:500;flex:none}
+.apple svg{width:17px;height:20px}
+.apple .in{position:absolute;right:16px;top:50%;margin-top:-9px}
+.spin{width:1.15em;height:1.15em;flex:none;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;opacity:.6}
+.apple .spin{width:18px;height:18px;color:var(--on-apple)}
+@media (prefers-reduced-motion: no-preference){ .spin{animation:r 1s linear infinite} }
+@keyframes r{to{transform:rotate(360deg)}}
+.cannot{outline:2px dashed var(--warn);outline-offset:3px}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>#222 サインインの回る印を、どこに置くか</h1>
+    <p class="lead">サインインの画面を写した見本です。「Apple で続ける」を押して Face ID を通したあと、サーバーの応答を待つあいだの形を3案で見比べてください。失敗の文も同じ場所に出ます。赤い点線の C は、Apple のボタンの中身を差し替えられないため作れない、参考の案です。</p>
+  </header>
+  <div class="controls">
+    <div class="seg" id="states"><span>状態</span></div>
+    <div class="seg" id="sizes"><span>文字の大きさ</span></div>
+    <div class="seg" id="widths"><span>画面の幅</span></div>
+  </div>
+  <div class="phones" id="phones"></div>
+</div>
+
+<script>
+// Dynamic Type の大きさ（pt）。Apple HIG の表から
+const SIZES = [
+  {k:'L',name:'既定',foot:13,sub:15,head:17,body:17,t2:22},
+  {k:'xxxL',name:'xxxL',foot:19,sub:21,head:23,body:23,t2:28},
+  {k:'AX1',name:'AX1',foot:23,sub:25,head:28,body:28,t2:34},
+  {k:'AX3',name:'AX3',foot:33,sub:36,head:40,body:40,t2:45},
+  {k:'AX5',name:'AX5',foot:44,sub:49,head:53,body:53,t2:58},
+];
+const WIDTHS = [{k:'375',name:'375（mini・SE）'},{k:'402',name:'402（17）'},{k:'440',name:'440（Pro Max）'}];
+const STATES = [{k:'wait',name:'応答待ち'},{k:'fail',name:'失敗'},{k:'ready',name:'押す前'}];
+const state = {st:'wait', size:'L', width:'402'};
+try{ Object.assign(state, JSON.parse(localStorage.getItem('p222')||'{}')); }catch(e){}
+
+function seg(id, items, key){
+  const el = document.getElementById(id);
+  items.forEach(it=>{
+    const inp = document.createElement('input');
+    inp.type='radio'; inp.name=key; inp.id=key+'-'+it.k; inp.checked = state[key]===it.k;
+    inp.addEventListener('change',()=>{ state[key]=it.k; try{localStorage.setItem('p222',JSON.stringify(state))}catch(e){} render(); });
+    const lb = document.createElement('label'); lb.htmlFor=inp.id; lb.textContent=it.name;
+    el.append(inp, lb);
+  });
+}
+seg('states', STATES, 'st'); seg('sizes', SIZES, 'size'); seg('widths', WIDTHS, 'width');
+
+const APPLE = '<svg viewBox="0 0 17 20" fill="currentColor" aria-hidden="true"><path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9C3.6 4.8 2 5.8 1 7.4c-1.9 3.3-.5 8.2 1.4 10.9.9 1.3 2 2.8 3.4 2.7 1.4-.1 1.9-.9 3.5-.9s2.1.9 3.5.9c1.5 0 2.4-1.3 3.3-2.7 1-1.5 1.5-3 1.5-3.1-.1 0-2.9-1.1-3-4.3zM11.5 2.9c.7-.9 1.2-2.1 1.1-3.3-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.2 1.1.1 2.3-.6 3-1.5z"/></svg>';
+
+function statusLine(s){
+  if (state.st==='wait') return `<div class="status" style="font-size:${s.foot}px"><span class="spin" role="img" aria-label="待っている"></span><span class="t">サインインしています…</span></div>`;
+  if (state.st==='fail') return `<div class="fail" style="font-size:${s.foot}px">インターネットにつながらないため、サインインできませんでした。つながるところで、もう一度押してください。</div>`;
+  return '';
+}
+function apple(inner){
+  return `<div class="apple${inner?' cannot':''}">${APPLE}<span>Appleで続ける</span>${inner&&state.st==='wait'?'<span class="spin in"></span>':''}</div>`;
+}
+function phone(v, s, W){
+  let bottom, note, cannot=false;
+  if (v==='A'){ bottom = statusLine(s) + apple(false); note = '今の実装。回る印と失敗の文を、ボタンのすぐ上（12pt）に置く。'; }
+  else if (v==='B'){ bottom = apple(false) + statusLine(s); note = '回る印と失敗の文を、ボタンの真下に置く。画面の下の端に寄る。'; }
+  else { cannot=true;
+    bottom = (state.st==='fail' ? statusLine(s) : '') + apple(true);
+    note = '回る印をボタンの中の右に置く。失敗の文はボタンの上。'; }
+  const title = {A:'A ボタンのすぐ上（今）', B:'B ボタンの真下', C:'C ボタンの中（参考）'}[v];
+  return `<figure>
+    <figcaption><b>${title}</b><br>${note}${cannot?' <span class="warn">SignInWithAppleButton の中身は差し替えられないので作れない。</span>':''}</figcaption>
+    <div class="scroller"><div class="phone" style="width:${W}px">
+      <div class="top">
+        <div class="header"><div class="mark"></div><div class="name" style="font-size:${s.t2}px">nu-tori</div><div class="leadtext" style="font-size:${s.body}px">毎朝の体重と、食事の写真だけ。</div></div>
+        <div class="consent"><b style="font-size:${s.head}px">続ける前に</b><span style="font-size:${s.sub}px">記録と写真（ヘルスケアから読んだ情報を含む）は、米国の会社のサービスで保存・処理します。食事の推定と返事のために AI にも送り、不具合と利用状況も送って、その分析にも AI を使います。</span></div>
+      </div>
+      <div class="bottom">${bottom}</div>
+    </div></div>
+  </figure>`;
+}
+function render(){
+  const s = SIZES.find(x=>x.k===state.size), W = +state.width;
+  document.getElementById('phones').innerHTML = ['A','B','C'].map(v=>phone(v, s, W)).join('');
+}
+render();
+</script>
