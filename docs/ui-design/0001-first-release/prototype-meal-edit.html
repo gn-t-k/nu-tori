@@ -1,0 +1,826 @@
+<title>食事を直すの見た目</title>
+<!--
+  PROTOTYPE（捨てる前提）。「食事を直すの見た目を見比べる」（gn-t-k/nu-tori#314）の試作。
+  仕様「食事を直す」の申し送りのうち、見た目で決めるもの 8 の論点を、論点ごとに 2〜4 の案で並べる。
+  上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #edit-2）。
+  土台は main の画面のコード（コミット f9c2920 の ios/NuTori/Meal/）。共通の見た目は「食事を撮って推定するの見た目を見比べる」の試作
+  （claude/clever-meitner-ejk2dh の prototype-meal-photo.html、コミット 35e2522）から写した。main には入れない。
+-->
+<style>
+/*
+  nu-tori のコンポーネントの共通の見た目。トークンと、iOS の標準の部品を HTML で写したもの。
+  実装では SwiftUI の標準の部品とシステムの色を使う。ここの値はその見本で、対応は README.md の「ルック&フィール」。
+*/
+
+/* ── トークン（ライト） ── */
+:root{
+  /* iOS のシステムの色 */
+  --bg:#f2f2f7;            /* systemGroupedBackground */
+  --surface:#ffffff;       /* secondarySystemGroupedBackground */
+  --surface2:#f2f2f7;      /* tertiarySystemGroupedBackground */
+  --ink:#000000;           /* label */
+  --ink2:rgb(60 60 67 / .6);   /* secondaryLabel */
+  --ink3:rgb(60 60 67 / .3);   /* tertiaryLabel */
+  --sep:rgb(60 60 67 / .29);   /* separator */
+  --fill:rgb(120 120 128 / .12); /* tertiarySystemFill */
+  --tint:#6155f5;          /* アクセント（systemIndigo） */
+  --on-tint:#ffffff;
+  --destructive:#ff383c;   /* systemRed。破壊的な操作だけに使う */
+  --scrim:rgb(0 0 0 / .2);
+  --chrome:rgb(249 249 249 / .94); /* バーの材質 */
+  /* P・F・C（3色のどの組も色覚の型を問わず見分けられる。validate_palette で確認） */
+  --p:#f07f1a; --f:#15803d; --c:#2c7be5;
+  --track:#e5e5ea;         /* 輪の地 */
+  /* グラフ */
+  --series:#6155f5; --grid:rgb(60 60 67 / .12); --guide:rgb(60 60 67 / .45);
+  /* 自分の発言 */
+  --me:#6155f5; --on-me:#ffffff;
+  /* ページ（コンポーネントの見本を並べる地） */
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+    --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+    --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+    --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+    --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+    --me:#6d7cff; --on-me:#ffffff;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+  --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+  --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+  --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+  --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+  --me:#6d7cff; --on-me:#ffffff;
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+  color-scheme:dark;
+}
+
+/* ── 文字（iOS のテキストスタイル。Dynamic Type の既定の大きさ） ── */
+:root{
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  --t-title2:22px;   /* Title 2（大きな数字） */
+  --t-title3:20px;   /* Title 3 */
+  --t-headline:17px; /* Headline（600） */
+  --t-body:17px;     /* Body */
+  --t-callout:16px;  /* Callout */
+  --t-sub:15px;      /* Subheadline */
+  --t-foot:13px;     /* Footnote */
+  --t-cap:12px;      /* Caption 1 */
+  --t-cap2:11px;     /* Caption 2 */
+}
+
+/* ── 見本を並べるページ ── */
+*{box-sizing:border-box}
+body{margin:0;padding:16px 16px 40px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.sheet-head,.page-head{max-width:1280px;margin:0 auto 14px}
+.page-head h1{font-size:17px;margin:0}
+.page-head p{margin:2px 0 0;color:var(--page-muted);max-width:720px}
+.states{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr));gap:20px;align-items:start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+figcaption{color:var(--page-muted);font-size:12.5px}
+figcaption b{color:var(--page-ink)}
+
+/* ── 電話の枠 ── */
+.phone{position:relative;height:680px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;font-size:var(--t-body);line-height:1.3}
+.phone.short{height:520px}
+.status{height:34px;flex:none}
+.home{height:22px;flex:none}
+
+/* ナビゲーションバー */
+.nav{height:44px;flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 12px;background:var(--bg)}
+.nav .l{justify-self:start;color:var(--tint);display:flex;align-items:center;gap:2px;font-size:var(--t-body)}
+.nav .l .chev{font-size:24px;line-height:1;margin-top:-2px}
+.nav .t{font-size:var(--t-headline);font-weight:600;text-align:center;white-space:nowrap}
+.nav .r{justify-self:end;color:var(--tint);font-size:var(--t-body)}
+.nav .r.b,.nav .l.b{font-weight:600}
+.nav.sep{border-bottom:.5px solid var(--sep)}
+.large-title{font-size:34px;font-weight:700;padding:2px 16px 8px}
+
+/* 本文のスクロール域 */
+.scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:24px;padding:12px 16px 16px}
+.scroll > *{flex:none}
+
+/* グループの一覧（Inset Grouped） */
+.group-h{font-size:var(--t-foot);color:var(--ink2);text-transform:none;padding:0 16px 6px;margin:0}
+.group-f{font-size:var(--t-foot);color:var(--ink2);padding:6px 16px 0;margin:0}
+.list{background:var(--surface);border-radius:10px;overflow:hidden}
+.list > .cell{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative;font-size:var(--t-body)}
+.list > .cell + .cell::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.cell .grow{flex:1;min-width:0}
+.cell .val{color:var(--ink2);text-align:right}
+.cell .disc{color:var(--ink3);font-size:18px;line-height:1;margin-left:2px}
+.cell.link{color:var(--tint)}
+.cell.danger{color:var(--destructive);justify-content:center}
+.cell .sub{display:block;color:var(--ink2);font-size:var(--t-foot)}
+
+/* 押して直せる値（iOS の編集できる値と同じく、アクセントの色で示す） */
+.edit{color:var(--tint)}
+/* 推定の印 */
+.est{display:inline-block;font-size:var(--t-cap2);color:var(--ink2);border:.5px solid var(--ink3);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:1px;line-height:1.5}
+
+/* ボタン */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font-size:var(--t-sub);font-weight:600}
+.btn.filled{background:var(--tint);color:var(--on-tint)}
+.btn.tinted{background:color-mix(in srgb,var(--tint) 15%,transparent);color:var(--tint)}
+.btn.gray{background:var(--fill);color:var(--tint)}
+.btn.large{height:50px;border-radius:12px;font-size:var(--t-body);width:100%}
+.btn.plain{height:auto;padding:0;color:var(--tint);font-weight:400;font-size:var(--t-body)}
+.btn[aria-disabled="true"]{opacity:.35}
+
+/* 値の欄 */
+.field{background:var(--fill);border-radius:10px;padding:11px 12px;font-size:var(--t-body);display:flex;justify-content:space-between;gap:8px}
+.field.focus{box-shadow:0 0 0 2px var(--tint) inset;background:var(--surface)}
+.field .ph{color:var(--ink3)}
+
+/* ステッパー（体重） */
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper .pm{width:48px;height:44px;border-radius:10px;background:var(--fill);color:var(--tint);font-size:22px;display:grid;place-items:center;flex:none}
+.stepper .v{flex:1;text-align:center;font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.stepper .v small{font-size:var(--t-sub);font-weight:400;color:var(--ink2);margin-left:3px}
+
+/* シート */
+.scrim{position:absolute;inset:0;background:var(--scrim);display:flex;flex-direction:column;justify-content:flex-end}
+.sheet{background:var(--bg);border-radius:12px 12px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -1px 0 var(--sep)}
+.sheet.large{position:absolute;inset:44px 0 0}
+.sheet .grab{width:36px;height:5px;border-radius:3px;background:var(--ink3);align-self:center;margin:6px 0 2px;flex:none}
+
+/* アクションシート・アラート */
+.action{margin:0 8px 8px;display:flex;flex-direction:column;gap:8px}
+.action .grp{background:var(--chrome);border-radius:14px;overflow:hidden;text-align:center}
+.action .msg{padding:13px 16px;font-size:var(--t-foot);color:var(--ink2)}
+.action .a{padding:17px;font-size:20px;color:var(--tint);border-top:.5px solid var(--sep)}
+.action .a.danger{color:var(--destructive)}
+.action .a.cancel{font-weight:600;border-top:0}
+.alert-wrap{position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center}
+.alert{width:270px;background:var(--chrome);border-radius:14px;overflow:hidden;text-align:center}
+.alert .ab{padding:18px 16px 16px;display:flex;flex-direction:column;gap:4px}
+.alert .ab b{font-size:var(--t-headline)}
+.alert .ab span{font-size:var(--t-foot)}
+.alert .bt{display:grid;grid-template-columns:1fr 1fr;border-top:.5px solid var(--sep)}
+.alert .bt span{padding:11px;font-size:var(--t-body);color:var(--tint)}
+.alert .bt span + span{border-left:.5px solid var(--sep)}
+.alert .bt .danger{color:var(--destructive);font-weight:600}
+
+/* 1日の丸（1本の輪を P・F・C で色分け）。SVG は ring() が描く */
+.ring{position:relative;display:inline-block;flex:none}
+.ring svg{display:block}
+.ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;text-align:center}
+
+/* P・F・C の見出しの色の印 */
+.key{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:0}
+.key.p{background:var(--p)} .key.f{background:var(--f)} .key.c{background:var(--c)}
+
+/* 推定中 */
+.loading{display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:var(--t-sub)}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink3);border-top-color:var(--ink2);animation:spin 1s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+
+/* グラフ */
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--ink2);font-size:10px;font-family:var(--font)}
+
+
+/* ── 試作のページ ── */
+body{padding-bottom:104px}
+.intro{max-width:1280px;margin:0 auto 12px;display:flex;flex-direction:column;gap:8px}
+.intro h1{font-size:20px;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--page-muted);max-width:760px}
+.topics{max-width:1280px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:6px}
+.topics button{font-size:13px;padding:6px 12px;border-radius:999px;background:var(--surface);color:var(--page-ink);box-shadow:0 0 0 .5px var(--frame)}
+.topics button[aria-current="true"]{background:var(--tint);color:var(--on-tint);box-shadow:none}
+.topic{max-width:1280px;margin:0 auto}
+.topic > h2{font-size:17px;margin:0 0 4px;text-wrap:balance}
+.topic > .q{margin:0 0 4px;max-width:760px}
+.topic > .fixed{margin:0 0 16px;max-width:760px;color:var(--page-muted);font-size:13px}
+.vhead{max-width:1280px;margin:0 auto 12px;display:flex;flex-direction:column;gap:2px}
+.vhead b{font-size:15px}
+.vhead span{color:var(--page-muted);font-size:13px;max-width:760px}
+.variant .states{margin:0}
+
+/* 切り替えのバー（試作の道具。設計の一部ではない） */
+.switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
+.switcher button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--page)}
+.switcher button:hover{background:color-mix(in srgb,var(--page) 15%,transparent)}
+.switcher .lab{padding:0 10px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lab b{font-weight:700;margin-right:6px}
+/* ── アカウント（07-components/account から） ── */
+.phone.tall{height:900px}
+.phone.mid{height:760px}
+.behind{position:absolute;inset:0;display:flex;flex-direction:column}
+.sheet .nav{background:var(--bg)}
+.list > .cell.stack{flex-direction:column;align-items:stretch;gap:4px}
+.cell .kv{font-size:var(--t-foot);color:var(--ink2);line-height:1.4}
+.cell .kv b{color:var(--ink);font-weight:400}
+.cell .ext{margin-left:auto;font-size:var(--t-foot)}
+.cell.info{gap:10px;font-size:var(--t-foot);color:var(--ink);align-items:flex-start}
+.cell.info svg{flex:none;margin-top:1px}
+.cell.danger[aria-disabled="true"]{opacity:.35}
+.alert .bt.stack{grid-template-columns:1fr}
+.alert .bt.stack span + span{border-left:0;border-top:.5px solid var(--sep)}
+.alert .bt.stack .cancel{font-weight:400}
+.alert .ab span + span{margin-top:6px}
+.toggle{width:51px;height:31px;border-radius:999px;background:var(--switch);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;top:2px;right:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgb(0 0 0 / .25)}
+.sec-err{font-size:var(--t-foot);color:var(--ink);padding:0 16px 6px;margin:0;line-height:1.4}
+.push-t{font-size:var(--t-foot);color:var(--ink2);padding:0 16px;margin:0;line-height:1.45}
+
+:root{--switch:#34c759}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--switch:#30d158}}
+:root[data-theme="dark"]{--switch:#30d158}
+code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+:root{--ring-gray:#aeaeb2}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ring-gray:#636366}}
+:root[data-theme="dark"]{--ring-gray:#636366}
+
+/* ── main のタイムライン（ios/NuTori/Timeline の形） ── */
+.nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+/* 帯（DayRingStrip）: 曜日の1文字、見ている日は Fill の地、まだ来ていない日は 0.45、使い始める前の日は丸を描かない */
+.band{display:flex;padding:0 16px 12px;border-bottom:.5px solid var(--sep);flex:none;background:var(--bg)}
+.band .day{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;font-size:var(--t-cap2);color:var(--ink2);border-radius:10px}
+.band .day.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.band .day.future{opacity:.45}
+.band .day.before{color:var(--ink3)}
+.band .day .nor{width:28px;height:28px}
+.band .day.hl{box-shadow:0 0 0 2px var(--tint) inset}
+/* タイムライン（TimelineScreen）: 日の見出しは左寄せの Footnote、記録は右に寄せる */
+.tl{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding:12px 16px}
+.tl > *{flex:none}
+.tl.top{justify-content:flex-start}
+.dayh{font-size:var(--t-foot);color:var(--ink2);margin-top:8px}
+.dayh:first-child{margin-top:0}
+.started{font-size:var(--t-foot);color:var(--ink2)}
+/* 体重の行（WeightRecordRow）: 中身の幅、Primary を 15% で敷く、角 12、› */
+.wrow{align-self:flex-end;display:flex;align-items:center;gap:8px;padding:16px;border-radius:12px;background:color-mix(in srgb,var(--tint) 15%,transparent);font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.disc{color:var(--ink3);font-size:var(--t-cap);flex:none}
+/* 食事のカード。中身は 07-components/timeline の食事のカード。地は体重の行と同じ濃さ */
+.mc{align-self:flex-end;max-width:86%;display:flex;gap:12px;align-items:center;padding:12px 16px 12px 12px;border-radius:12px;background:color-mix(in srgb,var(--tint) 15%,transparent);position:relative}
+.mc.w86{width:86%}
+.mc .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.mc .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:var(--t-sub)}
+.mc .top b{font-weight:600}
+.mc .k{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:var(--t-foot);color:var(--ink2)}
+.mc .pfc{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:var(--t-cap);color:var(--ink2);font-variant-numeric:tabular-nums}
+.mc .pfc b{color:var(--ink);font-weight:600}
+.mc .pfc > *{white-space:nowrap}
+.mc .st{font-size:var(--t-foot);color:var(--ink2);line-height:1.35}
+.mc .st b{color:var(--ink);font-weight:400}
+.mc .add{font-size:var(--t-foot);color:var(--tint)}
+.mc .shot{font-size:var(--t-cap);color:var(--ink2);white-space:nowrap}
+.mc.hl{box-shadow:0 0 0 2px var(--tint)}
+/* 写真の縮小（色の四角で仮置き） */
+.ph{width:64px;height:64px;border-radius:8px;flex:none;position:relative;background:linear-gradient(135deg,#c79a63,#8a6238 55%,#e6d2ac)}
+.ph.b{background:linear-gradient(135deg,#e7c889,#b87a3a 60%,#f1e3c2)}
+.ph.c{background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.ph.d{background:linear-gradient(135deg,#d8b36a,#a0512d 55%,#f0dcb4)}
+.ph.e{background:linear-gradient(135deg,#7a9a6b,#d9c9a3 45%,#8c5a3c)}
+.ph.none{background:var(--fill);display:grid;place-items:center;color:var(--ink3)}
+.ph .mark{position:absolute;right:4px;bottom:4px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:rgb(0 0 0 / .55);color:#fff;font-size:var(--t-cap2);display:grid;place-items:center;font-weight:600}
+.ph .over{position:absolute;inset:0;border-radius:8px;background:rgb(0 0 0 / .45);color:#fff;display:grid;place-items:center;font-size:var(--t-cap2);font-weight:600;text-align:center;line-height:1.2}
+/* 重ねた2枚 */
+.stack2{position:relative;width:72px;height:68px;flex:none}
+.stack2 .ph{position:absolute}
+.stack2 .ph:first-child{right:0;top:0;width:58px;height:58px;opacity:.9}
+.stack2 .ph:last-child{left:0;bottom:0;box-shadow:0 0 0 2px var(--surface)}
+/* 写真を上に大きく */
+.mc.big{flex-direction:column;align-items:stretch;padding:6px;gap:0;width:72%}
+.mc.big .pics{display:flex;gap:4px}
+.mc.big .pics .ph{flex:1;width:auto;height:150px;border-radius:8px}
+.mc.big .pics.two .ph{height:120px}
+.mc.big .row2{display:flex;align-items:center;gap:8px;padding:10px 10px 6px}
+.dots{display:flex;gap:5px;justify-content:center;position:absolute;left:0;right:0;bottom:62px}
+.dots i{width:6px;height:6px;border-radius:50%;background:rgb(255 255 255 / .55)}
+.dots i:first-child{background:#fff}
+.mc.big .ph.none{height:150px}
+/* 推定中 */
+.loading{display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:var(--t-foot)}
+.spinner.s{width:14px;height:14px}
+
+/* 入力欄（TimelineScreen の composer）: バーの材質の上に 44 の丸いボタン */
+.comp{display:flex;align-items:center;gap:12px;padding:8px 16px;flex:none;background:var(--chrome);border-top:.5px solid var(--sep)}
+.comp.center{justify-content:center}
+.cb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--fill);color:var(--tint)}
+.cb.on{background:var(--tint);color:var(--on-tint)}
+.cap{height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 18px;font-size:var(--t-sub);font-weight:600;background:var(--fill);color:var(--tint);flex:none}
+.cap.on{background:var(--tint);color:var(--on-tint)}
+.cap.grow{flex:1}
+.comp .sp{flex:1}
+.press{box-shadow:0 0 0 4px color-mix(in srgb,var(--tint) 35%,transparent)}
+/* 入力欄の上の1行（答えていない知らせの1行と同じ形） */
+.pill{align-self:stretch;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:8px 16px;border-radius:999px;background:var(--surface);font-size:var(--t-foot);box-shadow:0 0 0 .5px var(--sep);flex:none}
+.pill span:last-child{color:var(--tint);font-weight:600;white-space:nowrap}
+/* その場の知らせ（カメラを許可していない） */
+.inline-note{align-self:stretch;background:var(--surface);border-radius:12px;padding:12px 16px;display:flex;flex-direction:column;gap:10px;font-size:var(--t-foot)}
+.inline-note p{margin:0;line-height:1.45}
+.inline-note .acts{display:flex;gap:12px;justify-content:flex-end}
+
+/* 自前のカメラ（07-components/composer の「カメラ」） */
+.camera{flex:1;display:flex;flex-direction:column;color:#fff;background:#0d0d0d}
+.camera .top{height:44px;display:flex;align-items:center;padding:0 16px;font-size:var(--t-body);flex:none}
+.finder{flex:1;position:relative;background:radial-gradient(ellipse at 50% 55%,#e9d8b8 0 26%,#c79a63 27% 34%,#6f5134 35% 60%,#3a2c20 61%)}
+.finder.dead{background:#1c1c1e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 32px;text-align:center}
+.finder.dead p{margin:0;font-size:var(--t-sub);line-height:1.5;color:rgb(235 235 245 / .85)}
+.finder.dead .btn{background:#fff;color:#000}
+.camera .bottom{height:150px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 28px;flex:none}
+.camera .roll{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a);justify-self:start}
+.camera .shutter{width:72px;height:72px;border-radius:50%;border:4px solid currentColor;display:grid;place-items:center}
+.camera .shutter i{width:58px;height:58px;border-radius:50%;background:currentColor}
+.camera .shutter.off{opacity:.3}
+/* iOS 標準のカメラ（UIImagePickerController の写真の撮影）。形は標準のものを写した */
+.syscam{flex:1;display:flex;flex-direction:column;color:#fff;background:#000}
+.syscam .top{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex:none;font-size:var(--t-foot)}
+.syscam .bottom{height:170px;display:flex;flex-direction:column;justify-content:center;gap:14px;flex:none}
+.syscam .mode{text-align:center;font-size:var(--t-cap);color:#ffd60a;letter-spacing:.06em}
+.syscam .row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 24px}
+.syscam .row .l{font-size:var(--t-body)}
+.syscam .row .r{justify-self:end;width:40px;height:40px;border-radius:50%;background:rgb(255 255 255 / .15);display:grid;place-items:center}
+.syscam .shutter{width:70px;height:70px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center}
+.syscam .shutter i{width:58px;height:58px;border-radius:50%;background:#fff}
+.syscam .review{height:88px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:var(--t-body);flex:none;background:#000}
+.finder.still{background:radial-gradient(ellipse at 50% 55%,#f0dfc0 0 26%,#c79a63 27% 34%,#6f5134 35% 60%,#3a2c20 61%)}
+/* iOS の許可の画面 */
+.sysalert .ab b{font-size:var(--t-headline)}
+.sysalert .bt span{font-weight:400}
+.sysalert .bt span:last-child{font-weight:600}
+/* 長押しのメニュー・押して出すメニュー（標準の Menu） */
+.blurwrap{position:absolute;inset:0;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);background:rgb(0 0 0 / .08)}
+.cmenu{position:absolute;left:16px;bottom:90px;width:230px;background:var(--chrome);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgb(0 0 0 / .2)}
+.cmenu div{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;font-size:var(--t-body);color:var(--ink)}
+.cmenu div + div{border-top:.5px solid var(--sep)}
+.lifted{position:absolute;left:16px;bottom:30px}
+
+/* 食事の画面（07-components/meal）。この仕様では値を直さないので、値は文字の色 */
+.photo{height:210px;border-radius:12px;position:relative;background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.photo.b{background:linear-gradient(135deg,#e7c889,#b87a3a 60%,#f1e3c2)}
+.photo.short{height:120px}
+.photo .pgdots{position:absolute;left:0;right:0;bottom:8px;display:flex;gap:6px;justify-content:center}
+.photo .pgdots i{width:7px;height:7px;border-radius:50%;background:rgb(255 255 255 / .5)}
+.photo .pgdots i:first-child{background:#fff}
+.photo .zoom{position:absolute;right:8px;bottom:8px;width:28px;height:28px;border-radius:50%;background:rgb(0 0 0 / .45);color:#fff;display:grid;place-items:center}
+.tot{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.tot .k{font-size:var(--t-title2);font-weight:600;font-variant-numeric:tabular-nums}
+.tot .k small{font-size:var(--t-sub);font-weight:400;color:var(--ink2);margin-left:4px}
+.tot .k.none{color:var(--ink3)}
+.tot .pfc{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.tot .pfc b{color:var(--ink);font-weight:600;font-size:var(--t-sub);margin-left:2px}
+.tot .src{font-size:var(--t-foot);color:var(--ink2);border-top:.5px solid var(--sep);padding-top:8px}
+.dish .cell.dh{font-weight:600}
+.dish .cell.dh .kc{font-weight:400;color:var(--ink2);font-size:var(--t-sub);font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap}
+.dish .cell.dh .q{font-weight:400;margin-left:8px;font-variant-numeric:tabular-nums}
+.dish .cell.dh .dsrc{display:block;font-weight:400;font-size:var(--t-foot);color:var(--ink2)}
+.dish .cell.ing{font-size:var(--t-sub);min-height:44px;padding:11px 16px 11px 28px}
+.dish .cell.ing .v{font-variant-numeric:tabular-nums;white-space:nowrap}
+.dish .cell.ing .isrc{display:block;font-size:var(--t-cap);color:var(--ink2)}
+.dish .cell.ing + .cell::before{left:28px}
+.empty{padding:22px 16px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.empty b{font-weight:600}
+.empty span{font-size:var(--t-foot);color:var(--ink2);line-height:1.45}
+.star{color:var(--ink2);font-weight:400;margin-left:1px}
+/* 写真を大きく見る */
+.viewer{flex:1;display:flex;flex-direction:column;background:#000;color:#fff}
+.viewer .top{height:44px;display:flex;align-items:center;justify-content:flex-end;padding:0 16px;flex:none;font-size:var(--t-body);font-weight:600}
+.viewer .pic{flex:1;margin:40px 0;background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.viewer .pgdots{display:flex;gap:6px;justify-content:center;padding-bottom:24px}
+.viewer .pgdots i{width:7px;height:7px;border-radius:50%;background:rgb(255 255 255 / .4)}
+.viewer .pgdots i:first-child{background:#fff}
+.textpage{padding:12px 16px;display:flex;flex-direction:column;gap:12px;font-size:var(--t-body);line-height:1.5}
+.textpage p{margin:0}
+
+/* 日のまとめ（DaySummarySheet と 07-components/day-summary） */
+.sheet.large{top:40px}
+.sheet .nav{background:transparent}
+.daynav{display:flex;align-items:center;gap:16px}
+.daynav .ar{color:var(--tint);font-size:24px;font-weight:400;line-height:1;margin-top:-2px}
+.daynav .ar.off{color:var(--ink3)}
+.eat{display:flex;align-items:center;gap:16px;padding:16px}
+.eat .ring .c b{font-size:var(--t-title2);font-weight:600;font-variant-numeric:tabular-nums}
+.eat .ring .c span{font-size:var(--t-cap);color:var(--ink2);font-variant-numeric:tabular-nums}
+.eat .ring .c b.none{color:var(--ink3)}
+.facts{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.facts div{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.facts div b{color:var(--ink);font-size:var(--t-sub);font-weight:600}
+.facts div + div{border-top:.5px solid var(--sep);padding-top:8px}
+.facts .wait{display:block;border:0;padding:0;font-size:var(--t-foot);color:var(--ink2);line-height:1.45}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--page-muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+
+/* 試作の道具: 論点の中の切り替え（「料理を足す」を置くか） */
+.opt{display:inline-flex;align-items:center;gap:8px;margin:0 0 16px;font-size:13px;color:var(--page-muted)}
+.opt .seg{display:inline-flex;background:var(--surface);border-radius:999px;padding:2px;box-shadow:0 0 0 .5px var(--frame)}
+.opt .seg button{padding:4px 12px;border-radius:999px;font-size:13px;color:var(--page-ink)}
+.opt .seg button[aria-pressed="true"]{background:var(--page-ink);color:var(--page)}
+.topic[data-add="off"] .add{display:none}
+.topic[data-add="on"] .noadd{display:none}
+.common{margin:0 0 24px}
+.common > .vhead{margin-bottom:12px}
+.hr{max-width:1280px;margin:0 auto 20px;border:0;border-top:1px dashed var(--frame)}
+code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ── この試作で足したもの ── */
+.scroll{overflow:auto;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.phone.with-kb .scroll{padding-bottom:8px}
+/* 食事の画面の料理のまとまり（MealScreen の dishRows） */
+.dish .cell.dh .q.edit,.dish .cell.ing .v.edit{color:var(--tint)}
+.dish .cell.dh .nm.edit{color:var(--tint)}
+.dish .cell.dh .kc.dim,.dish .cell.ing.dim{color:var(--ink3)}
+.dish .cell.ing.dim .v{color:var(--ink3)}
+.dish .cell.wait{font-size:var(--t-foot);color:var(--ink2);padding-left:28px}
+.dish .cell.note{font-size:var(--t-foot);color:var(--ink2);line-height:1.45;padding-top:4px}
+.dish .cell.fx{flex-direction:column;align-items:stretch;gap:8px;padding:10px 16px}
+.dish .cell .row{display:flex;gap:8px;align-items:center}
+.dish .cell .row .field{flex:1}
+.field.sm{padding:8px 10px}
+.field .u{color:var(--ink2)}
+.field.qty{flex:none;width:110px}
+.minus{width:22px;height:22px;border-radius:50%;background:var(--destructive);color:#fff;display:grid;place-items:center;font-weight:700;flex:none;font-size:16px;line-height:1}
+.plus{width:22px;height:22px;border-radius:50%;background:#34c759;color:#fff;display:grid;place-items:center;font-weight:700;flex:none;font-size:16px;line-height:1}
+.swipe{position:relative;overflow:hidden}
+.swipe .slid{transform:translateX(-74px)}
+.swipe .del{position:absolute;right:0;top:0;bottom:0;width:74px;background:var(--destructive);color:#fff;display:grid;place-items:center;font-size:var(--t-sub)}
+.flash{background:color-mix(in srgb,var(--tint) 10%,var(--surface))}
+.new-tag{font-size:var(--t-cap);color:var(--tint);margin-left:6px;font-weight:400}
+/* キーボード（形だけ） */
+.kb{flex:none;background:#d1d3d9;padding:6px 3px 4px;display:flex;flex-direction:column;gap:8px}
+.kb .bar{display:flex;justify-content:flex-end;padding:2px 10px 0;color:var(--tint);font-size:var(--t-body);font-weight:600;background:transparent}
+.kb .r{display:flex;gap:5px;justify-content:center}
+.kb .k{height:38px;border-radius:5px;background:#fff;flex:1;max-width:32px;display:grid;place-items:center;font-size:16px;color:#000;box-shadow:0 1px 0 #898a8d}
+.kb .k.w{max-width:none;flex:2.4;background:#abb0ba;font-size:14px}
+.kb .k.go{max-width:none;flex:2.4;background:var(--tint);color:#fff;font-size:14px}
+.kb.num .r .k{max-width:none;height:44px;font-size:22px}
+.kb.num .r .k.blank{background:transparent;box-shadow:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .kb{background:#2b2b2d}:root:not([data-theme="light"]) .kb .k{background:#6b6b6e;color:#fff}:root:not([data-theme="light"]) .kb .k.w{background:#464648}}
+:root[data-theme="dark"] .kb{background:#2b2b2d}
+:root[data-theme="dark"] .kb .k{background:#6b6b6e;color:#fff}
+:root[data-theme="dark"] .kb .k.w{background:#464648}
+/* 日時の選び方 */
+.dt{display:flex;gap:6px}
+.dt span{background:var(--fill);border-radius:7px;padding:5px 10px;font-variant-numeric:tabular-nums;font-size:var(--t-body)}
+.dt span.on{color:var(--tint)}
+.cal{padding:10px 16px 14px}
+.cal .mh{display:flex;justify-content:space-between;font-weight:600;font-size:var(--t-body);margin-bottom:8px}
+.cal .mh span:last-child{color:var(--tint);font-weight:400}
+.cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.cal .g .wd{font-size:var(--t-cap2);color:var(--ink3);font-weight:600}
+.cal .g span{height:30px;display:grid;place-items:center;border-radius:50%}
+.cal .g .sel{background:color-mix(in srgb,var(--tint) 18%,transparent);color:var(--tint);font-weight:600}
+.cal .g .today{color:var(--tint)}
+.cal .g .fut{color:var(--ink3)}
+.wheel{display:flex;justify-content:center;gap:24px;padding:4px 0 10px;font-size:20px;font-variant-numeric:tabular-nums}
+.wheel div{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink3)}
+.wheel div b{color:var(--ink);font-weight:400;background:var(--fill);border-radius:8px;padding:2px 14px}
+.popover{position:absolute;left:24px;right:24px;background:var(--surface);border-radius:14px;box-shadow:0 10px 40px rgb(0 0 0 / .22);overflow:hidden}
+.tzrow .val{font-size:var(--t-sub)}
+.tzpick .cell{font-size:var(--t-body)}
+.check{color:var(--tint);margin-left:auto}
+.searchbar{margin:0 0 4px;background:var(--fill);border-radius:10px;padding:8px 12px;color:var(--ink3);font-size:var(--t-body)}
+/* その場の取り消し（シェイクで取り消す） */
+.undo .alert{width:270px}
+/* 「編集」の状態 */
+.editing .cell.dh{gap:10px}
+/* 栄養の内訳 */
+.nut .cell{font-size:var(--t-body)}
+.nut .cell .val{font-variant-numeric:tabular-nums;color:var(--ink)}
+.nut .cell .val.unk{color:var(--ink3)}
+.nut .cell .val.unk2{color:var(--ink2)}
+.nut-head{padding:4px 16px 0;display:flex;flex-direction:column;gap:2px}
+.nut-head b{font-size:var(--t-title3);font-weight:600}
+.nut-head span{font-size:var(--t-foot);color:var(--ink2)}
+.common-figs{margin-bottom:28px}
+.vhead.fixedcopy{margin-bottom:8px}
+</style>
+<header class="intro">
+  <h1>食事を直すの見た目を見比べる</h1>
+  <p>仕様「食事を直す」の前に、見た目で決めるものを並べた試作（捨てる前提。gn-t-k/nu-tori#314）。上の論点を選び、下のバーの ‹ › か矢印キーで案を切り替える。<code>#&lt;論点&gt;-&lt;案の番号&gt;</code>（例: <code>#edit-2</code>）で開ける。今のアプリ（main の <code>ios/NuTori/Meal/MealScreen.swift</code> と <code>MealCardView.swift</code>、コミット f9c2920）の食事の画面とカードの上に、直す操作を足して描いた。電話の中はスクロールできる。</p>
+  <p>例の日付は、今日が 9月24日（木）。値はすべて作った値で、写真は色の四角で仮置きにした。決まっていることのうち iOS の標準のアプリの形と違うもの（1・4・8）は、決まった形と標準の形を並べた。2〜7 は、1 の案の A（その場で直す）の上に描いた。1 で別の案を選ぶと、2〜7 の置き場はその案に移る（中身はそのまま）。</p>
+</header>
+
+<nav class="topics" aria-label="論点" id="topics"></nav>
+<main id="main"></main>
+
+<div class="switcher" id="switcher" role="group" aria-label="案の切り替え（試作の道具）">
+  <button type="button" id="prev" aria-label="前の案">‹</button>
+  <span class="lab" id="lab" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="次の案">›</button>
+</div>
+<script>
+// ── アイコン（SF Symbols の代わり） ──
+const I = {
+  cam: (s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
+  wt: (s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg>`,
+  photo: (s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="15" height="13" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v10"/><path d="M4 16l4-4 3 3 2-2 4 4"/></svg>`,
+  person: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>',
+};
+
+// ── 共通の部品 ──
+const PH = (cls = '') => `<div class="status"></div>`;
+const HOME = '<div class="home"></div>';
+const NAV = (r = '', t = '食事', l = '9月24日（木）') => `<div class="nav"><span class="l"><span class="chev">‹</span>${l}</span><span class="t">${t}</span><span class="r${r === '完了' || r === '足す' ? ' b' : ''}">${r}</span></div>`;
+const NAVC = (l, t, r) => `<div class="nav"><span class="l">${l}</span><span class="t">${t}</span><span class="r b">${r}</span></div>`;
+const phone = (inner, cls = '') => `<div class="phone ${cls}">${PH()}${inner}${HOME}</div>`;
+const scroll = x => `<div class="scroll">${x}</div>`;
+const PHOTO = '<div class="photo short" role="img" aria-label="写真"></div>';
+const TIME = (v = '9月24日（木）12:20', edit = false) => `<div class="list"><div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="num${edit ? ' edit' : ''}">${v}</span></div></div>`;
+const TOT = (k = '510', p = '32', f = '6', c = '78', src = true) => `<div class="list tot"><span class="k${k === '—' ? ' none' : ''}">${k}<small>kcal</small></span><div class="pfc"><span><span class="key p"></span> P<b>${p}</b> g</span><span><span class="key f"></span> F<b>${f}</b> g</span><span><span class="key c"></span> C<b>${c}</b> g</span></div>${src ? '<div class="src">栄養の出どころ: 栄養成分表示 1・成分表 4・推定 1</div>' : ''}</div>`;
+const CITE = '<div class="list"><div class="cell"><span class="grow">栄養の出典</span><span class="disc">›</span></div></div>';
+const DEL = '<div class="list"><div class="cell danger">食事を削除</div></div>';
+const ADDROW = '<div class="list"><div class="cell link">料理を足す</div></div>';
+const H = t => `<p class="group-h">${t}</p>`;
+const F = t => `<p class="group-f">${t}</p>`;
+const est = '<span class="est">推定</span>';
+const BREAK = '<div class="cell"><span class="grow">栄養の内訳</span><span class="disc">›</span></div>';
+
+// 料理の行。o: {name, q, est, kc, edit (none|q|all), chev, minus}
+function dh(o){
+  const e = o.edit || 'none';
+  const nm = `<span class="nm${e === 'all' || e === 'name' ? ' edit' : ''}">${o.name}</span>`;
+  const q = `<span class="q${e === 'all' || e === 'q' ? ' edit' : ''}">${o.q}</span>`;
+  return `<div class="cell dh">${o.minus ? '<span class="minus">−</span>' : ''}${nm}${q}${o.est ? est : ''}<span class="kc${o.dim ? ' dim' : ''}">${o.kc}</span>${o.chev ? '<span class="disc">›</span>' : ''}</div>`;
+}
+const ing = (n, q, edit = false, dim = false) => `<div class="cell ing${dim ? ' dim' : ''}"><span class="grow">${n}</span><span class="v${edit ? ' edit' : ''}">${q}</span></div>`;
+const CHICKEN_I = [['サラダチキン（プレーン）', '110 g']];
+const ONIGIRI_I = [['ご飯', '190 g'], ['鮭フレーク', '10 g'], ['ツナ（油漬）', '12 g'], ['マヨネーズ', '6 g'], ['焼きのり', '2枚']];
+function dishList(dishes, opt = {}){
+  return dishes.map((d, i) => `<div>${i === 0 ? H('料理') : ''}<div class="list dish">${d}</div></div>`).join('');
+}
+const chicken = (edit = 'none', extra = {}) => dh({name:'サラダチキン', q:'1袋', kc:'121 kcal', edit, ...extra}) + CHICKEN_I.map(x => ing(...x, edit === 'all' || edit === 'q')).join('') + (extra.noBreak ? '' : BREAK);
+const onigiri = (edit = 'none', extra = {}) => dh({name:'おにぎり', q:'2個', est:true, kc:'389 kcal', edit, ...extra}) + ONIGIRI_I.map(x => ing(...x, edit === 'all' || edit === 'q')).join('') + (extra.noBreak ? '' : BREAK);
+
+// キーボード
+const KB_TEXT = (go = '完了') => `<div class="kb"><div class="r">${'たなはまらやわ'.split('').map(x => `<span class="k">${x}</span>`).join('')}</div><div class="r">${'あかさ'.split('').map(x => `<span class="k">${x}</span>`).join('')}<span class="k w">空白</span></div><div class="r"><span class="k w">123</span><span class="k w">🌐</span><span class="k go">${go}</span></div></div>`;
+const KB_NUM = (bar = '') => `<div class="kb num">${bar ? `<div class="bar">${bar}</div>` : ''}<div class="r"><span class="k">1</span><span class="k">2</span><span class="k">3</span></div><div class="r"><span class="k">4</span><span class="k">5</span><span class="k">6</span></div><div class="r"><span class="k">7</span><span class="k">8</span><span class="k">9</span></div><div class="r"><span class="k blank"></span><span class="k">0</span><span class="k w">⌫</span></div></div>`;
+
+// タイムラインのカード（MealCardView）
+const TLNAV = `<div class="nav"><span class="l"></span><span class="t">9月24日（木）</span><span class="r"><span class="person">${I.person}</span></span></div>`;
+const WROW = t => `<div class="wrow">${t}<span class="disc">›</span></div>`;
+const DAYH = t => `<div class="dayh">${t}</div>`;
+function card(o){
+  const pic = `<span class="ph ${o.ph || 'c'}"></span>`;
+  const name = o.name ? `<b>${o.name}</b>` : '';
+  const line = o.line || '';
+  const pfc = o.kcal ? `<div class="pfc"><b>${o.kcal} kcal</b><span>P ${o.p} g</span><span>F ${o.f} g</span><span>C ${o.c} g</span></div>` : '';
+  return `<div class="mc big"><div class="pics">${pic}</div><div class="row2"><div class="bd"><div class="top">${name}${line}</div><span class="shot">${o.time || '12:20'}</span>${pfc}</div><span class="disc">›</span></div></div>`;
+}
+const timeline = (cards, comp = true) => `${TLNAV}<div class="tl">${DAYH('9月24日（木）')}${WROW('7:12 72.4 kg')}${cards}</div>${comp ? `<div class="comp"><span class="cb on">${I.cam()}</span><span class="cb">${I.photo()}</span><span class="cb">${I.wt()}</span><span class="sp"></span></div>` : ''}`;
+
+// 確かめ・アラート
+const actionSheet = (msg, a, cancel = 'キャンセル') => `<div class="scrim"><div class="action"><div class="grp"><div class="msg">${msg}</div><div class="a danger">${a}</div></div><div class="grp"><div class="a cancel">${cancel}</div></div></div></div>`;
+const alertBox = (title, body, btns, extra = '') => `<div class="alert-wrap"><div class="alert"><div class="ab"><b>${title}</b>${body ? `<span>${body}</span>` : ''}${extra}</div><div class="bt">${btns.map(b => `<span class="${b[1] || ''}">${b[0]}</span>`).join('')}</div></div></div>`;
+
+// ── 論点 ──
+const T = [];
+
+// 1. 直し方
+T.push({id:'edit', label:'直せる値と直し方', title:'直せる値と、直しているときの行',
+  q:'料理の名前と量、材料の量をどこでどう直すか。決まった形（行がその場で欄に変わる）を、iOS の標準のアプリの直し方（ナビゲーションバーの「編集」、潜った画面のフォーム、シート）と比べる。',
+  fixed:'決まっていること: 直せる値は Primary、名前と量を一緒に直せる、量を変えると材料も同じ割合で変わる、材料の量は数字のキーボード、推定の印は直すと外す、直すと合計と1日の丸がその場で変わる（<code>06-layout.md</code>「食事」、<code>07-components/meal</code>、<code>DESIGN.md</code>「一覧」「値の欄」「推定の印」）。開き直す理由: <code>DESIGN.md</code> の Do\'s「標準があるものは、それに従う」。',
+  variants:[
+  {name:'その場で欄に変わる（決まった形）', desc:'食事の画面の値をそのまま押して直す。料理の名前か量を押すと、その料理の行が名前と量の欄に変わる。直している間はナビゲーションバーの右に「完了」。押すのは1回で、モードに入らない。標準の部品（TextField）の組み合わせだが、標準のアプリにこの形の直し方は見当たらない。',
+   figs:[
+    {cap:'<b>見ているとき。</b>押して直せる値（料理の名前と量、材料の量、時刻）を Primary で書く。名前を Primary にすると、行の多くが色つきになる（下の「量だけ Primary」と比べる）。',
+     html: phone(NAV() + scroll(PHOTO + TIME('9月24日（木）12:20', true) + TOT() + dishList([chicken('all'), onigiri('all')]) + CITE + DEL))},
+    {cap:'<b>量だけ Primary にしたとき。</b>名前は黒のまま、量と時刻だけ色つき。名前を押しても同じく直せるが、押せることは見た目から分かりにくい。',
+     html: phone(NAV() + scroll(TIME('9月24日（木）12:20', true) + TOT() + dishList([chicken('q'), onigiri('q')]) + CITE))},
+    {cap:'<b>料理を直しているとき。</b>おにぎりの行が名前と量の欄に変わる。量を押したので数字のキーボード。下に注記と「この料理を削除」。合計と材料の量は打つそばから変わる。',
+     html: phone(NAV('完了') + scroll(TOT('510') + dishList([chicken('q', {noBreak:true}), `<div class="cell fx"><div class="row"><div class="field sm">おにぎり</div><div class="field sm qty focus"><span>2</span><span class="u">個</span></div></div></div><div class="cell note">量を変えると、材料の量も同じ割合で変わります。</div>` + ONIGIRI_I.map(x => ing(...x)).join('') + '<div class="cell danger">この料理を削除</div>'])) + KB_NUM(), 'with-kb')},
+    {cap:'<b>材料の量を直しているとき。</b>ご飯の量だけが欄に変わる。190 → 150 g で、料理は 327 kcal、食事は 448 kcal になる。材料の量を直したときに、料理の量の推定の印を外すかは会話で決める（図は残した形）。',
+     html: phone(NAV('完了') + scroll(TOT('448', '31', '6', '63') + dishList([dh({name:'おにぎり', q:'2個', est:true, kc:'327 kcal', edit:'q'}) + `<div class="cell ing"><span class="grow">ご飯</span><div class="field sm qty focus"><span>150</span><span class="u">g</span></div></div>` + ONIGIRI_I.slice(1).map(x => ing(...x, true)).join('')])) + KB_NUM(), 'with-kb')},
+   ]},
+  {name:'ナビゲーションバーの「編集」', desc:'ふだんの食事の画面は見るだけ（今の main と同じ見た目）。右上の「編集」で画面ごと直す状態に入り、値がすべて欄になる。料理の左に赤い −、一番下に「料理を足す」。「完了」で抜ける。連絡先とヘルスケアのデータの直し方。直す前に1手増え、DESIGN.md の Do\'s「モードレス」とぶつかる。',
+   figs:[
+    {cap:'<b>見ているとき。</b>値は文字の色のまま。押せるのは右上の「編集」、「栄養の内訳 ›」、「栄養の出典 ›」、「食事を削除」。',
+     html: phone(NAV('編集') + scroll(PHOTO + TIME() + TOT() + dishList([chicken(), onigiri()]) + CITE + DEL))},
+    {cap:'<b>「編集」を押したあと。</b>時刻は日時の選び方、料理の名前と量と材料の量は欄になる。赤い − を押すと右に「削除」が出る（標準の一覧の編集）。食事を消すのは編集の外に残す。左は「キャンセル」で、直したものを戻せる。',
+     html: phone(NAVC('キャンセル', '食事', '完了') + scroll(`<div class="list"><div class="cell"><span class="grow">時刻</span><span class="dt"><span>9月24日</span><span>12:20</span></span></div></div>` + `<div>${H('料理')}<div class="list dish editing"><div class="cell dh"><span class="minus">−</span><div class="field sm" style="flex:1">サラダチキン</div><div class="field sm qty"><span>1</span><span class="u">袋</span></div></div><div class="cell ing"><span class="grow">サラダチキン（プレーン）</span><div class="field sm qty"><span>110</span><span class="u">g</span></div></div></div></div><div><div class="list dish editing"><div class="cell dh"><span class="minus">−</span><div class="field sm" style="flex:1">おにぎり</div><div class="field sm qty"><span>2</span><span class="u">個</span></div></div>${ONIGIRI_I.map(x => `<div class="cell ing"><span class="grow">${x[0]}</span><div class="field sm qty"><span>${x[1].split(' ')[0].replace('枚', '')}</span><span class="u">${x[1].includes('枚') ? '枚' : 'g'}</span></div></div>`).join('')}</div></div><div class="list"><div class="cell"><span class="plus">＋</span><span>料理を足す</span></div></div>`))},
+   ]},
+  {name:'料理の画面へ潜る', desc:'食事の画面の料理の行に › を付け、押すと「料理」の画面へプッシュで潜る。名前と量と材料の量はその画面のフォームで直し、栄養の内訳もその画面の下に並べる（今の「栄養の内訳」の画面を、料理の画面にまとめる）。リマインダーの詳細や設定の直し方。単位ビュー「食事」の画面の数と潜る深さ（<code>06-layout.md</code>「ペインの割り当て」）は変わらず3段（タイムライン → 食事 → 料理）。',
+   figs:[
+    {cap:'<b>食事の画面。</b>料理の行は名前・量・kcal と ›。材料はこの画面には並べず、料理の画面で見る。食事の画面が短くなる。時刻だけはこの画面で直す（Primary）。',
+     html: phone(NAV() + scroll(PHOTO + TIME('9月24日（木）12:20', true) + TOT() + `<div>${H('料理')}<div class="list dish">${dh({name:'サラダチキン', q:'1袋', kc:'121 kcal', chev:true})}${dh({name:'おにぎり', q:'2個', est:true, kc:'389 kcal', chev:true})}</div></div>` + ADDROW + CITE + DEL))},
+    {cap:'<b>料理の画面（おにぎり）。</b>名前と量はフォームの欄、材料の量は Primary で押すとその場で数字のキーボード。下に主な栄養（ミネラルとビタミンは続けてスクロール）。一番下に「この料理を削除」。戻ると直した値が食事の画面に出ている。',
+     html: phone(NAV('', 'おにぎり', '食事') + scroll(`<div>${H('名前と量')}<div class="list"><div class="cell"><span class="grow">名前</span><span class="edit">おにぎり</span></div><div class="cell"><span class="grow">量</span><span class="edit">2個</span>${est}</div></div>${F('量を変えると、材料の量も同じ割合で変わります。')}</div><div>${H('材料')}<div class="list dish">${ONIGIRI_I.map(x => ing(...x, true)).join('')}</div></div><div>${H('主な栄養')}<div class="list nut"><div class="cell"><span class="grow">エネルギー</span><span class="val">389 kcal</span></div><div class="cell"><span class="grow">たんぱく質</span><span class="val">6.0 g</span></div><div class="cell"><span class="grow">脂質</span><span class="val">5.0 g</span></div><div class="cell"><span class="grow">炭水化物</span><span class="val">77.0 g</span></div></div></div><div class="list"><div class="cell danger">この料理を削除</div></div>`))},
+   ]},
+  {name:'シートで直す', desc:'料理の行を押すと、その料理を直すシートが下から出る（カレンダーの予定やヘルスケアの「データを追加」と同じく、左に「キャンセル」、右に「完了」）。食事の画面は見るだけのまま。直すあいだは食事の合計が見えない。',
+   figs:[
+    {cap:'<b>食事の画面。</b>料理の行は押せるので、名前を Primary にする（量と材料は文字の色）。',
+     html: phone(NAV() + scroll(PHOTO + TIME('9月24日（木）12:20', true) + TOT() + dishList([chicken('name'), onigiri('name')]) + DEL))},
+    {cap:'<b>おにぎりを押したあと。</b>名前と量、材料の量をフォームで直す。「キャンセル」で何も変えずに閉じ、「完了」で当てる。「この料理を削除」はシートの一番下。',
+     html: phone(`<div class="behind"><div class="status"></div>${NAV()}</div><div class="scrim" style="justify-content:flex-start"><div class="sheet large">${NAVC('キャンセル', 'おにぎり', '完了')}${scroll(`<div><div class="list"><div class="cell"><span class="grow">名前</span><span>おにぎり</span></div><div class="cell"><span class="grow">量</span><span class="edit">2個</span>${est}</div></div>${F('量を変えると、材料の量も同じ割合で変わります。')}</div><div>${H('材料')}<div class="list dish">${ONIGIRI_I.map(x => ing(...x, true)).join('')}</div></div><div class="list"><div class="cell danger">この料理を削除</div></div>`)}</div></div>`)},
+   ]},
+  ]});
+
+// 2. 名前を直したとき
+const NAMEEDIT = note => phone(NAV('完了') + scroll(TOT() + dishList([chicken('q', {noBreak:true}), `<div class="cell fx"><div class="row"><div class="field sm focus">鮭おにぎり</div><div class="field sm qty"><span>2</span><span class="u">個</span></div></div></div>${note ? `<div class="cell note">${note}</div>` : ''}` + ONIGIRI_I.map(x => ing(...x)).join('') + '<div class="cell danger">この料理を削除</div>'])) + KB_TEXT(), 'with-kb');
+const AFTER = (flash) => phone(NAV() + scroll(TOT('486', '33', '5', '80') + dishList([chicken('q'), `<div class="${flash ? 'flash' : ''}">${dh({name:'鮭おにぎり', q:'2個', est:true, kc:'365 kcal', edit:'q'})}</div>` + [['ご飯', '200 g'], ['焼き鮭', '20 g'], ['焼きのり', '2枚']].map(x => ing(...x, true)).join('') + (flash ? '<div class="cell note">名前から推定し直しました。</div>' : '') + BREAK])));
+T.push({id:'rename', label:'名前を直したとき', title:'料理の名前を直したとき',
+  q:'「おにぎり」を「鮭おにぎり」に直すと、量を直していなければ量も推定し直される。直しているあいだにそれを伝えるか。推定し直しが済んで材料と量が変わったときの手応え。',
+  fixed:'決まっていること: 量を直していなければ名前から量も推定し直し、直していれば量を固定して材料への割り振りだけを推定し直す（「写真からの推定の仕組み」の追記の「写真と文章からの推定」）。待つあいだの見え方は 3。',
+  variants:[
+  {name:'伝えない', desc:'欄の下に何も書かない。「完了」で名前が当たり、推定し直しが済むと材料と量がその場で入れ替わる（数字は <code>contentTransition(.numericText())</code>）。',
+   figs:[{cap:'<b>名前を直しているとき。</b>量の注記だけ（1 の決まった形）。', html: NAMEEDIT('量を変えると、材料の量も同じ割合で変わります。')},
+         {cap:'<b>推定し直しが済んだあと。</b>材料が「ご飯・焼き鮭・焼きのり」に変わり、kcal が変わる。変わったことは値の動きだけで伝わる。', html: AFTER(false)}]},
+  {name:'欄の下に書く', desc:'名前の欄を選んでいるあいだだけ、注記を「名前を変えると、量と材料を推定し直します。」に替える。量を直してあれば「名前を変えると、材料を推定し直します。量はそのままです。」。済んだあとは「伝えない」と同じ。',
+   figs:[{cap:'<b>名前を直しているとき（量はまだ推定のまま）。</b>', html: NAMEEDIT('名前を変えると、量と材料を推定し直します。')},
+         {cap:'<b>量を直したあとの料理の名前を直しているとき。</b>量の推定の印は無い。', html: NAMEEDIT('名前を変えると、材料を推定し直します。量はそのままです。').replace(est, '')}]},
+  {name:'欄の下に書く ＋ 済んだら1行', desc:'「欄の下に書く」に加え、推定し直しが済んだら、その料理の行を薄く Primary で敷き、材料の下に「名前から推定し直しました。」を、次にこの画面を離れるまで出す。',
+   figs:[{cap:'<b>名前を直しているとき。</b>', html: NAMEEDIT('名前を変えると、量と材料を推定し直します。')},
+         {cap:'<b>推定し直しが済んだあと。</b>どこが変わったかが分かる。画面を離れると消える。', html: AFTER(true)}]},
+  ]});
+
+// 3. 料理ごとの待ち
+const WAITDISHES = (mode) => {
+  // mode a: 行で示す, b: 食事ごと, c: 前の値のまま
+  const chick = chicken('q');
+  if (mode === 'b') return `<div>${H('料理')}<div class="list"><div class="cell"><span class="loading"><span class="spinner"></span>推定しています…</span></div></div>${F('鮭おにぎり、味噌汁を推定しています。')}</div>` + dishList([chick]).replace(H('料理'), '');
+  const renamed = mode === 'a'
+    ? dh({name:'鮭おにぎり', q:'2個', kc:'—', edit:'q'}) + '<div class="cell wait"><span class="loading"><span class="spinner s"></span>推定しています…</span></div>'
+    : dh({name:'鮭おにぎり', q:'2個', est:true, kc:'389 kcal', dim:true, edit:'q'}) + '<div class="cell wait"><span class="loading"><span class="spinner s"></span>推定し直しています…</span></div>' + ONIGIRI_I.slice(0, 3).map(x => ing(...x, false, true)).join('');
+  const added = dh({name:'味噌汁', q:'', kc:'—', edit:'all'});
+  const tomorrow = dh({name:'から揚げ', q:'', kc:'—', edit:'all'}) + '<div class="cell wait">今日はもう推定できないため、明日推定します</div>';
+  return dishList([chick, renamed, added, tomorrow]);
+};
+const WAITTOT = mode => mode === 'c' ? TOT('510') : mode === 'b' ? TOT('—', '—', '—', '—', false) : TOT('121 以上', '24 以上', '1 以上', '0 以上', false);
+const failedRow = (mode) => dishList([chicken('q'), dh({name:'鮭おにぎり', q:'', kc:'0 kcal', edit:'all'}) + `<div class="cell wait">${mode === 'b' ? '' : ''}この名前からは材料を推定できませんでした</div>`]);
+T.push({id:'wait', label:'料理ごとの待ち', title:'料理ごとに推定を待つときの見え方',
+  q:'1つの食事で、名前を直した料理（推定中）、インターネットにつながらないときに足した料理（まだ送れていない）、回数の上限で翌日に推定する料理が並んだとき。料理の行と食事の合計、タイムラインのカードをどう見せるか。',
+  fixed:'決まっていること: 待っている表示（回る印と「推定しています…」）はサーバーが処理しているあいだだけ。まだ送れていない料理には出さず、インターネットにつながらないことも書かない（<code>DESIGN.md</code>「待っている表示」と Don\'ts）。回数の上限の数は書かない。翌日に推定する料理は、マップの申し送りの提案（名前を保存して翌日に推定する）で描いた。どの案も、上から サラダチキン（推定できた）、鮭おにぎり（名前を直して推定中）、味噌汁（足したがまだ送れていない）、から揚げ（足したが上限で翌日に推定）。',
+  variants:[
+  {name:'その料理の行で示す', desc:'待っている料理だけ、量と kcal を「—」にして、材料の場所にその料理の状態を書く。ほかの料理はそのまま直せる。合計は分かる料理の分だけを足し、「以上」を付ける（食事の画面の今の「以上」と同じ意味）。',
+   figs:[{cap:'<b>食事の画面。</b>味噌汁（まだ送れていない）は名前だけで、何も添えない。', html: phone(NAV() + scroll(WAITTOT('a') + WAITDISHES('a') + ADDROW + DEL))},
+         {cap:'<b>タイムラインのカード。</b>名前は全部並べ、kcal と P・F・C は分かる分に「以上」。状態の1行は付けない。', html: phone(timeline(card({name:'サラダチキン・鮭おにぎり・味噌汁・から揚げ', kcal:'121 以上', p:'24 以上', f:'1 以上', c:'0 以上'})), 'short')},
+         {cap:'<b>推定し直しが通らなかったとき。</b>鮭おにぎりは名前を残し、0 kcal で、材料の場所に理由を書く。名前を直すか、左へ送って消す。', html: phone(NAV() + scroll(TOT('121', '24', '1', '0') + failedRow('a') + ADDROW))}]},
+  {name:'食事ごと「推定しています…」', desc:'どれか1品でも待っていれば、料理の一覧の一番上に「推定しています…」を出し、待っている料理はそこに名前だけ並べて、行は出さない。合計は「—」。推定できた料理だけを下に並べる。カードは推定中の食事と同じ見え方に戻る。',
+   figs:[{cap:'<b>食事の画面。</b>まだ送れていない味噌汁と翌日に推定するから揚げも、ここでは見えなくなる（何を待っているかは注記の名前だけ）。', html: phone(NAV() + scroll(WAITTOT('b') + WAITDISHES('b') + ADDROW + DEL))},
+         {cap:'<b>タイムラインのカード。</b>今の推定中の食事のカードと同じ。', html: phone(timeline(card({line:'<span class="loading"><span class="spinner s"></span>推定しています…</span>'})), 'short')},
+         {cap:'<b>推定し直しが通らなかったとき。</b>「その料理の行で示す」と同じ形で、ここで初めて行が戻る。', html: phone(NAV() + scroll(TOT('121', '24', '1', '0') + failedRow('b') + ADDROW))}]},
+  {name:'前の値のまま', desc:'名前を直した料理は、届くまで前の材料と kcal を薄い色で残し、「推定し直しています…」を添える。合計も前の値のまま。足した料理（味噌汁・から揚げ）は値が無いので「その料理の行で示す」と同じ。合計が一瞬「—」に落ちない代わりに、古い値が混じる。',
+   figs:[{cap:'<b>食事の画面。</b>合計 510 kcal には、直す前のおにぎりの 389 kcal が入ったまま。', html: phone(NAV() + scroll(WAITTOT('c') + WAITDISHES('c') + ADDROW + DEL))},
+         {cap:'<b>タイムラインのカード。</b>kcal は前の値のまま。名前は新しい名前。', html: phone(timeline(card({name:'サラダチキン・鮭おにぎり・味噌汁・から揚げ', kcal:'510', p:'32', f:'6', c:'78'})), 'short')},
+         {cap:'<b>推定し直しが通らなかったとき。</b>前の値は消え、0 kcal と理由。', html: phone(NAV() + scroll(TOT('121', '24', '1', '0') + failedRow('c') + ADDROW))}]},
+  ]});
+
+// 4. 料理を足す
+const EMPTYSTATE = (addRow, hint) => phone(NAV(addRow === 'plus' ? '＋' : '') + scroll(PHOTO + TIME('9月24日（木）10:15', true) + TOT('0', '0', '0', '0', false) + `<div>${H('料理')}<div class="list empty"><b>料理を推定できませんでした</b>${hint ? '<span>料理の名前を入れると、量と材料を推定します。</span>' : ''}</div></div>` + (addRow === 'row' ? ADDROW : '') + DEL));
+T.push({id:'add', label:'料理を足す', title:'料理を足す',
+  q:'料理を足す入口をどこに置き、名前をどう入れるか。推定できなかった食事でどう見せるか。決まった形（一覧の最後の行に名前の欄）を、iOS の標準の足し方（ナビゲーションバーの ＋ とシート、＋ と文字の欄のあるアラート）と比べる。',
+  fixed:'決まっていること: 名前を入れて足すと、量と材料を推定する（<code>06-layout.md</code>「食事」の「料理を足す・消す」）。「食事を撮って推定する」では、どの状態にも置かなかった。どの案も、推定できた・まだ送れていない・推定中・料理なし・翌日に推定・推定できなかったの、どの状態にも置く形で描いた（置かない状態があるかは選ぶときに言う）。カードには入口を置かない。',
+  variants:[
+  {name:'一覧の最後の行（決まった形）', desc:'料理の一覧の下に「料理を足す」の行。押すとその場に名前の欄が出て、文字のキーボードの「足す」（改行のキー）で足す。リマインダーの新しい項目と同じ。',
+   figs:[{cap:'<b>押したあと。</b>名前の欄が最後の料理の下に出る。空のまま離れると何も足さない。', html: phone(NAV('完了') + scroll(TOT() + dishList([chicken('q', {noBreak:true}), onigiri('q', {noBreak:true}), `<div class="cell fx"><div class="field sm focus"><span class="ph">料理の名前</span></div></div>`])) + KB_TEXT('足す'), 'with-kb')},
+         {cap:'<b>推定できなかった食事。</b>理由の下に「料理の名前を入れると、量と材料を推定します。」と「料理を足す」。', html: EMPTYSTATE('row', true)}]},
+  {name:'＋ とシート', desc:'ナビゲーションバーの右に ＋。押すと「料理を足す」のシートが下から出て、名前を入れて右上の「足す」。カレンダーやヘルスケアの「データを追加」と同じ。1 で「シートで直す」を選ぶとそろう。',
+   figs:[{cap:'<b>＋ を押したあと。</b>名前の欄だけのシート（中くらいの高さ）。', html: phone(`<div class="behind"><div class="status"></div>${NAV('＋')}${scroll(TOT() + dishList([chicken('q')]))}</div><div class="scrim"><div class="sheet" style="height:62%">${NAVC('キャンセル', '料理を足す', '足す')}<div class="scroll"><div class="field focus"><span>味噌汁</span></div>${F('名前から、量と材料を推定します。')}</div>${KB_TEXT('足す')}</div></div>`)},
+         {cap:'<b>推定できなかった食事。</b>入口は右上の ＋ だけ。理由の下の文で ＋ を指すか（試作は指さない文にした）。', html: EMPTYSTATE('plus', true)}]},
+  {name:'＋ とアラート', desc:'ナビゲーションバーの ＋ を押すと、文字の欄のあるアラート（<code>alert</code> と <code>TextField</code>）が出る。名前1つを入れるだけの短い作業に、標準のアプリでよく使われる形（ファイルのフォルダ名など）。',
+   figs:[{cap:'<b>＋ を押したあと。</b>', html: phone(`<div class="behind"><div class="status"></div>${NAV('＋')}${scroll(TOT() + dishList([chicken('q'), onigiri('q')]))}</div>` + alertBox('料理を足す', '名前から、量と材料を推定します。', [['キャンセル'], ['足す', 'danger" style="color:var(--tint)']], '<div class="field" style="margin-top:10px;text-align:left;background:var(--surface)">味噌汁</div>'))},
+         {cap:'<b>推定できなかった食事。</b>', html: EMPTYSTATE('plus', true)}]},
+  ]});
+
+// 5. 料理を消す
+const LASTSWIPE = phone(NAV() + scroll(TOT('121', '24', '1', '0') + `<div>${H('料理')}<div class="list dish swipe"><div class="slid">${chicken('q', {noBreak:true})}</div><span class="del">削除</span></div></div>` + ADDROW + DEL));
+T.push({id:'remove', label:'料理を消す', title:'料理を消す',
+  q:'最後の1品を消したとき、食事の画面とカードをどう見せるか。消したあとに戻す手段を置くか。',
+  fixed:'決まっていること: 料理の行を左へ送ると「削除」が出て、確かめずに消える。直している行の「この料理を削除」でも消せる。VoiceOver ではカスタムアクション（<code>06-layout.md</code>「食事」の「料理を足す・消す」、<code>07-components/meal</code>「行を左へ送る」。iOS の標準の <code>swipeActions</code>）。消した料理は「料理を足す」で足し直す。',
+  variants:[
+  {name:'料理のない食事として残す', desc:'最後の1品を消しても食事は残る。料理の一覧の場所に「料理はありません」と「料理を足す」。合計は 0 kcal。カードは「料理はありません」の1行。写真だけの記録として残したい人に合う。',
+   figs:[{cap:'<b>最後の1品（サラダチキン）を左へ送ったところ。</b>', html: LASTSWIPE},
+         {cap:'<b>消したあと。</b>', html: phone(NAV() + scroll(PHOTO + TIME('9月24日（木）12:20', true) + TOT('0', '0', '0', '0', false) + `<div>${H('料理')}<div class="list empty"><b>料理はありません</b></div></div>` + ADDROW + DEL))},
+         {cap:'<b>タイムラインのカード。</b>', html: phone(timeline(card({line:'<span class="st">料理はありません</span>'})), 'short')}]},
+  {name:'食事ごと消すか確かめる', desc:'最後の1品を消すときだけ、画面の下から「この食事を削除しますか」を確かめる（食事を削除と同じ確かめ）。料理のない食事は残らない。消したくなければ「キャンセル」で料理も残る。',
+   figs:[{cap:'<b>最後の1品の「削除」を押したあと。</b>', html: phone(NAV() + scroll(TOT('121', '24', '1', '0') + dishList([chicken('q')]) + ADDROW + DEL) + actionSheet('最後の料理です。この食事と写真がすべて削除されます。ヘルスケアに書き出した分も削除します。', '食事を削除'))}]},
+  {name:'取り消しを置く', desc:'「料理のない食事として残す」に加え、消したあとに iPhone を振ると、iOS の標準の「取り消す」のアラートが出て、消した料理が戻る（<code>UndoManager</code>。メールやメモと同じ）。最後の1品でなくても同じ。',
+   figs:[{cap:'<b>おにぎりを消したあと、iPhone を振ったところ。</b>', html: phone(NAV() + scroll(TOT('121', '24', '1', '0') + dishList([chicken('q')]) + ADDROW) + alertBox('取り消す - 料理の削除', '', [['キャンセル'], ['取り消す', 'danger" style="color:var(--tint);font-weight:600']]))}]},
+  ]});
+
+// 6. 栄養の内訳と不明
+const NUT = [
+  ['主な栄養', [['エネルギー', '389 kcal'], ['たんぱく質', '6.0 g'], ['脂質', '5.0 g'], ['炭水化物', '77.0 g'], ['食物繊維', '1.2 g', 'p'], ['食塩相当量', '2.0 g']]],
+  ['ミネラル', [['カリウム', '120 mg', 'p'], ['カルシウム', '12 mg', 'p'], ['マグネシウム', '16 mg', 'p'], ['鉄', '0.4 mg', 'p']]],
+  ['ビタミン', [['ビタミンA', '45 µg', 'p'], ['ビタミンD', '', 'u'], ['ビタミンB1', '0.06 mg', 'p'], ['ビタミンB2', '0.05 mg', 'p'], ['ビタミンC', '0 mg']]],
+];
+const NUTALL = [
+  ['主な栄養', [['エネルギー', '320 kcal'], ['たんぱく質', '18.0 g'], ['脂質', '20.0 g'], ['炭水化物', '14.0 g'], ['食物繊維', '0.8 g'], ['食塩相当量', '1.6 g']]],
+  ['ミネラル', [['カリウム', '', 'u'], ['カルシウム', '', 'u'], ['マグネシウム', '', 'u'], ['鉄', '', 'u']]],
+  ['ビタミン', [['ビタミンA', '', 'u'], ['ビタミンD', '', 'u'], ['ビタミンB1', '', 'u'], ['ビタミンB2', '', 'u'], ['ビタミンC', '', 'u']]],
+];
+function nutScreen(data, v, title, sub){
+  const fmt = (val, k) => {
+    if (k === 'u') return v === 'a' ? '<span class="val unk2">不明</span>' : v === 'b' ? '<span class="val unk">—</span>' : null;
+    if (k === 'p') return v === 'b' ? `<span class="val">${val}＊</span>` : `<span class="val">${val} 以上</span>`;
+    return `<span class="val">${val}</span>`;
+  };
+  let body = `<div class="nut-head"><b>${title}</b><span>${sub}</span></div>`;
+  for (const [h, rows] of data){
+    const cells = rows.map(([n, val, k]) => { const x = fmt(val, k); return x ? `<div class="cell"><span class="grow">${n}</span>${x}</div>` : ''; }).filter(Boolean);
+    if (!cells.length){
+      if (v === 'c') body += `<div>${H(h)}<div class="list"><div class="cell"><span class="grow" style="color:var(--ink2);font-size:var(--t-foot)">材料の${h}は分かりません</span></div></div></div>`;
+      continue;
+    }
+    const partial = rows.some(r => r[2] === 'p');
+    const foot = v === 'b' && partial ? F('＊一部の材料は分からないため、分かる分だけを足しています。') : '';
+    body += `<div>${H(h)}<div class="list nut">${cells.join('')}</div>${foot}</div>`;
+  }
+  if (v === 'a') body += F('「以上」は、一部の材料の値が分からず、分かる分だけを足した値です。「不明」は、どの材料も値が分からない栄養です。');
+  if (v === 'c') body += F('「以上」は、一部の材料の値が分からず、分かる分だけを足した値です。');
+  return phone(NAV('', '', '食事') + scroll(body));
+}
+T.push({id:'nutrients', label:'栄養の内訳と不明', title:'栄養の内訳と「不明」',
+  q:'料理の栄養の内訳で、どの材料でも分からない栄養（「不明」）と、一部の材料だけ分からない栄養をどう見せるか。推定した材料だけの料理（主な栄養のほかはすべて分からない）のとき、ミネラルとビタミンをどう見せるか。',
+  fixed:'決まっていること: 料理の行の「栄養の内訳 ›」（料理のまとまりの最後の行）からプッシュで開く。題は料理の名前、戻るは「‹ 食事」。主な栄養・ミネラル・ビタミンの順で、見るだけ。出す項目は「仕様: 食事を撮って推定する」の「栄養の項目」の「内訳の画面」の列。値の分からない栄養は 0 と区別する。食事の画面の合計は、分からない材料が混じる栄養に「以上」を付ける（main のまま）。左の図はおにぎり（鮭フレークだけ推定の材料で、ビタミンD は成分表の材料にも値が無い）、右の図はから揚げ（材料がすべて推定）。',
+  variants:[
+  {name:'「不明」と書く', desc:'どの材料でも分からない栄養は「不明」と書き、一部だけ分からない栄養は「以上」を付ける（食事の画面の合計とそろう）。画面の下に、2つの意味を1回だけ書く。',
+   figs:[{cap:'<b>おにぎり。</b>', html: nutScreen(NUT, 'a', 'おにぎり', '2個・ご飯 190 g ほか')},
+         {cap:'<b>から揚げ（材料がすべて推定）。</b>ミネラルとビタミンが「不明」で埋まる。', html: nutScreen(NUTALL, 'a', 'から揚げ', '5個・鶏もも肉 150 g ほか')}]},
+  {name:'「—」と ＊', desc:'分からない栄養は「—」、一部だけ分からない栄養は値に ＊ を付け、そのまとまりの下に注記。「以上」を使わないので、食事の画面の合計（「以上」）とは書き方が違う。',
+   figs:[{cap:'<b>おにぎり。</b>', html: nutScreen(NUT, 'b', 'おにぎり', '2個・ご飯 190 g ほか')},
+         {cap:'<b>から揚げ（材料がすべて推定）。</b>', html: nutScreen(NUTALL, 'b', 'から揚げ', '5個・鶏もも肉 150 g ほか')}]},
+  {name:'分からない行を出さない', desc:'どの材料でも分からない栄養の行は出さない。一部だけ分からない栄養は「以上」。まとまりの行がすべて分からないときは、まとまりの中に「材料のミネラルは分かりません」の1行だけを置く。',
+   figs:[{cap:'<b>おにぎり。</b>ビタミンD の行が無い。', html: nutScreen(NUT, 'c', 'おにぎり', '2個・ご飯 190 g ほか')},
+         {cap:'<b>から揚げ（材料がすべて推定）。</b>画面が短くなる。', html: nutScreen(NUTALL, 'c', 'から揚げ', '5個・鶏もも肉 150 g ほか')}]},
+  ]});
+
+// 7. 時刻を直す
+const CAL = `<div class="cal"><div class="mh"><span>2026年9月</span><span>‹ ›</span></div><div class="g">${'日月火水木金土'.split('').map(x => `<span class="wd">${x}</span>`).join('')}${['', '', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(d => `<span class="${d === 24 ? 'sel' : d > 24 ? 'fut' : ''}">${d}</span>`).join('')}</div></div>`;
+const WHEEL = `<div class="wheel"><div><span>10</span><span>11</span><b>12</b><span>13</span></div><div><span>18</span><span>19</span><b>20</b><span>21</span></div></div>`;
+const TIMEBASE = (timeRow, extra = '') => phone(NAV() + scroll(PHOTO + timeRow + TOT() + dishList([chicken('q')]) + extra));
+T.push({id:'time', label:'時刻を直す', title:'食事の時刻を直す',
+  q:'時刻の行を押したときの日時の選び方の出し方と、時差（その食事の時刻が UTC から何時間ずれているか。日を決めるのに使う）を見せるか・直せるようにするか。日をまたいで直したときの手応え。',
+  fixed:'決まっていること: iOS の日時の選び方（<code>DatePicker</code>）で直す。写真の食事は撮った時刻が初期値（<code>06-layout.md</code>「食事」）。カードは送った時刻の位置のまま動かず、1日の丸と日のまとめは直した日に移る（#160 の決めたことの3）。どのタイムゾーンで日を決めるかは会話で決める。旅先で撮った写真に時差が無いと、選んだときの端末の時差になり、食べた土地の時刻とずれる（#188 の利用者の話の14）。',
+  variants:[
+  {name:'行の中の小さな日時', desc:'時刻の行の右に、日付と時刻の2つの小さなボタン（<code>DatePicker</code> の compact）。押すと、その上に暦か時刻の回す欄が浮かぶ。時差は見せない。設定の「日付と時刻」やリマインダーと同じ。',
+   figs:[{cap:'<b>見ているとき。</b>', html: TIMEBASE(`<div class="list"><div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="dt"><span class="on">9月24日</span><span class="on">12:20</span></span></div></div>`)},
+         {cap:'<b>日付を押したあと。</b>暦が浮かぶ。日を選ぶと閉じ、1日の丸がその日へ移る。', html: phone(NAV() + scroll(PHOTO + `<div class="list"><div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="dt"><span class="on">9月24日</span><span class="on">12:20</span></span></div></div>` + TOT()) + `<div class="popover" style="top:330px">${CAL}</div>`)}]},
+  {name:'押すと下に広がる', desc:'時刻の行を押すと、その下に暦と時刻の回す欄が広がる（<code>DatePicker</code> の graphical）。もう一度押すと畳む。カレンダーの予定の「開始」と同じ。時差は見せない。',
+   figs:[{cap:'<b>押したあと。</b>合計と料理は下へ押し出される。', html: TIMEBASE(`<div class="list"><div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="num edit">9月24日（木）12:20</span></div>${CAL}${WHEEL}</div>`)}]},
+  {name:'時差も直せる', desc:'「行の中の小さな日時」の下に「時間帯」の行を足し、押すと時間帯の一覧へ潜って選ぶ。カレンダーの予定の「時間帯」と同じ。時刻はその時間帯での時刻として読み替える。',
+   figs:[{cap:'<b>見ているとき。</b>いつも時間帯の行がある。', html: TIMEBASE(`<div class="list"><div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="dt"><span class="on">9月24日</span><span class="on">12:20</span></span></div><div class="cell tzrow"><span class="grow">時間帯</span><span class="val">東京</span><span class="disc">›</span></div></div>`)},
+         {cap:'<b>時間帯を押したあと。</b>都市の名前で探す。選ぶと戻る。', html: phone(NAV('', '時間帯', '食事') + scroll(`<div class="searchbar">検索</div><div class="list tzpick"><div class="cell">東京<span class="check">✓</span></div><div class="cell">ホノルル</div><div class="cell">ソウル</div><div class="cell">ロサンゼルス</div></div>`))}]},
+  {name:'違うときだけ時差を見せる', desc:'食事の時差が端末の今の時差と同じなら、「行の中の小さな日時」と同じ。違うときだけ、時刻の行の下に「時間帯 GMT-10」の行が出て、押すと「時差も直せる」と同じ一覧へ潜る。日本で使うふだんは見えない。',
+   figs:[{cap:'<b>ふだん（時差が同じ）。</b>', html: TIMEBASE(`<div class="list"><div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="dt"><span class="on">9月24日</span><span class="on">12:20</span></span></div></div>`)},
+         {cap:'<b>ホノルルで撮った写真の食事を、東京で見たとき。</b>撮影時刻に時差の無い写真なら、ここが東京のまま（GMT+9）になり、この行は出ない（その写真を直すには「時差も直せる」が要る）。', html: TIMEBASE(`<div class="list"><div class="cell"><span class="grow">時刻<span class="sub">撮った時刻</span></span><span class="dt"><span class="on">9月24日</span><span class="on">12:20</span></span></div><div class="cell tzrow"><span class="grow">時間帯</span><span class="val">GMT-10</span><span class="disc">›</span></div></div>`)}]},
+  ]});
+
+// 8. 食事を削除の確かめ
+const DELBASE = (bottom, overlay = '') => phone(NAV() + scroll(dishList([onigiri('q')]) + CITE + bottom) + overlay);
+T.push({id:'delete', label:'食事を削除の確かめ', title:'「食事を削除」の確かめ',
+  q:'「食事を削除」を押したときの確かめを、今の形（行がその場で確かめに変わる）のままにするか、iOS の標準の確かめ（画面の下から出る確かめ）にするか。範囲は「食事を撮って推定する」のものだが、同じ食事の画面にあるのでここで比べる。',
+  fixed:'今の形: <code>MealScreen.swift</code> の <code>deletionSection</code>。<code>DESIGN.md</code> の Do\'s「画面を覆わずに確かめられるなら、ダイアログやシートにしない（食事の削除は、行がその場で確かめに変わる）」。凍結済みの <code>07-components/meal</code>「食事を削除」は、画面の下から確かめる形だった。開き直す理由: 行がその場で確かめに変わる形は、標準のアプリに見当たらない（連絡先の「連絡先を削除」、写真の削除はどちらも画面の下から確かめる）。',
+  variants:[
+  {name:'行がその場で変わる（今の形）', desc:'「食事を削除」の行が、説明と「食事を削除」「キャンセル」の3行に変わる。画面は覆わず、戻るも使える。',
+   figs:[{cap:'<b>押したあと。</b>', html: DELBASE(`<div class="list"><div class="cell" style="font-size:var(--t-foot);color:var(--ink2)">この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。</div><div class="cell danger">食事を削除</div><div class="cell" style="justify-content:center;color:var(--tint);font-weight:600">キャンセル</div></div>`)}]},
+  {name:'画面の下から確かめる（標準）', desc:'押すと画面の下から確かめが出る（<code>confirmationDialog</code>）。文は今と同じ。否定の操作は「キャンセル」1つ。選ぶと <code>DESIGN.md</code> の Do\'s の例を直す。',
+   figs:[{cap:'<b>押したあと。</b>', html: DELBASE(DEL, actionSheet('この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。', '食事を削除'))}]},
+  ]});
+
+// ── 描く ──
+const main = document.getElementById('main');
+main.innerHTML = T.map(t => `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${t.variants.map(v => `<div class="variant" data-v="${v.name}"><div class="vhead"><b>${v.name}</b><span>${v.desc}</span></div><div class="states">${v.figs.map(f => `<figure>${f.html}<figcaption>${f.cap}</figcaption></figure>`).join('')}</div></div>`).join('')}</section>`).join('');
+
+// ── 論点と案の切り替え（試作の道具） ──
+const topics = [...document.querySelectorAll('.topic')];
+const nav = document.getElementById('topics');
+let ti = 0, vi = 0;
+topics.forEach((t, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = `${i + 1}. ${t.dataset.label}`;
+  b.addEventListener('click', () => show(i, 0, true));
+  nav.appendChild(b);
+});
+function variants(){ return [...topics[ti].querySelectorAll('.variant')]; }
+function show(t, v, scroll){
+  ti = (t + topics.length) % topics.length;
+  const vs = variants();
+  vi = (v + vs.length) % vs.length;
+  topics.forEach((x, i) => { x.hidden = i !== ti; });
+  vs.forEach((x, i) => { x.hidden = i !== vi; });
+  [...nav.children].forEach((b, i) => b.setAttribute('aria-current', String(i === ti)));
+  document.getElementById('lab').innerHTML = `<b>${String.fromCharCode(65 + vi)}</b>${vs[vi].dataset.v}（${vi + 1}/${vs.length}）`;
+  try { history.replaceState(null, '', `#${topics[ti].dataset.topic}-${vi + 1}`); } catch (e) {}
+  if (scroll) topics[ti].scrollIntoView({block: 'start'});
+}
+document.getElementById('prev').addEventListener('click', () => show(ti, vi - 1));
+document.getElementById('next').addEventListener('click', () => show(ti, vi + 1));
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') show(ti, vi - 1);
+  if (e.key === 'ArrowRight') show(ti, vi + 1);
+});
+(() => {
+  const m = location.hash.match(/^#([a-z-]+?)-(\d+)$/);
+  const t = m ? topics.findIndex(x => x.dataset.topic === m[1]) : -1;
+  show(t < 0 ? 0 : t, m && t >= 0 ? +m[2] - 1 : 0);
+})();
+</script>
