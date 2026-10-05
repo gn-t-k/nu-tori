@@ -12,7 +12,7 @@ extension XCUIApplication {
         lockoutDefaults: String? = nil,
         now: UITestNow = .morningBeforeNotice,
         timeZone: String?,
-        contentSizeCategory: String? = nil
+        textSize: UITestTextSize? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
@@ -36,9 +36,8 @@ extension XCUIApplication {
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
         }
-        // 文字の大きさ（UICTContentSizeCategoryAccessibilityXXXL など）を、端末の設定によらずこれにする
-        if let contentSizeCategory {
-            app.launchArguments += ["-UIPreferredContentSizeCategoryName", contentSizeCategory]
+        if let textSize {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", textSize.rawValue]
         }
         app.launch()
         return app

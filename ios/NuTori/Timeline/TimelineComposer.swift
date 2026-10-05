@@ -106,40 +106,53 @@ private struct ComposerButtonsLayout: Layout {
     var spacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
-        guard let width = proposal.width else {
-            return CGSize(width: oneRowWidth(sizes), height: sizes.map(\.height).max() ?? 0)
+        let rows = rows(in: proposal.width, subviews: subviews)
+        guard let wrapped = rows.wrapped else {
+            return CGSize(width: proposal.width ?? rows.firstRowWidth, height: rows.firstRowHeight)
         }
-        guard let last = subviews.last, oneRowWidth(sizes) > width else {
-            return CGSize(width: width, height: sizes.map(\.height).max() ?? 0)
-        }
-        let firstRowHeight = sizes.dropLast().map(\.height).max() ?? 0
-        let lastHeight = last.sizeThatFits(ProposedViewSize(width: width, height: nil)).height
-        return CGSize(width: width, height: firstRowHeight + spacing + lastHeight)
+        let wrappedHeight = wrapped.sizeThatFits(
+            ProposedViewSize(width: proposal.width, height: nil)
+        ).height
+        return CGSize(
+            width: proposal.width ?? rows.firstRowWidth,
+            height: rows.firstRowHeight + spacing + wrappedHeight)
     }
 
     func placeSubviews(
         in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()
     ) {
-        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
-        let wraps = oneRowWidth(sizes) > bounds.width
-        let rowCount = wraps ? subviews.count - 1 : subviews.count
-        let rowHeight = sizes.prefix(rowCount).map(\.height).max() ?? 0
+        let rows = rows(in: bounds.width, subviews: subviews)
         var x = bounds.minX
-        for index in subviews.indices.prefix(rowCount) {
-            subviews[index].place(
-                at: CGPoint(x: x, y: bounds.minY + rowHeight / 2), anchor: .leading,
-                proposal: ProposedViewSize(sizes[index]))
-            x += sizes[index].width + spacing
+        for (subview, size) in rows.firstRow {
+            subview.place(
+                at: CGPoint(x: x, y: bounds.minY + rows.firstRowHeight / 2), anchor: .leading,
+                proposal: ProposedViewSize(size))
+            x += size.width + spacing
         }
-        if wraps, let last = subviews.last {
-            last.place(
-                at: CGPoint(x: bounds.minX, y: bounds.minY + rowHeight + spacing),
-                proposal: ProposedViewSize(width: bounds.width, height: nil))
-        }
+        rows.wrapped?.place(
+            at: CGPoint(x: bounds.minX, y: bounds.minY + rows.firstRowHeight + spacing),
+            proposal: ProposedViewSize(width: bounds.width, height: nil))
     }
 
-    private func oneRowWidth(_ sizes: [CGSize]) -> CGFloat {
-        sizes.map(\.width).reduce(0, +) + spacing * CGFloat(max(sizes.count - 1, 0))
+    private struct Rows {
+        var firstRow: [(subview: LayoutSubview, size: CGSize)]
+        /// 1行に入らず、下の行に全幅で置くボタン
+        var wrapped: LayoutSubview?
+        var firstRowWidth: CGFloat
+        var firstRowHeight: CGFloat { firstRow.map(\.size.height).max() ?? 0 }
+    }
+
+    /// 幅が決まっていないときは、すべてを1行に並べる
+    private func rows(in width: CGFloat?, subviews: Subviews) -> Rows {
+        var firstRow = subviews.map { (subview: $0, size: $0.sizeThatFits(.unspecified)) }
+        var wrapped: LayoutSubview?
+        if let width, rowWidth(firstRow) > width {
+            wrapped = firstRow.popLast()?.subview
+        }
+        return Rows(firstRow: firstRow, wrapped: wrapped, firstRowWidth: rowWidth(firstRow))
+    }
+
+    private func rowWidth(_ row: [(subview: LayoutSubview, size: CGSize)]) -> CGFloat {
+        row.map(\.size.width).reduce(0, +) + spacing * CGFloat(max(row.count - 1, 0))
     }
 }
