@@ -17,6 +17,7 @@ struct SignInView: View {
                 }
             }
             VStack(spacing: 12) {
+                // DESIGN.md の「押した操作の応答待ち」はボタンの中に回る印を出すが、Apple のボタンは中身を差し替えられないので、すぐ上に置く
                 statusLine
                     // 下に残す欄では送る側より先に縮められるので、文字を大きくしても文を途中で切らない
                     .fixedSize(horizontal: false, vertical: true)
