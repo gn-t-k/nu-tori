@@ -135,24 +135,22 @@ private struct ComposerButtonsLayout: Layout {
     }
 
     private struct Rows {
-        var firstRow: [(subview: LayoutSubview, size: CGSize)]
+        let firstRow: [(subview: LayoutSubview, size: CGSize)]
         /// 1行に入らず、下の行に全幅で置くボタン
-        var wrapped: LayoutSubview?
-        var firstRowWidth: CGFloat
+        let wrapped: LayoutSubview?
+        let spacing: CGFloat
+        var firstRowWidth: CGFloat {
+            firstRow.map(\.size.width).reduce(0, +) + spacing * CGFloat(max(firstRow.count - 1, 0))
+        }
         var firstRowHeight: CGFloat { firstRow.map(\.size.height).max() ?? 0 }
     }
 
-    /// 幅が決まっていないときは、すべてを1行に並べる
+    /// 幅を決めずに理想の大きさを聞かれたときは、1行に並べた大きさを答える
     private func rows(in width: CGFloat?, subviews: Subviews) -> Rows {
-        var firstRow = subviews.map { (subview: $0, size: $0.sizeThatFits(.unspecified)) }
-        var wrapped: LayoutSubview?
-        if let width, rowWidth(firstRow) > width {
-            wrapped = firstRow.popLast()?.subview
-        }
-        return Rows(firstRow: firstRow, wrapped: wrapped, firstRowWidth: rowWidth(firstRow))
-    }
-
-    private func rowWidth(_ row: [(subview: LayoutSubview, size: CGSize)]) -> CGFloat {
-        row.map(\.size.width).reduce(0, +) + spacing * CGFloat(max(row.count - 1, 0))
+        let all = Rows(
+            firstRow: subviews.map { ($0, $0.sizeThatFits(.unspecified)) }, wrapped: nil,
+            spacing: spacing)
+        guard let width, all.firstRowWidth > width else { return all }
+        return Rows(firstRow: all.firstRow.dropLast(), wrapped: subviews.last, spacing: spacing)
     }
 }
