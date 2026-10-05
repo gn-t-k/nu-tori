@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 import type { SyncClientState } from "../sync-client-state";
+import type { SyncWriteOutcome } from "../sync-write-outcome";
 import type { RejectionReason } from "../rejection-reason";
 import type { UsageEvent } from "../usage-event";
 import type { CurrentRecord } from "./current-record";
@@ -46,11 +47,11 @@ export const createSyncLedger = <
       const settled = request.writes.map((write, positionInRequest) => {
         const previousReceipt = store.findWriteReceipt(write.id);
         if (previousReceipt !== undefined) {
-          return {
-            writeId: write.id,
-            outcome: previousReceipt.outcome,
-            target: { recordType: previousReceipt.recordType, recordId: previousReceipt.recordId },
-          };
+          // 種類を探すのは受け付けなかったときだけにする。受け付けた書き込みの再送は、種類を登録簿から外したあとも通す
+          return settle(write.id, previousReceipt.outcome, () => ({
+            owner: findOwner(previousReceipt.recordType, "登録簿に無い種類の控え"),
+            recordId: previousReceipt.recordId,
+          }));
         }
         const owner = kinds.find((kind) => kind.writes?.isWrite(write) === true);
         if (owner?.writes === undefined) {
@@ -96,25 +97,21 @@ export const createSyncLedger = <
             reason: decision.outcome.reason,
           });
         }
-        return {
-          writeId: write.id,
-          outcome: decision.outcome,
-          target: { recordType: owner.name, recordId: decision.recordId },
-        };
+        return settle(write.id, decision.outcome, () => ({ owner, recordId: decision.recordId }));
       });
       // 今の値は、要求の書き込みを全部当て終えてから読む。同じ書き込みの ID が再び届いたときも同じ（控えには持たない）
       const results = settled.map(
-        ({ writeId, outcome, target }): PushedResult<TRecordType, TValue> => ({
+        ({ writeId, outcome, rejectedTarget }): PushedResult<TRecordType, TValue> => ({
           writeId,
           outcome,
           rejectedRecord:
-            outcome.result === "rejected"
-              ? {
-                  recordType: target.recordType,
-                  recordId: target.recordId,
-                  current: readRejectedCurrent(target.recordType, target.recordId),
-                }
-              : undefined,
+            rejectedTarget === undefined
+              ? undefined
+              : {
+                  recordType: rejectedTarget.owner.name,
+                  recordId: rejectedTarget.recordId,
+                  current: readRejectedCurrent(rejectedTarget.owner, rejectedTarget.recordId),
+                },
         }),
       );
       return { results, rejectedWrites, usageEvents, previousRequestReceivedAt };
@@ -164,6 +161,16 @@ export const createSyncLedger = <
       }),
     );
 
+  // 受け付けなかったときだけ、今の値を読む種類と記録を持たせる
+  const settle = (
+    writeId: string,
+    outcome: SyncWriteOutcome,
+    findRejectedTarget: () => { owner: Kind; recordId: string },
+  ) =>
+    outcome.result === "rejected"
+      ? { writeId, outcome, rejectedTarget: findRejectedTarget() }
+      : { writeId, outcome, rejectedTarget: undefined };
+
   const findOwner = (recordType: TRecordType, missingMessage: string) => {
     const owner = kinds.find((kind) => kind.name === recordType);
     if (owner === undefined) {
@@ -173,11 +180,7 @@ export const createSyncLedger = <
   };
 
   // 受け付けなかった書き込みの記録は、まだ作られていないことがあるので、どの種類でも無いこと（absent）を返す
-  const readRejectedCurrent = (
-    recordType: TRecordType,
-    recordId: string,
-  ): CurrentRecord<TValue> => {
-    const owner = findOwner(recordType, "登録簿に無い種類の控え");
+  const readRejectedCurrent = (owner: Kind, recordId: string): CurrentRecord<TValue> => {
     const current = owner.readCurrent(recordId);
     match(current.status)
       .with("value", "absent", () => undefined)
