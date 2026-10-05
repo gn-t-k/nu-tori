@@ -274,7 +274,7 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - **削除（button-destructive）**: `role: .destructive`。ボタンには削除するものの名前を入れる（「食事を削除」）
 - **一覧（list、list-row）**: 押して潜れる行には `chevron.right` を付ける。押してその場で直せる値は Primary で書く（list-row-editable-value）
 - **タイムラインのカード（timeline-card）**: 知らせ、週の振り返り。アプリからの知らせは全幅の白いカード
-- **入力欄（composer-field、composer-camera、composer-photos、composer-weight、composer-send）**: タイムラインの下に固定する。左から「撮る」「写真」「体重」の丸いアイコンのボタンを左に寄せる。「撮る」はいつも Primary で塗り、「写真」と記録済みの「体重」は灰色の丸にする。その日の体重が未記録のあいだは、「体重」を Primary で塗った文字のカプセル「体重を記録」（高さ 44、アイコンなし）に広げる（composer-weight-unrecorded）。書く欄は1行から始まり5行まで伸び、「送る」は欄の右端に置く
+- **入力欄（composer-field、composer-camera、composer-photos、composer-weight、composer-send）**: タイムラインの下に固定する。左から「撮る」「写真」「体重」の丸いアイコンのボタンを左に寄せる。「撮る」はいつも Primary で塗り、「写真」と記録済みの「体重」は灰色の丸にする。その日の体重が未記録のあいだは、「体重」を Primary で塗った文字のカプセル「体重を記録」（高さ 44、アイコンなし）に広げる（composer-weight-unrecorded）。大きな文字でカプセルが「撮る」「写真」の横に入らないときは、文字を1行のまま、丸の行の下に入力欄の幅いっぱいで置く。書く欄は1行から始まり5行まで伸び、「送る」は欄の右端に置く
 - **プリセット（preset-chip）**: 入力欄の上に並べる、角の丸いチップ。押せる範囲は 44 に広げる
 - **自分の記録（own-record-card）と自分の発言（own-message-bubble）**: 自分が記録した食事と体重は右に寄せ、Primary を薄く敷いたカードにする。自分が書いた文は Primary の吹き出しで右に寄せる
 - **返ってきた発言（reply-message）**: 吹き出しにせず、左の地の上に文で置く

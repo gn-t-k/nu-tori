@@ -11,7 +11,8 @@ extension XCUIApplication {
         pickedPhotoCount: Int = 0,
         lockoutDefaults: String? = nil,
         now: UITestNow = .morningBeforeNotice,
-        timeZone: String?
+        timeZone: String?,
+        contentSizeCategory: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
@@ -34,6 +35,10 @@ extension XCUIApplication {
         app.launchEnvironment["UI_TEST_NOW"] = now.rawValue
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
+        }
+        // 文字の大きさ（UICTContentSizeCategoryAccessibilityXXXL など）を、端末の設定によらずこれにする
+        if let contentSizeCategory {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", contentSizeCategory]
         }
         app.launch()
         return app
