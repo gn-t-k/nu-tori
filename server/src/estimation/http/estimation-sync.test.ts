@@ -92,6 +92,7 @@ describe("推定", () => {
           name: "親子丼",
           quantity: 1,
           unit: "杯",
+          quantitySource: "estimated",
           positionInMeal: 0,
           version: 1,
         },
@@ -101,6 +102,7 @@ describe("推定", () => {
           name: "緑茶",
           quantity: 1,
           unit: "本",
+          quantitySource: "estimated",
           positionInMeal: 1,
           version: 1,
         },
@@ -119,6 +121,7 @@ describe("推定", () => {
           unit: "g",
           edibleGramsPerUnit: 1,
           positionInDish: 0,
+          quantitySource: "estimated",
           nutrientSource: { type: "food_composition", foodNumber: "11225" },
           // 成分表の (0) は 0 の値にし、「-」（ヨウ素・セレン・クロム・モリブデン・ビオチン）は持たない
           nutrients: {
@@ -160,6 +163,7 @@ describe("推定", () => {
           unit: "g",
           edibleGramsPerUnit: 1,
           positionInDish: 1,
+          quantitySource: "estimated",
           nutrientSource: { type: "estimated" },
           nutrients: {
             energy_kcal: 156,
@@ -178,6 +182,7 @@ describe("推定", () => {
           unit: "本",
           edibleGramsPerUnit: 500,
           positionInDish: 0,
+          quantitySource: "estimated",
           nutrientSource: { type: "nutrition_label", labelBasisGrams: 100 },
           nutrients: { energy_kcal: 0, protein_g: 0, salt_equivalent_g: 0.02 },
         },

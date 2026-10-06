@@ -10,6 +10,7 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
+import { correctDishByWrites } from "../../dish/http/testing/correct-dish-by-writes";
 import { inspectDeletedContents } from "../../dish/http/testing/inspect-deleted-contents";
 import { seedNotYetWritableEdits } from "../../dish/http/testing/seed-not-yet-writable-edits";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
@@ -672,12 +673,16 @@ describe("食事の同期", () => {
       const estimated = (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes;
       dishIds = estimated.filter(({ kind }) => kind === "dish").map(({ recordId }) => recordId);
       const estimatedIngredients = estimated.filter(({ kind }) => kind === "ingredient");
-      const editedIngredientId =
-        estimatedIngredients.find(({ record }) => record["dishId"] === dishIds[0])?.recordId ?? "";
+      const { secondRenameWriteId } = await correctDishByWrites(sessionToken, {
+        dishId: dishIds[0] ?? "",
+        ingredientIds: estimatedIngredients
+          .filter(({ record }) => record["dishId"] === dishIds[0])
+          .map(({ recordId }) => recordId),
+      });
       const { replacingIngredientId } = await seedNotYetWritableEdits(accountId, {
         mealId,
         dishId: dishIds[0] ?? "",
-        ingredientId: editedIngredientId,
+        cancellingRenameWriteId: secondRenameWriteId,
       });
       ingredientIds = [
         ...estimatedIngredients.map(({ recordId }) => recordId),

@@ -6,8 +6,13 @@ export const toDishRecord = (value: Dish): z.input<typeof dishRecordSchema> => (
   id: value.id,
   mealId: value.mealId,
   name: value.name,
-  quantity: value.quantity,
-  unit: value.unit,
+  ...(value.quantity === undefined
+    ? {}
+    : {
+        quantity: value.quantity.value,
+        unit: value.quantity.unit,
+        quantitySource: value.quantity.source,
+      }),
   positionInMeal: value.positionInMeal,
   version: value.version,
 });

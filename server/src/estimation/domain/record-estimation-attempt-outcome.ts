@@ -4,7 +4,7 @@ import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordType } from "../../domain/record-type";
 import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
-import type { Ingredient } from "../../ingredient/domain/ingredient";
+import type { NewIngredient } from "../../ingredient/domain/ingredient";
 import type { BegunEstimationAttempt } from "./begin-estimation-attempts";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimatedDish } from "./estimated-dish";
@@ -41,7 +41,7 @@ export const recordEstimationAttemptOutcome = (
       const computeEnded = (
         finalStatus: "estimated" | "no_dishes" | "failed",
         dishes: readonly NewDish[],
-        ingredients: readonly Ingredient[],
+        ingredients: readonly NewIngredient[],
       ) =>
         computeEstimationEndedEvent({
           finalStatus,
@@ -89,7 +89,11 @@ const toRecords = (
   mealId: string,
   estimationId: string,
   estimated: readonly EstimatedDish[],
-): { dishes: NewDish[]; applications: DishEstimationApplication[]; ingredients: Ingredient[] } => {
+): {
+  dishes: NewDish[];
+  applications: DishEstimationApplication[];
+  ingredients: NewIngredient[];
+} => {
   const withIds = estimated.map(({ ingredients, name, quantity, unit }, positionInMeal) => {
     const dishId = crypto.randomUUID();
     return {

@@ -1,8 +1,24 @@
 // 端末から届く料理の書き込み。入口は受け口で値を確かめず、ドメイン層で確かめる
-export type DishWrite = { id: string } & { type: "delete_dish"; dishId: string };
+export type DishWrite = { id: string } & (
+  | { type: "delete_dish"; dishId: string }
+  | {
+      type: "update_dish";
+      dishId: string;
+      name: string;
+      // 量の無い料理の名前を直すときは省く
+      quantity: DishQuantityCorrection | undefined;
+    }
+);
+
+// 直した料理の量と、端末が同じ割合で変えた今の材料の量（比例）。サーバーは割合を計算し直さない
+export type DishQuantityCorrection = {
+  value: number;
+  proportionedIngredients: readonly { ingredientId: string; quantity: number }[];
+};
 
 // 書き込みの type の一覧。ドメインの種類の見分けと、受け口の見分けが、ここを使う
 export const dishWriteTypes: readonly string[] = Object.keys({
   delete_dish: true,
+  update_dish: true,
   // キーを書き込みの型に合わせ、type を足したときの足し忘れを型エラーにする
 } satisfies Record<DishWrite["type"], true>);

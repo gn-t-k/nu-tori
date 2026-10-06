@@ -10,4 +10,11 @@ export const toDishWrite = (write: z.infer<(typeof dishWriteSchemas)[number]>): 
       type: "delete_dish",
       dishId,
     }))
+    .with({ type: "update_dish" }, ({ id, dishId, name, quantity }): SyncWrite => ({
+      id,
+      type: "update_dish",
+      dishId,
+      name,
+      quantity,
+    }))
     .exhaustive();

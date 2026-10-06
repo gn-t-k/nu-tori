@@ -6,7 +6,14 @@ export const ingredientRecordSchema = z
     id: z.string(),
     dishId: z.string(),
     name: z.string(),
-    quantity: z.number(),
+    quantity: z.number().openapi({
+      description:
+        "今の量。直した量か、料理の量に比例させた量のうち受け取った順でいちばんあとのもの。無ければ推定した量",
+    }),
+    quantitySource: z.enum(["estimated", "corrected"]).openapi({
+      description:
+        "量の出どころ。推定したまま（estimated）か、材料の量を直した（corrected）か。料理の量に比例させた量は estimated のまま",
+    }),
     unit: z.string(),
     edibleGramsPerUnit: z.number(),
     positionInDish: z.number().int(),
