@@ -62,6 +62,11 @@ final class YieldingSyncBoxMock: SyncBox, RecordCacheReading {
         return try await box.dishes()
     }
 
+    func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus] {
+        await Task.yield()
+        return try await box.dishEstimationStatuses()
+    }
+
     func ingredients() async throws -> [Ingredient] {
         await Task.yield()
         return try await box.ingredients()

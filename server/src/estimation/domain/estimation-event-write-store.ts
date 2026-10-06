@@ -1,10 +1,14 @@
 import type { EstimationEvents } from "./estimation-events";
 
-// 推定の出来事（予定・つなぎ・見送り・推定・試み・結果・完了・断念）を書く置き場。どれも INSERT だけで持つ。
+// 推定の出来事（予定・つなぎ・取り消し・見送り・推定・試み・結果・完了・断念）を書く置き場。どれも INSERT だけで持つ。
 // 推定の書き込みの口（writeEstimationEvents）にだけ渡し、ほかは読みだけの置き場で読む
 export type EstimationEventWriteStore = {
-  // 予定と一緒につなぎも書く
+  // 予定と一緒に食事とのつなぎも書く
   insertMealSchedule: (schedule: EstimationEvents["schedule"]) => void;
+  // 予定と一緒に料理とのつなぎも書く
+  insertDishSchedule: (schedule: EstimationEvents["dishSchedule"]) => void;
+  // 取り消した予定は待っている予定から外れる
+  insertCancellation: (cancellation: EstimationEvents["cancellation"]) => void;
   // 見送った予定は待っている予定から外れる
   insertDeferral: (deferral: EstimationEvents["deferral"]) => void;
   // 同じ予定から二度始めないことは、表の一意で守る

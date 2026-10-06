@@ -1,6 +1,8 @@
 import { match } from "ts-pattern";
 import { deleteDishes } from "../../dish/domain/delete-dishes";
 import type { DishStore } from "../../dish/domain/dish-store";
+import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
+import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
 import { computeEstimationEndedEvent } from "../../estimation/domain/compute-estimation-ended-event";
 import type { EstimationStore } from "../../estimation/domain/estimation-store";
 import { findMealReceivedAt } from "../../estimation/domain/find-meal-received-at";
@@ -51,7 +53,7 @@ export const createMealKind = (
 });
 
 // 食事の書き込みが、食事のほかに変える記録の種類
-type AddedRecordType = "meal_estimation_status" | "dish" | "ingredient";
+type AddedRecordType = "meal_estimation_status" | "dish" | "ingredient" | "dish_estimation_status";
 
 // 食事の書き込みが読み書きする置き場
 type MealKindStores = {
@@ -62,6 +64,7 @@ type MealKindStores = {
   estimation: EstimationStore;
   writeEstimationEvents: RecordKindStores["writeEstimationEvents"];
   dish: DishStore;
+  dishEstimationStatus: DishEstimationStatusStore;
   ingredient: IngredientStore;
 };
 
@@ -178,8 +181,9 @@ const discarded = (
   };
 };
 
-// 料理・材料・写真の宣言を消し、それぞれの削除の印を残す。料理と材料の変更は1つずつ足す。
-// 推定中の食事なら、つなぎが CASCADE で消える前に推定を読み、推定ごとの出来事を「食事が消えた」で送る
+// 料理・材料・写真の宣言を消し、それぞれの削除の印を残す。料理と材料の変更は1つずつ足し、推定し直しの予定のある料理は、
+// 料理ごとの推定の状態の変更も足す。推定中の食事と、推定し直しの推定中の料理なら、つなぎが CASCADE で消える前に推定を読み、
+// 推定ごとの出来事を「食事が消えた」で送る
 const decideDelete = (
   stores: MealKindStores,
   mealId: string,
@@ -200,6 +204,9 @@ const decideDelete = (
   const meal = store.find(mealId);
   const dishIds = stores.dish.findIdsOfMeal(mealId);
   const ingredientIds = stores.ingredient.findIdsOfMeal(mealId);
+  const scheduledDishIds = dishIds.filter(
+    (dishId) => stores.dishEstimationStatus.findSchedulesOfDish(dishId).length > 0,
+  );
   // 食事がまだ届いていなくても印を残し、同じ要求やあとから届く作る書き込みで生き返らせない
   return {
     writeKind: "delete",
@@ -210,8 +217,22 @@ const decideDelete = (
       { recordType: "meal_estimation_status", recordId: mealId },
       ...dishIds.map((recordId) => ({ recordType: "dish" as const, recordId })),
       ...ingredientIds.map((recordId) => ({ recordType: "ingredient" as const, recordId })),
+      ...scheduledDishIds.map((recordId) => ({
+        recordType: "dish_estimation_status" as const,
+        recordId,
+      })),
     ],
-    usageEvents: computeMealDeletedEstimationEvents(stores, mealId, receivedAt),
+    usageEvents: [
+      ...computeMealDeletedEstimationEvents(stores, mealId, receivedAt),
+      ...scheduledDishIds.flatMap((dishId) =>
+        computeDishDeletedEstimationEvents(
+          stores,
+          { id: dishId, mealId },
+          "meal_deleted",
+          receivedAt,
+        ),
+      ),
+    ],
     // #332 の「消す順」: 料理ごとの中身を消してから、食事の時刻の修正を消し、食事の削除の印を書いて食事を消す
     commit: (receiptId) => {
       deleteDishes(stores, { dishIds, ingredientIds }, receiptId);
@@ -282,6 +303,7 @@ const computeMealDeletedEstimationEvents = (
   }
   return [
     computeEstimationEndedEvent({
+      trigger: "photo",
       finalStatus: "meal_deleted",
       attempts: stores.estimation.findAttempts(estimationId),
       receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),

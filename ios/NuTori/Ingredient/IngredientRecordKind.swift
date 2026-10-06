@@ -4,7 +4,7 @@ import NuToriCore
 import SwiftData
 
 /// 材料の、登録簿の1行。取りに行った材料をキャッシュに当てる。
-/// サーバーだけが書く種類なので、送る書き込みは持たない（`IngredientSyncing`）
+/// 送る書き込みと受け付けなかったときの扱いは、キャッシュの型に依らないので `IngredientSyncing` が持つ
 nonisolated struct IngredientRecordKind: RecordKind {
     var synced: any SyncedRecordKind { syncing }
 

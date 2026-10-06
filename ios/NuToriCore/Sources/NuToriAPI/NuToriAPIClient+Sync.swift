@@ -159,6 +159,17 @@ extension Components.Schemas.SyncWrite {
         case .deleteMeal(let writeId, let mealId):
             self = .deleteMeal(
                 .init(id: writeId.uuidString, _type: .deleteMeal, mealId: mealId.uuidString))
+        case .createDish(let writeId, let dish):
+            self = .createDish(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .createDish,
+                    dishId: dish.id.uuidString,
+                    mealId: dish.mealId.uuidString,
+                    name: dish.name,
+                    positionInMeal: dish.positionInMeal
+                )
+            )
         case .deleteDish(let writeId, let dishId):
             self = .deleteDish(
                 .init(id: writeId.uuidString, _type: .deleteDish, dishId: dishId.uuidString))
@@ -311,6 +322,7 @@ extension SyncWriteResult.RejectionReason {
         case "photo_already_used": self = .photoAlreadyUsed
         case "invalid_notice_type": self = .invalidNoticeType
         case "invalid_target_on": self = .invalidTargetOn
+        case "ingredients_replaced": self = .ingredientsReplaced
         default: self = .unknown(reason: reason)
         }
     }
@@ -370,6 +382,20 @@ extension SyncChange {
         case "dish_deletion":
             if let dishId = UUID(uuidString: recordId) {
                 self = .dishDeletion(dishId: dishId)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "dish_estimation_status":
+            if let status = try? record.decoded(as: DishEstimationStatusPayload.self)
+                .syncedStatus
+            {
+                self = .dishEstimationStatus(status)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "dish_estimation_status_deletion":
+            if let dishId = UUID(uuidString: recordId) {
+                self = .dishEstimationStatusDeletion(dishId: dishId)
             } else {
                 self = .unknown(kind: kind)
             }

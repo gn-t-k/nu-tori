@@ -6,7 +6,8 @@ extension RecordKindRegistry where Cache == RecordCacheMock {
         -> RecordKindRegistry<RecordCacheMock>
     {
         let base: [any RecordKind<RecordCacheMock>] = [
-            AccountSettingsRecordKindMock(), DishRecordKindMock(), IngredientRecordKindMock(),
+            AccountSettingsRecordKindMock(), DishRecordKindMock(),
+            DishEstimationStatusRecordKindMock(), IngredientRecordKindMock(),
             MealRecordKindMock(), MealEstimationStatusRecordKindMock(), NoticeRecordKindMock(),
             UsualWeighingTimeRecordKindMock(), WeightRecordKindMock(), WeightTrendRecordKindMock(),
         ]

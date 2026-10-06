@@ -83,6 +83,13 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         oldest_pending_write_age_seconds: reported.oldestPendingWriteAgeSeconds,
       },
     }))
+    .with({ name: "reestimated_dish_edited" }, (edited) => ({
+      name: edited.name,
+      properties: {
+        action: edited.action,
+        seconds_from_reestimation_ended: edited.secondsFromReestimationEnded,
+      },
+    }))
     .with({ name: "estimated_quantity_corrected" }, (corrected) => ({
       name: corrected.name,
       properties: {

@@ -5,10 +5,15 @@ import type { DishQuantityCorrection } from "./dish-write";
 export type DishStore = {
   // 今の値（量と単位と版は出来事から出す）
   find: (id: string) => Dish | undefined;
+  exists: (id: string) => boolean;
   hasDeletion: (id: string) => boolean;
+  // 使う人が足した料理か（料理を作る書き込みを当てた控えがある）。料理に作り手は持たない
+  wasAddedByUser: (id: string) => boolean;
+  // 料理が対象の推定（推定し直し）を当てたうち、いちばん新しいものの終わり（完了か断念）の時刻。当てていなければ undefined
+  findNewestReestimationEndedAt: (id: string) => Date | undefined;
   findIdsOfMeal: (mealId: string) => string[];
   insert: (dish: NewDish) => void;
-  // 当てた推定と推定の量を書く。材料はこのあとに、同じ推定の ID を付けて書く
+  // 当てた推定と推定の量（あれば）を書く。材料はこのあとに、同じ推定の ID を付けて書く
   insertEstimationApplication: (application: DishEstimationApplication) => void;
   // 料理を直した書き込みの控えに、直した名前を書く（料理は控えの record_id）
   insertNameCorrection: (receiptId: WriteReceiptId, name: string) => void;

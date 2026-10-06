@@ -3,6 +3,8 @@ public import Foundation
 /// 食事の書き込み。送り待ちの置き場には、食事の種類の名前と、この中身の JSON で入る
 public enum MealWrite: PendingWriteBody {
     case create(Meal)
+    /// 撮った時刻を直す。時差・送った時刻・入口は変えない
+    case update(mealId: UUID, eatenAt: Date)
     case delete(mealId: UUID)
 
     public static var kindName: RecordKindName { MealSyncing.kindName }
@@ -15,13 +17,16 @@ public enum MealWrite: PendingWriteBody {
     }
 
     /// 送り待ちに保存する JSON。キーを足すときは、無くても読める形にする（`docs/agents/sync.md`「置き場の約束」）
+    /// case を足しても、前の版が残した送り待ちはそのまま読める（case ごとのキーで入るため）
     public enum Stored: Codable {
         case create(StoredMeal)
+        case update(mealId: UUID, eatenAt: Date)
         case delete(mealId: UUID)
 
         init(_ write: MealWrite) {
             switch write {
             case .create(let meal): self = .create(StoredMeal(meal))
+            case .update(let mealId, let eatenAt): self = .update(mealId: mealId, eatenAt: eatenAt)
             case .delete(let mealId): self = .delete(mealId: mealId)
             }
         }
@@ -29,6 +34,7 @@ public enum MealWrite: PendingWriteBody {
         func write() -> MealWrite? {
             switch self {
             case .create(let stored): stored.meal().map { .create($0) }
+            case .update(let mealId, let eatenAt): .update(mealId: mealId, eatenAt: eatenAt)
             case .delete(let mealId): .delete(mealId: mealId)
             }
         }

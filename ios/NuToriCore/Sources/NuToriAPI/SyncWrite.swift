@@ -14,6 +14,8 @@ public enum SyncWrite: Sendable, Equatable {
     case updateMeal(writeId: UUID, mealId: UUID, eatenAt: Date)
     /// サーバーは受け付けないことが無い。知らない ID でも削除の印を残す
     case deleteMeal(writeId: UUID, mealId: UUID)
+    /// 料理を足す。食事が無い、範囲の外の名前は、サーバーが受け付けない。食事が消えていれば、サーバーは料理の削除の印を残して捨てる
+    case createDish(writeId: UUID, dish: NewDish)
     /// サーバーは受け付けないことが無い。知らない ID でも削除の印を残す。料理のすべての材料も消える
     case deleteDish(writeId: UUID, dishId: UUID)
     /// 消えていた料理、範囲の外の名前と量は、サーバーが受け付けない

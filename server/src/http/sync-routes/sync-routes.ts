@@ -60,7 +60,8 @@ const routes = new OpenAPIHono<{ Bindings: Env }>()
                       }),
                       rejectionReason: z.string().optional().openapi({
                         description:
-                          "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ",
+                          "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと",
+                        example: "ingredients_replaced",
                       }),
                       current: syncWriteCurrentSchema.optional().openapi({
                         description:

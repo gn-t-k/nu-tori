@@ -6,6 +6,7 @@ import type { EstimationAttempt } from "./estimation-store";
 
 // 推定ごとの出来事。料理と材料は、推定できたときだけ数える（料理なし・諦めた・食事が消えたは 0）
 export const computeEstimationEndedEvent = (ended: {
+  trigger: Extract<UsageEvent, { name: "estimation_ended" }>["trigger"];
   finalStatus: Extract<UsageEvent, { name: "estimation_ended" }>["finalStatus"];
   attempts: readonly EstimationAttempt[];
   receivedAt: Date;
@@ -17,7 +18,7 @@ export const computeEstimationEndedEvent = (ended: {
     ended.ingredients.filter(({ nutrientSource }) => nutrientSource.type === type).length;
   return {
     name: "estimation_ended",
-    trigger: "photo",
+    trigger: ended.trigger,
     finalStatus: ended.finalStatus,
     retryCount: Math.max(ended.attempts.length - 1, 0),
     dishCount: ended.dishCount,

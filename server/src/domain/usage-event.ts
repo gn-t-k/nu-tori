@@ -33,11 +33,13 @@ export type UsageEvent =
       matchIngredientsUsage: TokenUsage | undefined;
     }
   | {
-      // 推定し終えた・諦めたとき。推定中に食事を消したときは、食事を消す書き込みで送る
+      // 推定し終えた・諦めたとき。推定中に食事・料理を消したときは、食事・料理を消す書き込みで送る
       name: "estimation_ended";
-      // 推定のきっかけ。仕様（#188）が送るものに挙げ、あとで文章からの推定を足したときに PostHog で分けて見るため、今は写真だけでも送る
-      trigger: "photo";
-      finalStatus: "estimated" | "no_dishes" | "failed" | "meal_deleted";
+      // 推定のきっかけ。写真の推定（食事が対象）と、名前を直した・料理を足したときの推定し直し（料理が対象）
+      trigger: "photo" | "dish_renamed" | "dish_added";
+      // 料理が対象の推定は、料理ごとの推定の状態の値（estimated・no_dishes・failed）で送る。
+      // 推定中に消えたら、消えたものの区分（食事・料理）で送る
+      finalStatus: "estimated" | "no_dishes" | "failed" | "meal_deleted" | "dish_deleted";
       // 自動のやり直しの回数（試みの数 - 1）
       retryCount: number;
       dishCount: number;
@@ -58,6 +60,13 @@ export type UsageEvent =
       name: "sync_pending_writes_reported";
       pendingWriteCount: number;
       oldestPendingWriteAgeSeconds: number;
+    }
+  | {
+      // 推定し直しを当てた料理を、使う人がまた直した・消したとき（#332 の「観測」）。「元に戻す」が要るかを見る
+      name: "reestimated_dish_edited";
+      action: "corrected" | "deleted";
+      // 料理に当てたいちばん新しい推定し直しの終わり（完了か断念）から、直す・消す書き込みを当てるまで
+      secondsFromReestimationEnded: number;
     }
   | {
       // 量の出どころが推定の料理・材料の量を直す書き込みを当てたとき（量の修正の率。#332 の「観測」）

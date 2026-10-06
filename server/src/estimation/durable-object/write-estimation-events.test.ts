@@ -99,7 +99,7 @@ describe("推定の書き込みの口", () => {
       run = (writes) => {
         writes.deferToNextDay({
           scheduleId: "schedule-1",
-          mealId: "meal-1",
+          target: { type: "meal", mealId: "meal-1" },
           deferredAt: startedAt,
           nextSchedule: { id: "schedule-2", dueAt: nextDayStartsAt, countedOn: "2026-01-02" },
         });
@@ -122,7 +122,7 @@ describe("推定の書き込みの口", () => {
         writes.beginEstimation({
           id: "estimation-1",
           scheduleId: "schedule-2",
-          mealId: "meal-1",
+          target: { type: "meal", mealId: "meal-1" },
           startedAt: nextDayStartsAt,
         });
       };
@@ -145,7 +145,7 @@ describe("推定の書き込みの口", () => {
         writes.beginEstimation({
           id: "estimation-1",
           scheduleId: "schedule-1",
-          mealId: "meal-1",
+          target: { type: "meal", mealId: "meal-1" },
           startedAt,
         });
         writes.beginAttempt({
@@ -169,7 +169,7 @@ describe("推定の書き込みの口", () => {
       run = (writes) => {
         writes.complete({
           estimationId: "estimation-1",
-          mealId: "meal-1",
+          target: { type: "meal", mealId: "meal-1" },
           completedAt: startedAt,
           result: "estimated",
         });
@@ -191,7 +191,7 @@ describe("推定の書き込みの口", () => {
       run = (writes) => {
         writes.complete({
           estimationId: "estimation-1",
-          mealId: "meal-1",
+          target: { type: "meal", mealId: "meal-1" },
           completedAt: startedAt,
           result: "no_dishes",
         });
@@ -211,7 +211,11 @@ describe("推定の書き込みの口", () => {
     beforeEach(() => {
       seed = seedStartedEstimation;
       run = (writes) => {
-        writes.abandon({ estimationId: "estimation-1", mealId: "meal-1", abandonedAt: startedAt });
+        writes.abandon({
+          estimationId: "estimation-1",
+          target: { type: "meal", mealId: "meal-1" },
+          abandonedAt: startedAt,
+        });
       };
     });
 
@@ -234,12 +238,12 @@ describe("推定の書き込みの口", () => {
         writes.beginEstimation({
           id: "estimation-1",
           scheduleId: "schedule-1",
-          mealId: "meal-1",
+          target: { type: "meal", mealId: "meal-1" },
           startedAt,
         });
         writes.deferToNextDay({
           scheduleId: "schedule-2",
-          mealId: "meal-2",
+          target: { type: "meal", mealId: "meal-2" },
           deferredAt: startedAt,
           nextSchedule: { id: "schedule-3", dueAt: nextDayStartsAt, countedOn: "2026-01-02" },
         });
@@ -262,14 +266,14 @@ describe("推定の書き込みの口", () => {
       run = (writes) => {
         writes.deferToNextDay({
           scheduleId: "schedule-1",
-          mealId: "meal-1",
+          target: { type: "meal", mealId: "meal-1" },
           deferredAt: startedAt,
           nextSchedule: { id: "schedule-2", dueAt: nextDayStartsAt, countedOn: "2026-01-02" },
         });
         writes.beginEstimation({
           id: "estimation-1",
           scheduleId: "schedule-2",
-          mealId: "meal-1",
+          target: { type: "meal", mealId: "meal-1" },
           startedAt: nextDayStartsAt,
         });
       };

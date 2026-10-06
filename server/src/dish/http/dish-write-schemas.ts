@@ -1,6 +1,20 @@
 import { z } from "@hono/zod-openapi";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 
+const createDishWriteSchema = z
+  .object({
+    id: writeIdSchema,
+    type: z.literal("create_dish"),
+    dishId: z.string().min(1).openapi({ description: "端末が振る UUID v4" }),
+    mealId: z.string().min(1),
+    name: z.string(),
+    positionInMeal: z.number().int().openapi({
+      description:
+        "端末のキャッシュの、その食事の料理の最後の次の値。一意にせず、同じなら ID の順で並べる",
+    }),
+  })
+  .openapi("CreateDishWrite");
+
 const deleteDishWriteSchema = z
   .object({
     id: writeIdSchema,
@@ -31,4 +45,8 @@ const updateDishWriteSchema = z
   .openapi("UpdateDishWrite");
 
 // 料理の書き込みのスキーマ。型を保つため as const で並べる
-export const dishWriteSchemas = [deleteDishWriteSchema, updateDishWriteSchema] as const;
+export const dishWriteSchemas = [
+  deleteDishWriteSchema,
+  updateDishWriteSchema,
+  createDishWriteSchema,
+] as const;

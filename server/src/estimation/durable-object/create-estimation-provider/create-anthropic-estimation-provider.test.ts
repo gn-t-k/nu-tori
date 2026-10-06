@@ -81,7 +81,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("料理・材料と使ったトークンを返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeSuccess((reply) => {
           expect(reply.usage).toEqual({ inputTokens: 1500, outputTokens: 400 });
@@ -119,7 +122,7 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("Sonnet 5 に、思考を切り、アカウント ID のハッシュを添えて頼むこと", async () => {
-        await provider.identifyDishes({ photos }, neverEnds());
+        await provider.identifyDishes({ photos, dish: undefined, addedDishNames: [] }, neverEnds());
 
         expect(requests).toHaveLength(1);
         expect(requests[0]).toMatchObject({
@@ -134,7 +137,7 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("写真を JPEG の画像として、指示より前に渡すこと", async () => {
-        await provider.identifyDishes({ photos }, neverEnds());
+        await provider.identifyDishes({ photos, dish: undefined, addedDishNames: [] }, neverEnds());
 
         expect(requests[0]).toMatchObject({
           body: {
@@ -159,7 +162,7 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("構造化出力を求めること", async () => {
-        await provider.identifyDishes({ photos }, neverEnds());
+        await provider.identifyDishes({ photos, dish: undefined, addedDishNames: [] }, neverEnds());
 
         expect(requests[0]).toMatchObject({
           body: { output_config: { format: { type: "json_schema" } } },
@@ -175,7 +178,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("料理 0 件で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeSuccess((reply) => {
           expect(reply.output).toEqual({ dishes: [] });
@@ -191,7 +197,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("使ったトークンを持つ、読めない応答の失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderInvalidResponseError");
@@ -210,7 +219,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("使ったトークンを持つ、読めない応答の失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderInvalidResponseError");
@@ -248,7 +260,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("読めない応答の失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderInvalidResponseError");
@@ -266,7 +281,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("使ったトークンを持つ、読めない応答の失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderInvalidResponseError");
@@ -283,12 +301,161 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("使ったトークンを持つ、読めない応答の失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderInvalidResponseError");
           expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
         });
+      });
+    });
+  });
+
+  describe("① 名前を直した料理を推定し直す", () => {
+    let provider: EstimationProvider;
+    let requests: ReturnType<typeof stubAnthropicApi>["requests"];
+    beforeEach(() => {
+      const stub = stubAnthropicApi(async () => replyWithText(JSON.stringify(oyakodonReply)));
+      requests = stub.requests;
+      provider = createAnthropicEstimationProvider(stub.client, "account-1");
+    });
+
+    test("写真のあとに、料理の今の名前と、直した材料の名前と量と、直した料理の量と単位を渡すこと", async () => {
+      await provider.identifyDishes(
+        {
+          photos,
+          dish: {
+            name: "カツ丼",
+            correctedIngredients: [{ name: "ご飯", quantity: 150, unit: "g" }],
+            correctedQuantity: { value: 1.5, unit: "杯" },
+          },
+          addedDishNames: [],
+        },
+        neverEnds(),
+      );
+
+      expect(requests[0]).toMatchObject({
+        body: {
+          messages: [
+            {
+              content: [
+                { type: "image" },
+                { type: "image" },
+                {
+                  type: "text",
+                  text: expect.stringMatching(/「カツ丼」[\s\S]*ご飯 150 g[\s\S]*1\.5 杯/),
+                },
+              ],
+            },
+          ],
+        },
+      });
+    });
+
+    test("直した材料も量も無ければ、それらを渡さないこと", async () => {
+      await provider.identifyDishes(
+        {
+          photos,
+          dish: { name: "カツ丼", correctedIngredients: [], correctedQuantity: undefined },
+          addedDishNames: [],
+        },
+        neverEnds(),
+      );
+
+      expect(requests[0]).toMatchObject({
+        body: {
+          messages: [
+            {
+              content: [
+                { type: "image" },
+                { type: "image" },
+                { type: "text", text: expect.not.stringMatching(/直した材料|料理の量は/) },
+              ],
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe("① 写真が届かなかった料理を名前だけで推定し直す", () => {
+    test("画像を渡さず、写真が無いことと料理の名前を渡すこと", async () => {
+      const stub = stubAnthropicApi(async () => replyWithText(JSON.stringify(oyakodonReply)));
+      const provider = createAnthropicEstimationProvider(stub.client, "account-1");
+
+      await provider.identifyDishes(
+        {
+          photos: [],
+          dish: { name: "味噌汁", correctedIngredients: [], correctedQuantity: undefined },
+          addedDishNames: [],
+        },
+        neverEnds(),
+      );
+
+      expect(stub.requests[0]).toMatchObject({
+        body: {
+          messages: [
+            {
+              content: [
+                { type: "text", text: expect.stringMatching(/「味噌汁」[\s\S]*写真はありません/) },
+              ],
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe("① 使う人が料理を足した食事の写真を読み取る", () => {
+    let requests: ReturnType<typeof stubAnthropicApi>["requests"];
+    const identifyWithAddedDishes = async (addedDishNames: string[]) => {
+      const stub = stubAnthropicApi(async () => replyWithText(JSON.stringify(oyakodonReply)));
+      requests = stub.requests;
+      await createAnthropicEstimationProvider(stub.client, "account-1").identifyDishes(
+        { photos, dish: undefined, addedDishNames },
+        neverEnds(),
+      );
+    };
+
+    test("写真のあとに、足した料理の名前を渡し、同じ料理を答えないよう指示すること", async () => {
+      await identifyWithAddedDishes(["味噌汁", "サラダ"]);
+
+      expect(requests[0]).toMatchObject({
+        body: {
+          messages: [
+            {
+              content: [
+                { type: "image" },
+                { type: "image" },
+                {
+                  type: "text",
+                  text: expect.stringMatching(/味噌汁、サラダ[\s\S]*同じ料理は答えない/),
+                },
+              ],
+            },
+          ],
+        },
+      });
+    });
+
+    test("足した料理が無ければ、それを渡さないこと", async () => {
+      await identifyWithAddedDishes([]);
+
+      expect(requests[0]).toMatchObject({
+        body: {
+          messages: [
+            {
+              content: [
+                { type: "image" },
+                { type: "image" },
+                { type: "text", text: expect.not.stringMatching(/足した料理/) },
+              ],
+            },
+          ],
+        },
       });
     });
   });
@@ -384,7 +551,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("提供元のエラーの種類を持つ 400 の失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderBadRequestError");
@@ -420,7 +590,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("400 とは分けて、提供元のエラーの失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderError");
@@ -437,7 +610,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("HTTP の状態コードを種類にした失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderError");
@@ -456,7 +632,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("connection_error の失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, neverEnds());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderError");
@@ -473,7 +652,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("時間切れの失敗で返すこと", async () => {
-        const result = await provider.identifyDishes({ photos }, AbortSignal.abort());
+        const result = await provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          AbortSignal.abort(),
+        );
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("EstimationProviderTimedOutError");
@@ -494,7 +676,10 @@ describe("createAnthropicEstimationProvider", () => {
       });
 
       test("① は 90 秒で、時間切れの失敗で返すこと", async () => {
-        const pending = provider.identifyDishes({ photos }, neverEnds());
+        const pending = provider.identifyDishes(
+          { photos, dish: undefined, addedDishNames: [] },
+          neverEnds(),
+        );
 
         await vi.advanceTimersByTimeAsync(90_000);
 

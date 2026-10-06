@@ -125,12 +125,29 @@ extension SyncChange {
 }
 
 extension SyncChange {
+    /// 知らない状態は nil にする。サーバーが状態を足しても、古い版のアプリは前の状態のまま同期を続ける
+    struct DishEstimationStatusPayload: Decodable {
+        let dishId: String
+        let status: String
+
+        var syncedStatus: SyncedDishEstimationStatus? {
+            guard let dishId = UUID(uuidString: dishId),
+                let status = SyncedDishEstimationStatus.Status(rawValue: status)
+            else {
+                return nil
+            }
+            return SyncedDishEstimationStatus(dishId: dishId, status: status)
+        }
+    }
+
+    /// 量と単位と出どころは、3つそろうか、3つとも無い（量の無い料理）。片方だけのときと、知らない出どころは nil にする
     struct DishPayload: Decodable {
         let id: String
         let mealId: String
         let name: String
-        let quantity: Double
-        let unit: String
+        let quantity: Double?
+        let unit: String?
+        let quantitySource: String?
         let positionInMeal: Int
         let version: Int
 
@@ -138,18 +155,28 @@ extension SyncChange {
             guard let id = UUID(uuidString: id), let mealId = UUID(uuidString: mealId) else {
                 return nil
             }
+            let syncedQuantity: SyncedDish.Quantity?
+            switch (quantity, unit, quantitySource.map(SyncedQuantitySource.init(rawValue:))) {
+            case (nil, nil, nil):
+                syncedQuantity = nil
+            case (let value?, let unit?, let source??):
+                syncedQuantity = SyncedDish.Quantity(value: value, unit: unit, source: source)
+            default:
+                return nil
+            }
             return SyncedDish(
-                id: id, mealId: mealId, name: name, quantity: quantity, unit: unit,
+                id: id, mealId: mealId, name: name, quantity: syncedQuantity,
                 positionInMeal: positionInMeal, version: version)
         }
     }
 
-    /// 知らない出どころと、読めない ID は nil にする。知らない栄養の項目の名前は、そのまま持つ
+    /// 知らない出どころ（栄養と量）と、読めない ID は nil にする。知らない栄養の項目の名前は、そのまま持つ
     struct IngredientPayload: Decodable {
         let id: String
         let dishId: String
         let name: String
         let quantity: Double
+        let quantitySource: String
         let unit: String
         let edibleGramsPerUnit: Double
         let positionInDish: Int
@@ -177,12 +204,14 @@ extension SyncChange {
 
         var syncedIngredient: SyncedIngredient? {
             guard let id = UUID(uuidString: id), let dishId = UUID(uuidString: dishId),
-                let source = nutrientSource.syncedSource
+                let source = nutrientSource.syncedSource,
+                let quantitySource = SyncedQuantitySource(rawValue: quantitySource)
             else {
                 return nil
             }
             return SyncedIngredient(
-                id: id, dishId: dishId, name: name, quantity: quantity, unit: unit,
+                id: id, dishId: dishId, name: name, quantity: quantity,
+                quantitySource: quantitySource, unit: unit,
                 edibleGramsPerUnit: edibleGramsPerUnit, positionInDish: positionInDish,
                 nutrientSource: source, nutrients: nutrients)
         }
@@ -261,6 +290,7 @@ extension SyncChange {
     extension SyncChange.MealPayload.Photo: Encodable {}
     extension SyncChange.MealEstimationStatusPayload: Encodable {}
     extension SyncChange.DishPayload: Encodable {}
+    extension SyncChange.DishEstimationStatusPayload: Encodable {}
     extension SyncChange.IngredientPayload: Encodable {}
     extension SyncChange.IngredientPayload.NutrientSourcePayload: Encodable {}
     extension SyncChange.NoticePayload: Encodable {}

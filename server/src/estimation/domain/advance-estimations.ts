@@ -38,7 +38,7 @@ export const advanceEstimations = async (
   }
   const settled = await Promise.allSettled(
     begun.attempts.map(async (attempt) => {
-      const outcome = await runEstimationAttempt(deps, attempt.photoIds);
+      const outcome = await runEstimationAttempt(deps, attempt);
       return {
         outcome,
         usageEvents: recordEstimationAttemptOutcome(

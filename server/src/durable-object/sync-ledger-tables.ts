@@ -7,6 +7,7 @@ const recordTypes = [
   "meal_estimation_status",
   "dish",
   "ingredient",
+  "dish_estimation_status",
   "notice",
   "usual_weighing_time",
   "weight_trend",
@@ -81,6 +82,7 @@ const syncWriteRejections = sqliteTable("sync_write_rejections", {
       "photo_already_used",
       "invalid_notice_type",
       "invalid_target_on",
+      "ingredients_replaced",
     ],
   }).notNull(),
 });

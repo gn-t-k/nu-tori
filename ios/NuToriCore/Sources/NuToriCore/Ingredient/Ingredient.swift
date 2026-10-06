@@ -6,6 +6,8 @@ public struct Ingredient: Hashable, Sendable {
     public let dishId: UUID
     public let name: String
     public let quantity: Double
+    /// 料理の量に比例させた量は、推定したまま
+    public let quantitySource: QuantitySource
     public let unit: String
     /// 1単位あたりの可食部の g
     public let edibleGramsPerUnit: Double
@@ -20,6 +22,7 @@ public struct Ingredient: Hashable, Sendable {
         dishId: UUID,
         name: String,
         quantity: Double,
+        quantitySource: QuantitySource,
         unit: String,
         edibleGramsPerUnit: Double,
         positionInDish: Int,
@@ -30,6 +33,7 @@ public struct Ingredient: Hashable, Sendable {
         self.dishId = dishId
         self.name = name
         self.quantity = quantity
+        self.quantitySource = quantitySource
         self.unit = unit
         self.edibleGramsPerUnit = edibleGramsPerUnit
         self.positionInDish = positionInDish

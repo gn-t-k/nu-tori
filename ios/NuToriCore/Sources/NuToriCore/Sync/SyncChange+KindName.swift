@@ -9,6 +9,7 @@ extension SyncChange {
         case .weightRecord, .weightRecordDeletion: .weightRecord
         case .accountSettings: .accountSettings
         case .dish, .dishDeletion: .dish
+        case .dishEstimationStatus, .dishEstimationStatusDeletion: .dishEstimationStatus
         case .ingredient, .ingredientDeletion: .ingredient
         case .meal, .mealDeletion: .meal
         case .mealEstimationStatus, .mealEstimationStatusDeletion: .mealEstimationStatus

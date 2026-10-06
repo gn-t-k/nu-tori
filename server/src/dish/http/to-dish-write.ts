@@ -5,6 +5,14 @@ import type { dishWriteSchemas } from "./dish-write-schemas";
 
 export const toDishWrite = (write: z.infer<(typeof dishWriteSchemas)[number]>): SyncWrite =>
   match(write)
+    .with({ type: "create_dish" }, ({ id, dishId, mealId, name, positionInMeal }): SyncWrite => ({
+      id,
+      type: "create_dish",
+      dishId,
+      mealId,
+      name,
+      positionInMeal,
+    }))
     .with({ type: "delete_dish" }, ({ id, dishId }): SyncWrite => ({
       id,
       type: "delete_dish",

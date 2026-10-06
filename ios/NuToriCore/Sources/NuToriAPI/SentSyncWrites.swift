@@ -45,7 +45,8 @@
                 .sourceDeletedWeightRecord(let writeId, _), .updateAccountSettings(let writeId, _),
                 .createMeal(let writeId, _), .updateMeal(let writeId, _, _),
                 .deleteMeal(let writeId, _),
-                .deleteDish(let writeId, _), .updateDish(let writeId, _),
+                .createDish(let writeId, _), .deleteDish(let writeId, _),
+                .updateDish(let writeId, _),
                 .updateIngredient(let writeId, _, _),
                 .createNotice(let writeId, _), .respondNotice(let writeId, _, _):
                 writeId
@@ -118,6 +119,14 @@
                     eatenAt: date(write.eatenAt))
             case .deleteMeal(let write):
                 self = .deleteMeal(writeId: try uuid(write.id), mealId: try uuid(write.mealId))
+            case .createDish(let write):
+                self = .createDish(
+                    writeId: try uuid(write.id),
+                    dish: NewDish(
+                        id: try uuid(write.dishId),
+                        mealId: try uuid(write.mealId),
+                        name: write.name,
+                        positionInMeal: write.positionInMeal))
             case .deleteDish(let write):
                 self = .deleteDish(writeId: try uuid(write.id), dishId: try uuid(write.dishId))
             case .updateDish(let write):

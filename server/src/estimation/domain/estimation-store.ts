@@ -1,17 +1,18 @@
 import type { EstimationAttemptConclusion } from "./estimation-attempt-conclusion";
+import type { EstimationTarget } from "./estimation-target";
 
 // 推定・試み・結果・完了・断念を読む置き場。書くのは推定の書き込みの口（writeEstimationEvents）だけ
 export type EstimationStore = {
   // 数える日の推定の数。食事を消しても減らない
   countEstimationsCountedOn: (countedOn: string) => number;
-  // 続いている推定（完了も断念も無く、食事につながっている）と、その試みを古い順に
+  // 続いている推定（完了も断念も無く、食事か料理につながっている）と、その試みを古い順に
   findContinuingEstimations: () => {
     estimationId: string;
-    mealId: string;
+    target: EstimationTarget;
     attempts: EstimationAttempt[];
   }[];
-  // 推定の対象の食事。呼び出し中に食事が消えて、つなぎが無ければ undefined
-  findMealIdOfEstimation: (estimationId: string) => string | undefined;
+  // 推定の対象の食事か料理。呼び出し中に食事か料理が消えて、つなぎが無ければ undefined
+  findTargetOfEstimation: (estimationId: string) => EstimationTarget | undefined;
   // 食事の、始めていて完了も断念もしていない推定
   findOngoingEstimationIdOfMeal: (mealId: string) => string | undefined;
   findAttempts: (estimationId: string) => EstimationAttempt[];

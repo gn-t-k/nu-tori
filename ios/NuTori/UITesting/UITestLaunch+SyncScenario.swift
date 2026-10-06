@@ -141,11 +141,13 @@
             return [
                 .dish(
                     SyncedDish(
-                        id: dishId, mealId: mealId, name: "親子丼", quantity: 1, unit: "杯",
+                        id: dishId, mealId: mealId, name: "親子丼",
+                        quantity: .init(value: 1, unit: "杯", source: .estimated),
                         positionInMeal: 0, version: 1)),
                 .ingredient(
                     SyncedIngredient(
-                        id: UUID(), dishId: dishId, name: "鶏もも肉", quantity: 80, unit: "g",
+                        id: UUID(), dishId: dishId, name: "鶏もも肉", quantity: 80,
+                        quantitySource: .estimated, unit: "g",
                         edibleGramsPerUnit: 1, positionInDish: 0,
                         nutrientSource: .foodComposition(foodNumber: "11221"),
                         nutrients: [
@@ -154,7 +156,8 @@
                         ])),
                 .ingredient(
                     SyncedIngredient(
-                        id: UUID(), dishId: dishId, name: "ご飯", quantity: 200, unit: "g",
+                        id: UUID(), dishId: dishId, name: "ご飯", quantity: 200,
+                        quantitySource: .estimated, unit: "g",
                         edibleGramsPerUnit: 1, positionInDish: 1,
                         nutrientSource: .foodComposition(foodNumber: "01088"),
                         nutrients: [

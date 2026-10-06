@@ -78,8 +78,9 @@ struct HealthDishWriteStoringTests {
                             .dish(
                                 SyncedDish(
                                     id: HealthDishWriteStoringTests.firstDishId, mealId: mealId,
-                                    name: "親子丼", quantity: 1, unit: "杯", positionInMeal: 0,
-                                    version: 1))
+                                    name: "親子丼",
+                                    quantity: .init(value: 1, unit: "杯", source: .estimated),
+                                    positionInMeal: 0, version: 1))
                         ]),
                     KindChanges(
                         kind: .ingredient,
@@ -87,7 +88,8 @@ struct HealthDishWriteStoringTests {
                             .ingredient(
                                 SyncedIngredient(
                                     id: UUID(), dishId: HealthDishWriteStoringTests.firstDishId,
-                                    name: "鶏もも肉", quantity: 80, unit: "g",
+                                    name: "鶏もも肉", quantity: 80, quantitySource: .estimated,
+                                    unit: "g",
                                     edibleGramsPerUnit: 1, positionInDish: 0,
                                     nutrientSource: .estimated, nutrients: ["energy_kcal": 204]))
                         ]),

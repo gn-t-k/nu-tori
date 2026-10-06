@@ -26,9 +26,10 @@ export type DishQuantity = {
 // 料理を作るときに書く値。量と単位は当てた推定（DishEstimationApplication）が持ち、版は出来事から出す
 export type NewDish = Pick<Dish, "id" | "mealId" | "name" | "positionInMeal">;
 
-// 推定の結果を料理に当てたこと。推定した量と単位を持つ
+// 推定の結果を料理に当てたこと。推定した量と単位を持つ。
+// 推定し直しで、量を直してあった料理（直した量を固定する）と、通らなかった推定（料理なし・推定できなかった）は量を持たない
 export type DishEstimationApplication = {
   dishId: string;
   estimationId: string;
-  estimatedQuantity: { quantity: number; unit: string };
+  estimatedQuantity: { quantity: number; unit: string } | undefined;
 };

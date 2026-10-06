@@ -13,7 +13,7 @@ import {
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 import { correctDishByWrites } from "../../dish/http/testing/correct-dish-by-writes";
 import { inspectDeletedContents } from "../../dish/http/testing/inspect-deleted-contents";
-import { seedNotYetWritableEdits } from "../../dish/http/testing/seed-not-yet-writable-edits";
+import { reestimateRenamedDish } from "../../dish/http/testing/reestimate-renamed-dish";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { recordPhotographedMeal } from "../../estimation/http/testing/record-photographed-meal";
 import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
@@ -914,19 +914,21 @@ describe("食事の同期", () => {
       ) {
         throw new Error("時刻を直す書き込みが当たらなかった");
       }
-      const { secondRenameWriteId } = await correctDishByWrites(sessionToken, {
+      // 名前を2回直すので、1回目の名前で待った予定は、2回目の名前の書き込みが取り消す
+      await correctDishByWrites(sessionToken, {
         dishId: dishIds[0] ?? "",
         ingredientIds: estimatedIngredients
           .filter(({ record }) => record["dishId"] === dishIds[0])
           .map(({ recordId }) => recordId),
       });
-      const { replacingIngredientId } = await seedNotYetWritableEdits(accountId, {
-        dishId: dishIds[0] ?? "",
-        cancellingRenameWriteId: secondRenameWriteId,
-      });
+      const replacingIngredientIds = await reestimateRenamedDish(
+        accountId,
+        sessionToken,
+        dishIds[0] ?? "",
+      );
       ingredientIds = [
         ...estimatedIngredients.map(({ recordId }) => recordId),
-        replacingIngredientId,
+        ...replacingIngredientIds,
       ];
       const { estimationSchedules, estimations } = await inspectDeletedContents(accountId, {
         mealIds: [],

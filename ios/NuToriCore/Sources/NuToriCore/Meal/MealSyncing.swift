@@ -2,7 +2,7 @@ public import Foundation
 public import NuToriAPI
 
 /// 食事の同期の形。記録の種類の入口のうち、キャッシュの型に依らない部分。
-/// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込み（作る・消す）を作る
+/// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込み（作る・時刻を直す・消す）を作る
 public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った食事が読めなくなる
     public static let kindName = RecordKindName.meal
@@ -28,6 +28,8 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
         switch pending.write {
         case .create(let meal):
             return .createMeal(writeId: pending.writeId, meal: SyncedMeal(meal))
+        case .update(let mealId, let eatenAt):
+            return .updateMeal(writeId: pending.writeId, mealId: mealId, eatenAt: eatenAt)
         case .delete(let mealId):
             return .deleteMeal(writeId: pending.writeId, mealId: mealId)
         }
@@ -35,6 +37,7 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
 
     /// 受け付けなかった作る書き込みは、サーバーに食事が無いときだけ、カードを外して行にする。
     /// 削除の印のときは、その食事はもう消されているので行を出さない。値があるときは、カードがそのまま残る。
+    /// 受け付けなかった時刻を直す書き込みは、サーバーに食事が無ければ食事をキャッシュから外す（直せなかった1行は見え方のチケットで足す）。
     /// 消す書き込みは、サーバーが受け付けないことが無い
     public func rejection(
         of entry: PendingEntry,
@@ -49,7 +52,11 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
                     writeId: pending.writeId, reason: reason, record: .meal(meal)),
                 removingChanges: [.mealDeletion(mealId: meal.id)]
             )
-        case (.create, .value), (.create, .deleted), (.create, nil), (.delete, _):
+        case (.update(let mealId, _), .absent):
+            return KindRejection(
+                rejectedWrite: nil, removingChanges: [.mealDeletion(mealId: mealId)])
+        case (.create, .value), (.create, .deleted), (.create, nil), (.update, .value),
+            (.update, .deleted), (.update, nil), (.delete, _):
             return KindRejection.none
         }
     }
@@ -59,6 +66,22 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
         SyncBoxResult(
             enqueuing: [try write.entry()],
             kindChanges: [KindChanges(kind: name, changes: [.meal(SyncedMeal(meal))])]
+        )
+    }
+
+    /// 食事の時刻を直したときの結果。送り待ちに足し、直した食事を、取りに行った変更と同じ形でキャッシュに当てる
+    public func correctingEatenAt(
+        of meal: Meal, to eatenAt: Date, enqueuing write: PendingMealWrite
+    )
+        throws -> SyncBoxResult
+    {
+        let corrected = Meal(
+            id: meal.id, eatenAt: eatenAt, eatenUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
+            sentAt: meal.sentAt, sentTimeZone: meal.sentTimeZone, entry: meal.entry,
+            photoIds: meal.photoIds)
+        return SyncBoxResult(
+            enqueuing: [try write.entry()],
+            kindChanges: [KindChanges(kind: name, changes: [.meal(SyncedMeal(corrected))])]
         )
     }
 
