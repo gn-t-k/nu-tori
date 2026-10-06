@@ -4,7 +4,7 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
-/// タイムラインから、食事を撮る・選んで記録し、食事のカードと食事の画面の写真を読み、時刻を直し、食事を消す操作
+/// タイムラインから、食事を撮る・選んで記録し、食事のカードと食事の画面の写真を読み、時刻を直し、料理を直し、食事を消す操作
 struct MealActions {
     /// 「撮る」を押したとき。まだ求めていなければ、ここでカメラの許可を求める
     let prepareCamera: () async -> CameraReadiness
@@ -20,4 +20,6 @@ struct MealActions {
     let correctMealTime: (_ card: MealCard, _ eatenAt: Date) async -> Void
     /// 食事の画面の「食事を削除」。`deletedAt` は消した時刻で、送ってから消すまでの時間を測る
     let deleteMeal: (_ card: MealCard, _ deletedAt: Date) async -> Void
+    /// 料理の画面の操作
+    let dish: DishActions
 }

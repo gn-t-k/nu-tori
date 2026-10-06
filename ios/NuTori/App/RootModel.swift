@@ -9,6 +9,8 @@ final class RootModel {
     private(set) var reminderLanding: ReminderLanding?
     /// 画面が今日と操作した時刻を読む時計
     let clock: DeviceClock
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカードで、まだ送れていない料理として見せる
+    private(set) var unsentDishIds: Set<UUID> = []
     var rejectedLines: [RejectedLine] {
         guard case .accepting(let rejected) = rejectionAcceptance else { return [] }
         return rejected.lines
@@ -34,6 +36,10 @@ final class RootModel {
         }
         recordSync.onReplacingRecord = { [weak self] recordId in
             self?.dropRejection(for: recordId)
+        }
+        recordSync.onUnsentDishIds = { [weak self] unsentDishIds in
+            guard self?.unsentDishIds != unsentDishIds else { return }
+            self?.unsentDishIds = unsentDishIds
         }
     }
 
@@ -176,6 +182,38 @@ final class RootModel {
             return
         }
         await accountSession.capture(.mealTimeCorrected)
+    }
+
+    /// 料理の画面で料理の名前を直す。インターネットにつながらなくても、その場で直した名前になる。
+    /// 送ったら、PostHog に直した回数を送る（名前は送らない）。空の名前と今と同じ名前は送らない
+    func renameDish(_ dish: Dish, to typedName: String) async {
+        guard let renamed = try? await recordSync.renameDish(id: dish.id, to: typedName),
+            renamed != dish
+        else { return }
+        await accountSession.capture(.dishCorrected)
+    }
+
+    /// 料理の画面で料理の量を直す。その場で材料の量と kcal・栄養の内訳が変わる。送ったら、PostHog に直した回数を送る（量は送らない）
+    func correctDishQuantity(_ dish: Dish, to value: Double) async {
+        guard let corrected = try? await recordSync.correctDishQuantity(id: dish.id, to: value),
+            corrected != dish
+        else { return }
+        await accountSession.capture(.dishCorrected)
+    }
+
+    /// 料理の画面で材料の量を直す。その場で kcal と栄養の内訳が変わる。送ったら、PostHog に料理を直した回数を送る（量は送らない）
+    func correctIngredientQuantity(_ ingredient: Ingredient, to quantity: Double) async {
+        guard
+            let corrected = try? await recordSync.correctIngredientQuantity(
+                id: ingredient.id, to: quantity),
+            corrected != ingredient
+        else { return }
+        await accountSession.capture(.dishCorrected)
+    }
+
+    /// 料理の画面の「この料理を削除」（最後の1品でないとき）。インターネットにつながらなくても、その場で消える
+    func deleteDish(_ dish: Dish) async {
+        try? await recordSync.deleteDish(id: dish.id)
     }
 
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil

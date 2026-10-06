@@ -14,6 +14,7 @@
                 capture: { _ in },
                 correctMealTime: { _, _ in },
                 deleteMeal: { _, _ in },
+                dishActions: .noop,
                 confirmsDeletion: sample.confirmsDeletion
             )
         }

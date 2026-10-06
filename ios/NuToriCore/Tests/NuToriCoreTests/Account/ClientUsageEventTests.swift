@@ -198,6 +198,18 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("料理の画面で料理の名前・量か材料の量を直したとき")
+    struct DishCorrected {
+        @Test("回数だけを数え、名前と量を載せないこと")
+        func hasNoFields() {
+            let event = ClientUsageEvent.dishCorrected
+
+            #expect(event.name == "dish_corrected")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("推定できた食事を、送ってから 30 分 30 秒後に消したとき")
     struct EstimatedMealDeleted {
         let event: ClientUsageEvent
