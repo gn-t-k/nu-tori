@@ -286,6 +286,8 @@
                 case .deleteMeal(_, let mealId):
                     put(.mealDeletion(mealId: mealId))
                     estimatingMealIds.removeAll { $0 == mealId }
+                case .deleteDish(_, let dishId):
+                    put(.dishDeletion(dishId: dishId))
                 case .createNotice(_, let notice):
                     guard entries[write.recordKey] == nil else { return }
                     put(

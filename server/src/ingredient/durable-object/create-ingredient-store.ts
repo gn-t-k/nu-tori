@@ -1,18 +1,21 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dishTables } from "../../dish/durable-object/dish-tables";
 import { findNewestDishEstimationId } from "../../dish/durable-object/find-newest-dish-estimation";
 import { isNutrientName } from "../../domain/food-composition/nutrient-name";
+import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { Ingredient, IngredientNutrientSource } from "../domain/ingredient";
 import type { IngredientStore } from "../domain/ingredient-store";
 import { ingredientTables } from "./ingredient-tables";
 
 const { dishes } = dishTables;
+const { syncWriteReceipts } = syncLedgerTables;
 const {
   ingredients,
   foodCompositionIngredients,
   nutritionLabelIngredients,
   ingredientNutrients,
+  ingredientQuantityCorrections,
   ingredientDeletions,
 } = ingredientTables;
 
@@ -82,6 +85,13 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
       .where(eq(dishes.mealId, mealId))
       .all()
       .map(({ id }) => id),
+  findIdsOfDish: (dishId) =>
+    db
+      .select({ id: ingredients.id })
+      .from(ingredients)
+      .where(eq(ingredients.dishId, dishId))
+      .all()
+      .map(({ id }) => id),
   insert: ({ nutrientSource, nutrients, ...ingredient }: Ingredient) => {
     db.insert(ingredients).values(ingredient).run();
     if (nutrientSource.type === "food_composition") {
@@ -103,6 +113,26 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
   remove: (ids) => {
     for (const id of ids) {
       db.delete(ingredients).where(eq(ingredients.id, id)).run();
+    }
+  },
+  removeCorrections: (ids) => {
+    for (const id of ids) {
+      db.delete(ingredientQuantityCorrections)
+        .where(
+          inArray(
+            ingredientQuantityCorrections.syncWriteReceiptId,
+            db
+              .select({ id: syncWriteReceipts.id })
+              .from(syncWriteReceipts)
+              .where(
+                and(
+                  eq(syncWriteReceipts.recordType, "ingredient"),
+                  eq(syncWriteReceipts.recordId, id),
+                ),
+              ),
+          ),
+        )
+        .run();
     }
   },
   insertDeletions: (ids, receiptId) => {

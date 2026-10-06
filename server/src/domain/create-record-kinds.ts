@@ -17,7 +17,7 @@ import type { WriteBase } from "./sync-ledger/write-base";
 export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
   [
     createAccountSettingsKind(stores.accountSettings),
-    createDishKind(stores.dish),
+    createDishKind({ dish: stores.dish, ingredient: stores.ingredient }),
     createIngredientKind(stores.ingredient),
     createMealKind(stores, receivedAt),
     createMealEstimationStatusKind(stores.meal, stores.mealEstimationStatus),

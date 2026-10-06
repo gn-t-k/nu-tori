@@ -44,6 +44,7 @@
             case .createWeightRecord(let writeId, _), .updateWeightRecord(let writeId, _),
                 .sourceDeletedWeightRecord(let writeId, _), .updateAccountSettings(let writeId, _),
                 .createMeal(let writeId, _), .deleteMeal(let writeId, _),
+                .deleteDish(let writeId, _),
                 .createNotice(let writeId, _), .respondNotice(let writeId, _, _):
                 writeId
             }
@@ -111,6 +112,8 @@
                     ))
             case .deleteMeal(let write):
                 self = .deleteMeal(writeId: try uuid(write.id), mealId: try uuid(write.mealId))
+            case .deleteDish(let write):
+                self = .deleteDish(writeId: try uuid(write.id), dishId: try uuid(write.dishId))
             case .createNotice(let write):
                 let notice = write.notice
                 guard let noticeType = SyncedNotice.NoticeType(rawValue: notice.noticeType) else {

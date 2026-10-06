@@ -63,6 +63,20 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
       db.delete(dishes).where(eq(dishes.id, id)).run();
     }
   },
+  removeCorrections: (ids) => {
+    for (const id of ids) {
+      const receiptIds = db
+        .select({ id: syncWriteReceipts.id })
+        .from(syncWriteReceipts)
+        .where(and(eq(syncWriteReceipts.recordType, "dish"), eq(syncWriteReceipts.recordId, id)));
+      db.delete(dishNameCorrections)
+        .where(inArray(dishNameCorrections.syncWriteReceiptId, receiptIds))
+        .run();
+      db.delete(dishQuantityCorrections)
+        .where(inArray(dishQuantityCorrections.syncWriteReceiptId, receiptIds))
+        .run();
+    }
+  },
   insertDeletions: (ids, receiptId) => {
     for (const dishId of ids) {
       db.insert(dishDeletions).values({ dishId, syncWriteReceiptId: receiptId.value }).run();

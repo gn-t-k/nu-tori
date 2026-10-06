@@ -31,6 +31,7 @@ struct SentSyncWritesTests {
                     settings: SyncedAccountSettings(id: UUID(), sendsUsageData: true)),
                 .createMeal(writeId: UUID(), meal: try .fixture()),
                 .deleteMeal(writeId: UUID(), mealId: UUID()),
+                .deleteDish(writeId: UUID(), dishId: UUID()),
                 .createNotice(
                     writeId: UUID(),
                     notice: NewNotice(

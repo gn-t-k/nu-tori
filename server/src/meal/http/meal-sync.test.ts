@@ -10,6 +10,12 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
+import { inspectDeletedContents } from "../../dish/http/testing/inspect-deleted-contents";
+import { seedNotYetWritableEdits } from "../../dish/http/testing/seed-not-yet-writable-edits";
+import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
+import { recordPhotographedMeal } from "../../estimation/http/testing/record-photographed-meal";
+import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
+import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { createMealWrite } from "./testing/create-meal-write";
 import { deleteMealWrite } from "./testing/delete-meal-write";
 import { beforeEach, describe, expect, test } from "vitest";
@@ -648,6 +654,99 @@ describe("食事の同期", () => {
       expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
         "duplicate_photo_ids",
       );
+    });
+  });
+  describe("時刻と料理の名前と量と材料を直し、推定し直しで材料が置き換わり、待つ予定を取り消した料理と、直していない料理を持つ食事を消す書き込みを送ったとき", () => {
+    let mealId: string;
+    let dishIds: string[];
+    let ingredientIds: string[];
+    let estimationCountsBefore: { estimationSchedules: number; estimations: number };
+    let write: ReturnType<typeof deleteMealWrite>;
+    let inspected: Awaited<ReturnType<typeof inspectDeletedContents>>;
+    beforeEach(async () => {
+      // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
+      useFakeClock(Date.now() + 86_400_000);
+      mockCreateEstimationProviderOk();
+      mealId = await recordPhotographedMeal(sessionToken);
+      await runEstimationAlarm(accountId);
+      const estimated = (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes;
+      dishIds = estimated.filter(({ kind }) => kind === "dish").map(({ recordId }) => recordId);
+      const estimatedIngredients = estimated.filter(({ kind }) => kind === "ingredient");
+      const editedIngredientId =
+        estimatedIngredients.find(({ record }) => record["dishId"] === dishIds[0])?.recordId ?? "";
+      const { replacingIngredientId } = await seedNotYetWritableEdits(accountId, {
+        mealId,
+        dishId: dishIds[0] ?? "",
+        ingredientId: editedIngredientId,
+      });
+      ingredientIds = [
+        ...estimatedIngredients.map(({ recordId }) => recordId),
+        replacingIngredientId,
+      ];
+      const { estimationSchedules, estimations } = await inspectDeletedContents(accountId, {
+        mealIds: [],
+        dishIds: [],
+        ingredientIds: [],
+      });
+      estimationCountsBefore = { estimationSchedules, estimations };
+      write = deleteMealWrite(mealId);
+      await pushSyncWrites(sessionToken, { writes: [write] });
+      inspected = await inspectDeletedContents(accountId, {
+        mealIds: [mealId],
+        dishIds,
+        ingredientIds,
+      });
+    });
+
+    test("控えを外部キーで指す表のうち、削除の印と帳簿のほかに、消した食事・料理・材料の控えから辿れる行が残らないこと", () => {
+      expect({
+        // 数え上げが修正の表を拾っていること
+        countsCorrectionTables: [
+          "meal_eaten_at_corrections",
+          "dish_name_corrections",
+          "dish_quantity_corrections",
+          "ingredient_quantity_corrections",
+          "estimation_schedule_cancellations",
+        ].every((table) => inspected.tablesReferringToReceipts.includes(table)),
+        leftoverRowsByTable: inspected.leftoverRowsByTable,
+      }).toEqual({ countsCorrectionTables: true, leftoverRowsByTable: {} });
+    });
+
+    test("食事・料理・当てた推定・推定の量・材料・栄養・比例の明細・つなぎ・取り消しが残らないこと", () => {
+      expect(inspected.contentCounts).toEqual({
+        dishes: 0,
+        estimationApplications: 0,
+        estimatedQuantities: 0,
+        ingredients: 0,
+        ingredientNutrients: 0,
+        foodCompositionIngredients: 0,
+        proportions: 0,
+        dishScheduleLinks: 0,
+        cancellationsOfLinkedSchedules: 0,
+        meals: 0,
+      });
+    });
+
+    test("料理と、前の推定の材料も含むすべての材料の削除の印を、食事を消した書き込みの控えつきで書くこと", () => {
+      const receipt = { kind: "delete", recordType: "meal", recordId: mealId };
+      expect({
+        dishes: inspected.dishDeletionReceipts,
+        ingredients: inspected.ingredientDeletionReceipts,
+      }).toEqual({
+        dishes: Object.fromEntries(dishIds.map((id) => [id, receipt])),
+        ingredients: Object.fromEntries(ingredientIds.map((id) => [id, receipt])),
+      });
+    });
+
+    test("予定と推定は残ること", () => {
+      expect({
+        estimationSchedules: inspected.estimationSchedules,
+        estimations: inspected.estimations,
+      }).toEqual(estimationCountsBefore);
+    });
+
+    test("外部キーの違反が無いこと", () => {
+      expect(inspected.foreignKeyViolations).toEqual([]);
     });
   });
 });

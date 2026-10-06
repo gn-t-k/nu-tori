@@ -474,6 +474,9 @@
             "$ref": "#/components/schemas/UpdateAccountSettingsWrite"
           },
           {
+            "$ref": "#/components/schemas/DeleteDishWrite"
+          },
+          {
             "$ref": "#/components/schemas/CreateMealWrite"
           },
           {
@@ -499,6 +502,7 @@
           "propertyName": "type",
           "mapping": {
             "update_account_settings": "#/components/schemas/UpdateAccountSettingsWrite",
+            "delete_dish": "#/components/schemas/DeleteDishWrite",
             "create_meal": "#/components/schemas/CreateMealWrite",
             "delete_meal": "#/components/schemas/DeleteMealWrite",
             "create_notice": "#/components/schemas/CreateNoticeWrite",
@@ -546,6 +550,31 @@
           "id",
           "type",
           "accountSettings"
+        ]
+      },
+      "DeleteDishWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "delete_dish"
+            ]
+          },
+          "dishId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "dishId"
         ]
       },
       "CreateMealWrite": {

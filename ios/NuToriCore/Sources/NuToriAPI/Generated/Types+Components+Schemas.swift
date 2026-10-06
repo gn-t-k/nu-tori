@@ -808,6 +808,8 @@ extension Components {
             case createNotice(Components.Schemas.CreateNoticeWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
             case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteDishWrite`.
+            case deleteDish(Components.Schemas.DeleteDishWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteMealWrite`.
             case deleteMeal(Components.Schemas.DeleteMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/RespondNoticeWrite`.
@@ -834,6 +836,8 @@ extension Components {
                     self = .createNotice(try .init(from: decoder))
                 case "create_weight_record":
                     self = .createWeightRecord(try .init(from: decoder))
+                case "delete_dish":
+                    self = .deleteDish(try .init(from: decoder))
                 case "delete_meal":
                     self = .deleteMeal(try .init(from: decoder))
                 case "respond_notice":
@@ -859,6 +863,8 @@ extension Components {
                 case let .createNotice(value):
                     try value.encode(to: encoder)
                 case let .createWeightRecord(value):
+                    try value.encode(to: encoder)
+                case let .deleteDish(value):
                     try value.encode(to: encoder)
                 case let .deleteMeal(value):
                     try value.encode(to: encoder)
@@ -931,6 +937,41 @@ extension Components {
                 case id
                 case _type = "type"
                 case accountSettings
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/DeleteDishWrite`.
+        internal struct DeleteDishWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteDishWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/DeleteDishWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case deleteDish = "delete_dish"
+            }
+            /// - Remark: Generated from `#/components/schemas/DeleteDishWrite/type`.
+            internal var _type: Components.Schemas.DeleteDishWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/DeleteDishWrite/dishId`.
+            internal var dishId: Swift.String
+            /// Creates a new `DeleteDishWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - dishId:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.DeleteDishWrite._TypePayload,
+                dishId: Swift.String
+            ) {
+                self.id = id
+                self._type = _type
+                self.dishId = dishId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case dishId
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateMealWrite`.
