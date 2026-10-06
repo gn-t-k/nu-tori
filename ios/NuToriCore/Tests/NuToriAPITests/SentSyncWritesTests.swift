@@ -32,6 +32,19 @@ struct SentSyncWritesTests {
                 .createMeal(writeId: UUID(), meal: try .fixture()),
                 .deleteMeal(writeId: UUID(), mealId: UUID()),
                 .deleteDish(writeId: UUID(), dishId: UUID()),
+                .updateDish(
+                    writeId: UUID(),
+                    correction: DishCorrection(
+                        id: UUID(), name: "親子丼",
+                        quantity: .init(
+                            value: 1.5,
+                            proportionedIngredients: [
+                                .init(ingredientId: UUID(), quantity: 120)
+                            ]))),
+                .updateDish(
+                    writeId: UUID(),
+                    correction: DishCorrection(id: UUID(), name: "味噌汁", quantity: nil)),
+                .updateIngredient(writeId: UUID(), ingredientId: UUID(), quantity: 150),
                 .createNotice(
                     writeId: UUID(),
                     notice: NewNotice(

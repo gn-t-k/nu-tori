@@ -14,6 +14,10 @@ public enum SyncWrite: Sendable, Equatable {
     case deleteMeal(writeId: UUID, mealId: UUID)
     /// サーバーは受け付けないことが無い。知らない ID でも削除の印を残す。料理のすべての材料も消える
     case deleteDish(writeId: UUID, dishId: UUID)
+    /// 消えていた料理、範囲の外の名前と量は、サーバーが受け付けない
+    case updateDish(writeId: UUID, correction: DishCorrection)
+    /// 料理ごと消えていた材料、範囲の外の量は、サーバーが受け付けない
+    case updateIngredient(writeId: UUID, ingredientId: UUID, quantity: Double)
     /// 同じ ID の知らせがすでにあれば、サーバーは捨てる
     case createNotice(writeId: UUID, notice: NewNotice)
     /// すでに答えがあれば、サーバーは捨てる（先に受け取ったほうが残る）
