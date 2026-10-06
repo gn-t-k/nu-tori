@@ -13,8 +13,10 @@ public struct Timeline: Sendable {
         // 食事の日が使い始めた日より前の食事は、カードは並べても、丸にも日のまとめにも入れない
         let mealsByEatenDay = Dictionary(
             grouping: input.meals.filter { $0.meal.day >= firstDay }, by: \.meal.day)
+        // 答えた知らせは並べない。記録したことは体重の行で分かるため
         let noticesByDay = Dictionary(
-            grouping: input.notices.filter { $0.targetDay >= firstDay }, by: \.targetDay)
+            grouping: input.notices.filter { $0.response == nil && $0.targetDay >= firstDay },
+            by: \.targetDay)
         let rejectedWeightLines = input.rejectedLines.compactMap(\.weightLine)
         let rejectedMealLines = input.rejectedLines.compactMap(\.mealLine)
         let lastDay = ([today] + weightRecordsByDay.keys + mealsByDay.keys + noticesByDay.keys)
@@ -29,7 +31,9 @@ public struct Timeline: Sendable {
                     rejectedLines: rejectedWeightLines.filter { $0.record.day == day },
                     meals: mealsByDay[day] ?? [],
                     rejectedMealLines: rejectedMealLines.filter { $0.meal.cardDay == day },
-                    notices: (noticesByDay[day] ?? []).map { NoticeCard(notice: $0, today: today) }
+                    notices: (noticesByDay[day] ?? []).map {
+                        NoticeCard(unanswered: $0, today: today)
+                    }
                 ),
                 food: DayFood(meals: mealsByEatenDay[day] ?? [])
             )

@@ -75,12 +75,15 @@ extension TimelineTests {
                 )
             }
 
-            @Test("答えた形で置くこと")
-            func placesAnswered() {
+            @Test("並べないこと")
+            func doesNotPlaceAnswered() {
+                #expect(timeline.days.last?.items == [])
+            }
+
+            @Test("記録忘れの通知から、いちばん新しい日の下に着くこと")
+            func landsOnEndFromReminder() {
                 #expect(
-                    timeline.days.last?.items == [
-                        .notice(NoticeCard(notice: notice, form: .answered))
-                    ])
+                    timeline.landing(for: .notice(id: notice.id)) == .end(PlacingNotices.today))
             }
 
             @Test("答えていない知らせの1行を出さないこと")

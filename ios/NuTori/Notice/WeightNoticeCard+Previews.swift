@@ -22,8 +22,6 @@
             case awaitingAnswer
             /// 今日の答えていない知らせで、体重記録がまだ1つも無い。値は空で、押すとキーボードで入れる
             case awaitingAnswerWithoutPreviousRecord
-            /// 知らせの中で記録した
-            case answered
             /// 前の日の答えていない知らせ。文だけ
             case unansweredPastDay
 
@@ -33,11 +31,6 @@
                     NoticeCard(
                         notice: .sampleMissedWeightRecord(on: .sampleToday, respondedAt: nil),
                         form: .awaitingAnswer)
-                case .answered:
-                    NoticeCard(
-                        notice: .sampleMissedWeightRecord(
-                            on: .sampleToday, respondedAt: (hour: 9, minute: 30)),
-                        form: .answered)
                 case .unansweredPastDay:
                     NoticeCard(
                         notice: .sampleMissedWeightRecord(
@@ -48,7 +41,7 @@
 
             var records: [WeightRecord] {
                 switch self {
-                case .awaitingAnswer, .answered, .unansweredPastDay:
+                case .awaitingAnswer, .unansweredPastDay:
                     [
                         .sample(
                             72.4, on: CalendarDay.sampleToday.advanced(by: -2), at: 7, 10,
