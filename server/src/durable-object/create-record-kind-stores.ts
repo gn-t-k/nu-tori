@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { createAccountSettingsStore } from "../account-settings/durable-object/create-account-settings-store";
 import { createDishStore } from "../dish/durable-object/create-dish-store";
+import { createDishEstimationStatusStore } from "../dish-estimation-status/durable-object/create-dish-estimation-status-store";
 import type { RecordKindStores } from "../domain/record-kind-stores";
 import { createEstimationEventWriteStore } from "../estimation/durable-object/create-estimation-event-write-store";
 import { createEstimationScheduleStore } from "../estimation/durable-object/create-estimation-schedule-store";
@@ -22,9 +23,12 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
   const meal = createMealStore(db);
   const mealEstimationStatus = createMealEstimationStatusStore(db);
   const estimationEventWrite = createEstimationEventWriteStore(db);
+  const dish = createDishStore(db);
+  const dishEstimationStatus = createDishEstimationStatusStore(db);
   return {
     accountSettings: createAccountSettingsStore(db),
-    dish: createDishStore(db),
+    dish,
+    dishEstimationStatus,
     ingredient: createIngredientStore(db),
     meal,
     mealEstimationStatus,
@@ -37,6 +41,10 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     estimationSchedule: createEstimationScheduleStore(db),
     estimation: createEstimationStore(db),
     writeEstimationEvents: (addChange, run) =>
-      writeEstimationEvents({ meal, mealEstimationStatus, estimationEventWrite }, addChange, run),
+      writeEstimationEvents(
+        { meal, mealEstimationStatus, dish, dishEstimationStatus, estimationEventWrite },
+        addChange,
+        run,
+      ),
   };
 };

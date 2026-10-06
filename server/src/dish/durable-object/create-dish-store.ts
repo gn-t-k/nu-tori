@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
@@ -21,7 +21,7 @@ const {
 const { syncWriteReceipts, syncWriteRecordChanges } = syncLedgerTables;
 const { ingredients, ingredientQuantityCorrections } = ingredientTables;
 const { mealEatenAtCorrections } = mealTables;
-const { estimations } = estimationTables;
+const { estimations, estimationCompletions, estimationAbandonments } = estimationTables;
 
 // 料理の ID は食事の数ほど届きうるので、変数の上限（100）を超えないよう1行ずつ消し・書く
 export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
@@ -47,6 +47,30 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
       version: countVersion(db, dish),
     };
   },
+  exists: (id) =>
+    db.select({ id: dishes.id }).from(dishes).where(eq(dishes.id, id)).get() !== undefined,
+  findNewestReestimationEndedAt: (id) =>
+    db
+      .select({
+        endedAt: sql<number>`coalesce(${estimationCompletions.completedAt}, ${estimationAbandonments.abandonedAt})`,
+      })
+      .from(dishEstimationApplications)
+      .innerJoin(estimations, eq(estimations.id, dishEstimationApplications.estimationId))
+      .innerJoin(
+        dishEstimationSchedules,
+        eq(dishEstimationSchedules.estimationScheduleId, estimations.estimationScheduleId),
+      )
+      .leftJoin(estimationCompletions, eq(estimationCompletions.estimationId, estimations.id))
+      .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
+      .where(eq(dishEstimationApplications.dishId, id))
+      .orderBy(
+        desc(
+          sql`coalesce(${estimationCompletions.completedAt}, ${estimationAbandonments.abandonedAt})`,
+        ),
+      )
+      .limit(1)
+      .all()
+      .map(({ endedAt }) => new Date(endedAt))[0],
   hasDeletion: (id) =>
     db
       .select({ id: dishDeletions.dishId })
@@ -65,9 +89,11 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
   },
   insertEstimationApplication: ({ dishId, estimationId, estimatedQuantity }) => {
     db.insert(dishEstimationApplications).values({ dishId, estimationId }).run();
-    db.insert(dishEstimatedQuantities)
-      .values({ dishId, estimationId, ...estimatedQuantity })
-      .run();
+    if (estimatedQuantity !== undefined) {
+      db.insert(dishEstimatedQuantities)
+        .values({ dishId, estimationId, ...estimatedQuantity })
+        .run();
+    }
   },
   insertNameCorrection: (receiptId, name) => {
     db.insert(dishNameCorrections).values({ syncWriteReceiptId: receiptId.value, name }).run();

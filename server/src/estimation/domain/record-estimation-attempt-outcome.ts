@@ -6,15 +6,16 @@ import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { NewIngredient } from "../../ingredient/domain/ingredient";
 import type { BegunEstimationAttempt } from "./begin-estimation-attempts";
+import { applyDishEstimation } from "./apply-dish-estimation";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimatedDish } from "./estimated-dish";
 import type { EstimationAttemptOutcome } from "./estimation-attempt-outcome";
-import { findMealReceivedAt } from "./find-meal-received-at";
+import { findEstimationOrigin } from "./find-estimation-origin";
 import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 
 // 呼び出しから戻ったときに、1つのトランザクションで試みの結果を書く。
-// 食事とのつなぎが無ければ（呼び出し中に食事が消えた）結果だけで終え、二度と呼ばない。
-// 通ったら料理・当てた推定と推定の量・材料・完了を書く。料理と材料の変更は run の中で足すので、推定の書き込みの口が足す推定の状態の変更より前に並ぶ。400 か、試みが上限に達したら諦める。
+// 食事・料理とのつなぎが無ければ（呼び出し中に食事・料理が消えた）結果だけで終え、二度と呼ばない（届いた推定は捨てる）。
+// 食事が対象なら、通ったら料理・当てた推定と推定の量・材料・完了を書く。料理が対象なら、完了か断念を書き、当てるなら料理に当てる。料理と材料の変更は run の中で足すので、推定の書き込みの口が足す推定の状態の変更より前に並ぶ。400 か、試みが上限に達したら諦める。
 // 返すのは PostHog に送る出来事
 export const recordEstimationAttemptOutcome = (
   ledgerStore: LedgerStore<RecordType>,
@@ -33,33 +34,47 @@ export const recordEstimationAttemptOutcome = (
         identifyDishesUsage: outcome.usage.identifyDishes,
         matchIngredientsUsage: outcome.usage.matchIngredients,
       };
-      const mealId = stores.estimation.findMealIdOfEstimation(estimationId);
-      if (mealId === undefined) {
+      const target = stores.estimation.findTargetOfEstimation(estimationId);
+      if (target === undefined) {
         return [attemptEnded];
       }
       const attempts = stores.estimation.findAttempts(estimationId);
       const computeEnded = (
         finalStatus: "estimated" | "no_dishes" | "failed",
-        dishes: readonly NewDish[],
-        ingredients: readonly NewIngredient[],
+        dishCount: number,
+        ingredients: readonly Pick<NewIngredient, "nutrientSource">[],
       ) =>
         computeEstimationEndedEvent({
+          ...findEstimationOrigin(stores, target, estimationId),
           finalStatus,
           attempts,
-          receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),
           endedAt,
-          dishCount: dishes.length,
+          dishCount,
           ingredients,
         });
 
       if (outcome.result === "succeeded") {
+        if (target.type === "dish") {
+          const [estimated] = outcome.dishes;
+          const result = estimated === undefined ? "no_dishes" : "estimated";
+          writes.complete({ estimationId, target, completedAt: endedAt, result });
+          applyDishEstimation(stores, addChange, {
+            dishId: target.dishId,
+            estimationId,
+            estimated,
+          });
+          return [
+            attemptEnded,
+            computeEnded(result, outcome.dishes.length, estimated?.ingredients ?? []),
+          ];
+        }
         const { dishes, applications, ingredients } = toRecords(
-          mealId,
+          target.mealId,
           estimationId,
           outcome.dishes,
         );
         const result = dishes.length === 0 ? "no_dishes" : "estimated";
-        writes.complete({ estimationId, mealId, completedAt: endedAt, result });
+        writes.complete({ estimationId, target, completedAt: endedAt, result });
         for (const dish of dishes) {
           stores.dish.insert(dish);
         }
@@ -75,11 +90,18 @@ export const recordEstimationAttemptOutcome = (
         for (const { id } of ingredients) {
           addChange({ recordType: "ingredient", recordId: id });
         }
-        return [attemptEnded, computeEnded(result, dishes, ingredients)];
+        return [attemptEnded, computeEnded(result, dishes.length, ingredients)];
       }
       if (outcome.result === "bad_request" || attempts.length >= maximumEstimationAttempts) {
-        writes.abandon({ estimationId, mealId, abandonedAt: endedAt });
-        return [attemptEnded, computeEnded("failed", [], [])];
+        writes.abandon({ estimationId, target, abandonedAt: endedAt });
+        if (target.type === "dish") {
+          applyDishEstimation(stores, addChange, {
+            dishId: target.dishId,
+            estimationId,
+            estimated: undefined,
+          });
+        }
+        return [attemptEnded, computeEnded("failed", 0, [])];
       }
       return [attemptEnded];
     }),

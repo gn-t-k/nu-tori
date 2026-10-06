@@ -10,7 +10,8 @@ import type { EstimationProviderTimedOutError } from "./estimation-provider-time
 // signal は試み（①②）の時間の上限で切れる。提供元は切れたら EstimationProviderTimedOutError で返す
 export type EstimationProvider = {
   identifyDishes(
-    request: { photos: readonly ArrayBuffer[] },
+    // dish は名前を直したときの推定し直しで、その料理1つだけを返させる。写真の推定では undefined
+    request: { photos: readonly ArrayBuffer[]; dish: DishToReestimate | undefined },
     signal: AbortSignal,
   ): R.ResultAsync<
     EstimationProviderReply<IdentifiedDishes>,
@@ -29,6 +30,15 @@ export type EstimationProvider = {
     | EstimationProviderTimedOutError
     | EstimationProviderInvalidResponseError
   >;
+};
+
+// 推定し直す料理の今の値（#332 の「① に渡すもの」）
+export type DishToReestimate = {
+  name: string;
+  // 今の材料のうち、量の出どころが「直した」の材料だけ。新しい料理にも同じ材料があれば、この量を使わせる
+  correctedIngredients: readonly { name: string; quantity: number; unit: string }[];
+  // 料理の量を直してあれば、その量と単位を固定し、材料への割り振りだけを推定させる。直していなければ undefined
+  correctedQuantity: { value: number; unit: string } | undefined;
 };
 
 export type EstimationProviderReply<TOutput> = {

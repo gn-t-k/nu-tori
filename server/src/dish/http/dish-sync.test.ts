@@ -21,7 +21,7 @@ import { deleteDishWrite } from "./testing/delete-dish-write";
 import { insertDishWithoutQuantity } from "./testing/insert-dish-without-quantity";
 import { updateDishWrite } from "./testing/update-dish-write";
 import { inspectDeletedContents } from "./testing/inspect-deleted-contents";
-import { seedNotYetWritableEdits } from "./testing/seed-not-yet-writable-edits";
+import { reestimateRenamedDish } from "./testing/reestimate-renamed-dish";
 import { beforeEach, describe, expect, test } from "vitest";
 
 describe("料理の同期", () => {
@@ -412,6 +412,13 @@ describe("料理の同期", () => {
               positionInMeal: 0,
               version: 2,
             },
+            // 名前を直したので、推定し直しを待つ
+            {
+              kind: "dish_estimation_status",
+              recordId: quantitylessDishId,
+              dishId: quantitylessDishId,
+              status: "estimating",
+            },
           ]);
         });
       });
@@ -514,15 +521,10 @@ describe("料理の同期", () => {
       ) {
         throw new Error("時刻を直す書き込みが当たらなかった");
       }
-      const { secondRenameWriteId } = await correctDishByWrites(sessionToken, {
-        dishId,
-        ingredientIds: previousIngredientIds,
-      });
-      const { replacingIngredientId } = await seedNotYetWritableEdits(accountId, {
-        dishId,
-        cancellingRenameWriteId: secondRenameWriteId,
-      });
-      ingredientIds = [...previousIngredientIds, replacingIngredientId];
+      // 名前を2回直すので、1回目の名前で待った予定は、2回目の名前の書き込みが取り消す
+      await correctDishByWrites(sessionToken, { dishId, ingredientIds: previousIngredientIds });
+      const replacingIngredientIds = await reestimateRenamedDish(accountId, sessionToken, dishId);
+      ingredientIds = [...previousIngredientIds, ...replacingIngredientIds];
       lastSequence = (await pullChangesAfter(0)).at(-1)?.sequence ?? 0;
       const { estimationSchedules, estimations } = await inspectDeletedContents(accountId, {
         mealIds: [],
@@ -552,19 +554,25 @@ describe("料理の同期", () => {
         expect(results).toEqual([{ writeId: write.id, result: "applied" }]);
       });
 
-      test("取りに行くと、料理と、前の推定の材料も含むすべての材料の削除の印が返ること", async () => {
-        const [dishChange, ...ingredientChanges] = (await pullChangesAfter(lastSequence)).map(
-          ({ kind, recordId }) => ({ kind, recordId }),
-        );
+      test("取りに行くと、料理と、前の推定の材料も含むすべての材料と、料理ごとの推定の状態の削除の印が返ること", async () => {
+        const changes = (await pullChangesAfter(lastSequence)).map(({ kind, recordId }) => ({
+          kind,
+          recordId,
+        }));
+        const [dishChange] = changes;
         // 材料どうしの並びは約束しない（消す口が材料を引く順は ID の並びに左右される）
         expect({
           dish: dishChange,
-          ingredients: ingredientChanges.toSorted((a, b) => a.recordId.localeCompare(b.recordId)),
+          ingredients: changes
+            .slice(1, -1)
+            .toSorted((a, b) => a.recordId.localeCompare(b.recordId)),
+          status: changes.at(-1),
         }).toEqual({
           dish: { kind: "dish_deletion", recordId: dishId },
           ingredients: ingredientIds
             .toSorted((a, b) => a.localeCompare(b))
             .map((recordId) => ({ kind: "ingredient_deletion", recordId })),
+          status: { kind: "dish_estimation_status_deletion", recordId: dishId },
         });
       });
 

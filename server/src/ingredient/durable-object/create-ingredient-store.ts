@@ -78,6 +78,14 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
       .get();
     return ingredient !== undefined && !isCurrent(db, ingredient);
   },
+  isReplaced: (id) => {
+    const ingredient = db
+      .select({ dishId: ingredients.dishId, estimationId: ingredients.estimationId })
+      .from(ingredients)
+      .where(eq(ingredients.id, id))
+      .get();
+    return ingredient !== undefined && !isCurrent(db, ingredient);
+  },
   findIdsOfMeal: (mealId) =>
     db
       .select({ id: ingredients.id })

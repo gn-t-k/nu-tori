@@ -1,5 +1,6 @@
 import type { AccountSettingsStore } from "../account-settings/domain/account-settings-store";
 import type { DishStore } from "../dish/domain/dish-store";
+import type { DishEstimationStatusStore } from "../dish-estimation-status/domain/dish-estimation-status-store";
 import type { EstimationScheduleStore } from "../estimation/domain/estimation-schedule-store";
 import type { EstimationStore } from "../estimation/domain/estimation-store";
 import type { EstimationWrites } from "../estimation/domain/estimation-writes";
@@ -18,6 +19,7 @@ import type { WeightRecordStore } from "../weight-record/domain/weight-record-st
 export type RecordKindStores = {
   accountSettings: AccountSettingsStore;
   dish: DishStore;
+  dishEstimationStatus: DishEstimationStatusStore;
   ingredient: IngredientStore;
   meal: MealStore;
   mealEstimationStatus: MealEstimationStatusStore;
@@ -36,7 +38,9 @@ export type RecordKindStores = {
   // 推定の予定と結果を書く口（ドメイン層の writeEstimationEvents に、書く置き場を渡したもの）。
   // 書く置き場はここにしか渡さないので、推定の予定と結果はこの口を通してしか書けない
   writeEstimationEvents: <T>(
-    addChange: (change: RecordChangeTarget<"meal_estimation_status">) => void,
+    addChange: (
+      change: RecordChangeTarget<"meal_estimation_status" | "dish_estimation_status">,
+    ) => void,
     run: (writes: EstimationWrites) => T,
   ) => T;
 };

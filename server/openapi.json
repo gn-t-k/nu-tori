@@ -17,6 +17,7 @@
         "enum": [
           "account_settings",
           "dish",
+          "dish_estimation_status",
           "ingredient",
           "meal",
           "meal_estimation_status",
@@ -87,6 +88,24 @@
           "version"
         ],
         "description": "kind が dish の変更の record。消えたら kind が dish_deletion で record が空の変更が届く"
+      },
+      "DishEstimationStatusRecord": {
+        "type": "object",
+        "properties": {
+          "dishId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
+            "example": "estimating"
+          }
+        },
+        "required": [
+          "dishId",
+          "status"
+        ],
+        "description": "kind が dish_estimation_status の変更の record。recordId は料理の ID。推定し直しをしていない料理の変更は届かない。料理が消えたら kind が dish_estimation_status_deletion で record が空の変更が届く"
       },
       "IngredientRecord": {
         "type": "object",
@@ -440,7 +459,8 @@
           },
           "rejectionReason": {
             "type": "string",
-            "description": "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ"
+            "description": "result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと",
+            "example": "ingredients_replaced"
           },
           "current": {
             "$ref": "#/components/schemas/SyncWriteCurrent"

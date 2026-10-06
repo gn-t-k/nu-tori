@@ -6,6 +6,8 @@ export type IngredientStore = {
   find: (id: string) => Ingredient | undefined;
   // 削除の印があるか、前の推定の材料（今の材料でない）なら true
   hasDeletion: (id: string) => boolean;
+  // 推定し直しで置き換わった前の材料（行はあり、料理のいちばん新しい当てた推定の材料でない）なら true
+  isReplaced: (id: string) => boolean;
   // 食事の料理の材料（前の推定の材料も）
   findIdsOfMeal: (mealId: string) => string[];
   // 料理の材料（前の推定の材料も）

@@ -3,17 +3,18 @@ import { R } from "@praha/byethrow";
 import { z } from "zod";
 import nutrients from "../../../../../shared/nutrients.json";
 import type {
+  DishToReestimate,
   EstimationProvider,
   EstimationProviderReply,
   IdentifiedDishes,
 } from "../../domain/estimation-provider";
 import { requestStructuredOutput } from "./request-structured-output";
 
-// ①: 写真（1食事に 1〜4 枚）から、料理と材料と量を読み取る
+// ①: 写真（1食事に 1〜4 枚）から、料理と材料と量を読み取る。推定し直しでは、写真と料理の今の値から、その料理1つを読み取る
 export const identifyDishes = async (
   client: Anthropic,
   userId: string,
-  request: { photos: readonly ArrayBuffer[] },
+  request: { photos: readonly ArrayBuffer[]; dish: DishToReestimate | undefined },
   signal: AbortSignal,
 ): R.ResultAsync<
   EstimationProviderReply<IdentifiedDishes>,
@@ -35,7 +36,13 @@ export const identifyDishes = async (
             data: Buffer.from(photo).toString("base64"),
           },
         })),
-        { type: "text", text: "この食事の料理と材料を答えてください。" },
+        {
+          type: "text",
+          text:
+            request.dish === undefined
+              ? "この食事の料理と材料を答えてください。"
+              : toReestimationInstruction(request.dish),
+        },
       ],
       schema: identifiedDishesSchema,
       userId,
@@ -48,6 +55,31 @@ export const identifyDishes = async (
     R.map(({ output, usage }) => ({ output: toIdentifiedDishes(output), usage })),
   );
 };
+
+// 名前を直した料理の推定し直しの指示（#332 の「① に渡すもの」）。使う人が直した材料と料理の量だけを渡す
+const toReestimationInstruction = ({
+  name,
+  correctedIngredients,
+  correctedQuantity,
+}: DishToReestimate): string =>
+  [
+    `使う人が、この食事の料理の1つの名前を「${name}」に直しました。この料理1つだけについて、量と材料を答えてください（dishes は1件）。写真にほかの料理が写っていても答えません。`,
+    "写真から見分けられなくても、名前と写真から無理なく推定できる範囲で答えてください。その名前の料理の材料を出せないときだけ、dishes を空にしてください。",
+    ...(correctedIngredients.length === 0
+      ? []
+      : [
+          `使う人が直した材料: ${correctedIngredients
+            .map(
+              ({ name: ingredientName, quantity, unit }) => `${ingredientName} ${quantity} ${unit}`,
+            )
+            .join("、")}。新しい料理にも同じ材料があれば、この量を使ってください。`,
+        ]),
+    ...(correctedQuantity === undefined
+      ? []
+      : [
+          `料理の量は ${correctedQuantity.value} ${correctedQuantity.unit}に決まっています。料理の量と単位はこのまま答え、材料への割り振りだけを推定してください。`,
+        ]),
+  ].join("\n");
 
 const nutrientNames = Object.keys(nutrients);
 

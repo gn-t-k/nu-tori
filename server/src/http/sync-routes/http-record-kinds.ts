@@ -1,5 +1,6 @@
 import { accountSettingsHttpKind } from "../../account-settings/http/account-settings-http-kind";
 import { dishHttpKind } from "../../dish/http/dish-http-kind";
+import { dishEstimationStatusHttpKind } from "../../dish-estimation-status/http/dish-estimation-status-http-kind";
 import type { RecordType } from "../../domain/record-type";
 import { ingredientHttpKind } from "../../ingredient/http/ingredient-http-kind";
 import { mealHttpKind } from "../../meal/http/meal-http-kind";
@@ -15,6 +16,7 @@ import type { HttpRecordKind } from "./http-record-kind";
 export const httpRecordKinds = {
   account_settings: accountSettingsHttpKind,
   dish: dishHttpKind,
+  dish_estimation_status: dishEstimationStatusHttpKind,
   ingredient: ingredientHttpKind,
   meal: mealHttpKind,
   meal_estimation_status: mealEstimationStatusHttpKind,

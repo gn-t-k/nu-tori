@@ -4,6 +4,8 @@ import { match, P } from "ts-pattern";
 import type { EstimationAttemptConclusion } from "../domain/estimation-attempt-conclusion";
 import type { EstimationAttemptResult } from "../domain/estimation-attempt-result";
 import type { EstimationAttempt, EstimationStore } from "../domain/estimation-store";
+import { dishTables } from "../../dish/durable-object/dish-tables";
+import type { EstimationTarget } from "../domain/estimation-target";
 import { estimationTables } from "./estimation-tables";
 
 const {
@@ -16,6 +18,7 @@ const {
   estimationCompletions,
   estimationAbandonments,
 } = estimationTables;
+const { dishes, dishEstimationSchedules } = dishTables;
 
 export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationStore => {
   const findAttempts = (estimationId: string): EstimationAttempt[] =>
@@ -58,7 +61,11 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
         .where(eq(estimationSchedules.countedOn, countedOn))
         .get()?.total ?? 0,
     findContinuingEstimations: () => {
-      const continuing = db
+      const notEnded = and(
+        isNull(estimationCompletions.estimationId),
+        isNull(estimationAbandonments.estimationId),
+      );
+      const continuingOfMeals = db
         .select({ estimationId: estimations.id, mealId: mealEstimationSchedules.mealId })
         .from(estimations)
         .innerJoin(
@@ -67,21 +74,40 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
         )
         .leftJoin(estimationCompletions, eq(estimationCompletions.estimationId, estimations.id))
         .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
-        .where(
-          and(
-            isNull(estimationCompletions.estimationId),
-            isNull(estimationAbandonments.estimationId),
-          ),
+        .where(notEnded)
+        .all()
+        .map(({ estimationId, mealId }) => ({
+          estimationId,
+          target: { type: "meal" as const, mealId },
+        }));
+      const continuingOfDishes = db
+        .select({
+          estimationId: estimations.id,
+          dishId: dishEstimationSchedules.dishId,
+          mealId: dishes.mealId,
+        })
+        .from(estimations)
+        .innerJoin(
+          dishEstimationSchedules,
+          eq(dishEstimationSchedules.estimationScheduleId, estimations.estimationScheduleId),
         )
-        .all();
-      return continuing.map(({ estimationId, mealId }) => ({
+        .innerJoin(dishes, eq(dishes.id, dishEstimationSchedules.dishId))
+        .leftJoin(estimationCompletions, eq(estimationCompletions.estimationId, estimations.id))
+        .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
+        .where(notEnded)
+        .all()
+        .map(({ estimationId, dishId, mealId }) => ({
+          estimationId,
+          target: { type: "dish" as const, dishId, mealId },
+        }));
+      return [...continuingOfMeals, ...continuingOfDishes].map(({ estimationId, target }) => ({
         estimationId,
-        mealId,
+        target,
         attempts: findAttempts(estimationId),
       }));
     },
-    findMealIdOfEstimation: (estimationId) =>
-      db
+    findTargetOfEstimation: (estimationId): EstimationTarget | undefined => {
+      const meal = db
         .select({ mealId: mealEstimationSchedules.mealId })
         .from(estimations)
         .innerJoin(
@@ -89,7 +115,22 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
           eq(mealEstimationSchedules.estimationScheduleId, estimations.estimationScheduleId),
         )
         .where(eq(estimations.id, estimationId))
-        .get()?.mealId,
+        .get();
+      if (meal !== undefined) {
+        return { type: "meal", mealId: meal.mealId };
+      }
+      const dish = db
+        .select({ dishId: dishEstimationSchedules.dishId, mealId: dishes.mealId })
+        .from(estimations)
+        .innerJoin(
+          dishEstimationSchedules,
+          eq(dishEstimationSchedules.estimationScheduleId, estimations.estimationScheduleId),
+        )
+        .innerJoin(dishes, eq(dishes.id, dishEstimationSchedules.dishId))
+        .where(eq(estimations.id, estimationId))
+        .get();
+      return dish === undefined ? undefined : { type: "dish", ...dish };
+    },
     findOngoingEstimationIdOfMeal: (mealId) =>
       db
         .select({ estimationId: estimations.id })

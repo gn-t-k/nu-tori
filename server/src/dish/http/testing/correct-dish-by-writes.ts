@@ -6,21 +6,20 @@ import { updateIngredientWrite } from "../../../ingredient/http/testing/update-i
 import { updateDishWrite } from "./update-dish-write";
 
 // 推定できた料理の名前を2回、量を1回（今の材料すべての比例の明細つき）、材料の量を1回、本物の書き込みで直す。
-// 「消したら中身が残らない」の前提に使う。名前の2回目の書き込みの ID を返す（予定の取り消しの控えに使う）
+// 「消したら中身が残らない」の前提に使う。名前を直すたびに推定し直しの予定が入り、1回目の名前の予定は2回目の名前の書き込みが取り消す
 export const correctDishByWrites = async (
   sessionToken: string,
   { dishId, ingredientIds }: { dishId: string; ingredientIds: readonly string[] },
-): Promise<{ secondRenameWriteId: string }> => {
+): Promise<void> => {
   const [firstIngredientId] = ingredientIds;
   if (firstIngredientId === undefined) {
     throw new Error("直す材料が無い");
   }
-  const secondRename = updateDishWrite(dishId, { name: "かつ丼" });
   const { results } = await (
     await pushSyncWrites(sessionToken, {
       writes: [
         updateDishWrite(dishId, { name: "カツ丼" }),
-        secondRename,
+        updateDishWrite(dishId, { name: "かつ丼" }),
         updateDishWrite(dishId, {
           name: "かつ丼",
           quantity: {
@@ -38,5 +37,4 @@ export const correctDishByWrites = async (
   if (results.some(({ result }) => result !== "applied")) {
     throw new Error(`直す書き込みが当たらなかった: ${JSON.stringify(results)}`);
   }
-  return { secondRenameWriteId: secondRename.id };
 };

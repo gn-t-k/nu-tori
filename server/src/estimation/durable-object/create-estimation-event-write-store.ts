@@ -1,6 +1,7 @@
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { match, P } from "ts-pattern";
 import type { EstimationEventWriteStore } from "../domain/estimation-event-write-store";
+import { dishTables } from "../../dish/durable-object/dish-tables";
 import { estimationTables } from "./estimation-tables";
 
 const {
@@ -13,7 +14,9 @@ const {
   estimationAttemptErrors,
   estimationCompletions,
   estimationAbandonments,
+  estimationScheduleCancellations,
 } = estimationTables;
+const { dishEstimationSchedules } = dishTables;
 
 export const createEstimationEventWriteStore = (
   db: DrizzleSqliteDODatabase,
@@ -21,6 +24,15 @@ export const createEstimationEventWriteStore = (
   insertMealSchedule: ({ id, dueAt, countedOn, mealId }) => {
     db.insert(estimationSchedules).values({ id, dueAt, countedOn }).run();
     db.insert(mealEstimationSchedules).values({ estimationScheduleId: id, mealId }).run();
+  },
+  insertDishSchedule: ({ id, dueAt, countedOn, dishId }) => {
+    db.insert(estimationSchedules).values({ id, dueAt, countedOn }).run();
+    db.insert(dishEstimationSchedules).values({ estimationScheduleId: id, dishId }).run();
+  },
+  insertCancellation: ({ scheduleId, receiptId }) => {
+    db.insert(estimationScheduleCancellations)
+      .values({ estimationScheduleId: scheduleId, syncWriteReceiptId: receiptId.value })
+      .run();
   },
   insertDeferral: ({ scheduleId, deferredAt }) => {
     db.insert(estimationDeferrals).values({ estimationScheduleId: scheduleId, deferredAt }).run();
