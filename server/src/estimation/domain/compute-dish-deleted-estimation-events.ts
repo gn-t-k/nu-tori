@@ -1,3 +1,4 @@
+import type { DishStore } from "../../dish/domain/dish-store";
 import { findOngoingEstimationId } from "../../dish-estimation-status/domain/dish-estimation-schedule";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
 import type { UsageEvent } from "../../domain/usage-event";
@@ -13,6 +14,7 @@ export const computeDishDeletedEstimationEvents = (
     dishEstimationStatus: DishEstimationStatusStore;
     estimationSchedule: EstimationScheduleStore;
     estimation: EstimationStore;
+    dish: DishStore;
   },
   dish: { id: string; mealId: string },
   finalStatus: "dish_deleted" | "meal_deleted",

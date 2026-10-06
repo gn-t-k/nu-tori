@@ -2,6 +2,7 @@ import { runDurableObjectAlarm } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
+import { createDishWrite } from "../../dish/http/testing/create-dish-write";
 import { deleteDishWrite } from "../../dish/http/testing/delete-dish-write";
 import { updateDishWrite } from "../../dish/http/testing/update-dish-write";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
@@ -726,6 +727,38 @@ describe("名前を直したときの推定し直し", () => {
       });
     });
 
+    describe("料理を足して推定し直したとき", () => {
+      let addedDishId: string;
+      beforeEach(async () => {
+        clock.advance(1000);
+        const write = createDishWrite(mealId, { name: "味噌汁" });
+        addedDishId = write.dishId;
+        await pushSyncWrites(sessionToken, { writes: [write] });
+        clock.advance(20_000);
+        await runEstimationAlarm(accountId);
+      });
+
+      test("推定ごとの出来事を、きっかけを「料理を足した」で送ること", () => {
+        expect(readEndedTriggers(captureSpy)).toEqual(["dish_added"]);
+      });
+
+      describe("そのあとに足した料理の名前を直して推定し直したとき", () => {
+        beforeEach(async () => {
+          captureSpy.mockClear();
+          clock.advance(1000);
+          await pushSyncWrites(sessionToken, {
+            writes: [updateDishWrite(addedDishId, { name: "豚汁" })],
+          });
+          clock.advance(1000);
+          await runEstimationAlarm(accountId);
+        });
+
+        test("推定ごとの出来事を、きっかけを「名前を直した」で送ること", () => {
+          expect(readEndedTriggers(captureSpy)).toEqual(["dish_renamed"]);
+        });
+      });
+    });
+
     describe("推定し直しの呼び出し中に料理を消したとき", () => {
       beforeEach(async () => {
         const { promise: replyAfter, resolve: reply } = Promise.withResolvers<void>();
@@ -752,6 +785,11 @@ describe("名前を直したときの推定し直し", () => {
     });
   });
 });
+
+const readEndedTriggers = (captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>) =>
+  readPostHogCapturedEvents(captureSpy)
+    .filter(({ event }) => event === "estimation_ended")
+    .map(({ properties }) => properties["trigger"]);
 
 const nextDayOf = (day: string) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);

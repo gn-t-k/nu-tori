@@ -77,6 +77,19 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
       .from(dishDeletions)
       .where(eq(dishDeletions.dishId, id))
       .get() !== undefined,
+  wasAddedByUser: (id) =>
+    db
+      .select({ id: syncWriteReceipts.id })
+      .from(syncWriteReceipts)
+      .where(
+        and(
+          eq(syncWriteReceipts.recordType, "dish"),
+          eq(syncWriteReceipts.recordId, id),
+          eq(syncWriteReceipts.kind, "create"),
+          eq(syncWriteReceipts.result, "applied"),
+        ),
+      )
+      .get() !== undefined,
   findIdsOfMeal: (mealId) =>
     db
       .select({ id: dishes.id })

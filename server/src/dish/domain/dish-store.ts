@@ -7,6 +7,8 @@ export type DishStore = {
   find: (id: string) => Dish | undefined;
   exists: (id: string) => boolean;
   hasDeletion: (id: string) => boolean;
+  // 使う人が足した料理か（料理を作る書き込みを当てた控えがある）。料理に作り手は持たない
+  wasAddedByUser: (id: string) => boolean;
   // 料理が対象の推定（推定し直し）を当てたうち、いちばん新しいものの終わり（完了か断念）の時刻。当てていなければ undefined
   findNewestReestimationEndedAt: (id: string) => Date | undefined;
   findIdsOfMeal: (mealId: string) => string[];
