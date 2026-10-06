@@ -10,6 +10,8 @@ public enum SyncWrite: Sendable, Equatable {
     case updateAccountSettings(writeId: UUID, settings: SyncedAccountSettings)
     /// 写真の宣言を含む。写真のファイルは別の経路で送る
     case createMeal(writeId: UUID, meal: SyncedMeal)
+    /// 直すのは撮った時刻だけ。時差・送った時刻・入口は変えない
+    case updateMeal(writeId: UUID, mealId: UUID, eatenAt: Date)
     /// サーバーは受け付けないことが無い。知らない ID でも削除の印を残す
     case deleteMeal(writeId: UUID, mealId: UUID)
     /// サーバーは受け付けないことが無い。知らない ID でも削除の印を残す。料理のすべての材料も消える

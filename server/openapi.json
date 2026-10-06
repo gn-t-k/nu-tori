@@ -508,6 +508,9 @@
             "$ref": "#/components/schemas/DeleteMealWrite"
           },
           {
+            "$ref": "#/components/schemas/UpdateMealWrite"
+          },
+          {
             "$ref": "#/components/schemas/CreateNoticeWrite"
           },
           {
@@ -532,6 +535,7 @@
             "update_ingredient": "#/components/schemas/UpdateIngredientWrite",
             "create_meal": "#/components/schemas/CreateMealWrite",
             "delete_meal": "#/components/schemas/DeleteMealWrite",
+            "update_meal": "#/components/schemas/UpdateMealWrite",
             "create_notice": "#/components/schemas/CreateNoticeWrite",
             "respond_notice": "#/components/schemas/RespondNoticeWrite",
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
@@ -802,6 +806,38 @@
           "id",
           "type",
           "mealId"
+        ]
+      },
+      "UpdateMealWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "update_meal"
+            ]
+          },
+          "mealId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "eatenAt": {
+            "type": "integer",
+            "minimum": -8640000000000000,
+            "maximum": 8640000000000000,
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "mealId",
+          "eatenAt"
         ]
       },
       "CreateNoticeWrite": {

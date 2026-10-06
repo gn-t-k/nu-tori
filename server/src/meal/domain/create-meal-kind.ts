@@ -34,6 +34,9 @@ export const createMealKind = (
       match(write)
         .with({ type: "create_meal" }, ({ meal }) => decideCreate(stores, meal, receivedAt))
         .with({ type: "delete_meal" }, ({ mealId }) => decideDelete(stores, mealId, receivedAt))
+        .with({ type: "update_meal" }, ({ mealId, eatenAt }) =>
+          decideUpdate(stores, mealId, eatenAt),
+        )
         .exhaustive(),
   },
   follows: undefined,
@@ -218,6 +221,52 @@ const decideDelete = (
         store.insertPhotoDeletions(meal.photoIds, receiptId);
         store.remove(mealId);
       }
+    },
+  };
+};
+
+// 撮った時刻を直す。時刻を確かめない（#188 の作る書き込みと同じ）。時刻の修正はその食事の料理すべての版を上げるので、料理の変更も足す。
+// 修正の行の順は変更の並びの通し番号で決まるので、修正を書くときは必ず食事を changedRecordId に返す
+const decideUpdate = (
+  stores: MealKindStores,
+  mealId: string,
+  eatenAt: Date,
+): WriteDecision<AddedRecordType> => {
+  const store = stores.meal;
+  const meal = store.find(mealId);
+  if (meal === undefined) {
+    return {
+      writeKind: "update",
+      recordId: mealId,
+      outcome: { result: "rejected", reason: "record_not_found" },
+      changedRecordId: undefined,
+      addedChanges: [],
+      usageEvents: [],
+      commit: () => undefined,
+    };
+  }
+  if (meal.eatenAt.getTime() === eatenAt.getTime()) {
+    return {
+      writeKind: "update",
+      recordId: mealId,
+      outcome: { result: "applied" },
+      changedRecordId: undefined,
+      addedChanges: [],
+      usageEvents: [],
+      commit: () => undefined,
+    };
+  }
+  return {
+    writeKind: "update",
+    recordId: mealId,
+    outcome: { result: "applied" },
+    changedRecordId: mealId,
+    addedChanges: stores.dish
+      .findIdsOfMeal(mealId)
+      .map((recordId) => ({ recordType: "dish" as const, recordId })),
+    usageEvents: [],
+    commit: (receiptId) => {
+      store.insertEatenAtCorrection(eatenAt, receiptId);
     },
   };
 };

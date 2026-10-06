@@ -10,6 +10,7 @@ import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing
 import { signInTestAccount } from "../../http/testing";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { updateIngredientWrite } from "../../ingredient/http/testing/update-ingredient-write";
+import { updateMealWrite } from "../../meal/http/testing/update-meal-write";
 import {
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
@@ -509,12 +510,22 @@ describe("料理の同期", () => {
           .map(({ recordId }) => recordId);
       const previousIngredientIds = ingredientIdsOf(dishId);
       untouchedIngredientIds = ingredientIdsOf(untouchedDishId);
+      const corrected = await pushSyncWrites(sessionToken, {
+        writes: [
+          updateMealWrite(mealId, Date.now() - 10 * 60_000),
+          updateMealWrite(mealId, Date.now() - 20 * 60_000),
+        ],
+      });
+      if (
+        (await corrected.json<PushResults>()).results.some(({ result }) => result !== "applied")
+      ) {
+        throw new Error("時刻を直す書き込みが当たらなかった");
+      }
       const { secondRenameWriteId } = await correctDishByWrites(sessionToken, {
         dishId,
         ingredientIds: previousIngredientIds,
       });
       const { replacingIngredientId } = await seedNotYetWritableEdits(accountId, {
-        mealId,
         dishId,
         cancellingRenameWriteId: secondRenameWriteId,
       });
@@ -549,14 +560,18 @@ describe("料理の同期", () => {
       });
 
       test("取りに行くと、料理と、前の推定の材料も含むすべての材料の削除の印が返ること", async () => {
-        const [first, ...rest] = await pullChangesAfter(lastSequence);
-        // 材料の削除の印どうしの並びは決めていない（材料の ID の順になる）
+        const [dishChange, ...ingredientChanges] = (await pullChangesAfter(lastSequence)).map(
+          ({ kind, recordId }) => ({ kind, recordId }),
+        );
+        // 材料どうしの並びは約束しない（消す口が材料を引く順は ID の並びに左右される）
         expect({
-          first: { kind: first?.kind, recordId: first?.recordId },
-          rest: rest.map(({ kind, recordId }) => `${kind}:${recordId}`).toSorted(),
+          dish: dishChange,
+          ingredients: ingredientChanges.toSorted((a, b) => a.recordId.localeCompare(b.recordId)),
         }).toEqual({
-          first: { kind: "dish_deletion", recordId: dishId },
-          rest: ingredientIds.map((recordId) => `ingredient_deletion:${recordId}`).toSorted(),
+          dish: { kind: "dish_deletion", recordId: dishId },
+          ingredients: ingredientIds
+            .toSorted((a, b) => a.localeCompare(b))
+            .map((recordId) => ({ kind: "ingredient_deletion", recordId })),
         });
       });
 

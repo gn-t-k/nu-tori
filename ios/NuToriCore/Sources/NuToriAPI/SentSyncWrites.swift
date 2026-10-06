@@ -43,7 +43,8 @@
             switch self {
             case .createWeightRecord(let writeId, _), .updateWeightRecord(let writeId, _),
                 .sourceDeletedWeightRecord(let writeId, _), .updateAccountSettings(let writeId, _),
-                .createMeal(let writeId, _), .deleteMeal(let writeId, _),
+                .createMeal(let writeId, _), .updateMeal(let writeId, _, _),
+                .deleteMeal(let writeId, _),
                 .deleteDish(let writeId, _), .updateDish(let writeId, _),
                 .updateIngredient(let writeId, _, _),
                 .createNotice(let writeId, _), .respondNotice(let writeId, _, _):
@@ -111,6 +112,10 @@
                         entryMethod: entryMethod,
                         photoIds: try meal.photos.map { try uuid($0.id) }
                     ))
+            case .updateMeal(let write):
+                self = .updateMeal(
+                    writeId: try uuid(write.id), mealId: try uuid(write.mealId),
+                    eatenAt: date(write.eatenAt))
             case .deleteMeal(let write):
                 self = .deleteMeal(writeId: try uuid(write.id), mealId: try uuid(write.mealId))
             case .deleteDish(let write):

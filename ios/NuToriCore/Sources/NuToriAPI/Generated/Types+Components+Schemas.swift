@@ -860,6 +860,8 @@ extension Components {
             case updateDish(Components.Schemas.UpdateDishWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateIngredientWrite`.
             case updateIngredient(Components.Schemas.UpdateIngredientWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateMealWrite`.
+            case updateMeal(Components.Schemas.UpdateMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateWeightRecordWrite`.
             case updateWeightRecord(Components.Schemas.UpdateWeightRecordWrite)
             internal enum CodingKeys: String, CodingKey {
@@ -892,6 +894,8 @@ extension Components {
                     self = .updateDish(try .init(from: decoder))
                 case "update_ingredient":
                     self = .updateIngredient(try .init(from: decoder))
+                case "update_meal":
+                    self = .updateMeal(try .init(from: decoder))
                 case "update_weight_record":
                     self = .updateWeightRecord(try .init(from: decoder))
                 default:
@@ -923,6 +927,8 @@ extension Components {
                 case let .updateDish(value):
                     try value.encode(to: encoder)
                 case let .updateIngredient(value):
+                    try value.encode(to: encoder)
+                case let .updateMeal(value):
                     try value.encode(to: encoder)
                 case let .updateWeightRecord(value):
                     try value.encode(to: encoder)
@@ -1324,6 +1330,49 @@ extension Components {
                 case id
                 case _type = "type"
                 case mealId
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/UpdateMealWrite`.
+        internal struct UpdateMealWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case updateMeal = "update_meal"
+            }
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/type`.
+            internal var _type: Components.Schemas.UpdateMealWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/mealId`.
+            internal var mealId: Swift.String
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/eatenAt`.
+            internal var eatenAt: Swift.Int
+            /// Creates a new `UpdateMealWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - mealId:
+            ///   - eatenAt: UNIX 時刻のミリ秒（UTC）
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.UpdateMealWrite._TypePayload,
+                mealId: Swift.String,
+                eatenAt: Swift.Int
+            ) {
+                self.id = id
+                self._type = _type
+                self.mealId = mealId
+                self.eatenAt = eatenAt
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case mealId
+                case eatenAt
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite`.

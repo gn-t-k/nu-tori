@@ -11,6 +11,7 @@
             case .updateAccountSettings(_, let settings):
                 .init(kind: .accountSettings, id: settings.id)
             case .createMeal(_, let meal): .init(kind: .meal, id: meal.id)
+            case .updateMeal(_, let mealId, _): .init(kind: .meal, id: mealId)
             case .deleteMeal(_, let mealId): .init(kind: .meal, id: mealId)
             case .deleteDish(_, let dishId): .init(kind: .dish, id: dishId)
             case .updateDish(_, let correction): .init(kind: .dish, id: correction.id)

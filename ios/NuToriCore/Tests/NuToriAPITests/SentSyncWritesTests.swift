@@ -30,6 +30,9 @@ struct SentSyncWritesTests {
                     writeId: UUID(),
                     settings: SyncedAccountSettings(id: UUID(), sendsUsageData: true)),
                 .createMeal(writeId: UUID(), meal: try .fixture()),
+                .updateMeal(
+                    writeId: UUID(), mealId: UUID(),
+                    eatenAt: Date(timeIntervalSince1970: 1_767_229_200)),
                 .deleteMeal(writeId: UUID(), mealId: UUID()),
                 .deleteDish(writeId: UUID(), dishId: UUID()),
                 .updateDish(

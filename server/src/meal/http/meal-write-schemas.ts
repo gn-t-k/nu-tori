@@ -42,5 +42,19 @@ const deleteMealWriteSchema = z
   })
   .openapi("DeleteMealWrite");
 
+// 直すのは撮った時刻だけ。サーバーでは時刻を確かめない（#332 の「受け付ける値」）
+const updateMealWriteSchema = z
+  .object({
+    id: writeIdSchema,
+    type: z.literal("update_meal"),
+    mealId: z.string().min(1),
+    eatenAt: timestampSchema,
+  })
+  .openapi("UpdateMealWrite");
+
 // 食事の書き込みのスキーマ。型を保つため as const で並べる
-export const mealWriteSchemas = [createMealWriteSchema, deleteMealWriteSchema] as const;
+export const mealWriteSchemas = [
+  createMealWriteSchema,
+  deleteMealWriteSchema,
+  updateMealWriteSchema,
+] as const;
