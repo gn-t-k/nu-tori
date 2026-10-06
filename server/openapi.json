@@ -519,6 +519,9 @@
             "$ref": "#/components/schemas/UpdateDishWrite"
           },
           {
+            "$ref": "#/components/schemas/CreateDishWrite"
+          },
+          {
             "$ref": "#/components/schemas/UpdateIngredientWrite"
           },
           {
@@ -552,6 +555,7 @@
             "update_account_settings": "#/components/schemas/UpdateAccountSettingsWrite",
             "delete_dish": "#/components/schemas/DeleteDishWrite",
             "update_dish": "#/components/schemas/UpdateDishWrite",
+            "create_dish": "#/components/schemas/CreateDishWrite",
             "update_ingredient": "#/components/schemas/UpdateIngredientWrite",
             "create_meal": "#/components/schemas/CreateMealWrite",
             "delete_meal": "#/components/schemas/DeleteMealWrite",
@@ -690,6 +694,46 @@
           "type",
           "dishId",
           "name"
+        ]
+      },
+      "CreateDishWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "create_dish"
+            ]
+          },
+          "dishId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "端末が振る UUID v4"
+          },
+          "mealId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "positionInMeal": {
+            "type": "integer",
+            "description": "端末のキャッシュの、その食事の料理の最後の次の値。一意にせず、同じなら ID の順で並べる"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "dishId",
+          "mealId",
+          "name",
+          "positionInMeal"
         ]
       },
       "UpdateIngredientWrite": {

@@ -12,7 +12,7 @@ import { deleteDishes } from "./delete-dishes";
 import type { Dish } from "./dish";
 import { type DishQuantityCorrection, type DishWrite, dishWriteTypes } from "./dish-write";
 
-// 料理の種類。サーバーが推定の完了で作り、端末が名前と量を直し、消す。名前を直すと、サーバーがその料理だけを推定し直す。
+// 料理の種類。サーバーが推定の完了で作り、端末が足し、名前と量を直し、消す。足したときと名前を直したときは、サーバーがその料理だけを推定し直す。
 // receivedAt は要求を受け取った時刻。推定し直しの予定の時刻と数える日に使う
 export const createDishKind = (
   stores: DishKindStores,
@@ -23,6 +23,7 @@ export const createDishKind = (
     isWrite: (write): write is DishWrite => dishWriteTypes.includes(write.type),
     decide: (write) =>
       match(write)
+        .with({ type: "create_dish" }, (create) => decideCreate(stores, create, receivedAt))
         .with({ type: "delete_dish" }, ({ dishId }) => decideDelete(stores, dishId, receivedAt))
         .with({ type: "update_dish" }, (update) => decideUpdate(stores, update, receivedAt))
         .exhaustive(),
@@ -52,6 +53,69 @@ type DishKindStores = Pick<
   | "estimation"
   | "writeEstimationEvents"
 >;
+
+// 名前だけで料理を作り、名前を直したときと同じく推定し直しを予定に入れる。量と材料は推定し直しで入る。
+// 足したのが使う人かは、この書き込みの控えで分かるので、料理に作り手を持たない
+const decideCreate = (
+  stores: DishKindStores,
+  { dishId, mealId, name, positionInMeal }: Extract<DishWrite, { type: "create_dish" }>,
+  receivedAt: Date,
+): WriteDecision<AddedRecordType> => {
+  const ignored = (result: "ignored_duplicate" | "ignored_tombstone") => ({
+    writeKind: "create" as const,
+    recordId: dishId,
+    outcome: { result },
+    changedRecordId: undefined,
+    addedChanges: [],
+    usageEvents: [],
+    commit: () => undefined,
+  });
+  if (stores.dish.exists(dishId)) {
+    return ignored("ignored_duplicate");
+  }
+  if (stores.dish.hasDeletion(dishId)) {
+    return ignored("ignored_tombstone");
+  }
+  // 消えた食事に足した料理は、削除の印を残して、あとから同じ ID が届いても生き返らせない
+  if (stores.meal.hasDeletion(mealId)) {
+    return {
+      ...ignored("ignored_tombstone"),
+      changedRecordId: dishId,
+      commit: (receiptId) => {
+        stores.dish.insertDeletions([dishId], receiptId);
+      },
+    };
+  }
+  const meal = stores.meal.find(mealId);
+  if (meal === undefined) {
+    return { ...rejected(dishId, "record_not_found"), writeKind: "create" };
+  }
+  if (!isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length)) {
+    return { ...rejected(dishId, "out_of_range"), writeKind: "create" };
+  }
+  return {
+    writeKind: "create",
+    recordId: dishId,
+    outcome: { result: "applied" },
+    changedRecordId: dishId,
+    // 足した料理の予定は、受け取った時刻が来ているので推定中になる
+    addedChanges: [{ recordType: "dish_estimation_status", recordId: dishId }],
+    usageEvents: [],
+    commit: (receiptId) => {
+      stores.dish.insert({ id: dishId, mealId, name, positionInMeal });
+      // 推定の状態の変更は addedChanges で足すので、推定の書き込みの口が足す変更は捨てる
+      stores.writeEstimationEvents(discardStatusChange, (writes) =>
+        scheduleDishReestimation(
+          stores,
+          writes,
+          { id: dishId, mealSentTimeZone: meal.sentTimeZone },
+          receiptId,
+          receivedAt,
+        ),
+      );
+    },
+  };
+};
 
 // 受け付けられないことが無い書き込み（docs/agents/sync.md）。料理がまだ届いていなくても印を残し、
 // あとから届く作る書き込みで生き返らせない。材料の変更は、前の推定の材料も含めて1つずつ足す。
