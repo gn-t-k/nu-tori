@@ -17,7 +17,7 @@ export const createEstimationScheduleStore = (
   db: DrizzleSqliteDODatabase,
 ): EstimationScheduleStore => {
   // 待っている予定（推定も見送りも無い）。食事の予定は取り消さないので、取り消しは料理の予定だけを見る
-  const waitingMealSchedules = (now: Date | undefined) =>
+  const waitingMealSchedules = (dueBy: Date | undefined) =>
     db
       .select({
         scheduleId: estimationSchedules.id,
@@ -39,12 +39,12 @@ export const createEstimationScheduleStore = (
         and(
           isNull(estimations.id),
           isNull(estimationDeferrals.estimationScheduleId),
-          now === undefined ? undefined : lte(estimationSchedules.dueAt, now),
+          dueBy === undefined ? undefined : lte(estimationSchedules.dueAt, dueBy),
         ),
       )
       .orderBy(asc(estimationSchedules.dueAt))
       .all();
-  const waitingDishSchedules = (now: Date | undefined) =>
+  const waitingDishSchedules = (dueBy: Date | undefined) =>
     db
       .select({
         scheduleId: estimationSchedules.id,
@@ -73,7 +73,7 @@ export const createEstimationScheduleStore = (
           isNull(estimations.id),
           isNull(estimationDeferrals.estimationScheduleId),
           isNull(estimationScheduleCancellations.estimationScheduleId),
-          now === undefined ? undefined : lte(estimationSchedules.dueAt, now),
+          dueBy === undefined ? undefined : lte(estimationSchedules.dueAt, dueBy),
         ),
       )
       .orderBy(asc(estimationSchedules.dueAt))
@@ -86,27 +86,21 @@ export const createEstimationScheduleStore = (
         .from(mealEstimationSchedules)
         .where(eq(mealEstimationSchedules.mealId, mealId))
         .get() !== undefined,
-    findEarliestWaitingDueAt: () =>
-      [...waitingMealSchedules(undefined), ...waitingDishSchedules(undefined)]
-        .map(({ dueAt }) => dueAt)
-        .toSorted((a, b) => a.getTime() - b.getTime())[0],
-    findDueWaitingSchedules: (now) =>
+    findWaitingSchedules: (dueBy) =>
       [
-        ...waitingMealSchedules(now).map(({ scheduleId, dueAt, countedOn, mealId }) => ({
+        ...waitingMealSchedules(dueBy).map(({ scheduleId, dueAt, countedOn, mealId }) => ({
           scheduleId,
           dueAt,
           countedOn,
           target: { type: "meal" as const, mealId },
         })),
-        ...waitingDishSchedules(now).map(({ scheduleId, dueAt, countedOn, dishId, mealId }) => ({
+        ...waitingDishSchedules(dueBy).map(({ scheduleId, dueAt, countedOn, dishId, mealId }) => ({
           scheduleId,
           dueAt,
           countedOn,
           target: { type: "dish" as const, dishId, mealId },
         })),
-      ]
-        .toSorted((a, b) => a.dueAt.getTime() - b.dueAt.getTime())
-        .map(({ scheduleId, countedOn, target }) => ({ scheduleId, countedOn, target })),
+      ].toSorted((a, b) => a.dueAt.getTime() - b.dueAt.getTime()),
     findEarliestDueAtOfMeal: (mealId) =>
       db
         .select({ dueAt: min(estimationSchedules.dueAt) })

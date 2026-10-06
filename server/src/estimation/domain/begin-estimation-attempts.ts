@@ -13,6 +13,7 @@ import { computeNextEstimationAttemptAt } from "./compute-next-estimation-attemp
 import type { DishToReestimate } from "./estimation-provider";
 import type { EstimationTarget } from "./estimation-target";
 import { findEstimationOrigin } from "./find-estimation-origin";
+import { findStartableSchedules } from "./find-startable-schedules";
 import { maximumDailyEstimations } from "./maximum-daily-estimations";
 import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 
@@ -25,7 +26,7 @@ export type BegunEstimationAttempt = {
   dish: DishToReestimate | undefined;
 };
 
-// アラームから呼ぶ。1つのトランザクションで、時刻が来た待っている予定（食事か料理が対象）から推定を始めて最初の試みを書き、
+// アラームから呼ぶ。1つのトランザクションで、時刻が来た待っている予定（食事か料理が対象。写真を待たせている料理の予定は除く）から推定を始めて最初の試みを書き、
 // 次に試みる時刻が来た続いている推定の試みを書く。途中で止まった試みで上限に達した推定は、もう呼ばずに諦める。
 // 予定の数える日の推定が1日の上限に達していれば、推定を始めず、次の日の 0:00 の予定を同じ対象に足して見送る
 export const beginEstimationAttempts = (
@@ -44,17 +45,17 @@ export const beginEstimationAttempts = (
         attempts.push({
           attemptId,
           estimationId,
-          photoIds: meal.photoIds,
+          // 料理が対象の推定を写真がそろう前に始めたのは、写真を待つ時間を過ぎたときなので、名前だけで推定する
+          photoIds:
+            target.type === "dish" && stores.mealPhoto.hasUnreceivedPhotos(meal.id)
+              ? []
+              : meal.photoIds,
           dish: target.type === "dish" ? computeDishToReestimate(stores, target.dishId) : undefined,
         });
       };
 
       // 始めた推定の試みは呼び出し中なので、下の続いている推定では次に試みる時刻がまだ来ていない
-      for (const {
-        scheduleId,
-        target,
-        countedOn,
-      } of stores.estimationSchedule.findDueWaitingSchedules(now)) {
+      for (const { scheduleId, target, countedOn } of findStartableSchedules(stores, now)) {
         if (stores.estimation.countEstimationsCountedOn(countedOn) >= maximumDailyEstimations) {
           const nextDay = computeNextDayStart(
             countedOn,

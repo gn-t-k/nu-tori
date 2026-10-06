@@ -29,17 +29,29 @@ export const findOngoingEstimationId = (
   schedules: readonly DishEstimationSchedule[],
 ): string | undefined => schedules.find(({ progress }) => progress === "estimating")?.estimationId;
 
-// 推定し直しの書き込みを受け取った時刻。その推定の予定から、見送りでつながった前の予定を辿った、いちばん早い予定の時刻。
-// 見送りから作る次の日の予定は見送った予定とつながず別の予定なので、due_at の並びで、すぐ前が取り消していない見送った予定である間だけ遡る
+// 推定し直しの書き込みを受け取った時刻。その推定の予定から、見送りでつながった前の予定を辿った、いちばん早い予定の時刻
 export const findReceivedAtOfEstimation = (
   schedules: readonly DishEstimationSchedule[],
   estimationId: string,
 ): Date => {
-  const sorted = schedules.toSorted((a, b) => b.dueAt.getTime() - a.dueAt.getTime());
-  const ownIndex = sorted.findIndex((schedule) => schedule.estimationId === estimationId);
-  const own = sorted[ownIndex];
+  const own = schedules.find((schedule) => schedule.estimationId === estimationId);
   if (own === undefined) {
     throw new Error(`推定を始めた料理の予定が無い: ${estimationId}`);
+  }
+  return findReceivedAtOfSchedule(schedules, own.scheduleId);
+};
+
+// 予定のもとの書き込みを受け取った時刻。その予定から、見送りでつながった前の予定を辿った、いちばん早い予定の時刻。
+// 見送りから作る次の日の予定は見送った予定とつながず別の予定なので、due_at の並びで、すぐ前が取り消していない見送った予定である間だけ遡る
+export const findReceivedAtOfSchedule = (
+  schedules: readonly DishEstimationSchedule[],
+  scheduleId: string,
+): Date => {
+  const sorted = schedules.toSorted((a, b) => b.dueAt.getTime() - a.dueAt.getTime());
+  const ownIndex = sorted.findIndex((schedule) => schedule.scheduleId === scheduleId);
+  const own = sorted[ownIndex];
+  if (own === undefined) {
+    throw new Error(`料理の予定が無い: ${scheduleId}`);
   }
   let receivedAt = own.dueAt;
   for (const previous of sorted.slice(ownIndex + 1)) {
