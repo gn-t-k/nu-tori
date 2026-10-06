@@ -127,9 +127,6 @@ struct MealScreen: View {
         .onAppear {
             Task { await capture(.screen(.meal)) }
         }
-        .modifier(
-            LastDishDeletionConfirmation(
-                isPresented: $confirmsLastDishDeletion, deleteMeal: deleteMealAndReturn))
     }
 
     private var screenList: MealScreenList {
@@ -148,7 +145,7 @@ struct MealScreen: View {
         Task { await deleteMeal(card, deletedAt) }
     }
 
-    /// 「食事を削除」を押すと、画面の下から確かめる（`confirmationDialog`）
+    /// 「食事を削除」を押すと、押したボタンから確かめる（`confirmationDialog`）
     private var deletionSection: some View {
         Section {
             Button("食事を削除", role: .destructive) {
@@ -287,6 +284,11 @@ struct MealScreen: View {
                         .swipeActions(edge: .trailing) {
                             dishDeletionButton(contents)
                         }
+                        // 左へ送って出るボタンには付けられないので、行に付け、行のそばに出す
+                        .modifier(
+                            LastDishDeletionConfirmation(
+                                isPresented: lastDishDeletionPresented(contents),
+                                deleteMeal: deleteMealAndReturn))
                     case .rejected(let line):
                         RejectedMealLinesText(lines: [line])
                     }
@@ -338,6 +340,14 @@ struct MealScreen: View {
                 Label("削除", systemImage: "trash")
             }
             .tint(.red)
+        }
+    }
+
+    /// 最後の1品の行だけが確かめを出す。ほかの行にも同じ値を渡すと、確かめが行の数だけ出る
+    private func lastDishDeletionPresented(_ contents: DishContents) -> Binding<Bool> {
+        switch removal(of: contents) {
+        case .meal: $confirmsLastDishDeletion
+        case .dish: .constant(false)
         }
     }
 

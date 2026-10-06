@@ -50,7 +50,7 @@
             case failed
             /// 推定できなかった食事に料理を足し、推定し直している。理由の文に代えて料理の行を出す
             case failedWithAddedDish
-            /// 推定できた食事で「食事を削除」を押し、画面の下から確かめている
+            /// 推定できた食事で「食事を削除」を押し、押したボタンから確かめている
             case confirmingDeletion
             /// 料理が1品の食事で、その行を左へ送って「削除」を押し、食事ごと消すかを確かめている
             case confirmingLastDishDeletion

@@ -9,7 +9,7 @@ struct DishScreen: View {
     let contents: DishContents
     /// 受け付けなかった書き込みの1行の置き場（名前と量の下、材料の行の下と材料の行を外した位置）
     let list: DishScreenList
-    /// 消すと食事の料理が無くなるか。最後の1品なら、料理でなく食事を消すかを画面の下から確かめる
+    /// 消すと食事の料理が無くなるか。最後の1品なら、料理でなく食事を消すかを確かめる
     let removal: DishRemoval
     let actions: DishActions
     /// 最後の1品の確かめで「食事を削除」を押したとき。タイムラインに戻り、食事を消す
@@ -183,7 +183,7 @@ struct DishScreen: View {
     }
 
     /// 料理を消すと、キャッシュから消えた料理を `DishDestination` が見て食事の画面に戻る。
-    /// 最後の1品のときだけ、画面の下から確かめ、「食事を削除」で食事ごと消してタイムラインに戻る
+    /// 最後の1品のときだけ、押したボタンから確かめ、「食事を削除」で食事ごと消してタイムラインに戻る
     private var deletionSection: some View {
         Section {
             Button("この料理を削除", role: .destructive) {
