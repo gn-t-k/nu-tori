@@ -19,6 +19,7 @@ extension Components {
         internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
             case accountSettings = "account_settings"
             case dish = "dish"
+            case dishEstimationStatus = "dish_estimation_status"
             case ingredient = "ingredient"
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
@@ -126,6 +127,33 @@ extension Components {
                 case quantitySource
                 case positionInMeal
                 case version
+            }
+        }
+        /// kind が dish_estimation_status の変更の record。recordId は料理の ID。推定し直しをしていない料理の変更は届かない。料理が消えたら kind が dish_estimation_status_deletion で record が空の変更が届く
+        ///
+        /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord`.
+        internal struct DishEstimationStatusRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord/dishId`.
+            internal var dishId: Swift.String
+            /// 推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            ///
+            /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord/status`.
+            internal var status: Swift.String
+            /// Creates a new `DishEstimationStatusRecord`.
+            ///
+            /// - Parameters:
+            ///   - dishId:
+            ///   - status: 推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            internal init(
+                dishId: Swift.String,
+                status: Swift.String
+            ) {
+                self.dishId = dishId
+                self.status = status
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case dishId
+                case status
             }
         }
         /// kind が ingredient の変更の record。消えたら kind が ingredient_deletion で record が空の変更が届く
@@ -727,7 +755,7 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
             internal var result: Swift.String
-            /// result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
+            /// result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
             internal var rejectionReason: Swift.String?
@@ -738,7 +766,7 @@ extension Components {
             /// - Parameters:
             ///   - writeId:
             ///   - result: 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
-            ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
+            ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと
             ///   - current:
             internal init(
                 writeId: Swift.String,
