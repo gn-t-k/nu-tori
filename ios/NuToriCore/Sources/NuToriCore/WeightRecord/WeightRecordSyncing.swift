@@ -41,7 +41,8 @@ public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
+        current: SyncWriteResult.Current?,
+        shown: ShownRecords
     ) throws -> KindRejection {
         let pending = try PendingWeightRecordWrite(entry: entry)
         let serverHasValue: Bool

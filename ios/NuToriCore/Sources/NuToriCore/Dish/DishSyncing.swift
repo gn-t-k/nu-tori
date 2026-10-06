@@ -34,25 +34,62 @@ public struct DishSyncing: SyncedRecordKind, RecordKindWrites {
         }
     }
 
-    /// 受け付けなかった作る・直す書き込みは、サーバーに料理が無いときだけ、料理をキャッシュから外す。
+    /// 受け付けなかった作る・直す書き込みは、1行にし、サーバーに料理が無いときだけ、料理をキャッシュから外す。
     /// 値と削除の印は同期の働きが当てる（推定し直しで材料が入れ替わっていたときは、料理の量が料理の今の値に戻り、
-    /// 置き換わった前の材料は、続けて取りに行く変更の削除の印で外れる）。画面に出す1行は、見え方のチケットで足す。
-    /// 消す書き込みは、サーバーが受け付けないことが無い
+    /// 置き換わった前の材料は、続けて取りに行く変更の削除の印で外れる）。
+    /// 直す書き込みは、サーバーに値があれば直そうとした名前か量の「直せなかった」行、削除の印か無ければ端末で見せていた料理の「記録できなかった」行。
+    /// 足した料理は、食事が無ければ「記録できなかった」行。消す書き込みは、サーバーが受け付けないことが無い
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
+        current: SyncWriteResult.Current?,
+        shown: ShownRecords
     ) throws -> KindRejection {
         let pending = try PendingDishWrite(entry: entry)
+        func rejected(_ meal: Meal, _ subject: RejectedMealLine.Subject) -> RejectedWrite {
+            RejectedWrite(
+                writeId: pending.writeId, reason: reason,
+                record: .mealEdit(RejectedMealLine(meal: meal, subject: subject)))
+        }
         switch (pending.write, current) {
         case (.create(let dish), .absent):
             return KindRejection(
-                rejectedWrite: nil, removingChanges: [.dishDeletion(dishId: dish.id)])
+                rejectedWrite: shown.meals[dish.mealId].map {
+                    rejected(
+                        $0,
+                        .addedDish(
+                            RejectedMealLine.DishPlace(
+                                id: dish.id, name: dish.name, positionInMeal: dish.positionInMeal)))
+                },
+                removingChanges: [.dishDeletion(dishId: dish.id)])
         case (.update(let correction), .absent), (.rename(let correction), .absent):
             return KindRejection(
-                rejectedWrite: nil, removingChanges: [.dishDeletion(dishId: correction.id)])
-        case (.create, .value), (.create, .deleted), (.create, nil), (.update, .value),
-            (.update, .deleted), (.update, nil), (.rename, .value), (.rename, .deleted),
+                rejectedWrite: shown.dishPlace(of: correction.id).map {
+                    rejected($0.0, .goneDish($0.1))
+                },
+                removingChanges: [.dishDeletion(dishId: correction.id)])
+        case (.update(let correction), .deleted), (.rename(let correction), .deleted):
+            return KindRejection(
+                rejectedWrite: shown.dishPlace(of: correction.id).map {
+                    rejected($0.0, .goneDish($0.1))
+                },
+                removingChanges: [])
+        case (.rename(let correction), .value):
+            return KindRejection(
+                rejectedWrite: shown.dishPlace(of: correction.id).map {
+                    rejected($0.0, .dishName($0.1, attempted: correction.name))
+                },
+                removingChanges: [])
+        case (.update(let correction), .value):
+            guard let quantity = correction.quantity,
+                let unit = shown.dishes[correction.id]?.quantity?.unit
+            else { return KindRejection.none }
+            return KindRejection(
+                rejectedWrite: shown.dishPlace(of: correction.id).map {
+                    rejected($0.0, .dishQuantity($0.1, attempted: quantity.value, unit: unit))
+                },
+                removingChanges: [])
+        case (.create, .value), (.create, .deleted), (.create, nil), (.update, nil),
             (.rename, nil), (.delete, _):
             return KindRejection.none
         }
@@ -139,5 +176,22 @@ extension SyncedDish {
             positionInMeal: dish.positionInMeal,
             version: dish.version
         )
+    }
+}
+
+extension DishSyncing {
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。送った端末で、送り終えるまで料理をまだ送れていないとして見せる。
+    /// 読めない送り待ちと、ほかの種類の送り待ちは読み飛ばす
+    public static func unsentDishIds(in entries: [PendingEntry]) -> Set<UUID> {
+        Set(
+            entries.filter { $0.kind == DishSyncing.kindName }
+                .compactMap { try? PendingDishWrite(entry: $0) }
+                .compactMap { pending in
+                    switch pending.write {
+                    case .create(let dish): dish.id
+                    case .rename(let correction): correction.id
+                    case .update, .delete: nil
+                    }
+                })
     }
 }

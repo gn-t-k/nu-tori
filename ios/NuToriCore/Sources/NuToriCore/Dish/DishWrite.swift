@@ -109,20 +109,3 @@ public enum DishWrite: PendingWriteBody {
 
 /// 料理の送り待ち
 public typealias PendingDishWrite = Pending<DishWrite>
-
-extension Pending where Write == DishWrite {
-    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。送った端末で、送り終えるまで料理をまだ送れていないとして見せる。
-    /// 読めない送り待ちと、ほかの種類の送り待ちは読み飛ばす
-    public static func unsentDishIds(in entries: [PendingEntry]) -> Set<UUID> {
-        Set(
-            entries.filter { $0.kind == DishSyncing.kindName }
-                .compactMap { try? PendingDishWrite(entry: $0) }
-                .compactMap { pending in
-                    switch pending.write {
-                    case .create(let dish): dish.id
-                    case .rename(let correction): correction.id
-                    case .update, .delete: nil
-                    }
-                })
-    }
-}

@@ -11,7 +11,7 @@ public struct MealCard: Hashable, Sendable {
     public let contents: MealContents
 
     /// `dishes` と `ingredients` と `dishEstimationStatuses` は、キャッシュの全部の料理・材料・料理ごとの推定の状態でよい（この食事のものを取り出す）。
-    /// `unsentDishIds` は、送り待ちに料理を足す・名前を直す書き込みがある料理（`PendingDishWrite.unsentDishIds(in:)`）
+    /// `unsentDishIds` は、送り待ちに料理を足す・名前を直す書き込みがある料理（`DishSyncing.unsentDishIds(in:)`）
     public init(
         meal: Meal,
         status: MealEstimationStatus?,

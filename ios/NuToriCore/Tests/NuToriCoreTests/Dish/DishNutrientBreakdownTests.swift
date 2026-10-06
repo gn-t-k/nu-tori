@@ -10,7 +10,8 @@ struct DishNutrientBreakdownTests {
             DishContents(
                 dish: dish,
                 ingredients: ingredients.map {
-                    .fixture(dishId: dish.id, nutrientSource: $0.nutrientSource, nutrients: $0.nutrients)
+                    .fixture(
+                        dishId: dish.id, nutrientSource: $0.nutrientSource, nutrients: $0.nutrients)
                 }))
     }
 
