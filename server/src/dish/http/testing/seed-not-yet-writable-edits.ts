@@ -4,13 +4,13 @@ import { getAccountDurableObject } from "../../../durable-object/get-account-dur
 
 type Sql = DurableObjectStorage["sql"];
 
-// まだ書き込みの口が無い直し（時刻・名前・量・材料の量の修正、推定し直し、予定の取り消し）を、
+// まだ書き込みの口が無い直し（名前・量・材料の量の修正、推定し直し、予定の取り消し）を、
 // 帳簿が書くのと同じ形（要求の控え・書き込みの控え・変更の並びとのつなぎ）で DB に直に書く。
 // 「消したら中身が残らない」の前提に使う。書き込みの口を足すチケットで、その分を本物の書き込みに置き換える
 // （#332 の「テストの決定」）。置き換えの済んだ分は、ここから消す
 export const seedNotYetWritableEdits = (
   accountId: string,
-  target: { mealId: string; dishId: string; ingredientId: string },
+  target: { dishId: string; ingredientId: string },
 ): Promise<{ replacingIngredientId: string }> =>
   runInDurableObject(getAccountDurableObject(env, accountId), (_, state) => {
     const { sql } = state.storage;
@@ -53,14 +53,6 @@ export const seedNotYetWritableEdits = (
       return receiptId;
     };
 
-    // 時刻を2回直す
-    for (const minutes of [10, 20]) {
-      sql.exec(
-        "INSERT INTO meal_eaten_at_corrections (sync_write_receipt_id, eaten_at) VALUES (?, ?)",
-        insertReceipt("meal", target.mealId),
-        Date.now() - minutes * 60_000,
-      );
-    }
     // 名前を2回直す。1回目の名前の修正で待った予定を、2回目で取り消す
     const firstRenameReceiptId = insertReceipt("dish", target.dishId);
     sql.exec(

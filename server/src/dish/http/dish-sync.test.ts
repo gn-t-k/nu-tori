@@ -8,6 +8,7 @@ import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { signInTestAccount } from "../../http/testing";
+import { updateMealWrite } from "../../meal/http/testing/update-meal-write";
 import { deleteDishWrite } from "./testing/delete-dish-write";
 import { inspectDeletedContents } from "./testing/inspect-deleted-contents";
 import { seedNotYetWritableEdits } from "./testing/seed-not-yet-writable-edits";
@@ -130,8 +131,18 @@ describe("料理の同期", () => {
           .map(({ recordId }) => recordId);
       const previousIngredientIds = ingredientIdsOf(dishId);
       untouchedIngredientIds = ingredientIdsOf(untouchedDishId);
+      const corrected = await pushSyncWrites(sessionToken, {
+        writes: [
+          updateMealWrite(mealId, Date.now() - 10 * 60_000),
+          updateMealWrite(mealId, Date.now() - 20 * 60_000),
+        ],
+      });
+      if (
+        (await corrected.json<PushResults>()).results.some(({ result }) => result !== "applied")
+      ) {
+        throw new Error("時刻を直す書き込みが当たらなかった");
+      }
       const { replacingIngredientId } = await seedNotYetWritableEdits(accountId, {
-        mealId,
         dishId,
         ingredientId: previousIngredientIds[0] ?? "",
       });
@@ -166,11 +177,19 @@ describe("料理の同期", () => {
       });
 
       test("取りに行くと、料理と、前の推定の材料も含むすべての材料の削除の印が返ること", async () => {
-        const changes = await pullChangesAfter(lastSequence);
-        expect(changes.map(({ kind, recordId }) => ({ kind, recordId }))).toEqual([
-          { kind: "dish_deletion", recordId: dishId },
-          ...ingredientIds.map((recordId) => ({ kind: "ingredient_deletion", recordId })),
-        ]);
+        const [dishChange, ...ingredientChanges] = (await pullChangesAfter(lastSequence)).map(
+          ({ kind, recordId }) => ({ kind, recordId }),
+        );
+        // 材料どうしの並びは約束しない（消す口が材料を引く順は ID の並びに左右される）
+        expect({
+          dish: dishChange,
+          ingredients: ingredientChanges.toSorted((a, b) => a.recordId.localeCompare(b.recordId)),
+        }).toEqual({
+          dish: { kind: "dish_deletion", recordId: dishId },
+          ingredients: ingredientIds
+            .toSorted((a, b) => a.localeCompare(b))
+            .map((recordId) => ({ kind: "ingredient_deletion", recordId })),
+        });
       });
 
       test("控えを外部キーで指す表のうち、削除の印と帳簿のほかに、消した料理と材料の控えから辿れる行が残らないこと", () => {
