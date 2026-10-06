@@ -207,6 +207,8 @@
             case accountDeletionRateLimited = "account-deletion-rate-limited"
             case accountDeletionUnauthorized = "account-deletion-unauthorized"
             case appBuildUnsupported = "app-build-unsupported"
+            /// PROTOTYPE: 体重の知らせの見せ方を比べる（NoticePrototype.swift）
+            case prototypeNotice = "prototype-notice"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

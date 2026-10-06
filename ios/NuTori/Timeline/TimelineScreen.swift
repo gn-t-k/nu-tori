@@ -45,6 +45,14 @@ struct TimelineScreen: View {
                 Divider()
                 content(loaded: loaded)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    #if DEBUG
+                        // PROTOTYPE: 体重の知らせの見せ方の切り替え（NoticePrototype.swift）
+                        .safeAreaInset(edge: .bottom) {
+                            if NoticePrototype.isEnabled {
+                                NoticePrototypeSwitcher()
+                            }
+                        }
+                    #endif
                     .overlay(alignment: .top) {
                         if let card = loaded?.noticeAwaitingAnswer,
                             unansweredNoticeLineVisibility.shows(for: card)

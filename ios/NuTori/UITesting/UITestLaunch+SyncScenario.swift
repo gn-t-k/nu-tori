@@ -56,7 +56,29 @@
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
                 return .init(records: [], startedOn: today, accountDeletion: .sessionExpired)
+            case .prototypeNotice:
+                return prototypeNotice()
             }
+        }
+
+        /// PROTOTYPE: おととい 7:12 に記録し、昨日は記録しないまま 8:00 の知らせが残った。今日は未記録
+        private func prototypeNotice() -> FakeSyncServer.Scenario {
+            let yesterday = clock.today().advanced(by: -1)
+            return .init(
+                records: [
+                    weight(
+                        Self.fixedId("55555555-5555-4555-8555-555555555555"), 72.8,
+                        dayOffset: -2, hour: 7, minute: 12, imported: nil),
+                    .notice(
+                        SyncedNotice(
+                            id: Notice.id(kind: .missedWeightRecord, targetDay: yesterday),
+                            noticeType: .missedWeightRecord,
+                            issuedAt: date(dayOffset: -1, hour: 8, minute: 0),
+                            timeZone: clock.timeZone(),
+                            targetOn: yesterday.yearMonthDay,
+                            response: nil)),
+                ],
+                startedOn: TimelineDayText.startedOn(for: clock.today().advanced(by: -2)))
         }
 
         private static let manualId = fixedId("11111111-1111-4111-8111-111111111111")

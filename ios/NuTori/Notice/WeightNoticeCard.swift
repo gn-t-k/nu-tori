@@ -12,11 +12,33 @@ struct WeightNoticeCard: View {
     let capture: (ClientUsageEvent) async -> Void
     let onRecord: (WeightEntry.Write) -> Void
 
+    #if DEBUG
+        // PROTOTYPE: 見せ方を比べる切り替え（NoticePrototype.swift）
+        @AppStorage(NoticePrototype.storageKey) private var prototypeRaw = NoticePrototype.current
+            .rawValue
+    #endif
+
     var body: some View {
+        #if DEBUG
+            let variant = NoticePrototype.active(prototypeRaw)
+            let title = variant.title(for: card, today: today)
+            if card.form == .answered, variant == .hideAnswered {
+                EmptyView()
+            } else if card.form == .answered, variant == .answeredLine {
+                AnsweredNoticeLine(card: card, title: title)
+            } else {
+                cardBody(title: title)
+            }
+        #else
+            cardBody(title: "今日の体重")
+        #endif
+    }
+
+    private func cardBody(title: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("今日の体重")
+                    Text(title)
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     Text(WeightAmountText.clock(card.clockTime))
