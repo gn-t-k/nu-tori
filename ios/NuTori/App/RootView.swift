@@ -57,6 +57,7 @@ struct RootView: View {
             TimelineScreenContainer(
                 clock: model.clock,
                 rejectedLines: model.rejectedLines,
+                unsentDishIds: model.unsentDishIds,
                 capture: { await model.capture($0) },
                 reminderLanding: model.reminderLanding,
                 noteReminderLanded: { model.noteReminderLanded() },
@@ -102,7 +103,21 @@ struct RootView: View {
                     },
                     deleteMeal: { card, deletedAt in
                         await model.deleteMeal(card, deletedAt: deletedAt)
-                    }
+                    },
+                    dish: DishActions(
+                        rename: { dish, typedName in
+                            await model.renameDish(dish, to: typedName)
+                        },
+                        correctQuantity: { dish, value in
+                            await model.correctDishQuantity(dish, to: value)
+                        },
+                        correctIngredientQuantity: { ingredient, quantity in
+                            await model.correctIngredientQuantity(ingredient, to: quantity)
+                        },
+                        delete: { dish in
+                            await model.deleteDish(dish)
+                        }
+                    )
                 ),
                 holdsMealOriginals: { await model.holdsMealOriginals($0) }
             )

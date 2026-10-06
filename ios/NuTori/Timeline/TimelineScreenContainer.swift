@@ -7,6 +7,8 @@ import SwiftUI
 struct TimelineScreenContainer: View {
     let clock: DeviceClock
     let rejectedLines: [RejectedLine]
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理（まだ送れていない料理として見せる）
+    let unsentDishIds: Set<UUID>
     let capture: (ClientUsageEvent) async -> Void
     let reminderLanding: ReminderLanding?
     let noteReminderLanded: () -> Void
@@ -48,6 +50,7 @@ struct TimelineScreenContainer: View {
     @Query private var cachedMeals: [CachedMeal]
     @Query private var cachedEstimationStatuses: [CachedMealEstimationStatus]
     @Query private var cachedDishes: [CachedDish]
+    @Query private var cachedDishEstimationStatuses: [CachedDishEstimationStatus]
     @Query private var cachedIngredients: [CachedIngredient]
     @Query private var cachedNotices: [CachedNotice]
     @Query private var cachedWeightTrendDays: [CachedWeightTrendDay]
@@ -61,7 +64,7 @@ struct TimelineScreenContainer: View {
         return .completed(startedDay: state.startedOn.flatMap(CalendarDay.init(yearMonthDay:)))
     }
 
-    /// 推定の状態・料理・材料は食事と別の種類で、食事より先にも後にも届く
+    /// 推定の状態・料理・料理ごとの推定の状態・材料は食事と別の種類で、食事より先にも後にも届く
     private var mealCards: [MealCard] {
         var statuses: [UUID: MealEstimationStatus] = [:]
         for row in cachedEstimationStatuses {
@@ -71,6 +74,10 @@ struct TimelineScreenContainer: View {
         let dishesByMeal = Dictionary(grouping: cachedDishes.map { $0.dish() }, by: \.mealId)
         let ingredientsByDish = Dictionary(
             grouping: cachedIngredients.compactMap { $0.ingredient() }, by: \.dishId)
+        var dishStatuses: [UUID: DishEstimationStatus] = [:]
+        for row in cachedDishEstimationStatuses {
+            dishStatuses[row.dishId] = row.estimationStatus()
+        }
         return cachedMeals.compactMap { row in
             row.meal().map { meal in
                 let dishes = dishesByMeal[meal.id] ?? []
@@ -79,7 +86,9 @@ struct TimelineScreenContainer: View {
                     status: statuses[meal.id],
                     recordedOnThisDevice: mealsRecordedHere.contains(meal.id),
                     dishes: dishes,
-                    ingredients: dishes.flatMap { ingredientsByDish[$0.id] ?? [] }
+                    ingredients: dishes.flatMap { ingredientsByDish[$0.id] ?? [] },
+                    dishEstimationStatuses: dishStatuses,
+                    unsentDishIds: unsentDishIds
                 )
             }
         }

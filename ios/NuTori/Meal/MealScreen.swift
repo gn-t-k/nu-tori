@@ -16,12 +16,25 @@ struct MealScreen: View {
     let correctMealTime: (_ card: MealCard, _ eatenAt: Date) async -> Void
     /// その場でキャッシュとアプリの中の写真から消え、消す書き込みが送り待ちに並ぶ。インターネットにつながらなくても消せる
     let deleteMeal: (_ card: MealCard, _ deletedAt: Date) async -> Void
+    /// 料理の画面の操作
+    let dishActions: DishActions
 
     var body: some View {
         list
             .navigationDestination(for: DishRoute.self) { route in
                 DishDestination(
-                    contents: card.contents.dishes.first { $0.dish.id == route.dishId })
+                    contents: card.contents.dishes.first { $0.dish.id == route.dishId }
+                ) { contents in
+                    DishScreen(
+                        contents: contents,
+                        removal: DishRemoval(
+                            removing: contents.dish.id,
+                            among: card.contents.dishes.map(\.dish)),
+                        actions: dishActions,
+                        deleteMeal: {
+                            await deleteMeal(card, now())
+                        })
+                }
             }
     }
 
@@ -33,6 +46,7 @@ struct MealScreen: View {
         capture: @escaping (ClientUsageEvent) async -> Void,
         correctMealTime: @escaping (_ card: MealCard, _ eatenAt: Date) async -> Void,
         deleteMeal: @escaping (_ card: MealCard, _ deletedAt: Date) async -> Void,
+        dishActions: DishActions,
         confirmsDeletion: Bool
     ) {
         self.card = card
@@ -41,6 +55,7 @@ struct MealScreen: View {
         self.capture = capture
         self.correctMealTime = correctMealTime
         self.deleteMeal = deleteMeal
+        self.dishActions = dishActions
         _confirmsDeletion = State(initialValue: confirmsDeletion)
         _eatenAt = State(initialValue: card.meal.eatenAt)
     }
@@ -269,7 +284,7 @@ struct MealScreen: View {
                 name.fixedSize()
                 quantity.fixedSize()
                 if showsEstimateBadge {
-                    estimateBadge.fixedSize()
+                    EstimateBadge().fixedSize()
                 }
                 Spacer(minLength: 0)
                 dishKilocalories.fixedSize()
@@ -278,25 +293,12 @@ struct MealScreen: View {
                 name
                 quantity
                 if showsEstimateBadge {
-                    estimateBadge
+                    EstimateBadge()
                 }
                 dishKilocalories
             }
         }
         .accessibilityElement(children: .combine)
-    }
-
-    /// 推定したままの量に添える、枠線だけの小さな印（DESIGN.md の estimate-badge）
-    private var estimateBadge: some View {
-        Text("推定")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 1)
-            .overlay {
-                RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(.secondary, lineWidth: 1)
-            }
     }
 
     private func unestimated(title: String, detail: String?) -> some View {
@@ -315,5 +317,20 @@ struct MealScreen: View {
             .padding(.vertical, 12)
             .accessibilityElement(children: .combine)
         }
+    }
+}
+
+/// 推定したままの量に添える、枠線だけの小さな印（DESIGN.md の estimate-badge）。食事の画面の料理の行と、料理の画面の量に添える
+struct EstimateBadge: View {
+    var body: some View {
+        Text("推定")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .overlay {
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(.secondary, lineWidth: 1)
+            }
     }
 }
