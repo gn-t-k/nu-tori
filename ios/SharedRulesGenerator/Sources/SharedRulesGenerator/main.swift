@@ -25,11 +25,38 @@ try renderNutrient(
 )
 .write(to: output.appending(path: "Nutrient.swift"), atomically: true, encoding: .utf8)
 
-/// 下限は minimum（含む）か exclusiveMinimum（含まない）。上限は maximum（含む）で、無ければ上限なし
+/// 下限は minimum（含む）か exclusiveMinimum（含まない）のどちらか。上限は maximum（含む）で、無ければ上限なし
 private struct Bounds: Decodable {
-    let minimum: Double?
-    let exclusiveMinimum: Double?
+    let lowerBound: LowerBound
     let maximum: Double?
+
+    enum LowerBound {
+        case none
+        case inclusive(Double)
+        case exclusive(Double)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case minimum, exclusiveMinimum, maximum
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        maximum = try container.decodeIfPresent(Double.self, forKey: .maximum)
+        switch try (
+            container.decodeIfPresent(Double.self, forKey: .minimum),
+            container.decodeIfPresent(Double.self, forKey: .exclusiveMinimum)
+        ) {
+        case (nil, nil): lowerBound = .none
+        case (let minimum?, nil): lowerBound = .inclusive(minimum)
+        case (nil, let exclusiveMinimum?): lowerBound = .exclusive(exclusiveMinimum)
+        // 両方を書くと、サーバーは両方を当て、端末は片方しか当てず、判定が食い違う
+        case (.some, .some):
+            throw DecodingError.dataCorruptedError(
+                forKey: .exclusiveMinimum, in: container,
+                debugDescription: "minimum と exclusiveMinimum は片方だけ書く")
+        }
+    }
 }
 
 private struct NutrientItem: Decodable {
@@ -41,9 +68,13 @@ private func renderAcceptedRange(_ ranges: [String: Bounds]) -> String {
     let cases = names.map { "    case \($0)" }
     let boundsCases = names.map { name in
         let range = ranges[name]!
-        let lowerBound = (range.minimum ?? range.exclusiveMinimum).map { "\($0)" } ?? "-.infinity"
+        let (lowerBound, includesLowerBound) =
+            switch range.lowerBound {
+            case .none: ("-.infinity", true)
+            case .inclusive(let minimum): ("\(minimum)", true)
+            case .exclusive(let exclusiveMinimum): ("\(exclusiveMinimum)", false)
+            }
         let upperBound = range.maximum.map { "\($0)" } ?? ".infinity"
-        let includesLowerBound = range.exclusiveMinimum == nil
         return """
                     case .\(name):
                         AcceptedBounds(

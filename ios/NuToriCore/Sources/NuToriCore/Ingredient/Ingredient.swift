@@ -47,6 +47,13 @@ public struct Ingredient: Hashable, Sendable {
     }
 }
 
+extension Sequence<Ingredient> {
+    /// 料理の中の並び順（同じなら ID の順）に並べる
+    func sortedInDishOrder() -> [Ingredient] {
+        sorted { ($0.positionInDish, $0.id.uuidString) < ($1.positionInDish, $1.id.uuidString) }
+    }
+}
+
 /// 栄養の値の出どころ
 public enum NutrientSource: Hashable, Sendable {
     /// 栄養成分表示。値は表示の単位あたりで、その可食部の g を持つ

@@ -7,7 +7,7 @@ public enum DishWrite: PendingWriteBody {
     case create(NewDish)
     /// 量を直す。名前と量を両方運ぶ
     case update(DishCorrection)
-    /// 名前を直す。送る書き込みは量を直すときと同じ料理を直す書き込みで、量の無い料理は量と比例の材料を省く。
+    /// 名前を直す。送る書き込みは量を直すときと同じ料理を直す書き込みで、名前だけを直すので量と比例の材料を省く。
     /// 量を直す書き込みと分けて持つのは、送り終えるまで料理をまだ送れていないとして見せるため
     case rename(DishCorrection)
     case delete(dishId: UUID)
