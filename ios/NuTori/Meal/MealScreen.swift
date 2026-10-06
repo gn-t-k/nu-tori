@@ -3,28 +3,26 @@ import NuToriCore
 import SwiftUI
 import UIKit
 
-/// 食事の画面。タイムラインの食事のカードから潜る。この仕様では見るだけで、値は Primary にしない。
+/// 食事の画面。タイムラインの食事のカードから潜る。その場で直す値は時刻だけで、料理は料理の画面へ潜って直す。
 /// 写真、時刻、合計と栄養の出どころの1行、料理の一覧、「栄養の出典 ›」、「食事を削除」の順に並べる
 struct MealScreen: View {
     let card: MealCard
     /// 描く大きさに縮めた写真。この端末に無ければ取りに行く。取れなければ nil
     let loadPhoto: (_ photoId: UUID) async -> UIImage?
-    /// 消した時刻を測るための今
+    /// 消した時刻を測るための今。直せる時刻の上限にもする
     let now: () -> Date
     let capture: (ClientUsageEvent) async -> Void
+    /// その場でキャッシュに当たり、直す書き込みが送り待ちに並ぶ。インターネットにつながらなくても直せる
+    let correctMealTime: (_ card: MealCard, _ eatenAt: Date) async -> Void
     /// その場でキャッシュとアプリの中の写真から消え、消す書き込みが送り待ちに並ぶ。インターネットにつながらなくても消せる
     let deleteMeal: (_ card: MealCard, _ deletedAt: Date) async -> Void
 
     var body: some View {
-        ScrollViewReader { scroll in
-            list
-                .onChange(of: confirmsDeletion) { _, confirms in
-                    // 展開した確かめが画面の下に隠れないようにする
-                    if confirms {
-                        withAnimation { scroll.scrollTo(Self.deletionEnd, anchor: .bottom) }
-                    }
-                }
-        }
+        list
+            .navigationDestination(for: DishRoute.self) { route in
+                DishDestination(
+                    contents: card.contents.dishes.first { $0.dish.id == route.dishId })
+            }
     }
 
     /// confirmsDeletion は開いたときに、消す確かめを出しているか
@@ -33,6 +31,7 @@ struct MealScreen: View {
         loadPhoto: @escaping (_ photoId: UUID) async -> UIImage?,
         now: @escaping () -> Date,
         capture: @escaping (ClientUsageEvent) async -> Void,
+        correctMealTime: @escaping (_ card: MealCard, _ eatenAt: Date) async -> Void,
         deleteMeal: @escaping (_ card: MealCard, _ deletedAt: Date) async -> Void,
         confirmsDeletion: Bool
     ) {
@@ -40,12 +39,16 @@ struct MealScreen: View {
         self.loadPhoto = loadPhoto
         self.now = now
         self.capture = capture
+        self.correctMealTime = correctMealTime
         self.deleteMeal = deleteMeal
         _confirmsDeletion = State(initialValue: confirmsDeletion)
+        _eatenAt = State(initialValue: card.meal.eatenAt)
     }
 
     @Environment(\.dismiss) private var dismiss
     @State private var confirmsDeletion: Bool
+    /// 日付と時刻のボタンが選んでいる撮った時刻。送ってキャッシュに当たるまでのあいだも、選んだ値のまま見せる
+    @State private var eatenAt: Date
     /// 読み終えた写真。写真をまだ持っていない端末では、届くまで回る印を出す
     @State private var images: [UUID: UIImage] = [:]
 
@@ -58,13 +61,7 @@ struct MealScreen: View {
                 .listRowInsets(EdgeInsets())
             }
             Section {
-                LabeledContent {
-                    Text(eatenTimeText)
-                        .monospacedDigit()
-                } label: {
-                    Text("時刻")
-                    Text("撮った時刻")
-                }
+                eatenTimePicker
             }
             Section {
                 totals
@@ -92,14 +89,17 @@ struct MealScreen: View {
         }
     }
 
-    /// 「食事を削除」を押すと、その行が説明と「食事を削除」「キャンセル」に変わる。
-    /// 画面は覆わず、ほかの操作や戻るはそのまま使え、画面を離れれば確かめはなかったことになる
-    @ViewBuilder private var deletionSection: some View {
+    /// 「食事を削除」を押すと、画面の下から確かめる（`confirmationDialog`）
+    private var deletionSection: some View {
         Section {
-            if confirmsDeletion {
-                Text("この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            Button("食事を削除", role: .destructive) {
+                confirmsDeletion = true
+            }
+            .accessibilityIdentifier("meal-delete")
+            .confirmationDialog(
+                "この食事と料理がすべて削除されます。ヘルスケアに書き出した分も削除します。",
+                isPresented: $confirmsDeletion, titleVisibility: .visible
+            ) {
                 Button("食事を削除", role: .destructive) {
                     let deletedAt = now()
                     // 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
@@ -107,21 +107,36 @@ struct MealScreen: View {
                     Task { await deleteMeal(card, deletedAt) }
                 }
                 .accessibilityIdentifier("meal-delete-confirm")
-                Button("キャンセル", role: .cancel) {
-                    withAnimation { confirmsDeletion = false }
-                }
-                .accessibilityIdentifier("meal-delete-cancel")
-                .id(Self.deletionEnd)
-            } else {
-                Button("食事を削除", role: .destructive) {
-                    withAnimation { confirmsDeletion = true }
-                }
-                .accessibilityIdentifier("meal-delete")
+                Button("キャンセル", role: .cancel) {}
             }
         }
     }
 
-    private static let deletionEnd = "deletion-end"
+    /// 日付と時刻の2つの小さなボタン。撮った時刻に食事の時差を足した時計の時刻を出し、今より先は選べない。
+    /// 直したら、時刻を直す書き込みを送る。日をまたいでも、カードは送った時刻の位置のまま動かない
+    private var eatenTimePicker: some View {
+        // 端末の時計が遅れていて撮った時刻が今より先のときも、範囲に収めるために値を動かして送らないよう、撮った時刻までは含める
+        DatePicker(
+            selection: $eatenAt, in: ...max(now(), card.meal.eatenAt),
+            displayedComponents: [.date, .hourAndMinute]
+        ) {
+            Text("時刻")
+            Text("撮った時刻")
+        }
+        .datePickerStyle(.compact)
+        // 端末のタイムゾーンでなく食事の時差の時計で見せ、選んだ値もその時計の時刻として受け取る。
+        // 地と文字の色は iOS の compact の見た目に任せ、Primary は押したときの tint（AccentColor）で出る
+        .environment(\.timeZone, card.meal.eatenTimeZone)
+        .accessibilityIdentifier("meal-time")
+        .onChange(of: eatenAt) { _, chosen in
+            guard chosen != card.meal.eatenAt else { return }
+            Task { await correctMealTime(card, chosen) }
+        }
+        .onChange(of: card.meal.eatenAt) { _, synced in
+            // ほかの端末で直した時刻が届いたときも、ボタンの値をそろえる
+            eatenAt = synced
+        }
+    }
 
     /// 切り抜かずに出し、2枚以上なら横に送る。押しても何も起きない
     private var photos: some View {
@@ -213,13 +228,13 @@ struct MealScreen: View {
                 }
             }
         case .estimated:
-            ForEach(Array(card.contents.dishes.enumerated()), id: \.element.dish.id) {
-                index, dish in
-                Section {
-                    dishRows(dish)
-                } header: {
-                    if index == 0 {
-                        Text("料理")
+            if !card.contents.dishes.isEmpty {
+                Section("料理") {
+                    ForEach(card.contents.dishes, id: \.dish.id) { dish in
+                        NavigationLink(value: DishRoute(dishId: dish.dish.id)) {
+                            dishRow(dish)
+                        }
+                        .accessibilityIdentifier("meal-dish")
                     }
                 }
             }
@@ -233,13 +248,10 @@ struct MealScreen: View {
         }
     }
 
-    private var eatenTimeText: String {
-        "\(TimelineDayText.label(for: card.meal.day))\(WeightAmountText.clock(card.meal.eatenClockTime))"
-    }
-
-    /// 料理の行（名前、量、kcal）の下に材料の行（名前、量）を並べる。量の無い料理（足したばかりの料理）の量は「—」。
-    /// 1行に収まらない大きな文字では、項目ごとに次の行へ送る
-    @ViewBuilder private func dishRows(_ contents: DishContents) -> some View {
+    /// 料理の行（名前、量、推定の印、kcal）。材料の行は並べず、料理の画面で見せる。量の無い料理（足したばかりの料理）の量は「—」。
+    /// 推定の印は、推定したままの量にだけ添える。1行に収まらない大きな文字では、項目ごとに次の行へ送る
+    @ViewBuilder private func dishRow(_ contents: DishContents) -> some View {
+        let showsEstimateBadge = contents.dish.quantity?.source == .estimated
         let name = Text(contents.dish.name)
             .fontWeight(.semibold)
         let quantity = Text(
@@ -256,30 +268,22 @@ struct MealScreen: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 name.fixedSize()
                 quantity.fixedSize()
-                estimateBadge.fixedSize()
+                if showsEstimateBadge {
+                    estimateBadge.fixedSize()
+                }
                 Spacer(minLength: 0)
                 dishKilocalories.fixedSize()
             }
             ItemWrappingLayout(spacing: 8, lineSpacing: 2) {
                 name
                 quantity
-                estimateBadge
+                if showsEstimateBadge {
+                    estimateBadge
+                }
                 dishKilocalories
             }
         }
         .accessibilityElement(children: .combine)
-        ForEach(contents.ingredients, id: \.id) { ingredient in
-            HStack(alignment: .firstTextBaseline) {
-                Text(ingredient.name)
-                Spacer(minLength: 8)
-                Text(NutritionText.quantity(ingredient.quantity, unit: ingredient.unit))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            .font(.subheadline)
-            .padding(.leading, 12)
-            .accessibilityElement(children: .combine)
-        }
     }
 
     /// 推定したままの量に添える、枠線だけの小さな印（DESIGN.md の estimate-badge）

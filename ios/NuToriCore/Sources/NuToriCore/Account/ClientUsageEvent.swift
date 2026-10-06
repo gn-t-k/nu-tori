@@ -21,6 +21,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case cameraPermissionNoticeShown
     /// 食事の画面で食事を消した。消したときの推定の状態と、送ってから消すまでの時間
     case mealDeleted(status: MealEstimationStatus, sinceRecorded: Duration)
+    /// 食事の画面で時刻を直した。回数だけを数え、時刻は載せない
+    case mealTimeCorrected
     /// 帯の下の、答えていない知らせの1行を押した
     case unansweredNoticeLineTapped
     /// 記録忘れの通知を押して開いた。着いたときに、その日の体重の知らせがあったか
@@ -79,6 +81,7 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .cameraCancelled: "camera_cancelled"
         case .cameraPermissionNoticeShown: "camera_permission_notice_shown"
         case .mealDeleted: "meal_deleted"
+        case .mealTimeCorrected: "meal_time_corrected"
         case .unansweredNoticeLineTapped: "unanswered_notice_line_tapped"
         case .missedWeightReminderOpened: "missed_weight_reminder_opened"
         case .notificationPermissionRequested: "notification_permission_requested"
@@ -90,7 +93,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         switch self {
         case .weightRecorded, .weightCorrected, .weightInputCancelled, .usageDataTurnedOff,
             .initialPullDuration, .mealRecorded, .cameraCancelled, .cameraPermissionNoticeShown,
-            .mealDeleted, .unansweredNoticeLineTapped, .missedWeightReminderOpened,
+            .mealDeleted, .mealTimeCorrected, .unansweredNoticeLineTapped,
+            .missedWeightReminderOpened,
             .notificationPermissionRequested, .notificationSettingsOpened:
             nil
         case .screen(.timeline):
@@ -118,7 +122,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .weightCorrected(let place):
             ["place": .token(place.token)]
         case .weightInputCancelled, .usageDataTurnedOff, .screen, .cameraCancelled,
-            .cameraPermissionNoticeShown, .unansweredNoticeLineTapped, .notificationSettingsOpened:
+            .cameraPermissionNoticeShown, .mealTimeCorrected, .unansweredNoticeLineTapped,
+            .notificationSettingsOpened:
             [:]
         case .missedWeightReminderOpened(let hadNotice):
             ["had_notice": .flag(hadNotice)]

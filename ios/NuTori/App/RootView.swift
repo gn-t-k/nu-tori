@@ -97,6 +97,9 @@ struct RootView: View {
                         }
                         return await MealPhotoImage.thumbnail(at: file)
                     },
+                    correctMealTime: { card, eatenAt in
+                        await model.correctMealTime(card, eatenAt: eatenAt)
+                    },
                     deleteMeal: { card, deletedAt in
                         await model.deleteMeal(card, deletedAt: deletedAt)
                     }

@@ -1,6 +1,6 @@
 import XCTest
 
-/// 「写真」で写真を選ぶ → カードが出る → 推定の結果が届く → 食事の画面を開く → 食事を削除する。
+/// 「写真」で写真を選ぶ → カードが出る → 推定の結果が届く → 食事の画面を開く → 料理の画面へ潜って戻る → 食事を削除する。
 /// 写真の選択は起動の値で差し替え（選ぶ画面を開かずに1枚選んだことにする）、API は最初に取りに行くと推定中、
 /// 次からは推定できた（親子丼。鶏もも肉 80 g・ご飯 200 g で 464 kcal）を返す
 @MainActor
@@ -29,15 +29,27 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
 
         card.tap()
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
-        XCTAssertTrue(element(containing: "鶏もも肉").waitForExistence(timeout: 5))
+        let dish = app.buttons["meal-dish"]
+        XCTAssertTrue(dish.waitForExistence(timeout: 5))
+        XCTAssertTrue(dish.label.contains("親子丼"))
+        // 材料の行は食事の画面に並べず、料理の画面で見せる
+        XCTAssertFalse(element(containing: "鶏もも肉").exists)
         attachScreenshot(of: app, named: "食事の画面")
+        dish.tap()
+        XCTAssertTrue(app.navigationBars["親子丼"].waitForExistence(timeout: 5))
+        // 戻るのボタン（「‹ 食事」）。版によって文字を出さないので、並びの最初のボタンで押す
+        app.navigationBars["親子丼"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
         let delete = app.buttons["meal-delete"]
         XCTAssertTrue(scrollUntilExists(delete))
         XCTAssertTrue(app.buttons["nutrient-citation"].exists)
         attachScreenshot(of: app, named: "食事の画面の下")
 
         delete.tap()
-        let confirm = app.buttons["meal-delete-confirm"]
+        // 画面の下から出る確かめ（confirmationDialog）の「食事を削除」。行の「食事を削除」と見分ける
+        let confirm = app.buttons.matching(
+            NSPredicate(format: "label == %@ AND identifier != %@", "食事を削除", "meal-delete")
+        ).firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "食事を削除する確かめ")
         confirm.tap()
