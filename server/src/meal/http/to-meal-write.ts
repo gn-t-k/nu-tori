@@ -23,4 +23,10 @@ export const toMealWrite = (write: z.infer<(typeof mealWriteSchemas)[number]>): 
       type: "delete_meal",
       mealId,
     }))
+    .with({ type: "update_meal" }, ({ id, mealId, eatenAt }): SyncWrite => ({
+      id,
+      type: "update_meal",
+      mealId,
+      eatenAt: new Date(eatenAt),
+    }))
     .exhaustive();

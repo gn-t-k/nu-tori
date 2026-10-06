@@ -283,6 +283,15 @@
                     guard entries[write.recordKey] == nil else { return }
                     put(.meal(meal))
                     put(.mealEstimationStatus(.init(mealId: meal.id, status: .estimating)))
+                case .updateMeal(_, _, let eatenAt):
+                    guard case .meal(let meal) = entries[write.recordKey]?.change else { return }
+                    put(
+                        .meal(
+                            SyncedMeal(
+                                id: meal.id, eatenAt: eatenAt,
+                                eatenUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
+                                sentAt: meal.sentAt, sentTimeZone: meal.sentTimeZone,
+                                entryMethod: meal.entryMethod, photoIds: meal.photoIds)))
                 case .deleteMeal(_, let mealId):
                     put(.mealDeletion(mealId: mealId))
                     estimatingMealIds.removeAll { $0 == mealId }

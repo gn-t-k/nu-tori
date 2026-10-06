@@ -8,6 +8,7 @@ import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { signInTestAccount } from "../../http/testing";
+import { updateMealWrite } from "../../meal/http/testing/update-meal-write";
 import { deleteDishWrite } from "./testing/delete-dish-write";
 import { inspectDeletedContents } from "./testing/inspect-deleted-contents";
 import { seedNotYetWritableEdits } from "./testing/seed-not-yet-writable-edits";
@@ -130,8 +131,18 @@ describe("料理の同期", () => {
           .map(({ recordId }) => recordId);
       const previousIngredientIds = ingredientIdsOf(dishId);
       untouchedIngredientIds = ingredientIdsOf(untouchedDishId);
+      const corrected = await pushSyncWrites(sessionToken, {
+        writes: [
+          updateMealWrite(mealId, Date.now() - 10 * 60_000),
+          updateMealWrite(mealId, Date.now() - 20 * 60_000),
+        ],
+      });
+      if (
+        (await corrected.json<PushResults>()).results.some(({ result }) => result !== "applied")
+      ) {
+        throw new Error("時刻を直す書き込みが当たらなかった");
+      }
       const { replacingIngredientId } = await seedNotYetWritableEdits(accountId, {
-        mealId,
         dishId,
         ingredientId: previousIngredientIds[0] ?? "",
       });
