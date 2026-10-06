@@ -205,6 +205,11 @@ extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
         return Array(cache.dishes.values)
     }
 
+    public func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus] {
+        try failIfNeeded()
+        return cache.dishEstimationStatuses
+    }
+
     public func ingredients() async throws -> [Ingredient] {
         try failIfNeeded()
         return Array(cache.ingredients.values)

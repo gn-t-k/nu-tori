@@ -191,8 +191,9 @@ extension SyncEngineTests {
                 #expect(
                     store.state?.readableKinds
                         == [
-                            .accountSettings, .dish, .ingredient, .meal, .mealEstimationStatus,
-                            .notice, .usualWeighingTime, .weightRecord, .weightTrend,
+                            .accountSettings, .dish, .dishEstimationStatus, .ingredient, .meal,
+                            .mealEstimationStatus, .notice, .usualWeighingTime, .weightRecord,
+                            .weightTrend,
                         ])
             }
         }

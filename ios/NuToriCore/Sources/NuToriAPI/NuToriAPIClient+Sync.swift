@@ -384,6 +384,20 @@ extension SyncChange {
             } else {
                 self = .unknown(kind: kind)
             }
+        case "dish_estimation_status":
+            if let status = try? record.decoded(as: DishEstimationStatusPayload.self)
+                .syncedStatus
+            {
+                self = .dishEstimationStatus(status)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "dish_estimation_status_deletion":
+            if let dishId = UUID(uuidString: recordId) {
+                self = .dishEstimationStatusDeletion(dishId: dishId)
+            } else {
+                self = .unknown(kind: kind)
+            }
         case "ingredient":
             if let ingredient = try? record.decoded(as: IngredientPayload.self).syncedIngredient {
                 self = .ingredient(ingredient)

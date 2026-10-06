@@ -7,6 +7,9 @@ public enum SyncChange: Sendable, Equatable {
     case accountSettings(SyncedAccountSettings)
     case dish(SyncedDish)
     case dishDeletion(dishId: UUID)
+    case dishEstimationStatus(SyncedDishEstimationStatus)
+    /// 料理の削除の印と、別の変更で届く。届く順は約束しない
+    case dishEstimationStatusDeletion(dishId: UUID)
     case ingredient(SyncedIngredient)
     case ingredientDeletion(ingredientId: UUID)
     case meal(SyncedMeal)

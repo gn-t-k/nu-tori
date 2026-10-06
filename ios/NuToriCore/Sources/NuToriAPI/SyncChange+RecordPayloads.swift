@@ -125,6 +125,21 @@ extension SyncChange {
 }
 
 extension SyncChange {
+    /// 知らない状態は nil にする。サーバーが状態を足しても、古い版のアプリは前の状態のまま同期を続ける
+    struct DishEstimationStatusPayload: Decodable {
+        let dishId: String
+        let status: String
+
+        var syncedStatus: SyncedDishEstimationStatus? {
+            guard let dishId = UUID(uuidString: dishId),
+                let status = SyncedDishEstimationStatus.Status(rawValue: status)
+            else {
+                return nil
+            }
+            return SyncedDishEstimationStatus(dishId: dishId, status: status)
+        }
+    }
+
     struct DishPayload: Decodable {
         let id: String
         let mealId: String
@@ -261,6 +276,7 @@ extension SyncChange {
     extension SyncChange.MealPayload.Photo: Encodable {}
     extension SyncChange.MealEstimationStatusPayload: Encodable {}
     extension SyncChange.DishPayload: Encodable {}
+    extension SyncChange.DishEstimationStatusPayload: Encodable {}
     extension SyncChange.IngredientPayload: Encodable {}
     extension SyncChange.IngredientPayload.NutrientSourcePayload: Encodable {}
     extension SyncChange.NoticePayload: Encodable {}
