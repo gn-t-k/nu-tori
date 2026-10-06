@@ -1,8 +1,7 @@
 /// 食事や写真、料理を足す・名前を直す書き込みを送ったあと、推定中の食事か料理があるあいだ、送ってから1分まで数秒おきに取りに行く。
 /// そのあとは、ふだんの時機（開いたとき、電波が戻ったとき、バックグラウンド更新）にだけ取りに行く。翌日に推定の食事と料理は待たない
 public struct EstimationFollowUp: Sendable {
-    /// `sentAt` は送り終えた時点、`now` は今の時点。送ってからの経過は、端末の時計（UI テストでは止める）ではなく、
-    /// 単調な時計で測る（アプリは `ContinuousClock`）。`wait` は、次に取りに行くまで待つ
+    /// `sentAt` は送り終えた時点、`now` は今の時点。`wait` は、次に取りに行くまで待つ
     public init(
         sentAt: ContinuousClock.Instant,
         cache: any RecordCacheReading,

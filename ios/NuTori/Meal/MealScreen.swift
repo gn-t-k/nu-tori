@@ -343,7 +343,7 @@ struct MealScreen: View {
         }
     }
 
-    /// 最後の1品の行だけが確かめを出す。ほかの行にも同じ値を渡すと、確かめが行の数だけ出る
+    /// 確かめは最後の1品の行だけが持つ。確かめているあいだに料理が増えて最後の1品でなくなったら、確かめを閉じる
     private func lastDishDeletionPresented(_ contents: DishContents) -> Binding<Bool> {
         switch removal(of: contents) {
         case .meal: $confirmsLastDishDeletion
