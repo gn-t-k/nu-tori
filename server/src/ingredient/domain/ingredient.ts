@@ -4,6 +4,8 @@ import type { NutrientName } from "../../domain/food-composition/nutrient-name";
 export type Ingredient = {
   id: string;
   dishId: string;
+  // この材料が属する当てた推定。今の材料は、料理のいちばん新しい当てた推定の材料
+  estimationId: string;
   name: string;
   quantity: number;
   unit: string;

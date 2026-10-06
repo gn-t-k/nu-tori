@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { beforeEach, describe, expect, test } from "vitest";
 import {
   type ActualColumn,
@@ -74,6 +74,41 @@ describe("表の宣言と DB の列のずれを見つけること", () => {
       });
       expect(findTableDeclarationMismatches(meals, actualColumns)).toEqual([
         "meals.title: notNull が違う（宣言 false、DB true）",
+      ]);
+    });
+  });
+  describe("主キーが複数の列の組のとき", () => {
+    let pairColumns: ActualColumn[];
+    beforeEach(() => {
+      pairColumns = [
+        { name: "dish_id", type: "TEXT", notnull: 1, pk: 1 },
+        { name: "estimation_id", type: "TEXT", notnull: 1, pk: 2 },
+        { name: "quantity", type: "REAL", notnull: 1, pk: 0 },
+      ];
+    });
+
+    test("組の主キーで宣言していれば、ずれが無いこと", () => {
+      const applications = sqliteTable(
+        "applications",
+        {
+          dishId: text("dish_id").notNull(),
+          estimationId: text("estimation_id").notNull(),
+          quantity: real("quantity").notNull(),
+        },
+        (table) => [primaryKey({ columns: [table.dishId, table.estimationId] })],
+      );
+      expect(findTableDeclarationMismatches(applications, pairColumns)).toEqual([]);
+    });
+
+    test("組の主キーを宣言し忘れたら、その列を報告すること", () => {
+      const applications = sqliteTable("applications", {
+        dishId: text("dish_id").notNull(),
+        estimationId: text("estimation_id").notNull(),
+        quantity: real("quantity").notNull(),
+      });
+      expect(findTableDeclarationMismatches(applications, pairColumns)).toEqual([
+        "applications.dish_id: primaryKey が違う（宣言 false、DB true）",
+        "applications.estimation_id: primaryKey が違う（宣言 false、DB true）",
       ]);
     });
   });

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dishTables } from "../../dish/durable-object/dish-tables";
+import { findNewestDishEstimationId } from "../../dish/durable-object/find-newest-dish-estimation";
 import { isNutrientName } from "../../domain/food-composition/nutrient-name";
 import type { Ingredient, IngredientNutrientSource } from "../domain/ingredient";
 import type { IngredientStore } from "../domain/ingredient-store";
@@ -13,7 +14,6 @@ const {
   nutritionLabelIngredients,
   ingredientNutrients,
   ingredientDeletions,
-  syncWriteIngredientDeletions,
 } = ingredientTables;
 
 // 材料の ID は食事の数ほど届きうるので、変数の上限（100）を超えないよう1行ずつ消し・書く
@@ -36,7 +36,7 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
       )
       .where(eq(ingredients.id, id))
       .get();
-    if (found === undefined) {
+    if (found === undefined || !isCurrent(db, found.ingredient)) {
       return undefined;
     }
     const nutrients = db
@@ -58,12 +58,22 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
       ),
     };
   },
-  hasDeletion: (id) =>
-    db
+  hasDeletion: (id) => {
+    const deletion = db
       .select({ id: ingredientDeletions.ingredientId })
       .from(ingredientDeletions)
       .where(eq(ingredientDeletions.ingredientId, id))
-      .get() !== undefined,
+      .get();
+    if (deletion !== undefined) {
+      return true;
+    }
+    const ingredient = db
+      .select({ dishId: ingredients.dishId, estimationId: ingredients.estimationId })
+      .from(ingredients)
+      .where(eq(ingredients.id, id))
+      .get();
+    return ingredient !== undefined && !isCurrent(db, ingredient);
+  },
   findIdsOfMeal: (mealId) =>
     db
       .select({ id: ingredients.id })
@@ -97,13 +107,18 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
   },
   insertDeletions: (ids, receiptId) => {
     for (const ingredientId of ids) {
-      db.insert(ingredientDeletions).values({ ingredientId }).run();
-      db.insert(syncWriteIngredientDeletions)
+      db.insert(ingredientDeletions)
         .values({ ingredientId, syncWriteReceiptId: receiptId.value })
         .run();
     }
   },
 });
+
+// 今の材料は、料理のいちばん新しい当てた推定の材料。前の推定の材料は、行が残っても削除の印として届ける
+const isCurrent = (
+  db: DrizzleSqliteDODatabase,
+  { dishId, estimationId }: { dishId: string; estimationId: string },
+): boolean => findNewestDishEstimationId(db, dishId) === estimationId;
 
 // 出どころは、サブセットの表の行があるかで出す
 const toNutrientSource = ({

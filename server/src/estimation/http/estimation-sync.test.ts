@@ -606,15 +606,15 @@ describe("推定", () => {
       }).toEqual({ dishes: [], ingredients: [], nutrients: [], foodComposition: [] });
     });
 
-    test("料理と材料の削除の印を、消した書き込みの控えとつなぐこと", async () => {
+    test("料理と材料の削除の印を、消した書き込みの控えつきで書くこと", async () => {
       expect({
         dishes: await readRows(
           accountId,
-          "SELECT count(*) AS count FROM dish_deletions JOIN sync_write_dish_deletions USING (dish_id)",
+          "SELECT count(*) AS count FROM dish_deletions JOIN sync_write_receipts ON sync_write_receipts.id = dish_deletions.sync_write_receipt_id WHERE sync_write_receipts.kind = 'delete'",
         ),
         ingredients: await readRows(
           accountId,
-          "SELECT count(*) AS count FROM ingredient_deletions JOIN sync_write_ingredient_deletions USING (ingredient_id)",
+          "SELECT count(*) AS count FROM ingredient_deletions JOIN sync_write_receipts ON sync_write_receipts.id = ingredient_deletions.sync_write_receipt_id WHERE sync_write_receipts.kind = 'delete'",
         ),
       }).toEqual({ dishes: [{ count: 2 }], ingredients: [{ count: 3 }] });
     });

@@ -1,4 +1,13 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  type AnySQLiteColumn,
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
+import { dishTables } from "../../dish/durable-object/dish-tables";
+import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { mealTables } from "../../meal/durable-object/meal-tables";
 
 const estimationSchedules = sqliteTable(
@@ -89,7 +98,20 @@ const estimationAbandonments = sqliteTable("estimation_abandonments", {
   abandonedAt: integer("abandoned_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-// 推定の出来事の表（予定・推定・見送り・試み・結果・完了・断念）。INSERT だけで持つ。宣言は durable-object-migrations/ の SQL に合わせる
+// 料理が対象の予定の取り消し。控えは取り消した名前の修正の書き込み（UNIQUE にしない理由は #332 の Schema changes）
+const estimationScheduleCancellations = sqliteTable("estimation_schedule_cancellations", {
+  // 料理の表がこの表の束を指し返すので、型の推論が循環しないよう参照先の型を書く
+  estimationScheduleId: text("estimation_schedule_id")
+    .primaryKey()
+    .references((): AnySQLiteColumn => dishTables.dishEstimationSchedules.estimationScheduleId, {
+      onDelete: "cascade",
+    }),
+  syncWriteReceiptId: text("sync_write_receipt_id")
+    .notNull()
+    .references(() => syncLedgerTables.syncWriteReceipts.id),
+});
+
+// 推定の出来事の表（予定・推定・見送り・試み・結果・完了・断念・取り消し）。INSERT だけで持つ。宣言は durable-object-migrations/ の SQL に合わせる
 export const estimationTables = {
   estimationSchedules,
   mealEstimationSchedules,
@@ -100,4 +122,5 @@ export const estimationTables = {
   estimationAttemptErrors,
   estimationCompletions,
   estimationAbandonments,
+  estimationScheduleCancellations,
 };

@@ -9,7 +9,11 @@ export const findTableDeclarationMismatches = (
   table: SQLiteTable,
   actualColumns: readonly ActualColumn[],
 ): string[] => {
-  const { name: tableName, columns } = getTableConfig(table);
+  const { name: tableName, columns, primaryKeys } = getTableConfig(table);
+  // 組の主キー（primaryKey({ columns })）の列は、列の primary が立たないので、組から拾う
+  const compositeKeyColumnNames = new Set(
+    primaryKeys.flatMap((key) => key.columns.map((column) => column.name)),
+  );
   const declared = new Map(
     columns.map((column) => [
       column.name,
@@ -17,7 +21,7 @@ export const findTableDeclarationMismatches = (
         type: column.getSQLType().toLowerCase(),
         // 主キーの列は、SQLite が NOT NULL と書いていなくても値を必ず持つものとして宣言している
         notNull: column.notNull || column.primary,
-        primaryKey: column.primary,
+        primaryKey: column.primary || compositeKeyColumnNames.has(column.name),
       },
     ]),
   );

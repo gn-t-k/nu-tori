@@ -91,13 +91,15 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - スキーマは素の SQLite で書く。表は Drizzle ORM で宣言して読み書きし、移行は手書きの SQL で持つ（ADR-0021）。Drizzle Kit は使わない
 - Drizzle の宣言は、今の表の形に合わせて手で書く。記録の種類の表は `src/<種類>/durable-object/` に、帳簿の表と種類をまたぐ表は `src/durable-object/` に置き、全部を `durable-object-tables.ts` に集める。宣言は1ファイル1つの表の束を export する。移行を足すときは、SQL と宣言の両方を書く
 - 食事の仕様（#188）の表の置き場: 食事とその削除の印は `src/meal/durable-object/meal-tables.ts`、写真（宣言、ファイルの受け取りと R2 から消した事実、宣言の削除の印）は同じフォルダの `meal-photo-tables.ts`、推定の出来事（予定・つなぎ・見送り・推定・試み・結果・完了・断念）は `src/estimation/durable-object/estimation-tables.ts`、料理は `src/dish/durable-object/dish-tables.ts`、材料と出どころのサブセットと栄養の値は `src/ingredient/durable-object/ingredient-tables.ts`。推定の出来事は記録の種類ではないので `src/estimation/` に別に置く。表を足すときは、親の表の束を import して外部キーを張る
+- 食事を直す仕様（#332）の表の置き場: 当てた推定・推定の量・料理の名前と量の修正・比例の明細・料理が対象の予定のつなぎ・料理の削除の印は `dish-tables.ts`、材料の量の修正と材料の削除の印は `ingredient-tables.ts`、食事の時刻の修正は `meal-tables.ts`、予定の取り消しは `estimation-tables.ts`。表の束が互いを指す（料理 ↔ 材料、料理 ↔ 推定の出来事）ところは、指し返すほうの `references` に `(): AnySQLiteColumn =>` と型を書き、型の推論の循環を切る
 - 置き場の実装のクエリは Drizzle で書く。`sql.raw()` と、自分で文字列を組み立てる SQL は使わない（`sql` のテンプレートに列を渡すのはよい）。DB から読んだ区分の文字列は、宣言の `text({ enum })` から導いた型で受け、読み戻す関数を書かない
 - 宣言と移行がずれていないかは、`src/durable-object/durable-object-tables.test.ts` が、移行を当てた DB の実際の列（`pragma_table_info`）と宣言（`getTableConfig`）を比べて確かめる。比べる関数は `src/testing/find-table-declaration-mismatches.ts`（表と実際の列を渡すと、ずれの説明を返す。D1 の表にも使う）。表の宣言に無い表が DB にあっても落ちる
 - 置き場のテストの行は `@praha/drizzle-factory` で作る（`src/durable-object/testing/durable-object-factory.ts`）。`create()` は Promise を返すので、テストで `await` して使い、同期の `transactionSync` の中では使わない。`drizzle(storage, { schema: durableObjectTables })` の `schema` を渡した db を factory に渡す
 - D1 のスキーマの変更は、`d1-migrations/` の移行の SQL ファイルで行う
 - Durable Object の中のスキーマの変更は、`durable-object-migrations/` に版つきの SQL ファイルを置き、`src/durable-object/durable-object-migrations.ts` の並びに足す。各 Durable Object が起動するときに、まだ当てていない版を、版の小さい順に自分の DB に当てる。並んだ PR の移行は版の大きいほうが先に当たることがあるので、並んで足す移行どうしは互いに頼らない形にする
 - どちらの移行も足すだけにし、1つ前の版のコードでも動く形にする（下の「デプロイ」で、移行を当ててからコードを出すため）
-- あとで `meals`・`dishes`・`ingredients` の子の表を足すとき、自分の削除の印を持たない子（文章の食事のサブセット、直した印、料理が対象の予定のつなぎ、料理を作った推定など）は `ON DELETE CASCADE` にする。1つ前の版のコードは、あとで足した子を知らずに親を消すので、NO ACTION だと食事を消す書き込みが外部キーの違反で送り直され続ける
+- あとで `meals`・`dishes`・`ingredients` の子の表を足すとき、自分の削除の印を持たない子（文章の食事のサブセット、料理が対象の予定のつなぎ、料理を作った推定など）は `ON DELETE CASCADE` にする。1つ前の版のコードは、あとで足した子を知らずに親を消すので、NO ACTION だと食事を消す書き込みが外部キーの違反で送り直され続ける
+- 控えだけを指す修正の行（時刻・名前・量の修正）は、外部キーで記録を指さず、料理・食事を消す口が、その記録を書き換えた控えから探して消す
 - 索引は、同期の要求ごとに走る引き方に加え、アラームや推定の開始ごと、記録を受け取るごとに走る引き方にも置く。行が食事の数ほど増え続ける表（予定・推定・試み・料理・材料など）が対象になる。引く道が無いもの（控えから削除の印を引く）や、索引が効かない引き方（待っている予定を、推定も見送りも無いことで出す）には置かない
 - Durable Object のアラームは一度に1つしか張れない。アラームで動かすもの（推定など）は、予定を DB に持ち、いちばん早い予定にアラームを合わせる
   - いちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が表から出し、送る要求と写真の要求の入口で張る。写真の控えの消し残しを除いた時刻は `src/domain/compute-next-alarm-at-except-leftover-photos.ts` が出し、消し直しに失敗したアラームはこちらで張り直す（今に張り直さず、Cloudflare のアラームのやり直しに任せる）。アラームで動かすものを足すときは、その時刻を後者に足す（足さないと、入口で張り直したときに遅い時刻で上書きする）
