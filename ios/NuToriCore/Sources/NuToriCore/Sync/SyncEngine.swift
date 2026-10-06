@@ -191,6 +191,11 @@ public actor SyncEngine {
         try await exportNutritionBestEffort()
     }
 
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカード（`MealCard`）に渡し、まだ送れていない料理として見せる
+    public func unsentDishIds() async throws -> Set<UUID> {
+        PendingDishWrite.unsentDishIds(in: try await store.pendingEntries())
+    }
+
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
     public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
         let settings = AccountSettings(
@@ -256,7 +261,7 @@ public actor SyncEngine {
     private func apply(_ edit: DishEdit) async throws {
         try await writingCache {
             try await store.apply(
-                DishSyncing().correcting(edit, enqueuing: pending(.update(edit.correction))))
+                DishSyncing().correcting(edit, enqueuing: pending(edit.write)))
         }
     }
 

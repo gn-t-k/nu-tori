@@ -27,7 +27,7 @@ public struct DishSyncing: SyncedRecordKind, RecordKindWrites {
         switch pending.write {
         case .create(let dish):
             return .createDish(writeId: pending.writeId, dish: dish)
-        case .update(let correction):
+        case .update(let correction), .rename(let correction):
             return .updateDish(writeId: pending.writeId, correction: correction)
         case .delete(let dishId):
             return .deleteDish(writeId: pending.writeId, dishId: dishId)
@@ -48,11 +48,12 @@ public struct DishSyncing: SyncedRecordKind, RecordKindWrites {
         case (.create(let dish), .absent):
             return KindRejection(
                 rejectedWrite: nil, removingChanges: [.dishDeletion(dishId: dish.id)])
-        case (.update(let correction), .absent):
+        case (.update(let correction), .absent), (.rename(let correction), .absent):
             return KindRejection(
                 rejectedWrite: nil, removingChanges: [.dishDeletion(dishId: correction.id)])
         case (.create, .value), (.create, .deleted), (.create, nil), (.update, .value),
-            (.update, .deleted), (.update, nil), (.delete, _):
+            (.update, .deleted), (.update, nil), (.rename, .value), (.rename, .deleted),
+            (.rename, nil), (.delete, _):
             return KindRejection.none
         }
     }
