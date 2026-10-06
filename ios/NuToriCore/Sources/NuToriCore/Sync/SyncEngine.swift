@@ -111,10 +111,7 @@ public actor SyncEngine {
         guard try await store.meals().contains(where: { $0.id == mealId }) else {
             throw UnknownRecordError(recordId: mealId)
         }
-        let name = typedName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard AcceptedRange.dishNameTrimmedLength.bounds.contains(Double(name.count)) else {
-            return nil
-        }
+        guard let name = Dish.acceptedName(typed: typedName) else { return nil }
         let lastPosition = try await store.dishes().filter { $0.mealId == mealId }
             .map(\.positionInMeal).max()
         let newDish = NewDish(

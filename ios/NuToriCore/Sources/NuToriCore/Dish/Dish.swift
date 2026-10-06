@@ -40,4 +40,10 @@ public struct Dish: Hashable, Sendable {
             self.source = source
         }
     }
+
+    /// 足す・直す名前。前後の空白を除いた名前にし、受け付ける範囲の外（空）なら nil
+    static func acceptedName(typed: String) -> String? {
+        let name = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        return AcceptedRange.dishNameTrimmedLength.bounds.contains(Double(name.count)) ? name : nil
+    }
 }

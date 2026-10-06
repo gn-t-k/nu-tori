@@ -38,8 +38,7 @@ struct MealContentsTests {
                         dishId: MealContentsTests.dishA, name: "鶏肉", positionInDish: 0,
                         nutrients: [.energyKcal: 200]),
                     .fixture(dishId: UUID(), name: "親の料理がまだ届いていない材料"),
-                ]
-            )
+                ], dishEstimationStatuses: [:], unsentDishIds: [], mealState: .estimated)
         }
 
         @Test("カードの名前は、料理の名前を並び順に「・」でつなぐこと")
@@ -89,7 +88,7 @@ struct MealContentsTests {
                         .fixture(
                             dishId: MealContentsTests.dishA,
                             nutrientSource: .nutritionLabel(basisGrams: 250)),
-                    ])
+                    ], dishEstimationStatuses: [:], unsentDishIds: [], mealState: .estimated)
             }
 
             @Test("栄養成分表示・成分表・推定の順に材料の数を並べ、0 のものは書かないこと")
@@ -123,7 +122,7 @@ struct MealContentsTests {
                         .fixture(
                             dishId: MealContentsTests.dishA,
                             nutrientSource: .foodComposition(foodNumber: "01088")),
-                    ])
+                    ], dishEstimationStatuses: [:], unsentDishIds: [], mealState: .estimated)
             }
 
             @Test("数を書かないこと")
@@ -138,7 +137,8 @@ struct MealContentsTests {
         @Suite("材料が無い食事")
         struct WithoutIngredients {
             let contents = MealContents(
-                mealId: MealContentsTests.mealId, dishes: [], ingredients: [])
+                mealId: MealContentsTests.mealId, dishes: [], ingredients: [],
+                dishEstimationStatuses: [:], unsentDishIds: [], mealState: .estimated)
 
             @Test("1行を出さないこと")
             func hasNoLine() {
@@ -164,7 +164,7 @@ struct MealContentsTests {
                         .fixture(
                             dishId: MealContentsTests.dishA,
                             nutrientSource: .foodComposition(foodNumber: "11225")),
-                    ])
+                    ], dishEstimationStatuses: [:], unsentDishIds: [], mealState: .estimated)
             }
 
             @Test("出すこと")
@@ -188,7 +188,7 @@ struct MealContentsTests {
                         .fixture(
                             dishId: MealContentsTests.dishA,
                             nutrientSource: .nutritionLabel(basisGrams: 250)),
-                    ])
+                    ], dishEstimationStatuses: [:], unsentDishIds: [], mealState: .estimated)
             }
 
             @Test("出さないこと")
@@ -200,7 +200,9 @@ struct MealContentsTests {
 
     @Suite("料理がまだ無い食事")
     struct WithoutDishes {
-        let contents = MealContents(mealId: MealContentsTests.mealId, dishes: [], ingredients: [])
+        let contents = MealContents(
+            mealId: MealContentsTests.mealId, dishes: [], ingredients: [],
+            dishEstimationStatuses: [:], unsentDishIds: [], mealState: .estimated)
 
         @Test("カードの名前を持たないこと")
         func hasNoName() {

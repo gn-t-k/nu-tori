@@ -17,7 +17,7 @@ public struct ShownRecords: Sendable {
     }
 
     /// 端末で見せていた料理と、その食事
-    func dishPlace(of dishId: UUID) -> (Meal, RejectedMealLine.DishPlace)? {
+    func dishPlace(of dishId: UUID) -> (meal: Meal, place: RejectedMealLine.DishPlace)? {
         guard let dish = dishes[dishId], let meal = meals[dish.mealId] else { return nil }
         return (
             meal,
@@ -27,7 +27,9 @@ public struct ShownRecords: Sendable {
     }
 
     /// 端末で見せていた材料と、その料理と食事
-    func ingredientPlace(of ingredientId: UUID) -> (Meal, RejectedMealLine.IngredientPlace)? {
+    func ingredientPlace(of ingredientId: UUID)
+        -> (meal: Meal, place: RejectedMealLine.IngredientPlace)?
+    {
         guard let ingredient = ingredients[ingredientId],
             let (meal, dish) = dishPlace(of: ingredient.dishId)
         else { return nil }

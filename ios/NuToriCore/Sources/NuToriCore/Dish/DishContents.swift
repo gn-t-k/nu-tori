@@ -9,7 +9,7 @@ public struct DishContents: Hashable, Sendable {
     /// 料理ごとの待ちの見え方
     public let progress: DishProgress
 
-    public init(dish: Dish, ingredients: [Ingredient], progress: DishProgress = .settled) {
+    public init(dish: Dish, ingredients: [Ingredient], progress: DishProgress) {
         self.dish = dish
         self.ingredients = ingredients
         self.progress = progress
@@ -18,8 +18,7 @@ public struct DishContents: Hashable, Sendable {
 
     /// 料理の材料を、並び順（同じなら ID の順）に並べて持つ。画面とヘルスケアが、同じ順で足した同じ合計を出すため
     public init(
-        dish: Dish, ingredientsInAnyOrder ingredients: [Ingredient],
-        progress: DishProgress = .settled
+        dish: Dish, ingredientsInAnyOrder ingredients: [Ingredient], progress: DishProgress
     ) {
         self.init(
             dish: dish,
@@ -32,6 +31,11 @@ public struct DishContents: Hashable, Sendable {
 
     /// 食事の画面の料理の行に出すもの
     public var row: DishRow { DishRow(contents: self) }
+
+    /// 料理の行と料理の画面に見せる量。待っている料理の推定したままの量は、推定し直しで変わるので見せない（nil）
+    var shownQuantity: Dish.Quantity? {
+        progress.isWaiting && dish.quantity?.source == .estimated ? nil : dish.quantity
+    }
 
     /// 料理の画面に、材料と栄養のまとまり（主な栄養・ミネラル・ビタミンと注記）を出すか。待っている料理と通らなかった料理は出さない
     public var showsIngredientsAndNutrients: Bool { progress == .settled }

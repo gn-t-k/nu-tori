@@ -12,7 +12,7 @@ struct DishNutrientBreakdownTests {
                 ingredients: ingredients.map {
                     .fixture(
                         dishId: dish.id, nutrientSource: $0.nutrientSource, nutrients: $0.nutrients)
-                }))
+                }, progress: .settled))
     }
 
     static func text(_ breakdown: DishNutrientBreakdown, _ name: String) throws -> String {

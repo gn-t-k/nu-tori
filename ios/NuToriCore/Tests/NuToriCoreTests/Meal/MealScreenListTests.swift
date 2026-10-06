@@ -20,7 +20,8 @@ struct MealScreenListTests {
             third = .fixture(mealId: meal.id, name: "サラダ", positionInMeal: 2)
             let card = MealCard(
                 meal: meal, status: .estimated, recordedOnThisDevice: true,
-                dishes: [third, first], ingredients: [])
+                dishes: [third, first], ingredients: [], dishEstimationStatuses: [:],
+                unsentDishIds: [])
             eatenAtLine = RejectedMealLine(
                 meal: meal,
                 subject: .eatenAt(
@@ -71,7 +72,7 @@ struct MealScreenListTests {
             egg = .fixture(dishId: dish.id, name: "卵", positionInDish: 2)
             let card = MealCard(
                 meal: meal, status: .estimated, recordedOnThisDevice: true, dishes: [dish],
-                ingredients: [egg, rice])
+                ingredients: [egg, rice], dishEstimationStatuses: [:], unsentDishIds: [])
             let place = RejectedMealLine.DishPlace(id: dish.id, name: "親子丼", positionInMeal: 0)
             quantityLine = RejectedMealLine(
                 meal: meal, subject: .dishQuantity(place, attempted: 1.5, unit: "杯"))

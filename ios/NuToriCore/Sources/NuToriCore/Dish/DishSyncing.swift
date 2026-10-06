@@ -65,19 +65,19 @@ public struct DishSyncing: SyncedRecordKind, RecordKindWrites {
         case (.update(let correction), .absent), (.rename(let correction), .absent):
             return KindRejection(
                 rejectedWrite: shown.dishPlace(of: correction.id).map {
-                    rejected($0.0, .goneDish($0.1))
+                    rejected($0.meal, .goneDish($0.place))
                 },
                 removingChanges: [.dishDeletion(dishId: correction.id)])
         case (.update(let correction), .deleted), (.rename(let correction), .deleted):
             return KindRejection(
                 rejectedWrite: shown.dishPlace(of: correction.id).map {
-                    rejected($0.0, .goneDish($0.1))
+                    rejected($0.meal, .goneDish($0.place))
                 },
                 removingChanges: [])
         case (.rename(let correction), .value):
             return KindRejection(
                 rejectedWrite: shown.dishPlace(of: correction.id).map {
-                    rejected($0.0, .dishName($0.1, attempted: correction.name))
+                    rejected($0.meal, .dishName($0.place, attempted: correction.name))
                 },
                 removingChanges: [])
         case (.update(let correction), .value):
@@ -86,7 +86,8 @@ public struct DishSyncing: SyncedRecordKind, RecordKindWrites {
             else { return KindRejection.none }
             return KindRejection(
                 rejectedWrite: shown.dishPlace(of: correction.id).map {
-                    rejected($0.0, .dishQuantity($0.1, attempted: quantity.value, unit: unit))
+                    rejected(
+                        $0.meal, .dishQuantity($0.place, attempted: quantity.value, unit: unit))
                 },
                 removingChanges: [])
         case (.create, .value), (.create, .deleted), (.create, nil), (.update, nil),

@@ -5,9 +5,11 @@
     import UIKit
 
     #Preview("状態ごと", arguments: MealScreen.Sample.allCases) { sample in
+        // 見本の料理の ID は作るたびに変わるので、受け付けなかった1行は同じカードから作る
+        let card = sample.card
         NavigationStack {
             MealScreen(
-                card: sample.card,
+                card: card,
                 loadPhoto: { photoId in
                     sample.holdsPhotos ? UIImage.sampleMealPhoto(for: photoId) : nil
                 },
@@ -18,8 +20,10 @@
                 addDish: { _, _ in },
                 dishActions: .noop,
                 returnToTimeline: {},
-                rejectedLines: [],
-                confirmsDeletion: sample.confirmsDeletion
+                rejectedLines: sample.rejectedLines(in: card),
+                confirmsDeletion: sample.confirmsDeletion,
+                confirmsLastDishDeletion: sample.confirmsLastDishDeletion,
+                addingDish: sample.addingDish
             )
         }
     }
@@ -48,6 +52,12 @@
             case failedWithAddedDish
             /// 推定できた食事で「食事を削除」を押し、画面の下から確かめている
             case confirmingDeletion
+            /// 料理が1品の食事で、その行を左へ送って「削除」を押し、食事ごと消すかを確かめている
+            case confirmingLastDishDeletion
+            /// 「料理を足す」を押し、名前の欄を出している
+            case addingDish
+            /// 料理の名前を直す書き込みを受け付けられず、料理の行の下に「直せなかった」1行を出している
+            case rejectedDishName
 
             var card: MealCard {
                 switch self {
@@ -81,19 +91,34 @@
                         meal: lunch(photoCount: 1), status: .failed, recordedOnThisDevice: true)
                 case .failedWithAddedDish:
                     addedMisoSoup(to: lunch(photoCount: 1))
-                case .confirmingDeletion:
+                case .confirmingDeletion, .addingDish, .rejectedDishName:
                     .sampleEstimated(lunch(photoCount: 1))
+                case .confirmingLastDishDeletion:
+                    .sampleBlackCoffee(lunch(photoCount: 1))
                 }
             }
 
-            var confirmsDeletion: Bool {
-                switch self {
-                case .confirmingDeletion: true
-                case .notSent, .awaitingPhotosOnAnotherDevice, .estimating, .estimated,
-                    .estimatedWithoutFoodComposition, .estimatedBeforeDishesArrive, .noDishes,
-                    .deferredToNextDay, .failed, .failedWithAddedDish:
-                    false
+            var confirmsDeletion: Bool { self == .confirmingDeletion }
+
+            var confirmsLastDishDeletion: Bool { self == .confirmingLastDishDeletion }
+
+            var addingDish: Bool { self == .addingDish }
+
+            /// 1品目の名前を「カツ丼」に直そうとして、受け付けられなかった
+            func rejectedLines(in card: MealCard) -> [RejectedLine] {
+                guard self == .rejectedDishName, let dish = card.contents.dishes.first?.dish else {
+                    return []
                 }
+                return [
+                    .meal(
+                        RejectedMealLine(
+                            meal: card.meal,
+                            subject: .dishName(
+                                RejectedMealLine.DishPlace(
+                                    id: dish.id, name: dish.name,
+                                    positionInMeal: dish.positionInMeal),
+                                attempted: "カツ丼")))
+                ]
             }
 
             /// 写真をまだ持っていない端末では、取りに行っても届かない
@@ -102,7 +127,8 @@
                 case .awaitingPhotosOnAnotherDevice: false
                 case .notSent, .estimating, .estimated, .estimatedWithoutFoodComposition,
                     .estimatedBeforeDishesArrive, .noDishes, .deferredToNextDay, .failed,
-                    .failedWithAddedDish, .confirmingDeletion:
+                    .failedWithAddedDish, .confirmingDeletion, .confirmingLastDishDeletion,
+                    .addingDish, .rejectedDishName:
                     true
                 }
             }
@@ -113,7 +139,8 @@
                     version: 1)
                 return MealCard(
                     meal: meal, status: .failed, recordedOnThisDevice: true, dishes: [dish],
-                    ingredients: [], dishEstimationStatuses: [dish.id: .estimating])
+                    ingredients: [], dishEstimationStatuses: [dish.id: .estimating],
+                    unsentDishIds: [])
             }
 
             private func lunch(photoCount: Int) -> Meal {

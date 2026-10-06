@@ -15,12 +15,13 @@ extension MealCard {
         guard let nutrients else {
             return MealCard(
                 meal: meal, status: status, recordedOnThisDevice: recordedOnThisDevice,
-                dishes: [], ingredients: [])
+                dishes: [], ingredients: [], dishEstimationStatuses: [:], unsentDishIds: [])
         }
         let dish = Dish.fixture(mealId: meal.id)
         return MealCard(
             meal: meal, status: status, recordedOnThisDevice: recordedOnThisDevice,
             dishes: [dish],
-            ingredients: [.fixture(dishId: dish.id, nutrients: nutrients)])
+            ingredients: [.fixture(dishId: dish.id, nutrients: nutrients)],
+            dishEstimationStatuses: [:], unsentDishIds: [])
     }
 }

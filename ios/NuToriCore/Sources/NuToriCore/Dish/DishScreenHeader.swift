@@ -9,11 +9,10 @@ public struct DishScreenHeader: Hashable, Sendable {
     public init(_ contents: DishContents) {
         let quantity = contents.dish.quantity
         self.quantity = quantity
+        // 見せない量（待っている料理の推定したままの量）は、欄を空にして置き文字の「—」を見せる
         quantityField = quantity.map { quantity in
-            // 待っている料理の推定したままの量は、食事の画面の料理の行（`DishRow`）と同じく「—」にする
-            let hidesValue = contents.progress.isWaiting && quantity.source == .estimated
-            return QuantityField(
-                text: hidesValue ? "" : QuantityFieldText.text(quantity.value),
+            QuantityField(
+                text: contents.shownQuantity.map { QuantityFieldText.text($0.value) } ?? "",
                 unit: quantity.unit,
                 showsEstimateBadge: contents.row.showsEstimateBadge)
         }

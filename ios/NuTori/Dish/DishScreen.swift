@@ -60,11 +60,28 @@ struct DishScreen: View {
         }
     }
 
+    /// confirmsMealDeletion は開いたときに、最後の1品を消すかの確かめを出しているか
+    init(
+        contents: DishContents,
+        list: DishScreenList,
+        removal: DishRemoval,
+        actions: DishActions,
+        deleteMeal: @escaping () -> Void,
+        confirmsMealDeletion: Bool
+    ) {
+        self.contents = contents
+        self.list = list
+        self.removal = removal
+        self.actions = actions
+        self.deleteMeal = deleteMeal
+        _confirmsMealDeletion = State(initialValue: confirmsMealDeletion)
+    }
+
     /// 打っている欄。欄を離れたら確定する
     @FocusState private var focusedField: Field?
     /// 打ちかけの文字。打っていない欄は、キャッシュの今の値を見せる
     @State private var drafts: [Field: String] = [:]
-    @State private var confirmsMealDeletion = false
+    @State private var confirmsMealDeletion: Bool
 
     private enum Field: Hashable {
         case name
@@ -88,15 +105,8 @@ struct DishScreen: View {
                         .accessibilityIdentifier("dish-name")
                 }
                 if let note = contents.row.note {
-                    HStack(spacing: 8) {
-                        if note.showsSpinner {
-                            ProgressView()
-                        }
-                        Text(note.text)
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("dish-progress")
+                    DishProgressNoteText(note: note)
+                        .accessibilityIdentifier("dish-progress")
                 }
                 RejectedMealLinesText(lines: list.belowHeader)
             }
@@ -226,42 +236,4 @@ struct DishScreen: View {
             }
         }
     }
-}
-
-/// 受け付けなかった書き込みの1行（「1.5杯に直せませんでした。」など）。行の下や、記録の行を外した位置に置く
-struct RejectedMealLinesText: View {
-    let lines: [RejectedMealLine]
-
-    var body: some View {
-        ForEach(lines, id: \.self) { line in
-            Text(line.text)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("rejected-meal-line")
-        }
-    }
-}
-
-/// 料理の画面へ潜る行き先。画面は、そのときの食事のカードから料理の ID で引いて描く
-nonisolated struct DishRoute: Hashable {
-    let dishId: UUID
-}
-
-/// 開いている料理が消えたら（この画面で消した、ほかの端末で消して同期で届いた）、食事の画面に戻る
-struct DishDestination: View {
-    let contents: DishContents?
-    let screen: (DishContents) -> DishScreen
-
-    var body: some View {
-        if let contents {
-            screen(contents)
-        } else {
-            Color(.systemGroupedBackground)
-                .onAppear {
-                    dismiss()
-                }
-        }
-    }
-
-    @Environment(\.dismiss) private var dismiss
 }

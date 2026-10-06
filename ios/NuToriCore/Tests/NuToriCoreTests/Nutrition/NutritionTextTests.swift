@@ -111,7 +111,8 @@ struct NutritionTextTests {
             let dish = Dish.fixture()
             return MealContents(
                 mealId: dish.mealId, dishes: [dish],
-                ingredients: sources.map { .fixture(dishId: dish.id, nutrientSource: $0) }
+                ingredients: sources.map { .fixture(dishId: dish.id, nutrientSource: $0) },
+                dishEstimationStatuses: [:], unsentDishIds: [], mealState: .estimated
             ).nutrientSourceLine
         }
     }

@@ -40,8 +40,7 @@
                     sampleIngredient(
                         misoSoup, 1, "わかめ", 2, "g", .estimated,
                         kcal: 20, protein: nil, fat: 0.4, carbohydrate: 5.6),
-                ]
-            )
+                ], dishEstimationStatuses: [:], unsentDishIds: [])
         }
 
         /// プレビューの見本の、kcal はあるが P・F・C がすべて 0 の食事（ブラックコーヒー）
@@ -59,8 +58,7 @@
                     sampleIngredient(
                         coffee, 0, "コーヒー", 150, "ml", .estimated,
                         kcal: 4, protein: 0, fat: 0, carbohydrate: 0)
-                ]
-            )
+                ], dishEstimationStatuses: [:], unsentDishIds: [])
         }
 
         /// 値は基準の g（成分表と推定は 100 g、栄養成分表示は表示の単位）あたり。nil は「不明」
