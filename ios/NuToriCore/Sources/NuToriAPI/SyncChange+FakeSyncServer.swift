@@ -183,8 +183,9 @@
         fileprivate init(_ dish: SyncedDish) {
             self.init(
                 id: dish.id.uuidString, mealId: dish.mealId.uuidString, name: dish.name,
-                quantity: dish.quantity, unit: dish.unit, positionInMeal: dish.positionInMeal,
-                version: dish.version)
+                quantity: dish.quantity?.value, unit: dish.quantity?.unit,
+                quantitySource: dish.quantity?.source.rawValue,
+                positionInMeal: dish.positionInMeal, version: dish.version)
         }
     }
 
@@ -201,7 +202,8 @@
                 }
             self.init(
                 id: ingredient.id.uuidString, dishId: ingredient.dishId.uuidString,
-                name: ingredient.name, quantity: ingredient.quantity, unit: ingredient.unit,
+                name: ingredient.name, quantity: ingredient.quantity,
+                quantitySource: ingredient.quantitySource.rawValue, unit: ingredient.unit,
                 edibleGramsPerUnit: ingredient.edibleGramsPerUnit,
                 positionInDish: ingredient.positionInDish, nutrientSource: source,
                 nutrients: ingredient.nutrients)

@@ -7,10 +7,12 @@
         /// たんぱく質が「不明」の推定の材料）の2品で、P は「以上」になる
         static func sampleEstimated(_ meal: Meal, recordedOnThisDevice: Bool = true) -> MealCard {
             let oyakodon = Dish(
-                id: UUID(), mealId: meal.id, name: "親子丼", quantity: 1, unit: "杯",
+                id: UUID(), mealId: meal.id, name: "親子丼",
+                quantity: Dish.Quantity(value: 1, unit: "杯", source: .estimated),
                 positionInMeal: 0, version: 1)
             let misoSoup = Dish(
-                id: UUID(), mealId: meal.id, name: "味噌汁", quantity: 1, unit: "杯",
+                id: UUID(), mealId: meal.id, name: "味噌汁",
+                quantity: Dish.Quantity(value: 1, unit: "杯", source: .estimated),
                 positionInMeal: 1, version: 1)
             return MealCard(
                 meal: meal,
@@ -45,7 +47,8 @@
         /// プレビューの見本の、kcal はあるが P・F・C がすべて 0 の食事（ブラックコーヒー）
         static func sampleBlackCoffee(_ meal: Meal) -> MealCard {
             let coffee = Dish(
-                id: UUID(), mealId: meal.id, name: "ブラックコーヒー", quantity: 1, unit: "杯",
+                id: UUID(), mealId: meal.id, name: "ブラックコーヒー",
+                quantity: Dish.Quantity(value: 1, unit: "杯", source: .estimated),
                 positionInMeal: 0, version: 1)
             return MealCard(
                 meal: meal,
@@ -71,7 +74,8 @@
             ]
             nutrients[.proteinG] = protein
             return Ingredient(
-                id: UUID(), dishId: dish.id, name: name, quantity: quantity, unit: unit,
+                id: UUID(), dishId: dish.id, name: name, quantity: quantity,
+                quantitySource: .estimated, unit: unit,
                 edibleGramsPerUnit: edibleGramsPerUnit, positionInDish: position,
                 nutrientSource: source, nutrients: nutrients)
         }

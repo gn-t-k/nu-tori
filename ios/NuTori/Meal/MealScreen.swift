@@ -237,13 +237,13 @@ struct MealScreen: View {
         "\(TimelineDayText.label(for: card.meal.day))\(WeightAmountText.clock(card.meal.eatenClockTime))"
     }
 
-    /// 料理の行（名前、量、kcal）の下に材料の行（名前、量）を並べる。この仕様の量はすべて推定したまま。
+    /// 料理の行（名前、量、kcal）の下に材料の行（名前、量）を並べる。量の無い料理（足したばかりの料理）の量は「—」。
     /// 1行に収まらない大きな文字では、項目ごとに次の行へ送る
     @ViewBuilder private func dishRows(_ contents: DishContents) -> some View {
         let name = Text(contents.dish.name)
             .fontWeight(.semibold)
         let quantity = Text(
-            NutritionText.quantity(contents.dish.quantity, unit: contents.dish.unit)
+            contents.dish.quantity.map { NutritionText.quantity($0.value, unit: $0.unit) } ?? "—"
         )
         .monospacedDigit()
         let dishKilocalories = Text(

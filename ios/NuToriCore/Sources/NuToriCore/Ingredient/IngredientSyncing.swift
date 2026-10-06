@@ -44,6 +44,7 @@ extension Ingredient {
             dishId: ingredient.dishId,
             name: ingredient.name,
             quantity: ingredient.quantity,
+            quantitySource: QuantitySource(ingredient.quantitySource),
             unit: ingredient.unit,
             edibleGramsPerUnit: ingredient.edibleGramsPerUnit,
             positionInDish: ingredient.positionInDish,
@@ -53,6 +54,24 @@ extension Ingredient {
                     Nutrient(rawValue: name).map { ($0, value) }
                 })
         )
+    }
+}
+
+extension QuantitySource {
+    init(_ source: SyncedQuantitySource) {
+        switch source {
+        case .estimated: self = .estimated
+        case .corrected: self = .corrected
+        }
+    }
+}
+
+extension SyncedQuantitySource {
+    init(_ source: QuantitySource) {
+        switch source {
+        case .estimated: self = .estimated
+        case .corrected: self = .corrected
+        }
     }
 }
 

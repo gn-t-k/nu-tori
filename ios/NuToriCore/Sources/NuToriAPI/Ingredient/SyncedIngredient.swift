@@ -5,7 +5,9 @@ public struct SyncedIngredient: Sendable, Equatable {
     public let id: UUID
     public let dishId: UUID
     public let name: String
+    /// 今の量。直した量か、料理の量に比例させた量か、推定した量
     public let quantity: Double
+    public let quantitySource: SyncedQuantitySource
     public let unit: String
     /// 1単位あたりの可食部の g
     public let edibleGramsPerUnit: Double
@@ -21,6 +23,7 @@ public struct SyncedIngredient: Sendable, Equatable {
         dishId: UUID,
         name: String,
         quantity: Double,
+        quantitySource: SyncedQuantitySource,
         unit: String,
         edibleGramsPerUnit: Double,
         positionInDish: Int,
@@ -31,6 +34,7 @@ public struct SyncedIngredient: Sendable, Equatable {
         self.dishId = dishId
         self.name = name
         self.quantity = quantity
+        self.quantitySource = quantitySource
         self.unit = unit
         self.edibleGramsPerUnit = edibleGramsPerUnit
         self.positionInDish = positionInDish

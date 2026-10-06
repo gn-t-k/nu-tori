@@ -9,6 +9,8 @@ nonisolated final class CachedIngredient {
     var dishId: UUID
     var name: String
     var quantity: Double
+    /// `estimated`・`corrected`
+    var quantitySource: String
     var unit: String
     var edibleGramsPerUnit: Double
     var positionInDish: Int
@@ -27,6 +29,7 @@ nonisolated final class CachedIngredient {
         dishId = ingredient.dishId
         name = ingredient.name
         quantity = ingredient.quantity
+        quantitySource = ingredient.quantitySource.stored
         unit = ingredient.unit
         edibleGramsPerUnit = ingredient.edibleGramsPerUnit
         positionInDish = ingredient.positionInDish
@@ -44,6 +47,7 @@ nonisolated final class CachedIngredient {
         dishId = ingredient.dishId
         name = ingredient.name
         quantity = ingredient.quantity
+        quantitySource = ingredient.quantitySource.stored
         unit = ingredient.unit
         edibleGramsPerUnit = ingredient.edibleGramsPerUnit
         positionInDish = ingredient.positionInDish
@@ -56,9 +60,11 @@ nonisolated final class CachedIngredient {
         nutrientValues = nutrients.values
     }
 
-    /// 出どころを読めないとき（形が合わない行）は nil
+    /// 栄養か量の出どころを読めないとき（形が合わない行）は nil
     func ingredient() -> Ingredient? {
-        guard let source = nutrientSource() else { return nil }
+        guard let source = nutrientSource(),
+            let storedQuantitySource = QuantitySource(stored: quantitySource)
+        else { return nil }
         var nutrients: [Nutrient: Double] = [:]
         for (name, value) in zip(nutrientNames, nutrientValues) {
             if let nutrient = Nutrient(rawValue: name) {
@@ -70,6 +76,7 @@ nonisolated final class CachedIngredient {
             dishId: dishId,
             name: name,
             quantity: quantity,
+            quantitySource: storedQuantitySource,
             unit: unit,
             edibleGramsPerUnit: edibleGramsPerUnit,
             positionInDish: positionInDish,

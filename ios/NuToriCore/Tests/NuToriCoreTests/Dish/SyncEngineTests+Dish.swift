@@ -101,7 +101,7 @@ extension SyncEngineTests {
             """
             {"sequence":\(sequence),"kind":"dish","recordId":"\(id.uuidString)",
              "record":{"id":"\(id.uuidString)","mealId":"\(mealId.uuidString)","name":"親子丼",
-               "quantity":1,"unit":"杯","positionInMeal":0,"version":1}}
+               "quantity":1,"unit":"杯","quantitySource":"estimated","positionInMeal":0,"version":1}}
             """
         }
 
@@ -109,7 +109,7 @@ extension SyncEngineTests {
             """
             {"sequence":\(sequence),"kind":"ingredient","recordId":"\(id.uuidString)",
              "record":{"id":"\(id.uuidString)","dishId":"\(dishId.uuidString)","name":"鶏もも肉",
-               "quantity":80,"unit":"g","edibleGramsPerUnit":1,"positionInDish":0,
+               "quantity":80,"quantitySource":"estimated","unit":"g","edibleGramsPerUnit":1,"positionInDish":0,
                "nutrientSource":{"type":"food_composition","foodNumber":"11225"},
                "nutrients":{"energy_kcal":204,"future_nutrient_g":1.5}}}
             """

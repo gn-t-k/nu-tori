@@ -42,8 +42,9 @@ extension Dish {
             id: dish.id,
             mealId: dish.mealId,
             name: dish.name,
-            quantity: dish.quantity,
-            unit: dish.unit,
+            quantity: dish.quantity.map {
+                Quantity(value: $0.value, unit: $0.unit, source: QuantitySource($0.source))
+            },
             positionInMeal: dish.positionInMeal,
             version: dish.version
         )
