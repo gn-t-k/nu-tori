@@ -104,7 +104,7 @@ import NuToriCore
         guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
             return
         }
-        followEstimationInBackground(sentAt: clock.now())
+        followEstimationInBackground(sentAt: .now)
     }
 
     /// App スイッチャーで閉じると裏の送信が取り消されるので、開いたときに写真の送り残しを送り直す
@@ -323,11 +323,12 @@ import NuToriCore
         Task { _ = try? await self.syncAfterInFlight() }
     }
 
-    private func followEstimationInBackground(sentAt: Date) {
+    /// 送ってからの経過は、`clock`（UI テストでは止める）ではなく単調な時計で測る。止めた時計では1分の締め切りが来ないため
+    private func followEstimationInBackground(sentAt: ContinuousClock.Instant) {
         let followUp = EstimationFollowUp(
             sentAt: sentAt,
             cache: store,
-            now: clock.now,
+            now: { .now },
             wait: { try await Task.sleep(for: $0) }
         )
         Task { try? await followUp.run { try await self.sync() } }

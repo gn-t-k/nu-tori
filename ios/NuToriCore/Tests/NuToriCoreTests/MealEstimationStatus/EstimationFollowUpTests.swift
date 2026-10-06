@@ -36,7 +36,7 @@ struct EstimationFollowUpTests {
         let followUp: EstimationFollowUp
 
         init() async throws {
-            clock = WaitingClock(start: SyncEngine.fixtureNow)
+            clock = WaitingClock()
             let store = try SyncBoxMock.ok()
             transport = .sync(pullPages: [
                 EstimationFollowUpTests.dishStatusPage("estimating", sequence: 1),
@@ -46,7 +46,7 @@ struct EstimationFollowUpTests {
             engine = .fixture(store: store, transport: transport)
             _ = try await engine.sync()
             followUp = EstimationFollowUp(
-                sentAt: SyncEngine.fixtureNow, cache: store, now: clock.now, wait: clock.wait)
+                sentAt: clock.now(), cache: store, now: clock.now, wait: clock.wait)
         }
 
         @Test("数秒おきに取りに行き、推定中の料理が無くなったらやめること")
@@ -64,7 +64,7 @@ struct EstimationFollowUpTests {
         let followUp: EstimationFollowUp
 
         init() async throws {
-            clock = WaitingClock(start: SyncEngine.fixtureNow)
+            clock = WaitingClock()
             let store = try SyncBoxMock.ok()
             let engine = SyncEngine.fixture(
                 store: store,
@@ -73,7 +73,7 @@ struct EstimationFollowUpTests {
                 ]))
             _ = try await engine.sync()
             followUp = EstimationFollowUp(
-                sentAt: SyncEngine.fixtureNow, cache: store, now: clock.now, wait: clock.wait)
+                sentAt: clock.now(), cache: store, now: clock.now, wait: clock.wait)
         }
 
         @Test("待たずに、取りに行かないこと")
@@ -95,7 +95,7 @@ struct EstimationFollowUpTests {
         let followUp: EstimationFollowUp
 
         init() async throws {
-            clock = WaitingClock(start: SyncEngine.fixtureNow)
+            clock = WaitingClock()
             let store = try SyncBoxMock.ok()
             transport = .sync(pullPages: [
                 EstimationFollowUpTests.statusPage("estimating", sequence: 1),
@@ -105,7 +105,7 @@ struct EstimationFollowUpTests {
             engine = .fixture(store: store, transport: transport)
             _ = try await engine.sync()
             followUp = EstimationFollowUp(
-                sentAt: SyncEngine.fixtureNow, cache: store, now: clock.now, wait: clock.wait)
+                sentAt: clock.now(), cache: store, now: clock.now, wait: clock.wait)
         }
 
         @Test("数秒おきに取りに行き、推定中の食事が無くなったらやめること")
@@ -125,7 +125,7 @@ struct EstimationFollowUpTests {
         let followUp: EstimationFollowUp
 
         init() async throws {
-            clock = WaitingClock(start: SyncEngine.fixtureNow)
+            clock = WaitingClock()
             let store = try SyncBoxMock.ok()
             transport = .sync(pullPages: [
                 EstimationFollowUpTests.statusPage("estimating", sequence: 1)
@@ -133,7 +133,7 @@ struct EstimationFollowUpTests {
             engine = .fixture(store: store, transport: transport)
             _ = try await engine.sync()
             followUp = EstimationFollowUp(
-                sentAt: SyncEngine.fixtureNow, cache: store, now: clock.now, wait: clock.wait)
+                sentAt: clock.now(), cache: store, now: clock.now, wait: clock.wait)
         }
 
         @Test("送ってから1分で取りに行くのをやめ、ふだんの時機に任せること")
@@ -152,7 +152,7 @@ struct EstimationFollowUpTests {
         let followUp: EstimationFollowUp
 
         init() async throws {
-            clock = WaitingClock(start: SyncEngine.fixtureNow)
+            clock = WaitingClock()
             let store = try SyncBoxMock.ok()
             transport = .sync(pullPages: [
                 EstimationFollowUpTests.statusPage("deferred_to_next_day", sequence: 1)
@@ -160,7 +160,7 @@ struct EstimationFollowUpTests {
             let engine = SyncEngine.fixture(store: store, transport: transport)
             _ = try await engine.sync()
             followUp = EstimationFollowUp(
-                sentAt: SyncEngine.fixtureNow, cache: store, now: clock.now, wait: clock.wait)
+                sentAt: clock.now(), cache: store, now: clock.now, wait: clock.wait)
         }
 
         @Test("待たずに、取りに行かないこと")
@@ -180,7 +180,7 @@ struct EstimationFollowUpTests {
         let followUp: EstimationFollowUp
 
         init() async throws {
-            clock = WaitingClock(start: SyncEngine.fixtureNow)
+            clock = WaitingClock()
             let store = try SyncBoxMock.ok()
             let engine = SyncEngine.fixture(
                 store: store,
@@ -189,7 +189,7 @@ struct EstimationFollowUpTests {
                 ]))
             _ = try await engine.sync()
             followUp = EstimationFollowUp(
-                sentAt: SyncEngine.fixtureNow, cache: store, now: clock.now, wait: clock.wait)
+                sentAt: clock.now(), cache: store, now: clock.now, wait: clock.wait)
         }
 
         @Test("続けずにやめること")
