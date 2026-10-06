@@ -41,15 +41,12 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
         app.navigationBars["親子丼"].buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
         let delete = app.buttons["meal-delete"]
-        XCTAssertTrue(scrollUntilExists(delete))
+        XCTAssertTrue(app.scrollUntilExists(delete))
         XCTAssertTrue(app.buttons["nutrient-citation"].exists)
         attachScreenshot(of: app, named: "食事の画面の下")
 
         delete.tap()
-        // 画面の下から出る確かめ（confirmationDialog）の「食事を削除」。行の「食事を削除」と見分ける
-        let confirm = app.buttons.matching(
-            NSPredicate(format: "label == %@ AND identifier != %@", "食事を削除", "meal-delete")
-        ).firstMatch
+        let confirm = app.mealDeletionConfirm
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "食事を削除する確かめ")
         confirm.tap()
@@ -70,23 +67,6 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
     private func element(containing text: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text))
             .firstMatch
-    }
-
-    /// 食事の画面は List なので、画面の外の行はまだ作られていない。下へ送って作らせる
-    private func scrollUntilExists(_ element: XCUIElement) -> Bool {
-        for _ in 0..<5 where !element.exists {
-            app.swipeUp()
-        }
-        return element.exists
-    }
-
-    /// 推定の結果は、取りに行く間隔（数秒おき）で届く
-    private func waitUntil(_ element: XCUIElement, matches format: String, _ argument: String)
-        -> Bool
-    {
-        let expectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: format, argument), object: element)
-        return XCTWaiter().wait(for: [expectation], timeout: 30) == .completed
     }
 
     private static func todayIdentifier() throws -> String {

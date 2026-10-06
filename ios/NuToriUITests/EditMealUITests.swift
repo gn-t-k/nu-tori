@@ -44,7 +44,7 @@ final class EditMealUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
 
         let addDish = app.buttons["meal-add-dish"]
-        XCTAssertTrue(scrollUntilExists(addDish))
+        XCTAssertTrue(app.scrollUntilExists(addDish))
         addDish.tap()
         let newName = app.textFields["meal-add-dish-name"]
         XCTAssertTrue(newName.waitForExistence(timeout: 5))
@@ -65,20 +65,20 @@ final class EditMealUITests: XCTestCase {
         let katsudon = dish(named: "カツ丼")
         katsudon.swipeLeft()
         app.buttons["削除"].firstMatch.tap()
-        XCTAssertTrue(mealDeletionConfirm.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.mealDeletionConfirm.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "最後の1品を消す確かめ")
         cancelConfirmation()
-        XCTAssertTrue(mealDeletionConfirm.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.mealDeletionConfirm.waitForNonExistence(timeout: 5))
         XCTAssertTrue(katsudon.waitForExistence(timeout: 5))
 
         // 料理の画面の「この料理を削除」も同じ確かめで、「食事を削除」でタイムラインまで戻る
         katsudon.tap()
         XCTAssertTrue(app.navigationBars["カツ丼"].waitForExistence(timeout: 5))
         let deleteDish = app.buttons["dish-delete"]
-        XCTAssertTrue(scrollUntilExists(deleteDish))
+        XCTAssertTrue(app.scrollUntilExists(deleteDish))
         deleteDish.tap()
-        XCTAssertTrue(mealDeletionConfirm.waitForExistence(timeout: 5))
-        mealDeletionConfirm.tap()
+        XCTAssertTrue(app.mealDeletionConfirm.waitForExistence(timeout: 5))
+        app.mealDeletionConfirm.tap()
 
         XCTAssertTrue(app.navigationBars["カツ丼"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["食事"].waitForNonExistence(timeout: 5))
@@ -105,13 +105,6 @@ final class EditMealUITests: XCTestCase {
         XCTAssertTrue(waitUntil(time, matches: "label CONTAINS %@", "5:30"))
     }
 
-    /// 確かめ（confirmationDialog）の「食事を削除」。食事の画面の行の「食事を削除」と見分ける
-    private var mealDeletionConfirm: XCUIElement {
-        app.buttons.matching(
-            NSPredicate(format: "label == %@ AND identifier != %@", "食事を削除", "meal-delete")
-        ).firstMatch
-    }
-
     /// 確かめを「キャンセル」で閉じる。iOS 26 の確かめは押した場所から浮かぶ欄で出て「キャンセル」のボタンを持たず、
     /// 欄の外を押すのがキャンセルになる（CI の要素の木では「ポップアップを閉じる」の領域だけがある）。
     /// 画面の下から出る形なら「キャンセル」を押す
@@ -136,22 +129,5 @@ final class EditMealUITests: XCTestCase {
         field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: length + 2))
         field.typeText(text)
-    }
-
-    /// 食事の画面は List なので、画面の外の行はまだ作られていない。下へ送って作らせる
-    private func scrollUntilExists(_ element: XCUIElement) -> Bool {
-        for _ in 0..<5 where !element.exists {
-            app.swipeUp()
-        }
-        return element.exists
-    }
-
-    /// 推定の結果は、取りに行く間隔（数秒おき）で届く
-    private func waitUntil(_ element: XCUIElement, matches format: String, _ argument: String)
-        -> Bool
-    {
-        let expectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: format, argument), object: element)
-        return XCTWaiter().wait(for: [expectation], timeout: 30) == .completed
     }
 }
