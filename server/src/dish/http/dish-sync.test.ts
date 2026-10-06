@@ -4,6 +4,7 @@ import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/
 import { recordPhotographedMeal } from "../../estimation/http/testing/record-photographed-meal";
 import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
+import { countCorrectionsByReceivedOrder } from "../../http/sync-routes/testing/count-corrections-by-received-order";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
@@ -255,28 +256,20 @@ describe("料理の同期", () => {
       });
     });
 
-    describe("名前と料理の量と材料の量を直す書き込みを当てたとき", () => {
+    describe("時刻と名前と料理の量と材料の量を直す書き込みを当てたとき", () => {
       beforeEach(async () => {
+        await pushSyncWrites(sessionToken, {
+          writes: [updateMealWrite(mealId, Date.now() - 10 * 60_000)],
+        });
         await correctDishByWrites(sessionToken, { dishId, ingredientIds: [chickenId, riceId] });
       });
 
       test("修正の表のどの行の控えにも、受け取った順（変更の並びとのつなぎ）があること", async () => {
-        expect({
-          dish_name_corrections: await countOrderedRows(accountId, "dish_name_corrections"),
-          dish_quantity_corrections: await countOrderedRows(accountId, "dish_quantity_corrections"),
-          dish_quantity_correction_ingredients: await countOrderedRows(
-            accountId,
-            "dish_quantity_correction_ingredients",
-          ),
-          ingredient_quantity_corrections: await countOrderedRows(
-            accountId,
-            "ingredient_quantity_corrections",
-          ),
-        }).toEqual({
-          dish_name_corrections: { total: 2, ordered: 2 },
-          dish_quantity_corrections: { total: 1, ordered: 1 },
-          dish_quantity_correction_ingredients: { total: 2, ordered: 2 },
-          ingredient_quantity_corrections: { total: 1, ordered: 1 },
+        expect(await countCorrectionsByReceivedOrder(accountId)).toEqual({
+          meal_eaten_at_corrections: { withOrder: 1, withoutOrder: 0 },
+          dish_name_corrections: { withOrder: 2, withoutOrder: 0 },
+          dish_quantity_corrections: { withOrder: 1, withoutOrder: 0 },
+          ingredient_quantity_corrections: { withOrder: 1, withoutOrder: 0 },
         });
       });
     });
@@ -658,14 +651,4 @@ const pushRejection = async (sessionToken: string, writes: unknown[]) => {
     rejectionReason: last?.rejectionReason,
     status: last?.current?.status,
   };
-};
-
-// 控えだけを指す表の行の数と、そのうち控えに変更の並びとのつなぎ（受け取った順）がある行の数
-const countOrderedRows = async (accountId: string, table: string) => {
-  const [counts] = await readRows(
-    accountId,
-    `SELECT count(*) AS total, count(l.record_change_sequence) AS ordered FROM ${table} AS c
-     LEFT JOIN sync_write_record_changes AS l ON l.sync_write_receipt_id = c.sync_write_receipt_id`,
-  );
-  return counts;
 };
