@@ -10,6 +10,7 @@
                 recordPickedPhotos: { _, _ in },
                 photoSelection: .picker,
                 loadPhoto: { _, photoId in UIImage.sampleMealPhoto(for: photoId) },
+                correctMealTime: { _, _ in },
                 deleteMeal: { _, _ in }
             )
         }

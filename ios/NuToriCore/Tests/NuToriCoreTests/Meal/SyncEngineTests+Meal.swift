@@ -221,6 +221,18 @@ extension SyncEngineTests {
                             eatenAt: correctedEatenAt))
             }
 
+            @Test("日をまたいで直すと、食事の日が直した日に移り、カードを置く日は送った日のままのこと")
+            func movesDayButNotCardDay() async throws {
+                // 撮った日（東京の 2026-09-22）の前の日の 23:30（東京）に直す
+                let previousNight = try Date("2026-09-21T23:30:00+09:00", strategy: .iso8601)
+
+                try await engine.correctMealTime(mealId: meal.id, eatenAt: previousNight)
+
+                let cached = try #require(store.cache.meals[meal.id])
+                #expect(cached.day == CalendarDay(year: 2026, month: 9, day: 21))
+                #expect(cached.cardDay == meal.cardDay)
+            }
+
             @Test("今と同じ時刻なら、何も送り待ちに入れないこと")
             func ignoresSameTime() async throws {
                 try await engine.correctMealTime(mealId: meal.id, eatenAt: meal.eatenAt)

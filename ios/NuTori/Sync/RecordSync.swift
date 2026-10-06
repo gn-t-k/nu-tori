@@ -109,6 +109,14 @@ import NuToriCore
         await mealPhotos.resendPendingUploads()
     }
 
+    /// 食事の撮った時刻を直す。電波が無くても、その場でキャッシュに当たる。直す書き込みは送り待ちに並ぶ
+    func correctMealTime(mealId: UUID, eatenAt: Date) async throws {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        try await engineForThisDevice(accountId: accountId).correctMealTime(
+            mealId: mealId, eatenAt: eatenAt)
+        syncInBackground()
+    }
+
     /// 電波が無くても、その場でキャッシュとアプリの中の写真から消える。消す書き込みは送り待ちに並ぶ
     func deleteMeal(id mealId: UUID) async throws {
         guard await hasSession(), let accountId = await signedInAccountId() else { return }
