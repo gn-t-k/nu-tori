@@ -167,6 +167,17 @@ final class RootModel {
         await accountSession.capture(.mealDeleted(card, at: deletedAt))
     }
 
+    /// 食事の画面で撮った時刻を直す。インターネットにつながらなくても、その場で1日の丸と日のまとめが直した日に移る。
+    /// 直せたら、PostHog に直した回数を送る（時刻は送らない）
+    func correctMealTime(_ card: MealCard, eatenAt: Date) async {
+        do {
+            try await recordSync.correctMealTime(mealId: card.meal.id, eatenAt: eatenAt)
+        } catch {
+            return
+        }
+        await accountSession.capture(.mealTimeCorrected)
+    }
+
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil
     func mealPhotoFile(mealId: UUID, photoId: UUID) async -> URL? {
         await recordSync.mealPhotos.photoFile(mealId: mealId, photoId: photoId)

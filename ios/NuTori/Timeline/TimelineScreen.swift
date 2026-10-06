@@ -79,6 +79,7 @@ struct TimelineScreen: View {
                         },
                         now: now,
                         capture: capture,
+                        correctMealTime: mealActions.correctMealTime,
                         deleteMeal: mealActions.deleteMeal,
                         confirmsDeletion: false
                     )
