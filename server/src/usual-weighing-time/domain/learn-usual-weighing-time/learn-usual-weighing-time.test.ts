@@ -66,6 +66,95 @@ describe("いつもの時刻の学習", () => {
     });
   });
 
+  describe("時刻の無い記録", () => {
+    describe("記録したときの時計で 0:00:00 ちょうどの記録だけが3日あるとき", () => {
+      let learned: number | undefined;
+
+      beforeEach(() => {
+        learned = learnUsualWeighingTime({
+          weightRecords: [
+            inTokyo("a", "2026-09-28T00:00:00"),
+            inTokyo("b", "2026-09-29T00:00:00"),
+            inTokyo("c", "2026-09-30T00:00:00"),
+          ],
+          now: new Date("2026-09-30T12:00:00+09:00"),
+          timeZone: "Asia/Tokyo",
+        });
+      });
+
+      test("材料から外し、いつもの時刻を出さないこと", () => {
+        expect(learned).toBeUndefined();
+      });
+    });
+
+    describe("0:00:00 ちょうどの記録と同じ日に、ほかの記録があるとき", () => {
+      let learned: number | undefined;
+
+      beforeEach(() => {
+        learned = learnUsualWeighingTime({
+          weightRecords: [
+            inTokyo("a", "2026-09-28T00:00:00"),
+            inTokyo("b", "2026-09-28T07:00:00"),
+            inTokyo("c", "2026-09-29T00:00:00"),
+            inTokyo("d", "2026-09-29T07:10:00"),
+            inTokyo("e", "2026-09-30T00:00:00"),
+            inTokyo("f", "2026-09-30T07:20:00"),
+          ],
+          now: new Date("2026-09-30T12:00:00+09:00"),
+          timeZone: "Asia/Tokyo",
+        });
+      });
+
+      test("ほかの記録をその日の最初の記録にすること", () => {
+        expect(learned).toBe(7 * 60 + 10);
+      });
+    });
+
+    describe("0:00 台でも 0:00:00 ちょうどではない記録のとき", () => {
+      let learned: number | undefined;
+
+      beforeEach(() => {
+        learned = learnUsualWeighingTime({
+          weightRecords: [
+            inTokyo("a", "2026-09-28T00:00:01"),
+            inTokyo("b", "2026-09-29T00:01:00"),
+            inTokyo("c", "2026-09-30T00:02:00"),
+          ],
+          now: new Date("2026-09-30T12:00:00+09:00"),
+          timeZone: "Asia/Tokyo",
+        });
+      });
+
+      test("材料に入れること", () => {
+        expect(learned).toBe(0);
+      });
+    });
+
+    describe("ほかのタイムゾーンの 0:00:00 ちょうどの記録のとき", () => {
+      let learned: number | undefined;
+
+      beforeEach(() => {
+        learned = learnUsualWeighingTime({
+          weightRecords: [
+            inTokyo("a", "2026-09-28T07:00:00"),
+            inTokyo("b", "2026-09-29T07:00:00"),
+            {
+              id: "c",
+              measuredAt: new Date("2026-09-30T00:00:00-07:00"),
+              timeZone: "America/Los_Angeles",
+            },
+          ],
+          now: new Date("2026-09-30T12:00:00-07:00"),
+          timeZone: "America/Los_Angeles",
+        });
+      });
+
+      test("記録したときのタイムゾーンの時計で見分けて外すこと", () => {
+        expect(learned).toBeUndefined();
+      });
+    });
+  });
+
   describe("5分単位の丸め", () => {
     describe("中央値が5分の区切りの真ん中より前のとき", () => {
       let learned: number | undefined;

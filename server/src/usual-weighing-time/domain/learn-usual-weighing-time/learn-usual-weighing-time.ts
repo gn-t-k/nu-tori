@@ -14,7 +14,7 @@ export const learnUsualWeighingTime = (input: {
 }): number | undefined => {
   const today = computeCalendarDayInTimeZone(input.now, input.timeZone);
   const firstDay = addDays(today, -(usualWeighingTimeRangeDays - 1));
-  const minutes = computeDailyRepresentativeWeights(input.weightRecords)
+  const minutes = computeDailyRepresentativeWeights(input.weightRecords.filter(hasClockTime))
     .filter(({ calendarDay }) => firstDay <= calendarDay && calendarDay <= today)
     .map(({ weightRecord }) => computeMinuteOfDay(weightRecord.measuredAt, weightRecord.timeZone))
     .toSorted((a, b) => a - b);
@@ -29,12 +29,21 @@ const stepMinutes = 5;
 const minutesPerDay = 24 * 60;
 const millisecondsPerMinute = 60 * 1000;
 
+// 時刻の無い記録 = 記録したときのタイムゾーンの時計で 0:00:00.000 ちょうど。
+// 日付だけを持つ記録をヘルスケアに 0:00 で書くアプリ（MacroFactor）があり、その時刻は測った時刻ではない。
+// 材料に入れると、いつもの時刻が 0:00 になり、記録忘れの通知が深夜 1:00 になる（#321）。
+// 傾向やグラフには入れたままにするので、ここでだけ外す。手で入れてちょうど 0:00:00.000 になることは、まず無いとみなす
+const hasClockTime = (weightRecord: { measuredAt: Date; timeZone: string }): boolean =>
+  computeMillisecondsOfDay(weightRecord.measuredAt, weightRecord.timeZone) !== 0;
+
 // 記録したときのタイムゾーンの時計の時刻。秒は切り捨てる（時計に見える分）
-const computeMinuteOfDay = (instant: Date, timeZone: string): number => {
+const computeMinuteOfDay = (instant: Date, timeZone: string): number =>
+  Math.floor(computeMillisecondsOfDay(instant, timeZone) / millisecondsPerMinute);
+
+// 記録したときのタイムゾーンの、その日の 0:00 からのミリ秒
+const computeMillisecondsOfDay = (instant: Date, timeZone: string): number => {
   const localMilliseconds = instant.getTime() + computeUtcOffsetSeconds(instant, timeZone) * 1000;
-  const millisecondsOfDay =
-    ((localMilliseconds % millisecondsPerDay) + millisecondsPerDay) % millisecondsPerDay;
-  return Math.floor(millisecondsOfDay / millisecondsPerMinute);
+  return ((localMilliseconds % millisecondsPerDay) + millisecondsPerDay) % millisecondsPerDay;
 };
 
 // 並べた値を受け取る。数が偶数のときは真ん中の2つの平均
