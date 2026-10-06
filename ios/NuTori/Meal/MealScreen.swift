@@ -106,6 +106,11 @@ struct MealScreen: View {
                 totals
             }
             dishList
+                // 確かめているあいだに料理の数が変わったら、最後の1品の確かめを閉じる。見えなくするだけだと、
+                // また最後の1品に戻ったときに、押していない確かめが出直すため
+                .onChange(of: card.contents.dishes.count) { _, _ in
+                    confirmsLastDishDeletion = false
+                }
             addDishSection
             if card.contents.showsNutrientCitation {
                 Section {
@@ -343,7 +348,7 @@ struct MealScreen: View {
         }
     }
 
-    /// 確かめは最後の1品の行だけが持つ。確かめているあいだに料理が増えて最後の1品でなくなったら、確かめを閉じる
+    /// 確かめは最後の1品の行だけが持つ
     private func lastDishDeletionPresented(_ contents: DishContents) -> Binding<Bool> {
         switch removal(of: contents) {
         case .meal: $confirmsLastDishDeletion
