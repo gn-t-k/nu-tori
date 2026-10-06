@@ -53,13 +53,24 @@
             "type": "string"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "今の名前"
           },
           "quantity": {
-            "type": "number"
+            "type": "number",
+            "description": "今の量。量の無い料理は省く"
           },
           "unit": {
-            "type": "string"
+            "type": "string",
+            "description": "量の単位。量の無い料理は省く"
+          },
+          "quantitySource": {
+            "type": "string",
+            "enum": [
+              "estimated",
+              "corrected"
+            ],
+            "description": "量の出どころ。推定したまま（estimated）か、料理の量を直した（corrected）か。量の無い料理は省く"
           },
           "positionInMeal": {
             "type": "integer"
@@ -72,8 +83,6 @@
           "id",
           "mealId",
           "name",
-          "quantity",
-          "unit",
           "positionInMeal",
           "version"
         ],
@@ -92,7 +101,16 @@
             "type": "string"
           },
           "quantity": {
-            "type": "number"
+            "type": "number",
+            "description": "今の量。直した量か、料理の量に比例させた量のうち受け取った順でいちばんあとのもの。無ければ推定した量"
+          },
+          "quantitySource": {
+            "type": "string",
+            "enum": [
+              "estimated",
+              "corrected"
+            ],
+            "description": "量の出どころ。推定したまま（estimated）か、材料の量を直した（corrected）か。料理の量に比例させた量は estimated のまま"
           },
           "unit": {
             "type": "string"
@@ -170,6 +188,7 @@
           "dishId",
           "name",
           "quantity",
+          "quantitySource",
           "unit",
           "edibleGramsPerUnit",
           "positionInDish",
@@ -477,6 +496,12 @@
             "$ref": "#/components/schemas/DeleteDishWrite"
           },
           {
+            "$ref": "#/components/schemas/UpdateDishWrite"
+          },
+          {
+            "$ref": "#/components/schemas/UpdateIngredientWrite"
+          },
+          {
             "$ref": "#/components/schemas/CreateMealWrite"
           },
           {
@@ -506,6 +531,8 @@
           "mapping": {
             "update_account_settings": "#/components/schemas/UpdateAccountSettingsWrite",
             "delete_dish": "#/components/schemas/DeleteDishWrite",
+            "update_dish": "#/components/schemas/UpdateDishWrite",
+            "update_ingredient": "#/components/schemas/UpdateIngredientWrite",
             "create_meal": "#/components/schemas/CreateMealWrite",
             "delete_meal": "#/components/schemas/DeleteMealWrite",
             "update_meal": "#/components/schemas/UpdateMealWrite",
@@ -579,6 +606,100 @@
           "id",
           "type",
           "dishId"
+        ]
+      },
+      "UpdateDishWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "update_dish"
+            ]
+          },
+          "dishId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "今の名前か、直した名前"
+          },
+          "quantity": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number",
+                "description": "今の量か、直した量。単位は料理の単位のまま"
+              },
+              "proportionedIngredients": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "ingredientId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "ingredientId",
+                    "quantity"
+                  ]
+                },
+                "description": "量を直したときに、端末が今の材料の量を同じ割合で変えた量。材料ごとに1つ。サーバーは割合を計算し直さない"
+              }
+            },
+            "required": [
+              "value",
+              "proportionedIngredients"
+            ],
+            "description": "量の無い料理（推定し直しが一度も当たっていない料理）は省く"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "dishId",
+          "name"
+        ]
+      },
+      "UpdateIngredientWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "update_ingredient"
+            ]
+          },
+          "ingredientId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "quantity": {
+            "type": "number",
+            "description": "直した量。単位は材料の単位のまま"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "ingredientId",
+          "quantity"
         ]
       },
       "CreateMealWrite": {

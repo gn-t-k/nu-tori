@@ -25,9 +25,11 @@ try renderNutrient(
 )
 .write(to: output.appending(path: "Nutrient.swift"), atomically: true, encoding: .utf8)
 
+/// 下限は minimum（含む）か exclusiveMinimum（含まない）。上限は maximum（含む）で、無ければ上限なし
 private struct Bounds: Decodable {
-    let minimum: Double
-    let maximum: Double
+    let minimum: Double?
+    let exclusiveMinimum: Double?
+    let maximum: Double?
 }
 
 private struct NutrientItem: Decodable {
@@ -39,7 +41,14 @@ private func renderAcceptedRange(_ ranges: [String: Bounds]) -> String {
     let cases = names.map { "    case \($0)" }
     let boundsCases = names.map { name in
         let range = ranges[name]!
-        return "        case .\(name): \(range.minimum)...\(range.maximum)"
+        let lowerBound = (range.minimum ?? range.exclusiveMinimum).map { "\($0)" } ?? "-.infinity"
+        let upperBound = range.maximum.map { "\($0)" } ?? ".infinity"
+        let includesLowerBound = range.exclusiveMinimum == nil
+        return """
+                    case .\(name):
+                        AcceptedBounds(
+                            lowerBound: \(lowerBound), includesLowerBound: \(includesLowerBound), upperBound: \(upperBound))
+            """
     }
     return """
         // shared/accepted-ranges.json から書き出した。直すときは JSON を直し、scripts/check ios --fix で書き出し直す
@@ -47,10 +56,21 @@ private func renderAcceptedRange(_ ranges: [String: Bounds]) -> String {
         public enum AcceptedRange {
         \(cases.joined(separator: "\n"))
 
-            public var bounds: ClosedRange<Double> {
+            public var bounds: AcceptedBounds {
                 switch self {
         \(boundsCases.joined(separator: "\n"))
                 }
+            }
+        }
+
+        /// 下限を含むかは範囲ごとに決まる。上限は含み、無い範囲では無限大
+        public struct AcceptedBounds: Sendable {
+            public let lowerBound: Double
+            public let includesLowerBound: Bool
+            public let upperBound: Double
+
+            public func contains(_ value: Double) -> Bool {
+                (includesLowerBound ? lowerBound <= value : lowerBound < value) && value <= upperBound
             }
         }
 

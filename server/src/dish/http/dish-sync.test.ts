@@ -4,12 +4,22 @@ import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/
 import { recordPhotographedMeal } from "../../estimation/http/testing/record-photographed-meal";
 import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
+import { countCorrectionsByReceivedOrder } from "../../http/sync-routes/testing/count-corrections-by-received-order";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { signInTestAccount } from "../../http/testing";
+import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
+import { updateIngredientWrite } from "../../ingredient/http/testing/update-ingredient-write";
 import { updateMealWrite } from "../../meal/http/testing/update-meal-write";
+import {
+  mockPostHogCaptureEndpointOk,
+  readPostHogCapturedEvents,
+} from "../../observability/testing";
+import { correctDishByWrites } from "./testing/correct-dish-by-writes";
 import { deleteDishWrite } from "./testing/delete-dish-write";
+import { insertDishWithoutQuantity } from "./testing/insert-dish-without-quantity";
+import { updateDishWrite } from "./testing/update-dish-write";
 import { inspectDeletedContents } from "./testing/inspect-deleted-contents";
 import { seedNotYetWritableEdits } from "./testing/seed-not-yet-writable-edits";
 import { beforeEach, describe, expect, test } from "vitest";
@@ -56,10 +66,15 @@ describe("料理の同期", () => {
     });
 
     test("取りに行くと、料理とその材料の削除の印が返ること", () => {
-      expect(changesAfterDeletion.map(({ kind, recordId }) => ({ kind, recordId }))).toEqual([
-        { kind: "dish_deletion", recordId: dishId },
-        ...ingredientIds.map((recordId) => ({ kind: "ingredient_deletion", recordId })),
-      ]);
+      const [first, ...rest] = changesAfterDeletion;
+      // 材料の削除の印どうしの並びは決めていない（材料の ID の順になる）
+      expect({
+        first: { kind: first?.kind, recordId: first?.recordId },
+        rest: rest.map(({ kind, recordId }) => `${kind}:${recordId}`).toSorted(),
+      }).toEqual({
+        first: { kind: "dish_deletion", recordId: dishId },
+        rest: ingredientIds.map((recordId) => `ingredient_deletion:${recordId}`).toSorted(),
+      });
     });
   });
   describe("知らない ID の料理を消す書き込みを送ったとき", () => {
@@ -106,6 +121,363 @@ describe("料理の同期", () => {
     });
   });
 
+  describe("推定できた食事の料理を直すとき", () => {
+    // 推定した親子丼（1 杯）と、その材料の鶏もも肉（80 g）とご飯（200 g）
+    let mealId: string;
+    let dishId: string;
+    let chickenId: string;
+    let riceId: string;
+    let lastSequence: number;
+    const quantityWrite = (value: number) =>
+      updateDishWrite(dishId, {
+        name: "親子丼",
+        quantity: {
+          value,
+          proportionedIngredients: [
+            { ingredientId: chickenId, quantity: 80 * value },
+            { ingredientId: riceId, quantity: 200 * value },
+          ],
+        },
+      });
+    beforeEach(async () => {
+      mockCreateEstimationProviderOk();
+      mealId = await recordPhotographedMeal(sessionToken);
+      await runEstimationAlarm(accountId);
+      const estimated = await pullChangesAfter(0);
+      dishId = estimated.find(({ kind }) => kind === "dish")?.recordId ?? "";
+      const ingredientIdNamed = (name: string) =>
+        estimated.find(({ kind, record }) => kind === "ingredient" && record["name"] === name)
+          ?.recordId ?? "";
+      chickenId = ingredientIdNamed("鶏もも肉");
+      riceId = ingredientIdNamed("ご飯");
+      lastSequence = estimated.at(-1)?.sequence ?? 0;
+    });
+
+    describe("名前を2回直したとき", () => {
+      let results: PushResults["results"];
+      beforeEach(async () => {
+        ({ results } = await (
+          await pushSyncWrites(sessionToken, {
+            writes: [
+              updateDishWrite(dishId, { name: "カツ丼" }),
+              updateDishWrite(dishId, { name: "かつ丼" }),
+            ],
+          })
+        ).json<PushResults>());
+      });
+
+      test("どちらも当てたと返すこと", () => {
+        expect(results.map(({ result }) => result)).toEqual(["applied", "applied"]);
+      });
+
+      test("取りに行くと、あとの名前と、名前の修正の数だけ上がった版の料理が返ること", async () => {
+        expect(changedValues(await pullChangesAfter(lastSequence)).at(-1)).toEqual({
+          kind: "dish",
+          recordId: dishId,
+          id: dishId,
+          mealId,
+          name: "かつ丼",
+          quantity: 1,
+          unit: "杯",
+          quantitySource: "estimated",
+          positionInMeal: 0,
+          version: 3,
+        });
+      });
+    });
+
+    describe("量を、比例させた材料の量と一緒に直したとき", () => {
+      beforeEach(async () => {
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            updateDishWrite(dishId, {
+              name: "親子丼",
+              quantity: {
+                value: 1.5,
+                proportionedIngredients: [
+                  { ingredientId: chickenId, quantity: 120 },
+                  { ingredientId: riceId, quantity: 300 },
+                ],
+              },
+            }),
+          ],
+        });
+      });
+
+      test("取りに行くと、直した量の料理と、比例させた量で出どころが推定のままの材料が返ること", async () => {
+        expect(
+          changedValues(await pullChangesAfter(lastSequence)).map(
+            ({ kind, recordId, quantity, quantitySource, version }) => ({
+              kind,
+              recordId,
+              quantity,
+              quantitySource,
+              version,
+            }),
+          ),
+        ).toEqual([
+          {
+            kind: "dish",
+            recordId: dishId,
+            quantity: 1.5,
+            quantitySource: "corrected",
+            version: 2,
+          },
+          {
+            kind: "ingredient",
+            recordId: chickenId,
+            quantity: 120,
+            quantitySource: "estimated",
+            version: undefined,
+          },
+          {
+            kind: "ingredient",
+            recordId: riceId,
+            quantity: 300,
+            quantitySource: "estimated",
+            version: undefined,
+          },
+        ]);
+      });
+
+      describe("そのあとに材料の量を直したとき", () => {
+        beforeEach(async () => {
+          await pushSyncWrites(sessionToken, { writes: [updateIngredientWrite(chickenId, 100)] });
+        });
+
+        test("取りに行くと、材料を直した量が返ること", async () => {
+          const chicken = changedValues(await pullChangesAfter(lastSequence)).findLast(
+            ({ recordId }) => recordId === chickenId,
+          );
+          expect(chicken).toEqual(
+            expect.objectContaining({ quantity: 100, quantitySource: "corrected" }),
+          );
+        });
+      });
+    });
+
+    describe("時刻と名前と料理の量と材料の量を直す書き込みを当てたとき", () => {
+      beforeEach(async () => {
+        await pushSyncWrites(sessionToken, {
+          writes: [updateMealWrite(mealId, Date.now() - 10 * 60_000)],
+        });
+        await correctDishByWrites(sessionToken, { dishId, ingredientIds: [chickenId, riceId] });
+      });
+
+      test("修正の表のどの行の控えにも、受け取った順（変更の並びとのつなぎ）があること", async () => {
+        expect(await countCorrectionsByReceivedOrder(accountId)).toEqual({
+          meal_eaten_at_corrections: { withOrder: 1, withoutOrder: 0 },
+          dish_name_corrections: { withOrder: 2, withoutOrder: 0 },
+          dish_quantity_corrections: { withOrder: 1, withoutOrder: 0 },
+          ingredient_quantity_corrections: { withOrder: 1, withoutOrder: 0 },
+        });
+      });
+    });
+
+    describe("名前も量も今の値と同じ書き込みを送ったとき", () => {
+      let results: PushResults["results"];
+      beforeEach(async () => {
+        ({ results } = await (
+          await pushSyncWrites(sessionToken, {
+            writes: [
+              updateDishWrite(dishId, {
+                name: "親子丼",
+                quantity: {
+                  value: 1,
+                  proportionedIngredients: [
+                    { ingredientId: chickenId, quantity: 80 },
+                    { ingredientId: riceId, quantity: 200 },
+                  ],
+                },
+              }),
+            ],
+          })
+        ).json<PushResults>());
+      });
+
+      test("当てたと返すこと", () => {
+        expect(results.map(({ result }) => result)).toEqual(["applied"]);
+      });
+
+      test("変更を足さないこと", async () => {
+        expect(await pullChangesAfter(lastSequence)).toEqual([]);
+      });
+    });
+
+    describe("受け付けない書き込みを送ったとき", () => {
+      test("消した料理を直す書き込みは、直す先が無いとして、今の値に削除の印を添えること", async () => {
+        expect(
+          await pushRejection(sessionToken, [
+            deleteDishWrite(dishId),
+            updateDishWrite(dishId, { name: "カツ丼" }),
+          ]),
+        ).toEqual({ result: "rejected", rejectionReason: "record_not_found", status: "deleted" });
+      });
+
+      test("知らない料理を直す書き込みは、直す先が無いとして、今の値に無いことを添えること", async () => {
+        expect(
+          await pushRejection(sessionToken, [
+            updateDishWrite(crypto.randomUUID(), { name: "カツ丼" }),
+          ]),
+        ).toEqual({ result: "rejected", rejectionReason: "record_not_found", status: "absent" });
+      });
+
+      test("空白だけの名前は、範囲の外として、今の値に料理を添えること", async () => {
+        expect(
+          await pushRejection(sessionToken, [updateDishWrite(dishId, { name: " 　" })]),
+        ).toEqual({
+          result: "rejected",
+          rejectionReason: "out_of_range",
+          status: "value",
+        });
+      });
+
+      test("量が 0 の書き込みは、範囲の外とすること", async () => {
+        expect(
+          await pushRejection(sessionToken, [
+            updateDishWrite(dishId, {
+              name: "親子丼",
+              quantity: {
+                value: 0,
+                proportionedIngredients: [
+                  { ingredientId: chickenId, quantity: 0 },
+                  { ingredientId: riceId, quantity: 0 },
+                ],
+              },
+            }),
+          ]),
+        ).toEqual({ result: "rejected", rejectionReason: "out_of_range", status: "value" });
+      });
+
+      test("比例させた材料の量が 0 の書き込みは、範囲の外とすること", async () => {
+        expect(
+          await pushRejection(sessionToken, [
+            updateDishWrite(dishId, {
+              name: "親子丼",
+              quantity: {
+                value: 0.5,
+                proportionedIngredients: [
+                  { ingredientId: chickenId, quantity: 0 },
+                  { ingredientId: riceId, quantity: 100 },
+                ],
+              },
+            }),
+          ]),
+        ).toEqual({ result: "rejected", rejectionReason: "out_of_range", status: "value" });
+      });
+    });
+
+    describe("量の無い料理があるとき", () => {
+      let quantitylessDishId: string;
+      beforeEach(async () => {
+        quantitylessDishId = await insertDishWithoutQuantity(accountId, mealId, "味噌汁");
+      });
+
+      test("量を載せた書き込みは、範囲の外として受け付けないこと", async () => {
+        const response = await pushSyncWrites(sessionToken, {
+          writes: [
+            updateDishWrite(quantitylessDishId, {
+              name: "味噌汁",
+              quantity: { value: 1, proportionedIngredients: [] },
+            }),
+          ],
+        });
+        expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
+          "out_of_range",
+        );
+      });
+
+      describe("量を省いて名前だけを直す書き込みを送ったとき", () => {
+        let results: PushResults["results"];
+        beforeEach(async () => {
+          ({ results } = await (
+            await pushSyncWrites(sessionToken, {
+              writes: [updateDishWrite(quantitylessDishId, { name: "豚汁" })],
+            })
+          ).json<PushResults>());
+        });
+
+        test("当てたと返すこと", () => {
+          expect(results.map(({ result }) => result)).toEqual(["applied"]);
+        });
+
+        test("取りに行くと、量と単位と量の出どころを省いた、直した名前の料理が返ること", async () => {
+          expect(changedValues(await pullChangesAfter(lastSequence))).toEqual([
+            {
+              kind: "dish",
+              recordId: quantitylessDishId,
+              id: quantitylessDishId,
+              mealId,
+              name: "豚汁",
+              positionInMeal: 0,
+              version: 2,
+            },
+          ]);
+        });
+      });
+    });
+
+    describe("本番のサーバーで", () => {
+      let fetchSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
+      beforeEach(async () => {
+        await enableUsageEventSending(accountId);
+        fetchSpy = mockPostHogCaptureEndpointOk();
+      });
+
+      describe("推定した料理の量を直したとき", () => {
+        beforeEach(async () => {
+          await pushSyncWrites(sessionToken, { writes: [quantityWrite(1.5)] });
+        });
+
+        test("料理を直した率だけを PostHog に送り、比例させた材料は送らないこと", () => {
+          expect(readPostHogCapturedEvents(fetchSpy)).toEqual([
+            {
+              event: "estimated_quantity_corrected",
+              distinct_id: accountId,
+              properties: { target: "dish", meal_input: "photo", ratio: 1.5, $geoip_disable: true },
+            },
+          ]);
+        });
+
+        describe("直した料理の量をもう一度直したとき", () => {
+          beforeEach(async () => {
+            fetchSpy.mockClear();
+            await pushSyncWrites(sessionToken, { writes: [quantityWrite(2)] });
+          });
+
+          test("送らないこと", () => {
+            expect(readPostHogCapturedEvents(fetchSpy)).toEqual([]);
+          });
+        });
+
+        describe("比例させた材料の量を直したとき", () => {
+          beforeEach(async () => {
+            fetchSpy.mockClear();
+            await pushSyncWrites(sessionToken, { writes: [updateIngredientWrite(riceId, 250)] });
+          });
+
+          test("比例させたあとの量に対する率を送ること", () => {
+            expect(
+              readPostHogCapturedEvents(fetchSpy).map(({ properties }) => properties["ratio"]),
+            ).toEqual([250 / 300]);
+          });
+        });
+      });
+
+      describe("名前だけを直したとき", () => {
+        beforeEach(async () => {
+          await pushSyncWrites(sessionToken, {
+            writes: [updateDishWrite(dishId, { name: "カツ丼" })],
+          });
+        });
+
+        test("送らないこと", () => {
+          expect(readPostHogCapturedEvents(fetchSpy)).toEqual([]);
+        });
+      });
+    });
+  });
+
   describe("時刻と名前と量と材料を直し、推定し直しで材料が置き換わり、待つ予定を取り消した料理と、直していない料理があるとき", () => {
     let mealId: string;
     let dishId: string;
@@ -142,9 +514,13 @@ describe("料理の同期", () => {
       ) {
         throw new Error("時刻を直す書き込みが当たらなかった");
       }
+      const { secondRenameWriteId } = await correctDishByWrites(sessionToken, {
+        dishId,
+        ingredientIds: previousIngredientIds,
+      });
       const { replacingIngredientId } = await seedNotYetWritableEdits(accountId, {
         dishId,
-        ingredientId: previousIngredientIds[0] ?? "",
+        cancellingRenameWriteId: secondRenameWriteId,
       });
       ingredientIds = [...previousIngredientIds, replacingIngredientId];
       lastSequence = (await pullChangesAfter(0)).at(-1)?.sequence ?? 0;
@@ -257,3 +633,22 @@ describe("料理の同期", () => {
     });
   });
 });
+
+// 取りに行った変更を、種類・記録の ID と値の欄を並べた1つの値にする
+const changedValues = (changes: PullResult["changes"]) =>
+  changes.map(({ kind, recordId, record }): Record<string, unknown> => ({
+    kind,
+    recordId,
+    ...record,
+  }));
+
+// 書き込みを送り、最後の書き込みの結果を返す
+const pushRejection = async (sessionToken: string, writes: unknown[]) => {
+  const { results } = await (await pushSyncWrites(sessionToken, { writes })).json<PushResults>();
+  const last = results.at(-1);
+  return {
+    result: last?.result,
+    rejectionReason: last?.rejectionReason,
+    status: last?.current?.status,
+  };
+};

@@ -7,6 +7,7 @@ export const toIngredientRecord = (value: Ingredient): z.input<typeof ingredient
   dishId: value.dishId,
   name: value.name,
   quantity: value.quantity,
+  quantitySource: value.quantitySource,
   unit: value.unit,
   edibleGramsPerUnit: value.edibleGramsPerUnit,
   positionInDish: value.positionInDish,

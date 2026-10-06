@@ -4,86 +4,22 @@ import { getAccountDurableObject } from "../../../durable-object/get-account-dur
 
 type Sql = DurableObjectStorage["sql"];
 
-// まだ書き込みの口が無い直し（名前・量・材料の量の修正、推定し直し、予定の取り消し）を、
-// 帳簿が書くのと同じ形（要求の控え・書き込みの控え・変更の並びとのつなぎ）で DB に直に書く。
+// まだ書き込みの口が無い直し（推定し直し、予定の取り消し）を、DB に直に書く。
 // 「消したら中身が残らない」の前提に使う。書き込みの口を足すチケットで、その分を本物の書き込みに置き換える
-// （#332 の「テストの決定」）。置き換えの済んだ分は、ここから消す
+// （#332 の「テストの決定」）。置き換えの済んだ分（時刻・名前・料理の量・材料の量の修正）は、ここから消した。
+// 取り消しは、名前を直した本物の書き込み（cancellingRenameWriteId。控えの ID は書き込みの ID）が取り消したことにする
 export const seedNotYetWritableEdits = (
   accountId: string,
-  target: { dishId: string; ingredientId: string },
+  target: { dishId: string; cancellingRenameWriteId: string },
 ): Promise<{ replacingIngredientId: string }> =>
   runInDurableObject(getAccountDurableObject(env, accountId), (_, state) => {
     const { sql } = state.storage;
-    const requestLogId = crypto.randomUUID();
-    sql.exec(
-      `INSERT INTO sync_request_logs (id, device_id, received_at, time_zone, app_version, os_version, pending_write_count, pending_photo_count)
-       VALUES (?, 'device', ?, 'Asia/Tokyo', '1.0', '26.0', 0, 0)`,
-      requestLogId,
-      Date.now(),
-    );
-    sql.exec(
-      "INSERT INTO sync_push_logs (sync_request_log_id, is_final_batch) VALUES (?, 1)",
-      requestLogId,
-    );
-    let position = 0;
-    const insertReceipt = (recordType: string, recordId: string): string => {
-      const receiptId = crypto.randomUUID();
-      sql.exec(
-        `INSERT INTO sync_write_receipts (id, sync_request_log_id, position_in_request, kind, record_type, record_id, result)
-         VALUES (?, ?, ?, 'update', ?, ?, 'applied')`,
-        receiptId,
-        requestLogId,
-        position,
-        recordType,
-        recordId,
-      );
-      position += 1;
-      const { sequence } = sql
-        .exec<{ sequence: number }>(
-          "INSERT INTO record_changes (record_type, record_id) VALUES (?, ?) RETURNING sequence",
-          recordType,
-          recordId,
-        )
-        .one();
-      sql.exec(
-        "INSERT INTO sync_write_record_changes (record_change_sequence, sync_write_receipt_id) VALUES (?, ?)",
-        sequence,
-        receiptId,
-      );
-      return receiptId;
-    };
-
-    // 名前を2回直す。1回目の名前の修正で待った予定を、2回目で取り消す
-    const firstRenameReceiptId = insertReceipt("dish", target.dishId);
-    sql.exec(
-      "INSERT INTO dish_name_corrections (sync_write_receipt_id, name) VALUES (?, 'カツ丼')",
-      firstRenameReceiptId,
-    );
-    const secondRenameReceiptId = insertReceipt("dish", target.dishId);
-    sql.exec(
-      "INSERT INTO dish_name_corrections (sync_write_receipt_id, name) VALUES (?, 'かつ丼')",
-      secondRenameReceiptId,
-    );
+    // 1回目の名前の修正で待った予定を、2回目の名前の修正で取り消す
     const cancelledScheduleId = insertDishSchedule(sql, target.dishId);
     sql.exec(
       "INSERT INTO estimation_schedule_cancellations (estimation_schedule_id, sync_write_receipt_id) VALUES (?, ?)",
       cancelledScheduleId,
-      secondRenameReceiptId,
-    );
-    // 料理の量を比例の明細つきで直し、材料の量を直す
-    const quantityReceiptId = insertReceipt("dish", target.dishId);
-    sql.exec(
-      "INSERT INTO dish_quantity_corrections (sync_write_receipt_id, quantity) VALUES (?, 1.5)",
-      quantityReceiptId,
-    );
-    sql.exec(
-      "INSERT INTO dish_quantity_correction_ingredients (sync_write_receipt_id, ingredient_id, quantity) VALUES (?, ?, 120)",
-      quantityReceiptId,
-      target.ingredientId,
-    );
-    sql.exec(
-      "INSERT INTO ingredient_quantity_corrections (sync_write_receipt_id, quantity) VALUES (?, 150)",
-      insertReceipt("ingredient", target.ingredientId),
+      target.cancellingRenameWriteId,
     );
     // 料理が対象の推定を当てて材料を置き換える（前の推定の材料が残る）
     const scheduleId = insertDishSchedule(sql, target.dishId);

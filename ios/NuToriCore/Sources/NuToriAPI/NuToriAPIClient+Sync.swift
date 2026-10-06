@@ -162,6 +162,32 @@ extension Components.Schemas.SyncWrite {
         case .deleteDish(let writeId, let dishId):
             self = .deleteDish(
                 .init(id: writeId.uuidString, _type: .deleteDish, dishId: dishId.uuidString))
+        case .updateDish(let writeId, let correction):
+            self = .updateDish(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .updateDish,
+                    dishId: correction.id.uuidString,
+                    name: correction.name,
+                    quantity: correction.quantity.map { quantity in
+                        .init(
+                            value: quantity.value,
+                            proportionedIngredients: quantity.proportionedIngredients.map {
+                                .init(
+                                    ingredientId: $0.ingredientId.uuidString, quantity: $0.quantity)
+                            })
+                    }
+                )
+            )
+        case .updateIngredient(let writeId, let ingredientId, let quantity):
+            self = .updateIngredient(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .updateIngredient,
+                    ingredientId: ingredientId.uuidString,
+                    quantity: quantity
+                )
+            )
         case .createNotice(let writeId, let notice):
             self = .createNotice(
                 .init(

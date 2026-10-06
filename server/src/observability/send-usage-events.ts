@@ -83,6 +83,15 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         oldest_pending_write_age_seconds: reported.oldestPendingWriteAgeSeconds,
       },
     }))
+    .with({ name: "estimated_quantity_corrected" }, (corrected) => ({
+      name: corrected.name,
+      properties: {
+        target: corrected.target,
+        meal_input: corrected.mealInput,
+        ingredient_nutrient_source: corrected.ingredientNutrientSource,
+        ratio: corrected.ratio,
+      },
+    }))
     .exhaustive();
   return {
     event: name,

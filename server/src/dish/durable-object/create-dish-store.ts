@@ -1,4 +1,4 @@
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
@@ -14,10 +14,11 @@ const {
   dishEstimatedQuantities,
   dishNameCorrections,
   dishQuantityCorrections,
+  dishQuantityCorrectionIngredients,
   dishEstimationSchedules,
   dishDeletions,
 } = dishTables;
-const { syncWriteReceipts } = syncLedgerTables;
+const { syncWriteReceipts, syncWriteRecordChanges } = syncLedgerTables;
 const { ingredients, ingredientQuantityCorrections } = ingredientTables;
 const { mealEatenAtCorrections } = mealTables;
 const { estimations } = estimationTables;
@@ -30,11 +31,21 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
       return undefined;
     }
     const estimatedQuantity = findNewestDishEstimatedQuantity(db, id);
-    if (estimatedQuantity === undefined) {
-      // 今は料理を推定の完了でだけ作り、同じトランザクションで量つきの当てた推定を書くので起きない
-      throw new Error(`料理 ${id} に量を持つ当てた推定が無い`);
-    }
-    return { ...dish, ...estimatedQuantity, version: countVersion(db, dish) };
+    const correctedQuantity = findLatestQuantity(db, id);
+    return {
+      ...dish,
+      name: findLatestName(db, id) ?? dish.name,
+      // 量を直す書き込みは、量を持つ当てた推定の無い料理では受け付けないので、直した量だけがあることは無い
+      quantity:
+        estimatedQuantity === undefined
+          ? undefined
+          : {
+              value: correctedQuantity ?? estimatedQuantity.quantity,
+              unit: estimatedQuantity.unit,
+              source: correctedQuantity === undefined ? "estimated" : "corrected",
+            },
+      version: countVersion(db, dish),
+    };
   },
   hasDeletion: (id) =>
     db
@@ -57,6 +68,19 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
     db.insert(dishEstimatedQuantities)
       .values({ dishId, estimationId, ...estimatedQuantity })
       .run();
+  },
+  insertNameCorrection: (receiptId, name) => {
+    db.insert(dishNameCorrections).values({ syncWriteReceiptId: receiptId.value, name }).run();
+  },
+  insertQuantityCorrection: (receiptId, { value, proportionedIngredients }) => {
+    db.insert(dishQuantityCorrections)
+      .values({ syncWriteReceiptId: receiptId.value, quantity: value })
+      .run();
+    for (const { ingredientId, quantity } of proportionedIngredients) {
+      db.insert(dishQuantityCorrectionIngredients)
+        .values({ syncWriteReceiptId: receiptId.value, ingredientId, quantity })
+        .run();
+    }
   },
   remove: (ids) => {
     for (const id of ids) {
@@ -126,6 +150,41 @@ const countVersion = (db: DrizzleSqliteDODatabase, dish: { id: string; mealId: s
     )
     .where(eq(dishEstimationApplications.dishId, dish.id))
     .get()?.total ?? 0);
+
+// 料理を書き換えた控えの修正のうち、受け取った順（控えを当てたときの変更の通し番号）でいちばんあとのもの
+const findLatestName = (db: DrizzleSqliteDODatabase, dishId: string): string | undefined =>
+  db
+    .select({ name: dishNameCorrections.name })
+    .from(dishNameCorrections)
+    .innerJoin(syncWriteReceipts, eq(syncWriteReceipts.id, dishNameCorrections.syncWriteReceiptId))
+    .innerJoin(
+      syncWriteRecordChanges,
+      eq(syncWriteRecordChanges.syncWriteReceiptId, dishNameCorrections.syncWriteReceiptId),
+    )
+    .where(receiptOfDish(dishId))
+    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
+    .limit(1)
+    .get()?.name;
+
+const findLatestQuantity = (db: DrizzleSqliteDODatabase, dishId: string): number | undefined =>
+  db
+    .select({ quantity: dishQuantityCorrections.quantity })
+    .from(dishQuantityCorrections)
+    .innerJoin(
+      syncWriteReceipts,
+      eq(syncWriteReceipts.id, dishQuantityCorrections.syncWriteReceiptId),
+    )
+    .innerJoin(
+      syncWriteRecordChanges,
+      eq(syncWriteRecordChanges.syncWriteReceiptId, dishQuantityCorrections.syncWriteReceiptId),
+    )
+    .where(receiptOfDish(dishId))
+    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
+    .limit(1)
+    .get()?.quantity;
+
+const receiptOfDish = (dishId: string) =>
+  and(eq(syncWriteReceipts.recordType, "dish"), eq(syncWriteReceipts.recordId, dishId));
 
 // 控えだけを指す修正の表の行のうち、条件に合う控えのものを数える
 const countCorrections = (

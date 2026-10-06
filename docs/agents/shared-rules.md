@@ -23,6 +23,12 @@
 - サーバーは `computeDailyRepresentativeWeights`（`server/src/weight-record/domain/compute-daily-representative-weights/`）が正本、端末は NuToriCore の `RepresentativeWeight`。入力（体重記録の ID・時刻・タイムゾーン・値の並び）と期待値（日ごとの代表値）は `shared/daily-representative-weight.test-cases.json`
 - 同じ時刻の記録が2つある日、西へ移って同じ日付の記録が時刻の順と入れ替わる日、日付が変わる直前と直後の場面を含む
 
+## 受け付ける値の範囲
+
+- 範囲は `shared/accepted-ranges.json`、入力と期待値は `shared/accepted-ranges.test-cases.json`。サーバーは `isWithinAcceptedRange`（`server/src/domain/is-within-accepted-range/`）、端末は書き出した `AcceptedRange` の `bounds.contains`
+- 範囲ごとに、下限は `minimum`（含む）か `exclusiveMinimum`（含まない）、上限は `maximum`（含む）で書く。書いていない側は限りが無い（料理と材料の量は「0 より大きい」なので `exclusiveMinimum` だけ）
+- 料理の名前は、前後の空白を除いた文字数を `dishNameTrimmedLength` に当てる。前後の空白を除くのは、サーバーは `String.prototype.trim`、端末は `trimmingCharacters(in: .whitespacesAndNewlines)`
+
 ## 今は片側だけの決めごと
 
 両側に置く決めごとのうち、今は端末だけ（またはサーバーだけ）に置いているもの。両側に置く仕様が来たとき、手順と入力と期待値を `shared/` に移し、この一覧から消す。決めごとを書き直すときは、この一覧に抜けが無いかも見る。

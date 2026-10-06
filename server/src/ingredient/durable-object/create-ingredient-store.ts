@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dishTables } from "../../dish/durable-object/dish-tables";
 import { findNewestDishEstimationId } from "../../dish/durable-object/find-newest-dish-estimation";
@@ -8,8 +8,8 @@ import type { Ingredient, IngredientNutrientSource } from "../domain/ingredient"
 import type { IngredientStore } from "../domain/ingredient-store";
 import { ingredientTables } from "./ingredient-tables";
 
-const { dishes } = dishTables;
-const { syncWriteReceipts } = syncLedgerTables;
+const { dishes, dishQuantityCorrectionIngredients } = dishTables;
+const { syncWriteReceipts, syncWriteRecordChanges } = syncLedgerTables;
 const {
   ingredients,
   foodCompositionIngredients,
@@ -52,6 +52,7 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
       .all();
     return {
       ...found.ingredient,
+      ...findCurrentQuantity(db, found.ingredient),
       nutrientSource: toNutrientSource(found),
       // 名前は書くときに確かめているが、項目を減らしたあとの古い行は読み飛ばす
       nutrients: Object.fromEntries(
@@ -92,7 +93,19 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
       .where(eq(ingredients.dishId, dishId))
       .all()
       .map(({ id }) => id),
-  insert: ({ nutrientSource, nutrients, ...ingredient }: Ingredient) => {
+  findCurrentIdsOfDish: (dishId) => {
+    const estimationId = findNewestDishEstimationId(db, dishId);
+    if (estimationId === undefined) {
+      return [];
+    }
+    return db
+      .select({ id: ingredients.id })
+      .from(ingredients)
+      .where(and(eq(ingredients.dishId, dishId), eq(ingredients.estimationId, estimationId)))
+      .all()
+      .map(({ id }) => id);
+  },
+  insert: ({ nutrientSource, nutrients, ...ingredient }) => {
     db.insert(ingredients).values(ingredient).run();
     if (nutrientSource.type === "food_composition") {
       db.insert(foodCompositionIngredients)
@@ -109,6 +122,11 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
         .values({ id: crypto.randomUUID(), ingredientId: ingredient.id, nutrient, amountPerBasis })
         .run();
     }
+  },
+  insertQuantityCorrection: (receiptId, quantity) => {
+    db.insert(ingredientQuantityCorrections)
+      .values({ syncWriteReceiptId: receiptId.value, quantity })
+      .run();
   },
   remove: (ids) => {
     for (const id of ids) {
@@ -149,6 +167,65 @@ const isCurrent = (
   db: DrizzleSqliteDODatabase,
   { dishId, estimationId }: { dishId: string; estimationId: string },
 ): boolean => findNewestDishEstimationId(db, dishId) === estimationId;
+
+// 今の量は、材料を直した量（材料を書き換えた控えの修正）と、料理の量に比例させた量（料理を書き換えた控えの明細）を合わせて、
+// 受け取った順（控えを当てたときの変更の通し番号）でいちばんあとのもの。どちらも無ければ推定した量。
+// 出どころは、材料を直した量があれば直した（比例は推定したまま）
+const findCurrentQuantity = (
+  db: DrizzleSqliteDODatabase,
+  ingredient: { id: string; quantity: number },
+): Pick<Ingredient, "quantity" | "quantitySource"> => {
+  const corrected = db
+    .select({
+      quantity: ingredientQuantityCorrections.quantity,
+      sequence: syncWriteRecordChanges.recordChangeSequence,
+    })
+    .from(ingredientQuantityCorrections)
+    .innerJoin(
+      syncWriteReceipts,
+      eq(syncWriteReceipts.id, ingredientQuantityCorrections.syncWriteReceiptId),
+    )
+    .innerJoin(
+      syncWriteRecordChanges,
+      eq(
+        syncWriteRecordChanges.syncWriteReceiptId,
+        ingredientQuantityCorrections.syncWriteReceiptId,
+      ),
+    )
+    .where(
+      and(
+        eq(syncWriteReceipts.recordType, "ingredient"),
+        eq(syncWriteReceipts.recordId, ingredient.id),
+      ),
+    )
+    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
+    .limit(1)
+    .get();
+  const proportioned = db
+    .select({
+      quantity: dishQuantityCorrectionIngredients.quantity,
+      sequence: syncWriteRecordChanges.recordChangeSequence,
+    })
+    .from(dishQuantityCorrectionIngredients)
+    .innerJoin(
+      syncWriteRecordChanges,
+      eq(
+        syncWriteRecordChanges.syncWriteReceiptId,
+        dishQuantityCorrectionIngredients.syncWriteReceiptId,
+      ),
+    )
+    .where(eq(dishQuantityCorrectionIngredients.ingredientId, ingredient.id))
+    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
+    .limit(1)
+    .get();
+  const latest = [corrected, proportioned]
+    .filter((found) => found !== undefined)
+    .toSorted((a, b) => b.sequence - a.sequence)[0];
+  return {
+    quantity: latest?.quantity ?? ingredient.quantity,
+    quantitySource: corrected === undefined ? "estimated" : "corrected",
+  };
+};
 
 // 出どころは、サブセットの表の行があるかで出す
 const toNutrientSource = ({

@@ -45,7 +45,8 @@
                 .sourceDeletedWeightRecord(let writeId, _), .updateAccountSettings(let writeId, _),
                 .createMeal(let writeId, _), .updateMeal(let writeId, _, _),
                 .deleteMeal(let writeId, _),
-                .deleteDish(let writeId, _),
+                .deleteDish(let writeId, _), .updateDish(let writeId, _),
+                .updateIngredient(let writeId, _, _),
                 .createNotice(let writeId, _), .respondNotice(let writeId, _, _):
                 writeId
             }
@@ -119,6 +120,26 @@
                 self = .deleteMeal(writeId: try uuid(write.id), mealId: try uuid(write.mealId))
             case .deleteDish(let write):
                 self = .deleteDish(writeId: try uuid(write.id), dishId: try uuid(write.dishId))
+            case .updateDish(let write):
+                self = .updateDish(
+                    writeId: try uuid(write.id),
+                    correction: DishCorrection(
+                        id: try uuid(write.dishId),
+                        name: write.name,
+                        quantity: try write.quantity.map { quantity in
+                            DishCorrection.Quantity(
+                                value: quantity.value,
+                                proportionedIngredients: try quantity.proportionedIngredients.map {
+                                    DishCorrection.ProportionedIngredient(
+                                        ingredientId: try uuid($0.ingredientId),
+                                        quantity: $0.quantity)
+                                })
+                        }))
+            case .updateIngredient(let write):
+                self = .updateIngredient(
+                    writeId: try uuid(write.id),
+                    ingredientId: try uuid(write.ingredientId),
+                    quantity: write.quantity)
             case .createNotice(let write):
                 let notice = write.notice
                 guard let noticeType = SyncedNotice.NoticeType(rawValue: notice.noticeType) else {

@@ -1,8 +1,8 @@
 import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
-import type { Ingredient } from "./ingredient";
+import type { Ingredient, NewIngredient } from "./ingredient";
 
 export type IngredientStore = {
-  // 今の材料（料理のいちばん新しい当てた推定の材料）だけを返す
+  // 今の材料（料理のいちばん新しい当てた推定の材料）だけを返す。量は今の量
   find: (id: string) => Ingredient | undefined;
   // 削除の印があるか、前の推定の材料（今の材料でない）なら true
   hasDeletion: (id: string) => boolean;
@@ -10,8 +10,12 @@ export type IngredientStore = {
   findIdsOfMeal: (mealId: string) => string[];
   // 料理の材料（前の推定の材料も）
   findIdsOfDish: (dishId: string) => string[];
+  // 料理の今の材料（いちばん新しい当てた推定の材料）
+  findCurrentIdsOfDish: (dishId: string) => string[];
   // 出どころと栄養の値ごと書く。料理の当てた推定を先に書いてから呼ぶ
-  insert: (ingredient: Ingredient) => void;
+  insert: (ingredient: NewIngredient) => void;
+  // 材料を直した書き込みの控えに、直した量を書く（材料は控えの record_id）
+  insertQuantityCorrection: (receiptId: WriteReceiptId, quantity: number) => void;
   // 出どころと栄養の値は CASCADE で消える
   remove: (ids: readonly string[]) => void;
   // 材料を書き換えた控えから、量の修正の行を探して消す

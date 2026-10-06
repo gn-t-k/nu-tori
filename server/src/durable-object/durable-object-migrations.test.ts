@@ -177,8 +177,7 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
         id: "dish-1",
         mealId: "meal-1",
         name: "カレー",
-        quantity: 1.5,
-        unit: "plate",
+        quantity: { value: 1.5, unit: "plate", source: "estimated" },
         positionInMeal: 0,
         version: 1,
       });
