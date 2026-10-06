@@ -1,4 +1,5 @@
 #if DEBUG
+    import Foundation
     import NuToriCore
     import SwiftUI
     import UIKit
@@ -14,7 +15,10 @@
                 capture: { _ in },
                 correctMealTime: { _, _ in },
                 deleteMeal: { _, _ in },
+                addDish: { _, _ in },
                 dishActions: .noop,
+                returnToTimeline: {},
+                rejectedLines: [],
                 confirmsDeletion: sample.confirmsDeletion
             )
         }
@@ -38,8 +42,10 @@
             case noDishes
             /// その日の回数を使い切ったので、明日推定する
             case deferredToNextDay
-            /// 推定できなかった。0 kcal
+            /// 推定できなかった。0 kcal。理由の下に料理を足せることを添える
             case failed
+            /// 推定できなかった食事に料理を足し、推定し直している。理由の文に代えて料理の行を出す
+            case failedWithAddedDish
             /// 推定できた食事で「食事を削除」を押し、画面の下から確かめている
             case confirmingDeletion
 
@@ -73,6 +79,8 @@
                 case .failed:
                     MealCard(
                         meal: lunch(photoCount: 1), status: .failed, recordedOnThisDevice: true)
+                case .failedWithAddedDish:
+                    addedMisoSoup(to: lunch(photoCount: 1))
                 case .confirmingDeletion:
                     .sampleEstimated(lunch(photoCount: 1))
                 }
@@ -83,7 +91,7 @@
                 case .confirmingDeletion: true
                 case .notSent, .awaitingPhotosOnAnotherDevice, .estimating, .estimated,
                     .estimatedWithoutFoodComposition, .estimatedBeforeDishesArrive, .noDishes,
-                    .deferredToNextDay, .failed:
+                    .deferredToNextDay, .failed, .failedWithAddedDish:
                     false
                 }
             }
@@ -94,9 +102,18 @@
                 case .awaitingPhotosOnAnotherDevice: false
                 case .notSent, .estimating, .estimated, .estimatedWithoutFoodComposition,
                     .estimatedBeforeDishesArrive, .noDishes, .deferredToNextDay, .failed,
-                    .confirmingDeletion:
+                    .failedWithAddedDish, .confirmingDeletion:
                     true
                 }
+            }
+
+            private func addedMisoSoup(to meal: Meal) -> MealCard {
+                let dish = Dish(
+                    id: UUID(), mealId: meal.id, name: "味噌汁", quantity: nil, positionInMeal: 0,
+                    version: 1)
+                return MealCard(
+                    meal: meal, status: .failed, recordedOnThisDevice: true, dishes: [dish],
+                    ingredients: [], dishEstimationStatuses: [dish.id: .estimating])
             }
 
             private func lunch(photoCount: Int) -> Meal {

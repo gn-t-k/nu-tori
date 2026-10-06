@@ -98,7 +98,8 @@ import NuToriCore
         return meals
     }
 
-    /// 食事を記録したあとと、食事の写真を送り終えたあと。送り待ちを送り、送り終えたら、推定中の食事があるあいだ裏で取りに行く
+    /// 食事を記録したあと、食事の写真を送り終えたあと、料理を足した・名前を直したあと。
+    /// 送り待ちを送り、送り終えたら、推定中の食事か料理があるあいだ裏で取りに行く
     func followEstimationAfterSending() async {
         guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
             return
@@ -115,6 +116,7 @@ import NuToriCore
     /// 食事の撮った時刻を直す。電波が無くても、その場でキャッシュに当たる。直す書き込みは送り待ちに並ぶ
     func correctMealTime(mealId: UUID, eatenAt: Date) async throws {
         guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        onReplacingRecord(mealId)
         try await engineForThisDevice(accountId: accountId).correctMealTime(
             mealId: mealId, eatenAt: eatenAt)
         syncInBackground()
@@ -131,16 +133,32 @@ import NuToriCore
     /// 返すのはキャッシュの今の料理（空の名前と今と同じ名前は送らず、前の料理）。サインインしていなければ nil
     func renameDish(id dishId: UUID, to typedName: String) async throws -> Dish? {
         guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        onReplacingRecord(dishId)
         let engine = engineForThisDevice(accountId: accountId)
         let dish = try await engine.renameDish(id: dishId, to: typedName)
         await publishUnsentDishIds(engine)
-        syncInBackground()
+        // 送れたら、推定し直しを待つあいだ数秒おきに取りに行く
+        Task { await self.followEstimationAfterSending() }
+        return dish
+    }
+
+    /// 食事に料理を足す。電波が無くても、その場でキャッシュに入る。作る書き込みは送り待ちに並び、送れたらサーバーが推定し直しを始める。
+    /// 返すのは足した料理（空の名前は足さず nil）。サインインしていなければ nil
+    func addDish(named typedName: String, toMeal mealId: UUID) async throws -> Dish? {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        let engine = engineForThisDevice(accountId: accountId)
+        guard let dish = try await engine.addDish(named: typedName, toMeal: mealId) else {
+            return nil
+        }
+        await publishUnsentDishIds(engine)
+        Task { await self.followEstimationAfterSending() }
         return dish
     }
 
     /// 料理の量を直す。材料の量も同じ割合で変わる。返すのはキャッシュの今の料理。サインインしていなければ nil
     func correctDishQuantity(id dishId: UUID, to value: Double) async throws -> Dish? {
         guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        onReplacingRecord(dishId)
         let dish = try await engineForThisDevice(accountId: accountId).correctDishQuantity(
             id: dishId, to: value)
         syncInBackground()
@@ -152,6 +170,7 @@ import NuToriCore
         -> Ingredient?
     {
         guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        onReplacingRecord(ingredientId)
         let ingredient = try await engineForThisDevice(accountId: accountId)
             .correctIngredientQuantity(id: ingredientId, to: quantity)
         syncInBackground()
@@ -161,6 +180,7 @@ import NuToriCore
     /// 料理を消す（最後の1品でないとき）。電波が無くても、その場でキャッシュから消える。消す書き込みは送り待ちに並ぶ
     func deleteDish(id dishId: UUID) async throws {
         guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        onReplacingRecord(dishId)
         let engine = engineForThisDevice(accountId: accountId)
         try await engine.deleteDish(id: dishId)
         await publishUnsentDishIds(engine)

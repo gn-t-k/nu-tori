@@ -1,7 +1,7 @@
 public import Foundation
 
-/// 食事や写真を送ったあと、推定中の食事があるあいだ、送ってから1分まで数秒おきに取りに行く。
-/// そのあとは、ふだんの時機（開いたとき、電波が戻ったとき、バックグラウンド更新）にだけ取りに行く。翌日に推定の食事は待たない
+/// 食事や写真、料理を足す・名前を直す書き込みを送ったあと、推定中の食事か料理があるあいだ、送ってから1分まで数秒おきに取りに行く。
+/// そのあとは、ふだんの時機（開いたとき、電波が戻ったとき、バックグラウンド更新）にだけ取りに行く。翌日に推定の食事と料理は待たない
 public struct EstimationFollowUp: Sendable {
     /// `sentAt` は送り終えた時刻。`wait` は、次に取りに行くまで待つ
     public init(
@@ -20,7 +20,7 @@ public struct EstimationFollowUp: Sendable {
     public func run(sync: () async throws -> SyncResult?) async throws {
         let interval = Duration.seconds(3)
         let deadline = sentAt.addingTimeInterval(60)
-        while try await hasEstimatingMeal(), now() < deadline {
+        while try await hasEstimating(), now() < deadline {
             try await wait(interval)
             guard let result = try await sync(), result.ending == .finished else { return }
         }
@@ -31,7 +31,10 @@ public struct EstimationFollowUp: Sendable {
     private let now: @Sendable () -> Date
     private let wait: @Sendable (Duration) async throws -> Void
 
-    private func hasEstimatingMeal() async throws -> Bool {
-        try await cache.mealEstimationStatuses().values.contains(.estimating)
+    private func hasEstimating() async throws -> Bool {
+        if try await cache.mealEstimationStatuses().values.contains(.estimating) {
+            return true
+        }
+        return try await cache.dishEstimationStatuses().values.contains(.estimating)
     }
 }

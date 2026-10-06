@@ -78,15 +78,17 @@ struct MealCardView: View {
         }
     }
 
-    /// まだ送れていない・写真を待っているあいだは、何も置かない（写真と時刻だけ）。
-    /// 推定できた食事は料理の名前を置く（料理がまだ届いていなければ、届くまで何も置かない）
+    /// 料理があれば、どの状態でも料理の名前を置く。写真の推定の状態の1行は、料理が無いあいだは状態ごとに、
+    /// 料理を足したあとは推定中と翌日に推定だけ名前の下に置く。料理ごとの待ちの1行は付けない
     @ViewBuilder private var namePlace: some View {
-        if let dishNames {
+        let place = card.namePlace
+        if let dishNames = place.dishNames {
             Text(dishNames)
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .lineLimit(2)
-        } else if let statusLine = card.state.statusLine {
+        }
+        if let statusLine = place.statusLine {
             HStack(spacing: 6) {
                 // 推定の待っている表示。サーバーが処理しているあいだだけ出す
                 if card.state == .estimating {
@@ -100,13 +102,8 @@ struct MealCardView: View {
         }
     }
 
-    /// 推定できて、料理が届いている食事の名前
-    private var dishNames: String? {
-        guard case .estimated = card.nutrition else { return nil }
-        return card.contents.name
-    }
-
-    /// kcal と P・F・C は、推定できたときだけ出す。「不明」の材料が混じる栄養には「以上」が付く
+    /// kcal と P・F・C は、分かる料理があるときだけ出す。「不明」の材料が混じる栄養と、待っている料理がある食事・
+    /// 写真の推定が済んでいない食事の値には「以上」が付く
     private var nutritionText: (kilocalories: String, pfc: [String])? {
         guard case .estimated(let totals) = card.nutrition else { return nil }
         let pfc = PFC.allCases.map { pfc in
@@ -134,7 +131,8 @@ struct MealCardView: View {
 
     private var accessibilityText: String {
         let nutrition = nutritionText.map { ([$0.kilocalories] + $0.pfc).joined(separator: " ") }
-        return ["食事", dishNames ?? card.state.statusLine, eatenTimeText, nutrition]
+        let place = card.namePlace
+        return ["食事", place.dishNames, place.statusLine, eatenTimeText, nutrition]
             .compactMap(\.self).joined(separator: "、")
     }
 

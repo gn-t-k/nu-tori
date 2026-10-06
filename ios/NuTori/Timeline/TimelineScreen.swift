@@ -31,7 +31,7 @@ struct TimelineScreen: View {
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
         let selectedDay = visibleDay ?? loaded?.days.last?.day ?? today
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 DayRingStrip(
                     weeks: stripWeeks(loaded: loaded),
@@ -81,7 +81,12 @@ struct TimelineScreen: View {
                         capture: capture,
                         correctMealTime: mealActions.correctMealTime,
                         deleteMeal: mealActions.deleteMeal,
+                        addDish: mealActions.addDish,
                         dishActions: mealActions.dish,
+                        returnToTimeline: {
+                            navigationPath = NavigationPath()
+                        },
+                        rejectedLines: rejectedLines,
                         confirmsDeletion: false
                     )
                 }
@@ -204,6 +209,8 @@ struct TimelineScreen: View {
     }
 
     @State private var showsAccount = false
+    /// 潜った画面の並び。食事を消したら、料理の画面からでもタイムラインまで戻す
+    @State private var navigationPath = NavigationPath()
     @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
     /// 体重のシートで記録したか。シートが閉じたら通知の許可を求める合図

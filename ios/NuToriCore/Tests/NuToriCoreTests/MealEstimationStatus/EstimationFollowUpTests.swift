@@ -17,6 +17,76 @@ struct EstimationFollowUpTests {
         """
     }
 
+    static let dishId = "00000000-0000-4000-8000-0000000000d1"
+
+    static func dishStatusPage(_ status: String, sequence: Int) -> String {
+        """
+        {"changes":[
+          {"sequence":\(sequence),"kind":"dish_estimation_status","recordId":"\(dishId)",
+           "record":{"dishId":"\(dishId)","status":"\(status)"}}
+        ],"hasMore":false,"nextAfterSequence":\(sequence),"startedOn":null}
+        """
+    }
+
+    @Suite("推定し直しを待つ料理が、何回か取りに行くうちに推定できたとき")
+    struct DishEstimatedSoon {
+        let clock: WaitingClock
+        let transport: ClientTransportMock
+        let engine: SyncEngine
+        let followUp: EstimationFollowUp
+
+        init() async throws {
+            clock = WaitingClock(start: SyncEngine.fixtureNow)
+            let store = try SyncBoxMock.ok()
+            transport = .sync(pullPages: [
+                EstimationFollowUpTests.dishStatusPage("estimating", sequence: 1),
+                EstimationFollowUpTests.dishStatusPage("estimating", sequence: 2),
+                EstimationFollowUpTests.dishStatusPage("estimated", sequence: 3),
+            ])
+            engine = .fixture(store: store, transport: transport)
+            _ = try await engine.sync()
+            followUp = EstimationFollowUp(
+                sentAt: SyncEngine.fixtureNow, cache: store, now: clock.now, wait: clock.wait)
+        }
+
+        @Test("数秒おきに取りに行き、推定中の料理が無くなったらやめること")
+        func pollsUntilEstimated() async throws {
+            try await followUp.run { try await engine.sync() }
+
+            #expect(try transport.pullQueries.count == 3)
+            #expect(clock.waits == [.seconds(3), .seconds(3)])
+        }
+    }
+
+    @Suite("翌日に推定の料理だけがあるとき")
+    struct DishDeferredOnly {
+        let clock: WaitingClock
+        let followUp: EstimationFollowUp
+
+        init() async throws {
+            clock = WaitingClock(start: SyncEngine.fixtureNow)
+            let store = try SyncBoxMock.ok()
+            let engine = SyncEngine.fixture(
+                store: store,
+                transport: .sync(pullPages: [
+                    EstimationFollowUpTests.dishStatusPage("deferred_to_next_day", sequence: 1)
+                ]))
+            _ = try await engine.sync()
+            followUp = EstimationFollowUp(
+                sentAt: SyncEngine.fixtureNow, cache: store, now: clock.now, wait: clock.wait)
+        }
+
+        @Test("待たずに、取りに行かないこと")
+        func doesNotPoll() async throws {
+            try await followUp.run {
+                Issue.record("取りに行った")
+                return nil
+            }
+
+            #expect(clock.waits.isEmpty)
+        }
+    }
+
     @Suite("推定中の食事が、何回か取りに行くうちに推定できたとき")
     struct EstimatedSoon {
         let clock: WaitingClock

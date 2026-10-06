@@ -104,6 +104,9 @@ struct RootView: View {
                     deleteMeal: { card, deletedAt in
                         await model.deleteMeal(card, deletedAt: deletedAt)
                     },
+                    addDish: { card, typedName in
+                        await model.addDish(named: typedName, to: card)
+                    },
                     dish: DishActions(
                         rename: { dish, typedName in
                             await model.renameDish(dish, to: typedName)
