@@ -140,7 +140,7 @@ extension HealthSyncEngineTests {
 
             init() async throws {
                 let store = try SyncBoxMock<RecordCacheMock>.ok()
-                try store.cache.putMeal(estimated: true)
+                try store.cache.putMeal()
                 store.cache.putDish(version: 1, energyKcal: 200, proteinG: 10)
                 firstHealthStore = .ok(authorizedNutrients: [.energy])
                 try await HealthSyncEngine.fixture(healthStore: firstHealthStore, store: store)
@@ -168,7 +168,7 @@ extension HealthSyncEngineTests {
 
             init() async throws {
                 let store = try SyncBoxMock<RecordCacheMock>.ok()
-                try store.cache.putMeal(estimated: true)
+                try store.cache.putMeal()
                 store.cache.putDish(version: 1, energyKcal: 200, proteinG: 10)
                 try await HealthSyncEngine.fixture(
                     healthStore: .ok(authorizedNutrients: [.energy]), store: store
@@ -241,50 +241,6 @@ extension HealthSyncEngineTests {
             }
         }
 
-        @Suite("推定できていない食事の料理があるとき")
-        struct NotEstimatedYet {
-            let healthStore: HealthStoreMock
-            let engine: HealthSyncEngine
-
-            init() throws {
-                let store = try SyncBoxMock<RecordCacheMock>.ok()
-                try store.cache.putMeal(estimated: false)
-                store.cache.putDish(version: 1, energyKcal: 200)
-                healthStore = .ok()
-                engine = .fixture(healthStore: healthStore, store: store)
-            }
-
-            @Test("書かないこと")
-            func writesNothing() async throws {
-                try await engine.exportNutrition()
-
-                #expect(healthStore.nutritionWrites.isEmpty)
-            }
-        }
-
-        @Suite("推定できていなくて書かなかった料理の食事が、推定できたとわかったとき")
-        struct EstimatedLater {
-            let healthStore: HealthStoreMock
-            let engine: HealthSyncEngine
-
-            init() async throws {
-                let store = try SyncBoxMock<RecordCacheMock>.ok()
-                try store.cache.putMeal(estimated: false)
-                store.cache.putDish(version: 1, energyKcal: 200)
-                healthStore = .ok()
-                engine = .fixture(healthStore: healthStore, store: store)
-                try await engine.exportNutrition()
-                store.cache.write(.estimated, forMealId: Nutrition.mealId)
-            }
-
-            @Test("書くこと")
-            func writes() async throws {
-                try await engine.exportNutrition()
-
-                #expect(healthStore.nutritionWrites.count == 1)
-            }
-        }
-
         @Suite("食事がまだ届いていない料理があるとき")
         struct MealNotArrivedYet {
             let healthStore: HealthStoreMock
@@ -318,7 +274,7 @@ extension HealthSyncEngineTests {
                 healthStore = .ok()
                 engine = .fixture(healthStore: healthStore, store: store)
                 try await engine.exportNutrition()
-                try store.cache.putMeal(estimated: true)
+                try store.cache.putMeal()
             }
 
             @Test("書くこと")
@@ -337,7 +293,7 @@ extension HealthSyncEngineTests {
 
             init() throws {
                 store = try .ok()
-                try store.cache.putMeal(estimated: true)
+                try store.cache.putMeal()
                 store.cache.upsert(Dish.fixture(id: Nutrition.dishId, mealId: Nutrition.mealId))
                 store.cache.upsert(Ingredient.fixture(dishId: Nutrition.dishId, nutrients: [:]))
                 healthStore = .ok()
@@ -442,9 +398,9 @@ extension HealthSyncEngineTests {
 
 extension SyncBoxMock where Cache == RecordCacheMock {
     /// 推定できた食事に、親子丼が1つある
-    fileprivate static func withEstimatedDish() throws -> SyncBoxMock<RecordCacheMock> {
+    static func withEstimatedDish() throws -> SyncBoxMock<RecordCacheMock> {
         let store = try SyncBoxMock<RecordCacheMock>.ok()
-        try store.cache.putMeal(estimated: true)
+        try store.cache.putMeal()
         store.cache.putDish(version: 1, energyKcal: 200)
         return store
     }
@@ -461,20 +417,16 @@ extension SyncBoxMock where Cache == RecordCacheMock {
 }
 
 extension RecordCacheMock {
-    fileprivate func putMeal(estimated: Bool) throws {
+    func putMeal(status: MealEstimationStatus = .estimated) throws {
         upsert(
             try Meal.fixture(
                 eatenAt: "2026-09-22T12:10:00+09:00", sentAt: "2026-09-22T12:11:00+09:00",
                 id: HealthSyncEngineTests.Nutrition.mealId))
-        if estimated {
-            write(.estimated, forMealId: HealthSyncEngineTests.Nutrition.mealId)
-        } else {
-            write(.estimating, forMealId: HealthSyncEngineTests.Nutrition.mealId)
-        }
+        write(status, forMealId: HealthSyncEngineTests.Nutrition.mealId)
     }
 
     /// 親子丼 1 つ。材料は 1 つで、量は 100 g（値はそのまま料理の合計になる）
-    fileprivate func putDish(version: Int, energyKcal: Double, proteinG: Double? = nil) {
+    func putDish(version: Int, energyKcal: Double, proteinG: Double? = nil) {
         let dishId = HealthSyncEngineTests.Nutrition.dishId
         upsert(
             Dish.fixture(
