@@ -67,7 +67,10 @@ const toSchedule = ({
   completion: "estimated" | "no_dishes" | null;
   abandonment: string | null;
 }): DishEstimationSchedule => {
-  const schedule = { scheduleId, dueAt, cancelled: cancellation !== null };
+  const schedule = { scheduleId, dueAt };
+  if (cancellation !== null) {
+    return { ...schedule, progress: "cancelled" };
+  }
   if (deferral !== null) {
     return { ...schedule, progress: "deferred" };
   }

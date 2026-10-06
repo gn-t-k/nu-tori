@@ -1,11 +1,10 @@
 import { findReceivedAtOfSchedule } from "../../dish-estimation-status/domain/dish-estimation-schedule";
-import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
-import type { MealPhotoStore } from "../../meal/domain/meal-photo-store";
 import type { WaitingSchedule } from "./estimation-schedule-store";
+import type { ScheduleStartStores } from "./schedule-start-stores";
 
 // 待っている予定を始められる時刻。待つ時間は、予定のもとの書き込みを受け取った時刻から数える（見送りから作る次の日の予定でも延ばさない）
 export const computeScheduleStartsAt = (
-  stores: Stores,
+  stores: ScheduleStartStores,
   { scheduleId, target, dueAt }: WaitingSchedule,
 ): Date => {
   if (target.type === "meal" || !stores.mealPhoto.hasUnreceivedPhotos(target.mealId)) {
@@ -16,11 +15,6 @@ export const computeScheduleStartsAt = (
     scheduleId,
   );
   return new Date(Math.max(dueAt.getTime(), receivedAt.getTime() + photoWaitLimitMs));
-};
-
-type Stores = {
-  mealPhoto: MealPhotoStore;
-  dishEstimationStatus: DishEstimationStatusStore;
 };
 
 // 料理が対象の予定が、食事の写真を待つ長さ（#332 の「写真を待つ」）。書き込みが届いていれば端末はつながっていて、
