@@ -93,16 +93,18 @@ final class EditMealUITests: XCTestCase {
     private func correctTimeToFiveThirty() {
         let picker = app.datePickers["meal-time"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
-        // 日付と時刻の2つのボタンのうち、時刻
-        let time = picker.buttons.element(boundBy: 1)
+        // 日付と時刻の2つのボタンのうち、時刻。並びの番号では日付のボタン（10/5/26）に当たり暦が開いたので、時刻の「:」で見分ける
+        let time = picker.buttons.matching(NSPredicate(format: "label CONTAINS %@", ":")).firstMatch
         XCTAssertTrue(time.waitForExistence(timeout: 5))
         time.tap()
-        let hour = app.pickerWheels.element(boundBy: 0)
+        // 輪の並びは言語で変わる（日本語は午前・午後の輪が先）ので、並びの番号でなく今の時（6）の輪を探す
+        let hour = app.pickerWheels.matching(NSPredicate(format: "value BEGINSWITH %@", "6"))
+            .firstMatch
         XCTAssertTrue(hour.waitForExistence(timeout: 5))
         hour.adjust(toPickerWheelValue: "5")
-        // 浮かんだ欄の外を押して閉じる
+        // 浮かんだ欄の外を押して閉じる。回した時の輪は値が変わり上の問い合わせで見つからなくなるので、輪のどれかで見る
         app.navigationBars["食事"].tap()
-        XCTAssertTrue(hour.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.pickerWheels.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertTrue(waitUntil(time, matches: "label CONTAINS %@", "5:30"))
     }
 
