@@ -14,7 +14,7 @@ import { requestStructuredOutput } from "./request-structured-output";
 export const identifyDishes = async (
   client: Anthropic,
   userId: string,
-  request: { photos: readonly ArrayBuffer[]; dish: DishToReestimate | undefined },
+  request: Parameters<EstimationProvider["identifyDishes"]>[0],
   signal: AbortSignal,
 ): R.ResultAsync<
   EstimationProviderReply<IdentifiedDishes>,
@@ -40,8 +40,8 @@ export const identifyDishes = async (
           type: "text",
           text:
             request.dish === undefined
-              ? "この食事の料理と材料を答えてください。"
-              : toReestimationInstruction(request.dish),
+              ? toMealInstruction(request.addedDishNames)
+              : toReestimationInstruction(request.dish, request.photos.length > 0),
         },
       ],
       schema: identifiedDishesSchema,
@@ -56,15 +56,28 @@ export const identifyDishes = async (
   );
 };
 
-// 名前を直した料理の推定し直しの指示（#332 の「① に渡すもの」）。使う人が直した材料と料理の量だけを渡す
-const toReestimationInstruction = ({
-  name,
-  correctedIngredients,
-  correctedQuantity,
-}: DishToReestimate): string =>
+// 写真の推定の指示。使う人が先に足した料理は、写真に写っていても答えさせない（#332 の「料理を足す」）
+const toMealInstruction = (addedDishNames: readonly string[]): string =>
   [
-    `使う人が、この食事の料理の1つの名前を「${name}」に直しました。この料理1つだけについて、量と材料を答えてください（dishes は1件）。写真にほかの料理が写っていても答えません。`,
-    "写真から見分けられなくても、名前と写真から無理なく推定できる範囲で答えてください。その名前の料理の材料を出せないときだけ、dishes を空にしてください。",
+    "この食事の料理と材料を答えてください。",
+    ...(addedDishNames.length === 0
+      ? []
+      : [
+          `使う人がこの食事に足した料理: ${addedDishNames.join("、")}。これらと同じ料理は答えないでください。`,
+        ]),
+  ].join("\n");
+
+// 名前を直した・足した料理の推定し直しの指示（#332 の「① に渡すもの」）。使う人が直した材料と料理の量だけを渡す。
+// 写真が届かないまま待つ時間を過ぎたら、写真を渡さず名前だけで推定させる
+const toReestimationInstruction = (
+  { name, correctedIngredients, correctedQuantity }: DishToReestimate,
+  hasPhotos: boolean,
+): string =>
+  [
+    `使う人が、この食事の料理の1つの名前を「${name}」にしました。この料理1つだけについて、量と材料を答えてください（dishes は1件）。写真にほかの料理が写っていても答えません。`,
+    hasPhotos
+      ? "写真から見分けられなくても、名前と写真から無理なく推定できる範囲で答えてください。その名前の料理の材料を出せないときだけ、dishes を空にしてください。"
+      : "この食事の写真はありません。名前から、1人が食べる一般的な分量で答えてください。その名前の料理の材料を出せないときだけ、dishes を空にしてください。",
     ...(correctedIngredients.length === 0
       ? []
       : [

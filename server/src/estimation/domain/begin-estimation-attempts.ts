@@ -18,12 +18,14 @@ import { maximumDailyEstimations } from "./maximum-daily-estimations";
 import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 
 // 提供元を呼ぶ前に書いた試み。呼び出し中に止まっても、行が残って試みに数える。
-// 料理が対象の推定（推定し直し）は、試みを書いた時点の料理の今の値を ① に渡す
+// 料理が対象の推定（推定し直し）は、試みを書いた時点の料理の今の値を ① に渡す。
+// 食事が対象の推定は、試みを書いた時点で食事にある使う人が足した料理の名前を ① に渡す
 export type BegunEstimationAttempt = {
   attemptId: string;
   estimationId: string;
   photoIds: readonly string[];
   dish: DishToReestimate | undefined;
+  addedDishNames: readonly string[];
 };
 
 // アラームから呼ぶ。1つのトランザクションで、時刻が来た待っている予定（食事か料理が対象。写真を待たせている料理の予定は除く）から推定を始めて最初の試みを書き、
@@ -51,6 +53,7 @@ export const beginEstimationAttempts = (
               ? []
               : meal.photoIds,
           dish: target.type === "dish" ? computeDishToReestimate(stores, target.dishId) : undefined,
+          addedDishNames: target.type === "meal" ? findDishNamesOfMeal(stores, target.mealId) : [],
         });
       };
 
@@ -114,6 +117,15 @@ export const beginEstimationAttempts = (
       return { attempts, usageEvents };
     }),
   );
+
+// 食事の推定が終わるまでは、食事の料理はどれも使う人が足した料理（食事の推定が作った料理はまだ無い）
+const findDishNamesOfMeal = (stores: Pick<RecordKindStores, "dish">, mealId: string): string[] =>
+  stores.dish
+    .findIdsOfMeal(mealId)
+    .map((dishId) => stores.dish.find(dishId))
+    .filter((dish) => dish !== undefined)
+    .toSorted((a, b) => a.positionInMeal - b.positionInMeal || a.id.localeCompare(b.id))
+    .map(({ name }) => name);
 
 const findScheduledMeal = (stores: Pick<RecordKindStores, "meal">, mealId: string): Meal => {
   const meal = stores.meal.find(mealId);

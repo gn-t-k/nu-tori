@@ -113,6 +113,23 @@ describe("写真を待っている食事に料理を足したとき", () => {
       ).toEqual([{ photoCount: 1, name: "味噌汁" }]);
     });
 
+    test("食事の推定の ① に、足した料理の名前を渡すこと", () => {
+      expect(
+        provider.identifyDishesRequests
+          .filter(({ dish }) => dish === undefined)
+          .map(({ addedDishNames }) => addedDishNames),
+      ).toEqual([["味噌汁"]]);
+    });
+
+    test("食事の推定が作った料理を、足した料理の後ろに並べること", async () => {
+      expect(
+        (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes
+          .filter(({ kind }) => kind === "dish")
+          .map(({ record }) => `${String(record["positionInMeal"])} ${String(record["name"])}`)
+          .toSorted(),
+      ).toEqual(["3 味噌汁", "4 親子丼", "5 緑茶"]);
+    });
+
     test("始めたときに、その日の推定の回数に数えること", async () => {
       // 食事の推定と、料理の推定し直し
       expect(await readRows(accountId, "SELECT id FROM estimations")).toHaveLength(2);

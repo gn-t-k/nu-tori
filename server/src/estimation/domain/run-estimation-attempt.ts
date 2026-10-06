@@ -25,12 +25,19 @@ import type {
 // R2 と成分表の読み込みの失敗は投げる（試みは結果の無いまま、途中で止まった試みとして数える）
 export const runEstimationAttempt = async (
   deps: { archive: MealPhotoArchive; provider: EstimationProvider },
-  request: { photoIds: readonly string[]; dish: DishToReestimate | undefined },
+  request: {
+    photoIds: readonly string[];
+    dish: DishToReestimate | undefined;
+    addedDishNames: readonly string[];
+  },
 ): Promise<EstimationAttemptOutcome> => {
   const photos = await readPhotos(deps.archive, request.photoIds);
   const signal = AbortSignal.timeout(estimationAttemptTimeLimitMs);
   const attempted = await R.pipe(
-    deps.provider.identifyDishes({ photos, dish: request.dish }, signal),
+    deps.provider.identifyDishes(
+      { photos, dish: request.dish, addedDishNames: request.addedDishNames },
+      signal,
+    ),
     R.mapError((error) =>
       toAttemptFailed(error, "identify_dishes", {
         identifyDishes: usageOf(error),

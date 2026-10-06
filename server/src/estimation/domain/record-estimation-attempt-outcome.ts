@@ -68,10 +68,12 @@ export const recordEstimationAttemptOutcome = (
             computeEnded(result, outcome.dishes.length, estimated?.ingredients ?? []),
           ];
         }
+        // 食事の推定が作る料理は、そのときまでに使う人が足した料理の後ろに並べる
         const { dishes, applications, ingredients } = toRecords(
           target.mealId,
           estimationId,
           outcome.dishes,
+          computeNextPositionInMeal(stores, target.mealId),
         );
         const result = dishes.length === 0 ? "no_dishes" : "estimated";
         writes.complete({ estimationId, target, completedAt: endedAt, result });
@@ -107,19 +109,32 @@ export const recordEstimationAttemptOutcome = (
     }),
   );
 
+// 食事の料理の並び順のいちばんあとの次の値。料理が無ければ 0
+const computeNextPositionInMeal = (
+  stores: Pick<RecordKindStores, "dish">,
+  mealId: string,
+): number =>
+  Math.max(
+    -1,
+    ...stores.dish
+      .findIdsOfMeal(mealId)
+      .map((dishId) => stores.dish.find(dishId)?.positionInMeal ?? -1),
+  ) + 1;
+
 const toRecords = (
   mealId: string,
   estimationId: string,
   estimated: readonly EstimatedDish[],
+  firstPositionInMeal: number,
 ): {
   dishes: NewDish[];
   applications: DishEstimationApplication[];
   ingredients: NewIngredient[];
 } => {
-  const withIds = estimated.map(({ ingredients, name, quantity, unit }, positionInMeal) => {
+  const withIds = estimated.map(({ ingredients, name, quantity, unit }, index) => {
     const dishId = crypto.randomUUID();
     return {
-      dish: { id: dishId, mealId, name, positionInMeal },
+      dish: { id: dishId, mealId, name, positionInMeal: firstPositionInMeal + index },
       application: { dishId, estimationId, estimatedQuantity: { quantity, unit } },
       ingredients: ingredients.map((ingredient, positionInDish) => ({
         ...ingredient,
