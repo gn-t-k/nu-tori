@@ -113,7 +113,10 @@ final class EditMealUITests: XCTestCase {
         if cancel.exists {
             cancel.tap()
         } else {
-            app.otherElements["PopoverDismissRegion"].tap()
+            // 欄は押した料理の行のそばに浮かび、画面の真ん中に重なることがある。領域の真ん中を押すと欄のボタンに当たりうるので、
+            // 行から離れた上の端（ナビゲーションバーのあたり）を押す
+            app.otherElements["PopoverDismissRegion"]
+                .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
         }
     }
 

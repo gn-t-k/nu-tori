@@ -3,7 +3,8 @@
 // 推定を始めた予定だけが、始めた推定の ID を持つ
 export type DishEstimationSchedule = { scheduleId: string; dueAt: Date } & (
   | { progress: "cancelled" }
-  | ActiveProgress
+  | { progress: "waiting" | "deferred" }
+  | { progress: "estimating" | "estimated" | "no_dishes" | "abandoned"; estimationId: string }
 );
 
 // 取り消していない予定のうち、due_at がいちばん新しいもの。料理ごとの推定の状態と、届いた推定を当てるかは、この予定で決める。
@@ -12,9 +13,7 @@ export const findNewestActiveSchedule = (
   schedules: readonly DishEstimationSchedule[],
 ): ActiveDishEstimationSchedule | undefined =>
   schedules
-    .filter(
-      (schedule): schedule is ActiveDishEstimationSchedule => schedule.progress !== "cancelled",
-    )
+    .filter((schedule) => schedule.progress !== "cancelled")
     .toSorted((a, b) => b.dueAt.getTime() - a.dueAt.getTime())[0];
 
 // まだ始まっていない予定（推定も見送りも無く、取り消していない予定）。名前をまた直したときに取り消す
@@ -65,8 +64,4 @@ export const findReceivedAtOfSchedule = (
 };
 
 // 取り消していない予定
-type ActiveDishEstimationSchedule = { scheduleId: string; dueAt: Date } & ActiveProgress;
-
-type ActiveProgress =
-  | { progress: "waiting" | "deferred" }
-  | { progress: "estimating" | "estimated" | "no_dishes" | "abandoned"; estimationId: string };
+type ActiveDishEstimationSchedule = Exclude<DishEstimationSchedule, { progress: "cancelled" }>;

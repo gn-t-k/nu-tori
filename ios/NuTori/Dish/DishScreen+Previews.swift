@@ -36,7 +36,7 @@
             case added
             /// 料理の量を直す書き込みを受け付けられず、名前と量の下に「直せなかった」1行を出している
             case rejectedQuantity
-            /// 食事の最後の1品で「この料理を削除」を押し、食事ごと消すかを画面の下から確かめている
+            /// 食事の最後の1品で「この料理を削除」を押し、食事ごと消すかを押したボタンから確かめている
             case confirmingMealDeletion
 
             func contents(in card: MealCard) -> DishContents {
