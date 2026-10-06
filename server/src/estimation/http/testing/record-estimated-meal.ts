@@ -2,6 +2,7 @@ import {
   pullSyncChanges,
   type PullResult,
 } from "../../../http/sync-routes/testing/pull-sync-changes";
+import { requireLastSequence } from "../../../http/sync-routes/testing/require-last-sequence";
 import { recordPhotographedMeal } from "./record-photographed-meal";
 import { runEstimationAlarm } from "./run-estimation-alarm";
 
@@ -22,6 +23,6 @@ export const recordEstimatedMeal = async (accountId: string, sessionToken: strin
     mealId,
     dishId: (name: string) => recordIdNamed("dish", name),
     ingredientId: (name: string) => recordIdNamed("ingredient", name),
-    lastSequence: changes.at(-1)?.sequence ?? 0,
+    lastSequence: requireLastSequence(changes),
   };
 };

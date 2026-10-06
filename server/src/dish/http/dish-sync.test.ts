@@ -2,10 +2,13 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { recordPhotographedMeal } from "../../estimation/http/testing/record-photographed-meal";
+import { countEstimations } from "../../estimation/http/testing/count-estimations";
 import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { countCorrectionsByReceivedOrder } from "../../http/sync-routes/testing/count-corrections-by-received-order";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
+import { requireLastSequence } from "../../http/sync-routes/testing/require-last-sequence";
+import { requireRecordId } from "../../http/sync-routes/testing/require-record-id";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { signInTestAccount } from "../../http/testing";
@@ -22,7 +25,7 @@ import { createDishWrite } from "./testing/create-dish-write";
 import { deleteDishWrite } from "./testing/delete-dish-write";
 import { updateDishWrite } from "./testing/update-dish-write";
 import { inspectDeletedContents } from "./testing/inspect-deleted-contents";
-import { reestimateRenamedDish } from "./testing/reestimate-renamed-dish";
+import { recordMealWithCorrectedDish } from "./testing/record-meal-with-corrected-dish";
 import { beforeEach, describe, expect, test } from "vitest";
 
 describe("料理の同期", () => {
@@ -50,11 +53,11 @@ describe("料理の同期", () => {
       await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
       const estimated = await pullChangesAfter(0);
-      dishId = estimated.find(({ kind }) => kind === "dish")?.recordId ?? "";
+      dishId = requireRecordId(estimated, ({ kind }) => kind === "dish");
       ingredientIds = estimated
         .filter(({ kind, record }) => kind === "ingredient" && record["dishId"] === dishId)
         .map(({ recordId }) => recordId);
-      const lastSequence = estimated.at(-1)?.sequence ?? 0;
+      const lastSequence = requireLastSequence(estimated);
       write = deleteDishWrite(dishId);
       ({ results } = await (
         await pushSyncWrites(sessionToken, { writes: [write] })
@@ -129,7 +132,7 @@ describe("料理の同期", () => {
       mockCreateEstimationProviderOk();
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
-      lastSequence = (await pullChangesAfter(0)).at(-1)?.sequence ?? 0;
+      lastSequence = requireLastSequence(await pullChangesAfter(0));
     });
 
     describe("推定できた食事に、端末の ID の料理を足したとき", () => {
@@ -198,7 +201,7 @@ describe("料理の同期", () => {
       let results: PushResults["results"];
       beforeEach(async () => {
         await pushSyncWrites(sessionToken, { writes: [deleteMealWrite(mealId)] });
-        lastSequence = (await pullChangesAfter(0)).at(-1)?.sequence ?? 0;
+        lastSequence = requireLastSequence(await pullChangesAfter(0));
         write = createDishWrite(mealId);
         ({ results } = await (
           await pushSyncWrites(sessionToken, { writes: [write] })
@@ -227,8 +230,13 @@ describe("料理の同期", () => {
     });
 
     describe("知らない食事に料理を足す書き込みを送ったとき", () => {
-      test("足す先が無いとして、今の値に無いことを添えること", async () => {
-        expect(await pushRejection(sessionToken, [createDishWrite(crypto.randomUUID())])).toEqual({
+      let rejection: Rejection;
+      beforeEach(async () => {
+        rejection = await pushRejection(sessionToken, [createDishWrite(crypto.randomUUID())]);
+      });
+
+      test("足す先が無いとして、今の値に無いことを添えること", () => {
+        expect(rejection).toEqual({
           result: "rejected",
           rejectionReason: "record_not_found",
           status: "absent",
@@ -237,10 +245,17 @@ describe("料理の同期", () => {
     });
 
     describe("空白だけの名前の料理を足す書き込みを送ったとき", () => {
-      test("範囲の外として、今の値に無いことを添えること", async () => {
-        expect(
-          await pushRejection(sessionToken, [createDishWrite(mealId, { name: " 　" })]),
-        ).toEqual({ result: "rejected", rejectionReason: "out_of_range", status: "absent" });
+      let rejection: Rejection;
+      beforeEach(async () => {
+        rejection = await pushRejection(sessionToken, [createDishWrite(mealId, { name: " 　" })]);
+      });
+
+      test("範囲の外として、今の値に無いことを添えること", () => {
+        expect(rejection).toEqual({
+          result: "rejected",
+          rejectionReason: "out_of_range",
+          status: "absent",
+        });
       });
     });
   });
@@ -268,13 +283,15 @@ describe("料理の同期", () => {
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
       const estimated = await pullChangesAfter(0);
-      dishId = estimated.find(({ kind }) => kind === "dish")?.recordId ?? "";
+      dishId = requireRecordId(estimated, ({ kind }) => kind === "dish");
       const ingredientIdNamed = (name: string) =>
-        estimated.find(({ kind, record }) => kind === "ingredient" && record["name"] === name)
-          ?.recordId ?? "";
+        requireRecordId(
+          estimated,
+          ({ kind, record }) => kind === "ingredient" && record["name"] === name,
+        );
       chickenId = ingredientIdNamed("鶏もも肉");
       riceId = ingredientIdNamed("ご飯");
-      lastSequence = estimated.at(-1)?.sequence ?? 0;
+      lastSequence = requireLastSequence(estimated);
     });
 
     describe("名前を2回直したとき", () => {
@@ -429,36 +446,58 @@ describe("料理の同期", () => {
     });
 
     describe("受け付けない書き込みを送ったとき", () => {
-      test("消した料理を直す書き込みは、直す先が無いとして、今の値に削除の印を添えること", async () => {
-        expect(
-          await pushRejection(sessionToken, [
+      let rejection: Rejection;
+
+      describe("消した料理を直す書き込みのとき", () => {
+        beforeEach(async () => {
+          rejection = await pushRejection(sessionToken, [
             deleteDishWrite(dishId),
             updateDishWrite(dishId, { name: "カツ丼" }),
-          ]),
-        ).toEqual({ result: "rejected", rejectionReason: "record_not_found", status: "deleted" });
-      });
+          ]);
+        });
 
-      test("知らない料理を直す書き込みは、直す先が無いとして、今の値に無いことを添えること", async () => {
-        expect(
-          await pushRejection(sessionToken, [
-            updateDishWrite(crypto.randomUUID(), { name: "カツ丼" }),
-          ]),
-        ).toEqual({ result: "rejected", rejectionReason: "record_not_found", status: "absent" });
-      });
-
-      test("空白だけの名前は、範囲の外として、今の値に料理を添えること", async () => {
-        expect(
-          await pushRejection(sessionToken, [updateDishWrite(dishId, { name: " 　" })]),
-        ).toEqual({
-          result: "rejected",
-          rejectionReason: "out_of_range",
-          status: "value",
+        test("直す先が無いとして、今の値に削除の印を添えること", () => {
+          expect(rejection).toEqual({
+            result: "rejected",
+            rejectionReason: "record_not_found",
+            status: "deleted",
+          });
         });
       });
 
-      test("量が 0 の書き込みは、範囲の外とすること", async () => {
-        expect(
-          await pushRejection(sessionToken, [
+      describe("知らない料理を直す書き込みのとき", () => {
+        beforeEach(async () => {
+          rejection = await pushRejection(sessionToken, [
+            updateDishWrite(crypto.randomUUID(), { name: "カツ丼" }),
+          ]);
+        });
+
+        test("直す先が無いとして、今の値に無いことを添えること", () => {
+          expect(rejection).toEqual({
+            result: "rejected",
+            rejectionReason: "record_not_found",
+            status: "absent",
+          });
+        });
+      });
+
+      describe("空白だけの名前のとき", () => {
+        beforeEach(async () => {
+          rejection = await pushRejection(sessionToken, [updateDishWrite(dishId, { name: " 　" })]);
+        });
+
+        test("範囲の外として、今の値に料理を添えること", () => {
+          expect(rejection).toEqual({
+            result: "rejected",
+            rejectionReason: "out_of_range",
+            status: "value",
+          });
+        });
+      });
+
+      describe("量が 0 のとき", () => {
+        beforeEach(async () => {
+          rejection = await pushRejection(sessionToken, [
             updateDishWrite(dishId, {
               name: "親子丼",
               quantity: {
@@ -469,13 +508,21 @@ describe("料理の同期", () => {
                 ],
               },
             }),
-          ]),
-        ).toEqual({ result: "rejected", rejectionReason: "out_of_range", status: "value" });
+          ]);
+        });
+
+        test("範囲の外とすること", () => {
+          expect(rejection).toEqual({
+            result: "rejected",
+            rejectionReason: "out_of_range",
+            status: "value",
+          });
+        });
       });
 
-      test("比例させた材料の量が 0 の書き込みは、範囲の外とすること", async () => {
-        expect(
-          await pushRejection(sessionToken, [
+      describe("比例させた材料の量が 0 のとき", () => {
+        beforeEach(async () => {
+          rejection = await pushRejection(sessionToken, [
             updateDishWrite(dishId, {
               name: "親子丼",
               quantity: {
@@ -486,8 +533,16 @@ describe("料理の同期", () => {
                 ],
               },
             }),
-          ]),
-        ).toEqual({ result: "rejected", rejectionReason: "out_of_range", status: "value" });
+          ]);
+        });
+
+        test("範囲の外とすること", () => {
+          expect(rejection).toEqual({
+            result: "rejected",
+            rejectionReason: "out_of_range",
+            status: "value",
+          });
+        });
       });
     });
 
@@ -498,21 +553,23 @@ describe("料理の同期", () => {
         const write = createDishWrite(mealId, { name: "味噌汁", positionInMeal: 2 });
         quantitylessDishId = write.dishId;
         await pushSyncWrites(sessionToken, { writes: [write] });
-        lastSequence = (await pullChangesAfter(0)).at(-1)?.sequence ?? 0;
+        lastSequence = requireLastSequence(await pullChangesAfter(0));
       });
 
-      test("量を載せた書き込みは、範囲の外として受け付けないこと", async () => {
-        const response = await pushSyncWrites(sessionToken, {
-          writes: [
+      describe("量を載せた書き込みを送ったとき", () => {
+        let rejection: Rejection;
+        beforeEach(async () => {
+          rejection = await pushRejection(sessionToken, [
             updateDishWrite(quantitylessDishId, {
               name: "味噌汁",
               quantity: { value: 1, proportionedIngredients: [] },
             }),
-          ],
+          ]);
         });
-        expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
-          "out_of_range",
-        );
+
+        test("範囲の外として受け付けないこと", () => {
+          expect(rejection.rejectionReason).toBe("out_of_range");
+        });
       });
 
       describe("量を省いて名前だけを直す書き込みを送ったとき", () => {
@@ -615,51 +672,20 @@ describe("料理の同期", () => {
     let ingredientIds: string[];
     let untouchedIngredientIds: string[];
     let lastSequence: number;
-    let estimationCountsBefore: { estimationSchedules: number; estimations: number };
+    let estimationCountsBefore: Awaited<ReturnType<typeof countEstimations>>;
     beforeEach(async () => {
       mockCreateEstimationProviderOk();
-      mealId = await recordPhotographedMeal(sessionToken);
-      await runEstimationAlarm(accountId);
-      const estimated = await pullChangesAfter(0);
-      const dishIds = estimated
-        .filter(({ kind }) => kind === "dish")
-        .map(({ recordId }) => recordId);
-      dishId = dishIds[0] ?? "";
-      untouchedDishId = dishIds[1] ?? "";
-      const ingredientIdsOf = (id: string) =>
-        estimated
-          .filter(({ kind, record }) => kind === "ingredient" && record["dishId"] === id)
-          .map(({ recordId }) => recordId);
-      const previousIngredientIds = ingredientIdsOf(dishId);
-      untouchedIngredientIds = ingredientIdsOf(untouchedDishId);
-      const corrected = await pushSyncWrites(sessionToken, {
-        writes: [
-          updateMealWrite(mealId, Date.now() - 10 * 60_000),
-          updateMealWrite(mealId, Date.now() - 20 * 60_000),
-        ],
-      });
-      if (
-        (await corrected.json<PushResults>()).results.some(({ result }) => result !== "applied")
-      ) {
-        throw new Error("時刻を直す書き込みが当たらなかった");
-      }
-      // 名前を2回直すので、1回目の名前で待った予定は、2回目の名前の書き込みが取り消す
-      await correctDishByWrites(sessionToken, { dishId, ingredientIds: previousIngredientIds });
-      const replacingIngredientIds = await reestimateRenamedDish(accountId, sessionToken, dishId);
-      ingredientIds = [...previousIngredientIds, ...replacingIngredientIds];
-      lastSequence = (await pullChangesAfter(0)).at(-1)?.sequence ?? 0;
-      const { estimationSchedules, estimations } = await inspectDeletedContents(accountId, {
-        mealIds: [],
-        dishIds: [],
-        ingredientIds: [],
-      });
-      estimationCountsBefore = { estimationSchedules, estimations };
+      ({ mealId, dishId, untouchedDishId, ingredientIds, untouchedIngredientIds } =
+        await recordMealWithCorrectedDish(accountId, sessionToken));
+      lastSequence = requireLastSequence(await pullChangesAfter(0));
+      estimationCountsBefore = await countEstimations(accountId);
     });
 
     describe("直した料理を消す書き込みを送ったとき", () => {
       let write: ReturnType<typeof deleteDishWrite>;
       let results: PushResults["results"];
       let inspected: Awaited<ReturnType<typeof inspectDeletedContents>>;
+      let estimationCountsAfter: Awaited<ReturnType<typeof countEstimations>>;
       beforeEach(async () => {
         write = deleteDishWrite(dishId);
         ({ results } = await (
@@ -670,6 +696,7 @@ describe("料理の同期", () => {
           dishIds: [dishId],
           ingredientIds,
         });
+        estimationCountsAfter = await countEstimations(accountId);
       });
 
       test("当てたと返すこと", () => {
@@ -738,10 +765,7 @@ describe("料理の同期", () => {
       });
 
       test("予定と推定は残ること", () => {
-        expect({
-          estimationSchedules: inspected.estimationSchedules,
-          estimations: inspected.estimations,
-        }).toEqual(estimationCountsBefore);
+        expect(estimationCountsAfter).toEqual(estimationCountsBefore);
       });
 
       test("外部キーの違反が無いこと", () => {
@@ -782,3 +806,5 @@ const pushRejection = async (sessionToken: string, writes: unknown[]) => {
     status: last?.current?.status,
   };
 };
+
+type Rejection = Awaited<ReturnType<typeof pushRejection>>;
