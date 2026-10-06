@@ -6,6 +6,7 @@ import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { NewIngredient } from "../../ingredient/domain/ingredient";
 import type { BegunEstimationAttempt } from "./begin-estimation-attempts";
+import { abandonEstimation } from "./abandon-estimation";
 import { applyDishEstimation } from "./apply-dish-estimation";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimatedDish } from "./estimated-dish";
@@ -25,7 +26,7 @@ export const recordEstimationAttemptOutcome = (
   endedAt: Date,
 ): UsageEvent[] =>
   createRecordLedger(ledgerStore, stores, endedAt).changeOutsideWrites((addChange) =>
-    stores.writeEstimationEvents(addChange, (writes) => {
+    stores.writeEstimationEvents(addChange, endedAt, (writes) => {
       const { estimationId } = attempt;
       writes.recordAttemptResult({ attemptId: attempt.attemptId, endedAt, conclusion: outcome });
       const attemptEnded: UsageEvent = {
@@ -95,14 +96,11 @@ export const recordEstimationAttemptOutcome = (
         return [attemptEnded, computeEnded(result, dishes.length, ingredients)];
       }
       if (outcome.result === "bad_request" || attempts.length >= maximumEstimationAttempts) {
-        writes.abandon({ estimationId, target, abandonedAt: endedAt });
-        if (target.type === "dish") {
-          applyDishEstimation(stores, addChange, {
-            dishId: target.dishId,
-            estimationId,
-            estimated: undefined,
-          });
-        }
+        abandonEstimation(stores, writes, addChange, {
+          estimationId,
+          target,
+          abandonedAt: endedAt,
+        });
         return [attemptEnded, computeEnded("failed", 0, [])];
       }
       return [attemptEnded];

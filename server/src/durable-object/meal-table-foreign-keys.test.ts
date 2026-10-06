@@ -1,5 +1,5 @@
 import { env, runInDurableObject } from "cloudflare:test";
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 
 // Durable Object の SQLite の外部キーは、黙って効かなくなっても気づけるよう、食事・推定・料理・材料の表で確かめる
 type Sql = DurableObjectStorage["sql"];
@@ -45,8 +45,10 @@ describe("食事・推定・料理・材料の表の外部キー", () => {
   });
 
   describe("当てた推定と推定の量、料理が対象の予定のつなぎと取り消しを持つ料理があるとき", () => {
-    test("料理を消すと、当てた推定・推定の量・つなぎ・取り消しが消え、予定と推定が残ること", async () => {
-      const counts = await runInAccount((sql) => {
+    let account: Account;
+    beforeEach(async () => {
+      account = createAccount();
+      await runIn(account, (sql) => {
         seedDishWithEstimation(sql);
         insertReceipt(sql, "receipt-1", "dish", "dish-1");
         sql.exec(
@@ -58,6 +60,11 @@ describe("食事・推定・料理・材料の表の外部キー", () => {
         sql.exec(
           "INSERT INTO estimation_schedule_cancellations (estimation_schedule_id, sync_write_receipt_id) VALUES ('schedule-2', 'receipt-1')",
         );
+      });
+    });
+
+    test("料理を消すと、当てた推定・推定の量・つなぎ・取り消しが消え、予定と推定が残ること", async () => {
+      const counts = await runIn(account, (sql) => {
         sql.exec("DELETE FROM dishes WHERE id = 'dish-1'");
         return {
           dishes: countRows(sql, "dishes"),
@@ -82,12 +89,19 @@ describe("食事・推定・料理・材料の表の外部キー", () => {
   });
 
   describe("当てた推定が無いとき", () => {
+    let account: Account;
+    beforeEach(async () => {
+      account = createAccount();
+      await runIn(account, (sql) => {
+        insertMeal(sql, "meal-1");
+        insertDish(sql, "dish-1", "meal-1");
+        insertEstimation(sql, "schedule-1", "estimation-1");
+      });
+    });
+
     test("当てた推定に属さない材料は INSERT できないこと", async () => {
       await expect(
-        runInAccount((sql) => {
-          insertMeal(sql, "meal-1");
-          insertDish(sql, "dish-1", "meal-1");
-          insertEstimation(sql, "schedule-1", "estimation-1");
+        runIn(account, (sql) => {
           insertIngredient(sql, "ingredient-1", "dish-1", "estimation-1");
         }),
       ).rejects.toThrow(/FOREIGN KEY/);
@@ -95,9 +109,14 @@ describe("食事・推定・料理・材料の表の外部キー", () => {
   });
 
   describe("料理の量の修正と、その比例の明細があるとき", () => {
+    let account: Account;
+    beforeEach(async () => {
+      account = createAccount();
+      await runIn(account, seedQuantityCorrectionWithProportion);
+    });
+
     test("料理の量の修正を消すと、比例の明細が消えること", async () => {
-      const counts = await runInAccount((sql) => {
-        seedQuantityCorrectionWithProportion(sql);
+      const counts = await runIn(account, (sql) => {
         sql.exec("DELETE FROM dish_quantity_corrections WHERE sync_write_receipt_id = 'receipt-1'");
         return {
           ingredients: countRows(sql, "ingredients"),
@@ -108,8 +127,7 @@ describe("食事・推定・料理・材料の表の外部キー", () => {
     });
 
     test("材料を消すと、比例の明細と栄養の値が消えること", async () => {
-      const counts = await runInAccount((sql) => {
-        seedQuantityCorrectionWithProportion(sql);
+      const counts = await runIn(account, (sql) => {
         sql.exec("DELETE FROM ingredients WHERE id = 'ingredient-1'");
         return {
           corrections: countRows(sql, "dish_quantity_corrections"),
@@ -179,6 +197,14 @@ const runInAccount = <T>(run: (sql: Sql) => T): Promise<T> =>
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), (_, state) =>
     run(state.storage.sql),
   );
+
+// 準備と確かめる操作を、同じアカウントの Durable Object で別々に動かす
+type Account = ReturnType<typeof createAccount>;
+
+const createAccount = () => env.ACCOUNT.get(env.ACCOUNT.newUniqueId());
+
+const runIn = <T>(account: Account, run: (sql: Sql) => T): Promise<T> =>
+  runInDurableObject(account, (_, state) => run(state.storage.sql));
 
 const countRows = (sql: Sql, table: string): number =>
   sql.exec<{ count: number }>(`SELECT count(*) AS count FROM ${table}`).one().count;

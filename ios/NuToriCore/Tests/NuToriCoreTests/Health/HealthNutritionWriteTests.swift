@@ -81,7 +81,8 @@ struct HealthNutritionWriteTests {
             let unknown = Ingredient.fixture(dishId: dish.id, nutrients: [:])
             let write = try #require(
                 HealthNutritionWrite(
-                    dish: DishContents(dish: dish, ingredients: [known, unknown]), of: meal,
+                    dish: DishContents(
+                        dish: dish, ingredients: [known, unknown], progress: .settled), of: meal,
                     authorized: [.protein]))
 
             #expect(write.values == [.init(nutrient: .protein, amount: 10)])
@@ -120,7 +121,7 @@ struct HealthNutritionWriteTests {
                 dish: dish,
                 ingredients: [
                     .fixture(dishId: dish.id, quantity: quantity, nutrients: nutrients)
-                ])
+                ], progress: .settled)
         }
     }
 

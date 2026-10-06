@@ -14,7 +14,7 @@ export type MealStore = {
   ) => Pick<Meal, "eatenAt" | "eatenAtUtcOffsetSeconds">[];
   insert: (meal: Meal) => void;
   // 時刻の修正は書き込みの控えごとに足し、meals の時刻は書き換えない
-  insertEatenAtCorrection: (eatenAt: Date, receiptId: WriteReceiptId) => void;
+  insertEatenAtCorrection: (receiptId: WriteReceiptId, eatenAt: Date) => void;
   // 食事を書き換えた控えから、時刻の修正の行を探して消す
   removeCorrections: (id: string) => void;
   // 写真の宣言ごと消す

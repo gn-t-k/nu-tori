@@ -168,9 +168,15 @@ public struct RejectedMealLine: Hashable, Sendable {
         case inIngredientList(dishId: UUID, positionInDish: Int)
     }
 
+    /// 受け付けなかった1行のうち、その食事の1行（ほかの食事と体重の1行を除く）
+    static func lines(of meal: Meal, among rejectedLines: [RejectedLine]) -> [RejectedMealLine] {
+        rejectedLines.compactMap(\.mealLine).filter { $0.meal.id == meal.id }
+    }
+
     /// 「1.5杯」「150 g 」。英字の単位は「に」との間も空ける（体重の「71.9 kg に直せませんでした。」にそろえる）
     private static func quantity(_ value: Double, unit: String) -> String {
         let text = NutritionText.quantity(value, unit: unit)
-        return unit.last.map { $0.isASCII || $0 == "µ" } ?? false ? "\(text) " : text
+        let endsWithLatinUnit = unit.last.map { $0.isASCII || $0 == "µ" } ?? false
+        return endsWithLatinUnit ? "\(text) " : text
     }
 }

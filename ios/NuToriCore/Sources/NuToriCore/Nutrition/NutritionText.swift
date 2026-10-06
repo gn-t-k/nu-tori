@@ -21,11 +21,15 @@ public enum NutritionText {
 
     /// 「110 g」「2個」。小数は1桁まで。英字の単位だけ数との間を空ける（「個」「杯」は続ける）
     public static func quantity(_ quantity: Double, unit: String) -> String {
-        let tenths = Int((quantity * 10).rounded())
-        let number =
-            tenths % 10 == 0 ? "\(tenths / 10)" : "\(tenths / 10).\(abs(tenths % 10))"
+        let number = quantityNumber(quantity)
         let spaced = unit.first.map { $0.isASCII || $0 == "µ" } ?? false
         return spaced ? "\(number) \(unit)" : "\(number)\(unit)"
+    }
+
+    /// 量の数。「2」「1.5」。小数は1桁まで
+    static func quantityNumber(_ quantity: Double) -> String {
+        let tenths = Int((quantity * 10).rounded())
+        return tenths % 10 == 0 ? "\(tenths / 10)" : "\(tenths / 10).\(abs(tenths % 10))"
     }
 
     /// 「栄養の出どころ: 栄養成分表示 1・成分表 4・推定 1」。1種類だけなら数を書かない。「AI」とは書かない

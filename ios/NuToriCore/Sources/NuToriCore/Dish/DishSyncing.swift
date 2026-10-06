@@ -65,19 +65,19 @@ public struct DishSyncing: SyncedRecordKind, RecordKindWrites {
         case (.update(let correction), .absent), (.rename(let correction), .absent):
             return KindRejection(
                 rejectedWrite: shown.dishPlace(of: correction.id).map {
-                    rejected($0.0, .goneDish($0.1))
+                    rejected($0.meal, .goneDish($0.place))
                 },
                 removingChanges: [.dishDeletion(dishId: correction.id)])
         case (.update(let correction), .deleted), (.rename(let correction), .deleted):
             return KindRejection(
                 rejectedWrite: shown.dishPlace(of: correction.id).map {
-                    rejected($0.0, .goneDish($0.1))
+                    rejected($0.meal, .goneDish($0.place))
                 },
                 removingChanges: [])
         case (.rename(let correction), .value):
             return KindRejection(
                 rejectedWrite: shown.dishPlace(of: correction.id).map {
-                    rejected($0.0, .dishName($0.1, attempted: correction.name))
+                    rejected($0.meal, .dishName($0.place, attempted: correction.name))
                 },
                 removingChanges: [])
         case (.update(let correction), .value):
@@ -86,7 +86,8 @@ public struct DishSyncing: SyncedRecordKind, RecordKindWrites {
             else { return KindRejection.none }
             return KindRejection(
                 rejectedWrite: shown.dishPlace(of: correction.id).map {
-                    rejected($0.0, .dishQuantity($0.1, attempted: quantity.value, unit: unit))
+                    rejected(
+                        $0.meal, .dishQuantity($0.place, attempted: quantity.value, unit: unit))
                 },
                 removingChanges: [])
         case (.create, .value), (.create, .deleted), (.create, nil), (.update, nil),
@@ -180,7 +181,8 @@ extension SyncedDish {
 }
 
 extension DishSyncing {
-    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。送った端末で、送り終えるまで料理をまだ送れていないとして見せる。
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。送った端末で、送り終えて料理ごとの推定の状態が届くまで料理をまだ送れていないとして見せる
+    /// （受け付けた書き込みも、変更を取り切るまで送り待ちに残る。`SyncEngine` の `resolve`）。
     /// 読めない送り待ちと、ほかの種類の送り待ちは読み飛ばす
     public static func unsentDishIds(in entries: [PendingEntry]) -> Set<UUID> {
         Set(

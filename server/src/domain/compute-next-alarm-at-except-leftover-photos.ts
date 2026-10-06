@@ -1,5 +1,5 @@
 import { computeNextEstimationAttemptAt } from "../estimation/domain/compute-next-estimation-attempt-at";
-import { findEarliestScheduleStartsAt } from "../estimation/domain/find-startable-schedules";
+import { findEarliestScheduleStartsAt } from "../estimation/domain/find-earliest-schedule-starts-at";
 import type { RecordKindStores } from "./record-kind-stores";
 
 // 写真の控えの消し残しを除いた、次のアラームの時刻。消し直しに失敗したアラームが、今に張り直さずに使う。どれも無ければ undefined。

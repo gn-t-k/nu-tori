@@ -68,14 +68,14 @@ export type UsageEvent =
       // 料理に当てたいちばん新しい推定し直しの終わり（完了か断念）から、直す・消す書き込みを当てるまで
       secondsFromReestimationEnded: number;
     }
-  | {
+  | ({
       // 量の出どころが推定の料理・材料の量を直す書き込みを当てたとき（量の修正の率。#332 の「観測」）
       name: "estimated_quantity_corrected";
-      target: "dish" | "ingredient";
       // 写真の食事か文章の食事か。文章の食事は「文章と会話」で足すので、今は写真だけでも送る
       mealInput: "photo";
-      // 材料のときだけ持つ
-      ingredientNutrientSource: IngredientNutrientSource["type"] | undefined;
       // 直した量 ÷ 推定の量（直す前の今の量。比例で変えた材料では比例のあとの量）
       ratio: number;
-    };
+    } & (
+      | { target: "dish" }
+      | { target: "ingredient"; ingredientNutrientSource: IngredientNutrientSource["type"] }
+    ));

@@ -28,7 +28,7 @@ extension SyncEngineTests {
                     meal: meal, status: .estimated, recordedOnThisDevice: true,
                     dishes: Array(store.cache.dishes.values),
                     ingredients: Array(store.cache.ingredients.values),
-                    dishEstimationStatuses: store.cache.dishEstimationStatuses)
+                    dishEstimationStatuses: store.cache.dishEstimationStatuses, unsentDishIds: [])
             }
         }
 

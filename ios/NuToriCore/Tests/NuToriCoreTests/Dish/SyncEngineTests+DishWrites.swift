@@ -266,7 +266,7 @@ extension SyncEngineTests {
                 #expect(store.entries.map(\.kind) == [.dish])
             }
 
-            @Test("送ると、直した名前と今の量と今の材料の量を、料理を直す書き込みで送ること")
+            @Test("送ると、量を省いて直した名前だけを、料理を直す書き込みで送ること")
             func sendsUpdateDish() async throws {
                 _ = try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
 
@@ -278,13 +278,7 @@ extension SyncEngineTests {
                         == .updateDish(
                             writeId: write.writeId,
                             correction: DishCorrection(
-                                id: DishWrites.dishId, name: "カツ丼",
-                                quantity: .init(
-                                    value: 1,
-                                    proportionedIngredients: [
-                                        .init(ingredientId: DishWrites.riceId, quantity: 200),
-                                        .init(ingredientId: DishWrites.chickenId, quantity: 80),
-                                    ]))))
+                                id: DishWrites.dishId, name: "カツ丼", quantity: nil)))
             }
 
             @Test("名前を空にしたら、送らずに前の名前の料理を返すこと")

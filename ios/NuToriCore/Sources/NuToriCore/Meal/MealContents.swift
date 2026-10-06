@@ -18,9 +18,7 @@ public struct MealContents: Hashable, Sendable {
     }
 
     /// 量と材料を待っている料理があるか
-    public var hasWaitingDishes: Bool {
-        dishes.contains { $0.progress.isWaiting }
-    }
+    public var hasWaitingDishes: Bool { Self.hasWaiting(dishes) }
 
     /// 分かる料理（待っていない料理）があるか
     var hasKnownDishes: Bool {
@@ -29,14 +27,14 @@ public struct MealContents: Hashable, Sendable {
 
     /// `dishes` と `ingredients` と `dishEstimationStatuses` は、全部の食事・全部の料理のものを渡してよい（この食事のものだけを取り出す）。
     /// `unsentDishIds` は、送り待ちに料理を足す・名前を直す書き込みがある料理（`DishSyncing.unsentDishIds(in:)`）。
-    /// `mealState` は、食事のカードの状態（無ければ推定できた食事として扱う）
+    /// `mealState` は、食事のカードの状態
     public init(
         mealId: UUID,
         dishes: [Dish],
         ingredients: [Ingredient],
-        dishEstimationStatuses: [UUID: DishEstimationStatus] = [:],
-        unsentDishIds: Set<UUID> = [],
-        mealState: MealCardState? = nil
+        dishEstimationStatuses: [UUID: DishEstimationStatus],
+        unsentDishIds: Set<UUID>,
+        mealState: MealCardState
     ) {
         let ingredientsByDish = Dictionary(grouping: ingredients, by: \.dishId)
         self.dishes =
@@ -54,13 +52,16 @@ public struct MealContents: Hashable, Sendable {
                         unsent: unsentDishIds.contains(dish.id), mealState: mealState))
             }
         let combined = NutrientTotals(combining: self.dishes.compactMap(\.knownTotals))
-        totals =
-            self.dishes.contains { $0.progress.isWaiting } ? combined.markingIncomplete() : combined
+        totals = Self.hasWaiting(self.dishes) ? combined.markingIncomplete() : combined
         // 待っている料理の材料は、推定し直しが届く前のものなので数えない
         let knownIngredients = self.dishes.filter { $0.knownTotals != nil }.flatMap(\.ingredients)
         nutrientSourceLine = NutrientSourceLine(ingredients: knownIngredients)
         showsNutrientCitation = knownIngredients.contains {
             $0.nutrientSource.kind == .foodComposition
         }
+    }
+
+    private static func hasWaiting(_ dishes: [DishContents]) -> Bool {
+        dishes.contains { $0.progress.isWaiting }
     }
 }

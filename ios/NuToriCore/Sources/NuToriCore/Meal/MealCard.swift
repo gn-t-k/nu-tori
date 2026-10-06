@@ -18,8 +18,8 @@ public struct MealCard: Hashable, Sendable {
         recordedOnThisDevice: Bool,
         dishes: [Dish],
         ingredients: [Ingredient],
-        dishEstimationStatuses: [UUID: DishEstimationStatus] = [:],
-        unsentDishIds: Set<UUID> = []
+        dishEstimationStatuses: [UUID: DishEstimationStatus],
+        unsentDishIds: Set<UUID>
     ) {
         self.meal = meal
         self.status = status
@@ -34,7 +34,7 @@ public struct MealCard: Hashable, Sendable {
     public init(meal: Meal, status: MealEstimationStatus?, recordedOnThisDevice: Bool) {
         self.init(
             meal: meal, status: status, recordedOnThisDevice: recordedOnThisDevice, dishes: [],
-            ingredients: [])
+            ingredients: [], dishEstimationStatuses: [:], unsentDishIds: [])
     }
 
     public var state: MealCardState {

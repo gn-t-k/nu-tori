@@ -2,19 +2,34 @@ import Foundation
 public import NuToriAPI
 
 /// 料理を直した結果。キャッシュに当てる料理と材料と、送る料理を直す書き込みの中身を持つ。
-/// 料理を直す書き込みは、名前と量を両方運ぶ（量の無い料理は名前だけ）
+/// 料理を直す書き込みは、量を直したときは名前と量と比例の材料を、名前を直したときは名前だけを運ぶ
 public struct DishEdit: Sendable, Equatable {
     /// 直したあとの料理
     public let dish: Dish
-    /// 量を変えた材料（料理の量を直したときの比例）。名前だけを直したときは空
-    public let ingredients: [Ingredient]
     public let correction: DishCorrection
-    /// 名前を直したか（量を直したのでなく）
-    public let renames: Bool
+    public let change: Change
+
+    /// 名前を直したか、量を直したか
+    public enum Change: Sendable, Equatable {
+        case renamed
+        /// 比例で量を変えた材料を持つ
+        case quantityCorrected(proportioned: [Ingredient])
+    }
+
+    /// 量を変えた材料（料理の量を直したときの比例）。名前を直したときは空
+    public var ingredients: [Ingredient] {
+        switch change {
+        case .renamed: []
+        case .quantityCorrected(let proportioned): proportioned
+        }
+    }
 
     /// 送り待ちに入れる書き込み
     public var write: DishWrite {
-        renames ? .rename(correction) : .update(correction)
+        switch change {
+        case .renamed: .rename(correction)
+        case .quantityCorrected: .update(correction)
+        }
     }
 
     /// 料理の量を直す。その料理の今の材料の量を、同じ割合（直した量 ÷ 前の量）で変える（比例）。
@@ -35,31 +50,22 @@ public struct DishEdit: Sendable, Equatable {
             quantity: Dish.Quantity(value: value, unit: quantity.unit, source: .corrected))
         return DishEdit(
             dish: corrected,
-            ingredients: proportioned,
             correction: correction(of: corrected, ingredients: proportioned),
-            renames: false)
+            change: .quantityCorrected(proportioned: proportioned))
     }
 
     /// 料理の名前を直す。前後の空白を除いた名前にし、量と材料は変えない。
-    /// 書き込みには今の量と今の材料の量を載せる（量の無い料理は名前だけ）。
+    /// 書き込みには量と比例の材料を載せない（載せると、推定し直しで材料が入れ替わったあとに届いた直しが受け付けられなくなる）。
     /// 前後の空白を除いて受け付ける範囲の外（空）の名前と、今と同じ名前は直さず nil（空なら、画面は前の名前に戻す）
-    public static func renaming(_ dish: Dish, ingredients: [Ingredient], to typedName: String)
-        -> DishEdit?
-    {
-        let name = typedName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard AcceptedRange.dishNameTrimmedLength.bounds.contains(Double(name.count)),
-            name != dish.name
-        else { return nil }
+    public static func renaming(_ dish: Dish, to typedName: String) -> DishEdit? {
+        guard let name = Dish.acceptedName(typed: typedName), name != dish.name else { return nil }
         let renamed = dish.with(name: name, quantity: dish.quantity)
         return DishEdit(
             dish: renamed,
-            ingredients: [],
-            correction: correction(
-                of: renamed, ingredients: ingredientsInOrder(of: dish, among: ingredients)),
-            renames: true)
+            correction: DishCorrection(id: dish.id, name: name, quantity: nil),
+            change: .renamed)
     }
 
-    /// 量の無い料理は、量と比例の材料を省く
     private static func correction(of dish: Dish, ingredients: [Ingredient]) -> DishCorrection {
         DishCorrection(
             id: dish.id,
@@ -79,7 +85,8 @@ public struct DishEdit: Sendable, Equatable {
         -> [Ingredient]
     {
         DishContents(
-            dish: dish, ingredientsInAnyOrder: ingredients.filter { $0.dishId == dish.id }
+            dish: dish, ingredientsInAnyOrder: ingredients.filter { $0.dishId == dish.id },
+            progress: .settled
         ).ingredients
     }
 }

@@ -8,7 +8,8 @@ nonisolated final class CachedDish {
     @Attribute(.unique) var dishId: UUID
     var mealId: UUID
     var name: String
-    /// 量・単位・量の出どころは、そろって持つか、そろって持たない（足したばかりで量の無い料理）
+    /// 量・単位・量の出どころは、そろって持つか、そろって持たない（足したばかりで量の無い料理）。
+    /// SwiftData の @Model は列に enum の associated value や構造体の optional を素直に持てないので、3つの optional に分け、読む口（`dish()`）で組にする
     var quantity: Double?
     var unit: String?
     /// `estimated`・`corrected`

@@ -10,11 +10,11 @@ import type { EstimationAttemptOutcome } from "./estimation-attempt-outcome";
 import { estimationAttemptTimeLimitMs } from "./estimation-attempt-time-limit-ms";
 import type { EstimationAttemptUsage } from "./estimation-attempt-usage";
 import type {
-  DishToReestimate,
   EstimationProvider,
   EstimationProviderReply,
   IdentifiedDishes,
   IdentifiedIngredient,
+  IdentificationTarget,
   IngredientMatch,
   IngredientMatchRequest,
   MatchedIngredients,
@@ -25,19 +25,12 @@ import type {
 // R2 と成分表の読み込みの失敗は投げる（試みは結果の無いまま、途中で止まった試みとして数える）
 export const runEstimationAttempt = async (
   deps: { archive: MealPhotoArchive; provider: EstimationProvider },
-  request: {
-    photoIds: readonly string[];
-    dish: DishToReestimate | undefined;
-    addedDishNames: readonly string[];
-  },
+  request: { photoIds: readonly string[]; target: IdentificationTarget },
 ): Promise<EstimationAttemptOutcome> => {
   const photos = await readPhotos(deps.archive, request.photoIds);
   const signal = AbortSignal.timeout(estimationAttemptTimeLimitMs);
   const attempted = await R.pipe(
-    deps.provider.identifyDishes(
-      { photos, dish: request.dish, addedDishNames: request.addedDishNames },
-      signal,
-    ),
+    deps.provider.identifyDishes({ photos, target: request.target }, signal),
     R.mapError((error) =>
       toAttemptFailed(error, "identify_dishes", {
         identifyDishes: usageOf(error),
@@ -45,7 +38,7 @@ export const runEstimationAttempt = async (
       }),
     ),
     R.andThen((identified) =>
-      isValidIdentifiedDishes(identified.output, request.dish)
+      isValidIdentifiedDishes(identified.output, request.target)
         ? R.succeed(identified)
         : R.fail(
             new EstimationAttemptFailedError({
@@ -266,9 +259,9 @@ const usageOf = (error: ProviderFailure) =>
 // 推定し直しは、その料理1つか、材料を出せない（0 件）の答えだけを通す
 const isValidIdentifiedDishes = (
   { dishes }: IdentifiedDishes,
-  reestimating: DishToReestimate | undefined,
+  target: IdentificationTarget,
 ): boolean =>
-  (reestimating === undefined || dishes.length <= 1) &&
+  (target.type === "meal" || dishes.length <= 1) &&
   dishes.every(
     (dish) =>
       isPresentText(dish.name) &&

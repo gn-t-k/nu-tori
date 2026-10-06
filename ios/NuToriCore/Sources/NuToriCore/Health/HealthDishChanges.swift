@@ -47,7 +47,8 @@ struct HealthDishChanges {
             .map {
                 DishToWrite(
                     contents: DishContents(
-                        dish: $0.dish, ingredientsInAnyOrder: ingredientsByDish[$0.dish.id] ?? []),
+                        dish: $0.dish, ingredientsInAnyOrder: ingredientsByDish[$0.dish.id] ?? [],
+                        progress: .settled),
                     meal: $0.meal)
             }
     }

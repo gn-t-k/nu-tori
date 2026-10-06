@@ -41,6 +41,7 @@ export type RecordKindStores = {
     addChange: (
       change: RecordChangeTarget<"meal_estimation_status" | "dish_estimation_status">,
     ) => void,
+    now: Date,
     run: (writes: EstimationWrites) => T,
   ) => T;
 };

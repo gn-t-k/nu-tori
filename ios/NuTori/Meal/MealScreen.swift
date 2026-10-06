@@ -37,12 +37,14 @@ struct MealScreen: View {
                             contents: contents, in: card, rejectedLines: rejectedLines),
                         removal: removal(of: contents),
                         actions: dishActions,
-                        deleteMeal: deleteMealAndReturn)
+                        deleteMeal: deleteMealAndReturn,
+                        confirmsMealDeletion: false)
                 }
             }
     }
 
-    /// confirmsDeletion は開いたときに、消す確かめを出しているか
+    /// confirmsDeletion・confirmsLastDishDeletion は開いたときに、食事を消す・最後の1品を消す確かめを出しているか。
+    /// addingDish は開いたときに、料理を足す名前の欄を出しているか
     init(
         card: MealCard,
         loadPhoto: @escaping (_ photoId: UUID) async -> UIImage?,
@@ -54,7 +56,9 @@ struct MealScreen: View {
         dishActions: DishActions,
         returnToTimeline: @escaping () -> Void,
         rejectedLines: [RejectedLine],
-        confirmsDeletion: Bool
+        confirmsDeletion: Bool,
+        confirmsLastDishDeletion: Bool,
+        addingDish: Bool
     ) {
         self.card = card
         self.rejectedLines = rejectedLines
@@ -67,14 +71,16 @@ struct MealScreen: View {
         self.dishActions = dishActions
         self.returnToTimeline = returnToTimeline
         _confirmsDeletion = State(initialValue: confirmsDeletion)
+        _confirmsLastDishDeletion = State(initialValue: confirmsLastDishDeletion)
+        _addingDish = State(initialValue: addingDish)
         _eatenAt = State(initialValue: card.meal.eatenAt)
     }
 
     @State private var confirmsDeletion: Bool
     /// 最後の1品の行を左へ送り、食事ごと消すかを確かめている
-    @State private var confirmsLastDishDeletion = false
+    @State private var confirmsLastDishDeletion: Bool
     /// 「料理を足す」を押して、名前の欄を出している
-    @State private var addingDish = false
+    @State private var addingDish: Bool
     @State private var newDishName = ""
     @FocusState private var focusesNewDishName: Bool
     /// 日付と時刻のボタンが選んでいる撮った時刻。送ってキャッシュに当たるまでのあいだも、選んだ値のまま見せる
@@ -369,7 +375,7 @@ struct MealScreen: View {
         addingDish = false
         let typed = newDishName
         newDishName = ""
-        guard !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        // 空白だけの名前は足さない。足すかは `SyncEngine.addDish` が決める
         Task { await addDish(card, typed) }
     }
 
@@ -406,33 +412,10 @@ struct MealScreen: View {
                 }
             }
             if let note = row.note {
-                HStack(spacing: 8) {
-                    // 推定の待っている表示。サーバーが処理しているあいだだけ出す
-                    if note.showsSpinner {
-                        ProgressView()
-                    }
-                    Text(note.text)
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                DishProgressNoteText(note: note)
             }
             RejectedMealLinesText(lines: rejected)
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// 推定したままの量に添える、枠線だけの小さな印（DESIGN.md の estimate-badge）。食事の画面の料理の行と、料理の画面の量に添える
-struct EstimateBadge: View {
-    var body: some View {
-        Text("推定")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 1)
-            .overlay {
-                RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(.secondary, lineWidth: 1)
-            }
     }
 }

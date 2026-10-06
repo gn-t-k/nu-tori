@@ -47,29 +47,36 @@ export const createDishEstimationStatusStore = (
       .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
       .where(eq(dishEstimationSchedules.dishId, dishId))
       .all()
-      .map(({ scheduleId, dueAt, cancellation, estimation, ...events }) => ({
-        scheduleId,
-        dueAt,
-        cancelled: cancellation !== null,
-        progress: toProgress({ estimation, ...events }),
-        estimationId: estimation ?? undefined,
-      })),
+      .map(toSchedule),
 });
 
-const toProgress = (events: {
+const toSchedule = ({
+  scheduleId,
+  dueAt,
+  cancellation,
+  deferral,
+  estimation,
+  completion,
+  abandonment,
+}: {
+  scheduleId: string;
+  dueAt: Date;
+  cancellation: string | null;
   deferral: string | null;
   estimation: string | null;
   completion: "estimated" | "no_dishes" | null;
   abandonment: string | null;
-}): DishEstimationSchedule["progress"] => {
-  if (events.deferral !== null) {
-    return "deferred";
+}): DishEstimationSchedule => {
+  const schedule = { scheduleId, dueAt, cancelled: cancellation !== null };
+  if (deferral !== null) {
+    return { ...schedule, progress: "deferred" };
   }
-  if (events.estimation === null) {
-    return "waiting";
+  if (estimation === null) {
+    return { ...schedule, progress: "waiting" };
   }
-  if (events.completion !== null) {
-    return events.completion;
-  }
-  return events.abandonment === null ? "estimating" : "abandoned";
+  return {
+    ...schedule,
+    progress: completion ?? (abandonment === null ? "estimating" : "abandoned"),
+    estimationId: estimation,
+  };
 };

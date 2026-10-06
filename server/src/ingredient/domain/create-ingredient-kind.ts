@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import { computeReestimatedDishEditedEvents } from "../../dish/domain/compute-reestimated-dish-edited-events";
 import type { DishStore } from "../../dish/domain/dish-store";
@@ -61,15 +62,7 @@ const decideUpdate = (
     return rejected(ingredientId, "out_of_range");
   }
   if (quantity === current.quantity) {
-    return {
-      writeKind: "update",
-      recordId: ingredientId,
-      outcome: { result: "applied" },
-      changedRecordId: undefined,
-      addedChanges: [],
-      usageEvents: [],
-      commit: () => undefined,
-    };
+    return decideWithoutChange("update", ingredientId, { result: "applied" });
   }
   return {
     writeKind: "update",
@@ -99,15 +92,5 @@ const decideUpdate = (
   };
 };
 
-const rejected = (
-  ingredientId: string,
-  reason: RejectionReason,
-): WriteDecision<AddedRecordType> => ({
-  writeKind: "update",
-  recordId: ingredientId,
-  outcome: { result: "rejected", reason },
-  changedRecordId: undefined,
-  addedChanges: [],
-  usageEvents: [],
-  commit: () => undefined,
-});
+const rejected = (ingredientId: string, reason: RejectionReason): WriteDecision<AddedRecordType> =>
+  decideWithoutChange("update", ingredientId, { result: "rejected", reason });

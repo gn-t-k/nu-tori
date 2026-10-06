@@ -30,7 +30,7 @@ export const applyDishEstimation = (
   },
 ): void => {
   const newest = findNewestActiveSchedule(stores.dishEstimationStatus.findSchedulesOfDish(dishId));
-  if (newest?.estimationId !== estimationId) {
+  if (newest === undefined || !("estimationId" in newest) || newest.estimationId !== estimationId) {
     return;
   }
   const dish = stores.dish.find(dishId);

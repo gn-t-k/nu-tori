@@ -4,7 +4,9 @@ import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
+import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
 import { scheduleDishReestimation } from "../../estimation/domain/schedule-dish-reestimation";
 import { computeReestimatedDishEditedEvents } from "./compute-reestimated-dish-edited-events";
@@ -61,25 +63,16 @@ const decideCreate = (
   { dishId, mealId, name, positionInMeal }: Extract<DishWrite, { type: "create_dish" }>,
   receivedAt: Date,
 ): WriteDecision<AddedRecordType> => {
-  const ignored = (result: "ignored_duplicate" | "ignored_tombstone") => ({
-    writeKind: "create" as const,
-    recordId: dishId,
-    outcome: { result },
-    changedRecordId: undefined,
-    addedChanges: [],
-    usageEvents: [],
-    commit: () => undefined,
-  });
   if (stores.dish.exists(dishId)) {
-    return ignored("ignored_duplicate");
+    return decideWithoutChange("create", dishId, { result: "ignored_duplicate" });
   }
   if (stores.dish.hasDeletion(dishId)) {
-    return ignored("ignored_tombstone");
+    return decideWithoutChange("create", dishId, { result: "ignored_tombstone" });
   }
   // 消えた食事に足した料理は、削除の印を残して、あとから同じ ID が届いても生き返らせない
   if (stores.meal.hasDeletion(mealId)) {
     return {
-      ...ignored("ignored_tombstone"),
+      ...decideWithoutChange("create", dishId, { result: "ignored_tombstone" }),
       changedRecordId: dishId,
       commit: (receiptId) => {
         stores.dish.insertDeletions([dishId], receiptId);
@@ -88,10 +81,10 @@ const decideCreate = (
   }
   const meal = stores.meal.find(mealId);
   if (meal === undefined) {
-    return { ...rejected(dishId, "record_not_found"), writeKind: "create" };
+    return rejected("create", dishId, "record_not_found");
   }
   if (!isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length)) {
-    return { ...rejected(dishId, "out_of_range"), writeKind: "create" };
+    return rejected("create", dishId, "out_of_range");
   }
   return {
     writeKind: "create",
@@ -103,15 +96,11 @@ const decideCreate = (
     usageEvents: [],
     commit: (receiptId) => {
       stores.dish.insert({ id: dishId, mealId, name, positionInMeal });
-      // 推定の状態の変更は addedChanges で足すので、推定の書き込みの口が足す変更は捨てる
-      stores.writeEstimationEvents(discardStatusChange, (writes) =>
-        scheduleDishReestimation(
-          stores,
-          writes,
-          { id: dishId, mealSentTimeZone: meal.sentTimeZone },
-          receiptId,
-          receivedAt,
-        ),
+      scheduleReestimation(
+        stores,
+        { id: dishId, mealSentTimeZone: meal.sentTimeZone },
+        receiptId,
+        receivedAt,
       );
     },
   };
@@ -171,38 +160,30 @@ const decideUpdate = (
 ): WriteDecision<AddedRecordType> => {
   const current = stores.dish.find(dishId);
   if (current === undefined) {
-    return rejected(dishId, "record_not_found");
+    return rejected("update", dishId, "record_not_found");
   }
   if (
     !isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length) ||
     (quantity !== undefined && !isAcceptableQuantity(current, quantity))
   ) {
-    return rejected(dishId, "out_of_range");
+    return rejected("update", dishId, "out_of_range");
   }
   const renamed = name !== current.name;
   const quantityCorrection =
     quantity !== undefined && quantity.value !== current.quantity?.value ? quantity : undefined;
   // 比例の明細の材料は、同じ料理の今の材料でないと書けない（表の外部キーでは守れない）。
-  // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき
+  // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき。量が今と同じでも、載せた組は確かめる
   if (
-    quantityCorrection !== undefined &&
+    quantity !== undefined &&
     !isSameIdSet(
-      quantityCorrection.proportionedIngredients.map(({ ingredientId }) => ingredientId),
+      quantity.proportionedIngredients.map(({ ingredientId }) => ingredientId),
       stores.ingredient.findCurrentIdsOfDish(dishId),
     )
   ) {
-    return rejected(dishId, "ingredients_replaced");
+    return rejected("update", dishId, "ingredients_replaced");
   }
   if (!renamed && quantityCorrection === undefined) {
-    return {
-      writeKind: "update",
-      recordId: dishId,
-      outcome: { result: "applied" },
-      changedRecordId: undefined,
-      addedChanges: [],
-      usageEvents: [],
-      commit: () => undefined,
-    };
+    return decideWithoutChange("update", dishId, { result: "applied" });
   }
   // 名前を直した予定は、受け取った時刻が来ているので推定中になる。前から推定中なら変更を足さない
   const startsEstimating =
@@ -233,7 +214,6 @@ const decideUpdate = (
               name: "estimated_quantity_corrected" as const,
               target: "dish" as const,
               mealInput: "photo" as const,
-              ingredientNutrientSource: undefined,
               ratio: quantityCorrection.value / current.quantity.value,
             },
           ]
@@ -241,30 +221,36 @@ const decideUpdate = (
       ...computeReestimatedDishEditedEvents(stores.dish, dishId, "corrected", receivedAt),
     ],
     commit: (receiptId) => {
-      if (renamed) {
-        stores.dish.insertNameCorrection(receiptId, name);
-      }
       if (quantityCorrection !== undefined) {
         stores.dish.insertQuantityCorrection(receiptId, quantityCorrection);
       }
       if (renamed) {
+        stores.dish.insertNameCorrection(receiptId, name);
         const meal = stores.meal.find(current.mealId);
         if (meal === undefined) {
           throw new Error(`料理の食事が無い: ${current.mealId}`);
         }
-        // 推定の状態の変更は addedChanges で足すので、推定の書き込みの口が足す変更は捨てる
-        stores.writeEstimationEvents(discardStatusChange, (writes) =>
-          scheduleDishReestimation(
-            stores,
-            writes,
-            { id: dishId, mealSentTimeZone: meal.sentTimeZone },
-            receiptId,
-            receivedAt,
-          ),
+        scheduleReestimation(
+          stores,
+          { id: dishId, mealSentTimeZone: meal.sentTimeZone },
+          receiptId,
+          receivedAt,
         );
       }
     },
   };
+};
+
+// 推定の状態の変更は addedChanges で足すので、推定の書き込みの口が足す変更は捨てる
+const scheduleReestimation = (
+  stores: DishKindStores,
+  dish: Parameters<typeof scheduleDishReestimation>[2],
+  receiptId: WriteReceiptId,
+  receivedAt: Date,
+): void => {
+  stores.writeEstimationEvents(discardStatusChange, receivedAt, (writes) =>
+    scheduleDishReestimation(stores, writes, dish, receiptId, receivedAt),
+  );
 };
 
 const discardStatusChange = (): void => undefined;
@@ -286,12 +272,9 @@ const isSameIdSet = (left: readonly string[], right: readonly string[]): boolean
   );
 };
 
-const rejected = (dishId: string, reason: RejectionReason): WriteDecision<AddedRecordType> => ({
-  writeKind: "update",
-  recordId: dishId,
-  outcome: { result: "rejected", reason },
-  changedRecordId: undefined,
-  addedChanges: [],
-  usageEvents: [],
-  commit: () => undefined,
-});
+const rejected = (
+  writeKind: "create" | "update",
+  dishId: string,
+  reason: RejectionReason,
+): WriteDecision<AddedRecordType> =>
+  decideWithoutChange(writeKind, dishId, { result: "rejected", reason });

@@ -17,9 +17,13 @@ const writeInAccount = (seed: Seed, run: Run): Promise<RecordChangeTarget<string
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), async (_, state) => {
     await seed(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
     const changes: RecordChangeTarget<string>[] = [];
-    createRecordKindStores(state.storage).writeEstimationEvents((change) => {
-      changes.push(change);
-    }, run);
+    createRecordKindStores(state.storage).writeEstimationEvents(
+      (change) => {
+        changes.push(change);
+      },
+      new Date(),
+      run,
+    );
     return changes;
   });
 

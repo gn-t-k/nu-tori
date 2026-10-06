@@ -90,7 +90,15 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         seconds_from_reestimation_ended: edited.secondsFromReestimationEnded,
       },
     }))
-    .with({ name: "estimated_quantity_corrected" }, (corrected) => ({
+    .with({ name: "estimated_quantity_corrected", target: "dish" }, (corrected) => ({
+      name: corrected.name,
+      properties: {
+        target: corrected.target,
+        meal_input: corrected.mealInput,
+        ratio: corrected.ratio,
+      },
+    }))
+    .with({ name: "estimated_quantity_corrected", target: "ingredient" }, (corrected) => ({
       name: corrected.name,
       properties: {
         target: corrected.target,

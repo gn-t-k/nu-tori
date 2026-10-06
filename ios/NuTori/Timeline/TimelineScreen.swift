@@ -87,7 +87,9 @@ struct TimelineScreen: View {
                             navigationPath = NavigationPath()
                         },
                         rejectedLines: rejectedLines,
-                        confirmsDeletion: false
+                        confirmsDeletion: false,
+                        confirmsLastDishDeletion: false,
+                        addingDish: false
                     )
                 }
             }

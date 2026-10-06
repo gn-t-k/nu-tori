@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { createRecordLedger } from "../../domain/create-record-ledger";
 import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -5,12 +6,12 @@ import type { RecordType } from "../../domain/record-type";
 import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { Meal } from "../../meal/domain/meal";
-import { applyDishEstimation } from "./apply-dish-estimation";
+import { abandonEstimation } from "./abandon-estimation";
 import { computeDishToReestimate } from "./compute-dish-to-reestimate";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import { computeNextDayStart } from "./compute-next-day-start";
 import { computeNextEstimationAttemptAt } from "./compute-next-estimation-attempt-at";
-import type { DishToReestimate } from "./estimation-provider";
+import type { IdentificationTarget } from "./estimation-provider";
 import type { EstimationTarget } from "./estimation-target";
 import { findEstimationOrigin } from "./find-estimation-origin";
 import { findStartableSchedules } from "./find-startable-schedules";
@@ -24,8 +25,7 @@ export type BegunEstimationAttempt = {
   attemptId: string;
   estimationId: string;
   photoIds: readonly string[];
-  dish: DishToReestimate | undefined;
-  addedDishNames: readonly string[];
+  target: IdentificationTarget;
 };
 
 // アラームから呼ぶ。1つのトランザクションで、時刻が来た待っている予定（食事か料理が対象。写真を待たせている料理の予定は除く）から推定を始めて最初の試みを書き、
@@ -37,7 +37,7 @@ export const beginEstimationAttempts = (
   now: Date,
 ): { attempts: BegunEstimationAttempt[]; usageEvents: UsageEvent[] } =>
   createRecordLedger(ledgerStore, stores, now).changeOutsideWrites((addChange) =>
-    stores.writeEstimationEvents(addChange, (writes) => {
+    stores.writeEstimationEvents(addChange, now, (writes) => {
       const attempts: BegunEstimationAttempt[] = [];
       const usageEvents: UsageEvent[] = [];
       const beginAttempt = (estimationId: string, target: EstimationTarget) => {
@@ -52,8 +52,17 @@ export const beginEstimationAttempts = (
             target.type === "dish" && stores.mealPhoto.hasUnreceivedPhotos(meal.id)
               ? []
               : meal.photoIds,
-          dish: target.type === "dish" ? computeDishToReestimate(stores, target.dishId) : undefined,
-          addedDishNames: target.type === "meal" ? findDishNamesOfMeal(stores, target.mealId) : [],
+          target: match(target)
+            .returnType<IdentificationTarget>()
+            .with({ type: "meal" }, ({ mealId }) => ({
+              type: "meal",
+              addedDishNames: findDishNamesOfMeal(stores, mealId),
+            }))
+            .with({ type: "dish" }, ({ dishId }) => ({
+              type: "dish",
+              dish: computeDishToReestimate(stores, dishId),
+            }))
+            .exhaustive(),
         });
       };
 
@@ -95,14 +104,7 @@ export const beginEstimationAttempts = (
           beginAttempt(estimationId, target);
           continue;
         }
-        writes.abandon({ estimationId, target, abandonedAt: now });
-        if (target.type === "dish") {
-          applyDishEstimation(stores, addChange, {
-            dishId: target.dishId,
-            estimationId,
-            estimated: undefined,
-          });
-        }
+        abandonEstimation(stores, writes, addChange, { estimationId, target, abandonedAt: now });
         usageEvents.push(
           computeEstimationEndedEvent({
             ...findEstimationOrigin(stores, target, estimationId),
