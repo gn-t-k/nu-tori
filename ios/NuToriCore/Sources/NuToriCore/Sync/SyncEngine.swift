@@ -77,6 +77,21 @@ public actor SyncEngine {
         return meal
     }
 
+    /// 食事の撮った時刻を直す。時差・送った時刻・入口は変えない。電波が無くても、その場でキャッシュに当て、直す書き込みを送り待ちに並べる。
+    /// 今と同じ時刻なら何もしない。キャッシュに無い食事は `UnknownRecordError`
+    public func correctMealTime(mealId: UUID, eatenAt: Date) async throws {
+        guard let meal = try await store.meals().first(where: { $0.id == mealId }) else {
+            throw UnknownRecordError(recordId: mealId)
+        }
+        guard meal.eatenAt != eatenAt else { return }
+        try await writingCache {
+            try await store.apply(
+                MealSyncing().correctingEatenAt(
+                    of: meal, to: eatenAt,
+                    enqueuing: pending(.update(mealId: mealId, eatenAt: eatenAt))))
+        }
+    }
+
     /// 食事を消す。電波が無くても、その場でキャッシュから消し、消す書き込みを送り待ちに並べ、アプリの中の写真を消す
     public func deleteMeal(id mealId: UUID) async throws {
         try await writingCache {
