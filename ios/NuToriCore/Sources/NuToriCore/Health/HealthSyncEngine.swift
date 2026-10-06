@@ -53,6 +53,10 @@ public actor HealthSyncEngine {
             cachedRecords: cachedRecords
         )
         try await writingCache {
+            // 読み取りを待つあいだに、書けなかった手の記録が出て印が下ろされていることがあるので、書く直前の印を使う。
+            // 読み直しから書くまでの短い隙間は残る。塞ぐには置き場に印を変えずにアンカーだけ書く口が要る
+            let hasWrittenCachedManualRecords = try await store.healthSyncState()
+                .hasWrittenCachedManualRecords
             try await store.apply(
                 WeightRecordSyncing().importing(
                     plan.newRecords,
@@ -60,7 +64,7 @@ public actor HealthSyncEngine {
                     now: now,
                     healthSyncState: HealthSyncState(
                         anchor: changes.anchor,
-                        hasWrittenCachedManualRecords: state.hasWrittenCachedManualRecords
+                        hasWrittenCachedManualRecords: hasWrittenCachedManualRecords
                     )
                 )
             )
@@ -69,7 +73,9 @@ public actor HealthSyncEngine {
 
     /// 記録を作った・直したとき、取りに行って版が上がった手の記録が届いたときに、その場で書く
     public func exportWeightRecord(_ record: WeightRecord) async throws {
-        guard record.isManual, try await healthStore.isWeightWriteAuthorized() else {
+        guard record.isManual else { return }
+        guard try await healthStore.isWeightWriteAuthorized() else {
+            try await unmarkCachedManualRecordsAsWritten()
             return
         }
         try await reporting(.healthWrite) {
@@ -191,6 +197,20 @@ public actor HealthSyncEngine {
                 await errorReporting.report(failure)
             }
             throw error
+        }
+    }
+
+    /// iPhone の設定で書き込みをオフにしたあいだの手の記録は、オンに戻したあとのまとめ書きでしか書かれないため
+    private func unmarkCachedManualRecordsAsWritten() async throws {
+        let state = try await store.healthSyncState()
+        guard state.hasWrittenCachedManualRecords else { return }
+        try await writingCache {
+            try await store.apply(
+                SyncBoxResult(
+                    healthSyncState: HealthSyncState(
+                        anchor: state.anchor, hasWrittenCachedManualRecords: false)
+                )
+            )
         }
     }
 
