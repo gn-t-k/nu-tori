@@ -211,9 +211,23 @@ final class RootModel {
         await accountSession.capture(.dishCorrected)
     }
 
-    /// 料理の画面の「この料理を削除」（最後の1品でないとき）。インターネットにつながらなくても、その場で消える
+    /// 料理を消す（食事の画面で左へ送った、料理の画面の「この料理を削除」。最後の1品でないとき）。
+    /// インターネットにつながらなくても、その場で消える。消せたら、PostHog に消した回数を送る（名前は送らない）
     func deleteDish(_ dish: Dish) async {
-        try? await recordSync.deleteDish(id: dish.id)
+        do {
+            try await recordSync.deleteDish(id: dish.id)
+        } catch {
+            return
+        }
+        await accountSession.capture(.dishDeleted)
+    }
+
+    /// 食事の画面の「料理を足す」。インターネットにつながらなくても、その場で料理の行が出る。
+    /// 足したら、PostHog に足した回数を送る（名前は送らない）。空の名前は足さない
+    func addDish(named typedName: String, to card: MealCard) async {
+        guard (try? await recordSync.addDish(named: typedName, toMeal: card.meal.id)) != nil
+        else { return }
+        await accountSession.capture(.dishAdded)
     }
 
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil

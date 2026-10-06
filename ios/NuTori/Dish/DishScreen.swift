@@ -7,20 +7,30 @@ import SwiftUI
 /// 直す状態に入る操作は無く、値を押せばその場で直せる（iOS の設定のアプリの詳細の画面と同じ）
 struct DishScreen: View {
     let contents: DishContents
+    /// 受け付けなかった書き込みの1行の置き場（名前と量の下、材料の行の下と材料の行を外した位置）
+    let list: DishScreenList
     /// 消すと食事の料理が無くなるか。最後の1品なら、料理でなく食事を消すかを画面の下から確かめる
     let removal: DishRemoval
     let actions: DishActions
-    /// 最後の1品の確かめで「食事を削除」を押したとき
-    let deleteMeal: () async -> Void
+    /// 最後の1品の確かめで「食事を削除」を押したとき。タイムラインに戻り、食事を消す
+    let deleteMeal: () -> Void
 
     var body: some View {
         List {
             nameAndQuantity
             if contents.showsIngredientsAndNutrients {
-                if !contents.ingredients.isEmpty {
+                if !list.ingredients.isEmpty {
                     Section("材料") {
-                        ForEach(contents.ingredients, id: \.id) { ingredient in
-                            ingredientRow(ingredient)
+                        ForEach(list.ingredients, id: \.rowId) { item in
+                            switch item {
+                            case .record(let ingredient, let below):
+                                VStack(alignment: .leading, spacing: 4) {
+                                    ingredientRow(ingredient)
+                                    RejectedMealLinesText(lines: below)
+                                }
+                            case .rejected(let line):
+                                RejectedMealLinesText(lines: [line])
+                            }
                         }
                     }
                 }
@@ -88,6 +98,7 @@ struct DishScreen: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("dish-progress")
                 }
+                RejectedMealLinesText(lines: list.belowHeader)
             }
             if let field = header.quantityField {
                 quantityRow(field)
@@ -162,7 +173,7 @@ struct DishScreen: View {
     }
 
     /// 料理を消すと、キャッシュから消えた料理を `DishDestination` が見て食事の画面に戻る。
-    /// 最後の1品のときだけ、画面の下から確かめ、「食事を削除」で食事ごと消す（食事が消えるとタイムラインに戻る）
+    /// 最後の1品のときだけ、画面の下から確かめ、「食事を削除」で食事ごと消してタイムラインに戻る
     private var deletionSection: some View {
         Section {
             Button("この料理を削除", role: .destructive) {
@@ -175,15 +186,9 @@ struct DishScreen: View {
                 }
             }
             .accessibilityIdentifier("dish-delete")
-            .confirmationDialog(
-                "最後の料理です。この食事と写真がすべて削除されます。ヘルスケアに書き出した分も削除します。",
-                isPresented: $confirmsMealDeletion, titleVisibility: .visible
-            ) {
-                Button("食事を削除", role: .destructive) {
-                    Task { await deleteMeal() }
-                }
-                Button("キャンセル", role: .cancel) {}
-            }
+            .modifier(
+                LastDishDeletionConfirmation(
+                    isPresented: $confirmsMealDeletion, deleteMeal: deleteMeal))
         }
     }
 
@@ -219,6 +224,20 @@ struct DishScreen: View {
             if drafts[field] == typed {
                 drafts[field] = nil
             }
+        }
+    }
+}
+
+/// 受け付けなかった書き込みの1行（「1.5杯に直せませんでした。」など）。行の下や、記録の行を外した位置に置く
+struct RejectedMealLinesText: View {
+    let lines: [RejectedMealLine]
+
+    var body: some View {
+        ForEach(lines, id: \.self) { line in
+            Text(line.text)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("rejected-meal-line")
         }
     }
 }

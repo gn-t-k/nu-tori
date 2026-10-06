@@ -20,6 +20,8 @@ struct MealActions {
     let correctMealTime: (_ card: MealCard, _ eatenAt: Date) async -> Void
     /// 食事の画面の「食事を削除」。`deletedAt` は消した時刻で、送ってから消すまでの時間を測る
     let deleteMeal: (_ card: MealCard, _ deletedAt: Date) async -> Void
-    /// 料理の画面の操作
+    /// 食事の画面の「料理を足す」で名前を確定したとき。前後の空白を除いて空の名前は足さない
+    let addDish: (_ card: MealCard, _ typedName: String) async -> Void
+    /// 料理の画面と、食事の画面の料理の行の操作
     let dish: DishActions
 }

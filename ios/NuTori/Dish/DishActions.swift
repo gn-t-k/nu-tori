@@ -10,7 +10,7 @@ struct DishActions {
     let correctQuantity: (_ dish: Dish, _ value: Double) async -> Void
     /// 材料の量の欄を確定したとき。料理の量は変わらない
     let correctIngredientQuantity: (_ ingredient: Ingredient, _ quantity: Double) async -> Void
-    /// 「この料理を削除」（最後の1品でないとき）
+    /// 食事の画面で料理の行を左へ送ったとき、料理の画面の「この料理を削除」（どちらも最後の1品でないとき）
     let delete: (_ dish: Dish) async -> Void
 }
 

@@ -7,6 +7,10 @@
         NavigationStack {
             DishScreen(
                 contents: sample.contents,
+                list: DishScreenList(
+                    contents: sample.contents,
+                    in: MealCard.sampleEstimated(.sample(on: .sampleToday, at: 12, 10)),
+                    rejectedLines: []),
                 removal: .dish(dishId: sample.contents.dish.id),
                 actions: .noop,
                 deleteMeal: {})
