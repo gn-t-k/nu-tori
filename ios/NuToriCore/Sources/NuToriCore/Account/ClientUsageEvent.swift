@@ -25,6 +25,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case mealTimeCorrected
     /// 料理の画面で料理の名前・量か材料の量を直した。回数だけを数え、名前と量は載せない
     case dishCorrected
+    /// 食事の画面の「料理を足す」で料理を足した。回数だけを数え、名前は載せない
+    case dishAdded
+    /// 料理を消した（食事の画面で左へ送った、料理の画面の「この料理を削除」）。最後の1品で食事ごと消したときは数えない
+    case dishDeleted
     /// 帯の下の、答えていない知らせの1行を押した
     case unansweredNoticeLineTapped
     /// 記録忘れの通知を押して開いた。着いたときに、その日の体重の知らせがあったか
@@ -85,6 +89,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .mealDeleted: "meal_deleted"
         case .mealTimeCorrected: "meal_time_corrected"
         case .dishCorrected: "dish_corrected"
+        case .dishAdded: "dish_added"
+        case .dishDeleted: "dish_deleted"
         case .unansweredNoticeLineTapped: "unanswered_notice_line_tapped"
         case .missedWeightReminderOpened: "missed_weight_reminder_opened"
         case .notificationPermissionRequested: "notification_permission_requested"
@@ -96,7 +102,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         switch self {
         case .weightRecorded, .weightCorrected, .weightInputCancelled, .usageDataTurnedOff,
             .initialPullDuration, .mealRecorded, .cameraCancelled, .cameraPermissionNoticeShown,
-            .mealDeleted, .mealTimeCorrected, .dishCorrected, .unansweredNoticeLineTapped,
+            .mealDeleted, .mealTimeCorrected, .dishCorrected, .dishAdded, .dishDeleted,
+            .unansweredNoticeLineTapped,
             .missedWeightReminderOpened,
             .notificationPermissionRequested, .notificationSettingsOpened:
             nil
@@ -125,7 +132,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .weightCorrected(let place):
             ["place": .token(place.token)]
         case .weightInputCancelled, .usageDataTurnedOff, .screen, .cameraCancelled,
-            .cameraPermissionNoticeShown, .mealTimeCorrected, .dishCorrected,
+            .cameraPermissionNoticeShown, .mealTimeCorrected, .dishCorrected, .dishAdded,
+            .dishDeleted,
             .unansweredNoticeLineTapped,
             .notificationSettingsOpened:
             [:]
