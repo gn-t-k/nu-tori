@@ -1,7 +1,5 @@
 import type { PullResult } from "./pull-sync-changes";
 
-type Change = PullResult["changes"][number];
-
 // 取りに行った変更のうち、条件に合う最初の変更の記録の ID。無ければ、前提の記録ができていないので投げる
 export const requireRecordId = (
   changes: PullResult["changes"],
@@ -13,3 +11,5 @@ export const requireRecordId = (
   }
   return found.recordId;
 };
+
+type Change = PullResult["changes"][number];

@@ -76,6 +76,16 @@ describe("名前を直したときの推定し直し", () => {
       throw new Error(`名前を直す書き込みが当たらなかった: ${JSON.stringify(results)}`);
     }
   };
+  // 結果が無ければ、書き込みが受け口に届いていないので投げる
+  const pushLateWrite = async (write: unknown) => {
+    const [result] = (
+      await (await pushSyncWrites(sessionToken, { writes: [write] })).json<PushResults>()
+    ).results;
+    if (result === undefined) {
+      throw new Error("送った書き込みの結果が無い");
+    }
+    return result;
+  };
   const currentIngredientNamesOfDish = async () =>
     (await pullChangesAfter(0))
       .filter(({ kind, record }) => kind === "ingredient" && record["dishId"] === dishId)
@@ -130,7 +140,10 @@ describe("名前を直したときの推定し直し", () => {
 
       test("① に、食事の写真と料理の今の名前を渡し、直した材料と量は渡さないこと", () => {
         const request = readIdentifyDishesRequests(provider).at(-1);
-        expect({ photoCount: request?.photos.length, target: request?.target }).toEqual({
+        if (request === undefined) {
+          throw new Error("① の入力が無い");
+        }
+        expect({ photoCount: request.photos.length, target: request.target }).toEqual({
           photoCount: 1,
           target: {
             type: "dish",
@@ -197,16 +210,11 @@ describe("名前を直したときの推定し直し", () => {
       });
 
       describe("推定し直しで材料が置き換わったあとに、届くのが遅れた書き込みを送ったとき", () => {
-        let results: PushResults["results"];
-        const pushLateWrite = async (write: unknown) => {
-          ({ results } = await (
-            await pushSyncWrites(sessionToken, { writes: [write] })
-          ).json<PushResults>());
-        };
+        let result: PushResults["results"][number];
 
         describe("前の材料を載せた料理の量の書き込みのとき", () => {
           beforeEach(async () => {
-            await pushLateWrite(
+            result = await pushLateWrite(
               updateDishWrite(dishId, {
                 name: "カツ丼",
                 quantity: {
@@ -222,10 +230,10 @@ describe("名前を直したときの推定し直し", () => {
 
           test("材料が置き換わったとして、今の値に料理の今の値を添えること", () => {
             expect({
-              result: results[0]?.result,
-              rejectionReason: results[0]?.rejectionReason,
-              status: results[0]?.current?.status,
-              record: results[0]?.current?.change?.record,
+              result: result.result,
+              rejectionReason: result.rejectionReason,
+              status: result.current?.status,
+              record: result.current?.change?.record,
             }).toEqual({
               result: "rejected",
               rejectionReason: "ingredients_replaced",
@@ -237,7 +245,7 @@ describe("名前を直したときの推定し直し", () => {
 
         describe("量が今と同じで、前の材料を載せた料理の書き込みのとき", () => {
           beforeEach(async () => {
-            await pushLateWrite(
+            result = await pushLateWrite(
               updateDishWrite(dishId, {
                 name: "カツカレー",
                 quantity: {
@@ -253,32 +261,32 @@ describe("名前を直したときの推定し直し", () => {
 
           test("材料が置き換わったとして受け付けないこと", () => {
             expect({
-              result: results[0]?.result,
-              rejectionReason: results[0]?.rejectionReason,
+              result: result.result,
+              rejectionReason: result.rejectionReason,
             }).toEqual({ result: "rejected", rejectionReason: "ingredients_replaced" });
           });
         });
 
         describe("量を省いて名前だけを直す書き込みのとき", () => {
           beforeEach(async () => {
-            await pushLateWrite(updateDishWrite(dishId, { name: "カツカレー" }));
+            result = await pushLateWrite(updateDishWrite(dishId, { name: "カツカレー" }));
           });
 
           test("受け付けること", () => {
-            expect(results[0]?.result).toBe("applied");
+            expect(result.result).toBe("applied");
           });
         });
 
         describe("前の材料の量を直す書き込みのとき", () => {
           beforeEach(async () => {
-            await pushLateWrite(updateIngredientWrite(riceId, 150));
+            result = await pushLateWrite(updateIngredientWrite(riceId, 150));
           });
 
           test("材料が置き換わったとして、今の値に削除の印を添えること", () => {
             expect({
-              result: results[0]?.result,
-              rejectionReason: results[0]?.rejectionReason,
-              status: results[0]?.current?.status,
+              result: result.result,
+              rejectionReason: result.rejectionReason,
+              status: result.current?.status,
             }).toEqual({
               result: "rejected",
               rejectionReason: "ingredients_replaced",
