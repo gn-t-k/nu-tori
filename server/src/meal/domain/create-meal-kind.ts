@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import { deleteDishes } from "../../dish/domain/delete-dishes";
 import type { DishStore } from "../../dish/domain/dish-store";
 import { computeEstimationEndedEvent } from "../../estimation/domain/compute-estimation-ended-event";
 import type { EstimationStore } from "../../estimation/domain/estimation-store";
@@ -174,7 +175,7 @@ const discarded = (
   };
 };
 
-// 料理・材料・写真の宣言を子から消し、それぞれの削除の印を残す。料理と材料の変更は1つずつ足す。
+// 料理・材料・写真の宣言を消し、それぞれの削除の印を残す。料理と材料の変更は1つずつ足す。
 // 推定中の食事なら、つなぎが CASCADE で消える前に推定を読み、推定ごとの出来事を「食事が消えた」で送る
 const decideDelete = (
   stores: MealKindStores,
@@ -208,16 +209,15 @@ const decideDelete = (
       ...ingredientIds.map((recordId) => ({ recordType: "ingredient" as const, recordId })),
     ],
     usageEvents: computeMealDeletedEstimationEvents(stores, mealId, receivedAt),
+    // #332 の「消す順」: 料理ごとの中身を消してから、食事の時刻の修正を消し、食事の削除の印を書いて食事を消す
     commit: (receiptId) => {
-      if (meal !== undefined) {
-        stores.ingredient.remove(ingredientIds);
-        stores.dish.remove(dishIds);
-        store.remove(mealId);
-        store.insertPhotoDeletions(meal.photoIds, receiptId);
-      }
+      deleteDishes(stores, { dishIds, ingredientIds }, receiptId);
+      store.removeCorrections(mealId);
       store.insertDeletion(receiptId);
-      stores.dish.insertDeletions(dishIds, receiptId);
-      stores.ingredient.insertDeletions(ingredientIds, receiptId);
+      if (meal !== undefined) {
+        store.insertPhotoDeletions(meal.photoIds, receiptId);
+        store.remove(mealId);
+      }
     },
   };
 };

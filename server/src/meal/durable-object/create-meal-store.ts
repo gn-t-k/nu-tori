@@ -6,7 +6,7 @@ import { mealPhotoTables } from "./meal-photo-tables";
 import { mealTables } from "./meal-tables";
 
 const { syncWriteReceipts } = syncLedgerTables;
-const { meals, mealDeletions } = mealTables;
+const { meals, mealEatenAtCorrections, mealDeletions } = mealTables;
 const { mealPhotos, mealPhotoDeletions } = mealPhotoTables;
 
 export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
@@ -58,6 +58,21 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
     db.insert(meals).values(meal).run();
     db.insert(mealPhotos)
       .values(photoIds.map((id, positionInMeal) => ({ id, mealId: meal.id, positionInMeal })))
+      .run();
+  },
+  removeCorrections: (id) => {
+    db.delete(mealEatenAtCorrections)
+      .where(
+        inArray(
+          mealEatenAtCorrections.syncWriteReceiptId,
+          db
+            .select({ id: syncWriteReceipts.id })
+            .from(syncWriteReceipts)
+            .where(
+              and(eq(syncWriteReceipts.recordType, "meal"), eq(syncWriteReceipts.recordId, id)),
+            ),
+        ),
+      )
       .run();
   },
   remove: (id) => {

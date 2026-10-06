@@ -154,6 +154,9 @@ extension Components.Schemas.SyncWrite {
         case .deleteMeal(let writeId, let mealId):
             self = .deleteMeal(
                 .init(id: writeId.uuidString, _type: .deleteMeal, mealId: mealId.uuidString))
+        case .deleteDish(let writeId, let dishId):
+            self = .deleteDish(
+                .init(id: writeId.uuidString, _type: .deleteDish, dishId: dishId.uuidString))
         case .createNotice(let writeId, let notice):
             self = .createNotice(
                 .init(
