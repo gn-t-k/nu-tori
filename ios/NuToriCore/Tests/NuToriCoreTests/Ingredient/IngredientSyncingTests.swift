@@ -20,9 +20,9 @@ struct IngredientSyncingTests {
         #expect(!syncing.owns(.unknown(kind: "ingredient")))
     }
 
-    @Test("サーバーだけが書く種類として、送る書き込みを持たないこと")
-    func hasNoWrites() {
-        #expect(syncing.writes == nil)
+    @Test("端末も書く種類として、送る書き込みを持つこと")
+    func hasWrites() {
+        #expect(syncing.writes != nil)
     }
 
     @Test("栄養の項目の名前を端末の項目に変え、知らない項目は読み飛ばすこと")

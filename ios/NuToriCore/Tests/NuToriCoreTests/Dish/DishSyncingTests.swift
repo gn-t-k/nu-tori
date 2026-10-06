@@ -18,9 +18,9 @@ struct DishSyncingTests {
         #expect(!syncing.owns(.unknown(kind: "dish")))
     }
 
-    @Test("サーバーだけが書く種類として、送る書き込みを持たないこと")
-    func hasNoWrites() {
-        #expect(syncing.writes == nil)
+    @Test("端末も書く種類として、送る書き込みを持つこと")
+    func hasWrites() {
+        #expect(syncing.writes != nil)
     }
 
     @Test("量の無い料理は、量を持たないこと")

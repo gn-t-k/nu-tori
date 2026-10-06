@@ -47,6 +47,8 @@ public struct SyncWriteResult: Sendable, Equatable {
         case invalidNoticeType
         /// 知らせの対象の日付が、日付の形でない
         case invalidTargetOn
+        /// 推定し直しで、料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直した）
+        case ingredientsReplaced
         case unknown(reason: String)
     }
 }

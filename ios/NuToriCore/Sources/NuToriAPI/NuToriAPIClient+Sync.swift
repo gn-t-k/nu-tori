@@ -322,6 +322,7 @@ extension SyncWriteResult.RejectionReason {
         case "photo_already_used": self = .photoAlreadyUsed
         case "invalid_notice_type": self = .invalidNoticeType
         case "invalid_target_on": self = .invalidTargetOn
+        case "ingredients_replaced": self = .ingredientsReplaced
         default: self = .unknown(reason: reason)
         }
     }

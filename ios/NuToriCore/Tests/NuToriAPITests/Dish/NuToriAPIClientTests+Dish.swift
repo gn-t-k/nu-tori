@@ -11,6 +11,49 @@ extension NuToriAPIClientTests {
         static let dishId = "00000000-0000-4000-8000-0000000000d1"
         static let ingredientId = "00000000-0000-4000-8000-0000000000e1"
 
+        @Suite("推定し直しで置き換わった前の材料を直す書き込みを、受け付けなかったとき")
+        struct PushingReplacedIngredientWrite {
+            let client: NuToriAPIClient
+            let writeId: UUID
+            let ingredientId: UUID
+
+            init() throws {
+                writeId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000a1"))
+                ingredientId = try #require(UUID(uuidString: DishSync.ingredientId))
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(
+                        json: """
+                            {"results":[
+                              {"writeId":"\(writeId.uuidString)","result":"rejected","rejectionReason":"ingredients_replaced",
+                               "current":{"status":"deleted","change":{"kind":"ingredient_deletion","recordId":"\(DishSync.ingredientId)","record":{}}}}
+                            ]}
+                            """
+                    ),
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("理由を材料が置き換わっていたと読み、今の値を材料の削除の印として読むこと")
+            func readsIngredientsReplaced() async throws {
+                let result = try await client.pushSyncWrites(
+                    [
+                        .updateIngredient(
+                            writeId: writeId, ingredientId: ingredientId, quantity: 150)
+                    ],
+                    isFinalBatch: true, clientState: .fixture())
+
+                #expect(
+                    result
+                        == .pushed([
+                            SyncWriteResult(
+                                writeId: writeId, outcome: .rejected(.ingredientsReplaced),
+                                current: .deleted(.ingredientDeletion(ingredientId: ingredientId)))
+                        ]))
+            }
+        }
+
         @Suite("料理と材料の変更を取りに行ったとき")
         struct PullingDishChanges {
             let client: NuToriAPIClient

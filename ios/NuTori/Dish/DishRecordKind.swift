@@ -4,7 +4,7 @@ import NuToriCore
 import SwiftData
 
 /// 料理の、登録簿の1行。取りに行った料理をキャッシュに当てる。
-/// サーバーだけが書く種類なので、送る書き込みは持たない（`DishSyncing`）
+/// 送る書き込みと受け付けなかったときの扱いは、キャッシュの型に依らないので `DishSyncing` が持つ
 nonisolated struct DishRecordKind: RecordKind {
     var synced: any SyncedRecordKind { syncing }
 

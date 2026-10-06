@@ -60,6 +60,12 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         case deletedMeal(mealId: UUID)
         /// 答えていない知らせの今の値
         case unansweredNotice(Notice)
+        /// 料理の今の値
+        case dish(SyncedDish)
+        /// 料理の削除の印
+        case deletedDish(dishId: UUID)
+        /// 材料の削除の印（推定し直しで置き換わった材料も、削除の印で返る）
+        case deletedIngredient(ingredientId: UUID)
 
         /// 偽の同期サーバーと同じ道で、線上の形にする
         var syncWriteCurrent: SyncWriteResult.Current {
@@ -67,6 +73,10 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             case .absent: .absent
             case .deleted(let recordId): .deleted(.weightRecordDeletion(recordId: recordId))
             case .deletedMeal(let mealId): .deleted(.mealDeletion(mealId: mealId))
+            case .dish(let dish): .value(.dish(dish))
+            case .deletedDish(let dishId): .deleted(.dishDeletion(dishId: dishId))
+            case .deletedIngredient(let ingredientId):
+                .deleted(.ingredientDeletion(ingredientId: ingredientId))
             case .unansweredNotice(let notice):
                 .value(
                     .notice(
@@ -86,11 +96,12 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     }
 
     /// 書き込みには受け付けたか断ったかを送った順に返し、取得には `pullPages` を1ページずつ返す。
-    /// 断った書き込みには、`currents` にあれば、サーバーの今の値を添える
+    /// 断った書き込みには、`currents` にあれば、サーバーの今の値を添える。断った理由は、`rejectionReasons` に無ければ `out_of_range`
     public static func sync(
         pushStatus: HTTPResponse.Status = .ok,
         rejectedWriteIndexes: Set<Int> = [],
         currents: [Int: Current] = [:],
+        rejectionReasons: [Int: String] = [:],
         pullPages: [String] = [emptyPage]
     ) -> ClientTransportMock {
         let pulls = Pulls(pages: pullPages)
@@ -98,7 +109,7 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             if request.path == "/v1/sync/writes" {
                 return try pushResponse(
                     status: pushStatus, body: body, rejectedWriteIndexes: rejectedWriteIndexes,
-                    currents: currents)
+                    currents: currents, rejectionReasons: rejectionReasons)
             }
             return jsonResponse(status: .ok, json: pulls.next())
         }
@@ -185,7 +196,8 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         status: HTTPResponse.Status,
         body: String?,
         rejectedWriteIndexes: Set<Int>,
-        currents: [Int: Current]
+        currents: [Int: Current],
+        rejectionReasons: [Int: String]
     ) throws -> (HTTPResponse, HTTPBody?) {
         guard status == .ok else {
             return (HTTPResponse(status: status), nil)
@@ -198,8 +210,9 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             }
             let current =
                 try currents[index].map { #","current":\#(try $0.syncWriteCurrent.json())"# } ?? ""
+            let reason = rejectionReasons[index] ?? "out_of_range"
             return
-                #"{"writeId":"\#(writeId)","result":"rejected","rejectionReason":"out_of_range"\#(current)}"#
+                #"{"writeId":"\#(writeId)","result":"rejected","rejectionReason":"\#(reason)"\#(current)}"#
         }
         return jsonResponse(status: .ok, json: #"{"results":[\#(results.joined(separator: ","))]}"#)
     }
