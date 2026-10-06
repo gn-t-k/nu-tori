@@ -20,7 +20,8 @@ final class WeightNoticeAfterNoticeTimeUITests: XCTestCase {
         attachScreenshot(of: app, named: "知らせの時刻を過ぎた朝")
 
         notice.buttons["weight-notice-record"].tap()
-        XCTAssertTrue(notice.staticTexts["記録しました"].waitForExistence(timeout: 5))
+        // 答えた知らせは並べないので、記録するとカードが消える
+        XCTAssertTrue(notice.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "知らせの中で記録した")
     }

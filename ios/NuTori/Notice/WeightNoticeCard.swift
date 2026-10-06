@@ -1,7 +1,7 @@
 import NuToriCore
 import SwiftUI
 
-/// タイムラインの体重の知らせ。今日の答えていない知らせは、中で体重を記録できる
+/// タイムラインの体重の知らせ（答えていないものだけ）。今日の知らせは、中で体重を記録できる
 struct WeightNoticeCard: View {
     let card: NoticeCard
     /// 前回の値と、今日の手の記録を直すかを決める記録
@@ -16,7 +16,7 @@ struct WeightNoticeCard: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("今日の体重")
+                    Text(title)
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     Text(WeightAmountText.clock(card.clockTime))
@@ -24,7 +24,7 @@ struct WeightNoticeCard: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                Text(detail)
+                Text("いつもはこの時間までに記録しています。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -37,7 +37,7 @@ struct WeightNoticeCard: View {
                 // 値は作ったときの記録で決まる。カードが出たあとに前回の体重が届いたら（開いたときの取得、
                 // ほかの端末の記録）、その値から始め直す
                 .id(WeightEntry(weightRecords: records, today: today).initialValue)
-            case .answered, .unansweredPastDay:
+            case .unansweredPastDay:
                 EmptyView()
             }
         }
@@ -51,10 +51,11 @@ struct WeightNoticeCard: View {
         .accessibilityIdentifier("weight-notice")
     }
 
-    private var detail: String {
+    /// 前の日の知らせは、カードだけを読んでもその日の分と分かるよう、日付を書く
+    private var title: String {
         switch card.form {
-        case .awaitingAnswer, .unansweredPastDay: "いつもはこの時間までに記録しています。"
-        case .answered: "記録しました"
+        case .awaitingAnswer: "今日の体重"
+        case .unansweredPastDay: "\(TimelineDayText.label(for: card.notice.targetDay))の体重"
         }
     }
 }

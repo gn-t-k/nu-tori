@@ -93,24 +93,4 @@ struct UnansweredNoticeLineVisibilityTests {
             #expect(!visibility.shows(for: card))
         }
     }
-
-    @Suite("上へ流れたあとに、知らせに答えたとき")
-    struct AnsweredAfterScrolledAbove {
-        let card: NoticeCard
-        let visibility: UnansweredNoticeLineVisibility
-
-        init() throws {
-            let awaiting = try UnansweredNoticeLineVisibilityTests.card(form: .awaitingAnswer)
-            var visibility = UnansweredNoticeLineVisibility()
-            visibility.note(.init(noticeId: awaiting.notice.id, maxY: -20))
-            visibility.note(nil)
-            self.visibility = visibility
-            card = try UnansweredNoticeLineVisibilityTests.card(form: .answered)
-        }
-
-        @Test("出さないこと")
-        func hides() {
-            #expect(!visibility.shows(for: card))
-        }
-    }
 }

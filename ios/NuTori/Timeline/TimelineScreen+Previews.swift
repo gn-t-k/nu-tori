@@ -43,7 +43,7 @@
             case meals
             /// 今日はまだ量っておらず、8:00 に体重の知らせが出た。一昨日の知らせには答えていない
             case awaitingNotice
-            /// 今日の体重の知らせの中で記録した
+            /// 今日の体重の知らせの中で記録した。答えた知らせは並べない
             case answeredNotice
 
             var initialPull: TimelineScreen.InitialPull {
