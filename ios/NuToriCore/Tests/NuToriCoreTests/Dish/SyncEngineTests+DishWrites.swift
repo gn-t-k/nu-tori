@@ -331,13 +331,11 @@ extension SyncEngineTests {
 
             @Suite("キャッシュに無い料理のとき")
             struct UnknownDish {
-                let store: SyncBoxMock<RecordCacheMock>
                 let engine: SyncEngine
                 let unknownId: UUID
 
                 init() async throws {
-                    store = try await DishWrites.seededStore()
-                    engine = .fixture(store: store, transport: .sync())
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
                     unknownId = UUID()
                 }
 

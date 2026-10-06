@@ -10,48 +10,73 @@ extension SyncEngineTests {
     struct UnsentDishes {
         @Suite("料理を足したとき")
         struct AddedDish {
-            let engine: SyncEngine
-            let dishId: UUID
+            @Suite("送る前")
+            struct BeforeSync {
+                let engine: SyncEngine
+                let dishId: UUID
 
-            init() async throws {
-                engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
-                dishId = try #require(
-                    try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId)
-                ).id
+                init() async throws {
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                    dishId = try #require(
+                        try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId)
+                    ).id
+                }
+
+                @Test("まだ送れていない料理にすること")
+                func isUnsent() async throws {
+                    #expect(try await engine.unsentDishIds() == [dishId])
+                }
             }
 
-            @Test("送るまで、まだ送れていない料理にすること")
-            func isUnsentUntilSent() async throws {
-                #expect(try await engine.unsentDishIds() == [dishId])
-            }
+            @Suite("送ったとき")
+            struct Synced {
+                let engine: SyncEngine
 
-            @Test("送ったら、まだ送れていない料理にしないこと")
-            func isNotUnsentAfterSync() async throws {
-                _ = try await engine.sync()
+                init() async throws {
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                    _ = try #require(
+                        try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId))
+                    _ = try await engine.sync()
+                }
 
-                #expect(try await engine.unsentDishIds().isEmpty)
+                @Test("まだ送れていない料理にしないこと")
+                func isNotUnsent() async throws {
+                    #expect(try await engine.unsentDishIds().isEmpty)
+                }
             }
         }
 
         @Suite("名前を直したとき")
         struct RenamedDish {
-            let engine: SyncEngine
+            @Suite("送る前")
+            struct BeforeSync {
+                let engine: SyncEngine
 
-            init() async throws {
-                engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
-                try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+                init() async throws {
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                    try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+                }
+
+                @Test("まだ送れていない料理にすること")
+                func isUnsent() async throws {
+                    #expect(try await engine.unsentDishIds() == [DishWrites.dishId])
+                }
             }
 
-            @Test("送るまで、まだ送れていない料理にすること")
-            func isUnsentUntilSent() async throws {
-                #expect(try await engine.unsentDishIds() == [DishWrites.dishId])
-            }
+            @Suite("送って変更を取り切ったとき")
+            struct Synced {
+                let engine: SyncEngine
 
-            @Test("送って変更を取り切ったら、まだ送れていない料理にしないこと")
-            func isNotUnsentAfterSync() async throws {
-                _ = try await engine.sync()
+                init() async throws {
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                    try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+                    _ = try await engine.sync()
+                }
 
-                #expect(try await engine.unsentDishIds().isEmpty)
+                @Test("まだ送れていない料理にしないこと")
+                func isNotUnsent() async throws {
+                    #expect(try await engine.unsentDishIds().isEmpty)
+                }
             }
         }
 

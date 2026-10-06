@@ -107,54 +107,92 @@ struct DishScreenHeaderTests {
     struct Note {
         @Suite("推定したままの量のとき")
         struct Estimated {
-            let header: DishScreenHeader
+            @Suite("名前の欄を選んでいないとき")
+            struct NotEditingName {
+                let header: DishScreenHeader
+                let editingName: Bool
 
-            init() {
-                header = DishScreenHeaderTests.header(quantity: DishScreenHeaderTests.estimated)
+                init() {
+                    header = DishScreenHeaderTests.header(quantity: DishScreenHeaderTests.estimated)
+                    editingName = false
+                }
+
+                @Test("量を変えると材料も同じ割合で変わることを書くこと")
+                func describesProportionalChange() {
+                    #expect(header.note(editingName: editingName) == "量を変えると、材料の量も同じ割合で変わります。")
+                }
             }
 
-            @Test("名前の欄を選んでいないときは、量を変えると材料も同じ割合で変わることを書くこと")
-            func notEditingName() {
-                #expect(header.note(editingName: false) == "量を変えると、材料の量も同じ割合で変わります。")
-            }
+            @Suite("名前の欄を選んでいるとき")
+            struct EditingName {
+                let header: DishScreenHeader
+                let editingName: Bool
 
-            @Test("名前の欄を選んでいれば、量と材料を推定し直すことを書くこと")
-            func editingName() {
-                #expect(header.note(editingName: true) == "名前を変えると、量と材料を推定し直します。")
+                init() {
+                    header = DishScreenHeaderTests.header(quantity: DishScreenHeaderTests.estimated)
+                    editingName = true
+                }
+
+                @Test("量と材料を推定し直すことを書くこと")
+                func describesReestimation() {
+                    #expect(header.note(editingName: editingName) == "名前を変えると、量と材料を推定し直します。")
+                }
             }
         }
 
         @Suite("直した量のとき")
         struct Corrected {
-            let header: DishScreenHeader
+            @Suite("名前の欄を選んでいるとき")
+            struct EditingName {
+                let header: DishScreenHeader
+                let editingName: Bool
 
-            init() {
-                header = DishScreenHeaderTests.header(quantity: DishScreenHeaderTests.corrected)
-            }
+                init() {
+                    header = DishScreenHeaderTests.header(quantity: DishScreenHeaderTests.corrected)
+                    editingName = true
+                }
 
-            @Test("名前の欄を選んでいれば、量はそのままで材料を推定し直すことを書くこと")
-            func editingName() {
-                #expect(
-                    header.note(editingName: true) == "名前を変えると、材料を推定し直します。量はそのままです。")
+                @Test("量はそのままで材料を推定し直すことを書くこと")
+                func describesIngredientReestimation() {
+                    #expect(
+                        header.note(editingName: editingName)
+                            == "名前を変えると、材料を推定し直します。量はそのままです。")
+                }
             }
         }
 
         @Suite("量の無い料理のとき")
         struct WithoutQuantity {
-            let header: DishScreenHeader
+            @Suite("名前の欄を選んでいないとき")
+            struct NotEditingName {
+                let header: DishScreenHeader
+                let editingName: Bool
 
-            init() {
-                header = DishScreenHeaderTests.header(quantity: nil, progress: .notSent)
+                init() {
+                    header = DishScreenHeaderTests.header(quantity: nil, progress: .notSent)
+                    editingName = false
+                }
+
+                @Test("注記を出さないこと")
+                func showsNoNote() {
+                    #expect(header.note(editingName: editingName) == nil)
+                }
             }
 
-            @Test("名前の欄を選んでいないときは、注記を出さないこと")
-            func notEditingName() {
-                #expect(header.note(editingName: false) == nil)
-            }
+            @Suite("名前の欄を選んでいるとき")
+            struct EditingName {
+                let header: DishScreenHeader
+                let editingName: Bool
 
-            @Test("名前の欄を選んでいれば、量と材料を推定し直すことを書くこと")
-            func editingName() {
-                #expect(header.note(editingName: true) == "名前を変えると、量と材料を推定し直します。")
+                init() {
+                    header = DishScreenHeaderTests.header(quantity: nil, progress: .notSent)
+                    editingName = true
+                }
+
+                @Test("量と材料を推定し直すことを書くこと")
+                func describesReestimation() {
+                    #expect(header.note(editingName: editingName) == "名前を変えると、量と材料を推定し直します。")
+                }
             }
         }
     }

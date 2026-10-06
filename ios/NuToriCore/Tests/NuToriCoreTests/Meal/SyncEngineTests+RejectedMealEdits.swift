@@ -65,7 +65,9 @@ extension SyncEngineTests {
 
                 #expect(line.text == "19:40 に直せませんでした。")
                 #expect(line.placement(in: RejectedMealEdits.card(of: store)) == .belowEatenAt)
-                #expect(store.cache.meals[Writes.mealId]?.eatenAt == (try Writes.meal()).eatenAt)
+                #expect(
+                    try #require(store.cache.meals[Writes.mealId]).eatenAt
+                        == (try Writes.meal()).eatenAt)
             }
         }
 
@@ -114,7 +116,7 @@ extension SyncEngineTests {
                 #expect(
                     line.placement(in: RejectedMealEdits.card(of: store))
                         == .belowDish(Writes.dishId))
-                #expect(store.cache.dishes[Writes.dishId]?.name == "親子丼")
+                #expect(try #require(store.cache.dishes[Writes.dishId]).name == "親子丼")
             }
         }
 
@@ -139,56 +141,101 @@ extension SyncEngineTests {
                 #expect(
                     line.placement(in: RejectedMealEdits.card(of: store))
                         == .belowDish(Writes.dishId))
-                #expect(store.cache.dishes[Writes.dishId]?.quantity?.value == 2)
+                #expect(try #require(store.cache.dishes[Writes.dishId]).quantity?.value == 2)
             }
         }
 
         @Suite("直そうとした料理が消えていたとき")
         struct GoneDish {
-            let store: SyncBoxMock<RecordCacheMock>
-            let engine: SyncEngine
-
-            init() async throws {
-                store = try await Writes.seededStore()
-                engine = RejectedMealEdits.engine(
+            static func engine(store: SyncBoxMock<RecordCacheMock>) async throws -> SyncEngine {
+                let engine = RejectedMealEdits.engine(
                     current: .deletedDish(dishId: Writes.dishId), reason: "record_not_found",
                     store: store)
                 try await engine.renameDish(id: Writes.dishId, to: "カツ丼")
+                return engine
             }
 
-            @Test("端末で見せていた名前で「記録できませんでした」を料理の行を外した位置に出すこと")
-            func showsLineInDishList() async throws {
-                let line = try RejectedMealEdits.line(try await engine.sync())
+            @Suite("食事のカードがあるとき")
+            struct WithCard {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
 
-                #expect(line.text == "12:10 の食事の カツ丼 は、記録できませんでした。")
-                #expect(
-                    line.placement(in: RejectedMealEdits.card(of: store))
-                        == .inDishList(positionInMeal: 0))
-                #expect(line.placement(in: nil) == .timeline)
+                init() async throws {
+                    store = try await Writes.seededStore()
+                    engine = try await GoneDish.engine(store: store)
+                }
+
+                @Test("端末で見せていた名前で「記録できませんでした」を料理の行を外した位置に出すこと")
+                func showsLineInDishList() async throws {
+                    let line = try RejectedMealEdits.line(try await engine.sync())
+
+                    #expect(line.text == "12:10 の食事の カツ丼 は、記録できませんでした。")
+                    #expect(
+                        line.placement(in: RejectedMealEdits.card(of: store))
+                            == .inDishList(positionInMeal: 0))
+                }
+            }
+
+            @Suite("食事のカードが無いとき")
+            struct WithoutCard {
+                let line: RejectedMealLine
+
+                init() async throws {
+                    let engine = try await GoneDish.engine(store: try await Writes.seededStore())
+                    line = try RejectedMealEdits.line(try await engine.sync())
+                }
+
+                @Test("タイムラインに出すこと")
+                func showsLineOnTimeline() {
+                    #expect(line.placement(in: nil) == .timeline)
+                }
             }
         }
 
         @Suite("足した料理の食事が無かったとき")
         struct AddedDishWithoutMeal {
-            let store: SyncBoxMock<RecordCacheMock>
-            let engine: SyncEngine
-
-            init() async throws {
-                store = try await Writes.seededStore()
-                engine = RejectedMealEdits.engine(
+            static func engine(store: SyncBoxMock<RecordCacheMock>) async throws -> SyncEngine {
+                let engine = RejectedMealEdits.engine(
                     current: .absent, reason: "record_not_found", store: store)
                 try await engine.addDish(named: "味噌汁", toMeal: Writes.mealId)
+                return engine
             }
 
-            @Test("「記録できませんでした」をその料理の並び順の位置に出すこと")
-            func showsLineAtPosition() async throws {
-                let line = try RejectedMealEdits.line(try await engine.sync())
+            @Suite("食事のカードがあるとき")
+            struct WithCard {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
 
-                #expect(line.text == "12:10 の食事に足した味噌汁は、記録できませんでした。")
-                #expect(
-                    line.placement(in: RejectedMealEdits.card(of: store))
-                        == .inDishList(positionInMeal: 1))
-                #expect(line.placement(in: nil) == .timeline)
+                init() async throws {
+                    store = try await Writes.seededStore()
+                    engine = try await AddedDishWithoutMeal.engine(store: store)
+                }
+
+                @Test("「記録できませんでした」をその料理の並び順の位置に出すこと")
+                func showsLineAtPosition() async throws {
+                    let line = try RejectedMealEdits.line(try await engine.sync())
+
+                    #expect(line.text == "12:10 の食事に足した味噌汁は、記録できませんでした。")
+                    #expect(
+                        line.placement(in: RejectedMealEdits.card(of: store))
+                            == .inDishList(positionInMeal: 1))
+                }
+            }
+
+            @Suite("食事のカードが無いとき")
+            struct WithoutCard {
+                let line: RejectedMealLine
+
+                init() async throws {
+                    let engine = try await AddedDishWithoutMeal.engine(
+                        store: try await Writes.seededStore())
+                    line = try RejectedMealEdits.line(try await engine.sync())
+                }
+
+                @Test("タイムラインに出すこと")
+                func showsLineOnTimeline() {
+                    #expect(line.placement(in: nil) == .timeline)
+                }
             }
         }
 
@@ -246,35 +293,71 @@ extension SyncEngineTests {
 
         @Suite("直そうとした材料が料理ごと消えていたとき")
         struct GoneIngredient {
-            let store: SyncBoxMock<RecordCacheMock>
-            let line: RejectedMealLine
-            /// 料理の削除の印が届く前のカード
-            let cardWithDish: MealCard?
-
-            init() async throws {
-                store = try await Writes.seededStore()
+            static func rejectedLine(store: SyncBoxMock<RecordCacheMock>) async throws
+                -> RejectedMealLine
+            {
                 let engine = RejectedMealEdits.engine(
                     current: .deletedIngredient(ingredientId: Writes.riceId),
                     reason: "record_not_found", store: store)
                 try await engine.correctIngredientQuantity(id: Writes.riceId, to: 150)
-                line = try RejectedMealEdits.line(try await engine.sync())
-                cardWithDish = RejectedMealEdits.card(of: store)
-                try await store.apply(
-                    SyncBoxResult(kindChanges: [
-                        KindChanges(kind: .dish, changes: [.dishDeletion(dishId: Writes.dishId)])
-                    ]))
+                return try RejectedMealEdits.line(try await engine.sync())
             }
 
-            @Test("「記録できませんでした」を、残っている親の位置に出すこと")
-            func showsLineAtRemainingParent() {
-                #expect(line.text == "12:10 の食事の 親子丼 の ご飯 は、記録できませんでした。")
-                #expect(
-                    line.placement(in: cardWithDish)
-                        == .inIngredientList(dishId: Writes.dishId, positionInDish: 0))
-                #expect(
-                    line.placement(in: RejectedMealEdits.card(of: store))
-                        == .inDishList(positionInMeal: 0))
-                #expect(line.placement(in: nil) == .timeline)
+            @Suite("料理の削除の印が届く前のとき")
+            struct BeforeDishDeletion {
+                let line: RejectedMealLine
+                let card: MealCard?
+
+                init() async throws {
+                    let store = try await Writes.seededStore()
+                    line = try await GoneIngredient.rejectedLine(store: store)
+                    card = RejectedMealEdits.card(of: store)
+                }
+
+                @Test("「記録できませんでした」を、材料のあった位置に出すこと")
+                func showsLineAtIngredientPosition() {
+                    #expect(line.text == "12:10 の食事の 親子丼 の ご飯 は、記録できませんでした。")
+                    #expect(
+                        line.placement(in: card)
+                            == .inIngredientList(dishId: Writes.dishId, positionInDish: 0))
+                }
+            }
+
+            @Suite("料理の削除の印が届いたあとのとき")
+            struct AfterDishDeletion {
+                let line: RejectedMealLine
+                let card: MealCard?
+
+                init() async throws {
+                    let store = try await Writes.seededStore()
+                    line = try await GoneIngredient.rejectedLine(store: store)
+                    try await store.apply(
+                        SyncBoxResult(kindChanges: [
+                            KindChanges(
+                                kind: .dish, changes: [.dishDeletion(dishId: Writes.dishId)])
+                        ]))
+                    card = RejectedMealEdits.card(of: store)
+                }
+
+                @Test("残っている食事の、料理のあった位置に出すこと")
+                func showsLineInDishList() {
+                    #expect(line.placement(in: card) == .inDishList(positionInMeal: 0))
+                }
+            }
+
+            @Suite("食事のカードが無いとき")
+            struct WithoutCard {
+                let line: RejectedMealLine
+
+                init() async throws {
+                    line = try await GoneIngredient.rejectedLine(
+                        store: try await Writes.seededStore())
+                }
+
+                @Test("タイムラインに出すこと")
+                func showsLineOnTimeline() {
+                    #expect(line.placement(in: nil) == .timeline)
+                }
             }
         }
 
@@ -301,7 +384,7 @@ extension SyncEngineTests {
                 #expect(
                     line.placement(in: RejectedMealEdits.card(of: store))
                         == .belowIngredient(Writes.riceId))
-                #expect(store.cache.ingredients[Writes.riceId]?.quantity == 200)
+                #expect(try #require(store.cache.ingredients[Writes.riceId]).quantity == 200)
             }
         }
 

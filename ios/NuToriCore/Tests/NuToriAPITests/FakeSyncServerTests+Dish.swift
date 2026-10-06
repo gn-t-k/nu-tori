@@ -194,11 +194,12 @@ extension FakeSyncServerTests {
                             writeId: UUID(),
                             correction: DishCorrection(id: dish.id, name: "謎の料理", quantity: nil))
                     ], isFinalBatch: true, clientState: .fixture())
+                // 偽のサーバーは、推定中を返した次の取得で推定し直す
+                _ = try await client.pullSyncChanges(afterSequence: 2, clientState: .fixture())
             }
 
             @Test("次の取得で前の材料を消して料理なしを返すこと")
             func failsUnestimableName() async throws {
-                _ = try await client.pullSyncChanges(afterSequence: 2, clientState: .fixture())
                 let second = try await client.pullSyncChanges(
                     afterSequence: 4, clientState: .fixture())
 

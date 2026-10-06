@@ -50,8 +50,7 @@ struct MealCardDishWaitingTests {
         try #require(card.nutrition.estimatedTotals)
     }
 
-    /// 料理の行と、料理の画面で材料と栄養を出すか
-    @Suite("食事の画面の料理の行")
+    @Suite("食事の画面の料理の行と、料理の画面で材料と栄養を出すか")
     struct Rows {
         @Suite("料理ごとの推定の状態が無い料理のとき")
         struct NotWaiting {
@@ -383,9 +382,8 @@ struct MealCardDishWaitingTests {
     struct AddedToUnsettledMeal {
         @Suite("足した料理が推定できたとき")
         struct AddedDishEstimated {
-            static func totals(whileMealIs status: MealEstimationStatus?) throws -> NutrientTotals {
-                try MealCardDishWaitingTests.totals(
-                    of: card(status: status, dishStatuses: [soupId: .estimated], withCurry: false))
+            static func addedCard(whileMealIs status: MealEstimationStatus?) throws -> MealCard {
+                try card(status: status, dishStatuses: [soupId: .estimated], withCurry: false)
             }
 
             @Suite("食事が推定中のとき")
@@ -394,12 +392,9 @@ struct MealCardDishWaitingTests {
                 let food: DayFood
 
                 init() throws {
-                    totals = try AddedDishEstimated.totals(whileMealIs: .estimating)
-                    food = DayFood(meals: [
-                        try card(
-                            status: .estimating, dishStatuses: [soupId: .estimated],
-                            withCurry: false)
-                    ])
+                    let card = try addedCard(whileMealIs: .estimating)
+                    totals = try MealCardDishWaitingTests.totals(of: card)
+                    food = DayFood(meals: [card])
                 }
 
                 @Test("足した料理の分だけで、待っている料理が無くても合計に「以上」を付けること")
@@ -421,7 +416,8 @@ struct MealCardDishWaitingTests {
                 let totals: NutrientTotals
 
                 init() throws {
-                    totals = try AddedDishEstimated.totals(whileMealIs: .deferredToNextDay)
+                    totals = try MealCardDishWaitingTests.totals(
+                        of: addedCard(whileMealIs: .deferredToNextDay))
                 }
 
                 @Test("足した料理の分だけで、待っている料理が無くても合計に「以上」を付けること")
@@ -435,7 +431,8 @@ struct MealCardDishWaitingTests {
                 let totals: NutrientTotals
 
                 init() throws {
-                    totals = try AddedDishEstimated.totals(whileMealIs: .awaitingPhotos)
+                    totals = try MealCardDishWaitingTests.totals(
+                        of: addedCard(whileMealIs: .awaitingPhotos))
                 }
 
                 @Test("足した料理の分だけで、待っている料理が無くても合計に「以上」を付けること")
@@ -449,7 +446,7 @@ struct MealCardDishWaitingTests {
                 let totals: NutrientTotals
 
                 init() throws {
-                    totals = try AddedDishEstimated.totals(whileMealIs: nil)
+                    totals = try MealCardDishWaitingTests.totals(of: addedCard(whileMealIs: nil))
                 }
 
                 @Test("足した料理の分だけで、待っている料理が無くても合計に「以上」を付けること")
@@ -475,8 +472,7 @@ struct MealCardDishWaitingTests {
         }
     }
 
-    /// 料理を足したあとの食事のカードの名前の場所と、食事の画面の料理の一覧の上の食事の状態
-    @Suite("料理を足したあとの食事")
+    @Suite("料理を足したあとの、食事のカードの名前の場所と、食事の画面の料理の一覧の上の食事の状態")
     struct AfterAdding {
         static func addedCard(_ status: MealEstimationStatus?) throws -> MealCard {
             try card(status: status, dishStatuses: [soupId: .estimating], withCurry: false)

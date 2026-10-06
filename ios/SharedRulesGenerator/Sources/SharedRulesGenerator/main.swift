@@ -31,13 +31,9 @@ private struct Bounds: Decodable {
     let maximum: Double?
 
     enum LowerBound {
-        case none
+        case unbounded
         case inclusive(Double)
         case exclusive(Double)
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case minimum, exclusiveMinimum, maximum
     }
 
     init(from decoder: any Decoder) throws {
@@ -47,7 +43,7 @@ private struct Bounds: Decodable {
             container.decodeIfPresent(Double.self, forKey: .minimum),
             container.decodeIfPresent(Double.self, forKey: .exclusiveMinimum)
         ) {
-        case (nil, nil): lowerBound = .none
+        case (nil, nil): lowerBound = .unbounded
         case (let minimum?, nil): lowerBound = .inclusive(minimum)
         case (nil, let exclusiveMinimum?): lowerBound = .exclusive(exclusiveMinimum)
         // 両方を書くと、サーバーは両方を当て、端末は片方しか当てず、判定が食い違う
@@ -56,6 +52,10 @@ private struct Bounds: Decodable {
                 forKey: .exclusiveMinimum, in: container,
                 debugDescription: "minimum と exclusiveMinimum は片方だけ書く")
         }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case minimum, exclusiveMinimum, maximum
     }
 }
 
@@ -70,7 +70,7 @@ private func renderAcceptedRange(_ ranges: [String: Bounds]) -> String {
         let range = ranges[name]!
         let (lowerBound, includesLowerBound) =
             switch range.lowerBound {
-            case .none: ("-.infinity", true)
+            case .unbounded: ("-.infinity", true)
             case .inclusive(let minimum): ("\(minimum)", true)
             case .exclusive(let exclusiveMinimum): ("\(exclusiveMinimum)", false)
             }

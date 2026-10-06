@@ -191,8 +191,8 @@ extension TimelineTests {
                 }
 
                 @Test("タイムラインに行を置かないこと（食事の画面に出す）")
-                func notOnTimeline() {
-                    #expect(timeline.days.first?.items == [.meal(lunch)])
+                func notOnTimeline() throws {
+                    #expect(try #require(timeline.days.first).items == [.meal(lunch)])
                 }
             }
 
