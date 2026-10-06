@@ -606,13 +606,20 @@ struct HealthSyncEngineTests {
         @Suite("書き込みの許可が無いとき")
         struct Unauthorized {
             let healthStore: HealthStoreMock
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: HealthSyncEngine
             let manual: WeightRecord
+            let imported: WeightRecord
 
             init() throws {
                 manual = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                imported = try .imported(70.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
                 healthStore = .ok(isWriteAuthorized: false)
-                engine = .fixture(healthStore: healthStore, store: try .ok())
+                store = try .ok(
+                    healthState: HealthSyncState(
+                        anchor: HealthChanges.fixtureAnchor, hasWrittenCachedManualRecords: true)
+                )
+                engine = .fixture(healthStore: healthStore, store: store)
             }
 
             @Test("書かないこと")
@@ -620,6 +627,25 @@ struct HealthSyncEngineTests {
                 try await engine.exportWeightRecord(manual)
 
                 #expect(healthStore.writes.isEmpty)
+            }
+
+            @Test("あとで許可を得たときにまとめて書くために、書き終えた印を下ろし、アンカーは変えないこと")
+            func unmarksAsWritten() async throws {
+                try await engine.exportWeightRecord(manual)
+
+                #expect(
+                    store.healthState
+                        == HealthSyncState(
+                            anchor: HealthChanges.fixtureAnchor,
+                            hasWrittenCachedManualRecords: false
+                        ))
+            }
+
+            @Test("取り込んだ体重では、書き終えた印を下ろさないこと")
+            func keepsMarkForImportedRecord() async throws {
+                try await engine.exportWeightRecord(imported)
+
+                #expect(store.healthState.hasWrittenCachedManualRecords)
             }
         }
 
