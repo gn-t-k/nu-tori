@@ -8,9 +8,9 @@ public actor GatedErrorReportingSession: ErrorReportingSession {
         await forwarding.identify(accountId: accountId)
     }
 
-    public func report(_ failure: HandledFailure) async {
+    public func report(_ failure: HandledFailure, cause: FailureCause?) async {
         guard identified else { return }
-        await forwarding.report(failure)
+        await forwarding.report(failure, cause: cause)
     }
 
     public func clearUser() async {

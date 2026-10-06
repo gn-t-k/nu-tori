@@ -30,6 +30,6 @@ private nonisolated struct SilentAnalyticsSession: AnalyticsSession {
 
 private nonisolated struct SilentErrorReportingSession: ErrorReportingSession {
     func identify(accountId: String) async {}
-    func report(_ failure: HandledFailure) async {}
+    func report(_ failure: HandledFailure, cause: FailureCause?) async {}
     func clearUser() async {}
 }

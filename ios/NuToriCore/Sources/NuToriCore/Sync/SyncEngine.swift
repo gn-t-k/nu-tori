@@ -169,9 +169,7 @@ public actor SyncEngine {
             } catch  where error.isAppBuildUnsupported {
                 return .appBuildUnsupported
             } catch {
-                if let failure = HandledFailure.reported(error, as: .sync) {
-                    await errorReporting.report(failure)
-                }
+                await errorReporting.report(error, as: .sync)
                 return .unavailable
             }
             switch result {
@@ -278,9 +276,7 @@ public actor SyncEngine {
             } catch  where error.isAppBuildUnsupported {
                 return .appBuildUnsupported
             } catch {
-                if let failure = HandledFailure.reported(error, as: .sync) {
-                    await errorReporting.report(failure)
-                }
+                await errorReporting.report(error, as: .sync)
                 return .unavailable
             }
             switch result {
@@ -351,9 +347,7 @@ public actor SyncEngine {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            if let failure = HandledFailure.reported(error, as: .cacheSave) {
-                await errorReporting.report(failure)
-            }
+            await errorReporting.report(error, as: .cacheSave)
             throw error
         }
     }

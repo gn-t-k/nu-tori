@@ -4,7 +4,7 @@ import NuToriCore
 nonisolated struct PlaceholderErrorReportingSession: ErrorReportingSession {
     func identify(accountId: String) async {}
 
-    func report(_ failure: HandledFailure) async {}
+    func report(_ failure: HandledFailure, cause: FailureCause?) async {}
 
     func clearUser() async {}
 }

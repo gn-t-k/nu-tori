@@ -62,6 +62,20 @@ struct HandledFailureTests {
         }
     }
 
+    @Suite("端末のロック中でヘルスケアのデータを読み書きできないとき")
+    struct HealthDataLocked {
+        let error: NSError
+
+        init() {
+            error = NSError(domain: "com.apple.healthkit", code: 6)
+        }
+
+        @Test("送らないこと")
+        func skips() {
+            #expect(HandledFailure.reported(error, as: .healthRead) == nil)
+        }
+    }
+
     @Suite("それ以外の失敗のとき")
     struct OtherFailure {
         let error: SampleError

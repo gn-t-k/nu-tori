@@ -6,8 +6,6 @@ import Testing
 extension HealthSyncEngineTests {
     @Suite("読み取りの失敗を Sentry に送る")
     struct ReportingReadFailures {
-        struct SampleError: Error {}
-
         @Suite("時間切れのとき")
         struct TimedOut {
             let reporting: ErrorReportingSessionMock
@@ -31,7 +29,30 @@ extension HealthSyncEngineTests {
             }
         }
 
-        @Suite("時間切れ以外のとき")
+        @Suite("端末のロック中でヘルスケアのデータを読めないとき")
+        struct HealthDataLocked {
+            let reporting: ErrorReportingSessionMock
+            let engine: HealthSyncEngine
+
+            init() throws {
+                reporting = .ok()
+                engine = .fixture(
+                    healthStore: .error(NSError(domain: "com.apple.healthkit", code: 6)),
+                    store: try .ok(),
+                    errorReporting: reporting
+                )
+            }
+
+            @Test("送らず、失敗を呼び出し側に返すこと")
+            func doesNotReport() async {
+                await #expect(throws: NSError.self) {
+                    try await engine.importChanges()
+                }
+                #expect(reporting.reported.isEmpty)
+            }
+        }
+
+        @Suite("時間切れとロック中以外のとき")
         struct OtherFailure {
             let reporting: ErrorReportingSessionMock
             let engine: HealthSyncEngine
@@ -39,18 +60,21 @@ extension HealthSyncEngineTests {
             init() throws {
                 reporting = .ok()
                 engine = .fixture(
-                    healthStore: .error(SampleError()),
+                    healthStore: .error(NSError(domain: "com.apple.healthkit", code: 3)),
                     store: try .ok(),
                     errorReporting: reporting
                 )
             }
 
-            @Test("読み取りの失敗として送ること")
-            func reportsHealthRead() async {
-                await #expect(throws: SampleError.self) {
+            @Test("読み取りの失敗として、原因のドメインとコードを添えて送ること")
+            func reportsHealthRead() async throws {
+                await #expect(throws: NSError.self) {
                     try await engine.importChanges()
                 }
                 #expect(reporting.reported == [.healthRead])
+                let cause = try #require(reporting.reports.first?.cause)
+                #expect(cause.domain == "com.apple.healthkit")
+                #expect(cause.code == 3)
             }
         }
     }

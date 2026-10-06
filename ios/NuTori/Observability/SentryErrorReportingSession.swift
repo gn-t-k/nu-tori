@@ -20,7 +20,7 @@ actor SentryErrorReportingSession: ErrorReportingSession {
         }
     }
 
-    func report(_ failure: HandledFailure) async {
+    func report(_ failure: HandledFailure, cause: FailureCause?) async {
         guard started else { return }
         let message =
             switch failure {
@@ -36,7 +36,11 @@ actor SentryErrorReportingSession: ErrorReportingSession {
             case .notificationPermissionRequest: "notification_permission_request"
             }
         await MainActor.run {
-            _ = SentrySDK.capture(message: message)
+            _ = SentrySDK.capture(message: message) { scope in
+                guard let cause else { return }
+                scope.setTag(value: cause.domain, key: "error.domain")
+                scope.setTag(value: String(cause.code), key: "error.code")
+            }
         }
     }
 

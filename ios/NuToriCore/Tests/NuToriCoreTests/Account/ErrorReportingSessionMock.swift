@@ -2,7 +2,13 @@ import NuToriCore
 
 final class ErrorReportingSessionMock: ErrorReportingSession, @unchecked Sendable {
     private(set) var identifiedAccountIds: [String] = []
-    private(set) var reported: [HandledFailure] = []
+    struct Report {
+        let failure: HandledFailure
+        let cause: FailureCause?
+    }
+
+    private(set) var reports: [Report] = []
+    var reported: [HandledFailure] { reports.map(\.failure) }
     private(set) var clearUserCount = 0
 
     static func ok() -> ErrorReportingSessionMock {
@@ -13,8 +19,8 @@ final class ErrorReportingSessionMock: ErrorReportingSession, @unchecked Sendabl
         identifiedAccountIds.append(accountId)
     }
 
-    func report(_ failure: HandledFailure) async {
-        reported.append(failure)
+    func report(_ failure: HandledFailure, cause: FailureCause?) async {
+        reports.append(Report(failure: failure, cause: cause))
     }
 
     func clearUser() async {

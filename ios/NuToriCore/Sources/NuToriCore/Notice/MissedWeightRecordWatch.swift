@@ -71,7 +71,7 @@ public actor MissedWeightRecordWatch {
         do {
             granted = try await center.requestPermission()
         } catch {
-            await report(error, as: .notificationPermissionRequest)
+            await errorReporting.report(error, as: .notificationPermissionRequest)
             granted = false
         }
         guard granted else { return .notGranted }
@@ -135,7 +135,7 @@ public actor MissedWeightRecordWatch {
                 usualWeighingTime: try await cache.usualWeighingTime()
             )
         } catch {
-            await report(error, as: .cacheRead)
+            await errorReporting.report(error, as: .cacheRead)
             decidedNoticeTime = nil
             return false
         }
@@ -186,7 +186,7 @@ public actor MissedWeightRecordWatch {
                 enqueued = true
             }
         } catch {
-            await report(error, as: .cacheSave)
+            await errorReporting.report(error, as: .cacheSave)
         }
         return enqueued
     }
@@ -202,7 +202,7 @@ public actor MissedWeightRecordWatch {
             do {
                 try await center.schedule(reminder)
             } catch {
-                await report(error, as: .reminderSchedule)
+                await errorReporting.report(error, as: .reminderSchedule)
                 return
             }
         }
@@ -212,12 +212,6 @@ public actor MissedWeightRecordWatch {
         decidedNoticeTime = nil
         await center.removeScheduled(ids: await center.scheduledIds())
         await center.removeDelivered(ids: await center.deliveredIds())
-    }
-
-    private func report(_ error: any Error, as area: HandledFailure) async {
-        if let failure = HandledFailure.reported(error, as: area) {
-            await errorReporting.report(failure)
-        }
     }
 }
 
