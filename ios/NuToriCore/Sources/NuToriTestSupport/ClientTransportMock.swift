@@ -101,14 +101,15 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
-    /// 書き込みには受け付けたか断ったかを送った順に返し、取得には `pullPages` を1ページずつ返す。
+    /// 書き込みには受け付けたか断ったかを送った順に返し、取得には `pullPages` を1ページずつ返す（`pullStatus` が 200 でなければ、本文の無いその状態コード）。
     /// 断った書き込みには、`currents` にあれば、サーバーの今の値を添える。断った理由は、`rejectionReasons` に無ければ `out_of_range`
     public static func sync(
         pushStatus: HTTPResponse.Status = .ok,
         rejectedWriteIndexes: Set<Int> = [],
         currents: [Int: Current] = [:],
         rejectionReasons: [Int: String] = [:],
-        pullPages: [String] = [emptyPage]
+        pullPages: [String] = [emptyPage],
+        pullStatus: HTTPResponse.Status = .ok
     ) -> ClientTransportMock {
         let pulls = Pulls(pages: pullPages)
         return ClientTransportMock { request, body in
@@ -117,6 +118,7 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
                     status: pushStatus, body: body, rejectedWriteIndexes: rejectedWriteIndexes,
                     currents: currents, rejectionReasons: rejectionReasons)
             }
+            guard pullStatus == .ok else { return (HTTPResponse(status: pullStatus), nil) }
             return jsonResponse(status: .ok, json: pulls.next())
         }
     }

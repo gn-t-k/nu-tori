@@ -131,10 +131,7 @@ public actor SyncEngine {
     @discardableResult
     public func renameDish(id dishId: UUID, to typedName: String) async throws -> Dish {
         let dish = try await cachedDish(id: dishId)
-        let ingredients = try await store.ingredients()
-        guard let edit = DishEdit.renaming(dish, ingredients: ingredients, to: typedName) else {
-            return dish
-        }
+        guard let edit = DishEdit.renaming(dish, to: typedName) else { return dish }
         try await apply(edit)
         return edit.dish
     }
@@ -215,11 +212,19 @@ public actor SyncEngine {
 
     public func sync() async throws -> SyncResult {
         var rejectedWrites: [RejectedWrite] = []
+        var awaitingPullWriteIds: [UUID] = []
         let stoppedBy: SyncResult.StopReason?
-        if let pushStop = try await pushPendingWrites(collectingRejectionsIn: &rejectedWrites) {
+        if let pushStop = try await pushPendingWrites(
+            collectingRejectionsIn: &rejectedWrites, awaitingPullIn: &awaitingPullWriteIds)
+        {
             stoppedBy = pushStop
         } else {
             stoppedBy = try await pullChanges()
+            if stoppedBy == nil, !awaitingPullWriteIds.isEmpty {
+                try await writingCache {
+                    try await store.apply(SyncBoxResult(resolvedWriteIds: awaitingPullWriteIds))
+                }
+            }
         }
         return SyncResult(
             rejectedWrites: rejectedWrites,
@@ -267,9 +272,11 @@ public actor SyncEngine {
         Pending(enqueuedAt: now(), write: write)
     }
 
-    private func pushPendingWrites(collectingRejectionsIn rejectedWrites: inout [RejectedWrite])
-        async throws -> SyncResult.StopReason?
-    {
+    /// `awaitingPullWriteIds` には、受け付けたが、変更を取り切るまで送り待ちに残す書き込みを集める（`resolve`）
+    private func pushPendingWrites(
+        collectingRejectionsIn rejectedWrites: inout [RejectedWrite],
+        awaitingPullIn awaitingPullWriteIds: inout [UUID]
+    ) async throws -> SyncResult.StopReason? {
         let maxWritesPerRequest = 500
         let pending = try await store.pendingEntries()
         for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
@@ -294,7 +301,9 @@ public actor SyncEngine {
             }
             switch result {
             case .pushed(let results):
-                try await resolve(batch, with: results, rejectedWrites: &rejectedWrites)
+                try await resolve(
+                    batch, with: results, rejectedWrites: &rejectedWrites,
+                    awaitingPullWriteIds: &awaitingPullWriteIds)
             case .badRequest:
                 return .badRequest
             case .sessionExpired:
@@ -327,11 +336,14 @@ public actor SyncEngine {
     }
 
     /// 結果を、受け付けた・受け付けなかったの2つに畳んで読む。細かい結果はサーバーの控えと観測にだけ使う。
-    /// 受け付けなかったら送り待ちから外し、添えられたサーバーの今の値を、取りに行った変更と同じ道で当てる
+    /// 受け付けなかったら送り待ちから外し、添えられたサーバーの今の値を、取りに行った変更と同じ道で当てる。
+    /// 受け付けた料理を足す・名前を直す書き込みは、料理ごとの推定の状態が届くまで料理をまだ送れていないとして見せるため、
+    /// 変更を取り切るまで送り待ちに残す（取りに行けなければ次の同期で送り直し、帳簿は同じ書き込みの ID に同じ結果を返す）
     private func resolve(
         _ batch: [PendingEntry],
         with results: [SyncWriteResult],
-        rejectedWrites: inout [RejectedWrite]
+        rejectedWrites: inout [RejectedWrite],
+        awaitingPullWriteIds: inout [UUID]
     ) async throws {
         let resultsByWriteId = Dictionary(
             results.map { ($0.writeId, $0) },
@@ -350,10 +362,15 @@ public actor SyncEngine {
             guard let result = resultsByWriteId[entry.writeId] else {
                 continue
             }
-            resolvedWriteIds.append(entry.writeId)
             guard case .rejected(let reason) = result.outcome else {
+                if DishSyncing.unsentDishIds(in: [entry]).isEmpty {
+                    resolvedWriteIds.append(entry.writeId)
+                } else {
+                    awaitingPullWriteIds.append(entry.writeId)
+                }
                 continue
             }
+            resolvedWriteIds.append(entry.writeId)
             let rejection = try writes(for: entry).rejection(
                 of: entry, reason: reason, current: result.current, shown: shown)
             if let rejected = rejection.rejectedWrite {

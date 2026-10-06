@@ -181,7 +181,8 @@ extension SyncedDish {
 }
 
 extension DishSyncing {
-    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。送った端末で、送り終えるまで料理をまだ送れていないとして見せる。
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。送った端末で、送り終えて料理ごとの推定の状態が届くまで料理をまだ送れていないとして見せる
+    /// （受け付けた書き込みも、変更を取り切るまで送り待ちに残る。`SyncEngine` の `resolve`）。
     /// 読めない送り待ちと、ほかの種類の送り待ちは読み飛ばす
     public static func unsentDishIds(in entries: [PendingEntry]) -> Set<UUID> {
         Set(

@@ -103,14 +103,7 @@ struct DishEditTests {
             let dish = Dish.fixture(
                 id: DishEditTests.dishId,
                 quantity: Dish.Quantity(value: 1.5, unit: "杯", source: .corrected))
-            edited = DishEdit.renaming(
-                dish,
-                ingredients: [
-                    .fixture(
-                        id: DishEditTests.riceId, dishId: DishEditTests.dishId, name: "ご飯",
-                        quantity: 300)
-                ],
-                to: "  カツカレー \n")
+            edited = DishEdit.renaming(dish, to: "  カツカレー \n")
         }
 
         @Test("前後の空白を除いた名前にし、量と材料は変えないこと")
@@ -123,19 +116,14 @@ struct DishEditTests {
             #expect(edited.ingredients.isEmpty)
         }
 
-        @Test("名前と、今の量と今の材料の量を載せた書き込みにすること")
-        func carriesCurrentQuantity() throws {
+        // 量を載せると、推定し直しで材料が入れ替わったあとに届いた名前の直しが受け付けられなくなる
+        @Test("量と比例の材料を省き、名前だけを運ぶ書き込みにすること")
+        func carriesNameOnly() throws {
             let edited = try #require(edited)
 
             #expect(
                 edited.correction
-                    == DishCorrection(
-                        id: DishEditTests.dishId, name: "カツカレー",
-                        quantity: .init(
-                            value: 1.5,
-                            proportionedIngredients: [
-                                .init(ingredientId: DishEditTests.riceId, quantity: 300)
-                            ])))
+                    == DishCorrection(id: DishEditTests.dishId, name: "カツカレー", quantity: nil))
         }
     }
 
@@ -144,8 +132,7 @@ struct DishEditTests {
         let edited: DishEdit?
 
         init() {
-            edited = DishEdit.renaming(
-                .fixture(id: DishEditTests.dishId, quantity: nil), ingredients: [], to: "豚汁")
+            edited = DishEdit.renaming(.fixture(id: DishEditTests.dishId, quantity: nil), to: "豚汁")
         }
 
         @Test("量と比例の材料を省き、名前だけを運ぶ書き込みにすること")
@@ -168,12 +155,12 @@ struct DishEditTests {
 
         @Test("前後の空白を除いて空なら、直さないこと")
         func ignoresBlankName() {
-            #expect(DishEdit.renaming(dish, ingredients: [], to: " \n ") == nil)
+            #expect(DishEdit.renaming(dish, to: " \n ") == nil)
         }
 
         @Test("前後の空白を除いて今と同じ名前なら、直さないこと")
         func ignoresSameName() {
-            #expect(DishEdit.renaming(dish, ingredients: [], to: "親子丼 ") == nil)
+            #expect(DishEdit.renaming(dish, to: "親子丼 ") == nil)
         }
     }
 }
