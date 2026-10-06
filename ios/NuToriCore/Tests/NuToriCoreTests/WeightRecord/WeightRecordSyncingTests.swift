@@ -148,7 +148,8 @@ struct WeightRecordSyncingTests {
                 timeZone: corrected.timeZone, version: 1, imported: nil)
 
             let rejection = try syncing.rejection(
-                of: entry, reason: .versionTooLow, current: .value(.weightRecord(server)))
+                of: entry, reason: .versionTooLow, current: .value(.weightRecord(server)),
+                shown: .none)
 
             #expect(
                 rejection.rejectedWrite?.record == .weightRecord(corrected, serverHasValue: true))
@@ -158,7 +159,7 @@ struct WeightRecordSyncingTests {
         func serverDeleted() throws {
             let rejection = try syncing.rejection(
                 of: entry, reason: .versionTooLow,
-                current: .deleted(.weightRecordDeletion(recordId: corrected.id)))
+                current: .deleted(.weightRecordDeletion(recordId: corrected.id)), shown: .none)
 
             #expect(
                 rejection.rejectedWrite?.record == .weightRecord(corrected, serverHasValue: false))
@@ -167,7 +168,7 @@ struct WeightRecordSyncingTests {
         @Test("サーバーに無ければ、値の無い行にし、端末の記録を外す変更を返すこと")
         func serverAbsent() throws {
             let rejection = try syncing.rejection(
-                of: entry, reason: .recordNotFound, current: .absent)
+                of: entry, reason: .recordNotFound, current: .absent, shown: .none)
 
             #expect(
                 rejection.rejectedWrite?.record == .weightRecord(corrected, serverHasValue: false))
@@ -182,7 +183,7 @@ struct WeightRecordSyncingTests {
             ).entry()
 
             let rejection = try syncing.rejection(
-                of: sourceDeleted, reason: .recordNotFound, current: .absent)
+                of: sourceDeleted, reason: .recordNotFound, current: .absent, shown: .none)
 
             #expect(rejection == KindRejection.none)
         }

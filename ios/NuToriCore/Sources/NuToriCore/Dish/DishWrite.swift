@@ -5,8 +5,11 @@ public import NuToriAPI
 public enum DishWrite: PendingWriteBody {
     /// 料理を足す。名前だけで作り、量と材料はサーバーの推定し直しで入る
     case create(NewDish)
-    /// 名前と量を両方運ぶ。量の無い料理の名前を直すときは、量と比例の材料を省く
+    /// 量を直す。名前と量を両方運ぶ
     case update(DishCorrection)
+    /// 名前を直す。送る書き込みは量を直すときと同じ料理を直す書き込みで、量の無い料理は量と比例の材料を省く。
+    /// 量を直す書き込みと分けて持つのは、送り終えるまで料理をまだ送れていないとして見せるため
+    case rename(DishCorrection)
     case delete(dishId: UUID)
 
     public static var kindName: RecordKindName { DishSyncing.kindName }
@@ -21,12 +24,14 @@ public enum DishWrite: PendingWriteBody {
     public enum Stored: Codable {
         case create(StoredNewDish)
         case update(StoredCorrection)
+        case rename(StoredCorrection)
         case delete(dishId: UUID)
 
         init(_ write: DishWrite) {
             switch write {
             case .create(let dish): self = .create(StoredNewDish(dish))
             case .update(let correction): self = .update(StoredCorrection(correction))
+            case .rename(let correction): self = .rename(StoredCorrection(correction))
             case .delete(let dishId): self = .delete(dishId: dishId)
             }
         }
@@ -35,6 +40,7 @@ public enum DishWrite: PendingWriteBody {
             switch self {
             case .create(let stored): .create(stored.newDish())
             case .update(let stored): .update(stored.correction())
+            case .rename(let stored): .rename(stored.correction())
             case .delete(let dishId): .delete(dishId: dishId)
             }
         }

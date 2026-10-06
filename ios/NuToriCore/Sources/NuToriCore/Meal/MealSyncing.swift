@@ -37,12 +37,14 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
 
     /// 受け付けなかった作る書き込みは、サーバーに食事が無いときだけ、カードを外して行にする。
     /// 削除の印のときは、その食事はもう消されているので行を出さない。値があるときは、カードがそのまま残る。
-    /// 受け付けなかった時刻を直す書き込みは、サーバーに食事が無ければ食事をキャッシュから外す（直せなかった1行は見え方のチケットで足す）。
+    /// 受け付けなかった時刻を直す書き込みは、サーバーに値があれば直そうとした時刻の「直せなかった」行を、
+    /// 削除の印か無ければ端末で見せていた食事の「記録できなかった」行を出す（無ければ食事をキャッシュから外す）。
     /// 消す書き込みは、サーバーが受け付けないことが無い
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
+        current: SyncWriteResult.Current?,
+        shown: ShownRecords
     ) throws -> KindRejection {
         let pending = try PendingMealWrite(entry: entry)
         switch (pending.write, current) {
@@ -54,9 +56,31 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
             )
         case (.update(let mealId, _), .absent):
             return KindRejection(
-                rejectedWrite: nil, removingChanges: [.mealDeletion(mealId: mealId)])
-        case (.create, .value), (.create, .deleted), (.create, nil), (.update, .value),
-            (.update, .deleted), (.update, nil), (.delete, _):
+                rejectedWrite: shown.meals[mealId].map {
+                    RejectedWrite(
+                        writeId: pending.writeId, reason: reason,
+                        record: .mealEdit(RejectedMealLine(meal: $0)))
+                },
+                removingChanges: [.mealDeletion(mealId: mealId)])
+        case (.update(let mealId, _), .deleted):
+            return KindRejection(
+                rejectedWrite: shown.meals[mealId].map {
+                    RejectedWrite(
+                        writeId: pending.writeId, reason: reason,
+                        record: .mealEdit(RejectedMealLine(meal: $0)))
+                },
+                removingChanges: [])
+        case (.update(let mealId, let eatenAt), .value(let change)):
+            let serverMeal = MealSyncing().current(from: [change]).meals.first
+            return KindRejection(
+                rejectedWrite: (shown.meals[mealId] ?? serverMeal).map {
+                    RejectedWrite(
+                        writeId: pending.writeId, reason: reason,
+                        record: .mealEdit(
+                            RejectedMealLine(meal: $0, subject: .eatenAt(attempted: eatenAt))))
+                },
+                removingChanges: [])
+        case (.create, .value), (.create, .deleted), (.create, nil), (.update, nil), (.delete, _):
             return KindRejection.none
         }
     }

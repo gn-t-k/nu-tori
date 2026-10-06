@@ -19,5 +19,7 @@ public struct RejectedWrite: Sendable, Equatable {
         case weightRecord(WeightRecord, serverHasValue: Bool)
         /// サーバーに値が無い食事。カードを置いていた位置に出す
         case meal(Meal)
+        /// 食事の時刻・料理・材料の書き込み。置き場は1行が決める（`RejectedMealLine.placement(in:)`）
+        case mealEdit(RejectedMealLine)
     }
 }

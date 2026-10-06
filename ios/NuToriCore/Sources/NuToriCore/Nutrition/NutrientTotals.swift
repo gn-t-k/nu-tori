@@ -33,6 +33,29 @@ public struct NutrientTotals: Hashable, Sendable {
             })
     }
 
+    /// すべての栄養が分かる 0。材料の無い料理（推定し直しが通らなかった料理）を、分かる料理として足すため
+    static let knownZero = NutrientTotals(
+        entries: Dictionary(
+            uniqueKeysWithValues: Nutrient.allCases.map {
+                ($0, Entry(sum: 0, hasKnown: true, hasUnknown: false))
+            }))
+
+    /// 分からない分が別にある合計にする（料理ごとに待つ料理や、写真の推定がまだ作っていない料理）。
+    /// 分かる値のある栄養は「以上」に、分かる値の無い栄養は「不明」になる
+    func markingIncomplete() -> NutrientTotals {
+        NutrientTotals(
+            entries: Dictionary(
+                uniqueKeysWithValues: Nutrient.allCases.map { nutrient in
+                    var entry = entry(of: nutrient)
+                    entry.hasUnknown = true
+                    return (nutrient, entry)
+                }))
+    }
+
+    private init(entries: [Nutrient: Entry]) {
+        self.entries = entries
+    }
+
     public subscript(nutrient: Nutrient) -> NutrientAmount {
         let entry = entry(of: nutrient)
         switch (entry.hasKnown, entry.hasUnknown) {

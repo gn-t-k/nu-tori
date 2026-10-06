@@ -31,22 +31,39 @@ public struct IngredientSyncing: SyncedRecordKind, RecordKindWrites {
         }
     }
 
-    /// 受け付けなかった直す書き込みは、サーバーに材料が無いときだけ、材料をキャッシュから外す。
+    /// 受け付けなかった直す書き込みは、1行にし、サーバーに材料が無いときだけ、材料をキャッシュから外す。
     /// 推定し直しで置き換わった前の材料と、料理ごと消えていた材料は、削除の印を同期の働きが当てて外す。
-    /// 画面に出す1行は、見え方のチケットで足す
+    /// 推定し直しで置き換わっていたら（`ingredients_replaced`）、今の値が削除の印でも「直せなかった」行（使う人が直した値が黙って消えないよう）。
+    /// それ以外は、サーバーに値があれば「直せなかった」行、削除の印か無ければ端末で見せていた材料の「記録できなかった」行
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
+        current: SyncWriteResult.Current?,
+        shown: ShownRecords
     ) throws -> KindRejection {
         let pending = try PendingIngredientWrite(entry: entry)
-        switch (pending.write, current) {
-        case (.update(let ingredientId, _), .absent):
-            return KindRejection(
-                rejectedWrite: nil,
-                removingChanges: [.ingredientDeletion(ingredientId: ingredientId)])
-        case (.update, .value), (.update, .deleted), (.update, nil):
-            return KindRejection.none
+        switch pending.write {
+        case .update(let ingredientId, let quantity):
+            let subject: (RejectedMealLine.IngredientPlace) -> RejectedMealLine.Subject? =
+                switch (reason, current) {
+                case (.ingredientsReplaced, _): { .replacedIngredient($0, attempted: quantity) }
+                case (_, .value): { .ingredientQuantity($0, attempted: quantity) }
+                case (_, .deleted), (_, .absent): { .goneIngredient($0) }
+                case (_, nil): { _ in nil }
+                }
+            let rejectedWrite = shown.ingredientPlace(of: ingredientId).flatMap { meal, place in
+                subject(place).map {
+                    RejectedWrite(
+                        writeId: pending.writeId, reason: reason,
+                        record: .mealEdit(RejectedMealLine(meal: meal, subject: $0)))
+                }
+            }
+            if case .absent = current {
+                return KindRejection(
+                    rejectedWrite: rejectedWrite,
+                    removingChanges: [.ingredientDeletion(ingredientId: ingredientId)])
+            }
+            return KindRejection(rejectedWrite: rejectedWrite, removingChanges: [])
         }
     }
 

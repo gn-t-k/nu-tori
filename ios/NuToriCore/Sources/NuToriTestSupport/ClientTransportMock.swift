@@ -60,8 +60,12 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         case deletedMeal(mealId: UUID)
         /// 答えていない知らせの今の値
         case unansweredNotice(Notice)
+        /// 食事の今の値
+        case meal(SyncedMeal)
         /// 料理の今の値
         case dish(SyncedDish)
+        /// 材料の今の値
+        case ingredient(SyncedIngredient)
         /// 料理の削除の印
         case deletedDish(dishId: UUID)
         /// 材料の削除の印（推定し直しで置き換わった材料も、削除の印で返る）
@@ -73,7 +77,9 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             case .absent: .absent
             case .deleted(let recordId): .deleted(.weightRecordDeletion(recordId: recordId))
             case .deletedMeal(let mealId): .deleted(.mealDeletion(mealId: mealId))
+            case .meal(let meal): .value(.meal(meal))
             case .dish(let dish): .value(.dish(dish))
+            case .ingredient(let ingredient): .value(.ingredient(ingredient))
             case .deletedDish(let dishId): .deleted(.dishDeletion(dishId: dishId))
             case .deletedIngredient(let ingredientId):
                 .deleted(.ingredientDeletion(ingredientId: ingredientId))

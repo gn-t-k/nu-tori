@@ -191,6 +191,11 @@ public actor SyncEngine {
         try await exportNutritionBestEffort()
     }
 
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカード（`MealCard`）に渡し、まだ送れていない料理として見せる
+    public func unsentDishIds() async throws -> Set<UUID> {
+        DishSyncing.unsentDishIds(in: try await store.pendingEntries())
+    }
+
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
     public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
         let settings = AccountSettings(
@@ -256,7 +261,7 @@ public actor SyncEngine {
     private func apply(_ edit: DishEdit) async throws {
         try await writingCache {
             try await store.apply(
-                DishSyncing().correcting(edit, enqueuing: pending(.update(edit.correction))))
+                DishSyncing().correcting(edit, enqueuing: pending(edit.write)))
         }
     }
 
@@ -337,6 +342,13 @@ public actor SyncEngine {
         )
         var resolvedWriteIds: [UUID] = []
         var currentChanges: [RecordKindName: [SyncChange]] = [:]
+        // 行に出す名前と時刻は、サーバーの今の値を当てる前のキャッシュから読む。受け付けなかった書き込みがあるときだけ読む
+        let shown =
+            results.contains { if case .rejected = $0.outcome { true } else { false } }
+            ? ShownRecords(
+                meals: try await store.meals(), dishes: try await store.dishes(),
+                ingredients: try await store.ingredients())
+            : ShownRecords.none
         for entry in batch {
             guard let result = resultsByWriteId[entry.writeId] else {
                 continue
@@ -346,7 +358,7 @@ public actor SyncEngine {
                 continue
             }
             let rejection = try writes(for: entry).rejection(
-                of: entry, reason: reason, current: result.current)
+                of: entry, reason: reason, current: result.current, shown: shown)
             if let rejected = rejection.rejectedWrite {
                 rejectedWrites.append(rejected)
             }
