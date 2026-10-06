@@ -159,6 +159,17 @@ extension Components.Schemas.SyncWrite {
         case .deleteMeal(let writeId, let mealId):
             self = .deleteMeal(
                 .init(id: writeId.uuidString, _type: .deleteMeal, mealId: mealId.uuidString))
+        case .createDish(let writeId, let dish):
+            self = .createDish(
+                .init(
+                    id: writeId.uuidString,
+                    _type: .createDish,
+                    dishId: dish.id.uuidString,
+                    mealId: dish.mealId.uuidString,
+                    name: dish.name,
+                    positionInMeal: dish.positionInMeal
+                )
+            )
         case .deleteDish(let writeId, let dishId):
             self = .deleteDish(
                 .init(id: writeId.uuidString, _type: .deleteDish, dishId: dishId.uuidString))

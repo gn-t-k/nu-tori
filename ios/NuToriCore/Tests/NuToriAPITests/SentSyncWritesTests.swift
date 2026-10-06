@@ -34,6 +34,9 @@ struct SentSyncWritesTests {
                     writeId: UUID(), mealId: UUID(),
                     eatenAt: Date(timeIntervalSince1970: 1_767_229_200)),
                 .deleteMeal(writeId: UUID(), mealId: UUID()),
+                .createDish(
+                    writeId: UUID(),
+                    dish: NewDish(id: UUID(), mealId: UUID(), name: "味噌汁", positionInMeal: 2)),
                 .deleteDish(writeId: UUID(), dishId: UUID()),
                 .updateDish(
                     writeId: UUID(),

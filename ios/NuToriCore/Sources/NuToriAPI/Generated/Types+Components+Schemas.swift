@@ -868,6 +868,8 @@ extension Components {
         ///
         /// - Remark: Generated from `#/components/schemas/SyncWrite`.
         internal enum SyncWrite: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateDishWrite`.
+            case createDish(Components.Schemas.CreateDishWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateMealWrite`.
             case createMeal(Components.Schemas.CreateMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateNoticeWrite`.
@@ -902,6 +904,8 @@ extension Components {
                     forKey: ._type
                 )
                 switch discriminator {
+                case "create_dish":
+                    self = .createDish(try .init(from: decoder))
                 case "create_meal":
                     self = .createMeal(try .init(from: decoder))
                 case "create_notice":
@@ -936,6 +940,8 @@ extension Components {
             }
             internal func encode(to encoder: any Swift.Encoder) throws {
                 switch self {
+                case let .createDish(value):
+                    try value.encode(to: encoder)
                 case let .createMeal(value):
                     try value.encode(to: encoder)
                 case let .createNotice(value):
@@ -1163,6 +1169,63 @@ extension Components {
                 case dishId
                 case name
                 case quantity
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CreateDishWrite`.
+        internal struct CreateDishWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case createDish = "create_dish"
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/type`.
+            internal var _type: Components.Schemas.CreateDishWrite._TypePayload
+            /// 端末が振る UUID v4
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/dishId`.
+            internal var dishId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/mealId`.
+            internal var mealId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/name`.
+            internal var name: Swift.String
+            /// 端末のキャッシュの、その食事の料理の最後の次の値。一意にせず、同じなら ID の順で並べる
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/positionInMeal`.
+            internal var positionInMeal: Swift.Int
+            /// Creates a new `CreateDishWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - dishId: 端末が振る UUID v4
+            ///   - mealId:
+            ///   - name:
+            ///   - positionInMeal: 端末のキャッシュの、その食事の料理の最後の次の値。一意にせず、同じなら ID の順で並べる
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.CreateDishWrite._TypePayload,
+                dishId: Swift.String,
+                mealId: Swift.String,
+                name: Swift.String,
+                positionInMeal: Swift.Int
+            ) {
+                self.id = id
+                self._type = _type
+                self.dishId = dishId
+                self.mealId = mealId
+                self.name = name
+                self.positionInMeal = positionInMeal
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case dishId
+                case mealId
+                case name
+                case positionInMeal
             }
         }
         /// - Remark: Generated from `#/components/schemas/UpdateIngredientWrite`.

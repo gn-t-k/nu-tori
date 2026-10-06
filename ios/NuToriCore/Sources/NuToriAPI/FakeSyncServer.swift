@@ -297,8 +297,8 @@
                     estimatingMealIds.removeAll { $0 == mealId }
                 case .deleteDish(_, let dishId):
                     put(.dishDeletion(dishId: dishId))
-                case .updateDish, .updateIngredient:
-                    // 端末はまだ料理と材料を直す書き込みを送らない。直した値を当てるのは、端末で料理を直すチケットで足す
+                case .createDish, .updateDish, .updateIngredient:
+                    // 端末はまだ料理を足す・料理と材料を直す書き込みを送らない。当てるのは、端末で料理を直すチケットで足す
                     return
                 case .createNotice(_, let notice):
                     guard entries[write.recordKey] == nil else { return }
