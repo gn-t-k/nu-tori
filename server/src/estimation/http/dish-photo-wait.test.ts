@@ -12,6 +12,7 @@ import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { signInTestAccount } from "../../http/testing";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
 import { mockCreateEstimationProviderOk } from "../durable-object/create-estimation-provider/create-estimation-provider.mock";
+import { readIdentifyDishesRequests } from "./testing/read-identify-dishes-requests";
 import { runEstimationAlarm } from "./testing/run-estimation-alarm";
 import { useFakeClock } from "./testing/use-fake-clock";
 import { beforeEach, describe, expect, test } from "vitest";
@@ -68,7 +69,7 @@ describe("写真を待っている食事に料理を足したとき", () => {
 
     test("推定を始めず、その日の推定の回数に数えないこと", async () => {
       expect({
-        requests: provider.identifyDishesRequests.length,
+        requests: readIdentifyDishesRequests(provider).length,
         estimations: await readRows(accountId, "SELECT id FROM estimations"),
       }).toEqual({ requests: 0, estimations: [] });
     });
@@ -90,7 +91,7 @@ describe("写真を待っている食事に料理を足したとき", () => {
     });
 
     test("名前を直した料理も、写真が届くまで推定を始めないこと", () => {
-      expect(provider.identifyDishesRequests).toEqual([]);
+      expect(readIdentifyDishesRequests(provider)).toEqual([]);
     });
 
     test("アラームを、名前を直した書き込みから写真を待つ時間を過ぎる時刻に張ること", async () => {
@@ -107,18 +108,23 @@ describe("写真を待っている食事に料理を足したとき", () => {
 
     test("① に、食事の写真と料理の名前を渡して推定し直すこと", () => {
       expect(
-        provider.identifyDishesRequests
-          .filter(({ dish }) => dish !== undefined)
-          .map(({ photos, dish }) => ({ photoCount: photos.length, name: dish?.name })),
-      ).toEqual([{ photoCount: 1, name: "味噌汁" }]);
+        readIdentifyDishesRequests(provider)
+          .filter(({ target }) => target.type === "dish")
+          .map(({ photos, target }) => ({ photoCount: photos.length, target })),
+      ).toEqual([
+        {
+          photoCount: 1,
+          target: { type: "dish", dish: expect.objectContaining({ name: "味噌汁" }) },
+        },
+      ]);
     });
 
     test("食事の推定の ① に、足した料理の名前を渡すこと", () => {
       expect(
-        provider.identifyDishesRequests
-          .filter(({ dish }) => dish === undefined)
-          .map(({ addedDishNames }) => addedDishNames),
-      ).toEqual([["味噌汁"]]);
+        readIdentifyDishesRequests(provider)
+          .filter(({ target }) => target.type === "meal")
+          .map(({ target }) => target),
+      ).toEqual([{ type: "meal", addedDishNames: ["味噌汁"] }]);
     });
 
     test("食事の推定が作った料理を、足した料理の後ろに並べること", async () => {
@@ -144,11 +150,16 @@ describe("写真を待っている食事に料理を足したとき", () => {
 
     test("① に、写真を渡さず料理の名前だけで推定し直すこと", () => {
       expect(
-        provider.identifyDishesRequests.map(({ photos, dish }) => ({
+        readIdentifyDishesRequests(provider).map(({ photos, target }) => ({
           photoCount: photos.length,
-          name: dish?.name,
+          target,
         })),
-      ).toEqual([{ photoCount: 0, name: "味噌汁" }]);
+      ).toEqual([
+        {
+          photoCount: 0,
+          target: { type: "dish", dish: expect.objectContaining({ name: "味噌汁" }) },
+        },
+      ]);
     });
 
     test("始めたときに、その日の推定の回数に数えること", async () => {

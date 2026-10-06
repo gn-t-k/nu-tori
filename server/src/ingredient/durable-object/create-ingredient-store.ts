@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dishTables } from "../../dish/durable-object/dish-tables";
-import { findNewestDishEstimationId } from "../../dish/durable-object/find-newest-dish-estimation";
+import { findNewestDishEstimationId } from "../../dish/durable-object/find-newest-dish-estimation-id";
 import { isNutrientName } from "../../domain/food-composition/nutrient-name";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { Ingredient, IngredientNutrientSource } from "../domain/ingredient";
@@ -62,30 +62,13 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
       ),
     };
   },
-  hasDeletion: (id) => {
-    const deletion = db
+  hasDeletion: (id) =>
+    db
       .select({ id: ingredientDeletions.ingredientId })
       .from(ingredientDeletions)
       .where(eq(ingredientDeletions.ingredientId, id))
-      .get();
-    if (deletion !== undefined) {
-      return true;
-    }
-    const ingredient = db
-      .select({ dishId: ingredients.dishId, estimationId: ingredients.estimationId })
-      .from(ingredients)
-      .where(eq(ingredients.id, id))
-      .get();
-    return ingredient !== undefined && !isCurrent(db, ingredient);
-  },
-  isReplaced: (id) => {
-    const ingredient = db
-      .select({ dishId: ingredients.dishId, estimationId: ingredients.estimationId })
-      .from(ingredients)
-      .where(eq(ingredients.id, id))
-      .get();
-    return ingredient !== undefined && !isCurrent(db, ingredient);
-  },
+      .get() !== undefined || isReplaced(db, id),
+  isReplaced: (id) => isReplaced(db, id),
   findIdsOfMeal: (mealId) =>
     db
       .select({ id: ingredients.id })
@@ -169,6 +152,16 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
     }
   },
 });
+
+// 推定し直しで置き換わった前の推定の材料（行は残る）
+const isReplaced = (db: DrizzleSqliteDODatabase, id: string): boolean => {
+  const ingredient = db
+    .select({ dishId: ingredients.dishId, estimationId: ingredients.estimationId })
+    .from(ingredients)
+    .where(eq(ingredients.id, id))
+    .get();
+  return ingredient !== undefined && !isCurrent(db, ingredient);
+};
 
 // 今の材料は、料理のいちばん新しい当てた推定の材料。前の推定の材料は、行が残っても削除の印として届ける
 const isCurrent = (

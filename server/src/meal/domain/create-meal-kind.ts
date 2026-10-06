@@ -15,6 +15,7 @@ import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { IngredientStore } from "../../ingredient/domain/ingredient-store";
@@ -130,7 +131,7 @@ const decideCreate = (
     ],
     commit: () => {
       store.insert(meal);
-      stores.writeEstimationEvents(discardStatusChangeAddedWithMeal, (writes) =>
+      stores.writeEstimationEvents(discardStatusChangeAddedWithMeal, receivedAt, (writes) =>
         scheduleMealEstimation(stores, writes, meal, receivedAt),
       );
     },
@@ -256,26 +257,13 @@ const decideUpdate = (
   const store = stores.meal;
   const meal = store.find(mealId);
   if (meal === undefined) {
-    return {
-      writeKind: "update",
-      recordId: mealId,
-      outcome: { result: "rejected", reason: "record_not_found" },
-      changedRecordId: undefined,
-      addedChanges: [],
-      usageEvents: [],
-      commit: () => undefined,
-    };
+    return decideWithoutChange("update", mealId, {
+      result: "rejected",
+      reason: "record_not_found",
+    });
   }
   if (meal.eatenAt.getTime() === eatenAt.getTime()) {
-    return {
-      writeKind: "update",
-      recordId: mealId,
-      outcome: { result: "applied" },
-      changedRecordId: undefined,
-      addedChanges: [],
-      usageEvents: [],
-      commit: () => undefined,
-    };
+    return decideWithoutChange("update", mealId, { result: "applied" });
   }
   return {
     writeKind: "update",
@@ -287,7 +275,7 @@ const decideUpdate = (
       .map((recordId) => ({ recordType: "dish" as const, recordId })),
     usageEvents: [],
     commit: (receiptId) => {
-      store.insertEatenAtCorrection(eatenAt, receiptId);
+      store.insertEatenAtCorrection(receiptId, eatenAt);
     },
   };
 };

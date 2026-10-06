@@ -40,10 +40,11 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     mealPhoto: createMealPhotoStore(db),
     estimationSchedule: createEstimationScheduleStore(db),
     estimation: createEstimationStore(db),
-    writeEstimationEvents: (addChange, run) =>
+    writeEstimationEvents: (addChange, now, run) =>
       writeEstimationEvents(
         { meal, mealEstimationStatus, dish, dishEstimationStatus, estimationEventWrite },
         addChange,
+        now,
         run,
       ),
   };

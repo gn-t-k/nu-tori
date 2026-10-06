@@ -4,7 +4,7 @@ import type { EstimationTarget } from "./estimation-target";
 export type EstimationScheduleStore = {
   hasScheduleOfMeal: (mealId: string) => boolean;
   // 待っている予定（推定も見送りも取り消しも無く、食事か料理につながっている）のうち、時刻が dueBy までのもの（早い順）。
-  // dueBy が undefined ならすべて。写真を待たせるかは見ない（find-startable-schedules.ts）
+  // dueBy が undefined ならすべて。写真を待たせるかは見ない（compute-schedule-starts-at.ts）
   findWaitingSchedules: (dueBy: Date | undefined) => WaitingSchedule[];
   // 食事を受け取った（写真がそろって予定に入れた）時刻。見送りで足した予定より前の、いちばん早い予定の時刻
   findEarliestDueAtOfMeal: (mealId: string) => Date | undefined;

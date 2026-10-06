@@ -20,6 +20,7 @@ import {
   mockCreateEstimationProviderError,
   mockCreateEstimationProviderOk,
 } from "../durable-object/create-estimation-provider/create-estimation-provider.mock";
+import { readIdentifyDishesRequests } from "./testing/read-identify-dishes-requests";
 import { EstimationProviderBadRequestError } from "../domain/estimation-provider-bad-request-error";
 import { insertCountedEstimations } from "./testing/insert-counted-estimations";
 import { recordEstimatedMeal } from "./testing/record-estimated-meal";
@@ -128,15 +129,18 @@ describe("名前を直したときの推定し直し", () => {
 
       test("① に、食事の写真と料理の今の名前を渡し、直した材料と量は渡さないこと", () => {
         expect(
-          provider.identifyDishesRequests.at(-1) === undefined
+          readIdentifyDishesRequests(provider).at(-1) === undefined
             ? undefined
             : {
-                photoCount: provider.identifyDishesRequests.at(-1)?.photos.length,
-                dish: provider.identifyDishesRequests.at(-1)?.dish,
+                photoCount: readIdentifyDishesRequests(provider).at(-1)?.photos.length,
+                target: readIdentifyDishesRequests(provider).at(-1)?.target,
               },
         ).toEqual({
           photoCount: 1,
-          dish: { name: "カツ丼", correctedIngredients: [], correctedQuantity: undefined },
+          target: {
+            type: "dish",
+            dish: { name: "カツ丼", correctedIngredients: [], correctedQuantity: undefined },
+          },
         });
       });
 
@@ -265,10 +269,10 @@ describe("名前を直したときの推定し直し", () => {
       });
       // 量を固定しても、提供元が別の量を答えることがある
       provider = mockCreateEstimationProviderOk({
-        identifiedDishes: ({ dish }) => ({
+        identifiedDishes: ({ target }) => ({
           dishes: [
             {
-              name: dish?.name ?? "",
+              name: target.type === "dish" ? target.dish.name : "",
               quantity: 3,
               unit: "皿",
               ingredients: [
@@ -298,11 +302,14 @@ describe("名前を直したときの推定し直し", () => {
     });
 
     test("① に、直した材料だけを名前と量の組で渡し、直した料理の量と単位を渡すこと", () => {
-      expect(provider.identifyDishesRequests.at(-1)?.dish).toEqual({
-        name: "カツ丼",
-        // 比例で変えた鶏もも肉は渡さない
-        correctedIngredients: [{ name: "ご飯", quantity: 250, unit: "g" }],
-        correctedQuantity: { value: 1.5, unit: "杯" },
+      expect(readIdentifyDishesRequests(provider).at(-1)?.target).toEqual({
+        type: "dish",
+        dish: {
+          name: "カツ丼",
+          // 比例で変えた鶏もも肉は渡さない
+          correctedIngredients: [{ name: "ご飯", quantity: 250, unit: "g" }],
+          correctedQuantity: { value: 1.5, unit: "杯" },
+        },
       });
     });
 
@@ -398,11 +405,11 @@ describe("名前を直したときの推定し直し", () => {
         test("最後の名前で推定し、それだけを当てること", async () => {
           const changes = await pullDishChanges();
           expect({
-            lastName: provider.identifyDishesRequests.at(-1)?.dish?.name,
+            lastTarget: readIdentifyDishesRequests(provider).at(-1)?.target,
             version: changes.findLast(({ kind }) => kind === "dish")?.["version"],
             status: changes.findLast(({ kind }) => kind === "dish_estimation_status")?.["status"],
           }).toEqual({
-            lastName: "かつ丼",
+            lastTarget: { type: "dish", dish: expect.objectContaining({ name: "かつ丼" }) },
             // 1 ＋ 名前の修正 2 ＋ 当てた推定し直し 1
             version: 4,
             status: "estimated",
@@ -469,9 +476,11 @@ describe("名前を直したときの推定し直し", () => {
     });
 
     test("最後の名前だけで推定すること", () => {
-      expect(provider.identifyDishesRequests.slice(1).map(({ dish }) => dish?.name)).toEqual([
-        "かつ丼",
-      ]);
+      expect(
+        readIdentifyDishesRequests(provider)
+          .slice(1)
+          .map(({ target }) => target),
+      ).toEqual([{ type: "dish", dish: expect.objectContaining({ name: "かつ丼" }) }]);
     });
   });
 

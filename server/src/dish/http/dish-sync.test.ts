@@ -176,10 +176,13 @@ describe("料理の同期", () => {
     });
 
     describe("消した料理と同じ ID の料理を足す書き込みを送ったとき", () => {
-      test("削除の印のある料理として捨て、料理を作らないこと", async () => {
-        const dishId = crypto.randomUUID();
+      let dishId: string;
+      beforeEach(async () => {
+        dishId = crypto.randomUUID();
         await pushSyncWrites(sessionToken, { writes: [deleteDishWrite(dishId)] });
+      });
 
+      test("削除の印のある料理として捨て、料理を作らないこと", async () => {
         expect({
           rejection: await pushRejection(sessionToken, [createDishWrite(mealId, { dishId })]),
           rows: await readRows(accountId, `SELECT id FROM dishes WHERE id = '${dishId}'`),

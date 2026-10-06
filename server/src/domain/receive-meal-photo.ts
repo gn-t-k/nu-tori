@@ -57,7 +57,7 @@ const recordReceipt = (
     const mealId = stores.mealPhoto.findMealIdOfPhoto(photoId);
     const meal = mealId === undefined ? undefined : stores.meal.find(mealId);
     if (meal !== undefined) {
-      stores.writeEstimationEvents(addChange, (writes) =>
+      stores.writeEstimationEvents(addChange, receivedAt, (writes) =>
         scheduleMealEstimation(stores, writes, meal, receivedAt),
       );
     }

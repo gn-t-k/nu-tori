@@ -7,7 +7,8 @@ export const dishRecordSchema = z
     mealId: z.string(),
     name: z.string().openapi({ description: "今の名前" }),
     // 量の無い料理（推定し直しが一度も当たっていない料理）は、量と単位と量の出どころを省く。
-    // 1つ前の版のアプリは読めないので、最低バージョンで締め出す（#332 の「移行の決まりの例外」）
+    // 1つ前の版のアプリは読めないので、最低バージョンで締め出す（#332 の「移行の決まりの例外」）。
+    // 3つは揃って有るか無いかだが、#188 から出ている quantity・unit のキーを変えないため、組にせず平らに持つ
     quantity: z.number().optional().openapi({ description: "今の量。量の無い料理は省く" }),
     unit: z.string().optional().openapi({ description: "量の単位。量の無い料理は省く" }),
     quantitySource: z.enum(["estimated", "corrected"]).optional().openapi({

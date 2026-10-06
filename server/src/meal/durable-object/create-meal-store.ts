@@ -95,7 +95,7 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       .values(photoIds.map((id, positionInMeal) => ({ id, mealId: meal.id, positionInMeal })))
       .run();
   },
-  insertEatenAtCorrection: (eatenAt, receiptId) => {
+  insertEatenAtCorrection: (receiptId, eatenAt) => {
     db.insert(mealEatenAtCorrections)
       .values({ syncWriteReceiptId: receiptId.value, eatenAt })
       .run();

@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
+import { match } from "ts-pattern";
 import { z } from "zod";
 import nutrients from "../../../../../shared/nutrients.json";
 import type {
@@ -38,10 +39,12 @@ export const identifyDishes = async (
         })),
         {
           type: "text",
-          text:
-            request.dish === undefined
-              ? toMealInstruction(request.addedDishNames)
-              : toReestimationInstruction(request.dish, request.photos.length > 0),
+          text: match(request.target)
+            .with({ type: "meal" }, ({ addedDishNames }) => toMealInstruction(addedDishNames))
+            .with({ type: "dish" }, ({ dish }) =>
+              toReestimationInstruction(dish, request.photos.length > 0),
+            )
+            .exhaustive(),
         },
       ],
       schema: identifiedDishesSchema,

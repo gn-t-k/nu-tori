@@ -24,13 +24,11 @@ type FakeReplies = {
 
 // 料理ありで答える偽の提供元。既定は、栄養成分表示の写った料理と、成分表を引く材料と、成分表に無い材料。
 // 推定し直し（要求に料理がある）の既定は、1つ目の料理を、直した名前と直した量で返す。
-// 返す identifyDishesRequests に、偽物が受け取った ① の入力を受け取った順に溜める
+// 偽物の identifyDishes も呼び出しを記録する（受け取った ① の入力は readIdentifyDishesRequests で読む）
 export const mockCreateEstimationProviderOk = (overrides?: Partial<FakeReplies>) => {
   const replies: FakeReplies = { ...defaultReplies, ...overrides };
-  const identifyDishesRequests: IdentifyDishesRequest[] = [];
   const provider: EstimationProvider = {
-    identifyDishes: async (request) => {
-      identifyDishesRequests.push(request);
+    identifyDishes: vi.fn<EstimationProvider["identifyDishes"]>(async (request) => {
       await replies.replyAfter;
       return R.succeed({
         output:
@@ -39,15 +37,14 @@ export const mockCreateEstimationProviderOk = (overrides?: Partial<FakeReplies>)
             : replies.identifiedDishes,
         usage: replies.identifyDishesUsage,
       });
-    },
+    }),
     matchIngredients: async (request) =>
       R.succeed({
         output: replies.matchIngredients(request),
         usage: replies.matchIngredientsUsage,
       }),
   };
-  vi.spyOn(module, "createEstimationProvider").mockReturnValue(provider);
-  return { identifyDishesRequests };
+  return vi.spyOn(module, "createEstimationProvider").mockReturnValue(provider);
 };
 
 // 失敗で答える偽の提供元。failingCall が match_ingredients なら、① は既定の料理で通り、② で落ちる
@@ -119,16 +116,17 @@ const photoDishes: IdentifiedDishes = {
 
 const identifyDefaultDishes = (request: IdentifyDishesRequest): IdentifiedDishes => {
   const [first] = photoDishes.dishes;
-  if (request.dish === undefined || first === undefined) {
+  if (request.target.type === "meal" || first === undefined) {
     return photoDishes;
   }
+  const { dish } = request.target;
   return {
     dishes: [
       {
         ...first,
-        name: request.dish.name,
-        quantity: request.dish.correctedQuantity?.value ?? first.quantity,
-        unit: request.dish.correctedQuantity?.unit ?? first.unit,
+        name: dish.name,
+        quantity: dish.correctedQuantity?.value ?? first.quantity,
+        unit: dish.correctedQuantity?.unit ?? first.unit,
       },
     ],
   };

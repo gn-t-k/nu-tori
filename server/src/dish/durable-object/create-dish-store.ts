@@ -6,7 +6,7 @@ import { ingredientTables } from "../../ingredient/durable-object/ingredient-tab
 import { mealTables } from "../../meal/durable-object/meal-tables";
 import type { DishStore } from "../domain/dish-store";
 import { dishTables } from "./dish-tables";
-import { findNewestDishEstimatedQuantity } from "./find-newest-dish-estimation";
+import { findNewestDishEstimatedQuantity } from "./find-newest-dish-estimated-quantity";
 
 const {
   dishes,
@@ -49,11 +49,10 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
   },
   exists: (id) =>
     db.select({ id: dishes.id }).from(dishes).where(eq(dishes.id, id)).get() !== undefined,
-  findNewestReestimationEndedAt: (id) =>
-    db
-      .select({
-        endedAt: sql<number>`coalesce(${estimationCompletions.completedAt}, ${estimationAbandonments.abandonedAt})`,
-      })
+  findNewestReestimationEndedAt: (id) => {
+    const endedAt = sql<number>`coalesce(${estimationCompletions.completedAt}, ${estimationAbandonments.abandonedAt})`;
+    return db
+      .select({ endedAt })
       .from(dishEstimationApplications)
       .innerJoin(estimations, eq(estimations.id, dishEstimationApplications.estimationId))
       .innerJoin(
@@ -63,14 +62,11 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
       .leftJoin(estimationCompletions, eq(estimationCompletions.estimationId, estimations.id))
       .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
       .where(eq(dishEstimationApplications.dishId, id))
-      .orderBy(
-        desc(
-          sql`coalesce(${estimationCompletions.completedAt}, ${estimationAbandonments.abandonedAt})`,
-        ),
-      )
+      .orderBy(desc(endedAt))
       .limit(1)
       .all()
-      .map(({ endedAt }) => new Date(endedAt))[0],
+      .map((row) => new Date(row.endedAt))[0];
+  },
   hasDeletion: (id) =>
     db
       .select({ id: dishDeletions.dishId })
@@ -153,16 +149,8 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
 // 統計の無い DB では控えの record_type だけで引き、材料への書き込みの控えを全部読むので、材料の ID の副問い合わせで書く
 const countVersion = (db: DrizzleSqliteDODatabase, dish: { id: string; mealId: string }): number =>
   1 +
-  countCorrections(
-    db,
-    dishNameCorrections,
-    and(eq(syncWriteReceipts.recordType, "dish"), eq(syncWriteReceipts.recordId, dish.id)),
-  ) +
-  countCorrections(
-    db,
-    dishQuantityCorrections,
-    and(eq(syncWriteReceipts.recordType, "dish"), eq(syncWriteReceipts.recordId, dish.id)),
-  ) +
+  countCorrections(db, dishNameCorrections, receiptOfDish(dish.id)) +
+  countCorrections(db, dishQuantityCorrections, receiptOfDish(dish.id)) +
   countCorrections(
     db,
     ingredientQuantityCorrections,

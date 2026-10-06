@@ -14,7 +14,8 @@ import type { EstimationWrites } from "./estimation-writes";
 // 書いた食事・料理ごとに、初めて書く前と run のあとの推定の状態を、食事の推定の状態・料理ごとの推定の状態の種類で出し、
 // 違う記録にだけ、書いた順に推定の状態の変更を足す。addChange は帳簿の changeOutsideWrites のもの。
 // 料理の推定を始めたときは、状態が同じでも変更を足す: 見送りから作った次の日の予定は、0:00 を過ぎると出来事が無いまま
-// 翌日に推定から推定中に変わるので、比べると変わっておらず、端末に届かないため（#332 の「料理ごとの推定の状態の出し方」）
+// 翌日に推定から推定中に変わるので、比べると変わっておらず、端末に届かないため（#332 の「料理ごとの推定の状態の出し方」）。
+// now は料理ごとの推定の状態を決める時刻
 export const writeEstimationEvents = <T>(
   stores: {
     meal: MealStore;
@@ -26,9 +27,9 @@ export const writeEstimationEvents = <T>(
   addChange: (
     change: RecordChangeTarget<"meal_estimation_status" | "dish_estimation_status">,
   ) => void,
+  now: Date,
   run: (writes: EstimationWrites) => T,
 ): T => {
-  const now = new Date();
   const mealStatusKind = createMealEstimationStatusKind(stores.meal, stores.mealEstimationStatus);
   const dishStatusKind = createDishEstimationStatusKind(
     stores.dish,
@@ -55,25 +56,29 @@ export const writeEstimationEvents = <T>(
       });
     }
   };
-  const rememberDish = (dishId: string, always = false) => {
+  const rememberDish = (dishId: string) => {
     const key = `dish:${dishId}`;
-    const remembered = statusesBeforeWrites.get(key);
-    if (remembered === undefined) {
+    if (!statusesBeforeWrites.has(key)) {
       statusesBeforeWrites.set(key, {
         change: { recordType: "dish_estimation_status", recordId: dishId },
         before: dishStatusKind.readCurrent(dishId),
-        always,
+        always: false,
       });
-      return;
     }
-    remembered.always ||= always;
   };
-  const rememberTarget = (target: EstimationTarget, always = false) => {
+  const rememberStartedDish = (dishId: string) => {
+    rememberDish(dishId);
+    const remembered = statusesBeforeWrites.get(`dish:${dishId}`);
+    if (remembered !== undefined) {
+      remembered.always = true;
+    }
+  };
+  const rememberTarget = (target: EstimationTarget) => {
     if (target.type === "meal") {
       rememberMeal(target.mealId);
       return;
     }
-    rememberDish(target.dishId, always);
+    rememberDish(target.dishId);
   };
 
   const result = run({
@@ -99,7 +104,11 @@ export const writeEstimationEvents = <T>(
       store.insertDishSchedule({ ...nextSchedule, dishId: target.dishId });
     },
     beginEstimation: ({ target, ...estimation }) => {
-      rememberTarget(target, true);
+      if (target.type === "meal") {
+        rememberMeal(target.mealId);
+      } else {
+        rememberStartedDish(target.dishId);
+      }
       store.insertEstimation(estimation);
     },
     beginAttempt: (attempt) => {
