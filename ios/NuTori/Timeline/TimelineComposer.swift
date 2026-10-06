@@ -19,7 +19,7 @@ struct TimelineComposer: View {
                 cameraNotice
                     .padding(.horizontal)
             }
-            HStack(spacing: 12) {
+            ComposerButtonsLayout(spacing: 12) {
                 Button(action: onCapture) {
                     circle(systemName: "camera.fill", filled: true)
                 }
@@ -33,7 +33,6 @@ struct TimelineComposer: View {
                 .accessibilityLabel("写真")
                 .accessibilityIdentifier("composer-photos")
                 weightButton
-                Spacer(minLength: 0)
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
@@ -45,18 +44,20 @@ struct TimelineComposer: View {
     @ScaledMetric private var scaledButtonSize: CGFloat = 44
     private var buttonSize: CGFloat { min(scaledButtonSize, 88) }
     @Environment(\.openURL) private var openURL
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// 今日の体重が未記録のあいだは、文字のカプセルに広げる。記録すると丸（体重計）に戻る。
-    /// 大きな文字ではカプセルが文字を収めきれないので、未記録でも丸にし、名前は accessibilityLabel で残す
+    /// 今日の体重が未記録のあいだは、記録を促すため、文字の大きさによらず文字のカプセルに広げる。記録すると丸（体重計）に戻る。
+    /// 大きな文字で「撮る」「写真」の横に入らないときは、ComposerButtonsLayout が下の行に全幅で置く
     private var weightButton: some View {
         Button(action: onWeight) {
-            if weightRecordedToday || dynamicTypeSize.isAccessibilitySize {
-                circle(systemName: "scalemass.fill", filled: !weightRecordedToday)
+            if weightRecordedToday {
+                circle(systemName: "scalemass.fill", filled: false)
             } else {
                 Text("体重を記録")
                     .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
                     .padding(.horizontal)
+                    // 1行に並べるときは文字の幅、下の行に送ったときは全幅にする
+                    .frame(maxWidth: .infinity)
                     .frame(height: buttonSize)
                     .background(Color.accentColor, in: Capsule())
                     .foregroundStyle(Color.white)
@@ -96,5 +97,60 @@ struct TimelineComposer: View {
             .frame(width: buttonSize, height: buttonSize)
             .background(filled ? Color.accentColor : Color(.tertiarySystemFill), in: Circle())
             .foregroundStyle(filled ? Color.white : Color.accentColor)
+    }
+}
+
+/// 入力欄のボタンを左から1行に並べる。最後のボタン（体重）が1行に入らないときだけ、ほかのボタンの行の下に全幅で置く。
+/// 入るかどうかは文字の大きさの段階でなく、ボタンの幅と入力欄の幅で決める
+private struct ComposerButtonsLayout: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = rows(in: proposal.width, subviews: subviews)
+        guard let wrapped = rows.wrapped else {
+            return CGSize(width: proposal.width ?? rows.firstRowWidth, height: rows.firstRowHeight)
+        }
+        let wrappedHeight = wrapped.sizeThatFits(
+            ProposedViewSize(width: proposal.width, height: nil)
+        ).height
+        return CGSize(
+            width: proposal.width ?? rows.firstRowWidth,
+            height: rows.firstRowHeight + spacing + wrappedHeight)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()
+    ) {
+        let rows = rows(in: bounds.width, subviews: subviews)
+        var x = bounds.minX
+        for (subview, size) in rows.firstRow {
+            subview.place(
+                at: CGPoint(x: x, y: bounds.minY + rows.firstRowHeight / 2), anchor: .leading,
+                proposal: ProposedViewSize(size))
+            x += size.width + spacing
+        }
+        rows.wrapped?.place(
+            at: CGPoint(x: bounds.minX, y: bounds.minY + rows.firstRowHeight + spacing),
+            proposal: ProposedViewSize(width: bounds.width, height: nil))
+    }
+
+    private struct Rows {
+        let firstRow: [(subview: LayoutSubview, size: CGSize)]
+        /// 1行に入らず、下の行に全幅で置くボタン
+        let wrapped: LayoutSubview?
+        let spacing: CGFloat
+        var firstRowWidth: CGFloat {
+            firstRow.map(\.size.width).reduce(0, +) + spacing * CGFloat(max(firstRow.count - 1, 0))
+        }
+        var firstRowHeight: CGFloat { firstRow.map(\.size.height).max() ?? 0 }
+    }
+
+    /// 幅を決めずに理想の大きさを聞かれたときは、1行に並べた大きさを答える
+    private func rows(in width: CGFloat?, subviews: Subviews) -> Rows {
+        let all = Rows(
+            firstRow: subviews.map { ($0, $0.sizeThatFits(.unspecified)) }, wrapped: nil,
+            spacing: spacing)
+        guard let width, all.firstRowWidth > width else { return all }
+        return Rows(firstRow: all.firstRow.dropLast(), wrapped: subviews.last, spacing: spacing)
     }
 }

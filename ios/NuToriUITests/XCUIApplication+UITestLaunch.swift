@@ -11,7 +11,8 @@ extension XCUIApplication {
         pickedPhotoCount: Int = 0,
         lockoutDefaults: String? = nil,
         now: UITestNow = .morningBeforeNotice,
-        timeZone: String?
+        timeZone: String?,
+        textSize: UITestTextSize? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
@@ -34,6 +35,9 @@ extension XCUIApplication {
         app.launchEnvironment["UI_TEST_NOW"] = now.rawValue
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
+        }
+        if let textSize {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", textSize.rawValue]
         }
         app.launch()
         return app
