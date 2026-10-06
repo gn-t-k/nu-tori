@@ -38,4 +38,28 @@ describe("受け付ける値の範囲", () => {
       },
     );
   });
+
+  describe("料理の量", () => {
+    test.for(testCases.dishQuantity)("$name を受け付けるかを決めること", ({ value, accepted }) => {
+      expect(isWithinAcceptedRange("dishQuantity", value)).toBe(accepted);
+    });
+  });
+
+  describe("材料の量", () => {
+    test.for(testCases.ingredientQuantity)(
+      "$name を受け付けるかを決めること",
+      ({ value, accepted }) => {
+        expect(isWithinAcceptedRange("ingredientQuantity", value)).toBe(accepted);
+      },
+    );
+  });
+
+  describe("料理の名前の、前後の空白を除いた文字数", () => {
+    test.for(testCases.dishNameTrimmedLength)(
+      "$name を受け付けるかを決めること",
+      ({ value, accepted }) => {
+        expect(isWithinAcceptedRange("dishNameTrimmedLength", value)).toBe(accepted);
+      },
+    );
+  });
 });

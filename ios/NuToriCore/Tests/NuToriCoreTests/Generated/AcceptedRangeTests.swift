@@ -45,11 +45,45 @@ struct AcceptedRangeTests {
         }
     }
 
+    @Suite("料理の量")
+    struct DishQuantity {
+        // swiftlint:disable:next no_parameterized_test
+        @Test("受け付けるかを決めること", arguments: try TestCases.load().dishQuantity)
+        func decidesWhetherToAccept(testCase: TestCase) {
+            #expect(AcceptedRange.dishQuantity.bounds.contains(testCase.value) == testCase.accepted)
+        }
+    }
+
+    @Suite("材料の量")
+    struct IngredientQuantity {
+        // swiftlint:disable:next no_parameterized_test
+        @Test("受け付けるかを決めること", arguments: try TestCases.load().ingredientQuantity)
+        func decidesWhetherToAccept(testCase: TestCase) {
+            #expect(
+                AcceptedRange.ingredientQuantity.bounds.contains(testCase.value)
+                    == testCase.accepted)
+        }
+    }
+
+    @Suite("料理の名前の、前後の空白を除いた文字数")
+    struct DishNameTrimmedLength {
+        // swiftlint:disable:next no_parameterized_test
+        @Test("受け付けるかを決めること", arguments: try TestCases.load().dishNameTrimmedLength)
+        func decidesWhetherToAccept(testCase: TestCase) {
+            #expect(
+                AcceptedRange.dishNameTrimmedLength.bounds.contains(testCase.value)
+                    == testCase.accepted)
+        }
+    }
+
     struct TestCases: Decodable {
         let weightKilograms: [TestCase]
         let bodyFatPercentage: [TestCase]
         let mealPhotoCount: [TestCase]
         let mealUtcOffsetSeconds: [TestCase]
+        let dishQuantity: [TestCase]
+        let ingredientQuantity: [TestCase]
+        let dishNameTrimmedLength: [TestCase]
 
         static func load() throws -> Self {
             try SharedTestCases.decode(Self.self, fromFileNamed: "accepted-ranges.test-cases.json")
