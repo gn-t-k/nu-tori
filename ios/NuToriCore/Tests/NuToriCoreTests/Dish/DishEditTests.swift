@@ -66,32 +66,50 @@ struct DishEditTests {
         }
     }
 
-    @Suite("料理の量を、受け付ける範囲の外や今と同じ量に直したとき")
-    struct CorrectingQuantityWithoutChange {
-        let dish: Dish
+    @Suite("料理の量を、受け付ける範囲の外の 0 に直したとき")
+    struct CorrectingQuantityToZero {
+        let edited: DishEdit?
 
         init() {
-            dish = Dish.fixture(quantity: Dish.Quantity(value: 1, unit: "杯", source: .estimated))
+            edited = DishEdit.correctingQuantity(
+                of: Dish.fixture(quantity: Dish.Quantity(value: 1, unit: "杯", source: .estimated)),
+                ingredients: [], to: 0)
         }
 
-        @Test("0 にしたら、直さないこと")
-        func ignoresZero() {
-            #expect(DishEdit.correctingQuantity(of: dish, ingredients: [], to: 0) == nil)
+        @Test("直さないこと")
+        func ignores() {
+            #expect(edited == nil)
+        }
+    }
+
+    @Suite("料理の量を、今と同じ量に直したとき")
+    struct CorrectingQuantityToSame {
+        let edited: DishEdit?
+
+        init() {
+            edited = DishEdit.correctingQuantity(
+                of: Dish.fixture(quantity: Dish.Quantity(value: 1, unit: "杯", source: .estimated)),
+                ingredients: [], to: 1)
         }
 
-        @Test("今と同じ量にしたら、直さないこと")
-        func ignoresSameQuantity() {
-            #expect(DishEdit.correctingQuantity(of: dish, ingredients: [], to: 1) == nil)
+        @Test("直さないこと")
+        func ignores() {
+            #expect(edited == nil)
         }
     }
 
     @Suite("量の無い料理の量を直そうとしたとき")
     struct CorrectingQuantityOfDishWithoutQuantity {
+        let edited: DishEdit?
+
+        init() {
+            edited = DishEdit.correctingQuantity(
+                of: .fixture(quantity: nil), ingredients: [], to: 1)
+        }
+
         @Test("直さないこと")
         func ignores() {
-            #expect(
-                DishEdit.correctingQuantity(
-                    of: .fixture(quantity: nil), ingredients: [], to: 1) == nil)
+            #expect(edited == nil)
         }
     }
 
@@ -145,22 +163,31 @@ struct DishEditTests {
         }
     }
 
-    @Suite("料理の名前を、空や今と同じ名前に直したとき")
-    struct RenamingWithoutChange {
-        let dish: Dish
+    @Suite("料理の名前を、前後の空白を除いて空の名前に直したとき")
+    struct RenamingToBlank {
+        let edited: DishEdit?
 
         init() {
-            dish = Dish.fixture(name: "親子丼")
+            edited = DishEdit.renaming(Dish.fixture(name: "親子丼"), to: " \n ")
         }
 
-        @Test("前後の空白を除いて空なら、直さないこと")
-        func ignoresBlankName() {
-            #expect(DishEdit.renaming(dish, to: " \n ") == nil)
+        @Test("直さないこと")
+        func ignores() {
+            #expect(edited == nil)
+        }
+    }
+
+    @Suite("料理の名前を、前後の空白を除いて今と同じ名前に直したとき")
+    struct RenamingToSame {
+        let edited: DishEdit?
+
+        init() {
+            edited = DishEdit.renaming(Dish.fixture(name: "親子丼"), to: "親子丼 ")
         }
 
-        @Test("前後の空白を除いて今と同じ名前なら、直さないこと")
-        func ignoresSameName() {
-            #expect(DishEdit.renaming(dish, to: "親子丼 ") == nil)
+        @Test("直さないこと")
+        func ignores() {
+            #expect(edited == nil)
         }
     }
 }

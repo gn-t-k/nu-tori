@@ -61,7 +61,7 @@ extension HealthSyncEngineTests {
             }
 
             @Test("書かないこと")
-            func exports() async throws {
+            func doesNotExport() async throws {
                 try await engine.exportNutrition()
 
                 #expect(healthStore.nutritionWrites.isEmpty)
@@ -81,7 +81,7 @@ extension HealthSyncEngineTests {
             }
 
             @Test("書かないこと")
-            func exports() async throws {
+            func doesNotExport() async throws {
                 try await engine.exportNutrition()
 
                 #expect(healthStore.nutritionWrites.isEmpty)
@@ -191,7 +191,7 @@ extension HealthSyncEngineTests {
             }
 
             @Test("書かないこと")
-            func exports() async throws {
+            func doesNotExport() async throws {
                 try await engine.exportNutrition()
 
                 #expect(healthStore.nutritionWrites.isEmpty)
@@ -223,15 +223,28 @@ extension HealthSyncEngineTests {
                 #expect(store.healthDishWrites.isEmpty)
             }
 
-            @Test("推定し直しが通ったら書くこと")
-            func writesAfterEstimated() async throws {
-                store.cache.putDish(version: 2, energyKcal: 300)
-                store.cache.write(.estimated, forDishId: DishNutrition.dishId)
+            @Suite("推定し直しが通ったとき")
+            struct Estimated {
+                let store: SyncBoxMock<RecordCacheMock>
+                let healthStore: HealthStoreMock
+                let engine: HealthSyncEngine
 
-                try await engine.exportNutrition()
+                init() async throws {
+                    let waiting = try await DishAddedToMealWithoutDishesAwaitingEstimation()
+                    store = waiting.store
+                    healthStore = waiting.healthStore
+                    engine = waiting.engine
+                    store.cache.putDish(version: 2, energyKcal: 300)
+                    store.cache.write(.estimated, forDishId: DishNutrition.dishId)
+                }
 
-                #expect(healthStore.nutritionWrites.map(\.syncVersion) == [2])
-                #expect(store.healthDishWrites == [DishNutrition.dishId: 2])
+                @Test("書くこと")
+                func exports() async throws {
+                    try await engine.exportNutrition()
+
+                    #expect(healthStore.nutritionWrites.map(\.syncVersion) == [2])
+                    #expect(store.healthDishWrites == [DishNutrition.dishId: 2])
+                }
             }
         }
 
@@ -260,41 +273,73 @@ extension HealthSyncEngineTests {
                 #expect(store.healthDishWrites == [DishNutrition.dishId: 1])
             }
 
-            @Test("推定し直しが通ったら、上がった版で書き直すこと")
-            func rewritesAfterEstimated() async throws {
-                try await engine.exportNutrition()
-                store.cache.putDish(version: 3, energyKcal: 400)
-                store.cache.write(.estimated, forDishId: DishNutrition.dishId)
+            @Suite("待つあいだに書き出してから、推定し直しが通ったとき")
+            struct Estimated {
+                let store: SyncBoxMock<RecordCacheMock>
+                let healthStore: HealthStoreMock
+                let engine: HealthSyncEngine
 
-                try await engine.exportNutrition()
+                init() async throws {
+                    let renamed = try await RenamedWrittenDish()
+                    store = renamed.store
+                    healthStore = renamed.healthStore
+                    engine = renamed.engine
+                    try await engine.exportNutrition()
+                    store.cache.putDish(version: 3, energyKcal: 400)
+                    store.cache.write(.estimated, forDishId: DishNutrition.dishId)
+                }
 
-                #expect(healthStore.nutritionWrites.map(\.syncVersion) == [1, 3])
-                #expect(store.healthDishWrites == [DishNutrition.dishId: 3])
+                @Test("上がった版で書き直すこと")
+                func rewrites() async throws {
+                    try await engine.exportNutrition()
+
+                    #expect(healthStore.nutritionWrites.map(\.syncVersion) == [1, 3])
+                    #expect(store.healthDishWrites == [DishNutrition.dishId: 3])
+                }
             }
 
-            @Test("推定し直しが通らず材料が無くなったら、ヘルスケアから消して控えも消すこと")
-            func deletesAfterFailed() async throws {
-                store.cache.remove(ingredientId: DishNutrition.dishId)
-                store.cache.write(.failed, forDishId: DishNutrition.dishId)
+            @Suite("推定し直しが通らず材料が無くなったとき")
+            struct Failed {
+                let store: SyncBoxMock<RecordCacheMock>
+                let healthStore: HealthStoreMock
+                let engine: HealthSyncEngine
 
-                try await engine.exportNutrition()
+                init() async throws {
+                    let renamed = try await RenamedWrittenDish()
+                    store = renamed.store
+                    healthStore = renamed.healthStore
+                    engine = renamed.engine
+                    store.cache.remove(ingredientId: DishNutrition.dishId)
+                    store.cache.write(.failed, forDishId: DishNutrition.dishId)
+                }
 
-                #expect(healthStore.nutritionDeletions == [DishNutrition.dishId])
-                #expect(store.healthDishWrites.isEmpty)
+                @Test("ヘルスケアから消して控えも消すこと")
+                func deletes() async throws {
+                    try await engine.exportNutrition()
+
+                    #expect(healthStore.nutritionDeletions == [DishNutrition.dishId])
+                    #expect(store.healthDishWrites.isEmpty)
+                }
             }
         }
 
         @Suite("書いた料理の削除の印が届いて、料理と材料が無くなったとき")
         struct DishDeletionMarkArrived {
-            @Test("ヘルスケアから消して、控えも消すこと")
-            func deletes() async throws {
-                let store = try SyncBoxMock<RecordCacheMock>.withEstimatedDish()
-                let healthStore = HealthStoreMock.ok()
-                let engine = HealthSyncEngine.fixture(healthStore: healthStore, store: store)
+            let store: SyncBoxMock<RecordCacheMock>
+            let healthStore: HealthStoreMock
+            let engine: HealthSyncEngine
+
+            init() async throws {
+                store = try .withEstimatedDish()
+                healthStore = .ok()
+                engine = .fixture(healthStore: healthStore, store: store)
                 try await engine.exportNutrition()
                 store.cache.remove(dishId: DishNutrition.dishId)
                 store.cache.remove(ingredientId: DishNutrition.dishId)
+            }
 
+            @Test("ヘルスケアから消して、控えも消すこと")
+            func deletes() async throws {
                 try await engine.exportNutrition()
 
                 #expect(healthStore.nutritionDeletions == [DishNutrition.dishId])

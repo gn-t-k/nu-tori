@@ -122,13 +122,26 @@ extension SyncEngineTests {
                                 positionInMeal: 1)))
             }
 
-            @Test("名前が前後の空白を除いて空なら、足さずに nil を返すこと")
-            func ignoresBlankName() async throws {
-                let dish = try await engine.addDish(named: "  ", toMeal: DishWrites.mealId)
+            @Suite("名前が前後の空白を除いて空のとき")
+            struct BlankName {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let name: String
 
-                #expect(dish == nil)
-                #expect(store.entries.isEmpty)
-                #expect(store.cache.dishes.count == 1)
+                init() async throws {
+                    store = try await DishWrites.seededStore()
+                    engine = .fixture(store: store, transport: .sync())
+                    name = "  "
+                }
+
+                @Test("足さずに nil を返すこと")
+                func ignoresBlankName() async throws {
+                    let dish = try await engine.addDish(named: name, toMeal: DishWrites.mealId)
+
+                    #expect(dish == nil)
+                    #expect(store.entries.isEmpty)
+                    #expect(store.cache.dishes.count == 1)
+                }
             }
         }
 
@@ -236,12 +249,26 @@ extension SyncEngineTests {
                         ])
             }
 
-            @Test("受け付ける範囲の外の量なら、送らずにキャッシュの料理をそのまま返すこと")
-            func ignoresOutOfRange() async throws {
-                let dish = try await engine.correctDishQuantity(id: DishWrites.dishId, to: 0)
+            @Suite("受け付ける範囲の外の量のとき")
+            struct OutOfRange {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let quantity: Double
 
-                #expect(dish.quantity?.value == 1)
-                #expect(store.entries.isEmpty)
+                init() async throws {
+                    store = try await DishWrites.seededStore()
+                    engine = .fixture(store: store, transport: .sync())
+                    quantity = 0
+                }
+
+                @Test("送らずにキャッシュの料理をそのまま返すこと")
+                func ignoresOutOfRange() async throws {
+                    let dish = try await engine.correctDishQuantity(
+                        id: DishWrites.dishId, to: quantity)
+
+                    #expect(dish.quantity?.value == 1)
+                    #expect(store.entries.isEmpty)
+                }
             }
         }
 
@@ -281,20 +308,44 @@ extension SyncEngineTests {
                                 id: DishWrites.dishId, name: "カツ丼", quantity: nil)))
             }
 
-            @Test("名前を空にしたら、送らずに前の名前の料理を返すこと")
-            func keepsPreviousNameForBlank() async throws {
-                let dish = try await engine.renameDish(id: DishWrites.dishId, to: " ")
+            @Suite("名前を空にしたとき")
+            struct BlankName {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let name: String
 
-                #expect(dish.name == "親子丼")
-                #expect(store.entries.isEmpty)
+                init() async throws {
+                    store = try await DishWrites.seededStore()
+                    engine = .fixture(store: store, transport: .sync())
+                    name = " "
+                }
+
+                @Test("送らずに前の名前の料理を返すこと")
+                func keepsPreviousNameForBlank() async throws {
+                    let dish = try await engine.renameDish(id: DishWrites.dishId, to: name)
+
+                    #expect(dish.name == "親子丼")
+                    #expect(store.entries.isEmpty)
+                }
             }
 
-            @Test("キャッシュに無い料理は、直さずに投げること")
-            func throwsForUnknownDish() async throws {
-                let unknownId = UUID()
+            @Suite("キャッシュに無い料理のとき")
+            struct UnknownDish {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let unknownId: UUID
 
-                await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknownId)) {
-                    _ = try await engine.renameDish(id: unknownId, to: "カツ丼")
+                init() async throws {
+                    store = try await DishWrites.seededStore()
+                    engine = .fixture(store: store, transport: .sync())
+                    unknownId = UUID()
+                }
+
+                @Test("直さずに投げること")
+                func throwsForUnknownDish() async throws {
+                    await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknownId)) {
+                        _ = try await engine.renameDish(id: unknownId, to: "カツ丼")
+                    }
                 }
             }
         }
@@ -336,13 +387,26 @@ extension SyncEngineTests {
                             writeId: write.writeId, ingredientId: DishWrites.riceId, quantity: 150))
             }
 
-            @Test("受け付ける範囲の外の量なら、送らずにキャッシュの材料をそのまま返すこと")
-            func ignoresOutOfRange() async throws {
-                let ingredient = try await engine.correctIngredientQuantity(
-                    id: DishWrites.riceId, to: -10)
+            @Suite("受け付ける範囲の外の量のとき")
+            struct OutOfRange {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let quantity: Double
 
-                #expect(ingredient.quantity == 200)
-                #expect(store.entries.isEmpty)
+                init() async throws {
+                    store = try await DishWrites.seededStore()
+                    engine = .fixture(store: store, transport: .sync())
+                    quantity = -10
+                }
+
+                @Test("送らずにキャッシュの材料をそのまま返すこと")
+                func ignoresOutOfRange() async throws {
+                    let ingredient = try await engine.correctIngredientQuantity(
+                        id: DishWrites.riceId, to: quantity)
+
+                    #expect(ingredient.quantity == 200)
+                    #expect(store.entries.isEmpty)
+                }
             }
         }
 
