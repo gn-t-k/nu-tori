@@ -20,10 +20,10 @@ public enum HandledFailure: Sendable, Equatable {
     /// 通知の許可を求められなかった
     case notificationPermissionRequest
 
-    /// 取り消し、つながらない・時間切れ、締め出し（426。想定した結果）は送らない
+    /// 取り消し、つながらない・時間切れ、締め出し（426）、ロック中のヘルスケア（想定した結果）は送らない
     public static func reported(_ error: any Error, as area: HandledFailure) -> HandledFailure? {
         if error is CancellationError || error.isUnreachableOrTimedOut
-            || error.isAppBuildUnsupported
+            || error.isAppBuildUnsupported || error.isHealthDataLocked
         {
             return nil
         }
@@ -40,6 +40,14 @@ extension Error {
         default:
             return false
         }
+    }
+
+    /// 端末のロック中はヘルスケアのデータが暗号化されていて、読み書きが `HKError.errorDatabaseInaccessible` で失敗する。
+    /// バックグラウンド配信でロック中に起こされると起き、アンカーを進めないので、次に起こされたときか開いたときに取り込む。
+    /// NuToriCore は HealthKit を import しないので、ドメインとコードで見分ける
+    var isHealthDataLocked: Bool {
+        let error = self as NSError
+        return error.domain == "com.apple.healthkit" && error.code == 6
     }
 
     var isUnreachableOrTimedOut: Bool {

@@ -52,5 +52,29 @@ extension SyncEngineTests {
                 #expect(reporting.reported == [.sync])
             }
         }
+
+        @Suite("要求が通信の失敗で終わったとき")
+        struct TransportFailure {
+            let reporting: ErrorReportingSessionMock
+            let engine: SyncEngine
+
+            init() throws {
+                reporting = .ok()
+                engine = .fixture(
+                    store: try .ok(),
+                    transport: .error(URLError(.badServerResponse)),
+                    errorReporting: reporting
+                )
+            }
+
+            @Test("クライアントが包んだ通信の失敗のドメインとコードを添えること")
+            func attachesUnderlyingCause() async throws {
+                _ = try await engine.sync()
+
+                let cause = try #require(reporting.reports.first?.cause)
+                #expect(cause.domain == NSURLErrorDomain)
+                #expect(cause.code == URLError.Code.badServerResponse.rawValue)
+            }
+        }
     }
 }

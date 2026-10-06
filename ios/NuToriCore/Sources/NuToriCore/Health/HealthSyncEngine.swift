@@ -159,9 +159,7 @@ public actor HealthSyncEngine {
             }
         }
         if let firstFailure {
-            if let failure = HandledFailure.reported(firstFailure, as: .healthNutritionWrite) {
-                await errorReporting.report(failure)
-            }
+            await errorReporting.report(firstFailure, as: .healthNutritionWrite)
             throw firstFailure
         }
     }
@@ -179,9 +177,7 @@ public actor HealthSyncEngine {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            if let failure = HandledFailure.reported(error, as: .cacheSave) {
-                await errorReporting.report(failure)
-            }
+            await errorReporting.report(error, as: .cacheSave)
             throw error
         }
     }
@@ -193,9 +189,7 @@ public actor HealthSyncEngine {
         do {
             return try await body()
         } catch {
-            if let failure = HandledFailure.reported(error, as: area) {
-                await errorReporting.report(failure)
-            }
+            await errorReporting.report(error, as: area)
             throw error
         }
     }

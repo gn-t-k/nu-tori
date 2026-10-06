@@ -15,7 +15,7 @@ struct GatedErrorReportingSessionTests {
 
         @Test("失敗を送らないこと")
         func drops() async {
-            await session.report(.sync)
+            await session.report(.sync, cause: nil)
 
             #expect(forwarding.reported.isEmpty)
         }
@@ -34,7 +34,7 @@ struct GatedErrorReportingSessionTests {
 
         @Test("失敗を送ること")
         func forwards() async {
-            await session.report(.healthWrite)
+            await session.report(.healthWrite, cause: nil)
 
             #expect(forwarding.identifiedAccountIds == ["account-1"])
             #expect(forwarding.reported == [.healthWrite])
@@ -55,7 +55,7 @@ struct GatedErrorReportingSessionTests {
 
         @Test("失敗を送らないこと")
         func drops() async {
-            await session.report(.cacheSave)
+            await session.report(.cacheSave, cause: nil)
 
             #expect(forwarding.clearUserCount == 1)
             #expect(forwarding.reported.isEmpty)

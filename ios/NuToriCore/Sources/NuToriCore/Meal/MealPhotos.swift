@@ -95,9 +95,7 @@ public actor MealPhotos: BackgroundTransferStore {
         if case .responded(let statusCode) = result {
             await client.receiveMealPhotoUploadResponse(statusCode: statusCode)
         }
-        if let failure = Self.reportedFailure(of: result) {
-            await errorReporting.report(failure)
-        }
+        await reportFailure(of: result)
         switch UploadOutcome(result) {
         case .delivered:
             try? FileManager.default.removeItem(at: uploadFile(of: upload))
@@ -176,19 +174,19 @@ public actor MealPhotos: BackgroundTransferStore {
 
     /// セッション切れと回数の歯止めは、送り直せば届くので送らない。締め出し（426）は想定した結果で、更新した版が送り直すので送らない。
     /// つながらない・時間切れ・取り消しも送らない
-    private static func reportedFailure(of result: MealPhotoUploadResult) -> HandledFailure? {
+    private func reportFailure(of result: MealPhotoUploadResult) async {
         switch result {
         case .responded(let statusCode) where (200..<300).contains(statusCode):
-            return nil
+            return
         case .responded(401), .responded(AppBuildVerdict.unsupportedStatusCode), .responded(429):
-            return nil
+            return
         case .responded:
-            return .photoUpload
+            await errorReporting.report(.photoUpload, cause: nil)
         case .failed(let error):
             if error.isCancelledTransfer {
-                return nil
+                return
             }
-            return HandledFailure.reported(error, as: .photoUpload)
+            await errorReporting.report(error, as: .photoUpload)
         }
     }
 
