@@ -65,10 +65,10 @@ final class EditMealUITests: XCTestCase {
         let katsudon = dish(named: "カツ丼")
         katsudon.swipeLeft()
         app.buttons["削除"].firstMatch.tap()
-        let cancel = app.buttons["キャンセル"]
-        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        XCTAssertTrue(mealDeletionConfirm.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "最後の1品を消す確かめ")
-        cancel.tap()
+        cancelConfirmation()
+        XCTAssertTrue(mealDeletionConfirm.waitForNonExistence(timeout: 5))
         XCTAssertTrue(katsudon.waitForExistence(timeout: 5))
 
         // 料理の画面の「この料理を削除」も同じ確かめで、「食事を削除」でタイムラインまで戻る
@@ -77,11 +77,8 @@ final class EditMealUITests: XCTestCase {
         let deleteDish = app.buttons["dish-delete"]
         XCTAssertTrue(scrollUntilExists(deleteDish))
         deleteDish.tap()
-        let confirm = app.buttons.matching(
-            NSPredicate(format: "label == %@ AND identifier != %@", "食事を削除", "meal-delete")
-        ).firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
-        confirm.tap()
+        XCTAssertTrue(mealDeletionConfirm.waitForExistence(timeout: 5))
+        mealDeletionConfirm.tap()
 
         XCTAssertTrue(app.navigationBars["カツ丼"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["食事"].waitForNonExistence(timeout: 5))
@@ -106,6 +103,25 @@ final class EditMealUITests: XCTestCase {
         app.navigationBars["食事"].tap()
         XCTAssertTrue(app.pickerWheels.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertTrue(waitUntil(time, matches: "label CONTAINS %@", "5:30"))
+    }
+
+    /// 確かめ（confirmationDialog）の「食事を削除」。食事の画面の行の「食事を削除」と見分ける
+    private var mealDeletionConfirm: XCUIElement {
+        app.buttons.matching(
+            NSPredicate(format: "label == %@ AND identifier != %@", "食事を削除", "meal-delete")
+        ).firstMatch
+    }
+
+    /// 確かめを「キャンセル」で閉じる。iOS 26 の確かめは押した場所から浮かぶ欄で出て「キャンセル」のボタンを持たず、
+    /// 欄の外を押すのがキャンセルになる（CI の要素の木では「ポップアップを閉じる」の領域だけがある）。
+    /// 画面の下から出る形なら「キャンセル」を押す
+    private func cancelConfirmation() {
+        let cancel = app.buttons["キャンセル"]
+        if cancel.exists {
+            cancel.tap()
+        } else {
+            app.otherElements["PopoverDismissRegion"].tap()
+        }
     }
 
     private func dish(named name: String) -> XCUIElement {
