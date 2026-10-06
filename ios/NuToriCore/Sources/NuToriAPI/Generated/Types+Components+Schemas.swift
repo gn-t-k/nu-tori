@@ -1082,7 +1082,7 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/name`.
             internal var name: Swift.String
-            /// 量の無い料理（推定し直しが一度も当たっていない料理）は省く
+            /// 名前だけを直すときは省く。量を直すときは名前と量を運ぶ
             ///
             /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity`.
             internal struct QuantityPayload: Codable, Hashable, Sendable {
@@ -1138,7 +1138,7 @@ extension Components {
                     case proportionedIngredients
                 }
             }
-            /// 量の無い料理（推定し直しが一度も当たっていない料理）は省く
+            /// 名前だけを直すときは省く。量を直すときは名前と量を運ぶ
             ///
             /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity`.
             internal var quantity: Components.Schemas.UpdateDishWrite.QuantityPayload?
@@ -1149,7 +1149,7 @@ extension Components {
             ///   - _type:
             ///   - dishId:
             ///   - name: 今の名前か、直した名前
-            ///   - quantity: 量の無い料理（推定し直しが一度も当たっていない料理）は省く
+            ///   - quantity: 名前だけを直すときは省く。量を直すときは名前と量を運ぶ
             internal init(
                 id: Swift.String,
                 _type: Components.Schemas.UpdateDishWrite._TypePayload,

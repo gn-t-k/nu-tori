@@ -221,31 +221,72 @@ extension SyncEngineTests {
                             eatenAt: correctedEatenAt))
             }
 
-            @Test("日をまたいで直すと、食事の日が直した日に移り、カードを置く日は送った日のままのこと")
-            func movesDayButNotCardDay() async throws {
-                // 撮った日（東京の 2026-09-22）の前の日の 23:30（東京）に直す
-                let previousNight = try Date("2026-09-21T23:30:00+09:00", strategy: .iso8601)
+            @Suite("日をまたいで直したとき")
+            struct AcrossDays {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let meal: Meal
+                let previousNight: Date
 
-                try await engine.correctMealTime(mealId: meal.id, eatenAt: previousNight)
+                init() async throws {
+                    let base = try await CorrectingEatenAt()
+                    store = base.store
+                    engine = base.engine
+                    meal = base.meal
+                    // 撮った日（東京の 2026-09-22）の前の日の 23:30（東京）に直す
+                    previousNight = try Date("2026-09-21T23:30:00+09:00", strategy: .iso8601)
+                }
 
-                let cached = try #require(store.cache.meals[meal.id])
-                #expect(cached.day == CalendarDay(year: 2026, month: 9, day: 21))
-                #expect(cached.cardDay == meal.cardDay)
+                @Test("食事の日が直した日に移り、カードを置く日は送った日のままのこと")
+                func movesDayButNotCardDay() async throws {
+                    try await engine.correctMealTime(mealId: meal.id, eatenAt: previousNight)
+
+                    let cached = try #require(store.cache.meals[meal.id])
+                    #expect(cached.day == CalendarDay(year: 2026, month: 9, day: 21))
+                    #expect(cached.cardDay == meal.cardDay)
+                }
             }
 
-            @Test("今と同じ時刻なら、何も送り待ちに入れないこと")
-            func ignoresSameTime() async throws {
-                try await engine.correctMealTime(mealId: meal.id, eatenAt: meal.eatenAt)
+            @Suite("今と同じ時刻に直したとき")
+            struct SameTime {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let meal: Meal
 
-                #expect(store.entries.map(\.kind) == [.meal])
+                init() async throws {
+                    let base = try await CorrectingEatenAt()
+                    store = base.store
+                    engine = base.engine
+                    meal = base.meal
+                }
+
+                @Test("何も送り待ちに入れないこと")
+                func ignoresSameTime() async throws {
+                    try await engine.correctMealTime(mealId: meal.id, eatenAt: meal.eatenAt)
+
+                    #expect(store.entries.map(\.kind) == [.meal])
+                }
             }
 
-            @Test("キャッシュに無い食事は、直さずに投げること")
-            func throwsForUnknownMeal() async throws {
-                let unknownId = UUID()
+            @Suite("キャッシュに無い食事を直すとき")
+            struct UnknownMeal {
+                let engine: SyncEngine
+                let correctedEatenAt: Date
+                let unknownId: UUID
 
-                await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknownId)) {
-                    try await engine.correctMealTime(mealId: unknownId, eatenAt: correctedEatenAt)
+                init() async throws {
+                    let base = try await CorrectingEatenAt()
+                    engine = base.engine
+                    correctedEatenAt = base.correctedEatenAt
+                    unknownId = UUID()
+                }
+
+                @Test("直さずに投げること")
+                func throwsForUnknownMeal() async throws {
+                    await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknownId)) {
+                        try await engine.correctMealTime(
+                            mealId: unknownId, eatenAt: correctedEatenAt)
+                    }
                 }
             }
         }

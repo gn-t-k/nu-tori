@@ -40,7 +40,7 @@ const updateDishWriteSchema = z
           }),
       })
       .optional()
-      .openapi({ description: "量の無い料理（推定し直しが一度も当たっていない料理）は省く" }),
+      .openapi({ description: "名前だけを直すときは省く。量を直すときは名前と量を運ぶ" }),
   })
   .openapi("UpdateDishWrite");
 

@@ -6,6 +6,7 @@ import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
+import { requireLastSequence } from "../../http/sync-routes/testing/require-last-sequence";
 import { signInTestAccount } from "../../http/testing";
 import { deleteDishWrite } from "../../dish/http/testing/delete-dish-write";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
@@ -39,9 +40,13 @@ describe("材料の同期", () => {
     const ingredient = estimated.find(
       ({ kind, record }) => kind === "ingredient" && record["name"] === "鶏もも肉",
     );
-    ingredientId = ingredient?.recordId ?? "";
-    dishId = String(ingredient?.record["dishId"]);
-    lastSequence = estimated.at(-1)?.sequence ?? 0;
+    const ingredientDishId = ingredient?.record["dishId"];
+    if (ingredient === undefined || typeof ingredientDishId !== "string") {
+      throw new Error("推定で鶏もも肉ができていない");
+    }
+    ingredientId = ingredient.recordId;
+    dishId = ingredientDishId;
+    lastSequence = requireLastSequence(estimated);
   });
 
   describe("推定した材料の量を直す書き込みを送ったとき", () => {
@@ -104,7 +109,7 @@ describe("材料の同期", () => {
       let sequenceBefore: number;
       let sameResults: PushResults["results"];
       beforeEach(async () => {
-        sequenceBefore = (await pullChangesAfter(0)).at(-1)?.sequence ?? 0;
+        sequenceBefore = requireLastSequence(await pullChangesAfter(0));
         ({ results: sameResults } = await (
           await pushSyncWrites(sessionToken, { writes: [updateIngredientWrite(ingredientId, 120)] })
         ).json<PushResults>());

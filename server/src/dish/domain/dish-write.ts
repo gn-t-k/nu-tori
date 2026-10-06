@@ -8,7 +8,7 @@ export type DishWrite = { id: string } &
         type: "update_dish";
         dishId: string;
         name: string;
-        // 量の無い料理の名前を直すときは省く
+        // 名前だけを直すときは省く。量を直すときは名前と量を運ぶ
         quantity: DishQuantityCorrection | undefined;
       }
   );

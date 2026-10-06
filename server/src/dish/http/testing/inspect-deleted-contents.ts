@@ -103,11 +103,6 @@ export const inspectDeletedContents = (accountId: string, deleted: DeletedRecord
         "ingredient_id",
         deleted.ingredientIds,
       ),
-      estimationSchedules: sql
-        .exec<{ total: number }>("SELECT count(*) AS total FROM estimation_schedules")
-        .one().total,
-      estimations: sql.exec<{ total: number }>("SELECT count(*) AS total FROM estimations").one()
-        .total,
       foreignKeyViolations: sql.exec("PRAGMA foreign_key_check").toArray(),
     };
   });

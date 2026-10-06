@@ -11,9 +11,9 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
-import { correctDishByWrites } from "../../dish/http/testing/correct-dish-by-writes";
 import { inspectDeletedContents } from "../../dish/http/testing/inspect-deleted-contents";
-import { reestimateRenamedDish } from "../../dish/http/testing/reestimate-renamed-dish";
+import { recordMealWithCorrectedDish } from "../../dish/http/testing/record-meal-with-corrected-dish";
+import { countEstimations } from "../../estimation/http/testing/count-estimations";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { recordPhotographedMeal } from "../../estimation/http/testing/record-photographed-meal";
 import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
@@ -891,51 +891,19 @@ describe("食事の同期", () => {
     let mealId: string;
     let dishIds: string[];
     let ingredientIds: string[];
-    let estimationCountsBefore: { estimationSchedules: number; estimations: number };
+    let estimationCountsBefore: Awaited<ReturnType<typeof countEstimations>>;
+    let estimationCountsAfter: Awaited<ReturnType<typeof countEstimations>>;
     let write: ReturnType<typeof deleteMealWrite>;
     let inspected: Awaited<ReturnType<typeof inspectDeletedContents>>;
     beforeEach(async () => {
       // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
       useFakeClock(Date.now() + 86_400_000);
       mockCreateEstimationProviderOk();
-      mealId = await recordPhotographedMeal(sessionToken);
-      await runEstimationAlarm(accountId);
-      const estimated = (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes;
-      dishIds = estimated.filter(({ kind }) => kind === "dish").map(({ recordId }) => recordId);
-      const estimatedIngredients = estimated.filter(({ kind }) => kind === "ingredient");
-      const corrected = await pushSyncWrites(sessionToken, {
-        writes: [
-          updateMealWrite(mealId, Date.now() - 10 * 60_000),
-          updateMealWrite(mealId, Date.now() - 20 * 60_000),
-        ],
-      });
-      if (
-        (await corrected.json<PushResults>()).results.some(({ result }) => result !== "applied")
-      ) {
-        throw new Error("時刻を直す書き込みが当たらなかった");
-      }
-      // 名前を2回直すので、1回目の名前で待った予定は、2回目の名前の書き込みが取り消す
-      await correctDishByWrites(sessionToken, {
-        dishId: dishIds[0] ?? "",
-        ingredientIds: estimatedIngredients
-          .filter(({ record }) => record["dishId"] === dishIds[0])
-          .map(({ recordId }) => recordId),
-      });
-      const replacingIngredientIds = await reestimateRenamedDish(
-        accountId,
-        sessionToken,
-        dishIds[0] ?? "",
-      );
-      ingredientIds = [
-        ...estimatedIngredients.map(({ recordId }) => recordId),
-        ...replacingIngredientIds,
-      ];
-      const { estimationSchedules, estimations } = await inspectDeletedContents(accountId, {
-        mealIds: [],
-        dishIds: [],
-        ingredientIds: [],
-      });
-      estimationCountsBefore = { estimationSchedules, estimations };
+      const prepared = await recordMealWithCorrectedDish(accountId, sessionToken);
+      mealId = prepared.mealId;
+      dishIds = [prepared.dishId, prepared.untouchedDishId];
+      ingredientIds = [...prepared.ingredientIds, ...prepared.untouchedIngredientIds];
+      estimationCountsBefore = await countEstimations(accountId);
       write = deleteMealWrite(mealId);
       await pushSyncWrites(sessionToken, { writes: [write] });
       inspected = await inspectDeletedContents(accountId, {
@@ -943,6 +911,7 @@ describe("食事の同期", () => {
         dishIds,
         ingredientIds,
       });
+      estimationCountsAfter = await countEstimations(accountId);
     });
 
     test("控えを外部キーで指す表のうち、削除の印と帳簿のほかに、消した食事・料理・材料の控えから辿れる行が残らないこと", () => {
@@ -986,10 +955,7 @@ describe("食事の同期", () => {
     });
 
     test("予定と推定は残ること", () => {
-      expect({
-        estimationSchedules: inspected.estimationSchedules,
-        estimations: inspected.estimations,
-      }).toEqual(estimationCountsBefore);
+      expect(estimationCountsAfter).toEqual(estimationCountsBefore);
     });
 
     test("外部キーの違反が無いこと", () => {

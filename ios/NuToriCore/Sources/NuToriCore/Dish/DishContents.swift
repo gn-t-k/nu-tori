@@ -22,9 +22,7 @@ public struct DishContents: Hashable, Sendable {
     ) {
         self.init(
             dish: dish,
-            ingredients: ingredients.sorted {
-                ($0.positionInDish, $0.id.uuidString) < ($1.positionInDish, $1.id.uuidString)
-            },
+            ingredients: ingredients.sortedInDishOrder(),
             progress: progress
         )
     }

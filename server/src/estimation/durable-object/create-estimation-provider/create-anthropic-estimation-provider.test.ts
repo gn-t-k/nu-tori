@@ -332,9 +332,10 @@ describe("createAnthropicEstimationProvider", () => {
       provider = createAnthropicEstimationProvider(stub.client, "account-1");
     });
 
-    test("写真のあとに、料理の今の名前と、直した材料の名前と量と、直した料理の量と単位を渡すこと", async () => {
-      await provider.identifyDishes(
-        {
+    describe("直した材料と量があるとき", () => {
+      let request: IdentifyDishesRequest;
+      beforeEach(() => {
+        request = {
           photos,
           target: {
             type: "dish",
@@ -344,52 +345,59 @@ describe("createAnthropicEstimationProvider", () => {
               correctedQuantity: { value: 1.5, unit: "杯" },
             },
           },
-        },
-        neverEnds(),
-      );
+        };
+      });
 
-      expect(requests[0]).toMatchObject({
-        body: {
-          messages: [
-            {
-              content: [
-                { type: "image" },
-                { type: "image" },
-                {
-                  type: "text",
-                  text: expect.stringMatching(/「カツ丼」[\s\S]*ご飯 150 g[\s\S]*1\.5 杯/),
-                },
-              ],
-            },
-          ],
-        },
+      test("写真のあとに、料理の今の名前と、直した材料の名前と量と、直した料理の量と単位を渡すこと", async () => {
+        await provider.identifyDishes(request, neverEnds());
+
+        expect(requests[0]).toMatchObject({
+          body: {
+            messages: [
+              {
+                content: [
+                  { type: "image" },
+                  { type: "image" },
+                  {
+                    type: "text",
+                    text: expect.stringMatching(/「カツ丼」[\s\S]*ご飯 150 g[\s\S]*1\.5 杯/),
+                  },
+                ],
+              },
+            ],
+          },
+        });
       });
     });
 
-    test("直した材料も量も無ければ、それらを渡さないこと", async () => {
-      await provider.identifyDishes(
-        {
+    describe("直した材料も量も無いとき", () => {
+      let request: IdentifyDishesRequest;
+      beforeEach(() => {
+        request = {
           photos,
           target: {
             type: "dish",
             dish: { name: "カツ丼", correctedIngredients: [], correctedQuantity: undefined },
           },
-        },
-        neverEnds(),
-      );
+        };
+      });
 
-      expect(requests[0]).toMatchObject({
-        body: {
-          messages: [
-            {
-              content: [
-                { type: "image" },
-                { type: "image" },
-                { type: "text", text: expect.not.stringMatching(/直した材料|料理の量は/) },
-              ],
-            },
-          ],
-        },
+      test("それらを渡さないこと", async () => {
+        await provider.identifyDishes(request, neverEnds());
+
+        expect(requests[0]).toMatchObject({
+          body: {
+            messages: [
+              {
+                content: [
+                  { type: "image" },
+                  { type: "image" },
+                  { type: "text", text: expect.not.stringMatching(/直した材料|料理の量は/) },
+                ],
+              },
+            ],
+          },
+        });
       });
     });
   });
@@ -438,48 +446,56 @@ describe("createAnthropicEstimationProvider", () => {
       provider = createAnthropicEstimationProvider(stub.client, "account-1");
     });
 
-    test("写真のあとに、足した料理の名前を渡し、同じ料理を答えないよう指示すること", async () => {
-      await provider.identifyDishes(
-        { photos, target: { type: "meal", addedDishNames: ["味噌汁", "サラダ"] } },
-        neverEnds(),
-      );
+    describe("足した料理があるとき", () => {
+      let request: IdentifyDishesRequest;
+      beforeEach(() => {
+        request = { photos, target: { type: "meal", addedDishNames: ["味噌汁", "サラダ"] } };
+      });
 
-      expect(requests[0]).toMatchObject({
-        body: {
-          messages: [
-            {
-              content: [
-                { type: "image" },
-                { type: "image" },
-                {
-                  type: "text",
-                  text: expect.stringMatching(/味噌汁、サラダ[\s\S]*同じ料理は答えない/),
-                },
-              ],
-            },
-          ],
-        },
+      test("写真のあとに、足した料理の名前を渡し、同じ料理を答えないよう指示すること", async () => {
+        await provider.identifyDishes(request, neverEnds());
+
+        expect(requests[0]).toMatchObject({
+          body: {
+            messages: [
+              {
+                content: [
+                  { type: "image" },
+                  { type: "image" },
+                  {
+                    type: "text",
+                    text: expect.stringMatching(/味噌汁、サラダ[\s\S]*同じ料理は答えない/),
+                  },
+                ],
+              },
+            ],
+          },
+        });
       });
     });
 
-    test("足した料理が無ければ、それを渡さないこと", async () => {
-      await provider.identifyDishes(
-        { photos, target: { type: "meal", addedDishNames: [] } },
-        neverEnds(),
-      );
+    describe("足した料理が無いとき", () => {
+      let request: IdentifyDishesRequest;
+      beforeEach(() => {
+        request = { photos, target: { type: "meal", addedDishNames: [] } };
+      });
 
-      expect(requests[0]).toMatchObject({
-        body: {
-          messages: [
-            {
-              content: [
-                { type: "image" },
-                { type: "image" },
-                { type: "text", text: expect.not.stringMatching(/足した料理/) },
-              ],
-            },
-          ],
-        },
+      test("それを渡さないこと", async () => {
+        await provider.identifyDishes(request, neverEnds());
+
+        expect(requests[0]).toMatchObject({
+          body: {
+            messages: [
+              {
+                content: [
+                  { type: "image" },
+                  { type: "image" },
+                  { type: "text", text: expect.not.stringMatching(/足した料理/) },
+                ],
+              },
+            ],
+          },
+        });
       });
     });
   });
@@ -724,3 +740,6 @@ describe("createAnthropicEstimationProvider", () => {
     });
   });
 });
+
+// 推定の提供元の ① に渡す要求
+type IdentifyDishesRequest = Parameters<EstimationProvider["identifyDishes"]>[0];

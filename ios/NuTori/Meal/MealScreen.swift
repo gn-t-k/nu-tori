@@ -160,7 +160,6 @@ struct MealScreen: View {
                 isPresented: $confirmsDeletion, titleVisibility: .visible
             ) {
                 Button("食事を削除", role: .destructive, action: deleteMealAndReturn)
-                    .accessibilityIdentifier("meal-delete-confirm")
                 Button("キャンセル", role: .cancel) {}
             }
         }

@@ -84,10 +84,7 @@ public struct DishEdit: Sendable, Equatable {
     private static func ingredientsInOrder(of dish: Dish, among ingredients: [Ingredient])
         -> [Ingredient]
     {
-        DishContents(
-            dish: dish, ingredientsInAnyOrder: ingredients.filter { $0.dishId == dish.id },
-            progress: .settled
-        ).ingredients
+        ingredients.filter { $0.dishId == dish.id }.sortedInDishOrder()
     }
 }
 

@@ -1,6 +1,7 @@
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
+import { estimationEndedAt } from "../../estimation/durable-object/estimation-ended-at";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
 import { ingredientTables } from "../../ingredient/durable-object/ingredient-tables";
 import { mealTables } from "../../meal/durable-object/meal-tables";
@@ -49,10 +50,9 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
   },
   exists: (id) =>
     db.select({ id: dishes.id }).from(dishes).where(eq(dishes.id, id)).get() !== undefined,
-  findNewestReestimationEndedAt: (id) => {
-    const endedAt = sql<number>`coalesce(${estimationCompletions.completedAt}, ${estimationAbandonments.abandonedAt})`;
-    return db
-      .select({ endedAt })
+  findNewestReestimationEndedAt: (id) =>
+    db
+      .select({ endedAt: estimationEndedAt })
       .from(dishEstimationApplications)
       .innerJoin(estimations, eq(estimations.id, dishEstimationApplications.estimationId))
       .innerJoin(
@@ -62,11 +62,10 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
       .leftJoin(estimationCompletions, eq(estimationCompletions.estimationId, estimations.id))
       .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
       .where(eq(dishEstimationApplications.dishId, id))
-      .orderBy(desc(endedAt))
+      .orderBy(desc(estimationEndedAt))
       .limit(1)
       .all()
-      .map((row) => new Date(row.endedAt))[0];
-  },
+      .map((row) => new Date(row.endedAt))[0],
   hasDeletion: (id) =>
     db
       .select({ id: dishDeletions.dishId })

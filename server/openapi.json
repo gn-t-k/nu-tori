@@ -686,7 +686,7 @@
               "value",
               "proportionedIngredients"
             ],
-            "description": "量の無い料理（推定し直しが一度も当たっていない料理）は省く"
+            "description": "名前だけを直すときは省く。量を直すときは名前と量を運ぶ"
           }
         },
         "required": [

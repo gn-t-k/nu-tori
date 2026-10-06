@@ -56,29 +56,27 @@ export const writeEstimationEvents = <T>(
       });
     }
   };
-  const rememberDish = (dishId: string) => {
+  // always は、状態が同じでも変更を足すか（料理の推定を始めたとき）
+  const rememberDish = (dishId: string, { always }: { always: boolean }) => {
     const key = `dish:${dishId}`;
-    if (!statusesBeforeWrites.has(key)) {
+    const remembered = statusesBeforeWrites.get(key);
+    if (remembered === undefined) {
       statusesBeforeWrites.set(key, {
         change: { recordType: "dish_estimation_status", recordId: dishId },
         before: dishStatusKind.readCurrent(dishId),
-        always: false,
+        always,
       });
+      return;
     }
-  };
-  const rememberStartedDish = (dishId: string) => {
-    rememberDish(dishId);
-    const remembered = statusesBeforeWrites.get(`dish:${dishId}`);
-    if (remembered !== undefined) {
-      remembered.always = true;
-    }
+    // 同じ run で先に覚えた料理の推定を始めたときも、変更を足す
+    remembered.always ||= always;
   };
   const rememberTarget = (target: EstimationTarget) => {
     if (target.type === "meal") {
       rememberMeal(target.mealId);
       return;
     }
-    rememberDish(target.dishId);
+    rememberDish(target.dishId, { always: false });
   };
 
   const result = run({
@@ -87,11 +85,11 @@ export const writeEstimationEvents = <T>(
       store.insertMealSchedule(schedule);
     },
     scheduleDish: (schedule) => {
-      rememberDish(schedule.dishId);
+      rememberDish(schedule.dishId, { always: false });
       store.insertDishSchedule(schedule);
     },
     cancelDishSchedule: ({ dishId, ...cancellation }) => {
-      rememberDish(dishId);
+      rememberDish(dishId, { always: false });
       store.insertCancellation(cancellation);
     },
     deferToNextDay: ({ scheduleId, target, deferredAt, nextSchedule }) => {
@@ -107,7 +105,7 @@ export const writeEstimationEvents = <T>(
       if (target.type === "meal") {
         rememberMeal(target.mealId);
       } else {
-        rememberStartedDish(target.dishId);
+        rememberDish(target.dishId, { always: true });
       }
       store.insertEstimation(estimation);
     },

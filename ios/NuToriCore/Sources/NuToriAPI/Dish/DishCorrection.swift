@@ -1,10 +1,10 @@
 public import Foundation
 
-/// 料理を直す書き込みの中身。名前と量を両方運び、サーバーが今の値と違う分だけを修正として足す
+/// 料理を直す書き込みの中身。量を直すときは名前と量を運び、サーバーが今の値と違う分だけを修正として足す
 public struct DishCorrection: Sendable, Equatable {
     public let id: UUID
     public let name: String
-    /// 量の無い料理（推定し直しが一度も当たっていない料理）の名前を直すときは nil
+    /// 名前だけを直すときは nil
     public let quantity: Quantity?
 
     public init(id: UUID, name: String, quantity: Quantity?) {

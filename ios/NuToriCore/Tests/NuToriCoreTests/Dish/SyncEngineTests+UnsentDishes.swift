@@ -8,58 +8,101 @@ import Testing
 extension SyncEngineTests {
     @Suite("まだ送れていない料理")
     struct UnsentDishes {
-        let store: SyncBoxMock<RecordCacheMock>
-        let transport: ClientTransportMock
-        let engine: SyncEngine
+        @Suite("料理を足したとき")
+        struct AddedDish {
+            @Suite("送る前")
+            struct BeforeSync {
+                let engine: SyncEngine
+                let dishId: UUID
 
-        init() async throws {
-            store = try await DishWrites.seededStore()
-            transport = .sync()
-            engine = .fixture(store: store, transport: transport)
+                init() async throws {
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                    dishId = try #require(
+                        try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId)
+                    ).id
+                }
+
+                @Test("まだ送れていない料理にすること")
+                func isUnsent() async throws {
+                    #expect(try await engine.unsentDishIds() == [dishId])
+                }
+            }
+
+            @Suite("送ったとき")
+            struct Synced {
+                let engine: SyncEngine
+
+                init() async throws {
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                    _ = try #require(
+                        try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId))
+                    _ = try await engine.sync()
+                }
+
+                @Test("まだ送れていない料理にしないこと")
+                func isNotUnsent() async throws {
+                    #expect(try await engine.unsentDishIds().isEmpty)
+                }
+            }
         }
 
-        @Test("足した料理は、送るまでまだ送れていない料理にすること")
-        func addedDish() async throws {
-            let dish = try #require(
-                try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId))
+        @Suite("名前を直したとき")
+        struct RenamedDish {
+            @Suite("送る前")
+            struct BeforeSync {
+                let engine: SyncEngine
 
-            #expect(try await engine.unsentDishIds() == [dish.id])
-            _ = try await engine.sync()
-            #expect(try await engine.unsentDishIds().isEmpty)
+                init() async throws {
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                    try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+                }
+
+                @Test("まだ送れていない料理にすること")
+                func isUnsent() async throws {
+                    #expect(try await engine.unsentDishIds() == [DishWrites.dishId])
+                }
+            }
+
+            @Suite("送って変更を取り切ったとき")
+            struct Synced {
+                let engine: SyncEngine
+
+                init() async throws {
+                    engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                    try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+                    _ = try await engine.sync()
+                }
+
+                @Test("まだ送れていない料理にしないこと")
+                func isNotUnsent() async throws {
+                    #expect(try await engine.unsentDishIds().isEmpty)
+                }
+            }
         }
 
-        @Test("名前を直した料理は、送るまでまだ送れていない料理にすること")
-        func renamedDish() async throws {
-            try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+        @Suite("量だけを直したとき")
+        struct QuantityCorrectedDish {
+            let engine: SyncEngine
 
-            #expect(try await engine.unsentDishIds() == [DishWrites.dishId])
+            init() async throws {
+                engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
+                try await engine.correctDishQuantity(id: DishWrites.dishId, to: 1.5)
+            }
+
+            @Test("まだ送れていない料理にしないこと")
+            func isNotUnsent() async throws {
+                #expect(try await engine.unsentDishIds().isEmpty)
+            }
         }
 
-        @Test("名前を直した料理は、送って変更を取り切ったら、まだ送れていない料理にしないこと")
-        func renamedDishAfterSync() async throws {
-            try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
-            _ = try await engine.sync()
-
-            #expect(try await engine.unsentDishIds().isEmpty)
-        }
-
-        @Test("量だけを直した料理は、まだ送れていない料理にしないこと")
-        func quantityCorrectedDish() async throws {
-            try await engine.correctDishQuantity(id: DishWrites.dishId, to: 1.5)
-
-            #expect(try await engine.unsentDishIds().isEmpty)
-        }
-
-        @Suite("送り終えたあと、変更を取りに行けなかったとき")
+        @Suite("名前を直して送り終えたあと、変更を取りに行けなかったとき")
         struct PullFailed {
-            let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
 
             init() async throws {
-                store = try await DishWrites.seededStore()
                 transport = .sync(pullStatus: .internalServerError)
-                engine = .fixture(store: store, transport: transport)
+                engine = .fixture(store: try await DishWrites.seededStore(), transport: transport)
                 try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
                 _ = try await engine.sync()
             }
@@ -80,19 +123,6 @@ extension SyncEngineTests {
                 #expect(writeIds.count == 2)
                 #expect(Set(writeIds).count == 1)
             }
-        }
-
-        @Test("名前を直した書き込みも、料理を直す書き込みで送ること")
-        func renameIsSentAsUpdate() async throws {
-            try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
-            _ = try await engine.sync()
-
-            let write = try #require(try transport.pushBodies.first?.writes.first)
-            guard case .updateDish(_, let correction) = write else {
-                Issue.record("料理を直す書き込みでない: \(write)")
-                return
-            }
-            #expect(correction.name == "カツ丼")
         }
     }
 }

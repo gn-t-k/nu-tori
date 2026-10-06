@@ -47,37 +47,34 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
         shown: ShownRecords
     ) throws -> KindRejection {
         let pending = try PendingMealWrite(entry: entry)
+        func rejected(_ record: RejectedWrite.Record) -> RejectedWrite {
+            RejectedWrite(writeId: pending.writeId, reason: reason, record: record)
+        }
         switch (pending.write, current) {
         case (.create(let meal), .absent):
             return KindRejection(
-                rejectedWrite: RejectedWrite(
-                    writeId: pending.writeId, reason: reason, record: .meal(meal)),
+                rejectedWrite: rejected(.meal(meal)),
                 removingChanges: [.mealDeletion(mealId: meal.id)]
             )
         case (.update(let mealId, _), .absent):
             return KindRejection(
                 rejectedWrite: shown.meals[mealId].map {
-                    RejectedWrite(
-                        writeId: pending.writeId, reason: reason,
-                        record: .mealEdit(RejectedMealLine(meal: $0)))
+                    rejected(.mealEdit(RejectedMealLine(meal: $0)))
                 },
                 removingChanges: [.mealDeletion(mealId: mealId)])
         case (.update(let mealId, _), .deleted):
             return KindRejection(
                 rejectedWrite: shown.meals[mealId].map {
-                    RejectedWrite(
-                        writeId: pending.writeId, reason: reason,
-                        record: .mealEdit(RejectedMealLine(meal: $0)))
+                    rejected(.mealEdit(RejectedMealLine(meal: $0)))
                 },
                 removingChanges: [])
         case (.update(let mealId, let eatenAt), .value(let change)):
-            let serverMeal = MealSyncing().current(from: [change]).meals.first
+            let serverMeal = self.current(from: [change]).meals.first
             return KindRejection(
                 rejectedWrite: (shown.meals[mealId] ?? serverMeal).map {
-                    RejectedWrite(
-                        writeId: pending.writeId, reason: reason,
-                        record: .mealEdit(
-                            RejectedMealLine(meal: $0, subject: .eatenAt(attempted: eatenAt))))
+                    rejected(
+                        .mealEdit(RejectedMealLine(meal: $0, subject: .eatenAt(attempted: eatenAt)))
+                    )
                 },
                 removingChanges: [])
         case (.create, .value), (.create, .deleted), (.create, nil), (.update, nil), (.delete, _):
