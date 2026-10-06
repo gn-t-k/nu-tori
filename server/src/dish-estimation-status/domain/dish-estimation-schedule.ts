@@ -25,13 +25,11 @@ export const findWaitingSchedules = (
 ): DishEstimationSchedule[] =>
   schedules.filter(({ cancelled, progress }) => !cancelled && progress === "waiting");
 
-// 料理の推定を始めて、まだ完了も断念もしていない推定
-export const findOngoingEstimationId = (
-  schedules: readonly DishEstimationSchedule[],
-): string | undefined =>
+// 料理の推定を始めて、まだ完了も断念もしていない推定。名前をまた直したときに前の推定が呼び出し中なら、2つ以上並ぶ
+export const findOngoingEstimationIds = (schedules: readonly DishEstimationSchedule[]): string[] =>
   schedules.flatMap((schedule) =>
     schedule.progress === "estimating" ? [schedule.estimationId] : [],
-  )[0];
+  );
 
 // 推定し直しの書き込みを受け取った時刻。その推定の予定から、見送りでつながった前の予定を辿った、いちばん早い予定の時刻
 export const findReceivedAtOfEstimation = (

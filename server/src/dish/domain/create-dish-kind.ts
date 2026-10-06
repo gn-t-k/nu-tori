@@ -172,11 +172,11 @@ const decideUpdate = (
   const quantityCorrection =
     quantity !== undefined && quantity.value !== current.quantity?.value ? quantity : undefined;
   // 比例の明細の材料は、同じ料理の今の材料でないと書けない（表の外部キーでは守れない）。
-  // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき
+  // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき。量が今と同じでも、載せた組は確かめる
   if (
-    quantityCorrection !== undefined &&
+    quantity !== undefined &&
     !isSameIdSet(
-      quantityCorrection.proportionedIngredients.map(({ ingredientId }) => ingredientId),
+      quantity.proportionedIngredients.map(({ ingredientId }) => ingredientId),
       stores.ingredient.findCurrentIdsOfDish(dishId),
     )
   ) {

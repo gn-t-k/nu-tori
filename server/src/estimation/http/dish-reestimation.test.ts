@@ -232,6 +232,38 @@ describe("名前を直したときの推定し直し", () => {
           });
         });
 
+        test("量が今と同じでも、前の材料を載せた料理の書き込みは、材料が置き換わったとして受け付けないこと", async () => {
+          const { results } = await (
+            await pushSyncWrites(sessionToken, {
+              writes: [
+                updateDishWrite(dishId, {
+                  name: "カツカレー",
+                  quantity: {
+                    value: 1,
+                    proportionedIngredients: [
+                      { ingredientId: chickenId, quantity: 80 },
+                      { ingredientId: riceId, quantity: 200 },
+                    ],
+                  },
+                }),
+              ],
+            })
+          ).json<PushResults>();
+          expect({
+            result: results[0]?.result,
+            rejectionReason: results[0]?.rejectionReason,
+          }).toEqual({ result: "rejected", rejectionReason: "ingredients_replaced" });
+        });
+
+        test("量を省いて名前だけを直す書き込みは、受け付けること", async () => {
+          const { results } = await (
+            await pushSyncWrites(sessionToken, {
+              writes: [updateDishWrite(dishId, { name: "カツカレー" })],
+            })
+          ).json<PushResults>();
+          expect(results[0]?.result).toBe("applied");
+        });
+
         test("前の材料の量を直す書き込みは、材料が置き換わったとして、今の値に削除の印を添えること", async () => {
           const { results } = await (
             await pushSyncWrites(sessionToken, { writes: [updateIngredientWrite(riceId, 150)] })
@@ -790,6 +822,31 @@ describe("名前を直したときの推定し直し", () => {
               finalStatus: properties["final_status"],
             })),
         ).toEqual([{ trigger: "dish_renamed", finalStatus: "dish_deleted" }]);
+      });
+    });
+
+    describe("名前をまた直して推定し直しの呼び出しが2つ並んでいるあいだに料理を消したとき", () => {
+      beforeEach(async () => {
+        const { promise: replyAfter, resolve: reply } = Promise.withResolvers<void>();
+        mockCreateEstimationProviderOk({ replyAfter });
+        await rename("カツ丼");
+        const first = runDurableObjectAlarm(getAccountDurableObject(env, accountId));
+        await waitForEstimationAttempts(accountId, 2);
+        await rename("かつ丼");
+        const second = runDurableObjectAlarm(getAccountDurableObject(env, accountId));
+        await waitForEstimationAttempts(accountId, 3);
+        captureSpy.mockClear();
+        await pushSyncWrites(sessionToken, { writes: [deleteDishWrite(dishId)] });
+        reply();
+        await Promise.all([first, second]);
+      });
+
+      test("呼び出し中の推定のそれぞれについて、推定ごとの出来事を「料理が消えた」で送ること", () => {
+        expect(
+          readPostHogCapturedEvents(captureSpy)
+            .filter(({ event }) => event === "estimation_ended")
+            .map(({ properties }) => properties["final_status"]),
+        ).toEqual(["dish_deleted", "dish_deleted"]);
       });
     });
   });
