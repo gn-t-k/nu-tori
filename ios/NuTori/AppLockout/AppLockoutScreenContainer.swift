@@ -1,11 +1,11 @@
 import NuToriCore
 import SwiftUI
 
-/// どこから入れた版かを見分けて、締め出しの画面に渡す
+/// どこから入れた版かを見分けて、締め出しの画面の更新のボタンで開く先にする
 struct AppLockoutScreenContainer: View {
     var body: some View {
         AppLockoutScreen(
-            destination: destination ?? .appStore(appId: nil),
+            isOpening: false,
             openUpdate: {
                 // 見分け終える前に押されたら、見分け終えるのを待って開く。TestFlight の版で App Store を開かないため
                 let resolved: AppUpdateDestination
@@ -23,6 +23,6 @@ struct AppLockoutScreenContainer: View {
     }
 
     @Environment(\.openURL) private var openURL
-    /// どこから入れた版か。見分け終えるまでは nil で、ボタンの名前は見分けられないときと同じ App Store にする
+    /// どこから入れた版か。見分け終えるまでは nil
     @State private var destination: AppUpdateDestination?
 }

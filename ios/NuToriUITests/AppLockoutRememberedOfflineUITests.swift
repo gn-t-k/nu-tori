@@ -18,7 +18,7 @@ final class AppLockoutRememberedOfflineUITests: XCTestCase {
     func test_電波が無くても開き直すと締め出しの画面を出すこと() {
         XCTAssertTrue(app.otherElements["app-lockout"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["アップデートしてください"].exists)
-        XCTAssertTrue(app.buttons["App Store で更新"].exists)
+        XCTAssertTrue(app.buttons["更新する"].exists)
         XCTAssertFalse(app.otherElements["signIn"].exists)
         attachScreenshot(of: app, named: "電波が無いときに開き直した締め出しの画面")
     }

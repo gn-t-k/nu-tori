@@ -1,11 +1,14 @@
-import NuToriCore
 import SwiftUI
 
 /// 締め出しの画面。すべての画面に替えて全面に出し、説明と更新のボタンだけを載せる
 struct AppLockoutScreen: View {
-    /// ボタンの名前に出す、更新する場所
-    let destination: AppUpdateDestination
-    /// 更新する場所を開く
+    /// isOpening は画面を出したときの状態。更新する場所を開くのは画面の中で進むので、あとから渡し直しても変わらない
+    init(isOpening: Bool, openUpdate: @escaping () async -> Void) {
+        _isOpening = State(initialValue: isOpening)
+        self.openUpdate = openUpdate
+    }
+
+    /// 更新する場所を開く。どこから入れた版かを見分け終えるまで待つことがある
     let openUpdate: () async -> Void
 
     var body: some View {
@@ -19,18 +22,35 @@ struct AppLockoutScreen: View {
                 }
             }
             Button {
-                Task { await openUpdate() }
+                // 開くのを待つあいだに続けて押されても、二重に開かない
+                guard !isOpening else { return }
+                isOpening = true
+                Task {
+                    await openUpdate()
+                    isOpening = false
+                }
             } label: {
-                Text(buttonTitle)
-                    .frame(maxWidth: .infinity)
+                HStack {
+                    Text("更新する")
+                    if isOpening {
+                        ProgressView()
+                            // 既定の色は塗りと同じ Primary で見えないので、文字と同じ on-primary にする
+                            .tint(.white)
+                    }
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .padding([.horizontal, .bottom])
         }
         .background(Color(.systemGroupedBackground))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("app-lockout")
     }
+
+    /// 押してから、更新する場所を開くまでのあいだ
+    @State private var isOpening: Bool
 
     private var message: some View {
         VStack(spacing: 12) {
@@ -47,12 +67,5 @@ struct AppLockoutScreen: View {
                 .multilineTextAlignment(.center)
         }
         .padding()
-    }
-
-    private var buttonTitle: String {
-        switch destination {
-        case .appStore: "App Store で更新"
-        case .testFlight: "TestFlight で更新"
-        }
     }
 }
