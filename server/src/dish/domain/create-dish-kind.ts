@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
 import { computeDishEstimationStatus } from "../../dish-estimation-status/domain/compute-dish-estimation-status";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
+import { mealAwaitsEstimation } from "../../meal-estimation-status/domain/meal-awaits-estimation";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
@@ -51,6 +52,7 @@ type DishKindStores = Pick<
   | "dishEstimationStatus"
   | "ingredient"
   | "meal"
+  | "mealEstimationStatus"
   | "latestTimeZone"
   | "estimationSchedule"
   | "estimation"
@@ -83,6 +85,9 @@ const decideCreate = (
   const meal = stores.meal.find(mealId);
   if (meal === undefined) {
     return rejected("create", dishId, "record_not_found");
+  }
+  if (mealAwaitsEstimation(stores.mealEstimationStatus, mealId)) {
+    return rejected("create", dishId, "awaiting_estimation");
   }
   if (!isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length)) {
     return rejected("create", dishId, "out_of_range");
@@ -163,17 +168,9 @@ const decideUpdate = (
   if (current === undefined) {
     return rejected("update", dishId, "record_not_found");
   }
-  if (
-    !isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length) ||
-    (quantity !== undefined && !isAcceptableQuantity(current, quantity))
-  ) {
-    return rejected("update", dishId, "out_of_range");
-  }
-  const renamed = name !== current.name;
-  const quantityCorrection =
-    quantity !== undefined && quantity.value !== current.quantity?.value ? quantity : undefined;
   // 比例の明細の材料は、同じ料理の今の材料でないと書けない（表の外部キーでは守れない）。
-  // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき。量が今と同じでも、載せた組は確かめる
+  // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき。量が今と同じでも、載せた組は確かめる。
+  // 待っても直せないことを返すため、推定を待っていることより先に確かめる
   if (
     quantity !== undefined &&
     !isSameIdSet(
@@ -183,6 +180,18 @@ const decideUpdate = (
   ) {
     return rejected("update", dishId, "ingredients_replaced");
   }
+  if (mealAwaitsEstimation(stores.mealEstimationStatus, current.mealId)) {
+    return rejected("update", dishId, "awaiting_estimation");
+  }
+  if (
+    !isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length) ||
+    (quantity !== undefined && !isAcceptableQuantity(current, quantity))
+  ) {
+    return rejected("update", dishId, "out_of_range");
+  }
+  const renamed = name !== current.name;
+  const quantityCorrection =
+    quantity !== undefined && quantity.value !== current.quantity?.value ? quantity : undefined;
   if (!renamed && quantityCorrection === undefined) {
     return decideWithoutChange("update", dishId, { result: "applied" });
   }

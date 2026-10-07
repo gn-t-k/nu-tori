@@ -84,6 +84,7 @@ const syncWriteRejections = sqliteTable("sync_write_rejections", {
       "invalid_notice_type",
       "invalid_target_on",
       "ingredients_replaced",
+      "awaiting_estimation",
     ],
   }).notNull(),
 });
