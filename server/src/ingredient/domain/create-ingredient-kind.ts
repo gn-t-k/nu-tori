@@ -6,10 +6,9 @@ import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import { computeReestimatedDishEditedEvents } from "../../dish/domain/compute-reestimated-dish-edited-events";
+import { dishAwaitsEstimation } from "../../dish/domain/dish-awaits-estimation";
 import type { DishStore } from "../../dish/domain/dish-store";
-import { dishAwaitsReestimation } from "../../dish-estimation-status/domain/dish-awaits-reestimation";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
-import { mealAwaitsEstimation } from "../../meal-estimation-status/domain/meal-awaits-estimation";
 import type { MealEstimationStatusStore } from "../../meal-estimation-status/domain/meal-estimation-status-store";
 import type { Ingredient } from "./ingredient";
 import type { IngredientStore } from "./ingredient-store";
@@ -72,14 +71,11 @@ const decideUpdate = (
       store.isReplaced(ingredientId) ? "ingredients_replaced" : "record_not_found",
     );
   }
-  const mealId = stores.dish.find(current.dishId)?.mealId;
-  if (mealId === undefined) {
+  const dish = stores.dish.find(current.dishId);
+  if (dish === undefined) {
     throw new Error(`材料の料理が無い: ${current.dishId}`);
   }
-  if (
-    mealAwaitsEstimation(stores.mealEstimationStatus, mealId) ||
-    dishAwaitsReestimation(stores.dishEstimationStatus, current.dishId, receivedAt)
-  ) {
+  if (dishAwaitsEstimation(stores, dish, receivedAt)) {
     return rejected(ingredientId, "awaiting_estimation");
   }
   if (!isWithinAcceptedRange("ingredientQuantity", quantity)) {

@@ -215,10 +215,7 @@
             case .answers:
                 let afterSequence = Self.afterSequence(of: request)
                 let entries = ledger.withLock {
-                    $0.pull(
-                        after: afterSequence, estimatedDishes: scenario.estimatedDishes,
-                        estimateDish: scenario.estimateDish,
-                        mealEstimationPulls: scenario.mealEstimationPulls)
+                    $0.pull(after: afterSequence, scenario: scenario)
                 }
                 return .init(
                     changes: try entries.map {
@@ -289,21 +286,18 @@
                 return change.isDeletion ? .deleted(change) : .value(change)
             }
 
-            mutating func pull(
-                after afterSequence: Int, estimatedDishes: (UUID) -> [SyncChange],
-                estimateDish: (UUID, String) -> DishEstimate?, mealEstimationPulls: Int
-            ) -> [Entry] {
+            mutating func pull(after afterSequence: Int, scenario: Scenario) -> [Entry] {
                 let pulled = estimatingMeals.map {
                     EstimatingMeal(mealId: $0.mealId, remainingPulls: $0.remainingPulls - 1)
                 }
                 for meal in pulled where meal.remainingPulls == 0 {
                     put(.mealEstimationStatus(.init(mealId: meal.mealId, status: .estimated)))
-                    for change in estimatedDishes(meal.mealId) {
+                    for change in scenario.estimatedDishes(meal.mealId) {
                         put(change)
                     }
                 }
                 for dishId in estimatingDishIds {
-                    reestimate(dishId: dishId, estimateDish: estimateDish)
+                    reestimate(dishId: dishId, estimateDish: scenario.estimateDish)
                 }
                 let page = entries.values.filter { $0.sequence > afterSequence }
                     .sorted { $0.sequence < $1.sequence }
@@ -314,7 +308,7 @@
                         !stillEstimating.contains(where: { $0.mealId == status.mealId })
                     else { return nil }
                     return EstimatingMeal(
-                        mealId: status.mealId, remainingPulls: mealEstimationPulls)
+                        mealId: status.mealId, remainingPulls: scenario.mealEstimationPulls)
                 }
                 estimatingMeals = stillEstimating + newlyEstimating
                 estimatingDishIds = page.compactMap {

@@ -109,19 +109,12 @@ struct DishScreen: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 12) {
                     Text("名前")
-                    if offer.editsNameAndQuantity {
+                    nameOrQuantityValue(
                         TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(Color.accentColor)
                             .submitLabel(.done)
-                            .focused($focusedField, equals: .name)
-                            .accessibilityIdentifier("dish-name")
-                    } else {
-                        Spacer()
-                        Text(contents.dish.name)
-                            .multilineTextAlignment(.trailing)
-                            .accessibilityIdentifier("dish-name")
-                    }
+                            .focused($focusedField, equals: .name),
+                        text: Text(contents.dish.name),
+                        identifier: "dish-name")
                 }
                 if let note = offer.progressNote {
                     DishProgressNoteText(note: note)
@@ -145,25 +138,35 @@ struct DishScreen: View {
     private func quantityRow(_ field: DishScreenHeader.QuantityField) -> some View {
         HStack(spacing: 8) {
             Text("量")
-            if offer.editsNameAndQuantity {
+            nameOrQuantityValue(
                 TextField(field.placeholder, text: draft(.quantity, shown: field.text))
                     .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
                     .monospacedDigit()
-                    .foregroundStyle(Color.accentColor)
-                    .focused($focusedField, equals: .quantity)
-                    .accessibilityIdentifier("dish-quantity")
-            } else {
-                Spacer()
-                Text(field.text.isEmpty ? field.placeholder : field.text)
-                    .monospacedDigit()
-                    .accessibilityIdentifier("dish-quantity")
-            }
+                    .focused($focusedField, equals: .quantity),
+                text: Text(field.text.isEmpty ? field.placeholder : field.text).monospacedDigit(),
+                identifier: "dish-quantity")
             Text(field.unit)
                 .foregroundStyle(.secondary)
             if field.showsEstimateBadge {
                 EstimateBadge()
             }
+        }
+    }
+
+    /// 名前と量の値。直せるときは押してその場で直せる欄（`field`）を、直せないときは右へ寄せた文字（`text`）を置く
+    @ViewBuilder private func nameOrQuantityValue(
+        _ field: some View, text: Text, identifier: String
+    ) -> some View {
+        if offer.editsNameAndQuantity {
+            field
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(Color.accentColor)
+                .accessibilityIdentifier(identifier)
+        } else {
+            Spacer()
+            text
+                .multilineTextAlignment(.trailing)
+                .accessibilityIdentifier(identifier)
         }
     }
 

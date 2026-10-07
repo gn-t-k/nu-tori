@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
 import { computeDishEstimationStatus } from "./compute-dish-estimation-status";
 import type { DishEstimationStatusStore } from "./dish-estimation-status-store";
@@ -8,7 +9,8 @@ export const dishAwaitsReestimation = (
   store: DishEstimationStatusStore,
   dishId: RecordId,
   now: Date,
-): boolean => {
-  const status = computeDishEstimationStatus(store.findSchedulesOfDish(dishId), now);
-  return status === "estimating" || status === "deferred_to_next_day";
-};
+): boolean =>
+  match(computeDishEstimationStatus(store.findSchedulesOfDish(dishId), now))
+    .with("estimating", "deferred_to_next_day", () => true)
+    .with("estimated", "no_dishes", "failed", undefined, () => false)
+    .exhaustive();
