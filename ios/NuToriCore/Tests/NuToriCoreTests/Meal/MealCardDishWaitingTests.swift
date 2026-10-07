@@ -240,44 +240,6 @@ struct MealCardDishWaitingTests {
                 #expect(row.note == nil)
             }
         }
-
-        @Suite("この端末で記録した、写真を待っている食事の推定中の料理のとき")
-        struct AwaitingPhotosRecordedOnThisDevice {
-            let row: DishRow
-
-            init() throws {
-                row = try MealCardDishWaitingTests.soup(
-                    of: card(
-                        status: .awaitingPhotos, recordedOnThisDevice: true,
-                        dishStatuses: [soupId: .estimating])
-                ).row
-            }
-
-            @Test("まだ送れていないと同じに見せること")
-            func showsAsUnsent() {
-                #expect(row.kilocalories == "—")
-                #expect(row.note == nil)
-            }
-        }
-
-        @Suite("ほかの端末で記録した、写真を待っている食事の推定中の料理のとき")
-        struct AwaitingPhotosRecordedOnOtherDevice {
-            let row: DishRow
-
-            init() throws {
-                row = try MealCardDishWaitingTests.soup(
-                    of: card(
-                        status: .awaitingPhotos, recordedOnThisDevice: false,
-                        dishStatuses: [soupId: .estimating])
-                ).row
-            }
-
-            @Test("まだ送れていないと同じに見せること")
-            func showsAsUnsent() {
-                #expect(row.kilocalories == "—")
-                #expect(row.note == nil)
-            }
-        }
     }
 
     @Suite("「以上」")
@@ -378,164 +340,36 @@ struct MealCardDishWaitingTests {
         }
     }
 
-    @Suite("写真の推定が済んでいない食事に料理を足したとき")
-    struct AddedToUnsettledMeal {
-        @Suite("足した料理が推定できたとき")
-        struct AddedDishEstimated {
-            static func addedCard(whileMealIs status: MealEstimationStatus?) throws -> MealCard {
-                try card(status: status, dishStatuses: [soupId: .estimated], withCurry: false)
-            }
+    /// 推定を待っている食事には料理を足せないので、料理があるのは、写真の推定が作った料理が食事の推定の状態より先に届いた一瞬だけ
+    @Suite("推定中の食事に、写真の推定が作った料理が食事の推定の状態より先に届いたとき")
+    struct DishesArrivedBeforeStatus {
+        let card: MealCard
 
-            @Suite("食事が推定中のとき")
-            struct MealEstimating {
-                let totals: NutrientTotals
-                let food: DayFood
-
-                init() throws {
-                    let card = try addedCard(whileMealIs: .estimating)
-                    totals = try MealCardDishWaitingTests.totals(of: card)
-                    food = DayFood(meals: [card])
-                }
-
-                @Test("足した料理の分だけで、待っている料理が無くても合計に「以上」を付けること")
-                func totalsAreLowerBound() {
-                    #expect(totals[.energyKcal] == .atLeast(40))
-                }
-
-                @Test("日のまとめに足した料理の分を入れて「以上」を付け、推定が済んでいない食事に数えること")
-                func dayFood() throws {
-                    let figures = try #require(food.figures)
-
-                    #expect(figures.totals[.energyKcal] == .atLeast(40))
-                    #expect(figures.pendingMealCount == 1)
-                }
-            }
-
-            @Suite("食事が翌日に推定のとき")
-            struct MealDeferred {
-                let totals: NutrientTotals
-
-                init() throws {
-                    totals = try MealCardDishWaitingTests.totals(
-                        of: addedCard(whileMealIs: .deferredToNextDay))
-                }
-
-                @Test("足した料理の分だけで、待っている料理が無くても合計に「以上」を付けること")
-                func totalsAreLowerBound() {
-                    #expect(totals[.energyKcal] == .atLeast(40))
-                }
-            }
-
-            @Suite("食事が写真を待っているとき")
-            struct MealAwaitingPhotos {
-                let totals: NutrientTotals
-
-                init() throws {
-                    totals = try MealCardDishWaitingTests.totals(
-                        of: addedCard(whileMealIs: .awaitingPhotos))
-                }
-
-                @Test("足した料理の分だけで、待っている料理が無くても合計に「以上」を付けること")
-                func totalsAreLowerBound() {
-                    #expect(totals[.energyKcal] == .atLeast(40))
-                }
-            }
-
-            @Suite("食事の推定の状態がまだ届いていないとき")
-            struct MealWithoutStatus {
-                let totals: NutrientTotals
-
-                init() throws {
-                    totals = try MealCardDishWaitingTests.totals(of: addedCard(whileMealIs: nil))
-                }
-
-                @Test("足した料理の分だけで、待っている料理が無くても合計に「以上」を付けること")
-                func totalsAreLowerBound() {
-                    #expect(totals[.energyKcal] == .atLeast(40))
-                }
-            }
+        init() throws {
+            card = try MealCardDishWaitingTests.card(status: .estimating)
         }
 
-        @Suite("分かる料理が1つも無いとき")
-        struct NoKnownDish {
-            let card: MealCard
+        @Test("カードの名前の場所に、料理の名前を置かず「推定しています…」だけを置くこと")
+        func showsOnlyEstimatingLine() {
+            #expect(card.namePlace.dishNames == nil)
+            #expect(card.namePlace.statusLine == "推定しています…")
+        }
 
-            init() throws {
-                card = try MealCardDishWaitingTests.card(
-                    status: .estimating, dishStatuses: [soupId: .estimating], withCurry: false)
-            }
+        @Test("合計を出さないこと")
+        func showsNoTotals() {
+            #expect(card.nutrition == .pending)
+        }
 
-            @Test("合計を出さないこと")
-            func showsNoTotals() {
-                #expect(card.nutrition == .pending)
-            }
+        @Test("食事の画面の料理の一覧の上に推定中の1行を置くこと")
+        func showsMealNote() {
+            #expect(card.dishListNote == .estimating)
         }
     }
 
-    @Suite("料理を足したあとの、食事のカードの名前の場所と、食事の画面の料理の一覧の上の食事の状態")
+    @Suite("推定が済んだ食事に料理を足したあとの、食事のカードの名前の場所と、食事の画面の料理の一覧の上の食事の状態")
     struct AfterAdding {
-        static func addedCard(_ status: MealEstimationStatus?) throws -> MealCard {
+        static func addedCard(_ status: MealEstimationStatus) throws -> MealCard {
             try card(status: status, dishStatuses: [soupId: .estimating], withCurry: false)
-        }
-
-        @Suite("食事が写真を待っているとき")
-        struct MealAwaitingPhotos {
-            let card: MealCard
-
-            init() throws {
-                card = try addedCard(.awaitingPhotos)
-            }
-
-            @Test("カードの名前の場所に料理の名前を置き、状態の1行を置かないこと")
-            func showsDishNames() {
-                #expect(card.namePlace.dishNames == "味噌汁")
-                #expect(card.namePlace.statusLine == nil)
-            }
-
-            @Test("食事の画面の料理の一覧の上に食事の状態を置かないこと")
-            func hidesMealNote() {
-                #expect(card.dishListNote == nil)
-            }
-        }
-
-        @Suite("食事が推定中のとき")
-        struct MealEstimating {
-            let card: MealCard
-
-            init() throws {
-                card = try addedCard(.estimating)
-            }
-
-            @Test("カードの名前の場所に料理の名前を置き、写真の推定が済むまで状態の1行を残すこと")
-            func keepsStatusLine() {
-                #expect(card.namePlace.dishNames == "味噌汁")
-                #expect(card.namePlace.statusLine == "推定しています…")
-            }
-
-            @Test("食事の画面の料理の一覧の上に食事の状態を残すこと")
-            func keepsMealNote() {
-                #expect(card.dishListNote == .estimating)
-            }
-        }
-
-        @Suite("食事が翌日に推定のとき")
-        struct MealDeferred {
-            let card: MealCard
-
-            init() throws {
-                card = try addedCard(.deferredToNextDay)
-            }
-
-            @Test("カードの名前の場所に料理の名前を置き、写真の推定が済むまで状態の1行を残すこと")
-            func keepsStatusLine() {
-                #expect(card.namePlace.dishNames == "味噌汁")
-                #expect(card.namePlace.statusLine == "今日はもう推定できないため、明日推定します")
-            }
-
-            @Test("食事の画面の料理の一覧の上に食事の状態を残すこと")
-            func keepsMealNote() {
-                #expect(card.dishListNote == .deferredToNextDay)
-            }
         }
 
         @Suite("食事が料理なしのとき")
@@ -598,25 +432,6 @@ struct MealCardDishWaitingTests {
             }
         }
 
-        @Suite("食事の推定の状態がまだ届いていないとき")
-        struct MealWithoutStatus {
-            let card: MealCard
-
-            init() throws {
-                card = try addedCard(nil)
-            }
-
-            @Test("カードの名前の場所に料理の名前を置き、状態の1行を置かないこと")
-            func showsDishNames() {
-                #expect(card.namePlace.dishNames == "味噌汁")
-                #expect(card.namePlace.statusLine == nil)
-            }
-
-            @Test("食事の画面の料理の一覧の上に食事の状態を置かないこと")
-            func hidesMealNote() {
-                #expect(card.dishListNote == nil)
-            }
-        }
     }
 
     /// 料理が1つも無いあいだは、#188 のまま状態ごとの1行を置く

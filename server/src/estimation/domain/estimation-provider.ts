@@ -31,11 +31,9 @@ export type EstimationProvider = {
   >;
 };
 
-// ① に何を読み取らせるか。食事（写真の推定）は、使う人が食事に足した料理の今の名前を持ち、同じ料理を返させない。
+// ① に何を読み取らせるか。食事（写真の推定）は、写真の料理をすべて返させる。
 // 料理（名前を直した・料理を足したときの推定し直し）は、その料理の今の値を持ち、その料理1つだけを返させる
-export type IdentificationTarget =
-  | { type: "meal"; addedDishNames: readonly string[] }
-  | { type: "dish"; dish: DishToReestimate };
+export type IdentificationTarget = { type: "meal" } | { type: "dish"; dish: DishToReestimate };
 
 // 推定し直す料理の今の値（#332 の「① に渡すもの」）
 export type DishToReestimate = {

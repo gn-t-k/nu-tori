@@ -84,10 +84,10 @@ struct MealEditOfferTests {
             #expect(fixture.offer.dishScreen(fixture.notWaiting).showsIngredientsAndNutrients)
         }
 
-        @Test("翌日に推定の料理の画面にだけ、待ちの1行を出すこと")
-        func showsDeferredNoteOnly() {
+        @Test("推定中と翌日に推定の料理の画面に、待ちの1行を出すこと")
+        func showsProgressNotes() {
             #expect(fixture.offer.dishScreen(fixture.notSent).progressNote == nil)
-            #expect(fixture.offer.dishScreen(fixture.estimating).progressNote == nil)
+            #expect(fixture.offer.dishScreen(fixture.estimating).progressNote == .estimating)
             #expect(
                 fixture.offer.dishScreen(fixture.deferredToNextDay).progressNote
                     == .deferredToNextDay)
@@ -134,10 +134,10 @@ struct MealEditOfferTests {
             #expect(fixture.offer.dishScreen(fixture.notWaiting).showsIngredientsAndNutrients)
         }
 
-        @Test("翌日に推定の料理の画面にだけ、待ちの1行を出すこと")
-        func showsDeferredNoteOnly() {
+        @Test("推定中と翌日に推定の料理の画面に、待ちの1行を出すこと")
+        func showsProgressNotes() {
             #expect(fixture.offer.dishScreen(fixture.notSent).progressNote == nil)
-            #expect(fixture.offer.dishScreen(fixture.estimating).progressNote == nil)
+            #expect(fixture.offer.dishScreen(fixture.estimating).progressNote == .estimating)
             #expect(
                 fixture.offer.dishScreen(fixture.deferredToNextDay).progressNote
                     == .deferredToNextDay)
