@@ -136,7 +136,7 @@ check_ios_ui_test() {
     clone_ui_test_simulator
     trap 'xcrun simctl delete "$ui_test_simulator"' EXIT
     # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
-    xcrun simctl bootstatus "$ui_test_simulator" -b
+    boot_ui_test_simulator
     # Simulator.app でハードウェアキーボードを一度つなぐと、シミュレータがそれを覚えてソフトウェアキーボードを画面の外へ最小化し、キーを押すテストが落ちる。まっさらなシミュレータ（CI）では起きないので、Mac でもそろえる
     xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
     rm -rf "$results"
@@ -312,6 +312,24 @@ clone_ui_test_simulator() {
     xcrun simctl shutdown "$base" 2> /dev/null || true
     ui_test_simulator="$(xcrun simctl clone "$base" "$prefix $$")"
     rm -f "$lock"
+}
+
+# 壁紙のポスターを作る係（PosterBoard）は、起動のたびに数十の拡張を立ち上げる。CI のランナーではそれが数分ふさぎ、
+# アプリの起動と終了が時間切れになる（#354）。切った設定は複製に引き継がれないので、起動のたびに、立ち上がる前に切る
+boot_ui_test_simulator() {
+    local service="user/$(id -u)/com.apple.PosterBoard" tries=0
+    xcrun simctl boot "$ui_test_simulator"
+    until xcrun simctl spawn "$ui_test_simulator" launchctl disable "$service" 2> /dev/null; do
+        tries=$((tries + 1))
+        if [ "$tries" -ge 120 ]; then
+            echo "シミュレータの PosterBoard を切れない" >&2
+            return 1
+        fi
+        sleep 0.5
+    done
+    # 切る前に立ち上がっていたら止める。立ち上がっていなければ失敗するので、失敗は見ない
+    xcrun simctl spawn "$ui_test_simulator" launchctl bootout "$service" 2> /dev/null || true
+    xcrun simctl bootstatus "$ui_test_simulator" -b
 }
 
 # kill -9 などで消し損ねた UI テストの複製を、名前の pid のプロセスが居なければ消す
