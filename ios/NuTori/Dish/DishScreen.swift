@@ -58,6 +58,12 @@ struct DishScreen: View {
                 commit(previous)
             }
         }
+        .onDisappear {
+            // 打っている途中で「‹ 食事」で戻ると、欄を離れる前に画面が消えて上の onChange が呼ばれないので、ここで確定する
+            if let focusedField {
+                commit(focusedField)
+            }
+        }
     }
 
     /// confirmsMealDeletion は開いたときに、最後の1品を消すかの確かめを出しているか
