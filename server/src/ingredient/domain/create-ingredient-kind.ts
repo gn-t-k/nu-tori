@@ -7,6 +7,8 @@ import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-cha
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import { computeReestimatedDishEditedEvents } from "../../dish/domain/compute-reestimated-dish-edited-events";
 import type { DishStore } from "../../dish/domain/dish-store";
+import { dishAwaitsReestimation } from "../../dish-estimation-status/domain/dish-awaits-reestimation";
+import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
 import { mealAwaitsEstimation } from "../../meal-estimation-status/domain/meal-awaits-estimation";
 import type { MealEstimationStatusStore } from "../../meal-estimation-status/domain/meal-estimation-status-store";
 import type { Ingredient } from "./ingredient";
@@ -47,13 +49,15 @@ type AddedRecordType = "dish";
 type IngredientKindStores = {
   ingredient: IngredientStore;
   dish: DishStore;
+  dishEstimationStatus: DishEstimationStatusStore;
   mealEstimationStatus: MealEstimationStatusStore;
 };
 
 // 直した量は修正の出来事として足す。今の量と同じなら何も足さない。
 // 前の推定の材料（推定し直しで置き換わった材料）は、今の値が削除の印でも ingredients_replaced にし、
 // 料理ごと消えていた材料（削除の印がある）と分ける（端末は「直せなかった」行を出す）。
-// 材料の料理の食事が推定を待っていれば断る。置き換わった材料は待っても直せないので、それより先に確かめる
+// 材料の料理の食事が推定を待っているか、材料の料理が推定し直しを待っていれば断る。
+// 置き換わった材料は待っても直せないので、それより先に確かめる
 const decideUpdate = (
   stores: IngredientKindStores,
   ingredientId: RecordId,
@@ -72,7 +76,10 @@ const decideUpdate = (
   if (mealId === undefined) {
     throw new Error(`材料の料理が無い: ${current.dishId}`);
   }
-  if (mealAwaitsEstimation(stores.mealEstimationStatus, mealId)) {
+  if (
+    mealAwaitsEstimation(stores.mealEstimationStatus, mealId) ||
+    dishAwaitsReestimation(stores.dishEstimationStatus, current.dishId, receivedAt)
+  ) {
     return rejected(ingredientId, "awaiting_estimation");
   }
   if (!isWithinAcceptedRange("ingredientQuantity", quantity)) {

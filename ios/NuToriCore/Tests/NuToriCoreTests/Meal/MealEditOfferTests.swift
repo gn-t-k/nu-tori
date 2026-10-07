@@ -264,11 +264,25 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出し、待ちの1行を添えないこと")
-        func editsEveryDish() {
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
+        @Test("待っていない料理の画面では、名前と量を直せて、推定が終わると直せることを添えないこと")
+        func editsNotWaitingDish() {
+            #expect(fixture.offer.dishScreen(fixture.notWaiting).editsNameAndQuantity)
+            #expect(fixture.offer.dishScreen(fixture.notWaiting).waitNote == nil)
+        }
+
+        @Test("推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）の画面では、名前と量を文字で見せて推定が終わると直せることを添えること")
+        func editsNoWaitingDish() {
+            let waiting = [fixture.notSent, fixture.estimating, fixture.deferredToNextDay]
+            #expect(waiting.allSatisfy { !fixture.offer.dishScreen($0).editsNameAndQuantity })
+            #expect(
+                waiting.allSatisfy {
+                    fixture.offer.dishScreen($0).waitNote == "推定が終わると直せます。"
+                })
+        }
+
+        @Test("どの料理の画面でも、「この料理を削除」を出すこと")
+        func deletesEveryDish() {
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).waitNote == nil })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
@@ -310,11 +324,25 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出し、待ちの1行を添えないこと")
-        func editsEveryDish() {
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
+        @Test("待っていない料理の画面では、名前と量を直せて、推定が終わると直せることを添えないこと")
+        func editsNotWaitingDish() {
+            #expect(fixture.offer.dishScreen(fixture.notWaiting).editsNameAndQuantity)
+            #expect(fixture.offer.dishScreen(fixture.notWaiting).waitNote == nil)
+        }
+
+        @Test("推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）の画面では、名前と量を文字で見せて推定が終わると直せることを添えること")
+        func editsNoWaitingDish() {
+            let waiting = [fixture.notSent, fixture.estimating, fixture.deferredToNextDay]
+            #expect(waiting.allSatisfy { !fixture.offer.dishScreen($0).editsNameAndQuantity })
+            #expect(
+                waiting.allSatisfy {
+                    fixture.offer.dishScreen($0).waitNote == "推定が終わると直せます。"
+                })
+        }
+
+        @Test("どの料理の画面でも、「この料理を削除」を出すこと")
+        func deletesEveryDish() {
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).waitNote == nil })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
@@ -356,11 +384,25 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出し、待ちの1行を添えないこと")
-        func editsEveryDish() {
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
+        @Test("待っていない料理の画面では、名前と量を直せて、推定が終わると直せることを添えないこと")
+        func editsNotWaitingDish() {
+            #expect(fixture.offer.dishScreen(fixture.notWaiting).editsNameAndQuantity)
+            #expect(fixture.offer.dishScreen(fixture.notWaiting).waitNote == nil)
+        }
+
+        @Test("推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）の画面では、名前と量を文字で見せて推定が終わると直せることを添えること")
+        func editsNoWaitingDish() {
+            let waiting = [fixture.notSent, fixture.estimating, fixture.deferredToNextDay]
+            #expect(waiting.allSatisfy { !fixture.offer.dishScreen($0).editsNameAndQuantity })
+            #expect(
+                waiting.allSatisfy {
+                    fixture.offer.dishScreen($0).waitNote == "推定が終わると直せます。"
+                })
+        }
+
+        @Test("どの料理の画面でも、「この料理を削除」を出すこと")
+        func deletesEveryDish() {
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).waitNote == nil })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")

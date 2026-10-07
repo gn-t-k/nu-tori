@@ -427,82 +427,6 @@ describe("名前を直したときの推定し直し", () => {
       await waitForEstimationAttempts(accountId, 2);
     });
 
-    describe("料理の量を直したとき", () => {
-      beforeEach(async () => {
-        await pushSyncWrites(sessionToken, {
-          writes: [
-            updateDishWrite(dishId, {
-              name: "カツ丼",
-              quantity: {
-                value: 2,
-                proportionedIngredients: [
-                  { ingredientId: chickenId, quantity: 160 },
-                  { ingredientId: riceId, quantity: 400 },
-                ],
-              },
-            }),
-          ],
-        });
-        reply();
-        await alarm;
-      });
-
-      test("当てるときの今の量を見て、直した量を固定し、材料だけを当てること", async () => {
-        const dish = (await pullDishChanges()).findLast(({ kind }) => kind === "dish");
-        expect({
-          dish: { quantity: dish?.["quantity"], source: dish?.["quantitySource"] },
-          ingredients: await currentIngredientNamesOfDish(),
-        }).toEqual({
-          dish: { quantity: 2, source: "corrected" },
-          ingredients: ["ご飯 200", "鶏もも肉 80"],
-        });
-      });
-    });
-
-    describe("名前をまた直したとき", () => {
-      beforeEach(async () => {
-        await rename("かつ丼");
-        reply();
-        await alarm;
-      });
-
-      test("始まっていた推定は終えるが当てず、前の材料のままで、状態は推定中のままにすること", async () => {
-        expect({
-          completions: (await readRows(accountId, "SELECT result FROM estimation_completions"))
-            .length,
-          ingredients: await currentIngredientNamesOfDish(),
-          status: (await pullDishChanges()).findLast(
-            ({ kind }) => kind === "dish_estimation_status",
-          )?.["status"],
-        }).toEqual({
-          // 写真の推定と、捨てた推定し直し
-          completions: 2,
-          ingredients: ["ご飯 200", "鶏もも肉 80"],
-          status: "estimating",
-        });
-      });
-
-      describe("最後の名前の推定し直しが済んだとき", () => {
-        beforeEach(async () => {
-          await runEstimationAlarm(accountId);
-        });
-
-        test("最後の名前で推定し、それだけを当てること", async () => {
-          const changes = await pullDishChanges();
-          expect({
-            lastTarget: readIdentifyDishesRequests(provider).at(-1)?.target,
-            version: changes.findLast(({ kind }) => kind === "dish")?.["version"],
-            status: changes.findLast(({ kind }) => kind === "dish_estimation_status")?.["status"],
-          }).toEqual({
-            lastTarget: { type: "dish", dish: expect.objectContaining({ name: "かつ丼" }) },
-            // 1 ＋ 名前の修正 2 ＋ 当てた推定し直し 1
-            version: 4,
-            status: "estimated",
-          });
-        });
-      });
-    });
-
     describe("料理を消したとき", () => {
       beforeEach(async () => {
         await pushSyncWrites(sessionToken, { writes: [deleteDishWrite(dishId)] });
@@ -526,46 +450,6 @@ describe("名前を直したときの推定し直し", () => {
       test("推定の行を残し、回数を戻さないこと", async () => {
         expect(await readRows(accountId, "SELECT id FROM estimations")).toHaveLength(2);
       });
-    });
-  });
-
-  describe("まだ始まっていないうちに名前をもう一度直したとき", () => {
-    let secondWriteId: string;
-    beforeEach(async () => {
-      await rename("カツ丼");
-      const second = updateDishWrite(dishId, { name: "かつ丼" });
-      secondWriteId = second.id;
-      await pushSyncWrites(sessionToken, { writes: [second] });
-      await runEstimationAlarm(accountId);
-    });
-
-    test("前の予定を、あとの書き込みの控えで取り消し、推定を始めずに数えないこと", async () => {
-      expect({
-        schedules: (await readDishSchedules()).map(({ cancelled, started }) => ({
-          cancelled,
-          started,
-        })),
-        cancellations: await readRows(
-          accountId,
-          "SELECT sync_write_receipt_id FROM estimation_schedule_cancellations",
-        ),
-        estimations: (await readRows(accountId, "SELECT id FROM estimations")).length,
-      }).toEqual({
-        schedules: [
-          { cancelled: 1, started: 0 },
-          { cancelled: 0, started: 1 },
-        ],
-        cancellations: [{ sync_write_receipt_id: secondWriteId }],
-        estimations: 2,
-      });
-    });
-
-    test("最後の名前だけで推定すること", () => {
-      expect(
-        readIdentifyDishesRequests(provider)
-          .slice(1)
-          .map(({ target }) => target),
-      ).toEqual([{ type: "dish", dish: expect.objectContaining({ name: "かつ丼" }) }]);
     });
   });
 
@@ -682,23 +566,6 @@ describe("名前を直したときの推定し直し", () => {
             status: record["status"],
           })),
         ).toEqual([{ kind: "dish_estimation_status", status: "estimating" }]);
-      });
-    });
-
-    describe("見送ったあとに名前を直したとき", () => {
-      beforeEach(async () => {
-        await rename("かつ丼");
-      });
-
-      test("見送った予定が残っても、推定中の状態にし、次の日の予定を取り消すこと", async () => {
-        expect({
-          status: (await pullDishChanges()).at(-1)?.["status"],
-          schedules: (await readDishSchedules()).map(({ cancelled }) => cancelled),
-        }).toEqual({
-          status: "estimating",
-          // 見送った予定、名前を直した予定、取り消した次の日の予定（due_at の順）
-          schedules: [0, 0, 1],
-        });
       });
     });
   });
@@ -875,31 +742,6 @@ describe("名前を直したときの推定し直し", () => {
               finalStatus: properties["final_status"],
             })),
         ).toEqual([{ trigger: "dish_renamed", finalStatus: "dish_deleted" }]);
-      });
-    });
-
-    describe("名前をまた直して推定し直しの呼び出しが2つ並んでいるあいだに料理を消したとき", () => {
-      beforeEach(async () => {
-        const { promise: replyAfter, resolve: reply } = Promise.withResolvers<void>();
-        mockCreateEstimationProviderOk({ replyAfter });
-        await rename("カツ丼");
-        const first = runDurableObjectAlarm(getAccountDurableObject(env, accountId));
-        await waitForEstimationAttempts(accountId, 2);
-        await rename("かつ丼");
-        const second = runDurableObjectAlarm(getAccountDurableObject(env, accountId));
-        await waitForEstimationAttempts(accountId, 3);
-        captureSpy.mockClear();
-        await pushSyncWrites(sessionToken, { writes: [deleteDishWrite(dishId)] });
-        reply();
-        await Promise.all([first, second]);
-      });
-
-      test("呼び出し中の推定のそれぞれについて、推定ごとの出来事を「料理が消えた」で送ること", () => {
-        expect(
-          readPostHogCapturedEvents(captureSpy)
-            .filter(({ event }) => event === "estimation_ended")
-            .map(({ properties }) => properties["final_status"]),
-        ).toEqual(["dish_deleted", "dish_deleted"]);
       });
     });
   });

@@ -18,15 +18,17 @@ public struct MealEditOffer: Hashable, Sendable {
     }
 
     /// 食事の画面の料理の行に、左へ送る「削除」を出すか。推定を待っている食事の料理には出さない
-    /// （料理が推定の状態より先に届いた一瞬だけ、行がある）
+    /// （料理が推定の状態より先に届いた一瞬だけ、行がある）。推定し直しを待っている料理には出す
     public func deletesDishBySwipe(_ contents: DishContents) -> Bool {
         !mealAwaitsEstimation
     }
 
-    /// `contents` の料理の画面に出すもの。推定を待っている食事の料理は、名前と量を文字で見せ、「この料理を削除」も出さない
+    /// `contents` の料理の画面に出すもの。推定を待っている食事の料理は、名前と量を文字で見せ、「この料理を削除」も出さない。
+    /// 推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）は、名前と量を文字で見せ、「この料理を削除」だけを出す。
+    /// 待っているあいだに直すと、サーバーが断る（`awaiting_estimation`）
     public func dishScreen(_ contents: DishContents) -> DishScreenOffer {
         DishScreenOffer(
-            editsNameAndQuantity: !mealAwaitsEstimation,
+            editsNameAndQuantity: !mealAwaitsEstimation && !contents.progress.isWaiting,
             showsIngredientsAndNutrients: contents.showsIngredientsAndNutrients,
             deletesDish: !mealAwaitsEstimation,
             progressNote: contents.row.note)
