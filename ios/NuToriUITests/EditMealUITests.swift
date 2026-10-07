@@ -30,10 +30,18 @@ final class EditMealUITests: XCTestCase {
         dish(named: "親子丼").tap()
         XCTAssertTrue(app.navigationBars["親子丼"].waitForExistence(timeout: 5))
         let quantity = app.textFields["dish-quantity"]
-        replaceText(of: quantity, with: "2", length: 1)
+        // 量の欄は、右端を押しても文字の前に入ることがある（iOS 26.5）ので、2度押して数を選んでから打つ
+        XCTAssertTrue(quantity.waitForExistence(timeout: 5))
+        quantity.doubleTap()
+        quantity.typeText("2")
         app.buttons["完了"].firstMatch.tap()
+        // 名前は打ったまま確定せずに「‹ 食事」で戻っても、送られて料理の行の名前が変わる
         let name = app.textFields["dish-name"]
-        replaceText(of: name, with: "カツ丼\n", length: 3)
+        replaceText(of: name, with: "カツ丼", length: 3)
+        app.navigationBars["親子丼"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
+        XCTAssertTrue(dish(named: "カツ丼").waitForExistence(timeout: 5))
+        dish(named: "カツ丼").tap()
         XCTAssertTrue(app.navigationBars["カツ丼"].waitForExistence(timeout: 5))
         // 推定し直しは、取りに行く間隔（数秒おき）で届く。直した量は残り、材料だけが入れ替わる
         XCTAssertTrue(app.staticTexts["豚ロース"].waitForExistence(timeout: 30))
