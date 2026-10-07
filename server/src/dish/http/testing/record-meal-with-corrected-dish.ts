@@ -13,7 +13,7 @@ import { correctDishByWrites } from "./correct-dish-by-writes";
 import { reestimateRenamedDish } from "./reestimate-renamed-dish";
 
 // 写真1枚の食事を推定し、時刻を2回直し、1つめの料理の名前と量と材料を直して、推定し直しで材料を置き換える。2つめの料理は直さない。
-// 「消したら中身が残らない」の前提に使う。名前を2回直すので、1回目の名前で待った予定は、2回目の名前の書き込みが取り消す。
+// 「消したら中身が残らない」の前提に使う。
 // 推定の提供元の差し替えと時計は、呼ぶ側が先に用意する
 export const recordMealWithCorrectedDish = async (accountId: string, sessionToken: string) => {
   const mealId = await recordPhotographedMeal(sessionToken);
