@@ -29,11 +29,11 @@ Claude Code on the web のセッション（`CLAUDE_CODE_REMOTE=true`）では�
 
 - `GH_TOKEN` には仮の値 `proxy-injected` が入っていて、本物のトークンはプロキシが差し替える。PAT を環境変数に置かない
 - GraphQL は PR 用の一部を除いて 403 になり、GraphQL を使う `gh issue ...` や `gh pr ...` は通らない。`gh api repos/<owner>/<repo>/...` の REST を使う
-- 画像や動画は添付できない（試した結果は #357）。添付が要るときは、開発者に頼むか、`mcp__ccd_session__spawn_task` で Mac のセッションを始めるカードを出す
   - 読む: `gh api repos/gn-t-k/nu-tori/issues/<n>`、コメントは `.../issues/<n>/comments`
   - サブ Issue: `.../issues/<親>/sub_issues`（追加は `-X POST -F sub_issue_id=<子の DB ID>`）
   - 依存関係: `.../issues/<n>/dependencies/blocked_by`（追加は `-X POST -F issue_id=<ブロック元の DB ID>`）。すでに張られていると 422「already been taken」が返る
   - 担当者・ラベル・状態: `.../issues/<n>/assignees`、`.../issues/<n>/labels`、`-X PATCH .../issues/<n> -f state=closed`
+- 画像や動画は添付できない（試した結果は #357）。添付が要るときは、開発者に頼むか、`mcp__ccd_session__spawn_task` で Mac のセッションを始めるカードを出す
 - Issue とコメントを書くと、リンクやコードの前後にバッククォートが足されたり、バッククォートが引用符に変わったりして、書式が崩れることがある（コメントの投稿でも Issue の本文の更新でも、`gh api` でも `mcp__github__*` でも起きた）。書いたら必ず読み直し、崩れていたら手元に置いた元の本文で書き直す。コメントは `mcp__github__update_issue_comment`、Issue の本文は `gh api -X PATCH .../issues/<n> -F body=@<ファイル>` で直し、もう一度読み直す。空白の無い日本語の文に `[名前](URL)` を埋めると、URL を含む長い語として囲まれやすい。直らないときは、参照の形（文中は `[名前][33]`、末尾に `[33]: URL`）にする。ただし行頭の `- [名前][33]: 本文` は参照の定義と取られて崩れるので、その形の行は文中に URL を書く
 - ほかのツール（Codex、Cursor、Dependabot）が作った PR の CI の失敗は、その PR のブランチで始めたセッションで直す。クラウドのセッションは、作業ブランチにだけ push できるため
 - `mcp__github__*` のツールも使える。Issue、サブ Issue、コメント、PR は扱えるが、依存関係のツールは無いので `gh api` で張る
