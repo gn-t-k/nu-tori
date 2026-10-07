@@ -113,9 +113,10 @@ struct MealScreen: View {
                 .onChange(of: card.contents.dishes.count) { _, _ in
                     confirmsLastDishDeletion = false
                 }
-            if offer.addsDish {
+            switch offer.dishAddition {
+            case .offered:
                 addDishSection
-            } else if let note = offer.addDishWaitNote {
+            case .waiting(let note):
                 // 「料理を足す」の場所に、まとまりの下の注記と同じ見た目で置く（行は持たない）
                 Section {
                 } footer: {
@@ -305,7 +306,7 @@ struct MealScreen: View {
                         }
                         .accessibilityIdentifier("meal-dish")
                         .swipeActions(edge: .trailing) {
-                            if offer.deletesDishBySwipe(contents) {
+                            if offer.deletesDishBySwipe {
                                 dishDeletionButton(contents)
                             }
                         }

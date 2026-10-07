@@ -55,13 +55,12 @@ struct MealEditOfferTests {
 
         @Test("「料理を足す」を出さず、その場所に推定が終わると足せることを置くこと")
         func waitsToAddDish() {
-            #expect(!fixture.offer.addsDish)
-            #expect(fixture.offer.addDishWaitNote == "推定が終わると、料理を足せます。")
+            #expect(fixture.offer.dishAddition == .waiting(note: "推定が終わると、料理を足せます。"))
         }
 
         @Test("どの料理の行も、左へ送って消せないこと")
         func deletesNoDishBySwipe() {
-            #expect(!fixture.dishes.contains(where: fixture.offer.deletesDishBySwipe))
+            #expect(!fixture.offer.deletesDishBySwipe)
         }
 
         @Test("どの料理の画面でも、名前と量を文字で見せて推定が終わると直せることを添え、「この料理を削除」を出さないこと")
@@ -75,13 +74,12 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).deletesDish })
         }
 
-        @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
-        func showsIngredientsOnlyForNotWaiting() {
-            #expect(!fixture.offer.dishScreen(fixture.notSent).showsIngredientsAndNutrients)
-            #expect(!fixture.offer.dishScreen(fixture.estimating).showsIngredientsAndNutrients)
+        @Test("待っていない料理の画面にも、材料と栄養を出さないこと")
+        func showsNoIngredients() {
             #expect(
-                !fixture.offer.dishScreen(fixture.deferredToNextDay).showsIngredientsAndNutrients)
-            #expect(fixture.offer.dishScreen(fixture.notWaiting).showsIngredientsAndNutrients)
+                fixture.dishes.allSatisfy {
+                    !fixture.offer.dishScreen($0).showsIngredientsAndNutrients
+                })
         }
 
         @Test("推定中と翌日に推定の料理の画面に、待ちの1行を出すこと")
@@ -105,13 +103,12 @@ struct MealEditOfferTests {
 
         @Test("「料理を足す」を出さず、その場所に推定が終わると足せることを置くこと")
         func waitsToAddDish() {
-            #expect(!fixture.offer.addsDish)
-            #expect(fixture.offer.addDishWaitNote == "推定が終わると、料理を足せます。")
+            #expect(fixture.offer.dishAddition == .waiting(note: "推定が終わると、料理を足せます。"))
         }
 
         @Test("どの料理の行も、左へ送って消せないこと")
         func deletesNoDishBySwipe() {
-            #expect(!fixture.dishes.contains(where: fixture.offer.deletesDishBySwipe))
+            #expect(!fixture.offer.deletesDishBySwipe)
         }
 
         @Test("どの料理の画面でも、名前と量を文字で見せて推定が終わると直せることを添え、「この料理を削除」を出さないこと")
@@ -125,13 +122,12 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).deletesDish })
         }
 
-        @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
-        func showsIngredientsOnlyForNotWaiting() {
-            #expect(!fixture.offer.dishScreen(fixture.notSent).showsIngredientsAndNutrients)
-            #expect(!fixture.offer.dishScreen(fixture.estimating).showsIngredientsAndNutrients)
+        @Test("待っていない料理の画面にも、材料と栄養を出さないこと")
+        func showsNoIngredients() {
             #expect(
-                !fixture.offer.dishScreen(fixture.deferredToNextDay).showsIngredientsAndNutrients)
-            #expect(fixture.offer.dishScreen(fixture.notWaiting).showsIngredientsAndNutrients)
+                fixture.dishes.allSatisfy {
+                    !fixture.offer.dishScreen($0).showsIngredientsAndNutrients
+                })
         }
 
         @Test("推定中と翌日に推定の料理の画面に、待ちの1行を出すこと")
@@ -155,13 +151,12 @@ struct MealEditOfferTests {
 
         @Test("「料理を足す」を出さず、その場所に推定が終わると足せることを置くこと")
         func waitsToAddDish() {
-            #expect(!fixture.offer.addsDish)
-            #expect(fixture.offer.addDishWaitNote == "推定が終わると、料理を足せます。")
+            #expect(fixture.offer.dishAddition == .waiting(note: "推定が終わると、料理を足せます。"))
         }
 
         @Test("どの料理の行も、左へ送って消せないこと")
         func deletesNoDishBySwipe() {
-            #expect(!fixture.dishes.contains(where: fixture.offer.deletesDishBySwipe))
+            #expect(!fixture.offer.deletesDishBySwipe)
         }
 
         @Test("どの料理の画面でも、名前と量を文字で見せて推定が終わると直せることを添え、「この料理を削除」を出さないこと")
@@ -175,13 +170,12 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).deletesDish })
         }
 
-        @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
-        func showsIngredientsOnlyForNotWaiting() {
-            #expect(!fixture.offer.dishScreen(fixture.notSent).showsIngredientsAndNutrients)
-            #expect(!fixture.offer.dishScreen(fixture.estimating).showsIngredientsAndNutrients)
+        @Test("待っていない料理の画面にも、材料と栄養を出さないこと")
+        func showsNoIngredients() {
             #expect(
-                !fixture.offer.dishScreen(fixture.deferredToNextDay).showsIngredientsAndNutrients)
-            #expect(fixture.offer.dishScreen(fixture.notWaiting).showsIngredientsAndNutrients)
+                fixture.dishes.allSatisfy {
+                    !fixture.offer.dishScreen($0).showsIngredientsAndNutrients
+                })
         }
 
         @Test("推定中と翌日に推定の料理の画面に、待ちの1行を出すこと")
@@ -205,13 +199,12 @@ struct MealEditOfferTests {
 
         @Test("「料理を足す」を出さず、その場所に推定が終わると足せることを置くこと")
         func waitsToAddDish() {
-            #expect(!fixture.offer.addsDish)
-            #expect(fixture.offer.addDishWaitNote == "推定が終わると、料理を足せます。")
+            #expect(fixture.offer.dishAddition == .waiting(note: "推定が終わると、料理を足せます。"))
         }
 
         @Test("どの料理の行も、左へ送って消せないこと")
         func deletesNoDishBySwipe() {
-            #expect(!fixture.dishes.contains(where: fixture.offer.deletesDishBySwipe))
+            #expect(!fixture.offer.deletesDishBySwipe)
         }
 
         @Test("どの料理の画面でも、名前と量を文字で見せて推定が終わると直せることを添え、「この料理を削除」を出さないこと")
@@ -225,13 +218,12 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).deletesDish })
         }
 
-        @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
-        func showsIngredientsOnlyForNotWaiting() {
-            #expect(!fixture.offer.dishScreen(fixture.notSent).showsIngredientsAndNutrients)
-            #expect(!fixture.offer.dishScreen(fixture.estimating).showsIngredientsAndNutrients)
+        @Test("待っていない料理の画面にも、材料と栄養を出さないこと")
+        func showsNoIngredients() {
             #expect(
-                !fixture.offer.dishScreen(fixture.deferredToNextDay).showsIngredientsAndNutrients)
-            #expect(fixture.offer.dishScreen(fixture.notWaiting).showsIngredientsAndNutrients)
+                fixture.dishes.allSatisfy {
+                    !fixture.offer.dishScreen($0).showsIngredientsAndNutrients
+                })
         }
 
         @Test("推定中と翌日に推定の料理の画面に、待ちの1行を出すこと")
@@ -255,13 +247,12 @@ struct MealEditOfferTests {
 
         @Test("「料理を足す」を出し、待ちの1行を置かないこと")
         func addsDish() {
-            #expect(fixture.offer.addsDish)
-            #expect(fixture.offer.addDishWaitNote == nil)
+            #expect(fixture.offer.dishAddition == .offered)
         }
 
         @Test("どの料理の行も、左へ送って消せること")
         func deletesEveryDishBySwipe() {
-            #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
+            #expect(fixture.offer.deletesDishBySwipe)
         }
 
         @Test("待っていない料理の画面では、名前と量を直せて、推定が終わると直せることを添えないこと")
@@ -315,13 +306,12 @@ struct MealEditOfferTests {
 
         @Test("「料理を足す」を出し、待ちの1行を置かないこと")
         func addsDish() {
-            #expect(fixture.offer.addsDish)
-            #expect(fixture.offer.addDishWaitNote == nil)
+            #expect(fixture.offer.dishAddition == .offered)
         }
 
         @Test("どの料理の行も、左へ送って消せること")
         func deletesEveryDishBySwipe() {
-            #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
+            #expect(fixture.offer.deletesDishBySwipe)
         }
 
         @Test("待っていない料理の画面では、名前と量を直せて、推定が終わると直せることを添えないこと")
@@ -375,13 +365,12 @@ struct MealEditOfferTests {
 
         @Test("「料理を足す」を出し、待ちの1行を置かないこと")
         func addsDish() {
-            #expect(fixture.offer.addsDish)
-            #expect(fixture.offer.addDishWaitNote == nil)
+            #expect(fixture.offer.dishAddition == .offered)
         }
 
         @Test("どの料理の行も、左へ送って消せること")
         func deletesEveryDishBySwipe() {
-            #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
+            #expect(fixture.offer.deletesDishBySwipe)
         }
 
         @Test("待っていない料理の画面では、名前と量を直せて、推定が終わると直せることを添えないこと")
