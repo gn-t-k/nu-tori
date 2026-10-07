@@ -33,6 +33,7 @@ struct MealScreen: View {
                 ) { contents in
                     DishScreen(
                         contents: contents,
+                        offer: offer.dishScreen(contents),
                         list: DishScreenList(
                             contents: contents, in: card, rejectedLines: rejectedLines),
                         removal: removal(of: contents),
@@ -111,7 +112,9 @@ struct MealScreen: View {
                 .onChange(of: card.contents.dishes.count) { _, _ in
                     confirmsLastDishDeletion = false
                 }
-            addDishSection
+            if offer.addsDish {
+                addDishSection
+            }
             if card.contents.showsNutrientCitation {
                 Section {
                     NavigationLink("栄養の出典") {
@@ -132,6 +135,11 @@ struct MealScreen: View {
         .onAppear {
             Task { await capture(.screen(.meal)) }
         }
+    }
+
+    /// 出す操作。推定の状態はこの画面で見ず、これだけで決める
+    private var offer: MealEditOffer {
+        MealEditOffer(card: card)
     }
 
     private var screenList: MealScreenList {
@@ -289,7 +297,9 @@ struct MealScreen: View {
                         }
                         .accessibilityIdentifier("meal-dish")
                         .swipeActions(edge: .trailing) {
-                            dishDeletionButton(contents)
+                            if offer.deletesDishBySwipe(contents) {
+                                dishDeletionButton(contents)
+                            }
                         }
                         // 左へ送って出るボタンには付けられないので、行に付け、行のそばに出す
                         .modifier(
