@@ -13,7 +13,8 @@ struct HealthNutritionWriteTests {
             meal = try Meal.fixture(
                 eatenAt: "2026-09-22T12:10:00+09:00", sentAt: "2026-09-22T12:11:00+09:00")
             dish = Dish(
-                id: UUID(), mealId: meal.id, name: "親子丼", quantity: 1, unit: "杯",
+                id: UUID(), mealId: meal.id, name: "親子丼",
+                quantity: Dish.Quantity(value: 1, unit: "杯", source: .estimated),
                 positionInMeal: 0, version: 3)
         }
 
@@ -80,7 +81,8 @@ struct HealthNutritionWriteTests {
             let unknown = Ingredient.fixture(dishId: dish.id, nutrients: [:])
             let write = try #require(
                 HealthNutritionWrite(
-                    dish: DishContents(dish: dish, ingredients: [known, unknown]), of: meal,
+                    dish: DishContents(
+                        dish: dish, ingredients: [known, unknown], progress: .settled), of: meal,
                     authorized: [.protein]))
 
             #expect(write.values == [.init(nutrient: .protein, amount: 10)])
@@ -119,7 +121,7 @@ struct HealthNutritionWriteTests {
                 dish: dish,
                 ingredients: [
                     .fixture(dishId: dish.id, quantity: quantity, nutrients: nutrients)
-                ])
+                ], progress: .settled)
         }
     }
 

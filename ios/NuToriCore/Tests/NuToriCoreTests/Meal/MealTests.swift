@@ -29,5 +29,17 @@ struct MealTests {
         func clockTimeIsInEatenOffset() {
             #expect(meal.eatenClockTime == ClockTime(hour: 19, minute: 40))
         }
+
+        @Test("時刻を直す欄に出すタイムゾーンを、食事の時差の時計にすること")
+        func eatenTimeZoneIsEatenOffset() {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = meal.eatenTimeZone
+            let parts = calendar.dateComponents([.day, .hour, .minute], from: meal.eatenAt)
+
+            #expect(meal.eatenTimeZone.secondsFromGMT(for: meal.eatenAt) == -7 * 3600)
+            #expect(parts.day == 23)
+            #expect(parts.hour == 19)
+            #expect(parts.minute == 40)
+        }
     }
 }

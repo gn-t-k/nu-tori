@@ -21,8 +21,21 @@ const mealDeletions = sqliteTable("meal_deletions", {
     .references(() => syncLedgerTables.syncWriteReceipts.id),
 });
 
+// 時刻の修正。食事は控えの record_id で、食事を消す口が控えから探して消す。meals.eaten_at は作ったときの時刻のまま書き換えない
+const mealEatenAtCorrections = sqliteTable(
+  "meal_eaten_at_corrections",
+  {
+    syncWriteReceiptId: text("sync_write_receipt_id")
+      .primaryKey()
+      .references(() => syncLedgerTables.syncWriteReceipts.id),
+    eatenAt: integer("eaten_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("meal_eaten_at_corrections_eaten_at").on(table.eatenAt)],
+);
+
 // 食事の表。写真の表は meal-photo-tables.ts。宣言は durable-object-migrations/ の SQL に合わせる
 export const mealTables = {
   meals,
+  mealEatenAtCorrections,
   mealDeletions,
 };

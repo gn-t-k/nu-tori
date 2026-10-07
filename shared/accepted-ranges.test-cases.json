@@ -28,5 +28,22 @@
     { "name": "上限より 1 分東の +14:01（50460 秒）", "value": 50460, "accepted": false },
     { "name": "分の端数のある +05:45（20700 秒）", "value": 20700, "accepted": true },
     { "name": "時差の無い 0 秒", "value": 0, "accepted": true }
+  ],
+  "dishQuantity": [
+    { "name": "0 よりわずかに多い 0.01", "value": 0.01, "accepted": true },
+    { "name": "0", "value": 0, "accepted": false },
+    { "name": "負の -1", "value": -1, "accepted": false },
+    { "name": "上限の無い 1000", "value": 1000, "accepted": true }
+  ],
+  "ingredientQuantity": [
+    { "name": "0 よりわずかに多い 0.1", "value": 0.1, "accepted": true },
+    { "name": "0", "value": 0, "accepted": false },
+    { "name": "負の -10", "value": -10, "accepted": false },
+    { "name": "上限の無い 5000", "value": 5000, "accepted": true }
+  ],
+  "dishNameTrimmedLength": [
+    { "name": "前後の空白を除いて 1 文字", "value": 1, "accepted": true },
+    { "name": "空か空白だけ（前後の空白を除いて 0 文字）", "value": 0, "accepted": false },
+    { "name": "前後の空白を除いて 40 文字", "value": 40, "accepted": true }
   ]
 }

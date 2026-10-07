@@ -40,7 +40,8 @@ public struct NoticeSyncing: SyncedRecordKind, RecordKindWrites {
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
+        current: SyncWriteResult.Current?,
+        shown: ShownRecords
     ) throws -> KindRejection {
         let pending = try PendingNoticeWrite(entry: entry)
         return KindRejection(

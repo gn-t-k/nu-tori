@@ -52,6 +52,10 @@
             case .mealEstimation:
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:))
+            case .mealEdit:
+                return .init(
+                    records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
+                    estimateDish: Self.reestimate(dishId:name:))
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
@@ -141,11 +145,13 @@
             return [
                 .dish(
                     SyncedDish(
-                        id: dishId, mealId: mealId, name: "親子丼", quantity: 1, unit: "杯",
+                        id: dishId, mealId: mealId, name: "親子丼",
+                        quantity: .init(value: 1, unit: "杯", source: .estimated),
                         positionInMeal: 0, version: 1)),
                 .ingredient(
                     SyncedIngredient(
-                        id: UUID(), dishId: dishId, name: "鶏もも肉", quantity: 80, unit: "g",
+                        id: UUID(), dishId: dishId, name: "鶏もも肉", quantity: 80,
+                        quantitySource: .estimated, unit: "g",
                         edibleGramsPerUnit: 1, positionInDish: 0,
                         nutrientSource: .foodComposition(foodNumber: "11221"),
                         nutrients: [
@@ -154,7 +160,8 @@
                         ])),
                 .ingredient(
                     SyncedIngredient(
-                        id: UUID(), dishId: dishId, name: "ご飯", quantity: 200, unit: "g",
+                        id: UUID(), dishId: dishId, name: "ご飯", quantity: 200,
+                        quantitySource: .estimated, unit: "g",
                         edibleGramsPerUnit: 1, positionInDish: 1,
                         nutrientSource: .foodComposition(foodNumber: "01088"),
                         nutrients: [
@@ -162,6 +169,59 @@
                             "carbohydrate_g": 37.1,
                         ])),
             ]
+        }
+
+        /// 推定し直しで、名前から作る量と材料。カツ丼（豚ロース 100 g・ご飯 200 g）と味噌汁（味噌 18 g）のほかは、材料を推定できない
+        nonisolated private static func reestimate(dishId: UUID, name: String)
+            -> FakeSyncServer.DishEstimate?
+        {
+            switch name {
+            case "カツ丼":
+                FakeSyncServer.DishEstimate(
+                    quantity: .init(value: 1, unit: "杯", source: .estimated),
+                    ingredients: [
+                        ingredient(
+                            dishId: dishId, name: "豚ロース", grams: 100, position: 0,
+                            foodNumber: "11123",
+                            nutrients: [
+                                "energy_kcal": 248, "protein_g": 19.3, "fat_g": 19.2,
+                                "carbohydrate_g": 0.2,
+                            ]),
+                        ingredient(
+                            dishId: dishId, name: "ご飯", grams: 200, position: 1,
+                            foodNumber: "01088",
+                            nutrients: [
+                                "energy_kcal": 156, "protein_g": 2.5, "fat_g": 0.3,
+                                "carbohydrate_g": 37.1,
+                            ]),
+                    ])
+            case "味噌汁":
+                FakeSyncServer.DishEstimate(
+                    quantity: .init(value: 1, unit: "杯", source: .estimated),
+                    ingredients: [
+                        ingredient(
+                            dishId: dishId, name: "米みそ", grams: 18, position: 0,
+                            foodNumber: "17045",
+                            nutrients: [
+                                "energy_kcal": 182, "protein_g": 12.5, "fat_g": 6.0,
+                                "carbohydrate_g": 21.9,
+                            ])
+                    ])
+            default:
+                nil
+            }
+        }
+
+        /// 成分表の材料。栄養の値は 100 g あたり。ID は推定し直しを終えたときに振る
+        nonisolated private static func ingredient(
+            dishId: UUID, name: String, grams: Double, position: Int, foodNumber: String,
+            nutrients: [String: Double]
+        ) -> SyncedIngredient {
+            SyncedIngredient(
+                id: UUID(), dishId: dishId, name: name, quantity: grams,
+                quantitySource: .estimated, unit: "g", edibleGramsPerUnit: 1,
+                positionInDish: position, nutrientSource: .foodComposition(foodNumber: foodNumber),
+                nutrients: nutrients)
         }
 
         private static func fixedId(_ text: String) -> UUID {

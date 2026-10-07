@@ -8,6 +8,7 @@ extension Ingredient {
         dishId: UUID = UUID(),
         name: String = "鶏もも肉",
         quantity: Double = 100,
+        quantitySource: QuantitySource = .estimated,
         unit: String = "g",
         edibleGramsPerUnit: Double = 1,
         positionInDish: Int = 0,
@@ -19,6 +20,7 @@ extension Ingredient {
             dishId: dishId,
             name: name,
             quantity: quantity,
+            quantitySource: quantitySource,
             unit: unit,
             edibleGramsPerUnit: edibleGramsPerUnit,
             positionInDish: positionInDish,
@@ -29,15 +31,17 @@ extension Ingredient {
 }
 
 extension Dish {
+    /// 既定は、推定したままの 1 杯の料理
     static func fixture(
         id: UUID = UUID(),
         mealId: UUID = UUID(),
         name: String = "親子丼",
+        quantity: Quantity? = Quantity(value: 1, unit: "杯", source: .estimated),
         positionInMeal: Int = 0,
         version: Int = 1
     ) -> Dish {
         Dish(
-            id: id, mealId: mealId, name: name, quantity: 1, unit: "杯",
+            id: id, mealId: mealId, name: name, quantity: quantity,
             positionInMeal: positionInMeal, version: version)
     }
 }

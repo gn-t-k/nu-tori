@@ -8,6 +8,7 @@ nonisolated enum AppRecordKinds {
         RecordKindRegistry([
             AccountSettingsRecordKind(),
             DishRecordKind(),
+            DishEstimationStatusRecordKind(),
             IngredientRecordKind(),
             MealRecordKind(),
             MealEstimationStatusRecordKind(),

@@ -72,7 +72,8 @@ nonisolated struct RecordKindMock: RecordKind {
         func rejection(
             of entry: PendingEntry,
             reason: SyncWriteResult.RejectionReason,
-            current: SyncWriteResult.Current?
+            current: SyncWriteResult.Current?,
+            shown: ShownRecords
         ) throws -> KindRejection {
             KindRejection.none
         }

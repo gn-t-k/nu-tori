@@ -174,6 +174,161 @@ extension SyncEngineTests {
             }
         }
 
+        @Suite("食事の時刻を直したとき")
+        struct CorrectingEatenAt {
+            let store: SyncBoxMock<RecordCacheMock>
+            let transport: ClientTransportMock
+            let engine: SyncEngine
+            let meal: Meal
+            let correctedEatenAt: Date
+
+            init() async throws {
+                store = try .ok()
+                transport = .sync()
+                engine = .fixture(store: store, transport: transport)
+                meal = try await engine.recordLunch(photoId: UUID())
+                // 2026-09-22 19:40（東京）
+                correctedEatenAt = Date(timeIntervalSince1970: 1_790_073_600)
+            }
+
+            @Test("送り待ちに入れてから、キャッシュの食事の撮った時刻だけを直すこと")
+            func enqueuesThenCaches() async throws {
+                try await engine.correctMealTime(mealId: meal.id, eatenAt: correctedEatenAt)
+
+                #expect(store.entries.map(\.kind) == [.meal, .meal])
+                #expect(
+                    store.saves.suffix(2) == [
+                        .pending(added: 1, removed: 0), .cache(changes: 1, afterSequence: nil),
+                    ])
+                let cached = try #require(store.cache.meals[meal.id])
+                #expect(cached.eatenAt == correctedEatenAt)
+                #expect(cached.eatenUtcOffsetSeconds == meal.eatenUtcOffsetSeconds)
+                #expect(cached.sentAt == meal.sentAt)
+            }
+
+            @Test("送ると、食事の ID と直した時刻を、食事を直す書き込みで送ること")
+            func sendsUpdateMeal() async throws {
+                try await engine.correctMealTime(mealId: meal.id, eatenAt: correctedEatenAt)
+
+                _ = try await engine.sync()
+
+                let writes = try #require(transport.pushBodies.first).writes
+                try #require(writes.count == 2)
+                #expect(
+                    writes[1]
+                        == .updateMeal(
+                            writeId: writes[1].writeId, mealId: meal.id,
+                            eatenAt: correctedEatenAt))
+            }
+
+            @Suite("日をまたいで直したとき")
+            struct AcrossDays {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let meal: Meal
+                let previousNight: Date
+
+                init() async throws {
+                    let base = try await CorrectingEatenAt()
+                    store = base.store
+                    engine = base.engine
+                    meal = base.meal
+                    // 撮った日（東京の 2026-09-22）の前の日の 23:30（東京）に直す
+                    previousNight = try Date("2026-09-21T23:30:00+09:00", strategy: .iso8601)
+                }
+
+                @Test("食事の日が直した日に移り、カードを置く日は送った日のままのこと")
+                func movesDayButNotCardDay() async throws {
+                    try await engine.correctMealTime(mealId: meal.id, eatenAt: previousNight)
+
+                    let cached = try #require(store.cache.meals[meal.id])
+                    #expect(cached.day == CalendarDay(year: 2026, month: 9, day: 21))
+                    #expect(cached.cardDay == meal.cardDay)
+                }
+            }
+
+            @Suite("今と同じ時刻に直したとき")
+            struct SameTime {
+                let store: SyncBoxMock<RecordCacheMock>
+                let engine: SyncEngine
+                let meal: Meal
+
+                init() async throws {
+                    let base = try await CorrectingEatenAt()
+                    store = base.store
+                    engine = base.engine
+                    meal = base.meal
+                }
+
+                @Test("何も送り待ちに入れないこと")
+                func ignoresSameTime() async throws {
+                    try await engine.correctMealTime(mealId: meal.id, eatenAt: meal.eatenAt)
+
+                    #expect(store.entries.map(\.kind) == [.meal])
+                }
+            }
+
+            @Suite("キャッシュに無い食事を直すとき")
+            struct UnknownMeal {
+                let engine: SyncEngine
+                let correctedEatenAt: Date
+                let unknownId: UUID
+
+                init() async throws {
+                    let base = try await CorrectingEatenAt()
+                    engine = base.engine
+                    correctedEatenAt = base.correctedEatenAt
+                    unknownId = UUID()
+                }
+
+                @Test("直さずに投げること")
+                func throwsForUnknownMeal() async throws {
+                    await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknownId)) {
+                        try await engine.correctMealTime(
+                            mealId: unknownId, eatenAt: correctedEatenAt)
+                    }
+                }
+            }
+        }
+
+        @Suite("サーバーが時刻を直す書き込みを受け付けず、食事が消されていたとき")
+        struct CorrectionRejectedForDeletedMeal {
+            let store: SyncBoxMock<RecordCacheMock>
+            let engine: SyncEngine
+            let meal: Meal
+
+            init() async throws {
+                store = try .ok()
+                engine = .fixture(
+                    store: store,
+                    transport: .sync(
+                        rejectedWriteIndexes: [1],
+                        currents: [
+                            1: .deletedMeal(
+                                mealId: try #require(
+                                    UUID(uuidString: "00000000-0000-4000-8000-0000000000f1")))
+                        ]))
+                meal = Meal(
+                    id: try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000f1")),
+                    draft: try .lunch(photoId: UUID()))
+                try await store.apply(
+                    MealSyncing().recording(
+                        meal,
+                        enqueuing: PendingMealWrite(
+                            enqueuedAt: SyncEngine.fixtureNow, write: .create(meal))))
+                try await engine.correctMealTime(
+                    mealId: meal.id, eatenAt: meal.eatenAt.addingTimeInterval(-600))
+            }
+
+            @Test("削除の印を当てて、キャッシュから食事を消すこと")
+            func removesMeal() async throws {
+                _ = try await engine.sync()
+
+                #expect(store.cache.meals[meal.id] == nil)
+                #expect(store.entries.isEmpty)
+            }
+        }
+
         @Suite("食事と推定の状態の変更を取りに行ったとき")
         struct Pulling {
             let store: SyncBoxMock<RecordCacheMock>

@@ -15,11 +15,12 @@ public enum DayFood: Hashable, Sendable {
 
     /// 推定が済んだ食事の合計
     public struct Figures: Hashable, Sendable {
-        /// 済んだ食事の栄養の合計。「不明」の材料が混じる栄養は「以上」になる
+        /// 済んだ食事の栄養の合計。「不明」の材料が混じる栄養と、料理ごとに待つ料理・写真の推定が済んでいない食事に
+        /// 足した料理の分が入った栄養は「以上」になる
         public let totals: NutrientTotals
         /// 丸の P・F・C の割合。P・F・C がすべて 0 のときは nil（丸は空の輪にして、中に kcal を書く）
         public let shares: PFCShares?
-        /// 推定が済んでいない食事の数。0 でなければ、「まだ推定が済んでいない食事が N つあります。…」を添える
+        /// 推定が済んでいない食事の数（写真の推定の状態で決まる。料理ごとに待つ食事は数えない）。0 でなければ、「まだ推定が済んでいない食事が N つあります。…」を添える
         public let pendingMealCount: Int
     }
 
@@ -31,9 +32,18 @@ public enum DayFood: Hashable, Sendable {
         }
         var estimatedTotals: [NutrientTotals] = []
         var pendingMealCount = 0
+        // 料理ごとに待つ食事のうち、分かる値がまだ無いもの。日の値が出ないときだけ、推定しているところとして数える
+        var waitingWithoutFiguresCount = 0
         for meal in meals {
             switch meal.nutrition {
-            case .estimated(let totals): estimatedTotals.append(totals)
+            case .estimated(let totals):
+                estimatedTotals.append(totals)
+                if meal.state.awaitsPhotoEstimation {
+                    // 写真の推定が済んでいない食事に足した料理の分。食事は、推定が済んでいない食事に今までどおり数える
+                    pendingMealCount += 1
+                } else if meal.contents.hasWaitingDishes, totals[.energyKcal].value == nil {
+                    waitingWithoutFiguresCount += 1
+                }
             case .pending: pendingMealCount += 1
             case .noFood: break
             }
@@ -44,10 +54,10 @@ public enum DayFood: Hashable, Sendable {
                 Figures(
                     totals: totals, shares: PFCShares(totals: totals),
                     pendingMealCount: pendingMealCount))
-        } else if pendingMealCount == meals.count {
+        } else if pendingMealCount + waitingWithoutFiguresCount == meals.count {
             self = .allPending
         } else {
-            self = .unavailable(pendingMealCount: pendingMealCount)
+            self = .unavailable(pendingMealCount: pendingMealCount + waitingWithoutFiguresCount)
         }
     }
 

@@ -1,12 +1,12 @@
-import { and, asc, between, eq, inArray } from "drizzle-orm";
+import { and, asc, between, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { MealStore } from "../domain/meal-store";
 import { mealPhotoTables } from "./meal-photo-tables";
 import { mealTables } from "./meal-tables";
 
-const { syncWriteReceipts } = syncLedgerTables;
-const { meals, mealDeletions } = mealTables;
+const { syncWriteReceipts, syncWriteRecordChanges } = syncLedgerTables;
+const { meals, mealEatenAtCorrections, mealDeletions } = mealTables;
 const { mealPhotos, mealPhotoDeletions } = mealPhotoTables;
 
 export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
@@ -21,7 +21,11 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       .where(eq(mealPhotos.mealId, id))
       .orderBy(asc(mealPhotos.positionInMeal))
       .all();
-    return { ...meal, photoIds: photos.map((photo) => photo.id) };
+    return {
+      ...meal,
+      eatenAt: findCorrectedEatenAt(db, id) ?? meal.eatenAt,
+      photoIds: photos.map((photo) => photo.id),
+    };
   },
   hasDeletion: (id) =>
     db
@@ -45,19 +49,70 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
         .all()
         .map((photo) => photo.id),
     ]),
-  findEatenTimesBetween: (from, to) =>
-    db
-      .select({
-        eatenAt: meals.eatenAt,
-        eatenAtUtcOffsetSeconds: meals.eatenAtUtcOffsetSeconds,
-      })
+  // #332 の「時刻で食事を引く道」: 作ったときの時刻と直した時刻の両方から候補を出し、候補ごとに今の時刻を出してから範囲で絞る。
+  // 作ったときの時刻だけで引くと、直して日をまたいだ食事を数え誤る
+  findEatenTimesBetween: (from, to) => {
+    const createdInRange = db
+      .select({ id: meals.id })
       .from(meals)
       .where(between(meals.eatenAt, from, to))
-      .all(),
+      .all();
+    const correctedInRange = db
+      .select({ id: meals.id })
+      .from(mealEatenAtCorrections)
+      .innerJoin(
+        syncWriteReceipts,
+        eq(syncWriteReceipts.id, mealEatenAtCorrections.syncWriteReceiptId),
+      )
+      .innerJoin(
+        meals,
+        and(eq(syncWriteReceipts.recordType, "meal"), eq(meals.id, syncWriteReceipts.recordId)),
+      )
+      .where(between(mealEatenAtCorrections.eatenAt, from, to))
+      .all();
+    const candidateIds = new Set([...createdInRange, ...correctedInRange].map(({ id }) => id));
+    return [...candidateIds].flatMap((id) => {
+      const meal = db
+        .select({
+          eatenAt: meals.eatenAt,
+          eatenAtUtcOffsetSeconds: meals.eatenAtUtcOffsetSeconds,
+        })
+        .from(meals)
+        .where(eq(meals.id, id))
+        .get();
+      if (meal === undefined) {
+        return [];
+      }
+      const eatenAt = findCorrectedEatenAt(db, id) ?? meal.eatenAt;
+      return eatenAt >= from && eatenAt <= to
+        ? [{ eatenAt, eatenAtUtcOffsetSeconds: meal.eatenAtUtcOffsetSeconds }]
+        : [];
+    });
+  },
   insert: ({ photoIds, ...meal }) => {
     db.insert(meals).values(meal).run();
     db.insert(mealPhotos)
       .values(photoIds.map((id, positionInMeal) => ({ id, mealId: meal.id, positionInMeal })))
+      .run();
+  },
+  insertEatenAtCorrection: (receiptId, eatenAt) => {
+    db.insert(mealEatenAtCorrections)
+      .values({ syncWriteReceiptId: receiptId.value, eatenAt })
+      .run();
+  },
+  removeCorrections: (id) => {
+    db.delete(mealEatenAtCorrections)
+      .where(
+        inArray(
+          mealEatenAtCorrections.syncWriteReceiptId,
+          db
+            .select({ id: syncWriteReceipts.id })
+            .from(syncWriteReceipts)
+            .where(
+              and(eq(syncWriteReceipts.recordType, "meal"), eq(syncWriteReceipts.recordId, id)),
+            ),
+        ),
+      )
       .run();
   },
   remove: (id) => {
@@ -76,6 +131,24 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
     }
   },
 });
+
+// 食事を書き換えた控えのうち、時刻の修正を持ち、受け取った順（変更の並びの通し番号）がいちばんあとのものの時刻。修正が無ければ undefined
+const findCorrectedEatenAt = (db: DrizzleSqliteDODatabase, id: string): Date | undefined =>
+  db
+    .select({ eatenAt: mealEatenAtCorrections.eatenAt })
+    .from(mealEatenAtCorrections)
+    .innerJoin(
+      syncWriteReceipts,
+      eq(syncWriteReceipts.id, mealEatenAtCorrections.syncWriteReceiptId),
+    )
+    .innerJoin(
+      syncWriteRecordChanges,
+      eq(syncWriteRecordChanges.syncWriteReceiptId, mealEatenAtCorrections.syncWriteReceiptId),
+    )
+    .where(and(eq(syncWriteReceipts.recordType, "meal"), eq(syncWriteReceipts.recordId, id)))
+    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
+    .limit(1)
+    .get()?.eatenAt;
 
 // Durable Object の SQLite は、1つのクエリに渡せる変数が 100 まで。受け付けなかった書き込みの写真の ID は、いくつでも届きうる
 const splitIntoQueryableChunks = (ids: readonly string[]): string[][] => {

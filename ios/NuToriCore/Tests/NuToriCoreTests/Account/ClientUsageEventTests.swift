@@ -186,6 +186,54 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("食事の画面で時刻を直したとき")
+    struct MealTimeCorrected {
+        @Test("回数だけを数え、時刻を載せないこと")
+        func hasNoFields() {
+            let event = ClientUsageEvent.mealTimeCorrected
+
+            #expect(event.name == "meal_time_corrected")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("料理の画面で料理の名前・量か材料の量を直したとき")
+    struct DishCorrected {
+        @Test("回数だけを数え、名前と量を載せないこと")
+        func hasNoFields() {
+            let event = ClientUsageEvent.dishCorrected
+
+            #expect(event.name == "dish_corrected")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("食事の画面で料理を足したとき")
+    struct DishAdded {
+        @Test("回数だけを数え、名前を載せないこと")
+        func hasNoFields() {
+            let event = ClientUsageEvent.dishAdded
+
+            #expect(event.name == "dish_added")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("料理を消したとき")
+    struct DishDeleted {
+        @Test("回数だけを数え、名前を載せないこと")
+        func hasNoFields() {
+            let event = ClientUsageEvent.dishDeleted
+
+            #expect(event.name == "dish_deleted")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("推定できた食事を、送ってから 30 分 30 秒後に消したとき")
     struct EstimatedMealDeleted {
         let event: ClientUsageEvent

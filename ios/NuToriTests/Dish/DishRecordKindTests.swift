@@ -15,7 +15,8 @@ struct DishRecordKindTests {
 
     static func syncedDish(id: UUID) -> SyncedDish {
         SyncedDish(
-            id: id, mealId: UUID(), name: "親子丼", quantity: 1, unit: "杯", positionInMeal: 0,
+            id: id, mealId: UUID(), name: "親子丼",
+            quantity: .init(value: 1, unit: "杯", source: .estimated), positionInMeal: 0,
             version: 1)
     }
 
@@ -23,7 +24,8 @@ struct DishRecordKindTests {
         id: UUID, nutrientSource: SyncedIngredient.NutrientSource
     ) -> SyncedIngredient {
         SyncedIngredient(
-            id: id, dishId: keptDishId, name: "鶏もも肉", quantity: 80, unit: "g",
+            id: id, dishId: keptDishId, name: "鶏もも肉", quantity: 80, quantitySource: .estimated,
+            unit: "g",
             edibleGramsPerUnit: 1, positionInDish: 0, nutrientSource: nutrientSource,
             nutrients: ["energy_kcal": 204, "protein_g": 16.6, "future_nutrient_g": 1.5])
     }
@@ -70,6 +72,49 @@ struct DishRecordKindTests {
                 Set(dishes.map(\.dishId)) == [
                     DishRecordKindTests.keptDishId, DishRecordKindTests.removedDishId,
                 ])
+        }
+
+        @Test("量の無い料理と、直した量の料理と材料を、量と量の出どころを保って読めること")
+        func storesQuantities() async throws {
+            let addedDishId = UUID()
+            let correctedIngredientId = UUID()
+            try await store.apply(
+                SyncBoxResult(kindChanges: [
+                    KindChanges(
+                        kind: .dish,
+                        changes: [
+                            .dish(
+                                SyncedDish(
+                                    id: addedDishId, mealId: UUID(), name: "味噌汁",
+                                    quantity: nil, positionInMeal: 1, version: 1)),
+                            .dish(
+                                SyncedDish(
+                                    id: DishRecordKindTests.keptDishId, mealId: UUID(),
+                                    name: "親子丼",
+                                    quantity: .init(value: 1.5, unit: "杯", source: .corrected),
+                                    positionInMeal: 0, version: 2)),
+                        ]),
+                    KindChanges(
+                        kind: .ingredient,
+                        changes: [
+                            .ingredient(
+                                SyncedIngredient(
+                                    id: correctedIngredientId,
+                                    dishId: DishRecordKindTests.keptDishId, name: "ご飯",
+                                    quantity: 150, quantitySource: .corrected, unit: "g",
+                                    edibleGramsPerUnit: 1, positionInDish: 1,
+                                    nutrientSource: .estimated, nutrients: [:]))
+                        ]),
+                ]))
+
+            let dishes = try await store.dishes()
+            let ingredients = try await store.ingredients()
+            #expect(dishes.first { $0.id == addedDishId }?.quantity == nil)
+            #expect(
+                dishes.first { $0.id == DishRecordKindTests.keptDishId }?.quantity
+                    == Dish.Quantity(value: 1.5, unit: "杯", source: .corrected))
+            #expect(
+                ingredients.first { $0.id == correctedIngredientId }?.quantitySource == .corrected)
         }
 
         @Test("知らない栄養の項目を読み飛ばし、出どころと栄養の値を保って材料がキャッシュに入ること")

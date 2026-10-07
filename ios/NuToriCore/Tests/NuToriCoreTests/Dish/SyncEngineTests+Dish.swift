@@ -65,43 +65,11 @@ extension SyncEngineTests {
             }
         }
 
-        @Suite("料理の種類の送り待ちがあるとき")
-        struct PendingDish {
-            let engine: SyncEngine
-
-            init() throws {
-                engine = try .withPendingEntry(of: .dish)
-            }
-
-            @Test("サーバーだけが書く種類として、送らずに投げること")
-            func throwsServerOnly() async throws {
-                await #expect(throws: UnknownRecordKindError.serverOnly(.dish)) {
-                    _ = try await engine.sync()
-                }
-            }
-        }
-
-        @Suite("材料の種類の送り待ちがあるとき")
-        struct PendingIngredient {
-            let engine: SyncEngine
-
-            init() throws {
-                engine = try .withPendingEntry(of: .ingredient)
-            }
-
-            @Test("サーバーだけが書く種類として、送らずに投げること")
-            func throwsServerOnly() async throws {
-                await #expect(throws: UnknownRecordKindError.serverOnly(.ingredient)) {
-                    _ = try await engine.sync()
-                }
-            }
-        }
-
         static func dishChange(sequence: Int, id: UUID) -> String {
             """
             {"sequence":\(sequence),"kind":"dish","recordId":"\(id.uuidString)",
              "record":{"id":"\(id.uuidString)","mealId":"\(mealId.uuidString)","name":"親子丼",
-               "quantity":1,"unit":"杯","positionInMeal":0,"version":1}}
+               "quantity":1,"unit":"杯","quantitySource":"estimated","positionInMeal":0,"version":1}}
             """
         }
 
@@ -109,23 +77,10 @@ extension SyncEngineTests {
             """
             {"sequence":\(sequence),"kind":"ingredient","recordId":"\(id.uuidString)",
              "record":{"id":"\(id.uuidString)","dishId":"\(dishId.uuidString)","name":"鶏もも肉",
-               "quantity":80,"unit":"g","edibleGramsPerUnit":1,"positionInDish":0,
+               "quantity":80,"quantitySource":"estimated","unit":"g","edibleGramsPerUnit":1,"positionInDish":0,
                "nutrientSource":{"type":"food_composition","foodNumber":"11225"},
                "nutrients":{"energy_kcal":204,"future_nutrient_g":1.5}}}
             """
         }
-    }
-}
-
-extension SyncEngine {
-    /// 種類が `kind` の送り待ちが1つある同期の働き
-    fileprivate static func withPendingEntry(of kind: RecordKindName) throws -> SyncEngine {
-        .fixture(
-            store: try .ok(pendingEntries: [
-                PendingEntry(
-                    writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: kind,
-                    content: Data())
-            ]),
-            transport: .sync())
     }
 }

@@ -12,6 +12,9 @@ import NuToriCore
     var onDestination: (SignInDestination) -> Void = { _ in }
     var onRejectedWrites: ([RejectedWrite]) -> Void = { _ in }
     var onReplacingRecord: (UUID) -> Void = { _ in }
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理が変わりうるとき（料理を直した・消した、同期した）に、読み直して知らせる。
+    /// 送り待ちはキャッシュと別の置き場で `@Query` で読めないので、ここから渡す
+    var onUnsentDishIds: (Set<UUID>) -> Void = { _ in }
 
     func save(_ write: WeightEntry.Write) async throws {
         guard await hasSession(), let accountId = await signedInAccountId() else { return }
@@ -95,12 +98,13 @@ import NuToriCore
         return meals
     }
 
-    /// 食事を記録したあとと、食事の写真を送り終えたあと。送り待ちを送り、送り終えたら、推定中の食事があるあいだ裏で取りに行く
+    /// 食事を記録したあと、食事の写真を送り終えたあと、料理を足した・名前を直したあと。
+    /// 送り待ちを送り、送り終えたら、推定中の食事か料理があるあいだ裏で取りに行く
     func followEstimationAfterSending() async {
         guard let result = try? await syncAfterInFlight(), result.ending == .finished else {
             return
         }
-        followEstimationInBackground(sentAt: clock.now())
+        followEstimationInBackground(sentAt: .now)
     }
 
     /// App スイッチャーで閉じると裏の送信が取り消されるので、開いたときに写真の送り残しを送り直す
@@ -109,10 +113,77 @@ import NuToriCore
         await mealPhotos.resendPendingUploads()
     }
 
+    /// 食事の撮った時刻を直す。電波が無くても、その場でキャッシュに当たる。直す書き込みは送り待ちに並ぶ
+    func correctMealTime(mealId: UUID, eatenAt: Date) async throws {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        onReplacingRecord(mealId)
+        try await engineForThisDevice(accountId: accountId).correctMealTime(
+            mealId: mealId, eatenAt: eatenAt)
+        syncInBackground()
+    }
+
     /// 電波が無くても、その場でキャッシュとアプリの中の写真から消える。消す書き込みは送り待ちに並ぶ
     func deleteMeal(id mealId: UUID) async throws {
         guard await hasSession(), let accountId = await signedInAccountId() else { return }
         try await engineForThisDevice(accountId: accountId).deleteMeal(id: mealId)
+        syncInBackground()
+    }
+
+    /// 料理の名前を直す。電波が無くても、その場でキャッシュに当たる。直す書き込みは送り待ちに並び、送れたらサーバーが推定し直しを始める。
+    /// 返すのはキャッシュの今の料理（空の名前と今と同じ名前は送らず、前の料理）。サインインしていなければ nil
+    func renameDish(id dishId: UUID, to typedName: String) async throws -> Dish? {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        onReplacingRecord(dishId)
+        let engine = engineForThisDevice(accountId: accountId)
+        let dish = try await engine.renameDish(id: dishId, to: typedName)
+        await publishUnsentDishIds(engine)
+        // 送れたら、推定し直しを待つあいだ数秒おきに取りに行く
+        Task { await self.followEstimationAfterSending() }
+        return dish
+    }
+
+    /// 食事に料理を足す。電波が無くても、その場でキャッシュに入る。作る書き込みは送り待ちに並び、送れたらサーバーが推定し直しを始める。
+    /// 返すのは足した料理（空の名前は足さず nil）。サインインしていなければ nil
+    func addDish(named typedName: String, toMeal mealId: UUID) async throws -> Dish? {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        let engine = engineForThisDevice(accountId: accountId)
+        guard let dish = try await engine.addDish(named: typedName, toMeal: mealId) else {
+            return nil
+        }
+        await publishUnsentDishIds(engine)
+        Task { await self.followEstimationAfterSending() }
+        return dish
+    }
+
+    /// 料理の量を直す。材料の量も同じ割合で変わる。返すのはキャッシュの今の料理。サインインしていなければ nil
+    func correctDishQuantity(id dishId: UUID, to value: Double) async throws -> Dish? {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        onReplacingRecord(dishId)
+        let dish = try await engineForThisDevice(accountId: accountId).correctDishQuantity(
+            id: dishId, to: value)
+        syncInBackground()
+        return dish
+    }
+
+    /// 材料の量を直す。返すのはキャッシュの今の材料。サインインしていなければ nil
+    func correctIngredientQuantity(id ingredientId: UUID, to quantity: Double) async throws
+        -> Ingredient?
+    {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        onReplacingRecord(ingredientId)
+        let ingredient = try await engineForThisDevice(accountId: accountId)
+            .correctIngredientQuantity(id: ingredientId, to: quantity)
+        syncInBackground()
+        return ingredient
+    }
+
+    /// 料理を消す（最後の1品でないとき）。電波が無くても、その場でキャッシュから消える。消す書き込みは送り待ちに並ぶ
+    func deleteDish(id dishId: UUID) async throws {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        onReplacingRecord(dishId)
+        let engine = engineForThisDevice(accountId: accountId)
+        try await engine.deleteDish(id: dishId)
+        await publishUnsentDishIds(engine)
         syncInBackground()
     }
 
@@ -252,11 +323,12 @@ import NuToriCore
         Task { _ = try? await self.syncAfterInFlight() }
     }
 
-    private func followEstimationInBackground(sentAt: Date) {
+    /// 送ってからの経過は、`clock`（UI テストでは止める）ではなく単調な時計で測る。止めた時計では1分の締め切りが来ないため
+    private func followEstimationInBackground(sentAt: ContinuousClock.Instant) {
         let followUp = EstimationFollowUp(
             sentAt: sentAt,
             cache: store,
-            now: clock.now,
+            now: { .now },
             wait: { try await Task.sleep(for: $0) }
         )
         Task { try? await followUp.run { try await self.sync() } }
@@ -339,9 +411,11 @@ import NuToriCore
         } catch is CancellationError {
             throw CancellationError()
         } catch {
+            await publishUnsentDishIds(engineForThisDevice(accountId: accountId))
             await accountSession.noteInitialPull(.unfinished)
             throw error
         }
+        await publishUnsentDishIds(engineForThisDevice(accountId: accountId))
         let completedAfter = try await store.syncState()?.hasCompletedInitialPull ?? false
         await accountSession.noteInitialPull(
             AccountSession.initialPullNotice(
@@ -362,6 +436,12 @@ import NuToriCore
         }
         onDestination(try await accountSession.destination(afterSync: result))
         return result
+    }
+
+    /// 読めなければ知らせない（前に知らせた料理のまま見せる）
+    private func publishUnsentDishIds(_ engine: SyncEngine) async {
+        guard let unsentDishIds = try? await engine.unsentDishIds() else { return }
+        onUnsentDishIds(unsentDishIds)
     }
 
     private func engineForThisDevice(accountId: String) -> SyncEngine {

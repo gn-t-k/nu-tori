@@ -81,6 +81,8 @@
             public let accountDeletion: AccountDeletion
             /// 推定を終えた食事に、その食事の ID から作る料理と材料
             public let estimatedDishes: @Sendable (UUID) -> [SyncChange]
+            /// 推定し直し（料理を足した・名前を直した）を終えた料理に、料理の ID と名前から作る量と材料。nil なら材料を推定できない（料理なし）
+            public let estimateDish: @Sendable (_ dishId: UUID, _ name: String) -> DishEstimate?
 
             public init(
                 records: [SyncChange],
@@ -89,7 +91,10 @@
                 pull: Pull = .answers,
                 writePolicies: [String: WritePolicy] = [:],
                 accountDeletion: AccountDeletion = .deletes,
-                estimatedDishes: @escaping @Sendable (UUID) -> [SyncChange] = { _ in [] }
+                estimatedDishes: @escaping @Sendable (UUID) -> [SyncChange] = { _ in [] },
+                estimateDish:
+                    @escaping @Sendable (_ dishId: UUID, _ name: String) -> DishEstimate? =
+                    { _, _ in nil }
             ) {
                 self.records = records
                 self.startedOn = startedOn
@@ -98,6 +103,18 @@
                 self.writePolicies = writePolicies
                 self.accountDeletion = accountDeletion
                 self.estimatedDishes = estimatedDishes
+                self.estimateDish = estimateDish
+            }
+        }
+
+        /// 推定し直しで当てる、料理の量と材料。料理の量を直してあれば、量は当てず材料だけを当てる
+        public struct DishEstimate: Sendable {
+            public let quantity: SyncedDish.Quantity
+            public let ingredients: [SyncedIngredient]
+
+            public init(quantity: SyncedDish.Quantity, ingredients: [SyncedIngredient]) {
+                self.quantity = quantity
+                self.ingredients = ingredients
             }
         }
 
@@ -179,7 +196,9 @@
             case .answers:
                 let afterSequence = Self.afterSequence(of: request)
                 let entries = ledger.withLock {
-                    $0.pull(after: afterSequence, estimatedDishes: scenario.estimatedDishes)
+                    $0.pull(
+                        after: afterSequence, estimatedDishes: scenario.estimatedDishes,
+                        estimateDish: scenario.estimateDish)
                 }
                 return .init(
                     changes: try entries.map {
@@ -219,6 +238,8 @@
             private var entries: [RecordKey: Entry] = [:]
             /// 推定中を返した食事。次に取りに行かれたら推定を終える
             private var estimatingMealIds: [UUID] = []
+            /// 推定中を返した料理。次に取りに行かれたら推定し直しを終える
+            private var estimatingDishIds: [UUID] = []
 
             struct Entry {
                 let sequence: Int
@@ -236,13 +257,17 @@
             }
 
             mutating func pull(
-                after afterSequence: Int, estimatedDishes: (UUID) -> [SyncChange]
+                after afterSequence: Int, estimatedDishes: (UUID) -> [SyncChange],
+                estimateDish: (UUID, String) -> DishEstimate?
             ) -> [Entry] {
                 for mealId in estimatingMealIds {
                     put(.mealEstimationStatus(.init(mealId: mealId, status: .estimated)))
                     for change in estimatedDishes(mealId) {
                         put(change)
                     }
+                }
+                for dishId in estimatingDishIds {
+                    reestimate(dishId: dishId, estimateDish: estimateDish)
                 }
                 let page = entries.values.filter { $0.sequence > afterSequence }
                     .sorted { $0.sequence < $1.sequence }
@@ -252,7 +277,79 @@
                     else { return nil }
                     return status.mealId
                 }
+                estimatingDishIds = page.compactMap {
+                    guard case .dishEstimationStatus(let status) = $0.change,
+                        status.status == .estimating
+                    else { return nil }
+                    return status.dishId
+                }
                 return page
+            }
+
+            /// 前の材料を削除の印にし、推定した量（量を直してあれば直した量のまま）と材料を当てる。推定できなければ料理なしにする
+            private mutating func reestimate(
+                dishId: UUID, estimateDish: (UUID, String) -> DishEstimate?
+            ) {
+                guard case .dish(let dish) = entries[.init(kind: .dish, id: dishId)]?.change else {
+                    return
+                }
+                for ingredient in ingredients(ofDish: dishId) {
+                    put(.ingredientDeletion(ingredientId: ingredient.id))
+                }
+                guard let estimate = estimateDish(dishId, dish.name) else {
+                    put(.dishEstimationStatus(.init(dishId: dishId, status: .noDishes)))
+                    return
+                }
+                let quantity =
+                    dish.quantity?.source == .corrected ? dish.quantity : estimate.quantity
+                put(.dish(dish.replacing(name: dish.name, quantity: quantity)))
+                for ingredient in estimate.ingredients {
+                    put(.ingredient(ingredient))
+                }
+                put(.dishEstimationStatus(.init(dishId: dishId, status: .estimated)))
+            }
+
+            /// 料理の今の材料（削除の印を除く）を、置いた順に
+            private func ingredients(ofDish dishId: UUID) -> [SyncedIngredient] {
+                entries.values.sorted { $0.sequence < $1.sequence }.compactMap {
+                    guard case .ingredient(let ingredient) = $0.change,
+                        ingredient.dishId == dishId
+                    else { return nil }
+                    return ingredient
+                }
+            }
+
+            /// 量が今と違えば直した量にし、比例させた材料の量を当てる。名前が今と違えば、推定し直しを始める
+            private mutating func apply(_ correction: DishCorrection) {
+                guard
+                    case .dish(let dish) = entries[.init(kind: .dish, id: correction.id)]?.change
+                else { return }
+                let quantity: SyncedDish.Quantity? =
+                    if let value = correction.quantity?.value, let current = dish.quantity,
+                        value != current.value
+                    {
+                        .init(value: value, unit: current.unit, source: .corrected)
+                    } else {
+                        dish.quantity
+                    }
+                let renamed = correction.name != dish.name
+                guard renamed || quantity != dish.quantity else { return }
+                put(.dish(dish.replacing(name: correction.name, quantity: quantity)))
+                for proportioned in correction.quantity?.proportionedIngredients ?? [] {
+                    let key = RecordKey(kind: .ingredient, id: proportioned.ingredientId)
+                    guard case .ingredient(let ingredient) = entries[key]?.change,
+                        ingredient.quantity != proportioned.quantity
+                    else { continue }
+                    // 比例させた材料の量の出どころは、推定したまま
+                    put(
+                        .ingredient(
+                            ingredient.replacing(
+                                quantity: proportioned.quantity, source: ingredient.quantitySource)
+                        ))
+                }
+                if renamed {
+                    put(.dishEstimationStatus(.init(dishId: dish.id, status: .estimating)))
+                }
             }
 
             /// 届いた値をそのまま置く。サーバーの当て方の決まり（版の比べ方、消したときに連れて消すもの）は真似ない。
@@ -283,9 +380,44 @@
                     guard entries[write.recordKey] == nil else { return }
                     put(.meal(meal))
                     put(.mealEstimationStatus(.init(mealId: meal.id, status: .estimating)))
+                case .updateMeal(_, _, let eatenAt):
+                    guard case .meal(let meal) = entries[write.recordKey]?.change else { return }
+                    put(
+                        .meal(
+                            SyncedMeal(
+                                id: meal.id, eatenAt: eatenAt,
+                                eatenUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
+                                sentAt: meal.sentAt, sentTimeZone: meal.sentTimeZone,
+                                entryMethod: meal.entryMethod, photoIds: meal.photoIds)))
                 case .deleteMeal(_, let mealId):
                     put(.mealDeletion(mealId: mealId))
                     estimatingMealIds.removeAll { $0 == mealId }
+                case .deleteDish(_, let dishId):
+                    put(.dishDeletion(dishId: dishId))
+                    for ingredient in ingredients(ofDish: dishId) {
+                        put(.ingredientDeletion(ingredientId: ingredient.id))
+                    }
+                    if case .dishEstimationStatus = entries[
+                        .init(kind: .dishEstimationStatus, id: dishId)]?.change
+                    {
+                        put(.dishEstimationStatusDeletion(dishId: dishId))
+                    }
+                    estimatingDishIds.removeAll { $0 == dishId }
+                case .createDish(_, let newDish):
+                    guard entries[write.recordKey] == nil else { return }
+                    put(
+                        .dish(
+                            SyncedDish(
+                                id: newDish.id, mealId: newDish.mealId, name: newDish.name,
+                                quantity: nil, positionInMeal: newDish.positionInMeal, version: 1)))
+                    put(.dishEstimationStatus(.init(dishId: newDish.id, status: .estimating)))
+                case .updateDish(_, let correction):
+                    apply(correction)
+                case .updateIngredient(_, _, let quantity):
+                    guard case .ingredient(let ingredient) = entries[write.recordKey]?.change,
+                        ingredient.quantity != quantity
+                    else { return }
+                    put(.ingredient(ingredient.replacing(quantity: quantity, source: .corrected)))
                 case .createNotice(_, let notice):
                     guard entries[write.recordKey] == nil else { return }
                     put(
@@ -311,6 +443,26 @@
                 guard case .weightRecord(let record) = entries[key]?.change else { return nil }
                 return record
             }
+        }
+    }
+
+    extension SyncedDish {
+        /// 版を1つ上げる
+        fileprivate func replacing(name: String, quantity: Quantity?) -> SyncedDish {
+            SyncedDish(
+                id: id, mealId: mealId, name: name, quantity: quantity,
+                positionInMeal: positionInMeal, version: version + 1)
+        }
+    }
+
+    extension SyncedIngredient {
+        fileprivate func replacing(quantity: Double, source: SyncedQuantitySource)
+            -> SyncedIngredient
+        {
+            SyncedIngredient(
+                id: id, dishId: dishId, name: name, quantity: quantity, quantitySource: source,
+                unit: unit, edibleGramsPerUnit: edibleGramsPerUnit, positionInDish: positionInDish,
+                nutrientSource: nutrientSource, nutrients: nutrients)
         }
     }
 #endif

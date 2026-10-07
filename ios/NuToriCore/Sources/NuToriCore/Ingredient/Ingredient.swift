@@ -6,6 +6,8 @@ public struct Ingredient: Hashable, Sendable {
     public let dishId: UUID
     public let name: String
     public let quantity: Double
+    /// 料理の量に比例させた量は、推定したまま
+    public let quantitySource: QuantitySource
     public let unit: String
     /// 1単位あたりの可食部の g
     public let edibleGramsPerUnit: Double
@@ -20,6 +22,7 @@ public struct Ingredient: Hashable, Sendable {
         dishId: UUID,
         name: String,
         quantity: Double,
+        quantitySource: QuantitySource,
         unit: String,
         edibleGramsPerUnit: Double,
         positionInDish: Int,
@@ -30,6 +33,7 @@ public struct Ingredient: Hashable, Sendable {
         self.dishId = dishId
         self.name = name
         self.quantity = quantity
+        self.quantitySource = quantitySource
         self.unit = unit
         self.edibleGramsPerUnit = edibleGramsPerUnit
         self.positionInDish = positionInDish
@@ -40,6 +44,13 @@ public struct Ingredient: Hashable, Sendable {
     /// 材料の量に含まれる栄養の値。材料の値 × 量 × 1単位あたりの可食部の g ÷ 基準の g。「不明」なら nil
     public func amount(of nutrient: Nutrient) -> Double? {
         nutrients[nutrient].map { $0 * quantity * edibleGramsPerUnit / nutrientSource.basisGrams }
+    }
+}
+
+extension Sequence<Ingredient> {
+    /// 料理の中の並び順（同じなら ID の順）に並べる
+    func sortedInDishOrder() -> [Ingredient] {
+        sorted { ($0.positionInDish, $0.id.uuidString) < ($1.positionInDish, $1.id.uuidString) }
     }
 }
 

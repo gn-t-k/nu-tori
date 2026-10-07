@@ -18,7 +18,12 @@ public struct Timeline: Sendable {
             grouping: input.notices.filter { $0.response == nil && $0.targetDay >= firstDay },
             by: \.targetDay)
         let rejectedWeightLines = input.rejectedLines.compactMap(\.weightLine)
-        let rejectedMealLines = input.rejectedLines.compactMap(\.mealLine)
+        // 食事・料理・材料の行のうち、タイムラインに置くもの（食事が消えている、食事そのものの行）だけ。ほかは食事の画面と料理の画面に出す
+        let cardsByMealId = Dictionary(
+            input.meals.map { ($0.meal.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let rejectedMealLines = input.rejectedLines.compactMap(\.mealLine).filter {
+            $0.placement(in: cardsByMealId[$0.meal.id]) == .timeline
+        }
         let lastDay = ([today] + weightRecordsByDay.keys + mealsByDay.keys + noticesByDay.keys)
             .max()!
         let range = firstDay...max(firstDay, lastDay)
@@ -145,7 +150,7 @@ public struct Timeline: Sendable {
             case .weightRecord(let record): "record-\(record.id.uuidString)"
             case .rejectedWeightLine(let line): "rejection-\(line.record.id.uuidString)"
             case .meal(let card): "meal-\(card.meal.id.uuidString)"
-            case .rejectedMealLine(let line): "meal-rejection-\(line.meal.id.uuidString)"
+            case .rejectedMealLine(let line): "meal-rejection-\(line.recordId.uuidString)"
             case .notice(let card): "notice-\(card.notice.id.uuidString)"
             }
         }

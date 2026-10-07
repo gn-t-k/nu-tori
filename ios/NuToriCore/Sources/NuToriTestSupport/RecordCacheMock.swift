@@ -2,7 +2,7 @@ public import Foundation
 public import NuToriCore
 import Synchronization
 
-/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、材料、知らせ、いつもの時刻、体重の傾向を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
+/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
 /// 同期の働きの単体テストで、アプリの SwiftData のキャッシュの代わりに使う
 public final class RecordCacheMock: Sendable {
     public init() {}
@@ -27,6 +27,11 @@ public final class RecordCacheMock: Sendable {
     /// 料理の ID ごとの料理。親の食事がまだ無くても置く
     public var dishes: [UUID: Dish] {
         storage.withLock { $0.dishes }
+    }
+
+    /// 料理の ID ごとの推定の状態。料理がまだ無くても置く
+    public var dishEstimationStatuses: [UUID: DishEstimationStatus] {
+        storage.withLock { $0.dishEstimationStatuses }
     }
 
     /// 材料の ID ごとの材料。親の料理がまだ無くても置く
@@ -110,6 +115,18 @@ public final class RecordCacheMock: Sendable {
         storage.withLock { $0.dishes[dishId] = nil }
     }
 
+    public func write(_ status: DishEstimationStatus, forDishId dishId: UUID) {
+        storage.withLock { $0.dishEstimationStatuses[dishId] = status }
+    }
+
+    public func removeEstimationStatus(forDishId dishId: UUID) {
+        storage.withLock { $0.dishEstimationStatuses[dishId] = nil }
+    }
+
+    public func clearDishEstimationStatuses() {
+        storage.withLock { $0.dishEstimationStatuses = [:] }
+    }
+
     public func upsert(_ ingredient: Ingredient) {
         storage.withLock { $0.ingredients[ingredient.id] = ingredient }
     }
@@ -156,6 +173,7 @@ public final class RecordCacheMock: Sendable {
         var meals: [UUID: Meal] = [:]
         var estimationStatuses: [UUID: MealEstimationStatus] = [:]
         var dishes: [UUID: Dish] = [:]
+        var dishEstimationStatuses: [UUID: DishEstimationStatus] = [:]
         var ingredients: [UUID: Ingredient] = [:]
         var notices: [UUID: Notice] = [:]
         var usualWeighingTime: UsualWeighingTime?

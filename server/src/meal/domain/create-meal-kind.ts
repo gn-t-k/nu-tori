@@ -1,5 +1,8 @@
 import { match } from "ts-pattern";
+import { deleteDishes } from "../../dish/domain/delete-dishes";
 import type { DishStore } from "../../dish/domain/dish-store";
+import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
+import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
 import { computeEstimationEndedEvent } from "../../estimation/domain/compute-estimation-ended-event";
 import type { EstimationStore } from "../../estimation/domain/estimation-store";
 import { findMealReceivedAt } from "../../estimation/domain/find-meal-received-at";
@@ -12,6 +15,7 @@ import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { IngredientStore } from "../../ingredient/domain/ingredient-store";
@@ -33,6 +37,9 @@ export const createMealKind = (
       match(write)
         .with({ type: "create_meal" }, ({ meal }) => decideCreate(stores, meal, receivedAt))
         .with({ type: "delete_meal" }, ({ mealId }) => decideDelete(stores, mealId, receivedAt))
+        .with({ type: "update_meal" }, ({ mealId, eatenAt }) =>
+          decideUpdate(stores, mealId, eatenAt),
+        )
         .exhaustive(),
   },
   follows: undefined,
@@ -47,7 +54,7 @@ export const createMealKind = (
 });
 
 // 食事の書き込みが、食事のほかに変える記録の種類
-type AddedRecordType = "meal_estimation_status" | "dish" | "ingredient";
+type AddedRecordType = "meal_estimation_status" | "dish" | "ingredient" | "dish_estimation_status";
 
 // 食事の書き込みが読み書きする置き場
 type MealKindStores = {
@@ -58,6 +65,7 @@ type MealKindStores = {
   estimation: EstimationStore;
   writeEstimationEvents: RecordKindStores["writeEstimationEvents"];
   dish: DishStore;
+  dishEstimationStatus: DishEstimationStatusStore;
   ingredient: IngredientStore;
 };
 
@@ -123,7 +131,7 @@ const decideCreate = (
     ],
     commit: () => {
       store.insert(meal);
-      stores.writeEstimationEvents(discardStatusChangeAddedWithMeal, (writes) =>
+      stores.writeEstimationEvents(discardStatusChangeAddedWithMeal, receivedAt, (writes) =>
         scheduleMealEstimation(stores, writes, meal, receivedAt),
       );
     },
@@ -174,8 +182,9 @@ const discarded = (
   };
 };
 
-// 料理・材料・写真の宣言を子から消し、それぞれの削除の印を残す。料理と材料の変更は1つずつ足す。
-// 推定中の食事なら、つなぎが CASCADE で消える前に推定を読み、推定ごとの出来事を「食事が消えた」で送る
+// 料理・材料・写真の宣言を消し、それぞれの削除の印を残す。料理と材料の変更は1つずつ足し、推定し直しの予定のある料理は、
+// 料理ごとの推定の状態の変更も足す。推定中の食事と、推定し直しの推定中の料理なら、つなぎが CASCADE で消える前に推定を読み、
+// 推定ごとの出来事を「食事が消えた」で送る
 const decideDelete = (
   stores: MealKindStores,
   mealId: string,
@@ -196,6 +205,9 @@ const decideDelete = (
   const meal = store.find(mealId);
   const dishIds = stores.dish.findIdsOfMeal(mealId);
   const ingredientIds = stores.ingredient.findIdsOfMeal(mealId);
+  const scheduledDishIds = dishIds.filter(
+    (dishId) => stores.dishEstimationStatus.findSchedulesOfDish(dishId).length > 0,
+  );
   // 食事がまだ届いていなくても印を残し、同じ要求やあとから届く作る書き込みで生き返らせない
   return {
     writeKind: "delete",
@@ -206,18 +218,64 @@ const decideDelete = (
       { recordType: "meal_estimation_status", recordId: mealId },
       ...dishIds.map((recordId) => ({ recordType: "dish" as const, recordId })),
       ...ingredientIds.map((recordId) => ({ recordType: "ingredient" as const, recordId })),
+      ...scheduledDishIds.map((recordId) => ({
+        recordType: "dish_estimation_status" as const,
+        recordId,
+      })),
     ],
-    usageEvents: computeMealDeletedEstimationEvents(stores, mealId, receivedAt),
+    usageEvents: [
+      ...computeMealDeletedEstimationEvents(stores, mealId, receivedAt),
+      ...scheduledDishIds.flatMap((dishId) =>
+        computeDishDeletedEstimationEvents(
+          stores,
+          { id: dishId, mealId },
+          "meal_deleted",
+          receivedAt,
+        ),
+      ),
+    ],
+    // #332 の「消す順」: 料理ごとの中身を消してから、食事の時刻の修正を消し、食事の削除の印を書いて食事を消す
     commit: (receiptId) => {
-      if (meal !== undefined) {
-        stores.ingredient.remove(ingredientIds);
-        stores.dish.remove(dishIds);
-        store.remove(mealId);
-        store.insertPhotoDeletions(meal.photoIds, receiptId);
-      }
+      deleteDishes(stores, { dishIds, ingredientIds }, receiptId);
+      store.removeCorrections(mealId);
       store.insertDeletion(receiptId);
-      stores.dish.insertDeletions(dishIds, receiptId);
-      stores.ingredient.insertDeletions(ingredientIds, receiptId);
+      if (meal !== undefined) {
+        store.insertPhotoDeletions(meal.photoIds, receiptId);
+        store.remove(mealId);
+      }
+    },
+  };
+};
+
+// 撮った時刻を直す。時刻を確かめない（#188 の作る書き込みと同じ）。時刻の修正はその食事の料理すべての版を上げるので、料理の変更も足す。
+// 修正の行の順は変更の並びの通し番号で決まるので、修正を書くときは必ず食事を changedRecordId に返す
+const decideUpdate = (
+  stores: MealKindStores,
+  mealId: string,
+  eatenAt: Date,
+): WriteDecision<AddedRecordType> => {
+  const store = stores.meal;
+  const meal = store.find(mealId);
+  if (meal === undefined) {
+    return decideWithoutChange("update", mealId, {
+      result: "rejected",
+      reason: "record_not_found",
+    });
+  }
+  if (meal.eatenAt.getTime() === eatenAt.getTime()) {
+    return decideWithoutChange("update", mealId, { result: "applied" });
+  }
+  return {
+    writeKind: "update",
+    recordId: mealId,
+    outcome: { result: "applied" },
+    changedRecordId: mealId,
+    addedChanges: stores.dish
+      .findIdsOfMeal(mealId)
+      .map((recordId) => ({ recordType: "dish" as const, recordId })),
+    usageEvents: [],
+    commit: (receiptId) => {
+      store.insertEatenAtCorrection(receiptId, eatenAt);
     },
   };
 };
@@ -233,6 +291,7 @@ const computeMealDeletedEstimationEvents = (
   }
   return [
     computeEstimationEndedEvent({
+      trigger: "photo",
       finalStatus: "meal_deleted",
       attempts: stores.estimation.findAttempts(estimationId),
       receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),

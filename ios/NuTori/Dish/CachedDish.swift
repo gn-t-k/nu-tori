@@ -8,8 +8,12 @@ nonisolated final class CachedDish {
     @Attribute(.unique) var dishId: UUID
     var mealId: UUID
     var name: String
-    var quantity: Double
-    var unit: String
+    /// 量・単位・量の出どころは、そろって持つか、そろって持たない（足したばかりで量の無い料理）。
+    /// SwiftData の @Model は列に enum の associated value や構造体の optional を素直に持てないので、3つの optional に分け、読む口（`dish()`）で組にする
+    var quantity: Double?
+    var unit: String?
+    /// `estimated`・`corrected`
+    var quantitySource: String?
     var positionInMeal: Int
     var version: Int
 
@@ -17,8 +21,9 @@ nonisolated final class CachedDish {
         dishId = dish.id
         mealId = dish.mealId
         name = dish.name
-        quantity = dish.quantity
-        unit = dish.unit
+        quantity = dish.quantity?.value
+        unit = dish.quantity?.unit
+        quantitySource = dish.quantity?.source.stored
         positionInMeal = dish.positionInMeal
         version = dish.version
     }
@@ -27,22 +32,30 @@ nonisolated final class CachedDish {
     func apply(_ dish: Dish) {
         mealId = dish.mealId
         name = dish.name
-        quantity = dish.quantity
-        unit = dish.unit
+        quantity = dish.quantity?.value
+        unit = dish.quantity?.unit
+        quantitySource = dish.quantity?.source.stored
         positionInMeal = dish.positionInMeal
         version = dish.version
     }
 
+    /// 量と単位と量の出どころのうち、そろわないもの・読めないものがあれば（形が合わない行）、量の無い料理として読む
     func dish() -> Dish {
         Dish(
             id: dishId,
             mealId: mealId,
             name: name,
-            quantity: quantity,
-            unit: unit,
+            quantity: storedQuantity(),
             positionInMeal: positionInMeal,
             version: version
         )
+    }
+
+    private func storedQuantity() -> Dish.Quantity? {
+        guard let quantity, let unit,
+            let source = quantitySource.flatMap(QuantitySource.init(stored:))
+        else { return nil }
+        return Dish.Quantity(value: quantity, unit: unit, source: source)
     }
 }
 

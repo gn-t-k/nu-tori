@@ -10,6 +10,10 @@
             case .accountSettings(let settings): .init(kind: .accountSettings, id: settings.id)
             case .dish(let dish): .init(kind: .dish, id: dish.id)
             case .dishDeletion(let dishId): .init(kind: .dish, id: dishId)
+            case .dishEstimationStatus(let status):
+                .init(kind: .dishEstimationStatus, id: status.dishId)
+            case .dishEstimationStatusDeletion(let dishId):
+                .init(kind: .dishEstimationStatus, id: dishId)
             case .ingredient(let ingredient): .init(kind: .ingredient, id: ingredient.id)
             case .ingredientDeletion(let ingredientId): .init(kind: .ingredient, id: ingredientId)
             case .meal(let meal): .init(kind: .meal, id: meal.id)
@@ -32,11 +36,12 @@
 
         var isDeletion: Bool {
             switch self {
-            case .weightRecordDeletion, .dishDeletion, .ingredientDeletion, .mealDeletion,
-                .mealEstimationStatusDeletion, .noticeRemoval, .weightTrendAbsence:
+            case .weightRecordDeletion, .dishDeletion, .dishEstimationStatusDeletion,
+                .ingredientDeletion, .mealDeletion, .mealEstimationStatusDeletion, .noticeRemoval,
+                .weightTrendAbsence:
                 true
-            case .weightRecord, .accountSettings, .dish, .ingredient, .meal, .mealEstimationStatus,
-                .notice, .usualWeighingTime, .weightTrend, .unknown:
+            case .weightRecord, .accountSettings, .dish, .dishEstimationStatus, .ingredient, .meal,
+                .mealEstimationStatus, .notice, .usualWeighingTime, .weightTrend, .unknown:
                 false
             }
         }
@@ -45,11 +50,11 @@
         fileprivate var wireKind: String {
             let name = recordKey.kind.rawValue
             switch self {
-            case .weightRecord, .accountSettings, .dish, .ingredient, .meal, .mealEstimationStatus,
-                .notice, .usualWeighingTime, .weightTrend, .unknown:
+            case .weightRecord, .accountSettings, .dish, .dishEstimationStatus, .ingredient, .meal,
+                .mealEstimationStatus, .notice, .usualWeighingTime, .weightTrend, .unknown:
                 return name
-            case .weightRecordDeletion, .dishDeletion, .ingredientDeletion, .mealDeletion,
-                .mealEstimationStatusDeletion:
+            case .weightRecordDeletion, .dishDeletion, .dishEstimationStatusDeletion,
+                .ingredientDeletion, .mealDeletion, .mealEstimationStatusDeletion:
                 return "\(name)_deletion"
             case .weightTrendAbsence:
                 return "\(name)_absence"
@@ -67,6 +72,9 @@
                     AccountSettingsPayload(
                         id: settings.id.uuidString, sendsUsageData: settings.sendsUsageData)
                 case .dish(let dish): DishPayload(dish)
+                case .dishEstimationStatus(let status):
+                    DishEstimationStatusPayload(
+                        dishId: status.dishId.uuidString, status: status.status.rawValue)
                 case .ingredient(let ingredient): IngredientPayload(ingredient)
                 case .meal(let meal): MealPayload(meal)
                 case .mealEstimationStatus(let status):
@@ -80,8 +88,9 @@
                         days: trend.days.map {
                             .init(calendarDay: $0.calendarDay, trendKg: $0.trendKilograms)
                         })
-                case .weightRecordDeletion, .dishDeletion, .ingredientDeletion, .mealDeletion,
-                    .mealEstimationStatusDeletion, .noticeRemoval, .weightTrendAbsence, .unknown:
+                case .weightRecordDeletion, .dishDeletion, .dishEstimationStatusDeletion,
+                    .ingredientDeletion, .mealDeletion, .mealEstimationStatusDeletion,
+                    .noticeRemoval, .weightTrendAbsence, .unknown:
                     [String: String]()
                 }
             return try payload.decoded(as: Payload.self)
@@ -174,8 +183,9 @@
         fileprivate init(_ dish: SyncedDish) {
             self.init(
                 id: dish.id.uuidString, mealId: dish.mealId.uuidString, name: dish.name,
-                quantity: dish.quantity, unit: dish.unit, positionInMeal: dish.positionInMeal,
-                version: dish.version)
+                quantity: dish.quantity?.value, unit: dish.quantity?.unit,
+                quantitySource: dish.quantity?.source.rawValue,
+                positionInMeal: dish.positionInMeal, version: dish.version)
         }
     }
 
@@ -192,7 +202,8 @@
                 }
             self.init(
                 id: ingredient.id.uuidString, dishId: ingredient.dishId.uuidString,
-                name: ingredient.name, quantity: ingredient.quantity, unit: ingredient.unit,
+                name: ingredient.name, quantity: ingredient.quantity,
+                quantitySource: ingredient.quantitySource.rawValue, unit: ingredient.unit,
                 edibleGramsPerUnit: ingredient.edibleGramsPerUnit,
                 positionInDish: ingredient.positionInDish, nutrientSource: source,
                 nutrients: ingredient.nutrients)

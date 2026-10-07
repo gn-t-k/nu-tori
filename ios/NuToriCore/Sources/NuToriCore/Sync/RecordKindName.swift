@@ -4,6 +4,7 @@
 public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
     case accountSettings = "account-settings"
     case dish = "dish"
+    case dishEstimationStatus = "dish-estimation-status"
     case ingredient = "ingredient"
     case meal = "meal"
     case mealEstimationStatus = "meal-estimation-status"
@@ -18,6 +19,7 @@ public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
         switch self {
         case .accountSettings: "account_settings"
         case .dish: "dish"
+        case .dishEstimationStatus: "dish_estimation_status"
         case .ingredient: "ingredient"
         case .meal: "meal"
         case .mealEstimationStatus: "meal_estimation_status"

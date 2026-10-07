@@ -92,6 +92,7 @@ describe("推定", () => {
           name: "親子丼",
           quantity: 1,
           unit: "杯",
+          quantitySource: "estimated",
           positionInMeal: 0,
           version: 1,
         },
@@ -101,6 +102,7 @@ describe("推定", () => {
           name: "緑茶",
           quantity: 1,
           unit: "本",
+          quantitySource: "estimated",
           positionInMeal: 1,
           version: 1,
         },
@@ -119,6 +121,7 @@ describe("推定", () => {
           unit: "g",
           edibleGramsPerUnit: 1,
           positionInDish: 0,
+          quantitySource: "estimated",
           nutrientSource: { type: "food_composition", foodNumber: "11225" },
           // 成分表の (0) は 0 の値にし、「-」（ヨウ素・セレン・クロム・モリブデン・ビオチン）は持たない
           nutrients: {
@@ -160,6 +163,7 @@ describe("推定", () => {
           unit: "g",
           edibleGramsPerUnit: 1,
           positionInDish: 1,
+          quantitySource: "estimated",
           nutrientSource: { type: "estimated" },
           nutrients: {
             energy_kcal: 156,
@@ -178,6 +182,7 @@ describe("推定", () => {
           unit: "本",
           edibleGramsPerUnit: 500,
           positionInDish: 0,
+          quantitySource: "estimated",
           nutrientSource: { type: "nutrition_label", labelBasisGrams: 100 },
           nutrients: { energy_kcal: 0, protein_g: 0, salt_equivalent_g: 0.02 },
         },
@@ -606,15 +611,15 @@ describe("推定", () => {
       }).toEqual({ dishes: [], ingredients: [], nutrients: [], foodComposition: [] });
     });
 
-    test("料理と材料の削除の印を、消した書き込みの控えとつなぐこと", async () => {
+    test("料理と材料の削除の印を、消した書き込みの控えつきで書くこと", async () => {
       expect({
         dishes: await readRows(
           accountId,
-          "SELECT count(*) AS count FROM dish_deletions JOIN sync_write_dish_deletions USING (dish_id)",
+          "SELECT count(*) AS count FROM dish_deletions JOIN sync_write_receipts ON sync_write_receipts.id = dish_deletions.sync_write_receipt_id WHERE sync_write_receipts.kind = 'delete'",
         ),
         ingredients: await readRows(
           accountId,
-          "SELECT count(*) AS count FROM ingredient_deletions JOIN sync_write_ingredient_deletions USING (ingredient_id)",
+          "SELECT count(*) AS count FROM ingredient_deletions JOIN sync_write_receipts ON sync_write_receipts.id = ingredient_deletions.sync_write_receipt_id WHERE sync_write_receipts.kind = 'delete'",
         ),
       }).toEqual({ dishes: [{ count: 2 }], ingredients: [{ count: 3 }] });
     });

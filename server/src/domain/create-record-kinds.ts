@@ -1,5 +1,6 @@
 import { createAccountSettingsKind } from "../account-settings/domain/create-account-settings-kind";
 import { createDishKind } from "../dish/domain/create-dish-kind";
+import { createDishEstimationStatusKind } from "../dish-estimation-status/domain/create-dish-estimation-status-kind";
 import { createIngredientKind } from "../ingredient/domain/create-ingredient-kind";
 import { createMealKind } from "../meal/domain/create-meal-kind";
 import { createMealEstimationStatusKind } from "../meal-estimation-status/domain/create-meal-estimation-status-kind";
@@ -17,8 +18,9 @@ import type { WriteBase } from "./sync-ledger/write-base";
 export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
   [
     createAccountSettingsKind(stores.accountSettings),
-    createDishKind(stores.dish),
-    createIngredientKind(stores.ingredient),
+    createDishKind(stores, receivedAt),
+    createDishEstimationStatusKind(stores.dish, stores.dishEstimationStatus, receivedAt),
+    createIngredientKind(stores, receivedAt),
     createMealKind(stores, receivedAt),
     createMealEstimationStatusKind(stores.meal, stores.mealEstimationStatus),
     createNoticeKind(stores.notice),

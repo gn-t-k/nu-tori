@@ -1,6 +1,6 @@
 public import Foundation
 
-/// 受け付けなかった1行。体重の1行か食事の1行
+/// 受け付けなかった1行。体重の1行か、食事（時刻・料理・材料を含む）の1行
 public enum RejectedLine: Hashable, Sendable {
     case weight(RejectedWeightLine)
     case meal(RejectedMealLine)
@@ -11,13 +11,15 @@ public enum RejectedLine: Hashable, Sendable {
             self = .weight(RejectedWeightLine(record: record, serverHasValue: serverHasValue))
         case .meal(let meal):
             self = .meal(RejectedMealLine(meal: meal))
+        case .mealEdit(let line):
+            self = .meal(line)
         }
     }
 
     public var recordId: UUID {
         switch self {
         case .weight(let line): line.record.id
-        case .meal(let line): line.meal.id
+        case .meal(let line): line.recordId
         }
     }
 

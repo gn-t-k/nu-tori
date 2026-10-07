@@ -17,6 +17,9 @@ public protocol RecordCacheReading: Sendable {
     /// 親の食事がまだ届いていない料理も含む
     func dishes() async throws -> [Dish]
 
+    /// 料理の ID ごとの推定の状態。料理より先に届いた状態も含む
+    func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus]
+
     /// 親の料理がまだ届いていない材料も含む
     func ingredients() async throws -> [Ingredient]
 

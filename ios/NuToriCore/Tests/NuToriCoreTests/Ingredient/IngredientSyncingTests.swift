@@ -20,9 +20,9 @@ struct IngredientSyncingTests {
         #expect(!syncing.owns(.unknown(kind: "ingredient")))
     }
 
-    @Test("サーバーだけが書く種類として、送る書き込みを持たないこと")
-    func hasNoWrites() {
-        #expect(syncing.writes == nil)
+    @Test("端末も書く種類として、送る書き込みを持つこと")
+    func hasWrites() {
+        #expect(syncing.writes != nil)
     }
 
     @Test("栄養の項目の名前を端末の項目に変え、知らない項目は読み飛ばすこと")
@@ -35,7 +35,7 @@ struct IngredientSyncingTests {
         #expect(current.ingredients.map(\.nutrients) == [[.energyKcal: 204, .proteinG: 16.6]])
     }
 
-    @Test("出どころと量と親の料理の ID を、そのまま持つこと")
+    @Test("出どころと量と量の出どころと親の料理の ID を、そのまま持つこと")
     func keepsFields() throws {
         let synced = SyncedIngredient.fixture(
             nutrientSource: .nutritionLabel(basisGrams: 250), nutrients: [:])
@@ -47,6 +47,7 @@ struct IngredientSyncingTests {
         #expect(ingredient.dishId == Self.dishId)
         #expect(ingredient.name == "鶏もも肉")
         #expect(ingredient.quantity == 80)
+        #expect(ingredient.quantitySource == .corrected)
         #expect(ingredient.unit == "g")
         #expect(ingredient.edibleGramsPerUnit == 1)
         #expect(ingredient.positionInDish == 3)
@@ -74,7 +75,8 @@ extension SyncedIngredient {
     ) -> SyncedIngredient {
         SyncedIngredient(
             id: IngredientSyncingTests.ingredientId, dishId: IngredientSyncingTests.dishId,
-            name: "鶏もも肉", quantity: 80, unit: "g", edibleGramsPerUnit: 1, positionInDish: 3,
+            name: "鶏もも肉", quantity: 80, quantitySource: .corrected, unit: "g",
+            edibleGramsPerUnit: 1, positionInDish: 3,
             nutrientSource: nutrientSource, nutrients: nutrients)
     }
 }
@@ -82,7 +84,8 @@ extension SyncedIngredient {
 extension SyncedDish {
     fileprivate static func fixture() -> SyncedDish {
         SyncedDish(
-            id: IngredientSyncingTests.dishId, mealId: UUID(), name: "親子丼", quantity: 1,
-            unit: "杯", positionInMeal: 0, version: 1)
+            id: IngredientSyncingTests.dishId, mealId: UUID(), name: "親子丼",
+            quantity: .init(value: 1, unit: "杯", source: .estimated), positionInMeal: 0,
+            version: 1)
     }
 }

@@ -25,6 +25,14 @@ public enum MealCardState: Hashable, Sendable {
 }
 
 extension MealCardState {
+    /// 写真の推定が済んでいない（まだ送れていない・写真を待っている・推定中・翌日に推定）か
+    public var awaitsPhotoEstimation: Bool {
+        switch self {
+        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay: true
+        case .estimated, .noDishes, .failed: false
+        }
+    }
+
     /// カードの名前の場所に置く、状態の1行。推定できた食事は料理の名前を置くので、1行を持たない
     public var statusLine: String? {
         switch self {

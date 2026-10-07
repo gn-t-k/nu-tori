@@ -1,4 +1,5 @@
 import Foundation
+import NuToriAPI
 import NuToriCore
 import Testing
 
@@ -114,6 +115,103 @@ struct PendingWriteEntryTests {
             #expect(
                 try PendingWeightRecordWrite(entry: entry).write
                     == .sourceDeletedWeightRecord(recordId: recordId))
+        }
+    }
+
+    @Suite("食事を直す書き込みを足す前の版が残した、食事の送り待ちを読むとき")
+    struct LeftoverMealContent {
+        let createEntry: PendingEntry
+        let deleteEntry: PendingEntry
+        let mealId: UUID
+        let photoId: UUID
+
+        init() throws {
+            mealId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000f1"))
+            photoId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000c1"))
+            // 前の版が書いた形。時刻は 2001-01-01 からの秒数
+            createEntry = PendingEntry(
+                writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: .meal,
+                content: Data(
+                    """
+                    {"create":{"_0":{"id":"\(mealId.uuidString)","eatenAt":780000000,
+                      "eatenUtcOffsetSeconds":32400,"sentAt":780000060,
+                      "sentTimeZoneIdentifier":"Asia/Tokyo","entry":"captured",
+                      "photoIds":["\(photoId.uuidString)"]}}}
+                    """.utf8))
+            deleteEntry = PendingEntry(
+                writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: .meal,
+                content: Data(#"{"delete":{"mealId":"\#(mealId.uuidString)"}}"#.utf8))
+        }
+
+        @Test("作る書き込みとして読めること")
+        func readsCreate() throws {
+            let write = try PendingMealWrite(entry: createEntry).write
+
+            #expect(
+                write
+                    == .create(
+                        Meal(
+                            id: mealId, eatenAt: Date(timeIntervalSinceReferenceDate: 780_000_000),
+                            eatenUtcOffsetSeconds: 32_400,
+                            sentAt: Date(timeIntervalSinceReferenceDate: 780_000_060),
+                            sentTimeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                            entry: .captured, photoIds: [photoId])))
+        }
+
+        @Test("消す書き込みとして読めること")
+        func readsDelete() throws {
+            #expect(try PendingMealWrite(entry: deleteEntry).write == .delete(mealId: mealId))
+        }
+    }
+
+    @Suite("料理と材料の送り待ちを変換するとき")
+    struct DishAndIngredientConversion {
+        let dishWrites: [PendingDishWrite]
+        let ingredientWrite: PendingIngredientWrite
+
+        init() throws {
+            let dishId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000d1"))
+            let ingredientId = try #require(
+                UUID(uuidString: "00000000-0000-4000-8000-0000000000e1"))
+            dishWrites = [
+                PendingDishWrite(
+                    enqueuedAt: SyncEngine.fixtureNow,
+                    write: .create(
+                        NewDish(id: dishId, mealId: UUID(), name: "味噌汁", positionInMeal: 2))),
+                PendingDishWrite(
+                    enqueuedAt: SyncEngine.fixtureNow,
+                    write: .update(DishCorrection(id: dishId, name: "豚汁", quantity: nil))),
+                PendingDishWrite(
+                    enqueuedAt: SyncEngine.fixtureNow,
+                    write: .update(
+                        DishCorrection(
+                            id: dishId, name: "豚汁",
+                            quantity: .init(
+                                value: 1.5,
+                                proportionedIngredients: [
+                                    .init(ingredientId: ingredientId, quantity: 120)
+                                ])))),
+                PendingDishWrite(enqueuedAt: SyncEngine.fixtureNow, write: .delete(dishId: dishId)),
+            ]
+            ingredientWrite = PendingIngredientWrite(
+                enqueuedAt: SyncEngine.fixtureNow,
+                write: .update(ingredientId: ingredientId, quantity: 150))
+        }
+
+        @Test("料理の種類の名前で入り、同じ書き込みとして読み戻せること")
+        func roundTripsDishWrites() throws {
+            let entries = try dishWrites.map { try $0.entry() }
+
+            #expect(entries.map(\.kind) == [.dish, .dish, .dish, .dish])
+            #expect(try entries.map { try PendingDishWrite(entry: $0) } == dishWrites)
+        }
+
+        @Test("材料の種類の名前で入り、同じ書き込みとして読み戻せること")
+        func roundTripsIngredientWrite() throws {
+            let entry = try ingredientWrite.entry()
+
+            #expect(entry.kind == .ingredient)
+            #expect(try PendingIngredientWrite(entry: entry) == ingredientWrite)
         }
     }
 

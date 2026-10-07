@@ -19,6 +19,7 @@ extension Components {
         internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
             case accountSettings = "account_settings"
             case dish = "dish"
+            case dishEstimationStatus = "dish_estimation_status"
             case ingredient = "ingredient"
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
@@ -60,12 +61,29 @@ extension Components {
             internal var id: Swift.String
             /// - Remark: Generated from `#/components/schemas/DishRecord/mealId`.
             internal var mealId: Swift.String
+            /// 今の名前
+            ///
             /// - Remark: Generated from `#/components/schemas/DishRecord/name`.
             internal var name: Swift.String
+            /// 今の量。量の無い料理は省く
+            ///
             /// - Remark: Generated from `#/components/schemas/DishRecord/quantity`.
-            internal var quantity: Swift.Double
+            internal var quantity: Swift.Double?
+            /// 量の単位。量の無い料理は省く
+            ///
             /// - Remark: Generated from `#/components/schemas/DishRecord/unit`.
-            internal var unit: Swift.String
+            internal var unit: Swift.String?
+            /// 量の出どころ。推定したまま（estimated）か、料理の量を直した（corrected）か。量の無い料理は省く
+            ///
+            /// - Remark: Generated from `#/components/schemas/DishRecord/quantitySource`.
+            internal enum QuantitySourcePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case estimated = "estimated"
+                case corrected = "corrected"
+            }
+            /// 量の出どころ。推定したまま（estimated）か、料理の量を直した（corrected）か。量の無い料理は省く
+            ///
+            /// - Remark: Generated from `#/components/schemas/DishRecord/quantitySource`.
+            internal var quantitySource: Components.Schemas.DishRecord.QuantitySourcePayload?
             /// - Remark: Generated from `#/components/schemas/DishRecord/positionInMeal`.
             internal var positionInMeal: Swift.Int
             /// - Remark: Generated from `#/components/schemas/DishRecord/version`.
@@ -75,17 +93,19 @@ extension Components {
             /// - Parameters:
             ///   - id:
             ///   - mealId:
-            ///   - name:
-            ///   - quantity:
-            ///   - unit:
+            ///   - name: 今の名前
+            ///   - quantity: 今の量。量の無い料理は省く
+            ///   - unit: 量の単位。量の無い料理は省く
+            ///   - quantitySource: 量の出どころ。推定したまま（estimated）か、料理の量を直した（corrected）か。量の無い料理は省く
             ///   - positionInMeal:
             ///   - version:
             internal init(
                 id: Swift.String,
                 mealId: Swift.String,
                 name: Swift.String,
-                quantity: Swift.Double,
-                unit: Swift.String,
+                quantity: Swift.Double? = nil,
+                unit: Swift.String? = nil,
+                quantitySource: Components.Schemas.DishRecord.QuantitySourcePayload? = nil,
                 positionInMeal: Swift.Int,
                 version: Swift.Int
             ) {
@@ -94,6 +114,7 @@ extension Components {
                 self.name = name
                 self.quantity = quantity
                 self.unit = unit
+                self.quantitySource = quantitySource
                 self.positionInMeal = positionInMeal
                 self.version = version
             }
@@ -103,8 +124,36 @@ extension Components {
                 case name
                 case quantity
                 case unit
+                case quantitySource
                 case positionInMeal
                 case version
+            }
+        }
+        /// kind が dish_estimation_status の変更の record。recordId は料理の ID。推定し直しをしていない料理の変更は届かない。料理が消えたら kind が dish_estimation_status_deletion で record が空の変更が届く
+        ///
+        /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord`.
+        internal struct DishEstimationStatusRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord/dishId`.
+            internal var dishId: Swift.String
+            /// 推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            ///
+            /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord/status`.
+            internal var status: Swift.String
+            /// Creates a new `DishEstimationStatusRecord`.
+            ///
+            /// - Parameters:
+            ///   - dishId:
+            ///   - status: 推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            internal init(
+                dishId: Swift.String,
+                status: Swift.String
+            ) {
+                self.dishId = dishId
+                self.status = status
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case dishId
+                case status
             }
         }
         /// kind が ingredient の変更の record。消えたら kind が ingredient_deletion で record が空の変更が届く
@@ -117,8 +166,21 @@ extension Components {
             internal var dishId: Swift.String
             /// - Remark: Generated from `#/components/schemas/IngredientRecord/name`.
             internal var name: Swift.String
+            /// 今の量。直した量か、料理の量に比例させた量のうち受け取った順でいちばんあとのもの。無ければ推定した量
+            ///
             /// - Remark: Generated from `#/components/schemas/IngredientRecord/quantity`.
             internal var quantity: Swift.Double
+            /// 量の出どころ。推定したまま（estimated）か、材料の量を直した（corrected）か。料理の量に比例させた量は estimated のまま
+            ///
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/quantitySource`.
+            internal enum QuantitySourcePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case estimated = "estimated"
+                case corrected = "corrected"
+            }
+            /// 量の出どころ。推定したまま（estimated）か、材料の量を直した（corrected）か。料理の量に比例させた量は estimated のまま
+            ///
+            /// - Remark: Generated from `#/components/schemas/IngredientRecord/quantitySource`.
+            internal var quantitySource: Components.Schemas.IngredientRecord.QuantitySourcePayload
             /// - Remark: Generated from `#/components/schemas/IngredientRecord/unit`.
             internal var unit: Swift.String
             /// - Remark: Generated from `#/components/schemas/IngredientRecord/edibleGramsPerUnit`.
@@ -275,7 +337,8 @@ extension Components {
             ///   - id:
             ///   - dishId:
             ///   - name:
-            ///   - quantity:
+            ///   - quantity: 今の量。直した量か、料理の量に比例させた量のうち受け取った順でいちばんあとのもの。無ければ推定した量
+            ///   - quantitySource: 量の出どころ。推定したまま（estimated）か、材料の量を直した（corrected）か。料理の量に比例させた量は estimated のまま
             ///   - unit:
             ///   - edibleGramsPerUnit:
             ///   - positionInDish:
@@ -286,6 +349,7 @@ extension Components {
                 dishId: Swift.String,
                 name: Swift.String,
                 quantity: Swift.Double,
+                quantitySource: Components.Schemas.IngredientRecord.QuantitySourcePayload,
                 unit: Swift.String,
                 edibleGramsPerUnit: Swift.Double,
                 positionInDish: Swift.Int,
@@ -296,6 +360,7 @@ extension Components {
                 self.dishId = dishId
                 self.name = name
                 self.quantity = quantity
+                self.quantitySource = quantitySource
                 self.unit = unit
                 self.edibleGramsPerUnit = edibleGramsPerUnit
                 self.positionInDish = positionInDish
@@ -307,6 +372,7 @@ extension Components {
                 case dishId
                 case name
                 case quantity
+                case quantitySource
                 case unit
                 case edibleGramsPerUnit
                 case positionInDish
@@ -689,7 +755,7 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
             internal var result: Swift.String
-            /// result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
+            /// result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
             internal var rejectionReason: Swift.String?
@@ -700,7 +766,7 @@ extension Components {
             /// - Parameters:
             ///   - writeId:
             ///   - result: 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
-            ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ
+            ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと
             ///   - current:
             internal init(
                 writeId: Swift.String,
@@ -802,12 +868,16 @@ extension Components {
         ///
         /// - Remark: Generated from `#/components/schemas/SyncWrite`.
         internal enum SyncWrite: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateDishWrite`.
+            case createDish(Components.Schemas.CreateDishWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateMealWrite`.
             case createMeal(Components.Schemas.CreateMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateNoticeWrite`.
             case createNotice(Components.Schemas.CreateNoticeWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
             case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteDishWrite`.
+            case deleteDish(Components.Schemas.DeleteDishWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteMealWrite`.
             case deleteMeal(Components.Schemas.DeleteMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/RespondNoticeWrite`.
@@ -816,6 +886,12 @@ extension Components {
             case sourceDeletedWeightRecord(Components.Schemas.SourceDeletedWeightRecordWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateAccountSettingsWrite`.
             case updateAccountSettings(Components.Schemas.UpdateAccountSettingsWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateDishWrite`.
+            case updateDish(Components.Schemas.UpdateDishWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateIngredientWrite`.
+            case updateIngredient(Components.Schemas.UpdateIngredientWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateMealWrite`.
+            case updateMeal(Components.Schemas.UpdateMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/UpdateWeightRecordWrite`.
             case updateWeightRecord(Components.Schemas.UpdateWeightRecordWrite)
             internal enum CodingKeys: String, CodingKey {
@@ -828,12 +904,16 @@ extension Components {
                     forKey: ._type
                 )
                 switch discriminator {
+                case "create_dish":
+                    self = .createDish(try .init(from: decoder))
                 case "create_meal":
                     self = .createMeal(try .init(from: decoder))
                 case "create_notice":
                     self = .createNotice(try .init(from: decoder))
                 case "create_weight_record":
                     self = .createWeightRecord(try .init(from: decoder))
+                case "delete_dish":
+                    self = .deleteDish(try .init(from: decoder))
                 case "delete_meal":
                     self = .deleteMeal(try .init(from: decoder))
                 case "respond_notice":
@@ -842,6 +922,12 @@ extension Components {
                     self = .sourceDeletedWeightRecord(try .init(from: decoder))
                 case "update_account_settings":
                     self = .updateAccountSettings(try .init(from: decoder))
+                case "update_dish":
+                    self = .updateDish(try .init(from: decoder))
+                case "update_ingredient":
+                    self = .updateIngredient(try .init(from: decoder))
+                case "update_meal":
+                    self = .updateMeal(try .init(from: decoder))
                 case "update_weight_record":
                     self = .updateWeightRecord(try .init(from: decoder))
                 default:
@@ -854,11 +940,15 @@ extension Components {
             }
             internal func encode(to encoder: any Swift.Encoder) throws {
                 switch self {
+                case let .createDish(value):
+                    try value.encode(to: encoder)
                 case let .createMeal(value):
                     try value.encode(to: encoder)
                 case let .createNotice(value):
                     try value.encode(to: encoder)
                 case let .createWeightRecord(value):
+                    try value.encode(to: encoder)
+                case let .deleteDish(value):
                     try value.encode(to: encoder)
                 case let .deleteMeal(value):
                     try value.encode(to: encoder)
@@ -867,6 +957,12 @@ extension Components {
                 case let .sourceDeletedWeightRecord(value):
                     try value.encode(to: encoder)
                 case let .updateAccountSettings(value):
+                    try value.encode(to: encoder)
+                case let .updateDish(value):
+                    try value.encode(to: encoder)
+                case let .updateIngredient(value):
+                    try value.encode(to: encoder)
+                case let .updateMeal(value):
                     try value.encode(to: encoder)
                 case let .updateWeightRecord(value):
                     try value.encode(to: encoder)
@@ -931,6 +1027,248 @@ extension Components {
                 case id
                 case _type = "type"
                 case accountSettings
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/DeleteDishWrite`.
+        internal struct DeleteDishWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteDishWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/DeleteDishWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case deleteDish = "delete_dish"
+            }
+            /// - Remark: Generated from `#/components/schemas/DeleteDishWrite/type`.
+            internal var _type: Components.Schemas.DeleteDishWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/DeleteDishWrite/dishId`.
+            internal var dishId: Swift.String
+            /// Creates a new `DeleteDishWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - dishId:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.DeleteDishWrite._TypePayload,
+                dishId: Swift.String
+            ) {
+                self.id = id
+                self._type = _type
+                self.dishId = dishId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case dishId
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/UpdateDishWrite`.
+        internal struct UpdateDishWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case updateDish = "update_dish"
+            }
+            /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/type`.
+            internal var _type: Components.Schemas.UpdateDishWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/dishId`.
+            internal var dishId: Swift.String
+            /// 今の名前か、直した名前
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/name`.
+            internal var name: Swift.String
+            /// 名前だけを直すときは省く。量を直すときは名前と量を運ぶ
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity`.
+            internal struct QuantityPayload: Codable, Hashable, Sendable {
+                /// 今の量か、直した量。単位は料理の単位のまま
+                ///
+                /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity/value`.
+                internal var value: Swift.Double
+                /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity/ProportionedIngredientsPayload`.
+                internal struct ProportionedIngredientsPayloadPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity/ProportionedIngredientsPayload/ingredientId`.
+                    internal var ingredientId: Swift.String
+                    /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity/ProportionedIngredientsPayload/quantity`.
+                    internal var quantity: Swift.Double
+                    /// Creates a new `ProportionedIngredientsPayloadPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - ingredientId:
+                    ///   - quantity:
+                    internal init(
+                        ingredientId: Swift.String,
+                        quantity: Swift.Double
+                    ) {
+                        self.ingredientId = ingredientId
+                        self.quantity = quantity
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case ingredientId
+                        case quantity
+                    }
+                }
+                /// 量を直したときに、端末が今の材料の量を同じ割合で変えた量。材料ごとに1つ。サーバーは割合を計算し直さない
+                ///
+                /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity/proportionedIngredients`.
+                internal typealias ProportionedIngredientsPayload = [Components.Schemas.UpdateDishWrite.QuantityPayload.ProportionedIngredientsPayloadPayload]
+                /// 量を直したときに、端末が今の材料の量を同じ割合で変えた量。材料ごとに1つ。サーバーは割合を計算し直さない
+                ///
+                /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity/proportionedIngredients`.
+                internal var proportionedIngredients: Components.Schemas.UpdateDishWrite.QuantityPayload.ProportionedIngredientsPayload
+                /// Creates a new `QuantityPayload`.
+                ///
+                /// - Parameters:
+                ///   - value: 今の量か、直した量。単位は料理の単位のまま
+                ///   - proportionedIngredients: 量を直したときに、端末が今の材料の量を同じ割合で変えた量。材料ごとに1つ。サーバーは割合を計算し直さない
+                internal init(
+                    value: Swift.Double,
+                    proportionedIngredients: Components.Schemas.UpdateDishWrite.QuantityPayload.ProportionedIngredientsPayload
+                ) {
+                    self.value = value
+                    self.proportionedIngredients = proportionedIngredients
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case value
+                    case proportionedIngredients
+                }
+            }
+            /// 名前だけを直すときは省く。量を直すときは名前と量を運ぶ
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateDishWrite/quantity`.
+            internal var quantity: Components.Schemas.UpdateDishWrite.QuantityPayload?
+            /// Creates a new `UpdateDishWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - dishId:
+            ///   - name: 今の名前か、直した名前
+            ///   - quantity: 名前だけを直すときは省く。量を直すときは名前と量を運ぶ
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.UpdateDishWrite._TypePayload,
+                dishId: Swift.String,
+                name: Swift.String,
+                quantity: Components.Schemas.UpdateDishWrite.QuantityPayload? = nil
+            ) {
+                self.id = id
+                self._type = _type
+                self.dishId = dishId
+                self.name = name
+                self.quantity = quantity
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case dishId
+                case name
+                case quantity
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CreateDishWrite`.
+        internal struct CreateDishWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case createDish = "create_dish"
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/type`.
+            internal var _type: Components.Schemas.CreateDishWrite._TypePayload
+            /// 端末が振る UUID v4
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/dishId`.
+            internal var dishId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/mealId`.
+            internal var mealId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/name`.
+            internal var name: Swift.String
+            /// 端末のキャッシュの、その食事の料理の最後の次の値。一意にせず、同じなら ID の順で並べる
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDishWrite/positionInMeal`.
+            internal var positionInMeal: Swift.Int
+            /// Creates a new `CreateDishWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - dishId: 端末が振る UUID v4
+            ///   - mealId:
+            ///   - name:
+            ///   - positionInMeal: 端末のキャッシュの、その食事の料理の最後の次の値。一意にせず、同じなら ID の順で並べる
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.CreateDishWrite._TypePayload,
+                dishId: Swift.String,
+                mealId: Swift.String,
+                name: Swift.String,
+                positionInMeal: Swift.Int
+            ) {
+                self.id = id
+                self._type = _type
+                self.dishId = dishId
+                self.mealId = mealId
+                self.name = name
+                self.positionInMeal = positionInMeal
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case dishId
+                case mealId
+                case name
+                case positionInMeal
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/UpdateIngredientWrite`.
+        internal struct UpdateIngredientWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateIngredientWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/UpdateIngredientWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case updateIngredient = "update_ingredient"
+            }
+            /// - Remark: Generated from `#/components/schemas/UpdateIngredientWrite/type`.
+            internal var _type: Components.Schemas.UpdateIngredientWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/UpdateIngredientWrite/ingredientId`.
+            internal var ingredientId: Swift.String
+            /// 直した量。単位は材料の単位のまま
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateIngredientWrite/quantity`.
+            internal var quantity: Swift.Double
+            /// Creates a new `UpdateIngredientWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - ingredientId:
+            ///   - quantity: 直した量。単位は材料の単位のまま
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.UpdateIngredientWrite._TypePayload,
+                ingredientId: Swift.String,
+                quantity: Swift.Double
+            ) {
+                self.id = id
+                self._type = _type
+                self.ingredientId = ingredientId
+                self.quantity = quantity
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case ingredientId
+                case quantity
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateMealWrite`.
@@ -1083,6 +1421,49 @@ extension Components {
                 case id
                 case _type = "type"
                 case mealId
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/UpdateMealWrite`.
+        internal struct UpdateMealWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case updateMeal = "update_meal"
+            }
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/type`.
+            internal var _type: Components.Schemas.UpdateMealWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/mealId`.
+            internal var mealId: Swift.String
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateMealWrite/eatenAt`.
+            internal var eatenAt: Swift.Int
+            /// Creates a new `UpdateMealWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - mealId:
+            ///   - eatenAt: UNIX 時刻のミリ秒（UTC）
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.UpdateMealWrite._TypePayload,
+                mealId: Swift.String,
+                eatenAt: Swift.Int
+            ) {
+                self.id = id
+                self._type = _type
+                self.mealId = mealId
+                self.eatenAt = eatenAt
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case mealId
+                case eatenAt
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite`.

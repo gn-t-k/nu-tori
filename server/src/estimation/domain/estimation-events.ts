@@ -1,8 +1,13 @@
+import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { EstimationAttemptConclusion } from "./estimation-attempt-conclusion";
 
 // 推定の出来事ごとの書く値。書く置き場（EstimationEventWriteStore）と推定の書き込み（EstimationWrites）で形をそろえる
 export type EstimationEvents = {
   schedule: { id: string; mealId: string; dueAt: Date; countedOn: string };
+  // 料理が対象の予定（名前を直した・料理を足したときの推定し直し）
+  dishSchedule: { id: string; dishId: string; dueAt: Date; countedOn: string };
+  // 料理が対象の予定の取り消し。控えは取り消した名前の修正の書き込み
+  cancellation: { scheduleId: string; receiptId: WriteReceiptId };
   deferral: { scheduleId: string; deferredAt: Date };
   estimation: { id: string; scheduleId: string; startedAt: Date };
   attempt: { id: string; estimationId: string; attemptedAt: Date };

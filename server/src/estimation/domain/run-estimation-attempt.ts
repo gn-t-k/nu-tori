@@ -14,22 +14,23 @@ import type {
   EstimationProviderReply,
   IdentifiedDishes,
   IdentifiedIngredient,
+  IdentificationTarget,
   IngredientMatch,
   IngredientMatchRequest,
   MatchedIngredients,
 } from "./estimation-provider";
 
-// 試み1回分。写真を R2 から読み、①（写真から料理と材料）→ 成分表の候補 → ②（候補から選ぶか主な栄養を推定）と進め、応答を確かめる。
+// 試み1回分。写真を R2 から読み、①（写真から料理と材料。推定し直しでは写真と料理の今の値から、その料理1つ）→ 成分表の候補 → ②（候補から選ぶか主な栄養を推定）と進め、応答を確かめる。
 // 提供元の失敗と、確かめに通らない応答は、試みの結果として返す。
 // R2 と成分表の読み込みの失敗は投げる（試みは結果の無いまま、途中で止まった試みとして数える）
 export const runEstimationAttempt = async (
   deps: { archive: MealPhotoArchive; provider: EstimationProvider },
-  photoIds: readonly string[],
+  request: { photoIds: readonly string[]; target: IdentificationTarget },
 ): Promise<EstimationAttemptOutcome> => {
-  const photos = await readPhotos(deps.archive, photoIds);
+  const photos = await readPhotos(deps.archive, request.photoIds);
   const signal = AbortSignal.timeout(estimationAttemptTimeLimitMs);
   const attempted = await R.pipe(
-    deps.provider.identifyDishes({ photos }, signal),
+    deps.provider.identifyDishes({ photos, target: request.target }, signal),
     R.mapError((error) =>
       toAttemptFailed(error, "identify_dishes", {
         identifyDishes: usageOf(error),
@@ -37,7 +38,7 @@ export const runEstimationAttempt = async (
       }),
     ),
     R.andThen((identified) =>
-      isValidIdentifiedDishes(identified.output)
+      isValidIdentifiedDishes(identified.output, request.target)
         ? R.succeed(identified)
         : R.fail(
             new EstimationAttemptFailedError({
@@ -254,8 +255,13 @@ const toAttemptFailed = (
 const usageOf = (error: ProviderFailure) =>
   error.name === "EstimationProviderInvalidResponseError" ? error.usage : undefined;
 
-// Claude の構造化出力は数値の範囲を使えないので、量が 0 より大きいことなどをここで確かめる
-const isValidIdentifiedDishes = ({ dishes }: IdentifiedDishes): boolean =>
+// Claude の構造化出力は数値の範囲を使えないので、量が 0 より大きいことなどをここで確かめる。
+// 推定し直しは、その料理1つか、材料を出せない（0 件）の答えだけを通す
+const isValidIdentifiedDishes = (
+  { dishes }: IdentifiedDishes,
+  target: IdentificationTarget,
+): boolean =>
+  (target.type === "meal" || dishes.length <= 1) &&
   dishes.every(
     (dish) =>
       isPresentText(dish.name) &&

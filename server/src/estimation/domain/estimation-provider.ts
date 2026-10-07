@@ -9,26 +9,41 @@ import type { EstimationProviderTimedOutError } from "./estimation-provider-time
 // 本物は Anthropic の API を呼ぶ（基盤に固有の層が実装する）。応答は残さず、推定の結果だけをドメイン層が書く。
 // signal は試み（①②）の時間の上限で切れる。提供元は切れたら EstimationProviderTimedOutError で返す
 export type EstimationProvider = {
-  identifyDishes(
-    request: { photos: readonly ArrayBuffer[] },
+  identifyDishes: (
+    request: { photos: readonly ArrayBuffer[]; target: IdentificationTarget },
     signal: AbortSignal,
-  ): R.ResultAsync<
+  ) => R.ResultAsync<
     EstimationProviderReply<IdentifiedDishes>,
     | EstimationProviderError
     | EstimationProviderBadRequestError
     | EstimationProviderTimedOutError
     | EstimationProviderInvalidResponseError
   >;
-  matchIngredients(
+  matchIngredients: (
     request: IngredientMatchRequest,
     signal: AbortSignal,
-  ): R.ResultAsync<
+  ) => R.ResultAsync<
     EstimationProviderReply<MatchedIngredients>,
     | EstimationProviderError
     | EstimationProviderBadRequestError
     | EstimationProviderTimedOutError
     | EstimationProviderInvalidResponseError
   >;
+};
+
+// ① に何を読み取らせるか。食事（写真の推定）は、使う人が食事に足した料理の今の名前を持ち、同じ料理を返させない。
+// 料理（名前を直した・料理を足したときの推定し直し）は、その料理の今の値を持ち、その料理1つだけを返させる
+export type IdentificationTarget =
+  | { type: "meal"; addedDishNames: readonly string[] }
+  | { type: "dish"; dish: DishToReestimate };
+
+// 推定し直す料理の今の値（#332 の「① に渡すもの」）
+export type DishToReestimate = {
+  name: string;
+  // 今の材料のうち、量の出どころが「直した」の材料だけ。新しい料理にも同じ材料があれば、この量を使わせる
+  correctedIngredients: readonly { name: string; quantity: number; unit: string }[];
+  // 料理の量を直してあれば、その量と単位を固定し、材料への割り振りだけを推定させる。直していなければ undefined
+  correctedQuantity: { value: number; unit: string } | undefined;
 };
 
 export type EstimationProviderReply<TOutput> = {

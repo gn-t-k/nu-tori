@@ -157,6 +157,77 @@ extension TimelineTests {
             }
         }
 
+        @Suite("料理を直す書き込みを受け付けなかった行があるとき")
+        struct RejectedDishEdit {
+            static func lunch() throws -> MealCard {
+                MealCard(
+                    meal: try .fixture(
+                        eatenAt: "2026-09-24T12:10:00+09:00", sentAt: "2026-09-24T12:11:00+09:00"),
+                    status: .estimated, recordedOnThisDevice: true)
+            }
+
+            static func timeline(meals: [MealCard], lines: [RejectedMealLine]) -> Timeline {
+                Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: lines.map { .meal($0) }, meals: meals,
+                        notices: []),
+                    firstDay: PlacingMeals.day,
+                    today: PlacingMeals.day
+                )
+            }
+
+            @Suite("食事のカードが残っているとき")
+            struct MealRemains {
+                let lunch: MealCard
+                let timeline: Timeline
+
+                init() throws {
+                    lunch = try RejectedDishEdit.lunch()
+                    let dish = RejectedMealLine.DishPlace(
+                        id: UUID(), name: "カレー", positionInMeal: 0)
+                    timeline = RejectedDishEdit.timeline(
+                        meals: [lunch],
+                        lines: [RejectedMealLine(meal: lunch.meal, subject: .goneDish(dish))])
+                }
+
+                @Test("タイムラインに行を置かないこと（食事の画面に出す）")
+                func notOnTimeline() throws {
+                    #expect(try #require(timeline.days.first).items == [.meal(lunch)])
+                }
+            }
+
+            @Suite("食事も消えているとき")
+            struct MealGone {
+                let timeline: Timeline
+
+                init() throws {
+                    let meal = try RejectedDishEdit.lunch().meal
+                    timeline = RejectedDishEdit.timeline(
+                        meals: [],
+                        lines: [
+                            RejectedMealLine(
+                                meal: meal,
+                                subject: .goneDish(
+                                    RejectedMealLine.DishPlace(
+                                        id: UUID(), name: "カレー", positionInMeal: 0))),
+                            RejectedMealLine(
+                                meal: meal,
+                                subject: .goneDish(
+                                    RejectedMealLine.DishPlace(
+                                        id: UUID(), name: "味噌汁", positionInMeal: 1))),
+                        ])
+                }
+
+                @Test("カードを置いていた位置に行を置き、同じ食事の行をどれも残すこと")
+                func onTimeline() throws {
+                    let items = try #require(timeline.days.first).items
+
+                    #expect(items.count == 2)
+                    #expect(Set(items.map(\.id)).count == 2)
+                }
+            }
+        }
+
         @Suite("サーバーに記録の無い体重の行と、食事が同じ日にあるとき")
         struct RejectedWeightBetweenMeals {
             let lunch: MealCard

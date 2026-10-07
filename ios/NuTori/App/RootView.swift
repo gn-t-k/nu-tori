@@ -57,6 +57,7 @@ struct RootView: View {
             TimelineScreenContainer(
                 clock: model.clock,
                 rejectedLines: model.rejectedLines,
+                unsentDishIds: model.unsentDishIds,
                 capture: { await model.capture($0) },
                 reminderLanding: model.reminderLanding,
                 noteReminderLanded: { model.noteReminderLanded() },
@@ -97,9 +98,29 @@ struct RootView: View {
                         }
                         return await MealPhotoImage.thumbnail(at: file)
                     },
+                    correctMealTime: { card, eatenAt in
+                        await model.correctMealTime(card, eatenAt: eatenAt)
+                    },
                     deleteMeal: { card, deletedAt in
                         await model.deleteMeal(card, deletedAt: deletedAt)
-                    }
+                    },
+                    addDish: { card, typedName in
+                        await model.addDish(named: typedName, to: card)
+                    },
+                    dish: DishActions(
+                        rename: { dish, typedName in
+                            await model.renameDish(dish, to: typedName)
+                        },
+                        correctQuantity: { dish, value in
+                            await model.correctDishQuantity(dish, to: value)
+                        },
+                        correctIngredientQuantity: { ingredient, quantity in
+                            await model.correctIngredientQuantity(ingredient, to: quantity)
+                        },
+                        delete: { dish in
+                            await model.deleteDish(dish)
+                        }
+                    )
                 ),
                 holdsMealOriginals: { await model.holdsMealOriginals($0) }
             )

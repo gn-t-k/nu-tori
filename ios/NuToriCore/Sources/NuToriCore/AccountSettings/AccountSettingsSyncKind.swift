@@ -29,7 +29,8 @@ public struct AccountSettingsSyncKind: SyncedRecordKind, RecordKindWrites {
     public func rejection(
         of entry: PendingEntry,
         reason: SyncWriteResult.RejectionReason,
-        current: SyncWriteResult.Current?
+        current: SyncWriteResult.Current?,
+        shown: ShownRecords
     ) throws -> KindRejection {
         KindRejection.none
     }

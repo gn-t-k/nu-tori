@@ -53,6 +53,12 @@ public struct Meal: Hashable, Sendable {
         CalendarDay(containing: sentAt, in: sentTimeZone)
     }
 
+    /// 食事の時差だけを持つタイムゾーン。時刻を直す欄は、撮った時刻をこの時計で見せ、直した値もこの時計の時刻として受け取る
+    public var eatenTimeZone: TimeZone {
+        // 時差は秒で持ち、ありうる幅（±18 時間）の中なので作れる
+        TimeZone(secondsFromGMT: eatenUtcOffsetSeconds) ?? .gmt
+    }
+
     /// 撮った時刻に食事の時差を足した時計の時刻
     public var eatenClockTime: ClockTime {
         ClockTime(containing: eatenAt, utcOffsetSeconds: eatenUtcOffsetSeconds)
