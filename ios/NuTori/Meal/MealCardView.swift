@@ -78,8 +78,8 @@ struct MealCardView: View {
         }
     }
 
-    /// 料理があれば、どの状態でも料理の名前を置く。写真の推定の状態の1行は、料理が無いあいだは状態ごとに、
-    /// 料理を足したあとは推定中と翌日に推定だけ名前の下に置く。料理ごとの待ちの1行は付けない
+    /// 推定が済んだ食事は、料理があれば料理の名前を、無ければ写真の推定の状態の1行を置く。推定を待っている食事は状態の1行だけを置く。
+    /// 料理ごとの待ちの1行は付けない
     @ViewBuilder private var namePlace: some View {
         let place = card.namePlace
         if let dishNames = place.dishNames {
@@ -102,8 +102,7 @@ struct MealCardView: View {
         }
     }
 
-    /// kcal と P・F・C は、分かる料理があるときだけ出す。「不明」の材料が混じる栄養と、待っている料理がある食事・
-    /// 写真の推定が済んでいない食事の値には「以上」が付く
+    /// kcal と P・F・C は、分かる料理があるときだけ出す。「不明」の材料が混じる栄養と、待っている料理がある食事の値には「以上」が付く
     private var nutritionText: (kilocalories: String, pfc: [String])? {
         guard case .estimated(let totals) = card.nutrition else { return nil }
         let pfc = PFC.allCases.map { pfc in
