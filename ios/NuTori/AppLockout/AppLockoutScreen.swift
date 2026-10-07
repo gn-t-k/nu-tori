@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 締め出しの画面。すべての画面に替えて全面に出し、説明と更新のボタンだけを載せる
 struct AppLockoutScreen: View {
-    /// isOpening は開いたときの状態。開くのは画面の中で進むので、あとから渡し直しても変わらない
+    /// isOpening は画面を出したときの状態。更新する場所を開くのは画面の中で進むので、あとから渡し直しても変わらない
     init(isOpening: Bool, openUpdate: @escaping () async -> Void) {
         _isOpening = State(initialValue: isOpening)
         self.openUpdate = openUpdate
@@ -30,7 +30,7 @@ struct AppLockoutScreen: View {
                     isOpening = false
                 }
             } label: {
-                HStack(spacing: 8) {
+                HStack {
                     Text("更新する")
                     if isOpening {
                         ProgressView()
