@@ -25,9 +25,8 @@ on:
 
 concurrency:
   # ほかのラベルを付けただけの回が、回っている UI テストを止めないよう、別の組にする
-  group: >-
-    ${{ github.event.action == 'labeled' && github.event.label.name != 'ui-test' && github.run_id
-    || format('ios-ui-test-{0}', github.event.pull_request.number || github.ref) }}
+  # [DEBUG-354] 何本も同時に回すため、回ごとに別の組にする
+  group: ${{ github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -44,7 +43,41 @@ jobs:
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: scripts/check ios-ui-test
+      # [DEBUG-354] 3周回し、周ごとのログと見張りの記録を残す。落ちても次の周へ進む
+      - name: UI テストを3周回す（見張りつき）
+        run: |
+          debug=ios/.build/debug-354
+          mkdir -p "$debug"
+          failed=0
+          for pass in 1 2 3; do
+            dir="$debug/pass$pass"
+            mkdir -p "$dir"
+            .github/debug-354/watch.sh "$dir/check.log" "$dir" &
+            watcher=$!
+            start=$(date +%s)
+            set +e
+            scripts/check ios-ui-test 2>&1 | tee "$dir/check.log"
+            status=${PIPESTATUS[0]}
+            set -e
+            pkill -P "$watcher" || true
+            kill "$watcher" || true
+            fails=$(grep -c "Failed to terminate" "$dir/check.log" || true)
+            echo "pass$pass status=$status seconds=$(( $(date +%s) - start )) terminate_fail=$fails" | tee -a "$debug/summary.txt"
+            if [ -d ios/.build/NuTori.xcresult ]; then
+              xcrun xcresulttool get test-results summary --path ios/.build/NuTori.xcresult --compact > "$dir/summary.json" || true
+              jq -r '.testFailures[]? | "- \(.testIdentifierString): \(.failureText)"' "$dir/summary.json" > "$dir/failures.txt" || true
+            fi
+            [ "$status" = 0 ] || failed=1
+          done
+          cat "$debug/summary.txt" >> "$GITHUB_STEP_SUMMARY"
+          exit "$failed"
+      - name: "[DEBUG-354] 見張りの記録を上げる"
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: debug-354
+          path: ios/.build/debug-354
+          retention-days: 7
       - name: 失敗の要約とスクリーンショットを書き出す
         if: failure()
         run: |
