@@ -101,7 +101,7 @@ const waitForEstimation = async (
   options: MainFlowOptions,
   session: Session,
   mealId: string,
-): Promise<{ dishIds: string[]; ingredientCount: number }> => {
+): Promise<{ dishIds: [string, ...string[]]; ingredientCount: number }> => {
   const startedAt = Date.now();
   const changes: Change[] = [];
   let afterSequence = 0;
@@ -137,7 +137,7 @@ const findEstimationStatus = (changes: Change[], mealId: string): string | undef
 const requireEstimatedDishIdsAndIngredientCount = (
   changes: Change[],
   mealId: string,
-): { dishIds: string[]; ingredientCount: number } => {
+): { dishIds: [string, ...string[]]; ingredientCount: number } => {
   const dishIds = changes
     .filter(({ kind }) => kind === "dish")
     .map(({ record }) => z.object({ id: z.string(), mealId: z.string() }).parse(record))
@@ -147,23 +147,21 @@ const requireEstimatedDishIdsAndIngredientCount = (
     .filter(({ kind }) => kind === "ingredient")
     .map(({ record }) => z.object({ dishId: z.string() }).parse(record))
     .filter(({ dishId }) => dishIds.includes(dishId)).length;
-  if (dishIds.length === 0 || ingredientCount === 0) {
+  const [firstDishId, ...restDishIds] = dishIds;
+  if (firstDishId === undefined || ingredientCount === 0) {
     throw new Error(
       `推定できたのに、料理か材料が無い（料理 ${dishIds.length}、材料 ${ingredientCount}）`,
     );
   }
-  return { dishIds, ingredientCount };
+  return { dishIds: [firstDishId, ...restDishIds], ingredientCount };
 };
 
 // サーバーが振った料理の ID を、そのまま送り返して名前を直す。送り返した ID で料理が見つからないと、受け付けられずに失敗する（#362）
 const renameEstimatedDish = async (
   options: MainFlowOptions,
   session: Session,
-  dishId: string | undefined,
+  dishId: string,
 ): Promise<void> => {
-  if (dishId === undefined) {
-    throw new Error("名前を直す料理が無い");
-  }
   await pushWrites(options, session, [
     { id: generateRecordId(), type: "update_dish", dishId, name: "直した料理" },
   ]);
