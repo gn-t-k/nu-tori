@@ -6,7 +6,7 @@ import type { EstimationWrites } from "./estimation-writes";
 
 // 推定を諦める。料理が対象なら、推定できなかったとして料理に当てるかを決めて当てる（apply-dish-estimation.ts）
 export const abandonEstimation = (
-  stores: Pick<RecordKindStores, "dish" | "ingredient" | "dishEstimationStatus">,
+  stores: Pick<RecordKindStores, "dish" | "ingredient">,
   writes: EstimationWrites,
   addChange: (change: RecordChangeTarget<"dish" | "ingredient">) => void,
   abandonment: { estimationId: string; target: EstimationTarget; abandonedAt: Date },
