@@ -27,7 +27,7 @@ import { deleteDishWrite } from "./testing/delete-dish-write";
 import { updateDishWrite } from "./testing/update-dish-write";
 import { inspectDeletedContents } from "./testing/inspect-deleted-contents";
 import { recordMealWithCorrectedDish } from "./testing/record-meal-with-corrected-dish";
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 describe("料理の同期", () => {
   let accountId: string;
@@ -295,25 +295,26 @@ describe("料理の同期", () => {
       lastSequence = requireLastSequence(estimated);
     });
 
-    describe("名前を2回直したとき", () => {
+    describe("名前を直したとき", () => {
       let results: PushResults["results"];
       beforeEach(async () => {
         ({ results } = await (
           await pushSyncWrites(sessionToken, {
-            writes: [
-              updateDishWrite(dishId, { name: "カツ丼" }),
-              updateDishWrite(dishId, { name: "かつ丼" }),
-            ],
+            writes: [updateDishWrite(dishId, { name: "かつ丼" })],
           })
         ).json<PushResults>());
       });
 
-      test("どちらも当てたと返すこと", () => {
-        expect(results.map(({ result }) => result)).toEqual(["applied", "applied"]);
+      test("当てたと返すこと", () => {
+        expect(results.map(({ result }) => result)).toEqual(["applied"]);
       });
 
-      test("取りに行くと、あとの名前と、名前の修正の数だけ上がった版の料理が返ること", async () => {
-        expect(changedValues(await pullChangesAfter(lastSequence)).at(-1)).toEqual({
+      test("取りに行くと、直した名前と、名前の修正の分だけ上がった版の料理が返ること", async () => {
+        expect(
+          changedValues(await pullChangesAfter(lastSequence)).findLast(
+            ({ kind }) => kind === "dish",
+          ),
+        ).toEqual({
           kind: "dish",
           recordId: dishId,
           id: dishId,
@@ -323,7 +324,7 @@ describe("料理の同期", () => {
           unit: "杯",
           quantitySource: "estimated",
           positionInMeal: 0,
-          version: 3,
+          version: 2,
         });
       });
     });
@@ -409,7 +410,7 @@ describe("料理の同期", () => {
       test("修正の表のどの行の控えにも、受け取った順（変更の並びとのつなぎ）があること", async () => {
         expect(await countCorrectionsByReceivedOrder(accountId)).toEqual({
           meal_eaten_at_corrections: { withOrder: 1, withoutOrder: 0 },
-          dish_name_corrections: { withOrder: 2, withoutOrder: 0 },
+          dish_name_corrections: { withOrder: 1, withoutOrder: 0 },
           dish_quantity_corrections: { withOrder: 1, withoutOrder: 0 },
           ingredient_quantity_corrections: { withOrder: 1, withoutOrder: 0 },
         });
@@ -569,12 +570,16 @@ describe("料理の同期", () => {
 
     describe("量の無い料理があるとき", () => {
       let quantitylessDishId: string;
-      // 足したばかりで、推定し直しがまだ当たっていない料理
+      // 足した料理の推定し直しで、提供元が材料を出せなかった料理（量が一度も入らず、推定し直しを待っていない）
       beforeEach(async () => {
         const write = createDishWrite(mealId, { name: "味噌汁", positionInMeal: 2 });
         quantitylessDishId = write.dishId;
         await pushSyncWrites(sessionToken, { writes: [write] });
+        mockCreateEstimationProviderOk({ identifiedDishes: { dishes: [] } });
+        await runEstimationAlarm(accountId);
         lastSequence = requireLastSequence(await pullChangesAfter(0));
+        // 止まった時計のままだと、名前を直した予定が足したときの予定と同じ時刻になり、どちらが新しい予定かが決まらない
+        vi.setSystemTime(Date.now() + 1000);
       });
 
       describe("量を載せた書き込みを送ったとき", () => {
@@ -607,9 +612,15 @@ describe("料理の同期", () => {
           expect(results.map(({ result }) => result)).toEqual(["applied"]);
         });
 
-        test("取りに行くと、量と単位と量の出どころを省いた、直した名前の料理が返ること", async () => {
-          // 足したときから推定し直しを待っているので、料理ごとの推定の状態は変わらない
-          expect(changedValues(await pullChangesAfter(lastSequence))).toEqual([
+        test("取りに行くと、量と単位と量の出どころを省いた、直した名前の料理と、推定中の料理ごとの推定の状態が返ること", async () => {
+          expect(
+            changedValues(await pullChangesAfter(lastSequence)).map(
+              ({ status, ...value }): Record<string, unknown> =>
+                value["kind"] === "dish_estimation_status"
+                  ? { kind: value["kind"], status }
+                  : value,
+            ),
+          ).toEqual([
             {
               kind: "dish",
               recordId: quantitylessDishId,
@@ -617,8 +628,10 @@ describe("料理の同期", () => {
               mealId,
               name: "豚汁",
               positionInMeal: 2,
-              version: 2,
+              // 1 ＋ 当てた推定し直し 1 ＋ 名前の修正 1
+              version: 3,
             },
+            { kind: "dish_estimation_status", status: "estimating" },
           ]);
         });
       });
@@ -685,7 +698,7 @@ describe("料理の同期", () => {
     });
   });
 
-  describe("時刻と名前と量と材料を直し、推定し直しで材料が置き換わり、待つ予定を取り消した料理と、直していない料理があるとき", () => {
+  describe("時刻と名前と量と材料を直し、推定し直しで材料が置き換わった料理と、直していない料理があるとき", () => {
     let mealId: string;
     let dishId: string;
     let untouchedDishId: string;

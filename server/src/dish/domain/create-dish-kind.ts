@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
-import { computeDishEstimationStatus } from "../../dish-estimation-status/domain/compute-dish-estimation-status";
+import { dishAwaitsReestimation } from "../../dish-estimation-status/domain/dish-awaits-reestimation";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import { mealAwaitsEstimation } from "../../meal-estimation-status/domain/meal-awaits-estimation";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -158,7 +158,8 @@ const decideDelete = (
 };
 
 // 名前と量は、今の値と違う分だけ修正の出来事として足す。比例させた材料の量は端末が出したものを書き、計算し直さない。
-// 名前が変わったら、その料理の推定し直しを予定に入れる（まだ始まっていない前の予定は取り消す）
+// 名前が変わったら、その料理の推定し直しを予定に入れる（まだ始まっていない前の予定は取り消す）。
+// 食事が推定を待っているときと、料理が推定し直しを待っているときは断る
 const decideUpdate = (
   stores: DishKindStores,
   { dishId, name, quantity }: Extract<DishWrite, { type: "update_dish" }>,
@@ -180,7 +181,10 @@ const decideUpdate = (
   ) {
     return rejected("update", dishId, "ingredients_replaced");
   }
-  if (mealAwaitsEstimation(stores.mealEstimationStatus, current.mealId)) {
+  if (
+    mealAwaitsEstimation(stores.mealEstimationStatus, current.mealId) ||
+    dishAwaitsReestimation(stores.dishEstimationStatus, dishId, receivedAt)
+  ) {
     return rejected("update", dishId, "awaiting_estimation");
   }
   if (
@@ -195,13 +199,6 @@ const decideUpdate = (
   if (!renamed && quantityCorrection === undefined) {
     return decideWithoutChange("update", dishId, { result: "applied" });
   }
-  // 名前を直した予定は、受け取った時刻が来ているので推定中になる。前から推定中なら変更を足さない
-  const startsEstimating =
-    renamed &&
-    computeDishEstimationStatus(
-      stores.dishEstimationStatus.findSchedulesOfDish(dishId),
-      receivedAt,
-    ) !== "estimating";
   return {
     writeKind: "update",
     recordId: dishId,
@@ -212,9 +209,8 @@ const decideUpdate = (
         recordType: "ingredient" as const,
         recordId: ingredientId,
       })),
-      ...(startsEstimating
-        ? [{ recordType: "dish_estimation_status" as const, recordId: dishId }]
-        : []),
+      // 名前を直した予定は、受け取った時刻が来ているので推定中になる。推定し直しを待っている料理の直しは上で断るので、前から推定中のことは無い
+      ...(renamed ? [{ recordType: "dish_estimation_status" as const, recordId: dishId }] : []),
     ],
     usageEvents: [
       // 比例させた材料は、使う人が直した量でないので送らない。直してある量をもう一度直したときも送らない

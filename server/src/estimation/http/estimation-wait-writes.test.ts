@@ -390,6 +390,206 @@ describe("推定を待っている食事への書き込み", () => {
   });
 });
 
+// 推定できた食事の中で、推定し直しを待っている料理（推定中・翌日に推定）では、その料理と材料を直すことを断り、
+// その料理を消すことと、同じ食事のほかの料理を直すことと、料理を足すことは受け付ける（#381）。
+// 写真の推定で、親子丼（1 杯。鶏もも肉 80 g）と緑茶ができた食事から始める
+describe("推定し直しを待っている料理への書き込み", () => {
+  let accountId: string;
+  let sessionToken: string;
+  let mealId: string;
+  let dishId: string;
+  let greenTeaId: string;
+  let chickenId: string;
+  let riceId: string;
+  let pullChangesAfter: (afterSequence: number) => Promise<PullResult["changes"]>;
+  let pushWrites: (writes: unknown[]) => Promise<PushResults["results"]>;
+  beforeEach(async () => {
+    mockAppleKeysEndpointOk();
+    mockExchangeAppleAuthorizationCodeOk();
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
+    // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
+    useFakeClock(Date.now() + 86_400_000);
+    mockCreateEstimationProviderOk();
+    pullChangesAfter = async (afterSequence) =>
+      (await (await pullSyncChanges(sessionToken, { afterSequence })).json<PullResult>()).changes;
+    pushWrites = async (writes) =>
+      (await (await pushSyncWrites(sessionToken, { writes })).json<PushResults>()).results;
+    const estimated = await recordEstimatedMeal(accountId, sessionToken);
+    mealId = estimated.mealId;
+    dishId = estimated.dishId("親子丼");
+    greenTeaId = estimated.dishId("緑茶");
+    chickenId = estimated.ingredientId("鶏もも肉");
+    riceId = estimated.ingredientId("ご飯");
+  });
+
+  describe("名前を直して推定し直し中のとき", () => {
+    let lastSequence: number;
+    beforeEach(async () => {
+      await pushWrites([updateDishWrite(dishId, { name: "カツ丼" })]);
+      lastSequence = requireLastSequence(await pullChangesAfter(0));
+    });
+
+    describe("その料理の量を直す書き込みを送ったとき", () => {
+      let results: PushResults["results"];
+      beforeEach(async () => {
+        results = await pushWrites([
+          updateDishWrite(dishId, {
+            name: "カツ丼",
+            quantity: {
+              value: 2,
+              proportionedIngredients: [
+                { ingredientId: chickenId, quantity: 160 },
+                { ingredientId: riceId, quantity: 400 },
+              ],
+            },
+          }),
+        ]);
+      });
+
+      test("推定を待っているとして受け付けず、今の値に直した名前の料理を添えること", () => {
+        expect(
+          results.map(({ result, rejectionReason, current }) => ({
+            result,
+            rejectionReason,
+            status: current?.status,
+            name: current?.change?.record["name"],
+            quantity: current?.change?.record["quantity"],
+          })),
+        ).toEqual([
+          {
+            result: "rejected",
+            rejectionReason: "awaiting_estimation",
+            status: "value",
+            name: "カツ丼",
+            quantity: 1,
+          },
+        ]);
+      });
+
+      test("何も当てないこと", async () => {
+        expect(await pullChangesAfter(lastSequence)).toEqual([]);
+      });
+    });
+
+    describe("その料理の名前をまた直す書き込みを送ったとき", () => {
+      test("推定を待っているとして受け付けないこと", async () => {
+        expect(
+          (await pushWrites([updateDishWrite(dishId, { name: "かつ丼" })])).map(toReason),
+        ).toEqual(["awaiting_estimation"]);
+      });
+    });
+
+    describe("その料理の材料の量を直す書き込みを送ったとき", () => {
+      let results: PushResults["results"];
+      beforeEach(async () => {
+        results = await pushWrites([updateIngredientWrite(chickenId, 120)]);
+      });
+
+      test("推定を待っているとして受け付けず、今の値に直す前の材料を添えること", () => {
+        expect(
+          results.map(({ result, rejectionReason, current }) => ({
+            result,
+            rejectionReason,
+            status: current?.status,
+            quantity: current?.change?.record["quantity"],
+          })),
+        ).toEqual([
+          {
+            result: "rejected",
+            rejectionReason: "awaiting_estimation",
+            status: "value",
+            quantity: 80,
+          },
+        ]);
+      });
+
+      test("何も当てないこと", async () => {
+        expect(await pullChangesAfter(lastSequence)).toEqual([]);
+      });
+    });
+
+    describe("ほかの料理の名前を直す書き込みと、料理を足す書き込みと、その料理を消す書き込みを送ったとき", () => {
+      test("どれも当てたと返すこと", async () => {
+        expect(
+          (
+            await pushWrites([
+              updateDishWrite(greenTeaId, { name: "ほうじ茶" }),
+              createDishWrite(mealId),
+              deleteDishWrite(dishId),
+            ])
+          ).map(({ result }) => result),
+        ).toEqual(["applied", "applied", "applied"]);
+      });
+    });
+
+    describe("推定し直しが終わってから、その料理の名前と材料の量を直す書き込みを送ったとき", () => {
+      let replacingIngredientIds: string[];
+      beforeEach(async () => {
+        replacingIngredientIds = await reestimateRenamedDish(accountId, sessionToken, dishId);
+      });
+
+      test("どちらも当てたと返すこと", async () => {
+        const [replacingIngredientId] = replacingIngredientIds;
+        if (replacingIngredientId === undefined) {
+          throw new Error("置き換えた材料が無い");
+        }
+        expect(
+          (
+            await pushWrites([
+              updateIngredientWrite(replacingIngredientId, 120),
+              updateDishWrite(dishId, { name: "かつ丼" }),
+            ])
+          ).map(({ result }) => result),
+        ).toEqual(["applied", "applied"]);
+      });
+    });
+  });
+
+  describe("名前を直した推定し直しが翌日に推定になったとき", () => {
+    beforeEach(async () => {
+      const countedOn = await readEarliestCountedOn(accountId);
+      await pushWrites([updateDishWrite(dishId, { name: "カツ丼" })]);
+      await insertCountedEstimations(accountId, countedOn, 29);
+      await runEstimationAlarm(accountId);
+    });
+
+    describe("その料理の名前を直す書き込みと、材料の量を直す書き込みを送ったとき", () => {
+      test("どちらも推定を待っているとして受け付けないこと", async () => {
+        expect(
+          (
+            await pushWrites([
+              updateDishWrite(dishId, { name: "かつ丼" }),
+              updateIngredientWrite(chickenId, 120),
+            ])
+          ).map(toReason),
+        ).toEqual(["awaiting_estimation", "awaiting_estimation"]);
+      });
+    });
+
+    describe("その料理を消す書き込みを送ったとき", () => {
+      test("当てたと返すこと", async () => {
+        expect((await pushWrites([deleteDishWrite(dishId)])).map(({ result }) => result)).toEqual([
+          "applied",
+        ]);
+      });
+    });
+  });
+
+  describe("同じ要求で、料理を足し、その料理の名前を直す書き込みを送ったとき", () => {
+    test("足す書き込みを当て、名前を直す書き込みを推定を待っているとして受け付けないこと", async () => {
+      const create = createDishWrite(mealId, { name: "味噌汁" });
+      expect(
+        (await pushWrites([create, updateDishWrite(create.dishId, { name: "豚汁" })])).map(
+          ({ result, rejectionReason }) => ({ result, rejectionReason }),
+        ),
+      ).toEqual([
+        { result: "applied", rejectionReason: undefined },
+        { result: "rejected", rejectionReason: "awaiting_estimation" },
+      ]);
+    });
+  });
+});
+
 const toRejection = ({ result, rejectionReason, current }: PushResults["results"][number]) => ({
   result,
   rejectionReason,
