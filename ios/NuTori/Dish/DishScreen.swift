@@ -124,6 +124,13 @@ struct DishScreen: View {
             }
             if let field = header.quantityField {
                 quantityRow(field)
+            } else if offer.showsEmptyQuantity {
+                HStack(spacing: 8) {
+                    Text("量")
+                    Spacer()
+                    quantityText(nil)
+                        .accessibilityIdentifier("dish-quantity")
+                }
             }
         } footer: {
             // 直せないときは、直したときの注記の代わりに、推定が終わると直せることを置く
@@ -143,13 +150,22 @@ struct DishScreen: View {
                     .keyboardType(.decimalPad)
                     .monospacedDigit()
                     .focused($focusedField, equals: .quantity),
-                text: Text(field.text.isEmpty ? field.placeholder : field.text).monospacedDigit(),
+                text: quantityText(field.text.isEmpty ? nil : field.text),
                 identifier: "dish-quantity")
             Text(field.unit)
                 .foregroundStyle(.secondary)
             if field.showsEstimateBadge {
                 EstimateBadge()
             }
+        }
+    }
+
+    /// 直せないときの量の文字。見せる量が無ければ、欄の置き文字と同じ薄い色（tertiaryLabel）の「—」にする
+    private func quantityText(_ value: String?) -> Text {
+        if let value {
+            Text(value).monospacedDigit()
+        } else {
+            Text("—").foregroundStyle(.tertiary)
         }
     }
 

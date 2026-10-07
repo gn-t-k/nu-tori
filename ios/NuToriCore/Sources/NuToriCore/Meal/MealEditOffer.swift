@@ -23,8 +23,10 @@ public struct MealEditOffer: Hashable, Sendable {
     /// 推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）は、名前と量を文字で見せ、「この料理を削除」だけを出す。
     /// 待っているあいだに直すと、サーバーが断る（`awaiting_estimation`）
     public func dishScreen(_ contents: DishContents) -> DishScreenOffer {
-        DishScreenOffer(
-            editsNameAndQuantity: !mealAwaitsEstimation && !contents.progress.isWaiting,
+        let editsNameAndQuantity = !mealAwaitsEstimation && !contents.progress.isWaiting
+        return DishScreenOffer(
+            editsNameAndQuantity: editsNameAndQuantity,
+            showsEmptyQuantity: !editsNameAndQuantity && contents.dish.quantity == nil,
             showsIngredientsAndNutrients: !mealAwaitsEstimation
                 && contents.showsIngredientsAndNutrients,
             deletesDish: !mealAwaitsEstimation,
@@ -43,6 +45,9 @@ public struct MealEditOffer: Hashable, Sendable {
     public struct DishScreenOffer: Hashable, Sendable {
         /// 名前と量を、押してその場で直せる欄にするか。直せないときは文字で見せる
         public let editsNameAndQuantity: Bool
+        /// 量の無い料理（足したばかりで、推定し直しが一度も当たっていない料理）の量の行に「—」を置くか。
+        /// 直せないときだけ置き、食事の画面の料理の行と同じく量を「—」で見せる。直せるときは量の行を置かない
+        public let showsEmptyQuantity: Bool
         /// 材料（量をその場で直せる）と栄養のまとまりを出すか
         public let showsIngredientsAndNutrients: Bool
         /// 「この料理を削除」を出すか
