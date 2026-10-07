@@ -29,7 +29,7 @@ Claude Code on the web のセッション（`CLAUDE_CODE_REMOTE=true`）では�
 
 - `GH_TOKEN` には仮の値 `proxy-injected` が入っていて、本物のトークンはプロキシが差し替える。PAT を環境変数に置かない
 - GraphQL は PR 用の一部を除いて 403 になり、GraphQL を使う `gh issue ...` や `gh pr ...` は通らない。`gh api repos/<owner>/<repo>/...` の REST を使う
-- 画像や動画は添付できない。クラウドの `gh` は 2.89.0 で `--attach` のフラグが無く、Issue にも PR にも `unknown flag: --attach` で止まる（#357 で試した）。新しい版は入れていない（github.com の `cli/cli` はこのセッションの許可の外で 403 になる）。入れても、送る前にトークンの種類と GraphQL の権限を確かめるので、そこで止まるかもしれない。本文に書いた画像の参照（`![名前](URL)`）も、投稿すると `!` が落ちてただのリンクになる（コードブロックの中でも、`gh api` でも `mcp__github__*` でも）。添付が要るときは、Mac のセッションか開発者に頼む
+- 画像や動画は添付できない（試した結果は #357）。添付が要るときは、開発者に頼むか、`mcp__ccd_session__spawn_task` で Mac のセッションを始めるカードを出す
   - 読む: `gh api repos/gn-t-k/nu-tori/issues/<n>`、コメントは `.../issues/<n>/comments`
   - サブ Issue: `.../issues/<親>/sub_issues`（追加は `-X POST -F sub_issue_id=<子の DB ID>`）
   - 依存関係: `.../issues/<n>/dependencies/blocked_by`（追加は `-X POST -F issue_id=<ブロック元の DB ID>`）。すでに張られていると 422「already been taken」が返る
