@@ -1,10 +1,11 @@
 public import Foundation
+import NuToriAPI
 
 /// ヘルスケアから取り込んだ体重記録の ID。サンプルの UUID から決まるので、全期間を読み直しても二重にならない
 public enum ImportedWeightRecordId {
     public static func make(healthKitSampleId: UUID) -> UUID {
         NameBasedUUID.version5(
-            namespace: namespace, name: healthKitSampleId.uuidString.lowercased())
+            namespace: namespace, name: healthKitSampleId.canonicalString)
     }
 
     // 体重記録の ID にだけ使う名前空間。変えると、取り込み済みの記録が別の ID で二重に入る

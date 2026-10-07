@@ -47,3 +47,14 @@ custom_rules:
     regex: "->\\s*ModelContext\\b"
     message: "コンテキストはコンテナを保たず、コンテナが先に解放されると落ちる。コンテナを返すか、withExtendedLifetime(container) の中で使う"
     severity: error
+  uuid_string_through_canonical_string:
+    name: "API に載せる UUID の文字列は canonicalString で作る"
+    regex: "\\.uuidString\\b"
+    included:
+      - ".*/NuToriCore/Sources/NuToriAPI/.*"
+      - ".*/NuToriCore/Sources/NuToriTestSupport/.*"
+      - ".*/NuToriCore/Tests/NuToriAPITests/.*"
+      - ".*/NuToriCore/Sources/NuToriCore/Health/ImportedWeightRecordId\\.swift"
+    excluded: [".*/UUID\\+CanonicalString\\.swift"]
+    message: "uuidString は大文字で、サーバーは ID を小文字の正規形の文字列のまま比べる。UUID.canonicalString を使う（#362）"
+    severity: error

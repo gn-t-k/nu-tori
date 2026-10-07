@@ -7,7 +7,7 @@ import Testing
 extension NuToriAPIClientTests {
     @Suite("食事と推定の状態の同期")
     struct MealSync {
-        static let mealId = "00000000-0000-4000-8000-0000000000F1"
+        static let mealId = "00000000-0000-4000-8000-0000000000f1"
 
         @Suite("食事を作る書き込みと消す書き込みを送るとき")
         struct PushingMealWrites {
@@ -31,8 +31,8 @@ extension NuToriAPIClientTests {
                 transport = .ok(
                     json: """
                         {"results":[
-                          {"writeId":"\(createWriteId.uuidString)","result":"rejected","rejectionReason":"photo_already_used"},
-                          {"writeId":"\(deleteWriteId.uuidString)","result":"applied"}
+                          {"writeId":"\(createWriteId.canonicalString)","result":"rejected","rejectionReason":"photo_already_used"},
+                          {"writeId":"\(deleteWriteId.canonicalString)","result":"applied"}
                         ]}
                         """
                 )
@@ -54,7 +54,7 @@ extension NuToriAPIClientTests {
                     try PushSyncWritesPayload(sentBody: sent.body).writes == [
                         .createMeal(
                             .init(
-                                id: createWriteId.uuidString,
+                                id: "00000000-0000-4000-8000-0000000000a1",
                                 _type: .createMeal,
                                 meal: .init(
                                     id: MealSync.mealId,
@@ -64,14 +64,14 @@ extension NuToriAPIClientTests {
                                     sentTimeZone: "Asia/Tokyo",
                                     entryMethod: "picked",
                                     photos: [
-                                        .init(id: "00000000-0000-4000-8000-0000000000C1"),
-                                        .init(id: "00000000-0000-4000-8000-0000000000C2"),
+                                        .init(id: "00000000-0000-4000-8000-0000000000c1"),
+                                        .init(id: "00000000-0000-4000-8000-0000000000c2"),
                                     ]
                                 ))
                         ),
                         .deleteMeal(
                             .init(
-                                id: deleteWriteId.uuidString, _type: .deleteMeal,
+                                id: "00000000-0000-4000-8000-0000000000a2", _type: .deleteMeal,
                                 mealId: MealSync.mealId)),
                     ])
             }
@@ -103,7 +103,7 @@ extension NuToriAPIClientTests {
                               {"sequence":1,"kind":"meal","recordId":"\(id)",
                                "record":{"id":"\(id)","eatenAt":1767225600123,"eatenAtUtcOffsetSeconds":32400,
                                  "sentAt":1767225660000,"sentTimeZone":"Asia/Tokyo","entryMethod":"picked",
-                                 "photos":[{"id":"00000000-0000-4000-8000-0000000000C1"},{"id":"00000000-0000-4000-8000-0000000000C2"}]}},
+                                 "photos":[{"id":"00000000-0000-4000-8000-0000000000c1"},{"id":"00000000-0000-4000-8000-0000000000c2"}]}},
                               {"sequence":2,"kind":"meal_estimation_status","recordId":"\(id)",
                                "record":{"mealId":"\(id)","status":"deferred_to_next_day"}},
                               {"sequence":3,"kind":"meal_estimation_status","recordId":"\(id)",

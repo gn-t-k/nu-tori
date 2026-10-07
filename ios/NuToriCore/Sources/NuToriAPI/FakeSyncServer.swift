@@ -59,8 +59,14 @@
             case Operations.DeleteAccount.id:
                 return (HTTPResponse(status: scenario.accountDeletion.status), nil)
             case Operations.PushSyncWrites.id:
-                return try json(.ok, try await push(body))
+                guard let writes = try await sentWrites(body) else {
+                    return (HTTPResponse(status: .badRequest), nil)
+                }
+                return try json(.ok, try push(writes))
             case Operations.PullSyncChanges.id:
+                guard Self.namesDeviceCanonically(request) else {
+                    return (HTTPResponse(status: .badRequest), nil)
+                }
                 return try json(.ok, try await pull(request))
             default:
                 return (HTTPResponse(status: .notFound), nil)
@@ -154,12 +160,20 @@
             }
         }
 
-        private func push(_ body: HTTPBody?) async throws
+        /// 本物と同じく、ID が小文字の正規形でない本文は読まない（nil を返し、要求ごと 400 で断る）
+        private func sentWrites(_ body: HTTPBody?) async throws -> [SyncWrite]? {
+            guard let body else { throw MissingBodyError() }
+            do {
+                return try SentSyncWrites(json: try await Data(collecting: body, upTo: 1_048_576))
+                    .writes
+            } catch is SentSyncWrites.NonCanonicalIdError {
+                return nil
+            }
+        }
+
+        private func push(_ writes: [SyncWrite]) throws
             -> Operations.PushSyncWrites.Output.Ok.Body.JsonPayload
         {
-            guard let body else { throw MissingBodyError() }
-            let writes = try SentSyncWrites(json: try await Data(collecting: body, upTo: 1_048_576))
-                .writes
             let rejects = try writes.map { write in
                 switch writePolicies[write.recordKey.kind] ?? .apply {
                 case .apply: false
@@ -175,11 +189,11 @@
                 return try zip(writes, rejects).map { write, rejected in
                     rejected
                         ? Components.Schemas.SyncWriteResult(
-                            writeId: write.writeId.uuidString, result: "rejected",
+                            writeId: write.writeId.canonicalString, result: "rejected",
                             rejectionReason: "out_of_range",
                             current: try .init(ledger.current(of: write.recordKey)))
                         : Components.Schemas.SyncWriteResult(
-                            writeId: write.writeId.uuidString, result: "applied")
+                            writeId: write.writeId.canonicalString, result: "applied")
                 }
             }
             return .init(results: results)
@@ -212,8 +226,15 @@
         }
 
         private static func afterSequence(of request: HTTPRequest) -> Int {
-            URLComponents(string: request.path ?? "")?.queryItems?
-                .first { $0.name == "afterSequence" }?.value.flatMap(Int.init) ?? 0
+            query(request, "afterSequence").flatMap(Int.init) ?? 0
+        }
+
+        private static func namesDeviceCanonically(_ request: HTTPRequest) -> Bool {
+            query(request, "deviceId").flatMap(UUID.init(canonicalString:)) != nil
+        }
+
+        private static func query(_ request: HTTPRequest, _ name: String) -> String? {
+            URLComponents(string: request.path ?? "")?.queryItems?.first { $0.name == name }?.value
         }
 
         private func json(_ status: HTTPResponse.Status, _ payload: some Encodable) throws -> (
@@ -226,7 +247,7 @@
 
         struct MissingBodyError: Error {}
 
-        /// 記録の種類と ID の組。削除の印は、消した記録と同じ組に置く
+        /// 記録の種類と ID の組。削除の印は、消した記録と同じ組に置く。本物と同じく、ID は小文字の正規形の文字列のまま比べる
         struct RecordKey: Hashable {
             let kind: Components.Schemas.RecordKindName
             let id: String

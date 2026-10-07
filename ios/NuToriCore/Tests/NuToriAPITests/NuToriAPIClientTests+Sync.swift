@@ -22,7 +22,7 @@ extension NuToriAPIClientTests {
                 createWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!
                 updateWriteId = UUID(uuidString: "00000000-0000-4000-8000-0000000000a2")!
                 clientState = .fixture()
-                recordId = "00000000-0000-4000-8000-0000000000B1"
+                recordId = "00000000-0000-4000-8000-0000000000b1"
                 writes = [
                     .createWeightRecord(
                         writeId: createWriteId, record: .fixture()),
@@ -32,8 +32,8 @@ extension NuToriAPIClientTests {
                 transport = .ok(
                     json: """
                         {"results":[
-                          {"writeId":"\(createWriteId.uuidString)","result":"applied"},
-                          {"writeId":"\(updateWriteId.uuidString)","result":"rejected","rejectionReason":"out_of_range"}
+                          {"writeId":"\(createWriteId.canonicalString)","result":"applied"},
+                          {"writeId":"\(updateWriteId.canonicalString)","result":"rejected","rejectionReason":"out_of_range"}
                         ]}
                         """
                 )
@@ -75,7 +75,7 @@ extension NuToriAPIClientTests {
                     try PushSyncWritesPayload(sentBody: sent.body)
                         == PushSyncWritesPayload(
                             clientState: .init(
-                                deviceId: "00000000-0000-4000-8000-0000000000D1",
+                                deviceId: "00000000-0000-4000-8000-0000000000d1",
                                 timeZone: "Asia/Tokyo",
                                 appVersion: "1.0.0",
                                 osVersion: "26.0",
@@ -86,7 +86,7 @@ extension NuToriAPIClientTests {
                             writes: [
                                 .createWeightRecord(
                                     .init(
-                                        id: createWriteId.uuidString,
+                                        id: "00000000-0000-4000-8000-0000000000a1",
                                         _type: .createWeightRecord,
                                         weightRecord: .init(
                                             id: recordId, weightKg: 72.4,
@@ -94,7 +94,7 @@ extension NuToriAPIClientTests {
                                 ),
                                 .updateWeightRecord(
                                     .init(
-                                        id: updateWriteId.uuidString,
+                                        id: "00000000-0000-4000-8000-0000000000a2",
                                         _type: .updateWeightRecord,
                                         weightRecord: .init(
                                             id: recordId, weightKg: 72.4,
@@ -127,7 +127,8 @@ extension NuToriAPIClientTests {
                 ]
                 clientState = .fixture()
                 transport = .ok(
-                    json: #"{"results":[{"writeId":"\#(writeId.uuidString)","result":"applied"}]}"#
+                    json:
+                        #"{"results":[{"writeId":"\#(writeId.canonicalString)","result":"applied"}]}"#
                 )
                 client = NuToriAPIClient(
                     serverURL: URL(string: "https://api.example")!,
@@ -147,10 +148,11 @@ extension NuToriAPIClientTests {
                     try PushSyncWritesPayload(sentBody: sent.body).writes == [
                         .updateAccountSettings(
                             .init(
-                                id: writeId.uuidString,
+                                id: "00000000-0000-4000-8000-0000000000a3",
                                 _type: .updateAccountSettings,
                                 accountSettings: .init(
-                                    id: settingsId.uuidString, sendsUsageData: false)
+                                    id: "00000000-0000-4000-8000-0000000000e1",
+                                    sendsUsageData: false)
                             )
                         )
                     ])
@@ -213,10 +215,10 @@ extension NuToriAPIClientTests {
                         == .init(
                             sourceAppName: "Withings",
                             sourceBundleId: "com.withings.wiScaleNG",
-                            healthkitSampleUuid: "00000000-0000-4000-8000-0000000000C1",
+                            healthkitSampleUuid: "00000000-0000-4000-8000-0000000000c1",
                             bodyFat: .init(
                                 percentage: 18.5,
-                                healthkitSampleUuid: "00000000-0000-4000-8000-0000000000C2")
+                                healthkitSampleUuid: "00000000-0000-4000-8000-0000000000c2")
                         ))
             }
         }
@@ -246,9 +248,9 @@ extension NuToriAPIClientTests {
                 transport = .ok(
                     json: """
                         {"results":[
-                          {"writeId":"\(writeIds[0].uuidString)","result":"applied"},
-                          {"writeId":"\(writeIds[1].uuidString)","result":"ignored_tombstone"},
-                          {"writeId":"\(writeIds[2].uuidString)","result":"kept_corrected"}
+                          {"writeId":"\(writeIds[0].canonicalString)","result":"applied"},
+                          {"writeId":"\(writeIds[1].canonicalString)","result":"ignored_tombstone"},
+                          {"writeId":"\(writeIds[2].canonicalString)","result":"kept_corrected"}
                         ]}
                         """
                 )
@@ -270,9 +272,9 @@ extension NuToriAPIClientTests {
                     try PushSyncWritesPayload(sentBody: sent.body).writes == [
                         .sourceDeletedWeightRecord(
                             .init(
-                                id: writeIds[0].uuidString,
+                                id: "00000000-0000-4000-8000-0000000000a3",
                                 _type: .sourceDeletedWeightRecord,
-                                weightRecordId: weightRecordId.uuidString))
+                                weightRecordId: "00000000-0000-4000-8000-0000000000b1"))
                     ])
             }
 
@@ -310,8 +312,8 @@ extension NuToriAPIClientTests {
                     transport: ClientTransportMock.ok(
                         json: """
                             {"results":[
-                              {"writeId":"\(createWriteId.uuidString)","result":"ignored_stale"},
-                              {"writeId":"\(updateWriteId.uuidString)","result":"rejected","rejectionReason":"too_old"}
+                              {"writeId":"\(createWriteId.canonicalString)","result":"ignored_stale"},
+                              {"writeId":"\(updateWriteId.canonicalString)","result":"rejected","rejectionReason":"too_old"}
                             ]}
                             """
                     ),
@@ -355,18 +357,18 @@ extension NuToriAPIClientTests {
                     transport: ClientTransportMock.ok(
                         json: """
                             {"results":[
-                              {"writeId":"\(ids[0].uuidString)","result":"rejected","rejectionReason":"version_too_low",
+                              {"writeId":"\(ids[0].canonicalString)","result":"rejected","rejectionReason":"version_too_low",
                                 "current":{"status":"value","change":{"kind":"weight_record","recordId":"\(id)",
                                   "record":{"id":"\(id)","weightKg":71,"measuredAt":1767225600000,
                                     "timeZone":"Asia/Tokyo","version":1}}}},
-                              {"writeId":"\(ids[1].uuidString)","result":"rejected","rejectionReason":"version_too_low",
+                              {"writeId":"\(ids[1].canonicalString)","result":"rejected","rejectionReason":"version_too_low",
                                 "current":{"status":"deleted","change":{"kind":"weight_record_deletion",
                                   "recordId":"\(id)","record":{}}}},
-                              {"writeId":"\(ids[2].uuidString)","result":"rejected","rejectionReason":"out_of_range",
+                              {"writeId":"\(ids[2].canonicalString)","result":"rejected","rejectionReason":"out_of_range",
                                 "current":{"status":"absent"}},
-                              {"writeId":"\(ids[3].uuidString)","result":"rejected","rejectionReason":"out_of_range",
+                              {"writeId":"\(ids[3].canonicalString)","result":"rejected","rejectionReason":"out_of_range",
                                 "current":{"status":"archived"}},
-                              {"writeId":"\(ids[4].uuidString)","result":"rejected","rejectionReason":"out_of_range"}
+                              {"writeId":"\(ids[4].canonicalString)","result":"rejected","rejectionReason":"out_of_range"}
                             ]}
                             """
                     ),
@@ -589,7 +591,7 @@ extension NuToriAPIClientTests {
                 #expect(sent.request.headerFields[.authorization] == "Bearer session-1")
                 #expect(
                     query == [
-                        "deviceId": "00000000-0000-4000-8000-0000000000D1",
+                        "deviceId": "00000000-0000-4000-8000-0000000000d1",
                         "timeZone": "Asia/Tokyo",
                         "appVersion": "1.0.0",
                         "osVersion": "26.0",

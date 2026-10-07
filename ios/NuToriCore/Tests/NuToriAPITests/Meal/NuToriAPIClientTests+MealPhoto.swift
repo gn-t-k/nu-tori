@@ -8,7 +8,7 @@ import Testing
 extension NuToriAPIClientTests {
     @Suite("食事の写真")
     struct MealPhoto {
-        static let photoId = "00000000-0000-4000-8000-0000000000C1"
+        static let photoId = "00000000-0000-4000-8000-0000000000c1"
 
         @Suite("縮小版を取りに行き、サーバーが写真を返したとき")
         struct Fetched {
