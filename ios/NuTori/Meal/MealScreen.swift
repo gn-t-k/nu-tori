@@ -180,7 +180,9 @@ struct MealScreen: View {
         }
         .datePickerStyle(.compact)
         // 端末のタイムゾーンでなく食事の時差の時計で見せ、選んだ値もその時計の時刻として受け取る。
-        // 地と文字の色は iOS の compact の見た目に任せ、Primary は押したときの tint（AccentColor）で出る
+        // 地と文字の色は iOS の compact の見た目に任せ、Primary は押したときの tint（AccentColor）で出る。
+        // DESIGN.md の「その場で直す値は Primary」に従わないのは、compact には押す前の文字の色を変える口が無く、
+        // Primary にするには標準の見た目と動き（カレンダーのアプリと同じ）を捨てて自前のボタンに替えることになるため
         .environment(\.timeZone, card.meal.eatenTimeZone)
         .accessibilityIdentifier("meal-time")
         .onChange(of: eatenAt) { _, chosen in
