@@ -122,15 +122,13 @@ struct DishScreen: View {
                 }
                 RejectedMealLinesText(lines: list.belowHeader)
             }
-            if let field = header.quantityField {
+            switch offer.nameAndQuantity {
+            case .editable(quantity: let field?):
                 quantityRow(field)
-            } else if offer.showsEmptyQuantity {
-                HStack(spacing: 8) {
-                    Text("量")
-                    Spacer()
-                    quantityText(nil)
-                        .accessibilityIdentifier("dish-quantity")
-                }
+            case .editable(quantity: nil):
+                EmptyView()
+            case .text(let field):
+                quantityRow(field)
             }
         } footer: {
             // 直せないときは、直したときの注記の代わりに、推定が終わると直せることを置く
@@ -141,21 +139,27 @@ struct DishScreen: View {
     }
 
     /// 量の数字の欄。単位は欄の右に文字で添え（変えられない）、推定したままの量には推定の印を添える。
-    /// 直せないときは、欄でなく文字で見せる（空なら置き文字）
-    private func quantityRow(_ field: DishScreenHeader.QuantityField) -> some View {
+    /// 直せないときは、欄でなく文字で見せる（空なら置き文字）。量の無い料理（`field` が nil）は、直せないときだけ置き、「—」だけを見せる
+    private func quantityRow(_ field: DishScreenHeader.QuantityField?) -> some View {
         HStack(spacing: 8) {
             Text("量")
-            nameOrQuantityValue(
-                TextField(field.placeholder, text: draft(.quantity, shown: field.text))
-                    .keyboardType(.decimalPad)
-                    .monospacedDigit()
-                    .focused($focusedField, equals: .quantity),
-                text: quantityText(field.text.isEmpty ? nil : field.text),
-                identifier: "dish-quantity")
-            Text(field.unit)
-                .foregroundStyle(.secondary)
-            if field.showsEstimateBadge {
-                EstimateBadge()
+            if let field {
+                nameOrQuantityValue(
+                    TextField(field.placeholder, text: draft(.quantity, shown: field.text))
+                        .keyboardType(.decimalPad)
+                        .monospacedDigit()
+                        .focused($focusedField, equals: .quantity),
+                    text: quantityText(field.text.isEmpty ? nil : field.text),
+                    identifier: "dish-quantity")
+                Text(field.unit)
+                    .foregroundStyle(.secondary)
+                if field.showsEstimateBadge {
+                    EstimateBadge()
+                }
+            } else {
+                Spacer()
+                quantityText(nil)
+                    .accessibilityIdentifier("dish-quantity")
             }
         }
     }

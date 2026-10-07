@@ -296,36 +296,48 @@ struct MealEditOfferTests {
         }
     }
 
-    @Suite("量の無い料理（足したばかり）の画面の量の行")
+    @Suite("推定できた食事の、量の無い料理（足したばかり）の画面")
     struct DishWithoutQuantity {
-        let estimatedMeal: MealCard
-        let waitingMeal: MealCard
-
-        init() throws {
+        /// 推定できた食事と、量の無い料理1品。`dishStatus` が nil なら、料理を足す書き込みがまだ送れていない
+        static func offer(dishStatus: DishEstimationStatus?) throws -> MealEditOffer.DishScreenOffer
+        {
             let meal = try Meal.fixture(
                 eatenAt: "2026-09-24T12:10:00+09:00", sentAt: "2026-09-24T12:11:00+09:00")
-            func card(status: MealEstimationStatus, dishStatus: DishEstimationStatus?) -> MealCard {
-                let dish = Dish.fixture(mealId: meal.id, quantity: nil)
-                return MealCard(
-                    meal: meal, status: status, recordedOnThisDevice: true, dishes: [dish],
-                    ingredients: [],
-                    dishEstimationStatuses: dishStatus.map { [dish.id: $0] } ?? [:],
-                    unsentDishIds: dishStatus == nil ? [dish.id] : [])
+            let dish = Dish.fixture(mealId: meal.id, quantity: nil)
+            let card = MealCard(
+                meal: meal, status: .estimated, recordedOnThisDevice: true, dishes: [dish],
+                ingredients: [], dishEstimationStatuses: dishStatus.map { [dish.id: $0] } ?? [:],
+                unsentDishIds: dishStatus == nil ? [dish.id] : [])
+            let contents = try #require(card.contents.dishes.first)
+            return MealEditOffer(card: card).dishScreen(contents)
+        }
+
+        @Suite("推定し直しを待っているとき")
+        struct Waiting {
+            let offer: MealEditOffer.DishScreenOffer
+
+            init() throws {
+                offer = try DishWithoutQuantity.offer(dishStatus: nil)
             }
-            estimatedMeal = card(status: .estimated, dishStatus: .noDishes)
-            waitingMeal = card(status: .estimated, dishStatus: nil)
+
+            @Test("名前を文字で見せ、量の行に「—」を置くこと")
+            func showsEmptyQuantity() {
+                #expect(offer.nameAndQuantity == .text(quantity: nil))
+            }
         }
 
-        @Test("推定し直しを待っているあいだは、量の行に「—」を置くこと")
-        func showsEmptyQuantityWhileWaiting() throws {
-            let contents = try #require(waitingMeal.contents.dishes.first)
-            #expect(MealEditOffer(card: waitingMeal).dishScreen(contents).showsEmptyQuantity)
-        }
+        @Suite("推定し直しが通らず、直せるとき")
+        struct Unestimable {
+            let offer: MealEditOffer.DishScreenOffer
 
-        @Test("直せるときは、量の行を置かないこと")
-        func showsNoQuantityWhenEditable() throws {
-            let contents = try #require(estimatedMeal.contents.dishes.first)
-            #expect(!MealEditOffer(card: estimatedMeal).dishScreen(contents).showsEmptyQuantity)
+            init() throws {
+                offer = try DishWithoutQuantity.offer(dishStatus: .noDishes)
+            }
+
+            @Test("名前を直せる欄にし、量の行を置かないこと")
+            func showsNoQuantity() {
+                #expect(offer.nameAndQuantity == .editable(quantity: nil))
+            }
         }
     }
 

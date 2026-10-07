@@ -10,7 +10,7 @@ public struct MealEditOffer: Hashable, Sendable {
         mealAwaitsEstimation = card.state.awaitsPhotoEstimation
     }
 
-    /// 食事の画面の料理の一覧の最後に置くもの。推定を待っている食事には「料理を足す」を出さない
+    /// 食事の画面の料理の一覧の後ろに置くもの。推定を待っている食事には「料理を足す」を出さない
     public var dishAddition: DishAddition {
         mealAwaitsEstimation ? .waiting(note: "推定が終わると、料理を足せます。") : .offered
     }
@@ -23,31 +23,28 @@ public struct MealEditOffer: Hashable, Sendable {
     /// 推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）は、名前と量を文字で見せ、「この料理を削除」だけを出す。
     /// 待っているあいだに直すと、サーバーが断る（`awaiting_estimation`）
     public func dishScreen(_ contents: DishContents) -> DishScreenOffer {
-        let editsNameAndQuantity = !mealAwaitsEstimation && !contents.progress.isWaiting
+        let quantity = DishScreenHeader(contents).quantityField
         return DishScreenOffer(
-            editsNameAndQuantity: editsNameAndQuantity,
-            showsEmptyQuantity: !editsNameAndQuantity && contents.dish.quantity == nil,
+            nameAndQuantity: !mealAwaitsEstimation && !contents.progress.isWaiting
+                ? .editable(quantity: quantity) : .text(quantity: quantity),
             showsIngredientsAndNutrients: !mealAwaitsEstimation
                 && contents.showsIngredientsAndNutrients,
             deletesDish: !mealAwaitsEstimation,
             progressNote: contents.row.note)
     }
 
-    /// 食事の画面の料理の一覧の最後に置くもの
+    /// 食事の画面の料理の一覧の後ろに置くもの
     public enum DishAddition: Hashable, Sendable {
         /// 「料理を足す」を出す
         case offered
-        /// 「料理を足す」を出さず、その場所に1行を置く
+        /// 「料理を足す」を出さず、料理の一覧（無ければ合計）の下の注記に1行を置く
         case waiting(note: String)
     }
 
     /// 料理の画面に出すもの
     public struct DishScreenOffer: Hashable, Sendable {
-        /// 名前と量を、押してその場で直せる欄にするか。直せないときは文字で見せる
-        public let editsNameAndQuantity: Bool
-        /// 量の無い料理（足したばかりで、推定し直しが一度も当たっていない料理）の量の行に「—」を置くか。
-        /// 直せないときだけ置き、食事の画面の料理の行と同じく量を「—」で見せる。直せるときは量の行を置かない
-        public let showsEmptyQuantity: Bool
+        /// 名前と量の見せ方
+        public let nameAndQuantity: NameAndQuantity
         /// 材料（量をその場で直せる）と栄養のまとまりを出すか
         public let showsIngredientsAndNutrients: Bool
         /// 「この料理を削除」を出すか
@@ -55,9 +52,22 @@ public struct MealEditOffer: Hashable, Sendable {
         /// 名前の下の、食事の画面の料理の行と同じ待ちの1行
         public let progressNote: DishRow.Note?
 
+        /// 名前と量を、押してその場で直せる欄にするか
+        public var editsNameAndQuantity: Bool {
+            if case .editable = nameAndQuantity { true } else { false }
+        }
+
         /// 名前と量を直せないときに、その下へ添える1行
         public var waitNote: String? {
             editsNameAndQuantity ? nil : "推定が終わると直せます。"
+        }
+
+        /// 名前と量の見せ方。`quantity` は量の欄で、量の無い料理（足したばかりで、推定し直しが一度も当たっていない料理）は nil
+        public enum NameAndQuantity: Hashable, Sendable {
+            /// 押してその場で直せる欄にする。量の無い料理は量の行を置かない
+            case editable(quantity: DishScreenHeader.QuantityField?)
+            /// 直せないので文字で見せる。量の無い料理も量の行を置き、食事の画面の料理の行と同じく量を「—」で見せる
+            case text(quantity: DishScreenHeader.QuantityField?)
         }
     }
 }
