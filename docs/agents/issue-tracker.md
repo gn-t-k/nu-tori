@@ -4,7 +4,7 @@
 
 ## 運用ルール
 
-操作にはすべて `gh api` の REST を使う（`gh issue ...` は GraphQL を使い、クラウドのセッションでは 403 で通らないため）。クラウドのセッションでの認証、書いたあとの読み直し、サブ Issue と依存関係の API は `docs/agents/git.md` の「クラウドのセッションで GitHub を操作する」。
+下の手順は、クラウドのセッションでも通る `gh api` の REST で書いてある。Mac のセッションでは `gh issue ...`・`gh pr ...` を使ってもよい。クラウドのセッションでの GitHub の扱い（REST に回るもの、添付できないこと、書いたあとの読み直し、サブ Issue と依存関係の API）は `docs/agents/git.md` の「クラウドのセッションで GitHub を操作する」。
 
 - **Issueを作る**：本文をファイルに書き、`jq -n --rawfile b <ファイル> '{title:"...", body:$b, labels:["..."]}' | gh api repos/gn-t-k/nu-tori/issues -X POST --input -`
 - **本文の長さ**：Issue の本文とコメントは 65,536 文字まで（バイトではなく文字）。仕様のような長い本文は、投稿の前に `python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read()))' <ファイル>` で数え、6 万文字を超えたら、ほかの節と重なる図や付録をコメントに分ける
@@ -13,20 +13,6 @@
 - **Issueにコメントする**：`gh api repos/gn-t-k/nu-tori/issues/<番号>/comments -X POST -F body=@<ファイル>`
 - **ラベルを付ける／外す**：`gh api repos/gn-t-k/nu-tori/issues/<番号>/labels -X POST -f 'labels[]=...'` ／ `gh api repos/gn-t-k/nu-tori/issues/<番号>/labels/<名前> -X DELETE`
 - **クローズする**：コメントを付けてから、`gh api repos/gn-t-k/nu-tori/issues/<番号> -X PATCH -f state=closed -f state_reason=completed`
-
-## 画像や動画を添付する
-
-Issue・PR の本文とコメントに画像や動画を添付するときだけは、REST ではなく `gh` の `--attach` を使う（`gh issue create`・`gh issue edit`・`gh issue comment`・`gh pr create`・`gh pr edit`・`gh pr comment`）。REST の API には添付する口が無い。
-
-- `gh` は v2.99.0 以上が要る。古ければ上げる（macOS は `brew upgrade gh`）
-- 本文では `![alt](./ファイル)` の形で参照し、同じパスを `--attach` に渡す。その参照が、上げた画像の URL に書き換わる。`<img src="./ファイル">` で書くと書き換わらず、画像は末尾に足される
-- 書いたら読み直し、本文に `./` のパスが残っていないか確かめる。残っていたら、末尾に足された URL で本文を直す
-- 添付してよいのは、開発者の健康データが写っていないものだけ（ルートの `AGENTS.md` の「公開リポジトリ」）
-- クラウドのセッションで通るかは、まだ確かめていない。確かめたらここに書き足す
-
-例: `gh issue comment 233 --repo gn-t-k/nu-tori --body-file comment.md --attach ./lockout.png`（`comment.md` に `![締め出しの画面](./lockout.png)` を書いておく）
-
-**Why:** REST だけを使う決まりに従うと、添付できないと判断して止まった（#233）。
 
 ## PRをtriage対象にするか
 
