@@ -3,6 +3,7 @@
 - WIP コミットは、PR を出す前に工程ごとのコミットにまとめる
 - 積み重ねた PR の前の PR を直したら、後ろのブランチに merge で取り込む。後ろのブランチを rebase すると、レビュー済みの差分とコメントの位置がずれるため
 - PR の本文は `/pr` の形で、日本語で書く。好みのレビューの結果や、ほかの文書が PR の本文に書くよう求めること（実機の確認、App Privacy の回答）は、その後ろに節を足して書く
+- Issue・PR に画像や動画を添付するときは、`gh` の `--attach` を使う（使い方は `--help`）。ファイル名は英数字にする（macOS は濁点を分けた形で持ち、本文の `./ファイル` の参照と一致せず書き換わらない）。添付してよいのは、開発者の健康データが写っていないものだけ（ルートの `AGENTS.md` の「公開リポジトリ」）
 
 ## 好みのレビュー
 
@@ -26,9 +27,9 @@ PR の本文に、好みのレビューの結果（0件か、2周目で直した
 
 Claude Code on the web のセッション（`CLAUDE_CODE_REMOTE=true`）では、GitHub への通信がプロキシを通り、プロキシが認証を差し込む。
 
-- `gh` は入っていない。要るときは `apt-get install -y gh` で入れる（見つからなければ先に `apt-get update`）
-- 認証は、`GH_TOKEN` に仮の値を入れて `gh` を動かす（`GH_TOKEN=proxy-injected gh api ...`）。本物のトークンはプロキシが差し替えるので、PAT を環境変数に置かない
+- `GH_TOKEN` には仮の値 `proxy-injected` が入っていて、本物のトークンはプロキシが差し替える。PAT を環境変数に置かない
 - GraphQL は PR 用の一部を除いて 403 になり、GraphQL を使う `gh issue ...` や `gh pr ...` は通らない。`gh api repos/<owner>/<repo>/...` の REST を使う
+- 画像や動画は添付できない（`gh` の `--attach` は、送る前にトークンの種類と GraphQL の権限を確かめる）。添付が要るときは、Mac のセッションか開発者に頼む。まだ試していないので、試したら結果でこの行を直す
   - 読む: `gh api repos/gn-t-k/nu-tori/issues/<n>`、コメントは `.../issues/<n>/comments`
   - サブ Issue: `.../issues/<親>/sub_issues`（追加は `-X POST -F sub_issue_id=<子の DB ID>`）
   - 依存関係: `.../issues/<n>/dependencies/blocked_by`（追加は `-X POST -F issue_id=<ブロック元の DB ID>`）。すでに張られていると 422「already been taken」が返る
