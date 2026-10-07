@@ -129,8 +129,9 @@ jobs:
       NUMBER: ${{ needs.identify-pr.outputs.number }}
       PR_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.identify-pr.outputs.number }}
       RUN_URL: ${{ github.event.workflow_run.html_url }}
-      # PR の題は Dependabot が上げる版に合わせて書き換えるので、探すときは PR の番号を含むこの部分だけで探す。close-failure-issue と同じ形
-      TITLE_KEY: 依存の PR #${{ needs.identify-pr.outputs.number }} の check が落ちている
+      # PR の題は Dependabot が上げる版に合わせて書き換えるので、探すときは PR の番号を含むこの部分だけで探す。close-failure-issue と同じ形。
+      # 引用符で囲まないと、YAML が「 #」から後ろをコメントとして切り、「依存の PR」だけになる
+      TITLE_KEY: '依存の PR #${{ needs.identify-pr.outputs.number }} の check が落ちている'
     steps:
       - id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -220,7 +221,7 @@ jobs:
       PR_URL: ${{ github.event.pull_request.html_url }}
       MERGED: ${{ github.event.pull_request.merged }}
       # track-failure と同じ形
-      TITLE_KEY: 依存の PR #${{ github.event.pull_request.number }} の check が落ちている
+      TITLE_KEY: '依存の PR #${{ github.event.pull_request.number }} の check が落ちている'
     steps:
       - id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
