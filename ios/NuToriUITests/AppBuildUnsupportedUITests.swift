@@ -18,8 +18,7 @@ final class AppBuildUnsupportedUITests: XCTestCase {
         XCTAssertTrue(
             app.staticTexts["このバージョンの nu-tori は使えなくなりました。最新のバージョンに更新すると、続けて使えます。"]
                 .exists)
-        // デバッグビルドは、どこから入れた版か見分けられないので App Store
-        XCTAssertTrue(app.buttons["App Store で更新"].exists)
+        XCTAssertTrue(app.buttons["更新する"].exists)
         XCTAssertFalse(app.otherElements["timeline"].exists)
         XCTAssertFalse(app.buttons["account"].exists)
         XCTAssertFalse(app.buttons["composer-weight"].exists)

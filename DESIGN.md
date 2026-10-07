@@ -96,6 +96,12 @@ components:
     typography: "{typography.subheadline-emphasized}"
     rounded: "{rounded.full}"
     height: 36px
+  button-primary-large:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.subheadline-emphasized}"
+    rounded: "{rounded.full}"
+    height: 50px
   button-secondary:
     backgroundColor: "{colors.fill}"
     textColor: "{colors.primary}"
@@ -270,7 +276,7 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 
 ## Components
 
-- **ボタン（button-primary、button-secondary）**: 主な操作（記録、始める、この目標で始める）は塗ったボタン（`.borderedProminent`）、並べる副の操作（あとで）は灰色のボタン（`.bordered`）。灰色のボタンの文字は Fill の地で 4.43:1 と 4.5:1 にわずかに届かないが、SwiftUI の標準の見た目を優先してそのまま使う。同じ組み合わせのステッパーの − と ＋、入力欄の体重のボタンは記号なので、記号の基準（3:1）で足りる
+- **ボタン（button-primary、button-primary-large、button-secondary）**: 主な操作（記録、始める、この目標で始める）は塗ったボタン（`.borderedProminent`）、並べる副の操作（あとで）は灰色のボタン（`.bordered`）。画面の下に横幅いっぱいで置く主ボタン（締め出しの画面の「更新する」）は、iOS の標準の下のボタンと同じ高さにするため `.controlSize(.large)` にする（button-primary-large）。灰色のボタンの文字は Fill の地で 4.43:1 と 4.5:1 にわずかに届かないが、SwiftUI の標準の見た目を優先してそのまま使う。同じ組み合わせのステッパーの − と ＋、入力欄の体重のボタンは記号なので、記号の基準（3:1）で足りる
 - **削除（button-destructive）**: `role: .destructive`。ボタンには削除するものの名前を入れる（「食事を削除」）
 - **一覧（list、list-row）**: 押して潜れる行には `chevron.right` を付ける。押してその場で直せる値は Primary で書く（list-row-editable-value）
 - **タイムラインのカード（timeline-card）**: 知らせ、週の振り返り。アプリからの知らせは全幅の白いカード

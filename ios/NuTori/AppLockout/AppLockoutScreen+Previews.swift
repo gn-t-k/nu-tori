@@ -1,22 +1,21 @@
 #if DEBUG
-    import NuToriCore
     import SwiftUI
 
     #Preview("状態ごと", arguments: AppLockoutScreen.Sample.allCases) { sample in
-        AppLockoutScreen(destination: sample.destination, openUpdate: {})
+        AppLockoutScreen(isOpening: sample.isOpening, openUpdate: {})
     }
 
     extension AppLockoutScreen {
         fileprivate enum Sample: CaseIterable {
-            /// App Store から入れた版、または見分けられないとき
-            case appStore
-            /// TestFlight から入れた版
-            case testFlight
+            /// 押す前
+            case idle
+            /// 押して、更新する場所を開くのを待っている
+            case opening
 
-            var destination: AppUpdateDestination {
+            var isOpening: Bool {
                 switch self {
-                case .appStore: .appStore(appId: nil)
-                case .testFlight: .testFlight
+                case .idle: false
+                case .opening: true
                 }
             }
         }
