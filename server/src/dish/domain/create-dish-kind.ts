@@ -8,7 +8,6 @@ import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
 import { scheduleDishReestimation } from "../../estimation/domain/schedule-dish-reestimation";
 import { computeReestimatedDishEditedEvents } from "./compute-reestimated-dish-edited-events";
@@ -100,14 +99,9 @@ const decideCreate = (
     // 足した料理の予定は、受け取った時刻が来ているので推定中になる
     addedChanges: [{ recordType: "dish_estimation_status", recordId: dishId }],
     usageEvents: [],
-    commit: (receiptId) => {
+    commit: () => {
       stores.dish.insert({ id: dishId, mealId, name, positionInMeal });
-      scheduleReestimation(
-        stores,
-        { id: dishId, mealSentTimeZone: meal.sentTimeZone },
-        receiptId,
-        receivedAt,
-      );
+      scheduleReestimation(stores, { id: dishId, mealSentTimeZone: meal.sentTimeZone }, receivedAt);
     },
   };
 };
@@ -158,7 +152,7 @@ const decideDelete = (
 };
 
 // 名前と量は、今の値と違う分だけ修正の出来事として足す。比例させた材料の量は端末が出したものを書き、計算し直さない。
-// 名前が変わったら、その料理の推定し直しを予定に入れる（まだ始まっていない前の予定は取り消す）。
+// 名前が変わったら、その料理の推定し直しを予定に入れる。
 // 食事が推定を待っているときと、料理が推定し直しを待っているときは断る
 const decideUpdate = (
   stores: DishKindStores,
@@ -239,7 +233,6 @@ const decideUpdate = (
         scheduleReestimation(
           stores,
           { id: dishId, mealSentTimeZone: meal.sentTimeZone },
-          receiptId,
           receivedAt,
         );
       }
@@ -251,11 +244,10 @@ const decideUpdate = (
 const scheduleReestimation = (
   stores: DishKindStores,
   dish: Parameters<typeof scheduleDishReestimation>[2],
-  receiptId: WriteReceiptId,
   receivedAt: Date,
 ): void => {
   stores.writeEstimationEvents(discardStatusChange, receivedAt, (writes) =>
-    scheduleDishReestimation(stores, writes, dish, receiptId, receivedAt),
+    scheduleDishReestimation(stores, writes, dish, receivedAt),
   );
 };
 
