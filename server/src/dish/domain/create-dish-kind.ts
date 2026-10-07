@@ -1,6 +1,5 @@
 import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
-import { dishAwaitsReestimation } from "../../dish-estimation-status/domain/dish-awaits-reestimation";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import { mealAwaitsEstimation } from "../../meal-estimation-status/domain/meal-awaits-estimation";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -11,6 +10,7 @@ import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-
 import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
 import { scheduleDishReestimation } from "../../estimation/domain/schedule-dish-reestimation";
 import { computeReestimatedDishEditedEvents } from "./compute-reestimated-dish-edited-events";
+import { dishAwaitsEstimation } from "./dish-awaits-estimation";
 import { deleteDishes } from "./delete-dishes";
 import type { Dish } from "./dish";
 import { type DishQuantityCorrection, type DishWrite, dishWriteTypes } from "./dish-write";
@@ -175,10 +175,7 @@ const decideUpdate = (
   ) {
     return rejected("update", dishId, "ingredients_replaced");
   }
-  if (
-    mealAwaitsEstimation(stores.mealEstimationStatus, current.mealId) ||
-    dishAwaitsReestimation(stores.dishEstimationStatus, dishId, receivedAt)
-  ) {
+  if (dishAwaitsEstimation(stores, current, receivedAt)) {
     return rejected("update", dishId, "awaiting_estimation");
   }
   if (
