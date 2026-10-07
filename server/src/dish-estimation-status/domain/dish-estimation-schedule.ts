@@ -1,5 +1,6 @@
 // 料理が対象の推定の予定ごとの、予定から先の出来事。見送った予定は推定を始めない。始めた予定は、完了か断念が来るまで推定中。
-// 取り消すのは始まっていない予定だけ（名前をまた直したとき）なので、取り消した予定は推定も見送りも持たない。
+// 取り消した予定は、推定し直しを待つあいだに名前をまた直せたころに取り消した、始まっていない予定で、推定も見送りも持たない。
+// 今は取り消さないが、前に取り消した行は読む。
 // 推定を始めた予定だけが、始めた推定の ID を持つ
 export type DishEstimationSchedule = { scheduleId: string; dueAt: Date } & (
   | { progress: "cancelled" }
@@ -7,7 +8,7 @@ export type DishEstimationSchedule = { scheduleId: string; dueAt: Date } & (
   | { progress: "estimating" | "estimated" | "no_dishes" | "abandoned"; estimationId: string }
 );
 
-// 取り消していない予定のうち、due_at がいちばん新しいもの。料理ごとの推定の状態と、届いた推定を当てるかは、この予定で決める。
+// 取り消していない予定のうち、due_at がいちばん新しいもの。料理ごとの推定の状態は、この予定で決める。
 // 見送りから作る次の日の予定は、見送りと同じトランザクションで足し、due_at が見送った予定より後なので、見送った予定がこれになることは無い
 export const findNewestActiveSchedule = (
   schedules: readonly DishEstimationSchedule[],
@@ -16,12 +17,7 @@ export const findNewestActiveSchedule = (
     .filter((schedule) => schedule.progress !== "cancelled")
     .toSorted((a, b) => b.dueAt.getTime() - a.dueAt.getTime())[0];
 
-// まだ始まっていない予定（推定も見送りも無く、取り消していない予定）。名前をまた直したときに取り消す
-export const findWaitingSchedules = (
-  schedules: readonly DishEstimationSchedule[],
-): DishEstimationSchedule[] => schedules.filter(({ progress }) => progress === "waiting");
-
-// 料理の推定を始めて、まだ完了も断念もしていない推定。名前をまた直したときに前の推定が呼び出し中なら、2つ以上並ぶ
+// 料理の推定を始めて、まだ完了も断念もしていない推定
 export const findOngoingEstimationIds = (schedules: readonly DishEstimationSchedule[]): string[] =>
   schedules.flatMap((schedule) =>
     schedule.progress === "estimating" ? [schedule.estimationId] : [],

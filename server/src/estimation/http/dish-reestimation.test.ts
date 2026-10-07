@@ -96,7 +96,6 @@ describe("名前を直したときの推定し直し", () => {
     readRows(
       accountId,
       `SELECT s.due_at, s.counted_on,
-              (SELECT count(*) FROM estimation_schedule_cancellations c WHERE c.estimation_schedule_id = s.id) AS cancelled,
               (SELECT count(*) FROM estimations e WHERE e.estimation_schedule_id = s.id) AS started
        FROM estimation_schedules s JOIN dish_estimation_schedules d ON d.estimation_schedule_id = s.id
        WHERE d.dish_id = '${dishId}' ORDER BY s.due_at`,
@@ -112,7 +111,6 @@ describe("名前を直したときの推定し直し", () => {
         {
           due_at: Date.now(),
           counted_on: new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10),
-          cancelled: 0,
           started: 0,
         },
       ]);
@@ -500,7 +498,6 @@ describe("名前を直したときの推定し直し", () => {
       expect((await readDishSchedules()).at(-1)).toEqual({
         due_at: Date.parse(`${nextDayOf(countedOn)}T00:00:00+09:00`),
         counted_on: nextDayOf(countedOn),
-        cancelled: 0,
         started: 0,
       });
     });

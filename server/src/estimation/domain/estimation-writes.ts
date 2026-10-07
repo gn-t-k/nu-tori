@@ -1,4 +1,3 @@
-import type { RecordId } from "../../domain/record-id";
 import type { EstimationEvents } from "./estimation-events";
 import type { EstimationTarget } from "./estimation-target";
 
@@ -7,9 +6,6 @@ import type { EstimationTarget } from "./estimation-target";
 export type EstimationWrites = {
   scheduleMeal: (schedule: EstimationEvents["schedule"]) => void;
   scheduleDish: (schedule: EstimationEvents["dishSchedule"]) => void;
-  cancelDishSchedule: (
-    cancellation: EstimationEvents["cancellation"] & { dishId: RecordId },
-  ) => void;
   // 1日の上限で見送るときは、次の日の予定も同じ書き込みで、同じ対象に足す
   deferToNextDay: (
     deferral: EstimationEvents["deferral"] & {
