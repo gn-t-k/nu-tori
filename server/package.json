@@ -7,17 +7,17 @@
     "@hono/zod-openapi": "1.6.3",
     "@praha/byethrow": "0.12.0",
     "@praha/error-factory": "1.4.1",
-    "@sentry/cloudflare": "11.2.0",
-    "@sentry/hono": "11.2.0",
+    "@sentry/cloudflare": "11.4.0",
+    "@sentry/hono": "11.4.0",
     "better-auth": "1.7.7",
     "drizzle-orm": "0.45.3",
-    "hono": "4.13.12",
+    "hono": "4.13.13",
     "jose": "6.2.12",
     "ts-pattern": "5.9.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "1.3.5",
+    "@cloudflare/vitest-plugin": "1.3.6",
     "@praha/byethrow-docs": "0.12.0",
     "@praha/byethrow-oxlint": "0.12.0",
     "@praha/byethrow-testing": "0.12.0",
@@ -31,7 +31,7 @@
     "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vitest": "4.1.11",
-    "wrangler": "4.146.0"
+    "wrangler": "4.147.0"
   },
   "packageManager": "pnpm@12.6.0"
 }
