@@ -20,11 +20,6 @@ public struct MealContents: Hashable, Sendable {
     /// 量と材料を待っている料理があるか
     public var hasWaitingDishes: Bool { Self.hasWaiting(dishes) }
 
-    /// 分かる料理（待っていない料理）があるか
-    var hasKnownDishes: Bool {
-        dishes.contains { !$0.progress.isWaiting }
-    }
-
     /// `dishes` と `ingredients` と `dishEstimationStatuses` は、全部の食事・全部の料理のものを渡してよい（この食事のものだけを取り出す）。
     /// `unsentDishIds` は、送り待ちに料理を足す・名前を直す書き込みがある料理（`DishSyncing.unsentDishIds(in:)`）。
     /// `mealState` は、食事のカードの状態

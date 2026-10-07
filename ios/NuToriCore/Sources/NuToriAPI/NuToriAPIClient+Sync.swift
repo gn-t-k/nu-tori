@@ -329,6 +329,7 @@ extension SyncWriteResult.RejectionReason {
         case "invalid_notice_type": self = .invalidNoticeType
         case "invalid_target_on": self = .invalidTargetOn
         case "ingredients_replaced": self = .ingredientsReplaced
+        case "awaiting_estimation": self = .awaitingEstimation
         default: self = .unknown(reason: reason)
         }
     }

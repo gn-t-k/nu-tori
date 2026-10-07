@@ -89,6 +89,8 @@
             public let estimatedDishes: @Sendable (UUID) -> [SyncChange]
             /// 推定し直し（料理を足した・名前を直した）を終えた料理に、料理の ID と名前から作る量と材料。nil なら材料を推定できない（料理なし）
             public let estimateDish: @Sendable (_ dishId: UUID, _ name: String) -> DishEstimate?
+            /// 食事の推定中を返してから、推定を終えるまでの取得の回数。その回数めの取得で終える
+            public let mealEstimationPulls: Int
 
             public init(
                 records: [SyncChange],
@@ -100,8 +102,10 @@
                 estimatedDishes: @escaping @Sendable (UUID) -> [SyncChange] = { _ in [] },
                 estimateDish:
                     @escaping @Sendable (_ dishId: UUID, _ name: String) -> DishEstimate? =
-                    { _, _ in nil }
+                    { _, _ in nil },
+                mealEstimationPulls: Int = 1
             ) {
+                precondition(mealEstimationPulls >= 1, "推定を終えるまでの取得は1回以上")
                 self.records = records
                 self.startedOn = startedOn
                 self.connection = connection
@@ -110,6 +114,7 @@
                 self.accountDeletion = accountDeletion
                 self.estimatedDishes = estimatedDishes
                 self.estimateDish = estimateDish
+                self.mealEstimationPulls = mealEstimationPulls
             }
         }
 
@@ -210,9 +215,7 @@
             case .answers:
                 let afterSequence = Self.afterSequence(of: request)
                 let entries = ledger.withLock {
-                    $0.pull(
-                        after: afterSequence, estimatedDishes: scenario.estimatedDishes,
-                        estimateDish: scenario.estimateDish)
+                    $0.pull(after: afterSequence, scenario: scenario)
                 }
                 return .init(
                     changes: try entries.map {
@@ -257,14 +260,20 @@
         private struct Ledger {
             private var sequence = 0
             private var entries: [RecordKey: Entry] = [:]
-            /// 推定中を返した食事。次に取りに行かれたら推定を終える
-            private var estimatingMealIds: [UUID] = []
+            /// 推定中を返した食事
+            private var estimatingMeals: [EstimatingMeal] = []
             /// 推定中を返した料理。次に取りに行かれたら推定し直しを終える
             private var estimatingDishIds: [UUID] = []
 
             struct Entry {
                 let sequence: Int
                 let change: SyncChange
+            }
+
+            /// 推定中を返した食事と、推定を終えるまでに残る取得の回数。0 になった取得で推定を終える
+            struct EstimatingMeal {
+                let mealId: UUID
+                let remainingPulls: Int
             }
 
             mutating func put(_ change: SyncChange) {
@@ -277,27 +286,31 @@
                 return change.isDeletion ? .deleted(change) : .value(change)
             }
 
-            mutating func pull(
-                after afterSequence: Int, estimatedDishes: (UUID) -> [SyncChange],
-                estimateDish: (UUID, String) -> DishEstimate?
-            ) -> [Entry] {
-                for mealId in estimatingMealIds {
-                    put(.mealEstimationStatus(.init(mealId: mealId, status: .estimated)))
-                    for change in estimatedDishes(mealId) {
+            mutating func pull(after afterSequence: Int, scenario: Scenario) -> [Entry] {
+                let pulled = estimatingMeals.map {
+                    EstimatingMeal(mealId: $0.mealId, remainingPulls: $0.remainingPulls - 1)
+                }
+                for meal in pulled where meal.remainingPulls == 0 {
+                    put(.mealEstimationStatus(.init(mealId: meal.mealId, status: .estimated)))
+                    for change in scenario.estimatedDishes(meal.mealId) {
                         put(change)
                     }
                 }
                 for dishId in estimatingDishIds {
-                    reestimate(dishId: dishId, estimateDish: estimateDish)
+                    reestimate(dishId: dishId, estimateDish: scenario.estimateDish)
                 }
                 let page = entries.values.filter { $0.sequence > afterSequence }
                     .sorted { $0.sequence < $1.sequence }
-                estimatingMealIds = page.compactMap {
-                    guard case .mealEstimationStatus(let status) = $0.change,
-                        status.status == .estimating
+                let stillEstimating = pulled.filter { $0.remainingPulls > 0 }
+                let newlyEstimating = page.compactMap { entry -> EstimatingMeal? in
+                    guard case .mealEstimationStatus(let status) = entry.change,
+                        status.status == .estimating,
+                        !stillEstimating.contains(where: { $0.mealId == status.mealId })
                     else { return nil }
-                    return status.mealId
+                    return EstimatingMeal(
+                        mealId: status.mealId, remainingPulls: scenario.mealEstimationPulls)
                 }
+                estimatingMeals = stillEstimating + newlyEstimating
                 estimatingDishIds = page.compactMap {
                     guard case .dishEstimationStatus(let status) = $0.change,
                         status.status == .estimating
@@ -412,7 +425,7 @@
                                 entryMethod: meal.entryMethod, photoIds: meal.photoIds)))
                 case .deleteMeal(_, let mealId):
                     put(.mealDeletion(mealId: mealId))
-                    estimatingMealIds.removeAll { $0 == mealId }
+                    estimatingMeals.removeAll { $0.mealId == mealId }
                 case .deleteDish(_, let dishId):
                     put(.dishDeletion(dishId: dishId))
                     for ingredient in ingredients(ofDish: dishId) {

@@ -7,6 +7,8 @@ import SwiftUI
 /// 直す状態に入る操作は無く、値を押せばその場で直せる（iOS の設定のアプリの詳細の画面と同じ）
 struct DishScreen: View {
     let contents: DishContents
+    /// 出す操作と待ちの1行。推定の状態はこの画面で見ず、これだけで決める
+    let offer: MealEditOffer.DishScreenOffer
     /// 受け付けなかった書き込みの1行の置き場（名前と量の下、材料の行の下と材料の行を外した位置）
     let list: DishScreenList
     /// 消すと食事の料理が無くなるか。最後の1品なら、料理でなく食事を消すかを確かめる
@@ -18,7 +20,7 @@ struct DishScreen: View {
     var body: some View {
         List {
             nameAndQuantity
-            if contents.showsIngredientsAndNutrients {
+            if offer.showsIngredientsAndNutrients {
                 if !list.ingredients.isEmpty {
                     Section("材料") {
                         ForEach(list.ingredients, id: \.rowId) { item in
@@ -36,7 +38,9 @@ struct DishScreen: View {
                 }
                 nutrientBreakdown
             }
-            deletionSection
+            if offer.deletesDish {
+                deletionSection
+            }
         }
         .navigationTitle(contents.dish.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -69,6 +73,7 @@ struct DishScreen: View {
     /// confirmsMealDeletion は開いたときに、最後の1品を消すかの確かめを出しているか
     init(
         contents: DishContents,
+        offer: MealEditOffer.DishScreenOffer,
         list: DishScreenList,
         removal: DishRemoval,
         actions: DishActions,
@@ -76,6 +81,7 @@ struct DishScreen: View {
         confirmsMealDeletion: Bool
     ) {
         self.contents = contents
+        self.offer = offer
         self.list = list
         self.removal = removal
         self.actions = actions
@@ -103,14 +109,14 @@ struct DishScreen: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 12) {
                     Text("名前")
-                    TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(Color.accentColor)
-                        .submitLabel(.done)
-                        .focused($focusedField, equals: .name)
-                        .accessibilityIdentifier("dish-name")
+                    nameOrQuantityValue(
+                        TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
+                            .submitLabel(.done)
+                            .focused($focusedField, equals: .name),
+                        text: Text(contents.dish.name),
+                        identifier: "dish-name")
                 }
-                if let note = contents.row.note {
+                if let note = offer.progressNote {
                     DishProgressNoteText(note: note)
                         .accessibilityIdentifier("dish-progress")
                 }
@@ -120,28 +126,47 @@ struct DishScreen: View {
                 quantityRow(field)
             }
         } footer: {
-            if let note = header.note(editingName: focusedField == .name) {
+            // 直せないときは、直したときの注記の代わりに、推定が終わると直せることを置く
+            if let note = offer.waitNote ?? header.note(editingName: focusedField == .name) {
                 Text(note)
             }
         }
     }
 
-    /// 量の数字の欄。単位は欄の右に文字で添え（変えられない）、推定したままの量には推定の印を添える
+    /// 量の数字の欄。単位は欄の右に文字で添え（変えられない）、推定したままの量には推定の印を添える。
+    /// 直せないときは、欄でなく文字で見せる（空なら置き文字）
     private func quantityRow(_ field: DishScreenHeader.QuantityField) -> some View {
         HStack(spacing: 8) {
             Text("量")
-            TextField(field.placeholder, text: draft(.quantity, shown: field.text))
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .monospacedDigit()
-                .foregroundStyle(Color.accentColor)
-                .focused($focusedField, equals: .quantity)
-                .accessibilityIdentifier("dish-quantity")
+            nameOrQuantityValue(
+                TextField(field.placeholder, text: draft(.quantity, shown: field.text))
+                    .keyboardType(.decimalPad)
+                    .monospacedDigit()
+                    .focused($focusedField, equals: .quantity),
+                text: Text(field.text.isEmpty ? field.placeholder : field.text).monospacedDigit(),
+                identifier: "dish-quantity")
             Text(field.unit)
                 .foregroundStyle(.secondary)
             if field.showsEstimateBadge {
                 EstimateBadge()
             }
+        }
+    }
+
+    /// 名前と量の値。直せるときは押してその場で直せる欄（`field`）を、直せないときは右へ寄せた文字（`text`）を置く
+    @ViewBuilder private func nameOrQuantityValue(
+        _ field: some View, text: Text, identifier: String
+    ) -> some View {
+        if offer.editsNameAndQuantity {
+            field
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(Color.accentColor)
+                .accessibilityIdentifier(identifier)
+        } else {
+            Spacer()
+            text
+                .multilineTextAlignment(.trailing)
+                .accessibilityIdentifier(identifier)
         }
     }
 

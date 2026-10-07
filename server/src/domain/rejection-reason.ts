@@ -10,4 +10,6 @@ export type RejectionReason =
   | "invalid_notice_type"
   | "invalid_target_on"
   // 推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）
-  | "ingredients_replaced";
+  | "ingredients_replaced"
+  // 推定を待っている食事（写真を待っている・推定中・翌日に推定）に料理を足そうとした、その料理と材料を直そうとした、推定し直しを待っている料理（推定中・翌日に推定）と、その材料を直そうとした
+  | "awaiting_estimation";

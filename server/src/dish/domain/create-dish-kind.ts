@@ -1,16 +1,16 @@
 import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
-import { computeDishEstimationStatus } from "../../dish-estimation-status/domain/compute-dish-estimation-status";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
+import { mealAwaitsEstimation } from "../../meal-estimation-status/domain/meal-awaits-estimation";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
 import { scheduleDishReestimation } from "../../estimation/domain/schedule-dish-reestimation";
 import { computeReestimatedDishEditedEvents } from "./compute-reestimated-dish-edited-events";
+import { dishAwaitsEstimation } from "./dish-awaits-estimation";
 import { deleteDishes } from "./delete-dishes";
 import type { Dish } from "./dish";
 import { type DishQuantityCorrection, type DishWrite, dishWriteTypes } from "./dish-write";
@@ -51,6 +51,7 @@ type DishKindStores = Pick<
   | "dishEstimationStatus"
   | "ingredient"
   | "meal"
+  | "mealEstimationStatus"
   | "latestTimeZone"
   | "estimationSchedule"
   | "estimation"
@@ -84,6 +85,9 @@ const decideCreate = (
   if (meal === undefined) {
     return rejected("create", dishId, "record_not_found");
   }
+  if (mealAwaitsEstimation(stores.mealEstimationStatus, mealId)) {
+    return rejected("create", dishId, "awaiting_estimation");
+  }
   if (!isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length)) {
     return rejected("create", dishId, "out_of_range");
   }
@@ -95,14 +99,9 @@ const decideCreate = (
     // 足した料理の予定は、受け取った時刻が来ているので推定中になる
     addedChanges: [{ recordType: "dish_estimation_status", recordId: dishId }],
     usageEvents: [],
-    commit: (receiptId) => {
+    commit: () => {
       stores.dish.insert({ id: dishId, mealId, name, positionInMeal });
-      scheduleReestimation(
-        stores,
-        { id: dishId, mealSentTimeZone: meal.sentTimeZone },
-        receiptId,
-        receivedAt,
-      );
+      scheduleReestimation(stores, { id: dishId, mealSentTimeZone: meal.sentTimeZone }, receivedAt);
     },
   };
 };
@@ -153,7 +152,8 @@ const decideDelete = (
 };
 
 // 名前と量は、今の値と違う分だけ修正の出来事として足す。比例させた材料の量は端末が出したものを書き、計算し直さない。
-// 名前が変わったら、その料理の推定し直しを予定に入れる（まだ始まっていない前の予定は取り消す）
+// 名前が変わったら、その料理の推定し直しを予定に入れる。
+// 食事が推定を待っているときと、料理が推定し直しを待っているときは断る
 const decideUpdate = (
   stores: DishKindStores,
   { dishId, name, quantity }: Extract<DishWrite, { type: "update_dish" }>,
@@ -162,6 +162,21 @@ const decideUpdate = (
   const current = stores.dish.find(dishId);
   if (current === undefined) {
     return rejected("update", dishId, "record_not_found");
+  }
+  // 比例の明細の材料は、同じ料理の今の材料でないと書けない（表の外部キーでは守れない）。
+  // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき。量が今と同じでも、載せた組は確かめる。
+  // 待っても直せないことを返すため、推定を待っていることより先に確かめる
+  if (
+    quantity !== undefined &&
+    !isSameIdSet(
+      quantity.proportionedIngredients.map(({ ingredientId }) => ingredientId),
+      stores.ingredient.findCurrentIdsOfDish(dishId),
+    )
+  ) {
+    return rejected("update", dishId, "ingredients_replaced");
+  }
+  if (dishAwaitsEstimation(stores, current, receivedAt)) {
+    return rejected("update", dishId, "awaiting_estimation");
   }
   if (
     !isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length) ||
@@ -172,27 +187,9 @@ const decideUpdate = (
   const renamed = name !== current.name;
   const quantityCorrection =
     quantity !== undefined && quantity.value !== current.quantity?.value ? quantity : undefined;
-  // 比例の明細の材料は、同じ料理の今の材料でないと書けない（表の外部キーでは守れない）。
-  // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき。量が今と同じでも、載せた組は確かめる
-  if (
-    quantity !== undefined &&
-    !isSameIdSet(
-      quantity.proportionedIngredients.map(({ ingredientId }) => ingredientId),
-      stores.ingredient.findCurrentIdsOfDish(dishId),
-    )
-  ) {
-    return rejected("update", dishId, "ingredients_replaced");
-  }
   if (!renamed && quantityCorrection === undefined) {
     return decideWithoutChange("update", dishId, { result: "applied" });
   }
-  // 名前を直した予定は、受け取った時刻が来ているので推定中になる。前から推定中なら変更を足さない
-  const startsEstimating =
-    renamed &&
-    computeDishEstimationStatus(
-      stores.dishEstimationStatus.findSchedulesOfDish(dishId),
-      receivedAt,
-    ) !== "estimating";
   return {
     writeKind: "update",
     recordId: dishId,
@@ -203,9 +200,8 @@ const decideUpdate = (
         recordType: "ingredient" as const,
         recordId: ingredientId,
       })),
-      ...(startsEstimating
-        ? [{ recordType: "dish_estimation_status" as const, recordId: dishId }]
-        : []),
+      // 名前を直した予定は、受け取った時刻が来ているので推定中になる。推定し直しを待っている料理の直しは上で断るので、前から推定中のことは無い
+      ...(renamed ? [{ recordType: "dish_estimation_status" as const, recordId: dishId }] : []),
     ],
     usageEvents: [
       // 比例させた材料は、使う人が直した量でないので送らない。直してある量をもう一度直したときも送らない
@@ -234,7 +230,6 @@ const decideUpdate = (
         scheduleReestimation(
           stores,
           { id: dishId, mealSentTimeZone: meal.sentTimeZone },
-          receiptId,
           receivedAt,
         );
       }
@@ -246,11 +241,10 @@ const decideUpdate = (
 const scheduleReestimation = (
   stores: DishKindStores,
   dish: Parameters<typeof scheduleDishReestimation>[2],
-  receiptId: WriteReceiptId,
   receivedAt: Date,
 ): void => {
   stores.writeEstimationEvents(discardStatusChange, receivedAt, (writes) =>
-    scheduleDishReestimation(stores, writes, dish, receiptId, receivedAt),
+    scheduleDishReestimation(stores, writes, dish, receivedAt),
   );
 };
 

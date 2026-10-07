@@ -89,10 +89,6 @@ export const writeEstimationEvents = <T>(
       rememberDish(schedule.dishId, { always: false });
       store.insertDishSchedule(schedule);
     },
-    cancelDishSchedule: ({ dishId, ...cancellation }) => {
-      rememberDish(dishId, { always: false });
-      store.insertCancellation(cancellation);
-    },
     deferToNextDay: ({ scheduleId, target, deferredAt, nextSchedule }) => {
       rememberTarget(target);
       store.insertDeferral({ scheduleId, deferredAt });

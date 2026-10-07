@@ -100,7 +100,7 @@ const estimationAbandonments = sqliteTable("estimation_abandonments", {
   abandonedAt: integer("abandoned_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-// 料理が対象の予定の取り消し。控えは取り消した名前の修正の書き込み（UNIQUE にしない理由は #332 の Schema changes）
+// 料理が対象の予定の取り消し。控えは取り消した名前の修正の書き込み（UNIQUE にしない理由は #332 の Schema changes）。書く口は無く、ある行を読むだけ
 const estimationScheduleCancellations = sqliteTable("estimation_schedule_cancellations", {
   // 料理の表がこの表の束を指し返すので、型の推論が循環しないよう参照先の型を書く
   estimationScheduleId: text("estimation_schedule_id")

@@ -49,6 +49,8 @@ public struct SyncWriteResult: Sendable, Equatable {
         case invalidTargetOn
         /// 推定し直しで、料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直した）
         case ingredientsReplaced
+        /// 推定を待っている食事（写真を待っている・推定中・翌日に推定）に料理を足そうとした、その料理と材料を直そうとした、推定し直しを待っている料理（推定中・翌日に推定）と、その材料を直そうとした
+        case awaitingEstimation
         case unknown(reason: String)
     }
 }

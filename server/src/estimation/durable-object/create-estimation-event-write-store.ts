@@ -14,7 +14,6 @@ const {
   estimationAttemptErrors,
   estimationCompletions,
   estimationAbandonments,
-  estimationScheduleCancellations,
 } = estimationTables;
 const { dishEstimationSchedules } = dishTables;
 
@@ -28,11 +27,6 @@ export const createEstimationEventWriteStore = (
   insertDishSchedule: ({ id, dueAt, countedOn, dishId }) => {
     db.insert(estimationSchedules).values({ id, dueAt, countedOn }).run();
     db.insert(dishEstimationSchedules).values({ estimationScheduleId: id, dishId }).run();
-  },
-  insertCancellation: ({ scheduleId, receiptId }) => {
-    db.insert(estimationScheduleCancellations)
-      .values({ estimationScheduleId: scheduleId, syncWriteReceiptId: receiptId.value })
-      .run();
   },
   insertDeferral: ({ scheduleId, deferredAt }) => {
     db.insert(estimationDeferrals).values({ estimationScheduleId: scheduleId, deferredAt }).run();
