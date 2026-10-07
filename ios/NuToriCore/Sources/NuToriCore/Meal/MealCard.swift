@@ -45,22 +45,23 @@ public struct MealCard: Hashable, Sendable {
         MealNutrition(state: state, contents: contents)
     }
 
-    /// カードの名前の場所。料理があれば、どの状態でも料理の名前を置く。
-    /// 食事の状態の1行は、料理が無いあいだは状態ごとに置き（#188）、料理を足したあとは推定中と翌日に推定だけ、写真の推定が済むまで残す
+    /// カードの名前の場所。推定が済んだ食事は、料理があれば料理の名前を、無ければ状態の1行を置く（#188）。
+    /// 推定を待っている食事は状態の1行だけを置く。推定を待っている食事には料理を足せないので、料理があるのは、
+    /// 写真の推定が作った料理が食事の推定の状態より先に届いた一瞬だけ
     public var namePlace: NamePlace {
-        guard let names = contents.name else {
-            return NamePlace(dishNames: nil, statusLine: state.statusLine)
-        }
         switch state {
-        case .estimating, .deferredToNextDay:
-            return NamePlace(dishNames: names, statusLine: state.statusLine)
-        case .notSent, .awaitingPhotos, .estimated, .noDishes, .failed:
+        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay:
+            return NamePlace(dishNames: nil, statusLine: state.statusLine)
+        case .estimated, .noDishes, .failed:
+            guard let names = contents.name else {
+                return NamePlace(dishNames: nil, statusLine: state.statusLine)
+            }
             return NamePlace(dishNames: names, statusLine: nil)
         }
     }
 
-    /// 食事の画面の料理の一覧の場所に置く、食事の写真の推定の状態。
-    /// 料理が無いあいだは状態ごとに置き（#188）、料理を足したあとは推定中と翌日に推定だけ、料理の行の上に写真の推定が済むまで残す
+    /// 食事の画面の料理の一覧の場所に置く、食事の写真の推定の状態。推定中と翌日に推定は状態ごとに置き、
+    /// 料理なしと推定できなかったは料理が無いあいだだけ置く（#188）
     public var dishListNote: DishListNote? {
         switch state {
         case .notSent, .awaitingPhotos, .estimated: nil
@@ -147,11 +148,7 @@ extension MealNutrition {
     fileprivate init(state: MealCardState, contents: MealContents) {
         switch state {
         case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay:
-            // 写真の推定がまだ作っていない料理があるので、足した料理のうち分かる料理の分に「以上」を付ける。
-            // 分かる料理が1つも無いあいだは、#188 のまま出さない
-            self =
-                contents.hasKnownDishes
-                ? .estimated(contents.totals.markingIncomplete()) : .pending
+            self = .pending
         case .estimated:
             // 推定できた食事には、料理が1つ以上ある。無いのは、料理がまだ届いていないとき
             self = contents.dishes.isEmpty ? .pending : .estimated(contents.totals)

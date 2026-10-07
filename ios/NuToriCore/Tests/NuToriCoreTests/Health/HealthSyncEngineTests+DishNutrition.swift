@@ -132,50 +132,6 @@ extension HealthSyncEngineTests {
             }
         }
 
-        @Suite("写真を待っている食事に足した料理の推定し直しが通ったとき")
-        struct DishAddedToMealAwaitingPhotos {
-            let healthStore: HealthStoreMock
-            let engine: HealthSyncEngine
-
-            init() throws {
-                let store = try SyncBoxMock<RecordCacheMock>.ok()
-                try store.cache.putMeal(status: .awaitingPhotos)
-                store.cache.putDish(version: 2, energyKcal: 200)
-                store.cache.write(.estimated, forDishId: DishNutrition.dishId)
-                healthStore = .ok()
-                engine = .fixture(healthStore: healthStore, store: store)
-            }
-
-            @Test("食事の推定の状態は見ずに書くこと")
-            func exports() async throws {
-                try await engine.exportNutrition()
-
-                #expect(healthStore.nutritionWrites.map(\.syncId) == [DishNutrition.dishId])
-            }
-        }
-
-        @Suite("推定中食事に足した料理の推定し直しが通ったとき")
-        struct DishAddedToMealEstimating {
-            let healthStore: HealthStoreMock
-            let engine: HealthSyncEngine
-
-            init() throws {
-                let store = try SyncBoxMock<RecordCacheMock>.ok()
-                try store.cache.putMeal(status: .estimating)
-                store.cache.putDish(version: 2, energyKcal: 200)
-                store.cache.write(.estimated, forDishId: DishNutrition.dishId)
-                healthStore = .ok()
-                engine = .fixture(healthStore: healthStore, store: store)
-            }
-
-            @Test("食事の推定の状態は見ずに書くこと")
-            func exports() async throws {
-                try await engine.exportNutrition()
-
-                #expect(healthStore.nutritionWrites.map(\.syncId) == [DishNutrition.dishId])
-            }
-        }
-
         @Suite("量が無い料理のとき")
         struct DishWithoutQuantity {
             let healthStore: HealthStoreMock

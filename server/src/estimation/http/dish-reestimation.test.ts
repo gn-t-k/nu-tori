@@ -1,4 +1,4 @@
-import { runDurableObjectAlarm } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
@@ -296,6 +296,42 @@ describe("名前を直したときの推定し直し", () => {
           });
         });
       });
+    });
+  });
+
+  // 推定を待っている食事には料理を足せないので、料理が対象の予定は食事の写真を待たない
+  describe("推定できた食事に料理を足す書き込みを当てたとき", () => {
+    let receivedAt: number;
+    let alarmAt: number | null;
+    let alarmRan: boolean;
+    beforeEach(async () => {
+      clock.advance(1000);
+      receivedAt = Date.now();
+      await pushSyncWrites(sessionToken, { writes: [createDishWrite(mealId, { name: "味噌汁" })] });
+      alarmAt = await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
+        state.storage.getAlarm(),
+      );
+      alarmRan = await runEstimationAlarm(accountId);
+    });
+
+    test("アラームを、書き込みを受け取った時刻に張ること", () => {
+      expect({ alarmAt, alarmRan }).toEqual({ alarmAt: receivedAt, alarmRan: true });
+    });
+
+    test("受け取った時刻に、① に食事の写真と足した料理の名前を渡して推定し直すこと", () => {
+      expect(
+        readIdentifyDishesRequests(provider)
+          .slice(1)
+          .map(({ photos, target }) => ({ photoCount: photos.length, target })),
+      ).toEqual([
+        {
+          photoCount: 1,
+          target: {
+            type: "dish",
+            dish: { name: "味噌汁", correctedIngredients: [], correctedQuantity: undefined },
+          },
+        },
+      ]);
     });
   });
 

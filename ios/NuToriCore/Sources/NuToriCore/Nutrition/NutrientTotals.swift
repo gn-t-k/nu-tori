@@ -40,7 +40,7 @@ public struct NutrientTotals: Hashable, Sendable {
                 ($0, Entry(sum: 0, hasKnown: true, hasUnknown: false))
             }))
 
-    /// 分からない分が別にある合計にする（料理ごとに待つ料理や、写真の推定がまだ作っていない料理）。
+    /// 分からない分が別にある合計にする（料理ごとに待つ料理）。
     /// 分かる値のある栄養は「以上」に、分かる値の無い栄養は「不明」になる
     func markingIncomplete() -> NutrientTotals {
         NutrientTotals(
