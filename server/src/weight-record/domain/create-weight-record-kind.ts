@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import type { RecordId } from "../../domain/record-id";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
@@ -120,7 +121,10 @@ const decideUpdate = (
   });
 };
 
-const decideSourceDeleted = (dependencies: Dependencies, weightRecordId: string): WriteDecision => {
+const decideSourceDeleted = (
+  dependencies: Dependencies,
+  weightRecordId: RecordId,
+): WriteDecision => {
   const { store } = dependencies;
   if (store.hasDeletion(weightRecordId)) {
     return settled("source_deleted", weightRecordId, { result: "ignored_tombstone" });
@@ -141,7 +145,7 @@ const decideSourceDeleted = (dependencies: Dependencies, weightRecordId: string)
 // 行を書かずに終わる。削除の印で捨てたときだけ、変更の並びに載せる
 const settled = (
   writeKind: WriteKind,
-  recordId: string,
+  recordId: RecordId,
   outcome: Exclude<SyncWriteOutcome, { result: "applied" }>,
 ): WriteDecision => ({
   writeKind,
@@ -155,7 +159,7 @@ const settled = (
 
 const applied = (
   writeKind: WriteKind,
-  recordId: string,
+  recordId: RecordId,
   commit: WriteDecision["commit"],
 ): WriteDecision => ({
   writeKind,

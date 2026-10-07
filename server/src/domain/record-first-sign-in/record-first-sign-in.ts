@@ -1,3 +1,4 @@
+import { generateRecordId } from "../record-id";
 import { computeCalendarDayInTimeZone } from "../compute-calendar-day-in-time-zone";
 import { isTimeZoneName } from "../is-time-zone-name";
 import type { FirstSignInStore } from "./first-sign-in-store";
@@ -13,7 +14,7 @@ export const recordFirstSignIn = (
   const timeZone =
     signIn.timeZone !== undefined && isTimeZoneName(signIn.timeZone) ? signIn.timeZone : undefined;
   store.insert({
-    id: crypto.randomUUID(),
+    id: generateRecordId(),
     startedOn: computeCalendarDayInTimeZone(signIn.signedInAt, timeZone ?? "UTC"),
     signedInAt: signIn.signedInAt,
     timeZone,

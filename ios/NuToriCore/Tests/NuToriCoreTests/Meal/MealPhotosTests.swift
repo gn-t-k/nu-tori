@@ -43,7 +43,7 @@ struct MealPhotosTests {
             #expect(started.upload == MealPhotoUpload(mealId: meal.id, photoId: photoId))
             #expect(try Data(contentsOf: started.file) == MealPhotos.downscaled(original))
             #expect(started.request.method == "PUT")
-            #expect(started.request.url.path() == "/v1/meal-photos/\(photoId.uuidString)")
+            #expect(started.request.url.path() == "/v1/meal-photos/\(photoId.canonicalString)")
             #expect(started.request.headerFields["Authorization"] == "Bearer session-1")
         }
 

@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { weightTrendRecordId } from "../domain/weight-trend-record-id";
 
 // 取りに行く変更の record の形。応答の SyncChange は種類によらず record を任意のオブジェクトで持つので、応答のスキーマからは指さない
 export const weightTrendRecordSchema = z
@@ -16,6 +17,5 @@ export const weightTrendRecordSchema = z
       }),
   })
   .openapi({
-    description:
-      "kind が weight_trend の変更の record。recordId は weight_trend の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く",
+    description: `kind が weight_trend の変更の record。recordId は ${weightTrendRecordId}（UUID の nil）の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く`,
   });

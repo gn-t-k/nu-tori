@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
@@ -19,7 +20,7 @@ describe("体重記録の同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
   });
 
   describe("体重記録を作る書き込みを送ったとき", () => {
@@ -66,8 +67,8 @@ describe("体重記録の同期", () => {
           imported: {
             sourceAppName: "Withings",
             sourceBundleId: "com.withings.wiScaleNG",
-            healthkitSampleUuid: crypto.randomUUID(),
-            bodyFat: { percentage: 18.5, healthkitSampleUuid: crypto.randomUUID() },
+            healthkitSampleUuid: generateRecordId(),
+            bodyFat: { percentage: 18.5, healthkitSampleUuid: generateRecordId() },
           },
         },
       });
@@ -374,7 +375,7 @@ describe("体重記録の同期", () => {
     let response: Response;
     beforeEach(async () => {
       response = await pushSyncWrites(sessionToken, {
-        writes: [updateWeightRecordWrite(crypto.randomUUID())],
+        writes: [updateWeightRecordWrite(generateRecordId())],
       });
     });
 
@@ -406,8 +407,8 @@ describe("体重記録の同期", () => {
           imported: {
             sourceAppName: "Withings",
             sourceBundleId: "com.withings.wiScaleNG",
-            healthkitSampleUuid: crypto.randomUUID(),
-            bodyFat: { percentage: 75.1, healthkitSampleUuid: crypto.randomUUID() },
+            healthkitSampleUuid: generateRecordId(),
+            bodyFat: { percentage: 75.1, healthkitSampleUuid: generateRecordId() },
           },
         },
       });
@@ -493,8 +494,8 @@ describe("体重記録の同期", () => {
           imported: {
             sourceAppName: "Withings",
             sourceBundleId: "com.withings.wiScaleNG",
-            healthkitSampleUuid: crypto.randomUUID(),
-            bodyFat: { percentage: 18.5, healthkitSampleUuid: crypto.randomUUID() },
+            healthkitSampleUuid: generateRecordId(),
+            bodyFat: { percentage: 18.5, healthkitSampleUuid: generateRecordId() },
           },
         },
       });
@@ -648,7 +649,7 @@ describe("体重記録の同期", () => {
           imported: {
             sourceAppName: "Withings",
             sourceBundleId: "com.withings.wiScaleNG",
-            healthkitSampleUuid: crypto.randomUUID(),
+            healthkitSampleUuid: generateRecordId(),
           },
         },
       });
@@ -709,7 +710,7 @@ describe("体重記録の同期", () => {
     let recordId: string;
     let response: Response;
     beforeEach(async () => {
-      recordId = crypto.randomUUID();
+      recordId = generateRecordId();
       response = await pushSyncWrites(sessionToken, {
         writes: [sourceDeletedWeightRecordWrite(recordId)],
       });

@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
@@ -35,7 +36,7 @@ describe("料理の同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
     // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
     useFakeClock(Date.now() + 86_400_000);
     pullChangesAfter = async (afterSequence) =>
@@ -86,7 +87,7 @@ describe("料理の同期", () => {
     let write: ReturnType<typeof deleteDishWrite>;
     let results: PushResults["results"];
     beforeEach(async () => {
-      dishId = crypto.randomUUID();
+      dishId = generateRecordId();
       write = deleteDishWrite(dishId);
       ({ results } = await (
         await pushSyncWrites(sessionToken, { writes: [write] })
@@ -181,7 +182,7 @@ describe("料理の同期", () => {
     describe("消した料理と同じ ID の料理を足す書き込みを送ったとき", () => {
       let dishId: string;
       beforeEach(async () => {
-        dishId = crypto.randomUUID();
+        dishId = generateRecordId();
         await pushSyncWrites(sessionToken, { writes: [deleteDishWrite(dishId)] });
       });
 
@@ -232,7 +233,7 @@ describe("料理の同期", () => {
     describe("知らない食事に料理を足す書き込みを送ったとき", () => {
       let rejection: Rejection;
       beforeEach(async () => {
-        rejection = await pushRejection(sessionToken, [createDishWrite(crypto.randomUUID())]);
+        rejection = await pushRejection(sessionToken, [createDishWrite(generateRecordId())]);
       });
 
       test("足す先が無いとして、今の値に無いことを添えること", () => {
@@ -468,7 +469,7 @@ describe("料理の同期", () => {
       describe("知らない料理を直す書き込みのとき", () => {
         beforeEach(async () => {
           rejection = await pushRejection(sessionToken, [
-            updateDishWrite(crypto.randomUUID(), { name: "カツ丼" }),
+            updateDishWrite(generateRecordId(), { name: "カツ丼" }),
           ]);
         });
 
@@ -543,6 +544,26 @@ describe("料理の同期", () => {
             status: "value",
           });
         });
+      });
+    });
+
+    // 端末の UUID は大文字の綴りを出すので、そのまま送り返すとサーバーの ID と食い違う（#362）
+    describe("サーバーが振った料理の ID を大文字にして、名前を直す書き込みを送ったとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [
+            { ...updateDishWrite(dishId, { name: "カツ丼" }), dishId: dishId.toUpperCase() },
+          ],
+        });
+      });
+
+      test("400 を返すこと", () => {
+        expect(response.status).toBe(400);
+      });
+
+      test("料理を直さないこと", async () => {
+        expect(await pullChangesAfter(lastSequence)).toEqual([]);
       });
     });
 

@@ -24,10 +24,15 @@
     "byethrow/prefer-result-async": "error",
     "byethrow/prefer-result-matchers": "error",
     "byethrow/prefer-result-maybe-async": "error",
-    "nu-tori/no-switch-statement": "error"
+    "nu-tori/no-switch-statement": "error",
+    "nu-tori/no-random-uuid": "error"
   },
   "ignorePatterns": ["worker-configuration.d.ts"],
   "overrides": [
+    {
+      "files": ["src/domain/record-id/record-id.ts"],
+      "rules": { "nu-tori/no-random-uuid": "off" }
+    },
     {
       "files": ["src/domain/**/*.ts", "src/*/domain/**/*.ts"],
       "rules": {

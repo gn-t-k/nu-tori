@@ -1,11 +1,15 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
 import type { EstimationWrites } from "../domain/estimation-writes";
+
+const meal1 = generateRecordId();
+const meal2 = generateRecordId();
 
 // 推定の書き込みの口（ドメイン層の writeEstimationEvents）を、Durable Object の置き場で組んだ形で確かめる。
 // ドメイン層のテストは cloudflare:test を import できないので、ここに置く
@@ -30,7 +34,7 @@ const writeInAccount = (seed: Seed, run: Run): Promise<RecordChangeTarget<string
 // 待っている予定のある食事。見送り・開始の前の形
 const seedWaitingSchedule = async (
   factory: ReturnType<typeof durableObjectFactory>,
-  ids: { mealId: string; scheduleId: string },
+  ids: { mealId: RecordId; scheduleId: string },
 ) => {
   await factory.meals.create({ id: ids.mealId });
   await factory.estimationSchedules.create({ id: ids.scheduleId });
@@ -42,11 +46,11 @@ const seedWaitingSchedule = async (
 
 // 見送った予定と、次の日の待っている予定のある食事
 const seedDeferredSchedule = async (factory: ReturnType<typeof durableObjectFactory>) => {
-  await factory.meals.create({ id: "meal-1" });
+  await factory.meals.create({ id: meal1 });
   await factory.estimationSchedules.create({ id: "schedule-1", dueAt: startedAt });
   await factory.mealEstimationSchedules.create({
     estimationScheduleId: "schedule-1",
-    mealId: "meal-1",
+    mealId: meal1,
   });
   await factory.estimationDeferrals.create({ estimationScheduleId: "schedule-1" });
   await factory.estimationSchedules.create({
@@ -56,13 +60,13 @@ const seedDeferredSchedule = async (factory: ReturnType<typeof durableObjectFact
   });
   await factory.mealEstimationSchedules.create({
     estimationScheduleId: "schedule-2",
-    mealId: "meal-1",
+    mealId: meal1,
   });
 };
 
 // 推定を始めた予定のある食事
 const seedStartedEstimation = async (factory: ReturnType<typeof durableObjectFactory>) => {
-  await seedWaitingSchedule(factory, { mealId: "meal-1", scheduleId: "schedule-1" });
+  await seedWaitingSchedule(factory, { mealId: meal1, scheduleId: "schedule-1" });
   await factory.estimations.create({ id: "estimation-1", estimationScheduleId: "schedule-1" });
 };
 
@@ -75,12 +79,12 @@ describe("推定の書き込みの口", () => {
     let run: Run;
     beforeEach(() => {
       seed = async (factory) => {
-        await factory.meals.create({ id: "meal-1" });
+        await factory.meals.create({ id: meal1 });
       };
       run = (writes) => {
         writes.scheduleMeal({
           id: "schedule-1",
-          mealId: "meal-1",
+          mealId: meal1,
           dueAt: startedAt,
           countedOn: "2026-01-01",
         });
@@ -89,7 +93,7 @@ describe("推定の書き込みの口", () => {
 
     test("推定の状態の変更を足すこと（推定待ち → 推定中）", async () => {
       expect(await writeInAccount(seed, run)).toEqual([
-        { recordType: "meal_estimation_status", recordId: "meal-1" },
+        { recordType: "meal_estimation_status", recordId: meal1 },
       ]);
     });
   });
@@ -98,12 +102,11 @@ describe("推定の書き込みの口", () => {
     let seed: Seed;
     let run: Run;
     beforeEach(() => {
-      seed = (factory) =>
-        seedWaitingSchedule(factory, { mealId: "meal-1", scheduleId: "schedule-1" });
+      seed = (factory) => seedWaitingSchedule(factory, { mealId: meal1, scheduleId: "schedule-1" });
       run = (writes) => {
         writes.deferToNextDay({
           scheduleId: "schedule-1",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           deferredAt: startedAt,
           nextSchedule: { id: "schedule-2", dueAt: nextDayStartsAt, countedOn: "2026-01-02" },
         });
@@ -112,7 +115,7 @@ describe("推定の書き込みの口", () => {
 
     test("推定の状態の変更を足すこと（推定中 → 翌日に推定）", async () => {
       expect(await writeInAccount(seed, run)).toEqual([
-        { recordType: "meal_estimation_status", recordId: "meal-1" },
+        { recordType: "meal_estimation_status", recordId: meal1 },
       ]);
     });
   });
@@ -126,7 +129,7 @@ describe("推定の書き込みの口", () => {
         writes.beginEstimation({
           id: "estimation-1",
           scheduleId: "schedule-2",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           startedAt: nextDayStartsAt,
         });
       };
@@ -134,7 +137,7 @@ describe("推定の書き込みの口", () => {
 
     test("推定の状態の変更を足すこと（翌日に推定 → 推定中）", async () => {
       expect(await writeInAccount(seed, run)).toEqual([
-        { recordType: "meal_estimation_status", recordId: "meal-1" },
+        { recordType: "meal_estimation_status", recordId: meal1 },
       ]);
     });
   });
@@ -143,13 +146,12 @@ describe("推定の書き込みの口", () => {
     let seed: Seed;
     let run: Run;
     beforeEach(() => {
-      seed = (factory) =>
-        seedWaitingSchedule(factory, { mealId: "meal-1", scheduleId: "schedule-1" });
+      seed = (factory) => seedWaitingSchedule(factory, { mealId: meal1, scheduleId: "schedule-1" });
       run = (writes) => {
         writes.beginEstimation({
           id: "estimation-1",
           scheduleId: "schedule-1",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           startedAt,
         });
         writes.beginAttempt({
@@ -173,7 +175,7 @@ describe("推定の書き込みの口", () => {
       run = (writes) => {
         writes.complete({
           estimationId: "estimation-1",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           completedAt: startedAt,
           result: "estimated",
         });
@@ -182,7 +184,7 @@ describe("推定の書き込みの口", () => {
 
     test("推定の状態の変更を足すこと（推定中 → 推定済み）", async () => {
       expect(await writeInAccount(seed, run)).toEqual([
-        { recordType: "meal_estimation_status", recordId: "meal-1" },
+        { recordType: "meal_estimation_status", recordId: meal1 },
       ]);
     });
   });
@@ -195,7 +197,7 @@ describe("推定の書き込みの口", () => {
       run = (writes) => {
         writes.complete({
           estimationId: "estimation-1",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           completedAt: startedAt,
           result: "no_dishes",
         });
@@ -204,7 +206,7 @@ describe("推定の書き込みの口", () => {
 
     test("推定の状態の変更を足すこと（推定中 → 料理なし）", async () => {
       expect(await writeInAccount(seed, run)).toEqual([
-        { recordType: "meal_estimation_status", recordId: "meal-1" },
+        { recordType: "meal_estimation_status", recordId: meal1 },
       ]);
     });
   });
@@ -217,7 +219,7 @@ describe("推定の書き込みの口", () => {
       run = (writes) => {
         writes.abandon({
           estimationId: "estimation-1",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           abandonedAt: startedAt,
         });
       };
@@ -225,7 +227,7 @@ describe("推定の書き込みの口", () => {
 
     test("推定の状態の変更を足すこと（推定中 → 推定できなかった）", async () => {
       expect(await writeInAccount(seed, run)).toEqual([
-        { recordType: "meal_estimation_status", recordId: "meal-1" },
+        { recordType: "meal_estimation_status", recordId: meal1 },
       ]);
     });
   });
@@ -235,19 +237,19 @@ describe("推定の書き込みの口", () => {
     let run: Run;
     beforeEach(() => {
       seed = async (factory) => {
-        await seedWaitingSchedule(factory, { mealId: "meal-1", scheduleId: "schedule-1" });
-        await seedWaitingSchedule(factory, { mealId: "meal-2", scheduleId: "schedule-2" });
+        await seedWaitingSchedule(factory, { mealId: meal1, scheduleId: "schedule-1" });
+        await seedWaitingSchedule(factory, { mealId: meal2, scheduleId: "schedule-2" });
       };
       run = (writes) => {
         writes.beginEstimation({
           id: "estimation-1",
           scheduleId: "schedule-1",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           startedAt,
         });
         writes.deferToNextDay({
           scheduleId: "schedule-2",
-          target: { type: "meal", mealId: "meal-2" },
+          target: { type: "meal", mealId: meal2 },
           deferredAt: startedAt,
           nextSchedule: { id: "schedule-3", dueAt: nextDayStartsAt, countedOn: "2026-01-02" },
         });
@@ -256,7 +258,7 @@ describe("推定の書き込みの口", () => {
 
     test("状態の変わった食事の分だけ、推定の状態の変更を足すこと", async () => {
       expect(await writeInAccount(seed, run)).toEqual([
-        { recordType: "meal_estimation_status", recordId: "meal-2" },
+        { recordType: "meal_estimation_status", recordId: meal2 },
       ]);
     });
   });
@@ -265,19 +267,18 @@ describe("推定の書き込みの口", () => {
     let seed: Seed;
     let run: Run;
     beforeEach(() => {
-      seed = (factory) =>
-        seedWaitingSchedule(factory, { mealId: "meal-1", scheduleId: "schedule-1" });
+      seed = (factory) => seedWaitingSchedule(factory, { mealId: meal1, scheduleId: "schedule-1" });
       run = (writes) => {
         writes.deferToNextDay({
           scheduleId: "schedule-1",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           deferredAt: startedAt,
           nextSchedule: { id: "schedule-2", dueAt: nextDayStartsAt, countedOn: "2026-01-02" },
         });
         writes.beginEstimation({
           id: "estimation-1",
           scheduleId: "schedule-2",
-          target: { type: "meal", mealId: "meal-1" },
+          target: { type: "meal", mealId: meal1 },
           startedAt: nextDayStartsAt,
         });
       };

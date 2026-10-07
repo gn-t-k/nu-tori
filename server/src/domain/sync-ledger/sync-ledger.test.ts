@@ -1,3 +1,4 @@
+import { generateRecordId, type RecordId } from "../record-id";
 import { beforeEach, describe, expect, test } from "vitest";
 import type { SyncClientState } from "../sync-client-state";
 import { createSyncLedger } from "./sync-ledger";
@@ -8,6 +9,11 @@ import { createTestChildKind, type TestChildStore } from "./testing/test-child-k
 import { createTestFollowerKind } from "./testing/test-follower-kind";
 import { testFollowerRecordId } from "./testing/test-follower-record-id";
 import { createTestRecordKind, type TestRecordWrite } from "./testing/test-record-kind";
+
+const record1 = generateRecordId();
+const record2 = generateRecordId();
+const child1 = generateRecordId();
+const child2 = generateRecordId();
 
 type OtherWrite = { id: string; type: "other_write" };
 type TestLedger = ReturnType<
@@ -30,7 +36,7 @@ describe("同期の帳簿", () => {
   let receivedAt: Date;
   let pullRequest: (afterSequence: number) => Parameters<TestLedger["pull"]>[0];
   let pushRequest: (writes: (TestRecordWrite | OtherWrite)[]) => Parameters<TestLedger["push"]>[0];
-  let create: (id: string, recordId: string, value?: number) => TestRecordWrite;
+  let create: (id: string, recordId: RecordId, value?: number) => TestRecordWrite;
 
   beforeEach(() => {
     operations = [];
@@ -63,7 +69,7 @@ describe("同期の帳簿", () => {
   describe("書き込みを送るとき", () => {
     describe("受け付ける書き込みを1件送ったとき", () => {
       beforeEach(() => {
-        ledger.push(pushRequest([create("write-1", "record-1")]));
+        ledger.push(pushRequest([create("write-1", record1)]));
       });
 
       test("要求の控え、書き込みの控え、種類の行、変更の並びの順に書くこと", () => {
@@ -74,7 +80,7 @@ describe("同期の帳簿", () => {
     describe("削除の書き込みを送ったとき", () => {
       beforeEach(() => {
         ledger.push(
-          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: record1 }]),
         );
       });
 
@@ -85,10 +91,10 @@ describe("同期の帳簿", () => {
 
     describe("子のある記録を消す書き込みを送ったとき", () => {
       beforeEach(() => {
-        childStore.insert({ id: "child-1", parentId: "record-1", value: 1 });
+        childStore.insert({ id: child1, parentId: record1, value: 1 });
         operations.length = 0;
         ledger.push(
-          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: record1 }]),
         );
       });
 
@@ -107,9 +113,9 @@ describe("同期の帳簿", () => {
 
     describe("同じ書き込みの ID が再び届いたとき", () => {
       beforeEach(() => {
-        ledger.push(pushRequest([create("write-1", "record-1")]));
+        ledger.push(pushRequest([create("write-1", record1)]));
         operations.length = 0;
-        ledger.push(pushRequest([create("write-1", "record-1", 500)]));
+        ledger.push(pushRequest([create("write-1", record1, 500)]));
       });
 
       test("要求の控えのほかは何も書き足さないこと", () => {
@@ -121,7 +127,7 @@ describe("同期の帳簿", () => {
       let pushed: ReturnType<TestLedger["push"]>;
 
       beforeEach(() => {
-        pushed = ledger.push(pushRequest([create("write-1", "record-1", 500)]));
+        pushed = ledger.push(pushRequest([create("write-1", record1, 500)]));
       });
 
       test("受け付けなかった1件として返すこと", () => {
@@ -152,15 +158,15 @@ describe("同期の帳簿", () => {
           createTestChildKind(childStore),
         ]);
         ledgerWithoutDeletionMarks.push(
-          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: record1 }]),
         );
         pushToDeletedRecord = () =>
-          ledgerWithoutDeletionMarks.push(pushRequest([create("write-2", "record-1", 500)]));
+          ledgerWithoutDeletionMarks.push(pushRequest([create("write-2", record1, 500)]));
       });
 
       test("不具合として投げること", () => {
         expect(pushToDeletedRecord).toThrow(
-          "削除の印を持たない種類の削除の印: test_record record-1",
+          `削除の印を持たない種類の削除の印: test_record ${record1}`,
         );
       });
     });
@@ -181,8 +187,8 @@ describe("同期の帳簿", () => {
 
       describe("受け付けた書き込みなら", () => {
         beforeEach(() => {
-          ledger.push(pushRequest([create("write-1", "record-1")]));
-          resend = () => resendWithoutKind(create("write-1", "record-1"));
+          ledger.push(pushRequest([create("write-1", record1)]));
+          resend = () => resendWithoutKind(create("write-1", record1));
         });
 
         test("控えの結果を返すこと", () => {
@@ -194,8 +200,8 @@ describe("同期の帳簿", () => {
 
       describe("受け付けなかった書き込みなら", () => {
         beforeEach(() => {
-          ledger.push(pushRequest([create("write-1", "record-1", 500)]));
-          resend = () => resendWithoutKind(create("write-1", "record-1", 500));
+          ledger.push(pushRequest([create("write-1", record1, 500)]));
+          resend = () => resendWithoutKind(create("write-1", record1, 500));
         });
 
         test("不具合として投げること", () => {
@@ -210,7 +216,7 @@ describe("同期の帳簿", () => {
       beforeEach(() => {
         pushWithUnregistered = () =>
           ledger.push(
-            pushRequest([create("write-1", "record-1"), { id: "write-2", type: "other_write" }]),
+            pushRequest([create("write-1", record1), { id: "write-2", type: "other_write" }]),
           );
       });
 
@@ -238,7 +244,7 @@ describe("同期の帳簿", () => {
       let pulled: ReturnType<TestLedger["pull"]>;
 
       beforeEach(() => {
-        ledger.push(pushRequest([create("write-1", "record-1")]));
+        ledger.push(pushRequest([create("write-1", record1)]));
         pulled = ledger.pull(pullRequest(0));
       });
 
@@ -259,7 +265,7 @@ describe("同期の帳簿", () => {
           {
             sequence: 1,
             recordType: "test_record",
-            recordId: "record-1",
+            recordId: record1,
             current: { status: "value", value: 1 },
           },
           {
@@ -274,7 +280,7 @@ describe("同期の帳簿", () => {
 
     describe("元の種類の書き込みを受け付けなかったとき", () => {
       beforeEach(() => {
-        ledger.push(pushRequest([create("write-1", "record-1", 500)]));
+        ledger.push(pushRequest([create("write-1", record1, 500)]));
       });
 
       test("計算する種類を呼ばないこと", () => {
@@ -290,10 +296,10 @@ describe("同期の帳簿", () => {
       beforeEach(() => {
         ledger.push(
           pushRequest([
-            create("write-1", "record-1", 1),
-            { id: "write-2", type: "update_test_record", recordId: "record-1", value: 2 },
-            create("write-3", "record-2"),
-            { id: "write-4", type: "delete_test_record", recordId: "record-2" },
+            create("write-1", record1, 1),
+            { id: "write-2", type: "update_test_record", recordId: record1, value: 2 },
+            create("write-3", record2),
+            { id: "write-4", type: "delete_test_record", recordId: record2 },
           ]),
         );
         pulled = ledger.pull(pullRequest(0));
@@ -304,13 +310,13 @@ describe("同期の帳簿", () => {
           {
             sequence: 2,
             recordType: "test_record",
-            recordId: "record-1",
+            recordId: record1,
             current: { status: "value", value: 2 },
           },
           {
             sequence: 4,
             recordType: "test_record",
-            recordId: "record-2",
+            recordId: record2,
             current: { status: "deleted" },
           },
         ]);
@@ -321,10 +327,10 @@ describe("同期の帳簿", () => {
       let pulled: ReturnType<TestLedger["pull"]>;
 
       beforeEach(() => {
-        childStore.insert({ id: "child-1", parentId: "record-1", value: 1 });
-        childStore.insert({ id: "child-2", parentId: "record-1", value: 2 });
+        childStore.insert({ id: child1, parentId: record1, value: 1 });
+        childStore.insert({ id: child2, parentId: record1, value: 2 });
         ledger.push(
-          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: record1 }]),
         );
         pulled = ledger.pull(pullRequest(0));
       });
@@ -334,19 +340,19 @@ describe("同期の帳簿", () => {
           {
             sequence: 1,
             recordType: "test_record",
-            recordId: "record-1",
+            recordId: record1,
             current: { status: "deleted" },
           },
           {
             sequence: 2,
             recordType: "test_child",
-            recordId: "child-1",
+            recordId: child1,
             current: { status: "deleted" },
           },
           {
             sequence: 3,
             recordType: "test_child",
-            recordId: "child-2",
+            recordId: child2,
             current: { status: "deleted" },
           },
         ]);
@@ -358,10 +364,10 @@ describe("同期の帳簿", () => {
 
       beforeEach(() => {
         ledger.changeOutsideWrites((addChange) => {
-          childStore.insert({ id: "child-2", parentId: "record-1", value: 2 });
-          addChange({ recordType: "test_child", recordId: "child-2" });
-          childStore.insert({ id: "child-1", parentId: "record-1", value: 1 });
-          addChange({ recordType: "test_child", recordId: "child-1" });
+          childStore.insert({ id: child2, parentId: record1, value: 2 });
+          addChange({ recordType: "test_child", recordId: child2 });
+          childStore.insert({ id: child1, parentId: record1, value: 1 });
+          addChange({ recordType: "test_child", recordId: child1 });
         });
         pulled = ledger.pull(pullRequest(0));
       });
@@ -371,13 +377,13 @@ describe("同期の帳簿", () => {
           {
             sequence: 1,
             recordType: "test_child",
-            recordId: "child-2",
+            recordId: child2,
             current: { status: "value", value: 2 },
           },
           {
             sequence: 2,
             recordType: "test_child",
-            recordId: "child-1",
+            recordId: child1,
             current: { status: "value", value: 1 },
           },
         ]);
@@ -391,7 +397,7 @@ describe("同期の帳簿", () => {
       beforeEach(() => {
         ledger.push(
           pushRequest(
-            Array.from({ length: 501 }, (_, index) => create(`write-${index}`, `record-${index}`)),
+            Array.from({ length: 501 }, (_, index) => create(`write-${index}`, generateRecordId())),
           ),
         );
         firstPage = ledger.pull(pullRequest(0));
@@ -417,14 +423,14 @@ describe("同期の帳簿", () => {
 
       beforeEach(() => {
         ledger.changeOutsideWrites((addChange) => {
-          addChange({ recordType: "test_child", recordId: "child-1" });
+          addChange({ recordType: "test_child", recordId: child1 });
         });
         pullWithoutRecord = () => ledger.pull(pullRequest(0));
       });
 
       test("不具合として投げること", () => {
         expect(pullWithoutRecord).toThrow(
-          "変更の並びが指す記録も削除の印も無い: test_child child-1",
+          `変更の並びが指す記録も削除の印も無い: test_child ${child1}`,
         );
       });
     });
@@ -443,7 +449,7 @@ describe("同期の帳簿", () => {
           { ...createTestChildKind(childStore), whenGone: "absence" },
         ]);
         ledgerDeliveringAbsence.changeOutsideWrites((addChange) => {
-          addChange({ recordType: "test_child", recordId: "child-1" });
+          addChange({ recordType: "test_child", recordId: child1 });
         });
         pulled = ledgerDeliveringAbsence.pull(pullRequest(0));
       });
@@ -453,7 +459,7 @@ describe("同期の帳簿", () => {
           {
             sequence: 1,
             recordType: "test_child",
-            recordId: "child-1",
+            recordId: child1,
             current: { status: "absent" },
           },
         ]);
@@ -473,15 +479,15 @@ describe("同期の帳簿", () => {
           createTestRecordKind(createMemoryTestRecordStore(operations), childStore),
           { ...createTestChildKind(childStore), whenGone: "never" },
         ]);
-        childStore.insert({ id: "child-1", parentId: "record-1", value: 1 });
+        childStore.insert({ id: child1, parentId: record1, value: 1 });
         ledgerWithoutDeletionMarks.push(
-          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: "record-1" }]),
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: record1 }]),
         );
         pullDeletedRecord = () => ledgerWithoutDeletionMarks.pull(pullRequest(0));
       });
 
       test("不具合として投げること", () => {
-        expect(pullDeletedRecord).toThrow("削除の印を持たない種類の削除の印: test_child child-1");
+        expect(pullDeletedRecord).toThrow(`削除の印を持たない種類の削除の印: test_child ${child1}`);
       });
     });
 
@@ -489,7 +495,11 @@ describe("同期の帳簿", () => {
       let pullWithUnregistered: () => unknown;
 
       beforeEach(() => {
-        ledgerStore.insertRecordChange({ recordType: "other", recordId: "x", writeId: "w" });
+        ledgerStore.insertRecordChange({
+          recordType: "other",
+          recordId: generateRecordId(),
+          writeId: "w",
+        });
         pullWithUnregistered = () => ledger.pull(pullRequest(0));
       });
 

@@ -1,5 +1,6 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
+import { generateRecordId } from "../../../domain/record-id";
 import { getAccountDurableObject } from "../../../durable-object/get-account-durable-object";
 
 // 推定の予定を作る経路（写真の受け取り・アラーム）がまだ無いので、出来事の行を直に書く。
@@ -14,7 +15,7 @@ export const insertEstimationSchedule = (
 ) =>
   runInDurableObject(getAccountDurableObject(env, accountId), (_, state) => {
     const { sql } = state.storage;
-    const scheduleId = crypto.randomUUID();
+    const scheduleId = generateRecordId();
     sql.exec(
       "INSERT INTO estimation_schedules (id, due_at, counted_on) VALUES (?, ?, ?)",
       scheduleId,
@@ -37,7 +38,7 @@ export const insertEstimationSchedule = (
       );
       return;
     }
-    const estimationId = crypto.randomUUID();
+    const estimationId = generateRecordId();
     sql.exec(
       "INSERT INTO estimations (id, estimation_schedule_id, started_at) VALUES (?, ?, ?)",
       estimationId,

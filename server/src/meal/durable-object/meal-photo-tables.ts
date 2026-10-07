@@ -1,12 +1,14 @@
 import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { mealTables } from "./meal-tables";
 
 const mealPhotos = sqliteTable(
   "meal_photos",
   {
-    id: text("id").primaryKey(),
+    id: text("id").$type<RecordId>().primaryKey(),
     mealId: text("meal_id")
+      .$type<RecordId>()
       .notNull()
       .references(() => mealTables.meals.id),
     positionInMeal: integer("position_in_meal").notNull(),
@@ -16,19 +18,20 @@ const mealPhotos = sqliteTable(
 
 // 写真の ID は値で名指しする（外部キーにしない）。宣言より先にも後にも届き、食事を消したあとも R2 の消し残しを出すために残る
 const mealPhotoFileReceipts = sqliteTable("meal_photo_file_receipts", {
-  mealPhotoId: text("meal_photo_id").primaryKey(),
+  mealPhotoId: text("meal_photo_id").$type<RecordId>().primaryKey(),
   receivedAt: integer("received_at", { mode: "timestamp_ms" }).notNull(),
 });
 
 const mealPhotoFileDeletions = sqliteTable("meal_photo_file_deletions", {
   mealPhotoId: text("meal_photo_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => mealPhotoFileReceipts.mealPhotoId),
   deletedAt: integer("deleted_at", { mode: "timestamp_ms" }).notNull(),
 });
 
 const mealPhotoDeletions = sqliteTable("meal_photo_deletions", {
-  mealPhotoId: text("meal_photo_id").primaryKey(),
+  mealPhotoId: text("meal_photo_id").$type<RecordId>().primaryKey(),
   syncWriteReceiptId: text("sync_write_receipt_id")
     .notNull()
     .references(() => syncLedgerTables.syncWriteReceipts.id),

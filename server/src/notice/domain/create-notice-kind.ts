@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import type { RecordId } from "../../domain/record-id";
 import { isCalendarDay } from "../../domain/is-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
@@ -57,7 +58,7 @@ const decideCreate = (
 
 const decideRespond = (
   store: NoticeStore,
-  noticeId: string,
+  noticeId: RecordId,
   response: NoticeResponse,
 ): WriteDecision => {
   if (!isTimeZoneName(response.timeZone)) {
@@ -79,7 +80,7 @@ const decideRespond = (
 // 行を書かずに終わる
 const settled = (
   writeKind: WriteKind,
-  recordId: string,
+  recordId: RecordId,
   outcome: Exclude<SyncWriteOutcome, { result: "applied" }>,
 ): WriteDecision => ({
   writeKind,
@@ -93,7 +94,7 @@ const settled = (
 
 const applied = (
   writeKind: WriteKind,
-  recordId: string,
+  recordId: RecordId,
   commit: WriteDecision["commit"],
 ): WriteDecision => ({
   writeKind,

@@ -79,10 +79,10 @@ extension Components.Schemas.SyncWrite {
         case .createWeightRecord(let writeId, let record):
             self = .createWeightRecord(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .createWeightRecord,
                     weightRecord: .init(
-                        id: record.id.uuidString,
+                        id: record.id.canonicalString,
                         weightKg: record.weightKilograms,
                         measuredAt: record.measuredAt.millisecondsSince1970,
                         timeZone: record.timeZone.identifier,
@@ -90,11 +90,12 @@ extension Components.Schemas.SyncWrite {
                             .init(
                                 sourceAppName: imported.sourceAppName,
                                 sourceBundleId: imported.sourceBundleId,
-                                healthkitSampleUuid: imported.healthKitSampleId.uuidString,
+                                healthkitSampleUuid: imported.healthKitSampleId.canonicalString,
                                 bodyFat: imported.bodyFat.map { bodyFat in
                                     .init(
                                         percentage: bodyFat.percentage,
-                                        healthkitSampleUuid: bodyFat.healthKitSampleId.uuidString
+                                        healthkitSampleUuid: bodyFat.healthKitSampleId
+                                            .canonicalString
                                     )
                                 }
                             )
@@ -105,10 +106,10 @@ extension Components.Schemas.SyncWrite {
         case .updateWeightRecord(let writeId, let correction):
             self = .updateWeightRecord(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .updateWeightRecord,
                     weightRecord: .init(
-                        id: correction.id.uuidString,
+                        id: correction.id.canonicalString,
                         weightKg: correction.weightKilograms,
                         measuredAt: correction.measuredAt.millisecondsSince1970,
                         timeZone: correction.timeZone.identifier,
@@ -119,10 +120,10 @@ extension Components.Schemas.SyncWrite {
         case .updateAccountSettings(let writeId, let settings):
             self = .updateAccountSettings(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .updateAccountSettings,
                     accountSettings: .init(
-                        id: settings.id.uuidString,
+                        id: settings.id.canonicalString,
                         sendsUsageData: settings.sendsUsageData
                     )
                 )
@@ -130,62 +131,67 @@ extension Components.Schemas.SyncWrite {
         case .sourceDeletedWeightRecord(let writeId, let weightRecordId):
             self = .sourceDeletedWeightRecord(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .sourceDeletedWeightRecord,
-                    weightRecordId: weightRecordId.uuidString
+                    weightRecordId: weightRecordId.canonicalString
                 )
             )
         case .createMeal(let writeId, let meal):
             self = .createMeal(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .createMeal,
                     meal: .init(
-                        id: meal.id.uuidString,
+                        id: meal.id.canonicalString,
                         eatenAt: meal.eatenAt.millisecondsSince1970,
                         eatenAtUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
                         sentAt: meal.sentAt.millisecondsSince1970,
                         sentTimeZone: meal.sentTimeZone.identifier,
                         entryMethod: meal.entryMethod.rawValue,
-                        photos: meal.photoIds.map { .init(id: $0.uuidString) }
+                        photos: meal.photoIds.map { .init(id: $0.canonicalString) }
                     )
                 )
             )
         case .updateMeal(let writeId, let mealId, let eatenAt):
             self = .updateMeal(
                 .init(
-                    id: writeId.uuidString, _type: .updateMeal, mealId: mealId.uuidString,
+                    id: writeId.canonicalString, _type: .updateMeal, mealId: mealId.canonicalString,
                     eatenAt: eatenAt.millisecondsSince1970))
         case .deleteMeal(let writeId, let mealId):
             self = .deleteMeal(
-                .init(id: writeId.uuidString, _type: .deleteMeal, mealId: mealId.uuidString))
+                .init(
+                    id: writeId.canonicalString, _type: .deleteMeal, mealId: mealId.canonicalString)
+            )
         case .createDish(let writeId, let dish):
             self = .createDish(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .createDish,
-                    dishId: dish.id.uuidString,
-                    mealId: dish.mealId.uuidString,
+                    dishId: dish.id.canonicalString,
+                    mealId: dish.mealId.canonicalString,
                     name: dish.name,
                     positionInMeal: dish.positionInMeal
                 )
             )
         case .deleteDish(let writeId, let dishId):
             self = .deleteDish(
-                .init(id: writeId.uuidString, _type: .deleteDish, dishId: dishId.uuidString))
+                .init(
+                    id: writeId.canonicalString, _type: .deleteDish, dishId: dishId.canonicalString)
+            )
         case .updateDish(let writeId, let correction):
             self = .updateDish(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .updateDish,
-                    dishId: correction.id.uuidString,
+                    dishId: correction.id.canonicalString,
                     name: correction.name,
                     quantity: correction.quantity.map { quantity in
                         .init(
                             value: quantity.value,
                             proportionedIngredients: quantity.proportionedIngredients.map {
                                 .init(
-                                    ingredientId: $0.ingredientId.uuidString, quantity: $0.quantity)
+                                    ingredientId: $0.ingredientId.canonicalString,
+                                    quantity: $0.quantity)
                             })
                     }
                 )
@@ -193,19 +199,19 @@ extension Components.Schemas.SyncWrite {
         case .updateIngredient(let writeId, let ingredientId, let quantity):
             self = .updateIngredient(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .updateIngredient,
-                    ingredientId: ingredientId.uuidString,
+                    ingredientId: ingredientId.canonicalString,
                     quantity: quantity
                 )
             )
         case .createNotice(let writeId, let notice):
             self = .createNotice(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .createNotice,
                     notice: .init(
-                        id: notice.id.uuidString,
+                        id: notice.id.canonicalString,
                         noticeType: notice.noticeType.rawValue,
                         issuedAt: notice.issuedAt.millisecondsSince1970,
                         timeZone: notice.timeZone.identifier,
@@ -216,9 +222,9 @@ extension Components.Schemas.SyncWrite {
         case .respondNotice(let writeId, let noticeId, let response):
             self = .respondNotice(
                 .init(
-                    id: writeId.uuidString,
+                    id: writeId.canonicalString,
                     _type: .respondNotice,
-                    noticeId: noticeId.uuidString,
+                    noticeId: noticeId.canonicalString,
                     response: .init(
                         respondedAt: response.respondedAt.millisecondsSince1970,
                         timeZone: response.timeZone.identifier
@@ -232,7 +238,7 @@ extension Components.Schemas.SyncWrite {
 extension Operations.PushSyncWrites.Input.Body.JsonPayload.ClientStatePayload {
     fileprivate init(_ clientState: SyncClientState) {
         self.init(
-            deviceId: clientState.deviceId.uuidString,
+            deviceId: clientState.deviceId.canonicalString,
             timeZone: clientState.timeZone.identifier,
             appVersion: clientState.appVersion,
             osVersion: clientState.osVersion,
@@ -248,7 +254,7 @@ extension Operations.PushSyncWrites.Input.Body.JsonPayload.ClientStatePayload {
 extension Operations.PullSyncChanges.Input.Query {
     fileprivate init(_ clientState: SyncClientState, afterSequence: Int) {
         self.init(
-            deviceId: clientState.deviceId.uuidString,
+            deviceId: clientState.deviceId.canonicalString,
             timeZone: clientState.timeZone.identifier,
             appVersion: clientState.appVersion,
             osVersion: clientState.osVersion,

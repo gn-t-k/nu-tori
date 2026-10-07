@@ -1,5 +1,6 @@
 import type { BetterAuthOptions } from "better-auth";
 import { bearer } from "better-auth/plugins";
+import { generateRecordId } from "../../domain/record-id";
 
 // Better Auth の設定は、createAuthentication と、表が Better Auth の求める形かを確かめるテストが、ここから作る
 // Better Auth の HTTP の口は出さず、受け口から api を呼ぶ。baseURL は、無いと作るたびに警告が出るので渡す
@@ -17,6 +18,7 @@ export const createAuthenticationOptions = (env: Env, requestUrl: string) =>
         // Better Auth はメールを必須にするので、Apple のメールの代わりに sub と関係ない仮の値を入れる
         mapProfileToUser: () => ({
           name: "",
+          // oxlint-disable-next-line nu-tori/no-random-uuid -- 仮のメールの名前で、ID として比べない
           email: `${crypto.randomUUID()}@nu-tori.invalid`,
           emailVerified: false,
         }),
@@ -35,7 +37,7 @@ export const createAuthenticationOptions = (env: Env, requestUrl: string) =>
     },
     advanced: {
       database: {
-        generateId: () => crypto.randomUUID(),
+        generateId: () => generateRecordId(),
         // 表の正本は d1-migrations/ で、テストが表を使って確かめる。確かめると、アイソレートが起動するたびに D1 を問い合わせる
         validateSchema: false,
       },

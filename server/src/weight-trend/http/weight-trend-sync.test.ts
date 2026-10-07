@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
@@ -6,6 +7,7 @@ import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes"
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 import { sourceDeletedWeightRecordWrite } from "../../weight-record/http/testing/source-deleted-weight-record-write";
 import { updateWeightRecordWrite } from "../../weight-record/http/testing/update-weight-record-write";
+import { weightTrendRecordId } from "../domain/weight-trend-record-id";
 import { beforeEach, describe, expect, test } from "vitest";
 
 describe("体重の傾向の同期", () => {
@@ -14,7 +16,7 @@ describe("体重の傾向の同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ sessionToken } = await signInTestAccount(generateRecordId()));
     pullWeightTrend = async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
       return pulled.changes.filter(({ kind }) => kind.startsWith("weight_trend"));
@@ -52,7 +54,7 @@ describe("体重の傾向の同期", () => {
         {
           sequence: expect.any(Number),
           kind: "weight_trend",
-          recordId: "weight_trend",
+          recordId: weightTrendRecordId,
           record: {
             days: [
               { calendarDay: "2026-09-01", trendKg: 72.0 },
@@ -139,7 +141,7 @@ describe("体重の傾向の同期", () => {
           {
             sequence: expect.any(Number),
             kind: "weight_trend_absence",
-            recordId: "weight_trend",
+            recordId: weightTrendRecordId,
             record: {},
           },
         ]);
@@ -150,7 +152,7 @@ describe("体重の傾向の同期", () => {
   describe("体重記録が無いまま、届いていない記録の元のサンプルが消えた知らせを送ったとき", () => {
     beforeEach(async () => {
       await pushSyncWrites(sessionToken, {
-        writes: [sourceDeletedWeightRecordWrite(crypto.randomUUID())],
+        writes: [sourceDeletedWeightRecordWrite(generateRecordId())],
       });
     });
 
@@ -171,7 +173,7 @@ describe("体重の傾向の同期", () => {
               imported: {
                 sourceAppName: "Withings",
                 sourceBundleId: "com.withings.wiScaleNG",
-                healthkitSampleUuid: crypto.randomUUID(),
+                healthkitSampleUuid: generateRecordId(),
               },
             },
           }),

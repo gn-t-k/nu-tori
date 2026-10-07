@@ -121,16 +121,20 @@ extension FakeSyncServerTests {
             let dish: SyncedDish
             let client: NuToriAPIClient
             let rice: SyncedIngredient
+            let writeId: UUID
+            let pushed: NuToriAPIClient.PushSyncWritesResult
 
             init() async throws {
                 let base = try EstimatedDish()
                 dish = base.dish
                 rice = base.rice
                 client = base.client
-                _ = try await client.pushSyncWrites(
+                let writeId = UUID()
+                self.writeId = writeId
+                pushed = try await client.pushSyncWrites(
                     [
                         .updateDish(
-                            writeId: UUID(),
+                            writeId: writeId,
                             correction: DishCorrection(
                                 id: dish.id, name: "カツ丼",
                                 quantity: .init(
@@ -139,6 +143,16 @@ extension FakeSyncServerTests {
                                         .init(ingredientId: rice.id, quantity: 200)
                                     ])))
                     ], isFinalBatch: true, clientState: .fixture())
+            }
+
+            // 端末が UUID の大文字の文字列で送り返すと、サーバーの小文字の ID と食い違って断られた（#362）
+            @Test("小文字の ID で置いた料理を名指しした書き込みを、受け付けたと返すこと")
+            func appliesWriteForCanonicalId() {
+                #expect(
+                    pushed
+                        == .pushed([
+                            SyncWriteResult(writeId: writeId, outcome: .applied, current: nil)
+                        ]))
             }
 
             @Test("推定中を返し、次の取得で前の材料を消して推定し直した量と材料を返すこと")

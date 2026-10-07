@@ -112,7 +112,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## テスト
 
 - テストは Workers の実行環境の中で回す
-- D1 と Durable Object の中身は、テストのあいだ消えない。テストごとに新しい ID（`crypto.randomUUID()`）で書く
+- D1 と Durable Object の中身は、テストのあいだ消えない。テストごとに新しい ID（`generateRecordId()`）で書く
 
 ## デプロイ
 

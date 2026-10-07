@@ -1,11 +1,15 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId } from "../domain/record-id";
 import type { RecordType } from "../domain/record-type";
 import type { LedgerStore } from "../domain/sync-ledger/ledger-store";
 import { createLedgerStore } from "./create-ledger-store";
 import { durableObjectTables } from "./durable-object-tables";
 import { durableObjectFactory } from "./testing/durable-object-factory";
+
+const weight1 = generateRecordId();
+const settings1 = generateRecordId();
 
 type Seed = (factory: ReturnType<typeof durableObjectFactory>) => Promise<void>;
 
@@ -60,7 +64,7 @@ describe("帳簿の置き場", () => {
       rows = await runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), (_, state) => {
         createLedgerStore(state.storage).insertRecordChange({
           recordType: "weight_record",
-          recordId: "weight-1",
+          recordId: weight1,
           writeId: undefined,
         });
         return {
@@ -74,7 +78,7 @@ describe("帳簿の置き場", () => {
 
     test("変更の並びに書き、控えとのつなぎを書かないこと", () => {
       expect(rows).toEqual({
-        recordChanges: [{ sequence: 1, record_type: "weight_record", record_id: "weight-1" }],
+        recordChanges: [{ sequence: 1, record_type: "weight_record", record_id: weight1 }],
         links: [],
       });
     });
@@ -85,9 +89,9 @@ describe("帳簿の置き場", () => {
     beforeEach(() => {
       seed = async (factory) => {
         await factory.recordChanges.create([
-          { sequence: 1, recordType: "weight_record", recordId: "weight-1" },
-          { sequence: 2, recordType: "account_settings", recordId: "settings-1" },
-          { sequence: 3, recordType: "weight_record", recordId: "weight-1" },
+          { sequence: 1, recordType: "weight_record", recordId: weight1 },
+          { sequence: 2, recordType: "account_settings", recordId: settings1 },
+          { sequence: 3, recordType: "weight_record", recordId: weight1 },
         ]);
       };
     });
@@ -95,15 +99,15 @@ describe("帳簿の置き場", () => {
     test("記録ごとに最後の変更を、順番に読むこと", async () => {
       const changes = await withStore(seed, (store) => store.findLatestChangePerRecord(0, 10));
       expect(changes).toEqual([
-        { sequence: 2, recordType: "account_settings", recordId: "settings-1" },
-        { sequence: 3, recordType: "weight_record", recordId: "weight-1" },
+        { sequence: 2, recordType: "account_settings", recordId: settings1 },
+        { sequence: 3, recordType: "weight_record", recordId: weight1 },
       ]);
     });
 
     test("指定した番号より後の変更だけを、件数の上限まで読むこと", async () => {
       const changes = await withStore(seed, (store) => store.findLatestChangePerRecord(1, 1));
       expect(changes).toEqual([
-        { sequence: 2, recordType: "account_settings", recordId: "settings-1" },
+        { sequence: 2, recordType: "account_settings", recordId: settings1 },
       ]);
     });
   });

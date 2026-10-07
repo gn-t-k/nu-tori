@@ -1,3 +1,5 @@
+import { generateRecordId } from "../../../domain/record-id";
+
 type CreateDishWrite = {
   id: string;
   type: "create_dish";
@@ -13,9 +15,9 @@ export const createDishWrite = (
   fields: Partial<Pick<CreateDishWrite, "dishId" | "name" | "positionInMeal">> = {},
   overrides: { id?: string } = {},
 ): CreateDishWrite => ({
-  id: overrides.id ?? crypto.randomUUID(),
+  id: overrides.id ?? generateRecordId(),
   type: "create_dish",
-  dishId: fields.dishId ?? crypto.randomUUID(),
+  dishId: fields.dishId ?? generateRecordId(),
   mealId,
   name: fields.name ?? "味噌汁",
   positionInMeal: fields.positionInMeal ?? 2,

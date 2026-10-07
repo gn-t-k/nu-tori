@@ -70,16 +70,16 @@
                 case .weightRecord(let record): WeightRecordPayload(record)
                 case .accountSettings(let settings):
                     AccountSettingsPayload(
-                        id: settings.id.uuidString, sendsUsageData: settings.sendsUsageData)
+                        id: settings.id.canonicalString, sendsUsageData: settings.sendsUsageData)
                 case .dish(let dish): DishPayload(dish)
                 case .dishEstimationStatus(let status):
                     DishEstimationStatusPayload(
-                        dishId: status.dishId.uuidString, status: status.status.rawValue)
+                        dishId: status.dishId.canonicalString, status: status.status.rawValue)
                 case .ingredient(let ingredient): IngredientPayload(ingredient)
                 case .meal(let meal): MealPayload(meal)
                 case .mealEstimationStatus(let status):
                     MealEstimationStatusPayload(
-                        mealId: status.mealId.uuidString, status: status.status.rawValue)
+                        mealId: status.mealId.canonicalString, status: status.status.rawValue)
                 case .notice(let notice): NoticePayload(notice)
                 case .usualWeighingTime(let time):
                     UsualWeighingTimePayload(minuteOfDay: time.minuteOfDay)
@@ -99,7 +99,7 @@
 
     extension FakeSyncServer.RecordKey {
         init(kind: Components.Schemas.RecordKindName, id: UUID) {
-            self.init(kind: kind, id: id.uuidString)
+            self.init(kind: kind, id: id.canonicalString)
         }
     }
 
@@ -144,7 +144,7 @@
     extension SyncChange.WeightRecordPayload {
         fileprivate init(_ record: SyncedWeightRecord) {
             self.init(
-                id: record.id.uuidString,
+                id: record.id.canonicalString,
                 weightKg: record.weightKilograms,
                 measuredAt: record.measuredAt.millisecondsSince1970,
                 timeZone: record.timeZone.identifier,
@@ -153,11 +153,11 @@
                     Imported(
                         sourceAppName: imported.sourceAppName,
                         sourceBundleId: imported.sourceBundleId,
-                        healthkitSampleUuid: imported.healthKitSampleId.uuidString,
+                        healthkitSampleUuid: imported.healthKitSampleId.canonicalString,
                         bodyFat: imported.bodyFat.map {
                             .init(
                                 percentage: $0.percentage,
-                                healthkitSampleUuid: $0.healthKitSampleId.uuidString)
+                                healthkitSampleUuid: $0.healthKitSampleId.canonicalString)
                         }
                     )
                 }
@@ -168,13 +168,13 @@
     extension SyncChange.MealPayload {
         fileprivate init(_ meal: SyncedMeal) {
             self.init(
-                id: meal.id.uuidString,
+                id: meal.id.canonicalString,
                 eatenAt: meal.eatenAt.millisecondsSince1970,
                 eatenAtUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
                 sentAt: meal.sentAt.millisecondsSince1970,
                 sentTimeZone: meal.sentTimeZone.identifier,
                 entryMethod: meal.entryMethod.rawValue,
-                photos: meal.photoIds.map { .init(id: $0.uuidString) }
+                photos: meal.photoIds.map { .init(id: $0.canonicalString) }
             )
         }
     }
@@ -182,7 +182,7 @@
     extension SyncChange.DishPayload {
         fileprivate init(_ dish: SyncedDish) {
             self.init(
-                id: dish.id.uuidString, mealId: dish.mealId.uuidString, name: dish.name,
+                id: dish.id.canonicalString, mealId: dish.mealId.canonicalString, name: dish.name,
                 quantity: dish.quantity?.value, unit: dish.quantity?.unit,
                 quantitySource: dish.quantity?.source.rawValue,
                 positionInMeal: dish.positionInMeal, version: dish.version)
@@ -201,7 +201,7 @@
                     .init(type: "estimated", labelBasisGrams: nil, foodNumber: nil)
                 }
             self.init(
-                id: ingredient.id.uuidString, dishId: ingredient.dishId.uuidString,
+                id: ingredient.id.canonicalString, dishId: ingredient.dishId.canonicalString,
                 name: ingredient.name, quantity: ingredient.quantity,
                 quantitySource: ingredient.quantitySource.rawValue, unit: ingredient.unit,
                 edibleGramsPerUnit: ingredient.edibleGramsPerUnit,
@@ -213,7 +213,7 @@
     extension SyncChange.NoticePayload {
         fileprivate init(_ notice: SyncedNotice) {
             self.init(
-                id: notice.id.uuidString,
+                id: notice.id.canonicalString,
                 noticeType: notice.noticeType.rawValue,
                 issuedAt: notice.issuedAt.millisecondsSince1970,
                 timeZone: notice.timeZone.identifier,

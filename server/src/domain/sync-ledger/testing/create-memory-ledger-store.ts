@@ -1,3 +1,4 @@
+import type { RecordId } from "../../record-id";
 import type { SyncWriteOutcome } from "../../sync-write-outcome";
 import type { LedgerStore } from "../ledger-store";
 
@@ -8,9 +9,9 @@ export const createMemoryLedgerStore = <TRecordType extends string>(
   const requestReceivedAts: Date[] = [];
   const receipts = new Map<
     string,
-    { outcome: SyncWriteOutcome; recordType: TRecordType; recordId: string }
+    { outcome: SyncWriteOutcome; recordType: TRecordType; recordId: RecordId }
   >();
-  const changes: { sequence: number; recordType: TRecordType; recordId: string }[] = [];
+  const changes: { sequence: number; recordType: TRecordType; recordId: RecordId }[] = [];
   return {
     transaction: (run) => run(),
     findLatestRequestReceivedAt: () => requestReceivedAts.at(-1),

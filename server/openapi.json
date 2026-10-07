@@ -444,7 +444,7 @@
         "required": [
           "days"
         ],
-        "description": "kind が weight_trend の変更の record。recordId は weight_trend の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く"
+        "description": "kind が weight_trend の変更の record。recordId は 00000000-0000-0000-0000-000000000000（UUID の nil）の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く"
       },
       "SyncWriteResult": {
         "type": "object",
@@ -574,7 +574,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -588,7 +589,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "minLength": 1,
+                "format": "uuid",
+                "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
                 "description": "端末で振ったアカウントの設定の ID。アカウント ID から名前空間を分けた UUID v5 で出す。サーバーは ID では探さず、アカウントに1件の記録として持つ"
               },
               "sendsUsageData": {
@@ -612,7 +614,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -623,7 +626,8 @@
           },
           "dishId": {
             "type": "string",
-            "minLength": 1
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
           }
         },
         "required": [
@@ -637,7 +641,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -648,7 +653,8 @@
           },
           "dishId": {
             "type": "string",
-            "minLength": 1
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
           },
           "name": {
             "type": "string",
@@ -668,7 +674,8 @@
                   "properties": {
                     "ingredientId": {
                       "type": "string",
-                      "minLength": 1
+                      "format": "uuid",
+                      "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
                     },
                     "quantity": {
                       "type": "number"
@@ -701,7 +708,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -712,12 +720,14 @@
           },
           "dishId": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "端末が振る UUID v4"
           },
           "mealId": {
             "type": "string",
-            "minLength": 1
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
           },
           "name": {
             "type": "string"
@@ -741,7 +751,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -752,7 +763,8 @@
           },
           "ingredientId": {
             "type": "string",
-            "minLength": 1
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
           },
           "quantity": {
             "type": "number",
@@ -771,7 +783,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -785,7 +798,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "minLength": 1
+                "format": "uuid",
+                "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
               },
               "eatenAt": {
                 "type": "integer",
@@ -820,7 +834,8 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "format": "uuid",
+                      "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
                     }
                   },
                   "required": [
@@ -852,7 +867,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -863,7 +879,8 @@
           },
           "mealId": {
             "type": "string",
-            "minLength": 1
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
           }
         },
         "required": [
@@ -877,7 +894,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -888,7 +906,8 @@
           },
           "mealId": {
             "type": "string",
-            "minLength": 1
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
           },
           "eatenAt": {
             "type": "integer",
@@ -909,7 +928,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -923,7 +943,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "minLength": 1
+                "format": "uuid",
+                "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
               },
               "noticeType": {
                 "type": "string",
@@ -966,7 +987,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -977,7 +999,8 @@
           },
           "noticeId": {
             "type": "string",
-            "minLength": 1
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
           },
           "response": {
             "type": "object",
@@ -1011,7 +1034,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -1025,7 +1049,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "minLength": 1
+                "format": "uuid",
+                "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
               },
               "weightKg": {
                 "type": "number"
@@ -1051,7 +1076,8 @@
                   },
                   "healthkitSampleUuid": {
                     "type": "string",
-                    "minLength": 1
+                    "format": "uuid",
+                    "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
                   },
                   "bodyFat": {
                     "type": "object",
@@ -1061,7 +1087,8 @@
                       },
                       "healthkitSampleUuid": {
                         "type": "string",
-                        "minLength": 1
+                        "format": "uuid",
+                        "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
                       }
                     },
                     "required": [
@@ -1096,7 +1123,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -1110,7 +1138,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "minLength": 1
+                "format": "uuid",
+                "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
               },
               "weightKg": {
                 "type": "number"
@@ -1149,7 +1178,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "冪等の鍵"
           },
           "type": {
@@ -1160,7 +1190,8 @@
           },
           "weightRecordId": {
             "type": "string",
-            "minLength": 1
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
           }
         },
         "required": [
@@ -1308,7 +1339,8 @@
                     "properties": {
                       "deviceId": {
                         "type": "string",
-                        "minLength": 1
+                        "format": "uuid",
+                        "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
                       },
                       "timeZone": {
                         "type": "string",
@@ -1413,7 +1445,8 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1
+              "format": "uuid",
+              "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
             },
             "required": true,
             "name": "deviceId",
@@ -1562,7 +1595,8 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1,
+              "format": "uuid",
+              "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
               "description": "端末が振った写真の ID"
             },
             "required": true,
@@ -1619,7 +1653,8 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1,
+              "format": "uuid",
+              "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
               "description": "端末が振った写真の ID"
             },
             "required": true,

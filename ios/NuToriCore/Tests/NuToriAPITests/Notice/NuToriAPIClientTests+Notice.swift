@@ -7,8 +7,8 @@ import Testing
 extension NuToriAPIClientTests {
     @Suite("知らせ・いつもの時刻・体重の傾向の同期")
     struct NoticeSync {
-        static let noticeId = "00000000-0000-5000-8000-0000000000A1"
-        static let usualWeighingTimeId = "00000000-0000-4000-8000-0000000000B1"
+        static let noticeId = "00000000-0000-5000-8000-0000000000a1"
+        static let usualWeighingTimeId = "00000000-0000-4000-8000-0000000000b1"
 
         @Suite("知らせを作る書き込みと答える書き込みを送るとき")
         struct PushingNoticeWrites {
@@ -46,8 +46,8 @@ extension NuToriAPIClientTests {
                 transport = .ok(
                     json: """
                         {"results":[
-                          {"writeId":"\(createWriteId.uuidString)","result":"rejected","rejectionReason":"invalid_notice_type"},
-                          {"writeId":"\(respondWriteId.uuidString)","result":"rejected","rejectionReason":"invalid_target_on"}
+                          {"writeId":"\(createWriteId.canonicalString)","result":"rejected","rejectionReason":"invalid_notice_type"},
+                          {"writeId":"\(respondWriteId.canonicalString)","result":"rejected","rejectionReason":"invalid_target_on"}
                         ]}
                         """
                 )
@@ -69,7 +69,7 @@ extension NuToriAPIClientTests {
                     try PushSyncWritesPayload(sentBody: sent.body).writes == [
                         .createNotice(
                             .init(
-                                id: createWriteId.uuidString,
+                                id: "00000000-0000-4000-8000-0000000000a1",
                                 _type: .createNotice,
                                 notice: .init(
                                     id: NoticeSync.noticeId,
@@ -81,7 +81,7 @@ extension NuToriAPIClientTests {
                         ),
                         .respondNotice(
                             .init(
-                                id: respondWriteId.uuidString,
+                                id: "00000000-0000-4000-8000-0000000000a2",
                                 _type: .respondNotice,
                                 noticeId: NoticeSync.noticeId,
                                 response: .init(

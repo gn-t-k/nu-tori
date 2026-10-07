@@ -17,6 +17,11 @@
             writes = try payload.writes.map(SyncWrite.init)
         }
 
+        /// UUID としては読めるが、小文字の正規形でない ID。本物のサーバーは要求ごと 400 で断る
+        public struct NonCanonicalIdError: Error {
+            public let value: String
+        }
+
         public struct MalformedBodyError: Error {
             public let reason: String
         }
@@ -175,11 +180,15 @@
         }
     }
 
+    /// サーバーと同じく、小文字の正規形の文字列だけを UUID として読む
     private func uuid(_ value: String) throws -> UUID {
-        guard let uuid = UUID(uuidString: value) else {
+        if let uuid = UUID(canonicalString: value) {
+            return uuid
+        }
+        guard UUID(uuidString: value) != nil else {
             throw SentSyncWrites.MalformedBodyError(reason: "UUID でない \(value)")
         }
-        return uuid
+        throw SentSyncWrites.NonCanonicalIdError(value: value)
     }
 
     private func knownTimeZone(_ identifier: String) throws -> TimeZone {

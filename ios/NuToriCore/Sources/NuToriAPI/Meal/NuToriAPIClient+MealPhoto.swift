@@ -4,7 +4,7 @@ import OpenAPIRuntime
 extension NuToriAPIClient {
     /// 写真を持たない端末で、写真の控え（縮小版）を取りに行く
     public func fetchMealPhoto(id photoId: UUID) async throws -> FetchMealPhotoResult {
-        let output = try await client.getMealPhoto(path: .init(photoId: photoId.uuidString))
+        let output = try await client.getMealPhoto(path: .init(photoId: photoId.canonicalString))
         switch output {
         case .ok(let ok):
             // サーバーが受け付ける写真は 3 MiB まで
@@ -30,7 +30,7 @@ extension NuToriAPIClient {
             headerFields["Authorization"] = "Bearer \(token)"
         }
         return MealPhotoUploadRequest(
-            url: serverURL.appending(path: "v1/meal-photos/\(photoId.uuidString)"),
+            url: serverURL.appending(path: "v1/meal-photos/\(photoId.canonicalString)"),
             method: "PUT",
             headerFields: headerFields
         )

@@ -1,3 +1,4 @@
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { DishEstimationApplication, NewDish } from "../../dish/domain/dish";
 import { createRecordLedger } from "../../domain/create-record-ledger";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -110,7 +111,7 @@ export const recordEstimationAttemptOutcome = (
 // 食事の料理の並び順のいちばんあとの次の値。料理が無ければ 0
 const computeNextPositionInMeal = (
   stores: Pick<RecordKindStores, "dish">,
-  mealId: string,
+  mealId: RecordId,
 ): number =>
   Math.max(
     -1,
@@ -120,7 +121,7 @@ const computeNextPositionInMeal = (
   ) + 1;
 
 const toRecords = (
-  mealId: string,
+  mealId: RecordId,
   estimationId: string,
   estimated: readonly EstimatedDish[],
   firstPositionInMeal: number,
@@ -130,13 +131,13 @@ const toRecords = (
   ingredients: NewIngredient[];
 } => {
   const withIds = estimated.map(({ ingredients, name, quantity, unit }, index) => {
-    const dishId = crypto.randomUUID();
+    const dishId = generateRecordId();
     return {
       dish: { id: dishId, mealId, name, positionInMeal: firstPositionInMeal + index },
       application: { dishId, estimationId, estimatedQuantity: { quantity, unit } },
       ingredients: ingredients.map((ingredient, positionInDish) => ({
         ...ingredient,
-        id: crypto.randomUUID(),
+        id: generateRecordId(),
         dishId,
         estimationId,
         positionInDish,

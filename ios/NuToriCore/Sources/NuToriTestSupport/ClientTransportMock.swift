@@ -212,7 +212,7 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
         let writes = try sentWrites(body).writes
         let results = try writes.enumerated().map { index, write in
-            let writeId = write.writeId.uuidString
+            let writeId = write.writeId.canonicalString
             guard rejectedWriteIndexes.contains(index) else {
                 return #"{"writeId":"\#(writeId)","result":"applied"}"#
             }

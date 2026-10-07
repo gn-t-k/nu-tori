@@ -1,6 +1,7 @@
 import { R } from "@praha/byethrow";
 import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
+import type { RecordId } from "../../domain/record-id";
 import { loadFoodComposition } from "../../domain/food-composition/food-composition";
 import { isNutrientName } from "../../domain/food-composition/nutrient-name";
 import type { IngredientNutrientSource } from "../../ingredient/domain/ingredient";
@@ -25,7 +26,7 @@ import type {
 // R2 と成分表の読み込みの失敗は投げる（試みは結果の無いまま、途中で止まった試みとして数える）
 export const runEstimationAttempt = async (
   deps: { archive: MealPhotoArchive; provider: EstimationProvider },
-  request: { photoIds: readonly string[]; target: IdentificationTarget },
+  request: { photoIds: readonly RecordId[]; target: IdentificationTarget },
 ): Promise<EstimationAttemptOutcome> => {
   const photos = await readPhotos(deps.archive, request.photoIds);
   const signal = AbortSignal.timeout(estimationAttemptTimeLimitMs);
@@ -78,7 +79,7 @@ class EstimationAttemptFailedError extends ErrorFactory({
 
 const readPhotos = async (
   archive: MealPhotoArchive,
-  photoIds: readonly string[],
+  photoIds: readonly RecordId[],
 ): Promise<ArrayBuffer[]> => {
   try {
     const photos = await Promise.all(photoIds.map((photoId) => archive.read(photoId)));

@@ -1,5 +1,7 @@
+import type { RecordId } from "../../domain/record-id";
+
 export type WeightRecord = {
-  id: string;
+  id: RecordId;
   weightKg: number;
   measuredAt: Date;
   timeZone: string;

@@ -1,3 +1,3 @@
-import { z } from "@hono/zod-openapi";
+import { recordIdSchema } from "../../domain/record-id";
 
-export const writeIdSchema = z.string().min(1).openapi({ description: "冪等の鍵" });
+export const writeIdSchema = recordIdSchema.openapi({ description: "冪等の鍵" });

@@ -1,5 +1,6 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { estimationEndedAt } from "../../estimation/durable-object/estimation-ended-at";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
@@ -146,7 +147,10 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
 // 出来事は料理を消すまで消えないので、版は下がらない。数える出来事の種類は足すだけにする（減らすと版が下がり、ヘルスケアが書き直されない）。
 // 修正は控えの索引 sync_write_receipts_record (record_type, record_id) で引く。材料の分を材料と控えの結合で書くと、
 // 統計の無い DB では控えの record_type だけで引き、材料への書き込みの控えを全部読むので、材料の ID の副問い合わせで書く
-const countVersion = (db: DrizzleSqliteDODatabase, dish: { id: string; mealId: string }): number =>
+const countVersion = (
+  db: DrizzleSqliteDODatabase,
+  dish: { id: RecordId; mealId: RecordId },
+): number =>
   1 +
   countCorrections(db, dishNameCorrections, receiptOfDish(dish.id)) +
   countCorrections(db, dishQuantityCorrections, receiptOfDish(dish.id)) +
@@ -178,7 +182,7 @@ const countVersion = (db: DrizzleSqliteDODatabase, dish: { id: string; mealId: s
     .get()?.total ?? 0);
 
 // 料理を書き換えた控えの修正のうち、受け取った順（控えを当てたときの変更の通し番号）でいちばんあとのもの
-const findLatestName = (db: DrizzleSqliteDODatabase, dishId: string): string | undefined =>
+const findLatestName = (db: DrizzleSqliteDODatabase, dishId: RecordId): string | undefined =>
   db
     .select({ name: dishNameCorrections.name })
     .from(dishNameCorrections)
@@ -192,7 +196,7 @@ const findLatestName = (db: DrizzleSqliteDODatabase, dishId: string): string | u
     .limit(1)
     .get()?.name;
 
-const findLatestQuantity = (db: DrizzleSqliteDODatabase, dishId: string): number | undefined =>
+const findLatestQuantity = (db: DrizzleSqliteDODatabase, dishId: RecordId): number | undefined =>
   db
     .select({ quantity: dishQuantityCorrections.quantity })
     .from(dishQuantityCorrections)
@@ -209,7 +213,7 @@ const findLatestQuantity = (db: DrizzleSqliteDODatabase, dishId: string): number
     .limit(1)
     .get()?.quantity;
 
-const receiptOfDish = (dishId: string) =>
+const receiptOfDish = (dishId: RecordId) =>
   and(eq(syncWriteReceipts.recordType, "dish"), eq(syncWriteReceipts.recordId, dishId));
 
 // 控えだけを指す修正の表の行のうち、条件に合う控えのものを数える

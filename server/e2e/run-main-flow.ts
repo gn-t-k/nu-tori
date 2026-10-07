@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { generateRecordId } from "../src/domain/record-id";
 
 // 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから推定、アカウントの削除までを通す。
 // 失敗したら、どの段で何が起きたかを書いて投げる。サインインしたあとは、失敗してもアカウントを消してから投げる
@@ -10,8 +11,10 @@ export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
     options.log("体重を記録した");
     const mealId = await sendPhotographedMeal(options, session);
     options.log("写真の食事を送った");
-    const { dishCount, ingredientCount } = await waitForEstimation(options, session, mealId);
-    options.log(`推定できた（料理 ${dishCount}、材料 ${ingredientCount}）`);
+    const { dishIds, ingredientCount } = await waitForEstimation(options, session, mealId);
+    options.log(`推定できた（料理 ${dishIds.length}、材料 ${ingredientCount}）`);
+    await renameEstimatedDish(options, session, dishIds[0]);
+    options.log("推定でできた料理の名前を直した");
   } catch (error) {
     await deleteAccount(options, session).catch((deletionError: unknown) => {
       options.log(`アカウントの削除にも失敗した: ${describeError(deletionError)}`);
@@ -50,10 +53,10 @@ const signIn = async (options: MainFlowOptions): Promise<Session> => {
 const recordWeight = async (options: MainFlowOptions, session: Session): Promise<void> => {
   await pushWrites(options, session, [
     {
-      id: crypto.randomUUID(),
+      id: generateRecordId(),
       type: "create_weight_record",
       weightRecord: {
-        id: crypto.randomUUID(),
+        id: generateRecordId(),
         weightKg: 60.5,
         measuredAt: Date.now(),
         timeZone: "Asia/Tokyo",
@@ -66,12 +69,12 @@ const sendPhotographedMeal = async (
   options: MainFlowOptions,
   session: Session,
 ): Promise<string> => {
-  const mealId = crypto.randomUUID();
-  const photoId = crypto.randomUUID();
+  const mealId = generateRecordId();
+  const photoId = generateRecordId();
   const now = Date.now();
   await pushWrites(options, session, [
     {
-      id: crypto.randomUUID(),
+      id: generateRecordId(),
       type: "create_meal",
       meal: {
         id: mealId,
@@ -98,7 +101,7 @@ const waitForEstimation = async (
   options: MainFlowOptions,
   session: Session,
   mealId: string,
-): Promise<{ dishCount: number; ingredientCount: number }> => {
+): Promise<{ dishIds: [string, ...string[]]; ingredientCount: number }> => {
   const startedAt = Date.now();
   const changes: Change[] = [];
   let afterSequence = 0;
@@ -112,7 +115,7 @@ const waitForEstimation = async (
     }
     lastStatus = findEstimationStatus(changes, mealId) ?? lastStatus;
     if (lastStatus === "estimated") {
-      return countDishesAndIngredients(changes, mealId);
+      return requireEstimatedDishIdsAndIngredientCount(changes, mealId);
     }
     if (lastStatus !== "awaiting_photos" && lastStatus !== "estimating") {
       throw new Error(`推定できたにならず、${lastStatus} で終わった`);
@@ -131,10 +134,10 @@ const findEstimationStatus = (changes: Change[], mealId: string): string | undef
     .at(-1);
 
 // 推定できたなら、料理と材料が同期の変更に載っている。載っていなければ、状態だけが進んで中身が書かれていない
-const countDishesAndIngredients = (
+const requireEstimatedDishIdsAndIngredientCount = (
   changes: Change[],
   mealId: string,
-): { dishCount: number; ingredientCount: number } => {
+): { dishIds: [string, ...string[]]; ingredientCount: number } => {
   const dishIds = changes
     .filter(({ kind }) => kind === "dish")
     .map(({ record }) => z.object({ id: z.string(), mealId: z.string() }).parse(record))
@@ -144,12 +147,24 @@ const countDishesAndIngredients = (
     .filter(({ kind }) => kind === "ingredient")
     .map(({ record }) => z.object({ dishId: z.string() }).parse(record))
     .filter(({ dishId }) => dishIds.includes(dishId)).length;
-  if (dishIds.length === 0 || ingredientCount === 0) {
+  const [firstDishId, ...restDishIds] = dishIds;
+  if (firstDishId === undefined || ingredientCount === 0) {
     throw new Error(
       `推定できたのに、料理か材料が無い（料理 ${dishIds.length}、材料 ${ingredientCount}）`,
     );
   }
-  return { dishCount: dishIds.length, ingredientCount };
+  return { dishIds: [firstDishId, ...restDishIds], ingredientCount };
+};
+
+// サーバーが振った料理の ID を、そのまま送り返して名前を直す。送り返した ID で料理が見つからないと、受け付けられずに失敗する（#362）
+const renameEstimatedDish = async (
+  options: MainFlowOptions,
+  session: Session,
+  dishId: string,
+): Promise<void> => {
+  await pushWrites(options, session, [
+    { id: generateRecordId(), type: "update_dish", dishId, name: "直した料理" },
+  ]);
 };
 
 const pullChanges = async (
@@ -223,8 +238,11 @@ const callApi = (
     ...(init.body === undefined ? {} : { body: init.body }),
   });
 
+// 1回の流れは1台の端末として送る
+const deviceId = generateRecordId();
+
 const createClientState = () => ({
-  deviceId: "e2e-main-flow",
+  deviceId,
   timeZone: "Asia/Tokyo",
   appVersion: "1.0.0",
   osVersion: "26.0",

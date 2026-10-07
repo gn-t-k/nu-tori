@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
@@ -29,7 +30,7 @@ describe("食事の同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
   });
 
   describe("食事を作る書き込みを送ったとき", () => {
@@ -38,8 +39,8 @@ describe("食事の同期", () => {
     let photoIds: string[];
     let response: Response;
     beforeEach(async () => {
-      mealId = crypto.randomUUID();
-      photoIds = [crypto.randomUUID(), crypto.randomUUID()];
+      mealId = generateRecordId();
+      photoIds = [generateRecordId(), generateRecordId()];
       write = createMealWrite({
         meal: {
           id: mealId,
@@ -93,8 +94,8 @@ describe("食事の同期", () => {
     let mealId: string;
     let photoId: string;
     beforeEach(async () => {
-      mealId = crypto.randomUUID();
-      photoId = crypto.randomUUID();
+      mealId = generateRecordId();
+      photoId = generateRecordId();
       existing = createMealWrite({ meal: { id: mealId, photos: [{ id: photoId }] } });
       await pushSyncWrites(sessionToken, { writes: [existing] });
     });
@@ -105,7 +106,7 @@ describe("食事の同期", () => {
         response = await pushSyncWrites(sessionToken, {
           writes: [
             createMealWrite({
-              meal: { id: mealId, entryMethod: "picked", photos: [{ id: crypto.randomUUID() }] },
+              meal: { id: mealId, entryMethod: "picked", photos: [{ id: generateRecordId() }] },
             }),
           ],
         });
@@ -129,7 +130,7 @@ describe("食事の同期", () => {
       let newPhotoId: string;
       let results: PushResults["results"];
       beforeEach(async () => {
-        newPhotoId = crypto.randomUUID();
+        newPhotoId = generateRecordId();
         const response = await pushSyncWrites(sessionToken, {
           writes: [
             createMealWrite({ meal: { photos: [{ id: photoId }, { id: newPhotoId }] } }),
@@ -172,7 +173,7 @@ describe("食事の同期", () => {
     let photoId: string;
     let response: Response;
     beforeEach(async () => {
-      photoId = crypto.randomUUID();
+      photoId = generateRecordId();
       response = await pushSyncWrites(sessionToken, {
         writes: [
           createMealWrite({
@@ -201,8 +202,8 @@ describe("食事の同期", () => {
     let response: Response;
     let created: PullResult;
     beforeEach(async () => {
-      mealId = crypto.randomUUID();
-      photoIds = [crypto.randomUUID(), crypto.randomUUID()];
+      mealId = generateRecordId();
+      photoIds = [generateRecordId(), generateRecordId()];
       await pushSyncWrites(sessionToken, {
         writes: [createMealWrite({ meal: { id: mealId, photos: photoIds.map((id) => ({ id })) } })],
       });
@@ -345,7 +346,7 @@ describe("食事の同期", () => {
     let mealId: string;
     let response: Response;
     beforeEach(async () => {
-      mealId = crypto.randomUUID();
+      mealId = generateRecordId();
       response = await pushSyncWrites(sessionToken, { writes: [deleteMealWrite(mealId)] });
     });
 
@@ -362,7 +363,7 @@ describe("食事の同期", () => {
       let photoId: string;
       let createResponse: Response;
       beforeEach(async () => {
-        photoId = crypto.randomUUID();
+        photoId = generateRecordId();
         createResponse = await pushSyncWrites(sessionToken, {
           writes: [createMealWrite({ meal: { id: mealId, photos: [{ id: photoId }] } })],
         });
@@ -386,7 +387,7 @@ describe("食事の同期", () => {
     let created: ReturnType<typeof createMealWrite>;
     let afterCreated: number;
     beforeEach(async () => {
-      mealId = crypto.randomUUID();
+      mealId = generateRecordId();
       created = createMealWrite({ meal: { id: mealId, eatenAt: Date.UTC(2026, 8, 30, 3, 0) } });
       await pushSyncWrites(sessionToken, { writes: [created] });
       afterCreated = (await (await pullSyncChanges(sessionToken)).json<PullResult>())
@@ -489,7 +490,7 @@ describe("食事の同期", () => {
     let response: Response;
     beforeEach(async () => {
       response = await pushSyncWrites(sessionToken, {
-        writes: [updateMealWrite(crypto.randomUUID(), Date.UTC(2026, 8, 30, 4, 30))],
+        writes: [updateMealWrite(generateRecordId(), Date.UTC(2026, 8, 30, 4, 30))],
       });
     });
 
@@ -798,7 +799,7 @@ describe("食事の同期", () => {
       response = await pushSyncWrites(sessionToken, {
         writes: [
           createMealWrite({
-            meal: { photos: Array.from({ length: 5 }, () => ({ id: crypto.randomUUID() })) },
+            meal: { photos: Array.from({ length: 5 }, () => ({ id: generateRecordId() })) },
           }),
         ],
       });
@@ -815,7 +816,7 @@ describe("食事の同期", () => {
       response = await pushSyncWrites(sessionToken, {
         writes: [
           createMealWrite({
-            meal: { photos: Array.from({ length: 300 }, () => ({ id: crypto.randomUUID() })) },
+            meal: { photos: Array.from({ length: 300 }, () => ({ id: generateRecordId() })) },
           }),
         ],
       });
@@ -875,7 +876,7 @@ describe("食事の同期", () => {
   describe("同じ写真の ID を2つ持つ作る書き込みを送ったとき", () => {
     let response: Response;
     beforeEach(async () => {
-      const photoId = crypto.randomUUID();
+      const photoId = generateRecordId();
       response = await pushSyncWrites(sessionToken, {
         writes: [createMealWrite({ meal: { photos: [{ id: photoId }, { id: photoId }] } })],
       });

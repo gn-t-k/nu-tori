@@ -8,6 +8,7 @@ import {
   sqliteTable,
   text,
 } from "drizzle-orm/sqlite-core";
+import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
 import { ingredientTables } from "../../ingredient/durable-object/ingredient-tables";
@@ -17,8 +18,9 @@ import { mealTables } from "../../meal/durable-object/meal-tables";
 const dishes = sqliteTable(
   "dishes",
   {
-    id: text("id").primaryKey(),
+    id: text("id").$type<RecordId>().primaryKey(),
     mealId: text("meal_id")
+      .$type<RecordId>()
       .notNull()
       .references(() => mealTables.meals.id),
     name: text("name").notNull(),
@@ -33,6 +35,7 @@ const dishEstimationApplications = sqliteTable(
   "dish_estimation_applications",
   {
     dishId: text("dish_id")
+      .$type<RecordId>()
       .notNull()
       .references(() => dishes.id, { onDelete: "cascade" }),
     estimationId: text("estimation_id")
@@ -46,7 +49,7 @@ const dishEstimationApplications = sqliteTable(
 const dishEstimatedQuantities = sqliteTable(
   "dish_estimated_quantities",
   {
-    dishId: text("dish_id").notNull(),
+    dishId: text("dish_id").$type<RecordId>().notNull(),
     estimationId: text("estimation_id").notNull(),
     quantity: real("quantity").notNull(),
     unit: text("unit").notNull(),
@@ -84,6 +87,7 @@ const dishQuantityCorrectionIngredients = sqliteTable(
       .references(() => dishQuantityCorrections.syncWriteReceiptId, { onDelete: "cascade" }),
     // 材料の表がこの表の束を指し返すので、型の推論が循環しないよう参照先の型を書く
     ingredientId: text("ingredient_id")
+      .$type<RecordId>()
       .notNull()
       .references((): AnySQLiteColumn => ingredientTables.ingredients.id, { onDelete: "cascade" }),
     quantity: real("quantity").notNull(),
@@ -102,6 +106,7 @@ const dishEstimationSchedules = sqliteTable(
       .primaryKey()
       .references(() => estimationTables.estimationSchedules.id),
     dishId: text("dish_id")
+      .$type<RecordId>()
       .notNull()
       .references(() => dishes.id, { onDelete: "cascade" }),
   },
@@ -110,7 +115,7 @@ const dishEstimationSchedules = sqliteTable(
 
 // 料理の ID は値で名指しする（外部キーにしない）
 const dishDeletions = sqliteTable("dish_deletions", {
-  dishId: text("dish_id").primaryKey(),
+  dishId: text("dish_id").$type<RecordId>().primaryKey(),
   syncWriteReceiptId: text("sync_write_receipt_id")
     .notNull()
     .references(() => syncLedgerTables.syncWriteReceipts.id),

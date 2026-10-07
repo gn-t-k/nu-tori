@@ -1,3 +1,4 @@
+import type { RecordId } from "../../domain/record-id";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { DishStore } from "./dish-store";
 
@@ -5,7 +6,7 @@ import type { DishStore } from "./dish-store";
 // その料理のいちばん新しい当てた推定し直しの終わりを読む（消すときは消す前に読む）。推定し直しを当てていなければ送らない
 export const computeReestimatedDishEditedEvents = (
   dishStore: DishStore,
-  dishId: string,
+  dishId: RecordId,
   action: "corrected" | "deleted",
   editedAt: Date,
 ): UsageEvent[] => {

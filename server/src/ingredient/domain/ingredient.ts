@@ -1,10 +1,11 @@
+import type { RecordId } from "../../domain/record-id";
 import type { NutrientName } from "../../domain/food-composition/nutrient-name";
 import type { QuantitySource } from "../../domain/quantity-source";
 
 // 料理を構成する材料の今の値。サーバーが推定の完了で作り、端末が量を直す
 export type Ingredient = {
-  id: string;
-  dishId: string;
+  id: RecordId;
+  dishId: RecordId;
   // この材料が属する当てた推定。今の材料は、料理のいちばん新しい当てた推定の材料
   estimationId: string;
   name: string;

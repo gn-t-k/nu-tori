@@ -1,12 +1,13 @@
+import type { RecordId } from "../../domain/record-id";
 import type { Notice, NoticeResponse } from "./notice";
 
 // 端末から届く知らせの書き込み。種類は、受け付けるかを種類の decide が決めるため文字列で受ける
-export type NoticeWrite = { id: string } & (
+export type NoticeWrite = { id: RecordId } & (
   | {
       type: "create_notice";
       notice: Omit<Notice, "noticeType" | "response"> & { noticeType: string };
     }
-  | { type: "respond_notice"; noticeId: string; response: NoticeResponse }
+  | { type: "respond_notice"; noticeId: RecordId; response: NoticeResponse }
 );
 
 // 書き込みの type の一覧。ドメインの種類の見分けと、受け口の見分けが、ここを使う

@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { deleteDishWrite } from "../../dish/http/testing/delete-dish-write";
@@ -21,7 +22,7 @@ describe("料理ごとの推定の状態の同期", () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
     let accountId: string;
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
     // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
     useFakeClock(Date.now() + 86_400_000);
     mockCreateEstimationProviderOk();

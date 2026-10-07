@@ -6,6 +6,7 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import type { RecordId } from "../../domain/record-id";
 import { dishTables } from "../../dish/durable-object/dish-tables";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { mealTables } from "../../meal/durable-object/meal-tables";
@@ -28,6 +29,7 @@ const mealEstimationSchedules = sqliteTable(
       .primaryKey()
       .references(() => estimationSchedules.id),
     mealId: text("meal_id")
+      .$type<RecordId>()
       .notNull()
       .references(() => mealTables.meals.id, { onDelete: "cascade" }),
   },

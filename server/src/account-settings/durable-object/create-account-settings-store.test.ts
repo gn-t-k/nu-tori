@@ -1,10 +1,13 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId } from "../../domain/record-id";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import type { AccountSettingsStore } from "../domain/account-settings-store";
 import { createAccountSettingsStore } from "./create-account-settings-store";
+
+const settings1 = generateRecordId();
 
 type Seed = (factory: ReturnType<typeof durableObjectFactory>) => Promise<void>;
 
@@ -28,10 +31,10 @@ describe("アカウントの設定の置き場", () => {
 
     test("入れた設定を読めること", async () => {
       const found = await withStore(seed, (store) => {
-        store.insert({ id: "settings-1", sendsUsageData: true });
+        store.insert({ id: settings1, sendsUsageData: true });
         return store.find();
       });
-      expect(found).toEqual({ id: "settings-1", sendsUsageData: true });
+      expect(found).toEqual({ id: settings1, sendsUsageData: true });
     });
   });
 
@@ -39,13 +42,13 @@ describe("アカウントの設定の置き場", () => {
     let seed: Seed;
     beforeEach(() => {
       seed = async (factory) => {
-        await factory.accountSettings.create({ id: "settings-1", sendsUsageData: false });
+        await factory.accountSettings.create({ id: settings1, sendsUsageData: false });
       };
     });
 
     test("ID とともに今の値を読めること", async () => {
       const found = await withStore(seed, (store) => store.find());
-      expect(found).toEqual({ id: "settings-1", sendsUsageData: false });
+      expect(found).toEqual({ id: settings1, sendsUsageData: false });
     });
 
     test("値を直すと、ID は変わらず値だけが変わること", async () => {
@@ -53,7 +56,7 @@ describe("アカウントの設定の置き場", () => {
         store.update(true);
         return store.find();
       });
-      expect(found).toEqual({ id: "settings-1", sendsUsageData: true });
+      expect(found).toEqual({ id: settings1, sendsUsageData: true });
     });
   });
 });

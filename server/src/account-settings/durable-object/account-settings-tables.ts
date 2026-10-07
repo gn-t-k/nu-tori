@@ -1,8 +1,9 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 
 const accountSettings = sqliteTable("account_settings", {
-  id: text("id").primaryKey(),
+  id: text("id").$type<RecordId>().primaryKey(),
   sendsUsageData: integer("sends_usage_data", { mode: "boolean" }).notNull(),
 });
 

@@ -11,6 +11,88 @@ extension NuToriAPIClientTests {
         static let dishId = "00000000-0000-4000-8000-0000000000d1"
         static let ingredientId = "00000000-0000-4000-8000-0000000000e1"
 
+        @Suite("料理と材料の書き込みを送るとき")
+        struct PushingDishWrites {
+            let transport: ClientTransportMock
+            let client: NuToriAPIClient
+            let writes: [SyncWrite]
+
+            init() throws {
+                let dishId = try #require(UUID(uuidString: DishSync.dishId))
+                let mealId = try #require(UUID(uuidString: DishSync.mealId))
+                let ingredientId = try #require(UUID(uuidString: DishSync.ingredientId))
+                writes = [
+                    .createDish(
+                        writeId: try #require(
+                            UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")),
+                        dish: NewDish(id: dishId, mealId: mealId, name: "親子丼", positionInMeal: 0)),
+                    .updateDish(
+                        writeId: try #require(
+                            UUID(uuidString: "00000000-0000-4000-8000-0000000000a2")),
+                        correction: DishCorrection(
+                            id: dishId, name: "カツ丼",
+                            quantity: .init(
+                                value: 2,
+                                proportionedIngredients: [
+                                    .init(ingredientId: ingredientId, quantity: 160)
+                                ]))),
+                    .updateIngredient(
+                        writeId: try #require(
+                            UUID(uuidString: "00000000-0000-4000-8000-0000000000a3")),
+                        ingredientId: ingredientId, quantity: 150),
+                    .deleteDish(
+                        writeId: try #require(
+                            UUID(uuidString: "00000000-0000-4000-8000-0000000000a4")),
+                        dishId: dishId),
+                ]
+                transport = .ok(json: #"{"results":[]}"#)
+                client = NuToriAPIClient(
+                    serverURL: try #require(URL(string: "https://api.example")),
+                    transport: transport,
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("書き込み・料理・食事・材料の ID を、小文字の正規形で送ること")
+            func sendsLowercasedIds() async throws {
+                _ = try await client.pushSyncWrites(
+                    writes, isFinalBatch: true, clientState: .fixture())
+
+                let sent = try #require(transport.requests.first)
+                #expect(
+                    try PushSyncWritesPayload(sentBody: sent.body).writes == [
+                        .createDish(
+                            .init(
+                                id: "00000000-0000-4000-8000-0000000000a1", _type: .createDish,
+                                dishId: "00000000-0000-4000-8000-0000000000d1",
+                                mealId: "00000000-0000-4000-8000-0000000000f1",
+                                name: "親子丼", positionInMeal: 0)),
+                        .updateDish(
+                            .init(
+                                id: "00000000-0000-4000-8000-0000000000a2", _type: .updateDish,
+                                dishId: "00000000-0000-4000-8000-0000000000d1", name: "カツ丼",
+                                quantity: .init(
+                                    value: 2,
+                                    proportionedIngredients: [
+                                        .init(
+                                            ingredientId: "00000000-0000-4000-8000-0000000000e1",
+                                            quantity: 160)
+                                    ]))),
+                        .updateIngredient(
+                            .init(
+                                id: "00000000-0000-4000-8000-0000000000a3",
+                                _type: .updateIngredient,
+                                ingredientId: "00000000-0000-4000-8000-0000000000e1",
+                                quantity: 150)),
+                        .deleteDish(
+                            .init(
+                                id: "00000000-0000-4000-8000-0000000000a4", _type: .deleteDish,
+                                dishId: "00000000-0000-4000-8000-0000000000d1")),
+                    ])
+            }
+        }
+
         @Suite("推定し直しで置き換わった前の材料を直す書き込みを、受け付けなかったとき")
         struct PushingReplacedIngredientWrite {
             let client: NuToriAPIClient
@@ -25,7 +107,7 @@ extension NuToriAPIClientTests {
                     transport: ClientTransportMock.ok(
                         json: """
                             {"results":[
-                              {"writeId":"\(writeId.uuidString)","result":"rejected","rejectionReason":"ingredients_replaced",
+                              {"writeId":"\(writeId.canonicalString)","result":"rejected","rejectionReason":"ingredients_replaced",
                                "current":{"status":"deleted","change":{"kind":"ingredient_deletion","recordId":"\(DishSync.ingredientId)","record":{}}}}
                             ]}
                             """

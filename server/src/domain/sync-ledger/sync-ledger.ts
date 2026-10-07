@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import { generateRecordId, type RecordId } from "../record-id";
 import type { SyncClientState } from "../sync-client-state";
 import type { SyncWriteOutcome } from "../sync-write-outcome";
 import type { RejectionReason } from "../rejection-reason";
@@ -35,7 +36,7 @@ export const createSyncLedger = <
   }) =>
     store.transaction(() => {
       const previousRequestReceivedAt = store.findLatestRequestReceivedAt();
-      const requestLogId = crypto.randomUUID();
+      const requestLogId = generateRecordId();
       store.insertPushRequestLog({
         id: requestLogId,
         receivedAt: request.receivedAt,
@@ -125,7 +126,7 @@ export const createSyncLedger = <
     store.transaction(() => {
       const previousRequestReceivedAt = store.findLatestRequestReceivedAt();
       store.insertPullRequestLog({
-        id: crypto.randomUUID(),
+        id: generateRecordId(),
         receivedAt: request.receivedAt,
         clientState: request.clientState,
         afterSequence: request.afterSequence,
@@ -165,7 +166,7 @@ export const createSyncLedger = <
   const settle = (
     writeId: string,
     outcome: SyncWriteOutcome,
-    findRejectedTarget: () => { owner: Kind; recordId: string },
+    findRejectedTarget: () => { owner: Kind; recordId: RecordId },
   ) =>
     outcome.result === "rejected"
       ? { writeId, outcome, rejectedTarget: findRejectedTarget() }
@@ -180,7 +181,7 @@ export const createSyncLedger = <
   };
 
   // 受け付けなかった書き込みの記録は、まだ作られていないことがあるので、どの種類でも無いこと（absent）を返す
-  const readRejectedCurrent = (owner: Kind, recordId: string): CurrentRecord<TValue> => {
+  const readRejectedCurrent = (owner: Kind, recordId: RecordId): CurrentRecord<TValue> => {
     const current = owner.readCurrent(recordId);
     match(current.status)
       .with("value", "absent", () => undefined)
@@ -189,7 +190,7 @@ export const createSyncLedger = <
     return current;
   };
 
-  const readPulledCurrent = (owner: Kind, recordId: string): CurrentRecord<TValue> => {
+  const readPulledCurrent = (owner: Kind, recordId: RecordId): CurrentRecord<TValue> => {
     const current = owner.readCurrent(recordId);
     match(current.status)
       .with("value", () => undefined)

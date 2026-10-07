@@ -1,6 +1,7 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId } from "../domain/record-id";
 import { mockSetUserOk } from "../observability/set-user.mock";
 import { getAccountDurableObject } from "./get-account-durable-object";
 
@@ -10,7 +11,7 @@ describe("アカウントの Durable Object", () => {
     let signIn: { signedInAt: Date; timeZone: string | undefined };
     let setUserSpy: ReturnType<typeof mockSetUserOk>;
     beforeEach(() => {
-      accountId = crypto.randomUUID();
+      accountId = generateRecordId();
       signIn = { signedInAt: new Date(), timeZone: undefined };
       setUserSpy = mockSetUserOk();
     });
@@ -25,7 +26,7 @@ describe("アカウントの Durable Object", () => {
     let accountId: string;
     let setUserSpy: ReturnType<typeof mockSetUserOk>;
     beforeEach(() => {
-      accountId = crypto.randomUUID();
+      accountId = generateRecordId();
       setUserSpy = mockSetUserOk();
     });
 
@@ -39,7 +40,7 @@ describe("アカウントの Durable Object", () => {
     let accountId: string;
     let setUserSpy: ReturnType<typeof mockSetUserOk>;
     beforeEach(async () => {
-      accountId = crypto.randomUUID();
+      accountId = generateRecordId();
       const stub = getAccountDurableObject(env, accountId);
       // ひとりでに動かないよう、先の時刻に張ってから動かす
       await runInDurableObject(stub, (_, state) => state.storage.setAlarm(Date.now() + 3_600_000));
