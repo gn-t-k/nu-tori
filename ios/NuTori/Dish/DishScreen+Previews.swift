@@ -10,6 +10,7 @@
         NavigationStack {
             DishScreen(
                 contents: contents,
+                offer: MealEditOffer(card: card).dishScreen(contents),
                 list: DishScreenList(
                     contents: contents, in: card,
                     rejectedLines: sample.rejectedLines(of: contents, in: card)),
