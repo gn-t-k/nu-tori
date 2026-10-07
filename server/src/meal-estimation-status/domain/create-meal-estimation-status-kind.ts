@@ -25,7 +25,7 @@ export const createMealEstimationStatusKind = (
   },
 });
 
-const computeMealEstimationStatus = (
+export const computeMealEstimationStatus = (
   schedules: ReturnType<MealEstimationStatusStore["findSchedulesOfMeal"]>,
 ): MealEstimationStatus => {
   const latest = schedules.toSorted((a, b) => b.dueAt.getTime() - a.dueAt.getTime())[0];

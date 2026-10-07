@@ -755,7 +755,7 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/result`.
             internal var result: Swift.String
-            /// result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと
+            /// result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと。awaiting_estimation は、推定を待っている食事（写真を待っている・推定中・翌日に推定）に料理を足そうとした、その料理と材料を直そうとしたこと
             ///
             /// - Remark: Generated from `#/components/schemas/SyncWriteResult/rejectionReason`.
             internal var rejectionReason: Swift.String?
@@ -766,7 +766,7 @@ extension Components {
             /// - Parameters:
             ///   - writeId:
             ///   - result: 値が増えても古い版のアプリが読めるよう文字列で持つ。知らない値は端末が知らない結果として扱う
-            ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと
+            ///   - rejectionReason: result が rejected のときだけ付く。値が増えても読めるよう文字列で持つ。ingredients_replaced は、推定し直しで料理の材料が置き換わっていた（料理の量の書き込みが前の材料を載せていた、前の材料の量を直そうとした）こと。awaiting_estimation は、推定を待っている食事（写真を待っている・推定中・翌日に推定）に料理を足そうとした、その料理と材料を直そうとしたこと
             ///   - current:
             internal init(
                 writeId: Swift.String,

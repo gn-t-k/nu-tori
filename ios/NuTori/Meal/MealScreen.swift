@@ -4,7 +4,8 @@ import SwiftUI
 import UIKit
 
 /// 食事の画面。タイムラインの食事のカードから潜る。その場で直す値は時刻だけで、料理は料理の画面へ潜って直す。
-/// 写真、時刻、合計と栄養の出どころの1行、料理の一覧、「料理を足す」、「栄養の出典 ›」、「食事を削除」の順に並べる
+/// 写真、時刻、合計と栄養の出どころの1行、料理の一覧、「料理を足す」（推定を待っているあいだは、推定が終わると足せることの1行）、
+/// 「栄養の出典 ›」、「食事を削除」の順に並べる
 struct MealScreen: View {
     let card: MealCard
     /// 受け付けなかった書き込みの1行。この食事の1行を、時刻の下と料理の一覧（料理の画面では材料の一覧）に置く
@@ -114,6 +115,13 @@ struct MealScreen: View {
                 }
             if offer.addsDish {
                 addDishSection
+            } else if let note = offer.addDishWaitNote {
+                // 「料理を足す」の場所に、まとまりの下の注記と同じ見た目で置く（行は持たない）
+                Section {
+                } footer: {
+                    Text(note)
+                        .accessibilityIdentifier("meal-add-dish-wait")
+                }
             }
             if card.contents.showsNutrientCitation {
                 Section {

@@ -221,6 +221,50 @@ struct FakeSyncServerTests {
         }
     }
 
+    @Suite("推定を終えるまでの取得を2回にして、食事を作る書き込みを受け付けたとき")
+    struct MealEstimationAfterTwoPulls {
+        let meal: SyncedMeal
+        let dish: SyncedDish
+        let client: NuToriAPIClient
+
+        init() async throws {
+            let meal = try SyncedMeal.fixture()
+            let dish = try SyncedDish.fixture(mealId: meal.id)
+            self.meal = meal
+            self.dish = dish
+            client = FakeSyncServerTests.client(
+                .init(
+                    records: [], startedOn: FakeSyncServerTests.startedOn,
+                    estimatedDishes: { _ in [.dish(dish)] }, mealEstimationPulls: 2))
+            _ = try await client.pushSyncWrites(
+                [.createMeal(writeId: UUID(), meal: meal)], isFinalBatch: true,
+                clientState: .fixture())
+        }
+
+        @Test("推定中を返したあと、次の取得では何も返さず、その次の取得で推定できたことと料理を返すこと")
+        func estimatesOnSecondPull() async throws {
+            _ = try await client.pullSyncChanges(afterSequence: 0, clientState: .fixture())
+            let second = try await client.pullSyncChanges(afterSequence: 2, clientState: .fixture())
+            let third = try await client.pullSyncChanges(afterSequence: 2, clientState: .fixture())
+
+            #expect(
+                second
+                    == .pulled(
+                        SyncChangesPage(
+                            changes: [], hasMore: false, nextAfterSequence: 2,
+                            startedOn: FakeSyncServerTests.startedOn)))
+            #expect(
+                third
+                    == .pulled(
+                        SyncChangesPage(
+                            changes: [
+                                .mealEstimationStatus(.init(mealId: meal.id, status: .estimated)),
+                                .dish(dish),
+                            ], hasMore: false, nextAfterSequence: 4,
+                            startedOn: FakeSyncServerTests.startedOn)))
+        }
+    }
+
     @Suite("推定中を返した食事を消したとき")
     struct MealDeletedWhileEstimating {
         let meal: SyncedMeal

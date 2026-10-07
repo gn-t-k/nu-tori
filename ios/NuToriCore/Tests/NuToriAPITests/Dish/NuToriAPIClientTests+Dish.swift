@@ -136,6 +136,49 @@ extension NuToriAPIClientTests {
             }
         }
 
+        @Suite("推定を待っている食事に料理を足す書き込みを、受け付けなかったとき")
+        struct PushingWriteToMealAwaitingEstimation {
+            let client: NuToriAPIClient
+            let writeId: UUID
+            let dish: NewDish
+
+            init() throws {
+                writeId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000a2"))
+                dish = NewDish(
+                    id: try #require(UUID(uuidString: DishSync.dishId)),
+                    mealId: try #require(UUID(uuidString: DishSync.mealId)),
+                    name: "味噌汁", positionInMeal: 2)
+                client = NuToriAPIClient(
+                    serverURL: URL(string: "https://api.example")!,
+                    transport: ClientTransportMock.ok(
+                        json: """
+                            {"results":[
+                              {"writeId":"\(writeId.canonicalString)","result":"rejected","rejectionReason":"awaiting_estimation",
+                               "current":{"status":"absent"}}
+                            ]}
+                            """
+                    ),
+                    appBuildGate: .sample,
+                    sessionToken: { "session-1" }
+                )
+            }
+
+            @Test("理由を推定を待っていると読むこと")
+            func readsAwaitingEstimation() async throws {
+                let result = try await client.pushSyncWrites(
+                    [.createDish(writeId: writeId, dish: dish)],
+                    isFinalBatch: true, clientState: .fixture())
+
+                #expect(
+                    result
+                        == .pushed([
+                            SyncWriteResult(
+                                writeId: writeId, outcome: .rejected(.awaitingEstimation),
+                                current: .absent)
+                        ]))
+            }
+        }
+
         @Suite("料理と材料の変更を取りに行ったとき")
         struct PullingDishChanges {
             let client: NuToriAPIClient

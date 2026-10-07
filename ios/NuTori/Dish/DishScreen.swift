@@ -133,7 +133,8 @@ struct DishScreen: View {
                 quantityRow(field)
             }
         } footer: {
-            if let note = header.note(editingName: focusedField == .name) {
+            // 直せないときは、直したときの注記の代わりに、推定が終わると直せることを置く
+            if let note = offer.waitNote ?? header.note(editingName: focusedField == .name) {
                 Text(note)
             }
         }
