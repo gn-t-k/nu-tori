@@ -43,7 +43,7 @@ export const findReceivedAtOfEstimation = (
 
 // 予定のもとの書き込みを受け取った時刻。その予定から、見送りでつながった前の予定を辿った、いちばん早い予定の時刻。
 // 見送りから作る次の日の予定は見送った予定とつながず別の予定なので、due_at の並びで、すぐ前が見送った予定である間だけ遡る
-export const findReceivedAtOfSchedule = (
+const findReceivedAtOfSchedule = (
   schedules: readonly DishEstimationSchedule[],
   scheduleId: string,
 ): Date => {
