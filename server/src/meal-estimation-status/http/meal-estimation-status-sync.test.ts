@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
@@ -15,8 +16,8 @@ describe("推定の状態の同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
-    mealId = crypto.randomUUID();
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
+    mealId = generateRecordId();
     await pushSyncWrites(sessionToken, { writes: [createMealWrite({ meal: { id: mealId } })] });
     pullStatus = async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();

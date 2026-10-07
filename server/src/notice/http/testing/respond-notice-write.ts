@@ -1,8 +1,10 @@
+import { generateRecordId } from "../../../domain/record-id";
+
 export const respondNoticeWrite = (
   noticeId: string,
   overrides: { id?: string; response?: Record<string, unknown> } = {},
 ): { id: string; type: "respond_notice"; noticeId: string; response: Record<string, unknown> } => ({
-  id: overrides.id ?? crypto.randomUUID(),
+  id: overrides.id ?? generateRecordId(),
   type: "respond_notice",
   noticeId,
   response: {

@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { mockSetUserOk } from "../../observability/set-user.mock";
@@ -32,7 +33,7 @@ describe("セッションと回数の歯止め", () => {
       protectedApp = createProtectedApp();
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
-      signedIn = await signInTestAccount(crypto.randomUUID());
+      signedIn = await signInTestAccount(generateRecordId());
       limitSpy = mockAccountRateLimiterOk();
     });
 
@@ -63,7 +64,7 @@ describe("セッションと回数の歯止め", () => {
       protectedApp = createProtectedApp();
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
-      signedIn = await signInTestAccount(crypto.randomUUID());
+      signedIn = await signInTestAccount(generateRecordId());
       mockAccountRateLimiterOk();
       setUserSpy = mockSetUserOk();
     });
@@ -118,7 +119,7 @@ describe("セッションと回数の歯止め", () => {
       protectedApp = createProtectedApp();
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
-      ({ sessionToken } = await signInTestAccount(crypto.randomUUID()));
+      ({ sessionToken } = await signInTestAccount(generateRecordId()));
       mockAccountRateLimiterError();
     });
 

@@ -1,6 +1,7 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { generateRecordId } from "../../domain/record-id";
 import { createAppleRefreshTokenStore } from "../../auth/create-apple-refresh-token-store";
 import { createAuthentication } from "../../auth/create-authentication";
 import { AppleAuthorizationCodeRejectedError } from "../../auth/exchange-apple-authorization-code";
@@ -18,7 +19,7 @@ describe("サインイン", () => {
   describe("ID トークンと認可コードを受け付けたとき", () => {
     let appleUserId: string;
     beforeEach(() => {
-      appleUserId = crypto.randomUUID();
+      appleUserId = generateRecordId();
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk({ refreshToken: "apple-refresh-token" });
     });
@@ -60,7 +61,7 @@ describe("サインイン", () => {
     let appleUserId: string;
     let accountId: string;
     beforeEach(async () => {
-      appleUserId = crypto.randomUUID();
+      appleUserId = generateRecordId();
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
       ({ accountId } = await signInTestAccount(appleUserId));
@@ -89,7 +90,7 @@ describe("サインイン", () => {
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
       body = JSON.stringify({
-        idToken: await signAppleIdToken({ appleUserId: crypto.randomUUID(), nonce: "nonce-1" }),
+        idToken: await signAppleIdToken({ appleUserId: generateRecordId(), nonce: "nonce-1" }),
         nonce: "nonce-2",
         authorizationCode: "authorization-code",
       });
@@ -112,7 +113,7 @@ describe("サインイン", () => {
       mockExchangeAppleAuthorizationCodeOk();
       const nonce = "nonce-1";
       body = JSON.stringify({
-        idToken: await signAppleIdToken({ appleUserId: crypto.randomUUID(), nonce }),
+        idToken: await signAppleIdToken({ appleUserId: generateRecordId(), nonce }),
         nonce,
         authorizationCode: "authorization-code",
       });
@@ -136,7 +137,7 @@ describe("サインイン", () => {
       const nonce = "nonce-1";
       body = JSON.stringify({
         idToken: await signAppleIdToken({
-          appleUserId: crypto.randomUUID(),
+          appleUserId: generateRecordId(),
           nonce: await sha256Hex(nonce),
         }),
         nonce,
@@ -157,7 +158,7 @@ describe("サインイン", () => {
   describe("Apple が認可コードを受け付けなかったとき", () => {
     let appleUserId: string;
     beforeEach(() => {
-      appleUserId = crypto.randomUUID();
+      appleUserId = generateRecordId();
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeError(new AppleAuthorizationCodeRejectedError());
     });
@@ -177,7 +178,7 @@ describe("サインイン", () => {
       let appleUserId: string;
       let timeZone: string;
       beforeEach(() => {
-        appleUserId = crypto.randomUUID();
+        appleUserId = generateRecordId();
         timeZone = "Asia/Tokyo";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
@@ -197,7 +198,7 @@ describe("サインイン", () => {
     describe("端末のタイムゾーンが届かないとき", () => {
       let appleUserId: string;
       beforeEach(() => {
-        appleUserId = crypto.randomUUID();
+        appleUserId = generateRecordId();
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
         vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-29T20:00:00Z") });
@@ -217,7 +218,7 @@ describe("サインイン", () => {
       let appleUserId: string;
       let timeZone: string;
       beforeEach(() => {
-        appleUserId = crypto.randomUUID();
+        appleUserId = generateRecordId();
         timeZone = "Tokyo/Nowhere";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
@@ -239,7 +240,7 @@ describe("サインイン", () => {
       let accountId: string;
       let secondTimeZone: string;
       beforeEach(async () => {
-        appleUserId = crypto.randomUUID();
+        appleUserId = generateRecordId();
         secondTimeZone = "America/Los_Angeles";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
@@ -262,7 +263,7 @@ describe("サインイン", () => {
       let appleUserId: string;
       let timeZone: string;
       beforeEach(async () => {
-        appleUserId = crypto.randomUUID();
+        appleUserId = generateRecordId();
         timeZone = "Asia/Tokyo";
         mockAppleKeysEndpointOk();
         vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-29T20:00:00Z") });
@@ -285,7 +286,7 @@ describe("サインイン", () => {
     describe("認可コードの交換に失敗したとき", () => {
       let appleUserId: string;
       beforeEach(() => {
-        appleUserId = crypto.randomUUID();
+        appleUserId = generateRecordId();
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeError(new AppleAuthorizationCodeRejectedError());
       });

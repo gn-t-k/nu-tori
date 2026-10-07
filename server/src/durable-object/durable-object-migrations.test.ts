@@ -1,11 +1,17 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
+import { recordIdSchema } from "../domain/record-id";
 import { createDishStore } from "../dish/durable-object/create-dish-store";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
 type Sql = DurableObjectStorage["sql"];
+
+// 料理の置き場で読む料理と、その食事。ほかの行の ID は版 6 までの形のまま文字列で書く。
+// 料理の ID は、ORDER BY id で "dish-2" より前に並ぶ値にする
+const dish1 = recordIdSchema.parse("d1000000-0000-4000-8000-000000000000");
+const meal1 = recordIdSchema.parse("a1000000-0000-4000-8000-000000000000");
 
 describe("Durable Object の移行の版 7（料理と材料の表の作り直し）", () => {
   describe("版 6 までの形の食事・推定・料理・材料・削除の印があるとき", () => {
@@ -36,8 +42,8 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
         sql.exec("SELECT id, meal_id, name, position_in_meal FROM dishes ORDER BY id").toArray(),
       );
       expect(dishes).toEqual([
-        { id: "dish-1", meal_id: "meal-1", name: "カレー", position_in_meal: 0 },
-        { id: "dish-2", meal_id: "meal-1", name: "サラダ", position_in_meal: 1 },
+        { id: dish1, meal_id: meal1, name: "カレー", position_in_meal: 0 },
+        { id: "dish-2", meal_id: meal1, name: "サラダ", position_in_meal: 1 },
         { id: "dish-3", meal_id: "meal-2", name: "ご飯", position_in_meal: 0 },
       ]);
     });
@@ -49,7 +55,7 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
           .toArray(),
       );
       expect(applications).toEqual([
-        { dish_id: "dish-1", estimation_id: "estimation-1b" },
+        { dish_id: dish1, estimation_id: "estimation-1b" },
         { dish_id: "dish-2", estimation_id: "estimation-1b" },
         { dish_id: "dish-3", estimation_id: "estimation-2b" },
       ]);
@@ -64,7 +70,7 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
           .toArray(),
       );
       expect(quantities).toEqual([
-        { dish_id: "dish-1", estimation_id: "estimation-1b", quantity: 1.5, unit: "plate" },
+        { dish_id: dish1, estimation_id: "estimation-1b", quantity: 1.5, unit: "plate" },
         { dish_id: "dish-2", estimation_id: "estimation-1b", quantity: 1, unit: "bowl" },
         { dish_id: "dish-3", estimation_id: "estimation-2b", quantity: 150, unit: "g" },
       ]);
@@ -81,7 +87,7 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
       expect(ingredients).toEqual([
         {
           id: "ingredient-1",
-          dish_id: "dish-1",
+          dish_id: dish1,
           estimation_id: "estimation-1b",
           name: "米",
           quantity: 200,
@@ -91,7 +97,7 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
         },
         {
           id: "ingredient-2",
-          dish_id: "dish-1",
+          dish_id: dish1,
           estimation_id: "estimation-1b",
           name: "カレールー",
           quantity: 1,
@@ -171,11 +177,11 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
 
     test("料理の版が 1 であること", async () => {
       const dish = await runInDurableObject(account, (_, state) =>
-        createDishStore(drizzle(state.storage)).find("dish-1"),
+        createDishStore(drizzle(state.storage)).find(dish1),
       );
       expect(dish).toEqual({
-        id: "dish-1",
-        mealId: "meal-1",
+        id: dish1,
+        mealId: meal1,
         name: "カレー",
         quantity: { value: 1.5, unit: "plate", source: "estimated" },
         positionInMeal: 0,
@@ -216,7 +222,7 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
     test("移行のあとは、材料の残る料理を消せないこと", async () => {
       await expect(
         runInAccount(account, (sql) => {
-          sql.exec("DELETE FROM dishes WHERE id = 'dish-1'");
+          sql.exec("DELETE FROM dishes WHERE id = ?", dish1);
         }),
       ).rejects.toThrow(/FOREIGN KEY/);
     });
@@ -225,7 +231,8 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
       await expect(
         runInAccount(account, (sql) => {
           sql.exec(
-            "INSERT INTO ingredients (id, dish_id, estimation_id, name, quantity, unit, edible_grams_per_unit, position_in_dish) VALUES ('ingredient-5', 'dish-1', 'estimation-1a', '米', 100, 'g', 1, 2)",
+            "INSERT INTO ingredients (id, dish_id, estimation_id, name, quantity, unit, edible_grams_per_unit, position_in_dish) VALUES ('ingredient-5', ?, 'estimation-1a', '米', 100, 'g', 1, 2)",
+            dish1,
           );
         }),
       ).rejects.toThrow(/FOREIGN KEY/);
@@ -239,15 +246,15 @@ const runInAccount = <T>(account: DurableObjectStub, run: (sql: Sql) => T): Prom
 // 食事3つ（推定できたが2つの食事、推定できなかったあとに推定できた食事、料理なしの食事）、推定5つ、料理3つ、材料4つ、
 // 栄養の値と出どころのサブセット、#188 の形の料理と材料の削除の印（控えとのつなぎつき）
 const seedVersion6Rows = (sql: Sql) => {
-  for (const mealId of ["meal-1", "meal-2", "meal-3"]) {
+  for (const mealId of [meal1, "meal-2", "meal-3"]) {
     sql.exec(
       "INSERT INTO meals (id, eaten_at, eaten_at_utc_offset_seconds, sent_at, sent_time_zone, entry_method) VALUES (?, 0, 32400, 0, 'Asia/Tokyo', 'captured')",
       mealId,
     );
   }
   const estimations = [
-    { id: "estimation-1a", mealId: "meal-1", startedAt: 1000, end: "estimated", endedAt: 2000 },
-    { id: "estimation-1b", mealId: "meal-1", startedAt: 3000, end: "estimated", endedAt: 4000 },
+    { id: "estimation-1a", mealId: meal1, startedAt: 1000, end: "estimated", endedAt: 2000 },
+    { id: "estimation-1b", mealId: meal1, startedAt: 3000, end: "estimated", endedAt: 4000 },
     { id: "estimation-2a", mealId: "meal-2", startedAt: 1000, end: "abandoned", endedAt: 2000 },
     { id: "estimation-2b", mealId: "meal-2", startedAt: 3000, end: "estimated", endedAt: 4000 },
     { id: "estimation-3", mealId: "meal-3", startedAt: 1000, end: "no_dishes", endedAt: 2000 },
@@ -286,8 +293,8 @@ const seedVersion6Rows = (sql: Sql) => {
     }
   }
   const dishes = [
-    { id: "dish-1", mealId: "meal-1", name: "カレー", quantity: 1.5, unit: "plate", position: 0 },
-    { id: "dish-2", mealId: "meal-1", name: "サラダ", quantity: 1, unit: "bowl", position: 1 },
+    { id: dish1, mealId: meal1, name: "カレー", quantity: 1.5, unit: "plate", position: 0 },
+    { id: "dish-2", mealId: meal1, name: "サラダ", quantity: 1, unit: "bowl", position: 1 },
     { id: "dish-3", mealId: "meal-2", name: "ご飯", quantity: 150, unit: "g", position: 0 },
   ];
   for (const { id, mealId, name, quantity, unit, position } of dishes) {
@@ -304,7 +311,7 @@ const seedVersion6Rows = (sql: Sql) => {
   const ingredients = [
     {
       id: "ingredient-1",
-      dishId: "dish-1",
+      dishId: dish1,
       name: "米",
       quantity: 200,
       unit: "g",
@@ -313,7 +320,7 @@ const seedVersion6Rows = (sql: Sql) => {
     },
     {
       id: "ingredient-2",
-      dishId: "dish-1",
+      dishId: dish1,
       name: "カレールー",
       quantity: 1,
       unit: "皿分",

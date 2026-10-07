@@ -9,6 +9,7 @@ export const observeRequest = createMiddleware<{
   Bindings: Env;
   Variables: { accountId?: string; unsupportedAppBuild?: number };
 }>(async (c, next) => {
+  // oxlint-disable-next-line nu-tori/no-random-uuid -- ログを結ぶ ID で、DB にも API にも出さない
   const requestId = c.req.header("cf-ray") ?? crypto.randomUUID();
   setTag("requestId", requestId);
   const startedAt = Date.now();

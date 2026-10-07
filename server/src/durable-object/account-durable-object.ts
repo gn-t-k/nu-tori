@@ -2,6 +2,7 @@ import { R } from "@praha/byethrow";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { captureException, instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
+import type { RecordId } from "../domain/record-id";
 import { sendsUsageData } from "../account-settings/domain/sends-usage-data";
 import { recordFirstSignIn } from "../domain/record-first-sign-in";
 import { applySyncWrites } from "../domain/apply-sync-writes";
@@ -77,7 +78,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     // 失敗したら PostHog に送り、失敗を受け口に返す。受け口は 500 にし、要求ごとのログに失敗した段を出す
     async receiveMealPhoto(
       accountId: string,
-      request: { photoId: string; photo: ArrayBuffer },
+      request: { photoId: RecordId; photo: ArrayBuffer },
     ): R.ResultAsync<void, MealPhotoReceiptFailedError> {
       setUser({ id: accountId });
       const stores = createRecordKindStores(this.ctx.storage);
@@ -101,7 +102,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async readMealPhoto(accountId: string, photoId: string): Promise<ArrayBuffer | undefined> {
+    async readMealPhoto(accountId: string, photoId: RecordId): Promise<ArrayBuffer | undefined> {
       setUser({ id: accountId });
       return readKeptMealPhoto(
         createRecordKindStores(this.ctx.storage).mealPhoto,

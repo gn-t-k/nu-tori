@@ -1,8 +1,9 @@
+import type { RecordId } from "../../record-id";
 import type { TestRecordStore } from "./test-record-kind";
 
 export const createMemoryTestRecordStore = (operations: string[]): TestRecordStore => {
-  const values = new Map<string, number>();
-  const deletedRecordIds = new Set<string>();
+  const values = new Map<RecordId, number>();
+  const deletedRecordIds = new Set<RecordId>();
   return {
     find: (id) => values.get(id),
     hasDeletion: (recordId) => deletedRecordIds.has(recordId),

@@ -1,3 +1,4 @@
+import type { RecordId } from "../../domain/record-id";
 import { findReceivedAtOfEstimation } from "../../dish-estimation-status/domain/dish-estimation-schedule";
 import type { DishStore } from "../../dish/domain/dish-store";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
@@ -31,7 +32,7 @@ export const findEstimationOrigin = (
 
 const findDishEstimationOrigin = (
   stores: { dishEstimationStatus: DishEstimationStatusStore; dish: DishStore },
-  dishId: string,
+  dishId: RecordId,
   estimationId: string,
 ): ReturnType<typeof findEstimationOrigin> => {
   const schedules = stores.dishEstimationStatus.findSchedulesOfDish(dishId);

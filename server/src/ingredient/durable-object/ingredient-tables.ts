@@ -7,15 +7,16 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import type { RecordId } from "../../domain/record-id";
 import { dishTables } from "../../dish/durable-object/dish-tables";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 
 const ingredients = sqliteTable(
   "ingredients",
   {
-    id: text("id").primaryKey(),
+    id: text("id").$type<RecordId>().primaryKey(),
     // 料理と推定の組で、当てた推定を指す。料理だけを指す外部キーは持たない
-    dishId: text("dish_id").notNull(),
+    dishId: text("dish_id").$type<RecordId>().notNull(),
     estimationId: text("estimation_id").notNull(),
     name: text("name").notNull(),
     // 推定した量。書き換えない
@@ -41,6 +42,7 @@ const ingredients = sqliteTable(
 // 出どころのサブセットと栄養の値は自分の削除の印を持たないので、材料を消すと CASCADE で消える
 const foodCompositionIngredients = sqliteTable("food_composition_ingredients", {
   ingredientId: text("ingredient_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => ingredients.id, { onDelete: "cascade" }),
   // 先頭の 0 を落とさないよう TEXT で持つ
@@ -49,6 +51,7 @@ const foodCompositionIngredients = sqliteTable("food_composition_ingredients", {
 
 const nutritionLabelIngredients = sqliteTable("nutrition_label_ingredients", {
   ingredientId: text("ingredient_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => ingredients.id, { onDelete: "cascade" }),
   labelBasisGrams: real("label_basis_grams").notNull(),
@@ -59,6 +62,7 @@ const ingredientNutrients = sqliteTable(
   {
     id: text("id").primaryKey(),
     ingredientId: text("ingredient_id")
+      .$type<RecordId>()
       .notNull()
       .references(() => ingredients.id, { onDelete: "cascade" }),
     // 項目の名前の集合は shared/nutrients.json。単位は名前に含む
@@ -78,7 +82,7 @@ const ingredientQuantityCorrections = sqliteTable("ingredient_quantity_correctio
 
 // 材料の ID は値で名指しする（外部キーにしない）
 const ingredientDeletions = sqliteTable("ingredient_deletions", {
-  ingredientId: text("ingredient_id").primaryKey(),
+  ingredientId: text("ingredient_id").$type<RecordId>().primaryKey(),
   syncWriteReceiptId: text("sync_write_receipt_id")
     .notNull()
     .references(() => syncLedgerTables.syncWriteReceipts.id),

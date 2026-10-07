@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
@@ -15,7 +16,7 @@ describe("古いビルドの締め出し", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
   });
 
   describe("最低バージョンが 42 のとき", () => {

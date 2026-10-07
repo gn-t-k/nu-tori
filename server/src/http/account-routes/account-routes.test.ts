@@ -1,6 +1,7 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import {
   mockRevokeAppleRefreshTokenError,
@@ -26,7 +27,7 @@ describe("アカウントの削除", () => {
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk({ refreshToken: "apple-refresh-token" });
       revokeSpy = mockRevokeAppleRefreshTokenOk();
-      signedIn = await signInTestAccount(crypto.randomUUID());
+      signedIn = await signInTestAccount(generateRecordId());
       await runInDurableObject(getAccountDurableObject(env, signedIn.accountId), (_, state) => {
         state.storage.sql.exec("CREATE TABLE deletion_check_records (id TEXT PRIMARY KEY)");
       });
@@ -83,7 +84,7 @@ describe("アカウントの削除", () => {
       mockExchangeAppleAuthorizationCodeOk();
       mockRevokeAppleRefreshTokenOk();
       deletePostHogPersonSpy = mockDeletePostHogPersonOk();
-      ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+      ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
       productionEnv = {
         ...env,
         POSTHOG_PROJECT_ID: "12345",
@@ -107,8 +108,8 @@ describe("アカウントの削除", () => {
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
       mockRevokeAppleRefreshTokenOk();
-      signedIn = await signInTestAccount(crypto.randomUUID());
-      otherAccountId = crypto.randomUUID();
+      signedIn = await signInTestAccount(generateRecordId());
+      otherAccountId = generateRecordId();
       await env.PHOTOS.put(`${signedIn.accountId}/meal-photos/photo-1`, "jpeg");
       await env.PHOTOS.put(`${otherAccountId}/meal-photos/photo-1`, "jpeg");
     });
@@ -146,7 +147,7 @@ describe("アカウントの削除", () => {
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
       mockRevokeAppleRefreshTokenOk();
-      ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+      ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
       productionEnv = {
         ...env,
         POSTHOG_PROJECT_ID: "12345",
@@ -187,7 +188,7 @@ describe("アカウントの削除", () => {
       mockExchangeAppleAuthorizationCodeOk();
       mockRevokeAppleRefreshTokenOk();
       captureExceptionSpy = mockCaptureExceptionOk();
-      ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+      ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
       productionEnv = {
         ...env,
         POSTHOG_PROJECT_ID: "12345",
@@ -216,7 +217,7 @@ describe("アカウントの削除", () => {
     beforeEach(async () => {
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
-      ({ sessionToken } = await signInTestAccount(crypto.randomUUID()));
+      ({ sessionToken } = await signInTestAccount(generateRecordId()));
       mockRevokeAppleRefreshTokenError(new RevokeAppleRefreshTokenError({ status: 503 }));
       await deleteSignedInAccount(sessionToken, env);
       mockRevokeAppleRefreshTokenOk();

@@ -1,5 +1,6 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { env } from "cloudflare:workers";
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { createDishWrite } from "../../dish/http/testing/create-dish-write";
@@ -47,7 +48,7 @@ describe("名前を直したときの推定し直し", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
     // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
     clock = useFakeClock(Date.now() + 86_400_000);
     provider = mockCreateEstimationProviderOk();

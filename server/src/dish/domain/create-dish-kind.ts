@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import type { RecordId } from "../../domain/record-id";
 import { computeDishEstimationStatus } from "../../dish-estimation-status/domain/compute-dish-estimation-status";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -112,7 +113,7 @@ const decideCreate = (
 // （つなぎが CASCADE で消える）ので、推定ごとの出来事を「料理が消えた」で送る
 const decideDelete = (
   stores: DishKindStores,
-  dishId: string,
+  dishId: RecordId,
   receivedAt: Date,
 ): WriteDecision<AddedRecordType> => {
   if (stores.dish.hasDeletion(dishId)) {
@@ -274,7 +275,7 @@ const isSameIdSet = (left: readonly string[], right: readonly string[]): boolean
 
 const rejected = (
   writeKind: "create" | "update",
-  dishId: string,
+  dishId: RecordId,
   reason: RejectionReason,
 ): WriteDecision<AddedRecordType> =>
   decideWithoutChange(writeKind, dishId, { result: "rejected", reason });

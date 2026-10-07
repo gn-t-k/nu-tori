@@ -17,5 +17,5 @@ export const weightTrendRecordSchema = z
   })
   .openapi({
     description:
-      "kind が weight_trend の変更の record。recordId は weight_trend の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く",
+      "kind が weight_trend の変更の record。recordId は 00000000-0000-0000-0000-000000000000（UUID の nil）の1つだけ。体重記録が1つも無くなると、kind が weight_trend_absence で record が空の変更が届く",
   });

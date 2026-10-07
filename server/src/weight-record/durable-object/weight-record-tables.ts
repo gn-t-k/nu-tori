@@ -1,10 +1,11 @@
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 
 const weightRecords = sqliteTable(
   "weight_records",
   {
-    id: text("id").primaryKey(),
+    id: text("id").$type<RecordId>().primaryKey(),
     weightKg: real("weight_kg").notNull(),
     measuredAt: integer("measured_at", { mode: "timestamp_ms" }).notNull(),
     timeZone: text("time_zone").notNull(),
@@ -18,6 +19,7 @@ const importedWeightRecords = sqliteTable(
   "imported_weight_records",
   {
     weightRecordId: text("weight_record_id")
+      .$type<RecordId>()
       .primaryKey()
       .references(() => weightRecords.id, { onDelete: "cascade" }),
     sourceAppName: text("source_app_name").notNull(),
@@ -31,6 +33,7 @@ const importedWeightRecords = sqliteTable(
 
 const importedBodyFatPercentages = sqliteTable("imported_body_fat_percentages", {
   weightRecordId: text("weight_record_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => importedWeightRecords.weightRecordId, { onDelete: "cascade" }),
   bodyFatPercentage: real("body_fat_percentage").notNull(),

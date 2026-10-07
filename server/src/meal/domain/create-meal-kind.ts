@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import type { RecordId } from "../../domain/record-id";
 import { deleteDishes } from "../../dish/domain/delete-dishes";
 import type { DishStore } from "../../dish/domain/dish-store";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
@@ -187,7 +188,7 @@ const discarded = (
 // 推定ごとの出来事を「食事が消えた」で送る
 const decideDelete = (
   stores: MealKindStores,
-  mealId: string,
+  mealId: RecordId,
   receivedAt: Date,
 ): WriteDecision<AddedRecordType> => {
   const store = stores.meal;
@@ -251,7 +252,7 @@ const decideDelete = (
 // 修正の行の順は変更の並びの通し番号で決まるので、修正を書くときは必ず食事を changedRecordId に返す
 const decideUpdate = (
   stores: MealKindStores,
-  mealId: string,
+  mealId: RecordId,
   eatenAt: Date,
 ): WriteDecision<AddedRecordType> => {
   const store = stores.meal;
@@ -282,7 +283,7 @@ const decideUpdate = (
 
 const computeMealDeletedEstimationEvents = (
   stores: MealKindStores,
-  mealId: string,
+  mealId: RecordId,
   deletedAt: Date,
 ): UsageEvent[] => {
   const estimationId = stores.estimation.findOngoingEstimationIdOfMeal(mealId);

@@ -3,6 +3,7 @@ import { ErrorFactory } from "@praha/error-factory";
 import { scheduleMealEstimation } from "../estimation/domain/schedule-meal-estimation";
 import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
 import { createRecordLedger } from "./create-record-ledger";
+import type { RecordId } from "./record-id";
 import type { RecordKindStores } from "./record-kind-stores";
 import type { RecordType } from "./record-type";
 import type { LedgerStore } from "./sync-ledger/ledger-store";
@@ -14,7 +15,7 @@ export const receiveMealPhoto = (
   ledgerStore: LedgerStore<RecordType>,
   stores: RecordKindStores,
   archive: MealPhotoArchive,
-  request: { photoId: string; photo: ArrayBuffer; receivedAt: Date },
+  request: { photoId: RecordId; photo: ArrayBuffer; receivedAt: Date },
 ): R.ResultAsync<void, MealPhotoReceiptFailedError> => {
   const { photoId, receivedAt } = request;
   if (stores.mealPhoto.hasReceipt(photoId) || stores.mealPhoto.hasDeletion(photoId)) {
@@ -45,7 +46,7 @@ export class MealPhotoReceiptFailedError extends ErrorFactory({
 const recordReceipt = (
   ledgerStore: LedgerStore<RecordType>,
   stores: RecordKindStores,
-  photoId: string,
+  photoId: RecordId,
   receivedAt: Date,
 ): void => {
   createRecordLedger(ledgerStore, stores, receivedAt).changeOutsideWrites((addChange) => {

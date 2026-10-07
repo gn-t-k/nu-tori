@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import type { RecordId } from "../../domain/record-id";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
 import { dishTables } from "./dish-tables";
 import { newestDishEstimationFirst } from "./newest-dish-estimation-first";
@@ -10,7 +11,7 @@ const { estimations, estimationCompletions, estimationAbandonments } = estimatio
 // 料理のいちばん新しい当てた推定の ID。今の材料は、この推定の材料
 export const findNewestDishEstimationId = (
   db: DrizzleSqliteDODatabase,
-  dishId: string,
+  dishId: RecordId,
 ): string | undefined =>
   db
     .select({ estimationId: dishEstimationApplications.estimationId })

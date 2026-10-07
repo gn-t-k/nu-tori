@@ -1,8 +1,9 @@
+import type { RecordId } from "../../domain/record-id";
 import type { MealPhotoArchive } from "../domain/meal-photo-archive";
 import { computeMealPhotoKeyPrefix } from "./compute-meal-photo-key-prefix";
 
 export const createMealPhotoArchive = (bucket: R2Bucket, accountId: string): MealPhotoArchive => {
-  const keyOf = (photoId: string) => `${computeMealPhotoKeyPrefix(accountId)}${photoId}`;
+  const keyOf = (photoId: RecordId) => `${computeMealPhotoKeyPrefix(accountId)}${photoId}`;
   return {
     put: async (photoId, photo) => {
       await bucket.put(keyOf(photoId), photo);

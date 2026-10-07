@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { createRecordLedger } from "../../domain/create-record-ledger";
 import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -24,7 +25,7 @@ import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 export type BegunEstimationAttempt = {
   attemptId: string;
   estimationId: string;
-  photoIds: readonly string[];
+  photoIds: readonly RecordId[];
   target: IdentificationTarget;
 };
 
@@ -42,7 +43,7 @@ export const beginEstimationAttempts = (
       const usageEvents: UsageEvent[] = [];
       const beginAttempt = (estimationId: string, target: EstimationTarget) => {
         const meal = findScheduledMeal(stores, target.mealId);
-        const attemptId = crypto.randomUUID();
+        const attemptId = generateRecordId();
         writes.beginAttempt({ id: attemptId, estimationId, attemptedAt: now });
         attempts.push({
           attemptId,
@@ -79,7 +80,7 @@ export const beginEstimationAttempts = (
             target,
             deferredAt: now,
             nextSchedule: {
-              id: crypto.randomUUID(),
+              id: generateRecordId(),
               dueAt: nextDay.startsAt,
               countedOn: nextDay.countedOn,
             },
@@ -87,7 +88,7 @@ export const beginEstimationAttempts = (
           usageEvents.push({ name: "estimation_deferred" });
           continue;
         }
-        const estimationId = crypto.randomUUID();
+        const estimationId = generateRecordId();
         writes.beginEstimation({ id: estimationId, scheduleId, target, startedAt: now });
         beginAttempt(estimationId, target);
       }
@@ -121,7 +122,7 @@ export const beginEstimationAttempts = (
   );
 
 // 食事の推定が終わるまでは、食事の料理はどれも使う人が足した料理（食事の推定が作った料理はまだ無い）
-const findDishNamesOfMeal = (stores: Pick<RecordKindStores, "dish">, mealId: string): string[] =>
+const findDishNamesOfMeal = (stores: Pick<RecordKindStores, "dish">, mealId: RecordId): string[] =>
   stores.dish
     .findIdsOfMeal(mealId)
     .map((dishId) => stores.dish.find(dishId))
@@ -129,7 +130,7 @@ const findDishNamesOfMeal = (stores: Pick<RecordKindStores, "dish">, mealId: str
     .toSorted((a, b) => a.positionInMeal - b.positionInMeal || a.id.localeCompare(b.id))
     .map(({ name }) => name);
 
-const findScheduledMeal = (stores: Pick<RecordKindStores, "meal">, mealId: string): Meal => {
+const findScheduledMeal = (stores: Pick<RecordKindStores, "meal">, mealId: RecordId): Meal => {
   const meal = stores.meal.find(mealId);
   if (meal === undefined) {
     throw new Error(`推定の予定につながっている食事が無い: ${mealId}`);

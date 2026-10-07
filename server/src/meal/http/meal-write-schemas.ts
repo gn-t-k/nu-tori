@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { recordIdSchema } from "../../domain/record-id";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 
 // Date が表せる範囲。これを超える時刻は、日付の計算で例外になる
@@ -15,7 +16,7 @@ const createMealWriteSchema = z
     id: writeIdSchema,
     type: z.literal("create_meal"),
     meal: z.object({
-      id: z.string().min(1),
+      id: recordIdSchema,
       eatenAt: timestampSchema,
       eatenAtUtcOffsetSeconds: z
         .number()
@@ -28,7 +29,7 @@ const createMealWriteSchema = z
         example: "captured",
       }),
       photos: z
-        .array(z.object({ id: z.string().min(1) }))
+        .array(z.object({ id: recordIdSchema }))
         .openapi({ description: "並びが写真の並び順" }),
     }),
   })
@@ -38,7 +39,7 @@ const deleteMealWriteSchema = z
   .object({
     id: writeIdSchema,
     type: z.literal("delete_meal"),
-    mealId: z.string().min(1),
+    mealId: recordIdSchema,
   })
   .openapi("DeleteMealWrite");
 
@@ -47,7 +48,7 @@ const updateMealWriteSchema = z
   .object({
     id: writeIdSchema,
     type: z.literal("update_meal"),
-    mealId: z.string().min(1),
+    mealId: recordIdSchema,
     eatenAt: timestampSchema,
   })
   .openapi("UpdateMealWrite");

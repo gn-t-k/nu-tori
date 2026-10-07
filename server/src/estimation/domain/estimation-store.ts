@@ -1,3 +1,4 @@
+import type { RecordId } from "../../domain/record-id";
 import type { EstimationAttemptConclusion } from "./estimation-attempt-conclusion";
 import type { EstimationTarget } from "./estimation-target";
 
@@ -14,7 +15,7 @@ export type EstimationStore = {
   // 推定の対象の食事か料理。呼び出し中に食事か料理が消えて、つなぎが無ければ undefined
   findTargetOfEstimation: (estimationId: string) => EstimationTarget | undefined;
   // 食事の、始めていて完了も断念もしていない推定
-  findOngoingEstimationIdOfMeal: (mealId: string) => string | undefined;
+  findOngoingEstimationIdOfMeal: (mealId: RecordId) => string | undefined;
   findAttempts: (estimationId: string) => EstimationAttempt[];
 };
 

@@ -1,5 +1,6 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { createDishWrite } from "../../dish/http/testing/create-dish-write";
@@ -33,12 +34,12 @@ describe("写真を待っている食事に料理を足したとき", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
     // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
     clock = useFakeClock(Date.now() + 86_400_000);
     provider = mockCreateEstimationProviderOk();
-    mealId = crypto.randomUUID();
-    photoId = crypto.randomUUID();
+    mealId = generateRecordId();
+    photoId = generateRecordId();
     await pushSyncWrites(sessionToken, {
       writes: [createMealWrite({ meal: { id: mealId, photos: [{ id: photoId }] } })],
     });

@@ -1,3 +1,4 @@
+import type { RecordId } from "../../domain/record-id";
 import type { MealPhotoArchive } from "./meal-photo-archive";
 import type { MealPhotoStore } from "./meal-photo-store";
 
@@ -5,5 +6,5 @@ import type { MealPhotoStore } from "./meal-photo-store";
 export const readKeptMealPhoto = async (
   store: MealPhotoStore,
   archive: MealPhotoArchive,
-  photoId: string,
+  photoId: RecordId,
 ): Promise<ArrayBuffer | undefined> => (store.isKept(photoId) ? archive.read(photoId) : undefined);

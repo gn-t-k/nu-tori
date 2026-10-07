@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
@@ -23,7 +24,7 @@ describe("いつもの時刻の同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ sessionToken } = await signInTestAccount(generateRecordId()));
     // 使い始めた日より前の記録は直せないので、基準の今日を 60 日先の日本時間の昼にする
     const today = computeCalendarDayInTimeZone(
       new Date(Date.now() + 60 * dayMilliseconds),
@@ -180,7 +181,7 @@ describe("いつもの時刻の同期", () => {
         imported: {
           sourceAppName: "体重計",
           sourceBundleId: "com.example.scale",
-          healthkitSampleUuid: crypto.randomUUID(),
+          healthkitSampleUuid: generateRecordId(),
         },
       });
       await push([

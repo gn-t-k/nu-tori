@@ -1,3 +1,4 @@
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
 import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import { learnUsualWeighingTime, usualWeighingTimeRangeDays } from "./learn-usual-weighing-time";
@@ -17,7 +18,7 @@ export const relearnUsualWeighingTime = (
   },
   // きっかけの体重の書き込みの控え
   receiptId: WriteReceiptId,
-): string | undefined => {
+): RecordId | undefined => {
   // 学ぶ範囲（基準の今日と、その前の usualWeighingTimeRangeDays - 1 日）に入りうる記録だけを読む。日付は記録ごとのタイムゾーンで決まるので、時差の分だけ広く読む
   const timeZoneMarginDays = 2;
   const weightRecords = input
@@ -45,7 +46,7 @@ export const relearnUsualWeighingTime = (
     return undefined;
   }
   // 行は1つだけ。初めて学ぶときだけ ID を振る
-  const id = current?.id ?? crypto.randomUUID();
+  const id = current?.id ?? generateRecordId();
   if (current === undefined) {
     store.insert(id);
   }
@@ -53,4 +54,4 @@ export const relearnUsualWeighingTime = (
   return id;
 };
 
-type WeightRecordTime = { id: string; measuredAt: Date; timeZone: string };
+type WeightRecordTime = { id: RecordId; measuredAt: Date; timeZone: string };

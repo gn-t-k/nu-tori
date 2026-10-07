@@ -1,4 +1,6 @@
+import type { RecordId } from "../../domain/record-id";
+
 export type AccountSettings = {
-  id: string;
+  id: RecordId;
   sendsUsageData: boolean;
 };

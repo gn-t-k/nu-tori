@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { dishTables } from "../../dish/durable-object/dish-tables";
 import { findNewestDishEstimationId } from "../../dish/durable-object/find-newest-dish-estimation-id";
 import { isNutrientName } from "../../domain/food-composition/nutrient-name";
@@ -110,7 +111,7 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
     }
     for (const [nutrient, amountPerBasis] of Object.entries(nutrients)) {
       db.insert(ingredientNutrients)
-        .values({ id: crypto.randomUUID(), ingredientId: ingredient.id, nutrient, amountPerBasis })
+        .values({ id: generateRecordId(), ingredientId: ingredient.id, nutrient, amountPerBasis })
         .run();
     }
   },
@@ -154,7 +155,7 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
 });
 
 // 推定し直しで置き換わった前の推定の材料（行は残る）
-const isReplaced = (db: DrizzleSqliteDODatabase, id: string): boolean => {
+const isReplaced = (db: DrizzleSqliteDODatabase, id: RecordId): boolean => {
   const ingredient = db
     .select({ dishId: ingredients.dishId, estimationId: ingredients.estimationId })
     .from(ingredients)
@@ -166,7 +167,7 @@ const isReplaced = (db: DrizzleSqliteDODatabase, id: string): boolean => {
 // 今の材料は、料理のいちばん新しい当てた推定の材料。前の推定の材料は、行が残っても削除の印として届ける
 const isCurrent = (
   db: DrizzleSqliteDODatabase,
-  { dishId, estimationId }: { dishId: string; estimationId: string },
+  { dishId, estimationId }: { dishId: RecordId; estimationId: string },
 ): boolean => findNewestDishEstimationId(db, dishId) === estimationId;
 
 // 今の量は、材料を直した量（材料を書き換えた控えの修正）と、料理の量に比例させた量（料理を書き換えた控えの明細）を合わせて、
@@ -174,7 +175,7 @@ const isCurrent = (
 // 出どころは、材料を直した量があれば直した（比例は推定したまま）
 const findCurrentQuantity = (
   db: DrizzleSqliteDODatabase,
-  ingredient: { id: string; quantity: number },
+  ingredient: { id: RecordId; quantity: number },
 ): Pick<Ingredient, "quantity" | "quantitySource"> => {
   const corrected = db
     .select({

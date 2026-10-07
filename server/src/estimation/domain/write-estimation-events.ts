@@ -1,3 +1,4 @@
+import type { RecordId } from "../../domain/record-id";
 import type { DishStore } from "../../dish/domain/dish-store";
 import { createDishEstimationStatusKind } from "../../dish-estimation-status/domain/create-dish-estimation-status-kind";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
@@ -46,7 +47,7 @@ export const writeEstimationEvents = <T>(
       always: boolean;
     }
   >();
-  const rememberMeal = (mealId: string) => {
+  const rememberMeal = (mealId: RecordId) => {
     const key = `meal:${mealId}`;
     if (!statusesBeforeWrites.has(key)) {
       statusesBeforeWrites.set(key, {
@@ -57,7 +58,7 @@ export const writeEstimationEvents = <T>(
     }
   };
   // always は、状態が同じでも変更を足すか（料理の推定を始めたとき）
-  const rememberDish = (dishId: string, { always }: { always: boolean }) => {
+  const rememberDish = (dishId: RecordId, { always }: { always: boolean }) => {
     const key = `dish:${dishId}`;
     const remembered = statusesBeforeWrites.get(key);
     if (remembered === undefined) {

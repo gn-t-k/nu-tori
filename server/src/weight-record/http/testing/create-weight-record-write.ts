@@ -1,9 +1,11 @@
+import { generateRecordId } from "../../../domain/record-id";
+
 export const createWeightRecordWrite = (
   overrides: { id?: string; weightRecord?: Record<string, unknown> } = {},
 ): { id: string; type: "create_weight_record"; weightRecord: Record<string, unknown> } => {
-  const recordId = crypto.randomUUID();
+  const recordId = generateRecordId();
   return {
-    id: overrides.id ?? crypto.randomUUID(),
+    id: overrides.id ?? generateRecordId(),
     type: "create_weight_record",
     weightRecord: {
       id: recordId,

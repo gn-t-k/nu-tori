@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
@@ -28,7 +29,7 @@ describe("材料の同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
     // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
     useFakeClock(Date.now() + 86_400_000);
     pullChangesAfter = async (afterSequence) =>
@@ -152,7 +153,7 @@ describe("材料の同期", () => {
     beforeEach(async () => {
       ({ results } = await (
         await pushSyncWrites(sessionToken, {
-          writes: [updateIngredientWrite(crypto.randomUUID(), 100)],
+          writes: [updateIngredientWrite(generateRecordId(), 100)],
         })
       ).json<PushResults>());
     });

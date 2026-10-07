@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
 import type { LatestTimeZoneStore } from "../../domain/latest-time-zone-store";
@@ -25,7 +26,7 @@ export const scheduleMealEstimation = (
     return;
   }
   writes.scheduleMeal({
-    id: crypto.randomUUID(),
+    id: generateRecordId(),
     mealId: meal.id,
     dueAt: now,
     countedOn: computeCalendarDayInTimeZone(

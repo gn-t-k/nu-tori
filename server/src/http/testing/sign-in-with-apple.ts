@@ -8,6 +8,7 @@ export const signInWithApple = async (
   appleUserId: string,
   options: { timeZone?: string } = {},
 ): Promise<Response> => {
+  // oxlint-disable-next-line nu-tori/no-random-uuid -- テストで作る Apple のサインインの nonce で、ID として比べない
   const nonce = crypto.randomUUID();
   return app.request(
     "/v1/sessions",

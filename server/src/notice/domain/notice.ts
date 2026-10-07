@@ -1,6 +1,8 @@
+import type { RecordId } from "../../domain/record-id";
+
 // 端末が出す知らせ。この仕様の種類は体重の記録忘れ（missed_weight_record）だけ
 export type Notice = {
-  id: string;
+  id: RecordId;
   noticeType: NoticeType;
   issuedAt: Date;
   timeZone: string;

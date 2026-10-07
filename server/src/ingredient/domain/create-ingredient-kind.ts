@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import type { RecordId } from "../../domain/record-id";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
@@ -46,7 +47,7 @@ type AddedRecordType = "dish";
 // 料理ごと消えていた材料（削除の印がある）と分ける（端末は「直せなかった」行を出す）
 const decideUpdate = (
   stores: { ingredient: IngredientStore; dish: DishStore },
-  ingredientId: string,
+  ingredientId: RecordId,
   quantity: number,
   receivedAt: Date,
 ): WriteDecision<AddedRecordType> => {
@@ -92,5 +93,8 @@ const decideUpdate = (
   };
 };
 
-const rejected = (ingredientId: string, reason: RejectionReason): WriteDecision<AddedRecordType> =>
+const rejected = (
+  ingredientId: RecordId,
+  reason: RejectionReason,
+): WriteDecision<AddedRecordType> =>
   decideWithoutChange("update", ingredientId, { result: "rejected", reason });

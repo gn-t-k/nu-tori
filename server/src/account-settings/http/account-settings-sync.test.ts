@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
@@ -7,20 +8,26 @@ import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { updateAccountSettingsWrite } from "./testing/update-account-settings-write";
 import { beforeEach, describe, expect, test } from "vitest";
 
+const settingsId = generateRecordId();
+const firstDevice = generateRecordId();
+const secondDevice = generateRecordId();
+
 describe("アカウントの設定の同期", () => {
   let accountId: string;
   let sessionToken: string;
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
   });
 
   describe("記録が無いときに、利用状況を切り替える書き込みを送ったとき", () => {
     let write: ReturnType<typeof updateAccountSettingsWrite>;
     let response: Response;
     beforeEach(async () => {
-      write = updateAccountSettingsWrite({ accountSettings: { sendsUsageData: false } });
+      write = updateAccountSettingsWrite({
+        accountSettings: { id: settingsId, sendsUsageData: false },
+      });
       response = await pushSyncWrites(sessionToken, { writes: [write] });
     });
 
@@ -36,8 +43,8 @@ describe("アカウントの設定の同期", () => {
         {
           sequence: expect.any(Number),
           kind: "account_settings",
-          recordId: "account-settings-1",
-          record: { id: "account-settings-1", sendsUsageData: false },
+          recordId: settingsId,
+          record: { id: settingsId, sendsUsageData: false },
         },
       ]);
     });
@@ -74,12 +81,12 @@ describe("アカウントの設定の同期", () => {
   describe("端末が振った ID が、記録の ID と違う切り替えを送ったとき", () => {
     beforeEach(async () => {
       await pushSyncWrites(sessionToken, {
-        writes: [updateAccountSettingsWrite({ accountSettings: { id: "first-device" } })],
+        writes: [updateAccountSettingsWrite({ accountSettings: { id: firstDevice } })],
       });
       await pushSyncWrites(sessionToken, {
         writes: [
           updateAccountSettingsWrite({
-            accountSettings: { id: "second-device", sendsUsageData: true },
+            accountSettings: { id: secondDevice, sendsUsageData: true },
           }),
         ],
       });
@@ -88,7 +95,7 @@ describe("アカウントの設定の同期", () => {
     test("アカウントの設定を1件のまま置き換えること", async () => {
       expect(
         await readRows(accountId, "SELECT id, sends_usage_data FROM account_settings"),
-      ).toEqual([{ id: "first-device", sends_usage_data: 1 }]);
+      ).toEqual([{ id: firstDevice, sends_usage_data: 1 }]);
     });
   });
 });

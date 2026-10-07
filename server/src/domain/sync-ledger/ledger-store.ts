@@ -1,3 +1,4 @@
+import type { RecordId } from "../record-id";
 import type { SyncClientState } from "../sync-client-state";
 import type { SyncWriteOutcome } from "../sync-write-outcome";
 import type { WriteKind } from "./write-kind";
@@ -20,24 +21,24 @@ export type LedgerStore<TRecordType extends string> = {
   // 同じ書き込みの ID が再び届いたときに、最初の結果と、その書き込みが指した記録を返す
   findWriteReceipt: (
     writeId: string,
-  ) => { outcome: SyncWriteOutcome; recordType: TRecordType; recordId: string } | undefined;
+  ) => { outcome: SyncWriteOutcome; recordType: TRecordType; recordId: RecordId } | undefined;
   insertWriteReceipt: (receipt: {
     writeId: string;
     requestLogId: string;
     positionInRequest: number;
     kind: WriteKind;
     recordType: TRecordType;
-    recordId: string;
+    recordId: RecordId;
     outcome: SyncWriteOutcome;
   }) => void;
   // 書き込みが直接変えた記録の変更だけを、その書き込みの控えと結ぶ。ほかは writeId を undefined にする
   insertRecordChange: (change: {
     recordType: TRecordType;
-    recordId: string;
+    recordId: RecordId;
     writeId: string | undefined;
   }) => void;
   findLatestChangePerRecord: (
     afterSequence: number,
     limit: number,
-  ) => { sequence: number; recordType: TRecordType; recordId: string }[];
+  ) => { sequence: number; recordType: TRecordType; recordId: RecordId }[];
 };

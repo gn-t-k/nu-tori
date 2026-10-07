@@ -1,12 +1,13 @@
+import type { RecordId } from "../../record-id";
 import type { CurrentRecord } from "../current-record";
 import type { RecordKind } from "../record-kind";
 
 export type TestChildStore = {
-  find: (id: string) => number | undefined;
-  findIdsOfParent: (parentId: string) => string[];
-  hasDeletion: (id: string) => boolean;
-  insert: (child: { id: string; parentId: string; value: number }) => void;
-  removeWithDeletion: (id: string) => void;
+  find: (id: RecordId) => number | undefined;
+  findIdsOfParent: (parentId: RecordId) => RecordId[];
+  hasDeletion: (id: RecordId) => boolean;
+  insert: (child: { id: RecordId; parentId: RecordId; value: number }) => void;
+  removeWithDeletion: (id: RecordId) => void;
 };
 
 // 帳簿のテスト用の、サーバーだけが書く種類。テスト用の記録を親に持つ

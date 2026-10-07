@@ -1,3 +1,4 @@
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { DishStore } from "../../dish/domain/dish-store";
 import { findNewestActiveSchedule } from "../../dish-estimation-status/domain/dish-estimation-schedule";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
@@ -24,7 +25,7 @@ export const applyDishEstimation = (
     estimationId,
     estimated,
   }: {
-    dishId: string;
+    dishId: RecordId;
     estimationId: string;
     estimated: EstimatedDish | undefined;
   },
@@ -48,7 +49,7 @@ export const applyDishEstimation = (
   });
   const ingredients = (estimated?.ingredients ?? []).map((ingredient, positionInDish) => ({
     ...ingredient,
-    id: crypto.randomUUID(),
+    id: generateRecordId(),
     dishId,
     estimationId,
     positionInDish,

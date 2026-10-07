@@ -1,9 +1,10 @@
+import type { RecordId } from "../../domain/record-id";
 import type { QuantitySource } from "../../domain/quantity-source";
 
 // 食事に写っている料理の今の値。サーバーが推定の完了で作り、端末が名前と量を直す
 export type Dish = {
-  id: string;
-  mealId: string;
+  id: RecordId;
+  mealId: RecordId;
   // 今の名前。名前の修正のうち受け取った順でいちばんあとのもの、無ければ作ったときの名前
   name: string;
   // 今の量。量を持つ当てた推定が無い料理（推定し直しが一度も当たっていない料理）は持たない
@@ -29,7 +30,7 @@ export type NewDish = Pick<Dish, "id" | "mealId" | "name" | "positionInMeal">;
 // 推定の結果を料理に当てたこと。推定した量と単位を持つ。
 // 推定し直しで、量を直してあった料理（直した量を固定する）と、通らなかった推定（料理なし・推定できなかった）は量を持たない
 export type DishEstimationApplication = {
-  dishId: string;
+  dishId: RecordId;
   estimationId: string;
   estimatedQuantity: { quantity: number; unit: string } | undefined;
 };

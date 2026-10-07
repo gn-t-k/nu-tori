@@ -1,7 +1,9 @@
+import type { RecordId } from "../../domain/record-id";
+
 // 端末から届く材料の書き込み。入口は受け口で値を確かめず、ドメイン層で確かめる
-export type IngredientWrite = { id: string } & {
+export type IngredientWrite = { id: RecordId } & {
   type: "update_ingredient";
-  ingredientId: string;
+  ingredientId: RecordId;
   quantity: number;
 };
 

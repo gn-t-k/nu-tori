@@ -1,3 +1,4 @@
+import type { RecordId } from "../../domain/record-id";
 import type { DishStore } from "../../dish/domain/dish-store";
 import type { IngredientStore } from "../../ingredient/domain/ingredient-store";
 import type { DishToReestimate } from "./estimation-provider";
@@ -6,7 +7,7 @@ import type { DishToReestimate } from "./estimation-provider";
 // 推定したままの材料と、比例で変えた材料は渡さない
 export const computeDishToReestimate = (
   stores: { dish: DishStore; ingredient: IngredientStore },
-  dishId: string,
+  dishId: RecordId,
 ): DishToReestimate => {
   const dish = stores.dish.find(dishId);
   if (dish === undefined) {

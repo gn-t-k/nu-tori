@@ -1,8 +1,10 @@
+import type { RecordId } from "../../domain/record-id";
+
 // 写真の控え（縮小版のファイル）の置き場。アカウントごとに作る
 export type MealPhotoArchive = {
-  put: (photoId: string, photo: ArrayBuffer) => Promise<void>;
+  put: (photoId: RecordId, photo: ArrayBuffer) => Promise<void>;
   // 無ければ undefined
-  read: (photoId: string) => Promise<ArrayBuffer | undefined>;
+  read: (photoId: RecordId) => Promise<ArrayBuffer | undefined>;
   // 無くても失敗しない
-  remove: (photoId: string) => Promise<void>;
+  remove: (photoId: RecordId) => Promise<void>;
 };

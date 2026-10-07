@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
@@ -14,7 +15,7 @@ describe("知らせの同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ sessionToken } = await signInTestAccount(generateRecordId()));
   });
 
   describe("体重の記録忘れの知らせを作る書き込みを送ったとき", () => {
@@ -173,7 +174,7 @@ describe("知らせの同期", () => {
     let response: Response;
     beforeEach(async () => {
       response = await pushSyncWrites(sessionToken, {
-        writes: [createNoticeWrite({ notice: { id: "not-a-v5-uuid" } })],
+        writes: [createNoticeWrite({ notice: { id: generateRecordId() } })],
       });
     });
 
@@ -308,7 +309,7 @@ describe("知らせの同期", () => {
     let response: Response;
     beforeEach(async () => {
       response = await pushSyncWrites(sessionToken, {
-        writes: [respondNoticeWrite(crypto.randomUUID())],
+        writes: [respondNoticeWrite(generateRecordId())],
       });
     });
 

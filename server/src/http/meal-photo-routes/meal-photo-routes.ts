@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { R } from "@praha/byethrow";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
+import { recordIdSchema } from "../../domain/record-id";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
 
@@ -10,10 +11,10 @@ const maximumPhotoBytes = 3 * 1024 * 1024;
 const photoContentType = "image/jpeg";
 
 const photoIdParams = z.object({
-  photoId: z
-    .string()
-    .min(1)
-    .openapi({ param: { name: "photoId", in: "path" }, description: "端末が振った写真の ID" }),
+  photoId: recordIdSchema.openapi({
+    param: { name: "photoId", in: "path" },
+    description: "端末が振った写真の ID",
+  }),
 });
 
 // bodyLimit の型は Variables を何でも許す形なので、包んで accountId の型を保つ

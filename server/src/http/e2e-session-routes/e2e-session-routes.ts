@@ -25,6 +25,7 @@ export const e2eSessionRoutes = new Hono<{ Bindings: Env }>().post(
     }
     const { internalAdapter } = await createAuthentication(c.env, c.req.url).$context;
     const user = await internalAdapter.createUser(
+      // oxlint-disable-next-line nu-tori/no-random-uuid -- 仮のメールの名前で、ID として比べない
       { name: "", email: `${crypto.randomUUID()}@nu-tori.invalid`, emailVerified: false },
       // 入口の検査（validateUserInfo）は設定していないが、引数としては要る
       { method: "e2e" },

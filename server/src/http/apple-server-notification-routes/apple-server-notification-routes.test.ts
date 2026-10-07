@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId } from "../../domain/record-id";
 import { createAuthentication } from "../../auth/create-authentication";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockRevokeAppleRefreshTokenOk } from "../../auth/revoke-apple-refresh-token/revoke-apple-refresh-token.mock";
@@ -13,7 +14,7 @@ describe("Apple のサーバー間通知", () => {
     let signedIn: { accountId: string; sessionToken: string };
     let payload: string;
     beforeEach(async () => {
-      appleUserId = crypto.randomUUID();
+      appleUserId = generateRecordId();
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk();
       signedIn = await signInTestAccount(appleUserId);
@@ -45,7 +46,7 @@ describe("Apple のサーバー間通知", () => {
     let revokeSpy: ReturnType<typeof mockRevokeAppleRefreshTokenOk>;
     let payload: string;
     beforeEach(async () => {
-      const appleUserId = crypto.randomUUID();
+      const appleUserId = generateRecordId();
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk({ refreshToken: "apple-refresh-token" });
       revokeSpy = mockRevokeAppleRefreshTokenOk();
@@ -68,13 +69,13 @@ describe("Apple のサーバー間通知", () => {
       mockAppleKeysEndpointOk();
       const [header, body] = (
         await signAppleServerNotification({
-          appleUserId: crypto.randomUUID(),
+          appleUserId: generateRecordId(),
           type: "account-deleted",
         })
       ).split(".");
       const [, , otherSignature] = (
         await signAppleServerNotification({
-          appleUserId: crypto.randomUUID(),
+          appleUserId: generateRecordId(),
           type: "account-deleted",
         })
       ).split(".");

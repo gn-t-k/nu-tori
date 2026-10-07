@@ -1,3 +1,5 @@
+import { generateRecordId } from "../../../domain/record-id";
+
 type UpdateDishWrite = {
   id: string;
   type: "update_dish";
@@ -15,7 +17,7 @@ export const updateDishWrite = (
   fields: Pick<UpdateDishWrite, "name" | "quantity">,
   overrides: { id?: string } = {},
 ): UpdateDishWrite => ({
-  id: overrides.id ?? crypto.randomUUID(),
+  id: overrides.id ?? generateRecordId(),
   type: "update_dish",
   dishId,
   ...fields,

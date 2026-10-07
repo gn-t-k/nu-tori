@@ -1,3 +1,4 @@
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { findWaitingSchedules } from "../../dish-estimation-status/domain/dish-estimation-schedule";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
@@ -13,7 +14,7 @@ import type { EstimationWrites } from "./estimation-writes";
 export const scheduleDishReestimation = (
   stores: { dishEstimationStatus: DishEstimationStatusStore; latestTimeZone: LatestTimeZoneStore },
   writes: EstimationWrites,
-  dish: { id: string; mealSentTimeZone: string },
+  dish: { id: RecordId; mealSentTimeZone: string },
   receiptId: WriteReceiptId,
   receivedAt: Date,
 ): void => {
@@ -23,7 +24,7 @@ export const scheduleDishReestimation = (
     writes.cancelDishSchedule({ scheduleId, dishId: dish.id, receiptId });
   }
   writes.scheduleDish({
-    id: crypto.randomUUID(),
+    id: generateRecordId(),
     dishId: dish.id,
     dueAt: receivedAt,
     countedOn: computeCalendarDayInTimeZone(

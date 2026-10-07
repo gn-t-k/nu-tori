@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { recordIdSchema } from "../../domain/record-id";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 
 // Date が表せる範囲。これを超える時刻は、日付の計算で例外になる
@@ -18,7 +19,7 @@ const createNoticeWriteSchema = z
     id: writeIdSchema,
     type: z.literal("create_notice"),
     notice: z.object({
-      id: z.string().min(1),
+      id: recordIdSchema,
       noticeType: z.string().openapi({
         description: "missed_weight_record（体重の記録忘れ）。知らない値は受け付けない",
         example: "missed_weight_record",
@@ -34,7 +35,7 @@ const respondNoticeWriteSchema = z
   .object({
     id: writeIdSchema,
     type: z.literal("respond_notice"),
-    noticeId: z.string().min(1),
+    noticeId: recordIdSchema,
     response: z.object({
       respondedAt: timestampSchema,
       timeZone: timeZoneSchema,

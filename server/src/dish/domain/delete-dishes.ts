@@ -1,3 +1,4 @@
+import type { RecordId } from "../../domain/record-id";
 import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { IngredientStore } from "../../ingredient/domain/ingredient-store";
 import type { DishStore } from "./dish-store";
@@ -7,7 +8,7 @@ import type { DishStore } from "./dish-store";
 // 修正の行は控えだけを指すので、材料の行を消す前に、記録の ID から探して消す
 export const deleteDishes = (
   stores: { dish: DishStore; ingredient: IngredientStore },
-  { dishIds, ingredientIds }: { dishIds: readonly string[]; ingredientIds: readonly string[] },
+  { dishIds, ingredientIds }: { dishIds: readonly RecordId[]; ingredientIds: readonly RecordId[] },
   receiptId: WriteReceiptId,
 ): void => {
   stores.dish.insertDeletions(dishIds, receiptId);

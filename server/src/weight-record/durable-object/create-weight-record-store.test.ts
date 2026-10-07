@@ -1,10 +1,14 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId } from "../../domain/record-id";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import type { WeightRecordStore } from "../domain/weight-record-store";
 import { createWeightRecordStore } from "./create-weight-record-store";
+
+const weight1 = generateRecordId();
+const weight2 = generateRecordId();
 
 type Seed = (factory: ReturnType<typeof durableObjectFactory>) => Promise<void>;
 
@@ -20,13 +24,13 @@ describe("体重記録の置き場", () => {
     let seed: Seed;
     beforeEach(() => {
       seed = async (factory) => {
-        await factory.weightRecords.create({ id: "weight-1" });
+        await factory.weightRecords.create({ id: weight1 });
         await factory.importedWeightRecords.create({
-          weightRecordId: "weight-1",
+          weightRecordId: weight1,
           healthkitSampleUuid: "weight-sample-1",
         });
         await factory.importedBodyFatPercentages.create({
-          weightRecordId: "weight-1",
+          weightRecordId: weight1,
           bodyFatPercentage: 18.5,
           healthkitSampleUuid: "body-fat-sample-1",
         });
@@ -34,9 +38,9 @@ describe("体重記録の置き場", () => {
     });
 
     test("取り込みの情報と体脂肪率を含めて読むこと", async () => {
-      const record = await withStore(seed, (store) => store.find("weight-1"));
+      const record = await withStore(seed, (store) => store.find(weight1));
       expect(record).toMatchObject({
-        id: "weight-1",
+        id: weight1,
         imported: {
           healthkitSampleUuid: "weight-sample-1",
           bodyFat: { percentage: 18.5, healthkitSampleUuid: "body-fat-sample-1" },
@@ -56,17 +60,17 @@ describe("体重記録の置き場", () => {
     let seed: Seed;
     beforeEach(() => {
       seed = async (factory) => {
-        const receipt = await factory.syncWriteReceipts.create({ recordId: "weight-1" });
+        const receipt = await factory.syncWriteReceipts.create({ recordId: weight1 });
         await factory.weightRecordDeletions.create({ syncWriteReceiptId: receipt.id });
       };
     });
 
     test("削除した記録の ID で見つけること", async () => {
-      expect(await withStore(seed, (store) => store.hasDeletion("weight-1"))).toBe(true);
+      expect(await withStore(seed, (store) => store.hasDeletion(weight1))).toBe(true);
     });
 
     test("削除していない記録の ID では見つけないこと", async () => {
-      expect(await withStore(seed, (store) => store.hasDeletion("weight-2"))).toBe(false);
+      expect(await withStore(seed, (store) => store.hasDeletion(weight2))).toBe(false);
     });
   });
 });

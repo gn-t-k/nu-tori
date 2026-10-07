@@ -1,11 +1,12 @@
 import { z } from "@hono/zod-openapi";
+import { recordIdSchema } from "../../domain/record-id";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 
 // Date が表せる範囲。これを超える時刻は、日付の計算で例外になる
 const maximumTimestamp = 8.64e15;
 
 const weightRecordFields = {
-  id: z.string().min(1),
+  id: recordIdSchema,
   weightKg: z.number(),
   measuredAt: z
     .number()
@@ -26,11 +27,11 @@ const createWeightRecordWriteSchema = z
         .object({
           sourceAppName: z.string(),
           sourceBundleId: z.string(),
-          healthkitSampleUuid: z.string().min(1),
+          healthkitSampleUuid: recordIdSchema,
           bodyFat: z
             .object({
               percentage: z.number(),
-              healthkitSampleUuid: z.string().min(1),
+              healthkitSampleUuid: recordIdSchema,
             })
             .optional(),
         })
@@ -54,7 +55,7 @@ const sourceDeletedWeightRecordWriteSchema = z
   .object({
     id: writeIdSchema,
     type: z.literal("source_deleted_weight_record"),
-    weightRecordId: z.string().min(1),
+    weightRecordId: recordIdSchema,
   })
   .openapi("SourceDeletedWeightRecordWrite");
 

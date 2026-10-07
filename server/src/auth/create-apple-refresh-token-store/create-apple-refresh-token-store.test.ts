@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
+import { generateRecordId } from "../../domain/record-id";
 import { createAppleRefreshTokenStore } from "./index";
 import { createEncryptionKey } from "./testing/create-encryption-key";
 
@@ -8,7 +9,7 @@ describe("Apple の refresh token の置き場", () => {
     let accountId: string;
     let store: ReturnType<typeof createAppleRefreshTokenStore>;
     beforeEach(async () => {
-      accountId = crypto.randomUUID();
+      accountId = generateRecordId();
       store = createAppleRefreshTokenStore(env.DB, `1:${createEncryptionKey(1)}`);
       await store.save(accountId, "apple-refresh-token");
     });
@@ -35,8 +36,8 @@ describe("Apple の refresh token の置き場", () => {
     let newRefreshToken: string;
     beforeEach(async () => {
       newRefreshToken = "new-apple-refresh-token";
-      savedAccountId = crypto.randomUUID();
-      newAccountId = crypto.randomUUID();
+      savedAccountId = generateRecordId();
+      newAccountId = generateRecordId();
       const previousKey = createEncryptionKey(1);
       const newKey = createEncryptionKey(2);
       await createAppleRefreshTokenStore(env.DB, `1:${previousKey}`).save(
@@ -61,7 +62,7 @@ describe("Apple の refresh token の置き場", () => {
     let accountId: string;
     let store: ReturnType<typeof createAppleRefreshTokenStore>;
     beforeEach(() => {
-      accountId = crypto.randomUUID();
+      accountId = generateRecordId();
       store = createAppleRefreshTokenStore(env.DB, `1:${createEncryptionKey(1)}`);
     });
 

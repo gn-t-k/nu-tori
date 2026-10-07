@@ -1,5 +1,6 @@
 import { and, asc, between, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { MealStore } from "../domain/meal-store";
 import { mealPhotoTables } from "./meal-photo-tables";
@@ -133,7 +134,7 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
 });
 
 // 食事を書き換えた控えのうち、時刻の修正を持ち、受け取った順（変更の並びの通し番号）がいちばんあとのものの時刻。修正が無ければ undefined
-const findCorrectedEatenAt = (db: DrizzleSqliteDODatabase, id: string): Date | undefined =>
+const findCorrectedEatenAt = (db: DrizzleSqliteDODatabase, id: RecordId): Date | undefined =>
   db
     .select({ eatenAt: mealEatenAtCorrections.eatenAt })
     .from(mealEatenAtCorrections)
@@ -151,7 +152,7 @@ const findCorrectedEatenAt = (db: DrizzleSqliteDODatabase, id: string): Date | u
     .get()?.eatenAt;
 
 // Durable Object の SQLite は、1つのクエリに渡せる変数が 100 まで。受け付けなかった書き込みの写真の ID は、いくつでも届きうる
-const splitIntoQueryableChunks = (ids: readonly string[]): string[][] => {
+const splitIntoQueryableChunks = (ids: readonly RecordId[]): RecordId[][] => {
   const maximumVariablesPerQuery = 100;
   return Array.from({ length: Math.ceil(ids.length / maximumVariablesPerQuery) }, (_, index) =>
     ids.slice(index * maximumVariablesPerQuery, (index + 1) * maximumVariablesPerQuery),

@@ -1,9 +1,10 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 
 // 行は1つだけ。DB では止めず、decide が行を読んでから ID を振ることで守る
 const usualWeighingTimes = sqliteTable("usual_weighing_times", {
-  id: text("id").primaryKey(),
+  id: text("id").$type<RecordId>().primaryKey(),
 });
 
 // 学び直しで値が変わった事実。今の値は、控えの要求の received_at の降順、

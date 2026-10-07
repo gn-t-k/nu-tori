@@ -1,9 +1,10 @@
 import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { noticeTypes } from "../domain/notice";
 
 const notices = sqliteTable("notices", {
-  id: text("id").primaryKey(),
+  id: text("id").$type<RecordId>().primaryKey(),
   noticeType: text("notice_type", { enum: noticeTypes }).notNull(),
   issuedAt: integer("issued_at", { mode: "timestamp_ms" }).notNull(),
   timeZone: text("time_zone").notNull(),
@@ -11,6 +12,7 @@ const notices = sqliteTable("notices", {
 
 const missedRecordNotices = sqliteTable("missed_record_notices", {
   noticeId: text("notice_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => notices.id, { onDelete: "cascade" }),
   targetOn: text("target_on").notNull(),
@@ -23,6 +25,7 @@ const noticeResponses = sqliteTable(
       .primaryKey()
       .references(() => syncLedgerTables.syncWriteReceipts.id),
     noticeId: text("notice_id")
+      .$type<RecordId>()
       .notNull()
       .references(() => notices.id, { onDelete: "cascade" }),
     respondedAt: integer("responded_at", { mode: "timestamp_ms" }).notNull(),

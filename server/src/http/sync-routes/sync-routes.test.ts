@@ -1,3 +1,4 @@
+import { generateRecordId } from "../../domain/record-id";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../testing";
@@ -9,6 +10,7 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
+import { weightTrendRecordId } from "../../weight-trend/domain/weight-trend-record-id";
 import { app } from "../app";
 import { enableUsageEventSending } from "./testing/enable-usage-event-sending";
 import { pullSyncChanges, type PullResult } from "./testing/pull-sync-changes";
@@ -24,7 +26,7 @@ describe("同期", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(crypto.randomUUID()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
   });
 
   describe("同じ書き込みを送り直したとき", () => {
@@ -374,7 +376,7 @@ describe("同期", () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
       expect(pulled.changes.map(({ recordId }) => recordId)).toEqual([
         acceptable.weightRecord["id"],
-        "weight_trend",
+        weightTrendRecordId,
       ]);
     });
 
@@ -505,12 +507,14 @@ describe("同期", () => {
   });
 
   describe("送る要求に端末の状態が添えられているとき", () => {
+    let deviceId: string;
     beforeEach(async () => {
+      deviceId = generateRecordId();
       await pushSyncWrites(sessionToken, {
         writes: [createWeightRecordWrite()],
         isFinalBatch: true,
         clientState: {
-          deviceId: "device-a",
+          deviceId,
           timeZone: "Asia/Tokyo",
           appVersion: "1.2.3",
           osVersion: "26.1",
@@ -532,7 +536,7 @@ describe("同期", () => {
       );
       expect(rows).toEqual([
         {
-          device_id: "device-a",
+          device_id: deviceId,
           time_zone: "Asia/Tokyo",
           app_version: "1.2.3",
           os_version: "26.1",
@@ -634,7 +638,7 @@ const insertRequestLog = (accountId: string, receivedAt: number) =>
          (id, device_id, received_at, time_zone, app_version, os_version,
           pending_write_count, oldest_pending_write_age_seconds, pending_photo_count)
        VALUES (?, 'device-1', ?, 'Asia/Tokyo', '1.0.0', '26.0', 0, NULL, 0)`,
-      crypto.randomUUID(),
+      generateRecordId(),
       receivedAt,
     ),
   );

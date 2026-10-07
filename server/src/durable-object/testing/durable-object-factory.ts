@@ -1,4 +1,5 @@
 import { composeFactory, defineFactory } from "@praha/drizzle-factory";
+import { generateRecordId } from "../../domain/record-id";
 import { durableObjectTables } from "../durable-object-tables";
 
 const schema = durableObjectTables;
@@ -55,7 +56,7 @@ const syncWriteReceipts = defineFactory({
     positionInRequest: 0,
     kind: "create" as const,
     recordType: "weight_record" as const,
-    recordId: `record-${sequence}`,
+    recordId: generateRecordId(),
     result: "applied" as const,
   }),
 });
@@ -78,15 +79,15 @@ const recordChanges = defineFactory({
   resolver: ({ sequence }) => ({
     sequence,
     recordType: "weight_record" as const,
-    recordId: `record-${sequence}`,
+    recordId: generateRecordId(),
   }),
 });
 
 const weightRecords = defineFactory({
   schema,
   table: "weightRecords",
-  resolver: ({ sequence }) => ({
-    id: `weight-record-${sequence}`,
+  resolver: () => ({
+    id: generateRecordId(),
     weightKg: 60.5,
     measuredAt: new Date("2026-01-01T00:00:00Z"),
     timeZone: "Asia/Tokyo",
@@ -135,8 +136,8 @@ const weightRecordDeletions = defineFactory({
 const accountSettings = defineFactory({
   schema,
   table: "accountSettings",
-  resolver: ({ sequence }) => ({
-    id: `account-settings-${sequence}`,
+  resolver: () => ({
+    id: generateRecordId(),
     sendsUsageData: false,
   }),
 });
@@ -144,8 +145,8 @@ const accountSettings = defineFactory({
 const meals = defineFactory({
   schema,
   table: "meals",
-  resolver: ({ sequence }) => ({
-    id: `meal-${sequence}`,
+  resolver: () => ({
+    id: generateRecordId(),
     eatenAt: new Date("2026-01-01T00:00:00Z"),
     eatenAtUtcOffsetSeconds: 32_400,
     sentAt: new Date("2026-01-01T00:00:00Z"),

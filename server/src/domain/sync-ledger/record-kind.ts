@@ -1,3 +1,4 @@
+import type { RecordId } from "../record-id";
 import type { CurrentRecord } from "./current-record";
 import type { RecordChangeTarget } from "./record-change-target";
 import type { WriteReceiptId } from "./sync-ledger";
@@ -20,7 +21,7 @@ export type RecordKind<
   writes: KindWrites<TWrite, TAddedName> | undefined;
   // ほかの種類の記録から計算する種類だけが宣言する
   follows: KindFollows<TSourceName> | undefined;
-  readCurrent(recordId: string): CurrentRecord<TValue>;
+  readCurrent(recordId: RecordId): CurrentRecord<TValue>;
   whenGone: WhenGone;
 };
 
@@ -41,16 +42,16 @@ export type KindWrites<TWrite extends WriteBase, TAddedName extends string = nev
 export type KindFollows<TSourceName extends string> = {
   source: TSourceName;
   // 帳簿が、元の種類の書き込みを当てて行を書いたあとに、同じトランザクションの中で呼ぶ。書いたあとの記録を読み、自分の行を書き、変えた記録の ID を返す。帳簿は、元の書き込みの変更のあとに、控えと結ばずに並びに載せる
-  afterSourceApplied: (receiptId: WriteReceiptId) => readonly string[];
+  afterSourceApplied: (receiptId: WriteReceiptId) => readonly RecordId[];
 };
 
 export type WriteDecision<TAddedName extends string = never> = {
   writeKind: WriteKind;
   // 書き込みの控えに載せる記録の ID
-  recordId: string;
+  recordId: RecordId;
   outcome: SyncWriteOutcome;
   // 変更の並びに載せる記録の ID。書き込みの控えと結ぶ。載せないとき undefined
-  changedRecordId: string | undefined;
+  changedRecordId: RecordId | undefined;
   // 書き込みが直接変えた記録の外で、commit が変える記録。控えと結ばずに、changedRecordId の変更のあとに、並びの順で載せる
   addedChanges: readonly RecordChangeTarget<TAddedName>[];
   // 書き込みを当てたときに、分析用に送る出来事。同じ書き込みの ID が再び届いたときは送らない

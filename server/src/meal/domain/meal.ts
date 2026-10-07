@@ -1,7 +1,8 @@
+import type { RecordId } from "../../domain/record-id";
 import type { MealEntryMethod } from "./meal-entry-method";
 
 export type Meal = {
-  id: string;
+  id: RecordId;
   // 撮った時刻（食事の時刻）と、その時刻の UTC との時差
   eatenAt: Date;
   eatenAtUtcOffsetSeconds: number;
@@ -10,5 +11,5 @@ export type Meal = {
   sentTimeZone: string;
   entryMethod: MealEntryMethod;
   // 並びが写真の並び順
-  photoIds: readonly string[];
+  photoIds: readonly RecordId[];
 };
