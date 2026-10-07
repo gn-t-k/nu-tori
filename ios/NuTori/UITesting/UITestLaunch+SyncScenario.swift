@@ -53,9 +53,10 @@
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:))
             case .mealEdit:
+                // 推定中の食事の画面を開いて見られるよう、推定を3回めの取得（数秒おきに取りに行くので、10秒ほどあと）まで終えない
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
-                    estimateDish: Self.reestimate(dishId:name:))
+                    estimateDish: Self.reestimate(dishId:name:), mealEstimationPulls: 3)
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:

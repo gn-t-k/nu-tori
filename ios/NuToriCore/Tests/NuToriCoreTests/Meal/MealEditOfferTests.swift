@@ -53,20 +53,26 @@ struct MealEditOfferTests {
             fixture = try Fixture(status: nil, recordedOnThisDevice: true)
         }
 
-        @Test("「料理を足す」を出すこと")
-        func addsDish() {
-            #expect(fixture.offer.addsDish)
+        @Test("「料理を足す」を出さず、その場所に推定が終わると足せることを置くこと")
+        func waitsToAddDish() {
+            #expect(!fixture.offer.addsDish)
+            #expect(fixture.offer.addDishWaitNote == "推定が終わると、料理を足せます。")
         }
 
-        @Test("どの料理の行も、左へ送って消せること")
-        func deletesEveryDishBySwipe() {
-            #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
+        @Test("どの料理の行も、左へ送って消せないこと")
+        func deletesNoDishBySwipe() {
+            #expect(!fixture.dishes.contains(where: fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出すこと")
-        func editsEveryDish() {
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
+        @Test("どの料理の画面でも、名前と量を文字で見せて推定が終わると直せることを添え、「この料理を削除」を出さないこと")
+        func editsNoDish() {
+            #expect(
+                fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).editsNameAndQuantity })
+            #expect(
+                fixture.dishes.allSatisfy {
+                    fixture.offer.dishScreen($0).waitNote == "推定が終わると直せます。"
+                })
+            #expect(fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).deletesDish })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
@@ -97,20 +103,26 @@ struct MealEditOfferTests {
             fixture = try Fixture(status: .awaitingPhotos, recordedOnThisDevice: false)
         }
 
-        @Test("「料理を足す」を出すこと")
-        func addsDish() {
-            #expect(fixture.offer.addsDish)
+        @Test("「料理を足す」を出さず、その場所に推定が終わると足せることを置くこと")
+        func waitsToAddDish() {
+            #expect(!fixture.offer.addsDish)
+            #expect(fixture.offer.addDishWaitNote == "推定が終わると、料理を足せます。")
         }
 
-        @Test("どの料理の行も、左へ送って消せること")
-        func deletesEveryDishBySwipe() {
-            #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
+        @Test("どの料理の行も、左へ送って消せないこと")
+        func deletesNoDishBySwipe() {
+            #expect(!fixture.dishes.contains(where: fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出すこと")
-        func editsEveryDish() {
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
+        @Test("どの料理の画面でも、名前と量を文字で見せて推定が終わると直せることを添え、「この料理を削除」を出さないこと")
+        func editsNoDish() {
+            #expect(
+                fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).editsNameAndQuantity })
+            #expect(
+                fixture.dishes.allSatisfy {
+                    fixture.offer.dishScreen($0).waitNote == "推定が終わると直せます。"
+                })
+            #expect(fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).deletesDish })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
@@ -141,20 +153,26 @@ struct MealEditOfferTests {
             fixture = try Fixture(status: .estimating, recordedOnThisDevice: true)
         }
 
-        @Test("「料理を足す」を出すこと")
-        func addsDish() {
-            #expect(fixture.offer.addsDish)
+        @Test("「料理を足す」を出さず、その場所に推定が終わると足せることを置くこと")
+        func waitsToAddDish() {
+            #expect(!fixture.offer.addsDish)
+            #expect(fixture.offer.addDishWaitNote == "推定が終わると、料理を足せます。")
         }
 
-        @Test("どの料理の行も、左へ送って消せること")
-        func deletesEveryDishBySwipe() {
-            #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
+        @Test("どの料理の行も、左へ送って消せないこと")
+        func deletesNoDishBySwipe() {
+            #expect(!fixture.dishes.contains(where: fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出すこと")
-        func editsEveryDish() {
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
+        @Test("どの料理の画面でも、名前と量を文字で見せて推定が終わると直せることを添え、「この料理を削除」を出さないこと")
+        func editsNoDish() {
+            #expect(
+                fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).editsNameAndQuantity })
+            #expect(
+                fixture.dishes.allSatisfy {
+                    fixture.offer.dishScreen($0).waitNote == "推定が終わると直せます。"
+                })
+            #expect(fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).deletesDish })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
@@ -185,20 +203,26 @@ struct MealEditOfferTests {
             fixture = try Fixture(status: .deferredToNextDay, recordedOnThisDevice: true)
         }
 
-        @Test("「料理を足す」を出すこと")
-        func addsDish() {
-            #expect(fixture.offer.addsDish)
+        @Test("「料理を足す」を出さず、その場所に推定が終わると足せることを置くこと")
+        func waitsToAddDish() {
+            #expect(!fixture.offer.addsDish)
+            #expect(fixture.offer.addDishWaitNote == "推定が終わると、料理を足せます。")
         }
 
-        @Test("どの料理の行も、左へ送って消せること")
-        func deletesEveryDishBySwipe() {
-            #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
+        @Test("どの料理の行も、左へ送って消せないこと")
+        func deletesNoDishBySwipe() {
+            #expect(!fixture.dishes.contains(where: fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出すこと")
-        func editsEveryDish() {
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
-            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
+        @Test("どの料理の画面でも、名前と量を文字で見せて推定が終わると直せることを添え、「この料理を削除」を出さないこと")
+        func editsNoDish() {
+            #expect(
+                fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).editsNameAndQuantity })
+            #expect(
+                fixture.dishes.allSatisfy {
+                    fixture.offer.dishScreen($0).waitNote == "推定が終わると直せます。"
+                })
+            #expect(fixture.dishes.allSatisfy { !fixture.offer.dishScreen($0).deletesDish })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
@@ -229,9 +253,10 @@ struct MealEditOfferTests {
             fixture = try Fixture(status: .estimated, recordedOnThisDevice: true)
         }
 
-        @Test("「料理を足す」を出すこと")
+        @Test("「料理を足す」を出し、待ちの1行を置かないこと")
         func addsDish() {
             #expect(fixture.offer.addsDish)
+            #expect(fixture.offer.addDishWaitNote == nil)
         }
 
         @Test("どの料理の行も、左へ送って消せること")
@@ -239,10 +264,11 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出すこと")
+        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出し、待ちの1行を添えないこと")
         func editsEveryDish() {
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
+            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).waitNote == nil })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
@@ -273,9 +299,10 @@ struct MealEditOfferTests {
             fixture = try Fixture(status: .noDishes, recordedOnThisDevice: true)
         }
 
-        @Test("「料理を足す」を出すこと")
+        @Test("「料理を足す」を出し、待ちの1行を置かないこと")
         func addsDish() {
             #expect(fixture.offer.addsDish)
+            #expect(fixture.offer.addDishWaitNote == nil)
         }
 
         @Test("どの料理の行も、左へ送って消せること")
@@ -283,10 +310,11 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出すこと")
+        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出し、待ちの1行を添えないこと")
         func editsEveryDish() {
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
+            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).waitNote == nil })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")
@@ -317,9 +345,10 @@ struct MealEditOfferTests {
             fixture = try Fixture(status: .failed, recordedOnThisDevice: true)
         }
 
-        @Test("「料理を足す」を出すこと")
+        @Test("「料理を足す」を出し、待ちの1行を置かないこと")
         func addsDish() {
             #expect(fixture.offer.addsDish)
+            #expect(fixture.offer.addDishWaitNote == nil)
         }
 
         @Test("どの料理の行も、左へ送って消せること")
@@ -327,10 +356,11 @@ struct MealEditOfferTests {
             #expect(fixture.dishes.allSatisfy(fixture.offer.deletesDishBySwipe))
         }
 
-        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出すこと")
+        @Test("どの料理の画面でも、名前と量を直せて「この料理を削除」を出し、待ちの1行を添えないこと")
         func editsEveryDish() {
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).editsNameAndQuantity })
             #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).deletesDish })
+            #expect(fixture.dishes.allSatisfy { fixture.offer.dishScreen($0).waitNote == nil })
         }
 
         @Test("待っていない料理の画面にだけ、材料と栄養を出すこと")

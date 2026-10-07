@@ -9,21 +9,36 @@ public struct MealEditOffer: Hashable, Sendable {
         mealState = card.state
     }
 
-    /// 食事の画面の料理の一覧の最後に、「料理を足す」を出すか
-    public var addsDish: Bool { true }
+    /// 食事の画面の料理の一覧の最後に、「料理を足す」を出すか。推定を待っている食事には出さない
+    public var addsDish: Bool { !mealAwaitsEstimation }
 
-    /// 食事の画面の料理の行に、左へ送る「削除」を出すか
-    public func deletesDishBySwipe(_ contents: DishContents) -> Bool {
-        true
+    /// 「料理を足す」を出さないときに、その場所に置く1行
+    public var addDishWaitNote: String? {
+        addsDish ? nil : "推定が終わると、料理を足せます。"
     }
 
-    /// `contents` の料理の画面に出すもの
+    /// 食事の画面の料理の行に、左へ送る「削除」を出すか。推定を待っている食事の料理には出さない
+    /// （料理が推定の状態より先に届いた一瞬だけ、行がある）
+    public func deletesDishBySwipe(_ contents: DishContents) -> Bool {
+        !mealAwaitsEstimation
+    }
+
+    /// `contents` の料理の画面に出すもの。推定を待っている食事の料理は、名前と量を文字で見せ、「この料理を削除」も出さない
     public func dishScreen(_ contents: DishContents) -> DishScreenOffer {
         DishScreenOffer(
-            editsNameAndQuantity: true,
+            editsNameAndQuantity: !mealAwaitsEstimation,
             showsIngredientsAndNutrients: contents.showsIngredientsAndNutrients,
-            deletesDish: true,
+            deletesDish: !mealAwaitsEstimation,
             progressNote: contents.row.note)
+    }
+
+    /// 食事が推定を待っているか（まだ送れていない・写真を待っている・推定中・翌日に推定）。
+    /// 待っているあいだに料理を足す・直すと、サーバーが断る（`awaiting_estimation`）
+    private var mealAwaitsEstimation: Bool {
+        switch mealState {
+        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay: true
+        case .estimated, .noDishes, .failed: false
+        }
     }
 
     /// 料理の画面に出すもの
@@ -36,5 +51,10 @@ public struct MealEditOffer: Hashable, Sendable {
         public let deletesDish: Bool
         /// 名前の下の、食事の画面の料理の行と同じ待ちの1行
         public let progressNote: DishRow.Note?
+
+        /// 名前と量を直せないときに、その下へ添える1行
+        public var waitNote: String? {
+            editsNameAndQuantity ? nil : "推定が終わると直せます。"
+        }
     }
 }
