@@ -79,7 +79,7 @@
         "APPLE_BUNDLE_ID": "app.nu-tori",
         "SENTRY_ENVIRONMENT": "production",
         "POSTHOG_PROJECT_TOKEN": "phc_yYuKJmqxpHM77An2fa7NYoL8SK2RkbbEXgpVUQQ2fjze",
-        "MINIMUM_APP_BUILD": 0,
+        "MINIMUM_APP_BUILD": 52,
       },
       "ratelimits": [
         {
