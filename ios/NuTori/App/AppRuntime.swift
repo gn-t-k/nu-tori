@@ -168,7 +168,7 @@ import SwiftData
             }
         }
         health.bindWakeHandler { [weak sync] in
-            await sync?.importHealthAndSendPending()
+            try? await sync?.importHealthAndSendPending()
         }
         let model = RootModel(
             accountSession: session, recordSync: sync, health: health,

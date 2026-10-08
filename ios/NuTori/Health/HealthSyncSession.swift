@@ -81,6 +81,14 @@ import NuToriCore
         await importAndExportCached()
     }
 
+    /// 起動したときにも呼ぶ。ヘルスケアが閉じたアプリを起こすときは画面が作られないので、画面を開くのを待たずに見張りを登録する。
+    /// 許可をまだ求めていなければ、画面で求めたあとに登録する
+    func startDeliveryIfNeeded() async {
+        guard case .bound(let onWake) = delivery, await isAlreadyRequested() else { return }
+        delivery = .started
+        await startBackgroundDelivery(onWake)
+    }
+
     private let store: any HealthStore
     private let startBackgroundDelivery:
         @Sendable (@escaping @Sendable () async -> Void) async ->
@@ -110,11 +118,5 @@ import NuToriCore
     private func importAndExportCached() async {
         try? await engine.importChanges()
         try? await engine.exportCachedManualRecordsOnNewWriteAuthorization()
-    }
-
-    private func startDeliveryIfNeeded() async {
-        guard case .bound(let onWake) = delivery, await isAlreadyRequested() else { return }
-        delivery = .started
-        await startBackgroundDelivery(onWake)
     }
 }
