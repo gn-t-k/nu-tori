@@ -9,6 +9,9 @@ struct AccountScreen: View {
     let cameraAccess: CameraAccess
     /// 読み終えるまでは nil で、値を出さない
     let notificationPermission: NotificationPermission?
+    // 版とビルド番号は、問い合わせのときに見てもらう
+    let appVersion: String
+    let appBuild: Int
     let actions: AccountActions
     let onClose: () -> Void
 
@@ -73,6 +76,12 @@ struct AccountScreen: View {
                     "食事、体重、目標、会話の記録はすぐに消え、元に戻せません。エラーの報告と利用状況のデータは、最長 90 日で消えます。"
                 )
             }
+            Section {
+            } footer: {
+                Text("\(appVersion) (\(appBuild))")
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("app-version")
+            }
         }
         .navigationTitle("アカウント")
         .navigationBarTitleDisplayMode(.inline)
@@ -103,12 +112,16 @@ struct AccountScreen: View {
         cameraAccess: CameraAccess,
         notificationPermission: NotificationPermission?,
         deletion: Deletion,
+        appVersion: String,
+        appBuild: Int,
         actions: AccountActions,
         onClose: @escaping () -> Void
     ) {
         self.sendsUsageData = sendsUsageData
         self.cameraAccess = cameraAccess
         self.notificationPermission = notificationPermission
+        self.appVersion = appVersion
+        self.appBuild = appBuild
         self.actions = actions
         self.onClose = onClose
         _deletion = State(initialValue: deletion)
