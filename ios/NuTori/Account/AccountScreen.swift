@@ -9,7 +9,7 @@ struct AccountScreen: View {
     let cameraAccess: CameraAccess
     /// 読み終えるまでは nil で、値を出さない
     let notificationPermission: NotificationPermission?
-    /// アプリの版。ビルド番号と並べて、問い合わせのときに見てもらう
+    // 版とビルド番号は、問い合わせのときに見てもらう
     let appVersion: String
     let appBuild: Int
     let actions: AccountActions
