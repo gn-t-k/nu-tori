@@ -5,13 +5,9 @@ public import Foundation
 /// 出さないのは見せ方だけで、送った書き込みを断るかはサーバーが決める
 public struct MealEditOffer: Hashable, Sendable {
     let card: MealCard
-    /// 食事が推定を待っているか（まだ送れていない・写真を待っている・推定中・翌日に推定）。
-    /// 待っているあいだに料理を足す・直すと、サーバーが断る（`awaiting_estimation`）
-    let mealAwaitsEstimation: Bool
 
     public init(card: MealCard) {
         self.card = card
-        mealAwaitsEstimation = card.state.awaitsPhotoEstimation
     }
 
     /// 食事の画面の料理の一覧の後ろの「料理を足す」を押せない理由。押せるときは nil。推定を待っている食事では押せない
@@ -22,7 +18,7 @@ public struct MealEditOffer: Hashable, Sendable {
     /// 食事の画面の料理の行を左へ送ると出す「削除」。推定を待っている食事の料理には出さない
     /// （料理が推定の状態より先に届いた一瞬だけ、行がある）。推定し直しを待っている料理には出す
     public func rowDeletion(of dishId: UUID) -> Deletion {
-        mealAwaitsEstimation ? .hidden : removal(of: dishId)
+        mealAwaitsEstimation ? .hidden : deletion(of: dishId)
     }
 
     /// 料理の画面に出すもの。キャッシュに無い料理（消えた料理）は nil。
@@ -42,11 +38,10 @@ public struct MealEditOffer: Hashable, Sendable {
             contents: contents,
             nameAndQuantity: editable
                 ? .editable(quantity: quantity) : .disabled(quantity: quantity),
-            progressNote: contents.row.note,
             belowHeader: lines.belowHeader,
             ingredients: !mealAwaitsEstimation && contents.showsIngredientsAndNutrients
                 ? lines.ingredients : nil,
-            deletion: mealAwaitsEstimation ? .hidden : removal(of: dishId))
+            deletion: mealAwaitsEstimation ? .hidden : deletion(of: dishId))
     }
 
     /// 料理を消す操作で出すもの
@@ -64,8 +59,6 @@ public struct MealEditOffer: Hashable, Sendable {
         public let contents: DishContents
         /// 名前と量の見せ方
         public let nameAndQuantity: NameAndQuantity
-        /// 名前の下の、食事の画面の料理の行と同じ待ちの1行
-        public let progressNote: DishRow.Note?
         /// 名前と量の下に置く、受け付けなかった書き込みの1行
         public let belowHeader: [RejectedMealLine]
         /// 材料の一覧（材料の行の下の1行と、材料の行を外した位置の1行を並べる）。
@@ -73,6 +66,9 @@ public struct MealEditOffer: Hashable, Sendable {
         public let ingredients: [RecordListItem<Ingredient>]?
         /// 「この料理を削除」
         public let deletion: Deletion
+
+        /// 名前の下の、食事の画面の料理の行と同じ待ちの1行
+        public var progressNote: DishRow.Note? { contents.row.note }
 
         /// 名前と量の欄を押してその場で直せるか
         public var editsNameAndQuantity: Bool {
@@ -115,12 +111,16 @@ public struct MealEditOffer: Hashable, Sendable {
 
     /// 最後の1品かを、キャッシュの料理で数える。推定中・翌日に推定・まだ送れていない料理と、推定し直しが通らなかった料理も、
     /// キャッシュにある料理として1品に数える。キャッシュに無い料理は、料理だけを消す
-    private func removal(of dishId: UUID) -> Deletion {
+    private func deletion(of dishId: UUID) -> Deletion {
         let dishes = card.contents.dishes
         return dishes.contains(where: { $0.dish.id == dishId })
             && !dishes.contains(where: { $0.dish.id != dishId })
             ? .mealAfterConfirmation : .dish
     }
+
+    /// 食事が推定を待っているか（まだ送れていない・写真を待っている・推定中・翌日に推定）。
+    /// 待っているあいだに料理を足す・直すと、サーバーが断る（`awaiting_estimation`）
+    private var mealAwaitsEstimation: Bool { card.state.awaitsPhotoEstimation }
 
     /// 見せない量（待っている料理の推定したままの量）は、欄を空にして置き文字の「—」を見せる
     private func quantityField(of contents: DishContents) -> DishScreenOffer.QuantityField? {
