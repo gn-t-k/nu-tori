@@ -109,12 +109,11 @@ struct DishScreen: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 12) {
                     Text("名前")
-                    nameOrQuantityValue(
+                    valueField(
                         TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
                             .submitLabel(.done)
                             .focused($focusedField, equals: .name),
-                        text: Text(contents.dish.name),
-                        identifier: "dish-name")
+                        editable: offer.editsNameAndQuantity, identifier: "dish-name")
                 }
                 if let note = offer.progressNote {
                     DishProgressNoteText(note: note)
@@ -122,29 +121,34 @@ struct DishScreen: View {
                 }
                 RejectedMealLinesText(lines: list.belowHeader)
             }
-            if let field = header.quantityField {
-                quantityRow(field)
+            switch offer.nameAndQuantity {
+            case .editable(quantity: let field?):
+                quantityRow(field, editable: true)
+            case .disabled(quantity: let field?):
+                quantityRow(field, editable: false)
+            case .editable(quantity: nil):
+                EmptyView()
+            case .disabled(quantity: nil):
+                emptyQuantityRow
             }
         } footer: {
-            // 直せないときは、直したときの注記の代わりに、推定が終わると直せることを置く
+            // 直せないときは、直したときの注記の代わりに、押せない理由（推定が終わると直せること）を置く
             if let note = offer.waitNote ?? header.note(editingName: focusedField == .name) {
                 Text(note)
             }
         }
     }
 
-    /// 量の数字の欄。単位は欄の右に文字で添え（変えられない）、推定したままの量には推定の印を添える。
-    /// 直せないときは、欄でなく文字で見せる（空なら置き文字）
-    private func quantityRow(_ field: DishScreenHeader.QuantityField) -> some View {
+    /// 量の数字の欄。単位は欄の右に文字で添え（変えられない）、推定したままの量には推定の印を添える
+    private func quantityRow(_ field: DishScreenHeader.QuantityField, editable: Bool) -> some View {
         HStack(spacing: 8) {
             Text("量")
-            nameOrQuantityValue(
+            valueField(
                 TextField(field.placeholder, text: draft(.quantity, shown: field.text))
                     .keyboardType(.decimalPad)
                     .monospacedDigit()
                     .focused($focusedField, equals: .quantity),
-                text: Text(field.text.isEmpty ? field.placeholder : field.text).monospacedDigit(),
-                identifier: "dish-quantity")
+                editable: editable, identifier: "dish-quantity")
             Text(field.unit)
                 .foregroundStyle(.secondary)
             if field.showsEstimateBadge {
@@ -153,21 +157,24 @@ struct DishScreen: View {
         }
     }
 
-    /// 名前と量の値。直せるときは押してその場で直せる欄（`field`）を、直せないときは右へ寄せた文字（`text`）を置く
-    @ViewBuilder private func nameOrQuantityValue(
-        _ field: some View, text: Text, identifier: String
-    ) -> some View {
-        if offer.editsNameAndQuantity {
-            field
-                .multilineTextAlignment(.trailing)
-                .foregroundStyle(Color.accentColor)
-                .accessibilityIdentifier(identifier)
-        } else {
-            Spacer()
-            text
-                .multilineTextAlignment(.trailing)
-                .accessibilityIdentifier(identifier)
+    /// 量の無い料理を直せないときの量の行。食事の画面の料理の行と同じく、量を「—」で見せる。
+    /// 打つ値は無いので、置き文字の「—」だけを見せる押せない欄にする
+    private var emptyQuantityRow: some View {
+        HStack(spacing: 8) {
+            Text("量")
+            valueField(
+                TextField("—", text: .constant("")), editable: false, identifier: "dish-quantity")
         }
+    }
+
+    /// 名前と量の欄。押してその場で直せる。直せないとき（`editable` が false）は、いつもの場所に置いたまま押せない表示にする
+    private func valueField(_ field: some View, editable: Bool, identifier: String) -> some View {
+        field
+            .multilineTextAlignment(.trailing)
+            // 押せない欄は、ここで Primary を指定していても、システムが押せない色（灰色）で描く（iOS 26.5 のシミュレーターで確かめた）
+            .foregroundStyle(Color.accentColor)
+            .disabled(!editable)
+            .accessibilityIdentifier(identifier)
     }
 
     /// 材料の名前と量。量は Primary で、押すとその場で数字のキーボードが出る。材料の名前は直せない
