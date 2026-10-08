@@ -211,11 +211,21 @@ import NuToriCore
         syncInBackground()
     }
 
-    func importHealthAndSendPending() async {
+    func importHealthAndSendPending() async throws {
         await health.importChanges()
         // 送れなくても、取り込んだ体重記録で置き直す
         await refreshMissedWeightRecordWatch(after: .healthImported)
-        _ = try? await sync()
+        _ = try await sync()
+    }
+
+    /// バックグラウンドの更新で起こされたとき。送れたかを返す
+    func refreshInBackground() async -> Bool {
+        do {
+            try await importHealthAndSendPending()
+            return true
+        } catch {
+            return false
+        }
     }
 
     init(
@@ -265,6 +275,7 @@ import NuToriCore
         watchNetwork()
         watchClock()
         scheduleBackgroundRefresh()
+        Task { await health.startDeliveryIfNeeded() }
     }
 
     func sync() async throws -> SyncResult? {
@@ -344,12 +355,7 @@ import NuToriCore
 
     private func handle(_ task: BGAppRefreshTask) async {
         scheduleBackgroundRefresh()
-        do {
-            _ = try await sync()
-            task.setTaskCompleted(success: true)
-        } catch {
-            task.setTaskCompleted(success: false)
-        }
+        task.setTaskCompleted(success: await refreshInBackground())
     }
 
     private func scheduleBackgroundRefresh() {
