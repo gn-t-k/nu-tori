@@ -6,13 +6,8 @@ import SwiftUI
 /// 名前と量（下に注記）、材料、主な栄養・ミネラル・ビタミン、「以上」と「不明」の注記、「この料理を削除」の順に並べる。
 /// 直す状態に入る操作は無く、値を押せばその場で直せる（iOS の設定のアプリの詳細の画面と同じ）
 struct DishScreen: View {
-    let contents: DishContents
-    /// 出す操作と待ちの1行。推定の状態はこの画面で見ず、これだけで決める
+    /// 料理と、出す操作・注記・待ちの1行・受け付けなかった1行。推定の状態はこの画面で見ず、これだけで決める
     let offer: MealEditOffer.DishScreenOffer
-    /// 受け付けなかった書き込みの1行の置き場（名前と量の下、材料の行の下と材料の行を外した位置）
-    let list: DishScreenList
-    /// 消すと食事の料理が無くなるか。最後の1品なら、料理でなく食事を消すかを確かめる
-    let removal: DishRemoval
     let actions: DishActions
     /// 最後の1品の確かめで「食事を削除」を押したとき。タイムラインに戻り、食事を消す
     let deleteMeal: () -> Void
@@ -20,10 +15,10 @@ struct DishScreen: View {
     var body: some View {
         List {
             nameAndQuantity
-            if offer.showsIngredientsAndNutrients {
-                if !list.ingredients.isEmpty {
+            if let ingredients = offer.ingredients {
+                if !ingredients.isEmpty {
                     Section("材料") {
-                        ForEach(list.ingredients, id: \.rowId) { item in
+                        ForEach(ingredients, id: \.rowId) { item in
                             switch item {
                             case .record(let ingredient, let below):
                                 VStack(alignment: .leading, spacing: 4) {
@@ -38,9 +33,7 @@ struct DishScreen: View {
                 }
                 nutrientBreakdown
             }
-            if offer.deletesDish {
-                deletionSection
-            }
+            deletionSection
         }
         .navigationTitle(contents.dish.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -72,18 +65,12 @@ struct DishScreen: View {
 
     /// confirmsMealDeletion は開いたときに、最後の1品を消すかの確かめを出しているか
     init(
-        contents: DishContents,
         offer: MealEditOffer.DishScreenOffer,
-        list: DishScreenList,
-        removal: DishRemoval,
         actions: DishActions,
         deleteMeal: @escaping () -> Void,
         confirmsMealDeletion: Bool
     ) {
-        self.contents = contents
         self.offer = offer
-        self.list = list
-        self.removal = removal
         self.actions = actions
         self.deleteMeal = deleteMeal
         _confirmsMealDeletion = State(initialValue: confirmsMealDeletion)
@@ -101,7 +88,7 @@ struct DishScreen: View {
         case ingredient(UUID)
     }
 
-    private var header: DishScreenHeader { DishScreenHeader(contents) }
+    private var contents: DishContents { offer.contents }
 
     /// 名前と量。待っている料理と通らなかった料理は、名前の下に食事の画面の料理の行と同じ状態の1行を出す
     private var nameAndQuantity: some View {
@@ -119,7 +106,7 @@ struct DishScreen: View {
                     DishProgressNoteText(note: note)
                         .accessibilityIdentifier("dish-progress")
                 }
-                RejectedMealLinesText(lines: list.belowHeader)
+                RejectedMealLinesText(lines: offer.belowHeader)
             }
             switch offer.nameAndQuantity {
             case .editable(quantity: let field?):
@@ -132,15 +119,16 @@ struct DishScreen: View {
                 emptyQuantityRow
             }
         } footer: {
-            // 直せないときは、直したときの注記の代わりに、押せない理由（推定が終わると直せること）を置く
-            if let note = offer.waitNote ?? header.note(editingName: focusedField == .name) {
+            if let note = offer.footerNote(editingName: focusedField == .name) {
                 Text(note)
             }
         }
     }
 
     /// 量の数字の欄。単位は欄の右に文字で添え（変えられない）、推定したままの量には推定の印を添える
-    private func quantityRow(_ field: DishScreenHeader.QuantityField, editable: Bool) -> some View {
+    private func quantityRow(
+        _ field: MealEditOffer.DishScreenOffer.QuantityField, editable: Bool
+    ) -> some View {
         HStack(spacing: 8) {
             Text("量")
             valueField(
@@ -222,16 +210,26 @@ struct DishScreen: View {
 
     /// 料理を消すと、キャッシュから消えた料理を `DishDestination` が見て食事の画面に戻る。
     /// 最後の1品のときだけ、押したボタンから確かめ、「食事を削除」で食事ごと消してタイムラインに戻る
-    private var deletionSection: some View {
+    @ViewBuilder private var deletionSection: some View {
+        switch offer.deletion {
+        case .hidden:
+            EmptyView()
+        case .dish:
+            deletionButton {
+                Task { await actions.delete(contents.dish) }
+            }
+        case .mealAfterConfirmation:
+            deletionButton {
+                confirmsMealDeletion = true
+            }
+        }
+    }
+
+    private func deletionButton(_ delete: @escaping () -> Void) -> some View {
         Section {
             Button("この料理を削除", role: .destructive) {
                 focusedField = nil
-                switch removal {
-                case .dish:
-                    Task { await actions.delete(contents.dish) }
-                case .meal:
-                    confirmsMealDeletion = true
-                }
+                delete()
             }
             .accessibilityIdentifier("dish-delete")
             .modifier(
