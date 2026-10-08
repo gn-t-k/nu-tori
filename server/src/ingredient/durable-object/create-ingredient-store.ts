@@ -1,16 +1,18 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { dishTables } from "../../dish/durable-object/dish-tables";
 import { findNewestDishEstimationId } from "../../dish/durable-object/find-newest-dish-estimation-id";
 import { isNutrientName } from "../../domain/food-composition/nutrient-name";
+import { findLatestCorrection } from "../../durable-object/find-latest-correction";
+import { removeCorrectionsOfRecord } from "../../durable-object/remove-corrections-of-record";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { Ingredient, IngredientNutrientSource } from "../domain/ingredient";
 import type { IngredientStore } from "../domain/ingredient-store";
 import { ingredientTables } from "./ingredient-tables";
 
 const { dishes, dishQuantityCorrectionIngredients } = dishTables;
-const { syncWriteReceipts, syncWriteRecordChanges } = syncLedgerTables;
+const { syncWriteRecordChanges } = syncLedgerTables;
 const {
   ingredients,
   foodCompositionIngredients,
@@ -127,22 +129,10 @@ export const createIngredientStore = (db: DrizzleSqliteDODatabase): IngredientSt
   },
   removeCorrections: (ids) => {
     for (const id of ids) {
-      db.delete(ingredientQuantityCorrections)
-        .where(
-          inArray(
-            ingredientQuantityCorrections.syncWriteReceiptId,
-            db
-              .select({ id: syncWriteReceipts.id })
-              .from(syncWriteReceipts)
-              .where(
-                and(
-                  eq(syncWriteReceipts.recordType, "ingredient"),
-                  eq(syncWriteReceipts.recordId, id),
-                ),
-              ),
-          ),
-        )
-        .run();
+      removeCorrectionsOfRecord(db, ingredientQuantityCorrections, {
+        recordType: "ingredient",
+        recordId: id,
+      });
     }
   },
   insertDeletions: (ids, receiptId) => {
@@ -177,32 +167,10 @@ const findCurrentQuantity = (
   db: DrizzleSqliteDODatabase,
   ingredient: { id: RecordId; quantity: number },
 ): Pick<Ingredient, "quantity" | "quantitySource"> => {
-  const corrected = db
-    .select({
-      quantity: ingredientQuantityCorrections.quantity,
-      sequence: syncWriteRecordChanges.recordChangeSequence,
-    })
-    .from(ingredientQuantityCorrections)
-    .innerJoin(
-      syncWriteReceipts,
-      eq(syncWriteReceipts.id, ingredientQuantityCorrections.syncWriteReceiptId),
-    )
-    .innerJoin(
-      syncWriteRecordChanges,
-      eq(
-        syncWriteRecordChanges.syncWriteReceiptId,
-        ingredientQuantityCorrections.syncWriteReceiptId,
-      ),
-    )
-    .where(
-      and(
-        eq(syncWriteReceipts.recordType, "ingredient"),
-        eq(syncWriteReceipts.recordId, ingredient.id),
-      ),
-    )
-    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
-    .limit(1)
-    .get();
+  const corrected = findLatestCorrection(db, ingredientQuantityCorrections, "quantity", {
+    recordType: "ingredient",
+    recordId: ingredient.id,
+  });
   const proportioned = db
     .select({
       quantity: dishQuantityCorrectionIngredients.quantity,
@@ -220,7 +188,12 @@ const findCurrentQuantity = (
     .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
     .limit(1)
     .get();
-  const latest = [corrected, proportioned]
+  const latest = [
+    corrected === undefined
+      ? undefined
+      : { quantity: corrected.value, sequence: corrected.sequence },
+    proportioned,
+  ]
     .filter((found) => found !== undefined)
     .toSorted((a, b) => b.sequence - a.sequence)[0];
   return {
