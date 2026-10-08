@@ -113,7 +113,7 @@ struct DishScreen: View {
                         TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
                             .submitLabel(.done)
                             .focused($focusedField, equals: .name),
-                        identifier: "dish-name")
+                        editable: offer.editsNameAndQuantity, identifier: "dish-name")
                 }
                 if let note = offer.progressNote {
                     DishProgressNoteText(note: note)
@@ -146,7 +146,7 @@ struct DishScreen: View {
                     .keyboardType(.decimalPad)
                     .monospacedDigit()
                     .focused($focusedField, equals: .quantity),
-                identifier: "dish-quantity")
+                editable: offer.editsNameAndQuantity, identifier: "dish-quantity")
             Text(field.unit)
                 .foregroundStyle(.secondary)
             if field.showsEstimateBadge {
@@ -160,16 +160,18 @@ struct DishScreen: View {
     private var emptyQuantityRow: some View {
         HStack(spacing: 8) {
             Text("量")
-            valueField(TextField("—", text: .constant("")), identifier: "dish-quantity")
+            valueField(
+                TextField("—", text: .constant("")), editable: false, identifier: "dish-quantity")
         }
     }
 
-    /// 名前と量の欄。押してその場で直せる。直せないときは、いつもの場所に置いたまま押せない表示にする
-    private func valueField(_ field: some View, identifier: String) -> some View {
+    /// 名前と量の欄。押してその場で直せる。直せないとき（`editable` が false）は、いつもの場所に置いたまま押せない表示にする
+    private func valueField(_ field: some View, editable: Bool, identifier: String) -> some View {
         field
             .multilineTextAlignment(.trailing)
+            // 押せない欄は、ここで Primary を指定していても、システムが押せない色（灰色）で描く（iOS 26.5 のシミュレーターで確かめた）
             .foregroundStyle(Color.accentColor)
-            .disabled(!offer.editsNameAndQuantity)
+            .disabled(!editable)
             .accessibilityIdentifier(identifier)
     }
 
