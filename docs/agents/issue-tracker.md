@@ -7,6 +7,7 @@
 下の手順は、クラウドのセッションでも通る `gh api` の REST で書いてある。Mac のセッションでは `gh issue ...`・`gh pr ...` を使ってもよい。クラウドのセッションでの GitHub の扱い（REST に回るもの、添付できないこと、書いたあとの読み直し、サブ Issue と依存関係の API）は `docs/agents/git.md` の「クラウドのセッションで GitHub を操作する」。
 
 - **Issueを作る**：本文をファイルに書き、`jq -n --rawfile b <ファイル> '{title:"...", body:$b, labels:["..."]}' | gh api repos/gn-t-k/nu-tori/issues -X POST --input -`
+- **Issueを親のサブ Issue にする**：`gh api repos/gn-t-k/nu-tori/issues/<親>/sub_issues -X POST -F sub_issue_id=<子の DB ID>`。DB ID は `gh api repos/gn-t-k/nu-tori/issues/<子> --jq .id` で取る（`#番号` や `node_id` ではない）。サブ Issue が使えない場合は、子の本文の先頭に `Part of #<親>` と書く
 - **本文の長さ**：Issue の本文とコメントは 65,536 文字まで（バイトではなく文字）。仕様のような長い本文は、投稿の前に `python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read()))' <ファイル>` で数え、6 万文字を超えたら、ほかの節と重なる図や付録をコメントに分ける
 - **Issueを読む**：`gh api repos/gn-t-k/nu-tori/issues/<番号>`（ラベルは `.labels[].name`）と、コメントは `gh api repos/gn-t-k/nu-tori/issues/<番号>/comments`
 - **Issueを一覧する**：`gh api 'repos/gn-t-k/nu-tori/issues?state=open&per_page=100'`。`labels=<名前>` と `state` で絞り込む。PR も混ざるので、`pull_request` のあるものを除く
@@ -39,7 +40,7 @@ GitHub Issueを作る。
 `/wayfinder` が使う。**マップ**は1つのIssueで、その**子**Issueがチケットになる。
 
 - **マップ**：`wayfinder:map` ラベルを付けた1つのIssue。本文にメモ／これまでの決定事項／未解明事項を持つ。上の「Issueを作る」で `labels:["wayfinder:map"]`。
-- **子チケット**：GitHubのサブIssueとしてマップに紐づけたIssue（`gh api repos/gn-t-k/nu-tori/issues/<マップ>/sub_issues -X POST -F sub_issue_id=<子の DB ID>` で登録）。サブIssueが使えない場合は、マップ本文のタスクリストに子を追加し、子の本文の先頭に `Part of #<マップ>` と書く。ラベルは `wayfinder:<種類>`（`research`／`prototype`／`grilling`／`task`）。着手したら担当者を作業中の開発者にする。
+- **子チケット**：GitHubのサブIssueとしてマップに紐づけたIssue（上の「Issueを親のサブ Issue にする」で登録）。サブIssueが使えない場合は、マップ本文のタスクリストに子を追加し、子の本文の先頭に `Part of #<マップ>` と書く。ラベルは `wayfinder:<種類>`（`research`／`prototype`／`grilling`／`task`）。着手したら担当者を作業中の開発者にする。
 - **ブロック関係**：GitHubの**ネイティブなIssue依存関係**を使う（UIでも見える正式な表現）。`gh api --method POST repos/<owner>/<repo>/issues/<子>/dependencies/blocked_by -F issue_id=<ブロック元のDB ID>` で依存を追加する。`<ブロック元のDB ID>` はブロック元Issueの数値の**データベースID**（`gh api repos/<owner>/<repo>/issues/<n> --jq .id` で取得。`#番号` や `node_id` ではない）。GitHubは `issue_dependencies_summary.blocked_by`（未解決のブロック元の数。これが実際の関門）を返す。依存関係が使えない場合は、子の本文の先頭に `Blocked by: #<n>, #<n>` と書く。ブロック元がすべてクローズされたらブロック解除とみなす。
 - **着手可能なチケットの探し方**：マップの未クローズの子を一覧し（`gh api repos/gn-t-k/nu-tori/issues/<マップ>/sub_issues` のうち `state` が `open` のもの、またはタスクリストの子）、未解決のブロック元があるもの（`issue_dependencies_summary.blocked_by > 0`、または `Blocked by` 行に未クローズのIssueがあるもの）と担当者がいるものを除く。残ったうちマップ上で最初のものを選ぶ。
 - **着手宣言**：`gh api repos/gn-t-k/nu-tori/issues/<n>/assignees -X POST -f 'assignees[]=<自分の GitHub のユーザー名>'`。セッションで最初に行う書き込みにする。
