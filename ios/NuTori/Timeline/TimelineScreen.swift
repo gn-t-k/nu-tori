@@ -74,15 +74,9 @@ struct TimelineScreen: View {
                 MealDestination(card: meals.first { $0.meal.id == route.mealId }) { card in
                     MealScreen(
                         card: card,
-                        loadPhoto: { photoId in
-                            await mealActions.loadPhoto(card.meal.id, photoId)
-                        },
                         now: now,
                         capture: capture,
-                        correctMealTime: mealActions.correctMealTime,
-                        deleteMeal: mealActions.deleteMeal,
-                        addDish: mealActions.addDish,
-                        dishActions: mealActions.dish,
+                        actions: mealActions,
                         returnToTimeline: {
                             navigationPath = NavigationPath()
                         },

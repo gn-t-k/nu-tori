@@ -16,11 +16,14 @@ struct MealActions {
     let photoSelection: MealPhotoSelection
     /// カードに描く大きさに縮めた写真。この端末に無ければ取りに行く。取れなければ nil
     let loadPhoto: (_ mealId: UUID, _ photoId: UUID) async -> UIImage?
-    /// 食事の画面の時刻を直したとき。`eatenAt` は直した撮った時刻
+    /// 食事の画面の時刻を直したとき。`eatenAt` は直した撮った時刻。
+    /// その場でキャッシュに当たり、直す書き込みが送り待ちに並ぶ。インターネットにつながらなくても直せる
     let correctMealTime: (_ card: MealCard, _ eatenAt: Date) async -> Void
-    /// 食事の画面の「食事を削除」。`deletedAt` は消した時刻で、送ってから消すまでの時間を測る
+    /// 食事の画面の「食事を削除」。`deletedAt` は消した時刻で、送ってから消すまでの時間を測る。
+    /// その場でキャッシュとアプリの中の写真から消え、消す書き込みが送り待ちに並ぶ。インターネットにつながらなくても消せる
     let deleteMeal: (_ card: MealCard, _ deletedAt: Date) async -> Void
-    /// 食事の画面の「料理を足す」で名前を確定したとき。前後の空白を除いて空の名前は足さない
+    /// 食事の画面の「料理を足す」で名前を確定したとき。前後の空白を除いて空の名前は足さない。
+    /// その場でキャッシュに入り、作る書き込みが送り待ちに並ぶ。インターネットにつながらなくても足せる
     let addDish: (_ card: MealCard, _ typedName: String) async -> Void
     /// 料理の画面と、食事の画面の料理の行の操作
     let dish: DishActions

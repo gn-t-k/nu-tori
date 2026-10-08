@@ -10,19 +10,10 @@ struct MealScreen: View {
     let card: MealCard
     /// 受け付けなかった書き込みの1行。この食事の1行を、時刻の下と料理の一覧（料理の画面では材料の一覧）に置く
     let rejectedLines: [RejectedLine]
-    /// 描く大きさに縮めた写真。この端末に無ければ取りに行く。取れなければ nil
-    let loadPhoto: (_ photoId: UUID) async -> UIImage?
     /// 消した時刻を測るための今。直せる時刻の上限にもする
     let now: () -> Date
     let capture: (ClientUsageEvent) async -> Void
-    /// その場でキャッシュに当たり、直す書き込みが送り待ちに並ぶ。インターネットにつながらなくても直せる
-    let correctMealTime: (_ card: MealCard, _ eatenAt: Date) async -> Void
-    /// その場でキャッシュとアプリの中の写真から消え、消す書き込みが送り待ちに並ぶ。インターネットにつながらなくても消せる
-    let deleteMeal: (_ card: MealCard, _ deletedAt: Date) async -> Void
-    /// その場でキャッシュに入り、作る書き込みが送り待ちに並ぶ。インターネットにつながらなくても足せる
-    let addDish: (_ card: MealCard, _ typedName: String) async -> Void
-    /// 料理の画面と、料理の行を左へ送る操作
-    let dishActions: DishActions
+    let actions: MealActions
     /// 料理の画面にいても、タイムラインまで戻る（食事を消したとき）
     let returnToTimeline: () -> Void
 
@@ -34,7 +25,7 @@ struct MealScreen: View {
                 ) { dishOffer in
                     DishScreen(
                         offer: dishOffer,
-                        actions: dishActions,
+                        actions: actions.dish,
                         deleteMeal: deleteMealAndReturn,
                         confirmsMealDeletion: false)
                 }
@@ -45,13 +36,9 @@ struct MealScreen: View {
     /// addingDish は開いたときに、料理を足す名前の欄を出しているか
     init(
         card: MealCard,
-        loadPhoto: @escaping (_ photoId: UUID) async -> UIImage?,
         now: @escaping () -> Date,
         capture: @escaping (ClientUsageEvent) async -> Void,
-        correctMealTime: @escaping (_ card: MealCard, _ eatenAt: Date) async -> Void,
-        deleteMeal: @escaping (_ card: MealCard, _ deletedAt: Date) async -> Void,
-        addDish: @escaping (_ card: MealCard, _ typedName: String) async -> Void,
-        dishActions: DishActions,
+        actions: MealActions,
         returnToTimeline: @escaping () -> Void,
         rejectedLines: [RejectedLine],
         confirmsDeletion: Bool,
@@ -60,13 +47,9 @@ struct MealScreen: View {
     ) {
         self.card = card
         self.rejectedLines = rejectedLines
-        self.loadPhoto = loadPhoto
         self.now = now
         self.capture = capture
-        self.correctMealTime = correctMealTime
-        self.deleteMeal = deleteMeal
-        self.addDish = addDish
-        self.dishActions = dishActions
+        self.actions = actions
         self.returnToTimeline = returnToTimeline
         _confirmsDeletion = State(initialValue: confirmsDeletion)
         _confirmsLastDishDeletion = State(initialValue: confirmsLastDishDeletion)
@@ -125,7 +108,7 @@ struct MealScreen: View {
         .modifier(
             MealPhotosLoading(
                 photoIds: card.meal.photoIds, state: card.state, images: $images,
-                loadPhoto: loadPhoto)
+                loadPhoto: { photoId in await actions.loadPhoto(card.meal.id, photoId) })
         )
         .onAppear {
             Task { await capture(.screen(.meal)) }
@@ -145,7 +128,7 @@ struct MealScreen: View {
     private func deleteMealAndReturn() {
         let deletedAt = now()
         returnToTimeline()
-        Task { await deleteMeal(card, deletedAt) }
+        Task { await actions.deleteMeal(card, deletedAt) }
     }
 
     /// 「食事を削除」を押すと、押したボタンから確かめる（`confirmationDialog`）
@@ -185,7 +168,7 @@ struct MealScreen: View {
         .accessibilityIdentifier("meal-time")
         .onChange(of: eatenAt) { _, chosen in
             guard chosen != card.meal.eatenAt else { return }
-            Task { await correctMealTime(card, chosen) }
+            Task { await actions.correctMealTime(card, chosen) }
         }
         .onChange(of: card.meal.eatenAt) { _, synced in
             // ほかの端末で直した時刻が届いたときも、ボタンの値をそろえる
@@ -335,7 +318,7 @@ struct MealScreen: View {
             EmptyView()
         case .dish:
             Button(role: .destructive) {
-                Task { await dishActions.delete(contents.dish) }
+                Task { await actions.dish.delete(contents.dish) }
             } label: {
                 Label("削除", systemImage: "trash")
             }
@@ -399,7 +382,7 @@ struct MealScreen: View {
         let typed = newDishName
         newDishName = ""
         // 空白だけの名前は足さない。足すかは `SyncEngine.addDish` が決める
-        Task { await addDish(card, typed) }
+        Task { await actions.addDish(card, typed) }
     }
 
     /// 料理の行（名前、量、推定の印、kcal と、行の下の待ちの1行）。材料の行は並べず、料理の画面で見せる。

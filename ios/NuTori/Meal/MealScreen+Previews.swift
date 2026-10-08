@@ -2,7 +2,6 @@
     import Foundation
     import NuToriCore
     import SwiftUI
-    import UIKit
 
     #Preview("状態ごと", arguments: MealScreen.Sample.allCases) { sample in
         // 見本の料理の ID は作るたびに変わるので、受け付けなかった1行は同じカードから作る
@@ -10,15 +9,9 @@
         NavigationStack {
             MealScreen(
                 card: card,
-                loadPhoto: { photoId in
-                    sample.holdsPhotos ? UIImage.sampleMealPhoto(for: photoId) : nil
-                },
                 now: DeviceClock.live.now,
                 capture: { _ in },
-                correctMealTime: { _, _ in },
-                deleteMeal: { _, _ in },
-                addDish: { _, _ in },
-                dishActions: .noop,
+                actions: sample.holdsPhotos ? .noop : .noopWithoutPhotos,
                 returnToTimeline: {},
                 rejectedLines: sample.rejectedLines(in: card),
                 confirmsDeletion: sample.confirmsDeletion,
