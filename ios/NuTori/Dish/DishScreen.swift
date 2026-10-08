@@ -211,24 +211,30 @@ struct DishScreen: View {
     /// 料理を消すと、キャッシュから消えた料理を `DishDestination` が見て食事の画面に戻る。
     /// 最後の1品のときだけ、押したボタンから確かめ、「食事を削除」で食事ごと消してタイムラインに戻る
     @ViewBuilder private var deletionSection: some View {
-        if offer.deletion != .hidden {
-            Section {
-                Button("この料理を削除", role: .destructive) {
-                    focusedField = nil
-                    switch offer.deletion {
-                    case .hidden:
-                        break
-                    case .dish:
-                        Task { await actions.delete(contents.dish) }
-                    case .mealAfterConfirmation:
-                        confirmsMealDeletion = true
-                    }
-                }
-                .accessibilityIdentifier("dish-delete")
-                .modifier(
-                    LastDishDeletionConfirmation(
-                        isPresented: $confirmsMealDeletion, deleteMeal: deleteMeal))
+        switch offer.deletion {
+        case .hidden:
+            EmptyView()
+        case .dish:
+            deletionButton {
+                Task { await actions.delete(contents.dish) }
             }
+        case .mealAfterConfirmation:
+            deletionButton {
+                confirmsMealDeletion = true
+            }
+        }
+    }
+
+    private func deletionButton(_ delete: @escaping () -> Void) -> some View {
+        Section {
+            Button("この料理を削除", role: .destructive) {
+                focusedField = nil
+                delete()
+            }
+            .accessibilityIdentifier("dish-delete")
+            .modifier(
+                LastDishDeletionConfirmation(
+                    isPresented: $confirmsMealDeletion, deleteMeal: deleteMeal))
         }
     }
 

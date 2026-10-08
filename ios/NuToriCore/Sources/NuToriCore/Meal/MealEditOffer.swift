@@ -15,10 +15,18 @@ public struct MealEditOffer: Hashable, Sendable {
         mealAwaitsEstimation ? "推定が終わると足せます。" : nil
     }
 
-    /// 食事の画面の料理の行を左へ送ると出す「削除」。推定を待っている食事の料理には出さない
-    /// （料理が推定の状態より先に届いた一瞬だけ、行がある）。推定し直しを待っている料理には出す
+    /// 食事の画面の料理の行を左へ送ると出す「削除」。料理の画面の「この料理を削除」も同じ。
+    /// 推定を待っている食事の料理には出さない（料理が推定の状態より先に届いた一瞬だけ、行がある）。推定し直しを待っている料理には出す。
+    /// 最後の1品かは、キャッシュの料理で数える。推定中・翌日に推定・まだ送れていない料理と、
+    /// 推定し直しが通らなかった料理も、キャッシュにある料理として1品に数える。キャッシュに無い料理は、料理だけを消す
     public func rowDeletion(of dishId: UUID) -> Deletion {
-        mealAwaitsEstimation ? .hidden : deletion(of: dishId)
+        if mealAwaitsEstimation {
+            return .hidden
+        }
+        let dishes = card.contents.dishes
+        return dishes.contains(where: { $0.dish.id == dishId })
+            && !dishes.contains(where: { $0.dish.id != dishId })
+            ? .mealAfterConfirmation : .dish
     }
 
     /// 料理の画面に出すもの。キャッシュに無い料理（消えた料理）は nil。
@@ -41,7 +49,7 @@ public struct MealEditOffer: Hashable, Sendable {
             belowHeader: lines.belowHeader,
             ingredients: !mealAwaitsEstimation && contents.showsIngredientsAndNutrients
                 ? lines.ingredients : nil,
-            deletion: mealAwaitsEstimation ? .hidden : deletion(of: dishId))
+            deletion: rowDeletion(of: dishId))
     }
 
     /// 料理を消す操作で出すもの
@@ -107,15 +115,6 @@ public struct MealEditOffer: Hashable, Sendable {
 
             public var placeholder: String { "—" }
         }
-    }
-
-    /// 最後の1品かを、キャッシュの料理で数える。推定中・翌日に推定・まだ送れていない料理と、推定し直しが通らなかった料理も、
-    /// キャッシュにある料理として1品に数える。キャッシュに無い料理は、料理だけを消す
-    private func deletion(of dishId: UUID) -> Deletion {
-        let dishes = card.contents.dishes
-        return dishes.contains(where: { $0.dish.id == dishId })
-            && !dishes.contains(where: { $0.dish.id != dishId })
-            ? .mealAfterConfirmation : .dish
     }
 
     /// 食事が推定を待っているか（まだ送れていない・写真を待っている・推定中・翌日に推定）。
