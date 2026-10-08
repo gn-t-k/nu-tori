@@ -1,6 +1,7 @@
 import type { RecordId } from "../../record-id";
 import type { CurrentRecord } from "../current-record";
 import type { RecordKind } from "../record-kind";
+import { rejectWrite } from "../reject-write";
 import type { TestChildStore } from "./test-child-kind";
 
 export type TestRecordStore = {
@@ -15,9 +16,17 @@ export type TestRecordStore = {
 export type TestRecordWrite =
   | { id: string; type: "create_test_record"; recordId: RecordId; value: number }
   | { id: string; type: "update_test_record"; recordId: RecordId; value: number }
-  | { id: string; type: "delete_test_record"; recordId: RecordId };
+  | { id: string; type: "delete_test_record"; recordId: RecordId }
+  | {
+      id: string;
+      type: "create_test_record_with_children";
+      recordId: RecordId;
+      // 決定で宣言する子と、commit の中で足す子。両方にある子は、変更が重なる
+      declaredChildIds: RecordId[];
+      addedInCommitChildIds: RecordId[];
+    };
 
-// 帳簿のテスト用の種類。100 を超える値は受け付けない。消すと子も消す
+// 帳簿のテスト用の種類。100 を超える値は受け付けない。今と同じ値に直す書き込みは何も書かない。消すと子も消す
 export const createTestRecordKind = (
   store: TestRecordStore,
   childStore: TestChildStore,
@@ -27,15 +36,15 @@ export const createTestRecordKind = (
     isWrite: (write): write is TestRecordWrite =>
       write.type === "create_test_record" ||
       write.type === "update_test_record" ||
-      write.type === "delete_test_record",
+      write.type === "delete_test_record" ||
+      write.type === "create_test_record_with_children",
     decide: (write) => {
       if (write.type === "delete_test_record") {
         const childIds = childStore.findIdsOfParent(write.recordId);
         return {
+          result: "applied",
           writeKind: "source_deleted",
           recordId: write.recordId,
-          outcome: { result: "applied" },
-          changedRecordId: write.recordId,
           addedChanges: childIds.map((childId) => ({
             recordType: "test_child",
             recordId: childId,
@@ -50,34 +59,39 @@ export const createTestRecordKind = (
           },
         };
       }
+      if (write.type === "create_test_record_with_children") {
+        return {
+          result: "applied",
+          writeKind: "create",
+          recordId: write.recordId,
+          addedChanges: write.declaredChildIds.map((childId) => ({
+            recordType: "test_child",
+            recordId: childId,
+          })),
+          usageEvents: [],
+          commit: (_receiptId, addChange) => {
+            store.insert(write.recordId, 1);
+            for (const childId of write.addedInCommitChildIds) {
+              childStore.insert({ id: childId, parentId: write.recordId, value: 1 });
+              addChange({ recordType: "test_child", recordId: childId });
+            }
+          },
+        };
+      }
       const writeKind = write.type === "create_test_record" ? "create" : "update";
       if (write.value > 100) {
-        return {
-          writeKind,
-          recordId: write.recordId,
-          outcome: { result: "rejected", reason: "out_of_range" },
-          changedRecordId: undefined,
-          addedChanges: [],
-          usageEvents: [],
-          commit: () => undefined,
-        };
+        return rejectWrite(writeKind, write.recordId, "out_of_range");
       }
       if (store.hasDeletion(write.recordId)) {
-        return {
-          writeKind,
-          recordId: write.recordId,
-          outcome: { result: "ignored_tombstone" },
-          changedRecordId: write.recordId,
-          addedChanges: [],
-          usageEvents: [],
-          commit: () => undefined,
-        };
+        return { result: "ignored_tombstone", writeKind, recordId: write.recordId };
+      }
+      if (writeKind === "update" && store.find(write.recordId) === write.value) {
+        return { result: "unchanged", writeKind, recordId: write.recordId };
       }
       return {
+        result: "applied",
         writeKind,
         recordId: write.recordId,
-        outcome: { result: "applied" },
-        changedRecordId: write.recordId,
         addedChanges: [],
         usageEvents: [],
         commit: () =>

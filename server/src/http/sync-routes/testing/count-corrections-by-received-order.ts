@@ -1,7 +1,7 @@
 import { readRows } from "./read-rows";
 
 // 控えだけを指す修正の表。今の値は受け取った順（変更の並びとのつなぎの通し番号）で選ぶので、
-// 修正の行を書く decide が changedRecordId を返し忘れると、その行は並びから落ちる。修正の表を足したら、ここに足す
+// 修正の行を applied でない決定の commit で書くと、その行は並びから落ちる。修正の表を足したら、ここに足す
 const correctionTables = [
   "meal_eaten_at_corrections",
   "dish_name_corrections",

@@ -1,9 +1,8 @@
 import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
-import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
-import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
+import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import { computeReestimatedDishEditedEvents } from "../../dish/domain/compute-reestimated-dish-edited-events";
 import { dishAwaitsEstimation } from "../../dish/domain/dish-awaits-estimation";
@@ -66,7 +65,8 @@ const decideUpdate = (
   const store = stores.ingredient;
   const current = store.find(ingredientId);
   if (current === undefined) {
-    return rejected(
+    return rejectWrite(
+      "update",
       ingredientId,
       store.isReplaced(ingredientId) ? "ingredients_replaced" : "record_not_found",
     );
@@ -76,19 +76,18 @@ const decideUpdate = (
     throw new Error(`材料の料理が無い: ${current.dishId}`);
   }
   if (dishAwaitsEstimation(stores, dish, receivedAt)) {
-    return rejected(ingredientId, "awaiting_estimation");
+    return rejectWrite("update", ingredientId, "awaiting_estimation");
   }
   if (!isWithinAcceptedRange("ingredientQuantity", quantity)) {
-    return rejected(ingredientId, "out_of_range");
+    return rejectWrite("update", ingredientId, "out_of_range");
   }
   if (quantity === current.quantity) {
-    return decideWithoutChange("update", ingredientId, { result: "applied" });
+    return { result: "unchanged", writeKind: "update", recordId: ingredientId };
   }
   return {
+    result: "applied",
     writeKind: "update",
     recordId: ingredientId,
-    outcome: { result: "applied" },
-    changedRecordId: ingredientId,
     addedChanges: [{ recordType: "dish", recordId: current.dishId }],
     // 直してある量をもう一度直したときは、推定の量を直した率にならないので送らない
     usageEvents: [
@@ -111,9 +110,3 @@ const decideUpdate = (
     },
   };
 };
-
-const rejected = (
-  ingredientId: RecordId,
-  reason: RejectionReason,
-): WriteDecision<AddedRecordType> =>
-  decideWithoutChange("update", ingredientId, { result: "rejected", reason });

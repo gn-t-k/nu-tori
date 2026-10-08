@@ -13,11 +13,10 @@ export const createAccountSettingsKind = (
     decide: ({ accountSettings }) => {
       const current = store.find();
       return {
+        result: "applied",
         writeKind: "update",
-        recordId: accountSettings.id,
-        outcome: { result: "applied" },
-        // 記録は1件なので、あればその ID で変更を並べる
-        changedRecordId: current?.id ?? accountSettings.id,
+        // 記録は1件なので、あればその ID で控えと変更を並べる
+        recordId: current?.id ?? accountSettings.id,
         addedChanges: [],
         usageEvents: [],
         commit: (receiptId) => {

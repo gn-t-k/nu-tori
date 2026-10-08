@@ -3,9 +3,8 @@ import type { RecordId } from "../../domain/record-id";
 import { isCalendarDay } from "../../domain/is-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
-import type { WriteKind } from "../../domain/sync-ledger/write-kind";
-import type { SyncWriteOutcome } from "../../domain/sync-write-outcome";
 import { isNoticeType, type Notice, type NoticeResponse } from "./notice";
 import type { NoticeStore } from "./notice-store";
 import { type NoticeWrite, noticeWriteTypes } from "./notice-write";
@@ -39,21 +38,28 @@ const decideCreate = (
 ): WriteDecision => {
   const { noticeType } = notice;
   if (!isNoticeType(noticeType)) {
-    return settled("create", notice.id, { result: "rejected", reason: "invalid_notice_type" });
+    return rejectWrite("create", notice.id, "invalid_notice_type");
   }
   if (!isTimeZoneName(notice.timeZone)) {
-    return settled("create", notice.id, { result: "rejected", reason: "invalid_time_zone" });
+    return rejectWrite("create", notice.id, "invalid_time_zone");
   }
   if (!isCalendarDay(notice.targetOn)) {
-    return settled("create", notice.id, { result: "rejected", reason: "invalid_target_on" });
+    return rejectWrite("create", notice.id, "invalid_target_on");
   }
   // 2台目の作る書き込みで、1台目で答えた知らせを答えていない形に戻さない
   if (store.find(notice.id) !== undefined) {
-    return settled("create", notice.id, { result: "ignored_duplicate" });
+    return { result: "ignored_duplicate", writeKind: "create", recordId: notice.id };
   }
-  return applied("create", notice.id, () => {
-    store.insert({ ...notice, noticeType });
-  });
+  return {
+    result: "applied",
+    writeKind: "create",
+    recordId: notice.id,
+    addedChanges: [],
+    usageEvents: [],
+    commit: () => {
+      store.insert({ ...notice, noticeType });
+    },
+  };
 };
 
 const decideRespond = (
@@ -62,46 +68,24 @@ const decideRespond = (
   response: NoticeResponse,
 ): WriteDecision => {
   if (!isTimeZoneName(response.timeZone)) {
-    return settled("respond", noticeId, { result: "rejected", reason: "invalid_time_zone" });
+    return rejectWrite("respond", noticeId, "invalid_time_zone");
   }
   const notice = store.find(noticeId);
   if (notice === undefined) {
-    return settled("respond", noticeId, { result: "rejected", reason: "record_not_found" });
+    return rejectWrite("respond", noticeId, "record_not_found");
   }
   // 2台の両方で答えたとき、先に受け取ったほうを残す
   if (notice.response !== undefined) {
-    return settled("respond", noticeId, { result: "ignored_duplicate" });
+    return { result: "ignored_duplicate", writeKind: "respond", recordId: noticeId };
   }
-  return applied("respond", noticeId, (receiptId) => {
-    store.insertResponse(receiptId, noticeId, response);
-  });
+  return {
+    result: "applied",
+    writeKind: "respond",
+    recordId: noticeId,
+    addedChanges: [],
+    usageEvents: [],
+    commit: (receiptId) => {
+      store.insertResponse(receiptId, noticeId, response);
+    },
+  };
 };
-
-// 行を書かずに終わる
-const settled = (
-  writeKind: WriteKind,
-  recordId: RecordId,
-  outcome: Exclude<SyncWriteOutcome, { result: "applied" }>,
-): WriteDecision => ({
-  writeKind,
-  recordId,
-  outcome,
-  changedRecordId: undefined,
-  addedChanges: [],
-  usageEvents: [],
-  commit: () => undefined,
-});
-
-const applied = (
-  writeKind: WriteKind,
-  recordId: RecordId,
-  commit: WriteDecision["commit"],
-): WriteDecision => ({
-  writeKind,
-  recordId,
-  outcome: { result: "applied" },
-  changedRecordId: recordId,
-  addedChanges: [],
-  usageEvents: [],
-  commit,
-});

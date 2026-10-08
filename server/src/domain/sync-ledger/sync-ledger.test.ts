@@ -111,6 +111,83 @@ describe("同期の帳簿", () => {
       });
     });
 
+    describe("当てた書き込みが、commit の中でも変更を足したとき", () => {
+      let pulled: ReturnType<TestLedger["pull"]>;
+
+      beforeEach(() => {
+        ledger.push(
+          pushRequest([
+            {
+              id: "write-1",
+              type: "create_test_record_with_children",
+              recordId: record1,
+              declaredChildIds: [child1],
+              addedInCommitChildIds: [child2, child1],
+            },
+          ]),
+        );
+        pulled = ledger.pull(pullRequest(0));
+      });
+
+      test("書き込みの記録、宣言した変更、commit の中で足した変更の順に、同じ記録を1つにまとめて書くこと", () => {
+        expect(operations).toEqual([
+          "request_log",
+          "receipt",
+          "record",
+          "child",
+          "child",
+          "change",
+          "added_change",
+          "added_change",
+          "request_log",
+        ]);
+      });
+
+      test("その順の通し番号で返すこと", () => {
+        expect(pulled.changes.map(({ sequence, recordId }) => ({ sequence, recordId }))).toEqual([
+          { sequence: 1, recordId: record1 },
+          { sequence: 2, recordId: child1 },
+          { sequence: 3, recordId: child2 },
+        ]);
+      });
+    });
+
+    describe("削除の印のある記録に書き込みを送ったとき", () => {
+      let pushed: ReturnType<TestLedger["push"]>;
+      let pulled: ReturnType<TestLedger["pull"]>;
+
+      beforeEach(() => {
+        ledger.push(
+          pushRequest([{ id: "write-1", type: "delete_test_record", recordId: record1 }]),
+        );
+        const { lastSequence } = ledger.pull(pullRequest(0));
+        operations.length = 0;
+        pushed = ledger.push(pushRequest([create("write-2", record1)]));
+        pulled = ledger.pull(pullRequest(lastSequence ?? 0));
+      });
+
+      test("捨てた1件として返すこと", () => {
+        expect(pushed.results).toEqual([
+          {
+            writeId: "write-2",
+            outcome: { result: "ignored_tombstone" },
+            rejectedRecord: undefined,
+          },
+        ]);
+      });
+
+      test("削除の印を取り終えた端末にも、削除の印を返し直すこと", () => {
+        expect(pulled.changes).toEqual([
+          {
+            sequence: 2,
+            recordType: "test_record",
+            recordId: record1,
+            current: { status: "deleted" },
+          },
+        ]);
+      });
+    });
+
     describe("同じ書き込みの ID が再び届いたとき", () => {
       beforeEach(() => {
         ledger.push(pushRequest([create("write-1", record1)]));
@@ -275,6 +352,28 @@ describe("同期の帳簿", () => {
             current: { status: "value", value: 1 },
           },
         ]);
+      });
+    });
+
+    describe("元の種類の書き込みが、今の値と同じだったとき", () => {
+      let pushed: ReturnType<TestLedger["push"]>;
+
+      beforeEach(() => {
+        ledger.push(pushRequest([create("write-1", record1)]));
+        operations.length = 0;
+        pushed = ledger.push(
+          pushRequest([{ id: "write-2", type: "update_test_record", recordId: record1, value: 1 }]),
+        );
+      });
+
+      test("受け付けた1件として返すこと", () => {
+        expect(pushed.results).toEqual([
+          { writeId: "write-2", outcome: { result: "applied" }, rejectedRecord: undefined },
+        ]);
+      });
+
+      test("変更の並びに載せず、計算する種類を呼ばないこと", () => {
+        expect(operations).toEqual(["request_log", "receipt"]);
       });
     });
 

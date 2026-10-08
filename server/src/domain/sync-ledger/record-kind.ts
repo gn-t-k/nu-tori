@@ -4,7 +4,7 @@ import type { RecordChangeTarget } from "./record-change-target";
 import type { WriteReceiptId } from "./sync-ledger";
 import type { WriteBase } from "./write-base";
 import type { WriteKind } from "./write-kind";
-import type { SyncWriteOutcome } from "../sync-write-outcome";
+import type { RejectionReason } from "../rejection-reason";
 import type { UsageEvent } from "../usage-event";
 
 // 記録の種類が帳簿に見せる入口。置き場は種類が閉じ込めて持つ
@@ -45,17 +45,49 @@ export type KindFollows<TSourceName extends string> = {
   afterSourceApplied: (receiptId: WriteReceiptId) => readonly RecordId[];
 };
 
-export type WriteDecision<TAddedName extends string = never> = {
-  writeKind: WriteKind;
-  // 書き込みの控えに載せる記録の ID
-  recordId: RecordId;
-  outcome: SyncWriteOutcome;
-  // 変更の並びに載せる記録の ID。書き込みの控えと結ぶ。載せないとき undefined
-  changedRecordId: RecordId | undefined;
-  // 書き込みが直接変えた記録の外で、commit が変える記録。控えと結ばずに、changedRecordId の変更のあとに、並びの順で載せる
-  addedChanges: readonly RecordChangeTarget<TAddedName>[];
-  // 書き込みを当てたときに、分析用に送る出来事。同じ書き込みの ID が再び届いたときは送らない
-  usageEvents: readonly UsageEvent[];
-  // 帳簿が控えを書いたあとに呼ぶ。控えの ID は帳簿しか作れないので、控えより先に自分の行を書けない
-  commit: (receiptId: WriteReceiptId) => void;
-};
+// 書き込みを受け付けるかの決定。控えに載せる結果、変更の並びに書き込みの記録を載せ直すか、後に続く種類を走らせるかは、
+// 帳簿が決定の種類から決める（種類は書かない）
+// - applied: 当てる。書き込みの記録の変更を控えと結んで載せ、後に続く種類を走らせる
+// - unchanged: 今の値と同じなので何も書かない。控えは applied にするが、変更を載せず、後に続く種類も走らせない
+// - ignored_duplicate: 同じ記録がもうあるので捨てる
+// - ignored_tombstone: 削除の印のある記録への書き込みを捨てる。削除の印を取り終えた端末にも、作り直した記録を残させないよう、
+//   書き込みの記録の変更を載せ直す
+// - kept_corrected: 直してある記録なので、元のサンプルが消えても残す
+// - rejected: 受け付けない
+export type WriteDecision<TAddedName extends string = never> =
+  | {
+      result: "applied";
+      writeKind: WriteKind;
+      // 書き込みの控えと、変更の並びに載せる記録の ID
+      recordId: RecordId;
+      // 書き込みが直接変えた記録の外で、commit が変える記録。控えと結ばずに、書き込みの記録の変更のあとに、並びの順で載せる
+      addedChanges: readonly RecordChangeTarget<TAddedName>[];
+      // 書き込みを当てたときに、分析用に送る出来事。同じ書き込みの ID が再び届いたときは送らない
+      usageEvents: readonly UsageEvent[];
+      // 帳簿が控えを書いたあとに呼ぶ。控えの ID は帳簿しか作れないので、控えより先に自分の行を書けない。
+      // addChange で足した変更は、addedChanges のあとに足した順で載せる。帳簿は、同じ記録の変更を最初の1つにまとめる
+      commit: (
+        receiptId: WriteReceiptId,
+        addChange: (change: RecordChangeTarget<TAddedName>) => void,
+      ) => void;
+    }
+  | {
+      result: "unchanged" | "ignored_duplicate" | "kept_corrected";
+      writeKind: WriteKind;
+      recordId: RecordId;
+    }
+  | {
+      result: "ignored_tombstone";
+      writeKind: WriteKind;
+      recordId: RecordId;
+      // 捨てるときにも書く行（あとから届く書き込みを止める削除の印など）があるときだけ渡す
+      commit?: (receiptId: WriteReceiptId) => void;
+    }
+  | {
+      result: "rejected";
+      writeKind: WriteKind;
+      recordId: RecordId;
+      reason: RejectionReason;
+      // 受け付けないときにも書く行があるときだけ渡す
+      commit?: (receiptId: WriteReceiptId) => void;
+    };
