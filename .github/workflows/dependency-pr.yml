@@ -200,7 +200,7 @@ jobs:
 
           直すときは、PR のブランチで始めたセッションで直す（docs/agents/git.md）。クラウドのセッションは、作業ブランチにだけ push できるため。
 
-          Dependabot の PR に直したコミットを足すと、Dependabot はその PR を rebase しなくなる。Dependabot の recreate のコマンド（PR へのコメント）を使うと、足したコミットが消える。
+          Dependabot の PR に直したコミットを足すと、Dependabot はその PR を rebase しなくなる。Dependabot の recreate のコマンド（PR へのコメント）を使うと、足したコミットが消える。クラウドのセッションからはこのコマンドを送れないので、開発者に頼む。
 
           PR がマージされるか閉じられると、ワークフローがこの Issue を閉じる。
           BODY
