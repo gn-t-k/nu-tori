@@ -9,7 +9,7 @@ import type { LedgerChange } from "./ledger-change";
 import type { LedgerStore } from "./ledger-store";
 import type { PushedResult } from "./pushed-result";
 import type { RecordChangeTarget } from "./record-change-target";
-import type { RecordKind, WhenGone } from "./record-kind";
+import type { RecordKind, WhenGone, WriteDecision } from "./record-kind";
 import type { WriteBase } from "./write-base";
 import type { WriteKind } from "./write-kind";
 
@@ -59,6 +59,7 @@ export const createSyncLedger = <
           throw new Error(`登録簿に無い書き込み: ${write.type}`);
         }
         const decision = owner.writes.decide(write);
+        const outcome = toOutcome(decision);
         store.insertWriteReceipt({
           writeId: write.id,
           requestLogId,
@@ -66,21 +67,28 @@ export const createSyncLedger = <
           kind: decision.writeKind,
           recordType: owner.name,
           recordId: decision.recordId,
-          outcome: decision.outcome,
+          outcome,
         });
         const receiptId = WriteReceiptId.issue(write.id);
-        decision.commit(receiptId);
-        if (decision.changedRecordId !== undefined) {
+        const { changedRecordId, addedChanges } = commitDecision(decision, receiptId);
+        // 同じ記録の変更は最初の1つにまとめる。書き込みの記録の変更だけを控えと結ぶ
+        const changedKeys = new Set<string>();
+        if (changedRecordId !== undefined) {
+          changedKeys.add(`${owner.name}:${changedRecordId}`);
           store.insertRecordChange({
             recordType: owner.name,
-            recordId: decision.changedRecordId,
+            recordId: changedRecordId,
             writeId: write.id,
           });
         }
-        for (const added of decision.addedChanges) {
-          store.insertRecordChange({ ...added, writeId: undefined });
+        for (const added of addedChanges) {
+          const key = `${added.recordType}:${added.recordId}`;
+          if (!changedKeys.has(key)) {
+            changedKeys.add(key);
+            store.insertRecordChange({ ...added, writeId: undefined });
+          }
         }
-        if (decision.outcome.result === "applied") {
+        if (decision.result === "applied") {
           for (const follower of kinds) {
             if (follower.follows?.source !== owner.name) {
               continue;
@@ -89,16 +97,16 @@ export const createSyncLedger = <
               store.insertRecordChange({ recordType: follower.name, recordId, writeId: undefined });
             }
           }
+          usageEvents.push(...decision.usageEvents);
         }
-        usageEvents.push(...decision.usageEvents);
-        if (decision.outcome.result === "rejected") {
+        if (decision.result === "rejected") {
           rejectedWrites.push({
             writeKind: decision.writeKind,
             recordType: owner.name,
-            reason: decision.outcome.reason,
+            reason: decision.reason,
           });
         }
-        return settle(write.id, decision.outcome, () => ({ owner, recordId: decision.recordId }));
+        return settle(write.id, outcome, () => ({ owner, recordId: decision.recordId }));
       });
       // 今の値は、要求の書き込みを全部当て終えてから読む。同じ書き込みの ID が再び届いたときも同じ（控えには持たない）
       const results = settled.map(
@@ -162,6 +170,36 @@ export const createSyncLedger = <
       }),
     );
 
+  // 決定の行を書き、変更の並びに載せる変更を返す。書き込みの記録の変更（控えと結ぶ）と、そのあとに並べる変更に分ける。
+  // 当てた書き込みが commit の中で足した変更は、宣言した変更のあとに並べる（commit は控えのあと、変更より先に呼ぶ）
+  const commitDecision = (
+    decision: WriteDecision<TKindName>,
+    receiptId: WriteReceiptId,
+  ): { changedRecordId: RecordId | undefined; addedChanges: RecordChangeTarget<TKindName>[] } =>
+    match(decision)
+      .with({ result: "applied" }, ({ recordId, addedChanges, commit }) => {
+        const addedInCommit: RecordChangeTarget<TKindName>[] = [];
+        commit(receiptId, (change) => {
+          addedInCommit.push(change);
+        });
+        return { changedRecordId: recordId, addedChanges: [...addedChanges, ...addedInCommit] };
+      })
+      .with({ result: "ignored_tombstone" }, ({ recordId, commit }) => {
+        commit?.(receiptId);
+        return { changedRecordId: recordId, addedChanges: [] };
+      })
+      .with({ result: "rejected" }, ({ commit }) => {
+        commit?.(receiptId);
+        return { changedRecordId: undefined, addedChanges: [] };
+      })
+      .with(
+        { result: "unchanged" },
+        { result: "ignored_duplicate" },
+        { result: "kept_corrected" },
+        () => ({ changedRecordId: undefined, addedChanges: [] }),
+      )
+      .exhaustive();
+
   // 受け付けなかったときだけ、今の値を読む種類と記録を持たせる
   const settle = (
     writeId: string,
@@ -202,6 +240,19 @@ export const createSyncLedger = <
 
   return { push, pull, changeOutsideWrites };
 };
+
+// 控えと応答に載せる結果。今の値と同じだった書き込みも、受け付けたので applied にする
+const toOutcome = (decision: WriteDecision<string>): SyncWriteOutcome =>
+  match(decision)
+    .with({ result: "applied" }, { result: "unchanged" }, () => ({ result: "applied" }) as const)
+    .with(
+      { result: "ignored_duplicate" },
+      { result: "ignored_tombstone" },
+      { result: "kept_corrected" },
+      ({ result }) => ({ result }),
+    )
+    .with({ result: "rejected" }, ({ reason }) => ({ result: "rejected", reason }) as const)
+    .exhaustive();
 
 // 今の値が種類の whenGone と食い違うのは不具合なので投げる
 const ensureKeepsDeletionMarks = (

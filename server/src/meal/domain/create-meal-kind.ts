@@ -16,8 +16,9 @@ import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
-import { decideWithoutChange } from "../../domain/sync-ledger/decide-without-change";
+import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
+import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { IngredientStore } from "../../ingredient/domain/ingredient-store";
 import type { Meal } from "./meal";
@@ -84,15 +85,7 @@ const decideCreate = (
   }
   // 写真はいまの食事のものなので、写真の削除の印を書かない
   if (store.find(newMeal.id) !== undefined) {
-    return {
-      writeKind: "create",
-      recordId: newMeal.id,
-      outcome: { result: "ignored_duplicate" },
-      changedRecordId: undefined,
-      addedChanges: [],
-      usageEvents: [],
-      commit: () => undefined,
-    };
+    return { result: "ignored_duplicate", writeKind: "create", recordId: newMeal.id };
   }
   if (
     !isWithinAcceptedRange("mealPhotoCount", photoIds.length) ||
@@ -115,10 +108,9 @@ const decideCreate = (
   }
   const meal: Meal = { ...newMeal, entryMethod };
   return {
+    result: "applied",
     writeKind: "create",
     recordId: meal.id,
-    outcome: { result: "applied" },
-    changedRecordId: meal.id,
     addedChanges: [{ recordType: "meal_estimation_status", recordId: meal.id }],
     usageEvents: [
       {
@@ -130,18 +122,16 @@ const decideCreate = (
         mealCountOfDay: countMealsOnEatenDay(store, meal) + 1,
       },
     ],
-    commit: () => {
+    // 推定の状態の変更は、食事ができたことに付いて addedChanges で足す。写真がそろって予定に入れたときに
+    // 推定の書き込みの口が足す変更は、同じ記録なので帳簿が1つにまとめる
+    commit: (_receiptId, addChange) => {
       store.insert(meal);
-      stores.writeEstimationEvents(discardStatusChangeAddedWithMeal, receivedAt, (writes) =>
+      stores.writeEstimationEvents(addChange, receivedAt, (writes) =>
         scheduleMealEstimation(stores, writes, meal, receivedAt),
       );
     },
   };
 };
-
-// 推定の状態の変更は、食事ができたことに付いて addedChanges で1つ足す。写真がそろって予定に入れても1つでよいので、
-// 推定の書き込みの口が足す変更は捨てる
-const discardStatusChangeAddedWithMeal = (): void => undefined;
 
 // 食べた日の、いまある食事の数。消した食事は行が無いので数えない
 const countMealsOnEatenDay = (store: MealStore, meal: Meal): number => {
@@ -171,13 +161,10 @@ const discarded = (
     (photoId) => !usedPhotoIds.includes(photoId),
   );
   return {
+    ...outcome,
     writeKind: "create",
     recordId: newMeal.id,
-    outcome,
-    changedRecordId: outcome.result === "ignored_tombstone" ? newMeal.id : undefined,
-    addedChanges: [],
-    usageEvents: [],
-    commit: (receiptId) => {
+    commit: (receiptId: WriteReceiptId) => {
       store.insertPhotoDeletions(unusedPhotoIds, receiptId);
     },
   };
@@ -193,15 +180,7 @@ const decideDelete = (
 ): WriteDecision<AddedRecordType> => {
   const store = stores.meal;
   if (store.hasDeletion(mealId)) {
-    return {
-      writeKind: "delete",
-      recordId: mealId,
-      outcome: { result: "ignored_tombstone" },
-      changedRecordId: mealId,
-      addedChanges: [],
-      usageEvents: [],
-      commit: () => undefined,
-    };
+    return { result: "ignored_tombstone", writeKind: "delete", recordId: mealId };
   }
   const meal = store.find(mealId);
   const dishIds = stores.dish.findIdsOfMeal(mealId);
@@ -211,10 +190,9 @@ const decideDelete = (
   );
   // 食事がまだ届いていなくても印を残し、同じ要求やあとから届く作る書き込みで生き返らせない
   return {
+    result: "applied",
     writeKind: "delete",
     recordId: mealId,
-    outcome: { result: "applied" },
-    changedRecordId: mealId,
     addedChanges: [
       { recordType: "meal_estimation_status", recordId: mealId },
       ...dishIds.map((recordId) => ({ recordType: "dish" as const, recordId })),
@@ -249,7 +227,7 @@ const decideDelete = (
 };
 
 // 撮った時刻を直す。時刻を確かめない（#188 の作る書き込みと同じ）。時刻の修正はその食事の料理すべての版を上げるので、料理の変更も足す。
-// 修正の行の順は変更の並びの通し番号で決まるので、修正を書くときは必ず食事を changedRecordId に返す
+// 修正の行の順は変更の並びの通し番号で決まるので、修正を書くときは必ず applied で返し、食事の変更を並びに載せる
 const decideUpdate = (
   stores: MealKindStores,
   mealId: RecordId,
@@ -258,19 +236,15 @@ const decideUpdate = (
   const store = stores.meal;
   const meal = store.find(mealId);
   if (meal === undefined) {
-    return decideWithoutChange("update", mealId, {
-      result: "rejected",
-      reason: "record_not_found",
-    });
+    return rejectWrite("update", mealId, "record_not_found");
   }
   if (meal.eatenAt.getTime() === eatenAt.getTime()) {
-    return decideWithoutChange("update", mealId, { result: "applied" });
+    return { result: "unchanged", writeKind: "update", recordId: mealId };
   }
   return {
+    result: "applied",
     writeKind: "update",
     recordId: mealId,
-    outcome: { result: "applied" },
-    changedRecordId: mealId,
     addedChanges: stores.dish
       .findIdsOfMeal(mealId)
       .map((recordId) => ({ recordType: "dish" as const, recordId })),

@@ -3,9 +3,8 @@ import type { RecordId } from "../../domain/record-id";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
-import type { WriteKind } from "../../domain/sync-ledger/write-kind";
-import type { SyncWriteOutcome } from "../../domain/sync-write-outcome";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { WeightRecord } from "./weight-record";
 import type { WeightRecordStore } from "./weight-record-store";
@@ -52,18 +51,18 @@ const decideCreate = (
   weightRecord: Omit<WeightRecord, "version">,
 ): WriteDecision => {
   if (!isWithinAcceptedRange("weightKilograms", weightRecord.weightKg)) {
-    return settled("create", weightRecord.id, { result: "rejected", reason: "out_of_range" });
+    return rejectWrite("create", weightRecord.id, "out_of_range");
   }
   const bodyFat = weightRecord.imported?.bodyFat;
   if (bodyFat !== undefined && !isWithinAcceptedRange("bodyFatPercentage", bodyFat.percentage)) {
-    return settled("create", weightRecord.id, { result: "rejected", reason: "out_of_range" });
+    return rejectWrite("create", weightRecord.id, "out_of_range");
   }
   if (!isTimeZoneName(weightRecord.timeZone)) {
-    return settled("create", weightRecord.id, { result: "rejected", reason: "invalid_time_zone" });
+    return rejectWrite("create", weightRecord.id, "invalid_time_zone");
   }
   const { store } = dependencies;
   if (store.hasDeletion(weightRecord.id)) {
-    return settled("create", weightRecord.id, { result: "ignored_tombstone" });
+    return { result: "ignored_tombstone", writeKind: "create", recordId: weightRecord.id };
   }
   // ID の出し方に頼らず、同じサンプルを二重に取り込まない
   const isDuplicate =
@@ -71,11 +70,18 @@ const decideCreate = (
     (weightRecord.imported !== undefined &&
       store.existsImportedSample(weightRecord.imported.healthkitSampleUuid));
   if (isDuplicate) {
-    return settled("create", weightRecord.id, { result: "ignored_duplicate" });
+    return { result: "ignored_duplicate", writeKind: "create", recordId: weightRecord.id };
   }
-  return applied("create", weightRecord.id, () => {
-    store.insert({ ...weightRecord, version: 1 });
-  });
+  return {
+    result: "applied",
+    writeKind: "create",
+    recordId: weightRecord.id,
+    addedChanges: [],
+    usageEvents: [],
+    commit: () => {
+      store.insert({ ...weightRecord, version: 1 });
+    },
+  };
 };
 
 const decideUpdate = (
@@ -84,41 +90,45 @@ const decideUpdate = (
 ): WriteDecision => {
   // 版を上げ忘れる不具合が、受け付けなかった1件として見えるようにする
   if (weightRecord.version < 2) {
-    return settled("update", weightRecord.id, { result: "rejected", reason: "version_too_low" });
+    return rejectWrite("update", weightRecord.id, "version_too_low");
   }
   if (!isWithinAcceptedRange("weightKilograms", weightRecord.weightKg)) {
-    return settled("update", weightRecord.id, { result: "rejected", reason: "out_of_range" });
+    return rejectWrite("update", weightRecord.id, "out_of_range");
   }
   if (!isTimeZoneName(weightRecord.timeZone)) {
-    return settled("update", weightRecord.id, { result: "rejected", reason: "invalid_time_zone" });
+    return rejectWrite("update", weightRecord.id, "invalid_time_zone");
   }
   const { store } = dependencies;
   if (store.hasDeletion(weightRecord.id)) {
-    return settled("update", weightRecord.id, { result: "ignored_tombstone" });
+    return { result: "ignored_tombstone", writeKind: "update", recordId: weightRecord.id };
   }
   const current = store.find(weightRecord.id);
   if (current === undefined) {
-    return settled("update", weightRecord.id, { result: "rejected", reason: "record_not_found" });
+    return rejectWrite("update", weightRecord.id, "record_not_found");
   }
   const startedOn = dependencies.findStartedOn();
   if (
     startedOn !== undefined &&
     computeCalendarDayInTimeZone(current.measuredAt, current.timeZone) < startedOn
   ) {
-    return settled("update", weightRecord.id, {
-      result: "rejected",
-      reason: "record_before_started_on",
-    });
+    return rejectWrite("update", weightRecord.id, "record_before_started_on");
   }
-  return applied("update", weightRecord.id, () => {
-    // 2台で同じ記録を直したとき、あとに受け取ったほうの版が前より小さくならないようにする
-    store.update(weightRecord.id, {
-      weightKg: weightRecord.weightKg,
-      measuredAt: weightRecord.measuredAt,
-      timeZone: weightRecord.timeZone,
-      version: Math.max(weightRecord.version, current.version + 1),
-    });
-  });
+  return {
+    result: "applied",
+    writeKind: "update",
+    recordId: weightRecord.id,
+    addedChanges: [],
+    usageEvents: [],
+    commit: () => {
+      // 2台で同じ記録を直したとき、あとに受け取ったほうの版が前より小さくならないようにする
+      store.update(weightRecord.id, {
+        weightKg: weightRecord.weightKg,
+        measuredAt: weightRecord.measuredAt,
+        timeZone: weightRecord.timeZone,
+        version: Math.max(weightRecord.version, current.version + 1),
+      });
+    },
+  };
 };
 
 const decideSourceDeleted = (
@@ -127,46 +137,24 @@ const decideSourceDeleted = (
 ): WriteDecision => {
   const { store } = dependencies;
   if (store.hasDeletion(weightRecordId)) {
-    return settled("source_deleted", weightRecordId, { result: "ignored_tombstone" });
+    return { result: "ignored_tombstone", writeKind: "source_deleted", recordId: weightRecordId };
   }
   const current = store.find(weightRecordId);
   if (current !== undefined && current.version >= 2) {
-    return settled("source_deleted", weightRecordId, { result: "kept_corrected" });
+    return { result: "kept_corrected", writeKind: "source_deleted", recordId: weightRecordId };
   }
   // 記録がまだ届いていなくても印を残し、あとから届く作る書き込みで生き返らせない
-  return applied("source_deleted", weightRecordId, (receiptId) => {
-    if (current !== undefined) {
-      store.remove(weightRecordId);
-    }
-    store.insertDeletion(receiptId);
-  });
+  return {
+    result: "applied",
+    writeKind: "source_deleted",
+    recordId: weightRecordId,
+    addedChanges: [],
+    usageEvents: [],
+    commit: (receiptId) => {
+      if (current !== undefined) {
+        store.remove(weightRecordId);
+      }
+      store.insertDeletion(receiptId);
+    },
+  };
 };
-
-// 行を書かずに終わる。削除の印で捨てたときだけ、変更の並びに載せる
-const settled = (
-  writeKind: WriteKind,
-  recordId: RecordId,
-  outcome: Exclude<SyncWriteOutcome, { result: "applied" }>,
-): WriteDecision => ({
-  writeKind,
-  recordId,
-  outcome,
-  changedRecordId: outcome.result === "ignored_tombstone" ? recordId : undefined,
-  addedChanges: [],
-  usageEvents: [],
-  commit: () => undefined,
-});
-
-const applied = (
-  writeKind: WriteKind,
-  recordId: RecordId,
-  commit: WriteDecision["commit"],
-): WriteDecision => ({
-  writeKind,
-  recordId,
-  outcome: { result: "applied" },
-  changedRecordId: recordId,
-  addedChanges: [],
-  usageEvents: [],
-  commit,
-});

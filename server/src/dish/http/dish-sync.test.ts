@@ -184,6 +184,7 @@ describe("料理の同期", () => {
       beforeEach(async () => {
         dishId = generateRecordId();
         await pushSyncWrites(sessionToken, { writes: [deleteDishWrite(dishId)] });
+        lastSequence = requireLastSequence(await pullChangesAfter(0));
       });
 
       test("削除の印のある料理として捨て、料理を作らないこと", async () => {
@@ -194,6 +195,14 @@ describe("料理の同期", () => {
           rejection: { result: "ignored_tombstone", rejectionReason: undefined, status: undefined },
           rows: [],
         });
+      });
+
+      // 電波のない端末が、削除の印を取り終えたあとに同じ ID の料理を作っていても、キャッシュに料理を残させない
+      test("削除の印を取り終えた端末に、料理の削除の印を返し直すこと", async () => {
+        await pushSyncWrites(sessionToken, { writes: [createDishWrite(mealId, { dishId })] });
+        expect(changedValues(await pullChangesAfter(lastSequence))).toEqual([
+          { kind: "dish_deletion", recordId: dishId },
+        ]);
       });
     });
 
