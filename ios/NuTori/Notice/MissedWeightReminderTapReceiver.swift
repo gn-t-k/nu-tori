@@ -14,19 +14,30 @@ final class MissedWeightReminderTapReceiver: NSObject, UNUserNotificationCenterD
         UNUserNotificationCenter.current().delegate = self
     }
 
+    /// UIKit は完了の閉包の中で画面の控えを撮り直し、メインのスレッドの外で呼ぶと落とす。
+    /// async 版は終わったときにほかのスレッドで完了を呼ぶので、閉包の版にしてメインで呼ぶ
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
         let request = response.notification.request
-        guard
-            request.content.categoryIdentifier
-                == UserNotificationReminderCenter.categoryIdentifier,
-            let noticeId = UUID(uuidString: request.identifier)
-        else {
-            return
+        let noticeId: UUID? =
+            if request.content.categoryIdentifier
+                == UserNotificationReminderCenter.categoryIdentifier
+            {
+                UUID(uuidString: request.identifier)
+            } else {
+                nil
+            }
+        // SDK は閉包を Sendable と書いていないが、メインで呼ぶことを求めているので、メインへ渡してよい
+        nonisolated(unsafe) let completionHandler = completionHandler
+        Task { @MainActor in
+            if let noticeId {
+                receive(noticeId)
+            }
+            completionHandler()
         }
-        await receive(noticeId)
     }
 
     private let onTap: (UUID) -> Void
