@@ -122,8 +122,10 @@ struct DishScreen: View {
                 RejectedMealLinesText(lines: list.belowHeader)
             }
             switch offer.nameAndQuantity {
-            case .editable(quantity: let field?), .disabled(quantity: let field?):
-                quantityRow(field)
+            case .editable(quantity: let field?):
+                quantityRow(field, editable: true)
+            case .disabled(quantity: let field?):
+                quantityRow(field, editable: false)
             case .editable(quantity: nil):
                 EmptyView()
             case .disabled(quantity: nil):
@@ -138,7 +140,7 @@ struct DishScreen: View {
     }
 
     /// 量の数字の欄。単位は欄の右に文字で添え（変えられない）、推定したままの量には推定の印を添える
-    private func quantityRow(_ field: DishScreenHeader.QuantityField) -> some View {
+    private func quantityRow(_ field: DishScreenHeader.QuantityField, editable: Bool) -> some View {
         HStack(spacing: 8) {
             Text("量")
             valueField(
@@ -146,7 +148,7 @@ struct DishScreen: View {
                     .keyboardType(.decimalPad)
                     .monospacedDigit()
                     .focused($focusedField, equals: .quantity),
-                editable: offer.editsNameAndQuantity, identifier: "dish-quantity")
+                editable: editable, identifier: "dish-quantity")
             Text(field.unit)
                 .foregroundStyle(.secondary)
             if field.showsEstimateBadge {
