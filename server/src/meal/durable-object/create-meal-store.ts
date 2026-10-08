@@ -1,12 +1,14 @@
-import { and, asc, between, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, between, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../domain/record-id";
+import { findLatestCorrection } from "../../durable-object/find-latest-correction";
+import { removeCorrectionsOfRecord } from "../../durable-object/remove-corrections-of-record";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { MealStore } from "../domain/meal-store";
 import { mealPhotoTables } from "./meal-photo-tables";
 import { mealTables } from "./meal-tables";
 
-const { syncWriteReceipts, syncWriteRecordChanges } = syncLedgerTables;
+const { syncWriteReceipts } = syncLedgerTables;
 const { meals, mealEatenAtCorrections, mealDeletions } = mealTables;
 const { mealPhotos, mealPhotoDeletions } = mealPhotoTables;
 
@@ -102,19 +104,7 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       .run();
   },
   removeCorrections: (id) => {
-    db.delete(mealEatenAtCorrections)
-      .where(
-        inArray(
-          mealEatenAtCorrections.syncWriteReceiptId,
-          db
-            .select({ id: syncWriteReceipts.id })
-            .from(syncWriteReceipts)
-            .where(
-              and(eq(syncWriteReceipts.recordType, "meal"), eq(syncWriteReceipts.recordId, id)),
-            ),
-        ),
-      )
-      .run();
+    removeCorrectionsOfRecord(db, mealEatenAtCorrections, { recordType: "meal", recordId: id });
   },
   remove: (id) => {
     db.delete(mealPhotos).where(eq(mealPhotos.mealId, id)).run();
@@ -133,23 +123,11 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
   },
 });
 
-// 食事を書き換えた控えのうち、時刻の修正を持ち、受け取った順（変更の並びの通し番号）がいちばんあとのものの時刻。修正が無ければ undefined
 const findCorrectedEatenAt = (db: DrizzleSqliteDODatabase, id: RecordId): Date | undefined =>
-  db
-    .select({ eatenAt: mealEatenAtCorrections.eatenAt })
-    .from(mealEatenAtCorrections)
-    .innerJoin(
-      syncWriteReceipts,
-      eq(syncWriteReceipts.id, mealEatenAtCorrections.syncWriteReceiptId),
-    )
-    .innerJoin(
-      syncWriteRecordChanges,
-      eq(syncWriteRecordChanges.syncWriteReceiptId, mealEatenAtCorrections.syncWriteReceiptId),
-    )
-    .where(and(eq(syncWriteReceipts.recordType, "meal"), eq(syncWriteReceipts.recordId, id)))
-    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
-    .limit(1)
-    .get()?.eatenAt;
+  findLatestCorrection(db, mealEatenAtCorrections, "eatenAt", {
+    recordType: "meal",
+    recordId: id,
+  })?.value;
 
 // Durable Object の SQLite は、1つのクエリに渡せる変数が 100 まで。受け付けなかった書き込みの写真の ID は、いくつでも届きうる
 const splitIntoQueryableChunks = (ids: readonly RecordId[]): RecordId[][] => {

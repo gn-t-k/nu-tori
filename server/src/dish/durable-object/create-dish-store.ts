@@ -1,6 +1,9 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../domain/record-id";
+import type { CorrectionTable } from "../../durable-object/correction-table";
+import { findLatestCorrection } from "../../durable-object/find-latest-correction";
+import { removeCorrectionsOfRecord } from "../../durable-object/remove-corrections-of-record";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { estimationEndedAt } from "../../estimation/durable-object/estimation-ended-at";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
@@ -20,7 +23,7 @@ const {
   dishEstimationSchedules,
   dishDeletions,
 } = dishTables;
-const { syncWriteReceipts, syncWriteRecordChanges } = syncLedgerTables;
+const { syncWriteReceipts } = syncLedgerTables;
 const { ingredients, ingredientQuantityCorrections } = ingredientTables;
 const { mealEatenAtCorrections } = mealTables;
 const { estimations, estimationCompletions, estimationAbandonments } = estimationTables;
@@ -124,16 +127,9 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
   },
   removeCorrections: (ids) => {
     for (const id of ids) {
-      const receiptIds = db
-        .select({ id: syncWriteReceipts.id })
-        .from(syncWriteReceipts)
-        .where(and(eq(syncWriteReceipts.recordType, "dish"), eq(syncWriteReceipts.recordId, id)));
-      db.delete(dishNameCorrections)
-        .where(inArray(dishNameCorrections.syncWriteReceiptId, receiptIds))
-        .run();
-      db.delete(dishQuantityCorrections)
-        .where(inArray(dishQuantityCorrections.syncWriteReceiptId, receiptIds))
-        .run();
+      for (const corrections of [dishNameCorrections, dishQuantityCorrections]) {
+        removeCorrectionsOfRecord(db, corrections, { recordType: "dish", recordId: id });
+      }
     }
   },
   insertDeletions: (ids, receiptId) => {
@@ -181,37 +177,17 @@ const countVersion = (
     .where(eq(dishEstimationApplications.dishId, dish.id))
     .get()?.total ?? 0);
 
-// 料理を書き換えた控えの修正のうち、受け取った順（控えを当てたときの変更の通し番号）でいちばんあとのもの
 const findLatestName = (db: DrizzleSqliteDODatabase, dishId: RecordId): string | undefined =>
-  db
-    .select({ name: dishNameCorrections.name })
-    .from(dishNameCorrections)
-    .innerJoin(syncWriteReceipts, eq(syncWriteReceipts.id, dishNameCorrections.syncWriteReceiptId))
-    .innerJoin(
-      syncWriteRecordChanges,
-      eq(syncWriteRecordChanges.syncWriteReceiptId, dishNameCorrections.syncWriteReceiptId),
-    )
-    .where(receiptOfDish(dishId))
-    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
-    .limit(1)
-    .get()?.name;
+  findLatestCorrection(db, dishNameCorrections, "name", {
+    recordType: "dish",
+    recordId: dishId,
+  })?.value;
 
 const findLatestQuantity = (db: DrizzleSqliteDODatabase, dishId: RecordId): number | undefined =>
-  db
-    .select({ quantity: dishQuantityCorrections.quantity })
-    .from(dishQuantityCorrections)
-    .innerJoin(
-      syncWriteReceipts,
-      eq(syncWriteReceipts.id, dishQuantityCorrections.syncWriteReceiptId),
-    )
-    .innerJoin(
-      syncWriteRecordChanges,
-      eq(syncWriteRecordChanges.syncWriteReceiptId, dishQuantityCorrections.syncWriteReceiptId),
-    )
-    .where(receiptOfDish(dishId))
-    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
-    .limit(1)
-    .get()?.quantity;
+  findLatestCorrection(db, dishQuantityCorrections, "quantity", {
+    recordType: "dish",
+    recordId: dishId,
+  })?.value;
 
 const receiptOfDish = (dishId: RecordId) =>
   and(eq(syncWriteReceipts.recordType, "dish"), eq(syncWriteReceipts.recordId, dishId));
@@ -219,11 +195,7 @@ const receiptOfDish = (dishId: RecordId) =>
 // 控えだけを指す修正の表の行のうち、条件に合う控えのものを数える
 const countCorrections = (
   db: DrizzleSqliteDODatabase,
-  corrections:
-    | typeof dishNameCorrections
-    | typeof dishQuantityCorrections
-    | typeof ingredientQuantityCorrections
-    | typeof mealEatenAtCorrections,
+  corrections: CorrectionTable,
   receiptCondition: ReturnType<typeof and>,
 ): number =>
   db
