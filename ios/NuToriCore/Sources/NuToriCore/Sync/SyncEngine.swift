@@ -173,7 +173,7 @@ public actor SyncEngine {
     }
 
     /// 料理を消す。電波が無くても、その場でキャッシュから料理と材料と料理ごとの推定の状態を消し、消す書き込みを送り待ちに並べ、
-    /// ヘルスケアからも消しに行く。最後の1品かは画面が `DishRemoval` で先に決め、最後の1品なら `deleteMeal` を呼ぶ
+    /// ヘルスケアからも消しに行く。最後の1品かは画面が `MealEditOffer` で先に決め、最後の1品なら `deleteMeal` を呼ぶ
     public func deleteDish(id dishId: UUID) async throws {
         let ingredientIds = try await store.ingredients().filter { $0.dishId == dishId }.map(\.id)
         try await writingCache {

@@ -30,14 +30,10 @@ struct MealScreen: View {
         list
             .navigationDestination(for: DishRoute.self) { route in
                 DishDestination(
-                    contents: card.contents.dishes.first { $0.dish.id == route.dishId }
-                ) { contents in
+                    offer: offer.dishScreen(dishId: route.dishId, rejectedLines: rejectedLines)
+                ) { dishOffer in
                     DishScreen(
-                        contents: contents,
-                        offer: offer.dishScreen(contents),
-                        list: DishScreenList(
-                            contents: contents, in: card, rejectedLines: rejectedLines),
-                        removal: removal(of: contents),
+                        offer: dishOffer,
                         actions: dishActions,
                         deleteMeal: deleteMealAndReturn,
                         confirmsMealDeletion: false)
@@ -143,11 +139,6 @@ struct MealScreen: View {
 
     private var screenList: MealScreenList {
         MealScreenList(card: card, rejectedLines: rejectedLines)
-    }
-
-    /// 消すと食事の料理が無くなるか。待っている・まだ送れていない・通らなかった料理も1品に数える
-    private func removal(of contents: DishContents) -> DishRemoval {
-        DishRemoval(removing: contents.dish.id, among: card.contents.dishes.map(\.dish))
     }
 
     /// 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
@@ -296,9 +287,7 @@ struct MealScreen: View {
                         }
                         .accessibilityIdentifier("meal-dish")
                         .swipeActions(edge: .trailing) {
-                            if offer.deletesDishBySwipe {
-                                dishDeletionButton(contents)
-                            }
+                            dishDeletionButton(contents)
                         }
                         // 左へ送って出るボタンには付けられないので、行に付け、行のそばに出す
                         .modifier(
@@ -341,14 +330,16 @@ struct MealScreen: View {
 
     /// 料理の行を左へ送ると出る「削除」。最後の1品でなければ確かめずに消し、最後の1品なら食事ごと消すかを確かめる
     @ViewBuilder private func dishDeletionButton(_ contents: DishContents) -> some View {
-        switch removal(of: contents) {
+        switch offer.rowDeletion(of: contents.dish.id) {
+        case .hidden:
+            EmptyView()
         case .dish:
             Button(role: .destructive) {
                 Task { await dishActions.delete(contents.dish) }
             } label: {
                 Label("削除", systemImage: "trash")
             }
-        case .meal:
+        case .mealAfterConfirmation:
             // 破壊的な役割のボタンは、押すと行を消す動きをする。確かめて料理を残すこともあるので、役割を付けず色だけ付ける
             Button {
                 confirmsLastDishDeletion = true
@@ -361,9 +352,9 @@ struct MealScreen: View {
 
     /// 確かめは最後の1品の行だけが持つ
     private func lastDishDeletionPresented(_ contents: DishContents) -> Binding<Bool> {
-        switch removal(of: contents) {
-        case .meal: $confirmsLastDishDeletion
-        case .dish: .constant(false)
+        switch offer.rowDeletion(of: contents.dish.id) {
+        case .mealAfterConfirmation: $confirmsLastDishDeletion
+        case .hidden, .dish: .constant(false)
         }
     }
 
@@ -390,22 +381,14 @@ struct MealScreen: View {
                 Button("料理を足す") {
                     addingDish = true
                 }
-                .disabled(addDishDisabledNote != nil)
+                .disabled(offer.addDishWaitNote != nil)
                 .accessibilityIdentifier("meal-add-dish")
             }
         } footer: {
-            if let addDishDisabledNote {
-                Text(addDishDisabledNote)
+            if let addDishWaitNote = offer.addDishWaitNote {
+                Text(addDishWaitNote)
                     .accessibilityIdentifier("meal-add-dish-wait")
             }
-        }
-    }
-
-    /// 「料理を足す」を押せないときの理由。押せるときは nil
-    private var addDishDisabledNote: String? {
-        switch offer.dishAddition {
-        case .offered: nil
-        case .disabled(let note): note
         }
     }
 

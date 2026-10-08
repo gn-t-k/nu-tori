@@ -4,20 +4,19 @@
     import SwiftUI
 
     #Preview("状態ごと", arguments: DishScreen.Sample.allCases) { sample in
-        // 見本の料理の ID は作るたびに変わるので、料理と受け付けなかった1行は同じカードから作る
-        let card = MealCard.sampleEstimated(.sample(on: .sampleToday, at: 12, 10))
-        let contents = sample.contents(in: card)
+        // 見本の料理の ID は作るたびに変わるので、見本のカードと受け付けなかった1行は同じ食事から作る
+        let base = MealCard.sampleEstimated(.sample(on: .sampleToday, at: 12, 10))
+        let shown = sample.shownDish(in: base)
+        let offer = MealEditOffer(card: sample.card(from: base, shown: shown)).dishScreen(
+            dishId: shown.id, rejectedLines: sample.rejectedLines(of: shown, in: base))
         NavigationStack {
-            DishScreen(
-                contents: contents,
-                offer: MealEditOffer(card: card).dishScreen(contents),
-                list: DishScreenList(
-                    contents: contents, in: card,
-                    rejectedLines: sample.rejectedLines(of: contents, in: card)),
-                removal: sample.removal(of: contents),
-                actions: .noop,
-                deleteMeal: {},
-                confirmsMealDeletion: sample.confirmsMealDeletion)
+            if let offer {
+                DishScreen(
+                    offer: offer,
+                    actions: .noop,
+                    deleteMeal: {},
+                    confirmsMealDeletion: sample.confirmsMealDeletion)
+            }
         }
     }
 
@@ -40,49 +39,57 @@
             /// 食事の最後の1品で「この料理を削除」を押し、食事ごと消すかを押したボタンから確かめている
             case confirmingMealDeletion
 
-            func contents(in card: MealCard) -> DishContents {
-                let oyakodon = card.contents.dishes[0]
-                let dish = oyakodon.dish
+            /// 画面に出す料理。足したばかりの見本だけ、見本のカードに無いサラダを足す
+            func shownDish(in base: MealCard) -> Dish {
+                let oyakodon = base.contents.dishes[0].dish
                 switch self {
-                case .estimated, .rejectedQuantity, .confirmingMealDeletion:
+                case .estimated, .estimating, .deferredToNextDay, .unestimable, .rejectedQuantity,
+                    .confirmingMealDeletion:
                     return oyakodon
                 case .quantityCorrected:
-                    return DishContents(
-                        dish: Dish(
-                            id: dish.id, mealId: dish.mealId, name: dish.name,
-                            quantity: Dish.Quantity(value: 1.5, unit: "杯", source: .corrected),
-                            positionInMeal: 0, version: 2),
-                        ingredients: oyakodon.ingredients, progress: .settled)
-                case .estimating:
-                    return DishContents(
-                        dish: dish, ingredients: oyakodon.ingredients, progress: .estimating)
-                case .deferredToNextDay:
-                    return DishContents(
-                        dish: dish, ingredients: oyakodon.ingredients,
-                        progress: .deferredToNextDay)
-                case .unestimable:
-                    return DishContents(dish: dish, ingredients: [], progress: .unestimable)
+                    return Dish(
+                        id: oyakodon.id, mealId: oyakodon.mealId, name: oyakodon.name,
+                        quantity: Dish.Quantity(value: 1.5, unit: "杯", source: .corrected),
+                        positionInMeal: 0, version: 2)
                 case .added:
-                    return DishContents(
-                        dish: Dish(
-                            id: UUID(), mealId: dish.mealId, name: "サラダ", quantity: nil,
-                            positionInMeal: 2, version: 1),
-                        ingredients: [], progress: .notSent)
+                    return Dish(
+                        id: UUID(), mealId: oyakodon.mealId, name: "サラダ", quantity: nil,
+                        positionInMeal: 2, version: 1)
                 }
             }
 
-            /// 最後の1品の見本だけ、料理を消すと食事の料理が無くなる
-            func removal(of contents: DishContents) -> DishRemoval {
-                self == .confirmingMealDeletion
-                    ? .meal(mealId: contents.dish.mealId) : .dish(dishId: contents.dish.id)
+            /// 見本のカード（推定できた親子丼と味噌汁）の、`shown` の料理をこの見本の状態にしたカード
+            func card(from base: MealCard, shown: Dish) -> MealCard {
+                let others = base.contents.dishes.filter { $0.dish.id != shown.id }
+                // 最後の1品の見本だけ、ほかの料理を外す
+                let kept = self == .confirmingMealDeletion ? [] : others
+                let shownIngredients =
+                    base.contents.dishes.first { $0.dish.id == shown.id }?.ingredients ?? []
+                return MealCard(
+                    meal: base.meal, status: .estimated, recordedOnThisDevice: true,
+                    dishes: [shown] + kept.map(\.dish),
+                    ingredients: (self == .unestimable ? [] : shownIngredients)
+                        + kept.flatMap(\.ingredients),
+                    dishEstimationStatuses: dishEstimationStatus.map { [shown.id: $0] } ?? [:],
+                    unsentDishIds: self == .added ? [shown.id] : [])
+            }
+
+            private var dishEstimationStatus: DishEstimationStatus? {
+                switch self {
+                case .estimated, .quantityCorrected, .added, .rejectedQuantity,
+                    .confirmingMealDeletion:
+                    nil
+                case .estimating: .estimating
+                case .deferredToNextDay: .deferredToNextDay
+                case .unestimable: .noDishes
+                }
             }
 
             var confirmsMealDeletion: Bool { self == .confirmingMealDeletion }
 
             /// 量を「1.5杯」に直そうとして、受け付けられなかった
-            func rejectedLines(of contents: DishContents, in card: MealCard) -> [RejectedLine] {
+            func rejectedLines(of dish: Dish, in card: MealCard) -> [RejectedLine] {
                 guard self == .rejectedQuantity else { return [] }
-                let dish = contents.dish
                 return [
                     .meal(
                         RejectedMealLine(

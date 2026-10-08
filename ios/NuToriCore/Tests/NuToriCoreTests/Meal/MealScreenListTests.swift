@@ -57,7 +57,7 @@ struct MealScreenListTests {
 
     @Suite("料理の画面で、材料の量を直せず、置き換わった前の材料と料理の量も直せなかったとき")
     struct DishScreen {
-        let list: DishScreenList
+        let offer: MealEditOffer.DishScreenOffer
         let rice: Ingredient
         let egg: Ingredient
         let quantityLine: RejectedMealLine
@@ -86,21 +86,23 @@ struct MealScreenListTests {
                 subject: .replacedIngredient(
                     .init(id: UUID(), name: "玉ねぎ", unit: "g", positionInDish: 1, dish: place),
                     attempted: 30))
-            let contents = try #require(card.contents.dishes.first)
-            list = DishScreenList(
-                contents: contents, in: card,
-                rejectedLines: [.meal(replacedLine), .meal(riceLine), .meal(quantityLine)])
+            offer = try #require(
+                MealEditOffer(card: card).dishScreen(
+                    dishId: dish.id,
+                    rejectedLines: [.meal(replacedLine), .meal(riceLine), .meal(quantityLine)]))
         }
 
         @Test("料理の量を直せなかった1行を、名前と量の下に置くこと")
         func placesDishLineBelowHeader() {
-            #expect(list.belowHeader == [quantityLine])
+            #expect(offer.belowHeader == [quantityLine])
         }
 
         @Test("材料の1行は材料の行の下に、置き換わった前の材料の1行はその並び順の位置に置くこと")
-        func interleavesIngredientLines() {
-            #expect(list.ingredients.map(\.ingredient?.name) == ["ご飯", nil, "卵"])
-            #expect(list.ingredients.map(\.lines) == [[riceLine], [replacedLine], []])
+        func interleavesIngredientLines() throws {
+            let ingredients = try #require(offer.ingredients)
+
+            #expect(ingredients.map(\.ingredient?.name) == ["ご飯", nil, "卵"])
+            #expect(ingredients.map(\.lines) == [[riceLine], [replacedLine], []])
         }
     }
 }
