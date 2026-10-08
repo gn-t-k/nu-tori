@@ -14,6 +14,8 @@ struct AccountScreenContainer: View {
             cameraAccess: CameraAccess.current(),
             notificationPermission: notificationPermission,
             deletion: .idle,
+            appVersion: Bundle.main.appVersion,
+            appBuild: Bundle.main.appBuild,
             actions: actions,
             onClose: onClose
         )

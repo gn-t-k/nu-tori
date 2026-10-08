@@ -452,8 +452,7 @@ import NuToriCore
             accountId: accountId,
             device: SyncDevice(
                 deviceId: deviceId(),
-                appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
-                    as? String ?? "0",
+                appVersion: Bundle.main.appVersion,
                 osVersion: "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
             ),
             timeZone: clock.timeZone,

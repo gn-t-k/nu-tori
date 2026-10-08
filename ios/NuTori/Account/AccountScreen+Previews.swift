@@ -10,6 +10,8 @@
                 cameraAccess: sample.cameraAccess,
                 notificationPermission: sample.notificationPermission,
                 deletion: sample.deletion,
+                appVersion: "1.0",
+                appBuild: 53,
                 actions: .noop,
                 onClose: {}
             )
