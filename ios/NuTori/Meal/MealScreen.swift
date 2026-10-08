@@ -4,8 +4,7 @@ import SwiftUI
 import UIKit
 
 /// 食事の画面。タイムラインの食事のカードから潜る。その場で直す値は時刻だけで、料理は料理の画面へ潜って直す。
-/// 写真、時刻、合計と栄養の出どころの1行、料理の一覧、「料理を足す」（推定を待っているあいだは置かず、料理の一覧の下、
-/// 料理の一覧が無ければ合計の下に、推定が終わると足せることの1行を置く）、
+/// 写真、時刻、合計と栄養の出どころの1行、料理の一覧、「料理を足す」（推定を待っているあいだは押せず、下に推定が終わると足せることの1行）、
 /// 「栄養の出典 ›」、「食事を削除」の順に並べる
 struct MealScreen: View {
     let card: MealCard
@@ -107,10 +106,6 @@ struct MealScreen: View {
             }
             Section {
                 totals
-            } footer: {
-                if !showsDishList, case .waiting(let note) = offer.dishAddition {
-                    dishAdditionWaitText(note)
-                }
             }
             dishList
                 // 確かめているあいだに料理の数が変わったら、最後の1品の確かめを閉じる。見えなくするだけだと、
@@ -118,9 +113,7 @@ struct MealScreen: View {
                 .onChange(of: card.contents.dishes.count) { _, _ in
                     confirmsLastDishDeletion = false
                 }
-            if case .offered = offer.dishAddition {
-                addDishSection
-            }
+            addDishSection
             if card.contents.showsNutrientCitation {
                 Section {
                     NavigationLink("栄養の出典") {
@@ -288,12 +281,14 @@ struct MealScreen: View {
     /// 料理の一覧の場所。写真の推定の状態の1行（推定中・翌日に推定は状態ごとに、料理なし・推定できなかったは料理が無いあいだ）の下に、
     /// 料理の行と受け付けなかった1行を並べる。まだ送れていない・写真を待っているあいだで料理が無ければ、何も置かない
     @ViewBuilder private var dishList: some View {
-        if showsDishList {
-            Section {
-                if let note = card.dishListNote {
+        let note = card.dishListNote
+        let items = screenList.dishes
+        if note != nil || !items.isEmpty {
+            Section("料理") {
+                if let note {
                     dishListNote(note)
                 }
-                ForEach(screenList.dishes, id: \.rowId) { item in
+                ForEach(items, id: \.rowId) { item in
                     switch item {
                     case .record(let contents, let below):
                         NavigationLink(value: DishRoute(dishId: contents.dish.id)) {
@@ -314,26 +309,8 @@ struct MealScreen: View {
                         RejectedMealLinesText(lines: [line])
                     }
                 }
-            } header: {
-                Text("料理")
-            } footer: {
-                if case .waiting(let note) = offer.dishAddition {
-                    dishAdditionWaitText(note)
-                }
             }
         }
-    }
-
-    /// 料理の一覧を置くか。写真の推定の状態の1行も料理の行も無ければ置かない
-    private var showsDishList: Bool {
-        card.dishListNote != nil || !screenList.dishes.isEmpty
-    }
-
-    /// 推定を待っているあいだ、「料理を足す」の代わりに置く1行。空のまとまりの下に置くと、上下のまとまりの間に浮いて
-    /// どのまとまりの注記か分からなくなるので、すぐ上のまとまり（料理の一覧か合計）の下の注記にする
-    private func dishAdditionWaitText(_ note: String) -> some View {
-        Text(note)
-            .accessibilityIdentifier("meal-add-dish-wait")
     }
 
     /// 写真の推定の状態。推定中は回る印と並べ、料理なし・推定できなかったは理由の下に、料理を足せることを添える
@@ -390,7 +367,8 @@ struct MealScreen: View {
         }
     }
 
-    /// 料理の一覧の最後の「料理を足す」。押すとその場に名前の欄が出る。改行のキーか、欄を離れたときに足し、空なら何も足さない
+    /// 料理の一覧の最後の「料理を足す」。押すとその場に名前の欄が出る。改行のキーか、欄を離れたときに足し、空なら何も足さない。
+    /// 推定を待っているあいだは、押せない表示にして、まとまりの下に押せない理由を置く
     private var addDishSection: some View {
         Section {
             if addingDish {
@@ -412,8 +390,22 @@ struct MealScreen: View {
                 Button("料理を足す") {
                     addingDish = true
                 }
+                .disabled(addDishDisabledNote != nil)
                 .accessibilityIdentifier("meal-add-dish")
             }
+        } footer: {
+            if let addDishDisabledNote {
+                Text(addDishDisabledNote)
+                    .accessibilityIdentifier("meal-add-dish-wait")
+            }
+        }
+    }
+
+    /// 「料理を足す」を押せないときの理由。押せるときは nil
+    private var addDishDisabledNote: String? {
+        switch offer.dishAddition {
+        case .offered: nil
+        case .disabled(let note): note
         }
     }
 

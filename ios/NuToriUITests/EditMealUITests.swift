@@ -1,6 +1,6 @@
 import XCTest
 
-/// 食事を直す主な流れ。「写真」で写真を選び、推定中の食事の画面を開く（料理を足せない）→ 推定が届く（親子丼 1杯）→ 時刻を直す →
+/// 食事を直す主な流れ。「写真」で写真を選び、推定中の食事の画面を開く（「料理を足す」を押せない）→ 推定が届く（親子丼 1杯）→ 時刻を直す →
 /// 料理の画面で量と名前（カツ丼）を直す → 推定し直しが届く → 料理（味噌汁）を足す → 左へ送って消す →
 /// 最後の1品を消して食事が消える。API は起動の値で差し替え、料理を足す・名前を直すと、次に取りに行ったときに推定し直しを返す
 @MainActor
@@ -24,14 +24,14 @@ final class EditMealUITests: XCTestCase {
         card.tap()
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
 
-        // 推定を待っているあいだは、「料理を足す」の代わりに待ちの1行を置き、時刻と「食事を削除」は出す
+        // 推定を待っているあいだは、「料理を足す」を押せなくして押せない理由を添え、時刻と「食事を削除」は出す
         let addDishWait = app.staticTexts["meal-add-dish-wait"]
         XCTAssertTrue(addDishWait.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["meal-add-dish"].exists)
+        XCTAssertFalse(app.buttons["meal-add-dish"].isEnabled)
         XCTAssertTrue(app.datePickers["meal-time"].exists)
         XCTAssertTrue(app.scrollUntilExists(app.buttons["meal-delete"]))
         attachScreenshot(of: app, named: "推定中の食事の画面")
-        // 推定が終わると、開き直さなくても料理が届き、待ちの1行が消える
+        // 推定が終わると、開き直さなくても料理が届き、押せない理由が消える
         XCTAssertTrue(dish(named: "親子丼").waitForExistence(timeout: 30))
         XCTAssertTrue(addDishWait.waitForNonExistence(timeout: 5))
         // 「食事を削除」を探して下へ送っていたら、時刻を直すために上へ戻す
