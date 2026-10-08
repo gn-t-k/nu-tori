@@ -161,9 +161,11 @@ describe("同期の帳簿", () => {
           pushRequest([{ id: "write-1", type: "delete_test_record", recordId: record1 }]),
         );
         const { lastSequence } = ledger.pull(pullRequest(0));
-        operations.length = 0;
+        if (lastSequence === undefined) {
+          throw new Error("削除の印の変更が無い");
+        }
         pushed = ledger.push(pushRequest([create("write-2", record1)]));
-        pulled = ledger.pull(pullRequest(lastSequence ?? 0));
+        pulled = ledger.pull(pullRequest(lastSequence));
       });
 
       test("捨てた1件として返すこと", () => {
