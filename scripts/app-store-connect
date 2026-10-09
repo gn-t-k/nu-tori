@@ -11,14 +11,14 @@ const { join } = require("node:path");
 const main = async () => {
   const [command, target, ...flags] = process.argv.slice(2);
   if (command !== "get" || !target?.startsWith("/v")) {
-    throw new Error(
+    throw new ExpectedFailure(
       "使い方: scripts/app-store-connect get '/v1/...' [--all]（GET だけ。--all で links.next をたどる）",
     );
   }
   const keyId = process.env.NU_TORI_ASC_KEY_ID;
   const issuerId = process.env.NU_TORI_ASC_ISSUER_ID;
   if (!keyId || !issuerId) {
-    throw new Error("Not authenticated: NU_TORI_ASC_KEY_ID と NU_TORI_ASC_ISSUER_ID が無い");
+    throw new ExpectedFailure("Not authenticated: NU_TORI_ASC_KEY_ID と NU_TORI_ASC_ISSUER_ID が無い");
   }
   const privateKey = loadPrivateKey(keyId);
 
@@ -31,7 +31,7 @@ const main = async () => {
       headers: { Authorization: `Bearer ${signShortLivedJwt({ keyId, issuerId, privateKey })}` },
     });
     const body = await response.text();
-    if (!response.ok) throw new Error(`${response.status} ${body}`);
+    if (!response.ok) throw new ExpectedFailure(`${response.status} ${body}`);
     const page = JSON.parse(body);
     if (!followAll) {
       console.log(JSON.stringify(page, null, 2));
@@ -59,7 +59,7 @@ const loadPrivateKey = (keyId) => {
     return createPrivateKey(readFileSync(path, "utf8"));
   } catch (error) {
     if (error.code === "ENOENT") {
-      throw new Error(`Not authenticated: NU_TORI_ASC_PRIVATE_KEY も ${path} も無い`);
+      throw new ExpectedFailure(`Not authenticated: NU_TORI_ASC_PRIVATE_KEY も ${path} も無い`);
     }
     throw error;
   }
@@ -86,12 +86,15 @@ const signShortLivedJwt = ({ keyId, issuerId, privateKey }) => {
 const toApiUrl = (value) => {
   const api = new URL("https://api.appstoreconnect.apple.com");
   const url = new URL(value, api);
-  if (url.origin !== api.origin) throw new Error(`${api.host} の外へは送らない: ${url.origin}`);
+  if (url.origin !== api.origin) throw new ExpectedFailure(`${api.host} の外へは送らない: ${url.origin}`);
   return url;
 };
 
+// 自分で出す文（使い方、未認証、HTTP の状態、ホストを断る文）は文だけを、想定外の失敗はスタックと cause まで出す
+class ExpectedFailure extends Error {}
+
 // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
 main().catch((error) => {
-  console.error(error.message ?? String(error));
+  console.error(error instanceof ExpectedFailure ? error.message : error);
   process.exitCode = 1;
 });
