@@ -82,7 +82,7 @@ const signShortLivedJwt = ({ keyId, issuerId, privateKey }) => {
   return `${unsigned}.${signature.toString("base64url")}`;
 };
 
-// キーの役割 Developer はフィードバックを消せるので、書き込みと、ほかのホストへの送信をここで断る
+// 書き込みは main が GET だけを送って断る。漏れた要求がほかのホストへ鍵つきで出ないよう、ここで断る
 const toApiUrl = (value) => {
   const api = new URL("https://api.appstoreconnect.apple.com");
   const url = new URL(value, api);
