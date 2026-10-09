@@ -1,0 +1,767 @@
+<title>文章と会話の見た目</title>
+<!--
+  PROTOTYPE（捨てる前提）。「文章と会話の見た目を見比べる」（gn-t-k/nu-tori#412）の試作。
+  仕様「文章と会話」の申し送りのうち、見た目で決めるもの 8 項目を 9 の論点に分け（入力欄を「書く欄の並べ方」と「プリセット」に分けた）、論点ごとに 3〜5 の案で並べる。
+  上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #stream-2）。
+  土台は main の画面のコード（コミット 4e0f031 の ios/NuTori/Timeline/ と ios/NuTori/Meal/）。共通の見た目は「食事を直すの見た目を見比べる」の試作
+  （prototype/0001-meal-edit の prototype-meal-edit.html、コミット ee496d3）から写した。main には入れない。
+-->
+<style>
+/* ── トークン（ライト） ── */
+:root{
+  /* iOS のシステムの色 */
+  --bg:#f2f2f7;            /* systemGroupedBackground */
+  --surface:#ffffff;       /* secondarySystemGroupedBackground */
+  --surface2:#f2f2f7;      /* tertiarySystemGroupedBackground */
+  --ink:#000000;           /* label */
+  --ink2:rgb(60 60 67 / .6);   /* secondaryLabel */
+  --ink3:rgb(60 60 67 / .3);   /* tertiaryLabel */
+  --sep:rgb(60 60 67 / .29);   /* separator */
+  --fill:rgb(120 120 128 / .12); /* tertiarySystemFill */
+  --tint:#6155f5;          /* アクセント（systemIndigo） */
+  --on-tint:#ffffff;
+  --destructive:#ff383c;   /* systemRed。破壊的な操作だけに使う */
+  --scrim:rgb(0 0 0 / .2);
+  --chrome:rgb(249 249 249 / .94); /* バーの材質 */
+  /* P・F・C（3色のどの組も色覚の型を問わず見分けられる。validate_palette で確認） */
+  --p:#f07f1a; --f:#15803d; --c:#2c7be5;
+  --track:#e5e5ea;         /* 輪の地 */
+  /* グラフ */
+  --series:#6155f5; --grid:rgb(60 60 67 / .12); --guide:rgb(60 60 67 / .45);
+  /* 自分の発言 */
+  --me:#6155f5; --on-me:#ffffff;
+  /* ページ（コンポーネントの見本を並べる地） */
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+    --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+    --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+    --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+    --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+    --me:#6d7cff; --on-me:#ffffff;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+  --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+  --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+  --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+  --series:#6d7cff; --grid:rgb(235 235 245 / .12); --guide:rgb(235 235 245 / .45);
+  --me:#6d7cff; --on-me:#ffffff;
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+  color-scheme:dark;
+}
+
+/* ── 文字（iOS のテキストスタイル。Dynamic Type の既定の大きさ） ── */
+:root{
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  --t-title2:22px;   /* Title 2（大きな数字） */
+  --t-title3:20px;   /* Title 3 */
+  --t-headline:17px; /* Headline（600） */
+  --t-body:17px;     /* Body */
+  --t-callout:16px;  /* Callout */
+  --t-sub:15px;      /* Subheadline */
+  --t-foot:13px;     /* Footnote */
+  --t-cap:12px;      /* Caption 1 */
+/* ── 見本を並べるページ ── */
+*{box-sizing:border-box}
+body{margin:0;padding:16px 16px 40px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.sheet-head,.page-head{max-width:1280px;margin:0 auto 14px}
+.page-head h1{font-size:17px;margin:0}
+.page-head p{margin:2px 0 0;color:var(--page-muted);max-width:720px}
+.states{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr));gap:20px;align-items:start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+figcaption{color:var(--page-muted);font-size:12.5px}
+
+/* ── 試作のページ ── */
+body{padding-bottom:104px}
+.intro{max-width:1280px;margin:0 auto 12px;display:flex;flex-direction:column;gap:8px}
+.intro h1{font-size:20px;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--page-muted);max-width:760px}
+.topics{max-width:1280px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:6px}
+.topics button{font-size:13px;padding:6px 12px;border-radius:999px;background:var(--surface);color:var(--page-ink);box-shadow:0 0 0 .5px var(--frame)}
+.topics button[aria-current="true"]{background:var(--tint);color:var(--on-tint);box-shadow:none}
+.topic{max-width:1280px;margin:0 auto}
+.topic > h2{font-size:17px;margin:0 0 4px;text-wrap:balance}
+.topic > .q{margin:0 0 4px;max-width:760px}
+.topic > .fixed{margin:0 0 16px;max-width:760px;color:var(--page-muted);font-size:13px}
+.topic > .ctl{margin:0 0 16px;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;max-width:900px}
+.topic > .ctl fieldset{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.topic > .ctl legend{float:left;margin-right:6px;color:var(--page-muted)}
+.vhead{max-width:1280px;margin:0 auto 12px;display:flex;flex-direction:column;gap:2px}
+.vhead b{font-size:15px}
+.vhead span{color:var(--page-muted);font-size:13px;max-width:760px}
+.variant .states{margin:0}
+.replay{align-self:flex-start;font-size:13px;padding:6px 14px;border-radius:999px;background:var(--page-ink);color:var(--page)}
+.vo{display:block;margin-top:4px;font-size:12px;color:var(--page-muted);border-left:2px solid var(--frame);padding-left:8px}
+.vo b{color:var(--page-ink);font-weight:600}
+
+/* 切り替えのバー（試作の道具。設計の一部ではない） */
+.switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
+.switcher button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--page)}
+.switcher button:hover{background:color-mix(in srgb,var(--page) 15%,transparent)}
+.switcher .lab{padding:0 10px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lab b{font-weight:700;margin-right:6px}
+code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ── 電話の枠 ── */
+.phone{position:relative;height:680px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;font-size:var(--t-body);line-height:1.3}
+.phone.short{height:560px}
+.status{height:34px;flex:none}
+.home{height:22px;flex:none}
+.nav{height:44px;flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 12px;background:var(--bg)}
+.nav .l{justify-self:start;color:var(--tint);display:flex;align-items:center;gap:2px}
+.nav .l .chev{font-size:24px;line-height:1;margin-top:-2px}
+.nav .t{font-size:var(--t-headline);font-weight:600;text-align:center;white-space:nowrap}
+.nav .r{justify-self:end;color:var(--tint)}
+.nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font-size:var(--t-sub);font-weight:600}
+.btn.filled{background:var(--tint);color:var(--on-tint)}
+.btn.gray{background:var(--fill);color:var(--tint)}
+.btn.sm{height:32px;padding:0 14px}
+.tbtn{color:var(--tint);font-size:var(--t-sub);font-weight:600;display:inline-flex;align-items:center;gap:6px;min-height:44px}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink3);border-top-color:var(--ink2);animation:spin 1s linear infinite;flex:none;display:inline-block}
+.spinner.s{width:14px;height:14px}
+.btn .spinner,.tbtn .spinner{border-color:color-mix(in srgb,currentColor 30%,transparent);border-top-color:currentColor}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+
+/* 帯（DayRingStrip）。丸は灰色の輪で仮置き */
+.band{display:flex;padding:0 16px 10px;border-bottom:.5px solid var(--sep);flex:none;background:var(--bg)}
+.band .day{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:var(--t-cap2);color:var(--ink2);padding:4px 0;border-radius:10px}
+.band .day i{width:28px;height:28px;border-radius:50%;border:4.5px solid var(--track);display:block}
+.band .day.done i{border-color:color-mix(in srgb,var(--tint) 55%,var(--track))}
+.band .day.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.band .day.future{opacity:.45}
+
+/* タイムライン（TimelineScreen）: 日の見出しは左寄せの Footnote、自分の記録は右に寄せる */
+.tl{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding:12px 16px}
+.tl.live{overflow-y:auto;justify-content:flex-start;scrollbar-width:thin}
+.tl.live > .grow-top{flex:1 0 0}
+.tl > *{flex:none}
+.dayh{font-size:var(--t-foot);color:var(--ink2);margin-top:8px}
+.dayh:first-child{margin-top:0}
+.wrow{align-self:flex-end;display:flex;align-items:center;gap:8px;padding:16px;border-radius:12px;background:color-mix(in srgb,var(--tint) 10%,var(--surface));font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.disc{color:var(--ink3);font-size:var(--t-cap);flex:none}
+.rej{align-self:flex-end;font-size:var(--t-foot);color:var(--ink2);text-align:right}
+
+/* 食事のカード（MealCardView）: Primary を薄く敷き、幅 72%、写真を上に大きく */
+.mc{align-self:flex-end;width:72%;border-radius:12px;background:color-mix(in srgb,var(--tint) 10%,var(--surface));overflow:hidden;position:relative}
+.mc .pic{height:150px;background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.mc .pic.b{background:linear-gradient(135deg,#e7c889,#b87a3a 60%,#f1e3c2)}
+.mc .row2{display:flex;align-items:center;gap:8px;padding:16px}
+.mc .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mc .nm{font-size:var(--t-sub);font-weight:600}
+.mc .stl{font-size:var(--t-sub);color:var(--ink2);display:flex;align-items:center;gap:6px}
+.mc .tm{font-size:var(--t-cap);color:var(--ink2);font-variant-numeric:tabular-nums}
+.mc .nu{display:flex;flex-wrap:wrap;gap:0 8px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.mc .nu b{font-weight:600}
+.mc .quote{margin:12px 12px 0;padding:8px 12px;border-radius:10px;background:var(--surface);font-size:var(--t-foot);color:var(--ink2);line-height:1.4}
+.mc .quote.bar{background:none;border-left:3px solid color-mix(in srgb,var(--tint) 45%,transparent);border-radius:0;margin:14px 16px 0;padding:0 0 0 10px}
+.mc .icon-top{display:flex;align-items:center;gap:6px;padding:14px 16px 0;font-size:var(--t-cap);color:var(--ink2)}
+.mc .foot{border-top:.5px solid var(--sep);padding:0 16px;display:flex;justify-content:flex-start}
+.mc.ghost{opacity:.35}
+.under{align-self:flex-end;display:flex;justify-content:flex-end;width:72%}
+.under.left{align-self:flex-start;justify-content:flex-start;width:auto}
+
+/* 自分の発言（own-message-bubble）と返ってきた発言（reply-message） */
+.me{align-self:flex-end;max-width:78%;background:var(--me);color:var(--on-me);border-radius:18px;padding:12px;font-size:var(--t-sub);line-height:1.35;white-space:pre-wrap}
+.me.faded{opacity:.55}
+.me.body,.reply.body{font-size:var(--t-body);line-height:1.35}
+.reply{align-self:flex-start;max-width:92%;font-size:var(--t-sub);line-height:1.45;color:var(--ink)}
+.reply p{margin:0}
+.reply p + p,.reply ul + p,.reply p + ul{margin-top:6px}
+.reply ul{margin:0;padding-left:1.2em}
+.reply .cursor{display:inline-block;width:.5em}
+.reply .fade{animation:fadein .25s ease-out both}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.reply .fade{animation:none}}
+.wait{display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:var(--t-foot)}
+.wait.right{align-self:flex-end}
+.wait.left{align-self:flex-start}
+.note{font-size:var(--t-foot);color:var(--ink2);line-height:1.4}
+.note.right{align-self:flex-end;text-align:right;max-width:78%}
+.note.left{align-self:flex-start;max-width:92%}
+
+/* AI の返事の1行 */
+.ai1{align-self:flex-start;font-size:var(--t-cap);color:var(--ink2);display:flex;align-items:center;gap:4px}
+.ai1.center{align-self:stretch;justify-content:center;gap:10px}
+.ai1.center::before,.ai1.center::after{content:"";flex:1;border-top:.5px solid var(--sep)}
+.ai-badge{display:inline-block;font-size:var(--t-cap2);color:var(--ink2);border:.5px solid var(--ink3);border-radius:4px;padding:0 4px;line-height:1.5}
+.ai1 svg{flex:none}
+
+/* 会話のまとまり */
+.conv{display:flex;flex-direction:column;gap:8px;align-self:stretch}
+.conv.rule{border-left:2px solid color-mix(in srgb,var(--tint) 30%,transparent);padding-left:10px;margin-left:-12px}
+.conv.gap{margin:12px 0}
+.conv.card{background:var(--surface);border-radius:12px;padding:12px}
+.cont{font-size:var(--t-cap);color:var(--ink2)}
+
+/* 指し示す食事 */
+.ptr{align-self:flex-start;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px 6px 6px;border-radius:12px;background:var(--surface);font-size:var(--t-foot);max-width:86%}
+.ptr .th{width:40px;height:40px;border-radius:8px;flex:none;background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.ptr .th.b{background:linear-gradient(135deg,#e7c889,#b87a3a 60%,#f1e3c2)}
+.ptr .th.none{background:var(--fill)}
+.ptr b{font-weight:600;display:block;font-size:var(--t-sub)}
+.ptr span{color:var(--ink2)}
+.ptr.gone{color:var(--ink2);background:none;box-shadow:0 0 0 .5px var(--sep) inset;padding-left:12px}
+.ptrs{align-self:flex-start;display:flex;flex-direction:column;gap:6px;width:70%}
+.ptrs .ptr{max-width:none}
+.ptr.gone{white-space:nowrap}
+.mini{align-self:flex-start;width:58%;border-radius:12px;background:color-mix(in srgb,var(--tint) 10%,var(--surface));overflow:hidden}
+.mini .pic{height:72px;background:linear-gradient(135deg,#9bb07a,#e0c8a0 50%,#c26a3a)}
+.mini .r{padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:var(--t-foot)}
+.mini .r div{flex:1}
+.mini b{display:block;font-size:var(--t-sub)}
+.mini span{color:var(--ink2)}
+
+/* 入力欄（TimelineComposer）: バーの材質の上に 44 の丸いボタン、右に書く欄 */
+.compwrap{flex:none;background:var(--chrome);border-top:.5px solid var(--sep)}
+.chips{display:flex;gap:8px;padding:8px 16px 0;overflow:hidden;flex:none}
+.chips.onbg{background:var(--bg)}
+.chips span{white-space:nowrap;font-size:var(--t-foot);height:32px;display:flex;align-items:center;padding:0 12px;border-radius:999px;background:var(--surface);color:var(--ink);box-shadow:0 0 0 .5px var(--sep)}
+.chips span.press{box-shadow:0 0 0 3px color-mix(in srgb,var(--tint) 40%,transparent)}
+.comp{display:flex;align-items:flex-end;gap:12px;padding:8px 16px;flex-wrap:wrap}
+.comp .rowx{display:flex;align-items:flex-end;gap:12px;width:100%}
+.cb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--fill);color:var(--tint)}
+.cb.on{background:var(--tint);color:var(--on-tint)}
+.cap{height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 16px;font-size:var(--t-sub);font-weight:600;background:var(--tint);color:var(--on-tint);flex:none;white-space:nowrap}
+.cap.full{flex:1 0 100%}
+.in{flex:1;min-height:36px;border-radius:18px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);color:var(--ink3);font-size:var(--t-body);display:flex;align-items:flex-end;gap:8px;padding:7px 4px 4px 14px;min-width:0;margin-bottom:4px}
+.in .tx{flex:1;min-width:0;padding-bottom:3px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.in.typing{color:var(--ink)}
+.in.typing .tx{white-space:normal}
+.in.focus{box-shadow:0 0 0 .5px var(--sep)}
+.in .caret{display:inline-block;width:2px;height:1.1em;background:var(--tint);vertical-align:-3px;margin-left:1px}
+.in .send{width:28px;height:28px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;flex:none}
+.in.full{flex:1 0 100%}
+.in.narrow .tx{max-width:3.5em}
+/* 大きな文字（Dynamic Type の AX3 ほど）。丸は 88 で止める */
+.big .cb{width:64px;height:64px}
+.big .cap{height:64px;font-size:24px;padding:0 20px}
+.big .in{font-size:28px;min-height:56px;border-radius:28px;padding:10px 6px 6px 18px}
+.big .chips span{font-size:22px;height:44px}
+/* キーボード */
+.kb{flex:none;background:#d1d3d9;padding:6px 3px 4px;display:flex;flex-direction:column;gap:8px}
+.kb .cand{display:flex;gap:16px;padding:2px 10px 4px;font-size:var(--t-body);color:#000}
+.kb .r{display:flex;gap:5px;justify-content:center}
+.kb .k{height:38px;border-radius:5px;background:#fff;flex:1;max-width:32px;display:grid;place-items:center;font-size:16px;color:#000;box-shadow:0 1px 0 #898a8d}
+.kb .k.w{max-width:none;flex:2.4;background:#abb0ba;font-size:14px}
+.kb .k.go{max-width:none;flex:2.4;background:var(--tint);color:#fff;font-size:14px}
+.kb .chipsbar{display:flex;gap:8px;padding:0 6px 4px;overflow:hidden}
+.kb .chipsbar span{white-space:nowrap;font-size:var(--t-foot);height:32px;display:flex;align-items:center;padding:0 12px;border-radius:999px;background:#fff;color:#000}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .kb{background:#2b2b2d}:root:not([data-theme="light"]) .kb .k,:root:not([data-theme="light"]) .kb .chipsbar span{background:#6b6b6e;color:#fff}:root:not([data-theme="light"]) .kb .k.w{background:#464648}:root:not([data-theme="light"]) .kb .cand{color:#fff}}
+:root[data-theme="dark"] .kb{background:#2b2b2d}
+:root[data-theme="dark"] .kb .k,:root[data-theme="dark"] .kb .chipsbar span{background:#6b6b6e;color:#fff}
+:root[data-theme="dark"] .kb .k.w{background:#464648}
+:root[data-theme="dark"] .kb .cand{color:#fff}
+
+/* 食事の画面（MealScreen）の上端 */
+.scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:24px;padding:12px 16px 16px}
+.scroll > *{flex:none}
+.list{background:var(--surface);border-radius:10px;overflow:hidden}
+.list > .cell{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative;font-size:var(--t-body)}
+.list > .cell + .cell::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.cell .grow{flex:1;min-width:0}
+.cell .v{color:var(--tint);font-variant-numeric:tabular-nums}
+.cell .sub{display:block;color:var(--ink2);font-size:var(--t-foot)}
+.cell.danger{color:var(--destructive);justify-content:center}
+.cell.link{color:var(--tint)}
+.group-h{font-size:var(--t-foot);color:var(--ink2);padding:0 16px 6px;margin:0}
+.group-f{font-size:var(--t-foot);color:var(--ink2);padding:6px 16px 0;margin:0}
+.tot{padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.tot .k{font-size:var(--t-title2);font-variant-numeric:tabular-nums}
+.tot .k small{font-size:var(--t-sub);color:var(--ink2);margin-left:4px}
+.tot .pfc{display:flex;gap:14px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.key{display:inline-block;width:9px;height:9px;border-radius:2px}
+.key.p{background:var(--p)} .key.f{background:var(--f)} .key.c{background:var(--c)}
+.sentq{font-size:var(--t-sub);line-height:1.45}
+
+/* 確かめ（confirmationDialog） */
+.scrim{position:absolute;inset:0;background:var(--scrim);display:flex;flex-direction:column;justify-content:flex-end;z-index:2}
+.action{margin:0 8px 30px;display:flex;flex-direction:column;gap:8px}
+.action .grp{background:var(--chrome);border-radius:14px;overflow:hidden;text-align:center}
+.action .msg{padding:13px 16px;font-size:var(--t-foot);color:var(--ink2)}
+.action .a{padding:17px;font-size:20px;color:var(--tint);border-top:.5px solid var(--sep)}
+.action .a.danger{color:var(--destructive)}
+.action .a.cancel{font-weight:600;border-top:0}
+.press{box-shadow:0 0 0 4px color-mix(in srgb,var(--tint) 35%,transparent)}
+</style>
+<header class="intro">
+  <h1>文章と会話の見た目を見比べる</h1>
+  <p>仕様「文章と会話」の前に、見た目で決めるものを並べた試作（捨てる前提。gn-t-k/nu-tori#412）。上の論点を選び、下のバーの ‹ › か矢印キーで案を切り替える。<code>#&lt;論点&gt;-&lt;案の番号&gt;</code>（例: <code>#stream-2</code>）で開ける。今のアプリ（main の <code>TimelineComposer.swift</code>、<code>TimelineScreen.swift</code>、<code>MealCardView.swift</code>、コミット 4e0f031）のタイムラインと入力欄の上に、書いて送る操作と会話を足して描いた。</p>
+  <p>例の日付は、今日が 9月24日（木）。値と文はすべて作ったもので、写真は色の四角で仮置きにした。決まっていることは論点ごとに灰色の段落に書き、どの案も守る。決まっていることのうち iOS の標準や別の文書と食い違うもの（5 の文字の大きさ）は、両方を描いた。5 の「少しずつ伸びる発言」は、案を開くと流れ、「もう一度流す」で何度でも流せる。</p>
+</header>
+
+<nav class="topics" aria-label="論点" id="topics"></nav>
+<main id="main"></main>
+
+<div class="switcher" id="switcher" role="group" aria-label="案の切り替え（試作の道具）">
+  <button type="button" id="prev" aria-label="前の案">‹</button>
+  <span class="lab" id="lab" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="次の案">›</button>
+</div>
+<script>
+// ── アイコン（SF Symbols の代わり） ──
+const I = {
+  cam: (s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
+  wt: (s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg>`,
+  photo: (s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="15" height="13" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v10"/><path d="M4 16l4-4 3 3 2-2 4 4"/></svg>`,
+  person: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>',
+  send: (s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 12V2M2.5 6.5 7 2l4.5 4.5"/></svg>`,
+  sparkles: (s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.2L17 9l-5.2 1.8L10 16l-1.8-5.2L3 9l5.2-1.8z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>`,
+  text: (s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 6h14M5 11h14M5 16h9"/></svg>`,
+};
+
+// ── 共通の部品 ──
+const HOME = '<div class="home"></div>';
+const phone = (inner, cls = '') => `<div class="phone ${cls}"><div class="status"></div>${inner}${HOME}</div>`;
+const TLNAV = (t = '9月24日（木）') => `<div class="nav"><span class="l"></span><span class="t">${t}</span><span class="r"><span class="person">${I.person}</span></span></div>`;
+const BAND = (sel = 3) => `<div class="band">${'月火水木金土日'.split('').map((d, i) => `<span class="day${i === sel ? ' sel' : ''}${i < sel ? ' done' : ''}${i > 3 ? ' future' : ''}"><i></i>${d}</span>`).join('')}</div>`;
+const TOP = (t, sel) => TLNAV(t) + BAND(sel);
+const tl = (items, cls = '') => `<div class="tl ${cls}">${items}</div>`;
+const DAYH = t => `<div class="dayh">${t}</div>`;
+const WROW = t => `<div class="wrow">${t}<span class="disc">›</span></div>`;
+const ME = (t, cls = '') => `<div class="me ${cls}">${t}</div>`;
+const REPLY = (t, cls = '') => `<div class="reply ${cls}">${t}</div>`;
+const SPIN = (side = 'left', text = '') => `<div class="wait ${side}"><span class="spinner s"></span>${text}</div>`;
+const NOTE = (t, side = 'right') => `<div class="note ${side}">${t}</div>`;
+// 食事のカード。o.pic: 写真の色（無ければ写真の場所を出さない）、o.name、o.status（状態の1行）、o.estimating、o.time、o.kcal、o.top、o.foot
+function MEAL(o){
+  const pic = o.pic ? `<div class="pic ${o.pic === true ? '' : o.pic}"></div>` : '';
+  const name = o.name ? `<span class="nm">${o.name}</span>` : '';
+  const st = o.status ? `<span class="stl">${o.estimating ? '<span class="spinner s"></span>' : ''}${o.status}</span>` : '';
+  const nu = o.kcal ? `<span class="nu"><b>${o.kcal} kcal</b><span>P ${o.p} g</span><span>F ${o.f} g</span><span>C ${o.c} g</span></span>` : '';
+  return `<div class="mc ${o.cls || ''}">${pic}${o.top || ''}<div class="row2"><div class="bd">${name}${st}<span class="tm">${o.time || '12:20'}</span>${nu}</div><span class="disc">›</span></div>${o.foot || ''}</div>`;
+}
+const PHOTOMEAL = (time = '7:40', name = 'トースト・ゆで卵', k = ['358', '17', '14', '40']) => MEAL({pic:'b', name, time, kcal:k[0], p:k[1], f:k[2], c:k[3]});
+const SENDBACK = '<span class="tbtn">会話として送り直す</span>';
+
+// 入力欄。o.weight: 'done'|'todo'、o.typing: 書いている（文字がある）、o.focus: 書く欄を選んでいる、o.text、o.layout: 'row'|'top'|'wrap'
+// o.hidePhoto: 書いているあいだ「写真」も隠す、o.big: 大きな文字、o.chips: プリセットの文言（null なら出さない）、o.press: 押したチップ、o.kb: キーボード
+function COMP(o = {}){
+  const caret = o.focus ? '<span class="caret"></span>' : '';
+  const writing = o.typing || o.focus;
+  const field = (extra = '') => `<span class="in${o.typing ? ' typing' : ''}${extra}"><span class="tx">${o.text || '書く'}${caret}</span>${o.typing ? `<span class="send" aria-label="送る">${I.send()}</span>` : ''}</span>`;
+  const cam = `<span class="cb on">${I.cam(o.big ? 30 : 22)}</span>`;
+  const pho = `<span class="cb">${I.photo(o.big ? 30 : 22)}</span>`;
+  const wt = o.weight === 'todo' ? '<span class="cap">体重を記録</span>' : `<span class="cb">${I.wt(o.big ? 30 : 22)}</span>`;
+  const capFull = '<span class="cap full">体重を記録</span>';
+  let row;
+  const lead = cam + (writing && o.hidePhoto ? '' : pho);
+  if (o.layout === 'top') {
+    row = `<div class="rowx">${field(' full')}</div><div class="rowx">${lead}${writing ? '' : wt}</div>`;
+  } else if (writing) {
+    row = `<div class="rowx">${lead}${field()}</div>`;
+  } else if (o.weight === 'todo' && (o.big || o.layout === 'wrap')) {
+    row = `<div class="rowx">${lead}${field()}</div>${capFull}`;
+  } else {
+    row = `<div class="rowx">${lead}${wt}${field(o.weight === 'todo' ? ' narrow' : '')}</div>`;
+  }
+  const chips = o.chips ? `<div class="chips">${o.chips.map((c, i) => `<span class="${o.press === i ? 'press' : ''}">${c}</span>`).join('')}</div>` : '';
+  return `<div class="compwrap${o.big ? ' big' : ''}">${chips}<div class="comp">${row}</div></div>${o.kb ? KB(o.kb) : ''}`;
+}
+// キーボード。o.cand: 変換の候補、o.chips: キーボードの上のチップ
+function KB(o = {}){
+  const chips = o.chips ? `<div class="chipsbar">${o.chips.map(c => `<span>${c}</span>`).join('')}</div>` : '';
+  const cand = o.cand ? `<div class="cand">${o.cand.map((c, i) => i ? `<span>${c}</span>` : `<b>${c}</b>`).join('')}</div>` : '';
+  return `<div class="kb" aria-hidden="true">${chips}${cand}<div class="r">${'たなはまらやわ'.split('').map(x => `<span class="k">${x}</span>`).join('')}</div><div class="r">${'あかさ'.split('').map(x => `<span class="k">${x}</span>`).join('')}<span class="k w">空白</span></div><div class="r"><span class="k w">123</span><span class="k w">🌐</span><span class="k go">改行</span></div></div>`;
+}
+const actionSheet = (msg, a, cancel = 'キャンセル') => `<div class="scrim"><div class="action"><div class="grp"><div class="msg">${msg}</div><div class="a danger">${a}</div></div><div class="grp"><div class="a cancel">${cancel}</div></div></div></div>`;
+
+// 例の文
+const PRESET = ['ここまでの食事のフィードバック', '次の食事のアドバイス'];
+const PRESET_SHORT = ['食事のフィードバック', '次の食事'];
+const PRESET_TEXT = ['ここまでの食事のフィードバックをください。', '次の食事のアドバイスをください。'];
+const R_LUNCH = '朝のたんぱく質が 17 g なので、サラダチキンかゆで卵を足すと目安に近づきます。おにぎりは1つなら残りの炭水化物に収まります。';
+const R_NIGHT = 'ここまでで 868 kcal なので、夜は 980 kcal ほど残っています。';
+const BASE = PHOTOMEAL();
+// ── 論点 ──
+const T = [];
+const tlBase = (extra = '') => tl(DAYH('今日') + WROW('7:12 72.4 kg') + BASE + extra);
+
+// 1. 書く欄の並べ方
+T.push({id:'composer', label:'書く欄の並べ方', title:'入力欄の書く欄の並べ方',
+  q:'main の入力欄（「撮る」「写真」「体重」、未記録のときの「体重を記録」のカプセル）に、書く欄をどう並べるか。カプセルが広がっているとき、大きな文字でカプセルが下の行に回るときの書く欄の幅と、書いているあいだに「写真」も隠すか。',
+  fixed:`決まっていること: 書く欄は1行から始まり5行まで伸び、「送る」は欄の右端に文字を入れたときだけ出す。書いているあいだは「体重」を隠して書く欄を広げ、カメラは残す。枠のある部品の間は 12 以上（<code>DESIGN.md</code>「入力欄」「Layout」、<code>06-layout.md</code>「入力欄」）。どの案もプリセットは描かない（論点 2）。`,
+  variants:[
+  {name:'1行に並べ、書く欄が残りの幅', desc:'main の並びの右の空きに書く欄を置く。カプセル「体重を記録」が広がっているあいだは書く欄が狭くなり、「書く」の文字が入るだけの幅になる。大きな文字でカプセルが下の行に回るときは、書く欄は上の行の残り。',
+   figs:[
+    {cap:'<b>今日の体重を記録済み。</b>丸 3 つの右に書く欄。', html: phone(TOP() + tlBase() + COMP({weight:'done'}))},
+    {cap:'<b>今日の体重が未記録。</b>カプセルが広がり、書く欄は残りの幅。カプセルの文字が長い言語や少し大きな文字では、書く欄が「書く」も入らないほど狭くなる。押すと下の「書いているとき」と同じになる。', html: phone(TOP() + tlBase() + COMP({weight:'todo'}))},
+    {cap:'<b>大きな文字で未記録。</b>カプセルは下の行に全幅。書く欄は上の行の「撮る」「写真」の右。', html: phone(TOP() + tlBase() + COMP({weight:'todo', big:true}))},
+    {cap:'<b>書いているとき。</b>「体重」（カプセルでも丸でも）を隠し、「撮る」「写真」と書く欄。書く欄は 5 行まで伸び、右端に「送る」。', html: phone(TOP() + tl(BASE) + COMP({weight:'todo', typing:true, focus:true, text:'夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ', kb:{cand:['飲んだ', '呑んだ', 'のんだ']}}))},
+   ]},
+  {name:'書く欄を上の行に全幅', desc:'書く欄をボタンの行の上に全幅で置く。カプセルの有無と文字の大きさで書く欄の幅が変わらない。入力欄が1行ぶん高くなり、タイムラインが狭くなる。書いているあいだは下の行から「体重」が消える。',
+   figs:[
+    {cap:'<b>今日の体重を記録済み。</b>', html: phone(TOP() + tlBase() + COMP({weight:'done', layout:'top'}))},
+    {cap:'<b>今日の体重が未記録。</b>カプセルは下の行で、ボタンの横に並ぶ。', html: phone(TOP() + tlBase() + COMP({weight:'todo', layout:'top'}))},
+    {cap:'<b>大きな文字で未記録。</b>', html: phone(TOP() + tlBase() + COMP({weight:'todo', layout:'top', big:true}))},
+    {cap:'<b>書いているとき。</b>下の行は「撮る」「写真」だけ。', html: phone(TOP() + tl(BASE) + COMP({weight:'todo', layout:'top', typing:true, focus:true, text:'夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ', kb:{cand:['飲んだ', '呑んだ', 'のんだ']}}))},
+   ]},
+  {name:'未記録のカプセルはいつも下の行', desc:'A の並びのまま、カプセル「体重を記録」は文字の大きさによらずいつも丸の行の下に全幅で置く。書く欄の幅は記録の前後で変わらない。記録するとカプセルが消えて丸になり、入力欄が1行ぶん低くなる。',
+   figs:[
+    {cap:'<b>今日の体重を記録済み。</b>A と同じ。', html: phone(TOP() + tlBase() + COMP({weight:'done'}))},
+    {cap:'<b>今日の体重が未記録。</b>上の行は「撮る」「写真」と書く欄、下にカプセル。', html: phone(TOP() + tlBase() + COMP({weight:'todo', layout:'wrap'}))},
+    {cap:'<b>書いているとき。</b>A と同じ（カプセルは消える）。', html: phone(TOP() + tl(BASE) + COMP({weight:'todo', typing:true, focus:true, text:'夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ', kb:{cand:['飲んだ', '呑んだ', 'のんだ']}}))},
+   ]},
+  {name:'書いているあいだは「写真」も隠す', desc:'並びは A。書く欄を押すと「体重」と一緒に「写真」も隠し、「撮る」と書く欄だけにする（凍結済みの見本と同じ形）。書く欄が広がる。書きかけで撮っておいた写真を選ぶには、いったん欄を離れる。',
+   figs:[
+    {cap:'<b>今日の体重が未記録。</b>A と同じ。', html: phone(TOP() + tlBase() + COMP({weight:'todo'}))},
+    {cap:'<b>書いているとき。</b>「撮る」と書く欄だけ。', html: phone(TOP() + tl(BASE) + COMP({weight:'todo', typing:true, focus:true, hidePhoto:true, text:'夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ', kb:{cand:['飲んだ', '呑んだ', 'のんだ']}}))},
+   ]},
+  ]});
+
+// 2. プリセット
+T.push({id:'preset', label:'プリセット', title:'プリセットのチップを出す時機と、押したとき',
+  q:'プリセットのチップをいつ出すか（いつも、書く欄に触れたときだけ、書く欄が空のときだけ）。チップの文言と入れる文面。欄に文字があるときに押したら置き換えるか後ろに足すか。押したあとにキーボードを出すか。',
+  fixed:`決まっていること: 入力欄の上に並べる角の丸いチップで、押せる範囲は 44。プリセットは2つ（「ここまでの食事のフィードバック」「次の食事のアドバイス」）。押しても送らず、文面を入力欄に入れるだけ（<code>DESIGN.md</code>「プリセット」、<code>GLOSSARY.md</code>「プリセット」、#29 の追記「会話」）。入れる文面はどの案も「ここまでの食事のフィードバックをください。」「次の食事のアドバイスをください。」で仮置き。書く欄の並べ方は論点 1 の A。`,
+  variants:[
+  {name:'いつも出す・名前のまま・置き換える', desc:'入力欄の上にいつも2つのチップを出す。文言は <code>GLOSSARY.md</code> の名前のまま。押すと書く欄の文字を文面で置き換え、キーボードを出す。送るには「送る」をもう1回押す。',
+   figs:[
+    {cap:'<b>ふだん。</b>タイムラインの下端にいつもチップの行がある。', html: phone(TOP() + tlBase() + COMP({weight:'done', chips:PRESET}))},
+    {cap:'<b>「ここまでの食事のフィードバック」を押したあと。</b>文面が入り、キーボードが出る。チップは出したまま。', html: phone(TOP() + tl(BASE) + COMP({weight:'done', typing:true, focus:true, text:PRESET_TEXT[0], chips:PRESET, press:0, kb:{}}))},
+    {cap:'<b>書きかけで押したとき。</b>書きかけの「夜は外で」が文面に置き換わる。戻すには取り消し（振って取り消す）。', html: phone(TOP() + tl(BASE) + COMP({weight:'done', typing:true, focus:true, text:PRESET_TEXT[1], chips:PRESET, press:1, kb:{}}))},
+   ]},
+  {name:'書く欄に触れたときだけ・短い文言', desc:'ふだんはチップを出さない。書く欄を押し、欄が空のあいだだけ、書く欄のすぐ上にチップを出す。文言は短くする（「食事のフィードバック」「次の食事」）。押すと文面が入り、チップは消える。欄が空のときだけ出すので、置き換えか足すかは起きない。',
+   figs:[
+    {cap:'<b>ふだん。</b>チップは無い。タイムラインが1行ぶん広い。', html: phone(TOP() + tlBase() + COMP({weight:'done'}))},
+    {cap:'<b>書く欄を押したとき。</b>キーボードと一緒にチップが出る。', html: phone(TOP() + tl(BASE) + COMP({weight:'done', focus:true, chips:PRESET_SHORT, kb:{}}))},
+    {cap:'<b>「食事のフィードバック」を押したあと。</b>文面が入り、チップは消える。', html: phone(TOP() + tl(BASE) + COMP({weight:'done', typing:true, focus:true, text:PRESET_TEXT[0], kb:{}}))},
+   ]},
+  {name:'欄が空のときだけ・キーボードを出さない', desc:'書く欄が空のあいだはいつもチップを出し、書き始めると消す。押すと文面が入るが、キーボードは出さず、そのまま「送る」を押せる（2回で送れる）。直したいときは書く欄を押す。',
+   figs:[
+    {cap:'<b>ふだん。</b>A と同じくチップがある。', html: phone(TOP() + tlBase() + COMP({weight:'done', chips:PRESET}))},
+    {cap:'<b>「次の食事のアドバイス」を押したあと。</b>文面が入り、「送る」が出る。キーボードは出ない。チップは消える。', html: phone(TOP() + tlBase() + COMP({weight:'done', typing:true, text:PRESET_TEXT[1]}))},
+    {cap:'<b>書き始めたとき。</b>チップは消える。', html: phone(TOP() + tl(BASE) + COMP({weight:'done', typing:true, focus:true, text:'夜は外で', kb:{cand:['外で', 'そとで']}}))},
+   ]},
+  ]});
+
+// 3. 送った文章と、読み分けるまで
+const sentTl = (after, bubbleCls = '') => tlBase(ME('夜は外で食べる予定。何を選べばいい？', bubbleCls) + after);
+T.push({id:'pending', label:'読み分けるまで', title:'送った文章と、読み分けるまで',
+  q:'送った文章の応答待ちの回る印をどこにどう置くか。まだ送れていない送った文章をどう見せるか。',
+  fixed:`決まっていること: 自分が書いた文は Primary の吹き出しで右に寄せる。応答待ちは、食事とも会話とも取れる回る印。サーバーが処理しているあいだだけ出し、まだ送れていないあいだは出さず、電波が無いことも注記しない（<code>DESIGN.md</code>「自分の記録と自分の発言」「待っている表示」、Do's and Don'ts）。`,
+  variants:[
+  {name:'吹き出しの下に回る印だけ', desc:'吹き出しの右下に小さな回る印。送った文章のその場に出す。読み分けると、印が消えて食事のカードか発言に替わる。',
+   figs:[
+    {cap:'<b>サーバーが処理しているあいだ。</b>', html: phone(TOP() + sentTl(SPIN('right')) + COMP({weight:'done'}))},
+    {cap:'<b>まだ送れていないあいだ。</b>ほかと同じ吹き出しで、印は無い。', html: phone(TOP() + sentTl('') + COMP({weight:'done'}))},
+   ]},
+  {name:'左の地の上に回る印だけ', desc:'発言が来る左の地の上に回る印。会話なら、印がそのまま発言に替わる。食事なら、印が消えて吹き出しの下にカードが出る（右に移る）。',
+   figs:[
+    {cap:'<b>サーバーが処理しているあいだ。</b>', html: phone(TOP() + sentTl(SPIN('left')) + COMP({weight:'done'}))},
+    {cap:'<b>まだ送れていないあいだ。</b>A と同じ。', html: phone(TOP() + sentTl('') + COMP({weight:'done'}))},
+   ]},
+  {name:'左の地の上に回る印と文言', desc:'B に文言を添える。食事とも会話とも取れる「読んでいます…」（食事の推定の「推定しています…」と同じ形）。',
+   figs:[
+    {cap:'<b>サーバーが処理しているあいだ。</b>', html: phone(TOP() + sentTl(SPIN('left', '読んでいます…')) + COMP({weight:'done'}))},
+    {cap:'<b>まだ送れていないあいだ。</b>A と同じ。', html: phone(TOP() + sentTl('') + COMP({weight:'done'}))},
+   ]},
+  {name:'送れていないあいだは吹き出しを薄く', desc:'回る印は A の置き場。まだ送れていないあいだは吹き出しを薄くする（メッセージの送信中に近い）。注記はしないが、見た目で送れていないことが分かる。<code>DESIGN.md</code> の Don\'t「電波がないことを注記しない」の趣旨とぶつかるかを見る案。',
+   figs:[
+    {cap:'<b>サーバーが処理しているあいだ。</b>', html: phone(TOP() + sentTl(SPIN('right')) + COMP({weight:'done'}))},
+    {cap:'<b>まだ送れていないあいだ。</b>吹き出しが薄い。', html: phone(TOP() + sentTl('', 'faded') + COMP({weight:'done'}))},
+   ]},
+  ]});
+// 4. 食事と読み分けたとき
+const S1 = 'サラダチキンとおにぎり2個';
+const S2 = '昼はサラダチキンとおにぎり2個、3時ごろにプロテインも飲んだ';
+const S3 = '昨日の夜はラーメンと餃子';
+const M_LUNCH = {name:'サラダチキン・おにぎり', time:'12:20', kcal:'510', p:'32', f:'6', c:'78'};
+const M_LUNCH12 = {...M_LUNCH, time:'12:00'};
+const M_PROT = {name:'プロテイン', time:'15:00', kcal:'120', p:'24', f:'1', c:'3'};
+const M_RAMEN = {name:'ラーメン・餃子', time:'昨日 21:00', kcal:'860', p:'30', f:'38', c:'98'};
+const FOOT = `<div class="foot">${SENDBACK}</div>`;
+const QUOTE = s => `<div class="quote bar">${s}</div>`;
+const TXTMARK = `<div class="icon-top">${I.text(13)}書いて記録</div>`;
+const AFTER_BACK = (sent, before, reply) => phone(TOP() + tl(DAYH('今日') + before + ME(sent) + REPLY(reply)) + COMP({weight:'done'}));
+const MEALSCREEN = phone(`<div class="nav"><span class="l"><span class="chev">‹</span>9月24日（木）</span><span class="t">食事</span><span class="r"></span></div><div class="scroll"><div><p class="group-h">送った文章</p><div class="list"><div class="cell sentq">${S1}</div></div></div><div class="list"><div class="cell"><span class="grow">時刻</span><span class="v">9月24日（木）12:20</span></div></div><div class="list tot"><span class="k">510<small>kcal</small></span><div class="pfc"><span><span class="key p"></span> P 32 g</span><span><span class="key f"></span> F 6 g</span><span><span class="key c"></span> C 78 g</span></div></div><div><p class="group-h">料理</p><div class="list"><div class="cell"><span class="grow">サラダチキン</span><span class="v">1袋</span></div><div class="cell"><span class="grow">おにぎり</span><span class="v">2個</span></div></div></div><div class="list"><div class="cell danger">食事を削除</div></div></div>`, 'short');
+T.push({id:'meal', label:'食事と読み分けたとき', title:'送った文章を食事と読み分けたとき',
+  q:'送った文章の吹き出しから食事のカードへの変わり方。写真の無い食事のカードに、文章の食事と分かる手がかりを足すか。食事が複数できたとき「会話として送り直す」をどこに添えるか。食事の時刻が送った位置と違う（前の日を含む）とき、送った位置に何を残すか。押したときに確かめるかと、押したあとの見え方。',
+  fixed:`決まっていること: 返ってきた食事のカードに「会話として送り直す」を添え、押すとその文章から作った食事をすべて消して発言を作る。1つの送った文章から時刻の違う食事が複数できる。食事の時刻は文章の中の時刻か送った時刻。食事は写真の食事と同じ推定の状態を持つ（<code>06-layout.md</code>「書いて送った文章」、#29 の追記「送った文章と AI の発言」）。写真が0枚の食事の画面は、上端に記録した文章を出す（<code>06-layout.md</code>「食事」。A の最後の図）。例は、①「${S1}」を 12:20 に送った、②「${S2}」を 15:30 に送った、③「${S3}」を今日 7:50 に送った。`,
+  variants:[
+  {name:'吹き出しを残し、下にカード', desc:'送った文章の吹き出しはそのまま残し、読み分けたらその下にカードを出す。カードは main と同じ（写真の場所が無いだけ）で、手がかりは吹き出し。「会話として送り直す」はどのカードにも添える。時刻が違う食事は、その時刻の位置に出し、送った位置には吹き出しだけが残る。押すと確かめずに食事を消し、吹き出しの下に発言が来る。',
+   figs:[
+    {cap:'<b>① 推定しているあいだ。</b>カードは状態の1行（推定しています…）。', html: phone(TOP() + tl(DAYH('今日') + WROW('7:12 72.4 kg') + PHOTOMEAL() + ME(S1) + MEAL({status:'推定しています…', estimating:true, time:'12:20', foot:FOOT})) + COMP({weight:'done'}))},
+    {cap:'<b>① 推定が済んだ。</b>', html: phone(TOP() + tl(DAYH('今日') + WROW('7:12 72.4 kg') + PHOTOMEAL() + ME(S1) + MEAL({...M_LUNCH, foot:FOOT})) + COMP({weight:'done'}))},
+    {cap:'<b>② 食事が2つ、時刻が違う。</b>12:00 と 15:00 にカード、15:30 の位置に吹き出しだけ。どちらのカードの「会話として送り直す」も、2つとも消す。', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({...M_LUNCH12, foot:FOOT}) + MEAL({...M_PROT, foot:FOOT}) + ME(S2))+ COMP({weight:'done'}))},
+    {cap:'<b>③ 前の日の食事。</b>カードは昨日に入り、今日の 7:50 には吹き出しだけ。今日だけ見ていると、何が起きたか分からない。', html: phone(TOP() + tl(DAYH('昨日') + MEAL({...M_RAMEN, time:'21:00', foot:FOOT}) + DAYH('今日') + WROW('7:12 72.4 kg') + ME(S3)) + COMP({weight:'done'}))},
+    {cap:'<b>「会話として送り直す」を押したあと。</b>確かめずにカードが消え、吹き出しの下に回る印、続いて発言（ここでは書いたことの受け止め）。', html: AFTER_BACK(S1, WROW('7:12 72.4 kg') + PHOTOMEAL(), 'サラダチキンとおにぎり2個なら 510 kcal ほどで、昼の目安に収まります。')},
+    {cap:'<b>食事の画面の上端（決まっている形。どの案も同じ）。</b>写真の代わりに送った文章。', html: MEALSCREEN},
+   ]},
+  {name:'吹き出しをカードに置き換える', desc:'読み分けたら吹き出しを消し、カードに置き換える。カードの上端に送った文章を引用の形で出し、文章の食事と分かるようにする。食事が複数なら、どのカードにも同じ文章と「会話として送り直す」。送った位置には何も残さない。押すと確かめ（<code>confirmationDialog</code>）を出す。',
+   figs:[
+    {cap:'<b>① 推定しているあいだ。</b>', html: phone(TOP() + tl(DAYH('今日') + WROW('7:12 72.4 kg') + PHOTOMEAL() + MEAL({status:'推定しています…', estimating:true, time:'12:20', top:QUOTE(S1), foot:FOOT})) + COMP({weight:'done'}))},
+    {cap:'<b>① 推定が済んだ。</b>', html: phone(TOP() + tl(DAYH('今日') + WROW('7:12 72.4 kg') + PHOTOMEAL() + MEAL({...M_LUNCH, top:QUOTE(S1), foot:FOOT})) + COMP({weight:'done'}))},
+    {cap:'<b>② 食事が2つ、時刻が違う。</b>どちらのカードにも同じ文章。15:30 の位置には何も無い。', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({...M_LUNCH12, top:QUOTE(S2), foot:FOOT}) + MEAL({...M_PROT, top:QUOTE(S2), foot:FOOT})) + COMP({weight:'done'}))},
+    {cap:'<b>③ 前の日の食事。</b>送った直後、吹き出しが今日の位置から消え、カードは昨日に入る（今日の位置からは見えない）。', html: phone(TOP() + tl(DAYH('昨日') + MEAL({...M_RAMEN, time:'21:00', top:QUOTE(S3), foot:FOOT}) + DAYH('今日') + WROW('7:12 72.4 kg')) + COMP({weight:'done'}))},
+    {cap:'<b>「会話として送り直す」を押したとき。</b>食事を消すので確かめる。', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({...M_LUNCH12, top:QUOTE(S2), foot:FOOT}) + MEAL({...M_PROT, top:QUOTE(S2), foot:FOOT})) + COMP({weight:'done'}) + actionSheet('この文章から作った食事（2つ）を削除して、会話として送り直します。', '会話として送り直す'))},
+    {cap:'<b>押したあと。</b>カードが消え、15:30 の位置に吹き出しが戻り、その下に発言。', html: AFTER_BACK(S2, PHOTOMEAL(), '昼と3時を合わせて 630 kcal ほどで、たんぱく質は目安まであと 30 g です。')},
+   ]},
+  {name:'吹き出しを残し、送り直すは吹き出しに1つ', desc:'吹き出しは残し、「会話として送り直す」は吹き出しの下に1つだけ置く（食事ではなく、送った文章への操作として）。カードには写真の代わりに「書いて記録」の小さな1行を添える。時刻が違うときは、吹き出しの下に「12:00 と 15:00 の食事にしました」のように、どこに入れたかを書く。押すと確かめる。',
+   figs:[
+    {cap:'<b>① 推定が済んだ。</b>同じ時刻なので、吹き出し・送り直す・カードが続く。', html: phone(TOP() + tl(DAYH('今日') + WROW('7:12 72.4 kg') + PHOTOMEAL() + ME(S1) + `<div class="under">${SENDBACK}</div>` + MEAL({...M_LUNCH, top:TXTMARK})) + COMP({weight:'done'}))},
+    {cap:'<b>② 食事が2つ、時刻が違う。</b>カードはそれぞれの時刻に。15:30 の吹き出しの下に、入れた先と送り直す。', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({...M_LUNCH12, top:TXTMARK}) + MEAL({...M_PROT, top:TXTMARK}) + ME(S2) + NOTE('12:00 と 15:00 の食事にしました') + `<div class="under">${SENDBACK}</div>`) + COMP({weight:'done'}))},
+    {cap:'<b>③ 前の日の食事。</b>今日の吹き出しの下に「昨日 21:00 の食事にしました」。', html: phone(TOP() + tl(DAYH('昨日') + MEAL({...M_RAMEN, time:'21:00', top:TXTMARK}) + DAYH('今日') + WROW('7:12 72.4 kg') + ME(S3) + NOTE('昨日 21:00 の食事にしました') + `<div class="under">${SENDBACK}</div>`) + COMP({weight:'done'}))},
+    {cap:'<b>押したとき。</b>B と同じ確かめ。', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({...M_LUNCH12, top:TXTMARK}) + MEAL({...M_PROT, top:TXTMARK}) + ME(S2) + NOTE('12:00 と 15:00 の食事にしました') + `<div class="under">${SENDBACK}</div>`) + COMP({weight:'done'}) + actionSheet('この文章から作った食事（2つ）を削除して、会話として送り直します。', '会話として送り直す'))},
+   ]},
+  ]});
+// 5. 少しずつ伸びる発言
+const Q_NIGHT = '夜は外で食べる予定。何を選べばいい？';
+const STREAM_MD = '夜は外で食べるなら、次のどちらかにすると、たんぱく質が目安に近づきます。\n\n- **焼き魚の定食**: ご飯を普通盛りにしても、残りの 980 kcal に収まります\n- **鶏の照り焼き丼**: 大盛りにすると目安を超えます\n\nここまでで脂質は 20 g なので、揚げ物を選んでも収まります。';
+const livePhone = (font) => phone(TOP() + `<div class="tl live"><div class="grow-top"></div>${DAYH('今日')}${WROW('7:12 72.4 kg')}${PHOTOMEAL()}${ME('昼はコンビニになりそう。何を選べばいい？', font)}${REPLY(R_LUNCH, font)}${MEAL({pic:true, ...M_LUNCH})}${ME(Q_NIGHT, font)}<div class="slot"></div></div>` + COMP({weight:'done'}), 'stream" data-font="' + font);
+const streamFigs = [
+  {cap:'<b>Subheadline（<code>DESIGN.md</code> の「Typography」）。</b>タイムラインのカードの本文と同じ大きさ。', html: livePhone('')},
+  {cap:'<b>Body（凍結済みの <code>07-components/README.md</code>）。</b>入力欄・一覧の行と同じ大きさ。吹き出しも Body にした。', html: livePhone('body')},
+];
+T.push({id:'stream', label:'伸びる発言', title:'少しずつ伸びる発言',
+  q:'発言の伸び方。最初の文字が届くまでの回る印から文への替わり方。伸びるあいだにタイムラインを一番下へ追うか、上へ動かしたら止めるか。太字と箇条書きを描くか。開き直すこと: 会話の文字は Subheadline（<code>DESIGN.md</code>）か Body（凍結済みの <code>07-components/README.md</code>）か（どの案も両方を並べた）。',
+  fixed:`決まっていること: 返ってきた発言は吹き出しにせず左の地の上に文で置く。作っているあいだは見守る要求で少しずつ届け、作り終えたら記録で置き換える。です・ます調で短く（目安 300 字）、箇条書きは少なく（<code>DESIGN.md</code>「返ってきた発言」、#29 の追記「会話」「指示に入れること」）。届く速さと区切りは作った値（最初の文字まで 1.2 秒、2〜10 文字ずつ 0.06〜0.35 秒おき）。下の設定は案によらず効く。伸びているあいだに電話の中を上へ動かすと、追い方の違いを試せる。`,
+  ctl:`<fieldset data-k="follow"><legend>下へ追う</legend><label><input type="radio" name="follow" value="stop" checked> 上へ動かしたら止める</label><label><input type="radio" name="follow" value="always"> いつも追う</label><label><input type="radio" name="follow" value="none"> 追わない</label></fieldset>
+  <fieldset data-k="fmt"><legend>書式</legend><label><input type="radio" name="fmt" value="md" checked> 太字と箇条書きを描く</label><label><input type="radio" name="fmt" value="plain"> 記号を外して文だけ</label><label><input type="radio" name="fmt" value="raw"> 記号のまま</label></fieldset>
+  <fieldset data-k="spin"><legend>回る印</legend><label><input type="radio" name="spin" value="replace" checked> 最初の文字で文に替える</label><label><input type="radio" name="spin" value="trail"> 作り終えるまで文の後ろに残す</label></fieldset>`,
+  variants:[
+  {name:'届いた分をそのまま出す', stream:'chunk', desc:'見守る要求で届いた分を、届いたときにそのまま足す。届き方のむらがそのまま見える（数文字ずつ、間があいたり詰まったり）。',
+   figs: streamFigs},
+  {name:'文字ずつ滑らかに出す', stream:'smooth', desc:'届いた分を手元にためて、1文字ずつ一定の速さ（0.03 秒に1文字）で出す。届くのが速いときは少し遅れて出る。足した文字はふわっと出す（視差効果を減らす設定では出さない）。',
+   figs: streamFigs},
+  {name:'文ごとにまとめて出す', stream:'sentence', desc:'「。」か改行まで届いたら、その文をまとめて出す。文の途中は見せない。1文目が出るまでは回る印のまま。',
+   figs: streamFigs},
+  ]});
+
+// 6. AI の返事の1行
+const Q1 = '昼はコンビニになりそう。何を選べばいい？';
+const Q2 = 'おにぎりは鮭と昆布どっちがいい？';
+const R2 = '鮭のほうがたんぱく質が少し多いので、今日は鮭がおすすめです。';
+const Q3 = '明日の朝は何を食べればいい？';
+const R3 = '昨日はたんぱく質が目安より 20 g 少なかったので、朝にゆで卵かヨーグルトを足すと近づきます。';
+function discFigs(line){
+  // line(reply, cls) は1行を添えた発言、line.before は会話の始まりに置く1行
+  const first = (r) => (line.before ? line.before : '') ;
+  return [
+    {cap:'<b>会話の最初の発言。</b>', html: phone(TOP() + tl(DAYH('今日') + WROW('7:12 72.4 kg') + PHOTOMEAL() + first() + ME(Q1) + line(R_LUNCH)) + COMP({weight:'done'}))},
+    {cap:'<b>同じ会話の2つ目からは添えない。</b>', html: phone(TOP() + tl(PHOTOMEAL() + first() + ME(Q1) + line(R_LUNCH) + ME(Q2) + REPLY(R2)) + COMP({weight:'done'}))},
+    {cap:'<b>会話が日をまたいだあとの最初の発言。</b>昨日始まった会話が続いている（あいだに食事も体重記録も無い）。今日の最初の発言にもう一度添える。', html: phone(TOP() + tl(DAYH('昨日') + (line.before ? line.before : '') + ME(Q2) + line(R2) + DAYH('今日') + (line.before ? line.before : '') + ME(Q3) + line(R3)) + COMP({weight:'todo'}))},
+  ];
+}
+const DISC = (name, desc, line, vo) => ({name, desc, figs: discFigs(line).map((f, i) => i === 0 ? {...f, cap: f.cap + `<span class="vo"><b>VoiceOver:</b> ${vo}</span>`} : f)});
+T.push({id:'disclosure', label:'AI の返事の1行', title:'AI の返事の1行',
+  q:'AI の返事であることを示す1行の置き場（発言の上、発言の下、会話のまとまりの始まり）、形（小さな灰色の1行、小さなラベル、アイコン）と文言、VoiceOver での読ませ方。開発者にとってかなり受け入れがたい決定なので、目立ち方の違う案を並べた。',
+  fixed:`決まっていること: 会話の最初の AI の発言と、会話が日をまたいだあと（発言の時刻の日で数える）の最初の AI の発言に添える。画面に「AI」と出さない決まりの例外で、文言には「AI」を含める（「自動で作った返事」は退けた）。ほかの場所には出さない（#29 の追記「会話」、ADR-0018、<code>DESIGN.md</code> の Don'ts）。`,
+  variants:[
+  DISC('発言の上に小さな灰色の1行', '発言のすぐ上に Caption 1・secondaryLabel で「AI の返事」。発言の見出しのように読める。', r => `<div class="ai1">AI の返事</div>` + REPLY(r), '「AI の返事。朝のたんぱく質が…」と、発言と1つにまとめて読む（1行を発言の頭に付ける）'),
+  DISC('発言の下に小さな灰色の1行', '発言を読み終えたところに「AI の返事」。発言を先に読ませ、1行は目立たない。', r => REPLY(r) + `<div class="ai1">AI の返事</div>`, '「朝のたんぱく質が…。AI の返事」と、発言の後ろに付けて1つで読む'),
+  (() => { const l = r => REPLY(r); l.before = '<div class="ai1 center">返事は AI が書きます</div>'; return DISC('会話の始まりに区切りの1行', '会話のまとまりの始まり（ユーザーの発言の上）に、細い線ではさんだ中央の1行「返事は AI が書きます」。会話の始まりを示す区切りも兼ねる（論点 7）。', l, '1行を独立した要素にし、「返事は AI が書きます」と見出しとして読む（ローターの見出しで飛べる）'); })(),
+  DISC('発言の頭に小さなラベル', '発言の1文字目の前に、推定の印と同じ枠線だけのラベル「AI」。行を増やさない。', r => REPLY(`<span class="ai-badge">AI</span> ${r}`), '「AI の返事。朝のたんぱく質が…」と読む（ラベルの文字「AI」ではなく、読み上げ用の文言を当てる）'),
+  DISC('アイコンを添えた1行', '発言の上に、SF Symbols の <code>sparkles</code> と「AI の返事」。iOS の Apple Intelligence の要約などと同じ手がかり。', r => `<div class="ai1">${I.sparkles()}AI の返事</div>` + REPLY(r), 'A と同じ。アイコンは読まない'),
+  ]});
+
+// 7. 会話のまとまりと区切り
+const AI1 = '<div class="ai1">AI の返事</div>';
+function convFigs(wrap, sep = ''){
+  const L = R_LUNCH;
+  return [
+    {cap:'<b>区切り。</b>2往復の会話のあと、写真の食事が入り、次の発言から新しい会話。', html: phone(TOP() + tl(PHOTOMEAL() + wrap(ME(Q1) + AI1 + REPLY(L) + ME(Q2) + REPLY(R2)) + sep + MEAL({pic:true, ...M_LUNCH}) + sep + wrap(ME(Q_NIGHT) + AI1 + REPLY(R_NIGHT))) + COMP({weight:'done'}))},
+    {cap:'<b>日の見出しをまたいで続く会話。</b>昨日 22:40 からの会話に、今日 7:00 の発言が続く（ヘルスケアから取り込んだ体重では区切らない）。今日の最初の発言に1行がもう一度付く。', html: phone(TOP() + tl(DAYH('昨日') + MEAL({pic:true, ...M_LUNCH, time:'19:30'}) + sep + wrap(ME('寝る前にお腹がすいた') + AI1 + REPLY('ここまでで 1,640 kcal なので、牛乳 1 杯くらいなら目安に収まります。') + DAYH('今日') + ME(Q3) + AI1 + REPLY(R3))) + COMP({weight:'todo'}))},
+    {cap:'<b>あとから入った食事と、ずれたとき。</b>12:30 と 13:00 の発言は1つの会話。あとで、撮っておいた 12:40 の写真を入れた。会話は組み直さないので、食事をはさんでも同じ会話のまま（13:00 の発言に1行は付かない）。', html: phone(TOP() + tl(DAYH('今日') + wrap(ME(Q1) + AI1 + REPLY(L) + MEAL({pic:'b', name:'おにぎり', time:'12:40', kcal:'180', p:'4', f:'2', c:'38'}) + ME(Q2) + REPLY(R2))) + COMP({weight:'done'}))},
+  ];
+}
+T.push({id:'group', label:'会話のまとまり', title:'会話のまとまりと区切り',
+  q:'タイムラインで会話のまとまりを見せるか（何も描かない、区切りに余白、細い線）。日の見出しをまたいで続く会話の見え方。あとから入った食事などで、会話のまとまりと見た目がずれたときの見え方。',
+  fixed:`決まっていること: 会話のまとまりの中に、ユーザーの発言と AI の発言を続けて並べる。あいだ（タイムラインの位置で決める）にユーザーが入れた食事か体重記録があれば新しい会話。知らせ、日の変わり目、ヘルスケアから取り込んだ体重では区切らない。入った会話は発言を入れたときに決め、あとから組み直さない（<code>06-layout.md</code>「ペインの割り当て」、#29 の追記「会話の区切り」）。AI の返事の1行は論点 6 の A で描いた。`,
+  variants:[
+  {name:'何も描かない', desc:'まとまりは描かず、並びだけ。区切りは間に入った食事が示し、新しい会話の始まりは AI の返事の1行が示す。', figs: convFigs(x => x)},
+  {name:'区切りに余白', desc:'会話のまとまりの前後を、まとまりの間（24）だけ空ける。まとまりの中は 8。', figs: convFigs(x => `<div class="conv gap">${x}</div>`)},
+  {name:'区切りに細い横線', desc:'会話が終わって次のものが入る所に、全幅の細い線（separator）。日の見出しの前には引かない。', figs: convFigs(x => `<div class="conv">${x}</div>`, '<div style="border-top:.5px solid var(--sep);margin:4px 0"></div>')},
+  {name:'まとまりの左に細い縦線', desc:'会話のまとまりの左の端に、Primary を薄くした縦線。日の見出しをまたいでも線は続く。あとから入った食事は線の内側に入り、同じ会話と分かる（ずれが見える）。', figs: convFigs(x => `<div class="conv rule">${x}</div>`)},
+  ]});
+
+// 8. 記録を直してほしい
+const QFIX = '昼のおにぎりは1個だった。直しておいて';
+const RFIX = '食事を開いて、おにぎりの量を 1個 に変えてください。合計と1日の丸も一緒に変わります。';
+const QFIX2 = '朝と昼のご飯は半分だった。直しておいて';
+const RFIX2 = 'それぞれの食事を開いて、ご飯の量を半分に変えてください。';
+const fixFigs = (ptr) => [
+  {cap:'<b>食事が1つ。</b>', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({pic:true, ...M_LUNCH}) + ME(QFIX) + AI1 + REPLY(RFIX) + ptr([['サラダチキン・おにぎり', '今日 12:20', '']])) + COMP({weight:'done'}))},
+  {cap:'<b>食事が2つ。</b>', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({pic:true, ...M_LUNCH}) + ME(QFIX2) + AI1 + REPLY(RFIX2) + ptr([['トースト・ゆで卵', '今日 7:40', 'b'], ['サラダチキン・おにぎり', '今日 12:20', '']])) + COMP({weight:'done'}))},
+  {cap:'<b>指し示す食事が消えていた。</b>あとで昼の食事を削除した。', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + ME(QFIX) + AI1 + REPLY(RFIX) + ptr([['サラダチキン・おにぎり', '今日 12:20', '', true]])) + COMP({weight:'done'}))},
+];
+T.push({id:'pointer', label:'直してほしいへの発言', title:'「記録を直してほしい」への発言と、指し示す食事',
+  q:'発言の下に、押して開ける食事をどう出すか（小さな食事の行、縮めた食事のカード、文字のボタン）。食事が複数のとき。指し示す食事が消えていたとき。',
+  fixed:`決まっていること: 指し示す食事を押して自分で直してほしいと頼む（「直しました」とは言わない）。発言は指し示す食事の ID（今日と昨日の食事、複数もありうる）を返せる。指し示す食事は作り終えて記録が届いたときに出し、伸びているあいだは出さない（#29 の追記「記録を直してほしいと書かれたとき」）。押すと食事の画面へ潜る。`,
+  variants:[
+  {name:'小さな食事の行', desc:'発言の下に、写真の縮小・名前・時刻・› の白い行（44 以上）。複数なら縦に並べる。消えていたら、押せない灰色の枠だけの行「削除した食事」に変える。',
+   figs: fixFigs(list => `<div class="ptrs">${list.map(([n, t, ph, gone]) => gone ? '<div class="ptr gone">削除した食事</div>' : `<div class="ptr"><span class="th ${ph}"></span><div><b>${n}</b><span>${t}</span></div><span class="disc">›</span></div>`).join('')}</div>`)},
+  {name:'縮めた食事のカード', desc:'発言の下に、自分の記録と同じ薄い Primary の地のカードを縮めて置く（左に寄せる）。タイムラインの食事のカードと同じものだと分かる。複数なら縦に並べる。消えていたら出さない。',
+   figs: fixFigs(list => list.filter(x => !x[3]).map(([n, t, ph]) => `<div class="mini"><div class="pic" ${ph === 'b' ? 'style="background:linear-gradient(135deg,#e7c889,#b87a3a 60%,#f1e3c2)"' : ''}></div><div class="r"><div><b>${n}</b><span>${t}</span></div><span class="disc">›</span></div></div>`).join(''))},
+  {name:'文字のボタン', desc:'発言の下に、Primary の文字のボタン「12:20 の食事を開く」。複数なら横に並べ、入らなければ折り返す。消えていたら押せない（無効の表示）。',
+   figs: fixFigs(list => `<div class="under left" style="gap:24px;flex-wrap:wrap">${list.map(([n, t, ph, gone]) => `<span class="tbtn" ${gone ? 'style="opacity:.35"' : ''}>${t.replace('今日 ', '')} の食事を開く</span>`).join('')}</div>`)},
+  ]});
+
+// 9. 作れなかった・回数切れ
+const QF = '夜は外で食べる予定。何を選べばいい？';
+const failFigs = (fail, limit, pressed) => [
+  {cap:'<b>作れなかった。</b>', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({pic:true, ...M_LUNCH}) + ME(QF) + fail) + COMP({weight:'done'}))},
+  {cap:'<b>回数切れ。</b>', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({pic:true, ...M_LUNCH}) + ME(QF) + limit) + COMP({weight:'done'}))},
+  {cap:'<b>「送り直す」を押したあと。</b>ボタンの中に、文字と並べて回る印。作れたら1行とボタンが消え、発言が来る。', html: phone(TOP() + tl(DAYH('今日') + PHOTOMEAL() + MEAL({pic:true, ...M_LUNCH}) + ME(QF) + pressed) + COMP({weight:'done'}))},
+];
+const LINE_R = (t, b) => `<div class="under" style="align-items:center;gap:12px;width:auto"><span class="note">${t}</span>${b}</div>`;
+T.push({id:'failed', label:'作れなかった・回数切れ', title:'作れなかった・回数切れ',
+  q:'作れなかったことと回数切れを伝える1行の置き場と文言（食事の推定の「推定できませんでした」「今日はもう推定できません」とそろえるか）。「送り直す」の形（文字のボタン、灰色のボタン）と、押したあとの見え方。',
+  fixed:`決まっていること: 作れなかった送った文章と回数切れの送った文章には「送り直す」を出す。押すと作り直し、回数に1回と数える。押した操作の応答待ちは、ボタンの中に文字と並べて回る印（#29 の追記「会話」、<code>DESIGN.md</code>「待っている表示」）。回数の数値は試作に入れない。`,
+  variants:[
+  {name:'吹き出しの下、右に1行と文字のボタン', desc:'送った文章の続きとして、吹き出しの右下に灰色の1行と文字のボタン「送り直す」。受け付けなかった1行と同じく右に寄せる。文言は推定の言い回しにそろえる（「返事を作れませんでした」「今日はもう返事を作れません」）。',
+   figs: failFigs(LINE_R('返事を作れませんでした', '<span class="tbtn">送り直す</span>'), LINE_R('今日はもう返事を作れません', '<span class="tbtn">送り直す</span>'), LINE_R('返事を作れませんでした', '<span class="tbtn"><span class="spinner s"></span>送り直す</span>'))},
+  {name:'左の地に1行と灰色のボタン', desc:'発言が来るはずだった左の地に、灰色の1行と、その下に灰色のボタン「送り直す」。発言の代わりと分かる。',
+   figs: failFigs(NOTE('返事を作れませんでした', 'left') + '<div class="under left"><span class="btn gray sm">送り直す</span></div>', NOTE('今日はもう返事を作れません', 'left') + '<div class="under left"><span class="btn gray sm">送り直す</span></div>', NOTE('返事を作れませんでした', 'left') + '<div class="under left"><span class="btn gray sm"><span class="spinner s"></span>送り直す</span></div>')},
+  {name:'左の地に、次にできることまで書く', desc:'B の置き場で、文言に次にできることを足す（推定の「今日はもう推定できないため、明日推定します」と同じ形）。回数切れは自動では送り直さないので「明日送り直せます」。ボタンは文字のボタン。',
+   figs: failFigs(NOTE('返事を作れませんでした。送り直すと、もう一度作ります。', 'left') + '<div class="under left"><span class="tbtn">送り直す</span></div>', NOTE('今日はもう返事を作れないため、明日送り直してください。', 'left') + '<div class="under left"><span class="tbtn">送り直す</span></div>', NOTE('返事を作れませんでした。送り直すと、もう一度作ります。', 'left') + '<div class="under left"><span class="tbtn"><span class="spinner s"></span>送り直す</span></div>')},
+  ]});
+
+// ── 描く ──
+const main = document.getElementById('main');
+main.innerHTML = T.map(t => `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${t.ctl ? `<form class="ctl" onsubmit="return false">${t.ctl}</form>` : ''}${t.variants.map(v => `<div class="variant" data-v="${v.name}"${v.stream ? ` data-stream="${v.stream}"` : ''}><div class="vhead"><b>${v.name}</b><span>${v.desc}</span>${v.stream ? '<button type="button" class="replay">もう一度流す</button>' : ''}</div><div class="states">${v.figs.map(f => `<figure>${f.html}<figcaption>${f.cap}</figcaption></figure>`).join('')}</div></div>`).join('')}</section>`).join('');
+
+// ── 少しずつ伸びる発言（試作の道具） ──
+// 届き方は毎回同じにする（決まった種の乱数）
+function chunksOf(text){
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const out = [];
+  let i = 0, t = 1200;
+  while (i < text.length){
+    const n = 2 + Math.floor(rnd() * 9);
+    out.push({at: t, upto: Math.min(text.length, i + n)});
+    i += n;
+    t += 60 + Math.floor(rnd() * 290);
+  }
+  return out;
+}
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// 届いた途中の文を描く。fmt: md（太字と箇条書き）、plain（記号を外す）、raw（記号のまま）
+function renderText(src, fmt){
+  if (fmt === 'raw') return `<p style="white-space:pre-wrap">${esc(src)}</p>`;
+  const inline = s => {
+    let out = '', bold = false;
+    const parts = esc(s).split('**');
+    parts.forEach((p, i) => { if (i) bold = !bold; out += fmt === 'md' && bold ? `<b>${p}</b>` : p; });
+    // 閉じていない ** の途中（「*」1つ）は描かない
+    return out.replace(/\*$/, '');
+  };
+  return src.split('\n\n').map(block => {
+    const lines = block.split('\n').filter(l => l !== '');
+    if (lines.length && lines.every(l => l.startsWith('- ') || l === '-')){
+      if (fmt === 'md') return `<ul>${lines.map(l => `<li>${inline(l.slice(2))}</li>`).join('')}</ul>`;
+      return lines.map(l => `<p>・${inline(l.slice(2))}</p>`).join('');
+    }
+    return `<p>${inline(block)}</p>`;
+  }).join('');
+}
+const ctlValue = k => (document.querySelector(`input[name="${k}"]:checked`) || {}).value;
+let streamToken = 0;
+function runStreams(variant){
+  const token = ++streamToken;
+  const mode = variant.dataset.stream;
+  const chunks = chunksOf(STREAM_MD);
+  const phones = [...variant.querySelectorAll('.phone.stream')];
+  phones.forEach(ph => {
+    const tlEl = ph.querySelector('.tl.live');
+    const slot = ph.querySelector('.slot');
+    const font = ph.dataset.font;
+    let received = 0, shown = 0, done = false;
+    tlEl.userUp = false;
+    tlEl.onscroll = () => {
+      if (tlEl.prog){ tlEl.prog = false; return; }
+      tlEl.userUp = tlEl.scrollHeight - tlEl.scrollTop - tlEl.clientHeight > 24;
+    };
+    const follow = (force) => {
+      const f = ctlValue('follow');
+      if (force || f === 'always' || (f === 'stop' && !tlEl.userUp)){ tlEl.prog = true; tlEl.scrollTop = tlEl.scrollHeight; }
+    };
+    const draw = () => {
+      if (token !== streamToken) return;
+      let upto = mode === 'smooth' ? shown : received;
+      if (mode === 'sentence' && !done){
+        const part = STREAM_MD.slice(0, received);
+        upto = Math.max(part.lastIndexOf('。'), part.lastIndexOf('\n')) + 1;
+      }
+      const text = STREAM_MD.slice(0, upto);
+      const spin = '<div class="wait left"><span class="spinner s"></span></div>';
+      const trail = ctlValue('spin') === 'trail' && !(done && (mode !== 'smooth' || shown >= STREAM_MD.length));
+      slot.innerHTML = text ? REPLY(renderText(text, ctlValue('fmt')), font) + (trail ? spin : '') : spin;
+      follow(false);
+    };
+    slot.innerHTML = '';
+    follow(true);
+    draw();
+    chunks.forEach((c, i) => setTimeout(() => {
+      if (token !== streamToken) return;
+      received = c.upto;
+      if (i === chunks.length - 1) done = true;
+      if (mode !== 'smooth') draw();
+    }, c.at));
+    if (mode === 'smooth'){
+      const tick = () => {
+        if (token !== streamToken) return;
+        if (shown < received){ shown++; draw(); }
+        if (!(done && shown >= STREAM_MD.length)) setTimeout(tick, 30); else draw();
+      };
+      setTimeout(tick, 30);
+    }
+  });
+}
+document.querySelectorAll('.replay').forEach(b => b.addEventListener('click', () => runStreams(b.closest('.variant'))));
+document.querySelectorAll('.ctl input').forEach(x => x.addEventListener('change', () => {
+  const v = [...document.querySelectorAll('.variant[data-stream]')].find(v => !v.hidden && !v.closest('.topic').hidden);
+  if (v) runStreams(v);
+}));
+
+// ── 論点と案の切り替え（試作の道具） ──
+const topics = [...document.querySelectorAll('.topic')];
+const nav = document.getElementById('topics');
+let ti = 0, vi = 0;
+topics.forEach((t, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = `${i + 1}. ${t.dataset.label}`;
+  b.addEventListener('click', () => show(i, 0, true));
+  nav.appendChild(b);
+});
+function variants(){ return [...topics[ti].querySelectorAll('.variant')]; }
+function show(t, v, scroll){
+  ti = (t + topics.length) % topics.length;
+  const vs = variants();
+  vi = (v + vs.length) % vs.length;
+  topics.forEach((x, i) => { x.hidden = i !== ti; });
+  vs.forEach((x, i) => { x.hidden = i !== vi; });
+  [...nav.children].forEach((b, i) => b.setAttribute('aria-current', String(i === ti)));
+  document.getElementById('lab').innerHTML = `<b>${String.fromCharCode(65 + vi)}</b>${vs[vi].dataset.v}（${vi + 1}/${vs.length}）`;
+  try { history.replaceState(null, '', `#${topics[ti].dataset.topic}-${vi + 1}`); } catch (e) {}
+  if (scroll) topics[ti].scrollIntoView({block: 'start'});
+  streamToken++;
+  if (vs[vi].dataset.stream) runStreams(vs[vi]);
+}
+document.getElementById('prev').addEventListener('click', () => show(ti, vi - 1));
+document.getElementById('next').addEventListener('click', () => show(ti, vi + 1));
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') show(ti, vi - 1);
+  if (e.key === 'ArrowRight') show(ti, vi + 1);
+});
+(() => {
+  const m = location.hash.match(/^#([a-z-]+?)-(\d+)$/);
+  const t = m ? topics.findIndex(x => x.dataset.topic === m[1]) : -1;
+  show(t < 0 ? 0 : t, m && t >= 0 ? +m[2] - 1 : 0);
+})();
+</script>
