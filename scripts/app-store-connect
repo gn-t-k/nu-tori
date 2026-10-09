@@ -8,11 +8,40 @@ const { readFileSync } = require("node:fs");
 const { homedir } = require("node:os");
 const { join } = require("node:path");
 
-const api = "https://api.appstoreconnect.apple.com";
+const main = async () => {
+  const [command, target, ...flags] = process.argv.slice(2);
+  if (command !== "get" || !target?.startsWith("/v")) {
+    throw new Error(
+      "使い方: scripts/app-store-connect get '/v1/...' [--all]（GET だけ。--all で links.next をたどる）",
+    );
+  }
+  const keyId = process.env.NU_TORI_ASC_KEY_ID;
+  const issuerId = process.env.NU_TORI_ASC_ISSUER_ID;
+  if (!keyId || !issuerId) {
+    throw new Error("Not authenticated: NU_TORI_ASC_KEY_ID と NU_TORI_ASC_ISSUER_ID が無い");
+  }
+  const privateKey = loadPrivateKey(keyId);
 
-const fail = (message) => {
-  console.error(message);
-  process.exit(1);
+  const followAll = flags.includes("--all");
+  let url = toApiUrl(target);
+  const merged = { data: [], included: [] };
+  while (url) {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${signShortLivedJwt({ keyId, issuerId, privateKey })}` },
+    });
+    const body = await response.text();
+    if (!response.ok) throw new Error(`${response.status} ${body}`);
+    const page = JSON.parse(body);
+    if (!followAll) {
+      console.log(JSON.stringify(page, null, 2));
+      return;
+    }
+    merged.data.push(...[page.data].flat());
+    merged.included.push(...(page.included ?? []));
+    url = page.links?.next ? toApiUrl(page.links.next) : null;
+  }
+  console.log(JSON.stringify(merged, null, 2));
 };
 
 const loadPrivateKey = (keyId) => {
@@ -28,15 +57,15 @@ const loadPrivateKey = (keyId) => {
   const path = join(homedir(), ".appstoreconnect", "private_keys", `AuthKey_${keyId}.p8`);
   try {
     return createPrivateKey(readFileSync(path, "utf8"));
-  } catch {
-    return fail(`Not authenticated: NU_TORI_ASC_PRIVATE_KEY も ${path} も無い`);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`Not authenticated: NU_TORI_ASC_PRIVATE_KEY も ${path} も無い`);
+    }
+    throw error;
   }
 };
 
-const keyId = process.env.NU_TORI_ASC_KEY_ID;
-const issuerId = process.env.NU_TORI_ASC_ISSUER_ID;
-
-const token = (privateKey) => {
+const signShortLivedJwt = ({ keyId, issuerId, privateKey }) => {
   const now = Math.floor(Date.now() / 1000);
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
   // 一度きりの要求には 2 分が適当と Apple が書くので、呼ぶたびに短い寿命で作る
@@ -55,41 +84,14 @@ const token = (privateKey) => {
 
 // キーの役割 Developer はフィードバックを消せるので、書き込みと、ほかのホストへの送信をここで断る
 const toApiUrl = (value) => {
+  const api = new URL("https://api.appstoreconnect.apple.com");
   const url = new URL(value, api);
-  if (url.origin !== api) fail(`api.appstoreconnect.apple.com の外へは送らない: ${url.origin}`);
+  if (url.origin !== api.origin) throw new Error(`${api.host} の外へは送らない: ${url.origin}`);
   return url;
 };
 
-const main = async () => {
-  const [command, target, ...flags] = process.argv.slice(2);
-  if (command !== "get" || !target?.startsWith("/v")) {
-    fail("使い方: scripts/app-store-connect get '/v1/...' [--all]（GET だけ。--all で links.next をたどる）");
-  }
-  if (!keyId || !issuerId) {
-    fail("Not authenticated: NU_TORI_ASC_KEY_ID と NU_TORI_ASC_ISSUER_ID が無い");
-  }
-  const privateKey = loadPrivateKey(keyId);
-
-  const followAll = flags.includes("--all");
-  let url = toApiUrl(target);
-  const merged = { data: [], included: [] };
-  while (url) {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token(privateKey)}` },
-    });
-    const body = await response.text();
-    if (!response.ok) fail(`${response.status} ${body}`);
-    const page = JSON.parse(body);
-    if (!followAll) {
-      console.log(JSON.stringify(page, null, 2));
-      return;
-    }
-    merged.data.push(...[page.data].flat());
-    merged.included.push(...(page.included ?? []));
-    url = page.links?.next ? toApiUrl(page.links.next) : null;
-  }
-  console.log(JSON.stringify(merged, null, 2));
-};
-
-main().catch((error) => fail(String(error)));
+// process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
+main().catch((error) => {
+  console.error(error.message ?? String(error));
+  process.exitCode = 1;
+});
