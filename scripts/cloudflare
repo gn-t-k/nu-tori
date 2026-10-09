@@ -16,6 +16,11 @@ command="$1"
 environment="$2"
 shift 2
 
+case "$command" in
+    logs | metrics) ;;
+    *) usage ;;
+esac
+
 # 環境に既定を置かない。付け忘れで、開発用と本番を取り違えないため
 case "$environment" in
     development) worker="nu-tori-development" ;;
@@ -23,30 +28,41 @@ case "$environment" in
     *) usage ;;
 esac
 
-if [ -z "${NU_TORI_CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-    echo "Not authenticated: NU_TORI_CLOUDFLARE_ACCOUNT_ID が無い" >&2
+# 何分前・何時間前は正の整数だけを受ける。分を省いて JSON を渡すと、JSON が分として読まれるため
+since="${1:-}"
+case "$since" in
+    '') ;;
+    0 | *[!0-9]*) usage ;;
+esac
+
+# デプロイ用の CLOUDFLARE_API_TOKEN（書き込みの権限）は使わない
+if [ -z "${NU_TORI_CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${NU_TORI_CLOUDFLARE_READ_TOKEN:-}" ]; then
+    echo "Not authenticated: NU_TORI_CLOUDFLARE_ACCOUNT_ID と NU_TORI_CLOUDFLARE_READ_TOKEN が要る" >&2
     exit 1
 fi
 api="https://api.cloudflare.com/client/v4"
 account="$api/accounts/$NU_TORI_CLOUDFLARE_ACCOUNT_ID"
 
-# デプロイ用の CLOUDFLARE_API_TOKEN（書き込みの権限）は使わない。無ければ付けずに送り、Claude Code on the web の API credentials に付けてもらう
-auth=()
-if [ -n "${NU_TORI_CLOUDFLARE_READ_TOKEN:-}" ]; then
-    auth=(-H "Authorization: Bearer $NU_TORI_CLOUDFLARE_READ_TOKEN")
-fi
-
 post_json() {
-    # macOS の bash 3.2 は、set -u のもとで空の配列を "${auth[@]}" と書くと落ちるので、${auth[@]+...} で囲む
-    curl --silent --show-error --fail-with-body ${auth[@]+"${auth[@]}"} \
+    curl --silent --show-error --fail-with-body -H "Authorization: Bearer $NU_TORI_CLOUDFLARE_READ_TOKEN" \
         -H "Content-Type: application/json" --data @- "$1"
+}
+
+# GraphQL は、問い合わせの誤りや権限の不足を HTTP 200 と errors で返すので、errors があれば失敗として抜ける
+fail_on_graphql_errors() {
+    node -e '
+        let body = "";
+        process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
+            console.log(body);
+            if (JSON.parse(body).errors?.length) process.exitCode = 1;
+        });'
 }
 
 case "$command" in
     logs)
         extra="${2:-}"
         [ -n "$extra" ] || extra='{}'
-        WORKER="$worker" MINUTES="${1:-60}" EXTRA="$extra" node -e '
+        WORKER="$worker" MINUTES="${since:-60}" EXTRA="$extra" node -e '
             const { view = "events", limit = 100, filters = [], ...parameters } = JSON.parse(process.env.EXTRA);
             const now = Date.now();
             console.log(JSON.stringify({
@@ -62,7 +78,7 @@ case "$command" in
             }));' | post_json "$account/workers/observability/telemetry/query"
         ;;
     metrics)
-        ACCOUNT="$NU_TORI_CLOUDFLARE_ACCOUNT_ID" WORKER="$worker" HOURS="${1:-24}" node -e '
+        ACCOUNT="$NU_TORI_CLOUDFLARE_ACCOUNT_ID" WORKER="$worker" HOURS="${since:-24}" node -e '
             const end = new Date();
             const start = new Date(end - Number(process.env.HOURS) * 3_600_000);
             console.log(JSON.stringify({
@@ -76,7 +92,6 @@ case "$command" in
                     } }
                 }`,
                 variables: { accountTag: process.env.ACCOUNT, scriptName: process.env.WORKER, start: start.toISOString(), end: end.toISOString() },
-            }));' | post_json "$api/graphql"
+            }));' | post_json "$api/graphql" | fail_on_graphql_errors
         ;;
-    *) usage ;;
 esac
