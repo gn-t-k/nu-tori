@@ -54,7 +54,12 @@ fail_on_graphql_errors() {
         let body = "";
         process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
             console.log(body);
-            if (JSON.parse(body).errors?.length) process.exitCode = 1;
+            // つながらない・5xx の HTML のように JSON でない本文は、原因が JSON の解釈に見えないよう、本文だけ出して失敗にする
+            try {
+                if (JSON.parse(body).errors?.length) process.exitCode = 1;
+            } catch {
+                process.exitCode = 1;
+            }
         });'
 }
 
@@ -94,4 +99,6 @@ case "$command" in
                 variables: { accountTag: process.env.ACCOUNT, scriptName: process.env.WORKER, start: start.toISOString(), end: end.toISOString() },
             }));' | post_json "$api/graphql" | fail_on_graphql_errors
         ;;
+    # 先頭の確かめと一覧がずれたとき、何もせず 0 で抜けないようにする
+    *) usage ;;
 esac
