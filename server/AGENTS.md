@@ -36,6 +36,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 受け口のスキーマは要求の形だけを確かめる。受け付ける値の範囲はドメイン層で確かめる
 - 想定した失敗（`docs/agents/languages/typescript.md` の「失敗の扱い」）を状態コードに直すのは受け口で行う
 - 失敗した段（R2、LLM の提供元の呼び出しなど）は、例外の `stage` の欄に持たせる。受け口の要求ごとのログ（`src/http/observe-request.ts`）が、例外の名前と一緒に出す
+- 開発用と本番で出たログと、呼び出しの数・誤り・CPU 時間を読むときは、`docs/agents/tooling.md` の「Cloudflare を読む」を読む
 - Durable Object の RPC を越えたエラーには、`name`・独自のフィールド・`cause` が届き、`instanceof` は効かない（互換フラグ `enhanced_error_serialization`。`compatibility_date` が 2026-04-21 以降なら既定で有効）。`legacy_error_serialization` は足さない。足すと `name` が `"Error"` になり、独自のフィールドも消える
 
 **Why:** ドメイン層を基盤から切り離しておくと、基盤を移るとき（出口は ADR-0012）に書き直すのが基盤に固有の層だけで済む。
