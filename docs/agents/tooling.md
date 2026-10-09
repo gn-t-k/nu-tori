@@ -73,7 +73,7 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - 鍵は読むだけにする。個人の API キーで、スコープは `query:read` だけ（preset「Performing analytics queries」）、届く範囲は nu-tori のプロジェクトだけにする（この鍵で `HogQLQuery` と `RetentionQuery` が通ることを 2026-10-09 に確かめた）。`query:read` でも `persons` の表は読めるので、ID を外に出さないことは上の決まりで守る。Worker が人を消す `POSTHOG_PERSONAL_API_KEY` は使わない
   - Mac: シェルの設定に `NU_TORI_POSTHOG_PROJECT_ID`（プロジェクトの URL の数字）と `NU_TORI_POSTHOG_READ_KEY` を書く
   - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_POSTHOG_READ_KEY` は Runtime Secret にする。Claude Code on the web のネットを Custom にしているなら、`eu.posthog.com` を足す
-- Query API はいまは無料だが、PostHog はいずれ課金すると書いている。上限はプロジェクトごとに 1 時間 2,400 回・1 分 240 回・同時 3 本・実行 10 秒で、ほかに鍵ごとに 1 時間に読む量の予算がある（量は公開されていない）。どれかを超えると `429` が返り、読む量の予算なら `api_queries_budget_exceeded` が付く
+- Query API はいまは無料だが、PostHog はいずれ課金すると書いている。上限はプロジェクトごとに 1 時間 2,400 回・1 分 240 回・同時 3 本・実行 10 秒で、ほかに個人の API キーで読む分には、プロジェクトごとに 1 時間に読む量の予算がある（量は公開されていない）。どれかを超えると `429` が返り、読む量の予算なら `api_queries_budget_exceeded` が付く
 - プロジェクトの ID か鍵の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
 
 ## CI
