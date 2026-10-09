@@ -12,6 +12,8 @@ EOF
     exit 2
 }
 [ $# -eq 0 ] || usage
+# 標準入力をつながずに打つと、node が入力を待ったまま黙って止まるため
+[ ! -t 0 ] || usage
 
 # 読むだけ（query:read）の鍵を、Worker が人を消す鍵（POSTHOG_PERSONAL_API_KEY）と混ざらない名前で受け取る
 if [ -z "${NU_TORI_POSTHOG_PROJECT_ID:-}" ] || [ -z "${NU_TORI_POSTHOG_READ_KEY:-}" ]; then
