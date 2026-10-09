@@ -62,6 +62,20 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - AI Gateway のログは、まだ読まない（ゲートウェイが無い）。ゲートウェイを作るときに、トークンに `AI Gateway Read` を足し、スクリプトにゲートウェイの ID とログを読む口を足す。そのときも、要求と応答の本文（`request_head`・`response_head`、`.../logs/<id>/request`・`/response`）は読まない
 - アカウント ID かトークンの無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
 
+## PostHog を読む
+
+利用の数（出来事の件数、続き具合、ファネル、変えた前後の差）は、`scripts/posthog-query` で読む。PostHog の Query API を直接呼び、置き場（EU）と鍵の受け取り方は、このスクリプトの1か所に書く。MCP の設定には PostHog を置かない。調べた経緯は `docs/research/posthog-agent-access.md`。
+
+- 読む: 標準入力に Query API の query を JSON で渡す。例 `echo '{"kind":"HogQLQuery","query":"SELECT count() FROM events WHERE timestamp >= now() - INTERVAL 7 DAY"}' | scripts/posthog-query`。続き具合は `RetentionQuery`、ファネルは `FunnelsQuery`、ほかは `HogQLQuery`（SQL）。率は応答に無いので、件数から自分で割る
+- PostHog に送るのは本番だけ（サーバーも、iOS のリリースビルドだけ）なので、環境は名指さない。読んだのは本番の数になる
+- 期間は8週ほどに絞り、人の一覧と出来事の行（`EventsQuery`、`SELECT *`）は取らない
+- 読んだ中身のうち、`distinct_id`（アカウント ID）、`person_id`、`$session_id`・`$device_id`・`$anon_distinct_id` などの ID、人の属性、1人ごとの行は、公開の Issue・PR・コメントに貼らない。貼るのは集計（件数・率・差・中央値の秒、版・週ごとの内訳）までで、1〜2人の内訳は「数人」とまとめる
+- 鍵は読むだけにする。個人の API キーで、スコープは `query:read` だけ（preset「Performing analytics queries」）、届く範囲は nu-tori のプロジェクトだけにする（この鍵で `HogQLQuery` と `RetentionQuery` が通ることを 2026-10-09 に確かめた）。`query:read` でも `persons` の表は読めるので、ID を外に出さないことは上の決まりで守る。Worker が人を消す `POSTHOG_PERSONAL_API_KEY` は使わない
+  - Mac: シェルの設定に `NU_TORI_POSTHOG_PROJECT_ID`（プロジェクトの URL の数字）と `NU_TORI_POSTHOG_READ_KEY` を書く
+  - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_POSTHOG_READ_KEY` は Runtime Secret にする。Claude Code on the web のネットを Custom にしているなら、`eu.posthog.com` を足す
+- Query API はいまは無料だが、PostHog はいずれ課金すると書いている。上限はプロジェクトごとに 1 時間 2,400 回・1 分 240 回・同時 3 本・実行 10 秒で、ほかに個人の API キーで読む分には、プロジェクトごとに 1 時間に読む量の予算がある（量は公開されていない）。どれかを超えると `429` が返り、読む量の予算なら `api_queries_budget_exceeded` が付く
+- プロジェクトの ID か鍵の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
+
 ## CI
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# エージェントと人が PostHog の数（件数・続き具合・ファネル・前後の差）を読む。Query API を直接呼び、置き場と鍵の受け取り方をここ1か所に置く
+set -euo pipefail
+
+usage() {
+    cat >&2 <<'EOF'
+使い方:
+  scripts/posthog-query < query.json
+    標準入力に Query API の query の中身を JSON で渡す（{"kind":"HogQLQuery","query":"SELECT ..."} など）
+    例: echo '{"kind":"HogQLQuery","query":"SELECT count() FROM events WHERE timestamp >= now() - INTERVAL 7 DAY"}' | scripts/posthog-query
+EOF
+    exit 2
+}
+[ $# -eq 0 ] || usage
+# 標準入力をつながずに打つと、node が入力を待ったまま黙って止まるため
+[ ! -t 0 ] || usage
+
+# 読むだけ（query:read）の鍵を、Worker が人を消す鍵（POSTHOG_PERSONAL_API_KEY）と混ざらない名前で受け取る
+if [ -z "${NU_TORI_POSTHOG_PROJECT_ID:-}" ] || [ -z "${NU_TORI_POSTHOG_READ_KEY:-}" ]; then
+    echo "Not authenticated: NU_TORI_POSTHOG_PROJECT_ID と NU_TORI_POSTHOG_READ_KEY が要る" >&2
+    exit 1
+fi
+case "$NU_TORI_POSTHOG_PROJECT_ID" in
+    *[!0-9]*)
+        echo "NU_TORI_POSTHOG_PROJECT_ID はプロジェクトの URL の数字にする" >&2
+        exit 1
+        ;;
+esac
+
+# name は PostHog の query_log に残り、エージェントの問い合わせを後から見分けられる
+body="$(node -e '
+    let input = "";
+    process.stdin.on("data", (chunk) => (input += chunk)).on("end", () => {
+        let query;
+        try {
+            query = JSON.parse(input);
+        } catch {
+            console.error("標準入力が JSON でない");
+            process.exit(2);
+        }
+        if (typeof query?.kind !== "string") {
+            console.error("query に kind が無い");
+            process.exit(2);
+        }
+        console.log(JSON.stringify({ name: "agent: scripts/posthog-query", query }));
+    });')"
+
+# 読む API は取り込み（eu.i.posthog.com）と別の host
+printf '%s' "$body" | curl --silent --show-error --fail-with-body \
+    -H "Authorization: Bearer $NU_TORI_POSTHOG_READ_KEY" -H "Content-Type: application/json" --data @- \
+    "https://eu.posthog.com/api/projects/$NU_TORI_POSTHOG_PROJECT_ID/query/"
