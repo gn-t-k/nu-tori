@@ -1,0 +1,100 @@
+#!/usr/bin/env node
+// エージェントと人が App Store Connect API を読むだけで呼ぶ。GET だけを送り、鍵の読み方と JWT の作り方をここ1か所に置く
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { createPrivateKey, sign } = require("node:crypto");
+const { readFileSync } = require("node:fs");
+const { homedir } = require("node:os");
+const { join } = require("node:path");
+
+const main = async () => {
+  const [command, target, ...flags] = process.argv.slice(2);
+  if (command !== "get" || !target?.startsWith("/v")) {
+    throw new ExpectedFailure(
+      "使い方: scripts/app-store-connect get '/v1/...' [--all]（GET だけ。--all で links.next をたどる）",
+    );
+  }
+  const keyId = process.env.NU_TORI_ASC_KEY_ID;
+  const issuerId = process.env.NU_TORI_ASC_ISSUER_ID;
+  if (!keyId || !issuerId) {
+    throw new ExpectedFailure("Not authenticated: NU_TORI_ASC_KEY_ID と NU_TORI_ASC_ISSUER_ID が無い");
+  }
+  const privateKey = loadPrivateKey(keyId);
+
+  const followAll = flags.includes("--all");
+  let url = toApiUrl(target);
+  const merged = { data: [], included: [] };
+  while (url) {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${signShortLivedJwt({ keyId, issuerId, privateKey })}` },
+    });
+    const body = await response.text();
+    if (!response.ok) throw new ExpectedFailure(`${response.status} ${body}`);
+    const page = JSON.parse(body);
+    if (!followAll) {
+      console.log(JSON.stringify(page, null, 2));
+      return;
+    }
+    merged.data.push(...[page.data].flat());
+    merged.included.push(...(page.included ?? []));
+    url = page.links?.next ? toApiUrl(page.links.next) : null;
+  }
+  console.log(JSON.stringify(merged, null, 2));
+};
+
+const loadPrivateKey = (keyId) => {
+  const inline = process.env.NU_TORI_ASC_PRIVATE_KEY;
+  if (inline) {
+    // クラウドの秘密の値は改行を持てないことがあるので、base64 の1行を正にし、\n を書いた PEM も受ける
+    const pem = inline.includes("BEGIN")
+      ? inline.replaceAll("\\n", "\n")
+      : Buffer.from(inline, "base64").toString("utf8");
+    return createPrivateKey(pem);
+  }
+  // altool が探す場所の1つにそろえる
+  const path = join(homedir(), ".appstoreconnect", "private_keys", `AuthKey_${keyId}.p8`);
+  try {
+    return createPrivateKey(readFileSync(path, "utf8"));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new ExpectedFailure(`Not authenticated: NU_TORI_ASC_PRIVATE_KEY も ${path} も無い`);
+    }
+    throw error;
+  }
+};
+
+const signShortLivedJwt = ({ keyId, issuerId, privateKey }) => {
+  const now = Math.floor(Date.now() / 1000);
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  // 一度きりの要求には 2 分が適当と Apple が書くので、呼ぶたびに短い寿命で作る
+  const unsigned = `${encode({ alg: "ES256", kid: keyId, typ: "JWT" })}.${encode({
+    iss: issuerId,
+    iat: now,
+    exp: now + 120,
+    aud: "appstoreconnect-v1",
+  })}`;
+  const signature = sign("sha256", Buffer.from(unsigned), {
+    key: privateKey,
+    dsaEncoding: "ieee-p1363",
+  });
+  return `${unsigned}.${signature.toString("base64url")}`;
+};
+
+// 書き込みは main が GET だけを送って断る。漏れた要求がほかのホストへ鍵つきで出ないよう、ここで断る
+const toApiUrl = (value) => {
+  const api = new URL("https://api.appstoreconnect.apple.com");
+  const url = new URL(value, api);
+  if (url.origin !== api.origin) throw new ExpectedFailure(`${api.host} の外へは送らない: ${url.origin}`);
+  return url;
+};
+
+// 自分で出す文（使い方、未認証、HTTP の状態、ホストを断る文）は文だけを、想定外の失敗はスタックと cause まで出す
+class ExpectedFailure extends Error {}
+
+// process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
+main().catch((error) => {
+  console.error(error instanceof ExpectedFailure ? error.message : error);
+  process.exitCode = 1;
+});
