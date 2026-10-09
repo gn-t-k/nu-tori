@@ -1,0 +1,222 @@
+#!/usr/bin/env node
+// 本番の知らせ（いまは Sentry の新しい・急に増えた・再発した課題）を、GitHub の Issue（needs-triage、ロック）にする。.github/workflows/production-alerts.yml が毎時呼ぶ
+// Issue に載せる欄は、ここで決めた欄だけを Sentry から取る。全部を取ってから消す形にしない（欄が増えたときに漏れないため）
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { execFileSync } = require("node:child_process");
+const { join } = require("node:path");
+
+const repository = process.env.GITHUB_REPOSITORY ?? "gn-t-k/nu-tori";
+// 1回に書く数（作る・コメントする）。Issue を速く作りすぎると GitHub が二次の上限で止めるため。残りは次の回で拾う
+const maxWrites = 5;
+// 並びが拾う順になる。is:new は 7 日のあいだ続くので、新しい課題は後ろでも次の回で拾える
+const states = { regressed: "解決したのに再発した", escalating: "急に増えた", new: "新しい" };
+const issueMarker = /<!-- sentry-issue: ([A-Z0-9-]+) -->/;
+const stateMarker = /<!-- sentry-state: ([a-z_]+) -->/g;
+
+const main = () => {
+  const [source, ...flags] = process.argv.slice(2);
+  if (source !== "sentry" || flags.some((flag) => flag !== "--dry-run")) {
+    throw new ExpectedFailure(
+      "使い方: scripts/production-alerts sentry [--dry-run]（--dry-run は GitHub に書かず、することだけを出す）",
+    );
+  }
+  const dryRun = flags.includes("--dry-run");
+  const known = listKnownIssues();
+  // 作ったあとのロックが一時の失敗で抜けても、次の回で拾ってロックする
+  for (const issue of [...known.values()].flat().filter((issue) => !issue.locked)) {
+    console.log(`ロックする: #${issue.number}`);
+    if (!dryRun) github(["--method", "PUT", `repos/${repository}/issues/${issue.number}/lock`]);
+  }
+  let writes = 0;
+  for (const alert of listSentryAlerts()) {
+    const previous = (known.get(alert.shortId) ?? []).sort((a, b) => b.number - a.number)[0];
+    if (previous && alreadyNotified(previous, alert)) continue;
+    if (writes === maxWrites) {
+      console.log(`1回に書く上限の ${maxWrites} 件に達したので、残りは次の回で拾う`);
+      return;
+    }
+    writes += 1;
+    if (previous?.state === "open") {
+      console.log(`コメントする: #${previous.number}（${alert.shortId} が ${alert.substatus}）`);
+      if (!dryRun) {
+        github(["--method", "POST", `repos/${repository}/issues/${previous.number}/comments`], {
+          body: commentBody(alert),
+        });
+      }
+      continue;
+    }
+    const title = issueTitle(alert);
+    console.log(`作る: ${title}${previous ? `（前の Issue #${previous.number}）` : ""}`);
+    if (dryRun) continue;
+    const created = parseJson(
+      github(["--method", "POST", `repos/${repository}/issues`], {
+        title,
+        body: issueBody(alert, readLatestEvent(alert.shortId), previous),
+        labels: ["needs-triage"],
+      }),
+      "gh api",
+    );
+    // GITHUB_TOKEN で作った Issue は lock-conversations.yml を起こさないので、ここでロックする
+    github(["--method", "PUT", `repos/${repository}/issues/${created.number}/lock`]);
+  }
+};
+
+const listSentryAlerts = () => {
+  const { data, hasMore } = parseJson(
+    sentry([
+      "issue",
+      "list",
+      "nu-tori-fv/",
+      // サーバーの開発用の Worker も同じ組織に送るので、本番に絞る
+      "--query",
+      // 状態も検索で絞り、上限の 100 件を知らせる課題だけに使う
+      "is:unresolved environment:production substatus:[new,escalating,regressed]",
+      "--period",
+      "7d",
+      "--limit",
+      "100",
+      "--json",
+      "--fields",
+      "shortId,substatus,count,userCount,firstSeen,lastSeen,permalink,metadata.type,metadata.function",
+    ]),
+    "scripts/sentry issue list",
+  );
+  if (hasMore) console.log("知らせる課題が 100 件を超えた。101 件目からは読んでいない");
+  const order = Object.keys(states);
+  return data.sort(
+      (a, b) =>
+        order.indexOf(a.substatus) - order.indexOf(b.substatus) || a.firstSeen.localeCompare(b.firstSeen),
+    );
+};
+
+// 版と OS は課題に無いので、最新のイベントのタグから、この2つだけを抜く
+const readLatestEvent = (shortId) => {
+  const { event } = parseJson(
+    sentry(["issue", "view", shortId, "--json", "--fields", "event.tags"]),
+    "scripts/sentry issue view",
+  );
+  const tag = (key) => event?.tags?.find((item) => item.key === key)?.value;
+  return { release: tag("release"), os: tag("os") };
+};
+
+// 印を書いた Issue を、閉じたものも含めて読む。検索 API は、作った直後の Issue がすぐ出る約束が無いので使わない
+const listKnownIssues = () => {
+  const lines = github([
+    "--paginate",
+    `repos/${repository}/issues?state=all&per_page=100`,
+    "--jq",
+    '.[] | select(.pull_request == null and ((.body // "") | contains("<!-- sentry-issue: "))) | {number, state, state_reason, closed_at, locked, body, user: .user.login, author_association}',
+  ]);
+  const known = new Map();
+  for (const line of lines.split("\n").filter(Boolean)) {
+    const issue = parseJson(line, "gh api");
+    const shortId = trusted(issue) && issue.body.match(issueMarker)?.[1];
+    if (shortId) known.set(shortId, [...(known.get(shortId) ?? []), issue]);
+  }
+  return known;
+};
+
+// 最後に書いた状態と同じなら、もう知らせてある。閉じた Issue でも、wontfix（not_planned）で閉じたものは立て直さない。
+// 直して閉じた（completed）あとにまた起きたなら、同じ状態でも知らせ直す（再発して直したあとの、2度目の再発）
+const alreadyNotified = (previous, alert) =>
+  readLatestState(previous) === alert.substatus &&
+  !(previous.state_reason === "completed" && alert.lastSeen > previous.closed_at);
+
+// 本文の印のあと、コメントに書いた印があれば、最後のものが今の状態
+const readLatestState = (issue) => {
+  const comments = github([
+    "--paginate",
+    `repos/${repository}/issues/${issue.number}/comments?per_page=100`,
+    "--jq",
+    '.[] | {body, user: .user.login, author_association}',
+  ])
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => parseJson(line, "gh api"))
+    .filter(trusted);
+  const marks = [issue, ...comments].flatMap((item) => [...item.body.matchAll(stateMarker)].map((m) => m[1]));
+  return marks.at(-1);
+};
+
+// 自分たちが書いた印だけを信じる。公開のリポジトリでは、外の人が印を書いた Issue を先に立てて、知らせを止められてしまうため
+const trusted = (item) =>
+  item.user === "github-actions[bot]" || ["OWNER", "MEMBER", "COLLABORATOR"].includes(item.author_association);
+
+const issueTitle = (alert) => {
+  const { type, function: name } = alert.metadata ?? {};
+  const summary = [plain(type), name && `in ${plain(name)}`].filter(Boolean).join(" ");
+  return `Sentry ${alert.shortId}: ${summary || "型の無い課題"}`;
+};
+
+const issueBody = (alert, event, previous) =>
+  [
+    `本番の Sentry に${states[alert.substatus]}課題がある。スタックと最新のイベントは \`scripts/sentry issue view ${alert.shortId} --json\` で読む。`,
+    "",
+    `- 課題: [${alert.shortId}](${alert.permalink})`,
+    `- 状態: ${alert.substatus}`,
+    `- 型: ${code(alert.metadata?.type)}`,
+    `- 関数: ${code(alert.metadata?.function)}`,
+    `- 版: ${code(event.release)}`,
+    `- OS: ${code(event.os)}`,
+    `- 件数: ${alert.count}（利用者 ${alert.userCount}）`,
+    `- 最初の発生: ${alert.firstSeen}`,
+    `- 最後の発生: ${alert.lastSeen}`,
+    ...(previous ? [`- 前の Issue: #${previous.number}`] : []),
+    "",
+    "`.github/workflows/production-alerts.yml` が作り、ロックした。例外のメッセージと利用者の情報は、公開の場に貼らない（`docs/agents/tooling.md` の「Sentry を読む」）。",
+    "",
+    `<!-- sentry-issue: ${alert.shortId} -->`,
+    `<!-- sentry-state: ${alert.substatus} -->`,
+  ].join("\n");
+
+const commentBody = (alert) =>
+  [
+    `Sentry の状態が ${alert.substatus}（${states[alert.substatus]}）になった。件数 ${alert.count}（利用者 ${alert.userCount}）、最後の発生 ${alert.lastSeen}。`,
+    "",
+    `<!-- sentry-state: ${alert.substatus} -->`,
+  ].join("\n");
+
+// 型と関数の名前はコードが決めるが、Markdown とメンションに化けないよう、記号を落として長さを切る
+const plain = (value) => (value ? String(value).replace(/[`@\r\n<>]/g, "").slice(0, 200) : "");
+// コードの囲みの中はメンションにならないので、版の @ は残す
+const code = (value) => (value ? `\`${String(value).replace(/[`\r\n]/g, "").slice(0, 200)}\`` : "—");
+
+// 読んだ出力の断片が、公開の Actions のログに SyntaxError の文として出ないよう、文だけで失敗する
+const parseJson = (text, source) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new ExpectedFailure(`${source} の出力が JSON でない`);
+  }
+};
+
+const sentry = (args) => run(join(__dirname, "sentry"), args);
+
+// 本文は標準入力の JSON で渡す。-f で渡すと、@ で始まる値をファイルとして読むため
+const github = (args, body) =>
+  run("gh", ["api", ...args, ...(body ? ["--input", "-"] : [])], body && JSON.stringify(body));
+
+const run = (command, args, input) => {
+  try {
+    return execFileSync(command, args, {
+      input,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["pipe", "pipe", "inherit"],
+    });
+  } catch (error) {
+    throw new ExpectedFailure(`${command} ${args.join(" ")} が ${error.status ?? error.code} で失敗した`);
+  }
+};
+
+// 自分で出す文（使い方、呼んだコマンドの失敗）は文だけを、想定外の失敗はスタックと cause まで出す
+class ExpectedFailure extends Error {}
+
+try {
+  main();
+} catch (error) {
+  console.error(error instanceof ExpectedFailure ? error.message : error);
+  process.exitCode = 1;
+}
