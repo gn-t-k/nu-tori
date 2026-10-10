@@ -1,4 +1,5 @@
 import type { RecordId } from "../../domain/record-id";
+import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { SentText } from "./sent-text";
 
 export type SentTextStore = {
@@ -11,4 +12,9 @@ export type SentTextStore = {
     classifiedAt: Date;
     result: "meal" | "conversation";
   }) => void;
+  // その文章から作った、いまある文章の食事
+  findMealIds: (sentTextId: RecordId) => RecordId[];
+  // 会話として送り直したこと。文章は控えの record_id。消した食事の削除の印も、同じ控えで書く
+  insertConversationResend: (receiptId: WriteReceiptId) => void;
+  insertConversationResendMealDeletion: (receiptId: WriteReceiptId, mealId: RecordId) => void;
 };

@@ -28,7 +28,7 @@ export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
     createMealKind(stores, receivedAt),
     createMealEstimationStatusKind(stores.meal, stores.mealEstimationStatus),
     createNoticeKind(stores.notice),
-    createSentTextKind(stores.sentText),
+    createSentTextKind(stores, receivedAt),
     createSentTextStatusKind(stores.sentText, stores.sentTextStatus),
     createUsualWeighingTimeKind({
       store: stores.usualWeighingTime,

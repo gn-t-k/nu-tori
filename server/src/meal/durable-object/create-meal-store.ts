@@ -12,7 +12,7 @@ import { mealTables } from "./meal-tables";
 const { syncWriteReceipts } = syncLedgerTables;
 const { meals, mealEatenAtCorrections, mealDeletions } = mealTables;
 const { mealPhotos, mealPhotoDeletions } = mealPhotoTables;
-const { sentTextMeals, mealEatenAtEstimations } = sentTextTables;
+const { sentTextMeals, mealEatenAtEstimations, conversationResendMealDeletions } = sentTextTables;
 
 export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
   find: (id) => {
@@ -37,13 +37,19 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
         .get()?.sentTextId,
     };
   },
+  // 食事の削除の印は2つの表にある。食事を消す書き込みの印（控えの record_id が食事）と、会話として送り直して消した食事の印（#419）
   hasDeletion: (id) =>
     db
       .select({ id: mealDeletions.syncWriteReceiptId })
       .from(mealDeletions)
       .innerJoin(syncWriteReceipts, eq(syncWriteReceipts.id, mealDeletions.syncWriteReceiptId))
       .where(and(eq(syncWriteReceipts.recordType, "meal"), eq(syncWriteReceipts.recordId, id)))
-      .all().length > 0,
+      .get() !== undefined ||
+    db
+      .select({ mealId: conversationResendMealDeletions.mealId })
+      .from(conversationResendMealDeletions)
+      .where(eq(conversationResendMealDeletions.mealId, id))
+      .get() !== undefined,
   findUsedPhotoIds: (photoIds) =>
     splitIntoQueryableChunks(photoIds).flatMap((chunk) => [
       ...db

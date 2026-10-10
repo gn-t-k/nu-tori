@@ -624,6 +624,9 @@
             "$ref": "#/components/schemas/CreateSentTextWrite"
           },
           {
+            "$ref": "#/components/schemas/ResendSentTextAsConversationWrite"
+          },
+          {
             "$ref": "#/components/schemas/CreateWeightRecordWrite"
           },
           {
@@ -647,6 +650,7 @@
             "create_notice": "#/components/schemas/CreateNoticeWrite",
             "respond_notice": "#/components/schemas/RespondNoticeWrite",
             "create_sent_text": "#/components/schemas/CreateSentTextWrite",
+            "resend_sent_text_as_conversation": "#/components/schemas/ResendSentTextAsConversationWrite",
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
             "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite"
@@ -1165,6 +1169,34 @@
           "id",
           "type",
           "sentText"
+        ]
+      },
+      "ResendSentTextAsConversationWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "resend_sent_text_as_conversation"
+            ]
+          },
+          "sentTextId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "食事と読み分けた送った文章。その文章から作った食事を消し、会話にする"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "sentTextId"
         ]
       },
       "CreateWeightRecordWrite": {
