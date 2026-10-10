@@ -3,7 +3,7 @@ import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 
 // 返事の依頼。依頼ときっかけのサブセットは、返事の書き込みの口（writeReplyEvents）の request で一緒に書く
 export type ReplyRequest = {
-  id: string;
+  id: RecordId;
   sentTextId: RecordId;
   // 依頼を作った時点の、ユーザーの最新のタイムゾーンでの日（読めなければ送った文章のタイムゾーン）
   countedOn: string;

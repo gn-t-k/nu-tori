@@ -32,7 +32,7 @@ describe("返事に渡す文脈の組み立て", () => {
       test("送った文章の時刻とタイムゾーンでの日時と曜日を、送った日時にすること", () => {
         expect(context.structuredValues.sentAt).toEqual({
           at: "2026-10-09T22:30",
-          dayOfWeek: "金",
+          dayOfWeek: "friday",
         });
       });
 

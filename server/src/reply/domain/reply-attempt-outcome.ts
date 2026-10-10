@@ -1,5 +1,5 @@
 import type { RecordId } from "../../domain/record-id";
-import type { TokenUsage } from "../../estimation/domain/estimation-provider";
+import type { TokenUsage } from "../../domain/token-usage";
 
 // 試み1回の結果と、書くもの・送るもの。提供元の失敗と、読めない応答も試みの結果にする。
 // usage は呼び出しで実際に使ったトークン（分からなければ undefined）。

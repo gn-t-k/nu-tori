@@ -31,13 +31,6 @@ const sentTextColumns = {
   timeZone: sentTexts.sentTimeZone,
 };
 
-// 依頼の時刻を出すための列。きっかけの時刻で、読み分けなら読み分けた時刻、会話として送り直した・送り直したなら、その書き込みを受け取った時刻。
-// 送り直した文章にも読み分けた行があるので、控えの時刻を先に採る
-const requestTimes = {
-  classifiedAt: sentTextClassifications.classifiedAt,
-  resentAt: syncRequestLogs.receivedAt,
-};
-
 const toRequestedAt = (times: { classifiedAt: Date | null; resentAt: Date | null }): Date => {
   const requestedAt = times.resentAt ?? times.classifiedAt;
   if (requestedAt === null) {
@@ -46,13 +39,8 @@ const toRequestedAt = (times: { classifiedAt: Date | null; resentAt: Date | null
   return requestedAt;
 };
 
-// 依頼のきっかけの、送り直す書き込みの控え。依頼のきっかけは1つなので、どちらか一方だけが当たる
-const isResendReceipt = or(
-  eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
-  eq(syncWriteReceipts.id, resendReplyRequests.syncWriteReceiptId),
-);
-
 export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
+  const requestTimes = selectRequestTimes(db);
   const findAttempts = (generationId: RecordId): ReplyAttempt[] =>
     db
       .select({
@@ -89,21 +77,12 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
           requestId: replyRequests.id,
           countedOn: replyRequests.countedOn,
           sentText: sentTextColumns,
-          ...requestTimes,
+          classifiedAt: requestTimes.classifiedAt,
+          resentAt: requestTimes.resentAt,
         })
         .from(replyRequests)
         .innerJoin(sentTexts, eq(sentTexts.id, replyRequests.sentTextId))
-        .leftJoin(
-          sentTextClassifications,
-          eq(sentTextClassifications.sentTextId, replyRequests.sentTextId),
-        )
-        .leftJoin(
-          conversationResendReplyRequests,
-          eq(conversationResendReplyRequests.replyRequestId, replyRequests.id),
-        )
-        .leftJoin(resendReplyRequests, eq(resendReplyRequests.replyRequestId, replyRequests.id))
-        .leftJoin(syncWriteReceipts, isResendReceipt)
-        .leftJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
+        .innerJoin(requestTimes, eq(requestTimes.replyRequestId, replyRequests.id))
         .leftJoin(replyRequestHalts, eq(replyRequestHalts.replyRequestId, replyRequests.id))
         .leftJoin(replyGenerations, eq(replyGenerations.replyRequestId, replyRequests.id))
         .where(and(isNull(replyRequestHalts.replyRequestId), isNull(replyGenerations.id)))
@@ -125,21 +104,16 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
     // 続いている生成も「返事も作れなかったも無いこと」で絞るので、索引が効かない
     findContinuingGenerations: () =>
       db
-        .select({ generationId: replyGenerations.id, sentText: sentTextColumns, ...requestTimes })
+        .select({
+          generationId: replyGenerations.id,
+          sentText: sentTextColumns,
+          classifiedAt: requestTimes.classifiedAt,
+          resentAt: requestTimes.resentAt,
+        })
         .from(replyGenerations)
         .innerJoin(replyRequests, eq(replyRequests.id, replyGenerations.replyRequestId))
         .innerJoin(sentTexts, eq(sentTexts.id, replyRequests.sentTextId))
-        .leftJoin(
-          sentTextClassifications,
-          eq(sentTextClassifications.sentTextId, replyRequests.sentTextId),
-        )
-        .leftJoin(
-          conversationResendReplyRequests,
-          eq(conversationResendReplyRequests.replyRequestId, replyRequests.id),
-        )
-        .leftJoin(resendReplyRequests, eq(resendReplyRequests.replyRequestId, replyRequests.id))
-        .leftJoin(syncWriteReceipts, isResendReceipt)
-        .leftJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
+        .innerJoin(requestTimes, eq(requestTimes.replyRequestId, replyRequests.id))
         .leftJoin(aiUtterances, eq(aiUtterances.replyGenerationId, replyGenerations.id))
         .leftJoin(
           replyGenerationAbandonments,
@@ -197,6 +171,35 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
         .get() !== undefined,
   };
 };
+
+// 依頼の時刻を出すための列。きっかけの時刻で、読み分けなら読み分けた時刻、会話として送り直した・送り直したなら、その書き込みを受け取った時刻。
+// 送り直した文章にも読み分けた行があるので、控えの時刻を先に採る（toRequestedAt）
+const selectRequestTimes = (db: DrizzleSqliteDODatabase) =>
+  db
+    .select({
+      replyRequestId: replyRequests.id,
+      classifiedAt: sentTextClassifications.classifiedAt,
+      resentAt: syncRequestLogs.receivedAt,
+    })
+    .from(replyRequests)
+    .leftJoin(
+      sentTextClassifications,
+      eq(sentTextClassifications.sentTextId, replyRequests.sentTextId),
+    )
+    .leftJoin(
+      conversationResendReplyRequests,
+      eq(conversationResendReplyRequests.replyRequestId, replyRequests.id),
+    )
+    .leftJoin(resendReplyRequests, eq(resendReplyRequests.replyRequestId, replyRequests.id))
+    .leftJoin(syncWriteReceipts, isResendReceipt)
+    .leftJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
+    .as("reply_request_times");
+
+// 依頼のきっかけの、送り直す書き込みの控え。依頼のきっかけは1つなので、どちらか一方だけが当たる
+const isResendReceipt = or(
+  eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
+  eq(syncWriteReceipts.id, resendReplyRequests.syncWriteReceiptId),
+);
 
 const toConclusion = (
   result: (typeof replyGenerationAttemptResults.$inferSelect)["result"],

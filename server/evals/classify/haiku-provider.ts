@@ -1,10 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { R } from "@praha/byethrow";
 import type { ApiProvider, ProviderResponse } from "promptfoo";
 import { createHaikuClassificationRequest } from "../../src/reply/durable-object/create-conversation-provider/create-haiku-classification-request";
-import { haikuClassificationOutputSchema } from "../../src/reply/durable-object/create-conversation-provider/haiku-classification-output-schema";
+import { readHaikuClassification } from "../../src/reply/durable-object/create-conversation-provider/read-haiku-classification";
 import type { ClassificationEvalOutput } from "./classification-eval-output";
 
-// promptfoo の custom provider。Claude Haiku 5.5 を Anthropic の API で呼ぶ。要求の形はサーバーと同じものを import する。
+// promptfoo の custom provider。Claude Haiku 5.5 を Anthropic の API で呼ぶ。要求の形と応答の読み方はサーバーと同じものを import する。
 // 鍵: 開発用のワークスペース（nu-tori-development）のキーを NU_TORI_ANTHROPIC_API_KEY に置く。
 // ANTHROPIC_API_KEY はクラウドのセッションでエージェント自身が使う名前なので避ける
 export default class HaikuProvider implements ApiProvider {
@@ -23,23 +24,11 @@ export default class HaikuProvider implements ApiProvider {
       completion: message.usage.output_tokens,
       total: message.usage.input_tokens + message.usage.output_tokens,
     };
-    if (message.stop_reason === "max_tokens" || message.stop_reason === "refusal") {
-      return { error: `Haiku 5.5 が答えなかった（${message.stop_reason}）`, tokenUsage };
+    const classification = readHaikuClassification(message);
+    if (R.isFailure(classification)) {
+      return { error: "Haiku 5.5 が答えなかったか、応答を読めなかった", tokenUsage };
     }
-    const text = message.content.map((block) => (block.type === "text" ? block.text : "")).join("");
-    const parsed = haikuClassificationOutputSchema.safeParse(parseJson(text));
-    if (!parsed.success) {
-      return { error: "Haiku 5.5 の応答を読めなかった", tokenUsage };
-    }
-    const output: ClassificationEvalOutput = { kind: "label", label: parsed.data.label };
+    const output: ClassificationEvalOutput = { kind: "label", label: classification.value.label };
     return { output, tokenUsage };
   };
 }
-
-const parseJson = (text: string): unknown => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-};

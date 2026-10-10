@@ -248,8 +248,8 @@ const sentTextClassifications = defineFactory({
 const replyRequests = defineFactory({
   schema,
   table: "replyRequests",
-  resolver: ({ sequence, use }) => ({
-    id: `reply-request-${sequence}`,
+  resolver: ({ use }) => ({
+    id: generateRecordId(),
     sentTextId: () =>
       use(sentTexts)
         .create()

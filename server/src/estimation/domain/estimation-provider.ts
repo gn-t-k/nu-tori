@@ -1,3 +1,5 @@
+import type { DayOfWeek } from "../../domain/day-of-week";
+import type { TokenUsage } from "../../domain/token-usage";
 import type { R } from "@praha/byethrow";
 import type { NutrientName } from "../../domain/food-composition/nutrient-name";
 import type { EstimationProviderBadRequestError } from "./estimation-provider-bad-request-error";
@@ -64,15 +66,6 @@ export type WrittenMealsRequest = {
 // タイムゾーンでの日時（YYYY-MM-DDTHH:mm）
 export type LocalDateTime = string;
 
-export type DayOfWeek =
-  | "sunday"
-  | "monday"
-  | "tuesday"
-  | "wednesday"
-  | "thursday"
-  | "friday"
-  | "saturday";
-
 // 文章の食事の ① の応答。食事の並びで、食べたものが書かれていなければ 0 件。
 // eatenAt は送ったときのタイムゾーンでの日時。文章に書かれていたかは返させず、範囲はドメイン層が確かめる
 export type IdentifiedWrittenMeals = {
@@ -84,8 +77,6 @@ export type EstimationProviderReply<TOutput> = {
   // 呼び出しで実際に使ったトークン
   usage: TokenUsage;
 };
-
-export type TokenUsage = { inputTokens: number; outputTokens: number };
 
 // ① の応答。料理が写っていない・見分けられないときは料理が 0 件
 export type IdentifiedDishes = {

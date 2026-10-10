@@ -1,7 +1,7 @@
 import { R } from "@praha/byethrow";
 import { vi } from "vitest";
 import type { RecordId } from "../../../domain/record-id";
-import type { TokenUsage } from "../../../estimation/domain/estimation-provider";
+import type { TokenUsage } from "../../../domain/token-usage";
 import type { ClassificationLabel, ConversationProvider } from "../../domain/conversation-provider";
 import type { ConversationProviderError } from "../../domain/conversation-provider-error";
 import type { ReplyContext } from "../../domain/reply-context";

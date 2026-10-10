@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import { computeReplyFailureReason } from "../../reply/domain/compute-reply-failure-reason";
 import type { SentTextReplyStatus } from "./sent-text-status";
 import type { ReplyRequestProgress } from "./sent-text-status-store";
 
@@ -24,6 +25,9 @@ export const computeSentTextReplyStatus = (
   return match(lastEnded)
     .returnType<SentTextReplyStatus>()
     .with({ progress: "halted" }, () => ({ type: "halted" }))
-    .with({ progress: "abandoned" }, ({ reason }) => ({ type: "failed", reason }))
+    .with({ progress: "abandoned" }, ({ lastAttemptResult }) => ({
+      type: "failed",
+      reason: computeReplyFailureReason(lastAttemptResult),
+    }))
     .exhaustive();
 };

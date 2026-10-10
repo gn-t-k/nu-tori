@@ -9,7 +9,10 @@ import type {
   EstimationProviderReply,
   IdentifiedDishes,
 } from "../../domain/estimation-provider";
+import { foodCompositionQuerySection } from "./food-composition-query-section";
+import { identifiedDishSchema } from "./identified-dish-schema";
 import { requestStructuredOutput } from "./request-structured-output";
+import { toIdentifiedDishes } from "./to-identified-dishes";
 
 // ①: 写真（1食事に 1〜4 枚）から、料理と材料と量を読み取る。推定し直しでは、写真と料理の今の値から、その料理1つを読み取る
 export const identifyDishes = async (
@@ -89,62 +92,11 @@ const toReestimationInstruction = (
         ]),
   ].join("\n");
 
-const nutrientNames = Object.keys(nutrients);
-
-// 料理の形。文章の食事の ① も同じ形で料理を返させる
-export const identifiedDishSchema = z.object({
-  name: z.string(),
-  quantity: z.number(),
-  unit: z.string(),
-  ingredients: z.array(
-    z.object({
-      name: z.string(),
-      quantity: z.number(),
-      unit: z.string(),
-      edibleGramsPerUnit: z.number(),
-      foodCompositionQuery: z.string(),
-      nutritionLabel: z
-        .object({
-          basisGrams: z.number(),
-          // 栄養の名前をキーにした表は構造化出力で書けないので、名前と値の組の並びにする
-          nutrients: z.array(z.object({ nutrient: z.enum(nutrientNames), amount: z.number() })),
-        })
-        .nullable(),
-    }),
-  ),
-});
-
 const identifiedDishesSchema = z.object({ dishes: z.array(identifiedDishSchema) });
-
-export const toIdentifiedDishes = (
-  output: z.output<typeof identifiedDishesSchema>,
-): IdentifiedDishes => ({
-  dishes: output.dishes.map((dish) => ({
-    ...dish,
-    ingredients: dish.ingredients.map(({ nutritionLabel, ...ingredient }) => ({
-      ...ingredient,
-      nutritionLabel:
-        nutritionLabel === null
-          ? undefined
-          : {
-              basisGrams: nutritionLabel.basisGrams,
-              nutrients: Object.fromEntries(
-                nutritionLabel.nutrients.map(({ nutrient, amount }) => [nutrient, amount]),
-              ),
-            },
-    })),
-  })),
-});
 
 const nutrientLines = Object.entries(nutrients)
   .map(([name, { unit }]) => `- ${name}（${unit}）`)
   .join("\n");
-
-// 成分表を引く語の指示。文章の食事の ① も同じ指示で答えさせる
-export const foodCompositionQuerySection = `## 成分表を引く語（foodCompositionQuery）
-- 日本食品標準成分表（八訂）の食品名を引くための語を、空白で区切って答える。
-- 成分表の書き方に寄せる。肉・魚・野菜の多くはひらがなで書かれる（鶏→にわとり、豚→ぶた、牛→うし、鮭→さけ、ご飯→こめ 水稲めし 精白米、サラダ油→調合油）。部位や調理の状態（生・ゆで・焼き・揚げ・皮なし・皮つき など）も語に含める。
-- 例: 「にわとり 若どり もも 皮なし 焼き」「こめ 水稲めし 精白米」「ぶた ロース 脂身つき 焼き」「せん茶 浸出液」`;
 
 const system = `あなたは、食事の写真から、栄養を計算するための料理と材料の一覧を作る。写真は同じ1回の食事を写したもので、1〜4 枚ある。
 

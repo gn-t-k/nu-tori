@@ -1,4 +1,4 @@
-import { type RecordId, recordIdSchema } from "../../src/domain/record-id";
+import { evalMealId } from "./eval-meal-id";
 import type {
   MainNutrients,
   ReplyContext,
@@ -7,10 +7,6 @@ import type {
 
 // 評価の組の文脈の元になる2日（作り話。公開リポジトリなので、開発者の記録は使わない）。
 // どちらも東京の 2026-10-10（土）に送った発言に応える。場面は、この日に発言を差し替えて作る（cases.ts）
-
-// 食事 ID。末尾の数で見分ける（1xx は記録の多い日、2xx は少ない日）
-export const evalMealId = (n: number): RecordId =>
-  recordIdSchema.parse(`7d1c2a4e-3b5f-4c8a-9e6d-${n.toString().padStart(12, "0")}`);
 
 const nutrients = (
   energyKcal: number,
@@ -32,7 +28,7 @@ const dish = (
 ): ReplyContextDish => ({ name, quantity: { value, unit }, nutrients: mainNutrients });
 
 // 記録の多い日: 3日続けて朝・昼・夜を記録し、体重を毎朝量り、会話もしている人の、夕食のあと
-export const richDay: ReplyContext = {
+const richDay: ReplyContext = {
   window: [
     {
       type: "user_utterance",
@@ -124,7 +120,7 @@ export const richDay: ReplyContext = {
     },
   ],
   structuredValues: {
-    sentAt: { at: "2026-10-10T19:40", dayOfWeek: "土" },
+    sentAt: { at: "2026-10-10T19:40", dayOfWeek: "saturday" },
     todayMeals: [
       {
         mealId: evalMealId(111),
@@ -184,7 +180,7 @@ export const richDay: ReplyContext = {
 };
 
 // 記録の少ない日: ときどきしか記録しない人の、昼。今日はカフェラテだけ、会話は無い
-export const sparseDay: ReplyContext = {
+const sparseDay: ReplyContext = {
   window: [
     {
       type: "meal_recorded",
@@ -195,7 +191,7 @@ export const sparseDay: ReplyContext = {
     },
   ],
   structuredValues: {
-    sentAt: { at: "2026-10-10T12:15", dayOfWeek: "土" },
+    sentAt: { at: "2026-10-10T12:15", dayOfWeek: "saturday" },
     todayMeals: [
       {
         mealId: evalMealId(211),
@@ -227,8 +223,10 @@ export const sparseDay: ReplyContext = {
 };
 
 // 今日まだ何も記録していない日（記録の少ない日から、今日の食事と窓を除いたもの）
-export const emptyToday: ReplyContext = {
+const emptyToday: ReplyContext = {
   window: [],
   structuredValues: { ...sparseDay.structuredValues, todayMeals: [], todayNutrients: undefined },
   newUtterance: sparseDay.newUtterance,
 };
+
+export const evalDays = { richDay, sparseDay, emptyToday };

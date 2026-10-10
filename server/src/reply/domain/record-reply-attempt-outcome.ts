@@ -1,4 +1,3 @@
-import { match } from "ts-pattern";
 import { createRecordLedger } from "../../domain/create-record-ledger";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordType } from "../../domain/record-type";
@@ -6,8 +5,9 @@ import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { BegunReplyAttempt } from "./begin-reply-attempts";
 import { computeReplyGenerationEndedEvent } from "./compute-reply-generation-ended-event";
+import { concludeReplyAttempt } from "./conclude-reply-attempt";
+import { findProviderErrorType } from "./find-provider-error-type";
 import { maximumReplyAttempts } from "./maximum-reply-attempts";
-import type { ReplyAttemptConclusion } from "./reply-attempt";
 import type { ReplyAttemptOutcome } from "./reply-attempt-outcome";
 
 // 呼び出しから戻ったときに、1つのトランザクションで試みの結果を書く。
@@ -24,19 +24,13 @@ export const recordReplyAttemptOutcome = (
   createRecordLedger(ledgerStore, stores, endedAt).changeOutsideWrites((addChange) =>
     stores.writeReplyEvents(addChange, (writes) => {
       const { generationId } = attempt;
-      writes.recordAttemptResult({
-        attemptId: attempt.attemptId,
-        endedAt,
-        conclusion: toConclusion(outcome),
-      });
+      const conclusion = concludeReplyAttempt(outcome);
+      writes.recordAttemptResult({ attemptId: attempt.attemptId, endedAt, conclusion });
       const attemptEnded: UsageEvent = {
         name: "reply_attempt_ended",
         result: outcome.result,
         usage: outcome.usage,
-        providerErrorType:
-          outcome.result === "provider_error" || outcome.result === "bad_request"
-            ? outcome.errorType
-            : undefined,
+        providerErrorType: findProviderErrorType(conclusion),
       };
       if (stores.reply.hasEnded(generationId)) {
         return [attemptEnded];
@@ -63,20 +57,3 @@ export const recordReplyAttemptOutcome = (
       return [attemptEnded];
     }),
   );
-
-const toConclusion = (outcome: ReplyAttemptOutcome): ReplyAttemptConclusion =>
-  match(outcome)
-    .returnType<ReplyAttemptConclusion>()
-    .with(
-      { result: "succeeded" },
-      { result: "timed_out" },
-      { result: "invalid_response" },
-      ({ result }) => ({
-        result,
-      }),
-    )
-    .with({ result: "provider_error" }, { result: "bad_request" }, ({ result, errorType }) => ({
-      result,
-      errorType,
-    }))
-    .exhaustive();

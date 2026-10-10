@@ -1,9 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
-import {
-  computeWrittenMealEatenAt,
-  toWrittenMealsRequest,
-} from "../../src/estimation/domain/written-meal-eaten-at";
+import { computeWrittenMealEatenAt } from "../../src/estimation/domain/compute-written-meal-eaten-at";
+import { toWrittenMealsRequest } from "../../src/estimation/domain/to-written-meals-request";
 import { identifyWrittenMeals } from "../../src/estimation/durable-object/create-estimation-provider/identify-written-meals";
 
 // 文章の食事の ① が決める食べた時刻の揺れを、本番と同じ指示とモデル（#188 の推定と同じ）で確かめる（#419 の「時刻の決め方」、#434）。

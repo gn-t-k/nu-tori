@@ -1,9 +1,11 @@
 import type { EstimationAttemptResult } from "../estimation/domain/estimation-attempt-result";
-import type { TokenUsage } from "../estimation/domain/estimation-provider";
+import type { TokenUsage } from "./token-usage";
 import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
 import type { MealPhotoReceiptFailedError } from "./receive-meal-photo";
+import type { ClassificationLabel } from "../reply/domain/conversation-provider";
 import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";
+import type { SentTextClassification } from "../sent-text/domain/sent-text-classification";
 import type { ReplyFailureReason } from "../sent-text-status/domain/sent-text-status";
 import type { RecordType } from "./record-type";
 import type { RejectionReason } from "./rejection-reason";
@@ -58,9 +60,9 @@ export type UsageEvent =
       // 送った文章を読み分けたとき（呼び出しごと）。本文は含めない
       name: "sent_text_classified";
       // 書いた読み分けの結果。決めかねたときと呼び出しの失敗は会話
-      result: "meal" | "conversation";
+      result: SentTextClassification;
       // 提供元の答え。呼び出しが失敗したら failed
-      providerResult: "meal" | "conversation" | "unsure" | "failed";
+      providerResult: ClassificationLabel | "failed";
       // 呼び出しで使ったトークン。失敗したら undefined
       usage: TokenUsage | undefined;
       // 送った文章を作る書き込みを受け取ってから、読み分けを書くまで

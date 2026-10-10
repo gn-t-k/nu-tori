@@ -6,7 +6,7 @@ import type { UsageEvent } from "../../domain/usage-event";
 import { deleteDishes } from "../../dish/domain/delete-dishes";
 import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
 import { computeEstimationEndedEvent } from "../../estimation/domain/compute-estimation-ended-event";
-import { findMealEstimationTrigger } from "../../estimation/domain/find-estimation-origin";
+import { findMealEstimationTrigger } from "../../estimation/domain/find-meal-estimation-trigger";
 import { findMealReceivedAt } from "../../estimation/domain/find-meal-received-at";
 
 // 食事を消す口が読み書きする置き場

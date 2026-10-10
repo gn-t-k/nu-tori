@@ -5,7 +5,6 @@ import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { replyTables } from "../../reply/durable-object/reply-tables";
 import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables";
-import type { ReplyFailureReason } from "../domain/sent-text-status";
 import type { ReplyRequestProgress, SentTextStatusStore } from "../domain/sent-text-status-store";
 
 const { sentTextClassifications, sentTextConversationResends } = sentTextTables;
@@ -79,18 +78,15 @@ export const createSentTextStatusStore = (db: DrizzleSqliteDODatabase): SentText
           return {
             progress: "abandoned",
             endedAt: abandonedAt,
-            reason: findFailureReason(db, generationId),
+            lastAttemptResult: findLastAttemptResult(db, generationId),
           };
         }
         return { progress: "generating" };
       }),
 });
 
-// 最後の試みの結果が 400 なら bad_request、ほか（結果の無い試みを含む）はやり直しを使い切った
-const findFailureReason = (
-  db: DrizzleSqliteDODatabase,
-  generationId: RecordId,
-): ReplyFailureReason =>
+// 結果の無い試みなら undefined
+const findLastAttemptResult = (db: DrizzleSqliteDODatabase, generationId: RecordId) =>
   db
     .select({ result: replyGenerationAttemptResults.result })
     .from(replyGenerationAttempts)
@@ -101,6 +97,4 @@ const findFailureReason = (
     .where(eq(replyGenerationAttempts.replyGenerationId, generationId))
     .orderBy(desc(replyGenerationAttempts.attemptedAt), desc(replyGenerationAttempts.id))
     .limit(1)
-    .get()?.result === "bad_request"
-    ? "bad_request"
-    : "retries_exhausted";
+    .get()?.result ?? undefined;

@@ -1,6 +1,6 @@
 import type { R } from "@praha/byethrow";
 import type { RecordId } from "../../domain/record-id";
-import type { TokenUsage } from "../../estimation/domain/estimation-provider";
+import type { TokenUsage } from "../../domain/token-usage";
 import type { ConversationProviderBadRequestError } from "./conversation-provider-bad-request-error";
 import type { ConversationProviderError } from "./conversation-provider-error";
 import type { ConversationProviderInvalidResponseError } from "./conversation-provider-invalid-response-error";
@@ -13,7 +13,7 @@ export type ConversationProvider = {
   // 食べた・飲んだものを伝えていれば meal、ほかは conversation、確信が持てなければ unsure を返す
   classifySentText: (request: {
     body: string;
-  }) => R.ResultAsync<ClassificationReply, ConversationProviderError>;
+  }) => R.ResultAsync<ClassificationResult, ConversationProviderError>;
   // 文脈を渡して返事を作らせる。文脈を文の塊にして指示と並べるのは提供元が受け持つ。
   // signal は試みの時間の上限で切れる。提供元は切れたら ConversationProviderTimedOutError で返す。
   // 出力の上限で切れた・決めた形に読めない応答は ConversationProviderInvalidResponseError で返す。
@@ -30,7 +30,7 @@ export type ConversationProvider = {
   >;
 };
 
-export type ClassificationReply = {
+export type ClassificationResult = {
   label: ClassificationLabel;
   // 呼び出しで実際に使ったトークン
   usage: TokenUsage;

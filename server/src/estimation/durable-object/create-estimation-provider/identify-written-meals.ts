@@ -1,18 +1,16 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
 import { z } from "zod";
+import type { DayOfWeek } from "../../../domain/day-of-week";
 import type {
-  DayOfWeek,
   EstimationProvider,
   EstimationProviderReply,
   IdentifiedWrittenMeals,
   WrittenMealsRequest,
 } from "../../domain/estimation-provider";
-import {
-  foodCompositionQuerySection,
-  identifiedDishSchema,
-  toIdentifiedDishes,
-} from "./identify-dishes";
+import { foodCompositionQuerySection } from "./food-composition-query-section";
+import { identifiedDishSchema } from "./identified-dish-schema";
+import { toIdentifiedDishes } from "./to-identified-dishes";
 import { requestStructuredOutput } from "./request-structured-output";
 
 // 文章の食事の ①: 送った文章から、時刻の違う食事ごとに、食べた日時と料理と材料と量を読み取る（#419 の「文章の食事」）。

@@ -4,7 +4,8 @@ import { createPhotoBytes } from "../src/http/meal-photo-routes/testing/create-p
 import { app } from "../src/http/app";
 import { mockCreateEstimationProviderOk } from "../src/estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { mockCreateConversationProviderOk } from "../src/reply/durable-object/create-conversation-provider/create-conversation-provider.mock";
-import { mealTextBody, runMainFlow } from "./run-main-flow";
+import { mealTextBody } from "./meal-text-body";
+import { runMainFlow } from "./run-main-flow";
 
 const signInSecret = "e2e-sign-in-secret-0123456789abcdef0123456789";
 

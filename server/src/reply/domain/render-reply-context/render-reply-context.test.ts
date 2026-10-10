@@ -19,7 +19,7 @@ describe("返事に渡す文脈の文", () => {
       },
     ],
     structuredValues: {
-      sentAt: { at: "2026-10-10T13:00", dayOfWeek: "土" },
+      sentAt: { at: "2026-10-10T13:00", dayOfWeek: "saturday" },
       todayMeals: [
         {
           mealId,

@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { computeSha256Hex } from "../../../domain/compute-sha256-hex";
 import type { ConversationProvider } from "../../domain/conversation-provider";
 import { classifyWithHaiku } from "./classify-with-haiku";
 import { generateReplyWithSonnet } from "./generate-reply-with-sonnet";
@@ -10,17 +11,10 @@ export const createAnthropicConversationProvider = (
   accountId: string,
 ): ConversationProvider => {
   // 提供元の濫用の検知に使う識別子。アカウント ID は元に戻せない形（SHA-256）にして渡す
-  const userId = hashAccountId(accountId);
+  const userId = computeSha256Hex(accountId);
   return {
     classifySentText: async ({ body }) => classifyWithHaiku(client, await userId, body),
     generateReply: async (request, signal) =>
       generateReplyWithSonnet(client, await userId, request, signal),
   };
-};
-
-const hashAccountId = async (accountId: string): Promise<string> => {
-  const digest = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(accountId)),
-  );
-  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
 };
