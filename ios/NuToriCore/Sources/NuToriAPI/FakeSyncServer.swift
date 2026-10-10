@@ -91,6 +91,10 @@
             public let estimateDish: @Sendable (_ dishId: UUID, _ name: String) -> DishEstimate?
             /// 食事の推定中を返してから、推定を終えるまでの取得の回数。その回数めの取得で終える
             public let mealEstimationPulls: Int
+            /// 送った文章の本文から、読み分けと返事の答え方を決める。nil なら読み分けを待ったままにする
+            public let answerSentText: @Sendable (_ body: String) -> SentTextAnswer?
+            /// 送った文章を受け付けてから（送り直されてから）、答えるまでの取得の回数。その回数めの取得で答える
+            public let sentTextAnswerPulls: Int
 
             public init(
                 records: [SyncChange],
@@ -103,9 +107,13 @@
                 estimateDish:
                     @escaping @Sendable (_ dishId: UUID, _ name: String) -> DishEstimate? =
                     { _, _ in nil },
-                mealEstimationPulls: Int = 1
+                mealEstimationPulls: Int = 1,
+                answerSentText: @escaping @Sendable (_ body: String) -> SentTextAnswer? = { _ in nil
+                },
+                sentTextAnswerPulls: Int = 1
             ) {
                 precondition(mealEstimationPulls >= 1, "推定を終えるまでの取得は1回以上")
+                precondition(sentTextAnswerPulls >= 1, "送った文章に答えるまでの取得は1回以上")
                 self.records = records
                 self.startedOn = startedOn
                 self.connection = connection
@@ -115,7 +123,20 @@
                 self.estimatedDishes = estimatedDishes
                 self.estimateDish = estimateDish
                 self.mealEstimationPulls = mealEstimationPulls
+                self.answerSentText = answerSentText
+                self.sentTextAnswerPulls = sentTextAnswerPulls
             }
+        }
+
+        /// 送った文章への答え方。返事は指し示す食事を持たない
+        public enum SentTextAnswer: Sendable {
+            /// 食事と読み分け、送った時刻の文章の食事を1つ作る（推定は写真の食事と同じく進む）。
+            /// 会話として送り直されたら、この本文で返事をする
+            case meal(replyAsConversation: String)
+            /// 会話と読み分け、この本文で返事をする
+            case reply(String)
+            /// 会話と読み分け、1回めは作れなかった（やり直しを使い切った）にする。送り直されたら、この本文で返事をする
+            case failsThenReply(String)
         }
 
         /// 推定し直しで当てる、料理の量と材料。料理の量を直してあれば、量は当てず材料だけを当てる
@@ -264,6 +285,10 @@
             private var estimatingMeals: [EstimatingMeal] = []
             /// 推定中を返した料理。次に取りに行かれたら推定し直しを終える
             private var estimatingDishIds: [UUID] = []
+            /// 答えを待っている送った文章と、答えるまでに残る取得の回数（0 は、まだ1回も取りに行かれていない）
+            private var awaitingSentTexts: [UUID: Int] = [:]
+            /// 作れなかったにした送った文章。送り直されたら返事をする
+            private var failedSentTextIds: Set<UUID> = []
 
             struct Entry {
                 let sequence: Int
@@ -287,6 +312,7 @@
             }
 
             mutating func pull(after afterSequence: Int, scenario: Scenario) -> [Entry] {
+                answerSentTexts(scenario: scenario)
                 let pulled = estimatingMeals.map {
                     EstimatingMeal(mealId: $0.mealId, remainingPulls: $0.remainingPulls - 1)
                 }
@@ -318,6 +344,74 @@
                     return status.dishId
                 }
                 return page
+            }
+
+            /// 答える回数めの取得になった送った文章に、読み分けか返事を当てる
+            private mutating func answerSentTexts(scenario: Scenario) {
+                for (sentTextId, remaining) in awaitingSentTexts.sorted(by: {
+                    $0.key.canonicalString < $1.key.canonicalString
+                }) {
+                    let left = (remaining == 0 ? scenario.sentTextAnswerPulls : remaining) - 1
+                    guard left == 0 else {
+                        awaitingSentTexts[sentTextId] = left
+                        continue
+                    }
+                    awaitingSentTexts[sentTextId] = nil
+                    guard
+                        case .sentText(let sentText) = entries[
+                            .init(kind: .sentText, id: sentTextId)]?.change,
+                        case .sentTextStatus(let status) = entries[
+                            .init(kind: .sentTextStatus, id: sentTextId)]?.change,
+                        let answer = scenario.answerSentText(sentText.body)
+                    else { continue }
+                    switch (status.classification, answer) {
+                    case (.pending, .meal):
+                        let mealId = UUID()
+                        put(
+                            .meal(
+                                SyncedMeal(
+                                    id: mealId, eatenAt: sentText.sentAt,
+                                    eatenUtcOffsetSeconds: sentText.timeZone.secondsFromGMT(
+                                        for: sentText.sentAt),
+                                    sentAt: sentText.sentAt, sentTimeZone: sentText.timeZone,
+                                    entryMethod: .written(sentTextId: sentTextId), photoIds: [])))
+                        put(.mealEstimationStatus(.init(mealId: mealId, status: .estimating)))
+                        put(
+                            .sentTextStatus(
+                                .init(
+                                    sentTextId: sentTextId, classification: .meal,
+                                    reply: .notRequested)))
+                    case (.pending, .reply(let body)), (.conversation, .reply(let body)),
+                        (.conversation, .meal(let body)):
+                        reply(body, to: sentTextId)
+                    case (.pending, .failsThenReply(let body)),
+                        (.conversation, .failsThenReply(let body)):
+                        if failedSentTextIds.contains(sentTextId) {
+                            reply(body, to: sentTextId)
+                        } else {
+                            failedSentTextIds.insert(sentTextId)
+                            put(
+                                .sentTextStatus(
+                                    .init(
+                                        sentTextId: sentTextId, classification: .conversation,
+                                        reply: .failed(.retriesExhausted))))
+                        }
+                    case (.meal, _):
+                        continue
+                    }
+                }
+            }
+
+            private mutating func reply(_ body: String, to sentTextId: UUID) {
+                put(
+                    .aiUtterance(
+                        SyncedAiUtterance(
+                            id: UUID(), body: body, sentTextId: sentTextId, mealIds: [])))
+                put(
+                    .sentTextStatus(
+                        .init(
+                            sentTextId: sentTextId, classification: .conversation, reply: .replied))
+                )
             }
 
             /// 前の材料を削除の印にし、推定した量（量を直してあれば直した量のまま）と材料を当てる。推定できなければ料理なしにする
@@ -479,6 +573,7 @@
                             .init(
                                 sentTextId: sentText.id, classification: .pending,
                                 reply: .notRequested)))
+                    awaitingSentTexts[sentText.id] = 0
                 // 食事を消す書き込みと同じく、その文章から作った食事の削除の印だけを置き、料理と材料は連れて消さない
                 case .resendSentTextAsConversation(_, let sentTextId):
                     guard
@@ -495,6 +590,7 @@
                             .init(
                                 sentTextId: sentTextId, classification: .conversation,
                                 reply: .awaiting)))
+                    awaitingSentTexts[sentTextId] = 0
                 // 回数切れ・作れなかったの文章だけを応答待ちに戻す。返事は作らない
                 case .resendSentText(_, let sentTextId):
                     guard
@@ -508,6 +604,7 @@
                                 .init(
                                     sentTextId: sentTextId,
                                     classification: status.classification, reply: .awaiting)))
+                        awaitingSentTexts[sentTextId] = 0
                     case .notRequested, .awaiting, .replied:
                         return
                     }

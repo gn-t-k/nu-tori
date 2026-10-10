@@ -27,7 +27,8 @@ public actor GatedAnalyticsSession: AnalyticsSession {
             .unansweredNoticeLineTapped,
             .missedWeightReminderOpened,
             .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
-            .presetTapped:
+            .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
+            .replyMealOpened:
             guard identified else { return }
             await forwarding.capture(event)
         }
