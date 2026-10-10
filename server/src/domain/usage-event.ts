@@ -37,8 +37,8 @@ export type UsageEvent =
   | {
       // 推定し終えた・諦めたとき。推定中に食事・料理を消したときは、食事・料理を消す書き込みで送る
       name: "estimation_ended";
-      // 推定のきっかけ。写真の推定（食事が対象）と、名前を直した・料理を足したときの推定し直し（料理が対象）
-      trigger: "photo" | "dish_renamed" | "dish_added";
+      // 推定のきっかけ。写真の推定と文章の食事の推定（食事が対象）と、名前を直した・料理を足したときの推定し直し（料理が対象）
+      trigger: "photo" | "text" | "dish_renamed" | "dish_added";
       // 料理が対象の推定は、料理ごとの推定の状態の値（estimated・no_dishes・failed）で送る。
       // 推定中に消えたら、消えたものの区分（食事・料理）で送る
       finalStatus: "estimated" | "no_dishes" | "failed" | "meal_deleted" | "dish_deleted";

@@ -12,7 +12,7 @@ import { mealTables } from "./meal-tables";
 const { syncWriteReceipts } = syncLedgerTables;
 const { meals, mealEatenAtCorrections, mealDeletions } = mealTables;
 const { mealPhotos, mealPhotoDeletions } = mealPhotoTables;
-const { sentTextMeals } = sentTextTables;
+const { sentTextMeals, mealEatenAtEstimations } = sentTextTables;
 
 export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
   find: (id) => {
@@ -28,7 +28,7 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       .all();
     return {
       ...meal,
-      eatenAt: findCorrectedEatenAt(db, id) ?? meal.eatenAt,
+      eatenAt: findCurrentEatenAt(db, id, meal.eatenAt),
       photoIds: photos.map((photo) => photo.id),
       sentTextId: db
         .select({ sentTextId: sentTextMeals.sentTextId })
@@ -81,8 +81,8 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       .all();
     return [...new Set([...sentOrCreatedSince, ...correctedSince].map(({ id }) => id))];
   },
-  // #332 の「時刻で食事を引く道」: 作ったときの時刻と直した時刻の両方から候補を出し、候補ごとに今の時刻を出してから範囲で絞る。
-  // 作ったときの時刻だけで引くと、直して日をまたいだ食事を数え誤る
+  // #332 の「時刻で食事を引く道」: 作ったときの時刻と直した時刻と推定した時刻（#419）から候補を出し、候補ごとに今の時刻を出してから範囲で絞る。
+  // 作ったときの時刻だけで引くと、直して・推定して日をまたいだ食事を数え誤る
   findEatenTimesBetween: (from, to) => {
     const createdInRange = db
       .select({ id: meals.id })
@@ -102,7 +102,14 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       )
       .where(between(mealEatenAtCorrections.eatenAt, from, to))
       .all();
-    const candidateIds = new Set([...createdInRange, ...correctedInRange].map(({ id }) => id));
+    const estimatedInRange = db
+      .select({ id: mealEatenAtEstimations.mealId })
+      .from(mealEatenAtEstimations)
+      .where(between(mealEatenAtEstimations.eatenAt, from, to))
+      .all();
+    const candidateIds = new Set(
+      [...createdInRange, ...correctedInRange, ...estimatedInRange].map(({ id }) => id),
+    );
     return [...candidateIds].flatMap((id) => {
       const meal = db
         .select({
@@ -115,7 +122,7 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       if (meal === undefined) {
         return [];
       }
-      const eatenAt = findCorrectedEatenAt(db, id) ?? meal.eatenAt;
+      const eatenAt = findCurrentEatenAt(db, id, meal.eatenAt);
       return eatenAt >= from && eatenAt <= to
         ? [{ eatenAt, eatenAtUtcOffsetSeconds: meal.eatenAtUtcOffsetSeconds }]
         : [];
@@ -157,11 +164,22 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
   },
 });
 
-const findCorrectedEatenAt = (db: DrizzleSqliteDODatabase, id: RecordId): Date | undefined =>
+// 今の時刻は、使う人が直した時刻 → 推定した時刻（文章の食事の1つ目）→ 作ったときの時刻の順で決める（#419 の「1つ目の食事の時刻」）
+const findCurrentEatenAt = (
+  db: DrizzleSqliteDODatabase,
+  id: RecordId,
+  createdEatenAt: Date,
+): Date =>
   findLatestCorrection(db, mealEatenAtCorrections, "eatenAt", {
     recordType: "meal",
     recordId: id,
-  })?.value;
+  })?.value ??
+  db
+    .select({ eatenAt: mealEatenAtEstimations.eatenAt })
+    .from(mealEatenAtEstimations)
+    .where(eq(mealEatenAtEstimations.mealId, id))
+    .get()?.eatenAt ??
+  createdEatenAt;
 
 // Durable Object の SQLite は、1つのクエリに渡せる変数が 100 まで。受け付けなかった書き込みの写真の ID は、いくつでも届きうる
 const splitIntoQueryableChunks = (ids: readonly RecordId[]): RecordId[][] => {

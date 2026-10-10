@@ -3,7 +3,7 @@ import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { Meal } from "./meal";
 
 export type MealStore = {
-  // 時刻は今の時刻（受け取った順でいちばんあとの修正。無ければ作ったときの時刻）
+  // 時刻は今の時刻（受け取った順でいちばんあとの修正。無ければ推定した時刻、それも無ければ作ったときの時刻）
   find: (id: RecordId) => Meal | undefined;
   hasDeletion: (id: RecordId) => boolean;
   // 渡した写真の ID のうち、どれかの食事の写真の宣言か、写真の削除の印にあるもの

@@ -1,9 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstimationProvider } from "../../domain/estimation-provider";
 import { identifyDishes } from "./identify-dishes";
+import { identifyWrittenMeals } from "./identify-written-meals";
 import { matchIngredients } from "./match-ingredients";
 
-// Anthropic の API で ①（写真）と ② を呼ぶ提供元。提供元の応答は残さない
+// Anthropic の API で ①（写真か送った文章）と ② を呼ぶ提供元。提供元の応答は残さない
 export const createAnthropicEstimationProvider = (
   client: Anthropic,
   accountId: string,
@@ -13,6 +14,8 @@ export const createAnthropicEstimationProvider = (
   return {
     identifyDishes: async (request, signal) =>
       identifyDishes(client, await userId, request, signal),
+    identifyWrittenMeals: async (request, signal) =>
+      identifyWrittenMeals(client, await userId, request, signal),
     matchIngredients: async (request, signal) =>
       matchIngredients(client, await userId, request, signal),
   };
