@@ -498,6 +498,12 @@ const context: ReplyContext = {
         ],
       },
     ],
+    todayNutrients: {
+      energyKcal: { type: "exactly", value: 650 },
+      proteinG: { type: "exactly", value: 30 },
+      fatG: { type: "exactly", value: 18 },
+      carbohydrateG: { type: "exactly", value: 90 },
+    },
     yesterdayMeals: [],
     previousDays: [],
     weeklyWeightTrend: [],

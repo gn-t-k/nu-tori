@@ -39,6 +39,12 @@ describe("返事に渡す文脈の文", () => {
           ],
         },
       ],
+      todayNutrients: {
+        energyKcal: { type: "exactly", value: 650.4 },
+        proteinG: { type: "exactly", value: 30.26 },
+        fatG: { type: "at_least", value: 18 },
+        carbohydrateG: { type: "unknown" },
+      },
       yesterdayMeals: [],
       previousDays: [{ calendarDay: "2026-10-09", recorded: false }],
       weeklyWeightTrend: [{ firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: 72.45 }],
@@ -69,6 +75,10 @@ describe("返事に渡す文脈の文", () => {
 
     test("料理ごとの栄養を、以上と不明を書き分けて丸めること", () => {
       expect(blocks[1]?.text).toContain("親子丼（1 杯）: 650 kcal、P 30.3 g、F 18 g 以上、C 不明");
+    });
+
+    test("今日の食事の合計を1行にすること", () => {
+      expect(blocks[1]?.text).toContain("今日の合計: 650 kcal、P 30.3 g、F 18 g 以上、C 不明");
     });
 
     test("新しい発言に、送った時刻と本文を書くこと", () => {

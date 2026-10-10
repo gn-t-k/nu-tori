@@ -144,13 +144,14 @@ const assembleStructuredValues = (
       )
       .toSorted((a, b) => a.meal.eatenAt.getTime() - b.meal.eatenAt.getTime());
 
+  const todayMeals = mealsOn(today);
   const lastWeightRecord = weightRecords
     .toSorted((a, b) => a.measuredAt.getTime() - b.measuredAt.getTime())
     .at(-1);
 
   return {
     sentAt: { at: toWallClock(sentText.sentAt), dayOfWeek: computeDayOfWeek(today) },
-    todayMeals: mealsOn(today).map(({ meal, estimation, dishes }) => ({
+    todayMeals: todayMeals.map(({ meal, estimation, dishes }) => ({
       mealId: meal.id,
       eatenAt: formatEatenAt(meal),
       estimation,
@@ -163,6 +164,7 @@ const assembleStructuredValues = (
         nutrients: computeMainNutrients(ingredients),
       })),
     })),
+    todayNutrients: todayMeals.length === 0 ? undefined : computeDayNutrients(todayMeals),
     yesterdayMeals: mealsOn(yesterday).map(({ meal, dishes }) => ({
       mealId: meal.id,
       eatenAt: formatEatenAt(meal),

@@ -341,6 +341,16 @@ describe("返事に渡す文脈の組み立て", () => {
         ]);
       });
 
+      // 返事を作るモデルに足し算をさせない（#434 の評価で、合計を足し間違えた）
+      test("今日の食事の合計を入れること", () => {
+        expect(context.structuredValues.todayNutrients).toEqual({
+          energyKcal: { type: "exactly", value: 500 },
+          proteinG: { type: "exactly", value: 24 },
+          fatG: { type: "at_least", value: 10 },
+          carbohydrateG: { type: "at_least", value: 70 },
+        });
+      });
+
       test("昨日の食事を ID つきで入れること", () => {
         expect(context.structuredValues.yesterdayMeals).toEqual([
           { mealId: build.id(3), eatenAt: "2026-10-09T19:00", dishNames: ["カレー"] },
@@ -375,6 +385,44 @@ describe("返事に渡す文脈の組み立て", () => {
             },
           },
         ]);
+      });
+    });
+
+    describe("今日の食事がまだ無いとき", () => {
+      test("今日の食事の合計を入れないこと", () => {
+        const context = assembleReplyContext(
+          build.source({ sentText: build.sentText(1, answeredAt) }),
+        );
+        expect(context.structuredValues.todayNutrients).toBeUndefined();
+      });
+    });
+
+    describe("今日の食事に、推定の済んだ食事と、推定を待つ食事があるとき", () => {
+      test("今日の食事の合計の分かる値を「以上」にすること", () => {
+        const context = assembleReplyContext(
+          build.source({
+            sentText: build.sentText(1, answeredAt),
+            meals: [
+              build.meal(2, "2026-10-09T23:30:00Z", [
+                build.dish("そば", [
+                  build.ingredient("そば", 200, {
+                    energy_kcal: 130,
+                    protein_g: 5,
+                    fat_g: 1,
+                    carbohydrate_g: 26,
+                  }),
+                ]),
+              ]),
+              { ...build.meal(3, "2026-10-10T01:00:00Z"), estimation: "awaiting" },
+            ],
+          }),
+        );
+        expect(context.structuredValues.todayNutrients).toEqual({
+          energyKcal: { type: "at_least", value: 260 },
+          proteinG: { type: "at_least", value: 10 },
+          fatG: { type: "at_least", value: 2 },
+          carbohydrateG: { type: "at_least", value: 52 },
+        });
       });
     });
 

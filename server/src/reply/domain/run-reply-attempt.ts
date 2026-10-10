@@ -1,11 +1,11 @@
 import { R } from "@praha/byethrow";
 import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
-import type { RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { SentText } from "../../sent-text/domain/sent-text";
 import { assembleReplyContext } from "./assemble-reply-context";
 import type { ConversationProvider, GeneratedReply } from "./conversation-provider";
+import { listReferableMealIds } from "./list-referable-meal-ids";
 import { readReplyContextSource } from "./read-reply-context-source";
 import type { ReplyAttemptOutcome } from "./reply-attempt-outcome";
 import { replyAttemptTimeLimitMs } from "./reply-attempt-time-limit-ms";
@@ -87,18 +87,14 @@ const toAttemptFailed = (
       .exhaustive(),
   });
 
-// 指し示せるのは、文脈で ID を付けた食事（今日と昨日の食事、記録の印の食事）のうち、作り終えた時点で在る食事だけ（設計判断 30）。
+// 指し示せるのは、文脈で ID を付けた食事（listReferableMealIds）のうち、作り終えた時点で在る食事だけ（設計判断 30）。
 // 同じ食事を二度指すと並びを持てないので、それも読めない応答にする
 const isValidReply = (
   { body, mealIds }: GeneratedReply,
   context: ReplyContext,
   stores: Pick<RecordKindStores, "meal">,
 ): boolean => {
-  const referable = new Set<RecordId>([
-    ...context.structuredValues.todayMeals.map(({ mealId }) => mealId),
-    ...context.structuredValues.yesterdayMeals.map(({ mealId }) => mealId),
-    ...context.window.flatMap((entry) => (entry.type === "meal_recorded" ? [entry.mealId] : [])),
-  ]);
+  const referable = listReferableMealIds(context);
   return (
     body.trim().length > 0 &&
     new Set(mealIds).size === mealIds.length &&
