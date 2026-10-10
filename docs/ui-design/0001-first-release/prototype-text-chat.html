@@ -199,6 +199,7 @@ code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
 .ai1.center::before,.ai1.center::after{content:"";flex:1;border-top:.5px solid var(--sep)}
 .ai-badge{display:inline-block;font-size:var(--t-cap2);color:var(--ink2);border:.5px solid var(--ink3);border-radius:4px;padding:0 4px;line-height:1.5}
 .ai1 svg{flex:none}
+.foot{font-size:var(--t-cap);color:var(--ink2);text-align:center;padding:0 16px 6px;margin-top:-2px}
 
 /* 会話のまとまり */
 .conv{display:flex;flex-direction:column;gap:8px;align-self:stretch}
@@ -369,7 +370,8 @@ function COMP(o = {}){
     row = `<div class="rowx">${lead}${wt}${field(o.weight === 'todo' ? ' narrow' : '')}</div>`;
   }
   const chips = o.chips ? `<div class="chips">${o.chips.map((c, i) => `<span class="${o.press === i ? 'press' : ''}">${c}</span>`).join('')}</div>` : '';
-  return `<div class="compwrap${o.big ? ' big' : ''}">${chips}<div class="comp">${row}</div></div>${o.kb ? KB(o.kb) : ''}`;
+  const foot = o.foot ? `<div class="foot" data-foot>${FOOT_TEXTS[0]}</div>` : '';
+  return `<div class="compwrap${o.big ? ' big' : ''}">${chips}<div class="comp">${row}</div>${foot}</div>${o.kb ? KB(o.kb) : ''}`;
 }
 // キーボード。o.cand: 変換の候補、o.chips: キーボードの上のチップ
 function KB(o = {}){
@@ -546,24 +548,31 @@ const Q2 = 'おにぎりは鮭と昆布どっちがいい？';
 const R2 = '鮭のほうがたんぱく質が少し多いので、今日は鮭がおすすめです。';
 const Q3 = '明日の朝は何を食べればいい？';
 const R3 = '昨日はたんぱく質が目安より 20 g 少なかったので、朝にゆで卵かヨーグルトを足すと近づきます。';
-function discFigs(line){
+// 入力欄の下にいつも出す1行の文言の候補（案 F）。「返事は AI が書きます」は開発者が気に入らなかったので比べるために最後に残す
+const FOOT_TEXTS = ['返事を書くのは AI です', '話しかけると AI が答えます', 'AI が読んで返事をします', 'nu-tori の返事は AI が書いています', '返事は AI によるものです', '返事は AI が書きます'];
+function discFigs(line, co = {}){
   // line(reply, cls) は1行を添えた発言、line.before は会話の始まりに置く1行
   const first = (r) => (line.before ? line.before : '') ;
   return [
-    {cap:'<b>会話の最初の発言。</b>', html: phone(TOP() + tl(DAYH('今日') + WROW('7:12 72.4 kg') + PHOTOMEAL() + first() + ME(Q1) + line(R_LUNCH)) + COMP({weight:'done'}))},
-    {cap:'<b>同じ会話の2つ目からは添えない。</b>', html: phone(TOP() + tl(PHOTOMEAL() + first() + ME(Q1) + line(R_LUNCH) + ME(Q2) + REPLY(R2)) + COMP({weight:'done'}))},
-    {cap:'<b>会話が日をまたいだあとの最初の発言。</b>昨日始まった会話が続いている（あいだに食事も体重記録も無い）。今日の最初の発言にもう一度添える。', html: phone(TOP() + tl(DAYH('昨日') + (line.before ? line.before : '') + ME(Q2) + line(R2) + DAYH('今日') + (line.before ? line.before : '') + ME(Q3) + line(R3)) + COMP({weight:'todo'}))},
+    {cap:'<b>会話の最初の発言。</b>', html: phone(TOP() + tl(DAYH('今日') + WROW('7:12 72.4 kg') + PHOTOMEAL() + first() + ME(Q1) + line(R_LUNCH)) + COMP({weight:'done', ...co}))},
+    {cap:'<b>同じ会話の2つ目からは添えない。</b>', html: phone(TOP() + tl(PHOTOMEAL() + first() + ME(Q1) + line(R_LUNCH) + ME(Q2) + REPLY(R2)) + COMP({weight:'done', ...co}))},
+    {cap:'<b>会話が日をまたいだあとの最初の発言。</b>昨日始まった会話が続いている（あいだに食事も体重記録も無い）。今日の最初の発言にもう一度添える。', html: phone(TOP() + tl(DAYH('昨日') + (line.before ? line.before : '') + ME(Q2) + line(R2) + DAYH('今日') + (line.before ? line.before : '') + ME(Q3) + line(R3)) + COMP({weight:'todo', ...co}))},
   ];
 }
 const DISC = (name, desc, line, vo) => ({name, desc, figs: discFigs(line).map((f, i) => i === 0 ? {...f, cap: f.cap + `<span class="vo"><b>VoiceOver:</b> ${vo}</span>`} : f)});
 T.push({id:'disclosure', label:'AI の返事の1行', title:'AI の返事の1行',
-  q:'AI の返事であることを示す1行の置き場（発言の上、発言の下、会話のまとまりの始まり）、形（小さな灰色の1行、小さなラベル、アイコン）と文言、VoiceOver での読ませ方。開発者にとってかなり受け入れがたい決定なので、目立ち方の違う案を並べた。',
+  ctl: `<fieldset data-k="foot"><legend>文言（案 F）</legend>${FOOT_TEXTS.map((t, i) => `<label><input type="radio" name="foot" value="${i}"${i ? '' : ' checked'}> ${t}</label>`).join('')}</fieldset>`,
+  q:'AI の返事であることを示す1行の置き場（発言の上、発言の下、会話のまとまりの始まり、入力欄の下に1か所）、形（小さな灰色の1行、小さなラベル、アイコン）と文言、VoiceOver での読ませ方。開発者にとってかなり受け入れがたい決定なので、目立ち方の違う案を並べた。',
   fixed:`決まっていること: 会話の最初の AI の発言と、会話が日をまたいだあと（発言の時刻の日で数える）の最初の AI の発言に添える。画面に「AI」と出さない決まりの例外で、文言には「AI」を含める（「自動で作った返事」は退けた）。ほかの場所には出さない（#29 の追記「会話」、ADR-0018、<code>DESIGN.md</code> の Don'ts）。`,
   variants:[
   DISC('発言の上に小さな灰色の1行', '発言のすぐ上に Caption 1・secondaryLabel で「AI の返事」。発言の見出しのように読める。', r => `<div class="ai1">AI の返事</div>` + REPLY(r), '「AI の返事。朝のたんぱく質が…」と、発言と1つにまとめて読む（1行を発言の頭に付ける）'),
   DISC('発言の下に小さな灰色の1行', '発言を読み終えたところに「AI の返事」。発言を先に読ませ、1行は目立たない。', r => REPLY(r) + `<div class="ai1">AI の返事</div>`, '「朝のたんぱく質が…。AI の返事」と、発言の後ろに付けて1つで読む'),
   (() => { const l = r => REPLY(r); l.before = '<div class="ai1 center">返事は AI が書きます</div>'; return DISC('会話の始まりに区切りの1行', '会話のまとまりの始まり（ユーザーの発言の上）に、細い線ではさんだ中央の1行「返事は AI が書きます」。会話の始まりを示す区切りも兼ねる（論点 7）。', l, '1行を独立した要素にし、「返事は AI が書きます」と見出しとして読む（ローターの見出しで飛べる）'); })(),
   DISC('発言の頭に小さなラベル', '発言の1文字目の前に、推定の印と同じ枠線だけのラベル「AI」。行を増やさない。', r => REPLY(`<span class="ai-badge">AI</span> ${r}`), '「AI の返事。朝のたんぱく質が…」と読む（ラベルの文字「AI」ではなく、読み上げ用の文言を当てる）'),
+  {name:'入力欄の下にいつも1行', desc:'発言ごとには添えず、入力欄のボタンの行の下に、小さな薄い1行（Caption 1・secondaryLabel、中央）をいつも出す。スクロールしても消えず、どの会話の始めにも目に入る（Claude のアプリの入力欄の下の1行と同じ形）。文言は上の「文言」で切り替える。体重だけ記録する人にも出る。',
+   figs: [...discFigs(r => REPLY(r), {foot:true}).map(f => ({...f, cap: f.cap.replace(/同じ会話の2つ目からは添えない。|今日の最初の発言にもう一度添える。/, '')})),
+     {cap:'<b>書いているとき。</b>キーボードを出しても、1行は書く欄の下に残る。', html: phone(TOP() + tl(BASE) + COMP({weight:'done', typing:true, focus:true, text:'夜は何を食べればいい？', foot:true, kb:{cand:['いい', '良い', 'よい']}}))},
+     {cap:'<b>会話の無い日。</b>体重と写真の食事だけでも出る。<span class="vo"><b>VoiceOver:</b> 入力欄の最後の要素として、1行をそのまま読む。会話の発言には何も付けない</span>', html: phone(TOP() + tlBase() + COMP({weight:'done', foot:true}))}]},
   DISC('アイコンを添えた1行', '発言の上に、SF Symbols の <code>sparkles</code> と「AI の返事」。iOS の Apple Intelligence の要約などと同じ手がかり。', r => `<div class="ai1">${I.sparkles()}AI の返事</div>` + REPLY(r), 'A と同じ。アイコンは読まない'),
   ]});
 
@@ -722,6 +731,9 @@ function runStreams(variant){
   });
 }
 document.querySelectorAll('.replay').forEach(b => b.addEventListener('click', () => runStreams(b.closest('.variant'))));
+document.querySelectorAll('input[name="foot"]').forEach(x => x.addEventListener('change', () => {
+  document.querySelectorAll('[data-foot]').forEach(e => { e.textContent = FOOT_TEXTS[+x.value]; });
+}));
 document.querySelectorAll('.ctl input').forEach(x => x.addEventListener('change', () => {
   const v = [...document.querySelectorAll('.variant[data-stream]')].find(v => !v.hidden && !v.closest('.topic').hidden);
   if (v) runStreams(v);
