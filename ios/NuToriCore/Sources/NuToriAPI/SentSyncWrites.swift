@@ -194,6 +194,9 @@
             case .resendSentTextAsConversation(let write):
                 self = .resendSentTextAsConversation(
                     writeId: try uuid(write.id), sentTextId: try uuid(write.sentTextId))
+            case .resendSentText(let write):
+                self = .resendSentText(
+                    writeId: try uuid(write.id), sentTextId: try uuid(write.sentTextId))
             }
         }
     }

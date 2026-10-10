@@ -495,9 +495,22 @@
                             .init(
                                 sentTextId: sentTextId, classification: .conversation,
                                 reply: .awaiting)))
-                // 端末はまだ送らない（`server/openapi.json` に形が無い）
-                case .resendSentText:
-                    return
+                // 回数切れ・作れなかったの文章だけを応答待ちに戻す。返事は作らない
+                case .resendSentText(_, let sentTextId):
+                    guard
+                        case .sentTextStatus(let status) = entries[
+                            .init(kind: .sentTextStatus, id: sentTextId)]?.change
+                    else { return }
+                    switch status.reply {
+                    case .halted, .failed:
+                        put(
+                            .sentTextStatus(
+                                .init(
+                                    sentTextId: sentTextId,
+                                    classification: status.classification, reply: .awaiting)))
+                    case .notRequested, .awaiting, .replied:
+                        return
+                    }
                 case .respondNotice(_, _, let response):
                     guard case .notice(let notice) = entries[write.recordKey]?.change else {
                         return

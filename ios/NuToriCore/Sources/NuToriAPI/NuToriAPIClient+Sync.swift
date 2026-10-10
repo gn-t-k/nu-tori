@@ -12,7 +12,7 @@ extension NuToriAPIClient {
             body: .json(
                 .init(
                     clientState: .init(clientState),
-                    writes: writes.compactMap(Components.Schemas.SyncWrite.init),
+                    writes: writes.map(Components.Schemas.SyncWrite.init),
                     isFinalBatch: isFinalBatch
                 )
             )
@@ -74,8 +74,7 @@ extension NuToriAPIClient {
 }
 
 extension Components.Schemas.SyncWrite {
-    /// サーバーの API にまだ形の無い書き込みは nil にして送らない。結果が返らないので、送り待ちに残る
-    fileprivate init?(_ write: SyncWrite) {
+    fileprivate init(_ write: SyncWrite) {
         switch write {
         case .createWeightRecord(let writeId, let record):
             self = .createWeightRecord(
@@ -253,9 +252,14 @@ extension Components.Schemas.SyncWrite {
                     sentTextId: sentTextId.canonicalString
                 )
             )
-        // サーバーが受け付ける形（#430）が `server/openapi.json` に入るまで送らない。入ったら生成し直して、ここで作る
-        case .resendSentText:
-            return nil
+        case .resendSentText(let writeId, let sentTextId):
+            self = .resendSentText(
+                .init(
+                    id: writeId.canonicalString,
+                    _type: .resendSentText,
+                    sentTextId: sentTextId.canonicalString
+                )
+            )
         }
     }
 }

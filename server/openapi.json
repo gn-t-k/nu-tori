@@ -638,6 +638,9 @@
             "$ref": "#/components/schemas/ResendSentTextAsConversationWrite"
           },
           {
+            "$ref": "#/components/schemas/ResendSentTextWrite"
+          },
+          {
             "$ref": "#/components/schemas/CreateWeightRecordWrite"
           },
           {
@@ -662,6 +665,7 @@
             "respond_notice": "#/components/schemas/RespondNoticeWrite",
             "create_sent_text": "#/components/schemas/CreateSentTextWrite",
             "resend_sent_text_as_conversation": "#/components/schemas/ResendSentTextAsConversationWrite",
+            "resend_sent_text": "#/components/schemas/ResendSentTextWrite",
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
             "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite"
@@ -1202,6 +1206,34 @@
             "format": "uuid",
             "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
             "description": "食事と読み分けた送った文章。その文章から作った食事を消し、会話にする"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "sentTextId"
+        ]
+      },
+      "ResendSentTextWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "resend_sent_text"
+            ]
+          },
+          "sentTextId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "返事を作れなかった・回数切れの送った文章。もう一度返事を作らせる"
           }
         },
         "required": [

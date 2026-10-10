@@ -1018,6 +1018,8 @@ extension Components {
             case deleteDish(Components.Schemas.DeleteDishWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteMealWrite`.
             case deleteMeal(Components.Schemas.DeleteMealWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/ResendSentTextWrite`.
+            case resendSentText(Components.Schemas.ResendSentTextWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/ResendSentTextAsConversationWrite`.
             case resendSentTextAsConversation(Components.Schemas.ResendSentTextAsConversationWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/RespondNoticeWrite`.
@@ -1058,6 +1060,8 @@ extension Components {
                     self = .deleteDish(try .init(from: decoder))
                 case "delete_meal":
                     self = .deleteMeal(try .init(from: decoder))
+                case "resend_sent_text":
+                    self = .resendSentText(try .init(from: decoder))
                 case "resend_sent_text_as_conversation":
                     self = .resendSentTextAsConversation(try .init(from: decoder))
                 case "respond_notice":
@@ -1097,6 +1101,8 @@ extension Components {
                 case let .deleteDish(value):
                     try value.encode(to: encoder)
                 case let .deleteMeal(value):
+                    try value.encode(to: encoder)
+                case let .resendSentText(value):
                     try value.encode(to: encoder)
                 case let .resendSentTextAsConversation(value):
                     try value.encode(to: encoder)
@@ -1863,6 +1869,43 @@ extension Components {
             internal init(
                 id: Swift.String,
                 _type: Components.Schemas.ResendSentTextAsConversationWrite._TypePayload,
+                sentTextId: Swift.String
+            ) {
+                self.id = id
+                self._type = _type
+                self.sentTextId = sentTextId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case sentTextId
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite`.
+        internal struct ResendSentTextWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case resendSentText = "resend_sent_text"
+            }
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite/type`.
+            internal var _type: Components.Schemas.ResendSentTextWrite._TypePayload
+            /// 返事を作れなかった・回数切れの送った文章。もう一度返事を作らせる
+            ///
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite/sentTextId`.
+            internal var sentTextId: Swift.String
+            /// Creates a new `ResendSentTextWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - sentTextId: 返事を作れなかった・回数切れの送った文章。もう一度返事を作らせる
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.ResendSentTextWrite._TypePayload,
                 sentTextId: Swift.String
             ) {
                 self.id = id

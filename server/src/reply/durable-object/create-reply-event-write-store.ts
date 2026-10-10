@@ -9,6 +9,7 @@ const {
   replyRequests,
   classificationReplyRequests,
   conversationResendReplyRequests,
+  resendReplyRequests,
   replyRequestHalts,
   replyGenerations,
   replyGenerationAttempts,
@@ -27,6 +28,11 @@ export const createReplyEventWriteStore = (db: DrizzleSqliteDODatabase): ReplyEv
       })
       .with({ type: "conversation_resend" }, ({ receiptId }) => {
         db.insert(conversationResendReplyRequests)
+          .values({ replyRequestId: id, syncWriteReceiptId: receiptId.value })
+          .run();
+      })
+      .with({ type: "resend" }, ({ receiptId }) => {
+        db.insert(resendReplyRequests)
           .values({ replyRequestId: id, syncWriteReceiptId: receiptId.value })
           .run();
       })

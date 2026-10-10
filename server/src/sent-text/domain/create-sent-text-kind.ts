@@ -6,6 +6,7 @@ import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import {
@@ -13,6 +14,8 @@ import {
   type MealDeletionStores,
   planMealDeletion,
 } from "../../meal/domain/plan-meal-deletion";
+import type { ReplyRequest } from "../../reply/domain/reply-request";
+import { computeSentTextReplyStatus } from "../../sent-text-status/domain/compute-sent-text-reply-status";
 import type { SentText } from "./sent-text";
 import { type SentTextWrite, sentTextWriteTypes } from "./sent-text-write";
 
@@ -29,6 +32,9 @@ export const createSentTextKind = (
         .with({ type: "create_sent_text" }, ({ sentText }) => decideCreate(stores, sentText))
         .with({ type: "resend_sent_text_as_conversation" }, ({ sentTextId }) =>
           decideResendAsConversation(stores, sentTextId, receivedAt),
+        )
+        .with({ type: "resend_sent_text" }, ({ sentTextId }) =>
+          decideResend(stores, sentTextId, receivedAt),
         )
         .exhaustive(),
   },
@@ -120,26 +126,88 @@ const decideResendAsConversation = (
           stores.sentText.insertConversationResendMealDeletion(receiptId, mealId);
         });
       }
-      // 依頼を書くだけなので、口が足すのは送った文章の状態の変更だけ（返事の変更は足されない）。
-      // 状態の変更は addedChanges にもあり、帳簿が1つにまとめる
-      stores.writeReplyEvents(
-        (change) => {
-          if (change.recordType === "sent_text_status") {
-            addChange({ recordType: change.recordType, recordId: change.recordId });
-          }
-        },
-        (writes) => {
-          writes.request({
-            id: generateRecordId(),
-            sentTextId,
-            countedOn: computeCalendarDayInTimeZone(
-              receivedAt,
-              findLatestValidTimeZone(stores.latestTimeZone) ?? sentText.timeZone,
-            ),
-            trigger: { type: "conversation_resend", receiptId },
-          });
-        },
-      );
+      writeReplyRequest(stores, addChange, {
+        sentText,
+        receivedAt,
+        trigger: { type: "conversation_resend", receiptId },
+      });
     },
   };
+};
+
+// 返事を作れなかった・回数切れの文章に、返事の依頼を作り直す（#419 の「作れなかった・回数切れ」）。
+// 回数は新しい依頼の数える日でまた数えるので、回数切れの文章も翌日に送り直せば通る
+const decideResend = (
+  stores: SentTextKindStores,
+  sentTextId: RecordId,
+  receivedAt: Date,
+): WriteDecision<AddedRecordType> => {
+  const sentText = stores.sentText.find(sentTextId);
+  if (sentText === undefined) {
+    return rejectWrite("resend", sentTextId, "record_not_found");
+  }
+  const replyStatus = computeSentTextReplyStatus(
+    stores.sentTextStatus.findReplyRequestProgresses(sentTextId),
+  );
+  return (
+    match(replyStatus)
+      .returnType<WriteDecision<AddedRecordType>>()
+      // 返事を頼んでいない文章（読み分ける前、食事と読み分けた文章）
+      .with({ type: "none" }, () => rejectWrite("resend", sentTextId, "reply_not_failed"))
+      // 2台目の端末から押した・2回目の書き込み。返事は来るか来ているので、行も変更も足さず、回数を2回使わない（設計判断 29）
+      .with({ type: "awaiting" }, { type: "replied" }, () => ({
+        result: "unchanged",
+        writeKind: "resend",
+        recordId: sentTextId,
+      }))
+      .with({ type: "halted" }, { type: "failed" }, () => ({
+        result: "applied",
+        writeKind: "resend",
+        recordId: sentTextId,
+        addedChanges: [{ recordType: "sent_text_status", recordId: sentTextId }],
+        usageEvents: [],
+        // 依頼のきっかけは送り直したことの行を指すので、先にその行を書く
+        commit: (receiptId, addChange) => {
+          stores.sentText.insertResend(receiptId);
+          writeReplyRequest(stores, addChange, {
+            sentText,
+            receivedAt,
+            trigger: { type: "resend", receiptId },
+          });
+        },
+      }))
+      .exhaustive()
+  );
+};
+
+// 送り直しの返事の依頼を書く。数える日は、受け取った時刻の、ユーザーの最新のタイムゾーンでの日（読めなければ文章のタイムゾーン）
+const writeReplyRequest = (
+  stores: SentTextKindStores,
+  addChange: (change: RecordChangeTarget<AddedRecordType>) => void,
+  {
+    sentText,
+    receivedAt,
+    trigger,
+  }: { sentText: SentText; receivedAt: Date; trigger: ReplyRequest["trigger"] },
+): void => {
+  // 依頼を書くだけなので、口が足すのは送った文章の状態の変更だけ（返事の変更は足されない）。
+  // 状態の変更は addedChanges にもあり、帳簿が1つにまとめる
+  stores.writeReplyEvents(
+    (change) => {
+      if (change.recordType === "sent_text_status") {
+        addChange({ recordType: change.recordType, recordId: change.recordId });
+      }
+    },
+    (writes) => {
+      writes.request({
+        id: generateRecordId(),
+        sentTextId: sentText.id,
+        countedOn: computeCalendarDayInTimeZone(
+          receivedAt,
+          findLatestValidTimeZone(stores.latestTimeZone) ?? sentText.timeZone,
+        ),
+        trigger,
+      });
+    },
+  );
 };

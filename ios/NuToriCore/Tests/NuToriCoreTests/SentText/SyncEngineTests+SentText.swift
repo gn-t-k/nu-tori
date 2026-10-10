@@ -223,13 +223,15 @@ extension SyncEngineTests {
         @Suite("返事を作れなかった文章を送り直したとき")
         struct Resending {
             let store: SyncBoxMock<RecordCacheMock>
+            let transport: ClientTransportMock
             let engine: SyncEngine
             let sentText: SentText
 
             init() async throws {
                 sentText = try .breakfastAndLunch()
                 store = try .ok()
-                engine = .fixture(store: store, transport: .sync())
+                transport = .sync()
+                engine = .fixture(store: store, transport: transport)
                 try await store.apply(
                     SyncBoxResult(kindChanges: [
                         KindChanges(
@@ -245,6 +247,17 @@ extension SyncEngineTests {
                     try store.entries.map { try PendingSentTextWrite(entry: $0).write }
                         == [.resend(sentTextId: sentText.id)])
                 #expect(store.saves.last == .pending(added: 1, removed: 0))
+            }
+
+            @Test("送ると、その文章を、送り直す書き込みで送ること")
+            func sendsResend() async throws {
+                try await engine.resend(sentTextId: sentText.id)
+
+                _ = try await engine.sync()
+
+                let write = try #require(try transport.pushBodies.first?.writes.first)
+                #expect(write == .resendSentText(writeId: write.writeId, sentTextId: sentText.id))
+                #expect(store.entries.isEmpty)
             }
         }
 

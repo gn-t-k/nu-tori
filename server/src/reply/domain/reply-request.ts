@@ -7,9 +7,11 @@ export type ReplyRequest = {
   sentTextId: RecordId;
   // 依頼を作った時点の、ユーザーの最新のタイムゾーンでの日（読めなければ送った文章のタイムゾーン）
   countedOn: string;
-  // きっかけ。送り直したは、その書き込みを足すチケット（#430）で、控えの ID を持つ型として足す
+  // きっかけ
   trigger:
     | { type: "classification" }
     // 会話として送り直す書き込みの控え（sent_text_conversation_resends を指す）
-    | { type: "conversation_resend"; receiptId: WriteReceiptId };
+    | { type: "conversation_resend"; receiptId: WriteReceiptId }
+    // 送り直す書き込みの控え（sent_text_resends を指す）
+    | { type: "resend"; receiptId: WriteReceiptId };
 };

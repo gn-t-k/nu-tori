@@ -19,4 +19,6 @@ export type SentTextStore = {
   // 会話として送り直したこと。文章は控えの record_id。消した食事の削除の印も、同じ控えで書く
   insertConversationResend: (receiptId: WriteReceiptId) => void;
   insertConversationResendMealDeletion: (receiptId: WriteReceiptId, mealId: RecordId) => void;
+  // 送り直したこと。文章は控えの record_id
+  insertResend: (receiptId: WriteReceiptId) => void;
 };
