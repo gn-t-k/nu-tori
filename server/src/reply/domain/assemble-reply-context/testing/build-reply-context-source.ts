@@ -61,6 +61,7 @@ export const buildReplyContextSource = {
       sentTimeZone: "Asia/Tokyo",
       entryMethod: "captured",
       photoIds: [buildReplyContextSource.id(n + 5000)],
+      sentTextId: undefined,
     },
     estimation: "settled",
     dishes,

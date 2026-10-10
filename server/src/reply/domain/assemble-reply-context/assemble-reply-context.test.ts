@@ -200,6 +200,7 @@ describe("返事に渡す文脈の組み立て", () => {
                   ...build.meal(4, minutesBefore(90), [], minutesBefore(60)).meal,
                   entryMethod: "written",
                   photoIds: [],
+                  sentTextId: build.id(3),
                 },
               },
             ],
