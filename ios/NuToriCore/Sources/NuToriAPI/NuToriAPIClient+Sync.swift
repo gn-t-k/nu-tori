@@ -12,7 +12,7 @@ extension NuToriAPIClient {
             body: .json(
                 .init(
                     clientState: .init(clientState),
-                    writes: writes.map(Components.Schemas.SyncWrite.init),
+                    writes: writes.compactMap(Components.Schemas.SyncWrite.init),
                     isFinalBatch: isFinalBatch
                 )
             )
@@ -74,7 +74,8 @@ extension NuToriAPIClient {
 }
 
 extension Components.Schemas.SyncWrite {
-    fileprivate init(_ write: SyncWrite) {
+    /// サーバーの API にまだ形の無い書き込みは nil にして送らない。結果が返らないので、送り待ちに残る
+    fileprivate init?(_ write: SyncWrite) {
         switch write {
         case .createWeightRecord(let writeId, let record):
             self = .createWeightRecord(
@@ -147,7 +148,7 @@ extension Components.Schemas.SyncWrite {
                         eatenAtUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
                         sentAt: meal.sentAt.millisecondsSince1970,
                         sentTimeZone: meal.sentTimeZone.identifier,
-                        entryMethod: meal.entryMethod.rawValue,
+                        entryMethod: meal.entryMethod.wireName,
                         photos: meal.photoIds.map { .init(id: $0.canonicalString) }
                     )
                 )
@@ -231,6 +232,22 @@ extension Components.Schemas.SyncWrite {
                     )
                 )
             )
+        case .createSentText(let writeId, let sentText):
+            self = .createSentText(
+                .init(
+                    id: writeId.canonicalString,
+                    _type: .createSentText,
+                    sentText: .init(
+                        id: sentText.id.canonicalString,
+                        body: sentText.body,
+                        sentAt: sentText.sentAt.millisecondsSince1970,
+                        timeZone: sentText.timeZone.identifier
+                    )
+                )
+            )
+        // サーバーが受け付ける形（#427・#430）が `server/openapi.json` に入るまで送らない。入ったら生成し直して、ここで作る
+        case .resendSentTextAsConversation, .resendSentText:
+            return nil
         }
     }
 }
@@ -330,6 +347,8 @@ extension SyncWriteResult.RejectionReason {
         case "invalid_target_on": self = .invalidTargetOn
         case "ingredients_replaced": self = .ingredientsReplaced
         case "awaiting_estimation": self = .awaitingEstimation
+        case "not_classified_as_meal": self = .notClassifiedAsMeal
+        case "reply_not_failed": self = .replyNotFailed
         default: self = .unknown(reason: reason)
         }
     }
@@ -363,6 +382,12 @@ extension SyncChange {
                 .syncedWeightRecord
             {
                 self = .weightRecord(record)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "ai_utterance":
+            if let utterance = try? record.decoded(as: AiUtterancePayload.self).syncedAiUtterance {
+                self = .aiUtterance(utterance)
             } else {
                 self = .unknown(kind: kind)
             }
@@ -447,6 +472,18 @@ extension SyncChange {
         case "notice":
             if let notice = try? record.decoded(as: NoticePayload.self).syncedNotice {
                 self = .notice(notice)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "sent_text":
+            if let sentText = try? record.decoded(as: SentTextPayload.self).syncedSentText {
+                self = .sentText(sentText)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "sent_text_status":
+            if let status = try? record.decoded(as: SentTextStatusPayload.self).syncedStatus {
+                self = .sentTextStatus(status)
             } else {
                 self = .unknown(kind: kind)
             }

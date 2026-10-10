@@ -1,6 +1,6 @@
 public import Foundation
 
-/// サーバーが受け付けなかった書き込みを、タイムラインに一時的に出す1行の並び。体重と食事を1本で持つ
+/// サーバーが受け付けなかった書き込みを、タイムラインに一時的に出す1行の並び。体重と食事と送った文章を1本で持つ
 public struct RejectedLines: Sendable, Equatable {
     public private(set) var lines: [RejectedLine] = []
 

@@ -12,9 +12,9 @@ struct RecordKindRegistryNamesTests {
         #expect(deviceNames == ServerRecordKindNames.names)
         #expect(
             deviceNames == [
-                "account_settings", "dish", "dish_estimation_status", "ingredient", "meal",
-                "meal_estimation_status", "notice", "usual_weighing_time", "weight_record",
-                "weight_trend",
+                "account_settings", "ai_utterance", "dish", "dish_estimation_status",
+                "ingredient", "meal", "meal_estimation_status", "notice", "sent_text",
+                "sent_text_status", "usual_weighing_time", "weight_record", "weight_trend",
             ])
     }
 

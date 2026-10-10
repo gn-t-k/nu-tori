@@ -73,7 +73,7 @@ extension SyncChange {
 }
 
 extension SyncChange {
-    /// 知らない入口と、読めない ID・タイムゾーンは nil にする
+    /// 知らない入口と、読めない ID・タイムゾーンは nil にする。送った文章の ID は文章の食事だけが持ち、古い版のアプリは読み飛ばす
     struct MealPayload: Decodable {
         let id: String
         let eatenAt: Int
@@ -81,6 +81,7 @@ extension SyncChange {
         let sentAt: Int
         let sentTimeZone: String
         let entryMethod: String
+        let sentTextId: String?
         let photos: [Photo]
 
         struct Photo: Decodable {
@@ -88,9 +89,12 @@ extension SyncChange {
         }
 
         var syncedMeal: SyncedMeal? {
+            let sentTextUUID = sentTextId.flatMap(UUID.init(uuidString:))
             guard let id = UUID(uuidString: id),
                 let sentTimeZone = TimeZone(identifier: sentTimeZone),
-                let entryMethod = SyncedMeal.EntryMethod(rawValue: entryMethod)
+                sentTextId == nil || sentTextUUID != nil,
+                let entryMethod = SyncedMeal.EntryMethod(
+                    wireName: entryMethod, sentTextId: sentTextUUID)
             else {
                 return nil
             }
@@ -260,6 +264,58 @@ extension SyncChange {
         }
     }
 
+    /// 読めない ID・タイムゾーンは nil にする
+    struct SentTextPayload: Decodable {
+        let id: String
+        let body: String
+        let sentAt: Int
+        let timeZone: String
+
+        var syncedSentText: SyncedSentText? {
+            guard let id = UUID(uuidString: id), let timeZone = TimeZone(identifier: timeZone)
+            else {
+                return nil
+            }
+            return SyncedSentText(
+                id: id, body: body, sentAt: Date(timeIntervalSince1970: Double(sentAt) / 1000),
+                timeZone: timeZone)
+        }
+    }
+
+    /// 知らない読み分けの結果は nil にする。サーバーが値を足しても、古い版のアプリは前の状態のまま同期を続ける
+    struct SentTextStatusPayload: Decodable {
+        let sentTextId: String
+        let classification: String
+
+        var syncedStatus: SyncedSentTextStatus? {
+            guard let sentTextId = UUID(uuidString: sentTextId),
+                let classification = SyncedSentTextStatus.Classification(rawValue: classification)
+            else {
+                return nil
+            }
+            return SyncedSentTextStatus(sentTextId: sentTextId, classification: classification)
+        }
+    }
+
+    /// 読めない ID は nil にする
+    struct AiUtterancePayload: Decodable {
+        let id: String
+        let body: String
+        let sentTextId: String
+        let mealIds: [String]
+
+        var syncedAiUtterance: SyncedAiUtterance? {
+            guard let id = UUID(uuidString: id), let sentTextId = UUID(uuidString: sentTextId)
+            else {
+                return nil
+            }
+            let mealUUIDs = mealIds.compactMap(UUID.init(uuidString:))
+            guard mealUUIDs.count == mealIds.count else { return nil }
+            return SyncedAiUtterance(
+                id: id, body: body, sentTextId: sentTextId, mealIds: mealUUIDs)
+        }
+    }
+
     struct UsualWeighingTimePayload: Decodable {
         let minuteOfDay: Int
     }
@@ -295,6 +351,9 @@ extension SyncChange {
     extension SyncChange.IngredientPayload.NutrientSourcePayload: Encodable {}
     extension SyncChange.NoticePayload: Encodable {}
     extension SyncChange.NoticePayload.Response: Encodable {}
+    extension SyncChange.SentTextPayload: Encodable {}
+    extension SyncChange.SentTextStatusPayload: Encodable {}
+    extension SyncChange.AiUtterancePayload: Encodable {}
     extension SyncChange.UsualWeighingTimePayload: Encodable {}
     extension SyncChange.WeightTrendPayload: Encodable {}
     extension SyncChange.WeightTrendPayload.Day: Encodable {}
