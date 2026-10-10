@@ -1,15 +1,12 @@
-import { R } from "@praha/byethrow";
+import Anthropic from "@anthropic-ai/sdk";
 import type { ConversationProvider } from "../../domain/conversation-provider";
-import { ConversationProviderError } from "../../domain/conversation-provider-error";
+import { createAnthropicConversationProvider } from "./create-anthropic-conversation-provider";
 
 // 提供元の差し替えの口。Durable Object が読み分けと返事のたびにここから提供元を得る。テストは同じフォルダの mock で偽物に差し替える。
-// 本物の読み分けは #432、返事は #433 でつなぐ。つなぐまでは呼び出しの失敗を返し、どの文章も会話にする（#419 の「決めかねたとき」）。
-// 返事は提供元のエラーとしてやり直し、使い切ると作れなかったになる
-export const createConversationProvider = (
-  _env: Env,
-  _accountId: string,
-): ConversationProvider => ({
-  classifySentText: async () =>
-    R.fail(new ConversationProviderError({ errorType: "not_connected" })),
-  generateReply: async () => R.fail(new ConversationProviderError({ errorType: "not_connected" })),
-});
+// どのモデルで読み分けるかはこの層が決める（#419 の「読み分け」）。今は推定と同じ Anthropic のワークスペースの Haiku 5.5（#423）
+export const createConversationProvider = (env: Env, accountId: string): ConversationProvider =>
+  createAnthropicConversationProvider(
+    // 読み分けはやり直さず、失敗は会話にする。返事の再試行はドメイン層が持つ。どちらも SDK の再試行は切る
+    new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 0 }),
+    accountId,
+  );
