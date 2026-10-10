@@ -59,7 +59,7 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - トークンは読むだけにする。アカウントのトークンで、Workers の役割 `Metadata Read-Only` を `nu-tori-development` と `nu-tori-production` に絞ったものと、`Account Analytics Read` だけを付ける（このトークンでログの問い合わせが通ることを 2026-10-09 に確かめた）。デプロイ用の `CLOUDFLARE_API_TOKEN` は使わない
   - Mac: シェルの設定に `NU_TORI_CLOUDFLARE_ACCOUNT_ID` と `NU_TORI_CLOUDFLARE_READ_TOKEN` を書く
   - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_CLOUDFLARE_READ_TOKEN` は Runtime Secret にする
-- AI Gateway のログは、まだ読まない（#422 で作ったゲートウェイは、今はどの呼び出しも通していない。`server/AGENTS.md` の「構成」）。ゲートウェイを使い始めるときに、トークンに `AI Gateway Read` を足し、スクリプトにゲートウェイの ID とログを読む口を足す。そのときも、要求と応答の本文（`request_head`・`response_head`、`.../logs/<id>/request`・`/response`）は読まない
+- AI Gateway のログは読まない（ゲートウェイは置いていない。`server/AGENTS.md` の「構成」）。Workers AI を呼び始めてゲートウェイを作るときに、トークンに `AI Gateway Read` を足し、スクリプトにゲートウェイの ID とログを読む口を足す。そのときも、要求と応答の本文（`request_head`・`response_head`、`.../logs/<id>/request`・`/response`）は読まない
 - アカウント ID かトークンの無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
 
 ## PostHog を読む
