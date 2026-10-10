@@ -137,12 +137,12 @@ components:
   own-message-bubble:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
-    typography: "{typography.subheadline}"
+    typography: "{typography.body}"
     rounded: "{rounded.xl}"
     padding: 12px
   reply-message:
     textColor: "{colors.on-surface}"
-    typography: "{typography.subheadline}"
+    typography: "{typography.body}"
   composer-field:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface-tertiary}"
@@ -251,9 +251,9 @@ components:
 
 - **Title 2**: 体重の値、大きな1日の丸の中の kcal
 - **Headline**: ナビゲーションバーの題、カードの見出し
-- **Body**: 一覧の行、値の欄、入力欄
-- **Subheadline**: タイムラインのカードの本文、会話、食事の名前、ボタン（ボタンは太字）
-- **Footnote**: 一覧の注記、kcal と P・F・C の小さな数字。一覧の見出しは、iOS の標準の見た目に任せる
+- **Body**: 一覧の行、値の欄、入力欄、会話（自分の吹き出しも返事も。iOS のメッセージと Claude のアプリに合わせる）
+- **Subheadline**: タイムラインのカードの本文、食事の名前、ボタン（ボタンは太字）
+- **Footnote**: 一覧の注記、kcal と P・F・C の小さな数字、タイムラインの日の見出し。一覧の見出しは、iOS の標準の見た目に任せる
 - **Caption 1・2**: 時刻、帯の曜日、グラフの目盛り、推定の印
 - Large Title は使わない。タイムラインの題はいま見ている日付にする
 
@@ -287,7 +287,8 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - **AI の返事の1行（composer-ai-reply-note）**: 入力欄のボタンの行の下に、いつも「AI が読んで返事をします」を Caption 1・secondaryLabel で中央に置く。キーボードを出しても書く欄の下に残る。大きな文字では折り返して全文を見せ、… で切らない。VoiceOver ではボタンの行のあとに、ふつうの文として読む。規約のための文なので消さない（ADR-0018）
 - **プリセット（preset-chip）**: 入力欄の上に並べる、角の丸いチップ。書く欄に文字があるあいだは隠す（押すと書きかけの文を置き換えてしまうため）。押すと文面を書く欄に入れてキーボードを出し、送らない。押せる範囲は 44 に広げる
 - **自分の記録（own-record-card）と自分の発言（own-message-bubble）**: 自分が記録した食事と体重は右に寄せ、Primary を薄く敷いたカードにする。自分が書いた文は Primary の吹き出しで右に寄せる
-- **返ってきた発言（reply-message）**: 吹き出しにせず、左の地の上に文で置く
+- **返ってきた発言（reply-message）**: 吹き出しにせず、左の地の上に文で置く。太字・箇条書き・番号つきの箇条書きを描く
+- **タイムラインの日の見出し**: タイムライン全体で中央に揃える。上に浮かせて止めない（ナビゲーションバーの題と1日の丸の帯が、いま見ている日を示す）
 - **値の欄（value-field、value-field-focused）**: 数の値は数字のキーボードを出す。選んでいるときは Surface の地に Primary の枠を付ける
 - **押せないボタン**: システムの無効の表示（`.disabled`）に任せる
 - **推定の印（estimate-badge）**: 推定したままの料理の量に添える、枠線だけの小さな印。直すと外す

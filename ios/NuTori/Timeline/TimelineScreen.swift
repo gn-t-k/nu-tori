@@ -31,6 +31,9 @@ struct TimelineScreen: View {
     let sendText: (TextDraft) async -> Void
     let accountActions: AccountActions
     let mealActions: MealActions
+    /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
+    var conversation = Timeline.Conversation.none
+    var conversationActions = ConversationActions.none
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
@@ -87,7 +90,10 @@ struct TimelineScreen: View {
                         rejectedLines: rejectedLines,
                         confirmsDeletion: false,
                         confirmsLastDishDeletion: false,
-                        addingDish: false
+                        addingDish: false,
+                        sentText: card.meal.sentTextId.flatMap { sentTextId in
+                            conversation.sentTexts.first { $0.id == sentTextId }
+                        }
                     )
                 }
             }
@@ -227,6 +233,12 @@ struct TimelineScreen: View {
     /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
+    /// 伸びている返事に合わせて一番下へ追うか。使う人が動かして一番下から離れたら止め、一番下へ戻すか、伸びる返事が無くなったら追う
+    @State private var followsGrowingReply = true
+    /// タイムラインの一番下が見えているか
+    @State private var showsTimelineEnd = true
+    /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
+    @State private var replyFirstText = ReplyFirstTextWatch()
 
     private var showsCamera: Binding<Bool> {
         Binding(
@@ -316,10 +328,35 @@ struct TimelineScreen: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                 }
-                .defaultScrollAnchor(.bottom)
+                .defaultScrollAnchor(.bottom, for: .initialOffset)
+                .defaultScrollAnchor(.bottom, for: .alignment)
+                // 返事が伸びるあいだは一番下へ追う。使う人が上へ動かしたら、追うのを止める
+                .defaultScrollAnchor(followsGrowingReply ? .bottom : .top, for: .sizeChanges)
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.visibleRect.maxY >= geometry.contentSize.height - 1
+                } action: { _, atEnd in
+                    showsTimelineEnd = atEnd
+                }
                 .onScrollPhaseChange { _, phase in
                     if phase != .idle {
                         showsCameraNotice = false
+                    }
+                    // 動かしているあいだは追わず、止まったときに一番下が見えていれば、また追う
+                    if phase == .interacting {
+                        followsGrowingReply = false
+                    } else if phase == .idle {
+                        followsGrowingReply = showsTimelineEnd
+                    }
+                }
+                .onChange(of: timeline.hasGrowingReply) { _, growing in
+                    if !growing {
+                        followsGrowingReply = true
+                    }
+                }
+                .onChange(of: timeline.days, initial: true) { _, _ in
+                    let events = replyFirstText.note(timeline, at: now())
+                    for event in events {
+                        Task { await capture(event) }
                     }
                 }
                 .coordinateSpace(.named("timeline"))
@@ -356,77 +393,15 @@ struct TimelineScreen: View {
     }
 
     private func daySection(_ day: Timeline.Day, in timeline: Timeline) -> some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 0) {
+            // 日の見出しは、タイムライン全体で中央に揃える。上に浮かせて止めない（ナビゲーションバーの題と1日の丸の帯が、いま見ている日を示す）
             Text(TimelineDayText.label(for: day.day))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
             ForEach(day.items) { item in
-                switch item {
-                case .weightRecord(let record):
-                    NavigationLink(value: record.day) {
-                        WeightRecordRow(record: record)
-                    }
-                    .buttonStyle(.plain)
-                    .undeliveredRecord(timeline.isUndelivered(item))
-                    .accessibilityIdentifier("weight-row")
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                case .rejectedWeightLine(let line):
-                    Text(line.text)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .accessibilityIdentifier("rejected-weight-line")
-                case .meal(let card):
-                    // どの状態のカードも、押すと食事の画面へ潜る
-                    NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                        MealCardView(card: card) { photoId in
-                            await mealActions.loadPhoto(card.meal.id, photoId)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .undeliveredRecord(timeline.isUndelivered(item))
-                    .accessibilityIdentifier("meal-card")
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                case .rejectedMealLine(let line):
-                    Text(line.text)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .accessibilityIdentifier("rejected-meal-line")
-                // 送った文章と返事は、会話の画面（#441）で描く。それまでは、タイムラインに会話を渡していないので並ばない
-                case .sentText, .rejectedSentTextLine, .reply:
-                    EmptyView()
-                case .notice(let card):
-                    WeightNoticeCard(
-                        card: card,
-                        records: records,
-                        today: today,
-                        now: now,
-                        timeZone: timeZone,
-                        capture: capture,
-                        onRecord: { write in
-                            noticeRecordedCount += 1
-                            Task {
-                                await saveWeight(write)
-                                // 知らせの中で記録したときは、記録した直後に通知の許可を求める
-                                await requestNotificationPermission()
-                            }
-                        }
-                    )
-                    .id(item.id)
-                    .background {
-                        if card.form == .awaitingAnswer {
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: AwaitingNoticePositionKey.self,
-                                    value: UnansweredNoticeLineVisibility.CardPosition(
-                                        noticeId: card.notice.id,
-                                        maxY: Double(geo.frame(in: .named("timeline")).maxY)))
-                            }
-                        }
-                    }
-                }
+                itemView(item, in: timeline)
+                    .padding(.top, Self.gap(before: item, in: day))
             }
         }
         // 中の行が自分の識別子を保つよう、区切りは入れ物にしてから名前を付ける
@@ -443,6 +418,154 @@ struct TimelineScreen: View {
                 )
             }
         }
+    }
+
+    /// 会話のまとまりの見た目（仕様 #419「会話のまとまりの見た目」）。隣り合う発言（送った文章と返事、返事と次の送った文章）は 8、
+    /// あいだに別の記録か日の見出しがある発言と、発言のすぐあとの記録は 24 空ける。会話の区切りとは結びつけない。
+    /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、会話のまとまりを余白だけで見せるため、ここは数値で決める。
+    /// ほかの項目の間と、吹き出しとその下の文章の食事のカードの間は、VStack の標準の間隔と同じ 8 にする
+    private static func gap(before item: Timeline.Item, in day: Timeline.Day) -> CGFloat {
+        let adjacent: CGFloat = 8
+        let apart: CGFloat = 24
+        guard let index = day.items.firstIndex(of: item) else { return adjacent }
+        let previous = index > 0 ? day.items[index - 1] : nil
+        if item.isUtterance {
+            return day.followsUtterance(item) ? adjacent : apart
+        }
+        if case .meal(let card) = item, let sentTextId = card.meal.sentTextId {
+            switch previous {
+            case .sentText(let bubble) where bubble.sentText.id == sentTextId:
+                return adjacent
+            case .meal(let previousCard) where previousCard.meal.sentTextId == sentTextId:
+                return adjacent
+            default:
+                break
+            }
+        }
+        return previous?.isUtterance == true ? apart : adjacent
+    }
+
+    @ViewBuilder private func itemView(_ item: Timeline.Item, in timeline: Timeline) -> some View {
+        switch item {
+        case .weightRecord(let record):
+            NavigationLink(value: record.day) {
+                WeightRecordRow(record: record)
+            }
+            .buttonStyle(.plain)
+            .undeliveredRecord(timeline.isUndelivered(item))
+            .accessibilityIdentifier("weight-row")
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        case .rejectedWeightLine(let line):
+            Text(line.text)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityIdentifier("rejected-weight-line")
+        case .meal(let card) where card.meal.sentTextId != nil:
+            writtenMealCard(card, isUndelivered: timeline.isUndelivered(item))
+        case .meal(let card):
+            // どの状態のカードも、押すと食事の画面へ潜る
+            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                MealCardView(card: card) { photoId in
+                    await mealActions.loadPhoto(card.meal.id, photoId)
+                }
+            }
+            .buttonStyle(.plain)
+            .undeliveredRecord(timeline.isUndelivered(item))
+            .accessibilityIdentifier("meal-card")
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        case .rejectedMealLine(let line):
+            Text(line.text)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityIdentifier("rejected-meal-line")
+        case .sentText(let bubble):
+            SentTextBubbleView(
+                bubble: bubble, isUndelivered: timeline.isUndelivered(item)
+            ) { reason in
+                followsGrowingReply = true
+                Task { await conversationActions.resend(bubble.sentText.id, reason) }
+            }
+        case .rejectedSentTextLine(let line):
+            Text(line.text)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityIdentifier("rejected-sent-text-line")
+        case .reply(let reply):
+            ReplyView(
+                reply: reply,
+                openMeal: { card in
+                    navigationPath.append(MealRoute(mealId: card.meal.id))
+                    Task { await capture(.replyMealOpened) }
+                },
+                loadPhoto: mealActions.loadPhoto
+            )
+            .id(item.id)
+        case .notice(let card):
+            WeightNoticeCard(
+                card: card,
+                records: records,
+                today: today,
+                now: now,
+                timeZone: timeZone,
+                capture: capture,
+                onRecord: { write in
+                    noticeRecordedCount += 1
+                    Task {
+                        await saveWeight(write)
+                        // 知らせの中で記録したときは、記録した直後に通知の許可を求める
+                        await requestNotificationPermission()
+                    }
+                }
+            )
+            .id(item.id)
+            .background {
+                if card.form == .awaitingAnswer {
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: AwaitingNoticePositionKey.self,
+                            value: UnansweredNoticeLineVisibility.CardPosition(
+                                noticeId: card.notice.id,
+                                maxY: Double(geo.frame(in: .named("timeline")).maxY)))
+                    }
+                }
+            }
+        }
+    }
+
+    /// 文章の食事のカード。写真の場所を持たず、文章の食事と分かる手がかりは上の吹き出し。
+    /// 下に「会話として送り直す」を添える。押しても確かめず、その文章の食事がすべて消える
+    private func writtenMealCard(_ card: MealCard, isUndelivered: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                MealCardView(card: card, showsCardChrome: false) { photoId in
+                    await mealActions.loadPhoto(card.meal.id, photoId)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("meal-card")
+            Divider()
+            Button("会話として送り直す") {
+                guard let sentTextId = card.meal.sentTextId else { return }
+                let deletedMealCount = meals.filter { $0.meal.sentTextId == sentTextId }.count
+                followsGrowingReply = true
+                Task {
+                    await conversationActions.resendAsConversation(sentTextId, deletedMealCount)
+                }
+            }
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .padding(.horizontal)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .accessibilityIdentifier("resend-as-conversation")
+        }
+        .modifier(OwnRecordCard())
+        .undeliveredRecord(isUndelivered)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     /// 帯の下の1行。押すと、その知らせまで戻る
@@ -503,6 +626,7 @@ struct TimelineScreen: View {
             },
             onSendText: { draft in
                 showsCameraNotice = false
+                followsGrowingReply = true
                 Task { await sendText(draft) }
             }
         )
@@ -552,7 +676,7 @@ struct TimelineScreen: View {
         Timeline(
             input: Timeline.Input(
                 weightRecords: records, rejectedLines: rejectedLines, meals: meals,
-                notices: notices, undelivered: undeliveredRecords),
+                notices: notices, undelivered: undeliveredRecords, conversation: conversation),
             firstDay: firstDay, today: today)
     }
 

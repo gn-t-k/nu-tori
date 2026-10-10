@@ -8,6 +8,8 @@ import UIKit
 /// 「栄養の出典 ›」、「食事を削除」の順に並べる
 struct MealScreen: View {
     let card: MealCard
+    /// 文章の食事の送った文章。写真の代わりに一番上に出す。写真の食事と、送った文章がまだ届いていない文章の食事は nil
+    let sentText: SentText?
     /// 受け付けなかった書き込みの1行。この食事の1行を、時刻の下と料理の一覧（料理の画面では材料の一覧）に置く
     let rejectedLines: [RejectedLine]
     /// 消した時刻を測るための今。直せる時刻の上限にもする
@@ -43,9 +45,11 @@ struct MealScreen: View {
         rejectedLines: [RejectedLine],
         confirmsDeletion: Bool,
         confirmsLastDishDeletion: Bool,
-        addingDish: Bool
+        addingDish: Bool,
+        sentText: SentText? = nil
     ) {
         self.card = card
+        self.sentText = sentText
         self.rejectedLines = rejectedLines
         self.now = now
         self.capture = capture
@@ -76,6 +80,12 @@ struct MealScreen: View {
                     photos
                 }
                 .listRowInsets(EdgeInsets())
+            } else if let sentText {
+                Section {
+                    Text(sentText.body)
+                        .font(.body)
+                        .accessibilityIdentifier("meal-sent-text")
+                }
             }
             Section {
                 VStack(alignment: .leading, spacing: 4) {

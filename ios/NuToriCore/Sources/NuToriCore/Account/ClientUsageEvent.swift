@@ -41,6 +41,14 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case textSent(preset: TextPreset?, editedPreset: Bool, length: Int)
     /// 入力欄の上のプリセットを押した
     case presetTapped(TextPreset)
+    /// 文章の食事のカードの「会話として送り直す」を押した。その場で消えた食事の数
+    case resentAsConversation(deletedMealCount: Int)
+    /// 作れなかった・回数切れの1行の「送り直す」を押した。押したときの1行の理由
+    case replyRegenerateTapped(ReplyRegenerateReason)
+    /// 返事の最初の文字を出した。応答を待ち始めてから出るまでの時間と、見守る要求で届いた（つながっていた）か
+    case replyFirstTextShown(sinceSent: Duration, watched: Bool)
+    /// 返事の下の、指し示す食事の行を押した
+    case replyMealOpened
 
     /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
     /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
@@ -48,6 +56,12 @@ public enum ClientUsageEvent: Sendable, Equatable {
         .mealDeleted(
             status: card.status ?? .awaitingPhotos,
             sinceRecorded: .seconds(max(now.timeIntervalSince(card.meal.sentAt), 0)))
+    }
+
+    /// 「送り直す」を添えた1行の理由
+    public enum ReplyRegenerateReason: Sendable, Equatable {
+        case failed(SentTextStatus.FailureReason)
+        case halted
     }
 
     public enum WeightInputMethod: Sendable, Equatable {
@@ -101,6 +115,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .notificationSettingsOpened: "notification_settings_opened"
         case .textSent: "text_sent"
         case .presetTapped: "preset_tapped"
+        case .resentAsConversation: "resent_as_conversation"
+        case .replyRegenerateTapped: "reply_regenerate_tapped"
+        case .replyFirstTextShown: "reply_first_text_shown"
+        case .replyMealOpened: "reply_meal_opened"
         }
     }
 
@@ -112,7 +130,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .unansweredNoticeLineTapped,
             .missedWeightReminderOpened,
             .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
-            .presetTapped:
+            .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
+            .replyMealOpened:
             nil
         case .screen(.timeline):
             "timeline"
@@ -142,8 +161,17 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .cameraPermissionNoticeShown, .mealTimeCorrected, .dishCorrected, .dishAdded,
             .dishDeleted,
             .unansweredNoticeLineTapped,
-            .notificationSettingsOpened:
+            .notificationSettingsOpened, .replyMealOpened:
             [:]
+        case .resentAsConversation(let deletedMealCount):
+            ["deleted_meal_count": .count(deletedMealCount)]
+        case .replyRegenerateTapped(let reason):
+            ["reason": .token(reason.token)]
+        case .replyFirstTextShown(let sinceSent, let watched):
+            [
+                "seconds_since_sent": .wholeSeconds(Self.wholeSeconds(sinceSent)),
+                "watched": .flag(watched),
+            ]
         case .missedWeightReminderOpened(let hadNotice):
             ["had_notice": .flag(hadNotice)]
         case .notificationPermissionRequested(let granted):
@@ -196,6 +224,16 @@ extension ClientUsageEvent.WeightCorrectionPlace {
         case .daySummary: "day_summary"
         case .otherRecords: "other_records"
         case .recentRecords: "recent_records"
+        }
+    }
+}
+
+extension ClientUsageEvent.ReplyRegenerateReason {
+    fileprivate var token: String {
+        switch self {
+        case .failed(.retriesExhausted): "retries_exhausted"
+        case .failed(.badRequest): "bad_request"
+        case .halted: "halted"
         }
     }
 }
