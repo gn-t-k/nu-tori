@@ -161,9 +161,7 @@ public struct Timeline: Sendable {
                 })
         }
 
-        /// 項目の前を詰めるか空けるか（仕様 #419「会話のまとまりの見た目」）。会話の区切りとは結びつけない。
-        /// 発言（送った文章と返事）は、すぐ前の発言と隣り合えば詰め、あいだに別の記録か日の見出しがあれば空ける。
-        /// 文章の食事のカードは、その文章の吹き出しと同じ文章の食事のすぐ下なら詰める。ほかの項目は、発言のすぐあとなら空け、ほかは詰める
+        /// 会話の区切りを持たず、隣り合うかだけで決める。日をまたぐ会話や、あとから入った食事で、まとまりがずれないため（仕様 #419「会話のまとまりの見た目」）
         public func spacing(before item: Item) -> ItemSpacing {
             guard let index = items.firstIndex(of: item) else { return .close }
             let previous = index > 0 ? items[index - 1] : nil

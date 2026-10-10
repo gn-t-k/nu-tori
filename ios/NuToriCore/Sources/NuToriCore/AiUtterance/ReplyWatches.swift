@@ -23,10 +23,8 @@ public actor ReplyWatches {
         Set(tasks.keys)
     }
 
-    /// 応答を待つ送った文章（`SyncEngine.sentTextsAwaitingResponse()`）を渡す。同期を終えるたびと、前面に戻ったときに呼ぶ。
-    /// まだつないでいない文章をつなぎ、応答を待たなくなった文章の途中の返事を捨てる。
-    /// 結果を受け取って閉じた文章と、つながらなかった文章は、応答を待っているあいだは `stopAll()` までつなぎ直さない（取りに行くで受け取る）。
-    /// 応答を待たなくなったあとでまた応答を待つようになった文章（送り直した）は、つなぎ直す
+    /// 同期を終えるたびと前面に戻ったときに、応答を待つ送った文章（`SyncEngine.sentTextsAwaitingResponse()`）を渡す。
+    /// 結果を受け取って閉じた文章と、つながらなかった文章をつなぎ直さないのは、その結果を取りに行くで受け取るため
     public func follow(awaiting sentTextIds: Set<UUID>) async {
         givenUp.formIntersection(sentTextIds)
         let settledStreams = streams.keys.filter {
