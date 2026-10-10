@@ -305,11 +305,15 @@
     "vars": {
       "boundary": "question",
       "expected": "chat",
-      "text": "ここまでの食事のフィードバックをください"
+      "text": "ここまでの食事のフィードバックをください。"
     }
   },
   {
-    "vars": { "boundary": "question", "expected": "chat", "text": "次の食事のアドバイスをください" }
+    "vars": {
+      "boundary": "question",
+      "expected": "chat",
+      "text": "次の食事のアドバイスをください。"
+    }
   },
   {
     "vars": {
