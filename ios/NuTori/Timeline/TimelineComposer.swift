@@ -3,7 +3,7 @@ import NuToriCore
 import SwiftUI
 import UIKit
 
-/// タイムラインの下に固定する入力欄。上の行に左から「撮る」「写真」「体重」と、残りの幅の書く欄。
+/// タイムラインの下に固定する入力欄。上の行に左から「撮る」「写真」「体重」と、残りの幅の書く欄（大きな文字では、書く欄を一番下の行に全幅で置く）。
 /// 今日の体重が未記録のあいだは、「体重」をカプセルにして丸の行の下に全幅で置く（書く欄の幅が記録の前後で変わらないように）。
 /// カメラを許可していない人が「撮る」を押したら、そのすぐ上に知らせを出す
 struct TimelineComposer: View {
@@ -50,32 +50,25 @@ struct TimelineComposer: View {
                 if draft.showsPresets {
                     presets
                 }
-                HStack(alignment: .bottom, spacing: 12) {
-                    Button(action: onCapture) {
-                        circle(systemName: "camera.fill", filled: true)
+                if dynamicTypeSize.isAccessibilitySize {
+                    HStack(spacing: 12) {
+                        circleButtons
+                        Spacer(minLength: 0)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("撮る")
-                    .accessibilityIdentifier("composer-capture")
-                    Button(action: onPickPhotos) {
-                        circle(systemName: "photo.on.rectangle", filled: false)
+                } else {
+                    HStack(alignment: .bottom, spacing: 12) {
+                        circleButtons
+                        field
+                            // 1行のとき、丸のボタンと縦の中心をそろえる（行は下端でそろえ、伸びた欄は上へ広がる）
+                            .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("写真")
-                    .accessibilityIdentifier("composer-photos")
-                    if weightRecordedToday && !writing {
-                        Button(action: onWeight) {
-                            circle(systemName: "scalemass.fill", filled: false)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(preparingWeightEntry)
-                        .accessibilityLabel("体重")
-                        .accessibilityIdentifier("composer-weight")
-                    }
-                    field
                 }
                 if !weightRecordedToday && !writing {
                     unrecordedWeightCapsule
+                }
+                // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）。一番下に置き、書き始めてカプセルが消えても欄を動かさない
+                if dynamicTypeSize.isAccessibilitySize {
+                    field
                 }
                 if let remaining = draft.remainingLength {
                     Text("残り \(remaining)")
@@ -99,10 +92,36 @@ struct TimelineComposer: View {
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
     private var writing: Bool { fieldFocused || !draft.text.isEmpty }
 
-    /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする。3つの丸と書く欄が画面の幅に収まるところで止める
+    /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする。3つの丸が画面の幅に収まるところで止める（大きな文字では書く欄を別の行に置く）
     @ScaledMetric private var scaledButtonSize: CGFloat = 44
     private var buttonSize: CGFloat { min(scaledButtonSize, 88) }
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.openURL) private var openURL
+
+    /// 左から「撮る」「写真」「体重」。「体重」は記録済みで書いていないときだけ
+    @ViewBuilder private var circleButtons: some View {
+        Button(action: onCapture) {
+            circle(systemName: "camera.fill", filled: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("撮る")
+        .accessibilityIdentifier("composer-capture")
+        Button(action: onPickPhotos) {
+            circle(systemName: "photo.on.rectangle", filled: false)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("写真")
+        .accessibilityIdentifier("composer-photos")
+        if weightRecordedToday && !writing {
+            Button(action: onWeight) {
+                circle(systemName: "scalemass.fill", filled: false)
+            }
+            .buttonStyle(.plain)
+            .disabled(preparingWeightEntry)
+            .accessibilityLabel("体重")
+            .accessibilityIdentifier("composer-weight")
+        }
+    }
 
     /// 押すと文面を入れてキーボードを出す。送らない
     private var presets: some View {
@@ -168,8 +187,6 @@ struct TimelineComposer: View {
         .frame(minHeight: Self.fieldMinHeight)
         .background(Color(.secondarySystemGroupedBackground), in: fieldShape)
         .overlay(fieldShape.stroke(Color(.separator), lineWidth: 0.5))
-        // 1行のとき、丸のボタンと縦の中心をそろえる（行は下端でそろえ、伸びた欄は上へ広がる）
-        .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
     }
 
     /// DESIGN.md の composer-field の高さ。書く欄の1行の高さで、丸のボタンと縦の中心をそろえるのにも使う
