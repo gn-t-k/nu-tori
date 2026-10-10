@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "evals:classify": "PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 promptfoo eval -c evals/classify/promptfooconfig.ts --no-cache --no-write --no-table -o .scratch/classify-results.json; tsx evals/classify/summarize-classification-results.ts .scratch/classify-results.json"
+    "evals:classify": "PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 promptfoo eval -c evals/classify/promptfooconfig.ts --no-cache --no-write --no-table -o .scratch/classify-results.json; tsx evals/classify/summarize-classification-results.ts .scratch/classify-results.json",
+    "evals:reply": "PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 promptfoo eval -c evals/reply/promptfooconfig.ts --no-cache --no-write --no-table -o .scratch/reply-results.json; tsx evals/reply/summarize-reply-results.ts .scratch/reply-results.json"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",
