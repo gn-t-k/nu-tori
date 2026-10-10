@@ -1,11 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { R } from "@praha/byethrow";
 import type { ConversationProvider } from "../../domain/conversation-provider";
-import { ConversationProviderError } from "../../domain/conversation-provider-error";
 import { classifyWithHaiku } from "./classify-with-haiku";
+import { generateReplyWithSonnet } from "./generate-reply-with-sonnet";
 
-// Anthropic の API で読み分ける提供元。推定と同じワークスペース（環境ごとの API キー）から呼ぶ（#423 で Haiku 5.5 に決めた）。
-// 返事は #433 でつなぐ。つなぐまでは提供元のエラーとしてやり直し、使い切ると作れなかったになる
+// Anthropic の API で読み分けと返事をする提供元。推定と同じワークスペース（環境ごとの API キー）から呼ぶ。
+// 読み分けは Haiku 5.5（#423）、返事は Sonnet 5.5 を流す形で呼ぶ（#419 の「返事を作る」）
 export const createAnthropicConversationProvider = (
   client: Anthropic,
   accountId: string,
@@ -14,8 +13,8 @@ export const createAnthropicConversationProvider = (
   const userId = hashAccountId(accountId);
   return {
     classifySentText: async ({ body }) => classifyWithHaiku(client, await userId, body),
-    generateReply: async () =>
-      R.fail(new ConversationProviderError({ errorType: "not_connected" })),
+    generateReply: async (request, signal) =>
+      generateReplyWithSonnet(client, await userId, request, signal),
   };
 };
 
