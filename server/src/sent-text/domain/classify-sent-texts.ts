@@ -78,14 +78,17 @@ const recordClassification = (
     stores.sentText.insertClassification({ sentTextId: sentText.id, classifiedAt, result });
     addChange({ recordType: "sent_text_status", recordId: sentText.id });
     if (result === "conversation") {
-      stores.replyRequest.insert({
-        id: generateRecordId(),
-        sentTextId: sentText.id,
-        countedOn: computeCalendarDayInTimeZone(
-          classifiedAt,
-          findLatestValidTimeZone(stores.latestTimeZone) ?? sentText.timeZone,
-        ),
-        trigger: { type: "classification" },
+      // 応答待ちになった状態の変更は、返事の書き込みの口が足す（取りに行く応答では、同じ文章の変更は1つにまとまる）
+      stores.writeReplyEvents(addChange, (writes) => {
+        writes.request({
+          id: generateRecordId(),
+          sentTextId: sentText.id,
+          countedOn: computeCalendarDayInTimeZone(
+            classifiedAt,
+            findLatestValidTimeZone(stores.latestTimeZone) ?? sentText.timeZone,
+          ),
+          trigger: { type: "classification" },
+        });
       });
       return true;
     }

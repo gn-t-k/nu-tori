@@ -3,6 +3,8 @@ import type { TokenUsage } from "../estimation/domain/estimation-provider";
 import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
 import type { MealPhotoReceiptFailedError } from "./receive-meal-photo";
+import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";
+import type { ReplyFailureReason } from "../sent-text-status/domain/sent-text-status";
 import type { RecordType } from "./record-type";
 import type { RejectionReason } from "./rejection-reason";
 import type { WriteKind } from "./sync-ledger/write-kind";
@@ -65,6 +67,34 @@ export type UsageEvent =
       secondsFromReceivedToClassified: number;
       // 呼び出しが失敗したときの、提供元のエラーの種類
       providerErrorType: string | undefined;
+    }
+  | {
+      // 返事の試みの結果を書いたとき（呼び出しごと）。本文は含めない
+      name: "reply_attempt_ended";
+      result: ReplyAttemptOutcome["result"];
+      // 呼び出しで使ったトークン。分からなければ undefined
+      usage: TokenUsage | undefined;
+      // 提供元のエラーと 400 のときの、提供元のエラーの種類
+      providerErrorType: string | undefined;
+    }
+  | {
+      // 返事を書いた・作れなかったにしたとき（生成ごと）。本文は含めない
+      name: "reply_generation_ended";
+      finalStatus: "replied" | "failed";
+      // 作れなかった理由。返事を書いたら undefined
+      failureReason: ReplyFailureReason | undefined;
+      // 自動のやり直しの回数（試みの数 - 1）
+      retryCount: number;
+      // 返事が指し示した食事の数
+      referencedMealCount: number;
+      // 返事の依頼を作ってから（読み分けた・送り直しを受け取った）、終えるまで
+      secondsFromRequestedToEnded: number;
+      // 試みで提供元が返したエラーの種類（重ねない）
+      providerErrorTypes: string[];
+    }
+  | {
+      // 1日の返事の回数の上限に達していて、提供元を呼ばずに依頼を回数切れにしたとき。1日 20 回を調整するのに見る
+      name: "reply_request_halted";
     }
   | {
       // 1日の回数の上限に達していて、予定を次の日に回したとき

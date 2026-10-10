@@ -1,4 +1,4 @@
-import { and, asc, between, eq, inArray } from "drizzle-orm";
+import { and, asc, between, eq, gte, inArray, or } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../domain/record-id";
 import { findLatestCorrection } from "../../durable-object/find-latest-correction";
@@ -59,6 +59,28 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
         .all()
         .map((photo) => photo.id),
     ]),
+  // 推定した時刻（文章の食事）は送った時刻より後にならないので、送った時刻で拾える
+  findIdsSentOrEatenSince: (from) => {
+    const sentOrCreatedSince = db
+      .select({ id: meals.id })
+      .from(meals)
+      .where(or(gte(meals.sentAt, from), gte(meals.eatenAt, from)))
+      .all();
+    const correctedSince = db
+      .select({ id: meals.id })
+      .from(mealEatenAtCorrections)
+      .innerJoin(
+        syncWriteReceipts,
+        eq(syncWriteReceipts.id, mealEatenAtCorrections.syncWriteReceiptId),
+      )
+      .innerJoin(
+        meals,
+        and(eq(syncWriteReceipts.recordType, "meal"), eq(meals.id, syncWriteReceipts.recordId)),
+      )
+      .where(gte(mealEatenAtCorrections.eatenAt, from))
+      .all();
+    return [...new Set([...sentOrCreatedSince, ...correctedSince].map(({ id }) => id))];
+  },
   // #332 の「時刻で食事を引く道」: 作ったときの時刻と直した時刻の両方から候補を出し、候補ごとに今の時刻を出してから範囲で絞る。
   // 作ったときの時刻だけで引くと、直して日をまたいだ食事を数え誤る
   findEatenTimesBetween: (from, to) => {

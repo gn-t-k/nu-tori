@@ -89,7 +89,7 @@ describe("読み分け", () => {
 
     test("送った文章の状態が食事で届くこと", async () => {
       expect(await pullRecordsOf("sent_text_status")).toEqual([
-        { sentTextId, classification: "meal" },
+        { sentTextId, classification: "meal", replyStatus: "none" },
       ]);
     });
 
@@ -134,9 +134,10 @@ describe("読み分け", () => {
     {
       name: "読み分けの呼び出しが失敗したとき",
       arrange: () =>
-        mockCreateConversationProviderError(
-          new ConversationProviderError({ errorType: "overloaded_error" }),
-        ),
+        mockCreateConversationProviderError({
+          failingCall: "classify_sent_text",
+          error: new ConversationProviderError({ errorType: "overloaded_error" }),
+        }),
     },
   ])("$name", ({ arrange }) => {
     let sentTextId: string;
@@ -148,9 +149,10 @@ describe("読み分け", () => {
       await runEstimationAlarm(accountId);
     });
 
+    // 返事は同じアラームで作るので、応答の状態は返事あり
     test("送った文章の状態が会話で届くこと", async () => {
       expect(await pullRecordsOf("sent_text_status")).toEqual([
-        { sentTextId, classification: "conversation" },
+        { sentTextId, classification: "conversation", replyStatus: "replied" },
       ]);
     });
 

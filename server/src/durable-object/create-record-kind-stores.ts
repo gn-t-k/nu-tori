@@ -13,7 +13,9 @@ import { createMealPhotoStore } from "../meal/durable-object/create-meal-photo-s
 import { createMealStore } from "../meal/durable-object/create-meal-store";
 import { createMealEstimationStatusStore } from "../meal-estimation-status/durable-object/create-meal-estimation-status-store";
 import { createNoticeStore } from "../notice/durable-object/create-notice-store";
-import { createReplyRequestStore } from "../reply/durable-object/create-reply-request-store";
+import { writeReplyEvents } from "../reply/domain/write-reply-events";
+import { createReplyEventWriteStore } from "../reply/durable-object/create-reply-event-write-store";
+import { createReplyStore } from "../reply/durable-object/create-reply-store";
 import { createSentTextStore } from "../sent-text/durable-object/create-sent-text-store";
 import { createSentTextStatusStore } from "../sent-text-status/durable-object/create-sent-text-status-store";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
@@ -29,6 +31,9 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
   const estimationEventWrite = createEstimationEventWriteStore(db);
   const dish = createDishStore(db);
   const dishEstimationStatus = createDishEstimationStatusStore(db);
+  const sentText = createSentTextStore(db);
+  const sentTextStatus = createSentTextStatusStore(db);
+  const replyEventWrite = createReplyEventWriteStore(db);
   return {
     accountSettings: createAccountSettingsStore(db),
     aiUtterance: createAiUtteranceStore(db),
@@ -38,8 +43,8 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     meal,
     mealEstimationStatus,
     notice: createNoticeStore(db),
-    sentText: createSentTextStore(db),
-    sentTextStatus: createSentTextStatusStore(db),
+    sentText,
+    sentTextStatus,
     usualWeighingTime: createUsualWeighingTimeStore(db),
     weightRecord: createWeightRecordStore(db),
     firstSignIn: createFirstSignInStore(db),
@@ -47,7 +52,7 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     mealPhoto: createMealPhotoStore(db),
     estimationSchedule: createEstimationScheduleStore(db),
     estimation: createEstimationStore(db),
-    replyRequest: createReplyRequestStore(db),
+    reply: createReplyStore(db),
     writeEstimationEvents: (addChange, now, run) =>
       writeEstimationEvents(
         { meal, mealEstimationStatus, dish, dishEstimationStatus, estimationEventWrite },
@@ -55,5 +60,7 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
         now,
         run,
       ),
+    writeReplyEvents: (addChange, run) =>
+      writeReplyEvents({ sentText, sentTextStatus, replyEventWrite }, addChange, run),
   };
 };

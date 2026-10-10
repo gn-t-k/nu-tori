@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, gte, isNull } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { SentTextStore } from "../domain/sent-text-store";
@@ -19,6 +19,13 @@ export const createSentTextStore = (db: DrizzleSqliteDODatabase): SentTextStore 
   insert: ({ id, body, sentAt, timeZone }) => {
     db.insert(sentTexts).values({ id, body, sentAt, sentTimeZone: timeZone }).run();
   },
+  findSentSince: (from) =>
+    db
+      .select(sentTextColumns)
+      .from(sentTexts)
+      .where(gte(sentTexts.sentAt, from))
+      .orderBy(asc(sentTexts.sentAt), asc(sentTexts.id))
+      .all(),
   // 読み分け待ちは「読み分けの行が無いこと」で絞るので、索引が効かない（#419 の「索引」の置かないもの）。
   // 受け取った時刻は、文章を作った（当てた）控えの要求の時刻
   findUnclassified: () =>
