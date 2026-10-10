@@ -45,7 +45,7 @@ type AddedRecordType = "sent_text_status" | "meal" | MealDeletionChangeType;
 
 // 送った文章の書き込みが読み書きする置き場
 type SentTextKindStores = MealDeletionStores &
-  Pick<RecordKindStores, "sentText" | "sentTextStatus" | "replyRequest" | "latestTimeZone">;
+  Pick<RecordKindStores, "sentText" | "sentTextStatus" | "writeReplyEvents" | "latestTimeZone">;
 
 const decideCreate = (
   stores: SentTextKindStores,
@@ -113,22 +113,33 @@ const decideResendAsConversation = (
     ],
     usageEvents: deletions.flatMap(({ plan }) => plan.usageEvents),
     // 消した食事の削除の印は、会話として送り直したことの行を指すので、先にその行を書く
-    commit: (receiptId) => {
+    commit: (receiptId, addChange) => {
       stores.sentText.insertConversationResend(receiptId);
       for (const { mealId, plan } of deletions) {
         plan.commit(receiptId, () => {
           stores.sentText.insertConversationResendMealDeletion(receiptId, mealId);
         });
       }
-      stores.replyRequest.insert({
-        id: generateRecordId(),
-        sentTextId,
-        countedOn: computeCalendarDayInTimeZone(
-          receivedAt,
-          findLatestValidTimeZone(stores.latestTimeZone) ?? sentText.timeZone,
-        ),
-        trigger: { type: "conversation_resend", receiptId },
-      });
+      // 依頼を書くだけなので、口が足すのは送った文章の状態の変更だけ（返事の変更は足されない）。
+      // 状態の変更は addedChanges にもあり、帳簿が1つにまとめる
+      stores.writeReplyEvents(
+        (change) => {
+          if (change.recordType === "sent_text_status") {
+            addChange({ recordType: change.recordType, recordId: change.recordId });
+          }
+        },
+        (writes) => {
+          writes.request({
+            id: generateRecordId(),
+            sentTextId,
+            countedOn: computeCalendarDayInTimeZone(
+              receivedAt,
+              findLatestValidTimeZone(stores.latestTimeZone) ?? sentText.timeZone,
+            ),
+            trigger: { type: "conversation_resend", receiptId },
+          });
+        },
+      );
     },
   };
 };

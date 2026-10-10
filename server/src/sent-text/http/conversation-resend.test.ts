@@ -113,7 +113,7 @@ describe("会話として送り直す", () => {
         meals: recordIdsOf(beforeResend.changes, "meal"),
         dishes: recordIdsOf(beforeResend.changes, "dish"),
         ingredients: recordIdsOf(beforeResend.changes, "ingredient"),
-        statuses: [{ sentTextId, classification: "conversation" }],
+        statuses: [{ sentTextId, classification: "conversation", replyStatus: "awaiting" }],
       });
     });
 
@@ -289,7 +289,8 @@ describe("会話として送り直す", () => {
       }).toEqual({
         meals: [],
         dishes: [],
-        status: [{ sentTextId, classification: "conversation" }],
+        // 推定を捨てたアラームで、送り直しの依頼の返事も作る
+        status: [{ sentTextId, classification: "conversation", replyStatus: "replied" }],
       });
     });
   });

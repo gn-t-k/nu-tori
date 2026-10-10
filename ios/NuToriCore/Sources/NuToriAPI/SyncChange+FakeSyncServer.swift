@@ -102,7 +102,9 @@
                 case .sentTextStatus(let status):
                     SentTextStatusPayload(
                         sentTextId: status.sentTextId.canonicalString,
-                        classification: status.classification.rawValue)
+                        classification: status.classification.rawValue,
+                        replyStatus: status.reply.serverValue.status,
+                        replyFailureReason: status.reply.serverValue.failureReason)
                 case .usualWeighingTime(let time):
                     UsualWeighingTimePayload(minuteOfDay: time.minuteOfDay)
                 case .weightTrend(let trend):
@@ -253,6 +255,19 @@
                         timeZone: $0.timeZone.identifier)
                 }
             )
+        }
+    }
+
+    extension SyncedSentTextStatus.Reply {
+        /// サーバーの replyStatus と replyFailureReason の値
+        fileprivate var serverValue: (status: String, failureReason: String?) {
+            switch self {
+            case .notRequested: ("none", nil)
+            case .awaiting: ("awaiting", nil)
+            case .replied: ("replied", nil)
+            case .halted: ("halted", nil)
+            case .failed(let reason): ("failed", reason.rawValue)
+            }
         }
     }
 #endif

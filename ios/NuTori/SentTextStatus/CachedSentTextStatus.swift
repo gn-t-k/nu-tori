@@ -7,26 +7,47 @@ import SwiftData
 nonisolated final class CachedSentTextStatus {
     @Attribute(.unique) var sentTextId: UUID
     var classification: String
+    /// 応答の状態（none・awaiting・replied・halted・failed）
+    var replyStatus: String
+    /// replyStatus が failed のときだけ持つ、作れなかった理由
+    var replyFailureReason: String?
 
     init(sentTextId: UUID, status: SentTextStatus) {
         self.sentTextId = sentTextId
         classification = Self.stored(status.classification)
+        let reply = Self.stored(status.reply)
+        replyStatus = reply.status
+        replyFailureReason = reply.failureReason
     }
 
     func apply(_ status: SentTextStatus) {
         classification = Self.stored(status.classification)
+        let reply = Self.stored(status.reply)
+        replyStatus = reply.status
+        replyFailureReason = reply.failureReason
     }
 
     /// 読めない値の行は nil
     func sentTextStatus() -> SentTextStatus? {
-        let read: SentTextStatus.Classification? =
+        let classification: SentTextStatus.Classification? =
             switch classification {
             case "pending": .pending
             case "meal": .meal
             case "conversation": .conversation
             default: nil
             }
-        return read.map { SentTextStatus(classification: $0) }
+        let reply: SentTextStatus.Reply? =
+            switch (replyStatus, replyFailureReason) {
+            case ("none", _): .notRequested
+            case ("awaiting", _): .awaiting
+            case ("replied", _): .replied
+            case ("halted", _): .halted
+            case ("failed", "retries_exhausted"): .failed(.retriesExhausted)
+            case ("failed", "bad_request"): .failed(.badRequest)
+            default: nil
+            }
+        guard let classification, let reply else { return nil }
+        return SentTextStatus(classification: classification, reply: reply)
     }
 
     /// 保存は呼び出し側が行う
@@ -48,6 +69,19 @@ nonisolated final class CachedSentTextStatus {
         case .pending: "pending"
         case .meal: "meal"
         case .conversation: "conversation"
+        }
+    }
+
+    private static func stored(_ reply: SentTextStatus.Reply) -> (
+        status: String, failureReason: String?
+    ) {
+        switch reply {
+        case .notRequested: ("none", nil)
+        case .awaiting: ("awaiting", nil)
+        case .replied: ("replied", nil)
+        case .halted: ("halted", nil)
+        case .failed(.retriesExhausted): ("failed", "retries_exhausted")
+        case .failed(.badRequest): ("failed", "bad_request")
         }
     }
 }

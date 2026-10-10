@@ -79,8 +79,14 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - 読み分けはアラームで進める。入口は `src/sent-text/domain/classify-sent-texts.ts`: 読み分けを待っている文章（読み分けの行が無い）を送った時刻の順に1つずつ提供元に読ませ、1つのトランザクションで読み分けの結果と送った文章の状態の変更を書く。食事なら文章の食事（入口 `written`、時刻は送った時刻、`sent_text_meals` に文章を持つ）を作って推定の予定に入れ、会話・決めかねる・呼び出しの失敗なら会話にして返事の依頼（きっかけ: 読み分け）を書く。`runAccountAlarm` は推定より先に読み分けるので、文章の食事の推定は同じアラームで始まる
 - 読み分けは試みの行を持たず、やり直さない。呼んでいるあいだに止まった文章は行が無いまま残り、次のアラームで読み直す。読み分け待ちの文章があれば、次のアラームの時刻はその文章を受け取った時刻（過ぎているので、すぐ動く）
-- 読み分けと返事の提供元（LLM）は、ドメイン層の型 `ConversationProvider`（`src/reply/domain/conversation-provider.ts`）を、`src/reply/durable-object/create-conversation-provider/` が作る。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（食事・会話・決めかねるは `mockCreateConversationProviderOk`、呼び出しの失敗は `mockCreateConversationProviderError`）。本物の読み分けは #432 でつなぐ。つなぐまでは呼び出しの失敗を返す
-- 返事の依頼は、返事の依頼の置き場（`src/reply/domain/reply-request-store.ts`）の1つの口で、依頼ときっかけのサブセットを一緒に書く
+- 読み分けと返事の提供元（LLM）は、ドメイン層の型 `ConversationProvider`（`src/reply/domain/conversation-provider.ts`）を、`src/reply/durable-object/create-conversation-provider/` が作る。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（食事・会話・決めかねると返事は `mockCreateConversationProviderOk`、読み分けか返事の呼び出しの失敗は `mockCreateConversationProviderError` の `failingCall`）。本物の読み分けは #432、返事は #433 でつなぐ。つなぐまでは呼び出しの失敗を返す
+
+## 返事
+
+- 返事はアラームで進める（`runAccountAlarm` が読み分け・推定のあとに呼ぶ）。入口は `src/reply/domain/advance-replies.ts`: 待っている依頼から返事の生成を始めて試みを書き（`begin-reply-attempts.ts`）、応える文章の送った順に1つずつ文脈を読んで提供元を呼び（`run-reply-attempt.ts`。先に作った返事をあとの文章の窓に入れるため並べない）、結果を書く（`record-reply-attempt-outcome.ts`）。次に試みる時刻は推定と同じ式（`src/domain/compute-next-attempt-at.ts`）で、試みの時間の上限は `reply-attempt-time-limit-ms.ts`
+- 返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・返事・作れなかった）は、返事の書き込みの口（`src/reply/domain/write-reply-events.ts`）を通して書く。口は、表で守らない決まり（依頼は会話と読み分けた文章にだけ、回数切れと生成・返事と作れなかったはどちらか1つ）を書く前に確かめて投げ、書く前とあとで送った文章の状態を比べて変わった文章にだけ状態の変更を、返事を書いたら返事の変更を足す。依頼ときっかけのサブセットは、口の `request` で一緒に書く（きっかけは依頼の型の `trigger` で1つ）
+- 回数は1日 `maximumDailyReplyGenerations`（20）。生成を始めるときに、依頼の数える日の生成を数え、上限なら提供元を呼ばずに回数切れにする（翌日に回さない）。テストは `src/reply/http/testing/insert-counted-reply-requests.ts` で回数を満たす
+- 指し示す食事は、文脈で ID を付けた食事（今日と昨日の食事、記録の印の食事）のうち在るものだけを通し、ほかは読めない応答にしてやり直す
 
 ## 成分表のデータファイル
 

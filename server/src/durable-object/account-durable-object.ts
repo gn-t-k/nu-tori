@@ -150,6 +150,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
           ran.error instanceof Error && "stage" in ran.error ? ran.error.stage : undefined,
         classifications: ran.classifications,
         estimationAttempts: ran.attempts,
+        replyAttempts: ran.replyAttempts,
         durationMs: Date.now() - startedAt,
       });
       // Sentry に届け、Cloudflare のアラームのやり直しに任せる

@@ -476,7 +476,9 @@
                     put(.sentText(sentText))
                     put(
                         .sentTextStatus(
-                            .init(sentTextId: sentText.id, classification: .pending)))
+                            .init(
+                                sentTextId: sentText.id, classification: .pending,
+                                reply: .notRequested)))
                 // 食事を消す書き込みと同じく、その文章から作った食事の削除の印だけを置き、料理と材料は連れて消さない
                 case .resendSentTextAsConversation(_, let sentTextId):
                     guard
@@ -490,7 +492,9 @@
                     }
                     put(
                         .sentTextStatus(
-                            .init(sentTextId: sentTextId, classification: .conversation)))
+                            .init(
+                                sentTextId: sentTextId, classification: .conversation,
+                                reply: .awaiting)))
                 // 端末はまだ送らない（`server/openapi.json` に形が無い）
                 case .resendSentText:
                     return

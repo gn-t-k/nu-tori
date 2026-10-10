@@ -1,6 +1,7 @@
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import type { SentTextStore } from "../../sent-text/domain/sent-text-store";
+import { computeSentTextReplyStatus } from "./compute-sent-text-reply-status";
 import type { SentTextStatus } from "./sent-text-status";
 import type { SentTextStatusStore } from "./sent-text-status-store";
 
@@ -19,7 +20,10 @@ export const createSentTextStatusKind = (
     }
     return {
       status: "value",
-      value: { classification: store.findClassification(sentTextId) ?? "pending" },
+      value: {
+        classification: store.findClassification(sentTextId) ?? "pending",
+        reply: computeSentTextReplyStatus(store.findReplyRequestProgresses(sentTextId)),
+      },
     };
   },
 });

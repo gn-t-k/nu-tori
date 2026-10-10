@@ -13,6 +13,8 @@ export type MealStore = {
     from: Date,
     to: Date,
   ) => Pick<Meal, "eatenAt" | "eatenAtUtcOffsetSeconds">[];
+  // 送った時刻か今の時刻が from 以降の食事（多めに返す。返事の文脈を読むのに使う）
+  findIdsSentOrEatenSince: (from: Date) => RecordId[];
   insert: (meal: Meal) => void;
   // 時刻の修正は書き込みの控えごとに足し、meals の時刻は書き換えない
   insertEatenAtCorrection: (receiptId: WriteReceiptId, eatenAt: Date) => void;

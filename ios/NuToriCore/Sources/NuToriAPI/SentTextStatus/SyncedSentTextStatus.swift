@@ -4,10 +4,12 @@ public import Foundation
 public struct SyncedSentTextStatus: Sendable, Equatable {
     public let sentTextId: UUID
     public let classification: Classification
+    public let reply: Reply
 
-    public init(sentTextId: UUID, classification: Classification) {
+    public init(sentTextId: UUID, classification: Classification, reply: Reply) {
         self.sentTextId = sentTextId
         self.classification = classification
+        self.reply = reply
     }
 
     /// 読み分けの今の結果。サーバーの `classification` の値
@@ -15,5 +17,21 @@ public struct SyncedSentTextStatus: Sendable, Equatable {
         case pending
         case meal
         case conversation
+    }
+
+    /// 応答の状態。サーバーの `replyStatus` と、作れなかったときの `replyFailureReason` の値
+    public enum Reply: Sendable, Equatable {
+        /// サーバーの none
+        case notRequested
+        case awaiting
+        case replied
+        case halted
+        case failed(FailureReason)
+    }
+
+    /// 作れなかった理由。サーバーの `replyFailureReason` の値
+    public enum FailureReason: String, Sendable, Equatable {
+        case retriesExhausted = "retries_exhausted"
+        case badRequest = "bad_request"
     }
 }

@@ -232,6 +232,92 @@ const estimations = defineFactory({
   }),
 });
 
+const sentTextClassifications = defineFactory({
+  schema,
+  table: "sentTextClassifications",
+  resolver: ({ use }) => ({
+    sentTextId: () =>
+      use(sentTexts)
+        .create()
+        .then((sentText) => sentText.id),
+    classifiedAt: new Date("2026-01-01T03:00:01Z"),
+    result: "conversation" as const,
+  }),
+});
+
+const replyRequests = defineFactory({
+  schema,
+  table: "replyRequests",
+  resolver: ({ sequence, use }) => ({
+    id: `reply-request-${sequence}`,
+    sentTextId: () =>
+      use(sentTexts)
+        .create()
+        .then((sentText) => sentText.id),
+    countedOn: "2026-01-01",
+  }),
+});
+
+const classificationReplyRequests = defineFactory({
+  schema,
+  table: "classificationReplyRequests",
+  resolver: ({ use }) => ({
+    replyRequestId: () =>
+      use(replyRequests)
+        .create()
+        .then((request) => request.id),
+  }),
+});
+
+const replyRequestHalts = defineFactory({
+  schema,
+  table: "replyRequestHalts",
+  resolver: ({ use }) => ({
+    replyRequestId: () =>
+      use(replyRequests)
+        .create()
+        .then((request) => request.id),
+    haltedAt: new Date("2026-01-01T03:00:02Z"),
+  }),
+});
+
+const replyGenerations = defineFactory({
+  schema,
+  table: "replyGenerations",
+  resolver: ({ use }) => ({
+    id: generateRecordId(),
+    replyRequestId: () =>
+      use(replyRequests)
+        .create()
+        .then((request) => request.id),
+    startedAt: new Date("2026-01-01T03:00:02Z"),
+  }),
+});
+
+const replyGenerationAbandonments = defineFactory({
+  schema,
+  table: "replyGenerationAbandonments",
+  resolver: ({ use }) => ({
+    replyGenerationId: () =>
+      use(replyGenerations)
+        .create()
+        .then((generation) => generation.id),
+    abandonedAt: new Date("2026-01-01T03:10:00Z"),
+  }),
+});
+
+const aiUtterances = defineFactory({
+  schema,
+  table: "aiUtterances",
+  resolver: ({ use }) => ({
+    replyGenerationId: () =>
+      use(replyGenerations)
+        .create()
+        .then((generation) => generation.id),
+    body: "お昼はしっかり食べられていますね。",
+  }),
+});
+
 // 置き場のテストで行を作る。create() は Promise を返すので、テストで await する。transactionSync の中では使わない
 export const durableObjectFactory = composeFactory({
   firstSignIns,
@@ -252,4 +338,11 @@ export const durableObjectFactory = composeFactory({
   mealEstimationSchedules,
   estimationDeferrals,
   estimations,
+  sentTextClassifications,
+  replyRequests,
+  classificationReplyRequests,
+  replyRequestHalts,
+  replyGenerations,
+  replyGenerationAbandonments,
+  aiUtterances,
 });

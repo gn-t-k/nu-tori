@@ -282,18 +282,37 @@ extension SyncChange {
         }
     }
 
-    /// 知らない読み分けの結果は nil にする。サーバーが値を足しても、古い版のアプリは前の状態のまま同期を続ける
+    /// 知らない読み分けの結果・応答の状態・作れなかった理由は nil にする。サーバーが値を足しても、古い版のアプリは前の状態のまま同期を続ける
     struct SentTextStatusPayload: Decodable {
         let sentTextId: String
         let classification: String
+        let replyStatus: String
+        /// replyStatus が failed のときだけある
+        let replyFailureReason: String?
 
         var syncedStatus: SyncedSentTextStatus? {
             guard let sentTextId = UUID(uuidString: sentTextId),
-                let classification = SyncedSentTextStatus.Classification(rawValue: classification)
+                let classification = SyncedSentTextStatus.Classification(rawValue: classification),
+                let reply
             else {
                 return nil
             }
-            return SyncedSentTextStatus(sentTextId: sentTextId, classification: classification)
+            return SyncedSentTextStatus(
+                sentTextId: sentTextId, classification: classification, reply: reply)
+        }
+
+        private var reply: SyncedSentTextStatus.Reply? {
+            switch replyStatus {
+            case "none": .notRequested
+            case "awaiting": .awaiting
+            case "replied": .replied
+            case "halted": .halted
+            case "failed":
+                replyFailureReason.flatMap(SyncedSentTextStatus.FailureReason.init(rawValue:)).map {
+                    .failed($0)
+                }
+            default: nil
+            }
         }
     }
 

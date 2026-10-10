@@ -59,7 +59,7 @@ describe("送った文章の同期", () => {
           sequence: expect.any(Number),
           kind: "sent_text_status",
           recordId: sentTextId,
-          record: { sentTextId, classification: "pending" },
+          record: { sentTextId, classification: "pending", replyStatus: "none" },
         },
       ]);
     });

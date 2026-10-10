@@ -40,6 +40,16 @@ extension SentTextStatus {
                 case .meal: .meal
                 case .conversation: .conversation
                 }
+            }(),
+            reply: {
+                switch status.reply {
+                case .notRequested: .notRequested
+                case .awaiting: .awaiting
+                case .replied: .replied
+                case .halted: .halted
+                case .failed(.retriesExhausted): .failed(.retriesExhausted)
+                case .failed(.badRequest): .failed(.badRequest)
+                }
             }())
     }
 }
