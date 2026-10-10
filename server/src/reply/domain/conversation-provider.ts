@@ -16,9 +16,10 @@ export type ConversationProvider = {
   }) => R.ResultAsync<ClassificationReply, ConversationProviderError>;
   // 文脈を渡して返事を作らせる。文脈を文の塊にして指示と並べるのは提供元が受け持つ。
   // signal は試みの時間の上限で切れる。提供元は切れたら ConversationProviderTimedOutError で返す。
-  // 出力の上限で切れた・決めた形に読めない応答は ConversationProviderInvalidResponseError で返す
+  // 出力の上限で切れた・決めた形に読めない応答は ConversationProviderInvalidResponseError で返す。
+  // onText には、返事の本文のできた分を、できた順に渡す（見守る要求で流す）。つないだ分は、通ったときの body と同じになる
   generateReply: (
-    request: { context: ReplyContext },
+    request: { context: ReplyContext; onText: (text: string) => void },
     signal: AbortSignal,
   ) => R.ResultAsync<
     GeneratedReply,

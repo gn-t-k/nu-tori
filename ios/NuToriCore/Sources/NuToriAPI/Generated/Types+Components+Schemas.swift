@@ -2222,5 +2222,258 @@ extension Components {
                 case record
             }
         }
+        /// 見守る要求の出来事。閉じたら、どの出来事で閉じたかによらず、同期の取りに行くで記録を受け取る
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent`.
+        internal enum ReplyStreamEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/ClassifiedAsMealEvent`.
+            case classifiedAsMeal(Components.Schemas.ClassifiedAsMealEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/RepliedEvent`.
+            case replied(Components.Schemas.RepliedEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/ReplyFailedEvent`.
+            case replyFailed(Components.Schemas.ReplyFailedEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/ReplyHaltedEvent`.
+            case replyHalted(Components.Schemas.ReplyHaltedEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/ReplyStartedEvent`.
+            case replyStarted(Components.Schemas.ReplyStartedEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/TextDeltaEvent`.
+            case textDelta(Components.Schemas.TextDeltaEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/TextDiscardedEvent`.
+            case textDiscarded(Components.Schemas.TextDiscardedEvent)
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+            internal init(from decoder: any Swift.Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                let discriminator = try container.decode(
+                    Swift.String.self,
+                    forKey: ._type
+                )
+                switch discriminator {
+                case "classified_as_meal":
+                    self = .classifiedAsMeal(try .init(from: decoder))
+                case "replied":
+                    self = .replied(try .init(from: decoder))
+                case "reply_failed":
+                    self = .replyFailed(try .init(from: decoder))
+                case "reply_halted":
+                    self = .replyHalted(try .init(from: decoder))
+                case "reply_started":
+                    self = .replyStarted(try .init(from: decoder))
+                case "text_delta":
+                    self = .textDelta(try .init(from: decoder))
+                case "text_discarded":
+                    self = .textDiscarded(try .init(from: decoder))
+                default:
+                    throw Swift.DecodingError.unknownOneOfDiscriminator(
+                        discriminatorKey: CodingKeys._type,
+                        discriminatorValue: discriminator,
+                        codingPath: decoder.codingPath
+                    )
+                }
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .classifiedAsMeal(value):
+                    try value.encode(to: encoder)
+                case let .replied(value):
+                    try value.encode(to: encoder)
+                case let .replyFailed(value):
+                    try value.encode(to: encoder)
+                case let .replyHalted(value):
+                    try value.encode(to: encoder)
+                case let .replyStarted(value):
+                    try value.encode(to: encoder)
+                case let .textDelta(value):
+                    try value.encode(to: encoder)
+                case let .textDiscarded(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// 返事の ID。返事の生成を始めたら最初に1度だけ送る。返事の記録（ai_utterance）の ID と同じで、試みをまたいで変わらない
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReplyStartedEvent`.
+        internal struct ReplyStartedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReplyStartedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case replyStarted = "reply_started"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyStartedEvent/type`.
+            internal var _type: Components.Schemas.ReplyStartedEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/ReplyStartedEvent/replyId`.
+            internal var replyId: Swift.String
+            /// Creates a new `ReplyStartedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            ///   - replyId:
+            internal init(
+                _type: Components.Schemas.ReplyStartedEvent._TypePayload,
+                replyId: Swift.String
+            ) {
+                self._type = _type
+                self.replyId = replyId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+                case replyId
+            }
+        }
+        /// 返事の本文のできた分。届いた順につなぐ。試みの途中からつないだときは、返事の ID のすぐあとに、ここまでにできた分をまとめて1つで送る
+        ///
+        /// - Remark: Generated from `#/components/schemas/TextDeltaEvent`.
+        internal struct TextDeltaEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TextDeltaEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case textDelta = "text_delta"
+            }
+            /// - Remark: Generated from `#/components/schemas/TextDeltaEvent/type`.
+            internal var _type: Components.Schemas.TextDeltaEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/TextDeltaEvent/text`.
+            internal var text: Swift.String
+            /// Creates a new `TextDeltaEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            ///   - text:
+            internal init(
+                _type: Components.Schemas.TextDeltaEvent._TypePayload,
+                text: Swift.String
+            ) {
+                self._type = _type
+                self.text = text
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+                case text
+            }
+        }
+        /// 流している途中で試みが失敗した。それまでにつないだ分を捨てる。次の試みで初めから流し直す
+        ///
+        /// - Remark: Generated from `#/components/schemas/TextDiscardedEvent`.
+        internal struct TextDiscardedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TextDiscardedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case textDiscarded = "text_discarded"
+            }
+            /// - Remark: Generated from `#/components/schemas/TextDiscardedEvent/type`.
+            internal var _type: Components.Schemas.TextDiscardedEvent._TypePayload
+            /// Creates a new `TextDiscardedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            internal init(_type: Components.Schemas.TextDiscardedEvent._TypePayload) {
+                self._type = _type
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+        }
+        /// 返事を記録に書いた。送ったあと閉じる
+        ///
+        /// - Remark: Generated from `#/components/schemas/RepliedEvent`.
+        internal struct RepliedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/RepliedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case replied = "replied"
+            }
+            /// - Remark: Generated from `#/components/schemas/RepliedEvent/type`.
+            internal var _type: Components.Schemas.RepliedEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/RepliedEvent/replyId`.
+            internal var replyId: Swift.String
+            /// Creates a new `RepliedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            ///   - replyId:
+            internal init(
+                _type: Components.Schemas.RepliedEvent._TypePayload,
+                replyId: Swift.String
+            ) {
+                self._type = _type
+                self.replyId = replyId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+                case replyId
+            }
+        }
+        /// 食事と読み分けた。送ったあと閉じる
+        ///
+        /// - Remark: Generated from `#/components/schemas/ClassifiedAsMealEvent`.
+        internal struct ClassifiedAsMealEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ClassifiedAsMealEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case classifiedAsMeal = "classified_as_meal"
+            }
+            /// - Remark: Generated from `#/components/schemas/ClassifiedAsMealEvent/type`.
+            internal var _type: Components.Schemas.ClassifiedAsMealEvent._TypePayload
+            /// Creates a new `ClassifiedAsMealEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            internal init(_type: Components.Schemas.ClassifiedAsMealEvent._TypePayload) {
+                self._type = _type
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+        }
+        /// その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent`.
+        internal struct ReplyHaltedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case replyHalted = "reply_halted"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/type`.
+            internal var _type: Components.Schemas.ReplyHaltedEvent._TypePayload
+            /// Creates a new `ReplyHaltedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            internal init(_type: Components.Schemas.ReplyHaltedEvent._TypePayload) {
+                self._type = _type
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+        }
+        /// 返事を作れなかった（やり直しを使い切った・提供元の 400）。送ったあと閉じる
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent`.
+        internal struct ReplyFailedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case replyFailed = "reply_failed"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent/type`.
+            internal var _type: Components.Schemas.ReplyFailedEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent/failureReason`.
+            internal enum FailureReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case retriesExhausted = "retries_exhausted"
+                case badRequest = "bad_request"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent/failureReason`.
+            internal var failureReason: Components.Schemas.ReplyFailedEvent.FailureReasonPayload
+            /// Creates a new `ReplyFailedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            ///   - failureReason:
+            internal init(
+                _type: Components.Schemas.ReplyFailedEvent._TypePayload,
+                failureReason: Components.Schemas.ReplyFailedEvent.FailureReasonPayload
+            ) {
+                self._type = _type
+                self.failureReason = failureReason
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+                case failureReason
+            }
+        }
     }
 }

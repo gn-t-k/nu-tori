@@ -4,6 +4,7 @@ import { deleteLeftoverMealPhotoFiles } from "../meal/domain/delete-leftover-mea
 import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
 import { advanceReplies } from "../reply/domain/advance-replies";
 import type { ConversationProvider } from "../reply/domain/conversation-provider";
+import type { ReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
 import { computeNextAlarmAt } from "./compute-next-alarm-at";
 import { computeNextAlarmAtExceptLeftoverPhotos } from "./compute-next-alarm-at-except-leftover-photos";
@@ -20,18 +21,25 @@ export const runAccountAlarm = async (
     provider: EstimationProvider;
     conversationProvider: ConversationProvider;
     armAlarm: () => Promise<void>;
+    replyWatchers: ReplyWatchers;
   },
 ) => {
   // 食事と読み分けた文章の推定を、同じアラームで始めるため、推定より先に読み分ける
   const classified = await classifySentTexts(ledgerStore, stores, {
     provider: deps.conversationProvider,
   });
+  // 食事と読み分けた文章の見守る要求を閉じる
+  deps.replyWatchers.refresh(stores);
   const advanced = await advanceEstimations(ledgerStore, stores, deps, new Date());
   // 推定のあとに作り、同じアラームで推定し終えた食事の栄養を返事の文脈に入れる
   const replied = await advanceReplies(
     ledgerStore,
     stores,
-    { provider: deps.conversationProvider, armAlarm: deps.armAlarm },
+    {
+      provider: deps.conversationProvider,
+      armAlarm: deps.armAlarm,
+      watchers: deps.replyWatchers,
+    },
     new Date(),
   );
   const deletionError: unknown = await deleteLeftoverMealPhotoFiles(

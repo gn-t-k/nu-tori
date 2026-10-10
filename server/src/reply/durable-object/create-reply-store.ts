@@ -159,6 +159,24 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
           requestedAt: toRequestedAt(times),
           attempts: findAttempts(generationId),
         })),
+    findContinuingGenerationId: (sentTextId) =>
+      db
+        .select({ id: replyGenerations.id })
+        .from(replyGenerations)
+        .innerJoin(replyRequests, eq(replyRequests.id, replyGenerations.replyRequestId))
+        .leftJoin(aiUtterances, eq(aiUtterances.replyGenerationId, replyGenerations.id))
+        .leftJoin(
+          replyGenerationAbandonments,
+          eq(replyGenerationAbandonments.replyGenerationId, replyGenerations.id),
+        )
+        .where(
+          and(
+            eq(replyRequests.sentTextId, sentTextId),
+            isNull(aiUtterances.replyGenerationId),
+            isNull(replyGenerationAbandonments.replyGenerationId),
+          ),
+        )
+        .get()?.id,
     findAttempts,
     hasEnded: (generationId) =>
       db

@@ -7,7 +7,8 @@ import type { ConversationProviderError } from "../../domain/conversation-provid
 import type { ReplyContext } from "../../domain/reply-context";
 import * as module from "./index";
 
-type FakeReply = { body: string; mealIds: readonly RecordId[] };
+// textDeltas は onText に渡すできた分。省くと本文を1つで渡す
+type FakeReply = { body: string; mealIds: readonly RecordId[]; textDeltas?: readonly string[] };
 
 type FakeReplies = {
   classification: ClassificationLabel;
@@ -25,24 +26,27 @@ export const mockCreateConversationProviderOk = (overrides?: Partial<FakeReplies
     classifySentText: vi.fn<ConversationProvider["classifySentText"]>(async () =>
       R.succeed({ label: replies.classification, usage: replies.classificationUsage }),
     ),
-    generateReply: vi.fn<ConversationProvider["generateReply"]>(async ({ context }) =>
-      R.succeed({
-        ...(typeof replies.reply === "function" ? replies.reply(context) : replies.reply),
-        usage: replies.replyUsage,
-      }),
-    ),
+    generateReply: vi.fn<ConversationProvider["generateReply"]>(async ({ context, onText }) => {
+      const { body, mealIds, textDeltas } =
+        typeof replies.reply === "function" ? replies.reply(context) : replies.reply;
+      for (const text of textDeltas ?? [body]) {
+        onText(text);
+      }
+      return R.succeed({ body, mealIds, usage: replies.replyUsage });
+    }),
   };
   return vi.spyOn(module, "createConversationProvider").mockReturnValue(provider);
 };
 
 // 呼び出しが失敗する偽の提供元。読み分けが落ちるとき（会話になる）は、返事は既定の返事で答える。
-// 返事が落ちるときは、読み分けは会話と答える
+// 返事が落ちるときは、読み分けは会話と答え、textDeltasBeforeFailure を onText に渡してから失敗する
 export const mockCreateConversationProviderError = (
   failure:
     | { failingCall: "classify_sent_text"; error: ConversationProviderError }
     | {
         failingCall: "generate_reply";
         error: R.InferFailure<ConversationProvider["generateReply"]>;
+        textDeltasBeforeFailure?: readonly string[];
       },
 ) => {
   const provider: ConversationProvider = {
@@ -50,10 +54,16 @@ export const mockCreateConversationProviderError = (
       failure.failingCall === "classify_sent_text"
         ? R.fail(failure.error)
         : R.succeed({ label: "conversation", usage: defaultReplies.classificationUsage }),
-    generateReply: async () =>
-      failure.failingCall === "generate_reply"
-        ? R.fail(failure.error)
-        : R.succeed({ ...defaultReply, usage: defaultReplies.replyUsage }),
+    generateReply: async ({ onText }) => {
+      if (failure.failingCall === "classify_sent_text") {
+        onText(defaultReply.body);
+        return R.succeed({ ...defaultReply, usage: defaultReplies.replyUsage });
+      }
+      for (const text of failure.textDeltasBeforeFailure ?? []) {
+        onText(text);
+      }
+      return R.fail(failure.error);
+    },
   };
   return vi.spyOn(module, "createConversationProvider").mockReturnValue(provider);
 };

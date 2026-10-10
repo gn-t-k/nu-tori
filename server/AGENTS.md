@@ -87,6 +87,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・返事・作れなかった）は、返事の書き込みの口（`src/reply/domain/write-reply-events.ts`）を通して書く。口は、表で守らない決まり（依頼は会話と読み分けた文章にだけ、回数切れと生成・返事と作れなかったはどちらか1つ）を書く前に確かめて投げ、書く前とあとで送った文章の状態を比べて変わった文章にだけ状態の変更を、返事を書いたら返事の変更を足す。依頼ときっかけのサブセットは、口の `request` で一緒に書く（きっかけは依頼の型の `trigger` で1つ）
 - 回数は1日 `maximumDailyReplyGenerations`（20）。生成を始めるときに、依頼の数える日の生成を数え、上限なら提供元を呼ばずに回数切れにする（翌日に回さない）。テストは `src/reply/http/testing/insert-counted-reply-requests.ts` で回数を満たす
 - 指し示す食事は、文脈で ID を付けた食事（今日と昨日の食事、記録の印の食事）のうち在るものだけを通し、ほかは読めない応答にしてやり直す
+- 見守る要求（`GET /v1/sent-texts/{sentTextId}/reply-stream`）は、Durable Object の RPC が返す SSE のバイトの流れを、受け口の Worker がそのまま `text/event-stream` で返す。つないでいる要求と、試みが流している途中の文は、Durable Object の実体のメモリ（`src/reply/domain/create-reply-watchers.ts`）にだけ持ち、記録に残さない。返事はアラームが作るので、端末が切れても最後まで作る。提供元は `generateReply` の `onText` に本文のできた分を渡し、アラームは読み分け・生成の開始・試みの結果のあとに `refresh` で結果を送る。出来事の形は `src/http/reply-stream-routes/reply-stream-event-schema.ts`
 
 ## 成分表のデータファイル
 
