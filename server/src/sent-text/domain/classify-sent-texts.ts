@@ -26,9 +26,13 @@ export const classifySentTexts = async (
   usageEvents: UsageEvent[];
   // アラームの呼び出しごとのログに出す、呼び出しごとの結果
   classifications: ClassificationReport[];
+  // Sentry に包まずに送る、呼び出しの失敗（応答のエラーがあればその内容、無ければ失敗そのもの）。
+  // 本番のクレジットが尽きるとすべての文章が会話になるので、急増で気づく（#419 の「観測」）
+  providerErrors: unknown[];
 }> => {
   const usageEvents: UsageEvent[] = [];
   const classifications: ClassificationReport[] = [];
+  const providerErrors: unknown[] = [];
   for (const { sentText, receivedAt } of stores.sentText.findUnclassified()) {
     // 送った順に書くため、1つずつ呼ぶ
     const replied = await deps.provider.classifySentText({ body: sentText.body });
@@ -39,6 +43,9 @@ export const classifySentTexts = async (
       continue;
     }
     const providerErrorType = R.isFailure(replied) ? replied.error.errorType : undefined;
+    if (R.isFailure(replied)) {
+      providerErrors.push(replied.error.cause ?? replied.error);
+    }
     classifications.push({ result, providerResult, providerErrorType });
     usageEvents.push({
       name: "sent_text_classified",
@@ -54,6 +61,7 @@ export const classifySentTexts = async (
   return {
     usageEvents: sendsUsageData(stores.accountSettings) ? usageEvents : [],
     classifications,
+    providerErrors,
   };
 };
 
