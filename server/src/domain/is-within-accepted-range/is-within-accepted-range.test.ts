@@ -62,4 +62,13 @@ describe("受け付ける値の範囲", () => {
       },
     );
   });
+
+  describe("送った文章の、前後の空白を除いたコードポイントの数", () => {
+    test.for(testCases.sentTextBodyTrimmedLength)(
+      "$name を受け付けるかを決めること",
+      ({ value, accepted }) => {
+        expect(isWithinAcceptedRange("sentTextBodyTrimmedLength", value)).toBe(accepted);
+      },
+    );
+  });
 });

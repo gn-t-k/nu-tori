@@ -16,12 +16,15 @@
         "type": "string",
         "enum": [
           "account_settings",
+          "ai_utterance",
           "dish",
           "dish_estimation_status",
           "ingredient",
           "meal",
           "meal_estimation_status",
           "notice",
+          "sent_text",
+          "sent_text_status",
           "usual_weighing_time",
           "weight_record",
           "weight_trend"
@@ -43,6 +46,36 @@
           "sendsUsageData"
         ],
         "description": "kind が account_settings の変更の record。アカウントに1つで、削除の印は無い"
+      },
+      "AiUtteranceRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "返事の生成の ID（見守る要求の最初に流す ID と同じ）"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sentTextId": {
+            "type": "string",
+            "description": "応える送った文章の ID。時刻とタイムゾーンはこの文章のものを使う"
+          },
+          "mealIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "指し示す食事の ID。並びが返事の中の並び。食事が消えても残る"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sentTextId",
+          "mealIds"
+        ],
+        "description": "kind が ai_utterance の変更の record。返事は消えない"
       },
       "DishRecord": {
         "type": "object",
@@ -334,6 +367,50 @@
           "targetOn"
         ]
       },
+      "SentTextRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Asia/Tokyo"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sentAt",
+          "timeZone"
+        ],
+        "description": "kind が sent_text の変更の record。送った文章は消えない"
+      },
+      "SentTextStatusRecord": {
+        "type": "object",
+        "properties": {
+          "sentTextId": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "description": "読み分けの今の結果。pending（読み分けを待っている）・meal・conversation",
+            "example": "pending"
+          }
+        },
+        "required": [
+          "sentTextId",
+          "classification"
+        ],
+        "description": "kind が sent_text_status の変更の record。recordId は送った文章の ID"
+      },
       "UsualWeighingTimeRecord": {
         "type": "object",
         "properties": {
@@ -540,6 +617,9 @@
             "$ref": "#/components/schemas/RespondNoticeWrite"
           },
           {
+            "$ref": "#/components/schemas/CreateSentTextWrite"
+          },
+          {
             "$ref": "#/components/schemas/CreateWeightRecordWrite"
           },
           {
@@ -562,6 +642,7 @@
             "update_meal": "#/components/schemas/UpdateMealWrite",
             "create_notice": "#/components/schemas/CreateNoticeWrite",
             "respond_notice": "#/components/schemas/RespondNoticeWrite",
+            "create_sent_text": "#/components/schemas/CreateSentTextWrite",
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
             "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite"
@@ -1027,6 +1108,59 @@
           "type",
           "noticeId",
           "response"
+        ]
+      },
+      "CreateSentTextWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "create_sent_text"
+            ]
+          },
+          "sentText": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
+              },
+              "body": {
+                "type": "string",
+                "description": "本文。前後の空白を除いて 1〜500 のコードポイント（範囲はサーバーのドメイン層で確かめる）"
+              },
+              "sentAt": {
+                "type": "integer",
+                "minimum": -8640000000000000,
+                "maximum": 8640000000000000,
+                "description": "送る操作をした時刻。UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "description": "送ったときのタイムゾーン（IANA 名）",
+                "example": "Asia/Tokyo"
+              }
+            },
+            "required": [
+              "id",
+              "body",
+              "sentAt",
+              "timeZone"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "sentText"
         ]
       },
       "CreateWeightRecordWrite": {

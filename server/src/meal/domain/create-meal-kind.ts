@@ -22,7 +22,7 @@ import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { IngredientStore } from "../../ingredient/domain/ingredient-store";
 import type { Meal } from "./meal";
-import { isMealEntryMethod } from "./meal-entry-method";
+import { isPhotoMealEntryMethod } from "./meal-entry-method";
 import type { MealPhotoStore } from "./meal-photo-store";
 import type { MealStore } from "./meal-store";
 import { type MealWrite, mealWriteTypes } from "./meal-write";
@@ -96,7 +96,7 @@ const decideCreate = (
   if (new Set(photoIds).size !== photoIds.length) {
     return discarded(store, newMeal, { result: "rejected", reason: "duplicate_photo_ids" });
   }
-  if (!isMealEntryMethod(entryMethod)) {
+  if (!isPhotoMealEntryMethod(entryMethod)) {
     return discarded(store, newMeal, { result: "rejected", reason: "invalid_entry_method" });
   }
   if (!isTimeZoneName(newMeal.sentTimeZone)) {
