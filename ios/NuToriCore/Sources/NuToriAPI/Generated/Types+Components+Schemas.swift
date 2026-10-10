@@ -668,21 +668,37 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/classification`.
             internal var classification: Swift.String
+            /// 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyStatus`.
+            internal var replyStatus: Swift.String
+            /// replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyFailureReason`.
+            internal var replyFailureReason: Swift.String?
             /// Creates a new `SentTextStatusRecord`.
             ///
             /// - Parameters:
             ///   - sentTextId:
             ///   - classification: 読み分けの今の結果。pending（読み分けを待っている）・meal・conversation
+            ///   - replyStatus: 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）
+            ///   - replyFailureReason: replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）
             internal init(
                 sentTextId: Swift.String,
-                classification: Swift.String
+                classification: Swift.String,
+                replyStatus: Swift.String,
+                replyFailureReason: Swift.String? = nil
             ) {
                 self.sentTextId = sentTextId
                 self.classification = classification
+                self.replyStatus = replyStatus
+                self.replyFailureReason = replyFailureReason
             }
             internal enum CodingKeys: String, CodingKey {
                 case sentTextId
                 case classification
+                case replyStatus
+                case replyFailureReason
             }
         }
         /// kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない

@@ -465,7 +465,9 @@
                     put(.sentText(sentText))
                     put(
                         .sentTextStatus(
-                            .init(sentTextId: sentText.id, classification: .pending)))
+                            .init(
+                                sentTextId: sentText.id, classification: .pending,
+                                reply: .notRequested)))
                 // 端末はまだ送らない（`server/openapi.json` に形が無い）
                 case .resendSentTextAsConversation, .resendSentText:
                     return

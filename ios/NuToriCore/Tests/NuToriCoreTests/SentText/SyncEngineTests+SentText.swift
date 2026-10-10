@@ -267,7 +267,8 @@ extension SyncEngineTests {
                         """
                         {"changes":[
                           {"sequence":1,"kind":"sent_text_status","recordId":"\(sentTextId.uuidString)",
-                           "record":{"sentTextId":"\(sentTextId.uuidString)","classification":"conversation"}},
+                           "record":{"sentTextId":"\(sentTextId.uuidString)","classification":"conversation",
+                             "replyStatus":"replied"}},
                           {"sequence":2,"kind":"ai_utterance","recordId":"\(utteranceId.uuidString)",
                            "record":{"id":"\(utteranceId.uuidString)","body":"いいですね",
                              "sentTextId":"\(sentTextId.uuidString)",
@@ -283,13 +284,58 @@ extension SyncEngineTests {
 
                 #expect(store.cache.sentTexts.isEmpty)
                 #expect(
-                    store.cache.sentTextStatuses[sentTextId] == .init(classification: .conversation)
+                    store.cache.sentTextStatuses[sentTextId]
+                        == .init(classification: .conversation, reply: .replied)
                 )
                 #expect(
                     store.cache.aiUtterances[utteranceId]
                         == AiUtterance(
                             id: utteranceId, body: "いいですね", sentTextId: sentTextId,
                             mealIds: mealIds))
+            }
+        }
+
+        @Suite("作れなかった・回数切れ・知らない応答の状態が届いたとき")
+        struct ReceivingReplyStatuses {
+            let store: SyncBoxMock<RecordCacheMock>
+            let engine: SyncEngine
+            let failedId: UUID
+            let haltedId: UUID
+            let unknownId: UUID
+
+            init() throws {
+                failedId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1"))
+                haltedId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b2"))
+                unknownId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b3"))
+                store = try .ok()
+                engine = .fixture(
+                    store: store,
+                    transport: .sync(pullPages: [
+                        """
+                        {"changes":[
+                          {"sequence":1,"kind":"sent_text_status","recordId":"\(failedId.uuidString)",
+                           "record":{"sentTextId":"\(failedId.uuidString)","classification":"conversation",
+                             "replyStatus":"failed","replyFailureReason":"bad_request"}},
+                          {"sequence":2,"kind":"sent_text_status","recordId":"\(haltedId.uuidString)",
+                           "record":{"sentTextId":"\(haltedId.uuidString)","classification":"conversation",
+                             "replyStatus":"halted"}},
+                          {"sequence":3,"kind":"sent_text_status","recordId":"\(unknownId.uuidString)",
+                           "record":{"sentTextId":"\(unknownId.uuidString)","classification":"conversation",
+                             "replyStatus":"thinking"}}
+                        ],"hasMore":false,"nextAfterSequence":3,"startedOn":null}
+                        """
+                    ]))
+            }
+
+            @Test("作れなかった理由と回数切れを読み、知らない応答の状態は読み飛ばすこと")
+            func readsReplyStatuses() async throws {
+                _ = try await engine.sync()
+
+                #expect(
+                    store.cache.sentTextStatuses == [
+                        failedId: .init(classification: .conversation, reply: .failed(.badRequest)),
+                        haltedId: .init(classification: .conversation, reply: .halted),
+                    ])
             }
         }
 
