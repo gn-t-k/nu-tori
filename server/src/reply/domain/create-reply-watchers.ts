@@ -10,8 +10,9 @@ export type ReplyWatchChannel = {
 
 export type ReplyWatchers = ReturnType<typeof createReplyWatchers>;
 
-// つないでいる見守る要求と、試みが流している途中の文をメモリに持つ。Durable Object の実体ごとに1つ作り、
-// 受け口の要求とアラームが同じものを使う。途中の文は記録に残さない（#419 の「返事を作る」の保存するもの）
+// つないでいる見守る要求と、試みが流している途中の文をメモリに持つ。
+// Durable Object の実体ごとに1つ作り、受け口の要求とアラームが同じものを使う。
+// 途中の文は記録に残さない（#419 の「返事を作る」の保存するもの）
 export const createReplyWatchers = () => {
   const watchers = new Set<Watcher>();
   const partialTexts = new Map<RecordId, string>();

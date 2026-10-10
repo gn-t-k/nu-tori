@@ -1,7 +1,6 @@
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeReplyFailureReason } from "./compute-reply-failure-reason";
-import { findProviderErrorType } from "./find-provider-error-type";
-import type { ReplyAttempt } from "./reply-attempt";
+import { findProviderErrorType, type ReplyAttempt } from "./reply-attempt";
 
 // 返事の生成ごとの出来事。本文は含めず、指し示した食事は数だけ
 export const computeReplyGenerationEndedEvent = (ended: {

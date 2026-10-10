@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
-import { generateRecordId, type RecordId } from "../../domain/record-id";
+import type { RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
@@ -12,7 +12,7 @@ import {
   type MealDeletionStores,
   planMealDeletion,
 } from "../../meal/domain/plan-meal-deletion";
-import { computeReplyRequestCountedOn } from "../../reply/domain/compute-reply-request-counted-on";
+import { createReplyRequest } from "../../reply/domain/create-reply-request";
 import type { ReplyRequest } from "../../reply/domain/reply-request";
 import { computeSentTextReplyStatus } from "../../sent-text-status/domain/compute-sent-text-reply-status";
 import type { SentText } from "./sent-text";
@@ -82,8 +82,8 @@ const decideCreate = (
   };
 };
 
-// 食事と読み分けた文章を会話にし、その文章から作った食事（料理と材料を含む）をすべて消して、返事の依頼を作る
-// （#419 の「会話として送り直す」）。食事は食事を消す書き込みと同じく消し、削除の印は conversation_resend_meal_deletions に書く。
+// 食事と読み分けた文章を会話にし、その文章から作った食事（料理と材料を含む）をすべて消して、返事の依頼を作る（#419 の「会話として送り直す」）。
+// 食事は食事を消す書き込みと同じく消し、削除の印は conversation_resend_meal_deletions に書く。
 // 推定の行は消さないので、使った推定の回数は戻らない
 const decideResendAsConversation = (
   stores: SentTextKindStores,
@@ -198,12 +198,7 @@ const writeReplyRequest = (
       }
     },
     (writes) => {
-      writes.request({
-        id: generateRecordId(),
-        sentTextId: sentText.id,
-        countedOn: computeReplyRequestCountedOn(receivedAt, sentText, stores.latestTimeZone),
-        trigger,
-      });
+      writes.request(createReplyRequest(sentText, receivedAt, stores.latestTimeZone, trigger));
     },
   );
 };

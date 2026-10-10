@@ -3,8 +3,8 @@ import type { ReplyWatchers } from "../domain/create-reply-watchers";
 import { readReplyWatchState } from "../domain/read-reply-watch-state";
 import type { ReplyStreamEvent } from "../domain/reply-stream-event";
 
-// 見守る要求の流れ。出来事ごとに `data: <JSON>` の SSE のかたまりにして流す（RPC で返せるのはバイトの流れだけなので、
-// Durable Object の中で SSE にし、受け口の Worker はそのまま text/event-stream で返す。#69 で確かめた形）。
+// 見守る要求の流れ。
+// 出来事ごとに `data: <JSON>` の SSE のかたまりにして流す（RPC で返せるのはバイトの流れだけなので、Durable Object の中で SSE にし、受け口の Worker はそのまま text/event-stream で返す。#69 で確かめた形）。
 // 送った文章が無ければ undefined。端末が切れたら見守りを外す。返事はアラームが作り続けて記録に書く
 export const createReplyStream = (
   watchers: ReplyWatchers,

@@ -16,8 +16,8 @@ import type {
 } from "../reply-context";
 import type { ReplyContextSource, ReplyContextSourceMeal } from "../reply-context-source";
 
-// 返事を作るときに AI に渡す文脈を組み立てる。今日は、応える送った文章の時刻とタイムゾーンでの日
-// （電波がなくてあとで届いた文章でも、送ったときの日で読む）
+// 返事を作るときに AI に渡す文脈を組み立てる。
+// 今日は、応える送った文章の時刻とタイムゾーンでの日（電波がなくてあとで届いた文章でも、送ったときの日で読む）
 export const assembleReplyContext = (source: ReplyContextSource): ReplyContext => {
   const { sentText } = source;
   const toWallClock = (instant: Date): string =>

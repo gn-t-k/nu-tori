@@ -1,5 +1,4 @@
 import { R } from "@praha/byethrow";
-import { match, P } from "ts-pattern";
 import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordType } from "../../domain/record-type";
@@ -14,8 +13,9 @@ import type { ReplyAttemptConclusion } from "./reply-attempt";
 import type { ReplyAttemptOutcome } from "./reply-attempt-outcome";
 import { runReplyAttempt } from "./run-reply-attempt";
 
-// アラームの返事の入口。待っている依頼から返事の生成を始め（回数切れならそこで止め）、時刻が来た試みを書いてから、
-// 応える文章の送った順に1つずつ提供元を呼び、結果を書く。先に作った返事を、あとの文章の文脈の窓に入れるため、並べて呼ばない。
+// アラームの返事の入口。
+// 待っている依頼から返事の生成を始め（回数切れならそこで止め）、時刻が来た試みを書いてから、応える文章の送った順に1つずつ提供元を呼び、結果を書く。
+// 先に作った返事を、あとの文章の文脈の窓に入れるため、並べて呼ばない。
 // armAlarm は試みを書いたあと、呼ぶ前に呼ぶ。呼び出し中に止まっても、次に試みる時刻にアラームが動くため。
 // 止まった試み（文脈を読めなかったなど）は投げずに返し、ほかの試みの結果を書き終えてから呼び出し側が投げる。
 // 見守る要求には、生成を始めたら返事の ID を、呼んでいるあいだはできた分を、結果を書いたら返事か作れなかったを送る
@@ -57,8 +57,9 @@ export const advanceReplies = async (
             ...recordReplyAttemptOutcome(ledgerStore, stores, attempt, outcome, new Date()),
           );
           deps.watchers.refresh(stores);
-          attempts.push(concludeReplyAttempt(outcome));
-          providerErrors.push(...toProviderErrors(outcome));
+          const concluded = concludeReplyAttempt(outcome);
+          attempts.push(concluded.conclusion);
+          providerErrors.push(...concluded.providerErrors);
         }),
       );
     } catch (error) {
@@ -77,12 +78,3 @@ export const advanceReplies = async (
 
 // 途中で止まった試みは結果が無い
 type ReplyAttemptReport = ReplyAttemptConclusion | { result: undefined };
-
-const toProviderErrors = (outcome: ReplyAttemptOutcome): unknown[] =>
-  match(outcome)
-    .returnType<unknown[]>()
-    .with({ result: P.union("succeeded", "timed_out", "invalid_response") }, () => [])
-    .with({ result: P.union("provider_error", "bad_request") }, ({ providerError }) => [
-      providerError,
-    ])
-    .exhaustive();

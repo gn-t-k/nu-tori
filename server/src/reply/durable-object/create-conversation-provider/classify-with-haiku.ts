@@ -7,8 +7,8 @@ import { ConversationProviderError } from "../../domain/conversation-provider-er
 import { createHaikuClassificationRequest } from "./create-haiku-classification-request";
 import { readHaikuClassification } from "./read-haiku-classification";
 
-// 読み分けの呼び出し1回の時間の上限。アラームは文章を1つずつ読むので、止まった呼び出しが後ろの文章と推定を待たせないよう、
-// 短い判断に見合う長さにする（自分で決めた値）
+// 読み分けの呼び出し1回の時間の上限。
+// アラームは文章を1つずつ読むので、止まった呼び出しが後ろの文章と推定を待たせないよう、短い判断に見合う長さにする（自分で決めた値）
 const classificationTimeLimitMs = 30_000;
 
 // Haiku 5.5 に読み分けさせる。失敗はどれも会話になるので、種類（errorType）で分けるだけにし、応答のエラーを cause に持たせる。

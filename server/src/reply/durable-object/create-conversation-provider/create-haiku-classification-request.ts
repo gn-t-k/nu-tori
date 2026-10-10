@@ -3,8 +3,9 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { classificationCriteria } from "./classification-criteria";
 import { haikuClassificationOutputSchema } from "./haiku-classification-output-schema";
 
-// Claude Haiku 5.5 で読み分けるときの要求。確信度を返さないので、答えを meal・conversation・unsure の3つにし、
-// unsure は会話として扱う（#419 の「読み分け」）。答えは構造化出力の label を haikuClassificationOutputSchema で読む
+// Claude Haiku 5.5 で読み分けるときの要求。
+// 確信度を返さないので、答えを meal・conversation・unsure の3つにし、unsure は会話として扱う（#419 の「読み分け」）。
+// 答えは構造化出力の label を haikuClassificationOutputSchema で読む
 export const createHaikuClassificationRequest = (
   body: string,
 ): Anthropic.MessageCreateParamsNonStreaming => ({

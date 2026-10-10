@@ -28,8 +28,7 @@ export type MealDeletionPlan = {
   addedChanges: RecordChangeTarget<MealDeletionChangeType>[];
   // 推定中の食事と、推定し直しの推定中の料理なら、推定ごとの出来事を「食事が消えた」で送る
   usageEvents: UsageEvent[];
-  // 食事の削除の印は書き込みごとに置き場が違う（食事を消す書き込みは meal_deletions、会話として送り直すは
-  // conversation_resend_meal_deletions）ので、呼び出し側が insertDeletion で書く
+  // 食事の削除の印は書き込みごとに置き場が違う（食事を消す書き込みは meal_deletions、会話として送り直すは conversation_resend_meal_deletions）ので、呼び出し側が insertDeletion で書く
   commit: (receiptId: WriteReceiptId, insertDeletion: () => void) => void;
 };
 

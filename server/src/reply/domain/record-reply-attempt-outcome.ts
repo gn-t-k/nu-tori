@@ -6,8 +6,8 @@ import type { UsageEvent } from "../../domain/usage-event";
 import type { BegunReplyAttempt } from "./begin-reply-attempts";
 import { computeReplyGenerationEndedEvent } from "./compute-reply-generation-ended-event";
 import { concludeReplyAttempt } from "./conclude-reply-attempt";
-import { findProviderErrorType } from "./find-provider-error-type";
 import { maximumReplyAttempts } from "./maximum-reply-attempts";
+import { findProviderErrorType } from "./reply-attempt";
 import type { ReplyAttemptOutcome } from "./reply-attempt-outcome";
 
 // 呼び出しから戻ったときに、1つのトランザクションで試みの結果を書く。
@@ -24,7 +24,7 @@ export const recordReplyAttemptOutcome = (
   createRecordLedger(ledgerStore, stores, endedAt).changeOutsideWrites((addChange) =>
     stores.writeReplyEvents(addChange, (writes) => {
       const { generationId } = attempt;
-      const conclusion = concludeReplyAttempt(outcome);
+      const { conclusion } = concludeReplyAttempt(outcome);
       writes.recordAttemptResult({ attemptId: attempt.attemptId, endedAt, conclusion });
       const attemptEnded: UsageEvent = {
         name: "reply_attempt_ended",

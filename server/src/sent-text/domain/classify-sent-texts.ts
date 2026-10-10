@@ -15,7 +15,7 @@ import type {
   ConversationProvider,
 } from "../../reply/domain/conversation-provider";
 import type { ConversationProviderError } from "../../reply/domain/conversation-provider-error";
-import { computeReplyRequestCountedOn } from "../../reply/domain/compute-reply-request-counted-on";
+import { createReplyRequest } from "../../reply/domain/create-reply-request";
 import type { SentText } from "./sent-text";
 import type { SentTextClassification } from "./sent-text-classification";
 
@@ -113,12 +113,11 @@ const recordClassification = (
     if (result === "conversation") {
       // 応答待ちになった状態の変更は、返事の書き込みの口が足す（取りに行く応答では、同じ文章の変更は1つにまとまる）
       stores.writeReplyEvents(addChange, (writes) => {
-        writes.request({
-          id: generateRecordId(),
-          sentTextId: sentText.id,
-          countedOn: computeReplyRequestCountedOn(classifiedAt, sentText, stores.latestTimeZone),
-          trigger: { type: "classification" },
-        });
+        writes.request(
+          createReplyRequest(sentText, classifiedAt, stores.latestTimeZone, {
+            type: "classification",
+          }),
+        );
       });
       return true;
     }
