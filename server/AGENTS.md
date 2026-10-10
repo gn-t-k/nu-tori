@@ -25,7 +25,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 層
 
 - 置き場: HTTP の受け口は `src/http/`、Durable Object は `src/durable-object/`、ドメイン層は `src/domain/`、認証（Better Auth と、Apple の API への入出力）は `src/auth/`、観測（Sentry の設定と、PostHog の API への入出力）は `src/observability/`
-- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/dish-estimation-status/`、`src/ingredient/`、`src/notice/`、`src/usual-weighing-time/`、`src/weight-trend/`、`src/sent-text/`、`src/sent-text-status/`、`src/ai-utterance/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/`、返事の流れは `src/reply/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
+- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/dish-estimation-status/`、`src/ingredient/`、`src/notice/`、`src/usual-weighing-time/`、`src/weight-trend/`、`src/sent-text/`、`src/sent-text-status/`、`src/ai-utterance/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/`、返事の流れと、読み分けと返事の提供元は `src/reply/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
 - 層は oxlint の `no-restricted-imports`（`.oxlintrc.json` の `overrides`）で守る。`src/domain/` と `src/<種類>/domain/` からは、受け口（`http`）、Durable Object（`durable-object`）、`cloudflare:*`、`hono` を import できない。import の文字列だけを見るので、別名の import を使い始めたら dependency-cruiser を考える
 - 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
@@ -74,6 +74,13 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 提供元の失敗と、確かめに通らない応答は、試みの結果（`estimation_attempt_results.result`）にする。R2 と成分表の段で止まったら投げ、試みを結果の無いまま残して、途中で止まった試みとして数える
 - アラームの中は受け口の要求ごとのログを通らないので、アラームが呼び出しごとに `route: "alarm"` のログを出す（試みごとの結果・失敗した段・提供元のエラーの種類）
 - 推定のテストは、`src/estimation/http/testing/use-fake-clock.ts` で Date だけを先の時刻にして、アラームがひとりでに動かないようにし、`runDurableObjectAlarm` で動かす。やり直しは時計を進めてから動かす
+
+## 読み分け
+
+- 読み分けはアラームで進める。入口は `src/sent-text/domain/classify-sent-texts.ts`: 読み分けを待っている文章（読み分けの行が無い）を送った時刻の順に1つずつ提供元に読ませ、1つのトランザクションで読み分けの結果と送った文章の状態の変更を書く。食事なら文章の食事（入口 `written`、時刻は送った時刻、`sent_text_meals` に文章を持つ）を作って推定の予定に入れ、会話・決めかねる・呼び出しの失敗なら会話にして返事の依頼（きっかけ: 読み分け）を書く。`runAccountAlarm` は推定より先に読み分けるので、文章の食事の推定は同じアラームで始まる
+- 読み分けは試みの行を持たず、やり直さない。呼んでいるあいだに止まった文章は行が無いまま残り、次のアラームで読み直す。読み分け待ちの文章があれば、次のアラームの時刻はその文章を受け取った時刻（過ぎているので、すぐ動く）
+- 読み分けと返事の提供元（LLM）は、ドメイン層の型 `ConversationProvider`（`src/reply/domain/conversation-provider.ts`）を、`src/reply/durable-object/create-conversation-provider/` が作る。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（食事・会話・決めかねるは `mockCreateConversationProviderOk`、呼び出しの失敗は `mockCreateConversationProviderError`）。本物の読み分けは #432 でつなぐ。つなぐまでは呼び出しの失敗を返す
+- 返事の依頼は、返事の依頼の置き場（`src/reply/domain/reply-request-store.ts`）の1つの口で、依頼ときっかけのサブセットを一緒に書く
 
 ## 成分表のデータファイル
 

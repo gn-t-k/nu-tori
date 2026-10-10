@@ -13,6 +13,7 @@ import { createMealPhotoStore } from "../meal/durable-object/create-meal-photo-s
 import { createMealStore } from "../meal/durable-object/create-meal-store";
 import { createMealEstimationStatusStore } from "../meal-estimation-status/durable-object/create-meal-estimation-status-store";
 import { createNoticeStore } from "../notice/durable-object/create-notice-store";
+import { createReplyRequestStore } from "../reply/durable-object/create-reply-request-store";
 import { createSentTextStore } from "../sent-text/durable-object/create-sent-text-store";
 import { createSentTextStatusStore } from "../sent-text-status/durable-object/create-sent-text-status-store";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
@@ -46,6 +47,7 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     mealPhoto: createMealPhotoStore(db),
     estimationSchedule: createEstimationScheduleStore(db),
     estimation: createEstimationStore(db),
+    replyRequest: createReplyRequestStore(db),
     writeEstimationEvents: (addChange, now, run) =>
       writeEstimationEvents(
         { meal, mealEstimationStatus, dish, dishEstimationStatus, estimationEventWrite },
