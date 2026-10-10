@@ -4,107 +4,18 @@ import Testing
 
 @Suite("栄養の合計")
 struct NutrientTotalsTests {
-    @Suite("材料の合計")
-    struct OfIngredients {
-        @Suite("すべての材料の値が分かる栄養")
-        struct AllKnown {
-            let totals: NutrientTotals
+    // swiftlint:disable:next no_parameterized_test
+    @Test(
+        "材料の合計は、値の分かる材料の分を足し、不明が混じれば以上、すべて不明なら不明になること",
+        arguments: try SharedTestCases.decode(
+            [SharedCase].self, fromFileNamed: "nutrient-totals.test-cases.json")
+    )
+    func totalsOfIngredients(testCase: SharedCase) {
+        let totals = NutrientTotals(ingredients: testCase.ingredients)
 
-            init() {
-                totals = NutrientTotals(ingredients: [
-                    .fixture(quantity: 100, nutrients: [.energyKcal: 200, .proteinG: 20]),
-                    .fixture(quantity: 50, nutrients: [.energyKcal: 100, .proteinG: 4]),
-                ])
-            }
-
-            @Test("足した値になること")
-            func sumsKnownValues() {
-                #expect(totals[.energyKcal] == .exactly(250))
-                #expect(totals[.proteinG] == .exactly(22))
-            }
-        }
-
-        @Suite("不明の材料が混じる栄養")
-        struct UnknownMixed {
-            let totals: NutrientTotals
-
-            init() {
-                totals = NutrientTotals(ingredients: [
-                    .fixture(quantity: 100, nutrients: [.energyKcal: 200, .fiberG: 3]),
-                    .fixture(quantity: 100, nutrients: [.energyKcal: 100]),
-                ])
-            }
-
-            @Test("分かる分だけを足して「以上」になること")
-            func isAtLeast() {
-                #expect(totals[.energyKcal] == .exactly(300))
-                #expect(totals[.fiberG] == .atLeast(3))
-            }
-        }
-
-        @Suite("すべての材料が不明の栄養")
-        struct AllUnknown {
-            let totals: NutrientTotals
-
-            init() {
-                totals = NutrientTotals(ingredients: [
-                    .fixture(nutrients: [.energyKcal: 200]),
-                    .fixture(nutrients: [.energyKcal: 100]),
-                ])
-            }
-
-            @Test("不明になること")
-            func isUnknown() {
-                #expect(totals[.fiberG] == .unknown)
-            }
-        }
-
-        @Suite("値が 0 の材料と不明の材料が混じる栄養")
-        struct ZeroAndUnknownMixed {
-            let totals: NutrientTotals
-
-            init() {
-                totals = NutrientTotals(ingredients: [
-                    .fixture(nutrients: [.fiberG: 0]),
-                    .fixture(nutrients: [:]),
-                ])
-            }
-
-            @Test("0 以上になること")
-            func isAtLeastZero() {
-                #expect(totals[.fiberG] == .atLeast(0))
-            }
-        }
-
-        @Suite("材料の kcal が、たんぱく質・脂質・炭水化物から出す値と食い違うとき")
-        struct EnergyDiffersFromMacros {
-            let totals: NutrientTotals
-
-            init() {
-                // 4×10 + 9×5 + 4×20 = 165 kcal に当たる P・F・C だが、材料の kcal は 100（アルコールの分などで食い違う）
-                totals = NutrientTotals(ingredients: [
-                    .fixture(
-                        quantity: 100,
-                        nutrients: [.energyKcal: 100, .proteinG: 10, .fatG: 5, .carbohydrateG: 20])
-                ])
-            }
-
-            @Test("kcal は材料の kcal の和で、出し直さないこと")
-            func energyIsSumOfIngredientEnergy() {
-                #expect(totals[.energyKcal] == .exactly(100))
-            }
-        }
-
-        @Suite("材料が無いとき")
-        struct NoIngredients {
-            let totals = NutrientTotals(ingredients: [])
-
-            @Test("どの栄養も 0 になること")
-            func isZero() {
-                #expect(totals[.energyKcal] == .exactly(0))
-                #expect(totals[.proteinG] == .exactly(0))
-            }
-        }
+        #expect(
+            Dictionary(uniqueKeysWithValues: testCase.totals.keys.map { ($0, totals[$0]) })
+                == testCase.totals)
     }
 
     @Suite("合計どうしを足すとき")
@@ -162,6 +73,112 @@ struct NutrientTotalsTests {
             func isUnknown() {
                 #expect(totals[.fiberG] == .unknown)
             }
+        }
+    }
+
+    struct SharedCase: Decodable, Sendable, CustomTestStringConvertible {
+        let name: String
+        let ingredients: [Ingredient]
+        let totals: [Nutrient: NutrientAmount]
+
+        var testDescription: String { name }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            name = try container.decode(String.self, forKey: .name)
+            ingredients = try container.decode([SharedIngredient].self, forKey: .ingredients).map(
+                \.ingredient)
+            totals = try Self.nutrientKeyed(
+                container.decode([String: SharedAmount].self, forKey: .totals).mapValues(\.amount))
+        }
+
+        static func nutrientKeyed<Value>(_ values: [String: Value]) throws -> [Nutrient: Value] {
+            try Dictionary(
+                uniqueKeysWithValues: values.map { name, value in
+                    guard let nutrient = Nutrient(rawValue: name) else {
+                        throw DecodingError.dataCorrupted(
+                            .init(codingPath: [], debugDescription: "知らない栄養: \(name)"))
+                    }
+                    return (nutrient, value)
+                })
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case name
+            case ingredients
+            case totals
+        }
+    }
+
+    struct SharedIngredient: Decodable {
+        let ingredient: Ingredient
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let source = try container.decode(SharedNutrientSource.self, forKey: .nutrientSource)
+            ingredient = .fixture(
+                quantity: try container.decode(Double.self, forKey: .quantity),
+                edibleGramsPerUnit: try container.decode(Double.self, forKey: .edibleGramsPerUnit),
+                nutrientSource: source.nutrientSource,
+                nutrients: try SharedCase.nutrientKeyed(
+                    container.decode([String: Double].self, forKey: .nutrients)))
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case quantity
+            case edibleGramsPerUnit
+            case nutrientSource
+            case nutrients
+        }
+    }
+
+    struct SharedNutrientSource: Decodable {
+        let nutrientSource: NutrientSource
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(String.self, forKey: .type)
+            switch type {
+            case "nutrition_label":
+                nutrientSource = .nutritionLabel(
+                    basisGrams: try container.decode(Double.self, forKey: .labelBasisGrams))
+            case "food_composition":
+                nutrientSource = .foodComposition(
+                    foodNumber: try container.decode(String.self, forKey: .foodNumber))
+            case "estimated":
+                nutrientSource = .estimated
+            default:
+                throw DecodingError.dataCorruptedError(
+                    forKey: .type, in: container, debugDescription: "知らない出どころ: \(type)")
+            }
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case type
+            case labelBasisGrams
+            case foodNumber
+        }
+    }
+
+    struct SharedAmount: Decodable {
+        let amount: NutrientAmount
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(String.self, forKey: .type)
+            switch type {
+            case "exactly": amount = .exactly(try container.decode(Double.self, forKey: .value))
+            case "at_least": amount = .atLeast(try container.decode(Double.self, forKey: .value))
+            case "unknown": amount = .unknown
+            default:
+                throw DecodingError.dataCorruptedError(
+                    forKey: .type, in: container, debugDescription: "知らない合計の形: \(type)")
+            }
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case type
+            case value
         }
     }
 }
