@@ -1,0 +1,38 @@
+# 本番の知らせ（いまは Sentry の新しい・急に増えた・再発した課題）を、needs-triage の Issue にする。エージェントが /triage で拾う
+# 載せる欄と、重複の避け方は scripts/production-alerts。調べた経緯は docs/research/alerts-to-issues.md
+name: production-alerts
+
+on:
+  # 混む毎時 0 分を避ける。抜けても、新しい課題は 7 日のあいだ次の回で拾える
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+# 前の回が書き終わる前に次の回が同じ課題の Issue を作らないよう、1本ずつ回す
+concurrency:
+  group: production-alerts
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  sentry:
+    runs-on: ubuntu-latest
+    # 詰まった回が既定の 6 時間残ると、そのあいだの回が concurrency で待たされて捨てられる
+    timeout-minutes: 10
+    # Sentry の読むだけのトークンは、main からだけ使える Environment に置く（ADR-0010）
+    environment: production-alerts
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: server/.node-version
+      - run: scripts/production-alerts sentry
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NU_TORI_SENTRY_READ_TOKEN: ${{ secrets.NU_TORI_SENTRY_READ_TOKEN }}

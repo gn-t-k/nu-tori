@@ -76,6 +76,17 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - Query API はいまは無料だが、PostHog はいずれ課金すると書いている。上限はプロジェクトごとに 1 時間 2,400 回・1 分 240 回・同時 3 本・実行 10 秒で、ほかに個人の API キーで読む分には、プロジェクトごとに 1 時間に読む量の予算がある（量は公開されていない）。どれかを超えると `429` が返り、読む量の予算なら `api_queries_budget_exceeded` が付く
 - プロジェクトの ID か鍵の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
 
+## 本番の知らせを Issue にする
+
+`.github/workflows/production-alerts.yml` が毎時 17 分に `scripts/production-alerts sentry` を回し、本番（`environment:production`）の Sentry の、新しい・急に増えた・再発した課題を、`needs-triage` の Issue にしてロックする。エージェントは `/triage` で拾い、中身は `scripts/sentry` で読む。調べた経緯は `docs/research/alerts-to-issues.md`。
+
+- Issue の題は `Sentry <短い ID>: <例外の型> in <関数>`。本文に載せるのは、短い ID・状態・型・関数・版・OS・件数と利用者の数・最初と最後の発生・Sentry の URL だけで、スクリプトはこれらの欄だけを Sentry から取る。例外のメッセージ（Sentry の課題の題）は取らない
+- 本文の印 `<!-- sentry-issue: <短い ID> -->` で同じ課題の Issue を探し、`<!-- sentry-state: <状態> -->` で最後に知らせた状態を覚える。状態が変わったら、開いた Issue にはコメントを足し、閉じた Issue しか無ければ前の Issue を指して新しく作る。状態が同じなら何もしないので、Sentry で解決せずに Issue だけを閉じても立て直さない。そのかわり、Sentry で解決したあとの2度目の再発のように同じ状態に戻ったときは Issue にならず、Sentry のメールの知らせで気づく。ワークフローが作った開いた Issue のロックが抜けていたら、次の回でロックする。印は、ワークフローと、リポジトリの持ち主・メンバー・コラボレーターが書いたものだけを信じる
+- 1回に書くのは5件まで（作る・コメントする）。残りは次の回で拾う
+- 秘密の値は Sentry の読むだけのトークン `NU_TORI_SENTRY_READ_TOKEN` だけで、main からだけ使える Environment `production-alerts` に置く。Issue は `GITHUB_TOKEN` で書く
+- Mac で確かめるときは `scripts/production-alerts sentry --dry-run`。GitHub に書かず、作る Issue の題とコメントする先だけを出す
+- 公開のリポジトリでは、60 日動きが無いと定期実行が止まる。止まったら Actions の画面で入れ直す
+
 ## CI
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
