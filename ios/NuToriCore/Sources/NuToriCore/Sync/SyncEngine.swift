@@ -236,6 +236,14 @@ public actor SyncEngine {
         UndeliveredRecords(pendingEntries: try await store.pendingEntries())
     }
 
+    /// 応答を待つ送った文章（`Timeline.Conversation.sentTextIdsAwaitingResponse(undelivered:)`）。
+    /// 見守る要求をつなぐ文章と、つながっていなければ数秒おきに取りに行くかを決める
+    public func sentTextsAwaitingResponse() async throws -> Set<UUID> {
+        Timeline.Conversation(
+            sentTexts: try await store.sentTexts(), statuses: try await store.sentTextStatuses()
+        ).sentTextIdsAwaitingResponse(undelivered: try await undeliveredRecords())
+    }
+
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
     public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
         let settings = AccountSettings(

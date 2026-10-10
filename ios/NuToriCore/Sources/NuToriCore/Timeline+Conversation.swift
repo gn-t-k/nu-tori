@@ -24,6 +24,26 @@ extension Timeline {
             self.replies = replies
             self.streams = streams
         }
+
+        /// 応答を待つ送った文章。届いていて（送り待ちに書き込みが無く）、応答（文章の食事、返事、作れなかった・回数切れ）の
+        /// 状態がまだ届いていない文章。見守る要求をつなぎ、つながっていなければ送ってから1分まで数秒おきに取りに行く
+        public func sentTextIdsAwaitingResponse(undelivered: UndeliveredRecords) -> Set<UUID> {
+            Set(
+                sentTexts.map(\.id).filter {
+                    !undelivered.containsSentText(id: $0) && Self.awaitsResponse(statuses[$0])
+                })
+        }
+
+        static func awaitsResponse(_ status: SentTextStatus?) -> Bool {
+            guard let status else { return true }
+            switch (status.classification, status.reply) {
+            case (.pending, _), (.conversation, .notRequested), (.conversation, .awaiting):
+                return true
+            case (.meal, _), (.conversation, .replied), (.conversation, .halted),
+                (.conversation, .failed):
+                return false
+            }
+        }
     }
 
     /// 会話の元から作る、タイムラインに置くもの
@@ -81,15 +101,13 @@ extension Timeline {
             -> SentTextBubble.ReplyLine?
         {
             guard !hasReply else { return nil }
-            guard let status else { return .reading }
+            guard let status, !Conversation.awaitsResponse(status) else { return .reading }
             switch (status.classification, status.reply) {
-            case (.pending, _): return .reading
             case (.meal, _): return nil
-            case (.conversation, .notRequested), (.conversation, .awaiting),
-                (.conversation, .replied):
-                return .reading
             case (.conversation, .halted): return .halted
             case (.conversation, .failed(let reason)): return .failed(reason)
+            // 返事ありの状態が返事の記録より先に届いた一瞬と、届くことのない組み合わせ
+            case (.conversation, _), (.pending, _): return .reading
             }
         }
     }
