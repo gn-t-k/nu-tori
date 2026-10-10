@@ -68,13 +68,13 @@ describe("返事の評価の結果を読む", () => {
     });
   });
 
-  test("返事を作れなかった場面は、落ちた場面として、提供元のエラーを理由に読むこと", () => {
+  test("返事を作れなかった場面は、落ちた場面として、提供元のエラーの1行目を理由に読むこと", () => {
     const read = readReplyResults({
       results: {
         results: [
           result("off-topic-movie", {
             success: false,
-            error: "返事を作れなかった（ConversationProviderError）",
+            error: "返事を作れなかった（ConversationProviderError）\n    at JudgeProvider.callApi",
           }),
         ],
       },

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // promptfoo の結果（-o の JSON）から、場面ごとの合否・返事の本文・落ちた守ることと判定の理由を読む。
-// 返事を作れなかった場面は、落ちた場面として提供元のエラーを理由にする（回し直すかは読む人が決める）
+// 返事を作れなかった場面は、落ちた場面として提供元のエラーの1行目（スタックを除く）を理由にする（回し直すかは読む人が決める）
 export const readReplyResults = (
   results: unknown,
 ): {
@@ -28,7 +28,7 @@ export const readReplyResults = (
       failures:
         result.success || failures.length > 0
           ? failures
-          : [{ rubric: "返事を作る", reason: result.error ?? "理由が無い" }],
+          : [{ rubric: "返事を作る", reason: result.error?.split("\n")[0] ?? "理由が無い" }],
     };
   });
   return { passed: cases.filter(({ pass }) => pass).length, total: cases.length, cases };
