@@ -12,4 +12,8 @@ export type EstimationEvents = {
   attemptResult: { attemptId: string; endedAt: Date; conclusion: EstimationAttemptConclusion };
   completion: { estimationId: string; completedAt: Date; result: "estimated" | "no_dishes" };
   abandonment: { estimationId: string; abandonedAt: Date };
+  // 文章の食事の推定が決めた、予定のつなぎの食事（1つ目の食事）の時刻。食事は推定から辿る
+  mealEatenAtEstimation: { estimationId: string; eatenAt: Date };
+  // 文章の食事の推定が作った、2つめ以降の食事
+  createdMeal: { mealId: RecordId; estimationId: string };
 };

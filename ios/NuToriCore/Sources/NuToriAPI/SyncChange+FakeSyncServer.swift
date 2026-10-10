@@ -8,6 +8,7 @@
             case .weightRecord(let record): .init(kind: .weightRecord, id: record.id)
             case .weightRecordDeletion(let recordId): .init(kind: .weightRecord, id: recordId)
             case .accountSettings(let settings): .init(kind: .accountSettings, id: settings.id)
+            case .aiUtterance(let utterance): .init(kind: .aiUtterance, id: utterance.id)
             case .dish(let dish): .init(kind: .dish, id: dish.id)
             case .dishDeletion(let dishId): .init(kind: .dish, id: dishId)
             case .dishEstimationStatus(let status):
@@ -24,6 +25,9 @@
                 .init(kind: .mealEstimationStatus, id: mealId)
             case .notice(let notice): .init(kind: .notice, id: notice.id)
             case .noticeRemoval(let noticeId): .init(kind: .notice, id: noticeId)
+            case .sentText(let sentText): .init(kind: .sentText, id: sentText.id)
+            case .sentTextRemoval(let sentTextId): .init(kind: .sentText, id: sentTextId)
+            case .sentTextStatus(let status): .init(kind: .sentTextStatus, id: status.sentTextId)
             case .usualWeighingTime(let time): .init(kind: .usualWeighingTime, id: time.id)
             // 傾向はアカウントに1つで、recordId は種類の名前
             case .weightTrend, .weightTrendAbsence:
@@ -38,10 +42,11 @@
             switch self {
             case .weightRecordDeletion, .dishDeletion, .dishEstimationStatusDeletion,
                 .ingredientDeletion, .mealDeletion, .mealEstimationStatusDeletion, .noticeRemoval,
-                .weightTrendAbsence:
+                .sentTextRemoval, .weightTrendAbsence:
                 true
-            case .weightRecord, .accountSettings, .dish, .dishEstimationStatus, .ingredient, .meal,
-                .mealEstimationStatus, .notice, .usualWeighingTime, .weightTrend, .unknown:
+            case .weightRecord, .accountSettings, .aiUtterance, .dish, .dishEstimationStatus,
+                .ingredient, .meal, .mealEstimationStatus, .notice, .sentText, .sentTextStatus,
+                .usualWeighingTime, .weightTrend, .unknown:
                 false
             }
         }
@@ -50,8 +55,9 @@
         fileprivate var wireKind: String {
             let name = recordKey.kind.rawValue
             switch self {
-            case .weightRecord, .accountSettings, .dish, .dishEstimationStatus, .ingredient, .meal,
-                .mealEstimationStatus, .notice, .usualWeighingTime, .weightTrend, .unknown:
+            case .weightRecord, .accountSettings, .aiUtterance, .dish, .dishEstimationStatus,
+                .ingredient, .meal, .mealEstimationStatus, .notice, .sentText, .sentTextStatus,
+                .usualWeighingTime, .weightTrend, .unknown:
                 return name
             case .weightRecordDeletion, .dishDeletion, .dishEstimationStatusDeletion,
                 .ingredientDeletion, .mealDeletion, .mealEstimationStatusDeletion:
@@ -60,6 +66,8 @@
                 return "\(name)_absence"
             case .noticeRemoval:
                 preconditionFailure("サーバーは知らせの取り除きを返さない")
+            case .sentTextRemoval:
+                preconditionFailure("サーバーは送った文章の取り除きを返さない")
             }
         }
 
@@ -81,6 +89,22 @@
                     MealEstimationStatusPayload(
                         mealId: status.mealId.canonicalString, status: status.status.rawValue)
                 case .notice(let notice): NoticePayload(notice)
+                case .aiUtterance(let utterance):
+                    AiUtterancePayload(
+                        id: utterance.id.canonicalString, body: utterance.body,
+                        sentTextId: utterance.sentTextId.canonicalString,
+                        mealIds: utterance.mealIds.map(\.canonicalString))
+                case .sentText(let sentText):
+                    SentTextPayload(
+                        id: sentText.id.canonicalString, body: sentText.body,
+                        sentAt: sentText.sentAt.millisecondsSince1970,
+                        timeZone: sentText.timeZone.identifier)
+                case .sentTextStatus(let status):
+                    SentTextStatusPayload(
+                        sentTextId: status.sentTextId.canonicalString,
+                        classification: status.classification.rawValue,
+                        replyStatus: status.reply.serverValue.status,
+                        replyFailureReason: status.reply.serverValue.failureReason)
                 case .usualWeighingTime(let time):
                     UsualWeighingTimePayload(minuteOfDay: time.minuteOfDay)
                 case .weightTrend(let trend):
@@ -90,7 +114,7 @@
                         })
                 case .weightRecordDeletion, .dishDeletion, .dishEstimationStatusDeletion,
                     .ingredientDeletion, .mealDeletion, .mealEstimationStatusDeletion,
-                    .noticeRemoval, .weightTrendAbsence, .unknown:
+                    .noticeRemoval, .sentTextRemoval, .weightTrendAbsence, .unknown:
                     [String: String]()
                 }
             return try payload.decoded(as: Payload.self)
@@ -173,7 +197,14 @@
                 eatenAtUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
                 sentAt: meal.sentAt.millisecondsSince1970,
                 sentTimeZone: meal.sentTimeZone.identifier,
-                entryMethod: meal.entryMethod.rawValue,
+                entryMethod: meal.entryMethod.wireName,
+                sentTextId: {
+                    if case .written(let sentTextId) = meal.entryMethod {
+                        sentTextId.canonicalString
+                    } else {
+                        nil
+                    }
+                }(),
                 photos: meal.photoIds.map { .init(id: $0.canonicalString) }
             )
         }

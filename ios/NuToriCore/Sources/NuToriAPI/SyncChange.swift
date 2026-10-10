@@ -5,6 +5,8 @@ public enum SyncChange: Sendable, Equatable {
     /// サーバーは削除の印を返し直すので、同じ ID で2度届くことがある
     case weightRecordDeletion(recordId: UUID)
     case accountSettings(SyncedAccountSettings)
+    /// 返事は消えないので、削除の印を持たない
+    case aiUtterance(SyncedAiUtterance)
     case dish(SyncedDish)
     case dishDeletion(dishId: UUID)
     case dishEstimationStatus(SyncedDishEstimationStatus)
@@ -21,6 +23,13 @@ public enum SyncChange: Sendable, Equatable {
     /// サーバーからは届かない（知らせは削除の印を持たない）。受け付けなかった知らせの書き込みで、
     /// サーバーに知らせが無いときに、端末がキャッシュから外すのに使う
     case noticeRemoval(noticeId: UUID)
+    /// 送った文章は消えないので、削除の印を持たない
+    case sentText(SyncedSentText)
+    /// サーバーからは届かない（送った文章は削除の印を持たない）。受け付けなかった送った文章を作る書き込みで、
+    /// サーバーに文章が無いときに、端末がキャッシュから外すのに使う
+    case sentTextRemoval(sentTextId: UUID)
+    /// 送った文章より先に届くことがある
+    case sentTextStatus(SyncedSentTextStatus)
     case usualWeighingTime(SyncedUsualWeighingTime)
     /// 並び全体。届いたらキャッシュを置き換える
     case weightTrend(SyncedWeightTrend)

@@ -1,8 +1,12 @@
 import type { EstimationAttemptResult } from "../estimation/domain/estimation-attempt-result";
-import type { TokenUsage } from "../estimation/domain/estimation-provider";
+import type { TokenUsage } from "./token-usage";
 import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
 import type { MealPhotoReceiptFailedError } from "./receive-meal-photo";
+import type { ClassificationLabel } from "../reply/domain/conversation-provider";
+import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";
+import type { SentTextClassification } from "../sent-text/domain/sent-text-classification";
+import type { ReplyFailureReason } from "../sent-text-status/domain/sent-text-status";
 import type { RecordType } from "./record-type";
 import type { RejectionReason } from "./rejection-reason";
 import type { WriteKind } from "./sync-ledger/write-kind";
@@ -35,8 +39,8 @@ export type UsageEvent =
   | {
       // 推定し終えた・諦めたとき。推定中に食事・料理を消したときは、食事・料理を消す書き込みで送る
       name: "estimation_ended";
-      // 推定のきっかけ。写真の推定（食事が対象）と、名前を直した・料理を足したときの推定し直し（料理が対象）
-      trigger: "photo" | "dish_renamed" | "dish_added";
+      // 推定のきっかけ。写真の推定と文章の食事の推定（食事が対象）と、名前を直した・料理を足したときの推定し直し（料理が対象）
+      trigger: "photo" | "text" | "dish_renamed" | "dish_added";
       // 料理が対象の推定は、料理ごとの推定の状態の値（estimated・no_dishes・failed）で送る。
       // 推定中に消えたら、消えたものの区分（食事・料理）で送る
       finalStatus: "estimated" | "no_dishes" | "failed" | "meal_deleted" | "dish_deleted";
@@ -51,6 +55,48 @@ export type UsageEvent =
       secondsFromReceivedToEnded: number;
       // 試みで提供元が返したエラーの種類（重ねない）
       providerErrorTypes: string[];
+    }
+  | {
+      // 送った文章を読み分けたとき（呼び出しごと）。本文は含めない
+      name: "sent_text_classified";
+      // 書いた読み分けの結果。決めかねたときと呼び出しの失敗は会話
+      result: SentTextClassification;
+      // 提供元の答え。呼び出しが失敗したら failed
+      providerResult: ClassificationLabel | "failed";
+      // 呼び出しで使ったトークン。失敗したら undefined
+      usage: TokenUsage | undefined;
+      // 送った文章を作る書き込みを受け取ってから、読み分けを書くまで
+      secondsFromReceivedToClassified: number;
+      // 呼び出しが失敗したときの、提供元のエラーの種類
+      providerErrorType: string | undefined;
+    }
+  | {
+      // 返事の試みの結果を書いたとき（呼び出しごと）。本文は含めない
+      name: "reply_attempt_ended";
+      result: ReplyAttemptOutcome["result"];
+      // 呼び出しで使ったトークン。分からなければ undefined
+      usage: TokenUsage | undefined;
+      // 提供元のエラーと 400 のときの、提供元のエラーの種類
+      providerErrorType: string | undefined;
+    }
+  | {
+      // 返事を書いた・作れなかったにしたとき（生成ごと）。本文は含めない
+      name: "reply_generation_ended";
+      finalStatus: "replied" | "failed";
+      // 作れなかった理由。返事を書いたら undefined
+      failureReason: ReplyFailureReason | undefined;
+      // 自動のやり直しの回数（試みの数 - 1）
+      retryCount: number;
+      // 返事が指し示した食事の数
+      referencedMealCount: number;
+      // 返事の依頼を作ってから（読み分けた・送り直しを受け取った）、終えるまで
+      secondsFromRequestedToEnded: number;
+      // 試みで提供元が返したエラーの種類（重ねない）
+      providerErrorTypes: string[];
+    }
+  | {
+      // 1日の返事の回数の上限に達していて、提供元を呼ばずに依頼を回数切れにしたとき。1日 20 回を調整するのに見る
+      name: "reply_request_halted";
     }
   | {
       // 1日の回数の上限に達していて、予定を次の日に回したとき

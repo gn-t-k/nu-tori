@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { createPhotoBytes } from "../src/http/meal-photo-routes/testing/create-photo-bytes";
 import { app } from "../src/http/app";
 import { mockCreateEstimationProviderOk } from "../src/estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
+import { mockCreateConversationProviderOk } from "../src/reply/durable-object/create-conversation-provider/create-conversation-provider.mock";
+import { mealTextBody } from "./meal-text-body";
 import { runMainFlow } from "./run-main-flow";
 
 const signInSecret = "e2e-sign-in-secret-0123456789abcdef0123456789";
@@ -36,14 +38,19 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
         return response;
       },
       estimationTimeoutMs: 20_000,
+      replyTimeoutMs: 20_000,
       pollIntervalMs: 50,
       log: (message) => messages.push(message),
     };
   });
 
-  describe("写真の料理が推定できるとき", () => {
+  describe("写真と文章の食事が推定でき、会話の文章に返事が作れるとき", () => {
     beforeEach(() => {
       mockCreateEstimationProviderOk();
+      mockCreateConversationProviderOk({
+        classification: (body) => (body === mealTextBody ? "meal" : "conversation"),
+        reply: { body: "よく歩けましたね。", mealIds: [], textDeltas: ["よく歩けました", "ね。"] },
+      });
     });
 
     test("最後まで通り、作ったアカウントを消すこと", async () => {
@@ -65,8 +72,41 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
         "写真の食事を送った",
         "推定できた（料理 2、材料 3）",
         "推定でできた料理の名前を直した",
+        "食事の文章を送った",
+        "文章の食事が推定できた（料理 2、材料 3）",
+        "会話の文章を送った",
+        "見守る要求で返事が届いた（流れた分 2）",
+        "取りに行くで返事が届いた",
         "アカウントを削除した",
       ]);
+    });
+  });
+
+  describe("食事の文章が会話と読み分けられたとき", () => {
+    beforeEach(() => {
+      mockCreateEstimationProviderOk();
+      mockCreateConversationProviderOk({ classification: "conversation" });
+    });
+
+    test("読み分けの結果を知らせて失敗し、アカウントは消すこと", async () => {
+      await expect(runMainFlow(flowOptions)).rejects.toThrow(
+        "食事の文章が conversation と読み分けられた",
+      );
+      expect(await countCreatedAccount()).toBe(0);
+    });
+  });
+
+  describe("会話の文章が食事と読み分けられたとき", () => {
+    beforeEach(() => {
+      mockCreateEstimationProviderOk();
+      mockCreateConversationProviderOk({ classification: "meal" });
+    });
+
+    test("見守る要求が閉じたときの結果を知らせて失敗し、アカウントは消すこと", async () => {
+      await expect(runMainFlow(flowOptions)).rejects.toThrow(
+        '会話の文章の見守る要求が、返事ありでなく {"type":"classified_as_meal"} で閉じた',
+      );
+      expect(await countCreatedAccount()).toBe(0);
     });
   });
 

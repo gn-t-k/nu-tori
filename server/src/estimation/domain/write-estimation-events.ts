@@ -120,6 +120,13 @@ export const writeEstimationEvents = <T>(
       rememberTarget(target);
       store.insertAbandonment(abandonment);
     },
+    estimateMealEatenAt: (estimation) => {
+      store.insertMealEatenAtEstimation(estimation);
+    },
+    recordCreatedMeal: (createdMeal) => {
+      rememberMeal(createdMeal.mealId);
+      store.insertCreatedMeal(createdMeal);
+    },
   });
 
   for (const { change, before, always } of statusesBeforeWrites.values()) {

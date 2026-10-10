@@ -9,12 +9,19 @@ struct TimelineScreenContainer: View {
     let rejectedLines: [RejectedLine]
     /// 送り待ちに料理を足す・名前を直す書き込みがある料理（まだ送れていない料理として見せる）
     let unsentDishIds: Set<UUID>
+    /// まだ届いていない記録（薄く描く）
+    let undeliveredRecords: UndeliveredRecords
     let capture: (ClientUsageEvent) async -> Void
     let reminderLanding: ReminderLanding?
     let noteReminderLanded: () -> Void
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
+    /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
+    let sendText: (TextDraft) async -> Void
+    /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事
+    let replyStreams: [UUID: ReplyStream]
+    let conversationActions: ConversationActions
     let accountActions: AccountActions
     let mealActions: MealActions
     /// この端末で記録した（元の大きさの写真を持っている）食事か
@@ -31,14 +38,18 @@ struct TimelineScreenContainer: View {
             rejectedLines: rejectedLines,
             meals: mealCards,
             notices: cachedNotices.compactMap { $0.notice() },
+            undeliveredRecords: undeliveredRecords,
             capture: capture,
             reminderLanding: reminderLanding,
             noteReminderLanded: noteReminderLanded,
             requestNotificationPermission: requestNotificationPermission,
             prepareWeightEntry: prepareWeightEntry,
             saveWeight: saveWeight,
+            sendText: sendText,
             accountActions: accountActions,
-            mealActions: mealActions
+            mealActions: mealActions,
+            conversation: conversation,
+            conversationActions: conversationActions
         )
         .task(id: cachedMeals.map(\.mealId)) {
             await readMealsRecordedHere()
@@ -54,6 +65,9 @@ struct TimelineScreenContainer: View {
     @Query private var cachedIngredients: [CachedIngredient]
     @Query private var cachedNotices: [CachedNotice]
     @Query private var cachedWeightTrendDays: [CachedWeightTrendDay]
+    @Query private var cachedSentTexts: [CachedSentText]
+    @Query private var cachedSentTextStatuses: [CachedSentTextStatus]
+    @Query private var cachedAiUtterances: [CachedAiUtterance]
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 
@@ -92,6 +106,15 @@ struct TimelineScreenContainer: View {
                 )
             }
         }
+    }
+
+    /// 送った文章・その状態・返事は別の種類で、どれが先にも届く。送った文章が届くまで、状態と返事は並ばない
+    private var conversation: Timeline.Conversation {
+        Timeline.Conversation(
+            sentTexts: cachedSentTexts.compactMap { $0.sentText() },
+            statuses: CachedSentTextStatus.statuses(of: cachedSentTextStatuses),
+            replies: cachedAiUtterances.map { $0.aiUtterance() },
+            streams: replyStreams)
     }
 
     private func readMealsRecordedHere() async {

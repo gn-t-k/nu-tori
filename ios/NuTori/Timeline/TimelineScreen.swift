@@ -17,6 +17,8 @@ struct TimelineScreen: View {
     let meals: [MealCard]
     /// 答えた知らせも含む
     let notices: [Notice]
+    /// まだ届いていない記録（薄く描く）
+    let undeliveredRecords: UndeliveredRecords
     let capture: (ClientUsageEvent) async -> Void
     /// 記録忘れの通知を押して開いたときの着き先。着いたら `noteReminderLanded` を呼ぶ
     let reminderLanding: ReminderLanding?
@@ -25,12 +27,17 @@ struct TimelineScreen: View {
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
+    /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
+    let sendText: (TextDraft) async -> Void
     let accountActions: AccountActions
     let mealActions: MealActions
+    /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
+    let conversation: Timeline.Conversation
+    let conversationActions: ConversationActions
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
-        let selectedDay = visibleDay ?? loaded?.days.last?.day ?? today
+        let selectedDay = loaded.flatMap(selectedDay(in:)) ?? today
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 DayRingStrip(
@@ -83,7 +90,10 @@ struct TimelineScreen: View {
                         rejectedLines: rejectedLines,
                         confirmsDeletion: false,
                         confirmsLastDishDeletion: false,
-                        addingDish: false
+                        addingDish: false,
+                        sentText: card.meal.sentTextId.flatMap { sentTextId in
+                            conversation.sentTexts.first { $0.id == sentTextId }
+                        }
                     )
                 }
             }
@@ -99,7 +109,7 @@ struct TimelineScreen: View {
             .onDisappear {
                 showsCameraNotice = false
             }
-            .navigationTitle(title(loaded: loaded))
+            .navigationTitle(TimelineDayText.label(for: selectedDay))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -223,6 +233,12 @@ struct TimelineScreen: View {
     /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
+    /// 伸びている返事に合わせて一番下へ追うか。使う人が動かして一番下から離れたら止め、一番下へ戻すか、伸びる返事が無くなったら追う
+    @State private var followsGrowingReply = true
+    /// タイムラインの一番下が見えているか
+    @State private var showsTimelineEnd = true
+    /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
+    @State private var replyFirstText = ReplyFirstTextWatch()
 
     private var showsCamera: Binding<Bool> {
         Binding(
@@ -304,7 +320,7 @@ struct TimelineScreen: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             ForEach(timeline.days, id: \.day) { day in
-                                daySection(day)
+                                daySection(day, in: timeline)
                                     .id(day.day)
                             }
                         }
@@ -312,10 +328,35 @@ struct TimelineScreen: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                 }
-                .defaultScrollAnchor(.bottom)
+                .defaultScrollAnchor(.bottom, for: .initialOffset)
+                .defaultScrollAnchor(.bottom, for: .alignment)
+                // 返事が伸びるあいだは一番下へ追う。使う人が上へ動かしたら、追うのを止める
+                .defaultScrollAnchor(followsGrowingReply ? .bottom : .top, for: .sizeChanges)
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.visibleRect.maxY >= geometry.contentSize.height - 1
+                } action: { _, atEnd in
+                    showsTimelineEnd = atEnd
+                }
                 .onScrollPhaseChange { _, phase in
                     if phase != .idle {
                         showsCameraNotice = false
+                    }
+                    // 動かしているあいだは追わず、止まったときに一番下が見えていれば、また追う
+                    if phase == .interacting {
+                        followsGrowingReply = false
+                    } else if phase == .idle {
+                        followsGrowingReply = showsTimelineEnd
+                    }
+                }
+                .onChange(of: timeline.hasGrowingReply) { _, growing in
+                    if !growing {
+                        followsGrowingReply = true
+                    }
+                }
+                .onChange(of: timeline.days, initial: true) { _, _ in
+                    let events = replyFirstText.note(timeline, at: now())
+                    for event in events {
+                        Task { await capture(event) }
                     }
                 }
                 .coordinateSpace(.named("timeline"))
@@ -351,73 +392,16 @@ struct TimelineScreen: View {
         }
     }
 
-    private func daySection(_ day: Timeline.Day) -> some View {
-        VStack(alignment: .leading) {
+    private func daySection(_ day: Timeline.Day, in timeline: Timeline) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 日の見出しは、タイムライン全体で中央に揃える。上に浮かせて止めない（ナビゲーションバーの題と1日の丸の帯が、いま見ている日を示す）
             Text(TimelineDayText.label(for: day.day))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
             ForEach(day.items) { item in
-                switch item {
-                case .weightRecord(let record):
-                    NavigationLink(value: record.day) {
-                        WeightRecordRow(record: record)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("weight-row")
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                case .rejectedWeightLine(let line):
-                    Text(line.text)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .accessibilityIdentifier("rejected-weight-line")
-                case .meal(let card):
-                    // どの状態のカードも、押すと食事の画面へ潜る
-                    NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                        MealCardView(card: card) { photoId in
-                            await mealActions.loadPhoto(card.meal.id, photoId)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("meal-card")
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                case .rejectedMealLine(let line):
-                    Text(line.text)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .accessibilityIdentifier("rejected-meal-line")
-                case .notice(let card):
-                    WeightNoticeCard(
-                        card: card,
-                        records: records,
-                        today: today,
-                        now: now,
-                        timeZone: timeZone,
-                        capture: capture,
-                        onRecord: { write in
-                            noticeRecordedCount += 1
-                            Task {
-                                await saveWeight(write)
-                                // 知らせの中で記録したときは、記録した直後に通知の許可を求める
-                                await requestNotificationPermission()
-                            }
-                        }
-                    )
-                    .id(item.id)
-                    .background {
-                        if card.form == .awaitingAnswer {
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: AwaitingNoticePositionKey.self,
-                                    value: UnansweredNoticeLineVisibility.CardPosition(
-                                        noticeId: card.notice.id,
-                                        maxY: Double(geo.frame(in: .named("timeline")).maxY)))
-                            }
-                        }
-                    }
-                }
+                itemView(item, in: timeline)
+                    .padding(.top, Self.gap(before: item, in: day))
             }
         }
         // 中の行が自分の識別子を保つよう、区切りは入れ物にしてから名前を付ける
@@ -434,6 +418,131 @@ struct TimelineScreen: View {
                 )
             }
         }
+    }
+
+    /// 会話のまとまりの見た目（仕様 #419「会話のまとまりの見た目」）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
+    /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、会話のまとまりを余白だけで見せるため、ここは数値で決める。
+    /// 詰めるのは VStack の標準の間隔と同じ 8、空けるのは DESIGN.md のまとまりの間（section-gap）の 24
+    private static func gap(before item: Timeline.Item, in day: Timeline.Day) -> CGFloat {
+        switch day.spacing(before: item) {
+        case .close: 8
+        case .apart: 24
+        }
+    }
+
+    @ViewBuilder private func itemView(_ item: Timeline.Item, in timeline: Timeline) -> some View {
+        switch item {
+        case .weightRecord(let record):
+            NavigationLink(value: record.day) {
+                WeightRecordRow(record: record)
+            }
+            .buttonStyle(.plain)
+            .undeliveredRecord(timeline.isUndelivered(item))
+            .accessibilityIdentifier("weight-row")
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        case .rejectedWeightLine(let line):
+            RejectedLineText(text: line.text, subject: .weightRecord)
+        case .meal(let card):
+            if let sentTextId = card.meal.sentTextId {
+                writtenMealCard(
+                    card, sentTextId: sentTextId, isUndelivered: timeline.isUndelivered(item))
+            } else {
+                // どの状態のカードも、押すと食事の画面へ潜る
+                NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                    MealCardView(card: card) { photoId in
+                        await mealActions.loadPhoto(card.meal.id, photoId)
+                    }
+                    .modifier(OwnRecordCard())
+                }
+                .buttonStyle(.plain)
+                .undeliveredRecord(timeline.isUndelivered(item))
+                .accessibilityIdentifier("meal-card")
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        case .rejectedMealLine(let line):
+            RejectedLineText(text: line.text, subject: .meal)
+        case .sentText(let bubble):
+            SentTextBubbleView(
+                bubble: bubble, isUndelivered: timeline.isUndelivered(item)
+            ) { reason in
+                followsGrowingReply = true
+                Task { await conversationActions.resend(bubble.sentText.id, reason) }
+            }
+        case .rejectedSentTextLine(let line):
+            RejectedLineText(text: line.text, subject: .sentText)
+        case .reply(let reply):
+            ReplyView(
+                reply: reply,
+                openMeal: { card in
+                    navigationPath.append(MealRoute(mealId: card.meal.id))
+                    Task { await capture(.replyMealOpened) }
+                },
+                loadPhoto: mealActions.loadPhoto
+            )
+            .id(item.id)
+        case .notice(let card):
+            WeightNoticeCard(
+                card: card,
+                records: records,
+                today: today,
+                now: now,
+                timeZone: timeZone,
+                capture: capture,
+                onRecord: { write in
+                    noticeRecordedCount += 1
+                    Task {
+                        await saveWeight(write)
+                        // 知らせの中で記録したときは、記録した直後に通知の許可を求める
+                        await requestNotificationPermission()
+                    }
+                }
+            )
+            .id(item.id)
+            .background {
+                if card.form == .awaitingAnswer {
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: AwaitingNoticePositionKey.self,
+                            value: UnansweredNoticeLineVisibility.CardPosition(
+                                noticeId: card.notice.id,
+                                maxY: Double(geo.frame(in: .named("timeline")).maxY)))
+                    }
+                }
+            }
+        }
+    }
+
+    /// 文章の食事のカード。写真の場所を持たず、文章の食事と分かる手がかりは上の吹き出し。
+    /// 下に「会話として送り直す」を添える。押しても確かめず、その文章の食事がすべて消える
+    private func writtenMealCard(_ card: MealCard, sentTextId: UUID, isUndelivered: Bool)
+        -> some View
+    {
+        VStack(alignment: .leading, spacing: 0) {
+            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                MealCardView(card: card) { photoId in
+                    await mealActions.loadPhoto(card.meal.id, photoId)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("meal-card")
+            Divider()
+            Button("会話として送り直す") {
+                let deletedMealCount = meals.filter { $0.meal.sentTextId == sentTextId }.count
+                followsGrowingReply = true
+                Task {
+                    await conversationActions.resendAsConversation(sentTextId, deletedMealCount)
+                }
+            }
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .padding(.horizontal)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .accessibilityIdentifier("resend-as-conversation")
+        }
+        .modifier(OwnRecordCard())
+        .undeliveredRecord(isUndelivered)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     /// 帯の下の1行。押すと、その知らせまで戻る
@@ -467,6 +576,7 @@ struct TimelineScreen: View {
             weightRecordedToday: records.contains { $0.day == today },
             preparingWeightEntry: weightEntryPhase == .preparing,
             showsCameraNotice: showsCameraNotice,
+            initialDraft: TextDraft(),
             onCapture: hidingCameraNotice(openCamera),
             onPickPhotos: hidingCameraNotice {
                 switch mealActions.photoSelection {
@@ -486,6 +596,15 @@ struct TimelineScreen: View {
                     await prepareWeightEntry()
                     weightEntryPhase = .showing
                 }
+            },
+            onPresetTapped: { preset in
+                showsCameraNotice = false
+                Task { await capture(.presetTapped(preset)) }
+            },
+            onSendText: { draft in
+                showsCameraNotice = false
+                followsGrowingReply = true
+                Task { await sendText(draft) }
             }
         )
     }
@@ -524,7 +643,9 @@ struct TimelineScreen: View {
         let monday = today.startOfWeek
         return RingStrip(
             timeline: Timeline(
-                input: Timeline.Input(weightRecords: [], rejectedLines: [], meals: [], notices: []),
+                input: Timeline.Input(
+                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                    undelivered: .none, conversation: .none),
                 firstDay: monday,
                 today: today)
         ).weeks
@@ -534,16 +655,14 @@ struct TimelineScreen: View {
         Timeline(
             input: Timeline.Input(
                 weightRecords: records, rejectedLines: rejectedLines, meals: meals,
-                notices: notices),
+                notices: notices, undelivered: undeliveredRecords, conversation: conversation),
             firstDay: firstDay, today: today)
     }
 
-    private func title(loaded: Timeline?) -> String {
-        guard let loaded else {
-            return TimelineDayText.label(for: today)
-        }
-        let day = visibleDay ?? loaded.days.last?.day ?? today
-        return TimelineDayText.label(for: day)
+    /// 題と1日の丸の帯で示す日。日の区切りは遅れて作られ、開いた直後に下端へ動いたあとの位置が届かないことがあるので（#442）、一番下にいるかはスクロールの位置から決める
+    private func selectedDay(in timeline: Timeline) -> CalendarDay? {
+        let newest = timeline.days.last?.day
+        return showsTimelineEnd ? newest : visibleDay ?? newest
     }
 
     /// いちばん新しい日が画面に入っていればその日。遡っているときは、上端にかかっている日

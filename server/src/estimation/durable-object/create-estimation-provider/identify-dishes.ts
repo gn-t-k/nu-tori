@@ -9,7 +9,10 @@ import type {
   EstimationProviderReply,
   IdentifiedDishes,
 } from "../../domain/estimation-provider";
+import { foodCompositionQuerySection } from "./food-composition-query-section";
+import { identifiedDishSchema } from "./identified-dish-schema";
 import { requestStructuredOutput } from "./request-structured-output";
+import { toIdentifiedDishes } from "./to-identified-dishes";
 
 // ①: 写真（1食事に 1〜4 枚）から、料理と材料と量を読み取る。推定し直しでは、写真と料理の今の値から、その料理1つを読み取る
 export const identifyDishes = async (
@@ -41,7 +44,9 @@ export const identifyDishes = async (
           type: "text",
           text: match(request.target)
             .with({ type: "meal" }, () => mealInstruction)
-            .with({ type: "dish" }, ({ dish }) => toReestimationInstruction(dish))
+            .with({ type: "dish" }, ({ dish }) =>
+              toReestimationInstruction(dish, { hasPhotos: request.photos.length > 0 }),
+            )
             .exhaustive(),
         },
       ],
@@ -60,15 +65,17 @@ export const identifyDishes = async (
 // 写真の推定の指示
 const mealInstruction = "この食事の料理と材料を答えてください。";
 
-// 名前を直した・足した料理の推定し直しの指示（#332 の「① に渡すもの」）。使う人が直した材料と料理の量だけを渡す
-const toReestimationInstruction = ({
-  name,
-  correctedIngredients,
-  correctedQuantity,
-}: DishToReestimate): string =>
+// 名前を直した・足した料理の推定し直しの指示（#332 の「① に渡すもの」）。使う人が直した材料と料理の量だけを渡す。
+// 文章の食事は写真が無いので、名前だけから推定させる（#419 の「文章の食事」）
+const toReestimationInstruction = (
+  { name, correctedIngredients, correctedQuantity }: DishToReestimate,
+  { hasPhotos }: { hasPhotos: boolean },
+): string =>
   [
-    `使う人が、この食事の料理の1つの名前を「${name}」にしました。この料理1つだけについて、量と材料を答えてください（dishes は1件）。写真にほかの料理が写っていても答えません。`,
-    "写真から見分けられなくても、名前と写真から無理なく推定できる範囲で答えてください。その名前の料理の材料を出せないときだけ、dishes を空にしてください。",
+    `使う人が、この食事の料理の1つの名前を「${name}」にしました。この料理1つだけについて、量と材料を答えてください（dishes は1件）。${hasPhotos ? "写真にほかの料理が写っていても答えません。" : ""}`,
+    hasPhotos
+      ? "写真から見分けられなくても、名前と写真から無理なく推定できる範囲で答えてください。その名前の料理の材料を出せないときだけ、dishes を空にしてください。"
+      : "この食事は文章から記録したもので、写真はありません。名前から、一般的な1人前を無理なく推定できる範囲で答えてください。その名前の料理の材料を出せないときだけ、dishes を空にしてください。",
     ...(correctedIngredients.length === 0
       ? []
       : [
@@ -85,51 +92,7 @@ const toReestimationInstruction = ({
         ]),
   ].join("\n");
 
-const nutrientNames = Object.keys(nutrients);
-
-const identifiedDishesSchema = z.object({
-  dishes: z.array(
-    z.object({
-      name: z.string(),
-      quantity: z.number(),
-      unit: z.string(),
-      ingredients: z.array(
-        z.object({
-          name: z.string(),
-          quantity: z.number(),
-          unit: z.string(),
-          edibleGramsPerUnit: z.number(),
-          foodCompositionQuery: z.string(),
-          nutritionLabel: z
-            .object({
-              basisGrams: z.number(),
-              // 栄養の名前をキーにした表は構造化出力で書けないので、名前と値の組の並びにする
-              nutrients: z.array(z.object({ nutrient: z.enum(nutrientNames), amount: z.number() })),
-            })
-            .nullable(),
-        }),
-      ),
-    }),
-  ),
-});
-
-const toIdentifiedDishes = (output: z.output<typeof identifiedDishesSchema>): IdentifiedDishes => ({
-  dishes: output.dishes.map((dish) => ({
-    ...dish,
-    ingredients: dish.ingredients.map(({ nutritionLabel, ...ingredient }) => ({
-      ...ingredient,
-      nutritionLabel:
-        nutritionLabel === null
-          ? undefined
-          : {
-              basisGrams: nutritionLabel.basisGrams,
-              nutrients: Object.fromEntries(
-                nutritionLabel.nutrients.map(({ nutrient, amount }) => [nutrient, amount]),
-              ),
-            },
-    })),
-  })),
-});
+const identifiedDishesSchema = z.object({ dishes: z.array(identifiedDishSchema) });
 
 const nutrientLines = Object.entries(nutrients)
   .map(([name, { unit }]) => `- ${name}（${unit}）`)
@@ -143,10 +106,7 @@ const system = `あなたは、食事の写真から、栄養を計算するた�
 - 材料ごとに、名前・量・単位・1単位あたりの可食部の g を答える。単位が g なら 1、ml なら水に近いものは 1 とし、個・枚・本などは 1 つの可食部のおよその g にする。皮・骨・殻のように食べない部分は含めない。
 - 量は写真の大きさと一般的な分量から、1人が実際に食べた分を見積もる。
 
-## 成分表を引く語（foodCompositionQuery）
-- 日本食品標準成分表（八訂）の食品名を引くための語を、空白で区切って答える。
-- 成分表の書き方に寄せる。肉・魚・野菜の多くはひらがなで書かれる（鶏→にわとり、豚→ぶた、牛→うし、鮭→さけ、ご飯→こめ 水稲めし 精白米、サラダ油→調合油）。部位や調理の状態（生・ゆで・焼き・揚げ・皮なし・皮つき など）も語に含める。
-- 例: 「にわとり 若どり もも 皮なし 焼き」「こめ 水稲めし 精白米」「ぶた ロース 脂身つき 焼き」「せん茶 浸出液」
+${foodCompositionQuerySection}
 
 ## 栄養成分表示（nutritionLabel）
 - パッケージなどの栄養成分表示が写っていて、読み取れる材料だけに付ける。読めない・無いときは null にする。

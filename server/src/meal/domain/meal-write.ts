@@ -3,7 +3,10 @@ import type { Meal } from "./meal";
 
 // 端末から届く食事の書き込み。入口は受け口で値を確かめず、ドメイン層で確かめる
 export type MealWrite = { id: RecordId } & (
-  | { type: "create_meal"; meal: Omit<Meal, "entryMethod"> & { entryMethod: string } }
+  | {
+      type: "create_meal";
+      meal: Omit<Meal, "entryMethod" | "sentTextId"> & { entryMethod: string };
+    }
   | { type: "delete_meal"; mealId: RecordId }
   // 直すのは撮った時刻だけ。時差・送った時刻・入口は変えない
   | { type: "update_meal"; mealId: RecordId; eatenAt: Date }

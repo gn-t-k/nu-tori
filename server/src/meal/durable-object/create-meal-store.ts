@@ -1,9 +1,10 @@
-import { and, asc, between, eq, inArray } from "drizzle-orm";
+import { and, asc, between, eq, gte, inArray, or } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../domain/record-id";
 import { findLatestCorrection } from "../../durable-object/find-latest-correction";
 import { removeCorrectionsOfRecord } from "../../durable-object/remove-corrections-of-record";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
+import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables";
 import type { MealStore } from "../domain/meal-store";
 import { mealPhotoTables } from "./meal-photo-tables";
 import { mealTables } from "./meal-tables";
@@ -11,6 +12,7 @@ import { mealTables } from "./meal-tables";
 const { syncWriteReceipts } = syncLedgerTables;
 const { meals, mealEatenAtCorrections, mealDeletions } = mealTables;
 const { mealPhotos, mealPhotoDeletions } = mealPhotoTables;
+const { sentTextMeals, mealEatenAtEstimations, conversationResendMealDeletions } = sentTextTables;
 
 export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
   find: (id) => {
@@ -26,17 +28,28 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       .all();
     return {
       ...meal,
-      eatenAt: findCorrectedEatenAt(db, id) ?? meal.eatenAt,
+      eatenAt: findCurrentEatenAt(db, id, meal.eatenAt),
       photoIds: photos.map((photo) => photo.id),
+      sentTextId: db
+        .select({ sentTextId: sentTextMeals.sentTextId })
+        .from(sentTextMeals)
+        .where(eq(sentTextMeals.mealId, id))
+        .get()?.sentTextId,
     };
   },
+  // 食事の削除の印は2つの表にある。食事を消す書き込みの印（控えの record_id が食事）と、会話として送り直して消した食事の印（#419）
   hasDeletion: (id) =>
     db
       .select({ id: mealDeletions.syncWriteReceiptId })
       .from(mealDeletions)
       .innerJoin(syncWriteReceipts, eq(syncWriteReceipts.id, mealDeletions.syncWriteReceiptId))
       .where(and(eq(syncWriteReceipts.recordType, "meal"), eq(syncWriteReceipts.recordId, id)))
-      .all().length > 0,
+      .get() !== undefined ||
+    db
+      .select({ mealId: conversationResendMealDeletions.mealId })
+      .from(conversationResendMealDeletions)
+      .where(eq(conversationResendMealDeletions.mealId, id))
+      .get() !== undefined,
   findUsedPhotoIds: (photoIds) =>
     splitIntoQueryableChunks(photoIds).flatMap((chunk) => [
       ...db
@@ -52,8 +65,30 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
         .all()
         .map((photo) => photo.id),
     ]),
-  // #332 の「時刻で食事を引く道」: 作ったときの時刻と直した時刻の両方から候補を出し、候補ごとに今の時刻を出してから範囲で絞る。
-  // 作ったときの時刻だけで引くと、直して日をまたいだ食事を数え誤る
+  // 推定した時刻（文章の食事）は送った時刻より後にならないので、送った時刻で拾える
+  findIdsSentOrEatenSince: (from) => {
+    const sentOrCreatedSince = db
+      .select({ id: meals.id })
+      .from(meals)
+      .where(or(gte(meals.sentAt, from), gte(meals.eatenAt, from)))
+      .all();
+    const correctedSince = db
+      .select({ id: meals.id })
+      .from(mealEatenAtCorrections)
+      .innerJoin(
+        syncWriteReceipts,
+        eq(syncWriteReceipts.id, mealEatenAtCorrections.syncWriteReceiptId),
+      )
+      .innerJoin(
+        meals,
+        and(eq(syncWriteReceipts.recordType, "meal"), eq(meals.id, syncWriteReceipts.recordId)),
+      )
+      .where(gte(mealEatenAtCorrections.eatenAt, from))
+      .all();
+    return [...new Set([...sentOrCreatedSince, ...correctedSince].map(({ id }) => id))];
+  },
+  // #332 の「時刻で食事を引く道」: 作ったときの時刻と直した時刻と推定した時刻（#419）から候補を出し、候補ごとに今の時刻を出してから範囲で絞る。
+  // 作ったときの時刻だけで引くと、直して・推定して日をまたいだ食事を数え誤る
   findEatenTimesBetween: (from, to) => {
     const createdInRange = db
       .select({ id: meals.id })
@@ -73,7 +108,14 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       )
       .where(between(mealEatenAtCorrections.eatenAt, from, to))
       .all();
-    const candidateIds = new Set([...createdInRange, ...correctedInRange].map(({ id }) => id));
+    const estimatedInRange = db
+      .select({ id: mealEatenAtEstimations.mealId })
+      .from(mealEatenAtEstimations)
+      .where(between(mealEatenAtEstimations.eatenAt, from, to))
+      .all();
+    const candidateIds = new Set(
+      [...createdInRange, ...correctedInRange, ...estimatedInRange].map(({ id }) => id),
+    );
     return [...candidateIds].flatMap((id) => {
       const meal = db
         .select({
@@ -86,17 +128,22 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       if (meal === undefined) {
         return [];
       }
-      const eatenAt = findCorrectedEatenAt(db, id) ?? meal.eatenAt;
+      const eatenAt = findCurrentEatenAt(db, id, meal.eatenAt);
       return eatenAt >= from && eatenAt <= to
         ? [{ eatenAt, eatenAtUtcOffsetSeconds: meal.eatenAtUtcOffsetSeconds }]
         : [];
     });
   },
-  insert: ({ photoIds, ...meal }) => {
+  insert: ({ photoIds, sentTextId, ...meal }) => {
     db.insert(meals).values(meal).run();
-    db.insert(mealPhotos)
-      .values(photoIds.map((id, positionInMeal) => ({ id, mealId: meal.id, positionInMeal })))
-      .run();
+    if (photoIds.length > 0) {
+      db.insert(mealPhotos)
+        .values(photoIds.map((id, positionInMeal) => ({ id, mealId: meal.id, positionInMeal })))
+        .run();
+    }
+    if (sentTextId !== undefined) {
+      db.insert(sentTextMeals).values({ mealId: meal.id, sentTextId }).run();
+    }
   },
   insertEatenAtCorrection: (receiptId, eatenAt) => {
     db.insert(mealEatenAtCorrections)
@@ -123,11 +170,22 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
   },
 });
 
-const findCorrectedEatenAt = (db: DrizzleSqliteDODatabase, id: RecordId): Date | undefined =>
+// 今の時刻は、使う人が直した時刻 → 推定した時刻（文章の食事の1つ目）→ 作ったときの時刻の順で決める（#419 の「1つ目の食事の時刻」）
+const findCurrentEatenAt = (
+  db: DrizzleSqliteDODatabase,
+  id: RecordId,
+  createdEatenAt: Date,
+): Date =>
   findLatestCorrection(db, mealEatenAtCorrections, "eatenAt", {
     recordType: "meal",
     recordId: id,
-  })?.value;
+  })?.value ??
+  db
+    .select({ eatenAt: mealEatenAtEstimations.eatenAt })
+    .from(mealEatenAtEstimations)
+    .where(eq(mealEatenAtEstimations.mealId, id))
+    .get()?.eatenAt ??
+  createdEatenAt;
 
 // Durable Object の SQLite は、1つのクエリに渡せる変数が 100 まで。受け付けなかった書き込みの写真の ID は、いくつでも届きうる
 const splitIntoQueryableChunks = (ids: readonly RecordId[]): RecordId[][] => {

@@ -15,6 +15,9 @@ import type { SyncWrite } from "../domain/sync-write";
 import { createEstimationProvider } from "../estimation/durable-object/create-estimation-provider";
 import { readKeptMealPhoto } from "../meal/domain/read-kept-meal-photo";
 import { createMealPhotoArchive } from "../meal/durable-object/create-meal-photo-archive";
+import { createReplyWatchers } from "../reply/domain/create-reply-watchers";
+import { createConversationProvider } from "../reply/durable-object/create-conversation-provider";
+import { createReplyStream } from "../reply/durable-object/create-reply-stream";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
@@ -27,6 +30,9 @@ import { durableObjectMigrations } from "./durable-object-migrations";
 export const AccountDurableObject = instrumentDurableObjectWithSentry(
   createSentryOptions,
   class extends DurableObject<Env> {
+    // 見守る要求と、試みが流している途中の文。実体のメモリにだけ持ち、受け口の要求とアラームが同じものを使う
+    private readonly replyWatchers = createReplyWatchers();
+
     constructor(ctx: DurableObjectState, env: Env) {
       super(ctx, env);
       applyDurableObjectMigrations(ctx.storage, durableObjectMigrations);
@@ -111,6 +117,16 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
+    // 送った文章の見守る要求。文章が無ければ undefined
+    watchReply(accountId: string, sentTextId: RecordId): ReadableStream<Uint8Array> | undefined {
+      setUser({ id: accountId });
+      return createReplyStream(
+        this.replyWatchers,
+        createRecordKindStores(this.ctx.storage),
+        sentTextId,
+      );
+    }
+
     async deleteRecords(accountId: string): Promise<void> {
       setUser({ id: accountId });
       await this.ctx.storage.deleteAlarm();
@@ -132,7 +148,9 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         {
           archive: createMealPhotoArchive(this.env.PHOTOS, accountId),
           provider: createEstimationProvider(this.env, accountId),
+          conversationProvider: createConversationProvider(this.env, accountId),
           armAlarm: () => this.armAlarm(),
+          replyWatchers: this.replyWatchers,
         },
       );
       await this.setAlarm(ran.nextAlarmAt);
@@ -146,7 +164,9 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         error: ran.error instanceof Error ? ran.error.name : undefined,
         failedStage:
           ran.error instanceof Error && "stage" in ran.error ? ran.error.stage : undefined,
+        classifications: ran.classifications,
         estimationAttempts: ran.attempts,
+        replyAttempts: ran.replyAttempts,
         durationMs: Date.now() - startedAt,
       });
       // Sentry に届け、Cloudflare のアラームのやり直しに任せる

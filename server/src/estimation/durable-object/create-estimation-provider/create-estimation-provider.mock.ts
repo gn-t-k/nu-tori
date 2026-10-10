@@ -3,18 +3,25 @@ import { vi } from "vitest";
 import type {
   EstimationProvider,
   IdentifiedDishes,
+  IdentifiedWrittenMeals,
   IngredientMatchRequest,
   MatchedIngredients,
-  TokenUsage,
 } from "../../domain/estimation-provider";
+import type { TokenUsage } from "../../../domain/token-usage";
 import * as module from "./index";
 
 type IdentifyDishesRequest = Parameters<EstimationProvider["identifyDishes"]>[0];
+
+type IdentifyWrittenMealsRequest = Parameters<EstimationProvider["identifyWrittenMeals"]>[0];
 
 type FakeReplies = {
   // 要求から答えを作るときは関数で渡す（偽物が受け取った ① の入力を確かめるのにも使う）
   identifiedDishes: IdentifiedDishes | ((request: IdentifyDishesRequest) => IdentifiedDishes);
   identifyDishesUsage: TokenUsage;
+  // 文章の食事の ①。要求から答えを作るときは関数で渡す
+  identifiedWrittenMeals:
+    | IdentifiedWrittenMeals
+    | ((request: IdentifyWrittenMealsRequest) => IdentifiedWrittenMeals);
   // ② の答えを要求から作る
   matchIngredients: (request: IngredientMatchRequest) => MatchedIngredients;
   matchIngredientsUsage: TokenUsage;
@@ -24,7 +31,8 @@ type FakeReplies = {
 
 // 料理ありで答える偽の提供元。既定は、栄養成分表示の写った料理と、成分表を引く材料と、成分表に無い材料。
 // 推定し直し（要求に料理がある）の既定は、1つ目の料理を、直した名前と直した量で返す。
-// 偽物の identifyDishes も呼び出しを記録する（受け取った ① の入力は readIdentifyDishesRequests で読む）
+// 文章の食事の ① の既定は、送った日時の食事1つに、写真の既定と同じ料理を返す。
+// 偽物の ① は呼び出しを記録する（受け取った ① の入力は readIdentifyDishesRequests・readIdentifyWrittenMealsRequests で読む）
 export const mockCreateEstimationProviderOk = (overrides?: Partial<FakeReplies>) => {
   const replies: FakeReplies = { ...defaultReplies, ...overrides };
   const provider: EstimationProvider = {
@@ -35,6 +43,16 @@ export const mockCreateEstimationProviderOk = (overrides?: Partial<FakeReplies>)
           typeof replies.identifiedDishes === "function"
             ? replies.identifiedDishes(request)
             : replies.identifiedDishes,
+        usage: replies.identifyDishesUsage,
+      });
+    }),
+    identifyWrittenMeals: vi.fn<EstimationProvider["identifyWrittenMeals"]>(async (request) => {
+      await replies.replyAfter;
+      return R.succeed({
+        output:
+          typeof replies.identifiedWrittenMeals === "function"
+            ? replies.identifiedWrittenMeals(request)
+            : replies.identifiedWrittenMeals,
         usage: replies.identifyDishesUsage,
       });
     }),
@@ -60,6 +78,13 @@ export const mockCreateEstimationProviderError = (
         ? R.fail(error)
         : R.succeed({
             output: identifyDefaultDishes(request),
+            usage: defaultReplies.identifyDishesUsage,
+          }),
+    identifyWrittenMeals: async (request) =>
+      options.failingCall === "identify_dishes"
+        ? R.fail(error)
+        : R.succeed({
+            output: identifyDefaultWrittenMeals(request),
             usage: defaultReplies.identifyDishesUsage,
           }),
     matchIngredients: async () => R.fail(error),
@@ -132,9 +157,16 @@ const identifyDefaultDishes = (request: IdentifyDishesRequest): IdentifiedDishes
   };
 };
 
+const identifyDefaultWrittenMeals = (
+  request: IdentifyWrittenMealsRequest,
+): IdentifiedWrittenMeals => ({
+  meals: [{ eatenAt: request.sentAt.localDateTime, dishes: photoDishes.dishes }],
+});
+
 const defaultReplies: FakeReplies = {
   identifiedDishes: identifyDefaultDishes,
   identifyDishesUsage: { inputTokens: 1500, outputTokens: 400 },
+  identifiedWrittenMeals: identifyDefaultWrittenMeals,
   // 候補があれば1つ目を選び、無ければ主な栄養を推定する
   matchIngredients: (request) => ({
     ingredients: request.ingredients.map(({ candidates }) => {

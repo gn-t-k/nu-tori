@@ -31,4 +31,9 @@ public protocol RecordCacheReading: Sendable {
 
     /// 体重記録が1つも無ければ nil
     func weightTrend() async throws -> WeightTrend?
+
+    func sentTexts() async throws -> [SentText]
+
+    /// 送った文章の ID ごとの状態。送った文章より先に届いた状態も含む
+    func sentTextStatuses() async throws -> [UUID: SentTextStatus]
 }

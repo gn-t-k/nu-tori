@@ -16,12 +16,15 @@
         "type": "string",
         "enum": [
           "account_settings",
+          "ai_utterance",
           "dish",
           "dish_estimation_status",
           "ingredient",
           "meal",
           "meal_estimation_status",
           "notice",
+          "sent_text",
+          "sent_text_status",
           "usual_weighing_time",
           "weight_record",
           "weight_trend"
@@ -43,6 +46,36 @@
           "sendsUsageData"
         ],
         "description": "kind が account_settings の変更の record。アカウントに1つで、削除の印は無い"
+      },
+      "AiUtteranceRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "返事の生成の ID（見守る要求の最初に流す ID と同じ）"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sentTextId": {
+            "type": "string",
+            "description": "応える送った文章の ID。時刻とタイムゾーンはこの文章のものを使う"
+          },
+          "mealIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "指し示す食事の ID。並びが返事の中の並び。食事が消えても残る"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sentTextId",
+          "mealIds"
+        ],
+        "description": "kind が ai_utterance の変更の record。返事は消えない"
       },
       "DishRecord": {
         "type": "object",
@@ -255,6 +288,10 @@
               ]
             },
             "description": "写真の並び順"
+          },
+          "sentTextId": {
+            "type": "string",
+            "description": "文章の食事なら、作った送った文章の ID。写真の食事には無い"
           }
         },
         "required": [
@@ -333,6 +370,61 @@
           "timeZone",
           "targetOn"
         ]
+      },
+      "SentTextRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Asia/Tokyo"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sentAt",
+          "timeZone"
+        ],
+        "description": "kind が sent_text の変更の record。送った文章は消えない"
+      },
+      "SentTextStatusRecord": {
+        "type": "object",
+        "properties": {
+          "sentTextId": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "description": "読み分けの今の結果。pending（読み分けを待っている）・meal・conversation",
+            "example": "pending"
+          },
+          "replyStatus": {
+            "type": "string",
+            "description": "応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）",
+            "example": "awaiting"
+          },
+          "replyFailureReason": {
+            "type": "string",
+            "description": "replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）",
+            "example": "retries_exhausted"
+          }
+        },
+        "required": [
+          "sentTextId",
+          "classification",
+          "replyStatus"
+        ],
+        "description": "kind が sent_text_status の変更の record。recordId は送った文章の ID"
       },
       "UsualWeighingTimeRecord": {
         "type": "object",
@@ -540,6 +632,15 @@
             "$ref": "#/components/schemas/RespondNoticeWrite"
           },
           {
+            "$ref": "#/components/schemas/CreateSentTextWrite"
+          },
+          {
+            "$ref": "#/components/schemas/ResendSentTextAsConversationWrite"
+          },
+          {
+            "$ref": "#/components/schemas/ResendSentTextWrite"
+          },
+          {
             "$ref": "#/components/schemas/CreateWeightRecordWrite"
           },
           {
@@ -562,6 +663,9 @@
             "update_meal": "#/components/schemas/UpdateMealWrite",
             "create_notice": "#/components/schemas/CreateNoticeWrite",
             "respond_notice": "#/components/schemas/RespondNoticeWrite",
+            "create_sent_text": "#/components/schemas/CreateSentTextWrite",
+            "resend_sent_text_as_conversation": "#/components/schemas/ResendSentTextAsConversationWrite",
+            "resend_sent_text": "#/components/schemas/ResendSentTextWrite",
             "create_weight_record": "#/components/schemas/CreateWeightRecordWrite",
             "update_weight_record": "#/components/schemas/UpdateWeightRecordWrite",
             "source_deleted_weight_record": "#/components/schemas/SourceDeletedWeightRecordWrite"
@@ -1029,6 +1133,115 @@
           "response"
         ]
       },
+      "CreateSentTextWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "create_sent_text"
+            ]
+          },
+          "sentText": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$"
+              },
+              "body": {
+                "type": "string",
+                "description": "本文。前後の空白を除いて 1〜500 のコードポイント（範囲はサーバーのドメイン層で確かめる）"
+              },
+              "sentAt": {
+                "type": "integer",
+                "minimum": -8640000000000000,
+                "maximum": 8640000000000000,
+                "description": "送る操作をした時刻。UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "description": "送ったときのタイムゾーン（IANA 名）",
+                "example": "Asia/Tokyo"
+              }
+            },
+            "required": [
+              "id",
+              "body",
+              "sentAt",
+              "timeZone"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "sentText"
+        ]
+      },
+      "ResendSentTextAsConversationWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "resend_sent_text_as_conversation"
+            ]
+          },
+          "sentTextId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "食事と読み分けた送った文章。その文章から作った食事を消し、会話にする"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "sentTextId"
+        ]
+      },
+      "ResendSentTextWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "冪等の鍵"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "resend_sent_text"
+            ]
+          },
+          "sentTextId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+            "description": "返事を作れなかった・回数切れの送った文章。もう一度返事を作らせる"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "sentTextId"
+        ]
+      },
       "CreateWeightRecordWrite": {
         "type": "object",
         "properties": {
@@ -1225,6 +1438,169 @@
           "recordId",
           "record"
         ]
+      },
+      "ReplyStreamEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ReplyStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/TextDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/TextDiscardedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RepliedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ClassifiedAsMealEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ReplyHaltedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ReplyFailedEvent"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "reply_started": "#/components/schemas/ReplyStartedEvent",
+            "text_delta": "#/components/schemas/TextDeltaEvent",
+            "text_discarded": "#/components/schemas/TextDiscardedEvent",
+            "replied": "#/components/schemas/RepliedEvent",
+            "classified_as_meal": "#/components/schemas/ClassifiedAsMealEvent",
+            "reply_halted": "#/components/schemas/ReplyHaltedEvent",
+            "reply_failed": "#/components/schemas/ReplyFailedEvent"
+          }
+        },
+        "description": "見守る要求の出来事。閉じたら、どの出来事で閉じたかによらず、同期の取りに行くで記録を受け取る"
+      },
+      "ReplyStartedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "reply_started"
+            ]
+          },
+          "replyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "replyId"
+        ],
+        "description": "返事の ID。返事の生成を始めたら最初に1度だけ送る。返事の記録（ai_utterance）の ID と同じで、試みをまたいで変わらない"
+      },
+      "TextDeltaEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text_delta"
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "description": "返事の本文のできた分。届いた順につなぐ。試みの途中からつないだときは、返事の ID のすぐあとに、ここまでにできた分をまとめて1つで送る"
+      },
+      "TextDiscardedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text_discarded"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "流している途中で試みが失敗した。それまでにつないだ分を捨てる。次の試みで初めから流し直す"
+      },
+      "RepliedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "replied"
+            ]
+          },
+          "replyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "replyId"
+        ],
+        "description": "返事を記録に書いた。送ったあと閉じる"
+      },
+      "ClassifiedAsMealEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "classified_as_meal"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "食事と読み分けた。送ったあと閉じる"
+      },
+      "ReplyHaltedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "reply_halted"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる"
+      },
+      "ReplyFailedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "reply_failed"
+            ]
+          },
+          "failureReason": {
+            "type": "string",
+            "enum": [
+              "retries_exhausted",
+              "bad_request"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "failureReason"
+        ],
+        "description": "返事を作れなかった（やり直しを使い切った・提供元の 400）。送ったあと閉じる"
       }
     },
     "parameters": {}
@@ -1680,6 +2056,56 @@
           },
           "404": {
             "description": "まだ受け取っていないか、消した"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/sent-texts/{sentTextId}/reply-stream": {
+      "get": {
+        "operationId": "watchReply",
+        "summary": "送った文章の見守る要求",
+        "description": "応答を待つ送った文章があるあいだつなぐ。はじめに返事の ID、続けてできた分を流す。食事と読み分けた・返事を記録に書いた・回数切れ・作れなかったときは、その結果を送って閉じる。つなぐ前にそうなっていれば、結果だけを送って閉じる。端末が切れても、サーバーは返事を最後まで作って記録に書く。届け方の正本は同期で、途中の文は記録に残らない",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+              "description": "送った文章の ID"
+            },
+            "required": true,
+            "description": "送った文章の ID",
+            "name": "sentTextId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "出来事ごとに、data に JSON（ReplyStreamEvent）を1つ持つ SSE",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplyStreamEvent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "経路の形が違う"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "404": {
+            "description": "まだ受け取っていない送った文章"
           },
           "429": {
             "description": "回数の歯止めにかかった"

@@ -137,12 +137,12 @@ components:
   own-message-bubble:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
-    typography: "{typography.subheadline}"
+    typography: "{typography.body}"
     rounded: "{rounded.xl}"
     padding: 12px
   reply-message:
     textColor: "{colors.on-surface}"
-    typography: "{typography.subheadline}"
+    typography: "{typography.body}"
   composer-field:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface-tertiary}"
@@ -175,6 +175,9 @@ components:
     textColor: "{colors.on-primary}"
     rounded: "{rounded.full}"
     size: 28px
+  composer-ai-reply-note:
+    textColor: "{colors.on-surface-secondary}"
+    typography: "{typography.caption-1}"
   preset-chip:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface}"
@@ -248,9 +251,9 @@ components:
 
 - **Title 2**: 体重の値、大きな1日の丸の中の kcal
 - **Headline**: ナビゲーションバーの題、カードの見出し
-- **Body**: 一覧の行、値の欄、入力欄
-- **Subheadline**: タイムラインのカードの本文、会話、食事の名前、ボタン（ボタンは太字）
-- **Footnote**: 一覧の注記、kcal と P・F・C の小さな数字。一覧の見出しは、iOS の標準の見た目に任せる
+- **Body**: 一覧の行、値の欄、入力欄、会話（自分の吹き出しも返事も。iOS のメッセージと Claude のアプリに合わせる）
+- **Subheadline**: タイムラインのカードの本文、食事の名前、ボタン（ボタンは太字）
+- **Footnote**: 一覧の注記、kcal と P・F・C の小さな数字、タイムラインの日の見出し。一覧の見出しは、iOS の標準の見た目に任せる
 - **Caption 1・2**: 時刻、帯の曜日、グラフの目盛り、推定の印
 - Large Title は使わない。タイムラインの題はいま見ている日付にする
 
@@ -280,21 +283,24 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - **削除（button-destructive）**: `role: .destructive`。ボタンには削除するものの名前を入れる（「食事を削除」）
 - **一覧（list、list-row）**: 押して潜れる行には `chevron.right` を付ける。押してその場で直せる値は Primary で書く（list-row-editable-value）
 - **タイムラインのカード（timeline-card）**: 知らせ、週の振り返り。アプリからの知らせは全幅の白いカード
-- **入力欄（composer-field、composer-camera、composer-photos、composer-weight、composer-send）**: タイムラインの下に固定する。左から「撮る」「写真」「体重」の丸いアイコンのボタンを左に寄せる。「撮る」はいつも Primary で塗り、「写真」と記録済みの「体重」は灰色の丸にする。その日の体重が未記録のあいだは、「体重」を Primary で塗った文字のカプセル「体重を記録」（高さ 44、アイコンなし）に広げる（composer-weight-unrecorded）。大きな文字でカプセルが「撮る」「写真」の横に入らないときは、文字を1行のまま、丸の行の下に入力欄の幅いっぱいで置く。書く欄は1行から始まり5行まで伸び、「送る」は欄の右端に置く
-- **プリセット（preset-chip）**: 入力欄の上に並べる、角の丸いチップ。押せる範囲は 44 に広げる
+- **入力欄（composer-field、composer-camera、composer-photos、composer-weight、composer-send）**: タイムラインの下に固定する。左から「撮る」「写真」「体重」の丸いアイコンのボタンを左に寄せる。「撮る」はいつも Primary で塗り、「写真」と記録済みの「体重」は灰色の丸にする。丸の右の残りの幅に書く欄を置く。その日の体重が未記録のあいだは、「体重」を Primary で塗った文字のカプセル「体重を記録」（高さ 44、アイコンなし、文字は1行）にし、文字の大きさによらず、いつも丸の行の下に入力欄の幅いっぱいで置く（composer-weight-unrecorded）。書く欄の幅を、記録の前後で変えないため。書く欄は1行から始まり5行まで伸び、「送る」は文字を入れたときだけ欄の右端に出す。書いているあいだ（欄を選んでいるか、文字がある）は「体重」（丸でもカプセルでも）を隠して書く欄を広げ、「撮る」「写真」は残す。前後の空白を除いて 450 字を超えたら、書く欄の下に「残り N」を出す
+- **AI の返事の1行（composer-ai-reply-note）**: 入力欄のボタンの行の下に、いつも「AI が読んで返事をします」を Caption 1・secondaryLabel で中央に置く。キーボードを出しても書く欄の下に残る。大きな文字では折り返して全文を見せ、… で切らない。VoiceOver ではボタンの行のあとに、ふつうの文として読む。規約のための文なので消さない（ADR-0018）
+- **プリセット（preset-chip）**: 入力欄の上に並べる、角の丸いチップ。書く欄に文字があるあいだは隠す（押すと書きかけの文を置き換えてしまうため）。押すと文面を書く欄に入れてキーボードを出し、送らない。押せる範囲は 44 に広げる
 - **自分の記録（own-record-card）と自分の発言（own-message-bubble）**: 自分が記録した食事と体重は右に寄せ、Primary を薄く敷いたカードにする。自分が書いた文は Primary の吹き出しで右に寄せる
-- **返ってきた発言（reply-message）**: 吹き出しにせず、左の地の上に文で置く
+- **返ってきた発言（reply-message）**: 吹き出しにせず、左の地の上に文で置く。太字・箇条書き・番号つきの箇条書きを描く
+- **タイムラインの日の見出し**: タイムライン全体で中央に揃える。上に浮かせて止めない（ナビゲーションバーの題と1日の丸の帯が、いま見ている日を示す）
 - **値の欄（value-field、value-field-focused）**: 数の値は数字のキーボードを出す。選んでいるときは Surface の地に Primary の枠を付ける
 - **押せないボタン**: システムの無効の表示（`.disabled`）に任せる
 - **推定の印（estimate-badge）**: 推定したままの料理の量に添える、枠線だけの小さな印。直すと外す
 - **待っている表示**: 画面全体をふさがず、待っているもののその場に出す
   - 送った文章の応答待ち: 食事とも会話とも取れる回る印を出す
   - 押した操作の応答待ち: ボタンの中に、文字と並べて回る印を出す（HIG の Buttons）。文字は消さない。何を待っているかが分かるように
+  - まだ届いていない記録（体重の行、食事のカード、送った文章の吹き出し）: 記録の全体を不透明度 0.55 で描き、届いたら 0.25 秒で濃くする（「視差効果を減らす」でも同じ）
 - **ステッパー（stepper-button）**: 体重の − と ＋。見た目も 44
 - **1日の丸（day-ring-strip、day-ring-large）**: 目安を超えた印は輪の起点に付ける文字の色の点、体重の印は帯の丸の中に付ける灰色の点。帯の丸には曜日、大きな丸には kcal と P・F・C の名前を添える
 - **P・F・C の印（nutrient-key-protein、nutrient-key-fat、nutrient-key-carbohydrate）**: 見出しや内訳の P・F・C の名前の前に置く色の四角
 - **グラフ**: Swift Charts。系列は Primary の1色、目安と目標の道筋は点線、グリッドは薄く。系列が2本あるときは線の端に名前を添える。押した週・日の値は `chartXSelection` で出す
-- **アイコン**: SF Symbols の `camera.fill`（撮る）、`photo.on.rectangle`（撮っておいた写真を選ぶ）、`scalemass.fill`（体重）、`person.crop.circle`（アカウント）、`chevron.right`（潜れる行）。文字で足りるところにはアイコンを付けない
+- **アイコン**: SF Symbols の `camera.fill`（撮る）、`photo.on.rectangle`（撮っておいた写真を選ぶ）、`scalemass.fill`（体重）、`arrow.up`（送る）、`person.crop.circle`（アカウント）、`chevron.right`（潜れる行）。文字で足りるところにはアイコンを付けない
 
 ## Do's and Don'ts
 
@@ -311,9 +317,9 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - Do: ボタンは押すと起きることを動詞で書く（記録、始める、撮る）
 - Do: 大きな文字でも、操作の名前が読めるようにする
 - Don't: カスタムフォントを使う
-- Don't: 画面に「AI」「質問」「相談」という言葉を出す。推定であることは、推定の印と待っている表示で伝える（規約のために出す AI の返事の1行と、サインインの画面の同意は除く。ADR-0018）
+- Don't: 画面に「AI」「質問」「相談」という言葉を出す。推定であることは、推定の印と待っている表示で伝える（規約のために出す入力欄の下の1行「AI が読んで返事をします」と、サインインの画面の同意は除く。ADR-0018）
 - Don't: 間に合わない週を責める。事実だけを書く（「このままだと期限に 0.8 kg 届きません」）
-- Don't: 電波がないあいだに受け付けた記録や直しに、電波がないことや同期を待っていることを注記する。電波が戻れば、待っている表示や値の変化で伝わる（電波が要る操作（「[端末とサーバーの同期とオフライン時の振る舞い](https://github.com/gn-t-k/nu-tori/issues/26)」の追記の「電波がないとき」）を断るときは、その場で知らせる）
+- Don't: 電波がないあいだに受け付けた記録や直しに、電波がないことや同期を待っていることを文で注記する。インターネットにつながるかは iPhone の状態表示に任せ、サーバーに届いたかは記録を薄く描いて見せる（「待っている表示」のまだ届いていない記録）。画面の文で伝えるのは、電波が要る操作（「[端末とサーバーの同期とオフライン時の振る舞い](https://github.com/gn-t-k/nu-tori/issues/26)」の追記の「電波がないとき」）を断るときだけで、その場で知らせる
 - Don't: 画面の文に「電波」を使う。つながらないときは「インターネットにつながらない」と書く（機内モードも、Wi-Fi はあるが外に出られないときも含む）
 - Don't: 求められていないアドバイスを出す。知らせには、ふだんの様子と次にできることだけを書く
 - Don't: 縦軸が2本のグラフを作る（体重と kcal を1つのグラフに重ねない）

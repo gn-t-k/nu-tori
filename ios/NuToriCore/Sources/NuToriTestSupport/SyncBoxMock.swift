@@ -229,6 +229,16 @@ extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
         try failIfNeeded()
         return cache.weightTrend
     }
+
+    public func sentTexts() async throws -> [SentText] {
+        try failIfNeeded()
+        return Array(cache.sentTexts.values)
+    }
+
+    public func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
+        try failIfNeeded()
+        return cache.sentTextStatuses
+    }
 }
 
 extension SyncBoxMock: HealthDishWriteStoring where Cache == RecordCacheMock {

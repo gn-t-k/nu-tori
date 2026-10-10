@@ -168,6 +168,45 @@ describe("食事・推定・料理・材料の表の外部キー", () => {
     });
   });
 
+  describe("文章の食事に、推定した時刻と推定が作った食事があるとき", () => {
+    test("食事を消すと、文章の食事のサブセット・推定した時刻・推定が作った食事が消え、送った文章と推定が残ること", async () => {
+      const counts = await runInAccount((sql) => {
+        sql.exec(
+          "INSERT INTO sent_texts (id, body, sent_at, sent_time_zone) VALUES ('sent-text-1', '朝はパン、昼はうどん', 0, 'Asia/Tokyo')",
+        );
+        insertMeal(sql, "meal-1");
+        insertMeal(sql, "meal-2");
+        sql.exec(
+          "INSERT INTO sent_text_meals (meal_id, sent_text_id) VALUES ('meal-1', 'sent-text-1'), ('meal-2', 'sent-text-1')",
+        );
+        insertEstimation(sql, "schedule-1", "estimation-1");
+        sql.exec(
+          "INSERT INTO meal_eaten_at_estimations (meal_id, estimation_id, eaten_at) VALUES ('meal-1', 'estimation-1', 0)",
+        );
+        sql.exec(
+          "INSERT INTO estimation_created_meals (meal_id, estimation_id) VALUES ('meal-2', 'estimation-1')",
+        );
+        sql.exec("DELETE FROM meals");
+        return {
+          sentTextMeals: countRows(sql, "sent_text_meals"),
+          eatenAts: countRows(sql, "meal_eaten_at_estimations"),
+          createdMeals: countRows(sql, "estimation_created_meals"),
+          sentTexts: countRows(sql, "sent_texts"),
+          estimations: countRows(sql, "estimations"),
+          violations: sql.exec("PRAGMA foreign_key_check").toArray().length,
+        };
+      });
+      expect(counts).toEqual({
+        sentTextMeals: 0,
+        eatenAts: 0,
+        createdMeals: 0,
+        sentTexts: 1,
+        estimations: 1,
+        violations: 0,
+      });
+    });
+  });
+
   describe("写真の宣言のある食事があるとき", () => {
     test("写真の宣言の残る食事は消せないこと", async () => {
       await expect(

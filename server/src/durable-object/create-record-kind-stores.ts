@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { createAccountSettingsStore } from "../account-settings/durable-object/create-account-settings-store";
+import { createAiUtteranceStore } from "../ai-utterance/durable-object/create-ai-utterance-store";
 import { createDishStore } from "../dish/durable-object/create-dish-store";
 import { createDishEstimationStatusStore } from "../dish-estimation-status/durable-object/create-dish-estimation-status-store";
 import type { RecordKindStores } from "../domain/record-kind-stores";
@@ -12,6 +13,11 @@ import { createMealPhotoStore } from "../meal/durable-object/create-meal-photo-s
 import { createMealStore } from "../meal/durable-object/create-meal-store";
 import { createMealEstimationStatusStore } from "../meal-estimation-status/durable-object/create-meal-estimation-status-store";
 import { createNoticeStore } from "../notice/durable-object/create-notice-store";
+import { writeReplyEvents } from "../reply/domain/write-reply-events";
+import { createReplyEventWriteStore } from "../reply/durable-object/create-reply-event-write-store";
+import { createReplyStore } from "../reply/durable-object/create-reply-store";
+import { createSentTextStore } from "../sent-text/durable-object/create-sent-text-store";
+import { createSentTextStatusStore } from "../sent-text-status/durable-object/create-sent-text-status-store";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
 import { createLatestTimeZoneStore } from "./create-latest-time-zone-store";
 import { createUsualWeighingTimeStore } from "../usual-weighing-time/durable-object/create-usual-weighing-time-store";
@@ -25,14 +31,20 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
   const estimationEventWrite = createEstimationEventWriteStore(db);
   const dish = createDishStore(db);
   const dishEstimationStatus = createDishEstimationStatusStore(db);
+  const sentText = createSentTextStore(db);
+  const sentTextStatus = createSentTextStatusStore(db);
+  const replyEventWrite = createReplyEventWriteStore(db);
   return {
     accountSettings: createAccountSettingsStore(db),
+    aiUtterance: createAiUtteranceStore(db),
     dish,
     dishEstimationStatus,
     ingredient: createIngredientStore(db),
     meal,
     mealEstimationStatus,
     notice: createNoticeStore(db),
+    sentText,
+    sentTextStatus,
     usualWeighingTime: createUsualWeighingTimeStore(db),
     weightRecord: createWeightRecordStore(db),
     firstSignIn: createFirstSignInStore(db),
@@ -40,6 +52,7 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     mealPhoto: createMealPhotoStore(db),
     estimationSchedule: createEstimationScheduleStore(db),
     estimation: createEstimationStore(db),
+    reply: createReplyStore(db),
     writeEstimationEvents: (addChange, now, run) =>
       writeEstimationEvents(
         { meal, mealEstimationStatus, dish, dishEstimationStatus, estimationEventWrite },
@@ -47,5 +60,7 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
         now,
         run,
       ),
+    writeReplyEvents: (addChange, run) =>
+      writeReplyEvents({ sentText, sentTextStatus, replyEventWrite }, addChange, run),
   };
 };
