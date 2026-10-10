@@ -11,6 +11,9 @@ const recordTypes = [
   "dish_estimation_status",
   "notice",
   "usual_weighing_time",
+  "sent_text",
+  "sent_text_status",
+  "ai_utterance",
   "weight_trend",
 ] as const;
 

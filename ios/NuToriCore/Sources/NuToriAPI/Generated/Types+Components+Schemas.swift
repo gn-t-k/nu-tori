@@ -18,12 +18,15 @@ extension Components {
         /// - Remark: Generated from `#/components/schemas/RecordKindName`.
         internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
             case accountSettings = "account_settings"
+            case aiUtterance = "ai_utterance"
             case dish = "dish"
             case dishEstimationStatus = "dish_estimation_status"
             case ingredient = "ingredient"
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
             case notice = "notice"
+            case sentText = "sent_text"
+            case sentTextStatus = "sent_text_status"
             case usualWeighingTime = "usual_weighing_time"
             case weightRecord = "weight_record"
             case weightTrend = "weight_trend"
@@ -51,6 +54,49 @@ extension Components {
             internal enum CodingKeys: String, CodingKey {
                 case id
                 case sendsUsageData
+            }
+        }
+        /// kind が ai_utterance の変更の record。返事は消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord`.
+        internal struct AiUtteranceRecord: Codable, Hashable, Sendable {
+            /// 返事の生成の ID（見守る要求の最初に流す ID と同じ）
+            ///
+            /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord/body`.
+            internal var body: Swift.String
+            /// 応える送った文章の ID。時刻とタイムゾーンはこの文章のものを使う
+            ///
+            /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord/sentTextId`.
+            internal var sentTextId: Swift.String
+            /// 指し示す食事の ID。並びが返事の中の並び。食事が消えても残る
+            ///
+            /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord/mealIds`.
+            internal var mealIds: [Swift.String]
+            /// Creates a new `AiUtteranceRecord`.
+            ///
+            /// - Parameters:
+            ///   - id: 返事の生成の ID（見守る要求の最初に流す ID と同じ）
+            ///   - body:
+            ///   - sentTextId: 応える送った文章の ID。時刻とタイムゾーンはこの文章のものを使う
+            ///   - mealIds: 指し示す食事の ID。並びが返事の中の並び。食事が消えても残る
+            internal init(
+                id: Swift.String,
+                body: Swift.String,
+                sentTextId: Swift.String,
+                mealIds: [Swift.String]
+            ) {
+                self.id = id
+                self.body = body
+                self.sentTextId = sentTextId
+                self.mealIds = mealIds
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case body
+                case sentTextId
+                case mealIds
             }
         }
         /// kind が dish の変更の record。消えたら kind が dish_deletion で record が空の変更が届く
@@ -565,6 +611,72 @@ extension Components {
                 case response
             }
         }
+        /// kind が sent_text の変更の record。送った文章は消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/SentTextRecord`.
+        internal struct SentTextRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SentTextRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SentTextRecord/body`.
+            internal var body: Swift.String
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextRecord/sentAt`.
+            internal var sentAt: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/SentTextRecord/timeZone`.
+            internal var timeZone: Swift.String
+            /// Creates a new `SentTextRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - body:
+            ///   - sentAt: UNIX 時刻のミリ秒（UTC）
+            ///   - timeZone:
+            internal init(
+                id: Swift.String,
+                body: Swift.String,
+                sentAt: Swift.Int,
+                timeZone: Swift.String
+            ) {
+                self.id = id
+                self.body = body
+                self.sentAt = sentAt
+                self.timeZone = timeZone
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case body
+                case sentAt
+                case timeZone
+            }
+        }
+        /// kind が sent_text_status の変更の record。recordId は送った文章の ID
+        ///
+        /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord`.
+        internal struct SentTextStatusRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/sentTextId`.
+            internal var sentTextId: Swift.String
+            /// 読み分けの今の結果。pending（読み分けを待っている）・meal・conversation
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/classification`.
+            internal var classification: Swift.String
+            /// Creates a new `SentTextStatusRecord`.
+            ///
+            /// - Parameters:
+            ///   - sentTextId:
+            ///   - classification: 読み分けの今の結果。pending（読み分けを待っている）・meal・conversation
+            internal init(
+                sentTextId: Swift.String,
+                classification: Swift.String
+            ) {
+                self.sentTextId = sentTextId
+                self.classification = classification
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case sentTextId
+                case classification
+            }
+        }
         /// kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない
         ///
         /// - Remark: Generated from `#/components/schemas/UsualWeighingTimeRecord`.
@@ -874,6 +986,8 @@ extension Components {
             case createMeal(Components.Schemas.CreateMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateNoticeWrite`.
             case createNotice(Components.Schemas.CreateNoticeWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateSentTextWrite`.
+            case createSentText(Components.Schemas.CreateSentTextWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
             case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteDishWrite`.
@@ -910,6 +1024,8 @@ extension Components {
                     self = .createMeal(try .init(from: decoder))
                 case "create_notice":
                     self = .createNotice(try .init(from: decoder))
+                case "create_sent_text":
+                    self = .createSentText(try .init(from: decoder))
                 case "create_weight_record":
                     self = .createWeightRecord(try .init(from: decoder))
                 case "delete_dish":
@@ -945,6 +1061,8 @@ extension Components {
                 case let .createMeal(value):
                     try value.encode(to: encoder)
                 case let .createNotice(value):
+                    try value.encode(to: encoder)
+                case let .createSentText(value):
                     try value.encode(to: encoder)
                 case let .createWeightRecord(value):
                     try value.encode(to: encoder)
@@ -1612,6 +1730,82 @@ extension Components {
                 case _type = "type"
                 case noticeId
                 case response
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite`.
+        internal struct CreateSentTextWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case createSentText = "create_sent_text"
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/type`.
+            internal var _type: Components.Schemas.CreateSentTextWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText`.
+            internal struct SentTextPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText/id`.
+                internal var id: Swift.String
+                /// 本文。前後の空白を除いて 1〜500 のコードポイント（範囲はサーバーのドメイン層で確かめる）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText/body`.
+                internal var body: Swift.String
+                /// 送る操作をした時刻。UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText/sentAt`.
+                internal var sentAt: Swift.Int
+                /// 送ったときのタイムゾーン（IANA 名）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText/timeZone`.
+                internal var timeZone: Swift.String
+                /// Creates a new `SentTextPayload`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                ///   - body: 本文。前後の空白を除いて 1〜500 のコードポイント（範囲はサーバーのドメイン層で確かめる）
+                ///   - sentAt: 送る操作をした時刻。UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone: 送ったときのタイムゾーン（IANA 名）
+                internal init(
+                    id: Swift.String,
+                    body: Swift.String,
+                    sentAt: Swift.Int,
+                    timeZone: Swift.String
+                ) {
+                    self.id = id
+                    self.body = body
+                    self.sentAt = sentAt
+                    self.timeZone = timeZone
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case id
+                    case body
+                    case sentAt
+                    case timeZone
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText`.
+            internal var sentText: Components.Schemas.CreateSentTextWrite.SentTextPayload
+            /// Creates a new `CreateSentTextWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - sentText:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.CreateSentTextWrite._TypePayload,
+                sentText: Components.Schemas.CreateSentTextWrite.SentTextPayload
+            ) {
+                self.id = id
+                self._type = _type
+                self.sentText = sentText
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case sentText
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite`.

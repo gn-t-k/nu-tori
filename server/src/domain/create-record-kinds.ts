@@ -1,10 +1,13 @@
 import { createAccountSettingsKind } from "../account-settings/domain/create-account-settings-kind";
+import { createAiUtteranceKind } from "../ai-utterance/domain/create-ai-utterance-kind";
 import { createDishKind } from "../dish/domain/create-dish-kind";
 import { createDishEstimationStatusKind } from "../dish-estimation-status/domain/create-dish-estimation-status-kind";
 import { createIngredientKind } from "../ingredient/domain/create-ingredient-kind";
 import { createMealKind } from "../meal/domain/create-meal-kind";
 import { createMealEstimationStatusKind } from "../meal-estimation-status/domain/create-meal-estimation-status-kind";
 import { createNoticeKind } from "../notice/domain/create-notice-kind";
+import { createSentTextKind } from "../sent-text/domain/create-sent-text-kind";
+import { createSentTextStatusKind } from "../sent-text-status/domain/create-sent-text-status-kind";
 import { createUsualWeighingTimeKind } from "../usual-weighing-time/domain/create-usual-weighing-time-kind";
 import { createWeightRecordKind } from "../weight-record/domain/create-weight-record-kind";
 import { createWeightTrendKind } from "../weight-trend/domain/create-weight-trend-kind";
@@ -18,12 +21,15 @@ import type { WriteBase } from "./sync-ledger/write-base";
 export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
   [
     createAccountSettingsKind(stores.accountSettings),
+    createAiUtteranceKind(stores.aiUtterance),
     createDishKind(stores, receivedAt),
     createDishEstimationStatusKind(stores.dish, stores.dishEstimationStatus, receivedAt),
     createIngredientKind(stores, receivedAt),
     createMealKind(stores, receivedAt),
     createMealEstimationStatusKind(stores.meal, stores.mealEstimationStatus),
     createNoticeKind(stores.notice),
+    createSentTextKind(stores.sentText),
+    createSentTextStatusKind(stores.sentText, stores.sentTextStatus),
     createUsualWeighingTimeKind({
       store: stores.usualWeighingTime,
       weightRecordStore: stores.weightRecord,

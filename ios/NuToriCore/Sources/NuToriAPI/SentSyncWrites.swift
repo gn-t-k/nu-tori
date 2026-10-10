@@ -176,6 +176,9 @@
                     response: SyncedNotice.Response(
                         respondedAt: date(write.response.respondedAt),
                         timeZone: try knownTimeZone(write.response.timeZone)))
+            case .createSentText:
+                // 端末はまだ送った文章を送らない。端末の SyncWrite に送った文章を足す #437 で読むようにする
+                throw SentSyncWrites.MalformedBodyError(reason: "まだ読まない書き込み create_sent_text")
             }
         }
     }
