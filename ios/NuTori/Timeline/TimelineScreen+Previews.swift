@@ -25,7 +25,7 @@
             accountActions: .noop,
             mealActions: .noop,
             conversation: .none,
-            conversationActions: .none
+            conversationActions: .noop
         )
     }
 

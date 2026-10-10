@@ -251,24 +251,26 @@ final class RootModel {
     /// 文章の食事のカードの「会話として送り直す」。確かめずに、その場でその文章の食事が消える。
     /// 送ったら、PostHog に消えた食事の数を送る
     func resendAsConversation(sentTextId: UUID, deletedMealCount: Int) async {
-        do {
-            try await recordSync.resendAsConversation(sentTextId: sentTextId)
-        } catch {
-            return
-        }
-        await accountSession.capture(.resentAsConversation(deletedMealCount: deletedMealCount))
+        await enqueue(
+            { try await recordSync.resendAsConversation(sentTextId: sentTextId) },
+            thenCapture: .resentAsConversation(deletedMealCount: deletedMealCount))
     }
 
     /// 作れなかった・回数切れの1行の「送り直す」。送ったら、PostHog に1行の理由を送る
     func resendReply(
         sentTextId: UUID, reason: ClientUsageEvent.ReplyRegenerateReason
     ) async {
-        do {
-            try await recordSync.resend(sentTextId: sentTextId)
-        } catch {
-            return
-        }
-        await accountSession.capture(.replyRegenerateTapped(reason))
+        await enqueue(
+            { try await recordSync.resend(sentTextId: sentTextId) },
+            thenCapture: .replyRegenerateTapped(reason))
+    }
+
+    /// 送り待ちに並べられたら、PostHog に出来事を送る。並べられなかったら送らない
+    private func enqueue(
+        _ write: () async throws -> Void, thenCapture event: ClientUsageEvent
+    ) async {
+        guard (try? await write()) != nil else { return }
+        await accountSession.capture(event)
     }
 
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil

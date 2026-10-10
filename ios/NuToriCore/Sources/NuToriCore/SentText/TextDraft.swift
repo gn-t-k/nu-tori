@@ -11,7 +11,10 @@ public struct TextDraft: Equatable, Sendable {
         }
     }
 
-    public init(text: String = "") {
+    /// 何も書いていない書く欄
+    public static let empty = TextDraft(text: "")
+
+    public init(text: String) {
         self.text = text
     }
 

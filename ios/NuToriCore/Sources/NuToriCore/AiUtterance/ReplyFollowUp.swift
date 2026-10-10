@@ -14,8 +14,9 @@ public struct ReplyFollowUp: Sendable {
         self.wait = wait
     }
 
-    /// `awaiting` は応答を待つ送った文章（`SyncEngine.sentTextsAwaitingResponse()`）、`watching` は見守る要求がつながっている文章
-    /// （`ReplyWatches.connectedSentTextIds`）。`sync` は、送り待ちを送って取りに行く1回。同期できなかった（nil）か、止まったら、続けない
+    /// `awaiting` は応答を待つ送った文章（`SyncEngine.sentTextsAwaitingResponse()`）、`watching` は見守る要求がつながっている文章（`ReplyWatches.connectedSentTextIds`）。
+    /// `sync` は、送り待ちを送って取りに行く1回。
+    /// 同期できなかった（nil）か、止まったら、続けない
     public func run(
         awaiting: () async throws -> Set<UUID>,
         watching: () async -> Set<UUID>,

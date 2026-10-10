@@ -7,8 +7,4 @@ struct ConversationActions {
     let resendAsConversation: (_ sentTextId: UUID, _ deletedMealCount: Int) async -> Void
     /// 作れなかった・回数切れの1行の「送り直す」
     let resend: (_ sentTextId: UUID, _ reason: ClientUsageEvent.ReplyRegenerateReason) async -> Void
-
-    /// 会話を描かない見本の画面に渡す
-    static let none = ConversationActions(
-        resendAsConversation: { _, _ in }, resend: { _, _ in })
 }

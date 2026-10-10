@@ -11,9 +11,9 @@ struct ReplyFirstTextWatchTests {
     static func timeline(
         _ sentText: SentText,
         status: SentTextStatus?,
-        replies: [AiUtterance] = [],
-        stream: ReplyStream? = nil,
-        undelivered: UndeliveredRecords = .none
+        replies: [AiUtterance],
+        stream: ReplyStream?,
+        undelivered: UndeliveredRecords
     ) -> Timeline {
         Timeline(
             input: Timeline.Input(
@@ -42,7 +42,8 @@ struct ReplyFirstTextWatchTests {
             var watch = ReplyFirstTextWatch()
             firstEvents = watch.note(
                 ReplyFirstTextWatchTests.timeline(
-                    sentText, status: ReplyFirstTextWatchTests.awaiting),
+                    sentText, status: ReplyFirstTextWatchTests.awaiting, replies: [], stream: nil,
+                    undelivered: .none),
                 at: ReplyFirstTextWatchTests.start)
             self.watch = watch
         }
@@ -52,9 +53,9 @@ struct ReplyFirstTextWatchTests {
             var watch = watch
             let shown = watch.note(
                 ReplyFirstTextWatchTests.timeline(
-                    sentText, status: ReplyFirstTextWatchTests.awaiting,
+                    sentText, status: ReplyFirstTextWatchTests.awaiting, replies: [],
                     stream: [ReplyStreamEvent.replyStarted(replyId: replyId), .textDelta("野菜")]
-                        .reduce(into: ReplyStream()) { $0.receive($1) }),
+                        .reduce(into: ReplyStream()) { $0.receive($1) }, undelivered: .none),
                 at: ReplyFirstTextWatchTests.start.addingTimeInterval(6))
 
             #expect(firstEvents.isEmpty)
@@ -75,7 +76,8 @@ struct ReplyFirstTextWatchTests {
             var watch = ReplyFirstTextWatch()
             _ = watch.note(
                 ReplyFirstTextWatchTests.timeline(
-                    sentText, status: ReplyFirstTextWatchTests.awaiting),
+                    sentText, status: ReplyFirstTextWatchTests.awaiting, replies: [], stream: nil,
+                    undelivered: .none),
                 at: ReplyFirstTextWatchTests.start)
             self.watch = watch
         }
@@ -84,7 +86,8 @@ struct ReplyFirstTextWatchTests {
         func reportsPulledReplyOnce() {
             var watch = watch
             let replied = ReplyFirstTextWatchTests.timeline(
-                sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply])
+                sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply], stream: nil,
+                undelivered: .none)
             let shown = watch.note(
                 replied, at: ReplyFirstTextWatchTests.start.addingTimeInterval(9))
             let again = watch.note(
@@ -104,7 +107,8 @@ struct ReplyFirstTextWatchTests {
             let reply = AiUtterance(
                 id: UUID(), body: "野菜を足しましょう。", sentTextId: sentText.id, mealIds: [])
             timeline = ReplyFirstTextWatchTests.timeline(
-                sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply])
+                sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply], stream: nil,
+                undelivered: .none)
         }
 
         @Test("送らないこと")
@@ -132,11 +136,12 @@ struct ReplyFirstTextWatchTests {
             var watch = ReplyFirstTextWatch()
             _ = watch.note(
                 ReplyFirstTextWatchTests.timeline(
-                    sentText, status: nil, undelivered: undelivered),
+                    sentText, status: nil, replies: [], stream: nil, undelivered: undelivered),
                 at: ReplyFirstTextWatchTests.start)
             _ = watch.note(
                 ReplyFirstTextWatchTests.timeline(
-                    sentText, status: ReplyFirstTextWatchTests.awaiting),
+                    sentText, status: ReplyFirstTextWatchTests.awaiting, replies: [], stream: nil,
+                    undelivered: .none),
                 at: ReplyFirstTextWatchTests.start.addingTimeInterval(2))
             self.watch = watch
         }
@@ -146,7 +151,8 @@ struct ReplyFirstTextWatchTests {
             var watch = watch
             let shown = watch.note(
                 ReplyFirstTextWatchTests.timeline(
-                    sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply]),
+                    sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply],
+                    stream: nil, undelivered: .none),
                 at: ReplyFirstTextWatchTests.start.addingTimeInterval(5))
 
             #expect(shown == [.replyFirstTextShown(sinceSent: .seconds(5), watched: false)])
@@ -166,11 +172,13 @@ struct ReplyFirstTextWatchTests {
             var mealWatch = ReplyFirstTextWatch()
             var failedWatch = ReplyFirstTextWatch()
             _ = mealWatch.note(
-                ReplyFirstTextWatchTests.timeline(meal, status: nil),
+                ReplyFirstTextWatchTests.timeline(
+                    meal, status: nil, replies: [], stream: nil, undelivered: .none),
                 at: ReplyFirstTextWatchTests.start)
             _ = failedWatch.note(
                 ReplyFirstTextWatchTests.timeline(
-                    failed, status: ReplyFirstTextWatchTests.awaiting),
+                    failed, status: ReplyFirstTextWatchTests.awaiting, replies: [], stream: nil,
+                    undelivered: .none),
                 at: ReplyFirstTextWatchTests.start)
             self.mealWatch = mealWatch
             self.failedWatch = failedWatch
@@ -184,13 +192,15 @@ struct ReplyFirstTextWatchTests {
             let events =
                 mealWatch.note(
                     ReplyFirstTextWatchTests.timeline(
-                        meal, status: SentTextStatus(classification: .meal, reply: .notRequested)),
+                        meal, status: SentTextStatus(classification: .meal, reply: .notRequested),
+                        replies: [], stream: nil, undelivered: .none),
                     at: later)
                 + failedWatch.note(
                     ReplyFirstTextWatchTests.timeline(
                         failed,
                         status: SentTextStatus(
-                            classification: .conversation, reply: .failed(.retriesExhausted))),
+                            classification: .conversation, reply: .failed(.retriesExhausted)),
+                        replies: [], stream: nil, undelivered: .none),
                     at: later)
 
             #expect(events.isEmpty)

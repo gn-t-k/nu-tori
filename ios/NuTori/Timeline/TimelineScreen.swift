@@ -576,7 +576,7 @@ struct TimelineScreen: View {
             weightRecordedToday: records.contains { $0.day == today },
             preparingWeightEntry: weightEntryPhase == .preparing,
             showsCameraNotice: showsCameraNotice,
-            initialDraft: TextDraft(),
+            initialDraft: TextDraft.empty,
             onCapture: hidingCameraNotice(openCamera),
             onPickPhotos: hidingCameraNotice {
                 switch mealActions.photoSelection {

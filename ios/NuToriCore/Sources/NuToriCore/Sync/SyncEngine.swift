@@ -198,8 +198,9 @@ public actor SyncEngine {
         return sentText
     }
 
-    /// 食事と読み分けた文章を、会話として送り直す。電波が無くても、その場でその文章から作った食事（料理・材料を含む）を
-    /// キャッシュから消し、書き込み1つを送り待ちに並べる。断られたら、食事はサーバーに残る。
+    /// 食事と読み分けた文章を、会話として送り直す。
+    /// 電波が無くても、その場でその文章から作った食事（料理・材料を含む）をキャッシュから消し、書き込み1つを送り待ちに並べる。
+    /// 断られたら、食事はサーバーに残る。
     /// キャッシュに無い文章は `UnknownRecordError`
     public func resendAsConversation(sentTextId: UUID) async throws {
         try await requireCachedSentText(id: sentTextId)

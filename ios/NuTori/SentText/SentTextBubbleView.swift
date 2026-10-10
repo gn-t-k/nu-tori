@@ -39,24 +39,8 @@ struct SentTextBubbleView: View {
     }
 
     @ViewBuilder private func replyLine(_ line: SentTextBubble.ReplyLine) -> some View {
-        if let reason = line.resendReason {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(line.text)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .accessibilityIdentifier("reply-failed-line")
-                Button("送り直す") {
-                    resend(reason)
-                }
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-                .accessibilityIdentifier("reply-resend")
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-        } else {
+        switch line {
+        case .reading:
             // 送った文章の応答待ちの待っている表示。食事とも会話とも取れる文言にする
             HStack(spacing: 8) {
                 ProgressView()
@@ -68,6 +52,32 @@ struct SentTextBubbleView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("reply-reading")
+        case .halted, .failed:
+            // 添える理由は Core の resendReason の1か所で決める（この2つの場合はいつもある）
+            if let reason = line.resendReason {
+                resendLine(line.text, reason: reason)
+            }
         }
+    }
+
+    private func resendLine(_ text: String, reason: ClientUsageEvent.ReplyRegenerateReason)
+        -> some View
+    {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(text)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
+                .accessibilityIdentifier("reply-failed-line")
+            Button("送り直す") {
+                resend(reason)
+            }
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .accessibilityIdentifier("reply-resend")
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }

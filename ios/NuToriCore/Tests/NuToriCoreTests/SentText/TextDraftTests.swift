@@ -9,7 +9,7 @@ struct TextDraftTests {
         let draft: TextDraft
 
         init() {
-            draft = TextDraft()
+            draft = TextDraft.empty
         }
 
         @Test("送れないこと")
@@ -143,7 +143,7 @@ struct TextDraftTests {
         var draft: TextDraft
 
         init() {
-            draft = TextDraft()
+            draft = TextDraft.empty
             draft.insert(.nextMealAdvice)
         }
 
@@ -170,7 +170,7 @@ struct TextDraftTests {
         var draft: TextDraft
 
         init() {
-            draft = TextDraft()
+            draft = TextDraft.empty
             draft.insert(.mealFeedbackSoFar)
             draft.text += "夜は外食です。"
         }
@@ -188,7 +188,7 @@ struct TextDraftTests {
         var draft: TextDraft
 
         init() {
-            draft = TextDraft()
+            draft = TextDraft.empty
             draft.insert(.mealFeedbackSoFar)
             draft.text = ""
             draft.text = "朝はトースト"

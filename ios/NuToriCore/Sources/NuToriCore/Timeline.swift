@@ -277,9 +277,8 @@ public struct Timeline: Sendable {
             else { continue }
             // 吹き出しのすぐ下の文章の食事のカード（会話として送り直せなかった文章）の、さらにあと
             let afterMeals =
-                items[(bubbleIndex + 1)...].firstIndex { item in
-                    guard case .meal(let card) = item else { return true }
-                    return card.meal.sentTextId != bubble.sentText.id
+                items[(bubbleIndex + 1)...].firstIndex {
+                    !$0.belongs(toSentText: bubble.sentText.id)
                 } ?? items.endIndex
             items.insert(contentsOf: sentReplies.map { .reply($0) }, at: afterMeals)
         }

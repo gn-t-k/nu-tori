@@ -72,7 +72,7 @@
                 switch self {
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
                     .cameraNotPermitted:
-                    TextDraft()
+                    TextDraft.empty
                 case .writing:
                     TextDraft(text: "夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ")
                 case .presetInserted:

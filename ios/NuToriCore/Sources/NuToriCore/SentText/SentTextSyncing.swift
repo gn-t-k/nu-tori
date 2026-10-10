@@ -90,8 +90,9 @@ public struct SentTextSyncing: SyncedRecordKind, RecordKindWrites {
         )
     }
 
-    /// 会話として送り直したときの結果。送り待ちに足し、その文章から作った食事と、その料理・材料・推定の状態を、
-    /// 削除の印と同じ形でキャッシュから消す。`meals`・`dishes`・`ingredients` はキャッシュの今の記録
+    /// 会話として送り直したときの結果。
+    /// 送り待ちに足し、その文章から作った食事と、その料理・材料・推定の状態を、削除の印と同じ形でキャッシュから消す。
+    /// `meals`・`dishes`・`ingredients` はキャッシュの今の記録
     public func resendingAsConversation(
         sentTextId: UUID,
         meals: [Meal],

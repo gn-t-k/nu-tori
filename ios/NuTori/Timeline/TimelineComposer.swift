@@ -107,7 +107,7 @@ struct TimelineComposer: View {
     /// 押すと文面を入れてキーボードを出す。送らない
     private var presets: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 12) {
                 ForEach(TextPreset.allCases, id: \.self) { preset in
                     Button {
                         draft.insert(preset)
@@ -197,8 +197,8 @@ struct TimelineComposer: View {
         .accessibilityIdentifier("composer-weight-unrecorded")
     }
 
-    /// Anthropic の Usage Policy（消費者向けのチャットボットは、少なくとも各チャットセッションの始めに AI であることを伝える）のための1行で、
-    /// 消したり … で切ったりしない（ADR-0018、#29、#412 の6）。画面に「AI」と出す例外は、ここだけ（DESIGN.md の Don't）。
+    /// Anthropic の Usage Policy（消費者向けのチャットボットは、少なくとも各チャットセッションの始めに AI であることを伝える）のための1行で、消したり … で切ったりしない（ADR-0018、#29、#412 の6）。
+    /// 画面に「AI」と出す例外は、ここだけ（DESIGN.md の Don't）。
     /// ボタンにせず、ふつうの文としてボタンの行のあとに読ませる
     private var aiReplyNote: some View {
         Text("AI が読んで返事をします")
@@ -234,7 +234,7 @@ struct TimelineComposer: View {
     private func send() {
         guard draft.canSend else { return }
         onSendText(draft)
-        draft = TextDraft()
+        draft = TextDraft.empty
     }
 
     /// 塗った丸は Primary の地に白、灰色の丸は Fill の地に Primary
