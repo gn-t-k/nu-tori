@@ -174,8 +174,13 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
 
 // 依頼の時刻を出すための列。きっかけの時刻で、読み分けなら読み分けた時刻、会話として送り直した・送り直したなら、その書き込みを受け取った時刻。
 // 送り直した文章にも読み分けた行があるので、控えの時刻を先に採る（toRequestedAt）
-const selectRequestTimes = (db: DrizzleSqliteDODatabase) =>
-  db
+const selectRequestTimes = (db: DrizzleSqliteDODatabase) => {
+  // 依頼のきっかけの、送り直す書き込みの控え。依頼のきっかけは1つなので、どちらか一方だけが当たる
+  const isResendReceipt = or(
+    eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
+    eq(syncWriteReceipts.id, resendReplyRequests.syncWriteReceiptId),
+  );
+  return db
     .select({
       replyRequestId: replyRequests.id,
       classifiedAt: sentTextClassifications.classifiedAt,
@@ -194,12 +199,7 @@ const selectRequestTimes = (db: DrizzleSqliteDODatabase) =>
     .leftJoin(syncWriteReceipts, isResendReceipt)
     .leftJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
     .as("reply_request_times");
-
-// 依頼のきっかけの、送り直す書き込みの控え。依頼のきっかけは1つなので、どちらか一方だけが当たる
-const isResendReceipt = or(
-  eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
-  eq(syncWriteReceipts.id, resendReplyRequests.syncWriteReceiptId),
-);
+};
 
 const toConclusion = (
   result: (typeof replyGenerationAttemptResults.$inferSelect)["result"],

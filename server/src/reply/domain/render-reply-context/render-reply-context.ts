@@ -141,17 +141,17 @@ const formatDishNames = (dishNames: readonly string[]): string =>
 const formatDateTime = (wallClock: string): string =>
   `${formatDate(wallClock.slice(0, "YYYY-MM-DD".length))} ${formatTime(wallClock)}`;
 
-const formatDate = (calendarDay: string): string =>
-  `${calendarDay.slice(5, 7)}/${calendarDay.slice(8, 10)}(${dayOfWeekNames[computeDayOfWeek(calendarDay)]})`;
-
-const dayOfWeekNames: Readonly<Record<DayOfWeek, string>> = {
-  sunday: "日",
-  monday: "月",
-  tuesday: "火",
-  wednesday: "水",
-  thursday: "木",
-  friday: "金",
-  saturday: "土",
+const formatDate = (calendarDay: string): string => {
+  const dayOfWeekNames: Readonly<Record<DayOfWeek, string>> = {
+    sunday: "日",
+    monday: "月",
+    tuesday: "火",
+    wednesday: "水",
+    thursday: "木",
+    friday: "金",
+    saturday: "土",
+  };
+  return `${calendarDay.slice(5, 7)}/${calendarDay.slice(8, 10)}(${dayOfWeekNames[computeDayOfWeek(calendarDay)]})`;
 };
 
 const formatTime = (wallClock: string): string => wallClock.slice("YYYY-MM-DDT".length);

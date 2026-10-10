@@ -5,31 +5,6 @@ import Testing
 
 @Suite("送ったあと、応答を待って取りに行く")
 struct ReplyFollowUpTests {
-    /// 送った文章1つと、取りに行った回数。決めた回数だけ取りに行くと、その文章が応答する
-    final class Responses: Sendable {
-        let sentTextId = UUID()
-
-        init(respondingAtSync: Int) {
-            self.respondingAtSync = respondingAtSync
-        }
-
-        var awaiting: Set<UUID> {
-            syncCount < respondingAtSync ? [sentTextId] : []
-        }
-
-        var syncCount: Int {
-            syncs.withLock { $0 }
-        }
-
-        func recordSync() -> SyncResult {
-            syncs.withLock { $0 += 1 }
-            return SyncResult(rejectedWrites: [], ending: .finished)
-        }
-
-        private let respondingAtSync: Int
-        private let syncs = Mutex(0)
-    }
-
     @Suite("見守る要求がつながっていない文章が、何回か取りに行くうちに応答したとき")
     struct NotWatched {
         let clock: WaitingClock
@@ -100,5 +75,30 @@ struct ReplyFollowUpTests {
 
             #expect(responses.syncCount == 20)
         }
+    }
+
+    /// 送った文章1つと、取りに行った回数。決めた回数だけ取りに行くと、その文章が応答する
+    final class Responses: Sendable {
+        let sentTextId = UUID()
+
+        init(respondingAtSync: Int) {
+            self.respondingAtSync = respondingAtSync
+        }
+
+        var awaiting: Set<UUID> {
+            syncCount < respondingAtSync ? [sentTextId] : []
+        }
+
+        var syncCount: Int {
+            syncs.withLock { $0 }
+        }
+
+        func recordSync() -> SyncResult {
+            syncs.withLock { $0 += 1 }
+            return SyncResult(rejectedWrites: [], ending: .finished)
+        }
+
+        private let respondingAtSync: Int
+        private let syncs = Mutex(0)
     }
 }

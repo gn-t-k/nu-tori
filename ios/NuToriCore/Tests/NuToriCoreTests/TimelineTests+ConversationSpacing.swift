@@ -61,15 +61,15 @@ extension TimelineTests {
 
         @Test("送った文章と返事、返事と次の送った文章を、隣り合う発言として詰めること")
         func adjacentUtterances() {
-            #expect(spacings[0]["reply-\(reply.id.uuidString)"] == .close)
-            #expect(spacings[0]["sent-text-\(thanks.id.uuidString)"] == .close)
+            #expect(spacings[0][itemId(replying: reply)] == .close)
+            #expect(spacings[0][itemId(of: thanks)] == .close)
         }
 
         @Test("あいだに記録がある発言と、日の最初の発言を空けること")
         func separatedUtterances() {
-            #expect(spacings[0]["sent-text-\(question.id.uuidString)"] == .apart)
-            #expect(spacings[0]["sent-text-\(afterWeight.id.uuidString)"] == .apart)
-            #expect(spacings[1]["sent-text-\(nextDay.id.uuidString)"] == .apart)
+            #expect(spacings[0][itemId(of: question)] == .apart)
+            #expect(spacings[0][itemId(of: afterWeight)] == .apart)
+            #expect(spacings[1][itemId(of: nextDay)] == .apart)
         }
 
         @Test("文章の食事のカードを、その文章の吹き出しと、同じ文章の食事のすぐ下に詰めること")
@@ -82,6 +82,23 @@ extension TimelineTests {
         func recordsAfterUtterances() {
             #expect(spacings[0][Timeline.Item.weightRecord(night).id] == .apart)
             #expect(spacings[0][Timeline.Item.weightRecord(evening).id] == .close)
+        }
+
+        /// 送った文章の吹き出しの項目の ID
+        private func itemId(of sentText: SentText) -> String {
+            Timeline.Item.sentText(
+                SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil)
+            )
+            .id
+        }
+
+        /// 返事の項目の ID
+        private func itemId(replying reply: AiUtterance) -> String {
+            Timeline.Item.reply(
+                TimelineReply(
+                    id: reply.id, sentTextId: reply.sentTextId, body: reply.body, isGrowing: false,
+                    referencedMeals: [])
+            ).id
         }
     }
 }

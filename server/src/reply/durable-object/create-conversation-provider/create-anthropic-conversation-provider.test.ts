@@ -16,6 +16,7 @@ describe("createAnthropicConversationProvider", () => {
   describe("読み分け", () => {
     describe("食事と答えたとき", () => {
       let provider: ConversationProvider;
+      let request: ClassificationRequest;
       let requests: ReturnType<typeof stubAnthropicApi>["requests"];
       beforeEach(() => {
         const stub = stubAnthropicApi(async () =>
@@ -25,10 +26,11 @@ describe("createAnthropicConversationProvider", () => {
         );
         requests = stub.requests;
         provider = createAnthropicConversationProvider(stub.client, "account-1");
+        request = { body: "お昼に親子丼" };
       });
 
       test("食事と、使ったトークンを返すこと", async () => {
-        const result = await provider.classifySentText({ body: "お昼に親子丼" });
+        const result = await provider.classifySentText(request);
 
         expect(result).toBeSuccess((reply) => {
           expect(reply).toEqual({ label: "meal", usage: { inputTokens: 420, outputTokens: 6 } });
@@ -36,7 +38,7 @@ describe("createAnthropicConversationProvider", () => {
       });
 
       test("Haiku 5.5 に、思考を切り、アカウント ID のハッシュを添えて、文章をユーザーのメッセージで渡すこと", async () => {
-        await provider.classifySentText({ body: "お昼に親子丼" });
+        await provider.classifySentText(request);
 
         expect(requests.map(({ url, apiKey, body }) => ({ url, apiKey, body }))).toEqual([
           {
@@ -59,15 +61,17 @@ describe("createAnthropicConversationProvider", () => {
 
     describe("会話と答えたとき", () => {
       let provider: ConversationProvider;
+      let request: ClassificationRequest;
       beforeEach(() => {
         const stub = stubAnthropicApi(async () =>
           replyWithText(JSON.stringify({ label: "conversation" })),
         );
         provider = createAnthropicConversationProvider(stub.client, "account-1");
+        request = { body: "今日は何を食べようかな" };
       });
 
       test("その答えを返すこと", async () => {
-        const result = await provider.classifySentText({ body: "今日は何を食べようかな" });
+        const result = await provider.classifySentText(request);
 
         expect(result).toBeSuccess((reply) => {
           expect(reply.label).toBe("conversation");
@@ -77,15 +81,17 @@ describe("createAnthropicConversationProvider", () => {
 
     describe("決めかねると答えたとき", () => {
       let provider: ConversationProvider;
+      let request: ClassificationRequest;
       beforeEach(() => {
         const stub = stubAnthropicApi(async () =>
           replyWithText(JSON.stringify({ label: "unsure" })),
         );
         provider = createAnthropicConversationProvider(stub.client, "account-1");
+        request = { body: "今日は何を食べようかな" };
       });
 
       test("その答えを返すこと", async () => {
-        const result = await provider.classifySentText({ body: "今日は何を食べようかな" });
+        const result = await provider.classifySentText(request);
 
         expect(result).toBeSuccess((reply) => {
           expect(reply.label).toBe("unsure");
@@ -95,13 +101,15 @@ describe("createAnthropicConversationProvider", () => {
 
     describe("応答が JSON でないとき", () => {
       let provider: ConversationProvider;
+      let request: ClassificationRequest;
       beforeEach(() => {
         const stub = stubAnthropicApi(async () => replyWithText("食事です"));
         provider = createAnthropicConversationProvider(stub.client, "account-1");
+        request = { body: "お昼に親子丼" };
       });
 
       test("invalid_response の失敗で返すこと", async () => {
-        const result = await provider.classifySentText({ body: "お昼に親子丼" });
+        const result = await provider.classifySentText(request);
 
         expect(result).toBeFailure((error) => {
           expect({ name: error.name, errorType: error.errorType }).toEqual({
@@ -114,15 +122,17 @@ describe("createAnthropicConversationProvider", () => {
 
     describe("知らない答えのとき", () => {
       let provider: ConversationProvider;
+      let request: ClassificationRequest;
       beforeEach(() => {
         const stub = stubAnthropicApi(async () =>
           replyWithText(JSON.stringify({ label: "snack" })),
         );
         provider = createAnthropicConversationProvider(stub.client, "account-1");
+        request = { body: "お昼に親子丼" };
       });
 
       test("invalid_response の失敗で返すこと", async () => {
-        const result = await provider.classifySentText({ body: "お昼に親子丼" });
+        const result = await provider.classifySentText(request);
 
         expect(result).toBeFailure((error) => {
           expect({ name: error.name, errorType: error.errorType }).toEqual({
@@ -135,15 +145,17 @@ describe("createAnthropicConversationProvider", () => {
 
     describe("出力の上限で途中で切れたとき", () => {
       let provider: ConversationProvider;
+      let request: ClassificationRequest;
       beforeEach(() => {
         const stub = stubAnthropicApi(async () =>
           replyWithText('{"label":', { stopReason: "max_tokens" }),
         );
         provider = createAnthropicConversationProvider(stub.client, "account-1");
+        request = { body: "お昼に親子丼" };
       });
 
       test("invalid_response の失敗で返すこと", async () => {
-        const result = await provider.classifySentText({ body: "お昼に親子丼" });
+        const result = await provider.classifySentText(request);
 
         expect(result).toBeFailure((error) => {
           expect({ name: error.name, errorType: error.errorType }).toEqual({
@@ -156,13 +168,15 @@ describe("createAnthropicConversationProvider", () => {
 
     describe("安全のために答えなかったとき", () => {
       let provider: ConversationProvider;
+      let request: ClassificationRequest;
       beforeEach(() => {
         const stub = stubAnthropicApi(async () => replyWithText("", { stopReason: "refusal" }));
         provider = createAnthropicConversationProvider(stub.client, "account-1");
+        request = { body: "お昼に親子丼" };
       });
 
       test("invalid_response の失敗で返すこと", async () => {
-        const result = await provider.classifySentText({ body: "お昼に親子丼" });
+        const result = await provider.classifySentText(request);
 
         expect(result).toBeFailure((error) => {
           expect({ name: error.name, errorType: error.errorType }).toEqual({
@@ -176,16 +190,18 @@ describe("createAnthropicConversationProvider", () => {
     describe("提供元の呼び出しが失敗したとき", () => {
       describe("HTTP 400 のとき", () => {
         let provider: ConversationProvider;
+        let request: ClassificationRequest;
         beforeEach(() => {
           // 前払いのクレジットが尽きたときも 400 で返る
           const stub = stubAnthropicApi(async () =>
             replyWithError(400, "invalid_request_error", "Your credit balance is too low"),
           );
           provider = createAnthropicConversationProvider(stub.client, "account-1");
+          request = { body: "お昼に親子丼" };
         });
 
         test("提供元のエラーの種類と、応答のエラーを持つ失敗で返すこと", async () => {
-          const result = await provider.classifySentText({ body: "お昼に親子丼" });
+          const result = await provider.classifySentText(request);
 
           expect(result).toBeFailure((error) => {
             expect({
@@ -198,15 +214,17 @@ describe("createAnthropicConversationProvider", () => {
 
       describe("HTTP 529（過負荷）のとき", () => {
         let provider: ConversationProvider;
+        let request: ClassificationRequest;
         beforeEach(() => {
           const stub = stubAnthropicApi(async () =>
             replyWithError(529, "overloaded_error", "Overloaded"),
           );
           provider = createAnthropicConversationProvider(stub.client, "account-1");
+          request = { body: "お昼に親子丼" };
         });
 
         test("提供元のエラーの種類と、応答のエラーを持つ失敗で返すこと", async () => {
-          const result = await provider.classifySentText({ body: "お昼に親子丼" });
+          const result = await provider.classifySentText(request);
 
           expect(result).toBeFailure((error) => {
             expect({
@@ -219,13 +237,15 @@ describe("createAnthropicConversationProvider", () => {
 
       describe("エラーの種類が応答に無いとき", () => {
         let provider: ConversationProvider;
+        let request: ClassificationRequest;
         beforeEach(() => {
           const stub = stubAnthropicApi(async () => new Response("Bad Gateway", { status: 502 }));
           provider = createAnthropicConversationProvider(stub.client, "account-1");
+          request = { body: "お昼に親子丼" };
         });
 
         test("提供元のエラーの種類と、応答のエラーを持つ失敗で返すこと", async () => {
-          const result = await provider.classifySentText({ body: "お昼に親子丼" });
+          const result = await provider.classifySentText(request);
 
           expect(result).toBeFailure((error) => {
             expect({
@@ -238,15 +258,17 @@ describe("createAnthropicConversationProvider", () => {
 
       describe("つなげなかったとき", () => {
         let provider: ConversationProvider;
+        let request: ClassificationRequest;
         beforeEach(() => {
           const stub = stubAnthropicApi(async () => {
             throw new TypeError("fetch failed");
           });
           provider = createAnthropicConversationProvider(stub.client, "account-1");
+          request = { body: "お昼に親子丼" };
         });
 
         test("connection_error の失敗で返すこと", async () => {
-          const result = await provider.classifySentText({ body: "お昼に親子丼" });
+          const result = await provider.classifySentText(request);
 
           expect(result).toBeFailure((error) => {
             expect(error.errorType).toBe("connection_error");
@@ -256,10 +278,12 @@ describe("createAnthropicConversationProvider", () => {
 
       describe("呼び出しの時間の上限を超えたとき", () => {
         let provider: ConversationProvider;
+        let request: ClassificationRequest;
         beforeEach(() => {
           vi.useFakeTimers();
           const stub = stubAnthropicApi(() => new Promise(() => {}));
           provider = createAnthropicConversationProvider(stub.client, "account-1");
+          request = { body: "お昼に親子丼" };
         });
 
         afterEach(() => {
@@ -267,7 +291,7 @@ describe("createAnthropicConversationProvider", () => {
         });
 
         test("30 秒で、timed_out の失敗で返すこと", async () => {
-          const pending = provider.classifySentText({ body: "お昼に親子丼" });
+          const pending = provider.classifySentText(request);
 
           await vi.advanceTimersByTimeAsync(30_000);
 
@@ -645,16 +669,15 @@ describe("createAnthropicConversationProvider", () => {
 
       describe("頼む前に試みの時間の上限（signal）が切れていたとき", () => {
         let provider: ConversationProvider;
+        let signal: AbortSignal;
         beforeEach(() => {
           const stub = stubAnthropicApi(() => new Promise(() => {}));
           provider = createAnthropicConversationProvider(stub.client, "account-1");
+          signal = AbortSignal.abort();
         });
 
         test("時間切れの失敗で返すこと", async () => {
-          const result = await provider.generateReply(
-            { context, onText: () => {} },
-            AbortSignal.abort(),
-          );
+          const result = await provider.generateReply({ context, onText: () => {} }, signal);
 
           expect(result).toBeFailure((error) => {
             expect(error.name).toBe("ConversationProviderTimedOutError");
@@ -687,6 +710,8 @@ describe("createAnthropicConversationProvider", () => {
     });
   });
 });
+
+type ClassificationRequest = Parameters<ConversationProvider["classifySentText"]>[0];
 
 const endTurn = {
   type: "stop",
