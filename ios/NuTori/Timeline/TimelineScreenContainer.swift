@@ -17,6 +17,8 @@ struct TimelineScreenContainer: View {
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
+    /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
+    let sendText: (TextDraft) async -> Void
     let accountActions: AccountActions
     let mealActions: MealActions
     /// この端末で記録した（元の大きさの写真を持っている）食事か
@@ -40,6 +42,7 @@ struct TimelineScreenContainer: View {
             requestNotificationPermission: requestNotificationPermission,
             prepareWeightEntry: prepareWeightEntry,
             saveWeight: saveWeight,
+            sendText: sendText,
             accountActions: accountActions,
             mealActions: mealActions
         )

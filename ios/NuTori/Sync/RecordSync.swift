@@ -195,6 +195,18 @@ import NuToriCore
         syncInBackground()
     }
 
+    /// 入力欄から文章を送る。電波が無くても、その場でキャッシュに入る。作る書き込みは送り待ちに並ぶ。
+    /// 返すのは送った文章（受け付ける範囲の外は送らず nil）。サインインしていなければ nil
+    @discardableResult
+    func sendText(_ typedBody: String) async throws -> SentText? {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        let engine = engineForThisDevice(accountId: accountId)
+        guard let sentText = try await engine.sendText(typedBody) else { return nil }
+        await publishFromPending(engine)
+        syncInBackground()
+        return sentText
+    }
+
     /// 送れなかった分は送り待ちに残る
     func turnOnUsageData() async throws {
         guard let accountId = await signedInAccountId() else { return }
