@@ -11,7 +11,8 @@ import * as module from "./index";
 type FakeReply = { body: string; mealIds: readonly RecordId[]; textDeltas?: readonly string[] };
 
 type FakeReplies = {
-  classification: ClassificationLabel;
+  // 文章ごとに読み分けを変えるときは関数で渡す
+  classification: ClassificationLabel | ((body: string) => ClassificationLabel);
   classificationUsage: TokenUsage;
   // 文脈から返事を作るときは関数で渡す（文脈で ID を付けた食事を指し示させるのに使う）
   reply: FakeReply | ((context: ReplyContext) => FakeReply);
@@ -23,8 +24,14 @@ type FakeReplies = {
 export const mockCreateConversationProviderOk = (overrides?: Partial<FakeReplies>) => {
   const replies: FakeReplies = { ...defaultReplies, ...overrides };
   const provider: ConversationProvider = {
-    classifySentText: vi.fn<ConversationProvider["classifySentText"]>(async () =>
-      R.succeed({ label: replies.classification, usage: replies.classificationUsage }),
+    classifySentText: vi.fn<ConversationProvider["classifySentText"]>(async ({ body }) =>
+      R.succeed({
+        label:
+          typeof replies.classification === "function"
+            ? replies.classification(body)
+            : replies.classification,
+        usage: replies.classificationUsage,
+      }),
     ),
     generateReply: vi.fn<ConversationProvider["generateReply"]>(async ({ context, onText }) => {
       const { body, mealIds, textDeltas } =
