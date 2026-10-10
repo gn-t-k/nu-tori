@@ -16,6 +16,8 @@ export type ReplyStore = {
   countGenerationsCountedOn: (countedOn: string) => number;
   // 返事も作れなかったも無い生成と、その試み（試みの時刻の順）
   findContinuingGenerations: () => (ReplyGenerationOrigin & { attempts: ReplyAttempt[] })[];
+  // 文章の、返事も作れなかったも無い生成（文章に 0 か 1。終わっていない依頼は1つまでなので）
+  findContinuingGenerationId: (sentTextId: RecordId) => RecordId | undefined;
   // 生成の試み（試みの時刻の順）
   findAttempts: (generationId: RecordId) => ReplyAttempt[];
   // 返事か作れなかったを書いた生成か

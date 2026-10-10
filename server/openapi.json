@@ -1406,6 +1406,169 @@
           "recordId",
           "record"
         ]
+      },
+      "ReplyStreamEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ReplyStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/TextDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/TextDiscardedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RepliedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ClassifiedAsMealEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ReplyHaltedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ReplyFailedEvent"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "reply_started": "#/components/schemas/ReplyStartedEvent",
+            "text_delta": "#/components/schemas/TextDeltaEvent",
+            "text_discarded": "#/components/schemas/TextDiscardedEvent",
+            "replied": "#/components/schemas/RepliedEvent",
+            "classified_as_meal": "#/components/schemas/ClassifiedAsMealEvent",
+            "reply_halted": "#/components/schemas/ReplyHaltedEvent",
+            "reply_failed": "#/components/schemas/ReplyFailedEvent"
+          }
+        },
+        "description": "見守る要求の出来事。閉じたら、どの出来事で閉じたかによらず、同期の取りに行くで記録を受け取る"
+      },
+      "ReplyStartedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "reply_started"
+            ]
+          },
+          "replyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "replyId"
+        ],
+        "description": "返事の ID。返事の生成を始めたら最初に1度だけ送る。返事の記録（ai_utterance）の ID と同じで、試みをまたいで変わらない"
+      },
+      "TextDeltaEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text_delta"
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "description": "返事の本文のできた分。届いた順につなぐ。試みの途中からつないだときは、返事の ID のすぐあとに、ここまでにできた分をまとめて1つで送る"
+      },
+      "TextDiscardedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text_discarded"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "流している途中で試みが失敗した。それまでにつないだ分を捨てる。次の試みで初めから流し直す"
+      },
+      "RepliedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "replied"
+            ]
+          },
+          "replyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "replyId"
+        ],
+        "description": "返事を記録に書いた。送ったあと閉じる"
+      },
+      "ClassifiedAsMealEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "classified_as_meal"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "食事と読み分けた。送ったあと閉じる"
+      },
+      "ReplyHaltedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "reply_halted"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる"
+      },
+      "ReplyFailedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "reply_failed"
+            ]
+          },
+          "failureReason": {
+            "type": "string",
+            "enum": [
+              "retries_exhausted",
+              "bad_request"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "failureReason"
+        ],
+        "description": "返事を作れなかった（やり直しを使い切った・提供元の 400）。送ったあと閉じる"
       }
     },
     "parameters": {}
@@ -1861,6 +2024,56 @@
           },
           "404": {
             "description": "まだ受け取っていないか、消した"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/sent-texts/{sentTextId}/reply-stream": {
+      "get": {
+        "operationId": "watchReply",
+        "summary": "送った文章の見守る要求",
+        "description": "応答を待つ送った文章があるあいだつなぐ。はじめに返事の ID、続けてできた分を流す。食事と読み分けた・返事を記録に書いた・回数切れ・作れなかったときは、その結果を送って閉じる。つなぐ前にそうなっていれば、結果だけを送って閉じる。端末が切れても、サーバーは返事を最後まで作って記録に書く。届け方の正本は同期で、途中の文は記録に残らない",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+              "description": "送った文章の ID"
+            },
+            "required": true,
+            "description": "送った文章の ID",
+            "name": "sentTextId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "出来事ごとに、data に JSON（ReplyStreamEvent）を1つ持つ SSE",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplyStreamEvent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "経路の形が違う"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "404": {
+            "description": "まだ受け取っていない送った文章"
           },
           "429": {
             "description": "回数の歯止めにかかった"

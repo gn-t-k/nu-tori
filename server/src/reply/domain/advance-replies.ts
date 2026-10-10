@@ -5,6 +5,7 @@ import type { RecordType } from "../../domain/record-type";
 import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import { beginReplyAttempts } from "./begin-reply-attempts";
+import type { ReplyWatchers } from "./create-reply-watchers";
 import type { ConversationProvider } from "./conversation-provider";
 import { recordReplyAttemptOutcome } from "./record-reply-attempt-outcome";
 import type { ReplyAttemptOutcome } from "./reply-attempt-outcome";
@@ -13,11 +14,12 @@ import { runReplyAttempt } from "./run-reply-attempt";
 // アラームの返事の入口。待っている依頼から返事の生成を始め（回数切れならそこで止め）、時刻が来た試みを書いてから、
 // 応える文章の送った順に1つずつ提供元を呼び、結果を書く。先に作った返事を、あとの文章の文脈の窓に入れるため、並べて呼ばない。
 // armAlarm は試みを書いたあと、呼ぶ前に呼ぶ。呼び出し中に止まっても、次に試みる時刻にアラームが動くため。
-// 止まった試み（文脈を読めなかったなど）は投げずに返し、ほかの試みの結果を書き終えてから呼び出し側が投げる
+// 止まった試み（文脈を読めなかったなど）は投げずに返し、ほかの試みの結果を書き終えてから呼び出し側が投げる。
+// 見守る要求には、生成を始めたら返事の ID を、呼んでいるあいだはできた分を、結果を書いたら返事か作れなかったを送る
 export const advanceReplies = async (
   ledgerStore: LedgerStore<RecordType>,
   stores: RecordKindStores,
-  deps: { provider: ConversationProvider; armAlarm: () => Promise<void> },
+  deps: { provider: ConversationProvider; armAlarm: () => Promise<void>; watchers: ReplyWatchers },
   now: Date,
 ): Promise<{
   // 利用状況を送らない人には空
@@ -29,6 +31,7 @@ export const advanceReplies = async (
   stoppedError: unknown;
 }> => {
   const begun = beginReplyAttempts(ledgerStore, stores, now);
+  deps.watchers.refresh(stores);
   if (begun.attempts.length > 0) {
     await deps.armAlarm();
   }
@@ -37,14 +40,20 @@ export const advanceReplies = async (
   const providerErrors: unknown[] = [];
   let stoppedError: unknown = undefined;
   for (const attempt of begun.attempts) {
+    const sentTextId = attempt.sentText.id;
     try {
-      const outcome = await runReplyAttempt(deps.provider, stores, attempt.sentText);
+      const outcome = await runReplyAttempt(deps.provider, stores, attempt.sentText, (text) =>
+        deps.watchers.appendText(sentTextId, text),
+      );
+      deps.watchers.endAttempt(sentTextId, outcome.result === "succeeded");
       usageEvents.push(
         ...recordReplyAttemptOutcome(ledgerStore, stores, attempt, outcome, new Date()),
       );
+      deps.watchers.refresh(stores);
       attempts.push(toAttemptReport(outcome));
       providerErrors.push(...toProviderErrors(outcome));
     } catch (error) {
+      deps.watchers.endAttempt(sentTextId, false);
       attempts.push({ result: undefined });
       stoppedError ??= error;
     }

@@ -13,15 +13,17 @@ import type { ReplyContext } from "./reply-context";
 
 // 試み1回分。応える文章の文脈を置き場から読んで組み立て、提供元に返事を作らせ、応答を確かめる。
 // 文脈は呼ぶ直前に読むので、同じアラームで先に作った返事も窓に入る。
-// 提供元の失敗と、確かめに通らない応答（空の返事、指し示せない食事の ID）は、試みの結果として返す
+// 提供元の失敗と、確かめに通らない応答（空の返事、指し示せない食事の ID）は、試みの結果として返す。
+// onText には、提供元が返す本文のできた分をそのまま渡す
 export const runReplyAttempt = async (
   provider: ConversationProvider,
   stores: Parameters<typeof readReplyContextSource>[0],
   sentText: SentText,
+  onText: (text: string) => void,
 ): Promise<ReplyAttemptOutcome> => {
   const context = assembleReplyContext(readReplyContextSource(stores, sentText, new Date()));
   const attempted = await R.pipe(
-    provider.generateReply({ context }, AbortSignal.timeout(replyAttemptTimeLimitMs)),
+    provider.generateReply({ context, onText }, AbortSignal.timeout(replyAttemptTimeLimitMs)),
     R.mapError(toAttemptFailed),
     R.andThen((generated) =>
       isValidReply(generated, context, stores)
