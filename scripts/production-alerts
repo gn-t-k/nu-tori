@@ -12,8 +12,12 @@ const repository = process.env.GITHUB_REPOSITORY ?? "gn-t-k/nu-tori";
 const maxWrites = 5;
 // 並びが拾う順になる。is:new は 7 日のあいだ続くので、新しい課題は後ろでも次の回で拾える
 const states = { regressed: "解決したのに再発した", escalating: "急に増えた", new: "新しい" };
-const issueMarker = /<!-- sentry-issue: ([A-Z0-9-]+) -->/;
-const stateMarker = /<!-- sentry-state: ([a-z_]+) -->/g;
+// 本文とコメントの印。書く側と探す側がずれると重複を見分けられず毎時 Issue を作るので、形はここ1か所に置く
+const issueMarkPrefix = "<!-- sentry-issue: ";
+const issueMark = (shortId) => `${issueMarkPrefix}${shortId} -->`;
+const stateMark = (substatus) => `<!-- sentry-state: ${substatus} -->`;
+const issueMarkPattern = /<!-- sentry-issue: ([A-Z0-9-]+) -->/;
+const stateMarkPattern = /<!-- sentry-state: ([a-z_]+) -->/g;
 
 const main = () => {
   const [source, ...flags] = process.argv.slice(2);
@@ -24,15 +28,20 @@ const main = () => {
   }
   const dryRun = flags.includes("--dry-run");
   const known = listKnownIssues();
-  // 作ったあとのロックが一時の失敗で抜けても、次の回で拾ってロックする
-  for (const issue of [...known.values()].flat().filter((issue) => !issue.locked)) {
+  // 作ったあとのロックが一時の失敗で抜けても、次の回で拾ってロックする。開発者が外したロックと、人が立てた Issue には触れない
+  const unlocked = [...known.values()]
+    .flat()
+    .filter((issue) => issue.user === "github-actions[bot]" && issue.state === "open" && !issue.locked);
+  for (const issue of unlocked) {
     console.log(`ロックする: #${issue.number}`);
     if (!dryRun) github(["--method", "PUT", `repos/${repository}/issues/${issue.number}/lock`]);
   }
   let writes = 0;
   for (const alert of listSentryAlerts()) {
     const previous = (known.get(alert.shortId) ?? []).sort((a, b) => b.number - a.number)[0];
-    if (previous && alreadyNotified(previous, alert)) continue;
+    // 最後に知らせた状態と同じなら何もしない。閉じた Issue も立て直さない（直す前の版の端末から起き続けても、毎時立て直さないため）。
+    // そのため、Sentry で解決したあとの2度目の再発のように、同じ状態に戻ったときは Issue にせず、Sentry のメールの知らせに任せる
+    if (previous && readLatestState(previous) === alert.substatus) continue;
     if (writes === maxWrites) {
       console.log(`1回に書く上限の ${maxWrites} 件に達したので、残りは次の回で拾う`);
       return;
@@ -53,7 +62,7 @@ const main = () => {
     const created = parseJson(
       github(["--method", "POST", `repos/${repository}/issues`], {
         title,
-        body: issueBody(alert, readLatestEvent(alert.shortId), previous),
+        body: issueBody(alert, readReleaseAndOs(alert.shortId), previous),
         labels: ["needs-triage"],
       }),
       "gh api",
@@ -86,13 +95,12 @@ const listSentryAlerts = () => {
   if (hasMore) console.log("知らせる課題が 100 件を超えた。101 件目からは読んでいない");
   const order = Object.keys(states);
   return data.sort(
-      (a, b) =>
-        order.indexOf(a.substatus) - order.indexOf(b.substatus) || a.firstSeen.localeCompare(b.firstSeen),
-    );
+    (a, b) => order.indexOf(a.substatus) - order.indexOf(b.substatus) || a.firstSeen.localeCompare(b.firstSeen),
+  );
 };
 
 // 版と OS は課題に無いので、最新のイベントのタグから、この2つだけを抜く
-const readLatestEvent = (shortId) => {
+const readReleaseAndOs = (shortId) => {
   const { event } = parseJson(
     sentry(["issue", "view", shortId, "--json", "--fields", "event.tags"]),
     "scripts/sentry issue view",
@@ -107,22 +115,16 @@ const listKnownIssues = () => {
     "--paginate",
     `repos/${repository}/issues?state=all&per_page=100`,
     "--jq",
-    '.[] | select(.pull_request == null and ((.body // "") | contains("<!-- sentry-issue: "))) | {number, state, state_reason, closed_at, locked, body, user: .user.login, author_association}',
+    `.[] | select(.pull_request == null and ((.body // "") | contains(${JSON.stringify(issueMarkPrefix)}))) | {number, state, locked, body, user: .user.login, author_association}`,
   ]);
   const known = new Map();
   for (const line of lines.split("\n").filter(Boolean)) {
     const issue = parseJson(line, "gh api");
-    const shortId = trusted(issue) && issue.body.match(issueMarker)?.[1];
+    const shortId = trusted(issue) && issue.body.match(issueMarkPattern)?.[1];
     if (shortId) known.set(shortId, [...(known.get(shortId) ?? []), issue]);
   }
   return known;
 };
-
-// 最後に書いた状態と同じなら、もう知らせてある。閉じた Issue でも、wontfix（not_planned）で閉じたものは立て直さない。
-// 直して閉じた（completed）あとにまた起きたなら、同じ状態でも知らせ直す（再発して直したあとの、2度目の再発）
-const alreadyNotified = (previous, alert) =>
-  readLatestState(previous) === alert.substatus &&
-  !(previous.state_reason === "completed" && alert.lastSeen > previous.closed_at);
 
 // 本文の印のあと、コメントに書いた印があれば、最後のものが今の状態
 const readLatestState = (issue) => {
@@ -136,7 +138,7 @@ const readLatestState = (issue) => {
     .filter(Boolean)
     .map((line) => parseJson(line, "gh api"))
     .filter(trusted);
-  const marks = [issue, ...comments].flatMap((item) => [...item.body.matchAll(stateMarker)].map((m) => m[1]));
+  const marks = [issue, ...comments].flatMap((item) => [...item.body.matchAll(stateMarkPattern)].map((m) => m[1]));
   return marks.at(-1);
 };
 
@@ -150,7 +152,7 @@ const issueTitle = (alert) => {
   return `Sentry ${alert.shortId}: ${summary || "型の無い課題"}`;
 };
 
-const issueBody = (alert, event, previous) =>
+const issueBody = (alert, releaseAndOs, previous) =>
   [
     `本番の Sentry に${states[alert.substatus]}課題がある。スタックと最新のイベントは \`scripts/sentry issue view ${alert.shortId} --json\` で読む。`,
     "",
@@ -158,8 +160,8 @@ const issueBody = (alert, event, previous) =>
     `- 状態: ${alert.substatus}`,
     `- 型: ${code(alert.metadata?.type)}`,
     `- 関数: ${code(alert.metadata?.function)}`,
-    `- 版: ${code(event.release)}`,
-    `- OS: ${code(event.os)}`,
+    `- 版: ${code(releaseAndOs.release)}`,
+    `- OS: ${code(releaseAndOs.os)}`,
     `- 件数: ${alert.count}（利用者 ${alert.userCount}）`,
     `- 最初の発生: ${alert.firstSeen}`,
     `- 最後の発生: ${alert.lastSeen}`,
@@ -167,15 +169,15 @@ const issueBody = (alert, event, previous) =>
     "",
     "`.github/workflows/production-alerts.yml` が作り、ロックした。例外のメッセージと利用者の情報は、公開の場に貼らない（`docs/agents/tooling.md` の「Sentry を読む」）。",
     "",
-    `<!-- sentry-issue: ${alert.shortId} -->`,
-    `<!-- sentry-state: ${alert.substatus} -->`,
+    issueMark(alert.shortId),
+    stateMark(alert.substatus),
   ].join("\n");
 
 const commentBody = (alert) =>
   [
     `Sentry の状態が ${alert.substatus}（${states[alert.substatus]}）になった。件数 ${alert.count}（利用者 ${alert.userCount}）、最後の発生 ${alert.lastSeen}。`,
     "",
-    `<!-- sentry-state: ${alert.substatus} -->`,
+    stateMark(alert.substatus),
   ].join("\n");
 
 // 型と関数の名前はコードが決めるが、Markdown とメンションに化けないよう、記号を落として長さを切る
