@@ -205,14 +205,18 @@ extension SyncEngineTests {
                         == [.resendAsConversation(sentTextId: sentText.id)])
             }
 
-            @Test("サーバーの API に書き込みの形が入るまで、送らずに送り待ちに残すこと")
-            func keepsWritePending() async throws {
+            @Test("送ると、その文章を、会話として送り直す書き込みで送ること")
+            func sendsResendAsConversation() async throws {
                 try await engine.resendAsConversation(sentTextId: sentText.id)
 
                 _ = try await engine.sync()
 
-                #expect(try transport.pushBodies.flatMap(\.writes).isEmpty)
-                #expect(store.entries.map(\.kind) == [.sentText])
+                let write = try #require(try transport.pushBodies.first?.writes.first)
+                #expect(
+                    write
+                        == .resendSentTextAsConversation(
+                            writeId: write.writeId, sentTextId: sentText.id))
+                #expect(store.entries.isEmpty)
             }
         }
 
