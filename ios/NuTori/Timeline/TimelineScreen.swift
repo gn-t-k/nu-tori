@@ -394,6 +394,9 @@ struct TimelineScreen: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .accessibilityIdentifier("rejected-meal-line")
+                // 送った文章と返事は、会話の画面（#441）で描く。それまでは、タイムラインに会話を渡していないので並ばない
+                case .sentText, .rejectedSentTextLine, .reply:
+                    EmptyView()
                 case .notice(let card):
                     WeightNoticeCard(
                         card: card,
