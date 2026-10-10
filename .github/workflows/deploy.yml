@@ -56,7 +56,9 @@ jobs:
   verify-development:
     needs: development
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 流れが待つ上限の合計（8 分。e2e/verify-development.ts）と準備より長くし、時間切れで止まる前に
+    # 流れが止まった段を書き、作ったアカウントを消せるようにする
+    timeout-minutes: 15
     # E2E_SIGN_IN_SECRET を、開発用の Environment の秘密の値から読む。本番の Environment には置かない
     environment: development
     env:
