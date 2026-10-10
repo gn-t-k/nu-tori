@@ -39,11 +39,19 @@ export default class JevProvider implements ApiProvider {
     if (!response.ok) {
       return { error: `Jev の呼び出しが HTTP ${response.status} で失敗した` };
     }
-    const parsed = envelopeSchema.safeParse(await response.json());
-    if (!parsed.success) {
+    const parsedEnvelope = envelopeSchema.safeParse(await response.json());
+    if (!parsedEnvelope.success) {
       return { error: "Jev の応答を読めなかった" };
     }
-    const { answers, usage } = parsed.data.result;
+    const { state, result } = parsedEnvelope.data.result;
+    if (state !== "Completed") {
+      return { error: `Jev の実行が完了しなかった（${state}）` };
+    }
+    const parsedResponse = jevClassificationResponseSchema.safeParse(result);
+    if (!parsedResponse.success) {
+      return { error: "Jev の答えを読めなかった" };
+    }
+    const { answers, usage } = parsedResponse.data;
     const output: ClassificationEvalOutput = {
       kind: "probability",
       mealProbability: answers.is_meal.noul,
@@ -61,5 +69,5 @@ export default class JevProvider implements ApiProvider {
 
 const developmentGatewayId = "nu-tori-development";
 
-// Cloudflare の REST は答えを result に包んで返す
-const envelopeSchema = z.object({ result: jevClassificationResponseSchema });
+// Cloudflare の REST は状態（state）と答えを result に包む。完了しなかった実行を形の違いと分けて知らせるため、state を先に見る
+const envelopeSchema = z.object({ result: z.object({ state: z.string(), result: z.unknown() }) });
