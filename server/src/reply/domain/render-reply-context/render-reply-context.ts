@@ -71,6 +71,9 @@ const renderStructuredValues = (values: ReplyContextStructuredValues): string =>
               `  - ${name}${quantity === undefined ? "" : `（${formatNumber(quantity.value, 1)} ${quantity.unit}）`}: ${formatNutrients(nutrients)}`,
           ),
         ])),
+    ...(values.todayNutrients === undefined
+      ? []
+      : [`今日の合計: ${formatNutrients(values.todayNutrients)}`]),
     "",
     "## 昨日の食事",
     ...(values.yesterdayMeals.length === 0

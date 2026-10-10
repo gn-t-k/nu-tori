@@ -32,6 +32,8 @@ export type ReplyContextStructuredValues = {
     estimation: MealEstimationProgress;
     dishes: readonly ReplyContextDish[];
   }[];
+  // 今日の食事の合計。今日の食事が無ければ無い。推定を待つ・推定できなかった食事があれば、分かる値が「以上」になる
+  todayNutrients: MainNutrients | undefined;
   yesterdayMeals: readonly { mealId: RecordId; eatenAt: string; dishNames: readonly string[] }[];
   // 今日の前の 7 日。古い日から並ぶ。推定を待つ・推定できなかった食事のある日は、分かる値が「以上」になる
   previousDays: readonly (
