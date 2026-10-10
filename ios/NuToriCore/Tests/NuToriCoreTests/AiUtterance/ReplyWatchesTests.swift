@@ -204,13 +204,29 @@ struct ReplyWatchesTests {
             #expect(await watches.connectedSentTextIds.isEmpty)
         }
 
-        @Test("すべて切ったあとに応答を待つ文章を渡されたら、つなぐこと")
-        func reconnectsAfterStopAll() async {
-            await watches.stopAll()
-            await watches.follow(awaiting: [sentTextId])
-            await observer.nextClosed()
+        @Suite("すべて切ったとき")
+        struct StoppedAll {
+            let observer: Observer
+            let transport: ClientTransportMock
+            let watches: ReplyWatches
+            let sentTextId: UUID
 
-            #expect(transport.requests.count == 2)
+            init() async {
+                let notConnected = await NotConnected()
+                observer = notConnected.observer
+                transport = notConnected.transport
+                watches = notConnected.watches
+                sentTextId = notConnected.sentTextId
+                await watches.stopAll()
+            }
+
+            @Test("そのあとに応答を待つ文章を渡されたら、つなぐこと")
+            func reconnects() async {
+                await watches.follow(awaiting: [sentTextId])
+                await observer.nextClosed()
+
+                #expect(transport.requests.count == 2)
+            }
         }
     }
 }

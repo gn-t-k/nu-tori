@@ -8,8 +8,10 @@ describe("返事の長さと指し示す食事を確かめる", () => {
 
   describe("長さ", () => {
     let config: ReplyShapeConfig;
+    let metadata: unknown;
     beforeEach(() => {
       config = { maxLength: 10, referableMealIds: [salad, ramen], expectedMealIds: [] };
+      metadata = { mealIds: [] };
     });
 
     describe("上限ちょうどで、指し示す食事が無いとき", () => {
@@ -19,7 +21,7 @@ describe("返事の長さと指し示す食事を確かめる", () => {
       });
 
       test("通ること", () => {
-        expect(judgeReplyShape(output, { config, metadata: { mealIds: [] } }).pass).toBe(true);
+        expect(judgeReplyShape(output, { config, metadata }).pass).toBe(true);
       });
     });
 
@@ -30,7 +32,7 @@ describe("返事の長さと指し示す食事を確かめる", () => {
       });
 
       test("落ち、理由に字数が出ること", () => {
-        expect(judgeReplyShape(output, { config, metadata: { mealIds: [] } })).toEqual({
+        expect(judgeReplyShape(output, { config, metadata })).toEqual({
           pass: false,
           score: 0,
           reason: "11 字（上限 10 字）",
@@ -45,22 +47,24 @@ describe("返事の長さと指し示す食事を確かめる", () => {
       });
 
       test("1字と数え、上限ちょうどで通ること", () => {
-        expect(judgeReplyShape(output, { config, metadata: { mealIds: [] } }).pass).toBe(true);
+        expect(judgeReplyShape(output, { config, metadata }).pass).toBe(true);
       });
     });
   });
 
   describe("指し示す食事", () => {
     describe("文脈で ID を付けていない食事を指し示したとき", () => {
+      let output: string;
       let config: ReplyShapeConfig;
+      let metadata: unknown;
       beforeEach(() => {
+        output = "直してください";
         config = { maxLength: 10, referableMealIds: [salad, ramen], expectedMealIds: [] };
+        metadata = { mealIds: [unknown] };
       });
 
       test("落ちること", () => {
-        expect(
-          judgeReplyShape("直してください", { config, metadata: { mealIds: [unknown] } }),
-        ).toEqual({
+        expect(judgeReplyShape(output, { config, metadata })).toEqual({
           pass: false,
           score: 0,
           reason: `文脈で ID を付けていない食事を指し示した: ${unknown}`,
@@ -69,36 +73,52 @@ describe("返事の長さと指し示す食事を確かめる", () => {
     });
 
     describe("指し示してほしい食事があるとき", () => {
+      let output: string;
       let config: ReplyShapeConfig;
       beforeEach(() => {
+        output = "直してください";
         config = { maxLength: 10, referableMealIds: [salad, ramen], expectedMealIds: [salad] };
       });
 
-      test("指し示していれば通ること", () => {
-        expect(
-          judgeReplyShape("直してください", { config, metadata: { mealIds: [ramen, salad] } }).pass,
-        ).toBe(true);
+      describe("指し示しているとき", () => {
+        let metadata: unknown;
+        beforeEach(() => {
+          metadata = { mealIds: [ramen, salad] };
+        });
+
+        test("通ること", () => {
+          expect(judgeReplyShape(output, { config, metadata }).pass).toBe(true);
+        });
       });
 
-      test("指し示していなければ落ちること", () => {
-        expect(
-          judgeReplyShape("直してください", { config, metadata: { mealIds: [ramen] } }),
-        ).toEqual({
-          pass: false,
-          score: 0,
-          reason: `指し示してほしい食事を指し示していない: ${salad}`,
+      describe("指し示していないとき", () => {
+        let metadata: unknown;
+        beforeEach(() => {
+          metadata = { mealIds: [ramen] };
+        });
+
+        test("落ちること", () => {
+          expect(judgeReplyShape(output, { config, metadata })).toEqual({
+            pass: false,
+            score: 0,
+            reason: `指し示してほしい食事を指し示していない: ${salad}`,
+          });
         });
       });
     });
 
     describe("提供元が指し示す食事を返していないとき", () => {
+      let output: string;
       let config: ReplyShapeConfig;
+      let metadata: unknown;
       beforeEach(() => {
+        output = "こんにちは";
         config = { maxLength: 10, referableMealIds: [salad, ramen], expectedMealIds: [] };
+        metadata = undefined;
       });
 
       test("設定の誤りとして投げること", () => {
-        expect(() => judgeReplyShape("こんにちは", { config, metadata: undefined })).toThrow(
+        expect(() => judgeReplyShape(output, { config, metadata })).toThrow(
           "返事の提供元が metadata.mealIds を返していない",
         );
       });

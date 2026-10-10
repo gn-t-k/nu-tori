@@ -7,8 +7,7 @@ import {
 } from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
 
-// Anthropic の API の呼び出しを Result にする。SDK が投げる提供元の失敗を種類に分けて toFailure で失敗に直し、
-// SDK の失敗でないもの（想定外）は投げ直す
+// Anthropic の API の呼び出しを Result にする。SDK が投げる提供元の失敗を種類に分けて toFailure で失敗に直し、SDK の失敗でないもの（想定外）は投げ直す
 export const catchAnthropicFailure = <T, E>(
   call: Promise<T>,
   toFailure: (failure: AnthropicFailure) => E,
