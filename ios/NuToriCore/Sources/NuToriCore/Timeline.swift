@@ -24,6 +24,7 @@ public struct Timeline: Sendable {
         let rejectedMealLines = input.rejectedLines.compactMap(\.mealLine).filter {
             $0.placement(in: cardsByMealId[$0.meal.id]) == .timeline
         }
+        undelivered = input.undelivered
         let lastDay = ([today] + weightRecordsByDay.keys + mealsByDay.keys + noticesByDay.keys)
             .max()!
         let range = firstDay...max(firstDay, lastDay)
@@ -47,6 +48,13 @@ public struct Timeline: Sendable {
 
     /// 古い日から新しい日へ
     public let days: [Day]
+
+    /// まだ届いていない記録か。薄く描き、VoiceOver で「送信待ち」と添える
+    public func isUndelivered(_ item: Item) -> Bool {
+        undelivered.contains(item)
+    }
+
+    private let undelivered: UndeliveredRecords
 
     /// 今日の答えていない知らせ。画面の上へ流れて見えないときに、帯の下の1行で示す。
     /// 答えていない形のカードは、対象の日付が今日の知らせにだけあり、今日の日に並ぶので、新しい日から探す
@@ -94,17 +102,20 @@ public struct Timeline: Sendable {
         public let meals: [MealCard]
         /// 答えた知らせも含む
         public let notices: [Notice]
+        public let undelivered: UndeliveredRecords
 
         public init(
             weightRecords: [WeightRecord],
             rejectedLines: [RejectedLine],
             meals: [MealCard],
-            notices: [Notice]
+            notices: [Notice],
+            undelivered: UndeliveredRecords = .none
         ) {
             self.weightRecords = weightRecords
             self.rejectedLines = rejectedLines
             self.meals = meals
             self.notices = notices
+            self.undelivered = undelivered
         }
     }
 

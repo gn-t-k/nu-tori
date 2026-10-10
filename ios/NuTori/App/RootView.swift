@@ -58,6 +58,7 @@ struct RootView: View {
                 clock: model.clock,
                 rejectedLines: model.rejectedLines,
                 unsentDishIds: model.unsentDishIds,
+                undeliveredRecords: model.undeliveredRecords,
                 capture: { await model.capture($0) },
                 reminderLanding: model.reminderLanding,
                 noteReminderLanded: { model.noteReminderLanded() },
