@@ -65,36 +65,84 @@ describe("送った文章の同期", () => {
     });
 
     describe("同じ文章の ID で、別の書き込みの ID の作る書き込みを送ったとき", () => {
-      test("捨てること", async () => {
-        const again = createSentTextWrite({ sentText: { id: write.sentText["id"] } });
-        expect((await pushOne(again))?.result).toBe("ignored_duplicate");
+      let result: PushResults["results"][number] | undefined;
+      beforeEach(async () => {
+        result = await pushOne(createSentTextWrite({ sentText: { id: write.sentText["id"] } }));
+      });
+
+      test("捨てること", () => {
+        expect(result?.result).toBe("ignored_duplicate");
       });
     });
   });
 
   describe("受け付ける長さ", () => {
-    test.for([
-      { name: "空白だけ", body: " 　\n" },
-      { name: "前後の空白を除いて 501 字", body: "あ".repeat(501) },
-    ])("$name の文章を範囲の外として受け付けないこと", async ({ body }) => {
-      const result = await pushOne(createSentTextWrite({ sentText: { body } }));
-      expect(result?.rejectionReason).toBe("out_of_range");
+    describe("空白だけの文章を送ったとき", () => {
+      let result: PushResults["results"][number] | undefined;
+      beforeEach(async () => {
+        result = await pushOne(createSentTextWrite({ sentText: { body: " 　\n" } }));
+      });
+
+      test("範囲の外として受け付けないこと", () => {
+        expect(result?.rejectionReason).toBe("out_of_range");
+      });
     });
 
-    test.for([
-      { name: "500 字ちょうど", body: "あ".repeat(500) },
-      { name: "前後に空白がついた 500 字", body: ` \n${"あ".repeat(500)}　 ` },
-      // UTF-16 では 1000 単位になるが、コードポイントでは 500
-      { name: "サロゲートペアの絵文字 500 字", body: "🍙".repeat(500) },
-    ])("$name の文章を受け付けること", async ({ body }) => {
-      const result = await pushOne(createSentTextWrite({ sentText: { body } }));
-      expect(result?.result).toBe("applied");
+    describe("前後の空白を除いて 501 字の文章を送ったとき", () => {
+      let result: PushResults["results"][number] | undefined;
+      beforeEach(async () => {
+        result = await pushOne(createSentTextWrite({ sentText: { body: "あ".repeat(501) } }));
+      });
+
+      test("範囲の外として受け付けないこと", () => {
+        expect(result?.rejectionReason).toBe("out_of_range");
+      });
+    });
+
+    describe("500 字ちょうどの文章を送ったとき", () => {
+      let result: PushResults["results"][number] | undefined;
+      beforeEach(async () => {
+        result = await pushOne(createSentTextWrite({ sentText: { body: "あ".repeat(500) } }));
+      });
+
+      test("受け付けること", () => {
+        expect(result?.result).toBe("applied");
+      });
+    });
+
+    describe("前後に空白がついた 500 字の文章を送ったとき", () => {
+      let result: PushResults["results"][number] | undefined;
+      beforeEach(async () => {
+        result = await pushOne(
+          createSentTextWrite({ sentText: { body: ` \n${"あ".repeat(500)}　 ` } }),
+        );
+      });
+
+      test("受け付けること", () => {
+        expect(result?.result).toBe("applied");
+      });
+    });
+
+    describe("サロゲートペアの絵文字 500 字の文章を送ったとき", () => {
+      let result: PushResults["results"][number] | undefined;
+      beforeEach(async () => {
+        // UTF-16 では 1000 単位になるが、コードポイントでは 500
+        result = await pushOne(createSentTextWrite({ sentText: { body: "🍙".repeat(500) } }));
+      });
+
+      test("受け付けること", () => {
+        expect(result?.result).toBe("applied");
+      });
     });
   });
 
   describe("知らないタイムゾーンの作る書き込みを送ったとき", () => {
-    test("範囲の外として受け付けないこと", async () => {
-      const result = await pushOne(createSentTextWrite({ sentText: { timeZone: "Asia/Nowhere" } }));
+    let result: PushResults["results"][number] | undefined;
+    beforeEach(async () => {
+      result = await pushOne(createSentTextWrite({ sentText: { timeZone: "Asia/Nowhere" } }));
+    });
+
+    test("範囲の外として受け付けないこと", () => {
       expect(result?.rejectionReason).toBe("out_of_range");
     });
   });

@@ -63,6 +63,12 @@ describe("送り直す", () => {
        INNER JOIN reply_requests ON reply_requests.id = resend_reply_requests.reply_request_id`,
     );
 
+  const readNonCreateReceipts = () =>
+    readRows(
+      accountId,
+      "SELECT kind, result FROM sync_write_receipts WHERE record_type = 'sent_text' AND kind != 'create'",
+    );
+
   describe("提供元の 400 で作れなかった文章を送り直したとき", () => {
     let sentTextId: string;
     let beforeResend: number;
@@ -207,37 +213,63 @@ describe("送り直す", () => {
   });
 
   describe("返事を頼んでいない文章を送り直したとき", () => {
-    test.each([
-      { situation: "読み分ける前", classify: false },
-      { situation: "食事と読み分けた", classify: true },
-    ])("$situation 文章は、作れなかったでないとして受け付けないこと", async ({ classify }) => {
-      mockCreateConversationProviderOk({ classification: "meal" });
-      const sentTextId = await sendText();
-      if (classify) {
+    describe("読み分ける前の文章なら", () => {
+      let result: PushResults["results"][number] | undefined;
+      beforeEach(async () => {
+        mockCreateConversationProviderOk({ classification: "meal" });
+        const sentTextId = await sendText();
+        result = await resend(sentTextId);
+      });
+
+      test("作れなかったでないとして受け付けず、控えに送り直すとして残すこと", async () => {
+        expect({
+          result: result?.result,
+          rejectionReason: result?.rejectionReason,
+          currentKind: result?.current?.change?.kind,
+          receipts: await readNonCreateReceipts(),
+        }).toEqual({
+          result: "rejected",
+          rejectionReason: "reply_not_failed",
+          currentKind: "sent_text",
+          // 控えの kind で、送り直す書き込みと見分けられる
+          receipts: [{ kind: "resend", result: "rejected" }],
+        });
+      });
+    });
+
+    describe("食事と読み分けた文章なら", () => {
+      let result: PushResults["results"][number] | undefined;
+      beforeEach(async () => {
+        mockCreateConversationProviderOk({ classification: "meal" });
+        const sentTextId = await sendText();
         await runEstimationAlarm(accountId);
-      }
-      const result = await resend(sentTextId);
-      expect({
-        result: result?.result,
-        rejectionReason: result?.rejectionReason,
-        currentKind: result?.current?.change?.kind,
-        receipts: await readRows(
-          accountId,
-          "SELECT kind, result FROM sync_write_receipts WHERE record_type = 'sent_text' AND kind != 'create'",
-        ),
-      }).toEqual({
-        result: "rejected",
-        rejectionReason: "reply_not_failed",
-        currentKind: "sent_text",
-        // 控えの kind で、送り直す書き込みと見分けられる
-        receipts: [{ kind: "resend", result: "rejected" }],
+        result = await resend(sentTextId);
+      });
+
+      test("作れなかったでないとして受け付けず、控えに送り直すとして残すこと", async () => {
+        expect({
+          result: result?.result,
+          rejectionReason: result?.rejectionReason,
+          currentKind: result?.current?.change?.kind,
+          receipts: await readNonCreateReceipts(),
+        }).toEqual({
+          result: "rejected",
+          rejectionReason: "reply_not_failed",
+          currentKind: "sent_text",
+          // 控えの kind で、送り直す書き込みと見分けられる
+          receipts: [{ kind: "resend", result: "rejected" }],
+        });
       });
     });
   });
 
   describe("知らない文章を送り直したとき", () => {
-    test("見つからないとして受け付けず、文章が無いことを添えること", async () => {
-      const result = await resend(generateRecordId());
+    let result: PushResults["results"][number] | undefined;
+    beforeEach(async () => {
+      result = await resend(generateRecordId());
+    });
+
+    test("見つからないとして受け付けず、文章が無いことを添えること", () => {
       expect({
         result: result?.result,
         rejectionReason: result?.rejectionReason,

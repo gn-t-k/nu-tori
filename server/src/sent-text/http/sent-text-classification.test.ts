@@ -124,57 +124,119 @@ describe("読み分け", () => {
     });
   });
 
-  describe.for([
-    {
-      name: "会話と読み分けたとき",
-      arrange: () => mockCreateConversationProviderOk({ classification: "conversation" }),
-    },
-    {
-      name: "決めかねたとき",
-      arrange: () => mockCreateConversationProviderOk({ classification: "unsure" }),
-    },
-    {
-      name: "読み分けの呼び出しが失敗したとき",
-      arrange: () =>
+  describe("会話にするとき", () => {
+    describe("会話と読み分けたなら", () => {
+      let sentTextId: string;
+      beforeEach(async () => {
+        mockCreateConversationProviderOk({ classification: "conversation" });
+        mockCreateEstimationProviderOk();
+        // 端末のタイムゾーン（東京）と違うタイムゾーンで送る
+        sentTextId = await sendText({ timeZone: "America/New_York" });
+        await runEstimationAlarm(accountId);
+      });
+
+      // 返事は同じアラームで作るので、応答の状態は返事あり
+      test("送った文章の状態が会話で届くこと", async () => {
+        expect(await pullRecordsOf("sent_text_status")).toEqual([
+          { sentTextId, classification: "conversation", replyStatus: "replied" },
+        ]);
+      });
+
+      test("きっかけが読み分けの返事の依頼を、ユーザーの最新のタイムゾーンでの今日の分として作ること", async () => {
+        expect(await readReplyRequests()).toEqual([
+          {
+            sent_text_id: sentTextId,
+            counted_on: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
+              Date.now(),
+            ),
+            by_classification: 1,
+          },
+        ]);
+      });
+
+      test("食事を作らず、推定もしないこと", async () => {
+        expect({
+          meals: await pullRecordsOf("meal"),
+          estimations: await countEstimations(),
+        }).toEqual({ meals: [], estimations: 0 });
+      });
+    });
+
+    describe("決めかねたなら", () => {
+      let sentTextId: string;
+      beforeEach(async () => {
+        mockCreateConversationProviderOk({ classification: "unsure" });
+        mockCreateEstimationProviderOk();
+        // 端末のタイムゾーン（東京）と違うタイムゾーンで送る
+        sentTextId = await sendText({ timeZone: "America/New_York" });
+        await runEstimationAlarm(accountId);
+      });
+
+      // 返事は同じアラームで作るので、応答の状態は返事あり
+      test("送った文章の状態が会話で届くこと", async () => {
+        expect(await pullRecordsOf("sent_text_status")).toEqual([
+          { sentTextId, classification: "conversation", replyStatus: "replied" },
+        ]);
+      });
+
+      test("きっかけが読み分けの返事の依頼を、ユーザーの最新のタイムゾーンでの今日の分として作ること", async () => {
+        expect(await readReplyRequests()).toEqual([
+          {
+            sent_text_id: sentTextId,
+            counted_on: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
+              Date.now(),
+            ),
+            by_classification: 1,
+          },
+        ]);
+      });
+
+      test("食事を作らず、推定もしないこと", async () => {
+        expect({
+          meals: await pullRecordsOf("meal"),
+          estimations: await countEstimations(),
+        }).toEqual({ meals: [], estimations: 0 });
+      });
+    });
+
+    describe("読み分けの呼び出しが失敗したなら", () => {
+      let sentTextId: string;
+      beforeEach(async () => {
         mockCreateConversationProviderError({
           failingCall: "classify_sent_text",
           error: new ConversationProviderError({ errorType: "overloaded_error" }),
-        }),
-    },
-  ])("$name", ({ arrange }) => {
-    let sentTextId: string;
-    beforeEach(async () => {
-      arrange();
-      mockCreateEstimationProviderOk();
-      // 端末のタイムゾーン（東京）と違うタイムゾーンで送る
-      sentTextId = await sendText({ timeZone: "America/New_York" });
-      await runEstimationAlarm(accountId);
-    });
+        });
+        mockCreateEstimationProviderOk();
+        // 端末のタイムゾーン（東京）と違うタイムゾーンで送る
+        sentTextId = await sendText({ timeZone: "America/New_York" });
+        await runEstimationAlarm(accountId);
+      });
 
-    // 返事は同じアラームで作るので、応答の状態は返事あり
-    test("送った文章の状態が会話で届くこと", async () => {
-      expect(await pullRecordsOf("sent_text_status")).toEqual([
-        { sentTextId, classification: "conversation", replyStatus: "replied" },
-      ]);
-    });
+      // 返事は同じアラームで作るので、応答の状態は返事あり
+      test("送った文章の状態が会話で届くこと", async () => {
+        expect(await pullRecordsOf("sent_text_status")).toEqual([
+          { sentTextId, classification: "conversation", replyStatus: "replied" },
+        ]);
+      });
 
-    test("きっかけが読み分けの返事の依頼を、ユーザーの最新のタイムゾーンでの今日の分として作ること", async () => {
-      expect(await readReplyRequests()).toEqual([
-        {
-          sent_text_id: sentTextId,
-          counted_on: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
-            Date.now(),
-          ),
-          by_classification: 1,
-        },
-      ]);
-    });
+      test("きっかけが読み分けの返事の依頼を、ユーザーの最新のタイムゾーンでの今日の分として作ること", async () => {
+        expect(await readReplyRequests()).toEqual([
+          {
+            sent_text_id: sentTextId,
+            counted_on: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
+              Date.now(),
+            ),
+            by_classification: 1,
+          },
+        ]);
+      });
 
-    test("食事を作らず、推定もしないこと", async () => {
-      expect({
-        meals: await pullRecordsOf("meal"),
-        estimations: await countEstimations(),
-      }).toEqual({ meals: [], estimations: 0 });
+      test("食事を作らず、推定もしないこと", async () => {
+        expect({
+          meals: await pullRecordsOf("meal"),
+          estimations: await countEstimations(),
+        }).toEqual({ meals: [], estimations: 0 });
+      });
     });
   });
 
