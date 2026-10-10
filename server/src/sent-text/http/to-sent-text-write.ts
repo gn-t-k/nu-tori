@@ -20,4 +20,9 @@ export const toSentTextWrite = (write: z.infer<(typeof sentTextWriteSchemas)[num
       type: "resend_sent_text_as_conversation",
       sentTextId,
     }))
+    .with({ type: "resend_sent_text" }, ({ id, sentTextId }): SyncWrite => ({
+      id,
+      type: "resend_sent_text",
+      sentTextId,
+    }))
     .exhaustive();

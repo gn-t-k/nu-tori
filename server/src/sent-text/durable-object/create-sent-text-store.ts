@@ -9,6 +9,7 @@ const {
   sentTextClassifications,
   sentTextMeals,
   sentTextConversationResends,
+  sentTextResends,
   conversationResendMealDeletions,
 } = sentTextTables;
 const { syncWriteReceipts, syncRequestLogs } = syncLedgerTables;
@@ -69,5 +70,8 @@ export const createSentTextStore = (db: DrizzleSqliteDODatabase): SentTextStore 
     db.insert(conversationResendMealDeletions)
       .values({ mealId, syncWriteReceiptId: receiptId.value })
       .run();
+  },
+  insertResend: (receiptId) => {
+    db.insert(sentTextResends).values({ syncWriteReceiptId: receiptId.value }).run();
   },
 });

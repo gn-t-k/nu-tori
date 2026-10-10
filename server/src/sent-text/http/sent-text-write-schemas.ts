@@ -38,8 +38,19 @@ const resendSentTextAsConversationWriteSchema = z
   })
   .openapi("ResendSentTextAsConversationWrite");
 
+const resendSentTextWriteSchema = z
+  .object({
+    id: writeIdSchema,
+    type: z.literal("resend_sent_text"),
+    sentTextId: recordIdSchema.openapi({
+      description: "返事を作れなかった・回数切れの送った文章。もう一度返事を作らせる",
+    }),
+  })
+  .openapi("ResendSentTextWrite");
+
 // 送った文章の書き込みのスキーマ。型を保つため as const で並べる
 export const sentTextWriteSchemas = [
   createSentTextWriteSchema,
   resendSentTextAsConversationWriteSchema,
+  resendSentTextWriteSchema,
 ] as const;

@@ -6,11 +6,14 @@ export type SentTextWrite = { id: RecordId } & (
   | { type: "create_sent_text"; sentText: SentText }
   // 食事と読み分けた文章を、会話として送り直す（#419 の「会話として送り直す」）
   | { type: "resend_sent_text_as_conversation"; sentTextId: RecordId }
+  // 返事を作れなかった・回数切れの文章に、もう一度返事を作らせる（#419 の「作れなかった・回数切れ」）
+  | { type: "resend_sent_text"; sentTextId: RecordId }
 );
 
 // 書き込みの type の一覧。ドメインの種類の見分けと、受け口の見分けが、ここを使う
 export const sentTextWriteTypes: readonly string[] = Object.keys({
   create_sent_text: true,
   resend_sent_text_as_conversation: true,
+  resend_sent_text: true,
   // キーを書き込みの型に合わせ、type を足したときの足し忘れを型エラーにする
 } satisfies Record<SentTextWrite["type"], true>);
