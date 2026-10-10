@@ -191,6 +191,9 @@
                         body: sentText.body,
                         sentAt: date(sentText.sentAt),
                         timeZone: try knownTimeZone(sentText.timeZone)))
+            case .resendSentTextAsConversation(let write):
+                self = .resendSentTextAsConversation(
+                    writeId: try uuid(write.id), sentTextId: try uuid(write.sentTextId))
             }
         }
     }

@@ -1,13 +1,8 @@
 import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
-import { deleteDishes } from "../../dish/domain/delete-dishes";
 import type { DishStore } from "../../dish/domain/dish-store";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
-import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
-import { computeEstimationEndedEvent } from "../../estimation/domain/compute-estimation-ended-event";
 import type { EstimationStore } from "../../estimation/domain/estimation-store";
-import { findMealReceivedAt } from "../../estimation/domain/find-meal-received-at";
-import { findMealEstimationTrigger } from "../../estimation/domain/find-estimation-origin";
 import { scheduleMealEstimation } from "../../estimation/domain/schedule-meal-estimation";
 import type { EstimationScheduleStore } from "../../estimation/domain/estimation-schedule-store";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -20,12 +15,12 @@ import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
-import type { UsageEvent } from "../../domain/usage-event";
 import type { IngredientStore } from "../../ingredient/domain/ingredient-store";
 import type { Meal } from "./meal";
 import { isPhotoMealEntryMethod } from "./meal-entry-method";
 import type { MealPhotoStore } from "./meal-photo-store";
 import type { MealStore } from "./meal-store";
+import { planMealDeletion } from "./plan-meal-deletion";
 import { type MealWrite, mealWriteTypes } from "./meal-write";
 
 // receivedAt は要求を受け取った時刻。写真がそろった食事の推定の予定の時刻と、数える日に使う
@@ -171,9 +166,7 @@ const discarded = (
   };
 };
 
-// 料理・材料・写真の宣言を消し、それぞれの削除の印を残す。料理と材料の変更は1つずつ足し、推定し直しの予定のある料理は、
-// 料理ごとの推定の状態の変更も足す。推定中の食事と、推定し直しの推定中の料理なら、つなぎが CASCADE で消える前に推定を読み、
-// 推定ごとの出来事を「食事が消えた」で送る
+// 食事を消し、食事の削除の印を meal_deletions に残す。消し方は planMealDeletion
 const decideDelete = (
   stores: MealKindStores,
   mealId: RecordId,
@@ -183,46 +176,18 @@ const decideDelete = (
   if (store.hasDeletion(mealId)) {
     return { result: "ignored_tombstone", writeKind: "delete", recordId: mealId };
   }
-  const meal = store.find(mealId);
-  const dishIds = stores.dish.findIdsOfMeal(mealId);
-  const ingredientIds = stores.ingredient.findIdsOfMeal(mealId);
-  const scheduledDishIds = dishIds.filter(
-    (dishId) => stores.dishEstimationStatus.findSchedulesOfDish(dishId).length > 0,
-  );
+  const { addedChanges, usageEvents, commit } = planMealDeletion(stores, mealId, receivedAt);
   // 食事がまだ届いていなくても印を残し、同じ要求やあとから届く作る書き込みで生き返らせない
   return {
     result: "applied",
     writeKind: "delete",
     recordId: mealId,
-    addedChanges: [
-      { recordType: "meal_estimation_status", recordId: mealId },
-      ...dishIds.map((recordId) => ({ recordType: "dish" as const, recordId })),
-      ...ingredientIds.map((recordId) => ({ recordType: "ingredient" as const, recordId })),
-      ...scheduledDishIds.map((recordId) => ({
-        recordType: "dish_estimation_status" as const,
-        recordId,
-      })),
-    ],
-    usageEvents: [
-      ...computeMealDeletedEstimationEvents(stores, mealId, receivedAt),
-      ...scheduledDishIds.flatMap((dishId) =>
-        computeDishDeletedEstimationEvents(
-          stores,
-          { id: dishId, mealId },
-          "meal_deleted",
-          receivedAt,
-        ),
-      ),
-    ],
-    // #332 の「消す順」: 料理ごとの中身を消してから、食事の時刻の修正を消し、食事の削除の印を書いて食事を消す
+    addedChanges,
+    usageEvents,
     commit: (receiptId) => {
-      deleteDishes(stores, { dishIds, ingredientIds }, receiptId);
-      store.removeCorrections(mealId);
-      store.insertDeletion(receiptId);
-      if (meal !== undefined) {
-        store.insertPhotoDeletions(meal.photoIds, receiptId);
-        store.remove(mealId);
-      }
+      commit(receiptId, () => {
+        store.insertDeletion(receiptId);
+      });
     },
   };
 };
@@ -254,26 +219,4 @@ const decideUpdate = (
       store.insertEatenAtCorrection(receiptId, eatenAt);
     },
   };
-};
-
-const computeMealDeletedEstimationEvents = (
-  stores: MealKindStores,
-  mealId: RecordId,
-  deletedAt: Date,
-): UsageEvent[] => {
-  const estimationId = stores.estimation.findOngoingEstimationIdOfMeal(mealId);
-  if (estimationId === undefined) {
-    return [];
-  }
-  return [
-    computeEstimationEndedEvent({
-      trigger: findMealEstimationTrigger(stores.meal, mealId),
-      finalStatus: "meal_deleted",
-      attempts: stores.estimation.findAttempts(estimationId),
-      receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),
-      endedAt: deletedAt,
-      dishCount: 0,
-      ingredients: [],
-    }),
-  ];
 };

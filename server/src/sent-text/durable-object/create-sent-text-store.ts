@@ -4,7 +4,13 @@ import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { SentTextStore } from "../domain/sent-text-store";
 import { sentTextTables } from "./sent-text-tables";
 
-const { sentTexts, sentTextClassifications } = sentTextTables;
+const {
+  sentTexts,
+  sentTextClassifications,
+  sentTextMeals,
+  sentTextConversationResends,
+  conversationResendMealDeletions,
+} = sentTextTables;
 const { syncWriteReceipts, syncRequestLogs } = syncLedgerTables;
 
 const sentTextColumns = {
@@ -41,5 +47,20 @@ export const createSentTextStore = (db: DrizzleSqliteDODatabase): SentTextStore 
       .all(),
   insertClassification: ({ sentTextId, classifiedAt, result }) => {
     db.insert(sentTextClassifications).values({ sentTextId, classifiedAt, result }).run();
+  },
+  findMealIds: (sentTextId) =>
+    db
+      .select({ mealId: sentTextMeals.mealId })
+      .from(sentTextMeals)
+      .where(eq(sentTextMeals.sentTextId, sentTextId))
+      .all()
+      .map(({ mealId }) => mealId),
+  insertConversationResend: (receiptId) => {
+    db.insert(sentTextConversationResends).values({ syncWriteReceiptId: receiptId.value }).run();
+  },
+  insertConversationResendMealDeletion: (receiptId, mealId) => {
+    db.insert(conversationResendMealDeletions)
+      .values({ mealId, syncWriteReceiptId: receiptId.value })
+      .run();
   },
 });
