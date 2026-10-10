@@ -10,6 +10,7 @@ import type { MealPhotoStore } from "../meal/domain/meal-photo-store";
 import type { MealStore } from "../meal/domain/meal-store";
 import type { MealEstimationStatusStore } from "../meal-estimation-status/domain/meal-estimation-status-store";
 import type { NoticeStore } from "../notice/domain/notice-store";
+import type { ReplyRequestStore } from "../reply/domain/reply-request-store";
 import type { SentTextStore } from "../sent-text/domain/sent-text-store";
 import type { SentTextStatusStore } from "../sent-text-status/domain/sent-text-status-store";
 import type { LatestTimeZoneStore } from "./latest-time-zone-store";
@@ -41,6 +42,8 @@ export type RecordKindStores = {
   estimationSchedule: EstimationScheduleStore;
   // 推定と試みを読むために、アラームと食事の削除が使う
   estimation: EstimationStore;
+  // 会話と読み分けた文章の返事の依頼を書くために、読み分けが使う
+  replyRequest: ReplyRequestStore;
   // 推定の予定と結果を書く口（ドメイン層の writeEstimationEvents に、書く置き場を渡したもの）。
   // 書く置き場はここにしか渡さないので、推定の予定と結果はこの口を通してしか書けない
   writeEstimationEvents: <T>(

@@ -2,6 +2,8 @@ import { advanceEstimations } from "../estimation/domain/advance-estimations";
 import type { EstimationProvider } from "../estimation/domain/estimation-provider";
 import { deleteLeftoverMealPhotoFiles } from "../meal/domain/delete-leftover-meal-photo-files";
 import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
+import type { ConversationProvider } from "../reply/domain/conversation-provider";
+import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
 import { computeNextAlarmAt } from "./compute-next-alarm-at";
 import { computeNextAlarmAtExceptLeftoverPhotos } from "./compute-next-alarm-at-except-leftover-photos";
 import type { RecordKindStores } from "./record-kind-stores";
@@ -15,9 +17,14 @@ export const runAccountAlarm = async (
   deps: {
     archive: MealPhotoArchive;
     provider: EstimationProvider;
+    conversationProvider: ConversationProvider;
     armAlarm: () => Promise<void>;
   },
 ) => {
+  // 食事と読み分けた文章の推定を、同じアラームで始めるため、推定より先に読み分ける
+  const classified = await classifySentTexts(ledgerStore, stores, {
+    provider: deps.conversationProvider,
+  });
   const advanced = await advanceEstimations(ledgerStore, stores, deps, new Date());
   const deletionError: unknown = await deleteLeftoverMealPhotoFiles(
     stores.mealPhoto,
@@ -36,7 +43,8 @@ export const runAccountAlarm = async (
     // 推定が止まったことを、消し直しの失敗より先に報告する
     error: advanced.stoppedError ?? deletionError,
     providerErrors: advanced.providerErrors,
-    usageEvents: advanced.usageEvents,
+    usageEvents: [...classified.usageEvents, ...advanced.usageEvents],
+    classifications: classified.classifications,
     attempts: advanced.attempts,
   };
 };

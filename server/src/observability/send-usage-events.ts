@@ -72,6 +72,17 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         provider_error_types: ended.providerErrorTypes,
       },
     }))
+    .with({ name: "sent_text_classified" }, (classified) => ({
+      name: classified.name,
+      properties: {
+        result: classified.result,
+        provider_result: classified.providerResult,
+        input_tokens: classified.usage?.inputTokens,
+        output_tokens: classified.usage?.outputTokens,
+        seconds_from_received_to_classified: classified.secondsFromReceivedToClassified,
+        provider_error_type: classified.providerErrorType,
+      },
+    }))
     .with({ name: "estimation_deferred" }, (deferred) => ({
       name: deferred.name,
       properties: {},

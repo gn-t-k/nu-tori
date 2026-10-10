@@ -4,6 +4,7 @@ import type { RecordId } from "../../domain/record-id";
 import { findLatestCorrection } from "../../durable-object/find-latest-correction";
 import { removeCorrectionsOfRecord } from "../../durable-object/remove-corrections-of-record";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
+import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables";
 import type { MealStore } from "../domain/meal-store";
 import { mealPhotoTables } from "./meal-photo-tables";
 import { mealTables } from "./meal-tables";
@@ -11,6 +12,7 @@ import { mealTables } from "./meal-tables";
 const { syncWriteReceipts } = syncLedgerTables;
 const { meals, mealEatenAtCorrections, mealDeletions } = mealTables;
 const { mealPhotos, mealPhotoDeletions } = mealPhotoTables;
+const { sentTextMeals } = sentTextTables;
 
 export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
   find: (id) => {
@@ -28,6 +30,11 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
       ...meal,
       eatenAt: findCorrectedEatenAt(db, id) ?? meal.eatenAt,
       photoIds: photos.map((photo) => photo.id),
+      sentTextId: db
+        .select({ sentTextId: sentTextMeals.sentTextId })
+        .from(sentTextMeals)
+        .where(eq(sentTextMeals.mealId, id))
+        .get()?.sentTextId,
     };
   },
   hasDeletion: (id) =>
@@ -92,11 +99,16 @@ export const createMealStore = (db: DrizzleSqliteDODatabase): MealStore => ({
         : [];
     });
   },
-  insert: ({ photoIds, ...meal }) => {
+  insert: ({ photoIds, sentTextId, ...meal }) => {
     db.insert(meals).values(meal).run();
-    db.insert(mealPhotos)
-      .values(photoIds.map((id, positionInMeal) => ({ id, mealId: meal.id, positionInMeal })))
-      .run();
+    if (photoIds.length > 0) {
+      db.insert(mealPhotos)
+        .values(photoIds.map((id, positionInMeal) => ({ id, mealId: meal.id, positionInMeal })))
+        .run();
+    }
+    if (sentTextId !== undefined) {
+      db.insert(sentTextMeals).values({ mealId: meal.id, sentTextId }).run();
+    }
   },
   insertEatenAtCorrection: (receiptId, eatenAt) => {
     db.insert(mealEatenAtCorrections)
