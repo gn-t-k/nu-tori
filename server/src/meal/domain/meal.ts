@@ -10,6 +10,8 @@ export type Meal = {
   sentAt: Date;
   sentTimeZone: string;
   entryMethod: MealEntryMethod;
-  // 並びが写真の並び順
+  // 並びが写真の並び順。文章の食事は写真を持たない
   photoIds: readonly RecordId[];
+  // 文章の食事なら、作った送った文章の ID。写真の食事は undefined
+  sentTextId: RecordId | undefined;
 };

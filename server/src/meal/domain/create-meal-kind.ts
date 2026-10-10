@@ -106,7 +106,7 @@ const decideCreate = (
   if (store.findUsedPhotoIds(photoIds).length > 0) {
     return discarded(store, newMeal, { result: "rejected", reason: "photo_already_used" });
   }
-  const meal: Meal = { ...newMeal, entryMethod };
+  const meal: Meal = { ...newMeal, entryMethod, sentTextId: undefined };
   return {
     result: "applied",
     writeKind: "create",

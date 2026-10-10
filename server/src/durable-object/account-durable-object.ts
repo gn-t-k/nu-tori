@@ -15,6 +15,7 @@ import type { SyncWrite } from "../domain/sync-write";
 import { createEstimationProvider } from "../estimation/durable-object/create-estimation-provider";
 import { readKeptMealPhoto } from "../meal/domain/read-kept-meal-photo";
 import { createMealPhotoArchive } from "../meal/durable-object/create-meal-photo-archive";
+import { createConversationProvider } from "../reply/durable-object/create-conversation-provider";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
@@ -132,6 +133,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         {
           archive: createMealPhotoArchive(this.env.PHOTOS, accountId),
           provider: createEstimationProvider(this.env, accountId),
+          conversationProvider: createConversationProvider(this.env, accountId),
           armAlarm: () => this.armAlarm(),
         },
       );
@@ -146,6 +148,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         error: ran.error instanceof Error ? ran.error.name : undefined,
         failedStage:
           ran.error instanceof Error && "stage" in ran.error ? ran.error.stage : undefined,
+        classifications: ran.classifications,
         estimationAttempts: ran.attempts,
         durationMs: Date.now() - startedAt,
       });

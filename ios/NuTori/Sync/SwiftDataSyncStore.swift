@@ -143,6 +143,32 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
+    func sentTexts() async throws -> [SentText] {
+        try await onMain { stores in
+            try stores.cache.fetch(FetchDescriptor<CachedSentText>()).compactMap {
+                $0.sentText()
+            }
+        }
+    }
+
+    func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
+        try await onMain { stores in
+            var statuses: [UUID: SentTextStatus] = [:]
+            for row in try stores.cache.fetch(FetchDescriptor<CachedSentTextStatus>()) {
+                statuses[row.sentTextId] = row.sentTextStatus()
+            }
+            return statuses
+        }
+    }
+
+    func aiUtterances() async throws -> [AiUtterance] {
+        try await onMain { stores in
+            try stores.cache.fetch(FetchDescriptor<CachedAiUtterance>()).map {
+                $0.aiUtterance()
+            }
+        }
+    }
+
     func dishVersionsWrittenToHealth() async throws -> [UUID: Int] {
         try await onMain { stores in
             let rows = try stores.cache.fetch(FetchDescriptor<CachedHealthDishWrite>())

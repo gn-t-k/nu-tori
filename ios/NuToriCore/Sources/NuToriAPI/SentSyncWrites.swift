@@ -53,7 +53,9 @@
                 .createDish(let writeId, _), .deleteDish(let writeId, _),
                 .updateDish(let writeId, _),
                 .updateIngredient(let writeId, _, _),
-                .createNotice(let writeId, _), .respondNotice(let writeId, _, _):
+                .createNotice(let writeId, _), .respondNotice(let writeId, _, _),
+                .createSentText(let writeId, _), .resendSentTextAsConversation(let writeId, _),
+                .resendSentText(let writeId, _):
                 writeId
             }
         }
@@ -104,7 +106,11 @@
                         sendsUsageData: write.accountSettings.sendsUsageData))
             case .createMeal(let write):
                 let meal = write.meal
-                guard let entryMethod = SyncedMeal.EntryMethod(rawValue: meal.entryMethod) else {
+                // 端末が作る食事は写真の食事だけなので、送った文章の ID は読まない
+                guard
+                    let entryMethod = SyncedMeal.EntryMethod(
+                        wireName: meal.entryMethod, sentTextId: nil)
+                else {
                     throw SentSyncWrites.MalformedBodyError(reason: "知らない入口 \(meal.entryMethod)")
                 }
                 self = .createMeal(
@@ -176,9 +182,15 @@
                     response: SyncedNotice.Response(
                         respondedAt: date(write.response.respondedAt),
                         timeZone: try knownTimeZone(write.response.timeZone)))
-            case .createSentText:
-                // 端末はまだ送った文章を送らない。端末の SyncWrite に送った文章を足す #437 で読むようにする
-                throw SentSyncWrites.MalformedBodyError(reason: "まだ読まない書き込み create_sent_text")
+            case .createSentText(let write):
+                let sentText = write.sentText
+                self = .createSentText(
+                    writeId: try uuid(write.id),
+                    sentText: SyncedSentText(
+                        id: try uuid(sentText.id),
+                        body: sentText.body,
+                        sentAt: date(sentText.sentAt),
+                        timeZone: try knownTimeZone(sentText.timeZone)))
             }
         }
     }

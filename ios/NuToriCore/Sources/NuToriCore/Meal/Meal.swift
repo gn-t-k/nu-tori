@@ -9,7 +9,7 @@ public struct Meal: Hashable, Sendable {
     public let eatenUtcOffsetSeconds: Int
     public let sentAt: Date
     public let sentTimeZone: TimeZone
-    public let entry: MealDraft.Entry
+    public let entry: Entry
     /// 写真の並び順
     public let photoIds: [UUID]
 
@@ -19,7 +19,7 @@ public struct Meal: Hashable, Sendable {
         eatenUtcOffsetSeconds: Int,
         sentAt: Date,
         sentTimeZone: TimeZone,
-        entry: MealDraft.Entry,
+        entry: Entry,
         photoIds: [UUID]
     ) {
         self.id = id
@@ -38,9 +38,47 @@ public struct Meal: Hashable, Sendable {
             eatenUtcOffsetSeconds: draft.eatenUtcOffsetSeconds,
             sentAt: draft.sentAt,
             sentTimeZone: draft.sentTimeZone,
-            entry: draft.entry,
+            entry: Entry(draft.entry),
             photoIds: draft.photoIds
         )
+    }
+
+    /// 入口。写真の食事は端末が作り、文章の食事はサーバーが送った文章から作る
+    public enum Entry: Hashable, Sendable {
+        case captured
+        case picked
+        case written(sentTextId: UUID)
+
+        init(_ entry: MealDraft.Entry) {
+            switch entry {
+            case .captured: self = .captured
+            case .picked: self = .picked
+            }
+        }
+
+        /// 置き場（送り待ちとキャッシュ）に文字列で持つ名前。文章の食事の送った文章の ID は、別に持つ
+        public var storedName: String {
+            switch self {
+            case .captured: "captured"
+            case .picked: "picked"
+            case .written: "written"
+            }
+        }
+
+        /// 置き場の名前から読む。知らない名前と、送った文章の ID の無い文章の食事は nil
+        public init?(storedName: String, sentTextId: UUID?) {
+            switch (storedName, sentTextId) {
+            case ("captured", _): self = .captured
+            case ("picked", _): self = .picked
+            case ("written", let sentTextId?): self = .written(sentTextId: sentTextId)
+            default: return nil
+            }
+        }
+    }
+
+    /// 文章の食事なら、作った送った文章の ID。カードを吹き出しの下に置くことと、会話として送り直す宛先を決める
+    public var sentTextId: UUID? {
+        if case .written(let sentTextId) = entry { sentTextId } else { nil }
     }
 
     /// 食事の日。1日の丸と日のまとめに入れる日で、撮った時刻と食事の時差で決める

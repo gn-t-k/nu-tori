@@ -53,6 +53,20 @@ export type UsageEvent =
       providerErrorTypes: string[];
     }
   | {
+      // 送った文章を読み分けたとき（呼び出しごと）。本文は含めない
+      name: "sent_text_classified";
+      // 書いた読み分けの結果。決めかねたときと呼び出しの失敗は会話
+      result: "meal" | "conversation";
+      // 提供元の答え。呼び出しが失敗したら failed
+      providerResult: "meal" | "conversation" | "unsure" | "failed";
+      // 呼び出しで使ったトークン。失敗したら undefined
+      usage: TokenUsage | undefined;
+      // 送った文章を作る書き込みを受け取ってから、読み分けを書くまで
+      secondsFromReceivedToClassified: number;
+      // 呼び出しが失敗したときの、提供元のエラーの種類
+      providerErrorType: string | undefined;
+    }
+  | {
       // 1日の回数の上限に達していて、予定を次の日に回したとき
       name: "estimation_deferred";
     }
