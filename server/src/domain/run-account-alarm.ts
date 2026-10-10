@@ -58,7 +58,11 @@ export const runAccountAlarm = async (
         : computeNextAlarmAtExceptLeftoverPhotos(stores),
     // 推定・返事が止まったことを、消し直しの失敗より先に報告する
     error: advanced.stoppedError ?? replied.stoppedError ?? deletionError,
-    providerErrors: [...advanced.providerErrors, ...replied.providerErrors],
+    providerErrors: [
+      ...classified.providerErrors,
+      ...advanced.providerErrors,
+      ...replied.providerErrors,
+    ],
     usageEvents: [...classified.usageEvents, ...advanced.usageEvents, ...replied.usageEvents],
     classifications: classified.classifications,
     attempts: advanced.attempts,
