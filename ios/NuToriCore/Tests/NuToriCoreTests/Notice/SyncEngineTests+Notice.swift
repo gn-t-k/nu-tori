@@ -180,7 +180,11 @@ extension SyncEngineTests {
                 transport = .sync()
                 engine = .fixture(
                     store: store, transport: transport,
-                    readableKinds: RecordKindRegistry<RecordCacheMock>.ok().names)
+                    readableKinds: [
+                        .accountSettings, .dish, .dishEstimationStatus, .ingredient, .meal,
+                        .mealEstimationStatus, .notice, .usualWeighingTime, .weightRecord,
+                        .weightTrend,
+                    ])
             }
 
             @Test("通し番号を 0 に戻して全部取り直し、読める種類に知らせ・いつもの時刻・体重の傾向を足すこと")

@@ -86,4 +86,14 @@ final class YieldingSyncBoxMock: SyncBox, RecordCacheReading {
         await Task.yield()
         return try await box.weightTrend()
     }
+
+    func sentTexts() async throws -> [SentText] {
+        await Task.yield()
+        return try await box.sentTexts()
+    }
+
+    func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
+        await Task.yield()
+        return try await box.sentTextStatuses()
+    }
 }

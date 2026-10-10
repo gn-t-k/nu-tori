@@ -28,11 +28,17 @@
 - 範囲は `shared/accepted-ranges.json`、入力と期待値は `shared/accepted-ranges.test-cases.json`。サーバーは `isWithinAcceptedRange`（`server/src/domain/is-within-accepted-range/`）、端末は書き出した `AcceptedRange` の `bounds.contains`
 - 範囲ごとに、下限は `minimum`（含む）か `exclusiveMinimum`（含まない）、上限は `maximum`（含む）で書く。書いていない側は限りが無い（料理と材料の量は「0 より大きい」なので `exclusiveMinimum` だけ）
 - 料理の名前は、前後の空白を除いた文字数を `dishNameTrimmedLength` に当てる。前後の空白を除くのは、サーバーは `String.prototype.trim`、端末は `trimmingCharacters(in: .whitespacesAndNewlines)`
+- 送った文章の本文は、料理の名前と同じ手順で前後の空白を除き、Unicode のコードポイントの数を `sentTextBodyTrimmedLength` に当てる。サーバーは `Array.from(text).length`、端末は `unicodeScalars.count`。端末とサーバーで同じ数になるようにコードポイントで数える（絵文字や結合文字は、見た目の1字が2つ以上に数えられることがある）
+
+## 栄養の合計
+
+料理・食事・日の栄養の合計の出し方。材料の栄養は、値 × 量 × 1単位あたりの可食部の g ÷ 基準の g（成分表と AI の推定は可食部 100 g、栄養成分表示は表示の単位の可食部の g）。合計は値の分かる材料の分だけを足し、「不明」の材料が混じれば「以上」、すべて「不明」なら「不明」にする。kcal は材料の kcal の和で、P・F・C から出し直さない（ADR-0016）。
+
+- サーバーは `computeNutrientTotal`（`server/src/ingredient/domain/compute-nutrient-total/`。栄養の項目ごとに出す）、端末は NuToriCore の `NutrientTotals`。入力（材料の量・1単位あたりの可食部の g・出どころ・栄養の値）と期待値（項目ごとの合計）は `shared/nutrient-totals.test-cases.json`
+- 料理の合計から食事と日の合計を足し上げる手順（端末の `NutrientTotals(combining:)`、推定を待つ料理を「以上」にすること）は端末の見た目のためのもので、両側の決めごとに含めない。サーバーは食事と日の合計を材料から直に出す
 
 ## 今は片側だけの決めごと
 
 両側に置く決めごとのうち、今は端末だけ（またはサーバーだけ）に置いているもの。両側に置く仕様が来たとき、手順と入力と期待値を `shared/` に移し、この一覧から消す。決めごとを書き直すときは、この一覧に抜けが無いかも見る。
 
-| 決めごと | 今の置き場 | 両側にする仕様 |
-|---|---|---|
-| 栄養の合計（材料の栄養 = 値 × 量 × 1単位あたりの可食部の g ÷ 基準の g。「不明」の材料が混じれば「以上」、すべて「不明」なら「不明」。kcal は材料の kcal の和。ADR-0016） | 端末（NuToriCore の `NutrientTotals`。サーバーは合計を使わない） | サーバーで合計を使う最初の仕様（「文章と会話」の見込み。AI の発言に渡す文脈に、今日の食事の栄養と直前 7 日の日ごとの合計が入るため） |
+今は無い。

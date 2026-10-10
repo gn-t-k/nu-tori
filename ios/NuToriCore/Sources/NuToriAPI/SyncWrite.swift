@@ -26,4 +26,12 @@ public enum SyncWrite: Sendable, Equatable {
     case createNotice(writeId: UUID, notice: NewNotice)
     /// すでに答えがあれば、サーバーは捨てる（先に受け取ったほうが残る）
     case respondNotice(writeId: UUID, noticeId: UUID, response: SyncedNotice.Response)
+    /// 同じ ID の文章がすでにあれば、サーバーは捨てる。範囲の外の本文と知らないタイムゾーンは受け付けない
+    case createSentText(writeId: UUID, sentText: SyncedSentText)
+    /// 食事と読み分けた文章を会話として送り直す。サーバーはその文章から作った食事をすべて消す。
+    /// 知らない文章と、まだ読み分けていない文章は受け付けない。すでに会話の文章なら捨てる
+    case resendSentTextAsConversation(writeId: UUID, sentTextId: UUID)
+    /// 返事を作れなかった・回数切れの文章を送り直す。知らない文章と、返事を頼んでいない文章は受け付けない。
+    /// 返事ありか応答待ちの文章なら捨てる
+    case resendSentText(writeId: UUID, sentTextId: UUID)
 }

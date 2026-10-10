@@ -1,19 +1,15 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import {
-  APIConnectionError,
-  APIConnectionTimeoutError,
-  APIError,
-  APIUserAbortError,
-  BadRequestError,
-} from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { R } from "@praha/byethrow";
+import { match } from "ts-pattern";
 import type { z } from "zod";
+import { catchAnthropicFailure } from "../../../durable-object/anthropic/catch-anthropic-failure";
+import { parseJson } from "../../../durable-object/anthropic/parse-json";
 import { EstimationProviderBadRequestError } from "../../domain/estimation-provider-bad-request-error";
 import { EstimationProviderError } from "../../domain/estimation-provider-error";
 import { EstimationProviderInvalidResponseError } from "../../domain/estimation-provider-invalid-response-error";
 import { EstimationProviderTimedOutError } from "../../domain/estimation-provider-timed-out-error";
-import type { TokenUsage } from "../../domain/estimation-provider";
+import type { TokenUsage } from "../../../domain/token-usage";
 
 // 推定の2つの呼び出し（①②）に共通の頼み方。モデルを決め、思考を切り、構造化出力で答えさせ、
 // 時間の上限と失敗を提供元の失敗の種類に分ける。応答の中身（モデルの答えのテキスト）は残さず、読めた形と使ったトークンだけを返す
@@ -37,8 +33,8 @@ export const requestStructuredOutput = <TSchema extends z.ZodType>(
   | EstimationProviderInvalidResponseError
 > =>
   R.pipe(
-    client.messages
-      .create(
+    catchAnthropicFailure(
+      client.messages.create(
         {
           // 仕様（#188）の指定。差し替えるときはここだけを直す
           model: "claude-sonnet-5",
@@ -51,17 +47,23 @@ export const requestStructuredOutput = <TSchema extends z.ZodType>(
           output_config: { format: zodOutputFormat(call.schema) },
         },
         { signal, timeout: call.timeLimitMs },
-      )
-      .then(
-        (message) => R.succeed(message),
-        (error: unknown) => {
-          const failure = toProviderFailure(error);
-          if (failure === undefined) {
-            throw error;
-          }
-          return R.fail(failure);
-        },
       ),
+      (failure) =>
+        match(failure)
+          .with(
+            { type: "timed_out" },
+            ({ cause }) => new EstimationProviderTimedOutError({ cause }),
+          )
+          .with(
+            { type: "bad_request" },
+            ({ errorType, cause }) => new EstimationProviderBadRequestError({ errorType, cause }),
+          )
+          .with(
+            { type: "provider_error" },
+            ({ errorType, cause }) => new EstimationProviderError({ errorType, cause }),
+          )
+          .exhaustive(),
+    ),
     R.andThen((message) => readStructuredOutput(message, call.schema)),
   );
 
@@ -85,44 +87,4 @@ const readStructuredOutput = <TSchema extends z.ZodType>(
   return parsed.success
     ? R.succeed({ output: parsed.data, usage })
     : R.fail(new EstimationProviderInvalidResponseError({ usage }));
-};
-
-// JSON として読めないテキストは、形の確かめで落ちるよう undefined にする
-const parseJson = (text: string): unknown => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-};
-
-// SDK が投げる提供元の失敗。SDK の失敗でないもの（想定外）は undefined を返し、呼び出し側が投げ直す。
-// errorType は提供元のエラーの種類（応答に無ければ HTTP の状態コード、つなげなかったときは connection_error）
-const toProviderFailure = (
-  error: unknown,
-):
-  | EstimationProviderError
-  | EstimationProviderBadRequestError
-  | EstimationProviderTimedOutError
-  | undefined => {
-  // 時間の上限（呼び出し1回の timeout と、試み全体の signal）
-  if (error instanceof APIConnectionTimeoutError || error instanceof APIUserAbortError) {
-    return new EstimationProviderTimedOutError({ cause: error });
-  }
-  if (error instanceof BadRequestError) {
-    return new EstimationProviderBadRequestError({
-      errorType: error.type ?? "http_400",
-      cause: error,
-    });
-  }
-  if (error instanceof APIConnectionError) {
-    return new EstimationProviderError({ errorType: "connection_error", cause: error });
-  }
-  if (error instanceof APIError) {
-    return new EstimationProviderError({
-      errorType: error.type ?? `http_${error.status}`,
-      cause: error,
-    });
-  }
-  return undefined;
 };

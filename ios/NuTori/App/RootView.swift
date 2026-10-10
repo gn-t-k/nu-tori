@@ -58,6 +58,7 @@ struct RootView: View {
                 clock: model.clock,
                 rejectedLines: model.rejectedLines,
                 unsentDishIds: model.unsentDishIds,
+                undeliveredRecords: model.undeliveredRecords,
                 capture: { await model.capture($0) },
                 reminderLanding: model.reminderLanding,
                 noteReminderLanded: { model.noteReminderLanded() },
@@ -68,6 +69,19 @@ struct RootView: View {
                 saveWeight: { write in
                     await model.saveWeight(write)
                 },
+                sendText: { draft in
+                    await model.sendText(draft)
+                },
+                replyStreams: model.replyStreams,
+                conversationActions: ConversationActions(
+                    resendAsConversation: { sentTextId, deletedMealCount in
+                        await model.resendAsConversation(
+                            sentTextId: sentTextId, deletedMealCount: deletedMealCount)
+                    },
+                    resend: { sentTextId, reason in
+                        await model.resendReply(sentTextId: sentTextId, reason: reason)
+                    }
+                ),
                 accountActions: AccountActions(
                     signedInAccountId: { await model.signedInAccountId() },
                     turnOnUsageData: { await model.turnOnUsageData() },

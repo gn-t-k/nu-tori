@@ -1516,4 +1516,276 @@ internal enum Operations {
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
     }
+    /// 送った文章の見守る要求
+    ///
+    /// 応答を待つ送った文章があるあいだつなぐ。はじめに返事の ID、続けてできた分を流す。食事と読み分けた・返事を記録に書いた・回数切れ・作れなかったときは、その結果を送って閉じる。つなぐ前にそうなっていれば、結果だけを送って閉じる。端末が切れても、サーバーは返事を最後まで作って記録に書く。届け方の正本は同期で、途中の文は記録に残らない
+    ///
+    /// - Remark: HTTP `GET /v1/sent-texts/{sentTextId}/reply-stream`.
+    /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)`.
+    internal enum WatchReply {
+        internal static let id: Swift.String = "watchReply"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/sent-texts/{sentTextId}/reply-stream/GET/path`.
+            internal struct Path: Sendable, Hashable {
+                /// 送った文章の ID
+                ///
+                /// - Remark: Generated from `#/paths/v1/sent-texts/{sentTextId}/reply-stream/GET/path/sentTextId`.
+                internal var sentTextId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - sentTextId: 送った文章の ID
+                internal init(sentTextId: Swift.String) {
+                    self.sentTextId = sentTextId
+                }
+            }
+            internal var path: Operations.WatchReply.Input.Path
+            /// - Remark: Generated from `#/paths/v1/sent-texts/{sentTextId}/reply-stream/GET/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.WatchReply.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.WatchReply.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.WatchReply.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            internal init(
+                path: Operations.WatchReply.Input.Path,
+                headers: Operations.WatchReply.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/sent-texts/{sentTextId}/reply-stream/GET/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/sent-texts/{sentTextId}/reply-stream/GET/responses/200/content/text\/event-stream`.
+                    case textEventStream(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.textEventStream`.
+                    ///
+                    /// - Throws: An error if `self` is not `.textEventStream`.
+                    /// - SeeAlso: `.textEventStream`.
+                    internal var textEventStream: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .textEventStream(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.WatchReply.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.WatchReply.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 出来事ごとに、data に JSON（ReplyStreamEvent）を1つ持つ SSE
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.WatchReply.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.WatchReply.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                internal init() {}
+            }
+            /// 経路の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.WatchReply.Output.BadRequest)
+            /// 経路の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            internal static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.WatchReply.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.WatchReply.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.WatchReply.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct NotFound: Sendable, Hashable {
+                /// Creates a new `NotFound`.
+                internal init() {}
+            }
+            /// まだ受け取っていない送った文章
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.WatchReply.Output.NotFound)
+            /// まだ受け取っていない送った文章
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            internal static var notFound: Self {
+                .notFound(.init())
+            }
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            internal var notFound: Operations.WatchReply.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.WatchReply.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.WatchReply.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case textEventStream
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "text/event-stream":
+                    self = .textEventStream
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .textEventStream:
+                    return "text/event-stream"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .textEventStream
+                ]
+            }
+        }
+    }
 }

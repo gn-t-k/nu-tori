@@ -16,7 +16,9 @@
                 rejectedLines: sample.rejectedLines(in: card),
                 confirmsDeletion: sample.confirmsDeletion,
                 confirmsLastDishDeletion: sample.confirmsLastDishDeletion,
-                addingDish: sample.addingDish
+                addingDish: sample.addingDish,
+                // 見本はどれも写真の食事
+                sentText: nil
             )
         }
     }

@@ -72,6 +72,41 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         provider_error_types: ended.providerErrorTypes,
       },
     }))
+    .with({ name: "sent_text_classified" }, (classified) => ({
+      name: classified.name,
+      properties: {
+        result: classified.result,
+        provider_result: classified.providerResult,
+        input_tokens: classified.usage?.inputTokens,
+        output_tokens: classified.usage?.outputTokens,
+        seconds_from_received_to_classified: classified.secondsFromReceivedToClassified,
+        provider_error_type: classified.providerErrorType,
+      },
+    }))
+    .with({ name: "reply_attempt_ended" }, (ended) => ({
+      name: ended.name,
+      properties: {
+        result: ended.result,
+        input_tokens: ended.usage?.inputTokens,
+        output_tokens: ended.usage?.outputTokens,
+        provider_error_type: ended.providerErrorType,
+      },
+    }))
+    .with({ name: "reply_generation_ended" }, (ended) => ({
+      name: ended.name,
+      properties: {
+        final_status: ended.finalStatus,
+        failure_reason: ended.failureReason,
+        retry_count: ended.retryCount,
+        referenced_meal_count: ended.referencedMealCount,
+        seconds_from_requested_to_ended: ended.secondsFromRequestedToEnded,
+        provider_error_types: ended.providerErrorTypes,
+      },
+    }))
+    .with({ name: "reply_request_halted" }, (halted) => ({
+      name: halted.name,
+      properties: {},
+    }))
     .with({ name: "estimation_deferred" }, (deferred) => ({
       name: deferred.name,
       properties: {},

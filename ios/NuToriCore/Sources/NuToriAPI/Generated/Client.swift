@@ -475,4 +475,76 @@ internal struct Client: APIProtocol {
             }
         )
     }
+    /// 送った文章の見守る要求
+    ///
+    /// 応答を待つ送った文章があるあいだつなぐ。はじめに返事の ID、続けてできた分を流す。食事と読み分けた・返事を記録に書いた・回数切れ・作れなかったときは、その結果を送って閉じる。つなぐ前にそうなっていれば、結果だけを送って閉じる。端末が切れても、サーバーは返事を最後まで作って記録に書く。届け方の正本は同期で、途中の文は記録に残らない
+    ///
+    /// - Remark: HTTP `GET /v1/sent-texts/{sentTextId}/reply-stream`.
+    /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)`.
+    internal func watchReply(_ input: Operations.WatchReply.Input) async throws -> Operations.WatchReply.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.WatchReply.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/sent-texts/{}/reply-stream",
+                    parameters: [
+                        input.path.sentTextId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.WatchReply.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "text/event-stream"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "text/event-stream":
+                        body = try converter.getResponseBodyAsBinary(
+                            OpenAPIRuntime.HTTPBody.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .textEventStream(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 400:
+                    return .badRequest(.init())
+                case 401:
+                    return .unauthorized(.init())
+                case 404:
+                    return .notFound(.init())
+                case 429:
+                    return .tooManyRequests(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
 }

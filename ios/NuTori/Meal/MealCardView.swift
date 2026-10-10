@@ -3,8 +3,8 @@ import NuToriCore
 import SwiftUI
 import UIKit
 
-/// タイムラインの食事のカード。自分の記録として Primary を薄く敷き、画面の幅の 72% にする。
-/// 写真を上に大きく出し、下に名前の場所（状態の1行）と時刻を置く。右に寄せるのは置く側
+/// タイムラインの食事のカード。写真を上に大きく出し、下に名前の場所（状態の1行）と時刻を置く。文章の食事は写真の場所を持たない。
+/// カードの地と幅（`OwnRecordCard`）と、右に寄せるのは置く側が付ける。文章の食事は、下に「会話として送り直す」を添えた全体に付ける
 struct MealCardView: View {
     let card: MealCard
     /// カードに描く大きさに縮めた写真。この端末に無ければ取りに行く。取れなければ nil
@@ -39,14 +39,6 @@ struct MealCardView: View {
                     .accessibilityHidden(true)
             }
             .padding()
-        }
-        // DESIGN.md の own-record-card。Surface に Primary を 10% 混ぜる。角はタイムラインのカード（12）
-        .background(Color.accentColor.opacity(0.1))
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .containerRelativeFrame(.horizontal) { width, _ in
-            let widthRatio: CGFloat = 0.72
-            return width * widthRatio
         }
         .modifier(
             MealPhotosLoading(
@@ -120,12 +112,7 @@ struct MealCardView: View {
     }
 
     private var eatenTimeText: String {
-        switch card.eatenTime {
-        case .clock(let clock):
-            WeightAmountText.clock(clock)
-        case .dayAndClock(let day, let clock):
-            "\(TimelineDayText.label(for: day))\(WeightAmountText.clock(clock))"
-        }
+        card.eatenTimeText
     }
 
     private var accessibilityText: String {

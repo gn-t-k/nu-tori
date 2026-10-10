@@ -2,6 +2,10 @@
   "name": "nu-tori-server",
   "private": true,
   "type": "module",
+  "scripts": {
+    "evals:classify": "PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 promptfoo eval -c evals/classify/promptfooconfig.ts --no-cache --no-write --no-table -o .scratch/classify-results.json; tsx evals/classify/summarize-classification-results.ts .scratch/classify-results.json",
+    "evals:reply": "PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 promptfoo eval -c evals/reply/promptfooconfig.ts --no-cache --no-write --no-table -o .scratch/reply-results.json; tsx evals/reply/summarize-reply-results.ts .scratch/reply-results.json"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",
     "@hono/zod-openapi": "1.6.3",
@@ -27,6 +31,7 @@
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",
+    "promptfoo": "0.124.1",
     "read-excel-file": "9.3.10",
     "tsx": "4.23.15",
     "typescript": "7.0.2",

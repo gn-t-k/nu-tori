@@ -858,6 +858,21 @@ describe("食事の同期", () => {
     });
   });
 
+  describe("入口が文章（サーバーだけが作る文章の食事の入口）の作る書き込みを送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
+        writes: [createMealWrite({ meal: { entryMethod: "written" } })],
+      });
+    });
+
+    test("受け付けないこと", async () => {
+      expect((await response.json<PushResults>()).results[0]?.rejectionReason).toBe(
+        "invalid_entry_method",
+      );
+    });
+  });
+
   describe("送ったときのタイムゾーンが IANA 名でなく時差の作る書き込みを送ったとき", () => {
     let response: Response;
     beforeEach(async () => {

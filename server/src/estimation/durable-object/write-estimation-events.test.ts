@@ -288,4 +288,82 @@ describe("推定の書き込みの口", () => {
       expect(await writeInAccount(seed, run)).toEqual([]);
     });
   });
+
+  describe("文章の食事の推定", () => {
+    const sentText = generateRecordId();
+    const createdEatenAt = new Date("2026-01-01T00:00:00Z");
+    const estimatedEatenAt = new Date("2025-12-31T10:00:00Z");
+
+    // 同じ送った文章の文章の食事が2つあり、1つ目（meal1）だけが予定のつなぎを持って推定中
+    const seedWrittenMeals: Seed = async (factory) => {
+      await factory.sentTexts.create({ id: sentText });
+      for (const mealId of [meal1, meal2]) {
+        await factory.meals.create({ id: mealId, eatenAt: createdEatenAt, entryMethod: "written" });
+        await factory.sentTextMeals.create({ mealId, sentTextId: sentText });
+      }
+      await factory.estimationSchedules.create({ id: "schedule-1" });
+      await factory.mealEstimationSchedules.create({
+        estimationScheduleId: "schedule-1",
+        mealId: meal1,
+      });
+      await factory.estimations.create({ id: "estimation-1", estimationScheduleId: "schedule-1" });
+    };
+
+    // 書いたあとの食事の今の時刻
+    const writeAndReadEatenAts = (seed: Seed, run: Run) =>
+      runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), async (_, state) => {
+        await seed(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
+        const stores = createRecordKindStores(state.storage);
+        stores.writeEstimationEvents(() => undefined, new Date(), run);
+        return [meal1, meal2].map((mealId) => stores.meal.find(mealId)?.eatenAt);
+      });
+
+    test("時刻を決めるのは、推定の予定のつなぎの食事だけであること", async () => {
+      expect(
+        await writeAndReadEatenAts(seedWrittenMeals, (writes) => {
+          writes.estimateMealEatenAt({ estimationId: "estimation-1", eatenAt: estimatedEatenAt });
+        }),
+      ).toEqual([estimatedEatenAt, createdEatenAt]);
+    });
+
+    test("1つの推定が同じ食事の時刻を二度は決めないこと", async () => {
+      await expect(
+        writeAndReadEatenAts(seedWrittenMeals, (writes) => {
+          writes.estimateMealEatenAt({ estimationId: "estimation-1", eatenAt: estimatedEatenAt });
+          writes.estimateMealEatenAt({ estimationId: "estimation-1", eatenAt: createdEatenAt });
+        }),
+      ).rejects.toThrow(/UNIQUE constraint failed: meal_eaten_at_estimations/);
+    });
+
+    test("食事の予定のつなぎが無い推定は、時刻を決められないこと", async () => {
+      await expect(
+        writeAndReadEatenAts(
+          async (factory) => {
+            await seedWrittenMeals(factory);
+            await factory.estimations.create({ id: "estimation-2" });
+          },
+          (writes) => {
+            writes.estimateMealEatenAt({ estimationId: "estimation-2", eatenAt: estimatedEatenAt });
+          },
+        ),
+      ).rejects.toThrow(/食事の予定から始まった推定でない/);
+    });
+
+    test("推定を完了して2つめ以降の食事を作ると、どちらの食事にも推定の状態の変更を足すこと", async () => {
+      expect(
+        await writeInAccount(seedWrittenMeals, (writes) => {
+          writes.complete({
+            estimationId: "estimation-1",
+            target: { type: "meal", mealId: meal1 },
+            completedAt: startedAt,
+            result: "estimated",
+          });
+          writes.recordCreatedMeal({ mealId: meal2, estimationId: "estimation-1" });
+        }),
+      ).toEqual([
+        { recordType: "meal_estimation_status", recordId: meal1 },
+        { recordType: "meal_estimation_status", recordId: meal2 },
+      ]);
+    });
+  });
 });

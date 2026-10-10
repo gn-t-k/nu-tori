@@ -76,6 +76,17 @@ struct AcceptedRangeTests {
         }
     }
 
+    @Suite("送った文章の、前後の空白を除いたコードポイントの数")
+    struct SentTextBodyTrimmedLength {
+        // swiftlint:disable:next no_parameterized_test
+        @Test("受け付けるかを決めること", arguments: try TestCases.load().sentTextBodyTrimmedLength)
+        func decidesWhetherToAccept(testCase: TestCase) {
+            #expect(
+                AcceptedRange.sentTextBodyTrimmedLength.bounds.contains(testCase.value)
+                    == testCase.accepted)
+        }
+    }
+
     struct TestCases: Decodable {
         let weightKilograms: [TestCase]
         let bodyFatPercentage: [TestCase]
@@ -84,6 +95,7 @@ struct AcceptedRangeTests {
         let dishQuantity: [TestCase]
         let ingredientQuantity: [TestCase]
         let dishNameTrimmedLength: [TestCase]
+        let sentTextBodyTrimmedLength: [TestCase]
 
         static func load() throws -> Self {
             try SharedTestCases.decode(Self.self, fromFileNamed: "accepted-ranges.test-cases.json")

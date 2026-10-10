@@ -16,4 +16,7 @@ export type EstimationEventWriteStore = {
   insertAttemptResult: (attemptResult: EstimationEvents["attemptResult"]) => void;
   insertCompletion: (completion: EstimationEvents["completion"]) => void;
   insertAbandonment: (abandonment: EstimationEvents["abandonment"]) => void;
+  // 推定の予定のつなぎの食事に書く。食事が対象の予定から始まった推定でなければ投げる
+  insertMealEatenAtEstimation: (estimation: EstimationEvents["mealEatenAtEstimation"]) => void;
+  insertCreatedMeal: (createdMeal: EstimationEvents["createdMeal"]) => void;
 };

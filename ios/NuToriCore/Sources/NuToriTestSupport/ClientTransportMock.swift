@@ -164,6 +164,28 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
+    /// 見守る要求に、`data` を1つずつ持つ出来事を流して閉じる SSE で答える
+    public static func replyStream(data: [String]) -> ClientTransportMock {
+        ClientTransportMock { _, _ in
+            var response = HTTPResponse(status: .ok)
+            response.headerFields[.contentType] = "text/event-stream"
+            return (response, HTTPBody(data.map { "data: \($0)\n\n" }.joined()))
+        }
+    }
+
+    /// 見守る要求に、`data` の JSON を流し続け、`data` が終わったら閉じる SSE で答える。テストが流すたびに届く
+    public static func replyStream(data: AsyncStream<String>) -> ClientTransportMock {
+        ClientTransportMock { _, _ in
+            var response = HTTPResponse(status: .ok)
+            response.headerFields[.contentType] = "text/event-stream"
+            return (
+                response,
+                HTTPBody(
+                    data.map { "data: \($0)\n\n" }, length: .unknown, iterationBehavior: .single)
+            )
+        }
+    }
+
     public static func error(_ error: any Error) -> ClientTransportMock {
         ClientTransportMock { _, _ in throw error }
     }

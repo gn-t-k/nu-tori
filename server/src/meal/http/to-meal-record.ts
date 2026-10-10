@@ -10,4 +10,5 @@ export const toMealRecord = (value: Meal): z.input<typeof mealRecordSchema> => (
   sentTimeZone: value.sentTimeZone,
   entryMethod: value.entryMethod,
   photos: value.photoIds.map((id) => ({ id })),
+  ...(value.sentTextId === undefined ? {} : { sentTextId: value.sentTextId }),
 });

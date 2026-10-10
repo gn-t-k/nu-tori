@@ -20,6 +20,10 @@
                 .init(kind: .ingredient, id: ingredientId)
             case .createNotice(_, let notice): .init(kind: .notice, id: notice.id)
             case .respondNotice(_, let noticeId, _): .init(kind: .notice, id: noticeId)
+            case .createSentText(_, let sentText): .init(kind: .sentText, id: sentText.id)
+            case .resendSentTextAsConversation(_, let sentTextId),
+                .resendSentText(_, let sentTextId):
+                .init(kind: .sentText, id: sentTextId)
             }
         }
     }

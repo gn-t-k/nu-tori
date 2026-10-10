@@ -215,6 +215,34 @@ struct PendingWriteEntryTests {
         }
     }
 
+    @Suite("送った文章の送り待ちを変換するとき")
+    struct SentTextConversion {
+        let writes: [PendingSentTextWrite]
+
+        init() throws {
+            let sentText = SentText(
+                id: try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")),
+                body: "朝はパン、昼はうどん", sentAt: SyncEngine.fixtureNow,
+                timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))
+            writes = [
+                PendingSentTextWrite(enqueuedAt: SyncEngine.fixtureNow, write: .create(sentText)),
+                PendingSentTextWrite(
+                    enqueuedAt: SyncEngine.fixtureNow,
+                    write: .resendAsConversation(sentTextId: sentText.id)),
+                PendingSentTextWrite(
+                    enqueuedAt: SyncEngine.fixtureNow, write: .resend(sentTextId: sentText.id)),
+            ]
+        }
+
+        @Test("作る・会話として送り直す・送り直すのどれも、送った文章の種類の名前で入り、同じ書き込みとして読み戻せること")
+        func roundTripsSentTextWrites() throws {
+            let entries = try writes.map { try $0.entry() }
+
+            #expect(entries.map(\.kind) == [.sentText, .sentText, .sentText])
+            #expect(try entries.map { try PendingSentTextWrite(entry: $0) } == writes)
+        }
+    }
+
     @Suite("読めない中身のとき")
     struct InvalidContent {
         @Test("種類の名前を読めず、書き込みにも解けないこと")

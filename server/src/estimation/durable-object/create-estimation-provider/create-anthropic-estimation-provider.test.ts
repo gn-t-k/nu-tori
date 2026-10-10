@@ -393,6 +393,150 @@ describe("createAnthropicEstimationProvider", () => {
     });
   });
 
+  describe("① 文章の食事の料理の名前を直して推定し直す（写真が無い）", () => {
+    let requests: ReturnType<typeof stubAnthropicApi>["requests"];
+    beforeEach(async () => {
+      const stub = stubAnthropicApi(async () => replyWithText(JSON.stringify(oyakodonReply)));
+      requests = stub.requests;
+      await createAnthropicEstimationProvider(stub.client, "account-1").identifyDishes(
+        {
+          photos: [],
+          target: {
+            type: "dish",
+            dish: { name: "きつねうどん", correctedIngredients: [], correctedQuantity: undefined },
+          },
+        },
+        neverEnds(),
+      );
+    });
+
+    test("画像を渡さず、写真が無いので名前から推定させる指示を渡すこと", () => {
+      expect(requests[0]).toMatchObject({
+        body: {
+          messages: [
+            {
+              content: [
+                {
+                  type: "text",
+                  text: expect.stringMatching(/「きつねうどん」[\s\S]*写真はありません/),
+                },
+              ],
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe("① 送った文章から食事を読み取る", () => {
+    const request = {
+      body: "昨日の夜はパン、今朝はうどん",
+      sentAt: { localDateTime: "2026-10-10T08:30", dayOfWeek: "saturday" as const },
+    };
+
+    describe("時刻の違う食事を答えたとき", () => {
+      let provider: EstimationProvider;
+      let requests: ReturnType<typeof stubAnthropicApi>["requests"];
+      beforeEach(() => {
+        const stub = stubAnthropicApi(async () =>
+          replyWithText(
+            JSON.stringify({
+              meals: [
+                { eatenAt: "2026-10-09T19:00", dishes: oyakodonReply.dishes },
+                { eatenAt: "2026-10-10T07:00", dishes: [] },
+              ],
+            }),
+            { usage: { input_tokens: 900, output_tokens: 300 } },
+          ),
+        );
+        requests = stub.requests;
+        provider = createAnthropicEstimationProvider(stub.client, "account-1");
+      });
+
+      test("食事ごとの日時と料理・材料と、使ったトークンを返すこと", async () => {
+        const result = await provider.identifyWrittenMeals(request, neverEnds());
+
+        expect(result).toBeSuccess((reply) => {
+          expect(reply.usage).toEqual({ inputTokens: 900, outputTokens: 300 });
+          expect(
+            reply.output.meals.map(({ eatenAt, dishes }) => ({
+              eatenAt,
+              dishes: dishes.map(({ name, ingredients }) => ({
+                name,
+                ingredients: ingredients.map(({ name: ingredientName, nutritionLabel }) => ({
+                  name: ingredientName,
+                  nutritionLabel,
+                })),
+              })),
+            })),
+          ).toEqual([
+            {
+              eatenAt: "2026-10-09T19:00",
+              dishes: [
+                {
+                  name: "親子丼",
+                  ingredients: [
+                    { name: "鶏もも肉", nutritionLabel: undefined },
+                    {
+                      name: "緑茶",
+                      nutritionLabel: {
+                        basisGrams: 100,
+                        nutrients: { energy_kcal: 0, salt_equivalent_g: 0.02 },
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+            { eatenAt: "2026-10-10T07:00", dishes: [] },
+          ]);
+        });
+      });
+
+      test("画像を渡さず、送った日時と曜日と文章を文字で渡し、思考を切ってハッシュを添えること", async () => {
+        await provider.identifyWrittenMeals(request, neverEnds());
+
+        expect(requests[0]).toMatchObject({
+          body: {
+            model: "claude-sonnet-5",
+            thinking: { type: "disabled" },
+            metadata: { user_id: hashOfAccount1 },
+            output_config: { format: { type: "json_schema" } },
+            messages: [
+              {
+                content: [
+                  {
+                    type: "text",
+                    text: "送った日時: 2026-10-10 08:30（土曜日）\n送った文章:\n昨日の夜はパン、今朝はうどん",
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      });
+    });
+
+    describe("応答の形が違うとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        const stub = stubAnthropicApi(async () =>
+          replyWithText(JSON.stringify({ dishes: oyakodonReply.dishes })),
+        );
+        provider = createAnthropicEstimationProvider(stub.client, "account-1");
+      });
+
+      test("使ったトークンを持つ、読めない応答の失敗で返すこと", async () => {
+        const result = await provider.identifyWrittenMeals(request, neverEnds());
+
+        expect(result).toBeFailure((error) => {
+          expect(error.name).toBe("EstimationProviderInvalidResponseError");
+          expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
+        });
+      });
+    });
+  });
+
   describe("① 食事の写真を読み取る", () => {
     let provider: EstimationProvider;
     let requests: ReturnType<typeof stubAnthropicApi>["requests"];

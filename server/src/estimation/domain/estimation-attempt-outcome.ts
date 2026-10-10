@@ -5,7 +5,14 @@ import type { EstimationAttemptUsage } from "./estimation-attempt-usage";
 // failedStage は、アラームの呼び出しごとのログに出す失敗した呼び出し。
 // providerError は、Sentry に包まずに送る、提供元の応答のエラーの内容
 export type EstimationAttemptOutcome =
-  | { result: "succeeded"; dishes: EstimatedDish[]; usage: EstimationAttemptUsage }
+  | {
+      result: "succeeded";
+      // 文章の食事では、1つ目の食事の料理
+      dishes: EstimatedDish[];
+      // 文章の食事の推定で、食事が1つ以上返ったときだけある
+      writtenMeals: EstimatedWrittenMeals | undefined;
+      usage: EstimationAttemptUsage;
+    }
   | {
       result: "timed_out" | "invalid_response";
       failedStage: "identify_dishes" | "match_ingredients";
@@ -18,3 +25,9 @@ export type EstimationAttemptOutcome =
       errorType: string;
       providerError: unknown;
     };
+
+// 文章の食事の推定が決めた、1つ目の食事の時刻と、時刻の違う2つめ以降の食事。時刻は範囲に収めたもの
+export type EstimatedWrittenMeals = {
+  eatenAt: Date;
+  laterMeals: { eatenAt: Date; dishes: EstimatedDish[] }[];
+};

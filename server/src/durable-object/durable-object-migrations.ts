@@ -5,6 +5,7 @@ import createAccountSettings from "../../durable-object-migrations/0004_create_a
 import createMealTables from "../../durable-object-migrations/0005_create_meal_tables.sql";
 import createNoticeAndUsualWeighingTimeTables from "../../durable-object-migrations/0006_create_notice_and_usual_weighing_time_tables.sql";
 import rebuildDishAndIngredientTables from "../../durable-object-migrations/0007_rebuild_dish_and_ingredient_tables.sql";
+import createSentTextAndReplyTables from "../../durable-object-migrations/0008_create_sent_text_and_reply_tables.sql";
 import type { DurableObjectMigration } from "./apply-durable-object-migrations";
 
 // 版の順に並べる。SQL は ../../durable-object-migrations/ に置き、import で読む
@@ -16,4 +17,5 @@ export const durableObjectMigrations: readonly DurableObjectMigration[] = [
   { version: 5, sql: createMealTables },
   { version: 6, sql: createNoticeAndUsualWeighingTimeTables },
   { version: 7, sql: rebuildDishAndIngredientTables },
+  { version: 8, sql: createSentTextAndReplyTables },
 ];

@@ -1,3 +1,5 @@
+import type { DayOfWeek } from "../../domain/day-of-week";
+import type { TokenUsage } from "../../domain/token-usage";
 import type { R } from "@praha/byethrow";
 import type { NutrientName } from "../../domain/food-composition/nutrient-name";
 import type { EstimationProviderBadRequestError } from "./estimation-provider-bad-request-error";
@@ -14,6 +16,17 @@ export type EstimationProvider = {
     signal: AbortSignal,
   ) => R.ResultAsync<
     EstimationProviderReply<IdentifiedDishes>,
+    | EstimationProviderError
+    | EstimationProviderBadRequestError
+    | EstimationProviderTimedOutError
+    | EstimationProviderInvalidResponseError
+  >;
+  // 文章の食事の ①。写真の代わりに送った文章を渡し、時刻の違う食事ごとに、日時と料理と材料を読み取る
+  identifyWrittenMeals: (
+    request: WrittenMealsRequest,
+    signal: AbortSignal,
+  ) => R.ResultAsync<
+    EstimationProviderReply<IdentifiedWrittenMeals>,
     | EstimationProviderError
     | EstimationProviderBadRequestError
     | EstimationProviderTimedOutError
@@ -44,13 +57,26 @@ export type DishToReestimate = {
   correctedQuantity: { value: number; unit: string } | undefined;
 };
 
+// 文章の食事の ① に渡すもの（#419 の「文章の食事」）。日時と曜日は、推定する時点でなく送った時刻の、送ったときのタイムゾーンでのもの
+export type WrittenMealsRequest = {
+  body: string;
+  sentAt: { localDateTime: LocalDateTime; dayOfWeek: DayOfWeek };
+};
+
+// タイムゾーンでの日時（YYYY-MM-DDTHH:mm）
+export type LocalDateTime = string;
+
+// 文章の食事の ① の応答。食事の並びで、食べたものが書かれていなければ 0 件。
+// eatenAt は送ったときのタイムゾーンでの日時。文章に書かれていたかは返させず、範囲はドメイン層が確かめる
+export type IdentifiedWrittenMeals = {
+  meals: readonly { eatenAt: LocalDateTime; dishes: IdentifiedDishes["dishes"] }[];
+};
+
 export type EstimationProviderReply<TOutput> = {
   output: TOutput;
   // 呼び出しで実際に使ったトークン
   usage: TokenUsage;
 };
-
-export type TokenUsage = { inputTokens: number; outputTokens: number };
 
 // ① の応答。料理が写っていない・見分けられないときは料理が 0 件
 export type IdentifiedDishes = {

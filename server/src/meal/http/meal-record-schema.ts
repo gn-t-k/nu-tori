@@ -10,6 +10,9 @@ export const mealRecordSchema = z
     sentTimeZone: z.string().openapi({ example: "Asia/Tokyo" }),
     entryMethod: z.string().openapi({ example: "captured" }),
     photos: z.array(z.object({ id: z.string() })).openapi({ description: "写真の並び順" }),
+    sentTextId: z.string().optional().openapi({
+      description: "文章の食事なら、作った送った文章の ID。写真の食事には無い",
+    }),
   })
   .openapi({
     description:

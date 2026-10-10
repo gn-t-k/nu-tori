@@ -21,5 +21,7 @@ public struct RejectedWrite: Sendable, Equatable {
         case meal(Meal)
         /// 食事の時刻・料理・材料の書き込み。置き場は1行が決める（`RejectedMealLine.placement(in:)`）
         case mealEdit(RejectedMealLine)
+        /// 送った文章の書き込み。置き場は1行が決める（`RejectedSentTextLine.placement`）
+        case sentText(RejectedSentTextLine)
     }
 }

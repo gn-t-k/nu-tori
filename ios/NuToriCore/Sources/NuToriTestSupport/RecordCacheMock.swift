@@ -2,7 +2,7 @@ public import Foundation
 public import NuToriCore
 import Synchronization
 
-/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
+/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向、送った文章、送った文章の状態、返事を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
 /// 同期の働きの単体テストで、アプリの SwiftData のキャッシュの代わりに使う
 public final class RecordCacheMock: Sendable {
     public init() {}
@@ -50,6 +50,49 @@ public final class RecordCacheMock: Sendable {
 
     public var weightTrend: WeightTrend? {
         storage.withLock { $0.weightTrend }
+    }
+
+    /// 送った文章の ID ごとの送った文章
+    public var sentTexts: [UUID: SentText] {
+        storage.withLock { $0.sentTexts }
+    }
+
+    /// 送った文章の ID ごとの状態。送った文章がまだ無くても置く
+    public var sentTextStatuses: [UUID: SentTextStatus] {
+        storage.withLock { $0.sentTextStatuses }
+    }
+
+    /// 返事の ID ごとの返事。送った文章がまだ無くても置く
+    public var aiUtterances: [UUID: AiUtterance] {
+        storage.withLock { $0.aiUtterances }
+    }
+
+    public func upsert(_ sentText: SentText) {
+        storage.withLock { $0.sentTexts[sentText.id] = sentText }
+    }
+
+    public func remove(sentTextId: UUID) {
+        storage.withLock { $0.sentTexts[sentTextId] = nil }
+    }
+
+    public func clearSentTexts() {
+        storage.withLock { $0.sentTexts = [:] }
+    }
+
+    public func write(_ status: SentTextStatus, forSentTextId sentTextId: UUID) {
+        storage.withLock { $0.sentTextStatuses[sentTextId] = status }
+    }
+
+    public func clearSentTextStatuses() {
+        storage.withLock { $0.sentTextStatuses = [:] }
+    }
+
+    public func upsert(_ utterance: AiUtterance) {
+        storage.withLock { $0.aiUtterances[utterance.id] = utterance }
+    }
+
+    public func clearAiUtterances() {
+        storage.withLock { $0.aiUtterances = [:] }
     }
 
     public func upsert(_ notice: Notice) {
@@ -178,6 +221,9 @@ public final class RecordCacheMock: Sendable {
         var notices: [UUID: Notice] = [:]
         var usualWeighingTime: UsualWeighingTime?
         var weightTrend: WeightTrend?
+        var sentTexts: [UUID: SentText] = [:]
+        var sentTextStatuses: [UUID: SentTextStatus] = [:]
+        var aiUtterances: [UUID: AiUtterance] = [:]
         var appliedCounts: [RecordKindName: Int] = [:]
     }
 

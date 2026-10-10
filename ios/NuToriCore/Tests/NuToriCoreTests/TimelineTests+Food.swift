@@ -22,7 +22,7 @@ extension TimelineTests {
                                 eatenAt: "2026-09-23T19:40:00+09:00",
                                 sentAt: "2026-09-24T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
-                        ], notices: []),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -54,7 +54,7 @@ extension TimelineTests {
                                 eatenAt: "2026-09-22T19:40:00+09:00",
                                 sentAt: "2026-09-23T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
-                        ], notices: []),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 23)
                 )
@@ -81,7 +81,7 @@ extension TimelineTests {
                                 eatenAt: "2026-09-24T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients),
                             try .fixture(eatenAt: "2026-09-24T12:00:00+09:00", status: .estimating),
-                        ], notices: []),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -109,7 +109,7 @@ extension TimelineTests {
                             try .fixture(
                                 eatenAt: "2026-09-24T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
-                        ], notices: []),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )

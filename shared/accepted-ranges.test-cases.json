@@ -45,5 +45,11 @@
     { "name": "前後の空白を除いて 1 文字", "value": 1, "accepted": true },
     { "name": "空か空白だけ（前後の空白を除いて 0 文字）", "value": 0, "accepted": false },
     { "name": "前後の空白を除いて 40 文字", "value": 40, "accepted": true }
+  ],
+  "sentTextBodyTrimmedLength": [
+    { "name": "前後の空白を除いて 1 字", "value": 1, "accepted": true },
+    { "name": "空か空白だけ（前後の空白を除いて 0 字）", "value": 0, "accepted": false },
+    { "name": "上限の 500 字", "value": 500, "accepted": true },
+    { "name": "上限より 1 字多い 501 字", "value": 501, "accepted": false }
   ]
 }

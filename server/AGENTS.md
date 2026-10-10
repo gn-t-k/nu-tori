@@ -11,6 +11,8 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - Workers で動かないライブラリが要る処理が出たら、その部分だけ別の基盤に置く
 - 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（使う環境に。本番だけの値は本番だけ）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の秘密の値を足すときは `docs/agents/tooling.md` を読む
 - 推定の提供元（Anthropic）の API キーは、秘密の値 `ANTHROPIC_API_KEY` に置く。環境ごとの Anthropic のワークスペース（開発用は `nu-tori-development`、本番は `nu-tori-production`）のキーを、それぞれの環境に置く。`wrangler.jsonc` の `secrets.required` には両方の環境に書き、テストの値は `vitest.config.ts` にある（テストは提供元を偽物に差し替えるので、この値は本物に届かない）
+- 読み分け（Claude Haiku 5.5。#423 で決めた）も、推定と同じワークスペースの `ANTHROPIC_API_KEY` で呼ぶ。費用の上限はワークスペースの月の上限で、本番は前払いのクレジットが上限になる。尽きるとすべての文章が会話になるので、読み分けの呼び出しの失敗を Sentry に送り、急増で知らせる
+- Workers AI のつなぎ（`ai` の binding）と、環境ごとの AI Gateway は置いていない（#422 で作ったゲートウェイは、読み分けを Haiku 5.5 にしたので消す。#446）。Workers AI を呼ぶようになったら、両方の環境に `ai` のつなぎを書き、ルートの `AGENTS.md` のとおり環境ごとのゲートウェイを作って通し、そのときゲートウェイの設定（支出の上限、ログ、認証）をここに書く。ゲートウェイを名指さずに呼ぶと、ログがオンの `default` のゲートウェイができる
 
 ## 確かめのジョブのためのサインインの口
 
@@ -25,7 +27,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 層
 
 - 置き場: HTTP の受け口は `src/http/`、Durable Object は `src/durable-object/`、ドメイン層は `src/domain/`、認証（Better Auth と、Apple の API への入出力）は `src/auth/`、観測（Sentry の設定と、PostHog の API への入出力）は `src/observability/`
-- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/dish-estimation-status/`、`src/ingredient/`、`src/notice/`、`src/usual-weighing-time/`、`src/weight-trend/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
+- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/dish-estimation-status/`、`src/ingredient/`、`src/notice/`、`src/usual-weighing-time/`、`src/weight-trend/`、`src/sent-text/`、`src/sent-text-status/`、`src/ai-utterance/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/`、返事の流れと、読み分けと返事の提供元は `src/reply/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
 - 層は oxlint の `no-restricted-imports`（`.oxlintrc.json` の `overrides`）で守る。`src/domain/` と `src/<種類>/domain/` からは、受け口（`http`）、Durable Object（`durable-object`）、`cloudflare:*`、`hono` を import できない。import の文字列だけを見るので、別名の import を使い始めたら dependency-cruiser を考える
 - 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
@@ -75,6 +77,21 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - アラームの中は受け口の要求ごとのログを通らないので、アラームが呼び出しごとに `route: "alarm"` のログを出す（試みごとの結果・失敗した段・提供元のエラーの種類）
 - 推定のテストは、`src/estimation/http/testing/use-fake-clock.ts` で Date だけを先の時刻にして、アラームがひとりでに動かないようにし、`runDurableObjectAlarm` で動かす。やり直しは時計を進めてから動かす
 
+## 読み分け
+
+- 読み分けはアラームで進める。入口は `src/sent-text/domain/classify-sent-texts.ts`: 読み分けを待っている文章（読み分けの行が無い）を送った時刻の順に1つずつ提供元に読ませ、1つのトランザクションで読み分けの結果と送った文章の状態の変更を書く。食事なら文章の食事（入口 `written`、時刻は送った時刻、`sent_text_meals` に文章を持つ）を作って推定の予定に入れ、会話・決めかねる・呼び出しの失敗なら会話にして返事の依頼（きっかけ: 読み分け）を書く。`runAccountAlarm` は推定より先に読み分けるので、文章の食事の推定は同じアラームで始まる
+- 読み分けは試みの行を持たず、やり直さない。呼んでいるあいだに止まった文章は行が無いまま残り、次のアラームで読み直す。読み分け待ちの文章があれば、次のアラームの時刻はその文章を受け取った時刻（過ぎているので、すぐ動く）
+- 読み分けと返事の提供元（LLM）は、ドメイン層の型 `ConversationProvider`（`src/reply/domain/conversation-provider.ts`）を、`src/reply/durable-object/create-conversation-provider/` が作る。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（食事・会話・決めかねると返事は `mockCreateConversationProviderOk`、読み分けか返事の呼び出しの失敗は `mockCreateConversationProviderError` の `failingCall`）。本物は Anthropic の API（推定と同じく SDK の再試行は切る）で、`create-anthropic-conversation-provider.ts` が組む。読み分けは Claude Haiku 5.5（要求は `create-haiku-classification-request.ts`、基準の文面は `classification-criteria.ts`。どれも評価 `server/evals/classify` で確かめたので、変えたら回し直す）に、思考を切り、`metadata.user_id` にアカウント ID の SHA-256 を入れ、構造化出力で「食事」「会話」「決めかねる」の1つを答えさせる。呼び出し1回の時間の上限は 30 秒。失敗はどれも会話になるので `ConversationProviderError` の `errorType` で分けるだけにする（応答のエラーの種類、無ければ `http_<状態コード>`、つなげなければ `connection_error`、時間切れは `timed_out`、出力の上限で切れた・答えなかった・読めないは `invalid_response`）。提供元そのものは、推定と同じく SDK の `fetch` を差し替えて確かめる。返事の提供元は下の「返事」
+
+## 返事
+
+- 返事はアラームで進める（`runAccountAlarm` が読み分け・推定のあとに呼ぶ）。入口は `src/reply/domain/advance-replies.ts`: 待っている依頼から返事の生成を始めて試みを書き（`begin-reply-attempts.ts`）、応える文章の送った順に1つずつ文脈を読んで提供元を呼び（`run-reply-attempt.ts`。先に作った返事をあとの文章の窓に入れるため並べない）、結果を書く（`record-reply-attempt-outcome.ts`）。次に試みる時刻は推定と同じ式（`src/domain/compute-next-attempt-at.ts`）で、試みの時間の上限は `reply-attempt-time-limit-ms.ts`
+- 返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・返事・作れなかった）は、返事の書き込みの口（`src/reply/domain/write-reply-events.ts`）を通して書く。口は、表で守らない決まり（依頼は会話と読み分けた文章にだけ、回数切れと生成・返事と作れなかったはどちらか1つ）を書く前に確かめて投げ、書く前とあとで送った文章の状態を比べて変わった文章にだけ状態の変更を、返事を書いたら返事の変更を足す。依頼ときっかけのサブセットは、口の `request` で一緒に書く（きっかけは依頼の型の `trigger` で1つ）
+- 回数は1日 `maximumDailyReplyGenerations`（20）。生成を始めるときに、依頼の数える日の生成を数え、上限なら提供元を呼ばずに回数切れにする（翌日に回さない）。テストは `src/reply/http/testing/insert-counted-reply-requests.ts` で回数を満たす
+- 指し示す食事は、文脈で ID を付けた食事（今日と昨日の食事、記録の印の食事）のうち在るものだけを通し、ほかは読めない応答にしてやり直す
+- 返事の本物の提供元は Claude Sonnet 5.5 を流す形で呼ぶ（`generate-reply-with-sonnet.ts`）。要求は `create-sonnet-reply-request.ts`（指示を system に、文脈の窓・記録の値・新しい発言の文の塊をユーザーのメッセージに並べ、窓のあとにキャッシュの印。思考は `thinking: { type: "between_tools" }` で切る。Sonnet 5.5 は `disabled` を 400 で断る）、指示の文面は `reply-instructions.ts`（評価 `server/evals/reply` の 30 場面で確かめた。指示・文脈の文面・要求を変えたら `pnpm run evals:reply` を回し直し、すべて通るまで直す）、答えは構造化出力の `{ body, mealIds }`。流れてきた JSON から本文のできた分だけを読み（`read-streamed-reply-body.ts`）`onText` に渡す。時間の上限は試みの signal だけ。400 は状態コードで見分けて 400 の失敗、出力の上限で切れた・答えなかった・形が違うは読めない応答、流れが終わりの出来事なしに閉じたら提供元のエラー（`stream_ended`）。提供元そのものは SDK の `fetch` を差し替え、流す応答は `testing/reply-with-text-stream.ts` で作って確かめる
+- 見守る要求（`GET /v1/sent-texts/{sentTextId}/reply-stream`）は、Durable Object の RPC が返す SSE のバイトの流れを、受け口の Worker がそのまま `text/event-stream` で返す。つないでいる要求と、試みが流している途中の文は、Durable Object の実体のメモリ（`src/reply/domain/create-reply-watchers.ts`）にだけ持ち、記録に残さない。返事はアラームが作るので、端末が切れても最後まで作る。提供元は `generateReply` の `onText` に本文のできた分を渡し、アラームは読み分け・生成の開始・試みの結果のあとに `refresh` で結果を送る。出来事の形は `src/http/reply-stream-routes/reply-stream-event-schema.ts`
+
 ## 成分表のデータファイル
 
 - 成分表のデータファイル（`src/domain/food-composition/food-composition-table.json`）は、文部科学省の本表の Excel から `scripts/build-food-composition-table.ts` が作る。手で書き換えず、成分表の版を上げるときや読み方を直したときに、`server/` で `pnpm exec tsx scripts/build-food-composition-table.ts` を回して作り直す。出典はファイルの `source`
@@ -95,6 +112,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - Drizzle の宣言は、今の表の形に合わせて手で書く。記録の種類の表は `src/<種類>/durable-object/` に、帳簿の表と種類をまたぐ表は `src/durable-object/` に置き、全部を `durable-object-tables.ts` に集める。宣言は1ファイル1つの表の束を export する。移行を足すときは、SQL と宣言の両方を書く
 - 食事の仕様（#188）の表の置き場: 食事とその削除の印は `src/meal/durable-object/meal-tables.ts`、写真（宣言、ファイルの受け取りと R2 から消した事実、宣言の削除の印）は同じフォルダの `meal-photo-tables.ts`、推定の出来事（予定・つなぎ・見送り・推定・試み・結果・完了・断念）は `src/estimation/durable-object/estimation-tables.ts`、料理は `src/dish/durable-object/dish-tables.ts`、材料と出どころのサブセットと栄養の値は `src/ingredient/durable-object/ingredient-tables.ts`。推定の出来事は記録の種類ではないので `src/estimation/` に別に置く。表を足すときは、親の表の束を import して外部キーを張る
 - 食事を直す仕様（#332）の表の置き場: 当てた推定・推定の量・料理の名前と量の修正・比例の明細・料理が対象の予定のつなぎ・料理の削除の印は `dish-tables.ts`、材料の量の修正と材料の削除の印は `ingredient-tables.ts`、食事の時刻の修正は `meal-tables.ts`、予定の取り消しは `estimation-tables.ts`。表の束が互いを指す（料理 ↔ 材料、料理 ↔ 推定の出来事）ところは、指し返すほうの `references` に `(): AnySQLiteColumn =>` と型を書き、型の推論の循環を切る
+- 文章と会話の仕様（#419）の表の置き場: 送った文章・読み分け・会話として送り直し・送り直し・会話として送り直しで消した食事の削除の印と、文章の食事のサブセット（文章の食事・推定が作った食事・推定した時刻）は `src/sent-text/durable-object/sent-text-tables.ts`、返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・作れなかった）は `src/reply/durable-object/reply-tables.ts`、返事と指し示す食事は `src/ai-utterance/durable-object/ai-utterance-tables.ts`。返事の流れは記録の種類ではないので、推定と同じく `src/reply/` に別に置く
 - 置き場の実装のクエリは Drizzle で書く。`sql.raw()` と、自分で文字列を組み立てる SQL は使わない（`sql` のテンプレートに列を渡すのはよい）。DB から読んだ区分の文字列は、宣言の `text({ enum })` から導いた型で受け、読み戻す関数を書かない
 - 宣言と移行がずれていないかは、`src/durable-object/durable-object-tables.test.ts` が、移行を当てた DB の実際の列（`pragma_table_info`）と宣言（`getTableConfig`）を比べて確かめる。比べる関数は `src/testing/find-table-declaration-mismatches.ts`（表と実際の列を渡すと、ずれの説明を返す。D1 の表にも使う）。表の宣言に無い表が DB にあっても落ちる
 - 置き場のテストの行は `@praha/drizzle-factory` で作る（`src/durable-object/testing/durable-object-factory.ts`）。`create()` は Promise を返すので、テストで `await` して使い、同期の `transactionSync` の中では使わない。`drizzle(storage, { schema: durableObjectTables })` の `schema` を渡した db を factory に渡す

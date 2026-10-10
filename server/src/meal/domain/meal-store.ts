@@ -3,7 +3,7 @@ import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { Meal } from "./meal";
 
 export type MealStore = {
-  // 時刻は今の時刻（受け取った順でいちばんあとの修正。無ければ作ったときの時刻）
+  // 時刻は今の時刻（受け取った順でいちばんあとの修正。無ければ推定した時刻、それも無ければ作ったときの時刻）
   find: (id: RecordId) => Meal | undefined;
   hasDeletion: (id: RecordId) => boolean;
   // 渡した写真の ID のうち、どれかの食事の写真の宣言か、写真の削除の印にあるもの
@@ -13,6 +13,8 @@ export type MealStore = {
     from: Date,
     to: Date,
   ) => Pick<Meal, "eatenAt" | "eatenAtUtcOffsetSeconds">[];
+  // 送った時刻か今の時刻が from 以降の食事（多めに返す。返事の文脈を読むのに使う）
+  findIdsSentOrEatenSince: (from: Date) => RecordId[];
   insert: (meal: Meal) => void;
   // 時刻の修正は書き込みの控えごとに足し、meals の時刻は書き換えない
   insertEatenAtCorrection: (receiptId: WriteReceiptId, eatenAt: Date) => void;

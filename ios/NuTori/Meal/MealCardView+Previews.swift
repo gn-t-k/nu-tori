@@ -7,6 +7,7 @@
         MealCardView(card: sample.card) { photoId in
             sample.holdsPhotos ? UIImage.sampleMealPhoto(for: photoId) : nil
         }
+        .modifier(OwnRecordCard())
         .frame(maxWidth: .infinity, alignment: .trailing)
         .padding()
         .background(Color(.systemGroupedBackground))

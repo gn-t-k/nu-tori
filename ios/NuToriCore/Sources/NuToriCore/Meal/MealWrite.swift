@@ -46,8 +46,10 @@ public enum MealWrite: PendingWriteBody {
         let eatenUtcOffsetSeconds: Int
         let sentAt: Date
         let sentTimeZoneIdentifier: String
-        /// `captured` か `picked`
+        /// `Meal.Entry.storedName`
         let entry: String
+        /// 文章の食事だけが持つ。キーが無い前の版の送り待ちも読める
+        let sentTextId: UUID?
         let photoIds: [UUID]
 
         init(_ meal: Meal) {
@@ -56,13 +58,14 @@ public enum MealWrite: PendingWriteBody {
             eatenUtcOffsetSeconds = meal.eatenUtcOffsetSeconds
             sentAt = meal.sentAt
             sentTimeZoneIdentifier = meal.sentTimeZone.identifier
-            entry = meal.entry.rawValue
+            entry = meal.entry.storedName
+            sentTextId = meal.sentTextId
             photoIds = meal.photoIds
         }
 
         func meal() -> Meal? {
             guard let sentTimeZone = TimeZone(identifier: sentTimeZoneIdentifier),
-                let mealEntry = MealDraft.Entry(rawValue: entry)
+                let mealEntry = Meal.Entry(storedName: entry, sentTextId: sentTextId)
             else {
                 return nil
             }

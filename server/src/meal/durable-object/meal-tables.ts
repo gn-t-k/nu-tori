@@ -11,7 +11,7 @@ const meals = sqliteTable(
     eatenAtUtcOffsetSeconds: integer("eaten_at_utc_offset_seconds").notNull(),
     sentAt: integer("sent_at", { mode: "timestamp_ms" }).notNull(),
     sentTimeZone: text("sent_time_zone").notNull(),
-    entryMethod: text("entry_method", { enum: ["captured", "picked"] }).notNull(),
+    entryMethod: text("entry_method", { enum: ["captured", "picked", "written"] }).notNull(),
   },
   (table) => [index("meals_eaten_at").on(table.eatenAt)],
 );

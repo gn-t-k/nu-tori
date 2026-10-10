@@ -8,12 +8,15 @@ extension SyncChange {
         switch self {
         case .weightRecord, .weightRecordDeletion: .weightRecord
         case .accountSettings: .accountSettings
+        case .aiUtterance: .aiUtterance
         case .dish, .dishDeletion: .dish
         case .dishEstimationStatus, .dishEstimationStatusDeletion: .dishEstimationStatus
         case .ingredient, .ingredientDeletion: .ingredient
         case .meal, .mealDeletion: .meal
         case .mealEstimationStatus, .mealEstimationStatusDeletion: .mealEstimationStatus
         case .notice, .noticeRemoval: .notice
+        case .sentText, .sentTextRemoval: .sentText
+        case .sentTextStatus: .sentTextStatus
         case .usualWeighingTime: .usualWeighingTime
         case .weightTrend, .weightTrendAbsence: .weightTrend
         case .unknown: nil

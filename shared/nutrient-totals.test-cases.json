@@ -1,0 +1,125 @@
+[
+  {
+    "name": "材料が無い",
+    "ingredients": [],
+    "totals": {
+      "energy_kcal": { "type": "exactly", "value": 0 },
+      "protein_g": { "type": "exactly", "value": 0 }
+    }
+  },
+  {
+    "name": "成分表の材料の値がすべて分かる",
+    "ingredients": [
+      {
+        "quantity": 150,
+        "edibleGramsPerUnit": 1,
+        "nutrientSource": { "type": "food_composition", "foodNumber": "11221" },
+        "nutrients": { "energy_kcal": 200, "protein_g": 20 }
+      },
+      {
+        "quantity": 2,
+        "edibleGramsPerUnit": 50,
+        "nutrientSource": { "type": "estimated" },
+        "nutrients": { "energy_kcal": 100, "protein_g": 4 }
+      }
+    ],
+    "totals": {
+      "energy_kcal": { "type": "exactly", "value": 400 },
+      "protein_g": { "type": "exactly", "value": 34 }
+    }
+  },
+  {
+    "name": "栄養成分表示の材料は表示の単位の可食部の g を基準にする",
+    "ingredients": [
+      {
+        "quantity": 3,
+        "edibleGramsPerUnit": 25,
+        "nutrientSource": { "type": "nutrition_label", "labelBasisGrams": 50 },
+        "nutrients": { "energy_kcal": 120, "salt_equivalent_g": 0.5 }
+      }
+    ],
+    "totals": {
+      "energy_kcal": { "type": "exactly", "value": 180 },
+      "salt_equivalent_g": { "type": "exactly", "value": 0.75 }
+    }
+  },
+  {
+    "name": "不明の材料が混じる",
+    "ingredients": [
+      {
+        "quantity": 100,
+        "edibleGramsPerUnit": 1,
+        "nutrientSource": { "type": "estimated" },
+        "nutrients": { "energy_kcal": 200, "fiber_g": 3 }
+      },
+      {
+        "quantity": 100,
+        "edibleGramsPerUnit": 1,
+        "nutrientSource": { "type": "estimated" },
+        "nutrients": { "energy_kcal": 100 }
+      }
+    ],
+    "totals": {
+      "energy_kcal": { "type": "exactly", "value": 300 },
+      "fiber_g": { "type": "at_least", "value": 3 }
+    }
+  },
+  {
+    "name": "すべての材料が不明",
+    "ingredients": [
+      {
+        "quantity": 100,
+        "edibleGramsPerUnit": 1,
+        "nutrientSource": { "type": "estimated" },
+        "nutrients": { "energy_kcal": 200 }
+      },
+      {
+        "quantity": 100,
+        "edibleGramsPerUnit": 1,
+        "nutrientSource": { "type": "estimated" },
+        "nutrients": { "energy_kcal": 100 }
+      }
+    ],
+    "totals": {
+      "energy_kcal": { "type": "exactly", "value": 300 },
+      "fiber_g": { "type": "unknown" }
+    }
+  },
+  {
+    "name": "値が 0 の材料と不明の材料が混じる",
+    "ingredients": [
+      {
+        "quantity": 100,
+        "edibleGramsPerUnit": 1,
+        "nutrientSource": { "type": "estimated" },
+        "nutrients": { "fiber_g": 0 }
+      },
+      {
+        "quantity": 100,
+        "edibleGramsPerUnit": 1,
+        "nutrientSource": { "type": "estimated" },
+        "nutrients": {}
+      }
+    ],
+    "totals": {
+      "fiber_g": { "type": "at_least", "value": 0 }
+    }
+  },
+  {
+    "name": "材料の kcal が P・F・C から出す値と食い違う",
+    "ingredients": [
+      {
+        "quantity": 100,
+        "edibleGramsPerUnit": 1,
+        "nutrientSource": { "type": "food_composition", "foodNumber": "16001" },
+        "nutrients": { "energy_kcal": 100, "protein_g": 10, "fat_g": 5, "carbohydrate_g": 20 }
+      }
+    ],
+    "totals": {
+      "energy_kcal": { "type": "exactly", "value": 100 },
+      "protein_g": { "type": "exactly", "value": 10 },
+      "fat_g": { "type": "exactly", "value": 5 },
+      "carbohydrate_g": { "type": "exactly", "value": 20 }
+    }
+  }
+]

@@ -9,8 +9,10 @@ nonisolated final class CachedMeal {
     var eatenUtcOffsetSeconds: Int
     var sentAt: Date
     var sentTimeZoneIdentifier: String
-    /// `captured` か `picked`
+    /// `Meal.Entry.storedName`
     var entry: String
+    /// 文章の食事だけが持つ
+    var sentTextId: UUID?
     /// 写真の並び順
     var photoIds: [UUID]
 
@@ -20,7 +22,8 @@ nonisolated final class CachedMeal {
         eatenUtcOffsetSeconds = meal.eatenUtcOffsetSeconds
         sentAt = meal.sentAt
         sentTimeZoneIdentifier = meal.sentTimeZone.identifier
-        entry = meal.entry.rawValue
+        entry = meal.entry.storedName
+        sentTextId = meal.sentTextId
         photoIds = meal.photoIds
     }
 
@@ -30,13 +33,14 @@ nonisolated final class CachedMeal {
         eatenUtcOffsetSeconds = meal.eatenUtcOffsetSeconds
         sentAt = meal.sentAt
         sentTimeZoneIdentifier = meal.sentTimeZone.identifier
-        entry = meal.entry.rawValue
+        entry = meal.entry.storedName
+        sentTextId = meal.sentTextId
         photoIds = meal.photoIds
     }
 
     func meal() -> Meal? {
         guard let sentTimeZone = TimeZone(identifier: sentTimeZoneIdentifier),
-            let mealEntry = MealDraft.Entry(rawValue: entry)
+            let mealEntry = Meal.Entry(storedName: entry, sentTextId: sentTextId)
         else {
             return nil
         }

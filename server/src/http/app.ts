@@ -8,6 +8,7 @@ import { healthRoutes } from "./health-routes";
 import { mealPhotoRoutes } from "./meal-photo-routes";
 import { observeRequest } from "./observe-request";
 import { rejectUnsupportedAppBuild } from "./reject-unsupported-app-build";
+import { replyStreamRoutes } from "./reply-stream-routes";
 import { sessionRoutes } from "./session-routes";
 import { syncRoutes } from "./sync-routes";
 
@@ -23,6 +24,7 @@ app
   .route("/", accountRoutes)
   .route("/", syncRoutes)
   .route("/", mealPhotoRoutes)
+  .route("/", replyStreamRoutes)
   .route("/", appleServerNotificationRoutes);
 
 app.openAPIRegistry.registerComponent("securitySchemes", "session", {

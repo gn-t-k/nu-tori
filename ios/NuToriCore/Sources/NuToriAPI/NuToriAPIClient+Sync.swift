@@ -147,7 +147,7 @@ extension Components.Schemas.SyncWrite {
                         eatenAtUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
                         sentAt: meal.sentAt.millisecondsSince1970,
                         sentTimeZone: meal.sentTimeZone.identifier,
-                        entryMethod: meal.entryMethod.rawValue,
+                        entryMethod: meal.entryMethod.wireName,
                         photos: meal.photoIds.map { .init(id: $0.canonicalString) }
                     )
                 )
@@ -229,6 +229,35 @@ extension Components.Schemas.SyncWrite {
                         respondedAt: response.respondedAt.millisecondsSince1970,
                         timeZone: response.timeZone.identifier
                     )
+                )
+            )
+        case .createSentText(let writeId, let sentText):
+            self = .createSentText(
+                .init(
+                    id: writeId.canonicalString,
+                    _type: .createSentText,
+                    sentText: .init(
+                        id: sentText.id.canonicalString,
+                        body: sentText.body,
+                        sentAt: sentText.sentAt.millisecondsSince1970,
+                        timeZone: sentText.timeZone.identifier
+                    )
+                )
+            )
+        case .resendSentTextAsConversation(let writeId, let sentTextId):
+            self = .resendSentTextAsConversation(
+                .init(
+                    id: writeId.canonicalString,
+                    _type: .resendSentTextAsConversation,
+                    sentTextId: sentTextId.canonicalString
+                )
+            )
+        case .resendSentText(let writeId, let sentTextId):
+            self = .resendSentText(
+                .init(
+                    id: writeId.canonicalString,
+                    _type: .resendSentText,
+                    sentTextId: sentTextId.canonicalString
                 )
             )
         }
@@ -330,6 +359,8 @@ extension SyncWriteResult.RejectionReason {
         case "invalid_target_on": self = .invalidTargetOn
         case "ingredients_replaced": self = .ingredientsReplaced
         case "awaiting_estimation": self = .awaitingEstimation
+        case "not_classified_as_meal": self = .notClassifiedAsMeal
+        case "reply_not_failed": self = .replyNotFailed
         default: self = .unknown(reason: reason)
         }
     }
@@ -363,6 +394,12 @@ extension SyncChange {
                 .syncedWeightRecord
             {
                 self = .weightRecord(record)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "ai_utterance":
+            if let utterance = try? record.decoded(as: AiUtterancePayload.self).syncedAiUtterance {
+                self = .aiUtterance(utterance)
             } else {
                 self = .unknown(kind: kind)
             }
@@ -447,6 +484,18 @@ extension SyncChange {
         case "notice":
             if let notice = try? record.decoded(as: NoticePayload.self).syncedNotice {
                 self = .notice(notice)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "sent_text":
+            if let sentText = try? record.decoded(as: SentTextPayload.self).syncedSentText {
+                self = .sentText(sentText)
+            } else {
+                self = .unknown(kind: kind)
+            }
+        case "sent_text_status":
+            if let status = try? record.decoded(as: SentTextStatusPayload.self).syncedStatus {
+                self = .sentTextStatus(status)
             } else {
                 self = .unknown(kind: kind)
             }

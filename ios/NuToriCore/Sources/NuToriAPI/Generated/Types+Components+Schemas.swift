@@ -18,12 +18,15 @@ extension Components {
         /// - Remark: Generated from `#/components/schemas/RecordKindName`.
         internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
             case accountSettings = "account_settings"
+            case aiUtterance = "ai_utterance"
             case dish = "dish"
             case dishEstimationStatus = "dish_estimation_status"
             case ingredient = "ingredient"
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
             case notice = "notice"
+            case sentText = "sent_text"
+            case sentTextStatus = "sent_text_status"
             case usualWeighingTime = "usual_weighing_time"
             case weightRecord = "weight_record"
             case weightTrend = "weight_trend"
@@ -51,6 +54,49 @@ extension Components {
             internal enum CodingKeys: String, CodingKey {
                 case id
                 case sendsUsageData
+            }
+        }
+        /// kind が ai_utterance の変更の record。返事は消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord`.
+        internal struct AiUtteranceRecord: Codable, Hashable, Sendable {
+            /// 返事の生成の ID（見守る要求の最初に流す ID と同じ）
+            ///
+            /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord/body`.
+            internal var body: Swift.String
+            /// 応える送った文章の ID。時刻とタイムゾーンはこの文章のものを使う
+            ///
+            /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord/sentTextId`.
+            internal var sentTextId: Swift.String
+            /// 指し示す食事の ID。並びが返事の中の並び。食事が消えても残る
+            ///
+            /// - Remark: Generated from `#/components/schemas/AiUtteranceRecord/mealIds`.
+            internal var mealIds: [Swift.String]
+            /// Creates a new `AiUtteranceRecord`.
+            ///
+            /// - Parameters:
+            ///   - id: 返事の生成の ID（見守る要求の最初に流す ID と同じ）
+            ///   - body:
+            ///   - sentTextId: 応える送った文章の ID。時刻とタイムゾーンはこの文章のものを使う
+            ///   - mealIds: 指し示す食事の ID。並びが返事の中の並び。食事が消えても残る
+            internal init(
+                id: Swift.String,
+                body: Swift.String,
+                sentTextId: Swift.String,
+                mealIds: [Swift.String]
+            ) {
+                self.id = id
+                self.body = body
+                self.sentTextId = sentTextId
+                self.mealIds = mealIds
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case body
+                case sentTextId
+                case mealIds
             }
         }
         /// kind が dish の変更の record。消えたら kind が dish_deletion で record が空の変更が届く
@@ -423,6 +469,10 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/MealRecord/photos`.
             internal var photos: Components.Schemas.MealRecord.PhotosPayload
+            /// 文章の食事なら、作った送った文章の ID。写真の食事には無い
+            ///
+            /// - Remark: Generated from `#/components/schemas/MealRecord/sentTextId`.
+            internal var sentTextId: Swift.String?
             /// Creates a new `MealRecord`.
             ///
             /// - Parameters:
@@ -433,6 +483,7 @@ extension Components {
             ///   - sentTimeZone:
             ///   - entryMethod:
             ///   - photos: 写真の並び順
+            ///   - sentTextId: 文章の食事なら、作った送った文章の ID。写真の食事には無い
             internal init(
                 id: Swift.String,
                 eatenAt: Swift.Int,
@@ -440,7 +491,8 @@ extension Components {
                 sentAt: Swift.Int,
                 sentTimeZone: Swift.String,
                 entryMethod: Swift.String,
-                photos: Components.Schemas.MealRecord.PhotosPayload
+                photos: Components.Schemas.MealRecord.PhotosPayload,
+                sentTextId: Swift.String? = nil
             ) {
                 self.id = id
                 self.eatenAt = eatenAt
@@ -449,6 +501,7 @@ extension Components {
                 self.sentTimeZone = sentTimeZone
                 self.entryMethod = entryMethod
                 self.photos = photos
+                self.sentTextId = sentTextId
             }
             internal enum CodingKeys: String, CodingKey {
                 case id
@@ -458,6 +511,7 @@ extension Components {
                 case sentTimeZone
                 case entryMethod
                 case photos
+                case sentTextId
             }
         }
         /// kind が meal_estimation_status の変更の record。recordId は食事の ID。食事が消えたら kind が meal_estimation_status_deletion で record が空の変更が届く
@@ -563,6 +617,88 @@ extension Components {
                 case timeZone
                 case targetOn
                 case response
+            }
+        }
+        /// kind が sent_text の変更の record。送った文章は消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/SentTextRecord`.
+        internal struct SentTextRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SentTextRecord/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SentTextRecord/body`.
+            internal var body: Swift.String
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextRecord/sentAt`.
+            internal var sentAt: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/SentTextRecord/timeZone`.
+            internal var timeZone: Swift.String
+            /// Creates a new `SentTextRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - body:
+            ///   - sentAt: UNIX 時刻のミリ秒（UTC）
+            ///   - timeZone:
+            internal init(
+                id: Swift.String,
+                body: Swift.String,
+                sentAt: Swift.Int,
+                timeZone: Swift.String
+            ) {
+                self.id = id
+                self.body = body
+                self.sentAt = sentAt
+                self.timeZone = timeZone
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case body
+                case sentAt
+                case timeZone
+            }
+        }
+        /// kind が sent_text_status の変更の record。recordId は送った文章の ID
+        ///
+        /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord`.
+        internal struct SentTextStatusRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/sentTextId`.
+            internal var sentTextId: Swift.String
+            /// 読み分けの今の結果。pending（読み分けを待っている）・meal・conversation
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/classification`.
+            internal var classification: Swift.String
+            /// 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyStatus`.
+            internal var replyStatus: Swift.String
+            /// replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyFailureReason`.
+            internal var replyFailureReason: Swift.String?
+            /// Creates a new `SentTextStatusRecord`.
+            ///
+            /// - Parameters:
+            ///   - sentTextId:
+            ///   - classification: 読み分けの今の結果。pending（読み分けを待っている）・meal・conversation
+            ///   - replyStatus: 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）
+            ///   - replyFailureReason: replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）
+            internal init(
+                sentTextId: Swift.String,
+                classification: Swift.String,
+                replyStatus: Swift.String,
+                replyFailureReason: Swift.String? = nil
+            ) {
+                self.sentTextId = sentTextId
+                self.classification = classification
+                self.replyStatus = replyStatus
+                self.replyFailureReason = replyFailureReason
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case sentTextId
+                case classification
+                case replyStatus
+                case replyFailureReason
             }
         }
         /// kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない
@@ -874,12 +1010,18 @@ extension Components {
             case createMeal(Components.Schemas.CreateMealWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateNoticeWrite`.
             case createNotice(Components.Schemas.CreateNoticeWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateSentTextWrite`.
+            case createSentText(Components.Schemas.CreateSentTextWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/CreateWeightRecordWrite`.
             case createWeightRecord(Components.Schemas.CreateWeightRecordWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteDishWrite`.
             case deleteDish(Components.Schemas.DeleteDishWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteMealWrite`.
             case deleteMeal(Components.Schemas.DeleteMealWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/ResendSentTextWrite`.
+            case resendSentText(Components.Schemas.ResendSentTextWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/ResendSentTextAsConversationWrite`.
+            case resendSentTextAsConversation(Components.Schemas.ResendSentTextAsConversationWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/RespondNoticeWrite`.
             case respondNotice(Components.Schemas.RespondNoticeWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/SourceDeletedWeightRecordWrite`.
@@ -910,12 +1052,18 @@ extension Components {
                     self = .createMeal(try .init(from: decoder))
                 case "create_notice":
                     self = .createNotice(try .init(from: decoder))
+                case "create_sent_text":
+                    self = .createSentText(try .init(from: decoder))
                 case "create_weight_record":
                     self = .createWeightRecord(try .init(from: decoder))
                 case "delete_dish":
                     self = .deleteDish(try .init(from: decoder))
                 case "delete_meal":
                     self = .deleteMeal(try .init(from: decoder))
+                case "resend_sent_text":
+                    self = .resendSentText(try .init(from: decoder))
+                case "resend_sent_text_as_conversation":
+                    self = .resendSentTextAsConversation(try .init(from: decoder))
                 case "respond_notice":
                     self = .respondNotice(try .init(from: decoder))
                 case "source_deleted_weight_record":
@@ -946,11 +1094,17 @@ extension Components {
                     try value.encode(to: encoder)
                 case let .createNotice(value):
                     try value.encode(to: encoder)
+                case let .createSentText(value):
+                    try value.encode(to: encoder)
                 case let .createWeightRecord(value):
                     try value.encode(to: encoder)
                 case let .deleteDish(value):
                     try value.encode(to: encoder)
                 case let .deleteMeal(value):
+                    try value.encode(to: encoder)
+                case let .resendSentText(value):
+                    try value.encode(to: encoder)
+                case let .resendSentTextAsConversation(value):
                     try value.encode(to: encoder)
                 case let .respondNotice(value):
                     try value.encode(to: encoder)
@@ -1614,6 +1768,156 @@ extension Components {
                 case response
             }
         }
+        /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite`.
+        internal struct CreateSentTextWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case createSentText = "create_sent_text"
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/type`.
+            internal var _type: Components.Schemas.CreateSentTextWrite._TypePayload
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText`.
+            internal struct SentTextPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText/id`.
+                internal var id: Swift.String
+                /// 本文。前後の空白を除いて 1〜500 のコードポイント（範囲はサーバーのドメイン層で確かめる）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText/body`.
+                internal var body: Swift.String
+                /// 送る操作をした時刻。UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText/sentAt`.
+                internal var sentAt: Swift.Int
+                /// 送ったときのタイムゾーン（IANA 名）
+                ///
+                /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText/timeZone`.
+                internal var timeZone: Swift.String
+                /// Creates a new `SentTextPayload`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                ///   - body: 本文。前後の空白を除いて 1〜500 のコードポイント（範囲はサーバーのドメイン層で確かめる）
+                ///   - sentAt: 送る操作をした時刻。UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone: 送ったときのタイムゾーン（IANA 名）
+                internal init(
+                    id: Swift.String,
+                    body: Swift.String,
+                    sentAt: Swift.Int,
+                    timeZone: Swift.String
+                ) {
+                    self.id = id
+                    self.body = body
+                    self.sentAt = sentAt
+                    self.timeZone = timeZone
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case id
+                    case body
+                    case sentAt
+                    case timeZone
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CreateSentTextWrite/sentText`.
+            internal var sentText: Components.Schemas.CreateSentTextWrite.SentTextPayload
+            /// Creates a new `CreateSentTextWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - sentText:
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.CreateSentTextWrite._TypePayload,
+                sentText: Components.Schemas.CreateSentTextWrite.SentTextPayload
+            ) {
+                self.id = id
+                self._type = _type
+                self.sentText = sentText
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case sentText
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite`.
+        internal struct ResendSentTextAsConversationWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case resendSentTextAsConversation = "resend_sent_text_as_conversation"
+            }
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite/type`.
+            internal var _type: Components.Schemas.ResendSentTextAsConversationWrite._TypePayload
+            /// 食事と読み分けた送った文章。その文章から作った食事を消し、会話にする
+            ///
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite/sentTextId`.
+            internal var sentTextId: Swift.String
+            /// Creates a new `ResendSentTextAsConversationWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - sentTextId: 食事と読み分けた送った文章。その文章から作った食事を消し、会話にする
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.ResendSentTextAsConversationWrite._TypePayload,
+                sentTextId: Swift.String
+            ) {
+                self.id = id
+                self._type = _type
+                self.sentTextId = sentTextId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case sentTextId
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite`.
+        internal struct ResendSentTextWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case resendSentText = "resend_sent_text"
+            }
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite/type`.
+            internal var _type: Components.Schemas.ResendSentTextWrite._TypePayload
+            /// 返事を作れなかった・回数切れの送った文章。もう一度返事を作らせる
+            ///
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextWrite/sentTextId`.
+            internal var sentTextId: Swift.String
+            /// Creates a new `ResendSentTextWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - sentTextId: 返事を作れなかった・回数切れの送った文章。もう一度返事を作らせる
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.ResendSentTextWrite._TypePayload,
+                sentTextId: Swift.String
+            ) {
+                self.id = id
+                self._type = _type
+                self.sentTextId = sentTextId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case sentTextId
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite`.
         internal struct CreateWeightRecordWrite: Codable, Hashable, Sendable {
             /// 冪等の鍵
@@ -1916,6 +2220,259 @@ extension Components {
                 case kind
                 case recordId
                 case record
+            }
+        }
+        /// 見守る要求の出来事。閉じたら、どの出来事で閉じたかによらず、同期の取りに行くで記録を受け取る
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent`.
+        internal enum ReplyStreamEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/ClassifiedAsMealEvent`.
+            case classifiedAsMeal(Components.Schemas.ClassifiedAsMealEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/RepliedEvent`.
+            case replied(Components.Schemas.RepliedEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/ReplyFailedEvent`.
+            case replyFailed(Components.Schemas.ReplyFailedEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/ReplyHaltedEvent`.
+            case replyHalted(Components.Schemas.ReplyHaltedEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/ReplyStartedEvent`.
+            case replyStarted(Components.Schemas.ReplyStartedEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/TextDeltaEvent`.
+            case textDelta(Components.Schemas.TextDeltaEvent)
+            /// - Remark: Generated from `#/components/schemas/ReplyStreamEvent/TextDiscardedEvent`.
+            case textDiscarded(Components.Schemas.TextDiscardedEvent)
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+            internal init(from decoder: any Swift.Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                let discriminator = try container.decode(
+                    Swift.String.self,
+                    forKey: ._type
+                )
+                switch discriminator {
+                case "classified_as_meal":
+                    self = .classifiedAsMeal(try .init(from: decoder))
+                case "replied":
+                    self = .replied(try .init(from: decoder))
+                case "reply_failed":
+                    self = .replyFailed(try .init(from: decoder))
+                case "reply_halted":
+                    self = .replyHalted(try .init(from: decoder))
+                case "reply_started":
+                    self = .replyStarted(try .init(from: decoder))
+                case "text_delta":
+                    self = .textDelta(try .init(from: decoder))
+                case "text_discarded":
+                    self = .textDiscarded(try .init(from: decoder))
+                default:
+                    throw Swift.DecodingError.unknownOneOfDiscriminator(
+                        discriminatorKey: CodingKeys._type,
+                        discriminatorValue: discriminator,
+                        codingPath: decoder.codingPath
+                    )
+                }
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .classifiedAsMeal(value):
+                    try value.encode(to: encoder)
+                case let .replied(value):
+                    try value.encode(to: encoder)
+                case let .replyFailed(value):
+                    try value.encode(to: encoder)
+                case let .replyHalted(value):
+                    try value.encode(to: encoder)
+                case let .replyStarted(value):
+                    try value.encode(to: encoder)
+                case let .textDelta(value):
+                    try value.encode(to: encoder)
+                case let .textDiscarded(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// 返事の ID。返事の生成を始めたら最初に1度だけ送る。返事の記録（ai_utterance）の ID と同じで、試みをまたいで変わらない
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReplyStartedEvent`.
+        internal struct ReplyStartedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReplyStartedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case replyStarted = "reply_started"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyStartedEvent/type`.
+            internal var _type: Components.Schemas.ReplyStartedEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/ReplyStartedEvent/replyId`.
+            internal var replyId: Swift.String
+            /// Creates a new `ReplyStartedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            ///   - replyId:
+            internal init(
+                _type: Components.Schemas.ReplyStartedEvent._TypePayload,
+                replyId: Swift.String
+            ) {
+                self._type = _type
+                self.replyId = replyId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+                case replyId
+            }
+        }
+        /// 返事の本文のできた分。届いた順につなぐ。試みの途中からつないだときは、返事の ID のすぐあとに、ここまでにできた分をまとめて1つで送る
+        ///
+        /// - Remark: Generated from `#/components/schemas/TextDeltaEvent`.
+        internal struct TextDeltaEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TextDeltaEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case textDelta = "text_delta"
+            }
+            /// - Remark: Generated from `#/components/schemas/TextDeltaEvent/type`.
+            internal var _type: Components.Schemas.TextDeltaEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/TextDeltaEvent/text`.
+            internal var text: Swift.String
+            /// Creates a new `TextDeltaEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            ///   - text:
+            internal init(
+                _type: Components.Schemas.TextDeltaEvent._TypePayload,
+                text: Swift.String
+            ) {
+                self._type = _type
+                self.text = text
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+                case text
+            }
+        }
+        /// 流している途中で試みが失敗した。それまでにつないだ分を捨てる。次の試みで初めから流し直す
+        ///
+        /// - Remark: Generated from `#/components/schemas/TextDiscardedEvent`.
+        internal struct TextDiscardedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TextDiscardedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case textDiscarded = "text_discarded"
+            }
+            /// - Remark: Generated from `#/components/schemas/TextDiscardedEvent/type`.
+            internal var _type: Components.Schemas.TextDiscardedEvent._TypePayload
+            /// Creates a new `TextDiscardedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            internal init(_type: Components.Schemas.TextDiscardedEvent._TypePayload) {
+                self._type = _type
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+        }
+        /// 返事を記録に書いた。送ったあと閉じる
+        ///
+        /// - Remark: Generated from `#/components/schemas/RepliedEvent`.
+        internal struct RepliedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/RepliedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case replied = "replied"
+            }
+            /// - Remark: Generated from `#/components/schemas/RepliedEvent/type`.
+            internal var _type: Components.Schemas.RepliedEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/RepliedEvent/replyId`.
+            internal var replyId: Swift.String
+            /// Creates a new `RepliedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            ///   - replyId:
+            internal init(
+                _type: Components.Schemas.RepliedEvent._TypePayload,
+                replyId: Swift.String
+            ) {
+                self._type = _type
+                self.replyId = replyId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+                case replyId
+            }
+        }
+        /// 食事と読み分けた。送ったあと閉じる
+        ///
+        /// - Remark: Generated from `#/components/schemas/ClassifiedAsMealEvent`.
+        internal struct ClassifiedAsMealEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ClassifiedAsMealEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case classifiedAsMeal = "classified_as_meal"
+            }
+            /// - Remark: Generated from `#/components/schemas/ClassifiedAsMealEvent/type`.
+            internal var _type: Components.Schemas.ClassifiedAsMealEvent._TypePayload
+            /// Creates a new `ClassifiedAsMealEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            internal init(_type: Components.Schemas.ClassifiedAsMealEvent._TypePayload) {
+                self._type = _type
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+        }
+        /// その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent`.
+        internal struct ReplyHaltedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case replyHalted = "reply_halted"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/type`.
+            internal var _type: Components.Schemas.ReplyHaltedEvent._TypePayload
+            /// Creates a new `ReplyHaltedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            internal init(_type: Components.Schemas.ReplyHaltedEvent._TypePayload) {
+                self._type = _type
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+            }
+        }
+        /// 返事を作れなかった（やり直しを使い切った・提供元の 400）。送ったあと閉じる
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent`.
+        internal struct ReplyFailedEvent: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case replyFailed = "reply_failed"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent/type`.
+            internal var _type: Components.Schemas.ReplyFailedEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent/failureReason`.
+            internal enum FailureReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case retriesExhausted = "retries_exhausted"
+                case badRequest = "bad_request"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyFailedEvent/failureReason`.
+            internal var failureReason: Components.Schemas.ReplyFailedEvent.FailureReasonPayload
+            /// Creates a new `ReplyFailedEvent`.
+            ///
+            /// - Parameters:
+            ///   - _type:
+            ///   - failureReason:
+            internal init(
+                _type: Components.Schemas.ReplyFailedEvent._TypePayload,
+                failureReason: Components.Schemas.ReplyFailedEvent.FailureReasonPayload
+            ) {
+                self._type = _type
+                self.failureReason = failureReason
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case _type = "type"
+                case failureReason
             }
         }
     }

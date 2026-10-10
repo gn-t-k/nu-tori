@@ -61,6 +61,13 @@ struct SentSyncWritesTests {
                     writeId: UUID(), noticeId: noticeId,
                     response: SyncedNotice.Response(
                         respondedAt: Date(timeIntervalSince1970: 1_767_229_200), timeZone: tokyo)),
+                .createSentText(
+                    writeId: UUID(),
+                    sentText: SyncedSentText(
+                        id: recordId, body: "昼に親子丼",
+                        sentAt: Date(timeIntervalSince1970: 1_767_229_200), timeZone: tokyo)),
+                .resendSentTextAsConversation(writeId: UUID(), sentTextId: recordId),
+                .resendSentText(writeId: UUID(), sentTextId: recordId),
             ]
             transport = .sync()
             client = NuToriAPIClient(

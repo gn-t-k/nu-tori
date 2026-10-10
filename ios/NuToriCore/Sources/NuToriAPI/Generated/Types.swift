@@ -44,6 +44,13 @@ internal protocol APIProtocol: Sendable {
     /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
     /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
     func putMealPhoto(_ input: Operations.PutMealPhoto.Input) async throws -> Operations.PutMealPhoto.Output
+    /// 送った文章の見守る要求
+    ///
+    /// 応答を待つ送った文章があるあいだつなぐ。はじめに返事の ID、続けてできた分を流す。食事と読み分けた・返事を記録に書いた・回数切れ・作れなかったときは、その結果を送って閉じる。つなぐ前にそうなっていれば、結果だけを送って閉じる。端末が切れても、サーバーは返事を最後まで作って記録に書く。届け方の正本は同期で、途中の文は記録に残らない
+    ///
+    /// - Remark: HTTP `GET /v1/sent-texts/{sentTextId}/reply-stream`.
+    /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)`.
+    func watchReply(_ input: Operations.WatchReply.Input) async throws -> Operations.WatchReply.Output
 }
 
 /// Convenience overloads for operation inputs.
@@ -120,6 +127,21 @@ extension APIProtocol {
         try await putMealPhoto(Operations.PutMealPhoto.Input(
             path: path,
             body: body
+        ))
+    }
+    /// 送った文章の見守る要求
+    ///
+    /// 応答を待つ送った文章があるあいだつなぐ。はじめに返事の ID、続けてできた分を流す。食事と読み分けた・返事を記録に書いた・回数切れ・作れなかったときは、その結果を送って閉じる。つなぐ前にそうなっていれば、結果だけを送って閉じる。端末が切れても、サーバーは返事を最後まで作って記録に書く。届け方の正本は同期で、途中の文は記録に残らない
+    ///
+    /// - Remark: HTTP `GET /v1/sent-texts/{sentTextId}/reply-stream`.
+    /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)`.
+    internal func watchReply(
+        path: Operations.WatchReply.Input.Path,
+        headers: Operations.WatchReply.Input.Headers = .init()
+    ) async throws -> Operations.WatchReply.Output {
+        try await watchReply(Operations.WatchReply.Input(
+            path: path,
+            headers: headers
         ))
     }
 }

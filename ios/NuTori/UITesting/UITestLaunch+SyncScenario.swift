@@ -57,6 +57,11 @@
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
                     estimateDish: Self.reestimate(dishId:name:), mealEstimationPulls: 3)
+            case .conversation:
+                // 読んでいますを見られるよう、答えるのを3回めの取得まで待つ。送ったあとの取得と、見守る要求（偽のサーバーはつながない）が閉じたあとの取得の次で、数秒おきに取りに行くので数秒あと
+                return .init(
+                    records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
+                    answerSentText: Self.answer(sentText:), sentTextAnswerPulls: 3)
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
@@ -170,6 +175,22 @@
                             "carbohydrate_g": 37.1,
                         ])),
             ]
+        }
+
+        /// 送った文章の本文ごとの答え方。プリセットは会話、「昼は親子丼」は食事、「次の食事は？」は1回めは作れない
+        nonisolated private static func answer(sentText body: String) -> FakeSyncServer
+            .SentTextAnswer?
+        {
+            switch body {
+            case TextPreset.mealFeedbackSoFar.text:
+                .reply("今日は朝ごはんから **たんぱく質** がとれています。\n- 昼は野菜を足す\n- 夜は軽めに")
+            case "昼は親子丼":
+                .meal(replyAsConversation: "親子丼の話ですね。卵と鶏肉でたんぱく質がとれます。")
+            case "次の食事は？":
+                .failsThenReply("野菜の多い定食はどうでしょう。")
+            default:
+                nil
+            }
         }
 
         /// 推定し直しで、名前から作る量と材料。カツ丼（豚ロース 100 g・ご飯 200 g）と味噌汁（味噌 18 g）のほかは、材料を推定できない

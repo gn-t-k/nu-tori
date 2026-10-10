@@ -15,6 +15,11 @@ import NuToriCore
     /// 送り待ちに料理を足す・名前を直す書き込みがある料理が変わりうるとき（料理を直した・消した、同期した）に、読み直して知らせる。
     /// 送り待ちはキャッシュと別の置き場で `@Query` で読めないので、ここから渡す
     var onUnsentDishIds: (Set<UUID>) -> Void = { _ in }
+    /// まだ届いていない記録が変わりうるとき（記録を作った・直した、同期を始めた・終えた）に、読み直して知らせる。
+    /// 届いたら（送り待ちから無くなったら）、タイムラインで濃くする
+    var onUndeliveredRecords: (UndeliveredRecords) -> Void = { _ in }
+    /// 見守る要求で受け取っている途中の返事が変わったら、送った文章の ID ごとの全部を知らせる
+    var onReplyStreams: ([UUID: ReplyStream]) -> Void = { _ in }
 
     func save(_ write: WeightEntry.Write) async throws {
         guard await hasSession(), let accountId = await signedInAccountId() else { return }
@@ -25,6 +30,7 @@ import NuToriCore
             onReplacingRecord(record.id)
         }
         let record = try await engineForThisDevice(accountId: accountId).save(write)
+        await publishFromPending(accountId: accountId)
         // 積んだ答えは、このあとの同期で送る
         _ = await noteToMissedWeightRecordWatch(after: .weightRecorded)
         await health.export(record)
@@ -94,6 +100,7 @@ import NuToriCore
         for draft in drafts {
             meals.append(try await engine.recordMeal(draft, originals: originals))
         }
+        await publishFromPending(engine)
         Task { await self.followEstimationAfterSending() }
         return meals
     }
@@ -119,6 +126,7 @@ import NuToriCore
         onReplacingRecord(mealId)
         try await engineForThisDevice(accountId: accountId).correctMealTime(
             mealId: mealId, eatenAt: eatenAt)
+        await publishFromPending(accountId: accountId)
         syncInBackground()
     }
 
@@ -136,7 +144,7 @@ import NuToriCore
         onReplacingRecord(dishId)
         let engine = engineForThisDevice(accountId: accountId)
         let dish = try await engine.renameDish(id: dishId, to: typedName)
-        await publishUnsentDishIds(engine)
+        await publishFromPending(engine)
         // 送れたら、推定し直しを待つあいだ数秒おきに取りに行く
         Task { await self.followEstimationAfterSending() }
         return dish
@@ -150,7 +158,7 @@ import NuToriCore
         guard let dish = try await engine.addDish(named: typedName, toMeal: mealId) else {
             return nil
         }
-        await publishUnsentDishIds(engine)
+        await publishFromPending(engine)
         Task { await self.followEstimationAfterSending() }
         return dish
     }
@@ -161,6 +169,7 @@ import NuToriCore
         onReplacingRecord(dishId)
         let dish = try await engineForThisDevice(accountId: accountId).correctDishQuantity(
             id: dishId, to: value)
+        await publishFromPending(accountId: accountId)
         syncInBackground()
         return dish
     }
@@ -173,6 +182,7 @@ import NuToriCore
         onReplacingRecord(ingredientId)
         let ingredient = try await engineForThisDevice(accountId: accountId)
             .correctIngredientQuantity(id: ingredientId, to: quantity)
+        await publishFromPending(accountId: accountId)
         syncInBackground()
         return ingredient
     }
@@ -183,8 +193,39 @@ import NuToriCore
         onReplacingRecord(dishId)
         let engine = engineForThisDevice(accountId: accountId)
         try await engine.deleteDish(id: dishId)
-        await publishUnsentDishIds(engine)
+        await publishFromPending(engine)
         syncInBackground()
+    }
+
+    /// 入力欄から文章を送る。電波が無くても、その場でキャッシュに入る。作る書き込みは送り待ちに並ぶ。
+    /// 返すのは送った文章（受け付ける範囲の外は送らず nil）。サインインしていなければ nil
+    @discardableResult
+    func sendText(_ typedBody: String) async throws -> SentText? {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
+        let engine = engineForThisDevice(accountId: accountId)
+        guard let sentText = try await engine.sendText(typedBody) else { return nil }
+        await followRepliesAfterWriting(engine)
+        return sentText
+    }
+
+    /// 文章の食事のカードの「会話として送り直す」。電波が無くても、その場でその文章の食事・料理・材料がキャッシュから消える。
+    /// 書き込みは送り待ちに並ぶ
+    func resendAsConversation(sentTextId: UUID) async throws {
+        try await resendText(sentTextId: sentTextId) { engine in
+            try await engine.resendAsConversation(sentTextId: sentTextId)
+        }
+    }
+
+    /// 作れなかった・回数切れの1行の「送り直す」。書き込みは送り待ちに並ぶ
+    func resend(sentTextId: UUID) async throws {
+        try await resendText(sentTextId: sentTextId) { engine in
+            try await engine.resend(sentTextId: sentTextId)
+        }
+    }
+
+    /// 裏へ回ったとき・サインアウトしたときに、見守る要求をすべて切る。前面に戻って同期を終えたら、つなぎ直す
+    func stopFollowingReplies() async {
+        await replyWatches.stopAll()
     }
 
     /// 送れなかった分は送り待ちに残る
@@ -310,6 +351,14 @@ import NuToriCore
     private var networkWasUnavailable = false
     private var clockObservers: [any NSObjectProtocol] = []
     private var noticeTimer = NoticeTimer.stopped
+    /// 応答を待つ送った文章ごとの見守る要求。閉じたら取りに行き、届いた返事が途中の返事を置き換える
+    private lazy var replyWatches = ReplyWatches(
+        watch: { [client = self.client] sentTextId in
+            try await client.watchReply(sentTextId: sentTextId)
+        },
+        onStreams: { [weak self] streams in await self?.publishReplyStreams(streams) },
+        onClosed: { [weak self] in await self?.syncAfterReplyWatchClosed() }
+    )
 
     private enum NoticeTimer {
         case stopped
@@ -328,6 +377,55 @@ import NuToriCore
             startWaitingForNoticeTime()
         }
         return enqueued
+    }
+
+    private func publishReplyStreams(_ streams: [UUID: ReplyStream]) {
+        onReplyStreams(streams)
+    }
+
+    private func syncAfterReplyWatchClosed() async {
+        _ = try? await syncAfterInFlight()
+    }
+
+    /// 送り直す書き込みを送り待ちに並べる。サインインしていなければ何もしない
+    private func resendText(
+        sentTextId: UUID, _ enqueue: (SyncEngine) async throws -> Void
+    ) async throws {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        onReplacingRecord(sentTextId)
+        let engine = engineForThisDevice(accountId: accountId)
+        try await enqueue(engine)
+        await followRepliesAfterWriting(engine)
+    }
+
+    /// 文章の書き込みを送り待ちに並べたあと。まだ届いていない記録としてその場で描き、裏で送って返事を追う
+    private func followRepliesAfterWriting(_ engine: SyncEngine) async {
+        await publishFromPending(engine)
+        Task { await self.followRepliesAfterSending() }
+    }
+
+    /// 文章を送った・送り直したあと。送り待ちを送り、送り終えたら、見守る要求がつながっていない応答待ちの文章のために、送ってから1分まで数秒おきに取りに行く。
+    /// 送ってからの経過は単調な時計で測る（`followEstimationInBackground` と同じ）
+    private func followRepliesAfterSending() async {
+        guard let result = try? await syncAfterInFlight(), result.ending == .finished,
+            let accountId = await signedInAccountId()
+        else { return }
+        let engine = engineForThisDevice(accountId: accountId)
+        let sentAt = ContinuousClock.now
+        let followUp = ReplyFollowUp(
+            sentAt: sentAt, now: { .now }, wait: { try await Task.sleep(for: $0) })
+        try? await followUp.run(
+            awaiting: { try await engine.sentTextsAwaitingResponse() },
+            watching: { await self.replyWatches.connectedSentTextIds },
+            sync: { try await self.sync() })
+        // 食事と読み分けた文章は文章の食事になり、推定を待つ。送ってから1分まで、推定中の食事があるあいだ取りに行く
+        followEstimationInBackground(sentAt: sentAt)
+    }
+
+    /// 同期を終えたら、応答を待つ送った文章の見守る要求をつなぎ、応答を待たなくなった文章の途中の返事を捨てる
+    private func followReplies(_ engine: SyncEngine) async {
+        guard let awaiting = try? await engine.sentTextsAwaitingResponse() else { return }
+        await replyWatches.follow(awaiting: awaiting)
     }
 
     private func syncInBackground() {
@@ -409,6 +507,8 @@ import NuToriCore
             initialPullStartedAt = clock.now()
         }
         let startedAt = initialPullStartedAt ?? clock.now()
+        // 開いたときに前から残っていた送り待ちと、ヘルスケアから取り込んだ記録を、送り終えるのを待たずに薄く描く
+        await publishFromPending(accountId: accountId)
         // 出した知らせと答えは、この同期で送る
         _ = await noteToMissedWeightRecordWatch(after: .syncStarting)
         let result: SyncResult
@@ -417,11 +517,11 @@ import NuToriCore
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            await publishUnsentDishIds(engineForThisDevice(accountId: accountId))
+            await publishFromPending(accountId: accountId)
             await accountSession.noteInitialPull(.unfinished)
             throw error
         }
-        await publishUnsentDishIds(engineForThisDevice(accountId: accountId))
+        await publishFromPending(accountId: accountId)
         let completedAfter = try await store.syncState()?.hasCompletedInitialPull ?? false
         await accountSession.noteInitialPull(
             AccountSession.initialPullNotice(
@@ -437,6 +537,9 @@ import NuToriCore
         }
         // 答えは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
         _ = await noteToMissedWeightRecordWatch(after: .synced)
+        if result.ending == .finished {
+            await followReplies(engineForThisDevice(accountId: accountId))
+        }
         if !result.rejectedWrites.isEmpty {
             onRejectedWrites(result.rejectedWrites)
         }
@@ -444,10 +547,20 @@ import NuToriCore
         return result
     }
 
-    /// 読めなければ知らせない（前に知らせた料理のまま見せる）
-    private func publishUnsentDishIds(_ engine: SyncEngine) async {
-        guard let unsentDishIds = try? await engine.unsentDishIds() else { return }
-        onUnsentDishIds(unsentDishIds)
+    /// 送り待ちから作る見え方（まだ送れていない料理と、まだ届いていない記録）を読み直して知らせる。
+    /// 読めなければ知らせない（前に知らせたまま見せる）
+    private func publishFromPending(_ engine: SyncEngine) async {
+        if let unsentDishIds = try? await engine.unsentDishIds() {
+            onUnsentDishIds(unsentDishIds)
+        }
+        if let undeliveredRecords = try? await engine.undeliveredRecords() {
+            onUndeliveredRecords(undeliveredRecords)
+        }
+    }
+
+    /// 書き込みを送り待ちに並べたあとは、送るのを待たずに呼ぶ。まだ届いていない記録として、その場で薄く描くため
+    private func publishFromPending(accountId: String) async {
+        await publishFromPending(engineForThisDevice(accountId: accountId))
     }
 
     private func engineForThisDevice(accountId: String) -> SyncEngine {

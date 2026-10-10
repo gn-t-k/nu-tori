@@ -11,6 +11,9 @@ const recordTypes = [
   "dish_estimation_status",
   "notice",
   "usual_weighing_time",
+  "sent_text",
+  "sent_text_status",
+  "ai_utterance",
   "weight_trend",
 ] as const;
 
@@ -53,7 +56,15 @@ const syncWriteReceipts = sqliteTable(
       .references(() => syncPushLogs.syncRequestLogId),
     positionInRequest: integer("position_in_request").notNull(),
     kind: text("kind", {
-      enum: ["create", "update", "source_deleted", "delete", "respond"],
+      enum: [
+        "create",
+        "update",
+        "source_deleted",
+        "delete",
+        "respond",
+        "resend_as_conversation",
+        "resend",
+      ],
     }).notNull(),
     recordType: text("record_type", { enum: recordTypes }).notNull(),
     recordId: text("record_id").$type<RecordId>().notNull(),
@@ -85,6 +96,8 @@ const syncWriteRejections = sqliteTable("sync_write_rejections", {
       "invalid_target_on",
       "ingredients_replaced",
       "awaiting_estimation",
+      "not_classified_as_meal",
+      "reply_not_failed",
     ],
   }).notNull(),
 });

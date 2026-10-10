@@ -7,6 +7,7 @@ public enum AcceptedRange {
     case ingredientQuantity
     case mealPhotoCount
     case mealUtcOffsetSeconds
+    case sentTextBodyTrimmedLength
     case weightKilograms
 
     public var bounds: AcceptedBounds {
@@ -29,6 +30,9 @@ public enum AcceptedRange {
         case .mealUtcOffsetSeconds:
             AcceptedBounds(
                 lowerBound: -43200.0, includesLowerBound: true, upperBound: 50400.0)
+        case .sentTextBodyTrimmedLength:
+            AcceptedBounds(
+                lowerBound: 1.0, includesLowerBound: true, upperBound: 500.0)
         case .weightKilograms:
             AcceptedBounds(
                 lowerBound: 20.0, includesLowerBound: true, upperBound: 300.0)
