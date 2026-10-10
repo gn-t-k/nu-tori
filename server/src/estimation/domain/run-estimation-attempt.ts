@@ -6,6 +6,7 @@ import { loadFoodComposition } from "../../domain/food-composition/food-composit
 import { isNutrientName } from "../../domain/food-composition/nutrient-name";
 import type { IngredientNutrientSource } from "../../ingredient/domain/ingredient";
 import type { MealPhotoArchive } from "../../meal/domain/meal-photo-archive";
+import type { BegunEstimationAttempt, WrittenMealTarget } from "./begin-estimation-attempts";
 import type { EstimatedDish } from "./estimated-dish";
 import type { EstimationAttemptOutcome } from "./estimation-attempt-outcome";
 import { estimationAttemptTimeLimitMs } from "./estimation-attempt-time-limit-ms";
@@ -19,19 +20,57 @@ import type {
   IngredientMatch,
   IngredientMatchRequest,
   MatchedIngredients,
+  TokenUsage,
 } from "./estimation-provider";
+import { computeWrittenMealEatenAt, toWrittenMealsRequest } from "./written-meal-eaten-at";
 
-// 試み1回分。写真を R2 から読み、①（写真から料理と材料。推定し直しでは写真と料理の今の値から、その料理1つ）→ 成分表の候補 → ②（候補から選ぶか主な栄養を推定）と進め、応答を確かめる。
+// 試み1回分。写真を R2 から読み、①（写真から料理と材料。推定し直しでは写真と料理の今の値から、その料理1つ。
+// 文章の食事では、写真の代わりに送った文章から、時刻の違う食事ごとの料理と材料）→ 成分表の候補 → ②（候補から選ぶか主な栄養を推定）と進め、応答を確かめる。
 // 提供元の失敗と、確かめに通らない応答は、試みの結果として返す。
 // R2 と成分表の読み込みの失敗は投げる（試みは結果の無いまま、途中で止まった試みとして数える）
 export const runEstimationAttempt = async (
   deps: { archive: MealPhotoArchive; provider: EstimationProvider },
-  request: { photoIds: readonly RecordId[]; target: IdentificationTarget },
+  request: Pick<BegunEstimationAttempt, "photoIds" | "target">,
 ): Promise<EstimationAttemptOutcome> => {
-  const photos = await readPhotos(deps.archive, request.photoIds);
+  const { target } = request;
+  const photos =
+    target.type === "written_meal" ? [] : await readPhotos(deps.archive, request.photoIds);
   const signal = AbortSignal.timeout(estimationAttemptTimeLimitMs);
   const attempted = await R.pipe(
-    deps.provider.identifyDishes({ photos, target: request.target }, signal),
+    target.type === "written_meal"
+      ? identifyWrittenMeals(deps.provider, target.sentText, signal)
+      : identifyDishes(deps.provider, { photos, target }, signal),
+    R.andThen(({ identified, dishEatenAts }) =>
+      R.pipe(
+        matchIngredients(deps.provider, identified, signal),
+        R.map(({ dishes, usage }) => ({
+          usage,
+          ...(dishEatenAts === undefined
+            ? { dishes, writtenMeals: undefined }
+            : toWrittenMeals(dishes, dishEatenAts)),
+        })),
+      ),
+    ),
+  );
+  // 通らなかった試みも結果として書くので、ここで提供元の Result を試みの結果に直す
+  return R.isSuccess(attempted)
+    ? { result: "succeeded", ...attempted.value }
+    : attempted.error.outcome;
+};
+
+// ① の確かめに通った料理と、文章の食事なら料理ごとの食べた時刻（範囲に収めたもの。料理と同じ並び）
+type Identified = {
+  identified: EstimationProviderReply<IdentifiedDishes>;
+  dishEatenAts: Date[] | undefined;
+};
+
+const identifyDishes = (
+  provider: EstimationProvider,
+  request: { photos: readonly ArrayBuffer[]; target: IdentificationTarget },
+  signal: AbortSignal,
+): R.ResultAsync<Identified, EstimationAttemptFailedError> =>
+  R.pipe(
+    provider.identifyDishes(request, signal),
     R.mapError((error) =>
       toAttemptFailed(error, "identify_dishes", {
         identifyDishes: usageOf(error),
@@ -40,23 +79,75 @@ export const runEstimationAttempt = async (
     ),
     R.andThen((identified) =>
       isValidIdentifiedDishes(identified.output, request.target)
-        ? R.succeed(identified)
-        : R.fail(
-            new EstimationAttemptFailedError({
-              outcome: {
-                result: "invalid_response",
-                failedStage: "identify_dishes",
-                usage: { identifyDishes: identified.usage, matchIngredients: undefined },
-              },
-            }),
-          ),
+        ? R.succeed({ identified, dishEatenAts: undefined })
+        : R.fail(invalidIdentification(identified.usage)),
     ),
-    R.andThen((identified) => matchIngredients(deps.provider, identified, signal)),
   );
-  // 通らなかった試みも結果として書くので、ここで提供元の Result を試みの結果に直す
-  return R.isSuccess(attempted)
-    ? { result: "succeeded", ...attempted.value }
-    : attempted.error.outcome;
+
+// 文章の食事の ①。食事の並びを料理の並びに開き、料理ごとに食事の時刻を持たせる（② を1回で呼ぶため）
+const identifyWrittenMeals = (
+  provider: EstimationProvider,
+  sentText: WrittenMealTarget["sentText"],
+  signal: AbortSignal,
+): R.ResultAsync<Identified, EstimationAttemptFailedError> =>
+  R.pipe(
+    provider.identifyWrittenMeals(toWrittenMealsRequest(sentText), signal),
+    R.mapError((error) =>
+      toAttemptFailed(error, "identify_dishes", {
+        identifyDishes: usageOf(error),
+        matchIngredients: undefined,
+      }),
+    ),
+    R.andThen(({ output, usage }) => {
+      const eatenAts = output.meals.map(({ eatenAt }) =>
+        computeWrittenMealEatenAt(eatenAt, sentText),
+      );
+      const dishes = output.meals.flatMap(({ dishes: mealDishes }) => mealDishes);
+      if (
+        !eatenAts.every((eatenAt): eatenAt is Date => eatenAt !== undefined) ||
+        !isValidIdentifiedDishes({ dishes }, { type: "meal" })
+      ) {
+        return R.fail(invalidIdentification(usage));
+      }
+      const dishEatenAts = output.meals.flatMap(({ dishes: mealDishes }, index) =>
+        mealDishes.map(() => eatenAts[index] ?? sentText.sentAt),
+      );
+      return R.succeed({ identified: { output: { dishes }, usage }, dishEatenAts });
+    }),
+  );
+
+const invalidIdentification = (usage: TokenUsage): EstimationAttemptFailedError =>
+  new EstimationAttemptFailedError({
+    outcome: {
+      result: "invalid_response",
+      failedStage: "identify_dishes",
+      usage: { identifyDishes: usage, matchIngredients: undefined },
+    },
+  });
+
+// 同じ時刻の料理を1つの食事にまとめる（範囲の外の日時は送った時刻にそろうので、そこで重なりうる）。
+// 1つ目の食事は、① が最初に返した食事
+const toWrittenMeals = (
+  dishes: readonly EstimatedDish[],
+  dishEatenAts: readonly Date[],
+): Pick<Extract<EstimationAttemptOutcome, { result: "succeeded" }>, "dishes" | "writtenMeals"> => {
+  const meals: { eatenAt: Date; dishes: EstimatedDish[] }[] = [];
+  for (const [index, dish] of dishes.entries()) {
+    const eatenAt = dishEatenAts[index];
+    if (eatenAt === undefined) {
+      throw new Error("料理ごとの食べた時刻が、料理より少ない");
+    }
+    const sameTime = meals.find((meal) => meal.eatenAt.getTime() === eatenAt.getTime());
+    if (sameTime === undefined) {
+      meals.push({ eatenAt, dishes: [dish] });
+    } else {
+      sameTime.dishes.push(dish);
+    }
+  }
+  const [first, ...laterMeals] = meals;
+  return first === undefined
+    ? { dishes: [], writtenMeals: undefined }
+    : { dishes: first.dishes, writtenMeals: { eatenAt: first.eatenAt, laterMeals } };
 };
 
 // R2 と成分表の段で止まった。stage は、アラームの呼び出しごとのログに出す失敗した段
