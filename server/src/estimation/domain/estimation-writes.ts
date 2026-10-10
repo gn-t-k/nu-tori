@@ -21,4 +21,9 @@ export type EstimationWrites = {
   recordAttemptResult: (attemptResult: EstimationEvents["attemptResult"]) => void;
   complete: (completion: EstimationEvents["completion"] & { target: EstimationTarget }) => void;
   abandon: (abandonment: EstimationEvents["abandonment"] & { target: EstimationTarget }) => void;
+  // 1つの推定が時刻を決めるのは、その推定の予定のつなぎの食事だけ（#419 の設計判断 40）。食事は受け取らず、推定から辿る。
+  // 時刻は推定の状態を変えない
+  estimateMealEatenAt: (estimation: EstimationEvents["mealEatenAtEstimation"]) => void;
+  // 食事は先に書いておく。推定の状態（推定が完了していれば推定できた）が変わるので、変更を足す
+  recordCreatedMeal: (createdMeal: EstimationEvents["createdMeal"]) => void;
 };

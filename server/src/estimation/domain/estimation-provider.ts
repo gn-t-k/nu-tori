@@ -19,6 +19,17 @@ export type EstimationProvider = {
     | EstimationProviderTimedOutError
     | EstimationProviderInvalidResponseError
   >;
+  // 文章の食事の ①。写真の代わりに送った文章を渡し、時刻の違う食事ごとに、日時と料理と材料を読み取る
+  identifyWrittenMeals: (
+    request: WrittenMealsRequest,
+    signal: AbortSignal,
+  ) => R.ResultAsync<
+    EstimationProviderReply<IdentifiedWrittenMeals>,
+    | EstimationProviderError
+    | EstimationProviderBadRequestError
+    | EstimationProviderTimedOutError
+    | EstimationProviderInvalidResponseError
+  >;
   matchIngredients: (
     request: IngredientMatchRequest,
     signal: AbortSignal,
@@ -42,6 +53,30 @@ export type DishToReestimate = {
   correctedIngredients: readonly { name: string; quantity: number; unit: string }[];
   // 料理の量を直してあれば、その量と単位を固定し、材料への割り振りだけを推定させる。直していなければ undefined
   correctedQuantity: { value: number; unit: string } | undefined;
+};
+
+// 文章の食事の ① に渡すもの（#419 の「文章の食事」）。日時と曜日は、推定する時点でなく送った時刻の、送ったときのタイムゾーンでのもの
+export type WrittenMealsRequest = {
+  body: string;
+  sentAt: { localDateTime: LocalDateTime; dayOfWeek: DayOfWeek };
+};
+
+// タイムゾーンでの日時（YYYY-MM-DDTHH:mm）
+export type LocalDateTime = string;
+
+export type DayOfWeek =
+  | "sunday"
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday";
+
+// 文章の食事の ① の応答。食事の並びで、食べたものが書かれていなければ 0 件。
+// eatenAt は送ったときのタイムゾーンでの日時。文章に書かれていたかは返させず、範囲はドメイン層が確かめる
+export type IdentifiedWrittenMeals = {
+  meals: readonly { eatenAt: LocalDateTime; dishes: IdentifiedDishes["dishes"] }[];
 };
 
 export type EstimationProviderReply<TOutput> = {
