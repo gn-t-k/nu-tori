@@ -1,5 +1,6 @@
 /// 料理・食事・日の栄養の合計。値の分かる材料の分だけを足し、「不明」の材料が混じる栄養は「以上」にする。
 /// すべての材料が「不明」の栄養だけが「不明」で、kcal は材料の kcal の和（P・F・C から出し直さない。ADR-0016）
+/// 材料からの合計は、サーバーと両方に置く決めごと（`docs/agents/shared-rules.md` の「栄養の合計」）
 public struct NutrientTotals: Hashable, Sendable {
     /// 材料の栄養の値（`Ingredient.amount(of:)`）を足し上げる
     public init(ingredients: [Ingredient]) {

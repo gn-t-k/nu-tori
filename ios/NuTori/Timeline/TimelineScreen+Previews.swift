@@ -21,6 +21,7 @@
             requestNotificationPermission: {},
             prepareWeightEntry: {},
             saveWeight: { _ in },
+            sendText: { _ in },
             accountActions: .noop,
             mealActions: .noop
         )
