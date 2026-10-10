@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { generateRecordId } from "../../domain/record-id";
@@ -11,6 +11,8 @@ import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { signInTestAccount } from "../../http/testing";
+import { mockCaptureExceptionOk } from "../../observability/capture-exception.mock";
+import { mockSetUserOk } from "../../observability/set-user.mock";
 import {
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
@@ -173,6 +175,71 @@ describe("読み分け", () => {
         meals: await pullRecordsOf("meal"),
         estimations: await countEstimations(),
       }).toEqual({ meals: [], estimations: 0 });
+    });
+  });
+
+  // 本番のクレジットが尽きると、すべての文章が会話になり、食事が記録されない。Sentry の急増で気づく
+  describe("読み分けの呼び出しが失敗したとき", () => {
+    let providerResponseError: Error;
+    let setUserSpy: ReturnType<typeof mockSetUserOk>;
+    let captureExceptionSpy: ReturnType<typeof mockCaptureExceptionOk>;
+    let logSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(async () => {
+      providerResponseError = new Error("Your credit balance is too low");
+      mockCreateConversationProviderError({
+        failingCall: "classify_sent_text",
+        error: new ConversationProviderError({
+          errorType: "invalid_request_error",
+          cause: providerResponseError,
+        }),
+      });
+      await sendText();
+      setUserSpy = mockSetUserOk();
+      captureExceptionSpy = mockCaptureExceptionOk();
+      logSpy = vi.spyOn(console, "log");
+      await runEstimationAlarm(accountId);
+    });
+
+    test("提供元の応答のエラーを、包まずにアカウント ID を付けて Sentry に送ること", () => {
+      expect({
+        user: setUserSpy.mock.calls.at(-1)?.[0],
+        exceptions: captureExceptionSpy.mock.calls.map(([error]) => error),
+      }).toEqual({ user: { id: accountId }, exceptions: [providerResponseError] });
+    });
+
+    test("アラームの呼び出しのログに、読み分けの結果と提供元のエラーの種類を出すこと", () => {
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId,
+          route: "alarm",
+          classifications: [
+            {
+              result: "conversation",
+              providerResult: "failed",
+              providerErrorType: "invalid_request_error",
+            },
+          ],
+        }),
+      );
+    });
+  });
+
+  describe("応答のエラーの無い失敗のとき", () => {
+    let providerError: ConversationProviderError;
+    let captureExceptionSpy: ReturnType<typeof mockCaptureExceptionOk>;
+    beforeEach(async () => {
+      providerError = new ConversationProviderError({ errorType: "invalid_response" });
+      mockCreateConversationProviderError({
+        failingCall: "classify_sent_text",
+        error: providerError,
+      });
+      await sendText();
+      captureExceptionSpy = mockCaptureExceptionOk();
+      await runEstimationAlarm(accountId);
+    });
+
+    test("失敗そのものを Sentry に送ること", () => {
+      expect(captureExceptionSpy.mock.calls.map(([error]) => error)).toEqual([providerError]);
     });
   });
 
