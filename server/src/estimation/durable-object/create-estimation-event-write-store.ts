@@ -1,7 +1,9 @@
+import { eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { match, P } from "ts-pattern";
 import type { EstimationEventWriteStore } from "../domain/estimation-event-write-store";
 import { dishTables } from "../../dish/durable-object/dish-tables";
+import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables";
 import { estimationTables } from "./estimation-tables";
 
 const {
@@ -16,6 +18,7 @@ const {
   estimationAbandonments,
 } = estimationTables;
 const { dishEstimationSchedules } = dishTables;
+const { mealEatenAtEstimations, estimationCreatedMeals } = sentTextTables;
 
 export const createEstimationEventWriteStore = (
   db: DrizzleSqliteDODatabase,
@@ -55,5 +58,25 @@ export const createEstimationEventWriteStore = (
   },
   insertAbandonment: (abandonment) => {
     db.insert(estimationAbandonments).values(abandonment).run();
+  },
+  insertMealEatenAtEstimation: ({ estimationId, eatenAt }) => {
+    const scheduled = db
+      .select({ mealId: mealEstimationSchedules.mealId })
+      .from(estimations)
+      .innerJoin(
+        mealEstimationSchedules,
+        eq(mealEstimationSchedules.estimationScheduleId, estimations.estimationScheduleId),
+      )
+      .where(eq(estimations.id, estimationId))
+      .get();
+    if (scheduled === undefined) {
+      throw new Error(`食事の予定から始まった推定でない: ${estimationId}`);
+    }
+    db.insert(mealEatenAtEstimations)
+      .values({ mealId: scheduled.mealId, estimationId, eatenAt })
+      .run();
+  },
+  insertCreatedMeal: (createdMeal) => {
+    db.insert(estimationCreatedMeals).values(createdMeal).run();
   },
 });

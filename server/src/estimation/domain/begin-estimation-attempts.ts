@@ -7,6 +7,7 @@ import type { RecordType } from "../../domain/record-type";
 import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { Meal } from "../../meal/domain/meal";
+import type { SentText } from "../../sent-text/domain/sent-text";
 import { abandonEstimation } from "./abandon-estimation";
 import { computeDishToReestimate } from "./compute-dish-to-reestimate";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
@@ -19,12 +20,19 @@ import { maximumDailyEstimations } from "./maximum-daily-estimations";
 import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 
 // 提供元を呼ぶ前に書いた試み。呼び出し中に止まっても、行が残って試みに数える。
-// 料理が対象の推定（推定し直し）は、試みを書いた時点の料理の今の値を ① に渡す
+// 料理が対象の推定（推定し直し）は、試みを書いた時点の料理の今の値を ① に渡す。
+// 文章の食事が対象の推定は、写真の代わりに作った送った文章を ① に渡す
 export type BegunEstimationAttempt = {
   attemptId: string;
   estimationId: string;
   photoIds: readonly RecordId[];
-  target: IdentificationTarget;
+  target: IdentificationTarget | WrittenMealTarget;
+};
+
+// 文章の食事の推定の ① に渡す、作った送った文章（#419 の「文章の食事」）
+export type WrittenMealTarget = {
+  type: "written_meal";
+  sentText: Pick<SentText, "body" | "sentAt" | "timeZone">;
 };
 
 // アラームから呼ぶ。1つのトランザクションで、時刻が来た待っている予定（食事か料理が対象）から推定を始めて最初の試みを書き、
@@ -48,8 +56,12 @@ export const beginEstimationAttempts = (
           estimationId,
           photoIds: meal.photoIds,
           target: match(target)
-            .returnType<IdentificationTarget>()
-            .with({ type: "meal" }, () => ({ type: "meal" }))
+            .returnType<BegunEstimationAttempt["target"]>()
+            .with({ type: "meal" }, () =>
+              meal.sentTextId === undefined
+                ? { type: "meal" }
+                : { type: "written_meal", sentText: findSentText(stores, meal.sentTextId) },
+            )
             .with({ type: "dish" }, ({ dishId }) => ({
               type: "dish",
               dish: computeDishToReestimate(stores, dishId),
@@ -122,4 +134,15 @@ const findScheduledMeal = (stores: Pick<RecordKindStores, "meal">, mealId: Recor
     throw new Error(`推定の予定につながっている食事が無い: ${mealId}`);
   }
   return meal;
+};
+
+const findSentText = (
+  stores: Pick<RecordKindStores, "sentText">,
+  sentTextId: RecordId,
+): SentText => {
+  const sentText = stores.sentText.find(sentTextId);
+  if (sentText === undefined) {
+    throw new Error(`文章の食事を作った送った文章が無い: ${sentTextId}`);
+  }
+  return sentText;
 };

@@ -7,6 +7,7 @@ import { computeDishDeletedEstimationEvents } from "../../estimation/domain/comp
 import { computeEstimationEndedEvent } from "../../estimation/domain/compute-estimation-ended-event";
 import type { EstimationStore } from "../../estimation/domain/estimation-store";
 import { findMealReceivedAt } from "../../estimation/domain/find-meal-received-at";
+import { findMealEstimationTrigger } from "../../estimation/domain/find-estimation-origin";
 import { scheduleMealEstimation } from "../../estimation/domain/schedule-meal-estimation";
 import type { EstimationScheduleStore } from "../../estimation/domain/estimation-schedule-store";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -266,7 +267,7 @@ const computeMealDeletedEstimationEvents = (
   }
   return [
     computeEstimationEndedEvent({
-      trigger: "photo",
+      trigger: findMealEstimationTrigger(stores.meal, mealId),
       finalStatus: "meal_deleted",
       attempts: stores.estimation.findAttempts(estimationId),
       receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),
