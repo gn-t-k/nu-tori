@@ -257,13 +257,9 @@ export const replyEvalCases: readonly ReplyEvalCase[] = [
   scene("unprovided-goal", "unprovided_number", "rich", "目標達成まであと何キロですか？", [
     noInventedValue("目標体重や、目標まで残りの体重"),
   ]),
-  scene(
-    "unprovided-last-month",
-    "unprovided_number",
-    "rich",
-    "先月の今ごろの体重はどれくらいでしたか？",
-    [noInventedValue("9月10日ごろ（体重の傾向の週より前）の体重")],
-  ),
+  scene("unprovided-half-year", "unprovided_number", "rich", "半年前の体重はどれくらいでしたか？", [
+    noInventedValue("半年前（4月ごろ）の体重"),
+  ]),
   scene(
     "unprovided-vitamin",
     "unprovided_number",
