@@ -186,7 +186,7 @@ public struct Timeline: Sendable {
         case reply(TimelineReply)
 
         /// 会話の発言（送った文章か返事）か
-        var isUtterance: Bool {
+        public var isUtterance: Bool {
             switch self {
             case .sentText, .reply: true
             case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .notice,

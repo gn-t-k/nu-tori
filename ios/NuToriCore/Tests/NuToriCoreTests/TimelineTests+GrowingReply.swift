@@ -82,5 +82,33 @@ extension TimelineTests {
                         referencedMeals: [])
                 ])
         }
+
+        @Test("伸びている返事があるあいだだけ、伸びている返事があるとすること")
+        func tellsWhetherAReplyIsGrowing() throws {
+            let sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
+            let replyId = UUID()
+            func timeline(_ stream: ReplyStream, replies: [AiUtterance] = []) -> Timeline {
+                Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                        conversation: Timeline.Conversation(
+                            sentTexts: [sentText],
+                            statuses: [
+                                sentText.id: SentTextStatus(
+                                    classification: .conversation, reply: .awaiting)
+                            ],
+                            replies: replies,
+                            streams: [sentText.id: stream])),
+                    firstDay: Self.day, today: Self.day)
+            }
+            let growing = Self.stream([.replyStarted(replyId: replyId), .textDelta("野菜の")])
+            let reply = AiUtterance(
+                id: replyId, body: "野菜の多い定食はどうでしょう。", sentTextId: sentText.id, mealIds: [])
+
+            #expect(
+                timeline(Self.stream([.replyStarted(replyId: replyId)])).hasGrowingReply == false)
+            #expect(timeline(growing).hasGrowingReply)
+            #expect(timeline(growing, replies: [reply]).hasGrowingReply == false)
+        }
     }
 }

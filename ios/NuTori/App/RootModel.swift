@@ -13,6 +13,8 @@ final class RootModel {
     private(set) var unsentDishIds: Set<UUID> = []
     /// まだ届いていない記録。タイムラインで薄く描く
     private(set) var undeliveredRecords = UndeliveredRecords.none
+    /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事。タイムラインで伸ばして描く
+    private(set) var replyStreams: [UUID: ReplyStream] = [:]
     var rejectedLines: [RejectedLine] {
         guard case .accepting(let rejected) = rejectionAcceptance else { return [] }
         return rejected.lines
@@ -46,6 +48,9 @@ final class RootModel {
         recordSync.onUndeliveredRecords = { [weak self] undeliveredRecords in
             guard self?.undeliveredRecords != undeliveredRecords else { return }
             self?.undeliveredRecords = undeliveredRecords
+        }
+        recordSync.onReplyStreams = { [weak self] streams in
+            self?.replyStreams = streams
         }
     }
 
@@ -243,6 +248,29 @@ final class RootModel {
         await accountSession.capture(draft.sentEvent)
     }
 
+    /// 文章の食事のカードの「会話として送り直す」。確かめずに、その場でその文章の食事が消える。
+    /// 送ったら、PostHog に消えた食事の数を送る
+    func resendAsConversation(sentTextId: UUID, deletedMealCount: Int) async {
+        do {
+            try await recordSync.resendAsConversation(sentTextId: sentTextId)
+        } catch {
+            return
+        }
+        await accountSession.capture(.resentAsConversation(deletedMealCount: deletedMealCount))
+    }
+
+    /// 作れなかった・回数切れの1行の「送り直す」。送ったら、PostHog に1行の理由を送る
+    func resendReply(
+        sentTextId: UUID, reason: ClientUsageEvent.ReplyRegenerateReason
+    ) async {
+        do {
+            try await recordSync.resend(sentTextId: sentTextId)
+        } catch {
+            return
+        }
+        await accountSession.capture(.replyRegenerateTapped(reason))
+    }
+
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil
     func mealPhotoFile(mealId: UUID, photoId: UUID) async -> URL? {
         await recordSync.mealPhotos.photoFile(mealId: mealId, photoId: photoId)
@@ -261,6 +289,7 @@ final class RootModel {
     func noteAppBackgrounded() {
         rejectionAcceptance = .ignoring
         recordSync.stopWaitingForNoticeTime()
+        Task { await recordSync.stopFollowingReplies() }
     }
 
     func noteAppActive() {
@@ -365,6 +394,7 @@ final class RootModel {
             discardRejectedLines()
             // サインアウトとアカウントの削除で、予約した通知と通知センターに残った通知を外し、前の時刻で待たない
             recordSync.stopWaitingForNoticeTime()
+            Task { [recordSync] in await recordSync.stopFollowingReplies() }
             Task { [missedWeightRecordWatch] in await missedWeightRecordWatch.removeAll() }
         case .loadingTimeline, .timeline:
             break

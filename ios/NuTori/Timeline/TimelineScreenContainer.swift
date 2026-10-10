@@ -19,6 +19,9 @@ struct TimelineScreenContainer: View {
     let saveWeight: (WeightEntry.Write) async -> Void
     /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
     let sendText: (TextDraft) async -> Void
+    /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事
+    let replyStreams: [UUID: ReplyStream]
+    let conversationActions: ConversationActions
     let accountActions: AccountActions
     let mealActions: MealActions
     /// この端末で記録した（元の大きさの写真を持っている）食事か
@@ -44,7 +47,9 @@ struct TimelineScreenContainer: View {
             saveWeight: saveWeight,
             sendText: sendText,
             accountActions: accountActions,
-            mealActions: mealActions
+            mealActions: mealActions,
+            conversation: conversation,
+            conversationActions: conversationActions
         )
         .task(id: cachedMeals.map(\.mealId)) {
             await readMealsRecordedHere()
@@ -60,6 +65,9 @@ struct TimelineScreenContainer: View {
     @Query private var cachedIngredients: [CachedIngredient]
     @Query private var cachedNotices: [CachedNotice]
     @Query private var cachedWeightTrendDays: [CachedWeightTrendDay]
+    @Query private var cachedSentTexts: [CachedSentText]
+    @Query private var cachedSentTextStatuses: [CachedSentTextStatus]
+    @Query private var cachedAiUtterances: [CachedAiUtterance]
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 
@@ -98,6 +106,19 @@ struct TimelineScreenContainer: View {
                 )
             }
         }
+    }
+
+    /// 送った文章・その状態・返事は別の種類で、どれが先にも届く。送った文章が届くまで、状態と返事は並ばない
+    private var conversation: Timeline.Conversation {
+        var statuses: [UUID: SentTextStatus] = [:]
+        for row in cachedSentTextStatuses {
+            statuses[row.sentTextId] = row.sentTextStatus()
+        }
+        return Timeline.Conversation(
+            sentTexts: cachedSentTexts.compactMap { $0.sentText() },
+            statuses: statuses,
+            replies: cachedAiUtterances.map { $0.aiUtterance() },
+            streams: replyStreams)
     }
 
     private func readMealsRecordedHere() async {

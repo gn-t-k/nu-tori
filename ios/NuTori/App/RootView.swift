@@ -72,6 +72,16 @@ struct RootView: View {
                 sendText: { draft in
                     await model.sendText(draft)
                 },
+                replyStreams: model.replyStreams,
+                conversationActions: ConversationActions(
+                    resendAsConversation: { sentTextId, deletedMealCount in
+                        await model.resendAsConversation(
+                            sentTextId: sentTextId, deletedMealCount: deletedMealCount)
+                    },
+                    resend: { sentTextId, reason in
+                        await model.resendReply(sentTextId: sentTextId, reason: reason)
+                    }
+                ),
                 accountActions: AccountActions(
                     signedInAccountId: { await model.signedInAccountId() },
                     turnOnUsageData: { await model.turnOnUsageData() },

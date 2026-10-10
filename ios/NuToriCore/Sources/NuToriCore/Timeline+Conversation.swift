@@ -113,6 +113,17 @@ extension Timeline {
     }
 }
 
+extension Timeline {
+    /// 見守る要求で伸びている途中の返事があるか。あるあいだは、タイムラインの一番下へ追う
+    public var hasGrowingReply: Bool {
+        days.contains { day in
+            day.items.contains { item in
+                if case .reply(let reply) = item { reply.isGrowing } else { false }
+            }
+        }
+    }
+}
+
 extension SentText {
     /// タイムラインに吹き出しを置く日。送った時刻と、送ったときのタイムゾーンで決める
     public var day: CalendarDay {
