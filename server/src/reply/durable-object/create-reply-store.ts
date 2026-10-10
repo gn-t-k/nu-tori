@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNull } from "drizzle-orm";
+import { and, asc, count, eq, isNull, or } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { match } from "ts-pattern";
 import { aiUtteranceTables } from "../../ai-utterance/durable-object/ai-utterance-tables";
@@ -13,6 +13,7 @@ const { sentTexts, sentTextClassifications } = sentTextTables;
 const {
   replyRequests,
   conversationResendReplyRequests,
+  resendReplyRequests,
   replyRequestHalts,
   replyGenerations,
   replyGenerationAttempts,
@@ -30,23 +31,26 @@ const sentTextColumns = {
   timeZone: sentTexts.sentTimeZone,
 };
 
-// 依頼の時刻を出すための列。きっかけの時刻で、読み分けなら読み分けた時刻、会話として送り直したなら、その書き込みを受け取った時刻。
-// 会話として送り直した文章にも食事と読み分けた行があるので、控えの時刻を先に採る。送り直した（#430）を足すときは、その控えの時刻もここに足す
+// 依頼の時刻を出すための列。きっかけの時刻で、読み分けなら読み分けた時刻、会話として送り直した・送り直したなら、その書き込みを受け取った時刻。
+// 送り直した文章にも読み分けた行があるので、控えの時刻を先に採る
 const requestTimes = {
   classifiedAt: sentTextClassifications.classifiedAt,
-  conversationResentAt: syncRequestLogs.receivedAt,
+  resentAt: syncRequestLogs.receivedAt,
 };
 
-const toRequestedAt = (times: {
-  classifiedAt: Date | null;
-  conversationResentAt: Date | null;
-}): Date => {
-  const requestedAt = times.conversationResentAt ?? times.classifiedAt;
+const toRequestedAt = (times: { classifiedAt: Date | null; resentAt: Date | null }): Date => {
+  const requestedAt = times.resentAt ?? times.classifiedAt;
   if (requestedAt === null) {
     throw new Error("返事の依頼に、きっかけの時刻が無い");
   }
   return requestedAt;
 };
+
+// 依頼のきっかけの、送り直す書き込みの控え。依頼のきっかけは1つなので、どちらか一方だけが当たる
+const isResendReceipt = or(
+  eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
+  eq(syncWriteReceipts.id, resendReplyRequests.syncWriteReceiptId),
+);
 
 export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
   const findAttempts = (generationId: RecordId): ReplyAttempt[] =>
@@ -97,10 +101,8 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
           conversationResendReplyRequests,
           eq(conversationResendReplyRequests.replyRequestId, replyRequests.id),
         )
-        .leftJoin(
-          syncWriteReceipts,
-          eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
-        )
+        .leftJoin(resendReplyRequests, eq(resendReplyRequests.replyRequestId, replyRequests.id))
+        .leftJoin(syncWriteReceipts, isResendReceipt)
         .leftJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
         .leftJoin(replyRequestHalts, eq(replyRequestHalts.replyRequestId, replyRequests.id))
         .leftJoin(replyGenerations, eq(replyGenerations.replyRequestId, replyRequests.id))
@@ -135,10 +137,8 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
           conversationResendReplyRequests,
           eq(conversationResendReplyRequests.replyRequestId, replyRequests.id),
         )
-        .leftJoin(
-          syncWriteReceipts,
-          eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
-        )
+        .leftJoin(resendReplyRequests, eq(resendReplyRequests.replyRequestId, replyRequests.id))
+        .leftJoin(syncWriteReceipts, isResendReceipt)
         .leftJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
         .leftJoin(aiUtterances, eq(aiUtterances.replyGenerationId, replyGenerations.id))
         .leftJoin(
