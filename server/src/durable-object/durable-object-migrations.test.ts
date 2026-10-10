@@ -385,3 +385,107 @@ const seedVersion6Rows = (sql: Sql) => {
     "INSERT INTO sync_write_ingredient_deletions (ingredient_id, sync_write_receipt_id) VALUES ('ingredient-gone', 'receipt-1')",
   );
 };
+
+describe("Durable Object の移行の版 8（文章と会話の表）", () => {
+  describe("版 7 までの形の食事・推定・料理・材料・控えがあるとき", () => {
+    let account: DurableObjectStub;
+    let rowsBefore: Record<string, unknown[]>;
+    beforeEach(async () => {
+      account = env.ACCOUNT.get(env.ACCOUNT.newUniqueId());
+      rowsBefore = await runInDurableObject(account, async (_, state) => {
+        await state.storage.deleteAll();
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 6),
+        );
+        seedVersion6Rows(state.storage.sql);
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 7),
+        );
+        const rows = readAllRows(state.storage.sql);
+        applyDurableObjectMigrations(state.storage, durableObjectMigrations);
+        return rows;
+      });
+    });
+
+    test("文章と会話の 20 の表ができること", async () => {
+      const tables = await runInAccount(account, (sql) =>
+        sql
+          .exec<{ name: string }>(
+            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('sent_texts', 'sent_text_classifications', 'sent_text_conversation_resends', 'sent_text_resends', 'conversation_resend_meal_deletions', 'sent_text_meals', 'estimation_created_meals', 'meal_eaten_at_estimations', 'reply_requests', 'classification_reply_requests', 'resend_reply_requests', 'conversation_resend_reply_requests', 'reply_request_halts', 'reply_generations', 'reply_generation_attempts', 'reply_generation_attempt_results', 'reply_generation_attempt_errors', 'reply_generation_abandonments', 'ai_utterances', 'ai_utterance_meals') ORDER BY name",
+          )
+          .toArray()
+          .map(({ name }) => name),
+      );
+      expect(tables).toEqual([
+        "ai_utterance_meals",
+        "ai_utterances",
+        "classification_reply_requests",
+        "conversation_resend_meal_deletions",
+        "conversation_resend_reply_requests",
+        "estimation_created_meals",
+        "meal_eaten_at_estimations",
+        "reply_generation_abandonments",
+        "reply_generation_attempt_errors",
+        "reply_generation_attempt_results",
+        "reply_generation_attempts",
+        "reply_generations",
+        "reply_request_halts",
+        "reply_requests",
+        "resend_reply_requests",
+        "sent_text_classifications",
+        "sent_text_conversation_resends",
+        "sent_text_meals",
+        "sent_text_resends",
+        "sent_texts",
+      ]);
+    });
+
+    test("文章と会話の 6 つの索引が、それぞれの表にできること", async () => {
+      const indexes = await runInAccount(account, (sql) =>
+        sql
+          .exec(
+            "SELECT name, tbl_name FROM sqlite_schema WHERE type = 'index' AND name IN ('sent_texts_sent_at', 'sent_text_meals_sent_text_id', 'meal_eaten_at_estimations_eaten_at', 'reply_requests_sent_text_id', 'reply_requests_counted_on', 'reply_generation_attempts_reply_generation_id') ORDER BY name",
+          )
+          .toArray(),
+      );
+      expect(indexes).toEqual([
+        { name: "meal_eaten_at_estimations_eaten_at", tbl_name: "meal_eaten_at_estimations" },
+        {
+          name: "reply_generation_attempts_reply_generation_id",
+          tbl_name: "reply_generation_attempts",
+        },
+        { name: "reply_requests_counted_on", tbl_name: "reply_requests" },
+        { name: "reply_requests_sent_text_id", tbl_name: "reply_requests" },
+        { name: "sent_text_meals_sent_text_id", tbl_name: "sent_text_meals" },
+        { name: "sent_texts_sent_at", tbl_name: "sent_texts" },
+      ]);
+    });
+
+    test("既存の表の行が変わらないこと", async () => {
+      const rowsAfter = await runInAccount(account, readAllRows);
+      expect(
+        Object.fromEntries(Object.keys(rowsBefore).map((name) => [name, rowsAfter[name]])),
+      ).toEqual(rowsBefore);
+    });
+
+    test("外部キーの違反が無いこと", async () => {
+      const violations = await runInAccount(account, (sql) =>
+        sql.exec("PRAGMA foreign_key_check").toArray(),
+      );
+      expect(violations).toEqual([]);
+    });
+  });
+});
+
+// 移行の版の表と Cloudflare・SQLite の表を除く、すべての表の行を、表の名前ごとに読む
+const readAllRows = (sql: Sql): Record<string, unknown[]> =>
+  Object.fromEntries(
+    sql
+      .exec<{ name: string }>(
+        "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name <> 'durable_object_migrations' ORDER BY name",
+      )
+      .toArray()
+      .map(({ name }) => [name, sql.exec(`SELECT * FROM "${name}" ORDER BY rowid`).toArray()]),
+  );

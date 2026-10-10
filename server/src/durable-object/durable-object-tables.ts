@@ -1,10 +1,13 @@
 import { accountSettingsTables } from "../account-settings/durable-object/account-settings-tables";
+import { aiUtteranceTables } from "../ai-utterance/durable-object/ai-utterance-tables";
 import { dishTables } from "../dish/durable-object/dish-tables";
 import { estimationTables } from "../estimation/durable-object/estimation-tables";
 import { ingredientTables } from "../ingredient/durable-object/ingredient-tables";
 import { mealPhotoTables } from "../meal/durable-object/meal-photo-tables";
 import { mealTables } from "../meal/durable-object/meal-tables";
 import { noticeTables } from "../notice/durable-object/notice-tables";
+import { replyTables } from "../reply/durable-object/reply-tables";
+import { sentTextTables } from "../sent-text/durable-object/sent-text-tables";
 import { usualWeighingTimeTables } from "../usual-weighing-time/durable-object/usual-weighing-time-tables";
 import { weightRecordTables } from "../weight-record/durable-object/weight-record-tables";
 import { firstSignInTables } from "./first-sign-in-tables";
@@ -23,4 +26,7 @@ export const durableObjectTables = {
   ...ingredientTables,
   ...noticeTables,
   ...usualWeighingTimeTables,
+  ...sentTextTables,
+  ...replyTables,
+  ...aiUtteranceTables,
 };
