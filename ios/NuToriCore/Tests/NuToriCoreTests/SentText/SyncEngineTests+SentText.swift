@@ -57,6 +57,16 @@ extension SyncEngineTests {
                                 timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))))
                 #expect(store.entries.isEmpty)
             }
+
+            @Test("届くまでは応答を待つ文章とせず、届いたら応答を待つ文章とすること")
+            func awaitsResponseAfterDelivered() async throws {
+                let sentText = try #require(try await engine.sendText("次は何を食べたらいい？"))
+                #expect(try await engine.sentTextsAwaitingResponse().isEmpty)
+
+                _ = try await engine.sync()
+
+                #expect(try await engine.sentTextsAwaitingResponse() == [sentText.id])
+            }
         }
 
         @Suite("空白だけの文章を送ろうとしたとき")

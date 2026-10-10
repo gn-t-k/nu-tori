@@ -86,9 +86,21 @@ public struct Meal: Hashable, Sendable {
         CalendarDay(containing: eatenAt, utcOffsetSeconds: eatenUtcOffsetSeconds)
     }
 
-    /// タイムラインでカードを置く日。送った時刻と、送ったときのタイムゾーンで決める
+    /// タイムラインでカードを置く日。送った時刻と、送ったときのタイムゾーンで決める。
+    /// 送った文章の吹き出しから離して置く文章の食事は、食事の日
     public var cardDay: CalendarDay {
-        CalendarDay(containing: sentAt, in: sentTimeZone)
+        isApartFromSentText ? day : CalendarDay(containing: sentAt, in: sentTimeZone)
+    }
+
+    /// タイムラインでカードを置く位置の時刻。ふつうは送った時刻で、送った文章の吹き出しから離して置く文章の食事は、今の食べた時刻
+    public var cardInstant: Date {
+        isApartFromSentText ? eatenAt : sentAt
+    }
+
+    /// 今の食べた時刻が送った時刻と違う文章の食事（「朝はパン、昼はうどん」の朝、推定や直しで時刻が動いた食事）。
+    /// その時刻の位置（前の日を含む）に置き、送った位置には吹き出しだけを残す
+    public var isApartFromSentText: Bool {
+        sentTextId != nil && eatenAt != sentAt
     }
 
     /// 食事の時差だけを持つタイムゾーン。時刻を直す欄は、撮った時刻をこの時計で見せ、直した値もこの時計の時刻として受け取る
