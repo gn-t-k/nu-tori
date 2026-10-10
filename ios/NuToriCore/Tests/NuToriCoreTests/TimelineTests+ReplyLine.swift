@@ -25,7 +25,7 @@ extension TimelineTests {
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
                         statuses: status.map { [sentText.id: $0] } ?? [:],
-                        replies: replies)),
+                        replies: replies, streams: [:])),
                 firstDay: day, today: day)
             return timeline.days.flatMap(\.items).lazy.compactMap { item in
                 if case .sentText(let bubble) = item { bubble } else { nil }
@@ -44,7 +44,7 @@ extension TimelineTests {
                     .replyLine
                 #expect(line == .reading)
                 #expect(line?.text == "読んでいます…")
-                #expect(line?.offersResend == false)
+                #expect(line?.resendReason == nil)
             }
 
             @Test("読み分けを待つあいだは、読んでいますを出すこと")
@@ -68,7 +68,8 @@ extension TimelineTests {
                 let sentText = try ReplyLines.sentText()
                 let bubble = try ReplyLines.bubble(
                     status: nil, pending: [.create(sentText)], sentText: sentText)
-                #expect(bubble == SentTextBubble(sentText: sentText, replyLine: nil))
+                #expect(
+                    bubble == SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil))
             }
 
             @Test("返事が届いたら、出さないこと")
@@ -104,21 +105,21 @@ extension TimelineTests {
             func showsHalted() throws {
                 let line = try Self.line(.halted)
                 #expect(line?.text == "今日はもう返事を作れません")
-                #expect(line?.offersResend == true)
+                #expect(line?.resendReason == .halted)
             }
 
             @Test("やり直しを使い切ったら、返事を作れませんでしたの1行に送り直すを添えること")
             func showsRetriesExhausted() throws {
                 let line = try Self.line(.failed(.retriesExhausted))
                 #expect(line?.text == "返事を作れませんでした")
-                #expect(line?.offersResend == true)
+                #expect(line?.resendReason == .failed(.retriesExhausted))
             }
 
             @Test("提供元が受け付けなかったら、時間をおいて送り直すよう促す1行に送り直すを添えること")
             func showsBadRequest() throws {
                 let line = try Self.line(.failed(.badRequest))
                 #expect(line?.text == "今は返事を作れません。時間をおいて送り直してください")
-                #expect(line?.offersResend == true)
+                #expect(line?.resendReason == .failed(.badRequest))
             }
         }
 

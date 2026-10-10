@@ -6,7 +6,7 @@ import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables"
 const replyRequests = sqliteTable(
   "reply_requests",
   {
-    id: text("id").primaryKey(),
+    id: text("id").$type<RecordId>().primaryKey(),
     sentTextId: text("sent_text_id")
       .$type<RecordId>()
       .notNull()
@@ -22,6 +22,7 @@ const replyRequests = sqliteTable(
 // 依頼のきっかけ: 会話と読み分けた
 const classificationReplyRequests = sqliteTable("classification_reply_requests", {
   replyRequestId: text("reply_request_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => replyRequests.id),
 });
@@ -29,6 +30,7 @@ const classificationReplyRequests = sqliteTable("classification_reply_requests",
 // 依頼のきっかけ: 送り直した
 const resendReplyRequests = sqliteTable("resend_reply_requests", {
   replyRequestId: text("reply_request_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => replyRequests.id),
   syncWriteReceiptId: text("sync_write_receipt_id")
@@ -40,6 +42,7 @@ const resendReplyRequests = sqliteTable("resend_reply_requests", {
 // 依頼のきっかけ: 会話として送り直した
 const conversationResendReplyRequests = sqliteTable("conversation_resend_reply_requests", {
   replyRequestId: text("reply_request_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => replyRequests.id),
   syncWriteReceiptId: text("sync_write_receipt_id")
@@ -51,6 +54,7 @@ const conversationResendReplyRequests = sqliteTable("conversation_resend_reply_r
 // 回数切れ（提供元を呼ぶ前に依頼を止めた）
 const replyRequestHalts = sqliteTable("reply_request_halts", {
   replyRequestId: text("reply_request_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => replyRequests.id),
   haltedAt: integer("halted_at", { mode: "timestamp_ms" }).notNull(),
@@ -60,6 +64,7 @@ const replyRequestHalts = sqliteTable("reply_request_halts", {
 const replyGenerations = sqliteTable("reply_generations", {
   id: text("id").$type<RecordId>().primaryKey(),
   replyRequestId: text("reply_request_id")
+    .$type<RecordId>()
     .notNull()
     .unique()
     .references(() => replyRequests.id),
@@ -69,7 +74,7 @@ const replyGenerations = sqliteTable("reply_generations", {
 const replyGenerationAttempts = sqliteTable(
   "reply_generation_attempts",
   {
-    id: text("id").primaryKey(),
+    id: text("id").$type<RecordId>().primaryKey(),
     replyGenerationId: text("reply_generation_id")
       .$type<RecordId>()
       .notNull()
@@ -86,6 +91,7 @@ const replyGenerationAttempts = sqliteTable(
 
 const replyGenerationAttemptResults = sqliteTable("reply_generation_attempt_results", {
   replyGenerationAttemptId: text("reply_generation_attempt_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => replyGenerationAttempts.id),
   endedAt: integer("ended_at", { mode: "timestamp_ms" }).notNull(),
@@ -97,6 +103,7 @@ const replyGenerationAttemptResults = sqliteTable("reply_generation_attempt_resu
 // 提供元が返したエラーの種類。提供元の文字列なので enum にしない
 const replyGenerationAttemptErrors = sqliteTable("reply_generation_attempt_errors", {
   replyGenerationAttemptId: text("reply_generation_attempt_id")
+    .$type<RecordId>()
     .primaryKey()
     .references(() => replyGenerationAttemptResults.replyGenerationAttemptId),
   errorType: text("error_type").notNull(),

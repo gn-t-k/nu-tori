@@ -1,13 +1,9 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import {
-  APIConnectionError,
-  APIConnectionTimeoutError,
-  APIError,
-  APIUserAbortError,
-  BadRequestError,
-} from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
-import type { TokenUsage } from "../../../estimation/domain/estimation-provider";
+import { match } from "ts-pattern";
+import { catchAnthropicFailure } from "../../../durable-object/anthropic/catch-anthropic-failure";
+import { parseJson } from "../../../durable-object/anthropic/parse-json";
+import type { TokenUsage } from "../../../domain/token-usage";
 import type { ConversationProvider, GeneratedReply } from "../../domain/conversation-provider";
 import { ConversationProviderBadRequestError } from "../../domain/conversation-provider-bad-request-error";
 import { ConversationProviderError } from "../../domain/conversation-provider-error";
@@ -19,32 +15,41 @@ import { sonnetReplyOutputSchema } from "./sonnet-reply-output-schema";
 
 // Claude Sonnet 5.5 に、流す形で返事を作らせる（#419 の「返事を作る」）。流れてきた JSON から本文のできた分を読み、onText に渡す。
 // 時間の上限は試み全体の signal だけにする（1回の試みで呼ぶのは1回）。応答の中身（返事の本文を除く）は残さない
-export const generateReplyWithSonnet = async (
+export const generateReplyWithSonnet = (
   client: Anthropic,
   userId: string,
   { context, onText }: Parameters<ConversationProvider["generateReply"]>[0],
   signal: AbortSignal,
 ): R.ResultAsync<GeneratedReply, R.InferFailure<ConversationProvider["generateReply"]>> =>
-  client.messages
-    .create({ ...createSonnetReplyRequest(context), metadata: { user_id: userId } }, { signal })
-    .then(async (stream) => {
-      const streamed = await readStream(stream, onText);
-      // 流している途中で signal が切れると、SDK は失敗にせず流れを終える
-      if (signal.aborted) {
-        return R.fail(new ConversationProviderTimedOutError());
-      }
-      return readReply(streamed, onText);
-    })
-    .then(
-      (result) => result,
-      (error: unknown) => {
-        const failure = toProviderFailure(error);
-        if (failure === undefined) {
-          throw error;
-        }
-        return R.fail(failure);
-      },
-    );
+  R.pipe(
+    // 流している途中のエラーも提供元の失敗にするため、流れを読み終えるまでを1つの呼び出しとして包む
+    catchAnthropicFailure(
+      client.messages
+        .create({ ...createSonnetReplyRequest(context), metadata: { user_id: userId } }, { signal })
+        .then(async (stream) => readStream(stream, onText)),
+      (failure) =>
+        match(failure)
+          .with(
+            { type: "timed_out" },
+            ({ cause }) => new ConversationProviderTimedOutError({ cause }),
+          )
+          .with(
+            { type: "bad_request" },
+            ({ errorType, cause }) => new ConversationProviderBadRequestError({ errorType, cause }),
+          )
+          .with(
+            { type: "provider_error" },
+            ({ errorType, cause }) => new ConversationProviderError({ errorType, cause }),
+          )
+          .exhaustive(),
+    ),
+    // 流している途中で signal が切れると、SDK は失敗にせず流れを終える
+    R.andThen((streamed) =>
+      signal.aborted
+        ? R.fail(new ConversationProviderTimedOutError())
+        : readReply(streamed, onText),
+    ),
+  );
 
 type StreamedMessage = {
   text: string;
@@ -109,45 +114,4 @@ const readReply = (
     onText(rest);
   }
   return R.succeed({ body: parsed.data.body, mealIds: parsed.data.mealIds, usage });
-};
-
-// JSON として読めないテキストは、形の確かめで落ちるよう undefined にする
-const parseJson = (text: string): unknown => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-};
-
-// SDK が投げる提供元の失敗。SDK の失敗でないもの（想定外）は undefined を返し、呼び出し側が投げ直す。
-// errorType は提供元のエラーの種類（応答に無ければ HTTP の状態コード、つなげなかったときは connection_error）。
-// 流している途中のエラーの出来事は、状態コードの無い APIError で届く
-const toProviderFailure = (
-  error: unknown,
-):
-  | ConversationProviderError
-  | ConversationProviderBadRequestError
-  | ConversationProviderTimedOutError
-  | undefined => {
-  if (error instanceof APIConnectionTimeoutError || error instanceof APIUserAbortError) {
-    return new ConversationProviderTimedOutError({ cause: error });
-  }
-  // 400 は状態コードで見分ける（月の支出の上限に当たったときも 400。メッセージの文字列では見分けない）
-  if (error instanceof BadRequestError) {
-    return new ConversationProviderBadRequestError({
-      errorType: error.type ?? "http_400",
-      cause: error,
-    });
-  }
-  if (error instanceof APIConnectionError) {
-    return new ConversationProviderError({ errorType: "connection_error", cause: error });
-  }
-  if (error instanceof APIError) {
-    return new ConversationProviderError({
-      errorType: error.type ?? `http_${error.status}`,
-      cause: error,
-    });
-  }
-  return undefined;
 };

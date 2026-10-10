@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
-import { computeDayOfWeek } from "../compute-day-of-week";
+import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
+import type { DayOfWeek } from "../../../domain/day-of-week";
 import type {
   MainNutrients,
   ReplyContext,
@@ -141,6 +142,16 @@ const formatDateTime = (wallClock: string): string =>
   `${formatDate(wallClock.slice(0, "YYYY-MM-DD".length))} ${formatTime(wallClock)}`;
 
 const formatDate = (calendarDay: string): string =>
-  `${calendarDay.slice(5, 7)}/${calendarDay.slice(8, 10)}(${computeDayOfWeek(calendarDay)})`;
+  `${calendarDay.slice(5, 7)}/${calendarDay.slice(8, 10)}(${dayOfWeekNames[computeDayOfWeek(calendarDay)]})`;
+
+const dayOfWeekNames: Readonly<Record<DayOfWeek, string>> = {
+  sunday: "日",
+  monday: "月",
+  tuesday: "火",
+  wednesday: "水",
+  thursday: "木",
+  friday: "金",
+  saturday: "土",
+};
 
 const formatTime = (wallClock: string): string => wallClock.slice("YYYY-MM-DDT".length);

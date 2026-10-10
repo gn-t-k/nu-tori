@@ -6,8 +6,8 @@ import type {
   IdentifiedWrittenMeals,
   IngredientMatchRequest,
   MatchedIngredients,
-  TokenUsage,
 } from "../../domain/estimation-provider";
+import type { TokenUsage } from "../../../domain/token-usage";
 import * as module from "./index";
 
 type IdentifyDishesRequest = Parameters<EstimationProvider["identifyDishes"]>[0];

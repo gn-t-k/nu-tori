@@ -2,11 +2,12 @@ import { addDays } from "../../../domain/add-days";
 import { computeCalendarDay } from "../../../domain/compute-calendar-day";
 import { computeCalendarDayInTimeZone } from "../../../domain/compute-calendar-day-in-time-zone";
 import { computeUtcOffsetSeconds } from "../../../domain/compute-utc-offset-seconds";
+import { formatLocalDateTime } from "../../../domain/format-local-date-time";
 import { computeNutrientTotal } from "../../../ingredient/domain/compute-nutrient-total";
 import type { Ingredient } from "../../../ingredient/domain/ingredient";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import type { Meal } from "../../../meal/domain/meal";
-import { computeDayOfWeek } from "../compute-day-of-week";
+import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type {
   MainNutrients,
   ReplyContext,
@@ -20,7 +21,7 @@ import type { ReplyContextSource, ReplyContextSourceMeal } from "../reply-contex
 export const assembleReplyContext = (source: ReplyContextSource): ReplyContext => {
   const { sentText } = source;
   const toWallClock = (instant: Date): string =>
-    formatWallClock(instant, computeUtcOffsetSeconds(instant, sentText.timeZone));
+    formatLocalDateTime(instant, computeUtcOffsetSeconds(instant, sentText.timeZone));
   // 応える文章より後に入った記録は、文章を送ったときに無かったので渡さない
   const sentByThen = (instant: Date): boolean => instant.getTime() <= sentText.sentAt.getTime();
   const meals = source.meals.filter(({ meal }) => sentByThen(meal.sentAt));
@@ -226,9 +227,4 @@ const markIncomplete = (amount: NutrientAmount): NutrientAmount =>
   amount.type === "exactly" ? { type: "at_least", value: amount.value } : amount;
 
 const formatEatenAt = (meal: Meal): string =>
-  formatWallClock(meal.eatenAt, meal.eatenAtUtcOffsetSeconds);
-
-const formatWallClock = (instant: Date, utcOffsetSeconds: number): string =>
-  new Date(instant.getTime() + utcOffsetSeconds * 1000)
-    .toISOString()
-    .slice(0, "YYYY-MM-DDTHH:mm".length);
+  formatLocalDateTime(meal.eatenAt, meal.eatenAtUtcOffsetSeconds);

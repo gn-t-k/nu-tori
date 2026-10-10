@@ -30,98 +30,170 @@ struct ReplyFirstTextWatchTests {
     static let awaiting = SentTextStatus(classification: .conversation, reply: .awaiting)
     static let replied = SentTextStatus(classification: .conversation, reply: .replied)
 
-    @Test("読んでいますを出してから、見守る要求で最初の文字が出るまでの秒数を、つながっていたとして送ること")
-    func reportsStreamedFirstText() throws {
-        let sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
+    @Suite("読んでいますを出したあと、見守る要求で最初の文字が出たとき")
+    struct Streamed {
+        let sentText: SentText
         let replyId = UUID()
-        var watch = ReplyFirstTextWatch()
+        let watch: ReplyFirstTextWatch
+        let firstEvents: [ClientUsageEvent]
 
-        let first = watch.note(Self.timeline(sentText, status: Self.awaiting), at: Self.start)
-        let shown = watch.note(
-            Self.timeline(
-                sentText, status: Self.awaiting,
-                stream: [ReplyStreamEvent.replyStarted(replyId: replyId), .textDelta("野菜")]
-                    .reduce(into: ReplyStream()) { $0.receive($1) }),
-            at: Self.start.addingTimeInterval(6))
+        init() throws {
+            sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
+            var watch = ReplyFirstTextWatch()
+            firstEvents = watch.note(
+                ReplyFirstTextWatchTests.timeline(
+                    sentText, status: ReplyFirstTextWatchTests.awaiting),
+                at: ReplyFirstTextWatchTests.start)
+            self.watch = watch
+        }
 
-        #expect(first.isEmpty)
-        #expect(shown == [.replyFirstTextShown(sinceSent: .seconds(6), watched: true)])
+        @Test("読んでいますを出してから最初の文字が出るまでの秒数を、つながっていたとして送ること")
+        func reportsStreamedFirstText() {
+            var watch = watch
+            let shown = watch.note(
+                ReplyFirstTextWatchTests.timeline(
+                    sentText, status: ReplyFirstTextWatchTests.awaiting,
+                    stream: [ReplyStreamEvent.replyStarted(replyId: replyId), .textDelta("野菜")]
+                        .reduce(into: ReplyStream()) { $0.receive($1) }),
+                at: ReplyFirstTextWatchTests.start.addingTimeInterval(6))
+
+            #expect(firstEvents.isEmpty)
+            #expect(shown == [.replyFirstTextShown(sinceSent: .seconds(6), watched: true)])
+        }
     }
 
-    @Test("取りに行って届いた返事は、つながっていなかったとして、1回だけ送ること")
-    func reportsPulledReplyOnce() throws {
-        let sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
-        let reply = AiUtterance(
-            id: UUID(), body: "野菜を足しましょう。", sentTextId: sentText.id, mealIds: [])
-        var watch = ReplyFirstTextWatch()
+    @Suite("読んでいますを出したあと、取りに行って返事が届いたとき")
+    struct Pulled {
+        let sentText: SentText
+        let reply: AiUtterance
+        let watch: ReplyFirstTextWatch
 
-        _ = watch.note(Self.timeline(sentText, status: Self.awaiting), at: Self.start)
-        let shown = watch.note(
-            Self.timeline(sentText, status: Self.replied, replies: [reply]),
-            at: Self.start.addingTimeInterval(9))
-        let again = watch.note(
-            Self.timeline(sentText, status: Self.replied, replies: [reply]),
-            at: Self.start.addingTimeInterval(12))
+        init() throws {
+            sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
+            reply = AiUtterance(
+                id: UUID(), body: "野菜を足しましょう。", sentTextId: sentText.id, mealIds: [])
+            var watch = ReplyFirstTextWatch()
+            _ = watch.note(
+                ReplyFirstTextWatchTests.timeline(
+                    sentText, status: ReplyFirstTextWatchTests.awaiting),
+                at: ReplyFirstTextWatchTests.start)
+            self.watch = watch
+        }
 
-        #expect(shown == [.replyFirstTextShown(sinceSent: .seconds(9), watched: false)])
-        #expect(again.isEmpty)
+        @Test("つながっていなかったとして、1回だけ送ること")
+        func reportsPulledReplyOnce() {
+            var watch = watch
+            let replied = ReplyFirstTextWatchTests.timeline(
+                sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply])
+            let shown = watch.note(
+                replied, at: ReplyFirstTextWatchTests.start.addingTimeInterval(9))
+            let again = watch.note(
+                replied, at: ReplyFirstTextWatchTests.start.addingTimeInterval(12))
+
+            #expect(shown == [.replyFirstTextShown(sinceSent: .seconds(9), watched: false)])
+            #expect(again.isEmpty)
+        }
     }
 
-    @Test("開いたときにもう届いていた返事は送らないこと")
-    func ignoresRepliesAlreadyShown() throws {
-        let sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
-        let reply = AiUtterance(
-            id: UUID(), body: "野菜を足しましょう。", sentTextId: sentText.id, mealIds: [])
-        var watch = ReplyFirstTextWatch()
+    @Suite("開いたときにもう返事が届いていたとき")
+    struct AlreadyReplied {
+        let timeline: Timeline
 
-        let events = watch.note(
-            Self.timeline(sentText, status: Self.replied, replies: [reply]), at: Self.start)
+        init() throws {
+            let sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
+            let reply = AiUtterance(
+                id: UUID(), body: "野菜を足しましょう。", sentTextId: sentText.id, mealIds: [])
+            timeline = ReplyFirstTextWatchTests.timeline(
+                sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply])
+        }
 
-        #expect(events.isEmpty)
+        @Test("送らないこと")
+        func ignoresRepliesAlreadyShown() {
+            var watch = ReplyFirstTextWatch()
+            #expect(watch.note(timeline, at: ReplyFirstTextWatchTests.start).isEmpty)
+        }
     }
 
-    @Test("まだ届いていない文章を送り待ちに並べた時点から数えること")
-    func countsFromUndelivered() throws {
-        let sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
-        let reply = AiUtterance(
-            id: UUID(), body: "野菜を足しましょう。", sentTextId: sentText.id, mealIds: [])
-        let undelivered = UndeliveredRecords(pendingEntries: [
-            try PendingSentTextWrite(enqueuedAt: Self.start, write: .create(sentText)).entry()
-        ])
-        var watch = ReplyFirstTextWatch()
+    @Suite("まだ届いていない文章を送り待ちに並べたのを見てから、返事が届いたとき")
+    struct FromUndelivered {
+        let sentText: SentText
+        let reply: AiUtterance
+        let watch: ReplyFirstTextWatch
 
-        _ = watch.note(
-            Self.timeline(sentText, status: nil, undelivered: undelivered), at: Self.start)
-        _ = watch.note(
-            Self.timeline(sentText, status: Self.awaiting), at: Self.start.addingTimeInterval(2))
-        let shown = watch.note(
-            Self.timeline(sentText, status: Self.replied, replies: [reply]),
-            at: Self.start.addingTimeInterval(5))
+        init() throws {
+            sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
+            reply = AiUtterance(
+                id: UUID(), body: "野菜を足しましょう。", sentTextId: sentText.id, mealIds: [])
+            let undelivered = UndeliveredRecords(pendingEntries: [
+                try PendingSentTextWrite(
+                    enqueuedAt: ReplyFirstTextWatchTests.start, write: .create(sentText)
+                ).entry()
+            ])
+            var watch = ReplyFirstTextWatch()
+            _ = watch.note(
+                ReplyFirstTextWatchTests.timeline(
+                    sentText, status: nil, undelivered: undelivered),
+                at: ReplyFirstTextWatchTests.start)
+            _ = watch.note(
+                ReplyFirstTextWatchTests.timeline(
+                    sentText, status: ReplyFirstTextWatchTests.awaiting),
+                at: ReplyFirstTextWatchTests.start.addingTimeInterval(2))
+            self.watch = watch
+        }
 
-        #expect(shown == [.replyFirstTextShown(sinceSent: .seconds(5), watched: false)])
+        @Test("送り待ちに並べたのを見た時点から数えること")
+        func countsFromUndelivered() {
+            var watch = watch
+            let shown = watch.note(
+                ReplyFirstTextWatchTests.timeline(
+                    sentText, status: ReplyFirstTextWatchTests.replied, replies: [reply]),
+                at: ReplyFirstTextWatchTests.start.addingTimeInterval(5))
+
+            #expect(shown == [.replyFirstTextShown(sinceSent: .seconds(5), watched: false)])
+        }
     }
 
-    @Test("食事と読み分けた文章と、作れなかった文章は送らないこと")
-    func ignoresMealsAndFailures() throws {
-        let meal = try SentText.fixture("昼はうどん", sentAt: "2026-09-24T12:11:00+09:00")
-        let failed = try SentText.fixture("次は？", sentAt: "2026-09-24T12:12:00+09:00")
-        var mealWatch = ReplyFirstTextWatch()
-        var failedWatch = ReplyFirstTextWatch()
+    @Suite("応答を待つのを見たあと、食事と読み分けたか、作れなかったとき")
+    struct NotReplied {
+        let meal: SentText
+        let failed: SentText
+        let mealWatch: ReplyFirstTextWatch
+        let failedWatch: ReplyFirstTextWatch
 
-        _ = mealWatch.note(Self.timeline(meal, status: nil), at: Self.start)
-        _ = failedWatch.note(Self.timeline(failed, status: Self.awaiting), at: Self.start)
-        let events =
-            mealWatch.note(
-                Self.timeline(
-                    meal, status: SentTextStatus(classification: .meal, reply: .notRequested)),
-                at: Self.start.addingTimeInterval(3))
-            + failedWatch.note(
-                Self.timeline(
-                    failed,
-                    status: SentTextStatus(
-                        classification: .conversation, reply: .failed(.retriesExhausted))),
-                at: Self.start.addingTimeInterval(3))
+        init() throws {
+            meal = try SentText.fixture("昼はうどん", sentAt: "2026-09-24T12:11:00+09:00")
+            failed = try SentText.fixture("次は？", sentAt: "2026-09-24T12:12:00+09:00")
+            var mealWatch = ReplyFirstTextWatch()
+            var failedWatch = ReplyFirstTextWatch()
+            _ = mealWatch.note(
+                ReplyFirstTextWatchTests.timeline(meal, status: nil),
+                at: ReplyFirstTextWatchTests.start)
+            _ = failedWatch.note(
+                ReplyFirstTextWatchTests.timeline(
+                    failed, status: ReplyFirstTextWatchTests.awaiting),
+                at: ReplyFirstTextWatchTests.start)
+            self.mealWatch = mealWatch
+            self.failedWatch = failedWatch
+        }
 
-        #expect(events.isEmpty)
+        @Test("送らないこと")
+        func ignoresMealsAndFailures() {
+            var mealWatch = mealWatch
+            var failedWatch = failedWatch
+            let later = ReplyFirstTextWatchTests.start.addingTimeInterval(3)
+            let events =
+                mealWatch.note(
+                    ReplyFirstTextWatchTests.timeline(
+                        meal, status: SentTextStatus(classification: .meal, reply: .notRequested)),
+                    at: later)
+                + failedWatch.note(
+                    ReplyFirstTextWatchTests.timeline(
+                        failed,
+                        status: SentTextStatus(
+                            classification: .conversation, reply: .failed(.retriesExhausted))),
+                    at: later)
+
+            #expect(events.isEmpty)
+        }
     }
 }

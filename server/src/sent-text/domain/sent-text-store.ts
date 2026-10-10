@@ -1,6 +1,7 @@
 import type { RecordId } from "../../domain/record-id";
 import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { SentText } from "./sent-text";
+import type { SentTextClassification } from "./sent-text-classification";
 
 export type SentTextStore = {
   find: (id: RecordId) => SentText | undefined;
@@ -12,7 +13,7 @@ export type SentTextStore = {
   insertClassification: (classification: {
     sentTextId: RecordId;
     classifiedAt: Date;
-    result: "meal" | "conversation";
+    result: SentTextClassification;
   }) => void;
   // その文章から作った、いまある文章の食事
   findMealIds: (sentTextId: RecordId) => RecordId[];

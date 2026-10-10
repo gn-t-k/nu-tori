@@ -16,7 +16,7 @@ extension TimelineTests {
             Timeline(
                 input: Timeline.Input(
                     weightRecords: weightRecords, rejectedLines: [], meals: meals, notices: [],
-                    conversation: conversation),
+                    undelivered: .none, conversation: conversation),
                 firstDay: firstDay, today: day)
         }
 
@@ -51,7 +51,7 @@ extension TimelineTests {
                         sentTexts: [sentText],
                         statuses: [
                             sentText.id: SentTextStatus(classification: .meal, reply: .notRequested)
-                        ]))
+                        ], replies: [], streams: [:]))
             }
 
             @Test("送った時刻の位置に吹き出しを置き、そのすぐ下に文章の食事のカードを置くこと")
@@ -60,7 +60,9 @@ extension TimelineTests {
                     timeline.days.map(\.items) == [
                         [
                             .weightRecord(morning),
-                            .sentText(SentTextBubble(sentText: sentText, replyLine: nil)),
+                            .sentText(
+                                SentTextBubble(
+                                    sentText: sentText, replyLine: nil, rejectedLine: nil)),
                             .meal(meal),
                             .weightRecord(evening),
                         ]
@@ -96,7 +98,7 @@ extension TimelineTests {
                         sentTexts: [sentText],
                         statuses: [
                             sentText.id: SentTextStatus(classification: .meal, reply: .notRequested)
-                        ]),
+                        ], replies: [], streams: [:]),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23))
             }
 
@@ -108,7 +110,9 @@ extension TimelineTests {
                         [
                             .weightRecord(morning),
                             .meal(breakfast),
-                            .sentText(SentTextBubble(sentText: sentText, replyLine: nil)),
+                            .sentText(
+                                SentTextBubble(
+                                    sentText: sentText, replyLine: nil, rejectedLine: nil)),
                             .meal(lunch),
                         ],
                     ])
@@ -141,7 +145,7 @@ extension TimelineTests {
                             next.id: SentTextStatus(
                                 classification: .conversation, reply: .halted),
                         ],
-                        replies: [reply]))
+                        replies: [reply], streams: [:]))
             }
 
             @Test("返事を、応える文章のすぐあとに並べること")
@@ -168,7 +172,7 @@ extension TimelineTests {
                         statuses: [:],
                         replies: [
                             AiUtterance(id: UUID(), body: "どうぞ", sentTextId: UUID(), mealIds: [])
-                        ]))
+                        ], streams: [:]))
             }
 
             @Test("送った文章が届くまで、返事を出さないこと")

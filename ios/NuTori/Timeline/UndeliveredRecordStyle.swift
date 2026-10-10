@@ -8,8 +8,8 @@ private struct UndeliveredRecordStyle: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            // 不透明度だけを動かす（同じときに変わった値まで動かさない）。位置が動かないので、
-            // 「視差効果を減らす」がオンでも同じに動かす。動きはあとで #325 で見直す
+            // 不透明度だけを動かす（同じときに変わった値まで動かさない）。
+            // 位置が動かないので、「視差効果を減らす」がオンでも同じに動かす。動きはあとで #325 で見直す
             .animation(.easeInOut(duration: 0.25)) {
                 $0.opacity(undelivered ? 0.55 : 1)
             }

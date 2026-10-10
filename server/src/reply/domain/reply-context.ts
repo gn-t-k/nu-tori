@@ -1,3 +1,4 @@
+import type { DayOfWeek } from "../../domain/day-of-week";
 import type { RecordId } from "../../domain/record-id";
 import type { NutrientAmount } from "../../ingredient/domain/nutrient-amount";
 import type { MealEstimationProgress } from "./reply-context-source";
@@ -57,5 +58,3 @@ export type MainNutrients = {
   fatG: NutrientAmount;
   carbohydrateG: NutrientAmount;
 };
-
-export type DayOfWeek = "月" | "火" | "水" | "木" | "金" | "土" | "日";

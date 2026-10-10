@@ -1,6 +1,9 @@
 import type { RecordId } from "../../src/domain/record-id";
 import type { ReplyContext } from "../../src/reply/domain/reply-context";
-import { emptyToday, evalMealId, richDay, sparseDay } from "./eval-days";
+import { evalDays } from "./eval-days";
+import { evalMealId } from "./eval-meal-id";
+
+const { richDay, sparseDay, emptyToday } = evalDays;
 
 // 返事の評価の組（仕様 #419 の「指示と評価」）。30 場面。場面ごとに守ることの一覧（rubric）を持ち、別の Claude が1項目ずつ判定する。
 // どの場面にもかける守ること（口調・書式・数字）は common-rubric.ts、長さと指し示す食事はコードで確かめる（judge-reply-shape）。

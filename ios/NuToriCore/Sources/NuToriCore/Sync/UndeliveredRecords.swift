@@ -15,7 +15,7 @@ public struct UndeliveredRecords: Hashable, Sendable {
         var sentTextIds: Set<UUID> = []
         for entry in pendingEntries {
             switch entry.kind {
-            case WeightRecordWrite.kindName:
+            case .weightRecord:
                 guard let pending = try? PendingWeightRecordWrite(entry: entry) else { continue }
                 switch pending.write {
                 case .createWeightRecord(let record), .correctWeightRecord(let record):
@@ -23,14 +23,14 @@ public struct UndeliveredRecords: Hashable, Sendable {
                 case .sourceDeletedWeightRecord:
                     continue
                 }
-            case MealWrite.kindName:
+            case .meal:
                 guard let pending = try? PendingMealWrite(entry: entry) else { continue }
                 switch pending.write {
                 case .create(let meal): mealIds.insert(meal.id)
                 case .update(let mealId, _): mealIds.insert(mealId)
                 case .delete: continue
                 }
-            case DishWrite.kindName:
+            case .dish:
                 guard let pending = try? PendingDishWrite(entry: entry) else { continue }
                 switch pending.write {
                 case .create(let dish): mealIds.insert(dish.mealId)
@@ -38,16 +38,18 @@ public struct UndeliveredRecords: Hashable, Sendable {
                 // 消した料理はキャッシュに無く、どの食事の料理だったかが分からないので、食事を薄く描かない
                 case .delete: continue
                 }
-            case IngredientWrite.kindName:
+            case .ingredient:
                 guard let pending = try? PendingIngredientWrite(entry: entry) else { continue }
                 switch pending.write {
                 case .update(let ingredientId, _): ingredientIds.insert(ingredientId)
                 }
             // 送り直す2つも、届くまで吹き出しを薄く描き、応答待ちを出さない
-            case SentTextWrite.kindName:
+            case .sentText:
                 guard let pending = try? PendingSentTextWrite(entry: entry) else { continue }
                 sentTextIds.insert(pending.write.sentTextId)
-            default:
+            case .accountSettings, .aiUtterance, .dishEstimationStatus, .mealEstimationStatus,
+                .notice,
+                .sentTextStatus, .usualWeighingTime, .weightTrend:
                 continue
             }
         }

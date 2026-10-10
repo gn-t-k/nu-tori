@@ -7,7 +7,7 @@ export type ReplyStore = {
   // 回数切れでも生成を始めてもいない依頼（応える文章の送った時刻の順）。
   // requestedAt は依頼を作った時刻（きっかけの時刻。読み分けなら読み分けた時刻）
   findWaitingRequests: () => {
-    requestId: string;
+    requestId: RecordId;
     sentText: SentText;
     countedOn: string;
     requestedAt: Date;

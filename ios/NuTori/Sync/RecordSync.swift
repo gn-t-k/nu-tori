@@ -204,30 +204,23 @@ import NuToriCore
         guard await hasSession(), let accountId = await signedInAccountId() else { return nil }
         let engine = engineForThisDevice(accountId: accountId)
         guard let sentText = try await engine.sendText(typedBody) else { return nil }
-        await publishFromPending(engine)
-        Task { await self.followRepliesAfterSending() }
+        await followRepliesAfterWriting(engine)
         return sentText
     }
 
     /// 文章の食事のカードの「会話として送り直す」。電波が無くても、その場でその文章の食事・料理・材料がキャッシュから消える。
     /// 書き込みは送り待ちに並ぶ
     func resendAsConversation(sentTextId: UUID) async throws {
-        guard await hasSession(), let accountId = await signedInAccountId() else { return }
-        onReplacingRecord(sentTextId)
-        let engine = engineForThisDevice(accountId: accountId)
-        try await engine.resendAsConversation(sentTextId: sentTextId)
-        await publishFromPending(engine)
-        Task { await self.followRepliesAfterSending() }
+        try await resendText(sentTextId: sentTextId) { engine in
+            try await engine.resendAsConversation(sentTextId: sentTextId)
+        }
     }
 
     /// 作れなかった・回数切れの1行の「送り直す」。書き込みは送り待ちに並ぶ
     func resend(sentTextId: UUID) async throws {
-        guard await hasSession(), let accountId = await signedInAccountId() else { return }
-        onReplacingRecord(sentTextId)
-        let engine = engineForThisDevice(accountId: accountId)
-        try await engine.resend(sentTextId: sentTextId)
-        await publishFromPending(engine)
-        Task { await self.followRepliesAfterSending() }
+        try await resendText(sentTextId: sentTextId) { engine in
+            try await engine.resend(sentTextId: sentTextId)
+        }
     }
 
     /// 裏へ回ったとき・サインアウトしたときに、見守る要求をすべて切る。前面に戻って同期を終えたら、つなぎ直す
@@ -394,8 +387,25 @@ import NuToriCore
         _ = try? await syncAfterInFlight()
     }
 
-    /// 文章を送った・送り直したあと。送り待ちを送り、送り終えたら、見守る要求がつながっていない応答待ちの文章のために、
-    /// 送ってから1分まで数秒おきに取りに行く。送ってからの経過は単調な時計で測る（`followEstimationInBackground` と同じ）
+    /// 送り直す書き込みを送り待ちに並べる。サインインしていなければ何もしない
+    private func resendText(
+        sentTextId: UUID, _ enqueue: (SyncEngine) async throws -> Void
+    ) async throws {
+        guard await hasSession(), let accountId = await signedInAccountId() else { return }
+        onReplacingRecord(sentTextId)
+        let engine = engineForThisDevice(accountId: accountId)
+        try await enqueue(engine)
+        await followRepliesAfterWriting(engine)
+    }
+
+    /// 文章の書き込みを送り待ちに並べたあと。まだ届いていない記録としてその場で描き、裏で送って返事を追う
+    private func followRepliesAfterWriting(_ engine: SyncEngine) async {
+        await publishFromPending(engine)
+        Task { await self.followRepliesAfterSending() }
+    }
+
+    /// 文章を送った・送り直したあと。送り待ちを送り、送り終えたら、見守る要求がつながっていない応答待ちの文章のために、送ってから1分まで数秒おきに取りに行く。
+    /// 送ってからの経過は単調な時計で測る（`followEstimationInBackground` と同じ）
     private func followRepliesAfterSending() async {
         guard let result = try? await syncAfterInFlight(), result.ending == .finished,
             let accountId = await signedInAccountId()

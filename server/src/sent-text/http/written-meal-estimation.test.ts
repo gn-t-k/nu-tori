@@ -7,10 +7,8 @@ import { generateRecordId } from "../../domain/record-id";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { insertCountedEstimations } from "../../estimation/http/testing/insert-counted-estimations";
-import {
-  readIdentifyDishesRequests,
-  readIdentifyWrittenMealsRequests,
-} from "../../estimation/http/testing/read-identify-dishes-requests";
+import { readIdentifyDishesRequests } from "../../estimation/http/testing/read-identify-dishes-requests";
+import { readIdentifyWrittenMealsRequests } from "../../estimation/http/testing/read-identify-written-meals-requests";
 import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { waitForEstimationAttempts } from "../../estimation/http/testing/wait-for-estimation-attempts";

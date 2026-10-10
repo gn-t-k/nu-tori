@@ -32,8 +32,8 @@ struct TimelineScreen: View {
     let accountActions: AccountActions
     let mealActions: MealActions
     /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
-    var conversation = Timeline.Conversation.none
-    var conversationActions = ConversationActions.none
+    let conversation: Timeline.Conversation
+    let conversationActions: ConversationActions
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
@@ -420,29 +420,14 @@ struct TimelineScreen: View {
         }
     }
 
-    /// 会話のまとまりの見た目（仕様 #419「会話のまとまりの見た目」）。隣り合う発言（送った文章と返事、返事と次の送った文章）は 8、
-    /// あいだに別の記録か日の見出しがある発言と、発言のすぐあとの記録は 24 空ける。会話の区切りとは結びつけない。
+    /// 会話のまとまりの見た目（仕様 #419「会話のまとまりの見た目」）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
     /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、会話のまとまりを余白だけで見せるため、ここは数値で決める。
-    /// ほかの項目の間と、吹き出しとその下の文章の食事のカードの間は、VStack の標準の間隔と同じ 8 にする
+    /// 詰めるのは VStack の標準の間隔と同じ 8、空けるのは DESIGN.md のまとまりの間（section-gap）の 24
     private static func gap(before item: Timeline.Item, in day: Timeline.Day) -> CGFloat {
-        let adjacent: CGFloat = 8
-        let apart: CGFloat = 24
-        guard let index = day.items.firstIndex(of: item) else { return adjacent }
-        let previous = index > 0 ? day.items[index - 1] : nil
-        if item.isUtterance {
-            return day.followsUtterance(item) ? adjacent : apart
+        switch day.spacing(before: item) {
+        case .close: 8
+        case .apart: 24
         }
-        if case .meal(let card) = item, let sentTextId = card.meal.sentTextId {
-            switch previous {
-            case .sentText(let bubble) where bubble.sentText.id == sentTextId:
-                return adjacent
-            case .meal(let previousCard) where previousCard.meal.sentTextId == sentTextId:
-                return adjacent
-            default:
-                break
-            }
-        }
-        return previous?.isUtterance == true ? apart : adjacent
     }
 
     @ViewBuilder private func itemView(_ item: Timeline.Item, in timeline: Timeline) -> some View {
@@ -456,30 +441,26 @@ struct TimelineScreen: View {
             .accessibilityIdentifier("weight-row")
             .frame(maxWidth: .infinity, alignment: .trailing)
         case .rejectedWeightLine(let line):
-            Text(line.text)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .accessibilityIdentifier("rejected-weight-line")
-        case .meal(let card) where card.meal.sentTextId != nil:
-            writtenMealCard(card, isUndelivered: timeline.isUndelivered(item))
+            RejectedLineText(text: line.text, subject: .weightRecord)
         case .meal(let card):
-            // どの状態のカードも、押すと食事の画面へ潜る
-            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                MealCardView(card: card) { photoId in
-                    await mealActions.loadPhoto(card.meal.id, photoId)
+            if let sentTextId = card.meal.sentTextId {
+                writtenMealCard(
+                    card, sentTextId: sentTextId, isUndelivered: timeline.isUndelivered(item))
+            } else {
+                // どの状態のカードも、押すと食事の画面へ潜る
+                NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                    MealCardView(card: card) { photoId in
+                        await mealActions.loadPhoto(card.meal.id, photoId)
+                    }
+                    .modifier(OwnRecordCard())
                 }
-            }
-            .buttonStyle(.plain)
-            .undeliveredRecord(timeline.isUndelivered(item))
-            .accessibilityIdentifier("meal-card")
-            .frame(maxWidth: .infinity, alignment: .trailing)
-        case .rejectedMealLine(let line):
-            Text(line.text)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+                .undeliveredRecord(timeline.isUndelivered(item))
+                .accessibilityIdentifier("meal-card")
                 .frame(maxWidth: .infinity, alignment: .trailing)
-                .accessibilityIdentifier("rejected-meal-line")
+            }
+        case .rejectedMealLine(let line):
+            RejectedLineText(text: line.text, subject: .meal)
         case .sentText(let bubble):
             SentTextBubbleView(
                 bubble: bubble, isUndelivered: timeline.isUndelivered(item)
@@ -488,12 +469,7 @@ struct TimelineScreen: View {
                 Task { await conversationActions.resend(bubble.sentText.id, reason) }
             }
         case .rejectedSentTextLine(let line):
-            Text(line.text)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.trailing)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .accessibilityIdentifier("rejected-sent-text-line")
+            RejectedLineText(text: line.text, subject: .sentText)
         case .reply(let reply):
             ReplyView(
                 reply: reply,
@@ -538,10 +514,12 @@ struct TimelineScreen: View {
 
     /// 文章の食事のカード。写真の場所を持たず、文章の食事と分かる手がかりは上の吹き出し。
     /// 下に「会話として送り直す」を添える。押しても確かめず、その文章の食事がすべて消える
-    private func writtenMealCard(_ card: MealCard, isUndelivered: Bool) -> some View {
+    private func writtenMealCard(_ card: MealCard, sentTextId: UUID, isUndelivered: Bool)
+        -> some View
+    {
         VStack(alignment: .leading, spacing: 0) {
             NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                MealCardView(card: card, showsCardChrome: false) { photoId in
+                MealCardView(card: card) { photoId in
                     await mealActions.loadPhoto(card.meal.id, photoId)
                 }
             }
@@ -549,7 +527,6 @@ struct TimelineScreen: View {
             .accessibilityIdentifier("meal-card")
             Divider()
             Button("会話として送り直す") {
-                guard let sentTextId = card.meal.sentTextId else { return }
                 let deletedMealCount = meals.filter { $0.meal.sentTextId == sentTextId }.count
                 followsGrowingReply = true
                 Task {
@@ -666,7 +643,9 @@ struct TimelineScreen: View {
         let monday = today.startOfWeek
         return RingStrip(
             timeline: Timeline(
-                input: Timeline.Input(weightRecords: [], rejectedLines: [], meals: [], notices: []),
+                input: Timeline.Input(
+                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                    undelivered: .none, conversation: .none),
                 firstDay: monday,
                 today: today)
         ).weeks

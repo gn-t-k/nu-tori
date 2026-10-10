@@ -1,6 +1,6 @@
 import { computeNextAttemptAt } from "../../domain/compute-next-attempt-at";
 import { createRecordLedger } from "../../domain/create-record-ledger";
-import { generateRecordId } from "../../domain/record-id";
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordType } from "../../domain/record-type";
 import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
@@ -12,7 +12,7 @@ import { replyAttemptTimeLimitMs } from "./reply-attempt-time-limit-ms";
 import type { ReplyGenerationOrigin } from "./reply-store";
 
 // 提供元を呼ぶ前に書いた試み。呼び出し中に止まっても、行が残って試みに数える
-export type BegunReplyAttempt = ReplyGenerationOrigin & { attemptId: string };
+export type BegunReplyAttempt = ReplyGenerationOrigin & { attemptId: RecordId };
 
 // アラームから呼ぶ。1つのトランザクションで、待っている依頼から返事の生成を始めて最初の試みを書き、
 // 次に試みる時刻が来た続いている生成の試みを書く。途中で止まった試みで上限に達した生成は、もう呼ばずに作れなかったにする。

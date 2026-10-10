@@ -8,13 +8,13 @@ export type ReplyWrites = {
   // 依頼ときっかけのサブセットを一緒に書く。会話と読み分けた文章にだけ書ける
   request: (request: ReplyRequest) => void;
   // 回数切れ。生成を始めた依頼には書けない
-  halt: (halt: { requestId: string; haltedAt: Date }) => void;
+  halt: (halt: { requestId: RecordId; haltedAt: Date }) => void;
   // 生成を始める。回数切れの依頼には書けない。ID は返事の ID を兼ねる
-  beginGeneration: (generation: { id: RecordId; requestId: string; startedAt: Date }) => void;
+  beginGeneration: (generation: { id: RecordId; requestId: RecordId; startedAt: Date }) => void;
   // 提供元を呼ぶ前に書く
-  beginAttempt: (attempt: { id: string; generationId: RecordId; attemptedAt: Date }) => void;
+  beginAttempt: (attempt: { id: RecordId; generationId: RecordId; attemptedAt: Date }) => void;
   recordAttemptResult: (attemptResult: {
-    attemptId: string;
+    attemptId: RecordId;
     endedAt: Date;
     conclusion: ReplyAttemptConclusion;
   }) => void;

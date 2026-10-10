@@ -27,6 +27,32 @@ public struct SyncedSentTextStatus: Sendable, Equatable {
         case replied
         case halted
         case failed(FailureReason)
+
+        /// 知らない応答の状態と作れなかった理由は nil
+        public init?(serverStatus: String, failureReason: String?) {
+            switch serverStatus {
+            case "none": self = .notRequested
+            case "awaiting": self = .awaiting
+            case "replied": self = .replied
+            case "halted": self = .halted
+            case "failed":
+                guard let reason = failureReason.flatMap(FailureReason.init(rawValue:)) else {
+                    return nil
+                }
+                self = .failed(reason)
+            default: return nil
+            }
+        }
+
+        public var serverValue: (status: String, failureReason: String?) {
+            switch self {
+            case .notRequested: ("none", nil)
+            case .awaiting: ("awaiting", nil)
+            case .replied: ("replied", nil)
+            case .halted: ("halted", nil)
+            case .failed(let reason): ("failed", reason.rawValue)
+            }
+        }
     }
 
     /// 作れなかった理由。サーバーの `replyFailureReason` の値

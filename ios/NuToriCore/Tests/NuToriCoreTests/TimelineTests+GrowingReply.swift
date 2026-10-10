@@ -14,6 +14,7 @@ extension TimelineTests {
             Timeline(
                 input: Timeline.Input(
                     weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                    undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
                         statuses: [
@@ -41,7 +42,8 @@ extension TimelineTests {
                 ]))
             #expect(
                 items == [
-                    .sentText(SentTextBubble(sentText: sentText, replyLine: nil)),
+                    .sentText(
+                        SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil)),
                     .reply(
                         TimelineReply(
                             id: replyId, sentTextId: sentText.id, body: "野菜の多い", isGrowing: true,
@@ -59,7 +61,9 @@ extension TimelineTests {
             ] {
                 #expect(
                     Self.items(sentText: sentText, stream: stream) == [
-                        .sentText(SentTextBubble(sentText: sentText, replyLine: .reading))
+                        .sentText(
+                            SentTextBubble(
+                                sentText: sentText, replyLine: .reading, rejectedLine: nil))
                     ])
             }
         }
@@ -91,6 +95,7 @@ extension TimelineTests {
                 Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                        undelivered: .none,
                         conversation: Timeline.Conversation(
                             sentTexts: [sentText],
                             statuses: [

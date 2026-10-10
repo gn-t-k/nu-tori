@@ -302,17 +302,7 @@ extension SyncChange {
         }
 
         private var reply: SyncedSentTextStatus.Reply? {
-            switch replyStatus {
-            case "none": .notRequested
-            case "awaiting": .awaiting
-            case "replied": .replied
-            case "halted": .halted
-            case "failed":
-                replyFailureReason.flatMap(SyncedSentTextStatus.FailureReason.init(rawValue:)).map {
-                    .failed($0)
-                }
-            default: nil
-            }
+            SyncedSentTextStatus.Reply(serverStatus: replyStatus, failureReason: replyFailureReason)
         }
     }
 

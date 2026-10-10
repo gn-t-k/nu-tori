@@ -55,14 +55,23 @@ struct ReplyWatchesTests {
 
     @Suite("返事を流しているあいだ")
     struct Streaming {
+        let observer: Observer
+        let feed: AsyncStream<String>.Continuation
+        let transport: ClientTransportMock
+        let watches: ReplyWatches
+        let sentTextId = UUID()
+        let replyId = UUID()
+
+        init() {
+            observer = Observer()
+            let (data, feed) = AsyncStream<String>.makeStream()
+            self.feed = feed
+            transport = .replyStream(data: data)
+            watches = observer.watches(transport)
+        }
+
         @Test("つながっているとし、できた分を途中の返事として知らせること")
         func publishesGrowingText() async throws {
-            let observer = Observer()
-            let (data, feed) = AsyncStream<String>.makeStream()
-            let watches = observer.watches(.replyStream(data: data))
-            let sentTextId = UUID()
-            let replyId = UUID()
-
             await watches.follow(awaiting: [sentTextId])
             feed.yield(#"{"type":"reply_started","replyId":"\#(replyId.uuidString)"}"#)
             feed.yield(#"{"type":"text_delta","text":"野菜の"}"#)
@@ -75,12 +84,6 @@ struct ReplyWatchesTests {
 
         @Test("同じ文章をもう一度つながないこと")
         func doesNotConnectTwice() async throws {
-            let observer = Observer()
-            let (data, feed) = AsyncStream<String>.makeStream()
-            let transport = ClientTransportMock.replyStream(data: data)
-            let watches = observer.watches(transport)
-            let sentTextId = UUID()
-
             await watches.follow(awaiting: [sentTextId])
             feed.yield(#"{"type":"text_delta","text":"野菜の"}"#)
             _ = await observer.nextStreams { $0[sentTextId]?.text == "野菜の" }
@@ -128,19 +131,49 @@ struct ReplyWatchesTests {
         }
     }
 
-    @Suite("結果を受け取らずに閉じたとき")
-    struct ClosedWithoutOutcome {
-        @Test("閉じたことを知らせ、まだ応答を待っていれば、つなぎ直すこと")
-        func reconnects() async {
-            let observer = Observer()
-            let transport = ClientTransportMock.replyStream(data: [
-                #"{"type":"text_delta","text":"どうぞ"}"#
-            ])
-            let watches = observer.watches(transport)
-            let sentTextId = UUID()
+    @Suite("結果を受け取って閉じた文章が、応答を待たなくなったあとで再び応答を待つようになったとき（送り直した）")
+    struct ResentAfterOutcome {
+        let observer: Observer
+        let transport: ClientTransportMock
+        let watches: ReplyWatches
+        let sentTextId = UUID()
 
+        init() async {
+            observer = Observer()
+            transport = .replyStream(data: [
+                #"{"type":"replied","replyId":"\#(UUID().uuidString)"}"#
+            ])
+            watches = observer.watches(transport)
             await watches.follow(awaiting: [sentTextId])
             await observer.nextClosed()
+            await watches.follow(awaiting: [])
+        }
+
+        @Test("つなぎ直すこと")
+        func reconnects() async {
+            await watches.follow(awaiting: [sentTextId])
+            await observer.nextClosed()
+            #expect(transport.requests.count == 2)
+        }
+    }
+
+    @Suite("結果を受け取らずに閉じたとき")
+    struct ClosedWithoutOutcome {
+        let observer: Observer
+        let transport: ClientTransportMock
+        let watches: ReplyWatches
+        let sentTextId = UUID()
+
+        init() async {
+            observer = Observer()
+            transport = .replyStream(data: [#"{"type":"text_delta","text":"どうぞ"}"#])
+            watches = observer.watches(transport)
+            await watches.follow(awaiting: [sentTextId])
+            await observer.nextClosed()
+        }
+
+        @Test("閉じたことを知らせ、まだ応答を待っていれば、つなぎ直すこと")
+        func reconnects() async {
             await watches.follow(awaiting: [sentTextId])
             await observer.nextClosed()
 
@@ -150,33 +183,29 @@ struct ReplyWatchesTests {
 
     @Suite("つながらなかったとき")
     struct NotConnected {
-        @Test("閉じたことを知らせ（取りに行くため）、つなぎ直さないこと")
-        func reportsClosedWithoutReconnecting() async {
-            let observer = Observer()
-            let transport = ClientTransportMock.error(URLError(.notConnectedToInternet))
-            let watches = observer.watches(transport)
-            let sentTextId = UUID()
+        let observer: Observer
+        let transport: ClientTransportMock
+        let watches: ReplyWatches
+        let sentTextId = UUID()
 
+        init() async {
+            observer = Observer()
+            transport = .error(URLError(.notConnectedToInternet))
+            watches = observer.watches(transport)
             await watches.follow(awaiting: [sentTextId])
             await observer.nextClosed()
+        }
+
+        @Test("閉じたことを知らせ（取りに行くため）、まだ応答を待っていても、つなぎ直さないこと")
+        func reportsClosedWithoutReconnecting() async {
             await watches.follow(awaiting: [sentTextId])
 
             #expect(transport.requests.count == 1)
             #expect(await watches.connectedSentTextIds.isEmpty)
         }
-    }
 
-    @Suite("すべて切ったとき")
-    struct Stopped {
-        @Test("途中の返事を捨て、次に応答を待つ文章を渡されたらつなぐこと")
-        func dropsAndReconnectsLater() async {
-            let observer = Observer()
-            let transport = ClientTransportMock.error(URLError(.notConnectedToInternet))
-            let watches = observer.watches(transport)
-            let sentTextId = UUID()
-            await watches.follow(awaiting: [sentTextId])
-            await observer.nextClosed()
-
+        @Test("すべて切ったあとに応答を待つ文章を渡されたら、つなぐこと")
+        func reconnectsAfterStopAll() async {
             await watches.stopAll()
             await watches.follow(awaiting: [sentTextId])
             await observer.nextClosed()

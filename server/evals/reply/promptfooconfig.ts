@@ -2,7 +2,8 @@ import type { UnifiedConfig } from "promptfoo";
 import { listReferableMealIds } from "../../src/reply/domain/list-referable-meal-ids";
 import { renderReplyContext } from "../../src/reply/domain/render-reply-context";
 import { replyEvalCases } from "./cases";
-import { commonRubric, replyMaxLength } from "./common-rubric";
+import { commonRubric } from "./common-rubric";
+import { replyMaxLength } from "./reply-max-length";
 import { gradingPrompt } from "./grading-prompt";
 import type { ReplyShapeConfig } from "./judge-reply-shape";
 

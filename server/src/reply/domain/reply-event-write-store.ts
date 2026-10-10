@@ -7,12 +7,12 @@ import type { ReplyRequest } from "./reply-request";
 export type ReplyEventWriteStore = {
   // 依頼と、きっかけのサブセット1つを書く
   insertRequest: (request: ReplyRequest) => void;
-  insertHalt: (halt: { requestId: string; haltedAt: Date }) => void;
-  insertGeneration: (generation: { id: RecordId; requestId: string; startedAt: Date }) => void;
-  insertAttempt: (attempt: { id: string; generationId: RecordId; attemptedAt: Date }) => void;
+  insertHalt: (halt: { requestId: RecordId; haltedAt: Date }) => void;
+  insertGeneration: (generation: { id: RecordId; requestId: RecordId; startedAt: Date }) => void;
+  insertAttempt: (attempt: { id: RecordId; generationId: RecordId; attemptedAt: Date }) => void;
   // 提供元のエラーと 400 なら、エラーの種類も書く
   insertAttemptResult: (attemptResult: {
-    attemptId: string;
+    attemptId: RecordId;
     endedAt: Date;
     conclusion: ReplyAttemptConclusion;
   }) => void;
@@ -24,10 +24,10 @@ export type ReplyEventWriteStore = {
   }) => void;
   insertAbandonment: (abandonment: { generationId: RecordId; abandonedAt: Date }) => void;
   // 口が決まりを確かめるための読み出し
-  findSentTextIdOfRequest: (requestId: string) => RecordId | undefined;
+  findSentTextIdOfRequest: (requestId: RecordId) => RecordId | undefined;
   findSentTextIdOfGeneration: (generationId: RecordId) => RecordId | undefined;
-  hasGeneration: (requestId: string) => boolean;
-  hasHalt: (requestId: string) => boolean;
+  hasGeneration: (requestId: RecordId) => boolean;
+  hasHalt: (requestId: RecordId) => boolean;
   hasUtterance: (generationId: RecordId) => boolean;
   hasAbandonment: (generationId: RecordId) => boolean;
 };

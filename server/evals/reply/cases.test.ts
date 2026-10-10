@@ -53,7 +53,7 @@ describe("返事の評価の組", () => {
 
   test("いま応える発言が、受け付ける送った文章と同じく、前後の空白を除いて 1〜500 字であること", () => {
     const outOfRange = replyEvalCases.filter(({ context }) => {
-      const length = context.newUtterance.body.trim().length;
+      const length = Array.from(context.newUtterance.body.trim()).length;
       return length < 1 || length > 500;
     });
     expect(outOfRange).toEqual([]);

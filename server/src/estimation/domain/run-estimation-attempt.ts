@@ -20,9 +20,10 @@ import type {
   IngredientMatch,
   IngredientMatchRequest,
   MatchedIngredients,
-  TokenUsage,
 } from "./estimation-provider";
-import { computeWrittenMealEatenAt, toWrittenMealsRequest } from "./written-meal-eaten-at";
+import type { TokenUsage } from "../../domain/token-usage";
+import { computeWrittenMealEatenAt } from "./compute-written-meal-eaten-at";
+import { toWrittenMealsRequest } from "./to-written-meals-request";
 
 // 試み1回分。写真を R2 から読み、①（写真から料理と材料。推定し直しでは写真と料理の今の値から、その料理1つ。
 // 文章の食事では、写真の代わりに送った文章から、時刻の違う食事ごとの料理と材料）→ 成分表の候補 → ②（候補から選ぶか主な栄養を推定）と進め、応答を確かめる。
@@ -40,14 +41,14 @@ export const runEstimationAttempt = async (
     target.type === "written_meal"
       ? identifyWrittenMeals(deps.provider, target.sentText, signal)
       : identifyDishes(deps.provider, { photos, target }, signal),
-    R.andThen(({ identified, dishEatenAts }) =>
+    R.andThen(({ identified, writtenMealShapes }) =>
       R.pipe(
         matchIngredients(deps.provider, identified, signal),
         R.map(({ dishes, usage }) => ({
           usage,
-          ...(dishEatenAts === undefined
+          ...(writtenMealShapes === undefined
             ? { dishes, writtenMeals: undefined }
-            : toWrittenMeals(dishes, dishEatenAts)),
+            : toWrittenMeals(dishes, writtenMealShapes)),
         })),
       ),
     ),
@@ -58,11 +59,13 @@ export const runEstimationAttempt = async (
     : attempted.error.outcome;
 };
 
-// ① の確かめに通った料理と、文章の食事なら料理ごとの食べた時刻（範囲に収めたもの。料理と同じ並び）
+// ① の確かめに通った料理と、文章の食事なら食事ごとの食べた時刻（範囲に収めたもの）と料理の数（料理の並びを食事の順に区切る）
 type Identified = {
   identified: EstimationProviderReply<IdentifiedDishes>;
-  dishEatenAts: Date[] | undefined;
+  writtenMealShapes: WrittenMealShape[] | undefined;
 };
+
+type WrittenMealShape = { eatenAt: Date; dishCount: number };
 
 const identifyDishes = (
   provider: EstimationProvider,
@@ -79,7 +82,7 @@ const identifyDishes = (
     ),
     R.andThen((identified) =>
       isValidIdentifiedDishes(identified.output, request.target)
-        ? R.succeed({ identified, dishEatenAts: undefined })
+        ? R.succeed({ identified, writtenMealShapes: undefined })
         : R.fail(invalidIdentification(identified.usage)),
     ),
   );
@@ -99,20 +102,18 @@ const identifyWrittenMeals = (
       }),
     ),
     R.andThen(({ output, usage }) => {
-      const eatenAts = output.meals.map(({ eatenAt }) =>
-        computeWrittenMealEatenAt(eatenAt, sentText),
-      );
+      const writtenMealShapes = output.meals.flatMap(({ eatenAt, dishes }) => {
+        const computed = computeWrittenMealEatenAt(eatenAt, sentText);
+        return computed === undefined ? [] : [{ eatenAt: computed, dishCount: dishes.length }];
+      });
       const dishes = output.meals.flatMap(({ dishes: mealDishes }) => mealDishes);
       if (
-        !eatenAts.every((eatenAt): eatenAt is Date => eatenAt !== undefined) ||
+        writtenMealShapes.length !== output.meals.length ||
         !isValidIdentifiedDishes({ dishes }, { type: "meal" })
       ) {
         return R.fail(invalidIdentification(usage));
       }
-      const dishEatenAts = output.meals.flatMap(({ dishes: mealDishes }, index) =>
-        mealDishes.map(() => eatenAts[index] ?? sentText.sentAt),
-      );
-      return R.succeed({ identified: { output: { dishes }, usage }, dishEatenAts });
+      return R.succeed({ identified: { output: { dishes }, usage }, writtenMealShapes });
     }),
   );
 
@@ -125,23 +126,22 @@ const invalidIdentification = (usage: TokenUsage): EstimationAttemptFailedError 
     },
   });
 
-// 同じ時刻の料理を1つの食事にまとめる（範囲の外の日時は送った時刻にそろうので、そこで重なりうる）。
-// 1つ目の食事は、① が最初に返した食事
+// 料理の並びを食事の順に区切り、同じ時刻の食事を1つにまとめる（範囲の外の日時は送った時刻にそろうので、そこで重なりうる）。
+// 料理の無い食事は作らない。1つ目の食事は、① が最初に返した食事
 const toWrittenMeals = (
   dishes: readonly EstimatedDish[],
-  dishEatenAts: readonly Date[],
+  shapes: readonly WrittenMealShape[],
 ): Pick<Extract<EstimationAttemptOutcome, { result: "succeeded" }>, "dishes" | "writtenMeals"> => {
   const meals: { eatenAt: Date; dishes: EstimatedDish[] }[] = [];
-  for (const [index, dish] of dishes.entries()) {
-    const eatenAt = dishEatenAts[index];
-    if (eatenAt === undefined) {
-      throw new Error("料理ごとの食べた時刻が、料理より少ない");
-    }
+  let start = 0;
+  for (const { eatenAt, dishCount } of shapes) {
+    const mealDishes = dishes.slice(start, start + dishCount);
+    start += dishCount;
     const sameTime = meals.find((meal) => meal.eatenAt.getTime() === eatenAt.getTime());
-    if (sameTime === undefined) {
-      meals.push({ eatenAt, dishes: [dish] });
-    } else {
-      sameTime.dishes.push(dish);
+    if (sameTime !== undefined) {
+      sameTime.dishes.push(...mealDishes);
+    } else if (mealDishes.length > 0) {
+      meals.push({ eatenAt, dishes: mealDishes });
     }
   }
   const [first, ...laterMeals] = meals;

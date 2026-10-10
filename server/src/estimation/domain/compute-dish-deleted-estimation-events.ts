@@ -5,7 +5,7 @@ import type { DishEstimationStatusStore } from "../../dish-estimation-status/dom
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimationStore } from "./estimation-store";
-import { findDishEstimationOrigin } from "./find-estimation-origin";
+import { findDishEstimationOrigin } from "./find-dish-estimation-origin";
 import type { EstimationScheduleStore } from "./estimation-schedule-store";
 
 // 推定し直しの推定中に料理が消えるときの、推定中の推定ごとの出来事（消えたものの区分で送る）。

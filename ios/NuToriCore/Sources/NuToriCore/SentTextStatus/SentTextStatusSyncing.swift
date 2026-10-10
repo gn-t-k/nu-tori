@@ -33,23 +33,56 @@ public struct SentTextStatusSyncing: SyncedRecordKind {
 
 extension SentTextStatus {
     init(_ status: SyncedSentTextStatus) {
-        self.init(
-            classification: {
-                switch status.classification {
-                case .pending: .pending
-                case .meal: .meal
-                case .conversation: .conversation
-                }
-            }(),
-            reply: {
-                switch status.reply {
-                case .notRequested: .notRequested
-                case .awaiting: .awaiting
-                case .replied: .replied
-                case .halted: .halted
-                case .failed(.retriesExhausted): .failed(.retriesExhausted)
-                case .failed(.badRequest): .failed(.badRequest)
-                }
-            }())
+        self.init(classification: Classification(status.classification), reply: Reply(status.reply))
+    }
+}
+
+extension SentTextStatus.Classification {
+    init(_ classification: SyncedSentTextStatus.Classification) {
+        self =
+            switch classification {
+            case .pending: .pending
+            case .meal: .meal
+            case .conversation: .conversation
+            }
+    }
+}
+
+extension SentTextStatus.Reply {
+    init(_ reply: SyncedSentTextStatus.Reply) {
+        self =
+            switch reply {
+            case .notRequested: .notRequested
+            case .awaiting: .awaiting
+            case .replied: .replied
+            case .halted: .halted
+            case .failed(.retriesExhausted): .failed(.retriesExhausted)
+            case .failed(.badRequest): .failed(.badRequest)
+            }
+    }
+}
+
+extension SyncedSentTextStatus.Classification {
+    init(_ classification: SentTextStatus.Classification) {
+        self =
+            switch classification {
+            case .pending: .pending
+            case .meal: .meal
+            case .conversation: .conversation
+            }
+    }
+}
+
+extension SyncedSentTextStatus.Reply {
+    init(_ reply: SentTextStatus.Reply) {
+        self =
+            switch reply {
+            case .notRequested: .notRequested
+            case .awaiting: .awaiting
+            case .replied: .replied
+            case .halted: .halted
+            case .failed(.retriesExhausted): .failed(.retriesExhausted)
+            case .failed(.badRequest): .failed(.badRequest)
+            }
     }
 }

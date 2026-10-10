@@ -110,13 +110,9 @@ struct TimelineScreenContainer: View {
 
     /// 送った文章・その状態・返事は別の種類で、どれが先にも届く。送った文章が届くまで、状態と返事は並ばない
     private var conversation: Timeline.Conversation {
-        var statuses: [UUID: SentTextStatus] = [:]
-        for row in cachedSentTextStatuses {
-            statuses[row.sentTextId] = row.sentTextStatus()
-        }
-        return Timeline.Conversation(
+        Timeline.Conversation(
             sentTexts: cachedSentTexts.compactMap { $0.sentText() },
-            statuses: statuses,
+            statuses: CachedSentTextStatus.statuses(of: cachedSentTextStatuses),
             replies: cachedAiUtterances.map { $0.aiUtterance() },
             streams: replyStreams)
     }

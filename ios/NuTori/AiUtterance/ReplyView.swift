@@ -24,7 +24,7 @@ struct ReplyView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading) {
             ReplyTextView(
                 text: ReplyText(String(reply.body.prefix(shownCount ?? reply.body.count)))
             )
@@ -65,11 +65,11 @@ struct ReplyView: View {
 }
 
 /// 返事の本文を、段落・箇条書き・番号つきの箇条書き・太字で描く。会話の文字は Body
-struct ReplyTextView: View {
+private struct ReplyTextView: View {
     let text: ReplyText
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading) {
             ForEach(Array(text.lines.enumerated()), id: \.offset) { _, line in
                 switch line.kind {
                 case .paragraph:
@@ -87,7 +87,7 @@ struct ReplyTextView: View {
     }
 
     private func item(marker: String, runs: [ReplyText.Run]) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
+        HStack(alignment: .firstTextBaseline) {
             Text(marker)
                 .monospacedDigit()
             Text(Self.attributed(runs))
@@ -141,6 +141,7 @@ private struct ReferencedMealRow: View {
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)
                 }
+                // DESIGN.md の Layout は余白を標準に任せるが、縮小（40）を入れた行を押せる高さ（44）に近づけるため、標準の .padding()（16）より詰める
                 .padding(8)
                 .frame(minHeight: 44)
                 .background(

@@ -96,9 +96,4 @@ final class YieldingSyncBoxMock: SyncBox, RecordCacheReading {
         await Task.yield()
         return try await box.sentTextStatuses()
     }
-
-    func aiUtterances() async throws -> [AiUtterance] {
-        await Task.yield()
-        return try await box.aiUtterances()
-    }
 }

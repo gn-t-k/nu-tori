@@ -117,6 +117,7 @@ struct TimelineComposer: View {
                         Text(preset.title)
                             .font(.footnote)
                             .foregroundStyle(.primary)
+                            // DESIGN.md の Layout は余白を標準に任せるが、チップは preset-chip（高さ 32、左右 12）にそろえる。標準の .padding()（16）では高さが 32 を超える
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(Color(.secondarySystemGroupedBackground), in: Capsule())
@@ -139,6 +140,7 @@ struct TimelineComposer: View {
                 .font(.body)
                 .lineLimit(1...5)
                 .focused($fieldFocused)
+                // 1行の欄の高さを composer-field の 36 にする（Body の1行に上下 7 を足す）。標準の余白では 36 にならない
                 .padding(.vertical, 7)
                 .accessibilityIdentifier("composer-field")
             if !draft.text.isEmpty {
@@ -160,14 +162,18 @@ struct TimelineComposer: View {
                 .accessibilityIdentifier("composer-send")
             }
         }
+        // 文字を角の丸み（18）の内側に収める。標準の .padding()（16）は角の丸みと合わないので数値で決める
         .padding(.leading, 14)
         .padding(.trailing, draft.text.isEmpty ? 14 : 0)
-        .frame(minHeight: 36)
+        .frame(minHeight: Self.fieldMinHeight)
         .background(Color(.secondarySystemGroupedBackground), in: fieldShape)
         .overlay(fieldShape.stroke(Color(.separator), lineWidth: 0.5))
         // 1行のとき、丸のボタンと縦の中心をそろえる（行は下端でそろえ、伸びた欄は上へ広がる）
-        .padding(.bottom, max(0, (buttonSize - 36) / 2))
+        .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
     }
+
+    /// DESIGN.md の composer-field の高さ。書く欄の1行の高さで、丸のボタンと縦の中心をそろえるのにも使う
+    private static let fieldMinHeight: CGFloat = 36
 
     private var fieldShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 18)

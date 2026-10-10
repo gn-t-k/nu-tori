@@ -1,6 +1,4 @@
 import { match } from "ts-pattern";
-import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
-import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
@@ -14,6 +12,7 @@ import {
   type MealDeletionStores,
   planMealDeletion,
 } from "../../meal/domain/plan-meal-deletion";
+import { computeReplyRequestCountedOn } from "../../reply/domain/compute-reply-request-counted-on";
 import type { ReplyRequest } from "../../reply/domain/reply-request";
 import { computeSentTextReplyStatus } from "../../sent-text-status/domain/compute-sent-text-reply-status";
 import type { SentText } from "./sent-text";
@@ -202,10 +201,7 @@ const writeReplyRequest = (
       writes.request({
         id: generateRecordId(),
         sentTextId: sentText.id,
-        countedOn: computeCalendarDayInTimeZone(
-          receivedAt,
-          findLatestValidTimeZone(stores.latestTimeZone) ?? sentText.timeZone,
-        ),
+        countedOn: computeReplyRequestCountedOn(receivedAt, sentText, stores.latestTimeZone),
         trigger,
       });
     },

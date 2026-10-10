@@ -251,9 +251,7 @@ final class RootModel {
     /// 文章の食事のカードの「会話として送り直す」。確かめずに、その場でその文章の食事が消える。
     /// 送ったら、PostHog に消えた食事の数を送る
     func resendAsConversation(sentTextId: UUID, deletedMealCount: Int) async {
-        do {
-            try await recordSync.resendAsConversation(sentTextId: sentTextId)
-        } catch {
+        guard (try? await recordSync.resendAsConversation(sentTextId: sentTextId)) != nil else {
             return
         }
         await accountSession.capture(.resentAsConversation(deletedMealCount: deletedMealCount))
@@ -263,11 +261,7 @@ final class RootModel {
     func resendReply(
         sentTextId: UUID, reason: ClientUsageEvent.ReplyRegenerateReason
     ) async {
-        do {
-            try await recordSync.resend(sentTextId: sentTextId)
-        } catch {
-            return
-        }
+        guard (try? await recordSync.resend(sentTextId: sentTextId)) != nil else { return }
         await accountSession.capture(.replyRegenerateTapped(reason))
     }
 

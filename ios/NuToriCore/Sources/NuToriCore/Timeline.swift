@@ -99,6 +99,12 @@ public struct Timeline: Sendable {
         }
     }
 
+    /// 項目の前の間隔。詰めるか、会話のまとまりを分けて空けるか
+    public enum ItemSpacing: Equatable, Sendable {
+        case close
+        case apart
+    }
+
     public enum Landing: Equatable, Sendable {
         /// そのカードの位置
         case item(Item.ID)
@@ -122,8 +128,8 @@ public struct Timeline: Sendable {
             rejectedLines: [RejectedLine],
             meals: [MealCard],
             notices: [Notice],
-            undelivered: UndeliveredRecords = .none,
-            conversation: Conversation = .none
+            undelivered: UndeliveredRecords,
+            conversation: Conversation
         ) {
             self.weightRecords = weightRecords
             self.rejectedLines = rejectedLines
@@ -155,13 +161,21 @@ public struct Timeline: Sendable {
                 })
         }
 
-        /// 発言（送った文章と返事）が、すぐ前の発言と隣り合うか。あいだに別の記録か日の見出しがあれば（日の最初の発言なら）隣り合わない。
-        /// 隣り合う発言は詰め、隣り合わない発言は空けて置く。会話の区切りとは結びつけない
-        public func followsUtterance(_ item: Item) -> Bool {
-            guard item.isUtterance, let index = items.firstIndex(of: item), index > 0 else {
-                return false
+        /// 項目の前を詰めるか空けるか（仕様 #419「会話のまとまりの見た目」）。会話の区切りとは結びつけない。
+        /// 発言（送った文章と返事）は、すぐ前の発言と隣り合えば詰め、あいだに別の記録か日の見出しがあれば空ける。
+        /// 文章の食事のカードは、その文章の吹き出しと同じ文章の食事のすぐ下なら詰める。ほかの項目は、発言のすぐあとなら空け、ほかは詰める
+        public func spacing(before item: Item) -> ItemSpacing {
+            guard let index = items.firstIndex(of: item) else { return .close }
+            let previous = index > 0 ? items[index - 1] : nil
+            if item.isUtterance {
+                return previous?.isUtterance == true ? .close : .apart
             }
-            return items[index - 1].isUtterance
+            if case .meal(let card) = item, let sentTextId = card.meal.sentTextId,
+                previous?.belongs(toSentText: sentTextId) == true
+            {
+                return .close
+            }
+            return previous?.isUtterance == true ? .apart : .close
         }
 
         /// 1日の丸の帯に出す、この日の丸
@@ -184,6 +198,17 @@ public struct Timeline: Sendable {
         /// 文章を送る（作る書き込み）を受け付けなかった1行。吹き出しを外した位置に出す
         case rejectedSentTextLine(RejectedSentTextLine)
         case reply(TimelineReply)
+
+        /// その送った文章の吹き出しか、その文章の食事のカードか
+        func belongs(toSentText sentTextId: UUID) -> Bool {
+            switch self {
+            case .sentText(let bubble): bubble.sentText.id == sentTextId
+            case .meal(let card): card.meal.sentTextId == sentTextId
+            case .weightRecord, .rejectedWeightLine, .rejectedMealLine, .notice,
+                .rejectedSentTextLine, .reply:
+                false
+            }
+        }
 
         /// 会話の発言（送った文章か返事）か
         public var isUtterance: Bool {

@@ -1,7 +1,9 @@
+import type { SentTextClassification } from "../../sent-text/domain/sent-text-classification";
+
 // 送った文章の状態。行を持たず、読み分けと返事の流れの出来事から出す（#419 の「同期」）
 export type SentTextStatus = {
   // 読み分けの今の結果。pending は読み分けを待っている
-  classification: "pending" | "meal" | "conversation";
+  classification: "pending" | SentTextClassification;
   reply: SentTextReplyStatus;
 };
 

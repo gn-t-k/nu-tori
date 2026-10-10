@@ -56,20 +56,21 @@ const writeInAccount = (seed: Seed, run: Run): Promise<Written> =>
 
 const sentTextId: RecordId = generateRecordId();
 const generationId: RecordId = generateRecordId();
+const requestId: RecordId = generateRecordId();
 const requestedAt = new Date("2026-01-01T03:00:01Z");
 
-// 会話と読み分けた文章の、きっかけが読み分けの依頼 request-1
+// 会話と読み分けた文章の、きっかけが読み分けの依頼
 const seedRequest = async (factory: ReturnType<typeof durableObjectFactory>) => {
   await factory.sentTexts.create({ id: sentTextId });
   await factory.sentTextClassifications.create({ sentTextId });
-  await factory.replyRequests.create({ id: "request-1", sentTextId });
-  await factory.classificationReplyRequests.create({ replyRequestId: "request-1" });
+  await factory.replyRequests.create({ id: requestId, sentTextId });
+  await factory.classificationReplyRequests.create({ replyRequestId: requestId });
 };
 
-// 依頼 request-1 の生成
+// 依頼の生成
 const seedGeneration = async (factory: ReturnType<typeof durableObjectFactory>) => {
   await seedRequest(factory);
-  await factory.replyGenerations.create({ id: generationId, replyRequestId: "request-1" });
+  await factory.replyGenerations.create({ id: generationId, replyRequestId: requestId });
 };
 
 describe("返事の書き込みの口", () => {
@@ -83,7 +84,7 @@ describe("返事の書き込みの口", () => {
         },
         (writes) => {
           writes.request({
-            id: "request-1",
+            id: requestId,
             sentTextId,
             countedOn: "2026-01-01",
             trigger: { type: "classification" },
@@ -99,8 +100,8 @@ describe("返事の書き込みの口", () => {
         resendTriggers: written.rows["resendTriggers"],
         conversationResendTriggers: written.rows["conversationResendTriggers"],
       }).toEqual({
-        requests: [{ id: "request-1", sent_text_id: sentTextId, counted_on: "2026-01-01" }],
-        classificationTriggers: [{ reply_request_id: "request-1" }],
+        requests: [{ id: requestId, sent_text_id: sentTextId, counted_on: "2026-01-01" }],
+        classificationTriggers: [{ reply_request_id: requestId }],
         resendTriggers: [],
         conversationResendTriggers: [],
       });
@@ -121,7 +122,7 @@ describe("返事の書き込みの口", () => {
         },
         (writes) => {
           writes.request({
-            id: "request-1",
+            id: requestId,
             sentTextId,
             countedOn: "2026-01-01",
             trigger: { type: "classification" },
@@ -149,7 +150,7 @@ describe("返事の書き込みの口", () => {
         },
         (writes) => {
           writes.request({
-            id: "request-1",
+            id: requestId,
             sentTextId,
             countedOn: "2026-01-01",
             trigger: { type: "classification" },
@@ -175,7 +176,7 @@ describe("返事の書き込みの口", () => {
         },
         (writes) => {
           writes.request({
-            id: "request-1",
+            id: requestId,
             sentTextId,
             countedOn: "2026-01-01",
             trigger: { type: "classification" },
@@ -200,7 +201,7 @@ describe("返事の書き込みの口", () => {
           await seedGeneration(factory);
         },
         (writes) => {
-          writes.halt({ requestId: "request-1", haltedAt: requestedAt });
+          writes.halt({ requestId, haltedAt: requestedAt });
         },
       );
     });
@@ -219,12 +220,12 @@ describe("返事の書き込みの口", () => {
       written = await writeInAccount(
         async (factory) => {
           await seedRequest(factory);
-          await factory.replyRequestHalts.create({ replyRequestId: "request-1" });
+          await factory.replyRequestHalts.create({ replyRequestId: requestId });
         },
         (writes) => {
           writes.beginGeneration({
             id: generationId,
-            requestId: "request-1",
+            requestId,
             startedAt: requestedAt,
           });
         },

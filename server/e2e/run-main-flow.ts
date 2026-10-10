@@ -1,9 +1,9 @@
 import { z } from "zod";
+import { mealTextBody } from "./meal-text-body";
 import { generateRecordId } from "../src/domain/record-id";
 import { replyStreamEventSchema } from "../src/http/reply-stream-routes/reply-stream-event-schema";
 
-// 送る文章は作り話にする（公開リポジトリ）。食事の文章は、食事と読み分けられる文にする
-export const mealTextBody = "朝にトーストを1枚とゆで卵を食べた";
+// 送る文章は作り話にする（公開リポジトリ）
 const conversationTextBody = "今日はよく歩いたので、少し脚が疲れた";
 
 // 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから写真と文章の食事の推定、会話の文章への返事、アカウントの削除までを通す。

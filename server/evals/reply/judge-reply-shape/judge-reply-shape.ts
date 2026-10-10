@@ -21,8 +21,8 @@ export const judgeReplyShape = (
     throw new Error("返事の提供元が metadata.mealIds を返していない");
   }
   const { mealIds } = metadata.data;
-  // 送った文章の長さと同じく UTF-16 の単位で数える（返事の日本語の文字は1つ1単位）
-  const length = output.length;
+  // 送った文章の受け付ける長さと同じく、コードポイントで数える
+  const length = Array.from(output).length;
   const unreferable = mealIds.filter((mealId) => !referableMealIds.includes(mealId));
   const missing = expectedMealIds.filter((mealId) => !mealIds.includes(mealId));
   const failures = [
