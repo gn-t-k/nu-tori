@@ -1,6 +1,7 @@
-import { classificationCriteria } from "./classification-criteria";
+import { classificationCriteria } from "../../src/reply/durable-object/create-conversation-provider/classification-criteria";
 
-// Jev（Workers AI の typesafe/jev）に渡す入力。食事かを noul（真である確からしさ）の問い1つで尋ね、
+// 評価で比べる Jev（Workers AI の typesafe/jev）に渡す入力。#423 で Haiku 5.5 に決め、サーバーは Jev を呼ばないので評価の側に置く。
+// 食事かを noul（真である確からしさ）の問い1つで尋ね、
 // 答えの answers.is_meal.noul をしきい値と比べる（読み方は jevClassificationResponseSchema）。
 // 呼ぶときは必ず環境ごとの AI Gateway を名指す（名指さないと、ログがオンの default のゲートウェイができる）
 export const createJevClassificationInput = (body: string) => ({

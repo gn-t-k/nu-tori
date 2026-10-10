@@ -1,11 +1,11 @@
 import type { ApiProvider, ProviderResponse } from "promptfoo";
 import { z } from "zod";
-import { createJevClassificationInput } from "../../src/reply/durable-object/create-conversation-provider/create-jev-classification-input";
-import { jevClassificationResponseSchema } from "../../src/reply/durable-object/create-conversation-provider/jev-classification-response-schema";
+import { createJevClassificationInput } from "./create-jev-classification-input";
+import { jevClassificationResponseSchema } from "./jev-classification-response-schema";
 import type { ClassificationEvalOutput } from "./classification-eval-output";
 
 // promptfoo の custom provider。Jev（typesafe/jev）を、開発用の AI Gateway を通る Cloudflare の REST（/ai/run）で呼ぶ。
-// Node には Workers の env.AI が無いので REST にした。指示の文面と答えの形はサーバーと同じものを import する。
+// Node には Workers の env.AI が無いので REST にした。基準の文面はサーバーと同じものを import する。
 // 鍵: NU_TORI_CLOUDFLARE_ACCOUNT_ID と、Workers AI の Read と AI Gateway の Run を持つ開発用のトークン NU_TORI_CLOUDFLARE_AI_TOKEN
 export default class JevProvider implements ApiProvider {
   id = (): string => "typesafe/jev";
