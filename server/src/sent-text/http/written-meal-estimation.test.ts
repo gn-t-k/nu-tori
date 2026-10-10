@@ -168,6 +168,32 @@ describe("文章の食事の推定", () => {
     });
   });
 
+  describe("推定が返した食事の1つに、日付として無い日時があるとき", () => {
+    beforeEach(async () => {
+      mockCreateEstimationProviderOk({
+        identifiedWrittenMeals: {
+          meals: [
+            { eatenAt: "2026-10-10T07:00", dishes: [bread] },
+            { eatenAt: "2026-02-30T12:00", dishes: [udon] },
+          ],
+        },
+      });
+      await sendText({
+        body: "朝はパン、昼はうどん",
+        sentAt: saturdayMorningInTokyo,
+        timeZone: "Asia/Tokyo",
+      });
+      await runEstimationAlarm(accountId);
+    });
+
+    test("確かめに通らない試みにし、料理を作らないこと", async () => {
+      expect({
+        results: await readRows(accountId, "SELECT result FROM estimation_attempt_results"),
+        dishes: await pullRecordsOf("dish"),
+      }).toEqual({ results: [{ result: "invalid_response" }], dishes: [] });
+    });
+  });
+
   describe("推定が終わる前に、使う人が時刻を直したとき", () => {
     let correctedAt: number;
     beforeEach(async () => {

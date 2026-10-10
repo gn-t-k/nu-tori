@@ -12,33 +12,28 @@ import type { ReplyContext } from "./reply-context";
 
 // 試み1回分。応える文章の文脈を置き場から読んで組み立て、提供元に返事を作らせ、応答を確かめる。
 // 文脈は呼ぶ直前に読むので、同じアラームで先に作った返事も窓に入る。
-// 提供元の失敗と、確かめに通らない応答（空の返事、指し示せない食事の ID）は、失敗の試みの結果として返す。
+// 提供元の失敗と、確かめに通らない応答（空の返事、指し示せない食事の ID）も、試みの結果として返す。
 // onText には、提供元が返す本文のできた分をそのまま渡す
-export const runReplyAttempt = (
+export const runReplyAttempt = async (
   provider: ConversationProvider,
   stores: Parameters<typeof readReplyContextSource>[0],
   sentText: SentText,
   onText: (text: string) => void,
-): R.ResultAsync<SucceededOutcome, FailedOutcome> => {
+): Promise<ReplyAttemptOutcome> => {
   const context = assembleReplyContext(readReplyContextSource(stores, sentText, new Date()));
-  return R.pipe(
-    provider.generateReply({ context, onText }, AbortSignal.timeout(replyAttemptTimeLimitMs)),
-    R.mapError(toFailedOutcome),
-    R.andThen((generated) =>
-      isValidReply(generated, context, stores)
-        ? R.succeed(generated)
-        : R.fail<FailedOutcome>({ result: "invalid_response", usage: generated.usage }),
-    ),
-    R.map(({ body, mealIds, usage }): SucceededOutcome => ({
-      result: "succeeded",
-      body,
-      mealIds,
-      usage,
-    })),
+  const generated = await provider.generateReply(
+    { context, onText },
+    AbortSignal.timeout(replyAttemptTimeLimitMs),
   );
+  // 通らなかった試みも結果として書くので、ここで提供元の Result を試みの結果に直す
+  if (R.isFailure(generated)) {
+    return toFailedOutcome(generated.error);
+  }
+  const { body, mealIds, usage } = generated.value;
+  return isValidReply(generated.value, context, stores)
+    ? { result: "succeeded", body, mealIds, usage }
+    : { result: "invalid_response", usage };
 };
-
-type SucceededOutcome = Extract<ReplyAttemptOutcome, { result: "succeeded" }>;
 
 type FailedOutcome = Exclude<ReplyAttemptOutcome, { result: "succeeded" }>;
 

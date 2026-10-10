@@ -40,43 +40,29 @@ export const classifySentTexts = async (
   const providerErrors: unknown[] = [];
   for (const { sentText, receivedAt } of stores.sentText.findUnclassified()) {
     // 送った順に書くため、1つずつ呼ぶ
-    await R.pipe(
-      deps.provider.classifySentText({ body: sentText.body }),
-      R.map(({ label, usage }): ProviderClassification => ({
-        providerResult: label,
-        usage,
-        providerError: undefined,
-      })),
-      R.orElse((error) =>
-        R.succeed<ProviderClassification>({
-          providerResult: "failed",
-          usage: undefined,
-          providerError: error,
-        }),
-      ),
-      R.inspect(({ providerResult, usage, providerError }) => {
-        const result = providerResult === "meal" ? "meal" : "conversation";
-        const classifiedAt = new Date();
-        if (!recordClassification(ledgerStore, stores, sentText, result, classifiedAt)) {
-          return;
-        }
-        const providerErrorType = providerError?.errorType;
-        if (providerError !== undefined) {
-          providerErrors.push(providerError.cause ?? providerError);
-        }
-        classifications.push({ result, providerResult, providerErrorType });
-        usageEvents.push({
-          name: "sent_text_classified",
-          result,
-          providerResult,
-          usage,
-          secondsFromReceivedToClassified: Math.round(
-            (classifiedAt.getTime() - receivedAt.getTime()) / 1000,
-          ),
-          providerErrorType,
-        });
-      }),
+    const { providerResult, usage, providerError } = await askClassification(
+      deps.provider,
+      sentText,
     );
+    const result = providerResult === "meal" ? "meal" : "conversation";
+    const classifiedAt = new Date();
+    if (recordClassification(ledgerStore, stores, sentText, result, classifiedAt)) {
+      const providerErrorType = providerError?.errorType;
+      if (providerError !== undefined) {
+        providerErrors.push(providerError.cause ?? providerError);
+      }
+      classifications.push({ result, providerResult, providerErrorType });
+      usageEvents.push({
+        name: "sent_text_classified",
+        result,
+        providerResult,
+        usage,
+        secondsFromReceivedToClassified: Math.round(
+          (classifiedAt.getTime() - receivedAt.getTime()) / 1000,
+        ),
+        providerErrorType,
+      });
+    }
   }
   return {
     usageEvents: sendsUsageData(stores.accountSettings) ? usageEvents : [],
@@ -95,6 +81,21 @@ type ClassificationReport = {
 type ProviderClassification =
   | { providerResult: ClassificationLabel; usage: TokenUsage; providerError: undefined }
   | { providerResult: "failed"; usage: undefined; providerError: ConversationProviderError };
+
+// 呼び出しの失敗も会話にするので、ここで提供元の Result を答えに直す
+const askClassification = async (
+  provider: ConversationProvider,
+  sentText: SentText,
+): Promise<ProviderClassification> => {
+  const classified = await provider.classifySentText({ body: sentText.body });
+  return R.isSuccess(classified)
+    ? {
+        providerResult: classified.value.label,
+        usage: classified.value.usage,
+        providerError: undefined,
+      }
+    : { providerResult: "failed", usage: undefined, providerError: classified.error };
+};
 
 // 読み分けの結果と、文章の食事か返事の依頼を書く。呼んでいるあいだにほかで読み分けていたら、何も書かずに false を返す
 const recordClassification = (

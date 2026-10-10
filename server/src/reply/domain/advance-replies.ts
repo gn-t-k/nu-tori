@@ -1,10 +1,9 @@
-import { R } from "@praha/byethrow";
 import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordType } from "../../domain/record-type";
 import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
-import { beginReplyAttempts } from "./begin-reply-attempts";
+import { type BegunReplyAttempt, beginReplyAttempts } from "./begin-reply-attempts";
 import { concludeReplyAttempt } from "./conclude-reply-attempt";
 import type { ReplyWatchers } from "./create-reply-watchers";
 import type { ConversationProvider } from "./conversation-provider";
@@ -45,23 +44,13 @@ export const advanceReplies = async (
   for (const attempt of begun.attempts) {
     const sentTextId = attempt.sentText.id;
     try {
-      await R.pipe(
-        runReplyAttempt(deps.provider, stores, attempt.sentText, (text) =>
-          deps.watchers.appendText(sentTextId, text),
-        ),
-        // 通らなかった試みも結果として書く
-        R.orElse((failed) => R.succeed<ReplyAttemptOutcome>(failed)),
-        R.inspect((outcome) => {
-          deps.watchers.endAttempt(sentTextId, outcome.result === "succeeded");
-          usageEvents.push(
-            ...recordReplyAttemptOutcome(ledgerStore, stores, attempt, outcome, new Date()),
-          );
-          deps.watchers.refresh(stores);
-          const concluded = concludeReplyAttempt(outcome);
-          attempts.push(concluded.conclusion);
-          providerErrors.push(...concluded.providerErrors);
-        }),
+      const outcome = await runReplyAttempt(deps.provider, stores, attempt.sentText, (text) =>
+        deps.watchers.appendText(sentTextId, text),
       );
+      const ended = endReplyAttempt(ledgerStore, stores, deps.watchers, attempt, outcome);
+      usageEvents.push(...ended.usageEvents);
+      attempts.push(ended.conclusion);
+      providerErrors.push(...ended.providerErrors);
     } catch (error) {
       deps.watchers.endAttempt(sentTextId, false);
       attempts.push({ result: undefined });
@@ -78,3 +67,17 @@ export const advanceReplies = async (
 
 // 途中で止まった試みは結果が無い
 type ReplyAttemptReport = ReplyAttemptConclusion | { result: undefined };
+
+// 通らなかった試みも結果として書き、見守る要求に終わりと書いたあとの状態を送る
+const endReplyAttempt = (
+  ledgerStore: LedgerStore<RecordType>,
+  stores: RecordKindStores,
+  watchers: ReplyWatchers,
+  attempt: BegunReplyAttempt,
+  outcome: ReplyAttemptOutcome,
+): ReturnType<typeof concludeReplyAttempt> & { usageEvents: UsageEvent[] } => {
+  watchers.endAttempt(attempt.sentText.id, outcome.result === "succeeded");
+  const usageEvents = recordReplyAttemptOutcome(ledgerStore, stores, attempt, outcome, new Date());
+  watchers.refresh(stores);
+  return { ...concludeReplyAttempt(outcome), usageEvents };
+};

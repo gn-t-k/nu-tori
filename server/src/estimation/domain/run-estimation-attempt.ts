@@ -102,13 +102,15 @@ const identifyWrittenMeals = (
       }),
     ),
     R.andThen(({ output, usage }) => {
-      const writtenMealShapes = output.meals.flatMap(({ eatenAt, dishes }) => {
-        const computed = computeWrittenMealEatenAt(eatenAt, sentText);
-        return computed === undefined ? [] : [{ eatenAt: computed, dishCount: dishes.length }];
-      });
+      const writtenMealShapes = output.meals.map(({ eatenAt, dishes }) => ({
+        eatenAt: computeWrittenMealEatenAt(eatenAt, sentText),
+        dishCount: dishes.length,
+      }));
       const dishes = output.meals.flatMap(({ dishes: mealDishes }) => mealDishes);
       if (
-        writtenMealShapes.length !== output.meals.length ||
+        !writtenMealShapes.every(
+          (shape): shape is WrittenMealShape => shape.eatenAt !== undefined,
+        ) ||
         !isValidIdentifiedDishes({ dishes }, { type: "meal" })
       ) {
         return R.fail(invalidIdentification(usage));
