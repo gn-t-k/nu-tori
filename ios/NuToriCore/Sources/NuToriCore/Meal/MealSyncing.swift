@@ -154,26 +154,28 @@ extension Meal {
             eatenUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
             sentAt: meal.sentAt,
             sentTimeZone: meal.sentTimeZone,
-            entry: MealDraft.Entry(meal.entryMethod),
+            entry: Meal.Entry(meal.entryMethod),
             photoIds: meal.photoIds
         )
     }
 }
 
 extension SyncedMeal.EntryMethod {
-    init(_ entry: MealDraft.Entry) {
+    init(_ entry: Meal.Entry) {
         switch entry {
         case .captured: self = .captured
         case .picked: self = .picked
+        case .written(let sentTextId): self = .written(sentTextId: sentTextId)
         }
     }
 }
 
-extension MealDraft.Entry {
+extension Meal.Entry {
     init(_ entryMethod: SyncedMeal.EntryMethod) {
         switch entryMethod {
         case .captured: self = .captured
         case .picked: self = .picked
+        case .written(let sentTextId): self = .written(sentTextId: sentTextId)
         }
     }
 }

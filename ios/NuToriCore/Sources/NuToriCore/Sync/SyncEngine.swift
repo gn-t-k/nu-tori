@@ -186,6 +186,47 @@ public actor SyncEngine {
     }
 
     /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカード（`MealCard`）に渡し、まだ送れていない料理として見せる
+    /// 文章を送る。送った文章の ID と、送った時刻（送る操作をした時刻）はここで決める。電波が無くても受け付け、送り待ちに並べる。
+    /// 前後の空白を除いた本文で送り、受け付ける範囲の外（空白だけ、長すぎる）なら送らずに nil
+    @discardableResult
+    public func sendText(_ typedBody: String) async throws -> SentText? {
+        guard let body = SentText.acceptedBody(typed: typedBody) else { return nil }
+        let sentText = SentText(id: UUID(), body: body, sentAt: now(), timeZone: timeZone())
+        try await writingCache {
+            try await store.apply(
+                SentTextSyncing().sending(sentText, enqueuing: pending(.create(sentText))))
+        }
+        return sentText
+    }
+
+    /// 食事と読み分けた文章を、会話として送り直す。電波が無くても、その場でその文章から作った食事（料理・材料を含む）を
+    /// キャッシュから消し、書き込み1つを送り待ちに並べる。断られたら、食事はサーバーに残る。
+    /// キャッシュに無い文章は `UnknownRecordError`
+    public func resendAsConversation(sentTextId: UUID) async throws {
+        try await requireCachedSentText(id: sentTextId)
+        let meals = try await store.meals()
+        let dishes = try await store.dishes()
+        let ingredients = try await store.ingredients()
+        try await writingCache {
+            try await store.apply(
+                SentTextSyncing().resendingAsConversation(
+                    sentTextId: sentTextId, meals: meals, dishes: dishes,
+                    ingredients: ingredients,
+                    enqueuing: pending(.resendAsConversation(sentTextId: sentTextId))))
+        }
+        try await exportNutritionBestEffort()
+    }
+
+    /// 返事を作れなかった・回数切れの文章を送り直す。電波が無くても、書き込み1つを送り待ちに並べる。
+    /// キャッシュに無い文章は `UnknownRecordError`
+    public func resend(sentTextId: UUID) async throws {
+        try await requireCachedSentText(id: sentTextId)
+        try await writingCache {
+            try await store.apply(
+                SentTextSyncing().resending(enqueuing: pending(.resend(sentTextId: sentTextId))))
+        }
+    }
+
     public func unsentDishIds() async throws -> Set<UUID> {
         DishSyncing.unsentDishIds(in: try await store.pendingEntries())
     }
@@ -262,6 +303,12 @@ public actor SyncEngine {
             throw UnknownRecordError(recordId: dishId)
         }
         return dish
+    }
+
+    private func requireCachedSentText(id sentTextId: UUID) async throws {
+        guard try await store.sentTexts().contains(where: { $0.id == sentTextId }) else {
+            throw UnknownRecordError(recordId: sentTextId)
+        }
     }
 
     /// 直した料理と比例の材料を、送り待ちを先に保存してからキャッシュに当てる

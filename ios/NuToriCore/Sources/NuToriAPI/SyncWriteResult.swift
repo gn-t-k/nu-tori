@@ -51,6 +51,10 @@ public struct SyncWriteResult: Sendable, Equatable {
         case ingredientsReplaced
         /// 推定を待っている食事（写真を待っている・推定中・翌日に推定）に料理を足そうとした、その料理と材料を直そうとした、推定し直しを待っている料理（推定中・翌日に推定）と、その材料を直そうとした
         case awaitingEstimation
+        /// 会話として送り直そうとした文章を、まだ読み分けていない
+        case notClassifiedAsMeal
+        /// 送り直そうとした文章に、返事を頼んでいない（読み分ける前か、食事と読み分けた）
+        case replyNotFailed
         case unknown(reason: String)
     }
 }

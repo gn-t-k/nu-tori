@@ -7,12 +7,15 @@ nonisolated enum AppRecordKinds {
     static var registry: RecordKindRegistry<ModelContext> {
         RecordKindRegistry([
             AccountSettingsRecordKind(),
+            AiUtteranceRecordKind(),
             DishRecordKind(),
             DishEstimationStatusRecordKind(),
             IngredientRecordKind(),
             MealRecordKind(),
             MealEstimationStatusRecordKind(),
             NoticeRecordKind(),
+            SentTextRecordKind(),
+            SentTextStatusRecordKind(),
             UsualWeighingTimeRecordKind(),
             WeightRecordKind(),
             WeightTrendRecordKind(),

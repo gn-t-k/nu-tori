@@ -460,6 +460,15 @@
                                 id: notice.id, noticeType: notice.noticeType,
                                 issuedAt: notice.issuedAt, timeZone: notice.timeZone,
                                 targetOn: notice.targetOn, response: nil)))
+                case .createSentText(_, let sentText):
+                    guard entries[write.recordKey] == nil else { return }
+                    put(.sentText(sentText))
+                    put(
+                        .sentTextStatus(
+                            .init(sentTextId: sentText.id, classification: .pending)))
+                // 端末はまだ送らない（`server/openapi.json` に形が無い）
+                case .resendSentTextAsConversation, .resendSentText:
+                    return
                 case .respondNotice(_, _, let response):
                     guard case .notice(let notice) = entries[write.recordKey]?.change else {
                         return
