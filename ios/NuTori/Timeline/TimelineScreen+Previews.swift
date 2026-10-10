@@ -14,6 +14,7 @@
             rejectedLines: sample.rejectedLines,
             meals: sample.meals,
             notices: sample.notices,
+            undeliveredRecords: sample.undeliveredRecords,
             capture: { _ in },
             reminderLanding: nil,
             noteReminderLanded: {},
@@ -45,13 +46,15 @@
             case awaitingNotice
             /// 今日の体重の知らせの中で記録した。答えた知らせは並べない
             case answeredNotice
+            /// インターネットにつながらないあいだに、今日の体重と食事を記録した。どちらもまだ届いていない
+            case undelivered
 
             var initialPull: TimelineScreen.InitialPull {
                 switch self {
                 case .loading: .inProgress
                 case .firstDay: .completed(startedDay: .sampleToday)
                 case .unrecordedToday, .recordedToday, .rejected, .meals, .awaitingNotice,
-                    .answeredNotice:
+                    .answeredNotice, .undelivered:
                     .completed(startedDay: Self.startedDay)
                 case .startedDayUndecided: .completed(startedDay: nil)
                 }
@@ -65,6 +68,7 @@
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 7, 5, from: .manual)]
                 case .answeredNotice:
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 9, 30, from: .manual)]
+                case .undelivered: Self.pastRecords + [Self.undeliveredRecord]
                 case .rejected: [Self.correctedRecord]
                 }
             }
@@ -72,7 +76,7 @@
             var rejectedLines: [RejectedLine] {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .meals, .awaitingNotice, .answeredNotice:
+                    .meals, .awaitingNotice, .answeredNotice, .undelivered:
                     []
                 case .rejected:
                     [
@@ -101,6 +105,8 @@
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .awaitingNotice, .answeredNotice:
                     []
+                case .undelivered:
+                    [MealCard(meal: Self.undeliveredMeal, status: nil, recordedOnThisDevice: true)]
                 case .meals:
                     [
                         // 推定できた食事で、帯の今日の丸が P・F・C の割合で塗られる
@@ -120,7 +126,7 @@
             var notices: [Notice] {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals:
+                    .rejected, .meals, .undelivered:
                     []
                 case .awaitingNotice:
                     [
@@ -136,7 +142,32 @@
                 }
             }
 
+            var undeliveredRecords: UndeliveredRecords {
+                switch self {
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .rejected, .meals, .awaitingNotice, .answeredNotice:
+                    .none
+                case .undelivered:
+                    UndeliveredRecords(
+                        pendingEntries: [
+                            try? PendingWeightRecordWrite(
+                                enqueuedAt: Self.undeliveredRecord.instant,
+                                write: .createWeightRecord(Self.undeliveredRecord)
+                            ).entry(),
+                            try? PendingMealWrite(
+                                enqueuedAt: Self.undeliveredMeal.sentAt,
+                                write: .create(Self.undeliveredMeal)
+                            ).entry(),
+                        ].compactMap(\.self))
+                }
+            }
+
             private static let startedDay = CalendarDay.sampleToday.advanced(by: -10)
+
+            private static let undeliveredRecord = WeightRecord.sample(
+                71.8, on: .sampleToday, at: 7, 5, from: .manual)
+
+            private static let undeliveredMeal = Meal.sample(on: .sampleToday, at: 12, 10)
 
             private static let pastRecords: [WeightRecord] = [
                 .sample(72.8, on: startedDay, at: 7, 2, from: .manual),

@@ -9,6 +9,8 @@ struct TimelineScreenContainer: View {
     let rejectedLines: [RejectedLine]
     /// 送り待ちに料理を足す・名前を直す書き込みがある料理（まだ送れていない料理として見せる）
     let unsentDishIds: Set<UUID>
+    /// まだ届いていない記録（薄く描く）
+    let undeliveredRecords: UndeliveredRecords
     let capture: (ClientUsageEvent) async -> Void
     let reminderLanding: ReminderLanding?
     let noteReminderLanded: () -> Void
@@ -31,6 +33,7 @@ struct TimelineScreenContainer: View {
             rejectedLines: rejectedLines,
             meals: mealCards,
             notices: cachedNotices.compactMap { $0.notice() },
+            undeliveredRecords: undeliveredRecords,
             capture: capture,
             reminderLanding: reminderLanding,
             noteReminderLanded: noteReminderLanded,

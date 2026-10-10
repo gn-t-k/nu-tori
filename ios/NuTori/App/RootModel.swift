@@ -11,6 +11,8 @@ final class RootModel {
     let clock: DeviceClock
     /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカードで、まだ送れていない料理として見せる
     private(set) var unsentDishIds: Set<UUID> = []
+    /// まだ届いていない記録。タイムラインで薄く描く
+    private(set) var undeliveredRecords = UndeliveredRecords.none
     var rejectedLines: [RejectedLine] {
         guard case .accepting(let rejected) = rejectionAcceptance else { return [] }
         return rejected.lines
@@ -40,6 +42,10 @@ final class RootModel {
         recordSync.onUnsentDishIds = { [weak self] unsentDishIds in
             guard self?.unsentDishIds != unsentDishIds else { return }
             self?.unsentDishIds = unsentDishIds
+        }
+        recordSync.onUndeliveredRecords = { [weak self] undeliveredRecords in
+            guard self?.undeliveredRecords != undeliveredRecords else { return }
+            self?.undeliveredRecords = undeliveredRecords
         }
     }
 

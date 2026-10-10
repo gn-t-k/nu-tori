@@ -17,6 +17,8 @@ struct TimelineScreen: View {
     let meals: [MealCard]
     /// 答えた知らせも含む
     let notices: [Notice]
+    /// まだ届いていない記録（薄く描く）
+    let undeliveredRecords: UndeliveredRecords
     let capture: (ClientUsageEvent) async -> Void
     /// 記録忘れの通知を押して開いたときの着き先。着いたら `noteReminderLanded` を呼ぶ
     let reminderLanding: ReminderLanding?
@@ -304,7 +306,7 @@ struct TimelineScreen: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             ForEach(timeline.days, id: \.day) { day in
-                                daySection(day)
+                                daySection(day, in: timeline)
                                     .id(day.day)
                             }
                         }
@@ -351,7 +353,7 @@ struct TimelineScreen: View {
         }
     }
 
-    private func daySection(_ day: Timeline.Day) -> some View {
+    private func daySection(_ day: Timeline.Day, in timeline: Timeline) -> some View {
         VStack(alignment: .leading) {
             Text(TimelineDayText.label(for: day.day))
                 .font(.footnote)
@@ -364,6 +366,7 @@ struct TimelineScreen: View {
                         WeightRecordRow(record: record)
                     }
                     .buttonStyle(.plain)
+                    .undeliveredRecord(timeline.isUndelivered(item))
                     .accessibilityIdentifier("weight-row")
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 case .rejectedWeightLine(let line):
@@ -380,6 +383,7 @@ struct TimelineScreen: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .undeliveredRecord(timeline.isUndelivered(item))
                     .accessibilityIdentifier("meal-card")
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 case .rejectedMealLine(let line):
@@ -534,7 +538,7 @@ struct TimelineScreen: View {
         Timeline(
             input: Timeline.Input(
                 weightRecords: records, rejectedLines: rejectedLines, meals: meals,
-                notices: notices),
+                notices: notices, undelivered: undeliveredRecords),
             firstDay: firstDay, today: today)
     }
 
