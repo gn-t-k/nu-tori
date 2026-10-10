@@ -37,7 +37,7 @@ struct TimelineScreen: View {
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
-        let selectedDay = visibleDay ?? loaded?.days.last?.day ?? today
+        let selectedDay = loaded.flatMap(selectedDay(in:)) ?? today
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 DayRingStrip(
@@ -109,7 +109,7 @@ struct TimelineScreen: View {
             .onDisappear {
                 showsCameraNotice = false
             }
-            .navigationTitle(title(loaded: loaded))
+            .navigationTitle(TimelineDayText.label(for: selectedDay))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -680,12 +680,10 @@ struct TimelineScreen: View {
             firstDay: firstDay, today: today)
     }
 
-    private func title(loaded: Timeline?) -> String {
-        guard let loaded else {
-            return TimelineDayText.label(for: today)
-        }
-        let day = visibleDay ?? loaded.days.last?.day ?? today
-        return TimelineDayText.label(for: day)
+    /// 題と1日の丸の帯で示す日。日の区切りは遅れて作られ、開いた直後に下端へ動いたあとの位置が届かないことがあるので（#442）、一番下にいるかはスクロールの位置から決める
+    private func selectedDay(in timeline: Timeline) -> CalendarDay? {
+        let newest = timeline.days.last?.day
+        return showsTimelineEnd ? newest : visibleDay ?? newest
     }
 
     /// いちばん新しい日が画面に入っていればその日。遡っているときは、上端にかかっている日
