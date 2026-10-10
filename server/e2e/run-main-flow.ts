@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { generateRecordId } from "../src/domain/record-id";
+import { replyStreamEventSchema } from "../src/http/reply-stream-routes/reply-stream-event-schema";
 
-// 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから推定、アカウントの削除までを通す。
+// 送る文章は作り話にする（公開リポジトリ）。食事の文章は、食事と読み分けられる文にする
+export const mealTextBody = "朝にトーストを1枚とゆで卵を食べた";
+const conversationTextBody = "今日はよく歩いたので、少し脚が疲れた";
+
+// 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから写真と文章の食事の推定、会話の文章への返事、アカウントの削除までを通す。
 // 失敗したら、どの段で何が起きたかを書いて投げる。サインインしたあとは、失敗してもアカウントを消してから投げる
 export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
   const session = await signIn(options);
@@ -15,6 +20,18 @@ export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
     options.log(`推定できた（料理 ${dishIds.length}、材料 ${ingredientCount}）`);
     await renameEstimatedDish(options, session, dishIds[0]);
     options.log("推定でできた料理の名前を直した");
+    const mealTextId = await sendText(options, session, mealTextBody);
+    options.log("食事の文章を送った");
+    const writtenMeal = await waitForWrittenMealEstimation(options, session, mealTextId);
+    options.log(
+      `文章の食事が推定できた（料理 ${writtenMeal.dishIds.length}、材料 ${writtenMeal.ingredientCount}）`,
+    );
+    const conversationTextId = await sendText(options, session, conversationTextBody);
+    options.log("会話の文章を送った");
+    const streamedReply = await watchReply(options, session, conversationTextId);
+    options.log(`見守る要求で返事が届いた（流れた分 ${streamedReply.textDeltaCount}）`);
+    await requirePulledReply(options, session, conversationTextId, streamedReply);
+    options.log("取りに行くで返事が届いた");
   } catch (error) {
     await deleteAccount(options, session).catch((deletionError: unknown) => {
       options.log(`アカウントの削除にも失敗した: ${describeError(deletionError)}`);
@@ -97,35 +114,92 @@ const sendPhotographedMeal = async (
   return mealId;
 };
 
-const waitForEstimation = async (
+const waitForEstimation = (
   options: MainFlowOptions,
   session: Session,
   mealId: string,
-): Promise<{ dishIds: [string, ...string[]]; ingredientCount: number }> => {
+): Promise<{ dishIds: [string, ...string[]]; ingredientCount: number }> =>
+  waitForChanges(options, session, {
+    goal: "推定できた",
+    timeoutMs: options.estimationTimeoutMs,
+    inspect: (changes) => inspectEstimation(changes, mealId),
+  });
+
+// 文章を読み分けて文章の食事ができ、その推定が終わるまで待つ。食事と読み分けられなければ失敗にする
+const waitForWrittenMealEstimation = (
+  options: MainFlowOptions,
+  session: Session,
+  sentTextId: string,
+): Promise<{ dishIds: [string, ...string[]]; ingredientCount: number }> =>
+  waitForChanges(options, session, {
+    goal: "文章の食事が推定できた",
+    timeoutMs: options.estimationTimeoutMs,
+    inspect: (changes) => {
+      const classification = findSentTextStatus(changes, sentTextId)?.classification ?? "未取得";
+      if (classification !== "meal") {
+        if (classification !== "pending" && classification !== "未取得") {
+          throw new Error(`食事の文章が ${classification} と読み分けられた`);
+        }
+        return { waiting: `読み分け ${classification}` };
+      }
+      // 文章から食事がいくつできても、1つ目の食事（送った文章から先に作る食事）の推定を見る
+      const mealId = changes
+        .filter(({ kind }) => kind === "meal")
+        .map(({ record }) =>
+          z.object({ id: z.string(), sentTextId: z.string().optional() }).parse(record),
+        )
+        .find((meal) => meal.sentTextId === sentTextId)?.id;
+      if (mealId === undefined) {
+        throw new Error("食事と読み分けられたのに、文章の食事が無い");
+      }
+      return inspectEstimation(changes, mealId);
+    },
+  });
+
+const inspectEstimation = (
+  changes: Change[],
+  mealId: string,
+): Inspection<{ dishIds: [string, ...string[]]; ingredientCount: number }> => {
+  const status = findEstimationStatus(changes, mealId) ?? "未取得";
+  if (status === "estimated") {
+    return { done: requireEstimatedDishIdsAndIngredientCount(changes, mealId) };
+  }
+  if (status !== "awaiting_photos" && status !== "estimating") {
+    throw new Error(`推定できたにならず、${status} で終わった`);
+  }
+  return { waiting: status };
+};
+
+// 変更を取りに行き続け、inspect が終わったと言うまで待つ。inspect は、望まない結果で終わったら投げる
+const waitForChanges = async <T>(
+  options: MainFlowOptions,
+  session: Session,
+  wait: { goal: string; timeoutMs: number; inspect: (changes: Change[]) => Inspection<T> },
+): Promise<T> => {
   const startedAt = Date.now();
   const changes: Change[] = [];
   let afterSequence = 0;
-  let lastStatus = "未取得";
-  while (Date.now() - startedAt < options.estimationTimeoutMs) {
+  let lastState = "未取得";
+  while (Date.now() - startedAt < wait.timeoutMs) {
     const pulled = await pullChanges(options, session, afterSequence);
     changes.push(...pulled.changes);
     afterSequence = pulled.nextAfterSequence;
     if (pulled.hasMore) {
       continue;
     }
-    lastStatus = findEstimationStatus(changes, mealId) ?? lastStatus;
-    if (lastStatus === "estimated") {
-      return requireEstimatedDishIdsAndIngredientCount(changes, mealId);
+    const inspection = wait.inspect(changes);
+    if ("done" in inspection) {
+      return inspection.done;
     }
-    if (lastStatus !== "awaiting_photos" && lastStatus !== "estimating") {
-      throw new Error(`推定できたにならず、${lastStatus} で終わった`);
-    }
+    lastState = inspection.waiting;
     await new Promise((resolve) => setTimeout(resolve, options.pollIntervalMs));
   }
   throw new Error(
-    `推定できたにならないまま ${options.estimationTimeoutMs} ミリ秒たった（最後の状態: ${lastStatus}）`,
+    `${wait.goal}にならないまま ${wait.timeoutMs} ミリ秒たった（最後の状態: ${lastState}）`,
   );
 };
+
+type Inspection<T> = { done: T } | { waiting: string };
 
 const findEstimationStatus = (changes: Change[], mealId: string): string | undefined =>
   changes
@@ -165,6 +239,126 @@ const renameEstimatedDish = async (
   await pushWrites(options, session, [
     { id: generateRecordId(), type: "update_dish", dishId, name: "直した料理" },
   ]);
+};
+
+const sendText = async (options: MainFlowOptions, session: Session, body: string) => {
+  const sentTextId = generateRecordId();
+  await pushWrites(options, session, [
+    {
+      id: generateRecordId(),
+      type: "create_sent_text",
+      sentText: { id: sentTextId, body, sentAt: Date.now(), timeZone: "Asia/Tokyo" },
+    },
+  ]);
+  return sentTextId;
+};
+
+// 送った文章の見守る要求をつなぎ、閉じるまで読む。返事の ID のあとに本文が流れ、返事ありで閉じなければ失敗にする。
+// つなぐ前に返事ができ終わっていると本文が流れないが、読み分けと返事でモデルを2回呼ぶあいだにつなげる見込み
+const watchReply = async (
+  options: MainFlowOptions,
+  session: Session,
+  sentTextId: string,
+): Promise<StreamedReply> => {
+  const signal = AbortSignal.timeout(options.replyTimeoutMs);
+  const events = await (async () => {
+    const response = await callApi(
+      options,
+      session,
+      "GET",
+      `/v1/sent-texts/${sentTextId}/reply-stream`,
+      { signal },
+    );
+    if (response.status !== 200) {
+      throw new Error(`見守る要求をつなげなかった（状態コード ${response.status}）`);
+    }
+    return readServerSentEvents(await response.text());
+  })().catch((error: unknown) => {
+    if (signal.aborted) {
+      throw new Error(
+        `会話の文章の見守る要求が ${options.replyTimeoutMs} ミリ秒のうちに閉じなかった`,
+        { cause: error },
+      );
+    }
+    throw error;
+  });
+  const lastEvent = events.at(-1);
+  if (lastEvent?.type !== "replied") {
+    throw new Error(
+      `会話の文章の見守る要求が、返事ありでなく ${lastEvent === undefined ? "出来事なし" : JSON.stringify(lastEvent)} で閉じた`,
+    );
+  }
+  if (!events.some(({ type }) => type === "reply_started")) {
+    throw new Error("見守る要求をつないだときには返事ができ終わっていて、本文が流れなかった");
+  }
+  // 試みが途中で失敗すると、それまでの分を捨てて初めから流し直す
+  const textDeltas = events.reduce<string[]>(
+    (texts, event) =>
+      event.type === "text_delta"
+        ? [...texts, event.text]
+        : event.type === "text_discarded"
+          ? []
+          : texts,
+    [],
+  );
+  return {
+    replyId: lastEvent.replyId,
+    body: textDeltas.join(""),
+    textDeltaCount: textDeltas.length,
+  };
+};
+
+const readServerSentEvents = (text: string) =>
+  text
+    .split("\n\n")
+    .flatMap((block) => block.split("\n").filter((line) => line.startsWith("data: ")))
+    .map((line) => replyStreamEventSchema.parse(JSON.parse(line.slice("data: ".length))));
+
+// 見守る要求で届いた返事が、取りに行く応答にも、送った文章の状態と返事の記録で届いていることを確かめる
+const requirePulledReply = async (
+  options: MainFlowOptions,
+  session: Session,
+  sentTextId: string,
+  streamedReply: StreamedReply,
+): Promise<void> => {
+  const changes = await pullAllChanges(options, session);
+  const replyStatus = findSentTextStatus(changes, sentTextId)?.replyStatus ?? "未取得";
+  if (replyStatus !== "replied") {
+    throw new Error(`見守る要求は返事ありで閉じたのに、取りに行くと応答の状態が ${replyStatus}`);
+  }
+  const utterance = changes
+    .filter(({ kind }) => kind === "ai_utterance")
+    .map(({ record }) =>
+      z.object({ id: z.string(), body: z.string(), sentTextId: z.string() }).parse(record),
+    )
+    .find((record) => record.sentTextId === sentTextId);
+  if (utterance === undefined) {
+    throw new Error("見守る要求は返事ありで閉じたのに、取りに行くと返事が無い");
+  }
+  if (utterance.id !== streamedReply.replyId || utterance.body !== streamedReply.body) {
+    throw new Error("取りに行った返事が、見守る要求で届いた返事と ID か本文で食い違う");
+  }
+};
+
+const findSentTextStatus = (changes: Change[], sentTextId: string) =>
+  changes
+    .filter(({ kind, recordId }) => kind === "sent_text_status" && recordId === sentTextId)
+    .map(({ record }) =>
+      z.object({ classification: z.string(), replyStatus: z.string() }).parse(record),
+    )
+    .at(-1);
+
+const pullAllChanges = async (options: MainFlowOptions, session: Session): Promise<Change[]> => {
+  const changes: Change[] = [];
+  let afterSequence = 0;
+  for (;;) {
+    const pulled = await pullChanges(options, session, afterSequence);
+    changes.push(...pulled.changes);
+    afterSequence = pulled.nextAfterSequence;
+    if (!pulled.hasMore) {
+      return changes;
+    }
+  }
 };
 
 const pullChanges = async (
@@ -230,12 +424,13 @@ const callApi = (
   session: Session,
   method: string,
   path: string,
-  init: { headers?: Record<string, string>; body?: BodyInit } = {},
+  init: { headers?: Record<string, string>; body?: BodyInit; signal?: AbortSignal } = {},
 ): Promise<Response> =>
   options.send(`${options.baseUrl}${path}`, {
     method,
     headers: { ...init.headers, authorization: `Bearer ${session.sessionToken}` },
     ...(init.body === undefined ? {} : { body: init.body }),
+    ...(init.signal === undefined ? {} : { signal: init.signal }),
   });
 
 // 1回の流れは1台の端末として送る
@@ -269,10 +464,15 @@ type MainFlowOptions = {
   signInSecret: string;
   photo: Uint8Array;
   send: (url: string, init: RequestInit) => Promise<Response>;
+  // 推定は、写真の食事と文章の食事（読み分けを含む）のそれぞれで待つ
   estimationTimeoutMs: number;
+  // 会話の文章を送ってから、見守る要求が返事ありで閉じるまで（読み分けと返事）
+  replyTimeoutMs: number;
   pollIntervalMs: number;
   log: (message: string) => void;
 };
+
+type StreamedReply = { replyId: string; body: string; textDeltaCount: number };
 
 type Session = { sessionToken: string; accountId: string };
 
