@@ -190,6 +190,11 @@ public actor SyncEngine {
         DishSyncing.unsentDishIds(in: try await store.pendingEntries())
     }
 
+    /// まだ届いていない記録。タイムラインに渡し、薄く描く
+    public func undeliveredRecords() async throws -> UndeliveredRecords {
+        UndeliveredRecords(pendingEntries: try await store.pendingEntries())
+    }
+
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
     public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
         let settings = AccountSettings(
