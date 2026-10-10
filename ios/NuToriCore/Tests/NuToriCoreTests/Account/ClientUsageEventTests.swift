@@ -186,6 +186,61 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("プリセットの文面を書き換えて文章を送ったとき")
+    struct TextSentFromEditedPreset {
+        let event: ClientUsageEvent
+
+        init() {
+            event = .textSent(preset: .mealFeedbackSoFar, editedPreset: true, length: 28)
+        }
+
+        @Test("本文を載せず、プリセットの種類と書き換えたかと字数だけを載せること")
+        func omitsTheBody() {
+            #expect(event.name == "text_sent")
+            #expect(
+                event.fields == [
+                    "preset": .token("meal_feedback_so_far"),
+                    "edited_preset": .flag(true),
+                    "length": .count(28),
+                ])
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("プリセットを使わずに文章を送ったとき")
+    struct TextSentWithoutPreset {
+        let event: ClientUsageEvent
+
+        init() {
+            event = .textSent(preset: nil, editedPreset: false, length: 6)
+        }
+
+        @Test("プリセットの種類を載せないこと")
+        func omitsThePreset() {
+            #expect(
+                event.fields == [
+                    "edited_preset": .flag(false),
+                    "length": .count(6),
+                ])
+        }
+    }
+
+    @Suite("プリセットを押したとき")
+    struct PresetTapped {
+        let event: ClientUsageEvent
+
+        init() {
+            event = .presetTapped(.nextMealAdvice)
+        }
+
+        @Test("プリセットの種類だけを載せること")
+        func carriesThePreset() {
+            #expect(event.name == "preset_tapped")
+            #expect(event.fields == ["preset": .token("next_meal_advice")])
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("食事の画面で時刻を直したとき")
     struct MealTimeCorrected {
         @Test("回数だけを数え、時刻を載せないこと")
