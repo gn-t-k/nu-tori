@@ -128,6 +128,32 @@ struct ReplyWatchesTests {
         }
     }
 
+    @Suite("結果を受け取って閉じた文章が、応答を待たなくなったあとで再び応答を待つようになったとき（送り直した）")
+    struct ResentAfterOutcome {
+        let observer: Observer
+        let transport: ClientTransportMock
+        let watches: ReplyWatches
+        let sentTextId = UUID()
+
+        init() async {
+            observer = Observer()
+            transport = .replyStream(data: [
+                #"{"type":"replied","replyId":"\#(UUID().uuidString)"}"#
+            ])
+            watches = observer.watches(transport)
+            await watches.follow(awaiting: [sentTextId])
+            await observer.nextClosed()
+            await watches.follow(awaiting: [])
+        }
+
+        @Test("つなぎ直すこと")
+        func reconnects() async {
+            await watches.follow(awaiting: [sentTextId])
+            await observer.nextClosed()
+            #expect(transport.requests.count == 2)
+        }
+    }
+
     @Suite("結果を受け取らずに閉じたとき")
     struct ClosedWithoutOutcome {
         @Test("閉じたことを知らせ、まだ応答を待っていれば、つなぎ直すこと")
