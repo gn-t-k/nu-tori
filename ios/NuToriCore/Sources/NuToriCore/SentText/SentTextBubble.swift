@@ -6,9 +6,7 @@ public struct SentTextBubble: Hashable, Sendable {
     /// 会話として送り直す・送り直すを受け付けなかった1行。吹き出しのすぐ下に出す
     public let rejectedLine: RejectedSentTextLine?
 
-    public init(
-        sentText: SentText, replyLine: ReplyLine?, rejectedLine: RejectedSentTextLine? = nil
-    ) {
+    public init(sentText: SentText, replyLine: ReplyLine?, rejectedLine: RejectedSentTextLine?) {
         self.sentText = sentText
         self.replyLine = replyLine
         self.rejectedLine = rejectedLine
@@ -34,11 +32,12 @@ public struct SentTextBubble: Hashable, Sendable {
             }
         }
 
-        /// 「送り直す」を添えるか。作れなかった・回数切れはどの理由にも添える
-        public var offersResend: Bool {
+        /// 「送り直す」を添える1行の理由。作れなかった・回数切れはどの理由にも添え、読んでいますには添えない（nil）
+        public var resendReason: ClientUsageEvent.ReplyRegenerateReason? {
             switch self {
-            case .reading: false
-            case .halted, .failed: true
+            case .reading: nil
+            case .halted: .halted
+            case .failed(let reason): .failed(reason)
             }
         }
     }

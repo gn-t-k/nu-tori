@@ -1,8 +1,8 @@
 public import Foundation
 
 /// 返事の最初の文字を出したときに、PostHog に送る出来事（`reply_first_text_shown`）を決める。
-/// 応答を待っている（まだ届いていないか、読んでいますを出している）のを見た文章だけを数え、
-/// 見た時点から最初の文字が出るまでを測る。開いたときにもう返事のあった文章は数えない
+/// 応答を待っている（まだ届いていないか、読んでいますを出している）のを見た文章だけを数え、見た時点から最初の文字が出るまでを測る。
+/// 開いたときにもう返事のあった文章は数えない
 public struct ReplyFirstTextWatch: Sendable {
     public init() {}
 
@@ -16,9 +16,12 @@ public struct ReplyFirstTextWatch: Sendable {
                 if timeline.isUndelivered(item) || bubble.replyLine == .reading {
                     awaiting.insert(bubble.sentText.id)
                 }
-            case .reply(let reply) where !reply.body.isEmpty:
-                shown[reply.sentTextId] = reply.isGrowing
-            default:
+            case .reply(let reply):
+                if !reply.body.isEmpty {
+                    shown[reply.sentTextId] = reply.isGrowing
+                }
+            case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .notice,
+                .rejectedSentTextLine:
                 continue
             }
         }

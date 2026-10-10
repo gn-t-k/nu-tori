@@ -46,7 +46,7 @@ struct MealScreen: View {
         confirmsDeletion: Bool,
         confirmsLastDishDeletion: Bool,
         addingDish: Bool,
-        sentText: SentText? = nil
+        sentText: SentText?
     ) {
         self.card = card
         self.sentText = sentText

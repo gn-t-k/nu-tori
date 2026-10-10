@@ -239,11 +239,6 @@ extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
         try failIfNeeded()
         return cache.sentTextStatuses
     }
-
-    public func aiUtterances() async throws -> [AiUtterance] {
-        try failIfNeeded()
-        return Array(cache.aiUtterances.values)
-    }
 }
 
 extension SyncBoxMock: HealthDishWriteStoring where Cache == RecordCacheMock {

@@ -14,7 +14,7 @@ extension TimelineTests {
             Timeline(
                 input: Timeline.Input(
                     weightRecords: weightRecords, rejectedLines: [], meals: meals, notices: [],
-                    undelivered: UndeliveredRecords(pendingEntries: pending)),
+                    undelivered: UndeliveredRecords(pendingEntries: pending), conversation: .none),
                 firstDay: day, today: day)
         }
 
@@ -155,7 +155,8 @@ extension TimelineTests {
                                 try PendingSentTextWrite(enqueuedAt: sentText.sentAt, write: $0)
                                     .entry()
                             }),
-                        conversation: Timeline.Conversation(sentTexts: [sentText], statuses: [:])),
+                        conversation: Timeline.Conversation(
+                            sentTexts: [sentText], statuses: [:], replies: [], streams: [:])),
                     firstDay: Undelivered.day, today: Undelivered.day)
             }
 
@@ -165,7 +166,8 @@ extension TimelineTests {
                 let sentText = try SentText.fixture(sentAt: "2026-09-24T12:11:00+09:00")
                 let timeline = try Self.timeline(sentText: sentText, pending: [write(sentText)])
                 return timeline.isUndelivered(
-                    .sentText(SentTextBubble(sentText: sentText, replyLine: nil)))
+                    .sentText(SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil))
+                )
             }
 
             @Test("作る書き込みが送り待ちに残っている文章を、まだ届いていないとすること")
@@ -189,7 +191,9 @@ extension TimelineTests {
                 let timeline = try Self.timeline(sentText: sentText, pending: [])
                 #expect(
                     !timeline.isUndelivered(
-                        .sentText(SentTextBubble(sentText: sentText, replyLine: .reading))))
+                        .sentText(
+                            SentTextBubble(
+                                sentText: sentText, replyLine: .reading, rejectedLine: nil))))
             }
         }
     }

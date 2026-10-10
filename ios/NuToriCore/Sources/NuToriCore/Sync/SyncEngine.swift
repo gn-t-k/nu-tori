@@ -240,7 +240,8 @@ public actor SyncEngine {
     /// 見守る要求をつなぐ文章と、つながっていなければ数秒おきに取りに行くかを決める
     public func sentTextsAwaitingResponse() async throws -> Set<UUID> {
         Timeline.Conversation(
-            sentTexts: try await store.sentTexts(), statuses: try await store.sentTextStatuses()
+            sentTexts: try await store.sentTexts(), statuses: try await store.sentTextStatuses(),
+            replies: [], streams: [:]
         ).sentTextIdsAwaitingResponse(undelivered: try await undeliveredRecords())
     }
 

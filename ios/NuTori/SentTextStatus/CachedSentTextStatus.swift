@@ -14,40 +14,33 @@ nonisolated final class CachedSentTextStatus {
 
     init(sentTextId: UUID, status: SentTextStatus) {
         self.sentTextId = sentTextId
-        classification = Self.stored(status.classification)
-        let reply = Self.stored(status.reply)
-        replyStatus = reply.status
-        replyFailureReason = reply.failureReason
+        let stored = status.storedValue
+        classification = stored.classification
+        replyStatus = stored.replyStatus
+        replyFailureReason = stored.replyFailureReason
     }
 
     func apply(_ status: SentTextStatus) {
-        classification = Self.stored(status.classification)
-        let reply = Self.stored(status.reply)
-        replyStatus = reply.status
-        replyFailureReason = reply.failureReason
+        let stored = status.storedValue
+        classification = stored.classification
+        replyStatus = stored.replyStatus
+        replyFailureReason = stored.replyFailureReason
     }
 
     /// 読めない値の行は nil
     func sentTextStatus() -> SentTextStatus? {
-        let classification: SentTextStatus.Classification? =
-            switch classification {
-            case "pending": .pending
-            case "meal": .meal
-            case "conversation": .conversation
-            default: nil
-            }
-        let reply: SentTextStatus.Reply? =
-            switch (replyStatus, replyFailureReason) {
-            case ("none", _): .notRequested
-            case ("awaiting", _): .awaiting
-            case ("replied", _): .replied
-            case ("halted", _): .halted
-            case ("failed", "retries_exhausted"): .failed(.retriesExhausted)
-            case ("failed", "bad_request"): .failed(.badRequest)
-            default: nil
-            }
-        guard let classification, let reply else { return nil }
-        return SentTextStatus(classification: classification, reply: reply)
+        SentTextStatus(
+            storedClassification: classification, replyStatus: replyStatus,
+            replyFailureReason: replyFailureReason)
+    }
+
+    /// 送った文章の ID ごとの状態。読めない値の行は入れない
+    static func statuses(of rows: [CachedSentTextStatus]) -> [UUID: SentTextStatus] {
+        var statuses: [UUID: SentTextStatus] = [:]
+        for row in rows {
+            statuses[row.sentTextId] = row.sentTextStatus()
+        }
+        return statuses
     }
 
     /// 保存は呼び出し側が行う
@@ -61,27 +54,6 @@ nonisolated final class CachedSentTextStatus {
             existing.apply(status)
         } else {
             context.insert(CachedSentTextStatus(sentTextId: sentTextId, status: status))
-        }
-    }
-
-    private static func stored(_ classification: SentTextStatus.Classification) -> String {
-        switch classification {
-        case .pending: "pending"
-        case .meal: "meal"
-        case .conversation: "conversation"
-        }
-    }
-
-    private static func stored(_ reply: SentTextStatus.Reply) -> (
-        status: String, failureReason: String?
-    ) {
-        switch reply {
-        case .notRequested: ("none", nil)
-        case .awaiting: ("awaiting", nil)
-        case .replied: ("replied", nil)
-        case .halted: ("halted", nil)
-        case .failed(.retriesExhausted): ("failed", "retries_exhausted")
-        case .failed(.badRequest): ("failed", "bad_request")
         }
     }
 }

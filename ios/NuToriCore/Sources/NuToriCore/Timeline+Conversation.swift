@@ -3,7 +3,8 @@ public import Foundation
 extension Timeline {
     /// タイムラインに並べる会話の元。送った文章、その状態、返事、見守る要求で受け取っている途中の返事
     public struct Conversation: Sendable {
-        public static let none = Conversation(sentTexts: [], statuses: [:])
+        public static let none = Conversation(
+            sentTexts: [], statuses: [:], replies: [], streams: [:])
 
         public let sentTexts: [SentText]
         /// 送った文章の ID ごとの状態。送った文章より先に届いた状態も含む
@@ -16,8 +17,8 @@ extension Timeline {
         public init(
             sentTexts: [SentText],
             statuses: [UUID: SentTextStatus],
-            replies: [AiUtterance] = [],
-            streams: [UUID: ReplyStream] = [:]
+            replies: [AiUtterance],
+            streams: [UUID: ReplyStream]
         ) {
             self.sentTexts = sentTexts
             self.statuses = statuses

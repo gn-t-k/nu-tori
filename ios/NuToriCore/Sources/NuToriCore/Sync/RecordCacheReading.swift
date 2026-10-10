@@ -36,7 +36,4 @@ public protocol RecordCacheReading: Sendable {
 
     /// 送った文章の ID ごとの状態。送った文章より先に届いた状態も含む
     func sentTextStatuses() async throws -> [UUID: SentTextStatus]
-
-    /// 送った文章より先に届いた返事も含む
-    func aiUtterances() async throws -> [AiUtterance]
 }

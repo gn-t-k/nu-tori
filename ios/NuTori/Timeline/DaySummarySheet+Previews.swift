@@ -67,7 +67,7 @@
                             meal: .sample(on: Self.day(of: .foodUnavailableWithPending), at: 19, 0),
                             status: .deferredToNextDay, recordedOnThisDevice: true),
                         .sampleBlackCoffee(.sample(on: Self.day(of: .foodWithoutMacros), at: 9, 0)),
-                    ], notices: []),
+                    ], notices: [], undelivered: .none, conversation: .none),
                 firstDay: startedDay,
                 today: .sampleToday
             )

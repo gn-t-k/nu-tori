@@ -1,10 +1,9 @@
 import XCTest
 
-/// 文章と会話の主な流れ。プリセットで書いて送る → 読んでいます → 返事が届く → 食事の文章を送る → カードが出る →
-/// 会話として送り直す → 返事が届く → 作れなかった文章を送り直す → 返事が届く。
-/// API は起動の値で差し替え、偽のサーバーは送った文章の本文で答え方を決め、答えるのを3回めの取得まで待つ
+/// 文章と会話の主な流れ。プリセットで書いて送る → 読んでいます → 返事が届く → 食事の文章を送る → カードが出る → 会話として送り直す → 返事が届く → 作れなかった文章を送り直す → 返事が届く。
+/// 条件は、サインイン済みで、API が会話の場面（偽のサーバーが送った文章の本文で答え方を決め、答えるのを3回めの取得まで待つ）のとき
 @MainActor
-final class TextChatUITests: XCTestCase {
+final class SendTextWithConversationScenarioUITests: XCTestCase {
     private var app = XCUIApplication()
 
     override func setUp() async throws {
@@ -65,9 +64,12 @@ final class TextChatUITests: XCTestCase {
         app.buttons["composer-send"].tap()
     }
 
-    private func element(_ identifier: String, containing text: String? = nil) -> XCUIElement {
-        let byIdentifier = app.descendants(matching: .any).matching(identifier: identifier)
-        guard let text else { return byIdentifier.firstMatch }
-        return byIdentifier.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+    private func element(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+    }
+
+    private func element(_ identifier: String, containing text: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier)
+            .matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 }

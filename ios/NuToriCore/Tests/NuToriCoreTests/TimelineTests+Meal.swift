@@ -19,7 +19,8 @@ extension TimelineTests {
                     status: .estimated, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [meal], notices: []),
+                        weightRecords: [], rejectedLines: [], meals: [meal], notices: [],
+                        undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: PlacingMeals.day
                 )
@@ -42,7 +43,8 @@ extension TimelineTests {
                     status: nil, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [meal], notices: []),
+                        weightRecords: [], rejectedLines: [], meals: [meal], notices: [],
+                        undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -72,7 +74,7 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [evening, morning], rejectedLines: [], meals: [lunch],
-                        notices: []),
+                        notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -108,7 +110,7 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [dinner, breakfast, lunch],
-                        notices: []),
+                        notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -142,7 +144,7 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [morning], rejectedLines: [.meal(line)], meals: [before],
-                        notices: []),
+                        notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -170,7 +172,7 @@ extension TimelineTests {
                 Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: lines.map { .meal($0) }, meals: meals,
-                        notices: []),
+                        notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -245,7 +247,7 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [.weight(line)], meals: [lunch],
-                        notices: []),
+                        notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )

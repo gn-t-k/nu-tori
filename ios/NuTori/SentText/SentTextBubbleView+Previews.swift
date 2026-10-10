@@ -31,15 +31,18 @@
             var bubble: SentTextBubble {
                 switch self {
                 case .undelivered, .replied:
-                    SentTextBubble(sentText: Self.sentText, replyLine: nil)
+                    SentTextBubble(sentText: Self.sentText, replyLine: nil, rejectedLine: nil)
                 case .reading:
-                    SentTextBubble(sentText: Self.sentText, replyLine: .reading)
+                    SentTextBubble(sentText: Self.sentText, replyLine: .reading, rejectedLine: nil)
                 case .failedRetriesExhausted:
-                    SentTextBubble(sentText: Self.sentText, replyLine: .failed(.retriesExhausted))
+                    SentTextBubble(
+                        sentText: Self.sentText, replyLine: .failed(.retriesExhausted),
+                        rejectedLine: nil)
                 case .failedBadRequest:
-                    SentTextBubble(sentText: Self.sentText, replyLine: .failed(.badRequest))
+                    SentTextBubble(
+                        sentText: Self.sentText, replyLine: .failed(.badRequest), rejectedLine: nil)
                 case .halted:
-                    SentTextBubble(sentText: Self.sentText, replyLine: .halted)
+                    SentTextBubble(sentText: Self.sentText, replyLine: .halted, rejectedLine: nil)
                 case .resendRejected:
                     SentTextBubble(
                         sentText: Self.sentText, replyLine: .failed(.retriesExhausted),
