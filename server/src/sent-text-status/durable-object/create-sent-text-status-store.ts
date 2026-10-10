@@ -1,13 +1,15 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import type { RecordId } from "../../domain/record-id";
 import { aiUtteranceTables } from "../../ai-utterance/durable-object/ai-utterance-tables";
+import type { RecordId } from "../../domain/record-id";
+import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { replyTables } from "../../reply/durable-object/reply-tables";
 import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables";
 import type { ReplyFailureReason } from "../domain/sent-text-status";
 import type { ReplyRequestProgress, SentTextStatusStore } from "../domain/sent-text-status-store";
 
-const { sentTextClassifications } = sentTextTables;
+const { sentTextClassifications, sentTextConversationResends } = sentTextTables;
+const { syncWriteReceipts } = syncLedgerTables;
 const {
   replyRequests,
   replyRequestHalts,
@@ -19,12 +21,32 @@ const {
 const { aiUtterances } = aiUtteranceTables;
 
 export const createSentTextStatusStore = (db: DrizzleSqliteDODatabase): SentTextStatusStore => ({
-  findClassification: (sentTextId) =>
-    db
+  // 読み分けの行は書き換えないので、会話として送り直していれば、読み分けの結果によらず会話にする
+  findClassification: (sentTextId) => {
+    const resentAsConversation =
+      db
+        .select({ id: sentTextConversationResends.syncWriteReceiptId })
+        .from(sentTextConversationResends)
+        .innerJoin(
+          syncWriteReceipts,
+          eq(syncWriteReceipts.id, sentTextConversationResends.syncWriteReceiptId),
+        )
+        .where(
+          and(
+            eq(syncWriteReceipts.recordType, "sent_text"),
+            eq(syncWriteReceipts.recordId, sentTextId),
+          ),
+        )
+        .get() !== undefined;
+    if (resentAsConversation) {
+      return "conversation";
+    }
+    return db
       .select({ result: sentTextClassifications.result })
       .from(sentTextClassifications)
       .where(eq(sentTextClassifications.sentTextId, sentTextId))
-      .get()?.result,
+      .get()?.result;
+  },
   findReplyRequestProgresses: (sentTextId) =>
     db
       .select({

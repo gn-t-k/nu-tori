@@ -5,8 +5,8 @@ import { readClassificationResults } from "./read-classification-results";
 
 // 読み分けのモデルの比べ方の結果を、PR の本文に貼る表と決めたものにして出す。
 // 回し方（手で。CI と scripts/check には入れない）: server/ で `pnpm run evals:classify`。
-// 鍵は開発用だけを使う。Jev は NU_TORI_CLOUDFLARE_ACCOUNT_ID と NU_TORI_CLOUDFLARE_AI_TOKEN（Workers AI の Read）、
-// Haiku 5.5 は開発用のワークスペースの ANTHROPIC_API_KEY。結果の JSON は .scratch/（gitignore）に書く
+// 鍵は開発用だけを使う。Jev は NU_TORI_CLOUDFLARE_ACCOUNT_ID と NU_TORI_CLOUDFLARE_AI_TOKEN（Workers AI の Read と AI Gateway の Run）、
+// Haiku 5.5 は開発用のワークスペースのキー NU_TORI_ANTHROPIC_API_KEY。結果の JSON は .scratch/（gitignore）に書く
 const resultsPath = process.argv[2];
 if (resultsPath === undefined) {
   throw new Error("使い方: tsx evals/classify/summarize-classification-results.ts <results.json>");

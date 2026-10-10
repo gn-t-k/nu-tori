@@ -1,8 +1,9 @@
 import { and, asc, count, eq, isNull } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import type { RecordId } from "../../domain/record-id";
 import { match } from "ts-pattern";
 import { aiUtteranceTables } from "../../ai-utterance/durable-object/ai-utterance-tables";
+import type { RecordId } from "../../domain/record-id";
+import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables";
 import type { ReplyAttempt, ReplyAttemptConclusion } from "../domain/reply-attempt";
 import type { ReplyStore } from "../domain/reply-store";
@@ -11,7 +12,7 @@ import { replyTables } from "./reply-tables";
 const { sentTexts, sentTextClassifications } = sentTextTables;
 const {
   replyRequests,
-  classificationReplyRequests,
+  conversationResendReplyRequests,
   replyRequestHalts,
   replyGenerations,
   replyGenerationAttempts,
@@ -20,6 +21,7 @@ const {
   replyGenerationAbandonments,
 } = replyTables;
 const { aiUtterances } = aiUtteranceTables;
+const { syncWriteReceipts, syncRequestLogs } = syncLedgerTables;
 
 const sentTextColumns = {
   id: sentTexts.id,
@@ -28,9 +30,23 @@ const sentTextColumns = {
   timeZone: sentTexts.sentTimeZone,
 };
 
-// 依頼の時刻は、きっかけの時刻（読み分けなら読み分けた時刻）。
-// きっかけ（会話として送り直した・送り直した）を足すときは、その控えの要求の時刻を足し、ここで1つにまとめる
-const requestedAt = sentTextClassifications.classifiedAt;
+// 依頼の時刻を出すための列。きっかけの時刻で、読み分けなら読み分けた時刻、会話として送り直したなら、その書き込みを受け取った時刻。
+// 会話として送り直した文章にも食事と読み分けた行があるので、控えの時刻を先に採る。送り直した（#430）を足すときは、その控えの時刻もここに足す
+const requestTimes = {
+  classifiedAt: sentTextClassifications.classifiedAt,
+  conversationResentAt: syncRequestLogs.receivedAt,
+};
+
+const toRequestedAt = (times: {
+  classifiedAt: Date | null;
+  conversationResentAt: Date | null;
+}): Date => {
+  const requestedAt = times.conversationResentAt ?? times.classifiedAt;
+  if (requestedAt === null) {
+    throw new Error("返事の依頼に、きっかけの時刻が無い");
+  }
+  return requestedAt;
+};
 
 export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
   const findAttempts = (generationId: RecordId): ReplyAttempt[] =>
@@ -69,23 +85,34 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
           requestId: replyRequests.id,
           countedOn: replyRequests.countedOn,
           sentText: sentTextColumns,
-          requestedAt,
+          ...requestTimes,
         })
         .from(replyRequests)
         .innerJoin(sentTexts, eq(sentTexts.id, replyRequests.sentTextId))
-        .innerJoin(
-          classificationReplyRequests,
-          eq(classificationReplyRequests.replyRequestId, replyRequests.id),
-        )
-        .innerJoin(
+        .leftJoin(
           sentTextClassifications,
           eq(sentTextClassifications.sentTextId, replyRequests.sentTextId),
         )
+        .leftJoin(
+          conversationResendReplyRequests,
+          eq(conversationResendReplyRequests.replyRequestId, replyRequests.id),
+        )
+        .leftJoin(
+          syncWriteReceipts,
+          eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
+        )
+        .leftJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
         .leftJoin(replyRequestHalts, eq(replyRequestHalts.replyRequestId, replyRequests.id))
         .leftJoin(replyGenerations, eq(replyGenerations.replyRequestId, replyRequests.id))
         .where(and(isNull(replyRequestHalts.replyRequestId), isNull(replyGenerations.id)))
         .orderBy(asc(sentTexts.sentAt), asc(sentTexts.id))
-        .all(),
+        .all()
+        .map(({ requestId, countedOn, sentText, ...times }) => ({
+          requestId,
+          countedOn,
+          sentText,
+          requestedAt: toRequestedAt(times),
+        })),
     countGenerationsCountedOn: (countedOn) =>
       db
         .select({ count: count() })
@@ -96,18 +123,23 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
     // 続いている生成も「返事も作れなかったも無いこと」で絞るので、索引が効かない
     findContinuingGenerations: () =>
       db
-        .select({ generationId: replyGenerations.id, sentText: sentTextColumns, requestedAt })
+        .select({ generationId: replyGenerations.id, sentText: sentTextColumns, ...requestTimes })
         .from(replyGenerations)
         .innerJoin(replyRequests, eq(replyRequests.id, replyGenerations.replyRequestId))
         .innerJoin(sentTexts, eq(sentTexts.id, replyRequests.sentTextId))
-        .innerJoin(
-          classificationReplyRequests,
-          eq(classificationReplyRequests.replyRequestId, replyRequests.id),
-        )
-        .innerJoin(
+        .leftJoin(
           sentTextClassifications,
           eq(sentTextClassifications.sentTextId, replyRequests.sentTextId),
         )
+        .leftJoin(
+          conversationResendReplyRequests,
+          eq(conversationResendReplyRequests.replyRequestId, replyRequests.id),
+        )
+        .leftJoin(
+          syncWriteReceipts,
+          eq(syncWriteReceipts.id, conversationResendReplyRequests.syncWriteReceiptId),
+        )
+        .leftJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
         .leftJoin(aiUtterances, eq(aiUtterances.replyGenerationId, replyGenerations.id))
         .leftJoin(
           replyGenerationAbandonments,
@@ -121,7 +153,12 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
         )
         .orderBy(asc(sentTexts.sentAt), asc(sentTexts.id))
         .all()
-        .map((generation) => ({ ...generation, attempts: findAttempts(generation.generationId) })),
+        .map(({ generationId, sentText, ...times }) => ({
+          generationId,
+          sentText,
+          requestedAt: toRequestedAt(times),
+          attempts: findAttempts(generationId),
+        })),
     findAttempts,
     hasEnded: (generationId) =>
       db

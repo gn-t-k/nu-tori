@@ -1018,6 +1018,8 @@ extension Components {
             case deleteDish(Components.Schemas.DeleteDishWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/DeleteMealWrite`.
             case deleteMeal(Components.Schemas.DeleteMealWrite)
+            /// - Remark: Generated from `#/components/schemas/SyncWrite/ResendSentTextAsConversationWrite`.
+            case resendSentTextAsConversation(Components.Schemas.ResendSentTextAsConversationWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/RespondNoticeWrite`.
             case respondNotice(Components.Schemas.RespondNoticeWrite)
             /// - Remark: Generated from `#/components/schemas/SyncWrite/SourceDeletedWeightRecordWrite`.
@@ -1056,6 +1058,8 @@ extension Components {
                     self = .deleteDish(try .init(from: decoder))
                 case "delete_meal":
                     self = .deleteMeal(try .init(from: decoder))
+                case "resend_sent_text_as_conversation":
+                    self = .resendSentTextAsConversation(try .init(from: decoder))
                 case "respond_notice":
                     self = .respondNotice(try .init(from: decoder))
                 case "source_deleted_weight_record":
@@ -1093,6 +1097,8 @@ extension Components {
                 case let .deleteDish(value):
                     try value.encode(to: encoder)
                 case let .deleteMeal(value):
+                    try value.encode(to: encoder)
+                case let .resendSentTextAsConversation(value):
                     try value.encode(to: encoder)
                 case let .respondNotice(value):
                     try value.encode(to: encoder)
@@ -1830,6 +1836,43 @@ extension Components {
                 case id
                 case _type = "type"
                 case sentText
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite`.
+        internal struct ResendSentTextAsConversationWrite: Codable, Hashable, Sendable {
+            /// 冪等の鍵
+            ///
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite/id`.
+            internal var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite/type`.
+            internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case resendSentTextAsConversation = "resend_sent_text_as_conversation"
+            }
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite/type`.
+            internal var _type: Components.Schemas.ResendSentTextAsConversationWrite._TypePayload
+            /// 食事と読み分けた送った文章。その文章から作った食事を消し、会話にする
+            ///
+            /// - Remark: Generated from `#/components/schemas/ResendSentTextAsConversationWrite/sentTextId`.
+            internal var sentTextId: Swift.String
+            /// Creates a new `ResendSentTextAsConversationWrite`.
+            ///
+            /// - Parameters:
+            ///   - id: 冪等の鍵
+            ///   - _type:
+            ///   - sentTextId: 食事と読み分けた送った文章。その文章から作った食事を消し、会話にする
+            internal init(
+                id: Swift.String,
+                _type: Components.Schemas.ResendSentTextAsConversationWrite._TypePayload,
+                sentTextId: Swift.String
+            ) {
+                self.id = id
+                self._type = _type
+                self.sentTextId = sentTextId
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case _type = "type"
+                case sentTextId
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateWeightRecordWrite`.

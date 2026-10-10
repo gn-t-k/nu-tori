@@ -8,6 +8,7 @@ import { replyTables } from "./reply-tables";
 const {
   replyRequests,
   classificationReplyRequests,
+  conversationResendReplyRequests,
   replyRequestHalts,
   replyGenerations,
   replyGenerationAttempts,
@@ -23,6 +24,11 @@ export const createReplyEventWriteStore = (db: DrizzleSqliteDODatabase): ReplyEv
     match(trigger)
       .with({ type: "classification" }, () => {
         db.insert(classificationReplyRequests).values({ replyRequestId: id }).run();
+      })
+      .with({ type: "conversation_resend" }, ({ receiptId }) => {
+        db.insert(conversationResendReplyRequests)
+          .values({ replyRequestId: id, syncWriteReceiptId: receiptId.value })
+          .run();
       })
       .exhaustive();
   },

@@ -245,8 +245,16 @@ extension Components.Schemas.SyncWrite {
                     )
                 )
             )
-        // サーバーが受け付ける形（#427・#430）が `server/openapi.json` に入るまで送らない。入ったら生成し直して、ここで作る
-        case .resendSentTextAsConversation, .resendSentText:
+        case .resendSentTextAsConversation(let writeId, let sentTextId):
+            self = .resendSentTextAsConversation(
+                .init(
+                    id: writeId.canonicalString,
+                    _type: .resendSentTextAsConversation,
+                    sentTextId: sentTextId.canonicalString
+                )
+            )
+        // サーバーが受け付ける形（#430）が `server/openapi.json` に入るまで送らない。入ったら生成し直して、ここで作る
+        case .resendSentText:
             return nil
         }
     }

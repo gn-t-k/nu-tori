@@ -353,6 +353,17 @@
                 }
             }
 
+            /// 送った文章から作った、今の文章の食事（削除の印を除く）を、置いた順に
+            private func writtenMealIds(ofSentText sentTextId: UUID) -> [UUID] {
+                entries.values.sorted { $0.sequence < $1.sequence }.compactMap {
+                    guard case .meal(let meal) = $0.change,
+                        case .written(let mealSentTextId) = meal.entryMethod,
+                        mealSentTextId == sentTextId
+                    else { return nil }
+                    return meal.id
+                }
+            }
+
             /// 量が今と違えば直した量にし、比例させた材料の量を当てる。名前が今と違えば、推定し直しを始める
             private mutating func apply(_ correction: DishCorrection) {
                 guard
@@ -468,8 +479,24 @@
                             .init(
                                 sentTextId: sentText.id, classification: .pending,
                                 reply: .notRequested)))
+                // 食事を消す書き込みと同じく、その文章から作った食事の削除の印だけを置き、料理と材料は連れて消さない
+                case .resendSentTextAsConversation(_, let sentTextId):
+                    guard
+                        case .sentTextStatus(let status) = entries[
+                            .init(kind: .sentTextStatus, id: sentTextId)]?.change,
+                        status.classification == .meal
+                    else { return }
+                    for mealId in writtenMealIds(ofSentText: sentTextId) {
+                        put(.mealDeletion(mealId: mealId))
+                        estimatingMeals.removeAll { $0.mealId == mealId }
+                    }
+                    put(
+                        .sentTextStatus(
+                            .init(
+                                sentTextId: sentTextId, classification: .conversation,
+                                reply: .awaiting)))
                 // 端末はまだ送らない（`server/openapi.json` に形が無い）
-                case .resendSentTextAsConversation, .resendSentText:
+                case .resendSentText:
                     return
                 case .respondNotice(_, _, let response):
                     guard case .notice(let notice) = entries[write.recordKey]?.change else {
