@@ -12,6 +12,7 @@ public struct UndeliveredRecords: Hashable, Sendable {
         var mealIds: Set<UUID> = []
         var dishIds: Set<UUID> = []
         var ingredientIds: Set<UUID> = []
+        var sentTextIds: Set<UUID> = []
         for entry in pendingEntries {
             switch entry.kind {
             case WeightRecordWrite.kindName:
@@ -42,6 +43,10 @@ public struct UndeliveredRecords: Hashable, Sendable {
                 switch pending.write {
                 case .update(let ingredientId, _): ingredientIds.insert(ingredientId)
                 }
+            // 送り直す2つも、届くまで吹き出しを薄く描き、応答待ちを出さない
+            case SentTextWrite.kindName:
+                guard let pending = try? PendingSentTextWrite(entry: entry) else { continue }
+                sentTextIds.insert(pending.write.sentTextId)
             default:
                 continue
             }
@@ -50,6 +55,7 @@ public struct UndeliveredRecords: Hashable, Sendable {
         self.mealIds = mealIds
         self.dishIds = dishIds
         self.ingredientIds = ingredientIds
+        self.sentTextIds = sentTextIds
     }
 
     func contains(_ item: Timeline.Item) -> Bool {
@@ -61,8 +67,14 @@ public struct UndeliveredRecords: Hashable, Sendable {
                     dishIds.contains(contents.dish.id)
                         || contents.ingredients.contains { ingredientIds.contains($0.id) }
                 }
-        case .rejectedWeightLine, .rejectedMealLine, .notice: false
+        case .sentText(let bubble): containsSentText(id: bubble.sentText.id)
+        case .rejectedWeightLine, .rejectedMealLine, .notice, .rejectedSentTextLine, .reply: false
         }
+    }
+
+    /// 作る・会話として送り直す・送り直すの書き込みが送り待ちに残っている送った文章か
+    func containsSentText(id sentTextId: UUID) -> Bool {
+        sentTextIds.contains(sentTextId)
     }
 
     private let weightRecordIds: Set<UUID>
@@ -71,4 +83,5 @@ public struct UndeliveredRecords: Hashable, Sendable {
     /// 直す書き込みがある料理と材料。食事の画面での直しは、その料理と材料の食事のカードを薄く描く
     private let dishIds: Set<UUID>
     private let ingredientIds: Set<UUID>
+    private let sentTextIds: Set<UUID>
 }

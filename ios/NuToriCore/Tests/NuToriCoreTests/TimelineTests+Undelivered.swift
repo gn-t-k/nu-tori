@@ -143,5 +143,54 @@ extension TimelineTests {
                 #expect(timeline.isUndelivered(.meal(card)))
             }
         }
+
+        @Suite("送った文章の吹き出し")
+        struct SentTexts {
+            static func timeline(sentText: SentText, pending: [SentTextWrite]) throws -> Timeline {
+                Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                        undelivered: UndeliveredRecords(
+                            pendingEntries: try pending.map {
+                                try PendingSentTextWrite(enqueuedAt: sentText.sentAt, write: $0)
+                                    .entry()
+                            }),
+                        conversation: Timeline.Conversation(sentTexts: [sentText], statuses: [:])),
+                    firstDay: Undelivered.day, today: Undelivered.day)
+            }
+
+            static func isUndelivered(
+                _ write: (SentText) -> SentTextWrite
+            ) throws -> Bool {
+                let sentText = try SentText.fixture(sentAt: "2026-09-24T12:11:00+09:00")
+                let timeline = try Self.timeline(sentText: sentText, pending: [write(sentText)])
+                return timeline.isUndelivered(
+                    .sentText(SentTextBubble(sentText: sentText, replyLine: nil)))
+            }
+
+            @Test("作る書き込みが送り待ちに残っている文章を、まだ届いていないとすること")
+            func createdIsUndelivered() throws {
+                #expect(try Self.isUndelivered { .create($0) })
+            }
+
+            @Test("会話として送り直す書き込みが送り待ちに残っている文章を、まだ届いていないとすること")
+            func resentAsConversationIsUndelivered() throws {
+                #expect(try Self.isUndelivered { .resendAsConversation(sentTextId: $0.id) })
+            }
+
+            @Test("送り直す書き込みが送り待ちに残っている文章を、まだ届いていないとすること")
+            func resentIsUndelivered() throws {
+                #expect(try Self.isUndelivered { .resend(sentTextId: $0.id) })
+            }
+
+            @Test("送り待ちに書き込みが無い文章を、届いたとすること")
+            func sentIsDelivered() throws {
+                let sentText = try SentText.fixture(sentAt: "2026-09-24T12:11:00+09:00")
+                let timeline = try Self.timeline(sentText: sentText, pending: [])
+                #expect(
+                    !timeline.isUndelivered(
+                        .sentText(SentTextBubble(sentText: sentText, replyLine: .reading))))
+            }
+        }
     }
 }
