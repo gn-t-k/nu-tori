@@ -155,6 +155,33 @@ const meals = defineFactory({
   }),
 });
 
+const sentTexts = defineFactory({
+  schema,
+  table: "sentTexts",
+  resolver: () => ({
+    id: generateRecordId(),
+    body: "朝はパン",
+    sentAt: new Date("2026-01-01T00:00:00Z"),
+    sentTimeZone: "Asia/Tokyo",
+  }),
+});
+
+// 文章の食事。食事を指定しなければ、入口が文章の食事を作る
+const sentTextMeals = defineFactory({
+  schema,
+  table: "sentTextMeals",
+  resolver: ({ use }) => ({
+    mealId: () =>
+      use(meals)
+        .create({ entryMethod: "written" })
+        .then((meal) => meal.id),
+    sentTextId: () =>
+      use(sentTexts)
+        .create()
+        .then((sentText) => sentText.id),
+  }),
+});
+
 const estimationSchedules = defineFactory({
   schema,
   table: "estimationSchedules",
@@ -219,6 +246,8 @@ export const durableObjectFactory = composeFactory({
   weightRecordDeletions,
   accountSettings,
   meals,
+  sentTexts,
+  sentTextMeals,
   estimationSchedules,
   mealEstimationSchedules,
   estimationDeferrals,
