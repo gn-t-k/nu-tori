@@ -185,7 +185,6 @@ public actor SyncEngine {
         try await exportNutritionBestEffort()
     }
 
-    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカード（`MealCard`）に渡し、まだ送れていない料理として見せる
     /// 文章を送る。送った文章の ID と、送った時刻（送る操作をした時刻）はここで決める。電波が無くても受け付け、送り待ちに並べる。
     /// 前後の空白を除いた本文で送り、受け付ける範囲の外（空白だけ、長すぎる）なら送らずに nil
     @discardableResult
@@ -227,6 +226,7 @@ public actor SyncEngine {
         }
     }
 
+    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカード（`MealCard`）に渡し、まだ送れていない料理として見せる
     public func unsentDishIds() async throws -> Set<UUID> {
         DishSyncing.unsentDishIds(in: try await store.pendingEntries())
     }

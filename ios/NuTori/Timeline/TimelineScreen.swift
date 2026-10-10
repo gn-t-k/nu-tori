@@ -27,6 +27,8 @@ struct TimelineScreen: View {
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
+    /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
+    let sendText: (TextDraft) async -> Void
     let accountActions: AccountActions
     let mealActions: MealActions
 
@@ -471,6 +473,7 @@ struct TimelineScreen: View {
             weightRecordedToday: records.contains { $0.day == today },
             preparingWeightEntry: weightEntryPhase == .preparing,
             showsCameraNotice: showsCameraNotice,
+            initialDraft: TextDraft(),
             onCapture: hidingCameraNotice(openCamera),
             onPickPhotos: hidingCameraNotice {
                 switch mealActions.photoSelection {
@@ -490,6 +493,14 @@ struct TimelineScreen: View {
                     await prepareWeightEntry()
                     weightEntryPhase = .showing
                 }
+            },
+            onPresetTapped: { preset in
+                showsCameraNotice = false
+                Task { await capture(.presetTapped(preset)) }
+            },
+            onSendText: { draft in
+                showsCameraNotice = false
+                Task { await sendText(draft) }
             }
         )
     }

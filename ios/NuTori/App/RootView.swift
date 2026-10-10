@@ -69,6 +69,9 @@ struct RootView: View {
                 saveWeight: { write in
                     await model.saveWeight(write)
                 },
+                sendText: { draft in
+                    await model.sendText(draft)
+                },
                 accountActions: AccountActions(
                     signedInAccountId: { await model.signedInAccountId() },
                     turnOnUsageData: { await model.turnOnUsageData() },

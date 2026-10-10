@@ -236,6 +236,13 @@ final class RootModel {
         await accountSession.capture(.dishAdded)
     }
 
+    /// 入力欄から文章を送る。インターネットにつながらなくても、その場で送り待ちに並ぶ。
+    /// 送ったら、PostHog にプリセットの種類と字数を送る（本文は送らない）
+    func sendText(_ draft: TextDraft) async {
+        guard (try? await recordSync.sendText(draft.text)) != nil else { return }
+        await accountSession.capture(draft.sentEvent)
+    }
+
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil
     func mealPhotoFile(mealId: UUID, photoId: UUID) async -> URL? {
         await recordSync.mealPhotos.photoFile(mealId: mealId, photoId: photoId)

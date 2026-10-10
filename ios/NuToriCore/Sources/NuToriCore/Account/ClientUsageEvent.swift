@@ -37,6 +37,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case notificationPermissionRequested(granted: Bool)
     /// アカウントの画面の通知の行から、iPhone の設定を開いた
     case notificationSettingsOpened
+    /// 入力欄から文章を送った。本文は載せない。`preset` は押したプリセット（使っていなければ nil）、`length` は前後の空白を除いた字数
+    case textSent(preset: TextPreset?, editedPreset: Bool, length: Int)
+    /// 入力欄の上のプリセットを押した
+    case presetTapped(TextPreset)
 
     /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
     /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
@@ -95,6 +99,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .missedWeightReminderOpened: "missed_weight_reminder_opened"
         case .notificationPermissionRequested: "notification_permission_requested"
         case .notificationSettingsOpened: "notification_settings_opened"
+        case .textSent: "text_sent"
+        case .presetTapped: "preset_tapped"
         }
     }
 
@@ -105,7 +111,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .mealDeleted, .mealTimeCorrected, .dishCorrected, .dishAdded, .dishDeleted,
             .unansweredNoticeLineTapped,
             .missedWeightReminderOpened,
-            .notificationPermissionRequested, .notificationSettingsOpened:
+            .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
+            .presetTapped:
             nil
         case .screen(.timeline):
             "timeline"
@@ -141,6 +148,16 @@ public enum ClientUsageEvent: Sendable, Equatable {
             ["had_notice": .flag(hadNotice)]
         case .notificationPermissionRequested(let granted):
             ["granted": .flag(granted)]
+        case .textSent(.none, let editedPreset, let length):
+            ["edited_preset": .flag(editedPreset), "length": .count(length)]
+        case .textSent(.some(let preset), let editedPreset, let length):
+            [
+                "preset": .token(preset.token),
+                "edited_preset": .flag(editedPreset),
+                "length": .count(length),
+            ]
+        case .presetTapped(let preset):
+            ["preset": .token(preset.token)]
         case .initialPullDuration(let duration):
             ["duration_seconds": .wholeSeconds(Self.wholeSeconds(duration))]
         case .mealRecorded(let entry, let photoCount, let mealCount):
@@ -179,6 +196,15 @@ extension ClientUsageEvent.WeightCorrectionPlace {
         case .daySummary: "day_summary"
         case .otherRecords: "other_records"
         case .recentRecords: "recent_records"
+        }
+    }
+}
+
+extension TextPreset {
+    fileprivate var token: String {
+        switch self {
+        case .mealFeedbackSoFar: "meal_feedback_so_far"
+        case .nextMealAdvice: "next_meal_advice"
         }
     }
 }
