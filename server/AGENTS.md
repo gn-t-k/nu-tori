@@ -12,7 +12,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（使う環境に。本番だけの値は本番だけ）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の秘密の値を足すときは `docs/agents/tooling.md` を読む
 - 推定の提供元（Anthropic）の API キーは、秘密の値 `ANTHROPIC_API_KEY` に置く。環境ごとの Anthropic のワークスペース（開発用は `nu-tori-development`、本番は `nu-tori-production`）のキーを、それぞれの環境に置く。`wrangler.jsonc` の `secrets.required` には両方の環境に書き、テストの値は `vitest.config.ts` にある（テストは提供元を偽物に差し替えるので、この値は本物に届かない）
 - 読み分け（Claude Haiku 5.5。#423 で決めた）も、推定と同じワークスペースの `ANTHROPIC_API_KEY` で呼ぶ。費用の上限はワークスペースの月の上限で、本番は前払いのクレジットが上限になる。尽きるとすべての文章が会話になるので、読み分けの呼び出しの失敗を Sentry に送り、急増で知らせる
-- 環境ごとの AI Gateway（#422 で作った `nu-tori-development`・`nu-tori-production`）は、今は使っていない。Workers AI（Jev）で読み分ける案のために作ったもので、Haiku 5.5 に決めたので呼び先にしていない。Workers AI を呼ぶようになったら、ルートの `AGENTS.md` のとおりゲートウェイを通し、そのときゲートウェイの設定（支出の上限、ログ、認証）をここに書く
+- Workers AI のつなぎ（`ai` の binding）と、環境ごとの AI Gateway は置いていない（#422 で作ったゲートウェイは、読み分けを Haiku 5.5 にしたので消す。#446）。Workers AI を呼ぶようになったら、両方の環境に `ai` のつなぎを書き、ルートの `AGENTS.md` のとおり環境ごとのゲートウェイを作って通し、そのときゲートウェイの設定（支出の上限、ログ、認証）をここに書く。ゲートウェイを名指さずに呼ぶと、ログがオンの `default` のゲートウェイができる
 
 ## 確かめのジョブのためのサインインの口
 
