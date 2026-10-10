@@ -3,7 +3,6 @@ import { R } from "@praha/byethrow";
 import type { ApiProvider, ProviderResponse } from "promptfoo";
 import { createHaikuClassificationRequest } from "../../src/reply/durable-object/create-conversation-provider/create-haiku-classification-request";
 import { readHaikuClassification } from "../../src/reply/durable-object/create-conversation-provider/read-haiku-classification";
-import type { ClassificationEvalOutput } from "./classification-eval-output";
 
 // promptfoo の custom provider。Claude Haiku 5.5 を Anthropic の API で呼ぶ。要求の形と応答の読み方はサーバーと同じものを import する。
 // 鍵: 開発用のワークスペース（nu-tori-development）のキーを NU_TORI_ANTHROPIC_API_KEY に置く。
@@ -28,7 +27,6 @@ export default class HaikuProvider implements ApiProvider {
     if (R.isFailure(classification)) {
       return { error: "Haiku 5.5 が答えなかったか、応答を読めなかった", tokenUsage };
     }
-    const output: ClassificationEvalOutput = { kind: "label", label: classification.value.label };
-    return { output, tokenUsage };
+    return { output: classification.value.label, tokenUsage };
   };
 }

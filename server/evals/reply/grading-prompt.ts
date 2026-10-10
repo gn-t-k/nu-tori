@@ -1,5 +1,6 @@
-// llm-rubric の判定の指示（promptfoo の rubricPrompt）。既定の指示は返事しか見せないので、数字が渡した値か、記録に触れているかを判定できるよう、
-// 返事を作るときに渡した文脈（vars.contextText）も見せる。{{ }} は promptfoo が nunjucks で埋める
+// llm-rubric の判定の指示（promptfoo の rubricPrompt）。
+// 既定の指示は返事しか見せないので、数字が渡した値か、記録に触れているかを判定できるよう、返事を作るときに渡した文脈（vars.contextText）も見せる。
+// {{ }} は promptfoo が nunjucks で埋める
 export const gradingPrompt = JSON.stringify([
   {
     role: "system",

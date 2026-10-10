@@ -1,40 +1,29 @@
 import { z } from "zod";
-import { classificationMetricName } from "../classification-metric-name";
-import { classificationThresholds } from "../classification-thresholds";
+import type { ClassificationErrorKind } from "../judge-classification-error/judge-classification-error";
 
-// promptfoo の結果（-o の JSON）から、Jev のしきい値ごとと Haiku 5.5 の、2種類の間違いの数を読む。
+// promptfoo の結果（-o の JSON）から、Haiku 5.5 の2種類の間違いの数を読む。
 // 呼び出しに失敗した件があると数が欠けるので、数えずに失敗の数を返す（回し直す）。
 // 結果の形やモデルの label が設定と食い違うのは設定の誤りなので throw する
 export const readClassificationResults = (
   results: unknown,
 ):
-  | {
-      status: "complete";
-      haiku: ErrorCounts;
-      jev: (ErrorCounts & { threshold: number })[];
-    }
-  | { status: "incomplete"; errorCounts: { jev: number; haiku: number } } => {
+  | { status: "complete"; mealAsChat: number; chatAsMeal: number }
+  | { status: "incomplete"; errorCount: number } => {
   const { prompts } = resultsSchema.parse(results).results;
-  const jev = findMetrics(prompts, "jev");
-  const haiku = findMetrics(prompts, "haiku");
-  if (jev.testErrorCount > 0 || haiku.testErrorCount > 0) {
-    return {
-      status: "incomplete",
-      errorCounts: { jev: jev.testErrorCount, haiku: haiku.testErrorCount },
-    };
+  const haiku = prompts.find(({ provider }) => provider === "haiku");
+  if (haiku === undefined) {
+    throw new Error("結果に haiku の提供元が無い");
+  }
+  const { testErrorCount, namedScores } = haiku.metrics;
+  if (testErrorCount > 0) {
+    return { status: "incomplete", errorCount: testErrorCount };
   }
   return {
     status: "complete",
-    // Haiku 5.5 の答えはしきい値に関わらず同じ数なので、一番低いしきい値の数を読む
-    haiku: readErrorCounts(haiku.namedScores, classificationThresholds[0]),
-    jev: classificationThresholds.map((threshold) => ({
-      threshold,
-      ...readErrorCounts(jev.namedScores, threshold),
-    })),
+    mealAsChat: readCount(namedScores, "meal_as_chat"),
+    chatAsMeal: readCount(namedScores, "chat_as_meal"),
   };
 };
-
-type ErrorCounts = { mealAsChat: number; chatAsMeal: number };
 
 const resultsSchema = z.object({
   results: z.object({
@@ -50,25 +39,7 @@ const resultsSchema = z.object({
   }),
 });
 
-type PromptMetrics = z.infer<typeof resultsSchema>["results"]["prompts"][number]["metrics"];
-
-const findMetrics = (
-  prompts: z.infer<typeof resultsSchema>["results"]["prompts"],
-  label: "jev" | "haiku",
-): PromptMetrics => {
-  const found = prompts.find(({ provider }) => provider === label);
-  if (found === undefined) {
-    throw new Error(`結果に ${label} の提供元が無い`);
-  }
-  return found.metrics;
-};
-
-const readErrorCounts = (namedScores: Record<string, number>, threshold: number): ErrorCounts => ({
-  mealAsChat: readCount(namedScores, classificationMetricName("meal_as_chat", threshold)),
-  chatAsMeal: readCount(namedScores, classificationMetricName("chat_as_meal", threshold)),
-});
-
-const readCount = (namedScores: Record<string, number>, name: string): number => {
+const readCount = (namedScores: Record<string, number>, name: ClassificationErrorKind): number => {
   const count = namedScores[name];
   if (count === undefined) {
     throw new Error(`結果に ${name} の数が無い`);

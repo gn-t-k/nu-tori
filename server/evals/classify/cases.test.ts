@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, test } from "vitest";
 import cases from "./cases.json";
 
 // 読み分けの評価の組（仕様 #419 の「読み分け」）。promptfoo の tests の形で、正解を開発者が確かめる。
-// 数を縛るのは、Jev にする条件の「Haiku 5.5 の数＋4（評価の組の 5%）」が 80 個を前提にするため
 describe("読み分けの評価の組", () => {
   describe("組の全体", () => {
     test("80 個あること", () => {
