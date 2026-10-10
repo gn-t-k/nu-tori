@@ -469,6 +469,10 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/MealRecord/photos`.
             internal var photos: Components.Schemas.MealRecord.PhotosPayload
+            /// 文章の食事なら、作った送った文章の ID。写真の食事には無い
+            ///
+            /// - Remark: Generated from `#/components/schemas/MealRecord/sentTextId`.
+            internal var sentTextId: Swift.String?
             /// Creates a new `MealRecord`.
             ///
             /// - Parameters:
@@ -479,6 +483,7 @@ extension Components {
             ///   - sentTimeZone:
             ///   - entryMethod:
             ///   - photos: 写真の並び順
+            ///   - sentTextId: 文章の食事なら、作った送った文章の ID。写真の食事には無い
             internal init(
                 id: Swift.String,
                 eatenAt: Swift.Int,
@@ -486,7 +491,8 @@ extension Components {
                 sentAt: Swift.Int,
                 sentTimeZone: Swift.String,
                 entryMethod: Swift.String,
-                photos: Components.Schemas.MealRecord.PhotosPayload
+                photos: Components.Schemas.MealRecord.PhotosPayload,
+                sentTextId: Swift.String? = nil
             ) {
                 self.id = id
                 self.eatenAt = eatenAt
@@ -495,6 +501,7 @@ extension Components {
                 self.sentTimeZone = sentTimeZone
                 self.entryMethod = entryMethod
                 self.photos = photos
+                self.sentTextId = sentTextId
             }
             internal enum CodingKeys: String, CodingKey {
                 case id
@@ -504,6 +511,7 @@ extension Components {
                 case sentTimeZone
                 case entryMethod
                 case photos
+                case sentTextId
             }
         }
         /// kind が meal_estimation_status の変更の record。recordId は食事の ID。食事が消えたら kind が meal_estimation_status_deletion で record が空の変更が届く
