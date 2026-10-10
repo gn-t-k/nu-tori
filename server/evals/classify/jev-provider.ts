@@ -6,7 +6,7 @@ import type { ClassificationEvalOutput } from "./classification-eval-output";
 
 // promptfoo の custom provider。Jev（typesafe/jev）を、開発用の AI Gateway を通る Cloudflare の REST（/ai/run）で呼ぶ。
 // Node には Workers の env.AI が無いので REST にした。指示の文面と答えの形はサーバーと同じものを import する。
-// 鍵: NU_TORI_CLOUDFLARE_ACCOUNT_ID と、Workers AI の Read を持つ開発用のトークン NU_TORI_CLOUDFLARE_AI_TOKEN
+// 鍵: NU_TORI_CLOUDFLARE_ACCOUNT_ID と、Workers AI の Read と AI Gateway の Run を持つ開発用のトークン NU_TORI_CLOUDFLARE_AI_TOKEN
 export default class JevProvider implements ApiProvider {
   id = (): string => "typesafe/jev";
 
@@ -26,6 +26,8 @@ export default class JevProvider implements ApiProvider {
           authorization: `Bearer ${token}`,
           // ゲートウェイを名指さないと、ログがオンの default のゲートウェイができる（#422）
           "cf-aig-gateway-id": developmentGatewayId,
+          // 開発用のゲートウェイは認証がオン（#422）。同じトークンに AI Gateway の Run を持たせて通す
+          "cf-aig-authorization": `Bearer ${token}`,
           "content-type": "application/json",
         },
         body: JSON.stringify({

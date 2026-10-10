@@ -5,14 +5,15 @@ import { haikuClassificationOutputSchema } from "../../src/reply/durable-object/
 import type { ClassificationEvalOutput } from "./classification-eval-output";
 
 // promptfoo の custom provider。Claude Haiku 5.5 を Anthropic の API で呼ぶ。要求の形はサーバーと同じものを import する。
-// 鍵: 開発用のワークスペース（nu-tori-development）の ANTHROPIC_API_KEY
+// 鍵: 開発用のワークスペース（nu-tori-development）のキーを NU_TORI_ANTHROPIC_API_KEY に置く。
+// ANTHROPIC_API_KEY はクラウドのセッションでエージェント自身が使う名前なので避ける
 export default class HaikuProvider implements ApiProvider {
   id = (): string => "claude-haiku-5-5";
 
   callApi = async (prompt: string): Promise<ProviderResponse> => {
-    const apiKey = process.env["ANTHROPIC_API_KEY"];
+    const apiKey = process.env["NU_TORI_ANTHROPIC_API_KEY"];
     if (apiKey === undefined) {
-      return { error: "開発用のワークスペースの ANTHROPIC_API_KEY を置いてから回す" };
+      return { error: "開発用のワークスペースのキーを NU_TORI_ANTHROPIC_API_KEY に置いてから回す" };
     }
     // 呼び先を名指す。環境の ANTHROPIC_BASE_URL（エージェントの道具が置くことがある）に向かわないように
     const client = new Anthropic({ apiKey, baseURL: "https://api.anthropic.com" });
