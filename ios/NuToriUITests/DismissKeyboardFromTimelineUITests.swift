@@ -1,6 +1,6 @@
 import XCTest
 
-/// 書く欄で送ったあと、タイムラインを下へ引いてキーボードを下げる。
+/// 書く欄で送ったあと、タイムラインを動かしてキーボードを下げる。
 /// 条件は、サインイン済みで、今日の体重を記録したあと（「体重」の丸が、書いていないときだけ出る）
 @MainActor
 final class DismissKeyboardFromTimelineUITests: XCTestCase {
@@ -16,7 +16,7 @@ final class DismissKeyboardFromTimelineUITests: XCTestCase {
         XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
     }
 
-    func test_送ったあとも続けて書けタイムラインを下へ引くとキーボードが下がって体重の丸が出ること() {
+    func test_送ったあとも続けて書けタイムラインを下へ動かすとキーボードが下がって体重の丸が出ること() {
         app.composerField.tap()
         app.composerField.typeText("散歩した")
         XCTAssertFalse(app.buttons["composer-weight"].exists)
@@ -30,12 +30,45 @@ final class DismissKeyboardFromTimelineUITests: XCTestCase {
         app.buttons["composer-send"].tap()
         XCTAssertTrue(app.staticText(containing: "夜も歩く").waitForExistence(timeout: 5))
 
-        // 指に合わせて下がるキーボードは、指がキーボードの上まで来ないと下がらないので、タイムラインから画面の下端まで引く
-        let dragStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-        let screenBottom = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98))
-        dragStart.press(forDuration: 0.1, thenDragTo: screenBottom)
+        dragTimeline(fromY: 0.25, toY: 0.4)
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
-        attachScreenshot(of: app, named: "タイムラインを引いて下げたキーボード")
+        attachScreenshot(of: app, named: "タイムラインを動かして下げたキーボード")
+    }
+
+    func test_タイムラインを上へ動かしてもキーボードが下がること() {
+        app.composerField.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+
+        dragTimeline(fromY: 0.4, toY: 0.25)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
+    }
+
+    func test_タイムラインの押せないところを押すとキーボードが下がること() {
+        app.composerField.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+
+        app.otherElements["day-section-2026-10-05"].staticTexts["10月5日（月）"].tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
+    }
+
+    func test_キーボードが出ているあいだに体重の行を押すと体重の画面へ潜ること() {
+        app.composerField.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+
+        let rows = app.buttons.matching(identifier: "weight-row")
+        rows.element(boundBy: rows.count - 1).tap()
+        XCTAssertTrue(app.descendants(matching: .any)["weight-screen"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+    }
+
+    /// キーボードが出ているあいだにタイムラインが見えている範囲（1日の丸の帯と入力欄のあいだ）の中だけで、指を動かす。
+    /// キーボードにも入力欄にも届かない、ふつうに動かすときの短い動き
+    private func dragTimeline(fromY: CGFloat, toY: CGFloat) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: fromY))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: toY))
+        start.press(forDuration: 0.1, thenDragTo: end)
     }
 }

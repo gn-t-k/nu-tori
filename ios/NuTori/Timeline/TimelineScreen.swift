@@ -2,6 +2,7 @@ import Foundation
 import NuToriCore
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct TimelineScreen: View {
     let records: [WeightRecord]
@@ -327,9 +328,17 @@ struct TimelineScreen: View {
                         .padding()
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
+                    // 余白や文を押したら、キーボードを下げる。押せるもの（記録の行、カード、知らせの中の欄）は自分の動きをする
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        // 書く欄と知らせの中の欄のどちらにカーソルがあっても下げる
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder), to: nil, from: nil,
+                            for: nil)
+                    }
                 }
-                // 送ったあともキーボードを残すので、下げる手立てはタイムラインを下へ引くこと。メッセージのアプリと同じく指に合わせて下げる
-                .scrollDismissesKeyboard(.interactively)
+                // 送ったあともキーボードを残すので、下げる手立てはタイムラインを動かすか押すこと。指に合わせて下げる形（.interactively）は、指がキーボードに届くまで下がらず、あいだに入力欄があるここではふつうに動かしても届かない（#450）
+                .scrollDismissesKeyboard(.immediately)
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
                 // 返事が伸びるあいだは一番下へ追う。使う人が上へ動かしたら、追うのを止める
