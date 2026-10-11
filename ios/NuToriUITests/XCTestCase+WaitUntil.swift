@@ -9,4 +9,11 @@ extension XCTestCase {
             predicate: NSPredicate(format: format, argument), object: element)
         return XCTWaiter().wait(for: [expectation], timeout: 30) == .completed
     }
+
+    /// 要素が画面の中に入って押せるようになるまで待つ
+    @MainActor func waitUntilHittable(_ element: XCUIElement) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"), object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: 10) == .completed
+    }
 }

@@ -167,6 +167,7 @@ struct TimelineScreen: View {
                     let sentAt = now()
                     capturedCount += 1
                     cameraPhase = .closed
+                    returnToTimelineEnd()
                     Task { await mealActions.recordCapturedPhoto(original, exif, sentAt) }
                 },
                 onCancel: {
@@ -191,6 +192,7 @@ struct TimelineScreen: View {
             guard !items.isEmpty else { return }
             let pickedAt = now()
             pickedPhotos = []
+            returnToTimelineEnd()
             Task { await mealActions.recordPickedPhotos(items, pickedAt) }
         }
         .onChange(of: weightEntryPhase) { previous, phase in
@@ -233,8 +235,8 @@ struct TimelineScreen: View {
     /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
-    /// 伸びている返事に合わせて一番下へ追うか。使う人が動かして一番下から離れたら止め、一番下へ戻すか、伸びる返事が無くなったら追う
-    @State private var followsGrowingReply = true
+    /// 中身が伸びたとき（返事が伸びる、送った食事のカードが足される）に一番下へ追うか。使う人が動かして一番下から離れたら止め、一番下へ戻すか、伸びる返事が無くなったら追う
+    @State private var followsTimelineEnd = true
     /// タイムラインの一番下が見えているか
     @State private var showsTimelineEnd = true
     /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
@@ -332,8 +334,8 @@ struct TimelineScreen: View {
                 .scrollDismissesKeyboard(.interactively)
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
-                // 返事が伸びるあいだは一番下へ追う。使う人が上へ動かしたら、追うのを止める
-                .defaultScrollAnchor(followsGrowingReply ? .bottom : .top, for: .sizeChanges)
+                // 返事が伸びるあいだと、送った食事のカードが足されるときは一番下へ追う。使う人が上へ動かしたら、追うのを止める
+                .defaultScrollAnchor(followsTimelineEnd ? .bottom : .top, for: .sizeChanges)
                 .onScrollGeometryChange(for: Bool.self) { geometry in
                     geometry.visibleRect.maxY >= geometry.contentSize.height - 1
                 } action: { _, atEnd in
@@ -345,14 +347,14 @@ struct TimelineScreen: View {
                     }
                     // 動かしているあいだは追わず、止まったときに一番下が見えていれば、また追う
                     if phase == .interacting {
-                        followsGrowingReply = false
+                        followsTimelineEnd = false
                     } else if phase == .idle {
-                        followsGrowingReply = showsTimelineEnd
+                        followsTimelineEnd = showsTimelineEnd
                     }
                 }
                 .onChange(of: timeline.hasGrowingReply) { _, growing in
                     if !growing {
-                        followsGrowingReply = true
+                        followsTimelineEnd = true
                     }
                 }
                 .onChange(of: timeline.days, initial: true) { _, _ in
@@ -467,7 +469,7 @@ struct TimelineScreen: View {
             SentTextBubbleView(
                 bubble: bubble, isUndelivered: timeline.isUndelivered(item)
             ) { reason in
-                followsGrowingReply = true
+                followsTimelineEnd = true
                 Task { await conversationActions.resend(bubble.sentText.id, reason) }
             }
         case .rejectedSentTextLine(let line):
@@ -532,7 +534,7 @@ struct TimelineScreen: View {
             Divider()
             Button("会話として送り直す") {
                 let deletedMealCount = meals.filter { $0.meal.sentTextId == sentTextId }.count
-                followsGrowingReply = true
+                followsTimelineEnd = true
                 Task {
                     await conversationActions.resendAsConversation(sentTextId, deletedMealCount)
                 }
@@ -589,6 +591,7 @@ struct TimelineScreen: View {
                 #if DEBUG
                     case .fixed(let record):
                         let pickedAt = now()
+                        returnToTimelineEnd()
                         Task { await record(pickedAt) }
                 #endif
                 }
@@ -607,10 +610,19 @@ struct TimelineScreen: View {
             },
             onSendText: { draft in
                 showsCameraNotice = false
-                followsGrowingReply = true
+                followsTimelineEnd = true
                 Task { await sendText(draft) }
             }
         )
+    }
+
+    /// 遡っていても、送った食事が並ぶ一番下に戻す。食事のカードは送った時刻の位置に、あとから足されるので、足されたときも一番下へ追う
+    private func returnToTimelineEnd() {
+        followsTimelineEnd = true
+        // 読み込み中は並んでいないので動かさない。取り終えたら一番下から開く
+        if !showsLoading {
+            dayFocus = .scrollingToEnd(today)
+        }
     }
 
     /// ほかを押したら、カメラの許可の知らせを消してから動く
@@ -730,7 +742,7 @@ private enum DayFocus: Equatable {
     case scrollingTo(CalendarDay)
     /// 答えていない知らせの1行と、記録忘れの通知から、その知らせのカードへ
     case scrollingToItem(Timeline.Item.ID)
-    /// 記録忘れの通知から、その日（今日）のいちばん下へ
+    /// 記録忘れの通知と、写真を撮った・選んだときに、その日（今日）のいちばん下へ
     case scrollingToEnd(CalendarDay)
 
     init(_ landing: Timeline.Landing) {
