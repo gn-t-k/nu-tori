@@ -22,9 +22,9 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         app.buttons["composer-send"].tap()
         // 読んでいますは返事が届くと消えるので、ほかのものより先に見る
         XCTAssertTrue(element("reply-reading").waitForExistence(timeout: 10))
-        XCTAssertTrue(element("sent-text-bubble", containing: "フィードバック").exists)
+        XCTAssertTrue(app.element("sent-text-bubble", containing: "フィードバック").exists)
         attachScreenshot(of: app, named: "読んでいます")
-        let feedback = element("reply", containing: "今日は朝ごはんから")
+        let feedback = app.element("reply", containing: "今日は朝ごはんから")
         XCTAssertTrue(feedback.waitForExistence(timeout: 30))
         XCTAssertTrue(element("reply-reading").waitForNonExistence(timeout: 5))
         attachScreenshot(of: app, named: "返事が届いた")
@@ -34,24 +34,24 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         let card = app.buttons["meal-card"]
         XCTAssertTrue(card.waitForExistence(timeout: 30))
         XCTAssertTrue(waitUntil(card, matches: "label CONTAINS %@", "親子丼"))
-        XCTAssertTrue(element("sent-text-bubble", containing: "昼は親子丼").exists)
+        XCTAssertTrue(app.element("sent-text-bubble", containing: "昼は親子丼").exists)
         XCTAssertEqual(app.buttons.matching(identifier: "resend-as-conversation").count, 1)
         attachScreenshot(of: app, named: "吹き出しにつないだ文章の食事")
 
         // 確かめずに食事の行が消えて吹き出しだけが残り、返事が届く
         app.buttons["resend-as-conversation"].tap()
         XCTAssertTrue(card.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(element("sent-text-bubble", containing: "昼は親子丼").exists)
-        XCTAssertTrue(element("reply", containing: "親子丼の話").waitForExistence(timeout: 30))
+        XCTAssertTrue(app.element("sent-text-bubble", containing: "昼は親子丼").exists)
+        XCTAssertTrue(app.element("reply", containing: "親子丼の話").waitForExistence(timeout: 30))
         attachScreenshot(of: app, named: "会話として送り直した返事")
 
         send("次の食事は？")
-        let failed = element("reply-failed-line", containing: "返事を作れませんでした")
+        let failed = app.element("reply-failed-line", containing: "返事を作れませんでした")
         XCTAssertTrue(failed.waitForExistence(timeout: 30))
         attachScreenshot(of: app, named: "作れなかった1行")
         app.buttons["reply-resend"].tap()
         XCTAssertTrue(failed.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(element("reply", containing: "野菜の多い定食").waitForExistence(timeout: 30))
+        XCTAssertTrue(app.element("reply", containing: "野菜の多い定食").waitForExistence(timeout: 30))
         attachScreenshot(of: app, named: "送り直した返事")
     }
 
@@ -63,10 +63,5 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
 
     private func element(_ identifier: String) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
-    }
-
-    private func element(_ identifier: String, containing text: String) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: identifier)
-            .matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 }

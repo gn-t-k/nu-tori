@@ -260,7 +260,15 @@ struct TimelineComposer: View {
     private func send() {
         guard draft.canSend else { return }
         onSendText(draft)
-        draft = TextDraft.empty
+        clearField()
+    }
+
+    /// 一度に空にしない。日本語のキーボードでひらがなを確定した直後に空にすると、欄に文字が残る（SwiftUI の TextField の不具合、FB16817300）。
+    /// 空でない別の文に置き換えてから次の回で空にすると残らない。空白にするのは、「送る」が押せない文のため。
+    /// 知られた回避策の「最後の1文字を消してから空にする」は、1文字の文でその場で空になり、残る
+    private func clearField() {
+        draft.text = " "
+        Task { draft = TextDraft.empty }
     }
 
     private var weightScaleIcon: some View {

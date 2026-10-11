@@ -62,6 +62,12 @@ extension XCUIApplication {
         staticTexts.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
+    /// 識別子が同じ要素（吹き出し、返事など）のうち、ラベルにこの文を含むもの
+    @MainActor func element(_ identifier: String, containing text: String) -> XCUIElement {
+        descendants(matching: .any).matching(identifier: identifier)
+            .matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+    }
+
     /// 昨日の値から 0.2 kg 下げて記録する。初期値が 72.6 kg のとき、72.4 kg になる
     @MainActor func recordWeightTwoTenthsLower() {
         // 今日の体重が未記録なら「体重を記録」のカプセル、記録済みなら丸い「体重」
