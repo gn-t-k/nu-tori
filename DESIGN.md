@@ -300,7 +300,7 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - **1日の丸（day-ring-strip、day-ring-large）**: 目安を超えた印は輪の起点に付ける文字の色の点、体重の印は帯の丸の中に付ける灰色の点。帯の丸には曜日、大きな丸には kcal と P・F・C の名前を添える
 - **P・F・C の印（nutrient-key-protein、nutrient-key-fat、nutrient-key-carbohydrate）**: 見出しや内訳の P・F・C の名前の前に置く色の四角
 - **グラフ**: Swift Charts。系列は Primary の1色、目安と目標の道筋は点線、グリッドは薄く。系列が2本あるときは線の端に名前を添える。押した週・日の値は `chartXSelection` で出す
-- **アイコン**: SF Symbols の `camera.fill`（撮る）、`photo.on.rectangle`（撮っておいた写真を選ぶ）、`arrow.up`（送る）、`person.crop.circle`（アカウント）、`chevron.right`（潜れる行）。体重は SF Symbols でなく、アセットの `WeightScale`（角の丸い四角に目盛りの弧と針の体重計。形は「[文章と会話の見た目を見比べる](https://github.com/gn-t-k/nu-tori/issues/412)」の試作で描いたもの）。文字で足りるところにはアイコンを付けない
+- **アイコン**: SF Symbols の `camera.fill`（撮る）、`photo.on.rectangle`（撮っておいた写真を選ぶ）、`arrow.up`（送る）、`person.crop.circle`（アカウント）、`chevron.right`（潜れる行）。体重は SF Symbols でなく、アセットの `WeightScale`（角の丸い四角に目盛りの弧と針の体重計）。文字で足りるところにはアイコンを付けない
 
 ## Do's and Don'ts
 

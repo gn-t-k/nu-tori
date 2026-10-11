@@ -95,6 +95,8 @@ struct TimelineComposer: View {
     /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする。3つの丸が画面の幅に収まるところで止める（大きな文字では書く欄を別の行に置く）
     @ScaledMetric private var scaledButtonSize: CGFloat = 44
     private var buttonSize: CGFloat { min(scaledButtonSize, 88) }
+    /// アセットの画像は SF Symbols と違って文字の大きさを追わないので、本文の文字に合わせて拡げる。24 は、標準の文字で「撮る」「写真」のアイコンと大きさがそろって見える値
+    @ScaledMetric(relativeTo: .body) private var weightScaleIconSize: CGFloat = 24
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.openURL) private var openURL
 
@@ -261,12 +263,11 @@ struct TimelineComposer: View {
         draft = TextDraft.empty
     }
 
-    /// SF Symbols と違って文字の大きさを追わないので、試作と同じく丸の直径の半分にする
     private var weightScaleIcon: some View {
         Image("WeightScale")
             .resizable()
             .scaledToFit()
-            .frame(width: buttonSize / 2, height: buttonSize / 2)
+            .frame(width: weightScaleIconSize, height: weightScaleIconSize)
     }
 
     private func circle(systemName: String, filled: Bool) -> some View {
