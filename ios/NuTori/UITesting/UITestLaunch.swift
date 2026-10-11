@@ -19,6 +19,8 @@
         let lockoutDefaultsName: String?
         /// `UI_TEST_NOW` の時刻で止めた時計
         let clock: DeviceClock
+        /// アプリの時計を、ホームへ出てから開き直すたびに1日進める。閉じているあいだに日付が変わったことにする
+        let dayPassesOnReturn: Bool
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -38,7 +40,8 @@
                 pickedMealPhotoCount: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init),
                 lockoutDefaultsName: environment["UI_TEST_LOCKOUT_DEFAULTS"],
                 // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
-                clock: frozenClock(environment["UI_TEST_NOW"])
+                clock: frozenClock(environment["UI_TEST_NOW"]),
+                dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil
             )
         }
 
@@ -66,7 +69,8 @@
             try store.prepareForUITest(seededResults())
             // 同じ偽の同期サーバーを、セッションが変わって作り直すクライアントでも使う
             let server = FakeSyncServer(syncScenario())
-            let clock = self.clock
+            // 始めに置く記録は起動したときの時刻で決め、アプリには進む時計を1つだけ渡す
+            let clock = dayPassesOnReturn ? self.clock.advancingDayOnReturn() : self.clock
             return AppRuntime.assemble(
                 AppRuntime.Parts(
                     store: store,

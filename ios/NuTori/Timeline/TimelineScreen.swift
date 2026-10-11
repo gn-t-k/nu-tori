@@ -238,6 +238,8 @@ struct TimelineScreen: View {
     @State private var pickedPhotos: [PhotosPickerItem] = []
     /// 中身が伸びたとき（返事が伸びる、送った食事のカードが足される）に一番下へ追うか。使う人が動かして一番下から離れたら止め、一番下へ戻すか、伸びる返事が無くなったら追う
     @State private var followsTimelineEnd = true
+    /// 一番下に着き終えた、いちばん新しい日。日が足された描画では、まだ前の日のまま
+    @State private var settledNewestDay: CalendarDay?
     /// タイムラインの一番下が見えているか
     @State private var showsTimelineEnd = true
     /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
@@ -309,7 +311,9 @@ struct TimelineScreen: View {
     }
 
     private func timelineList(_ timeline: Timeline) -> some View {
-        GeometryReader { geo in
+        // タイムラインの中身の全体。下の余白まで含めた下端へ動かすときに名指しする
+        let contentId = "timeline-content"
+        return GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView {
                     // 中身が画面より短いときは下に寄せ、長いときは下端から開く
@@ -328,6 +332,7 @@ struct TimelineScreen: View {
                             }
                         }
                         .padding()
+                        .id(contentId)
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                     // 余白や文を押したら、キーボードを下げる。押せるもの（記録の行、カード、知らせの中の欄）は自分の動きをする
@@ -344,7 +349,18 @@ struct TimelineScreen: View {
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
                 // 返事が伸びるあいだと、送った食事のカードが足されるときは一番下へ追う。使う人が上へ動かしたら、追うのを止める
-                .defaultScrollAnchor(followsTimelineEnd ? .bottom : .top, for: .sizeChanges)
+                // 日が足された描画では追わない。LazyVStack はまだ描いていない日の高さをほかの日の平均で見積もり、追うとその見積もりの端（何も無い所）へ動いて、足された日が描かれず真っ白のまま残る
+                .defaultScrollAnchor(
+                    followsTimelineEnd && timeline.days.last?.day == settledNewestDay
+                        ? .bottom : .top, for: .sizeChanges
+                )
+                // 足された日が今の位置のすぐ下に描かれてから、下端へ動かす
+                .onChange(of: timeline.days.last?.day, initial: true) { _, newest in
+                    if followsTimelineEnd, settledNewestDay != nil {
+                        proxy.scrollTo(contentId, anchor: .bottom)
+                    }
+                    settledNewestDay = newest
+                }
                 .onScrollGeometryChange(for: Bool.self) { geometry in
                     geometry.visibleRect.maxY >= geometry.contentSize.height - 1
                 } action: { _, atEnd in
