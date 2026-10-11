@@ -522,6 +522,8 @@ struct TimelineScreen: View {
                 MealCardView(card: card) { photoId in
                     await mealActions.loadPhoto(card.meal.id, photoId)
                 }
+                // カードの地はラベルの外に付くので、地の無いラベルは文字のところしか押せない。› と余白も押せるよう、ラベルの全体を押せる形にする
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("meal-card")

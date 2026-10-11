@@ -1,6 +1,6 @@
 import XCTest
 
-/// 文章と会話の主な流れ。プリセットで書いて送る → 読んでいます → 返事が届く → 食事の文章を送る → カードが出る → 会話として送り直す → 返事が届く → 作れなかった文章を送り直す → 返事が届く。
+/// 文章と会話の主な流れ。プリセットで書いて送る → 読んでいます → 返事が届く → 食事の文章を送る → カードが出る → カードの余白を押して食事の画面へ潜り戻る → 会話として送り直す → 返事が届く → 作れなかった文章を送り直す → 返事が届く。
 /// 条件は、サインイン済みで、API が会話の場面（偽のサーバーが送った文章の本文で答え方を決め、答えるのを3回めの取得まで待つ）のとき
 @MainActor
 final class SendTextWithConversationScenarioUITests: XCTestCase {
@@ -15,7 +15,7 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
     }
 
-    func test_書いて送ると返事が届き食事の文章を会話として送り直し作れなかった文章を送り直せること() {
+    func test_書いて送ると返事が届き食事の文章のカードの余白から食事の画面へ潜れ会話として送り直し作れなかった文章を送り直せること() {
         // プリセットは文面を書く欄に入れるだけで、送らない
         app.buttons.matching(identifier: "preset-chip").element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["composer-send"].waitForExistence(timeout: 5))
@@ -36,6 +36,15 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         XCTAssertTrue(waitUntil(card, matches: "label CONTAINS %@", "親子丼"))
         XCTAssertTrue(element("sent-text-bubble", containing: "昼は親子丼").exists)
         attachScreenshot(of: app, named: "文章の食事のカード")
+        // 文字の無い右端の余白（› の右）を押しても、› を押しても、食事の画面へ潜る
+        openMeal(byTapping: card.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)))
+        attachScreenshot(of: app, named: "余白から潜った食事の画面")
+        goBackToTimeline(card)
+        // › は右の余白（16pt）のすぐ内側に置かれる
+        openMeal(
+            byTapping: card.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: card.frame.width - 20, dy: card.frame.height / 2)))
+        goBackToTimeline(card)
 
         // 確かめずにカードが消え、返事が届く
         app.buttons["resend-as-conversation"].tap()
@@ -51,6 +60,16 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         XCTAssertTrue(failed.waitForNonExistence(timeout: 5))
         XCTAssertTrue(element("reply", containing: "野菜の多い定食").waitForExistence(timeout: 30))
         attachScreenshot(of: app, named: "送り直した返事")
+    }
+
+    private func openMeal(byTapping point: XCUICoordinate) {
+        point.tap()
+        XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
+    }
+
+    private func goBackToTimeline(_ card: XCUIElement) {
+        app.navigationBars["食事"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
     }
 
     /// 書く欄は、縦に伸びる TextField（UITextView）なので、種類を問わずに探す
