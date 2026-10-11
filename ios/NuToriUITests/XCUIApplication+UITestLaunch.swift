@@ -11,6 +11,7 @@ extension XCUIApplication {
         pickedPhotoCount: Int = 0,
         lockoutDefaults: String? = nil,
         now: UITestNow = .morningBeforeNotice,
+        dayPassesOnReturn: Bool = false,
         timeZone: String?,
         textSize: UITestTextSize? = nil
     ) -> XCUIApplication {
@@ -33,6 +34,10 @@ extension XCUIApplication {
         }
         // アプリの時計をこの時刻（TZ のタイムゾーンの時計の時刻）で止める
         app.launchEnvironment["UI_TEST_NOW"] = now.rawValue
+        // ホームへ出てから開き直すたびに、アプリの時計を1日進める
+        if dayPassesOnReturn {
+            app.launchEnvironment["UI_TEST_DAY_PASSES_ON_RETURN"] = "1"
+        }
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
         }
