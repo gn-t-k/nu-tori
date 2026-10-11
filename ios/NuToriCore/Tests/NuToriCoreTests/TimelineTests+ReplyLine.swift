@@ -69,7 +69,9 @@ extension TimelineTests {
                 let bubble = try ReplyLines.bubble(
                     status: nil, pending: [.create(sentText)], sentText: sentText)
                 #expect(
-                    bubble == SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil))
+                    bubble
+                        == SentTextBubble(
+                            sentText: sentText, meals: [], replyLine: nil, rejectedLine: nil))
             }
 
             @Test("返事が届いたら、出さないこと")
