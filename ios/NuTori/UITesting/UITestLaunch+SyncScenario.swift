@@ -58,10 +58,10 @@
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
                     estimateDish: Self.reestimate(dishId:name:), mealEstimationPulls: 3)
             case .conversation:
-                // 読んでいますを見られるよう、答えるのを3回めの取得まで待つ。送ったあとの取得と、見守る要求（偽のサーバーはつながない）が閉じたあとの取得の次で、数秒おきに取りに行くので数秒あと
+                // 読んでいますを、画面の読み取りが遅い CI でも見られるよう、答えるのを5回めの取得まで待つ。送ったあとの取得と、見守る要求（偽のサーバーはつながない）が閉じたあとの取得はすぐ続き、そのあとは数秒おきに取りに行くので、9秒ほどあと
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
-                    answerSentText: Self.answer(sentText:), sentTextAnswerPulls: 3)
+                    answerSentText: Self.answer(sentText:), sentTextAnswerPulls: 5)
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
