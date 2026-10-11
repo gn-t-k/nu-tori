@@ -81,10 +81,10 @@ extension TimelineTests {
                 #expect(timeline.days.last?.items == [])
             }
 
-            @Test("記録忘れの通知から、いちばん新しい日の下に着くこと")
+            @Test("記録忘れの通知から、タイムラインのいちばん下に着くこと")
             func landsOnEndFromReminder() {
                 #expect(
-                    timeline.landing(for: .notice(id: notice.id)) == .end(PlacingNotices.today))
+                    timeline.landing(for: .notice(id: notice.id)) == .end)
             }
 
             @Test("答えていない知らせの1行を出さないこと")
@@ -169,9 +169,9 @@ extension TimelineTests {
                     today: ReminderLandings.today)
             }
 
-            @Test("並んでいる知らせがあっても、いちばん新しい日の下に着くこと")
+            @Test("並んでいる知らせがあっても、タイムラインのいちばん下に着くこと")
             func landsOnEnd() {
-                #expect(timeline.landing(for: .timelineEnd) == .end(ReminderLandings.today))
+                #expect(timeline.landing(for: .timelineEnd) == .end)
             }
         }
 
@@ -190,28 +190,11 @@ extension TimelineTests {
                     today: ReminderLandings.today)
             }
 
-            @Test("いちばん新しい日の下に着くこと")
+            @Test("タイムラインのいちばん下に着くこと")
             func landsOnEnd() {
                 #expect(
-                    timeline.landing(for: .notice(id: noticeId)) == .end(ReminderLandings.today))
+                    timeline.landing(for: .notice(id: noticeId)) == .end)
             }
         }
-    }
-}
-
-extension Notice {
-    /// issuedAt は ISO 8601 の時刻。東京で出した、その日の体重の知らせ
-    fileprivate static func missedWeightRecord(issuedAt: String) throws -> Notice {
-        let timeZone = try #require(TimeZone(identifier: "Asia/Tokyo"))
-        let issued = try Date(issuedAt, strategy: .iso8601)
-        let day = CalendarDay(containing: issued, in: timeZone)
-        return Notice(
-            id: Notice.id(kind: .missedWeightRecord, targetDay: day),
-            kind: .missedWeightRecord,
-            issuedAt: issued,
-            timeZone: timeZone,
-            targetDay: day,
-            response: nil
-        )
     }
 }

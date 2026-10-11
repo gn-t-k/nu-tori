@@ -404,8 +404,9 @@ struct TimelineScreen: View {
                         withAnimation {
                             proxy.scrollTo(itemId, anchor: .top)
                         }
-                    case .scrollingToEnd(let day):
-                        proxy.scrollTo(day, anchor: .bottom)
+                    case .scrollingToEnd:
+                        // 下の余白まで含めた下端に着く。いちばん新しい日の下端（余白の手前）に着くと、そのあと中身が伸びても .sizeChanges の .bottom が追わない（#467）
+                        proxy.scrollTo(contentId, anchor: .bottom)
                     case .timeline, .summary:
                         return
                     }
@@ -449,8 +450,8 @@ struct TimelineScreen: View {
         }
     }
 
-    /// 会話のまとまりの見た目（仕様 #419「会話のまとまりの見た目」）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
-    /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、会話のまとまりを余白だけで見せるため、ここは数値で決める。
+    /// 話し手の替わり目の見た目（#449 の解決コメント）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
+    /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、話し手の替わり目を余白だけで見せるため、ここは数値で決める。
     /// 詰めるのは VStack の標準の間隔と同じ 8、空けるのは DESIGN.md のまとまりの間（section-gap）の 24
     private static func gap(before item: Timeline.Item, in day: Timeline.Day) -> CGFloat {
         switch day.spacing(before: item) {
@@ -472,31 +473,37 @@ struct TimelineScreen: View {
         case .rejectedWeightLine(let line):
             RejectedLineText(text: line.text, subject: .weightRecord)
         case .meal(let card):
-            if let sentTextId = card.meal.sentTextId {
-                writtenMealCard(
-                    card, sentTextId: sentTextId, isUndelivered: timeline.isUndelivered(item))
-            } else {
-                // どの状態のカードも、押すと食事の画面へ潜る
-                NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                    MealCardView(card: card) { photoId in
-                        await mealActions.loadPhoto(card.meal.id, photoId)
-                    }
-                    .modifier(OwnRecordCard())
+            // どの状態のカードも、押すと食事の画面へ潜る
+            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                MealCardView(card: card) { photoId in
+                    await mealActions.loadPhoto(card.meal.id, photoId)
                 }
-                .buttonStyle(.plain)
-                .undeliveredRecord(timeline.isUndelivered(item))
-                .accessibilityIdentifier("meal-card")
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .modifier(OwnRecordCard())
             }
+            .buttonStyle(.plain)
+            .undeliveredRecord(timeline.isUndelivered(item))
+            .accessibilityIdentifier("meal-card")
+            .frame(maxWidth: .infinity, alignment: .trailing)
         case .rejectedMealLine(let line):
             RejectedLineText(text: line.text, subject: .meal)
         case .sentText(let bubble):
             SentTextBubbleView(
-                bubble: bubble, isUndelivered: timeline.isUndelivered(item)
-            ) { reason in
-                followsTimelineEnd = true
-                Task { await conversationActions.resend(bubble.sentText.id, reason) }
-            }
+                bubble: bubble, isUndelivered: timeline.isUndelivered(item),
+                resend: { reason in
+                    followsTimelineEnd = true
+                    Task { await conversationActions.resend(bubble.sentText.id, reason) }
+                },
+                resendAsConversation: {
+                    followsTimelineEnd = true
+                    Task {
+                        await conversationActions.resendAsConversation(
+                            bubble.sentText.id, bubble.meals.count)
+                    }
+                },
+                isMealUndelivered: { timeline.isUndelivered(.meal($0)) },
+                openMeal: { navigationPath.append(MealRoute(mealId: $0.meal.id)) },
+                loadPhoto: mealActions.loadPhoto
+            )
         case .rejectedSentTextLine(let line):
             RejectedLineText(text: line.text, subject: .sentText)
         case .reply(let reply):
@@ -539,41 +546,6 @@ struct TimelineScreen: View {
                 }
             }
         }
-    }
-
-    /// 文章の食事のカード。写真の場所を持たず、文章の食事と分かる手がかりは上の吹き出し。
-    /// 下に「会話として送り直す」を添える。押しても確かめず、その文章の食事がすべて消える
-    private func writtenMealCard(_ card: MealCard, sentTextId: UUID, isUndelivered: Bool)
-        -> some View
-    {
-        VStack(alignment: .leading, spacing: 0) {
-            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                MealCardView(card: card) { photoId in
-                    await mealActions.loadPhoto(card.meal.id, photoId)
-                }
-                // カードの地はラベルの外に付くので、地の無いラベルは文字のところしか押せない。› と余白も押せるよう、ラベルの全体を押せる形にする
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("meal-card")
-            Divider()
-            Button("会話として送り直す") {
-                let deletedMealCount = meals.filter { $0.meal.sentTextId == sentTextId }.count
-                followsTimelineEnd = true
-                Task {
-                    await conversationActions.resendAsConversation(sentTextId, deletedMealCount)
-                }
-            }
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .padding(.horizontal)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-            .accessibilityIdentifier("resend-as-conversation")
-        }
-        .modifier(OwnRecordCard())
-        .undeliveredRecord(isUndelivered)
-        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     /// 帯の下の1行。押すと、その知らせまで戻る
@@ -646,7 +618,7 @@ struct TimelineScreen: View {
         followsTimelineEnd = true
         // 読み込み中は並んでいないので動かさない。取り終えたら一番下から開く
         if !showsLoading {
-            dayFocus = .scrollingToEnd(today)
+            dayFocus = .scrollingToEnd
         }
     }
 
@@ -767,13 +739,13 @@ private enum DayFocus: Equatable {
     case scrollingTo(CalendarDay)
     /// 答えていない知らせの1行と、記録忘れの通知から、その知らせのカードへ
     case scrollingToItem(Timeline.Item.ID)
-    /// 記録忘れの通知と、写真を撮った・選んだときに、その日（今日）のいちばん下へ
-    case scrollingToEnd(CalendarDay)
+    /// 記録忘れの通知と、写真を撮った・選んだときに、タイムラインのいちばん下へ
+    case scrollingToEnd
 
     init(_ landing: Timeline.Landing) {
         switch landing {
         case .item(let itemId): self = .scrollingToItem(itemId)
-        case .end(let day): self = .scrollingToEnd(day)
+        case .end: self = .scrollingToEnd
         }
     }
 }

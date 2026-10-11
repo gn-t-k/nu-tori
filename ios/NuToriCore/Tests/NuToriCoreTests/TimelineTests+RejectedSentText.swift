@@ -46,7 +46,8 @@ extension TimelineTests {
                     [
                         .sentText(
                             SentTextBubble(
-                                sentText: sentText, replyLine: .failed(.retriesExhausted),
+                                sentText: sentText, meals: [],
+                                replyLine: .failed(.retriesExhausted),
                                 rejectedLine: line))
                     ]
                 ])

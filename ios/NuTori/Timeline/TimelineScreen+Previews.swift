@@ -24,7 +24,7 @@
             sendText: { _ in },
             accountActions: .noop,
             mealActions: .noop,
-            conversation: .none,
+            conversation: sample.conversation,
             conversationActions: .noop
         )
     }
@@ -51,13 +51,15 @@
             case answeredNotice
             /// インターネットにつながらないあいだに、今日の体重と食事を記録した。どちらもまだ届いていない
             case undelivered
+            /// 文章で食事を記録した。食事が1つの文章、前の日の夜を含む3つの文章、食事をすべて消した文章がある
+            case writtenMeals
 
             var initialPull: TimelineScreen.InitialPull {
                 switch self {
                 case .loading: .inProgress
                 case .firstDay: .completed(startedDay: .sampleToday)
                 case .unrecordedToday, .recordedToday, .rejected, .meals, .awaitingNotice,
-                    .answeredNotice, .undelivered:
+                    .answeredNotice, .undelivered, .writtenMeals:
                     .completed(startedDay: Self.startedDay)
                 case .startedDayUndecided: .completed(startedDay: nil)
                 }
@@ -67,7 +69,7 @@
                 switch self {
                 case .loading, .firstDay: []
                 case .unrecordedToday, .startedDayUndecided, .awaitingNotice: Self.pastRecords
-                case .recordedToday, .meals:
+                case .recordedToday, .meals, .writtenMeals:
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 7, 5, from: .manual)]
                 case .answeredNotice:
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 9, 30, from: .manual)]
@@ -79,7 +81,7 @@
             var rejectedLines: [RejectedLine] {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .meals, .awaitingNotice, .answeredNotice, .undelivered:
+                    .meals, .awaitingNotice, .answeredNotice, .undelivered, .writtenMeals:
                     []
                 case .rejected:
                     [
@@ -123,13 +125,48 @@
                                 sentOn: .sampleToday, photoCount: 3),
                             status: nil, recordedOnThisDevice: true),
                     ]
+                case .writtenMeals:
+                    [
+                        .sampleEstimated(
+                            .sampleWritten(
+                                from: Self.oneMealText, eatenOn: .sampleToday, at: 12, 0)),
+                        MealCard(
+                            meal: .sampleWritten(
+                                from: Self.threeMealsText,
+                                eatenOn: CalendarDay.sampleToday.advanced(by: -1), at: 19, 0),
+                            status: .estimating, recordedOnThisDevice: false),
+                        .sampleEstimated(
+                            .sampleWritten(
+                                from: Self.threeMealsText, eatenOn: .sampleToday, at: 7, 30)),
+                        .sampleEstimated(
+                            .sampleWritten(
+                                from: Self.threeMealsText, eatenOn: .sampleToday, at: 12, 30)),
+                    ]
+                }
+            }
+
+            var conversation: Timeline.Conversation {
+                switch self {
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered:
+                    .none
+                case .writtenMeals:
+                    Timeline.Conversation(
+                        sentTexts: [Self.oneMealText, Self.threeMealsText, Self.deletedMealsText],
+                        statuses: Dictionary(
+                            uniqueKeysWithValues: [
+                                Self.oneMealText, Self.threeMealsText, Self.deletedMealsText,
+                            ].map {
+                                ($0.id, SentTextStatus(classification: .meal, reply: .notRequested))
+                            }),
+                        replies: [], streams: [:])
                 }
             }
 
             var notices: [Notice] {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals, .undelivered:
+                    .rejected, .meals, .undelivered, .writtenMeals:
                     []
                 case .awaitingNotice:
                     [
@@ -148,7 +185,7 @@
             var undeliveredRecords: UndeliveredRecords {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals, .awaitingNotice, .answeredNotice:
+                    .rejected, .meals, .awaitingNotice, .answeredNotice, .writtenMeals:
                     .none
                 case .undelivered:
                     UndeliveredRecords(
@@ -171,6 +208,16 @@
                 71.8, on: .sampleToday, at: 7, 5, from: .manual)
 
             private static let undeliveredMeal = Meal.sample(on: .sampleToday, at: 12, 10)
+
+            private static let oneMealText = SentText.sample(
+                "昼はうどん", on: .sampleToday, at: 12, 0)
+
+            private static let threeMealsText = SentText.sample(
+                "昨日の夜はカレー、朝はパン、昼はうどん", on: .sampleToday, at: 15, 0)
+
+            /// 食事をすべて消した文章。吹き出しだけが残る
+            private static let deletedMealsText = SentText.sample(
+                "夜はラーメン", on: .sampleToday, at: 21, 0)
 
             private static let pastRecords: [WeightRecord] = [
                 .sample(72.8, on: startedDay, at: 7, 2, from: .manual),

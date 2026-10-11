@@ -1,13 +1,19 @@
-/// タイムラインに置く送った文章の吹き出し。吹き出しの下に添える1行（応答待ち・作れなかった・回数切れ、受け付けなかった）を持つ
+/// タイムラインに置く送った文章の吹き出し。吹き出しの下につなぐ文章の食事と、添える1行（応答待ち・作れなかった・回数切れ、受け付けなかった）を持つ
 public struct SentTextBubble: Hashable, Sendable {
     public let sentText: SentText
+    /// その文章からできた食事。食べた時刻（前の日を含む）にかかわらず、すべて吹き出しの下に食べた時刻の順でつなぐ
+    public let meals: [MealCard]
     /// 応答の1行。応答が届いた（文章の食事、返事の最初の文字）か、まだ届いていない文章なら nil
     public let replyLine: ReplyLine?
     /// 会話として送り直す・送り直すを受け付けなかった1行。吹き出しのすぐ下に出す
     public let rejectedLine: RejectedSentTextLine?
 
-    public init(sentText: SentText, replyLine: ReplyLine?, rejectedLine: RejectedSentTextLine?) {
+    public init(
+        sentText: SentText, meals: [MealCard], replyLine: ReplyLine?,
+        rejectedLine: RejectedSentTextLine?
+    ) {
         self.sentText = sentText
+        self.meals = meals
         self.replyLine = replyLine
         self.rejectedLine = rejectedLine
     }

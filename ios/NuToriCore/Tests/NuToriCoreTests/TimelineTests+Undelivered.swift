@@ -166,7 +166,9 @@ extension TimelineTests {
                 let sentText = try SentText.fixture(sentAt: "2026-09-24T12:11:00+09:00")
                 let timeline = try Self.timeline(sentText: sentText, pending: [write(sentText)])
                 return timeline.isUndelivered(
-                    .sentText(SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil))
+                    .sentText(
+                        SentTextBubble(
+                            sentText: sentText, meals: [], replyLine: nil, rejectedLine: nil))
                 )
             }
 
@@ -193,7 +195,8 @@ extension TimelineTests {
                     !timeline.isUndelivered(
                         .sentText(
                             SentTextBubble(
-                                sentText: sentText, replyLine: .reading, rejectedLine: nil))))
+                                sentText: sentText, meals: [], replyLine: .reading,
+                                rejectedLine: nil))))
             }
         }
     }

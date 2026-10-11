@@ -7,8 +7,6 @@ public struct Timeline: Sendable {
     public init(input: Input, firstDay: CalendarDay, today: CalendarDay) {
         let weightRecordsByDay = Dictionary(
             grouping: input.weightRecords.filter { $0.day >= firstDay }, by: \.day)
-        let mealsByDay = Dictionary(
-            grouping: input.meals.filter { $0.meal.cardDay >= firstDay }, by: \.meal.cardDay)
         // 1日の丸と日のまとめには、カードを置く日でなく、食事の日（撮った時刻と食事の時差から出した日）に入れる。
         // 食事の日が使い始めた日より前の食事は、カードは並べても、丸にも日のまとめにも入れない
         let mealsByEatenDay = Dictionary(
@@ -28,6 +26,11 @@ public struct Timeline: Sendable {
         let conversation = ConversationItems(
             input.conversation, rejectedLines: input.rejectedLines.compactMap(\.sentTextLine),
             cardsByMealId: cardsByMealId, undelivered: input.undelivered)
+        // 吹き出しにつないだ文章の食事は、単独のカードとして並べない
+        let mealsByDay = Dictionary(
+            grouping: input.meals.filter {
+                $0.meal.cardDay >= firstDay && !conversation.joinedMealIds.contains($0.meal.id)
+            }, by: \.meal.cardDay)
         let bubblesByDay = Dictionary(
             grouping: conversation.bubbles.filter { $0.sentText.day >= firstDay },
             by: \.sentText.day)
@@ -85,31 +88,37 @@ public struct Timeline: Sendable {
         startedDay ?? weightRecords.map(\.day).min() ?? today
     }
 
-    /// 記録忘れの通知を押して開いたときに着く位置。その知らせが並んでいなければ、いちばん新しい日の下
+    /// 記録忘れの通知を押して開いたときに着く位置。その知らせが並んでいなければ、タイムラインのいちばん下
     public func landing(for reminder: ReminderLanding) -> Landing {
         switch reminder {
         case .notice(let noticeId):
             let item = days.lazy.flatMap(\.items).first { item in
                 if case .notice(let card) = item { card.notice.id == noticeId } else { false }
             }
-            guard let item else { return .end(dayRange.upperBound) }
+            guard let item else { return .end }
             return .item(item.id)
         case .timelineEnd:
-            return .end(dayRange.upperBound)
+            return .end
         }
     }
 
-    /// 項目の前の間隔。詰めるか、会話のまとまりを分けて空けるか
     public enum ItemSpacing: Equatable, Sendable {
         case close
         case apart
     }
 
+    /// タイムラインの項目の話し手
+    public enum Speaker: Equatable, Sendable {
+        case me
+        case ai
+        case app
+    }
+
     public enum Landing: Equatable, Sendable {
         /// そのカードの位置
         case item(Item.ID)
-        /// その日のいちばん下
-        case end(CalendarDay)
+        /// タイムラインのいちばん下
+        case end
     }
 
     /// タイムラインに並べる元になるもの。種類が増えたら欄を足す
@@ -142,8 +151,8 @@ public struct Timeline: Sendable {
 
     public struct Day: Hashable, Sendable {
         public let day: CalendarDay
-        /// 体重記録は時刻、食事は送った時刻（吹き出しから離す文章の食事は食べた時刻）、知らせは出した時刻、送った文章は送った時刻の順。
-        /// 受け付けなかった行は、その位置に入る。返事は、応える送った文章（とその下の文章の食事）のすぐあと
+        /// 体重記録は時刻、食事は送った時刻、知らせは出した時刻、送った文章は送った時刻の順。文章の食事は、その文章の吹き出しにつなぐ。
+        /// 受け付けなかった行は、その位置に入る。返事は、応える送った文章のすぐあと
         public let items: [Item]
         /// この日の食べた量。この日に食べた（食事の日がこの日の）食事から出す。カードを置く日の食事とは限らない
         public let food: DayFood
@@ -161,19 +170,11 @@ public struct Timeline: Sendable {
                 })
         }
 
-        /// 会話の区切りを持たず、隣り合うかだけで決める。日をまたぐ会話や、あとから入った食事で、まとまりがずれないため（仕様 #419「会話のまとまりの見た目」）
+        /// 話し手の替わり目を空けて、自分の吹き出しのすぐ下の返事が、前の吹き出しの続きに見えないようにする。日の見出しは話し手ではないので、日の最初の項目は詰める。
+        /// 会話の区切りを持たず、隣り合う2つだけで決める。日をまたぐ会話や、あとから入った食事で、間がずれないため（#449 の解決コメント）
         public func spacing(before item: Item) -> ItemSpacing {
-            guard let index = items.firstIndex(of: item) else { return .close }
-            let previous = index > 0 ? items[index - 1] : nil
-            if item.isUtterance {
-                return previous?.isUtterance == true ? .close : .apart
-            }
-            if case .meal(let card) = item, let sentTextId = card.meal.sentTextId,
-                previous?.belongs(toSentText: sentTextId) == true
-            {
-                return .close
-            }
-            return previous?.isUtterance == true ? .apart : .close
+            guard let index = items.firstIndex(of: item), index > 0 else { return .close }
+            return items[index - 1].speaker == item.speaker ? .close : .apart
         }
 
         /// 1日の丸の帯に出す、この日の丸
@@ -197,24 +198,14 @@ public struct Timeline: Sendable {
         case rejectedSentTextLine(RejectedSentTextLine)
         case reply(TimelineReply)
 
-        /// その送った文章の吹き出しか、その文章の食事のカードか
-        func belongs(toSentText sentTextId: UUID) -> Bool {
+        /// 受け付けなかった1行は、自分が書いた記録や文章の代わりに出るので、自分にする
+        public var speaker: Speaker {
             switch self {
-            case .sentText(let bubble): bubble.sentText.id == sentTextId
-            case .meal(let card): card.meal.sentTextId == sentTextId
-            case .weightRecord, .rejectedWeightLine, .rejectedMealLine, .notice,
-                .rejectedSentTextLine, .reply:
-                false
-            }
-        }
-
-        /// 会話の発言（送った文章か返事）か
-        public var isUtterance: Bool {
-            switch self {
-            case .sentText, .reply: true
-            case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .notice,
+            case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .sentText,
                 .rejectedSentTextLine:
-                false
+                .me
+            case .reply: .ai
+            case .notice: .app
             }
         }
 
@@ -273,12 +264,7 @@ public struct Timeline: Sendable {
             guard let sentReplies = replies[bubble.sentText.id],
                 let bubbleIndex = items.firstIndex(of: .sentText(bubble))
             else { continue }
-            // 吹き出しのすぐ下の文章の食事のカード（会話として送り直せなかった文章）の、さらにあと
-            let afterMeals =
-                items[(bubbleIndex + 1)...].firstIndex {
-                    !$0.belongs(toSentText: bubble.sentText.id)
-                } ?? items.endIndex
-            items.insert(contentsOf: sentReplies.map { .reply($0) }, at: afterMeals)
+            items.insert(contentsOf: sentReplies.map { .reply($0) }, at: bubbleIndex + 1)
         }
         return items
     }
@@ -302,12 +288,12 @@ public struct Timeline: Sendable {
 
         init(card: MealCard) {
             self.init(
-                instant: card.meal.cardInstant, eatenAt: card.meal.eatenAt, item: .meal(card))
+                instant: card.meal.sentAt, eatenAt: card.meal.eatenAt, item: .meal(card))
         }
 
         init(line: RejectedMealLine) {
             self.init(
-                instant: line.meal.cardInstant, eatenAt: line.meal.eatenAt,
+                instant: line.meal.sentAt, eatenAt: line.meal.eatenAt,
                 item: .rejectedMealLine(line))
         }
 
