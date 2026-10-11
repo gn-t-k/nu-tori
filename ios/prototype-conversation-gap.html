@@ -1,0 +1,202 @@
+<title>話し手が変わるところの間</title>
+<!--
+  PROTOTYPE（捨てる前提）。「会話で、話し手が変わるところの間が狭い」（gn-t-k/nu-tori#449）の試作。main には入れない。
+  A 今の形（発言が続くと話し手によらず 8）/ B 変わるところだけ 16 / C 変わるところは 24、同じ話し手が続くところだけ 8。
+  下のバーの ‹ › か左右の矢印キーで案を切り替える。#a #b #c で開ける。「3つ並べる」で横に並べる。
+  間の決め方は main の Timeline.Day.spacing(before:) と TimelineScreen.gap(before:in:) を写した。見た目は SentTextBubbleView・ReplyView・
+  WeightRecordRow・MealCardView の数値を写した（pt を px に当てる）。アプリの中の同じ試作は ConversationGapPrototype.swift。
+-->
+<style>
+/* 見本を並べるページの上に、iPhone の画面を 1:1（pt = px）で描く */
+:root{
+  --bg:#f2f2f7;            /* systemGroupedBackground */
+  --surface:#ffffff;       /* secondarySystemGroupedBackground */
+  --ink:#000000;
+  --ink2:rgb(60 60 67 / .6);
+  --ink3:rgb(60 60 67 / .3);
+  --sep:rgb(60 60 67 / .29);
+  --fill:rgb(120 120 128 / .12);
+  --tint:#6155f5;          /* アクセント */
+  --on-tint:#ffffff;
+  --track:#e5e5ea;
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
+  --gap-mark:rgb(255 56 60 / .16); --gap-ink:#c4161c;
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24); --tint:#6d7cff; --on-tint:#ffffff; --track:#2c2c2e;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+    --gap-mark:rgb(255 66 69 / .24); --gap-ink:#ff8a8c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24); --tint:#6d7cff; --on-tint:#ffffff; --track:#2c2c2e;
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+  --gap-mark:rgb(255 66 69 / .24); --gap-ink:#ff8a8c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;padding-block:16px 96px;padding-inline:16px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+.intro{max-width:1240px;margin:0 auto 14px;display:flex;flex-direction:column;gap:6px}
+.intro h1{font-size:20px;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--page-muted);max-width:720px}
+.ctl{max-width:1240px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
+.ctl label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.stage{max-width:1240px;margin:0 auto;display:grid;gap:20px;justify-content:center;grid-template-columns:minmax(0,390px)}
+.stage.all{grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),390px))}
+figure{margin:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+figcaption{font-size:13px;color:var(--page-muted)}
+figcaption b{color:var(--page-ink);font-size:15px;margin-right:6px}
+
+/* ── 電話の枠 ── */
+.phone{background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;font-size:17px;line-height:1.3}
+.status{height:34px;flex:none}
+.nav{height:44px;flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 16px}
+.nav .t{grid-column:2;font-size:17px;font-weight:600}
+.nav .r{justify-self:end;width:30px;height:30px;border-radius:50%;background:var(--fill)}
+.band{display:flex;padding:0 16px 10px;border-bottom:.5px solid var(--sep)}
+.band .d{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--ink2);padding:4px 0;border-radius:10px}
+.band .d i{width:28px;height:28px;border-radius:50%;border:4.5px solid var(--track)}
+.band .d.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.band .d.sel i{border-color:color-mix(in srgb,var(--tint) 55%,var(--track))}
+.tl{padding:12px 16px 16px;display:flex;flex-direction:column}
+.dayhd{font-size:13px;color:var(--ink2);text-align:center}
+.composer{flex:none;padding:8px 16px 26px;border-top:.5px solid var(--sep);display:flex;gap:8px;align-items:center}
+.composer .f{flex:1;height:36px;border-radius:18px;background:var(--surface);border:.5px solid var(--sep);padding:0 14px;display:flex;align-items:center;color:var(--ink3);font-size:17px}
+.composer .s{width:36px;height:36px;border-radius:50%;background:var(--fill)}
+
+/* 項目。間は JS が margin-top で置く */
+.item{position:relative}
+.gap{position:absolute;left:-16px;right:-16px;bottom:100%;display:none;align-items:center;justify-content:flex-end;padding-right:4px;background:var(--gap-mark);color:var(--gap-ink);font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+.show-gaps .gap.change{display:flex}
+.wrow{align-self:flex-end;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:16px;border-radius:12px;background:color-mix(in srgb,var(--tint) 10%,var(--surface));font-size:15px;font-variant-numeric:tabular-nums}
+.wrow small{font-size:12px;color:var(--ink2)}
+.me{align-self:flex-end;max-width:78%;background:var(--tint);color:var(--on-tint);border-radius:18px;padding:12px;white-space:pre-wrap}
+.reply{align-self:flex-start;max-width:92%;display:flex;flex-direction:column;gap:8px}
+.reply p{margin:0}
+.reply .li{display:flex;gap:8px}
+.meal{align-self:flex-end;width:78%;border-radius:12px;background:color-mix(in srgb,var(--tint) 10%,var(--surface));padding:16px;display:flex;align-items:center;gap:8px}
+.meal .b{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.meal .n{font-size:15px;font-weight:600}
+.meal .c{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.meal .k{font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;display:flex;flex-wrap:wrap;gap:0 8px}
+.meal .k b{font-weight:600}
+.meal .chev{color:var(--ink3);font-size:12px}
+
+/* 切り替えのバー（試作の道具。設計の一部ではない） */
+.switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
+.switcher button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--page)}
+.switcher .lab{padding:0 10px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lab b{margin-right:6px}
+.all ~ .switcher{display:none}
+</style>
+
+<div class="intro">
+  <h1>話し手が変わるところの間（#449）</h1>
+  <p>自分の吹き出しのすぐ下に返事（吹き出しの無い地の文）が続くと、前の吹き出しの続きに見える。話し手が変わるところの間をいくつにすると分かれて見えるかを比べる。画面は iPhone の幅（390 pt）を 1:1 で描いた。</p>
+</div>
+<div class="ctl">
+  <label><input type="checkbox" id="all"> 3つ並べる</label>
+  <label><input type="checkbox" id="marks"> 話し手が変わる間に印を付ける</label>
+</div>
+<div class="stage" id="stage"></div>
+<div class="switcher" role="group" aria-label="案の切り替え">
+  <button id="prev" aria-label="前の案">‹</button>
+  <span class="lab" id="lab"></span>
+  <button id="next" aria-label="次の案">›</button>
+</div>
+
+<script>
+// ── 間の決め方（main の Timeline.Day.spacing(before:) を写し、案ごとに話し手が変わるところだけ変える） ──
+const VARIANTS = [
+  {key:'a', label:'A', name:'今の形・8', change:8},
+  {key:'b', label:'B', name:'変わるところ 16', change:16},
+  {key:'c', label:'C', name:'変わるところ 24', change:24},
+];
+const isUtterance = it => it.kind === 'me' || it.kind === 'reply';
+const speaker = it => it.kind === 'me' ? 'me' : it.kind === 'reply' ? 'ai' : null;
+function spacing(items, i){
+  const it = items[i], prev = items[i-1];
+  if (isUtterance(it)) return prev && isUtterance(prev) ? 'close' : 'apart';
+  if (it.kind === 'meal' && prev && prev.sentText === it.sentText) return 'close';
+  return prev && isUtterance(prev) ? 'apart' : 'close';
+}
+function gap(items, i, v){
+  if (i === 0) return {px:8, change:false};
+  if (spacing(items, i) === 'apart') return {px:24, change:false};
+  const s = speaker(items[i]), p = speaker(items[i-1]);
+  const change = s && p && s !== p;
+  return {px: change ? v.change : 8, change: !!change};
+}
+
+// ── 場面: 今日 7:12 に体重を記録し、昼に会話を3往復した。2つめの文章は食事（親子丼）になり、返事は無い ──
+const ITEMS = [
+  {kind:'weight'},
+  {kind:'me', sentText:1, text:'ここまでの食事のフィードバックをください。'},
+  {kind:'reply', html:'<p>朝ごはんで <b>たんぱく質</b> がとれています。</p><div class="li"><span>•</span><span>昼は野菜を足す</span></div><div class="li"><span>•</span><span>夜は軽めに</span></div>'},
+  {kind:'me', sentText:2, text:'昼は親子丼'},
+  {kind:'meal', sentText:2},
+  {kind:'me', sentText:3, text:'↑は3人で分けて食べた'},
+  {kind:'reply', html:'<p>3人で分けたなら、1人分は3分の1ほどですね。量を直しておくと、今日の合計に合います。</p>'},
+  {kind:'me', sentText:4, text:'ありがとう'},
+  {kind:'reply', html:'<p>どういたしまして。夜ごはんも送ってください。</p>'},
+];
+
+function itemHTML(it){
+  switch (it.kind){
+    case 'weight': return '<div class="wrow"><span>7:12 72.4 kg</span><small>手で記録</small></div>';
+    case 'me': return `<div class="me">${it.text}</div>`;
+    case 'reply': return `<div class="reply">${it.html}</div>`;
+    case 'meal': return '<div class="meal"><div class="b"><span class="n">親子丼</span><span class="c">12:40</span><span class="k"><b>346 kcal</b><span>P 19.1</span><span>F 14.5</span><span>C 37.1</span></span></div><span class="chev">›</span></div>';
+  }
+}
+function phoneHTML(v){
+  const days = ['日','月','火','水','木','金','土'];
+  const band = days.map((d,i)=>`<span class="d${i===0?' sel':''}"><i></i>${d}</span>`).join('');
+  const rows = ITEMS.map((it,i)=>{
+    const g = gap(ITEMS, i, v);
+    const align = it.kind === 'reply' ? 'flex-start' : 'flex-end';
+    return `<div class="item" style="margin-top:${g.px}px;align-self:stretch;display:flex;flex-direction:column;align-items:${align}">`
+      + `<span class="gap${g.change?' change':''}" style="height:${g.px}px">${g.px}</span>${itemHTML(it)}</div>`;
+  }).join('');
+  return `<div class="phone"><div class="status"></div><div class="nav"><span class="t">今日</span><span class="r"></span></div>`
+    + `<div class="band">${band}</div><div class="tl"><div class="dayhd">今日</div>${rows}</div>`
+    + `<div class="composer"><span class="f">記録や質問を書く</span><span class="s"></span></div></div>`;
+}
+
+// ── ページ ──
+const stage = document.getElementById('stage');
+const allBox = document.getElementById('all');
+const marksBox = document.getElementById('marks');
+let current = Math.max(0, VARIANTS.findIndex(v => '#'+v.key === location.hash));
+function render(){
+  const list = allBox.checked ? VARIANTS : [VARIANTS[current]];
+  stage.className = 'stage' + (allBox.checked ? ' all' : '') + (marksBox.checked ? ' show-gaps' : '');
+  stage.innerHTML = list.map(v => `<figure><figcaption><b>${v.label}</b>${v.name}</figcaption>${phoneHTML(v)}</figure>`).join('');
+  const v = VARIANTS[current];
+  document.getElementById('lab').innerHTML = `<b>${v.label}</b>${v.name}`;
+}
+function go(d){
+  current = (current + d + VARIANTS.length) % VARIANTS.length;
+  try { history.replaceState(null, '', '#' + VARIANTS[current].key); } catch (e) {}
+  render();
+}
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+allBox.onchange = render;
+marksBox.onchange = render;
+addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input,textarea,[contenteditable]') && e.target.type !== 'checkbox') return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+render();
+</script>
