@@ -26,11 +26,14 @@ public struct TextDraft: Equatable, Sendable {
     /// プリセットは、書く欄に文字があるあいだ隠す（押すと書きかけの文を置き換えてしまうため）
     public var showsPresets: Bool { text.isEmpty }
 
-    /// 書く欄の下に出す「残り N」の N。450 字を超えるまでは nil で、500 字を超えたら負の数（画面では「N 字多い」と出す）
-    public var remainingLength: Int? {
+    /// 書く欄の下に出す字数の知らせ。450 字を超えるまでは nil
+    public var lengthNotice: LengthNotice? {
         let upperBound = Int(AcceptedRange.sentTextBodyTrimmedLength.bounds.upperBound)
         let remaining = upperBound - trimmedLength
-        return remaining < Self.remainingShownBelow ? remaining : nil
+        if remaining < 0 {
+            return .over(-remaining)
+        }
+        return remaining < Self.remainingShownBelow ? .remaining(remaining) : nil
     }
 
     /// 送ったときに PostHog に送る出来事。本文は載せない
@@ -45,6 +48,14 @@ public struct TextDraft: Equatable, Sendable {
     public mutating func insert(_ preset: TextPreset) {
         text = preset.text
         insertedPreset = preset
+    }
+
+    /// 書く欄の下に出す字数の知らせ
+    public enum LengthNotice: Equatable, Sendable {
+        /// 送れる上限まであと何字か（0 を含む）
+        case remaining(Int)
+        /// 上限を何字超えたか。負の数では超えたことが伝わりにくいため、超えた字数を持つ（#454）
+        case over(Int)
     }
 
     /// 書く欄を空にするまで覚えておく、押したプリセット

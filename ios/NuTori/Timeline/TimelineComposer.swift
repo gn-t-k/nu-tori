@@ -70,9 +70,8 @@ struct TimelineComposer: View {
                 if dynamicTypeSize.isAccessibilitySize {
                     field
                 }
-                if let remaining = draft.remainingLength {
-                    // 500 字を超えたら負の数を見せず、超えた字数を文で示す（#454）。色は変えない（DESIGN.md の Colors）
-                    Text(remaining < 0 ? "\(-remaining) 字多い" : "残り \(remaining)")
+                if let notice = draft.lengthNotice {
+                    lengthNoticeText(notice)
                         .font(.footnote)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -247,6 +246,13 @@ struct TimelineComposer: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("camera-permission-notice")
+    }
+
+    private func lengthNoticeText(_ notice: TextDraft.LengthNotice) -> Text {
+        switch notice {
+        case .remaining(let count): Text("残り \(count)")
+        case .over(let count): Text("\(count) 字多い")
+        }
     }
 
     private func send() {

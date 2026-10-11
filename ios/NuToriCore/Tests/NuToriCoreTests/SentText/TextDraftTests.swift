@@ -24,7 +24,7 @@ struct TextDraftTests {
 
         @Test("残りの字数を出さないこと")
         func hidesRemaining() {
-            #expect(draft.remainingLength == nil)
+            #expect(draft.lengthNotice == nil)
         }
     }
 
@@ -62,7 +62,7 @@ struct TextDraftTests {
 
         @Test("残りの字数をまだ出さないこと")
         func hidesRemaining() {
-            #expect(draft.remainingLength == nil)
+            #expect(draft.lengthNotice == nil)
         }
     }
 
@@ -76,7 +76,7 @@ struct TextDraftTests {
 
         @Test("残りを 49 字と出すこと")
         func showsRemaining() {
-            #expect(draft.remainingLength == 49)
+            #expect(draft.lengthNotice == .remaining(49))
         }
     }
 
@@ -95,7 +95,7 @@ struct TextDraftTests {
 
         @Test("残りを 0 字と出すこと")
         func showsZero() {
-            #expect(draft.remainingLength == 0)
+            #expect(draft.lengthNotice == .remaining(0))
         }
     }
 
@@ -112,9 +112,9 @@ struct TextDraftTests {
             #expect(!draft.canSend)
         }
 
-        @Test("残りを負の数で出すこと")
-        func showsNegative() {
-            #expect(draft.remainingLength == -1)
+        @Test("1 字多いと出すこと")
+        func showsOver() {
+            #expect(draft.lengthNotice == .over(1))
         }
     }
 
@@ -132,9 +132,9 @@ struct TextDraftTests {
             #expect(!draft.canSend)
         }
 
-        @Test("残りもコードポイントで数えること")
-        func countsRemainingInCodePoints() {
-            #expect(draft.remainingLength == -2)
+        @Test("多い字数もコードポイントで数えること")
+        func countsOverInCodePoints() {
+            #expect(draft.lengthNotice == .over(2))
         }
     }
 
