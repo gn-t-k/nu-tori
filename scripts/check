@@ -131,7 +131,7 @@ check_ios_ui_test() {
     check_ios_app
 
     step "UI テスト"
-    local results="$ios/.build/NuTori.xcresult"
+    local results="$ios/.build/NuTori.xcresult" kana_keyboard="ja_JP-Kana@sw=Kana;hw=Automatic"
     # 1台のシミュレータでは同じアプリの UI テストを同時に回せないので、ほかのチェックアウトとぶつからないよう、回すたびに複製を作って消す
     clone_ui_test_simulator
     trap 'xcrun simctl delete "$ui_test_simulator"' EXIT
@@ -139,6 +139,9 @@ check_ios_ui_test() {
     boot_ui_test_simulator
     # Simulator.app でハードウェアキーボードを一度つなぐと、シミュレータがそれを覚えてソフトウェアキーボードを画面の外へ最小化し、キーを押すテストが落ちる。まっさらなシミュレータ（CI）では起きないので、Mac でもそろえる
     xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
+    # キーボードの並びと最初に出るキーボードはシミュレータの言語で決まり、英語のランナー（CI）ではかなが出ない。かなを打つテストのために、どこでもかなを入れて、最後に使ったキーボードにする（最初に出る）。テストの中で地球儀のキーで切り替えると、初めての案内がキーボードを覆う
+    xcrun simctl spawn "$ui_test_simulator" defaults write -g AppleKeyboards -array "$kana_keyboard" "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"
+    xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences KeyboardLastUsed "$kana_keyboard"
     rm -rf "$results"
     # テストの診断をシミュレータから集めると、テストが通った回でも時間切れの10分まで待つことがある。落ちた理由は xcresult で足りる
     xcodebuild \
