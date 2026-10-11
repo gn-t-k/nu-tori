@@ -1,6 +1,6 @@
 import XCTest
 
-/// 文章と会話の主な流れ。プリセットで書いて送る → 読んでいます → 返事が届く → 食事の文章を送る → カードが出る → 会話として送り直す → 返事が届く → 作れなかった文章を送り直す → 返事が届く。
+/// 文章と会話の主な流れ。プリセットで書いて送る → 読んでいます → 返事が届く → 食事の文章を送る → 吹き出しの下に食事の行がつながる → 会話として送り直す → 返事が届く → 作れなかった文章を送り直す → 返事が届く。
 /// 条件は、サインイン済みで、API が会話の場面（偽のサーバーが送った文章の本文で答え方を決め、答えるのを3回めの取得まで待つ）のとき
 @MainActor
 final class SendTextWithConversationScenarioUITests: XCTestCase {
@@ -30,16 +30,18 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         attachScreenshot(of: app, named: "返事が届いた")
 
         send("昼は親子丼")
-        // 吹き出しを残し、その下に文章の食事のカード（写真の場所なし）を出す。推定が届くと料理の名前になる
+        // 吹き出しの下に、文章の食事の行（写真の場所なし）をつなぐ。推定が届くと料理の名前になる
         let card = app.buttons["meal-card"]
         XCTAssertTrue(card.waitForExistence(timeout: 30))
         XCTAssertTrue(waitUntil(card, matches: "label CONTAINS %@", "親子丼"))
         XCTAssertTrue(element("sent-text-bubble", containing: "昼は親子丼").exists)
-        attachScreenshot(of: app, named: "文章の食事のカード")
+        XCTAssertEqual(app.buttons.matching(identifier: "resend-as-conversation").count, 1)
+        attachScreenshot(of: app, named: "吹き出しにつないだ文章の食事")
 
-        // 確かめずにカードが消え、返事が届く
+        // 確かめずに食事の行が消えて吹き出しだけが残り、返事が届く
         app.buttons["resend-as-conversation"].tap()
         XCTAssertTrue(card.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(element("sent-text-bubble", containing: "昼は親子丼").exists)
         XCTAssertTrue(element("reply", containing: "親子丼の話").waitForExistence(timeout: 30))
         attachScreenshot(of: app, named: "会話として送り直した返事")
 

@@ -11,8 +11,6 @@ extension TimelineTests {
         let reply: AiUtterance
         let thanks: SentText
         let lunchText: SentText
-        let lunch: MealCard
-        let lunchSide: MealCard
         let snackQuestion: SentText
         let snackReply: AiUtterance
         let snack: MealCard
@@ -30,12 +28,6 @@ extension TimelineTests {
                 id: UUID(), body: "野菜の多い定食はどうでしょう。", sentTextId: question.id, mealIds: [])
             thanks = try .fixture("ありがとう", sentAt: "2026-09-24T12:30:00+09:00")
             lunchText = try .fixture("昼はうどんとおにぎり", sentAt: "2026-09-24T12:40:00+09:00")
-            lunch = try PlacingConversation.writtenMeal(
-                from: lunchText, eatenAt: "2026-09-24T12:40:00+09:00",
-                sentAt: "2026-09-24T12:40:00+09:00")
-            lunchSide = try PlacingConversation.writtenMeal(
-                from: lunchText, eatenAt: "2026-09-24T12:40:00+09:00",
-                sentAt: "2026-09-24T12:40:00+09:00")
             snackQuestion = try .fixture("おやつは何がいい？", sentAt: "2026-09-24T15:00:00+09:00")
             snackReply = AiUtterance(
                 id: UUID(), body: "ナッツはどうでしょう。", sentTextId: snackQuestion.id, mealIds: [])
@@ -48,7 +40,7 @@ extension TimelineTests {
             timeline = Timeline(
                 input: Timeline.Input(
                     weightRecords: [morning, evening, night], rejectedLines: [],
-                    meals: [breakfast, lunch, lunchSide, snack], notices: [notice],
+                    meals: [breakfast, snack], notices: [notice],
                     undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [
@@ -89,12 +81,6 @@ extension TimelineTests {
             #expect(spacings[itemId(of: lunchText)] == .close)
         }
 
-        @Test("文章の食事のカードを、その文章の吹き出しと、同じ文章の食事のすぐ下に詰めること")
-        func writtenMealsBelowBubble() {
-            #expect(spacings[Timeline.Item.meal(lunch).id] == .close)
-            #expect(spacings[Timeline.Item.meal(lunchSide).id] == .close)
-        }
-
         @Test("返事のすぐ下の写真の食事を空けること")
         func photoMealAfterReply() {
             #expect(spacings[Timeline.Item.meal(snack).id] == .apart)
@@ -120,7 +106,7 @@ extension TimelineTests {
         /// 送った文章の吹き出しの項目の ID
         private func itemId(of sentText: SentText) -> String {
             Timeline.Item.sentText(
-                SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil)
+                SentTextBubble(sentText: sentText, meals: [], replyLine: nil, rejectedLine: nil)
             )
             .id
         }
@@ -155,7 +141,9 @@ extension TimelineTests {
                 day: CalendarDay(year: 2026, month: 9, day: 25),
                 items: [
                     reply,
-                    .sentText(SentTextBubble(sentText: morning, replyLine: nil, rejectedLine: nil)),
+                    .sentText(
+                        SentTextBubble(
+                            sentText: morning, meals: [], replyLine: nil, rejectedLine: nil)),
                 ],
                 food: .noMeals)
         }

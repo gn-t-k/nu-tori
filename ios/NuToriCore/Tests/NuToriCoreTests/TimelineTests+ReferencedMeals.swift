@@ -42,14 +42,14 @@ extension TimelineTests {
                 today: CalendarDay(year: 2026, month: 9, day: 24))
         }
 
-        @Test("返った順に食事の行を並べ、キャッシュに無い食事を削除した食事にすること")
+        @Test("返った順に食事の行を並べ、キャッシュに無い食事の行を出さないこと")
         func listsMealsInOrder() {
             let replies = timeline.days.flatMap(\.items).compactMap { item in
                 if case .reply(let reply) = item { reply } else { nil }
             }
             #expect(
                 replies.map(\.referencedMeals) == [
-                    [.meal(dinner), .deleted(mealId: deletedMealId), .meal(lunch)]
+                    [dinner, lunch]
                 ])
         }
     }

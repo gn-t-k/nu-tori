@@ -36,6 +36,22 @@
             )
         }
 
+        /// プレビューの見本の、送った文章からできた食事。食べた時刻は日本時間
+        static func sampleWritten(
+            from sentText: SentText, eatenOn day: CalendarDay, at hour: Int, _ minute: Int
+        ) -> Meal {
+            let eatenAt = sampleInstant(on: day, at: hour, minute)
+            return Meal(
+                id: UUID(),
+                eatenAt: eatenAt,
+                eatenUtcOffsetSeconds: sampleTimeZone.secondsFromGMT(for: eatenAt),
+                sentAt: sentText.sentAt,
+                sentTimeZone: sentText.timeZone,
+                entry: .written(sentTextId: sentText.id),
+                photoIds: []
+            )
+        }
+
         private static let sampleTimeZone = TimeZone(identifier: "Asia/Tokyo")!
 
         private static func sampleInstant(on day: CalendarDay, at hour: Int, _ minute: Int)

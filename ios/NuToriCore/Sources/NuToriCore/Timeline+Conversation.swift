@@ -71,6 +71,9 @@ extension Timeline {
         /// 吹き出しに添えず、それだけを置く受け付けなかった1行（文章を送れなかった）
         let separateLines: [RejectedSentTextLine]
 
+        /// 吹き出しにつないだ文章の食事の ID。単独のカードとして並べない
+        let joinedMealIds: Set<UUID>
+
         init(
             _ conversation: Conversation,
             rejectedLines: [RejectedSentTextLine],
@@ -78,6 +81,13 @@ extension Timeline {
             undelivered: UndeliveredRecords
         ) {
             let sentTextIds = Set(conversation.sentTexts.map(\.id))
+            var joinedMeals: [UUID: [MealCard]] = [:]
+            for card in cardsByMealId.values {
+                guard let sentTextId = card.meal.sentTextId, sentTextIds.contains(sentTextId)
+                else { continue }
+                joinedMeals[sentTextId, default: []].append(card)
+            }
+            joinedMealIds = Set(joinedMeals.values.joined().map(\.meal.id))
             let linesBelowBubble = Dictionary(
                 rejectedLines.filter {
                     $0.placement == .belowBubble && sentTextIds.contains($0.sentText.id)
@@ -88,9 +98,8 @@ extension Timeline {
             let records = conversation.replies.filter { sentTextIds.contains($0.sentTextId) }.map {
                 TimelineReply(
                     id: $0.id, sentTextId: $0.sentTextId, body: $0.body, isGrowing: false,
-                    referencedMeals: $0.mealIds.map { mealId in
-                        cardsByMealId[mealId].map { .meal($0) } ?? .deleted(mealId: mealId)
-                    })
+                    // 消えた食事（キャッシュに無い）は並べない。跡を残すと、消したつもりのものが残る（#452）
+                    referencedMeals: $0.mealIds.compactMap { cardsByMealId[$0] })
             }
             // 見守る要求で届いた ID と同じ返事が届いたら、届いた返事で置き換える
             let growing = conversation.streams.compactMap { sentTextId, stream in
@@ -102,6 +111,10 @@ extension Timeline {
             bubbles = conversation.sentTexts.map { sentText in
                 SentTextBubble(
                     sentText: sentText,
+                    meals: (joinedMeals[sentText.id] ?? []).sorted {
+                        ($0.meal.eatenAt, $0.meal.id.uuidString)
+                            < ($1.meal.eatenAt, $1.meal.id.uuidString)
+                    },
                     replyLine: undelivered.containsSentText(id: sentText.id)
                         ? nil
                         : Self.replyLine(
