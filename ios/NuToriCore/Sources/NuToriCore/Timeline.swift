@@ -99,10 +99,16 @@ public struct Timeline: Sendable {
         }
     }
 
-    /// 項目の前の間隔。詰めるか、会話のまとまりを分けて空けるか
     public enum ItemSpacing: Equatable, Sendable {
         case close
         case apart
+    }
+
+    /// タイムラインの項目の話し手
+    public enum Speaker: Equatable, Sendable {
+        case me
+        case ai
+        case app
     }
 
     public enum Landing: Equatable, Sendable {
@@ -161,19 +167,11 @@ public struct Timeline: Sendable {
                 })
         }
 
-        /// 会話の区切りを持たず、隣り合うかだけで決める。日をまたぐ会話や、あとから入った食事で、まとまりがずれないため（仕様 #419「会話のまとまりの見た目」）
+        /// 話し手の替わり目を空けて、自分の吹き出しのすぐ下の返事が、前の吹き出しの続きに見えないようにする。日の見出しは話し手ではないので、日の最初の項目は詰める。
+        /// 会話の区切りを持たず、隣り合う2つだけで決める。日をまたぐ会話や、あとから入った食事で、間がずれないため（#449 の解決コメント）
         public func spacing(before item: Item) -> ItemSpacing {
-            guard let index = items.firstIndex(of: item) else { return .close }
-            let previous = index > 0 ? items[index - 1] : nil
-            if item.isUtterance {
-                return previous?.isUtterance == true ? .close : .apart
-            }
-            if case .meal(let card) = item, let sentTextId = card.meal.sentTextId,
-                previous?.belongs(toSentText: sentTextId) == true
-            {
-                return .close
-            }
-            return previous?.isUtterance == true ? .apart : .close
+            guard let index = items.firstIndex(of: item), index > 0 else { return .close }
+            return items[index - 1].speaker == item.speaker ? .close : .apart
         }
 
         /// 1日の丸の帯に出す、この日の丸
@@ -208,13 +206,14 @@ public struct Timeline: Sendable {
             }
         }
 
-        /// 会話の発言（送った文章か返事）か
-        public var isUtterance: Bool {
+        /// 受け付けなかった1行は、自分が書いた記録や文章の代わりに出るので、自分にする
+        public var speaker: Speaker {
             switch self {
-            case .sentText, .reply: true
-            case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .notice,
+            case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .sentText,
                 .rejectedSentTextLine:
-                false
+                .me
+            case .reply: .ai
+            case .notice: .app
             }
         }
 
