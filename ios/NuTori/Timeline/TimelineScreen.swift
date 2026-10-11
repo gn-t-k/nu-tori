@@ -328,6 +328,8 @@ struct TimelineScreen: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                 }
+                // 送ったあともキーボードを残すので、下げる手立てはタイムラインを下へ引くこと。メッセージのアプリと同じく指に合わせて下げる
+                .scrollDismissesKeyboard(.interactively)
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
                 // 返事が伸びるあいだは一番下へ追う。使う人が上へ動かしたら、追うのを止める
