@@ -26,7 +26,7 @@ public struct TextDraft: Equatable, Sendable {
     /// プリセットは、書く欄に文字があるあいだ隠す（押すと書きかけの文を置き換えてしまうため）
     public var showsPresets: Bool { text.isEmpty }
 
-    /// 書く欄の下に出す「残り N」の N。450 字を超えるまでは nil で、500 字を超えたら負の数
+    /// 書く欄の下に出す「残り N」の N。450 字を超えるまでは nil で、500 字を超えたら負の数（画面では「N 字多い」と出す）
     public var remainingLength: Int? {
         let upperBound = Int(AcceptedRange.sentTextBodyTrimmedLength.bounds.upperBound)
         let remaining = upperBound - trimmedLength

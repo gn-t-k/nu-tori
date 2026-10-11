@@ -71,7 +71,8 @@ struct TimelineComposer: View {
                     field
                 }
                 if let remaining = draft.remainingLength {
-                    Text("残り \(remaining)")
+                    // 500 字を超えたら負の数を見せず、超えた字数を文で示す（#454）。色は変えない（DESIGN.md の Colors）
+                    Text(remaining < 0 ? "\(-remaining) 字多い" : "残り \(remaining)")
                         .font(.footnote)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
