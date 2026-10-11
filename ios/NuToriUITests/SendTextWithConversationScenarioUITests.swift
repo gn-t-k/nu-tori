@@ -1,7 +1,7 @@
 import XCTest
 
 /// 文章と会話の主な流れ。プリセットで書いて送る → 読んでいます → 返事が届く → 食事の文章を送る → カードが出る → 会話として送り直す → 返事が届く → 作れなかった文章を送り直す → 返事が届く。
-/// 条件は、サインイン済みで、API が会話の場面（偽のサーバーが送った文章の本文で答え方を決め、答えるのを3回めの取得まで待つ）のとき
+/// 条件は、サインイン済みで、API が会話の場面（偽のサーバーが送った文章の本文で答え方を決め、答えるのを数回あとの取得まで待つ）のとき
 @MainActor
 final class SendTextWithConversationScenarioUITests: XCTestCase {
     private var app = XCUIApplication()
@@ -20,9 +20,9 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         app.buttons.matching(identifier: "preset-chip").element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["composer-send"].waitForExistence(timeout: 5))
         app.buttons["composer-send"].tap()
-        XCTAssertTrue(
-            element("sent-text-bubble", containing: "フィードバック").waitForExistence(timeout: 5))
+        // 読んでいますは返事が届くと消えるので、ほかのものより先に見る
         XCTAssertTrue(element("reply-reading").waitForExistence(timeout: 10))
+        XCTAssertTrue(element("sent-text-bubble", containing: "フィードバック").exists)
         attachScreenshot(of: app, named: "読んでいます")
         let feedback = element("reply", containing: "今日は朝ごはんから")
         XCTAssertTrue(feedback.waitForExistence(timeout: 30))
