@@ -240,8 +240,8 @@ struct TimelineScreen: View {
     @State private var followsTimelineEnd = true
     /// 一番下に着き終えた、いちばん新しい日。日が足された描画では、まだ前の日のまま
     @State private var settledNewestDay: CalendarDay?
-    /// タイムラインの一番下が見えているか
-    @State private var showsTimelineEnd = true
+    /// タイムラインの一番下が、入力欄の上に見えているか
+    @State private var timelineEnd = TimelineEndPosition.shown
     /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
     @State private var replyFirstText = ReplyFirstTextWatch()
 
@@ -361,20 +361,32 @@ struct TimelineScreen: View {
                     }
                     settledNewestDay = newest
                 }
-                .onScrollGeometryChange(for: Bool.self) { geometry in
-                    geometry.visibleRect.maxY >= geometry.contentSize.height - 1
-                } action: { _, atEnd in
-                    showsTimelineEnd = atEnd
+                .onScrollGeometryChange(for: TimelineEndPosition.self) { geometry in
+                    // 見えている所（visibleRect）は、下の入力欄に隠れた分（contentInsets.bottom）まで含む
+                    TimelineEndPosition(
+                        visibleMaxY: geometry.visibleRect.maxY,
+                        hiddenByComposer: geometry.contentInsets.bottom,
+                        contentHeight: geometry.contentSize.height)
+                } action: { _, position in
+                    timelineEnd = position
                 }
-                .onScrollPhaseChange { _, phase in
+                .onScrollPhaseChange { oldPhase, phase in
                     if phase != .idle {
                         showsCameraNotice = false
                     }
-                    // 動かしているあいだは追わず、止まったときに一番下が見えていれば、また追う
+                    // 動かしているあいだは追わず、止まったときに一番下が入力欄の上か下にあれば、また追う
                     if phase == .interacting {
                         followsTimelineEnd = false
                     } else if phase == .idle {
-                        followsTimelineEnd = showsTimelineEnd
+                        followsTimelineEnd = timelineEnd.followsWhenSettled
+                        // 下端ちょうどにいないと .sizeChanges の .bottom が追わないので、使う人が入力欄の下に隠れた所で止めたら下端へ動かす（#469）。
+                        // アプリが動かして止まったとき（知らせのカードへ着いた、ここで下端へ動かした）は、着いた所に置く
+                        let releasedByUser = oldPhase == .interacting || oldPhase == .decelerating
+                        if releasedByUser, timelineEnd == .underComposer {
+                            withAnimation {
+                                proxy.scrollTo(contentId, anchor: .bottom)
+                            }
+                        }
                     }
                 }
                 .onChange(of: timeline.hasGrowingReply) { _, growing in
@@ -704,7 +716,7 @@ struct TimelineScreen: View {
     /// 題と1日の丸の帯で示す日。日の区切りは遅れて作られ、開いた直後に下端へ動いたあとの位置が届かないことがあるので（#442）、一番下にいるかはスクロールの位置から決める
     private func selectedDay(in timeline: Timeline) -> CalendarDay? {
         let newest = timeline.days.last?.day
-        return showsTimelineEnd ? newest : visibleDay ?? newest
+        return timelineEnd == .shown ? newest : visibleDay ?? newest
     }
 
     /// いちばん新しい日が画面に入っていればその日。遡っているときは、上端にかかっている日
