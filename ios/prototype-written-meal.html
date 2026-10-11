@@ -1,0 +1,526 @@
+<title>文章の食事の見せ方</title>
+<!--
+  PROTOTYPE（使い捨て）: #452「送った文章と、そこからできた食事のカードを1つにまとめるか」と
+  #453「食事を消したとき、『削除した食事』だけでは何を消したか分からない」を見比べる。
+  4つの案を、下の浮いた帯（‹ ›、キーボードの ← →）で切り替える。場面は右（狭い画面では上）の試作の枠で選ぶ。
+  SwiftUI ではなく HTML にしたのは、Linux のセッションでアプリを動かせず、開発者が iPhone のブラウザでそのまま見比べられるようにするため。
+  見た目は DESIGN.md のトークンと、今の SwiftUI（MealCardView・SentTextBubbleView・ReplyView）を写した。main には入れない。
+-->
+<style>
+/* 配置: iPhone の幅のタイムラインを1つ置き、横（狭い画面では上）に試作の操作の枠を置く。試作の部品は破線と等幅の文字でアプリと見分ける */
+:root {
+  --primary: #6155F5;
+  --on-primary: #FFFFFF;
+  --bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --own-card: color-mix(in srgb, #6155F5 10%, #FFFFFF);
+  --label: #000000;
+  --label-2: rgba(60, 60, 67, 0.6);
+  --label-3: rgba(60, 60, 67, 0.3);
+  --fill: #EFEFF0;
+  --separator: rgba(60, 60, 67, 0.29);
+  --error: #FF383C;
+  --sheet-dim: rgba(0, 0, 0, 0.35);
+  --flash: color-mix(in srgb, #6155F5 30%, transparent);
+  --proto-bg: #1F1D2B;
+  --proto-fg: #F4F3FA;
+  --proto-muted: #A9A6BD;
+  --proto-line: #8B86A8;
+  --page: #E4E3EA;
+  --font-app: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --font-proto: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #6D7CFF; --bg: #000000; --surface: #1C1C1E;
+    --own-card: color-mix(in srgb, #6D7CFF 10%, #1C1C1E);
+    --label: #FFFFFF; --label-2: rgba(235, 235, 245, 0.6); --label-3: rgba(235, 235, 245, 0.3);
+    --fill: #323236; --separator: rgba(84, 84, 88, 0.6); --error: #FF4245;
+    --sheet-dim: rgba(0, 0, 0, 0.6); --flash: color-mix(in srgb, #6D7CFF 40%, transparent);
+    --proto-bg: #EDECF5; --proto-fg: #1F1D2B; --proto-muted: #5A5670; --proto-line: #6E6A88;
+    --page: #121117; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --primary: #6D7CFF; --bg: #000000; --surface: #1C1C1E;
+  --own-card: color-mix(in srgb, #6D7CFF 10%, #1C1C1E);
+  --label: #FFFFFF; --label-2: rgba(235, 235, 245, 0.6); --label-3: rgba(235, 235, 245, 0.3);
+  --fill: #323236; --separator: rgba(84, 84, 88, 0.6); --error: #FF4245;
+  --sheet-dim: rgba(0, 0, 0, 0.6); --flash: color-mix(in srgb, #6D7CFF 40%, transparent);
+  --proto-bg: #EDECF5; --proto-fg: #1F1D2B; --proto-muted: #5A5670; --proto-line: #6E6A88;
+  --page: #121117; color-scheme: dark;
+}
+
+body { background: var(--page); color: var(--label); font-family: var(--font-app); }
+.wrap {
+  display: grid; gap: 20px; justify-content: center; align-items: start;
+  grid-template-columns: minmax(0, 390px);
+  padding-inline: 16px; padding-block: 16px 96px;
+}
+@media (min-width: 860px) {
+  .wrap { grid-template-columns: 390px minmax(0, 360px); }
+  .panel { order: 2; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+}
+
+/* ---------- 試作の枠 ---------- */
+.panel {
+  background: var(--proto-bg); color: var(--proto-fg); font-family: var(--font-proto);
+  border-radius: 14px; padding: 14px 16px; display: grid; gap: 12px; font-size: 12.5px; line-height: 1.55;
+  min-width: 0;
+}
+.panel h1 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--proto-muted); font-weight: 600; }
+.panel h2 { margin: 0; font-size: 15px; font-family: var(--font-app); text-wrap: balance; }
+.panel p { margin: 0; color: var(--proto-muted); }
+.panel label { display: grid; gap: 4px; }
+.panel .lbl { color: var(--proto-muted); letter-spacing: 0.04em; }
+.panel select, .panel button {
+  font: inherit; color: var(--proto-fg); background: transparent; border: 1px dashed var(--proto-line);
+  border-radius: 8px; padding: 7px 10px; min-height: 36px;
+}
+.panel select option { color: #000; background: #fff; }
+.panel button { cursor: pointer; text-align: left; }
+.panel .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.panel .check { display: flex; gap: 8px; align-items: center; }
+.panel details { border-top: 1px dashed var(--proto-line); padding-top: 8px; }
+.panel summary { cursor: pointer; color: var(--proto-muted); }
+.panel pre { margin: 8px 0 0; white-space: pre-wrap; word-break: break-all; font-size: 11px; max-height: 260px; overflow: auto; }
+.panel .points { margin: 0; padding-left: 1.2em; color: var(--proto-fg); display: grid; gap: 2px; }
+
+.switcher {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  display: flex; align-items: center; gap: 4px; padding: 4px;
+  background: var(--proto-bg); color: var(--proto-fg); font-family: var(--font-proto); font-size: 13px;
+  border-radius: 999px; border: 1px dashed var(--proto-line); box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  max-width: calc(100vw - 32px);
+}
+.switcher button {
+  font: inherit; color: inherit; background: transparent; border: 0; width: 40px; height: 40px;
+  border-radius: 999px; cursor: pointer; font-size: 18px;
+}
+.switcher button:hover { background: color-mix(in srgb, var(--proto-fg) 12%, transparent); }
+.switcher span { padding-inline: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* ---------- アプリの画面 ---------- */
+.phone {
+  background: var(--bg); border-radius: 30px; overflow: hidden; min-width: 0;
+  border: 1px solid var(--separator); display: flex; flex-direction: column;
+  font-size: 15px; line-height: 20px;
+}
+@media (max-width: 430px) { .phone { border-radius: 18px; } }
+.nav { text-align: center; font-weight: 600; font-size: 17px; line-height: 22px; padding: 14px 16px 10px; }
+.strip { display: flex; justify-content: space-between; padding: 0 16px 10px; border-bottom: 0.5px solid var(--separator); }
+.strip div { display: grid; justify-items: center; gap: 2px; font-size: 11px; line-height: 13px; color: var(--label-2); }
+.strip i { width: 28px; height: 28px; border-radius: 50%; border: 4.5px solid var(--fill); display: block; }
+.strip .today i { border-color: color-mix(in srgb, var(--primary) 55%, var(--fill)); }
+.timeline { padding: 16px; display: flex; flex-direction: column; min-height: 520px; }
+.day-head { text-align: center; font-size: 13px; line-height: 18px; color: var(--label-2); margin-bottom: 16px; }
+.group { display: flex; flex-direction: column; gap: 8px; }
+.group + .group { margin-top: 24px; }
+
+.right { display: flex; justify-content: flex-end; }
+.bubble {
+  background: var(--primary); color: var(--on-primary); font-size: 17px; line-height: 22px;
+  padding: 12px; border-radius: 18px; max-width: 78%; overflow-wrap: anywhere;
+}
+.own-card { background: var(--own-card); border-radius: 12px; width: 72%; overflow: hidden; }
+.own-card.wide { width: 78%; }
+.meal-main {
+  display: flex; align-items: center; gap: 8px; padding: 16px; width: 100%;
+  background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.meal-main.tight { padding: 12px 16px; }
+.meal-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.dish { font-weight: 600; overflow-wrap: anywhere; }
+.time { font-size: 12px; line-height: 16px; color: var(--label-2); font-variant-numeric: tabular-nums; }
+.nutri { font-size: 13px; line-height: 18px; color: var(--label-2); display: flex; flex-wrap: wrap; column-gap: 8px; font-variant-numeric: tabular-nums; }
+.nutri b { font-weight: 600; }
+.chev { color: var(--label-3); font-size: 12px; }
+.divider { height: 0.5px; background: var(--separator); }
+.divider.inset { margin-left: 16px; }
+.text-btn {
+  background: none; border: 0; font: inherit; font-weight: 600; color: var(--primary);
+  min-height: 44px; padding: 0 16px; text-align: left; cursor: pointer; width: 100%;
+}
+.photo { aspect-ratio: 4 / 3; max-width: 100%; background:
+  radial-gradient(circle at 35% 45%, #F3C9A4 0 22%, transparent 23%),
+  radial-gradient(circle at 68% 55%, #E9E2D0 0 20%, transparent 21%),
+  linear-gradient(135deg, #B9A58C, #8F7C66); }
+.weight { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; padding: 12px 16px; }
+.weight strong { font-size: 22px; line-height: 28px; font-weight: 400; font-variant-numeric: tabular-nums; }
+
+.reading { display: flex; gap: 8px; align-items: center; font-size: 13px; line-height: 18px; color: var(--label-2); }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--label-3); border-top-color: var(--label-2); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+.reply { width: 92%; display: grid; gap: 8px; }
+.reply p { margin: 0; font-size: 17px; line-height: 22px; }
+.ref {
+  display: flex; gap: 12px; align-items: center; padding: 8px 12px; min-height: 44px; border-radius: 12px;
+  background: var(--surface); border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%;
+}
+.ref.deleted { background: transparent; box-shadow: inset 0 0 0 0.5px var(--separator); cursor: default; color: var(--label-2); font-size: 13px; line-height: 18px; }
+.ref.deleted.jump { cursor: pointer; }
+.ref .meal-text { gap: 0; }
+.ref .sub { font-size: 12px; line-height: 16px; color: var(--label-2); overflow-wrap: anywhere; }
+
+/* 案 B: 文章を見出しにした1枚のカード */
+.quote { padding: 12px 16px 4px; font-size: 13px; line-height: 18px; color: var(--label-2); overflow-wrap: anywhere; }
+.quote .cap { display: block; font-size: 11px; line-height: 13px; margin-bottom: 2px; color: var(--label-2); }
+.gone-row { padding: 12px 16px; font-size: 13px; line-height: 18px; color: var(--label-2); display: grid; gap: 0; }
+/* 案 C: 吹き出しの下につないだ食事 */
+.joined { width: 78%; display: flex; flex-direction: column; }
+.joined .bubble { max-width: none; border-radius: 18px 18px 4px 4px; }
+.joined .tray { background: var(--own-card); border-radius: 4px 4px 18px 18px; margin-top: 2px; overflow: hidden; }
+.struck .dish { text-decoration: line-through; color: var(--label-2); font-weight: 400; }
+.side-btn { display: flex; justify-content: flex-end; }
+.side-btn .text-btn { width: auto; font-size: 15px; padding: 0 4px; }
+/* 案 D: 文章は添え書き、食事は写真の食事と同じカード */
+.note { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.note-text { max-width: 64%; font-size: 13px; line-height: 18px; color: var(--label-2); text-align: right; overflow-wrap: anywhere; }
+.more { width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--fill); color: var(--primary); font: inherit; font-weight: 700; cursor: pointer; line-height: 1; }
+.slim { width: 72%; border-radius: 12px; box-shadow: inset 0 0 0 0.5px var(--separator); padding: 10px 16px; font-size: 13px; line-height: 18px; color: var(--label-2); }
+
+.flash { animation: flash 1.4s ease-out; border-radius: 12px; }
+@keyframes flash { from { box-shadow: 0 0 0 6px var(--flash); background-color: var(--flash); } to { box-shadow: 0 0 0 6px transparent; } }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; outline: 2px solid var(--primary); } }
+
+.composer { padding: 10px 16px 12px; border-top: 0.5px solid var(--separator); display: grid; gap: 6px; background: var(--bg); }
+.composer .row { display: flex; gap: 12px; align-items: center; }
+.cbtn { width: 44px; height: 44px; border-radius: 50%; background: var(--fill); color: var(--primary); display: grid; place-items: center; font-size: 16px; flex: none; }
+.cbtn.main { background: var(--primary); color: var(--on-primary); }
+.field { flex: 1; min-width: 0; height: 36px; border-radius: 18px; background: var(--surface); color: var(--label-3); display: flex; align-items: center; padding-inline: 12px; font-size: 17px; }
+.composer small { text-align: center; color: var(--label-2); font-size: 12px; line-height: 16px; }
+
+.sheet-back { position: fixed; inset: 0; background: var(--sheet-dim); z-index: 40; display: flex; align-items: flex-end; justify-content: center; padding: 16px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
+.sheet { width: min(390px, 100%); display: grid; gap: 8px; font-family: var(--font-app); }
+.sheet .box { background: var(--surface); border-radius: 14px; overflow: hidden; display: grid; }
+.sheet .title { padding: 14px 16px; text-align: center; font-size: 13px; line-height: 18px; color: var(--label-2); border-bottom: 0.5px solid var(--separator); overflow-wrap: anywhere; }
+.sheet button { background: none; border: 0; font: inherit; font-size: 17px; min-height: 56px; color: var(--primary); cursor: pointer; }
+.sheet button + button { border-top: 0.5px solid var(--separator); }
+.sheet .destructive { color: var(--error); }
+.sheet .cancel { font-weight: 600; }
+
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.panel button:focus-visible, .panel select:focus-visible, .switcher button:focus-visible { outline-color: var(--proto-fg); }
+</style>
+
+<div class="wrap">
+  <aside class="panel" aria-label="試作の操作">
+    <h1>Prototype · #452 #453</h1>
+    <h2 id="proto-variant-name"></h2>
+    <p id="proto-variant-desc"></p>
+    <ul class="points" id="proto-variant-points"></ul>
+    <label><span class="lbl">場面</span>
+      <select id="proto-scenario"></select>
+    </label>
+    <div class="row" id="proto-actions"></div>
+    <label><span class="lbl">返事の下の「削除した食事」に添えるもの（#453）</span>
+      <select id="proto-hint">
+        <option value="plain">なし（今の形）</option>
+        <option value="time">時刻</option>
+        <option value="name">料理の名前と時刻</option>
+        <option value="text">元の文章</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" id="proto-jump"> <span>返事の下の「削除した食事」を押すと、元の場所へ戻る</span></label>
+    <p>食事のカードや行を押すと、食事の画面の代わりに「食事を削除」を出します。消すと、両方の場所がどう変わるかを見られます。</p>
+    <details>
+      <summary>今の状態</summary>
+      <pre id="proto-state"></pre>
+    </details>
+  </aside>
+
+  <main class="phone" aria-label="タイムライン（試作）">
+    <div class="nav">10月11日（土）</div>
+    <div class="strip" aria-hidden="true">
+      <div><i></i>日</div><div><i></i>月</div><div><i></i>火</div><div><i></i>水</div><div><i></i>木</div><div><i></i>金</div><div class="today"><i></i>土</div>
+    </div>
+    <div class="timeline" id="timeline"></div>
+    <div class="composer" aria-hidden="true">
+      <div class="row"><span class="cbtn main">●</span><span class="cbtn">▢</span><span class="cbtn">⚖︎</span><span class="field">書く</span></div>
+      <small>AI が読んで返事をします</small>
+    </div>
+  </main>
+</div>
+
+<nav class="switcher" aria-label="案の切り替え">
+  <button type="button" id="proto-prev" aria-label="前の案">‹</button>
+  <span id="proto-label"></span>
+  <button type="button" id="proto-next" aria-label="次の案">›</button>
+</nav>
+
+<div id="sheet-root"></div>
+
+<script>
+const VARIANTS = {
+  A: {
+    name: '今の形',
+    desc: '吹き出しの下に、文章からできた食事のカードを詰めて並べる。比べるための基準。',
+    points: ['食事が複数なら、カードも複数（どれにも「会話として送り直す」）', '消すとカードは跡を残さず消える', '返事の下は「削除した食事」になる'],
+  },
+  B: {
+    name: '吹き出しがカードになる',
+    desc: '食事ができたら、吹き出しを1枚の自分の記録のカードに変える。送った文章はカードの見出しに小さく残す。',
+    points: ['食事が複数なら、1枚のカードの中に行で並べる', '「会話として送り直す」はカードの下に1つ', '消した食事は、その行が「削除した食事」と時刻になる'],
+  },
+  C: {
+    name: '吹き出しに食事をつなぐ',
+    desc: '吹き出しはそのまま残し、すぐ下に食事の行をつないで1つのかたまりにする。',
+    points: ['食事が複数なら、つないだ部分に行で並べる', '「会話として送り直す」はかたまりの外の右下', '消した食事は、名前に取り消し線を引いて残す'],
+  },
+  D: {
+    name: '食事のカードだけ',
+    desc: '吹き出しを出さず、写真の食事と同じカードにする。送った文章はカードの上に添え書きで残す。',
+    points: ['食事が複数なら、添え書き1つの下にカードを並べる', '「会話として送り直す」は添え書きの … の中', '消した食事は、細い枠「削除した食事・名前」になる'],
+  },
+};
+const KEYS = Object.keys(VARIANTS);
+
+const MEAL = {
+  apple: { name: 'りんご 1個', time: '10:12', kcal: 52, p: '0.3 g', f: '0.2 g', c: '14 g' },
+  toast: { name: 'トースト 1枚、コーヒー（ブラック）', time: '7:40', kcal: 192, p: '6.2 g', f: '3.4 g', c: '33 g' },
+  ramen: { name: '醤油ラーメン 1杯', time: '12:30', kcal: 480, p: '20 g', f: '14 g', c: '65 g' },
+};
+const meal = (id, deleted = false) => ({ id, ...MEAL[id], deleted });
+const weight = () => ({ type: 'weight', id: 'w', time: '7:05', value: '72.4 kg' });
+const photoMeal = () => ({ type: 'photo', id: 'p', name: '焼き鮭定食', time: '8:10', kcal: 610, p: '34 g', f: '18 g', c: '78 g' });
+const textApple = (deleted = false) => ({
+  type: 'text', id: 't1', body: 'りんごを1つ食べた', phase: 'meals', meals: [meal('apple', deleted)],
+  conversationReply: 'りんごは手軽でいいですね。食事の記録にはせず、会話として受け取りました。',
+});
+const textMulti = (ramenDeleted = false) => ({
+  type: 'text', id: 't1', body: '朝はトーストとコーヒー、昼はラーメンを食べた', phase: 'meals',
+  meals: [meal('toast'), meal('ramen', ramenDeleted)],
+  conversationReply: '食事の記録にはせず、会話として受け取りました。',
+});
+const askApple = () => ({
+  type: 'text', id: 't2', body: 'さっきのりんごの記録を直して', phase: 'conversation', meals: [],
+  reply: { body: 'りんごの記録はこちらです。量と時刻は、押すと直せます。', refs: ['apple'] },
+});
+
+const SCENARIOS = {
+  one: { name: '食事が1つ', build: () => [weight(), photoMeal(), textApple()] },
+  dishes: { name: '料理が2つの食事が1つ', build: () => [weight(), {
+    type: 'text', id: 't1', body: '朝にトーストとコーヒー', phase: 'meals', meals: [meal('toast')],
+    conversationReply: '食事の記録にはせず、会話として受け取りました。' }] },
+  multi: { name: '1つの文章から食事が2つ', build: () => [weight(), textMulti()] },
+  reading: { name: '読んでいる途中 → 食事ができる', build: () => [weight(), photoMeal(), { ...textApple(), phase: 'reading' }] },
+  refer: { name: '返事が食事を指す（消す前）', build: () => [weight(), photoMeal(), textApple(), askApple()] },
+  deleted: { name: '指した食事を消したあと（#443 の手順）', build: () => [weight(), photoMeal(), textApple(true), askApple()] },
+  multiDeleted: { name: '2つのうち1つを消したあと', build: () => [weight(), textMulti(true), {
+    type: 'text', id: 't2', body: '昼のラーメンの量を直したい', phase: 'conversation', meals: [],
+    reply: { body: 'ラーメンの記録はこちらです。押すと量を直せます。', refs: ['ramen'] } }] },
+};
+
+const store = {
+  get(k) { try { return localStorage.getItem('proto-written-meal:' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('proto-written-meal:' + k, v); } catch {} },
+};
+
+let variant = (location.hash.slice(1).toUpperCase());
+if (!KEYS.includes(variant)) variant = store.get('variant') || 'A';
+if (!KEYS.includes(variant)) variant = 'A';
+let scenarioKey = store.get('scenario');
+if (!SCENARIOS[scenarioKey]) scenarioKey = 'refer';
+let hint = store.get('hint') || 'plain';
+let jump = store.get('jump') === '1';
+let items = SCENARIOS[scenarioKey].build();
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const allMeals = () => items.flatMap((it) => (it.meals || []).map((m) => ({ ...m, textId: it.id, textBody: it.body })));
+const findMeal = (id) => allMeals().find((m) => m.id === id);
+
+// ---------- 部品 ----------
+function nutri(m) {
+  return `<div class="nutri"><b>${m.kcal} kcal</b><span>P ${m.p}</span><span>F ${m.f}</span><span>C ${m.c}</span></div>`;
+}
+function mealMain(m, { tight = false, withNutri = true } = {}) {
+  return `<button type="button" class="meal-main${tight ? ' tight' : ''}" data-act="meal" data-id="${m.id}">
+    <span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">${m.time}</span>${withNutri ? nutri(m) : ''}</span>
+    <span class="chev" aria-hidden="true">›</span></button>`;
+}
+const bubble = (t) => `<div class="right"><div class="bubble">${esc(t.body)}</div></div>`;
+const reading = () => `<div class="reading"><span class="spinner" aria-hidden="true"></span>読んでいます…</div>`;
+const resendBtn = (t) => `<button type="button" class="text-btn" data-act="resend" data-id="${t.id}">会話として送り直す</button>`;
+
+function refRow(id) {
+  const m = findAnyMeal(id);
+  if (!m) return '';
+  if (!m.deleted) {
+    return `<button type="button" class="ref" data-act="meal" data-id="${m.id}">
+      <span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">${m.time}</span></span>
+      <span class="chev" aria-hidden="true">›</span></button>`;
+  }
+  const sub = {
+    plain: '',
+    time: `<span class="sub">${m.time}</span>`,
+    name: `<span class="sub">${esc(m.name)}・${m.time}</span>`,
+    text: `<span class="sub">「${esc(m.textBody)}」から</span>`,
+  }[hint];
+  const tag = jump ? 'button type="button"' : 'div';
+  const close = jump ? 'button' : 'div';
+  return `<${tag} class="ref deleted${jump ? ' jump' : ''}" ${jump ? `data-act="jump" data-id="${m.id}"` : ''}>
+    <span class="meal-text"><span>削除した食事</span>${sub}</span>${jump ? '<span class="chev" aria-hidden="true">›</span>' : ''}</${close}>`;
+}
+function reply(r) {
+  return `<div class="reply"><p>${esc(r.body)}</p>${r.refs.map(refRow).join('')}</div>`;
+}
+
+// ---------- 案ごとの、送った文章とできた食事 ----------
+const RENDER = {
+  A(t) {
+    // 今の形: 食事ごとに別のカード。消した食事は並びから消える
+    const live = t.meals.filter((m) => !m.deleted);
+    return [bubble(t), ...live.map((m) => `<div class="right"><div class="own-card">${mealMain(m)}<div class="divider"></div>${resendBtn(t)}</div></div>`)]
+      .join('') + (t.meals.length && !live.length ? `<span data-trace="${t.meals.map((m) => m.id).join(' ')}"></span>` : '');
+  },
+  B(t) {
+    const rows = t.meals.map((m, i) => (i ? '<div class="divider inset"></div>' : '') + (m.deleted
+      ? `<div class="gone-row" data-trace="${m.id}"><span>削除した食事</span><span class="time">${m.time}</span></div>`
+      : mealMain(m, { tight: true }))).join('');
+    return `<div class="right"><div class="own-card wide">
+      <div class="quote"><span class="cap">書いた記録</span>「${esc(t.body)}」</div>
+      ${rows}<div class="divider"></div>${resendBtn(t)}</div></div>`;
+  },
+  C(t) {
+    const rows = t.meals.map((m, i) => (i ? '<div class="divider inset"></div>' : '') + (m.deleted
+      ? `<div class="meal-main tight struck" data-trace="${m.id}"><span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">削除しました・${m.time}</span></span></div>`
+      : mealMain(m, { tight: true }))).join('');
+    return `<div class="right"><div class="joined"><div class="bubble">${esc(t.body)}</div><div class="tray">${rows}</div></div></div>
+      <div class="side-btn">${resendBtn(t)}</div>`;
+  },
+  D(t) {
+    const cards = t.meals.map((m) => (m.deleted
+      ? `<div class="right"><div class="slim" data-trace="${m.id}">削除した食事・${esc(m.name)}</div></div>`
+      : `<div class="right"><div class="own-card">${mealMain(m)}</div></div>`)).join('');
+    return `<div class="note"><span class="note-text">「${esc(t.body)}」から</span>
+      <button type="button" class="more" data-act="more" data-id="${t.id}" aria-label="送った文章の操作">…</button></div>${cards}`;
+  },
+};
+
+function renderItem(it) {
+  if (it.type === 'weight') {
+    return `<div class="group"><div class="right"><div class="own-card"><div class="weight"><strong>${it.value}</strong><span class="time">${it.time}</span></div></div></div></div>`;
+  }
+  if (it.type === 'photo') {
+    return `<div class="group"><div class="right"><div class="own-card"><div class="photo"></div>${mealMain(it)}</div></div></div>`;
+  }
+  let body;
+  if (it.phase === 'reading') body = bubble(it) + reading();
+  else if (it.phase === 'conversation') body = bubble(it) + (it.reply ? reply(it.reply) : '');
+  else body = RENDER[variant](it);
+  return `<div class="group" data-text="${it.id}">${body}</div>`;
+}
+
+function render() {
+  const v = VARIANTS[variant];
+  document.getElementById('timeline').innerHTML = `<div class="day-head">10月11日（土）</div>` + items.map(renderItem).join('');
+  document.getElementById('proto-label').textContent = `${variant}（${v.name}）`;
+  document.getElementById('proto-variant-name').textContent = `${variant}. ${v.name}`;
+  document.getElementById('proto-variant-desc').textContent = v.desc;
+  document.getElementById('proto-variant-points').innerHTML = v.points.map((p) => `<li>${esc(p)}</li>`).join('');
+  const actions = [];
+  items.filter((it) => it.phase === 'reading').forEach((it) => actions.push(`<button type="button" data-proto="finish" data-id="${it.id}">→ 読み終えて、食事ができる</button>`));
+  actions.push('<button type="button" data-proto="reset">場面を最初から</button>');
+  document.getElementById('proto-actions').innerHTML = actions.join('');
+  document.getElementById('proto-state').textContent = JSON.stringify({
+    variant, scenario: scenarioKey, replyDeletedHint: hint, jumpToOrigin: jump,
+    items: items.map((it) => it.type === 'text'
+      ? { id: it.id, body: it.body, phase: it.phase, meals: it.meals.map((m) => `${m.name}${m.deleted ? '（削除）' : ''}`), reply: it.reply ? { body: it.reply.body, refs: it.reply.refs } : undefined }
+      : { id: it.id, type: it.type }),
+  }, null, 2);
+  if (location.hash.slice(1) !== variant) history.replaceState(null, '', '#' + variant);
+}
+
+// ---------- 操作 ----------
+function sheet({ title, actions }) {
+  const root = document.getElementById('sheet-root');
+  root.innerHTML = `<div class="sheet-back" data-sheet="close"><div class="sheet" role="dialog" aria-modal="true">
+    <div class="box">${title ? `<div class="title">${esc(title)}</div>` : ''}${actions.map((a, i) => `<button type="button" class="${a.destructive ? 'destructive' : ''}" data-sheet="${i}">${esc(a.label)}</button>`).join('')}</div>
+    <div class="box"><button type="button" class="cancel" data-sheet="close">キャンセル</button></div></div></div>`;
+  root.querySelector('.sheet .box button')?.focus();
+  root.onclick = (e) => {
+    const b = e.target.closest('[data-sheet]');
+    if (!b || (b.classList.contains('sheet-back') && e.target !== b)) return;
+    root.innerHTML = '';
+    if (b.dataset.sheet !== 'close') actions[Number(b.dataset.sheet)].run();
+  };
+}
+function deleteMeal(id) {
+  items.forEach((it) => (it.meals || []).forEach((m) => { if (m.id === id) m.deleted = true; }));
+  render();
+}
+function resend(textId) {
+  const t = items.find((it) => it.id === textId);
+  // 会話として送り直すと、その文章の食事はすべて消える（今の仕様）。指していた返事の行は「削除した食事」になる
+  t.meals.forEach((m) => { m.deleted = true; });
+  const gone = t.meals;
+  t.phase = 'conversation';
+  t.reply = { body: t.conversationReply, refs: [] };
+  t.meals = [];
+  t.goneMeals = gone;
+  render();
+}
+const findAnyMeal = (id) => findMeal(id) || items.flatMap((it) => (it.goneMeals || []).map((m) => ({ ...m, textId: it.id, textBody: it.body }))).find((m) => m.id === id);
+
+document.getElementById('timeline').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const id = b.dataset.id;
+  if (b.dataset.act === 'meal') {
+    if (id === 'p') { sheet({ title: '写真の食事（この試作では消せません）', actions: [] }); return; }
+    const m = findMeal(id);
+    sheet({ title: `${m.name}・${m.time}（試作では食事の画面の代わり）`, actions: [{ label: '食事を削除', destructive: true, run: () => deleteMeal(id) }] });
+  } else if (b.dataset.act === 'resend') {
+    resend(id);
+  } else if (b.dataset.act === 'more') {
+    const t = items.find((it) => it.id === id);
+    sheet({ title: `「${t.body}」`, actions: [{ label: '会話として送り直す', run: () => resend(id) }] });
+  } else if (b.dataset.act === 'jump') {
+    const m = findAnyMeal(id);
+    const target = document.querySelector(`[data-trace~="${id}"]`) || document.querySelector(`[data-text="${m?.textId || 't1'}"] .bubble`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
+  }
+});
+
+const scenarioSelect = document.getElementById('proto-scenario');
+scenarioSelect.innerHTML = Object.entries(SCENARIOS).map(([k, s]) => `<option value="${k}">${esc(s.name)}</option>`).join('');
+scenarioSelect.value = scenarioKey;
+scenarioSelect.addEventListener('change', () => { scenarioKey = scenarioSelect.value; store.set('scenario', scenarioKey); items = SCENARIOS[scenarioKey].build(); render(); });
+const hintSelect = document.getElementById('proto-hint');
+hintSelect.value = hint;
+hintSelect.addEventListener('change', () => { hint = hintSelect.value; store.set('hint', hint); render(); });
+const jumpBox = document.getElementById('proto-jump');
+jumpBox.checked = jump;
+jumpBox.addEventListener('change', () => { jump = jumpBox.checked; store.set('jump', jump ? '1' : '0'); render(); });
+document.getElementById('proto-actions').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-proto]');
+  if (!b) return;
+  if (b.dataset.proto === 'reset') items = SCENARIOS[scenarioKey].build();
+  if (b.dataset.proto === 'finish') items.find((it) => it.id === b.dataset.id).phase = 'meals';
+  render();
+});
+
+function step(d) {
+  variant = KEYS[(KEYS.indexOf(variant) + d + KEYS.length) % KEYS.length];
+  store.set('variant', variant);
+  render();
+}
+document.getElementById('proto-prev').addEventListener('click', () => step(-1));
+document.getElementById('proto-next').addEventListener('click', () => step(1));
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (document.getElementById('sheet-root').children.length) { if (e.key === 'Escape') document.getElementById('sheet-root').innerHTML = ''; return; }
+  if (e.key === 'ArrowLeft') step(-1);
+  if (e.key === 'ArrowRight') step(1);
+});
+window.addEventListener('hashchange', () => {
+  const k = location.hash.slice(1).toUpperCase();
+  if (KEYS.includes(k) && k !== variant) { variant = k; render(); }
+});
+render();
+</script>
