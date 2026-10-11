@@ -1,13 +1,15 @@
 <title>話し手が変わるところの間</title>
 <!--
   PROTOTYPE（捨てる前提）。「会話で、話し手が変わるところの間が狭い」（gn-t-k/nu-tori#449）の試作。main には入れない。
-  A 今の形（発言が続くと話し手によらず 8）/ B 変わるところだけ 16 / C 変わるところは 24、同じ話し手が続くところだけ 8。
-  下のバーの ‹ › か左右の矢印キーで案を切り替える。#a #b #c で開ける。「3つ並べる」で横に並べる。
-  間の決め方は main の Timeline.Day.spacing(before:) と TimelineScreen.gap(before:in:) を写した。見た目は SentTextBubbleView・ReplyView・
-  WeightRecordRow・MealCardView の数値を写した（pt を px に当てる）。アプリの中の同じ試作は ConversationGapPrototype.swift。
+  2回目: 見た目を #452 の決定（C5。文章からできた食事は吹き出しの下に行でつなぐ。自分の記録の地は Primary 22%）のあとの形にし、
+  記録と発言が隣り合うところの間を比べる。
+    C: 話し手が変わるところは 24、同じ話し手が続くところは 8。記録と発言が隣り合うところは 24、記録どうしは 8
+    D: 話し手だけで決める。自分（記録と送った文章）と AI が入れ替わるところは 24、ほかは 8
+  1回目の A（今の形・8）/ B（16）/ C（24）は fc5bcf1 にある。
+  下のバーの ‹ › か左右の矢印キーで案を切り替える。#c #d で開ける。「並べる」で横に並べる。
+  C5 の見た目は claude/affectionate-lovelace-swcmlb の ios/prototype-written-meal.html（93de4bd）から写した。
 -->
 <style>
-/* 見本を並べるページの上に、iPhone の画面を 1:1（pt = px）で描く */
 :root{
   --bg:#f2f2f7;            /* systemGroupedBackground */
   --surface:#ffffff;       /* secondarySystemGroupedBackground */
@@ -16,7 +18,7 @@
   --ink3:rgb(60 60 67 / .3);
   --sep:rgb(60 60 67 / .29);
   --fill:rgb(120 120 128 / .12);
-  --tint:#6155f5;          /* アクセント */
+  --tint:#6155f5;          /* Primary */
   --on-tint:#ffffff;
   --track:#e5e5ea;
   --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
@@ -40,6 +42,7 @@
   --gap-mark:rgb(255 66 69 / .24); --gap-ink:#ff8a8c;
   color-scheme:dark;
 }
+:root{ --own:color-mix(in srgb,var(--tint) 22%,var(--surface)); } /* 自分の記録の地（#452 で 22% にそろえた） */
 *{box-sizing:border-box}
 body{margin:0;padding-block:16px 96px;padding-inline:16px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
 button,input{font:inherit;color:inherit}
@@ -47,7 +50,10 @@ button{background:none;border:0;padding:0;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
 .intro{max-width:1240px;margin:0 auto 14px;display:flex;flex-direction:column;gap:6px}
 .intro h1{font-size:20px;margin:0;text-wrap:balance}
-.intro p{margin:0;color:var(--page-muted);max-width:720px}
+.intro p{margin:0;color:var(--page-muted);max-width:760px}
+.intro dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;max-width:760px}
+.intro dt{font-weight:700}
+.intro dd{margin:0;color:var(--page-muted)}
 .ctl{max-width:1240px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
 .ctl label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
 .stage{max-width:1240px;margin:0 auto;display:grid;gap:20px;justify-content:center;grid-template-columns:minmax(0,390px)}
@@ -74,22 +80,32 @@ figcaption b{color:var(--page-ink);font-size:15px;margin-right:6px}
 .composer .s{width:36px;height:36px;border-radius:50%;background:var(--fill)}
 
 /* 項目。間は JS が margin-top で置く */
-.item{position:relative}
+.item{position:relative;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.item.ai{align-items:flex-start}
 .gap{position:absolute;left:-16px;right:-16px;bottom:100%;display:none;align-items:center;justify-content:flex-end;padding-right:4px;background:var(--gap-mark);color:var(--gap-ink);font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
-.show-gaps .gap.change{display:flex}
-.wrow{align-self:flex-end;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:16px;border-radius:12px;background:color-mix(in srgb,var(--tint) 10%,var(--surface));font-size:15px;font-variant-numeric:tabular-nums}
+.show-gaps .gap.wide{display:flex}
+.own{background:var(--own);border-radius:12px;overflow:hidden}
+.wrow{display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:16px;font-size:15px;font-variant-numeric:tabular-nums}
 .wrow small{font-size:12px;color:var(--ink2)}
-.me{align-self:flex-end;max-width:78%;background:var(--tint);color:var(--on-tint);border-radius:18px;padding:12px;white-space:pre-wrap}
-.reply{align-self:flex-start;max-width:92%;display:flex;flex-direction:column;gap:8px}
-.reply p{margin:0}
-.reply .li{display:flex;gap:8px}
-.meal{align-self:flex-end;width:78%;border-radius:12px;background:color-mix(in srgb,var(--tint) 10%,var(--surface));padding:16px;display:flex;align-items:center;gap:8px}
+.photo{aspect-ratio:4/3;max-width:100%;background:radial-gradient(circle at 35% 45%,#f3c9a4 0 22%,transparent 23%),radial-gradient(circle at 68% 55%,#e9e2d0 0 20%,transparent 21%),linear-gradient(135deg,#b9a58c,#8f7c66)}
+.meal-card{width:78%}
+.meal{display:flex;align-items:center;gap:8px;padding:16px}
+.meal.tight{padding:12px 16px}
 .meal .b{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
 .meal .n{font-size:15px;font-weight:600}
 .meal .c{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
 .meal .k{font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;display:flex;flex-wrap:wrap;gap:0 8px}
 .meal .k b{font-weight:600}
 .meal .chev{color:var(--ink3);font-size:12px}
+.me{max-width:78%;background:var(--tint);color:var(--on-tint);border-radius:18px;padding:12px;white-space:pre-wrap}
+/* C5: 吹き出しの下に食事の行をすき間なくつなぎ、外側の角丸1つのかたまりにする */
+.joined{width:78%;border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.joined .me{max-width:none;border-radius:0}
+.joined .tray{background:var(--own)}
+.resend{color:var(--tint);font-size:15px;font-weight:600;min-height:44px;padding:0 4px;margin-top:-8px}
+.reply{max-width:92%;display:flex;flex-direction:column;gap:8px}
+.reply p{margin:0}
+.reply .li{display:flex;gap:8px}
 
 /* 切り替えのバー（試作の道具。設計の一部ではない） */
 .switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
@@ -100,12 +116,16 @@ figcaption b{color:var(--page-ink);font-size:15px;margin-right:6px}
 </style>
 
 <div class="intro">
-  <h1>話し手が変わるところの間（#449）</h1>
-  <p>自分の吹き出しのすぐ下に返事（吹き出しの無い地の文）が続くと、前の吹き出しの続きに見える。話し手が変わるところの間をいくつにすると分かれて見えるかを比べる。画面は iPhone の幅（390 pt）を 1:1 で描いた。</p>
+  <h1>記録と発言のあいだの間（#449）</h1>
+  <p>話し手が変わるところは 24 にすると決めた（1回目の C）。残る問いは、体重や食事のカード（自分の記録）と発言が隣り合うところを 24 にするか 8 にするか。見た目は #452 の決定のあと（文章からできた食事は吹き出しの下につなぐ、自分の記録の地は 22%）。iPhone の幅（390 pt）を 1:1 で描いた。</p>
+  <dl>
+    <dt>C</dt><dd>話し手が変わるところと、記録 ⇄ 発言は 24。同じ話し手の発言が続くところと、記録どうしは 8</dd>
+    <dt>D</dt><dd>話し手だけで決める。自分（記録と送った文章）と AI が入れ替わるところだけ 24、ほかは 8</dd>
+  </dl>
 </div>
 <div class="ctl">
-  <label><input type="checkbox" id="all"> 3つ並べる</label>
-  <label><input type="checkbox" id="marks"> 話し手が変わる間に印を付ける</label>
+  <label><input type="checkbox" id="all"> 並べる</label>
+  <label><input type="checkbox" id="marks"> 24 の間に印を付ける</label>
 </div>
 <div class="stage" id="stage"></div>
 <div class="switcher" role="group" aria-label="案の切り替え">
@@ -115,57 +135,43 @@ figcaption b{color:var(--page-ink);font-size:15px;margin-right:6px}
 </div>
 
 <script>
-// ── 間の決め方（main の Timeline.Day.spacing(before:) を写し、案ごとに話し手が変わるところだけ変える） ──
+// ── 間の決め方 ──
+// 項目は、話し手（me / ai）と、記録か発言か（record）を持つ
 const VARIANTS = [
-  {key:'a', label:'A', name:'今の形・8', change:8},
-  {key:'b', label:'B', name:'変わるところ 16', change:16},
-  {key:'c', label:'C', name:'変わるところ 24', change:24},
+  {key:'c', label:'C', name:'記録 ⇄ 発言も 24', gap(p, it){
+    if (p.record && it.record) return 8;
+    if (p.record !== it.record) return 24;
+    return p.who === it.who ? 8 : 24;
+  }},
+  {key:'d', label:'D', name:'話し手だけで決める', gap(p, it){
+    return p.who === it.who ? 8 : 24;
+  }},
 ];
-const isUtterance = it => it.kind === 'me' || it.kind === 'reply';
-const speaker = it => it.kind === 'me' ? 'me' : it.kind === 'reply' ? 'ai' : null;
-function spacing(items, i){
-  const it = items[i], prev = items[i-1];
-  if (isUtterance(it)) return prev && isUtterance(prev) ? 'close' : 'apart';
-  if (it.kind === 'meal' && prev && prev.sentText === it.sentText) return 'close';
-  return prev && isUtterance(prev) ? 'apart' : 'close';
-}
-function gap(items, i, v){
-  if (i === 0) return {px:8, change:false};
-  if (spacing(items, i) === 'apart') return {px:24, change:false};
-  const s = speaker(items[i]), p = speaker(items[i-1]);
-  const change = s && p && s !== p;
-  return {px: change ? v.change : 8, change: !!change};
-}
 
-// ── 場面: 今日 7:12 に体重を記録し、昼に会話を3往復した。2つめの文章は食事（親子丼）になり、返事は無い ──
+// ── 場面: 今日。朝に体重と写真の食事、昼に会話と文章の食事、夜に写真の食事のあと質問 ──
+const meal = (name, time, kcal, p, f, c, tight) =>
+  `<div class="meal${tight?' tight':''}"><div class="b"><span class="n">${name}</span><span class="c">${time}</span>`
+  + `<span class="k"><b>${kcal} kcal</b><span>P ${p}</span><span>F ${f}</span><span>C ${c}</span></span></div><span class="chev">›</span></div>`;
 const ITEMS = [
-  {kind:'weight'},
-  {kind:'me', sentText:1, text:'ここまでの食事のフィードバックをください。'},
-  {kind:'reply', html:'<p>朝ごはんで <b>たんぱく質</b> がとれています。</p><div class="li"><span>•</span><span>昼は野菜を足す</span></div><div class="li"><span>•</span><span>夜は軽めに</span></div>'},
-  {kind:'me', sentText:2, text:'昼は親子丼'},
-  {kind:'meal', sentText:2},
-  {kind:'me', sentText:3, text:'↑は3人で分けて食べた'},
-  {kind:'reply', html:'<p>3人で分けたなら、1人分は3分の1ほどですね。量を直しておくと、今日の合計に合います。</p>'},
-  {kind:'me', sentText:4, text:'ありがとう'},
-  {kind:'reply', html:'<p>どういたしまして。夜ごはんも送ってください。</p>'},
+  {who:'me', record:true, html:'<div class="own"><div class="wrow"><span>7:12 72.4 kg</span><small>手で記録</small></div></div>'},
+  {who:'me', record:true, html:`<div class="own meal-card"><div class="photo"></div>${meal('トースト、目玉焼き','8:05',412,'18.2','17.9','42.6')}</div>`},
+  {who:'me', record:false, html:'<div class="me">ここまでの食事のフィードバックをください。</div>'},
+  {who:'ai', record:false, html:'<div class="reply"><p>朝ごはんで <b>たんぱく質</b> がとれています。</p><div class="li"><span>•</span><span>昼は野菜を足す</span></div><div class="li"><span>•</span><span>夜は軽めに</span></div></div>'},
+  {who:'me', record:false, html:`<div class="joined"><div class="me">昼は親子丼</div><div class="tray">${meal('親子丼','12:40',346,'19.1','14.5','37.1',true)}</div></div><button class="resend">会話として送り直す</button>`},
+  {who:'me', record:false, html:'<div class="me">↑は3人で分けて食べた</div>'},
+  {who:'ai', record:false, html:'<div class="reply"><p>3人で分けたなら、1人分は3分の1ほどですね。量を直しておくと、今日の合計に合います。</p></div>'},
+  {who:'me', record:true, html:`<div class="own meal-card"><div class="photo"></div>${meal('鮭の塩焼き定食','19:10',598,'32.4','15.8','78.0')}</div>`},
+  {who:'me', record:false, html:'<div class="me">今日はこれで足りてる？</div>'},
+  {who:'ai', record:false, html:'<div class="reply"><p>たんぱく質は目安に届いています。脂質は少し少なめなので、明日の朝にナッツを足すとちょうどよくなります。</p></div>'},
 ];
 
-function itemHTML(it){
-  switch (it.kind){
-    case 'weight': return '<div class="wrow"><span>7:12 72.4 kg</span><small>手で記録</small></div>';
-    case 'me': return `<div class="me">${it.text}</div>`;
-    case 'reply': return `<div class="reply">${it.html}</div>`;
-    case 'meal': return '<div class="meal"><div class="b"><span class="n">親子丼</span><span class="c">12:40</span><span class="k"><b>346 kcal</b><span>P 19.1</span><span>F 14.5</span><span>C 37.1</span></span></div><span class="chev">›</span></div>';
-  }
-}
 function phoneHTML(v){
   const days = ['日','月','火','水','木','金','土'];
   const band = days.map((d,i)=>`<span class="d${i===0?' sel':''}"><i></i>${d}</span>`).join('');
   const rows = ITEMS.map((it,i)=>{
-    const g = gap(ITEMS, i, v);
-    const align = it.kind === 'reply' ? 'flex-start' : 'flex-end';
-    return `<div class="item" style="margin-top:${g.px}px;align-self:stretch;display:flex;flex-direction:column;align-items:${align}">`
-      + `<span class="gap${g.change?' change':''}" style="height:${g.px}px">${g.px}</span>${itemHTML(it)}</div>`;
+    const px = i === 0 ? 8 : v.gap(ITEMS[i-1], it);
+    return `<div class="item${it.who==='ai'?' ai':''}" style="margin-top:${px}px">`
+      + `<span class="gap${px===24?' wide':''}" style="height:${px}px">${px}</span>${it.html}</div>`;
   }).join('');
   return `<div class="phone"><div class="status"></div><div class="nav"><span class="t">今日</span><span class="r"></span></div>`
     + `<div class="band">${band}</div><div class="tl"><div class="dayhd">今日</div>${rows}</div>`
@@ -194,7 +200,7 @@ document.getElementById('next').onclick = () => go(1);
 allBox.onchange = render;
 marksBox.onchange = render;
 addEventListener('keydown', e => {
-  if (e.target.closest && e.target.closest('input,textarea,[contenteditable]') && e.target.type !== 'checkbox') return;
+  if (e.target.closest && e.target.closest('textarea,[contenteditable]')) return;
   if (e.key === 'ArrowLeft') go(-1);
   if (e.key === 'ArrowRight') go(1);
 });
