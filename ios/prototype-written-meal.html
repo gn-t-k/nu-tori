@@ -189,7 +189,8 @@ body { background: var(--page); color: var(--label); font-family: var(--font-app
 /* C5: 下の地を濃くして、すき間なく1つの角丸に */
 .joined.close { border-radius: 18px; overflow: hidden; }
 .joined.close .bubble { border-radius: 0; }
-.joined.close .tray { margin-top: 0; border-radius: 0; background: color-mix(in srgb, var(--primary) 22%, var(--surface)); }
+.joined.close .tray { margin-top: 0; border-radius: 0; background: var(--own-card); }
+.only-tray .joined.close .tray { background: color-mix(in srgb, var(--primary) 22%, var(--surface)); }
 .struck .dish { text-decoration: line-through; color: var(--label-2); font-weight: 400; }
 .side-btn { display: flex; justify-content: flex-end; }
 .side-btn .text-btn { width: auto; font-size: 15px; padding: 0 4px; }
@@ -274,33 +275,28 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 const VARIANTS = {
   A: {
     name: '今の形',
-    desc: '吹き出しの下に、文章からできた食事のカードを詰めて並べる。比べるための基準。',
+    desc: '吹き出しの下に、文章からできた食事のカードを詰めて並べる。自分の記録の地は Primary 10%。比べるための基準。',
     points: ['食事ごとに別のカード（どれにも「会話として送り直す」）', '消すとカードは跡を残さず消える'],
   },
-  C1: {
-    name: '前回の C',
-    desc: '濃い Primary の吹き出しの下に、薄い地の食事の行を 2pt 空けてつなぐ。「色が違いすぎて1枚に見えない」と言われた形。',
-    points: ['吹き出しと行のあいだに細いすき間', '上は濃い Primary、下は Primary を 10% 敷いた地'],
-  },
-  C2: {
-    name: '全部を吹き出しの色に',
-    desc: '食事の行も吹き出しの中に入れ、1つの Primary の吹き出しにする。文章と食事を白い細線で分ける。',
-    points: ['1色なので、いちばん1枚に見える', '料理の名前と kcal も白い文字になる', '消した食事は、白の薄い文字に取り消し線'],
-  },
-  C3: {
-    name: '吹き出しの中に白い行',
-    desc: 'Primary の吹き出しの中に、食事の行を白い角丸の札で入れる。メッセージのリンクのプレビューに近い形。',
-    points: ['外枠は吹き出しの1つ', '食事の行は今の文字の色のまま読める', '食事が複数なら、札を縦に重ねる'],
-  },
-  C4: {
-    name: '薄い地の1枚に、文章を大きく',
-    desc: '濃い Primary を使わず、自分の記録の薄い地の1枚にする。文章は会話と同じ大きさ（Body）で上に置く。',
-    points: ['写真の食事・体重と同じ地になる', '文章は吹き出しに見えにくくなる', 'B と違い、文章を小さくしない'],
-  },
   C5: {
-    name: '色の差を詰めて、すき間なく',
-    desc: '吹き出しの形のまま、下の地を Primary 22% に濃くし、すき間をなくして1つの角丸にする。',
-    points: ['外の角丸は 18 の1つだけ', '上下の明るさの差を前回より小さく'],
+    name: '前回の C5',
+    desc: '文章の食事の下の地だけ Primary 22%。体重と写真の食事のカードは今の 10% のまま。',
+    points: ['文章の食事だけ、ほかの自分の記録より濃い'],
+  },
+  'C5-16': {
+    name: '自分の記録をすべて 16%',
+    desc: '体重・写真の食事・文章の食事の下の地を、どれも Primary 16% にそろえる。', mix: 16,
+    points: ['今の 10% より少しだけ濃い', '吹き出しとのつながりは C5 より弱い', 'ライトで時刻・kcal の文字と地の差 3.15:1（今は 3.26:1）'],
+  },
+  'C5-22': {
+    name: '自分の記録をすべて 22%',
+    desc: '体重・写真の食事・文章の食事の下の地を、どれも Primary 22% にそろえる（C5 の濃さ）。', mix: 22,
+    points: ['C5 の見た目のまま、ほかのカードも同じ地になる', 'ライトで時刻・kcal の文字と地の差 3.04:1（今は 3.26:1）'],
+  },
+  'C5-28': {
+    name: '自分の記録をすべて 28%',
+    desc: '体重・写真の食事・文章の食事の下の地を、どれも Primary 28% にそろえる。', mix: 28,
+    points: ['吹き出しとの差がいちばん小さい', '灰色の地との差がいちばん大きい', 'ライトで時刻・kcal の文字と地の差 2.93:1（今は 3.26:1）'],
   },
 };
 const KEYS = Object.keys(VARIANTS);
@@ -346,10 +342,10 @@ const store = {
   set(k, v) { try { localStorage.setItem('proto-written-meal-v2:' + k, v); } catch {} },
 };
 
-let variant = (location.hash.slice(1).toUpperCase());
-// 案 C を元に詰める2回目。前回の案 B・D は ed87c4c にある
-if (!KEYS.includes(variant)) variant = store.get('variant') || 'C1';
-if (!KEYS.includes(variant)) variant = 'C1';
+let variant = location.hash.slice(1).toUpperCase();
+// 3回目: 案 C5 の地の濃さを、ほかの自分の記録とそろえる。前回の C1〜C4 は 9f6114b、B・D は ed87c4c にある
+if (!KEYS.includes(variant)) variant = store.get('variant') || 'C5-22';
+if (!KEYS.includes(variant)) variant = 'C5-22';
 let scenarioKey = store.get('scenario');
 if (!SCENARIOS[scenarioKey]) scenarioKey = 'refer';
 let hint = store.get('hint') || 'name';
@@ -410,21 +406,6 @@ const RENDER = {
     return [bubble(t), ...live.map((m) => `<div class="right"><div class="own-card">${mealMain(m)}<div class="divider"></div>${resendBtn(t)}</div></div>`)]
       .join('') + (t.meals.length && !live.length ? `<span data-trace="${t.meals.map((m) => m.id).join(' ')}"></span>` : '');
   },
-  C1(t) {
-    return `<div class="right"><div class="joined"><div class="bubble">${esc(t.body)}</div><div class="tray">${rowsOf(t)}</div></div></div>${sideResend(t)}`;
-  },
-  C2(t) {
-    return `<div class="right"><div class="joined solid"><div class="bubble">${esc(t.body)}</div><div class="tray">${rowsOf(t)}</div></div></div>${sideResend(t)}`;
-  },
-  C3(t) {
-    const chips = t.meals.map((m) => `<div class="chip">${m.deleted
-      ? `<div class="meal-main tight struck" data-trace="${m.id}"><span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">削除しました・${m.time}</span></span></div>`
-      : mealMain(m, { tight: true })}</div>`).join('');
-    return `<div class="right"><div class="framed"><div class="framed-text">${esc(t.body)}</div>${chips}</div></div>${sideResend(t)}`;
-  },
-  C4(t) {
-    return `<div class="right"><div class="own-card wide"><div class="card-text">${esc(t.body)}</div><div class="divider"></div>${rowsOf(t)}</div></div>${sideResend(t)}`;
-  },
   C5(t) {
     return `<div class="right"><div class="joined close"><div class="bubble">${esc(t.body)}</div><div class="tray">${rowsOf(t)}</div></div></div>${sideResend(t)}`;
   },
@@ -440,12 +421,16 @@ function renderItem(it) {
   let body;
   if (it.phase === 'reading') body = bubble(it) + reading();
   else if (it.phase === 'conversation') body = bubble(it) + (it.reply ? reply(it.reply) : '');
-  else body = RENDER[variant](it);
+  else body = RENDER[variant.startsWith('C5') ? 'C5' : variant](it);
   return `<div class="group" data-text="${it.id}">${body}</div>`;
 }
 
 function render() {
   const v = VARIANTS[variant];
+  const phone = document.querySelector('.phone');
+  phone.classList.toggle('only-tray', variant === 'C5');
+  if (v.mix) phone.style.setProperty('--own-card', `color-mix(in srgb, var(--primary) ${v.mix}%, var(--surface))`);
+  else phone.style.removeProperty('--own-card');
   document.getElementById('timeline').innerHTML = `<div class="day-head">10月11日（土）</div>` + items.map(renderItem).join('');
   document.getElementById('proto-label').textContent = `${variant}（${v.name}）`;
   document.getElementById('proto-variant-name').textContent = `${variant}. ${v.name}`;
