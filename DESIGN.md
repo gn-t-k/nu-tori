@@ -129,7 +129,7 @@ components:
     rounded: "{rounded.lg}"
     padding: 16px
   own-record-card:
-    backgroundColor: "color-mix(in srgb, #6155F5 10%, #FFFFFF)"
+    backgroundColor: "color-mix(in srgb, #6155F5 22%, #FFFFFF)"
     textColor: "{colors.on-surface}"
     typography: "{typography.subheadline}"
     rounded: "{rounded.lg}"
@@ -286,7 +286,8 @@ spacing のトークンは、見本を描くときの値。画面の端とカー
 - **入力欄（composer-field、composer-camera、composer-photos、composer-weight、composer-send）**: タイムラインの下に固定する。左から「撮る」「写真」「体重」の丸いアイコンのボタンを左に寄せる。「撮る」はいつも Primary で塗り、「写真」と記録済みの「体重」は灰色の丸にする。丸の右の残りの幅に書く欄を置く。その日の体重が未記録のあいだは、「体重」を Primary で塗った文字のカプセル「体重を記録」（高さ 44、アイコンなし、文字は1行）にし、文字の大きさによらず、いつも丸の行の下に入力欄の幅いっぱいで置く（composer-weight-unrecorded）。書く欄の幅を、記録の前後で変えないため。書く欄は1行から始まり5行まで伸び、「送る」は欄の右端に置く。字数の「残り N」は書く欄の下に置く
 - **AI の返事の1行（composer-ai-reply-note）**: 入力欄の一番下の中央に、Caption 1・secondaryLabel で置く。大きな文字では折り返して全文を見せ、… で切らない。規約のための文なので消さない（ADR-0018）
 - **プリセット（preset-chip）**: 入力欄の上に並べる、角の丸いチップ。押せる範囲は 44 に広げる
-- **自分の記録（own-record-card）と自分の発言（own-message-bubble）**: 自分が記録した食事と体重は右に寄せ、Primary を薄く敷いたカードにする。自分が書いた文は Primary の吹き出しで右に寄せる
+- **自分の記録（own-record-card）と自分の発言（own-message-bubble）**: 自分が記録した食事と体重は右に寄せ、Primary を 22% 敷いたカードにする。カードの中の secondaryLabel の文字は、ライトで地と 3.04:1 で 4.5:1 に届かないが、自分の記録を返事の地と見分けやすくするほうを取る（#452）。自分が書いた文は Primary の吹き出しで右に寄せる
+- **文章とその食事のかたまり**: 送った文章からできた食事は、吹き出しのすぐ下にすき間なくつなぎ、全体を角丸 18（rounded.xl）の1つのかたまりにする。上は own-message-bubble、下は own-record-card の地で、食事が複数なら行を細い線（Divider）で区切る。幅は文章の長さによらず、吹き出しの最大の幅（画面の 78%）。「会話として送り直す」は、かたまりの外の右下に1つだけ文字のボタンで置く。食事がすべて消えたら吹き出しだけに戻る
 - **返ってきた発言（reply-message）**: 吹き出しにせず、左の地の上に文で置く。太字・箇条書き・番号つきの箇条書きを描く
 - **タイムラインの日の見出し**: タイムライン全体で中央に揃える。上に浮かせて止めない（ナビゲーションバーの題と1日の丸の帯が、いま見ている日を示す）
 - **値の欄（value-field、value-field-focused）**: 数の値は数字のキーボードを出す。選んでいるときは Surface の地に Primary の枠を付ける

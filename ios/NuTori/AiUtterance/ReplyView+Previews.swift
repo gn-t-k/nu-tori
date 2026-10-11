@@ -19,7 +19,7 @@
             case formatted
             /// 見守る要求で伸びている途中。文字ずつ出す
             case growing
-            /// 指し示す食事が、写真の食事・消えた食事の順に並ぶ
+            /// 指し示す食事が、写真の食事・文章の食事の順に並ぶ。消えた食事は並ばない
             case referencingMeals
 
             var reply: TimelineReply {
@@ -46,8 +46,11 @@
                         id: UUID(), sentTextId: UUID(), body: "この2つの食事のことですね。",
                         isGrowing: false,
                         referencedMeals: [
-                            .meal(.sampleEstimated(.sample(on: .sampleToday, at: 12, 20))),
-                            .deleted(mealId: UUID()),
+                            .sampleEstimated(.sample(on: .sampleToday, at: 12, 20)),
+                            .sampleEstimated(
+                                .sampleWritten(
+                                    from: .sample("夜は焼き魚定食", on: .sampleToday, at: 20, 0),
+                                    eatenOn: .sampleToday, at: 19, 0)),
                         ])
                 }
             }

@@ -485,31 +485,37 @@ struct TimelineScreen: View {
         case .rejectedWeightLine(let line):
             RejectedLineText(text: line.text, subject: .weightRecord)
         case .meal(let card):
-            if let sentTextId = card.meal.sentTextId {
-                writtenMealCard(
-                    card, sentTextId: sentTextId, isUndelivered: timeline.isUndelivered(item))
-            } else {
-                // どの状態のカードも、押すと食事の画面へ潜る
-                NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                    MealCardView(card: card) { photoId in
-                        await mealActions.loadPhoto(card.meal.id, photoId)
-                    }
-                    .modifier(OwnRecordCard())
+            // どの状態のカードも、押すと食事の画面へ潜る
+            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
+                MealCardView(card: card) { photoId in
+                    await mealActions.loadPhoto(card.meal.id, photoId)
                 }
-                .buttonStyle(.plain)
-                .undeliveredRecord(timeline.isUndelivered(item))
-                .accessibilityIdentifier("meal-card")
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .modifier(OwnRecordCard())
             }
+            .buttonStyle(.plain)
+            .undeliveredRecord(timeline.isUndelivered(item))
+            .accessibilityIdentifier("meal-card")
+            .frame(maxWidth: .infinity, alignment: .trailing)
         case .rejectedMealLine(let line):
             RejectedLineText(text: line.text, subject: .meal)
         case .sentText(let bubble):
             SentTextBubbleView(
-                bubble: bubble, isUndelivered: timeline.isUndelivered(item)
-            ) { reason in
-                followsTimelineEnd = true
-                Task { await conversationActions.resend(bubble.sentText.id, reason) }
-            }
+                bubble: bubble, isUndelivered: timeline.isUndelivered(item),
+                resend: { reason in
+                    followsTimelineEnd = true
+                    Task { await conversationActions.resend(bubble.sentText.id, reason) }
+                },
+                resendAsConversation: {
+                    followsTimelineEnd = true
+                    Task {
+                        await conversationActions.resendAsConversation(
+                            bubble.sentText.id, bubble.meals.count)
+                    }
+                },
+                isMealUndelivered: { timeline.isUndelivered(.meal($0)) },
+                openMeal: { navigationPath.append(MealRoute(mealId: $0.meal.id)) },
+                loadPhoto: mealActions.loadPhoto
+            )
         case .rejectedSentTextLine(let line):
             RejectedLineText(text: line.text, subject: .sentText)
         case .reply(let reply):
@@ -552,41 +558,6 @@ struct TimelineScreen: View {
                 }
             }
         }
-    }
-
-    /// 文章の食事のカード。写真の場所を持たず、文章の食事と分かる手がかりは上の吹き出し。
-    /// 下に「会話として送り直す」を添える。押しても確かめず、その文章の食事がすべて消える
-    private func writtenMealCard(_ card: MealCard, sentTextId: UUID, isUndelivered: Bool)
-        -> some View
-    {
-        VStack(alignment: .leading, spacing: 0) {
-            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                MealCardView(card: card) { photoId in
-                    await mealActions.loadPhoto(card.meal.id, photoId)
-                }
-                // カードの地はラベルの外に付くので、地の無いラベルは文字のところしか押せない。› と余白も押せるよう、ラベルの全体を押せる形にする
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("meal-card")
-            Divider()
-            Button("会話として送り直す") {
-                let deletedMealCount = meals.filter { $0.meal.sentTextId == sentTextId }.count
-                followsTimelineEnd = true
-                Task {
-                    await conversationActions.resendAsConversation(sentTextId, deletedMealCount)
-                }
-            }
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .padding(.horizontal)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-            .accessibilityIdentifier("resend-as-conversation")
-        }
-        .modifier(OwnRecordCard())
-        .undeliveredRecord(isUndelivered)
-        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     /// 帯の下の1行。押すと、その知らせまで戻る

@@ -54,16 +54,16 @@ extension TimelineTests {
                         ], replies: [], streams: [:]))
             }
 
-            @Test("送った時刻の位置に吹き出しを置き、そのすぐ下に文章の食事のカードを置くこと")
-            func placesMealCardBelowBubble() {
+            @Test("送った時刻の位置に、文章の食事をつないだ吹き出しを置くこと")
+            func joinsMealToBubble() {
                 #expect(
                     timeline.days.map(\.items) == [
                         [
                             .weightRecord(morning),
                             .sentText(
                                 SentTextBubble(
-                                    sentText: sentText, replyLine: nil, rejectedLine: nil)),
-                            .meal(meal),
+                                    sentText: sentText, meals: [meal], replyLine: nil,
+                                    rejectedLine: nil)),
                             .weightRecord(evening),
                         ]
                     ])
@@ -102,25 +102,57 @@ extension TimelineTests {
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23))
             }
 
-            @Test("その時刻の位置（前の日を含む）にカードを置き、送った位置には吹き出しと同じ時刻の食事だけを残すこと")
-            func placesMealAtItsTime() {
+            @Test("食べた時刻（前の日を含む）にかかわらず、すべての食事を食べた時刻の順に吹き出しへつなぐこと")
+            func joinsAllMealsToBubble() {
                 #expect(
                     timeline.days.map(\.items) == [
-                        [.meal(dinnerOfPreviousDay)],
+                        [],
                         [
                             .weightRecord(morning),
-                            .meal(breakfast),
                             .sentText(
                                 SentTextBubble(
-                                    sentText: sentText, replyLine: nil, rejectedLine: nil)),
-                            .meal(lunch),
+                                    sentText: sentText,
+                                    meals: [dinnerOfPreviousDay, breakfast, lunch],
+                                    replyLine: nil, rejectedLine: nil)),
                         ],
                     ])
             }
 
-            @Test("その時刻の位置に置いたカードには、日を添えずに時刻を出すこと")
-            func showsClockOnly() {
-                #expect(dinnerOfPreviousDay.eatenTime == .clock(ClockTime(hour: 19, minute: 0)))
+            @Test("日の食べた量を、食べた時刻の日で数えること")
+            func countsFoodOnEatenDay() {
+                // 料理がまだ届いていない食事は、推定しているところとして数える。前の日に食事が入らなければ、食事の無い日（noMeals）になる
+                #expect(timeline.days.map(\.food) == [.allPending, .allPending])
+            }
+
+            @Test("前の日に食べた食事には、食べた日を添えて時刻を出すこと")
+            func showsEatenDay() {
+                #expect(
+                    dinnerOfPreviousDay.eatenTime
+                        == .dayAndClock(
+                            CalendarDay(year: 2026, month: 9, day: 23),
+                            ClockTime(hour: 19, minute: 0)))
+            }
+        }
+
+        @Suite("文章の食事の、送った文章がまだ届いていないとき")
+        struct MealWithoutSentText {
+            let meal: MealCard
+            let morning: WeightRecord
+            let timeline: Timeline
+
+            init() throws {
+                let sentText = try SentText.fixture("朝はパン", sentAt: "2026-09-24T12:11:00+09:00")
+                meal = try PlacingConversation.writtenMeal(
+                    from: sentText, eatenAt: "2026-09-24T08:00:00+09:00",
+                    sentAt: "2026-09-24T12:11:00+09:00")
+                morning = try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                timeline = PlacingConversation.timeline(
+                    weightRecords: [morning], meals: [meal], conversation: .none)
+            }
+
+            @Test("送った時刻の位置に、食事を単独のカードで置くこと")
+            func placesMealCardAtSentTime() {
+                #expect(timeline.days.map(\.items) == [[.weightRecord(morning), .meal(meal)]])
             }
         }
 

@@ -32,8 +32,8 @@ struct ReplyView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(reply.body)
             .accessibilityIdentifier("reply")
-            ForEach(Array(reply.referencedMeals.enumerated()), id: \.offset) { _, meal in
-                ReferencedMealRow(meal: meal, open: openMeal, loadPhoto: loadPhoto)
+            ForEach(Array(reply.referencedMeals.enumerated()), id: \.offset) { _, card in
+                ReferencedMealRow(card: card, open: openMeal, loadPhoto: loadPhoto)
             }
         }
         .containerRelativeFrame(.horizontal, alignment: .leading) { width, _ in
@@ -109,59 +109,46 @@ private struct ReplyTextView: View {
 }
 
 /// 返事の下の、指し示す食事の小さな白い行（写真の縮小・名前・時刻・›）。押すと食事の画面へ潜る。
-/// 文章の食事は写真の縮小の場所を出さない。消えた食事は、押せない灰色の枠だけの行「削除した食事」にする
+/// 文章の食事は写真の縮小の場所を出さない
 private struct ReferencedMealRow: View {
-    let meal: TimelineReply.ReferencedMeal
+    let card: MealCard
     let open: (MealCard) -> Void
     let loadPhoto: (_ mealId: UUID, _ photoId: UUID) async -> UIImage?
 
     var body: some View {
-        switch meal {
-        case .meal(let card):
-            Button {
-                open(card)
-            } label: {
-                HStack(spacing: 12) {
-                    if let photoId = card.meal.photoIds.first {
-                        thumbnail(mealId: card.meal.id, photoId: photoId)
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(card.namePlace.dishNames ?? card.namePlace.statusLine ?? "食事")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .lineLimit(2)
-                        Text(card.eatenTimeText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .accessibilityHidden(true)
+        Button {
+            open(card)
+        } label: {
+            HStack(spacing: 12) {
+                if let photoId = card.meal.photoIds.first {
+                    thumbnail(mealId: card.meal.id, photoId: photoId)
                 }
-                // DESIGN.md の Layout は余白を標準に任せるが、縮小（40）を入れた行を押せる高さ（44）に近づけるため、標準の .padding()（16）より詰める
-                .padding(8)
-                .frame(minHeight: 44)
-                .background(
-                    Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(card.namePlace.dishNames ?? card.namePlace.statusLine ?? "食事")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .lineLimit(2)
+                    Text(card.eatenTimeText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("reply-meal")
-        case .deleted:
-            Text("削除した食事")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12).stroke(Color(.separator), lineWidth: 0.5)
-                )
-                .accessibilityIdentifier("reply-deleted-meal")
+            // DESIGN.md の Layout は余白を標準に任せるが、縮小（40）を入れた行を押せる高さ（44）に近づけるため、標準の .padding()（16）より詰める
+            .padding(8)
+            .frame(minHeight: 44)
+            .background(
+                Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 12))
         }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("reply-meal")
     }
 
     /// 縮小の大きさは文字の大きさに合わせる
