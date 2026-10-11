@@ -114,7 +114,7 @@ struct TimelineComposer: View {
         .accessibilityIdentifier("composer-photos")
         if weightRecordedToday && !writing {
             Button(action: onWeight) {
-                circle(systemName: "scalemass.fill", filled: false)
+                circle(filled: false) { weightScaleIcon }
             }
             .buttonStyle(.plain)
             .disabled(preparingWeightEntry)
@@ -261,9 +261,21 @@ struct TimelineComposer: View {
         draft = TextDraft.empty
     }
 
-    /// 塗った丸は Primary の地に白、灰色の丸は Fill の地に Primary
+    /// SF Symbols と違って文字の大きさを追わないので、試作と同じく丸の直径の半分にする
+    private var weightScaleIcon: some View {
+        Image("WeightScale")
+            .resizable()
+            .scaledToFit()
+            .frame(width: buttonSize / 2, height: buttonSize / 2)
+    }
+
     private func circle(systemName: String, filled: Bool) -> some View {
-        Image(systemName: systemName)
+        circle(filled: filled) { Image(systemName: systemName) }
+    }
+
+    /// 塗った丸は Primary の地に白、灰色の丸は Fill の地に Primary
+    private func circle(filled: Bool, @ViewBuilder icon: () -> some View) -> some View {
+        icon()
             .frame(width: buttonSize, height: buttonSize)
             .background(filled ? Color.accentColor : Color(.tertiarySystemFill), in: Circle())
             .foregroundStyle(filled ? Color.white : Color.accentColor)
