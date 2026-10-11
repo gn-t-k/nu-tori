@@ -372,6 +372,7 @@ const resendBtn = (t) => `<button type="button" class="text-btn" data-act="resen
 function refRow(id) {
   const m = findAnyMeal(id);
   if (!m) return '';
+  if (m.deleted && variant !== 'A') return '';
   if (!m.deleted) {
     return `<button type="button" class="ref" data-act="meal" data-id="${m.id}">
       <span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">${m.time}</span></span>
@@ -394,7 +395,8 @@ function reply(r) {
 
 // ---------- 案ごとの、送った文章とできた食事 ----------
 function rowsOf(t, cls = '') {
-  return t.meals.map((m, i) => (i ? `<div class="divider inset ${cls}"></div>` : '') + (m.deleted
+  // 4回目: 消した食事は跡を残さない（②）
+  return t.meals.filter((m) => !m.deleted).map((m, i) => (i ? `<div class="divider inset ${cls}"></div>` : '') + (m.deleted
     ? `<div class="meal-main tight struck" data-trace="${m.id}"><span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">削除しました・${m.time}</span></span></div>`
     : mealMain(m, { tight: true }))).join('');
 }
@@ -407,6 +409,7 @@ const RENDER = {
       .join('') + (t.meals.length && !live.length ? `<span data-trace="${t.meals.map((m) => m.id).join(' ')}"></span>` : '');
   },
   C5(t) {
+    if (!t.meals.some((m) => !m.deleted)) return bubble(t);
     return `<div class="right"><div class="joined close"><div class="bubble">${esc(t.body)}</div><div class="tray">${rowsOf(t)}</div></div></div>${sideResend(t)}`;
   },
 };
