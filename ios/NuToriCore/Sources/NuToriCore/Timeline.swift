@@ -99,7 +99,6 @@ public struct Timeline: Sendable {
         }
     }
 
-    /// 項目の前の間隔
     public enum ItemSpacing: Equatable, Sendable {
         case close
         case apart

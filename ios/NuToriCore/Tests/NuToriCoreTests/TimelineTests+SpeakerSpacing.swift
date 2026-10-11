@@ -134,7 +134,7 @@ extension TimelineTests {
             ).id
         }
 
-        /// 答えていない、今日の知らせの項目の ID
+        /// 知らせの項目の ID
         private func itemId(of notice: Notice) -> String {
             Timeline.Item.notice(NoticeCard(notice: notice, form: .awaitingAnswer)).id
         }
