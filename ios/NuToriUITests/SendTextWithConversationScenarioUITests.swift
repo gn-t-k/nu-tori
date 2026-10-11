@@ -12,7 +12,7 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         app = .launched(
             account: "signed-in", api: "conversation", healthLatestKilograms: nil,
             now: .morningBeforeNotice, timeZone: "Asia/Tokyo")
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.composerField.waitForExistence(timeout: 5))
     }
 
     func test_書いて送ると返事が届き食事の文章を会話として送り直し作れなかった文章を送り直せること() {
@@ -53,14 +53,9 @@ final class SendTextWithConversationScenarioUITests: XCTestCase {
         attachScreenshot(of: app, named: "送り直した返事")
     }
 
-    /// 書く欄は、縦に伸びる TextField（UITextView）なので、種類を問わずに探す
-    private var field: XCUIElement {
-        app.descendants(matching: .any)["composer-field"]
-    }
-
     private func send(_ text: String) {
-        field.tap()
-        field.typeText(text)
+        app.composerField.tap()
+        app.composerField.typeText(text)
         app.buttons["composer-send"].tap()
     }
 
