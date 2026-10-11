@@ -8,9 +8,7 @@ extension TimelineTests {
         let question: SentText
         let reply: AiUtterance
         let thanks: SentText
-        let lunchText: SentText
-        let lunch: MealCard
-        let lunchSide: MealCard
+        let afternoon: WeightRecord
         let evening: WeightRecord
         let afterWeight: SentText
         let night: WeightRecord
@@ -22,13 +20,7 @@ extension TimelineTests {
             reply = AiUtterance(
                 id: UUID(), body: "野菜の多い定食はどうでしょう。", sentTextId: question.id, mealIds: [])
             thanks = try .fixture("ありがとう", sentAt: "2026-09-24T12:30:00+09:00")
-            lunchText = try .fixture("昼はうどんとおにぎり", sentAt: "2026-09-24T12:40:00+09:00")
-            lunch = try PlacingConversation.writtenMeal(
-                from: lunchText, eatenAt: "2026-09-24T12:40:00+09:00",
-                sentAt: "2026-09-24T12:40:00+09:00")
-            lunchSide = try PlacingConversation.writtenMeal(
-                from: lunchText, eatenAt: "2026-09-24T12:40:00+09:00",
-                sentAt: "2026-09-24T12:40:00+09:00")
+            afternoon = try .manual(72.5, at: "2026-09-24T15:00:00+09:00", in: "Asia/Tokyo")
             evening = try .manual(72.8, at: "2026-09-24T21:00:00+09:00", in: "Asia/Tokyo")
             afterWeight = try .fixture("体重が増えた", sentAt: "2026-09-24T21:10:00+09:00")
             night = try .manual(72.6, at: "2026-09-24T22:00:00+09:00", in: "Asia/Tokyo")
@@ -36,14 +28,12 @@ extension TimelineTests {
             let replied = SentTextStatus(classification: .conversation, reply: .replied)
             timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [evening, night], rejectedLines: [], meals: [lunch, lunchSide],
+                    weightRecords: [afternoon, evening, night], rejectedLines: [], meals: [],
                     notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
-                        sentTexts: [question, thanks, lunchText, afterWeight, nextDay],
+                        sentTexts: [question, thanks, afterWeight, nextDay],
                         statuses: [
                             question.id: replied, thanks.id: replied,
-                            lunchText.id: SentTextStatus(
-                                classification: .meal, reply: .notRequested),
                             afterWeight.id: replied, nextDay.id: replied,
                         ],
                         replies: [reply], streams: [:])),
@@ -72,12 +62,6 @@ extension TimelineTests {
             #expect(spacings[1][itemId(of: nextDay)] == .apart)
         }
 
-        @Test("文章の食事のカードを、その文章の吹き出しと、同じ文章の食事のすぐ下に詰めること")
-        func writtenMealsBelowBubble() {
-            #expect(spacings[0][Timeline.Item.meal(lunch).id] == .close)
-            #expect(spacings[0][Timeline.Item.meal(lunchSide).id] == .close)
-        }
-
         @Test("発言のすぐあとの記録を空け、記録のあとの記録を詰めること")
         func recordsAfterUtterances() {
             #expect(spacings[0][Timeline.Item.weightRecord(night).id] == .apart)
@@ -87,7 +71,7 @@ extension TimelineTests {
         /// 送った文章の吹き出しの項目の ID
         private func itemId(of sentText: SentText) -> String {
             Timeline.Item.sentText(
-                SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil)
+                SentTextBubble(sentText: sentText, meals: [], replyLine: nil, rejectedLine: nil)
             )
             .id
         }

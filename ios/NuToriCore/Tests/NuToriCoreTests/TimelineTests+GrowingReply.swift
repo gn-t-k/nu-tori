@@ -43,7 +43,8 @@ extension TimelineTests {
             #expect(
                 items == [
                     .sentText(
-                        SentTextBubble(sentText: sentText, replyLine: nil, rejectedLine: nil)),
+                        SentTextBubble(
+                            sentText: sentText, meals: [], replyLine: nil, rejectedLine: nil)),
                     .reply(
                         TimelineReply(
                             id: replyId, sentTextId: sentText.id, body: "野菜の多い", isGrowing: true,
@@ -63,7 +64,8 @@ extension TimelineTests {
                     Self.items(sentText: sentText, stream: stream) == [
                         .sentText(
                             SentTextBubble(
-                                sentText: sentText, replyLine: .reading, rejectedLine: nil))
+                                sentText: sentText, meals: [], replyLine: .reading,
+                                rejectedLine: nil))
                     ])
             }
         }

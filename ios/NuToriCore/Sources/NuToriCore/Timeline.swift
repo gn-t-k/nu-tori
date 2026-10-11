@@ -7,8 +7,6 @@ public struct Timeline: Sendable {
     public init(input: Input, firstDay: CalendarDay, today: CalendarDay) {
         let weightRecordsByDay = Dictionary(
             grouping: input.weightRecords.filter { $0.day >= firstDay }, by: \.day)
-        let mealsByDay = Dictionary(
-            grouping: input.meals.filter { $0.meal.cardDay >= firstDay }, by: \.meal.cardDay)
         // 1日の丸と日のまとめには、カードを置く日でなく、食事の日（撮った時刻と食事の時差から出した日）に入れる。
         // 食事の日が使い始めた日より前の食事は、カードは並べても、丸にも日のまとめにも入れない
         let mealsByEatenDay = Dictionary(
@@ -28,6 +26,11 @@ public struct Timeline: Sendable {
         let conversation = ConversationItems(
             input.conversation, rejectedLines: input.rejectedLines.compactMap(\.sentTextLine),
             cardsByMealId: cardsByMealId, undelivered: input.undelivered)
+        // 吹き出しにつないだ文章の食事は、単独のカードとして並べない
+        let mealsByDay = Dictionary(
+            grouping: input.meals.filter {
+                $0.meal.cardDay >= firstDay && !conversation.joinedMealIds.contains($0.meal.id)
+            }, by: \.meal.cardDay)
         let bubblesByDay = Dictionary(
             grouping: conversation.bubbles.filter { $0.sentText.day >= firstDay },
             by: \.sentText.day)
@@ -142,8 +145,8 @@ public struct Timeline: Sendable {
 
     public struct Day: Hashable, Sendable {
         public let day: CalendarDay
-        /// 体重記録は時刻、食事は送った時刻（吹き出しから離す文章の食事は食べた時刻）、知らせは出した時刻、送った文章は送った時刻の順。
-        /// 受け付けなかった行は、その位置に入る。返事は、応える送った文章（とその下の文章の食事）のすぐあと
+        /// 体重記録は時刻、食事は送った時刻、知らせは出した時刻、送った文章は送った時刻の順。文章の食事は、その文章の吹き出しにつなぐ。
+        /// 受け付けなかった行は、その位置に入る。返事は、応える送った文章のすぐあと
         public let items: [Item]
         /// この日の食べた量。この日に食べた（食事の日がこの日の）食事から出す。カードを置く日の食事とは限らない
         public let food: DayFood
@@ -168,11 +171,6 @@ public struct Timeline: Sendable {
             if item.isUtterance {
                 return previous?.isUtterance == true ? .close : .apart
             }
-            if case .meal(let card) = item, let sentTextId = card.meal.sentTextId,
-                previous?.belongs(toSentText: sentTextId) == true
-            {
-                return .close
-            }
             return previous?.isUtterance == true ? .apart : .close
         }
 
@@ -196,17 +194,6 @@ public struct Timeline: Sendable {
         /// 文章を送る（作る書き込み）を受け付けなかった1行。吹き出しを外した位置に出す
         case rejectedSentTextLine(RejectedSentTextLine)
         case reply(TimelineReply)
-
-        /// その送った文章の吹き出しか、その文章の食事のカードか
-        func belongs(toSentText sentTextId: UUID) -> Bool {
-            switch self {
-            case .sentText(let bubble): bubble.sentText.id == sentTextId
-            case .meal(let card): card.meal.sentTextId == sentTextId
-            case .weightRecord, .rejectedWeightLine, .rejectedMealLine, .notice,
-                .rejectedSentTextLine, .reply:
-                false
-            }
-        }
 
         /// 会話の発言（送った文章か返事）か
         public var isUtterance: Bool {
@@ -273,12 +260,7 @@ public struct Timeline: Sendable {
             guard let sentReplies = replies[bubble.sentText.id],
                 let bubbleIndex = items.firstIndex(of: .sentText(bubble))
             else { continue }
-            // 吹き出しのすぐ下の文章の食事のカード（会話として送り直せなかった文章）の、さらにあと
-            let afterMeals =
-                items[(bubbleIndex + 1)...].firstIndex {
-                    !$0.belongs(toSentText: bubble.sentText.id)
-                } ?? items.endIndex
-            items.insert(contentsOf: sentReplies.map { .reply($0) }, at: afterMeals)
+            items.insert(contentsOf: sentReplies.map { .reply($0) }, at: bubbleIndex + 1)
         }
         return items
     }
@@ -302,12 +284,12 @@ public struct Timeline: Sendable {
 
         init(card: MealCard) {
             self.init(
-                instant: card.meal.cardInstant, eatenAt: card.meal.eatenAt, item: .meal(card))
+                instant: card.meal.sentAt, eatenAt: card.meal.eatenAt, item: .meal(card))
         }
 
         init(line: RejectedMealLine) {
             self.init(
-                instant: line.meal.cardInstant, eatenAt: line.meal.eatenAt,
+                instant: line.meal.sentAt, eatenAt: line.meal.eatenAt,
                 item: .rejectedMealLine(line))
         }
 

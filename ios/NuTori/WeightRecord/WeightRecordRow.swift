@@ -22,8 +22,11 @@ struct WeightRecordRow: View {
                 .accessibilityHidden(true)
         }
         .padding()
-        // DESIGN.md の own-record-card。Surface に Primary を 10% 混ぜる。角はタイムラインのカード（12）
-        .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        // DESIGN.md の own-record-card。角はタイムラインのカード（12）
+        .background(
+            Color.accentColor.opacity(OwnRecordCard.tintOpacity),
+            in: RoundedRectangle(cornerRadius: 12)
+        )
         .background(
             Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
     }
