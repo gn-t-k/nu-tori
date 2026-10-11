@@ -404,8 +404,9 @@ struct TimelineScreen: View {
                         withAnimation {
                             proxy.scrollTo(itemId, anchor: .top)
                         }
-                    case .scrollingToEnd(let day):
-                        proxy.scrollTo(day, anchor: .bottom)
+                    case .scrollingToEnd:
+                        // 下の余白まで含めた下端に着く。いちばん新しい日の下端（余白の手前）に着くと、そのあと中身が伸びても .sizeChanges の .bottom が追わない（#467）
+                        proxy.scrollTo(contentId, anchor: .bottom)
                     case .timeline, .summary:
                         return
                     }
@@ -646,7 +647,7 @@ struct TimelineScreen: View {
         followsTimelineEnd = true
         // 読み込み中は並んでいないので動かさない。取り終えたら一番下から開く
         if !showsLoading {
-            dayFocus = .scrollingToEnd(today)
+            dayFocus = .scrollingToEnd
         }
     }
 
@@ -767,13 +768,13 @@ private enum DayFocus: Equatable {
     case scrollingTo(CalendarDay)
     /// 答えていない知らせの1行と、記録忘れの通知から、その知らせのカードへ
     case scrollingToItem(Timeline.Item.ID)
-    /// 記録忘れの通知と、写真を撮った・選んだときに、その日（今日）のいちばん下へ
-    case scrollingToEnd(CalendarDay)
+    /// 記録忘れの通知と、写真を撮った・選んだときに、タイムラインのいちばん下へ
+    case scrollingToEnd
 
     init(_ landing: Timeline.Landing) {
         switch landing {
         case .item(let itemId): self = .scrollingToItem(itemId)
-        case .end(let day): self = .scrollingToEnd(day)
+        case .end: self = .scrollingToEnd
         }
     }
 }

@@ -85,17 +85,17 @@ public struct Timeline: Sendable {
         startedDay ?? weightRecords.map(\.day).min() ?? today
     }
 
-    /// 記録忘れの通知を押して開いたときに着く位置。その知らせが並んでいなければ、いちばん新しい日の下
+    /// 記録忘れの通知を押して開いたときに着く位置。その知らせが並んでいなければ、タイムラインのいちばん下
     public func landing(for reminder: ReminderLanding) -> Landing {
         switch reminder {
         case .notice(let noticeId):
             let item = days.lazy.flatMap(\.items).first { item in
                 if case .notice(let card) = item { card.notice.id == noticeId } else { false }
             }
-            guard let item else { return .end(dayRange.upperBound) }
+            guard let item else { return .end }
             return .item(item.id)
         case .timelineEnd:
-            return .end(dayRange.upperBound)
+            return .end
         }
     }
 
@@ -108,8 +108,8 @@ public struct Timeline: Sendable {
     public enum Landing: Equatable, Sendable {
         /// そのカードの位置
         case item(Item.ID)
-        /// その日のいちばん下
-        case end(CalendarDay)
+        /// タイムラインのいちばん下
+        case end
     }
 
     /// タイムラインに並べる元になるもの。種類が増えたら欄を足す

@@ -16,4 +16,18 @@ extension XCTestCase {
             predicate: NSPredicate(format: "isHittable == true"), object: element)
         return XCTWaiter().wait(for: [expectation], timeout: 10) == .completed
     }
+
+    /// 要素の下端が、もう1つの要素の上端より上に来るまで待つ
+    @MainActor func waitUntil(_ element: XCUIElement, isAbove other: XCUIElement) async throws
+        -> Bool
+    {
+        let deadline = ContinuousClock.now + .seconds(10)
+        while element.frame.maxY > other.frame.minY {
+            if ContinuousClock.now >= deadline {
+                return false
+            }
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        return true
+    }
 }
