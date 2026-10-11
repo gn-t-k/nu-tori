@@ -1,0 +1,239 @@
+<title>「残り N」の見せ方</title>
+<!--
+  PROTOTYPE（捨てる前提）。「「残り N」の色を変えて分かりやすくするか」（gn-t-k/nu-tori#454）の試作。
+  入力欄の書く欄の下の「残り N」を、500 字を超えたときにどう見せるかを 5 案で並べる。
+  下のバーの ‹ › か矢印キーで案を切り替える。#A〜#E で開ける。上の「字数」で、4つ目の電話の字数を動かせる。
+  土台は main の ios/NuTori/Timeline/TimelineComposer.swift（コミット 7e7896b）と、
+  「文章と会話の見た目を見比べる」の試作（prototype/0001-text-chat の prototype-text-chat.html）の入力欄の見た目。main には入れない。
+-->
+<style>
+/* 見本を並べる灰色のページに、iOS の電話の枠を横に並べる。色は iOS のシステムの色（DESIGN.md の Colors）だけ */
+:root{
+  --bg:#f2f2f7; --surface:#ffffff; --ink:#000000;
+  --ink2:rgb(60 60 67 / .6); --ink3:rgb(60 60 67 / .3);
+  --sep:rgb(60 60 67 / .29); --fill:rgb(120 120 128 / .12);
+  --tint:#6155f5; --on-tint:#ffffff; --destructive:#ff383c;
+  --chrome:rgb(249 249 249 / .94); --kb:#d1d3d9; --key:#ffffff; --key2:#abb0ba; --keyink:#000000;
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --ink:#ffffff;
+    --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+    --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245;
+    --chrome:rgb(22 22 24 / .94); --kb:#2b2b2d; --key:#6b6b6e; --key2:#464648; --keyink:#ffffff;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --ink:#ffffff;
+  --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+  --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245;
+  --chrome:rgb(22 22 24 / .94); --kb:#2b2b2d; --key:#6b6b6e; --key2:#464648; --keyink:#ffffff;
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:16px 16px 104px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:20px;margin:0;text-wrap:balance}
+h2{font-size:17px;margin:0;text-wrap:balance}
+p{margin:0;max-width:760px}
+.muted{color:var(--page-muted)}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:13px}
+.ctl input[type=range]{width:min(280px,100%)}
+.ctl .q{display:flex;flex-wrap:wrap;gap:6px}
+.ctl .q button,.theme button{font-size:13px;padding:5px 11px;border-radius:999px;background:var(--surface);color:var(--page-ink);box-shadow:0 0 0 .5px var(--frame)}
+.ctl .q button[aria-pressed="true"],.theme button[aria-pressed="true"]{background:var(--tint);color:var(--on-tint);box-shadow:none}
+.num{font-variant-numeric:tabular-nums}
+.vhead{display:flex;flex-direction:column;gap:4px}
+.vhead .tags{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
+.vhead .tags span{padding:2px 8px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--frame)}
+.vhead .tags span.warn{box-shadow:0 0 0 1px var(--destructive)}
+.states{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:20px;align-items:start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+figcaption{color:var(--page-muted);font-size:12.5px}
+figcaption b{color:var(--page-ink)}
+.vo{display:block;margin-top:4px;font-size:12px;color:var(--page-muted);border-left:2px solid var(--frame);padding-left:8px}
+.vo b{color:var(--page-ink);font-weight:600}
+
+/* 電話の枠 */
+.phone{height:560px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;font-size:17px;line-height:1.3}
+.status{height:34px;flex:none}
+.nav{height:44px;flex:none;display:grid;place-items:center;font-size:17px;font-weight:600}
+.tl{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding:12px 16px;min-height:0;overflow:hidden}
+.me{align-self:flex-end;max-width:78%;background:var(--tint);color:var(--on-tint);padding:8px 12px;border-radius:18px;font-size:15px}
+.reply{font-size:15px;color:var(--ink)}
+/* 入力欄（TimelineComposer）: バーの材質の上に丸のボタンと書く欄、その下に「残り N」と AI の1行 */
+.compwrap{flex:none;background:var(--chrome);border-top:.5px solid var(--sep);padding:8px 16px;display:flex;flex-direction:column;gap:8px}
+.rowx{display:flex;align-items:flex-end;gap:12px}
+.cb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--fill);color:var(--tint)}
+.cb.on{background:var(--tint);color:var(--on-tint)}
+.in{flex:1;min-width:0;border-radius:18px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);display:flex;align-items:flex-end;gap:8px;padding:7px 4px 4px 14px;margin-bottom:4px}
+.in.over{box-shadow:0 0 0 1.5px var(--destructive)}
+.in .tx{flex:1;min-width:0;max-height:calc(5 * 1.3em);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:3px;word-break:break-all}
+.in .tx mark{background:color-mix(in srgb,var(--destructive) 22%,transparent);color:inherit;border-radius:2px}
+.in .caret{display:inline-block;width:2px;height:1.1em;background:var(--tint);vertical-align:-3px;margin-left:1px}
+.send{width:28px;height:28px;border-radius:50%;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;flex:none}
+.send.off{background:var(--fill);color:var(--ink3)}
+.remain{align-self:flex-end;font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.remain.red{color:var(--destructive)}
+.remain.strong{font-weight:600}
+.ainote{font-size:12px;color:var(--ink2);text-align:center}
+.kb{flex:none;background:var(--kb);padding:6px 3px 4px;display:flex;flex-direction:column;gap:8px}
+.kb .r{display:flex;gap:5px;justify-content:center}
+.kb .k{height:36px;border-radius:5px;background:var(--key);flex:1;max-width:32px;display:grid;place-items:center;font-size:15px;color:var(--keyink)}
+.kb .k.w{max-width:none;flex:2.4;background:var(--key2);font-size:13px}
+.home{height:16px;flex:none;background:var(--kb)}
+
+/* 切り替えのバー（試作の道具。設計の一部ではない） */
+.switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
+.switcher button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--page)}
+.switcher .lab{padding:0 10px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lab b{font-weight:700;margin-right:6px}
+.theme{display:flex;gap:6px;font-size:13px;align-items:center}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>500 字を超えたとき、「残り N」をどう見せるか</h1>
+    <p class="muted">書く欄の下の「残り N」は 451 字目から出て、500 字を超えると「送る」が押せなくなる（#419）。今は N がマイナスになっても灰色のまま。色で知らせる案と、文で知らせる案を並べる。DESIGN.md は「Error（systemRed）は戻せない操作（削除）だけ」「状態は色で分けず文で示す」と決めているので、赤を使う案はこの決まりを変えることになる（各案の札に書いた）。</p>
+    <div class="ctl">
+      <label for="len">4つ目の電話の字数 <b class="num" id="lenv">520</b> 字</label>
+      <input type="range" id="len" min="440" max="560" value="520">
+      <span class="q" id="quick"></span>
+    </div>
+    <div class="theme"><span class="muted">見た目</span>
+      <button type="button" data-t="" aria-pressed="true">端末に合わせる</button>
+      <button type="button" data-t="light" aria-pressed="false">ライト</button>
+      <button type="button" data-t="dark" aria-pressed="false">ダーク</button>
+    </div>
+  </header>
+  <section id="variant" class="wrap" style="gap:12px"></section>
+</div>
+
+<nav class="switcher" aria-label="案の切り替え">
+  <button type="button" id="prev" aria-label="前の案">‹</button>
+  <span class="lab" id="lab"></span>
+  <button type="button" id="next" aria-label="次の案">›</button>
+</nav>
+
+<script>
+const LIMIT = 500, SHOW_FROM = 451;
+// 例の文（開発者の記録ではない）。字はすべて BMP なので、length がコードポイントの数と同じ
+const SAMPLE = ('今週は平日の昼を社食で食べていて、定食の日とうどんの日が半分ずつくらい。夜は帰りが遅い日が多く、コンビニのおにぎりとサラダチキンで済ませることが増えた。週末は家で作っていて、土曜は鍋、日曜はカレーを多めに作って月曜の昼にも回した。間食はほとんどしていないけれど、仕事中に甘いコーヒーを一日二本くらい飲んでいる。体重はこの二週間でほとんど動いていなくて、朝に量る時刻がばらついているのも気になっている。来週は出張で外食が続くので、店で選ぶときに何を気にしたらいいかを知りたい。飲み会も一回ある。');
+const text = n => { let s = ''; while (s.length < n) s += SAMPLE; return s.slice(0, n); };
+
+// 案。label(n): 「残り N」の行（null なら出さない）、over: 欄の縁、mark: 超えた字の印、vo: VoiceOver の読み上げ
+const V = [
+  {key:'A', name:'今のまま（灰色の「残り -N」）',
+   desc:'main の形。500 字を超えても色も文も変えず、N がマイナスになる。「送る」が押せない理由は、マイナスの数から読み取ってもらう。',
+   tags:[['DESIGN.md はそのまま'], ['SwiftUI: 変更なし']],
+   label:n => ({t:`残り ${LIMIT - n}`, cls:''}),
+   vo:n => `残り マイナス${n - LIMIT}`},
+  {key:'B', name:'超えたら数字を赤に',
+   desc:'文は今のまま。500 字を超えたら「残り -N」を Error（systemRed）にする。超えるまでは灰色。開発者の最初の案。',
+   tags:[['DESIGN.md を変える：Error を「戻せない操作」以外（送れない状態）にも使う', 'warn'], ['SwiftUI: foregroundStyle を切り替える1行']],
+   label:n => ({t:`残り ${LIMIT - n}`, cls:n > LIMIT ? 'red' : ''}),
+   vo:n => `残り マイナス${n - LIMIT}（色は読まれない）`},
+  {key:'C', name:'超えたら文で「N 字多い」',
+   desc:'色は灰色のまま。500 字を超えたら、マイナスの数をやめて「12 字多い」と書く。DESIGN.md の「状態は文で示す」に沿う。',
+   tags:[['DESIGN.md はそのまま'], ['SwiftUI: TextDraft に「多い字数」を足し、文を出し分ける']],
+   label:n => n > LIMIT ? {t:`${n - LIMIT} 字多い`, cls:''} : {t:`残り ${LIMIT - n}`, cls:''},
+   vo:n => `${n - LIMIT}字多い`},
+  {key:'D', name:'文と赤の両方（欄の縁も赤）',
+   desc:'C の文「N 字多い」を赤にし、書く欄の縁も赤にする。色だけに頼らず文でも伝える。目立たせ方が一番強い。',
+   tags:[['DESIGN.md を変える：Error を送れない状態にも使い、欄の縁にも使う', 'warn'], ['SwiftUI: 文の出し分け＋色と縁の切り替え']],
+   label:n => n > LIMIT ? {t:`${n - LIMIT} 字多い`, cls:'red strong'} : {t:`残り ${LIMIT - n}`, cls:''},
+   over:true,
+   vo:n => `${n - LIMIT}字多い`},
+  {key:'E', name:'超えた字に印を付ける',
+   desc:'下の行は C と同じ灰色の「N 字多い」。そのうえで書く欄の中の 501 字目からを薄い赤で塗り、どこまで削ればよいかを見せる（X の投稿欄と同じ考え方）。',
+   tags:[['DESIGN.md を変える：Error の色を、超えた字の印にも使う', 'warn'], ['SwiftUI: TextField では範囲に色を付けられない。iOS 26 の TextEditor（AttributedString）に替え、1〜5行で伸びる形を作り直す']],
+   label:n => n > LIMIT ? {t:`${n - LIMIT} 字多い`, cls:''} : {t:`残り ${LIMIT - n}`, cls:''},
+   mark:true,
+   vo:n => `${n - LIMIT}字多い（印は読まれない）`},
+];
+
+const SVG = {
+  cam:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 4h6l1.5 2H20a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3.5z"/><circle cx="12" cy="12.5" r="3.6" fill="var(--tint)"/></svg>',
+  photo:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="15" height="13" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v10"/><path d="M4 16l4-4 3 3 2-2 4 4"/></svg>',
+  send:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 12V2M2.5 6.5 7 2l4.5 4.5"/></svg>',
+};
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function phone(v, n){
+  const t = text(n);
+  const over = n > LIMIT;
+  const body = v.mark && over ? esc(t.slice(0, LIMIT)) + '<mark>' + esc(t.slice(LIMIT)) + '</mark>' : esc(t);
+  const lab = n >= SHOW_FROM ? v.label(n) : null;
+  const remain = lab ? `<div class="remain ${lab.cls}">${lab.t}</div>` : '';
+  return `<div class="phone">
+    <div class="status"></div><div class="nav">10月11日（日）</div>
+    <div class="tl"><div class="me">昼はうどんにしました</div><div class="reply">うどんだけだとたんぱく質が少なめなので、夜は肉か魚を足すと目安に近づきます。</div></div>
+    <div class="compwrap">
+      <div class="rowx"><span class="cb on">${SVG.cam}</span><span class="cb">${SVG.photo}</span>
+        <span class="in${v.over && over ? ' over' : ''}"><span class="tx"><span>${body}<span class="caret"></span></span></span><span class="send${over ? ' off' : ''}" aria-label="送る">${SVG.send}</span></span>
+      </div>
+      ${remain}
+      <div class="ainote">AI が読んで返事をします</div>
+    </div>
+    <div class="kb" aria-hidden="true"><div class="r">${'たなはまらやわ'.split('').map(x => `<span class="k">${x}</span>`).join('')}</div><div class="r">${'あかさ'.split('').map(x => `<span class="k">${x}</span>`).join('')}<span class="k w">空白</span></div><div class="r"><span class="k w">123</span><span class="k w">🌐</span><span class="k w">改行</span></div></div>
+    <div class="home"></div>
+  </div>`;
+}
+
+function caption(v, n){
+  const head = n < SHOW_FROM ? `<b>${n} 字。</b>「残り N」はまだ出ない。` :
+    n <= LIMIT ? `<b>${n} 字。</b>送れる。` : `<b>${n} 字。</b>${n - LIMIT} 字多く、「送る」は押せない。`;
+  const vo = n > LIMIT ? `<span class="vo">VoiceOver: <b>${v.vo(n)}</b>／「送る」は「淡色表示」</span>` : '';
+  return head + vo;
+}
+
+let cur = 0, live = 520;
+function render(){
+  const v = V[cur];
+  const fixed = [480, 500, 512];
+  document.getElementById('variant').innerHTML = `
+    <div class="vhead"><h2>${v.key}. ${v.name}</h2><p class="muted">${v.desc}</p>
+      <div class="tags">${v.tags.map(([t, c]) => `<span class="${c || ''}">${t}</span>`).join('')}</div></div>
+    <div class="states">
+      ${fixed.map(n => `<figure>${phone(v, n)}<figcaption>${caption(v, n)}</figcaption></figure>`).join('')}
+      <figure id="livefig">${phone(v, live)}<figcaption>${caption(v, live)}（上の「字数」で動かせる）</figcaption></figure>
+    </div>`;
+  document.getElementById('lab').innerHTML = `<b>${v.key}</b>${v.name}`;
+  if (location.hash.slice(1) !== v.key) history.replaceState(null, '', '#' + v.key);
+}
+function go(d){ cur = (cur + d + V.length) % V.length; render(); }
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+const range = document.getElementById('len');
+const quick = document.getElementById('quick');
+function setLive(n){
+  live = n; range.value = n; document.getElementById('lenv').textContent = n;
+  quick.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.n === n)));
+  const v = V[cur];
+  document.getElementById('livefig').innerHTML = `${phone(v, n)}<figcaption>${caption(v, n)}（上の「字数」で動かせる）</figcaption>`;
+}
+quick.innerHTML = [450, 451, 499, 500, 501, 530].map(n => `<button type="button" data-n="${n}" aria-pressed="false">${n}</button>`).join('');
+quick.onclick = e => { const b = e.target.closest('button'); if (b) setLive(+b.dataset.n); };
+range.oninput = () => setLive(+range.value);
+document.querySelectorAll('.theme button').forEach(b => b.onclick = () => {
+  if (b.dataset.t) document.documentElement.dataset.theme = b.dataset.t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('.theme button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+});
+const fromHash = V.findIndex(v => v.key === location.hash.slice(1).toUpperCase());
+cur = fromHash < 0 ? 0 : fromHash;
+render(); setLive(live);
+</script>
