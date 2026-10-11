@@ -26,7 +26,6 @@ public struct TextDraft: Equatable, Sendable {
     /// プリセットは、書く欄に文字があるあいだ隠す（押すと書きかけの文を置き換えてしまうため）
     public var showsPresets: Bool { text.isEmpty }
 
-    /// 書く欄の下に出す字数の知らせ。450 字を超えるまでは nil
     public var lengthNotice: LengthNotice? {
         let upperBound = Int(AcceptedRange.sentTextBodyTrimmedLength.bounds.upperBound)
         let remaining = upperBound - trimmedLength
@@ -50,7 +49,6 @@ public struct TextDraft: Equatable, Sendable {
         insertedPreset = preset
     }
 
-    /// 書く欄の下に出す字数の知らせ
     public enum LengthNotice: Equatable, Sendable {
         /// 送れる上限まであと何字か（0 を含む）
         case remaining(Int)
