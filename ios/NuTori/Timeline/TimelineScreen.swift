@@ -462,8 +462,8 @@ struct TimelineScreen: View {
         }
     }
 
-    /// 会話のまとまりの見た目（仕様 #419「会話のまとまりの見た目」）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
-    /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、会話のまとまりを余白だけで見せるため、ここは数値で決める。
+    /// 話し手の替わり目の見た目（#449 の解決コメント）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
+    /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、話し手の替わり目を余白だけで見せるため、ここは数値で決める。
     /// 詰めるのは VStack の標準の間隔と同じ 8、空けるのは DESIGN.md のまとまりの間（section-gap）の 24
     private static func gap(before item: Timeline.Item, in day: Timeline.Day) -> CGFloat {
         switch day.spacing(before: item) {
