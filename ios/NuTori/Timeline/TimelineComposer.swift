@@ -70,8 +70,8 @@ struct TimelineComposer: View {
                 if dynamicTypeSize.isAccessibilitySize {
                     field
                 }
-                if let remaining = draft.remainingLength {
-                    Text("残り \(remaining)")
+                if let notice = draft.lengthNotice {
+                    lengthNoticeText(notice)
                         .font(.footnote)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -246,6 +246,13 @@ struct TimelineComposer: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("camera-permission-notice")
+    }
+
+    private func lengthNoticeText(_ notice: TextDraft.LengthNotice) -> Text {
+        switch notice {
+        case .remaining(let count): Text("残り \(count)")
+        case .over(let count): Text("\(count) 字多い")
+        }
     }
 
     private func send() {

@@ -38,7 +38,7 @@
             case onlyWhitespace
             /// 450 字を超えた。「残り N」を出す
             case nearLimit
-            /// 500 字を超えた。「残り」が負の数で、「送る」を押せない
+            /// 500 字を超えた。「N 字多い」を出し、「送る」を押せない
             case overLimit
 
             var weightRecordedToday: Bool {
