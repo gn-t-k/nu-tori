@@ -25,13 +25,15 @@ final class ReturnToTimelineEndAfterPickedPhotosUITests: XCTestCase {
         attachScreenshot(of: app, named: "遡ったタイムライン")
     }
 
-    func test_遡ってから写真を選ぶと足した食事のカードが見える位置に戻ること() {
-        app.buttons["composer-photos"].tap()
+    func test_遡ってから写真を選ぶと足した食事のカードが見える位置に戻ること() async throws {
+        let photos = app.buttons["composer-photos"]
+        photos.tap()
 
         let added = mealCards.element(boundBy: Self.mealsFillingScreen)
         XCTAssertTrue(added.waitForExistence(timeout: 10))
-        XCTAssertTrue(waitUntilHittable(added))
+        let shown = try await waitUntil(added, isAbove: photos)
         attachScreenshot(of: app, named: "写真を足して一番下に戻ったタイムライン")
+        XCTAssertTrue(shown, "足した食事のカードが入力欄の下に隠れている")
     }
 
     /// カードが画面の高さを超えて並び、遡れるようになる数
