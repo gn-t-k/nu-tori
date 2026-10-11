@@ -234,16 +234,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
       <select id="proto-scenario"></select>
     </label>
     <div class="row" id="proto-actions"></div>
-    <label><span class="lbl">返事の下の「削除した食事」に添えるもの（#453）</span>
-      <select id="proto-hint">
-        <option value="plain">なし（今の形）</option>
-        <option value="time">時刻</option>
-        <option value="name">料理の名前と時刻（決めた形）</option>
-        <option value="text">元の文章</option>
-      </select>
-    </label>
-    <label class="check"><input type="checkbox" id="proto-jump"> <span>返事の下の「削除した食事」を押すと、元の場所へ戻る</span></label>
-    <p>食事のカードや行を押すと、食事の画面の代わりに「食事を削除」を出します。消すと、両方の場所がどう変わるかを見られます。</p>
+    <p>場面の時刻は、送った時刻です。食事のカードや行を押すと、食事の画面の代わりに「食事を削除」を出します。</p>
     <details>
       <summary>今の状態</summary>
       <pre id="proto-state"></pre>
@@ -272,31 +263,23 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 <div id="sheet-root"></div>
 
 <script>
+// 5回目: 文章と時刻が違う食事を、吹き出しの下につなぐか、その時刻の位置に出すか。地はどれも Primary 22%。
+// 前回までの案は 6ba1f88（C5 の地の濃さ）、9f6114b（C1〜C5）、ed87c4c（A〜D）にある
 const VARIANTS = {
-  A: {
-    name: '今の形',
-    desc: '吹き出しの下に、文章からできた食事のカードを詰めて並べる。自分の記録の地は Primary 10%。比べるための基準。',
-    points: ['食事ごとに別のカード（どれにも「会話として送り直す」）', '消すとカードは跡を残さず消える'],
+  JOIN: {
+    name: 'ア 全部を吹き出しの下につなぐ',
+    desc: '文章からできた食事は、時刻にかかわらず全部を吹き出しの下につなぐ。食事のカードは、食べた時刻の位置には出ない。',
+    points: ['1つの文章と、そこからできた食事が1か所にまとまる', '7:40 に食べた食事が、送った 13:00 の位置に並ぶ', '日の合計は食べた時刻で数えるので変わらない'],
   },
-  C5: {
-    name: '前回の C5',
-    desc: '文章の食事の下の地だけ Primary 22%。体重と写真の食事のカードは今の 10% のまま。',
-    points: ['文章の食事だけ、ほかの自分の記録より濃い'],
+  SPLIT: {
+    name: 'イ 時刻が違う食事はその時刻の位置に',
+    desc: '送った時刻と同じ食事だけを吹き出しの下につなぐ。時刻が違う食事は、今の仕様どおり、その時刻の位置にカードで出す。',
+    points: ['タイムラインの時刻の順が崩れない', '離れた位置のカードは、文章の食事だと分かる手がかりがない（今と同じ）', 'つなぐ食事が無ければ、吹き出しと「会話として送り直す」だけになる'],
   },
-  'C5-16': {
-    name: '自分の記録をすべて 16%',
-    desc: '体重・写真の食事・文章の食事の下の地を、どれも Primary 16% にそろえる。', mix: 16,
-    points: ['今の 10% より少しだけ濃い', '吹き出しとのつながりは C5 より弱い', 'ライトで時刻・kcal の文字と地の差 3.15:1（今は 3.26:1）'],
-  },
-  'C5-22': {
-    name: '自分の記録をすべて 22%',
-    desc: '体重・写真の食事・文章の食事の下の地を、どれも Primary 22% にそろえる（C5 の濃さ）。', mix: 22,
-    points: ['C5 の見た目のまま、ほかのカードも同じ地になる', 'ライトで時刻・kcal の文字と地の差 3.04:1（今は 3.26:1）'],
-  },
-  'C5-28': {
-    name: '自分の記録をすべて 28%',
-    desc: '体重・写真の食事・文章の食事の下の地を、どれも Primary 28% にそろえる。', mix: 28,
-    points: ['吹き出しとの差がいちばん小さい', '灰色の地との差がいちばん大きい', 'ライトで時刻・kcal の文字と地の差 2.93:1（今は 3.26:1）'],
+  'SPLIT-NOTE': {
+    name: 'イ＋添え書き',
+    desc: 'イと同じ置き方で、離れた位置のカードの上に「『送った文章』から」を小さく添える。',
+    points: ['時刻の順を保ったまま、文章の食事だと分かる', '添え書きの分だけ、離れたカードが少し縦に長くなる'],
   },
 };
 const KEYS = Object.keys(VARIANTS);
@@ -306,55 +289,53 @@ const MEAL = {
   toast: { name: 'トースト 1枚、コーヒー（ブラック）', time: '7:40', kcal: 192, p: '6.2 g', f: '3.4 g', c: '33 g' },
   ramen: { name: '醤油ラーメン 1杯', time: '12:30', kcal: 480, p: '20 g', f: '14 g', c: '65 g' },
 };
-const meal = (id, deleted = false) => ({ id, ...MEAL[id], deleted });
+const meal = (id, deleted = false, time) => ({ id, ...MEAL[id], ...(time ? { time } : {}), deleted });
 const weight = () => ({ type: 'weight', id: 'w', time: '7:05', value: '72.4 kg' });
 const photoMeal = () => ({ type: 'photo', id: 'p', name: '焼き鮭定食', time: '8:10', kcal: 610, p: '34 g', f: '18 g', c: '78 g' });
+const CONV = '食事の記録にはせず、会話として受け取りました。';
 const textApple = (deleted = false) => ({
-  type: 'text', id: 't1', body: 'りんごを1つ食べた', phase: 'meals', meals: [meal('apple', deleted)],
-  conversationReply: 'りんごは手軽でいいですね。食事の記録にはせず、会話として受け取りました。',
+  type: 'text', id: 't1', sent: '10:12', body: 'りんごを1つ食べた', phase: 'meals', meals: [meal('apple', deleted)], conversationReply: CONV,
 });
 const textMulti = (ramenDeleted = false) => ({
-  type: 'text', id: 't1', body: '朝はトーストとコーヒー、昼はラーメンを食べた', phase: 'meals',
-  meals: [meal('toast'), meal('ramen', ramenDeleted)],
-  conversationReply: '食事の記録にはせず、会話として受け取りました。',
+  type: 'text', id: 't1', sent: '13:00', body: '朝はトーストとコーヒー、昼はラーメンを食べた', phase: 'meals',
+  meals: [meal('toast'), meal('ramen', ramenDeleted)], conversationReply: CONV,
 });
 const askApple = () => ({
-  type: 'text', id: 't2', body: 'さっきのりんごの記録を直して', phase: 'conversation', meals: [],
+  type: 'text', id: 't2', sent: '10:30', body: 'さっきのりんごの記録を直して', phase: 'conversation', meals: [],
   reply: { body: 'りんごの記録はこちらです。量と時刻は、押すと直せます。', refs: ['apple'] },
 });
 
 const SCENARIOS = {
-  one: { name: '食事が1つ', build: () => [weight(), photoMeal(), textApple()] },
-  dishes: { name: '料理が2つの食事が1つ', build: () => [weight(), {
-    type: 'text', id: 't1', body: '朝にトーストとコーヒー', phase: 'meals', meals: [meal('toast')],
-    conversationReply: '食事の記録にはせず、会話として受け取りました。' }] },
-  multi: { name: '1つの文章から食事が2つ', build: () => [weight(), textMulti()] },
-  reading: { name: '読んでいる途中 → 食事ができる', build: () => [weight(), photoMeal(), { ...textApple(), phase: 'reading' }] },
-  refer: { name: '返事が食事を指す（消す前）', build: () => [weight(), photoMeal(), textApple(), askApple()] },
-  deleted: { name: '指した食事を消したあと（#443 の手順）', build: () => [weight(), photoMeal(), textApple(true), askApple()] },
-  multiDeleted: { name: '2つのうち1つを消したあと', build: () => [weight(), textMulti(true), {
-    type: 'text', id: 't2', body: '昼のラーメンの量を直したい', phase: 'conversation', meals: [],
+  multi: { name: '13:00 に、朝と昼の2食を送った', build: () => [weight(), photoMeal(), textMulti()] },
+  mixed: { name: '15:10 に、今のおやつと朝食を送った', build: () => [weight(), photoMeal(), {
+    type: 'text', id: 't1', sent: '15:10', body: 'おやつにりんごを食べた。朝はトーストとコーヒーだった', phase: 'meals',
+    meals: [meal('apple', false, '15:10'), meal('toast')], conversationReply: CONV }] },
+  past: { name: '13:00 に、朝食だけを送った', build: () => [weight(), photoMeal(), {
+    type: 'text', id: 't1', sent: '13:00', body: '朝はトーストとコーヒーだった', phase: 'meals', meals: [meal('toast')], conversationReply: CONV }] },
+  one: { name: '今食べたものを1つ送った', build: () => [weight(), photoMeal(), textApple()] },
+  multiDeleted: { name: '2食のうち1つを消したあと', build: () => [weight(), photoMeal(), textMulti(true), {
+    type: 'text', id: 't2', sent: '13:20', body: '昼のラーメンの量を直したい', phase: 'conversation', meals: [],
     reply: { body: 'ラーメンの記録はこちらです。押すと量を直せます。', refs: ['ramen'] } }] },
 };
 
 const store = {
-  get(k) { try { return localStorage.getItem('proto-written-meal-v2:' + k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem('proto-written-meal-v2:' + k, v); } catch {} },
+  get(k) { try { return localStorage.getItem('proto-written-meal-v3:' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('proto-written-meal-v3:' + k, v); } catch {} },
 };
 
 let variant = location.hash.slice(1).toUpperCase();
-// 3回目: 案 C5 の地の濃さを、ほかの自分の記録とそろえる。前回の C1〜C4 は 9f6114b、B・D は ed87c4c にある
-if (!KEYS.includes(variant)) variant = store.get('variant') || 'C5-22';
-if (!KEYS.includes(variant)) variant = 'C5-22';
+if (!KEYS.includes(variant)) variant = store.get('variant') || 'JOIN';
+if (!KEYS.includes(variant)) variant = 'JOIN';
 let scenarioKey = store.get('scenario');
-if (!SCENARIOS[scenarioKey]) scenarioKey = 'refer';
-let hint = store.get('hint') || 'name';
-let jump = store.get('jump') === '1';
+if (!SCENARIOS[scenarioKey]) scenarioKey = 'multi';
+let hint = 'plain';
+let jump = false;
 let items = SCENARIOS[scenarioKey].build();
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const allMeals = () => items.flatMap((it) => (it.meals || []).map((m) => ({ ...m, textId: it.id, textBody: it.body })));
 const findMeal = (id) => allMeals().find((m) => m.id === id);
+const minutes = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
 // ---------- 部品 ----------
 function nutri(m) {
@@ -369,72 +350,60 @@ const bubble = (t) => `<div class="right"><div class="bubble">${esc(t.body)}</di
 const reading = () => `<div class="reading"><span class="spinner" aria-hidden="true"></span>読んでいます…</div>`;
 const resendBtn = (t) => `<button type="button" class="text-btn" data-act="resend" data-id="${t.id}">会話として送り直す</button>`;
 
+// 消した食事は、返事の下に出さない（4回目で決めた②）
 function refRow(id) {
-  const m = findAnyMeal(id);
-  if (!m) return '';
-  if (m.deleted && variant !== 'A') return '';
-  if (!m.deleted) {
-    return `<button type="button" class="ref" data-act="meal" data-id="${m.id}">
-      <span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">${m.time}</span></span>
-      <span class="chev" aria-hidden="true">›</span></button>`;
-  }
-  const sub = {
-    plain: '',
-    time: `<span class="sub">${m.time}</span>`,
-    name: `<span class="sub">${esc(m.name)}・${m.time}</span>`,
-    text: `<span class="sub">「${esc(m.textBody)}」から</span>`,
-  }[hint];
-  const tag = jump ? 'button type="button"' : 'div';
-  const close = jump ? 'button' : 'div';
-  return `<${tag} class="ref deleted${jump ? ' jump' : ''}" ${jump ? `data-act="jump" data-id="${m.id}"` : ''}>
-    <span class="meal-text"><span>削除した食事</span>${sub}</span>${jump ? '<span class="chev" aria-hidden="true">›</span>' : ''}</${close}>`;
+  const m = findMeal(id);
+  if (!m || m.deleted) return '';
+  return `<button type="button" class="ref" data-act="meal" data-id="${m.id}">
+    <span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">${m.time}</span></span>
+    <span class="chev" aria-hidden="true">›</span></button>`;
 }
 function reply(r) {
   return `<div class="reply"><p>${esc(r.body)}</p>${r.refs.map(refRow).join('')}</div>`;
 }
 
-// ---------- 案ごとの、送った文章とできた食事 ----------
-function rowsOf(t, cls = '') {
-  // 4回目: 消した食事は跡を残さない（②）
-  return t.meals.filter((m) => !m.deleted).map((m, i) => (i ? `<div class="divider inset ${cls}"></div>` : '') + (m.deleted
-    ? `<div class="meal-main tight struck" data-trace="${m.id}"><span class="meal-text"><span class="dish">${esc(m.name)}</span><span class="time">削除しました・${m.time}</span></span></div>`
-    : mealMain(m, { tight: true }))).join('');
-}
+// ---------- 送った文章と、吹き出しの下につなぐ食事 ----------
 const sideResend = (t) => `<div class="side-btn">${resendBtn(t)}</div>`;
-const RENDER = {
-  A(t) {
-    // 今の形: 食事ごとに別のカード。消した食事は並びから消える
-    const live = t.meals.filter((m) => !m.deleted);
-    return [bubble(t), ...live.map((m) => `<div class="right"><div class="own-card">${mealMain(m)}<div class="divider"></div>${resendBtn(t)}</div></div>`)]
-      .join('') + (t.meals.length && !live.length ? `<span data-trace="${t.meals.map((m) => m.id).join(' ')}"></span>` : '');
-  },
-  C5(t) {
-    if (!t.meals.some((m) => !m.deleted)) return bubble(t);
-    return `<div class="right"><div class="joined close"><div class="bubble">${esc(t.body)}</div><div class="tray">${rowsOf(t)}</div></div></div>${sideResend(t)}`;
-  },
-};
+const joinedHere = (t, m) => variant === 'JOIN' || m.time === t.sent;
+function textGroup(t) {
+  const live = t.meals.filter((m) => !m.deleted);
+  if (!live.length) return bubble(t);
+  const here = live.filter((m) => joinedHere(t, m));
+  const rows = here.map((m, i) => (i ? '<div class="divider inset"></div>' : '') + mealMain(m, { tight: true })).join('');
+  const head = here.length
+    ? `<div class="right"><div class="joined close"><div class="bubble">${esc(t.body)}</div><div class="tray">${rows}</div></div></div>`
+    : bubble(t);
+  return head + sideResend(t);
+}
+// イ: 時刻が違う食事は、その時刻の位置に自分の記録のカードで出す
+function farMeal(t, m) {
+  const note = variant === 'SPLIT-NOTE' ? `<div class="note"><span class="note-text">「${esc(t.body)}」から</span></div>` : '';
+  return `<div class="group">${note}<div class="right"><div class="own-card">${mealMain(m)}</div></div></div>`;
+}
 
-function renderItem(it) {
+function units(it) {
   if (it.type === 'weight') {
-    return `<div class="group"><div class="right"><div class="own-card"><div class="weight"><strong>${it.value}</strong><span class="time">${it.time}</span></div></div></div></div>`;
+    return [{ at: minutes(it.time), html: `<div class="group"><div class="right"><div class="own-card"><div class="weight"><strong>${it.value}</strong><span class="time">${it.time}</span></div></div></div></div>` }];
   }
   if (it.type === 'photo') {
-    return `<div class="group"><div class="right"><div class="own-card"><div class="photo"></div>${mealMain(it)}</div></div></div>`;
+    return [{ at: minutes(it.time), html: `<div class="group"><div class="right"><div class="own-card"><div class="photo"></div>${mealMain(it)}</div></div></div>` }];
   }
   let body;
+  const far = [];
   if (it.phase === 'reading') body = bubble(it) + reading();
   else if (it.phase === 'conversation') body = bubble(it) + (it.reply ? reply(it.reply) : '');
-  else body = RENDER[variant.startsWith('C5') ? 'C5' : variant](it);
-  return `<div class="group" data-text="${it.id}">${body}</div>`;
+  else {
+    body = textGroup(it);
+    it.meals.filter((m) => !m.deleted && !joinedHere(it, m)).forEach((m) => far.push({ at: minutes(m.time), html: farMeal(it, m) }));
+  }
+  return [{ at: minutes(it.sent), html: `<div class="group" data-text="${it.id}">${body}</div>` }, ...far];
 }
 
 function render() {
   const v = VARIANTS[variant];
-  const phone = document.querySelector('.phone');
-  phone.classList.toggle('only-tray', variant === 'C5');
-  if (v.mix) phone.style.setProperty('--own-card', `color-mix(in srgb, var(--primary) ${v.mix}%, var(--surface))`);
-  else phone.style.removeProperty('--own-card');
-  document.getElementById('timeline').innerHTML = `<div class="day-head">10月11日（土）</div>` + items.map(renderItem).join('');
+  document.querySelector('.phone').style.setProperty('--own-card', 'color-mix(in srgb, var(--primary) 22%, var(--surface))');
+  const list = items.flatMap(units).sort((x, y) => x.at - y.at);
+  document.getElementById('timeline').innerHTML = `<div class="day-head">10月11日（土）</div>` + list.map((u) => u.html).join('');
   document.getElementById('proto-label').textContent = `${variant}（${v.name}）`;
   document.getElementById('proto-variant-name').textContent = `${variant}. ${v.name}`;
   document.getElementById('proto-variant-desc').textContent = v.desc;
@@ -444,9 +413,9 @@ function render() {
   actions.push('<button type="button" data-proto="reset">場面を最初から</button>');
   document.getElementById('proto-actions').innerHTML = actions.join('');
   document.getElementById('proto-state').textContent = JSON.stringify({
-    variant, scenario: scenarioKey, replyDeletedHint: hint, jumpToOrigin: jump,
+    variant, scenario: scenarioKey,
     items: items.map((it) => it.type === 'text'
-      ? { id: it.id, body: it.body, phase: it.phase, meals: it.meals.map((m) => `${m.name}${m.deleted ? '（削除）' : ''}`), reply: it.reply ? { body: it.reply.body, refs: it.reply.refs } : undefined }
+      ? { id: it.id, sent: it.sent, body: it.body, phase: it.phase, meals: it.meals.map((m) => `${m.time} ${m.name}${m.deleted ? '（削除）' : ''}`), reply: it.reply ? { body: it.reply.body, refs: it.reply.refs } : undefined }
       : { id: it.id, type: it.type }),
   }, null, 2);
   if (location.hash.slice(1) !== variant) history.replaceState(null, '', '#' + variant);
@@ -509,12 +478,6 @@ const scenarioSelect = document.getElementById('proto-scenario');
 scenarioSelect.innerHTML = Object.entries(SCENARIOS).map(([k, s]) => `<option value="${k}">${esc(s.name)}</option>`).join('');
 scenarioSelect.value = scenarioKey;
 scenarioSelect.addEventListener('change', () => { scenarioKey = scenarioSelect.value; store.set('scenario', scenarioKey); items = SCENARIOS[scenarioKey].build(); render(); });
-const hintSelect = document.getElementById('proto-hint');
-hintSelect.value = hint;
-hintSelect.addEventListener('change', () => { hint = hintSelect.value; store.set('hint', hint); render(); });
-const jumpBox = document.getElementById('proto-jump');
-jumpBox.checked = jump;
-jumpBox.addEventListener('change', () => { jump = jumpBox.checked; store.set('jump', jump ? '1' : '0'); render(); });
 document.getElementById('proto-actions').addEventListener('click', (e) => {
   const b = e.target.closest('[data-proto]');
   if (!b) return;
