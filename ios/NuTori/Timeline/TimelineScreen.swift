@@ -52,6 +52,14 @@ struct TimelineScreen: View {
                 Divider()
                 content(loaded: loaded)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    #if DEBUG
+                        // PROTOTYPE: 話し手が変わるところの間の切り替え（ConversationGapPrototype.swift）
+                        .safeAreaInset(edge: .bottom) {
+                            if ConversationGapPrototype.isEnabled {
+                                ConversationGapPrototypeSwitcher()
+                            }
+                        }
+                    #endif
                     .overlay(alignment: .top) {
                         if let card = loaded?.noticeAwaitingAnswer,
                             unansweredNoticeLineVisibility.shows(for: card)
@@ -215,6 +223,11 @@ struct TimelineScreen: View {
     }
 
     @State private var showsAccount = false
+    #if DEBUG
+        // PROTOTYPE: 話し手が変わるところの間の案（ConversationGapPrototype.swift）
+        @AppStorage(ConversationGapPrototype.storageKey) private var conversationGapVariant =
+            ConversationGapPrototype.current.rawValue
+    #endif
     /// 潜った画面の並び。食事を消したら、料理の画面からでもタイムラインまで戻す
     @State private var navigationPath = NavigationPath()
     @State private var visibleDay: CalendarDay?
@@ -401,7 +414,7 @@ struct TimelineScreen: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             ForEach(day.items) { item in
                 itemView(item, in: timeline)
-                    .padding(.top, Self.gap(before: item, in: day))
+                    .padding(.top, gap(before: item, in: day))
             }
         }
         // 中の行が自分の識別子を保つよう、区切りは入れ物にしてから名前を付ける
@@ -423,10 +436,17 @@ struct TimelineScreen: View {
     /// 会話のまとまりの見た目（仕様 #419「会話のまとまりの見た目」）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
     /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、会話のまとまりを余白だけで見せるため、ここは数値で決める。
     /// 詰めるのは VStack の標準の間隔と同じ 8、空けるのは DESIGN.md のまとまりの間（section-gap）の 24
-    private static func gap(before item: Timeline.Item, in day: Timeline.Day) -> CGFloat {
+    private func gap(before item: Timeline.Item, in day: Timeline.Day) -> CGFloat {
         switch day.spacing(before: item) {
-        case .close: 8
-        case .apart: 24
+        case .close:
+            #if DEBUG
+                // PROTOTYPE: 話し手が変わるところの間を案ごとに変える
+                return ConversationGapPrototype.active(conversationGapVariant).closeGap(
+                    before: item, in: day)
+            #else
+                return 8
+            #endif
+        case .apart: return 24
         }
     }
 

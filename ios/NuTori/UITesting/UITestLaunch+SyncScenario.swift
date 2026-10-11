@@ -66,7 +66,60 @@
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
                 return .init(records: [], startedOn: today, accountDeletion: .sessionExpired)
+            case .prototypeConversationGap:
+                return prototypeConversationGap()
             }
+        }
+
+        /// PROTOTYPE: 今日 7:12 に体重を記録し、昼に会話を3往復した。2つめの文章は食事（親子丼）になり、返事は無い
+        private func prototypeConversationGap() -> FakeSyncServer.Scenario {
+            let feedbackId = Self.fixedId("66666666-6666-4666-8666-666666666661")
+            let lunchId = Self.fixedId("66666666-6666-4666-8666-666666666662")
+            let sharedId = Self.fixedId("66666666-6666-4666-8666-666666666663")
+            let thanksId = Self.fixedId("66666666-6666-4666-8666-666666666664")
+            let mealId = Self.fixedId("77777777-7777-4777-8777-777777777771")
+            let lunchAt = date(dayOffset: 0, hour: 12, minute: 40)
+            return .init(
+                records: [
+                    todaysManualWeight,
+                    sentText(feedbackId, "ここまでの食事のフィードバックをください。", hour: 12, minute: 30),
+                    sentText(lunchId, "昼は親子丼", hour: 12, minute: 40),
+                    .meal(
+                        SyncedMeal(
+                            id: mealId, eatenAt: lunchAt,
+                            eatenUtcOffsetSeconds: clock.timeZone().secondsFromGMT(for: lunchAt),
+                            sentAt: lunchAt, sentTimeZone: clock.timeZone(),
+                            entryMethod: .written(sentTextId: lunchId), photoIds: [])),
+                    .mealEstimationStatus(.init(mealId: mealId, status: .estimated)),
+                    .sentTextStatus(
+                        .init(sentTextId: lunchId, classification: .meal, reply: .notRequested)),
+                    sentText(sharedId, "↑は3人で分けて食べた", hour: 12, minute: 45),
+                    sentText(thanksId, "ありがとう", hour: 12, minute: 50),
+                ]
+                    + reply(
+                        to: feedbackId,
+                        "朝ごはんで **たんぱく質** がとれています。\n- 昼は野菜を足す\n- 夜は軽めに")
+                    + reply(to: sharedId, "3人で分けたなら、1人分は3分の1ほどですね。量を直しておくと、今日の合計に合います。")
+                    + reply(to: thanksId, "どういたしまして。夜ごはんも送ってください。")
+                    + Self.oyakodon(mealId: mealId),
+                startedOn: TimelineDayText.startedOn(for: clock.today()))
+        }
+
+        private func sentText(_ id: UUID, _ body: String, hour: Int, minute: Int) -> SyncChange {
+            .sentText(
+                SyncedSentText(
+                    id: id, body: body, sentAt: date(dayOffset: 0, hour: hour, minute: minute),
+                    timeZone: clock.timeZone()))
+        }
+
+        /// 返事と、返事を作り終えた送った文章の状態
+        private func reply(to sentTextId: UUID, _ body: String) -> [SyncChange] {
+            [
+                .aiUtterance(
+                    SyncedAiUtterance(id: UUID(), body: body, sentTextId: sentTextId, mealIds: [])),
+                .sentTextStatus(
+                    .init(sentTextId: sentTextId, classification: .conversation, reply: .replied)),
+            ]
         }
 
         private static let manualId = fixedId("11111111-1111-4111-8111-111111111111")

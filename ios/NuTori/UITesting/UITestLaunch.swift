@@ -211,6 +211,8 @@
             case accountDeletionRateLimited = "account-deletion-rate-limited"
             case accountDeletionUnauthorized = "account-deletion-unauthorized"
             case appBuildUnsupported = "app-build-unsupported"
+            /// PROTOTYPE: 話し手が変わるところの間を比べる（ConversationGapPrototype.swift）
+            case prototypeConversationGap = "prototype-conversation-gap"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める
