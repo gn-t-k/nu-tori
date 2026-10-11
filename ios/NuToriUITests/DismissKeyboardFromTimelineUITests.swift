@@ -16,27 +16,26 @@ final class DismissKeyboardFromTimelineUITests: XCTestCase {
         XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
     }
 
-    func test_送ったあともキーボードが残りタイムラインを下へ引くと下がって体重の丸が出ること() {
-        field.tap()
-        field.typeText("散歩した")
+    func test_送ったあとも続けて書けタイムラインを下へ引くとキーボードが下がって体重の丸が出ること() {
+        app.composerField.tap()
+        app.composerField.typeText("散歩した")
         XCTAssertFalse(app.buttons["composer-weight"].exists)
         app.buttons["composer-send"].tap()
         XCTAssertTrue(app.staticText(containing: "散歩した").waitForExistence(timeout: 5))
         XCTAssertTrue(app.keyboards.firstMatch.exists)
         XCTAssertFalse(app.buttons["composer-weight"].exists)
 
+        // 欄を押し直さずに、続けて書いて送れる
+        app.composerField.typeText("夜も歩く")
+        app.buttons["composer-send"].tap()
+        XCTAssertTrue(app.staticText(containing: "夜も歩く").waitForExistence(timeout: 5))
+
         // 指に合わせて下がるキーボードは、指がキーボードの上まで来ないと下がらないので、タイムラインから画面の下端まで引く
-        let timeline = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-        timeline.press(
-            forDuration: 0.1,
-            thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+        let dragStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+        let screenBottom = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98))
+        dragStart.press(forDuration: 0.1, thenDragTo: screenBottom)
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "タイムラインを引いて下げたキーボード")
-    }
-
-    /// 書く欄は、縦に伸びる TextField（UITextView）なので、種類を問わずに探す
-    private var field: XCUIElement {
-        app.descendants(matching: .any)["composer-field"]
     }
 }
