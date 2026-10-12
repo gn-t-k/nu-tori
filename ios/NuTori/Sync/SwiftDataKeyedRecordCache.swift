@@ -20,8 +20,12 @@ nonisolated struct SwiftDataKeyedRecordCache<Row: KeyedCacheRow>: KeyedRecordCac
         }
     }
 
+    /// `delete(model:)` は、保存の前に足した行を残す。残すと、次の保存で置き場に書かれるので、あとから消す
     func removeAll() throws {
         try context.delete(model: Row.self)
+        for row in try context.fetch(FetchDescriptor<Row>()) {
+            context.delete(row)
+        }
     }
 
     /// 読めない行（知らないタイムゾーンなど）は飛ばす
