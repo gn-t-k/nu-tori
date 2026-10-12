@@ -23,6 +23,7 @@ final class RootModel {
     init(
         accountSession: AccountSession,
         recordSync: RecordSync,
+        reflector: RecordSyncReflector,
         health: HealthSyncSession,
         missedWeightRecordWatch: MissedWeightRecordWatch,
         clock: DeviceClock
@@ -32,24 +33,24 @@ final class RootModel {
         self.recordSync = recordSync
         self.health = health
         self.missedWeightRecordWatch = missedWeightRecordWatch
-        recordSync.onDestination = { [weak self] destination in
+        reflector.onDestination = { [weak self] destination in
             self?.replaceScreen(with: destination)
         }
-        recordSync.onRejectedWrites = { [weak self] writes in
+        reflector.onRejectedWrites = { [weak self] writes in
             self?.noteRejected(writes)
         }
-        recordSync.onReplacingRecord = { [weak self] recordId in
+        reflector.onReplacingRecord = { [weak self] recordId in
             self?.dropRejection(for: recordId)
         }
-        recordSync.onUnsentDishIds = { [weak self] unsentDishIds in
+        reflector.onUnsentDishIds = { [weak self] unsentDishIds in
             guard self?.unsentDishIds != unsentDishIds else { return }
             self?.unsentDishIds = unsentDishIds
         }
-        recordSync.onUndeliveredRecords = { [weak self] undeliveredRecords in
+        reflector.onUndeliveredRecords = { [weak self] undeliveredRecords in
             guard self?.undeliveredRecords != undeliveredRecords else { return }
             self?.undeliveredRecords = undeliveredRecords
         }
-        recordSync.onReplyStreams = { [weak self] streams in
+        reflector.onReplyStreams = { [weak self] streams in
             self?.replyStreams = streams
         }
     }
@@ -290,8 +291,10 @@ final class RootModel {
 
     func noteAppBackgrounded() {
         rejectionAcceptance = .ignoring
-        recordSync.stopWaitingForNoticeTime()
-        Task { await recordSync.stopFollowingReplies() }
+        Task {
+            await recordSync.stopWaitingForNoticeTime()
+            await recordSync.stopFollowingReplies()
+        }
     }
 
     func noteAppActive() {
@@ -395,8 +398,10 @@ final class RootModel {
             // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
             discardRejectedLines()
             // サインアウトとアカウントの削除で、予約した通知と通知センターに残った通知を外し、前の時刻で待たない
-            recordSync.stopWaitingForNoticeTime()
-            Task { [recordSync] in await recordSync.stopFollowingReplies() }
+            Task { [recordSync] in
+                await recordSync.stopWaitingForNoticeTime()
+                await recordSync.stopFollowingReplies()
+            }
             Task { [missedWeightRecordWatch] in await missedWeightRecordWatch.removeAll() }
         case .loadingTimeline, .timeline:
             break
@@ -457,7 +462,7 @@ final class RootModel {
                 _ = try await self.recordSync.sync()
             }
             // 送れなくても、同期の前に記録忘れの見張りが決めて返した時刻を待つ
-            recordSync.startWaitingForNoticeTime()
+            await recordSync.startWaitingForNoticeTime()
         case .opening, .signIn:
             return
         }

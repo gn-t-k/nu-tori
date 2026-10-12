@@ -51,6 +51,12 @@
   - 直したときの書き直しは、版をサーバーが出すので、書き込みが当たって料理の新しい版が届いてから行う。端末で直した値をその場で書かない
 - 呼ぶ時機は、取りに行く頁を取り切ったあと（`SyncEngine`）、この端末で食事を消したあと（`SyncEngine.deleteMeal`）、この端末で料理を消したあと（`SyncEngine.deleteDish`）、栄養の許可を求めたあと（`HealthSyncEngine.requestNutritionAuthorizationAfterMealRecorded`）。どれも、書けなくても同期と食事を消すことは止めない
 
+## 送って取りに行く段取り
+
+- 段取り（同時に起きた同期をまとめる、書き込みを積んだあとに見え方を知らせて送る、送ったあとに返事を追ってから推定を追う、取りに行く間隔、初回の取得の知らせ、記録忘れの見張りへの知らせ）は、NuToriCore の `RecordSync`（actor）に置く。外とは、同期の働きを作るもの（`SyncEngineSource`）、時計（`RecordSyncClock`）、見守る要求のつなぎ、反映の先（`RecordSyncReflection`）でつなぐ
+- アプリのターゲットには、段取りを起こすきっかけ（`RecordSyncTriggers`。バックグラウンド更新、回線、時計の変化）と、port の実装（`DeviceSyncEngineSource`、`RecordSyncReflector`）と、組み立て（`AppRuntime`）だけを置く
+- 文章を送ったあとの取得は、送ってすぐ、見守る要求が閉じてすぐ、そのあと3秒おき。UI テストの場面で偽の同期サーバーが何回めの取得で答えるかを決めるときは、`RecordSyncTests` の取得の並びから数える
+
 ## 置き場の約束
 
 - 端末の置き場（保存の順、送り待ちの箱の入口、種類の名前）は `ios/AGENTS.md` の「構成」、サーバーの帳簿（控えを書く順、冪等、500 件の区切り）は `server/AGENTS.md` の「同期の記録の種類の足し方」にある
