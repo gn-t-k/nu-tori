@@ -69,7 +69,9 @@ struct SentTextBubbleView: View {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(bubble.meals.enumerated()), id: \.element.meal.id) { index, card in
                     if index > 0 {
+                        // 行の文字の左端（MealCardView の標準の余白）にそろえて、線を左から下げる
                         Divider()
+                            .padding(.leading)
                     }
                     mealRow(card)
                 }
