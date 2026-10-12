@@ -44,6 +44,15 @@ check_ios() {
     fi
     (cd "$ios" && "$swiftlint" lint --strict --quiet)
 
+    step "UI テストが確かめた画面のスクリーンショットを残しているか"
+    local missing
+    missing="$(missing_ui_test_screenshots "$ios"/NuToriUITests/*UITests.swift)"
+    if [ -n "$missing" ]; then
+        echo "$missing" >&2
+        echo "上のテストで attachScreenshot(of:named:) を呼ぶ（docs/agents/languages/swift.md「道具」）" >&2
+        return 1
+    fi
+
     step "Xcode のプロジェクトの依存が exactVersion か"
     if grep -A2 'requirement = {' "$ios/NuTori.xcodeproj/project.pbxproj" |
         grep 'kind = ' | grep -v 'kind = exactVersion'; then
@@ -260,6 +269,28 @@ install_swiftlint() {
         rm "$dir/$asset"
     fi
     swiftlint="$dir/swiftlint"
+}
+
+# attachScreenshot を呼ばない test メソッドを「ファイル: func test_…」の形で出す。メソッドの終わりは、次の func かファイルの終わりとみなす
+missing_ui_test_screenshots() {
+    awk '
+        function report() {
+            if (test != "" && !shot) print file ": " test
+            test = ""
+        }
+        FNR == 1 { report(); file = FILENAME }
+        /^[[:space:]]*(@MainActor[[:space:]]+)?(private[[:space:]]+)?(override[[:space:]]+)?func[[:space:]]/ {
+            report()
+            shot = 0
+            if ($0 ~ /func test/) {
+                test = $0
+                sub(/^[[:space:]]*/, "", test)
+                sub(/\(.*/, "", test)
+            }
+        }
+        /attachScreenshot\(/ { shot = 1 }
+        END { report() }
+    ' "$@"
 }
 
 # いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
