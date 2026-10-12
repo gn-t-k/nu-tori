@@ -1,10 +1,8 @@
 import { match } from "ts-pattern";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
-import { createRecordLedger } from "../../domain/create-record-ledger";
 import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
+import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import type { RecordType } from "../../domain/record-type";
-import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { Meal } from "../../meal/domain/meal";
 import type { SentText } from "../../sent-text/domain/sent-text";
@@ -39,94 +37,101 @@ export type WrittenMealTarget = {
 // 次に試みる時刻が来た続いている推定の試みを書く。途中で止まった試みで上限に達した推定は、もう呼ばずに諦める。
 // 予定の数える日の推定が1日の上限に達していれば、推定を始めず、次の日の 0:00 の予定を同じ対象に足して見送る
 export const beginEstimationAttempts = (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: Pick<
+    RecordKindStores,
+    | "dish"
+    | "dishEstimationStatus"
+    | "estimation"
+    | "estimationSchedule"
+    | "ingredient"
+    | "latestTimeZone"
+    | "meal"
+    | "sentText"
+  >,
   now: Date,
 ): { attempts: BegunEstimationAttempt[]; usageEvents: UsageEvent[] } =>
-  createRecordLedger(ledgerStore, stores, now).changeOutsideWrites((addChange) =>
-    stores.writeEstimationEvents(addChange, now, (writes) => {
-      const attempts: BegunEstimationAttempt[] = [];
-      const usageEvents: UsageEvent[] = [];
-      const beginAttempt = (estimationId: string, target: EstimationTarget) => {
-        const meal = findScheduledMeal(stores, target.mealId);
-        const attemptId = generateRecordId();
-        writes.beginAttempt({ id: attemptId, estimationId, attemptedAt: now });
-        attempts.push({
-          attemptId,
-          estimationId,
-          photoIds: meal.photoIds,
-          target: match(target)
-            .returnType<BegunEstimationAttempt["target"]>()
-            .with({ type: "meal" }, () =>
-              meal.sentTextId === undefined
-                ? { type: "meal" }
-                : { type: "written_meal", sentText: findSentText(stores, meal.sentTextId) },
-            )
-            .with({ type: "dish" }, ({ dishId }) => ({
-              type: "dish",
-              dish: computeDishToReestimate(stores, dishId),
-            }))
-            .exhaustive(),
-        });
-      };
-
-      // 始めた推定の試みは呼び出し中なので、下の続いている推定では次に試みる時刻がまだ来ていない
-      for (const {
-        scheduleId,
-        target,
-        countedOn,
-      } of stores.estimationSchedule.findWaitingSchedules(now)) {
-        if (stores.estimation.countEstimationsCountedOn(countedOn) >= maximumDailyEstimations) {
-          const nextDay = computeNextDayStart(
-            countedOn,
-            findLatestValidTimeZone(stores.latestTimeZone) ??
-              findScheduledMeal(stores, target.mealId).sentTimeZone,
-          );
-          writes.deferToNextDay({
-            scheduleId,
-            target,
-            deferredAt: now,
-            nextSchedule: {
-              id: generateRecordId(),
-              dueAt: nextDay.startsAt,
-              countedOn: nextDay.countedOn,
-            },
-          });
-          usageEvents.push({ name: "estimation_deferred" });
-          continue;
-        }
-        const estimationId = generateRecordId();
-        writes.beginEstimation({ id: estimationId, scheduleId, target, startedAt: now });
-        beginAttempt(estimationId, target);
-      }
-
-      for (const {
+  writeRecordChanges(({ addChange, estimationAt }) => {
+    const writes = estimationAt(now);
+    const attempts: BegunEstimationAttempt[] = [];
+    const usageEvents: UsageEvent[] = [];
+    const beginAttempt = (estimationId: string, target: EstimationTarget) => {
+      const meal = findScheduledMeal(stores, target.mealId);
+      const attemptId = generateRecordId();
+      writes.beginAttempt({ id: attemptId, estimationId, attemptedAt: now });
+      attempts.push({
+        attemptId,
         estimationId,
-        target,
-        attempts: previous,
-      } of stores.estimation.findContinuingEstimations()) {
-        if (computeNextEstimationAttemptAt(previous).getTime() > now.getTime()) {
-          continue;
-        }
-        if (previous.length < maximumEstimationAttempts) {
-          beginAttempt(estimationId, target);
-          continue;
-        }
-        abandonEstimation(stores, writes, addChange, { estimationId, target, abandonedAt: now });
-        usageEvents.push(
-          computeEstimationEndedEvent({
-            ...findEstimationOrigin(stores, target, estimationId),
-            finalStatus: "failed",
-            attempts: previous,
-            endedAt: now,
-            dishCount: 0,
-            ingredients: [],
-          }),
+        photoIds: meal.photoIds,
+        target: match(target)
+          .returnType<BegunEstimationAttempt["target"]>()
+          .with({ type: "meal" }, () =>
+            meal.sentTextId === undefined
+              ? { type: "meal" }
+              : { type: "written_meal", sentText: findSentText(stores, meal.sentTextId) },
+          )
+          .with({ type: "dish" }, ({ dishId }) => ({
+            type: "dish",
+            dish: computeDishToReestimate(stores, dishId),
+          }))
+          .exhaustive(),
+      });
+    };
+
+    // 始めた推定の試みは呼び出し中なので、下の続いている推定では次に試みる時刻がまだ来ていない
+    for (const { scheduleId, target, countedOn } of stores.estimationSchedule.findWaitingSchedules(
+      now,
+    )) {
+      if (stores.estimation.countEstimationsCountedOn(countedOn) >= maximumDailyEstimations) {
+        const nextDay = computeNextDayStart(
+          countedOn,
+          findLatestValidTimeZone(stores.latestTimeZone) ??
+            findScheduledMeal(stores, target.mealId).sentTimeZone,
         );
+        writes.deferToNextDay({
+          scheduleId,
+          target,
+          deferredAt: now,
+          nextSchedule: {
+            id: generateRecordId(),
+            dueAt: nextDay.startsAt,
+            countedOn: nextDay.countedOn,
+          },
+        });
+        usageEvents.push({ name: "estimation_deferred" });
+        continue;
       }
-      return { attempts, usageEvents };
-    }),
-  );
+      const estimationId = generateRecordId();
+      writes.beginEstimation({ id: estimationId, scheduleId, target, startedAt: now });
+      beginAttempt(estimationId, target);
+    }
+
+    for (const {
+      estimationId,
+      target,
+      attempts: previous,
+    } of stores.estimation.findContinuingEstimations()) {
+      if (computeNextEstimationAttemptAt(previous).getTime() > now.getTime()) {
+        continue;
+      }
+      if (previous.length < maximumEstimationAttempts) {
+        beginAttempt(estimationId, target);
+        continue;
+      }
+      abandonEstimation(stores, writes, addChange, { estimationId, target, abandonedAt: now });
+      usageEvents.push(
+        computeEstimationEndedEvent({
+          ...findEstimationOrigin(stores, target, estimationId),
+          finalStatus: "failed",
+          attempts: previous,
+          endedAt: now,
+          dishCount: 0,
+          ingredients: [],
+        }),
+      );
+    }
+    return { attempts, usageEvents };
+  });
 
 const findScheduledMeal = (stores: Pick<RecordKindStores, "meal">, mealId: RecordId): Meal => {
   const meal = stores.meal.find(mealId);

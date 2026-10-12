@@ -45,8 +45,8 @@ export type RecordKindStores = {
   estimation: EstimationStore;
   // 返事の流れを読むために、アラームと送った文章の状態が使う
   reply: ReplyStore;
-  // 推定の予定と結果を書く口（ドメイン層の writeEstimationEvents に、書く置き場を渡したもの）。
-  // 書く置き場はここにしか渡さないので、推定の予定と結果はこの口を通してしか書けない
+  // 推定の予定と結果を書く口（ドメイン層の writeEstimationEvents に、書く置き場を渡したもの）。種類が、書き込みの決定の commit の中で使う。
+  // 書く置き場はここと記録の変化を書く入口にしか渡さないので、推定の予定と結果はこの口か入口を通してしか書けない
   writeEstimationEvents: <T>(
     addChange: (
       change: RecordChangeTarget<"meal_estimation_status" | "dish_estimation_status">,
@@ -54,8 +54,8 @@ export type RecordKindStores = {
     now: Date,
     run: (writes: EstimationWrites) => T,
   ) => T;
-  // 返事の流れの出来事を書く口（ドメイン層の writeReplyEvents に、書く置き場を渡したもの）。
-  // 書く置き場はここにしか渡さないので、返事の依頼から返事・作れなかったまでは、この口を通してしか書けない
+  // 返事の流れの出来事を書く口（ドメイン層の writeReplyEvents に、書く置き場を渡したもの）。種類が、書き込みの決定の commit の中で使う。
+  // 書く置き場はここと記録の変化を書く入口にしか渡さないので、返事の依頼から返事・作れなかったまでは、この口か入口を通してしか書けない
   writeReplyEvents: <T>(
     addChange: (change: RecordChangeTarget<"sent_text_status" | "ai_utterance">) => void,
     run: (writes: ReplyWrites) => T,

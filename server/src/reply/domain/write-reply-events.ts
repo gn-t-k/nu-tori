@@ -12,7 +12,7 @@ import type { ReplyWrites } from "./reply-writes";
 // 表で守らない決まり（依頼は会話の文章にだけ、回数切れと生成はどちらか1つ、返事と作れなかったはどちらか1つ。設計判断 34・40）を書く前に確かめ、破る書き込みは投げる。
 // きっかけがちょうど1つなことは、依頼の型（trigger）で守る。
 // 書いた送った文章ごとに、初めて書く前と run のあとの送った文章の状態を比べ、違う文章にだけ、書いた順に状態の変更を足す。
-// 返事を書いたら、返事の変更も足す。addChange は帳簿の changeOutsideWrites か、書き込みの決定の commit に渡るもの
+// 返事を書いたら、返事の変更も足す。addChange は、記録の変化を書く入口か、書き込みの決定の commit に渡るもの
 export const writeReplyEvents = <T>(
   stores: {
     sentText: SentTextStore;

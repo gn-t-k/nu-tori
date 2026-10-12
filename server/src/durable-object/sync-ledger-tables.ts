@@ -1,21 +1,7 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import type { RecordId } from "../domain/record-id";
-
-const recordTypes = [
-  "weight_record",
-  "account_settings",
-  "meal",
-  "meal_estimation_status",
-  "dish",
-  "ingredient",
-  "dish_estimation_status",
-  "notice",
-  "usual_weighing_time",
-  "sent_text",
-  "sent_text_status",
-  "ai_utterance",
-  "weight_trend",
-] as const;
+// record_type の列挙は、種類の名前の一覧から引く。列は TEXT で、SQL に値の並びを書いていないので、種類を足しても移行は要らない
+import { recordTypes } from "../domain/record-types";
 
 const syncRequestLogs = sqliteTable(
   "sync_request_logs",

@@ -1,9 +1,9 @@
 public import Foundation
 public import NuToriAPI
 
-/// 知らせの同期の形。記録の種類の入口のうち、キャッシュの型に依らない部分。
-/// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込み（作る・答える）を作る
-public struct NoticeSyncing: SyncedRecordKind, RecordKindWrites {
+/// 知らせの同期の形。記録の種類の入口のうち、キャッシュの置き方に依らない部分。
+/// 取りに行った変更の見分け方と今の値の読み方、キャッシュへの当て方、送り待ちから送る書き込み（作る・答える）を作る
+public struct NoticeSyncing: CacheApplying, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った知らせが読めなくなる
     public static let kindName = RecordKindName.notice
 
@@ -71,6 +71,23 @@ public struct NoticeSyncing: SyncedRecordKind, RecordKindWrites {
                     kind: name, changes: [.notice(SyncedNotice(notice.responded(response)))])
             ]
         )
+    }
+
+    /// 今の値を書いてから、外す知らせを消す。キャッシュに無い知らせは読み飛ばす
+    public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<Notice, UUID>)
+        throws
+    {
+        let current = current(from: changes)
+        for record in current.notices {
+            try cache.upsert(record)
+        }
+        for recordId in current.removedNoticeIds {
+            try cache.remove(id: recordId)
+        }
+    }
+
+    public func erase(_ cache: any KeyedRecordCache<Notice, UUID>) throws {
+        try cache.removeAll()
     }
 
     /// 取りに行った変更を、今の値の並びにする。対象の日付が読めない知らせは読み飛ばす

@@ -1,4 +1,4 @@
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { createServerOnlyKind } from "../../domain/sync-ledger/create-server-only-kind";
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import type { MealStore } from "../../meal/domain/meal-store";
 import { computeMealEstimationStatus } from "./compute-meal-estimation-status";
@@ -9,18 +9,13 @@ import type { MealEstimationStatusStore } from "./meal-estimation-status-store";
 export const createMealEstimationStatusKind = (
   mealStore: MealStore,
   store: MealEstimationStatusStore,
-): RecordKind<"meal_estimation_status", never, MealEstimationStatus> => ({
-  name: "meal_estimation_status",
-  writes: undefined,
-  follows: undefined,
-  whenGone: "deletion_mark",
-  readCurrent: (mealId): CurrentRecord<MealEstimationStatus> => {
-    if (mealStore.find(mealId) === undefined) {
-      return mealStore.hasDeletion(mealId) ? { status: "deleted" } : { status: "absent" };
-    }
-    return {
-      status: "value",
-      value: computeMealEstimationStatus(store.findSchedulesOfMeal(mealId)),
-    };
-  },
-});
+): RecordKind<"meal_estimation_status", never, MealEstimationStatus> =>
+  createServerOnlyKind({
+    name: "meal_estimation_status",
+    whenGone: "deletion_mark",
+    parent: {
+      exists: (mealId) => mealStore.find(mealId) !== undefined,
+      hasDeletion: mealStore.hasDeletion,
+    },
+    find: (mealId) => computeMealEstimationStatus(store.findSchedulesOfMeal(mealId)),
+  });

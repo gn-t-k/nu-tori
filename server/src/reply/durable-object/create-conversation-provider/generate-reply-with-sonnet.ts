@@ -1,14 +1,12 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
-import { match } from "ts-pattern";
 import { catchAnthropicFailure } from "../../../durable-object/anthropic/catch-anthropic-failure";
 import { parseJson } from "../../../durable-object/anthropic/parse-json";
 import type { TokenUsage } from "../../../domain/token-usage";
 import type { ConversationProvider, GeneratedReply } from "../../domain/conversation-provider";
-import { ConversationProviderBadRequestError } from "../../domain/conversation-provider-bad-request-error";
-import { ConversationProviderError } from "../../domain/conversation-provider-error";
-import { ConversationProviderInvalidResponseError } from "../../domain/conversation-provider-invalid-response-error";
-import { ConversationProviderTimedOutError } from "../../domain/conversation-provider-timed-out-error";
+import { LlmCallError } from "../../../domain/llm-call-error";
+import { LlmCallInvalidResponseError } from "../../../domain/llm-call-invalid-response-error";
+import { LlmCallTimedOutError } from "../../../domain/llm-call-timed-out-error";
 import { createSonnetReplyRequest } from "./create-sonnet-reply-request";
 import { readStreamedReplyBody } from "./read-streamed-reply-body";
 import { sonnetReplyOutputSchema } from "./sonnet-reply-output-schema";
@@ -27,27 +25,10 @@ export const generateReplyWithSonnet = (
       client.messages
         .create({ ...createSonnetReplyRequest(context), metadata: { user_id: userId } }, { signal })
         .then(async (stream) => readStream(stream, onText)),
-      (failure) =>
-        match(failure)
-          .with(
-            { type: "timed_out" },
-            ({ cause }) => new ConversationProviderTimedOutError({ cause }),
-          )
-          .with(
-            { type: "bad_request" },
-            ({ errorType, cause }) => new ConversationProviderBadRequestError({ errorType, cause }),
-          )
-          .with(
-            { type: "provider_error" },
-            ({ errorType, cause }) => new ConversationProviderError({ errorType, cause }),
-          )
-          .exhaustive(),
     ),
     // 流している途中で signal が切れると、SDK は失敗にせず流れを終える
     R.andThen((streamed) =>
-      signal.aborted
-        ? R.fail(new ConversationProviderTimedOutError())
-        : readReply(streamed, onText),
+      signal.aborted ? R.fail(new LlmCallTimedOutError()) : readReply(streamed, onText),
     ),
   );
 
@@ -95,19 +76,16 @@ const readStream = async (
 const readReply = (
   { text, passedBody, stopReason, usage }: StreamedMessage,
   onText: (text: string) => void,
-): R.Result<
-  GeneratedReply,
-  ConversationProviderError | ConversationProviderInvalidResponseError
-> => {
+): R.Result<GeneratedReply, LlmCallError | LlmCallInvalidResponseError> => {
   if (stopReason === null) {
-    return R.fail(new ConversationProviderError({ errorType: "stream_ended" }));
+    return R.fail(new LlmCallError({ errorType: "stream_ended" }));
   }
   if (stopReason !== "end_turn") {
-    return R.fail(new ConversationProviderInvalidResponseError({ usage }));
+    return R.fail(new LlmCallInvalidResponseError({ usage }));
   }
   const parsed = sonnetReplyOutputSchema.safeParse(parseJson(text));
   if (!parsed.success) {
-    return R.fail(new ConversationProviderInvalidResponseError({ usage }));
+    return R.fail(new LlmCallInvalidResponseError({ usage }));
   }
   const rest = parsed.data.body.slice(passedBody.length);
   if (rest.length > 0) {

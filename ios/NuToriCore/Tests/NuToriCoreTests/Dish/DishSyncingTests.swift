@@ -59,6 +59,76 @@ struct DishSyncingTests {
         #expect(current.removedDishIds == [Self.dishId, other])
     }
 
+    @Suite("取りに行った変更をキャッシュに当てるとき")
+    struct Applying {
+        let syncing = DishSyncing()
+        let cache = MemoryKeyedRecordCache<Dish, UUID>(id: \.id)
+        /// 親の食事は届いていない
+        let kept = Dish.fixture(name: "親子丼")
+        let removed = Dish.fixture(name: "味噌汁", quantity: nil, positionInMeal: 1)
+
+        init() throws {
+            try syncing.apply([kept, removed].map { .dish(Self.synced($0)) }, to: cache)
+        }
+
+        static func synced(_ dish: Dish) -> SyncedDish {
+            SyncedDish(
+                id: dish.id, mealId: dish.mealId, name: dish.name,
+                quantity: dish.quantity.map {
+                    .init(
+                        value: $0.value, unit: $0.unit,
+                        source: $0.source == .corrected ? .corrected : .estimated)
+                },
+                positionInMeal: dish.positionInMeal, version: dish.version)
+        }
+
+        @Test("親の食事が無くても、届いた料理が今の値でキャッシュに入ること")
+        func storesArrivedDishes() {
+            #expect(Set(cache.all()) == [kept, removed])
+        }
+
+        @Test("同じ料理の新しい版が、キャッシュの料理を上書きすること")
+        func overwritesRevisedDish() throws {
+            let newer = Dish.fixture(
+                id: kept.id, mealId: kept.mealId, name: "カツ丼",
+                quantity: Dish.Quantity(value: 1.5, unit: "杯", source: .corrected), version: 2)
+
+            try syncing.apply([.dish(Self.synced(newer))], to: cache)
+
+            #expect(Set(cache.all()) == [newer, removed])
+        }
+
+        @Test("削除の印の料理が消え、キャッシュに無い料理の削除の印は読み飛ばすこと")
+        func removesMarkedDishesAndSkipsMissing() throws {
+            try syncing.apply(
+                [.dishDeletion(dishId: removed.id), .dishDeletion(dishId: UUID())], to: cache)
+
+            #expect(cache.all() == [kept])
+        }
+
+        @Test("同じ料理の今の値と削除の印が一緒に届いたら、消えていること")
+        func removalWinsOverValueInSameChanges() throws {
+            try syncing.apply(
+                [.dishDeletion(dishId: kept.id), .dish(Self.synced(kept))], to: cache)
+
+            #expect(cache.all() == [removed])
+        }
+
+        @Test("ほかの種類の変更は、キャッシュを変えないこと")
+        func skipsOtherKinds() throws {
+            try syncing.apply([.dishEstimationStatusDeletion(dishId: kept.id)], to: cache)
+
+            #expect(cache.all().count == 2)
+        }
+
+        @Test("空にすると、料理がキャッシュから無くなること")
+        func erases() throws {
+            try syncing.erase(cache)
+
+            #expect(cache.all().isEmpty)
+        }
+    }
+
     static let synced = SyncedDish(
         id: dishId, mealId: mealId, name: "親子丼",
         quantity: .init(value: 1.5, unit: "杯", source: .corrected), positionInMeal: 2, version: 1)

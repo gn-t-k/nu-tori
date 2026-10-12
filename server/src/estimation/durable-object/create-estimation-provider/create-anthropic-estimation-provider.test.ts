@@ -203,7 +203,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderInvalidResponseError");
+          expect(error.name).toBe("LlmCallInvalidResponseError");
           expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
         });
       });
@@ -225,7 +225,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderInvalidResponseError");
+          expect(error.name).toBe("LlmCallInvalidResponseError");
           expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
         });
       });
@@ -266,7 +266,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderInvalidResponseError");
+          expect(error.name).toBe("LlmCallInvalidResponseError");
         });
       });
     });
@@ -287,7 +287,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderInvalidResponseError");
+          expect(error.name).toBe("LlmCallInvalidResponseError");
           expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
         });
       });
@@ -307,7 +307,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderInvalidResponseError");
+          expect(error.name).toBe("LlmCallInvalidResponseError");
           expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
         });
       });
@@ -530,7 +530,7 @@ describe("createAnthropicEstimationProvider", () => {
         const result = await provider.identifyWrittenMeals(request, neverEnds());
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderInvalidResponseError");
+          expect(error.name).toBe("LlmCallInvalidResponseError");
           expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
         });
       });
@@ -639,7 +639,7 @@ describe("createAnthropicEstimationProvider", () => {
         const result = await provider.matchIngredients(matchRequest, neverEnds());
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderInvalidResponseError");
+          expect(error.name).toBe("LlmCallInvalidResponseError");
         });
       });
     });
@@ -662,7 +662,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderBadRequestError");
+          expect(error.name).toBe("LlmCallBadRequestError");
           expect(error).toMatchObject({ errorType: "invalid_request_error" });
         });
       });
@@ -679,7 +679,7 @@ describe("createAnthropicEstimationProvider", () => {
         const result = await provider.matchIngredients(matchRequest, neverEnds());
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderError");
+          expect(error.name).toBe("LlmCallError");
           expect(error).toMatchObject({ errorType: "overloaded_error" });
         });
       });
@@ -701,7 +701,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderError");
+          expect(error.name).toBe("LlmCallError");
           expect(error).toMatchObject({ errorType: "authentication_error" });
         });
       });
@@ -721,7 +721,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderError");
+          expect(error.name).toBe("LlmCallError");
           expect(error).toMatchObject({ errorType: "http_502" });
         });
       });
@@ -743,7 +743,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderError");
+          expect(error.name).toBe("LlmCallError");
           expect(error).toMatchObject({ errorType: "connection_error" });
         });
       });
@@ -763,7 +763,7 @@ describe("createAnthropicEstimationProvider", () => {
         );
 
         expect(result).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderTimedOutError");
+          expect(error.name).toBe("LlmCallTimedOutError");
         });
       });
     });
@@ -786,7 +786,7 @@ describe("createAnthropicEstimationProvider", () => {
         await vi.advanceTimersByTimeAsync(90_000);
 
         expect(await pending).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderTimedOutError");
+          expect(error.name).toBe("LlmCallTimedOutError");
         });
       });
 
@@ -796,7 +796,7 @@ describe("createAnthropicEstimationProvider", () => {
         await vi.advanceTimersByTimeAsync(60_000);
 
         expect(await pending).toBeFailure((error) => {
-          expect(error.name).toBe("EstimationProviderTimedOutError");
+          expect(error.name).toBe("LlmCallTimedOutError");
         });
       });
     });

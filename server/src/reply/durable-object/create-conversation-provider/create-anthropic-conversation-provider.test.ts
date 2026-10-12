@@ -113,7 +113,7 @@ describe("createAnthropicConversationProvider", () => {
 
         expect(result).toBeFailure((error) => {
           expect({ name: error.name, errorType: error.errorType }).toEqual({
-            name: "ConversationProviderError",
+            name: "LlmCallError",
             errorType: "invalid_response",
           });
         });
@@ -136,7 +136,7 @@ describe("createAnthropicConversationProvider", () => {
 
         expect(result).toBeFailure((error) => {
           expect({ name: error.name, errorType: error.errorType }).toEqual({
-            name: "ConversationProviderError",
+            name: "LlmCallError",
             errorType: "invalid_response",
           });
         });
@@ -159,7 +159,7 @@ describe("createAnthropicConversationProvider", () => {
 
         expect(result).toBeFailure((error) => {
           expect({ name: error.name, errorType: error.errorType }).toEqual({
-            name: "ConversationProviderError",
+            name: "LlmCallError",
             errorType: "invalid_response",
           });
         });
@@ -180,7 +180,7 @@ describe("createAnthropicConversationProvider", () => {
 
         expect(result).toBeFailure((error) => {
           expect({ name: error.name, errorType: error.errorType }).toEqual({
-            name: "ConversationProviderError",
+            name: "LlmCallError",
             errorType: "invalid_response",
           });
         });
@@ -468,7 +468,7 @@ describe("createAnthropicConversationProvider", () => {
 
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
-            name: "ConversationProviderInvalidResponseError",
+            name: "LlmCallInvalidResponseError",
             usage: { inputTokens: 2400, outputTokens: 4096 },
           });
         });
@@ -497,7 +497,7 @@ describe("createAnthropicConversationProvider", () => {
 
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
-            name: "ConversationProviderInvalidResponseError",
+            name: "LlmCallInvalidResponseError",
             usage: { inputTokens: 2400, outputTokens: 4096 },
           });
         });
@@ -526,7 +526,7 @@ describe("createAnthropicConversationProvider", () => {
 
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
-            name: "ConversationProviderInvalidResponseError",
+            name: "LlmCallInvalidResponseError",
             usage: { inputTokens: 2400, outputTokens: 4096 },
           });
         });
@@ -552,7 +552,7 @@ describe("createAnthropicConversationProvider", () => {
               errorType: "errorType" in error ? error.errorType : undefined,
               causeStatus: error.cause instanceof APIError ? error.cause.status : undefined,
             }).toEqual({
-              name: "ConversationProviderBadRequestError",
+              name: "LlmCallBadRequestError",
               errorType: "invalid_request_error",
               causeStatus: 400,
             });
@@ -574,7 +574,7 @@ describe("createAnthropicConversationProvider", () => {
 
           expect(result).toBeFailure((error) => {
             expect(error).toMatchObject({
-              name: "ConversationProviderError",
+              name: "LlmCallError",
               errorType: "overloaded_error",
             });
           });
@@ -593,7 +593,7 @@ describe("createAnthropicConversationProvider", () => {
 
           expect(result).toBeFailure((error) => {
             expect(error).toMatchObject({
-              name: "ConversationProviderError",
+              name: "LlmCallError",
               errorType: "http_502",
             });
           });
@@ -618,7 +618,7 @@ describe("createAnthropicConversationProvider", () => {
 
           expect(result).toBeFailure((error) => {
             expect(error).toMatchObject({
-              name: "ConversationProviderError",
+              name: "LlmCallError",
               errorType: "overloaded_error",
             });
           });
@@ -639,7 +639,7 @@ describe("createAnthropicConversationProvider", () => {
 
           expect(result).toBeFailure((error) => {
             expect(error).toMatchObject({
-              name: "ConversationProviderError",
+              name: "LlmCallError",
               errorType: "stream_ended",
             });
           });
@@ -660,7 +660,7 @@ describe("createAnthropicConversationProvider", () => {
 
           expect(result).toBeFailure((error) => {
             expect(error).toMatchObject({
-              name: "ConversationProviderError",
+              name: "LlmCallError",
               errorType: "connection_error",
             });
           });
@@ -680,7 +680,7 @@ describe("createAnthropicConversationProvider", () => {
           const result = await provider.generateReply({ context, onText: () => {} }, signal);
 
           expect(result).toBeFailure((error) => {
-            expect(error.name).toBe("ConversationProviderTimedOutError");
+            expect(error.name).toBe("LlmCallTimedOutError");
           });
         });
       });
@@ -703,7 +703,7 @@ describe("createAnthropicConversationProvider", () => {
           );
 
           expect(result).toBeFailure((error) => {
-            expect(error.name).toBe("ConversationProviderTimedOutError");
+            expect(error.name).toBe("LlmCallTimedOutError");
           });
         });
       });

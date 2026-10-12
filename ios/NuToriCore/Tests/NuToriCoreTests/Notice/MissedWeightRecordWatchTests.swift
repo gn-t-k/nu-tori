@@ -162,7 +162,7 @@ struct MissedWeightRecordWatchTests {
                 watch = try MissedWeightRecordWatchTests.watch(
                     store: store, now: "2026-09-22T09:00:00+09:00")
                 await watch.refresh(after: .reminderTapped)
-                store.cache.upsert(
+                store.cache.weightRecordCache.upsert(
                     try WeightRecord.imported(
                         72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
             }
@@ -191,7 +191,7 @@ struct MissedWeightRecordWatchTests {
                 watch = try MissedWeightRecordWatchTests.watch(
                     store: store, now: "2026-09-22T09:00:00+09:00")
                 await watch.refresh(after: .reminderTapped)
-                store.cache.upsert(
+                store.cache.weightRecordCache.upsert(
                     try WeightRecord.imported(
                         72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
                 await watch.refresh(after: .synced)
@@ -240,7 +240,7 @@ struct MissedWeightRecordWatchTests {
                 watch = try MissedWeightRecordWatchTests.watch(
                     store: store, now: "2026-09-22T09:00:00+09:00")
                 await watch.refresh(after: .reminderTapped)
-                store.cache.upsert(
+                store.cache.weightRecordCache.upsert(
                     try WeightRecord.imported(
                         72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
             }
@@ -268,7 +268,7 @@ struct MissedWeightRecordWatchTests {
                 watch = try MissedWeightRecordWatchTests.watch(
                     store: store, now: "2026-09-22T09:00:00+09:00")
                 await watch.refresh(after: .reminderTapped)
-                store.cache.upsert(
+                store.cache.weightRecordCache.upsert(
                     try WeightRecord.imported(
                         72.4, at: "2026-09-22T08:50:00+09:00", in: "Asia/Tokyo"))
             }

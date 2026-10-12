@@ -8,7 +8,7 @@ import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { signInTestAccount } from "../../http/testing";
-import { ConversationProviderBadRequestError } from "../../reply/domain/conversation-provider-bad-request-error";
+import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
 import {
   mockCreateConversationProviderError,
   mockCreateConversationProviderOk,
@@ -76,7 +76,7 @@ describe("送り直す", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderBadRequestError({
+        error: new LlmCallBadRequestError({
           errorType: "invalid_request_error",
           cause: new Error("Bad Request"),
         }),
@@ -191,7 +191,7 @@ describe("送り直す", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderBadRequestError({
+        error: new LlmCallBadRequestError({
           errorType: "invalid_request_error",
           cause: new Error("Bad Request"),
         }),

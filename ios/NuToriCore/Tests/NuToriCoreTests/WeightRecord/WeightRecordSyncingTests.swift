@@ -188,4 +188,79 @@ struct WeightRecordSyncingTests {
             #expect(rejection == KindRejection.none)
         }
     }
+
+    @Suite("取りに行った変更をキャッシュに当てるとき")
+    struct Applying {
+        let syncing = WeightRecordSyncing()
+        let cache = MemoryKeyedRecordCache<WeightRecord, UUID>(id: \.id)
+        let kept: WeightRecord
+        let revised: WeightRecord
+        let removed: WeightRecord
+
+        init() throws {
+            kept = try .manual(70.0, at: "2026-09-22T07:12:00+09:00", in: "Asia/Tokyo")
+            revised = try .manual(71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+            removed = try .manual(72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+            try syncing.apply(
+                [kept, revised, removed].map { .weightRecord(Self.synced($0)) }, to: cache)
+        }
+
+        static func synced(_ record: WeightRecord) -> SyncedWeightRecord {
+            SyncedWeightRecord(
+                id: record.id, weightKilograms: record.kilograms, measuredAt: record.instant,
+                timeZone: record.timeZone, version: record.version, imported: nil)
+        }
+
+        @Test("届いた記録が今の値でキャッシュに入ること")
+        func storesArrivedRecords() {
+            #expect(Set(cache.all()) == [kept, revised, removed])
+        }
+
+        @Test("同じ記録の新しい版が、キャッシュの記録を上書きすること")
+        func overwritesRevisedRecord() throws {
+            let newer = WeightRecord(
+                id: revised.id, kilograms: 73.0, instant: revised.instant,
+                timeZone: revised.timeZone, inputSource: .manual, version: 2)
+
+            try syncing.apply([.weightRecord(Self.synced(newer))], to: cache)
+
+            #expect(Set(cache.all()) == [kept, newer, removed])
+        }
+
+        @Test("削除の印の記録が消え、キャッシュに無い記録の削除の印は読み飛ばすこと")
+        func removesMarkedRecordsAndSkipsMissing() throws {
+            try syncing.apply(
+                [
+                    .weightRecordDeletion(recordId: removed.id),
+                    .weightRecordDeletion(recordId: UUID()),
+                ], to: cache)
+
+            #expect(Set(cache.all()) == [kept, revised])
+        }
+
+        @Test("同じ記録の今の値と削除の印が一緒に届いたら、消えていること")
+        func removalWinsOverValueInSameChanges() throws {
+            try syncing.apply(
+                [
+                    .weightRecordDeletion(recordId: kept.id),
+                    .weightRecord(Self.synced(kept)),
+                ], to: cache)
+
+            #expect(Set(cache.all()) == [revised, removed])
+        }
+
+        @Test("ほかの種類の変更は、キャッシュを変えないこと")
+        func skipsOtherKinds() throws {
+            try syncing.apply([.unknown(kind: "note")], to: cache)
+
+            #expect(cache.all().count == 3)
+        }
+
+        @Test("空にすると、体重記録がキャッシュから無くなること")
+        func erases() throws {
+            try syncing.erase(cache)
+
+            #expect(cache.all().isEmpty)
+        }
+    }
 }

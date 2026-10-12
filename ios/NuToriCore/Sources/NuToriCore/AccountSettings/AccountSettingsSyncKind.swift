@@ -1,9 +1,9 @@
 import Foundation
 public import NuToriAPI
 
-/// アカウントの設定の、送りと受け取りの入口（キャッシュに依らない部分）。
-/// 登録簿の1行（アプリの `AccountSettingsRecordKind`）が、これを使ってキャッシュに当てる
-public struct AccountSettingsSyncKind: SyncedRecordKind, RecordKindWrites {
+/// アカウントの設定の、送りと受け取りの入口（キャッシュの置き方に依らない部分）。
+/// 取りに行った変更の見分け方、キャッシュへの当て方、送り待ちから送る書き込みを作る
+public struct AccountSettingsSyncKind: CacheApplying, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った設定が読めなくなる
     public static let kindName = RecordKindName.accountSettings
 
@@ -52,6 +52,19 @@ public struct AccountSettingsSyncKind: SyncedRecordKind, RecordKindWrites {
                     ])
             ]
         )
+    }
+
+    /// 届いたなかでいちばん新しい設定を置く。設定の無い取得は、今の設定を変えない
+    public func apply(_ changes: [SyncChange], to cache: any SingleRecordCache<AccountSettings>)
+        throws
+    {
+        if let settings = Self.latestSettings(in: changes) {
+            try cache.write(settings)
+        }
+    }
+
+    public func erase(_ cache: any SingleRecordCache<AccountSettings>) throws {
+        try cache.clear()
     }
 
     /// 届いた変更のうち、いちばん新しい設定。無ければ nil
