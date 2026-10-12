@@ -2,6 +2,10 @@ import XCTest
 
 /// タイムラインの一番下を見たまま、「写真」で食事を続けて足す → 足すたびに、足した食事のカードが入力欄の「写真」より上に見える（#467）。
 /// 写真の選択は起動の値で差し替える（選ぶ画面を開かずに1枚選んだことにする）
+///
+/// 毎回、中身の下端へ動かしてついていくと決める規則は NuToriCore の単体テスト（TimelineViewportTests の「過去の不具合の場面」の #467）が見る。
+/// ここで見るのは SwiftUI の癖: ScrollViewProxy の scrollTo が、中身の全体を名指しすると下の余白まで含めた下端に着くこと、
+/// 下端ちょうどにいるときだけ、大きさが変わったときの位置の保ち方（defaultScrollAnchor の .sizeChanges の .bottom）が、足されたカードの分だけ下端についていくこと
 @MainActor
 final class FollowTimelineEndAfterPickedPhotosInRowUITests: XCTestCase {
     private var app = XCUIApplication()

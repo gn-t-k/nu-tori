@@ -2,6 +2,10 @@ import XCTest
 
 /// 食事の多い日が続いたタイムラインの一番下を見たまま、ホームへ出て、日付が変わってから開き直す → 足された今日の区切りが一番下に見える。
 /// 足された日の高さは、描かれるまでほかの日の平均で見積もられる。食事の多い日が続くと見積もりが画面より大きくなり、その端へ動くと何も描かれないまま残る
+///
+/// 足された日が描かれるのを待ってから下端へ動かすと決める規則は NuToriCore の単体テスト（TimelineViewportTests の「過去の不具合の場面」の、日付が変わって開き直す場面）が見る。
+/// ここで見るのは SwiftUI の癖: 遅れて読む並び（LazyVStack）の、まだ描いていない日の高さの見積もりと、
+/// いちばん新しい日の onChange が、足された日が今の位置のすぐ下に描かれてから届くこと（描かれる前に動かすと、見積もりの端に着く）
 @MainActor
 final class ReopenTimelineAfterDayChangeUITests: XCTestCase {
     private var app = XCUIApplication()
