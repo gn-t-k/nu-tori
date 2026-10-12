@@ -73,6 +73,7 @@
   3. 当て方のテストを、NuToriCore でメモリの adapter（`MemoryKeyedRecordCache`・`MemorySingleRecordCache`）に当てて書く（見本は `WeightRecordSyncingTests` の `Applying`）
   4. メモリの箱に足す。`RecordCacheMock` にメモリの adapter を1つ持たせ、`RecordKindRegistry.ok` に `PortedRecordKind` の1行を足す。当て方を写した Mock は書かない
   5. アプリのターゲットに、SwiftData の行（`@Model`。`CacheStoreSchema` に並べる）と、行と記録の対応（`Cached…+Cache.swift`）だけを書く。ID で引く行は `KeyedCacheRow`、1件だけの行は `SingleCacheRow` に従わせ、adapter は `SwiftDataKeyedRecordCache`・`SwiftDataSingleRecordCache` を使う。1件の記録を何行にも分けて持つ種類（体重の傾向）だけ、その種類の adapter を書く（`SwiftDataWeightTrendCache`）
+     - 行の対応のテストを、アプリのテストに SwiftData の adapter に当てて書く（見本は `CachedWeightRecordCacheTests`）。確かめるのは、足した記録を保存して読み戻すと同じ記録になること、同じ ID で値が替わること、ID で消えること、読めない行の扱い。当て方（3 で確かめたもの）は写さない
   6. `AppRecordKinds.registry` に、名前の順で `PortedRecordKind` の1行を足し、SwiftData の adapter を渡す。読む口（`RecordCacheReading`）に足すときは、`SwiftDataSyncStore` も adapter を通して読む
   - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る
   - 同期の変更（NuToriAPI の `SyncChange`）に case を足したら、どの種類のものかを決める1か所（NuToriCore の `SyncChange.kindName`）に書く。種類の中では、自分の変更かを `kindName` と自分の名前で決め、自分の case を `if case` で取り出す（ほかの種類の case を並べない）
