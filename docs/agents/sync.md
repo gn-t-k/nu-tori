@@ -64,7 +64,7 @@
 
 - サーバー: `server/AGENTS.md` の「同期の記録の種類の足し方」に従う。受け付けなかった書き込みの今の値は、種類の `readCurrent` と受け口の `toRecord` から作るので、種類に足すものは無い
   - サーバーだけが書く種類の変更と、書き込みがほかの種類の記録も変えるときの変更は、帳簿の口から足す（同じ節）。通し番号は足した順に付き、取りに行く応答もその順に並ぶ
-- 端末: NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く。NuToriCore に `SyncedRecordKind`、アプリのターゲットに `RecordKind<ModelContext>`（`synced` と `apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
+- 端末: NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く。NuToriCore に `SyncedRecordKind`、アプリのターゲットに `RecordKind<ModelContext>`（`synced` と `apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す。体重記録は、当て方を NuToriCore の `CacheApplying`（`WeightRecordSyncing` の `apply`・`erase`）に書き、キャッシュの口（`KeyedRecordCache`。1件だけの種類は `SingleRecordCache`）に当てる。登録簿には `PortedRecordKind` で、アプリは SwiftData の adapter（`SwiftDataKeyedRecordCache`。行を `KeyedCacheRow` に従わせる）、メモリの箱は `RecordCacheMock` のメモリの adapter を渡す。当て方のテストは、NuToriCore でメモリの adapter に当てて書く。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
   - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る
   - 同期の変更（NuToriAPI の `SyncChange`）に case を足したら、どの種類のものかを決める1か所（NuToriCore の `SyncChange.kindName`）に書く。種類の中では、自分の変更かを `kindName` と自分の名前で決め、自分の case を `if case` で取り出す（ほかの種類の case を並べない）
   - 端末が書く種類は、`SyncedRecordKind.writes` に、送る書き込み（`syncWrite`）と受け付けなかったときの扱い（`rejection`）を持つ `RecordKindWrites` を返す。送り待ちの中身は種類ごとの型（見本は食事の `MealWrite`）で、`PendingWriteBody` に従い、JSON の形（`Stored`）との行き来だけを書く。JSON への変換と読めないときのエラーは `PendingWriteBody` の既定の実装が持つ。送り待ちは `Pending` の1つの口で作り、`PendingEntry` に種類の名前と一緒に入れる
