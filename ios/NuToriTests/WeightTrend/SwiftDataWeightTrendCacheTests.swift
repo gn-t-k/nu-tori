@@ -29,14 +29,27 @@ struct SwiftDataWeightTrendCacheTests {
             #expect(try cache.savedRecord() == nil)
         }
 
-        @Test("保存の前に書いた傾向も、空にできること")
-        func clearsUnsavedTrend() throws {
+    }
+
+    @Suite("まだ何も書いていなくて、保存の前に傾向を書いたとき")
+    @MainActor
+    struct WrittenBeforeSaving {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataWeightTrendCache
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            cache = SwiftDataWeightTrendCache(context: store.container.mainContext)
+            cache.context.autosaveEnabled = false
             try cache.write(
                 WeightTrend(days: [
                     SwiftDataWeightTrendCacheTests.day(20, 72.4),
                     SwiftDataWeightTrendCacheTests.day(21, 72.35),
                 ]))
+        }
 
+        @Test("書いた傾向も、空にできること")
+        func clearsUnsavedTrend() throws {
             try cache.clear()
 
             #expect(try cache.savedRecord() == nil)
@@ -49,6 +62,7 @@ struct SwiftDataWeightTrendCacheTests {
         let store: SwiftDataSyncStore
         let cache: SwiftDataWeightTrendCache
         let trend: WeightTrend
+        let next: WeightTrend
 
         init() throws {
             store = try SwiftDataSyncStore(inMemory: true)
@@ -58,6 +72,11 @@ struct SwiftDataWeightTrendCacheTests {
                 SwiftDataWeightTrendCacheTests.day(20, 72.4),
                 SwiftDataWeightTrendCacheTests.day(21, 72.35),
                 SwiftDataWeightTrendCacheTests.day(22, 72.123_456_789),
+            ])
+            next = WeightTrend(days: [
+                SwiftDataWeightTrendCacheTests.day(21, 72.5),
+                SwiftDataWeightTrendCacheTests.day(22, 72.45),
+                SwiftDataWeightTrendCacheTests.day(23, 72.3),
             ])
             try cache.write(trend)
             try cache.context.save()
@@ -70,12 +89,6 @@ struct SwiftDataWeightTrendCacheTests {
 
         @Test("日が重なる別の並びを書くと、同じ日は値を替え、並びに無い日を消し、新しい日を足すこと")
         func replacesWithOverlappingDays() throws {
-            let next = WeightTrend(days: [
-                SwiftDataWeightTrendCacheTests.day(21, 72.5),
-                SwiftDataWeightTrendCacheTests.day(22, 72.45),
-                SwiftDataWeightTrendCacheTests.day(23, 72.3),
-            ])
-
             try cache.write(next)
 
             #expect(try cache.savedRecord() == next)
@@ -88,15 +101,35 @@ struct SwiftDataWeightTrendCacheTests {
 
             #expect(try cache.savedRecord() == nil)
         }
+    }
 
-        @Test("空にしてから、同じ保存の前に同じ日を含む並びを書き直すと、書いた並びが残ること")
-        func writesAfterClearing() throws {
-            let again = WeightTrend(days: [
+    @Suite("3日分の傾向を書いて保存し、保存の前に空にしたとき")
+    @MainActor
+    struct ClearedBeforeSaving {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataWeightTrendCache
+        let again: WeightTrend
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            cache = SwiftDataWeightTrendCache(context: store.container.mainContext)
+            cache.context.autosaveEnabled = false
+            again = WeightTrend(days: [
                 SwiftDataWeightTrendCacheTests.day(22, 72.6),
                 SwiftDataWeightTrendCacheTests.day(23, 72.55),
             ])
+            try cache.write(
+                WeightTrend(days: [
+                    SwiftDataWeightTrendCacheTests.day(20, 72.4),
+                    SwiftDataWeightTrendCacheTests.day(21, 72.35),
+                    SwiftDataWeightTrendCacheTests.day(22, 72.123_456_789),
+                ]))
+            try cache.context.save()
             try cache.clear()
+        }
 
+        @Test("同じ保存の前に同じ日を含む並びを書き直すと、書いた並びが残ること")
+        func writesAfterClearing() throws {
             try cache.write(again)
 
             #expect(try cache.savedRecord() == again)

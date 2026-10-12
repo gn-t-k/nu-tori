@@ -92,10 +92,20 @@ struct AccountSettingsSyncKindTests {
             #expect(cache.read() == AccountSettings(id: id, sendsUsageData: false))
         }
 
+    }
+
+    @Suite("設定がキャッシュにあるとき")
+    struct Cached {
+        let kind = AccountSettingsSyncKind()
+        let cache = MemorySingleRecordCache<AccountSettings>()
+        let id = AccountSettings.fixture(sendsUsageData: true).id
+
+        init() throws {
+            try kind.apply([.accountSettings(.init(id: id, sendsUsageData: true))], to: cache)
+        }
+
         @Test("設定の無い変更は、キャッシュの設定を変えないこと")
         func keepsSettingsWithoutChange() throws {
-            try kind.apply([.accountSettings(.init(id: id, sendsUsageData: true))], to: cache)
-
             try kind.apply([.unknown(kind: "note")], to: cache)
 
             #expect(cache.read() == AccountSettings(id: id, sendsUsageData: true))
@@ -103,8 +113,6 @@ struct AccountSettingsSyncKindTests {
 
         @Test("空にすると、設定がキャッシュから無くなること")
         func erases() throws {
-            try kind.apply([.accountSettings(.init(id: id, sendsUsageData: true))], to: cache)
-
             try kind.erase(cache)
 
             #expect(cache.read() == nil)

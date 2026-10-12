@@ -36,10 +36,20 @@ struct UsualWeighingTimeSyncingTests {
             #expect(cache.read() == UsualWeighingTime(id: id, minuteOfDay: 450))
         }
 
+    }
+
+    @Suite("時刻がキャッシュにあるとき")
+    struct Cached {
+        let syncing = UsualWeighingTimeSyncing()
+        let cache = MemorySingleRecordCache<UsualWeighingTime>()
+        let id = UUID()
+
+        init() throws {
+            try syncing.apply([.usualWeighingTime(.init(id: id, minuteOfDay: 435))], to: cache)
+        }
+
         @Test("時刻の無い変更は、キャッシュの時刻を変えないこと")
         func keepsTimeWithoutChange() throws {
-            try syncing.apply([.usualWeighingTime(.init(id: id, minuteOfDay: 435))], to: cache)
-
             try syncing.apply([.weightTrendAbsence], to: cache)
 
             #expect(cache.read() == UsualWeighingTime(id: id, minuteOfDay: 435))
@@ -47,8 +57,6 @@ struct UsualWeighingTimeSyncingTests {
 
         @Test("空にすると、時刻がキャッシュから無くなること")
         func erases() throws {
-            try syncing.apply([.usualWeighingTime(.init(id: id, minuteOfDay: 435))], to: cache)
-
             try syncing.erase(cache)
 
             #expect(cache.read() == nil)
