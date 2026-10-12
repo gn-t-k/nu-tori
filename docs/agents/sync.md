@@ -63,6 +63,9 @@
 ## 記録の種類の足し方
 
 - サーバー: `server/AGENTS.md` の「同期の記録の種類の足し方」に従う。受け付けなかった書き込みの今の値は、種類の `readCurrent` と受け口の `toRecord` から作るので、種類に足すものは無い
+  - 名前を、名前の一覧（`domain/record-types.ts`）に1行足す。種類の名前の型と帳簿の表の列挙はここから引くので、ほかに名前を並べ直す場所は無い
+  - 種類のまとまり（`src/<種類>/`）に、種類、置き場、受け口の入口を置く。受け口は、書き込みのスキーマ、記録の形、変換を `http/<種類>-http-kind.ts` の1ファイルに書く。サーバーだけが書く種類は `createServerOnlyKind` で作る
+  - 4つの登録簿に1行ずつ足し、`scripts/check server --fix` で `openapi.json` を書き出し直す。一覧に足した名前が登録簿に無いと、型検査が止める
   - サーバーだけが書く種類の変更と、書き込みがほかの種類の記録も変えるときの変更は、帳簿の口から足す（同じ節）。通し番号は足した順に付き、取りに行く応答もその順に並ぶ
 - 端末: NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く。NuToriCore に `SyncedRecordKind`、アプリのターゲットに `RecordKind<ModelContext>`（`synced` と `apply`・`erase`）を書き、`AppRecordKinds.registry` に名前の順で1行足す。体重記録は、当て方を NuToriCore の `CacheApplying`（`WeightRecordSyncing` の `apply`・`erase`）に書き、キャッシュの口（`KeyedRecordCache`。1件だけの種類は `SingleRecordCache`）に当てる。登録簿には `PortedRecordKind` で、アプリは SwiftData の adapter（`SwiftDataKeyedRecordCache`。行を `KeyedCacheRow` に従わせる）、メモリの箱は `RecordCacheMock` のメモリの adapter を渡す。当て方のテストは、NuToriCore でメモリの adapter に当てて書く。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
   - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る
