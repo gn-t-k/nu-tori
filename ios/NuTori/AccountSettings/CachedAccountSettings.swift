@@ -2,6 +2,7 @@ import Foundation
 import NuToriCore
 import SwiftData
 
+/// アカウントの設定。アカウントに1つなので、行は1つだけ置く（`singletonKey` が重ならない）
 @Model
 nonisolated final class CachedAccountSettings {
     @Attribute(.unique) var singletonKey: String
@@ -21,23 +22,6 @@ nonisolated final class CachedAccountSettings {
     func apply(_ settings: AccountSettings) {
         settingsId = settings.id
         sendsUsageData = settings.sendsUsageData
-    }
-
-    /// 保存は呼び出し側が行う
-    static func write(_ settings: AccountSettings, in context: ModelContext) throws {
-        if let existing = try current(in: context) {
-            existing.apply(settings)
-        } else {
-            context.insert(CachedAccountSettings(settings))
-        }
-    }
-
-    static func current(in context: ModelContext) throws -> CachedAccountSettings? {
-        let key = onlyKey
-        var descriptor = FetchDescriptor<CachedAccountSettings>(
-            predicate: #Predicate { $0.singletonKey == key })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
     }
 
     static let onlyKey = "account-settings"

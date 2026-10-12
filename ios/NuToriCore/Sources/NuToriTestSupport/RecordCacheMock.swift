@@ -2,221 +2,123 @@ public import Foundation
 public import NuToriCore
 import Synchronization
 
-/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向、送った文章、送った文章の状態、返事を持つ。登録簿の種類（`AccountSettingsRecordKindMock` など）が当てる。
-/// 当て方を NuToriCore に移した種類（体重記録）は、メモリの adapter（`weightRecords`）で持ち、NuToriCore の当て方が当てる。
-/// 同期の働きの単体テストで、アプリの SwiftData のキャッシュの代わりに使う
+/// メモリのキャッシュ。記録の種類ごとに、NuToriCore のメモリの adapter（`…Cache`）を1つずつ持ち、NuToriCore の当て方（`CacheApplying`）が当てる。
+/// 同期の働きの単体テストで、アプリの SwiftData のキャッシュの代わりに使う。
+/// テストは、ID ごとの辞書（`meals` など）で今の値を確かめ、準備は adapter にじかに置くか、下の短い書き方で置く
 public final class RecordCacheMock: Sendable {
     public init() {}
 
-    /// 体重記録のキャッシュの口。体重記録の当て方（`WeightRecordSyncing`）が読み書きする
-    public let weightRecords = MemoryKeyedRecordCache<WeightRecord, UUID>(id: \.id)
+    public let accountSettingsCache = MemorySingleRecordCache<AccountSettings>()
+    public let aiUtteranceCache = MemoryKeyedRecordCache<AiUtterance, UUID>(id: \.id)
+    public let dishCache = MemoryKeyedRecordCache<Dish, UUID>(id: \.id)
+    /// 料理の ID で引く
+    public let dishEstimationStatusCache = MemoryKeyedRecordCache<
+        DishEstimationStatusSyncing.Status, UUID
+    >(id: \.dishId)
+    public let ingredientCache = MemoryKeyedRecordCache<Ingredient, UUID>(id: \.id)
+    public let mealCache = MemoryKeyedRecordCache<Meal, UUID>(id: \.id)
+    /// 食事の ID で引く
+    public let mealEstimationStatusCache = MemoryKeyedRecordCache<
+        MealEstimationStatusSyncing.Status, UUID
+    >(id: \.mealId)
+    public let noticeCache = MemoryKeyedRecordCache<Notice, UUID>(id: \.id)
+    public let sentTextCache = MemoryKeyedRecordCache<SentText, UUID>(id: \.id)
+    /// 送った文章の ID で引く
+    public let sentTextStatusCache = MemoryKeyedRecordCache<SentTextStatusSyncing.Status, UUID>(
+        id: \.sentTextId)
+    public let usualWeighingTimeCache = MemorySingleRecordCache<UsualWeighingTime>()
+    public let weightRecordCache = MemoryKeyedRecordCache<WeightRecord, UUID>(id: \.id)
+    public let weightTrendCache = MemorySingleRecordCache<WeightTrend>()
 
-    public var records: [UUID: WeightRecord] {
-        Dictionary(weightRecords.all().map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
-    }
+    public var records: [UUID: WeightRecord] { Self.byId(weightRecordCache.all(), \.id) }
 
-    public var settings: AccountSettings? {
-        storage.withLock { $0.settings }
-    }
+    public var settings: AccountSettings? { accountSettingsCache.read() }
 
-    public var meals: [UUID: Meal] {
-        storage.withLock { $0.meals }
-    }
+    public var meals: [UUID: Meal] { Self.byId(mealCache.all(), \.id) }
 
     /// 食事の ID ごとの推定の状態
     public var estimationStatuses: [UUID: MealEstimationStatus] {
-        storage.withLock { $0.estimationStatuses }
+        Self.byId(mealEstimationStatusCache.all(), \.mealId).mapValues(\.status)
     }
 
-    /// 料理の ID ごとの料理。親の食事がまだ無くても置く
-    public var dishes: [UUID: Dish] {
-        storage.withLock { $0.dishes }
-    }
+    /// 料理の ID ごとの料理
+    public var dishes: [UUID: Dish] { Self.byId(dishCache.all(), \.id) }
 
-    /// 料理の ID ごとの推定の状態。料理がまだ無くても置く
+    /// 料理の ID ごとの推定の状態
     public var dishEstimationStatuses: [UUID: DishEstimationStatus] {
-        storage.withLock { $0.dishEstimationStatuses }
+        Self.byId(dishEstimationStatusCache.all(), \.dishId).mapValues(\.status)
     }
 
-    /// 材料の ID ごとの材料。親の料理がまだ無くても置く
-    public var ingredients: [UUID: Ingredient] {
-        storage.withLock { $0.ingredients }
-    }
+    /// 材料の ID ごとの材料
+    public var ingredients: [UUID: Ingredient] { Self.byId(ingredientCache.all(), \.id) }
 
     /// 知らせの ID ごとの知らせ
-    public var notices: [UUID: Notice] {
-        storage.withLock { $0.notices }
-    }
+    public var notices: [UUID: Notice] { Self.byId(noticeCache.all(), \.id) }
 
-    public var usualWeighingTime: UsualWeighingTime? {
-        storage.withLock { $0.usualWeighingTime }
-    }
+    public var usualWeighingTime: UsualWeighingTime? { usualWeighingTimeCache.read() }
 
-    public var weightTrend: WeightTrend? {
-        storage.withLock { $0.weightTrend }
-    }
+    public var weightTrend: WeightTrend? { weightTrendCache.read() }
 
     /// 送った文章の ID ごとの送った文章
-    public var sentTexts: [UUID: SentText] {
-        storage.withLock { $0.sentTexts }
-    }
+    public var sentTexts: [UUID: SentText] { Self.byId(sentTextCache.all(), \.id) }
 
-    /// 送った文章の ID ごとの状態。送った文章がまだ無くても置く
+    /// 送った文章の ID ごとの状態
     public var sentTextStatuses: [UUID: SentTextStatus] {
-        storage.withLock { $0.sentTextStatuses }
+        Self.byId(sentTextStatusCache.all(), \.sentTextId).mapValues(\.status)
     }
 
-    /// 返事の ID ごとの返事。送った文章がまだ無くても置く
-    public var aiUtterances: [UUID: AiUtterance] {
-        storage.withLock { $0.aiUtterances }
+    /// 返事の ID ごとの返事
+    public var aiUtterances: [UUID: AiUtterance] { Self.byId(aiUtteranceCache.all(), \.id) }
+
+    public func upsert(_ meal: Meal) {
+        mealCache.upsert(meal)
     }
 
-    public func upsert(_ sentText: SentText) {
-        storage.withLock { $0.sentTexts[sentText.id] = sentText }
+    public func remove(mealId: UUID) {
+        mealCache.remove(id: mealId)
     }
 
-    public func remove(sentTextId: UUID) {
-        storage.withLock { $0.sentTexts[sentTextId] = nil }
+    public func write(_ status: MealEstimationStatus, forMealId mealId: UUID) {
+        mealEstimationStatusCache.upsert(.init(mealId: mealId, status: status))
     }
 
-    public func clearSentTexts() {
-        storage.withLock { $0.sentTexts = [:] }
+    public func upsert(_ dish: Dish) {
+        dishCache.upsert(dish)
     }
 
-    public func write(_ status: SentTextStatus, forSentTextId sentTextId: UUID) {
-        storage.withLock { $0.sentTextStatuses[sentTextId] = status }
+    public func remove(dishId: UUID) {
+        dishCache.remove(id: dishId)
     }
 
-    public func clearSentTextStatuses() {
-        storage.withLock { $0.sentTextStatuses = [:] }
+    public func write(_ status: DishEstimationStatus, forDishId dishId: UUID) {
+        dishEstimationStatusCache.upsert(.init(dishId: dishId, status: status))
     }
 
-    public func upsert(_ utterance: AiUtterance) {
-        storage.withLock { $0.aiUtterances[utterance.id] = utterance }
+    public func upsert(_ ingredient: Ingredient) {
+        ingredientCache.upsert(ingredient)
     }
 
-    public func clearAiUtterances() {
-        storage.withLock { $0.aiUtterances = [:] }
-    }
-
-    public func upsert(_ notice: Notice) {
-        storage.withLock { $0.notices[notice.id] = notice }
-    }
-
-    public func remove(noticeId: UUID) {
-        storage.withLock { $0.notices[noticeId] = nil }
-    }
-
-    public func clearNotices() {
-        storage.withLock { $0.notices = [:] }
-    }
-
-    /// nil で空にする
-    public func setUsualWeighingTime(_ usualWeighingTime: UsualWeighingTime?) {
-        storage.withLock { $0.usualWeighingTime = usualWeighingTime }
-    }
-
-    /// nil で空にする
-    public func setWeightTrend(_ weightTrend: WeightTrend?) {
-        storage.withLock { $0.weightTrend = weightTrend }
+    public func remove(ingredientId: UUID) {
+        ingredientCache.remove(id: ingredientId)
     }
 
     /// 名前の種類が当てられた変更の数。テスト用の種類が数えるのに使う
     public func appliedCount(of kind: RecordKindName) -> Int {
-        storage.withLock { $0.appliedCounts[kind, default: 0] }
-    }
-
-    public func write(_ settings: AccountSettings) {
-        storage.withLock { $0.settings = settings }
-    }
-
-    public func upsert(_ meal: Meal) {
-        storage.withLock { $0.meals[meal.id] = meal }
-    }
-
-    public func remove(mealId: UUID) {
-        storage.withLock { $0.meals[mealId] = nil }
-    }
-
-    public func write(_ status: MealEstimationStatus, forMealId mealId: UUID) {
-        storage.withLock { $0.estimationStatuses[mealId] = status }
-    }
-
-    public func removeEstimationStatus(forMealId mealId: UUID) {
-        storage.withLock { $0.estimationStatuses[mealId] = nil }
-    }
-
-    public func upsert(_ dish: Dish) {
-        storage.withLock { $0.dishes[dish.id] = dish }
-    }
-
-    public func remove(dishId: UUID) {
-        storage.withLock { $0.dishes[dishId] = nil }
-    }
-
-    public func write(_ status: DishEstimationStatus, forDishId dishId: UUID) {
-        storage.withLock { $0.dishEstimationStatuses[dishId] = status }
-    }
-
-    public func removeEstimationStatus(forDishId dishId: UUID) {
-        storage.withLock { $0.dishEstimationStatuses[dishId] = nil }
-    }
-
-    public func clearDishEstimationStatuses() {
-        storage.withLock { $0.dishEstimationStatuses = [:] }
-    }
-
-    public func upsert(_ ingredient: Ingredient) {
-        storage.withLock { $0.ingredients[ingredient.id] = ingredient }
-    }
-
-    public func remove(ingredientId: UUID) {
-        storage.withLock { $0.ingredients[ingredientId] = nil }
-    }
-
-    public func clearDishes() {
-        storage.withLock { $0.dishes = [:] }
-    }
-
-    public func clearIngredients() {
-        storage.withLock { $0.ingredients = [:] }
-    }
-
-    public func clearMeals() {
-        storage.withLock { $0.meals = [:] }
-    }
-
-    public func clearEstimationStatuses() {
-        storage.withLock { $0.estimationStatuses = [:] }
+        appliedCounts.withLock { $0[kind, default: 0] }
     }
 
     public func didApply(_ count: Int, forKind kind: RecordKindName) {
-        storage.withLock { $0.appliedCounts[kind, default: 0] += count }
-    }
-
-    public func clearSettings() {
-        storage.withLock { $0.settings = nil }
+        appliedCounts.withLock { $0[kind, default: 0] += count }
     }
 
     public func clearApplied(forKind kind: RecordKindName) {
-        storage.withLock { $0.appliedCounts[kind] = nil }
+        appliedCounts.withLock { $0[kind] = nil }
     }
 
-    private struct Storage {
-        var settings: AccountSettings?
-        var meals: [UUID: Meal] = [:]
-        var estimationStatuses: [UUID: MealEstimationStatus] = [:]
-        var dishes: [UUID: Dish] = [:]
-        var dishEstimationStatuses: [UUID: DishEstimationStatus] = [:]
-        var ingredients: [UUID: Ingredient] = [:]
-        var notices: [UUID: Notice] = [:]
-        var usualWeighingTime: UsualWeighingTime?
-        var weightTrend: WeightTrend?
-        var sentTexts: [UUID: SentText] = [:]
-        var sentTextStatuses: [UUID: SentTextStatus] = [:]
-        var aiUtterances: [UUID: AiUtterance] = [:]
-        var appliedCounts: [RecordKindName: Int] = [:]
+    private static func byId<Record>(_ records: [Record], _ id: (Record) -> UUID) -> [UUID: Record]
+    {
+        Dictionary(records.map { (id($0), $0) }, uniquingKeysWith: { _, last in last })
     }
 
-    private let storage = Mutex(Storage())
+    private let appliedCounts = Mutex<[RecordKindName: Int]>([:])
 }

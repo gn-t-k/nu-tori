@@ -25,22 +25,5 @@ nonisolated final class CachedUsualWeighingTime {
         UsualWeighingTime(id: usualWeighingTimeId, minuteOfDay: minuteOfDay)
     }
 
-    /// 保存は呼び出し側が行う
-    static func write(_ usualWeighingTime: UsualWeighingTime, in context: ModelContext) throws {
-        if let existing = try current(in: context) {
-            existing.apply(usualWeighingTime)
-        } else {
-            context.insert(CachedUsualWeighingTime(usualWeighingTime))
-        }
-    }
-
-    static func current(in context: ModelContext) throws -> CachedUsualWeighingTime? {
-        let key = onlyKey
-        var descriptor = FetchDescriptor<CachedUsualWeighingTime>(
-            predicate: #Predicate { $0.singletonKey == key })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
-    }
-
     static let onlyKey = "usual-weighing-time"
 }

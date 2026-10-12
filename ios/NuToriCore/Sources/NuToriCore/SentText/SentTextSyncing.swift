@@ -1,9 +1,9 @@
 public import Foundation
 public import NuToriAPI
 
-/// 送った文章の同期の形。記録の種類の入口のうち、キャッシュの型に依らない部分。
-/// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込み（作る・会話として送り直す・送り直す）を作る
-public struct SentTextSyncing: SyncedRecordKind, RecordKindWrites {
+/// 送った文章の同期の形。記録の種類の入口のうち、キャッシュの置き方に依らない部分。
+/// 取りに行った変更の見分け方と今の値の読み方、キャッシュへの当て方、送り待ちから送る書き込み（作る・会話として送り直す・送り直す）を作る
+public struct SentTextSyncing: CacheApplying, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った送った文章が読めなくなる
     public static let kindName = RecordKindName.sentText
 
@@ -124,6 +124,23 @@ public struct SentTextSyncing: SyncedRecordKind, RecordKindWrites {
     /// 送り直したときの結果。送り待ちに足すだけで、キャッシュは変えない
     public func resending(enqueuing write: PendingSentTextWrite) throws -> SyncBoxResult {
         SyncBoxResult(enqueuing: [try write.entry()])
+    }
+
+    /// 今の値を書いてから、外す送った文章（受け付けなかった作る書き込み）を消す。キャッシュに無い文章は読み飛ばす
+    public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<SentText, UUID>)
+        throws
+    {
+        let current = current(from: changes)
+        for record in current.sentTexts {
+            try cache.upsert(record)
+        }
+        for recordId in current.removedSentTextIds {
+            try cache.remove(id: recordId)
+        }
+    }
+
+    public func erase(_ cache: any KeyedRecordCache<SentText, UUID>) throws {
+        try cache.removeAll()
     }
 
     /// 取りに行った変更を、今の値の並びにする

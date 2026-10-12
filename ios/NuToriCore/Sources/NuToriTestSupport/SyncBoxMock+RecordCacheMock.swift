@@ -14,10 +14,10 @@ extension SyncBoxMock where Cache == RecordCacheMock {
     ) throws -> SyncBoxMock<RecordCacheMock> {
         let cache = RecordCacheMock()
         for record in records {
-            cache.weightRecords.upsert(record)
+            cache.weightRecordCache.upsert(record)
         }
         if let accountSettings {
-            cache.write(accountSettings)
+            cache.accountSettingsCache.write(accountSettings)
         }
         return SyncBoxMock(
             kinds: .ok(extra: recordKinds), cache: cache,
@@ -33,7 +33,7 @@ extension SyncBoxMock where Cache == RecordCacheMock {
     ) -> SyncBoxMock<RecordCacheMock> {
         let cache = RecordCacheMock()
         for record in records {
-            cache.weightRecords.upsert(record)
+            cache.weightRecordCache.upsert(record)
         }
         return SyncBoxMock(
             kinds: .ok(), cache: cache,

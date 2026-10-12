@@ -66,6 +66,87 @@ struct IngredientSyncingTests {
 
         #expect(current.removedIngredientIds == [Self.ingredientId, other])
     }
+
+    @Suite("取りに行った変更をキャッシュに当てるとき")
+    struct Applying {
+        let syncing = IngredientSyncing()
+        let cache = MemoryKeyedRecordCache<Ingredient, UUID>(id: \.id)
+        /// 親の料理は届いていない
+        let kept = Ingredient.fixture(name: "鶏もも肉", nutrients: [.energyKcal: 204])
+        let removed = Ingredient.fixture(
+            name: "ご飯", positionInDish: 1, nutrientSource: .estimated)
+
+        init() throws {
+            try syncing.apply([kept, removed].map { .ingredient(Self.synced($0)) }, to: cache)
+        }
+
+        static func synced(_ ingredient: Ingredient) -> SyncedIngredient {
+            let nutrientSource: SyncedIngredient.NutrientSource =
+                switch ingredient.nutrientSource {
+                case .nutritionLabel(let basisGrams): .nutritionLabel(basisGrams: basisGrams)
+                case .foodComposition(let foodNumber): .foodComposition(foodNumber: foodNumber)
+                case .estimated: .estimated
+                }
+            return SyncedIngredient(
+                id: ingredient.id, dishId: ingredient.dishId, name: ingredient.name,
+                quantity: ingredient.quantity,
+                quantitySource: ingredient.quantitySource == .corrected ? .corrected : .estimated,
+                unit: ingredient.unit, edibleGramsPerUnit: ingredient.edibleGramsPerUnit,
+                positionInDish: ingredient.positionInDish, nutrientSource: nutrientSource,
+                nutrients: Dictionary(
+                    uniqueKeysWithValues: ingredient.nutrients.map { ($0.key.rawValue, $0.value) }))
+        }
+
+        @Test("親の料理が無くても、届いた材料が今の値でキャッシュに入ること")
+        func storesArrivedIngredients() {
+            #expect(Set(cache.all()) == [kept, removed])
+        }
+
+        @Test("同じ材料が届き直したら、キャッシュの材料をその値にそろえること")
+        func overwritesArrivedAgain() throws {
+            let corrected = Ingredient.fixture(
+                id: kept.id, dishId: kept.dishId, quantity: 150, quantitySource: .corrected,
+                nutrients: [.energyKcal: 306])
+
+            try syncing.apply([.ingredient(Self.synced(corrected))], to: cache)
+
+            #expect(Set(cache.all()) == [corrected, removed])
+        }
+
+        @Test("削除の印の材料が消え、キャッシュに無い材料の削除の印は読み飛ばすこと")
+        func removesMarkedIngredientsAndSkipsMissing() throws {
+            try syncing.apply(
+                [
+                    .ingredientDeletion(ingredientId: removed.id),
+                    .ingredientDeletion(ingredientId: UUID()),
+                ], to: cache)
+
+            #expect(cache.all() == [kept])
+        }
+
+        @Test("同じ材料の今の値と削除の印が一緒に届いたら、消えていること")
+        func removalWinsOverValueInSameChanges() throws {
+            try syncing.apply(
+                [.ingredientDeletion(ingredientId: kept.id), .ingredient(Self.synced(kept))],
+                to: cache)
+
+            #expect(cache.all() == [removed])
+        }
+
+        @Test("ほかの種類の変更は、キャッシュを変えないこと")
+        func skipsOtherKinds() throws {
+            try syncing.apply([.dishDeletion(dishId: kept.id)], to: cache)
+
+            #expect(cache.all().count == 2)
+        }
+
+        @Test("空にすると、材料がキャッシュから無くなること")
+        func erases() throws {
+            try syncing.erase(cache)
+
+            #expect(cache.all().isEmpty)
+        }
+    }
 }
 
 extension SyncedIngredient {

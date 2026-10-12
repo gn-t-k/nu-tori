@@ -58,20 +58,3 @@ nonisolated final class CachedDish {
         return Dish.Quantity(value: quantity, unit: unit, source: source)
     }
 }
-
-/// キャッシュの料理の読み書き。登録簿の種類（`DishRecordKind`）が使う。保存は呼び出し側が行う
-extension CachedDish {
-    nonisolated static func find(id: UUID, in context: ModelContext) throws -> CachedDish? {
-        var descriptor = FetchDescriptor<CachedDish>(predicate: #Predicate { $0.dishId == id })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
-    }
-
-    nonisolated static func upsert(_ dish: Dish, in context: ModelContext) throws {
-        if let existing = try find(id: dish.id, in: context) {
-            existing.apply(dish)
-        } else {
-            context.insert(CachedDish(dish))
-        }
-    }
-}
