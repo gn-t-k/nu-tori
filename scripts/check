@@ -28,6 +28,8 @@ main() {
 
     trap on_exit EXIT
     for target in ${targets:-ios server}; do
+        # 対象の前提（swift や xcodebuild があるか）で落ちたとき、前の対象の手順の名前を出さない
+        current_step=""
         case "$target" in
             ios) check_ios ;;
             ios-app) check_ios_app ;;
@@ -255,7 +257,8 @@ step() {
 on_exit() {
     local status=$?
     if [ -n "$ui_test_simulator" ]; then
-        xcrun simctl delete "$ui_test_simulator"
+        # set -e は trap の中でも効くので、消せなくても結果の行は出す
+        xcrun simctl delete "$ui_test_simulator" || echo "UI テストの複製 ${ui_test_simulator} を消せない" >&2
     fi
     if [ "$status" -eq 0 ]; then
         echo "scripts/check: OK"
