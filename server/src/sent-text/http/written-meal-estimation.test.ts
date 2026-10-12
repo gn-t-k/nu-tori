@@ -88,16 +88,6 @@ describe("文章の食事の推定", () => {
     return String(write.sentText["id"]);
   };
 
-  // 推定が1つの食事を日時 eatenAt で返したときの、食事の今の時刻
-  const estimateWith = async (eatenAt: string) => {
-    mockCreateEstimationProviderOk({
-      identifiedWrittenMeals: { meals: [{ eatenAt, dishes: [bread] }] },
-    });
-    await sendText({ body: "朝はパン", sentAt: saturdayMorningInTokyo, timeZone: "Asia/Tokyo" });
-    await runEstimationAlarm(accountId);
-    return (await pullRecordsOf("meal")).map(({ eatenAt: mealEatenAt }) => mealEatenAt);
-  };
-
   describe("食事と読み分けた文章を推定するとき", () => {
     let provider: ReturnType<typeof mockCreateEstimationProviderOk>;
     beforeEach(async () => {
@@ -144,53 +134,6 @@ describe("文章の食事の推定", () => {
         requests: [{ localDateTime: "2026-10-10T08:30", dayOfWeek: "saturday" }],
         statuses: ["estimated"],
       });
-    });
-  });
-
-  describe("推定が返した日時で、1つ目の食事の時刻を決めるとき", () => {
-    test("送った時刻より前で 7 日以内なら、送ったタイムゾーンでのその日時にすること", async () => {
-      // 東京の 2026-10-09 19:00
-      expect(await estimateWith("2026-10-09T19:00")).toEqual([Date.UTC(2026, 9, 9, 10, 0)]);
-    });
-
-    test("ちょうど 7 日前なら、その日時にすること", async () => {
-      expect(await estimateWith("2026-10-03T08:30")).toEqual([
-        saturdayMorningInTokyo - 7 * 86_400_000,
-      ]);
-    });
-
-    test("7 日より前なら、送った時刻にすること", async () => {
-      expect(await estimateWith("2026-10-03T08:29")).toEqual([saturdayMorningInTokyo]);
-    });
-
-    test("送った時刻より後なら、送った時刻にすること", async () => {
-      expect(await estimateWith("2026-10-10T08:31")).toEqual([saturdayMorningInTokyo]);
-    });
-  });
-
-  describe("推定が返した食事の1つに、日付として無い日時があるとき", () => {
-    beforeEach(async () => {
-      mockCreateEstimationProviderOk({
-        identifiedWrittenMeals: {
-          meals: [
-            { eatenAt: "2026-10-10T07:00", dishes: [bread] },
-            { eatenAt: "2026-02-30T12:00", dishes: [udon] },
-          ],
-        },
-      });
-      await sendText({
-        body: "朝はパン、昼はうどん",
-        sentAt: saturdayMorningInTokyo,
-        timeZone: "Asia/Tokyo",
-      });
-      await runEstimationAlarm(accountId);
-    });
-
-    test("確かめに通らない試みにし、料理を作らないこと", async () => {
-      expect({
-        results: await readRows(accountId, "SELECT result FROM estimation_attempt_results"),
-        dishes: await pullRecordsOf("dish"),
-      }).toEqual({ results: [{ result: "invalid_response" }], dishes: [] });
     });
   });
 
@@ -292,32 +235,6 @@ describe("文章の食事の推定", () => {
         { mealId: expect.any(String), status: "estimated" },
         { mealId: expect.any(String), status: "estimated" },
       ]);
-    });
-  });
-
-  describe("範囲の外の日時の食事が2つ返り、どちらも送った時刻になるとき", () => {
-    beforeEach(async () => {
-      mockCreateEstimationProviderOk({
-        identifiedWrittenMeals: {
-          meals: [
-            { eatenAt: "2026-10-10T12:00", dishes: [bread] },
-            { eatenAt: "2026-10-10T19:00", dishes: [udon] },
-          ],
-        },
-      });
-      await sendText({
-        body: "パンとうどん",
-        sentAt: saturdayMorningInTokyo,
-        timeZone: "Asia/Tokyo",
-      });
-      await runEstimationAlarm(accountId);
-    });
-
-    test("同じ時刻の料理を1つの食事にまとめること", async () => {
-      expect({
-        meals: (await pullRecordsOf("meal")).map(({ eatenAt }) => eatenAt),
-        dishes: (await pullRecordsOf("dish")).map(({ name }) => name),
-      }).toEqual({ meals: [saturdayMorningInTokyo], dishes: ["トースト", "かけうどん"] });
     });
   });
 

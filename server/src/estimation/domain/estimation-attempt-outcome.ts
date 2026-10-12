@@ -1,7 +1,8 @@
 import type { EstimatedDish } from "./estimated-dish";
 import type { EstimationAttemptUsage } from "./estimation-attempt-usage";
 
-// 試み1回の結果と、書くもの・送るもの。提供元の失敗と、確かめに通らない応答も試みの結果にする。
+// 試み（①②で1回）の結果と、書くもの・送るもの。提供元の失敗と、確かめに通らない応答（invalid_response）も試みの結果にする。
+// 結果の無い試みは、途中で止まった試み。試みの結果を表す型はこれ1つで、結果の名前や書いて残す分は、ここから取り出す。
 // failedStage は、アラームの呼び出しごとのログに出す失敗した呼び出し。
 // providerError は、Sentry に包まずに送る、提供元の応答のエラーの内容
 export type EstimationAttemptOutcome =

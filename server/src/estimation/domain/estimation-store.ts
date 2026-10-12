@@ -1,5 +1,5 @@
 import type { RecordId } from "../../domain/record-id";
-import type { EstimationAttemptConclusion } from "./estimation-attempt-conclusion";
+import type { EstimationEvents } from "./estimation-events";
 import type { EstimationTarget } from "./estimation-target";
 
 // 推定・試み・結果・完了・断念を読む置き場。書くのは推定の書き込みの口（writeEstimationEvents）だけ
@@ -22,5 +22,5 @@ export type EstimationStore = {
 // 結果の無い試みは、呼び出し中か、途中で止まった試み
 export type EstimationAttempt = {
   attemptedAt: Date;
-  ended: { endedAt: Date; conclusion: EstimationAttemptConclusion } | undefined;
+  ended: Pick<EstimationEvents["attemptResult"], "endedAt" | "conclusion"> | undefined;
 };

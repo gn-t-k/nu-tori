@@ -1,4 +1,4 @@
-import type { EstimationAttemptResult } from "../estimation/domain/estimation-attempt-result";
+import type { EstimationAttemptOutcome } from "../estimation/domain/estimation-attempt-outcome";
 import type { TokenUsage } from "./token-usage";
 import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
@@ -32,7 +32,7 @@ export type UsageEvent =
   | {
       // 試みの結果を書いたとき。① が通って ② で落ちた試みも、① のトークンを送る
       name: "estimation_attempt_ended";
-      result: EstimationAttemptResult;
+      result: EstimationAttemptOutcome["result"];
       identifyDishesUsage: TokenUsage | undefined;
       matchIngredientsUsage: TokenUsage | undefined;
     }

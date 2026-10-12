@@ -1,5 +1,6 @@
 import type { RecordId } from "../../domain/record-id";
-import type { EstimationAttemptConclusion } from "./estimation-attempt-conclusion";
+import type { DistributivePick } from "../../domain/distributive-pick";
+import type { EstimationAttemptOutcome } from "./estimation-attempt-outcome";
 
 // 推定の出来事ごとの書く値。書く置き場（EstimationEventWriteStore）と推定の書き込み（EstimationWrites）で形をそろえる
 export type EstimationEvents = {
@@ -9,7 +10,12 @@ export type EstimationEvents = {
   deferral: { scheduleId: string; deferredAt: Date };
   estimation: { id: string; scheduleId: string; startedAt: Date };
   attempt: { id: string; estimationId: string; attemptedAt: Date };
-  attemptResult: { attemptId: string; endedAt: Date; conclusion: EstimationAttemptConclusion };
+  // conclusion は、試みの結果のうち書いて残す分（結果と、提供元のエラーと 400 のときのエラーの種類）
+  attemptResult: {
+    attemptId: string;
+    endedAt: Date;
+    conclusion: DistributivePick<EstimationAttemptOutcome, "result" | "errorType">;
+  };
   completion: { estimationId: string; completedAt: Date; result: "estimated" | "no_dishes" };
   abandonment: { estimationId: string; abandonedAt: Date };
   // 文章の食事の推定が決めた、予定のつなぎの食事（1つ目の食事）の時刻。食事は推定から辿る
