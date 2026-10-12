@@ -14,12 +14,12 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-http-types", exact: "1.8.0"),
-        .package(url: "https://github.com/apple/swift-openapi-runtime", exact: "1.12.2"),
+        .package(url: "https://github.com/apple/swift-openapi-runtime", exact: "1.13.0"),
         .package(url: "https://github.com/apple/swift-openapi-urlsession", exact: "1.3.2"),
         .package(url: "https://github.com/apple/swift-crypto", exact: "5.0.0"),
         // 版の正本をここに置く。アプリのターゲットだけが import し、このパッケージのターゲットは依存しない
-        .package(url: "https://github.com/PostHog/posthog-ios.git", exact: "3.90.0"),
-        .package(url: "https://github.com/getsentry/sentry-cocoa.git", exact: "9.30.0"),
+        .package(url: "https://github.com/PostHog/posthog-ios.git", exact: "3.92.0"),
+        .package(url: "https://github.com/getsentry/sentry-cocoa.git", exact: "9.30.1"),
     ],
     targets: [
         .target(
