@@ -3,14 +3,13 @@ import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
 import type { ConversationProvider } from "../reply/domain/conversation-provider";
 import type { ReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { accountAlarmJobs } from "./account-alarm-jobs";
+import type { RecordChangeWriter } from "./record-change-writer";
 import type { RecordKindStores } from "./record-kind-stores";
-import type { RecordType } from "./record-type";
 import { runAlarmJobs } from "./run-alarm-jobs";
-import type { LedgerStore } from "./sync-ledger/ledger-store";
 
 // 呼び出し側は、次の時刻に張り、提供元のエラーを Sentry に送り、利用状況を送り、error があれば投げて Cloudflare のアラームのやり直しに任せる
 export const runAccountAlarm = async (
-  ledgerStore: LedgerStore<RecordType>,
+  writeRecordChanges: RecordChangeWriter,
   stores: RecordKindStores,
   deps: {
     archive: MealPhotoArchive;
@@ -21,7 +20,7 @@ export const runAccountAlarm = async (
   },
 ) => {
   const { nextAlarmAt, error, reports } = await runAlarmJobs(accountAlarmJobs, stores, {
-    ledgerStore,
+    writeRecordChanges,
     ...deps,
   });
   return {

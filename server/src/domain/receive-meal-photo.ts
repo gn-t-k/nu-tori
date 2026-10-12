@@ -2,18 +2,16 @@ import { R } from "@praha/byethrow";
 import { ErrorFactory } from "@praha/error-factory";
 import { scheduleMealEstimation } from "../estimation/domain/schedule-meal-estimation";
 import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
-import { createRecordLedger } from "./create-record-ledger";
+import type { RecordChangeWriter } from "./record-change-writer";
 import type { RecordId } from "./record-id";
 import type { RecordKindStores } from "./record-kind-stores";
-import type { RecordType } from "./record-type";
-import type { LedgerStore } from "./sync-ledger/ledger-store";
 
 // 写真のファイルを R2 に置き、受け取りを控える。同じ写真が再び届いたときと、消した食事の写真が届いたときは、何もせずに受け取った形で終える。
-// 食事の写真がこれでそろったら、推定の書き込みの口を通して推定の予定に入れる。
+// 食事の写真がこれでそろったら、記録の変化を書く入口を通して推定の予定に入れる。
 // 失敗は、呼び出し側が PostHog と要求ごとのログに失敗した段を出すために、Result で返す
 export const receiveMealPhoto = (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: MealPhotoReceiptStores,
   archive: MealPhotoArchive,
   request: { photoId: RecordId; photo: ArrayBuffer; receivedAt: Date },
 ): R.ResultAsync<void, MealPhotoReceiptFailedError> => {
@@ -29,7 +27,7 @@ export const receiveMealPhoto = (
     }),
     R.andThen(() =>
       R.try({
-        try: () => recordReceipt(ledgerStore, stores, photoId, receivedAt),
+        try: () => recordReceipt(writeRecordChanges, stores, photoId, receivedAt),
         catch: (cause) => new MealPhotoReceiptFailedError({ stage: "record_receipt", cause }),
       }),
     ),
@@ -43,13 +41,18 @@ export class MealPhotoReceiptFailedError extends ErrorFactory({
   fields: ErrorFactory.fields<{ stage: "put_file" | "record_receipt" }>(),
 }) {}
 
+type MealPhotoReceiptStores = Pick<
+  RecordKindStores,
+  "estimationSchedule" | "latestTimeZone" | "meal" | "mealPhoto"
+>;
+
 const recordReceipt = (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: MealPhotoReceiptStores,
   photoId: RecordId,
   receivedAt: Date,
 ): void => {
-  createRecordLedger(ledgerStore, stores, receivedAt).changeOutsideWrites((addChange) => {
+  writeRecordChanges(({ estimationAt }) => {
     // 同じ写真の要求が、置いているあいだに先に控えたかもしれない
     if (stores.mealPhoto.hasReceipt(photoId)) {
       return;
@@ -58,9 +61,7 @@ const recordReceipt = (
     const mealId = stores.mealPhoto.findMealIdOfPhoto(photoId);
     const meal = mealId === undefined ? undefined : stores.meal.find(mealId);
     if (meal !== undefined) {
-      stores.writeEstimationEvents(addChange, receivedAt, (writes) =>
-        scheduleMealEstimation(stores, writes, meal, receivedAt),
-      );
+      scheduleMealEstimation(stores, estimationAt(receivedAt), meal, receivedAt);
     }
   });
 };

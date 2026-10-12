@@ -10,9 +10,8 @@ import { replyAttemptTimeLimitMs } from "../reply/domain/reply-attempt-time-limi
 import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
 import type { AlarmJob } from "./alarm-job";
 import { computeNextAttemptAt } from "./compute-next-attempt-at";
+import type { RecordChangeWriter } from "./record-change-writer";
 import type { RecordKindStores } from "./record-kind-stores";
-import type { RecordType } from "./record-type";
-import type { LedgerStore } from "./sync-ledger/ledger-store";
 import type { UsageEvent } from "./usage-event";
 
 // アカウントのアラームで動かす仕事の並び。アラームはこの順に進め、エラーはこの順で先のものを報告する。
@@ -25,7 +24,7 @@ export const accountAlarmJobs: readonly AlarmJob<
   // 読み分け。食事と読み分けた文章の推定を同じアラームで始めるため、推定より先に置く
   {
     advance: async (stores, deps) => {
-      const classified = await classifySentTexts(deps.ledgerStore, stores, {
+      const classified = await classifySentTexts(deps.writeRecordChanges, stores, {
         provider: deps.conversationProvider,
       });
       // 食事と読み分けた文章の見守る要求を閉じる
@@ -40,7 +39,7 @@ export const accountAlarmJobs: readonly AlarmJob<
   {
     advance: async (stores, deps) => {
       const { stoppedError, ...advanced } = await advanceEstimations(
-        deps.ledgerStore,
+        deps.writeRecordChanges,
         stores,
         deps,
         new Date(),
@@ -60,7 +59,7 @@ export const accountAlarmJobs: readonly AlarmJob<
   {
     advance: async (stores, deps) => {
       const { stoppedError, attempts, ...replied } = await advanceReplies(
-        deps.ledgerStore,
+        deps.writeRecordChanges,
         stores,
         {
           provider: deps.conversationProvider,
@@ -98,7 +97,7 @@ export const accountAlarmJobs: readonly AlarmJob<
 ];
 
 type AccountAlarmDeps = {
-  ledgerStore: LedgerStore<RecordType>;
+  writeRecordChanges: RecordChangeWriter;
   archive: MealPhotoArchive;
   provider: EstimationProvider;
   conversationProvider: ConversationProvider;

@@ -22,6 +22,7 @@ import { createSentryOptions } from "../observability/create-sentry-options";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
+import { createRecordChangeWriter } from "./create-record-change-writer";
 import { createRecordKindStores } from "./create-record-kind-stores";
 import { createLedgerStore } from "./create-ledger-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
@@ -90,7 +91,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       const stores = createRecordKindStores(this.ctx.storage);
       return R.pipe(
         receiveMealPhoto(
-          createLedgerStore(this.ctx.storage),
+          createRecordChangeWriter(this.ctx.storage),
           stores,
           createMealPhotoArchive(this.env.PHOTOS, accountId),
           { ...request, receivedAt: new Date() },
@@ -143,7 +144,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       setUser({ id: accountId });
       const startedAt = Date.now();
       const ran = await runAccountAlarm(
-        createLedgerStore(this.ctx.storage),
+        createRecordChangeWriter(this.ctx.storage),
         createRecordKindStores(this.ctx.storage),
         {
           archive: createMealPhotoArchive(this.env.PHOTOS, accountId),
