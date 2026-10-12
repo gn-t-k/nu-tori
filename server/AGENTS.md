@@ -68,7 +68,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 ## 推定
 
-- 推定はアラームで進める。入口は `src/estimation/domain/advance-estimations.ts`: 待っている予定から推定を始め、次に試みる時刻が来た推定の試みを書いてから（`begin-estimation-attempts.ts`）、提供元を呼び（`run-estimation-attempt.ts`）、結果を書く（`record-estimation-attempt-outcome.ts`）。次に試みる時刻（待ちを広げる式と、試みの時間の上限）はドメイン層の `compute-next-estimation-attempt-at` が出し、`compute-next-alarm-at-except-leftover-photos.ts` もそれでアラームを合わせる
+- 推定はアラームで進める。入口は `src/estimation/domain/advance-estimations.ts`: 待っている予定から推定を始め、次に試みる時刻が来た推定の試みを書いてから（`begin-estimation-attempts.ts`）、提供元を呼び（`run-estimation-attempt.ts`）、結果を書く（`record-estimation-attempt-outcome.ts`）。次に試みる時刻（待ちを広げる式と、試みの時間の上限）はドメイン層の `compute-next-estimation-attempt-at` が出し、アラームで動かす仕事の並び（`src/domain/account-alarm-jobs.ts`）もそれでアラームを合わせる
 - 推定の予定と結果（予定・見送り・推定・試み・結果・完了・断念）は、推定の書き込みの口（`src/estimation/domain/write-estimation-events.ts`）を通して書く。書く置き場はこの口にしか渡らず、口が書く前とあとの推定の状態を比べて変わった食事・料理にだけ推定の状態の変更を足すので、書く場所では足さない
 - 予定と推定の対象は、食事（写真の推定）か料理（名前を直した・料理を足したときの推定し直し。`EstimationTarget`）。料理が対象の推定は、料理の今の値を ① に渡し、終わったら `apply-dish-estimation.ts` が当てる（料理を消していたら、届いた推定を捨てる）。回数・見送り・やり直し・アラームは食事が対象の推定と同じ流れに載る
 - 推定の回数は、アカウントごとに1日 `maximumDailyEstimations`（30）まで。`beginEstimationAttempts` が、予定から推定を始める前に、予定の数える日（`counted_on`）の `estimations` を数え、上限なら見送る（`estimation_deferrals`、次の日の 0:00 の予定とつなぎ、PostHog の `estimation_deferred`）。次の日の 0:00 は、ユーザーの最新のタイムゾーン（読めなければ食事を送ったときのもの）で `computeNextDayStart` が出し、その日の分に数える。日ごとの回数の行は持たず、食事を消しても推定の行は残るので回数は戻らない。テストは `src/estimation/http/testing/insert-counted-estimations.ts` で、食事につながらない推定を書いて回数を満たす
@@ -123,8 +123,9 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 控えだけを指す修正の行（時刻・名前・量の修正）は、外部キーで記録を指さず、料理・食事を消す口が、その記録を書き換えた控えから探して消す
 - 索引は、同期の要求ごとに走る引き方に加え、アラームや推定の開始ごと、記録を受け取るごとに走る引き方にも置く。行が食事の数ほど増え続ける表（予定・推定・試み・料理・材料など）が対象になる。引く道が無いもの（控えから削除の印を引く）や、索引が効かない引き方（待っている予定を、推定も見送りも無いことで出す）には置かない
 - Durable Object のアラームは一度に1つしか張れない。アラームで動かすもの（推定など）は、予定を DB に持ち、いちばん早い予定にアラームを合わせる
-  - いちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が表から出し、送る要求と写真の要求の入口で張る。写真の控えの消し残しを除いた時刻は `src/domain/compute-next-alarm-at-except-leftover-photos.ts` が出し、消し直しに失敗したアラームはこちらで張り直す（今に張り直さず、Cloudflare のアラームのやり直しに任せる）。アラームで動かすものを足すときは、その時刻を後者に足す（足さないと、入口で張り直したときに遅い時刻で上書きする）
-  - アラーム1回分（推定を進め、写真の控えの消し残しを消し、次に張る時刻と報告するエラーを決める）は `src/domain/run-account-alarm.ts` に置く。Durable Object の `alarm()` は、返った時刻に張り、Sentry・PostHog・ログに出し、エラーを投げるだけにする
+  - アラームで動かす仕事（読み分け、推定、返事、写真の控えの消し残しの消し直し）は、「進める」と「次に動く時刻」を対にした値（`src/domain/alarm-job.ts`）にして、1つの並び（`src/domain/account-alarm-jobs.ts`）に置く。アラームで動かすものを足すときは、この並びに足す。アラームは並びの順に進め、エラーは並びで先の仕事のものを報告する
+  - アラーム1回分（仕事を順に進め、次に張る時刻と報告するエラーを決める）は `src/domain/run-account-alarm.ts` が、入口（送る要求と写真の要求）で張るいちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が、どちらもこの並びから出す。Durable Object の `alarm()` は、返った時刻に張り、Sentry・PostHog・ログに出し、エラーを投げるだけにする
+  - 写真の控えの消し直しに失敗したアラームは、消し残しの時刻（今）を除いたいちばん早い時刻に張り直す（今に張り直さず、Cloudflare のアラームのやり直しに任せる）。仕事が `left_to_alarm_retry` を返すと、その仕事の時刻を除く
   - アラームの中のアカウント ID は `ctx.id.name`（`idFromName` で付けた名前）から得る。テストの実行環境でも、張ったアラームはひとりでに動くので、アラームの結果を確かめるテストは `runDurableObjectAlarm` で動かしたうえで `vi.waitFor` で待つ
 - 記録に対しては、全員をまたぐ SQL は書けない。全員をまたぐ分析は、記録を書くときに分析用の出来事を PostHog に送って行う
 
