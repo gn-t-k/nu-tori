@@ -1,4 +1,4 @@
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { createServerOnlyKind } from "../../domain/sync-ledger/create-server-only-kind";
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import type { WeightRecordStore } from "../../weight-record/domain/weight-record-store";
 import { relearnUsualWeighingTime } from "./relearn-usual-weighing-time";
@@ -14,29 +14,27 @@ export const createUsualWeighingTimeKind = (dependencies: {
   findLatestTimeZone: () => string | undefined;
   // 要求を受け取った時刻
   receivedAt: Date;
-}): RecordKind<"usual_weighing_time", never, UsualWeighingTime, never, "weight_record"> => ({
-  name: "usual_weighing_time",
-  writes: undefined,
-  follows: {
-    source: "weight_record",
-    afterSourceApplied: (receiptId) => {
-      const relearnedId = relearnUsualWeighingTime(
-        dependencies.store,
-        {
-          findWeightRecordsMeasuredBetween: dependencies.weightRecordStore.findMeasuredBetween,
-          now: dependencies.receivedAt,
-          latestTimeZone: dependencies.findLatestTimeZone(),
-        },
-        receiptId,
-      );
-      return relearnedId === undefined ? [] : [relearnedId];
+}): RecordKind<"usual_weighing_time", never, UsualWeighingTime, never, "weight_record"> =>
+  createServerOnlyKind({
+    name: "usual_weighing_time",
+    follows: {
+      source: "weight_record",
+      afterSourceApplied: (receiptId) => {
+        const relearnedId = relearnUsualWeighingTime(
+          dependencies.store,
+          {
+            findWeightRecordsMeasuredBetween: dependencies.weightRecordStore.findMeasuredBetween,
+            now: dependencies.receivedAt,
+            latestTimeZone: dependencies.findLatestTimeZone(),
+          },
+          receiptId,
+        );
+        return relearnedId === undefined ? [] : [relearnedId];
+      },
     },
-  },
-  whenGone: "never",
-  readCurrent: (recordId): CurrentRecord<UsualWeighingTime> => {
-    const usualWeighingTime = dependencies.store.find();
-    return usualWeighingTime?.id === recordId
-      ? { status: "value", value: usualWeighingTime }
-      : { status: "absent" };
-  },
-});
+    whenGone: "never",
+    find: (recordId) => {
+      const usualWeighingTime = dependencies.store.find();
+      return usualWeighingTime?.id === recordId ? usualWeighingTime : undefined;
+    },
+  });
