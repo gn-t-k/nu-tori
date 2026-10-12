@@ -80,9 +80,9 @@ struct MealWireCoding: RecordKindWriteWireCoding {
                     writeId: try uuid(write.id),
                     meal: SyncedMeal(
                         id: try uuid(meal.id),
-                        eatenAt: date(meal.eatenAt),
+                        eatenAt: Date(millisecondsSince1970: meal.eatenAt),
                         eatenUtcOffsetSeconds: meal.eatenAtUtcOffsetSeconds,
-                        sentAt: date(meal.sentAt),
+                        sentAt: Date(millisecondsSince1970: meal.sentAt),
                         sentTimeZone: try knownTimeZone(meal.sentTimeZone),
                         entryMethod: entryMethod,
                         photoIds: try meal.photos.map { try uuid($0.id) }
@@ -91,7 +91,7 @@ struct MealWireCoding: RecordKindWriteWireCoding {
             if case .updateMeal(let write) = wire {
                 return .updateMeal(
                     writeId: try uuid(write.id), mealId: try uuid(write.mealId),
-                    eatenAt: date(write.eatenAt))
+                    eatenAt: Date(millisecondsSince1970: write.eatenAt))
             }
             if case .deleteMeal(let write) = wire {
                 return .deleteMeal(writeId: try uuid(write.id), mealId: try uuid(write.mealId))
@@ -131,9 +131,9 @@ extension SyncChange {
             guard photoIds.count == photos.count else { return nil }
             return SyncedMeal(
                 id: id,
-                eatenAt: Date(timeIntervalSince1970: Double(eatenAt) / 1000),
+                eatenAt: Date(millisecondsSince1970: eatenAt),
                 eatenUtcOffsetSeconds: eatenAtUtcOffsetSeconds,
-                sentAt: Date(timeIntervalSince1970: Double(sentAt) / 1000),
+                sentAt: Date(millisecondsSince1970: sentAt),
                 sentTimeZone: sentTimeZone,
                 entryMethod: entryMethod,
                 photoIds: photoIds

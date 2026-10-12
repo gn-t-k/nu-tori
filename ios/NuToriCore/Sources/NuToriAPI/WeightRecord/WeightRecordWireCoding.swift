@@ -99,7 +99,7 @@ struct WeightRecordWireCoding: RecordKindWriteWireCoding {
                     record: NewWeightRecord(
                         id: try uuid(record.id),
                         weightKilograms: record.weightKg,
-                        measuredAt: date(record.measuredAt),
+                        measuredAt: Date(millisecondsSince1970: record.measuredAt),
                         timeZone: try knownTimeZone(record.timeZone),
                         imported: try record.imported.map { imported in
                             SyncedWeightRecord.Imported(
@@ -122,7 +122,7 @@ struct WeightRecordWireCoding: RecordKindWriteWireCoding {
                     correction: WeightRecordCorrection(
                         id: try uuid(record.id),
                         weightKilograms: record.weightKg,
-                        measuredAt: date(record.measuredAt),
+                        measuredAt: Date(millisecondsSince1970: record.measuredAt),
                         timeZone: try knownTimeZone(record.timeZone),
                         version: record.version
                     ))
@@ -185,7 +185,7 @@ extension SyncChange {
             return SyncedWeightRecord(
                 id: id,
                 weightKilograms: weightKg,
-                measuredAt: Date(timeIntervalSince1970: Double(measuredAt) / 1000),
+                measuredAt: Date(millisecondsSince1970: measuredAt),
                 timeZone: timeZone,
                 version: version,
                 imported: importedSource

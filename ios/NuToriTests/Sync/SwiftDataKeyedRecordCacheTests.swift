@@ -15,88 +15,46 @@ struct SwiftDataKeyedRecordCacheTests {
             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))
     }
 
+    /// 記録を1件保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
+    @MainActor static func savedCache() throws -> (
+        store: SwiftDataSyncStore, cache: SwiftDataKeyedRecordCache<CachedSentText>,
+        saved: SentText
+    ) {
+        let store = try SwiftDataSyncStore(inMemory: true)
+        let cache = SwiftDataKeyedRecordCache<CachedSentText>(
+            context: store.container.mainContext)
+        cache.context.autosaveEnabled = false
+        let saved = try sentText(id: UUID(), body: "朝ごはん")
+        try cache.upsert(saved)
+        try cache.context.save()
+        return (store, cache, saved)
+    }
+
     @Suite("記録を1件保存してあるとき")
     @MainActor
     struct Saved {
         let store: SwiftDataSyncStore
         let cache: SwiftDataKeyedRecordCache<CachedSentText>
         let saved: SentText
+        let added: SentText
 
         init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            cache = SwiftDataKeyedRecordCache(context: store.container.mainContext)
-            cache.context.autosaveEnabled = false
-            saved = try SwiftDataKeyedRecordCacheTests.sentText(id: UUID(), body: "朝ごはん")
-            try cache.upsert(saved)
-            try cache.context.save()
+            (store, cache, saved) = try SwiftDataKeyedRecordCacheTests.savedCache()
+            added = try SwiftDataKeyedRecordCacheTests.sentText(id: UUID(), body: "昼ごはん")
         }
 
         @Test("保存の前に足した記録を、同じ保存の前に読めること")
         func readsUnsavedRecord() throws {
-            let added = try SwiftDataKeyedRecordCacheTests.sentText(id: UUID(), body: "昼ごはん")
-
             try cache.upsert(added)
 
             #expect(Set(try cache.all()) == [saved, added])
         }
 
-        @Test("保存の前に足した記録を、同じ保存の前に消せること")
-        func removesUnsavedRecord() throws {
-            let added = try SwiftDataKeyedRecordCacheTests.sentText(id: UUID(), body: "昼ごはん")
-            try cache.upsert(added)
-
+        @Test("キャッシュに無い ID を消しても、何も変わらないこと")
+        func skipsMissingId() throws {
             try cache.remove(id: added.id)
 
             #expect(try cache.savedRecords() == [saved])
-        }
-
-        @Test("保存の前に同じ ID を2回足すと、行を増やさず、あとの値になること")
-        func upsertsSameIdTwiceBeforeSaving() throws {
-            let id = UUID()
-            try cache.upsert(try SwiftDataKeyedRecordCacheTests.sentText(id: id, body: "昼ごはん"))
-            let latest = try SwiftDataKeyedRecordCacheTests.sentText(id: id, body: "昼ごはんと味噌汁")
-
-            try cache.upsert(latest)
-
-            #expect(Set(try cache.savedRecords()) == [saved, latest])
-        }
-
-        @Test("消した記録と同じ ID を、同じ保存の前に足し直すと、足した値が残ること")
-        func upsertsRemovedIdBeforeSaving() throws {
-            let again = try SwiftDataKeyedRecordCacheTests.sentText(
-                id: saved.id, body: "朝ごはんとコーヒー")
-            try cache.remove(id: saved.id)
-
-            try cache.upsert(again)
-
-            #expect(try cache.savedRecords() == [again])
-        }
-
-        @Test("キャッシュに無い ID を消しても、何も変わらないこと")
-        func skipsMissingId() throws {
-            try cache.remove(id: UUID())
-
-            #expect(try cache.savedRecords() == [saved])
-        }
-
-        @Test("保存の前に足した記録も、すべて消せること")
-        func removesAllIncludingUnsaved() throws {
-            try cache.upsert(
-                try SwiftDataKeyedRecordCacheTests.sentText(id: UUID(), body: "昼ごはん"))
-
-            try cache.removeAll()
-
-            #expect(try cache.savedRecords().isEmpty)
-        }
-
-        @Test("保存の前に値を替えた記録も、すべて消せること")
-        func removesAllIncludingRevised() throws {
-            try cache.upsert(
-                try SwiftDataKeyedRecordCacheTests.sentText(id: saved.id, body: "朝ごはんとコーヒー"))
-
-            try cache.removeAll()
-
-            #expect(try cache.savedRecords().isEmpty)
         }
 
         @Test("すべて消したあと、同じ保存の前には1件も読めないこと")
@@ -105,13 +63,105 @@ struct SwiftDataKeyedRecordCacheTests {
 
             #expect(try cache.all().isEmpty)
         }
+    }
 
-        @Test("すべて消してから、同じ保存の前に同じ ID を足し直すと、足した値が残ること")
-        func upsertsAfterRemovingAll() throws {
-            let again = try SwiftDataKeyedRecordCacheTests.sentText(
-                id: saved.id, body: "朝ごはんとコーヒー")
+    @Suite("記録を1件保存してあり、保存の前にもう1件足したとき")
+    @MainActor
+    struct AddedBeforeSaving {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataKeyedRecordCache<CachedSentText>
+        let saved: SentText
+        let added: SentText
+        let latest: SentText
+
+        init() throws {
+            (store, cache, saved) = try SwiftDataKeyedRecordCacheTests.savedCache()
+            added = try SwiftDataKeyedRecordCacheTests.sentText(id: UUID(), body: "昼ごはん")
+            latest = try SwiftDataKeyedRecordCacheTests.sentText(id: added.id, body: "昼ごはんと味噌汁")
+            try cache.upsert(added)
+        }
+
+        @Test("足した記録を、同じ保存の前に消せること")
+        func removesUnsavedRecord() throws {
+            try cache.remove(id: added.id)
+
+            #expect(try cache.savedRecords() == [saved])
+        }
+
+        @Test("同じ ID をもう一度足すと、行を増やさず、あとの値になること")
+        func upsertsSameIdTwiceBeforeSaving() throws {
+            try cache.upsert(latest)
+
+            #expect(Set(try cache.savedRecords()) == [saved, latest])
+        }
+
+        @Test("足した記録も、すべて消せること")
+        func removesAllIncludingUnsaved() throws {
             try cache.removeAll()
 
+            #expect(try cache.savedRecords().isEmpty)
+        }
+    }
+
+    @Suite("保存してある記録の値を、保存の前に替えたとき")
+    @MainActor
+    struct RevisedBeforeSaving {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataKeyedRecordCache<CachedSentText>
+        let saved: SentText
+
+        init() throws {
+            (store, cache, saved) = try SwiftDataKeyedRecordCacheTests.savedCache()
+            try cache.upsert(
+                try SwiftDataKeyedRecordCacheTests.sentText(id: saved.id, body: "朝ごはんとコーヒー"))
+        }
+
+        @Test("値を替えた記録も、すべて消せること")
+        func removesAllIncludingRevised() throws {
+            try cache.removeAll()
+
+            #expect(try cache.savedRecords().isEmpty)
+        }
+    }
+
+    @Suite("保存してある記録を、保存の前に消したとき")
+    @MainActor
+    struct RemovedBeforeSaving {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataKeyedRecordCache<CachedSentText>
+        let saved: SentText
+        let again: SentText
+
+        init() throws {
+            (store, cache, saved) = try SwiftDataKeyedRecordCacheTests.savedCache()
+            again = try SwiftDataKeyedRecordCacheTests.sentText(id: saved.id, body: "朝ごはんとコーヒー")
+            try cache.remove(id: saved.id)
+        }
+
+        @Test("同じ ID を、同じ保存の前に足し直すと、足した値が残ること")
+        func upsertsRemovedIdBeforeSaving() throws {
+            try cache.upsert(again)
+
+            #expect(try cache.savedRecords() == [again])
+        }
+    }
+
+    @Suite("保存してある記録を、保存の前にすべて消したとき")
+    @MainActor
+    struct RemovedAllBeforeSaving {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataKeyedRecordCache<CachedSentText>
+        let saved: SentText
+        let again: SentText
+
+        init() throws {
+            (store, cache, saved) = try SwiftDataKeyedRecordCacheTests.savedCache()
+            again = try SwiftDataKeyedRecordCacheTests.sentText(id: saved.id, body: "朝ごはんとコーヒー")
+            try cache.removeAll()
+        }
+
+        @Test("同じ ID を、同じ保存の前に足し直すと、足した値が残ること")
+        func upsertsAfterRemovingAll() throws {
             try cache.upsert(again)
 
             #expect(try cache.savedRecords() == [again])

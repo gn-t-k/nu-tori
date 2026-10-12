@@ -84,11 +84,9 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
 
     func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
         try await onMain { stores in
-            let statuses = try SwiftDataKeyedRecordCache<CachedMealEstimationStatus>(
-                context: stores.cache
-            ).all()
-            return Dictionary(
-                statuses.map { ($0.mealId, $0.status) }, uniquingKeysWith: { _, last in last })
+            try Self.statusesByParentId(of: CachedMealEstimationStatus.self, in: stores.cache) {
+                ($0.mealId, $0.status)
+            }
         }
     }
 
@@ -106,11 +104,9 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
 
     func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus] {
         try await onMain { stores in
-            let statuses = try SwiftDataKeyedRecordCache<CachedDishEstimationStatus>(
-                context: stores.cache
-            ).all()
-            return Dictionary(
-                statuses.map { ($0.dishId, $0.status) }, uniquingKeysWith: { _, last in last })
+            try Self.statusesByParentId(of: CachedDishEstimationStatus.self, in: stores.cache) {
+                ($0.dishId, $0.status)
+            }
         }
     }
 
@@ -146,11 +142,9 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
 
     func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
         try await onMain { stores in
-            let statuses = try SwiftDataKeyedRecordCache<CachedSentTextStatus>(
-                context: stores.cache
-            ).all()
-            return Dictionary(
-                statuses.map { ($0.sentTextId, $0.status) }, uniquingKeysWith: { _, last in last })
+            try Self.statusesByParentId(of: CachedSentTextStatus.self, in: stores.cache) {
+                ($0.sentTextId, $0.status)
+            }
         }
     }
 
@@ -210,8 +204,8 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
             try stores.pending.delete(model: PendingWriteRow.self)
             try stores.pending.delete(model: HealthSyncStateRow.self)
             try stores.pending.save()
-            try stores.cache.delete(model: CachedSyncState.self)
-            try stores.cache.delete(model: CachedHealthDishWrite.self)
+            try stores.cache.deleteAll(CachedSyncState.self)
+            try stores.cache.deleteAll(CachedHealthDishWrite.self)
             for kind in kinds.kinds {
                 try kind.erase(stores.cache)
             }
@@ -258,6 +252,17 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         let pending = pendingContainer.mainContext
         pending.autosaveEnabled = false
         return Contexts(cache: cache, pending: pending)
+    }
+
+    /// 親の ID で引く状態を、親の ID ごとにまとめる。同じ親の行が重なっていたら、あとの行を取る
+    @MainActor private static func statusesByParentId<Row: KeyedCacheRow, Status>(
+        of row: Row.Type,
+        in context: ModelContext,
+        _ parentIdAndStatus: (Row.Record) -> (UUID, Status)
+    ) throws -> [UUID: Status] {
+        Dictionary(
+            try SwiftDataKeyedRecordCache<Row>(context: context).all().map(parentIdAndStatus),
+            uniquingKeysWith: { _, last in last })
     }
 
     /// 結果を受け取った送り待ちを最後に消すのは、間で落ちても送り待ちが残り、次に送って同じ戻しに戻るため

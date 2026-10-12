@@ -156,4 +156,30 @@ struct RecordSyncTests {
             #expect(device.reflection.finishedSyncs.count == 2)
         }
     }
+
+    @Suite("同期を終えて、次に知らせを出すかを決める時刻を待っているとき")
+    struct WaitingForNoticeTime {
+        let device: RecordSyncDevice
+
+        init() async throws {
+            let clock = SteppingClock()
+            device = try RecordSyncDevice(
+                clock: clock,
+                server: .passing(
+                    .init(records: [], startedOn: RecordSyncDevice.startedOn), clock: clock))
+            // 見張りは、同期で次の時刻を決める
+            _ = try await device.recordSync.sync()
+            device.recordSync.startWaitingForNoticeTime()
+            // 待つ側が来るまで待つ。時計は進めない
+            await clock.advance(by: .zero)
+            try #require(clock.sleeperCount == 1)
+        }
+
+        @Test("待つのをやめると、段取りの順番を待たずに、その場で待ちを取り消すこと", .timeLimit(.minutes(1)))
+        func cancelsRightAway() {
+            device.recordSync.stopWaitingForNoticeTime()
+
+            #expect(device.clock.sleeperCount == 0)
+        }
+    }
 }

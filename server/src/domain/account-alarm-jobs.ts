@@ -10,6 +10,7 @@ import { replyAttemptTimeLimitMs } from "../reply/domain/reply-attempt-time-limi
 import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
 import type { AlarmJob } from "./alarm-job";
 import { computeNextAttemptAt } from "./compute-next-attempt-at";
+import { findEarliest } from "./find-earliest";
 import type { RecordChangeWriter } from "./record-change-writer";
 import type { RecordKindStores } from "./record-kind-stores";
 import type { UsageEvent } from "./usage-event";
@@ -129,8 +130,3 @@ const toStoppable = (stoppedError: unknown) =>
   stoppedError === undefined
     ? ({ result: "advanced" } as const)
     : ({ result: "stopped", error: stoppedError } as const);
-
-const findEarliest = (candidates: readonly (Date | undefined)[]): Date | undefined =>
-  candidates
-    .filter((candidate) => candidate !== undefined)
-    .toSorted((a, b) => a.getTime() - b.getTime())[0];

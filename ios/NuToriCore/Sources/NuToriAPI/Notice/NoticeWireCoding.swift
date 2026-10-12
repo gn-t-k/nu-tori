@@ -76,7 +76,7 @@ struct NoticeWireCoding: RecordKindWriteWireCoding {
                     notice: NewNotice(
                         id: try uuid(notice.id),
                         noticeType: noticeType,
-                        issuedAt: date(notice.issuedAt),
+                        issuedAt: Date(millisecondsSince1970: notice.issuedAt),
                         timeZone: try knownTimeZone(notice.timeZone),
                         targetOn: notice.targetOn
                     ))
@@ -86,7 +86,7 @@ struct NoticeWireCoding: RecordKindWriteWireCoding {
                     writeId: try uuid(write.id),
                     noticeId: try uuid(write.noticeId),
                     response: SyncedNotice.Response(
-                        respondedAt: date(write.response.respondedAt),
+                        respondedAt: Date(millisecondsSince1970: write.response.respondedAt),
                         timeZone: try knownTimeZone(write.response.timeZone)))
             }
             return nil
@@ -122,13 +122,13 @@ extension SyncChange {
                     return nil
                 }
                 syncedResponse = SyncedNotice.Response(
-                    respondedAt: Date(timeIntervalSince1970: Double(response.respondedAt) / 1000),
+                    respondedAt: Date(millisecondsSince1970: response.respondedAt),
                     timeZone: responseTimeZone)
             }
             return SyncedNotice(
                 id: id,
                 noticeType: noticeType,
-                issuedAt: Date(timeIntervalSince1970: Double(issuedAt) / 1000),
+                issuedAt: Date(millisecondsSince1970: issuedAt),
                 timeZone: timeZone,
                 targetOn: targetOn,
                 response: syncedResponse

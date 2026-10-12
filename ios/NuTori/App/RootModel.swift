@@ -291,10 +291,8 @@ final class RootModel {
 
     func noteAppBackgrounded() {
         rejectionAcceptance = .ignoring
-        Task {
-            await recordSync.stopWaitingForNoticeTime()
-            await recordSync.stopFollowingReplies()
-        }
+        recordSync.stopWaitingForNoticeTime()
+        Task { await recordSync.stopFollowingReplies() }
     }
 
     func noteAppActive() {
@@ -398,10 +396,8 @@ final class RootModel {
             // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
             discardRejectedLines()
             // サインアウトとアカウントの削除で、予約した通知と通知センターに残った通知を外し、前の時刻で待たない
-            Task { [recordSync] in
-                await recordSync.stopWaitingForNoticeTime()
-                await recordSync.stopFollowingReplies()
-            }
+            recordSync.stopWaitingForNoticeTime()
+            Task { [recordSync] in await recordSync.stopFollowingReplies() }
             Task { [missedWeightRecordWatch] in await missedWeightRecordWatch.removeAll() }
         case .loadingTimeline, .timeline:
             break
@@ -462,7 +458,7 @@ final class RootModel {
                 _ = try await self.recordSync.sync()
             }
             // 送れなくても、同期の前に記録忘れの見張りが決めて返した時刻を待つ
-            await recordSync.startWaitingForNoticeTime()
+            recordSync.startWaitingForNoticeTime()
         case .opening, .signIn:
             return
         }

@@ -33,20 +33,20 @@ struct TimelineViewportTests {
         @Suite("開いたとき")
         struct Opening {
             var viewport: TimelineViewport
+            let instructions: [TimelineViewport.Instruction]
 
             init() {
                 viewport = TimelineViewport()
+                instructions = viewport.newestDayChanged(to: TimelineViewportTests.today)
             }
 
             @Test("開いた位置が一番下なので、動かす指示を出さないこと")
-            mutating func doesNotScroll() {
-                #expect(viewport.newestDayChanged(to: TimelineViewportTests.today).isEmpty)
+            func doesNotScroll() {
+                #expect(instructions.isEmpty)
             }
 
             @Test("中身が伸びたら一番下についていくこと")
-            mutating func follows() {
-                _ = viewport.newestDayChanged(to: TimelineViewportTests.today)
-
+            func follows() {
                 #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
             }
         }

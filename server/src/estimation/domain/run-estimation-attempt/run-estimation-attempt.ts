@@ -1,16 +1,16 @@
 import { R } from "@praha/byethrow";
 import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
-import type { RecordId } from "../../domain/record-id";
-import { loadFoodComposition } from "../../domain/food-composition/food-composition";
-import { isNutrientName } from "../../domain/food-composition/nutrient-name";
-import type { IngredientNutrientSource } from "../../ingredient/domain/ingredient";
-import type { MealPhotoArchive } from "../../meal/domain/meal-photo-archive";
-import type { BegunEstimationAttempt, WrittenMealTarget } from "./begin-estimation-attempts";
-import type { EstimatedDish } from "./estimated-dish";
-import type { EstimationAttemptOutcome } from "./estimation-attempt-outcome";
-import { estimationAttemptTimeLimitMs } from "./estimation-attempt-time-limit-ms";
-import type { EstimationAttemptUsage } from "./estimation-attempt-usage";
+import type { RecordId } from "../../../domain/record-id";
+import { loadFoodComposition } from "../../../domain/food-composition/food-composition";
+import { isNutrientName } from "../../../domain/food-composition/nutrient-name";
+import type { IngredientNutrientSource } from "../../../ingredient/domain/ingredient";
+import type { MealPhotoArchive } from "../../../meal/domain/meal-photo-archive";
+import type { BegunEstimationAttempt, WrittenMealTarget } from "../begin-estimation-attempts";
+import type { EstimatedDish } from "../estimated-dish";
+import type { EstimationAttemptOutcome } from "../estimation-attempt-outcome";
+import { estimationAttemptTimeLimitMs } from "../estimation-attempt-time-limit-ms";
+import type { EstimationAttemptUsage } from "../estimation-attempt-usage";
 import type {
   EstimationProvider,
   EstimationProviderReply,
@@ -20,10 +20,10 @@ import type {
   IngredientMatch,
   IngredientMatchRequest,
   MatchedIngredients,
-} from "./estimation-provider";
-import type { TokenUsage } from "../../domain/token-usage";
-import { computeWrittenMealEatenAt } from "./compute-written-meal-eaten-at";
-import { toWrittenMealsRequest } from "./to-written-meals-request";
+} from "../estimation-provider";
+import type { TokenUsage } from "../../../domain/token-usage";
+import { computeWrittenMealEatenAt } from "../compute-written-meal-eaten-at";
+import { toWrittenMealsRequest } from "../to-written-meals-request";
 
 // 試み1回分。写真を R2 から読み、①（写真から料理と材料。推定し直しでは写真と料理の今の値から、その料理1つ。
 // 文章の食事では、写真の代わりに送った文章から、時刻の違う食事ごとの料理と材料）→ 成分表の候補 → ②（候補から選ぶか主な栄養を推定）と進め、応答を確かめる。
