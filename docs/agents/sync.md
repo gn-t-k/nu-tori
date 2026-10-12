@@ -75,11 +75,12 @@
   - サーバーだけが書く種類の変更と、書き込みがほかの種類の記録も変えるときの変更は、帳簿の口から足す（同じ節）。通し番号は足した順に付き、取りに行く応答もその順に並ぶ
 - 端末: 次の順に足す。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
   1. NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く
-  2. NuToriAPI に、同期の変更（`SyncChange`）の case と、端末が書く種類なら書き込み（`SyncWrite`）の case を足し、次を直す。全部の case を並べる switch は、種類を決める1か所だけにある
-     - どの種類のものかを決める1か所（変更は `SyncChange.recordKind`、書き込みは `SyncWrite.recordKind`）に書く。NuToriCore の `SyncChange.kindName` はここから引くので、NuToriCore に並べ直す場所は無い
+  2. NuToriAPI に、同期の変更（`SyncChange`）の case と、端末が書く種類なら書き込み（`SyncWrite`）の case を足し、次を直す
+     - どの種類のものかを決める switch（変更は `SyncChange.recordKind`、書き込みは `SyncWrite.recordKind`）に書く。全部の case を並べる switch は、変更はここだけ、書き込みはここと、下の `SyncWrite.writeId` と `Ledger.apply` の3つで、どれも、case を足すと書くまでコンパイルが止まる。NuToriCore の `SyncChange.kindName` はここから引くので、NuToriCore に並べ直す場所は無い
      - 種類のフォルダ（`NuToriAPI/<種類>/`）に、線上の形との行き来（`RecordKindWireCoding`。端末が書く種類は `RecordKindWriteWireCoding`）を1つ書く。見本は、端末が書く種類が `MealWireCoding`、サーバーだけが書く種類が `MealEstimationStatusWireCoding`。受け取った変更の読み方、record の形（`SyncChange.<種類>Payload`）、送る書き込みの書き方と当たる記録の ID、FakeSyncServer が返す変更の形、送られた書き込みの読み戻し（`SentSyncWrites`）は、ここに1回だけ書く。自分の case は `if case` で取り出す（ほかの種類の case を並べない）
+       - `if case` で取り出すので、すでにある種類に書き込みの case を足したとき、種類の適合への足し忘れをコンパイルは止めない。`wire(of:)` に足し忘れると、送るときに `SyncWrite.MissingWireCodingError` を投げ、`sentWrite` に足し忘れると、偽の同期サーバーとテストが読むときに投げる。止めるのは `SentSyncWritesTests` の `AllKinds`: case を足すとテストの `SyncWriteCase` の switch がコンパイルを止め、名前を足すと、送る書き込みにその case を足すまでテストが落ち、足すと、送って読み戻すテストが適合の足し忘れで落ちる
      - 符号化の表（`RecordKindWireCodings.coding(of:)`）に1行足す。サーバーの列挙（`openapi.json` から生成した `RecordKindName`）に足した名前が表に無いと、コンパイルが止める
-     - 書き込みの case を足したときは、`SyncWrite.writeId` と、FakeSyncServer の当て方（`Ledger.apply`。ほかの種類の記録も連れて変えるので、種類の適合に分けていない）にも足す。足し忘れはコンパイルが止める
+     - 書き込みの case を足したときは、`SyncWrite.writeId` と、FakeSyncServer の当て方（`Ledger.apply`。ほかの種類の記録も連れて変えるので、種類の適合に分けていない）にも足す。この2つの足し忘れはコンパイルが止める
   3. NuToriCore に、種類の同期の形（`CacheApplying`。見本は `WeightRecordSyncing`）を書く。キャッシュへの当て方（`apply`・`erase`）はここに1回だけ書き、キャッシュの口（port）に当てる。口は、ID で引く種類が `KeyedRecordCache`（親の ID で引く推定の状態などは、親の ID と値の組を記録にする。見本は `MealEstimationStatusSyncing.Status`）、1件だけの種類が `SingleRecordCache`
   4. 当て方のテストを、NuToriCore でメモリの adapter（`MemoryKeyedRecordCache`・`MemorySingleRecordCache`）に当てて書く（見本は `WeightRecordSyncingTests` の `Applying`）
   5. メモリの箱に足す。`RecordCacheMock` にメモリの adapter を1つ持たせ、`RecordKindRegistry.ok` に `PortedRecordKind` の1行を足す。当て方を写した Mock は書かない
