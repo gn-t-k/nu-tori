@@ -72,7 +72,7 @@
   - 名前を、名前の一覧（`domain/record-types.ts`）に1行足す。種類の名前の型と帳簿の表の列挙はここから引くので、ほかに名前を並べ直す場所は無い
   - 種類のまとまり（`src/<種類>/`）に、種類、置き場、受け口の入口を置く。受け口は、書き込みのスキーマ、記録の形、変換を `http/<種類>-http-kind.ts` の1ファイルに書く。サーバーだけが書く種類は `createServerOnlyKind` で作る
   - 4つの登録簿に1行ずつ足し、`scripts/check server --fix` で `openapi.json` を書き出し直す。一覧に足した名前が登録簿に無いと、型検査が止める
-  - サーバーだけが書く種類の変更と、書き込みがほかの種類の記録も変えるときの変更は、帳簿の口から足す（同じ節）。通し番号は足した順に付き、取りに行く応答もその順に並ぶ
+  - サーバーだけが書く種類の変更と、書き込みがほかの種類の記録も変えるときの変更は、書き込みの決定（`addedChanges`・`commit` の `addChange`）か、記録の変化を書く入口（`RecordChangeWriter`）から足す（同じ節）。通し番号は足した順に付き、取りに行く応答もその順に並ぶ
 - 端末: 次の順に足す。サーバーの列挙との突き合わせは `AppRecordKindsTests` が行い、片方にだけ足すと落ちる
   1. NuToriCore の `RecordKindName` に case を足し、`serverName` の switch にサーバーの列挙の名前を書く
   2. NuToriAPI に、同期の変更（`SyncChange`）の case と、端末が書く種類なら書き込み（`SyncWrite`）の case を足し、次を直す

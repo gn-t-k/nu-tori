@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { generateRecordId } from "../../../domain/record-id";
 import type { MealPhotoArchive } from "../../../meal/domain/meal-photo-archive";
+import { mockMealPhotoArchiveOk } from "../../../meal/domain/meal-photo-archive.mock";
 import type { BegunEstimationAttempt } from "../begin-estimation-attempts";
 import { LlmCallError } from "../../../domain/llm-call-error";
 import { LlmCallInvalidResponseError } from "../../../domain/llm-call-invalid-response-error";
@@ -65,11 +66,7 @@ describe("推定の試み", () => {
   let photographedMeal: Pick<BegunEstimationAttempt, "photoIds" | "target">;
   let writtenMeal: Pick<BegunEstimationAttempt, "photoIds" | "target">;
   beforeEach(() => {
-    archive = {
-      put: () => Promise.resolve(),
-      read: () => Promise.resolve(new ArrayBuffer(8)),
-      remove: () => Promise.resolve(),
-    };
+    archive = mockMealPhotoArchiveOk();
     photographedMeal = { photoIds: [generateRecordId()], target: { type: "meal" } };
     writtenMeal = {
       photoIds: [],
