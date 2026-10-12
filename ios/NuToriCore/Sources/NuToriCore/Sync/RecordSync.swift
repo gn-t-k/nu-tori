@@ -1,5 +1,6 @@
 public import Foundation
 public import NuToriAPI
+import Synchronization
 
 /// 送り待ちを送って取りに行く段取り。記録を書いたあと、アプリを開いたとき、電波が戻ったとき、バックグラウンド更新で呼ぶ。
 /// 書き込みは同期の働き（`SyncEngine`）が送り待ちを先に保存してからキャッシュに当て（ADR-0022）、ここはそのあとに見え方を知らせて送る
@@ -82,36 +83,23 @@ public actor RecordSync {
     }
 
     /// 開いているあいだ、記録忘れの見張りに次に知らせを出すかを決める時刻を聞いて待ち、来たら決める。
-    /// 見張りに出来事を知らせるたびに（日付やタイムゾーンが変わった、いつもの時刻が届いた、など）聞き直して待ち直す
-    public func startWaitingForNoticeTime() {
-        stopWaitingForNoticeTime()
-        noticeTimer = .waiting(
-            Task { [weak self, missedWeightRecordWatch, clock] in
-                // サインアウトのあとは、見張りが時刻を忘れているので待たない
-                guard let noticeTime = await missedWeightRecordWatch.nextNoticeTime() else {
-                    return
-                }
-                do {
-                    try await clock.wait(
-                        .seconds(max(0, noticeTime.timeIntervalSince(clock.now()))))
-                } catch {
-                    // 待ち直すか、裏へ回って取り消した
-                    return
-                }
-                // 決めたあとに見張りに次の時刻を聞き直して、待ち直す
-                await self?.refreshMissedWeightRecordWatch(after: .noticeTimeReached)
-            })
+    /// 見張りに出来事を知らせるたびに（日付やタイムゾーンが変わった、いつもの時刻が届いた、など）聞き直して待ち直す。
+    /// 始めるのも取り消すのも、段取りの順番を待たずにその場で効く。裏へ回ったあとに、前の待ちで見張りを動かさないため
+    public nonisolated func startWaitingForNoticeTime() {
+        let replaced = noticeTimer.withLock { timer in
+            defer { timer = .waiting(waitForNoticeTime()) }
+            return timer
+        }
+        replaced.cancel()
     }
 
     /// 裏へ回ったら待たない。前面に戻ったときに待ち直す
-    public func stopWaitingForNoticeTime() {
-        switch noticeTimer {
-        case .stopped:
-            break
-        case .waiting(let task):
-            task.cancel()
+    public nonisolated func stopWaitingForNoticeTime() {
+        let stopped = noticeTimer.withLock { timer in
+            defer { timer = .stopped }
+            return timer
         }
-        noticeTimer = .stopped
+        stopped.cancel()
     }
 
     /// キャッシュにその ID の知らせがあるか（答えていても）
@@ -309,7 +297,8 @@ public actor RecordSync {
     /// 初めての取得を測り始めた時刻。測る前と、終えたあとは無い
     private var initialPullStartedAt: Date?
     private var inFlight: Task<SyncResult?, any Error>?
-    private var noticeTimer = NoticeTimer.stopped
+    /// 段取りの外（画面）からその場で取り消せるよう、actor の状態にせず鍵で守る
+    private let noticeTimer = Mutex(NoticeTimer.stopped)
     /// 応答を待つ送った文章ごとの見守る要求。閉じたら取りに行き、届いた返事が途中の返事を置き換える
     private lazy var replyWatches = ReplyWatches(
         watch: watchReply,
@@ -320,6 +309,47 @@ public actor RecordSync {
     private enum NoticeTimer {
         case stopped
         case waiting(Task<Void, Never>)
+
+        func cancel() {
+            switch self {
+            case .stopped:
+                break
+            case .waiting(let task):
+                task.cancel()
+            }
+        }
+    }
+
+    private nonisolated func waitForNoticeTime() -> Task<Void, Never> {
+        Task { [weak self, missedWeightRecordWatch, clock] in
+            // サインアウトのあとは、見張りが時刻を忘れているので待たない
+            guard let noticeTime = await missedWeightRecordWatch.nextNoticeTime() else {
+                return
+            }
+            do {
+                try await clock.wait(
+                    .seconds(max(0, noticeTime.timeIntervalSince(clock.now()))))
+            } catch {
+                // 待ち直すか、裏へ回って取り消した
+                return
+            }
+            // 決めたあとに見張りに次の時刻を聞き直して、待ち直す
+            await self?.refreshMissedWeightRecordWatch(after: .noticeTimeReached)
+        }
+    }
+
+    /// 待っていたら、次の時刻を聞き直して待ち直す。待つのをやめたあとは、待ち直さない
+    private nonisolated func restartWaitingForNoticeTimeIfWaiting() {
+        let replaced = noticeTimer.withLock { timer in
+            switch timer {
+            case .stopped:
+                return NoticeTimer.stopped
+            case .waiting:
+                defer { timer = .waiting(waitForNoticeTime()) }
+                return timer
+            }
+        }
+        replaced.cancel()
     }
 
     private func engineIfSignedIn() async -> SyncEngine? {
@@ -334,12 +364,7 @@ public actor RecordSync {
         after event: MissedWeightRecordWatch.Event
     ) async -> Bool {
         let enqueued = await missedWeightRecordWatch.refresh(after: event)
-        switch noticeTimer {
-        case .stopped:
-            break
-        case .waiting:
-            startWaitingForNoticeTime()
-        }
+        restartWaitingForNoticeTimeIfWaiting()
         return enqueued
     }
 

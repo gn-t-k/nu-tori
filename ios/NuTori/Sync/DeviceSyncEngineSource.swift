@@ -21,7 +21,8 @@ nonisolated struct DeviceSyncEngineSource: SyncEngineSource {
         (try? await deviceStore.signedInAccount())?.accountId
     }
 
-    func engine(accountId: String) async -> SyncEngine {
+    /// 端末の ID を読んで無ければ作るので、段取りの actor の上で走ることに頼らず、MainActor で1つずつ走らせる
+    @MainActor func engine(accountId: String) async -> SyncEngine {
         let version = ProcessInfo.processInfo.operatingSystemVersion
         return SyncEngine(
             store: store,
