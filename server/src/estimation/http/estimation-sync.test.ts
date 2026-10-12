@@ -17,9 +17,9 @@ import {
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
 } from "../../observability/testing";
-import { EstimationProviderBadRequestError } from "../domain/estimation-provider-bad-request-error";
-import { EstimationProviderError } from "../domain/estimation-provider-error";
-import { EstimationProviderTimedOutError } from "../domain/estimation-provider-timed-out-error";
+import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
+import { LlmCallError } from "../../domain/llm-call-error";
+import { LlmCallTimedOutError } from "../../domain/llm-call-timed-out-error";
 import {
   mockCreateEstimationProviderError,
   mockCreateEstimationProviderOk,
@@ -246,7 +246,7 @@ describe("推定", () => {
     beforeEach(async () => {
       providerResponseError = new Error("Overloaded");
       mockCreateEstimationProviderError(
-        new EstimationProviderError({
+        new LlmCallError({
           errorType: "overloaded_error",
           cause: providerResponseError,
         }),
@@ -327,7 +327,7 @@ describe("推定", () => {
     let mealId: string;
     beforeEach(async () => {
       mockCreateEstimationProviderError(
-        new EstimationProviderBadRequestError({ errorType: "invalid_request_error" }),
+        new LlmCallBadRequestError({ errorType: "invalid_request_error" }),
       );
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
@@ -345,7 +345,7 @@ describe("推定", () => {
   describe("提供元の呼び出しが時間切れになったとき", () => {
     let mealId: string;
     beforeEach(async () => {
-      mockCreateEstimationProviderError(new EstimationProviderTimedOutError());
+      mockCreateEstimationProviderError(new LlmCallTimedOutError());
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
     });
@@ -391,7 +391,7 @@ describe("推定", () => {
     let captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
     beforeEach(async () => {
       await enableUsageEventSending(accountId);
-      mockCreateEstimationProviderError(new EstimationProviderError({ errorType: "api_error" }), {
+      mockCreateEstimationProviderError(new LlmCallError({ errorType: "api_error" }), {
         failingCall: "match_ingredients",
       });
       await recordPhotographedMeal(sessionToken);
@@ -450,7 +450,7 @@ describe("推定", () => {
   describe("6回の試みが提供元のエラーで、7つ目の試みの呼び出し中に止まったとき", () => {
     let mealId: string;
     beforeEach(async () => {
-      mockCreateEstimationProviderError(new EstimationProviderError({ errorType: "api_error" }));
+      mockCreateEstimationProviderError(new LlmCallError({ errorType: "api_error" }));
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
       for (let retry = 0; retry < 5; retry += 1) {

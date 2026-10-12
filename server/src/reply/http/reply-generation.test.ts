@@ -18,10 +18,10 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { createSentTextWrite } from "../../sent-text/http/testing/create-sent-text-write";
-import { ConversationProviderBadRequestError } from "../domain/conversation-provider-bad-request-error";
-import { ConversationProviderError } from "../domain/conversation-provider-error";
-import { ConversationProviderInvalidResponseError } from "../domain/conversation-provider-invalid-response-error";
-import { ConversationProviderTimedOutError } from "../domain/conversation-provider-timed-out-error";
+import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
+import { LlmCallError } from "../../domain/llm-call-error";
+import { LlmCallInvalidResponseError } from "../../domain/llm-call-invalid-response-error";
+import { LlmCallTimedOutError } from "../../domain/llm-call-timed-out-error";
 import {
   mockCreateConversationProviderError,
   mockCreateConversationProviderOk,
@@ -296,7 +296,7 @@ describe("返事を作る", () => {
       providerResponseError = new Error("Overloaded");
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderError({
+        error: new LlmCallError({
           errorType: "overloaded_error",
           cause: providerResponseError,
         }),
@@ -387,7 +387,7 @@ describe("返事を作る", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderTimedOutError(),
+        error: new LlmCallTimedOutError(),
       });
       sentTextId = await sendText();
       await runEstimationAlarm(accountId);
@@ -409,7 +409,7 @@ describe("返事を作る", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderInvalidResponseError({
+        error: new LlmCallInvalidResponseError({
           usage: { inputTokens: 2400, outputTokens: 1024 },
         }),
       });
@@ -486,7 +486,7 @@ describe("返事を作る", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderBadRequestError({
+        error: new LlmCallBadRequestError({
           errorType: "invalid_request_error",
           cause: new Error("Bad Request"),
         }),
