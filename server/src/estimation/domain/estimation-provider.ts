@@ -2,24 +2,21 @@ import type { DayOfWeek } from "../../domain/day-of-week";
 import type { TokenUsage } from "../../domain/token-usage";
 import type { R } from "@praha/byethrow";
 import type { NutrientName } from "../../domain/food-composition/nutrient-name";
-import type { EstimationProviderBadRequestError } from "./estimation-provider-bad-request-error";
-import type { EstimationProviderError } from "./estimation-provider-error";
-import type { EstimationProviderInvalidResponseError } from "./estimation-provider-invalid-response-error";
-import type { EstimationProviderTimedOutError } from "./estimation-provider-timed-out-error";
+import type { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
+import type { LlmCallError } from "../../domain/llm-call-error";
+import type { LlmCallInvalidResponseError } from "../../domain/llm-call-invalid-response-error";
+import type { LlmCallTimedOutError } from "../../domain/llm-call-timed-out-error";
 
 // 推定を頼む提供元（LLM）。① で写真から料理と材料を読み取り、② で材料ごとに成分表の候補から選ぶか主な栄養を推定する。
 // 本物は Anthropic の API を呼ぶ（基盤に固有の層が実装する）。応答は残さず、推定の結果だけをドメイン層が書く。
-// signal は試み（①②）の時間の上限で切れる。提供元は切れたら EstimationProviderTimedOutError で返す
+// signal は試み（①②）の時間の上限で切れる。提供元は切れたら LlmCallTimedOutError で返す
 export type EstimationProvider = {
   identifyDishes: (
     request: { photos: readonly ArrayBuffer[]; target: IdentificationTarget },
     signal: AbortSignal,
   ) => R.ResultAsync<
     EstimationProviderReply<IdentifiedDishes>,
-    | EstimationProviderError
-    | EstimationProviderBadRequestError
-    | EstimationProviderTimedOutError
-    | EstimationProviderInvalidResponseError
+    LlmCallError | LlmCallBadRequestError | LlmCallTimedOutError | LlmCallInvalidResponseError
   >;
   // 文章の食事の ①。写真の代わりに送った文章を渡し、時刻の違う食事ごとに、日時と料理と材料を読み取る
   identifyWrittenMeals: (
@@ -27,20 +24,14 @@ export type EstimationProvider = {
     signal: AbortSignal,
   ) => R.ResultAsync<
     EstimationProviderReply<IdentifiedWrittenMeals>,
-    | EstimationProviderError
-    | EstimationProviderBadRequestError
-    | EstimationProviderTimedOutError
-    | EstimationProviderInvalidResponseError
+    LlmCallError | LlmCallBadRequestError | LlmCallTimedOutError | LlmCallInvalidResponseError
   >;
   matchIngredients: (
     request: IngredientMatchRequest,
     signal: AbortSignal,
   ) => R.ResultAsync<
     EstimationProviderReply<MatchedIngredients>,
-    | EstimationProviderError
-    | EstimationProviderBadRequestError
-    | EstimationProviderTimedOutError
-    | EstimationProviderInvalidResponseError
+    LlmCallError | LlmCallBadRequestError | LlmCallTimedOutError | LlmCallInvalidResponseError
   >;
 };
 

@@ -1,10 +1,10 @@
 import type { R } from "@praha/byethrow";
 import type { RecordId } from "../../domain/record-id";
 import type { TokenUsage } from "../../domain/token-usage";
-import type { ConversationProviderBadRequestError } from "./conversation-provider-bad-request-error";
-import type { ConversationProviderError } from "./conversation-provider-error";
-import type { ConversationProviderInvalidResponseError } from "./conversation-provider-invalid-response-error";
-import type { ConversationProviderTimedOutError } from "./conversation-provider-timed-out-error";
+import type { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
+import type { LlmCallError } from "../../domain/llm-call-error";
+import type { LlmCallInvalidResponseError } from "../../domain/llm-call-invalid-response-error";
+import type { LlmCallTimedOutError } from "../../domain/llm-call-timed-out-error";
 import type { ReplyContext } from "./reply-context";
 
 // 送った文章を読む提供元（LLM）。読み分けと返事の両方を受け持つ。
@@ -13,20 +13,17 @@ export type ConversationProvider = {
   // 食べた・飲んだものを伝えていれば meal、ほかは conversation、確信が持てなければ unsure を返す
   classifySentText: (request: {
     body: string;
-  }) => R.ResultAsync<ClassificationResult, ConversationProviderError>;
+  }) => R.ResultAsync<ClassificationResult, LlmCallError>;
   // 文脈を渡して返事を作らせる。文脈を文の塊にして指示と並べるのは提供元が受け持つ。
-  // signal は試みの時間の上限で切れる。提供元は切れたら ConversationProviderTimedOutError で返す。
-  // 出力の上限で切れた・決めた形に読めない応答は ConversationProviderInvalidResponseError で返す。
+  // signal は試みの時間の上限で切れる。提供元は切れたら LlmCallTimedOutError で返す。
+  // 出力の上限で切れた・決めた形に読めない応答は LlmCallInvalidResponseError で返す。
   // onText には、返事の本文のできた分を、できた順に渡す（見守る要求で流す）。つないだ分は、通ったときの body と同じになる
   generateReply: (
     request: { context: ReplyContext; onText: (text: string) => void },
     signal: AbortSignal,
   ) => R.ResultAsync<
     GeneratedReply,
-    | ConversationProviderError
-    | ConversationProviderBadRequestError
-    | ConversationProviderTimedOutError
-    | ConversationProviderInvalidResponseError
+    LlmCallError | LlmCallBadRequestError | LlmCallTimedOutError | LlmCallInvalidResponseError
   >;
 };
 

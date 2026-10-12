@@ -19,7 +19,7 @@ import {
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
 } from "../../observability/testing";
-import { EstimationProviderBadRequestError } from "../domain/estimation-provider-bad-request-error";
+import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
 import {
   mockCreateEstimationProviderError,
   mockCreateEstimationProviderOk,
@@ -163,7 +163,7 @@ describe("推定を待っている食事への書き込み", () => {
     let mealId: string;
     beforeEach(async () => {
       mockCreateEstimationProviderError(
-        new EstimationProviderBadRequestError({ errorType: "invalid_request_error" }),
+        new LlmCallBadRequestError({ errorType: "invalid_request_error" }),
       );
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);

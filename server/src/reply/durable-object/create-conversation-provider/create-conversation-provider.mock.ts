@@ -3,7 +3,7 @@ import { vi } from "vitest";
 import type { RecordId } from "../../../domain/record-id";
 import type { TokenUsage } from "../../../domain/token-usage";
 import type { ClassificationLabel, ConversationProvider } from "../../domain/conversation-provider";
-import type { ConversationProviderError } from "../../domain/conversation-provider-error";
+import type { LlmCallError } from "../../../domain/llm-call-error";
 import type { ReplyContext } from "../../domain/reply-context";
 import * as module from "./index";
 
@@ -49,7 +49,7 @@ export const mockCreateConversationProviderOk = (overrides?: Partial<FakeReplies
 // 返事が落ちるときは、読み分けは会話と答え、textDeltasBeforeFailure を onText に渡してから失敗する
 export const mockCreateConversationProviderError = (
   failure:
-    | { failingCall: "classify_sent_text"; error: ConversationProviderError }
+    | { failingCall: "classify_sent_text"; error: LlmCallError }
     | {
         failingCall: "generate_reply";
         error: R.InferFailure<ConversationProvider["generateReply"]>;
