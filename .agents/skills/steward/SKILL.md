@@ -6,26 +6,23 @@ disable-model-invocation: true
 
 # PR の見張り
 
-見張りの流れはハーネスの決まりに従う。ここには、このリポジトリに固有のことだけを書く。
+見張りの流れはハーネスの決まりに従う。ここには、ハーネスの既定と違うこのリポジトリの決まりだけを書く。
 
 ## merge できる状態
 
-- 必須のチェックは `check.yml` の `changes`・`ios`・`server`。`ios-app` は必須でない
-- `ios-ui-test` は PR では回らない。UI テストか画面の経路を変える PR は、Mac の結果を PR の本文に書くまで merge できる状態に入らない（手順は `ios/AGENTS.md` の「確かめる」）
-- main の `ios-ui-test` が落ちて立った Issue があれば、それを先に直す（`docs/agents/tooling.md` の「CI」）
+- 必須のチェックは `gh api repos/gn-t-k/nu-tori/rules/branches/main` の `required_status_checks` で見る
+- CI が緑でも、UI テストか画面の経路を変える PR は、Mac の結果を PR の本文に書くまで merge できる状態に入らない（`ios/AGENTS.md` の「確かめる」）
 
-## push する前
+## 衝突
 
-- 好みのレビューと、main を取り込んだだけの push の扱いは `docs/agents/git.md` の「好みのレビュー」
-- 積み重ねた PR の後ろのブランチには、rebase でなく merge で取り込む（`docs/agents/git.md`）
-- main との衝突を解いて merge するのは、開発者が merge を任せた1つのセッションだけ（`docs/agents/git.md`）。任されていなければ、衝突したことを開発者に1回伝えて待つ
+main との衝突を解いて merge するのは、開発者が merge を任せた1つのセッションだけ（`docs/agents/git.md`）。任されていなければ、衝突したことを開発者に1回伝えて待つ。
 
 ## Linux のセッションから Mac の結果を頼む
 
-開発者には、次の2行だけを送る。手順は開発者が知っているので書かない。
+開発者が Mac のセッションに貼るプロンプトを、次の形で渡す。結果は PR のコメントで届くので、届いたらコミットと結果を PR の本文に書く。
 
 ```text
-<PR の URL> の <先頭のコミットの SHA> で scripts/check ios-ui-test を回して、通ったか、落ちたらテストの名前と失敗の要約を貼ってください
+gn-t-k/nu-tori の #<PR> のコミット <SHA> で scripts/check ios-ui-test を回して、結果をその PR にコメントしてください。
+全件で15分ほどかかるので、コマンドの時間の制限を延ばすか、裏で回す。
+コメントには、コミットと、通ったか、落ちたらテストの名前と失敗の要約を書く。
 ```
-
-結果が返ったら、コミットと結果を PR の本文に書く。
