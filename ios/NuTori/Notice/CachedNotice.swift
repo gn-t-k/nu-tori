@@ -56,20 +56,4 @@ nonisolated final class CachedNotice {
             id: noticeId, kind: noticeKind, issuedAt: issuedAt, timeZone: timeZone,
             targetDay: day, response: response)
     }
-
-    /// 保存は呼び出し側が行う
-    static func upsert(_ notice: Notice, in context: ModelContext) throws {
-        if let existing = try find(id: notice.id, in: context) {
-            existing.apply(notice)
-        } else {
-            context.insert(CachedNotice(notice))
-        }
-    }
-
-    static func find(id: UUID, in context: ModelContext) throws -> CachedNotice? {
-        var descriptor = FetchDescriptor<CachedNotice>(
-            predicate: #Predicate { $0.noticeId == id })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
-    }
 }
