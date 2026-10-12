@@ -8,7 +8,7 @@ main() {
         case "$1" in
             --fix) fix=true ;;
             --only)
-                [ $# -ge 2 ] || usage_error
+                [ $# -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || usage_error
                 only_testing+=("-only-testing:NuToriUITests/$2")
                 shift
                 ;;
