@@ -11,6 +11,7 @@
 
 - 複製の元（`nu-tori ui-test-base`）は、初めて回したときに作られて残る（数百 MB）。UI テストを回すたびに落とされるので、Xcode・Simulator.app・MobileBuildMCP で選ばない。要らなくなったら、UI テストが回っていないときに `xcrun simctl delete <UDID>` で消す。次に回したときに作り直される
 - kill -9 などで止めると、複製が残る。次に回したときに、名前の pid のプロセスが居なければ消える
+- 落ちた UI テストを追うときは、`scripts/check ios-ui-test --only <クラス>[/<メソッド>] --repeat <回数>` で、そのテストだけを落ちるまでくり返す
 - MobileBuildMCP と Xcode は、今までどおり共有の iPhone を使う。`scripts/check` とはぶつからないが、MobileBuildMCP や Xcode どうしでは同じ端末を取り合う
 
 ## 置き場の移行を実機で確かめる

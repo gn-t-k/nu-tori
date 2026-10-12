@@ -3,17 +3,28 @@
 set -euo pipefail
 
 main() {
-    local targets="" arg target
-    for arg in "$@"; do
-        case "$arg" in
+    local targets="" target
+    while [ $# -gt 0 ]; do
+        case "$1" in
             --fix) fix=true ;;
-            ios | ios-app | ios-ui-test | server) targets="$targets $arg" ;;
-            *)
-                print_usage >&2
-                exit 2
+            --only)
+                [ $# -ge 2 ] || usage_error
+                only_testing+=("-only-testing:NuToriUITests/$2")
+                shift
                 ;;
+            --repeat)
+                [ $# -ge 2 ] && [[ "$2" =~ ^[1-9][0-9]*$ ]] || usage_error
+                repeat="$2"
+                shift
+                ;;
+            ios | ios-app | ios-ui-test | server) targets="$targets $1" ;;
+            *) usage_error ;;
         esac
+        shift
     done
+    if [ -n "${only_testing[*]-}$repeat" ] && [[ "$targets " != *" ios-ui-test "* ]]; then
+        usage_error
+    fi
 
     trap on_exit EXIT
     for target in ${targets:-ios server}; do
@@ -144,6 +155,10 @@ check_ios_ui_test() {
     xcrun simctl spawn "$ui_test_simulator" defaults write -g AppleKeyboards -array "$kana_keyboard" "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"
     xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences KeyboardLastUsed "$kana_keyboard"
     rm -rf "$results"
+    local repeat_options=()
+    if [ -n "$repeat" ]; then
+        repeat_options=(-test-iterations "$repeat" -run-tests-until-failure)
+    fi
     # テストの診断をシミュレータから集めると、テストが通った回でも時間切れの10分まで待つことがある。落ちた理由は xcresult で足りる
     xcodebuild \
         -project "$ios/NuTori.xcodeproj" \
@@ -151,6 +166,8 @@ check_ios_ui_test() {
         -destination "id=$ui_test_simulator" \
         -resultBundlePath "$results" \
         -collect-test-diagnostics never \
+        ${only_testing[@]+"${only_testing[@]}"} \
+        ${repeat_options[@]+"${repeat_options[@]}"} \
         test-without-building
 }
 
@@ -212,13 +229,21 @@ MESSAGE
 print_usage() {
     cat << 'USAGE'
 使い方: scripts/check [ios | ios-app | ios-ui-test | server] [--fix]
+       scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
   引数なし     ios と server
   ios          整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
   server       整形、Lint、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   --fix        直せるものを直してから確かめる
+  --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
+  --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
 USAGE
+}
+
+usage_error() {
+    print_usage >&2
+    exit 2
 }
 
 step() {
@@ -374,6 +399,8 @@ swiftlint_version=0.65.1
 swiftlint=""
 ui_test_simulator=""
 current_step=""
+only_testing=()
+repeat=""
 fix=false
 
 main "$@"
