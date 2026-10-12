@@ -38,8 +38,8 @@ extension TimelineTests {
             ).days
         }
 
-        @Suite("送った文章が、送った直後にいちばん下に足されたとき")
-        struct SentTextAdded {
+        /// 送った文章が、いちばん下に足された前後の並び
+        struct SentTextAddition {
             let old: [Timeline.Day]
             let new: [Timeline.Day]
             let sentAt: Date
@@ -51,33 +51,69 @@ extension TimelineTests {
                 new = ItemByUserAtEnd.days(weightRecords: [morning], sentTexts: [question])
                 sentAt = question.sentAt
             }
+        }
+
+        @Suite("送った文章がいちばん下に足され、今が送った時刻の1秒後のとき")
+        struct SentTextAddedJustNow {
+            let added: SentTextAddition
+            let now: Date
+
+            init() throws {
+                added = try SentTextAddition()
+                now = added.sentAt.addingTimeInterval(1)
+            }
 
             @Test("足したとすること")
             func adds() {
-                #expect(
-                    Timeline.addsItemByUserAtEnd(
-                        from: old, to: new, now: sentAt.addingTimeInterval(1)))
+                #expect(Timeline.addsItemByUserAtEnd(from: added.old, to: added.new, now: now))
+            }
+        }
+
+        @Suite("送った文章がいちばん下に足され、今が送った時刻のちょうど1分後のとき")
+        struct SentTextAddedAtWindowEnd {
+            let added: SentTextAddition
+            let now: Date
+
+            init() throws {
+                added = try SentTextAddition()
+                now = added.sentAt.addingTimeInterval(60)
             }
 
-            @Test("送った時刻から1分たっても、足したとすること")
-            func addsWithinWindow() {
-                #expect(
-                    Timeline.addsItemByUserAtEnd(
-                        from: old, to: new, now: sentAt.addingTimeInterval(60)))
+            @Test("足したとすること")
+            func adds() {
+                #expect(Timeline.addsItemByUserAtEnd(from: added.old, to: added.new, now: now))
+            }
+        }
+
+        @Suite("送った文章がいちばん下に足され、今が送った時刻から1分を過ぎているとき（ほかの端末で足したものが届いた）")
+        struct SentTextAddedAfterWindow {
+            let added: SentTextAddition
+            let now: Date
+
+            init() throws {
+                added = try SentTextAddition()
+                now = added.sentAt.addingTimeInterval(61)
             }
 
-            @Test("送った時刻から1分を過ぎていたら（ほかの端末で足したものが届いた）、足したとしないこと")
-            func doesNotAddAfterWindow() {
-                #expect(
-                    !Timeline.addsItemByUserAtEnd(
-                        from: old, to: new, now: sentAt.addingTimeInterval(61)))
+            @Test("足したとしないこと")
+            func doesNotAdd() {
+                #expect(!Timeline.addsItemByUserAtEnd(from: added.old, to: added.new, now: now))
+            }
+        }
+
+        @Suite("送った文章がいちばん下に足され、送った時刻が今より先のとき（時計の進んだほかの端末で足したものが届いた）")
+        struct SentTextAddedFromFuture {
+            let added: SentTextAddition
+            let now: Date
+
+            init() throws {
+                added = try SentTextAddition()
+                now = added.sentAt.addingTimeInterval(-1)
             }
 
-            @Test("送った時刻が今より先なら（時計の進んだほかの端末で足したものが届いた）、足したとしないこと")
-            func doesNotAddFromFuture() {
-                #expect(
-                    !Timeline.addsItemByUserAtEnd(
-                        from: old, to: new, now: sentAt.addingTimeInterval(-1)))
+            @Test("足したとしないこと")
+            func doesNotAdd() {
+                #expect(!Timeline.addsItemByUserAtEnd(from: added.old, to: added.new, now: now))
             }
         }
 
@@ -111,10 +147,10 @@ extension TimelineTests {
 
             init() throws {
                 let lastNight = try WeightRecord.manual(
-                    72.6, at: "2026-09-23T23:59:30+09:00", in: "Asia/Tokyo")
+                    72.6, at: "2026-09-23T22:00:00+09:00", in: "Asia/Tokyo")
                 old = ItemByUserAtEnd.days()
                 new = ItemByUserAtEnd.days(weightRecords: [lastNight])
-                now = lastNight.instant.addingTimeInterval(40)
+                now = lastNight.instant.addingTimeInterval(1)
             }
 
             @Test("足したとすること")
