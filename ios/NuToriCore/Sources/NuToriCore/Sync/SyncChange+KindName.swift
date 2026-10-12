@@ -2,24 +2,14 @@ public import NuToriAPI
 
 extension SyncChange {
     /// この変更がどの記録の種類のものか。知らない種類（`.unknown`）は nil。
-    /// 全部の case を並べる switch はここ1か所にする。case を足したら、ここに種類を書く。
+    /// 全部の case を並べる switch は NuToriAPI の1か所（`SyncChange.recordKind`）にあり、ここはその名前を端末の名前に引き直す。
     /// 各種類は、自分の変更かをこれと自分の名前で決め、自分の case を `if case` で取り出す
     public var kindName: RecordKindName? {
-        switch self {
-        case .weightRecord, .weightRecordDeletion: .weightRecord
-        case .accountSettings: .accountSettings
-        case .aiUtterance: .aiUtterance
-        case .dish, .dishDeletion: .dish
-        case .dishEstimationStatus, .dishEstimationStatusDeletion: .dishEstimationStatus
-        case .ingredient, .ingredientDeletion: .ingredient
-        case .meal, .mealDeletion: .meal
-        case .mealEstimationStatus, .mealEstimationStatusDeletion: .mealEstimationStatus
-        case .notice, .noticeRemoval: .notice
-        case .sentText, .sentTextRemoval: .sentText
-        case .sentTextStatus: .sentTextStatus
-        case .usualWeighingTime: .usualWeighingTime
-        case .weightTrend, .weightTrendAbsence: .weightTrend
-        case .unknown: nil
-        }
+        serverKindName.flatMap { RecordKindName.byServerName[$0] }
     }
+}
+
+extension RecordKindName {
+    fileprivate static let byServerName = Dictionary(
+        uniqueKeysWithValues: allCases.map { ($0.serverName, $0) })
 }
