@@ -8,13 +8,12 @@ import type { ReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
 import { computeNextAlarmAt } from "./compute-next-alarm-at";
 import { computeNextAlarmAtExceptLeftoverPhotos } from "./compute-next-alarm-at-except-leftover-photos";
+import type { RecordChangeWriter } from "./record-change-writer";
 import type { RecordKindStores } from "./record-kind-stores";
-import type { RecordType } from "./record-type";
-import type { LedgerStore } from "./sync-ledger/ledger-store";
 
 // 呼び出し側は、次の時刻に張り、提供元のエラーを Sentry に送り、利用状況を送り、error があれば投げて Cloudflare のアラームのやり直しに任せる
 export const runAccountAlarm = async (
-  ledgerStore: LedgerStore<RecordType>,
+  writeRecordChanges: RecordChangeWriter,
   stores: RecordKindStores,
   deps: {
     archive: MealPhotoArchive;
@@ -25,15 +24,15 @@ export const runAccountAlarm = async (
   },
 ) => {
   // 食事と読み分けた文章の推定を、同じアラームで始めるため、推定より先に読み分ける
-  const classified = await classifySentTexts(ledgerStore, stores, {
+  const classified = await classifySentTexts(writeRecordChanges, stores, {
     provider: deps.conversationProvider,
   });
   // 食事と読み分けた文章の見守る要求を閉じる
   deps.replyWatchers.refresh(stores);
-  const advanced = await advanceEstimations(ledgerStore, stores, deps, new Date());
+  const advanced = await advanceEstimations(writeRecordChanges, stores, deps, new Date());
   // 推定のあとに作り、同じアラームで推定し終えた食事の栄養を返事の文脈に入れる
   const replied = await advanceReplies(
-    ledgerStore,
+    writeRecordChanges,
     stores,
     {
       provider: deps.conversationProvider,

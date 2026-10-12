@@ -1,9 +1,7 @@
 import { computeNextAttemptAt } from "../../domain/compute-next-attempt-at";
-import { createRecordLedger } from "../../domain/create-record-ledger";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
+import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import type { RecordType } from "../../domain/record-type";
-import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeReplyGenerationEndedEvent } from "./compute-reply-generation-ended-event";
 import { maximumDailyReplyGenerations } from "./maximum-daily-reply-generations";
@@ -20,62 +18,60 @@ export type BegunReplyAttempt = ReplyGenerationOrigin & { attemptId: RecordId };
 // 依頼の数える日の生成が1日の上限に達していれば、生成を始めず、提供元を呼ばずに回数切れにする（翌日に回さない）。
 // 返す試みは、応える文章の送った順
 export const beginReplyAttempts = (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: Pick<RecordKindStores, "reply">,
   now: Date,
 ): { attempts: BegunReplyAttempt[]; usageEvents: UsageEvent[] } =>
-  createRecordLedger(ledgerStore, stores, now).changeOutsideWrites((addChange) =>
-    stores.writeReplyEvents(addChange, (writes) => {
-      const attempts: BegunReplyAttempt[] = [];
-      const usageEvents: UsageEvent[] = [];
-      const beginAttempt = (origin: ReplyGenerationOrigin) => {
-        const attemptId = generateRecordId();
-        writes.beginAttempt({ id: attemptId, generationId: origin.generationId, attemptedAt: now });
-        attempts.push({ ...origin, attemptId });
-      };
+  writeRecordChanges(({ reply: writes }) => {
+    const attempts: BegunReplyAttempt[] = [];
+    const usageEvents: UsageEvent[] = [];
+    const beginAttempt = (origin: ReplyGenerationOrigin) => {
+      const attemptId = generateRecordId();
+      writes.beginAttempt({ id: attemptId, generationId: origin.generationId, attemptedAt: now });
+      attempts.push({ ...origin, attemptId });
+    };
 
-      // 始めた生成の試みは呼び出し中なので、下の続いている生成では次に試みる時刻がまだ来ていない
-      for (const {
-        requestId,
-        sentText,
-        countedOn,
-        requestedAt,
-      } of stores.reply.findWaitingRequests()) {
-        if (stores.reply.countGenerationsCountedOn(countedOn) >= maximumDailyReplyGenerations) {
-          writes.halt({ requestId, haltedAt: now });
-          usageEvents.push({ name: "reply_request_halted" });
-          continue;
-        }
-        const generationId = generateRecordId();
-        writes.beginGeneration({ id: generationId, requestId, startedAt: now });
-        beginAttempt({ generationId, sentText, requestedAt });
+    // 始めた生成の試みは呼び出し中なので、下の続いている生成では次に試みる時刻がまだ来ていない
+    for (const {
+      requestId,
+      sentText,
+      countedOn,
+      requestedAt,
+    } of stores.reply.findWaitingRequests()) {
+      if (stores.reply.countGenerationsCountedOn(countedOn) >= maximumDailyReplyGenerations) {
+        writes.halt({ requestId, haltedAt: now });
+        usageEvents.push({ name: "reply_request_halted" });
+        continue;
       }
+      const generationId = generateRecordId();
+      writes.beginGeneration({ id: generationId, requestId, startedAt: now });
+      beginAttempt({ generationId, sentText, requestedAt });
+    }
 
-      for (const { attempts: previous, ...origin } of stores.reply.findContinuingGenerations()) {
-        if (computeNextAttemptAt(previous, replyAttemptTimeLimitMs).getTime() > now.getTime()) {
-          continue;
-        }
-        if (previous.length < maximumReplyAttempts) {
-          beginAttempt(origin);
-          continue;
-        }
-        writes.abandon({ generationId: origin.generationId, abandonedAt: now });
-        usageEvents.push(
-          computeReplyGenerationEndedEvent({
-            final: { status: "failed" },
-            attempts: previous,
-            requestedAt: origin.requestedAt,
-            endedAt: now,
-          }),
-        );
+    for (const { attempts: previous, ...origin } of stores.reply.findContinuingGenerations()) {
+      if (computeNextAttemptAt(previous, replyAttemptTimeLimitMs).getTime() > now.getTime()) {
+        continue;
       }
-      return {
-        attempts: attempts.toSorted(
-          (a, b) =>
-            a.sentText.sentAt.getTime() - b.sentText.sentAt.getTime() ||
-            a.sentText.id.localeCompare(b.sentText.id),
-        ),
-        usageEvents,
-      };
-    }),
-  );
+      if (previous.length < maximumReplyAttempts) {
+        beginAttempt(origin);
+        continue;
+      }
+      writes.abandon({ generationId: origin.generationId, abandonedAt: now });
+      usageEvents.push(
+        computeReplyGenerationEndedEvent({
+          final: { status: "failed" },
+          attempts: previous,
+          requestedAt: origin.requestedAt,
+          endedAt: now,
+        }),
+      );
+    }
+    return {
+      attempts: attempts.toSorted(
+        (a, b) =>
+          a.sentText.sentAt.getTime() - b.sentText.sentAt.getTime() ||
+          a.sentText.id.localeCompare(b.sentText.id),
+      ),
+      usageEvents,
+    };
+  });

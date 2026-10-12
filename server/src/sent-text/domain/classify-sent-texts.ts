@@ -1,11 +1,9 @@
 import { R } from "@praha/byethrow";
 import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import { computeUtcOffsetSeconds } from "../../domain/compute-utc-offset-seconds";
-import { createRecordLedger } from "../../domain/create-record-ledger";
 import { generateRecordId } from "../../domain/record-id";
+import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import type { RecordType } from "../../domain/record-type";
-import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { TokenUsage } from "../../domain/token-usage";
 import { scheduleMealEstimation } from "../../estimation/domain/schedule-meal-estimation";
@@ -23,8 +21,8 @@ import type { SentTextClassification } from "./sent-text-classification";
 // 食事なら文章の食事を1つ作って推定の予定に入れ、会話・決めかねる・呼び出しの失敗なら会話にして返事の依頼を作る（#419 の「読み分け」）。
 // 読み分けは推定の回数にも返事の回数にも数えない。呼んでいるあいだに止まったら、行が無いまま残り、次のアラームで読み直す
 export const classifySentTexts = async (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: ClassificationStores & Pick<RecordKindStores, "accountSettings">,
   deps: { provider: ConversationProvider },
 ): Promise<{
   // 利用状況を送らない人には空
@@ -46,7 +44,7 @@ export const classifySentTexts = async (
     );
     const result = providerResult === "meal" ? "meal" : "conversation";
     const classifiedAt = new Date();
-    if (recordClassification(ledgerStore, stores, sentText, result, classifiedAt)) {
+    if (recordClassification(writeRecordChanges, stores, sentText, result, classifiedAt)) {
       const providerErrorType = providerError?.errorType;
       if (providerError !== undefined) {
         providerErrors.push(providerError.cause ?? providerError);
@@ -70,6 +68,11 @@ export const classifySentTexts = async (
     providerErrors,
   };
 };
+
+type ClassificationStores = Pick<
+  RecordKindStores,
+  "estimationSchedule" | "latestTimeZone" | "meal" | "mealPhoto" | "sentText" | "sentTextStatus"
+>;
 
 type ClassificationReport = {
   result: SentTextClassification;
@@ -99,27 +102,25 @@ const askClassification = async (
 
 // 読み分けの結果と、文章の食事か返事の依頼を書く。呼んでいるあいだにほかで読み分けていたら、何も書かずに false を返す
 const recordClassification = (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: ClassificationStores,
   sentText: SentText,
   result: SentTextClassification,
   classifiedAt: Date,
 ): boolean =>
-  createRecordLedger(ledgerStore, stores, classifiedAt).changeOutsideWrites((addChange) => {
+  writeRecordChanges(({ addChange, estimationAt, reply }) => {
     if (stores.sentTextStatus.findClassification(sentText.id) !== undefined) {
       return false;
     }
     stores.sentText.insertClassification({ sentTextId: sentText.id, classifiedAt, result });
     addChange({ recordType: "sent_text_status", recordId: sentText.id });
     if (result === "conversation") {
-      // 応答待ちになった状態の変更は、返事の書き込みの口が足す（取りに行く応答では、同じ文章の変更は1つにまとまる）
-      stores.writeReplyEvents(addChange, (writes) => {
-        writes.request(
-          createReplyRequest(sentText, classifiedAt, stores.latestTimeZone, {
-            type: "classification",
-          }),
-        );
-      });
+      // 応答待ちになった状態の変更は、入口が足す（取りに行く応答では、同じ文章の変更は1つにまとまる）
+      reply.request(
+        createReplyRequest(sentText, classifiedAt, stores.latestTimeZone, {
+          type: "classification",
+        }),
+      );
       return true;
     }
     // 時刻は送った時刻。推定が決めた時刻は、推定が終わったときに別に書く（#426）
@@ -135,9 +136,7 @@ const recordClassification = (
     };
     stores.meal.insert(meal);
     addChange({ recordType: "meal", recordId: meal.id });
-    // 推定の状態の変更（推定中）は、推定の書き込みの口が足す
-    stores.writeEstimationEvents(addChange, classifiedAt, (writes) =>
-      scheduleMealEstimation(stores, writes, meal, classifiedAt),
-    );
+    // 推定の状態の変更（推定中）は、入口が足す
+    scheduleMealEstimation(stores, estimationAt(classifiedAt), meal, classifiedAt);
     return true;
   });
