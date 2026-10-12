@@ -1,6 +1,4 @@
-import type { createRecordKinds } from "./create-record-kinds";
+import type { recordTypes } from "./record-types";
 
-// 種類の名前は登録簿から導く。表の宣言の列挙（sync-ledger-tables.ts）は、ここに代入できる形で手で書く
-export type RecordType = NameOfKind<ReturnType<typeof createRecordKinds>[number]>;
-
-type NameOfKind<TKind> = TKind extends { name: infer TName extends string } ? TName : never;
+// 種類の名前。一覧（record-types.ts）から導く
+export type RecordType = (typeof recordTypes)[number];

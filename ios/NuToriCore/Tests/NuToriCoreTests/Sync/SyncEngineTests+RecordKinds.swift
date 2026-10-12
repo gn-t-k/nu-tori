@@ -77,7 +77,9 @@ extension SyncEngineTests {
             init() throws {
                 engine = .fixture(
                     store: SyncBoxMock(
-                        kinds: RecordKindRegistry([.weightRecord]),
+                        kinds: RecordKindRegistry([
+                            PortedRecordKind(WeightRecordSyncing()) { $0.weightRecordCache }
+                        ]),
                         cache: RecordCacheMock(),
                         pendingEntries: [RecordKindMock.entry(recordId: UUID())]),
                     transport: .sync())

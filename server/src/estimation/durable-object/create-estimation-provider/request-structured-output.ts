@@ -1,18 +1,17 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { R } from "@praha/byethrow";
-import { match } from "ts-pattern";
 import type { z } from "zod";
 import { catchAnthropicFailure } from "../../../durable-object/anthropic/catch-anthropic-failure";
 import { parseJson } from "../../../durable-object/anthropic/parse-json";
-import { EstimationProviderBadRequestError } from "../../domain/estimation-provider-bad-request-error";
-import { EstimationProviderError } from "../../domain/estimation-provider-error";
-import { EstimationProviderInvalidResponseError } from "../../domain/estimation-provider-invalid-response-error";
-import { EstimationProviderTimedOutError } from "../../domain/estimation-provider-timed-out-error";
+import type { LlmCallBadRequestError } from "../../../domain/llm-call-bad-request-error";
+import type { LlmCallError } from "../../../domain/llm-call-error";
+import { LlmCallInvalidResponseError } from "../../../domain/llm-call-invalid-response-error";
+import type { LlmCallTimedOutError } from "../../../domain/llm-call-timed-out-error";
 import type { TokenUsage } from "../../../domain/token-usage";
 
 // 推定の2つの呼び出し（①②）に共通の頼み方。モデルを決め、思考を切り、構造化出力で答えさせ、
-// 時間の上限と失敗を提供元の失敗の種類に分ける。応答の中身（モデルの答えのテキスト）は残さず、読めた形と使ったトークンだけを返す
+// 時間の上限をかける。提供元の失敗は catchAnthropicFailure が LLM の呼び出しの失敗に写す。応答の中身（モデルの答えのテキスト）は残さず、読めた形と使ったトークンだけを返す
 export const requestStructuredOutput = <TSchema extends z.ZodType>(
   client: Anthropic,
   call: {
@@ -27,10 +26,7 @@ export const requestStructuredOutput = <TSchema extends z.ZodType>(
   signal: AbortSignal,
 ): R.ResultAsync<
   { output: z.output<TSchema>; usage: TokenUsage },
-  | EstimationProviderError
-  | EstimationProviderBadRequestError
-  | EstimationProviderTimedOutError
-  | EstimationProviderInvalidResponseError
+  LlmCallError | LlmCallBadRequestError | LlmCallTimedOutError | LlmCallInvalidResponseError
 > =>
   R.pipe(
     catchAnthropicFailure(
@@ -48,21 +44,6 @@ export const requestStructuredOutput = <TSchema extends z.ZodType>(
         },
         { signal, timeout: call.timeLimitMs },
       ),
-      (failure) =>
-        match(failure)
-          .with(
-            { type: "timed_out" },
-            ({ cause }) => new EstimationProviderTimedOutError({ cause }),
-          )
-          .with(
-            { type: "bad_request" },
-            ({ errorType, cause }) => new EstimationProviderBadRequestError({ errorType, cause }),
-          )
-          .with(
-            { type: "provider_error" },
-            ({ errorType, cause }) => new EstimationProviderError({ errorType, cause }),
-          )
-          .exhaustive(),
     ),
     R.andThen((message) => readStructuredOutput(message, call.schema)),
   );
@@ -71,20 +52,17 @@ export const requestStructuredOutput = <TSchema extends z.ZodType>(
 const readStructuredOutput = <TSchema extends z.ZodType>(
   message: Anthropic.Message,
   schema: TSchema,
-): R.Result<
-  { output: z.output<TSchema>; usage: TokenUsage },
-  EstimationProviderInvalidResponseError
-> => {
+): R.Result<{ output: z.output<TSchema>; usage: TokenUsage }, LlmCallInvalidResponseError> => {
   const usage = {
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   };
   if (message.stop_reason === "max_tokens" || message.stop_reason === "refusal") {
-    return R.fail(new EstimationProviderInvalidResponseError({ usage }));
+    return R.fail(new LlmCallInvalidResponseError({ usage }));
   }
   const text = message.content.map((block) => (block.type === "text" ? block.text : "")).join("");
   const parsed = schema.safeParse(parseJson(text));
   return parsed.success
     ? R.succeed({ output: parsed.data, usage })
-    : R.fail(new EstimationProviderInvalidResponseError({ usage }));
+    : R.fail(new LlmCallInvalidResponseError({ usage }));
 };

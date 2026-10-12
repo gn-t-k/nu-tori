@@ -112,21 +112,3 @@ nonisolated final class CachedIngredient {
         return (sorted.map { $0.key.rawValue }, sorted.map { $0.value })
     }
 }
-
-/// キャッシュの材料の読み書き。登録簿の種類（`IngredientRecordKind`）が使う。保存は呼び出し側が行う
-extension CachedIngredient {
-    nonisolated static func find(id: UUID, in context: ModelContext) throws -> CachedIngredient? {
-        var descriptor = FetchDescriptor<CachedIngredient>(
-            predicate: #Predicate { $0.ingredientId == id })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
-    }
-
-    nonisolated static func upsert(_ ingredient: Ingredient, in context: ModelContext) throws {
-        if let existing = try find(id: ingredient.id, in: context) {
-            existing.apply(ingredient)
-        } else {
-            context.insert(CachedIngredient(ingredient))
-        }
-    }
-}

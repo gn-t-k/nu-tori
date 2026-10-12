@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { generateRecordId } from "../../domain/record-id";
 import type { MealPhotoArchive } from "../../meal/domain/meal-photo-archive";
 import type { BegunEstimationAttempt } from "./begin-estimation-attempts";
-import { EstimationProviderError } from "./estimation-provider-error";
-import { EstimationProviderInvalidResponseError } from "./estimation-provider-invalid-response-error";
+import { LlmCallError } from "../../domain/llm-call-error";
+import { LlmCallInvalidResponseError } from "../../domain/llm-call-invalid-response-error";
 import type { EstimationProvider, IdentifiedDishes } from "./estimation-provider";
 import { mockEstimationProviderError, mockEstimationProviderOk } from "./estimation-provider.mock";
 import { runEstimationAttempt } from "./run-estimation-attempt";
@@ -649,7 +649,7 @@ describe("推定の試み", () => {
       beforeEach(() => {
         providerError = new Error("overloaded");
         provider = mockEstimationProviderError(
-          new EstimationProviderError({ errorType: "overloaded_error", cause: providerError }),
+          new LlmCallError({ errorType: "overloaded_error", cause: providerError }),
         );
       });
 
@@ -668,7 +668,7 @@ describe("推定の試み", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderError(
-          new EstimationProviderInvalidResponseError({
+          new LlmCallInvalidResponseError({
             usage: { inputTokens: 1200, outputTokens: 4096 },
           }),
         );
@@ -710,10 +710,9 @@ describe("推定の試み", () => {
     describe("① は通り、② で提供元がエラーを返したとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
-        provider = mockEstimationProviderError(
-          new EstimationProviderError({ errorType: "api_error" }),
-          { failingCall: "match_ingredients" },
-        );
+        provider = mockEstimationProviderError(new LlmCallError({ errorType: "api_error" }), {
+          failingCall: "match_ingredients",
+        });
       });
 
       test("① の使用量だけを持ち、② で落ちた試みにすること", async () => {
@@ -732,7 +731,7 @@ describe("推定の試み", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderError(
-          new EstimationProviderInvalidResponseError({
+          new LlmCallInvalidResponseError({
             usage: { inputTokens: 900, outputTokens: 4096 },
           }),
           { failingCall: "match_ingredients" },

@@ -315,29 +315,26 @@ const toAttemptFailed = (
 ): EstimationAttemptFailedError =>
   new EstimationAttemptFailedError({
     outcome: match(error)
-      .with({ name: "EstimationProviderError" }, ({ errorType, cause }): FailedOutcome => ({
+      .with({ name: "LlmCallError" }, ({ errorType, cause }): FailedOutcome => ({
         result: "provider_error",
         failedStage,
         usage,
         errorType,
         providerError: cause,
       }))
-      .with(
-        { name: "EstimationProviderBadRequestError" },
-        ({ errorType, cause }): FailedOutcome => ({
-          result: "bad_request",
-          failedStage,
-          usage,
-          errorType,
-          providerError: cause,
-        }),
-      )
-      .with({ name: "EstimationProviderTimedOutError" }, (): FailedOutcome => ({
+      .with({ name: "LlmCallBadRequestError" }, ({ errorType, cause }): FailedOutcome => ({
+        result: "bad_request",
+        failedStage,
+        usage,
+        errorType,
+        providerError: cause,
+      }))
+      .with({ name: "LlmCallTimedOutError" }, (): FailedOutcome => ({
         result: "timed_out",
         failedStage,
         usage,
       }))
-      .with({ name: "EstimationProviderInvalidResponseError" }, (): FailedOutcome => ({
+      .with({ name: "LlmCallInvalidResponseError" }, (): FailedOutcome => ({
         result: "invalid_response",
         failedStage,
         usage,
@@ -347,7 +344,7 @@ const toAttemptFailed = (
 
 // 読めなかった応答でも、使ったトークンは分かる
 const usageOf = (error: ProviderFailure) =>
-  error.name === "EstimationProviderInvalidResponseError" ? error.usage : undefined;
+  error.name === "LlmCallInvalidResponseError" ? error.usage : undefined;
 
 // Claude の構造化出力は数値の範囲を使えないので、量が 0 より大きいことなどをここで確かめる。
 // 推定し直しは、その料理1つか、材料を出せない（0 件）の答えだけを通す

@@ -66,7 +66,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
 
     func weightRecord(id: UUID) async throws -> WeightRecord? {
         try await onMain { stores in
-            try CachedWeightRecord.find(id: id, in: stores.cache)?.weightRecord()
+            try CachedWeightRecord.find(id: id, in: stores.cache)?.record()
         }
     }
 
@@ -78,81 +78,79 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
 
     func accountSettings() async throws -> AccountSettings? {
         try await onMain { stores in
-            try CachedAccountSettings.current(in: stores.cache)?.accountSettings()
+            try SwiftDataSingleRecordCache<CachedAccountSettings>(context: stores.cache).read()
         }
     }
 
     func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
         try await onMain { stores in
-            var statuses: [UUID: MealEstimationStatus] = [:]
-            for row in try stores.cache.fetch(FetchDescriptor<CachedMealEstimationStatus>()) {
-                statuses[row.mealId] = row.estimationStatus()
-            }
-            return statuses
+            let statuses = try SwiftDataKeyedRecordCache<CachedMealEstimationStatus>(
+                context: stores.cache
+            ).all()
+            return Dictionary(
+                statuses.map { ($0.mealId, $0.status) }, uniquingKeysWith: { _, last in last })
         }
     }
 
     func meals() async throws -> [Meal] {
         try await onMain { stores in
-            try stores.cache.fetch(FetchDescriptor<CachedMeal>()).compactMap { $0.meal() }
+            try SwiftDataKeyedRecordCache<CachedMeal>(context: stores.cache).all()
         }
     }
 
     func dishes() async throws -> [Dish] {
         try await onMain { stores in
-            try stores.cache.fetch(FetchDescriptor<CachedDish>()).map { $0.dish() }
+            try SwiftDataKeyedRecordCache<CachedDish>(context: stores.cache).all()
         }
     }
 
     func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus] {
         try await onMain { stores in
-            var statuses: [UUID: DishEstimationStatus] = [:]
-            for row in try stores.cache.fetch(FetchDescriptor<CachedDishEstimationStatus>()) {
-                statuses[row.dishId] = row.estimationStatus()
-            }
-            return statuses
+            let statuses = try SwiftDataKeyedRecordCache<CachedDishEstimationStatus>(
+                context: stores.cache
+            ).all()
+            return Dictionary(
+                statuses.map { ($0.dishId, $0.status) }, uniquingKeysWith: { _, last in last })
         }
     }
 
     func ingredients() async throws -> [Ingredient] {
         try await onMain { stores in
-            try stores.cache.fetch(FetchDescriptor<CachedIngredient>()).compactMap {
-                $0.ingredient()
-            }
+            try SwiftDataKeyedRecordCache<CachedIngredient>(context: stores.cache).all()
         }
     }
 
     func notices() async throws -> [Notice] {
         try await onMain { stores in
-            try stores.cache.fetch(FetchDescriptor<CachedNotice>()).compactMap { $0.notice() }
+            try SwiftDataKeyedRecordCache<CachedNotice>(context: stores.cache).all()
         }
     }
 
     func usualWeighingTime() async throws -> UsualWeighingTime? {
         try await onMain { stores in
-            try CachedUsualWeighingTime.current(in: stores.cache)?.usualWeighingTime()
+            try SwiftDataSingleRecordCache<CachedUsualWeighingTime>(context: stores.cache).read()
         }
     }
 
     func weightTrend() async throws -> WeightTrend? {
         try await onMain { stores in
-            CachedWeightTrendDay.weightTrend(
-                of: try stores.cache.fetch(FetchDescriptor<CachedWeightTrendDay>()))
+            try SwiftDataWeightTrendCache(context: stores.cache).read()
         }
     }
 
     func sentTexts() async throws -> [SentText] {
         try await onMain { stores in
-            try stores.cache.fetch(FetchDescriptor<CachedSentText>()).compactMap {
-                $0.sentText()
-            }
+            try SwiftDataKeyedRecordCache<CachedSentText>(context: stores.cache).all()
         }
     }
 
     func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
         try await onMain { stores in
-            try CachedSentTextStatus.statuses(
-                of: stores.cache.fetch(FetchDescriptor<CachedSentTextStatus>()))
+            let statuses = try SwiftDataKeyedRecordCache<CachedSentTextStatus>(
+                context: stores.cache
+            ).all()
+            return Dictionary(
+                statuses.map { ($0.sentTextId, $0.status) }, uniquingKeysWith: { _, last in last })
         }
     }
 

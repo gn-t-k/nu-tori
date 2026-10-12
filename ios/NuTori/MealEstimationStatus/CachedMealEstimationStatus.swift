@@ -8,13 +8,13 @@ nonisolated final class CachedMealEstimationStatus {
     @Attribute(.unique) var mealId: UUID
     var status: String
 
-    init(mealId: UUID, status: MealEstimationStatus) {
-        self.mealId = mealId
-        self.status = Self.stored(status)
+    init(_ record: MealEstimationStatusSyncing.Status) {
+        mealId = record.mealId
+        status = Self.stored(record.status)
     }
 
-    func apply(_ status: MealEstimationStatus) {
-        self.status = Self.stored(status)
+    func apply(_ record: MealEstimationStatusSyncing.Status) {
+        status = Self.stored(record.status)
     }
 
     func estimationStatus() -> MealEstimationStatus? {
@@ -27,24 +27,6 @@ nonisolated final class CachedMealEstimationStatus {
         case "failed": .failed
         default: nil
         }
-    }
-
-    /// 保存は呼び出し側が行う
-    static func write(
-        _ status: MealEstimationStatus, forMealId mealId: UUID, in context: ModelContext
-    ) throws {
-        if let existing = try find(mealId: mealId, in: context) {
-            existing.apply(status)
-        } else {
-            context.insert(CachedMealEstimationStatus(mealId: mealId, status: status))
-        }
-    }
-
-    static func find(mealId: UUID, in context: ModelContext) throws -> CachedMealEstimationStatus? {
-        var descriptor = FetchDescriptor<CachedMealEstimationStatus>(
-            predicate: #Predicate { $0.mealId == mealId })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
     }
 
     private static func stored(_ status: MealEstimationStatus) -> String {

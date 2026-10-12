@@ -1,4 +1,4 @@
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { createServerOnlyKind } from "../../domain/sync-ledger/create-server-only-kind";
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import type { SentTextStore } from "../../sent-text/domain/sent-text-store";
 import { computeSentTextReplyStatus } from "./compute-sent-text-reply-status";
@@ -9,21 +9,15 @@ import type { SentTextStatusStore } from "./sent-text-status-store";
 export const createSentTextStatusKind = (
   sentTextStore: SentTextStore,
   store: SentTextStatusStore,
-): RecordKind<"sent_text_status", never, SentTextStatus> => ({
-  name: "sent_text_status",
-  writes: undefined,
-  follows: undefined,
-  whenGone: "never",
-  readCurrent: (sentTextId): CurrentRecord<SentTextStatus> => {
-    if (sentTextStore.find(sentTextId) === undefined) {
-      return { status: "absent" };
-    }
-    return {
-      status: "value",
-      value: {
-        classification: store.findClassification(sentTextId) ?? "pending",
-        reply: computeSentTextReplyStatus(store.findReplyRequestProgresses(sentTextId)),
-      },
-    };
-  },
-});
+): RecordKind<"sent_text_status", never, SentTextStatus> =>
+  createServerOnlyKind({
+    name: "sent_text_status",
+    whenGone: "never",
+    find: (sentTextId) =>
+      sentTextStore.find(sentTextId) === undefined
+        ? undefined
+        : {
+            classification: store.findClassification(sentTextId) ?? "pending",
+            reply: computeSentTextReplyStatus(store.findReplyRequestProgresses(sentTextId)),
+          },
+  });

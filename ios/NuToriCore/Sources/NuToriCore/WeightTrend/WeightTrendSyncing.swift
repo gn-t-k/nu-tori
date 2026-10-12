@@ -1,7 +1,7 @@
 public import NuToriAPI
 
 /// 体重の傾向の同期の形。サーバーだけが書く種類なので、送り待ちに入らず、送る書き込みを持たない
-public struct WeightTrendSyncing: SyncedRecordKind {
+public struct WeightTrendSyncing: CacheApplying {
     /// 登録簿の名前。送り待ちには入らないが、読めた種類として同期の状態に保存する
     public static let kindName = RecordKindName.weightTrend
 
@@ -21,6 +21,24 @@ public struct WeightTrendSyncing: SyncedRecordKind {
 
     public func owns(_ change: SyncChange) -> Bool {
         change.kindName == name
+    }
+
+    /// 日ごとに差し替えず、丸ごと置き換える。届いていなければ何もしない。
+    /// 日が1つも無い並びは、傾向が無いのと同じなので空にする（キャッシュの置き方で、読んだ値が変わらないように）
+    public func apply(_ changes: [SyncChange], to cache: any SingleRecordCache<WeightTrend>) throws
+    {
+        switch update(from: changes) {
+        case .replace(let trend) where !trend.days.isEmpty:
+            try cache.write(trend)
+        case .replace, .clear:
+            try cache.clear()
+        case nil:
+            break
+        }
+    }
+
+    public func erase(_ cache: any SingleRecordCache<WeightTrend>) throws {
+        try cache.clear()
     }
 
     /// 取りに行った変更のうち、最後に届いたものでの当て方。届いていなければ nil（キャッシュを変えない）。

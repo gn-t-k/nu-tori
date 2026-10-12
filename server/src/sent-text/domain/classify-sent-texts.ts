@@ -12,7 +12,7 @@ import type {
   ClassificationLabel,
   ConversationProvider,
 } from "../../reply/domain/conversation-provider";
-import type { ConversationProviderError } from "../../reply/domain/conversation-provider-error";
+import type { LlmCallError } from "../../domain/llm-call-error";
 import { createReplyRequest } from "../../reply/domain/create-reply-request";
 import type { SentText } from "./sent-text";
 import type { SentTextClassification } from "./sent-text-classification";
@@ -83,7 +83,7 @@ type ClassificationReport = {
 // 提供元の答え。呼び出しが失敗したら failed にし、失敗を持つ
 type ProviderClassification =
   | { providerResult: ClassificationLabel; usage: TokenUsage; providerError: undefined }
-  | { providerResult: "failed"; usage: undefined; providerError: ConversationProviderError };
+  | { providerResult: "failed"; usage: undefined; providerError: LlmCallError };
 
 // 呼び出しの失敗も会話にするので、ここで提供元の Result を答えに直す
 const askClassification = async (

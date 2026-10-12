@@ -17,7 +17,7 @@ import {
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
 } from "../../observability/testing";
-import { ConversationProviderError } from "../../reply/domain/conversation-provider-error";
+import { LlmCallError } from "../../domain/llm-call-error";
 import {
   mockCreateConversationProviderError,
   mockCreateConversationProviderOk,
@@ -204,7 +204,7 @@ describe("読み分け", () => {
       beforeEach(async () => {
         mockCreateConversationProviderError({
           failingCall: "classify_sent_text",
-          error: new ConversationProviderError({ errorType: "overloaded_error" }),
+          error: new LlmCallError({ errorType: "overloaded_error" }),
         });
         mockCreateEstimationProviderOk();
         // 端末のタイムゾーン（東京）と違うタイムゾーンで送る
@@ -250,7 +250,7 @@ describe("読み分け", () => {
       providerResponseError = new Error("Your credit balance is too low");
       mockCreateConversationProviderError({
         failingCall: "classify_sent_text",
-        error: new ConversationProviderError({
+        error: new LlmCallError({
           errorType: "invalid_request_error",
           cause: providerResponseError,
         }),
@@ -287,10 +287,10 @@ describe("読み分け", () => {
   });
 
   describe("応答のエラーの無い失敗のとき", () => {
-    let providerError: ConversationProviderError;
+    let providerError: LlmCallError;
     let captureExceptionSpy: ReturnType<typeof mockCaptureExceptionOk>;
     beforeEach(async () => {
-      providerError = new ConversationProviderError({ errorType: "invalid_response" });
+      providerError = new LlmCallError({ errorType: "invalid_response" });
       mockCreateConversationProviderError({
         failingCall: "classify_sent_text",
         error: providerError,

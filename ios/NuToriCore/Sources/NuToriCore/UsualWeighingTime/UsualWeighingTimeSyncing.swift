@@ -1,7 +1,7 @@
 public import NuToriAPI
 
 /// いつもの時刻の同期の形。サーバーだけが書く種類なので、送り待ちに入らず、送る書き込みを持たない
-public struct UsualWeighingTimeSyncing: SyncedRecordKind {
+public struct UsualWeighingTimeSyncing: CacheApplying {
     /// 登録簿の名前。送り待ちには入らないが、読めた種類として同期の状態に保存する
     public static let kindName = RecordKindName.usualWeighingTime
 
@@ -13,6 +13,19 @@ public struct UsualWeighingTimeSyncing: SyncedRecordKind {
 
     public func owns(_ change: SyncChange) -> Bool {
         change.kindName == name
+    }
+
+    /// 最後に届いた時刻を置く。届いていなければ何もしない。一度届いたら消えない
+    public func apply(_ changes: [SyncChange], to cache: any SingleRecordCache<UsualWeighingTime>)
+        throws
+    {
+        if let usualWeighingTime = current(from: changes) {
+            try cache.write(usualWeighingTime)
+        }
+    }
+
+    public func erase(_ cache: any SingleRecordCache<UsualWeighingTime>) throws {
+        try cache.clear()
     }
 
     /// 取りに行った変更のうち、最後に届いたいつもの時刻。届いていなければ nil（キャッシュを変えない。一度届いたら消えない）

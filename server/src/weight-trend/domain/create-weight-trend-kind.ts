@@ -1,4 +1,4 @@
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { createServerOnlyKind } from "../../domain/sync-ledger/create-server-only-kind";
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
 import type { WeightRecordStore } from "../../weight-record/domain/weight-record-store";
@@ -10,27 +10,23 @@ import { weightTrendRecordId } from "./weight-trend-record-id";
 // 記録はアカウントに1つで、体重記録が1つも無ければ無いことを届ける
 export const createWeightTrendKind = (
   weightRecordStore: WeightRecordStore,
-): RecordKind<"weight_trend", never, WeightTrend, never, "weight_record"> => ({
-  name: "weight_trend",
-  writes: undefined,
-  // 行を持たないので書かず、変わったことだけを並びに載せる
-  follows: { source: "weight_record", afterSourceApplied: () => [weightTrendRecordId] },
-  whenGone: "absence",
-  readCurrent: (): CurrentRecord<WeightTrend> => {
-    const representatives = computeDailyRepresentativeWeights(
-      weightRecordStore.findAllInMeasuredOrder(),
-    );
-    if (representatives.length === 0) {
-      return { status: "absent" };
-    }
-    return {
-      status: "value",
-      value: computeWeightTrend(
-        representatives.map(({ calendarDay, weightRecord }) => ({
-          calendarDay,
-          weightKg: weightRecord.weightKg,
-        })),
-      ),
-    };
-  },
-});
+): RecordKind<"weight_trend", never, WeightTrend, never, "weight_record"> =>
+  createServerOnlyKind({
+    name: "weight_trend",
+    // 行を持たないので書かず、変わったことだけを並びに載せる
+    follows: { source: "weight_record", afterSourceApplied: () => [weightTrendRecordId] },
+    whenGone: "absence",
+    find: () => {
+      const representatives = computeDailyRepresentativeWeights(
+        weightRecordStore.findAllInMeasuredOrder(),
+      );
+      return representatives.length === 0
+        ? undefined
+        : computeWeightTrend(
+            representatives.map(({ calendarDay, weightRecord }) => ({
+              calendarDay,
+              weightKg: weightRecord.weightKg,
+            })),
+          );
+    },
+  });
