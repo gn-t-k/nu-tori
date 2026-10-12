@@ -49,7 +49,7 @@ check_ios() {
     missing="$(missing_ui_test_screenshots "$ios"/NuToriUITests/*UITests.swift)"
     if [ -n "$missing" ]; then
         echo "$missing" >&2
-        echo "上のテストで attachScreenshot(of:named:) を呼ぶ（docs/agents/languages/swift.md「道具」）" >&2
+        echo "上のテストの本体で attachScreenshot(of:named:) を呼ぶ（docs/agents/languages/swift.md「道具」）" >&2
         return 1
     fi
 
@@ -271,7 +271,7 @@ install_swiftlint() {
     swiftlint="$dir/swiftlint"
 }
 
-# attachScreenshot を呼ばない test メソッドを「ファイル: func test_…」の形で出す。メソッドの終わりは、次の func かファイルの終わりとみなす
+# attachScreenshot を本体で直に呼ばない test メソッドを「ファイル: func test_…」の形で出す。メソッドの終わりは、次の func かファイルの終わりとみなす（テストの中に func を入れ子にすると、そこで終わったとみなす）
 missing_ui_test_screenshots() {
     awk '
         function report() {
@@ -279,7 +279,7 @@ missing_ui_test_screenshots() {
             test = ""
         }
         FNR == 1 { report(); file = FILENAME }
-        /^[[:space:]]*(@MainActor[[:space:]]+)?(private[[:space:]]+)?(override[[:space:]]+)?func[[:space:]]/ {
+        /(^|[[:space:]])func[[:space:]]/ {
             report()
             shot = 0
             if ($0 ~ /func test/) {
@@ -288,7 +288,7 @@ missing_ui_test_screenshots() {
                 sub(/\(.*/, "", test)
             }
         }
-        /attachScreenshot\(/ { shot = 1 }
+        !/^[[:space:]]*\/\// && /attachScreenshot\(/ { shot = 1 }
         END { report() }
     ' "$@"
 }
