@@ -10,10 +10,17 @@ extension RecordKindRegistry where Cache == RecordCacheMock {
             DishEstimationStatusRecordKindMock(), IngredientRecordKindMock(),
             MealRecordKindMock(), MealEstimationStatusRecordKindMock(), NoticeRecordKindMock(),
             SentTextRecordKindMock(), SentTextStatusRecordKindMock(),
-            UsualWeighingTimeRecordKindMock(), WeightRecordKindMock(), WeightTrendRecordKindMock(),
+            UsualWeighingTimeRecordKindMock(), .weightRecord, WeightTrendRecordKindMock(),
         ]
         let replaced = Set(extra.map(\.name))
         let kept = base.filter { !replaced.contains($0.name) }
         return RecordKindRegistry((kept + extra).sorted { $0.name < $1.name })
+    }
+}
+
+extension RecordKind where Self == PortedRecordKind<WeightRecordSyncing, RecordCacheMock> {
+    /// 体重記録の、メモリのキャッシュに当てる登録簿の1行。当て方は NuToriCore の `WeightRecordSyncing`
+    public static var weightRecord: Self {
+        PortedRecordKind(WeightRecordSyncing()) { $0.weightRecords }
     }
 }

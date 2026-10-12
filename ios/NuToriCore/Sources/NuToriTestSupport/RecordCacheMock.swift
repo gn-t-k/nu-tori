@@ -2,13 +2,17 @@ public import Foundation
 public import NuToriCore
 import Synchronization
 
-/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向、送った文章、送った文章の状態、返事を持つ。登録簿の種類（`WeightRecordKindMock` など）が当てる。
+/// メモリのキャッシュ。体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向、送った文章、送った文章の状態、返事を持つ。登録簿の種類（`AccountSettingsRecordKindMock` など）が当てる。
+/// 当て方を NuToriCore に移した種類（体重記録）は、メモリの adapter（`weightRecords`）で持ち、NuToriCore の当て方が当てる。
 /// 同期の働きの単体テストで、アプリの SwiftData のキャッシュの代わりに使う
 public final class RecordCacheMock: Sendable {
     public init() {}
 
+    /// 体重記録のキャッシュの口。体重記録の当て方（`WeightRecordSyncing`）が読み書きする
+    public let weightRecords = MemoryKeyedRecordCache<WeightRecord, UUID>(id: \.id)
+
     public var records: [UUID: WeightRecord] {
-        storage.withLock { $0.records }
+        Dictionary(weightRecords.all().map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
     }
 
     public var settings: AccountSettings? {
@@ -122,14 +126,6 @@ public final class RecordCacheMock: Sendable {
         storage.withLock { $0.appliedCounts[kind, default: 0] }
     }
 
-    public func upsert(_ record: WeightRecord) {
-        storage.withLock { $0.records[record.id] = record }
-    }
-
-    public func remove(recordId: UUID) {
-        storage.withLock { $0.records[recordId] = nil }
-    }
-
     public func write(_ settings: AccountSettings) {
         storage.withLock { $0.settings = settings }
     }
@@ -198,10 +194,6 @@ public final class RecordCacheMock: Sendable {
         storage.withLock { $0.appliedCounts[kind, default: 0] += count }
     }
 
-    public func clearRecords() {
-        storage.withLock { $0.records = [:] }
-    }
-
     public func clearSettings() {
         storage.withLock { $0.settings = nil }
     }
@@ -211,7 +203,6 @@ public final class RecordCacheMock: Sendable {
     }
 
     private struct Storage {
-        var records: [UUID: WeightRecord] = [:]
         var settings: AccountSettings?
         var meals: [UUID: Meal] = [:]
         var estimationStatuses: [UUID: MealEstimationStatus] = [:]

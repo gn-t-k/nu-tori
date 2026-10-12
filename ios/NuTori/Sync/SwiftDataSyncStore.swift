@@ -72,9 +72,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
 
     func weightRecords() async throws -> [WeightRecord] {
         try await onMain { stores in
-            try stores.cache.fetch(FetchDescriptor<CachedWeightRecord>()).compactMap {
-                $0.weightRecord()
-            }
+            try SwiftDataKeyedRecordCache<CachedWeightRecord>(context: stores.cache).all()
         }
     }
 

@@ -1,9 +1,9 @@
 public import Foundation
 public import NuToriAPI
 
-/// 体重記録の同期の形。記録の種類の入口のうち、キャッシュの型に依らない部分。
-/// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込みを作る
-public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
+/// 体重記録の同期の形。記録の種類の入口のうち、キャッシュの置き方に依らない部分。
+/// 取りに行った変更の見分け方と今の値の読み方、キャッシュへの当て方、送り待ちから送る書き込みを作る
+public struct WeightRecordSyncing: CacheApplying, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った体重記録が読めなくなる
     public static let kindName = RecordKindName.weightRecord
 
@@ -97,6 +97,23 @@ public struct WeightRecordSyncing: SyncedRecordKind, RecordKindWrites {
                 ],
             healthSyncState: healthSyncState
         )
+    }
+
+    /// 今の値を書いてから、削除の印の記録を消す。キャッシュに無い記録の削除の印は読み飛ばす（返し直されるため）
+    public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<WeightRecord, UUID>)
+        throws
+    {
+        let current = current(from: changes)
+        for record in current.records {
+            try cache.upsert(record)
+        }
+        for recordId in current.removedRecordIds {
+            try cache.remove(id: recordId)
+        }
+    }
+
+    public func erase(_ cache: any KeyedRecordCache<WeightRecord, UUID>) throws {
+        try cache.removeAll()
     }
 
     /// 取りに行った変更を、今の値の並びにする。削除の印は、置き場に無い ID でも読み飛ばせるよう ID だけを返す
