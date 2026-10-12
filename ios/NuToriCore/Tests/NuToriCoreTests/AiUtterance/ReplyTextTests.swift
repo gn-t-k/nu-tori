@@ -57,4 +57,29 @@ struct ReplyTextTests {
 
         #expect(text.lines == [.init(.bullet, [.bold("鮭"), .plain(" の塩焼き")])])
     }
+
+    @Test("コピーする文は、太字の記号を除き、箇条書きに印を付け、箇条書きどうしのあいだを除いて行のあいだを1行空けること")
+    func plainTextForCopying() {
+        let text = ReplyText(
+            "P は **38 g** です。\n\n候補です。\n- 焼き魚定食\n* **冷奴**\n1. 野菜から食べる\n2. ご飯は小盛り\n夜は軽めに。")
+
+        #expect(
+            text.plainText == """
+                P は 38 g です。
+
+                候補です。
+
+                • 焼き魚定食
+                • 冷奴
+                1. 野菜から食べる
+                2. ご飯は小盛り
+
+                夜は軽めに。
+                """)
+    }
+
+    @Test("空の本文のコピーする文は空であること")
+    func plainTextOfEmptyBody() {
+        #expect(ReplyText("").plainText.isEmpty)
+    }
 }

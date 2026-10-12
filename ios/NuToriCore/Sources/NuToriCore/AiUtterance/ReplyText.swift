@@ -31,6 +31,20 @@ public struct ReplyText: Hashable, Sendable {
         self.lines = lines
     }
 
+    /// コピーする文。描いたとおりに「**」を除き、箇条書きは「• 」、番号つきは「1. 」で始める。箇条書きどうしのあいだを除いて、行のあいだを1行空ける
+    public var plainText: String {
+        var text = ""
+        for (index, line) in lines.enumerated() {
+            if index > 0 {
+                let continuesList = line.kind != .paragraph && lines[index - 1].kind != .paragraph
+                text += continuesList ? "\n" : "\n\n"
+            }
+            text += line.marker.map { $0 + " " } ?? ""
+            text += line.runs.map(\.text).joined()
+        }
+        return text
+    }
+
     public struct Line: Hashable, Sendable {
         public let kind: Kind
         public let runs: [Run]
@@ -38,6 +52,15 @@ public struct ReplyText: Hashable, Sendable {
         public init(_ kind: Kind, _ runs: [Run]) {
             self.kind = kind
             self.runs = runs
+        }
+
+        /// 行の頭に描く印。段落には無い
+        public var marker: String? {
+            switch kind {
+            case .paragraph: nil
+            case .bullet: "•"
+            case .numbered(let number): "\(number)."
+            }
         }
     }
 
@@ -50,6 +73,12 @@ public struct ReplyText: Hashable, Sendable {
     public enum Run: Hashable, Sendable {
         case plain(String)
         case bold(String)
+
+        public var text: String {
+            switch self {
+            case .plain(let text), .bold(let text): text
+            }
+        }
     }
 
     private static func bulletItem(_ line: Substring) -> Substring? {

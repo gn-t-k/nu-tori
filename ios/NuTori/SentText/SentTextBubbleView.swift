@@ -27,6 +27,8 @@ struct SentTextBubbleView: View {
                     Spacer(minLength: 0)
                     text
                         .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 18))
+                        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 18))
+                        .modifier(textMenu)
                         .undeliveredRecord(isUndelivered)
                         .accessibilityIdentifier("sent-text-bubble")
                 }
@@ -49,13 +51,30 @@ struct SentTextBubbleView: View {
         }
     }
 
+    /// 長押しのメニューで「テキストを選択」を選んでから、選び終えるまで
+    @State private var isSelecting = false
+
+    private var textMenu: MessageTextMenu {
+        MessageTextMenu(
+            copyText: { bubble.sentText.body }, isEnabled: true, isSelecting: $isSelecting)
+    }
+
     private var text: some View {
-        Text(bubble.sentText.body)
-            // 会話の文字は Body（自分の吹き出しも返事も）。仕様 #419「少しずつ伸びる返事」
-            .font(.body)
-            .foregroundStyle(.white)
-            // DESIGN.md の Layout は余白を標準に任せるが、吹き出しの内側は own-message-bubble の padding（12）にそろえる（標準の .padding() は 16）
-            .padding(12)
+        Group {
+            if isSelecting {
+                // 地が Primary なので、選んだ範囲とつまみは白で描く
+                SelectableText(text: .sentText(bubble.sentText.body), tint: .white) {
+                    isSelecting = false
+                }
+            } else {
+                Text(bubble.sentText.body)
+                    // 会話の文字は Body（自分の吹き出しも返事も）。仕様 #419「少しずつ伸びる返事」
+                    .font(.body)
+                    .foregroundStyle(.white)
+            }
+        }
+        // DESIGN.md の Layout は余白を標準に任せるが、吹き出しの内側は own-message-bubble の padding（12）にそろえる（標準の .padding() は 16）
+        .padding(12)
     }
 
     /// 吹き出しの下に食事の行をすき間なくつなぎ、外側を角丸 18 の1つのかたまりにする。幅は文章の長さによらず最大の幅
@@ -64,6 +83,7 @@ struct SentTextBubbleView: View {
             text
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.accentColor)
+                .modifier(textMenu)
                 .undeliveredRecord(isUndelivered)
                 .accessibilityIdentifier("sent-text-bubble")
             VStack(alignment: .leading, spacing: 0) {
