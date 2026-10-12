@@ -18,6 +18,7 @@ disable-model-invocation: true
 
 - 好みのレビューと、main を取り込んだだけの push の扱いは `docs/agents/git.md` の「好みのレビュー」
 - 積み重ねた PR の後ろのブランチには、rebase でなく merge で取り込む（`docs/agents/git.md`）
+- main との衝突を解いて merge するのは、開発者が merge を任せた1つのセッションだけ（`docs/agents/git.md`）。任されていなければ、衝突したことを開発者に1回伝えて待つ
 
 ## Linux のセッションから Mac の結果を頼む
 
