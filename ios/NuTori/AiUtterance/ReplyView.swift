@@ -25,13 +25,19 @@ struct ReplyView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            ReplyTextView(
-                text: ReplyText(String(reply.body.prefix(shownCount ?? reply.body.count)))
-            )
-            // VoiceOver では、伸びている途中でも届いた分を読む
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(reply.body)
-            .accessibilityIdentifier("reply")
+            if isSelecting {
+                SelectableText(text: .reply(ReplyText(reply.body)), tint: nil) {
+                    isSelecting = false
+                }
+            } else {
+                replyText
+                    // 行の右の余白や行のあいだを長押ししても、メニューを出す
+                    .contentShape(Rectangle())
+                    .modifier(
+                        MessageTextMenu(
+                            copyText: { ReplyText(reply.body).plainText }, isEnabled: !isRevealing,
+                            isSelecting: $isSelecting))
+            }
             ForEach(Array(reply.referencedMeals.enumerated()), id: \.offset) { _, card in
                 ReferencedMealRow(card: card, open: openMeal, loadPhoto: loadPhoto)
             }
@@ -48,6 +54,23 @@ struct ReplyView: View {
 
     /// 出した文字の数。nil なら全部を出す
     @State private var shownCount: Int?
+    /// 長押しのメニューで「テキストを選択」を選んでから、選び終えるまで
+    @State private var isSelecting = false
+
+    /// 伸びているか、届いた分を出し終えていないあいだ。長押しのメニューは、全部を出してから出す
+    private var isRevealing: Bool {
+        reply.isGrowing || shownCount.map { $0 < reply.body.count } ?? false
+    }
+
+    private var replyText: some View {
+        ReplyTextView(
+            text: ReplyText(String(reply.body.prefix(shownCount ?? reply.body.count)))
+        )
+        // VoiceOver では、伸びている途中でも届いた分を読む
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(reply.body)
+        .accessibilityIdentifier("reply")
+    }
 
     /// 届いた分まで、少しずつ出す数を増やす。遅れているほど1回に多く出し、届く速さに追いつく
     private func reveal() async {
@@ -71,13 +94,10 @@ private struct ReplyTextView: View {
     var body: some View {
         VStack(alignment: .leading) {
             ForEach(Array(text.lines.enumerated()), id: \.offset) { _, line in
-                switch line.kind {
-                case .paragraph:
+                if let marker = line.marker {
+                    item(marker: marker, runs: line.runs)
+                } else {
                     Text(Self.attributed(line.runs))
-                case .bullet:
-                    item(marker: "•", runs: line.runs)
-                case .numbered(let number):
-                    item(marker: "\(number).", runs: line.runs)
                 }
             }
         }
