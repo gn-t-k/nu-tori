@@ -57,12 +57,13 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 `scripts/check` を通したうえで、変えたものを動かして確かめる。Mac で作業するときは `docs/agents/ios-mac.md` を読む。
 
 - Linux で `swift` が無いときは、`scripts/install-swift` で入れる
-- Linux では、アプリのビルドを CI の `ios-app` に、UI テストを `ios-ui-test` に任せる。UI テストか画面の経路を変える PR には、`ui-test` のラベルを付けて UI テストを回す。PR の無いブランチでは、`gh workflow run ios-ui-test.yml --ref <ブランチ>` で回す。落ちたら、`.github/workflows/ios-ui-test.yml` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
-- PR で UI テストを回すときは、あわせて Mac で `scripts/check ios-ui-test` を回し、CI の待ち時間を飛ばす。Mac のセッションでは自分で回す。Linux のセッションでは、開発者にそのコミットの SHA を添えて回すよう頼む（開発者が張り付いていればすぐ返る）
-  - Mac の結果が CI より先に返ればそれを使い、CI の結果は待たない。返る前に CI が終われば CI の結果を使う
+- Linux では、アプリのビルドを CI の `ios-app` に任せる
+- UI テストは、PR では CI で回さない。UI テストか画面の経路を変える PR は、PR の先頭のコミットで Mac の `scripts/check ios-ui-test` を回し、コミットと結果を PR の本文に書いてから merge する。Mac のセッションでは自分で回す。Linux のセッションでは、開発者にそのコミットの SHA を添えて回すよう頼む
   - 開発者の Mac で落ちたら、落ちたテストの名前と失敗の要約を貼ってもらって読む
-  - Mac の結果を使ったあとに CI が落ちたら、CI の結果に従って直す（Mac と CI で Xcode やシミュレーターの版がずれていることがある）
-  - Mac の結果を使ったときは、PR の本文にコミットと結果を書く
+  - 開発者が「Mac を開けない」と言ったら、そのブランチで `gh workflow run ios-ui-test.yml --ref <ブランチ>` を回し、そのランの URL と結果を、Mac の結果の代わりに PR の本文に書く
+  - PR の無いブランチでも、同じ `gh workflow run` で回せる
+  - CI の回が落ちたら、`.github/workflows/ios-ui-test.yml` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
+  - main でだけ落ちたとき（Mac と CI で Xcode やシミュレーターの版がずれていることがある）は、`docs/agents/tooling.md` の「CI」
 - UI テストはサーバーにつながない。API とサインイン済みの状態を差し替える（差し替えの置き場と切り替え方は `docs/agents/languages/swift.md` の「依存の差し替え」）。API とのつなぎは、`NuToriAPI` のテスト（トランスポートの差し替え）とサーバーのテストで確かめる
 
 ## 配布と実機の確認
