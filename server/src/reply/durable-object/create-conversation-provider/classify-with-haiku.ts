@@ -3,7 +3,7 @@ import { R } from "@praha/byethrow";
 import { match } from "ts-pattern";
 import { catchAnthropicFailure } from "../../../durable-object/anthropic/catch-anthropic-failure";
 import type { ClassificationResult } from "../../domain/conversation-provider";
-import { ConversationProviderError } from "../../domain/conversation-provider-error";
+import { LlmCallError } from "../../../domain/llm-call-error";
 import { createHaikuClassificationRequest } from "./create-haiku-classification-request";
 import { readHaikuClassification } from "./read-haiku-classification";
 
@@ -17,18 +17,24 @@ export const classifyWithHaiku = (
   client: Anthropic,
   userId: string,
   body: string,
-): R.ResultAsync<ClassificationResult, ConversationProviderError> =>
+): R.ResultAsync<ClassificationResult, LlmCallError> =>
   R.pipe(
     catchAnthropicFailure(
       client.messages.create(
         { ...createHaikuClassificationRequest(body), metadata: { user_id: userId } },
         { timeout: classificationTimeLimitMs },
       ),
+    ),
+    R.mapError(
       (failure) =>
-        new ConversationProviderError({
+        new LlmCallError({
           errorType: match(failure)
-            .with({ type: "timed_out" }, () => "timed_out")
-            .with({ type: "bad_request" }, { type: "provider_error" }, ({ errorType }) => errorType)
+            .with({ name: "LlmCallTimedOutError" }, () => "timed_out")
+            .with(
+              { name: "LlmCallBadRequestError" },
+              { name: "LlmCallError" },
+              ({ errorType }) => errorType,
+            )
             .exhaustive(),
           cause: failure.cause,
         }),
