@@ -4,9 +4,9 @@ import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { generateRecordId } from "../../domain/record-id";
 import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
-import { ConversationProviderBadRequestError } from "../../reply/domain/conversation-provider-bad-request-error";
-import { ConversationProviderError } from "../../reply/domain/conversation-provider-error";
-import { ConversationProviderTimedOutError } from "../../reply/domain/conversation-provider-timed-out-error";
+import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
+import { LlmCallError } from "../../domain/llm-call-error";
+import { LlmCallTimedOutError } from "../../domain/llm-call-timed-out-error";
 import {
   mockCreateConversationProviderError,
   mockCreateConversationProviderOk,
@@ -84,7 +84,7 @@ describe("見守る要求", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderError({ errorType: "overloaded_error" }),
+        error: new LlmCallError({ errorType: "overloaded_error" }),
         textDeltasBeforeFailure: ["お昼は"],
       });
       const sentTextId = await sendText();
@@ -120,7 +120,7 @@ describe("見守る要求", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderTimedOutError(),
+        error: new LlmCallTimedOutError(),
       });
       const sentTextId = await sendText();
       response = await watchReplyStream(sessionToken, sentTextId);
@@ -181,7 +181,7 @@ describe("見守る要求", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderBadRequestError({ errorType: "invalid_request_error" }),
+        error: new LlmCallBadRequestError({ errorType: "invalid_request_error" }),
       });
       const sentTextId = await sendText();
       response = await watchReplyStream(sessionToken, sentTextId);
@@ -217,7 +217,7 @@ describe("見守る要求", () => {
     beforeEach(async () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
-        error: new ConversationProviderTimedOutError(),
+        error: new LlmCallTimedOutError(),
       });
       const sentTextId = await sendText();
       await runEstimationAlarm(accountId);

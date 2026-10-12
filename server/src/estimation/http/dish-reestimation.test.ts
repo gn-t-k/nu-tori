@@ -23,7 +23,7 @@ import {
   mockCreateEstimationProviderOk,
 } from "../durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { readIdentifyDishesRequests } from "./testing/read-identify-dishes-requests";
-import { EstimationProviderBadRequestError } from "../domain/estimation-provider-bad-request-error";
+import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
 import { insertCountedEstimations } from "./testing/insert-counted-estimations";
 import { recordEstimatedMeal } from "./testing/record-estimated-meal";
 import { runEstimationAlarm } from "./testing/run-estimation-alarm";
@@ -480,7 +480,7 @@ describe("名前を直したときの推定し直し", () => {
   describe("提供元が 400 で答えたとき", () => {
     beforeEach(async () => {
       mockCreateEstimationProviderError(
-        new EstimationProviderBadRequestError({ errorType: "invalid_request_error" }),
+        new LlmCallBadRequestError({ errorType: "invalid_request_error" }),
       );
       await rename("カツ丼");
       await runEstimationAlarm(accountId);

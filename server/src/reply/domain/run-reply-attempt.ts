@@ -41,27 +41,24 @@ const toFailedOutcome = (
   error: R.InferFailure<ConversationProvider["generateReply"]>,
 ): FailedOutcome =>
   match(error)
-    .with({ name: "ConversationProviderError" }, ({ errorType, cause }): FailedOutcome => ({
+    .with({ name: "LlmCallError" }, ({ errorType, cause }): FailedOutcome => ({
       result: "provider_error",
       usage: undefined,
       errorType,
       // つないでいない提供元のように、応答のエラーが無ければ失敗そのものを送る
       providerError: cause ?? error,
     }))
-    .with(
-      { name: "ConversationProviderBadRequestError" },
-      ({ errorType, cause }): FailedOutcome => ({
-        result: "bad_request",
-        usage: undefined,
-        errorType,
-        providerError: cause ?? error,
-      }),
-    )
-    .with({ name: "ConversationProviderTimedOutError" }, (): FailedOutcome => ({
+    .with({ name: "LlmCallBadRequestError" }, ({ errorType, cause }): FailedOutcome => ({
+      result: "bad_request",
+      usage: undefined,
+      errorType,
+      providerError: cause ?? error,
+    }))
+    .with({ name: "LlmCallTimedOutError" }, (): FailedOutcome => ({
       result: "timed_out",
       usage: undefined,
     }))
-    .with({ name: "ConversationProviderInvalidResponseError" }, ({ usage }): FailedOutcome => ({
+    .with({ name: "LlmCallInvalidResponseError" }, ({ usage }): FailedOutcome => ({
       result: "invalid_response",
       usage,
     }))
