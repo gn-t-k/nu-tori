@@ -460,37 +460,6 @@ describe("同期の帳簿", () => {
       });
     });
 
-    describe("書き込みの外から変更を足したとき", () => {
-      let pulled: ReturnType<TestLedger["pull"]>;
-
-      beforeEach(() => {
-        ledger.changeOutsideWrites((addChange) => {
-          childStore.insert({ id: child2, parentId: record1, value: 2 });
-          addChange({ recordType: "test_child", recordId: child2 });
-          childStore.insert({ id: child1, parentId: record1, value: 1 });
-          addChange({ recordType: "test_child", recordId: child1 });
-        });
-        pulled = ledger.pull(pullRequest(0));
-      });
-
-      test("足した順の通し番号で返すこと", () => {
-        expect(pulled.changes).toEqual([
-          {
-            sequence: 1,
-            recordType: "test_child",
-            recordId: child2,
-            current: { status: "value", value: 2 },
-          },
-          {
-            sequence: 2,
-            recordType: "test_child",
-            recordId: child1,
-            current: { status: "value", value: 1 },
-          },
-        ]);
-      });
-    });
-
     describe("500 件を超える記録があるとき", () => {
       let firstPage: ReturnType<TestLedger["pull"]>;
       let secondPage: ReturnType<TestLedger["pull"]>;
@@ -523,8 +492,10 @@ describe("同期の帳簿", () => {
       let pullWithoutRecord: () => unknown;
 
       beforeEach(() => {
-        ledger.changeOutsideWrites((addChange) => {
-          addChange({ recordType: "test_child", recordId: child1 });
+        ledgerStore.insertRecordChange({
+          recordType: "test_child",
+          recordId: child1,
+          writeId: undefined,
         });
         pullWithoutRecord = () => ledger.pull(pullRequest(0));
       });
@@ -549,8 +520,10 @@ describe("同期の帳簿", () => {
           createTestRecordKind(createMemoryTestRecordStore(operations), childStore),
           { ...createTestChildKind(childStore), whenGone: "absence" },
         ]);
-        ledgerDeliveringAbsence.changeOutsideWrites((addChange) => {
-          addChange({ recordType: "test_child", recordId: child1 });
+        ledgerStore.insertRecordChange({
+          recordType: "test_child",
+          recordId: child1,
+          writeId: undefined,
         });
         pulled = ledgerDeliveringAbsence.pull(pullRequest(0));
       });

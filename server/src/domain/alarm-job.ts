@@ -8,7 +8,7 @@ export type AlarmJob<Stores, Deps, Report> = {
 
 type AlarmJobOutcome<Report> = { report: Report } & (
   | { result: "advanced" }
-  // 途中で止まった。次の時刻は表から出して張り直す
+  // 途中で止まった。この仕事の次の時刻も入れて、並びから出した時刻に張り直す
   | { result: "stopped"; error: unknown }
   // 失敗した。この仕事の時刻には張り直さず、Cloudflare のアラームのやり直しに任せる
   | { result: "left_to_alarm_retry"; error: unknown }

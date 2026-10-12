@@ -1,11 +1,11 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
-import { generateRecordId } from "../domain/record-id";
-import type { RecordChangeWriter } from "../domain/record-change-writer";
-import { createRecordChangeWriter } from "./create-record-change-writer";
-import { durableObjectTables } from "./durable-object-tables";
-import { durableObjectFactory } from "./testing/durable-object-factory";
+import { generateRecordId } from "../../domain/record-id";
+import type { RecordChangeWriter } from "../../domain/record-change-writer";
+import { createRecordChangeWriter } from "./index";
+import { durableObjectTables } from "../durable-object-tables";
+import { durableObjectFactory } from "../testing/durable-object-factory";
 
 type Seed = (factory: ReturnType<typeof durableObjectFactory>) => Promise<void>;
 type Run = Parameters<RecordChangeWriter>[0];

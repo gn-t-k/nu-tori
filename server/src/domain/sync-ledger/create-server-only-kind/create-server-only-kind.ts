@@ -1,5 +1,5 @@
-import type { RecordId } from "../record-id";
-import type { KindFollows, RecordKind } from "./record-kind";
+import type { RecordId } from "../../record-id";
+import type { KindFollows, RecordKind } from "../record-kind";
 
 // サーバーだけが書く種類を作る。端末からの書き込みを宣言せず、今の値は find から作る（値が無ければ、無いと返す）。
 // 親の記録と一緒に消える種類（記録の ID が親の ID の、推定の状態など）は、whenGone を deletion_mark にして親を渡す。

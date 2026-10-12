@@ -1,7 +1,3 @@
-import type { EstimationProvider } from "../estimation/domain/estimation-provider";
-import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
-import type { ConversationProvider } from "../reply/domain/conversation-provider";
-import type { ReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { accountAlarmJobs } from "./account-alarm-jobs";
 import type { RecordChangeWriter } from "./record-change-writer";
 import type { RecordKindStores } from "./record-kind-stores";
@@ -11,13 +7,8 @@ import { runAlarmJobs } from "./run-alarm-jobs";
 export const runAccountAlarm = async (
   writeRecordChanges: RecordChangeWriter,
   stores: RecordKindStores,
-  deps: {
-    archive: MealPhotoArchive;
-    provider: EstimationProvider;
-    conversationProvider: ConversationProvider;
-    armAlarm: () => Promise<void>;
-    replyWatchers: ReplyWatchers;
-  },
+  // 仕事の並びが要るもののうち、入口のほか
+  deps: Omit<Parameters<(typeof accountAlarmJobs)[number]["advance"]>[1], "writeRecordChanges">,
 ) => {
   const { nextAlarmAt, error, reports } = await runAlarmJobs(accountAlarmJobs, stores, {
     writeRecordChanges,

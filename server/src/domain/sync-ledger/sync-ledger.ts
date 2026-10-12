@@ -159,17 +159,6 @@ export const createSyncLedger = <
       };
     });
 
-  // 受け口の要求やアラームが、端末の書き込みの外で記録を変えるときの入口。run が記録を書き、変えた記録を addChange で足す。
-  // 変更は足した順に通し番号が付き、run の書き込みと1つのトランザクションに入る
-  const changeOutsideWrites = <T>(
-    run: (addChange: (change: RecordChangeTarget<TKindName>) => void) => T,
-  ): T =>
-    store.transaction(() =>
-      run((change) => {
-        store.insertRecordChange({ ...change, writeId: undefined });
-      }),
-    );
-
   // 決定の行を書き、変更の並びに載せる変更を返す。書き込みの記録の変更（控えと結ぶ）と、そのあとに並べる変更に分ける。
   // 当てた書き込みが commit の中で足した変更は、宣言した変更のあとに並べる（commit は控えのあと、変更より先に呼ぶ）
   const commitDecision = (
@@ -238,7 +227,7 @@ export const createSyncLedger = <
     return current;
   };
 
-  return { push, pull, changeOutsideWrites };
+  return { push, pull };
 };
 
 // 控えと応答に載せる結果。今の値と同じだった書き込みも、受け付けたので applied にする
