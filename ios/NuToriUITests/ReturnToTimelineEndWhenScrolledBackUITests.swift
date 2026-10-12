@@ -1,9 +1,9 @@
 import XCTest
 
-/// 食事を画面に収まらないだけ並べてタイムラインを遡った状態で、文章を送る → タイムラインの一番下に戻る。
+/// 食事を画面に収まらないだけ並べてタイムラインを遡った状態で、いちばん下に項目を足す（写真を選ぶ、文章を送る） → 一番下に戻る。
 /// 写真の選択は起動の値で差し替える（選ぶ画面を開かずに1枚選んだことにする）
 @MainActor
-final class ReturnToTimelineEndAfterSentTextUITests: XCTestCase {
+final class ReturnToTimelineEndWhenScrolledBackUITests: XCTestCase {
     private var app = XCUIApplication()
 
     override func setUp() async throws {
@@ -23,6 +23,17 @@ final class ReturnToTimelineEndAfterSentTextUITests: XCTestCase {
         app.otherElements["timeline"].swipeDown()
         XCTAssertFalse(newest.isHittable)
         attachScreenshot(of: app, named: "遡ったタイムライン")
+    }
+
+    func test_遡ってから写真を選ぶと足した食事のカードが見える位置に戻ること() async throws {
+        let photos = app.buttons["composer-photos"]
+        photos.tap()
+
+        let added = mealCards.element(boundBy: Self.mealsFillingScreen)
+        XCTAssertTrue(added.waitForExistence(timeout: 10))
+        let shown = try await waitUntil(added, isAbove: photos)
+        attachScreenshot(of: app, named: "写真を足して一番下に戻ったタイムライン")
+        XCTAssertTrue(shown, "足した食事のカードが入力欄の下に隠れている")
     }
 
     func test_遡ってから文章を送るとタイムラインの一番下に戻ること() {

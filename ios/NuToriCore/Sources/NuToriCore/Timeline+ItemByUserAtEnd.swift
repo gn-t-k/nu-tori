@@ -8,18 +8,20 @@ extension Timeline {
     /// 同じ時刻に並ぶ自分のものは ID の順になり、足したものが最後に来るとは限らない（一度に選んだ写真が、いくつかの食事になって1つずつ足されるとき）。
     /// そのあいだに足されたものも、いちばん下に足されたとする
     public static func addsItemByUserAtEnd(from old: [Day], to new: [Day], now: Date) -> Bool {
-        let oldIds = Set(old.lazy.flatMap(\.items).map(\.id))
         // 足されたものより下にある、前からの項目が並ぶ時刻
         var tiedAt: Date?
         for item in new.reversed().lazy.flatMap({ $0.items.reversed() }) {
-            let isAdded = !oldIds.contains(item.id)
+            // 前からある項目は下のほうにあるので、下から探す
+            let isAdded = !old.reversed().contains {
+                $0.items.reversed().contains { $0.id == item.id }
+            }
             guard let placedAt = item.placedAtByUser else {
                 if isAdded { continue }
                 return false
             }
             if isAdded {
                 return (tiedAt == nil || tiedAt == placedAt)
-                    && now.timeIntervalSince(placedAt) <= justAddedWindow
+                    && (0...justAddedWindow).contains(now.timeIntervalSince(placedAt))
             }
             if let tiedAt, tiedAt != placedAt {
                 return false

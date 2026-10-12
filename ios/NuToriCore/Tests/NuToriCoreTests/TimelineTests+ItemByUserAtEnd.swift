@@ -8,36 +8,12 @@ extension TimelineTests {
         static let yesterday = CalendarDay(year: 2026, month: 9, day: 23)
         static let today = CalendarDay(year: 2026, month: 9, day: 24)
 
-        let morning: WeightRecord
-        let question: SentText
-
-        init() throws {
-            morning = try .manual(72.9, at: "2026-09-24T07:00:00+09:00", in: "Asia/Tokyo")
-            question = try .fixture("次は何を食べたらいい？", sentAt: "2026-09-24T08:00:00+09:00")
+        static func morning() throws -> WeightRecord {
+            try .manual(72.9, at: "2026-09-24T07:00:00+09:00", in: "Asia/Tokyo")
         }
 
-        /// 足した直後（並ぶ時刻のすぐあと）に確かめる
-        static func adds(
-            from old: [Timeline.Day], to new: [Timeline.Day], secondsAfterPlaced: TimeInterval = 1
-        ) -> Bool {
-            let placedAt = new.flatMap(\.items).compactMap { item -> Date? in
-                switch item {
-                case .weightRecord(let record): record.instant
-                case .sentText(let bubble): bubble.sentText.sentAt
-                default: nil
-                }
-            }.filter { instant in
-                !old.flatMap(\.items).contains { item in
-                    switch item {
-                    case .weightRecord(let record): record.instant == instant
-                    case .sentText(let bubble): bubble.sentText.sentAt == instant
-                    default: false
-                    }
-                }
-            }.max()
-            let now = (placedAt ?? Date(timeIntervalSince1970: 0)).addingTimeInterval(
-                secondsAfterPlaced)
-            return Timeline.addsItemByUserAtEnd(from: old, to: new, now: now)
+        static func question() throws -> SentText {
+            try .fixture("次は何を食べたらいい？", sentAt: "2026-09-24T08:00:00+09:00")
         }
 
         static func days(
@@ -62,107 +38,234 @@ extension TimelineTests {
             ).days
         }
 
-        @Test("送った文章がいちばん下に足されたら、足されたとすること")
-        func sentTextAdded() {
-            let old = Self.days(weightRecords: [morning])
-            let new = Self.days(weightRecords: [morning], sentTexts: [question])
-            #expect(Self.adds(from: old, to: new))
-        }
+        @Suite("送った文章が、送った直後にいちばん下に足されたとき")
+        struct SentTextAdded {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let sentAt: Date
 
-        @Test("体重記録がいちばん下に足されたら、足されたとすること")
-        func weightRecordAdded() throws {
-            let night = try WeightRecord.manual(
-                72.6, at: "2026-09-24T22:00:00+09:00", in: "Asia/Tokyo")
-            let old = Self.days(weightRecords: [morning], sentTexts: [question])
-            let new = Self.days(weightRecords: [morning, night], sentTexts: [question])
-            #expect(Self.adds(from: old, to: new))
-        }
-
-        @Test("今日に何も無いとき、前の日のいちばん下に足されたら、足されたとすること")
-        func addedOnEarlierDay() throws {
-            let lastNight = try WeightRecord.manual(
-                72.6, at: "2026-09-23T22:00:00+09:00", in: "Asia/Tokyo")
-            let new = Self.days(weightRecords: [lastNight])
-            #expect(Self.adds(from: Self.days(), to: new))
-        }
-
-        @Test("同じ時刻に並ぶ文章のあいだに足されても、足されたとすること")
-        func addedAmongTied() throws {
-            let tied = try (0..<8).map { _ in
-                try SentText.fixture("散歩した", sentAt: "2026-09-24T08:00:00+09:00")
+            init() throws {
+                let morning = try ItemByUserAtEnd.morning()
+                let question = try ItemByUserAtEnd.question()
+                old = ItemByUserAtEnd.days(weightRecords: [morning])
+                new = ItemByUserAtEnd.days(weightRecords: [morning], sentTexts: [question])
+                sentAt = question.sentAt
             }
-            for added in tied {
-                let old = Self.days(
-                    weightRecords: [morning], sentTexts: tied.filter { $0 != added })
-                let new = Self.days(weightRecords: [morning], sentTexts: tied)
-                #expect(Self.adds(from: old, to: new))
+
+            @Test("足したとすること")
+            func adds() {
+                #expect(
+                    Timeline.addsItemByUserAtEnd(
+                        from: old, to: new, now: sentAt.addingTimeInterval(1)))
+            }
+
+            @Test("送った時刻から1分たっても、足したとすること")
+            func addsWithinWindow() {
+                #expect(
+                    Timeline.addsItemByUserAtEnd(
+                        from: old, to: new, now: sentAt.addingTimeInterval(60)))
+            }
+
+            @Test("送った時刻から1分を過ぎていたら（ほかの端末で足したものが届いた）、足したとしないこと")
+            func doesNotAddAfterWindow() {
+                #expect(
+                    !Timeline.addsItemByUserAtEnd(
+                        from: old, to: new, now: sentAt.addingTimeInterval(61)))
+            }
+
+            @Test("送った時刻が今より先なら（時計の進んだほかの端末で足したものが届いた）、足したとしないこと")
+            func doesNotAddFromFuture() {
+                #expect(
+                    !Timeline.addsItemByUserAtEnd(
+                        from: old, to: new, now: sentAt.addingTimeInterval(-1)))
             }
         }
 
-        @Test("あとの時刻の記録より前に足されたら、足されたとしないこと")
-        func addedBeforeLater() throws {
-            let earlier = try SentText.fixture("朝に歩いた", sentAt: "2026-09-24T06:00:00+09:00")
-            let old = Self.days(weightRecords: [morning], sentTexts: [question])
-            let new = Self.days(weightRecords: [morning], sentTexts: [earlier, question])
-            #expect(!Self.adds(from: old, to: new))
+        @Suite("手で入れた体重記録が、記録した直後にいちばん下に足されたとき")
+        struct ManualWeightAdded {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let morning = try ItemByUserAtEnd.morning()
+                let question = try ItemByUserAtEnd.question()
+                let night = try WeightRecord.manual(
+                    72.6, at: "2026-09-24T22:00:00+09:00", in: "Asia/Tokyo")
+                old = ItemByUserAtEnd.days(weightRecords: [morning], sentTexts: [question])
+                new = ItemByUserAtEnd.days(weightRecords: [morning, night], sentTexts: [question])
+                now = night.instant.addingTimeInterval(1)
+            }
+
+            @Test("足したとすること")
+            func adds() {
+                #expect(Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
         }
 
-        @Test("ヘルスケアから取り込んだ体重がいちばん下に足されても、足されたとしないこと")
-        func importedWeightAdded() throws {
-            let imported = try WeightRecord.imported(
-                72.6, at: "2026-09-24T22:00:00+09:00", in: "Asia/Tokyo")
-            let old = Self.days(weightRecords: [morning])
-            let new = Self.days(weightRecords: [morning, imported])
-            #expect(
-                !Timeline.addsItemByUserAtEnd(
-                    from: old, to: new, now: imported.instant.addingTimeInterval(1)))
+        @Suite("今日に何も無く、前の日のいちばん下に足されたとき")
+        struct AddedOnEarlierDay {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let lastNight = try WeightRecord.manual(
+                    72.6, at: "2026-09-23T23:59:30+09:00", in: "Asia/Tokyo")
+                old = ItemByUserAtEnd.days()
+                new = ItemByUserAtEnd.days(weightRecords: [lastNight])
+                now = lastNight.instant.addingTimeInterval(40)
+            }
+
+            @Test("足したとすること")
+            func adds() {
+                #expect(Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
         }
 
-        @Test("並ぶ時刻から1分より後に足されたら（ほかの端末で足したものが届いた）、足されたとしないこと")
-        func arrivedLater() {
-            let old = Self.days(weightRecords: [morning])
-            let new = Self.days(weightRecords: [morning], sentTexts: [question])
-            #expect(Self.adds(from: old, to: new, secondsAfterPlaced: 60))
-            #expect(!Self.adds(from: old, to: new, secondsAfterPlaced: 61))
+        @Suite("同じ時刻に並ぶ文章のうち、いちばん上に並ぶものが足されたとき")
+        struct AddedAmongTied {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let tied = try (0..<8).map { _ in
+                    try SentText.fixture("散歩した", sentAt: "2026-09-24T08:00:00+09:00")
+                }
+                // 同じ時刻の項目は ID の順に並ぶ
+                let added = try #require(tied.min { $0.id.uuidString < $1.id.uuidString })
+                old = ItemByUserAtEnd.days(sentTexts: tied.filter { $0 != added })
+                new = ItemByUserAtEnd.days(sentTexts: tied)
+                now = added.sentAt.addingTimeInterval(1)
+            }
+
+            @Test("足したとすること")
+            func adds() {
+                #expect(Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
         }
 
-        @Test("途中に足されたら、足されたとしないこと")
-        func addedInMiddle() throws {
-            let lastNight = try WeightRecord.manual(
-                72.6, at: "2026-09-23T22:00:00+09:00", in: "Asia/Tokyo")
-            let old = Self.days(weightRecords: [morning])
-            let new = Self.days(weightRecords: [lastNight, morning])
-            #expect(!Self.adds(from: old, to: new))
+        @Suite("あとの時刻の文章より前に足されたとき")
+        struct AddedBeforeLater {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let question = try ItemByUserAtEnd.question()
+                let earlier = try SentText.fixture(
+                    "朝に歩いた", sentAt: "2026-09-24T07:59:30+09:00")
+                old = ItemByUserAtEnd.days(sentTexts: [question])
+                new = ItemByUserAtEnd.days(sentTexts: [earlier, question])
+                now = earlier.sentAt.addingTimeInterval(1)
+            }
+
+            @Test("足したとしないこと")
+            func doesNotAdd() {
+                #expect(!Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
         }
 
-        @Test("返事がいちばん下に足されても、足されたとしないこと")
-        func replyAdded() {
-            let reply = AiUtterance(
-                id: UUID(), body: "野菜の多い定食はどうでしょう。", sentTextId: question.id, mealIds: [])
-            let old = Self.days(sentTexts: [question])
-            let new = Self.days(sentTexts: [question], replies: [reply])
-            #expect(!Self.adds(from: old, to: new))
+        @Suite("ヘルスケアから取り込んだ体重が、いちばん下に足されたとき")
+        struct ImportedWeightAdded {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let morning = try ItemByUserAtEnd.morning()
+                let imported = try WeightRecord.imported(
+                    72.6, at: "2026-09-24T22:00:00+09:00", in: "Asia/Tokyo")
+                old = ItemByUserAtEnd.days(weightRecords: [morning])
+                new = ItemByUserAtEnd.days(weightRecords: [morning, imported])
+                now = imported.instant.addingTimeInterval(1)
+            }
+
+            @Test("足したとしないこと")
+            func doesNotAdd() {
+                #expect(!Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
         }
 
-        @Test("知らせがいちばん下に足されても、足されたとしないこと")
-        func noticeAdded() throws {
-            let notice = try Notice.missedWeightRecord(issuedAt: "2026-09-24T21:00:00+09:00")
-            let old = Self.days(sentTexts: [question])
-            let new = Self.days(sentTexts: [question], notices: [notice])
-            #expect(!Self.adds(from: old, to: new))
+        @Suite("返事が、いちばん下に足されたとき")
+        struct ReplyAdded {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let question = try ItemByUserAtEnd.question()
+                let reply = AiUtterance(
+                    id: UUID(), body: "野菜の多い定食はどうでしょう。", sentTextId: question.id,
+                    mealIds: [])
+                old = ItemByUserAtEnd.days(sentTexts: [question])
+                new = ItemByUserAtEnd.days(sentTexts: [question], replies: [reply])
+                now = question.sentAt.addingTimeInterval(1)
+            }
+
+            @Test("足したとしないこと")
+            func doesNotAdd() {
+                #expect(!Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
         }
 
-        @Test("いちばん下が消えて前からある記録がいちばん下になっても、足されたとしないこと")
-        func lastRemoved() {
-            let old = Self.days(weightRecords: [morning], sentTexts: [question])
-            let new = Self.days(weightRecords: [morning])
-            #expect(!Self.adds(from: old, to: new))
+        @Suite("知らせが、いちばん下に足されたとき")
+        struct NoticeAdded {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let question = try ItemByUserAtEnd.question()
+                let notice = try Notice.missedWeightRecord(issuedAt: "2026-09-24T08:00:30+09:00")
+                old = ItemByUserAtEnd.days(sentTexts: [question])
+                new = ItemByUserAtEnd.days(sentTexts: [question], notices: [notice])
+                now = notice.issuedAt.addingTimeInterval(1)
+            }
+
+            @Test("足したとしないこと")
+            func doesNotAdd() {
+                #expect(!Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
         }
 
-        @Test("並びが変わらないときは、足されたとしないこと")
-        func unchanged() {
-            let days = Self.days(weightRecords: [morning], sentTexts: [question])
-            #expect(!Self.adds(from: days, to: days))
+        @Suite("いちばん下が消えて、前からある記録がいちばん下になったとき")
+        struct LastRemoved {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let morning = try ItemByUserAtEnd.morning()
+                let question = try ItemByUserAtEnd.question()
+                old = ItemByUserAtEnd.days(weightRecords: [morning], sentTexts: [question])
+                new = ItemByUserAtEnd.days(weightRecords: [morning])
+                now = morning.instant.addingTimeInterval(1)
+            }
+
+            @Test("足したとしないこと")
+            func doesNotAdd() {
+                #expect(!Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
+        }
+
+        @Suite("並びが変わらないとき")
+        struct Unchanged {
+            let days: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let question = try ItemByUserAtEnd.question()
+                days = ItemByUserAtEnd.days(
+                    weightRecords: [try ItemByUserAtEnd.morning()], sentTexts: [question])
+                now = question.sentAt.addingTimeInterval(1)
+            }
+
+            @Test("足したとしないこと")
+            func doesNotAdd() {
+                #expect(!Timeline.addsItemByUserAtEnd(from: days, to: days, now: now))
+            }
         }
     }
 }
