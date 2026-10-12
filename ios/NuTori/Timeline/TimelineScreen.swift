@@ -168,7 +168,6 @@ struct TimelineScreen: View {
                     let sentAt = now()
                     capturedCount += 1
                     cameraPhase = .closed
-                    returnToTimelineEnd()
                     Task { await mealActions.recordCapturedPhoto(original, exif, sentAt) }
                 },
                 onCancel: {
@@ -193,7 +192,6 @@ struct TimelineScreen: View {
             guard !items.isEmpty else { return }
             let pickedAt = now()
             pickedPhotos = []
-            returnToTimelineEnd()
             Task { await mealActions.recordPickedPhotos(items, pickedAt) }
         }
         .onChange(of: weightEntryPhase) { previous, phase in
@@ -348,7 +346,7 @@ struct TimelineScreen: View {
                 .scrollDismissesKeyboard(.immediately)
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
-                // 返事が伸びるあいだと、送った食事のカードが足されるときは一番下へ追う。使う人が上へ動かしたら、追うのを止める
+                // 一番下にいるあいだは、返事が伸びても、カードが足されても一番下へ追う。使う人が上へ動かしたら、追うのを止める
                 // 日が足された描画では追わない。LazyVStack はまだ描いていない日の高さをほかの日の平均で見積もり、追うとその見積もりの端（何も無い所）へ動いて、足された日が描かれず真っ白のまま残る
                 .defaultScrollAnchor(
                     followsTimelineEnd && timeline.days.last?.day == settledNewestDay
@@ -387,6 +385,14 @@ struct TimelineScreen: View {
                                 proxy.scrollTo(contentId, anchor: .bottom)
                             }
                         }
+                    }
+                }
+                // ユーザーがアプリの中でいちばん下に項目を足したら、遡っていても一番下へ動かし、そのあと伸びても追う。
+                // 返事と知らせが足されたときと、返事が伸びるだけのときは、遡っている人を動かさない
+                .onChange(of: timeline.days) { old, new in
+                    if Timeline.addsItemByUserAtEnd(from: old, to: new, now: now()) {
+                        followsTimelineEnd = true
+                        dayFocus = .scrollingToEnd
                     }
                 }
                 .onChange(of: timeline.hasGrowingReply) { _, growing in
@@ -600,7 +606,6 @@ struct TimelineScreen: View {
                 #if DEBUG
                     case .fixed(let record):
                         let pickedAt = now()
-                        returnToTimelineEnd()
                         Task { await record(pickedAt) }
                 #endif
                 }
@@ -619,19 +624,9 @@ struct TimelineScreen: View {
             },
             onSendText: { draft in
                 showsCameraNotice = false
-                followsTimelineEnd = true
                 Task { await sendText(draft) }
             }
         )
-    }
-
-    /// 遡っていても、送った食事が並ぶ一番下に戻す。食事のカードは送った時刻の位置に、あとから足されるので、足されたときも一番下へ追う
-    private func returnToTimelineEnd() {
-        followsTimelineEnd = true
-        // 読み込み中は並んでいないので動かさない。取り終えたら一番下から開く
-        if !showsLoading {
-            dayFocus = .scrollingToEnd
-        }
     }
 
     /// ほかを押したら、カメラの許可の知らせを消してから動く
