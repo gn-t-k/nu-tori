@@ -13,13 +13,14 @@ import { createWeightRecordKind } from "../weight-record/domain/create-weight-re
 import { createWeightTrendKind } from "../weight-trend/domain/create-weight-trend-kind";
 import { findLatestValidTimeZone } from "./find-latest-valid-time-zone";
 import type { RecordKindStores } from "./record-kind-stores";
+import type { RecordType } from "./record-type";
 import type { RecordKind } from "./sync-ledger/record-kind";
 import type { WriteBase } from "./sync-ledger/write-base";
 
-// 種類の登録簿。名前の順に、手で1行ずつ書く（生成しない）。
+// 種類の登録簿。名前の順に、手で1行ずつ書く（生成しない）。名前の一覧（record-types.ts）に無い名前の種類と、一覧にあるのにここに無い種類は、型検査が止める。
 // ほかの種類から計算する種類は、元の種類の書き込みを当てたあとに、この順で呼ばれる。receivedAt は要求を受け取った時刻
 export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
-  [
+  coveringRecordTypes([
     createAccountSettingsKind(stores.accountSettings),
     createAiUtteranceKind(stores.aiUtterance),
     createDishKind(stores, receivedAt),
@@ -41,4 +42,9 @@ export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
       findStartedOn: stores.firstSignIn.findStartedOn,
     }),
     createWeightTrendKind(stores.weightRecord),
-  ] as const satisfies readonly RecordKind<string, WriteBase, unknown, string, string>[];
+  ] as const satisfies readonly RecordKind<RecordType, WriteBase, unknown, string, string>[]);
+
+// 一覧のすべての種類が並びにあることを、型で確かめる。足りないと引数の型が never になり、呼ぶ側の型検査が落ちる。並びはそのまま返す
+const coveringRecordTypes = <TKinds extends readonly { name: string }[]>(
+  kinds: TKinds & (RecordType extends TKinds[number]["name"] ? unknown : never),
+): TKinds => kinds;
