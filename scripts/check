@@ -3,19 +3,33 @@
 set -euo pipefail
 
 main() {
-    local targets="" arg target
-    for arg in "$@"; do
-        case "$arg" in
+    local targets="" target
+    while [ $# -gt 0 ]; do
+        case "$1" in
             --fix) fix=true ;;
-            ios | ios-app | ios-ui-test | server) targets="$targets $arg" ;;
-            *)
-                print_usage >&2
-                exit 2
+            --only)
+                [ $# -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || usage_error
+                only_testing+=("-only-testing:NuToriUITests/$2")
+                shift
                 ;;
+            --repeat)
+                [ $# -ge 2 ] && [[ "$2" =~ ^[1-9][0-9]*$ ]] || usage_error
+                repeat="$2"
+                shift
+                ;;
+            ios | ios-app | ios-ui-test | server) targets="$targets $1" ;;
+            *) usage_error ;;
         esac
+        shift
     done
+    if [ -n "${only_testing[*]-}$repeat" ] && [[ "$targets " != *" ios-ui-test "* ]]; then
+        usage_error
+    fi
 
+    trap on_exit EXIT
     for target in ${targets:-ios server}; do
+        # 対象の前提（swift や xcodebuild があるか）で落ちたとき、前の対象の手順の名前を出さない
+        current_step=""
         case "$target" in
             ios) check_ios ;;
             ios-app) check_ios_app ;;
@@ -43,6 +57,15 @@ check_ios() {
         (cd "$ios" && "$swiftlint" lint --fix --quiet)
     fi
     (cd "$ios" && "$swiftlint" lint --strict --quiet)
+
+    step "UI テストが確かめた画面のスクリーンショットを残しているか"
+    local missing
+    missing="$(missing_ui_test_screenshots "$ios"/NuToriUITests/*UITests.swift)"
+    if [ -n "$missing" ]; then
+        echo "$missing" >&2
+        echo "上のテストの本体で attachScreenshot(of:named:) を呼ぶ（docs/agents/languages/swift.md「道具」）" >&2
+        return 1
+    fi
 
     step "Xcode のプロジェクトの依存が exactVersion か"
     if grep -A2 'requirement = {' "$ios/NuTori.xcodeproj/project.pbxproj" |
@@ -133,8 +156,8 @@ check_ios_ui_test() {
     step "UI テスト"
     local results="$ios/.build/NuTori.xcresult" kana_keyboard="ja_JP-Kana@sw=Kana;hw=Automatic"
     # 1台のシミュレータでは同じアプリの UI テストを同時に回せないので、ほかのチェックアウトとぶつからないよう、回すたびに複製を作って消す
+    # 消すのは on_exit
     clone_ui_test_simulator
-    trap 'xcrun simctl delete "$ui_test_simulator"' EXIT
     # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
     boot_ui_test_simulator
     # Simulator.app でハードウェアキーボードを一度つなぐと、シミュレータがそれを覚えてソフトウェアキーボードを画面の外へ最小化し、キーを押すテストが落ちる。まっさらなシミュレータ（CI）では起きないので、Mac でもそろえる
@@ -143,6 +166,10 @@ check_ios_ui_test() {
     xcrun simctl spawn "$ui_test_simulator" defaults write -g AppleKeyboards -array "$kana_keyboard" "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"
     xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences KeyboardLastUsed "$kana_keyboard"
     rm -rf "$results"
+    local repeat_options=()
+    if [ -n "$repeat" ]; then
+        repeat_options=(-test-iterations "$repeat" -run-tests-until-failure)
+    fi
     # テストの診断をシミュレータから集めると、テストが通った回でも時間切れの10分まで待つことがある。落ちた理由は xcresult で足りる
     xcodebuild \
         -project "$ios/NuTori.xcodeproj" \
@@ -150,6 +177,8 @@ check_ios_ui_test() {
         -destination "id=$ui_test_simulator" \
         -resultBundlePath "$results" \
         -collect-test-diagnostics never \
+        ${only_testing[@]+"${only_testing[@]}"} \
+        ${repeat_options[@]+"${repeat_options[@]}"} \
         test-without-building
 }
 
@@ -211,17 +240,40 @@ MESSAGE
 print_usage() {
     cat << 'USAGE'
 使い方: scripts/check [ios | ios-app | ios-ui-test | server] [--fix]
+       scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
   引数なし     ios と server
   ios          整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
   server       整形、Lint、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   --fix        直せるものを直してから確かめる
+  --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
+  --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
 USAGE
 }
 
+usage_error() {
+    print_usage >&2
+    exit 2
+}
+
 step() {
+    current_step="$*"
     echo "==> $*"
+}
+
+# 出力を tail に通すと終了コードが見えないので、最後の行に結果を出す
+on_exit() {
+    local status=$?
+    if [ -n "$ui_test_simulator" ]; then
+        # set -e は trap の中でも効くので、消せなくても結果の行は出す
+        xcrun simctl delete "$ui_test_simulator" || echo "UI テストの複製 ${ui_test_simulator} を消せない" >&2
+    fi
+    if [ "$status" -eq 0 ]; then
+        echo "scripts/check: OK"
+    else
+        echo "scripts/check: FAILED${current_step:+（${current_step}）}"
+    fi
 }
 
 # 版と SHA-256 を固定した SwiftLint を、無ければ .tools/ に落とし、パスを swiftlint に入れる
@@ -260,6 +312,28 @@ install_swiftlint() {
         rm "$dir/$asset"
     fi
     swiftlint="$dir/swiftlint"
+}
+
+# attachScreenshot を本体で直に呼ばない test メソッドを「ファイル: func test_…」の形で出す。メソッドの終わりは、次の func かファイルの終わりとみなす（テストの中に func を入れ子にすると、そこで終わったとみなす）
+missing_ui_test_screenshots() {
+    awk '
+        function report() {
+            if (test != "" && !shot) print file ": " test
+            test = ""
+        }
+        FNR == 1 { report(); file = FILENAME }
+        !/^[[:space:]]*\/\// && /(^|[[:space:]])func[[:space:]]/ {
+            report()
+            shot = 0
+            if ($0 ~ /func test/) {
+                test = $0
+                sub(/^[[:space:]]*/, "", test)
+                sub(/\(.*/, "", test)
+            }
+        }
+        !/^[[:space:]]*\/\// && /attachScreenshot\(/ { shot = 1 }
+        END { report() }
+    ' "$@"
 }
 
 # いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
@@ -358,6 +432,9 @@ server="$root/server"
 swiftlint_version=0.65.1
 swiftlint=""
 ui_test_simulator=""
+current_step=""
+only_testing=()
+repeat=""
 fix=false
 
 main "$@"

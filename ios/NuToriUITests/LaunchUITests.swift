@@ -11,5 +11,6 @@ final class LaunchUITests: XCTestCase {
 
     func test_前面で動いていること() {
         XCTAssertEqual(app.state, .runningForeground)
+        attachScreenshot(of: app, named: "起動した画面")
     }
 }
