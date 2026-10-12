@@ -15,7 +15,10 @@ main() {
         esac
     done
 
+    trap on_exit EXIT
     for target in ${targets:-ios server}; do
+        # 対象の前提（swift や xcodebuild があるか）で落ちたとき、前の対象の手順の名前を出さない
+        current_step=""
         case "$target" in
             ios) check_ios ;;
             ios-app) check_ios_app ;;
@@ -133,8 +136,8 @@ check_ios_ui_test() {
     step "UI テスト"
     local results="$ios/.build/NuTori.xcresult" kana_keyboard="ja_JP-Kana@sw=Kana;hw=Automatic"
     # 1台のシミュレータでは同じアプリの UI テストを同時に回せないので、ほかのチェックアウトとぶつからないよう、回すたびに複製を作って消す
+    # 消すのは on_exit
     clone_ui_test_simulator
-    trap 'xcrun simctl delete "$ui_test_simulator"' EXIT
     # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
     boot_ui_test_simulator
     # Simulator.app でハードウェアキーボードを一度つなぐと、シミュレータがそれを覚えてソフトウェアキーボードを画面の外へ最小化し、キーを押すテストが落ちる。まっさらなシミュレータ（CI）では起きないので、Mac でもそろえる
@@ -221,7 +224,22 @@ USAGE
 }
 
 step() {
+    current_step="$*"
     echo "==> $*"
+}
+
+# 出力を tail に通すと終了コードが見えないので、最後の行に結果を出す
+on_exit() {
+    local status=$?
+    if [ -n "$ui_test_simulator" ]; then
+        # set -e は trap の中でも効くので、消せなくても結果の行は出す
+        xcrun simctl delete "$ui_test_simulator" || echo "UI テストの複製 ${ui_test_simulator} を消せない" >&2
+    fi
+    if [ "$status" -eq 0 ]; then
+        echo "scripts/check: OK"
+    else
+        echo "scripts/check: FAILED${current_step:+（${current_step}）}"
+    fi
 }
 
 # 版と SHA-256 を固定した SwiftLint を、無ければ .tools/ に落とし、パスを swiftlint に入れる
@@ -358,6 +376,7 @@ server="$root/server"
 swiftlint_version=0.65.1
 swiftlint=""
 ui_test_simulator=""
+current_step=""
 fix=false
 
 main "$@"
