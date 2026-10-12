@@ -75,7 +75,8 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 提供元（LLM）は、ドメイン層の型 `EstimationProvider`（`src/estimation/domain/estimation-provider.ts`）を、`src/estimation/durable-object/create-estimation-provider/` が作る。Durable Object は推定のたびにここから得る。本物は Anthropic の API（`@anthropic-ai/sdk`。再試行は SDK でなくドメイン層が持つので切る）で、`create-anthropic-estimation-provider.ts` が組む。モデルは Claude Sonnet 5（`request-structured-output.ts` の1か所）、思考は `thinking: { type: "disabled" }` で切り、`metadata.user_id` にアカウント ID の SHA-256 を入れ、構造化出力（`output_config.format`）で答えさせる。呼び出し1回の時間の上限は ① が 90 秒、② が 60 秒（試み全体の 3 分の中に収まる）。HTTP 400 は 400 の失敗、時間切れは時間切れの失敗、そのほかの SDK のエラーは提供元のエラー（`errorType` は応答のエラーの種類、無ければ `http_<状態コード>`、つなげなければ `connection_error`）、構造化出力が読めない・出力の上限で切れた・答えなかったは読めない応答の失敗（使ったトークンつき）にする。提供元の応答のテキストは残さない。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（料理あり・料理なし・確かめに通らない・答える前に待つは `mockCreateEstimationProviderOk`、エラー・400・時間切れ・② だけ落ちるは `mockCreateEstimationProviderError`）。提供元そのものの要求の組み立てと応答の読み取りは、Anthropic の API の手前（SDK の `fetch`）を差し替えて確かめる（`testing/stub-anthropic-api.ts`）
 - 提供元の失敗と、確かめに通らない応答は、試みの結果（`estimation_attempt_results.result`）にする。R2 と成分表の段で止まったら投げ、試みを結果の無いまま残して、途中で止まった試みとして数える
 - アラームの中は受け口の要求ごとのログを通らないので、アラームが呼び出しごとに `route: "alarm"` のログを出す（試みごとの結果・失敗した段・提供元のエラーの種類）
-- 推定のテストは、`src/estimation/http/testing/use-fake-clock.ts` で Date だけを先の時刻にして、アラームがひとりでに動かないようにし、`runDurableObjectAlarm` で動かす。やり直しは時計を進めてから動かす
+- 試み1回分の中身（返った中身の確かめ、文章の食事のまとめ方と時刻の境目、① と ② の使用量の分け方、栄養の出どころ）は、`run-estimation-attempt.test.ts` が、偽の提供元（`src/estimation/domain/estimation-provider.mock.ts`。提供元を作る口の mock もこれを差す）と偽の写真の置き場を渡して直接確かめる。HTTP から動かす推定のテストは、つなぎ（記録・同期・出来事・ログに出ること）と予定（回数、見送り、やり直し、アラーム）に絞り、試みの中身の分岐を足さない
+- HTTP から動かす推定のテストは、`src/estimation/http/testing/use-fake-clock.ts` で Date だけを先の時刻にして、アラームがひとりでに動かないようにし、`runDurableObjectAlarm` で動かす。やり直しは時計を進めてから動かす
 
 ## 読み分け
 
