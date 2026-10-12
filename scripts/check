@@ -279,7 +279,7 @@ missing_ui_test_screenshots() {
             test = ""
         }
         FNR == 1 { report(); file = FILENAME }
-        /(^|[[:space:]])func[[:space:]]/ {
+        !/^[[:space:]]*\/\// && /(^|[[:space:]])func[[:space:]]/ {
             report()
             shot = 0
             if ($0 ~ /func test/) {
