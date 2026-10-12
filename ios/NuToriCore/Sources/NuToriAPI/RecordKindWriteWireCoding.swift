@@ -28,9 +28,5 @@ extension SyncWrite {
         func knownTimeZone(_ identifier: String) throws -> TimeZone {
             try SentSyncWrites.knownTimeZone(identifier)
         }
-
-        func date(_ milliseconds: Int) -> Date {
-            Date(timeIntervalSince1970: Double(milliseconds) / 1000)
-        }
     }
 #endif

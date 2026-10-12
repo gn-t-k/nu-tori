@@ -38,7 +38,7 @@ struct TimelineScreen: View {
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
-        let shownDay = loaded.flatMap { viewport.shownDay(newestDay: $0.days.last?.day) } ?? today
+        let shownDay = loaded.flatMap { viewport.shownDay(newestDay: $0.newestDay) } ?? today
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 DayRingStrip(
@@ -343,11 +343,11 @@ struct TimelineScreen: View {
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
                 .defaultScrollAnchor(
-                    viewport.followsSizeChanges(newestDay: timeline.days.last?.day)
+                    viewport.followsSizeChanges(newestDay: timeline.newestDay)
                         ? .bottom : .top, for: .sizeChanges
                 )
                 // 足された日が今の位置のすぐ下に描かれてから届く
-                .onChange(of: timeline.days.last?.day, initial: true) { _, newest in
+                .onChange(of: timeline.newestDay, initial: true) { _, newest in
                     perform(viewport.newestDayChanged(to: newest), with: proxy)
                 }
                 .onScrollGeometryChange(for: TimelineViewport.EndPosition.self) { geometry in
@@ -383,7 +383,7 @@ struct TimelineScreen: View {
                     // 位置は動かすたびに届くので、出す日が変わらないあいだは描き直させない
                     var moved = viewport
                     moved.dayPositionsChanged(
-                        positions, newestDay: timeline.days.last?.day,
+                        positions, newestDay: timeline.newestDay,
                         viewportHeight: Double(geo.size.height))
                     if moved != viewport {
                         viewport = moved

@@ -18,12 +18,8 @@ nonisolated struct SwiftDataSingleRecordCache<Row: SingleCacheRow>: SingleRecord
         }
     }
 
-    /// `delete(model:)` は、保存の前に足した行を残す。残すと、次の保存で置き場に書かれるので、あとから消す
     func clear() throws {
-        try context.delete(model: Row.self)
-        if let row = try row() {
-            context.delete(row)
-        }
+        try context.deleteAll(Row.self)
     }
 
     private func row() throws -> Row? {

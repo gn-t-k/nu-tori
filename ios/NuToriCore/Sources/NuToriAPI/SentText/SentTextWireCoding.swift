@@ -83,7 +83,7 @@ struct SentTextWireCoding: RecordKindWriteWireCoding {
                     sentText: SyncedSentText(
                         id: try uuid(sentText.id),
                         body: sentText.body,
-                        sentAt: date(sentText.sentAt),
+                        sentAt: Date(millisecondsSince1970: sentText.sentAt),
                         timeZone: try knownTimeZone(sentText.timeZone)))
             }
             if case .resendSentTextAsConversation(let write) = wire {
@@ -113,7 +113,7 @@ extension SyncChange {
                 return nil
             }
             return SyncedSentText(
-                id: id, body: body, sentAt: Date(timeIntervalSince1970: Double(sentAt) / 1000),
+                id: id, body: body, sentAt: Date(millisecondsSince1970: sentAt),
                 timeZone: timeZone)
         }
     }

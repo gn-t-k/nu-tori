@@ -1,6 +1,7 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import SwiftData
 import Testing
 
 @testable import NuTori
@@ -222,6 +223,34 @@ struct SwiftDataSyncStoreSavingTests {
             #expect(try await store.pendingEntries().isEmpty)
             #expect(try await store.syncState() == nil)
             #expect(try await store.healthSyncState() == .initial)
+        }
+    }
+
+    /// 保存の前に失敗すると、足した行がコンテキストに残る
+    @Suite("同期の状態と、ヘルスケアに書いた料理の控えを、足したまま保存していないとき")
+    @MainActor
+    struct ErasingUnsaved {
+        let store: SwiftDataSyncStore
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            let context = store.container.mainContext
+            context.autosaveEnabled = false
+            context.insert(
+                CachedSyncState(
+                    SyncState(
+                        afterSequence: 8, hasCompletedInitialPull: true,
+                        readableKinds: [.weightRecord], startedOn: nil)))
+            context.insert(CachedHealthDishWrite(dishId: UUID(), version: 1))
+        }
+
+        @Test("すべて消すと、足した行も置き場に書かれないこと")
+        func erasesUnsavedRows() async throws {
+            try await store.eraseAll()
+
+            let saved = ModelContext(store.container)
+            #expect(try saved.fetchCount(FetchDescriptor<CachedSyncState>()) == 0)
+            #expect(try saved.fetchCount(FetchDescriptor<CachedHealthDishWrite>()) == 0)
         }
     }
 }

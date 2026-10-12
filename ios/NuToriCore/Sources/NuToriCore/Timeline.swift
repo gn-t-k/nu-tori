@@ -64,6 +64,11 @@ public struct Timeline: Sendable {
     /// 古い日から新しい日へ
     public let days: [Day]
 
+    /// 日が1つも並んでいなければ無い
+    public var newestDay: CalendarDay? {
+        days.last?.day
+    }
+
     /// まだ届いていない記録か。薄く描き、VoiceOver で「送信待ち」と添える
     public func isUndelivered(_ item: Item) -> Bool {
         undelivered.contains(item)
