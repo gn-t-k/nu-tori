@@ -237,7 +237,7 @@ struct TimelineScreen: View {
     @State private var pickedPhotos: [PhotosPickerItem] = []
     /// 見える範囲の規則は NuToriCore の TimelineViewport が持つ。規則は前の出来事を覚えて決めるので、描き直しをまたいで持つために @State に置く
     @State private var viewport = TimelineViewport()
-    /// 実行を待っている指示。動かす口（ScrollViewProxy）は ScrollViewReader の中にしか無く、通知から開いた直後はカードが並んでからでないと着けないので、次の更新まで持ってから実行する
+    /// 実行を待っている指示。動かす口（ScrollViewProxy）は ScrollViewReader の中にしか無く、通知から開いた直後のカードと、足したばかりの項目は、並んでからでないと着けないので、次の更新まで持ってから実行する
     @State private var waitingInstructions: [TimelineViewport.Instruction] = []
     /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
     @State private var replyFirstText = ReplyFirstTextWatch()
@@ -368,7 +368,11 @@ struct TimelineScreen: View {
                         with: proxy)
                 }
                 .onChange(of: timeline.days) { old, new in
-                    waitingInstructions += viewport.daysChanged(from: old, to: new, now: now())
+                    let returning = viewport.daysChanged(from: old, to: new, now: now())
+                    guard !returning.isEmpty else { return }
+                    // 日のまとめを開いていても、足した項目を見せる
+                    summaryDay = nil
+                    waitingInstructions += returning
                 }
                 .onChange(of: timeline.hasGrowingReply) { _, growing in
                     viewport.growingReplyChanged(isGrowing: growing)

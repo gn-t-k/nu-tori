@@ -72,7 +72,7 @@ extension TimelineViewportTests {
                         == Array(repeating: [.scroll(to: .end, animated: false)], count: 5))
             }
 
-            @Test("5枚目のあとも、足されるカードについていくこと")
+            @Test("5枚目のあとも、足されるカードを追うこと")
             func keepsFollowing() {
                 #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
             }
@@ -87,7 +87,7 @@ extension TimelineViewportTests {
                 viewport = TimelineViewportTests.opened(newestDay: TimelineViewportTests.yesterday)
             }
 
-            @Test("高さの見積もりの端へ動かないよう、新しい日が描かれるのを待ってから中身の下端へ動かし、そのあと今日に足される記録についていくこと")
+            @Test("高さの見積もりの端へ動かないよう、新しい日が描かれるのを待ってから中身の下端へ動かし、そのあと今日に足される記録を追うこと")
             mutating func waitsForDayThenScrollsToEnd() {
                 #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
 

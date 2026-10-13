@@ -3,8 +3,8 @@ import XCTest
 /// 食事を画面に収まらないだけ並べてタイムラインを遡り、書く欄を押してキーボードを出した状態で、「写真」で写真を選ぶ → 一番下に戻っても、キーボードは出たまま。
 /// 写真の選択は起動の値で差し替える（選ぶ画面を開かずに1枚選んだことにする）
 ///
-/// キーボードを下げるのは使う人が動かし始めたときだけと決める規則は NuToriCore の単体テスト（TimelineViewportTests の「一番下についていく」と「過去の不具合の場面」の #450）が見る。
-/// ここで見るのは SwiftUI の癖: アプリが動かしたとき（ScrollViewProxy の scrollTo と、足されたカードについていく動き）には、ScrollView が「触っている」の相を知らせないこと
+/// キーボードを下げるのは使う人が動かし始めたときだけと決める規則は NuToriCore の単体テスト（TimelineViewportTests の「一番下を追う」と「過去の不具合の場面」の #450）が見る。
+/// ここで見るのは SwiftUI の癖: アプリが動かしたとき（ScrollViewProxy の scrollTo と、足されたカードを追う動き）には、ScrollView が「触っている」の相を知らせないこと
 @MainActor
 final class KeepKeyboardWhenReturningToTimelineEndUITests: XCTestCase {
     private var app = XCUIApplication()

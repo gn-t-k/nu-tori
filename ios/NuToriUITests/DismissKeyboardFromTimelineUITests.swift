@@ -5,7 +5,7 @@ import XCTest
 ///
 /// 動かし始めたら下げると決める規則は NuToriCore の単体テスト（TimelineViewportTests の「過去の不具合の場面」の #450）が見る。
 /// ここで見るのは SwiftUI と UIKit の癖: 指で動かし始めたときに ScrollView が「触っている」の相を知らせること（中身が画面より短くても、キーボードと入力欄に届かない短い動きでも、一番下にいて中身が跳ね返るだけの上への動きでも）、
-/// 下げる指示（resignFirstResponder）で書く欄のキーボードが実際に下がること、アプリが動かしたとき（送った文章についていく）には「触っている」の相が来ず、キーボードが残ること
+/// 下げる指示（resignFirstResponder）で書く欄のキーボードが実際に下がること、アプリが動かしたとき（送った文章を追う）には「触っている」の相が来ず、キーボードが残ること
 @MainActor
 final class DismissKeyboardFromTimelineUITests: XCTestCase {
     private var app = XCUIApplication()

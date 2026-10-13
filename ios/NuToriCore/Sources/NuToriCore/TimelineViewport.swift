@@ -10,8 +10,8 @@ public import Foundation
 public struct TimelineViewport: Equatable, Sendable {
     public init() {}
 
-    /// 中身が伸びたときに、一番下についていくか。
-    /// いちばん新しい日が足された描画ではついていかない。LazyVStack はまだ描いていない日の高さをほかの日の平均で見積もり、ついていくとその見積もりの端（何も無い所）へ動いて、足された日が描かれず真っ白のまま残る
+    /// 中身が伸びたときに、一番下を追うか。
+    /// いちばん新しい日が足された描画では追わない。LazyVStack はまだ描いていない日の高さをほかの日の平均で見積もり、追うとその見積もりの端（何も無い所）へ動いて、足された日が描かれず真っ白のまま残る
     /// - Parameter newestDay: いま描いているタイムラインのいちばん新しい日
     public func followsSizeChanges(newestDay: CalendarDay?) -> Bool {
         followsEnd && newestDay == settledNewestDay
@@ -30,13 +30,13 @@ public struct TimelineViewport: Equatable, Sendable {
     ) -> [Instruction] {
         switch phase {
         case .interacting:
-            // 触っているあいだはついていかない
+            // 触っているあいだは追わない
             followsEnd = false
             // 指に合わせて下げる形は、指がキーボードに届くまで下がらず、あいだに入力欄があるとふつうに動かしても届かない（#450）ので、動かし始めたら下げる
             return [.dismissKeyboard]
         case .idle:
             followsEnd = endPosition.followsWhenSettled
-            // 下端ちょうどにいないと、中身が伸びてもついていけないので、使う人が入力欄の下に隠れた所で止めたら下端へ動かす（#469）。
+            // 下端ちょうどにいないと、中身が伸びても追えないので、使う人が入力欄の下に隠れた所で止めたら下端へ動かす（#469）。
             // アプリが動かして止まったとき（知らせのカードへ着いた、ここで下端へ動かした）は、着いた所に置く
             let releasedByUser = oldPhase == .interacting || oldPhase == .decelerating
             return releasedByUser && endPosition == .underComposer
@@ -131,7 +131,7 @@ extension TimelineViewport {
     }
 
     public enum ScrollTarget: Equatable, Sendable {
-        /// 下の余白まで含めた、中身全体の下端。いちばん新しい日の下端（余白の手前）に着くと、そのあと中身が伸びてもついていけない（#467）
+        /// 下の余白まで含めた、中身全体の下端。いちばん新しい日の下端（余白の手前）に着くと、そのあと中身が伸びても追えない（#467）
         case end
         /// その日の区切りの上端
         case day(CalendarDay)

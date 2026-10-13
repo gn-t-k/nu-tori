@@ -49,7 +49,7 @@ extension TimelineViewportTests {
                 #expect(instructions == [.scroll(to: .end, animated: false)])
             }
 
-            @Test("そこから、中身が伸びたら一番下についていくこと")
+            @Test("そこから、中身が伸びたら一番下を追うこと")
             func followsFromThere() {
                 #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
             }
@@ -73,7 +73,7 @@ extension TimelineViewportTests {
                 #expect(instructions.isEmpty)
             }
 
-            @Test("ついていかないままであること")
+            @Test("追わないままであること")
             func doesNotFollow() {
                 #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
             }
@@ -88,7 +88,7 @@ extension TimelineViewportTests {
                 viewport.textResent()
             }
 
-            @Test("ついていき直すこと")
+            @Test("追い直すこと")
             func followsAgain() {
                 #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
             }
