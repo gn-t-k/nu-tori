@@ -284,8 +284,7 @@ const composeDishes = (
 };
 
 // 単位が g の材料は、量がそのまま可食部の g になる。① が 1個の g などを重ねて答えても、量に掛けない
-const isGramUnit = (unit: string): boolean =>
-  ["g", "グラム"].includes(unit.normalize("NFKC").trim().toLowerCase());
+const isGramUnit = (unit: string): boolean => unit === "g";
 
 const toMatchedNutrients = (
   matched: IngredientMatch | undefined,
