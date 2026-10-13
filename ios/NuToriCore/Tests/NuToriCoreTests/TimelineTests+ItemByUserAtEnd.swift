@@ -169,9 +169,10 @@ extension TimelineTests {
 
             init() throws {
                 let lastNight = try WeightRecord.manual(
-                    72.6, at: "2026-09-23T22:00:00+09:00", in: "Asia/Tokyo")
+                    72.6, at: "2026-09-23T23:59:59+09:00", in: "Asia/Tokyo")
                 old = ItemByUserAtEnd.days()
                 new = ItemByUserAtEnd.days(weightRecords: [lastNight])
+                // 日をまたいだ直後
                 now = lastNight.instant.addingTimeInterval(1)
             }
 

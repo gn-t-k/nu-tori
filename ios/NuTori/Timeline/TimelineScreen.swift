@@ -234,7 +234,7 @@ struct TimelineScreen: View {
     /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
-    /// 中身が伸びたとき（返事が伸びる、送った食事のカードが足される）に一番下へ追うか。使う人が動かして一番下から離れたら止め、一番下へ戻すか、伸びる返事が無くなったら追う
+    /// 中身が伸びたときに一番下へ追うか。立てる場面と下ろす場面は `timelineList` のコメント
     @State private var followsTimelineEnd = true
     /// 一番下に着き終えた、いちばん新しい日。日が足された描画では、まだ前の日のまま
     @State private var settledNewestDay: CalendarDay?
@@ -310,7 +310,7 @@ struct TimelineScreen: View {
 
     /// タイムラインの位置を動かす場面は、次の4つ。自分の操作の結果は見せ、ほかから来たもの（返事、知らせ、同期や取り込みで届いた記録）では読んでいる所から動かさない。
     /// - 開く: 一番下から開く
-    /// - 追う: 一番下にいるあいだ、中身が伸びても（返事が伸びる、項目や日が足される）一番下に保つ。指で上へ動かしたら止め、一番下で止めたらまた追う（`followsTimelineEnd`）
+    /// - 追う: 一番下にいるあいだ、中身が伸びても（返事が伸びる、項目や日が足される）一番下に保つ。指で触れたら止め、止まった所が一番下ならまた追う。伸びる返事が無くなったときと、送り直したときも、また追う（`followsTimelineEnd`）
     /// - 戻す: ユーザーがアプリの中でいちばん下に項目を足したら、遡っていても一番下へ連れていき、そこから追う（`Timeline.addsItemByUserAtEnd`）
     /// - 着く: 選んだ所へ行く。日のまとめで選んだ日、帯の下の1行の知らせ、通知から開いた知らせか一番下（`dayFocus`）
     private func timelineList(_ timeline: Timeline) -> some View {
