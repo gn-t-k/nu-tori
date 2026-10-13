@@ -5,7 +5,7 @@
 <title>目標を立てるの見た目</title>
 <!--
   PROTOTYPE（捨てる前提）。「目標を立てるの見た目を見比べる」（gn-t-k/nu-tori#506）の試作。
-  仕様「目標を立てる」の申し送りのうち、見た目で決めるもの 6 項目を 13 の論点に分け、論点ごとに 1〜4 の案で並べる。
+  仕様「目標を立てる」の申し送りのうち、見た目で決めるもの 6 項目を 14 の論点に分け、論点ごとに 1〜4 の案で並べる。
   上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #deadline-2）。
   「条件」で、人（逆算できるか、ヘルスケアの中身）、今朝の体重、インターネットを切り替える。
   最初の論点「通して触る」は、ほかの論点でいま選んでいる案を組み合わせて、流れを押して進められる。
@@ -191,7 +191,12 @@ figcaption b{color:var(--page-ink)}
 .plan .ck{color:var(--tint);font-weight:700;width:18px;text-align:center;flex:none}
 .plan.sel{box-shadow:0 0 0 1.5px var(--tint) inset}
 .plan.off{background:none;box-shadow:0 0 0 .5px var(--sep) inset;color:var(--ink2)}
-.plan.ghost .nm,.plan.ghost .big,.plan.ghost .ln,.plan.ghost .w{color:transparent;background:var(--ink3);border-radius:4px;opacity:.4;width:fit-content}
+.sk .plan{box-shadow:none}
+.sk .plan .nm,.sk .plan .big,.sk .plan .ln,.sk .plan .w{color:transparent;background:var(--ink3);border-radius:4px;opacity:.4;width:fit-content}
+.sk .plan .nm *,.sk .plan .big *,.sk .plan .btn,.sk .plan .ck{visibility:hidden}
+.hold{position:relative}
+.hold .hid{visibility:hidden}
+.hold .ctr{position:absolute;inset:0;display:grid;place-items:center}
 .badge{font-size:var(--t-cap2);font-weight:400;color:var(--ink2);border:.5px solid var(--ink3);border-radius:4px;padding:0 4px;line-height:1.5}
 .wait{display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:var(--t-foot);min-height:44px}
 .refuse{font-size:var(--t-foot);color:var(--ink2);margin:0}
@@ -391,13 +396,14 @@ function seq(st, pk){
 const WORDS = [
   {name: '食べ方で言う', loss: ['今の食事を少し控える程度', '夜の主食を半分にするくらい', '毎食を控えめにする。空腹を感じやすい'], gain: ['今の食事に少し足す程度', '間食を1回足すくらい', '毎食しっかり食べる。満腹が続きやすい']},
   {name: '続けやすさで言う', loss: ['無理なく続けやすい', '少し意識して控える', '空腹を感じやすい'], gain: ['無理なく続けやすい', '少し意識して多く食べる', '満腹が続きやすい']},
-  {name: '減らす量で言う'},
+  {name: '使う量との差で言う'},
+  {name: '空腹の強さを比べて言う', loss: ['空腹は軽め', '空腹を感じる', '空腹が強い'], gain: ['少し多めに食べる', 'しっかり食べる', 'かなり多く食べる']},
 ];
 function word(pk, dir, level, pf, kcal){
   const s = WORDS[pk.words || 0];
   if (s[dir]) return s[dir][level];
   const d = Math.abs(r50(pf.tdee) - kcal);
-  return d === 0 ? '今の食べる量のまま' : `今より1日に約 ${kc(d)} kcal ${dir === 'loss' ? '少なく' : '多く'}食べる`;
+  return d === 0 ? '1日に使う量と同じだけ食べる' : `1日に使う量より約 ${kc(d)} kcal ${dir === 'loss' ? '少なく' : '多く'}食べる`;
 }
 function speedText(pk, kgw){
   if (!pk.speed) return '';
@@ -430,12 +436,12 @@ const NAV = t => `<div class="nav"><span class="l"></span><span class="t">${t}</
 const WROW = '<div class="wrow">7:12 72.4 kg<span class="disc">›</span></div>';
 const MEAL = '<div class="mc"><div class="pic"></div><div class="row2"><div class="bd"><span class="nm">トースト・ゆで卵</span><span class="tm">7:40</span><span class="nu"><b>358 kcal</b><span>P 17 g</span><span>F 14 g</span><span>C 40 g</span></span></div><span class="disc">›</span></div></div>';
 // 入力欄。今朝の体重が未記録のあいだは、丸の行の下に「体重を記録」のカプセル（main の形）
-const COMP = st => `<div class="compwrap"><div class="comp"><div class="rowx"><span class="cb on">${I.cam}</span><span class="cb">${I.photo}</span>${st.tw ? `<span class="cb">${I.wt}</span>` : ''}<span class="in">書く</span></div>${st.tw ? '' : '<span class="cap">体重を記録</span>'}</div><div class="ainote">AI が読んで返事をします</div></div>`;
+const COMP = (st, quiet) => `<div class="compwrap"><div class="comp"><div class="rowx"><span class="cb${quiet ? '' : ' on'}">${I.cam}</span><span class="cb">${I.photo}</span>${st.tw ? `<span class="cb">${I.wt}</span>` : ''}<span class="in">書く</span></div>${st.tw ? '' : `<span class="cap"${quiet ? ' style="background:var(--fill);color:var(--tint)"' : ''}>体重を記録</span>`}</div><div class="ainote">AI が読んで返事をします</div></div>`;
 const KB = '<div class="kb" aria-hidden="true"><span class="bar">完了</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>.</span><span>0</span><span>⌫</span></div>';
 // 電話。o.goalKcal: 今日の丸を目安と比べる、o.kb: 数字のキーボード、o.line: 帯の下の1行、o.over: 重ねるもの、o.items: カードの前のもの
 function PHONE(st, card, o = {}){
   const items = o.items !== undefined ? o.items : `<div class="dayh">${fmtDW(st.today)}</div>${st.tw ? WROW : ''}${MEAL}`;
-  return `<div class="phone"><div class="status"></div>${NAV(fmtDW(st.today))}${BAND(st, o.goalKcal)}${o.line || ''}<div class="tl">${items}${card ? `<div class="apart" data-card>${card}</div>` : ''}</div>${o.kb ? KB : COMP(st)}<div class="home"></div>${o.over || ''}</div>`;
+  return `<div class="phone"><div class="status"></div>${NAV(fmtDW(st.today))}${BAND(st, o.goalKcal)}${o.line || ''}<div class="tl">${items}${card ? `<div class="apart" data-card>${card}</div>` : ''}</div>${o.kb ? KB : o.comp === 1 ? '' : COMP(st, o.comp === 2)}<div class="home"></div>${o.over || ''}</div>`;
 }
 const SPIN = '<span class="spinner"></span>';
 const act = a => a ? ` data-act="${a}"` : '';
@@ -493,7 +499,7 @@ function calendar(sel, min, max){
 function pgDeadline(st, pk, o = {}){
   const v = pk.deadline || 0, opts = dlOpts(st, pk), min = addD(st.today, MIN_DAYS - 1), max = addD(st.today, MAX_DAYS - 1);
   const q = `<p class="gq">いつまでに${st.dir === 'gain' ? '増やし' : '減らし'}ますか</p>`;
-  const selN = st.dlN === undefined ? (v === 1 || v === 2 ? 3 : null) : st.dlN; // B と C は 3か月を初期値にする
+  const selN = st.dlN === undefined ? (v === 1 || v === 2 || v === 4 ? 3 : null) : st.dlN; // B と C は 3か月を初期値にする
   const cur = st.dl || (opts.find(x => x.n === selN) || {}).date || null;
   const busy = st.busy === 'dl';
   let body;
@@ -506,7 +512,9 @@ function pgDeadline(st, pk, o = {}){
     body = `<div class="opts">${opts.map(x => `<div class="opt${selN === x.n ? ' sel' : ''}"${act('dlsel:' + x.n)}><span class="ck">${selN === x.n ? '✓' : ''}</span><span class="grow">${x.over ? '26週' : x.label}<span class="sub">${fmtDW(x.date)}まで</span></span></div>`).join('')}<div class="opt${custom ? ' sel' : ''}"${act('dlsel:date')}><span class="ck">${custom ? '✓' : ''}</span><span class="grow">日付で選ぶ</span>${custom ? `<span class="pill">${cur.getFullYear()}年${fmtD(cur)}</span>` : ''}</div></div>${o.cal ? calendar(cur, min, max) : ''}${FOOT(NEXT(!!cur, busy, 'dlnext'))}`;
   } else {
     // 日付だけ。標準の DatePicker（compact）と、早見のチップ
-    body = `<div class="opts"><div class="opt"><span class="grow">期限</span><span class="pill"${act('dlcal')}>${cur.getFullYear()}年${fmtD(cur)}</span></div></div><div class="chips2">${opts.map(x => `<span class="ch${+x.date === +cur ? ' on' : ''}"${act('dlsel:' + x.n)}>${x.over ? '26週' : x.label}後</span>`).join('')}</div>${o.cal ? calendar(cur, min, max) : ''}<p class="gqd" style="margin:0">${fmtD(min)}〜${fmtD(max)}の日を選べます（4〜26週）。</p>${FOOT(NEXT(true, busy, 'dlnext'))}`;
+    const row = `<div class="opts"><div class="opt"><span class="grow">期限</span><span class="pill"${act('dlcal')}>${cur.getFullYear()}年${fmtD(cur)}</span></div></div>`;
+    const chips = `<div class="chips2">${opts.map(x => `<span class="ch${+x.date === +cur ? ' on' : ''}"${act('dlsel:' + x.n)}>${x.over ? '26週' : x.label}後</span>`).join('')}</div>`;
+    body = `${v === 4 ? chips + row : row + chips}${o.cal ? calendar(cur, min, max) : ''}<p class="gqd" style="margin:0">${fmtD(min)}〜${fmtD(max)}の日を選べます（4〜26週）。</p>${FOOT(NEXT(true, busy, 'dlnext'))}`;
   }
   return `<div class="gcard">${HEAD(st, pk, 'deadline')}${q}${body}</div>`;
 }
@@ -518,6 +526,9 @@ function usedLine(st, pk){
     return `<div class="used"><span>172 cm・36歳・男性・${w} kg・${act3}</span><span class="chg"${act('change')}>変える</span></div>`;
   }
   const u = pk.used || 0, e = `推定消費量 ${kc(r50(pf.tdee))} kcal`;
+  const old = !st.tw && pk.tw === 2 ? '体重は 9月21日までの記録を使っています。' : '';
+  if (u === 3) return `<div class="used"><span>最近4週の記録では、1日に ${kc(r50(pf.tdee))} kcal ほど使っています。${old}</span></div>`;
+  if (old) return `<div class="used"><span>${u === 1 ? `体重の傾向 ${pf.trend.toFixed(1)} kg・${e}。` : u === 2 ? `9月21日 72.6 kg・${e}。` : ''}${old}</span></div>`;
   if (u === 0) return '';
   if (u === 1) return `<div class="used"><span>体重の傾向 ${pf.trend.toFixed(1)} kg・${e}</span></div>`;
   if (u === 2) return `<div class="used"><span>${st.tw ? '今朝 72.4 kg' : '9月21日 72.6 kg'}・${e}</span></div>`;
@@ -536,17 +547,21 @@ function planCard(st, pk, p, rec){
   const sel = (st.planSel === undefined ? rec : st.planSel === p.i);
   return `<div class="plan${sel ? ' sel' : ''}"${dim}${act('plansel:' + p.i)}><span class="ck">${sel ? '✓' : ''}</span><div class="bd"><span class="nm">${p.name}${badge}</span><span class="w">${w}${sp ? `・${sp}` : ''}</span></div><span class="rt"><span class="ln">${kg(p.t)} kg</span><span class="w">${kc(p.kcal)} kcal</span></span></div>`;
 }
-const ghostPlan = () => '<div class="plan ghost"><div class="bd"><span class="nm">ゆるめ　</span><span class="big">00.0 kg</span><span class="ln">1日の目安 0,000 kcal</span><span class="w">今の食事を少し控える程度</span></div></div>';
 function pgPlans(st, pk, o = {}){
   const pf = PF(st), dl = DL(st), days = DAYS(st);
   const head = HEAD(st, pk, 'plans') + usedLine(st, pk);
   const q = `<p class="gq">${fmtD(dl)}までの目標を選んでください</p>`;
   if (st.err) return `<div class="gcard">${head}<p class="refuse">インターネットにつながらないため、目標案を出せません。</p>${FOOT(`<span class="btn gray"${act('retry')}>もう一度試す</span>`)}</div>`;
-  if (st.loading) {
-    const w = (pk.wait || 0) === 1 ? ghostPlan() + ghostPlan() + ghostPlan() : `<div class="wait">${SPIN}目標案を計算しています…</div>`;
-    return `<div class="gcard">${head}${q}${w}${FOOT()}</div>`;
-  }
   const all = makePlans(pf, st.dir, days), shown = all.filter(p => !p.dropped), fv = pk.fewer || 0;
+  if (st.loading) {
+    const wv = pk.wait || 0, msg = `<div class="wait">${SPIN}目標案を計算しています…</div>`;
+    if (wv !== 1 && wv !== 3) return `<div class="gcard">${head}${q}${msg}${FOOT()}</div>`;
+    // 届く案と同じ高さの場所を取っておく（試作では、届く案をそのまま描いて隠している）
+    const quiet = {...st, loading: false, busy: null}, rows = `<div class="opts">${shown.map(p => planCard(quiet, pk, p, false)).join('')}</div>`;
+    const startOff = (pk.plans || 0) === 2 ? '<span class="btn filled large" aria-disabled="true">この目標で始める</span>' : '';
+    const box = wv === 1 ? `<div class="sk">${rows}</div>` : `<div class="hold"><div class="hid">${rows}</div><div class="ctr">${msg}</div></div>`;
+    return `<div class="gcard">${head}${q}${box}${startOff}<div class="gfoot">${BACK}<span class="tbtn" style="visibility:hidden">目標体重を自分で決める</span></div></div>`;
+  }
   // 「おすすめ」の付け先。標準があれば標準。無ければ、案 B だけ「出せるうち標準にいちばん近い案」に付ける
   const recI = shown.some(p => p.i === 1) ? 1 : fv === 1 && shown.length ? shown[shown.length - 1].i : -1;
   if (!shown.length) {
@@ -557,6 +572,10 @@ function pgPlans(st, pk, o = {}){
   const start = (pk.plans || 0) === 2 ? `<span class="btn filled large"${act('planstart')}>${st.busy === 'planstart' ? SPIN : ''}この目標で始める</span>` : '';
   const link = `<span class="tbtn"${act('custom')}>目標体重を自分で決める</span>`;
   return `<div class="gcard">${head}${q}<div class="opts">${cards}</div>${why}${start}<div class="gfoot">${BACK}${link}</div></div>`;
+}
+// 減量の目標案を1つも出せない人は、目標案のページまで進めず、向きを選んだ次の場所で断る
+function pgNoLoss(st, pk){
+  return `<div class="gcard">${HEAD(st, pk, seq(st, pk)[1])}<p class="gq">減量の目標は立てられません</p><p class="refuse">1日の目安が ${kc(FLOOR)} kcal を下回るためです。今の体重を保つ目標は立てられます。</p>${FOOT(`<span class="btn filled"${act('tokeep')}>維持にする</span>`)}</div>`;
 }
 function rejectText(st, j, dl){
   const pf = PF(st);
@@ -589,6 +608,11 @@ function pgCustom(st, pk, o = {}){
     const minus = st.dir === 'loss' ? atLim : atNear, plus = st.dir === 'loss' ? atNear : atLim;
     const val = v === 1 ? `<span class="val${o.focus ? ' focus' : ''}"><input type="number" step="0.1" inputmode="decimal" data-in="cwkg" value="${t === null ? '' : kg(t)}" placeholder="${kg(std.t)}" aria-label="目標体重"><small>kg</small></span>` : `<span class="val"><b>${kg(t)}</b><small>kg</small></span>`;
     input = `<div class="stepper">${v === 1 ? '' : `<span class="sb"${dis(minus)}${act('cw:-1')}>−</span>`}${val}${v === 1 ? '' : `<span class="sb"${dis(plus)}${act('cw:1')}>+</span>`}</div>`;
+  }
+  if (v === 3) {
+    const lo = Math.min(lim, near), hi = Math.max(lim, near), tv = Math.max(lo, Math.min(hi, t));
+    const marks = all.filter(p => !p.dropped).map(p => { const x = (p.t - lo) / (hi - lo) * 100; return `<span style="position:absolute;left:${x}%;transform:translateX(-${x}%)">${p.name}</span>`; }).join('');
+    input += `<div class="slider"><input type="range" min="${lo}" max="${hi}" step="1" value="${tv}" data-in="cw" aria-label="目標体重"><div class="ticks" style="position:relative;height:14px">${marks}</div></div>`;
   }
   const hint = `<p class="hint">体重の傾向 ${pf.trend.toFixed(1)} kg${v === 1 ? '' : `・標準は ${kg(std.t)} kg`}</p>`;
   let res, can = false;
@@ -624,12 +648,12 @@ const stdGoal = (st, lv = 1) => { const p = makePlans(PF(st), st.dir, DAYS(st))[
 // ── 図 ──
 const fig = (html, cap) => ({html, cap});
 const PG = {dir: pgDir, body: pgBody, deadline: pgDeadline, plans: pgPlans, custom: pgCustom, keep: pgKeep};
-const page = (name, st, pk, cap, o = {}) => fig(PHONE(st, PG[name](st, pk, o), o), cap);
+const page = (name, st, pk, cap, o = {}) => fig(PHONE(st, PG[name](st, pk, o), {...o, comp: pk.composer}), cap);
 const SMALL = {trend: 52.0, tdee: 1450}, TINY = {trend: 48.0, tdee: 1300}, NONE = {trend: 44.0, tdee: 1180};
 const personName = st => ({rev: '逆算できる人', hk: 'ヘルスケアに身体データがある人', partial: '性別と歩数だけある人', none: 'ヘルスケアを許可しない人'})[st.person];
 function taps(st, pk){
   // 開く、向き、（次へ）、期限、標準
-  const body = fields(st, pk), dlTap = (pk.deadline === 1 || pk.deadline === 2) ? '次へ' : '期限';
+  const body = fields(st, pk), dlTap = [1, 2, 4].includes(pk.deadline) ? '次へ' : '期限';
   const list = ['開く', '減量', ...(st.person === 'none' ? ['性別', '活動量'] : []), ...(body.length ? ['次へ'] : []), dlTap, '標準'];
   const inputs = body.filter(k => ['height', 'year', 'weight'].includes(k)).length;
   return `タップ ${list.length}（${list.join('、')}）・入力 ${inputs}・iPhone の許可 1`;
@@ -667,6 +691,11 @@ T.push({id: 'deadline', label: '期限のページ', title: '期限を尋ねる�
       figs: pk => { const st = base(), m = base({today: D(2026, 3, 1), tw: true}); return [
         page('deadline', st, pk, `<b>期限のページ。</b>手数は ${taps(st, pk)}。`),
         page('deadline', m, pk, '<b>今日が 3月1日でも同じ形。</b>')]; }},
+    {name: '日付だけ。早見のチップを欄の上に置く', desc: '案 C のチップを、日付の欄の上に置く。タイムラインのプリセット（入力欄の上に並び、押すと欄に入る）と同じ並びにする。押すと下の欄の日付が変わるので、目は上から下へ動く。',
+      figs: pk => { const st = base(), m = base({today: D(2026, 3, 1), tw: true}); return [
+        page('deadline', st, pk, `<b>期限のページ。</b>3か月後の日付が入った状態で開く。手数は ${taps(st, pk)}。`),
+        page('deadline', base({dl: D(2026, 11, 30), dlN: 'date'}), pk, '<b>日付を押したところ。</b>iPhone の標準のカレンダーが浮いて出る（ここではカードの中に並べて描いた）。', {cal: true}),
+        page('deadline', m, pk, '<b>幅を越える日（今日が 3月1日）。</b>4つめのチップが「26週後」になる。')]; }},
   ]});
 
 T.push({id: 'steps', label: '残りの手順', title: 'ページが1つ増えたあとの、残りの手順の示し方',
@@ -714,7 +743,7 @@ T.push({id: 'fewer', label: '案が少ないとき', title: '目標案が3つよ
   q: '減量で1日の目安が下限 1,200 kcal に当たると、速さを落とした案がゆるい案と重なって消える。2つ、1つ、0 のとき、何を見せるか。標準が出ないとき「おすすめ」をどこに付けるか。',
   fixed: '決まっていること: 下限に当たる案は速さを落とし、ひとつゆるい案と同じ目標体重になった案と、目標体重が体重の傾向より向きの側に出ない案は出さない（#32 の追記の「目標案」）。図は条件によらず、体の小さい人の作った値（減量・3か月）。速さを落として残った案は、名前はそのままで1日の目安が 1,200 kcal になる。',
   variants: [
-    {name: '出せる案だけを並べる', desc: '消えた案には触れない。「おすすめ」は標準にだけ付け、標準が無ければ付けない。0 のときは、出せない理由を1文で書き、「維持にする」と「戻る」（期限を変える）を置く。',
+    {name: '出せる案だけを並べる', desc: '消えた案には触れない。「おすすめ」は標準にだけ付け、標準が無ければ付けない。0 のときは、3枚めと4枚めのどちらか（目標案のページで知らせるか、手前で断るか）。',
       figs: pk => fewerFigs(pk)},
     {name: '出せる案だけを並べ、理由を1行添える', desc: '案の下に「1日の目安が 1,200 kcal を下回る案は出していません。」と書く。「おすすめ」は、標準が無ければ、出せるうち標準にいちばん近い案に付ける。',
       figs: pk => fewerFigs(pk)},
@@ -726,16 +755,18 @@ function fewerFigs(pk){
   return [
     page('plans', st(SMALL), pk, '<b>2つ。</b>体重の傾向 52.0 kg、推定消費量 1,450 kcal。標準は速さを落として残り、ハードは標準と同じ目標体重になって消える。'),
     page('plans', st(TINY), pk, '<b>1つ。</b>体重の傾向 48.0 kg、推定消費量 1,300 kcal。ゆるめだけが、速さを落として残る。'),
-    page('plans', st(NONE), pk, '<b>0。</b>推定消費量が 1,200 kcal を下回る。「目標体重を自分で決める」も出さない。')];
+    page('plans', st(NONE), pk, '<b>0（目標案のページで知らせる）。</b>推定消費量が 1,200 kcal を下回る。「目標体重を自分で決める」も出さない。'),
+    fig(PHONE(st(NONE), pgNoLoss(st(NONE), pk)), '<b>0（手前で断る）。</b>減量を選んだ次の場所で断り、期限を尋ねない。1つも出せないのは推定消費量が 1,200 kcal 前後より低いときで、期限を変えてもほぼ変わらないので、期限の前に分かる。逆算できない人は、足りない値を入れた「次へ」のあとで分かる。')];
 }
 
 T.push({id: 'words', label: '大変さの文言', title: '大変さのひとことの文言',
   q: '案の3つ（ゆるめ・標準・ハード）と、自分で決めた目標体重の3段階（ゆるめ以下／標準まで／ハードまで）に、どんなひとことを添えるか。',
   fixed: '決まっていること: 大変さはサーバーが段階だけを返し、目標を立てるときだけ出して保存しない（#32 の追記の「大変さ」）。求められていないアドバイスは出さない、責めない（<code>DESIGN.md</code> の Do\'s and Don\'ts）。自分で決めた目標体重には、その段階の案と同じ文言を使う。',
   variants: WORDS.map((w, i) => ({name: w.name, desc: [
-      '<code>07-components/goal-setup</code> の例。減量: 「今の食事を少し控える程度」「夜の主食を半分にするくらい」「毎食を控えめにする。空腹を感じやすい」。増量: 「今の食事に少し足す程度」「間食を1回足すくらい」「毎食しっかり食べる。満腹が続きやすい」。具体的だが、主食や間食の話が、その人の食事に合うとは限らない。',
+      '<code>07-components/goal-setup</code> の例。その人が何を食べているかは分からないので、当て推量になる。減量: 「今の食事を少し控える程度」「夜の主食を半分にするくらい」「毎食を控えめにする。空腹を感じやすい」。増量: 「今の食事に少し足す程度」「間食を1回足すくらい」「毎食しっかり食べる。満腹が続きやすい」。具体的だが、主食や間食の話が、その人の食事に合うとは限らない。',
       '食べ物を名指さず、続けたときの感じを書く。減量: 「無理なく続けやすい」「少し意識して控える」「空腹を感じやすい」。増量: 「無理なく続けやすい」「少し意識して多く食べる」「満腹が続きやすい」。',
-      '感じを言わず、事実だけを書く。推定消費量との差を「今より1日に約 400 kcal 少なく食べる」の形で出す。段階の名前（ゆるめ・標準・ハード）が大変さを担う。',
+      '感じを言わず、サーバーが持っている値だけで書く。推定消費量と1日の目安の差を「1日に使う量より約 400 kcal 少なく食べる」の形で出す。いま食べている量とは比べない（逆算できない人の食べている量は分からないため）。段階の名前（ゆるめ・標準・ハード）が大変さを担う。',
+      '減量はどの案でも空腹を感じる前提で、3つの差だけを書く。減量: 「空腹は軽め」「空腹を感じる」「空腹が強い」。増量: 「少し多めに食べる」「しっかり食べる」「かなり多く食べる」。その人がどう感じるかは言い切れないが、案どうしの順は外れない。',
     ][i],
     figs: pk => [
       page('plans', base(), pk, '<b>減量の3つ。</b>'),
@@ -764,6 +795,8 @@ T.push({id: 'custom', label: '自分で決める', title: '目標体重を自分
         page('custom', base({cw: 700}), pk, '<b>70.0 と打ったところ。</b>', {kb: true, focus: true})]},
     {name: 'スライダー。受け付ける幅だけ動く', desc: '標準の Slider を、受け付けるいちばん近い値から、いちばん遠い値（ハードか下限）までにする。受け付けない値を入れられない。0.1 kg 刻みを指で合わせにくく、幅が広い期限では細かく動かせない。',
       flag: '体重を入れる欄を main のステッパーにそろえない。',
+      figs: pk => customFigs(pk)},
+    {name: 'ステッパーとスライダー', desc: '上に main と同じステッパー（0.1 kg ずつ、値を押すとキーボード）、下にスライダー。スライダーは受け付ける幅だけ動き、ゆるめ・標準・ハードの案の位置に名前を置くので、幅と大変さが一目で分かる。大きく動かすのはスライダー、合わせるのはステッパー。HIG の Sliders は「スライダーに、対応する値の欄とステッパーを添えることを考える」としていて、標準から外れない。',
       figs: pk => customFigs(pk)},
   ]});
 const customFigs = pk => [
@@ -816,12 +849,20 @@ T.push({id: 'tw', label: 'その日の体重が無いとき', title: '逆算で�
     {name: '尋ねない', desc: 'そのまま期限のページへ進む。目標案は、前回までの記録の体重の傾向から出す。入力欄の「体重を記録」は出たままなので、先に測りたい人はそこから記録できる。',
       figs: pk => { const st = base({person: 'rev', tw: false}); return [
         page('deadline', st, pk, '<b>向きを選んだ次のページ。</b>期限のページに着く。'),
-        page('plans', st, pk, '<b>目標案。</b>前回（9月21日）までの体重の傾向から出す。')]; }},
+        page('plans', st, pk, '<b>目標案。</b>前回（9月21日）までの体重の傾向から出す。'),
+        NEWCOMER(pk)]; }},
     {name: '尋ねる', desc: '向きのあとに「今の体重を入れてください」を挟む。体重の知らせと同じステッパーで、前回の値から始める。目標の起点が今日の値を含むので新しくなるが、ページが1つ増える。',
       figs: pk => { const st = base({person: 'rev', tw: false}); return [
         page('body', st, pk, '<b>今の体重のページ。</b>値を動かすか押すまで「次へ」は押せない。'),
-        page('deadline', base({person: 'rev', tw: false, body: {weight: 1}}), pk, '<b>次のページ。</b>総数が1つ増えている。')]; }},
+        page('deadline', base({person: 'rev', tw: false, body: {weight: 1}}), pk, '<b>次のページ。</b>総数が1つ増えている。'),
+        NEWCOMER(pk)]; }},
+    {name: '尋ねず、いつまでの記録を使ったかを添える', desc: '案 A のまま、目標案の上の1行に「体重は 9月21日までの記録を使っています。」と事実だけを足す。今日の体重を足しても体重の傾向が動くのは、差の1割ほど（72.6 → 72.4 kg なら 0.02 kg）なので、「入れるとより正確になる」とは書かない。入力欄の「体重を記録」は出たまま。',
+      figs: pk => { const st = base({person: 'rev', tw: false}); return [
+        page('plans', st, pk, '<b>目標案。</b>上の1行に、使った記録の日を添える（論点「案の上に示す値」でいま見ている案に足す）。'),
+        NEWCOMER(pk)]; }},
   ]});
+// 体重の記録が1つも無い人（使い始めたばかりで、ヘルスケアにも無い）には、どの案でも今の体重を尋ねる
+const NEWCOMER = pk => page('body', base({person: 'none', tw: false}), pk, '<b>体重の記録が1つも無い人。</b>どの案でも、足りない値のページで今の体重を尋ねる（ここでは、ヘルスケアを許可しない人の形）。');
 
 T.push({id: 'offline', label: '電波がないとき', title: 'インターネットにつながらないときに始めたら、どこまで進めて何を見せるか',
   q: '目標案はサーバーが出す。逆算できるか（足りない値のページが要るか）もサーバーが返す。つながらないとき、どのページまで進め、どこで何を見せるか。',
@@ -859,6 +900,8 @@ T.push({id: 'wait', label: '待つあいだ', title: '目標案が届くまで�
         page('plans', base(), pk, '<b>届いたら、ページを送る。</b>'),
         page('plans', base({busy: (pk.plans || 0) === 2 ? 'planstart' : 'plan1'}), pk, '<b>案を押してから決まるまで。</b>')]},
   ]});
+T[T.length - 1].variants.push({name: '高さを取っておき、回る印と文', desc: 'ページを先に送り、案が届く場所の高さを先に取っておいて、その中央に「目標案を計算しています…」を出す。何を待っているかが読め、届いてもカードの高さが変わらない（案が3つより少ないときだけ縮む）。「戻る」「閉じる」の場所も動かない。',
+  figs: pk => waitFigs(pk)});
 const waitFigs = pk => [
   page('plans', base({loading: true}), pk, '<b>目標案が届くまで。</b>'),
   page('plans', base(), pk, '<b>届いたあと。</b>'),
@@ -884,10 +927,28 @@ T.push({id: 'done', label: '決まったあと', title: '決まったあと（�
         fig(wscreen, '<b>入口: 体重の画面（目標がない）。</b>傾向のグラフの下に「目標を立てる」。')];
     }}]});
 
+T.push({id: 'composer', label: '広げているあいだの入力欄', title: 'カードを広げているあいだ、入力欄をどう見せるか',
+  q: 'カードを広げているあいだも、下に入力欄が出ている。「撮る」と、今朝の体重がまだなら「体重を記録」が塗ったボタンで、カードの主なボタンと合わせて、塗ったボタンが画面に2〜3個並ぶ。',
+  fixed: '決まっていること: 入力欄はタイムラインの下に固定する。「撮る」はいつも Primary で塗る（<code>DESIGN.md</code>「入力欄」）。モードレスにし、どの操作も途中でやめられる（Do\'s and Don\'ts）。目標の設定はシートにせず、カードをその場で広げる。値の欄を選んでキーボードが出ているあいだは、どの案でも入力欄は隠れる。図は条件によらず、今朝の体重が記録済みのときと、まだのとき。',
+  variants: [
+    {name: '今のまま', desc: '入力欄を変えない。設定の途中でも、そのまま朝食を撮れ、体重を記録できる（記録した体重は目標案の計算に入る）。入力欄は画面の下の決まった場所にいつもある道具で、カードの中の主なボタンは1つ。', figs: pk => composerFigs(pk)},
+    {name: '広げているあいだは隠す', desc: 'カードを広げたら入力欄を下へ隠し、閉じるか決まると戻す。塗ったボタンはカードの中の1つだけになり、カードに使える高さが 100 ほど増える。撮るには「閉じる」を押す（答えは残る）。',
+      flag: '広げているあいだは「撮る」に1タップ余分にかかる（ADR-0002 の最重要の操作）。入力欄を固定する決まりを変える。',
+      figs: pk => composerFigs(pk)},
+    {name: '広げているあいだは灰色にする', desc: '入力欄は残し、「撮る」と「体重を記録」を灰色のボタンにする。押せるが目立たない。カードを閉じると元の色に戻る。',
+      flag: '「撮る」はいつも Primary で塗る、を変える。',
+      figs: pk => composerFigs(pk)},
+  ]});
+const composerFigs = pk => [
+  page('plans', base({person: 'rev', tw: true}), pk, '<b>今朝の体重は記録済み。</b>'),
+  page('plans', base({person: 'rev', tw: false}), pk, '<b>今朝の体重がまだ。</b>「体重を記録」のカプセルが出ている。')];
+
 // ── 描く ──
 const main = document.getElementById('main');
 main.innerHTML = T.map(t => `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${t.variants.map(v => `<div class="variant" data-v="${v.name}"><div class="vhead"><b>${v.name}</b><span>${v.desc}</span>${v.flag ? `<span class="flag">決まっていることを変える: ${v.flag}</span>` : ''}</div><div class="states"></div></div>`).join('')}</section>`).join('');
 T.forEach(t => { P[t.id] = 0; });
+// 2026-10-13 に開発者が選んだ案から始める（期限は C のチップを上に置いた E）
+Object.assign(P, {deadline: 4, steps: 1, plans: 2, fewer: 2, speed: 0, custom: 3, reject: 2, used: 3, wait: 3});
 
 // 1画面に収まるかを、図の下に書く
 function noteFit(root){
@@ -914,7 +975,7 @@ function renderLive(){
   if (L.page === 'closed') card = cardClosed(st, {refuse: L.refuse, resume: L.resume ? DIRNAME[L.dir] + (L.dlDone ? 'と期限' : '') : null});
   else if (L.page === 'done') { card = cardDone(L.goal); o.goalKcal = L.goal.kcal; }
   else if (L.page === 'pending') card = pgPending(st, pk, L.target);
-  else card = PG[L.page](st, pk, {cal: L.cal});
+  else { card = PG[L.page](st, pk, {cal: L.cal}); o.comp = pk.composer; }
   if (L.page === 'closed' && !L.later) o.line = '';
   if (L.hk) o.over = `<div class="scrim"><div class="hk"><small>iPhone の画面（ヘルスケアの許可）</small><b>ヘルスケアへのアクセス</b><p>体重、身長、生年月日、性別、歩数、摂取エネルギーの読み取りを求める。どちらを押しても先へ進む（取れる値は「条件」の人で決まる）。</p><div class="row"><span class="btn gray" data-act="hk">許可しない</span><span class="btn filled" data-act="hk">許可</span></div></div></div>`;
   el.innerHTML = PHONE(st, card, o);
@@ -1041,7 +1102,7 @@ document.getElementById('cond').addEventListener('change', e => {
 (() => {
   const m = location.hash.match(/^#([a-z-]+?)-(\d+)$/);
   const t = m ? topics.findIndex(x => x.dataset.topic === m[1]) : -1;
-  show(t < 0 ? 0 : t, m && t >= 0 ? +m[2] - 1 : 0);
+  show(t < 0 ? 0 : t, m && t >= 0 ? +m[2] - 1 : P[topics[0].dataset.topic]);
 })();
 </script>
 </html>
