@@ -7,6 +7,26 @@ import Testing
 
 @Suite("料理のキャッシュの行")
 struct CachedDishCacheTests {
+    /// 量のある料理と、量の無い料理を保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
+    @MainActor static func filledCache() throws -> (
+        store: SwiftDataSyncStore, cache: SwiftDataKeyedRecordCache<CachedDish>, corrected: Dish,
+        added: Dish
+    ) {
+        let store = try SwiftDataSyncStore(inMemory: true)
+        let cache = SwiftDataKeyedRecordCache<CachedDish>(context: store.container.mainContext)
+        let corrected = Dish(
+            id: UUID(), mealId: UUID(), name: "親子丼",
+            quantity: Dish.Quantity(value: 1.5, unit: "杯", source: .corrected),
+            positionInMeal: 0, version: 2)
+        let added = Dish(
+            id: UUID(), mealId: UUID(), name: "味噌汁", quantity: nil, positionInMeal: 1,
+            version: 1)
+        try cache.upsert(corrected)
+        try cache.upsert(added)
+        try cache.context.save()
+        return (store, cache, corrected, added)
+    }
+
     @Suite("量のある料理と、量の無い料理を足したとき")
     @MainActor
     struct Filled {
@@ -16,18 +36,7 @@ struct CachedDishCacheTests {
         let added: Dish
 
         init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            cache = SwiftDataKeyedRecordCache(context: store.container.mainContext)
-            corrected = Dish(
-                id: UUID(), mealId: UUID(), name: "親子丼",
-                quantity: Dish.Quantity(value: 1.5, unit: "杯", source: .corrected),
-                positionInMeal: 0, version: 2)
-            added = Dish(
-                id: UUID(), mealId: UUID(), name: "味噌汁", quantity: nil, positionInMeal: 1,
-                version: 1)
-            try cache.upsert(corrected)
-            try cache.upsert(added)
-            try cache.context.save()
+            (store, cache, corrected, added) = try CachedDishCacheTests.filledCache()
         }
 
         @Test("足した料理と同じ料理を、量と量の出どころを保って読めること")
@@ -35,29 +44,59 @@ struct CachedDishCacheTests {
             #expect(Set(try cache.savedRecords()) == [corrected, added])
         }
 
-        @Test("同じ ID の量の無い料理に量が付くと、行を増やさず値が替わること")
-        func replacesWithQuantity() throws {
-            let estimated = Dish(
-                id: added.id, mealId: UUID(), name: "豆腐の味噌汁",
-                quantity: Dish.Quantity(value: 1, unit: "椀", source: .estimated),
-                positionInMeal: 2, version: 2)
+        @Suite("量の無い料理と同じ ID の、量の付いた料理を足すとき")
+        @MainActor
+        struct UpsertingWithQuantity {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataKeyedRecordCache<CachedDish>
+            let corrected: Dish
+            let estimated: Dish
 
-            try cache.upsert(estimated)
+            init() throws {
+                let filled = try CachedDishCacheTests.filledCache()
+                store = filled.store
+                cache = filled.cache
+                corrected = filled.corrected
+                estimated = Dish(
+                    id: filled.added.id, mealId: UUID(), name: "豆腐の味噌汁",
+                    quantity: Dish.Quantity(value: 1, unit: "椀", source: .estimated),
+                    positionInMeal: 2, version: 2)
+            }
 
-            let saved = try cache.savedRecords()
-            #expect(saved.count == 2)
-            #expect(Set(saved) == [corrected, estimated])
+            @Test("行を増やさず値が替わること")
+            func replaces() throws {
+                try cache.upsert(estimated)
+
+                let saved = try cache.savedRecords()
+                #expect(saved.count == 2)
+                #expect(Set(saved) == [corrected, estimated])
+            }
         }
 
-        @Test("同じ ID の量のある料理が量の無い料理で届くと、量が無くなること")
-        func replacesWithoutQuantity() throws {
-            let withoutQuantity = Dish(
-                id: corrected.id, mealId: corrected.mealId, name: "親子丼", quantity: nil,
-                positionInMeal: 0, version: 3)
+        @Suite("量のある料理と同じ ID の、量の無い料理を足すとき")
+        @MainActor
+        struct UpsertingWithoutQuantity {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataKeyedRecordCache<CachedDish>
+            let added: Dish
+            let withoutQuantity: Dish
 
-            try cache.upsert(withoutQuantity)
+            init() throws {
+                let filled = try CachedDishCacheTests.filledCache()
+                store = filled.store
+                cache = filled.cache
+                added = filled.added
+                withoutQuantity = Dish(
+                    id: filled.corrected.id, mealId: filled.corrected.mealId, name: "親子丼",
+                    quantity: nil, positionInMeal: 0, version: 3)
+            }
 
-            #expect(Set(try cache.savedRecords()) == [withoutQuantity, added])
+            @Test("量が無くなること")
+            func losesQuantity() throws {
+                try cache.upsert(withoutQuantity)
+
+                #expect(Set(try cache.savedRecords()) == [withoutQuantity, added])
+            }
         }
 
         @Test("ID で消すと、その料理の行だけが無くなること")

@@ -62,13 +62,23 @@ struct DishSyncingTests {
     @Suite("取りに行った変更をキャッシュに当てるとき")
     struct Applying {
         let syncing = DishSyncing()
-        let cache = MemoryKeyedRecordCache<Dish, UUID>(id: \.id)
-        /// 親の食事は届いていない
-        let kept = Dish.fixture(name: "親子丼")
-        let removed = Dish.fixture(name: "味噌汁", quantity: nil, positionInMeal: 1)
+        let cache: MemoryKeyedRecordCache<Dish, UUID>
+        let kept: Dish
+        let removed: Dish
 
         init() throws {
-            try syncing.apply([kept, removed].map { .dish(Self.synced($0)) }, to: cache)
+            (cache, kept, removed) = try Self.appliedCache()
+        }
+
+        /// 料理を2件当てたキャッシュ。親の食事は届いていない
+        static func appliedCache() throws -> (
+            cache: MemoryKeyedRecordCache<Dish, UUID>, kept: Dish, removed: Dish
+        ) {
+            let cache = MemoryKeyedRecordCache<Dish, UUID>(id: \.id)
+            let kept = Dish.fixture(name: "親子丼")
+            let removed = Dish.fixture(name: "味噌汁", quantity: nil, positionInMeal: 1)
+            try DishSyncing().apply([kept, removed].map { .dish(synced($0)) }, to: cache)
+            return (cache, kept, removed)
         }
 
         static func synced(_ dish: Dish) -> SyncedDish {
@@ -87,15 +97,29 @@ struct DishSyncingTests {
             #expect(Set(cache.all()) == [kept, removed])
         }
 
-        @Test("同じ料理の新しい版が、キャッシュの料理を上書きすること")
-        func overwritesRevisedDish() throws {
-            let newer = Dish.fixture(
-                id: kept.id, mealId: kept.mealId, name: "カツ丼",
-                quantity: Dish.Quantity(value: 1.5, unit: "杯", source: .corrected), version: 2)
+        @Suite("同じ料理の新しい版が届いたとき")
+        struct NewerVersionArrived {
+            let syncing = DishSyncing()
+            let cache: MemoryKeyedRecordCache<Dish, UUID>
+            let removed: Dish
+            let newer: Dish
 
-            try syncing.apply([.dish(Self.synced(newer))], to: cache)
+            init() throws {
+                let applied = try Applying.appliedCache()
+                cache = applied.cache
+                removed = applied.removed
+                newer = Dish.fixture(
+                    id: applied.kept.id, mealId: applied.kept.mealId, name: "カツ丼",
+                    quantity: Dish.Quantity(value: 1.5, unit: "杯", source: .corrected),
+                    version: 2)
+            }
 
-            #expect(Set(cache.all()) == [newer, removed])
+            @Test("キャッシュの料理を上書きすること")
+            func overwritesDish() throws {
+                try syncing.apply([.dish(Applying.synced(newer))], to: cache)
+
+                #expect(Set(cache.all()) == [newer, removed])
+            }
         }
 
         @Test("削除の印の料理が消え、キャッシュに無い料理の削除の印は読み飛ばすこと")

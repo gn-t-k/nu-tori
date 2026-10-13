@@ -9,6 +9,30 @@ import Testing
 struct CachedMealEstimationStatusCacheTests {
     typealias Status = MealEstimationStatusSyncing.Status
 
+    /// すべての状態を、食事ごとに1つずつ保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
+    @MainActor static func filledCache() throws -> (
+        store: SwiftDataSyncStore, cache: SwiftDataKeyedRecordCache<CachedMealEstimationStatus>,
+        awaitingPhotos: Status, others: Set<Status>
+    ) {
+        let store = try SwiftDataSyncStore(inMemory: true)
+        let cache = SwiftDataKeyedRecordCache<CachedMealEstimationStatus>(
+            context: store.container.mainContext)
+        let awaitingPhotos = Status(mealId: UUID(), status: .awaitingPhotos)
+        let others: Set<Status> = [
+            Status(mealId: UUID(), status: .estimating),
+            Status(mealId: UUID(), status: .estimated),
+            Status(mealId: UUID(), status: .noDishes),
+            Status(mealId: UUID(), status: .deferredToNextDay),
+            Status(mealId: UUID(), status: .failed),
+        ]
+        try cache.upsert(awaitingPhotos)
+        for status in others {
+            try cache.upsert(status)
+        }
+        try cache.context.save()
+        return (store, cache, awaitingPhotos, others)
+    }
+
     @Suite("すべての状態を、食事ごとに1つずつ足したとき")
     @MainActor
     struct Filled {
@@ -18,21 +42,8 @@ struct CachedMealEstimationStatusCacheTests {
         let others: Set<Status>
 
         init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            cache = SwiftDataKeyedRecordCache(context: store.container.mainContext)
-            awaitingPhotos = Status(mealId: UUID(), status: .awaitingPhotos)
-            others = [
-                Status(mealId: UUID(), status: .estimating),
-                Status(mealId: UUID(), status: .estimated),
-                Status(mealId: UUID(), status: .noDishes),
-                Status(mealId: UUID(), status: .deferredToNextDay),
-                Status(mealId: UUID(), status: .failed),
-            ]
-            try cache.upsert(awaitingPhotos)
-            for status in others {
-                try cache.upsert(status)
-            }
-            try cache.context.save()
+            (store, cache, awaitingPhotos, others) =
+                try CachedMealEstimationStatusCacheTests.filledCache()
         }
 
         @Test("足した状態と同じ状態を、どの状態でも読めること")
@@ -40,15 +51,30 @@ struct CachedMealEstimationStatusCacheTests {
             #expect(Set(try cache.savedRecords()) == others.union([awaitingPhotos]))
         }
 
-        @Test("同じ食事の状態を足すと、行を増やさず状態が替わること")
-        func replacesSameMeal() throws {
-            let estimating = Status(mealId: awaitingPhotos.mealId, status: .estimating)
+        @Suite("同じ食事の状態を足すとき")
+        @MainActor
+        struct UpsertingSameMeal {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataKeyedRecordCache<CachedMealEstimationStatus>
+            let others: Set<Status>
+            let estimating: Status
 
-            try cache.upsert(estimating)
+            init() throws {
+                let filled = try CachedMealEstimationStatusCacheTests.filledCache()
+                store = filled.store
+                cache = filled.cache
+                others = filled.others
+                estimating = Status(mealId: filled.awaitingPhotos.mealId, status: .estimating)
+            }
 
-            let saved = try cache.savedRecords()
-            #expect(saved.count == 6)
-            #expect(Set(saved) == others.union([estimating]))
+            @Test("行を増やさず状態が替わること")
+            func replaces() throws {
+                try cache.upsert(estimating)
+
+                let saved = try cache.savedRecords()
+                #expect(saved.count == 6)
+                #expect(Set(saved) == others.union([estimating]))
+            }
         }
 
         @Test("食事の ID で消すと、その食事の状態の行だけが無くなること")

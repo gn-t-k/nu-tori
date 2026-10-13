@@ -16,6 +16,31 @@ struct CachedIngredientCacheTests {
             nutrients: nutrients)
     }
 
+    /// 栄養の出どころが、栄養成分表示・食品成分表・推定の材料を保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
+    @MainActor static func filledCache() throws -> (
+        store: SwiftDataSyncStore, cache: SwiftDataKeyedRecordCache<CachedIngredient>,
+        labeled: Ingredient, composed: Ingredient, estimated: Ingredient
+    ) {
+        let store = try SwiftDataSyncStore(inMemory: true)
+        let cache = SwiftDataKeyedRecordCache<CachedIngredient>(
+            context: store.container.mainContext)
+        let labeled = ingredient(
+            id: UUID(), nutrientSource: .nutritionLabel(basisGrams: 250),
+            nutrients: [.energyKcal: 120, .proteinG: 6.5, .fatG: 4.2])
+        let composed = ingredient(
+            id: UUID(), nutrientSource: .foodComposition(foodNumber: "11225"),
+            nutrients: [.energyKcal: 204, .proteinG: 16.6])
+        let estimated = Ingredient(
+            id: UUID(), dishId: UUID(), name: "ご飯", quantity: 1.5, quantitySource: .corrected,
+            unit: "膳", edibleGramsPerUnit: 150, positionInDish: 2, nutrientSource: .estimated,
+            nutrients: [:])
+        try cache.upsert(labeled)
+        try cache.upsert(composed)
+        try cache.upsert(estimated)
+        try cache.context.save()
+        return (store, cache, labeled, composed, estimated)
+    }
+
     @Suite("栄養の出どころが、栄養成分表示・食品成分表・推定の材料を足したとき")
     @MainActor
     struct Filled {
@@ -26,22 +51,8 @@ struct CachedIngredientCacheTests {
         let estimated: Ingredient
 
         init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            cache = SwiftDataKeyedRecordCache(context: store.container.mainContext)
-            labeled = CachedIngredientCacheTests.ingredient(
-                id: UUID(), nutrientSource: .nutritionLabel(basisGrams: 250),
-                nutrients: [.energyKcal: 120, .proteinG: 6.5, .fatG: 4.2])
-            composed = CachedIngredientCacheTests.ingredient(
-                id: UUID(), nutrientSource: .foodComposition(foodNumber: "11225"),
-                nutrients: [.energyKcal: 204, .proteinG: 16.6])
-            estimated = Ingredient(
-                id: UUID(), dishId: UUID(), name: "ご飯", quantity: 1.5, quantitySource: .corrected,
-                unit: "膳", edibleGramsPerUnit: 150, positionInDish: 2, nutrientSource: .estimated,
-                nutrients: [:])
-            try cache.upsert(labeled)
-            try cache.upsert(composed)
-            try cache.upsert(estimated)
-            try cache.context.save()
+            (store, cache, labeled, composed, estimated) =
+                try CachedIngredientCacheTests.filledCache()
         }
 
         @Test("足した材料と同じ材料を、栄養の出どころと栄養の値を保って読めること")
@@ -49,19 +60,36 @@ struct CachedIngredientCacheTests {
             #expect(Set(try cache.savedRecords()) == [labeled, composed, estimated])
         }
 
-        @Test("同じ ID の材料を足すと、行を増やさず、栄養の出どころと栄養の値も含めて値が替わること")
-        func replacesSameId() throws {
-            let revised = Ingredient(
-                id: labeled.id, dishId: UUID(), name: "牛乳", quantity: 0.8,
-                quantitySource: .corrected, unit: "杯", edibleGramsPerUnit: 200, positionInDish: 3,
-                nutrientSource: .foodComposition(foodNumber: "13003"),
-                nutrients: [.calciumMg: 110])
+        @Suite("同じ ID の材料を足すとき")
+        @MainActor
+        struct UpsertingSameId {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataKeyedRecordCache<CachedIngredient>
+            let composed: Ingredient
+            let estimated: Ingredient
+            let revised: Ingredient
 
-            try cache.upsert(revised)
+            init() throws {
+                let filled = try CachedIngredientCacheTests.filledCache()
+                store = filled.store
+                cache = filled.cache
+                composed = filled.composed
+                estimated = filled.estimated
+                revised = Ingredient(
+                    id: filled.labeled.id, dishId: UUID(), name: "牛乳", quantity: 0.8,
+                    quantitySource: .corrected, unit: "杯", edibleGramsPerUnit: 200,
+                    positionInDish: 3, nutrientSource: .foodComposition(foodNumber: "13003"),
+                    nutrients: [.calciumMg: 110])
+            }
 
-            let saved = try cache.savedRecords()
-            #expect(saved.count == 3)
-            #expect(Set(saved) == [revised, composed, estimated])
+            @Test("行を増やさず、栄養の出どころと栄養の値も含めて値が替わること")
+            func replaces() throws {
+                try cache.upsert(revised)
+
+                let saved = try cache.savedRecords()
+                #expect(saved.count == 3)
+                #expect(Set(saved) == [revised, composed, estimated])
+            }
         }
 
         @Test("ID で消すと、その材料の行だけが無くなること")

@@ -105,28 +105,31 @@ struct RecordSyncTests {
     @Suite("同期が動いているあいだに、もう一度同期を呼んだとき")
     struct SyncWhileInFlight {
         let device: RecordSyncDevice
+        /// 取得が届いたところで止まっている、1つめの同期
+        let first: Task<SyncResult?, any Error>
+        let secondStarted: Tally
 
-        init() throws {
+        init() async throws {
             let clock = SteppingClock()
             device = try RecordSyncDevice(
                 clock: clock,
                 server: .holdingPulls(
                     .init(records: [], startedOn: RecordSyncDevice.startedOn), clock: clock))
+            let recordSync = device.recordSync
+            first = Task { try await recordSync.sync() }
+            await device.server.pullArrivals.reaches(1)
+            secondStarted = Tally()
         }
 
         @Test("動いている1回にまとめ、取りに行くのは1回であること", .timeLimit(.minutes(1)))
         func joinsInFlightSync() async throws {
-            let recordSync = device.recordSync
-            let first = Task { try await recordSync.sync() }
-            await device.server.pullArrivals.reaches(1)
-            let secondStarted = Tally()
-            let second = Task {
+            let second = Task { [recordSync = device.recordSync, secondStarted] in
                 secondStarted.add()
                 return try await recordSync.sync()
             }
             await secondStarted.reaches(1)
             // 2つめが段取りに入ってから、取得を通す。段取りの中を1往復して、2つめを先に入らせる
-            _ = await recordSync.hasNotice(id: UUID())
+            _ = await device.recordSync.hasNotice(id: UUID())
             device.server.releasePulls()
             let results = [try await first.value, try await second.value]
 
@@ -137,17 +140,13 @@ struct RecordSyncTests {
 
         @Test("書き込みを送るための同期は、動いている1回が終わってから、もう1回取りに行くこと", .timeLimit(.minutes(1)))
         func syncsAgainAfterInFlightSync() async throws {
-            let recordSync = device.recordSync
-            let first = Task { try await recordSync.sync() }
-            await device.server.pullArrivals.reaches(1)
-            let secondStarted = Tally()
-            let second = Task {
+            let second = Task { [recordSync = device.recordSync, secondStarted] in
                 secondStarted.add()
                 await recordSync.followEstimationAfterSending()
             }
             await secondStarted.reaches(1)
             // 2つめが段取りに入ってから、取得を通す。段取りの中を1往復して、2つめを先に入らせる
-            _ = await recordSync.hasNotice(id: UUID())
+            _ = await device.recordSync.hasNotice(id: UUID())
             device.server.releasePulls()
             _ = try await first.value
             await second.value

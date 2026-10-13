@@ -70,14 +70,25 @@ struct IngredientSyncingTests {
     @Suite("取りに行った変更をキャッシュに当てるとき")
     struct Applying {
         let syncing = IngredientSyncing()
-        let cache = MemoryKeyedRecordCache<Ingredient, UUID>(id: \.id)
-        /// 親の料理は届いていない
-        let kept = Ingredient.fixture(name: "鶏もも肉", nutrients: [.energyKcal: 204])
-        let removed = Ingredient.fixture(
-            name: "ご飯", positionInDish: 1, nutrientSource: .estimated)
+        let cache: MemoryKeyedRecordCache<Ingredient, UUID>
+        let kept: Ingredient
+        let removed: Ingredient
 
         init() throws {
-            try syncing.apply([kept, removed].map { .ingredient(Self.synced($0)) }, to: cache)
+            (cache, kept, removed) = try Self.appliedCache()
+        }
+
+        /// 材料を2件当てたキャッシュ。親の料理は届いていない
+        static func appliedCache() throws -> (
+            cache: MemoryKeyedRecordCache<Ingredient, UUID>, kept: Ingredient, removed: Ingredient
+        ) {
+            let cache = MemoryKeyedRecordCache<Ingredient, UUID>(id: \.id)
+            let kept = Ingredient.fixture(name: "鶏もも肉", nutrients: [.energyKcal: 204])
+            let removed = Ingredient.fixture(
+                name: "ご飯", positionInDish: 1, nutrientSource: .estimated)
+            try IngredientSyncing().apply(
+                [kept, removed].map { .ingredient(synced($0)) }, to: cache)
+            return (cache, kept, removed)
         }
 
         static func synced(_ ingredient: Ingredient) -> SyncedIngredient {
@@ -102,15 +113,28 @@ struct IngredientSyncingTests {
             #expect(Set(cache.all()) == [kept, removed])
         }
 
-        @Test("同じ材料が届き直したら、キャッシュの材料をその値にそろえること")
-        func overwritesArrivedAgain() throws {
-            let corrected = Ingredient.fixture(
-                id: kept.id, dishId: kept.dishId, quantity: 150, quantitySource: .corrected,
-                nutrients: [.energyKcal: 306])
+        @Suite("同じ材料が届き直したとき")
+        struct ArrivedAgain {
+            let syncing = IngredientSyncing()
+            let cache: MemoryKeyedRecordCache<Ingredient, UUID>
+            let removed: Ingredient
+            let corrected: Ingredient
 
-            try syncing.apply([.ingredient(Self.synced(corrected))], to: cache)
+            init() throws {
+                let applied = try Applying.appliedCache()
+                cache = applied.cache
+                removed = applied.removed
+                corrected = Ingredient.fixture(
+                    id: applied.kept.id, dishId: applied.kept.dishId, quantity: 150,
+                    quantitySource: .corrected, nutrients: [.energyKcal: 306])
+            }
 
-            #expect(Set(cache.all()) == [corrected, removed])
+            @Test("キャッシュの材料をその値にそろえること")
+            func overwritesWithArrivedValue() throws {
+                try syncing.apply([.ingredient(Applying.synced(corrected))], to: cache)
+
+                #expect(Set(cache.all()) == [corrected, removed])
+            }
         }
 
         @Test("削除の印の材料が消え、キャッシュに無い材料の削除の印は読み飛ばすこと")

@@ -16,6 +16,25 @@ struct CachedNoticeCacheTests {
             response: response)
     }
 
+    /// 答えていない知らせと、答えた知らせを保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
+    @MainActor static func filledCache() throws -> (
+        store: SwiftDataSyncStore, cache: SwiftDataKeyedRecordCache<CachedNotice>,
+        unanswered: Notice, answered: Notice
+    ) {
+        let store = try SwiftDataSyncStore(inMemory: true)
+        let cache = SwiftDataKeyedRecordCache<CachedNotice>(context: store.container.mainContext)
+        let unanswered = try notice(day: 22, response: nil)
+        let answered = try notice(
+            day: 21,
+            response: Notice.Response(
+                respondedAt: Date(timeIntervalSince1970: 1_790_029_800),
+                timeZone: try #require(TimeZone(identifier: "America/New_York"))))
+        try cache.upsert(unanswered)
+        try cache.upsert(answered)
+        try cache.context.save()
+        return (store, cache, unanswered, answered)
+    }
+
     @Suite("答えていない知らせと、答えた知らせを足したとき")
     @MainActor
     struct Filled {
@@ -25,17 +44,7 @@ struct CachedNoticeCacheTests {
         let answered: Notice
 
         init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            cache = SwiftDataKeyedRecordCache(context: store.container.mainContext)
-            unanswered = try CachedNoticeCacheTests.notice(day: 22, response: nil)
-            answered = try CachedNoticeCacheTests.notice(
-                day: 21,
-                response: Notice.Response(
-                    respondedAt: Date(timeIntervalSince1970: 1_790_029_800),
-                    timeZone: try #require(TimeZone(identifier: "America/New_York"))))
-            try cache.upsert(unanswered)
-            try cache.upsert(answered)
-            try cache.context.save()
+            (store, cache, unanswered, answered) = try CachedNoticeCacheTests.filledCache()
         }
 
         @Test("足した知らせと同じ知らせを、答えを保って読めること")
@@ -43,28 +52,52 @@ struct CachedNoticeCacheTests {
             #expect(Set(try cache.savedRecords()) == [unanswered, answered])
         }
 
-        @Test("同じ ID の答えた知らせを足すと、行を増やさず、答えた形に替わること")
-        func replacesWithResponse() throws {
-            let responded = try CachedNoticeCacheTests.notice(
-                day: 22,
-                response: Notice.Response(
-                    respondedAt: Date(timeIntervalSince1970: 1_790_030_000),
-                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))))
+        @Suite("答えていない知らせと同じ ID の、答えた知らせを足すとき")
+        @MainActor
+        struct UpsertingWithResponse {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataKeyedRecordCache<CachedNotice>
+            let answered: Notice
+            let responded: Notice
 
-            try cache.upsert(responded)
+            init() throws {
+                (store, cache, _, answered) = try CachedNoticeCacheTests.filledCache()
+                responded = try CachedNoticeCacheTests.notice(
+                    day: 22,
+                    response: Notice.Response(
+                        respondedAt: Date(timeIntervalSince1970: 1_790_030_000),
+                        timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))))
+            }
 
-            let saved = try cache.savedRecords()
-            #expect(saved.count == 2)
-            #expect(Set(saved) == [responded, answered])
+            @Test("行を増やさず、答えた形に替わること")
+            func replaces() throws {
+                try cache.upsert(responded)
+
+                let saved = try cache.savedRecords()
+                #expect(saved.count == 2)
+                #expect(Set(saved) == [responded, answered])
+            }
         }
 
-        @Test("同じ ID の答えていない知らせを足すと、答えが無くなること")
-        func replacesWithoutResponse() throws {
-            let withdrawn = try CachedNoticeCacheTests.notice(day: 21, response: nil)
+        @Suite("答えた知らせと同じ ID の、答えていない知らせを足すとき")
+        @MainActor
+        struct UpsertingWithoutResponse {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataKeyedRecordCache<CachedNotice>
+            let unanswered: Notice
+            let withdrawn: Notice
 
-            try cache.upsert(withdrawn)
+            init() throws {
+                (store, cache, unanswered, _) = try CachedNoticeCacheTests.filledCache()
+                withdrawn = try CachedNoticeCacheTests.notice(day: 21, response: nil)
+            }
 
-            #expect(Set(try cache.savedRecords()) == [unanswered, withdrawn])
+            @Test("答えが無くなること")
+            func losesResponse() throws {
+                try cache.upsert(withdrawn)
+
+                #expect(Set(try cache.savedRecords()) == [unanswered, withdrawn])
+            }
         }
 
         @Test("ID で消すと、その知らせの行だけが無くなること")

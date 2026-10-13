@@ -192,17 +192,30 @@ struct WeightRecordSyncingTests {
     @Suite("取りに行った変更をキャッシュに当てるとき")
     struct Applying {
         let syncing = WeightRecordSyncing()
-        let cache = MemoryKeyedRecordCache<WeightRecord, UUID>(id: \.id)
+        let cache: MemoryKeyedRecordCache<WeightRecord, UUID>
         let kept: WeightRecord
         let revised: WeightRecord
         let removed: WeightRecord
 
         init() throws {
-            kept = try .manual(70.0, at: "2026-09-22T07:12:00+09:00", in: "Asia/Tokyo")
-            revised = try .manual(71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
-            removed = try .manual(72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-            try syncing.apply(
-                [kept, revised, removed].map { .weightRecord(Self.synced($0)) }, to: cache)
+            (cache, kept, revised, removed) = try Self.appliedCache()
+        }
+
+        /// 体重記録を3件当てたキャッシュ
+        static func appliedCache() throws -> (
+            cache: MemoryKeyedRecordCache<WeightRecord, UUID>, kept: WeightRecord,
+            revised: WeightRecord, removed: WeightRecord
+        ) {
+            let cache = MemoryKeyedRecordCache<WeightRecord, UUID>(id: \.id)
+            let kept = try WeightRecord.manual(
+                70.0, at: "2026-09-22T07:12:00+09:00", in: "Asia/Tokyo")
+            let revised = try WeightRecord.manual(
+                71.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+            let removed = try WeightRecord.manual(
+                72.0, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+            try WeightRecordSyncing().apply(
+                [kept, revised, removed].map { .weightRecord(synced($0)) }, to: cache)
+            return (cache, kept, revised, removed)
         }
 
         static func synced(_ record: WeightRecord) -> SyncedWeightRecord {
@@ -216,15 +229,30 @@ struct WeightRecordSyncingTests {
             #expect(Set(cache.all()) == [kept, revised, removed])
         }
 
-        @Test("同じ記録の新しい版が、キャッシュの記録を上書きすること")
-        func overwritesRevisedRecord() throws {
-            let newer = WeightRecord(
-                id: revised.id, kilograms: 73.0, instant: revised.instant,
-                timeZone: revised.timeZone, inputSource: .manual, version: 2)
+        @Suite("同じ記録の新しい版が届いたとき")
+        struct NewerVersionArrived {
+            let syncing = WeightRecordSyncing()
+            let cache: MemoryKeyedRecordCache<WeightRecord, UUID>
+            let kept: WeightRecord
+            let removed: WeightRecord
+            let newer: WeightRecord
 
-            try syncing.apply([.weightRecord(Self.synced(newer))], to: cache)
+            init() throws {
+                let applied = try Applying.appliedCache()
+                cache = applied.cache
+                kept = applied.kept
+                removed = applied.removed
+                newer = WeightRecord(
+                    id: applied.revised.id, kilograms: 73.0, instant: applied.revised.instant,
+                    timeZone: applied.revised.timeZone, inputSource: .manual, version: 2)
+            }
 
-            #expect(Set(cache.all()) == [kept, newer, removed])
+            @Test("キャッシュの記録を上書きすること")
+            func overwritesRecord() throws {
+                try syncing.apply([.weightRecord(Applying.synced(newer))], to: cache)
+
+                #expect(Set(cache.all()) == [kept, newer, removed])
+            }
         }
 
         @Test("削除の印の記録が消え、キャッシュに無い記録の削除の印は読み飛ばすこと")
