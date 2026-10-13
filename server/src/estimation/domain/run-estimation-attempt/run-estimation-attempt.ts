@@ -1,9 +1,11 @@
 import { R } from "@praha/byethrow";
+import nutrientDefinitions from "../../../../../shared/nutrients.json";
 import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
 import type { RecordId } from "../../../domain/record-id";
 import { loadFoodComposition } from "../../../domain/food-composition/food-composition";
 import { isNutrientName } from "../../../domain/food-composition/nutrient-name";
+import type { NutrientName } from "../../../domain/food-composition/nutrient-name";
 import type { IngredientNutrientSource } from "../../../ingredient/domain/ingredient";
 import type { MealPhotoArchive } from "../../../meal/domain/meal-photo-archive";
 import type { BegunEstimationAttempt, WrittenMealTarget } from "../begin-estimation-attempts";
@@ -367,11 +369,20 @@ const isValidIdentifiedDishes = (
           isPresentText(ingredient.unit) &&
           isPositive(ingredient.edibleGrams) &&
           (ingredient.nutritionLabel === undefined ||
-            (isPositive(ingredient.nutritionLabel.basisGrams) &&
-              Object.entries(ingredient.nutritionLabel.nutrients).every(
-                ([nutrient, amount]) => isNutrientName(nutrient) && isNonNegative(amount),
-              ))),
+            isValidNutritionLabel(ingredient.nutritionLabel)),
       ),
+  );
+
+const isValidNutritionLabel = ({
+  basisGrams,
+  nutrients,
+}: NonNullable<IdentifiedIngredient["nutritionLabel"]>): boolean =>
+  isPositive(basisGrams) &&
+  Object.entries(nutrients).every(
+    ([nutrient, amount]) =>
+      isNutrientName(nutrient) &&
+      isNonNegative(amount) &&
+      isPossibleInFood(nutrient, amount, basisGrams),
   );
 
 // 答えは要求と同じ数で、食品番号は候補から選んでいること
@@ -387,11 +398,32 @@ const isValidMatchedIngredients = (
           (candidate) => candidate.foodNumber === foodNumber,
         ),
       )
-      .with({ source: "estimated" }, ({ nutrients }) =>
-        Object.values(nutrients).every(isNonNegative),
-      )
+      .with({ source: "estimated" }, ({ nutrients }) => {
+        // AI の推定の栄養は、可食部 100 g あたり
+        const estimatedBasisGrams = 100;
+        return Object.entries(nutrients).every(
+          ([nutrient, amount]) =>
+            isNutrientName(nutrient) &&
+            isNonNegative(amount) &&
+            isPossibleInFood(nutrient, amount, estimatedBasisGrams),
+        );
+      })
       .exhaustive(),
   );
+
+// 基準の読み違い（1袋あたりの値を 1 g あたりと読む、1食分の値を 100 g あたりとして答える）で桁が跳ねた答えを落とす
+const isPossibleInFood = (nutrient: NutrientName, amount: number, basisGrams: number): boolean => {
+  // 正しい記録をはじかない高さに置く。純粋な脂質で 100 g あたり約 900 kcal で、栄養成分表示の許容差（±20%）を見込む
+  const maximumEnergyKcalPer100Grams = 1200;
+  // 重さより多くは入らない（100 g）が、① は ml を g とみなすので、水あめのように重い液体の表示は 100 ml あたり 120 g 近くになる。それが通るよう、重さの倍に置く
+  const maximumGramsPer100Grams = 200;
+  const amountPer100Grams = (amount / basisGrams) * 100;
+  // mg・µg の項目には、ありえないと言える上限が無いので確かめない
+  return match(nutrientDefinitions[nutrient].unit)
+    .with("kcal", () => amountPer100Grams <= maximumEnergyKcalPer100Grams)
+    .with("g", () => amountPer100Grams <= maximumGramsPer100Grams)
+    .otherwise(() => true);
+};
 
 const isPresentText = (text: string): boolean => text.trim().length > 0;
 
