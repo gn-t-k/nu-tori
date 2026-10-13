@@ -1,9 +1,9 @@
 import XCTest
 
-/// 食事を画面に収まらないだけ並べてタイムラインを遡った状態で、「写真」で写真を選ぶ → 足した食事のカードが見える位置（一番下）に戻る。
+/// 食事を画面に収まらないだけ並べてタイムラインを遡った状態で、いちばん下に項目を足す（写真を選ぶ、文章を送る） → 一番下に戻る。
 /// 写真の選択は起動の値で差し替える（選ぶ画面を開かずに1枚選んだことにする）
 @MainActor
-final class ReturnToTimelineEndAfterPickedPhotosUITests: XCTestCase {
+final class ReturnToTimelineEndWhenScrolledBackUITests: XCTestCase {
     private var app = XCUIApplication()
 
     override func setUp() async throws {
@@ -34,6 +34,18 @@ final class ReturnToTimelineEndAfterPickedPhotosUITests: XCTestCase {
         let shown = try await waitUntil(added, isAbove: photos)
         attachScreenshot(of: app, named: "写真を足して一番下に戻ったタイムライン")
         XCTAssertTrue(shown, "足した食事のカードが入力欄の下に隠れている")
+    }
+
+    func test_遡ってから文章を送るとタイムラインの一番下に戻ること() {
+        app.composerField.tap()
+        app.composerField.typeText("散歩した")
+        app.buttons["composer-send"].tap()
+
+        // 時計を止めているので、吹き出しは同じ時刻の食事のカードより上に並ぶ。一番下に戻ったことは、いちばん下のカードで確かめる
+        let newest = mealCards.element(boundBy: Self.mealsFillingScreen - 1)
+        let returned = waitUntilHittable(newest)
+        attachScreenshot(of: app, named: "文章を送って一番下に戻ったタイムライン")
+        XCTAssertTrue(returned, "いちばん下の食事のカードが見える位置に戻っていない")
     }
 
     /// カードが画面の高さを超えて並び、遡れるようになる数

@@ -168,7 +168,6 @@ struct TimelineScreen: View {
                     let sentAt = now()
                     capturedCount += 1
                     cameraPhase = .closed
-                    returnToTimelineEnd()
                     Task { await mealActions.recordCapturedPhoto(original, exif, sentAt) }
                 },
                 onCancel: {
@@ -193,7 +192,6 @@ struct TimelineScreen: View {
             guard !items.isEmpty else { return }
             let pickedAt = now()
             pickedPhotos = []
-            returnToTimelineEnd()
             Task { await mealActions.recordPickedPhotos(items, pickedAt) }
         }
         .onChange(of: weightEntryPhase) { previous, phase in
@@ -236,7 +234,7 @@ struct TimelineScreen: View {
     /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
-    /// 中身が伸びたとき（返事が伸びる、送った食事のカードが足される）に一番下へ追うか。使う人が動かして一番下から離れたら止め、一番下へ戻すか、伸びる返事が無くなったら追う
+    /// 中身が伸びたときに一番下へ追うか。立てる場面と下ろす場面は `timelineList` のコメント
     @State private var followsTimelineEnd = true
     /// 一番下に着き終えた、いちばん新しい日。日が足された描画では、まだ前の日のまま
     @State private var settledNewestDay: CalendarDay?
@@ -310,6 +308,11 @@ struct TimelineScreen: View {
         }
     }
 
+    /// タイムラインの位置を動かす場面は、次の4つ。自分の操作の結果は見せ、ほかから来たもの（返事、知らせ、同期や取り込みで届いた記録）では読んでいる所から動かさない。
+    /// - 開く: 一番下から開く
+    /// - 追う: 一番下にいるあいだ、中身が伸びても（返事が伸びる、項目や日が足される）一番下に保つ。指で触れたら止める。止まったとき（アプリが動かして着いたときを含む）は、そこが一番下なら追い、違えば止める。伸びる返事が無くなったときと、送り直したときも、また追う（`followsTimelineEnd`）
+    /// - 戻す: ユーザーがアプリの中でいちばん下に項目を足したら、遡っていても一番下へ連れていき、そこから追う（`Timeline.addsItemByUserAtEnd`）
+    /// - 着く: 選んだ所へ行く。日のまとめで選んだ日、帯の下の1行の知らせ、通知から開いた知らせか一番下（`dayFocus`）
     private func timelineList(_ timeline: Timeline) -> some View {
         // タイムラインの中身の全体。下の余白まで含めた下端へ動かすときに名指しする
         let contentId = "timeline-content"
@@ -346,10 +349,10 @@ struct TimelineScreen: View {
                 }
                 // 送ったあともキーボードを残すので、下げる手立てはタイムラインを動かすか押すこと。指に合わせて下げる形（.interactively）は、指がキーボードに届くまで下がらず、あいだに入力欄があるここではふつうに動かしても届かない（#450）
                 .scrollDismissesKeyboard(.immediately)
+                // 開く
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
-                // 返事が伸びるあいだと、送った食事のカードが足されるときは一番下へ追う。使う人が上へ動かしたら、追うのを止める
-                // 日が足された描画では追わない。LazyVStack はまだ描いていない日の高さをほかの日の平均で見積もり、追うとその見積もりの端（何も無い所）へ動いて、足された日が描かれず真っ白のまま残る
+                // 追う。日が足された描画では追わない。LazyVStack はまだ描いていない日の高さをほかの日の平均で見積もり、追うとその見積もりの端（何も無い所）へ動いて、足された日が描かれず真っ白のまま残る
                 .defaultScrollAnchor(
                     followsTimelineEnd && timeline.days.last?.day == settledNewestDay
                         ? .bottom : .top, for: .sizeChanges
@@ -379,7 +382,7 @@ struct TimelineScreen: View {
                         followsTimelineEnd = false
                     } else if phase == .idle {
                         followsTimelineEnd = timelineEnd.followsWhenSettled
-                        // 下端ちょうどにいないと .sizeChanges の .bottom が追わないので、使う人が入力欄の下に隠れた所で止めたら下端へ動かす（#469）。
+                        // 下端ちょうどにいないと .sizeChanges の .bottom が追わないので、使う人が入力欄の下に隠れた所で止めたら下端ちょうどへ寄せて、追えるようにする（#469）。
                         // アプリが動かして止まったとき（知らせのカードへ着いた、ここで下端へ動かした）は、着いた所に置く
                         let releasedByUser = oldPhase == .interacting || oldPhase == .decelerating
                         if releasedByUser, timelineEnd == .underComposer {
@@ -387,6 +390,13 @@ struct TimelineScreen: View {
                                 proxy.scrollTo(contentId, anchor: .bottom)
                             }
                         }
+                    }
+                }
+                // 戻す
+                .onChange(of: timeline.days) { old, new in
+                    if Timeline.addsItemByUserAtEnd(from: old, to: new, now: now()) {
+                        followsTimelineEnd = true
+                        dayFocus = .scrollingToEnd
                     }
                 }
                 .onChange(of: timeline.hasGrowingReply) { _, growing in
@@ -408,6 +418,7 @@ struct TimelineScreen: View {
                 .onPreferenceChange(AwaitingNoticePositionKey.self) { position in
                     unansweredNoticeLineVisibility.note(position)
                 }
+                // 着く
                 .onChange(of: dayFocus) { _, focus in
                     switch focus {
                     case .scrollingTo(let day):
@@ -600,7 +611,6 @@ struct TimelineScreen: View {
                 #if DEBUG
                     case .fixed(let record):
                         let pickedAt = now()
-                        returnToTimelineEnd()
                         Task { await record(pickedAt) }
                 #endif
                 }
@@ -619,19 +629,9 @@ struct TimelineScreen: View {
             },
             onSendText: { draft in
                 showsCameraNotice = false
-                followsTimelineEnd = true
                 Task { await sendText(draft) }
             }
         )
-    }
-
-    /// 遡っていても、送った食事が並ぶ一番下に戻す。食事のカードは送った時刻の位置に、あとから足されるので、足されたときも一番下へ追う
-    private func returnToTimelineEnd() {
-        followsTimelineEnd = true
-        // 読み込み中は並んでいないので動かさない。取り終えたら一番下から開く
-        if !showsLoading {
-            dayFocus = .scrollingToEnd
-        }
     }
 
     /// ほかを押したら、カメラの許可の知らせを消してから動く
