@@ -415,7 +415,7 @@ const isValidMatchedIngredients = (
 const isPossibleInFood = (nutrient: NutrientName, amount: number, basisGrams: number): boolean => {
   // 正しい記録をはじかない高さに置く。純粋な脂質で 100 g あたり約 900 kcal で、栄養成分表示の許容差（±20%）を見込む
   const maximumEnergyKcalPer100Grams = 1200;
-  // 重さより多くは入らないが、① は ml を g とみなすので、水あめのように重い液体の表示は 100 ml あたり 120 g 近くになる。その倍に置く
+  // 重さより多くは入らない（100 g）が、① は ml を g とみなすので、水あめのように重い液体の表示は 100 ml あたり 120 g 近くになる。それが通るよう、重さの倍に置く
   const maximumGramsPer100Grams = 200;
   const amountPer100Grams = (amount / basisGrams) * 100;
   // mg・µg の項目には、ありえないと言える上限が無いので確かめない
