@@ -21,7 +21,7 @@ const udon: IdentifiedDishes["dishes"][number] = {
       name: "うどん",
       quantity: 200,
       unit: "g",
-      edibleGramsPerUnit: 1,
+      edibleGrams: 200,
       foodCompositionQuery: "うどん ゆで",
       nutritionLabel: undefined,
     },
@@ -37,7 +37,7 @@ const bread: IdentifiedDishes["dishes"][number] = {
       name: "食パン",
       quantity: 1,
       unit: "枚",
-      edibleGramsPerUnit: 60,
+      edibleGrams: 60,
       foodCompositionQuery: "こむぎ 食パン",
       nutritionLabel: undefined,
     },
@@ -54,7 +54,7 @@ const greenTea: IdentifiedDishes["dishes"][number] = {
       name: "緑茶",
       quantity: 1,
       unit: "本",
-      edibleGramsPerUnit: 500,
+      edibleGrams: 500,
       foodCompositionQuery: "せん茶 浸出液",
       nutritionLabel: { basisGrams: 100, nutrients: { energy_kcal: 0 } },
     },
@@ -201,24 +201,23 @@ describe("推定の試み", () => {
       });
     });
 
-    describe("① が、単位が g の材料に、1単位あたりの可食部の g を 1 でない値で返したとき", () => {
+    describe("① が、量が 2 個で、食べた分の可食部の g が 100 の材料を返したとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderOk({
           identifiedDishes: {
             dishes: [
               {
-                name: "卵かけ用生卵",
-                quantity: 1,
+                name: "ゆで卵",
+                quantity: 2,
                 unit: "個",
                 ingredients: [
                   {
                     name: "卵",
-                    quantity: 50,
-                    unit: "g",
-                    // 1個の g を、量と重ねて答えた（そのまま掛けると 2,500 g になる）
-                    edibleGramsPerUnit: 50,
-                    foodCompositionQuery: "鶏卵 全卵 生",
+                    quantity: 2,
+                    unit: "個",
+                    edibleGrams: 100,
+                    foodCompositionQuery: "鶏卵 全卵 ゆで",
                     nutritionLabel: undefined,
                   },
                 ],
@@ -228,10 +227,33 @@ describe("推定の試み", () => {
         });
       });
 
-      test("1単位あたりの可食部の g を 1 にすること", async () => {
+      test("1単位あたりの可食部の g を、食べた分の g を量で割った 50 にすること", async () => {
         expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
           result: "succeeded",
-          dishes: [{ ingredients: [{ quantity: 50, unit: "g", edibleGramsPerUnit: 1 }] }],
+          dishes: [{ ingredients: [{ quantity: 2, unit: "個", edibleGramsPerUnit: 50 }] }],
+        });
+      });
+    });
+
+    describe("① が返した材料の、食べた分の可食部の g が 0 のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: {
+            dishes: [
+              {
+                ...udon,
+                ingredients: udon.ingredients.map((noodle) => ({ ...noodle, edibleGrams: 0 })),
+              },
+            ],
+          },
+        });
+      });
+
+      test("① で確かめに通らない試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "invalid_response",
+          failedStage: "identify_dishes",
         });
       });
     });

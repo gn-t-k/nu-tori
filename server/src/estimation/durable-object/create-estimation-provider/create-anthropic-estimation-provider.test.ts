@@ -12,7 +12,7 @@ const chicken = {
   name: "鶏もも肉",
   quantity: 80,
   unit: "g",
-  edibleGramsPerUnit: 1,
+  edibleGrams: 80,
   foodCompositionQuery: "にわとり 若どり もも 皮なし 焼き",
   nutritionLabel: null,
 };
@@ -21,7 +21,7 @@ const greenTea = {
   name: "緑茶",
   quantity: 1,
   unit: "本",
-  edibleGramsPerUnit: 500,
+  edibleGrams: 500,
   foodCompositionQuery: "せん茶 浸出液",
   nutritionLabel: {
     basisGrams: 100,
@@ -99,7 +99,7 @@ describe("createAnthropicEstimationProvider", () => {
                     name: "鶏もも肉",
                     quantity: 80,
                     unit: "g",
-                    edibleGramsPerUnit: 1,
+                    edibleGrams: 80,
                     foodCompositionQuery: "にわとり 若どり もも 皮なし 焼き",
                     nutritionLabel: undefined,
                   },
@@ -107,7 +107,7 @@ describe("createAnthropicEstimationProvider", () => {
                     name: "緑茶",
                     quantity: 1,
                     unit: "本",
-                    edibleGramsPerUnit: 500,
+                    edibleGrams: 500,
                     foodCompositionQuery: "せん茶 浸出液",
                     nutritionLabel: {
                       basisGrams: 100,

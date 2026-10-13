@@ -275,16 +275,14 @@ const composeDishes = (
         name: ingredient.name,
         quantity: ingredient.quantity,
         unit: ingredient.unit,
-        edibleGramsPerUnit: isGramUnit(ingredient.unit) ? 1 : ingredient.edibleGramsPerUnit,
+        // 栄養に使う g は ① が直接見積もった合計で、量と掛け合わせて作らない（量と1単位あたりを別々に答えさせると、重ねて答えたときに桁が跳ねる）
+        edibleGramsPerUnit: ingredient.edibleGrams / ingredient.quantity,
         nutrientSource,
         nutrients,
       };
     }),
   }));
 };
-
-// 単位が g の材料は、量がそのまま可食部の g になる。① が 1個の g などを重ねて答えても、量に掛けない
-const isGramUnit = (unit: string): boolean => unit === "g";
 
 const toMatchedNutrients = (
   matched: IngredientMatch | undefined,
@@ -367,7 +365,7 @@ const isValidIdentifiedDishes = (
           isPresentText(ingredient.name) &&
           isPositive(ingredient.quantity) &&
           isPresentText(ingredient.unit) &&
-          isPositive(ingredient.edibleGramsPerUnit) &&
+          isPositive(ingredient.edibleGrams) &&
           (ingredient.nutritionLabel === undefined ||
             (isPositive(ingredient.nutritionLabel.basisGrams) &&
               Object.entries(ingredient.nutritionLabel.nutrients).every(

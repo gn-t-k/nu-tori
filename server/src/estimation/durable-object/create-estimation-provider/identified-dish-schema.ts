@@ -13,7 +13,7 @@ export const identifiedDishSchema = z.object({
       name: z.string(),
       quantity: z.number(),
       unit: z.string(),
-      edibleGramsPerUnit: z.number(),
+      edibleGrams: z.number(),
       foodCompositionQuery: z.string(),
       nutritionLabel: z
         .object({

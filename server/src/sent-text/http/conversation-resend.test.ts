@@ -32,7 +32,7 @@ const dish = (name: string, ingredientName: string): IdentifiedDishes["dishes"][
       name: ingredientName,
       quantity: 100,
       unit: "g",
-      edibleGramsPerUnit: 1,
+      edibleGrams: 100,
       foodCompositionQuery: ingredientName,
       nutritionLabel: undefined,
     },
