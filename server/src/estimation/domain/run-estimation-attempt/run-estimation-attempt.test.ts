@@ -339,7 +339,7 @@ describe("推定の試み", () => {
       });
     });
 
-    describe("① が返した栄養成分表示のエネルギーが、基準 10 g あたり 120 kcal（100 g あたり 1,200 kcal）のとき", () => {
+    describe("① が返した栄養成分表示のエネルギーが、基準 50 g あたり 600 kcal（100 g あたり 1,200 kcal）のとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderOk({
@@ -349,7 +349,7 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 10, nutrients: { energy_kcal: 120 } },
+                  nutritionLabel: { basisGrams: 50, nutrients: { energy_kcal: 600 } },
                 })),
               },
             ],
@@ -364,7 +364,7 @@ describe("推定の試み", () => {
       });
     });
 
-    describe("① が返した栄養成分表示のエネルギーが、基準 10 g あたり 121 kcal（100 g あたり 1,200 kcal 超）のとき", () => {
+    describe("① が返した栄養成分表示のエネルギーが、基準 50 g あたり 600.5 kcal（100 g あたり 1,201 kcal）のとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderOk({
@@ -374,7 +374,7 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 10, nutrients: { energy_kcal: 121 } },
+                  nutritionLabel: { basisGrams: 50, nutrients: { energy_kcal: 600.5 } },
                 })),
               },
             ],
@@ -390,7 +390,7 @@ describe("推定の試み", () => {
       });
     });
 
-    describe("① が返した栄養成分表示のたんぱく質が、基準 10 g あたり 12 g（100 g あたり 120 g）のとき", () => {
+    describe("① が返した栄養成分表示のたんぱく質が、基準 50 g あたり 100 g（100 g あたり 200 g）のとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderOk({
@@ -400,7 +400,7 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 10, nutrients: { protein_g: 12 } },
+                  nutritionLabel: { basisGrams: 50, nutrients: { protein_g: 100 } },
                 })),
               },
             ],
@@ -415,7 +415,7 @@ describe("推定の試み", () => {
       });
     });
 
-    describe("① が返した栄養成分表示のたんぱく質が、基準 10 g あたり 13 g（100 g あたり 120 g 超）のとき", () => {
+    describe("① が返した栄養成分表示のたんぱく質が、基準 50 g あたり 100.5 g（100 g あたり 201 g）のとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderOk({
@@ -425,7 +425,7 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 10, nutrients: { protein_g: 13 } },
+                  nutritionLabel: { basisGrams: 50, nutrients: { protein_g: 100.5 } },
                 })),
               },
             ],
@@ -606,7 +606,7 @@ describe("推定の試み", () => {
       });
     });
 
-    describe("② が推定したたんぱく質が 100 g あたり 120 g のとき", () => {
+    describe("② が推定したたんぱく質が 100 g あたり 200 g のとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderOk({
@@ -615,7 +615,7 @@ describe("推定の試み", () => {
               source: "estimated",
               nutrients: {
                 energy_kcal: 0,
-                protein_g: 120,
+                protein_g: 200,
                 fat_g: 0,
                 carbohydrate_g: 0,
                 fiber_g: 0,
@@ -633,7 +633,7 @@ describe("推定の試み", () => {
       });
     });
 
-    describe("② が推定したたんぱく質が 100 g あたり 121 g のとき", () => {
+    describe("② が推定したたんぱく質が 100 g あたり 201 g のとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderOk({
@@ -642,7 +642,7 @@ describe("推定の試み", () => {
               source: "estimated",
               nutrients: {
                 energy_kcal: 0,
-                protein_g: 121,
+                protein_g: 201,
                 fat_g: 0,
                 carbohydrate_g: 0,
                 fiber_g: 0,

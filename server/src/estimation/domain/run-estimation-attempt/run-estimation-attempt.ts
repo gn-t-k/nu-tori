@@ -398,34 +398,32 @@ const isValidMatchedIngredients = (
           (candidate) => candidate.foodNumber === foodNumber,
         ),
       )
-      .with({ source: "estimated" }, ({ nutrients }) =>
-        Object.entries(nutrients).every(
+      .with({ source: "estimated" }, ({ nutrients }) => {
+        // AI の推定の栄養は、可食部 100 g あたり
+        const estimatedBasisGrams = 100;
+        return Object.entries(nutrients).every(
           ([nutrient, amount]) =>
             isNutrientName(nutrient) &&
             isNonNegative(amount) &&
             isPossibleInFood(nutrient, amount, estimatedBasisGrams),
-        ),
-      )
+        );
+      })
       .exhaustive(),
   );
 
-// AI の推定の栄養は、可食部 100 g あたり
-const estimatedBasisGrams = 100;
-
-// 食べ物にありえない濃さの値を通さない。基準の読み違い（1袋あたりの値を 1 g あたりと読む、1食分の値を 100 g あたりとして答える）で桁が跳ねた答えを落とす。
-// 上限は、正しい記録をはじかない高さに置く: エネルギーは純粋な脂質で 100 g あたり約 940 kcal、g の項目は 100 g あたり 100 g までで、
-// 栄養成分表示の許容差（±20%）を見込む。mg・µg の項目には、ありえないと言える上限が無いので確かめない
+// 基準の読み違い（1袋あたりの値を 1 g あたりと読む、1食分の値を 100 g あたりとして答える）で桁が跳ねた答えを落とす
 const isPossibleInFood = (nutrient: NutrientName, amount: number, basisGrams: number): boolean => {
+  // 正しい記録をはじかない高さに置く。純粋な脂質で 100 g あたり約 900 kcal で、栄養成分表示の許容差（±20%）を見込む
+  const maximumEnergyKcalPer100Grams = 1200;
+  // 重さより多くは入らないが、① は ml を g とみなすので、水あめのように重い液体の表示は 100 ml あたり 120 g 近くになる。その倍に置く
+  const maximumGramsPer100Grams = 200;
   const amountPer100Grams = (amount / basisGrams) * 100;
+  // mg・µg の項目には、ありえないと言える上限が無いので確かめない
   return match(nutrientDefinitions[nutrient].unit)
     .with("kcal", () => amountPer100Grams <= maximumEnergyKcalPer100Grams)
     .with("g", () => amountPer100Grams <= maximumGramsPer100Grams)
     .otherwise(() => true);
 };
-
-const maximumEnergyKcalPer100Grams = 1200;
-
-const maximumGramsPer100Grams = 120;
 
 const isPresentText = (text: string): boolean => text.trim().length > 0;
 
