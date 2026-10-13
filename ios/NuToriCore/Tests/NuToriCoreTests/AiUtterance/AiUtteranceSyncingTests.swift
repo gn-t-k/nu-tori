@@ -8,14 +8,27 @@ struct AiUtteranceSyncingTests {
     @Suite("取りに行った変更をキャッシュに当てるとき")
     struct Applying {
         let syncing = AiUtteranceSyncing()
-        let cache = MemoryKeyedRecordCache<AiUtterance, UUID>(id: \.id)
-        /// 応える送った文章は届いていない
-        let first = AiUtterance(id: UUID(), body: "よく食べました", sentTextId: UUID(), mealIds: [])
-        let second = AiUtterance(
-            id: UUID(), body: "昼はこちらです", sentTextId: UUID(), mealIds: [UUID(), UUID()])
+        let cache: MemoryKeyedRecordCache<AiUtterance, UUID>
+        let first: AiUtterance
+        let second: AiUtterance
 
         init() throws {
-            try syncing.apply([first, second].map { .aiUtterance(Self.synced($0)) }, to: cache)
+            (cache, first, second) = try Self.appliedCache()
+        }
+
+        /// 返事を2件当てたキャッシュ。応える送った文章は届いていない
+        static func appliedCache() throws -> (
+            cache: MemoryKeyedRecordCache<AiUtterance, UUID>, first: AiUtterance,
+            second: AiUtterance
+        ) {
+            let cache = MemoryKeyedRecordCache<AiUtterance, UUID>(id: \.id)
+            let first = AiUtterance(
+                id: UUID(), body: "よく食べました", sentTextId: UUID(), mealIds: [])
+            let second = AiUtterance(
+                id: UUID(), body: "昼はこちらです", sentTextId: UUID(), mealIds: [UUID(), UUID()])
+            try AiUtteranceSyncing().apply(
+                [first, second].map { .aiUtterance(synced($0)) }, to: cache)
+            return (cache, first, second)
         }
 
         static func synced(_ utterance: AiUtterance) -> SyncedAiUtterance {
@@ -29,15 +42,28 @@ struct AiUtteranceSyncingTests {
             #expect(Set(cache.all()) == [first, second])
         }
 
-        @Test("同じ返事が届き直したら、キャッシュの返事をその値にそろえること")
-        func overwritesArrivedAgain() throws {
-            let arrivedAgain = AiUtterance(
-                id: first.id, body: "よく食べましたね", sentTextId: first.sentTextId,
-                mealIds: [UUID()])
+        @Suite("同じ返事が届き直したとき")
+        struct ArrivedAgain {
+            let syncing = AiUtteranceSyncing()
+            let cache: MemoryKeyedRecordCache<AiUtterance, UUID>
+            let second: AiUtterance
+            let arrivedAgain: AiUtterance
 
-            try syncing.apply([.aiUtterance(Self.synced(arrivedAgain))], to: cache)
+            init() throws {
+                let applied = try Applying.appliedCache()
+                cache = applied.cache
+                second = applied.second
+                arrivedAgain = AiUtterance(
+                    id: applied.first.id, body: "よく食べましたね",
+                    sentTextId: applied.first.sentTextId, mealIds: [UUID()])
+            }
 
-            #expect(Set(cache.all()) == [arrivedAgain, second])
+            @Test("キャッシュの返事をその値にそろえること")
+            func overwritesWithArrivedValue() throws {
+                try syncing.apply([.aiUtterance(Applying.synced(arrivedAgain))], to: cache)
+
+                #expect(Set(cache.all()) == [arrivedAgain, second])
+            }
         }
 
         @Test("ほかの種類の変更は、キャッシュを変えないこと")

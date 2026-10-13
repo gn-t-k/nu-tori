@@ -8,12 +8,22 @@ struct WeightTrendSyncingTests {
     @Suite("傾向を持っていて、取りに行った変更をキャッシュに当てるとき")
     struct Applying {
         let syncing = WeightTrendSyncing()
-        let cache = MemorySingleRecordCache<WeightTrend>()
-        let held = WeightTrend.starting(
-            CalendarDay(year: 2026, month: 9, day: 20), kilograms: [72.4, 72.35, 72.3])
+        let cache: MemorySingleRecordCache<WeightTrend>
+        let held: WeightTrend
 
         init() throws {
-            try syncing.apply([.weightTrend(Self.synced(held))], to: cache)
+            (cache, held) = try Self.heldCache()
+        }
+
+        /// 傾向を当てたキャッシュ
+        static func heldCache() throws -> (
+            cache: MemorySingleRecordCache<WeightTrend>, held: WeightTrend
+        ) {
+            let cache = MemorySingleRecordCache<WeightTrend>()
+            let held = WeightTrend.starting(
+                CalendarDay(year: 2026, month: 9, day: 20), kilograms: [72.4, 72.35, 72.3])
+            try WeightTrendSyncing().apply([.weightTrend(synced(held))], to: cache)
+            return (cache, held)
         }
 
         static func synced(_ trend: WeightTrend) -> SyncedWeightTrend {
@@ -28,14 +38,24 @@ struct WeightTrendSyncingTests {
             #expect(cache.read() == held)
         }
 
-        @Test("短い並びが届いたら、日ごとに差し替えず、届いた並びで置き換えること")
-        func replacesWholeTrend() throws {
-            let shorter = WeightTrend.starting(
-                CalendarDay(year: 2026, month: 9, day: 21), kilograms: [72.5])
+        @Suite("短い並びが届いたとき")
+        struct ShorterArrived {
+            let syncing = WeightTrendSyncing()
+            let cache: MemorySingleRecordCache<WeightTrend>
+            let shorter: WeightTrend
 
-            try syncing.apply([.weightTrend(Self.synced(shorter))], to: cache)
+            init() throws {
+                cache = try Applying.heldCache().cache
+                shorter = WeightTrend.starting(
+                    CalendarDay(year: 2026, month: 9, day: 21), kilograms: [72.5])
+            }
 
-            #expect(cache.read() == shorter)
+            @Test("日ごとに差し替えず、届いた並びで置き換えること")
+            func replacesWholeTrend() throws {
+                try syncing.apply([.weightTrend(Applying.synced(shorter))], to: cache)
+
+                #expect(cache.read() == shorter)
+            }
         }
 
         @Test("日付が読めない日を読み飛ばして置き換えること")

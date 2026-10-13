@@ -15,6 +15,27 @@ struct CachedMealCacheTests {
             photoIds: photoIds)
     }
 
+    /// 写真の食事と文章の食事を保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
+    @MainActor static func filledCache() throws -> (
+        store: SwiftDataSyncStore, cache: SwiftDataKeyedRecordCache<CachedMeal>, picked: Meal,
+        written: Meal
+    ) {
+        let store = try SwiftDataSyncStore(inMemory: true)
+        let cache = SwiftDataKeyedRecordCache<CachedMeal>(context: store.container.mainContext)
+        // 写真の並びは ID の順と逆にして、並び順を保つことを確かめる
+        let picked = try meal(
+            id: UUID(), entry: .picked,
+            photoIds: [
+                try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000c2")),
+                try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000c1")),
+            ])
+        let written = try meal(id: UUID(), entry: .written(sentTextId: UUID()), photoIds: [])
+        try cache.upsert(picked)
+        try cache.upsert(written)
+        try cache.context.save()
+        return (store, cache, picked, written)
+    }
+
     @Suite("写真の食事と文章の食事を足したとき")
     @MainActor
     struct Filled {
@@ -24,20 +45,7 @@ struct CachedMealCacheTests {
         let written: Meal
 
         init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            cache = SwiftDataKeyedRecordCache(context: store.container.mainContext)
-            // 写真の並びは ID の順と逆にして、並び順を保つことを確かめる
-            picked = try CachedMealCacheTests.meal(
-                id: UUID(), entry: .picked,
-                photoIds: [
-                    try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000c2")),
-                    try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000c1")),
-                ])
-            written = try CachedMealCacheTests.meal(
-                id: UUID(), entry: .written(sentTextId: UUID()), photoIds: [])
-            try cache.upsert(picked)
-            try cache.upsert(written)
-            try cache.context.save()
+            (store, cache, picked, written) = try CachedMealCacheTests.filledCache()
         }
 
         @Test("足した食事と同じ食事を、写真の並び順と入口を保って読めること")
@@ -45,19 +53,35 @@ struct CachedMealCacheTests {
             #expect(Set(try cache.savedRecords()) == [picked, written])
         }
 
-        @Test("同じ ID の食事を足すと、行を増やさず、送った文章の ID も含めて値が替わること")
-        func replacesSameId() throws {
-            let revised = Meal(
-                id: written.id, eatenAt: Date(timeIntervalSince1970: 1_790_050_200),
-                eatenUtcOffsetSeconds: -14_400, sentAt: Date(timeIntervalSince1970: 1_790_050_260),
-                sentTimeZone: try #require(TimeZone(identifier: "America/New_York")),
-                entry: .captured, photoIds: [UUID()])
+        @Suite("同じ ID の食事を足すとき")
+        @MainActor
+        struct UpsertingSameId {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataKeyedRecordCache<CachedMeal>
+            let picked: Meal
+            let revised: Meal
 
-            try cache.upsert(revised)
+            init() throws {
+                let filled = try CachedMealCacheTests.filledCache()
+                store = filled.store
+                cache = filled.cache
+                picked = filled.picked
+                revised = Meal(
+                    id: filled.written.id, eatenAt: Date(timeIntervalSince1970: 1_790_050_200),
+                    eatenUtcOffsetSeconds: -14_400,
+                    sentAt: Date(timeIntervalSince1970: 1_790_050_260),
+                    sentTimeZone: try #require(TimeZone(identifier: "America/New_York")),
+                    entry: .captured, photoIds: [UUID()])
+            }
 
-            let saved = try cache.savedRecords()
-            #expect(saved.count == 2)
-            #expect(Set(saved) == [picked, revised])
+            @Test("行を増やさず、送った文章の ID も含めて値が替わること")
+            func replaces() throws {
+                try cache.upsert(revised)
+
+                let saved = try cache.savedRecords()
+                #expect(saved.count == 2)
+                #expect(Set(saved) == [picked, revised])
+            }
         }
 
         @Test("ID で消すと、その食事の行だけが無くなること")

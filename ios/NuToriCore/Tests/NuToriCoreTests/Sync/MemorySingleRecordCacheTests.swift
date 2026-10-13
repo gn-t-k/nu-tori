@@ -28,13 +28,21 @@ struct MemorySingleRecordCacheTests {
             #expect(try cache.read() == first)
         }
 
-        @Test("もう一度書くと、値が替わること")
-        func writeReplaces() throws {
+        @Suite("もう一度書くとき")
+        struct WritingAgain {
+            let cache: any SingleRecordCache<AccountSettings> = MemorySingleRecordCache()
             let second = AccountSettings(id: UUID(), sendsUsageData: false)
 
-            try cache.write(second)
+            init() throws {
+                try cache.write(AccountSettings(id: UUID(), sendsUsageData: true))
+            }
 
-            #expect(try cache.read() == second)
+            @Test("値が替わること")
+            func replaces() throws {
+                try cache.write(second)
+
+                #expect(try cache.read() == second)
+            }
         }
 
         @Test("空にすると、読んでも無いこと")

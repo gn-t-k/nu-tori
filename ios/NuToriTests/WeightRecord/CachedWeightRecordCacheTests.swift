@@ -7,6 +7,33 @@ import Testing
 
 @Suite("体重記録のキャッシュの行")
 struct CachedWeightRecordCacheTests {
+    /// 手で記録したものと、取り込んだものを保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
+    @MainActor static func filledCache() throws -> (
+        store: SwiftDataSyncStore, cache: SwiftDataKeyedRecordCache<CachedWeightRecord>,
+        manual: WeightRecord, imported: WeightRecord
+    ) {
+        let store = try SwiftDataSyncStore(inMemory: true)
+        let cache = SwiftDataKeyedRecordCache<CachedWeightRecord>(
+            context: store.container.mainContext)
+        let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        let manual = WeightRecord(
+            id: UUID(), kilograms: 70.4, instant: Date(timeIntervalSince1970: 1_790_028_720),
+            timeZone: tokyo, inputSource: .manual, version: 1)
+        let imported = WeightRecord(
+            id: UUID(), kilograms: 70.15,
+            instant: Date(timeIntervalSince1970: 1_790_115_120.5), timeZone: tokyo,
+            inputSource: .imported(
+                .init(
+                    appName: "体組成計", bundleId: "com.example.scale",
+                    healthKitSampleId: UUID(),
+                    bodyFat: .init(percentage: 21.5, healthKitSampleId: UUID()))),
+            version: 3)
+        try cache.upsert(manual)
+        try cache.upsert(imported)
+        try cache.context.save()
+        return (store, cache, manual, imported)
+    }
+
     @Suite("手で記録したものと、取り込んだものを足したとき")
     @MainActor
     struct Filled {
@@ -16,24 +43,7 @@ struct CachedWeightRecordCacheTests {
         let imported: WeightRecord
 
         init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            cache = SwiftDataKeyedRecordCache(context: store.container.mainContext)
-            let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
-            manual = WeightRecord(
-                id: UUID(), kilograms: 70.4, instant: Date(timeIntervalSince1970: 1_790_028_720),
-                timeZone: tokyo, inputSource: .manual, version: 1)
-            imported = WeightRecord(
-                id: UUID(), kilograms: 70.15,
-                instant: Date(timeIntervalSince1970: 1_790_115_120.5), timeZone: tokyo,
-                inputSource: .imported(
-                    .init(
-                        appName: "体組成計", bundleId: "com.example.scale",
-                        healthKitSampleId: UUID(),
-                        bodyFat: .init(percentage: 21.5, healthKitSampleId: UUID()))),
-                version: 3)
-            try cache.upsert(manual)
-            try cache.upsert(imported)
-            try cache.context.save()
+            (store, cache, manual, imported) = try CachedWeightRecordCacheTests.filledCache()
         }
 
         @Test("足した記録と同じ記録を読めること")
@@ -41,19 +51,34 @@ struct CachedWeightRecordCacheTests {
             #expect(Set(try cache.savedRecords()) == [manual, imported])
         }
 
-        @Test("同じ ID の記録を足すと、行を増やさず、取り込みの出どころも含めて値が替わること")
-        func replacesSameId() throws {
-            let revised = WeightRecord(
-                id: imported.id, kilograms: 69.8,
-                instant: Date(timeIntervalSince1970: 1_790_118_000),
-                timeZone: try #require(TimeZone(identifier: "America/New_York")),
-                inputSource: .manual, version: 4)
+        @Suite("同じ ID の記録を足すとき")
+        @MainActor
+        struct UpsertingSameId {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataKeyedRecordCache<CachedWeightRecord>
+            let manual: WeightRecord
+            let revised: WeightRecord
 
-            try cache.upsert(revised)
+            init() throws {
+                let filled = try CachedWeightRecordCacheTests.filledCache()
+                store = filled.store
+                cache = filled.cache
+                manual = filled.manual
+                revised = WeightRecord(
+                    id: filled.imported.id, kilograms: 69.8,
+                    instant: Date(timeIntervalSince1970: 1_790_118_000),
+                    timeZone: try #require(TimeZone(identifier: "America/New_York")),
+                    inputSource: .manual, version: 4)
+            }
 
-            let saved = try cache.savedRecords()
-            #expect(saved.count == 2)
-            #expect(Set(saved) == [manual, revised])
+            @Test("行を増やさず、取り込みの出どころも含めて値が替わること")
+            func replaces() throws {
+                try cache.upsert(revised)
+
+                let saved = try cache.savedRecords()
+                #expect(saved.count == 2)
+                #expect(Set(saved) == [manual, revised])
+            }
         }
 
         @Test("ID で消すと、その記録の行だけが無くなること")

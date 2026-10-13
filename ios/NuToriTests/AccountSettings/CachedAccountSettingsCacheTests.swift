@@ -8,6 +8,20 @@ import Testing
 /// アカウントの設定の行は、どの値でも読める（読めない行を持たない）
 @Suite("アカウントの設定のキャッシュの行")
 struct CachedAccountSettingsCacheTests {
+    /// 設定を書いて保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
+    @MainActor static func writtenCache() throws -> (
+        store: SwiftDataSyncStore, cache: SwiftDataSingleRecordCache<CachedAccountSettings>,
+        settings: AccountSettings
+    ) {
+        let store = try SwiftDataSyncStore(inMemory: true)
+        let cache = SwiftDataSingleRecordCache<CachedAccountSettings>(
+            context: store.container.mainContext)
+        let settings = AccountSettings(id: UUID(), sendsUsageData: true)
+        try cache.write(settings)
+        try cache.context.save()
+        return (store, cache, settings)
+    }
+
     @Suite("まだ何も書いていないとき")
     @MainActor
     struct Empty {
@@ -33,11 +47,7 @@ struct CachedAccountSettingsCacheTests {
         let settings: AccountSettings
 
         init() throws {
-            store = try SwiftDataSyncStore(inMemory: true)
-            cache = SwiftDataSingleRecordCache(context: store.container.mainContext)
-            settings = AccountSettings(id: UUID(), sendsUsageData: true)
-            try cache.write(settings)
-            try cache.context.save()
+            (store, cache, settings) = try CachedAccountSettingsCacheTests.writtenCache()
         }
 
         @Test("書いた設定と同じ設定を読めること")
@@ -45,14 +55,26 @@ struct CachedAccountSettingsCacheTests {
             #expect(try cache.savedRecord() == settings)
         }
 
-        @Test("別の設定を書くと、行を増やさず値が替わること")
-        func replaces() throws {
-            let revised = AccountSettings(id: UUID(), sendsUsageData: false)
+        @Suite("別の設定を書くとき")
+        @MainActor
+        struct WritingAnother {
+            let store: SwiftDataSyncStore
+            let cache: SwiftDataSingleRecordCache<CachedAccountSettings>
+            let revised: AccountSettings
 
-            try cache.write(revised)
+            init() throws {
+                (store, cache, _) = try CachedAccountSettingsCacheTests.writtenCache()
+                revised = AccountSettings(id: UUID(), sendsUsageData: false)
+            }
 
-            #expect(try cache.savedRecord() == revised)
-            #expect(try cache.context.fetchCount(FetchDescriptor<CachedAccountSettings>()) == 1)
+            @Test("行を増やさず値が替わること")
+            func replaces() throws {
+                try cache.write(revised)
+
+                #expect(try cache.savedRecord() == revised)
+                #expect(
+                    try cache.context.fetchCount(FetchDescriptor<CachedAccountSettings>()) == 1)
+            }
         }
 
         @Test("空にすると、読んでも無いこと")
