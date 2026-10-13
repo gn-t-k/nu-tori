@@ -960,7 +960,7 @@ const main = document.getElementById('main');
 main.innerHTML = T.map(t => `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${t.variants.map(v => `<div class="variant" data-v="${v.name}"><div class="vhead"><b>${v.name}</b><span>${v.desc}</span>${v.flag ? `<span class="flag">決まっていることを変える: ${v.flag}</span>` : ''}</div><div class="states"></div></div>`).join('')}</section>`).join('');
 T.forEach(t => { P[t.id] = 0; });
 // 2026-10-13 に開発者が選んだ案から始める（期限は C のチップを上に置いた E）
-Object.assign(P, {deadline: 4, steps: 1, plans: 2, fewer: 2, words: 2, speed: 0, custom: 3, reject: 2, used: 3, tw: 2, offline: 2, wait: 3});
+Object.assign(P, {deadline: 4, steps: 1, plans: 2, fewer: 2, words: 2, speed: 0, custom: 3, reject: 2, used: 3, tw: 2, offline: 2, wait: 3, composer: 3});
 
 // 1画面に収まるかを、図の下に書く
 function noteFit(root){
