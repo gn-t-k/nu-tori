@@ -184,7 +184,7 @@ type JudgedRun =
       type: "read";
       ingredients: readonly IdentifiedIngredient[];
       // expected と同じ並び。当たる材料が無ければ unmatched、あれば g の和と見立て
-      expected: readonly (
+      judgedExpected: readonly (
         | { type: "unmatched" }
         | { type: "matched"; grams: number; verdict: Verdict }
       )[];
@@ -202,7 +202,7 @@ const judgeRun = (answer: ReadIngredients, expected: readonly ExpectedIngredient
   return {
     type: "read",
     ingredients: answer,
-    expected: expected.map((ingredient, index) => {
+    judgedExpected: expected.map((ingredient, index) => {
       const matched = answer.filter((_, position) => assigned[position] === index);
       if (matched.length === 0) {
         return { type: "unmatched" };
@@ -267,7 +267,7 @@ const rows = judgedCases.flatMap(({ title, expected, judgedRuns }) =>
       if (judgedRun.type === "failed") {
         return "失敗";
       }
-      const judged = judgedRun.expected[index];
+      const judged = judgedRun.judgedExpected[index];
       return judged === undefined || judged.type === "unmatched"
         ? "無い"
         : `${formatGrams(judged.grams)}${marks[judged.verdict]}`;
@@ -301,15 +301,15 @@ const wildLines = judgedCases.flatMap(({ title, judgedRuns }) =>
 );
 
 const allRuns = judgedCases.flatMap(({ judgedRuns }) => judgedRuns);
-const readRunsOnly = allRuns.filter((judgedRun) => judgedRun.type === "read");
-const judgedExpected = readRunsOnly.flatMap(({ expected }) => expected);
+const answeredRuns = allRuns.filter((judgedRun) => judgedRun.type === "read");
+const judgedExpected = answeredRuns.flatMap((judgedRun) => judgedRun.judgedExpected);
 const countVerdict = (verdict: Verdict): number =>
   judgedExpected.filter((judged) => judged.type === "matched" && judged.verdict === verdict).length;
 const wildCount =
   countVerdict("wild") +
-  readRunsOnly.reduce((sum, { wildWithoutRange }) => sum + wildWithoutRange.length, 0);
+  answeredRuns.reduce((sum, { wildWithoutRange }) => sum + wildWithoutRange.length, 0);
 const unmatchedCount = judgedExpected.filter(({ type }) => type === "unmatched").length;
-const failedCount = allRuns.length - readRunsOnly.length;
+const failedCount = allRuns.length - answeredRuns.length;
 
 console.log(
   [
