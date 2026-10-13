@@ -23,7 +23,7 @@ const wildGramsWithoutRange = 1000;
 
 type ExpectedIngredient = {
   label: string;
-  // 材料の名前にどれかが入っていれば、この材料とみなす
+  // 材料の名前にどれかが入っていれば、この材料とみなす。1つの材料は、並びで最初に当たった1つにだけ数える
   keywords: readonly string[];
   minGrams: number;
   maxGrams: number;
@@ -38,7 +38,7 @@ const egg = (count: number): ExpectedIngredient => ({
 
 const rice: ExpectedIngredient = {
   label: "ご飯 1 杯",
-  keywords: ["飯", "ごはん", "ライス", "米"],
+  keywords: ["飯", "ごはん", "ライス"],
   minGrams: 100,
   maxGrams: 300,
 };
@@ -71,14 +71,21 @@ const writtenCases: readonly { body: string; expected: readonly ExpectedIngredie
   },
   {
     body: "鶏むね肉200gを焼いて食べた",
-    expected: [{ label: "鶏むね肉 200 g", keywords: ["鶏", "とり"], minGrams: 130, maxGrams: 220 }],
+    expected: [
+      {
+        label: "鶏むね肉 200 g",
+        keywords: ["鶏むね", "鶏肉", "むね肉", "とり肉"],
+        minGrams: 130,
+        maxGrams: 220,
+      },
+    ],
   },
   {
     body: "サラダにオリーブオイルを大さじ1かけた",
     expected: [
       {
         label: "オリーブオイル 大さじ 1",
-        keywords: ["オリーブ", "油", "オイル"],
+        keywords: ["オリーブ", "オイル"],
         minGrams: 9,
         maxGrams: 16,
       },
@@ -96,7 +103,12 @@ const committedPhotoCases: readonly { file: string; expected: readonly ExpectedI
     expected: [
       { label: "卵", keywords: ["卵", "たまご", "玉子"], minGrams: 40, maxGrams: 140 },
       { label: "ご飯", keywords: rice.keywords, minGrams: 120, maxGrams: 350 },
-      { label: "鶏肉", keywords: ["鶏", "とり"], minGrams: 40, maxGrams: 180 },
+      {
+        label: "鶏肉",
+        keywords: ["鶏もも", "鶏むね", "鶏肉", "もも肉", "とり肉"],
+        minGrams: 40,
+        maxGrams: 180,
+      },
     ],
   },
 ];
@@ -158,77 +170,61 @@ const readPhoto = async (file: string): Promise<ArrayBuffer> => {
 
 type Verdict = "in_range" | "out_of_range" | "wild";
 
-const judge = (grams: number, expected: ExpectedIngredient | undefined): Verdict => {
-  if (expected === undefined) {
-    return grams > wildGramsWithoutRange ? "wild" : "in_range";
-  }
-  if (grams >= expected.minGrams && grams <= expected.maxGrams) {
+const judgeAgainstRange = (grams: number, { minGrams, maxGrams }: ExpectedIngredient): Verdict => {
+  if (grams >= minGrams && grams <= maxGrams) {
     return "in_range";
   }
-  return grams > expected.maxGrams * wildFactor || grams < expected.minGrams / wildFactor
-    ? "wild"
-    : "out_of_range";
+  return grams > maxGrams * wildFactor || grams < minGrams / wildFactor ? "wild" : "out_of_range";
 };
 
-const marks: Readonly<Record<Verdict, string>> = { in_range: "", out_of_range: " △", wild: " ✕" };
+// 1回分の答えの見立て。failed は呼び出しが読めなかった回
+type JudgedRun =
+  | { type: "failed" }
+  | {
+      type: "read";
+      ingredients: readonly IdentifiedIngredient[];
+      // expected と同じ並び。当たる材料が無ければ unmatched、あれば g の和と見立て
+      expected: readonly (
+        | { type: "unmatched" }
+        | { type: "matched"; grams: number; verdict: Verdict }
+      )[];
+      // 範囲を持たない材料のうち、桁が違うもの
+      wildWithoutRange: readonly IdentifiedIngredient[];
+    };
 
-const counts: Record<Verdict, number> = { in_range: 0, out_of_range: 0, wild: 0 };
-
-let failedReadCount = 0;
-
-const formatGrams = (grams: number): string => String(Math.round(grams * 10) / 10);
-
-// 範囲を持つ材料は、材料ごとに1行で、回ごとの g を並べる。同じ回に当てはまる材料がいくつもあれば足す
-const toExpectedRows = (
-  title: string,
-  expected: readonly ExpectedIngredient[],
-  answers: readonly ReadIngredients[],
-): string[] =>
-  expected.map((ingredient) => {
-    const cells = answers.map((answer) => {
-      if (answer === undefined) {
-        return "失敗";
-      }
-      const matched = answer.filter(({ name }) =>
-        ingredient.keywords.some((keyword) => name.includes(keyword)),
-      );
+const judgeRun = (answer: ReadIngredients, expected: readonly ExpectedIngredient[]): JudgedRun => {
+  if (answer === undefined) {
+    return { type: "failed" };
+  }
+  const assigned = answer.map(({ name }) =>
+    expected.findIndex(({ keywords }) => keywords.some((keyword) => name.includes(keyword))),
+  );
+  return {
+    type: "read",
+    ingredients: answer,
+    expected: expected.map((ingredient, index) => {
+      const matched = answer.filter((_, position) => assigned[position] === index);
       if (matched.length === 0) {
-        return "無い";
+        return { type: "unmatched" };
       }
       const grams = matched.reduce((sum, { edibleGrams }) => sum + edibleGrams, 0);
-      const verdict = judge(grams, ingredient);
-      counts[verdict] += 1;
-      return `${formatGrams(grams)}${marks[verdict]}`;
-    });
-    return `| ${title} | ${ingredient.label} | ${ingredient.minGrams}〜${ingredient.maxGrams} | ${cells.join(" | ")} |`;
-  });
-
-// 範囲を持たない材料は、回ごとに、桁が違うものだけを名前つきで挙げる
-const toUnexpectedWildLines = (
-  title: string,
-  expected: readonly ExpectedIngredient[],
-  answers: readonly ReadIngredients[],
-): string[] =>
-  answers.flatMap((answer, run) =>
-    (answer ?? [])
-      .filter(
-        ({ name }) =>
-          !expected.some(({ keywords }) => keywords.some((keyword) => name.includes(keyword))),
-      )
-      .filter(({ edibleGrams }) => judge(edibleGrams, undefined) === "wild")
-      .map(({ name, quantity, unit, edibleGrams }) => {
-        counts.wild += 1;
-        return `- ${title} ${run + 1}回目: ${name} ${quantity} ${unit} = ${formatGrams(edibleGrams)} g ✕`;
-      }),
-  );
+      return { type: "matched", grams, verdict: judgeAgainstRange(grams, ingredient) };
+    }),
+    wildWithoutRange: answer.filter(
+      ({ edibleGrams }, position) =>
+        assigned[position] === -1 && edibleGrams > wildGramsWithoutRange,
+    ),
+  };
+};
 
 const localPhotoFiles = await readdir(localPhotoDirectory)
   .then((names) => names.filter((name) => /\.jpe?g$/i.test(name)).toSorted())
   .catch(() => []);
 
-const results = await Promise.all([
+const cases = await Promise.all([
   ...writtenCases.map(async ({ body, expected }) => ({
     title: body,
+    isLocalPhoto: false,
     expected,
     answers: await readRuns(() => readWrittenOnce(body)),
   })),
@@ -236,6 +232,7 @@ const results = await Promise.all([
     const photo = await readPhoto(file);
     return {
       title: `写真 ${path.basename(file)}`,
+      isLocalPhoto: false,
       expected,
       answers: await readRuns(() => readPhotoOnce(photo)),
     };
@@ -244,37 +241,75 @@ const results = await Promise.all([
     const photo = await readPhoto(path.join(localPhotoDirectory, name));
     return {
       title: `手元の写真 ${name}`,
+      isLocalPhoto: true,
       expected: [],
       answers: await readRuns(() => readPhotoOnce(photo)),
     };
   }),
 ]);
 
-const rows = results.flatMap(({ title, expected, answers }) => {
-  failedReadCount += answers.filter((answer) => answer === undefined).length;
-  return toExpectedRows(title, expected, answers);
-});
-const wildLines = results.flatMap(({ title, expected, answers }) =>
-  toUnexpectedWildLines(title, expected, answers),
+const judgedCases = cases.map(({ answers, ...rest }) => ({
+  ...rest,
+  judgedRuns: answers.map((answer) => judgeRun(answer, rest.expected)),
+}));
+
+const marks: Readonly<Record<Verdict, string>> = { in_range: "", out_of_range: " △", wild: " ✕" };
+
+const formatGrams = (grams: number): string => String(Math.round(grams * 10) / 10);
+
+const formatIngredient = ({ name, quantity, unit, edibleGrams }: IdentifiedIngredient): string =>
+  `${name} ${quantity} ${unit} = ${formatGrams(edibleGrams)} g`;
+
+// 範囲を持つ材料は、材料ごとに1行で、回ごとの g を並べる
+const rows = judgedCases.flatMap(({ title, expected, judgedRuns }) =>
+  expected.map((ingredient, index) => {
+    const cells = judgedRuns.map((judgedRun) => {
+      if (judgedRun.type === "failed") {
+        return "失敗";
+      }
+      const judged = judgedRun.expected[index];
+      return judged === undefined || judged.type === "unmatched"
+        ? "無い"
+        : `${formatGrams(judged.grams)}${marks[judged.verdict]}`;
+    });
+    return `| ${title} | ${ingredient.label} | ${ingredient.minGrams}〜${ingredient.maxGrams} | ${cells.join(" | ")} |`;
+  }),
 );
+
 // 手元の写真は範囲を持たないので、読んだ材料をそのまま並べる
-const localLines = results
-  .filter(({ title }) => title.startsWith("手元の写真"))
-  .flatMap(({ title, answers }) =>
-    answers.map(
-      (answer, run) =>
+const localLines = judgedCases
+  .filter(({ isLocalPhoto }) => isLocalPhoto)
+  .flatMap(({ title, judgedRuns }) =>
+    judgedRuns.map(
+      (judgedRun, run) =>
         `- ${title} ${run + 1}回目: ${
-          answer === undefined
+          judgedRun.type === "failed"
             ? "失敗"
-            : answer
-                .map(
-                  ({ name, quantity, unit, edibleGrams }) =>
-                    `${name} ${quantity} ${unit} = ${formatGrams(edibleGrams)} g`,
-                )
-                .join("、")
+            : judgedRun.ingredients.map(formatIngredient).join("、")
         }`,
     ),
   );
+
+const wildLines = judgedCases.flatMap(({ title, judgedRuns }) =>
+  judgedRuns.flatMap((judgedRun, run) =>
+    judgedRun.type === "failed"
+      ? []
+      : judgedRun.wildWithoutRange.map(
+          (ingredient) => `- ${title} ${run + 1}回目: ${formatIngredient(ingredient)}${marks.wild}`,
+        ),
+  ),
+);
+
+const allRuns = judgedCases.flatMap(({ judgedRuns }) => judgedRuns);
+const readRunsOnly = allRuns.filter((judgedRun) => judgedRun.type === "read");
+const judgedExpected = readRunsOnly.flatMap(({ expected }) => expected);
+const countVerdict = (verdict: Verdict): number =>
+  judgedExpected.filter((judged) => judged.type === "matched" && judged.verdict === verdict).length;
+const wildCount =
+  countVerdict("wild") +
+  readRunsOnly.reduce((sum, { wildWithoutRange }) => sum + wildWithoutRange.length, 0);
+const unmatchedCount = judgedExpected.filter(({ type }) => type === "unmatched").length;
+const failedCount = allRuns.length - readRunsOnly.length;
 
 console.log(
   [
@@ -285,7 +320,7 @@ console.log(
     ...localLines,
     ...wildLines,
     "",
-    `範囲の中 ${counts.in_range}、範囲の外（△） ${counts.out_of_range}、桁が違う（✕） ${counts.wild}、読めなかった呼び出し ${failedReadCount}`,
+    `範囲の中 ${countVerdict("in_range")}、範囲の外（△） ${countVerdict("out_of_range")}、桁が違う（✕） ${wildCount}、当たる材料が無い ${unmatchedCount}、読めなかった呼び出し ${failedCount}`,
     `△ は範囲の外、✕ は上限の ${wildFactor} 倍より大きいか下限の ${wildFactor} 分の 1 より小さい（範囲を持たない材料は ${wildGramsWithoutRange} g より大きい）`,
   ].join("\n"),
 );
