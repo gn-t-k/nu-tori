@@ -275,13 +275,17 @@ const composeDishes = (
         name: ingredient.name,
         quantity: ingredient.quantity,
         unit: ingredient.unit,
-        edibleGramsPerUnit: ingredient.edibleGramsPerUnit,
+        edibleGramsPerUnit: isGramUnit(ingredient.unit) ? 1 : ingredient.edibleGramsPerUnit,
         nutrientSource,
         nutrients,
       };
     }),
   }));
 };
+
+// 単位が g の材料は、量がそのまま可食部の g になる。① が 1個の g などを重ねて答えても、量に掛けない
+const isGramUnit = (unit: string): boolean =>
+  ["g", "グラム"].includes(unit.normalize("NFKC").trim().toLowerCase());
 
 const toMatchedNutrients = (
   matched: IngredientMatch | undefined,

@@ -201,6 +201,41 @@ describe("推定の試み", () => {
       });
     });
 
+    describe("① が、単位が g の材料に、1単位あたりの可食部の g を 1 でない値で返したとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: {
+            dishes: [
+              {
+                name: "卵かけ用生卵",
+                quantity: 1,
+                unit: "個",
+                ingredients: [
+                  {
+                    name: "卵",
+                    quantity: 50,
+                    unit: "g",
+                    // 1個の g を、量と重ねて答えた（そのまま掛けると 2,500 g になる）
+                    edibleGramsPerUnit: 50,
+                    foodCompositionQuery: "鶏卵 全卵 生",
+                    nutritionLabel: undefined,
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      });
+
+      test("1単位あたりの可食部の g を 1 にすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "succeeded",
+          dishes: [{ ingredients: [{ quantity: 50, unit: "g", edibleGramsPerUnit: 1 }] }],
+        });
+      });
+    });
+
     describe("① が返した料理の量が 0 のとき", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
