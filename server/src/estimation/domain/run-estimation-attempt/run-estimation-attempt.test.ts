@@ -339,6 +339,133 @@ describe("推定の試み", () => {
       });
     });
 
+    describe("① が返した栄養成分表示のエネルギーが、基準 10 g あたり 120 kcal（100 g あたり 1,200 kcal）のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: {
+            dishes: [
+              {
+                ...greenTea,
+                ingredients: greenTea.ingredients.map((ingredient) => ({
+                  ...ingredient,
+                  nutritionLabel: { basisGrams: 10, nutrients: { energy_kcal: 120 } },
+                })),
+              },
+            ],
+          },
+        });
+      });
+
+      test("通った試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "succeeded",
+        });
+      });
+    });
+
+    describe("① が返した栄養成分表示のエネルギーが、基準 10 g あたり 121 kcal（100 g あたり 1,200 kcal 超）のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: {
+            dishes: [
+              {
+                ...greenTea,
+                ingredients: greenTea.ingredients.map((ingredient) => ({
+                  ...ingredient,
+                  nutritionLabel: { basisGrams: 10, nutrients: { energy_kcal: 121 } },
+                })),
+              },
+            ],
+          },
+        });
+      });
+
+      test("① で確かめに通らない試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "invalid_response",
+          failedStage: "identify_dishes",
+        });
+      });
+    });
+
+    describe("① が返した栄養成分表示のたんぱく質が、基準 10 g あたり 12 g（100 g あたり 120 g）のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: {
+            dishes: [
+              {
+                ...greenTea,
+                ingredients: greenTea.ingredients.map((ingredient) => ({
+                  ...ingredient,
+                  nutritionLabel: { basisGrams: 10, nutrients: { protein_g: 12 } },
+                })),
+              },
+            ],
+          },
+        });
+      });
+
+      test("通った試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "succeeded",
+        });
+      });
+    });
+
+    describe("① が返した栄養成分表示のたんぱく質が、基準 10 g あたり 13 g（100 g あたり 120 g 超）のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: {
+            dishes: [
+              {
+                ...greenTea,
+                ingredients: greenTea.ingredients.map((ingredient) => ({
+                  ...ingredient,
+                  nutritionLabel: { basisGrams: 10, nutrients: { protein_g: 13 } },
+                })),
+              },
+            ],
+          },
+        });
+      });
+
+      test("① で確かめに通らない試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "invalid_response",
+          failedStage: "identify_dishes",
+        });
+      });
+    });
+
+    describe("① が返した栄養成分表示のカリウムが、基準 10 g あたり 5,000 mg のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: {
+            dishes: [
+              {
+                ...greenTea,
+                ingredients: greenTea.ingredients.map((ingredient) => ({
+                  ...ingredient,
+                  nutritionLabel: { basisGrams: 10, nutrients: { potassium_mg: 5000 } },
+                })),
+              },
+            ],
+          },
+        });
+      });
+
+      test("通った試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "succeeded",
+        });
+      });
+    });
+
     describe("推定し直しで、① が料理を2つ返したとき", () => {
       let provider: EstimationProvider;
       let renamedDish: Pick<BegunEstimationAttempt, "photoIds" | "target">;
@@ -406,6 +533,116 @@ describe("推定の試み", () => {
               nutrients: {
                 energy_kcal: -1,
                 protein_g: 0,
+                fat_g: 0,
+                carbohydrate_g: 0,
+                fiber_g: 0,
+                salt_equivalent_g: 0,
+              },
+            })),
+          }),
+        });
+      });
+
+      test("② で確かめに通らない試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "invalid_response",
+          failedStage: "match_ingredients",
+        });
+      });
+    });
+
+    describe("② が推定したエネルギーが 100 g あたり 1,200 kcal のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          matchIngredients: ({ ingredients }) => ({
+            ingredients: ingredients.map(() => ({
+              source: "estimated",
+              nutrients: {
+                energy_kcal: 1200,
+                protein_g: 0,
+                fat_g: 0,
+                carbohydrate_g: 0,
+                fiber_g: 0,
+                salt_equivalent_g: 0,
+              },
+            })),
+          }),
+        });
+      });
+
+      test("通った試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "succeeded",
+        });
+      });
+    });
+
+    describe("② が推定したエネルギーが 100 g あたり 1,201 kcal のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          matchIngredients: ({ ingredients }) => ({
+            ingredients: ingredients.map(() => ({
+              source: "estimated",
+              nutrients: {
+                energy_kcal: 1201,
+                protein_g: 0,
+                fat_g: 0,
+                carbohydrate_g: 0,
+                fiber_g: 0,
+                salt_equivalent_g: 0,
+              },
+            })),
+          }),
+        });
+      });
+
+      test("② で確かめに通らない試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "invalid_response",
+          failedStage: "match_ingredients",
+        });
+      });
+    });
+
+    describe("② が推定したたんぱく質が 100 g あたり 120 g のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          matchIngredients: ({ ingredients }) => ({
+            ingredients: ingredients.map(() => ({
+              source: "estimated",
+              nutrients: {
+                energy_kcal: 0,
+                protein_g: 120,
+                fat_g: 0,
+                carbohydrate_g: 0,
+                fiber_g: 0,
+                salt_equivalent_g: 0,
+              },
+            })),
+          }),
+        });
+      });
+
+      test("通った試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "succeeded",
+        });
+      });
+    });
+
+    describe("② が推定したたんぱく質が 100 g あたり 121 g のとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          matchIngredients: ({ ingredients }) => ({
+            ingredients: ingredients.map(() => ({
+              source: "estimated",
+              nutrients: {
+                energy_kcal: 0,
+                protein_g: 121,
                 fat_g: 0,
                 carbohydrate_g: 0,
                 fiber_g: 0,

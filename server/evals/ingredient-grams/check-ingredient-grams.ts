@@ -95,6 +95,24 @@ const writtenCases: readonly { body: string; expected: readonly ExpectedIngredie
     body: "緑茶のペットボトル500mlを1本",
     expected: [{ label: "緑茶 500 ml", keywords: ["茶"], minGrams: 450, maxGrams: 550 }],
   },
+  // kg と L で書いた量。g と ml に直すところで桁を外さないかを見る
+  {
+    body: "スポーツドリンクを1.5L飲んだ",
+    expected: [
+      {
+        label: "スポーツドリンク 1.5 L",
+        keywords: ["スポーツドリンク", "スポーツ飲料"],
+        minGrams: 1350,
+        maxGrams: 1650,
+      },
+    ],
+  },
+  {
+    body: "すいかを1kg食べた",
+    expected: [
+      { label: "すいか 1 kg", keywords: ["すいか", "スイカ"], minGrams: 550, maxGrams: 1050 },
+    ],
+  },
 ];
 
 const committedPhotoCases: readonly { file: string; expected: readonly ExpectedIngredient[] }[] = [
