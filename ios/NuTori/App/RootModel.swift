@@ -23,6 +23,7 @@ final class RootModel {
     init(
         accountSession: AccountSession,
         recordSync: RecordSync,
+        reflector: RecordSyncReflector,
         health: HealthSyncSession,
         missedWeightRecordWatch: MissedWeightRecordWatch,
         clock: DeviceClock
@@ -32,24 +33,24 @@ final class RootModel {
         self.recordSync = recordSync
         self.health = health
         self.missedWeightRecordWatch = missedWeightRecordWatch
-        recordSync.onDestination = { [weak self] destination in
+        reflector.onDestination = { [weak self] destination in
             self?.replaceScreen(with: destination)
         }
-        recordSync.onRejectedWrites = { [weak self] writes in
+        reflector.onRejectedWrites = { [weak self] writes in
             self?.noteRejected(writes)
         }
-        recordSync.onReplacingRecord = { [weak self] recordId in
+        reflector.onReplacingRecord = { [weak self] recordId in
             self?.dropRejection(for: recordId)
         }
-        recordSync.onUnsentDishIds = { [weak self] unsentDishIds in
+        reflector.onUnsentDishIds = { [weak self] unsentDishIds in
             guard self?.unsentDishIds != unsentDishIds else { return }
             self?.unsentDishIds = unsentDishIds
         }
-        recordSync.onUndeliveredRecords = { [weak self] undeliveredRecords in
+        reflector.onUndeliveredRecords = { [weak self] undeliveredRecords in
             guard self?.undeliveredRecords != undeliveredRecords else { return }
             self?.undeliveredRecords = undeliveredRecords
         }
-        recordSync.onReplyStreams = { [weak self] streams in
+        reflector.onReplyStreams = { [weak self] streams in
             self?.replyStreams = streams
         }
     }

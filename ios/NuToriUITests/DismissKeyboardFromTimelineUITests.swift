@@ -2,6 +2,10 @@ import XCTest
 
 /// 書く欄にカーソルがあるとき、タイムラインを動かすか押してキーボードを下げる。
 /// 条件は、サインイン済みで、今日の体重を記録したあと（「体重」の丸が、書いていないときだけ出る）、書く欄にカーソルがあってキーボードが出ている
+///
+/// 動かし始めたら下げると決める規則は NuToriCore の単体テスト（TimelineViewportTests の「過去の不具合の場面」の #450）が見る。
+/// ここで見るのは SwiftUI と UIKit の癖: 指で動かし始めたときに ScrollView が「触っている」の相を知らせること（中身が画面より短くても、キーボードと入力欄に届かない短い動きでも、一番下にいて中身が跳ね返るだけの上への動きでも）、
+/// 下げる指示（resignFirstResponder）で書く欄のキーボードが実際に下がること、アプリが動かしたとき（送った文章を追う）には「触っている」の相が来ず、キーボードが残ること
 @MainActor
 final class DismissKeyboardFromTimelineUITests: XCTestCase {
     private var app = XCUIApplication()
@@ -37,6 +41,7 @@ final class DismissKeyboardFromTimelineUITests: XCTestCase {
         attachScreenshot(of: app, named: "タイムラインを動かして下げたキーボード")
     }
 
+    /// 一番下にいるので、指を上へ動かしても中身は動かず、跳ね返るだけ
     func test_タイムラインを上へ動かしてもキーボードが下がること() {
         dragTimeline(fromY: 0.4, toY: 0.25)
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))

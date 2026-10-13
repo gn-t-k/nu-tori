@@ -1,9 +1,9 @@
 public import Foundation
 public import NuToriAPI
 
-/// 食事の同期の形。記録の種類の入口のうち、キャッシュの型に依らない部分。
-/// 取りに行った変更の見分け方と今の値の読み方、送り待ちから送る書き込み（作る・時刻を直す・消す）を作る
-public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
+/// 食事の同期の形。記録の種類の入口のうち、キャッシュの置き方に依らない部分。
+/// 取りに行った変更の見分け方と今の値の読み方、キャッシュへの当て方、送り待ちから送る書き込み（作る・時刻を直す・消す）を作る
+public struct MealSyncing: CacheApplying, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った食事が読めなくなる
     public static let kindName = RecordKindName.meal
 
@@ -115,6 +115,21 @@ public struct MealSyncing: SyncedRecordKind, RecordKindWrites {
                 MealEstimationStatusSyncing.removing(mealId: mealId),
             ]
         )
+    }
+
+    /// 今の値を書いてから、削除の印の食事を消す。キャッシュに無い食事の削除の印は読み飛ばす（返し直されるため）
+    public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<Meal, UUID>) throws {
+        let current = current(from: changes)
+        for meal in current.meals {
+            try cache.upsert(meal)
+        }
+        for mealId in current.removedMealIds {
+            try cache.remove(id: mealId)
+        }
+    }
+
+    public func erase(_ cache: any KeyedRecordCache<Meal, UUID>) throws {
+        try cache.removeAll()
     }
 
     /// 取りに行った変更を、今の値の並びにする。削除の印は、置き場に無い ID でも読み飛ばせるよう ID だけを返す

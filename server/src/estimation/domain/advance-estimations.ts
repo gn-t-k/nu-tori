@@ -1,8 +1,7 @@
 import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import { match, P } from "ts-pattern";
+import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import type { RecordType } from "../../domain/record-type";
-import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { MealPhotoArchive } from "../../meal/domain/meal-photo-archive";
 import { beginEstimationAttempts } from "./begin-estimation-attempts";
@@ -15,8 +14,10 @@ import { runEstimationAttempt } from "./run-estimation-attempt";
 // armAlarm は試みを書いたあと、呼ぶ前に呼ぶ。呼び出し中に止まっても、次に試みる時刻にアラームが動くため。
 // 止まった試み（R2・成分表の段）は投げずに返し、ほかの試みの結果を書き終えてから呼び出し側が投げる
 export const advanceEstimations = async (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: Parameters<typeof beginEstimationAttempts>[1] &
+    Parameters<typeof recordEstimationAttemptOutcome>[1] &
+    Pick<RecordKindStores, "accountSettings">,
   deps: {
     archive: MealPhotoArchive;
     provider: EstimationProvider;
@@ -32,7 +33,7 @@ export const advanceEstimations = async (
   providerErrors: unknown[];
   stoppedError: unknown;
 }> => {
-  const begun = beginEstimationAttempts(ledgerStore, stores, now);
+  const begun = beginEstimationAttempts(writeRecordChanges, stores, now);
   if (begun.attempts.length > 0) {
     await deps.armAlarm();
   }
@@ -42,7 +43,7 @@ export const advanceEstimations = async (
       return {
         outcome,
         usageEvents: recordEstimationAttemptOutcome(
-          ledgerStore,
+          writeRecordChanges,
           stores,
           attempt,
           outcome,

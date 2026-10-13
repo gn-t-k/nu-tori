@@ -2,9 +2,13 @@ import Foundation
 import NuToriCore
 import SwiftData
 
-/// キャッシュの体重記録の読み書き。登録簿の種類（`WeightRecordKind`）と、`SwiftDataSyncStore` の読む口・ヘルスケアの取り込みが使う。
+/// キャッシュの体重記録の行の引き方と、記録との行き来。SwiftData の adapter（`SwiftDataKeyedRecordCache`）と、`SwiftDataSyncStore` の読む口が使う。
 /// 保存は呼び出し側が行う
-extension CachedWeightRecord {
+extension CachedWeightRecord: KeyedCacheRow {
+    nonisolated static func id(of record: WeightRecord) -> UUID {
+        record.id
+    }
+
     nonisolated static func find(id: UUID, in context: ModelContext) throws -> CachedWeightRecord? {
         var descriptor = FetchDescriptor<CachedWeightRecord>(
             predicate: #Predicate { $0.recordId == id })
@@ -12,11 +16,7 @@ extension CachedWeightRecord {
         return try context.fetch(descriptor).first
     }
 
-    nonisolated static func upsert(_ record: WeightRecord, in context: ModelContext) throws {
-        if let existing = try find(id: record.id, in: context) {
-            try existing.apply(record)
-        } else {
-            context.insert(try CachedWeightRecord(record))
-        }
+    nonisolated func record() -> WeightRecord? {
+        weightRecord()
     }
 }

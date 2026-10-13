@@ -4,7 +4,7 @@ import SwiftUI
 @main
 struct NuToriApp: App {
     init() {
-        runtime?.recordSync.registerAndWatch()
+        runtime?.syncTriggers.registerAndWatch()
         runtime?.reminderTaps.startReceiving()
     }
 

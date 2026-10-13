@@ -8,7 +8,7 @@ import type {
   IngredientMatchRequest,
   MatchedIngredients,
 } from "../../domain/estimation-provider";
-import { EstimationProviderInvalidResponseError } from "../../domain/estimation-provider-invalid-response-error";
+import { LlmCallInvalidResponseError } from "../../../domain/llm-call-invalid-response-error";
 import { requestStructuredOutput } from "./request-structured-output";
 
 // ②: 栄養成分表示の無い材料ごとに、成分表の候補から食品番号を選ぶ。選べなければ主な栄養を推定する（文字だけの呼び出し）
@@ -40,7 +40,7 @@ export const matchIngredients = (
       // 食品番号も推定した栄養も無い答えは、読めない応答にする
       return ingredients.length === matches.length
         ? R.succeed({ output: { ingredients }, usage })
-        : R.fail(new EstimationProviderInvalidResponseError({ usage }));
+        : R.fail(new LlmCallInvalidResponseError({ usage }));
     }),
   );
 

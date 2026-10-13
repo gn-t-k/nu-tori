@@ -1,5 +1,5 @@
 import type { DishStore } from "../../dish/domain/dish-store";
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { createServerOnlyKind } from "../../domain/sync-ledger/create-server-only-kind";
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
 import { computeDishEstimationStatus } from "./compute-dish-estimation-status";
 import type { DishEstimationStatus } from "./dish-estimation-status";
@@ -11,16 +11,10 @@ export const createDishEstimationStatusKind = (
   dishStore: DishStore,
   store: DishEstimationStatusStore,
   now: Date,
-): RecordKind<"dish_estimation_status", never, DishEstimationStatus> => ({
-  name: "dish_estimation_status",
-  writes: undefined,
-  follows: undefined,
-  whenGone: "deletion_mark",
-  readCurrent: (dishId): CurrentRecord<DishEstimationStatus> => {
-    if (!dishStore.exists(dishId)) {
-      return dishStore.hasDeletion(dishId) ? { status: "deleted" } : { status: "absent" };
-    }
-    const status = computeDishEstimationStatus(store.findSchedulesOfDish(dishId), now);
-    return status === undefined ? { status: "absent" } : { status: "value", value: status };
-  },
-});
+): RecordKind<"dish_estimation_status", never, DishEstimationStatus> =>
+  createServerOnlyKind({
+    name: "dish_estimation_status",
+    whenGone: "deletion_mark",
+    parent: { exists: dishStore.exists, hasDeletion: dishStore.hasDeletion },
+    find: (dishId) => computeDishEstimationStatus(store.findSchedulesOfDish(dishId), now),
+  });

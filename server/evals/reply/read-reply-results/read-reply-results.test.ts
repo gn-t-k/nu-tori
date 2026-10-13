@@ -74,7 +74,7 @@ describe("返事の評価の結果を読む", () => {
         results: [
           result("off-topic-movie", {
             success: false,
-            error: "返事を作れなかった（ConversationProviderError）\n    at JudgeProvider.callApi",
+            error: "返事を作れなかった（LlmCallError）\n    at JudgeProvider.callApi",
           }),
         ],
       },
@@ -84,9 +84,7 @@ describe("返事の評価の結果を読む", () => {
         id: "off-topic-movie",
         pass: false,
         output: undefined,
-        failures: [
-          { rubric: "返事を作る", reason: "返事を作れなかった（ConversationProviderError）" },
-        ],
+        failures: [{ rubric: "返事を作る", reason: "返事を作れなかった（LlmCallError）" }],
       },
     ]);
   });

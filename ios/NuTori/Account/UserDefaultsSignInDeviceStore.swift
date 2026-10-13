@@ -46,8 +46,9 @@ nonisolated struct UserDefaultsSignInDeviceStore: SignInDeviceStore, @unchecked 
         defaults.removeObject(forKey: Key.deviceId)
     }
 
-    /// アプリを消すと消える場所に置く。キーチェーンは消しても残る
-    func loadOrCreateDeviceId() -> UUID {
+    /// アプリを消すと消える場所に置く。キーチェーンは消しても残る。
+    /// 読んで無ければ作るので、同時に呼ばれると別々の ID を作りうる。MainActor に置いて、1つずつ走らせる
+    @MainActor func loadOrCreateDeviceId() -> UUID {
         if let saved = defaults.string(forKey: Key.deviceId), let id = UUID(uuidString: saved) {
             return id
         }

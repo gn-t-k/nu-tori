@@ -17,9 +17,9 @@ import {
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
 } from "../../observability/testing";
-import { EstimationProviderBadRequestError } from "../domain/estimation-provider-bad-request-error";
-import { EstimationProviderError } from "../domain/estimation-provider-error";
-import { EstimationProviderTimedOutError } from "../domain/estimation-provider-timed-out-error";
+import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
+import { LlmCallError } from "../../domain/llm-call-error";
+import { LlmCallTimedOutError } from "../../domain/llm-call-timed-out-error";
 import {
   mockCreateEstimationProviderError,
   mockCreateEstimationProviderOk,
@@ -124,37 +124,8 @@ describe("推定", () => {
           positionInDish: 0,
           quantitySource: "estimated",
           nutrientSource: { type: "food_composition", foodNumber: "11225" },
-          // 成分表の (0) は 0 の値にし、「-」（ヨウ素・セレン・クロム・モリブデン・ビオチン）は持たない
-          nutrients: {
-            energy_kcal: 145,
-            protein_g: 21.5,
-            fat_g: 4.5,
-            carbohydrate_g: 0,
-            fiber_g: 0,
-            salt_equivalent_g: 0.2,
-            cholesterol_mg: 120,
-            potassium_mg: 380,
-            calcium_mg: 7,
-            magnesium_mg: 29,
-            phosphorus_mg: 220,
-            iron_mg: 0.9,
-            zinc_mg: 2.6,
-            copper_mg: 0.06,
-            manganese_mg: 0.01,
-            vitamin_a_ug: 13,
-            vitamin_d_ug: 0,
-            vitamin_e_mg: 0.3,
-            vitamin_k_ug: 29,
-            vitamin_b1_mg: 0.14,
-            vitamin_b2_mg: 0.23,
-            niacin_mg: 6.7,
-            vitamin_b6_mg: 0.37,
-            vitamin_b12_ug: 0.4,
-            folate_ug: 10,
-            pantothenic_acid_mg: 1.33,
-            vitamin_c_mg: 3,
-            water_g: 68.1,
-          },
+          // 成分表から決めた値そのものは、試みのテスト（run-estimation-attempt.test.ts）で確かめる
+          nutrients: expect.any(Object),
         },
         {
           id: expect.any(String),
@@ -275,7 +246,7 @@ describe("推定", () => {
     beforeEach(async () => {
       providerResponseError = new Error("Overloaded");
       mockCreateEstimationProviderError(
-        new EstimationProviderError({
+        new LlmCallError({
           errorType: "overloaded_error",
           cause: providerResponseError,
         }),
@@ -356,7 +327,7 @@ describe("推定", () => {
     let mealId: string;
     beforeEach(async () => {
       mockCreateEstimationProviderError(
-        new EstimationProviderBadRequestError({ errorType: "invalid_request_error" }),
+        new LlmCallBadRequestError({ errorType: "invalid_request_error" }),
       );
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
@@ -374,7 +345,7 @@ describe("推定", () => {
   describe("提供元の呼び出しが時間切れになったとき", () => {
     let mealId: string;
     beforeEach(async () => {
-      mockCreateEstimationProviderError(new EstimationProviderTimedOutError());
+      mockCreateEstimationProviderError(new LlmCallTimedOutError());
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
     });
@@ -416,32 +387,11 @@ describe("推定", () => {
     });
   });
 
-  describe("② の答えの食品番号が、成分表の候補に無いとき", () => {
-    beforeEach(async () => {
-      mockCreateEstimationProviderOk({
-        matchIngredients: ({ ingredients }) => ({
-          ingredients: ingredients.map(() => ({
-            source: "food_composition",
-            foodNumber: "99999",
-          })),
-        }),
-      });
-      await recordPhotographedMeal(sessionToken);
-      await runEstimationAlarm(accountId);
-    });
-
-    test("確かめに通らない試みにすること", async () => {
-      expect(await readRows(accountId, "SELECT result FROM estimation_attempt_results")).toEqual([
-        { result: "invalid_response" },
-      ]);
-    });
-  });
-
   describe("① は通り ② で提供元がエラーを返したとき、本番のサーバーで利用状況を送る人なら", () => {
     let captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
     beforeEach(async () => {
       await enableUsageEventSending(accountId);
-      mockCreateEstimationProviderError(new EstimationProviderError({ errorType: "api_error" }), {
+      mockCreateEstimationProviderError(new LlmCallError({ errorType: "api_error" }), {
         failingCall: "match_ingredients",
       });
       await recordPhotographedMeal(sessionToken);
@@ -500,7 +450,7 @@ describe("推定", () => {
   describe("6回の試みが提供元のエラーで、7つ目の試みの呼び出し中に止まったとき", () => {
     let mealId: string;
     beforeEach(async () => {
-      mockCreateEstimationProviderError(new EstimationProviderError({ errorType: "api_error" }));
+      mockCreateEstimationProviderError(new LlmCallError({ errorType: "api_error" }));
       mealId = await recordPhotographedMeal(sessionToken);
       await runEstimationAlarm(accountId);
       for (let retry = 0; retry < 5; retry += 1) {

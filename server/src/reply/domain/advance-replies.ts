@@ -1,7 +1,6 @@
 import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
+import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import type { RecordType } from "../../domain/record-type";
-import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import { type BegunReplyAttempt, beginReplyAttempts } from "./begin-reply-attempts";
 import { concludeReplyAttempt } from "./conclude-reply-attempt";
@@ -19,8 +18,8 @@ import { runReplyAttempt } from "./run-reply-attempt";
 // 止まった試み（文脈を読めなかったなど）は投げずに返し、ほかの試みの結果を書き終えてから呼び出し側が投げる。
 // 見守る要求には、生成を始めたら返事の ID を、呼んでいるあいだはできた分を、結果を書いたら返事か作れなかったを送る
 export const advanceReplies = async (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: ReplyAdvanceStores,
   deps: { provider: ConversationProvider; armAlarm: () => Promise<void>; watchers: ReplyWatchers },
   now: Date,
 ): Promise<{
@@ -32,7 +31,7 @@ export const advanceReplies = async (
   providerErrors: unknown[];
   stoppedError: unknown;
 }> => {
-  const begun = beginReplyAttempts(ledgerStore, stores, now);
+  const begun = beginReplyAttempts(writeRecordChanges, stores, now);
   deps.watchers.refresh(stores);
   if (begun.attempts.length > 0) {
     await deps.armAlarm();
@@ -47,7 +46,7 @@ export const advanceReplies = async (
       const outcome = await runReplyAttempt(deps.provider, stores, attempt.sentText, (text) =>
         deps.watchers.appendText(sentTextId, text),
       );
-      const ended = endReplyAttempt(ledgerStore, stores, deps.watchers, attempt, outcome);
+      const ended = endReplyAttempt(writeRecordChanges, stores, deps.watchers, attempt, outcome);
       usageEvents.push(...ended.usageEvents);
       attempts.push(ended.conclusion);
       providerErrors.push(...ended.providerErrors);
@@ -65,19 +64,30 @@ export const advanceReplies = async (
   };
 };
 
+// 試みを書くときに読む置き場と、文脈を読む置き場と、見守る要求に送る状態を読む置き場
+type ReplyAdvanceStores = Pick<RecordKindStores, "accountSettings" | "reply"> &
+  Parameters<typeof runReplyAttempt>[1] &
+  Parameters<ReplyWatchers["refresh"]>[0];
+
 // 途中で止まった試みは結果が無い
 type ReplyAttemptReport = ReplyAttemptConclusion | { result: undefined };
 
 // 通らなかった試みも結果として書き、見守る要求に終わりと書いたあとの状態を送る
 const endReplyAttempt = (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: ReplyAdvanceStores,
   watchers: ReplyWatchers,
   attempt: BegunReplyAttempt,
   outcome: ReplyAttemptOutcome,
 ): ReturnType<typeof concludeReplyAttempt> & { usageEvents: UsageEvent[] } => {
   watchers.endAttempt(attempt.sentText.id, outcome.result === "succeeded");
-  const usageEvents = recordReplyAttemptOutcome(ledgerStore, stores, attempt, outcome, new Date());
+  const usageEvents = recordReplyAttemptOutcome(
+    writeRecordChanges,
+    stores,
+    attempt,
+    outcome,
+    new Date(),
+  );
   watchers.refresh(stores);
   return { ...concludeReplyAttempt(outcome), usageEvents };
 };

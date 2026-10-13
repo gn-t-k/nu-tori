@@ -6,6 +6,8 @@ import SwiftData
 @MainActor final class AppRuntime {
     let container: ModelContainer
     let recordSync: RecordSync
+    /// バックグラウンド更新・回線・時計の変化を、同期の段取りに知らせる
+    let syncTriggers: RecordSyncTriggers
     let model: RootModel
     /// 締め出しの記憶。締め出しの画面はこれを見て、すべての画面の上に出る
     let appLockout: AppLockout
@@ -13,11 +15,12 @@ import SwiftData
     let reminderTaps: MissedWeightReminderTapReceiver
 
     init(
-        container: ModelContainer, recordSync: RecordSync, model: RootModel,
-        appLockout: AppLockout, reminderTaps: MissedWeightReminderTapReceiver
+        container: ModelContainer, recordSync: RecordSync, syncTriggers: RecordSyncTriggers,
+        model: RootModel, appLockout: AppLockout, reminderTaps: MissedWeightReminderTapReceiver
     ) {
         self.container = container
         self.recordSync = recordSync
+        self.syncTriggers = syncTriggers
         self.model = model
         self.appLockout = appLockout
         self.reminderTaps = reminderTaps
@@ -146,18 +149,25 @@ import SwiftData
             now: clock.now,
             errorReporting: observation.errorReporting
         )
+        let reflector = RecordSyncReflector()
         let sync = RecordSync(
             store: store,
-            client: client,
+            engines: DeviceSyncEngineSource(
+                store: store, client: client, keychain: keychain, deviceStore: deviceStore,
+                clock: clock, errorReporting: observation.errorReporting,
+                healthEngine: health.engine, mealPhotos: mealPhotos),
+            // 送ってからの経過は、止めた時計（UI テスト）でも進む単調な時計で測る
+            clock: RecordSyncClock(
+                now: clock.now, monotonicNow: { .now }, wait: { try await Task.sleep(for: $0) }),
+            watchReply: { try await client.watchReply(sentTextId: $0) },
+            reflection: reflector,
             accountSession: session,
-            health: health,
-            deviceId: { deviceStore.loadOrCreateDeviceId() },
-            hasSession: { (try? await keychain.sessionToken()) != nil },
-            signedInAccountId: { (try? await deviceStore.signedInAccount())?.accountId },
-            errorReporting: observation.errorReporting,
-            mealPhotos: mealPhotos,
             missedWeightRecordWatch: missedWeightRecordWatch,
-            clock: clock
+            mealPhotos: mealPhotos,
+            errorReporting: observation.errorReporting,
+            weightHealthExport: health.engine,
+            importHealthChanges: { await health.importChanges() },
+            takeStoreRecoveries: { store.takeRecoveries() }
         )
         let finishedUploads = parts.finishedMealPhotoUploads
         Task {
@@ -171,13 +181,14 @@ import SwiftData
             try? await sync?.importHealthAndSendPending()
         }
         let model = RootModel(
-            accountSession: session, recordSync: sync, health: health,
+            accountSession: session, recordSync: sync, reflector: reflector, health: health,
             missedWeightRecordWatch: missedWeightRecordWatch, clock: clock)
         let reminderTaps = MissedWeightReminderTapReceiver { [weak model] noticeId in
             Task { await model?.openFromReminder(noticeId: noticeId) }
         }
         return AppRuntime(
-            container: store.container, recordSync: sync, model: model, appLockout: appLockout,
-            reminderTaps: reminderTaps)
+            container: store.container, recordSync: sync,
+            syncTriggers: RecordSyncTriggers(recordSync: sync, health: health), model: model,
+            appLockout: appLockout, reminderTaps: reminderTaps)
     }
 }

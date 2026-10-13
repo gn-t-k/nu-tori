@@ -1,7 +1,5 @@
-import { createRecordLedger } from "../../domain/create-record-ledger";
+import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import type { RecordType } from "../../domain/record-type";
-import type { LedgerStore } from "../../domain/sync-ledger/ledger-store";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { BegunReplyAttempt } from "./begin-reply-attempts";
 import { computeReplyGenerationEndedEvent } from "./compute-reply-generation-ended-event";
@@ -15,45 +13,43 @@ import type { ReplyAttemptOutcome } from "./reply-attempt-outcome";
 // 呼び出し中にほかで終わっていたら（途中で止まった試みとみなして作れなかったにした）、結果だけを書く。
 // 返すのは PostHog に送る出来事
 export const recordReplyAttemptOutcome = (
-  ledgerStore: LedgerStore<RecordType>,
-  stores: RecordKindStores,
+  writeRecordChanges: RecordChangeWriter,
+  stores: Pick<RecordKindStores, "reply">,
   attempt: BegunReplyAttempt,
   outcome: ReplyAttemptOutcome,
   endedAt: Date,
 ): UsageEvent[] =>
-  createRecordLedger(ledgerStore, stores, endedAt).changeOutsideWrites((addChange) =>
-    stores.writeReplyEvents(addChange, (writes) => {
-      const { generationId } = attempt;
-      const { conclusion } = concludeReplyAttempt(outcome);
-      writes.recordAttemptResult({ attemptId: attempt.attemptId, endedAt, conclusion });
-      const attemptEnded: UsageEvent = {
-        name: "reply_attempt_ended",
-        result: outcome.result,
-        usage: outcome.usage,
-        providerErrorType: findProviderErrorType(conclusion),
-      };
-      if (stores.reply.hasEnded(generationId)) {
-        return [attemptEnded];
-      }
-      const attempts = stores.reply.findAttempts(generationId);
-      const ended = { attempts, requestedAt: attempt.requestedAt, endedAt };
-      if (outcome.result === "succeeded") {
-        writes.reply({ generationId, body: outcome.body, mealIds: outcome.mealIds });
-        return [
-          attemptEnded,
-          computeReplyGenerationEndedEvent({
-            ...ended,
-            final: { status: "replied", referencedMealCount: outcome.mealIds.length },
-          }),
-        ];
-      }
-      if (outcome.result === "bad_request" || attempts.length >= maximumReplyAttempts) {
-        writes.abandon({ generationId, abandonedAt: endedAt });
-        return [
-          attemptEnded,
-          computeReplyGenerationEndedEvent({ ...ended, final: { status: "failed" } }),
-        ];
-      }
+  writeRecordChanges(({ reply: writes }) => {
+    const { generationId } = attempt;
+    const { conclusion } = concludeReplyAttempt(outcome);
+    writes.recordAttemptResult({ attemptId: attempt.attemptId, endedAt, conclusion });
+    const attemptEnded: UsageEvent = {
+      name: "reply_attempt_ended",
+      result: outcome.result,
+      usage: outcome.usage,
+      providerErrorType: findProviderErrorType(conclusion),
+    };
+    if (stores.reply.hasEnded(generationId)) {
       return [attemptEnded];
-    }),
-  );
+    }
+    const attempts = stores.reply.findAttempts(generationId);
+    const ended = { attempts, requestedAt: attempt.requestedAt, endedAt };
+    if (outcome.result === "succeeded") {
+      writes.reply({ generationId, body: outcome.body, mealIds: outcome.mealIds });
+      return [
+        attemptEnded,
+        computeReplyGenerationEndedEvent({
+          ...ended,
+          final: { status: "replied", referencedMealCount: outcome.mealIds.length },
+        }),
+      ];
+    }
+    if (outcome.result === "bad_request" || attempts.length >= maximumReplyAttempts) {
+      writes.abandon({ generationId, abandonedAt: endedAt });
+      return [
+        attemptEnded,
+        computeReplyGenerationEndedEvent({ ...ended, final: { status: "failed" } }),
+      ];
+    }
+    return [attemptEnded];
+  });

@@ -5,7 +5,7 @@ import type { LedgerStore } from "./sync-ledger/ledger-store";
 import { createSyncLedger } from "./sync-ledger/sync-ledger";
 import type { SyncWrite } from "./sync-write";
 
-// 登録簿の種類で組んだ帳簿。書き込みと変更の型は、登録簿から導いた SyncWrite と RecordType
+// 登録簿の種類で組んだ帳簿。書き込みの型は登録簿から導いた SyncWrite、種類の名前の型は名前の一覧から導いた RecordType
 export const createRecordLedger = (
   ledgerStore: LedgerStore<RecordType>,
   stores: RecordKindStores,

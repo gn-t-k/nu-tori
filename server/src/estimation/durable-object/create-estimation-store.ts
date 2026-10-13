@@ -1,8 +1,8 @@
 import { and, asc, count, eq, isNotNull, isNull } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { match, P } from "ts-pattern";
-import type { EstimationAttemptConclusion } from "../domain/estimation-attempt-conclusion";
-import type { EstimationAttemptResult } from "../domain/estimation-attempt-result";
+import type { EstimationAttemptOutcome } from "../domain/estimation-attempt-outcome";
+import type { EstimationEvents } from "../domain/estimation-events";
 import type { EstimationAttempt, EstimationStore } from "../domain/estimation-store";
 import { estimationScheduleTargets } from "./estimation-schedule-targets";
 import { estimationTables } from "./estimation-tables";
@@ -117,9 +117,9 @@ export const createEstimationStore = (db: DrizzleSqliteDODatabase): EstimationSt
 
 // 提供元のエラーと 400 の結果には、同じトランザクションでエラーの種類を書いている
 const toConclusion = (
-  result: EstimationAttemptResult,
+  result: EstimationAttemptOutcome["result"],
   errorType: string | null,
-): EstimationAttemptConclusion =>
+): EstimationEvents["attemptResult"]["conclusion"] =>
   match(result)
     .with(P.union("provider_error", "bad_request"), (providerResult) => {
       if (errorType === null) {

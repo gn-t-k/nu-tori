@@ -2,7 +2,7 @@ public import Foundation
 public import NuToriAPI
 
 /// 材料の同期の形。端末も書く種類で、材料の量を直す書き込みを送り待ちから送る
-public struct IngredientSyncing: SyncedRecordKind, RecordKindWrites {
+public struct IngredientSyncing: CacheApplying, RecordKindWrites {
     /// 送り待ちの種類の名前。変えると、送り待ちに残った材料が読めなくなる
     public static let kindName = RecordKindName.ingredient
 
@@ -82,6 +82,23 @@ public struct IngredientSyncing: SyncedRecordKind, RecordKindWrites {
                 KindChanges(kind: name, changes: [.ingredient(SyncedIngredient(corrected))])
             ]
         )
+    }
+
+    /// 今の値を書いてから、削除の印の材料を消す。親の料理がまだ無くても置く（届く順は約束しない）。キャッシュに無い材料の削除の印は読み飛ばす（返し直されるため）
+    public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<Ingredient, UUID>)
+        throws
+    {
+        let current = current(from: changes)
+        for record in current.ingredients {
+            try cache.upsert(record)
+        }
+        for recordId in current.removedIngredientIds {
+            try cache.remove(id: recordId)
+        }
+    }
+
+    public func erase(_ cache: any KeyedRecordCache<Ingredient, UUID>) throws {
+        try cache.removeAll()
     }
 
     /// 取りに行った変更を、今の値の並びにする。料理より先に届いた材料も返す（届く順は約束しない）

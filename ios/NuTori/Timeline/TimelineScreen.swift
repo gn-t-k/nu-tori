@@ -38,17 +38,17 @@ struct TimelineScreen: View {
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
-        let selectedDay = loaded.flatMap(selectedDay(in:)) ?? today
+        let shownDay = loaded.flatMap { viewport.shownDay(newestDay: $0.newestDay) } ?? today
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 DayRingStrip(
                     weeks: stripWeeks(loaded: loaded),
-                    selectedDay: selectedDay,
+                    selectedDay: shownDay,
                     today: today,
                     openableDays: loaded?.dayRange
                 ) { day in
                     showsCameraNotice = false
-                    dayFocus = .summary(day)
+                    summaryDay = day
                 }
                 Divider()
                 content(loaded: loaded)
@@ -110,7 +110,7 @@ struct TimelineScreen: View {
             .onDisappear {
                 showsCameraNotice = false
             }
-            .navigationTitle(TimelineDayText.label(for: selectedDay))
+            .navigationTitle(TimelineDayText.label(for: shownDay))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -130,12 +130,13 @@ struct TimelineScreen: View {
                 .accessibilityIdentifier("account-screen")
             }
             .sheet(isPresented: summaryPresented) {
-                if case .summary(let day) = dayFocus, let loaded {
+                if let summaryDay, let loaded {
                     DaySummarySheet(
-                        timeline: loaded, day: day, weightRecords: records,
+                        timeline: loaded, day: summaryDay, weightRecords: records,
                         weightTrend: weightTrend
                     ) { chosen in
-                        dayFocus = .scrollingTo(chosen)
+                        self.summaryDay = nil
+                        waitingInstructions += viewport.dayChosen(chosen)
                     }
                 }
             }
@@ -218,11 +219,11 @@ struct TimelineScreen: View {
     @State private var showsAccount = false
     /// 潜った画面の並び。食事を消したら、料理の画面からでもタイムラインまで戻す
     @State private var navigationPath = NavigationPath()
-    @State private var visibleDay: CalendarDay?
     @State private var weightEntryPhase = WeightEntryPhase.closed
     /// 体重のシートで記録したか。シートが閉じたら通知の許可を求める合図
     @State private var recordedInWeightEntry = false
-    @State private var dayFocus: DayFocus = .timeline
+    /// 日のまとめを出している日
+    @State private var summaryDay: CalendarDay?
     @State private var cameraPhase = CameraPhase.closed
     /// カメラを許可していない人に出す知らせ。ほかを押すか、タイムラインを動かすと消える
     @State private var showsCameraNotice = false
@@ -234,12 +235,10 @@ struct TimelineScreen: View {
     /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
-    /// 中身が伸びたときに一番下へ追うか。立てる場面と下ろす場面は `timelineList` のコメント
-    @State private var followsTimelineEnd = true
-    /// 一番下に着き終えた、いちばん新しい日。日が足された描画では、まだ前の日のまま
-    @State private var settledNewestDay: CalendarDay?
-    /// タイムラインの一番下が、入力欄の上に見えているか
-    @State private var timelineEnd = TimelineEndPosition.shown
+    /// 見える範囲の規則は NuToriCore の TimelineViewport が持つ。規則は前の出来事を覚えて決めるので、描き直しをまたいで持つために @State に置く
+    @State private var viewport = TimelineViewport()
+    /// 実行を待っている指示。動かす口（ScrollViewProxy）は ScrollViewReader の中にしか無く、通知から開いた直後のカードと、足したばかりの項目は、並んでからでないと着けないので、次の更新まで持ってから実行する
+    @State private var waitingInstructions: [TimelineViewport.Instruction] = []
     /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
     @State private var replyFirstText = ReplyFirstTextWatch()
 
@@ -267,10 +266,10 @@ struct TimelineScreen: View {
 
     private var summaryPresented: Binding<Bool> {
         Binding(
-            get: { if case .summary = dayFocus { true } else { false } },
+            get: { summaryDay != nil },
             set: { presented in
-                if !presented, case .summary = dayFocus {
-                    dayFocus = .timeline
+                if !presented {
+                    summaryDay = nil
                 }
             }
         )
@@ -308,15 +307,8 @@ struct TimelineScreen: View {
         }
     }
 
-    /// タイムラインの位置を動かす場面は、次の4つ。自分の操作の結果は見せ、ほかから来たもの（返事、知らせ、同期や取り込みで届いた記録）では読んでいる所から動かさない。
-    /// - 開く: 一番下から開く
-    /// - 追う: 一番下にいるあいだ、中身が伸びても（返事が伸びる、項目や日が足される）一番下に保つ。指で触れたら止める。止まったとき（アプリが動かして着いたときを含む）は、そこが一番下なら追い、違えば止める。伸びる返事が無くなったときと、送り直したときも、また追う（`followsTimelineEnd`）
-    /// - 戻す: ユーザーがアプリの中でいちばん下に項目を足したら、遡っていても一番下へ連れていき、そこから追う（`Timeline.addsItemByUserAtEnd`）
-    /// - 着く: 選んだ所へ行く。日のまとめで選んだ日、帯の下の1行の知らせ、通知から開いた知らせか一番下（`dayFocus`）
     private func timelineList(_ timeline: Timeline) -> some View {
-        // タイムラインの中身の全体。下の余白まで含めた下端へ動かすときに名指しする
-        let contentId = "timeline-content"
-        return GeometryReader { geo in
+        GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView {
                     // 中身が画面より短いときは下に寄せ、長いときは下端から開く
@@ -335,74 +327,55 @@ struct TimelineScreen: View {
                             }
                         }
                         .padding()
-                        .id(contentId)
+                        .id(Self.contentId)
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                     // 余白や文を押したら、キーボードを下げる。押せるもの（記録の行、カード、知らせの中の欄）は自分の動きをする
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        // 書く欄と知らせの中の欄のどちらにカーソルがあっても下げる
-                        UIApplication.shared.sendAction(
-                            #selector(UIResponder.resignFirstResponder), to: nil, from: nil,
-                            for: nil)
+                        dismissKeyboard()
                     }
                 }
-                // 送ったあともキーボードを残すので、下げる手立てはタイムラインを動かすか押すこと。指に合わせて下げる形（.interactively）は、指がキーボードに届くまで下がらず、あいだに入力欄があるここではふつうに動かしても届かない（#450）
-                .scrollDismissesKeyboard(.immediately)
-                // 開く
+                // 送ったあともキーボードを残すので、下げる手立てはタイムラインを動かすか押すこと。動かしたときに下げるかは見える範囲の指示で決まるので、ScrollView には下げさせない
+                .scrollDismissesKeyboard(.never)
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
-                // 追う。日が足された描画では追わない。LazyVStack はまだ描いていない日の高さをほかの日の平均で見積もり、追うとその見積もりの端（何も無い所）へ動いて、足された日が描かれず真っ白のまま残る
                 .defaultScrollAnchor(
-                    followsTimelineEnd && timeline.days.last?.day == settledNewestDay
+                    viewport.followsSizeChanges(newestDay: timeline.newestDay)
                         ? .bottom : .top, for: .sizeChanges
                 )
-                // 足された日が今の位置のすぐ下に描かれてから、下端へ動かす
-                .onChange(of: timeline.days.last?.day, initial: true) { _, newest in
-                    if followsTimelineEnd, settledNewestDay != nil {
-                        proxy.scrollTo(contentId, anchor: .bottom)
-                    }
-                    settledNewestDay = newest
+                // 足された日が今の位置のすぐ下に描かれてから届く
+                .onChange(of: timeline.newestDay, initial: true) { _, newest in
+                    perform(viewport.newestDayChanged(to: newest), with: proxy)
                 }
-                .onScrollGeometryChange(for: TimelineEndPosition.self) { geometry in
+                .onScrollGeometryChange(for: TimelineViewport.EndPosition.self) { geometry in
                     // 見えている所（visibleRect）は、下の入力欄に隠れた分（contentInsets.bottom）まで含む
-                    TimelineEndPosition(
+                    TimelineViewport.EndPosition(
                         visibleMaxY: geometry.visibleRect.maxY,
                         hiddenByComposer: geometry.contentInsets.bottom,
                         contentHeight: geometry.contentSize.height)
                 } action: { _, position in
-                    timelineEnd = position
+                    viewport.endPositionChanged(to: position)
                 }
                 .onScrollPhaseChange { oldPhase, phase in
                     if phase != .idle {
                         showsCameraNotice = false
                     }
-                    // 動かしているあいだは追わず、止まったときに一番下が入力欄の上か下にあれば、また追う
-                    if phase == .interacting {
-                        followsTimelineEnd = false
-                    } else if phase == .idle {
-                        followsTimelineEnd = timelineEnd.followsWhenSettled
-                        // 下端ちょうどにいないと .sizeChanges の .bottom が追わないので、使う人が入力欄の下に隠れた所で止めたら下端ちょうどへ寄せて、追えるようにする（#469）。
-                        // アプリが動かして止まったとき（知らせのカードへ着いた、ここで下端へ動かした）は、着いた所に置く
-                        let releasedByUser = oldPhase == .interacting || oldPhase == .decelerating
-                        if releasedByUser, timelineEnd == .underComposer {
-                            withAnimation {
-                                proxy.scrollTo(contentId, anchor: .bottom)
-                            }
-                        }
-                    }
+                    perform(
+                        viewport.scrollPhaseChanged(
+                            from: TimelineViewport.ScrollPhase(oldPhase),
+                            to: TimelineViewport.ScrollPhase(phase)),
+                        with: proxy)
                 }
-                // 戻す
                 .onChange(of: timeline.days) { old, new in
-                    if Timeline.addsItemByUserAtEnd(from: old, to: new, now: now()) {
-                        followsTimelineEnd = true
-                        dayFocus = .scrollingToEnd
-                    }
+                    let returning = viewport.daysChanged(from: old, to: new, now: now())
+                    guard !returning.isEmpty else { return }
+                    // 日のまとめを開いていても、足した項目を見せる
+                    summaryDay = nil
+                    waitingInstructions += returning
                 }
                 .onChange(of: timeline.hasGrowingReply) { _, growing in
-                    if !growing {
-                        followsTimelineEnd = true
-                    }
+                    viewport.growingReplyChanged(isGrowing: growing)
                 }
                 .onChange(of: timeline.days, initial: true) { _, _ in
                     let events = replyFirstText.note(timeline, at: now())
@@ -411,34 +384,29 @@ struct TimelineScreen: View {
                     }
                 }
                 .coordinateSpace(.named("timeline"))
-                .onPreferenceChange(TimelineDayOffsetsKey.self) { offsets in
-                    visibleDay = dayInView(
-                        offsets, timeline: timeline, viewportHeight: geo.size.height)
+                .onPreferenceChange(TimelineDayPositionsKey.self) { positions in
+                    // 位置は動かすたびに届くので、出す日が変わらないあいだは描き直させない
+                    var moved = viewport
+                    moved.dayPositionsChanged(
+                        positions, newestDay: timeline.newestDay,
+                        viewportHeight: Double(geo.size.height))
+                    if moved != viewport {
+                        viewport = moved
+                    }
                 }
                 .onPreferenceChange(AwaitingNoticePositionKey.self) { position in
                     unansweredNoticeLineVisibility.note(position)
                 }
-                // 着く
-                .onChange(of: dayFocus) { _, focus in
-                    switch focus {
-                    case .scrollingTo(let day):
-                        proxy.scrollTo(day, anchor: .top)
-                    case .scrollingToItem(let itemId):
-                        withAnimation {
-                            proxy.scrollTo(itemId, anchor: .top)
-                        }
-                    case .scrollingToEnd:
-                        // 下の余白まで含めた下端に着く。いちばん新しい日の下端（余白の手前）に着くと、そのあと中身が伸びても .sizeChanges の .bottom が追わない（#467）
-                        proxy.scrollTo(contentId, anchor: .bottom)
-                    case .timeline, .summary:
-                        return
-                    }
-                    dayFocus = .timeline
+                .onChange(of: waitingInstructions) { _, instructions in
+                    guard !instructions.isEmpty else { return }
+                    waitingInstructions = []
+                    perform(instructions, with: proxy)
                 }
                 // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く
                 .onChange(of: reminderLanding, initial: true) { _, landing in
                     guard let landing else { return }
-                    dayFocus = DayFocus(timeline.landing(for: landing))
+                    summaryDay = nil
+                    waitingInstructions += viewport.landingRequested(timeline.landing(for: landing))
                     noteReminderLanded()
                 }
             }
@@ -463,15 +431,18 @@ struct TimelineScreen: View {
         .background {
             GeometryReader { geo in
                 Color.clear.preference(
-                    key: TimelineDayOffsetsKey.self,
+                    key: TimelineDayPositionsKey.self,
                     value: [
-                        TimelineDayOffset(
-                            day: day.day, minY: geo.frame(in: .named("timeline")).minY)
+                        TimelineViewport.DayPosition(
+                            day: day.day, minY: Double(geo.frame(in: .named("timeline")).minY))
                     ]
                 )
             }
         }
     }
+
+    /// タイムラインの中身の全体。下の余白まで含めた下端へ動かすときに名指しする
+    private static let contentId = "timeline-content"
 
     /// 話し手の替わり目の見た目（#449 の解決コメント）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
     /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、話し手の替わり目を余白だけで見せるため、ここは数値で決める。
@@ -513,11 +484,11 @@ struct TimelineScreen: View {
             SentTextBubbleView(
                 bubble: bubble, isUndelivered: timeline.isUndelivered(item),
                 resend: { reason in
-                    followsTimelineEnd = true
+                    viewport.textResent()
                     Task { await conversationActions.resend(bubble.sentText.id, reason) }
                 },
                 resendAsConversation: {
-                    followsTimelineEnd = true
+                    viewport.textResent()
                     Task {
                         await conversationActions.resendAsConversation(
                             bubble.sentText.id, bubble.meals.count)
@@ -574,7 +545,7 @@ struct TimelineScreen: View {
     /// 帯の下の1行。押すと、その知らせまで戻る
     private func unansweredNoticeLine(_ card: NoticeCard) -> some View {
         Button {
-            dayFocus = .scrollingToItem(Timeline.Item.notice(card).id)
+            waitingInstructions += viewport.landingRequested(.item(Timeline.Item.notice(card).id))
             Task { await capture(.unansweredNoticeLineTapped) }
         } label: {
             HStack(spacing: 12) {
@@ -634,6 +605,39 @@ struct TimelineScreen: View {
         )
     }
 
+    private func perform(
+        _ instructions: [TimelineViewport.Instruction], with proxy: ScrollViewProxy
+    ) {
+        for instruction in instructions {
+            switch instruction {
+            case .scroll(let target, let animated):
+                if animated {
+                    withAnimation {
+                        scroll(to: target, with: proxy)
+                    }
+                } else {
+                    scroll(to: target, with: proxy)
+                }
+            case .dismissKeyboard:
+                dismissKeyboard()
+            }
+        }
+    }
+
+    private func scroll(to target: TimelineViewport.ScrollTarget, with proxy: ScrollViewProxy) {
+        switch target {
+        case .end: proxy.scrollTo(Self.contentId, anchor: .bottom)
+        case .day(let day): proxy.scrollTo(day, anchor: .top)
+        case .item(let itemId): proxy.scrollTo(itemId, anchor: .top)
+        }
+    }
+
+    /// 書く欄と知らせの中の欄のどちらにカーソルがあっても下げる
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
     /// ほかを押したら、カメラの許可の知らせを消してから動く
     private func hidingCameraNotice(_ action: @escaping () -> Void) -> () -> Void {
         {
@@ -683,28 +687,19 @@ struct TimelineScreen: View {
                 notices: notices, undelivered: undeliveredRecords, conversation: conversation),
             firstDay: firstDay, today: today)
     }
+}
 
-    /// 題と1日の丸の帯で示す日。日の区切りは遅れて作られ、開いた直後に下端へ動いたあとの位置が届かないことがあるので（#442）、一番下にいるかはスクロールの位置から決める
-    private func selectedDay(in timeline: Timeline) -> CalendarDay? {
-        let newest = timeline.days.last?.day
-        return timelineEnd == .shown ? newest : visibleDay ?? newest
-    }
-
-    /// いちばん新しい日が画面に入っていればその日。遡っているときは、上端にかかっている日
-    private func dayInView(
-        _ offsets: [TimelineDayOffset], timeline: Timeline, viewportHeight: CGFloat
-    ) -> CalendarDay? {
-        // 開いた位置は下端。最終日が少し上にはみ出していても、その日を題にする
-        let newestStillVisible: CGFloat = -40
-        let topEdge: CGFloat = 8
-        if let last = timeline.days.last?.day,
-            let offset = offsets.first(where: { $0.day == last }),
-            offset.minY < viewportHeight, offset.minY > newestStillVisible
-        {
-            return last
+extension TimelineViewport.ScrollPhase {
+    fileprivate init(_ phase: SwiftUI.ScrollPhase) {
+        switch phase {
+        case .idle: self = .idle
+        case .tracking: self = .tracking
+        case .interacting: self = .interacting
+        case .decelerating: self = .decelerating
+        case .animating: self = .animating
+        // 知らない相は、使う人が触っていない動きとして扱う
+        @unknown default: self = .animating
         }
-        let atTop = offsets.filter { $0.minY <= topEdge }.max { $0.minY < $1.minY }
-        return atTop?.day ?? offsets.min { $0.minY < $1.minY }?.day
     }
 }
 
@@ -745,32 +740,13 @@ private enum CameraPhase: Equatable {
     case showing
 }
 
-private enum DayFocus: Equatable {
-    case timeline
-    case summary(CalendarDay)
-    case scrollingTo(CalendarDay)
-    /// 答えていない知らせの1行と、記録忘れの通知から、その知らせのカードへ
-    case scrollingToItem(Timeline.Item.ID)
-    /// 記録忘れの通知と、写真を撮った・選んだときに、タイムラインのいちばん下へ
-    case scrollingToEnd
+private struct TimelineDayPositionsKey: PreferenceKey {
+    static let defaultValue: [TimelineViewport.DayPosition] = []
 
-    init(_ landing: Timeline.Landing) {
-        switch landing {
-        case .item(let itemId): self = .scrollingToItem(itemId)
-        case .end: self = .scrollingToEnd
-        }
-    }
-}
-
-private struct TimelineDayOffset: Equatable {
-    let day: CalendarDay
-    let minY: CGFloat
-}
-
-private struct TimelineDayOffsetsKey: PreferenceKey {
-    static var defaultValue: [TimelineDayOffset] = []
-
-    static func reduce(value: inout [TimelineDayOffset], nextValue: () -> [TimelineDayOffset]) {
+    static func reduce(
+        value: inout [TimelineViewport.DayPosition],
+        nextValue: () -> [TimelineViewport.DayPosition]
+    ) {
         value.append(contentsOf: nextValue())
     }
 }
