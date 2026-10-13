@@ -169,7 +169,6 @@ struct TimelineScreen: View {
                     let sentAt = now()
                     capturedCount += 1
                     cameraPhase = .closed
-                    notePhotoSent()
                     Task { await mealActions.recordCapturedPhoto(original, exif, sentAt) }
                 },
                 onCancel: {
@@ -194,7 +193,6 @@ struct TimelineScreen: View {
             guard !items.isEmpty else { return }
             let pickedAt = now()
             pickedPhotos = []
-            notePhotoSent()
             Task { await mealActions.recordPickedPhotos(items, pickedAt) }
         }
         .onChange(of: weightEntryPhase) { previous, phase in
@@ -369,6 +367,9 @@ struct TimelineScreen: View {
                             to: TimelineViewport.ScrollPhase(phase)),
                         with: proxy)
                 }
+                .onChange(of: timeline.days) { old, new in
+                    waitingInstructions += viewport.daysChanged(from: old, to: new, now: now())
+                }
                 .onChange(of: timeline.hasGrowingReply) { _, growing in
                     viewport.growingReplyChanged(isGrowing: growing)
                 }
@@ -479,11 +480,11 @@ struct TimelineScreen: View {
             SentTextBubbleView(
                 bubble: bubble, isUndelivered: timeline.isUndelivered(item),
                 resend: { reason in
-                    viewport.textSent()
+                    viewport.textResent()
                     Task { await conversationActions.resend(bubble.sentText.id, reason) }
                 },
                 resendAsConversation: {
-                    viewport.textSent()
+                    viewport.textResent()
                     Task {
                         await conversationActions.resendAsConversation(
                             bubble.sentText.id, bubble.meals.count)
@@ -577,7 +578,6 @@ struct TimelineScreen: View {
                 #if DEBUG
                     case .fixed(let record):
                         let pickedAt = now()
-                        notePhotoSent()
                         Task { await record(pickedAt) }
                 #endif
                 }
@@ -596,14 +596,9 @@ struct TimelineScreen: View {
             },
             onSendText: { draft in
                 showsCameraNotice = false
-                viewport.textSent()
                 Task { await sendText(draft) }
             }
         )
-    }
-
-    private func notePhotoSent() {
-        waitingInstructions += viewport.photoSent(isTimelineLoaded: !showsLoading)
     }
 
     private func perform(

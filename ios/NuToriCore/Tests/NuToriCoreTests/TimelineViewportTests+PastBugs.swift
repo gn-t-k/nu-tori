@@ -1,3 +1,4 @@
+import Foundation
 import NuToriCore
 import Testing
 
@@ -33,7 +34,6 @@ extension TimelineViewportTests {
 
             init() {
                 viewport = TimelineViewportTests.opened()
-                viewport.textSent()
                 _ = viewport.scrollPhaseChanged(from: .idle, to: .tracking)
             }
 
@@ -50,11 +50,15 @@ extension TimelineViewportTests {
             var viewport: TimelineViewport
             var instructions: [[TimelineViewport.Instruction]] = []
 
-            init() {
+            init() throws {
+                let added = try ReturningToEnd.MealAdditions(count: 5)
                 viewport = TimelineViewportTests.opened()
-                for _ in 1...5 {
-                    instructions.append(viewport.photoSent(isTimelineLoaded: true))
-                    // 動かして着いたあと、カードが足されて中身が伸びる
+                for index in 0..<5 {
+                    instructions.append(
+                        viewport.daysChanged(
+                            from: added.days[index], to: added.days[index + 1],
+                            now: added.sentAt[index].addingTimeInterval(1)))
+                    // 動かして着く
                     _ = viewport.scrollPhaseChanged(from: .idle, to: .animating)
                     viewport.endPositionChanged(to: .shown)
                     _ = viewport.scrollPhaseChanged(from: .animating, to: .idle)

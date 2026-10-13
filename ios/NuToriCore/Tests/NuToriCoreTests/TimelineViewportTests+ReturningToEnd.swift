@@ -1,17 +1,47 @@
+import Foundation
 import NuToriCore
 import Testing
 
 extension TimelineViewportTests {
     @Suite("一番下へ戻す")
     struct ReturningToEnd {
-        @Suite("遡っているときに、写真を撮った・選んだとき")
-        struct PhotoSent {
+        /// 「写真」で送った食事が、1つずつ、いちばん下に足されていく並び。食事は1分おきに送る
+        struct MealAdditions {
+            /// 0 件から `count` 件までの並び
+            let days: [[Timeline.Day]]
+            /// 食事を送った時刻。`days[n]` で足されたのは `sentAt[n - 1]` の食事
+            let sentAt: [Date]
+
+            init(count: Int) throws {
+                let meals = try (0..<count).map { minute in
+                    try MealCard.fixture(
+                        eatenAt: "2026-10-13T12:\(10 + minute):00+09:00", status: nil)
+                }
+                days = (0...count).map { added in
+                    Timeline(
+                        input: Timeline.Input(
+                            weightRecords: [], rejectedLines: [], meals: Array(meals.prefix(added)),
+                            notices: [], undelivered: .none,
+                            conversation: Timeline.Conversation(
+                                sentTexts: [], statuses: [:], replies: [], streams: [:])),
+                        firstDay: TimelineViewportTests.today, today: TimelineViewportTests.today
+                    ).days
+                }
+                sentAt = meals.map(\.meal.sentAt)
+            }
+        }
+
+        @Suite("遡っているときに、ユーザーがアプリの中でいちばん下に項目を足したとき")
+        struct ItemAddedByUserAtEnd {
             var viewport: TimelineViewport
             let instructions: [TimelineViewport.Instruction]
 
-            init() {
+            init() throws {
+                let added = try MealAdditions(count: 1)
                 viewport = TimelineViewportTests.scrolledAway()
-                instructions = viewport.photoSent(isTimelineLoaded: true)
+                instructions = viewport.daysChanged(
+                    from: added.days[0], to: added.days[1],
+                    now: added.sentAt[0].addingTimeInterval(1))
             }
 
             @Test("一番下へ動かすこと")
@@ -19,33 +49,43 @@ extension TimelineViewportTests {
                 #expect(instructions == [.scroll(to: .end, animated: false)])
             }
 
-            @Test("あとから足される食事のカードに、ついていくこと")
-            func followsAddedCard() {
+            @Test("そこから、中身が伸びたら一番下についていくこと")
+            func followsFromThere() {
                 #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
             }
         }
 
-        @Suite("読み込み中に、写真を撮った・選んだとき")
-        struct PhotoSentWhileLoading {
+        @Suite("遡っているときに、ほかの端末で足した項目が、足してから1分を過ぎていちばん下に届いたとき")
+        struct ItemFromOtherDeviceArrivedAtEnd {
             var viewport: TimelineViewport
+            let instructions: [TimelineViewport.Instruction]
 
-            init() {
-                viewport = TimelineViewport()
+            init() throws {
+                let added = try MealAdditions(count: 1)
+                viewport = TimelineViewportTests.scrolledAway()
+                instructions = viewport.daysChanged(
+                    from: added.days[0], to: added.days[1],
+                    now: added.sentAt[0].addingTimeInterval(61))
             }
 
-            @Test("並んでいないので、動かす指示を出さないこと")
-            mutating func doesNotScroll() {
-                #expect(viewport.photoSent(isTimelineLoaded: false).isEmpty)
+            @Test("読んでいる所から動かさないこと")
+            func staysInPlace() {
+                #expect(instructions.isEmpty)
+            }
+
+            @Test("ついていかないままであること")
+            func doesNotFollow() {
+                #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
             }
         }
 
-        @Suite("遡っているときに、文章を送った・送り直したとき")
-        struct TextSent {
+        @Suite("遡っているときに、文章を送り直したとき")
+        struct TextResent {
             var viewport: TimelineViewport
 
             init() {
                 viewport = TimelineViewportTests.scrolledAway()
-                viewport.textSent()
+                viewport.textResent()
             }
 
             @Test("ついていき直すこと")
