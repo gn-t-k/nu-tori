@@ -99,7 +99,7 @@ const photoDishes: IdentifiedDishes = {
           name: "鶏もも肉",
           quantity: 80,
           unit: "g",
-          edibleGramsPerUnit: 1,
+          edibleGrams: 80,
           foodCompositionQuery: "にわとり 若どり もも 皮なし 焼き",
           nutritionLabel: undefined,
         },
@@ -107,7 +107,7 @@ const photoDishes: IdentifiedDishes = {
           name: "ご飯",
           quantity: 200,
           unit: "g",
-          edibleGramsPerUnit: 1,
+          edibleGrams: 200,
           // 成分表の名前と字を共有しないので、候補が無い
           foodCompositionQuery: "ご飯",
           nutritionLabel: undefined,
@@ -123,7 +123,7 @@ const photoDishes: IdentifiedDishes = {
           name: "緑茶",
           quantity: 1,
           unit: "本",
-          edibleGramsPerUnit: 500,
+          edibleGrams: 500,
           foodCompositionQuery: "せん茶 浸出液",
           nutritionLabel: {
             basisGrams: 100,

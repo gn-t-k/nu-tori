@@ -275,7 +275,8 @@ const composeDishes = (
         name: ingredient.name,
         quantity: ingredient.quantity,
         unit: ingredient.unit,
-        edibleGramsPerUnit: ingredient.edibleGramsPerUnit,
+        // 栄養に使う g は ① が直接見積もった合計で、量と掛け合わせて作らない（量と1単位あたりを別々に答えさせると、重ねて答えたときに桁が跳ねる）
+        edibleGramsPerUnit: ingredient.edibleGrams / ingredient.quantity,
         nutrientSource,
         nutrients,
       };
@@ -364,7 +365,7 @@ const isValidIdentifiedDishes = (
           isPresentText(ingredient.name) &&
           isPositive(ingredient.quantity) &&
           isPresentText(ingredient.unit) &&
-          isPositive(ingredient.edibleGramsPerUnit) &&
+          isPositive(ingredient.edibleGrams) &&
           (ingredient.nutritionLabel === undefined ||
             (isPositive(ingredient.nutritionLabel.basisGrams) &&
               Object.entries(ingredient.nutritionLabel.nutrients).every(

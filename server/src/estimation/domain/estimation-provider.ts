@@ -83,7 +83,8 @@ export type IdentifiedIngredient = {
   name: string;
   quantity: number;
   unit: string;
-  edibleGramsPerUnit: number;
+  // 食べた分（量ぜんぶ）の可食部の g。1単位あたりの g は答えさせず、ドメイン層がこれを量で割って出す
+  edibleGrams: number;
   // 成分表を引く語（調理の状態を含む）
   foodCompositionQuery: string;
   // 写真に栄養成分表示が写っていたときの値。nutrients は表示の単位（basisGrams g）あたりで、書かれていない栄養は持たない
