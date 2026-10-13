@@ -17,12 +17,12 @@ extension TimelineTests {
         }
 
         static func days(
-            weightRecords: [WeightRecord] = [], sentTexts: [SentText] = [],
-            replies: [AiUtterance] = [], notices: [Notice] = []
+            weightRecords: [WeightRecord] = [], meals: [MealCard] = [],
+            sentTexts: [SentText] = [], replies: [AiUtterance] = [], notices: [Notice] = []
         ) -> [Timeline.Day] {
             Timeline(
                 input: Timeline.Input(
-                    weightRecords: weightRecords, rejectedLines: [], meals: [], notices: notices,
+                    weightRecords: weightRecords, rejectedLines: [], meals: meals, notices: notices,
                     undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: sentTexts,
@@ -131,6 +131,28 @@ extension TimelineTests {
                 old = ItemByUserAtEnd.days(weightRecords: [morning], sentTexts: [question])
                 new = ItemByUserAtEnd.days(weightRecords: [morning, night], sentTexts: [question])
                 now = night.instant.addingTimeInterval(1)
+            }
+
+            @Test("足したとすること")
+            func adds() {
+                #expect(Timeline.addsItemByUserAtEnd(from: old, to: new, now: now))
+            }
+        }
+
+        @Suite("食事が、送った直後にいちばん下に足されたとき")
+        struct MealAdded {
+            let old: [Timeline.Day]
+            let new: [Timeline.Day]
+            let now: Date
+
+            init() throws {
+                let morning = try ItemByUserAtEnd.morning()
+                let lunch = try MealCard.fixture(
+                    eatenAt: "2026-09-24T12:10:00+09:00", sentAt: "2026-09-24T12:30:00+09:00",
+                    status: nil)
+                old = ItemByUserAtEnd.days(weightRecords: [morning])
+                new = ItemByUserAtEnd.days(weightRecords: [morning], meals: [lunch])
+                now = lunch.meal.sentAt.addingTimeInterval(1)
             }
 
             @Test("足したとすること")
