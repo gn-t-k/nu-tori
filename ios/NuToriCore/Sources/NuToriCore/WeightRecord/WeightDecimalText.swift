@@ -22,6 +22,13 @@ public enum WeightDecimalText {
         return whole
     }
 
+    /// 欄の文字（`sanitized` を通したもの）を kg の値として読む。末尾の小数点は無いものとし、空なら nil
+    public static func kilograms(_ text: String) -> Double? {
+        let core = text.hasSuffix(".") ? String(text.dropLast()) : text
+        guard !core.isEmpty else { return nil }
+        return Double(core)
+    }
+
     private static func isSeparator(_ character: Character) -> Bool {
         character == "." || character == "," || character == "．" || character == "，"
     }

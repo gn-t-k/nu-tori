@@ -3,6 +3,10 @@ import type { TokenUsage } from "./token-usage";
 import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
 import type { MealPhotoReceiptFailedError } from "./receive-meal-photo";
+import type { DailyGuideLimitType } from "../daily-guide/domain/daily-guide";
+import type { InitialExpenditureSource } from "../expenditure-estimate/domain/expenditure-estimate";
+import type { GoalDirection } from "../goal/domain/goal-direction";
+import type { PacePlan } from "../goal/domain/goal";
 import type { ClassificationLabel } from "../reply/domain/conversation-provider";
 import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";
 import type { SentTextClassification } from "../sent-text/domain/sent-text-classification";
@@ -101,6 +105,21 @@ export type UsageEvent =
   | {
       // 1日の回数の上限に達していて、予定を次の日に回したとき
       name: "estimation_deferred";
+    }
+  | {
+      // 目標を決めたとき（初めてと立て直し）。同じ要求の ID の再送では送らない。体重・目標体重・kcal の値は含めない
+      name: "goal_decision_recorded";
+      direction: GoalDirection;
+      // 初めての目標か。false は立て直し
+      isFirstGoal: boolean;
+      chosenPlan: PacePlan | "maintain";
+      // 1日の目安が下限を下回らないよう、速さを落とした案があったか
+      hadSlowedProposal: boolean;
+      // 端末が数えて要求に載せた、受け付けなかった自分の目標体重の数
+      rejectedCustomTargetWeightCount: number;
+      // 推定消費カロリーの出どころ。立て直しは前の値
+      expenditureSource: InitialExpenditureSource | "previous";
+      limitHits: DailyGuideLimitType[];
     }
   | {
       name: "sync_pending_writes_reported";

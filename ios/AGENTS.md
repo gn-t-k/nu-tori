@@ -5,12 +5,12 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 ## 構成
 
 - 画面を持たないロジックは、ローカルの Swift パッケージ `NuToriCore/` に置き、SwiftUI・UIKit・HealthKit・SwiftData を import しない。下の「端末で行うもの」の計算と判定と、送り待ちの判断がここに入る。Linux のエージェントと CI でも型検査とテストを回すため
-- 記録の種類（今は体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向、送った文章、送った文章の状態、返事）ごとに、フォルダを切る。`NuToriCore/Sources/NuToriCore/`・`NuToriCore/Sources/NuToriAPI/`・`NuTori/`（アプリのターゲット）のそれぞれに `WeightRecord/`、`AccountSettings/` を置き、その種類だけにかかる型・判断・SwiftData のモデル・画面を入れる。テストのターゲットも同じフォルダ名でそろえる。同期の共通のもの（同期の働き、同期の置き場の型、送り待ち）は `Sync/`、タイムラインは `Timeline/` に残す。機能を第一の軸にする切り方を採らなかった理由は「[コードの置き方を、機能ごとに縦に切るかを決める](https://github.com/gn-t-k/nu-tori/issues/153)」の解決コメント
+- 記録の種類（今は体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向、送った文章、送った文章の状態、返事、目標、1日の目安、推定消費カロリー）ごとに、フォルダを切る。`NuToriCore/Sources/NuToriCore/`・`NuToriCore/Sources/NuToriAPI/`・`NuTori/`（アプリのターゲット）のそれぞれに `WeightRecord/`、`AccountSettings/` を置き、その種類だけにかかる型・判断・SwiftData のモデル・画面を入れる。テストのターゲットも同じフォルダ名でそろえる。同期の共通のもの（同期の働き、同期の置き場の型、送り待ち）は `Sync/`、タイムラインは `Timeline/` に残す。機能を第一の軸にする切り方を採らなかった理由は「[コードの置き方を、機能ごとに縦に切るかを決める](https://github.com/gn-t-k/nu-tori/issues/153)」の解決コメント
 - 端末の SwiftData は2つの置き場に分ける（[ADR-0022](../docs/adr/0022-device-cache-and-pending-writes-in-separate-stores.md)）。`SwiftDataSyncStore` が両方を持つ
-  - キャッシュ（`CacheStore`）: 記録（知らせ、いつもの時刻、体重の傾向、送った文章の状態、返事を含む）、アカウントの設定、同期の状態（通し番号など）、ヘルスケアに書いた料理の控え（`CachedHealthDishWrite`。書いた料理を書き直さず、消えた料理をヘルスケアから消すため）。サーバーの写しなので移行を持たず、形が合わず開けないときは置き場ごと消して全部取り直す（取り終えるまでタイムラインは初回の取得と同じ読み込み中）。モデルは `CacheStoreSchema` に並べる
+  - キャッシュ（`CacheStore`）: 記録（知らせ、いつもの時刻、体重の傾向、送った文章の状態、返事、目標、1日の目安、推定消費カロリーを含む）、アカウントの設定、同期の状態（通し番号など）、ヘルスケアに書いた料理の控え（`CachedHealthDishWrite`。書いた料理を書き直さず、消えた料理をヘルスケアから消すため）。サーバーの写しなので移行を持たず、形が合わず開けないときは置き場ごと消して全部取り直す（取り終えるまでタイムラインは初回の取得と同じ読み込み中）。モデルは `CacheStoreSchema` に並べる
   - 送り待ち（`PendingStore`）: 送り待ちとヘルスケアの同期の進み具合。`PendingStoreMigrationPlan` の版つきのスキーマで移行し、版ごとのモデルの写し（`PendingStoreSchemaV1`・`PendingStoreSchemaV2` の中）を固める。形を変えるときは、写しを固めたまま次の版を足し、`docs/agents/ios-mac.md` の「置き場の移行を実機で確かめる」を開発者に頼む。送り待ちは「種類の名前＋中身」（`PendingEntry`）で持つので、種類を足しても形は変わらない
   - 送り待ちの箱（`SyncBox`）、記録の種類（NuToriCore の `CacheApplying`。キャッシュへの当て方の `apply`・`erase` を、種類ごとに1回だけ持つ）、登録簿（`AppRecordKinds.registry`。種類ごとに `PortedRecordKind` の1行）が同期の入口。種類はキャッシュの口（`KeyedRecordCache`・`SingleRecordCache`）に当て、アプリは SwiftData の adapter（`SwiftDataKeyedRecordCache`・`SwiftDataSingleRecordCache`・`SwiftDataWeightTrendCache`）を登録簿で渡す。アプリのターゲットが種類ごとに持つのは、SwiftData の行と、行と記録の対応（`Cached…+Cache.swift`）だけ。それぞれの役割と種類の足し方は `docs/agents/sync.md`。メモリの箱は `NuToriTestSupport` の `SyncBoxMock`（キャッシュが `RecordCacheMock` のものを、テストが `SyncBoxMock.ok(...)`・`.error(...)` で作る）。`RecordCacheMock` は、種類ごとに NuToriCore のメモリの adapter（`MemoryKeyedRecordCache`・`MemorySingleRecordCache`）を持ち、同じ当て方が当たる
-  - 種類の名前: NuToriCore の `RecordKindName`（enum。rawValue は送り待ちに保存するハイフンの書き方。`weight-record`、`account-settings`、`meal`、`meal-estimation-status`、`dish`、`dish-estimation-status`、`ingredient`、`notice`、`usual-weighing-time`、`weight-trend`、`sent-text`、`sent-text-status`、`ai-utterance`）で、送り待ち・変更・登録簿・読める種類を渡す。足すときは case を足す。SwiftData のモデルは文字列のまま持ち、読み書きの口で `RecordKindName` に変える（読めない名前の送り待ちは開くときに捨てて `storeRecovery` に残す）。サーバーの列挙（`server/openapi.json` の `RecordKindName`。snake_case）との対応は `RecordKindName.serverName` の switch だけに書き、`ServerRecordKindNames.names` と突き合わせる（`AppRecordKindsTests`）。保存した名前（rawValue）を変えると、送り待ちの置き場の移行が要る
+  - 種類の名前: NuToriCore の `RecordKindName`（enum。rawValue は送り待ちに保存するハイフンの書き方。`weight-record`、`account-settings`、`meal`、`meal-estimation-status`、`dish`、`dish-estimation-status`、`ingredient`、`notice`、`usual-weighing-time`、`weight-trend`、`sent-text`、`sent-text-status`、`ai-utterance`、`goal`、`daily-guide`、`expenditure-estimate`）で、送り待ち・変更・登録簿・読める種類を渡す。足すときは case を足す。SwiftData のモデルは文字列のまま持ち、読み書きの口で `RecordKindName` に変える（読めない名前の送り待ちは開くときに捨てて `storeRecovery` に残す）。サーバーの列挙（`server/openapi.json` の `RecordKindName`。snake_case）との対応は `RecordKindName.serverName` の switch だけに書き、`ServerRecordKindNames.names` と突き合わせる（`AppRecordKindsTests`）。保存した名前（rawValue）を変えると、送り待ちの置き場の移行が要る
   - 保存の順: 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。ヘルスケアの同期の進み具合は、送り待ちと同じ保存で書く。全消去は、送り待ちを1つの保存で空にしてから、キャッシュを空にする。送り待ちとキャッシュに書く道は箱の `apply` の1本で、ヘルスケアの取り込みと UI テストの準備もそこを通す
   - 置き場を分ける前の1つの置き場（`RecordStore`）は、更新して最初に開いたときに、送り待ちとヘルスケアの同期の進み具合を送り待ちの置き場へ移して消す（`LegacyRecordStore`）。開けない形のときは送り待ちを捨て、`HandledFailure.storeRecovery` として Sentry に送る
 - 食事の写真のファイル（`MealPhotos`。置き場は `AppRuntime` が渡す）: 元の写真と送る縮小版は Application Support（バックアップの対象）に、この端末に元の写真が無い食事（ほかの端末で記録した、機種変更のあと）のために取りに行った縮小版は Caches に置く。取りに行った縮小版は、食事かアカウントを消すまで持ち、それより前にシステムが空けたら、次に見るときに取りに行き直す
@@ -23,8 +23,11 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ルートの `AGENTS.md` の「リポジトリ全体の決定」の基準に当たるものだけを端末で行う。今の一覧:
 
-- 記録をまとめて見せるための計算: 材料の量からの栄養、材料から料理・食事への栄養の合計、料理の量を直したときの材料の量の比例、1日の丸・日のまとめの合計、週の振り返りの平均、習慣トラッカー、日と週の区切り、体重の日の代表値、体重の傾向のグラフの中身（点・線・使い始めの区切り・添え書き）、日のまとめの体重の傾向の速さ
+- 記録をまとめて見せるための計算: 材料の量からの栄養、材料から料理・食事への栄養の合計、料理の量を直したときの材料の量の比例、1日の丸・日のまとめの合計、週の振り返りの平均、習慣トラッカー、日と週の区切り、体重の日の代表値、体重の傾向のグラフの中身（点・線・使い始めの区切り・添え書き）、日のまとめの体重の傾向の速さ、日のまとめの進行中の要約（あと何 kg・あと何日。`GoalProgress`）
+- その日の1日の目安の引き方: その日の食べた量を、どの1日の目安と比べるか（基準1。電波が無くても1日の丸と日のまとめを目安と比べて見せるため、キャッシュの目標と1日の目安の記録で引く）。NuToriCore の `DailyGuideForDay` の1か所で、手順と入力と期待値はサーバーと同じ（`docs/agents/shared-rules.md` の「その日の1日の目安」）
 - 記録忘れの判定: 記録忘れの通知の予約の計画（どの日のどの時刻に予約するか。予約と取り消しを含む）と、体重の知らせを出すか・答えるかの判断（基準3。アプリが開かれていないときや電波が無いときにも、ローカル通知で届け、取り消すため）。判断は NuToriCore の記録忘れの計画（`MissedWeightRecordPlan`）の1か所で、「記録した日」と日ごとの知らせの ID もここでだけ作る。判断と通知の置き直しの入口は記録忘れの見張り（`MissedWeightRecordWatch`）の1つで、次に知らせを出すかを決める時刻も見張りが持つ。アプリのターゲットは出来事（通知を押した、記録した、同期した、時計が変わった、など）を知らせ、待つときに見張りに時刻を聞くだけにする
+- 目標を立てる知らせを出すか・答えるかの判断: 目標の記録も知らせも無いまま取りに行き終えたら、種類だけから作る ID の知らせを1つ出し、「あとで」か目標が決まったときの早いほうで答える（基準1。電波が無くても「あとで」がその場で効くため）。判断は NuToriCore の目標を立てる知らせの番（`GoalSetupNoticeKeeper`）の1か所で、入口は `RecordSync` の同期の終わりと `respondToGoalSetupNotice()`
+- 目標の設定の流れ: どのページを出すか、答えを残すこと、4つの要求をいつ出しどの答えを使うか（基準1・2。電波が無くても向きと期限に答えて止まり、自分で決める目標体重の答えを待つあいだも動かせるため）。NuToriCore の `GoalSetupFlow` の1か所で、要求は `NuToriAPIClient` の目標の設定の4つ、送り切る・体重を記録する・応答の記録を当てる・知らせに答えるは `GoalSetupRecords`（`RecordSync` が従う）に頼む。期限のチップと選べる幅（開始の日から両端を含めて 28〜182 日）は `GoalDeadlineChoices` が出す。正本はサーバーの `acceptedDeadlineDays`
 - 入力の検証: 受け付ける値の範囲、体重の打ち間違いの判定
 - 観測を始めてよいかの判定: PostHog を始めてよいか（利用状況を送るがオンで、初回の取得を終えた）。オフへの切り替えが電波が無くてもその場で効くため
 - 選んだ写真のまとめ方: 複数枚を一度に選んだとき、撮影時刻が近いものを1つの食事にまとめる（基準1）
@@ -41,6 +44,18 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 ## 身体データ
 
 - 目標の設定の途中で手で入れた身体データは、端末の中だけに持ち、目標が決まったら捨てる
+- ヘルスケアから読んだ身体データと使い始める前の摂取エネルギーも、端末の中では目標が決まった時点で捨て、置き場（SwiftData、UserDefaults）に書かない
+
+## ヘルスケアの読み方
+
+初めて目標を立てるときの許可と読み取りの入口は、NuToriCore の `GoalSetupHealthReader` の1つ。HealthKit に触れるのは `HealthStore` の実装（`HealthKitHealthStore`）だけで、選ぶ・除く・不明にする判断は `GoalSetupHealthReader` に置き、`HealthStoreMock` で確かめる。
+
+- 許可: 向きを選んだ直後に、身長・生年月日・性別・歩数・摂取エネルギーの読み取りを求める。体重（読む・書く）と体脂肪率（読む）も同じ要求に入れる（ヘルスケアは、まだ求めていない種類だけを画面に出す）。まだ求めていない種類があるかは `hasUnrequestedAuthorization()` で聞く。許可を求める文（`project.pbxproj` の `INFOPLIST_KEY_NSHealth…UsageDescription`）は、「[仕様: 土台と体重](https://github.com/gn-t-k/nu-tori/issues/103)」の本文が正本
+- 初期値の窓: 端末の今のタイムゾーンでの、今日を除く直前の 28 日
+- 摂取エネルギー: 初期値の窓に入る使い始める前の日だけを読む。出どころごとの日の合計を量のサンプルの統計（`separateBySource`）で出し、1日ごとに一番多い出どころの値にする（足し合わせない。同じ食事を2つのアプリが書いていることがあるため）。食品の組をたどって数え直さない。nu-tori 自身の分と今日の分は除く。P・F・C は読まない
+- 身体データ: 目標の下見で逆算できないと返ったときだけ読む。生年月日は満年齢にする（手で入れた生まれた年は、今年 − 生まれた年。`AgeInYears`）。性別は男性・女性のどちらかのときだけ使う。歩数は、初期値の窓の日ごとの値（出どころの重なりはヘルスケアの統計がならす）
+- 読めなかった値は「不明」（nil、または日ごとの辞書にその日が無い）にし、0 にしない。期間を限った読み取り許可（iOS 27）の境界より前の日と、境界をまたぐ日は不明にする。身長・生年月日・性別が不明なら、足りない値として手で入れてもらう
+- 読み取りの失敗は `HandledFailure.healthRead` で Sentry に送る。値は送らない
 
 ## API
 

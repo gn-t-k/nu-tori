@@ -9,6 +9,20 @@ public enum NutritionText {
         return amount.isLowerBound ? "\(text) 以上" : text
     }
 
+    /// kcal の整数を「2,250 kcal」にする
+    public static func kilocalories(_ kilocalories: Int) -> String {
+        amount(.exactly(Double(kilocalories)), of: .energyKcal)
+    }
+
+    /// 日のまとめの「食べた量 / 目安」。「17 / 130 g」「78 以上 / 220 g」「— / 50 g」。単位は目安のあとに1つだけ付ける
+    public static func amount(_ eaten: NutrientAmount, of nutrient: Nutrient, guide: Int)
+        -> String
+    {
+        let number = eaten.value.map(wholeNumber) ?? "—"
+        let eatenText = eaten.isLowerBound ? "\(number) 以上" : number
+        return "\(eatenText) / \(wholeNumber(Double(guide))) \(nutrient.unit)"
+    }
+
     /// 単位を別に置くところ（丸の中の kcal）に出す数だけ。「以上」も付けない。不明なら「—」
     public static func number(_ amount: NutrientAmount, of nutrient: Nutrient) -> String {
         amount.value.map(wholeNumber) ?? "—"

@@ -72,4 +72,46 @@ struct WeightDecimalTextTests {
             #expect(WeightDecimalText.sanitized(typed) == "20.")
         }
     }
+
+    @Suite("欄の文字を値として読むとき、末尾が小数点のとき")
+    struct ReadingTrailingSeparator {
+        let text: String
+
+        init() {
+            text = "72."
+        }
+
+        @Test("小数点の無い数として読むこと")
+        func readsWithoutSeparator() {
+            #expect(WeightDecimalText.kilograms(text) == 72)
+        }
+    }
+
+    @Suite("欄の文字を値として読むとき、小数第1位まであるとき")
+    struct ReadingOneDecimalPlace {
+        let text: String
+
+        init() {
+            text = "68.5"
+        }
+
+        @Test("その数として読むこと")
+        func readsValue() {
+            #expect(WeightDecimalText.kilograms(text) == 68.5)
+        }
+    }
+
+    @Suite("欄の文字を値として読むとき、空のとき")
+    struct ReadingEmptyText {
+        let text: String
+
+        init() {
+            text = ""
+        }
+
+        @Test("読まないこと")
+        func readsNothing() {
+            #expect(WeightDecimalText.kilograms(text) == nil)
+        }
+    }
 }

@@ -49,32 +49,32 @@ public enum NoticeWrite: PendingWriteBody {
 
     public struct StoredNotice: Codable {
         let id: UUID
-        /// `Notice.Kind` の rawValue
+        /// `Notice.Kind` の `storedName`
         let kind: String
         let issuedAt: Date
         let timeZoneIdentifier: String
-        /// YYYY-MM-DD
-        let targetDay: String
+        /// YYYY-MM-DD。記録忘れの知らせだけにある
+        let targetDay: String?
 
         init(_ notice: Notice) {
             id = notice.id
-            kind = notice.kind.rawValue
+            kind = notice.kind.storedName
             issuedAt = notice.issuedAt
             timeZoneIdentifier = notice.timeZone.identifier
-            targetDay = notice.targetDay.yearMonthDay
+            targetDay = notice.targetDay?.yearMonthDay
         }
 
         /// 答えていない形の知らせ
         func notice() -> Notice? {
-            guard let kind = Notice.Kind(rawValue: kind),
-                let timeZone = TimeZone(identifier: timeZoneIdentifier),
-                let targetDay = CalendarDay(yearMonthDay: targetDay)
+            guard
+                let kind = Notice.Kind(
+                    storedName: kind, targetDay: targetDay.flatMap(CalendarDay.init(yearMonthDay:))),
+                let timeZone = TimeZone(identifier: timeZoneIdentifier)
             else {
                 return nil
             }
             return Notice(
-                id: id, kind: kind, issuedAt: issuedAt, timeZone: timeZone,
-                targetDay: targetDay, response: nil)
+                id: id, kind: kind, issuedAt: issuedAt, timeZone: timeZone, response: nil)
         }
     }
 

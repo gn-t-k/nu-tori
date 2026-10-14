@@ -54,58 +54,31 @@ struct WeightEntryControls: View {
     /// ステッパーが入れた文字列。キーボードの変更通知が、その変更を打鍵と数えないため
     @State private var textFromStep: String?
 
-    @ViewBuilder private var value: some View {
-        if showsField {
-            TextField("", text: $draft.text)
-                .keyboardType(.decimalPad)
-                .font(.title2)
-                .monospacedDigit()
-                .multilineTextAlignment(.center)
-                .focused(typing)
-                .frame(minWidth: 88)
-                .padding(12)
-                .background(Color(.secondarySystemGroupedBackground), in: weightControlShape)
-                .overlay(weightControlShape.stroke(Color.accentColor))
-                .onChange(of: draft.text) { previous, next in
-                    if next == textFromStep {
-                        textFromStep = nil
-                        return
-                    }
-                    draft.applyTyped(previous: previous, next: next)
-                    observation.typed()
-                }
-                .accessibilityLabel("体重の値")
-                .onAppear { typing.wrappedValue = true }
-                .onChange(of: typing.wrappedValue) { _, focused in
-                    if !focused {
-                        showsField = false
-                    }
-                }
-        } else {
-            Button {
+    private var value: some View {
+        WeightValueField(
+            // 前回の値が無く、まだ入れていないとき（知らせの中はキーボードを自動で出さない）
+            shownText: draft.text.isEmpty ? "–" : draft.text,
+            text: $draft.text,
+            showsField: $showsField,
+            typing: typing,
+            fieldLabel: "体重の値",
+            // まだ入れていないときは、見た目の「–」に合わせて値を読まない
+            shownLabel: "体重",
+            shownValue: draft.kilograms.map(WeightAmountText.kilograms),
+            beginTyping: {
                 draft.beginTyping()
-                showsField = true
                 onBeginTyping()
-            } label: {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    // 前回の値が無く、まだ入れていないとき（知らせの中はキーボードを自動で出さない）
-                    Text(draft.text.isEmpty ? "–" : draft.text)
-                        .font(.title2)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                    Text("kg")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+            },
+            textChanged: { previous, next in
+                if next == textFromStep {
+                    textFromStep = nil
+                    return
                 }
-                .frame(minWidth: 88)
-                .padding(12)
-                .background(Color(.tertiarySystemFill), in: weightControlShape)
-            }
-            .buttonStyle(.plain)
-            // まだ入れていないときは、見た目の「–」に合わせて値を読まず、入れる欄だと伝える
-            .accessibilityLabel(draft.kilograms.map(WeightAmountText.kilograms) ?? "体重の値")
-            .animation(.default, value: draft.tenths)
-        }
+                draft.applyTyped(previous: previous, next: next)
+                observation.typed()
+            },
+            endTyping: {}
+        )
     }
 
     private var canDecrease: Bool {
@@ -144,61 +117,5 @@ struct WeightEntryControls: View {
             textFromStep = draft.text
         }
         typing.wrappedValue = false
-    }
-}
-
-/// 値の欄とステッパーの角（DESIGN.md の value-field と stepper-button）
-private let weightControlShape = RoundedRectangle(cornerRadius: 10)
-
-private struct WeightStepButton: View {
-    let title: String
-    let label: String
-    let enabled: Bool
-    let step: () -> Void
-
-    var body: some View {
-        Button(action: stepOnce) {
-            Text(title)
-                .font(.title2)
-                .frame(width: 44, height: 44)
-                .background(Color(.tertiarySystemFill), in: weightControlShape)
-                .foregroundStyle(Color.accentColor)
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .accessibilityLabel(label)
-        .onLongPressGesture(minimumDuration: 0.4, pressing: updatePress, perform: {})
-        .onDisappear {
-            stepTask?.cancel()
-        }
-    }
-
-    @State private var stepTask: Task<Void, Never>?
-    @State private var steppedFromPress = false
-
-    private func stepOnce() {
-        if steppedFromPress {
-            steppedFromPress = false
-            return
-        }
-        step()
-    }
-
-    private func updatePress(_ pressing: Bool) {
-        if pressing {
-            guard enabled, stepTask == nil else { return }
-            steppedFromPress = true
-            step()
-            stepTask = Task {
-                try? await Task.sleep(for: .milliseconds(400))
-                while !Task.isCancelled {
-                    step()
-                    try? await Task.sleep(for: .milliseconds(90))
-                }
-            }
-        } else {
-            stepTask?.cancel()
-            stepTask = nil
-        }
     }
 }

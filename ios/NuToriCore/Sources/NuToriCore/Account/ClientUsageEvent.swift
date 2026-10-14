@@ -49,6 +49,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case replyFirstTextShown(sinceSent: Duration, watched: Bool)
     /// 返事の下の、指し示す食事の行を押した
     case replyMealOpened
+    /// 目標の設定を開いた・閉じた・決めた・案を1つも出せなかった。体重・目標体重・kcal と身体データは載せない
+    case goalSetup(GoalSetupObservation)
 
     /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
     /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
@@ -119,6 +121,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .replyRegenerateTapped: "reply_regenerate_tapped"
         case .replyFirstTextShown: "reply_first_text_shown"
         case .replyMealOpened: "reply_meal_opened"
+        case .goalSetup(.opened): "goal_setup_opened"
+        case .goalSetup(.closed): "goal_setup_closed"
+        case .goalSetup(.decided): "goal_decided"
+        case .goalSetup(.plansUnavailable): "goal_plans_unavailable"
         }
     }
 
@@ -131,7 +137,7 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .missedWeightReminderOpened,
             .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
             .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
-            .replyMealOpened:
+            .replyMealOpened, .goalSetup:
             nil
         case .screen(.timeline):
             "timeline"
@@ -199,6 +205,17 @@ public enum ClientUsageEvent: Sendable, Equatable {
                 "estimation_state": .token(status.token),
                 "seconds_since_recorded": .wholeSeconds(Self.wholeSeconds(sinceRecorded)),
             ]
+        case .goalSetup(.opened(let entry, let isRestart, let resumed)):
+            [
+                "entry": .token(entry.token), "is_restart": .flag(isRestart),
+                "resumed": .flag(resumed),
+            ]
+        case .goalSetup(.closed(let page)):
+            ["page": .token(page.token)]
+        case .goalSetup(.decided(let choice, let recalculated)):
+            ["choice": .token(choice.token), "recalculated": .flag(recalculated)]
+        case .goalSetup(.plansUnavailable(let canBackCalculate)):
+            canBackCalculate.map { ["can_back_calculate": .flag($0)] } ?? [:]
         }
     }
 
@@ -265,6 +282,45 @@ extension MealEstimationStatus {
         case .noDishes: "no_dishes"
         case .deferredToNextDay: "deferred_to_next_day"
         case .failed: "failed"
+        }
+    }
+}
+
+extension GoalSetupObservation.Entry {
+    fileprivate var token: String {
+        switch self {
+        case .noticeCard: "notice_card"
+        case .unansweredNoticeLine: "unanswered_notice_line"
+        case .daySummary: "day_summary"
+        case .weightScreen: "weight_screen"
+        }
+    }
+}
+
+extension GoalSetupObservation.Page {
+    fileprivate var token: String {
+        switch self {
+        case .direction: "direction"
+        case .deadline: "deadline"
+        case .missingValues: "missing_values"
+        case .proposals: "proposals"
+        case .customTargetWeight: "custom_target_weight"
+        case .maintenance: "maintenance"
+        case .loseUnavailable: "lose_unavailable"
+        case .stopped: "stopped"
+        case .awaitingPreview: "awaiting_preview"
+        }
+    }
+}
+
+extension GoalSetupObservation.Choice {
+    fileprivate var token: String {
+        switch self {
+        case .gentle: "gentle"
+        case .standard: "standard"
+        case .hard: "hard"
+        case .custom: "custom"
+        case .maintain: "maintain"
         }
     }
 }

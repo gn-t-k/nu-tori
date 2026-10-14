@@ -41,12 +41,21 @@ enum PFC: CaseIterable {
         }
     }
 
-    /// 丸を一周した長さのうち、この栄養が占める割合
-    func share(of shares: PFCShares) -> Double {
+    /// 一周を 1 とした、この栄養を塗る長さ
+    func length(in arcs: DayRing.Arcs) -> Double {
         switch self {
-        case .protein: shares.protein
-        case .fat: shares.fat
-        case .carbohydrate: shares.carbohydrate
+        case .protein: arcs.protein
+        case .fat: arcs.fat
+        case .carbohydrate: arcs.carbohydrate
+        }
+    }
+
+    /// 1日の目安のうち、この栄養の g
+    func grams(in dailyGuide: DailyGuide) -> Int {
+        switch self {
+        case .protein: dailyGuide.proteinGrams
+        case .fat: dailyGuide.fatGrams
+        case .carbohydrate: dailyGuide.carbohydrateGrams
         }
     }
 

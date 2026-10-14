@@ -122,6 +122,24 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
+    func goals() async throws -> [Goal] {
+        try await onMain { stores in
+            try SwiftDataKeyedRecordCache<CachedGoal>(context: stores.cache).all()
+        }
+    }
+
+    func dailyGuides() async throws -> [DailyGuide] {
+        try await onMain { stores in
+            try SwiftDataKeyedRecordCache<CachedDailyGuide>(context: stores.cache).all()
+        }
+    }
+
+    func expenditureEstimates() async throws -> [ExpenditureEstimate] {
+        try await onMain { stores in
+            try SwiftDataKeyedRecordCache<CachedExpenditureEstimate>(context: stores.cache).all()
+        }
+    }
+
     func usualWeighingTime() async throws -> UsualWeighingTime? {
         try await onMain { stores in
             try SwiftDataSingleRecordCache<CachedUsualWeighingTime>(context: stores.cache).read()

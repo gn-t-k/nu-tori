@@ -47,8 +47,8 @@ public struct UndeliveredRecords: Hashable, Sendable {
             case .sentText:
                 guard let pending = try? PendingSentTextWrite(entry: entry) else { continue }
                 sentTextIds.insert(pending.write.sentTextId)
-            case .accountSettings, .aiUtterance, .dishEstimationStatus, .mealEstimationStatus,
-                .notice,
+            case .accountSettings, .aiUtterance, .dailyGuide, .dishEstimationStatus,
+                .expenditureEstimate, .goal, .mealEstimationStatus, .notice,
                 .sentTextStatus, .usualWeighingTime, .weightTrend:
                 continue
             }
@@ -70,7 +70,10 @@ public struct UndeliveredRecords: Hashable, Sendable {
                         || contents.ingredients.contains { ingredientIds.contains($0.id) }
                 }
         case .sentText(let bubble): containsSentText(id: bubble.sentText.id)
-        case .rejectedWeightLine, .rejectedMealLine, .notice, .rejectedSentTextLine, .reply: false
+        case .rejectedWeightLine, .rejectedMealLine, .notice, .goalSetupNotice,
+            .rejectedSentTextLine,
+            .reply:
+            false
         }
     }
 

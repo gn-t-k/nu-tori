@@ -1,10 +1,10 @@
 import type { RecordId } from "../../domain/record-id";
 import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
-import type { Notice, NoticeResponse } from "./notice";
+import type { IssuedNotice, Notice, NoticeResponse } from "./notice";
 
 export type NoticeStore = {
   find: (id: RecordId) => Notice | undefined;
-  insert: (notice: Omit<Notice, "response">) => void;
+  insert: (notice: IssuedNotice) => void;
   // 答えは答える書き込みの控えを指すので、控えの ID を受け取る
   insertResponse: (receiptId: WriteReceiptId, noticeId: RecordId, response: NoticeResponse) => void;
 };

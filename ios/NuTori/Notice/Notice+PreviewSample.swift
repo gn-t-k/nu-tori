@@ -13,11 +13,10 @@
             let issuedAt = calendar.date(
                 from: DateComponents(year: day.year, month: day.month, day: day.day, hour: 8))!
             return Notice(
-                id: Notice.id(kind: .missedWeightRecord, targetDay: day),
-                kind: .missedWeightRecord,
+                id: Notice.id(of: .missedWeightRecord(targetDay: day)),
+                kind: .missedWeightRecord(targetDay: day),
                 issuedAt: issuedAt,
                 timeZone: timeZone,
-                targetDay: day,
                 response: hourAndMinute.map { time in
                     Notice.Response(
                         respondedAt: calendar.date(
@@ -26,6 +25,25 @@
                                 minute: time.minute))!,
                         timeZone: timeZone)
                 }
+            )
+        }
+
+        /// プレビューの見本の目標を立てる知らせ。日本時間のその日の 7:00 に出し、答えていれば 7:05 に答えた
+        static func sampleGoalSetup(on day: CalendarDay, answered: Bool) -> Notice {
+            let timeZone = TimeZone(identifier: "Asia/Tokyo")!
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = timeZone
+            let issuedAt = calendar.date(
+                from: DateComponents(year: day.year, month: day.month, day: day.day, hour: 7))!
+            return Notice(
+                id: Notice.id(of: .goalSetup),
+                kind: .goalSetup,
+                issuedAt: issuedAt,
+                timeZone: timeZone,
+                response: answered
+                    ? Notice.Response(
+                        respondedAt: issuedAt.addingTimeInterval(300), timeZone: timeZone)
+                    : nil
             )
         }
     }

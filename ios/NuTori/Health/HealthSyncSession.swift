@@ -29,7 +29,7 @@ import NuToriCore
             engine: HealthSyncEngine(
                 healthStore: healthStore,
                 store: syncStore,
-                ownBundleId: Bundle.main.bundleIdentifier ?? "app.nu-tori",
+                ownBundleId: OwnBundleId.value,
                 timeZone: clock.timeZone,
                 now: clock.now,
                 errorReporting: errorReporting

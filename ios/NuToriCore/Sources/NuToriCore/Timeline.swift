@@ -11,10 +11,22 @@ public struct Timeline: Sendable {
         // 食事の日が使い始めた日より前の食事は、カードは並べても、丸にも日のまとめにも入れない
         let mealsByEatenDay = Dictionary(
             grouping: input.meals.filter { $0.meal.day >= firstDay }, by: \.meal.day)
-        // 答えた知らせは並べない。記録したことは体重の行で分かるため
+        // 答えた体重の知らせは並べない。記録したことは体重の行で分かるため。
+        // 対象の日付を持たない知らせ（目標を立てる）は、下で出した日に置く
         let noticesByDay = Dictionary(
-            grouping: input.notices.filter { $0.response == nil && $0.targetDay >= firstDay },
-            by: \.targetDay)
+            grouping: input.notices.compactMap { notice -> (day: CalendarDay, notice: Notice)? in
+                guard notice.response == nil, let targetDay = notice.targetDay,
+                    targetDay >= firstDay
+                else { return nil }
+                return (targetDay, notice)
+            },
+            by: \.day)
+        // 目標を立てる知らせは、答えたあとも（「あとで」、目標が決まった）カードを残す。
+        // 出したときのタイムゾーンの日に置き、使い始めた日より前なら使い始めた日に置く
+        let goalSetupNotice = input.notices.first { $0.kind == .goalSetup }
+        let goalSetupNoticeDay = goalSetupNotice.map {
+            max(CalendarDay(containing: $0.issuedAt, in: $0.timeZone), firstDay)
+        }
         let rejectedWeightLines = input.rejectedLines.compactMap(\.weightLine)
         // 食事・料理・材料の行のうち、タイムラインに置くもの（食事が消えている、食事そのものの行）だけ。ほかは食事の画面と料理の画面に出す
         let cardsByMealId = Dictionary(
@@ -23,6 +35,8 @@ public struct Timeline: Sendable {
             $0.placement(in: cardsByMealId[$0.meal.id]) == .timeline
         }
         undelivered = input.undelivered
+        notices = input.notices
+        self.goalSetupNotice = goalSetupNotice
         let conversation = ConversationItems(
             input.conversation, rejectedLines: input.rejectedLines.compactMap(\.sentTextLine),
             cardsByMealId: cardsByMealId, undelivered: input.undelivered)
@@ -36,7 +50,7 @@ public struct Timeline: Sendable {
             by: \.sentText.day)
         let lastDay =
             ([today] + weightRecordsByDay.keys + mealsByDay.keys + noticesByDay.keys
-            + bubblesByDay.keys).max()!
+            + bubblesByDay.keys + [goalSetupNoticeDay].compactMap(\.self)).max()!
         let range = firstDay...max(firstDay, lastDay)
         dayRange = range
         days = range.map { day in
@@ -47,16 +61,19 @@ public struct Timeline: Sendable {
                     rejectedLines: rejectedWeightLines.filter { $0.record.day == day },
                     meals: mealsByDay[day] ?? [],
                     rejectedMealLines: rejectedMealLines.filter { $0.meal.cardDay == day },
-                    notices: (noticesByDay[day] ?? []).map {
-                        NoticeCard(unanswered: $0, today: today)
+                    notices: (noticesByDay[day] ?? []).compactMap {
+                        NoticeCard(unanswered: $0.notice, today: today)
                     },
+                    goalSetupNotice: goalSetupNoticeDay == day ? goalSetupNotice : nil,
                     bubbles: bubblesByDay[day] ?? [],
                     rejectedSentTextLines: conversation.separateLines.filter {
                         $0.sentText.day == day
                     },
                     replies: conversation.replies
                 ),
-                food: DayFood(meals: mealsByEatenDay[day] ?? [])
+                food: DayFood(meals: mealsByEatenDay[day] ?? []),
+                dailyGuide: DailyGuideForDay(
+                    on: day, goals: input.goals, dailyGuides: input.dailyGuides)?.dailyGuide
             )
         }
     }
@@ -75,8 +92,18 @@ public struct Timeline: Sendable {
     }
 
     private let undelivered: UndeliveredRecords
+    private let notices: [Notice]
 
-    /// 今日の答えていない知らせ。画面の上へ流れて見えないときに、帯の下の1行で示す。
+    /// タイムラインにカードを置いた、目標を立てる知らせ（答えたものも含む）。知らせがまだ無ければ nil
+    public let goalSetupNotice: Notice?
+
+    /// 帯の下に1行で示す、答えていない知らせ（今日の体重の知らせと、目標を立てる知らせ）。出した時刻の古い順
+    public var unansweredNoticeLines: [UnansweredNoticeLine] {
+        UnansweredNoticeLine.lines(
+            weightNoticeAwaitingAnswer: noticeAwaitingAnswer, notices: notices)
+    }
+
+    /// 今日の答えていない体重の知らせ。画面の上へ流れて見えないときに、帯の下の1行で示す。
     /// 答えていない形のカードは、対象の日付が今日の知らせにだけあり、今日の日に並ぶので、新しい日から探す
     public var noticeAwaitingAnswer: NoticeCard? {
         days.reversed().lazy.flatMap(\.items)
@@ -136,6 +163,10 @@ public struct Timeline: Sendable {
         public let notices: [Notice]
         public let undelivered: UndeliveredRecords
         public let conversation: Conversation
+        /// 閉じた目標も含む。1日の丸と日のまとめを、その日の1日の目安と比べるために引く
+        public let goals: [Goal]
+        /// 目標がまだ届いていない1日の目安も含む
+        public let dailyGuides: [DailyGuide]
 
         public init(
             weightRecords: [WeightRecord],
@@ -143,7 +174,9 @@ public struct Timeline: Sendable {
             meals: [MealCard],
             notices: [Notice],
             undelivered: UndeliveredRecords,
-            conversation: Conversation
+            conversation: Conversation,
+            goals: [Goal],
+            dailyGuides: [DailyGuide]
         ) {
             self.weightRecords = weightRecords
             self.rejectedLines = rejectedLines
@@ -151,6 +184,8 @@ public struct Timeline: Sendable {
             self.notices = notices
             self.undelivered = undelivered
             self.conversation = conversation
+            self.goals = goals
+            self.dailyGuides = dailyGuides
         }
     }
 
@@ -161,11 +196,14 @@ public struct Timeline: Sendable {
         public let items: [Item]
         /// この日の食べた量。この日に食べた（食事の日がこの日の）食事から出す。カードを置く日の食事とは限らない
         public let food: DayFood
+        /// この日の食べた量を比べる1日の目安（`DailyGuideForDay`）。目標を立てる前の日と、目安がまだ届いていない日は nil で、比べない
+        public let dailyGuide: DailyGuide?
 
-        public init(day: CalendarDay, items: [Item], food: DayFood) {
+        public init(day: CalendarDay, items: [Item], food: DayFood, dailyGuide: DailyGuide?) {
             self.day = day
             self.items = items
             self.food = food
+            self.dailyGuide = dailyGuide
         }
 
         public var representativeWeight: RepresentativeWeight? {
@@ -188,7 +226,7 @@ public struct Timeline: Sendable {
                 hasWeightRecord: items.contains {
                     if case .weightRecord = $0 { true } else { false }
                 },
-                food: food)
+                food: food, dailyGuide: dailyGuide)
         }
     }
 
@@ -198,6 +236,8 @@ public struct Timeline: Sendable {
         case meal(MealCard)
         case rejectedMealLine(RejectedMealLine)
         case notice(NoticeCard)
+        /// 目標を立てる知らせのカード。答えたあとも残り、目標が決まると決めた目標を示す形になる（形は画面が目標の記録で決める）
+        case goalSetupNotice(Notice)
         case sentText(SentTextBubble)
         /// 文章を送る（作る書き込み）を受け付けなかった1行。吹き出しを外した位置に出す
         case rejectedSentTextLine(RejectedSentTextLine)
@@ -210,7 +250,7 @@ public struct Timeline: Sendable {
                 .rejectedSentTextLine:
                 .me
             case .reply: .ai
-            case .notice: .app
+            case .notice, .goalSetupNotice: .app
             }
         }
 
@@ -221,6 +261,7 @@ public struct Timeline: Sendable {
             case .meal(let card): "meal-\(card.meal.id.uuidString)"
             case .rejectedMealLine(let line): "meal-rejection-\(line.recordId.uuidString)"
             case .notice(let card): "notice-\(card.notice.id.uuidString)"
+            case .goalSetupNotice(let notice): "notice-\(notice.id.uuidString)"
             case .sentText(let bubble): "sent-text-\(bubble.sentText.id.uuidString)"
             case .rejectedSentTextLine(let line):
                 "sent-text-rejection-\(line.sentText.id.uuidString)"
@@ -236,6 +277,7 @@ public struct Timeline: Sendable {
         meals: [MealCard],
         rejectedMealLines: [RejectedMealLine],
         notices: [NoticeCard],
+        goalSetupNotice: Notice?,
         bubbles: [SentTextBubble],
         rejectedSentTextLines: [RejectedSentTextLine],
         replies: [UUID: [TimelineReply]]
@@ -243,6 +285,7 @@ public struct Timeline: Sendable {
         var placed =
             (records.map { Placed(record: $0) } + meals.map { Placed(card: $0) }
             + rejectedMealLines.map { Placed(line: $0) } + notices.map { Placed(notice: $0) }
+            + [goalSetupNotice].compactMap(\.self).map { Placed(goalSetupNotice: $0) }
             + bubbles.map { Placed(bubble: $0) } + rejectedSentTextLines.map { Placed(line: $0) })
             .sorted()
         for line in rejectedLines.sorted(by: { $0.record.instant < $1.record.instant }) {
@@ -313,6 +356,10 @@ public struct Timeline: Sendable {
 
         init(notice: NoticeCard) {
             self.init(instant: notice.notice.issuedAt, eatenAt: nil, item: .notice(notice))
+        }
+
+        init(goalSetupNotice notice: Notice) {
+            self.init(instant: notice.issuedAt, eatenAt: nil, item: .goalSetupNotice(notice))
         }
 
         static func < (lhs: Placed, rhs: Placed) -> Bool {

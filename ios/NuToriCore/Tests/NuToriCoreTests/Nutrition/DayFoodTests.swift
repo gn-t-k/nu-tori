@@ -48,7 +48,7 @@ struct DayFoodTests {
 
         @Test("丸を塗り、記録の続き具合に入ること")
         func paintsRing() {
-            let ring = DayRing(hasWeightRecord: false, food: food)
+            let ring = DayRing(hasWeightRecord: false, food: food, dailyGuide: nil)
 
             #expect(ring.shares == PFCShares(protein: 0.2, fat: 0.45, carbohydrate: 0.35))
             #expect(ring.hasRecordedFood)
@@ -97,7 +97,7 @@ struct DayFoodTests {
 
         @Test("丸を塗らず、記録の続き具合に入らないこと")
         func doesNotPaintRing() {
-            let ring = DayRing(hasWeightRecord: false, food: food)
+            let ring = DayRing(hasWeightRecord: false, food: food, dailyGuide: nil)
 
             #expect(ring.shares == nil)
             #expect(!ring.hasRecordedFood)
@@ -124,7 +124,7 @@ struct DayFoodTests {
 
         @Test("丸は空の輪で、記録の続き具合に入らないこと")
         func ringIsEmpty() {
-            let ring = DayRing(hasWeightRecord: false, food: food)
+            let ring = DayRing(hasWeightRecord: false, food: food, dailyGuide: nil)
 
             #expect(ring.shares == nil)
             #expect(!ring.hasRecordedFood)
@@ -153,7 +153,7 @@ struct DayFoodTests {
 
         @Test("丸は、済んだ食事の分で塗ること")
         func paintsRingFromFinishedMeals() {
-            #expect(DayRing(hasWeightRecord: false, food: food).hasRecordedFood)
+            #expect(DayRing(hasWeightRecord: false, food: food, dailyGuide: nil).hasRecordedFood)
         }
     }
 
@@ -174,7 +174,7 @@ struct DayFoodTests {
 
         @Test("丸は空の輪で、記録の続き具合に入らないこと")
         func ringIsEmpty() {
-            let ring = DayRing(hasWeightRecord: false, food: food)
+            let ring = DayRing(hasWeightRecord: false, food: food, dailyGuide: nil)
 
             #expect(ring.shares == nil)
             #expect(!ring.hasRecordedFood)
@@ -235,8 +235,6 @@ struct DayFoodTests {
 
     @Suite("日のまとめに添える文")
     struct Note {
-        static let ringNote = "目標がないので、丸は P・F・C の割合で一周します。"
-
         @Suite("推定が済んだ食事だけの日")
         struct OnlyEstimated {
             let food: DayFood
@@ -247,9 +245,9 @@ struct DayFoodTests {
                 ])
             }
 
-            @Test("丸の説明だけを添えること")
-            func onlyRingNote() {
-                #expect(food.notes == [Note.ringNote])
+            @Test("何も添えないこと")
+            func addsNothing() {
+                #expect(food.notes.isEmpty)
             }
         }
 
@@ -261,8 +259,7 @@ struct DayFoodTests {
             func saysEstimating() {
                 #expect(
                     food.notes == [
-                        Note.ringNote,
-                        "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。",
+                        "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。"
                     ])
             }
         }
@@ -283,8 +280,7 @@ struct DayFoodTests {
             func countsPendingMeals() {
                 #expect(
                     food.notes == [
-                        Note.ringNote,
-                        "まだ推定が済んでいない食事が2つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+                        "まだ推定が済んでいない食事が2つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。"
                     ])
             }
         }
@@ -297,8 +293,7 @@ struct DayFoodTests {
             func countsPendingMeals() {
                 #expect(
                     food.notes == [
-                        Note.ringNote,
-                        "まだ推定が済んでいない食事が1つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+                        "まだ推定が済んでいない食事が1つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。"
                     ])
             }
         }
@@ -311,7 +306,7 @@ struct DayFoodTests {
             func saysUnavailable() {
                 #expect(
                     food.notes == [
-                        Note.ringNote, "この日の食事からは、kcal と P・F・C を出せませんでした。",
+                        "この日の食事からは、kcal と P・F・C を出せませんでした。"
                     ])
             }
         }

@@ -479,6 +479,85 @@ describe("Durable Object の移行の版 8（文章と会話の表）", () => {
   });
 });
 
+describe("Durable Object の移行の版 9（目標・推定消費カロリー・1日の目安の表）", () => {
+  describe("版 8 までの形の食事・推定・料理・材料・控えがあるとき", () => {
+    let account: DurableObjectStub;
+    let rowsBefore: Record<string, unknown[]>;
+    beforeEach(async () => {
+      account = env.ACCOUNT.get(env.ACCOUNT.newUniqueId());
+      rowsBefore = await runInDurableObject(account, async (_, state) => {
+        await state.storage.deleteAll();
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 6),
+        );
+        seedVersion6Rows(state.storage.sql);
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 8),
+        );
+        const rows = readAllRows(state.storage.sql);
+        applyDurableObjectMigrations(state.storage, durableObjectMigrations);
+        return rows;
+      });
+    });
+
+    test("目標・推定消費カロリー・1日の目安の 8 つの表ができること", async () => {
+      const tables = await runInAccount(account, (sql) =>
+        sql
+          .exec<{ name: string }>(
+            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('goals', 'weight_change_goals', 'goal_closures', 'goal_decision_receipts', 'expenditure_estimates', 'initial_expenditure_estimates', 'daily_guides', 'daily_guide_limit_hits') ORDER BY name",
+          )
+          .toArray()
+          .map(({ name }) => name),
+      );
+      expect(tables).toEqual([
+        "daily_guide_limit_hits",
+        "daily_guides",
+        "expenditure_estimates",
+        "goal_closures",
+        "goal_decision_receipts",
+        "goals",
+        "initial_expenditure_estimates",
+        "weight_change_goals",
+      ]);
+    });
+
+    test("3 つの一意の索引が、それぞれの表にできること", async () => {
+      const indexes = await runInAccount(account, (sql) =>
+        sql
+          .exec(
+            "SELECT s.name AS name, s.tbl_name AS tbl_name, l.\"unique\" AS is_unique FROM sqlite_schema AS s JOIN pragma_index_list(s.tbl_name) AS l ON l.name = s.name WHERE s.type = 'index' AND s.name IN ('goal_closures_next_goal_id', 'goal_decision_receipts_goal_id', 'daily_guides_goal_id') ORDER BY s.name",
+          )
+          .toArray(),
+      );
+      expect(indexes).toEqual([
+        { name: "daily_guides_goal_id", tbl_name: "daily_guides", is_unique: 1 },
+        { name: "goal_closures_next_goal_id", tbl_name: "goal_closures", is_unique: 1 },
+        {
+          name: "goal_decision_receipts_goal_id",
+          tbl_name: "goal_decision_receipts",
+          is_unique: 1,
+        },
+      ]);
+    });
+
+    test("既存の表の行が変わらないこと", async () => {
+      const rowsAfter = await runInAccount(account, readAllRows);
+      expect(
+        Object.fromEntries(Object.keys(rowsBefore).map((name) => [name, rowsAfter[name]])),
+      ).toEqual(rowsBefore);
+    });
+
+    test("外部キーの違反が無いこと", async () => {
+      const violations = await runInAccount(account, (sql) =>
+        sql.exec("PRAGMA foreign_key_check").toArray(),
+      );
+      expect(violations).toEqual([]);
+    });
+  });
+});
+
 // 移行の版の表と Cloudflare・SQLite の表を除く、すべての表の行を、表の名前ごとに読む
 const readAllRows = (sql: Sql): Record<string, unknown[]> =>
   Object.fromEntries(

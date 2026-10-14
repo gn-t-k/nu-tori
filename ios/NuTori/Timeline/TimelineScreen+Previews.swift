@@ -14,6 +14,8 @@
             rejectedLines: sample.rejectedLines,
             meals: sample.meals,
             notices: sample.notices,
+            goals: sample.goals,
+            dailyGuides: sample.dailyGuides,
             undeliveredRecords: sample.undeliveredRecords,
             capture: { _ in },
             reminderLanding: nil,
@@ -25,7 +27,10 @@
             accountActions: .noop,
             mealActions: .noop,
             conversation: sample.conversation,
-            conversationActions: .noop
+            conversationActions: .noop,
+            goalSetupFlow: .notStarted,
+            answerGoalSetupLater: {},
+            openGoalSetupFlow: { _ in }
         )
     }
 
@@ -45,6 +50,8 @@
             case rejected
             /// 朝の食事は推定できて今日の丸が塗られ、昼の食事は推定の途中で、撮っておいた昨日の写真を選んだばかり
             case meals
+            /// meals と同じ記録で、今日から目標を立てた。今日の丸は1日の目安（1,850 kcal）のうち食べた分だけ進む
+            case goalDecided
             /// 今日はまだ量っておらず、8:00 に体重の知らせが出た。一昨日の知らせには答えていない
             case awaitingNotice
             /// 今日の体重の知らせの中で記録した。答えた知らせは並べない
@@ -58,7 +65,8 @@
                 switch self {
                 case .loading: .inProgress
                 case .firstDay: .completed(startedDay: .sampleToday)
-                case .unrecordedToday, .recordedToday, .rejected, .meals, .awaitingNotice,
+                case .unrecordedToday, .recordedToday, .rejected, .meals, .goalDecided,
+                    .awaitingNotice,
                     .answeredNotice, .undelivered, .writtenMeals:
                     .completed(startedDay: Self.startedDay)
                 case .startedDayUndecided: .completed(startedDay: nil)
@@ -69,7 +77,7 @@
                 switch self {
                 case .loading, .firstDay: []
                 case .unrecordedToday, .startedDayUndecided, .awaitingNotice: Self.pastRecords
-                case .recordedToday, .meals, .writtenMeals:
+                case .recordedToday, .meals, .goalDecided, .writtenMeals:
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 7, 5, from: .manual)]
                 case .answeredNotice:
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 9, 30, from: .manual)]
@@ -81,7 +89,8 @@
             var rejectedLines: [RejectedLine] {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .meals, .awaitingNotice, .answeredNotice, .undelivered, .writtenMeals:
+                    .meals, .goalDecided, .awaitingNotice, .answeredNotice, .undelivered,
+                    .writtenMeals:
                     []
                 case .rejected:
                     [
@@ -112,7 +121,7 @@
                     []
                 case .undelivered:
                     [MealCard(meal: Self.undeliveredMeal, status: nil, recordedOnThisDevice: true)]
-                case .meals:
+                case .meals, .goalDecided:
                     [
                         // 推定できた食事で、帯の今日の丸が P・F・C の割合で塗られる
                         .sampleEstimated(.sample(on: .sampleToday, at: 7, 40)),
@@ -148,7 +157,7 @@
             var conversation: Timeline.Conversation {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered:
+                    .rejected, .meals, .goalDecided, .awaitingNotice, .answeredNotice, .undelivered:
                     .none
                 case .writtenMeals:
                     Timeline.Conversation(
@@ -165,9 +174,13 @@
 
             var notices: [Notice] {
                 switch self {
-                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                case .loading, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .undelivered, .writtenMeals:
                     []
+                case .firstDay:
+                    [.sampleGoalSetup(on: .sampleToday, answered: false)]
+                case .goalDecided:
+                    [.sampleGoalSetup(on: .sampleToday, answered: true)]
                 case .awaitingNotice:
                     [
                         .sampleMissedWeightRecord(
@@ -182,10 +195,33 @@
                 }
             }
 
+            var goals: [Goal] {
+                switch self {
+                case .goalDecided: [Self.goal]
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered,
+                    .writtenMeals:
+                    []
+                }
+            }
+
+            var dailyGuides: [DailyGuide] {
+                switch self {
+                case .goalDecided: [.sample(for: Self.goal)]
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered,
+                    .writtenMeals:
+                    []
+                }
+            }
+
+            private static let goal = Goal.sampleLosing(startedOn: .sampleToday)
+
             var undeliveredRecords: UndeliveredRecords {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals, .awaitingNotice, .answeredNotice, .writtenMeals:
+                    .rejected, .meals, .goalDecided, .awaitingNotice, .answeredNotice,
+                    .writtenMeals:
                     .none
                 case .undelivered:
                     UndeliveredRecords(

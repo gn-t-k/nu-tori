@@ -10,8 +10,7 @@ struct MissedWeightRecordWatchTests {
 
     /// 2026年9月のその日の、記録忘れの知らせと通知の ID
     static func id(_ day: Int) -> UUID {
-        Notice.id(
-            kind: .missedWeightRecord, targetDay: CalendarDay(year: 2026, month: 9, day: day))
+        Notice.id(of: .missedWeightRecord(targetDay: CalendarDay(year: 2026, month: 9, day: day)))
     }
 
     static func watch(

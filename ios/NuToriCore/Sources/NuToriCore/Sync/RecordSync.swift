@@ -20,6 +20,7 @@ public actor RecordSync {
         reflection: any RecordSyncReflection,
         accountSession: AccountSession,
         missedWeightRecordWatch: MissedWeightRecordWatch,
+        goalSetupNoticeKeeper: GoalSetupNoticeKeeper,
         mealPhotos: MealPhotos,
         errorReporting: any ErrorReportingSession,
         weightHealthExport: any WeightHealthExport,
@@ -33,6 +34,7 @@ public actor RecordSync {
         self.reflection = reflection
         self.accountSession = accountSession
         self.missedWeightRecordWatch = missedWeightRecordWatch
+        self.goalSetupNoticeKeeper = goalSetupNoticeKeeper
         self.mealPhotos = mealPhotos
         self.errorReporting = errorReporting
         self.weightHealthExport = weightHealthExport
@@ -100,6 +102,51 @@ public actor RecordSync {
             return timer
         }
         stopped.cancel()
+    }
+
+    /// 目標を立てる知らせの「あとで」を押したときと、目標が決まったとき（目標を決める要求の応答を受け取ったとき）。
+    /// 知らせが答えていなければ、答えた形にして、答える書き込みを裏で送る。早いほうの1回だけが答えになる。
+    /// サインインしていなければ何もしない
+    public func respondToGoalSetupNotice() async {
+        guard await engines.hasSession(), await engines.signedInAccountId() != nil else { return }
+        if await goalSetupNoticeKeeper.respondIfUnanswered() {
+            syncInBackground()
+        }
+    }
+
+    /// 目標の設定を始めるときの状況。キャッシュに閉じていない目標があれば立て直し
+    public func goalSetupStart(today: CalendarDay) async throws -> GoalSetupStart {
+        GoalSetupStart(
+            goals: try await store.goals(),
+            hasWeightRecords: !(try await store.weightRecords()).isEmpty,
+            startedOn: try await store.syncState()?.startedOn,
+            today: today)
+    }
+
+    /// 初めての目標の下見の前。ヘルスケアの体重を取り込み（このとき初めて許可を得た人は全期間分）、送り待ちを送って、
+    /// 体重記録の送り待ちが残っていなければ true。電波が無い、同期が止まった、サインインしていなければ false
+    public func sendWeightRecordsForGoalSetup() async -> Bool {
+        await importHealthChanges()
+        guard let result = try? await syncAfterInFlight(), result.ending == .finished,
+            let entries = try? await store.pendingEntries()
+        else { return false }
+        return !entries.contains { $0.kind == .weightRecord }
+    }
+
+    /// 足りない値で入れた今の体重を、今日の体重記録にする。体重の記録が1つも無い人だけが入れるので、いつも作る書き込み
+    public func recordWeight(kilograms: Double, at instant: Date, in timeZone: TimeZone)
+        async throws
+    {
+        try await save(.create(kilograms: kilograms, instant: instant, timeZone: timeZone))
+    }
+
+    /// 目標を決める要求の応答の記録を、取りに行った変更と同じ道でキャッシュに当てる。同じ記録があとで同期でも届く
+    public func applyGoalDecision(_ changes: [SyncChange]) async throws {
+        try await store.apply(
+            SyncBoxResult(
+                kindChanges: changes.compactMap { change in
+                    change.kindName.map { KindChanges(kind: $0, changes: [change]) }
+                }))
     }
 
     /// キャッシュにその ID の知らせがあるか（答えていても）
@@ -290,12 +337,15 @@ public actor RecordSync {
     private let reflection: any RecordSyncReflection
     private let accountSession: AccountSession
     private let missedWeightRecordWatch: MissedWeightRecordWatch
+    private let goalSetupNoticeKeeper: GoalSetupNoticeKeeper
     private let errorReporting: any ErrorReportingSession
     private let weightHealthExport: any WeightHealthExport
     private let importHealthChanges: @Sendable () async -> Void
     private let takeStoreRecoveries: @Sendable () -> [HandledFailure]
     /// 初めての取得を測り始めた時刻。測る前と、終えたあとは無い
     private var initialPullStartedAt: Date?
+    /// 前の同期の終わりに目標を立てる知らせを出して、送るための同期を裏で始めたか。次の同期の1回が読んで倒す
+    private var isSendingIssuedGoalSetupNotice = false
     private var inFlight: Task<SyncResult?, any Error>?
     /// 段取りの外（画面）からその場で取り消せるよう、actor の状態にせず鍵で守る
     private let noticeTimer = Mutex(NoticeTimer.stopped)
@@ -434,6 +484,8 @@ public actor RecordSync {
         for failure in takeStoreRecoveries() {
             await errorReporting.report(failure, cause: nil)
         }
+        let sendsIssuedGoalSetupNotice = isSendingIssuedGoalSetupNotice
+        isSendingIssuedGoalSetupNotice = false
         let completedBefore = try await store.syncState()?.hasCompletedInitialPull ?? false
         if !completedBefore, initialPullStartedAt == nil {
             initialPullStartedAt = clock.now()
@@ -470,6 +522,13 @@ public actor RecordSync {
         // 答えは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
         _ = await noteToMissedWeightRecordWatch(after: .synced)
         if result.ending == .finished {
+            // 取り切ったあとに決める（途中だと、ほかの端末で立てた目標がまだ届いていないことがある）。
+            // 出したら、すぐ裏で送る。送り待ちに残すと、サインインし直しの画面が「まだ送っていない記録」があると案内するため。
+            // その送るための同期では出さない。作る書き込みが断られて知らせが外れたとき（前の版のサーバー）に、出して送るのを繰り返すため
+            if !sendsIssuedGoalSetupNotice, await goalSetupNoticeKeeper.issueIfNoGoal() {
+                isSendingIssuedGoalSetupNotice = true
+                syncInBackground()
+            }
             await followReplies(engine)
         }
         if !result.rejectedWrites.isEmpty {

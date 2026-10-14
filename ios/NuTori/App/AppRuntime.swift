@@ -149,6 +149,12 @@ import SwiftData
             now: clock.now,
             errorReporting: observation.errorReporting
         )
+        let goalSetupNoticeKeeper = GoalSetupNoticeKeeper(
+            cache: store,
+            timeZone: clock.timeZone,
+            now: clock.now,
+            errorReporting: observation.errorReporting
+        )
         let reflector = RecordSyncReflector()
         let sync = RecordSync(
             store: store,
@@ -163,6 +169,7 @@ import SwiftData
             reflection: reflector,
             accountSession: session,
             missedWeightRecordWatch: missedWeightRecordWatch,
+            goalSetupNoticeKeeper: goalSetupNoticeKeeper,
             mealPhotos: mealPhotos,
             errorReporting: observation.errorReporting,
             weightHealthExport: health.engine,
@@ -180,9 +187,36 @@ import SwiftData
         health.bindWakeHandler { [weak sync] in
             try? await sync?.importHealthAndSendPending()
         }
+        let goalSetupHealth = GoalSetupHealthReader(
+            healthStore: parts.healthStore,
+            ownBundleId: OwnBundleId.value,
+            timeZone: clock.timeZone,
+            now: clock.now,
+            errorReporting: observation.errorReporting
+        )
+        let goalSetup = GoalSetupSession(
+            today: clock.today,
+            start: { try await sync.goalSetupStart(today: $0) },
+            makeFlow: { start in
+                GoalSetupFlow(
+                    start: start,
+                    client: client,
+                    records: sync,
+                    health: goalSetupHealth,
+                    timeZone: clock.timeZone,
+                    now: clock.now,
+                    wait: { try await Task.sleep(for: $0) },
+                    errorReporting: observation.errorReporting,
+                    observe: { observation in
+                        Task { await session.capture(.goalSetup(observation)) }
+                    }
+                )
+            },
+            answerLater: { await sync.respondToGoalSetupNotice() }
+        )
         let model = RootModel(
             accountSession: session, recordSync: sync, reflector: reflector, health: health,
-            missedWeightRecordWatch: missedWeightRecordWatch, clock: clock)
+            missedWeightRecordWatch: missedWeightRecordWatch, goalSetup: goalSetup, clock: clock)
         let reminderTaps = MissedWeightReminderTapReceiver { [weak model] noticeId in
             Task { await model?.openFromReminder(noticeId: noticeId) }
         }

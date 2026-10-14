@@ -27,6 +27,7 @@
 
 - 範囲は `shared/accepted-ranges.json`、入力と期待値は `shared/accepted-ranges.test-cases.json`。サーバーは `isWithinAcceptedRange`（`server/src/domain/is-within-accepted-range/`）、端末は書き出した `AcceptedRange` の `bounds.contains`
 - 範囲ごとに、下限は `minimum`（含む）か `exclusiveMinimum`（含まない）、上限は `maximum`（含む）で書く。書いていない側は限りが無い（料理と材料の量は「0 より大きい」なので `exclusiveMinimum` だけ）
+- 身長（`heightCentimeters`）と年齢（`ageYears`）は、初めて目標を立てるときの身体データの範囲。打ち間違い（m で入れた身長など）を止めるだけの広い幅にする（体重と同じ考え）。サーバーは、推定消費カロリーを式で出すとき（`computeInitialExpenditureEstimate`。`server/src/expenditure-estimate/domain/`）に当てる。年齢は、生年月日か生まれた年から端末が出した歳
 - 料理の名前は、前後の空白を除いた文字数を `dishNameTrimmedLength` に当てる。前後の空白を除くのは、サーバーは `String.prototype.trim`、端末は `trimmingCharacters(in: .whitespacesAndNewlines)`
 - 送った文章の本文は、料理の名前と同じ手順で前後の空白を除き、Unicode のコードポイントの数を `sentTextBodyTrimmedLength` に当てる。サーバーは `Array.from(text).length`、端末は `unicodeScalars.count`。端末とサーバーで同じ数になるようにコードポイントで数える（絵文字や結合文字は、見た目の1字が2つ以上に数えられることがある）
 
@@ -36,6 +37,18 @@
 
 - サーバーは `computeNutrientTotal`（`server/src/ingredient/domain/compute-nutrient-total/`。栄養の項目ごとに出す）、端末は NuToriCore の `NutrientTotals`。入力（材料の量・1単位あたりの可食部の g・出どころ・栄養の値）と期待値（項目ごとの合計）は `shared/nutrient-totals.test-cases.json`
 - 料理の合計から食事と日の合計を足し上げる手順（端末の `NutrientTotals(combining:)`、推定を待つ料理を「以上」にすること）は端末の見た目のためのもので、両側の決めごとに含めない。サーバーは食事と日の合計を材料から直に出す
+
+## その日の1日の目安
+
+ある日に食べた量を、どの1日の目安と比べるかの引き方。端末は1日の丸と日のまとめ（電波が無くても見せるため、キャッシュの目標と1日の目安の記録で引く）、サーバーは AI に渡す文脈に使う。日は YYYY-MM-DD の文字列の順で比べる。
+
+1. その日 d を含む目標を選ぶ: 開始の日 ≦ d で、閉じていないか、終わった日（次の目標の開始の日）> d の目標。2つ以上あれば、開始の日、決めた時刻の順で遅いほう
+2. その目標の1日の目安のうち、当てる始まりの日 ≦ d で最も遅いもの
+3. 目標が無ければ、その日は比べない。目標があって1日の目安が無い（まだ届いていない）ときも比べない
+
+- サーバーは `findDailyGuideForDay`（`server/src/daily-guide/domain/find-daily-guide-for-day/`。その日を含む目標と、その1日の目安を返す）、端末は NuToriCore の `DailyGuideForDay`（同じ組を返す。タイムラインの日と1日の丸が持つ `dailyGuide` はここから引く）。入力（日、目標の ID・開始の日・決めた時刻・閉じていれば終わった日の並び、1日の目安の ID・目標の ID・当てる始まりの日の並び）と期待値（目標の ID と1日の目安の ID。無ければ `null`）は `shared/daily-guide-for-day.test-cases.json`
+- 同じ日に2回立て直した日（間の目標は開始の日と終わった日が同じで、どの日も含まない）、目標を立てる前の日、閉じていない目標が2つあるとき（閉じた目標の変更がまだ届いていない端末で起きる）、見送った週の日（その週に当てる1日の目安が無く、前の週のものが当たる）、親の目標がまだ届いていない1日の目安の場面を含む
+- 2つ目以降の目標の1日の目安は、当てる始まりの日が d 以前でいくら遅くても選ばない（1 で選んだ目標のものだけを見る）
 
 ## 今は片側だけの決めごと
 

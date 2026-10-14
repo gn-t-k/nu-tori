@@ -1,9 +1,11 @@
 // shared/accepted-ranges.json から書き出した。直すときは JSON を直し、scripts/check ios --fix で書き出し直す
 
 public enum AcceptedRange {
+    case ageYears
     case bodyFatPercentage
     case dishNameTrimmedLength
     case dishQuantity
+    case heightCentimeters
     case ingredientQuantity
     case mealPhotoCount
     case mealUtcOffsetSeconds
@@ -12,6 +14,9 @@ public enum AcceptedRange {
 
     public var bounds: AcceptedBounds {
         switch self {
+        case .ageYears:
+            AcceptedBounds(
+                lowerBound: 10.0, includesLowerBound: true, upperBound: 120.0)
         case .bodyFatPercentage:
             AcceptedBounds(
                 lowerBound: 1.0, includesLowerBound: true, upperBound: 75.0)
@@ -21,6 +26,9 @@ public enum AcceptedRange {
         case .dishQuantity:
             AcceptedBounds(
                 lowerBound: 0.0, includesLowerBound: false, upperBound: .infinity)
+        case .heightCentimeters:
+            AcceptedBounds(
+                lowerBound: 100.0, includesLowerBound: true, upperBound: 250.0)
         case .ingredientQuantity:
             AcceptedBounds(
                 lowerBound: 0.0, includesLowerBound: false, upperBound: .infinity)

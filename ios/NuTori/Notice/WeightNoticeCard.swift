@@ -55,7 +55,7 @@ struct WeightNoticeCard: View {
     private var title: String {
         switch card.form {
         case .awaitingAnswer: "今日の体重"
-        case .unansweredPastDay: "\(TimelineDayText.label(for: card.notice.targetDay))の体重"
+        case .unansweredPastDay(let targetDay): "\(TimelineDayText.label(for: targetDay))の体重"
         }
     }
 }

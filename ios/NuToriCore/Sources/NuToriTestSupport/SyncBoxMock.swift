@@ -220,6 +220,21 @@ extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
         return Array(cache.notices.values)
     }
 
+    public func goals() async throws -> [Goal] {
+        try failIfNeeded()
+        return Array(cache.goals.values)
+    }
+
+    public func dailyGuides() async throws -> [DailyGuide] {
+        try failIfNeeded()
+        return Array(cache.dailyGuides.values)
+    }
+
+    public func expenditureEstimates() async throws -> [ExpenditureEstimate] {
+        try failIfNeeded()
+        return Array(cache.expenditureEstimates.values)
+    }
+
     public func usualWeighingTime() async throws -> UsualWeighingTime? {
         try failIfNeeded()
         return cache.usualWeighingTime

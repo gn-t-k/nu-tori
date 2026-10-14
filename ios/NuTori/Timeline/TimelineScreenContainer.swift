@@ -21,6 +21,7 @@ struct TimelineScreenContainer: View {
     let sendText: (TextDraft) async -> Void
     /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事
     let replyStreams: [UUID: ReplyStream]
+    let goalSetup: GoalSetupSession
     let conversationActions: ConversationActions
     let accountActions: AccountActions
     let mealActions: MealActions
@@ -38,6 +39,8 @@ struct TimelineScreenContainer: View {
             rejectedLines: rejectedLines,
             meals: mealCards,
             notices: cachedNotices.compactMap { $0.notice() },
+            goals: cachedGoals.compactMap { $0.goal() },
+            dailyGuides: cachedDailyGuides.compactMap { $0.dailyGuide() },
             undeliveredRecords: undeliveredRecords,
             capture: capture,
             reminderLanding: reminderLanding,
@@ -49,7 +52,10 @@ struct TimelineScreenContainer: View {
             accountActions: accountActions,
             mealActions: mealActions,
             conversation: conversation,
-            conversationActions: conversationActions
+            conversationActions: conversationActions,
+            goalSetupFlow: GoalSetupNoticeCard.Flow(goalSetup.flow),
+            answerGoalSetupLater: goalSetup.answerLater,
+            openGoalSetupFlow: goalSetup.open(from:)
         )
         .task(id: cachedMeals.map(\.mealId)) {
             await readMealsRecordedHere()
@@ -64,6 +70,8 @@ struct TimelineScreenContainer: View {
     @Query private var cachedDishEstimationStatuses: [CachedDishEstimationStatus]
     @Query private var cachedIngredients: [CachedIngredient]
     @Query private var cachedNotices: [CachedNotice]
+    @Query private var cachedGoals: [CachedGoal]
+    @Query private var cachedDailyGuides: [CachedDailyGuide]
     @Query private var cachedWeightTrendDays: [CachedWeightTrendDay]
     @Query private var cachedSentTexts: [CachedSentText]
     @Query private var cachedSentTextStatuses: [CachedSentTextStatus]

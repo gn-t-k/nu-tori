@@ -10,11 +10,15 @@ public final class RecordCacheMock: Sendable {
 
     public let accountSettingsCache = MemorySingleRecordCache<AccountSettings>()
     public let aiUtteranceCache = MemoryKeyedRecordCache<AiUtterance, UUID>(id: \.id)
+    public let dailyGuideCache = MemoryKeyedRecordCache<DailyGuide, UUID>(id: \.id)
     public let dishCache = MemoryKeyedRecordCache<Dish, UUID>(id: \.id)
     /// 料理の ID で引く
     public let dishEstimationStatusCache = MemoryKeyedRecordCache<
         DishEstimationStatusSyncing.Status, UUID
     >(id: \.dishId)
+    public let expenditureEstimateCache = MemoryKeyedRecordCache<ExpenditureEstimate, UUID>(
+        id: \.id)
+    public let goalCache = MemoryKeyedRecordCache<Goal, UUID>(id: \.id)
     public let ingredientCache = MemoryKeyedRecordCache<Ingredient, UUID>(id: \.id)
     public let mealCache = MemoryKeyedRecordCache<Meal, UUID>(id: \.id)
     /// 食事の ID で引く
@@ -54,6 +58,17 @@ public final class RecordCacheMock: Sendable {
 
     /// 知らせの ID ごとの知らせ
     public var notices: [UUID: Notice] { Self.byId(noticeCache.all(), \.id) }
+
+    /// 目標の ID ごとの目標
+    public var goals: [UUID: Goal] { Self.byId(goalCache.all(), \.id) }
+
+    /// 1日の目安の ID ごとの1日の目安
+    public var dailyGuides: [UUID: DailyGuide] { Self.byId(dailyGuideCache.all(), \.id) }
+
+    /// 推定の ID ごとの推定消費カロリー
+    public var expenditureEstimates: [UUID: ExpenditureEstimate] {
+        Self.byId(expenditureEstimateCache.all(), \.id)
+    }
 
     public var usualWeighingTime: UsualWeighingTime? { usualWeighingTimeCache.read() }
 

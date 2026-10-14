@@ -32,7 +32,9 @@ struct RecordSyncBackgroundRefreshTests {
 
             #expect(succeeded)
             #expect(try await store.weightRecords().map(\.kilograms) == [70.5])
-            #expect(try await store.pendingEntries().isEmpty)
+            // 目標が無いので、同期の終わりに出した目標を立てる知らせの書き込みは、このあと裏で送る
+            let pending = try await store.pendingEntries().map(PendingNoticeWrite.init(entry:))
+            #expect(pending.map(\.write.noticeId) == [Notice.id(of: .goalSetup)])
         }
     }
 }

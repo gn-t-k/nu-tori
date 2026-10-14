@@ -21,7 +21,8 @@ public struct MissedWeightRecordPlan: Sendable {
         let unrecordedWeek = week.filter { !recordedDays.contains($0.day) }
 
         noticesToRespond = notices.filter {
-            $0.response == nil && recordedDays.contains($0.targetDay)
+            guard $0.response == nil, let targetDay = $0.targetDay else { return false }
+            return recordedDays.contains(targetDay)
         }
         // 過ぎた日の分は作らない（アプリを開かなかった日の知らせを、あとから出さない）
         if let todays = unrecordedWeek.first(where: { $0.day == today }),
@@ -30,10 +31,9 @@ public struct MissedWeightRecordPlan: Sendable {
         {
             noticeToIssue = Notice(
                 id: todays.id,
-                kind: .missedWeightRecord,
+                kind: .missedWeightRecord(targetDay: today),
                 issuedAt: todays.fireDate,
                 timeZone: timeZone,
-                targetDay: today,
                 response: nil
             )
         } else {
@@ -43,7 +43,7 @@ public struct MissedWeightRecordPlan: Sendable {
         recordedDayIds = Set(recordedDays.map(Self.id(on:)))
     }
 
-    /// 答えていない知らせのうち、対象の日付の体重記録があるもの
+    /// 答えていない記録忘れの知らせのうち、対象の日付の体重記録があるもの。目標を立てる知らせは入らない
     public let noticesToRespond: [Notice]
 
     /// 今日の通知の時刻を過ぎていて、今日の日付の体重記録も今日の知らせも無ければ、今日の知らせ
@@ -64,7 +64,7 @@ public struct MissedWeightRecordPlan: Sendable {
     private let recordedDayIds: Set<UUID>
 
     private static func id(on day: CalendarDay) -> UUID {
-        Notice.id(kind: .missedWeightRecord, targetDay: day)
+        Notice.id(of: .missedWeightRecord(targetDay: day))
     }
 
     /// その日の通知の時刻（今のタイムゾーン）。Calendar が時刻を出せなければ nil

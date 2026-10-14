@@ -5,9 +5,11 @@
     #Preview("状態ごと", arguments: DaySummarySheet.Sample.allCases) { sample in
         // シートに載せると、出てくる途中の動きを描いてしまう
         DaySummarySheet(
-            timeline: DaySummarySheet.Sample.timeline, day: sample.day,
+            timeline: sample.timeline, day: sample.day,
             weightRecords: DaySummarySheet.Sample.weightRecords,
-            weightTrend: DaySummarySheet.Sample.weightTrend
+            weightTrend: DaySummarySheet.Sample.weightTrend,
+            goalProgress: sample.goalProgress, today: .sampleToday,
+            startGoalSetup: sample.startsGoalSetup ? {} : nil
         ) { _ in }
     }
 
@@ -35,8 +37,78 @@
             case foodUnavailableWithPending
             /// kcal はあるが P・F・C がすべて 0 の日。空の輪の中に kcal を書く
             case foodWithoutMacros
+            /// 昨日から減量の目標を立てている今日。丸は1日の目安のうち食べた分だけ進み、P・F・C は「食べた量 / 目安」、
+            /// 体重の下に「あと N kg・あと N 日」
+            case goalLosing
+            /// 昨日から維持の目標を立てている今日。体重の下に「65.0 kg を保つ」
+            case goalMaintaining
+            /// 減量の目標を立てた昨日。3回食べて1日の目安を超え、丸の起点に印が付く。今日でないので目標の要約は出さない
+            case goalExceeded
+            /// 目標が無く、目標を立てる知らせのカードがタイムラインにある今日。体重の下に「目標を立てる」
+            case goalSetupAvailable
 
-            static let timeline = Timeline(
+            var timeline: Timeline {
+                switch self {
+                case .weighedOnce, .weighedSeveralTimes, .unrecorded, .firstDay, .foodEstimated,
+                    .foodPartlyPending, .foodAllPending, .foodUnavailable,
+                    .foodUnavailableWithPending, .foodWithoutMacros, .goalSetupAvailable:
+                    Self.beforeGoalTimeline
+                case .goalLosing, .goalExceeded: Self.goalTimeline(Self.losingGoal)
+                case .goalMaintaining: Self.goalTimeline(Self.maintainingGoal)
+                }
+            }
+
+            var goalProgress: GoalProgress? {
+                switch self {
+                case .weighedOnce, .weighedSeveralTimes, .unrecorded, .firstDay, .foodEstimated,
+                    .foodPartlyPending, .foodAllPending, .foodUnavailable,
+                    .foodUnavailableWithPending, .foodWithoutMacros, .goalSetupAvailable:
+                    nil
+                case .goalLosing, .goalExceeded:
+                    GoalProgress(
+                        goal: Self.losingGoal, today: .sampleToday, weightTrend: Self.weightTrend)
+                case .goalMaintaining:
+                    GoalProgress(
+                        goal: Self.maintainingGoal, today: .sampleToday,
+                        weightTrend: Self.weightTrend)
+                }
+            }
+
+            var startsGoalSetup: Bool {
+                switch self {
+                case .goalSetupAvailable: true
+                case .weighedOnce, .weighedSeveralTimes, .unrecorded, .firstDay, .foodEstimated,
+                    .foodPartlyPending, .foodAllPending, .foodUnavailable,
+                    .foodUnavailableWithPending, .foodWithoutMacros, .goalLosing, .goalMaintaining,
+                    .goalExceeded:
+                    false
+                }
+            }
+
+            private static let losingGoal = Goal.sampleLosing(
+                startedOn: CalendarDay.sampleToday.advanced(by: -1))
+            private static let maintainingGoal = Goal.sampleMaintaining(
+                startedOn: CalendarDay.sampleToday.advanced(by: -1))
+
+            /// 昨日から目標を立てている。昨日は3回、今日は1回食べた
+            private static func goalTimeline(_ goal: Goal) -> Timeline {
+                let yesterday = CalendarDay.sampleToday.advanced(by: -1)
+                return Timeline(
+                    input: Timeline.Input(
+                        weightRecords: weightRecords, rejectedLines: [],
+                        meals: [
+                            .sampleEstimated(.sample(on: yesterday, at: 7, 40)),
+                            .sampleEstimated(.sample(on: yesterday, at: 12, 10)),
+                            .sampleEstimated(.sample(on: yesterday, at: 19, 30)),
+                            .sampleEstimated(.sample(on: .sampleToday, at: 7, 40)),
+                        ], notices: [], undelivered: .none, conversation: .none,
+                        goals: [goal], dailyGuides: [.sample(for: goal)]),
+                    firstDay: startedDay,
+                    today: .sampleToday)
+            }
+
+            /// 目標を立てる前の日々
+            private static let beforeGoalTimeline = Timeline(
                 input: Timeline.Input(
                     weightRecords: weightRecords,
                     rejectedLines: [],
@@ -67,7 +139,8 @@
                             meal: .sample(on: Self.day(of: .foodUnavailableWithPending), at: 19, 0),
                             status: .deferredToNextDay, recordedOnThisDevice: true),
                         .sampleBlackCoffee(.sample(on: Self.day(of: .foodWithoutMacros), at: 9, 0)),
-                    ], notices: [], undelivered: .none, conversation: .none),
+                    ], notices: [], undelivered: .none, conversation: .none, goals: [],
+                    dailyGuides: []),
                 firstDay: startedDay,
                 today: .sampleToday
             )
@@ -98,7 +171,7 @@
             private static func day(of sample: Sample) -> CalendarDay {
                 switch sample {
                 case .weighedOnce: startedDay.advanced(by: 2)
-                case .weighedSeveralTimes: .sampleToday
+                case .weighedSeveralTimes, .goalSetupAvailable: .sampleToday
                 case .unrecorded: startedDay.advanced(by: 1)
                 case .firstDay: startedDay
                 case .foodEstimated: startedDay.advanced(by: 3)
@@ -107,6 +180,8 @@
                 case .foodUnavailable: startedDay.advanced(by: 6)
                 case .foodUnavailableWithPending: startedDay.advanced(by: 7)
                 case .foodWithoutMacros: startedDay.advanced(by: 8)
+                case .goalLosing, .goalMaintaining: .sampleToday
+                case .goalExceeded: CalendarDay.sampleToday.advanced(by: -1)
                 }
             }
 

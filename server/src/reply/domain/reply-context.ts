@@ -1,5 +1,7 @@
+import type { DailyGuideAmounts } from "../../daily-guide/domain/daily-guide-amounts";
 import type { DayOfWeek } from "../../domain/day-of-week";
 import type { RecordId } from "../../domain/record-id";
+import type { GoalDirection } from "../../goal/domain/goal-direction";
 import type { NutrientAmount } from "../../ingredient/domain/nutrient-amount";
 import type { MealEstimationProgress } from "./reply-context-source";
 
@@ -44,6 +46,18 @@ export type ReplyContextStructuredValues = {
   // 今日までの 28 日を 7 日ずつに分けた週ごとの、週の中で最後の傾向の値。古い週から並ぶ
   weeklyWeightTrend: readonly { firstDay: string; lastDay: string; trendKg: number | undefined }[];
   lastWeightRecord: { at: string; weightKg: number } | undefined;
+  // 今日を含む目標と、今日の1日の目安・推定消費カロリー。今日を含む目標が無ければ（目標を立てる前の日は）無い
+  goal: ReplyContextGoal | undefined;
+};
+
+export type ReplyContextGoal = {
+  direction: GoalDirection;
+  // 期限（YYYY-MM-DD）。維持の目標には無い
+  deadlineOn: string | undefined;
+  targetWeightKg: number;
+  dailyGuide: DailyGuideAmounts | undefined;
+  // 今日以前で当てる始まりの日が最も遅い推定
+  expenditureKcal: number | undefined;
 };
 
 export type ReplyContextDish = {

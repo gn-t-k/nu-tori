@@ -54,6 +54,13 @@ public struct CalendarDay: Hashable, Sendable {
         String(format: "%04d-%02d-%02d", year, month, day)
     }
 
+    /// その日の、そのタイムゾーンでの正午。日付だけを選ぶ部品（DatePicker）に渡す時刻で、夏時間の切り替えで日がずれないよう日の真ん中にする
+    public func noon(in timeZone: TimeZone) -> Date {
+        // 年月日の揃った DateComponents は、グレゴリオ暦ではいつも時刻になる
+        Self.gregorianCalendar(in: timeZone).date(
+            from: DateComponents(year: year, month: month, day: day, hour: 12))!
+    }
+
     public var startOfWeek: CalendarDay {
         // weekday は日曜が 1、月曜が 2
         let daysSinceMonday = (Self.utcCalendar.component(.weekday, from: startInUTC) + 5) % 7

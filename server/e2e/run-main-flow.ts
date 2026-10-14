@@ -1,12 +1,15 @@
+import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { mealTextBody } from "./meal-text-body";
+import { addDays } from "../src/domain/add-days";
+import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day-in-time-zone";
 import { generateRecordId } from "../src/domain/record-id";
 import { replyStreamEventSchema } from "../src/http/reply-stream-routes/reply-stream-event-schema";
 
 // 送る文章は作り話にする（公開リポジトリ）
 const conversationTextBody = "今日はよく歩いたので、少し脚が疲れた";
 
-// 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから写真と文章の食事の推定、会話の文章への返事、アカウントの削除までを通す。
+// 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから目標を決めて1日の目安が届くこと、写真と文章の食事の推定、会話の文章への返事、アカウントの削除までを通す。
 // 失敗したら、どの段で何が起きたかを書いて投げる。サインインしたあとは、失敗してもアカウントを消してから投げる
 export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
   const session = await signIn(options);
@@ -14,6 +17,7 @@ export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
   try {
     await recordWeight(options, session);
     options.log("体重を記録した");
+    await decideGoal(options, session);
     const mealId = await sendPhotographedMeal(options, session);
     options.log("写真の食事を送った");
     const { dishIds, ingredientCount } = await waitForEstimation(options, session, mealId);
@@ -80,6 +84,158 @@ const recordWeight = async (options: MainFlowOptions, session: Session): Promise
       },
     },
   ]);
+};
+
+// 初めての目標を、端末と同じ順で決める。使い始めたばかりで食べた量の記録が無いので逆算できず、身体データを添えて式で出す。
+// 減量の標準の案を、見せていた値のとおりに決め、同じ要求の ID の再送と、取りに行く応答に届くことまでを確かめる
+const decideGoal = async (options: MainFlowOptions, session: Session): Promise<void> => {
+  // 身体データは作り話にする（公開リポジトリ）。サーバーは計算に使ったら捨てる
+  const bodyData = {
+    sex: "female",
+    heightCentimeters: 160,
+    ageYears: 35,
+    activity: { type: "level", level: "standing" },
+  };
+
+  const goalSetupPreviewSchema = z.object({
+    canBackCalculate: z.boolean().optional(),
+    canOfferLoseProposals: z.boolean().optional(),
+  });
+
+  const dailyGuidePlanSchema = z.object({
+    energyKcal: z.number(),
+    proteinG: z.number(),
+    fatG: z.number(),
+    carbohydrateG: z.number(),
+  });
+
+  const goalProposalsSchema = z.object({
+    startedOn: z.string(),
+    expenditureSource: z.string(),
+    deadlineOn: z.string(),
+    proposals: z.array(
+      z.object({
+        pace: z.string(),
+        status: z.string(),
+        targetWeightKg: z.number().optional(),
+        dailyGuide: dailyGuidePlanSchema.optional(),
+      }),
+    ),
+  });
+
+  const goalDecisionSchema = z.object({
+    status: z.string(),
+    changes: z
+      .array(
+        z.object({
+          kind: z.string(),
+          recordId: z.string(),
+          record: z.record(z.string(), z.unknown()),
+        }),
+      )
+      .optional(),
+  });
+
+  const preview = goalSetupPreviewSchema.parse(
+    await postGoalSetup(options, session, "preview", { direction: "lose" }),
+  );
+  if (preview.canBackCalculate !== false) {
+    throw new Error(
+      `食べた量の記録が無いのに、目標の下見が逆算できると答えた（canBackCalculate: ${String(preview.canBackCalculate)}）`,
+    );
+  }
+  const previewWithBodyData = goalSetupPreviewSchema.parse(
+    await postGoalSetup(options, session, "preview", { direction: "lose", bodyData }),
+  );
+  if (previewWithBodyData.canOfferLoseProposals !== true) {
+    throw new Error(
+      `身体データを添えても、目標の下見が減量の案を出せると答えなかった（canOfferLoseProposals: ${String(previewWithBodyData.canOfferLoseProposals)}）`,
+    );
+  }
+  options.log("目標の下見で、逆算できず、身体データを添えると減量の案を出せると答えた");
+
+  // 期限は 13 週。開始の日は、サーバーが決めた日を目標案の応答から受け取って数える
+  const today = computeCalendarDayInTimeZone(new Date(), goalSetupTimeZone);
+  const proposals = goalProposalsSchema.parse(
+    await postGoalSetup(options, session, "proposals", {
+      plan: { direction: "lose", deadlineOn: addDays(today, 90) },
+      bodyData,
+    }),
+  );
+  const standard = proposals.proposals.find(({ pace }) => pace === "standard");
+  if (standard?.status !== "offered" || standard.targetWeightKg === undefined) {
+    throw new Error(`目標案に、出せる標準の案が無い（${standard?.status ?? "枠が無い"}）`);
+  }
+  options.log(`目標案を受け取った（推定消費カロリーの出どころ ${proposals.expenditureSource}）`);
+
+  const decisionRequest = {
+    requestId: generateRecordId(),
+    startedOn: proposals.startedOn,
+    choice: {
+      type: "proposal",
+      direction: "lose",
+      deadlineOn: proposals.deadlineOn,
+      pace: "standard",
+    },
+    shown: { targetWeightKg: standard.targetWeightKg, dailyGuide: standard.dailyGuide },
+    rejectedCustomTargetWeightCount: 0,
+    bodyData,
+  };
+  const decision = await postGoalSetup(options, session, "decisions", decisionRequest);
+  const decided = goalDecisionSchema.parse(decision);
+  if (decided.status !== "decided" || decided.changes === undefined) {
+    throw new Error(`目標が決まらず、${decided.status} が返った`);
+  }
+  const decidedKinds = decided.changes.map(({ kind }) => kind);
+  if (decidedKinds.join("・") !== "goal・daily_guide・expenditure_estimate") {
+    throw new Error(`決めた記録の並びが違う（${decidedKinds.join("・")}）`);
+  }
+  options.log(`目標を決めた（${decidedKinds.join("・")}）`);
+
+  const resent = await postGoalSetup(options, session, "decisions", decisionRequest);
+  if (!isDeepStrictEqual(resent, decision)) {
+    throw new Error("同じ要求の ID の再送が、初めの応答と違う応答で返った");
+  }
+  options.log("同じ要求の ID の再送が、同じ応答で返った");
+
+  const pulled = await pullAllChanges(options, session);
+  for (const change of decided.changes) {
+    const pulledRecord = pulled
+      .filter(({ kind, recordId }) => kind === change.kind && recordId === change.recordId)
+      .at(-1)?.record;
+    if (pulledRecord === undefined) {
+      throw new Error(`決めた ${change.kind} の記録が、取りに行く応答に無い`);
+    }
+    if (!isDeepStrictEqual(pulledRecord, change.record)) {
+      throw new Error(`取りに行った ${change.kind} の記録が、決めた応答の記録と食い違う`);
+    }
+  }
+  options.log("取りに行くで目標と1日の目安と推定消費カロリーが届いた");
+};
+
+const goalSetupTimeZone = "Asia/Tokyo";
+
+// 目標の設定の要求は同期の外でその場で答えるので、200 でなければ、断った理由（code）を添えて投げる
+const postGoalSetup = async (
+  options: MainFlowOptions,
+  session: Session,
+  path: "preview" | "proposals" | "decisions",
+  body: Record<string, unknown>,
+): Promise<unknown> => {
+  const response = await callApi(options, session, "POST", `/v1/goal-setup/${path}`, {
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ timeZone: goalSetupTimeZone, ...body }),
+  });
+  if (response.status !== 200) {
+    const code = await response
+      .json()
+      .then((json) => z.object({ code: z.string() }).parse(json).code)
+      .catch(() => "なし");
+    throw new Error(
+      `目標の設定の要求 ${path} が断られた（状態コード ${response.status}、理由: ${code}）`,
+    );
+  }
+  return response.json();
 };
 
 const sendPhotographedMeal = async (

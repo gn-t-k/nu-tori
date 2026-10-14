@@ -70,7 +70,9 @@ struct DayRingStrip: View {
                 .accessibilityIdentifier(identifier("day-label", day))
         case .ring(let day, let dayRing):
             let hasWeightRecord = dayRing.hasWeightRecord
-            let ring = Ring.shown(shares: dayRing.shares, hasWeightRecord: hasWeightRecord)
+            let ring = Ring.shown(
+                arcs: dayRing.arcs, exceedsDailyGuide: dayRing.exceedsDailyGuide,
+                hasWeightRecord: hasWeightRecord)
             if openableDays?.contains(day) == true {
                 Button {
                     onSelect(day)
@@ -83,6 +85,11 @@ struct DayRingStrip: View {
                     [
                         hasWeightRecord ? "体重の記録あり" : "体重の記録なし",
                         dayRing.hasRecordedFood ? "食事の記録あり" : nil,
+                        // 1日の目安と比べる日は、一周が目安になる
+                        dayRing.dailyGuide.map {
+                            "1日の目安 \(NutritionText.kilocalories($0.energyKilocalories))"
+                        },
+                        dayRing.exceedsDailyGuide ? "1日の目安を超えた" : nil,
                     ]
                     .compactMap(\.self).joined(separator: "、")
                 )
@@ -122,16 +129,19 @@ struct DayRingStrip: View {
         switch ring {
         case .hidden:
             Color.clear.frame(width: diameter, height: diameter)
-        case .shown(let shares, let hasWeightRecord):
-            DayRingView(shares: shares, diameter: diameter, lineWidth: 4.5)
-                .overlay {
-                    // 体重を記録した日は、丸の中に灰色の点を付ける
-                    if hasWeightRecord {
-                        Circle()
-                            .fill(Color.secondary)
-                            .frame(width: 7, height: 7)
-                    }
+        case .shown(let arcs, let exceedsDailyGuide, let hasWeightRecord):
+            DayRingView(
+                arcs: arcs, exceedsDailyGuide: exceedsDailyGuide, diameter: diameter,
+                lineWidth: 4.5, background: Color(.systemGroupedBackground)
+            )
+            .overlay {
+                // 体重を記録した日は、丸の中に灰色の点を付ける
+                if hasWeightRecord {
+                    Circle()
+                        .fill(Color.secondary)
+                        .frame(width: 7, height: 7)
                 }
+            }
         }
     }
 
@@ -151,8 +161,8 @@ struct DayRingStrip: View {
 
     private enum Ring: Equatable {
         case hidden
-        /// 割合が無い日は空の輪
-        case shown(shares: PFCShares?, hasWeightRecord: Bool)
+        /// 塗る長さが無い日は空の輪
+        case shown(arcs: DayRing.Arcs?, exceedsDailyGuide: Bool, hasWeightRecord: Bool)
     }
 }
 

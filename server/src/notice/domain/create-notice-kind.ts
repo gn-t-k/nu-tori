@@ -5,7 +5,13 @@ import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
-import { isNoticeType, type Notice, type NoticeResponse } from "./notice";
+import {
+  isNoticeType,
+  type Notice,
+  type NoticeResponse,
+  type NoticeSubject,
+  type NoticeType,
+} from "./notice";
 import type { NoticeStore } from "./notice-store";
 import { type NoticeWrite, noticeWriteTypes } from "./notice-write";
 
@@ -43,7 +49,8 @@ const decideCreate = (
   if (!isTimeZoneName(notice.timeZone)) {
     return rejectWrite("create", notice.id, "invalid_time_zone");
   }
-  if (!isCalendarDay(notice.targetOn)) {
+  const subject = toSubject(noticeType, notice.targetOn);
+  if (subject === undefined) {
     return rejectWrite("create", notice.id, "invalid_target_on");
   }
   // 2台目の作る書き込みで、1台目で答えた知らせを答えていない形に戻さない
@@ -57,10 +64,32 @@ const decideCreate = (
     addedChanges: [],
     usageEvents: [],
     commit: () => {
-      store.insert({ ...notice, noticeType });
+      store.insert({
+        id: notice.id,
+        issuedAt: notice.issuedAt,
+        timeZone: notice.timeZone,
+        ...subject,
+      });
     },
   };
 };
+
+// 種類ごとに持つもの。対象の日付が種類に合わなければ undefined
+// （記録忘れの知らせは暦にある日付を持ち、目標を立てる知らせは持たない）
+const toSubject = (
+  noticeType: NoticeType,
+  targetOn: string | undefined,
+): NoticeSubject | undefined =>
+  match(noticeType)
+    .with("missed_weight_record", (missedWeightRecord) =>
+      targetOn !== undefined && isCalendarDay(targetOn)
+        ? { noticeType: missedWeightRecord, targetOn }
+        : undefined,
+    )
+    .with("goal_setup", (goalSetup) =>
+      targetOn === undefined ? { noticeType: goalSetup } : undefined,
+    )
+    .exhaustive();
 
 const decideRespond = (
   store: NoticeStore,

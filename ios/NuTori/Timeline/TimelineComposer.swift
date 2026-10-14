@@ -5,9 +5,12 @@ import UIKit
 
 /// タイムラインの下に固定する入力欄。上の行に左から「撮る」「写真」「体重」と、残りの幅の書く欄（大きな文字では、書く欄を一番下の行に全幅で置く）。
 /// 今日の体重が未記録のあいだは、「体重」をカプセルにして丸の行の下に全幅で置く（書く欄の幅が記録の前後で変わらないように）。
+/// 目標を立てる知らせのカードを広げているあいだは、未記録でも「体重」を丸い灰色のボタンにする（カードの塗ったボタンと並ばないように）。
 /// カメラを許可していない人が「撮る」を押したら、そのすぐ上に知らせを出す
 struct TimelineComposer: View {
     let weightRecordedToday: Bool
+    /// 目標を立てる知らせのカードを広げている
+    let expandsGoalSetup: Bool
     /// 体重のシートを開く前の、ヘルスケアの許可を求めているあいだ
     let preparingWeightEntry: Bool
     let showsCameraNotice: Bool
@@ -20,6 +23,7 @@ struct TimelineComposer: View {
 
     init(
         weightRecordedToday: Bool,
+        expandsGoalSetup: Bool,
         preparingWeightEntry: Bool,
         showsCameraNotice: Bool,
         initialDraft: TextDraft,
@@ -30,6 +34,7 @@ struct TimelineComposer: View {
         onSendText: @escaping (TextDraft) -> Void
     ) {
         self.weightRecordedToday = weightRecordedToday
+        self.expandsGoalSetup = expandsGoalSetup
         self.preparingWeightEntry = preparingWeightEntry
         self.showsCameraNotice = showsCameraNotice
         self.onCapture = onCapture
@@ -63,7 +68,7 @@ struct TimelineComposer: View {
                             .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
                     }
                 }
-                if !weightRecordedToday && !writing {
+                if !showsWeightCircle && !writing {
                     unrecordedWeightCapsule
                 }
                 // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）。一番下に置き、書き始めてカプセルが消えても欄を動かさない
@@ -88,6 +93,9 @@ struct TimelineComposer: View {
 
     @State private var draft: TextDraft
     @FocusState private var fieldFocused: Bool
+
+    /// 「体重」を丸の行の灰色の丸にするか。記録済みか、目標を立てる知らせのカードを広げているとき
+    private var showsWeightCircle: Bool { weightRecordedToday || expandsGoalSetup }
 
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
     private var writing: Bool { fieldFocused || !draft.text.isEmpty }
@@ -114,7 +122,7 @@ struct TimelineComposer: View {
         .buttonStyle(.plain)
         .accessibilityLabel("写真")
         .accessibilityIdentifier("composer-photos")
-        if weightRecordedToday && !writing {
+        if showsWeightCircle && !writing {
             Button(action: onWeight) {
                 circle(filled: false) { weightScaleIcon }
             }

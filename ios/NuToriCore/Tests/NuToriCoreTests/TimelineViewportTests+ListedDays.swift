@@ -30,7 +30,7 @@ extension TimelineViewportTests {
             return Timeline(
                 input: Timeline.Input(
                     weightRecords: records, rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none),
+                    undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
                 firstDay: firstDay, today: today
             ).days
         }
@@ -457,6 +457,41 @@ extension TimelineViewportTests {
 
                 #expect(instructions == [.scroll(to: .item(item.id), animated: true)])
                 #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(35)))
+            }
+        }
+
+        @Suite("目標の設定を広げたカードを見せるとき")
+        struct RevealingItem {
+            let days: [Timeline.Day]
+            var viewport: TimelineViewport
+
+            init() throws {
+                days = try ListedDays.fortyDays()
+                viewport = ListedDays.opened(with: days)
+            }
+
+            @Test("並べていない日のカードなら、その日まで並べて、まだ並んでいないと返すこと")
+            mutating func listsUnlistedDay() throws {
+                let item = try #require(days[5].items.first)
+
+                let first = viewport.revealItem(item.id, in: days)
+                let listed = Array(viewport.listedDays(of: days))
+                let second = viewport.revealItem(item.id, in: days)
+
+                #expect(!first)
+                #expect(listed == Array(days.suffix(35)))
+                #expect(second)
+            }
+
+            @Test("並べている日のカードなら、並べる日を変えずに、並んでいると返すこと")
+            mutating func keepsListedDays() throws {
+                let item = try #require(days.last?.items.first)
+                let listed = Array(viewport.listedDays(of: days))
+
+                let revealed = viewport.revealItem(item.id, in: days)
+
+                #expect(revealed)
+                #expect(Array(viewport.listedDays(of: days)) == listed)
             }
         }
     }

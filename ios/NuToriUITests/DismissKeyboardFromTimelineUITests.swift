@@ -35,7 +35,9 @@ final class DismissKeyboardFromTimelineUITests: XCTestCase {
         app.buttons["composer-send"].tap()
         XCTAssertTrue(app.staticText(containing: "夜も歩く").waitForExistence(timeout: 5))
 
-        dragTimeline(fromY: 0.25, toY: 0.4)
+        // 送った文章を追って下へ送ると、目標を立てる知らせのカードが上へ流れ、帯のすぐ下に「目標を立てる ›」の1行が出る。
+        // 1行の上から動かすと、タイムラインでなく1行を押したことになるので、その下から動かす
+        dragTimeline(fromY: 0.32, toY: 0.45)
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "タイムラインを動かして下げたキーボード")

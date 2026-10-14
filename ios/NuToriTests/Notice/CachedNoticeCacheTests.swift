@@ -10,10 +10,50 @@ struct CachedNoticeCacheTests {
     static func notice(day: Int, response: Notice.Response?) throws -> Notice {
         let targetDay = CalendarDay(year: 2026, month: 9, day: day)
         return Notice(
-            id: Notice.id(kind: .missedWeightRecord, targetDay: targetDay),
-            kind: .missedWeightRecord, issuedAt: Date(timeIntervalSince1970: 1_790_028_900),
-            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), targetDay: targetDay,
-            response: response)
+            id: Notice.id(of: .missedWeightRecord(targetDay: targetDay)),
+            kind: .missedWeightRecord(targetDay: targetDay),
+            issuedAt: Date(timeIntervalSince1970: 1_790_028_900),
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), response: response)
+    }
+
+    static func goalSetup(response: Notice.Response?) throws -> Notice {
+        Notice(
+            id: Notice.id(of: .goalSetup), kind: .goalSetup,
+            issuedAt: Date(timeIntervalSince1970: 1_790_028_900),
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), response: response)
+    }
+
+    @Suite("対象の日付を持たない、目標を立てる知らせを足したとき")
+    @MainActor
+    struct GoalSetup {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataKeyedRecordCache<CachedNotice>
+        let unanswered: Notice
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            cache = SwiftDataKeyedRecordCache(context: store.container.mainContext)
+            unanswered = try CachedNoticeCacheTests.goalSetup(response: nil)
+            try cache.upsert(unanswered)
+            try cache.context.save()
+        }
+
+        @Test("足した知らせと同じ知らせを読めること")
+        func readsBackSameRecord() throws {
+            #expect(try cache.savedRecords() == [unanswered])
+        }
+
+        @Test("同じ ID の答えた知らせを足すと、行を増やさず、答えた形に替わること")
+        func replacesWithResponse() throws {
+            let responded = try CachedNoticeCacheTests.goalSetup(
+                response: Notice.Response(
+                    respondedAt: Date(timeIntervalSince1970: 1_790_030_000),
+                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))))
+
+            try cache.upsert(responded)
+
+            #expect(try cache.savedRecords() == [responded])
+        }
     }
 
     /// 答えていない知らせと、答えた知らせを保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
@@ -115,7 +155,7 @@ struct CachedNoticeCacheTests {
         }
     }
 
-    @Suite("知らない種類・知らないタイムゾーン・読めない日付・答えのタイムゾーンの無い行があるとき")
+    @Suite("知らない種類・知らないタイムゾーン・読めない日付・日付の無い記録忘れ・答えのタイムゾーンの無い行があるとき")
     @MainActor
     struct Unreadable {
         let store: SwiftDataSyncStore
@@ -130,13 +170,15 @@ struct CachedNoticeCacheTests {
             let unknownKind = try CachedNoticeCacheTests.notice(day: 21, response: nil)
             let unknownTimeZone = try CachedNoticeCacheTests.notice(day: 22, response: nil)
             let unreadableDay = try CachedNoticeCacheTests.notice(day: 23, response: nil)
+            let missingDay = try CachedNoticeCacheTests.notice(day: 25, response: nil)
             let responseWithoutTimeZone = try CachedNoticeCacheTests.notice(
                 day: 24,
                 response: Notice.Response(
                     respondedAt: Date(timeIntervalSince1970: 1_790_029_800),
                     timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))))
             for notice in [
-                readable, unknownKind, unknownTimeZone, unreadableDay, responseWithoutTimeZone,
+                readable, unknownKind, unknownTimeZone, unreadableDay, missingDay,
+                responseWithoutTimeZone,
             ] {
                 try cache.upsert(notice)
             }
@@ -146,6 +188,7 @@ struct CachedNoticeCacheTests {
                 .timeZoneIdentifier = "Nowhere/Unknown"
             try #require(try CachedNotice.find(id: unreadableDay.id, in: context)).targetDay =
                 "2026/09/23"
+            try #require(try CachedNotice.find(id: missingDay.id, in: context)).targetDay = nil
             try #require(try CachedNotice.find(id: responseWithoutTimeZone.id, in: context))
                 .responseTimeZoneIdentifier = nil
             try context.save()

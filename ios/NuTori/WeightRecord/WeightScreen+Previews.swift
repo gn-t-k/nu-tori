@@ -18,7 +18,8 @@
                 ),
                 rejectedLines: sample.rejectedLines,
                 capture: { _ in },
-                saveWeight: { _ in }
+                saveWeight: { _ in },
+                startGoalSetup: sample.startsGoalSetup ? {} : nil
             )
         }
     }
@@ -41,13 +42,16 @@
             case trendLine
             /// 使い始める前のヘルスケアの記録から傾向の線を通して引き、使い始めた日に区切りを引く
             case trendLineAcrossFirstDay
+            /// 目標が無く、目標を立てる知らせのカードがタイムラインにある。傾向のグラフの下に「目標を立てる」
+            case goalSetupAvailable
 
             static let day = CalendarDay.sampleToday.advanced(by: -1)
             static let firstDay = CalendarDay.sampleToday.advanced(by: -6)
 
             var startedDay: CalendarDay {
                 switch self {
-                case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected:
+                case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected,
+                    .goalSetupAvailable:
                     Self.firstDay
                 case .trendLine: CalendarDay.sampleToday.advanced(by: -40)
                 case .trendLineAcrossFirstDay: CalendarDay.sampleToday.advanced(by: -10)
@@ -57,7 +61,8 @@
             /// 同期で届いた傾向。線を引く見本は、最初の記録の日から最後の記録の日まで
             var trend: WeightTrend? {
                 switch self {
-                case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected:
+                case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected,
+                    .goalSetupAvailable:
                     nil
                 case .trendLine, .trendLineAcrossFirstDay:
                     WeightTrend.sample(
@@ -69,7 +74,7 @@
             var records: [WeightRecord] {
                 switch self {
                 case .trendLine, .trendLineAcrossFirstDay: Self.dailyRecords
-                case .oneRecord, .rejected: Self.dayRecord + Self.otherDays
+                case .oneRecord, .rejected, .goalSetupAvailable: Self.dayRecord + Self.otherDays
                 case .severalRecords:
                     Self.dayRecord + Self.otherDays + [
                         .sample(72.6, on: Self.day, at: 12, 40, from: .sampleScaleApp),
@@ -91,7 +96,7 @@
             var rejectedLines: [RejectedLine] {
                 switch self {
                 case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .trendLine,
-                    .trendLineAcrossFirstDay:
+                    .trendLineAcrossFirstDay, .goalSetupAvailable:
                     []
                 case .rejected:
                     [
@@ -108,6 +113,15 @@
                                 serverHasValue: true
                             ))
                     ]
+                }
+            }
+
+            var startsGoalSetup: Bool {
+                switch self {
+                case .goalSetupAvailable: true
+                case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected,
+                    .trendLine, .trendLineAcrossFirstDay:
+                    false
                 }
             }
 

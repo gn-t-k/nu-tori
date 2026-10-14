@@ -243,6 +243,66 @@ struct PendingWriteEntryTests {
         }
     }
 
+    @Suite("対象の日付を知らせがじかに持っていた版が残した、記録忘れの知らせの送り待ちを読むとき")
+    struct LeftoverMissedWeightRecordNotice {
+        let entry: PendingEntry
+        let noticeId: UUID
+
+        init() throws {
+            noticeId = try #require(UUID(uuidString: "B57A32FD-45B8-5188-9AFC-5FB5D28C26C9"))
+            // 以前の版が書いた形。issuedAt は 2001-01-01 からの秒数
+            let content = Data(
+                """
+                {"create":{"_0":{"id":"\(noticeId.uuidString)","kind":"missed-weight-record",
+                  "issuedAt":780000000,"timeZoneIdentifier":"Asia/Tokyo","targetDay":"2026-09-22"}}}
+                """.utf8)
+            entry = PendingEntry(
+                writeId: UUID(), enqueuedAt: SyncEngine.fixtureNow, kind: .notice,
+                content: content)
+        }
+
+        @Test("対象の日付を持つ記録忘れの知らせを作る書き込みとして読めること")
+        func readsAsCreate() throws {
+            let write = try PendingNoticeWrite(entry: entry).write
+
+            #expect(
+                write
+                    == .create(
+                        Notice(
+                            id: noticeId,
+                            kind: .missedWeightRecord(
+                                targetDay: CalendarDay(year: 2026, month: 9, day: 22)),
+                            issuedAt: Date(timeIntervalSinceReferenceDate: 780_000_000),
+                            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                            response: nil)))
+        }
+    }
+
+    @Suite("目標を立てる知らせの送り待ちを変換するとき")
+    struct GoalSetupNoticeConversion {
+        let write: PendingNoticeWrite
+
+        init() throws {
+            write = PendingNoticeWrite(
+                enqueuedAt: SyncEngine.fixtureNow,
+                write: .create(
+                    Notice(
+                        id: Notice.id(of: .goalSetup), kind: .goalSetup,
+                        issuedAt: SyncEngine.fixtureNow,
+                        timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                        response: nil)))
+        }
+
+        @Test("知らせの種類の名前で入り、対象の日付を持たずに、同じ書き込みとして読み戻せること")
+        func roundTripsWithoutTargetDay() throws {
+            let entry = try write.entry()
+
+            #expect(entry.kind == .notice)
+            #expect(try PendingNoticeWrite(entry: entry) == write)
+            #expect(!String(decoding: entry.content, as: UTF8.self).contains("targetDay"))
+        }
+    }
+
     @Suite("読めない中身のとき")
     struct InvalidContent {
         @Test("種類の名前を読めず、書き込みにも解けないこと")

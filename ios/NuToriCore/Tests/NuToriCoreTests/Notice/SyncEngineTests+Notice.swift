@@ -151,10 +151,10 @@ extension SyncEngineTests {
                     store.cache.notices[noticeId]
                         == Notice(
                             id: noticeId,
-                            kind: .missedWeightRecord,
+                            kind: .missedWeightRecord(
+                                targetDay: CalendarDay(year: 2026, month: 9, day: 22)),
                             issuedAt: Date(timeIntervalSince1970: 1_790_028_900),
                             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
-                            targetDay: CalendarDay(year: 2026, month: 9, day: 22),
                             response: Notice.Response(
                                 respondedAt: Date(timeIntervalSince1970: 1_790_029_800),
                                 timeZone: try #require(
@@ -209,10 +209,9 @@ extension Notice {
     fileprivate static func fixture() throws -> Notice {
         Notice(
             id: try #require(UUID(uuidString: "00000000-0000-5000-8000-0000000000a1")),
-            kind: .missedWeightRecord,
+            kind: .missedWeightRecord(targetDay: CalendarDay(year: 2026, month: 9, day: 22)),
             issuedAt: Date(timeIntervalSince1970: 1_790_028_900),
             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
-            targetDay: CalendarDay(year: 2026, month: 9, day: 22),
             response: nil
         )
     }
@@ -223,10 +222,9 @@ extension NewNotice {
     fileprivate static func fixture(id: UUID) throws -> NewNotice {
         NewNotice(
             id: id,
-            noticeType: .missedWeightRecord,
+            noticeType: .missedWeightRecord(targetOn: "2026-09-22"),
             issuedAt: Date(timeIntervalSince1970: 1_790_028_900),
-            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
-            targetOn: "2026-09-22"
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))
         )
     }
 }

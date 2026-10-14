@@ -27,7 +27,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 層
 
 - 置き場: HTTP の受け口は `src/http/`、Durable Object は `src/durable-object/`、ドメイン層は `src/domain/`、認証（Better Auth と、Apple の API への入出力）は `src/auth/`、観測（Sentry の設定と、PostHog の API への入出力）は `src/observability/`
-- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/dish-estimation-status/`、`src/ingredient/`、`src/notice/`、`src/usual-weighing-time/`、`src/weight-trend/`、`src/sent-text/`、`src/sent-text-status/`、`src/ai-utterance/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/`、返事の流れと、読み分けと返事の提供元は `src/reply/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
+- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/dish-estimation-status/`、`src/ingredient/`、`src/notice/`、`src/usual-weighing-time/`、`src/weight-trend/`、`src/sent-text/`、`src/sent-text-status/`、`src/ai-utterance/`、`src/goal/`、`src/daily-guide/`、`src/expenditure-estimate/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/`、返事の流れと、読み分けと返事の提供元は `src/reply/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
 - 層は oxlint の `no-restricted-imports`（`.oxlintrc.json` の `overrides`）で守る。`src/domain/` と `src/<種類>/domain/` からは、受け口（`http`）、Durable Object（`durable-object`）、`cloudflare:*`、`hono` を import できない。import の文字列だけを見るので、別名の import を使い始めたら dependency-cruiser を考える
 - 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
@@ -96,7 +96,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・返事・作れなかった）は、返事の書き込みの口（`src/reply/domain/write-reply-events.ts`）を通して書く（端末の書き込みの外では、記録の変化を書く入口がこの口を呼ぶ）。口は、表で守らない決まり（依頼は会話と読み分けた文章にだけ、回数切れと生成・返事と作れなかったはどちらか1つ）を書く前に確かめて投げ、書く前とあとで送った文章の状態を比べて変わった文章にだけ状態の変更を、返事を書いたら返事の変更を足す。依頼ときっかけのサブセットは、口の `request` で一緒に書く（きっかけは依頼の型の `trigger` で1つ）
 - 回数は1日 `maximumDailyReplyGenerations`（20）。生成を始めるときに、依頼の数える日の生成を数え、上限なら提供元を呼ばずに回数切れにする（翌日に回さない）。テストは `src/reply/http/testing/insert-counted-reply-requests.ts` で回数を満たす
 - 指し示す食事は、文脈で ID を付けた食事（今日と昨日の食事、記録の印の食事）のうち在るものだけを通し、ほかは読めない応答にしてやり直す
-- 返事の本物の提供元は Claude Sonnet 5.5 を流す形で呼ぶ（`generate-reply-with-sonnet.ts`）。要求は `create-sonnet-reply-request.ts`（指示を system に、文脈の窓・記録の値・新しい発言の文の塊をユーザーのメッセージに並べ、窓のあとにキャッシュの印。思考は `thinking: { type: "between_tools" }` で切る。Sonnet 5.5 は `disabled` を 400 で断る）、指示の文面は `reply-instructions.ts`（評価 `server/evals/reply` の 30 場面で確かめた。指示・文脈の文面・要求を変えたら `pnpm run evals:reply` を回し直し、すべて通るまで直す）、答えは構造化出力の `{ body, mealIds }`。流れてきた JSON から本文のできた分だけを読み（`read-streamed-reply-body.ts`）`onText` に渡す。時間の上限は試みの signal だけ。400 は状態コードで見分けて 400 の失敗、出力の上限で切れた・答えなかった・形が違うは読めない応答、流れが終わりの出来事なしに閉じたら提供元のエラー（`stream_ended`）。提供元そのものは SDK の `fetch` を差し替え、流す応答は `testing/reply-with-text-stream.ts` で作って確かめる
+- 返事の本物の提供元は Claude Sonnet 5.5 を流す形で呼ぶ（`generate-reply-with-sonnet.ts`）。要求は `create-sonnet-reply-request.ts`（指示を system に、文脈の窓・記録の値・新しい発言の文の塊をユーザーのメッセージに並べ、窓のあとにキャッシュの印。思考は `thinking: { type: "between_tools" }` で切る。Sonnet 5.5 は `disabled` を 400 で断る）、指示の文面は `reply-instructions.ts`（評価 `server/evals/reply` の 35 場面（目標を立てた人の 5 場面を含む）で確かめた。指示・文脈の文面・要求を変えたら `pnpm run evals:reply` を回し直し、すべて通るまで直す）、答えは構造化出力の `{ body, mealIds }`。流れてきた JSON から本文のできた分だけを読み（`read-streamed-reply-body.ts`）`onText` に渡す。時間の上限は試みの signal だけ。400 は状態コードで見分けて 400 の失敗、出力の上限で切れた・答えなかった・形が違うは読めない応答、流れが終わりの出来事なしに閉じたら提供元のエラー（`stream_ended`）。提供元そのものは SDK の `fetch` を差し替え、流す応答は `testing/reply-with-text-stream.ts` で作って確かめる
 - 見守る要求（`GET /v1/sent-texts/{sentTextId}/reply-stream`）は、Durable Object の RPC が返す SSE のバイトの流れを、受け口の Worker がそのまま `text/event-stream` で返す。つないでいる要求と、試みが流している途中の文は、Durable Object の実体のメモリ（`src/reply/domain/create-reply-watchers.ts`）にだけ持ち、記録に残さない。返事はアラームが作るので、端末が切れても最後まで作る。提供元は `generateReply` の `onText` に本文のできた分を渡し、アラームは読み分け・生成の開始・試みの結果のあとに `refresh` で結果を送る。出来事の形は `src/http/reply-stream-routes/reply-stream-event-schema.ts`
 
 ## 成分表のデータファイル
@@ -113,6 +113,17 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - 身体データと使い始める前の摂取エネルギーは、目標と推定消費カロリーの計算に使ったら捨て、DB にもログにも残さない（ADR-0009）
 
+## 目標の設定の要求
+
+- 目標の設定は、同期の外でその場で答える要求で進める。経路は `src/http/goal-setup-routes/`（`/v1/goal-setup/*`）、入口は `src/goal/domain/` の `previewGoalSetup`（目標の下見）・`proposeGoals`（目標案）・`assessCustomTargetWeight`（自分で決める目標体重）で、その人の Durable Object の同じ名前の RPC から呼ぶ。この3つは何も書かない
+- どの要求も、計算の元（開始の日、今の目標、開始の日の体重の傾向、推定消費カロリー）を `resolveGoalSetupBasis` で要求のたびに出し直す。初めての目標では推定消費カロリーを逆算か式で出し、今の目標があれば今の推定（`ExpenditureEstimateStore.findCurrent`）を使う。目標案から先は `requireCompleteGoalSetupBasis` で、体重記録と推定消費カロリーが揃っていることを確かめる
+- 断る要求（不具合のときだけ届く）は、形の誤りを 400、値の誤り（`GoalSetupRequestRejectedError` の `reason`）を 422 にして、本文の `code` に理由を入れ、受け口が Sentry に送る。エラーには理由と、誤っていた場所だけを持たせ、届いた値を載せない
+- 目標の下見の「減量の案を1つでも出せるか」は、期限を選ぶ前に答えるので、受け付けるいちばん短い期限（`acceptedDeadlineDays.minimum`）で確かめる
+- 目標を決める要求（`POST /v1/goal-setup/decisions`、入口は `decideGoal`）だけが書く。記録の変化を書く入口（`RecordChangeWriter`）の `run` の中で、要求の受け取り（`goal_decision_receipts`）を見て、同じ計算の元で計算し直し、端末が見せていた値と同じときだけ、目標を決めたことを書く口（`src/goal/domain/write-goal-decision.ts`。テストは Durable Object の置き場に当てる `src/goal/durable-object/write-goal-decision.test.ts`）で行の組を書く
+  - 応答の `status` は3つ: 決めた `decided`、開始の日か見せていた値が違った `recalculated`（目標案の応答と同じ形の新しい案を返し、受け取りを書かない。開始の日がずれて期限が 28〜182 日の外に出たら、受け付けるいちばん近い日に寄せた期限の案を返し、端末はその期限を使い直す）、自分で決めた目標体重を受け付けない `custom_target_weight_rejected`。同じ要求の ID の再送は、書かずに、決めた目標から読み直した記録（`readGoalDecisionRecords`）で `decided` を返す
+  - 目標・推定消費カロリー・1日の目安の行は、書く口を通してだけ書く。口は、表で守らない決まり（今の目標をいつも閉じて 0..1 に保つ、開始の日を今の目標より前にしない、推定の始まりは推定の行が無いときだけ、減量・増量で目標体重と開始の日の体重の傾向が等しくない、区分の値が一覧にある）を書く前に確かめて投げ、外部キーが指す行を先に書く
+  - 決めたときだけ、PostHog に `goal_decision_recorded` を送る（利用状況の設定に従う。再送では送らない）。体重・目標体重・kcal の値は載せない
+
 ## DB
 
 - スキーマは素の SQLite で書く。表は Drizzle ORM で宣言して読み書きし、移行は手書きの SQL で持つ（ADR-0021）。Drizzle Kit は使わない
@@ -120,6 +131,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 食事の仕様（#188）の表の置き場: 食事とその削除の印は `src/meal/durable-object/meal-tables.ts`、写真（宣言、ファイルの受け取りと R2 から消した事実、宣言の削除の印）は同じフォルダの `meal-photo-tables.ts`、推定の出来事（予定・つなぎ・見送り・推定・試み・結果・完了・断念）は `src/estimation/durable-object/estimation-tables.ts`、料理は `src/dish/durable-object/dish-tables.ts`、材料と出どころのサブセットと栄養の値は `src/ingredient/durable-object/ingredient-tables.ts`。推定の出来事は記録の種類ではないので `src/estimation/` に別に置く。表を足すときは、親の表の束を import して外部キーを張る
 - 食事を直す仕様（#332）の表の置き場: 当てた推定・推定の量・料理の名前と量の修正・比例の明細・料理が対象の予定のつなぎ・料理の削除の印は `dish-tables.ts`、材料の量の修正と材料の削除の印は `ingredient-tables.ts`、食事の時刻の修正は `meal-tables.ts`、予定の取り消しは `estimation-tables.ts`。表の束が互いを指す（料理 ↔ 材料、料理 ↔ 推定の出来事）ところは、指し返すほうの `references` に `(): AnySQLiteColumn =>` と型を書き、型の推論の循環を切る
 - 文章と会話の仕様（#419）の表の置き場: 送った文章・読み分け・会話として送り直し・送り直し・会話として送り直しで消した食事の削除の印と、文章の食事のサブセット（文章の食事・推定が作った食事・推定した時刻）は `src/sent-text/durable-object/sent-text-tables.ts`、返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・作れなかった）は `src/reply/durable-object/reply-tables.ts`、返事と指し示す食事は `src/ai-utterance/durable-object/ai-utterance-tables.ts`。返事の流れは記録の種類ではないので、推定と同じく `src/reply/` に別に置く
+- 目標を立てる仕様（#523）の表の置き場: 目標・減量と増量のサブセット・目標を閉じる・目標を決める要求の受け取りは `src/goal/durable-object/goal-tables.ts`、推定消費カロリーの推定と推定の始まりは `src/expenditure-estimate/durable-object/expenditure-estimate-tables.ts`、1日の目安と当たった上限と下限は `src/daily-guide/durable-object/daily-guide-tables.ts`。どの表も書き足すだけで、UPDATE も DELETE もしない。値が無いことは、サブセットの表に行が無いことで表す（維持の目標、閉じていない目標、始まりでない推定）。目標の向きは列に持たず、`src/goal/domain/compute-goal-direction.ts` が行の有無と体重の大小から出す
 - 置き場の実装のクエリは Drizzle で書く。`sql.raw()` と、自分で文字列を組み立てる SQL は使わない（`sql` のテンプレートに列を渡すのはよい）。DB から読んだ区分の文字列は、宣言の `text({ enum })` から導いた型で受け、読み戻す関数を書かない
 - 宣言と移行がずれていないかは、`src/durable-object/durable-object-tables.test.ts` が、移行を当てた DB の実際の列（`pragma_table_info`）と宣言（`getTableConfig`）を比べて確かめる。比べる関数は `src/testing/find-table-declaration-mismatches.ts`（表と実際の列を渡すと、ずれの説明を返す。D1 の表にも使う）。表の宣言に無い表が DB にあっても落ちる
 - 置き場のテストの行は `@praha/drizzle-factory` で作る（`src/durable-object/testing/durable-object-factory.ts`）。`create()` は Promise を返すので、テストで `await` して使い、同期の `transactionSync` の中では使わない。`drizzle(storage, { schema: durableObjectTables })` の `schema` を渡した db を factory に渡す

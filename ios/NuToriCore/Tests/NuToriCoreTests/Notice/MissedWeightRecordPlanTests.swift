@@ -7,8 +7,7 @@ import Testing
 struct MissedWeightRecordPlanTests {
     /// 2026年9月のその日の、記録忘れの知らせと通知の ID
     static func id(_ day: Int) -> UUID {
-        Notice.id(
-            kind: .missedWeightRecord, targetDay: CalendarDay(year: 2026, month: 9, day: day))
+        Notice.id(of: .missedWeightRecord(targetDay: CalendarDay(year: 2026, month: 9, day: day)))
     }
 
     /// 2026年9月のその日の8:15に出した、記録忘れの知らせ
@@ -16,10 +15,9 @@ struct MissedWeightRecordPlanTests {
         let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
         return Notice(
             id: id(day),
-            kind: .missedWeightRecord,
+            kind: .missedWeightRecord(targetDay: CalendarDay(year: 2026, month: 9, day: day)),
             issuedAt: try Date("2026-09-\(day)T08:15:00+09:00", strategy: .iso8601),
             timeZone: tokyo,
-            targetDay: CalendarDay(year: 2026, month: 9, day: day),
             response: try respondedAt.map {
                 Notice.Response(respondedAt: try Date($0, strategy: .iso8601), timeZone: tokyo)
             }
@@ -122,10 +120,10 @@ struct MissedWeightRecordPlanTests {
                 plan.noticeToIssue
                     == Notice(
                         id: try #require(UUID(uuidString: "B57A32FD-45B8-5188-9AFC-5FB5D28C26C9")),
-                        kind: .missedWeightRecord,
+                        kind: .missedWeightRecord(
+                            targetDay: CalendarDay(year: 2026, month: 9, day: 22)),
                         issuedAt: try Date("2026-09-22T08:15:00+09:00", strategy: .iso8601),
                         timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
-                        targetDay: CalendarDay(year: 2026, month: 9, day: 22),
                         response: nil
                     ))
         }

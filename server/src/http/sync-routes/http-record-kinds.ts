@@ -1,8 +1,11 @@
 import { accountSettingsHttpKind } from "../../account-settings/http/account-settings-http-kind";
 import { aiUtteranceHttpKind } from "../../ai-utterance/http/ai-utterance-http-kind";
+import { dailyGuideHttpKind } from "../../daily-guide/http/daily-guide-http-kind";
 import { dishHttpKind } from "../../dish/http/dish-http-kind";
 import { dishEstimationStatusHttpKind } from "../../dish-estimation-status/http/dish-estimation-status-http-kind";
 import type { RecordType } from "../../domain/record-type";
+import { expenditureEstimateHttpKind } from "../../expenditure-estimate/http/expenditure-estimate-http-kind";
+import { goalHttpKind } from "../../goal/http/goal-http-kind";
 import { ingredientHttpKind } from "../../ingredient/http/ingredient-http-kind";
 import { mealHttpKind } from "../../meal/http/meal-http-kind";
 import { mealEstimationStatusHttpKind } from "../../meal-estimation-status/http/meal-estimation-status-http-kind";
@@ -19,8 +22,11 @@ import type { HttpRecordKind } from "./http-record-kind";
 export const httpRecordKinds = {
   account_settings: accountSettingsHttpKind,
   ai_utterance: aiUtteranceHttpKind,
+  daily_guide: dailyGuideHttpKind,
   dish: dishHttpKind,
   dish_estimation_status: dishEstimationStatusHttpKind,
+  expenditure_estimate: expenditureEstimateHttpKind,
+  goal: goalHttpKind,
   ingredient: ingredientHttpKind,
   meal: mealHttpKind,
   meal_estimation_status: mealEstimationStatusHttpKind,
