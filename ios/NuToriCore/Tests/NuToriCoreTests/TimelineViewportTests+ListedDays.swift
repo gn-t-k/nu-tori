@@ -118,7 +118,7 @@ extension TimelineViewportTests {
 
             init() throws {
                 var viewport = ListedDays.opened(with: try ListedDays.fortyDays())
-                viewport.startReachedChanged(isAtStart: true)
+                viewport.startPositionChanged(to: .atStart)
                 instructions = viewport.scrollPhaseChanged(from: .idle, to: .idle)
             }
 
@@ -138,7 +138,7 @@ extension TimelineViewportTests {
                 days = try ListedDays.fortyDays()
                 viewport = ListedDays.scrolledAway(from: days)
                 TimelineViewportTests.touch(&viewport)
-                viewport.startReachedChanged(isAtStart: true)
+                viewport.startPositionChanged(to: .atStart)
                 _ = viewport.scrollPhaseChanged(from: .interacting, to: .decelerating)
                 instructions = viewport.scrollPhaseChanged(from: .decelerating, to: .idle)
             }
@@ -165,7 +165,7 @@ extension TimelineViewportTests {
                 var viewport = ListedDays.opened(with: try ListedDays.fortyDays())
                 _ = viewport.scrollPhaseChanged(from: .idle, to: .animating)
                 viewport.endPositionChanged(to: .offscreen)
-                viewport.startReachedChanged(isAtStart: true)
+                viewport.startPositionChanged(to: .atStart)
                 instructions = viewport.scrollPhaseChanged(from: .animating, to: .idle)
             }
 

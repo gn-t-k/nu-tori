@@ -370,11 +370,12 @@ struct TimelineScreen: View {
                 } action: { _, position in
                     viewport.endPositionChanged(to: position)
                 }
-                .onScrollGeometryChange(for: Bool.self) { geometry in
-                    // 位置は小数で届くので、1 までのずれは上端ちょうどとみなす
-                    geometry.contentOffset.y <= 1 - geometry.contentInsets.top
-                } action: { _, isAtStart in
-                    viewport.startReachedChanged(isAtStart: isAtStart)
+                .onScrollGeometryChange(for: TimelineViewport.StartPosition.self) { geometry in
+                    TimelineViewport.StartPosition(
+                        contentOffsetY: geometry.contentOffset.y,
+                        topInset: geometry.contentInsets.top)
+                } action: { _, position in
+                    viewport.startPositionChanged(to: position)
                 }
                 .onScrollPhaseChange { oldPhase, phase in
                     if phase != .idle {

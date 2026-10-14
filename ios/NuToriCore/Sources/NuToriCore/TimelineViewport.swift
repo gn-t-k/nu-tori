@@ -49,7 +49,7 @@ public struct TimelineViewport: Equatable, Sendable {
             let stoppedUnderComposer = releasedByUser && endPosition == .underComposer
             // 何で動いたか（指、ステータスバーを押した、VoiceOver で送った）は問わず、動いて上端で止まったら古い日を足す。
             // 足さないのは、開いたときに届く「止まっていた → 止まった」だけ。まだ並べ終えておらず、上端にいるように見えることがある
-            let stoppedAtStart = oldPhase != .idle && isAtStart
+            let stoppedAtStart = oldPhase != .idle && startPosition == .atStart
             return (stoppedUnderComposer ? [.scroll(to: .end, animated: true)] : [])
                 + (stoppedAtStart ? [.listOlderDays] : [])
         case .tracking, .decelerating, .animating:
@@ -64,9 +64,8 @@ public struct TimelineViewport: Equatable, Sendable {
         }
     }
 
-    /// 並べたいちばん古い日の上端が、見えている所の上端にあるかが変わった
-    public mutating func startReachedChanged(isAtStart: Bool) {
-        self.isAtStart = isAtStart
+    public mutating func startPositionChanged(to position: StartPosition) {
+        startPosition = position
     }
 
     /// 並べたいちばん古い日の前の日を足す。足した分だけ中身が下へずれるので、見ていた日を上端に置き直す。足す日が無ければ何もしない
@@ -209,7 +208,7 @@ public struct TimelineViewport: Equatable, Sendable {
     private var oldestListedDay: CalendarDay?
     /// 一番下から着く先の日。一番下が画面の外に出るか、指で触れるか、一番下へ連れていくまで持つ
     private var landingDay: CalendarDay?
-    private var isAtStart = false
+    private var startPosition = StartPosition.belowStart
     /// 追うか。立てる場面と下ろす場面は、型のコメントの「追う」と「戻す」
     private var followsEnd = true
     private var endPosition = EndPosition.shown
