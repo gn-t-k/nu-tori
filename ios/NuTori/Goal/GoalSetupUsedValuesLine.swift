@@ -10,6 +10,7 @@ struct GoalSetupUsedValuesLine: View {
     /// 今日の体重の記録が無いときの、使った最後の体重記録の日
     let pastWeightRecordDay: CalendarDay?
     let reviseMissingValues: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         Group {
@@ -33,14 +34,17 @@ struct GoalSetupUsedValuesLine: View {
         switch usedValues {
         case .formula(let body, let weightKilograms):
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                // 大きな文字では、「変える」に押されて使った値が細い列に折れるので、「変える」を下に置く
+                if dynamicTypeSize.isAccessibilitySize {
                     Text(bodyText(body, weightKilograms: weightKilograms))
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                    Button("変える", action: reviseMissingValues)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                        .accessibilityIdentifier("goal-setup-revise-missing-values")
+                    reviseButton
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(bodyText(body, weightKilograms: weightKilograms))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        reviseButton
+                    }
                 }
                 if let weightNote {
                     Text(weightNote)
@@ -54,6 +58,13 @@ struct GoalSetupUsedValuesLine: View {
             Text([Self.currentText(kilocalories), weightNote].compactMap(\.self).joined())
                 .accessibilityIdentifier("goal-setup-used-values")
         }
+    }
+
+    private var reviseButton: some View {
+        Button("変える", action: reviseMissingValues)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .accessibilityIdentifier("goal-setup-revise-missing-values")
     }
 
     private static func backCalculatedText(_ kilocalories: Int) -> String {
