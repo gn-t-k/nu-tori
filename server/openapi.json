@@ -17,8 +17,11 @@
         "enum": [
           "account_settings",
           "ai_utterance",
+          "daily_guide",
           "dish",
           "dish_estimation_status",
+          "expenditure_estimate",
+          "goal",
           "ingredient",
           "meal",
           "meal_estimation_status",
@@ -76,6 +79,63 @@
           "mealIds"
         ],
         "description": "kind が ai_utterance の変更の record。返事は消えない"
+      },
+      "DailyGuideRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "goalId": {
+            "type": "string",
+            "description": "目標の ID。目標の変更より先に届くことがある"
+          },
+          "expenditureEstimateId": {
+            "type": "string",
+            "description": "計算に使った推定消費カロリーの推定の ID。推定の変更より先に届くことがある"
+          },
+          "effectiveOn": {
+            "type": "string",
+            "description": "当てる始まりの日（YYYY-MM-DD）",
+            "example": "2026-10-01"
+          },
+          "energyKcal": {
+            "type": "integer"
+          },
+          "proteinG": {
+            "type": "integer"
+          },
+          "fatG": {
+            "type": "integer"
+          },
+          "carbohydrateG": {
+            "type": "integer"
+          },
+          "limitHits": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "weekly_change",
+                "required_pace",
+                "minimum_energy"
+              ]
+            },
+            "description": "当たった上限と下限。当たったものだけが並ぶ。1週の変化（weekly_change）、必要な速さの上限（required_pace）、下限のエネルギー（minimum_energy）"
+          }
+        },
+        "required": [
+          "id",
+          "goalId",
+          "expenditureEstimateId",
+          "effectiveOn",
+          "energyKcal",
+          "proteinG",
+          "fatG",
+          "carbohydrateG",
+          "limitHits"
+        ],
+        "description": "kind が daily_guide の変更の record。1日の目安は消えない"
       },
       "DishRecord": {
         "type": "object",
@@ -139,6 +199,133 @@
           "status"
         ],
         "description": "kind が dish_estimation_status の変更の record。recordId は料理の ID。推定し直しをしていない料理の変更は届かない。料理が消えたら kind が dish_estimation_status_deletion で record が空の変更が届く"
+      },
+      "ExpenditureEstimateRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "effectiveOn": {
+            "type": "string",
+            "description": "当てる始まりの日（YYYY-MM-DD）",
+            "example": "2026-10-01"
+          },
+          "expenditureKcal": {
+            "type": "integer",
+            "description": "推定消費カロリー（1日の kcal）"
+          },
+          "estimatedAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "initialSource": {
+            "type": "string",
+            "enum": [
+              "back_calculated",
+              "formula"
+            ],
+            "description": "推定の始まり（初めて目標を立てたときの推定）だけに付く出どころ。逆算（back_calculated）か式（formula）"
+          }
+        },
+        "required": [
+          "id",
+          "effectiveOn",
+          "expenditureKcal",
+          "estimatedAt"
+        ],
+        "description": "kind が expenditure_estimate の変更の record。推定は消えない"
+      },
+      "GoalRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "startedOn": {
+            "type": "string",
+            "description": "開始の日（YYYY-MM-DD）。目標が当たり始める日",
+            "example": "2026-10-01"
+          },
+          "startingWeightTrendKg": {
+            "type": "number",
+            "description": "開始の日以前で最も新しい体重の傾向"
+          },
+          "targetWeightKg": {
+            "type": "number"
+          },
+          "decidedAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "目標を決めた要求のタイムゾーン",
+            "example": "Asia/Tokyo"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "lose",
+              "gain",
+              "maintain"
+            ],
+            "description": "向き（減量・増量・維持）。weightChange が無ければ維持、あれば目標体重が開始の日の体重の傾向より小さいとき減量、ほかは増量"
+          },
+          "weightChange": {
+            "type": "object",
+            "properties": {
+              "deadlineOn": {
+                "type": "string",
+                "description": "期限（YYYY-MM-DD）",
+                "example": "2026-12-24"
+              },
+              "pacePlan": {
+                "type": "string",
+                "enum": [
+                  "gentle",
+                  "standard",
+                  "hard",
+                  "custom"
+                ],
+                "description": "速さの案。ゆるめ・標準・ハードと、自分で決めた目標体重（custom）"
+              }
+            },
+            "required": [
+              "deadlineOn",
+              "pacePlan"
+            ],
+            "description": "減量・増量の目標だけに付く"
+          },
+          "closure": {
+            "type": "object",
+            "properties": {
+              "endedOn": {
+                "type": "string",
+                "description": "終わった日（YYYY-MM-DD）。次の目標の開始の日",
+                "example": "2026-10-20"
+              },
+              "nextGoalId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "endedOn",
+              "nextGoalId"
+            ],
+            "description": "閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く"
+          }
+        },
+        "required": [
+          "id",
+          "startedOn",
+          "startingWeightTrendKg",
+          "targetWeightKg",
+          "decidedAt",
+          "timeZone",
+          "direction"
+        ],
+        "description": "kind が goal の変更の record。目標は消えない"
       },
       "IngredientRecord": {
         "type": "object",

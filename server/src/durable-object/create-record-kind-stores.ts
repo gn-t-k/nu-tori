@@ -1,10 +1,13 @@
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { createAccountSettingsStore } from "../account-settings/durable-object/create-account-settings-store";
 import { createAiUtteranceStore } from "../ai-utterance/durable-object/create-ai-utterance-store";
+import { createDailyGuideStore } from "../daily-guide/durable-object/create-daily-guide-store";
 import type { RecordKindStores } from "../domain/record-kind-stores";
 import { createEstimationScheduleStore } from "../estimation/durable-object/create-estimation-schedule-store";
 import { createEstimationStore } from "../estimation/durable-object/create-estimation-store";
 import { writeEstimationEvents } from "../estimation/domain/write-estimation-events";
+import { createExpenditureEstimateStore } from "../expenditure-estimate/durable-object/create-expenditure-estimate-store";
+import { createGoalStore } from "../goal/durable-object/create-goal-store";
 import { createIngredientStore } from "../ingredient/durable-object/create-ingredient-store";
 import { createMealPhotoStore } from "../meal/durable-object/create-meal-photo-store";
 import { createNoticeStore } from "../notice/durable-object/create-notice-store";
@@ -32,8 +35,11 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
   return {
     accountSettings: createAccountSettingsStore(db),
     aiUtterance: createAiUtteranceStore(db),
+    dailyGuide: createDailyGuideStore(db),
     dish,
     dishEstimationStatus,
+    expenditureEstimate: createExpenditureEstimateStore(db),
+    goal: createGoalStore(db),
     ingredient: createIngredientStore(db),
     meal,
     mealEstimationStatus,
