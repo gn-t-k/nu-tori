@@ -26,4 +26,11 @@ struct RecordKindRegistryNamesTests {
             RecordKindRegistry<RecordCacheMock>.ok().names.sorted()
                 == RecordKindName.allCases.sorted())
     }
+
+    @Test("キャッシュの口から作る登録簿が、端末の種類の名前を全部持つこと")
+    func portedRegistryHasEveryKind() {
+        let registry = RecordKindRegistry(ports: RecordCacheMock.Ports())
+
+        #expect(Set(registry.names) == Set(RecordKindName.allCases))
+    }
 }

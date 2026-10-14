@@ -7,24 +7,7 @@ extension RecordKindRegistry where Cache == RecordCacheMock {
     public static func ok(extra: [any RecordKind<RecordCacheMock>] = [])
         -> RecordKindRegistry<RecordCacheMock>
     {
-        let base: [any RecordKind<RecordCacheMock>] = [
-            PortedRecordKind(AccountSettingsSyncKind()) { $0.accountSettingsCache },
-            PortedRecordKind(AiUtteranceSyncing()) { $0.aiUtteranceCache },
-            PortedRecordKind(DailyGuideSyncing()) { $0.dailyGuideCache },
-            PortedRecordKind(DishSyncing()) { $0.dishCache },
-            PortedRecordKind(DishEstimationStatusSyncing()) { $0.dishEstimationStatusCache },
-            PortedRecordKind(ExpenditureEstimateSyncing()) { $0.expenditureEstimateCache },
-            PortedRecordKind(GoalSyncing()) { $0.goalCache },
-            PortedRecordKind(IngredientSyncing()) { $0.ingredientCache },
-            PortedRecordKind(MealSyncing()) { $0.mealCache },
-            PortedRecordKind(MealEstimationStatusSyncing()) { $0.mealEstimationStatusCache },
-            PortedRecordKind(NoticeSyncing()) { $0.noticeCache },
-            PortedRecordKind(SentTextSyncing()) { $0.sentTextCache },
-            PortedRecordKind(SentTextStatusSyncing()) { $0.sentTextStatusCache },
-            PortedRecordKind(UsualWeighingTimeSyncing()) { $0.usualWeighingTimeCache },
-            PortedRecordKind(WeightRecordSyncing()) { $0.weightRecordCache },
-            PortedRecordKind(WeightTrendSyncing()) { $0.weightTrendCache },
-        ]
+        let base = RecordKindRegistry(ports: RecordCacheMock.Ports()).kinds
         let replaced = Set(extra.map(\.name))
         let kept = base.filter { !replaced.contains($0.name) }
         return RecordKindRegistry((kept + extra).sorted { $0.name < $1.name })

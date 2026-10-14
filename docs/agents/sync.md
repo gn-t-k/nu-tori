@@ -93,10 +93,12 @@
      - 書き込みの case を足したときは、`SyncWrite.writeId` と、FakeSyncServer の当て方（`Ledger.apply`。ほかの種類の記録も連れて変えるので、種類の適合に分けていない）にも足す。この2つの足し忘れはコンパイルが止める
   3. NuToriCore に、種類の同期の形（`CacheApplying`。見本は `WeightRecordSyncing`）を書く。キャッシュへの当て方（`apply`・`erase`）はここに1回だけ書き、キャッシュの口（port）に当てる。口は、ID で引く種類が `KeyedRecordCache`（親の ID で引く推定の状態などは、親の ID と値の組を記録にする。見本は `MealEstimationStatusSyncing.Status`）、1件だけの種類が `SingleRecordCache`
   4. 当て方のテストを、NuToriCore でメモリの adapter（`MemoryKeyedRecordCache`・`MemorySingleRecordCache`）に当てて書く（見本は `WeightRecordSyncingTests` の `Applying`）
-  5. メモリの箱に足す。`RecordCacheMock` にメモリの adapter を1つ持たせ、`RecordKindRegistry.ok` に `PortedRecordKind` の1行を足す。当て方を写した Mock は書かない
+  5. 登録簿に足す。NuToriCore のキャッシュの口の取り出し方（`RecordCachePorts`）に、種類の口を返すメソッドを1つ足し、登録簿の並び（`RecordKindRegistry.init(ports:)`）に、名前の順で `PortedRecordKind` の1行を足す。並びはここに1回だけ書き、メモリとアプリは口の取り出し方だけを書く。口を足すと、メモリ（`RecordCacheMock.Ports`）と SwiftData（`AppRecordKinds.Ports`）の両方で、足すまでコンパイルが止まる
+     - メモリの箱には、`RecordCacheMock` にメモリの adapter を1つ持たせ、`RecordCacheMock.Ports` から渡す。当て方を写した Mock は書かない
   6. アプリのターゲットに、SwiftData の行（`@Model`。`CacheStoreSchema` に並べる）と、行と記録の対応（`Cached…+Cache.swift`）だけを書く。ID で引く行は `KeyedCacheRow`、1件だけの行は `SingleCacheRow` に従わせ、adapter は `SwiftDataKeyedRecordCache`・`SwiftDataSingleRecordCache` を使う。1件の記録を何行にも分けて持つ種類（体重の傾向）だけ、その種類の adapter を書く（`SwiftDataWeightTrendCache`）
      - 行の対応のテストを、アプリのテストに SwiftData の adapter に当てて書く（見本は `CachedWeightRecordCacheTests`）。確かめるのは、足した記録を保存して読み戻すと同じ記録になること、同じ ID で値が替わること、ID で消えること、読めない行の扱い。当て方（4 で確かめたもの）は写さない
-  7. `AppRecordKinds.registry` に、名前の順で `PortedRecordKind` の1行を足し、SwiftData の adapter を渡す。読む口（`RecordCacheReading`）に足すときは、`SwiftDataSyncStore` も adapter を通して読む
+  7. `AppRecordKinds.Ports` に、SwiftData の adapter を返すメソッドを1つ足す
+  - キャッシュを読む口（`RecordCacheReading`）は、登録簿から種類の口を引いて読む `read` の1つで、種類を足しても箱（`SwiftDataSyncStore`・`SyncBoxMock`）に足すものは無い。よく読む形（`meals()` など）は、`RecordCacheReading` の extension に1回だけ書く。登録簿に無い種類を読むと、種類の `kindName` で `UnknownRecordKindError.notRegistered` を投げる
   - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る
   - NuToriCore の種類の中では、自分の変更かを `SyncChange.kindName` と自分の名前で決め、自分の case を `if case` で取り出す（ほかの種類の case を並べない）
   - 端末が書く種類は、`SyncedRecordKind.writes` に、送る書き込み（`syncWrite`）と受け付けなかったときの扱い（`rejection`）を持つ `RecordKindWrites` を返す。送り待ちの中身は種類ごとの型（見本は食事の `MealWrite`）で、`PendingWriteBody` に従い、JSON の形（`Stored`）との行き来だけを書く。JSON への変換と読めないときのエラーは `PendingWriteBody` の既定の実装が持つ。送り待ちは `Pending` の1つの口で作り、`PendingEntry` に種類の名前と一緒に入れる
