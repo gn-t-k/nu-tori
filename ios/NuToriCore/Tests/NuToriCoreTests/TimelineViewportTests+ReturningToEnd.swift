@@ -79,12 +79,47 @@ extension TimelineViewportTests {
             }
         }
 
-        @Suite("遡っているときに、文章を送り直したとき")
+        /// 送り直した吹き出しと返事は、元の時刻の位置にあり、いちばん下には足されない
+        @Suite("遡っているときに、文章を送り直した・会話として送り直したとき")
         struct TextResent {
             var viewport: TimelineViewport
 
             init() {
                 viewport = TimelineViewportTests.scrolledAway()
+                viewport.textResent()
+            }
+
+            @Test("追わないままであること")
+            func doesNotFollow() {
+                #expect(!viewport.followsSizeChanges)
+            }
+        }
+
+        @Suite("一番下が入力欄の上に見えている所で指で触れているときに、文章を送り直した・会話として送り直したとき")
+        struct TextResentAtEndShown {
+            var viewport: TimelineViewport
+
+            init() {
+                viewport = TimelineViewportTests.opened()
+                TimelineViewportTests.touch(&viewport)
+                viewport.endPositionChanged(to: .shown)
+                viewport.textResent()
+            }
+
+            @Test("追い直すこと")
+            func followsAgain() {
+                #expect(viewport.followsSizeChanges)
+            }
+        }
+
+        @Suite("一番下が入力欄の下に隠れている所で指で触れているときに、文章を送り直した・会話として送り直したとき")
+        struct TextResentAtEndUnderComposer {
+            var viewport: TimelineViewport
+
+            init() {
+                viewport = TimelineViewportTests.opened()
+                TimelineViewportTests.touch(&viewport)
+                viewport.endPositionChanged(to: .underComposer)
                 viewport.textResent()
             }
 
