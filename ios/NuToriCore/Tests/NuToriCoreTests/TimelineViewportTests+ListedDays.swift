@@ -259,6 +259,108 @@ extension TimelineViewportTests {
             }
         }
 
+        @Suite("遡っているときに伸びる返事が無くなり、そのあと今日の項目が足されたとき")
+        struct ItemAddedAfterReplyFinishedWhileScrolledAway {
+            let added: [Timeline.Day]
+            var viewport: TimelineViewport
+
+            init() throws {
+                let days = try ListedDays.fortyDays()
+                added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [30])
+                viewport = ListedDays.scrolledAway(from: days)
+                // 追うことになるが、一番下は画面の外のまま
+                viewport.growingReplyChanged(isGrowing: false)
+                _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
+            }
+
+            @Test("一番下にはいないので、並べていた3日のままにすること")
+            func keepsListedDays() {
+                #expect(Array(viewport.listedDays(of: added)) == Array(added.suffix(3)))
+            }
+        }
+
+        @Suite("一番下で指で触れているときに、今日の項目が足されたとき")
+        struct ItemAddedWhileTouchingAtEnd {
+            let added: [Timeline.Day]
+            var viewport: TimelineViewport
+
+            init() throws {
+                let days = try ListedDays.fortyDays()
+                added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [30])
+                viewport = ListedDays.opened(with: days)
+                TimelineViewportTests.touch(&viewport)
+                _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
+            }
+
+            @Test("指で動かしている途中なので、並べていた3日のままにすること")
+            func keepsListedDays() {
+                #expect(Array(viewport.listedDays(of: added)) == Array(added.suffix(3)))
+            }
+        }
+
+        @Suite("一番下で、並べていない日を選んでから動くまでのあいだに、今日の項目が足されたとき")
+        struct ItemAddedBeforeLanding {
+            let days: [Timeline.Day]
+            let added: [Timeline.Day]
+            var viewport: TimelineViewport
+
+            init() throws {
+                days = try ListedDays.fortyDays()
+                added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
+                viewport = ListedDays.opened(with: days)
+                _ = viewport.dayChosen(days[5].day, in: days)
+                _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
+            }
+
+            @Test("着く先の日を外さず、その日から並べたままにすること")
+            func keepsLandingDay() {
+                #expect(Array(viewport.listedDays(of: added)) == Array(added.suffix(35)))
+            }
+        }
+
+        @Suite("並べていない日を選んで着き（止まったことは届かない）、そのあと今日の項目が足されたとき")
+        struct ItemAddedAfterLanding {
+            let added: [Timeline.Day]
+            var viewport: TimelineViewport
+
+            init() throws {
+                let days = try ListedDays.fortyDays()
+                added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
+                viewport = ListedDays.opened(with: days)
+                _ = viewport.dayChosen(days[5].day, in: days)
+                viewport.endPositionChanged(to: .offscreen)
+                _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
+            }
+
+            @Test("一番下にはいないので、着いた日から並べたままにすること")
+            func keepsListedDays() {
+                #expect(Array(viewport.listedDays(of: added)) == Array(added.suffix(35)))
+            }
+        }
+
+        @Suite("並べていない日に着いたあと、一番下へ戻ってから、今日の項目が足されたとき")
+        struct ItemAddedAfterLandingAndReturningToEnd {
+            let added: [Timeline.Day]
+            var viewport: TimelineViewport
+
+            init() throws {
+                let days = try ListedDays.fortyDays()
+                added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
+                viewport = ListedDays.opened(with: days)
+                _ = viewport.dayChosen(days[5].day, in: days)
+                viewport.endPositionChanged(to: .offscreen)
+                TimelineViewportTests.touch(&viewport)
+                viewport.endPositionChanged(to: .shown)
+                _ = viewport.scrollPhaseChanged(from: .interacting, to: .idle)
+                _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
+            }
+
+            @Test("着いた日を片づけ、新しいほうから項目が30個たまる3日を並べること")
+            func listsNewestDaysHoldingBatch() {
+                #expect(Array(viewport.listedDays(of: added)) == Array(added.suffix(3)))
+            }
+        }
+
         @Suite("日のまとめで、並べていない日を選んだとき")
         struct UnlistedDayChosen {
             let days: [Timeline.Day]

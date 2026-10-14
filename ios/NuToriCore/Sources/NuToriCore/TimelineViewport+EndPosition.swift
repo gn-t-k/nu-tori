@@ -25,8 +25,8 @@ extension TimelineViewport {
             }
         }
 
-        /// 止まったときに、また一番下を追うか。入力欄の下に隠れていても、一番下にいるとみなして追う
-        public var followsWhenSettled: Bool {
+        /// 一番下にいるか。入力欄の下に隠れていても、一番下にいるとみなす（止まったらまた追い、日の並びが変わったら並べる日を数え直す）
+        public var isAtEnd: Bool {
             switch self {
             case .shown, .underComposer: true
             case .offscreen: false

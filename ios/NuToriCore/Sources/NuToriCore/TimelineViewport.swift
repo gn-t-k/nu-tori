@@ -38,10 +38,11 @@ public struct TimelineViewport: Equatable, Sendable {
         case .interacting:
             // 触っているあいだは追わない
             followsEnd = false
+            landingDay = nil
             // 指に合わせて下げる形は、指がキーボードに届くまで下がらず、あいだに入力欄があるとふつうに動かしても届かない（#450）ので、動かし始めたら下げる
             return [.dismissKeyboard]
         case .idle:
-            followsEnd = endPosition.followsWhenSettled
+            followsEnd = endPosition.isAtEnd
             // 下端ちょうどにいないと、中身が伸びても追えないので、使う人が入力欄の下に隠れた所で止めたら下端へ動かす（#469）。
             // アプリが動かして止まったとき（知らせのカードへ着いた、ここで下端へ動かした）は、着いた所に置く
             let releasedByUser = oldPhase == .interacting || oldPhase == .decelerating
@@ -58,6 +59,9 @@ public struct TimelineViewport: Equatable, Sendable {
 
     public mutating func endPositionChanged(to position: EndPosition) {
         endPosition = position
+        if !position.isAtEnd {
+            landingDay = nil
+        }
     }
 
     /// 並べたいちばん古い日の上端が、見えている所の上端にあるかが変わった
@@ -85,11 +89,14 @@ public struct TimelineViewport: Equatable, Sendable {
         from old: [Timeline.Day], to new: [Timeline.Day], now: Date
     ) -> [Instruction] {
         // 一番下にいるあいだは、新しい並びで数え直す（開いたあとに同期で届いた古い日を並べ、遡って足した日を片づける）。上の日が出入りしても、一番下からは見えない。
+        // ただし、着く先の日は外さない。着くと決めてから動くまでは、まだ一番下にいる。
         // 遡っているあいだは、並べていた日のままにする。上の日が出入りすると、読んでいる所がずれる
-        let isAtEnd = followsEnd && endPosition != .offscreen
-        oldestListedDay =
-            isAtEnd
-            ? Self.oldestDay(ofBatchBefore: nil, in: new) : listedDays(of: old).first?.day
+        if followsEnd && endPosition.isAtEnd {
+            let recounted = Self.oldestDay(ofBatchBefore: nil, in: new)
+            oldestListedDay = [recounted, landingDay].compactMap { $0 }.min()
+        } else {
+            oldestListedDay = listedDays(of: old).first?.day
+        }
         guard Timeline.addsItemByUserAtEnd(from: old, to: new, now: now) else { return [] }
         followsEnd = true
         return [.scroll(to: .end, animated: false)]
@@ -164,14 +171,17 @@ public struct TimelineViewport: Equatable, Sendable {
         return oldest
     }
 
-    /// その日が並んでいなければ、その日まで並べる
+    /// その日が並んでいなければ、その日まで並べる。着き終えるまで、その日を並べる日から外さない
     private mutating func list(_ day: CalendarDay, in days: [Timeline.Day]) {
         guard let listedOldest = listedDays(of: days).first?.day else { return }
         oldestListedDay = min(listedOldest, day)
+        landingDay = day
     }
 
     /// 並べたいちばん古い日。開いて日の並びが届くまでは決めず、そのつど数える
     private var oldestListedDay: CalendarDay?
+    /// 着く先の日。一番下が画面の外に出るか、指で触れるまで持つ
+    private var landingDay: CalendarDay?
     private var isAtStart = false
     /// 追うか。立てる場面と下ろす場面は、型のコメントの「追う」と「戻す」
     private var followsEnd = true

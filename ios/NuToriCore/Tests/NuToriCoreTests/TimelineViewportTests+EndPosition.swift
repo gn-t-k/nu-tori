@@ -33,9 +33,9 @@ extension TimelineViewportTests {
                 #expect(position == .shown)
             }
 
-            @Test("止まったときに、また追うこと")
-            func follows() {
-                #expect(position.followsWhenSettled)
+            @Test("一番下にいるとみなすこと")
+            func atEnd() {
+                #expect(position.isAtEnd)
             }
         }
 
@@ -68,9 +68,9 @@ extension TimelineViewportTests {
                 #expect(position == .underComposer)
             }
 
-            @Test("止まったときに、また追うこと")
-            func follows() {
-                #expect(position.followsWhenSettled)
+            @Test("一番下にいるとみなすこと")
+            func atEnd() {
+                #expect(position.isAtEnd)
             }
         }
 
@@ -88,9 +88,9 @@ extension TimelineViewportTests {
                 #expect(position == .offscreen)
             }
 
-            @Test("止まっても追わないこと")
-            func doesNotFollow() {
-                #expect(!position.followsWhenSettled)
+            @Test("一番下にいるとみなさないこと")
+            func notAtEnd() {
+                #expect(!position.isAtEnd)
             }
         }
     }
