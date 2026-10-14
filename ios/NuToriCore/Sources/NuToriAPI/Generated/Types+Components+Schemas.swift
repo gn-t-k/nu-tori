@@ -19,8 +19,11 @@ extension Components {
         internal enum RecordKindName: String, Codable, Hashable, Sendable, CaseIterable {
             case accountSettings = "account_settings"
             case aiUtterance = "ai_utterance"
+            case dailyGuide = "daily_guide"
             case dish = "dish"
             case dishEstimationStatus = "dish_estimation_status"
+            case expenditureEstimate = "expenditure_estimate"
+            case goal = "goal"
             case ingredient = "ingredient"
             case meal = "meal"
             case mealEstimationStatus = "meal_estimation_status"
@@ -97,6 +100,91 @@ extension Components {
                 case body
                 case sentTextId
                 case mealIds
+            }
+        }
+        /// kind が daily_guide の変更の record。1日の目安は消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/DailyGuideRecord`.
+        internal struct DailyGuideRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/id`.
+            internal var id: Swift.String
+            /// 目標の ID。目標の変更より先に届くことがある
+            ///
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/goalId`.
+            internal var goalId: Swift.String
+            /// 計算に使った推定消費カロリーの推定の ID。推定の変更より先に届くことがある
+            ///
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/expenditureEstimateId`.
+            internal var expenditureEstimateId: Swift.String
+            /// 当てる始まりの日（YYYY-MM-DD）
+            ///
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/effectiveOn`.
+            internal var effectiveOn: Swift.String
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/energyKcal`.
+            internal var energyKcal: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/proteinG`.
+            internal var proteinG: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/fatG`.
+            internal var fatG: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/carbohydrateG`.
+            internal var carbohydrateG: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/LimitHitsPayload`.
+            internal enum LimitHitsPayloadPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case weeklyChange = "weekly_change"
+                case requiredPace = "required_pace"
+                case minimumEnergy = "minimum_energy"
+            }
+            /// 当たった上限と下限。当たったものだけが並ぶ。1週の変化（weekly_change）、必要な速さの上限（required_pace）、下限のエネルギー（minimum_energy）
+            ///
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/limitHits`.
+            internal typealias LimitHitsPayload = [Components.Schemas.DailyGuideRecord.LimitHitsPayloadPayload]
+            /// 当たった上限と下限。当たったものだけが並ぶ。1週の変化（weekly_change）、必要な速さの上限（required_pace）、下限のエネルギー（minimum_energy）
+            ///
+            /// - Remark: Generated from `#/components/schemas/DailyGuideRecord/limitHits`.
+            internal var limitHits: Components.Schemas.DailyGuideRecord.LimitHitsPayload
+            /// Creates a new `DailyGuideRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - goalId: 目標の ID。目標の変更より先に届くことがある
+            ///   - expenditureEstimateId: 計算に使った推定消費カロリーの推定の ID。推定の変更より先に届くことがある
+            ///   - effectiveOn: 当てる始まりの日（YYYY-MM-DD）
+            ///   - energyKcal:
+            ///   - proteinG:
+            ///   - fatG:
+            ///   - carbohydrateG:
+            ///   - limitHits: 当たった上限と下限。当たったものだけが並ぶ。1週の変化（weekly_change）、必要な速さの上限（required_pace）、下限のエネルギー（minimum_energy）
+            internal init(
+                id: Swift.String,
+                goalId: Swift.String,
+                expenditureEstimateId: Swift.String,
+                effectiveOn: Swift.String,
+                energyKcal: Swift.Int,
+                proteinG: Swift.Int,
+                fatG: Swift.Int,
+                carbohydrateG: Swift.Int,
+                limitHits: Components.Schemas.DailyGuideRecord.LimitHitsPayload
+            ) {
+                self.id = id
+                self.goalId = goalId
+                self.expenditureEstimateId = expenditureEstimateId
+                self.effectiveOn = effectiveOn
+                self.energyKcal = energyKcal
+                self.proteinG = proteinG
+                self.fatG = fatG
+                self.carbohydrateG = carbohydrateG
+                self.limitHits = limitHits
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case goalId
+                case expenditureEstimateId
+                case effectiveOn
+                case energyKcal
+                case proteinG
+                case fatG
+                case carbohydrateG
+                case limitHits
             }
         }
         /// kind が dish の変更の record。消えたら kind が dish_deletion で record が空の変更が届く
@@ -200,6 +288,218 @@ extension Components {
             internal enum CodingKeys: String, CodingKey {
                 case dishId
                 case status
+            }
+        }
+        /// kind が expenditure_estimate の変更の record。推定は消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/ExpenditureEstimateRecord`.
+        internal struct ExpenditureEstimateRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ExpenditureEstimateRecord/id`.
+            internal var id: Swift.String
+            /// 当てる始まりの日（YYYY-MM-DD）
+            ///
+            /// - Remark: Generated from `#/components/schemas/ExpenditureEstimateRecord/effectiveOn`.
+            internal var effectiveOn: Swift.String
+            /// 推定消費カロリー（1日の kcal）
+            ///
+            /// - Remark: Generated from `#/components/schemas/ExpenditureEstimateRecord/expenditureKcal`.
+            internal var expenditureKcal: Swift.Int
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/ExpenditureEstimateRecord/estimatedAt`.
+            internal var estimatedAt: Swift.Int
+            /// 推定の始まり（初めて目標を立てたときの推定）だけに付く出どころ。逆算（back_calculated）か式（formula）
+            ///
+            /// - Remark: Generated from `#/components/schemas/ExpenditureEstimateRecord/initialSource`.
+            internal enum InitialSourcePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case backCalculated = "back_calculated"
+                case formula = "formula"
+            }
+            /// 推定の始まり（初めて目標を立てたときの推定）だけに付く出どころ。逆算（back_calculated）か式（formula）
+            ///
+            /// - Remark: Generated from `#/components/schemas/ExpenditureEstimateRecord/initialSource`.
+            internal var initialSource: Components.Schemas.ExpenditureEstimateRecord.InitialSourcePayload?
+            /// Creates a new `ExpenditureEstimateRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - effectiveOn: 当てる始まりの日（YYYY-MM-DD）
+            ///   - expenditureKcal: 推定消費カロリー（1日の kcal）
+            ///   - estimatedAt: UNIX 時刻のミリ秒（UTC）
+            ///   - initialSource: 推定の始まり（初めて目標を立てたときの推定）だけに付く出どころ。逆算（back_calculated）か式（formula）
+            internal init(
+                id: Swift.String,
+                effectiveOn: Swift.String,
+                expenditureKcal: Swift.Int,
+                estimatedAt: Swift.Int,
+                initialSource: Components.Schemas.ExpenditureEstimateRecord.InitialSourcePayload? = nil
+            ) {
+                self.id = id
+                self.effectiveOn = effectiveOn
+                self.expenditureKcal = expenditureKcal
+                self.estimatedAt = estimatedAt
+                self.initialSource = initialSource
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case effectiveOn
+                case expenditureKcal
+                case estimatedAt
+                case initialSource
+            }
+        }
+        /// kind が goal の変更の record。目標は消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/GoalRecord`.
+        internal struct GoalRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/id`.
+            internal var id: Swift.String
+            /// 開始の日（YYYY-MM-DD）。目標が当たり始める日
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/startedOn`.
+            internal var startedOn: Swift.String
+            /// 開始の日以前で最も新しい体重の傾向
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/startingWeightTrendKg`.
+            internal var startingWeightTrendKg: Swift.Double
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/targetWeightKg`.
+            internal var targetWeightKg: Swift.Double
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/decidedAt`.
+            internal var decidedAt: Swift.Int
+            /// 目標を決めた要求のタイムゾーン
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/timeZone`.
+            internal var timeZone: Swift.String
+            /// 向き（減量・増量・維持）。weightChange が無ければ維持、あれば目標体重が開始の日の体重の傾向より小さいとき減量、ほかは増量
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/direction`.
+            internal enum DirectionPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case lose = "lose"
+                case gain = "gain"
+                case maintain = "maintain"
+            }
+            /// 向き（減量・増量・維持）。weightChange が無ければ維持、あれば目標体重が開始の日の体重の傾向より小さいとき減量、ほかは増量
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/direction`.
+            internal var direction: Components.Schemas.GoalRecord.DirectionPayload
+            /// 減量・増量の目標だけに付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/weightChange`.
+            internal struct WeightChangePayload: Codable, Hashable, Sendable {
+                /// 期限（YYYY-MM-DD）
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/weightChange/deadlineOn`.
+                internal var deadlineOn: Swift.String
+                /// 速さの案。ゆるめ・標準・ハードと、自分で決めた目標体重（custom）
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/weightChange/pacePlan`.
+                internal enum PacePlanPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case gentle = "gentle"
+                    case standard = "standard"
+                    case hard = "hard"
+                    case custom = "custom"
+                }
+                /// 速さの案。ゆるめ・標準・ハードと、自分で決めた目標体重（custom）
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/weightChange/pacePlan`.
+                internal var pacePlan: Components.Schemas.GoalRecord.WeightChangePayload.PacePlanPayload
+                /// Creates a new `WeightChangePayload`.
+                ///
+                /// - Parameters:
+                ///   - deadlineOn: 期限（YYYY-MM-DD）
+                ///   - pacePlan: 速さの案。ゆるめ・標準・ハードと、自分で決めた目標体重（custom）
+                internal init(
+                    deadlineOn: Swift.String,
+                    pacePlan: Components.Schemas.GoalRecord.WeightChangePayload.PacePlanPayload
+                ) {
+                    self.deadlineOn = deadlineOn
+                    self.pacePlan = pacePlan
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case deadlineOn
+                    case pacePlan
+                }
+            }
+            /// 減量・増量の目標だけに付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/weightChange`.
+            internal var weightChange: Components.Schemas.GoalRecord.WeightChangePayload?
+            /// 閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/closure`.
+            internal struct ClosurePayload: Codable, Hashable, Sendable {
+                /// 終わった日（YYYY-MM-DD）。次の目標の開始の日
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/closure/endedOn`.
+                internal var endedOn: Swift.String
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/closure/nextGoalId`.
+                internal var nextGoalId: Swift.String
+                /// Creates a new `ClosurePayload`.
+                ///
+                /// - Parameters:
+                ///   - endedOn: 終わった日（YYYY-MM-DD）。次の目標の開始の日
+                ///   - nextGoalId:
+                internal init(
+                    endedOn: Swift.String,
+                    nextGoalId: Swift.String
+                ) {
+                    self.endedOn = endedOn
+                    self.nextGoalId = nextGoalId
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case endedOn
+                    case nextGoalId
+                }
+            }
+            /// 閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/closure`.
+            internal var closure: Components.Schemas.GoalRecord.ClosurePayload?
+            /// Creates a new `GoalRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - startedOn: 開始の日（YYYY-MM-DD）。目標が当たり始める日
+            ///   - startingWeightTrendKg: 開始の日以前で最も新しい体重の傾向
+            ///   - targetWeightKg:
+            ///   - decidedAt: UNIX 時刻のミリ秒（UTC）
+            ///   - timeZone: 目標を決めた要求のタイムゾーン
+            ///   - direction: 向き（減量・増量・維持）。weightChange が無ければ維持、あれば目標体重が開始の日の体重の傾向より小さいとき減量、ほかは増量
+            ///   - weightChange: 減量・増量の目標だけに付く
+            ///   - closure: 閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く
+            internal init(
+                id: Swift.String,
+                startedOn: Swift.String,
+                startingWeightTrendKg: Swift.Double,
+                targetWeightKg: Swift.Double,
+                decidedAt: Swift.Int,
+                timeZone: Swift.String,
+                direction: Components.Schemas.GoalRecord.DirectionPayload,
+                weightChange: Components.Schemas.GoalRecord.WeightChangePayload? = nil,
+                closure: Components.Schemas.GoalRecord.ClosurePayload? = nil
+            ) {
+                self.id = id
+                self.startedOn = startedOn
+                self.startingWeightTrendKg = startingWeightTrendKg
+                self.targetWeightKg = targetWeightKg
+                self.decidedAt = decidedAt
+                self.timeZone = timeZone
+                self.direction = direction
+                self.weightChange = weightChange
+                self.closure = closure
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case startedOn
+                case startingWeightTrendKg
+                case targetWeightKg
+                case decidedAt
+                case timeZone
+                case direction
+                case weightChange
+                case closure
             }
         }
         /// kind が ingredient の変更の record。消えたら kind が ingredient_deletion で record が空の変更が届く
@@ -543,6 +843,8 @@ extension Components {
         internal struct NoticeRecord: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/NoticeRecord/id`.
             internal var id: Swift.String
+            /// missed_weight_record（体重の記録忘れ）、goal_setup（目標を立てる）
+            ///
             /// - Remark: Generated from `#/components/schemas/NoticeRecord/noticeType`.
             internal var noticeType: Swift.String
             /// UNIX 時刻のミリ秒（UTC）
@@ -551,10 +853,10 @@ extension Components {
             internal var issuedAt: Swift.Int
             /// - Remark: Generated from `#/components/schemas/NoticeRecord/timeZone`.
             internal var timeZone: Swift.String
-            /// YYYY-MM-DD
+            /// 対象の日付（YYYY-MM-DD）。missed_weight_record だけに付く
             ///
             /// - Remark: Generated from `#/components/schemas/NoticeRecord/targetOn`.
-            internal var targetOn: Swift.String
+            internal var targetOn: Swift.String?
             /// 答えていれば付く
             ///
             /// - Remark: Generated from `#/components/schemas/NoticeRecord/response`.
@@ -590,17 +892,17 @@ extension Components {
             ///
             /// - Parameters:
             ///   - id:
-            ///   - noticeType:
+            ///   - noticeType: missed_weight_record（体重の記録忘れ）、goal_setup（目標を立てる）
             ///   - issuedAt: UNIX 時刻のミリ秒（UTC）
             ///   - timeZone:
-            ///   - targetOn: YYYY-MM-DD
+            ///   - targetOn: 対象の日付（YYYY-MM-DD）。missed_weight_record だけに付く
             ///   - response: 答えていれば付く
             internal init(
                 id: Swift.String,
                 noticeType: Swift.String,
                 issuedAt: Swift.Int,
                 timeZone: Swift.String,
-                targetOn: Swift.String,
+                targetOn: Swift.String? = nil,
                 response: Components.Schemas.NoticeRecord.ResponsePayload? = nil
             ) {
                 self.id = id
@@ -1636,7 +1938,7 @@ extension Components {
             internal struct NoticePayload: Codable, Hashable, Sendable {
                 /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/id`.
                 internal var id: Swift.String
-                /// missed_weight_record（体重の記録忘れ）。知らない値は受け付けない
+                /// missed_weight_record（体重の記録忘れ）、goal_setup（目標を立てる）。知らない値は受け付けない
                 ///
                 /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/noticeType`.
                 internal var noticeType: Swift.String
@@ -1646,24 +1948,24 @@ extension Components {
                 internal var issuedAt: Swift.Int
                 /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/timeZone`.
                 internal var timeZone: Swift.String
-                /// YYYY-MM-DD
+                /// 対象の日付（YYYY-MM-DD）。missed_weight_record には要り、goal_setup には付けない
                 ///
                 /// - Remark: Generated from `#/components/schemas/CreateNoticeWrite/notice/targetOn`.
-                internal var targetOn: Swift.String
+                internal var targetOn: Swift.String?
                 /// Creates a new `NoticePayload`.
                 ///
                 /// - Parameters:
                 ///   - id:
-                ///   - noticeType: missed_weight_record（体重の記録忘れ）。知らない値は受け付けない
+                ///   - noticeType: missed_weight_record（体重の記録忘れ）、goal_setup（目標を立てる）。知らない値は受け付けない
                 ///   - issuedAt: UNIX 時刻のミリ秒（UTC）
                 ///   - timeZone:
-                ///   - targetOn: YYYY-MM-DD
+                ///   - targetOn: 対象の日付（YYYY-MM-DD）。missed_weight_record には要り、goal_setup には付けない
                 internal init(
                     id: Swift.String,
                     noticeType: Swift.String,
                     issuedAt: Swift.Int,
                     timeZone: Swift.String,
-                    targetOn: Swift.String
+                    targetOn: Swift.String? = nil
                 ) {
                     self.id = id
                     self.noticeType = noticeType

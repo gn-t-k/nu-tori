@@ -54,9 +54,8 @@ struct SentSyncWritesTests {
                 .createNotice(
                     writeId: UUID(),
                     notice: NewNotice(
-                        id: noticeId, noticeType: .missedWeightRecord,
-                        issuedAt: Date(timeIntervalSince1970: 1_767_225_600), timeZone: tokyo,
-                        targetOn: "2026-01-01")),
+                        id: noticeId, noticeType: .missedWeightRecord(targetOn: "2026-01-01"),
+                        issuedAt: Date(timeIntervalSince1970: 1_767_225_600), timeZone: tokyo)),
                 .respondNotice(
                     writeId: UUID(), noticeId: noticeId,
                     response: SyncedNotice.Response(

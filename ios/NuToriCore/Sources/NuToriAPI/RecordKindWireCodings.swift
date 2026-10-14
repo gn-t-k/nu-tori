@@ -7,8 +7,11 @@ enum RecordKindWireCodings {
         switch kind {
         case .accountSettings: AccountSettingsWireCoding()
         case .aiUtterance: AiUtteranceWireCoding()
+        case .dailyGuide: DailyGuideWireCoding()
         case .dish: DishWireCoding()
         case .dishEstimationStatus: DishEstimationStatusWireCoding()
+        case .expenditureEstimate: ExpenditureEstimateWireCoding()
+        case .goal: GoalWireCoding()
         case .ingredient: IngredientWireCoding()
         case .meal: MealWireCoding()
         case .mealEstimationStatus: MealEstimationStatusWireCoding()

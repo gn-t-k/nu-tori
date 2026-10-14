@@ -31,10 +31,9 @@ extension NuToriAPIClientTests {
                         writeId: createWriteId,
                         notice: NewNotice(
                             id: noticeId,
-                            noticeType: .missedWeightRecord,
+                            noticeType: .missedWeightRecord(targetOn: "2026-01-01"),
                             issuedAt: Date(timeIntervalSince1970: 1_767_225_600.123),
-                            timeZone: tokyo,
-                            targetOn: "2026-01-01"
+                            timeZone: tokyo
                         )),
                     .respondNotice(
                         writeId: respondWriteId,
@@ -155,9 +154,9 @@ extension NuToriAPIClientTests {
                 func notice(response: SyncedNotice.Response?) -> SyncChange {
                     .notice(
                         SyncedNotice(
-                            id: noticeId, noticeType: .missedWeightRecord,
+                            id: noticeId, noticeType: .missedWeightRecord(targetOn: "2026-01-01"),
                             issuedAt: Date(timeIntervalSince1970: 1_767_225_600.123),
-                            timeZone: tokyo, targetOn: "2026-01-01", response: response))
+                            timeZone: tokyo, response: response))
                 }
                 #expect(
                     result

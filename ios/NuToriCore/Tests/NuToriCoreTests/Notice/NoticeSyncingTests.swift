@@ -27,13 +27,8 @@ struct NoticeSyncingTests {
             return (cache, kept, removed)
         }
 
-        static func synced(_ notice: Notice, targetOn: String? = nil) -> SyncedNotice {
-            SyncedNotice(
-                id: notice.id, noticeType: .missedWeightRecord, issuedAt: notice.issuedAt,
-                timeZone: notice.timeZone, targetOn: targetOn ?? notice.targetDay.yearMonthDay,
-                response: notice.response.map {
-                    .init(respondedAt: $0.respondedAt, timeZone: $0.timeZone)
-                })
+        static func synced(_ notice: Notice) -> SyncedNotice {
+            SyncedNotice(notice)
         }
 
         @Test("届いた知らせが今の値でキャッシュに入ること")
@@ -53,10 +48,8 @@ struct NoticeSyncingTests {
                 let kept = applied.kept
                 cache = applied.cache
                 removed = applied.removed
-                responded = Notice(
-                    id: kept.id, kind: kept.kind, issuedAt: kept.issuedAt, timeZone: kept.timeZone,
-                    targetDay: kept.targetDay,
-                    response: Notice.Response(
+                responded = kept.responded(
+                    Notice.Response(
                         respondedAt: kept.issuedAt.addingTimeInterval(600),
                         timeZone: kept.timeZone))
             }
@@ -88,9 +81,10 @@ struct NoticeSyncingTests {
 
             init() throws {
                 (cache, kept, removed) = try Applying.appliedCache()
-                unreadable = Applying.synced(
-                    try Notice.missedWeightRecord(issuedAt: "2026-09-25T21:00:00+09:00"),
-                    targetOn: "9月25日")
+                let notice = try Notice.missedWeightRecord(issuedAt: "2026-09-25T21:00:00+09:00")
+                unreadable = SyncedNotice(
+                    id: notice.id, noticeType: .missedWeightRecord(targetOn: "9月25日"),
+                    issuedAt: notice.issuedAt, timeZone: notice.timeZone, response: nil)
             }
 
             @Test("キャッシュに入れないこと")

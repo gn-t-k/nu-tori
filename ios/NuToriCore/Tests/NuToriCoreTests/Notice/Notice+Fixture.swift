@@ -9,11 +9,10 @@ extension Notice {
         let issued = try Date(issuedAt, strategy: .iso8601)
         let day = CalendarDay(containing: issued, in: timeZone)
         return Notice(
-            id: Notice.id(kind: .missedWeightRecord, targetDay: day),
-            kind: .missedWeightRecord,
+            id: Notice.id(of: .missedWeightRecord(targetDay: day)),
+            kind: .missedWeightRecord(targetDay: day),
             issuedAt: issued,
             timeZone: timeZone,
-            targetDay: day,
             response: nil
         )
     }

@@ -47,8 +47,8 @@ public struct UndeliveredRecords: Hashable, Sendable {
             case .sentText:
                 guard let pending = try? PendingSentTextWrite(entry: entry) else { continue }
                 sentTextIds.insert(pending.write.sentTextId)
-            case .accountSettings, .aiUtterance, .dishEstimationStatus, .mealEstimationStatus,
-                .notice,
+            case .accountSettings, .aiUtterance, .dailyGuide, .dishEstimationStatus,
+                .expenditureEstimate, .goal, .mealEstimationStatus, .notice,
                 .sentTextStatus, .usualWeighingTime, .weightTrend:
                 continue
             }

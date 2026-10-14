@@ -77,6 +77,21 @@ final class YieldingSyncBoxMock: SyncBox, RecordCacheReading {
         return try await box.notices()
     }
 
+    func goals() async throws -> [Goal] {
+        await Task.yield()
+        return try await box.goals()
+    }
+
+    func dailyGuides() async throws -> [DailyGuide] {
+        await Task.yield()
+        return try await box.dailyGuides()
+    }
+
+    func expenditureEstimates() async throws -> [ExpenditureEstimate] {
+        await Task.yield()
+        return try await box.expenditureEstimates()
+    }
+
     func usualWeighingTime() async throws -> UsualWeighingTime? {
         await Task.yield()
         return try await box.usualWeighingTime()

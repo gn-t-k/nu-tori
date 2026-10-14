@@ -4,18 +4,30 @@ public import Foundation
 /// 最後に届いた位置で、上へ流れたかを覚えておく
 public struct UnansweredNoticeLineVisibility: Equatable, Sendable {
     public init() {
-        noticeIdAbove = nil
+        noticeIdsAbove = []
     }
 
-    /// 今日の答えていない知らせのカードの位置を受け取る。カードを描いていなければ nil で、覚えた向きを変えない
+    /// 答えていない知らせのカードの位置を受け取る。カードを描いていなければ nil で、覚えた向きを変えない
     public mutating func note(_ position: CardPosition?) {
         guard let position else { return }
-        noticeIdAbove = position.maxY <= 0 ? position.noticeId : nil
+        if position.maxY <= 0 {
+            noticeIdsAbove.insert(position.noticeId)
+        } else {
+            noticeIdsAbove.remove(position.noticeId)
+        }
     }
 
     /// そのカードが答えていない形で、画面の上へ流れて見えないか
     public func shows(for card: NoticeCard) -> Bool {
-        card.form == .awaitingAnswer && card.notice.id == noticeIdAbove
+        card.form == .awaitingAnswer && noticeIdsAbove.contains(card.notice.id)
+    }
+
+    /// その1行の知らせのカードが、画面の上へ流れて見えないか
+    public func shows(_ line: UnansweredNoticeLine) -> Bool {
+        switch line {
+        case .missedWeightRecord(let card): shows(for: card)
+        case .goalSetup(let notice): noticeIdsAbove.contains(notice.id)
+        }
     }
 
     public struct CardPosition: Equatable, Sendable {
@@ -29,6 +41,6 @@ public struct UnansweredNoticeLineVisibility: Equatable, Sendable {
         }
     }
 
-    /// 上へ流れて見えない知らせの ID
-    private var noticeIdAbove: UUID?
+    /// 上へ流れて見えない知らせの ID。体重の知らせと目標を立てる知らせは、別々に流れる
+    private var noticeIdsAbove: Set<UUID>
 }

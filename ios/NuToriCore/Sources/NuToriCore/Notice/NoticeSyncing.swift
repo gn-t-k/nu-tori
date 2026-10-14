@@ -90,7 +90,7 @@ public struct NoticeSyncing: CacheApplying, RecordKindWrites {
         try cache.removeAll()
     }
 
-    /// 取りに行った変更を、今の値の並びにする。対象の日付が読めない知らせは読み飛ばす
+    /// 取りに行った変更を、今の値の並びにする。対象の日付が読めない記録忘れの知らせは読み飛ばす
     public func current(from changes: [SyncChange]) -> Current {
         var notices: [Notice] = []
         var removedNoticeIds: [UUID] = []
@@ -106,16 +106,14 @@ public struct NoticeSyncing: CacheApplying, RecordKindWrites {
 }
 
 extension Notice {
+    /// 対象の日付が読めない記録忘れの知らせは nil
     init?(_ notice: SyncedNotice) {
-        guard let targetDay = CalendarDay(yearMonthDay: notice.targetOn) else {
-            return nil
-        }
+        guard let kind = Kind(notice.noticeType) else { return nil }
         self.init(
             id: notice.id,
-            kind: Kind(notice.noticeType),
+            kind: kind,
             issuedAt: notice.issuedAt,
             timeZone: notice.timeZone,
-            targetDay: targetDay,
             response: notice.response.map {
                 Response(respondedAt: $0.respondedAt, timeZone: $0.timeZone)
             }
@@ -124,9 +122,13 @@ extension Notice {
 }
 
 extension Notice.Kind {
-    init(_ noticeType: SyncedNotice.NoticeType) {
+    init?(_ noticeType: SyncedNotice.NoticeType) {
         switch noticeType {
-        case .missedWeightRecord: self = .missedWeightRecord
+        case .missedWeightRecord(let targetOn):
+            guard let targetDay = CalendarDay(yearMonthDay: targetOn) else { return nil }
+            self = .missedWeightRecord(targetDay: targetDay)
+        case .goalSetup:
+            self = .goalSetup
         }
     }
 }
@@ -134,19 +136,22 @@ extension Notice.Kind {
 extension SyncedNotice.NoticeType {
     init(_ kind: Notice.Kind) {
         switch kind {
-        case .missedWeightRecord: self = .missedWeightRecord
+        case .missedWeightRecord(let targetDay):
+            self = .missedWeightRecord(targetOn: targetDay.yearMonthDay)
+        case .goalSetup:
+            self = .goalSetup
         }
     }
 }
 
 extension SyncedNotice {
-    init(_ notice: Notice) {
+    /// 取りに行った変更と同じ形。端末で出した・答えた知らせをキャッシュに当てるのに使う
+    public init(_ notice: Notice) {
         self.init(
             id: notice.id,
             noticeType: NoticeType(notice.kind),
             issuedAt: notice.issuedAt,
             timeZone: notice.timeZone,
-            targetOn: notice.targetDay.yearMonthDay,
             response: notice.response.map(Response.init)
         )
     }
@@ -164,8 +169,7 @@ extension NewNotice {
             id: notice.id,
             noticeType: SyncedNotice.NoticeType(notice.kind),
             issuedAt: notice.issuedAt,
-            timeZone: notice.timeZone,
-            targetOn: notice.targetDay.yearMonthDay
+            timeZone: notice.timeZone
         )
     }
 }

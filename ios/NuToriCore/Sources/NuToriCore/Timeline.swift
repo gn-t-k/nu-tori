@@ -11,10 +11,16 @@ public struct Timeline: Sendable {
         // 食事の日が使い始めた日より前の食事は、カードは並べても、丸にも日のまとめにも入れない
         let mealsByEatenDay = Dictionary(
             grouping: input.meals.filter { $0.meal.day >= firstDay }, by: \.meal.day)
-        // 答えた知らせは並べない。記録したことは体重の行で分かるため
+        // 答えた体重の知らせは並べない。記録したことは体重の行で分かるため。
+        // 対象の日付を持たない知らせ（目標を立てる）は、ここでは並べない
         let noticesByDay = Dictionary(
-            grouping: input.notices.filter { $0.response == nil && $0.targetDay >= firstDay },
-            by: \.targetDay)
+            grouping: input.notices.compactMap { notice -> (day: CalendarDay, notice: Notice)? in
+                guard notice.response == nil, let targetDay = notice.targetDay,
+                    targetDay >= firstDay
+                else { return nil }
+                return (targetDay, notice)
+            },
+            by: \.day)
         let rejectedWeightLines = input.rejectedLines.compactMap(\.weightLine)
         // 食事・料理・材料の行のうち、タイムラインに置くもの（食事が消えている、食事そのものの行）だけ。ほかは食事の画面と料理の画面に出す
         let cardsByMealId = Dictionary(
@@ -23,6 +29,7 @@ public struct Timeline: Sendable {
             $0.placement(in: cardsByMealId[$0.meal.id]) == .timeline
         }
         undelivered = input.undelivered
+        notices = input.notices
         let conversation = ConversationItems(
             input.conversation, rejectedLines: input.rejectedLines.compactMap(\.sentTextLine),
             cardsByMealId: cardsByMealId, undelivered: input.undelivered)
@@ -48,7 +55,7 @@ public struct Timeline: Sendable {
                     meals: mealsByDay[day] ?? [],
                     rejectedMealLines: rejectedMealLines.filter { $0.meal.cardDay == day },
                     notices: (noticesByDay[day] ?? []).map {
-                        NoticeCard(unanswered: $0, today: today)
+                        NoticeCard(unanswered: $0.notice, targetDay: day, today: today)
                     },
                     bubbles: bubblesByDay[day] ?? [],
                     rejectedSentTextLines: conversation.separateLines.filter {
@@ -75,8 +82,15 @@ public struct Timeline: Sendable {
     }
 
     private let undelivered: UndeliveredRecords
+    private let notices: [Notice]
 
-    /// 今日の答えていない知らせ。画面の上へ流れて見えないときに、帯の下の1行で示す。
+    /// 帯の下に1行で示す、答えていない知らせ（今日の体重の知らせと、目標を立てる知らせ）。出した時刻の古い順
+    public var unansweredNoticeLines: [UnansweredNoticeLine] {
+        UnansweredNoticeLine.lines(
+            weightNoticeAwaitingAnswer: noticeAwaitingAnswer, notices: notices)
+    }
+
+    /// 今日の答えていない体重の知らせ。画面の上へ流れて見えないときに、帯の下の1行で示す。
     /// 答えていない形のカードは、対象の日付が今日の知らせにだけあり、今日の日に並ぶので、新しい日から探す
     public var noticeAwaitingAnswer: NoticeCard? {
         days.reversed().lazy.flatMap(\.items)
