@@ -2,7 +2,6 @@ import { R } from "@praha/byethrow";
 import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
 import { addDays } from "../../../domain/add-days";
-import { isWithinAcceptedRange } from "../../../domain/is-within-accepted-range";
 import type { BodyData } from "../body-data";
 import { computeActivityFactor } from "./compute-activity-factor";
 import { computeBackCalculatedExpenditure } from "./compute-back-calculated-expenditure";
@@ -33,7 +32,7 @@ export const computeInitialExpenditureEstimate = ({
   startingWeightTrendKg: number | undefined;
   // 逆算できる人には尋ねないので無い
   bodyData: BodyData | undefined;
-}): R.Result<InitialExpenditureEstimate, FormulaInputsMissingError | BodyDataOutOfRangeError> => {
+}): R.Result<InitialExpenditureEstimate, FormulaInputsMissingError> => {
   // 初期値の窓。今日は記録の途中なので入れない
   const windowDays = 28;
   const firstDay = addDays(today, -windowDays);
@@ -53,12 +52,6 @@ export const computeInitialExpenditureEstimate = ({
 
   if (bodyData === undefined || startingWeightTrendKg === undefined) {
     return R.fail(new FormulaInputsMissingError());
-  }
-  if (!isWithinAcceptedRange("heightCentimeters", bodyData.heightCentimeters)) {
-    return R.fail(new BodyDataOutOfRangeError({ range: "heightCentimeters" }));
-  }
-  if (!isWithinAcceptedRange("ageYears", bodyData.ageYears)) {
-    return R.fail(new BodyDataOutOfRangeError({ range: "ageYears" }));
   }
   const activityFactor = computeActivityFactor(
     match(bodyData.activity)
@@ -82,13 +75,6 @@ export const computeInitialExpenditureEstimate = ({
 export class FormulaInputsMissingError extends ErrorFactory({
   name: "FormulaInputsMissingError",
   message: "逆算できず、推定消費カロリーの式に使う値が足りない",
-}) {}
-
-// 身体データは残さないので、範囲の外だった値そのものは持たせない
-export class BodyDataOutOfRangeError extends ErrorFactory({
-  name: "BodyDataOutOfRangeError",
-  message: ({ range }) => `身体データが受け付ける値の範囲の外: ${range}`,
-  fields: ErrorFactory.fields<{ range: "heightCentimeters" | "ageYears" }>(),
 }) {}
 
 // Mifflin-St Jeor の式

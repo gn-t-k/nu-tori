@@ -110,7 +110,7 @@ const estimateInitialExpenditure = (
     dailyWeights: readonly { calendarDay: string; weightKg: number }[];
     startingWeightTrendKg: number | undefined;
   },
-): R.Result<GoalSetupExpenditure | undefined, GoalSetupRequestRejectedError> => {
+): R.Result<GoalSetupExpenditure | undefined, never> => {
   // 初期値の窓（今日を除く直前の 28 日）より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
   const since = new Date(Date.parse(`${addDays(today, -29)}T00:00:00Z`) - millisecondsPerDay);
   return R.pipe(
@@ -126,11 +126,8 @@ const estimateInitialExpenditure = (
     }),
     R.orElse((error) =>
       match(error)
-        .returnType<R.Result<undefined, GoalSetupRequestRejectedError>>()
+        .returnType<R.Result<undefined, never>>()
         .with({ name: "FormulaInputsMissingError" }, () => R.succeed(undefined))
-        .with({ name: "BodyDataOutOfRangeError" }, () =>
-          R.fail(new GoalSetupRequestRejectedError({ reason: "body_data_out_of_range" })),
-        )
         .exhaustive(),
     ),
   );
