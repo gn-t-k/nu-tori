@@ -2,17 +2,13 @@ import { z } from "@hono/zod-openapi";
 import { recordIdSchema } from "../../domain/record-id";
 import type { GoalDecisionRequest } from "../../goal/domain/decide-goal";
 import { dailyGuidePlanSchema } from "./daily-guide-plan-schema";
+import { deadlineOnSchema } from "./deadline-on-schema";
 import {
   calendarDaySchema,
   goalSetupSituationSchema,
   toGoalSetupSituation,
 } from "./goal-setup-situation-schema";
-
-const weightChangeDirectionSchema = z.enum(["lose", "gain"]);
-
-const deadlineOnSchema = calendarDaySchema.openapi({
-  description: "期限。開始の日から数えて（両端を含む）28〜182 日の日",
-});
+import { weightChangeDirectionSchema } from "./weight-change-direction-schema";
 
 // 目標を決める要求。摂取エネルギーと身体データは、初めての目標のときに、目標案の要求と同じものを添える
 export const goalDecisionRequestSchema = goalSetupSituationSchema.extend({

@@ -1,10 +1,10 @@
 import { R } from "@praha/byethrow";
-import { countAcceptedDaysToDeadline } from "./count-accepted-days-to-deadline";
+import { computeWeightChangeGoalInputs } from "./compute-weight-change-goal-inputs";
 import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
-import { requireCompleteGoalSetupBasis } from "./require-complete-goal-setup-basis";
-import { resolveGoalSetupBasis, type GoalSetupStores } from "./resolve-goal-setup-basis";
+import { resolveCompleteGoalSetupBasis } from "./resolve-complete-goal-setup-basis";
+import type { GoalSetupStores } from "./resolve-goal-setup-basis";
 import type { WeightChangeDirection } from "./weight-change-direction";
 
 export type CustomTargetWeightAssessment = {
@@ -24,18 +24,14 @@ export const assessCustomTargetWeight = (
   now: Date,
 ): R.Result<CustomTargetWeightAssessment, GoalSetupRequestRejectedError> =>
   R.pipe(
-    resolveGoalSetupBasis(stores, request, now),
-    R.andThen(requireCompleteGoalSetupBasis),
-    R.andThen(({ startedOn, startingWeightTrend, expenditure }) =>
+    resolveCompleteGoalSetupBasis(stores, request, now),
+    R.andThen((basis) =>
       R.pipe(
-        countAcceptedDaysToDeadline({ startedOn, deadlineOn: request.deadlineOn }),
-        R.map((daysFromStartToDeadline) => ({
-          startedOn,
+        computeWeightChangeGoalInputs(basis, request),
+        R.map((goal) => ({
+          startedOn: basis.startedOn,
           evaluation: evaluateCustomTargetWeight({
-            direction: request.direction,
-            expenditureKcal: expenditure.kcal,
-            startingWeightTrendKg: startingWeightTrend.trendKg,
-            daysFromStartToDeadline,
+            ...goal,
             targetWeightKg: request.targetWeightKg,
           }),
         })),

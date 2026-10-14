@@ -23,21 +23,15 @@ final class GoalSetupSession {
         self.answerLater = answerLater
     }
 
-    /// 開いたことのある流れ。まだ開いていなければ nil
+    /// 開いたことのある流れ。まだ開いていなければ nil。広げているか、「続ける」にするかは流れが持つ
     private(set) var flow: GoalSetupFlow?
 
-    var isOpen: Bool {
-        flow?.isOpen == true
-    }
-
-    /// 閉じたカードを「続ける」にするか
-    var hasProgress: Bool {
-        flow?.hasProgress == true
-    }
+    /// 知らせの「あとで」。帯の下の1行が消え、カードは残る
+    let answerLater: () async -> Void
 
     /// カードを広げる。途中まで進めていれば同じページから。決めたあとに開くときは、新しく始める
     func open(from entry: GoalSetupObservation.Entry) async {
-        guard !isOpening, !isOpen else { return }
+        guard !isOpening, flow?.isOpen != true else { return }
         if flow == nil || flow?.decision == .decided {
             isOpening = true
             defer { isOpening = false }
@@ -48,15 +42,6 @@ final class GoalSetupSession {
         flow?.open(from: entry)
     }
 
-    func close() {
-        flow?.close()
-    }
-
-    /// 知らせの「あとで」。帯の下の1行が消え、カードは残る
-    func later() async {
-        await answerLater()
-    }
-
     /// サインアウトとアカウントの削除。前のアカウントの答え（身体データを含む）を次のアカウントに持ち越さない
     func discard() {
         flow = nil
@@ -65,7 +50,6 @@ final class GoalSetupSession {
     private let today: () -> CalendarDay
     private let start: (CalendarDay) async throws -> GoalSetupStart
     private let makeFlow: (GoalSetupStart) -> GoalSetupFlow
-    private let answerLater: () async -> Void
     /// 状況を読んでいるあいだに2回押されても、流れを2つ作らない
     private var isOpening = false
 }

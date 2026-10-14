@@ -40,16 +40,17 @@ extension ClientUsageEventTests {
         func closed() {
             let pages: [GoalSetupObservation.Page] = [
                 .direction, .deadline, .missingValues, .proposals, .customTargetWeight,
-                .maintenance, .loseUnavailable, .stopped,
+                .maintenance, .loseUnavailable, .stopped, .awaitingPreview,
             ]
             let events = pages.map { ClientUsageEvent.goalSetup(.closed(page: $0)) }
 
-            #expect(events.map(\.name) == Array(repeating: "goal_setup_closed", count: 8))
+            #expect(events.map(\.name) == Array(repeating: "goal_setup_closed", count: 9))
             #expect(
                 events.map(\.fields)
                     == [
                         "direction", "deadline", "missing_values", "proposals",
                         "custom_target_weight", "maintenance", "lose_unavailable", "stopped",
+                        "awaiting_preview",
                     ].map { ["page": .token($0)] })
         }
 

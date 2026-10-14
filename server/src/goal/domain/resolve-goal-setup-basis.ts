@@ -70,7 +70,7 @@ export const resolveGoalSetupBasis = (
           ? estimateInitialExpenditure(stores, situation, {
               today,
               dailyWeights,
-              startWeightTrendKg: startingWeightTrend?.trendKg,
+              startingWeightTrendKg: startingWeightTrend?.trendKg,
             })
           : R.succeed(readCurrentExpenditure(stores)),
         R.map((expenditure) => ({ startedOn, currentGoal, startingWeightTrend, expenditure })),
@@ -104,11 +104,11 @@ const estimateInitialExpenditure = (
   {
     today,
     dailyWeights,
-    startWeightTrendKg,
+    startingWeightTrendKg,
   }: {
     today: string;
     dailyWeights: readonly { calendarDay: string; weightKg: number }[];
-    startWeightTrendKg: number | undefined;
+    startingWeightTrendKg: number | undefined;
   },
 ): R.Result<GoalSetupExpenditure | undefined, GoalSetupRequestRejectedError> => {
   // 初期値の窓（今日を除く直前の 28 日）より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
@@ -121,7 +121,7 @@ const estimateInitialExpenditure = (
       deviceEnergyIntakes: preUseEnergyIntakes,
       recordedEnergyIntakes: readRecordedEnergyIntakes(stores, since),
       dailyWeights,
-      startWeightTrendKg,
+      startingWeightTrendKg,
       bodyData,
     }),
     R.orElse((error) =>

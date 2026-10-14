@@ -7,10 +7,8 @@
         /// 目標の設定の4つの要求への答え方。計算はせず、場面が決めた値を返す
         public struct GoalSetupAnswers: Sendable {
             public let preview: GoalSetupPreview
-            /// 向きと期限（YYYY-MM-DD。維持は nil）から作る目標案
-            public let proposals:
-                @Sendable (_ direction: GoalSetupDirection, _ deadlineOn: String?)
-                    -> GoalProposals
+            /// 向きと期限から作る目標案
+            public let proposals: @Sendable (_ plan: GoalProposalsPlan) -> GoalProposals
             /// 期限と目標体重から作る、自分で決める目標体重の答え
             public let assessCustomTargetWeight:
                 @Sendable (_ deadlineOn: String, _ targetWeightKilograms: Double)
@@ -20,9 +18,7 @@
 
             public init(
                 preview: GoalSetupPreview,
-                proposals:
-                    @escaping @Sendable (_ direction: GoalSetupDirection, _ deadlineOn: String?)
-                    -> GoalProposals,
+                proposals: @escaping @Sendable (_ plan: GoalProposalsPlan) -> GoalProposals,
                 assessCustomTargetWeight:
                     @escaping @Sendable (_ deadlineOn: String, _ targetWeightKilograms: Double)
                     -> CustomTargetWeightAssessment.Outcome,
@@ -58,14 +54,14 @@
                 return try json(
                     .ok,
                     Components.Schemas.GoalProposals(
-                        answers.proposals(
-                            GoalSetupDirection(serverName: request.direction.rawValue),
-                            request.deadlineOn)))
+                        answers.proposals(GoalProposalsPlan(request.plan))))
             case Operations.AssessCustomTargetWeight.id:
                 let request = try decoder.decode(
                     Operations.AssessCustomTargetWeight.Input.Body.JsonPayload.self, from: data)
                 let proposals = answers.proposals(
-                    GoalSetupDirection(serverName: request.direction.rawValue), request.deadlineOn)
+                    .weightChange(
+                        direction: GoalProposals.Direction(request.direction),
+                        deadlineOn: request.deadlineOn))
                 return try jsonObject(
                     customTargetWeightAssessment(
                         startedOn: proposals.startedOn,
@@ -91,25 +87,23 @@
             _ request: Operations.DecideGoal.Input.Body.JsonPayload, answers: GoalSetupAnswers
         ) -> [SyncChange] {
             let direction: SyncedGoal.Direction
-            let proposalsDirection: GoalSetupDirection
+            let plan: GoalProposalsPlan
             switch request.choice {
             case .maintain:
                 direction = .maintain
-                proposalsDirection = .maintain
+                plan = .maintain
             case .proposal(let choice):
-                let weightChange = SyncedGoal.WeightChange(
-                    deadlineOn: choice.deadlineOn,
-                    pacePlan: SyncedGoal.PacePlan(rawValue: choice.pace.rawValue) ?? .standard)
-                direction = choice.direction == .lose ? .lose(weightChange) : .gain(weightChange)
-                proposalsDirection = choice.direction == .lose ? .lose : .gain
+                (direction, plan) = Self.weightChange(
+                    GoalProposals.Direction(choice.direction),
+                    SyncedGoal.WeightChange(
+                        deadlineOn: choice.deadlineOn,
+                        pacePlan: SyncedGoal.PacePlan(rawValue: choice.pace.rawValue) ?? .standard))
             case .custom(let choice):
-                let weightChange = SyncedGoal.WeightChange(
-                    deadlineOn: choice.deadlineOn, pacePlan: .custom)
-                direction = choice.direction == .lose ? .lose(weightChange) : .gain(weightChange)
-                proposalsDirection = choice.direction == .lose ? .lose : .gain
+                (direction, plan) = Self.weightChange(
+                    GoalProposals.Direction(choice.direction),
+                    SyncedGoal.WeightChange(deadlineOn: choice.deadlineOn, pacePlan: .custom))
             }
-            let proposals = answers.proposals(
-                proposalsDirection, direction.weightChange?.deadlineOn)
+            let proposals = answers.proposals(plan)
             let now = answers.now()
             let goalId = UUID()
             let estimateId = UUID()
@@ -136,6 +130,23 @@
                         initialSource: proposals.expenditureSource == .formula
                             ? .formula : .backCalculated)),
             ]
+        }
+
+        private static func weightChange(
+            _ direction: GoalProposals.Direction, _ weightChange: SyncedGoal.WeightChange
+        ) -> (SyncedGoal.Direction, GoalProposalsPlan) {
+            switch direction {
+            case .lose:
+                (
+                    .lose(weightChange),
+                    .weightChange(direction: .lose, deadlineOn: weightChange.deadlineOn)
+                )
+            case .gain:
+                (
+                    .gain(weightChange),
+                    .weightChange(direction: .gain, deadlineOn: weightChange.deadlineOn)
+                )
+            }
         }
 
         /// 1日の目安が allOf の入れ物なので、生成した型を通さずに書く
@@ -172,12 +183,24 @@
         }
     }
 
-    extension GoalSetupDirection {
-        fileprivate init(serverName: String) {
-            switch serverName {
+    extension GoalProposalsPlan {
+        fileprivate init(_ wire: Components.Schemas.GoalProposalsPlan) {
+            switch wire {
+            case .maintain: self = .maintain
+            case .lose(let lose):
+                self = .weightChange(direction: .lose, deadlineOn: lose.deadlineOn)
+            case .gain(let gain):
+                self = .weightChange(direction: .gain, deadlineOn: gain.deadlineOn)
+            }
+        }
+    }
+
+    extension GoalProposals.Direction {
+        /// 生成した型は要求ごとに向きの enum を持つので、文字列で読む。減量と増量しか届かない
+        fileprivate init<Wire: RawRepresentable<String>>(_ wire: Wire) {
+            switch wire.rawValue {
             case "lose": self = .lose
-            case "gain": self = .gain
-            default: self = .maintain
+            default: self = .gain
             }
         }
     }
@@ -212,9 +235,14 @@
                         targetWeightKg: maintenance.targetWeightKilograms,
                         dailyGuide: .init(maintenance.dailyGuide)))
             case .weightChange(let weightChange):
+                let direction =
+                    switch weightChange.direction {
+                    case .lose: "lose"
+                    case .gain: "gain"
+                    }
                 self.init(
                     startedOn: proposals.startedOn,
-                    direction: weightChange.direction == .lose ? "lose" : "gain",
+                    direction: direction,
                     expenditureKcal: proposals.expenditureKilocalories, expenditureSource: source,
                     startingWeightTrendKg: proposals.startingWeightTrendKilograms,
                     lastWeightRecordedOn: proposals.lastWeightRecordedOn,
@@ -231,7 +259,7 @@
 
     extension Components.Schemas.GoalProposal {
         fileprivate init(_ proposal: GoalProposals.Proposal) {
-            switch proposal.availability {
+            switch proposal {
             case .offered(let offered):
                 self.init(
                     pace: proposal.pace.rawValue, status: "offered",
@@ -239,7 +267,7 @@
                     dailyGuide: .init(offered.dailyGuide),
                     difficulty: offered.difficulty.rawValue,
                     dailyGuideDifferenceKcal: offered.dailyGuideDifferenceKilocalories)
-            case .unavailable(let reason):
+            case .unavailable(_, let reason):
                 let name =
                     switch reason {
                     case .dailyGuideBelowMinimum: "daily_guide_below_minimum"

@@ -128,9 +128,7 @@
             let clock = clock
             return FakeSyncServer.GoalSetupAnswers(
                 preview: GoalSetupPreview(canBackCalculate: true, canOfferLoseProposals: true),
-                proposals: { direction, deadlineOn in
-                    Self.goalProposals(direction: direction, deadlineOn: deadlineOn, today: today)
-                },
+                proposals: { plan in Self.goalProposals(plan, today: today) },
                 assessCustomTargetWeight: { _, kilograms in
                     // 体重の傾向から離れるほど、1日の目安を推定消費カロリーから離す
                     let difference = Int(((72.0 - kilograms).magnitude * 140 / 50).rounded()) * 50
@@ -146,11 +144,11 @@
         }
 
         nonisolated private static func goalProposals(
-            direction: GoalSetupDirection, deadlineOn: String?, today: String
+            _ requested: GoalProposalsPlan, today: String
         ) -> GoalProposals {
             let plan: GoalProposals.Plan
-            switch (direction, deadlineOn) {
-            case (.lose, let deadlineOn?):
+            switch requested {
+            case .weightChange(.lose, let deadlineOn):
                 plan = .weightChange(
                     .init(
                         direction: .lose, deadlineOn: deadlineOn,
@@ -161,7 +159,7 @@
                         acceptedTargetWeightRange: .init(
                             minimumKilograms: 67.8, maximumKilograms: 71.9,
                             fastestEndReason: .paceTooFast)))
-            case (.gain, let deadlineOn?):
+            case .weightChange(.gain, let deadlineOn):
                 plan = .weightChange(
                     .init(
                         direction: .gain, deadlineOn: deadlineOn,
@@ -172,7 +170,7 @@
                         acceptedTargetWeightRange: .init(
                             minimumKilograms: 72.1, maximumKilograms: 74.9,
                             fastestEndReason: .paceTooFast)))
-            default:
+            case .maintain:
                 plan = .maintenance(
                     .init(targetWeightKilograms: 72.0, dailyGuide: dailyGuide(2250)))
             }
@@ -184,13 +182,11 @@
         nonisolated private static func offered(
             _ pace: GoalProposals.Pace, _ kilograms: Double, _ energy: Int
         ) -> GoalProposals.Proposal {
-            .init(
-                pace: pace,
-                availability: .offered(
-                    .init(
-                        pace: pace, targetWeightKilograms: kilograms,
-                        dailyGuide: dailyGuide(energy),
-                        difficulty: pace, dailyGuideDifferenceKilocalories: energy - 2250)))
+            .offered(
+                .init(
+                    pace: pace, targetWeightKilograms: kilograms,
+                    dailyGuide: dailyGuide(energy),
+                    difficulty: pace, dailyGuideDifferenceKilocalories: energy - 2250))
         }
 
         /// P・F・C は kcal によらず同じにする

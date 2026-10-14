@@ -1908,6 +1908,82 @@
         ],
         "description": "offered のときだけ"
       },
+      "GoalProposalsPlan": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GoalMaintainPlan"
+          },
+          {
+            "$ref": "#/components/schemas/GoalLosePlan"
+          },
+          {
+            "$ref": "#/components/schemas/GoalGainPlan"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "direction",
+          "mapping": {
+            "maintain": "#/components/schemas/GoalMaintainPlan",
+            "lose": "#/components/schemas/GoalLosePlan",
+            "gain": "#/components/schemas/GoalGainPlan"
+          }
+        },
+        "description": "選んだ向きと、減量・増量の期限"
+      },
+      "GoalMaintainPlan": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "maintain"
+            ]
+          }
+        },
+        "required": [
+          "direction"
+        ]
+      },
+      "GoalLosePlan": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "lose"
+            ]
+          },
+          "deadlineOn": {
+            "type": "string",
+            "description": "期限。開始の日から数えて（両端を含む）28〜182 日の日",
+            "example": "2026-10-14"
+          }
+        },
+        "required": [
+          "direction",
+          "deadlineOn"
+        ]
+      },
+      "GoalGainPlan": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "gain"
+            ]
+          },
+          "deadlineOn": {
+            "type": "string",
+            "description": "期限。開始の日から数えて（両端を含む）28〜182 日の日",
+            "example": "2026-10-14"
+          }
+        },
+        "required": [
+          "direction",
+          "deadlineOn"
+        ]
+      },
       "CustomTargetWeightAssessment": {
         "type": "object",
         "properties": {
@@ -2920,23 +2996,13 @@
                   "bodyData": {
                     "$ref": "#/components/schemas/GoalSetupBodyData"
                   },
-                  "direction": {
-                    "type": "string",
-                    "enum": [
-                      "lose",
-                      "gain",
-                      "maintain"
-                    ]
-                  },
-                  "deadlineOn": {
-                    "type": "string",
-                    "description": "期限。減量・増量では必ず付ける。開始の日から数えて（両端を含む）28〜182 日の日",
-                    "example": "2026-10-14"
+                  "plan": {
+                    "$ref": "#/components/schemas/GoalProposalsPlan"
                   }
                 },
                 "required": [
                   "timeZone",
-                  "direction"
+                  "plan"
                 ]
               }
             }
@@ -3040,7 +3106,7 @@
                   },
                   "deadlineOn": {
                     "type": "string",
-                    "description": "YYYY-MM-DD",
+                    "description": "期限。開始の日から数えて（両端を含む）28〜182 日の日",
                     "example": "2026-10-14"
                   },
                   "targetWeightKg": {
@@ -3103,7 +3169,7 @@
       "post": {
         "operationId": "decideGoal",
         "summary": "目標を決める",
-        "description": "そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す",
+        "description": "そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す（開始の日がずれて期限が受け付ける幅の外に出たら、受け付けるいちばん近い日を期限にする）。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す",
         "security": [
           {
             "session": []

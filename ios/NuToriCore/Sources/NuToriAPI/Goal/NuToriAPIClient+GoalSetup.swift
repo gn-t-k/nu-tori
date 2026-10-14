@@ -33,10 +33,10 @@ extension NuToriAPIClient {
         }
     }
 
-    /// 目標案。減量・増量は期限（YYYY-MM-DD）を付ける。維持は nil
-    public func proposeGoals(
-        direction: GoalSetupDirection, deadlineOn: String?, inputs: GoalSetupInputs
-    ) async throws -> GoalSetupResult<GoalProposals> {
+    /// 目標案
+    public func proposeGoals(_ plan: GoalProposalsPlan, inputs: GoalSetupInputs) async throws
+        -> GoalSetupResult<GoalProposals>
+    {
         typealias Payload = Operations.ProposeGoals.Input.Body.JsonPayload
         let output = try await client.proposeGoals(
             body: .json(
@@ -45,8 +45,7 @@ extension NuToriAPIClient {
                     preUseEnergyIntakes: inputs.wireIntakes(
                         Payload.PreUseEnergyIntakesPayloadPayload.init),
                     bodyData: inputs.body.map(Components.Schemas.GoalSetupBodyData.init),
-                    direction: Payload.DirectionPayload(direction),
-                    deadlineOn: deadlineOn
+                    plan: Components.Schemas.GoalProposalsPlan(plan)
                 )))
         switch output {
         case .ok(let ok): return .answered(try GoalProposals(try ok.body.json))
@@ -74,7 +73,7 @@ extension NuToriAPIClient {
                     preUseEnergyIntakes: inputs.wireIntakes(
                         Payload.PreUseEnergyIntakesPayloadPayload.init),
                     bodyData: inputs.body.map(Components.Schemas.GoalSetupBodyData.init),
-                    direction: direction == .lose ? .lose : .gain,
+                    direction: direction.wire(lose: .lose, gain: .gain),
                     deadlineOn: deadlineOn,
                     targetWeightKg: targetWeightKilograms
                 )))
@@ -140,12 +139,15 @@ extension Operations.PreviewGoalSetup.Input.Body.JsonPayload.DirectionPayload {
     }
 }
 
-extension Operations.ProposeGoals.Input.Body.JsonPayload.DirectionPayload {
-    fileprivate init(_ direction: GoalSetupDirection) {
-        switch direction {
-        case .lose: self = .lose
-        case .gain: self = .gain
-        case .maintain: self = .maintain
+extension Components.Schemas.GoalProposalsPlan {
+    fileprivate init(_ plan: GoalProposalsPlan) {
+        switch plan {
+        case .maintain:
+            self = .maintain(.init(direction: .maintain))
+        case .weightChange(.lose, let deadlineOn):
+            self = .lose(.init(direction: .lose, deadlineOn: deadlineOn))
+        case .weightChange(.gain, let deadlineOn):
+            self = .gain(.init(direction: .gain, deadlineOn: deadlineOn))
         }
     }
 }
@@ -164,8 +166,13 @@ extension Components.Schemas.GoalSetupBodyData {
             case .level(let level):
                 .level(.init(_type: .level, level: .init(level)))
             }
+        let sex: Components.Schemas.GoalSetupBodyData.SexPayload =
+            switch body.sex {
+            case .male: .male
+            case .female: .female
+            }
         self.init(
-            sex: body.sex == .male ? .male : .female,
+            sex: sex,
             heightCentimeters: body.heightCentimeters,
             ageYears: body.ageYears,
             activity: activity)
@@ -206,12 +213,12 @@ extension Components.Schemas.GoalChoice {
         case .proposal(let direction, let deadlineOn, let pace):
             self = .proposal(
                 .init(
-                    _type: .proposal, direction: direction == .lose ? .lose : .gain,
+                    _type: .proposal, direction: direction.wire(lose: .lose, gain: .gain),
                     deadlineOn: deadlineOn, pace: .init(pace)))
         case .custom(let direction, let deadlineOn, let targetWeightKilograms):
             self = .custom(
                 .init(
-                    _type: .custom, direction: direction == .lose ? .lose : .gain,
+                    _type: .custom, direction: direction.wire(lose: .lose, gain: .gain),
                     deadlineOn: deadlineOn, targetWeightKg: targetWeightKilograms))
         }
     }
@@ -248,21 +255,10 @@ extension GoalProposals {
                 Maintenance(
                     targetWeightKilograms: maintenance.targetWeightKg,
                     dailyGuide: DailyGuidePlan(maintenance.dailyGuide)))
-        case "lose", "gain":
-            guard let deadlineOn = wire.deadlineOn, let proposals = wire.proposals else {
-                throw NuToriAPIClient.MalformedResponseError(reason: "期限か目標案が無い")
-            }
-            plan = .weightChange(
-                WeightChange(
-                    direction: wire.direction == "lose" ? .lose : .gain,
-                    deadlineOn: deadlineOn,
-                    proposals: try proposals.map(Proposal.init),
-                    acceptedTargetWeightRange: wire.acceptedTargetWeightRange.map {
-                        AcceptedTargetWeightRange(
-                            minimumKilograms: $0.minimumKg,
-                            maximumKilograms: $0.maximumKg,
-                            fastestEndReason: TargetWeightLimitReason($0.fastestEndReason))
-                    }))
+        case "lose":
+            plan = .weightChange(try WeightChange(wire, direction: .lose))
+        case "gain":
+            plan = .weightChange(try WeightChange(wire, direction: .gain))
         default:
             throw NuToriAPIClient.MalformedResponseError(reason: "知らない向き")
         }
@@ -276,6 +272,36 @@ extension GoalProposals {
     }
 }
 
+extension GoalProposals.WeightChange {
+    fileprivate init(_ wire: Components.Schemas.GoalProposals, direction: GoalProposals.Direction)
+        throws
+    {
+        guard let deadlineOn = wire.deadlineOn, let proposals = wire.proposals else {
+            throw NuToriAPIClient.MalformedResponseError(reason: "期限か目標案が無い")
+        }
+        self.init(
+            direction: direction,
+            deadlineOn: deadlineOn,
+            proposals: try proposals.map(GoalProposals.Proposal.init),
+            acceptedTargetWeightRange: wire.acceptedTargetWeightRange.map {
+                GoalProposals.AcceptedTargetWeightRange(
+                    minimumKilograms: $0.minimumKg,
+                    maximumKilograms: $0.maximumKg,
+                    fastestEndReason: TargetWeightLimitReason($0.fastestEndReason))
+            })
+    }
+}
+
+extension GoalProposals.Direction {
+    /// 生成した型は要求ごとに向きの enum を持つので、減量と増量の値を受け取って選ぶ
+    fileprivate func wire<Wire>(lose: Wire, gain: Wire) -> Wire {
+        switch self {
+        case .lose: lose
+        case .gain: gain
+        }
+    }
+}
+
 extension GoalProposals.Proposal {
     fileprivate init(_ wire: Components.Schemas.GoalProposal) throws {
         let pace = try GoalProposals.Pace(wireName: wire.pace)
@@ -286,22 +312,20 @@ extension GoalProposals.Proposal {
             else {
                 throw NuToriAPIClient.MalformedResponseError(reason: "出せる案の値が無い")
             }
-            self.init(
-                pace: pace,
-                availability: .offered(
-                    GoalProposals.OfferedProposal(
-                        pace: pace,
-                        targetWeightKilograms: targetWeightKg,
-                        dailyGuide: DailyGuidePlan(dailyGuide),
-                        difficulty: try GoalProposals.Pace(wireName: difficulty),
-                        dailyGuideDifferenceKilocalories: difference)))
+            self = .offered(
+                GoalProposals.OfferedProposal(
+                    pace: pace,
+                    targetWeightKilograms: targetWeightKg,
+                    dailyGuide: DailyGuidePlan(dailyGuide),
+                    difficulty: try GoalProposals.Pace(wireName: difficulty),
+                    dailyGuideDifferenceKilocalories: difference))
         case "unavailable":
             let reason: GoalProposals.UnavailableReason =
                 switch wire.unavailableReason {
                 case "daily_guide_below_minimum": .dailyGuideBelowMinimum
                 case let other: .unknown(other ?? "")
                 }
-            self.init(pace: pace, availability: .unavailable(reason))
+            self = .unavailable(pace: pace, reason: reason)
         default:
             throw NuToriAPIClient.MalformedResponseError(reason: "知らない案の状態")
         }

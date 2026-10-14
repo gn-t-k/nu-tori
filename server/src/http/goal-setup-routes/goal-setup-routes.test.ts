@@ -18,6 +18,7 @@ import { mockCaptureExceptionOk } from "../../observability/capture-exception.mo
 import { putMealPhoto } from "../meal-photo-routes/testing/put-meal-photo";
 import { pushSyncWrites } from "../sync-routes/testing/push-sync-writes";
 import { readRows } from "../sync-routes/testing/read-rows";
+import { app } from "../app";
 import { signInTestAccount } from "../testing";
 import { postGoalSetup } from "./testing/post-goal-setup";
 import { readAllStoredRows } from "./testing/read-all-stored-rows";
@@ -95,8 +96,7 @@ describe("目標の設定の要求", () => {
       let response: Response;
       beforeEach(async () => {
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
-          deadlineOn,
+          plan: { direction: "lose", deadlineOn },
           preUseEnergyIntakes,
         });
       });
@@ -152,7 +152,7 @@ describe("目標の設定の要求", () => {
       let response: Response;
       beforeEach(async () => {
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "maintain",
+          plan: { direction: "maintain" },
           preUseEnergyIntakes,
         });
       });
@@ -258,8 +258,7 @@ describe("目標の設定の要求", () => {
       let response: Response;
       beforeEach(async () => {
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
-          deadlineOn,
+          plan: { direction: "lose", deadlineOn },
           preUseEnergyIntakes,
         });
       });
@@ -428,8 +427,7 @@ describe("目標の設定の要求", () => {
       let response: Response;
       beforeEach(async () => {
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
-          deadlineOn,
+          plan: { direction: "lose", deadlineOn },
           bodyData,
         });
       });
@@ -449,8 +447,7 @@ describe("目標の設定の要求", () => {
       beforeEach(async () => {
         mockCaptureExceptionOk();
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
-          deadlineOn,
+          plan: { direction: "lose", deadlineOn },
         });
       });
 
@@ -479,7 +476,9 @@ describe("目標の設定の要求", () => {
       let response: Response;
       beforeEach(async () => {
         mockCaptureExceptionOk();
-        response = await postGoalSetup(sessionToken, "proposals", { direction: "maintain" });
+        response = await postGoalSetup(sessionToken, "proposals", {
+          plan: { direction: "maintain" },
+        });
       });
 
       test("体重記録が無いという理由で断ること", async () => {
@@ -533,8 +532,7 @@ describe("目標の設定の要求", () => {
       let response: Response;
       beforeEach(async () => {
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
-          deadlineOn,
+          plan: { direction: "lose", deadlineOn },
           preUseEnergyIntakes,
         });
       });
@@ -568,8 +566,7 @@ describe("目標の設定の要求", () => {
       beforeEach(async () => {
         // 端末の今日から数えると 183 日めで、受け付ける期限の外になる
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
-          deadlineOn: addDays(currentGoalStartedOn, 181),
+          plan: { direction: "lose", deadlineOn: addDays(currentGoalStartedOn, 181) },
         });
       });
 
@@ -611,7 +608,7 @@ describe("目標の設定の要求", () => {
       let response: Response;
       beforeEach(async () => {
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
+          plan: { direction: "lose" },
           preUseEnergyIntakes,
         });
       });
@@ -627,18 +624,62 @@ describe("目標の設定の要求", () => {
         expect(captureExceptionSpy).toHaveBeenCalledWith(
           expect.objectContaining({
             name: "GoalSetupRequestMalformedError",
-            issues: [{ path: "deadlineOn", code: "custom" }],
+            issues: [{ path: "plan.deadlineOn", code: "invalid_type" }],
           }),
         );
       });
     });
 
+    describe.for(["preview", "proposals", "custom-target-weight", "decisions"] as const)(
+      "%s の本文が JSON として読めないとき",
+      (path) => {
+        let response: Response;
+        beforeEach(async () => {
+          response = await app.request(
+            `/v1/goal-setup/${path}`,
+            {
+              method: "POST",
+              headers: {
+                authorization: `Bearer ${sessionToken}`,
+                "content-type": "application/json",
+              },
+              body: '{"timeZone": "Asia/Tokyo", "heightCentimeters": 172.5',
+            },
+            env,
+          );
+        });
+
+        test("形の誤りとして 400 で断ること", async () => {
+          expect({ status: response.status, body: await response.json() }).toEqual({
+            status: 400,
+            body: { code: "malformed_request" },
+          });
+        });
+
+        test("本文の値を載せずに、読めなかったことを Sentry に送ること", () => {
+          expect(
+            captureExceptionSpy.mock.calls.map(([error]) => ({
+              error,
+              text: `${String(error)} ${JSON.stringify(error)}`,
+            })),
+          ).toEqual([
+            {
+              error: expect.objectContaining({
+                name: "GoalSetupRequestMalformedError",
+                issues: [{ path: "", code: "invalid_json" }],
+              }),
+              text: expect.not.stringContaining("172.5"),
+            },
+          ]);
+        });
+      },
+    );
+
     describe("期限が開始の日から数えて 27 日めのとき", () => {
       let response: Response;
       beforeEach(async () => {
         response = await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
-          deadlineOn: addDays(today, 26),
+          plan: { direction: "lose", deadlineOn: addDays(today, 26) },
           preUseEnergyIntakes,
         });
       });
@@ -790,8 +831,7 @@ describe("目標の設定の要求", () => {
       responses = [
         await postGoalSetup(sessionToken, "preview", { direction: "lose", ...situation }),
         await postGoalSetup(sessionToken, "proposals", {
-          direction: "lose",
-          deadlineOn,
+          plan: { direction: "lose", deadlineOn },
           ...situation,
         }),
         await postGoalSetup(sessionToken, "custom-target-weight", {

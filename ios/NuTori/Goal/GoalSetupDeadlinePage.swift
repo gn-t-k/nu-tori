@@ -5,15 +5,16 @@ import SwiftUI
 /// 期限のページ。チップ「1か月後・2か月後・3か月後・6か月後」（6か月後が選べる最後の日を越えるときは「26週後」）と、
 /// 「期限」の1行の標準の DatePicker（compact）。選べる日は開始の日から 28〜182 日で、その幅を1行で書く。選んでから「次へ」
 struct GoalSetupDeadlinePage: View {
-    let flow: GoalSetupFlow
+    let content: GoalSetupFlowContent
+    let actions: GoalSetupFlowActions
     let timeZone: () -> TimeZone
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(flow.direction == .gain ? "いつまでに増やしますか" : "いつまでに減らしますか")
+            Text(content.direction == .gain ? "いつまでに増やしますか" : "いつまでに減らしますか")
                 .font(.headline)
             ItemWrappingLayout(spacing: 8, lineSpacing: 8) {
-                ForEach(flow.deadlineChoices.chips, id: \.day) { chip in
+                ForEach(content.deadlineChoices.chips, id: \.day) { chip in
                     chipButton(chip)
                 }
             }
@@ -21,7 +22,8 @@ struct GoalSetupDeadlinePage: View {
                 "期限",
                 selection: deadline,
                 in: date(
-                    of: flow.deadlineChoices.earliestDay)...date(of: flow.deadlineChoices.latestDay),
+                    of: content.deadlineChoices.earliestDay)...date(
+                        of: content.deadlineChoices.latestDay),
                 displayedComponents: .date
             )
             .datePickerStyle(.compact)
@@ -31,25 +33,23 @@ struct GoalSetupDeadlinePage: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            GoalSetupFooter(flow: flow) {
-                Button("次へ") {
-                    Task { await flow.proceedFromDeadline() }
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("goal-setup-next")
+            GoalSetupFooter(page: content.page, goBack: actions.goBack) {
+                Button("次へ", action: actions.proceedFromDeadline)
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("goal-setup-next")
             }
         }
     }
 
     private func chipButton(_ chip: GoalDeadlineChoices.Chip) -> some View {
-        let selected = chip.day == flow.deadline
+        let selected = chip.day == content.deadline
         let label =
             switch chip.label {
             case .months(let months): "\(months)か月後"
             case .weeks(let weeks): "\(weeks)週後"
             }
         return Button {
-            flow.chooseDeadline(chip.day)
+            actions.chooseDeadline(chip.day)
         } label: {
             Text(label)
                 .font(.footnote)
@@ -70,15 +70,15 @@ struct GoalSetupDeadlinePage: View {
 
     private var deadline: Binding<Date> {
         Binding(
-            get: { date(of: flow.deadline) },
-            set: { flow.chooseDeadline(CalendarDay(containing: $0, in: timeZone())) }
+            get: { date(of: content.deadline) },
+            set: { actions.chooseDeadline(CalendarDay(containing: $0, in: timeZone())) }
         )
     }
 
     /// 「10月22日〜4月13日の日を選べます（4〜26週）。」
     private var rangeText: String {
-        let earliest = flow.deadlineChoices.earliestDay
-        let latest = flow.deadlineChoices.latestDay
+        let earliest = content.deadlineChoices.earliestDay
+        let latest = content.deadlineChoices.latestDay
         return
             "\(earliest.month)月\(earliest.day)日〜\(latest.month)月\(latest.day)日の日を選べます（4〜26週）。"
     }

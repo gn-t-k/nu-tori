@@ -3,25 +3,28 @@ import { match } from "ts-pattern";
 import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import type { computeDailyGuide } from "../../daily-guide/domain/compute-daily-guide";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
+import type { RecordChangeWrites } from "../../domain/record-change-writes";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeGoalProposals } from "./compute-goal-proposals";
 import { computeMaintenancePlan } from "./compute-maintenance-plan";
 import { computeTargetWeightLimits } from "./compute-target-weight-limits";
-import { countAcceptedDaysToDeadline } from "./count-accepted-days-to-deadline";
+import { computeWeightChangeGoalInputs } from "./compute-weight-change-goal-inputs";
+import type { CustomTargetWeightRejectionReason } from "./custom-target-weight-rejection-reason";
 import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
 import type { GoalWeightChange } from "./goal";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
+import { moveDeadlineIntoAcceptedRange } from "./move-deadline-into-accepted-range";
 import type { ProposalPace } from "./proposal-pace";
-import type { GoalProposals } from "./propose-goals";
+import type { GoalProposals, GoalProposalsPlan } from "./propose-goals";
 import { proposeGoalsOnBasis } from "./propose-goals-on-basis";
 import { type GoalDecisionRecord, readGoalDecisionRecords } from "./read-goal-decision-records";
 import {
   type CompleteGoalSetupBasis,
-  requireCompleteGoalSetupBasis,
-} from "./require-complete-goal-setup-basis";
-import { resolveGoalSetupBasis, type GoalSetupStores } from "./resolve-goal-setup-basis";
+  resolveCompleteGoalSetupBasis,
+} from "./resolve-complete-goal-setup-basis";
+import type { GoalSetupStores } from "./resolve-goal-setup-basis";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import type { WeightChangeDirection } from "./weight-change-direction";
 import { writeGoalDecision } from "./write-goal-decision";
@@ -61,7 +64,7 @@ export type GoalDecision =
   | {
       status: "custom_target_weight_rejected";
       startedOn: string;
-      reason: "not_on_direction_side" | "pace_too_fast" | "daily_guide_below_minimum";
+      reason: CustomTargetWeightRejectionReason;
       // その期限に受け付ける目標体重が1つも無いときは無い
       nearestAcceptedTargetWeightKg: number | undefined;
     };
@@ -70,7 +73,7 @@ export type GoalDecision =
 // usageEvents は、決めたときに PostHog へ送る出来事（利用状況を送らない人と、再送では空）
 export const decideGoal = (
   writeRecordChanges: RecordChangeWriter,
-  stores: GoalSetupStores & Pick<RecordKindStores, "dailyGuide" | "accountSettings">,
+  stores: GoalDecisionStores,
   request: GoalDecisionRequest,
   now: Date,
 ): GoalDecisionResult =>
@@ -83,17 +86,16 @@ export const decideGoal = (
       });
     }
     return R.pipe(
-      resolveGoalSetupBasis(stores, request, now),
-      R.andThen(requireCompleteGoalSetupBasis),
-      R.andThen((basis) =>
-        R.pipe(
+      resolveCompleteGoalSetupBasis(stores, request, now),
+      R.andThen((basis) => {
+        // 開始の日が違えば、受け付けるかどうかより先に、新しい開始の日の案を見せ直す
+        if (basis.startedOn !== request.startedOn) {
+          return recalculate(basis, request.choice);
+        }
+        return R.pipe(
           assessChoice(basis, request.choice),
-          R.andThen((assessed) => {
-            // 開始の日が違えば、受け付けるかどうかより先に、新しい開始の日の案を見せ直す
-            if (basis.startedOn !== request.startedOn) {
-              return recalculate(basis, request.choice);
-            }
-            return match(assessed)
+          R.andThen((assessed) =>
+            match(assessed)
               .returnType<GoalDecisionResult>()
               .with({ status: "unavailable" }, () => recalculate(basis, request.choice))
               .with({ status: "rejected" }, ({ reason, nearestAcceptedTargetWeightKg }) =>
@@ -107,63 +109,22 @@ export const decideGoal = (
                   usageEvents: [],
                 }),
               )
-              .with({ status: "accepted" }, (accepted) => {
-                if (!isSameAsShown(accepted, request.shown)) {
-                  return recalculate(basis, request.choice);
-                }
-                const goalId = writeGoalDecision(stores, addChange, {
-                  requestId: request.requestId,
-                  goal: {
-                    startedOn: basis.startedOn,
-                    startingWeightTrendKg: basis.startingWeightTrend.trendKg,
-                    targetWeightKg: accepted.targetWeightKg,
-                    decidedAt: now,
-                    timeZone: request.timeZone,
-                    weightChange: accepted.weightChange,
-                  },
-                  dailyGuide: accepted.dailyGuide,
-                  initialExpenditure:
-                    basis.expenditure.source === "current"
-                      ? undefined
-                      : {
-                          expenditureKcal: basis.expenditure.kcal,
-                          source: basis.expenditure.source,
-                        },
-                });
-                const goal = stores.goal.find(goalId);
-                if (goal === undefined) {
-                  throw new Error("書いた目標が読めない");
-                }
-                return R.succeed({
-                  decision: { status: "decided", records: readGoalDecisionRecords(stores, goal) },
-                  usageEvents: sendsUsageData(stores.accountSettings)
-                    ? [
-                        {
-                          name: "goal_decision_recorded",
-                          direction:
-                            request.choice.type === "maintain"
-                              ? "maintain"
-                              : request.choice.direction,
-                          isFirstGoal: basis.currentGoal === undefined,
-                          chosenPlan: accepted.weightChange?.pacePlan ?? "maintain",
-                          hadSlowedProposal: accepted.hadSlowedProposal,
-                          rejectedCustomTargetWeightCount: request.rejectedCustomTargetWeightCount,
-                          expenditureSource:
-                            basis.expenditure.source === "current"
-                              ? "previous"
-                              : basis.expenditure.source,
-                          limitHits: accepted.dailyGuide.limitHits,
-                        },
-                      ]
-                    : [],
-                });
-              })
-              .exhaustive();
-          }),
-        ),
-      ),
+              .with({ status: "accepted" }, (accepted) =>
+                isSameAsShown(accepted, request.shown)
+                  ? R.succeed(
+                      writeDecidedGoal({ stores, addChange, basis, accepted, request, now }),
+                    )
+                  : recalculate(basis, request.choice),
+              )
+              .exhaustive(),
+          ),
+        );
+      }),
     );
   });
+
+type GoalDecisionStores = GoalSetupStores &
+  Pick<RecordKindStores, "dailyGuide" | "accountSettings">;
 
 type GoalDecisionResult = R.Result<
   { decision: GoalDecision; usageEvents: UsageEvent[] },
@@ -172,46 +133,46 @@ type GoalDecisionResult = R.Result<
 
 // 選んだものを、そのときの計算の元で確かめた結果
 type AssessedChoice =
-  | {
-      status: "accepted";
-      targetWeightKg: number;
-      dailyGuide: ReturnType<typeof computeDailyGuide>;
-      weightChange: GoalWeightChange | undefined;
-      // 1日の目安が下限を下回らないよう、速さを落とした案があったか
-      hadSlowedProposal: boolean;
-    }
+  | AcceptedChoice
   // 選んでいた案が出せなくなった
   | { status: "unavailable" }
   | {
       status: "rejected";
-      reason: "not_on_direction_side" | "pace_too_fast" | "daily_guide_below_minimum";
+      reason: CustomTargetWeightRejectionReason;
       nearestAcceptedTargetWeightKg: number | undefined;
     };
 
+type AcceptedChoice = {
+  status: "accepted";
+  targetWeightKg: number;
+  dailyGuide: ReturnType<typeof computeDailyGuide>;
+  weightChange: GoalWeightChange | undefined;
+  // 1日の目安が下限を下回らないよう、速さを落とした案があったか
+  hadSlowedProposal: boolean;
+};
+
 const assessChoice = (
-  { startedOn, startingWeightTrend, expenditure }: CompleteGoalSetupBasis,
+  basis: CompleteGoalSetupBasis,
   choice: GoalChoice,
-): R.Result<AssessedChoice, GoalSetupRequestRejectedError> => {
-  const basisValues = {
-    expenditureKcal: expenditure.kcal,
-    startingWeightTrendKg: startingWeightTrend.trendKg,
-  };
-  return match(choice)
+): R.Result<AssessedChoice, GoalSetupRequestRejectedError> =>
+  match(choice)
     .returnType<R.Result<AssessedChoice, GoalSetupRequestRejectedError>>()
     .with({ type: "maintain" }, () =>
       R.succeed({
         status: "accepted",
-        ...computeMaintenancePlan(basisValues),
+        ...computeMaintenancePlan({
+          expenditureKcal: basis.expenditure.kcal,
+          startingWeightTrendKg: basis.startingWeightTrend.trendKg,
+        }),
         weightChange: undefined,
         hadSlowedProposal: false,
       }),
     )
-    .with({ type: "proposal" }, { type: "custom" }, (weightChangeChoice) => {
-      const { direction, deadlineOn } = weightChangeChoice;
-      return R.pipe(
-        countAcceptedDaysToDeadline({ startedOn, deadlineOn }),
-        R.map((daysFromStartToDeadline) => {
-          const goal = { direction, ...basisValues, daysFromStartToDeadline };
+    .with({ type: "proposal" }, { type: "custom" }, (weightChangeChoice) =>
+      R.pipe(
+        computeWeightChangeGoalInputs(basis, weightChangeChoice),
+        R.map((goal) => {
+          const { deadlineOn } = weightChangeChoice;
           // ハード案がいちばん速いので、速さを落とした案があれば、いちばん速い端は下限で決まっている
           const hadSlowedProposal =
             computeTargetWeightLimits(goal).fastestEndReason === "daily_guide_below_minimum";
@@ -245,25 +206,103 @@ const assessChoice = (
             })
             .exhaustive();
         }),
-      );
-    })
+      ),
+    )
     .exhaustive();
-};
 
-const recalculate = (basis: CompleteGoalSetupBasis, choice: GoalChoice): GoalDecisionResult =>
-  R.pipe(
-    proposeGoalsOnBasis(
-      basis,
-      choice.type === "maintain"
-        ? { direction: "maintain" }
-        : { direction: choice.direction, deadlineOn: choice.deadlineOn },
-    ),
+const recalculate = (basis: CompleteGoalSetupBasis, choice: GoalChoice): GoalDecisionResult => {
+  const plan = match(proposalsPlanOf(choice))
+    .returnType<GoalProposalsPlan>()
+    .with({ direction: "maintain" }, (maintain) => maintain)
+    .with({ direction: "lose" }, { direction: "gain" }, ({ direction, deadlineOn }) => ({
+      direction,
+      // 開始の日がずれて期限が受け付ける幅の外に出たら、いちばん近い日に寄せて見せ直す。端末は返った期限を使い直す
+      deadlineOn: moveDeadlineIntoAcceptedRange({ startedOn: basis.startedOn, deadlineOn }),
+    }))
+    .exhaustive();
+  return R.pipe(
+    proposeGoalsOnBasis(basis, plan),
     R.map((proposals) => ({ decision: { status: "recalculated", proposals }, usageEvents: [] })),
   );
+};
+
+// 書いた記録と、PostHog に送る出来事を返す
+const writeDecidedGoal = ({
+  stores,
+  addChange,
+  basis,
+  accepted,
+  request,
+  now,
+}: {
+  stores: GoalDecisionStores;
+  addChange: RecordChangeWrites["addChange"];
+  basis: CompleteGoalSetupBasis;
+  accepted: AcceptedChoice;
+  request: GoalDecisionRequest;
+  now: Date;
+}): { decision: GoalDecision; usageEvents: UsageEvent[] } => {
+  // 立て直すときは推定を作らず、出来事には前の値を出どころとして送る
+  const { initialExpenditure, observedExpenditureSource } = match(basis.expenditure)
+    .with({ source: "current" }, () => ({
+      initialExpenditure: undefined,
+      observedExpenditureSource: "previous" as const,
+    }))
+    .with({ source: "back_calculated" }, { source: "formula" }, ({ source, kcal }) => ({
+      initialExpenditure: { expenditureKcal: kcal, source },
+      observedExpenditureSource: source,
+    }))
+    .exhaustive();
+  const goalId = writeGoalDecision(stores, addChange, {
+    requestId: request.requestId,
+    goal: {
+      startedOn: basis.startedOn,
+      startingWeightTrendKg: basis.startingWeightTrend.trendKg,
+      targetWeightKg: accepted.targetWeightKg,
+      decidedAt: now,
+      timeZone: request.timeZone,
+      weightChange: accepted.weightChange,
+    },
+    dailyGuide: accepted.dailyGuide,
+    initialExpenditure,
+  });
+  const goal = stores.goal.find(goalId);
+  if (goal === undefined) {
+    throw new Error("書いた目標が読めない");
+  }
+  return {
+    decision: { status: "decided", records: readGoalDecisionRecords(stores, goal) },
+    usageEvents: sendsUsageData(stores.accountSettings)
+      ? [
+          {
+            name: "goal_decision_recorded",
+            direction: proposalsPlanOf(request.choice).direction,
+            isFirstGoal: basis.currentGoal === undefined,
+            chosenPlan: accepted.weightChange?.pacePlan ?? "maintain",
+            hadSlowedProposal: accepted.hadSlowedProposal,
+            rejectedCustomTargetWeightCount: request.rejectedCustomTargetWeightCount,
+            expenditureSource: observedExpenditureSource,
+            limitHits: accepted.dailyGuide.limitHits,
+          },
+        ]
+      : [],
+  };
+};
+
+// 選んだものの向きと期限。維持は期限を持たない
+const proposalsPlanOf = (choice: GoalChoice): GoalProposalsPlan =>
+  match(choice)
+    .returnType<GoalProposalsPlan>()
+    .with({ type: "maintain" }, () => ({ direction: "maintain" }))
+    .with({ type: "proposal" }, { type: "custom" }, ({ direction, deadlineOn }) => ({
+      direction,
+      deadlineOn,
+    }))
+    .exhaustive();
 
 // 目標体重は 0.1 kg 単位、1日の目安は整数で見せているので、その単位で比べる
 const isSameAsShown = (
-  accepted: Pick<Extract<AssessedChoice, { status: "accepted" }>, "targetWeightKg" | "dailyGuide">,
+  accepted: Pick<AcceptedChoice, "targetWeightKg" | "dailyGuide">,
   shown: GoalDecisionRequest["shown"],
 ): boolean =>
   Math.round(accepted.targetWeightKg * 10) === Math.round(shown.targetWeightKg * 10) &&

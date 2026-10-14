@@ -5,10 +5,11 @@ import SwiftUI
 /// 足りない値のページ。ヘルスケアから取れなかった値だけを値の欄にする（身長、生まれた年、性別、活動量の3択、体重の記録が無ければ今の体重）。
 /// そろうまで・受け付ける範囲の外のあいだは「次へ」を押せない。生まれた年は選べる年だけを並べる
 struct GoalSetupMissingValuesPage: View {
-    let flow: GoalSetupFlow
+    let content: GoalSetupFlowContent
+    let actions: GoalSetupFlowActions
 
     var body: some View {
-        if let values = flow.missingValues {
+        if let values = content.missingValues {
             VStack(alignment: .leading, spacing: 12) {
                 Text("1日の目安の計算に使う値を入れてください")
                     .font(.headline)
@@ -16,13 +17,11 @@ struct GoalSetupMissingValuesPage: View {
                 ForEach(values.asked, id: \.self) { field in
                     fieldView(field, values: values)
                 }
-                GoalSetupFooter(flow: flow) {
-                    Button("次へ") {
-                        Task { await flow.proceedFromMissingValues() }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!values.isComplete)
-                    .accessibilityIdentifier("goal-setup-next")
+                GoalSetupFooter(page: content.page, goBack: actions.goBack) {
+                    Button("次へ", action: actions.proceedFromMissingValues)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!values.isComplete)
+                        .accessibilityIdentifier("goal-setup-next")
                 }
             }
         }
@@ -139,7 +138,7 @@ struct GoalSetupMissingValuesPage: View {
     }
 
     private func enter(_ entry: GoalSetupMissingValues.Entry) {
-        flow.enterMissingValues(entry)
+        actions.enterMissingValues(entry)
     }
 }
 

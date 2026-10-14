@@ -3,7 +3,8 @@ import { computeTargetWeightAtPace } from "./compute-target-weight-at-pace";
 import { kilocaloriesPerKilogram } from "../../domain/kilocalories-per-kilogram";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import { weeklyPaceRates } from "./weekly-pace-rates";
-import type { WeightChangeDirection } from "./weight-change-direction";
+import type { FastestEndReason } from "./fastest-end-reason";
+import type { WeightChangeGoalInputs } from "./weight-change-goal-inputs";
 
 // 受け付ける目標体重の両端（0.1kg 単位）。いちばん速い端が、いちばんゆるい端より体重の傾向の側にあるときは、受け付ける目標体重が無い
 export const computeTargetWeightLimits = ({
@@ -11,15 +12,10 @@ export const computeTargetWeightLimits = ({
   expenditureKcal,
   startingWeightTrendKg,
   daysFromStartToDeadline,
-}: {
-  direction: WeightChangeDirection;
-  expenditureKcal: number;
-  startingWeightTrendKg: number;
-  daysFromStartToDeadline: number;
-}): {
+}: WeightChangeGoalInputs): {
   gentlestKg: number;
   fastestKg: number;
-  fastestEndReason: "pace_too_fast" | "daily_guide_below_minimum";
+  fastestEndReason: FastestEndReason;
 } => {
   // 画面は体重の傾向を 0.1kg 単位で出すので、0.1kg に丸めた体重の傾向と同じ目標体重は、向きの側に出ていないとみなす
   const startingTenths = Math.round(startingWeightTrendKg * 10);

@@ -26,8 +26,10 @@ public enum GoalSetupObservation: Sendable, Equatable {
         case customTargetWeight
         case maintenance
         case loseUnavailable
-        /// 止まった場所（下見の答えを待っているあいだを含む）
+        /// 電波が無くて止まった場所
         case stopped
+        /// 次が足りない値か目標案かが分かるまで、下見の答えを待っている場所
+        case awaitingPreview
     }
 
     public enum Choice: Sendable, Equatable {

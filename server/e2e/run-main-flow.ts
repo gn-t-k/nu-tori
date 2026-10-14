@@ -111,8 +111,7 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
   const today = computeCalendarDayInTimeZone(new Date(), goalSetupTimeZone);
   const proposals = goalProposalsSchema.parse(
     await postGoalSetup(options, session, "proposals", {
-      direction: "lose",
-      deadlineOn: addDays(today, 90),
+      plan: { direction: "lose", deadlineOn: addDays(today, 90) },
       bodyData,
     }),
   );

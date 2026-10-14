@@ -1,19 +1,19 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { R } from "@praha/byethrow";
-import { ErrorFactory } from "@praha/error-factory";
 import { captureException } from "@sentry/cloudflare";
 import { match } from "ts-pattern";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
 import { dailyGuidePlanSchema, toDailyGuidePlan } from "./daily-guide-plan-schema";
+import { deadlineOnSchema } from "./deadline-on-schema";
 import { goalDecisionRequestSchema, toGoalDecisionRequest } from "./goal-decision-request-schema";
 import { goalDecisionSchema, toGoalDecisionResponse } from "./goal-decision-schema";
+import { GoalSetupRequestMalformedError } from "./goal-setup-request-malformed-error";
 import { goalProposalsSchema, toGoalProposalsResponse } from "./goal-proposals-schema";
-import {
-  calendarDaySchema,
-  goalSetupSituationSchema,
-  toGoalSetupSituation,
-} from "./goal-setup-situation-schema";
+import { goalSetupSituationSchema, toGoalSetupSituation } from "./goal-setup-situation-schema";
+import { rejectUnreadableJsonBody } from "./reject-unreadable-json-body";
+import { respondGoalSetupRejected } from "./respond-goal-setup-rejected";
+import { weightChangeDirectionSchema } from "./weight-change-direction-schema";
 
 const rejectionSchema = z
   .object({
@@ -39,7 +39,18 @@ const rejectionResponses = {
   429: { description: "回数の歯止めにかかった" },
 } as const;
 
-const weightChangeDirectionSchema = z.enum(["lose", "gain"]);
+// 選んだ向きと期限。維持は期限を持たない
+const goalProposalsPlanSchema = z
+  .discriminatedUnion("direction", [
+    z.object({ direction: z.literal("maintain") }).openapi("GoalMaintainPlan"),
+    z
+      .object({ direction: z.literal("lose"), deadlineOn: deadlineOnSchema })
+      .openapi("GoalLosePlan"),
+    z
+      .object({ direction: z.literal("gain"), deadlineOn: deadlineOnSchema })
+      .openapi("GoalGainPlan"),
+  ])
+  .openapi("GoalProposalsPlan", { description: "選んだ向きと、減量・増量の期限" });
 
 export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
   // 形の誤りも Sentry に送る。誤っていた場所と種類だけを持たせ、届いた値は載せない
@@ -64,7 +75,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       description:
         "向きを選んだ直後に、逆算できるかと、減量の目標案を1つでも出せるかを答える。初めての目標では、先に体重記録を同期で送り切る。何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
       request: {
         body: {
           required: true,
@@ -107,8 +118,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
         { ...toGoalSetupSituation(situation), direction },
       );
       if (R.isFailure(previewed)) {
-        captureException(previewed.error);
-        return c.json({ code: previewed.error.reason }, 422);
+        return respondGoalSetupRejected(c, previewed.error);
       }
       const { canBackCalculate, canOfferLoseProposals } = previewed.value;
       return c.json(
@@ -129,29 +139,13 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       description:
         "減量・増量は、期限までの3つの枠と、自分で決める目標体重の受け付ける幅を答える。維持は、目標体重と1日の目安を答える。そのときの体重の傾向で計算し、何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
       request: {
         body: {
           required: true,
           content: {
             "application/json": {
-              schema: goalSetupSituationSchema
-                .extend({
-                  direction: z.enum(["lose", "gain", "maintain"]),
-                  deadlineOn: calendarDaySchema.optional().openapi({
-                    description:
-                      "期限。減量・増量では必ず付ける。開始の日から数えて（両端を含む）28〜182 日の日",
-                  }),
-                })
-                .superRefine(({ direction, deadlineOn }, context) => {
-                  if (direction !== "maintain" && deadlineOn === undefined) {
-                    context.addIssue({
-                      code: "custom",
-                      path: ["deadlineOn"],
-                      message: "減量・増量には期限が要る",
-                    });
-                  }
-                }),
+              schema: goalSetupSituationSchema.extend({ plan: goalProposalsPlanSchema }),
             },
           },
         },
@@ -165,21 +159,13 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       },
     }),
     async (c) => {
-      const { direction, deadlineOn, ...situation } = c.req.valid("json");
+      const { plan, ...situation } = c.req.valid("json");
       const proposed = await getAccountDurableObject(c.env, c.var.accountId).proposeGoals(
         c.var.accountId,
-        {
-          ...toGoalSetupSituation(situation),
-          // 減量・増量で期限が無い要求は、スキーマが形の誤りとして断っている
-          plan:
-            direction === "maintain" || deadlineOn === undefined
-              ? { direction: "maintain" }
-              : { direction, deadlineOn },
-        },
+        { ...toGoalSetupSituation(situation), plan },
       );
       if (R.isFailure(proposed)) {
-        captureException(proposed.error);
-        return c.json({ code: proposed.error.reason }, 422);
+        return respondGoalSetupRejected(c, proposed.error);
       }
       return c.json(toGoalProposalsResponse(proposed.value), 200);
     },
@@ -193,7 +179,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       description:
         "受け付けるなら、その目標体重の1日の目安と大変さを答える。受け付けないなら、受け付けるいちばん近い目標体重と理由を答える。何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
       request: {
         body: {
           required: true,
@@ -201,7 +187,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
             "application/json": {
               schema: goalSetupSituationSchema.extend({
                 direction: weightChangeDirectionSchema,
-                deadlineOn: calendarDaySchema,
+                deadlineOn: deadlineOnSchema,
                 targetWeightKg: z.number().positive().openapi({
                   description: "0.1 kg 単位に丸めて確かめる",
                 }),
@@ -263,8 +249,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
         targetWeightKg,
       });
       if (R.isFailure(assessed)) {
-        captureException(assessed.error);
-        return c.json({ code: assessed.error.reason }, 422);
+        return respondGoalSetupRejected(c, assessed.error);
       }
       const { startedOn, evaluation } = assessed.value;
       return c.json(
@@ -300,9 +285,9 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       operationId: "decideGoal",
       summary: "目標を決める",
       description:
-        "そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す",
+        "そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す（開始の日がずれて期限が受け付ける幅の外に出たら、受け付けるいちばん近い日を期限にする）。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す",
       security: [{ session: [] }],
-      middleware: [authenticateAccount] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
       request: {
         body: {
           required: true,
@@ -323,16 +308,8 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
         toGoalDecisionRequest(c.req.valid("json")),
       );
       if (R.isFailure(decided)) {
-        captureException(decided.error);
-        return c.json({ code: decided.error.reason }, 422);
+        return respondGoalSetupRejected(c, decided.error);
       }
       return c.json(toGoalDecisionResponse(decided.value), 200);
     },
   );
-
-// 形の誤りで断った要求。値は残さないので、誤っていた場所（キーの道筋）と種類だけを持つ
-class GoalSetupRequestMalformedError extends ErrorFactory({
-  name: "GoalSetupRequestMalformedError",
-  message: "目標の設定の要求の形が違う",
-  fields: ErrorFactory.fields<{ issues: { path: string; code: string }[] }>(),
-}) {}

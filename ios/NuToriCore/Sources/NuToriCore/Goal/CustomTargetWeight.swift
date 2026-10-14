@@ -13,6 +13,22 @@ public struct CustomTargetWeight: Sendable, Equatable {
     /// 自分で決める目標体重の要求の答えを待っている（止めて 0.3 秒たつ前を含む）
     public let isAssessing: Bool
 
+    public init(
+        kilograms: Double,
+        direction: GoalProposals.Direction,
+        range: GoalProposals.AcceptedTargetWeightRange,
+        correctedReason: TargetWeightLimitReason?,
+        assessment: CustomTargetWeightAssessment.Accepted,
+        isAssessing: Bool
+    ) {
+        self.kilograms = kilograms
+        self.direction = direction
+        self.range = range
+        self.correctedReason = correctedReason
+        self.assessment = assessment
+        self.isAssessing = isAssessing
+    }
+
     /// 受け付ける端で − を押せなくする
     public var canDecrease: Bool {
         kilograms > range.minimumKilograms

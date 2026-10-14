@@ -44,11 +44,17 @@ public final class GoalSetupFlow {
     public private(set) var isOpen = false
     public private(set) var direction: GoalSetupDirection?
     public private(set) var deadline: CalendarDay
-    public let deadlineChoices: GoalDeadlineChoices
+    /// 目標案の開始の日がずれたら、その日から数え直す
+    public private(set) var deadlineChoices: GoalDeadlineChoices
     /// 足りない値のページの欄と入れた値。逆算できないと分かるまでは nil
     public private(set) var missingValues: GoalSetupMissingValues?
-    /// 目標案か維持の値。届くまでは nil
-    public private(set) var proposals: GoalProposals?
+    /// 目標案か維持の値。届くまでと、届かなかったときは nil
+    public var proposals: GoalProposals? {
+        switch proposalsState {
+        case .received(let proposals): proposals
+        case .notReceived, .unreachable: nil
+        }
+    }
     /// 目標案のページで選んでいる案
     public private(set) var selectedPace: GoalProposals.Pace?
     public private(set) var customTargetWeight: CustomTargetWeight?
@@ -58,10 +64,8 @@ public final class GoalSetupFlow {
     /// 決めずに新しい案が返った。「新しい体重で計算し直しました。」を添える
     public private(set) var showsRecalculated = false
 
-    /// 目標案の上の1行に見せる、足りない値の「次へ」で決めた身体データ。逆算できる人と、決めたあとは nil
-    public var usedBody: GoalSetupBody? {
-        submittedBody
-    }
+    /// 足りない値の「次へ」で決めた身体データ。目標案の上の1行に見せ、要求に添える。逆算できる人と、決めたあとは nil
+    public private(set) var submittedBody: GoalSetupBody?
 
     /// 今日の体重の記録が無いときの、目標案に使った最後の体重記録の日（「体重は 9月21日までの記録を使っています。」）。
     /// 今日の記録があるときと、目標案が届く前は nil
@@ -89,9 +93,9 @@ public final class GoalSetupFlow {
         return Progress(count: steps.count, index: steps.firstIndex(of: current) ?? 0)
     }
 
-    /// 閉じたカードを「続ける」にするか
+    /// 閉じたカードを「続ける」にするか。決めたあとは、続けるものが無い
     public var hasProgress: Bool {
-        direction != nil
+        direction != nil && decision != .decided
     }
 
     public var isRestart: Bool {
@@ -146,7 +150,7 @@ public final class GoalSetupFlow {
             case .maintain: needsMissingValues ? .missingValues : .final
             }
         guard needsPreview else {
-            previewGeneration += 1
+            previewRequest.invalidate()
             preview = .notNeeded
             await fetchProposalsIfReady()
             return
@@ -164,7 +168,7 @@ public final class GoalSetupFlow {
     public func proceedFromDeadline() async {
         guard position == .deadline else { return }
         position = needsMissingValues ? .missingValues : .final
-        await previewTask?.value
+        await previewRequest.task?.value
         await fetchProposalsIfReady()
     }
 
@@ -226,7 +230,7 @@ public final class GoalSetupFlow {
         if case .unreachable = preview {
             await runPreview()
         } else {
-            proposalsUnreachable = false
+            proposalsState = .notReceived
             await fetchProposalsIfReady()
         }
     }
@@ -267,11 +271,11 @@ public final class GoalSetupFlow {
             rejectedCustomTargetWeightCount += 1
         }
         customTargetWeight = custom.moved(to: clamped, correctedReason: reason)
-        assessmentGeneration += 1
-        let generation = assessmentGeneration
-        let task = Task {
+        // 待っている前の要求は出さない
+        assessmentRequest.task?.cancel()
+        let task = assessmentRequest.start { generation in
             do {
-                try await wait(Self.customTargetWeightPause)
+                try await self.wait(Self.customTargetWeightPause)
             } catch {
                 // 次に動かした
                 return
@@ -279,8 +283,6 @@ public final class GoalSetupFlow {
             // 出した要求は、次に動かしても取り消さない。届いた順が入れ替わっても、最後に出した要求の答えだけを使う
             await Task { await self.sendAssessment(generation: generation) }.value
         }
-        assessmentTask?.cancel()
-        assessmentTask = task
         await task.value
     }
 
@@ -292,13 +294,18 @@ public final class GoalSetupFlow {
     /// 「この目標で始める」「維持で始める」。自分で決める目標体重の答えを待っていれば、届いてから決める
     public func decide() async {
         guard decision == .idle else { return }
+        let isCustomTargetWeightUnanswered = unreachableRequest == .customTargetWeight
         unreachableRequest = nil
         decision = .deciding
         if position == .custom {
+            // 届かなかったときに見せている1日の目安は、今の目標体重のものではないので、問い直して届いてから決める
+            if isCustomTargetWeightUnanswered {
+                await assessCustomTargetWeight()
+            }
             // 答えが受け付けない値の直しを連れてきたら、次の要求を待ち直す
-            while customTargetWeight?.isAssessing == true, let task = assessmentTask {
+            while customTargetWeight?.isAssessing == true, let task = assessmentRequest.task {
                 await task.value
-                if task == assessmentTask { break }
+                if task == assessmentRequest.task { break }
             }
             guard unreachableRequest == nil, customTargetWeight?.isAssessing == false else {
                 decision = .idle
@@ -325,12 +332,10 @@ public final class GoalSetupFlow {
     private var position = Position.direction
     private var preview = PreviewState.notRequested
     /// 分かった逆算の答え。身体データを添えて下見を出し直すあいだも持つ
-    private var canBackCalculate: Bool?
-    private var proposalsUnreachable = false
-    /// 足りない値の「次へ」で決めた身体データ
-    private var submittedBody: GoalSetupBody?
+    private var backCalculation = BackCalculation.unknown
+    private var proposalsState = ProposalsState.notReceived
     /// 使い始める前の日ごとの摂取エネルギー。初めての目標で読んだあと
-    private var preUseEnergyIntakes: [String: Double]?
+    private var preUseEnergyIntakes: [CalendarDay: Double]?
     private var hasAskedAuthorization = false
     private var hasRecordedCurrentWeight = false
     private var rejectedCustomTargetWeightCount = 0
@@ -338,12 +343,9 @@ public final class GoalSetupFlow {
     private var reportedUnavailable = false
     /// 届いたか分からないまま送り直すときも同じ ID を使う
     private let decisionRequestId = UUID()
-    private var previewTask: Task<Void, Never>?
-    private var previewGeneration = 0
-    private var proposalsTask: Task<Void, Never>?
-    private var proposalsGeneration = 0
-    private var assessmentTask: Task<Void, Never>?
-    private var assessmentGeneration = 0
+    private var previewRequest = LatestRequest()
+    private var proposalsRequest = LatestRequest()
+    private var assessmentRequest = LatestRequest()
 
     private enum Position: Equatable {
         case direction
@@ -352,6 +354,34 @@ public final class GoalSetupFlow {
         /// 目標案・維持・断るページの場所
         case final
         case custom
+    }
+
+    private enum ProposalsState: Equatable {
+        case notReceived
+        case received(GoalProposals)
+        /// 電波が届かなかった
+        case unreachable
+    }
+
+    /// 初めての目標で、推定消費カロリーを記録から逆算できるか。立て直しは問わないので、いつも unknown
+    private enum BackCalculation: Equatable {
+        case unknown
+        case possible
+        case impossible
+
+        /// 足りない値を尋ねるか
+        var needsBodyData: Bool {
+            self == .impossible
+        }
+
+        /// 観測に載せる値。分かっていなければ nil
+        var observed: Bool? {
+            switch self {
+            case .unknown: nil
+            case .possible: true
+            case .impossible: false
+            }
+        }
     }
 
     private enum PreviewState: Equatable {
@@ -373,7 +403,7 @@ public final class GoalSetupFlow {
     }
 
     private var needsMissingValues: Bool {
-        isFirst && canBackCalculate == false
+        isFirst && backCalculation.needsBodyData
     }
 
     private var isLoseRefused: Bool {
@@ -381,7 +411,7 @@ public final class GoalSetupFlow {
         if case .answered(let answer) = preview, answer.canOfferLoseProposals == false {
             return true
         }
-        if proposals?.offersNothing == true {
+        if case .received(let proposals) = proposalsState, proposals.offersNothing {
             return true
         }
         return false
@@ -411,15 +441,15 @@ public final class GoalSetupFlow {
         switch preview {
         case .unreachable:
             return .stopped(
-                canBackCalculate == nil && isFirst ? .beforeMissingValues : .beforeProposals)
+                backCalculation == .unknown && isFirst ? .beforeMissingValues : .beforeProposals)
         case .notRequested, .inFlight:
-            if isFirst, canBackCalculate == nil {
+            if isFirst, backCalculation == .unknown {
                 return .awaitingPreview
             }
         case .notNeeded, .answered:
             break
         }
-        if proposalsUnreachable {
+        if proposalsState == .unreachable {
             return .stopped(.beforeProposals)
         }
         return direction == .maintain ? .maintenance : .proposals
@@ -429,7 +459,8 @@ public final class GoalSetupFlow {
         switch page {
         case .direction: .direction
         case .deadline: .deadline
-        case .awaitingPreview, .stopped: .stopped
+        case .awaitingPreview: .awaitingPreview
+        case .stopped: .stopped
         case .missingValues: .missingValues
         case .proposals: .proposals
         case .customTargetWeight: .customTargetWeight
@@ -441,26 +472,25 @@ public final class GoalSetupFlow {
     private var inputs: GoalSetupInputs {
         GoalSetupInputs(
             timeZone: timeZone(),
-            preUseEnergyIntakes: isFirst ? preUseEnergyIntakes ?? [:] : nil,
+            preUseEnergyIntakes: isFirst
+                ? Dictionary(
+                    uniqueKeysWithValues: (preUseEnergyIntakes ?? [:]).map {
+                        ($0.key.yearMonthDay, $0.value)
+                    }) : nil,
             body: submittedBody)
     }
 
     private func clearProposals() {
-        proposalsGeneration += 1
-        proposals = nil
-        proposalsUnreachable = false
+        proposalsRequest.invalidate()
+        proposalsState = .notReceived
         customTargetWeight = nil
         showsRecalculated = false
     }
 
     /// 下見を出す。初めての目標では、許可（1回だけ）、体重記録を送り切る、使い始める前の摂取エネルギーを読む、の順に済ませてから出す
     private func runPreview() async {
-        previewGeneration += 1
-        let generation = previewGeneration
         preview = .inFlight
-        let task = Task { await self.sendPreview(generation: generation) }
-        previewTask = task
-        await task.value
+        await previewRequest.start { await self.sendPreview(generation: $0) }.value
     }
 
     private func sendPreview(generation: Int) async {
@@ -493,8 +523,7 @@ public final class GoalSetupFlow {
                 // 読めなければ、使い始める前の分を使わずに逆算を問う
                 let intakes =
                     (try? await health.intakeEnergyBeforeFirstUse(firstUseDay: firstUseDay)) ?? [:]
-                preUseEnergyIntakes = Dictionary(
-                    uniqueKeysWithValues: intakes.map { ($0.key.yearMonthDay, $0.value) })
+                preUseEnergyIntakes = intakes
             }
         }
         let received: GoalSetupPreview
@@ -510,15 +539,15 @@ public final class GoalSetupFlow {
             finishPreview(.unreachable, generation: generation)
             return
         }
-        guard generation == previewGeneration else { return }
+        guard previewRequest.isLatest(generation) else { return }
         if let canBackCalculate = received.canBackCalculate {
-            self.canBackCalculate = canBackCalculate
+            backCalculation = canBackCalculate ? .possible : .impossible
         }
         if needsMissingValues, missingValues == nil {
             let body =
                 (try? await health.bodyData())
                 ?? HealthBodyData(heightCentimeters: nil, age: nil, sex: nil, dailySteps: [:])
-            guard generation == previewGeneration else { return }
+            guard previewRequest.isLatest(generation) else { return }
             missingValues = GoalSetupMissingValues(
                 health: body, asksCurrentWeight: !hasWeightRecords,
                 today: CalendarDay(containing: now(), in: timeZone()))
@@ -541,54 +570,62 @@ public final class GoalSetupFlow {
     }
 
     private func finishPreview(_ state: PreviewState, generation: Int) {
-        guard generation == previewGeneration else { return }
+        guard previewRequest.isLatest(generation) else { return }
         preview = state
         reportUnavailableIfNeeded()
     }
 
     private func fetchProposalsIfReady() async {
-        guard position == .final || position == .custom, let direction, proposals == nil,
-            !isLoseRefused, !(needsMissingValues && submittedBody == nil)
+        guard position == .final || position == .custom, let direction,
+            proposalsState == .notReceived, !isLoseRefused,
+            !(needsMissingValues && submittedBody == nil)
         else { return }
         switch preview {
         case .notNeeded, .answered: break
         case .notRequested, .inFlight, .unreachable: return
         }
-        if let proposalsTask {
-            await proposalsTask.value
-            if proposals != nil || proposalsUnreachable { return }
+        if let running = proposalsRequest.task {
+            await running.value
+            if proposalsState != .notReceived { return }
         }
-        proposalsGeneration += 1
-        let generation = proposalsGeneration
-        proposalsUnreachable = false
-        let deadlineOn = direction == .maintain ? nil : deadline.yearMonthDay
-        let task = Task {
+        let plan: GoalProposalsPlan =
+            switch direction {
+            case .maintain: .maintain
+            case .lose: .weightChange(direction: .lose, deadlineOn: deadline.yearMonthDay)
+            case .gain: .weightChange(direction: .gain, deadlineOn: deadline.yearMonthDay)
+            }
+        let task = proposalsRequest.start { generation in
             do {
-                let result = try await self.client.proposeGoals(
-                    direction: direction, deadlineOn: deadlineOn, inputs: self.inputs)
-                guard generation == self.proposalsGeneration else { return }
+                let result = try await self.client.proposeGoals(plan, inputs: self.inputs)
+                guard self.proposalsRequest.isLatest(generation) else { return }
                 guard case .answered(let proposals) = await self.answer(of: result) else {
-                    self.proposalsUnreachable = true
+                    self.proposalsState = .unreachable
                     return
                 }
                 self.apply(proposals)
             } catch {
                 await self.errorReporting.report(error, as: .goalSetupRequest)
-                guard generation == self.proposalsGeneration else { return }
-                self.proposalsUnreachable = true
+                guard self.proposalsRequest.isLatest(generation) else { return }
+                self.proposalsState = .unreachable
             }
         }
-        proposalsTask = task
         await task.value
-        if proposalsTask == task {
-            proposalsTask = nil
-        }
+        proposalsRequest.finish(task)
     }
 
     /// 選んでいた案が出せれば残し、出せなければ開くときと同じ決まりで選び直す
     private func apply(_ proposals: GoalProposals) {
-        self.proposals = proposals
+        proposalsState = .received(proposals)
+        // 日をまたいで開始の日がずれると、サーバーは期限を受け付ける幅に寄せた案を返すので、返った開始の日と期限を使い直す
+        if let startDay = CalendarDay(yearMonthDay: proposals.startedOn),
+            startDay != deadlineChoices.startDay
+        {
+            deadlineChoices = GoalDeadlineChoices(startDay: startDay)
+        }
         if case .weightChange(let weightChange) = proposals.plan {
+            if let deadlineDay = CalendarDay(yearMonthDay: weightChange.deadlineOn) {
+                deadline = deadlineDay
+            }
             if !weightChange.offeredProposals.contains(where: { $0.pace == selectedPace }) {
                 selectedPace = proposals.openingProposal?.pace
             }
@@ -602,18 +639,14 @@ public final class GoalSetupFlow {
     private func reportUnavailableIfNeeded() {
         guard isLoseRefused, !reportedUnavailable else { return }
         reportedUnavailable = true
-        observe(.plansUnavailable(canBackCalculate: isFirst ? canBackCalculate : nil))
+        observe(.plansUnavailable(canBackCalculate: backCalculation.observed))
     }
 
     private func assessCustomTargetWeight() async {
         guard let custom = customTargetWeight else { return }
         customTargetWeight = custom.moved(
             to: custom.kilograms, correctedReason: custom.correctedReason)
-        assessmentGeneration += 1
-        let generation = assessmentGeneration
-        let task = Task { await self.sendAssessment(generation: generation) }
-        assessmentTask = task
-        await task.value
+        await assessmentRequest.start { await self.sendAssessment(generation: $0) }.value
     }
 
     private func sendAssessment(generation: Int) async {
@@ -623,7 +656,7 @@ public final class GoalSetupFlow {
                 direction: custom.direction, deadlineOn: deadline.yearMonthDay,
                 targetWeightKilograms: custom.kilograms, inputs: inputs)
             // 最後に出した要求の答えだけを使う
-            guard generation == assessmentGeneration, let current = customTargetWeight else {
+            guard assessmentRequest.isLatest(generation), let current = customTargetWeight else {
                 return
             }
             guard case .answered(let assessment) = await answer(of: result) else {
@@ -640,14 +673,11 @@ public final class GoalSetupFlow {
                     return
                 }
                 customTargetWeight = current.moved(to: nearest, correctedReason: reason)
-                assessmentGeneration += 1
-                let next = assessmentGeneration
-                let task = Task { await self.sendAssessment(generation: next) }
-                assessmentTask = task
+                _ = assessmentRequest.start { await self.sendAssessment(generation: $0) }
             }
         } catch {
             await errorReporting.report(error, as: .goalSetupRequest)
-            guard generation == assessmentGeneration, let current = customTargetWeight else {
+            guard assessmentRequest.isLatest(generation), let current = customTargetWeight else {
                 return
             }
             customTargetWeight = current.unassessed()
@@ -687,13 +717,15 @@ public final class GoalSetupFlow {
             do {
                 try await records.applyGoalDecision(changes)
             } catch {
-                // 同じ記録が同期でも届く
+                // 同じ記録が同期でも届くので、押せないまま残さずに決まったものとして閉じる
                 await errorReporting.report(error, as: .cacheSave)
             }
             await records.respondToGoalSetupNotice()
             discardBodyValues()
             decision = .decided
             observe(.decided(choice: observedChoice(choice), recalculated: hasRecalculated))
+            // 決まったら閉じる。カードは決めた目標を示す形になり、開き直すと新しく始める
+            isOpen = false
         case .recalculated(let recalculated):
             hasRecalculated = true
             showsRecalculated = true
