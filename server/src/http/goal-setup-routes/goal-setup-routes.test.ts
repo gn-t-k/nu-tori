@@ -21,7 +21,9 @@ import { readRows } from "../sync-routes/testing/read-rows";
 import { app } from "../app";
 import { signInTestAccount } from "../testing";
 import { postGoalSetup } from "./testing/post-goal-setup";
+import { leftValuePattern } from "./testing/left-value-pattern";
 import { readAllStoredRows } from "./testing/read-all-stored-rows";
+import { readDecisionRowIds } from "./testing/read-decision-row-ids";
 import { recordDailyWeights } from "./testing/record-daily-weights";
 
 describe("目標の設定の要求", () => {
@@ -857,15 +859,7 @@ describe("目標の設定の要求", () => {
     });
 
     test("目標・推定消費カロリー・1日の目安の表に、何も書かないこと", async () => {
-      expect(
-        await readRows(
-          accountId,
-          "SELECT id FROM goals UNION ALL SELECT id FROM expenditure_estimates UNION ALL SELECT id FROM daily_guides UNION ALL SELECT id FROM goal_decision_receipts",
-        ),
-      ).toEqual([]);
+      expect(await readDecisionRowIds(accountId)).toEqual([]);
     });
   });
 });
-
-// 添えた摂取エネルギー（2413.7）と身長（171.3）、JSON の値として出る歩数（7654）と年齢（113）。ID や時刻の中の同じ並びは拾わない
-const leftValuePattern = /2413\.7|171\.3|[:,[]"?(?:7654|113)"?[,}\]]/u;
