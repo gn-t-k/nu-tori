@@ -1,7 +1,10 @@
 import { accountSettingsTables } from "../account-settings/durable-object/account-settings-tables";
 import { aiUtteranceTables } from "../ai-utterance/durable-object/ai-utterance-tables";
+import { dailyGuideTables } from "../daily-guide/durable-object/daily-guide-tables";
 import { dishTables } from "../dish/durable-object/dish-tables";
 import { estimationTables } from "../estimation/durable-object/estimation-tables";
+import { expenditureEstimateTables } from "../expenditure-estimate/durable-object/expenditure-estimate-tables";
+import { goalTables } from "../goal/durable-object/goal-tables";
 import { ingredientTables } from "../ingredient/durable-object/ingredient-tables";
 import { mealPhotoTables } from "../meal/durable-object/meal-photo-tables";
 import { mealTables } from "../meal/durable-object/meal-tables";
@@ -29,4 +32,7 @@ export const durableObjectTables = {
   ...sentTextTables,
   ...replyTables,
   ...aiUtteranceTables,
+  ...goalTables,
+  ...expenditureEstimateTables,
+  ...dailyGuideTables,
 };
