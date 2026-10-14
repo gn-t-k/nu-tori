@@ -38,6 +38,12 @@ export const createGoalStore = (db: DrizzleSqliteDODatabase): GoalStore => {
   };
   return {
     find,
+    findAll: () =>
+      db
+        .select({ id: goals.id })
+        .from(goals)
+        .all()
+        .flatMap(({ id }) => find(id) ?? []),
     // 閉じていない目標は書く口が1つに保つ。並びは、その日の1日の目安の引き方（開始の日、決めた時刻の順で遅いほう）に合わせる
     findCurrent: () => {
       const current = db

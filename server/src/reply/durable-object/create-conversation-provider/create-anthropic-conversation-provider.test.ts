@@ -766,6 +766,7 @@ const context: ReplyContext = {
     previousDays: [],
     weeklyWeightTrend: [],
     lastWeightRecord: undefined,
+    goal: undefined,
   },
   newUtterance: { at: "2026-10-10T13:00", body: "お昼は親子丼にしたよ" },
 };

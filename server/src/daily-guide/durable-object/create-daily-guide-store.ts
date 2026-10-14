@@ -28,6 +28,12 @@ export const createDailyGuideStore = (db: DrizzleSqliteDODatabase): DailyGuideSt
   };
   return {
     find,
+    findAll: () =>
+      db
+        .select({ id: dailyGuides.id })
+        .from(dailyGuides)
+        .all()
+        .flatMap(({ id }) => find(id) ?? []),
     findByGoalAndEffectiveDay: (goalId, effectiveOn) => {
       const guide = db
         .select({ id: dailyGuides.id })
