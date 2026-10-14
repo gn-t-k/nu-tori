@@ -175,6 +175,8 @@ const richDay: ReplyContext = {
       { firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: 68.3 },
     ],
     lastWeightRecord: { at: "2026-10-10T07:30", weightKg: 68.1 },
+    // 評価の場面は目標を立てる前の人（目標まで残りの体重を尋ねる場面が、渡していない数字を作らないことを見る）
+    goal: undefined,
   },
   newUtterance: { at: "2026-10-10T19:40", body: "" },
 };
@@ -218,6 +220,7 @@ const sparseDay: ReplyContext = {
       { firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: 72.3 },
     ],
     lastWeightRecord: { at: "2026-10-06T07:10", weightKg: 72.3 },
+    goal: undefined,
   },
   newUtterance: { at: "2026-10-10T12:15", body: "" },
 };

@@ -513,6 +513,104 @@ describe("返事に渡す文脈の組み立て", () => {
     });
   });
 
+  describe("目標と1日の目安と推定消費カロリー", () => {
+    // 応える文章は 2026-10-10 12:00（東京）
+    const answeredAt = "2026-10-10T03:00:00Z";
+    // 10/03 に減量の目標を立て、10/10 に立て直した。どちらの日にも推定がある
+    const firstGoal = build.goal(10, "2026-10-03", {
+      targetWeightKg: 70,
+      weightChange: { deadlineOn: "2027-01-01", pacePlan: "standard" },
+      closure: { endedOn: "2026-10-10", nextGoalId: build.id(11) },
+    });
+    const secondGoal = build.goal(11, "2026-10-10", {
+      targetWeightKg: 68.5,
+      weightChange: { deadlineOn: "2027-02-01", pacePlan: "gentle" },
+    });
+    const source = (sentAt: string) =>
+      build.source({
+        sentText: build.sentText(1, sentAt),
+        goals: [firstGoal, secondGoal],
+        dailyGuides: [
+          build.dailyGuide(20, firstGoal.id, "2026-10-03", 1900),
+          build.dailyGuide(21, secondGoal.id, "2026-10-10", 2000),
+        ],
+        expenditureEstimates: [
+          build.expenditureEstimate(30, "2026-10-03", 2400),
+          build.expenditureEstimate(31, "2026-10-10", 2350),
+        ],
+      });
+
+    describe("その日を含む目標があるとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        context = assembleReplyContext(source(answeredAt));
+      });
+
+      test("その日を含む目標の向き・期限・目標体重と、その日の1日の目安と推定消費カロリーを入れること", () => {
+        expect(context.structuredValues.goal).toEqual({
+          direction: "lose",
+          deadlineOn: "2027-02-01",
+          targetWeightKg: 68.5,
+          dailyGuide: { energyKcal: 2000, proteinG: 105, fatG: 55, carbohydrateG: 270 },
+          expenditureKcal: 2350,
+        });
+      });
+    });
+
+    describe("立て直す前の日の文章のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        // 10/09 12:00（東京）
+        context = assembleReplyContext(source("2026-10-09T03:00:00Z"));
+      });
+
+      test("前の目標と、その日以前で始まりの日が最も遅い推定を入れること", () => {
+        expect(context.structuredValues.goal).toEqual({
+          direction: "lose",
+          deadlineOn: "2027-01-01",
+          targetWeightKg: 70,
+          dailyGuide: { energyKcal: 1900, proteinG: 105, fatG: 55, carbohydrateG: 270 },
+          expenditureKcal: 2400,
+        });
+      });
+    });
+
+    describe("維持の目標のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        const goal = build.goal(10, "2026-10-03", { targetWeightKg: 72, weightChange: undefined });
+        context = assembleReplyContext(
+          build.source({
+            sentText: build.sentText(1, answeredAt),
+            goals: [goal],
+            dailyGuides: [build.dailyGuide(20, goal.id, "2026-10-03", 2400)],
+            expenditureEstimates: [build.expenditureEstimate(30, "2026-10-03", 2400)],
+          }),
+        );
+      });
+
+      test("向きを維持にし、期限を入れないこと", () => {
+        expect(context.structuredValues.goal).toMatchObject({
+          direction: "maintain",
+          deadlineOn: undefined,
+          targetWeightKg: 72,
+        });
+      });
+    });
+
+    describe("目標を立てる前の日の文章のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        // 10/02 12:00（東京）
+        context = assembleReplyContext(source("2026-10-02T03:00:00Z"));
+      });
+
+      test("目標も1日の目安も推定消費カロリーも入れないこと", () => {
+        expect(context.structuredValues.goal).toBeUndefined();
+      });
+    });
+  });
+
   describe("渡さないもの", () => {
     let serialized: string;
     beforeEach(() => {
