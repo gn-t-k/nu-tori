@@ -40,6 +40,33 @@ struct NutritionTextTests {
         }
     }
 
+    @Suite("食べた量と1日の目安を並べた値")
+    struct AmountAgainstGuide {
+        @Test("「食べた量 / 目安」にして、単位を最後に1つだけ付けること")
+        func showsEatenOverGuide() {
+            #expect(NutritionText.amount(.exactly(17.4), of: .proteinG, guide: 130) == "17 / 130 g")
+        }
+
+        @Test("「不明」の材料が混じる値には、食べた量に「以上」を付けること")
+        func marksLowerBoundOfEaten() {
+            #expect(
+                NutritionText.amount(.atLeast(78), of: .carbohydrateG, guide: 220)
+                    == "78 以上 / 220 g")
+        }
+
+        @Test("すべての材料が「不明」なら、食べた量を「—」にすること")
+        func dashesUnknownEaten() {
+            #expect(NutritionText.amount(.unknown, of: .fatG, guide: 50) == "— / 50 g")
+        }
+
+        @Test("千を超える目安も3桁ごとに区切ること")
+        func groupsThousandsOfGuide() {
+            #expect(
+                NutritionText.amount(.exactly(358), of: .energyKcal, guide: 1850)
+                    == "358 / 1,850 kcal")
+        }
+    }
+
     @Suite("数と別に置く単位")
     struct Unit {
         @Suite("分かる値")
