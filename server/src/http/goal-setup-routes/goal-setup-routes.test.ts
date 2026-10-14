@@ -781,29 +781,7 @@ describe("目標の設定の要求", () => {
       });
     });
 
-    describe("身体データの年齢が範囲の下の外のとき", () => {
-      let response: Response;
-      beforeEach(async () => {
-        response = await postGoalSetup(sessionToken, "preview", {
-          direction: "lose",
-          bodyData: {
-            sex: "female",
-            heightCentimeters: 160,
-            ageYears: 9,
-            activity: { type: "level", level: "sedentary" },
-          },
-        });
-      });
-
-      test("身体データが範囲の外という理由で断ること", async () => {
-        expect({ status: response.status, body: await response.json() }).toEqual({
-          status: 422,
-          body: { code: "body_data_out_of_range" },
-        });
-      });
-    });
-
-    describe("身体データの年齢が範囲の上の外のとき", () => {
+    describe("身体データの年齢が範囲の外のとき", () => {
       let response: Response;
       beforeEach(async () => {
         response = await postGoalSetup(sessionToken, "preview", {

@@ -3,7 +3,7 @@ import type { ComputedDailyGuide } from "../../../daily-guide/domain/computed-da
 import { computeDailyGuideDifferenceKcal } from "../../../daily-guide/domain/compute-daily-guide-difference-kcal";
 import { computeTargetWeightAtPace } from "../compute-target-weight-at-pace";
 import { computeTargetWeightLimits } from "../compute-target-weight-limits";
-import type { ProposalPace } from "../proposal-pace";
+import { type ProposalPace, proposalPaces } from "../proposal-pace";
 import { weeklyPaceRates } from "../weekly-pace-rates";
 import type { WeightChangeGoalInputs } from "../weight-change-goal-inputs";
 
@@ -24,7 +24,7 @@ export const computeGoalProposals = (
   const { direction, expenditureKcal, startingWeightTrendKg, daysFromStartToDeadline } = goal;
   const { gentlestKg, fastestKg } = computeTargetWeightLimits(goal);
   // 案の速さだと1日の目安が下限を下回るときは、下回らない速さ（受け付けるいちばん速い目標体重）まで落とす
-  const candidates = (["gentle", "standard", "hard"] as const).map((pace) => {
+  const candidates = proposalPaces.map((pace) => {
     const atPaceKg = computeTargetWeightAtPace({
       direction,
       startingWeightTrendKg,
