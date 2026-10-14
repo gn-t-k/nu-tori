@@ -40,7 +40,7 @@ struct UnansweredNoticeLineTests {
 
         @Test("体重の知らせのカードとしては並べないこと")
         func doesNotPlaceAsWeightNotice() {
-            #expect(timeline.days.flatMap(\.items).isEmpty)
+            #expect(timeline.days.flatMap(\.items) == [.goalSetupNotice(notice)])
             #expect(timeline.noticeAwaitingAnswer == nil)
         }
 

@@ -46,7 +46,10 @@ extension Timeline.Item {
             }
         case .meal(let card): card.meal.sentAt
         case .sentText(let bubble): bubble.sentText.sentAt
-        case .rejectedWeightLine, .rejectedMealLine, .rejectedSentTextLine, .notice, .reply: nil
+        case .rejectedWeightLine, .rejectedMealLine, .rejectedSentTextLine, .notice,
+            .goalSetupNotice,
+            .reply:
+            nil
         }
     }
 }

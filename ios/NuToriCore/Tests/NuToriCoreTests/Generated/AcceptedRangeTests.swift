@@ -24,6 +24,26 @@ struct AcceptedRangeTests {
         }
     }
 
+    @Suite("身長")
+    struct HeightCentimeters {
+        // swiftlint:disable:next no_parameterized_test
+        @Test("受け付けるかを決めること", arguments: try TestCases.load().heightCentimeters)
+        func decidesWhetherToAccept(testCase: TestCase) {
+            #expect(
+                AcceptedRange.heightCentimeters.bounds.contains(testCase.value) == testCase.accepted
+            )
+        }
+    }
+
+    @Suite("年齢")
+    struct AgeYears {
+        // swiftlint:disable:next no_parameterized_test
+        @Test("受け付けるかを決めること", arguments: try TestCases.load().ageYears)
+        func decidesWhetherToAccept(testCase: TestCase) {
+            #expect(AcceptedRange.ageYears.bounds.contains(testCase.value) == testCase.accepted)
+        }
+    }
+
     @Suite("食事の写真の枚数")
     struct MealPhotoCount {
         // swiftlint:disable:next no_parameterized_test
@@ -90,6 +110,8 @@ struct AcceptedRangeTests {
     struct TestCases: Decodable {
         let weightKilograms: [TestCase]
         let bodyFatPercentage: [TestCase]
+        let heightCentimeters: [TestCase]
+        let ageYears: [TestCase]
         let mealPhotoCount: [TestCase]
         let mealUtcOffsetSeconds: [TestCase]
         let dishQuantity: [TestCase]

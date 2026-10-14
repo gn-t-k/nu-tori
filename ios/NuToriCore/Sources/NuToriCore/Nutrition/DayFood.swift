@@ -61,28 +61,23 @@ public enum DayFood: Hashable, Sendable {
         if case .figures(let figures) = self { figures } else { nil }
     }
 
-    /// 日のまとめの「食事と栄養」の下に添える文（1日の目安と比べない日）。食事の無い日はまとまりを出さないので空
+    /// 日のまとめの「食事と栄養」の下に添える文。食事の無い日はまとまりを出さないので空。
+    /// 目標が無いことは書かない（日のまとめに「目標を立てる」を置く）
     public var notes: [String] {
-        notes(comparingWith: nil)
-    }
-
-    /// 日のまとめの「食事と栄養」の下に添える文。1日の目安と比べる日は、丸が割合で一周することを書かない
-    public func notes(comparingWith dailyGuide: DailyGuide?) -> [String] {
-        let ring = dailyGuide == nil ? ["目標がないので、丸は P・F・C の割合で一周します。"] : []
         switch self {
         case .noMeals:
             return []
         case .allPending:
-            return ring + [
+            return [
                 "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。"
             ]
         case .unavailable(let pendingMealCount):
-            return ring + [
+            return [
                 Self.pendingNote(pendingMealCount)
                     ?? "この日の食事からは、kcal と P・F・C を出せませんでした。"
             ]
         case .figures(let figures):
-            return ring + [Self.pendingNote(figures.pendingMealCount)].compactMap(\.self)
+            return [Self.pendingNote(figures.pendingMealCount)].compactMap(\.self)
         }
     }
 
