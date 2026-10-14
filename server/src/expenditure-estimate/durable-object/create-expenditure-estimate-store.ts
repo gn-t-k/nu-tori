@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, lte } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../domain/record-id";
 import type { ExpenditureEstimate } from "../domain/expenditure-estimate";
@@ -27,6 +27,13 @@ export const createExpenditureEstimateStore = (
   };
   return {
     find,
+    findEffectiveOnOrBefore: (calendarDay) =>
+      db
+        .select({ id: expenditureEstimates.id })
+        .from(expenditureEstimates)
+        .where(lte(expenditureEstimates.effectiveOn, calendarDay))
+        .all()
+        .flatMap(({ id }) => find(id) ?? []),
     findCurrent: () => {
       const current = db
         .select({ id: expenditureEstimates.id })

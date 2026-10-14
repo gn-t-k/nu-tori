@@ -3,6 +3,8 @@ import type { Goal } from "./goal";
 
 export type GoalStore = {
   find: (id: RecordId) => Goal | undefined;
+  // すべての目標（閉じた目標を含む）。並びは決めない
+  findAll: () => Goal[];
   // 今の目標（閉じていない目標）。初めて目標を立てる前は無い
   findCurrent: () => Goal | undefined;
   // その目標を次の目標にして閉じた、前の目標。初めての目標には無い

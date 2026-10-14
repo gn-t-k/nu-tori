@@ -1,6 +1,9 @@
 import type { AiUtterance } from "../../../../ai-utterance/domain/ai-utterance";
+import type { DailyGuide } from "../../../../daily-guide/domain/daily-guide";
 import type { Dish } from "../../../../dish/domain/dish";
 import { type RecordId, recordIdSchema } from "../../../../domain/record-id";
+import type { ExpenditureEstimate } from "../../../../expenditure-estimate/domain/expenditure-estimate";
+import type { Goal } from "../../../../goal/domain/goal";
 import type { Ingredient } from "../../../../ingredient/domain/ingredient";
 import type { SentText } from "../../../../sent-text/domain/sent-text";
 import type { WeightRecord } from "../../../../weight-record/domain/weight-record";
@@ -16,6 +19,9 @@ export const buildReplyContextSource = {
     meals: [],
     weightRecords: [],
     weightTrend: [],
+    goals: [],
+    dailyGuides: [],
+    expenditureEstimates: [],
     ...overrides,
   }),
 
@@ -110,5 +116,55 @@ export const buildReplyContextSource = {
     timeZone: "Asia/Tokyo",
     version: 1,
     imported,
+  }),
+
+  // 目標。開始の日の体重の傾向は 72 kg で、決めた時刻は開始の日の 12:00（東京）
+  goal: (
+    n: number,
+    startedOn: string,
+    {
+      targetWeightKg,
+      weightChange,
+      closure,
+    }: Pick<Goal, "targetWeightKg" | "weightChange"> & Partial<Pick<Goal, "closure">>,
+  ): Goal => ({
+    id: buildReplyContextSource.id(n),
+    startedOn,
+    startingWeightTrendKg: 72,
+    targetWeightKg,
+    decidedAt: new Date(`${startedOn}T03:00:00Z`),
+    timeZone: "Asia/Tokyo",
+    weightChange,
+    closure,
+  }),
+
+  // 1日の目安。P・F・C は 105・55・270 g
+  dailyGuide: (
+    n: number,
+    goalId: RecordId,
+    effectiveOn: string,
+    energyKcal: number,
+  ): DailyGuide => ({
+    id: buildReplyContextSource.id(n),
+    goalId,
+    expenditureEstimateId: buildReplyContextSource.id(n + 100),
+    effectiveOn,
+    energyKcal,
+    proteinG: 105,
+    fatG: 55,
+    carbohydrateG: 270,
+    limitHits: [],
+  }),
+
+  expenditureEstimate: (
+    n: number,
+    effectiveOn: string,
+    expenditureKcal: number,
+  ): ExpenditureEstimate => ({
+    id: buildReplyContextSource.id(n),
+    effectiveOn,
+    expenditureKcal,
+    estimatedAt: new Date(`${effectiveOn}T03:00:00Z`),
+    initialSource: undefined,
   }),
 };

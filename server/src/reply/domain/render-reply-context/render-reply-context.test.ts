@@ -49,6 +49,7 @@ describe("返事に渡す文脈の文", () => {
       previousDays: [{ calendarDay: "2026-10-09", recorded: false }],
       weeklyWeightTrend: [{ firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: 72.45 }],
       lastWeightRecord: { at: "2026-10-10T07:50", weightKg: 72.4 },
+      goal: undefined,
     },
     newUtterance: { at: "2026-10-10T13:00", body: "このあと何を食べたらいい？" },
   };
@@ -83,6 +84,67 @@ describe("返事に渡す文脈の文", () => {
 
     test("新しい発言に、送った時刻と本文を書くこと", () => {
       expect(blocks[2]?.text).toBe("10/10(土) 13:00 ユーザー: このあと何を食べたらいい？");
+    });
+
+    test("目標が無いとき、目標の節を書かないこと", () => {
+      expect(blocks[1]?.text).not.toContain("目標");
+    });
+  });
+
+  describe("減量の目標があるとき", () => {
+    let text: string | undefined;
+    beforeEach(() => {
+      text = renderReplyContext({
+        ...context,
+        structuredValues: {
+          ...context.structuredValues,
+          goal: {
+            direction: "lose",
+            deadlineOn: "2027-02-01",
+            targetWeightKg: 68.45,
+            dailyGuide: { energyKcal: 2000, proteinG: 105, fatG: 55, carbohydrateG: 270 },
+            expenditureKcal: 2350,
+          },
+        },
+      })[1]?.text;
+    });
+
+    test("目標の向き・期限・目標体重と、今日の1日の目安と推定消費カロリーを書くこと", () => {
+      expect(text).toContain(
+        [
+          "## 目標",
+          "減量。期限 2027/02/01(月)、目標体重 68.5 kg",
+          "今日の1日の目安: 2000 kcal、P 105 g、F 55 g、C 270 g",
+          "推定消費カロリー: 2350 kcal",
+        ].join("\n"),
+      );
+    });
+  });
+
+  describe("維持の目標で、1日の目安と推定消費カロリーが無いとき", () => {
+    let text: string | undefined;
+    beforeEach(() => {
+      text = renderReplyContext({
+        ...context,
+        structuredValues: {
+          ...context.structuredValues,
+          goal: {
+            direction: "maintain",
+            deadlineOn: undefined,
+            targetWeightKg: 72,
+            dailyGuide: undefined,
+            expenditureKcal: undefined,
+          },
+        },
+      })[1]?.text;
+    });
+
+    test("期限を書かず、1日の目安と推定消費カロリーをなしと書くこと", () => {
+      expect(text).toContain(
+        ["## 目標", "維持。目標体重 72 kg", "今日の1日の目安: なし", "推定消費カロリー: なし"].join(
+          "\n",
+        ),
+      );
     });
   });
 });

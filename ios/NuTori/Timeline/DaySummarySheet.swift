@@ -6,13 +6,16 @@ struct DaySummarySheet: View {
     /// 速さの出す条件（記録のある日の数）を数えるための、キャッシュの体重記録（送り待ちを含む）
     let weightRecords: [WeightRecord]
     let weightTrend: WeightTrend?
+    /// 今日を含む目標の、進行中の要約。目標が無ければ nil。今日の日のまとめにだけ出す
+    let goalProgress: GoalProgress?
+    let today: CalendarDay
     let onSeeOnTimeline: (CalendarDay) -> Void
 
     var body: some View {
         NavigationStack {
             List {
                 if shown.food != .noMeals {
-                    foodSection(shown.food)
+                    foodSection(shown)
                 }
                 Section {
                     if let weight = shown.representativeWeight {
@@ -40,6 +43,15 @@ struct DaySummarySheet: View {
                                 .contentTransition(.numericText())
                         }
                     }
+                    // 押しても開くものは無い（目標の画面は次の仕様）
+                    if shownDay == today, let goalProgress {
+                        LabeledContent("目標") {
+                            Text(goalProgress.text)
+                                .monospacedDigit()
+                                .contentTransition(.numericText())
+                        }
+                        .accessibilityIdentifier("day-summary-goal-progress")
+                    }
                 }
                 Section {
                     Button("タイムラインでこの日を見る") {
@@ -65,11 +77,14 @@ struct DaySummarySheet: View {
 
     init(
         timeline: Timeline, day: CalendarDay, weightRecords: [WeightRecord],
-        weightTrend: WeightTrend?, onSeeOnTimeline: @escaping (CalendarDay) -> Void
+        weightTrend: WeightTrend?, goalProgress: GoalProgress?, today: CalendarDay,
+        onSeeOnTimeline: @escaping (CalendarDay) -> Void
     ) {
         self.timeline = timeline
         self.weightRecords = weightRecords
         self.weightTrend = weightTrend
+        self.goalProgress = goalProgress
+        self.today = today
         self.onSeeOnTimeline = onSeeOnTimeline
         _shownDay = State(initialValue: day)
     }
@@ -113,11 +128,17 @@ struct DaySummarySheet: View {
         }
     }
 
-    /// 目標が無いあいだは、丸は P・F・C の割合で一周し、食べた量だけを書く。
+    /// 1日の目安と比べる日は、丸は一周を目安にして食べた分だけ進み、P・F・C を「食べた量 / 目安」にし、目安の kcal を添える。
+    /// 比べない日（目標を立てる前の日）は、丸は P・F・C の割合で一周し、食べた量だけを書く。丸の中はどちらも食べた kcal。
     /// 大きな文字では、丸を文字に合わせて広げ、丸の下に値を並べる
-    private func foodSection(_ food: DayFood) -> some View {
+    private func foodSection(_ day: Timeline.Day) -> some View {
+        let food = day.food
+        let dailyGuide = day.dailyGuide
+        let dayRing = day.ring
         let ring = DayRingView(
-            shares: food.figures?.shares, diameter: ringDiameter, lineWidth: ringLineWidth
+            arcs: dayRing.arcs, exceedsDailyGuide: dayRing.exceedsDailyGuide,
+            diameter: ringDiameter, lineWidth: ringLineWidth,
+            background: Color(.secondarySystemGroupedBackground)
         )
         .overlay {
             ringCenter(food.figures)
@@ -127,7 +148,7 @@ struct DaySummarySheet: View {
                 if pfc != .protein {
                     Divider()
                 }
-                pfcFact(pfc, figures: food.figures)
+                pfcFact(pfc, figures: food.figures, dailyGuide: dailyGuide)
             }
         }
         return Section {
@@ -142,7 +163,15 @@ struct DaySummarySheet: View {
             Text("食事と栄養")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(food.notes, id: \.self) { note in
+                // 試作（prototype-goal-setup-look の「決まったあと」）のとおり、まとまりの下の1行目に置く
+                if let dailyGuide {
+                    Text(
+                        "1日の目安 \(NutritionText.amount(.exactly(Double(dailyGuide.energyKilocalories)), of: .energyKcal))"
+                    )
+                    .monospacedDigit()
+                    .accessibilityIdentifier("day-summary-daily-guide")
+                }
+                ForEach(food.notes(comparingWith: dailyGuide), id: \.self) { note in
                     Text(note)
                 }
             }
@@ -165,15 +194,20 @@ struct DaySummarySheet: View {
     }
 
     /// 名前と値が1行に収まらないときは、値を名前の下に置く。名前と値の途中では改行しない
-    private func pfcFact(_ pfc: PFC, figures: DayFood.Figures?) -> some View {
+    private func pfcFact(_ pfc: PFC, figures: DayFood.Figures?, dailyGuide: DailyGuide?)
+        -> some View
+    {
         let name = HStack(alignment: .firstTextBaseline, spacing: 6) {
             pfc.key
             Text("\(pfc.letter) \(pfc.name)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+        let eaten = figures?.totals[pfc.nutrient] ?? .unknown
         let amount = Text(
-            NutritionText.amount(figures?.totals[pfc.nutrient] ?? .unknown, of: pfc.nutrient)
+            dailyGuide.map {
+                NutritionText.amount(eaten, of: pfc.nutrient, guide: pfc.grams(in: $0))
+            } ?? NutritionText.amount(eaten, of: pfc.nutrient)
         )
         .font(.subheadline)
         .fontWeight(.semibold)
