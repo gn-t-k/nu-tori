@@ -34,6 +34,7 @@ actor SentryErrorReportingSession: ErrorReportingSession {
             case .reminderSchedule: "reminder_schedule"
             case .cacheRead: "cache_read"
             case .notificationPermissionRequest: "notification_permission_request"
+            case .goalSetupRequest: "goal_setup_request"
             }
         await MainActor.run {
             _ = SentrySDK.capture(message: message) { scope in

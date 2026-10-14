@@ -3,13 +3,18 @@ public import HTTPTypes
 public import NuToriAPI
 public import NuToriCore
 public import OpenAPIRuntime
+import Synchronization
 
 /// API のトランスポートの差し替え。送った要求を記録する
 ///
 /// 作り方は、答え方ごとに `ok`（どの要求にも同じ答え）、`sync`（同期の書き込みと取得）、
-/// `account`（サインインと削除）、`mealPhotos`（縮小版を取りに行く）、`error`（投げる）の5つ
+/// `account`（サインインと削除）、`mealPhotos`（縮小版を取りに行く）、`goalSetup`（目標の設定の要求に、テストが決めた答えを返す）、
+/// `error`（投げる）の6つ
 public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
-    public private(set) var requests: [(request: HTTPRequest, body: String?)] = []
+    /// 目標の設定の要求は、答えを待つあいだに次の要求が重なるので、鍵で守る
+    public var requests: [(request: HTTPRequest, body: String?)] {
+        recorded.withLock { $0 }
+    }
 
     /// 送り待ちを送った要求の本文。知らない種類の書き込みがあれば投げる
     public var pushBodies: [SentSyncWrites] {
@@ -181,6 +186,23 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
+    /// 目標の設定の要求（`/v1/goal-setup/...`）に、`respond` が返す状態コードと本文の JSON で答える。
+    /// `respond` は経路の最後の部分（`preview`・`proposals`・`custom-target-weight`・`decisions`）と送った本文を受け取る。
+    /// 待たせてから答えれば、答えが届く順を入れ替えられる。投げれば、つながらなかったことにする
+    public static func goalSetup(
+        respond:
+            @escaping @Sendable (_ endpoint: String, _ body: String) async throws -> (
+                status: HTTPResponse.Status, json: String?
+            )
+    ) -> ClientTransportMock {
+        ClientTransportMock { request, body in
+            let endpoint = String((request.path ?? "").split(separator: "/").last ?? "")
+            let answer = try await respond(endpoint, body ?? "")
+            guard let json = answer.json else { return (HTTPResponse(status: answer.status), nil) }
+            return jsonResponse(status: answer.status, json: json)
+        }
+    }
+
     public static func error(_ error: any Error) -> ClientTransportMock {
         ClientTransportMock { _, _ in throw error }
     }
@@ -193,8 +215,8 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     ) async throws -> (HTTPResponse, HTTPBody?) {
         let bodyText: String? =
             if let body { try await String(collecting: body, upTo: .max) } else { nil }
-        requests.append((request, bodyText))
-        return try respond(request, bodyText)
+        recorded.withLock { $0.append((request, bodyText)) }
+        return try await respond(request, bodyText)
     }
 
     private final class Pulls: @unchecked Sendable {
@@ -209,10 +231,14 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
         }
     }
 
-    private let respond: @Sendable (HTTPRequest, String?) throws -> (HTTPResponse, HTTPBody?)
+    private let respond: @Sendable (HTTPRequest, String?) async throws -> (HTTPResponse, HTTPBody?)
+    private let recorded = Mutex<[(request: HTTPRequest, body: String?)]>([])
 
     private init(
-        respond: @escaping @Sendable (HTTPRequest, String?) throws -> (HTTPResponse, HTTPBody?)
+        respond:
+            @escaping @Sendable (HTTPRequest, String?) async throws -> (
+                HTTPResponse, HTTPBody?
+            )
     ) {
         self.respond = respond
     }
