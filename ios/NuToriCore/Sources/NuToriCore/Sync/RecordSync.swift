@@ -114,6 +114,39 @@ public actor RecordSync {
         }
     }
 
+    /// 目標の設定を始めるときの状況。キャッシュに閉じていない目標があれば立て直し
+    public func goalSetupStart(today: CalendarDay) async throws -> GoalSetupStart {
+        GoalSetupStart(
+            goals: try await store.goals(),
+            hasWeightRecords: !(try await store.weightRecords()).isEmpty,
+            startedOn: try await store.syncState()?.startedOn,
+            today: today)
+    }
+
+    /// 初めての目標の下見の前。ヘルスケアの体重を取り込み（このとき初めて許可を得た人は全期間分）、送り待ちを送って、
+    /// 体重記録の送り待ちが残っていなければ true。電波が無い、同期が止まった、サインインしていなければ false
+    public func sendWeightRecordsForGoalSetup() async -> Bool {
+        await importHealthChanges()
+        guard let result = try? await syncAfterInFlight(), result.ending == .finished,
+            let entries = try? await store.pendingEntries()
+        else { return false }
+        return !entries.contains { $0.kind == .weightRecord }
+    }
+
+    /// 足りない値で入れた今の体重を、今日の体重記録にする。体重の記録が1つも無い人だけが入れるので、いつも作る書き込み
+    public func recordWeight(kilograms: Double, at instant: Date, in timeZone: TimeZone) async throws {
+        try await save(.create(kilograms: kilograms, instant: instant, timeZone: timeZone))
+    }
+
+    /// 目標を決める要求の応答の記録を、取りに行った変更と同じ道でキャッシュに当てる。同じ記録があとで同期でも届く
+    public func applyGoalDecision(_ changes: [SyncChange]) async throws {
+        try await store.apply(
+            SyncBoxResult(
+                kindChanges: changes.compactMap { change in
+                    change.kindName.map { KindChanges(kind: $0, changes: [change]) }
+                }))
+    }
+
     /// キャッシュにその ID の知らせがあるか（答えていても）
     public func hasNotice(id noticeId: UUID) async -> Bool {
         let notices = (try? await store.notices()) ?? []
