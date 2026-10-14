@@ -12,6 +12,8 @@ struct WeightScreen: View {
     let rejectedLines: [RejectedLine]
     let capture: (ClientUsageEvent) async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
+    /// 目標が無いときの「目標を立てる」。タイムラインまで戻り、知らせのカードまで送って広げる。目標があれば nil
+    var startGoalSetup: (() -> Void)?
 
     var body: some View {
         List {
@@ -31,6 +33,13 @@ struct WeightScreen: View {
             } footer: {
                 if let note = trendChart.note {
                     Text(note)
+                }
+            }
+            // 目標までの道のりは次の仕様。目標が無いあいだは、その場所に立てる入口を置く
+            if let startGoalSetup {
+                Section {
+                    Button("目標を立てる", action: startGoalSetup)
+                        .accessibilityIdentifier("weight-screen-start-goal-setup")
                 }
             }
             if !recent.sinceFirstDay.isEmpty {

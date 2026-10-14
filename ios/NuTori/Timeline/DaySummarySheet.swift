@@ -9,6 +9,8 @@ struct DaySummarySheet: View {
     /// 今日を含む目標の、進行中の要約。目標が無ければ nil。今日の日のまとめにだけ出す
     let goalProgress: GoalProgress?
     let today: CalendarDay
+    /// 目標が無いときの「目標を立てる」。シートを閉じ、タイムラインの知らせのカードまで送って広げる。目標があれば nil
+    let startGoalSetup: (() -> Void)?
     let onSeeOnTimeline: (CalendarDay) -> Void
 
     var body: some View {
@@ -52,6 +54,11 @@ struct DaySummarySheet: View {
                         }
                         .accessibilityIdentifier("day-summary-goal-progress")
                     }
+                    // 目標が無いことを文で書かず、立てる入口を置く
+                    if let startGoalSetup {
+                        Button("目標を立てる", action: startGoalSetup)
+                            .accessibilityIdentifier("day-summary-start-goal-setup")
+                    }
                 }
                 Section {
                     Button("タイムラインでこの日を見る") {
@@ -78,8 +85,10 @@ struct DaySummarySheet: View {
     init(
         timeline: Timeline, day: CalendarDay, weightRecords: [WeightRecord],
         weightTrend: WeightTrend?, goalProgress: GoalProgress?, today: CalendarDay,
+        startGoalSetup: (() -> Void)? = nil,
         onSeeOnTimeline: @escaping (CalendarDay) -> Void
     ) {
+        self.startGoalSetup = startGoalSetup
         self.timeline = timeline
         self.weightRecords = weightRecords
         self.weightTrend = weightTrend
@@ -171,7 +180,7 @@ struct DaySummarySheet: View {
                     .monospacedDigit()
                     .accessibilityIdentifier("day-summary-daily-guide")
                 }
-                ForEach(food.notes(comparingWith: dailyGuide), id: \.self) { note in
+                ForEach(food.notes, id: \.self) { note in
                     Text(note)
                 }
             }

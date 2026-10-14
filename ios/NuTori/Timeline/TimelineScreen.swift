@@ -39,6 +39,8 @@ struct TimelineScreen: View {
     /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
     let conversation: Timeline.Conversation
     let conversationActions: ConversationActions
+    /// 目標を立てる知らせのカードが広げる、目標の設定の流れ
+    let goalSetup: GoalSetupSession
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
@@ -58,10 +60,8 @@ struct TimelineScreen: View {
                 content(loaded: loaded)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .overlay(alignment: .top) {
-                        if let card = loaded?.noticeAwaitingAnswer,
-                            unansweredNoticeLineVisibility.shows(for: card)
-                        {
-                            unansweredNoticeLine(card)
+                        if let loaded {
+                            unansweredNoticeLines(in: loaded)
                         }
                     }
             }
@@ -79,7 +79,10 @@ struct TimelineScreen: View {
                     ),
                     rejectedLines: rejectedLines,
                     capture: capture,
-                    saveWeight: saveWeight
+                    saveWeight: saveWeight,
+                    startGoalSetup: loaded.flatMap(goalSetupStarter(in:)).map { start in
+                        { start(.weightScreen) }
+                    }
                 )
             }
             .navigationDestination(for: MealRoute.self) { route in
@@ -137,7 +140,10 @@ struct TimelineScreen: View {
                 if let summaryDay, let loaded {
                     DaySummarySheet(
                         timeline: loaded, day: summaryDay, weightRecords: records,
-                        weightTrend: weightTrend, goalProgress: goalProgress, today: today
+                        weightTrend: weightTrend, goalProgress: goalProgress, today: today,
+                        startGoalSetup: goalSetupStarter(in: loaded).map { start in
+                            { start(.daySummary) }
+                        }
                     ) { chosen in
                         self.summaryDay = nil
                         waitingInstructions += viewport.dayChosen(chosen)
@@ -245,6 +251,8 @@ struct TimelineScreen: View {
     @State private var waitingInstructions: [TimelineViewport.Instruction] = []
     /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
     @State private var replyFirstText = ReplyFirstTextWatch()
+    /// 目標を立てる知らせのカードまで送って広げるよう頼まれた回数。開いているページが同じでも送り直す合図
+    @State private var goalSetupScrollRequests = 0
 
     private var showsCamera: Binding<Bool> {
         Binding(
@@ -398,13 +406,22 @@ struct TimelineScreen: View {
                         viewport = moved
                     }
                 }
-                .onPreferenceChange(AwaitingNoticePositionKey.self) { position in
-                    unansweredNoticeLineVisibility.note(position)
+                .onPreferenceChange(AwaitingNoticePositionKey.self) { positions in
+                    for position in positions {
+                        unansweredNoticeLineVisibility.note(position)
+                    }
                 }
                 .onChange(of: waitingInstructions) { _, instructions in
                     guard !instructions.isEmpty else { return }
                     waitingInstructions = []
                     perform(instructions, with: proxy)
+                }
+                // 目標の設定を広げた・ページを送ったら、カードの下端（塗ったボタン）が入力欄の上に見えるところまで、タイムラインごと送る
+                .onChange(of: goalSetupScrollKey) { _, key in
+                    guard key.page != nil, let notice = timeline.goalSetupNotice else { return }
+                    withAnimation {
+                        proxy.scrollTo(Timeline.Item.goalSetupNotice(notice).id, anchor: .bottom)
+                    }
                 }
                 // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く
                 .onChange(of: reminderLanding, initial: true) { _, landing in
@@ -537,13 +554,81 @@ struct TimelineScreen: View {
                     GeometryReader { geo in
                         Color.clear.preference(
                             key: AwaitingNoticePositionKey.self,
-                            value: UnansweredNoticeLineVisibility.CardPosition(
-                                noticeId: card.notice.id,
-                                maxY: Double(geo.frame(in: .named("timeline")).maxY)))
+                            value: [
+                                UnansweredNoticeLineVisibility.CardPosition(
+                                    noticeId: card.notice.id,
+                                    maxY: Double(geo.frame(in: .named("timeline")).maxY))
+                            ])
+                    }
+                }
+            }
+        case .goalSetupNotice(let notice):
+            GoalSetupNoticeCard(
+                notice: notice,
+                goal: currentGoal,
+                dailyGuide: currentGoal.flatMap(dailyGuide(of:)),
+                session: goalSetup,
+                timeZone: timeZone,
+                open: { entry in openGoalSetup(from: entry) }
+            )
+            .id(item.id)
+            .background {
+                if notice.response == nil {
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: AwaitingNoticePositionKey.self,
+                            value: [
+                                UnansweredNoticeLineVisibility.CardPosition(
+                                    noticeId: notice.id,
+                                    maxY: Double(geo.frame(in: .named("timeline")).maxY))
+                            ])
                     }
                 }
             }
         }
+    }
+
+    /// 帯の下の1行。カードが画面の上へ流れて見えない、答えていない知らせだけを、出した時刻の古い順に出す
+    private func unansweredNoticeLines(in timeline: Timeline) -> some View {
+        VStack(spacing: 0) {
+            ForEach(
+                timeline.unansweredNoticeLines.filter { unansweredNoticeLineVisibility.shows($0) },
+                id: \.self
+            ) { line in
+                switch line {
+                case .missedWeightRecord(let card):
+                    unansweredNoticeLine(card)
+                case .goalSetup:
+                    unansweredGoalSetupLine
+                }
+            }
+        }
+    }
+
+    /// 帯の下の1行「目標を立てる ›」。押すとカードまで送って広げる
+    private var unansweredGoalSetupLine: some View {
+        Button {
+            openGoalSetup(from: .unansweredNoticeLine)
+        } label: {
+            HStack(spacing: 12) {
+                Text("目標を立てる")
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.accentColor)
+            }
+            .font(.footnote)
+            .padding(.horizontal)
+            .frame(minHeight: 44)
+            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+            .overlay(Capsule().stroke(Color(.separator), lineWidth: 0.5))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding([.horizontal, .top])
+        .accessibilityLabel("目標を立てる")
+        .accessibilityIdentifier("unanswered-goal-setup-line")
     }
 
     /// 帯の下の1行。押すと、その知らせまで戻る
@@ -575,6 +660,7 @@ struct TimelineScreen: View {
     private func composer() -> some View {
         TimelineComposer(
             weightRecordedToday: records.contains { $0.day == today },
+            expandsGoalSetup: goalSetup.isOpen && currentGoal == nil,
             preparingWeightEntry: weightEntryPhase == .preparing,
             showsCameraNotice: showsCameraNotice,
             initialDraft: TextDraft.empty,
@@ -693,6 +779,46 @@ struct TimelineScreen: View {
             firstDay: firstDay, today: today)
     }
 
+    /// 今の目標。今日を含む目標が無ければ（西へ移ったあと）、閉じていない目標
+    private var currentGoal: Goal? {
+        DailyGuideForDay(on: today, goals: goals, dailyGuides: dailyGuides)?.goal
+            ?? goals.first { $0.closure == nil }
+    }
+
+    /// その目標の、当てる始まりの日が今日以前で最も遅い1日の目安。今日より後に始まる目標なら、最も早いもの
+    private func dailyGuide(of goal: Goal) -> DailyGuide? {
+        let guides = dailyGuides.filter { $0.goalId == goal.id }.sorted {
+            $0.effectiveDay < $1.effectiveDay
+        }
+        return guides.last { $0.effectiveDay <= today } ?? guides.first
+    }
+
+    /// 日のまとめと体重の画面の「目標を立てる」。目標が無く、知らせのカードがタイムラインにあるときだけ置く
+    private func goalSetupStarter(in timeline: Timeline)
+        -> ((GoalSetupObservation.Entry) -> Void)?
+    {
+        guard currentGoal == nil, timeline.goalSetupNotice != nil else { return nil }
+        return { entry in openGoalSetup(from: entry) }
+    }
+
+    /// シートを閉じ、潜った画面から戻って、知らせのカードまで送って広げる。途中まで進めていれば同じページから
+    private func openGoalSetup(from entry: GoalSetupObservation.Entry) {
+        showsCameraNotice = false
+        summaryDay = nil
+        navigationPath = NavigationPath()
+        Task {
+            await goalSetup.open(from: entry)
+            goalSetupScrollRequests += 1
+        }
+    }
+
+    /// 目標の設定を広げているあいだのページ。変わったら、カードの下端まで送る
+    private var goalSetupScrollKey: GoalSetupScrollKey {
+        GoalSetupScrollKey(
+            requests: goalSetupScrollRequests,
+            page: goalSetup.flow.flatMap { $0.isOpen ? GoalSetupPageKey($0.page) : nil })
+    }
+
     /// 日のまとめの進行中の要約。今日を含む目標で出す
     private var goalProgress: GoalProgress? {
         DailyGuideForDay(on: today, goals: goals, dailyGuides: dailyGuides).flatMap {
@@ -763,14 +889,20 @@ private struct TimelineDayPositionsKey: PreferenceKey {
     }
 }
 
-/// 今日の答えていない知らせのカードの位置。カードを描いていなければ nil
+/// 答えていない知らせのカード（今日の体重の知らせと、目標を立てる知らせ）の位置。描いていないカードの位置は無い
 private struct AwaitingNoticePositionKey: PreferenceKey {
-    static let defaultValue: UnansweredNoticeLineVisibility.CardPosition? = nil
+    static let defaultValue: [UnansweredNoticeLineVisibility.CardPosition] = []
 
     static func reduce(
-        value: inout UnansweredNoticeLineVisibility.CardPosition?,
-        nextValue: () -> UnansweredNoticeLineVisibility.CardPosition?
+        value: inout [UnansweredNoticeLineVisibility.CardPosition],
+        nextValue: () -> [UnansweredNoticeLineVisibility.CardPosition]
     ) {
-        value = nextValue() ?? value
+        value.append(contentsOf: nextValue())
     }
+}
+
+private struct GoalSetupScrollKey: Equatable {
+    let requests: Int
+    /// 広げていなければ nil
+    let page: GoalSetupPageKey?
 }

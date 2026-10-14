@@ -9,6 +9,8 @@ final class RootModel {
     private(set) var reminderLanding: ReminderLanding?
     /// 画面が今日と操作した時刻を読む時計
     let clock: DeviceClock
+    /// 目標を立てる知らせのカードが広げる、目標の設定の流れ
+    let goalSetup: GoalSetupSession
     /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカードで、まだ送れていない料理として見せる
     private(set) var unsentDishIds: Set<UUID> = []
     /// まだ届いていない記録。タイムラインで薄く描く
@@ -26,9 +28,11 @@ final class RootModel {
         reflector: RecordSyncReflector,
         health: HealthSyncSession,
         missedWeightRecordWatch: MissedWeightRecordWatch,
+        goalSetup: GoalSetupSession,
         clock: DeviceClock
     ) {
         self.clock = clock
+        self.goalSetup = goalSetup
         self.accountSession = accountSession
         self.recordSync = recordSync
         self.health = health
@@ -395,6 +399,8 @@ final class RootModel {
         case .signIn:
             // 受け付けなかった1行は前のアカウントの記録なので、次にサインインしたアカウントに出さない
             discardRejectedLines()
+            // 途中の答え（手で入れた身体データを含む）を、次にサインインしたアカウントに持ち越さない
+            goalSetup.discard()
             // サインアウトとアカウントの削除で、予約した通知と通知センターに残った通知を外し、前の時刻で待たない
             recordSync.stopWaitingForNoticeTime()
             Task { [recordSync] in await recordSync.stopFollowingReplies() }

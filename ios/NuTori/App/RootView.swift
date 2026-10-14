@@ -73,6 +73,7 @@ struct RootView: View {
                     await model.sendText(draft)
                 },
                 replyStreams: model.replyStreams,
+                goalSetup: model.goalSetup,
                 conversationActions: ConversationActions(
                     resendAsConversation: { sentTextId, deletedMealCount in
                         await model.resendAsConversation(
