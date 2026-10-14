@@ -91,7 +91,7 @@ public struct TimelineViewport: Equatable, Sendable {
         // 一番下にいるあいだは、新しい並びで数え直す（開いたあとに同期で届いた古い日を並べ、遡って足した日を片づける）。上の日が出入りしても、一番下からは見えない。
         // ただし、着く先の日は外さない。着くと決めてから動くまでは、まだ一番下にいる。
         // 遡っているあいだは、並べていた日のままにする。上の日が出入りすると、読んでいる所がずれる
-        if followsEnd && endPosition.isAtEnd {
+        if isAtEnd {
             let recounted = Self.oldestDay(ofBatchBefore: nil, in: new)
             oldestListedDay = [recounted, landingDay].compactMap { $0 }.min()
         } else {
@@ -99,6 +99,7 @@ public struct TimelineViewport: Equatable, Sendable {
         }
         guard Timeline.addsItemByUserAtEnd(from: old, to: new, now: now) else { return [] }
         followsEnd = true
+        landingDay = nil
         return [.scroll(to: .end, animated: false)]
     }
 
@@ -124,6 +125,7 @@ public struct TimelineViewport: Equatable, Sendable {
             }
             return [.scroll(to: .item(itemId), animated: true)]
         case .end:
+            landingDay = nil
             return [.scroll(to: .end, animated: false)]
         }
     }
@@ -171,16 +173,24 @@ public struct TimelineViewport: Equatable, Sendable {
         return oldest
     }
 
-    /// その日が並んでいなければ、その日まで並べる。着き終えるまで、その日を並べる日から外さない
+    /// その日が並んでいなければ、その日まで並べる。一番下にいるなら、一番下が画面の外に出るか、指で触れるか、一番下へ連れていくまで、その日を並べる日から外さない
     private mutating func list(_ day: CalendarDay, in days: [Timeline.Day]) {
         guard let listedOldest = listedDays(of: days).first?.day else { return }
         oldestListedDay = min(listedOldest, day)
-        landingDay = day
+        // 遡っているあいだは、並べていた日のままにする（`daysChanged`）ので、持たなくても外れない
+        if isAtEnd {
+            landingDay = day
+        }
+    }
+
+    /// 一番下にいるか。追っていて、一番下が見えている（入力欄の下に隠れていても）
+    private var isAtEnd: Bool {
+        followsEnd && endPosition.isAtEnd
     }
 
     /// 並べたいちばん古い日。開いて日の並びが届くまでは決めず、そのつど数える
     private var oldestListedDay: CalendarDay?
-    /// 着く先の日。一番下が画面の外に出るか、指で触れるまで持つ
+    /// 一番下から着く先の日。一番下が画面の外に出るか、指で触れるか、一番下へ連れていくまで持つ
     private var landingDay: CalendarDay?
     private var isAtStart = false
     /// 追うか。立てる場面と下ろす場面は、型のコメントの「追う」と「戻す」

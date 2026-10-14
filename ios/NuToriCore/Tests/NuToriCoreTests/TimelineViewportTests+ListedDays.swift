@@ -300,12 +300,11 @@ extension TimelineViewportTests {
 
         @Suite("一番下で、並べていない日を選んでから動くまでのあいだに、今日の項目が足されたとき")
         struct ItemAddedBeforeLanding {
-            let days: [Timeline.Day]
             let added: [Timeline.Day]
             var viewport: TimelineViewport
 
             init() throws {
-                days = try ListedDays.fortyDays()
+                let days = try ListedDays.fortyDays()
                 added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
                 viewport = ListedDays.opened(with: days)
                 _ = viewport.dayChosen(days[5].day, in: days)
@@ -358,6 +357,39 @@ extension TimelineViewportTests {
             @Test("着いた日を片づけ、新しいほうから項目が30個たまる3日を並べること")
             func listsNewestDaysHoldingBatch() {
                 #expect(Array(viewport.listedDays(of: added)) == Array(added.suffix(3)))
+            }
+        }
+
+        @Suite("遡っているときに並べていない日を選んで着き、そのあと入力欄から項目を足して一番下へ戻ったとき")
+        struct ItemAddedByUserAfterLandingWhileScrolledAway {
+            let afterReturning: [Timeline.Day]
+            var viewport: TimelineViewport
+
+            init() throws {
+                let days = try ListedDays.fortyDays()
+                let added = try ListedDays.days(
+                    recordCounts: Array(repeating: 10, count: 39) + [11])
+                afterReturning = try ListedDays.days(
+                    recordCounts: Array(repeating: 10, count: 39) + [12])
+                viewport = ListedDays.scrolledAway(from: days)
+                _ = viewport.dayChosen(days[5].day, in: days)
+                // 足した体重の時刻を今として渡し、たった今足したものとして一番下へ連れていく
+                let addedAt = try #require(
+                    added.last?.items.last.flatMap { item -> Date? in
+                        guard case .weightRecord(let record) = item else { return nil }
+                        return record.instant
+                    })
+                _ = viewport.daysChanged(from: days, to: added, now: addedAt)
+                viewport.endPositionChanged(to: .shown)
+                _ = viewport.daysChanged(
+                    from: added, to: afterReturning, now: ListedDays.notJustAdded)
+            }
+
+            @Test("着いた日を片づけ、新しいほうから項目が30個たまる3日を並べること")
+            func listsNewestDaysHoldingBatch() {
+                #expect(
+                    Array(viewport.listedDays(of: afterReturning))
+                        == Array(afterReturning.suffix(3)))
             }
         }
 
