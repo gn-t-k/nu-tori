@@ -10,10 +10,16 @@ import type { Notice } from "../domain/notice";
 // 文字列をキーにした値なので、openapi.json には部品として書き出し、端末が値の形を読めるようにする
 const noticeRecordSchema = z.object({
   id: z.string(),
-  noticeType: z.string().openapi({ example: "missed_weight_record" }),
+  noticeType: z.string().openapi({
+    description: "missed_weight_record（体重の記録忘れ）、goal_setup（目標を立てる）",
+    example: "missed_weight_record",
+  }),
   issuedAt: z.number().int().openapi({ description: "UNIX 時刻のミリ秒（UTC）" }),
   timeZone: z.string().openapi({ example: "Asia/Tokyo" }),
-  targetOn: z.string().openapi({ description: "YYYY-MM-DD" }),
+  targetOn: z
+    .string()
+    .optional()
+    .openapi({ description: "対象の日付（YYYY-MM-DD）。missed_weight_record だけに付く" }),
   response: z
     .object({
       respondedAt: z.number().int().openapi({ description: "UNIX 時刻のミリ秒（UTC）" }),
@@ -42,12 +48,17 @@ const createNoticeWriteSchema = z
     notice: z.object({
       id: recordIdSchema,
       noticeType: z.string().openapi({
-        description: "missed_weight_record（体重の記録忘れ）。知らない値は受け付けない",
+        description:
+          "missed_weight_record（体重の記録忘れ）、goal_setup（目標を立てる）。知らない値は受け付けない",
         example: "missed_weight_record",
       }),
       issuedAt: timestampSchema,
       timeZone: timeZoneSchema,
-      targetOn: z.string().openapi({ description: "YYYY-MM-DD", example: "2026-01-01" }),
+      targetOn: z.string().optional().openapi({
+        description:
+          "対象の日付（YYYY-MM-DD）。missed_weight_record には要り、goal_setup には付けない",
+        example: "2026-01-01",
+      }),
     }),
   })
   .openapi("CreateNoticeWrite");
@@ -101,7 +112,10 @@ export const noticeHttpKind: HttpRecordKind<
     noticeType: value.noticeType,
     issuedAt: value.issuedAt.getTime(),
     timeZone: value.timeZone,
-    targetOn: value.targetOn,
+    targetOn: match(value)
+      .with({ noticeType: "missed_weight_record" }, ({ targetOn }) => targetOn)
+      .with({ noticeType: "goal_setup" }, () => undefined)
+      .exhaustive(),
     response:
       value.response === undefined
         ? undefined

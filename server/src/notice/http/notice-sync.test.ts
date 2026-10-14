@@ -6,16 +6,19 @@ import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 import { sourceDeletedWeightRecordWrite } from "../../weight-record/http/testing/source-deleted-weight-record-write";
+import { countMissedRecordNotices } from "./testing/count-missed-record-notices";
+import { createGoalSetupNoticeWrite } from "./testing/create-goal-setup-notice-write";
 import { createNoticeWrite } from "./testing/create-notice-write";
 import { respondNoticeWrite } from "./testing/respond-notice-write";
 import { beforeEach, describe, expect, test } from "vitest";
 
 describe("知らせの同期", () => {
+  let accountId: string;
   let sessionToken: string;
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ sessionToken } = await signInTestAccount(generateRecordId()));
+    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
   });
 
   describe("体重の記録忘れの知らせを作る書き込みを送ったとき", () => {
@@ -55,6 +58,117 @@ describe("知らせの同期", () => {
           },
         },
       ]);
+    });
+  });
+
+  describe("目標を立てる知らせを作る書き込みを送ったとき", () => {
+    let write: ReturnType<typeof createGoalSetupNoticeWrite>;
+    let noticeId: string;
+    let response: Response;
+    beforeEach(async () => {
+      write = createGoalSetupNoticeWrite({
+        notice: { issuedAt: 1_767_225_600_000, timeZone: "Asia/Tokyo" },
+      });
+      noticeId = String(write.notice["id"]);
+      response = await pushSyncWrites(sessionToken, { writes: [write] });
+    });
+
+    test("当てたと書き込みごとの結果を返すこと", async () => {
+      expect({ status: response.status, body: await response.json() }).toEqual({
+        status: 200,
+        body: { results: [{ writeId: write.id, result: "applied" }] },
+      });
+    });
+
+    test("取りに行くと、対象の日付も答えも無い知らせが返ること", async () => {
+      const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+      expect(pulled.changes).toEqual([
+        {
+          sequence: expect.any(Number),
+          kind: "notice",
+          recordId: noticeId,
+          record: {
+            id: noticeId,
+            noticeType: "goal_setup",
+            issuedAt: 1_767_225_600_000,
+            timeZone: "Asia/Tokyo",
+          },
+        },
+      ]);
+    });
+
+    test("記録忘れの知らせの子の行を書かないこと", async () => {
+      expect(await countMissedRecordNotices(accountId, noticeId)).toBe(0);
+    });
+
+    describe("2台目から、同じ知らせの ID で作る書き込みを送ったとき", () => {
+      let second: Response;
+      beforeEach(async () => {
+        second = await pushSyncWrites(sessionToken, {
+          writes: [
+            createGoalSetupNoticeWrite({ notice: { id: noticeId, issuedAt: 1_767_229_200_000 } }),
+          ],
+        });
+      });
+
+      test("捨てること", async () => {
+        expect((await second.json<PushResults>()).results[0]?.result).toBe("ignored_duplicate");
+      });
+
+      test("先の知らせの値を変えないこと", async () => {
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes.map(({ record }) => record["issuedAt"])).toEqual([1_767_225_600_000]);
+      });
+    });
+
+    describe("答える書き込みを送ったとき", () => {
+      let respond: ReturnType<typeof respondNoticeWrite>;
+      let responded: Response;
+      beforeEach(async () => {
+        respond = respondNoticeWrite(noticeId, { response: { respondedAt: 1_767_229_200_000 } });
+        responded = await pushSyncWrites(sessionToken, { writes: [respond] });
+      });
+
+      test("当てたと書き込みごとの結果を返すこと", async () => {
+        expect((await responded.json<PushResults>()).results).toEqual([
+          { writeId: respond.id, result: "applied" },
+        ]);
+      });
+
+      test("取りに行くと、答えを添えた、対象の日付の無い知らせが返ること", async () => {
+        const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+        expect(pulled.changes.map(({ record }) => record)).toEqual([
+          {
+            id: noticeId,
+            noticeType: "goal_setup",
+            issuedAt: 1_767_225_600_000,
+            timeZone: "Asia/Tokyo",
+            response: { respondedAt: 1_767_229_200_000, timeZone: "Asia/Tokyo" },
+          },
+        ]);
+      });
+
+      describe("2つめの答える書き込みを送ったとき", () => {
+        let second: Response;
+        beforeEach(async () => {
+          second = await pushSyncWrites(sessionToken, {
+            writes: [
+              respondNoticeWrite(noticeId, { response: { respondedAt: 1_767_232_800_000 } }),
+            ],
+          });
+        });
+
+        test("捨てること", async () => {
+          expect((await second.json<PushResults>()).results[0]?.result).toBe("ignored_duplicate");
+        });
+
+        test("先の答えが残ること", async () => {
+          const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+          expect(pulled.changes.map(({ record }) => record["response"])).toEqual([
+            { respondedAt: 1_767_229_200_000, timeZone: "Asia/Tokyo" },
+          ]);
+        });
+      });
     });
   });
 
@@ -144,6 +258,36 @@ describe("知らせの同期", () => {
       beforeEach(async () => {
         response = await pushSyncWrites(sessionToken, {
           writes: [createNoticeWrite({ notice: { targetOn: "2026/01/01" } })],
+        });
+      });
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]).toEqual(
+          expect.objectContaining({ result: "rejected", rejectionReason: "invalid_target_on" }),
+        );
+      });
+    });
+
+    describe("体重の記録忘れの知らせに対象の日付が無いとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        const write = createNoticeWrite();
+        const { targetOn: _, ...notice } = write.notice;
+        response = await pushSyncWrites(sessionToken, { writes: [{ ...write, notice }] });
+      });
+
+      test("受け付けないこと", async () => {
+        expect((await response.json<PushResults>()).results[0]).toEqual(
+          expect.objectContaining({ result: "rejected", rejectionReason: "invalid_target_on" }),
+        );
+      });
+    });
+
+    describe("目標を立てる知らせに対象の日付があるとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await pushSyncWrites(sessionToken, {
+          writes: [createGoalSetupNoticeWrite({ notice: { targetOn: "2026-01-01" } })],
         });
       });
 

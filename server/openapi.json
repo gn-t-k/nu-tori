@@ -330,6 +330,7 @@
           },
           "noticeType": {
             "type": "string",
+            "description": "missed_weight_record（体重の記録忘れ）、goal_setup（目標を立てる）",
             "example": "missed_weight_record"
           },
           "issuedAt": {
@@ -342,7 +343,7 @@
           },
           "targetOn": {
             "type": "string",
-            "description": "YYYY-MM-DD"
+            "description": "対象の日付（YYYY-MM-DD）。missed_weight_record だけに付く"
           },
           "response": {
             "type": "object",
@@ -367,8 +368,7 @@
           "id",
           "noticeType",
           "issuedAt",
-          "timeZone",
-          "targetOn"
+          "timeZone"
         ]
       },
       "SentTextRecord": {
@@ -1052,7 +1052,7 @@
               },
               "noticeType": {
                 "type": "string",
-                "description": "missed_weight_record（体重の記録忘れ）。知らない値は受け付けない",
+                "description": "missed_weight_record（体重の記録忘れ）、goal_setup（目標を立てる）。知らない値は受け付けない",
                 "example": "missed_weight_record"
               },
               "issuedAt": {
@@ -1067,7 +1067,7 @@
               },
               "targetOn": {
                 "type": "string",
-                "description": "YYYY-MM-DD",
+                "description": "対象の日付（YYYY-MM-DD）。missed_weight_record には要り、goal_setup には付けない",
                 "example": "2026-01-01"
               }
             },
@@ -1075,8 +1075,7 @@
               "id",
               "noticeType",
               "issuedAt",
-              "timeZone",
-              "targetOn"
+              "timeZone"
             ]
           }
         },
