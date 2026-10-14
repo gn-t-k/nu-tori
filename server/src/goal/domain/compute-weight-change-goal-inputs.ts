@@ -1,5 +1,5 @@
 import { R } from "@praha/byethrow";
-import { countAcceptedDaysToDeadline } from "./count-accepted-days-to-deadline";
+import { countAcceptedDaysToDeadline } from "./accepted-deadline";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { CompleteGoalSetupBasis } from "./resolve-complete-goal-setup-basis";
 import type { WeightChangeDirection } from "./weight-change-direction";

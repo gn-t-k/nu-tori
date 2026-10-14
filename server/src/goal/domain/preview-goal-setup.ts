@@ -1,5 +1,5 @@
 import { R } from "@praha/byethrow";
-import { acceptedDeadlineDays } from "./accepted-deadline-days";
+import { acceptedDeadlineDays } from "./accepted-deadline";
 import { computeGoalProposals } from "./compute-goal-proposals";
 import type { GoalDirection } from "./goal-direction";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
