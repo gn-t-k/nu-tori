@@ -3,10 +3,11 @@ import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
 import { addDays } from "../../../domain/add-days";
 import type { BodyData } from "../body-data";
+import type { InitialExpenditureSource } from "../expenditure-estimate";
 import { computeActivityFactor } from "./compute-activity-factor";
 import { computeBackCalculatedExpenditure } from "./compute-back-calculated-expenditure";
 
-export type InitialExpenditureEstimate = { kcal: number; source: "back_calculated" | "formula" };
+export type InitialExpenditureEstimate = { kcal: number; source: InitialExpenditureSource };
 
 // 初めて目標を立てるときの推定消費カロリー。記録が足りれば逆算し、足りなければ式で出す。目標の向きでは変えない。
 // 逆算できるかだけを知りたいとき（目標の下見）は、bodyData を undefined で呼び、FormulaInputsMissingError を逆算できないと読む

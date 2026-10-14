@@ -2,6 +2,7 @@ import { z } from "@hono/zod-openapi";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import { computeGoalDirection } from "../domain/compute-goal-direction";
 import { type Goal, pacePlans } from "../domain/goal";
+import { goalDirections } from "../domain/goal-direction";
 
 // 取りに行く変更の record の形。応答の SyncChange は種類によらず record を任意のオブジェクトで持つので、応答のスキーマからは指さない
 const goalRecordSchema = z
@@ -20,7 +21,7 @@ const goalRecordSchema = z
       description: "目標を決めた要求のタイムゾーン",
       example: "Asia/Tokyo",
     }),
-    direction: z.enum(["lose", "gain", "maintain"]).openapi({
+    direction: z.enum(goalDirections).openapi({
       description:
         "向き（減量・増量・維持）。weightChange が無ければ維持、あれば目標体重が開始の日の体重の傾向より小さいとき減量、ほかは増量",
     }),

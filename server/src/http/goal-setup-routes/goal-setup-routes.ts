@@ -3,6 +3,7 @@ import { R } from "@praha/byethrow";
 import { captureException } from "@sentry/cloudflare";
 import { match } from "ts-pattern";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
+import { goalDirections } from "../../goal/domain/goal-direction";
 import { authenticateAccount } from "../authenticate-account";
 import { dailyGuidePlanSchema, toDailyGuidePlan } from "./daily-guide-plan-schema";
 import { deadlineOnSchema } from "./deadline-on-schema";
@@ -82,7 +83,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
           content: {
             "application/json": {
               schema: goalSetupSituationSchema.extend({
-                direction: z.enum(["lose", "gain", "maintain"]),
+                direction: z.enum(goalDirections),
               }),
             },
           },

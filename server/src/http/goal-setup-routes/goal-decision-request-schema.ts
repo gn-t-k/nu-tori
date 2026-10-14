@@ -1,6 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import { recordIdSchema } from "../../domain/record-id";
 import type { GoalDecisionRequest } from "../../goal/domain/decide-goal";
+import { proposalPaces } from "../../goal/domain/proposal-pace";
 import { dailyGuidePlanSchema } from "./daily-guide-plan-schema";
 import { deadlineOnSchema } from "./deadline-on-schema";
 import {
@@ -27,7 +28,7 @@ export const goalDecisionRequestSchema = goalSetupSituationSchema.extend({
           type: z.literal("proposal"),
           direction: weightChangeDirectionSchema,
           deadlineOn: deadlineOnSchema,
-          pace: z.enum(["gentle", "standard", "hard"]),
+          pace: z.enum(proposalPaces),
         })
         .openapi("GoalProposalChoice"),
       z
