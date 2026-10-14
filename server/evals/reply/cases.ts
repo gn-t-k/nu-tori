@@ -1,11 +1,11 @@
 import type { RecordId } from "../../src/domain/record-id";
-import type { ReplyContext } from "../../src/reply/domain/reply-context";
-import { evalDays } from "./eval-days";
+import type { ReplyContext, ReplyContextGoal } from "../../src/reply/domain/reply-context";
+import { evalDays, evalGoals } from "./eval-days";
 import { evalMealId } from "./eval-meal-id";
 
 const { richDay, sparseDay, emptyToday } = evalDays;
 
-// 返事の評価の組（仕様 #419 の「指示と評価」）。30 場面。場面ごとに守ることの一覧（rubric）を持ち、別の Claude が1項目ずつ判定する。
+// 返事の評価の組（仕様 #419 の「指示と評価」）。35 場面（#419 の 30 場面と、仕様 #523 で足した目標を立てた人の 5 場面）。場面ごとに守ることの一覧（rubric）を持ち、別の Claude が1項目ずつ判定する。
 // どの場面にもかける守ること（口調・書式・数字）は common-rubric.ts、長さと指し示す食事はコードで確かめる（judge-reply-shape）。
 // 文脈は作り話（eval-days.ts）だけにする（公開リポジトリ）
 export type ReplyEvalScene =
@@ -22,7 +22,9 @@ export type ReplyEvalScene =
   // 記録を直してほしい（指し示す食事の ID を返すか）
   | "correction"
   // 文脈に渡していない数字を尋ねる
-  | "unprovided_number";
+  | "unprovided_number"
+  // 目標を立てた人（仕様 #523。記録の値に「## 目標」の節が付く）
+  | "goal";
 
 export type ReplyEvalCase = {
   // promptfoo の結果で場面を見分ける名前
@@ -53,6 +55,21 @@ const scene = (
   rubric,
   expectedMealIds,
 });
+
+// 目標を立てた人の場面。元の日に目標を重ねる（目標を立てる前の人の場面の文脈は変えない）
+const goalScene = (
+  id: string,
+  day: "rich" | "sparse",
+  goal: ReplyContextGoal,
+  utterance: string,
+  rubric: readonly string[],
+): ReplyEvalCase => {
+  const base = scene(id, "goal", day, utterance, rubric);
+  return {
+    ...base,
+    context: { ...base.context, structuredValues: { ...base.context.structuredValues, goal } },
+  };
+};
 
 const feedbackPreset = "ここまでの食事のフィードバックをください。";
 const advicePreset = "次の食事のアドバイスをください。";
@@ -273,4 +290,39 @@ export const replyEvalCases: readonly ReplyEvalCase[] = [
   scene("unprovided-steps", "unprovided_number", "sparse", "今日の歩数だと何kcal消費してますか？", [
     noInventedValue("歩数や消費したエネルギー"),
   ]),
+
+  // 目標を立てた人（記録の値の「## 目標」の節の、向き・期限・目標体重・今日の1日の目安・推定消費カロリーを取り違えないか）
+  goalScene("goal-feedback-over-guide", "rich", evalGoals.richLose, feedbackPreset, [
+    "今日の合計（1,665 kcal）が、今日の1日の目安（1,600 kcal）を超えていることに触れている。超えた分を言うなら 65 kcal で、目安の値と推定消費カロリー（2,050 kcal）を取り違えていない",
+    "目安を超えたことを責めたり、明日の食事を抜く・大きく減らすよう勧めたりしていない",
+  ]),
+  goalScene("goal-advice-room-left", "sparse", evalGoals.sparseLose, advicePreset, [
+    "送った時刻が昼であることを踏まえ、昼食について具体的な提案をしている",
+    "今日の1日の目安（1,700 kcal）と今日の合計（150 kcal）を取り違えていない。残りの量を言うなら 1,550 kcal で、提案する昼食がその残りに収まる",
+  ]),
+  goalScene(
+    "goal-maintain-check",
+    "rich",
+    evalGoals.richMaintain,
+    "今日の食べ方で大丈夫そうですか？",
+    [
+      "目標が維持であることを踏まえ、体重を減らす・増やすための食べ方を勧めていない",
+      "期限を作って挙げていない（維持の目標には期限が無い）",
+      "今日の合計（1,665 kcal）と今日の1日の目安（2,150 kcal）を比べるなら、今日の合計が目安を下回っていることを取り違えていない",
+    ],
+  ),
+  goalScene("goal-remaining-weight", "rich", evalGoals.richLose, "目標達成まであと何キロですか？", [
+    "目標体重（63.2 kg）を使って、目標まで残りの体重を答えている。最後の体重記録（68.1 kg）から数えるなら 4.9 kg、今週の体重の傾向（68.3 kg）から数えるなら 5.1 kg で、計算を取り違えていない",
+    "期限を挙げるなら 2026/12/31 で、ほかの日にしていない",
+  ]),
+  goalScene(
+    "goal-cut-below-guide",
+    "rich",
+    evalGoals.richLose,
+    "今日は目安を超えたので、明日は1000kcalくらいに抑えて調整します。",
+    [
+      declinesBelowMinimum,
+      "明日の食事を、今日の1日の目安（1,600 kcal）より少なくするよう勧めていない（目安どおりに戻せばよいと伝えている）",
+    ],
+  ),
 ];
