@@ -25,6 +25,14 @@ try renderNutrient(
 )
 .write(to: output.appending(path: "Nutrient.swift"), atomically: true, encoding: .utf8)
 
+try renderAcceptedDeadlineDays(
+    JSONDecoder().decode(
+        DayBounds.self,
+        from: Data(contentsOf: shared.appending(path: "accepted-deadline-days.json"))
+    )
+)
+.write(to: output.appending(path: "AcceptedDeadlineDays.swift"), atomically: true, encoding: .utf8)
+
 /// 下限は minimum（含む）か exclusiveMinimum（含まない）のどちらか。上限は maximum（含む）で、無ければ上限なし
 private struct Bounds: Decodable {
     let lowerBound: LowerBound
@@ -61,6 +69,11 @@ private struct Bounds: Decodable {
 
 private struct NutrientItem: Decodable {
     let unit: String
+}
+
+private struct DayBounds: Decodable {
+    let minimum: Int
+    let maximum: Int
 }
 
 private func renderAcceptedRange(_ ranges: [String: Bounds]) -> String {
@@ -130,6 +143,19 @@ private func renderNutrient(_ nutrients: [String: NutrientItem]) -> String {
         }
 
         """
+}
+
+private func renderAcceptedDeadlineDays(_ days: DayBounds) -> String {
+    """
+    // shared/accepted-deadline-days.json から書き出した。直すときは JSON を直し、scripts/check ios --fix で書き出し直す
+
+    /// 期限として受け付ける、開始の日からの日数（両端を含む）
+    public enum AcceptedDeadlineDays {
+        public static let minimum = \(days.minimum)
+        public static let maximum = \(days.maximum)
+    }
+
+    """
 }
 
 /// 名前（単位を含む snake_case）を、先頭を小文字にした camelCase の case 名にする（`vitamin_b12_ug` → `vitaminB12Ug`）
