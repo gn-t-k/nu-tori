@@ -20,6 +20,16 @@ extension Goal {
         )
     }
 
+    /// `losing()` の開始の日（10月1日）を、`day` に替えたもの
+    static func losing(startedOn day: CalendarDay) throws -> Goal {
+        let losing = try Goal.losing()
+        return Goal(
+            id: losing.id, startedDay: day,
+            startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
+            targetWeightKilograms: losing.targetWeightKilograms, decidedAt: losing.decidedAt,
+            timeZone: losing.timeZone, direction: losing.direction, closure: nil)
+    }
+
     /// 2026-10-20（東京）に決めた、65.0 kg を保つ目標
     static func maintaining(id: UUID = UUID()) throws -> Goal {
         Goal(

@@ -44,12 +44,6 @@
                 }
             }
 
-            private static var decidedGoal: CurrentGoal? {
-                let goal = Goal.sampleLosing(startedOn: .sampleToday)
-                return CurrentGoal(
-                    today: .sampleToday, goals: [goal], dailyGuides: [.sample(for: goal)])
-            }
-
             var flow: GoalSetupNoticeCard.Flow {
                 switch self {
                 case .unanswered, .answeredLater, .decided: .notStarted
@@ -65,6 +59,12 @@
                             showsRecalculated: false, usedValues: nil, pastWeightRecordDay: nil),
                         .none)
                 }
+            }
+
+            private static var decidedGoal: CurrentGoal? {
+                let goal = Goal.sampleLosing(startedOn: .sampleToday)
+                return CurrentGoal(
+                    today: .sampleToday, goals: [goal], dailyGuides: [.sample(for: goal)])
             }
         }
     }

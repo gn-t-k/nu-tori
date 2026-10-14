@@ -32,8 +32,8 @@ struct WeightValueField: View {
                 .focused(typing)
                 .frame(minWidth: 88)
                 .padding(12)
-                .background(Color(.secondarySystemGroupedBackground), in: WeightStepButton.shape)
-                .overlay(WeightStepButton.shape.stroke(Color.accentColor))
+                .background(Color(.secondarySystemGroupedBackground), in: WeightControlShape())
+                .overlay(WeightControlShape().stroke(Color.accentColor))
                 .onChange(of: text) { previous, next in
                     textChanged(previous, next)
                 }
@@ -61,7 +61,7 @@ struct WeightValueField: View {
                 }
                 .frame(minWidth: 88)
                 .padding(12)
-                .background(Color(.tertiarySystemFill), in: WeightStepButton.shape)
+                .background(Color(.tertiarySystemFill), in: WeightControlShape())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(shownLabel)
