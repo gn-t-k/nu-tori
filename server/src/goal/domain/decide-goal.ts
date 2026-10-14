@@ -16,7 +16,7 @@ import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
 import type { GoalWeightChange } from "./goal";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
-import { moveDeadlineIntoAcceptedRange } from "./move-deadline-into-accepted-range";
+import { moveDeadlineIntoAcceptedRange } from "./accepted-deadline";
 import type { ProposalPace } from "./proposal-pace";
 import type { GoalProposals, GoalProposalsPlan } from "./propose-goals";
 import { proposeGoalsOnBasis } from "./propose-goals-on-basis";

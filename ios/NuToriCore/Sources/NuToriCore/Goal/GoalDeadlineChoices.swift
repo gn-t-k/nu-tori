@@ -1,7 +1,7 @@
 import Foundation
 
 /// 期限のページで選べる日とチップ。電波が無くても期限に答えられるよう、端末が開始の日から出す（ルートの `AGENTS.md` の基準1）。
-/// 受け付ける幅（開始の日から両端を含めて 28〜182 日）の正本はサーバーの `acceptedDeadlineDays`
+/// 受け付ける幅（開始の日から両端を含めて 28〜182 日）の正本は `shared/accepted-deadline-days.json`（`AcceptedDeadlineDays` に書き出す）
 public struct GoalDeadlineChoices: Sendable, Equatable {
     public let startDay: CalendarDay
     /// 選べる最初の日（開始の日から数えて 28 日め）
@@ -12,18 +12,19 @@ public struct GoalDeadlineChoices: Sendable, Equatable {
     public let chips: [Chip]
 
     /// 選べる幅を週で数えたもの（4〜26週）。幅を書く1行に出す
-    public static let acceptedWeeks = (minimumDays / 7)...(maximumDays / 7)
+    public static let acceptedWeeks =
+        (AcceptedDeadlineDays.minimum / 7)...(AcceptedDeadlineDays.maximum / 7)
 
     public init(startDay: CalendarDay) {
         self.startDay = startDay
-        earliestDay = startDay.advanced(by: Self.minimumDays - 1)
-        let latestDay = startDay.advanced(by: Self.maximumDays - 1)
+        earliestDay = startDay.advanced(by: AcceptedDeadlineDays.minimum - 1)
+        let latestDay = startDay.advanced(by: AcceptedDeadlineDays.maximum - 1)
         self.latestDay = latestDay
         chips = [1, 2, 3, 6].map { months in
             let day = Self.day(months: months, after: startDay)
             return day <= latestDay
                 ? Chip(label: .months(months), day: day)
-                : Chip(label: .weeks(Self.maximumDays / 7), day: latestDay)
+                : Chip(label: .weeks(AcceptedDeadlineDays.maximum / 7), day: latestDay)
         }
     }
 
@@ -49,9 +50,6 @@ public struct GoalDeadlineChoices: Sendable, Equatable {
         case months(Int)
         case weeks(Int)
     }
-
-    private static let minimumDays = 28
-    private static let maximumDays = 182
 
     /// 月の終わりにない日は、その月の最後の日にする（1月31日の1か月後は2月28日）
     private static func day(months: Int, after start: CalendarDay) -> CalendarDay {

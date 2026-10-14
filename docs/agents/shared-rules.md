@@ -31,6 +31,13 @@
 - 料理の名前は、前後の空白を除いた文字数を `dishNameTrimmedLength` に当てる。前後の空白を除くのは、サーバーは `String.prototype.trim`、端末は `trimmingCharacters(in: .whitespacesAndNewlines)`
 - 送った文章の本文は、料理の名前と同じ手順で前後の空白を除き、Unicode のコードポイントの数を `sentTextBodyTrimmedLength` に当てる。サーバーは `Array.from(text).length`、端末は `unicodeScalars.count`。端末とサーバーで同じ数になるようにコードポイントで数える（絵文字や結合文字は、見た目の1字が2つ以上に数えられることがある）
 
+## 受け付ける期限
+
+目標の期限は、開始の日から両端を含めて数えた日数が、下限から上限まで（4〜26 週）の日だけを受け付ける。
+
+- 日数は `shared/accepted-deadline-days.json`、入力（開始の日・期限の日）と期待値（受け付けるか）は `shared/accepted-deadline-days.test-cases.json`。サーバーは `src/goal/domain/accepted-deadline/`（受け付ける期限の日数を数える `countAcceptedDaysToDeadline`、開始の日がずれたとき期限を幅に寄せる `moveDeadlineIntoAcceptedRange`）、端末は書き出した `AcceptedDeadlineDays` を使う `GoalDeadlineChoices` の `contains`
+- 年をまたぐ場面と、うるう年の2月をまたぐ場面を含む
+
 ## 栄養の合計
 
 料理・食事・日の栄養の合計の出し方。材料の栄養は、値 × 量 × 1単位あたりの可食部の g ÷ 基準の g（成分表と AI の推定は可食部 100 g、栄養成分表示は表示の単位の可食部の g）。合計は値の分かる材料の分だけを足し、「不明」の材料が混じれば「以上」、すべて「不明」なら「不明」にする。kcal は材料の kcal の和で、P・F・C から出し直さない（ADR-0016）。
