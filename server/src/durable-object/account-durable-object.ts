@@ -158,17 +158,14 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     // 目標を決める。決めたら、目標・1日の目安・推定消費カロリーの記録を、応答と同期の両方に出す
     async decideGoal(accountId: string, request: Parameters<typeof decideGoal>[2]) {
       setUser({ id: accountId });
-      const decided = decideGoal(
-        createRecordChangeWriter(this.ctx.storage),
-        createRecordKindStores(this.ctx.storage),
-        request,
-        new Date(),
-      );
-      if (R.isSuccess(decided)) {
-        await sendUsageEvents(this.env, accountId, decided.value.usageEvents);
-      }
       return R.pipe(
-        decided,
+        decideGoal(
+          createRecordChangeWriter(this.ctx.storage),
+          createRecordKindStores(this.ctx.storage),
+          request,
+          new Date(),
+        ),
+        R.inspect(({ usageEvents }) => sendUsageEvents(this.env, accountId, usageEvents)),
         R.map(({ decision }) => decision),
       );
     }
