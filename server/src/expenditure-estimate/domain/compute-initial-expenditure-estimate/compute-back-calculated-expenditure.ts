@@ -1,5 +1,5 @@
+import { countDaysBetween } from "../../../domain/count-days-between";
 import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
-import { millisecondsPerDay } from "../../../domain/milliseconds-per-day";
 import { excludePartiallyRecordedDays } from "../exclude-partially-recorded-days";
 
 // 初期値の窓の中の食べた量と日の代表値を受け取る。記録が足りなければ undefined。値は丸めない
@@ -33,12 +33,12 @@ const computeWeightSlope = (
     firstDay === undefined ||
     lastDay === undefined ||
     days.length < minimumWeightDays ||
-    daysBetween(firstDay, lastDay) < minimumSpanDays
+    countDaysBetween(firstDay, lastDay) < minimumSpanDays
   ) {
     return undefined;
   }
   const points = dailyWeights.map(({ calendarDay, weightKg }) => ({
-    day: daysBetween(firstDay, calendarDay),
+    day: countDaysBetween(firstDay, calendarDay),
     weightKg,
   }));
   const meanDay = points.reduce((sum, { day }) => sum + day, 0) / points.length;
@@ -50,8 +50,3 @@ const computeWeightSlope = (
   const variance = points.reduce((sum, { day }) => sum + (day - meanDay) ** 2, 0);
   return covariance / variance;
 };
-
-const daysBetween = (from: string, to: string): number =>
-  Math.round(
-    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / millisecondsPerDay,
-  );

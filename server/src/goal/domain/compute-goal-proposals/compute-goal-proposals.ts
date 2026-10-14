@@ -1,4 +1,5 @@
 import { computeDailyGuide } from "../../../daily-guide/domain/compute-daily-guide";
+import type { ComputedDailyGuide } from "../../../daily-guide/domain/computed-daily-guide";
 import { computeDailyGuideDifferenceKcal } from "../../../daily-guide/domain/compute-daily-guide-difference-kcal";
 import { computeTargetWeightAtPace } from "../compute-target-weight-at-pace";
 import { computeTargetWeightLimits } from "../compute-target-weight-limits";
@@ -13,7 +14,7 @@ export const computeGoalProposals = (
   | {
       status: "offered";
       targetWeightKg: number;
-      dailyGuide: ReturnType<typeof computeDailyGuide>;
+      dailyGuide: ComputedDailyGuide;
       // 1日の目安と推定消費カロリーの差（少ないときは負）
       dailyGuideDifferenceKcal: number;
     }

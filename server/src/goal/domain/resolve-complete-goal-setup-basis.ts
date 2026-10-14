@@ -2,10 +2,10 @@ import { R } from "@praha/byethrow";
 import type { GoalSetupExpenditure } from "./goal-setup-expenditure";
 import { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
+import type { GoalSetupStores } from "./goal-setup-stores";
 import {
   resolveGoalSetupBasis,
   type GoalSetupBasis,
-  type GoalSetupStores,
   type StartingWeightTrend,
 } from "./resolve-goal-setup-basis";
 

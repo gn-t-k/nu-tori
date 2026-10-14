@@ -1,5 +1,6 @@
 import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
 import { weeklyPaceRates } from "../../../goal/domain/weekly-pace-rates";
+import type { ComputedDailyGuide } from "../computed-daily-guide";
 import type { DailyGuideGoal } from "../daily-guide-goal";
 import { minimumDailyGuideEnergyKcal } from "../minimum-daily-guide-energy-kcal";
 
@@ -10,7 +11,7 @@ export const computeDailyGuideEnergy = ({
 }: {
   expenditureKcal: number;
   goal: DailyGuideGoal;
-}): { energyKcal: number; limitHits: ("required_pace" | "minimum_energy")[] } => {
+}): Pick<ComputedDailyGuide, "energyKcal" | "limitHits"> => {
   const pace = computeLimitedPace(goal);
   const energyKcal = expenditureKcal + kilocaloriesPerKilogram * pace.kgPerDay;
   const isBelowMinimum = energyKcal < minimumDailyGuideEnergyKcal - tolerance;

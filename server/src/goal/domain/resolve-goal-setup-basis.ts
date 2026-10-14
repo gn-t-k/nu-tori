@@ -5,7 +5,6 @@ import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
-import type { RecordKindStores } from "../../domain/record-kind-stores";
 import { computeInitialExpenditureEstimate } from "../../expenditure-estimate/domain/compute-initial-expenditure-estimate";
 import { readRecordedEnergyIntakes } from "../../expenditure-estimate/domain/read-recorded-energy-intakes";
 import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
@@ -15,6 +14,7 @@ import { decideGoalStartDay } from "./decide-goal-start-day";
 import type { Goal } from "./goal";
 import type { GoalSetupExpenditure } from "./goal-setup-expenditure";
 import { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
+import type { GoalSetupStores } from "./goal-setup-stores";
 import type { GoalSetupSituation } from "./goal-setup-situation";
 
 // 目標の設定の計算の元。そのときの記録と、要求に載った端末の事情から、要求のたびに出し直す（何も残さない）
@@ -34,11 +34,6 @@ export type StartingWeightTrend = {
   // 体重の傾向の元になった、開始の日以前で最後の体重記録の日
   lastWeightRecordedOn: string;
 };
-
-export type GoalSetupStores = Pick<
-  RecordKindStores,
-  "goal" | "expenditureEstimate" | "weightRecord" | "firstSignIn" | "meal" | "dish" | "ingredient"
->;
 
 export const resolveGoalSetupBasis = (
   stores: GoalSetupStores,
@@ -110,7 +105,7 @@ const estimateInitialExpenditure = (
     dailyWeights: readonly { calendarDay: string; weightKg: number }[];
     startingWeightTrendKg: number | undefined;
   },
-): R.Result<GoalSetupExpenditure | undefined, GoalSetupRequestRejectedError> => {
+): R.Result<GoalSetupExpenditure | undefined, never> => {
   // 初期値の窓（今日を除く直前の 28 日）より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
   const since = new Date(Date.parse(`${addDays(today, -29)}T00:00:00Z`) - millisecondsPerDay);
   return R.pipe(
@@ -126,11 +121,8 @@ const estimateInitialExpenditure = (
     }),
     R.orElse((error) =>
       match(error)
-        .returnType<R.Result<undefined, GoalSetupRequestRejectedError>>()
+        .returnType<R.Result<undefined, never>>()
         .with({ name: "FormulaInputsMissingError" }, () => R.succeed(undefined))
-        .with({ name: "BodyDataOutOfRangeError" }, () =>
-          R.fail(new GoalSetupRequestRejectedError({ reason: "body_data_out_of_range" })),
-        )
         .exhaustive(),
     ),
   );

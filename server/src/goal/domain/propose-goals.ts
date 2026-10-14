@@ -9,7 +9,7 @@ import {
   resolveCompleteGoalSetupBasis,
   type CompleteGoalSetupBasis,
 } from "./resolve-complete-goal-setup-basis";
-import type { GoalSetupStores } from "./resolve-goal-setup-basis";
+import type { GoalSetupStores } from "./goal-setup-stores";
 import type { WeightChangeDirection } from "./weight-change-direction";
 
 // 選んだ向きと期限。維持は期限を持たない

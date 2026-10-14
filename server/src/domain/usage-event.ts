@@ -4,7 +4,8 @@ import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
 import type { MealPhotoReceiptFailedError } from "./receive-meal-photo";
 import type { DailyGuideLimitType } from "../daily-guide/domain/daily-guide";
-import type { GoalDirection } from "../goal/domain/compute-goal-direction";
+import type { InitialExpenditureSource } from "../expenditure-estimate/domain/expenditure-estimate";
+import type { GoalDirection } from "../goal/domain/goal-direction";
 import type { PacePlan } from "../goal/domain/goal";
 import type { ClassificationLabel } from "../reply/domain/conversation-provider";
 import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";
@@ -117,7 +118,7 @@ export type UsageEvent =
       // 端末が数えて要求に載せた、受け付けなかった自分の目標体重の数
       rejectedCustomTargetWeightCount: number;
       // 推定消費カロリーの出どころ。立て直しは前の値
-      expenditureSource: "back_calculated" | "formula" | "previous";
+      expenditureSource: InitialExpenditureSource | "previous";
       limitHits: DailyGuideLimitType[];
     }
   | {

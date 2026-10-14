@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
-import { generateRecordId } from "../../domain/record-id";
+import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordChangeWrites } from "../../domain/record-change-writes";
 import { createRecordChangeWriter } from "../../durable-object/create-record-change-writer";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
@@ -45,8 +45,9 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
   });
 
   describe("維持の目標があるとき", () => {
-    const goalId = generateRecordId();
+    let goalId: RecordId;
     beforeEach(async () => {
+      goalId = generateRecordId();
       await seed(async (factory) => {
         await factory.goals.create({
           id: goalId,
@@ -80,8 +81,9 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
   });
 
   describe("目標体重が開始の日の体重の傾向より小さい、期限のある目標があるとき", () => {
-    const goalId = generateRecordId();
+    let goalId: RecordId;
     beforeEach(async () => {
+      goalId = generateRecordId();
       await seed(async (factory) => {
         await factory.goals.create({
           id: goalId,
@@ -121,9 +123,11 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
   });
 
   describe("目標体重が開始の日の体重の傾向より大きい目標を、次の目標で閉じたとき", () => {
-    const closedGoalId = generateRecordId();
-    const nextGoalId = generateRecordId();
+    let closedGoalId: RecordId;
+    let nextGoalId: RecordId;
     beforeEach(async () => {
+      closedGoalId = generateRecordId();
+      nextGoalId = generateRecordId();
       await seed(async (factory) => {
         await factory.goals.create({
           id: closedGoalId,
@@ -193,9 +197,11 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
   });
 
   describe("逆算で出した推定の始まりと、あとの推定があるとき", () => {
-    const initialEstimateId = generateRecordId();
-    const laterEstimateId = generateRecordId();
+    let initialEstimateId: RecordId;
+    let laterEstimateId: RecordId;
     beforeEach(async () => {
+      initialEstimateId = generateRecordId();
+      laterEstimateId = generateRecordId();
       await seed(async (factory) => {
         await factory.expenditureEstimates.create({
           id: initialEstimateId,
@@ -248,8 +254,9 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
   });
 
   describe("式で出した推定の始まりがあるとき", () => {
-    const estimateId = generateRecordId();
+    let estimateId: RecordId;
     beforeEach(async () => {
+      estimateId = generateRecordId();
       await seed(async (factory) => {
         await factory.expenditureEstimates.create({ id: estimateId });
         await factory.initialExpenditureEstimates.create({
@@ -267,11 +274,15 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
   });
 
   describe("下限と1週の変化に当たった1日の目安と、何にも当たらない1日の目安があるとき", () => {
-    const goalId = generateRecordId();
-    const estimateId = generateRecordId();
-    const limitedGuideId = generateRecordId();
-    const freeGuideId = generateRecordId();
+    let goalId: RecordId;
+    let estimateId: RecordId;
+    let limitedGuideId: RecordId;
+    let freeGuideId: RecordId;
     beforeEach(async () => {
+      goalId = generateRecordId();
+      estimateId = generateRecordId();
+      limitedGuideId = generateRecordId();
+      freeGuideId = generateRecordId();
       await seed(async (factory) => {
         await factory.goals.create({ id: goalId, startedOn: "2026-10-01" });
         await factory.expenditureEstimates.create({ id: estimateId });
@@ -337,8 +348,9 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
   });
 
   describe("必要な速さの上限に当たった1日の目安があるとき", () => {
-    const guideId = generateRecordId();
+    let guideId: RecordId;
     beforeEach(async () => {
+      guideId = generateRecordId();
       await seed(async (factory) => {
         await factory.dailyGuideLimitHits.create({
           dailyGuideId: (await factory.dailyGuides.create({ id: guideId })).id,

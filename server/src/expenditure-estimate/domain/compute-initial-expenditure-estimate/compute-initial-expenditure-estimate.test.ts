@@ -293,27 +293,6 @@ describe("推定消費カロリーの始まりの計算", () => {
         });
       });
     });
-
-    describe("逆算できて、範囲の外の身体データが届いているとき", () => {
-      let estimate: Estimate;
-
-      beforeEach(() => {
-        estimate = computeInitialExpenditureEstimate(
-          createInput({
-            recordedEnergyIntakes: consecutiveDays("2026-10-01", 14, 2000),
-            dailyWeights: weightsLosing50GramsPerDay,
-            startingWeightTrendKg: 70,
-            bodyData: { ...sedentaryMan, heightCentimeters: 1.72 },
-          }),
-        );
-      });
-
-      test("身体データを使わず、逆算を返すこと", () => {
-        expect(estimate).toBeSuccess((value) => {
-          expect(value).toEqual({ kcal: 2385, source: "back_calculated" });
-        });
-      });
-    });
   });
 
   // 逆算できない（食べた量も体重記録も窓に無い）。体重 70 kg・身長 172 cm・36 歳の男の Mifflin-St Jeor は 1,600 kcal、女は 1,434 kcal
@@ -537,44 +516,6 @@ describe("推定消費カロリーの始まりの計算", () => {
       test("式に使う値が足りないと返すこと", () => {
         expect(estimate).toBeFailure((error) => {
           expect(error.name).toBe("FormulaInputsMissingError");
-        });
-      });
-    });
-
-    describe("身長が範囲の外のとき", () => {
-      let estimate: Estimate;
-
-      beforeEach(() => {
-        estimate = computeInitialExpenditureEstimate(
-          createInput({
-            startingWeightTrendKg: 70,
-            bodyData: { ...sedentaryMan, heightCentimeters: 99.9 },
-          }),
-        );
-      });
-
-      test("身長を受け付けないこと", () => {
-        expect(estimate).toBeFailure((error) => {
-          expect(error).toMatchObject({
-            name: "BodyDataOutOfRangeError",
-            range: "heightCentimeters",
-          });
-        });
-      });
-    });
-
-    describe("年齢が範囲の外のとき", () => {
-      let estimate: Estimate;
-
-      beforeEach(() => {
-        estimate = computeInitialExpenditureEstimate(
-          createInput({ startingWeightTrendKg: 70, bodyData: { ...sedentaryMan, ageYears: 121 } }),
-        );
-      });
-
-      test("年齢を受け付けないこと", () => {
-        expect(estimate).toBeFailure((error) => {
-          expect(error).toMatchObject({ name: "BodyDataOutOfRangeError", range: "ageYears" });
         });
       });
     });

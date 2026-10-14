@@ -21,7 +21,9 @@ import { readRows } from "../sync-routes/testing/read-rows";
 import { app } from "../app";
 import { signInTestAccount } from "../testing";
 import { postGoalSetup } from "./testing/post-goal-setup";
+import { leftValuePattern } from "./testing/left-value-pattern";
 import { readAllStoredRows } from "./testing/read-all-stored-rows";
+import { readDecisionRowIds } from "./testing/read-decision-row-ids";
 import { recordDailyWeights } from "./testing/record-daily-weights";
 
 describe("目標の設定の要求", () => {
@@ -384,14 +386,15 @@ describe("目標の設定の要求", () => {
   });
 
   describe("初めての目標で、体重記録が昨日の1つだけのとき", () => {
-    // Mifflin-St Jeor: 10 × 70 + 6.25 × 170 − 5 × 40 + 5 = 1567.5。立ち仕事が多い（1.55）で 2,430 kcal
-    const bodyData = {
-      sex: "male",
-      heightCentimeters: 170,
-      ageYears: 40,
-      activity: { type: "level", level: "standing" },
-    };
+    let bodyData: Record<string, unknown>;
     beforeEach(async () => {
+      // Mifflin-St Jeor: 10 × 70 + 6.25 × 170 − 5 × 40 + 5 = 1567.5。立ち仕事が多い（1.55）で 2,430 kcal
+      bodyData = {
+        sex: "male",
+        heightCentimeters: 170,
+        ageYears: 40,
+        activity: { type: "level", level: "standing" },
+      };
       await recordDailyWeights(sessionToken, [addDays(today, -1)], 70);
     });
 
@@ -778,6 +781,50 @@ describe("目標の設定の要求", () => {
       });
     });
 
+    describe("身体データの年齢が範囲の下の外のとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await postGoalSetup(sessionToken, "preview", {
+          direction: "lose",
+          bodyData: {
+            sex: "female",
+            heightCentimeters: 160,
+            ageYears: 9,
+            activity: { type: "level", level: "sedentary" },
+          },
+        });
+      });
+
+      test("身体データが範囲の外という理由で断ること", async () => {
+        expect({ status: response.status, body: await response.json() }).toEqual({
+          status: 422,
+          body: { code: "body_data_out_of_range" },
+        });
+      });
+    });
+
+    describe("身体データの年齢が範囲の上の外のとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await postGoalSetup(sessionToken, "preview", {
+          direction: "lose",
+          bodyData: {
+            sex: "female",
+            heightCentimeters: 160,
+            ageYears: 121,
+            activity: { type: "level", level: "sedentary" },
+          },
+        });
+      });
+
+      test("身体データが範囲の外という理由で断ること", async () => {
+        expect({ status: response.status, body: await response.json() }).toEqual({
+          status: 422,
+          body: { code: "body_data_out_of_range" },
+        });
+      });
+    });
+
     describe("タイムゾーンが IANA 名でないとき", () => {
       let response: Response;
       beforeEach(async () => {
@@ -856,15 +903,7 @@ describe("目標の設定の要求", () => {
     });
 
     test("目標・推定消費カロリー・1日の目安の表に、何も書かないこと", async () => {
-      expect(
-        await readRows(
-          accountId,
-          "SELECT id FROM goals UNION ALL SELECT id FROM expenditure_estimates UNION ALL SELECT id FROM daily_guides UNION ALL SELECT id FROM goal_decision_receipts",
-        ),
-      ).toEqual([]);
+      expect(await readDecisionRowIds(accountId)).toEqual([]);
     });
   });
 });
-
-// 添えた摂取エネルギー（2413.7）と身長（171.3）、JSON の値として出る歩数（7654）と年齢（113）。ID や時刻の中の同じ並びは拾わない
-const leftValuePattern = /2413\.7|171\.3|[:,[]"?(?:7654|113)"?[,}\]]/u;

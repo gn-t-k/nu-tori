@@ -1,5 +1,4 @@
 export {
-  BodyDataOutOfRangeError,
   computeInitialExpenditureEstimate,
   FormulaInputsMissingError,
   type InitialExpenditureEstimate,
