@@ -5,7 +5,7 @@ public import Foundation
 /// 並べるのは新しいほうの日だけにして、遡ったら古い日を足す（`listedDays`）。全部の日を遅れて読む並び（LazyVStack）にすると、まだ描いていない日の高さが見積もりになり、日の高さがばらつくと、一番下がその見積もりの端（何も無い所）になって真っ白のまま残る。遅れて読まずに全部を並べると、記録が増えるほど開くのが遅くなる
 /// 位置を動かす場面は、次の5つ。自分の操作の結果は見せ、ほかから来たもの（返事、知らせ、同期や取り込みで届いた記録）では読んでいる所から動かさない。
 /// - 開く: 一番下から開く（画面が初めの位置を一番下にする）
-/// - 追う: 一番下にいるあいだ、中身が伸びても（返事が伸びる、項目や日が足される）一番下に保つ。指で触れたら止める。止まったとき（アプリが動かして着いたときを含む）は、そこが一番下なら追い、違えば止める。伸びる返事が無くなったときと、送り直したときも、また追う（`followsSizeChanges`）
+/// - 追う: 一番下にいるあいだ、中身が伸びても（返事が伸びる、項目や日が足される）一番下に保つ。指で触れたら止める。止まったとき（アプリが動かして着いたときを含む）は、そこが一番下なら追い、違えば止める。伸びる返事が無くなったときと、送り直したときも、一番下にいればまた追う。遡っているときは追わない。返事はほかから来たもので、送り直した吹き出しと返事は元の時刻の位置にあり、いちばん下には足されない（`followsSizeChanges`）
 /// - 戻す: ユーザーがアプリの中でいちばん下に項目を足したら、遡っていても一番下へ連れていき、そこから追う（`daysChanged`）
 /// - 着く: 選んだ所へ行く。日のまとめで選んだ日、帯の下の1行の知らせ、通知から開いた知らせか一番下（`dayChosen`・`landingRequested`）。並べていない日なら、その日まで並べてから行く
 /// - 古い日を足す: 並べたいちばん古い日の上端まで遡って止まったら、その前の日を足し、見ていた日を上端に置き直す（`listOlderDays`）
@@ -80,7 +80,7 @@ public struct TimelineViewport: Equatable, Sendable {
 
     public mutating func growingReplyChanged(isGrowing: Bool) {
         if !isGrowing {
-            followsEnd = true
+            followAgainIfAtEnd()
         }
     }
 
@@ -105,7 +105,7 @@ public struct TimelineViewport: Equatable, Sendable {
 
     /// 文章を送り直した・会話として送り直した
     public mutating func textResent() {
-        followsEnd = true
+        followAgainIfAtEnd()
     }
 
     /// 日のまとめで日を選んだ
@@ -190,6 +190,13 @@ public struct TimelineViewport: Equatable, Sendable {
         // 遡っているあいだは、並べていた日のままにする（`daysChanged`）ので、持たなくても外れない
         if isFollowingAtEnd {
             landingDay = day
+        }
+    }
+
+    /// 一番下にいれば、また追う。遡っているときに追うと、そのあと中身が伸びたときに、読んでいる所がずれる（#510）
+    private mutating func followAgainIfAtEnd() {
+        if endPosition.isAtEnd {
+            followsEnd = true
         }
     }
 

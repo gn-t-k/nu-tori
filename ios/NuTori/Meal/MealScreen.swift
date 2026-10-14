@@ -167,7 +167,9 @@ struct MealScreen: View {
             displayedComponents: [.date, .hourAndMinute]
         ) {
             Text("時刻")
-            Text("撮った時刻")
+            if card.meal.entry.isPhoto {
+                Text("撮った時刻")
+            }
         }
         // 地と文字の色は iOS の compact の見た目に任せ、Primary は押したときの tint（AccentColor）で出る。
         // DESIGN.md の list-row-editable-value（押してその場で直せる値は Primary）に従わないのは、compact には押す前の文字の色を変える口が無く、

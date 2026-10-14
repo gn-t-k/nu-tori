@@ -56,6 +56,14 @@ public struct Meal: Hashable, Sendable {
             }
         }
 
+        /// 写真の入口の食事だけ、時刻が撮った時刻になる
+        public var isPhoto: Bool {
+            switch self {
+            case .captured, .picked: true
+            case .written: false
+            }
+        }
+
         /// 置き場（送り待ちとキャッシュ）に文字列で持つ名前。文章の食事の送った文章の ID は、別に持つ
         public var storedName: String {
             switch self {
