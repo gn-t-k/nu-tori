@@ -34,6 +34,16 @@ struct MemoryKeyedRecordCacheTests {
             #expect(Set(try cache.all().map(\.id)) == [kept.id, revised.id])
         }
 
+        @Test("ID で1件読めること")
+        func readsById() throws {
+            #expect(try cache.record(id: kept.id) == kept)
+        }
+
+        @Test("キャッシュに無い ID は nil を読むこと")
+        func readsNilForMissingId() throws {
+            #expect(try cache.record(id: UUID()) == nil)
+        }
+
         @Suite("同じ ID の記録を足すとき")
         struct UpsertingSameId {
             let cache: any KeyedRecordCache<WeightRecord, UUID>

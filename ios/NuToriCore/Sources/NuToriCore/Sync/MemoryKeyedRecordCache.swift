@@ -21,6 +21,10 @@ public final class MemoryKeyedRecordCache<Record: Sendable, ID: Hashable & Senda
         records.withLock { $0 = [:] }
     }
 
+    public func record(id: ID) -> Record? {
+        records.withLock { $0[id] }
+    }
+
     public func all() -> [Record] {
         records.withLock { Array($0.values) }
     }
