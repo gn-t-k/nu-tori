@@ -421,6 +421,70 @@ describe("目標を決める要求", () => {
       });
     });
 
+    describe("昨日を開始の日にした目標案の、28 日めの期限で決めようとしたとき", () => {
+      // 今日から数えると 27 日めで、受け付ける幅の外になる
+      let response: Response;
+      beforeEach(async () => {
+        const yesterday = addDays(today, -1);
+        response = await postGoalSetup(sessionToken, "decisions", {
+          ...standardDecision,
+          startedOn: yesterday,
+          choice: {
+            type: "proposal",
+            direction: "lose",
+            deadlineOn: addDays(yesterday, 27),
+            pace: "standard",
+          },
+        });
+      });
+
+      test("断らずに、今日から数えて 28 日めを期限にした目標案を返すこと", async () => {
+        expect({ status: response.status, body: await response.json() }).toMatchObject({
+          status: 200,
+          body: {
+            status: "recalculated",
+            proposals: { startedOn: today, direction: "lose", deadlineOn: addDays(today, 27) },
+          },
+        });
+      });
+
+      test("目標も受け取りも書かないこと", async () => {
+        expect(await readDecisionRowIds(accountId)).toEqual([]);
+      });
+    });
+
+    describe("明日を開始の日にした目標案の、182 日めの期限で、自分で決めた目標体重で決めようとしたとき", () => {
+      // 今日から数えると 183 日めで、受け付ける幅の外になる
+      let response: Response;
+      beforeEach(async () => {
+        const tomorrow = addDays(today, 1);
+        response = await postGoalSetup(sessionToken, "decisions", {
+          ...standardDecision,
+          startedOn: tomorrow,
+          choice: {
+            type: "custom",
+            direction: "lose",
+            deadlineOn: addDays(tomorrow, 181),
+            targetWeightKg: 66,
+          },
+          shown: {
+            targetWeightKg: 66,
+            dailyGuide: { energyKcal: 2350, proteinG: 105, fatG: 65, carbohydrateG: 345 },
+          },
+        });
+      });
+
+      test("断らずに、今日から数えて 182 日めを期限にした目標案を返すこと", async () => {
+        expect({ status: response.status, body: await response.json() }).toMatchObject({
+          status: 200,
+          body: {
+            status: "recalculated",
+            proposals: { startedOn: today, direction: "lose", deadlineOn: addDays(today, 181) },
+          },
+        });
+      });
+    });
+
     describe("本番のサーバーで", () => {
       let fetchSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
       beforeEach(async () => {

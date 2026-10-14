@@ -44,7 +44,8 @@ public final class GoalSetupFlow {
     public private(set) var isOpen = false
     public private(set) var direction: GoalSetupDirection?
     public private(set) var deadline: CalendarDay
-    public let deadlineChoices: GoalDeadlineChoices
+    /// 目標案の開始の日がずれたら、その日から数え直す
+    public private(set) var deadlineChoices: GoalDeadlineChoices
     /// 足りない値のページの欄と入れた値。逆算できないと分かるまでは nil
     public private(set) var missingValues: GoalSetupMissingValues?
     /// 目標案か維持の値。届くまでと、届かなかったときは nil
@@ -615,7 +616,16 @@ public final class GoalSetupFlow {
     /// 選んでいた案が出せれば残し、出せなければ開くときと同じ決まりで選び直す
     private func apply(_ proposals: GoalProposals) {
         proposalsState = .received(proposals)
+        // 日をまたいで開始の日がずれると、サーバーは期限を受け付ける幅に寄せた案を返すので、返った開始の日と期限を使い直す
+        if let startDay = CalendarDay(yearMonthDay: proposals.startedOn),
+            startDay != deadlineChoices.startDay
+        {
+            deadlineChoices = GoalDeadlineChoices(startDay: startDay)
+        }
         if case .weightChange(let weightChange) = proposals.plan {
+            if let deadlineDay = CalendarDay(yearMonthDay: weightChange.deadlineOn) {
+                deadline = deadlineDay
+            }
             if !weightChange.offeredProposals.contains(where: { $0.pace == selectedPace }) {
                 selectedPace = proposals.openingProposal?.pace
             }

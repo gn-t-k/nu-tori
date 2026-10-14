@@ -15,6 +15,7 @@ import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
 import type { GoalWeightChange } from "./goal";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
+import { moveDeadlineIntoAcceptedRange } from "./move-deadline-into-accepted-range";
 import type { ProposalPace } from "./proposal-pace";
 import type { GoalProposals, GoalProposalsPlan } from "./propose-goals";
 import { proposeGoalsOnBasis } from "./propose-goals-on-basis";
@@ -86,15 +87,15 @@ export const decideGoal = (
     }
     return R.pipe(
       resolveCompleteGoalSetupBasis(stores, request, now),
-      R.andThen((basis) =>
-        R.pipe(
+      R.andThen((basis) => {
+        // 開始の日が違えば、受け付けるかどうかより先に、新しい開始の日の案を見せ直す
+        if (basis.startedOn !== request.startedOn) {
+          return recalculate(basis, request.choice);
+        }
+        return R.pipe(
           assessChoice(basis, request.choice),
-          R.andThen((assessed) => {
-            // 開始の日が違えば、受け付けるかどうかより先に、新しい開始の日の案を見せ直す
-            if (basis.startedOn !== request.startedOn) {
-              return recalculate(basis, request.choice);
-            }
-            return match(assessed)
+          R.andThen((assessed) =>
+            match(assessed)
               .returnType<GoalDecisionResult>()
               .with({ status: "unavailable" }, () => recalculate(basis, request.choice))
               .with({ status: "rejected" }, ({ reason, nearestAcceptedTargetWeightKg }) =>
@@ -115,10 +116,10 @@ export const decideGoal = (
                     )
                   : recalculate(basis, request.choice),
               )
-              .exhaustive();
-          }),
-        ),
-      ),
+              .exhaustive(),
+          ),
+        );
+      }),
     );
   });
 
@@ -209,11 +210,21 @@ const assessChoice = (
     )
     .exhaustive();
 
-const recalculate = (basis: CompleteGoalSetupBasis, choice: GoalChoice): GoalDecisionResult =>
-  R.pipe(
-    proposeGoalsOnBasis(basis, proposalsPlanOf(choice)),
+const recalculate = (basis: CompleteGoalSetupBasis, choice: GoalChoice): GoalDecisionResult => {
+  const plan = match(proposalsPlanOf(choice))
+    .returnType<GoalProposalsPlan>()
+    .with({ direction: "maintain" }, (maintain) => maintain)
+    .with({ direction: "lose" }, { direction: "gain" }, ({ direction, deadlineOn }) => ({
+      direction,
+      // 開始の日がずれて期限が受け付ける幅の外に出たら、いちばん近い日に寄せて見せ直す。端末は返った期限を使い直す
+      deadlineOn: moveDeadlineIntoAcceptedRange({ startedOn: basis.startedOn, deadlineOn }),
+    }))
+    .exhaustive();
+  return R.pipe(
+    proposeGoalsOnBasis(basis, plan),
     R.map((proposals) => ({ decision: { status: "recalculated", proposals }, usageEvents: [] })),
   );
+};
 
 // 書いた記録と、PostHog に送る出来事を返す
 const writeDecidedGoal = ({

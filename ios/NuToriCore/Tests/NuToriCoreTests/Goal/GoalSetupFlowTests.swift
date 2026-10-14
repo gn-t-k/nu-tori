@@ -921,6 +921,74 @@ struct GoalSetupFlowTests {
         }
 
         @MainActor
+        @Suite("開始の日がずれ、期限を受け付ける幅に寄せた新しい案が返ったとき")
+        struct DeadlineMoved {
+            let harness: GoalSetupFlowHarness
+
+            init() async {
+                harness = GoalSetupFlowHarness(
+                    answers: [
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
+                        "proposals": [
+                            .json(JSON.loseProposals(deadlineOn: "2026-01-28"))
+                        ],
+                        "custom-target-weight": [.json(JSON.acceptedCustom(energyKcal: 1900))],
+                        "decisions": [
+                            .json(
+                                JSON.recalculated(
+                                    JSON.loseProposals(
+                                        startedOn: "2026-01-02", deadlineOn: "2026-01-29"))),
+                            .json(JSON.decided),
+                        ],
+                    ])
+                await harness.flow.chooseDirection(.lose)
+                harness.flow.chooseDeadline(CalendarDay(year: 2026, month: 1, day: 28))
+                await harness.flow.proceedFromDeadline()
+            }
+
+            @Test("返った期限を、見出しの期限と、次に決める要求の期限にすること")
+            func usesReturnedDeadline() async throws {
+                await harness.flow.decide()
+                #expect(harness.flow.deadline == CalendarDay(year: 2026, month: 1, day: 29))
+
+                await harness.flow.decide()
+
+                let decisions = try harness.sentBodies("decisions")
+                let choices = decisions.map {
+                    ($0["choice"] as? [String: Any])?["deadlineOn"] as? String
+                }
+                #expect(choices == ["2026-01-28", "2026-01-29"])
+                #expect(
+                    decisions.map { $0["startedOn"] as? String } == ["2026-01-01", "2026-01-02"])
+            }
+
+            @Test("選べる期限を、新しい開始の日から数え直すこと")
+            func rebasesDeadlineChoices() async {
+                await harness.flow.decide()
+
+                #expect(
+                    harness.flow.deadlineChoices
+                        == GoalDeadlineChoices(startDay: CalendarDay(year: 2026, month: 1, day: 2)))
+            }
+
+            @Test("自分で決める目標体重の要求に、返った期限を載せること", .timeLimit(.minutes(1)))
+            func assessesWithReturnedDeadline() async throws {
+                await harness.flow.decide()
+                harness.flow.openCustomTargetWeight()
+                let flow = harness.flow
+                let moving = Task { await flow.setCustomTargetWeight(66.0) }
+                await harness.clock.advance(by: .milliseconds(300))
+                await moving.value
+
+                #expect(
+                    try harness.sentBodies("custom-target-weight").first?["deadlineOn"] as? String
+                        == "2026-01-29")
+            }
+        }
+
+        @MainActor
         @Suite("選んでいた案が、計算し直して出せなくなったとき")
         struct SelectionUnavailable {
             let harness: GoalSetupFlowHarness
