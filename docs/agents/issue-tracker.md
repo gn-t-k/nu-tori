@@ -68,10 +68,8 @@ iOS のチケットは、作業する場所で分ける。Mac を閉じている
 | Mac | シミュレーターで画面と流れを確かめる（`docs/agents/ios-mac.md`） | `ready-for-agent` と `mac` | 確かめる画面を作る実装のチケット |
 | 実機 | TestFlight の版で確かめる（`docs/agents/ios-release.md` の「実機の確認」） | `ready-for-human` | 仕様の Issue（閉じる = main に入り、TestFlight に配られる） |
 
-Mac のチケットは、開発者が Mac の上のエージェントに頼む。開発者が外にいて Mac を開けて置く日は、Mac で `claude remote-control --spawn worktree` を動かし、スマホから頼む。
+`/implement-spec` の統括は、走らせるあいだ Mac を開いて置ける日は Mac で、置けない日はクラウドで回す。
 
-`/implement-spec` で1つの仕様を1つの統合の PR にまとめるときは、次のようにする。
-
-- 統括が拾うのは、作業する場所がクラウドのチケットだけ（`mac` と `ready-for-human` のラベルのチケットは拾わない）
-- 実装のチケットは、統合ブランチに取り込んだら、取り込んだ merge のコミットを書いて閉じる。Mac のチケットのブロックを、merge の前に外すため。統合の PR が閉じるのは仕様の Issue だけにする
-- Mac のチケットのブロックが外れたら、開発者に知らせる。統合の PR は、Mac のチケットが閉じるまで merge しない（PR の本文に「merge の前に閉じるもの」として並べる）
+- Mac の統括は、`mac` のチケットも拾う。シミュレーターは1台を取り合うので、`mac` のチケットは1枚ずつ流し、並べるのはクラウドのチケットとだけにする。`mac` のチケットの実装役には、`docs/agents/ios-mac.md` を読んで確かめるよう渡す
+- クラウドの統括は、クラウドのチケットだけを拾う。`mac` のチケットのブロックが外れたら開発者に知らせ、開発者が Mac の上のエージェントに頼む（外にいる日は、Mac で `claude remote-control --spawn worktree` を動かしてスマホから頼む）
+- 実装のチケットは、統合ブランチに取り込んだら、取り込んだ merge のコミットを書いて閉じる。後ろのチケットのブロックを、merge の前に外すため。統合の PR が閉じるのは仕様の Issue だけにし、`mac` のチケットが閉じるまで merge しない（PR の本文に「merge の前に閉じるもの」として並べる）
