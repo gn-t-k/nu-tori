@@ -1,0 +1,340 @@
+<title>いつもの料理の入口</title>
+<style>
+/* プロトタイプ。捨てる前提。iPhone の幅の画面を1枚置き、下の切り替えバーで案 A・B・C を見比べる。色は DESIGN.md の iOS 標準の値 */
+:root {
+  --bg: #F2F2F7; --surface: #FFFFFF; --fg: #000000;
+  --fg2: rgba(60,60,67,0.6); --fg3: rgba(60,60,67,0.3);
+  --fill: #EFEFF0; --sep: rgba(60,60,67,0.29); --primary: #6155F5; --on-primary: #FFFFFF;
+  --bar: rgba(249,249,249,0.94); --mine: #E9E7FD;
+  --p: #F07F1A; --f: #15803D; --c: #2C7BE5;
+  --switch-bg: #1d1d1f; --switch-fg: #ffffff; --scrim: rgba(0,0,0,0.25);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,0.6); --fg3: rgba(235,235,245,0.3);
+  --fill: #323236; --sep: rgba(84,84,88,0.6); --primary: #6D7CFF;
+  --bar: rgba(22,22,24,0.94); --mine: #2A2850;
+  --p: #E8903A; --f: #228C48; --c: #4290F4;
+  --switch-bg: #f2f2f7; --switch-fg: #000000; --scrim: rgba(0,0,0,0.5); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,0.6); --fg3: rgba(235,235,245,0.3);
+  --fill: #323236; --sep: rgba(84,84,88,0.6); --primary: #6D7CFF;
+  --bar: rgba(22,22,24,0.94); --mine: #2A2850;
+  --p: #E8903A; --f: #228C48; --c: #4290F4;
+  --switch-bg: #f2f2f7; --switch-fg: #000000; --scrim: rgba(0,0,0,0.5); color-scheme: dark }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; display: flex; flex-direction: column; align-items: center; padding-inline: 16px; padding-block: 12px 84px; gap: 12px; }
+.intro { max-width: 393px; width: 100%; font-size: 13px; color: var(--fg2); line-height: 1.5; }
+.intro b { color: var(--fg); }
+.phone { position: relative; width: 100%; max-width: 393px; aspect-ratio: 393 / 852; max-height: calc(100vh - 150px); min-height: 600px; background: var(--bg); border: 1px solid var(--sep); border-radius: 36px; overflow: hidden; display: flex; flex-direction: column; }
+.nav { padding: 14px 16px 6px; text-align: center; font-weight: 600; font-size: 17px; background: var(--bar); border-bottom: 0.5px solid var(--sep); }
+.rings { display: flex; justify-content: space-between; padding: 6px 4px 0; }
+.ring { width: 30px; height: 30px; border-radius: 50%; border: 4px solid var(--fill); }
+.ring.today { border-color: var(--p) var(--f) var(--c) var(--c); }
+.timeline { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.day { text-align: center; font-size: 12px; color: var(--fg2); }
+.row { align-self: flex-end; background: var(--mine); border-radius: 18px; padding: 8px 12px; max-width: 80%; font-size: 15px; line-height: 1.35; }
+.row small { display: block; color: var(--fg2); font-size: 12px; }
+.row.new { outline: 2px solid var(--primary); }
+.row .tag { font-size: 11px; color: var(--primary); font-weight: 600; }
+.reply { align-self: flex-start; max-width: 85%; font-size: 15px; line-height: 1.45; }
+
+.keyboard { flex: none; height: 39%; background: var(--fill); border-top: 0.5px solid var(--sep); display: grid; place-items: center; color: var(--fg2); font-size: 13px; }
+.panel { flex: none; height: 39%; background: var(--surface); border-top: 0.5px solid var(--sep); overflow-y: auto; }
+.panel .head, .sheet .search { font-size: 12px; color: var(--fg2); padding: 8px 16px 4px; }
+.sheet .search input { width: 100%; border: 0; border-radius: 10px; background: var(--fill); color: var(--fg); font: 17px var(--font); padding: 7px 10px; }
+.chip.entry { border-color: var(--primary); color: var(--primary); font-weight: 600; }
+.chip.entry.on { background: var(--primary); color: var(--on-primary); }
+.composer { background: var(--bar); border-top: 0.5px solid var(--sep); padding: 8px 16px 14px; display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 2; }
+.line { display: flex; align-items: flex-end; gap: 12px; }
+.circle { width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; background: var(--fill); color: var(--fg); font-size: 18px; display: grid; place-items: center; cursor: pointer; font-family: var(--font); }
+.circle.filled { background: var(--primary); color: var(--on-primary); }
+.circle .lbl { font-size: 10px; line-height: 1; font-weight: 600; }
+.field { flex: 1; min-width: 0; min-height: 36px; margin-bottom: 4px; border-radius: 18px; border: 0.5px solid var(--sep); background: var(--surface); display: flex; align-items: center; padding: 0 4px 0 14px; gap: 6px; flex-wrap: wrap; }
+.field input { flex: 1; min-width: 60px; border: 0; background: transparent; color: var(--fg); font: 17px var(--font); padding: 7px 0; outline: none; }
+.send { width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--primary); color: var(--on-primary); font-weight: 700; cursor: pointer; }
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.chip { flex: none; border: 0.5px solid var(--sep); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 6px 12px; font: 13px var(--font); cursor: pointer; white-space: nowrap; min-height: 32px; }
+.chip.usual { border-color: var(--primary); }
+.chip.usual small { color: var(--fg2); margin-left: 4px; }
+.chip.preset { color: var(--fg2); }
+.divider { flex: none; width: 1px; background: var(--sep); margin: 4px 2px; }
+.token { background: var(--mine); color: var(--fg); border-radius: 12px; padding: 3px 8px; font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+.token button { border: 0; background: none; color: var(--fg2); cursor: pointer; padding: 0; font-size: 13px; }
+
+.sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 62%; background: var(--surface); border-radius: 12px 12px 0 0; z-index: 6; display: flex; flex-direction: column; }
+.sheet header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; font-weight: 600; font-size: 17px; border-bottom: 0.5px solid var(--sep); }
+.sheet header button { border: 0; background: none; color: var(--primary); font: 17px var(--font); cursor: pointer; }
+.sheet header button:disabled { color: var(--fg3); }
+.sheet header button.strong { font-weight: 600; }
+.list { overflow-y: auto; flex: 1; }
+.item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 0.5px solid var(--sep); cursor: pointer; width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; color: var(--fg); text-align: left; font: 15px var(--font); }
+.item .check { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 1.5px solid var(--fg3); display: grid; place-items: center; font-size: 13px; color: var(--on-primary); }
+.item.on .check { background: var(--primary); border-color: var(--primary); }
+.item .main { flex: 1; min-width: 0; }
+.item .sub { font-size: 13px; color: var(--fg2); font-variant-numeric: tabular-nums; }
+.item .count { font-size: 12px; color: var(--fg2); font-variant-numeric: tabular-nums; }
+.suggest { background: var(--surface); border: 0.5px solid var(--sep); border-radius: 12px; max-height: 210px; overflow-y: auto; }
+.suggest .item { padding: 8px 12px; }
+.suggest .head { font-size: 12px; color: var(--fg2); padding: 8px 12px 2px; }
+.suggest .empty { font-size: 13px; color: var(--fg2); padding: 10px 12px; }
+
+.toast { position: absolute; left: 16px; right: 16px; bottom: 118px; background: var(--switch-bg); color: var(--switch-fg); border-radius: 12px; padding: 10px 14px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 10px; z-index: 4; }
+.toast button { border: 0; background: none; color: inherit; font: 600 13px var(--font); text-decoration: underline; cursor: pointer; }
+
+.state { max-width: 393px; width: 100%; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg2); background: var(--surface); border: 0.5px solid var(--sep); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
+
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); background: var(--switch-bg); color: var(--switch-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 4px 18px rgba(0,0,0,0.25); z-index: 20; max-width: calc(100% - 32px); }
+.switcher button { border: 0; background: transparent; color: inherit; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+.switcher span { font-size: 13px; font-weight: 600; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+</style>
+
+<p class="intro"><b>プロトタイプ（捨てる前提）</b>：いつもの料理を入力欄のどこから選ぶか。下の ‹ › か ← → で案を切り替える。灰色の箱はキーボードの高さ（iPhone 15 で画面の約4割）。料理と回数は架空の例。選ぶと、タイムラインの一番下に食事が出る。</p>
+
+<div class="phone" id="phone">
+  <div class="nav">10月14日（水）
+    <div class="rings"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring today"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div></div>
+  </div>
+  <div class="timeline" id="timeline"></div>
+  <div class="composer" id="composer"></div>
+  <div id="below"></div>
+</div>
+
+<pre class="state" id="state"></pre>
+
+<div class="switcher" role="group" aria-label="案の切り替え">
+  <button id="prev" aria-label="前の案">‹</button>
+  <span id="label"></span>
+  <button id="next" aria-label="次の案">›</button>
+</div>
+
+<script>
+const VARIANTS = {
+  C: '書く欄を選ぶと候補が出る',
+  D: 'プリセットの行の「いつもの料理」→ シート',
+  E: 'プリセットの行の「いつもの料理」→ キーボードの場所に一覧',
+};
+const KEYS = Object.keys(VARIANTS);
+// 直近 28 日の回数の多い順、同じ回数なら新しい順（架空の例）
+const USUAL = [
+  { name: 'プロテイン（ホエイ）', amount: '30 g', kcal: 118, count: 24 },
+  { name: 'バナナ', amount: '1本', kcal: 86, count: 15 },
+  { name: 'ゆで卵', amount: '1個', kcal: 76, count: 12 },
+  { name: '納豆ごはん', amount: '1杯', kcal: 390, count: 9 },
+  { name: 'ギリシャヨーグルト', amount: '1個', kcal: 92, count: 8 },
+  { name: 'サラダチキン', amount: '1袋', kcal: 121, count: 6 },
+  { name: '味噌汁', amount: '1杯', kcal: 40, count: 5 },
+  { name: '鮭おにぎり', amount: '1個', kcal: 180, count: 4 },
+  { name: 'カフェラテ', amount: '350 ml', kcal: 120, count: 3 },
+  { name: 'ミックスナッツ', amount: '25 g', kcal: 152, count: 2 },
+];
+const PRESETS = ['ここまでの食事のフィードバック', '次の食事のアドバイス'];
+
+let variant = KEYS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'E';
+let meals = []; // この画面で作った食事
+let ui = {};    // 案ごとの一時的な状態
+let lastAction = '—';
+let toastTimer = null;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const now = () => { const d = new Date(); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+
+function addMeal(dishes, how) {
+  const meal = { time: now(), dishes: dishes.map((d) => ({ ...d })), how };
+  meals.push(meal);
+  lastAction = `食事を作った（${how}）: ${dishes.map((d) => d.name).join('、')}`;
+  return meal;
+}
+
+function renderTimeline() {
+  const base = `
+    <div class="day">10月14日（水）</div>
+    <div class="row">体重 72.4 kg<small>7:02</small></div>
+    <div class="reply">おはようございます。昨日はたんぱく質が目安に届いていました。</div>`;
+  const rows = meals.map((m, i) => {
+    const kcal = m.dishes.reduce((s, d) => s + d.kcal, 0);
+    return `<div class="row ${i === meals.length - 1 ? 'new' : ''}"><span class="tag">いつもの料理から</span><br>${m.dishes.map((d) => esc(d.name) + ' ' + esc(d.amount)).join('<br>')}<small>${m.time} ・ ${kcal} kcal ・ 写真なし</small></div>`;
+  }).join('');
+  $('timeline').innerHTML = base + rows;
+  $('timeline').scrollTop = $('timeline').scrollHeight;
+}
+
+function circles(extra = '') {
+  return `<button class="circle filled" aria-label="撮る">📷</button><button class="circle" aria-label="写真">🖼</button>${extra}`;
+}
+
+function showToast(text, undo) {
+  document.querySelector('.toast')?.remove();
+  clearTimeout(toastTimer);
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `<span>${esc(text)}</span>${undo ? '<button>取り消す</button>' : ''}`;
+  if (undo) t.querySelector('button').onclick = () => { undo(); t.remove(); };
+  $('phone').appendChild(t);
+  toastTimer = setTimeout(() => t.remove(), 5000);
+}
+
+// 案 C: 書く欄を選ぶと、上に候補を出す。打つと名前で絞る。押すと欄に札として入り、「送る」で1つの食事になる
+function renderC() {
+  const q = ui.q ?? '';
+  const picked = ui.picked ?? (ui.picked = []);
+  const hits = USUAL.map((d, i) => ({ d, i })).filter(({ d, i }) => !picked.includes(i) && d.name.includes(q.trim()));
+  const panel = ui.focus ? `
+    <div class="suggest" id="suggest">
+      <div class="head">いつもの料理${q.trim() ? `（「${esc(q.trim())}」で絞った）` : ''}</div>
+      ${hits.length ? hits.map(({ d, i }) => `
+        <button class="item" data-i="${i}"><span class="main">${esc(d.name)}<div class="sub">${esc(d.amount)} ・ ${d.kcal} kcal</div></span><span class="count">28日で${d.count}回</span></button>`).join('')
+        : '<div class="empty">いつもの料理に無い。送ると、書いた文章として推定する</div>'}
+    </div>` : `<div class="chips">${PRESETS.map((p) => `<button class="chip preset">${p}</button>`).join('')}</div>`;
+  const writing = ui.focus || q || picked.length;
+  $('composer').innerHTML = `${panel}
+    <div class="line">${circles(writing ? '' : '<button class="circle" aria-label="体重">⚖️</button>')}
+      <div class="field">${picked.map((i) => `<span class="token">${esc(USUAL[i].name)}<button data-x="${i}" aria-label="外す">×</button></span>`).join('')}
+        <input id="text" placeholder="${picked.length ? '' : '書く'}" aria-label="書く" value="${esc(q)}">
+        ${picked.length || q ? '<button class="send" id="send" aria-label="送る">↑</button>' : ''}
+      </div></div>`;
+  $('below').innerHTML = ui.focus ? '<div class="keyboard">キーボード</div>' : '';
+  const input = $('text');
+  if (ui.focus) { input.focus(); input.setSelectionRange(q.length, q.length); }
+  input.onfocus = () => { if (!ui.focus) { ui.focus = true; render(); } };
+  input.oninput = () => { ui.q = input.value; render(); };
+  $('composer').querySelectorAll('[data-i]').forEach((el) => el.onmousedown = (e) => {
+    e.preventDefault(); picked.push(+el.dataset.i); ui.q = ''; lastAction = `欄に入れた: ${USUAL[+el.dataset.i].name}`; render();
+  });
+  $('composer').querySelectorAll('[data-x]').forEach((el) => el.onmousedown = (e) => {
+    e.preventDefault(); ui.picked = picked.filter((i) => i !== +el.dataset.x); render();
+  });
+  $('send')?.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    if (picked.length) addMeal(picked.map((i) => USUAL[i]), q.trim() ? 'C: 札と文章を送った（文章は別に推定する想定）' : 'C: 札を送った');
+    else lastAction = `文章「${q}」を送った（今の書いて送るのと同じ。推定する）`;
+    ui = {}; render(); document.activeElement?.blur();
+  });
+}
+
+function presetRow(on) {
+  return `<div class="chips"><button class="chip entry ${on ? 'on' : ''}" id="entry">いつもの料理</button>${PRESETS.map((p) => `<button class="chip preset">${p}</button>`).join('')}</div>`;
+}
+function itemHtml(d, i, on) {
+  return `<button class="item ${on ? 'on' : ''}" data-i="${i}" aria-pressed="${!!on}">
+    <span class="check">${on ? '✓' : ''}</span>
+    <span class="main">${esc(d.name)}<div class="sub">${esc(d.amount)} ・ ${d.kcal} kcal</div></span>
+    <span class="count">28日で${d.count}回</span></button>`;
+}
+
+// 案 D: プリセットの行の先頭に「いつもの料理」。押すとハーフシート。上の欄を押したときだけキーボードが出て、名前で絞る
+function renderD() {
+  $('composer').innerHTML = `${presetRow(false)}
+    <div class="line">${circles('<button class="circle" aria-label="体重">⚖️</button>')}
+      <div class="field"><input id="text" placeholder="書く" aria-label="書く"></div></div>`;
+  $('below').innerHTML = '';
+  $('entry').onclick = () => { ui.sheet = true; ui.picked = new Set(); ui.q = ''; lastAction = 'シートを開いた（キーボードは出ない）'; render(); };
+  if (!ui.sheet) return;
+  const picked = ui.picked, q = (ui.q ?? '').trim();
+  const scrim = document.createElement('div'); scrim.className = 'sheet-scrim';
+  scrim.onclick = () => { ui.sheet = false; render(); };
+  const sheet = document.createElement('div'); sheet.className = 'sheet';
+  if (ui.kb) sheet.style.height = '92%';
+  sheet.innerHTML = `
+    <header><button id="cancel">キャンセル</button><span>いつもの料理</span><button id="rec" class="strong" ${picked.size ? '' : 'disabled'}>記録${picked.size ? `（${picked.size}品）` : ''}</button></header>
+    <div class="search"><input id="q" placeholder="名前で絞る" aria-label="名前で絞る" value="${esc(ui.q ?? '')}"></div>
+    <div class="list">${USUAL.map((d, i) => ({ d, i })).filter(({ d }) => d.name.includes(q)).map(({ d, i }) => itemHtml(d, i, picked.has(i))).join('')}</div>
+    ${ui.kb ? '<div class="keyboard" style="height:42%">キーボード</div>' : ''}`;
+  $('phone').append(scrim, sheet);
+  const qi = sheet.querySelector('#q');
+  if (ui.kb) { qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
+  qi.onfocus = () => { if (!ui.kb) { ui.kb = true; lastAction = '絞る欄を押した → キーボードが出て、シートが伸びる'; render(); } };
+  qi.oninput = () => { ui.q = qi.value; render(); };
+  sheet.querySelectorAll('.item').forEach((el) => el.onmousedown = (e) => {
+    e.preventDefault(); const i = +el.dataset.i; picked.has(i) ? picked.delete(i) : picked.add(i);
+    lastAction = `選んでいる: ${[...picked].map((j) => USUAL[j].name).join('、') || 'なし'}`; render();
+  });
+  sheet.querySelector('#cancel').onclick = () => { ui = {}; lastAction = 'キャンセル'; render(); };
+  sheet.querySelector('#rec').onclick = () => { addMeal([...picked].sort((a, b) => a - b).map((j) => USUAL[j]), 'D: シートで記録'); ui = {}; render(); };
+}
+
+// 案 E: プリセットの行の先頭に「いつもの料理」。押すと、キーボードの代わりに同じ高さの一覧を出す（絵文字のキーボードのように）。
+// 選んだ料理は書く欄に札で入り、「送る」で1つの食事になる。書く欄を押すとキーボードに替わる（札は残る）
+function renderE() {
+  const picked = ui.picked ?? (ui.picked = []);
+  const mode = ui.mode; // undefined | 'panel' | 'kb'
+  const q = ui.q ?? '';
+  const writing = mode || picked.length || q;
+  $('composer').innerHTML = `${presetRow(mode === 'panel')}
+    <div class="line">${circles(writing ? '' : '<button class="circle" aria-label="体重">⚖️</button>')}
+      <div class="field">${picked.map((i) => `<span class="token">${esc(USUAL[i].name)}<button data-x="${i}" aria-label="外す">×</button></span>`).join('')}
+        <input id="text" placeholder="${picked.length ? '' : '書く'}" aria-label="書く" value="${esc(q)}">
+        ${picked.length || q ? '<button class="send" id="send" aria-label="送る">↑</button>' : ''}
+      </div></div>`;
+  $('below').innerHTML = mode === 'panel'
+    ? `<div class="panel"><div class="head">いつもの料理（直近28日の回数の多い順）</div>${USUAL.map((d, i) => itemHtml(d, i, picked.includes(i))).join('')}</div>`
+    : mode === 'kb' ? '<div class="keyboard">キーボード</div>' : '';
+  const input = $('text');
+  if (mode === 'kb') { input.focus(); input.setSelectionRange(q.length, q.length); }
+  input.onfocus = () => { if (ui.mode !== 'kb') { ui.mode = 'kb'; lastAction = '書く欄を押した → 一覧がキーボードに替わる（札は残る）'; render(); } };
+  input.oninput = () => { ui.q = input.value; render(); };
+  $('entry').onmousedown = (e) => {
+    e.preventDefault();
+    ui.mode = ui.mode === 'panel' ? 'kb' : 'panel';
+    lastAction = ui.mode === 'panel' ? '「いつもの料理」を押した → キーボードの場所に一覧' : 'もう一度押した → キーボードに戻る';
+    document.activeElement?.blur(); render();
+  };
+  document.querySelectorAll('#below .item').forEach((el) => el.onclick = () => {
+    const i = +el.dataset.i;
+    ui.picked = picked.includes(i) ? picked.filter((j) => j !== i) : [...picked, i];
+    lastAction = `欄の札: ${ui.picked.map((j) => USUAL[j].name).join('、') || 'なし'}`; render();
+  });
+  $('composer').querySelectorAll('[data-x]').forEach((el) => el.onmousedown = (e) => {
+    e.preventDefault(); ui.picked = picked.filter((i) => i !== +el.dataset.x); render();
+  });
+  $('send')?.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    if (picked.length) addMeal(picked.map((i) => USUAL[i]), q.trim() ? 'E: 札と文章を送った（文章は別に推定する想定）' : 'E: 札を送った');
+    else lastAction = `文章「${q}」を送った（今の書いて送るのと同じ。推定する）`;
+    ui = {}; document.activeElement?.blur(); render();
+  });
+}
+
+function renderState() {
+  $('state').textContent =
+`案: ${variant}（${VARIANTS[variant]}）
+直近の操作: ${lastAction}
+作った食事: ${meals.length}件${meals.length ? '\n' + meals.map((m) => `  ${m.time} ${m.dishes.map((d) => d.name).join(' + ')}  [${m.how}]`).join('\n') : ''}`;
+}
+
+function render() {
+  document.querySelectorAll('.sheet, .sheet-scrim').forEach((el) => el.remove());
+  ({ C: renderC, D: renderD, E: renderE })[variant]();
+  renderTimeline();
+  renderState();
+  $('label').textContent = `${variant}（${VARIANTS[variant]}）`;
+}
+
+function go(step) {
+  variant = KEYS[(KEYS.indexOf(variant) + step + KEYS.length) % KEYS.length];
+  try { history.replaceState(null, '', '#' + variant); } catch (e) {}
+  ui = {}; lastAction = '案を切り替えた'; document.querySelector('.toast')?.remove();
+  render();
+}
+$('prev').onclick = () => go(-1);
+$('next').onclick = () => go(1);
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+// 描き直す前に外を押したかを見るため、捕捉の段階で受ける
+document.addEventListener('mousedown', (e) => {
+  if (e.target.closest('#composer, #below, .sheet, .switcher')) return;
+  if (variant === 'C' && ui.focus) { ui.focus = false; render(); }
+  if (variant === 'E' && ui.mode) { ui.mode = undefined; render(); }
+}, true);
+render();
+</script>
