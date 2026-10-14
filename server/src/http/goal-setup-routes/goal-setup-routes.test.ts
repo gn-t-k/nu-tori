@@ -384,14 +384,15 @@ describe("目標の設定の要求", () => {
   });
 
   describe("初めての目標で、体重記録が昨日の1つだけのとき", () => {
-    // Mifflin-St Jeor: 10 × 70 + 6.25 × 170 − 5 × 40 + 5 = 1567.5。立ち仕事が多い（1.55）で 2,430 kcal
-    const bodyData = {
-      sex: "male",
-      heightCentimeters: 170,
-      ageYears: 40,
-      activity: { type: "level", level: "standing" },
-    };
+    let bodyData: Record<string, unknown>;
     beforeEach(async () => {
+      // Mifflin-St Jeor: 10 × 70 + 6.25 × 170 − 5 × 40 + 5 = 1567.5。立ち仕事が多い（1.55）で 2,430 kcal
+      bodyData = {
+        sex: "male",
+        heightCentimeters: 170,
+        ageYears: 40,
+        activity: { type: "level", level: "standing" },
+      };
       await recordDailyWeights(sessionToken, [addDays(today, -1)], 70);
     });
 
