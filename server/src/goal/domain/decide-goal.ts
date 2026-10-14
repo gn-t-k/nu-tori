@@ -193,7 +193,7 @@ const assessChoice = (
               return evaluation.status === "accepted"
                 ? {
                     status: "accepted",
-                    targetWeightKg: roundToTenthKg(targetWeightKg, "round"),
+                    targetWeightKg: evaluation.targetWeightKg,
                     dailyGuide: evaluation.dailyGuide,
                     weightChange: { deadlineOn, pacePlan: "custom" },
                     hadSlowedProposal,
@@ -296,12 +296,12 @@ const proposalsPlanOf = (choice: GoalChoice): GoalProposalsPlan =>
     }))
     .exhaustive();
 
-// 目標体重は 0.1 kg 単位、1日の目安は整数で見せているので、その単位で比べる
+// 目標体重は 0.1 kg 単位、1日の目安は整数で見せているので、その単位で比べる。計算し直した目標体重は 0.1 kg 単位になっている
 const isSameAsShown = (
   accepted: Pick<AcceptedChoice, "targetWeightKg" | "dailyGuide">,
   shown: GoalDecisionRequest["shown"],
 ): boolean =>
-  Math.round(accepted.targetWeightKg * 10) === Math.round(shown.targetWeightKg * 10) &&
+  accepted.targetWeightKg === roundToTenthKg(shown.targetWeightKg, "round") &&
   accepted.dailyGuide.energyKcal === shown.dailyGuide.energyKcal &&
   accepted.dailyGuide.proteinG === shown.dailyGuide.proteinG &&
   accepted.dailyGuide.fatG === shown.dailyGuide.fatG &&

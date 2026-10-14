@@ -34,6 +34,13 @@ describe("自分で決める目標体重", () => {
       });
     });
 
+    test("受け付ける目標体重を、0.1kg 単位に四捨五入して返すこと", () => {
+      expect(evaluateCustomTargetWeight({ ...goal, targetWeightKg: 68.06 })).toMatchObject({
+        status: "accepted",
+        targetWeightKg: 68.1,
+      });
+    });
+
     test("体重の傾向と同じ目標体重を、向きの側に出ないとして受け付けず、体重の傾向の 0.1kg 下を返すこと", () => {
       expect(evaluateCustomTargetWeight({ ...goal, targetWeightKg: 72.4 })).toEqual({
         status: "rejected",

@@ -16,6 +16,8 @@ export const evaluateCustomTargetWeight = ({
 }: WeightChangeGoalInputs & { targetWeightKg: number }):
   | {
       status: "accepted";
+      // 0.1kg 単位に四捨五入した目標体重。1日の目安と大変さは、この値で計算する
+      targetWeightKg: number;
       dailyGuide: ComputedDailyGuide;
       // 1日の目安と推定消費カロリーの差（少ないときは負）
       dailyGuideDifferenceKcal: number;
@@ -53,6 +55,7 @@ export const evaluateCustomTargetWeight = ({
   });
   return {
     status: "accepted",
+    targetWeightKg,
     dailyGuide,
     dailyGuideDifferenceKcal: computeDailyGuideDifferenceKcal({
       expenditureKcal,
