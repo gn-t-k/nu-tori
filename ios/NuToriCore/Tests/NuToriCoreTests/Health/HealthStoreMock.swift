@@ -8,6 +8,26 @@ final class HealthStoreMock: HealthStore, @unchecked Sendable {
     private(set) var nutritionAuthorizationRequests = 0
     private(set) var nutritionWrites: [HealthNutritionWrite] = []
     private(set) var nutritionDeletions: [UUID] = []
+    private(set) var goalSetupAuthorizationRequests = 0
+    private(set) var dietaryEnergyReadRequests: [DailyReadRequest] = []
+    private(set) var stepCountReadRequests: [DailyReadRequest] = []
+
+    struct DailyReadRequest: Equatable {
+        let days: ClosedRange<CalendarDay>
+        let timeZone: TimeZone
+    }
+
+    /// 目標の設定で読むもの
+    struct GoalSetup {
+        var requestStatus = HealthAuthorizationRequestStatus.alreadyRequested
+        var dietaryEnergy: [HealthDailySourceEnergy] = []
+        var dietaryEnergyBoundary: Date?
+        var dailySteps: [CalendarDay: Int] = [:]
+        var stepCountBoundary: Date?
+        var heightCentimeters: Double?
+        var dateOfBirth: CalendarDay?
+        var sex: BiologicalSex?
+    }
 
     struct ReadRequest: Equatable {
         let anchor: HealthAnchor?
@@ -21,7 +41,8 @@ final class HealthStoreMock: HealthStore, @unchecked Sendable {
         changes: HealthChanges = .fixture(),
         nutritionRequestStatus: HealthAuthorizationRequestStatus = .alreadyRequested,
         authorizedNutrients: Set<HealthNutrient> = Set(HealthNutrient.allCases),
-        nutritionFailure: (any Error)? = nil
+        nutritionFailure: (any Error)? = nil,
+        goalSetup: GoalSetup = GoalSetup()
     ) -> HealthStoreMock {
         HealthStoreMock(
             requestStatus: requestStatus,
@@ -31,6 +52,7 @@ final class HealthStoreMock: HealthStore, @unchecked Sendable {
             nutritionRequestStatus: nutritionRequestStatus,
             authorizedNutrients: authorizedNutrients,
             nutritionFailure: nutritionFailure,
+            goalSetup: goalSetup,
             failure: nil
         )
     }
@@ -44,6 +66,7 @@ final class HealthStoreMock: HealthStore, @unchecked Sendable {
             nutritionRequestStatus: .alreadyRequested,
             authorizedNutrients: Set(HealthNutrient.allCases),
             nutritionFailure: nil,
+            goalSetup: GoalSetup(),
             failure: error
         )
     }
@@ -108,6 +131,55 @@ final class HealthStoreMock: HealthStore, @unchecked Sendable {
         nutritionDeletions.append(syncId)
     }
 
+    func goalSetupAuthorizationRequestStatus() async throws -> HealthAuthorizationRequestStatus {
+        try failIfNeeded()
+        return goalSetup.requestStatus
+    }
+
+    func requestGoalSetupAuthorization() async throws {
+        try failIfNeeded()
+        goalSetupAuthorizationRequests += 1
+    }
+
+    func earliestAuthorizedSampleDate(for quantity: HealthDailyQuantity) async throws -> Date? {
+        try failIfNeeded()
+        switch quantity {
+        case .dietaryEnergy: return goalSetup.dietaryEnergyBoundary
+        case .stepCount: return goalSetup.stepCountBoundary
+        }
+    }
+
+    func readDailyDietaryEnergyBySource(days: ClosedRange<CalendarDay>, in timeZone: TimeZone)
+        async throws -> [HealthDailySourceEnergy]
+    {
+        try failIfNeeded()
+        dietaryEnergyReadRequests.append(DailyReadRequest(days: days, timeZone: timeZone))
+        return goalSetup.dietaryEnergy
+    }
+
+    func readDailyStepCounts(days: ClosedRange<CalendarDay>, in timeZone: TimeZone)
+        async throws -> [CalendarDay: Int]
+    {
+        try failIfNeeded()
+        stepCountReadRequests.append(DailyReadRequest(days: days, timeZone: timeZone))
+        return goalSetup.dailySteps
+    }
+
+    func readLatestHeightCentimeters() async throws -> Double? {
+        try failIfNeeded()
+        return goalSetup.heightCentimeters
+    }
+
+    func readDateOfBirth() async throws -> CalendarDay? {
+        try failIfNeeded()
+        return goalSetup.dateOfBirth
+    }
+
+    func readBiologicalSex() async throws -> BiologicalSex? {
+        try failIfNeeded()
+        return goalSetup.sex
+    }
+
     private let requestStatus: HealthAuthorizationRequestStatus
     private let isWriteAuthorized: Bool
     private let earliestAuthorizedSampleDateValue: Date?
@@ -115,6 +187,7 @@ final class HealthStoreMock: HealthStore, @unchecked Sendable {
     private let nutritionRequestStatus: HealthAuthorizationRequestStatus
     private let authorizedNutrients: Set<HealthNutrient>
     private let nutritionFailure: (any Error)?
+    private let goalSetup: GoalSetup
     private let failure: (any Error)?
 
     private init(
@@ -125,6 +198,7 @@ final class HealthStoreMock: HealthStore, @unchecked Sendable {
         nutritionRequestStatus: HealthAuthorizationRequestStatus,
         authorizedNutrients: Set<HealthNutrient>,
         nutritionFailure: (any Error)?,
+        goalSetup: GoalSetup,
         failure: (any Error)?
     ) {
         self.requestStatus = requestStatus
@@ -134,6 +208,7 @@ final class HealthStoreMock: HealthStore, @unchecked Sendable {
         self.nutritionRequestStatus = nutritionRequestStatus
         self.authorizedNutrients = authorizedNutrients
         self.nutritionFailure = nutritionFailure
+        self.goalSetup = goalSetup
         self.failure = failure
     }
 
