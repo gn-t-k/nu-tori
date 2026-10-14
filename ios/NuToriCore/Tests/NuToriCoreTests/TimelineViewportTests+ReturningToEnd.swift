@@ -51,7 +51,7 @@ extension TimelineViewportTests {
 
             @Test("そこから、中身が伸びたら一番下を追うこと")
             func followsFromThere() {
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(viewport.followsSizeChanges)
             }
         }
 
@@ -75,7 +75,7 @@ extension TimelineViewportTests {
 
             @Test("追わないままであること")
             func doesNotFollow() {
-                #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(!viewport.followsSizeChanges)
             }
         }
 
@@ -90,22 +90,22 @@ extension TimelineViewportTests {
 
             @Test("追い直すこと")
             func followsAgain() {
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(viewport.followsSizeChanges)
             }
         }
 
         @Suite("日のまとめで日を選んだとき")
         struct DayChosen {
-            let viewport: TimelineViewport
+            var viewport: TimelineViewport
 
             init() {
                 viewport = TimelineViewportTests.opened()
             }
 
             @Test("その日の区切りへ動かすこと")
-            func scrollsToDay() {
+            mutating func scrollsToDay() {
                 #expect(
-                    viewport.dayChosen(TimelineViewportTests.yesterday) == [
+                    viewport.dayChosen(TimelineViewportTests.yesterday, in: []) == [
                         .scroll(to: .day(TimelineViewportTests.yesterday), animated: false)
                     ])
             }
@@ -113,16 +113,16 @@ extension TimelineViewportTests {
 
         @Suite("知らせのカードに着くとき")
         struct LandingOnItem {
-            let viewport: TimelineViewport
+            var viewport: TimelineViewport
 
             init() {
                 viewport = TimelineViewportTests.opened()
             }
 
             @Test("そのカードへ、動きをつけて動かすこと")
-            func scrollsToItem() {
+            mutating func scrollsToItem() {
                 #expect(
-                    viewport.landingRequested(.item("notice-1")) == [
+                    viewport.landingRequested(.item("notice-1"), in: []) == [
                         .scroll(to: .item("notice-1"), animated: true)
                     ])
             }
@@ -130,15 +130,16 @@ extension TimelineViewportTests {
 
         @Suite("通知から、タイムラインのいちばん下に着くとき")
         struct LandingOnEnd {
-            let viewport: TimelineViewport
+            var viewport: TimelineViewport
 
             init() {
                 viewport = TimelineViewportTests.scrolledAway()
             }
 
             @Test("一番下へ動かすこと")
-            func scrollsToEnd() {
-                #expect(viewport.landingRequested(.end) == [.scroll(to: .end, animated: false)])
+            mutating func scrollsToEnd() {
+                #expect(
+                    viewport.landingRequested(.end, in: []) == [.scroll(to: .end, animated: false)])
             }
         }
     }

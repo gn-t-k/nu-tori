@@ -49,6 +49,8 @@
                     writePolicies: [RecordKindName.weightRecord.serverName: .reject])
             case .dayRing:
                 return dayRing()
+            case .unevenDays:
+                return unevenDays()
             case .mealEstimation:
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:))
@@ -90,12 +92,17 @@
         }
 
         /// 使い始めた日を3週間前にし、その日に記録を2件置く。帯を週単位で送って、画面の外の日へ移れる。
-        /// 使い始めた次の日を除く間の日にも1件ずつ置き、タイムラインが画面に収まらないようにする
+        /// 使い始めた次の日を除く間の日にも2件ずつ置き、開いたときに並べる分（`TimelineViewport` の、項目30個）に使い始めた日が入らないようにする
         private func dayRing() -> FakeSyncServer.Scenario {
-            let between = (-19 ... -1).enumerated().map { index, dayOffset in
-                weight(
-                    Self.fixedId(String(format: "bbbbbbbb-bbbb-4bbb-8bbb-%012d", index)), 71.0,
-                    dayOffset: dayOffset, hour: 7, minute: 0, imported: nil)
+            let between = (-19 ... -1).enumerated().flatMap { index, dayOffset in
+                [
+                    weight(
+                        Self.fixedId(String(format: "bbbbbbbb-bbbb-4bbb-8bbb-%012d", index)), 71.0,
+                        dayOffset: dayOffset, hour: 7, minute: 0, imported: nil),
+                    weight(
+                        Self.fixedId(String(format: "bbbbbbbb-bbbb-4bbb-9bbb-%012d", index)), 71.2,
+                        dayOffset: dayOffset, hour: 21, minute: 0, imported: nil),
+                ]
             }
             return .init(
                 records: [
@@ -109,6 +116,49 @@
                     tomorrowsImportedWeight,
                 ] + between,
                 startedOn: TimelineDayText.startedOn(for: clock.today().advanced(by: -21)))
+        }
+
+        /// 高さのばらつく日を並べる。おとといは短い返事、昨日は画面の数倍ある返事、今日は体重だけ。
+        /// まだ描いていない日の高さの見積もりが、実際の高さから大きく外れる
+        private func unevenDays() -> FakeSyncServer.Scenario {
+            let shortTalk = talk(
+                sentTextId: Self.fixedId("cccccccc-cccc-4ccc-8ccc-ccccccccccc1"),
+                replyId: Self.fixedId("dddddddd-dddd-4ddd-8ddd-ddddddddddd1"),
+                dayOffset: -2, replyParagraphs: 3)
+            let longTalk = talk(
+                sentTextId: Self.fixedId("cccccccc-cccc-4ccc-8ccc-ccccccccccc2"),
+                replyId: Self.fixedId("dddddddd-dddd-4ddd-8ddd-ddddddddddd2"),
+                dayOffset: -1, replyParagraphs: 30)
+            return .init(
+                records: shortTalk + longTalk + [
+                    weight(
+                        Self.fixedId("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1"), 71.0, dayOffset: 0,
+                        hour: 6, minute: 0, imported: nil)
+                ],
+                startedOn: TimelineDayText.startedOn(for: clock.today().advanced(by: -2)))
+        }
+
+        /// 12:00 に送ったプリセットの文章と、その返事。返事は、同じ段落を replyParagraphs 回くり返す
+        private func talk(
+            sentTextId: UUID, replyId: UUID, dayOffset: Int, replyParagraphs: Int
+        ) -> [SyncChange] {
+            [
+                .sentText(
+                    SyncedSentText(
+                        id: sentTextId, body: TextPreset.mealFeedbackSoFar.text,
+                        sentAt: date(dayOffset: dayOffset, hour: 12, minute: 0),
+                        timeZone: clock.timeZone())),
+                .sentTextStatus(
+                    SyncedSentTextStatus(
+                        sentTextId: sentTextId, classification: .conversation, reply: .replied)),
+                .aiUtterance(
+                    SyncedAiUtterance(
+                        id: replyId,
+                        body: String(
+                            repeating: "今日は朝ごはんから **たんぱく質** がとれています。\n- 昼は野菜を足す\n- 夜は軽めに\n\n",
+                            count: replyParagraphs),
+                        sentTextId: sentTextId, mealIds: [])),
+            ]
         }
 
         /// 今日 7:12 に手で記録した 72.4 kg

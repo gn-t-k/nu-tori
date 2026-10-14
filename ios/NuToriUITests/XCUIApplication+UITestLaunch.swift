@@ -12,6 +12,7 @@ extension XCUIApplication {
         lockoutDefaults: String? = nil,
         now: UITestNow = .morningBeforeNotice,
         dayPassesOnReturn: Bool = false,
+        cacheHoldsRecords: Bool = false,
         timeZone: String?,
         textSize: UITestTextSize? = nil
     ) -> XCUIApplication {
@@ -37,6 +38,10 @@ extension XCUIApplication {
         // ホームへ出てから開き直すたびに、アプリの時計を1日進める
         if dayPassesOnReturn {
             app.launchEnvironment["UI_TEST_DAY_PASSES_ON_RETURN"] = "1"
+        }
+        // 場面の記録を、前に開いたときに取り終えてキャッシュに持っている状態で始める
+        if cacheHoldsRecords {
+            app.launchEnvironment["UI_TEST_CACHE_HOLDS_RECORDS"] = "1"
         }
         if let timeZone {
             app.launchEnvironment["TZ"] = timeZone
