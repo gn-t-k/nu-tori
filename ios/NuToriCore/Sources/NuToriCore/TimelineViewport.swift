@@ -134,14 +134,18 @@ public struct TimelineViewport: Equatable, Sendable {
         }
     }
 
-    /// 目標の設定のカードを広げた・ページを送った。カードの日が並んでいれば true を返す。並んでいなければ、その日まで並べて false を返し、画面は並んでから送り直す。
-    /// カードの下端を入力欄の上に見せるので、上端に着く `landingRequested` とは分け、送るのは画面が持つ
-    public mutating func revealItem(_ itemId: Timeline.Item.ID, in days: [Timeline.Day]) -> Bool {
+    /// 目標の設定のカードを広げた・ページを送った。カードの下端（塗ったボタン）が入力欄の上に見えるところまで送るので、上端に着く `landingRequested` とは分ける。
+    /// カードの日が並んでいればすぐ送る。並んでいなければ、その日まで並べ、並んでから送る
+    public mutating func revealItem(_ itemId: Timeline.Item.ID, in days: [Timeline.Day])
+        -> [Instruction]
+    {
+        let reveal = Instruction.scroll(to: .itemBottom(itemId), animated: true)
         guard let day = days.first(where: { $0.items.contains { $0.id == itemId } }),
             !listedDays(of: days).contains(where: { $0.day == day.day })
-        else { return true }
+        else { return [reveal] }
         list(day.day, in: days)
-        return false
+        waitingInstructions.append(reveal)
+        return []
     }
 
     /// - Parameters:
@@ -245,6 +249,8 @@ extension TimelineViewport {
         case day(CalendarDay)
         /// そのカードの上端
         case item(Timeline.Item.ID)
+        /// そのカードの下端
+        case itemBottom(Timeline.Item.ID)
     }
 
     public struct DayPosition: Equatable, Sendable {

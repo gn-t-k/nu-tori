@@ -495,27 +495,29 @@ extension TimelineViewportTests {
                 viewport = ListedDays.opened(with: days)
             }
 
-            @Test("並べていない日のカードなら、その日まで並べて、まだ並んでいないと返すこと")
+            @Test("並べていない日のカードなら、その日まで並べ、並んでから動きをつけてカードの下端へ動かすこと")
             mutating func listsUnlistedDay() throws {
                 let item = try #require(days[5].items.first)
 
-                let first = viewport.revealItem(item.id, in: days)
-                let listed = Array(viewport.listedDays(of: days))
-                let second = viewport.revealItem(item.id, in: days)
+                let instructions = viewport.revealItem(item.id, in: days)
 
-                #expect(!first)
-                #expect(listed == Array(days.suffix(35)))
-                #expect(second)
+                #expect(instructions.isEmpty)
+                #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(35)))
+                #expect(
+                    viewport.waitingInstructions == [
+                        .scroll(to: .itemBottom(item.id), animated: true)
+                    ])
             }
 
-            @Test("並べている日のカードなら、並べる日を変えずに、並んでいると返すこと")
+            @Test("並べている日のカードなら、並べる日を変えずに、すぐ動きをつけてカードの下端へ動かすこと")
             mutating func keepsListedDays() throws {
                 let item = try #require(days.last?.items.first)
                 let listed = Array(viewport.listedDays(of: days))
 
-                let revealed = viewport.revealItem(item.id, in: days)
+                let instructions = viewport.revealItem(item.id, in: days)
 
-                #expect(revealed)
+                #expect(instructions == [.scroll(to: .itemBottom(item.id), animated: true)])
+                #expect(viewport.waitingInstructions.isEmpty)
                 #expect(Array(viewport.listedDays(of: days)) == listed)
             }
         }

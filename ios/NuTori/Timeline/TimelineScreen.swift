@@ -422,15 +422,10 @@ struct TimelineScreen: View {
                 // 目標の設定を広げた・ページを送ったら、カードの下端（塗ったボタン）が入力欄の上に見えるところまで、タイムラインごと送る
                 .onChange(of: goalSetupScrollKey) { _, key in
                     guard key.page != nil, let notice = timeline.goalSetupNotice else { return }
-                    let cardId = Timeline.Item.goalSetupNotice(notice).id
-                    // 並べていない日のカードなら、その日が並んでから送り直す
-                    guard viewport.revealItem(cardId, in: timeline.days) else {
-                        goalSetupScrollRequests += 1
-                        return
-                    }
-                    withAnimation {
-                        proxy.scrollTo(cardId, anchor: .bottom)
-                    }
+                    perform(
+                        viewport.revealItem(
+                            Timeline.Item.goalSetupNotice(notice).id, in: timeline.days),
+                        with: proxy)
                 }
                 // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く
                 .onChange(of: reminderLanding, initial: true) { _, landing in
@@ -708,6 +703,7 @@ struct TimelineScreen: View {
         case .end: proxy.scrollTo(Self.contentId, anchor: .bottom)
         case .day(let day): proxy.scrollTo(day, anchor: .top)
         case .item(let itemId): proxy.scrollTo(itemId, anchor: .top)
+        case .itemBottom(let itemId): proxy.scrollTo(itemId, anchor: .bottom)
         }
     }
 
