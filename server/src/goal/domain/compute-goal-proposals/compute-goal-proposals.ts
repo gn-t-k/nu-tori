@@ -4,16 +4,12 @@ import { computeTargetWeightAtPace } from "../compute-target-weight-at-pace";
 import { computeTargetWeightLimits } from "../compute-target-weight-limits";
 import type { ProposalPace } from "../proposal-pace";
 import { weeklyPaceRates } from "../weekly-pace-rates";
-import type { WeightChangeDirection } from "../weight-change-direction";
+import type { WeightChangeGoalInputs } from "../weight-change-goal-inputs";
 
 // 目標案の3つの枠を、ゆるい順に返す。案の大変さは、その案の段階（pace）
-export const computeGoalProposals = (goal: {
-  direction: WeightChangeDirection;
-  expenditureKcal: number;
-  startingWeightTrendKg: number;
-  // 開始の日から期限の日までの日数（両端を含む）
-  daysFromStartToDeadline: number;
-}): ({ pace: ProposalPace } & (
+export const computeGoalProposals = (
+  goal: WeightChangeGoalInputs,
+): ({ pace: ProposalPace } & (
   | {
       status: "offered";
       targetWeightKg: number;

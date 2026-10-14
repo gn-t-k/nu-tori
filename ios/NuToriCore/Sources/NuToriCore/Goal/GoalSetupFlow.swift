@@ -561,11 +561,15 @@ public final class GoalSetupFlow {
         proposalsGeneration += 1
         let generation = proposalsGeneration
         proposalsUnreachable = false
-        let deadlineOn = direction == .maintain ? nil : deadline.yearMonthDay
+        let plan: GoalProposalsPlan =
+            switch direction {
+            case .maintain: .maintain
+            case .lose: .weightChange(direction: .lose, deadlineOn: deadline.yearMonthDay)
+            case .gain: .weightChange(direction: .gain, deadlineOn: deadline.yearMonthDay)
+            }
         let task = Task {
             do {
-                let result = try await self.client.proposeGoals(
-                    direction: direction, deadlineOn: deadlineOn, inputs: self.inputs)
+                let result = try await self.client.proposeGoals(plan, inputs: self.inputs)
                 guard generation == self.proposalsGeneration else { return }
                 guard case .answered(let proposals) = await self.answer(of: result) else {
                     self.proposalsUnreachable = true

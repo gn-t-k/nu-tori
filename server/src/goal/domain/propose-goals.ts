@@ -6,10 +6,10 @@ import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejecte
 import type { GoalSetupSituation } from "./goal-setup-situation";
 import { proposeGoalsOnBasis } from "./propose-goals-on-basis";
 import {
-  requireCompleteGoalSetupBasis,
+  resolveCompleteGoalSetupBasis,
   type CompleteGoalSetupBasis,
-} from "./require-complete-goal-setup-basis";
-import { resolveGoalSetupBasis, type GoalSetupStores } from "./resolve-goal-setup-basis";
+} from "./resolve-complete-goal-setup-basis";
+import type { GoalSetupStores } from "./resolve-goal-setup-basis";
 import type { WeightChangeDirection } from "./weight-change-direction";
 
 // 選んだ向きと期限。維持は期限を持たない
@@ -41,7 +41,6 @@ export const proposeGoals = (
   now: Date,
 ): R.Result<GoalProposals, GoalSetupRequestRejectedError> =>
   R.pipe(
-    resolveGoalSetupBasis(stores, request, now),
-    R.andThen(requireCompleteGoalSetupBasis),
+    resolveCompleteGoalSetupBasis(stores, request, now),
     R.andThen((basis) => proposeGoalsOnBasis(basis, request.plan)),
   );

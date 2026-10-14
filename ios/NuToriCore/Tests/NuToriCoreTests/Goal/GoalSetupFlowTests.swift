@@ -55,7 +55,8 @@ struct GoalSetupFlowTests {
                 #expect(harness.flow.page == .proposals)
                 #expect(harness.flow.progress == .init(count: 3, index: 2))
                 #expect(
-                    try harness.sentBodies("proposals").first?["deadlineOn"] as? String
+                    (try harness.sentBodies("proposals").first?["plan"] as? [String: Any])?["deadlineOn"]
+                        as? String
                         == "2026-04-01")
             }
 
@@ -265,7 +266,9 @@ struct GoalSetupFlowTests {
 
                 #expect(harness.flow.page == .maintenance)
                 #expect(harness.flow.progress == .init(count: 2, index: 1))
-                #expect(try harness.sentBodies("proposals").first?["deadlineOn"] == nil)
+                let plan = try harness.sentBodies("proposals").first?["plan"] as? [String: Any]
+                #expect(plan?["direction"] as? String == "maintain")
+                #expect(plan?["deadlineOn"] == nil)
                 guard case .maintenance(let maintenance)? = harness.flow.proposals?.plan else {
                     Issue.record("維持の値が無い")
                     return
@@ -434,7 +437,8 @@ struct GoalSetupFlowTests {
 
                 #expect(harness.flow.page == .proposals)
                 #expect(
-                    try harness.sentBodies("proposals").first?["deadlineOn"] as? String
+                    (try harness.sentBodies("proposals").first?["plan"] as? [String: Any])?["deadlineOn"]
+                        as? String
                         == "2026-03-01")
             }
 

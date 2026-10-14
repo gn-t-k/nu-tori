@@ -17,7 +17,7 @@ export const computeInitialExpenditureEstimate = ({
   deviceEnergyIntakes,
   recordedEnergyIntakes,
   dailyWeights,
-  startWeightTrendKg,
+  startingWeightTrendKg,
   bodyData,
 }: {
   // 端末の今のタイムゾーンでの今日
@@ -30,7 +30,7 @@ export const computeInitialExpenditureEstimate = ({
   // 日の代表値
   dailyWeights: readonly { calendarDay: string; weightKg: number }[];
   // 開始の日の体重の傾向。体重記録が1つも無い人には無い
-  startWeightTrendKg: number | undefined;
+  startingWeightTrendKg: number | undefined;
   // 逆算できる人には尋ねないので無い
   bodyData: BodyData | undefined;
 }): R.Result<InitialExpenditureEstimate, FormulaInputsMissingError | BodyDataOutOfRangeError> => {
@@ -51,7 +51,7 @@ export const computeInitialExpenditureEstimate = ({
     return R.succeed({ kcal: Math.round(backCalculated), source: "back_calculated" });
   }
 
-  if (bodyData === undefined || startWeightTrendKg === undefined) {
+  if (bodyData === undefined || startingWeightTrendKg === undefined) {
     return R.fail(new FormulaInputsMissingError());
   }
   if (!isWithinAcceptedRange("heightCentimeters", bodyData.heightCentimeters)) {
@@ -73,7 +73,7 @@ export const computeInitialExpenditureEstimate = ({
     return R.fail(new FormulaInputsMissingError());
   }
   return R.succeed({
-    kcal: Math.round(computeRestingExpenditure(bodyData, startWeightTrendKg) * activityFactor),
+    kcal: Math.round(computeRestingExpenditure(bodyData, startingWeightTrendKg) * activityFactor),
     source: "formula",
   });
 };

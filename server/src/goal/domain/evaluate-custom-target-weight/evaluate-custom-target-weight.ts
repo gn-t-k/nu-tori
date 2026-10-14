@@ -1,23 +1,18 @@
 import { computeDailyGuide } from "../../../daily-guide/domain/compute-daily-guide";
 import { computeDailyGuideDifferenceKcal } from "../../../daily-guide/domain/compute-daily-guide-difference-kcal";
 import { computeTargetWeightLimits } from "../compute-target-weight-limits";
+import type { CustomTargetWeightRejectionReason } from "../custom-target-weight-rejection-reason";
 import type { ProposalPace } from "../proposal-pace";
 import { roundToTenthKg } from "../round-to-tenth-kg";
 import { weeklyPaceRates } from "../weekly-pace-rates";
 import type { WeightChangeDirection } from "../weight-change-direction";
+import type { WeightChangeGoalInputs } from "../weight-change-goal-inputs";
 
 // 自分で決めた目標体重を受け付けるかを決め、受け付けるなら1日の目安と大変さを返す
 export const evaluateCustomTargetWeight = ({
   targetWeightKg: enteredTargetWeightKg,
   ...goal
-}: {
-  direction: WeightChangeDirection;
-  expenditureKcal: number;
-  startingWeightTrendKg: number;
-  // 開始の日から期限の日までの日数（両端を含む）
-  daysFromStartToDeadline: number;
-  targetWeightKg: number;
-}):
+}: WeightChangeGoalInputs & { targetWeightKg: number }):
   | {
       status: "accepted";
       dailyGuide: ReturnType<typeof computeDailyGuide>;
@@ -27,7 +22,7 @@ export const evaluateCustomTargetWeight = ({
     }
   | {
       status: "rejected";
-      reason: "not_on_direction_side" | "pace_too_fast" | "daily_guide_below_minimum";
+      reason: CustomTargetWeightRejectionReason;
       // 減量の案を1つも出せないときは、受け付ける目標体重が無い
       nearestAcceptedTargetWeightKg: number | undefined;
     } => {

@@ -33,10 +33,10 @@ extension NuToriAPIClient {
         }
     }
 
-    /// 目標案。減量・増量は期限（YYYY-MM-DD）を付ける。維持は nil
-    public func proposeGoals(
-        direction: GoalSetupDirection, deadlineOn: String?, inputs: GoalSetupInputs
-    ) async throws -> GoalSetupResult<GoalProposals> {
+    /// 目標案
+    public func proposeGoals(_ plan: GoalProposalsPlan, inputs: GoalSetupInputs) async throws
+        -> GoalSetupResult<GoalProposals>
+    {
         typealias Payload = Operations.ProposeGoals.Input.Body.JsonPayload
         let output = try await client.proposeGoals(
             body: .json(
@@ -45,8 +45,7 @@ extension NuToriAPIClient {
                     preUseEnergyIntakes: inputs.wireIntakes(
                         Payload.PreUseEnergyIntakesPayloadPayload.init),
                     bodyData: inputs.body.map(Components.Schemas.GoalSetupBodyData.init),
-                    direction: Payload.DirectionPayload(direction),
-                    deadlineOn: deadlineOn
+                    plan: Components.Schemas.GoalProposalsPlan(plan)
                 )))
         switch output {
         case .ok(let ok): return .answered(try GoalProposals(try ok.body.json))
@@ -140,12 +139,15 @@ extension Operations.PreviewGoalSetup.Input.Body.JsonPayload.DirectionPayload {
     }
 }
 
-extension Operations.ProposeGoals.Input.Body.JsonPayload.DirectionPayload {
-    fileprivate init(_ direction: GoalSetupDirection) {
-        switch direction {
-        case .lose: self = .lose
-        case .gain: self = .gain
-        case .maintain: self = .maintain
+extension Components.Schemas.GoalProposalsPlan {
+    fileprivate init(_ plan: GoalProposalsPlan) {
+        switch plan {
+        case .maintain:
+            self = .maintain(.init(direction: .maintain))
+        case .weightChange(.lose, let deadlineOn):
+            self = .lose(.init(direction: .lose, deadlineOn: deadlineOn))
+        case .weightChange(.gain, let deadlineOn):
+            self = .gain(.init(direction: .gain, deadlineOn: deadlineOn))
         }
     }
 }

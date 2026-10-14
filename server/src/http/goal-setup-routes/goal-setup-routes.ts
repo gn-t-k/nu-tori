@@ -5,16 +5,15 @@ import { match } from "ts-pattern";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
 import { dailyGuidePlanSchema, toDailyGuidePlan } from "./daily-guide-plan-schema";
+import { deadlineOnSchema } from "./deadline-on-schema";
 import { goalDecisionRequestSchema, toGoalDecisionRequest } from "./goal-decision-request-schema";
 import { goalDecisionSchema, toGoalDecisionResponse } from "./goal-decision-schema";
 import { GoalSetupRequestMalformedError } from "./goal-setup-request-malformed-error";
 import { goalProposalsSchema, toGoalProposalsResponse } from "./goal-proposals-schema";
-import {
-  calendarDaySchema,
-  goalSetupSituationSchema,
-  toGoalSetupSituation,
-} from "./goal-setup-situation-schema";
+import { goalSetupSituationSchema, toGoalSetupSituation } from "./goal-setup-situation-schema";
 import { rejectUnreadableJsonBody } from "./reject-unreadable-json-body";
+import { respondGoalSetupRejected } from "./respond-goal-setup-rejected";
+import { weightChangeDirectionSchema } from "./weight-change-direction-schema";
 
 const rejectionSchema = z
   .object({
@@ -40,7 +39,18 @@ const rejectionResponses = {
   429: { description: "回数の歯止めにかかった" },
 } as const;
 
-const weightChangeDirectionSchema = z.enum(["lose", "gain"]);
+// 選んだ向きと期限。維持は期限を持たない
+const goalProposalsPlanSchema = z
+  .discriminatedUnion("direction", [
+    z.object({ direction: z.literal("maintain") }).openapi("GoalMaintainPlan"),
+    z
+      .object({ direction: z.literal("lose"), deadlineOn: deadlineOnSchema })
+      .openapi("GoalLosePlan"),
+    z
+      .object({ direction: z.literal("gain"), deadlineOn: deadlineOnSchema })
+      .openapi("GoalGainPlan"),
+  ])
+  .openapi("GoalProposalsPlan", { description: "選んだ向きと、減量・増量の期限" });
 
 export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
   // 形の誤りも Sentry に送る。誤っていた場所と種類だけを持たせ、届いた値は載せない
@@ -108,8 +118,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
         { ...toGoalSetupSituation(situation), direction },
       );
       if (R.isFailure(previewed)) {
-        captureException(previewed.error);
-        return c.json({ code: previewed.error.reason }, 422);
+        return respondGoalSetupRejected(c, previewed.error);
       }
       const { canBackCalculate, canOfferLoseProposals } = previewed.value;
       return c.json(
@@ -136,23 +145,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
           required: true,
           content: {
             "application/json": {
-              schema: goalSetupSituationSchema
-                .extend({
-                  direction: z.enum(["lose", "gain", "maintain"]),
-                  deadlineOn: calendarDaySchema.optional().openapi({
-                    description:
-                      "期限。減量・増量では必ず付ける。開始の日から数えて（両端を含む）28〜182 日の日",
-                  }),
-                })
-                .superRefine(({ direction, deadlineOn }, context) => {
-                  if (direction !== "maintain" && deadlineOn === undefined) {
-                    context.addIssue({
-                      code: "custom",
-                      path: ["deadlineOn"],
-                      message: "減量・増量には期限が要る",
-                    });
-                  }
-                }),
+              schema: goalSetupSituationSchema.extend({ plan: goalProposalsPlanSchema }),
             },
           },
         },
@@ -166,21 +159,13 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       },
     }),
     async (c) => {
-      const { direction, deadlineOn, ...situation } = c.req.valid("json");
+      const { plan, ...situation } = c.req.valid("json");
       const proposed = await getAccountDurableObject(c.env, c.var.accountId).proposeGoals(
         c.var.accountId,
-        {
-          ...toGoalSetupSituation(situation),
-          // 減量・増量で期限が無い要求は、スキーマが形の誤りとして断っている
-          plan:
-            direction === "maintain" || deadlineOn === undefined
-              ? { direction: "maintain" }
-              : { direction, deadlineOn },
-        },
+        { ...toGoalSetupSituation(situation), plan },
       );
       if (R.isFailure(proposed)) {
-        captureException(proposed.error);
-        return c.json({ code: proposed.error.reason }, 422);
+        return respondGoalSetupRejected(c, proposed.error);
       }
       return c.json(toGoalProposalsResponse(proposed.value), 200);
     },
@@ -202,7 +187,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
             "application/json": {
               schema: goalSetupSituationSchema.extend({
                 direction: weightChangeDirectionSchema,
-                deadlineOn: calendarDaySchema,
+                deadlineOn: deadlineOnSchema,
                 targetWeightKg: z.number().positive().openapi({
                   description: "0.1 kg 単位に丸めて確かめる",
                 }),
@@ -264,8 +249,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
         targetWeightKg,
       });
       if (R.isFailure(assessed)) {
-        captureException(assessed.error);
-        return c.json({ code: assessed.error.reason }, 422);
+        return respondGoalSetupRejected(c, assessed.error);
       }
       const { startedOn, evaluation } = assessed.value;
       return c.json(
@@ -324,8 +308,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
         toGoalDecisionRequest(c.req.valid("json")),
       );
       if (R.isFailure(decided)) {
-        captureException(decided.error);
-        return c.json({ code: decided.error.reason }, 422);
+        return respondGoalSetupRejected(c, decided.error);
       }
       return c.json(toGoalDecisionResponse(decided.value), 200);
     },

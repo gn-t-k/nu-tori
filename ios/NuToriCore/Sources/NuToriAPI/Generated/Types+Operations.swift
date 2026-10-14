@@ -1949,45 +1949,31 @@ internal enum Operations {
                     internal var preUseEnergyIntakes: Operations.ProposeGoals.Input.Body.JsonPayload.PreUseEnergyIntakesPayload?
                     /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/bodyData`.
                     internal var bodyData: Components.Schemas.GoalSetupBodyData?
-                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/direction`.
-                    internal enum DirectionPayload: String, Codable, Hashable, Sendable, CaseIterable {
-                        case lose = "lose"
-                        case gain = "gain"
-                        case maintain = "maintain"
-                    }
-                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/direction`.
-                    internal var direction: Operations.ProposeGoals.Input.Body.JsonPayload.DirectionPayload
-                    /// 期限。減量・増量では必ず付ける。開始の日から数えて（両端を含む）28〜182 日の日
-                    ///
-                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/deadlineOn`.
-                    internal var deadlineOn: Swift.String?
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/plan`.
+                    internal var plan: Components.Schemas.GoalProposalsPlan
                     /// Creates a new `JsonPayload`.
                     ///
                     /// - Parameters:
                     ///   - timeZone: 端末の今のタイムゾーン（IANA 名）。開始の日を決める
                     ///   - preUseEnergyIntakes: 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
                     ///   - bodyData:
-                    ///   - direction:
-                    ///   - deadlineOn: 期限。減量・増量では必ず付ける。開始の日から数えて（両端を含む）28〜182 日の日
+                    ///   - plan:
                     internal init(
                         timeZone: Swift.String,
                         preUseEnergyIntakes: Operations.ProposeGoals.Input.Body.JsonPayload.PreUseEnergyIntakesPayload? = nil,
                         bodyData: Components.Schemas.GoalSetupBodyData? = nil,
-                        direction: Operations.ProposeGoals.Input.Body.JsonPayload.DirectionPayload,
-                        deadlineOn: Swift.String? = nil
+                        plan: Components.Schemas.GoalProposalsPlan
                     ) {
                         self.timeZone = timeZone
                         self.preUseEnergyIntakes = preUseEnergyIntakes
                         self.bodyData = bodyData
-                        self.direction = direction
-                        self.deadlineOn = deadlineOn
+                        self.plan = plan
                     }
                     internal enum CodingKeys: String, CodingKey {
                         case timeZone
                         case preUseEnergyIntakes
                         case bodyData
-                        case direction
-                        case deadlineOn
+                        case plan
                     }
                 }
                 /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/content/application\/json`.
@@ -2333,7 +2319,7 @@ internal enum Operations {
                     }
                     /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/direction`.
                     internal var direction: Operations.AssessCustomTargetWeight.Input.Body.JsonPayload.DirectionPayload
-                    /// YYYY-MM-DD
+                    /// 期限。開始の日から数えて（両端を含む）28〜182 日の日
                     ///
                     /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/deadlineOn`.
                     internal var deadlineOn: Swift.String
@@ -2348,7 +2334,7 @@ internal enum Operations {
                     ///   - preUseEnergyIntakes: 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
                     ///   - bodyData:
                     ///   - direction:
-                    ///   - deadlineOn: YYYY-MM-DD
+                    ///   - deadlineOn: 期限。開始の日から数えて（両端を含む）28〜182 日の日
                     ///   - targetWeightKg: 0.1 kg 単位に丸めて確かめる
                     internal init(
                         timeZone: Swift.String,

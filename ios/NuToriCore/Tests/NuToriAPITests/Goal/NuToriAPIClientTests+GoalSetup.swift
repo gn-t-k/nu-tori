@@ -153,21 +153,22 @@ extension NuToriAPIClientTests {
             @Test("向きと期限を POST /v1/goal-setup/proposals に送ること")
             func sendsDeadline() async throws {
                 _ = try await client.proposeGoals(
-                    direction: .lose, deadlineOn: "2026-03-31", inputs: GoalSetup.firstGoalInputs)
+                    .weightChange(direction: .lose, deadlineOn: "2026-03-31"),
+                    inputs: GoalSetup.firstGoalInputs)
 
                 let sent = try #require(transport.requests.first)
                 #expect(sent.request.path == "/v1/goal-setup/proposals")
                 let body = try JSONDecoder().decode(
                     Operations.ProposeGoals.Input.Body.JsonPayload.self,
                     from: Data((sent.body ?? "").utf8))
-                #expect(body.direction == .lose)
-                #expect(body.deadlineOn == "2026-03-31")
+                #expect(body.plan == .lose(.init(direction: .lose, deadlineOn: "2026-03-31")))
             }
 
             @Test("3つの枠と出せない理由、受け付ける幅、推定消費カロリーと出どころを読むこと")
             func readsProposals() async throws {
                 let result = try await client.proposeGoals(
-                    direction: .lose, deadlineOn: "2026-03-31", inputs: GoalSetup.firstGoalInputs)
+                    .weightChange(direction: .lose, deadlineOn: "2026-03-31"),
+                    inputs: GoalSetup.firstGoalInputs)
 
                 let standard = GoalProposals.OfferedProposal(
                     pace: .standard, targetWeightKilograms: 65.5,
@@ -227,7 +228,7 @@ extension NuToriAPIClientTests {
             @Test("目標体重と1日の目安を読むこと")
             func readsMaintenance() async throws {
                 let result = try await client.proposeGoals(
-                    direction: .maintain, deadlineOn: nil, inputs: GoalSetup.firstGoalInputs)
+                    .maintain, inputs: GoalSetup.firstGoalInputs)
 
                 guard case .answered(let proposals) = result else {
                     Issue.record("答えが無い")

@@ -3,17 +3,18 @@ import { match } from "ts-pattern";
 import { computeAcceptedTargetWeightRange } from "./compute-accepted-target-weight-range";
 import { computeGoalProposals } from "./compute-goal-proposals";
 import { computeMaintenancePlan } from "./compute-maintenance-plan";
-import { countAcceptedDaysToDeadline } from "./count-accepted-days-to-deadline";
+import { computeWeightChangeGoalInputs } from "./compute-weight-change-goal-inputs";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalProposals, GoalProposalsPlan } from "./propose-goals";
-import type { CompleteGoalSetupBasis } from "./require-complete-goal-setup-basis";
+import type { CompleteGoalSetupBasis } from "./resolve-complete-goal-setup-basis";
 
 // 出し終えた計算の元から、目標案を出す。目標案の要求と、目標を決める要求が決めずに返す「新しい案」が使う
 export const proposeGoalsOnBasis = (
-  { startedOn, startingWeightTrend, expenditure }: CompleteGoalSetupBasis,
+  basis: CompleteGoalSetupBasis,
   plan: GoalProposalsPlan,
-): R.Result<GoalProposals, GoalSetupRequestRejectedError> =>
-  R.pipe(
+): R.Result<GoalProposals, GoalSetupRequestRejectedError> => {
+  const { startedOn, startingWeightTrend, expenditure } = basis;
+  return R.pipe(
     match(plan)
       .returnType<R.Result<GoalProposals["plan"], GoalSetupRequestRejectedError>>()
       .with({ direction: "maintain" }, ({ direction }) =>
@@ -25,25 +26,18 @@ export const proposeGoalsOnBasis = (
           }),
         }),
       )
-      .with({ direction: "lose" }, { direction: "gain" }, ({ direction, deadlineOn }) =>
+      .with({ direction: "lose" }, { direction: "gain" }, (weightChangePlan) =>
         R.pipe(
-          countAcceptedDaysToDeadline({ startedOn, deadlineOn }),
-          R.map((daysFromStartToDeadline) => {
-            const goal = {
-              direction,
-              expenditureKcal: expenditure.kcal,
-              startingWeightTrendKg: startingWeightTrend.trendKg,
-              daysFromStartToDeadline,
-            };
-            return {
-              direction,
-              deadlineOn,
-              proposals: computeGoalProposals(goal),
-              acceptedTargetWeightRange: computeAcceptedTargetWeightRange(goal),
-            };
-          }),
+          computeWeightChangeGoalInputs(basis, weightChangePlan),
+          R.map((goal) => ({
+            direction: weightChangePlan.direction,
+            deadlineOn: weightChangePlan.deadlineOn,
+            proposals: computeGoalProposals(goal),
+            acceptedTargetWeightRange: computeAcceptedTargetWeightRange(goal),
+          })),
         ),
       )
       .exhaustive(),
     R.map((proposed) => ({ startedOn, startingWeightTrend, expenditure, plan: proposed })),
   );
+};

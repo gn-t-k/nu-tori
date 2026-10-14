@@ -302,7 +302,7 @@ describe("推定消費カロリーの始まりの計算", () => {
           createInput({
             recordedEnergyIntakes: consecutiveDays("2026-10-01", 14, 2000),
             dailyWeights: weightsLosing50GramsPerDay,
-            startWeightTrendKg: 70,
+            startingWeightTrendKg: 70,
             bodyData: { ...sedentaryMan, heightCentimeters: 1.72 },
           }),
         );
@@ -323,7 +323,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: sedentaryMan }),
+          createInput({ startingWeightTrendKg: 70, bodyData: sedentaryMan }),
         );
       });
 
@@ -339,7 +339,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: { ...sedentaryMan, sex: "female" } }),
+          createInput({ startingWeightTrendKg: 70, bodyData: { ...sedentaryMan, sex: "female" } }),
         );
       });
 
@@ -356,7 +356,7 @@ describe("推定消費カロリーの始まりの計算", () => {
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
           createInput({
-            startWeightTrendKg: 70,
+            startingWeightTrendKg: 70,
             bodyData: { ...sedentaryMan, activity: { type: "level", level: "standing" } },
           }),
         );
@@ -375,7 +375,7 @@ describe("推定消費カロリーの始まりの計算", () => {
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
           createInput({
-            startWeightTrendKg: 70,
+            startingWeightTrendKg: 70,
             bodyData: { ...sedentaryMan, activity: { type: "level", level: "active" } },
           }),
         );
@@ -393,7 +393,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: manWalking([4999]) }),
+          createInput({ startingWeightTrendKg: 70, bodyData: manWalking([4999]) }),
         );
       });
 
@@ -409,7 +409,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: manWalking([5000]) }),
+          createInput({ startingWeightTrendKg: 70, bodyData: manWalking([5000]) }),
         );
       });
 
@@ -425,7 +425,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: manWalking([9999]) }),
+          createInput({ startingWeightTrendKg: 70, bodyData: manWalking([9999]) }),
         );
       });
 
@@ -441,7 +441,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: manWalking([10_000]) }),
+          createInput({ startingWeightTrendKg: 70, bodyData: manWalking([10_000]) }),
         );
       });
 
@@ -457,7 +457,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: manWalking([0, 10_000, 0]) }),
+          createInput({ startingWeightTrendKg: 70, bodyData: manWalking([0, 10_000, 0]) }),
         );
       });
 
@@ -474,7 +474,7 @@ describe("推定消費カロリーの始まりの計算", () => {
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
           createInput({
-            startWeightTrendKg: 70,
+            startingWeightTrendKg: 70,
             bodyData: {
               ...sedentaryMan,
               activity: {
@@ -502,7 +502,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: manWalking([0, 0]) }),
+          createInput({ startingWeightTrendKg: 70, bodyData: manWalking([0, 0]) }),
         );
       });
 
@@ -517,7 +517,7 @@ describe("推定消費カロリーの始まりの計算", () => {
       let estimate: Estimate;
 
       beforeEach(() => {
-        estimate = computeInitialExpenditureEstimate(createInput({ startWeightTrendKg: 70 }));
+        estimate = computeInitialExpenditureEstimate(createInput({ startingWeightTrendKg: 70 }));
       });
 
       test("式に使う値が足りないと返すこと", () => {
@@ -547,7 +547,7 @@ describe("推定消費カロリーの始まりの計算", () => {
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
           createInput({
-            startWeightTrendKg: 70,
+            startingWeightTrendKg: 70,
             bodyData: { ...sedentaryMan, heightCentimeters: 99.9 },
           }),
         );
@@ -568,7 +568,7 @@ describe("推定消費カロリーの始まりの計算", () => {
 
       beforeEach(() => {
         estimate = computeInitialExpenditureEstimate(
-          createInput({ startWeightTrendKg: 70, bodyData: { ...sedentaryMan, ageYears: 121 } }),
+          createInput({ startingWeightTrendKg: 70, bodyData: { ...sedentaryMan, ageYears: 121 } }),
         );
       });
 
@@ -587,7 +587,7 @@ const createInput = (overrides: Partial<Input>): Input => ({
   deviceEnergyIntakes: [],
   recordedEnergyIntakes: [],
   dailyWeights: [],
-  startWeightTrendKg: undefined,
+  startingWeightTrendKg: undefined,
   bodyData: undefined,
   ...overrides,
 });

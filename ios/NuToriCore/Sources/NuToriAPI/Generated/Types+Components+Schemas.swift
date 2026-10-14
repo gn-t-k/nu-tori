@@ -2995,6 +2995,128 @@ extension Components {
                 case carbohydrateG
             }
         }
+        /// 選んだ向きと、減量・増量の期限
+        ///
+        /// - Remark: Generated from `#/components/schemas/GoalProposalsPlan`.
+        internal enum GoalProposalsPlan: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/GoalProposalsPlan/GoalGainPlan`.
+            case gain(Components.Schemas.GoalGainPlan)
+            /// - Remark: Generated from `#/components/schemas/GoalProposalsPlan/GoalLosePlan`.
+            case lose(Components.Schemas.GoalLosePlan)
+            /// - Remark: Generated from `#/components/schemas/GoalProposalsPlan/GoalMaintainPlan`.
+            case maintain(Components.Schemas.GoalMaintainPlan)
+            internal enum CodingKeys: String, CodingKey {
+                case direction
+            }
+            internal init(from decoder: any Swift.Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                let discriminator = try container.decode(
+                    Swift.String.self,
+                    forKey: .direction
+                )
+                switch discriminator {
+                case "gain":
+                    self = .gain(try .init(from: decoder))
+                case "lose":
+                    self = .lose(try .init(from: decoder))
+                case "maintain":
+                    self = .maintain(try .init(from: decoder))
+                default:
+                    throw Swift.DecodingError.unknownOneOfDiscriminator(
+                        discriminatorKey: CodingKeys.direction,
+                        discriminatorValue: discriminator,
+                        codingPath: decoder.codingPath
+                    )
+                }
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .gain(value):
+                    try value.encode(to: encoder)
+                case let .lose(value):
+                    try value.encode(to: encoder)
+                case let .maintain(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/GoalMaintainPlan`.
+        internal struct GoalMaintainPlan: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/GoalMaintainPlan/direction`.
+            internal enum DirectionPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case maintain = "maintain"
+            }
+            /// - Remark: Generated from `#/components/schemas/GoalMaintainPlan/direction`.
+            internal var direction: Components.Schemas.GoalMaintainPlan.DirectionPayload
+            /// Creates a new `GoalMaintainPlan`.
+            ///
+            /// - Parameters:
+            ///   - direction:
+            internal init(direction: Components.Schemas.GoalMaintainPlan.DirectionPayload) {
+                self.direction = direction
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case direction
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/GoalLosePlan`.
+        internal struct GoalLosePlan: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/GoalLosePlan/direction`.
+            internal enum DirectionPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case lose = "lose"
+            }
+            /// - Remark: Generated from `#/components/schemas/GoalLosePlan/direction`.
+            internal var direction: Components.Schemas.GoalLosePlan.DirectionPayload
+            /// 期限。開始の日から数えて（両端を含む）28〜182 日の日
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalLosePlan/deadlineOn`.
+            internal var deadlineOn: Swift.String
+            /// Creates a new `GoalLosePlan`.
+            ///
+            /// - Parameters:
+            ///   - direction:
+            ///   - deadlineOn: 期限。開始の日から数えて（両端を含む）28〜182 日の日
+            internal init(
+                direction: Components.Schemas.GoalLosePlan.DirectionPayload,
+                deadlineOn: Swift.String
+            ) {
+                self.direction = direction
+                self.deadlineOn = deadlineOn
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case direction
+                case deadlineOn
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/GoalGainPlan`.
+        internal struct GoalGainPlan: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/GoalGainPlan/direction`.
+            internal enum DirectionPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case gain = "gain"
+            }
+            /// - Remark: Generated from `#/components/schemas/GoalGainPlan/direction`.
+            internal var direction: Components.Schemas.GoalGainPlan.DirectionPayload
+            /// 期限。開始の日から数えて（両端を含む）28〜182 日の日
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalGainPlan/deadlineOn`.
+            internal var deadlineOn: Swift.String
+            /// Creates a new `GoalGainPlan`.
+            ///
+            /// - Parameters:
+            ///   - direction:
+            ///   - deadlineOn: 期限。開始の日から数えて（両端を含む）28〜182 日の日
+            internal init(
+                direction: Components.Schemas.GoalGainPlan.DirectionPayload,
+                deadlineOn: Swift.String
+            ) {
+                self.direction = direction
+                self.deadlineOn = deadlineOn
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case direction
+                case deadlineOn
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/CustomTargetWeightAssessment`.
         internal struct CustomTargetWeightAssessment: Codable, Hashable, Sendable {
             /// 計算に使った開始の日（YYYY-MM-DD）

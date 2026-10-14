@@ -363,8 +363,7 @@ describe("目標を決める要求", () => {
       test("決めずに、新しい体重の傾向で出した目標案を、目標案の応答と同じ形で返すこと", async () => {
         const proposals = await (
           await postGoalSetup(sessionToken, "proposals", {
-            direction: "lose",
-            deadlineOn,
+            plan: { direction: "lose", deadlineOn },
             preUseEnergyIntakes,
           })
         ).json<{ startingWeightTrendKg: number; lastWeightRecordedOn: string }>();
@@ -780,7 +779,10 @@ describe("目標を決める要求", () => {
         },
       };
       const { maintenance } = await (
-        await postGoalSetup(sessionToken, "proposals", { direction: "maintain", ...situation })
+        await postGoalSetup(sessionToken, "proposals", {
+          plan: { direction: "maintain" },
+          ...situation,
+        })
       ).json<{ maintenance: { targetWeightKg: number; dailyGuide: unknown } }>();
       response = await postGoalSetup(sessionToken, "decisions", {
         requestId: generateRecordId(),
