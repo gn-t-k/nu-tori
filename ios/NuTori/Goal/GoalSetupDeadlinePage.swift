@@ -77,17 +77,13 @@ struct GoalSetupDeadlinePage: View {
 
     /// 「10月22日〜4月13日の日を選べます（4〜26週）。」
     private var rangeText: String {
-        let earliest = content.deadlineChoices.earliestDay
-        let latest = content.deadlineChoices.latestDay
-        return
-            "\(earliest.month)月\(earliest.day)日〜\(latest.month)月\(latest.day)日の日を選べます（4〜26週）。"
+        let earliest = GoalSetupDayText.monthDay(content.deadlineChoices.earliestDay)
+        let latest = GoalSetupDayText.monthDay(content.deadlineChoices.latestDay)
+        let weeks = GoalDeadlineChoices.acceptedWeeks
+        return "\(earliest)〜\(latest)の日を選べます（\(weeks.lowerBound)〜\(weeks.upperBound)週）。"
     }
 
-    /// その日の正午。DatePicker は時刻を持つので、夏時間の切り替えで日がずれないよう日の真ん中にする
     private func date(of day: CalendarDay) -> Date {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone()
-        return calendar.date(
-            from: DateComponents(year: day.year, month: day.month, day: day.day, hour: 12)) ?? .now
+        day.noon(in: timeZone())
     }
 }

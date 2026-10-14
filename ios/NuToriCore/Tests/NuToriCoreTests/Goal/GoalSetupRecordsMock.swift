@@ -22,12 +22,14 @@ final class GoalSetupRecordsMock: GoalSetupRecords, Sendable {
         set { state.withLock { $0.sendsWeightRecords = newValue } }
     }
 
-    /// - Parameter appliesGoalDecision: false なら、応答の記録をキャッシュに当てるときに投げる
-    static func ok(sendsWeightRecords: Bool = true, appliesGoalDecision: Bool = true)
-        -> GoalSetupRecordsMock
-    {
+    static func ok(sendsWeightRecords: Bool = true) -> GoalSetupRecordsMock {
+        GoalSetupRecordsMock(sendsWeightRecords: sendsWeightRecords, applyGoalDecisionError: nil)
+    }
+
+    /// 応答の記録をキャッシュに当てるときに `applyGoalDecisionError` を投げる
+    static func error(_ applyGoalDecisionError: any Error) -> GoalSetupRecordsMock {
         GoalSetupRecordsMock(
-            sendsWeightRecords: sendsWeightRecords, appliesGoalDecision: appliesGoalDecision)
+            sendsWeightRecords: true, applyGoalDecisionError: applyGoalDecisionError)
     }
 
     func goalSetupStart(today: CalendarDay) async throws -> GoalSetupStart {
@@ -47,11 +49,12 @@ final class GoalSetupRecordsMock: GoalSetupRecords, Sendable {
 
     func applyGoalDecision(_ changes: [SyncChange]) async throws {
         state.withLock { $0.calls.append(.applyGoalDecision(changes)) }
-        if !appliesGoalDecision {
-            throw CacheSaveFailure()
+        if let applyGoalDecisionError {
+            throw applyGoalDecisionError
         }
     }
 
+    /// キャッシュに保存できなかったことにする失敗
     struct CacheSaveFailure: Error {}
 
     func respondToGoalSetupNotice() async {
@@ -64,10 +67,10 @@ final class GoalSetupRecordsMock: GoalSetupRecords, Sendable {
     }
 
     private let state: Mutex<State>
-    private let appliesGoalDecision: Bool
+    private let applyGoalDecisionError: (any Error)?
 
-    private init(sendsWeightRecords: Bool, appliesGoalDecision: Bool) {
+    private init(sendsWeightRecords: Bool, applyGoalDecisionError: (any Error)?) {
         state = Mutex(State(sendsWeightRecords: sendsWeightRecords))
-        self.appliesGoalDecision = appliesGoalDecision
+        self.applyGoalDecisionError = applyGoalDecisionError
     }
 }

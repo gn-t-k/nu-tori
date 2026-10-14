@@ -61,8 +61,8 @@ public struct Timeline: Sendable {
                     rejectedLines: rejectedWeightLines.filter { $0.record.day == day },
                     meals: mealsByDay[day] ?? [],
                     rejectedMealLines: rejectedMealLines.filter { $0.meal.cardDay == day },
-                    notices: (noticesByDay[day] ?? []).map {
-                        NoticeCard(unanswered: $0.notice, targetDay: day, today: today)
+                    notices: (noticesByDay[day] ?? []).compactMap {
+                        NoticeCard(unanswered: $0.notice, today: today)
                     },
                     goalSetupNotice: goalSetupNoticeDay == day ? goalSetupNotice : nil,
                     bubbles: bubblesByDay[day] ?? [],
@@ -168,7 +168,6 @@ public struct Timeline: Sendable {
         /// 目標がまだ届いていない1日の目安も含む
         public let dailyGuides: [DailyGuide]
 
-        /// `goals`・`dailyGuides` を渡さなければ、どの日も1日の目安と比べない
         public init(
             weightRecords: [WeightRecord],
             rejectedLines: [RejectedLine],
@@ -176,8 +175,8 @@ public struct Timeline: Sendable {
             notices: [Notice],
             undelivered: UndeliveredRecords,
             conversation: Conversation,
-            goals: [Goal] = [],
-            dailyGuides: [DailyGuide] = []
+            goals: [Goal],
+            dailyGuides: [DailyGuide]
         ) {
             self.weightRecords = weightRecords
             self.rejectedLines = rejectedLines
@@ -200,7 +199,7 @@ public struct Timeline: Sendable {
         /// この日の食べた量を比べる1日の目安（`DailyGuideForDay`）。目標を立てる前の日と、目安がまだ届いていない日は nil で、比べない
         public let dailyGuide: DailyGuide?
 
-        public init(day: CalendarDay, items: [Item], food: DayFood, dailyGuide: DailyGuide? = nil) {
+        public init(day: CalendarDay, items: [Item], food: DayFood, dailyGuide: DailyGuide?) {
             self.day = day
             self.items = items
             self.food = food

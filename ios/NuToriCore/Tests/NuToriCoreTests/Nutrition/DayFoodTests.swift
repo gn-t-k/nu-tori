@@ -48,7 +48,7 @@ struct DayFoodTests {
 
         @Test("丸を塗り、記録の続き具合に入ること")
         func paintsRing() {
-            let ring = DayRing(hasWeightRecord: false, food: food)
+            let ring = DayRing(hasWeightRecord: false, food: food, dailyGuide: nil)
 
             #expect(ring.shares == PFCShares(protein: 0.2, fat: 0.45, carbohydrate: 0.35))
             #expect(ring.hasRecordedFood)
@@ -97,7 +97,7 @@ struct DayFoodTests {
 
         @Test("丸を塗らず、記録の続き具合に入らないこと")
         func doesNotPaintRing() {
-            let ring = DayRing(hasWeightRecord: false, food: food)
+            let ring = DayRing(hasWeightRecord: false, food: food, dailyGuide: nil)
 
             #expect(ring.shares == nil)
             #expect(!ring.hasRecordedFood)
@@ -124,7 +124,7 @@ struct DayFoodTests {
 
         @Test("丸は空の輪で、記録の続き具合に入らないこと")
         func ringIsEmpty() {
-            let ring = DayRing(hasWeightRecord: false, food: food)
+            let ring = DayRing(hasWeightRecord: false, food: food, dailyGuide: nil)
 
             #expect(ring.shares == nil)
             #expect(!ring.hasRecordedFood)
@@ -153,7 +153,7 @@ struct DayFoodTests {
 
         @Test("丸は、済んだ食事の分で塗ること")
         func paintsRingFromFinishedMeals() {
-            #expect(DayRing(hasWeightRecord: false, food: food).hasRecordedFood)
+            #expect(DayRing(hasWeightRecord: false, food: food, dailyGuide: nil).hasRecordedFood)
         }
     }
 
@@ -174,7 +174,7 @@ struct DayFoodTests {
 
         @Test("丸は空の輪で、記録の続き具合に入らないこと")
         func ringIsEmpty() {
-            let ring = DayRing(hasWeightRecord: false, food: food)
+            let ring = DayRing(hasWeightRecord: false, food: food, dailyGuide: nil)
 
             #expect(ring.shares == nil)
             #expect(!ring.hasRecordedFood)

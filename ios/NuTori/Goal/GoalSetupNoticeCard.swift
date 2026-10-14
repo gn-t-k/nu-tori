@@ -6,31 +6,46 @@ import SwiftUI
 struct GoalSetupNoticeCard: View {
     let notice: Notice
     /// 今の目標。決まっていれば、決めた目標を示す形にする
-    let goal: Goal?
-    /// 今の目標の1日の目安。まだ届いていなければ nil
-    let dailyGuide: DailyGuide?
-    let session: GoalSetupSession
+    let currentGoal: CurrentGoal?
+    /// 目標が決まっていないときの、目標の設定の流れの形
+    let flow: Flow
     let timeZone: () -> TimeZone
+    /// 知らせの「あとで」
+    let answerLater: () -> Void
     /// 「目標を立てる」「続ける」。開くところを添えて、カードを広げる
     let open: (GoalSetupObservation.Entry) -> Void
 
     var body: some View {
         Group {
-            if let goal {
-                GoalDecidedCard(goal: goal, dailyGuide: dailyGuide)
-            } else if let flow = session.flow, flow.isOpen {
-                GoalSetupFlowCard(
-                    content: GoalSetupFlowContent(flow),
-                    actions: GoalSetupFlowActions(flow, close: flow.close),
-                    timeZone: timeZone
-                )
-                .transition(expansion)
+            if let currentGoal {
+                GoalDecidedCard(goal: currentGoal.goal, dailyGuide: currentGoal.dailyGuide)
+            } else if case .expanded(let content, let actions) = flow {
+                GoalSetupFlowCard(content: content, actions: actions, timeZone: timeZone)
+                    .transition(expansion)
             } else {
                 closedCard
                     .transition(expansion)
             }
         }
         .animation(reduceMotion ? .easeInOut : .default, value: form)
+    }
+
+    /// 目標の設定の流れの形。外側が流れ（`GoalSetupFlow`）から読んで渡す
+    enum Flow {
+        /// まだ開いていないか、決めたあと。「目標を立てる」
+        case notStarted
+        /// 途中まで進めて閉じた。「続ける」で同じページから
+        case paused
+        /// 広げている
+        case expanded(GoalSetupFlowContent, GoalSetupFlowActions)
+
+        /// 広げているページ。広げていなければ nil
+        var expandedPage: GoalSetupPage? {
+            switch self {
+            case .notStarted, .paused: nil
+            case .expanded(let content, _): content.page
+            }
+        }
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -41,9 +56,13 @@ struct GoalSetupNoticeCard: View {
         case closed
     }
 
+    private var isPaused: Bool {
+        if case .paused = flow { true } else { false }
+    }
+
     private var form: Form {
-        if goal != nil { return .decided }
-        return session.flow?.isOpen == true ? .expanded : .closed
+        if currentGoal != nil { return .decided }
+        return flow.expandedPage == nil ? .closed : .expanded
     }
 
     /// 「視差効果を減らす」では、カードの広がりをフェードにする
@@ -93,16 +112,31 @@ struct GoalSetupNoticeCard: View {
     /// 「あとで」は答えていないあいだだけ。押すと帯の下の1行が消え、カードは残る
     @ViewBuilder private var buttons: some View {
         if notice.response == nil {
-            Button("あとで") {
-                Task { await session.answerLater() }
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("goal-setup-later")
+            Button("あとで", action: answerLater)
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("goal-setup-later")
         }
-        Button(session.flow?.hasProgress == true ? "続ける" : "目標を立てる") {
+        Button(isPaused ? "続ける" : "目標を立てる") {
             open(.noticeCard)
         }
         .buttonStyle(.borderedProminent)
         .accessibilityIdentifier("goal-setup-start")
+    }
+}
+
+extension GoalSetupNoticeCard.Flow {
+    /// 開いたことのある流れから。まだ開いていなければ nil
+    @MainActor
+    init(_ flow: GoalSetupFlow?) {
+        guard let flow else {
+            self = .notStarted
+            return
+        }
+        if flow.isOpen {
+            self = .expanded(
+                GoalSetupFlowContent(flow), GoalSetupFlowActions(flow, close: flow.close))
+        } else {
+            self = flow.hasProgress ? .paused : .notStarted
+        }
     }
 }

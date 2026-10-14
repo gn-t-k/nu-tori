@@ -8,4 +8,24 @@ public enum TargetWeightLimitReason: Sendable, Equatable {
     case notOnDirectionSide
     /// 端末が知らない理由
     case unknown(String)
+
+    /// サーバーの `rejectionReason`・`fastestEndReason` の値
+    var serverName: String {
+        switch self {
+        case .paceTooFast: "pace_too_fast"
+        case .dailyGuideBelowMinimum: "daily_guide_below_minimum"
+        case .notOnDirectionSide: "not_on_direction_side"
+        case .unknown(let name): name
+        }
+    }
+
+    /// 知らない値は `unknown` にする
+    init(serverName: String) {
+        switch serverName {
+        case "pace_too_fast": self = .paceTooFast
+        case "daily_guide_below_minimum": self = .dailyGuideBelowMinimum
+        case "not_on_direction_side": self = .notOnDirectionSide
+        default: self = .unknown(serverName)
+        }
+    }
 }

@@ -13,7 +13,7 @@ struct WeightScreen: View {
     let capture: (ClientUsageEvent) async -> Void
     let saveWeight: (WeightEntry.Write) async -> Void
     /// 目標が無いときの「目標を立てる」。タイムラインまで戻り、知らせのカードまで送って広げる。目標があれば nil
-    var startGoalSetup: (() -> Void)?
+    let startGoalSetup: (() -> Void)?
 
     var body: some View {
         List {

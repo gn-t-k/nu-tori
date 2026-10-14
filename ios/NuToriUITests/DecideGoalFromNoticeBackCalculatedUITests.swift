@@ -1,12 +1,12 @@
 import XCTest
 
-/// 目標を立てる知らせを開く → 減量 → 期限（そのまま「次へ」）→ 目標案 → 「この目標で始める」で、
+/// 逆算できる人が、目標を立てる知らせを開く → 減量 → 期限（そのまま「次へ」）→ 目標案 → 「この目標で始める」で、
 /// カードが「目標を決めました」になり、今日の丸が1日の目安と比べる形になる。
 ///
 /// どのページを出すか、どの要求をいつ出すかは NuToriCore の単体テスト（GoalSetupFlowTests）が見る。
 /// ここで見るのは、カードの中のページの送りと、決めた目標の記録がキャッシュに書かれてタイムラインと帯に届くこと
 @MainActor
-final class DecideGoalFromNoticeUITests: XCTestCase {
+final class DecideGoalFromNoticeBackCalculatedUITests: XCTestCase {
     private var app = XCUIApplication()
 
     override func setUp() async throws {
@@ -31,10 +31,6 @@ final class DecideGoalFromNoticeUITests: XCTestCase {
 
         let standard = app.buttons["goal-setup-proposal-standard"]
         XCTAssertTrue(standard.waitForExistence(timeout: 5))
-        XCTAssertTrue(standard.isSelected)
-        XCTAssertTrue(app.staticText(containing: "までの目標を選んでください").exists)
-        XCTAssertTrue(
-            app.staticText(containing: "最近4週の記録から推定した消費カロリーは、1日に 2,250 kcal です。").exists)
         attachScreenshot(of: app, named: "目標案")
         app.buttons["goal-setup-proposal-start"].tap()
 

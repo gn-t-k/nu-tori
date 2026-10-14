@@ -36,6 +36,18 @@ public enum GoalProgress: Hashable, Sendable {
             remainingDays: max(today.distance(to: weightChange.deadlineDay) + 1, 0))
     }
 
+    /// 今日を含む目標（`DailyGuideForDay`）の要約。今日を含む目標が無ければ nil
+    /// - Parameters:
+    ///   - goals: 閉じた目標も含む
+    ///   - dailyGuides: 目標がまだ届いていない1日の目安も含む
+    public init?(
+        today: CalendarDay, goals: [Goal], dailyGuides: [DailyGuide], weightTrend: WeightTrend?
+    ) {
+        guard let found = DailyGuideForDay(on: today, goals: goals, dailyGuides: dailyGuides)
+        else { return nil }
+        self.init(goal: found.goal, today: today, weightTrend: weightTrend)
+    }
+
     public var text: String {
         switch self {
         case .weightChange(let tenths, let days):

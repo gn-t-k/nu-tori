@@ -23,7 +23,8 @@ extension TimelineViewportTests {
                             weightRecords: [], rejectedLines: [], meals: Array(meals.prefix(added)),
                             notices: [], undelivered: .none,
                             conversation: Timeline.Conversation(
-                                sentTexts: [], statuses: [:], replies: [], streams: [:])),
+                                sentTexts: [], statuses: [:], replies: [], streams: [:]), goals: [],
+                            dailyGuides: []),
                         firstDay: TimelineViewportTests.today, today: TimelineViewportTests.today
                     ).days
                 }

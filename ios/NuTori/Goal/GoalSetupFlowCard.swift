@@ -14,10 +14,10 @@ struct GoalSetupFlowCard: View {
         VStack(alignment: .leading, spacing: 16) {
             header
             page
-                .id(GoalSetupPageKey(content.page))
+                .id(content.page)
                 .transition(pageTransition)
         }
-        .animation(reduceMotion ? .easeInOut : .default, value: GoalSetupPageKey(content.page))
+        .animation(reduceMotion ? .easeInOut : .default, value: content.page)
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         // DESIGN.md の timeline-card。アプリからの知らせは全幅の白いカード
@@ -102,9 +102,11 @@ struct GoalSetupFlowCard: View {
 
     private var loseUnavailablePage: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("1日の目安が 1,200 kcal を下回るため、減量の目標案を出せません。今の体重を保つ目標は立てられます。")
-                .font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
+            Text(
+                "1日の目安が \(NutritionText.kilocalories(DailyGuide.minimumEnergyKilocalories)) を下回るため、減量の目標案を出せません。今の体重を保つ目標は立てられます。"
+            )
+            .font(.subheadline)
+            .fixedSize(horizontal: false, vertical: true)
             GoalSetupFooter(page: content.page, goBack: actions.goBack) {
                 Button("維持にする", action: actions.chooseMaintainInstead)
                     .buttonStyle(.borderedProminent)

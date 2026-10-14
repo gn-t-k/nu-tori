@@ -15,11 +15,6 @@ enum GoalSetupDifficultyText {
     static func difference(_ kilocalories: Int) -> String {
         guard kilocalories != 0 else { return "推定消費カロリーと同じ" }
         let side = kilocalories < 0 ? "少ない" : "多い"
-        return "推定消費カロリーより \(Self.kilocalories(abs(kilocalories))) \(side)"
-    }
-
-    /// 「2,250 kcal」
-    static func kilocalories(_ kilocalories: Int) -> String {
-        NutritionText.amount(.exactly(Double(kilocalories)), of: .energyKcal)
+        return "推定消費カロリーより \(NutritionText.kilocalories(abs(kilocalories))) \(side)"
     }
 }

@@ -95,4 +95,47 @@ struct GoalProgressTests {
             #expect(progress?.text == "65.0 kg を保つ")
         }
     }
+
+    @Suite("目標の列から引くとき、今日を含む目標が無いとき（今日が開始の日より前）")
+    struct NoGoalContainingToday {
+        let goals: [Goal]
+
+        init() throws {
+            let losing = try Goal.losing()
+            goals = [
+                Goal(
+                    id: losing.id, startedDay: GoalProgressTests.today.advanced(by: 1),
+                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
+                    targetWeightKilograms: losing.targetWeightKilograms,
+                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
+                    direction: losing.direction, closure: nil)
+            ]
+        }
+
+        @Test("要約を出さないこと")
+        func showsNothing() {
+            #expect(
+                GoalProgress(
+                    today: GoalProgressTests.today, goals: goals, dailyGuides: [], weightTrend: nil)
+                    == nil)
+        }
+    }
+
+    @Suite("目標の列から引くとき、今日を含む目標があるとき")
+    struct GoalContainingToday {
+        let goals: [Goal]
+
+        init() throws {
+            goals = [try .losing()]
+        }
+
+        @Test("その目標の要約を出すこと")
+        func showsThatGoal() {
+            #expect(
+                GoalProgress(
+                    today: GoalProgressTests.today, goals: goals, dailyGuides: [],
+                    weightTrend: GoalProgressTests.trend(70.34, on: GoalProgressTests.today))?.text
+                    == "あと 2.3 kg・あと 45 日")
+        }
+    }
 }

@@ -122,7 +122,12 @@
                 startedOn: TimelineDayText.startedOn(for: clock.today().advanced(by: -21)))
         }
 
-        /// 逆算できる人の初めての目標。開始の日は今日、体重の傾向は 72.0 kg、推定消費カロリーは 2,250 kcal。
+        /// 逆算できる人の初めての目標の、開始の日の体重の傾向
+        nonisolated private static let goalSetupWeightTrendKilograms = 72.0
+        /// 逆算できる人の初めての目標の、推定消費カロリー
+        nonisolated private static let goalSetupExpenditureKilocalories = 2250
+
+        /// 逆算できる人の初めての目標。開始の日は今日。
         /// 案の値は期限によらず同じにする（計算はサーバーのテストで確かめる）
         private func goalSetupAnswers(today: String) -> FakeSyncServer.GoalSetupAnswers {
             let clock = clock
@@ -131,14 +136,17 @@
                 proposals: { plan in Self.goalProposals(plan, today: today) },
                 assessCustomTargetWeight: { _, kilograms in
                     // 体重の傾向から離れるほど、1日の目安を推定消費カロリーから離す
-                    let difference = Int(((72.0 - kilograms).magnitude * 140 / 50).rounded()) * 50
-                    let energy = kilograms < 72.0 ? 2250 - difference : 2250 + difference
+                    let trend = Self.goalSetupWeightTrendKilograms
+                    let expenditure = Self.goalSetupExpenditureKilocalories
+                    let difference = Int(((trend - kilograms).magnitude * 140 / 50).rounded()) * 50
+                    let energy =
+                        kilograms < trend ? expenditure - difference : expenditure + difference
                     return .accepted(
                         .init(
                             dailyGuide: Self.dailyGuide(energy),
                             difficulty: difference > 400
                                 ? .hard : difference > 200 ? .standard : .gentle,
-                            dailyGuideDifferenceKilocalories: energy - 2250))
+                            dailyGuideDifferenceKilocalories: energy - expenditure))
                 },
                 now: { clock.now() })
         }
@@ -172,11 +180,15 @@
                             fastestEndReason: .paceTooFast)))
             case .maintain:
                 plan = .maintenance(
-                    .init(targetWeightKilograms: 72.0, dailyGuide: dailyGuide(2250)))
+                    .init(
+                        targetWeightKilograms: goalSetupWeightTrendKilograms,
+                        dailyGuide: dailyGuide(goalSetupExpenditureKilocalories)))
             }
             return GoalProposals(
-                startedOn: today, expenditureKilocalories: 2250, expenditureSource: .backCalculated,
-                startingWeightTrendKilograms: 72.0, lastWeightRecordedOn: today, plan: plan)
+                startedOn: today, expenditureKilocalories: goalSetupExpenditureKilocalories,
+                expenditureSource: .backCalculated,
+                startingWeightTrendKilograms: goalSetupWeightTrendKilograms,
+                lastWeightRecordedOn: today, plan: plan)
         }
 
         nonisolated private static func offered(
@@ -186,7 +198,8 @@
                 .init(
                     pace: pace, targetWeightKilograms: kilograms,
                     dailyGuide: dailyGuide(energy),
-                    difficulty: pace, dailyGuideDifferenceKilocalories: energy - 2250))
+                    difficulty: pace,
+                    dailyGuideDifferenceKilocalories: energy - goalSetupExpenditureKilocalories))
         }
 
         /// P・F・C は kcal によらず同じにする

@@ -67,6 +67,22 @@ public final class GoalSetupFlow {
     /// 足りない値の「次へ」で決めた身体データ。目標案の上の1行に見せ、要求に添える。逆算できる人と、決めたあとは nil
     public internal(set) var submittedBody: GoalSetupBody?
 
+    /// 目標案の上の1行に出す、計算に使った値。目標案が届く前は nil。
+    /// 身体データを添えずに式の目標案が返ったとき（届かないはずの組み合わせ）も、どの値を使ったか言えないので nil
+    public var usedValues: GoalSetupUsedValues? {
+        guard let proposals else { return nil }
+        switch proposals.expenditureSource {
+        case .backCalculated:
+            return .backCalculated(expenditureKilocalories: proposals.expenditureKilocalories)
+        case .formula:
+            return submittedBody.map {
+                .formula($0, weightKilograms: proposals.startingWeightTrendKilograms)
+            }
+        case .current:
+            return .current(expenditureKilocalories: proposals.expenditureKilocalories)
+        }
+    }
+
     /// 今日の体重の記録が無いときの、目標案に使った最後の体重記録の日（「体重は 9月21日までの記録を使っています。」）。
     /// 今日の記録があるときと、目標案が届く前は nil
     public var pastWeightRecordDay: CalendarDay? {
@@ -409,16 +425,18 @@ public final class GoalSetupFlow {
         observe(.plansUnavailable(canBackCalculate: backCalculation.observed))
     }
 
-    /// 断る応答（不具合のときだけ届く）とセッション切れ・歯止めは、答えが無いものとして扱う。断る応答は報告する
-    func answer<Answer: Sendable & Equatable>(of result: GoalSetupResult<Answer>) async
-        -> GoalSetupResult<Answer>
+    /// 断る応答（不具合のときだけ届く）とセッション切れ・歯止めは、答えが無いものとして nil にする。断る応答は報告する
+    func answered<Answer: Sendable & Equatable>(_ result: GoalSetupResult<Answer>) async
+        -> Answer?
     {
         switch result {
-        case .answered, .sessionExpired, .rateLimited:
-            break
+        case .answered(let answer):
+            return answer
+        case .sessionExpired, .rateLimited:
+            return nil
         case .badRequest, .unprocessable:
             await errorReporting.report(.goalSetupRequest, cause: nil)
+            return nil
         }
-        return result
     }
 }

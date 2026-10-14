@@ -81,6 +81,7 @@ enum GoalSetupJSON {
         startedOn: String = "2026-01-01",
         deadlineOn: String = "2026-04-01",
         lastWeightRecordedOn: String = "2025-12-31",
+        expenditureSource: String = "back_calculated",
         offered: [String: (targetWeightKg: Double, energyKcal: Int)] = [
             "gentle": (68.5, 2050), "standard": (66.5, 1850), "hard": (64.5, 1650),
         ]
@@ -102,7 +103,7 @@ enum GoalSetupJSON {
             : #","acceptedTargetWeightRange":{"minimumKg":64.0,"maximumKg":69.9,"fastestEndReason":"pace_too_fast"}"#
         return """
             {"startedOn":"\(startedOn)","direction":"lose","expenditureKcal":2250,
-            "expenditureSource":"back_calculated","startingWeightTrendKg":70.0,
+            "expenditureSource":"\(expenditureSource)","startingWeightTrendKg":70.0,
             "lastWeightRecordedOn":"\(lastWeightRecordedOn)","deadlineOn":"\(deadlineOn)",
             "proposals":[\(proposals.joined(separator: ","))]\(range)}
             """

@@ -268,6 +268,23 @@ struct CalendarDayTests {
             }
         }
     }
+
+    @Suite("日の正午")
+    struct Noon {
+        let day: CalendarDay
+        let tokyo: TimeZone
+
+        init() throws {
+            day = CalendarDay(year: 2026, month: 10, day: 10)
+            tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        }
+
+        @Test("そのタイムゾーンでの、その日の 12 時を返すこと")
+        func returnsNoonInTimeZone() throws {
+            #expect(
+                day.noon(in: tokyo) == (try Date("2026-10-10T12:00:00+09:00", strategy: .iso8601)))
+        }
+    }
 }
 
 extension KeyedDecodingContainer {

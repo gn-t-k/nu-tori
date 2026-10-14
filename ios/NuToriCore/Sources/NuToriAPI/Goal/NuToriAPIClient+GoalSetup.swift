@@ -189,22 +189,6 @@ extension Components.Schemas.GoalSetupLevelActivity.LevelPayload {
     }
 }
 
-extension Components.Schemas.DailyGuidePlan {
-    fileprivate init(_ plan: DailyGuidePlan) {
-        self.init(
-            energyKcal: plan.energyKilocalories, proteinG: plan.proteinGrams, fatG: plan.fatGrams,
-            carbohydrateG: plan.carbohydrateGrams)
-    }
-}
-
-extension DailyGuidePlan {
-    fileprivate init(_ plan: Components.Schemas.DailyGuidePlan) {
-        self.init(
-            energyKilocalories: plan.energyKcal, proteinGrams: plan.proteinG, fatGrams: plan.fatG,
-            carbohydrateGrams: plan.carbohydrateG)
-    }
-}
-
 extension Components.Schemas.GoalChoice {
     fileprivate init(_ choice: GoalDecisionRequest.Choice) {
         switch choice {
@@ -287,7 +271,7 @@ extension GoalProposals.WeightChange {
                 GoalProposals.AcceptedTargetWeightRange(
                     minimumKilograms: $0.minimumKg,
                     maximumKilograms: $0.maximumKg,
-                    fastestEndReason: TargetWeightLimitReason($0.fastestEndReason))
+                    fastestEndReason: TargetWeightLimitReason(serverName: $0.fastestEndReason))
             })
     }
 }
@@ -320,12 +304,9 @@ extension GoalProposals.Proposal {
                     difficulty: try GoalProposals.Pace(wireName: difficulty),
                     dailyGuideDifferenceKilocalories: difference))
         case "unavailable":
-            let reason: GoalProposals.UnavailableReason =
-                switch wire.unavailableReason {
-                case "daily_guide_below_minimum": .dailyGuideBelowMinimum
-                case let other: .unknown(other ?? "")
-                }
-            self = .unavailable(pace: pace, reason: reason)
+            self = .unavailable(
+                pace: pace,
+                reason: GoalProposals.UnavailableReason(serverName: wire.unavailableReason ?? ""))
         default:
             throw NuToriAPIClient.MalformedResponseError(reason: "知らない案の状態")
         }
@@ -338,17 +319,6 @@ extension GoalProposals.Pace {
             throw NuToriAPIClient.MalformedResponseError(reason: "知らない速さの案")
         }
         self = pace
-    }
-}
-
-extension TargetWeightLimitReason {
-    fileprivate init(_ wireName: String) {
-        switch wireName {
-        case "pace_too_fast": self = .paceTooFast
-        case "daily_guide_below_minimum": self = .dailyGuideBelowMinimum
-        case "not_on_direction_side": self = .notOnDirectionSide
-        default: self = .unknown(wireName)
-        }
     }
 }
 
@@ -375,7 +345,7 @@ extension CustomTargetWeightAssessment {
             self.init(
                 startedOn: wire.startedOn,
                 outcome: .rejected(
-                    reason: TargetWeightLimitReason(reason),
+                    reason: TargetWeightLimitReason(serverName: reason),
                     nearestAcceptedTargetWeightKilograms: wire.nearestAcceptedTargetWeightKg))
         default:
             throw NuToriAPIClient.MalformedResponseError(reason: "知らない目標体重の答え")
@@ -405,7 +375,7 @@ extension GoalDecision {
                 throw NuToriAPIClient.MalformedResponseError(reason: "受け付けない理由が無い")
             }
             self = .customTargetWeightRejected(
-                startedOn: startedOn, reason: TargetWeightLimitReason(reason),
+                startedOn: startedOn, reason: TargetWeightLimitReason(serverName: reason),
                 nearestAcceptedTargetWeightKilograms: wire.nearestAcceptedTargetWeightKg)
         default:
             throw NuToriAPIClient.MalformedResponseError(reason: "知らない決めた答え")

@@ -23,13 +23,11 @@ struct GoalSetupProposalsPage: View {
                     waitingRows
                 }
             }
-            .opacity(isDeciding ? 0.4 : 1)
-            .disabled(isDeciding)
+            // DESIGN.md の押せないボタン（`.disabled` に任せる）に従わず、文と値も薄くする。仕様 #523 の「決める」が、押したら「ほかを薄くして」と決めているため
+            .opacity(content.isDeciding ? 0.4 : 1)
+            .disabled(content.isDeciding)
             if content.showsRecalculated {
-                Text("新しい体重で計算し直しました。")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                GoalSetupRecalculatedNote()
             }
             if content.unreachableRequest == .decision {
                 Text(GoalSetupUnreachableText.decision)
@@ -56,13 +54,9 @@ struct GoalSetupProposalsPage: View {
                         .disabled(content.proposals == nil)
                 }
             }
-            .opacity(isDeciding ? 0.4 : 1)
-            .disabled(isDeciding)
+            .opacity(content.isDeciding ? 0.4 : 1)
+            .disabled(content.isDeciding)
         }
-    }
-
-    private var isDeciding: Bool {
-        content.isDeciding
     }
 
     private func rows(_ weightChange: GoalProposals.WeightChange) -> some View {
@@ -136,7 +130,8 @@ struct GoalSetupProposalsPage: View {
 
     private func unavailableText(_ reason: GoalProposals.UnavailableReason) -> String {
         switch reason {
-        case .dailyGuideBelowMinimum: "1日の目安が 1,200 kcal を下回るため、出せません"
+        case .dailyGuideBelowMinimum:
+            "1日の目安が \(NutritionText.kilocalories(DailyGuide.minimumEnergyKilocalories)) を下回るため、出せません"
         case .unknown: "出せません"
         }
     }
@@ -219,7 +214,7 @@ private struct GoalProposalRow: View {
         VStack(alignment: alignment, spacing: 2) {
             Text(WeightAmountText.kilograms(proposal.targetWeightKilograms))
                 .font(.subheadline)
-            Text(GoalSetupDifficultyText.kilocalories(proposal.dailyGuide.energyKilocalories))
+            Text(NutritionText.kilocalories(proposal.dailyGuide.energyKilocalories))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

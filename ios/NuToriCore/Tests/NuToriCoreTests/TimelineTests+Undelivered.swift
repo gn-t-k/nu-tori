@@ -14,7 +14,8 @@ extension TimelineTests {
             Timeline(
                 input: Timeline.Input(
                     weightRecords: weightRecords, rejectedLines: [], meals: meals, notices: [],
-                    undelivered: UndeliveredRecords(pendingEntries: pending), conversation: .none),
+                    undelivered: UndeliveredRecords(pendingEntries: pending), conversation: .none,
+                    goals: [], dailyGuides: []),
                 firstDay: day, today: day)
         }
 
@@ -156,7 +157,8 @@ extension TimelineTests {
                                     .entry()
                             }),
                         conversation: Timeline.Conversation(
-                            sentTexts: [sentText], statuses: [:], replies: [], streams: [:])),
+                            sentTexts: [sentText], statuses: [:], replies: [], streams: [:]),
+                        goals: [], dailyGuides: []),
                     firstDay: Undelivered.day, today: Undelivered.day)
             }
 

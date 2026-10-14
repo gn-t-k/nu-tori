@@ -52,7 +52,7 @@ extension TimelineTests {
                                 classification: .meal, reply: .notRequested),
                             snackQuestion.id: replied, afterWeight.id: replied,
                         ],
-                        replies: [reply, snackReply], streams: [:])),
+                        replies: [reply, snackReply], streams: [:]), goals: [], dailyGuides: []),
                 firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                 today: CalendarDay(year: 2026, month: 9, day: 24))
         }
@@ -145,7 +145,7 @@ extension TimelineTests {
                         SentTextBubble(
                             sentText: morning, meals: [], replyLine: nil, rejectedLine: nil)),
                 ],
-                food: .noMeals)
+                food: .noMeals, dailyGuide: nil)
         }
 
         @Test("詰めること")

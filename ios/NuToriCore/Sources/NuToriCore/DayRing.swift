@@ -6,7 +6,7 @@ public struct DayRing: Hashable, Sendable {
     /// その日の食べた量を比べる1日の目安。nil の日（目標を立てる前の日など）は比べず、P・F・C の割合で一周する
     public let dailyGuide: DailyGuide?
 
-    public init(hasWeightRecord: Bool, food: DayFood, dailyGuide: DailyGuide? = nil) {
+    public init(hasWeightRecord: Bool, food: DayFood, dailyGuide: DailyGuide?) {
         self.hasWeightRecord = hasWeightRecord
         self.food = food
         self.dailyGuide = dailyGuide
@@ -14,7 +14,7 @@ public struct DayRing: Hashable, Sendable {
 
     /// 食事の無い日の丸
     public init(hasWeightRecord: Bool) {
-        self.init(hasWeightRecord: hasWeightRecord, food: .noMeals)
+        self.init(hasWeightRecord: hasWeightRecord, food: .noMeals, dailyGuide: nil)
     }
 
     /// 丸を P・F・C の割合で塗るときの割合。空の輪にするときは nil。

@@ -43,7 +43,7 @@ extension TimelineTests {
             let timeline = Timeline(
                 input: Timeline.Input(
                     weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none),
+                    undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
                 firstDay: CalendarDay(year: 2026, month: 10, day: 5),
                 today: CalendarDay(year: 2026, month: 10, day: 6)
             )

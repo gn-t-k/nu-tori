@@ -41,9 +41,10 @@ extension GoalSetupFlow {
         customTargetWeight = custom.moved(to: clamped, correctedReason: reason)
         // 待っている前の要求は出さない
         assessmentRequest.task?.cancel()
+        let pause = Duration.milliseconds(300)
         let task = assessmentRequest.start { generation in
             do {
-                try await self.wait(Self.customTargetWeightPause)
+                try await self.wait(pause)
             } catch {
                 // 次に動かした
                 return
@@ -55,8 +56,6 @@ extension GoalSetupFlow {
     }
 
     // MARK: 中身
-
-    private static let customTargetWeightPause = Duration.milliseconds(300)
 
     func clearProposals() {
         proposalsRequest.invalidate()
@@ -88,7 +87,7 @@ extension GoalSetupFlow {
             do {
                 let result = try await self.client.proposeGoals(plan, inputs: self.inputs)
                 guard self.proposalsRequest.isLatest(generation) else { return }
-                guard case .answered(let proposals) = await self.answer(of: result) else {
+                guard let proposals = await self.answered(result) else {
                     self.proposalsState = .unreachable
                     return
                 }
@@ -143,7 +142,7 @@ extension GoalSetupFlow {
             guard assessmentRequest.isLatest(generation), let current = customTargetWeight else {
                 return
             }
-            guard case .answered(let assessment) = await answer(of: result) else {
+            guard let assessment = await self.answered(result) else {
                 customTargetWeight = current.unassessed()
                 unreachableRequest = .customTargetWeight
                 return

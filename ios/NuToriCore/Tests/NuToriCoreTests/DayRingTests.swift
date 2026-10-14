@@ -58,7 +58,8 @@ struct DayRingTests {
         @Test("今の形のまま、P・F・C の割合で一周し、超えた印を付けないこと")
         func fillsWholeCircleByShares() throws {
             let ring = DayRing(
-                hasWeightRecord: false, food: try DayRingTests.food(kilocalories: 2000))
+                hasWeightRecord: false, food: try DayRingTests.food(kilocalories: 2000),
+                dailyGuide: nil)
 
             #expect(ring.arcs == DayRing.Arcs(protein: 0.2, fat: 0.45, carbohydrate: 0.35))
             #expect(!ring.exceedsDailyGuide)

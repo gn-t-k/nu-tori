@@ -1,5 +1,5 @@
 /// 目標の設定の流れで、いま出すページ
-public enum GoalSetupPage: Sendable, Equatable {
+public enum GoalSetupPage: Sendable, Hashable {
     case direction
     case deadline
     /// 次が足りない値か目標案かが、下見の答えを待たないと分からない（初めての目標）
@@ -15,7 +15,7 @@ public enum GoalSetupPage: Sendable, Equatable {
     /// 電波が無くて、下見か目標案の答えが要る場所で止まった（「もう一度試す」）
     case stopped(StopPlace)
 
-    public enum StopPlace: Sendable, Equatable {
+    public enum StopPlace: Sendable, Hashable {
         /// 足りない値より前。「…インターネットにつながると、続きに進めます。」
         case beforeMissingValues
         /// 目標案の前。「…インターネットにつながると、目標案を出せます。」

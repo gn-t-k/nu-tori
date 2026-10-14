@@ -23,7 +23,7 @@ struct TimelineComposer: View {
 
     init(
         weightRecordedToday: Bool,
-        expandsGoalSetup: Bool = false,
+        expandsGoalSetup: Bool,
         preparingWeightEntry: Bool,
         showsCameraNotice: Bool,
         initialDraft: TextDraft,
@@ -92,10 +92,10 @@ struct TimelineComposer: View {
     }
 
     @State private var draft: TextDraft
+    @FocusState private var fieldFocused: Bool
 
     /// 「体重」を丸の行の灰色の丸にするか。記録済みか、目標を立てる知らせのカードを広げているとき
     private var showsWeightCircle: Bool { weightRecordedToday || expandsGoalSetup }
-    @FocusState private var fieldFocused: Bool
 
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
     private var writing: Bool { fieldFocused || !draft.text.isEmpty }

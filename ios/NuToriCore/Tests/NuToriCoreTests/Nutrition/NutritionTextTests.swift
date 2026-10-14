@@ -40,6 +40,14 @@ struct NutritionTextTests {
         }
     }
 
+    @Suite("1日の目安の kcal")
+    struct GuideKilocalories {
+        @Test("3桁ごとに区切り、数と単位の間を空けること")
+        func groupsThousands() {
+            #expect(NutritionText.kilocalories(2250) == "2,250 kcal")
+        }
+    }
+
     @Suite("食べた量と1日の目安を並べた値")
     struct AmountAgainstGuide {
         @Test("「食べた量 / 目安」にして、単位を最後に1つだけ付けること")
