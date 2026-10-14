@@ -113,6 +113,13 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - 身体データと使い始める前の摂取エネルギーは、目標と推定消費カロリーの計算に使ったら捨て、DB にもログにも残さない（ADR-0009）
 
+## 目標の設定の要求
+
+- 目標の設定は、同期の外でその場で答える要求で進める。経路は `src/http/goal-setup-routes/`（`/v1/goal-setup/*`）、入口は `src/goal/domain/` の `previewGoalSetup`（目標の下見）・`proposeGoals`（目標案）・`assessCustomTargetWeight`（自分で決める目標体重）で、その人の Durable Object の同じ名前の RPC から呼ぶ。この3つは何も書かない
+- どの要求も、計算の元（開始の日、今の目標、開始の日の体重の傾向、推定消費カロリー）を `resolveGoalSetupBasis` で要求のたびに出し直す。初めての目標では推定消費カロリーを逆算か式で出し、今の目標があれば今の推定（`ExpenditureEstimateStore.findCurrent`）を使う。目標案から先は `requireCompleteGoalSetupBasis` で、体重記録と推定消費カロリーが揃っていることを確かめる
+- 断る要求（不具合のときだけ届く）は、形の誤りを 400、値の誤り（`GoalSetupRequestRejectedError` の `reason`）を 422 にして、本文の `code` に理由を入れ、受け口が Sentry に送る。エラーには理由と、誤っていた場所だけを持たせ、届いた値を載せない
+- 目標の下見の「減量の案を1つでも出せるか」は、期限を選ぶ前に答えるので、受け付けるいちばん短い期限（`acceptedDeadlineDays.minimum`）で確かめる
+
 ## DB
 
 - スキーマは素の SQLite で書く。表は Drizzle ORM で宣言して読み書きし、移行は手書きの SQL で持つ（ADR-0021）。Drizzle Kit は使わない

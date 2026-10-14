@@ -1,5 +1,7 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import type { RecordId } from "../../domain/record-id";
+import type { ExpenditureEstimate } from "../domain/expenditure-estimate";
 import type { ExpenditureEstimateStore } from "../domain/expenditure-estimate-store";
 import { expenditureEstimateTables } from "./expenditure-estimate-tables";
 
@@ -7,8 +9,8 @@ const { expenditureEstimates, initialExpenditureEstimates } = expenditureEstimat
 
 export const createExpenditureEstimateStore = (
   db: DrizzleSqliteDODatabase,
-): ExpenditureEstimateStore => ({
-  find: (id) => {
+): ExpenditureEstimateStore => {
+  const find = (id: RecordId): ExpenditureEstimate | undefined => {
     const row = db
       .select({ estimate: expenditureEstimates, initialSource: initialExpenditureEstimates.source })
       .from(expenditureEstimates)
@@ -22,5 +24,17 @@ export const createExpenditureEstimateStore = (
       return undefined;
     }
     return { ...row.estimate, initialSource: row.initialSource ?? undefined };
-  },
-});
+  };
+  return {
+    find,
+    findCurrent: () => {
+      const current = db
+        .select({ id: expenditureEstimates.id })
+        .from(expenditureEstimates)
+        .orderBy(desc(expenditureEstimates.effectiveOn), desc(expenditureEstimates.estimatedAt))
+        .limit(1)
+        .get();
+      return current === undefined ? undefined : find(current.id);
+    },
+  };
+};
