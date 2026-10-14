@@ -20,6 +20,7 @@ public actor RecordSync {
         reflection: any RecordSyncReflection,
         accountSession: AccountSession,
         missedWeightRecordWatch: MissedWeightRecordWatch,
+        goalSetupNoticeKeeper: GoalSetupNoticeKeeper,
         mealPhotos: MealPhotos,
         errorReporting: any ErrorReportingSession,
         weightHealthExport: any WeightHealthExport,
@@ -33,6 +34,7 @@ public actor RecordSync {
         self.reflection = reflection
         self.accountSession = accountSession
         self.missedWeightRecordWatch = missedWeightRecordWatch
+        self.goalSetupNoticeKeeper = goalSetupNoticeKeeper
         self.mealPhotos = mealPhotos
         self.errorReporting = errorReporting
         self.weightHealthExport = weightHealthExport
@@ -100,6 +102,16 @@ public actor RecordSync {
             return timer
         }
         stopped.cancel()
+    }
+
+    /// 目標を立てる知らせの「あとで」を押したときと、目標が決まったとき（目標を決める要求の応答を受け取ったとき）。
+    /// 知らせが答えていなければ、答えた形にして、答える書き込みを裏で送る。早いほうの1回だけが答えになる。
+    /// サインインしていなければ何もしない
+    public func respondToGoalSetupNotice() async {
+        guard await engines.hasSession(), await engines.signedInAccountId() != nil else { return }
+        if await goalSetupNoticeKeeper.respondIfUnanswered() {
+            syncInBackground()
+        }
     }
 
     /// キャッシュにその ID の知らせがあるか（答えていても）
@@ -290,6 +302,7 @@ public actor RecordSync {
     private let reflection: any RecordSyncReflection
     private let accountSession: AccountSession
     private let missedWeightRecordWatch: MissedWeightRecordWatch
+    private let goalSetupNoticeKeeper: GoalSetupNoticeKeeper
     private let errorReporting: any ErrorReportingSession
     private let weightHealthExport: any WeightHealthExport
     private let importHealthChanges: @Sendable () async -> Void
@@ -470,6 +483,9 @@ public actor RecordSync {
         // 答えは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
         _ = await noteToMissedWeightRecordWatch(after: .synced)
         if result.ending == .finished {
+            // 取り切ったあとに決める（途中だと、ほかの端末で立てた目標がまだ届いていないことがある）。
+            // 作る書き込みは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
+            await goalSetupNoticeKeeper.issueIfNoGoal()
             await followReplies(engine)
         }
         if !result.rejectedWrites.isEmpty {

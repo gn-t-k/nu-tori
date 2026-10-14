@@ -15,15 +15,27 @@ struct RecordSyncDevice {
     let recordSync: RecordSync
 
     /// `server` は、`clock` を渡して作った偽の同期サーバー
-    init(clock: SteppingClock, server: FakeSyncServerProbe) throws {
+    /// - Parameters:
+    ///   - goals: キャッシュに届いている目標。既定は維持の目標が1つで、目標を立てる知らせを出させない
+    ///   - stateBeforeUpdate: 前の版で最後に同期したときの通し番号と読めた種類。あれば、種類の増えた版に上げて最初に開いた端末にする
+    init(
+        clock: SteppingClock, server: FakeSyncServerProbe, goals: [Goal]? = nil,
+        stateBeforeUpdate: (afterSequence: Int, readableKinds: Set<RecordKindName>)? = nil
+    ) throws {
         let kinds = RecordKindRegistry<RecordCacheMock>.ok()
         let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
         // 記録忘れの通知の時刻（8:00）より前。知らせの書き込みを送り待ちに積ませない
         let now = try Date("2026-09-22T07:00:00+09:00", strategy: .iso8601)
+        let cache = RecordCacheMock()
+        for goal in try goals ?? [.maintaining()] {
+            cache.goalCache.upsert(goal)
+        }
         let store = SyncBoxMock(
-            kinds: kinds, cache: RecordCacheMock(),
+            kinds: kinds, cache: cache,
             state: SyncState(
-                afterSequence: 0, hasCompletedInitialPull: true, readableKinds: kinds.names,
+                afterSequence: stateBeforeUpdate?.afterSequence ?? 0,
+                hasCompletedInitialPull: true,
+                readableKinds: stateBeforeUpdate?.readableKinds ?? kinds.names,
                 startedOn: Self.startedOn))
         let client = NuToriAPIClient(
             serverURL: try #require(URL(string: "https://api.example")),
@@ -76,6 +88,12 @@ struct RecordSyncDevice {
             missedWeightRecordWatch: MissedWeightRecordWatch(
                 cache: store,
                 center: MissedWeightRecordReminderCenterMock.ok(),
+                timeZone: { tokyo },
+                now: { now },
+                errorReporting: errorReporting
+            ),
+            goalSetupNoticeKeeper: GoalSetupNoticeKeeper(
+                cache: store,
                 timeZone: { tokyo },
                 now: { now },
                 errorReporting: errorReporting
