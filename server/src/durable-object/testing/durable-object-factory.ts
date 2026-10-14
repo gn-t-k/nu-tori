@@ -318,6 +318,103 @@ const aiUtterances = defineFactory({
   }),
 });
 
+const goals = defineFactory({
+  schema,
+  table: "goals",
+  resolver: () => ({
+    id: generateRecordId(),
+    startedOn: "2026-01-01",
+    startingWeightTrendKg: 70,
+    targetWeightKg: 70,
+    decidedAt: new Date("2026-01-01T00:00:00Z"),
+    timeZone: "Asia/Tokyo",
+  }),
+});
+
+const weightChangeGoals = defineFactory({
+  schema,
+  table: "weightChangeGoals",
+  resolver: ({ use }) => ({
+    goalId: () =>
+      use(goals)
+        .create({ targetWeightKg: 65 })
+        .then((goal) => goal.id),
+    deadlineOn: "2026-03-31",
+    pacePlan: "standard" as const,
+  }),
+});
+
+const goalClosures = defineFactory({
+  schema,
+  table: "goalClosures",
+  resolver: ({ use }) => ({
+    goalId: () =>
+      use(goals)
+        .create()
+        .then((goal) => goal.id),
+    nextGoalId: () =>
+      use(goals)
+        .create()
+        .then((goal) => goal.id),
+  }),
+});
+
+const expenditureEstimates = defineFactory({
+  schema,
+  table: "expenditureEstimates",
+  resolver: () => ({
+    id: generateRecordId(),
+    effectiveOn: "2026-01-01",
+    expenditureKcal: 2250,
+    estimatedAt: new Date("2026-01-01T00:00:00Z"),
+  }),
+});
+
+const initialExpenditureEstimates = defineFactory({
+  schema,
+  table: "initialExpenditureEstimates",
+  resolver: ({ use }) => ({
+    expenditureEstimateId: () =>
+      use(expenditureEstimates)
+        .create()
+        .then((estimate) => estimate.id),
+    source: "back_calculated" as const,
+  }),
+});
+
+const dailyGuides = defineFactory({
+  schema,
+  table: "dailyGuides",
+  resolver: ({ use }) => ({
+    id: generateRecordId(),
+    goalId: () =>
+      use(goals)
+        .create()
+        .then((goal) => goal.id),
+    expenditureEstimateId: () =>
+      use(expenditureEstimates)
+        .create()
+        .then((estimate) => estimate.id),
+    effectiveOn: "2026-01-01",
+    energyKcal: 2250,
+    proteinG: 110,
+    fatG: 60,
+    carbohydrateG: 315,
+  }),
+});
+
+const dailyGuideLimitHits = defineFactory({
+  schema,
+  table: "dailyGuideLimitHits",
+  resolver: ({ use }) => ({
+    dailyGuideId: () =>
+      use(dailyGuides)
+        .create()
+        .then((guide) => guide.id),
+    limitType: "minimum_energy" as const,
+  }),
+});
+
 // 置き場のテストで行を作る。create() は Promise を返すので、テストで await する。transactionSync の中では使わない
 export const durableObjectFactory = composeFactory({
   firstSignIns,
@@ -345,4 +442,11 @@ export const durableObjectFactory = composeFactory({
   replyGenerations,
   replyGenerationAbandonments,
   aiUtterances,
+  goals,
+  weightChangeGoals,
+  goalClosures,
+  expenditureEstimates,
+  initialExpenditureEstimates,
+  dailyGuides,
+  dailyGuideLimitHits,
 });

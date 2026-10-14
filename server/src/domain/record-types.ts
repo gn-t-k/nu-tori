@@ -4,8 +4,11 @@
 export const recordTypes = [
   "account_settings",
   "ai_utterance",
+  "daily_guide",
   "dish",
   "dish_estimation_status",
+  "expenditure_estimate",
+  "goal",
   "ingredient",
   "meal",
   "meal_estimation_status",

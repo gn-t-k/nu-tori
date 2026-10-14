@@ -1,10 +1,13 @@
 import type { AccountSettingsStore } from "../account-settings/domain/account-settings-store";
 import type { AiUtteranceStore } from "../ai-utterance/domain/ai-utterance-store";
+import type { DailyGuideStore } from "../daily-guide/domain/daily-guide-store";
 import type { DishStore } from "../dish/domain/dish-store";
 import type { DishEstimationStatusStore } from "../dish-estimation-status/domain/dish-estimation-status-store";
 import type { EstimationScheduleStore } from "../estimation/domain/estimation-schedule-store";
 import type { EstimationStore } from "../estimation/domain/estimation-store";
 import type { EstimationWrites } from "../estimation/domain/estimation-writes";
+import type { ExpenditureEstimateStore } from "../expenditure-estimate/domain/expenditure-estimate-store";
+import type { GoalStore } from "../goal/domain/goal-store";
 import type { IngredientStore } from "../ingredient/domain/ingredient-store";
 import type { MealPhotoStore } from "../meal/domain/meal-photo-store";
 import type { MealStore } from "../meal/domain/meal-store";
@@ -24,8 +27,11 @@ import type { WeightRecordStore } from "../weight-record/domain/weight-record-st
 export type RecordKindStores = {
   accountSettings: AccountSettingsStore;
   aiUtterance: AiUtteranceStore;
+  dailyGuide: DailyGuideStore;
   dish: DishStore;
   dishEstimationStatus: DishEstimationStatusStore;
+  expenditureEstimate: ExpenditureEstimateStore;
+  goal: GoalStore;
   ingredient: IngredientStore;
   meal: MealStore;
   mealEstimationStatus: MealEstimationStatusStore;
