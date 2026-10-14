@@ -39,7 +39,7 @@ struct GoalSetupMissingValuesPage: View {
                 value: binding(entry.heightCentimeters) { entry.with(heightCentimeters: $0) },
                 identifier: "goal-setup-height")
         case .birthYear:
-            LabeledContent("生まれた年") {
+            GoalSetupLabeledRow("生まれた年") {
                 Picker(
                     "生まれた年",
                     selection: binding(entry.birthYear) { entry.with(birthYear: $0) }
@@ -55,7 +55,7 @@ struct GoalSetupMissingValuesPage: View {
             }
             .accessibilityIdentifier("goal-setup-birth-year")
         case .sex:
-            LabeledContent("性別") {
+            GoalSetupLabeledRow("性別") {
                 Picker("性別", selection: binding(entry.sex) { entry.with(sex: $0) }) {
                     Text(GoalSetupBodyText.sex(.male)).tag(GoalSetupBody.Sex?.some(.male))
                     Text(GoalSetupBodyText.sex(.female)).tag(GoalSetupBody.Sex?.some(.female))
@@ -88,7 +88,7 @@ struct GoalSetupMissingValuesPage: View {
         _ label: String, unit: String, placeholder: String, value: Binding<Double?>,
         identifier: String
     ) -> some View {
-        LabeledContent(label) {
+        GoalSetupLabeledRow(label) {
             HStack(spacing: 4) {
                 TextField(placeholder, value: value, format: .number)
                     .keyboardType(.decimalPad)

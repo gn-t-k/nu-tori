@@ -3,7 +3,7 @@ import NuToriCore
 import SwiftUI
 
 /// 期限のページ。チップ「1か月後・2か月後・3か月後・6か月後」（6か月後が選べる最後の日を越えるときは「26週後」）と、
-/// 「期限」の1行の標準の DatePicker（compact）。選べる日は開始の日から 28〜182 日で、その幅を1行で書く。選んでから「次へ」
+/// 「期限」の行の標準の DatePicker（compact）。選べる日は開始の日から 28〜182 日で、その幅を1行で書く。選んでから「次へ」
 struct GoalSetupDeadlinePage: View {
     let content: GoalSetupFlowContent
     let actions: GoalSetupFlowActions
@@ -18,17 +18,9 @@ struct GoalSetupDeadlinePage: View {
                     chipButton(chip)
                 }
             }
-            DatePicker(
-                "期限",
-                selection: deadline,
-                in: date(
-                    of: content.deadlineChoices.earliestDay)...date(
-                        of: content.deadlineChoices.latestDay),
-                displayedComponents: .date
-            )
-            .datePickerStyle(.compact)
-            .environment(\.timeZone, timeZone())
-            .accessibilityIdentifier("goal-setup-deadline-picker")
+            GoalSetupLabeledRow("期限") {
+                deadlinePicker
+            }
             Text(rangeText)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -39,6 +31,21 @@ struct GoalSetupDeadlinePage: View {
                     .accessibilityIdentifier("goal-setup-next")
             }
         }
+    }
+
+    private var deadlinePicker: some View {
+        DatePicker(
+            "期限",
+            selection: deadline,
+            in: date(
+                of: content.deadlineChoices.earliestDay)...date(
+                    of: content.deadlineChoices.latestDay),
+            displayedComponents: .date
+        )
+        .datePickerStyle(.compact)
+        .labelsHidden()
+        .environment(\.timeZone, timeZone())
+        .accessibilityIdentifier("goal-setup-deadline-picker")
     }
 
     private func chipButton(_ chip: GoalDeadlineChoices.Chip) -> some View {
