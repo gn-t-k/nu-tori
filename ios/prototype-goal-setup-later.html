@@ -1,0 +1,267 @@
+<title>目標の知らせの「あとで」</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE（使い捨て）。main には入れない。
+  問い: 目標を立てる知らせの「あとで」は、押しても見た目がほとんど変わらず、名前（あとでまた知らせる）と中身（もう知らせない）が逆。どうするか。
+  A 今の形 / B 名前を「今はしない」に変える / C ボタンをなくす / D 名前どおり、翌日まで隠す。
+  画面の下のバー（← →）で切り替える。#A〜#D で開ける。
+-->
+<style>
+/* 左にタイムラインを模した iPhone、右に操作と状態。狭い幅では縦に積む */
+:root {
+  --bg: #E6E6EC;
+  --phone-bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --fg: #000000;
+  --fg2: rgba(60, 60, 67, 0.6);
+  --fg3: rgba(60, 60, 67, 0.3);
+  --fill: #EFEFF0;
+  --sep: rgba(60, 60, 67, 0.29);
+  --primary: #6155F5;
+  --on-primary: #FFFFFF;
+  --mine: #E4E2FD;
+  --p: #F07F1A; --f: #15803D; --c: #2C7BE5;
+  --track: #E5E5EA;
+  --bar: #1C1C1E; --on-bar: #FFFFFF;
+  --hl: #FFF3C4;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111113; --phone-bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235, 235, 245, 0.6); --fg3: rgba(235, 235, 245, 0.3); --fill: #323236;
+  --sep: rgba(84, 84, 88, 0.6); --primary: #6D7CFF; --mine: #2A2852;
+  --p: #E8903A; --f: #228C48; --c: #4290F4; --track: #2C2C2E;
+  --bar: #F2F2F7; --on-bar: #000000; --hl: #4A3F12; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111113; --phone-bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235, 235, 245, 0.6); --fg3: rgba(235, 235, 245, 0.3); --fill: #323236;
+  --sep: rgba(84, 84, 88, 0.6); --primary: #6D7CFF; --mine: #2A2852;
+  --p: #E8903A; --f: #228C48; --c: #4290F4; --track: #2C2C2E;
+  --bar: #F2F2F7; --on-bar: #000000; --hl: #4A3F12; color-scheme: dark }
+
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; }
+.wrap { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: flex-start;
+  padding-block: 20px 96px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* iPhone */
+.phone { width: 360px; max-width: 100%; height: 640px; background: var(--phone-bg); border-radius: 36px;
+  border: 8px solid var(--bar); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.nav { padding: 14px 16px 6px; font-weight: 600; font-size: 17px; text-align: center; background: var(--phone-bg); }
+.band { display: flex; justify-content: space-between; padding: 4px 18px 10px; border-bottom: 0.5px solid var(--sep); background: var(--phone-bg); }
+.day { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--fg2); }
+.ring { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--track); }
+.ring.done { border-color: var(--c) var(--f) var(--p) var(--p); }
+.ring.today { outline: 2px solid var(--primary); outline-offset: 1px; }
+.line { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; font-size: 15px;
+  background: var(--surface); border-bottom: 0.5px solid var(--sep); color: var(--primary); cursor: pointer; }
+.line small { color: var(--fg2); font-size: 12px; }
+.scroll { flex: 1; overflow-y: auto; padding: 12px 12px 16px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+.sep { text-align: center; font-size: 12px; color: var(--fg2); padding: 4px 0; }
+.mine { align-self: flex-end; background: var(--mine); border-radius: 18px; padding: 8px 12px; max-width: 75%; }
+.mine .t { font-size: 12px; color: var(--fg2); }
+.say { padding: 0 4px; line-height: 1.45; }
+.card { background: var(--surface); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: background .4s; }
+.card.flash { background: var(--hl); }
+.card .h { display: flex; justify-content: space-between; align-items: baseline; }
+.card .h b { font-size: 15px; } .card .h span { font-size: 12px; color: var(--fg2); }
+.card .note { font-size: 13px; color: var(--fg2); line-height: 1.4; }
+.acts { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
+.btn { font: inherit; font-size: 15px; border: 0; border-radius: 9999px; padding: 7px 14px; cursor: pointer; }
+.btn.gray { background: var(--fill); color: var(--primary); }
+.btn.filled { background: var(--primary); color: var(--on-primary); }
+.btn:focus-visible, .ctl button:focus-visible, .switch button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.input { padding: 8px 12px 14px; border-top: 0.5px solid var(--sep); display: flex; gap: 8px; background: var(--phone-bg); }
+.input div { flex: 1; background: var(--surface); border-radius: 18px; padding: 7px 12px; color: var(--fg3); }
+
+/* 操作と状態 */
+.side { width: 360px; max-width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.side h1 { font-size: 20px; margin: 0; text-wrap: balance; }
+.side p { margin: 0; line-height: 1.55; color: var(--fg2); }
+.ctl { display: flex; flex-wrap: wrap; gap: 8px; }
+.ctl button { font: inherit; background: var(--surface); color: var(--fg); border: 0.5px solid var(--sep); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.state { background: var(--surface); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
+.state dt { color: var(--fg2); } .state dd { margin: 0; font-variant-numeric: tabular-nums; }
+.log { font-size: 13px; color: var(--fg2); line-height: 1.6; margin: 0; padding-left: 18px; }
+
+/* 切り替えのバー（デザインの対象ではない） */
+.switch { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 4px; background: var(--bar); color: var(--on-bar); border-radius: 9999px; padding: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.switch button { font: inherit; background: transparent; color: inherit; border: 0; font-size: 18px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; }
+.switch span { min-width: 200px; text-align: center; font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .scroll { scroll-behavior: auto; } .card { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="phone" aria-label="タイムラインの模型">
+    <div class="nav" id="navTitle">10月14日（水）</div>
+    <div class="band" id="band"></div>
+    <div class="line" id="line" hidden><span>目標を立てる ›</span><small id="lineNote"></small></div>
+    <div class="scroll" id="scroll"></div>
+    <div class="input"><div>書く…</div></div>
+  </div>
+
+  <div class="side">
+    <h1 id="vTitle"></h1>
+    <p id="vDesc"></p>
+    <div class="ctl">
+      <button id="addRec">記録を2つ足す（カードを上へ流す）</button>
+      <button id="nextDay">翌日にする</button>
+      <button id="reset">はじめから</button>
+    </div>
+    <dl class="state" id="state"></dl>
+    <ol class="log" id="log"></ol>
+  </div>
+</div>
+
+<div class="switch" role="group" aria-label="案の切り替え">
+  <button id="prev" aria-label="前の案">‹</button>
+  <span id="label"></span>
+  <button id="next" aria-label="次の案">›</button>
+</div>
+
+<script>
+const VARIANTS = {
+  A: { name: "今の形", desc: "「あとで」を押すと答えた形になり、帯の下の1行がもう出なくなる。カードと「目標を立てる」は残る。押した瞬間はカードが見えているので、変わるのはボタンが消えることだけ。" },
+  B: { name: "「今はしない」に変える", desc: "中身は A と同じ（押したら帯の下に出さない）。名前を中身に合わせ、押したらカードの文で何が変わったかを伝える。" },
+  C: { name: "ボタンをなくす", desc: "答えるのは目標が決まったときだけ。カードが上へ流れているあいだ、帯の下の1行は目標が決まるまで出続ける。" },
+  D: { name: "名前どおり翌日まで隠す", desc: "「あとで」を押すと、帯の下の1行をその日のうちは隠し、翌日にまた出す。押したらカードの文で、いつまた出るかを伝える。" },
+};
+const KEYS = Object.keys(VARIANTS);
+const DAYS = ["月","火","水","木","金","土","日"];
+let variant = KEYS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "A";
+let s;
+
+function fresh() {
+  s = { day: 2, answered: false, hiddenUntilDay: null, goal: false, records: [
+    { day: 2, k: "mine", t: "7:05", x: "体重 68.4 kg" },
+    { day: 2, k: "notice" },
+    { day: 2, k: "mine", t: "7:40", x: "朝ごはんの写真" },
+    { day: 2, k: "say", x: "トーストとゆで卵、ヨーグルトですね。だいたい 420 kcal です。" },
+  ], log: [], cardVisible: true, clock: 12 };
+}
+
+function lineShown() {
+  if (s.goal || s.cardVisible) return false;
+  if (variant === "C") return true;
+  if (variant === "D") return !(s.hiddenUntilDay !== null && s.day < s.hiddenUntilDay);
+  return !s.answered;
+}
+
+function noticeCard() {
+  const el = document.createElement("div");
+  el.className = "card"; el.id = "notice";
+  if (s.goal) {
+    el.innerHTML = `<div class="h"><b>目標</b><span>7:00</span></div><div>減量 −3 kg・12月14日まで</div><div class="note">1日の目安 1,850 kcal</div>`;
+    return el;
+  }
+  let note = "", later = "";
+  if (variant === "A") later = s.answered ? "" : `<button class="btn gray" data-a="later">あとで</button>`;
+  if (variant === "B") {
+    note = s.answered ? `<div class="note">わかりました。帯の下には出しません。日のまとめからも立てられます。</div>` : `<div class="note">日のまとめからも立てられます。</div>`;
+    later = s.answered ? "" : `<button class="btn gray" data-a="later">今はしない</button>`;
+  }
+  if (variant === "D") {
+    const hiding = s.hiddenUntilDay !== null && s.day < s.hiddenUntilDay;
+    note = hiding ? `<div class="note">明日また帯の下でお知らせします。</div>` : "";
+    later = hiding ? "" : `<button class="btn gray" data-a="later">あとで</button>`;
+  }
+  el.innerHTML = `<div class="h"><b>目標を立てる</b><span>7:00</span></div>
+    <div>目標を立てると、1日に食べる量の目安が出ます。</div>${note}
+    <div class="acts">${later}<button class="btn filled" data-a="start">目標を立てる</button></div>`;
+  return el;
+}
+
+function render(flashCard) {
+  location.hash = variant;
+  const v = VARIANTS[variant];
+  document.getElementById("label").textContent = `${variant}（${v.name}）`;
+  document.getElementById("vTitle").textContent = `${variant}. ${v.name}`;
+  document.getElementById("vDesc").textContent = v.desc;
+  document.getElementById("navTitle").textContent = `10月${12 + s.day}日（${DAYS[s.day]}）`;
+  document.getElementById("band").innerHTML = DAYS.map((d, i) =>
+    `<div class="day"><div class="ring ${i < s.day ? "done" : ""} ${i === s.day ? "today" : ""}"></div>${d}</div>`).join("");
+
+  const sc = document.getElementById("scroll");
+  sc.innerHTML = "";
+  let lastDay = null;
+  for (const r of s.records) {
+    if (r.day !== lastDay) { const d = document.createElement("div"); d.className = "sep"; d.textContent = `10月${12 + r.day}日（${DAYS[r.day]}）`; sc.append(d); lastDay = r.day; }
+    if (r.k === "notice") { const c = noticeCard(); if (flashCard) c.classList.add("flash"); sc.append(c); continue; }
+    const el = document.createElement("div");
+    el.className = r.k;
+    el.innerHTML = r.k === "mine" ? `<div>${r.x}</div><div class="t">${r.t}</div>` : r.x;
+    sc.append(el);
+  }
+  if (flashCard) setTimeout(() => document.getElementById("notice")?.classList.remove("flash"), 900);
+  observe();
+  renderState();
+}
+
+function renderState() {
+  const line = document.getElementById("line");
+  line.hidden = !lineShown();
+  const answeredText = s.goal ? "答えた（目標が決まった）"
+    : variant === "C" ? "答えていない"
+    : variant === "D" ? (s.hiddenUntilDay !== null && s.day < s.hiddenUntilDay ? `今日は隠す（${DAYS[s.hiddenUntilDay]}曜にまた出す）` : "答えていない")
+    : s.answered ? "答えた（もう帯の下に出さない）" : "答えていない";
+  document.getElementById("state").innerHTML = `
+    <dt>今日</dt><dd>10月${12 + s.day}日（${DAYS[s.day]}）</dd>
+    <dt>知らせ</dt><dd>${answeredText}</dd>
+    <dt>カード</dt><dd>${s.cardVisible ? "画面に見えている" : "上へ流れて見えない"}</dd>
+    <dt>帯の下の1行</dt><dd>${lineShown() ? "出ている" : "出ていない"}</dd>`;
+  document.getElementById("log").innerHTML = s.log.map(l => `<li>${l}</li>`).join("");
+}
+
+let io;
+function observe() {
+  io?.disconnect();
+  const card = document.getElementById("notice");
+  if (!card) { s.cardVisible = true; return; }
+  io = new IntersectionObserver(([e]) => { s.cardVisible = e.isIntersecting; renderState(); },
+    { root: document.getElementById("scroll"), threshold: 0 });
+  io.observe(card);
+}
+
+function scrollBottom() { const sc = document.getElementById("scroll"); sc.scrollTop = sc.scrollHeight; }
+
+document.getElementById("scroll").addEventListener("click", e => {
+  const a = e.target.closest("[data-a]")?.dataset.a;
+  if (a === "later") {
+    if (variant === "D") { s.hiddenUntilDay = s.day + 1; s.log.push(`「あとで」を押した → 今日は帯の下に出さない`); }
+    else { s.answered = true; s.log.push(`「${variant === "B" ? "今はしない" : "あとで"}」を押した → 答えた形になった`); }
+    render(variant === "B" || variant === "D");
+  }
+  if (a === "start") { s.goal = true; s.log.push("「目標を立てる」→ 目標が決まった（流れは省略）"); render(true); }
+});
+document.getElementById("line").addEventListener("click", () => {
+  document.getElementById("notice")?.scrollIntoView({ block: "center" });
+  s.log.push("帯の下の1行を押した → カードまでスクロール");
+});
+const MEALS = [["12:20", "昼ごはんの写真", "親子丼ですね。だいたい 680 kcal です。"], ["15:10", "おやつの写真", "どら焼き1つで 220 kcal ほどです。"], ["19:30", "夕ごはんの写真", "鮭の塩焼きと味噌汁、ご飯で 610 kcal くらいです。"]];
+let mi = 0;
+document.getElementById("addRec").addEventListener("click", () => {
+  const m = MEALS[mi++ % MEALS.length];
+  s.records.push({ day: s.day, k: "mine", t: m[0], x: m[1] }, { day: s.day, k: "say", x: m[2] });
+  s.log.push(`記録を足した（${m[0]}）`);
+  render(); requestAnimationFrame(scrollBottom);
+});
+document.getElementById("nextDay").addEventListener("click", () => {
+  if (s.day >= 6) return;
+  s.day++;
+  s.records.push({ day: s.day, k: "mine", t: "7:02", x: "体重 68.2 kg" });
+  s.log.push(`翌日（${DAYS[s.day]}）になった`);
+  render(); requestAnimationFrame(scrollBottom);
+});
+document.getElementById("reset").addEventListener("click", () => { fresh(); render(); });
+
+function go(d) { variant = KEYS[(KEYS.indexOf(variant) + d + KEYS.length) % KEYS.length]; fresh(); render(); }
+document.getElementById("prev").addEventListener("click", () => go(-1));
+document.getElementById("next").addEventListener("click", () => go(1));
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input,textarea,[contenteditable]")) return;
+  if (e.key === "ArrowLeft") go(-1);
+  if (e.key === "ArrowRight") go(1);
+});
+
+fresh(); render();
+</script>
