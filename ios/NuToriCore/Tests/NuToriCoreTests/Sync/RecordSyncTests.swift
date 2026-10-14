@@ -21,7 +21,7 @@ struct RecordSyncTests {
                         .init(
                             records: [], startedOn: RecordSyncDevice.startedOn,
                             answerSentText: { _ in .reply("こんにちは。") }, sentTextAnswerPulls: 5),
-                        clock: clock))
+                        clock: clock), goals: [try .maintaining()])
             }
 
             @Test(
@@ -79,7 +79,7 @@ struct RecordSyncTests {
                             },
                             answerSentText: { _ in .meal(replyAsConversation: "親子丼の話ですね。") },
                             sentTextAnswerPulls: 3),
-                        clock: clock))
+                        clock: clock), goals: [try .maintaining()])
             }
 
             @Test(
@@ -114,7 +114,8 @@ struct RecordSyncTests {
             device = try RecordSyncDevice(
                 clock: clock,
                 server: .holdingPulls(
-                    .init(records: [], startedOn: RecordSyncDevice.startedOn), clock: clock))
+                    .init(records: [], startedOn: RecordSyncDevice.startedOn), clock: clock),
+                goals: [try .maintaining()])
             let recordSync = device.recordSync
             first = Task { try await recordSync.sync() }
             await device.server.pullArrivals.reaches(1)
@@ -165,7 +166,8 @@ struct RecordSyncTests {
             device = try RecordSyncDevice(
                 clock: clock,
                 server: .passing(
-                    .init(records: [], startedOn: RecordSyncDevice.startedOn), clock: clock))
+                    .init(records: [], startedOn: RecordSyncDevice.startedOn), clock: clock),
+                goals: [try .maintaining()])
             // 見張りは、同期で次の時刻を決める
             _ = try await device.recordSync.sync()
             device.recordSync.startWaitingForNoticeTime()

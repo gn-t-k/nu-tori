@@ -8,7 +8,7 @@ import Testing
 @Suite("目標のキャッシュの行")
 struct CachedGoalCacheTests {
     /// 2026-10-01（東京）に決めた、12月24日までに 72.4 kg から 68.0 kg へ減らす、自分で決めた目標
-    static func losing(id: UUID = UUID(), closure: Goal.Closure? = nil) throws -> Goal {
+    static func losing(id: UUID = UUID(), closure: Goal.Closure?) throws -> Goal {
         Goal(
             id: id, startedDay: CalendarDay(year: 2026, month: 10, day: 1),
             startingWeightTrendKilograms: 72.4, targetWeightKilograms: 68.0,
@@ -37,7 +37,7 @@ struct CachedGoalCacheTests {
     ) {
         let store = try SwiftDataSyncStore(inMemory: true)
         let cache = SwiftDataKeyedRecordCache<CachedGoal>(context: store.container.mainContext)
-        let losing = try losing()
+        let losing = try losing(closure: nil)
         let maintaining = try maintaining()
         try cache.upsert(losing)
         try cache.upsert(maintaining)
@@ -114,8 +114,8 @@ struct CachedGoalCacheTests {
             cache = SwiftDataKeyedRecordCache(context: context)
             readable = try CachedGoalCacheTests.maintaining()
             let unknownDirection = try CachedGoalCacheTests.maintaining()
-            let unknownPacePlan = try CachedGoalCacheTests.losing()
-            let withoutDeadline = try CachedGoalCacheTests.losing()
+            let unknownPacePlan = try CachedGoalCacheTests.losing(closure: nil)
+            let withoutDeadline = try CachedGoalCacheTests.losing(closure: nil)
             let unreadableStartedDay = try CachedGoalCacheTests.maintaining()
             let closedWithoutNextGoal = try CachedGoalCacheTests.maintaining()
             for goal in [

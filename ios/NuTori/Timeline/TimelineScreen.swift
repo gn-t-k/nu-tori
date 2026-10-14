@@ -39,8 +39,12 @@ struct TimelineScreen: View {
     /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
     let conversation: Timeline.Conversation
     let conversationActions: ConversationActions
-    /// 目標を立てる知らせのカードが広げる、目標の設定の流れ
-    let goalSetup: GoalSetupSession
+    /// 目標を立てる知らせのカードが広げる、目標の設定の流れの形
+    let goalSetupFlow: GoalSetupNoticeCard.Flow
+    /// 目標を立てる知らせの「あとで」
+    let answerGoalSetupLater: () async -> Void
+    /// 目標を立てる知らせのカードを広げる。途中まで進めていれば同じページから
+    let openGoalSetupFlow: (GoalSetupObservation.Entry) async -> Void
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
@@ -576,10 +580,10 @@ struct TimelineScreen: View {
         case .goalSetupNotice(let notice):
             GoalSetupNoticeCard(
                 notice: notice,
-                goal: currentGoal,
-                dailyGuide: currentGoal.flatMap(dailyGuide(of:)),
-                session: goalSetup,
+                currentGoal: currentGoal,
+                flow: goalSetupFlow,
                 timeZone: timeZone,
+                answerLater: { Task { await answerGoalSetupLater() } },
                 open: { entry in openGoalSetup(from: entry) }
             )
             .id(item.id)
@@ -621,20 +625,9 @@ struct TimelineScreen: View {
         Button {
             openGoalSetup(from: .unansweredNoticeLine)
         } label: {
-            HStack(spacing: 12) {
-                Text("目標を立てる")
-                    .foregroundStyle(.primary)
-                Spacer()
+            UnansweredNoticeLineLabel(text: "目標を立てる") {
                 Image(systemName: "chevron.right")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color.accentColor)
             }
-            .font(.footnote)
-            .padding(.horizontal)
-            .frame(minHeight: 44)
-            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
-            .overlay(Capsule().stroke(Color(.separator), lineWidth: 0.5))
-            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .padding([.horizontal, .top])
@@ -649,20 +642,9 @@ struct TimelineScreen: View {
                 .item(Timeline.Item.notice(card).id), in: days)
             Task { await capture(.unansweredNoticeLineTapped) }
         } label: {
-            HStack(spacing: 12) {
-                Text("今日の体重がまだです")
-                    .foregroundStyle(.primary)
-                Spacer()
+            UnansweredNoticeLineLabel(text: "今日の体重がまだです") {
                 Text("見る")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color.accentColor)
             }
-            .font(.footnote)
-            .padding(.horizontal)
-            .frame(minHeight: 44)
-            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
-            .overlay(Capsule().stroke(Color(.separator), lineWidth: 0.5))
-            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .padding([.horizontal, .top])
@@ -672,7 +654,7 @@ struct TimelineScreen: View {
     private func composer() -> some View {
         TimelineComposer(
             weightRecordedToday: records.contains { $0.day == today },
-            expandsGoalSetup: goalSetup.flow?.isOpen == true && currentGoal == nil,
+            expandsGoalSetup: goalSetupFlow.expandedPage != nil && currentGoal == nil,
             preparingWeightEntry: weightEntryPhase == .preparing,
             showsCameraNotice: showsCameraNotice,
             initialDraft: TextDraft.empty,
@@ -780,7 +762,7 @@ struct TimelineScreen: View {
             timeline: Timeline(
                 input: Timeline.Input(
                     weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none),
+                    undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
                 firstDay: monday,
                 today: today)
         ).weeks
@@ -795,18 +777,8 @@ struct TimelineScreen: View {
             firstDay: firstDay, today: today)
     }
 
-    /// 今の目標。今日を含む目標が無ければ（西へ移ったあと）、閉じていない目標
-    private var currentGoal: Goal? {
-        DailyGuideForDay(on: today, goals: goals, dailyGuides: dailyGuides)?.goal
-            ?? goals.first { $0.closure == nil }
-    }
-
-    /// その目標の、当てる始まりの日が今日以前で最も遅い1日の目安。今日より後に始まる目標なら、最も早いもの
-    private func dailyGuide(of goal: Goal) -> DailyGuide? {
-        let guides = dailyGuides.filter { $0.goalId == goal.id }.sorted {
-            $0.effectiveDay < $1.effectiveDay
-        }
-        return guides.last { $0.effectiveDay <= today } ?? guides.first
+    private var currentGoal: CurrentGoal? {
+        CurrentGoal(today: today, goals: goals, dailyGuides: dailyGuides)
     }
 
     /// 日のまとめと体重の画面の「目標を立てる」。目標が無く、知らせのカードがタイムラインにあるときだけ置く
@@ -823,7 +795,7 @@ struct TimelineScreen: View {
         summaryDay = nil
         navigationPath = NavigationPath()
         Task {
-            await goalSetup.open(from: entry)
+            await openGoalSetupFlow(entry)
             goalSetupScrollRequests += 1
         }
     }
@@ -832,14 +804,13 @@ struct TimelineScreen: View {
     private var goalSetupScrollKey: GoalSetupScrollKey {
         GoalSetupScrollKey(
             requests: goalSetupScrollRequests,
-            page: goalSetup.flow.flatMap { $0.isOpen ? GoalSetupPageKey($0.page) : nil })
+            page: goalSetupFlow.expandedPage)
     }
 
     /// 日のまとめの進行中の要約。今日を含む目標で出す
     private var goalProgress: GoalProgress? {
-        DailyGuideForDay(on: today, goals: goals, dailyGuides: dailyGuides).flatMap {
-            GoalProgress(goal: $0.goal, today: today, weightTrend: weightTrend)
-        }
+        GoalProgress(
+            today: today, goals: goals, dailyGuides: dailyGuides, weightTrend: weightTrend)
     }
 }
 
@@ -917,8 +888,31 @@ private struct AwaitingNoticePositionKey: PreferenceKey {
     }
 }
 
+/// 帯の下の1行のカプセル。左に知らせの文、右に押すと何が起きるかの印
+private struct UnansweredNoticeLineLabel<Action: View>: View {
+    let text: String
+    @ViewBuilder let action: Action
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(text)
+                .foregroundStyle(.primary)
+            Spacer()
+            action
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.accentColor)
+        }
+        .font(.footnote)
+        .padding(.horizontal)
+        .frame(minHeight: 44)
+        .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+        .overlay(Capsule().stroke(Color(.separator), lineWidth: 0.5))
+        .contentShape(Capsule())
+    }
+}
+
 private struct GoalSetupScrollKey: Equatable {
     let requests: Int
     /// 広げていなければ nil
-    let page: GoalSetupPageKey?
+    let page: GoalSetupPage?
 }

@@ -189,7 +189,7 @@ import SwiftData
         }
         let goalSetupHealth = GoalSetupHealthReader(
             healthStore: parts.healthStore,
-            ownBundleId: Bundle.main.bundleIdentifier ?? "app.nu-tori",
+            ownBundleId: OwnBundleId.value,
             timeZone: clock.timeZone,
             now: clock.now,
             errorReporting: observation.errorReporting

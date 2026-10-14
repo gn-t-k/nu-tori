@@ -11,23 +11,29 @@ public struct GoalDeadlineChoices: Sendable, Equatable {
     /// 1か月後・2か月後・3か月後・6か月後。6か月後が最後の日を越えるときは 26 週後
     public let chips: [Chip]
 
+    /// 選べる幅を週で数えたもの（4〜26週）。幅を書く1行に出す
+    public static let acceptedWeeks = (minimumDays / 7)...(maximumDays / 7)
+
     public init(startDay: CalendarDay) {
         self.startDay = startDay
         earliestDay = startDay.advanced(by: Self.minimumDays - 1)
-        latestDay = startDay.advanced(by: Self.maximumDays - 1)
+        let latestDay = startDay.advanced(by: Self.maximumDays - 1)
+        self.latestDay = latestDay
         chips = [1, 2, 3, 6].map { months in
             let day = Self.day(months: months, after: startDay)
-            return day <= startDay.advanced(by: Self.maximumDays - 1)
+            return day <= latestDay
                 ? Chip(label: .months(months), day: day)
-                : Chip(
-                    label: .weeks(Self.maximumDays / 7),
-                    day: startDay.advanced(by: Self.maximumDays - 1))
+                : Chip(label: .weeks(Self.maximumDays / 7), day: latestDay)
         }
     }
 
     /// 期限の初期値（3か月後）
     public var initialDay: CalendarDay {
-        chips[2].day
+        // 3か月後は最後の日（182 日め）より前なので、いつも月のチップになる
+        guard let chip = chips.first(where: { $0.label == .months(3) }) else {
+            preconditionFailure("3か月後のチップが無い")
+        }
+        return chip.day
     }
 
     public func contains(_ day: CalendarDay) -> Bool {

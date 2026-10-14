@@ -16,6 +16,9 @@ public struct DailyGuide: Hashable, Sendable {
     /// 当たった上限と下限。当たったものだけが並ぶ
     public let limitHits: [LimitHit]
 
+    /// 1日の目安の下限。目安を出せない理由の文に出す。正本はサーバーの `minimumDailyGuideEnergyKcal`
+    public static let minimumEnergyKilocalories = 1200
+
     public init(
         id: UUID,
         goalId: UUID,

@@ -12,20 +12,20 @@ struct GoalSetupDirectionPage: View {
             Text("何を目指しますか")
                 .font(.headline)
             VStack(spacing: 8) {
-                row(.lose, name: "減量", detail: "体重を減らす")
-                row(.maintain, name: "維持", detail: "今の体重を保つ")
-                row(.gain, name: "増量", detail: "体重を増やす")
+                row(.lose, detail: "体重を減らす")
+                row(.maintain, detail: "今の体重を保つ")
+                row(.gain, detail: "体重を増やす")
             }
         }
     }
 
-    private func row(_ direction: GoalSetupDirection, name: String, detail: String) -> some View {
+    private func row(_ direction: GoalSetupDirection, detail: String) -> some View {
         Button {
             actions.chooseDirection(direction)
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
+                    Text(GoalDirectionText.name(direction))
                         .font(.body)
                         .foregroundStyle(.primary)
                     Text(detail)

@@ -85,15 +85,15 @@ struct DaySummarySheet: View {
     init(
         timeline: Timeline, day: CalendarDay, weightRecords: [WeightRecord],
         weightTrend: WeightTrend?, goalProgress: GoalProgress?, today: CalendarDay,
-        startGoalSetup: (() -> Void)? = nil,
+        startGoalSetup: (() -> Void)?,
         onSeeOnTimeline: @escaping (CalendarDay) -> Void
     ) {
-        self.startGoalSetup = startGoalSetup
         self.timeline = timeline
         self.weightRecords = weightRecords
         self.weightTrend = weightTrend
         self.goalProgress = goalProgress
         self.today = today
+        self.startGoalSetup = startGoalSetup
         self.onSeeOnTimeline = onSeeOnTimeline
         _shownDay = State(initialValue: day)
     }
@@ -175,7 +175,7 @@ struct DaySummarySheet: View {
                 // 試作（prototype-goal-setup-look の「決まったあと」）のとおり、まとまりの下の1行目に置く
                 if let dailyGuide {
                     Text(
-                        "1日の目安 \(NutritionText.amount(.exactly(Double(dailyGuide.energyKilocalories)), of: .energyKcal))"
+                        "1日の目安 \(NutritionText.kilocalories(dailyGuide.energyKilocalories))"
                     )
                     .monospacedDigit()
                     .accessibilityIdentifier("day-summary-daily-guide")

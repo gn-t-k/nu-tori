@@ -29,14 +29,12 @@ struct GoalSetupCustomTargetWeightPage: View {
                             .accessibilityIdentifier("goal-setup-custom-corrected")
                     }
                 }
-                .opacity(isDeciding ? 0.4 : 1)
-                .disabled(isDeciding)
+                // DESIGN.md の押せないボタン（`.disabled` に任せる）に従わず、文と値も薄くする。仕様 #523 の「決める」が、押したら「ほかを薄くして」と決めているため
+                .opacity(content.isDeciding ? 0.4 : 1)
+                .disabled(content.isDeciding)
             }
             if content.showsRecalculated {
-                Text("新しい体重で計算し直しました。")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                GoalSetupRecalculatedNote()
             }
             if let unreachable = unreachableText {
                 Text(unreachable)
@@ -52,23 +50,14 @@ struct GoalSetupCustomTargetWeightPage: View {
                     GoalSetupRetryButton(retry: actions.retry)
                 }
             }
-            .opacity(isDeciding ? 0.4 : 1)
-            .disabled(isDeciding)
-        }
-        .onChange(of: typing) { _, focused in
-            if !focused {
-                commitTyped()
-            }
+            .opacity(content.isDeciding ? 0.4 : 1)
+            .disabled(content.isDeciding)
         }
     }
 
     @State private var typedText = ""
     @State private var showsField = false
     @FocusState private var typing: Bool
-
-    private var isDeciding: Bool {
-        content.isDeciding
-    }
 
     private var unreachableText: String? {
         switch content.unreachableRequest {
@@ -92,54 +81,26 @@ struct GoalSetupCustomTargetWeightPage: View {
         .frame(maxWidth: .infinity)
     }
 
-    @ViewBuilder private func value(_ custom: CustomTargetWeight) -> some View {
-        if showsField {
-            TextField("", text: $typedText)
-                .keyboardType(.decimalPad)
-                .font(.title2)
-                .monospacedDigit()
-                .multilineTextAlignment(.center)
-                .focused($typing)
-                .frame(minWidth: 88)
-                .padding(12)
-                .background(Color(.secondarySystemGroupedBackground), in: weightControlShape)
-                .overlay(weightControlShape.stroke(Color.accentColor))
-                .onChange(of: typedText) { _, next in
-                    let sanitized = WeightDecimalText.sanitized(next)
-                    if sanitized != next {
-                        typedText = sanitized
-                    }
+    private func value(_ custom: CustomTargetWeight) -> some View {
+        WeightValueField(
+            shownText: String(
+                format: "%.1f", locale: Locale(identifier: "en_US_POSIX"), custom.kilograms),
+            text: $typedText,
+            showsField: $showsField,
+            typing: $typing,
+            fieldLabel: "目標体重の値",
+            shownLabel: "目標体重",
+            shownValue: WeightAmountText.kilograms(custom.kilograms),
+            beginTyping: { typedText = "" },
+            textChanged: { _, next in
+                let sanitized = WeightDecimalText.sanitized(next)
+                if sanitized != next {
+                    typedText = sanitized
                 }
-                .accessibilityLabel("目標体重の値")
-                .onAppear { typing = true }
-        } else {
-            Button {
-                typedText = ""
-                showsField = true
-            } label: {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(
-                        String(
-                            format: "%.1f", locale: Locale(identifier: "en_US_POSIX"),
-                            custom.kilograms)
-                    )
-                    .font(.title2)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    Text("kg")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(minWidth: 88)
-                .padding(12)
-                .background(Color(.tertiarySystemFill), in: weightControlShape)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("目標体重")
-            .accessibilityValue(WeightAmountText.kilograms(custom.kilograms))
-            .accessibilityIdentifier("goal-setup-custom-value")
-            .animation(.default, value: custom.kilograms)
-        }
+            },
+            endTyping: commitTyped
+        )
+        .accessibilityIdentifier("goal-setup-custom-value")
     }
 
     /// 受け付ける幅だけ動くスライダー。ゆるめ・標準・ハードの案の位置に名前を置く
@@ -200,7 +161,7 @@ struct GoalSetupCustomTargetWeightPage: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Text(
-                    GoalSetupDifficultyText.kilocalories(
+                    NutritionText.kilocalories(
                         custom.assessment.dailyGuide.energyKilocalories)
                 )
                 .font(.title2)
@@ -235,7 +196,8 @@ struct GoalSetupCustomTargetWeightPage: View {
         let kilograms = WeightAmountText.kilograms(custom.kilograms)
         switch reason {
         case .dailyGuideBelowMinimum:
-            return "1日の目安が 1,200 kcal を下回るため、\(deadline)までに目指せるのは \(kilograms) までです。"
+            return
+                "1日の目安が \(NutritionText.kilocalories(DailyGuide.minimumEnergyKilocalories)) を下回るため、\(deadline)までに目指せるのは \(kilograms) までです。"
         case .notOnDirectionSide:
             // 仕様に文が無い遅い側の端。体重の傾向より向きの側に出ない目標は立てられないことを、事実だけで書く
             return custom.direction == .lose
@@ -252,11 +214,7 @@ struct GoalSetupCustomTargetWeightPage: View {
 
     /// 打った値は、キーボードを閉じたときに受け取る。外の値は流れが端の値に直す
     private func commitTyped() {
-        showsField = false
-        let core = typedText.hasSuffix(".") ? String(typedText.dropLast()) : typedText
-        guard let kilograms = Double(core.replacingOccurrences(of: ",", with: ".")) else {
-            return
-        }
+        guard let kilograms = WeightDecimalText.kilograms(typedText) else { return }
         move(to: kilograms)
     }
 }

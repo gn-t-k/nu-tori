@@ -30,7 +30,7 @@ extension TimelineViewportTests {
             return Timeline(
                 input: Timeline.Input(
                     weightRecords: records, rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none),
+                    undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
                 firstDay: firstDay, today: today
             ).days
         }

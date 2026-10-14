@@ -7,6 +7,7 @@
             Spacer()
             TimelineComposer(
                 weightRecordedToday: sample.weightRecordedToday,
+                expandsGoalSetup: sample.expandsGoalSetup,
                 preparingWeightEntry: sample.preparingWeightEntry,
                 showsCameraNotice: sample.showsCameraNotice,
                 initialDraft: sample.draft,
@@ -40,10 +41,14 @@
             case nearLimit
             /// 500 字を超えた。「N 字多い」を出し、「送る」を押せない
             case overLimit
+            /// 今日の体重がまだで、目標を立てる知らせのカードを広げている。体重は灰色の丸
+            case goalSetupExpanded
 
             var weightRecordedToday: Bool {
                 switch self {
-                case .weightUnrecorded, .preparingWeightEntry, .writing, .overLimit: false
+                case .weightUnrecorded, .preparingWeightEntry, .writing, .overLimit,
+                    .goalSetupExpanded:
+                    false
                 case .weightRecorded, .cameraNotPermitted, .presetInserted, .onlyWhitespace,
                     .nearLimit:
                     true
@@ -54,7 +59,17 @@
                 switch self {
                 case .preparingWeightEntry: true
                 case .weightUnrecorded, .weightRecorded, .cameraNotPermitted, .writing,
-                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit:
+                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded:
+                    false
+                }
+            }
+
+            var expandsGoalSetup: Bool {
+                switch self {
+                case .goalSetupExpanded: true
+                case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
+                    .cameraNotPermitted, .writing, .presetInserted, .onlyWhitespace, .nearLimit,
+                    .overLimit:
                     false
                 }
             }
@@ -63,7 +78,7 @@
                 switch self {
                 case .cameraNotPermitted: true
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry, .writing,
-                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit:
+                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded:
                     false
                 }
             }
@@ -71,7 +86,7 @@
             var draft: TextDraft {
                 switch self {
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
-                    .cameraNotPermitted:
+                    .cameraNotPermitted, .goalSetupExpanded:
                     TextDraft.empty
                 case .writing:
                     TextDraft(text: "夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ")

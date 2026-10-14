@@ -9,6 +9,11 @@ public enum NutritionText {
         return amount.isLowerBound ? "\(text) 以上" : text
     }
 
+    /// 1日の目安の kcal。「2,250 kcal」
+    public static func kilocalories(_ kilocalories: Int) -> String {
+        amount(.exactly(Double(kilocalories)), of: .energyKcal)
+    }
+
     /// 日のまとめの「食べた量 / 目安」。「17 / 130 g」「78 以上 / 220 g」「— / 50 g」。単位は目安のあとに1つだけ付ける
     public static func amount(_ eaten: NutrientAmount, of nutrient: Nutrient, guide: Int)
         -> String

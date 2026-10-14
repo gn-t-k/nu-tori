@@ -35,7 +35,8 @@
                     NoticeCard(
                         notice: .sampleMissedWeightRecord(
                             on: CalendarDay.sampleToday.advanced(by: -1), respondedAt: nil),
-                        form: .unansweredPastDay)
+                        form: .unansweredPastDay(
+                            targetDay: CalendarDay.sampleToday.advanced(by: -1)))
                 }
             }
 

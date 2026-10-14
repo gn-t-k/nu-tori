@@ -74,9 +74,7 @@ struct WeightDraft {
     }
 
     private static func tenths(parsing text: String) -> Int? {
-        let core = text.hasSuffix(".") ? String(text.dropLast()) : text
-        guard !core.isEmpty, let value = Double(core) else { return nil }
-        return Int((value * 10).rounded())
+        WeightDecimalText.kilograms(text).map { Int(($0 * 10).rounded()) }
     }
 
     /// 先頭か末尾に足した文字。選択を置き換えたときは、増えた部分だけを返す

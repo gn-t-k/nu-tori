@@ -57,8 +57,8 @@ struct GoalSetupMissingValuesPage: View {
         case .sex:
             LabeledContent("性別") {
                 Picker("性別", selection: binding(entry.sex) { entry.with(sex: $0) }) {
-                    Text("男性").tag(GoalSetupBody.Sex?.some(.male))
-                    Text("女性").tag(GoalSetupBody.Sex?.some(.female))
+                    Text(GoalSetupBodyText.sex(.male)).tag(GoalSetupBody.Sex?.some(.male))
+                    Text(GoalSetupBodyText.sex(.female)).tag(GoalSetupBody.Sex?.some(.female))
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -113,7 +113,7 @@ struct GoalSetupMissingValuesPage: View {
     ) -> some View {
         Button(action: action) {
             HStack {
-                Text(level.name)
+                Text(GoalSetupBodyText.level(level))
                     .foregroundStyle(.primary)
                 Spacer(minLength: 0)
                 if selected {
@@ -139,16 +139,6 @@ struct GoalSetupMissingValuesPage: View {
 
     private func enter(_ entry: GoalSetupMissingValues.Entry) {
         actions.enterMissingValues(entry)
-    }
-}
-
-extension GoalSetupBody.Level {
-    fileprivate var name: String {
-        switch self {
-        case .sedentary: "ほぼ座り仕事"
-        case .standing: "立ち仕事が多い"
-        case .active: "よく動く"
-        }
     }
 }
 

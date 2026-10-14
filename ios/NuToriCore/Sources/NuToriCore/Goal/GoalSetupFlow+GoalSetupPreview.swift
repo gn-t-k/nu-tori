@@ -43,7 +43,7 @@ extension GoalSetupFlow {
         let received: GoalSetupPreview
         do {
             let result = try await client.previewGoalSetup(direction: direction, inputs: inputs)
-            guard case .answered(let answered) = await answer(of: result) else {
+            guard let answered = await self.answered(result) else {
                 finishPreview(.unreachable, generation: generation)
                 return
             }

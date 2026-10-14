@@ -126,6 +126,22 @@ public struct GoalProposals: Sendable, Equatable {
         case dailyGuideBelowMinimum
         /// 端末が知らない理由
         case unknown(String)
+
+        /// サーバーの `unavailableReason` の値
+        var serverName: String {
+            switch self {
+            case .dailyGuideBelowMinimum: "daily_guide_below_minimum"
+            case .unknown(let name): name
+            }
+        }
+
+        /// 知らない値は `unknown` にする
+        init(serverName: String) {
+            switch serverName {
+            case "daily_guide_below_minimum": self = .dailyGuideBelowMinimum
+            default: self = .unknown(serverName)
+            }
+        }
     }
 
     public struct AcceptedTargetWeightRange: Sendable, Equatable {

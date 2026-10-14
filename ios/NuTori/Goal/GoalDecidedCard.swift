@@ -23,13 +23,15 @@ struct GoalDecidedCard: View {
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             }
-            Text("\(Text(directionName).fontWeight(.semibold))　\(goalLine)")
-                .font(.subheadline)
-                .monospacedDigit()
-                .accessibilityIdentifier("goal-decided-goal")
+            Text(
+                "\(Text(GoalDirectionText.name(goal.direction)).fontWeight(.semibold))　\(goalLine)"
+            )
+            .font(.subheadline)
+            .monospacedDigit()
+            .accessibilityIdentifier("goal-decided-goal")
             if let dailyGuide {
                 Text(
-                    "1日の目安 \(Text(NutritionText.amount(.exactly(Double(dailyGuide.energyKilocalories)), of: .energyKcal)).fontWeight(.semibold))"
+                    "1日の目安 \(Text(NutritionText.kilocalories(dailyGuide.energyKilocalories)).fontWeight(.semibold))"
                 )
                 .font(.subheadline)
                 .monospacedDigit()
@@ -52,14 +54,6 @@ struct GoalDecidedCard: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("goal-decided")
-    }
-
-    private var directionName: String {
-        switch goal.direction {
-        case .lose: "減量"
-        case .gain: "増量"
-        case .maintain: "維持"
-        }
     }
 
     /// 減量・増量は「12月24日（木）までに 70.1 kg」、維持は「65.0 kg を保つ」

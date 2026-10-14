@@ -97,7 +97,7 @@
                     GoalProposals.Direction(choice.direction),
                     SyncedGoal.WeightChange(
                         deadlineOn: choice.deadlineOn,
-                        pacePlan: SyncedGoal.PacePlan(rawValue: choice.pace.rawValue) ?? .standard))
+                        pacePlan: SyncedGoal.PacePlan(choice.pace)))
             case .custom(let choice):
                 (direction, plan) = Self.weightChange(
                     GoalProposals.Direction(choice.direction),
@@ -200,18 +200,18 @@
         fileprivate init<Wire: RawRepresentable<String>>(_ wire: Wire) {
             switch wire.rawValue {
             case "lose": self = .lose
-            default: self = .gain
+            case "gain": self = .gain
+            default: preconditionFailure("目標の設定の要求に、減量と増量のほかの向きが届いた: \(wire.rawValue)")
             }
         }
     }
 
-    extension TargetWeightLimitReason {
-        fileprivate var serverName: String {
-            switch self {
-            case .paceTooFast: "pace_too_fast"
-            case .dailyGuideBelowMinimum: "daily_guide_below_minimum"
-            case .notOnDirectionSide: "not_on_direction_side"
-            case .unknown(let name): name
+    extension SyncedGoal.PacePlan {
+        fileprivate init(_ wire: Components.Schemas.GoalProposalChoice.PacePayload) {
+            switch wire {
+            case .gentle: self = .gentle
+            case .standard: self = .standard
+            case .hard: self = .hard
             }
         }
     }
@@ -268,23 +268,11 @@
                     difficulty: offered.difficulty.rawValue,
                     dailyGuideDifferenceKcal: offered.dailyGuideDifferenceKilocalories)
             case .unavailable(_, let reason):
-                let name =
-                    switch reason {
-                    case .dailyGuideBelowMinimum: "daily_guide_below_minimum"
-                    case .unknown(let name): name
-                    }
                 self.init(
                     pace: proposal.pace.rawValue, status: "unavailable",
-                    unavailableReason: name)
+                    unavailableReason: reason.serverName)
             }
         }
     }
 
-    extension Components.Schemas.DailyGuidePlan {
-        fileprivate init(_ plan: DailyGuidePlan) {
-            self.init(
-                energyKcal: plan.energyKilocalories, proteinG: plan.proteinGrams,
-                fatG: plan.fatGrams, carbohydrateG: plan.carbohydrateGrams)
-        }
-    }
 #endif

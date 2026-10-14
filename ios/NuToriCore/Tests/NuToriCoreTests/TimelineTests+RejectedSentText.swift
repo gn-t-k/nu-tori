@@ -19,7 +19,8 @@ extension TimelineTests {
             let timeline = Timeline(
                 input: Timeline.Input(
                     weightRecords: [morning, evening], rejectedLines: [.sentText(line)],
-                    meals: [], notices: [], undelivered: .none, conversation: .none),
+                    meals: [], notices: [], undelivered: .none, conversation: .none, goals: [],
+                    dailyGuides: []),
                 firstDay: Self.day, today: Self.day)
             #expect(
                 timeline.days.map(\.items) == [
@@ -39,7 +40,7 @@ extension TimelineTests {
                     undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText], statuses: [sentText.id: failed], replies: [],
-                        streams: [:])),
+                        streams: [:]), goals: [], dailyGuides: []),
                 firstDay: Self.day, today: Self.day)
             #expect(
                 timeline.days.map(\.items) == [

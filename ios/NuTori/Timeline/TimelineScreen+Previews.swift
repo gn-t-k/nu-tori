@@ -28,7 +28,9 @@
             mealActions: .noop,
             conversation: sample.conversation,
             conversationActions: .noop,
-            goalSetup: .preview
+            goalSetupFlow: .notStarted,
+            answerGoalSetupLater: {},
+            openGoalSetupFlow: { _ in }
         )
     }
 

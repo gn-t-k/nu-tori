@@ -40,7 +40,7 @@ extension GoalSetupFlow {
         let received: GoalDecision
         do {
             let result = try await client.decideGoal(request, inputs: inputs)
-            guard case .answered(let answered) = await answer(of: result) else {
+            guard let answered = await self.answered(result) else {
                 decision = .idle
                 unreachableRequest = .decision
                 return

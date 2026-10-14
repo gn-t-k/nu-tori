@@ -18,12 +18,16 @@ struct GoalSetupFlowTests {
             let harness: GoalSetupFlowHarness
 
             init() {
-                harness = GoalSetupFlowHarness(
+                harness = Self.harness(proposals: JSON.loseProposals())
+            }
+
+            static func harness(proposals: String) -> GoalSetupFlowHarness {
+                GoalSetupFlowHarness(
                     answers: [
                         "preview": [
                             .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
                         ],
-                        "proposals": [.json(JSON.loseProposals())],
+                        "proposals": [.json(proposals)],
                     ],
                     health: .ok(goalSetup: .init(requestStatus: .notYetRequested)))
             }
@@ -61,24 +65,12 @@ struct GoalSetupFlowTests {
                         == "2026-04-01")
             }
 
-            @Test("今日の体重の記録が無ければ、目標案に使った最後の体重記録の日を見せること")
-            func showsPastWeightRecordDay() async {
+            @Test("目標案の上の1行に、逆算した推定消費カロリーを見せること")
+            func showsBackCalculatedExpenditure() async {
                 await harness.flow.chooseDirection(.lose)
                 await harness.flow.proceedFromDeadline()
 
-                #expect(
-                    harness.flow.pastWeightRecordDay == CalendarDay(year: 2025, month: 12, day: 31))
-            }
-
-            @Test("今日の体重の記録があれば、最後の体重記録の日を見せないこと")
-            func hidesTodaysWeightRecordDay() async {
-                harness.server.replace(
-                    "proposals",
-                    with: .json(JSON.loseProposals(lastWeightRecordedOn: "2026-01-01")))
-                await harness.flow.chooseDirection(.lose)
-                await harness.flow.proceedFromDeadline()
-
-                #expect(harness.flow.pastWeightRecordDay == nil)
+                #expect(harness.flow.usedValues == .backCalculated(expenditureKilocalories: 2250))
             }
 
             @Test("許可を2回は求めないこと")
@@ -88,6 +80,43 @@ struct GoalSetupFlowTests {
                 await harness.flow.chooseDirection(.gain)
 
                 #expect(harness.health.goalSetupAuthorizationRequests == 1)
+            }
+
+            @MainActor
+            @Suite("目標案に使った最後の体重記録が、今日より前のとき")
+            struct PastWeightRecord {
+                let harness: GoalSetupFlowHarness
+
+                init() async {
+                    harness = FirstBackCalculable.harness(proposals: JSON.loseProposals())
+                    await harness.flow.chooseDirection(.lose)
+                    await harness.flow.proceedFromDeadline()
+                }
+
+                @Test("最後の体重記録の日を見せること")
+                func showsPastWeightRecordDay() {
+                    #expect(
+                        harness.flow.pastWeightRecordDay
+                            == CalendarDay(year: 2025, month: 12, day: 31))
+                }
+            }
+
+            @MainActor
+            @Suite("目標案に使った最後の体重記録が、今日のとき")
+            struct TodaysWeightRecord {
+                let harness: GoalSetupFlowHarness
+
+                init() async {
+                    harness = FirstBackCalculable.harness(
+                        proposals: JSON.loseProposals(lastWeightRecordedOn: "2026-01-01"))
+                    await harness.flow.chooseDirection(.lose)
+                    await harness.flow.proceedFromDeadline()
+                }
+
+                @Test("最後の体重記録の日を見せないこと")
+                func hidesTodaysWeightRecordDay() {
+                    #expect(harness.flow.pastWeightRecordDay == nil)
+                }
             }
         }
 
@@ -171,7 +200,7 @@ struct GoalSetupFlowTests {
                             .json(
                                 JSON.preview(canBackCalculate: false, canOfferLoseProposals: true)),
                         ],
-                        "proposals": [.json(JSON.loseProposals())],
+                        "proposals": [.json(JSON.loseProposals(expenditureSource: "formula"))],
                     ],
                     health: .ok(
                         goalSetup: .init(
@@ -236,7 +265,7 @@ struct GoalSetupFlowTests {
                 #expect(harness.flow.progress == .init(count: 4, index: 3))
             }
 
-            @Test("目標案の上の1行に、足りない値の「次へ」で決めた身体データを見せること")
+            @Test("目標案の上の1行に、足りない値の「次へ」で決めた身体データと、計算に使った体重の傾向を見せること")
             func showsUsedBody() async {
                 await harness.flow.chooseDirection(.lose)
                 await harness.flow.proceedFromDeadline()
@@ -245,10 +274,12 @@ struct GoalSetupFlowTests {
                 await harness.flow.proceedFromMissingValues()
 
                 #expect(
-                    harness.flow.submittedBody
-                        == GoalSetupBody(
-                            sex: .female, heightCentimeters: 160, ageYears: 35,
-                            activity: .level(.standing)))
+                    harness.flow.usedValues
+                        == .formula(
+                            GoalSetupBody(
+                                sex: .female, heightCentimeters: 160, ageYears: 35,
+                                activity: .level(.standing)),
+                            weightKilograms: 70.0))
             }
 
             @Test("自分で決める目標体重のページの「変える」で、答えを残して足りない値のページに戻ること")
@@ -296,6 +327,13 @@ struct GoalSetupFlowTests {
                 }
                 #expect(maintenance.dailyGuide.energyKilocalories == 2250)
             }
+
+            @Test("身体データを添えずに式の目標案が返っても、逆算した値として見せないこと")
+            func doesNotShowFormulaAsBackCalculated() async {
+                await harness.flow.chooseDirection(.maintain)
+
+                #expect(harness.flow.usedValues == nil)
+            }
         }
 
         @MainActor
@@ -311,7 +349,7 @@ struct GoalSetupFlowTests {
                         "preview": [
                             .json(JSON.preview(canBackCalculate: nil, canOfferLoseProposals: true))
                         ],
-                        "proposals": [.json(JSON.loseProposals())],
+                        "proposals": [.json(JSON.loseProposals(expenditureSource: "current"))],
                     ],
                     health: .ok(goalSetup: .init(requestStatus: .notYetRequested)))
             }
@@ -332,6 +370,14 @@ struct GoalSetupFlowTests {
 
                 #expect(harness.flow.page == .proposals)
                 #expect(harness.flow.progress == .init(count: 3, index: 2))
+            }
+
+            @Test("目標案の上の1行に、今の推定消費カロリーを見せること")
+            func showsCurrentExpenditure() async {
+                await harness.flow.chooseDirection(.lose)
+                await harness.flow.proceedFromDeadline()
+
+                #expect(harness.flow.usedValues == .current(expenditureKilocalories: 2250))
             }
         }
 
@@ -847,7 +893,7 @@ struct GoalSetupFlowTests {
                         "proposals": [.json(JSON.loseProposals())],
                         "decisions": [.json(JSON.decided)],
                     ],
-                    records: .ok(appliesGoalDecision: false))
+                    records: .error(GoalSetupRecordsMock.CacheSaveFailure()))
                 await harness.flow.chooseDirection(.lose)
                 await harness.flow.proceedFromDeadline()
                 harness.flow.open(from: .noticeCard)

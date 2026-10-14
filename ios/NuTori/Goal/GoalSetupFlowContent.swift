@@ -15,7 +15,7 @@ struct GoalSetupFlowContent {
     let decision: GoalSetupFlow.Decision
     let unreachableRequest: GoalSetupFlow.UnreachableRequest?
     let showsRecalculated: Bool
-    let submittedBody: GoalSetupBody?
+    let usedValues: GoalSetupUsedValues?
     let pastWeightRecordDay: CalendarDay?
 
     /// 「この目標で始める」を押したあと。ほかを薄くして押せなくする
@@ -40,7 +40,7 @@ extension GoalSetupFlowContent {
             decision: flow.decision,
             unreachableRequest: flow.unreachableRequest,
             showsRecalculated: flow.showsRecalculated,
-            submittedBody: flow.submittedBody,
+            usedValues: flow.usedValues,
             pastWeightRecordDay: flow.pastWeightRecordDay)
     }
 }

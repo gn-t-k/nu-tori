@@ -12,3 +12,19 @@ public struct DailyGuidePlan: Sendable, Equatable {
         self.carbohydrateGrams = carbohydrateGrams
     }
 }
+
+extension DailyGuidePlan {
+    init(_ wire: Components.Schemas.DailyGuidePlan) {
+        self.init(
+            energyKilocalories: wire.energyKcal, proteinGrams: wire.proteinG, fatGrams: wire.fatG,
+            carbohydrateGrams: wire.carbohydrateG)
+    }
+}
+
+extension Components.Schemas.DailyGuidePlan {
+    init(_ plan: DailyGuidePlan) {
+        self.init(
+            energyKcal: plan.energyKilocalories, proteinG: plan.proteinGrams, fatG: plan.fatGrams,
+            carbohydrateG: plan.carbohydrateGrams)
+    }
+}

@@ -33,7 +33,7 @@ extension TimelineTests {
                                     SentTextStatus(classification: .conversation, reply: .replied)
                                 )
                             }),
-                        replies: replies, streams: [:])),
+                        replies: replies, streams: [:]), goals: [], dailyGuides: []),
                 firstDay: yesterday, today: today
             ).days
         }

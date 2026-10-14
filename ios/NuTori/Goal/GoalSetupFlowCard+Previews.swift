@@ -47,7 +47,7 @@
                     selectedPace: proposals == nil ? nil : .standard,
                     customTargetWeight: customTargetWeight, decision: decision,
                     unreachableRequest: unreachableRequest,
-                    showsRecalculated: showsRecalculated, submittedBody: submittedBody,
+                    showsRecalculated: showsRecalculated, usedValues: usedValues,
                     pastWeightRecordDay: pastWeightRecordDay)
             }
 
@@ -113,8 +113,11 @@
             }
 
             /// 逆算できない人の目標案だけが、足りない値で決めた身体データと最後の体重記録の日を見せる
-            private var submittedBody: GoalSetupBody? {
-                isFormulaProposals ? Self.body : nil
+            private var usedValues: GoalSetupUsedValues? {
+                if isFormulaProposals { return .formula(Self.body, weightKilograms: 70.0) }
+                return proposals.map {
+                    .backCalculated(expenditureKilocalories: $0.expenditureKilocalories)
+                }
             }
 
             private var pastWeightRecordDay: CalendarDay? {
