@@ -18,6 +18,7 @@ import { mockCaptureExceptionOk } from "../../observability/capture-exception.mo
 import { putMealPhoto } from "../meal-photo-routes/testing/put-meal-photo";
 import { pushSyncWrites } from "../sync-routes/testing/push-sync-writes";
 import { readRows } from "../sync-routes/testing/read-rows";
+import { app } from "../app";
 import { signInTestAccount } from "../testing";
 import { postGoalSetup } from "./testing/post-goal-setup";
 import { readAllStoredRows } from "./testing/read-all-stored-rows";
@@ -632,6 +633,51 @@ describe("目標の設定の要求", () => {
         );
       });
     });
+
+    describe.for(["preview", "proposals", "custom-target-weight", "decisions"] as const)(
+      "%s の本文が JSON として読めないとき",
+      (path) => {
+        let response: Response;
+        beforeEach(async () => {
+          response = await app.request(
+            `/v1/goal-setup/${path}`,
+            {
+              method: "POST",
+              headers: {
+                authorization: `Bearer ${sessionToken}`,
+                "content-type": "application/json",
+              },
+              body: '{"timeZone": "Asia/Tokyo", "heightCentimeters": 172.5',
+            },
+            env,
+          );
+        });
+
+        test("形の誤りとして 400 で断ること", async () => {
+          expect({ status: response.status, body: await response.json() }).toEqual({
+            status: 400,
+            body: { code: "malformed_request" },
+          });
+        });
+
+        test("本文の値を載せずに、読めなかったことを Sentry に送ること", () => {
+          expect(
+            captureExceptionSpy.mock.calls.map(([error]) => ({
+              error,
+              text: `${String(error)} ${JSON.stringify(error)}`,
+            })),
+          ).toEqual([
+            {
+              error: expect.objectContaining({
+                name: "GoalSetupRequestMalformedError",
+                issues: [{ path: "", code: "invalid_json" }],
+              }),
+              text: expect.not.stringContaining("172.5"),
+            },
+          ]);
+        });
+      },
+    );
 
     describe("期限が開始の日から数えて 27 日めのとき", () => {
       let response: Response;
