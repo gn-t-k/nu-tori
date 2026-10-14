@@ -11,8 +11,11 @@ extension SyncChange {
         case .weightRecord, .weightRecordDeletion: .weightRecord
         case .accountSettings: .accountSettings
         case .aiUtterance: .aiUtterance
+        case .dailyGuide: .dailyGuide
         case .dish, .dishDeletion: .dish
         case .dishEstimationStatus, .dishEstimationStatusDeletion: .dishEstimationStatus
+        case .expenditureEstimate: .expenditureEstimate
+        case .goal: .goal
         case .ingredient, .ingredientDeletion: .ingredient
         case .meal, .mealDeletion: .meal
         case .mealEstimationStatus, .mealEstimationStatusDeletion: .mealEstimationStatus

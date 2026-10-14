@@ -13,11 +13,20 @@ nonisolated enum AppRecordKinds {
             PortedRecordKind(AiUtteranceSyncing()) {
                 SwiftDataKeyedRecordCache<CachedAiUtterance>(context: $0)
             },
+            PortedRecordKind(DailyGuideSyncing()) {
+                SwiftDataKeyedRecordCache<CachedDailyGuide>(context: $0)
+            },
             PortedRecordKind(DishSyncing()) {
                 SwiftDataKeyedRecordCache<CachedDish>(context: $0)
             },
             PortedRecordKind(DishEstimationStatusSyncing()) {
                 SwiftDataKeyedRecordCache<CachedDishEstimationStatus>(context: $0)
+            },
+            PortedRecordKind(ExpenditureEstimateSyncing()) {
+                SwiftDataKeyedRecordCache<CachedExpenditureEstimate>(context: $0)
+            },
+            PortedRecordKind(GoalSyncing()) {
+                SwiftDataKeyedRecordCache<CachedGoal>(context: $0)
             },
             PortedRecordKind(IngredientSyncing()) {
                 SwiftDataKeyedRecordCache<CachedIngredient>(context: $0)

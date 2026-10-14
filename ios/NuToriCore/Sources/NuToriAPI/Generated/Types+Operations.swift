@@ -1516,6 +1516,1529 @@ internal enum Operations {
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
     }
+    /// 目標の下見
+    ///
+    /// 向きを選んだ直後に、逆算できるかと、減量の目標案を1つでも出せるかを答える。初めての目標では、先に体重記録を同期で送り切る。何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/preview`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)`.
+    internal enum PreviewGoalSetup {
+        internal static let id: Swift.String = "previewGoalSetup"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PreviewGoalSetup.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PreviewGoalSetup.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.PreviewGoalSetup.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody`.
+            internal enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json`.
+                internal struct JsonPayload: Codable, Hashable, Sendable {
+                    /// 端末の今のタイムゾーン（IANA 名）。開始の日を決める
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/timeZone`.
+                    internal var timeZone: Swift.String
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/PreUseEnergyIntakesPayload`.
+                    internal struct PreUseEnergyIntakesPayloadPayload: Codable, Hashable, Sendable {
+                        /// YYYY-MM-DD
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/PreUseEnergyIntakesPayload/calendarDay`.
+                        internal var calendarDay: Swift.String
+                        /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/PreUseEnergyIntakesPayload/kcal`.
+                        internal var kcal: Swift.Double
+                        /// Creates a new `PreUseEnergyIntakesPayloadPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - calendarDay: YYYY-MM-DD
+                        ///   - kcal:
+                        internal init(
+                            calendarDay: Swift.String,
+                            kcal: Swift.Double
+                        ) {
+                            self.calendarDay = calendarDay
+                            self.kcal = kcal
+                        }
+                        internal enum CodingKeys: String, CodingKey {
+                            case calendarDay
+                            case kcal
+                        }
+                    }
+                    /// 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/preUseEnergyIntakes`.
+                    internal typealias PreUseEnergyIntakesPayload = [Operations.PreviewGoalSetup.Input.Body.JsonPayload.PreUseEnergyIntakesPayloadPayload]
+                    /// 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/preUseEnergyIntakes`.
+                    internal var preUseEnergyIntakes: Operations.PreviewGoalSetup.Input.Body.JsonPayload.PreUseEnergyIntakesPayload?
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/bodyData`.
+                    internal var bodyData: Components.Schemas.GoalSetupBodyData?
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/direction`.
+                    internal enum DirectionPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                        case lose = "lose"
+                        case gain = "gain"
+                        case maintain = "maintain"
+                    }
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/json/direction`.
+                    internal var direction: Operations.PreviewGoalSetup.Input.Body.JsonPayload.DirectionPayload
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - timeZone: 端末の今のタイムゾーン（IANA 名）。開始の日を決める
+                    ///   - preUseEnergyIntakes: 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///   - bodyData:
+                    ///   - direction:
+                    internal init(
+                        timeZone: Swift.String,
+                        preUseEnergyIntakes: Operations.PreviewGoalSetup.Input.Body.JsonPayload.PreUseEnergyIntakesPayload? = nil,
+                        bodyData: Components.Schemas.GoalSetupBodyData? = nil,
+                        direction: Operations.PreviewGoalSetup.Input.Body.JsonPayload.DirectionPayload
+                    ) {
+                        self.timeZone = timeZone
+                        self.preUseEnergyIntakes = preUseEnergyIntakes
+                        self.bodyData = bodyData
+                        self.direction = direction
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case timeZone
+                        case preUseEnergyIntakes
+                        case bodyData
+                        case direction
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/requestBody/content/application\/json`.
+                case json(Operations.PreviewGoalSetup.Input.Body.JsonPayload)
+            }
+            internal var body: Operations.PreviewGoalSetup.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            internal init(
+                headers: Operations.PreviewGoalSetup.Input.Headers = .init(),
+                body: Operations.PreviewGoalSetup.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupPreview)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupPreview {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.PreviewGoalSetup.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.PreviewGoalSetup.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 下見の答え
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.PreviewGoalSetup.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.PreviewGoalSetup.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/responses/400/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.PreviewGoalSetup.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.PreviewGoalSetup.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// 要求の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.PreviewGoalSetup.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.PreviewGoalSetup.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.PreviewGoalSetup.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.PreviewGoalSetup.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct UnprocessableContent: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/responses/422/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/preview/POST/responses/422/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.PreviewGoalSetup.Output.UnprocessableContent.Body
+                /// Creates a new `UnprocessableContent`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.PreviewGoalSetup.Output.UnprocessableContent.Body) {
+                    self.body = body
+                }
+            }
+            /// 形は合っているが、値を受け付けない
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)/responses/422`.
+            ///
+            /// HTTP response code: `422 unprocessableContent`.
+            case unprocessableContent(Operations.PreviewGoalSetup.Output.UnprocessableContent)
+            /// The associated value of the enum case if `self` is `.unprocessableContent`.
+            ///
+            /// - Throws: An error if `self` is not `.unprocessableContent`.
+            /// - SeeAlso: `.unprocessableContent`.
+            internal var unprocessableContent: Operations.PreviewGoalSetup.Output.UnprocessableContent {
+                get throws {
+                    switch self {
+                    case let .unprocessableContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unprocessableContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.PreviewGoalSetup.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.PreviewGoalSetup.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// 目標案
+    ///
+    /// 減量・増量は、期限までの3つの枠と、自分で決める目標体重の受け付ける幅を答える。維持は、目標体重と1日の目安を答える。そのときの体重の傾向で計算し、何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/proposals`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)`.
+    internal enum ProposeGoals {
+        internal static let id: Swift.String = "proposeGoals"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ProposeGoals.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ProposeGoals.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.ProposeGoals.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody`.
+            internal enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json`.
+                internal struct JsonPayload: Codable, Hashable, Sendable {
+                    /// 端末の今のタイムゾーン（IANA 名）。開始の日を決める
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/timeZone`.
+                    internal var timeZone: Swift.String
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/PreUseEnergyIntakesPayload`.
+                    internal struct PreUseEnergyIntakesPayloadPayload: Codable, Hashable, Sendable {
+                        /// YYYY-MM-DD
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/PreUseEnergyIntakesPayload/calendarDay`.
+                        internal var calendarDay: Swift.String
+                        /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/PreUseEnergyIntakesPayload/kcal`.
+                        internal var kcal: Swift.Double
+                        /// Creates a new `PreUseEnergyIntakesPayloadPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - calendarDay: YYYY-MM-DD
+                        ///   - kcal:
+                        internal init(
+                            calendarDay: Swift.String,
+                            kcal: Swift.Double
+                        ) {
+                            self.calendarDay = calendarDay
+                            self.kcal = kcal
+                        }
+                        internal enum CodingKeys: String, CodingKey {
+                            case calendarDay
+                            case kcal
+                        }
+                    }
+                    /// 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/preUseEnergyIntakes`.
+                    internal typealias PreUseEnergyIntakesPayload = [Operations.ProposeGoals.Input.Body.JsonPayload.PreUseEnergyIntakesPayloadPayload]
+                    /// 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/preUseEnergyIntakes`.
+                    internal var preUseEnergyIntakes: Operations.ProposeGoals.Input.Body.JsonPayload.PreUseEnergyIntakesPayload?
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/bodyData`.
+                    internal var bodyData: Components.Schemas.GoalSetupBodyData?
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/direction`.
+                    internal enum DirectionPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                        case lose = "lose"
+                        case gain = "gain"
+                        case maintain = "maintain"
+                    }
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/direction`.
+                    internal var direction: Operations.ProposeGoals.Input.Body.JsonPayload.DirectionPayload
+                    /// 期限。減量・増量では必ず付ける。開始の日から数えて（両端を含む）28〜182 日の日
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/json/deadlineOn`.
+                    internal var deadlineOn: Swift.String?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - timeZone: 端末の今のタイムゾーン（IANA 名）。開始の日を決める
+                    ///   - preUseEnergyIntakes: 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///   - bodyData:
+                    ///   - direction:
+                    ///   - deadlineOn: 期限。減量・増量では必ず付ける。開始の日から数えて（両端を含む）28〜182 日の日
+                    internal init(
+                        timeZone: Swift.String,
+                        preUseEnergyIntakes: Operations.ProposeGoals.Input.Body.JsonPayload.PreUseEnergyIntakesPayload? = nil,
+                        bodyData: Components.Schemas.GoalSetupBodyData? = nil,
+                        direction: Operations.ProposeGoals.Input.Body.JsonPayload.DirectionPayload,
+                        deadlineOn: Swift.String? = nil
+                    ) {
+                        self.timeZone = timeZone
+                        self.preUseEnergyIntakes = preUseEnergyIntakes
+                        self.bodyData = bodyData
+                        self.direction = direction
+                        self.deadlineOn = deadlineOn
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case timeZone
+                        case preUseEnergyIntakes
+                        case bodyData
+                        case direction
+                        case deadlineOn
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/requestBody/content/application\/json`.
+                case json(Operations.ProposeGoals.Input.Body.JsonPayload)
+            }
+            internal var body: Operations.ProposeGoals.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            internal init(
+                headers: Operations.ProposeGoals.Input.Headers = .init(),
+                body: Operations.ProposeGoals.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.GoalProposals)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalProposals {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.ProposeGoals.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.ProposeGoals.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 目標案
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ProposeGoals.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.ProposeGoals.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/responses/400/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.ProposeGoals.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.ProposeGoals.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// 要求の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.ProposeGoals.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.ProposeGoals.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.ProposeGoals.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.ProposeGoals.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct UnprocessableContent: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/responses/422/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/proposals/POST/responses/422/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.ProposeGoals.Output.UnprocessableContent.Body
+                /// Creates a new `UnprocessableContent`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.ProposeGoals.Output.UnprocessableContent.Body) {
+                    self.body = body
+                }
+            }
+            /// 形は合っているが、値を受け付けない
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)/responses/422`.
+            ///
+            /// HTTP response code: `422 unprocessableContent`.
+            case unprocessableContent(Operations.ProposeGoals.Output.UnprocessableContent)
+            /// The associated value of the enum case if `self` is `.unprocessableContent`.
+            ///
+            /// - Throws: An error if `self` is not `.unprocessableContent`.
+            /// - SeeAlso: `.unprocessableContent`.
+            internal var unprocessableContent: Operations.ProposeGoals.Output.UnprocessableContent {
+                get throws {
+                    switch self {
+                    case let .unprocessableContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unprocessableContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.ProposeGoals.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.ProposeGoals.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// 自分で決める目標体重
+    ///
+    /// 受け付けるなら、その目標体重の1日の目安と大変さを答える。受け付けないなら、受け付けるいちばん近い目標体重と理由を答える。何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/custom-target-weight`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)`.
+    internal enum AssessCustomTargetWeight {
+        internal static let id: Swift.String = "assessCustomTargetWeight"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.AssessCustomTargetWeight.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.AssessCustomTargetWeight.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.AssessCustomTargetWeight.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody`.
+            internal enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json`.
+                internal struct JsonPayload: Codable, Hashable, Sendable {
+                    /// 端末の今のタイムゾーン（IANA 名）。開始の日を決める
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/timeZone`.
+                    internal var timeZone: Swift.String
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/PreUseEnergyIntakesPayload`.
+                    internal struct PreUseEnergyIntakesPayloadPayload: Codable, Hashable, Sendable {
+                        /// YYYY-MM-DD
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/PreUseEnergyIntakesPayload/calendarDay`.
+                        internal var calendarDay: Swift.String
+                        /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/PreUseEnergyIntakesPayload/kcal`.
+                        internal var kcal: Swift.Double
+                        /// Creates a new `PreUseEnergyIntakesPayloadPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - calendarDay: YYYY-MM-DD
+                        ///   - kcal:
+                        internal init(
+                            calendarDay: Swift.String,
+                            kcal: Swift.Double
+                        ) {
+                            self.calendarDay = calendarDay
+                            self.kcal = kcal
+                        }
+                        internal enum CodingKeys: String, CodingKey {
+                            case calendarDay
+                            case kcal
+                        }
+                    }
+                    /// 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/preUseEnergyIntakes`.
+                    internal typealias PreUseEnergyIntakesPayload = [Operations.AssessCustomTargetWeight.Input.Body.JsonPayload.PreUseEnergyIntakesPayloadPayload]
+                    /// 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/preUseEnergyIntakes`.
+                    internal var preUseEnergyIntakes: Operations.AssessCustomTargetWeight.Input.Body.JsonPayload.PreUseEnergyIntakesPayload?
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/bodyData`.
+                    internal var bodyData: Components.Schemas.GoalSetupBodyData?
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/direction`.
+                    internal enum DirectionPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                        case lose = "lose"
+                        case gain = "gain"
+                    }
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/direction`.
+                    internal var direction: Operations.AssessCustomTargetWeight.Input.Body.JsonPayload.DirectionPayload
+                    /// YYYY-MM-DD
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/deadlineOn`.
+                    internal var deadlineOn: Swift.String
+                    /// 0.1 kg 単位に丸めて確かめる
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/json/targetWeightKg`.
+                    internal var targetWeightKg: Swift.Double
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - timeZone: 端末の今のタイムゾーン（IANA 名）。開始の日を決める
+                    ///   - preUseEnergyIntakes: 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///   - bodyData:
+                    ///   - direction:
+                    ///   - deadlineOn: YYYY-MM-DD
+                    ///   - targetWeightKg: 0.1 kg 単位に丸めて確かめる
+                    internal init(
+                        timeZone: Swift.String,
+                        preUseEnergyIntakes: Operations.AssessCustomTargetWeight.Input.Body.JsonPayload.PreUseEnergyIntakesPayload? = nil,
+                        bodyData: Components.Schemas.GoalSetupBodyData? = nil,
+                        direction: Operations.AssessCustomTargetWeight.Input.Body.JsonPayload.DirectionPayload,
+                        deadlineOn: Swift.String,
+                        targetWeightKg: Swift.Double
+                    ) {
+                        self.timeZone = timeZone
+                        self.preUseEnergyIntakes = preUseEnergyIntakes
+                        self.bodyData = bodyData
+                        self.direction = direction
+                        self.deadlineOn = deadlineOn
+                        self.targetWeightKg = targetWeightKg
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case timeZone
+                        case preUseEnergyIntakes
+                        case bodyData
+                        case direction
+                        case deadlineOn
+                        case targetWeightKg
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/requestBody/content/application\/json`.
+                case json(Operations.AssessCustomTargetWeight.Input.Body.JsonPayload)
+            }
+            internal var body: Operations.AssessCustomTargetWeight.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            internal init(
+                headers: Operations.AssessCustomTargetWeight.Input.Headers = .init(),
+                body: Operations.AssessCustomTargetWeight.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.CustomTargetWeightAssessment)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.CustomTargetWeightAssessment {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.AssessCustomTargetWeight.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.AssessCustomTargetWeight.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 受け付けるかと、受け付けるときの1日の目安
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.AssessCustomTargetWeight.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.AssessCustomTargetWeight.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/responses/400/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.AssessCustomTargetWeight.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.AssessCustomTargetWeight.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// 要求の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.AssessCustomTargetWeight.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.AssessCustomTargetWeight.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.AssessCustomTargetWeight.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.AssessCustomTargetWeight.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct UnprocessableContent: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/responses/422/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/custom-target-weight/POST/responses/422/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.AssessCustomTargetWeight.Output.UnprocessableContent.Body
+                /// Creates a new `UnprocessableContent`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.AssessCustomTargetWeight.Output.UnprocessableContent.Body) {
+                    self.body = body
+                }
+            }
+            /// 形は合っているが、値を受け付けない
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)/responses/422`.
+            ///
+            /// HTTP response code: `422 unprocessableContent`.
+            case unprocessableContent(Operations.AssessCustomTargetWeight.Output.UnprocessableContent)
+            /// The associated value of the enum case if `self` is `.unprocessableContent`.
+            ///
+            /// - Throws: An error if `self` is not `.unprocessableContent`.
+            /// - SeeAlso: `.unprocessableContent`.
+            internal var unprocessableContent: Operations.AssessCustomTargetWeight.Output.UnprocessableContent {
+                get throws {
+                    switch self {
+                    case let .unprocessableContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unprocessableContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.AssessCustomTargetWeight.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.AssessCustomTargetWeight.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// 目標を決める
+    ///
+    /// そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/decisions`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)`.
+    internal enum DecideGoal {
+        internal static let id: Swift.String = "decideGoal"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DecideGoal.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.DecideGoal.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.DecideGoal.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody`.
+            internal enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json`.
+                internal struct JsonPayload: Codable, Hashable, Sendable {
+                    /// 端末の今のタイムゾーン（IANA 名）。開始の日を決める
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/timeZone`.
+                    internal var timeZone: Swift.String
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/PreUseEnergyIntakesPayload`.
+                    internal struct PreUseEnergyIntakesPayloadPayload: Codable, Hashable, Sendable {
+                        /// YYYY-MM-DD
+                        ///
+                        /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/PreUseEnergyIntakesPayload/calendarDay`.
+                        internal var calendarDay: Swift.String
+                        /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/PreUseEnergyIntakesPayload/kcal`.
+                        internal var kcal: Swift.Double
+                        /// Creates a new `PreUseEnergyIntakesPayloadPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - calendarDay: YYYY-MM-DD
+                        ///   - kcal:
+                        internal init(
+                            calendarDay: Swift.String,
+                            kcal: Swift.Double
+                        ) {
+                            self.calendarDay = calendarDay
+                            self.kcal = kcal
+                        }
+                        internal enum CodingKeys: String, CodingKey {
+                            case calendarDay
+                            case kcal
+                        }
+                    }
+                    /// 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/preUseEnergyIntakes`.
+                    internal typealias PreUseEnergyIntakesPayload = [Operations.DecideGoal.Input.Body.JsonPayload.PreUseEnergyIntakesPayloadPayload]
+                    /// 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/preUseEnergyIntakes`.
+                    internal var preUseEnergyIntakes: Operations.DecideGoal.Input.Body.JsonPayload.PreUseEnergyIntakesPayload?
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/bodyData`.
+                    internal var bodyData: Components.Schemas.GoalSetupBodyData?
+                    /// 端末が振った要求の ID（UUID v4）。冪等の鍵。同じ ID の再送は、書かずに初めての応答と同じ形で返す
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/requestId`.
+                    internal var requestId: Swift.String
+                    /// 目標案の応答で受け取った開始の日。サーバーが出し直した開始の日と違えば、決めない
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/startedOn`.
+                    internal var startedOn: Swift.String
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/choice`.
+                    internal var choice: Components.Schemas.GoalChoice
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/shown`.
+                    internal var shown: Components.Schemas.GoalShownValues
+                    /// この目標の設定のあいだに、端末が端の値に直した自分の目標体重の数。観測に使う
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/json/rejectedCustomTargetWeightCount`.
+                    internal var rejectedCustomTargetWeightCount: Swift.Int
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - timeZone: 端末の今のタイムゾーン（IANA 名）。開始の日を決める
+                    ///   - preUseEnergyIntakes: 初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない
+                    ///   - bodyData:
+                    ///   - requestId: 端末が振った要求の ID（UUID v4）。冪等の鍵。同じ ID の再送は、書かずに初めての応答と同じ形で返す
+                    ///   - startedOn: 目標案の応答で受け取った開始の日。サーバーが出し直した開始の日と違えば、決めない
+                    ///   - choice:
+                    ///   - shown:
+                    ///   - rejectedCustomTargetWeightCount: この目標の設定のあいだに、端末が端の値に直した自分の目標体重の数。観測に使う
+                    internal init(
+                        timeZone: Swift.String,
+                        preUseEnergyIntakes: Operations.DecideGoal.Input.Body.JsonPayload.PreUseEnergyIntakesPayload? = nil,
+                        bodyData: Components.Schemas.GoalSetupBodyData? = nil,
+                        requestId: Swift.String,
+                        startedOn: Swift.String,
+                        choice: Components.Schemas.GoalChoice,
+                        shown: Components.Schemas.GoalShownValues,
+                        rejectedCustomTargetWeightCount: Swift.Int
+                    ) {
+                        self.timeZone = timeZone
+                        self.preUseEnergyIntakes = preUseEnergyIntakes
+                        self.bodyData = bodyData
+                        self.requestId = requestId
+                        self.startedOn = startedOn
+                        self.choice = choice
+                        self.shown = shown
+                        self.rejectedCustomTargetWeightCount = rejectedCustomTargetWeightCount
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case timeZone
+                        case preUseEnergyIntakes
+                        case bodyData
+                        case requestId
+                        case startedOn
+                        case choice
+                        case shown
+                        case rejectedCustomTargetWeightCount
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/requestBody/content/application\/json`.
+                case json(Operations.DecideGoal.Input.Body.JsonPayload)
+            }
+            internal var body: Operations.DecideGoal.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            internal init(
+                headers: Operations.DecideGoal.Input.Headers = .init(),
+                body: Operations.DecideGoal.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.GoalDecision)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalDecision {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.DecideGoal.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.DecideGoal.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 決めた記録か、決めなかった理由
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.DecideGoal.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.DecideGoal.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/responses/400/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.DecideGoal.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.DecideGoal.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// 要求の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.DecideGoal.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.DecideGoal.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.DecideGoal.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.DecideGoal.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct UnprocessableContent: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/responses/422/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/goal-setup/decisions/POST/responses/422/content/application\/json`.
+                    case json(Components.Schemas.GoalSetupRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.GoalSetupRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.DecideGoal.Output.UnprocessableContent.Body
+                /// Creates a new `UnprocessableContent`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.DecideGoal.Output.UnprocessableContent.Body) {
+                    self.body = body
+                }
+            }
+            /// 形は合っているが、値を受け付けない
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)/responses/422`.
+            ///
+            /// HTTP response code: `422 unprocessableContent`.
+            case unprocessableContent(Operations.DecideGoal.Output.UnprocessableContent)
+            /// The associated value of the enum case if `self` is `.unprocessableContent`.
+            ///
+            /// - Throws: An error if `self` is not `.unprocessableContent`.
+            /// - SeeAlso: `.unprocessableContent`.
+            internal var unprocessableContent: Operations.DecideGoal.Output.UnprocessableContent {
+                get throws {
+                    switch self {
+                    case let .unprocessableContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unprocessableContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.DecideGoal.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.DecideGoal.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// 送った文章の見守る要求
     ///
     /// 応答を待つ送った文章があるあいだつなぐ。はじめに返事の ID、続けてできた分を流す。食事と読み分けた・返事を記録に書いた・回数切れ・作れなかったときは、その結果を送って閉じる。つなぐ前にそうなっていれば、結果だけを送って閉じる。端末が切れても、サーバーは返事を最後まで作って記録に書く。届け方の正本は同期で、途中の文は記録に残らない

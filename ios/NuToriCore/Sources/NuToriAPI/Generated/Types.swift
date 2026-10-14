@@ -44,6 +44,34 @@ internal protocol APIProtocol: Sendable {
     /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
     /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
     func putMealPhoto(_ input: Operations.PutMealPhoto.Input) async throws -> Operations.PutMealPhoto.Output
+    /// 目標の下見
+    ///
+    /// 向きを選んだ直後に、逆算できるかと、減量の目標案を1つでも出せるかを答える。初めての目標では、先に体重記録を同期で送り切る。何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/preview`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)`.
+    func previewGoalSetup(_ input: Operations.PreviewGoalSetup.Input) async throws -> Operations.PreviewGoalSetup.Output
+    /// 目標案
+    ///
+    /// 減量・増量は、期限までの3つの枠と、自分で決める目標体重の受け付ける幅を答える。維持は、目標体重と1日の目安を答える。そのときの体重の傾向で計算し、何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/proposals`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)`.
+    func proposeGoals(_ input: Operations.ProposeGoals.Input) async throws -> Operations.ProposeGoals.Output
+    /// 自分で決める目標体重
+    ///
+    /// 受け付けるなら、その目標体重の1日の目安と大変さを答える。受け付けないなら、受け付けるいちばん近い目標体重と理由を答える。何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/custom-target-weight`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)`.
+    func assessCustomTargetWeight(_ input: Operations.AssessCustomTargetWeight.Input) async throws -> Operations.AssessCustomTargetWeight.Output
+    /// 目標を決める
+    ///
+    /// そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/decisions`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)`.
+    func decideGoal(_ input: Operations.DecideGoal.Input) async throws -> Operations.DecideGoal.Output
     /// 送った文章の見守る要求
     ///
     /// 応答を待つ送った文章があるあいだつなぐ。はじめに返事の ID、続けてできた分を流す。食事と読み分けた・返事を記録に書いた・回数切れ・作れなかったときは、その結果を送って閉じる。つなぐ前にそうなっていれば、結果だけを送って閉じる。端末が切れても、サーバーは返事を最後まで作って記録に書く。届け方の正本は同期で、途中の文は記録に残らない
@@ -126,6 +154,66 @@ extension APIProtocol {
     ) async throws -> Operations.PutMealPhoto.Output {
         try await putMealPhoto(Operations.PutMealPhoto.Input(
             path: path,
+            body: body
+        ))
+    }
+    /// 目標の下見
+    ///
+    /// 向きを選んだ直後に、逆算できるかと、減量の目標案を1つでも出せるかを答える。初めての目標では、先に体重記録を同期で送り切る。何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/preview`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/preview/post(previewGoalSetup)`.
+    internal func previewGoalSetup(
+        headers: Operations.PreviewGoalSetup.Input.Headers = .init(),
+        body: Operations.PreviewGoalSetup.Input.Body
+    ) async throws -> Operations.PreviewGoalSetup.Output {
+        try await previewGoalSetup(Operations.PreviewGoalSetup.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// 目標案
+    ///
+    /// 減量・増量は、期限までの3つの枠と、自分で決める目標体重の受け付ける幅を答える。維持は、目標体重と1日の目安を答える。そのときの体重の傾向で計算し、何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/proposals`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/proposals/post(proposeGoals)`.
+    internal func proposeGoals(
+        headers: Operations.ProposeGoals.Input.Headers = .init(),
+        body: Operations.ProposeGoals.Input.Body
+    ) async throws -> Operations.ProposeGoals.Output {
+        try await proposeGoals(Operations.ProposeGoals.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// 自分で決める目標体重
+    ///
+    /// 受け付けるなら、その目標体重の1日の目安と大変さを答える。受け付けないなら、受け付けるいちばん近い目標体重と理由を答える。何も書かない
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/custom-target-weight`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/custom-target-weight/post(assessCustomTargetWeight)`.
+    internal func assessCustomTargetWeight(
+        headers: Operations.AssessCustomTargetWeight.Input.Headers = .init(),
+        body: Operations.AssessCustomTargetWeight.Input.Body
+    ) async throws -> Operations.AssessCustomTargetWeight.Output {
+        try await assessCustomTargetWeight(Operations.AssessCustomTargetWeight.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// 目標を決める
+    ///
+    /// そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す
+    ///
+    /// - Remark: HTTP `POST /v1/goal-setup/decisions`.
+    /// - Remark: Generated from `#/paths//v1/goal-setup/decisions/post(decideGoal)`.
+    internal func decideGoal(
+        headers: Operations.DecideGoal.Input.Headers = .init(),
+        body: Operations.DecideGoal.Input.Body
+    ) async throws -> Operations.DecideGoal.Output {
+        try await decideGoal(Operations.DecideGoal.Input(
+            headers: headers,
             body: body
         ))
     }

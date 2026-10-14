@@ -10,8 +10,11 @@ extension RecordKindRegistry where Cache == RecordCacheMock {
         let base: [any RecordKind<RecordCacheMock>] = [
             PortedRecordKind(AccountSettingsSyncKind()) { $0.accountSettingsCache },
             PortedRecordKind(AiUtteranceSyncing()) { $0.aiUtteranceCache },
+            PortedRecordKind(DailyGuideSyncing()) { $0.dailyGuideCache },
             PortedRecordKind(DishSyncing()) { $0.dishCache },
             PortedRecordKind(DishEstimationStatusSyncing()) { $0.dishEstimationStatusCache },
+            PortedRecordKind(ExpenditureEstimateSyncing()) { $0.expenditureEstimateCache },
+            PortedRecordKind(GoalSyncing()) { $0.goalCache },
             PortedRecordKind(IngredientSyncing()) { $0.ingredientCache },
             PortedRecordKind(MealSyncing()) { $0.mealCache },
             PortedRecordKind(MealEstimationStatusSyncing()) { $0.mealEstimationStatusCache },

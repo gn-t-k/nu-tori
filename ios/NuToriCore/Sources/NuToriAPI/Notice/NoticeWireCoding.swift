@@ -27,10 +27,10 @@ struct NoticeWireCoding: RecordKindWriteWireCoding {
                         _type: .createNotice,
                         notice: .init(
                             id: notice.id.canonicalString,
-                            noticeType: notice.noticeType.rawValue,
+                            noticeType: notice.noticeType.serverName,
                             issuedAt: notice.issuedAt.millisecondsSince1970,
                             timeZone: notice.timeZone.identifier,
-                            targetOn: notice.targetOn
+                            targetOn: notice.noticeType.targetOn
                         )
                     )
                 ))
@@ -67,9 +67,12 @@ struct NoticeWireCoding: RecordKindWriteWireCoding {
         func sentWrite(_ wire: Components.Schemas.SyncWrite) throws -> SyncWrite? {
             if case .createNotice(let write) = wire {
                 let notice = write.notice
-                guard let noticeType = SyncedNotice.NoticeType(rawValue: notice.noticeType) else {
+                guard
+                    let noticeType = SyncedNotice.NoticeType(
+                        serverName: notice.noticeType, targetOn: notice.targetOn)
+                else {
                     throw SentSyncWrites.MalformedBodyError(
-                        reason: "知らない知らせの種類 \(notice.noticeType)")
+                        reason: "知らない知らせの種類か、対象の日付が無い \(notice.noticeType)")
                 }
                 return .createNotice(
                     writeId: try uuid(write.id),
@@ -77,8 +80,7 @@ struct NoticeWireCoding: RecordKindWriteWireCoding {
                         id: try uuid(notice.id),
                         noticeType: noticeType,
                         issuedAt: Date(millisecondsSince1970: notice.issuedAt),
-                        timeZone: try knownTimeZone(notice.timeZone),
-                        targetOn: notice.targetOn
+                        timeZone: try knownTimeZone(notice.timeZone)
                     ))
             }
             if case .respondNotice(let write) = wire {
@@ -95,13 +97,14 @@ struct NoticeWireCoding: RecordKindWriteWireCoding {
 }
 
 extension SyncChange {
-    /// 知らない種類と、読めない ID・タイムゾーンは nil にする
+    /// 知らない種類と、読めない ID・タイムゾーン、対象の日付の無い記録忘れの知らせは nil にする
     struct NoticePayload: Decodable {
         let id: String
         let noticeType: String
         let issuedAt: Int
         let timeZone: String
-        let targetOn: String
+        /// 記録忘れの知らせだけに付く
+        let targetOn: String?
         let response: Response?
 
         struct Response: Decodable {
@@ -111,7 +114,8 @@ extension SyncChange {
 
         var syncedNotice: SyncedNotice? {
             guard let id = UUID(uuidString: id),
-                let noticeType = SyncedNotice.NoticeType(rawValue: noticeType),
+                let noticeType = SyncedNotice.NoticeType(
+                    serverName: noticeType, targetOn: targetOn),
                 let timeZone = TimeZone(identifier: timeZone)
             else {
                 return nil
@@ -130,7 +134,6 @@ extension SyncChange {
                 noticeType: noticeType,
                 issuedAt: Date(millisecondsSince1970: issuedAt),
                 timeZone: timeZone,
-                targetOn: targetOn,
                 response: syncedResponse
             )
         }
@@ -142,10 +145,10 @@ extension SyncChange {
         fileprivate init(_ notice: SyncedNotice) {
             self.init(
                 id: notice.id.canonicalString,
-                noticeType: notice.noticeType.rawValue,
+                noticeType: notice.noticeType.serverName,
                 issuedAt: notice.issuedAt.millisecondsSince1970,
                 timeZone: notice.timeZone.identifier,
-                targetOn: notice.targetOn,
+                targetOn: notice.noticeType.targetOn,
                 response: notice.response.map {
                     .init(
                         respondedAt: $0.respondedAt.millisecondsSince1970,

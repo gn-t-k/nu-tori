@@ -4,8 +4,11 @@
 public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
     case accountSettings = "account-settings"
     case aiUtterance = "ai-utterance"
+    case dailyGuide = "daily-guide"
     case dish = "dish"
     case dishEstimationStatus = "dish-estimation-status"
+    case expenditureEstimate = "expenditure-estimate"
+    case goal = "goal"
     case ingredient = "ingredient"
     case meal = "meal"
     case mealEstimationStatus = "meal-estimation-status"
@@ -22,8 +25,11 @@ public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
         switch self {
         case .accountSettings: "account_settings"
         case .aiUtterance: "ai_utterance"
+        case .dailyGuide: "daily_guide"
         case .dish: "dish"
         case .dishEstimationStatus: "dish_estimation_status"
+        case .expenditureEstimate: "expenditure_estimate"
+        case .goal: "goal"
         case .ingredient: "ingredient"
         case .meal: "meal"
         case .mealEstimationStatus: "meal_estimation_status"

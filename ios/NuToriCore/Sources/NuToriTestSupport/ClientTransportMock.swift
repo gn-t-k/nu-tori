@@ -84,12 +84,7 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             case .deletedIngredient(let ingredientId):
                 .deleted(.ingredientDeletion(ingredientId: ingredientId))
             case .unansweredNotice(let notice):
-                .value(
-                    .notice(
-                        SyncedNotice(
-                            id: notice.id, noticeType: .missedWeightRecord,
-                            issuedAt: notice.issuedAt, timeZone: notice.timeZone,
-                            targetOn: notice.targetDay.yearMonthDay, response: nil)))
+                .value(.notice(SyncedNotice(notice)))
             case .weightRecord(let record):
                 .value(
                     .weightRecord(

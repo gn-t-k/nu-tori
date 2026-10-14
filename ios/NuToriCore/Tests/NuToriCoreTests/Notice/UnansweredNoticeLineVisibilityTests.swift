@@ -8,11 +8,10 @@ struct UnansweredNoticeLineVisibilityTests {
         let today = CalendarDay(year: 2026, month: 9, day: 22)
         return NoticeCard(
             notice: Notice(
-                id: Notice.id(kind: .missedWeightRecord, targetDay: today),
-                kind: .missedWeightRecord,
+                id: Notice.id(of: .missedWeightRecord(targetDay: today)),
+                kind: .missedWeightRecord(targetDay: today),
                 issuedAt: try Date("2026-09-22T08:15:00+09:00", strategy: .iso8601),
                 timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
-                targetDay: today,
                 response: nil
             ),
             form: form
