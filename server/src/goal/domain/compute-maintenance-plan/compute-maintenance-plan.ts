@@ -14,7 +14,7 @@ export const computeMaintenancePlan = ({
     targetWeightKg,
     dailyGuide: computeDailyGuide({
       expenditureKcal,
-      goal: { direction: "maintenance", targetWeightKg },
+      goal: { direction: "maintain", targetWeightKg },
     }),
   };
 };

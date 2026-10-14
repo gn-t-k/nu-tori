@@ -9,7 +9,7 @@ describe("1日の目安", () => {
         computeDailyGuide({
           expenditureKcal: 2000,
           goal: {
-            direction: "loss",
+            direction: "lose",
             startingWeightTrendKg: 70,
             targetWeightKg: 60,
             daysFromStartToDeadline: 28,

@@ -1,6 +1,6 @@
 import { minimumDailyGuideEnergyKcal } from "../../daily-guide/domain/minimum-daily-guide-energy-kcal";
 import { computeTargetWeightAtPace } from "./compute-target-weight-at-pace";
-import { kcalPerKgOfBodyWeight } from "./kcal-per-kg-of-body-weight";
+import { kilocaloriesPerKilogram } from "../../domain/kilocalories-per-kilogram";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import { weeklyPaceRates } from "./weekly-pace-rates";
 import type { WeightChangeDirection } from "./weight-change-direction";
@@ -39,7 +39,7 @@ export const computeTargetWeightLimits = ({
   }
   const minimumEnergyKg = roundToTenthKg(
     startingWeightTrendKg -
-      ((expenditureKcal - minimumDailyGuideEnergyKcal) / kcalPerKgOfBodyWeight) *
+      ((expenditureKcal - minimumDailyGuideEnergyKcal) / kilocaloriesPerKilogram) *
         daysFromStartToDeadline,
     "ceil",
   );

@@ -5,7 +5,7 @@ describe("自分で決める目標体重", () => {
   describe("減量で、ハード案の速さでも1日の目安が 1,200 kcal を下回らないとき", () => {
     // 72.4 kg から 12 週。ゆるめ・標準・ハードの案の目標体重は 70.3・68.1・65.9 kg
     let goal: {
-      direction: "loss";
+      direction: "lose";
       expenditureKcal: number;
       startingWeightTrendKg: number;
       daysFromStartToDeadline: number;
@@ -13,7 +13,7 @@ describe("自分で決める目標体重", () => {
 
     beforeEach(() => {
       goal = {
-        direction: "loss",
+        direction: "lose",
         expenditureKcal: 2250,
         startingWeightTrendKg: 72.4,
         daysFromStartToDeadline: 84,
@@ -96,7 +96,7 @@ describe("自分で決める目標体重", () => {
   describe("減量で、ハード案の速さだと1日の目安が 1,200 kcal を下回るとき", () => {
     // 1日に 300 kcal まで減らせて、84 日で 3.27 kg。60 − 3.27 は 56.73 kg
     let goal: {
-      direction: "loss";
+      direction: "lose";
       expenditureKcal: number;
       startingWeightTrendKg: number;
       daysFromStartToDeadline: number;
@@ -104,7 +104,7 @@ describe("自分で決める目標体重", () => {
 
     beforeEach(() => {
       goal = {
-        direction: "loss",
+        direction: "lose",
         expenditureKcal: 1500,
         startingWeightTrendKg: 60,
         daysFromStartToDeadline: 84,
@@ -129,7 +129,7 @@ describe("自分で決める目標体重", () => {
 
   describe("減量で、案を1つも出せないとき", () => {
     let goal: {
-      direction: "loss";
+      direction: "lose";
       expenditureKcal: number;
       startingWeightTrendKg: number;
       daysFromStartToDeadline: number;
@@ -137,7 +137,7 @@ describe("自分で決める目標体重", () => {
 
     beforeEach(() => {
       goal = {
-        direction: "loss",
+        direction: "lose",
         expenditureKcal: 1200,
         startingWeightTrendKg: 60,
         daysFromStartToDeadline: 84,

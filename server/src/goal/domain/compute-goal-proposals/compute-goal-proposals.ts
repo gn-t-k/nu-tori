@@ -37,12 +37,12 @@ export const computeGoalProposals = (goal: {
     return {
       pace,
       targetWeightKg:
-        direction === "loss" ? Math.max(atPaceKg, fastestKg) : Math.min(atPaceKg, fastestKg),
+        direction === "lose" ? Math.max(atPaceKg, fastestKg) : Math.min(atPaceKg, fastestKg),
     };
   });
   return candidates.map(({ pace, targetWeightKg }, index) => {
     const isOnDirectionSide =
-      direction === "loss" ? targetWeightKg <= gentlestKg : targetWeightKg >= gentlestKg;
+      direction === "lose" ? targetWeightKg <= gentlestKg : targetWeightKg >= gentlestKg;
     const isSameAsGentlerProposal = targetWeightKg === candidates[index - 1]?.targetWeightKg;
     if (!isOnDirectionSide || isSameAsGentlerProposal) {
       return { pace, status: "unavailable", reason: "daily_guide_below_minimum" };
