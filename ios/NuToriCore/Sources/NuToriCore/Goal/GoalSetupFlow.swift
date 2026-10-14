@@ -41,13 +41,13 @@ public final class GoalSetupFlow {
 
     // MARK: 見せるもの
 
-    public private(set) var isOpen = false
+    public internal(set) var isOpen = false
     public private(set) var direction: GoalSetupDirection?
-    public private(set) var deadline: CalendarDay
+    public internal(set) var deadline: CalendarDay
     /// 目標案の開始の日がずれたら、その日から数え直す
-    public private(set) var deadlineChoices: GoalDeadlineChoices
+    public internal(set) var deadlineChoices: GoalDeadlineChoices
     /// 足りない値のページの欄と入れた値。逆算できないと分かるまでは nil
-    public private(set) var missingValues: GoalSetupMissingValues?
+    public internal(set) var missingValues: GoalSetupMissingValues?
     /// 目標案か維持の値。届くまでと、届かなかったときは nil
     public var proposals: GoalProposals? {
         switch proposalsState {
@@ -56,16 +56,16 @@ public final class GoalSetupFlow {
         }
     }
     /// 目標案のページで選んでいる案
-    public private(set) var selectedPace: GoalProposals.Pace?
-    public private(set) var customTargetWeight: CustomTargetWeight?
-    public private(set) var decision: Decision = .idle
+    public internal(set) var selectedPace: GoalProposals.Pace?
+    public internal(set) var customTargetWeight: CustomTargetWeight?
+    public internal(set) var decision: Decision = .idle
     /// ページの中で電波が届かなかった要求。「ここまでの答えは残してあります。…」と「もう一度試す」を出す
-    public private(set) var unreachableRequest: UnreachableRequest?
+    public internal(set) var unreachableRequest: UnreachableRequest?
     /// 決めずに新しい案が返った。「新しい体重で計算し直しました。」を添える
-    public private(set) var showsRecalculated = false
+    public internal(set) var showsRecalculated = false
 
     /// 足りない値の「次へ」で決めた身体データ。目標案の上の1行に見せ、要求に添える。逆算できる人と、決めたあとは nil
-    public private(set) var submittedBody: GoalSetupBody?
+    public internal(set) var submittedBody: GoalSetupBody?
 
     /// 今日の体重の記録が無いときの、目標案に使った最後の体重記録の日（「体重は 9月21日までの記録を使っています。」）。
     /// 今日の記録があるときと、目標案が届く前は nil
@@ -235,119 +235,42 @@ public final class GoalSetupFlow {
         }
     }
 
-    public func selectPace(_ pace: GoalProposals.Pace) {
-        guard case .weightChange(let weightChange)? = proposals?.plan,
-            weightChange.offeredProposals.contains(where: { $0.pace == pace })
-        else { return }
-        selectedPace = pace
-    }
-
-    /// 「目標体重を自分で決める」。初期値は開くときに選ぶ案の目標体重
-    public func openCustomTargetWeight() {
-        guard case .weightChange(let weightChange)? = proposals?.plan,
-            let range = weightChange.acceptedTargetWeightRange,
-            let opening = proposals?.openingProposal
-        else { return }
-        if customTargetWeight == nil {
-            customTargetWeight = CustomTargetWeight(
-                kilograms: opening.targetWeightKilograms,
-                direction: weightChange.direction,
-                range: range,
-                correctedReason: nil,
-                assessment: CustomTargetWeightAssessment.Accepted(
-                    dailyGuide: opening.dailyGuide, difficulty: opening.difficulty,
-                    dailyGuideDifferenceKilocalories: opening.dailyGuideDifferenceKilocalories),
-                isAssessing: false)
-        }
-        position = .custom
-    }
-
-    /// ステッパー・スライダー・キーボードで目標体重を動かす。受け付ける幅の外は端の値に直して数える。
-    /// 止めて 0.3 秒たったら要求を出し、最後に出した要求の答えだけを使う
-    public func setCustomTargetWeight(_ kilograms: Double) async {
-        guard let custom = customTargetWeight else { return }
-        let (clamped, reason) = custom.clamped(kilograms)
-        if reason != nil {
-            rejectedCustomTargetWeightCount += 1
-        }
-        customTargetWeight = custom.moved(to: clamped, correctedReason: reason)
-        // 待っている前の要求は出さない
-        assessmentRequest.task?.cancel()
-        let task = assessmentRequest.start { generation in
-            do {
-                try await self.wait(Self.customTargetWeightPause)
-            } catch {
-                // 次に動かした
-                return
-            }
-            // 出した要求は、次に動かしても取り消さない。届いた順が入れ替わっても、最後に出した要求の答えだけを使う
-            await Task { await self.sendAssessment(generation: generation) }.value
-        }
-        await task.value
-    }
-
     /// 断るページの「維持にする」
     public func chooseMaintainInstead() async {
         await chooseDirection(.maintain)
     }
 
-    /// 「この目標で始める」「維持で始める」。自分で決める目標体重の答えを待っていれば、届いてから決める
-    public func decide() async {
-        guard decision == .idle else { return }
-        let isCustomTargetWeightUnanswered = unreachableRequest == .customTargetWeight
-        unreachableRequest = nil
-        decision = .deciding
-        if position == .custom {
-            // 届かなかったときに見せている1日の目安は、今の目標体重のものではないので、問い直して届いてから決める
-            if isCustomTargetWeightUnanswered {
-                await assessCustomTargetWeight()
-            }
-            // 答えが受け付けない値の直しを連れてきたら、次の要求を待ち直す
-            while customTargetWeight?.isAssessing == true, let task = assessmentRequest.task {
-                await task.value
-                if task == assessmentRequest.task { break }
-            }
-            guard unreachableRequest == nil, customTargetWeight?.isAssessing == false else {
-                decision = .idle
-                return
-            }
-        }
-        await sendDecision()
-    }
-
     // MARK: 中身
 
-    private static let customTargetWeightPause = Duration.milliseconds(300)
+    let start: GoalSetupStart
+    let client: NuToriAPIClient
+    let records: any GoalSetupRecords
+    let health: GoalSetupHealthReader
+    let timeZone: @Sendable () -> TimeZone
+    let now: @Sendable () -> Date
+    let wait: @Sendable (Duration) async throws -> Void
+    let errorReporting: any ErrorReportingSession
+    let observe: @MainActor (GoalSetupObservation) -> Void
 
-    private let start: GoalSetupStart
-    private let client: NuToriAPIClient
-    private let records: any GoalSetupRecords
-    private let health: GoalSetupHealthReader
-    private let timeZone: @Sendable () -> TimeZone
-    private let now: @Sendable () -> Date
-    private let wait: @Sendable (Duration) async throws -> Void
-    private let errorReporting: any ErrorReportingSession
-    private let observe: @MainActor (GoalSetupObservation) -> Void
-
-    private var position = Position.direction
-    private var preview = PreviewState.notRequested
+    var position = Position.direction
+    var preview = PreviewState.notRequested
     /// 分かった逆算の答え。身体データを添えて下見を出し直すあいだも持つ
-    private var backCalculation = BackCalculation.unknown
-    private var proposalsState = ProposalsState.notReceived
+    var backCalculation = BackCalculation.unknown
+    var proposalsState = ProposalsState.notReceived
     /// 使い始める前の日ごとの摂取エネルギー。初めての目標で読んだあと
-    private var preUseEnergyIntakes: [CalendarDay: Double]?
-    private var hasAskedAuthorization = false
-    private var hasRecordedCurrentWeight = false
-    private var rejectedCustomTargetWeightCount = 0
-    private var hasRecalculated = false
+    var preUseEnergyIntakes: [CalendarDay: Double]?
+    var hasAskedAuthorization = false
+    var hasRecordedCurrentWeight = false
+    var rejectedCustomTargetWeightCount = 0
+    var hasRecalculated = false
     private var reportedUnavailable = false
     /// 届いたか分からないまま送り直すときも同じ ID を使う
-    private let decisionRequestId = UUID()
-    private var previewRequest = LatestRequest()
-    private var proposalsRequest = LatestRequest()
-    private var assessmentRequest = LatestRequest()
+    let decisionRequestId = UUID()
+    var previewRequest = LatestRequest()
+    var proposalsRequest = LatestRequest()
+    var assessmentRequest = LatestRequest()
 
-    private enum Position: Equatable {
+    enum Position: Equatable {
         case direction
         case deadline
         case missingValues
@@ -356,7 +279,7 @@ public final class GoalSetupFlow {
         case custom
     }
 
-    private enum ProposalsState: Equatable {
+    enum ProposalsState: Equatable {
         case notReceived
         case received(GoalProposals)
         /// 電波が届かなかった
@@ -364,7 +287,7 @@ public final class GoalSetupFlow {
     }
 
     /// 初めての目標で、推定消費カロリーを記録から逆算できるか。立て直しは問わないので、いつも unknown
-    private enum BackCalculation: Equatable {
+    enum BackCalculation: Equatable {
         case unknown
         case possible
         case impossible
@@ -384,7 +307,7 @@ public final class GoalSetupFlow {
         }
     }
 
-    private enum PreviewState: Equatable {
+    enum PreviewState: Equatable {
         case notRequested
         /// 立て直しの増量・維持は、下見の答えを使わない
         case notNeeded
@@ -393,7 +316,7 @@ public final class GoalSetupFlow {
         case unreachable
     }
 
-    private var isFirst: Bool {
+    var isFirst: Bool {
         start.isFirst
     }
 
@@ -402,11 +325,11 @@ public final class GoalSetupFlow {
         isFirst || direction == .lose
     }
 
-    private var needsMissingValues: Bool {
+    var needsMissingValues: Bool {
         isFirst && backCalculation.needsBodyData
     }
 
-    private var isLoseRefused: Bool {
+    var isLoseRefused: Bool {
         guard direction == .lose else { return false }
         if case .answered(let answer) = preview, answer.canOfferLoseProposals == false {
             return true
@@ -418,7 +341,7 @@ public final class GoalSetupFlow {
     }
 
     /// 逆算できる人と立て直しは、減量を選んだ次の場所で断る
-    private var isRefusedBeforeDeadline: Bool {
+    var isRefusedBeforeDeadline: Bool {
         isLoseRefused && !needsMissingValues
     }
 
@@ -469,7 +392,7 @@ public final class GoalSetupFlow {
         }
     }
 
-    private var inputs: GoalSetupInputs {
+    var inputs: GoalSetupInputs {
         GoalSetupInputs(
             timeZone: timeZone(),
             preUseEnergyIntakes: isFirst
@@ -480,335 +403,14 @@ public final class GoalSetupFlow {
             body: submittedBody)
     }
 
-    private func clearProposals() {
-        proposalsRequest.invalidate()
-        proposalsState = .notReceived
-        customTargetWeight = nil
-        showsRecalculated = false
-    }
-
-    /// 下見を出す。初めての目標では、許可（1回だけ）、体重記録を送り切る、使い始める前の摂取エネルギーを読む、の順に済ませてから出す
-    private func runPreview() async {
-        preview = .inFlight
-        await previewRequest.start { await self.sendPreview(generation: $0) }.value
-    }
-
-    private func sendPreview(generation: Int) async {
-        guard let direction else { return }
-        if isFirst {
-            if !hasAskedAuthorization {
-                hasAskedAuthorization = true
-                // 許可しなかったことは指摘せずに先へ進む
-                if (try? await health.hasUnrequestedAuthorization()) == true {
-                    try? await health.requestAuthorization()
-                }
-            }
-            if let weight = missingValues?.currentWeightKilograms, submittedBody != nil,
-                !hasRecordedCurrentWeight
-            {
-                do {
-                    try await records.recordWeight(kilograms: weight, at: now(), in: timeZone())
-                    hasRecordedCurrentWeight = true
-                } catch {
-                    await errorReporting.report(error, as: .cacheSave)
-                    finishPreview(.unreachable, generation: generation)
-                    return
-                }
-            }
-            guard await records.sendWeightRecordsForGoalSetup() else {
-                finishPreview(.unreachable, generation: generation)
-                return
-            }
-            if preUseEnergyIntakes == nil, case .first(let firstUseDay, _) = start {
-                // 読めなければ、使い始める前の分を使わずに逆算を問う
-                let intakes =
-                    (try? await health.intakeEnergyBeforeFirstUse(firstUseDay: firstUseDay)) ?? [:]
-                preUseEnergyIntakes = intakes
-            }
-        }
-        let received: GoalSetupPreview
-        do {
-            let result = try await client.previewGoalSetup(direction: direction, inputs: inputs)
-            guard case .answered(let answered) = await answer(of: result) else {
-                finishPreview(.unreachable, generation: generation)
-                return
-            }
-            received = answered
-        } catch {
-            await errorReporting.report(error, as: .goalSetupRequest)
-            finishPreview(.unreachable, generation: generation)
-            return
-        }
-        guard previewRequest.isLatest(generation) else { return }
-        if let canBackCalculate = received.canBackCalculate {
-            backCalculation = canBackCalculate ? .possible : .impossible
-        }
-        if needsMissingValues, missingValues == nil {
-            let body =
-                (try? await health.bodyData())
-                ?? HealthBodyData(heightCentimeters: nil, age: nil, sex: nil, dailySteps: [:])
-            guard previewRequest.isLatest(generation) else { return }
-            missingValues = GoalSetupMissingValues(
-                health: body, asksCurrentWeight: !hasWeightRecords,
-                today: CalendarDay(containing: now(), in: timeZone()))
-        }
-        finishPreview(.answered(received), generation: generation)
-        if position == .final, needsMissingValues, submittedBody == nil {
-            position = .missingValues
-        }
-        if position == .deadline, isRefusedBeforeDeadline {
-            position = .final
-        }
-        await fetchProposalsIfReady()
-    }
-
-    private var hasWeightRecords: Bool {
-        switch start {
-        case .first(_, let hasWeightRecords): hasWeightRecords
-        case .restart: true
-        }
-    }
-
-    private func finishPreview(_ state: PreviewState, generation: Int) {
-        guard previewRequest.isLatest(generation) else { return }
-        preview = state
-        reportUnavailableIfNeeded()
-    }
-
-    private func fetchProposalsIfReady() async {
-        guard position == .final || position == .custom, let direction,
-            proposalsState == .notReceived, !isLoseRefused,
-            !(needsMissingValues && submittedBody == nil)
-        else { return }
-        switch preview {
-        case .notNeeded, .answered: break
-        case .notRequested, .inFlight, .unreachable: return
-        }
-        if let running = proposalsRequest.task {
-            await running.value
-            if proposalsState != .notReceived { return }
-        }
-        let plan: GoalProposalsPlan =
-            switch direction {
-            case .maintain: .maintain
-            case .lose: .weightChange(direction: .lose, deadlineOn: deadline.yearMonthDay)
-            case .gain: .weightChange(direction: .gain, deadlineOn: deadline.yearMonthDay)
-            }
-        let task = proposalsRequest.start { generation in
-            do {
-                let result = try await self.client.proposeGoals(plan, inputs: self.inputs)
-                guard self.proposalsRequest.isLatest(generation) else { return }
-                guard case .answered(let proposals) = await self.answer(of: result) else {
-                    self.proposalsState = .unreachable
-                    return
-                }
-                self.apply(proposals)
-            } catch {
-                await self.errorReporting.report(error, as: .goalSetupRequest)
-                guard self.proposalsRequest.isLatest(generation) else { return }
-                self.proposalsState = .unreachable
-            }
-        }
-        await task.value
-        proposalsRequest.finish(task)
-    }
-
-    /// 選んでいた案が出せれば残し、出せなければ開くときと同じ決まりで選び直す
-    private func apply(_ proposals: GoalProposals) {
-        proposalsState = .received(proposals)
-        // 日をまたいで開始の日がずれると、サーバーは期限を受け付ける幅に寄せた案を返すので、返った開始の日と期限を使い直す
-        if let startDay = CalendarDay(yearMonthDay: proposals.startedOn),
-            startDay != deadlineChoices.startDay
-        {
-            deadlineChoices = GoalDeadlineChoices(startDay: startDay)
-        }
-        if case .weightChange(let weightChange) = proposals.plan {
-            if let deadlineDay = CalendarDay(yearMonthDay: weightChange.deadlineOn) {
-                deadline = deadlineDay
-            }
-            if !weightChange.offeredProposals.contains(where: { $0.pace == selectedPace }) {
-                selectedPace = proposals.openingProposal?.pace
-            }
-            if let range = weightChange.acceptedTargetWeightRange {
-                customTargetWeight = customTargetWeight?.rebased(on: range)
-            }
-        }
-        reportUnavailableIfNeeded()
-    }
-
-    private func reportUnavailableIfNeeded() {
+    func reportUnavailableIfNeeded() {
         guard isLoseRefused, !reportedUnavailable else { return }
         reportedUnavailable = true
         observe(.plansUnavailable(canBackCalculate: backCalculation.observed))
     }
 
-    private func assessCustomTargetWeight() async {
-        guard let custom = customTargetWeight else { return }
-        customTargetWeight = custom.moved(
-            to: custom.kilograms, correctedReason: custom.correctedReason)
-        await assessmentRequest.start { await self.sendAssessment(generation: $0) }.value
-    }
-
-    private func sendAssessment(generation: Int) async {
-        guard let custom = customTargetWeight else { return }
-        do {
-            let result = try await client.assessCustomTargetWeight(
-                direction: custom.direction, deadlineOn: deadline.yearMonthDay,
-                targetWeightKilograms: custom.kilograms, inputs: inputs)
-            // 最後に出した要求の答えだけを使う
-            guard assessmentRequest.isLatest(generation), let current = customTargetWeight else {
-                return
-            }
-            guard case .answered(let assessment) = await answer(of: result) else {
-                customTargetWeight = current.unassessed()
-                unreachableRequest = .customTargetWeight
-                return
-            }
-            switch assessment.outcome {
-            case .accepted(let accepted):
-                customTargetWeight = current.assessed(accepted)
-            case .rejected(let reason, let nearest):
-                guard let nearest else {
-                    customTargetWeight = current.unassessed()
-                    return
-                }
-                customTargetWeight = current.moved(to: nearest, correctedReason: reason)
-                _ = assessmentRequest.start { await self.sendAssessment(generation: $0) }
-            }
-        } catch {
-            await errorReporting.report(error, as: .goalSetupRequest)
-            guard assessmentRequest.isLatest(generation), let current = customTargetWeight else {
-                return
-            }
-            customTargetWeight = current.unassessed()
-            unreachableRequest = .customTargetWeight
-        }
-    }
-
-    private func sendDecision() async {
-        guard let proposals, let (choice, shown) = decisionChoice(in: proposals) else {
-            decision = .idle
-            return
-        }
-        let request = GoalDecisionRequest(
-            requestId: decisionRequestId,
-            startedOn: proposals.startedOn,
-            choice: choice,
-            shownTargetWeightKilograms: shown.targetWeightKilograms,
-            shownDailyGuide: shown.dailyGuide,
-            rejectedCustomTargetWeightCount: rejectedCustomTargetWeightCount)
-        let received: GoalDecision
-        do {
-            let result = try await client.decideGoal(request, inputs: inputs)
-            guard case .answered(let answered) = await answer(of: result) else {
-                decision = .idle
-                unreachableRequest = .decision
-                return
-            }
-            received = answered
-        } catch {
-            await errorReporting.report(error, as: .goalSetupRequest)
-            decision = .idle
-            unreachableRequest = .decision
-            return
-        }
-        switch received {
-        case .decided(let changes):
-            do {
-                try await records.applyGoalDecision(changes)
-            } catch {
-                // 同じ記録が同期でも届くので、押せないまま残さずに決まったものとして閉じる
-                await errorReporting.report(error, as: .cacheSave)
-            }
-            await records.respondToGoalSetupNotice()
-            discardBodyValues()
-            decision = .decided
-            observe(.decided(choice: observedChoice(choice), recalculated: hasRecalculated))
-            // 決まったら閉じる。カードは決めた目標を示す形になり、開き直すと新しく始める
-            isOpen = false
-        case .recalculated(let recalculated):
-            hasRecalculated = true
-            showsRecalculated = true
-            apply(recalculated)
-            decision = .idle
-            if position == .custom {
-                if let custom = customTargetWeight {
-                    let (clamped, reason) = custom.clamped(custom.kilograms)
-                    customTargetWeight = custom.moved(to: clamped, correctedReason: reason)
-                }
-                await assessCustomTargetWeight()
-            }
-        case .customTargetWeightRejected(_, let reason, let nearest):
-            decision = .idle
-            if let custom = customTargetWeight, let nearest {
-                customTargetWeight = custom.moved(to: nearest, correctedReason: reason)
-                await assessCustomTargetWeight()
-            }
-        }
-    }
-
-    private struct Shown {
-        let targetWeightKilograms: Double
-        let dailyGuide: DailyGuidePlan
-    }
-
-    private func decisionChoice(in proposals: GoalProposals) -> (GoalDecisionRequest.Choice, Shown)?
-    {
-        switch proposals.plan {
-        case .maintenance(let maintenance):
-            return (
-                .maintain,
-                Shown(
-                    targetWeightKilograms: maintenance.targetWeightKilograms,
-                    dailyGuide: maintenance.dailyGuide)
-            )
-        case .weightChange(let weightChange):
-            if position == .custom {
-                guard let custom = customTargetWeight else { return nil }
-                return (
-                    .custom(
-                        direction: weightChange.direction, deadlineOn: weightChange.deadlineOn,
-                        targetWeightKilograms: custom.kilograms),
-                    Shown(
-                        targetWeightKilograms: custom.kilograms,
-                        dailyGuide: custom.assessment.dailyGuide)
-                )
-            }
-            guard
-                let selected = weightChange.offeredProposals.first(where: {
-                    $0.pace == selectedPace
-                })
-            else { return nil }
-            return (
-                .proposal(
-                    direction: weightChange.direction, deadlineOn: weightChange.deadlineOn,
-                    pace: selected.pace),
-                Shown(
-                    targetWeightKilograms: selected.targetWeightKilograms,
-                    dailyGuide: selected.dailyGuide)
-            )
-        }
-    }
-
-    private func observedChoice(_ choice: GoalDecisionRequest.Choice) -> GoalSetupObservation.Choice
-    {
-        switch choice {
-        case .maintain: .maintain
-        case .custom: .custom
-        case .proposal(_, _, .gentle): .gentle
-        case .proposal(_, _, .standard): .standard
-        case .proposal(_, _, .hard): .hard
-        }
-    }
-
-    private func discardBodyValues() {
-        submittedBody = nil
-        preUseEnergyIntakes = nil
-        missingValues = nil
-    }
-
     /// 断る応答（不具合のときだけ届く）とセッション切れ・歯止めは、答えが無いものとして扱う。断る応答は報告する
-    private func answer<Answer: Sendable & Equatable>(of result: GoalSetupResult<Answer>) async
+    func answer<Answer: Sendable & Equatable>(of result: GoalSetupResult<Answer>) async
         -> GoalSetupResult<Answer>
     {
         switch result {
