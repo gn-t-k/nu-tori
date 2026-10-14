@@ -89,9 +89,9 @@ public final class GoalSetupFlow {
         return Progress(count: steps.count, index: steps.firstIndex(of: current) ?? 0)
     }
 
-    /// 閉じたカードを「続ける」にするか
+    /// 閉じたカードを「続ける」にするか。決めたあとは、続けるものが無い
     public var hasProgress: Bool {
-        direction != nil
+        direction != nil && decision != .decided
     }
 
     public var isRestart: Bool {
@@ -292,9 +292,14 @@ public final class GoalSetupFlow {
     /// 「この目標で始める」「維持で始める」。自分で決める目標体重の答えを待っていれば、届いてから決める
     public func decide() async {
         guard decision == .idle else { return }
+        let isCustomTargetWeightUnanswered = unreachableRequest == .customTargetWeight
         unreachableRequest = nil
         decision = .deciding
         if position == .custom {
+            // 届かなかったときに見せている1日の目安は、今の目標体重のものではないので、問い直して届いてから決める
+            if isCustomTargetWeightUnanswered {
+                await assessCustomTargetWeight()
+            }
             // 答えが受け付けない値の直しを連れてきたら、次の要求を待ち直す
             while customTargetWeight?.isAssessing == true, let task = assessmentTask {
                 await task.value
@@ -429,7 +434,8 @@ public final class GoalSetupFlow {
         switch page {
         case .direction: .direction
         case .deadline: .deadline
-        case .awaitingPreview, .stopped: .stopped
+        case .awaitingPreview: .awaitingPreview
+        case .stopped: .stopped
         case .missingValues: .missingValues
         case .proposals: .proposals
         case .customTargetWeight: .customTargetWeight
@@ -691,13 +697,15 @@ public final class GoalSetupFlow {
             do {
                 try await records.applyGoalDecision(changes)
             } catch {
-                // 同じ記録が同期でも届く
+                // 同じ記録が同期でも届くので、押せないまま残さずに決まったものとして閉じる
                 await errorReporting.report(error, as: .cacheSave)
             }
             await records.respondToGoalSetupNotice()
             discardBodyValues()
             decision = .decided
             observe(.decided(choice: observedChoice(choice), recalculated: hasRecalculated))
+            // 決まったら閉じる。カードは決めた目標を示す形になり、開き直すと新しく始める
+            isOpen = false
         case .recalculated(let recalculated):
             hasRecalculated = true
             showsRecalculated = true

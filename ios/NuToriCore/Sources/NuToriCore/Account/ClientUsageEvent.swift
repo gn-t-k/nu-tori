@@ -308,6 +308,7 @@ extension GoalSetupObservation.Page {
         case .maintenance: "maintenance"
         case .loseUnavailable: "lose_unavailable"
         case .stopped: "stopped"
+        case .awaitingPreview: "awaiting_preview"
         }
     }
 }

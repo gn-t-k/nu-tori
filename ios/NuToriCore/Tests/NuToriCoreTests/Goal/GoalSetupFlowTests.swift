@@ -130,6 +130,26 @@ struct GoalSetupFlowTests {
                 #expect(harness.flow.page == .proposals)
                 #expect(harness.server.bodies("proposals").count == 1)
             }
+
+            @Test("答えを待つ場所で閉じたら、止まった場所と分けて知らせること", .timeLimit(.minutes(1)))
+            func observesAwaitingPreview() async {
+                harness.flow.open(from: .noticeCard)
+                let choosing = Task { await harness.flow.chooseDirection(.lose) }
+                while harness.server.bodies("preview").isEmpty {
+                    await Task.yield()
+                }
+                let proceeding = Task { await harness.flow.proceedFromDeadline() }
+                while harness.flow.page == .deadline {
+                    await Task.yield()
+                }
+
+                harness.flow.close()
+                gate.open()
+                await choosing.value
+                await proceeding.value
+
+                #expect(harness.observations.all.last == .closed(page: .awaitingPreview))
+            }
         }
 
         @MainActor
@@ -649,6 +669,96 @@ struct GoalSetupFlowTests {
     }
 
     @MainActor
+    @Suite("自分で決める目標体重の答えが届かなかったあと")
+    struct CustomUnreachable {
+        @MainActor
+        @Suite("「この目標で始める」で問い直した答えが届くとき")
+        struct AnsweredOnDecide {
+            let harness: GoalSetupFlowHarness
+
+            init() async {
+                harness = GoalSetupFlowHarness(
+                    answers: [
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
+                        "proposals": [.json(JSON.loseProposals())],
+                        "custom-target-weight": [
+                            .offline, .json(JSON.acceptedCustom(energyKcal: 1900)),
+                        ],
+                        "decisions": [.json(JSON.decided)],
+                    ])
+                await harness.flow.chooseDirection(.lose)
+                await harness.flow.proceedFromDeadline()
+                harness.flow.openCustomTargetWeight()
+                let flow = harness.flow
+                let moving = Task { await flow.setCustomTargetWeight(66.0) }
+                await harness.clock.advance(by: .milliseconds(300))
+                await moving.value
+            }
+
+            @Test("今の目標体重をもう一度問い、届いた1日の目安を見せていた値にして決めること", .timeLimit(.minutes(1)))
+            func asksAgainBeforeDeciding() async throws {
+                #expect(harness.flow.unreachableRequest == .customTargetWeight)
+
+                await harness.flow.decide()
+
+                let assessed = try harness.sentBodies("custom-target-weight").map {
+                    $0["targetWeightKg"] as? Double
+                }
+                #expect(assessed == [66.0, 66.0])
+                let decision = try #require(try harness.sentBodies("decisions").first)
+                let shown = try #require(decision["shown"] as? [String: Any])
+                let guide = try #require(shown["dailyGuide"] as? [String: Any])
+                #expect(guide["energyKcal"] as? Int == 1900)
+                #expect(harness.flow.decision == .decided)
+            }
+
+            @Test("計算し直しを挟まずに決めたと知らせること", .timeLimit(.minutes(1)))
+            func observesWithoutRecalculation() async {
+                await harness.flow.decide()
+
+                #expect(harness.flow.showsRecalculated == false)
+                #expect(harness.observations.all == [.decided(choice: .custom, recalculated: false)])
+            }
+        }
+
+        @MainActor
+        @Suite("問い直した答えも届かないとき")
+        struct UnreachableAgain {
+            let harness: GoalSetupFlowHarness
+
+            init() async {
+                harness = GoalSetupFlowHarness(
+                    answers: [
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
+                        "proposals": [.json(JSON.loseProposals())],
+                        "custom-target-weight": [.offline],
+                        "decisions": [.json(JSON.decided)],
+                    ])
+                await harness.flow.chooseDirection(.lose)
+                await harness.flow.proceedFromDeadline()
+                harness.flow.openCustomTargetWeight()
+                let flow = harness.flow
+                let moving = Task { await flow.setCustomTargetWeight(66.0) }
+                await harness.clock.advance(by: .milliseconds(300))
+                await moving.value
+            }
+
+            @Test("決めずに、届かなかった1行と「もう一度試す」を出すこと", .timeLimit(.minutes(1)))
+            func stopsWithoutDeciding() async {
+                await harness.flow.decide()
+
+                #expect(harness.server.bodies("decisions").isEmpty)
+                #expect(harness.flow.unreachableRequest == .customTargetWeight)
+                #expect(harness.flow.decision == .idle)
+            }
+        }
+    }
+
+    @MainActor
     @Suite("目標を決めるとき")
     struct Deciding {
         @MainActor
@@ -708,6 +818,46 @@ struct GoalSetupFlowTests {
                 #expect(harness.flow.missingValues == nil)
                 #expect(
                     harness.observations.all == [.decided(choice: .standard, recalculated: false)])
+            }
+
+            @Test("決まったら閉じること")
+            func closesWhenDecided() async {
+                harness.flow.open(from: .noticeCard)
+
+                await harness.flow.decide()
+
+                #expect(harness.flow.isOpen == false)
+            }
+        }
+
+        @MainActor
+        @Suite("決めたが、応答の記録をキャッシュに当てられなかったとき")
+        struct DecidedButNotCached {
+            let harness: GoalSetupFlowHarness
+
+            init() async {
+                harness = GoalSetupFlowHarness(
+                    answers: [
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
+                        "proposals": [.json(JSON.loseProposals())],
+                        "decisions": [.json(JSON.decided)],
+                    ],
+                    records: .ok(appliesGoalDecision: false))
+                await harness.flow.chooseDirection(.lose)
+                await harness.flow.proceedFromDeadline()
+                harness.flow.open(from: .noticeCard)
+            }
+
+            @Test("押せないまま残さずに閉じ、知らせに答えること（記録は同期で届く）")
+            func closes() async {
+                await harness.flow.decide()
+
+                #expect(harness.flow.isOpen == false)
+                #expect(harness.flow.hasProgress == false)
+                #expect(harness.flow.decision == .decided)
+                #expect(harness.records.calls.last == .respondToGoalSetupNotice)
             }
         }
 

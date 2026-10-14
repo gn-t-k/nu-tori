@@ -22,8 +22,12 @@ final class GoalSetupRecordsMock: GoalSetupRecords, Sendable {
         set { state.withLock { $0.sendsWeightRecords = newValue } }
     }
 
-    static func ok(sendsWeightRecords: Bool = true) -> GoalSetupRecordsMock {
-        GoalSetupRecordsMock(sendsWeightRecords: sendsWeightRecords)
+    /// - Parameter appliesGoalDecision: false なら、応答の記録をキャッシュに当てるときに投げる
+    static func ok(sendsWeightRecords: Bool = true, appliesGoalDecision: Bool = true)
+        -> GoalSetupRecordsMock
+    {
+        GoalSetupRecordsMock(
+            sendsWeightRecords: sendsWeightRecords, appliesGoalDecision: appliesGoalDecision)
     }
 
     func goalSetupStart(today: CalendarDay) async throws -> GoalSetupStart {
@@ -43,7 +47,12 @@ final class GoalSetupRecordsMock: GoalSetupRecords, Sendable {
 
     func applyGoalDecision(_ changes: [SyncChange]) async throws {
         state.withLock { $0.calls.append(.applyGoalDecision(changes)) }
+        if !appliesGoalDecision {
+            throw CacheSaveFailure()
+        }
     }
+
+    struct CacheSaveFailure: Error {}
 
     func respondToGoalSetupNotice() async {
         state.withLock { $0.calls.append(.respondToGoalSetupNotice) }
@@ -55,8 +64,10 @@ final class GoalSetupRecordsMock: GoalSetupRecords, Sendable {
     }
 
     private let state: Mutex<State>
+    private let appliesGoalDecision: Bool
 
-    private init(sendsWeightRecords: Bool) {
+    private init(sendsWeightRecords: Bool, appliesGoalDecision: Bool) {
         state = Mutex(State(sendsWeightRecords: sendsWeightRecords))
+        self.appliesGoalDecision = appliesGoalDecision
     }
 }
