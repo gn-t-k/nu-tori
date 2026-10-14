@@ -114,17 +114,22 @@ extension TimelineViewportTests {
 
         @Suite("開いたときに、位置が届く前の「止まっていた → 止まった」が、上端にいるように見えて届いたとき")
         struct IdleReportedAtStartOnOpening {
+            let days: [Timeline.Day]
+            var viewport: TimelineViewport
             let instructions: [TimelineViewport.Instruction]
 
             init() throws {
-                var viewport = ListedDays.opened(with: try ListedDays.fortyDays())
-                viewport.startReachedChanged(isAtStart: true)
-                instructions = viewport.scrollPhaseChanged(from: .idle, to: .idle)
+                days = try ListedDays.fortyDays()
+                viewport = ListedDays.opened(with: days)
+                viewport.startPositionChanged(to: .atStart)
+                instructions = viewport.scrollPhaseChanged(from: .idle, to: .idle, in: days)
             }
 
-            @Test("古い日を足す指示を出さないこと")
-            func doesNotAskForOlderDays() {
+            @Test("古い日を足さず、動かす指示を出さないこと")
+            func doesNotListOlderDays() {
                 #expect(instructions.isEmpty)
+                #expect(viewport.waitingInstructions.isEmpty)
+                #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(3)))
             }
         }
 
@@ -138,44 +143,51 @@ extension TimelineViewportTests {
                 days = try ListedDays.fortyDays()
                 viewport = ListedDays.scrolledAway(from: days)
                 TimelineViewportTests.touch(&viewport)
-                viewport.startReachedChanged(isAtStart: true)
-                _ = viewport.scrollPhaseChanged(from: .interacting, to: .decelerating)
-                instructions = viewport.scrollPhaseChanged(from: .decelerating, to: .idle)
+                viewport.startPositionChanged(to: .atStart)
+                _ = viewport.scrollPhaseChanged(from: .interacting, to: .decelerating, in: days)
+                instructions = viewport.scrollPhaseChanged(from: .decelerating, to: .idle, in: days)
             }
 
-            @Test("古い日を足す指示を出すこと")
-            func asksForOlderDays() {
-                #expect(instructions == [.listOlderDays])
-            }
-
-            @Test("前の3日を足し、見ていた日を上端に置き直すこと")
-            mutating func listsOlderBatchAndKeepsPlace() {
-                let listed = viewport.listOlderDays(of: days)
-
-                #expect(listed == [.scroll(to: .day(days[37].day), animated: false)])
+            @Test("前の3日を足すこと")
+            func listsOlderBatch() {
                 #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(6)))
+            }
+
+            @Test("足した日が並ぶまで待ってから、見ていた日を上端に置き直すこと")
+            func keepsPlaceAfterListing() {
+                #expect(instructions.isEmpty)
+                #expect(
+                    viewport.waitingInstructions == [
+                        .scroll(to: .day(days[37].day), animated: false)
+                    ])
             }
         }
 
         @Suite("指で触れずに動いて（ステータスバーを押した、VoiceOver で送ったなど）、並べたいちばん古い日の上端で止まったとき")
         struct StoppedAtStartWithoutTouch {
-            let instructions: [TimelineViewport.Instruction]
+            let days: [Timeline.Day]
+            var viewport: TimelineViewport
 
             init() throws {
-                var viewport = ListedDays.opened(with: try ListedDays.fortyDays())
-                _ = viewport.scrollPhaseChanged(from: .idle, to: .animating)
+                days = try ListedDays.fortyDays()
+                viewport = ListedDays.opened(with: days)
+                _ = viewport.scrollPhaseChanged(from: .idle, to: .animating, in: days)
                 viewport.endPositionChanged(to: .offscreen)
-                viewport.startReachedChanged(isAtStart: true)
-                instructions = viewport.scrollPhaseChanged(from: .animating, to: .idle)
+                viewport.startPositionChanged(to: .atStart)
+                _ = viewport.scrollPhaseChanged(from: .animating, to: .idle, in: days)
             }
 
-            @Test("古い日を足す指示を出すこと")
-            func asksForOlderDays() {
-                #expect(instructions == [.listOlderDays])
+            @Test("前の3日を足し、並んでから見ていた日を上端に置き直すこと")
+            func listsOlderBatch() {
+                #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(6)))
+                #expect(
+                    viewport.waitingInstructions == [
+                        .scroll(to: .day(days[37].day), animated: false)
+                    ])
             }
         }
 
-        @Suite("全部の日を並べているとき")
+        @Suite("全部の日を並べているときに、上端まで遡って止めたとき")
         struct AllDaysListed {
             let days: [Timeline.Day]
             var viewport: TimelineViewport
@@ -183,11 +195,14 @@ extension TimelineViewportTests {
             init() throws {
                 days = try ListedDays.days(recordCounts: [1, 0, 2])
                 viewport = ListedDays.scrolledAway(from: days)
+                TimelineViewportTests.touch(&viewport)
+                viewport.startPositionChanged(to: .atStart)
+                _ = viewport.scrollPhaseChanged(from: .interacting, to: .idle, in: days)
             }
 
-            @Test("古い日を足そうとしても、足す日が無いので、動かさないこと")
-            mutating func doesNothing() {
-                #expect(viewport.listOlderDays(of: days).isEmpty)
+            @Test("足す日が無いので、並べる日を変えず、動かさないこと")
+            func doesNothing() {
+                #expect(viewport.waitingInstructions.isEmpty)
                 #expect(Array(viewport.listedDays(of: days)) == days)
             }
         }
@@ -219,10 +234,16 @@ extension TimelineViewportTests {
                 let days = try ListedDays.fortyDays()
                 added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
                 viewport = ListedDays.scrolledAway(from: days)
-                _ = viewport.listOlderDays(of: days)
+                // 上端まで遡って、古い日を足す
                 TimelineViewportTests.touch(&viewport)
+                viewport.startPositionChanged(to: .atStart)
+                _ = viewport.scrollPhaseChanged(from: .interacting, to: .idle, in: days)
+                _ = viewport.takeWaitingInstructions()
+                // 一番下へ戻る
+                TimelineViewportTests.touch(&viewport)
+                viewport.startPositionChanged(to: .belowStart)
                 viewport.endPositionChanged(to: .shown)
-                _ = viewport.scrollPhaseChanged(from: .interacting, to: .idle)
+                _ = viewport.scrollPhaseChanged(from: .interacting, to: .idle, in: days)
                 _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
             }
 
@@ -296,7 +317,7 @@ extension TimelineViewportTests {
                 let days = try ListedDays.fortyDays()
                 added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
                 viewport = ListedDays.opened(with: days)
-                _ = viewport.dayChosen(days[5].day, in: days)
+                viewport.dayChosen(days[5].day, in: days)
                 _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
             }
 
@@ -315,7 +336,7 @@ extension TimelineViewportTests {
                 let days = try ListedDays.fortyDays()
                 added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
                 viewport = ListedDays.opened(with: days)
-                _ = viewport.dayChosen(days[5].day, in: days)
+                viewport.dayChosen(days[5].day, in: days)
                 viewport.endPositionChanged(to: .offscreen)
                 _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
             }
@@ -335,11 +356,11 @@ extension TimelineViewportTests {
                 let days = try ListedDays.fortyDays()
                 added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
                 viewport = ListedDays.opened(with: days)
-                _ = viewport.dayChosen(days[5].day, in: days)
+                viewport.dayChosen(days[5].day, in: days)
                 viewport.endPositionChanged(to: .offscreen)
                 TimelineViewportTests.touch(&viewport)
                 viewport.endPositionChanged(to: .shown)
-                _ = viewport.scrollPhaseChanged(from: .interacting, to: .idle)
+                _ = viewport.scrollPhaseChanged(from: .interacting, to: .idle, in: days)
                 _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
             }
 
@@ -361,7 +382,7 @@ extension TimelineViewportTests {
                 afterReturning = try ListedDays.days(
                     recordCounts: Array(repeating: 10, count: 39) + [12])
                 viewport = ListedDays.scrolledAway(from: days)
-                _ = viewport.dayChosen(days[5].day, in: days)
+                viewport.dayChosen(days[5].day, in: days)
                 _ = viewport.daysChanged(from: days, to: added, now: try ListedDays.addedAt(added))
                 viewport.endPositionChanged(to: .shown)
                 _ = viewport.daysChanged(
@@ -388,7 +409,7 @@ extension TimelineViewportTests {
                 afterAdding = try ListedDays.days(
                     recordCounts: Array(repeating: 10, count: 39) + [12])
                 viewport = ListedDays.opened(with: days)
-                _ = viewport.dayChosen(days[5].day, in: days)
+                viewport.dayChosen(days[5].day, in: days)
                 _ = viewport.daysChanged(from: days, to: added, now: try ListedDays.addedAt(added))
                 _ = viewport.daysChanged(
                     from: added, to: afterAdding, now: ListedDays.notJustAdded)
@@ -409,8 +430,8 @@ extension TimelineViewportTests {
                 let days = try ListedDays.fortyDays()
                 added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [11])
                 viewport = ListedDays.opened(with: days)
-                _ = viewport.dayChosen(days[5].day, in: days)
-                _ = viewport.landingRequested(.end, in: days)
+                viewport.dayChosen(days[5].day, in: days)
+                viewport.landingRequested(.end, in: days)
                 _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
             }
 
@@ -430,12 +451,15 @@ extension TimelineViewportTests {
                 viewport = ListedDays.opened(with: days)
             }
 
-            @Test("その日まで並べてから、その日の区切りへ動かすこと")
+            @Test("その日まで並べ、並んでからその日の区切りへ動かすこと")
             mutating func listsUpToDayThenScrolls() {
-                let instructions = viewport.dayChosen(days[5].day, in: days)
+                viewport.dayChosen(days[5].day, in: days)
 
-                #expect(instructions == [.scroll(to: .day(days[5].day), animated: false)])
                 #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(35)))
+                #expect(
+                    viewport.waitingInstructions == [
+                        .scroll(to: .day(days[5].day), animated: false)
+                    ])
             }
         }
 
@@ -451,12 +475,13 @@ extension TimelineViewportTests {
                 viewport = ListedDays.opened(with: days)
             }
 
-            @Test("その日まで並べてから、そのカードへ動かすこと")
+            @Test("その日まで並べ、並んでからそのカードへ動かすこと")
             mutating func listsUpToDayThenScrolls() {
-                let instructions = viewport.landingRequested(.item(item.id), in: days)
+                viewport.landingRequested(.item(item.id), in: days)
 
-                #expect(instructions == [.scroll(to: .item(item.id), animated: true)])
                 #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(35)))
+                #expect(
+                    viewport.waitingInstructions == [.scroll(to: .item(item.id), animated: true)])
             }
         }
 
@@ -470,27 +495,29 @@ extension TimelineViewportTests {
                 viewport = ListedDays.opened(with: days)
             }
 
-            @Test("並べていない日のカードなら、その日まで並べて、まだ並んでいないと返すこと")
+            @Test("並べていない日のカードなら、その日まで並べ、並んでから動きをつけてカードの下端へ動かすこと")
             mutating func listsUnlistedDay() throws {
                 let item = try #require(days[5].items.first)
 
-                let first = viewport.revealItem(item.id, in: days)
-                let listed = Array(viewport.listedDays(of: days))
-                let second = viewport.revealItem(item.id, in: days)
+                let instructions = viewport.revealItem(item.id, in: days)
 
-                #expect(!first)
-                #expect(listed == Array(days.suffix(35)))
-                #expect(second)
+                #expect(instructions.isEmpty)
+                #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(35)))
+                #expect(
+                    viewport.waitingInstructions == [
+                        .scroll(to: .itemBottom(item.id), animated: true)
+                    ])
             }
 
-            @Test("並べている日のカードなら、並べる日を変えずに、並んでいると返すこと")
+            @Test("並べている日のカードなら、並べる日を変えずに、すぐ動きをつけてカードの下端へ動かすこと")
             mutating func keepsListedDays() throws {
                 let item = try #require(days.last?.items.first)
                 let listed = Array(viewport.listedDays(of: days))
 
-                let revealed = viewport.revealItem(item.id, in: days)
+                let instructions = viewport.revealItem(item.id, in: days)
 
-                #expect(revealed)
+                #expect(instructions == [.scroll(to: .itemBottom(item.id), animated: true)])
+                #expect(viewport.waitingInstructions.isEmpty)
                 #expect(Array(viewport.listedDays(of: days)) == listed)
             }
         }

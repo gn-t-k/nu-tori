@@ -13,7 +13,7 @@ struct TimelineViewportTests {
 
     /// 使う人が指で動かし始めたところ
     static func touch(_ viewport: inout TimelineViewport) {
-        _ = viewport.scrollPhaseChanged(from: .idle, to: .interacting)
+        _ = viewport.scrollPhaseChanged(from: .idle, to: .interacting, in: [])
     }
 
     /// 使う人が上へ動かし、一番下が画面の外に出た所で止めたところ
@@ -21,8 +21,8 @@ struct TimelineViewportTests {
         var viewport = opened
         touch(&viewport)
         viewport.endPositionChanged(to: .offscreen)
-        _ = viewport.scrollPhaseChanged(from: .interacting, to: .decelerating)
-        _ = viewport.scrollPhaseChanged(from: .decelerating, to: .idle)
+        _ = viewport.scrollPhaseChanged(from: .interacting, to: .decelerating, in: [])
+        _ = viewport.scrollPhaseChanged(from: .decelerating, to: .idle, in: [])
         return viewport
     }
 
@@ -66,7 +66,7 @@ struct TimelineViewportTests {
                 viewport = TimelineViewportTests.opened()
                 TimelineViewportTests.touch(&viewport)
                 viewport.endPositionChanged(to: .shown)
-                instructions = viewport.scrollPhaseChanged(from: .interacting, to: .idle)
+                instructions = viewport.scrollPhaseChanged(from: .interacting, to: .idle, in: [])
             }
 
             @Test("また追うこと")
@@ -89,8 +89,8 @@ struct TimelineViewportTests {
                 viewport = TimelineViewportTests.opened()
                 TimelineViewportTests.touch(&viewport)
                 viewport.endPositionChanged(to: .underComposer)
-                _ = viewport.scrollPhaseChanged(from: .interacting, to: .decelerating)
-                instructions = viewport.scrollPhaseChanged(from: .decelerating, to: .idle)
+                _ = viewport.scrollPhaseChanged(from: .interacting, to: .decelerating, in: [])
+                instructions = viewport.scrollPhaseChanged(from: .decelerating, to: .idle, in: [])
             }
 
             @Test("一番下へ動きをつけて動かし、また追うこと")
@@ -121,9 +121,9 @@ struct TimelineViewportTests {
 
             init() {
                 viewport = TimelineViewportTests.opened()
-                _ = viewport.scrollPhaseChanged(from: .idle, to: .animating)
+                _ = viewport.scrollPhaseChanged(from: .idle, to: .animating, in: [])
                 viewport.endPositionChanged(to: .underComposer)
-                instructions = viewport.scrollPhaseChanged(from: .animating, to: .idle)
+                instructions = viewport.scrollPhaseChanged(from: .animating, to: .idle, in: [])
             }
 
             @Test("着いた所に置き、動かす指示を出さないこと")

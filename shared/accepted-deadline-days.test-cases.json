@@ -1,0 +1,50 @@
+[
+  {
+    "name": "開始の日から 27 日め",
+    "startedOn": "2026-10-01",
+    "deadlineOn": "2026-10-27",
+    "accepted": false
+  },
+  {
+    "name": "開始の日から 28 日め",
+    "startedOn": "2026-10-01",
+    "deadlineOn": "2026-10-28",
+    "accepted": true
+  },
+  {
+    "name": "開始の日から 182 日め",
+    "startedOn": "2026-10-01",
+    "deadlineOn": "2027-03-31",
+    "accepted": true
+  },
+  {
+    "name": "開始の日から 183 日め",
+    "startedOn": "2026-10-01",
+    "deadlineOn": "2027-04-01",
+    "accepted": false
+  },
+  {
+    "name": "開始の日と同じ日",
+    "startedOn": "2026-10-01",
+    "deadlineOn": "2026-10-01",
+    "accepted": false
+  },
+  {
+    "name": "開始の日より前の日",
+    "startedOn": "2026-10-01",
+    "deadlineOn": "2026-09-30",
+    "accepted": false
+  },
+  {
+    "name": "年をまたいで 28 日め",
+    "startedOn": "2026-12-30",
+    "deadlineOn": "2027-01-26",
+    "accepted": true
+  },
+  {
+    "name": "うるう年の2月をまたいで 28 日め",
+    "startedOn": "2028-02-15",
+    "deadlineOn": "2028-03-13",
+    "accepted": true
+  }
+]
