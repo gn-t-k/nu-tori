@@ -6,7 +6,7 @@ import type { Goal } from "../domain/goal";
 import type { GoalStore } from "../domain/goal-store";
 import { goalTables } from "./goal-tables";
 
-const { goals, weightChangeGoals, goalClosures } = goalTables;
+const { goals, weightChangeGoals, goalClosures, goalDecisionReceipts } = goalTables;
 // 目標を閉じた次の目標。終わった日は、次の目標の開始の日から出す
 const nextGoals = alias(goals, "next_goals");
 
@@ -49,6 +49,36 @@ export const createGoalStore = (db: DrizzleSqliteDODatabase): GoalStore => {
         .limit(1)
         .get();
       return current === undefined ? undefined : find(current.id);
+    },
+    findClosedBy: (nextGoalId) => {
+      const closure = db
+        .select({ goalId: goalClosures.goalId })
+        .from(goalClosures)
+        .where(eq(goalClosures.nextGoalId, nextGoalId))
+        .get();
+      return closure === undefined ? undefined : find(closure.goalId);
+    },
+    findByDecisionRequest: (requestId) => {
+      const receipt = db
+        .select({ goalId: goalDecisionReceipts.goalId })
+        .from(goalDecisionReceipts)
+        .where(eq(goalDecisionReceipts.id, requestId))
+        .get();
+      return receipt === undefined ? undefined : find(receipt.goalId);
+    },
+    insert: ({ weightChange, ...goal }) => {
+      db.insert(goals).values(goal).run();
+      if (weightChange !== undefined) {
+        db.insert(weightChangeGoals)
+          .values({ goalId: goal.id, ...weightChange })
+          .run();
+      }
+    },
+    insertClosure: (closure) => {
+      db.insert(goalClosures).values(closure).run();
+    },
+    insertDecisionReceipt: ({ requestId, goalId }) => {
+      db.insert(goalDecisionReceipts).values({ id: requestId, goalId }).run();
     },
   };
 };
