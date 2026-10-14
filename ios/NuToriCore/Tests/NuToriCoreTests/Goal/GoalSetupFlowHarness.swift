@@ -109,10 +109,11 @@ enum GoalSetupJSON {
             """
     }
 
-    static func maintenance(energyKcal: Int = 2250) -> String {
+    static func maintenance(energyKcal: Int = 2250, expenditureSource: String = "formula") -> String
+    {
         """
         {"startedOn":"2026-01-01","direction":"maintain","expenditureKcal":2250,
-        "expenditureSource":"formula","startingWeightTrendKg":65.0,"lastWeightRecordedOn":"2025-12-31",
+        "expenditureSource":"\(expenditureSource)","startingWeightTrendKg":65.0,"lastWeightRecordedOn":"2025-12-31",
         "maintenance":{"targetWeightKg":65.0,"dailyGuide":\(dailyGuide(energyKcal))}}
         """
     }

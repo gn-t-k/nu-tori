@@ -4,16 +4,6 @@ import Testing
 
 @Suite("今の目標")
 struct CurrentGoalTests {
-    /// `Goal.losing()` の開始の日（10月1日）を、`day` に替えたもの
-    static func losing(startedOn day: CalendarDay) throws -> Goal {
-        let losing = try Goal.losing()
-        return Goal(
-            id: losing.id, startedDay: day,
-            startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-            targetWeightKilograms: losing.targetWeightKilograms, decidedAt: losing.decidedAt,
-            timeZone: losing.timeZone, direction: losing.direction, closure: nil)
-    }
-
     static func guide(of goal: Goal, from day: CalendarDay) -> DailyGuide {
         DailyGuide(
             id: UUID(), goalId: goal.id, expenditureEstimateId: UUID(), effectiveDay: day,
@@ -43,7 +33,7 @@ struct CurrentGoalTests {
             let closed = try Goal.losing(
                 closure: Goal.Closure(
                     endedDay: CalendarDay(year: 2026, month: 10, day: 1), nextGoalId: UUID()))
-            goal = try CurrentGoalTests.losing(
+            goal = try Goal.losing(
                 startedOn: CalendarDay(year: 2026, month: 10, day: 1))
             olderGuide = CurrentGoalTests.guide(
                 of: goal, from: CalendarDay(year: 2026, month: 10, day: 1))
@@ -72,7 +62,7 @@ struct CurrentGoalTests {
         let current: CurrentGoal?
 
         init() throws {
-            goal = try CurrentGoalTests.losing(
+            goal = try Goal.losing(
                 startedOn: CalendarDay(year: 2026, month: 10, day: 11))
             earlierGuide = CurrentGoalTests.guide(
                 of: goal, from: CalendarDay(year: 2026, month: 10, day: 11))

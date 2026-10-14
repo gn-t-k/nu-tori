@@ -101,15 +101,7 @@ struct GoalProgressTests {
         let goals: [Goal]
 
         init() throws {
-            let losing = try Goal.losing()
-            goals = [
-                Goal(
-                    id: losing.id, startedDay: GoalProgressTests.today.advanced(by: 1),
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction, closure: nil)
-            ]
+            goals = [try .losing(startedOn: GoalProgressTests.today.advanced(by: 1))]
         }
 
         @Test("要約を出さないこと")

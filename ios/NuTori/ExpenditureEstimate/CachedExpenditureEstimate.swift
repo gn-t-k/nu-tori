@@ -31,23 +31,19 @@ nonisolated final class CachedExpenditureEstimate {
 
     /// 読めない日付・出どころの行は nil
     func expenditureEstimate() -> ExpenditureEstimate? {
-        guard let effectiveDay = CalendarDay(yearMonthDay: effectiveDay),
-            let source = Self.initialSource(initialSource)
-        else { return nil }
+        guard let effectiveDay = CalendarDay(yearMonthDay: effectiveDay) else { return nil }
+        // 推定の始まりでない推定は出どころを持たない
+        let source: ExpenditureEstimate.InitialSource?
+        switch initialSource {
+        case nil: source = nil
+        case "back_calculated": source = .backCalculated
+        case "formula": source = .formula
+        default: return nil
+        }
         return ExpenditureEstimate(
             id: estimateId, effectiveDay: effectiveDay,
             expenditureKilocalories: expenditureKilocalories, estimatedAt: estimatedAt,
             initialSource: source)
-    }
-
-    /// 読めない出どころは nil。推定の始まりでない推定（出どころを持たない）は `.some(nil)`
-    private static func initialSource(_ stored: String?) -> ExpenditureEstimate.InitialSource?? {
-        switch stored {
-        case nil: .some(nil)
-        case "back_calculated": ExpenditureEstimate.InitialSource.backCalculated
-        case "formula": ExpenditureEstimate.InitialSource.formula
-        default: nil
-        }
     }
 
     private static func stored(_ source: ExpenditureEstimate.InitialSource) -> String {

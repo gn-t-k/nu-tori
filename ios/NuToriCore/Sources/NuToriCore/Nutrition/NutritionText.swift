@@ -9,7 +9,7 @@ public enum NutritionText {
         return amount.isLowerBound ? "\(text) 以上" : text
     }
 
-    /// 1日の目安の kcal。「2,250 kcal」
+    /// kcal の整数を「2,250 kcal」にする
     public static func kilocalories(_ kilocalories: Int) -> String {
         amount(.exactly(Double(kilocalories)), of: .energyKcal)
     }

@@ -7,15 +7,12 @@ struct WeightStepButton: View {
     let enabled: Bool
     let step: () -> Void
 
-    /// 値の欄とステッパーの角（DESIGN.md の value-field と stepper-button）
-    static let shape = RoundedRectangle(cornerRadius: 10)
-
     var body: some View {
         Button(action: stepOnce) {
             Text(title)
                 .font(.title2)
                 .frame(width: 44, height: 44)
-                .background(Color(.tertiarySystemFill), in: Self.shape)
+                .background(Color(.tertiarySystemFill), in: WeightControlShape())
                 .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)

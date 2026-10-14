@@ -328,11 +328,29 @@ struct GoalSetupFlowTests {
                 #expect(maintenance.dailyGuide.energyKilocalories == 2250)
             }
 
-            @Test("身体データを添えずに式の目標案が返っても、逆算した値として見せないこと")
-            func doesNotShowFormulaAsBackCalculated() async {
-                await harness.flow.chooseDirection(.maintain)
+            @MainActor
+            @Suite("身体データを添えずに式の目標案が返ったとき")
+            struct FormulaWithoutBodyData {
+                let harness: GoalSetupFlowHarness
 
-                #expect(harness.flow.usedValues == nil)
+                init() {
+                    harness = GoalSetupFlowHarness(
+                        answers: [
+                            "preview": [
+                                .json(
+                                    JSON.preview(canBackCalculate: true, canOfferLoseProposals: nil)
+                                )
+                            ],
+                            "proposals": [.json(JSON.maintenance(expenditureSource: "formula"))],
+                        ])
+                }
+
+                @Test("目標案の上の1行に出す値が無いこと")
+                func hasNoUsedValues() async {
+                    await harness.flow.chooseDirection(.maintain)
+
+                    #expect(harness.flow.usedValues == nil)
+                }
             }
         }
 
