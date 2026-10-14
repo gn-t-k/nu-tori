@@ -6,11 +6,9 @@ struct TimelineViewportTests {
     static let yesterday = CalendarDay(year: 2026, month: 10, day: 12)
     static let today = CalendarDay(year: 2026, month: 10, day: 13)
 
-    /// 開いて、いちばん新しい日が一番下に着き終えたところ
-    static func opened(newestDay: CalendarDay = today) -> TimelineViewport {
-        var viewport = TimelineViewport()
-        _ = viewport.newestDayChanged(to: newestDay)
-        return viewport
+    /// 開いて、一番下にいるところ
+    static func opened() -> TimelineViewport {
+        TimelineViewport()
     }
 
     /// 使う人が指で動かし始めたところ
@@ -19,8 +17,8 @@ struct TimelineViewportTests {
     }
 
     /// 使う人が上へ動かし、一番下が画面の外に出た所で止めたところ
-    static func scrolledAway(newestDay: CalendarDay = today) -> TimelineViewport {
-        var viewport = opened(newestDay: newestDay)
+    static func scrolledAway(from opened: TimelineViewport = opened()) -> TimelineViewport {
+        var viewport = opened
         touch(&viewport)
         viewport.endPositionChanged(to: .offscreen)
         _ = viewport.scrollPhaseChanged(from: .interacting, to: .decelerating)
@@ -32,62 +30,15 @@ struct TimelineViewportTests {
     struct FollowingEnd {
         @Suite("開いたとき")
         struct Opening {
-            var viewport: TimelineViewport
-            let instructions: [TimelineViewport.Instruction]
+            let viewport: TimelineViewport
 
             init() {
-                viewport = TimelineViewport()
-                instructions = viewport.newestDayChanged(to: TimelineViewportTests.today)
-            }
-
-            @Test("開いた位置が一番下なので、動かす指示を出さないこと")
-            func doesNotScroll() {
-                #expect(instructions.isEmpty)
+                viewport = TimelineViewportTests.opened()
             }
 
             @Test("中身が伸びたら一番下を追うこと")
             func follows() {
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
-            }
-        }
-
-        @Suite("いちばん新しい日が足された描画")
-        struct NewestDayAdded {
-            var viewport: TimelineViewport
-
-            init() {
-                viewport = TimelineViewportTests.opened(newestDay: TimelineViewportTests.yesterday)
-            }
-
-            @Test("足された日が落ち着くまでは、追わないこと")
-            func doesNotFollowUntilSettled() {
-                #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
-            }
-
-            @Test("足された日が描かれたら、一番下へ動かし、また追うこと")
-            mutating func scrollsToEndThenFollows() {
-                let instructions = viewport.newestDayChanged(to: TimelineViewportTests.today)
-
-                #expect(instructions == [.scroll(to: .end, animated: false)])
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
-            }
-        }
-
-        @Suite("遡っているときに、いちばん新しい日が足されたとき")
-        struct NewestDayAddedWhileScrolledAway {
-            var viewport: TimelineViewport
-
-            init() {
-                viewport = TimelineViewportTests.scrolledAway(
-                    newestDay: TimelineViewportTests.yesterday)
-            }
-
-            @Test("見ている所から動かさないこと")
-            mutating func staysInPlace() {
-                let instructions = viewport.newestDayChanged(to: TimelineViewportTests.today)
-
-                #expect(instructions.isEmpty)
-                #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(viewport.followsSizeChanges)
             }
         }
 
@@ -102,7 +53,7 @@ struct TimelineViewportTests {
 
             @Test("一番下にいても、追わないこと")
             func doesNotFollow() {
-                #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(!viewport.followsSizeChanges)
             }
         }
 
@@ -120,7 +71,7 @@ struct TimelineViewportTests {
 
             @Test("また追うこと")
             func followsAgain() {
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(viewport.followsSizeChanges)
             }
 
             @Test("動かす指示を出さないこと")
@@ -145,7 +96,7 @@ struct TimelineViewportTests {
             @Test("一番下へ動きをつけて動かし、また追うこと")
             func scrollsToEndAndFollows() {
                 #expect(instructions == [.scroll(to: .end, animated: true)])
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(viewport.followsSizeChanges)
             }
         }
 
@@ -159,7 +110,7 @@ struct TimelineViewportTests {
 
             @Test("追わないこと")
             func doesNotFollow() {
-                #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(!viewport.followsSizeChanges)
             }
         }
 
@@ -192,7 +143,7 @@ struct TimelineViewportTests {
 
             @Test("追い直すこと")
             func followsAgain() {
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(viewport.followsSizeChanges)
             }
         }
 
@@ -207,7 +158,7 @@ struct TimelineViewportTests {
 
             @Test("追わないままであること")
             func doesNotFollow() {
-                #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(!viewport.followsSizeChanges)
             }
         }
     }

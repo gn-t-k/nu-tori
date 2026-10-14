@@ -21,6 +21,8 @@
         let clock: DeviceClock
         /// アプリの時計を、ホームへ出てから開き直すたびに1日進める。閉じているあいだに日付が変わったことにする
         let dayPassesOnReturn: Bool
+        /// 場面の記録を、前に開いたときに取り終えてキャッシュに持っている状態で始める。false なら、開いてから取りに行く
+        let cacheHoldsRecords: Bool
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -41,7 +43,8 @@
                 lockoutDefaultsName: environment["UI_TEST_LOCKOUT_DEFAULTS"],
                 // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
                 clock: frozenClock(environment["UI_TEST_NOW"]),
-                dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil
+                dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil,
+                cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil
             )
         }
 
@@ -66,9 +69,13 @@
             let photoUploader = UITestMealPhotoUploader()
             let photoRoot = FileManager.default.temporaryDirectory.appending(
                 path: "ui-test-meal-photos-\(UUID().uuidString)")
+            let scenario = syncScenario()
             try store.prepareForUITest(seededResults())
+            if cacheHoldsRecords {
+                try store.prepareForUITest([pulledResult(of: scenario, kinds: store.recordKinds)])
+            }
             // 同じ偽の同期サーバーを、セッションが変わって作り直すクライアントでも使う
-            let server = FakeSyncServer(syncScenario())
+            let server = FakeSyncServer(scenario)
             // 始めに置く記録は起動したときの時刻で決め、アプリには進む時計を1つだけ渡す
             let clock = dayPassesOnReturn ? self.clock.advancingDayOnReturn() : self.clock
             return AppRuntime.assemble(
@@ -121,6 +128,22 @@
                     enqueuing: PendingWeightRecordWrite(
                         enqueuedAt: clock.now(), write: .createWeightRecord($0)))
             } + [SyncBoxResult(syncState: seededSyncState())]
+        }
+
+        /// 場面の記録を取り終えたときに、キャッシュに当たる結果。通し番号は進めず、開いてからの取得で同じ記録がもう一度届く
+        private func pulledResult(
+            of scenario: FakeSyncServer.Scenario, kinds: [any SyncedRecordKind]
+        ) -> SyncBoxResult {
+            SyncBoxResult(
+                kindChanges: kinds.map { kind in
+                    KindChanges(kind: kind.name, changes: scenario.records.filter { kind.owns($0) })
+                }.filter { !$0.changes.isEmpty },
+                syncState: SyncState(
+                    afterSequence: 0,
+                    hasCompletedInitialPull: true,
+                    readableKinds: Set(kinds.map(\.name)),
+                    startedOn: scenario.startedOn
+                ))
         }
 
         /// 本物の時計に戻すと、結果が開いた時刻でまた変わるので、渡し忘れと読めない値はその場で止める
@@ -207,6 +230,7 @@
             case weightScreen = "weight-screen"
             case weightScreenPushRejected = "weight-screen-push-rejected"
             case dayRing = "day-ring"
+            case unevenDays = "uneven-days"
             case mealEstimation = "meal-estimation"
             /// 食事の推定に加えて、料理を足す・名前を直すと、次に取りに行ったときに推定し直しが届く
             case mealEdit = "meal-edit"

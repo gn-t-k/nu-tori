@@ -3,7 +3,7 @@ import XCTest
 /// 1日の丸の帯の丸を押す → 日のまとめが開く → 日を送る → 「タイムラインでこの日を見る」で、タイムラインがその日へ移り、題がその日になる。
 ///
 /// 選んだ日の区切りへ動かすと決める規則と、題に出す日を決める規則は NuToriCore の単体テスト（TimelineViewportTests の「一番下へ戻す」と「題と1日の丸の帯に出す日」）が見る。
-/// ここで見るのは SwiftUI の癖: シートが閉じるのと同じ更新で出した指示でも、ScrollViewProxy の scrollTo が、遅れて読む並び（LazyVStack）のまだ描いていない遠い日（21日前）に着くこと、
+/// ここで見るのは SwiftUI の癖: シートが閉じるのと同じ更新で出した指示でも、ScrollViewProxy の scrollTo が、その更新で並べ足した遠い日（21日前。開いたときには並べていない）に着くこと、
 /// 着いたあとの日の区切りの位置（GeometryReader と preference）が届いて、題がその日に変わること
 @MainActor
 final class DaySummaryFromRingUITests: XCTestCase {

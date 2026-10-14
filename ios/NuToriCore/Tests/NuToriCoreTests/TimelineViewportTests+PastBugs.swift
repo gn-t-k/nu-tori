@@ -74,27 +74,7 @@ extension TimelineViewportTests {
 
             @Test("5枚目のあとも、足されるカードを追うこと")
             func keepsFollowing() {
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
-            }
-        }
-
-        @Suite("閉じているあいだに日付が変わり、開き直して新しい日が足されたとき")
-        struct ReopenedAfterDayChange {
-            var viewport: TimelineViewport
-
-            init() {
-                // 前の日に、一番下を見たまま閉じた
-                viewport = TimelineViewportTests.opened(newestDay: TimelineViewportTests.yesterday)
-            }
-
-            @Test("高さの見積もりの端へ動かないよう、新しい日が描かれるのを待ってから中身の下端へ動かし、そのあと今日に足される記録を追うこと")
-            mutating func waitsForDayThenScrollsToEnd() {
-                #expect(!viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
-
-                let instructions = viewport.newestDayChanged(to: TimelineViewportTests.today)
-
-                #expect(instructions == [.scroll(to: .end, animated: false)])
-                #expect(viewport.followsSizeChanges(newestDay: TimelineViewportTests.today))
+                #expect(viewport.followsSizeChanges)
             }
         }
     }
