@@ -1,13 +1,33 @@
 import { minimumDailyGuideEnergyKcal } from "../../daily-guide/domain/minimum-daily-guide-energy-kcal";
 import { computeTargetWeightAtPace } from "./compute-target-weight-at-pace";
 import { kilocaloriesPerKilogram } from "../../domain/kilocalories-per-kilogram";
+import { isOnDirectionSide } from "./is-on-direction-side";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import { weeklyPaceRates } from "./weekly-pace-rates";
 import type { FastestEndReason } from "./fastest-end-reason";
 import type { WeightChangeGoalInputs } from "./weight-change-goal-inputs";
 
 // 受け付ける目標体重の両端（0.1kg 単位）。いちばん速い端が、いちばんゆるい端より体重の傾向の側にあるときは、受け付ける目標体重が無い
-export const computeTargetWeightLimits = ({
+export const computeTargetWeightLimits = (
+  goal: WeightChangeGoalInputs,
+): {
+  gentlestKg: number;
+  fastestKg: number;
+  fastestEndReason: FastestEndReason;
+  hasAcceptedTargetWeight: boolean;
+} => {
+  const ends = computeEnds(goal);
+  return {
+    ...ends,
+    hasAcceptedTargetWeight: isOnDirectionSide({
+      direction: goal.direction,
+      weightKg: ends.fastestKg,
+      comparedWeightKg: ends.gentlestKg,
+    }),
+  };
+};
+
+const computeEnds = ({
   direction,
   expenditureKcal,
   startingWeightTrendKg,

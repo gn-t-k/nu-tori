@@ -3,6 +3,7 @@ import type { ComputedDailyGuide } from "../../../daily-guide/domain/computed-da
 import { computeDailyGuideDifferenceKcal } from "../../../daily-guide/domain/compute-daily-guide-difference-kcal";
 import { computeTargetWeightAtPace } from "../compute-target-weight-at-pace";
 import { computeTargetWeightLimits } from "../compute-target-weight-limits";
+import { isOnDirectionSide } from "../is-on-direction-side";
 import { type ProposalPace, proposalPaces } from "../proposal-pace";
 import { weeklyPaceRates } from "../weekly-pace-rates";
 import type { WeightChangeGoalInputs } from "../weight-change-goal-inputs";
@@ -32,10 +33,11 @@ export const computeGoalProposals = (
     };
   });
   const proposals = candidates.map(({ pace, targetWeightKg }, index): GoalProposal => {
-    const isOnDirectionSide =
-      direction === "lose" ? targetWeightKg <= gentlestKg : targetWeightKg >= gentlestKg;
     const isSameAsGentlerProposal = targetWeightKg === candidates[index - 1]?.targetWeightKg;
-    if (!isOnDirectionSide || isSameAsGentlerProposal) {
+    if (
+      !isOnDirectionSide({ direction, weightKg: targetWeightKg, comparedWeightKg: gentlestKg }) ||
+      isSameAsGentlerProposal
+    ) {
       return { pace, status: "unavailable", reason: "daily_guide_below_minimum" };
     }
     const dailyGuide = computeDailyGuide({

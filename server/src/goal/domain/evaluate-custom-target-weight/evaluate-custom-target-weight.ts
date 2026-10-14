@@ -3,6 +3,7 @@ import type { ComputedDailyGuide } from "../../../daily-guide/domain/computed-da
 import { computeDailyGuideDifferenceKcal } from "../../../daily-guide/domain/compute-daily-guide-difference-kcal";
 import { computeTargetWeightLimits } from "../compute-target-weight-limits";
 import type { CustomTargetWeightRejectionReason } from "../custom-target-weight-rejection-reason";
+import { isOnDirectionSide } from "../is-on-direction-side";
 import type { ProposalPace } from "../proposal-pace";
 import { roundToTenthKg } from "../round-to-tenth-kg";
 import { weeklyPaceRates } from "../weekly-pace-rates";
@@ -31,18 +32,16 @@ export const evaluateCustomTargetWeight = ({
     } => {
   const { direction, expenditureKcal, startingWeightTrendKg, daysFromStartToDeadline } = goal;
   const targetWeightKg = roundToTenthKg(enteredTargetWeightKg, "round");
-  const { gentlestKg, fastestKg, fastestEndReason } = computeTargetWeightLimits(goal);
-  // 向きの側へ進んだ量。減量は軽いほど、増量は重いほど大きい
-  const progressOf = (weightKg: number): number => (direction === "lose" ? -weightKg : weightKg);
-  const hasAcceptedTargetWeight = progressOf(gentlestKg) <= progressOf(fastestKg);
-  if (progressOf(targetWeightKg) < progressOf(gentlestKg)) {
+  const { gentlestKg, fastestKg, fastestEndReason, hasAcceptedTargetWeight } =
+    computeTargetWeightLimits(goal);
+  if (!isOnDirectionSide({ direction, weightKg: targetWeightKg, comparedWeightKg: gentlestKg })) {
     return {
       status: "rejected",
       reason: "not_on_direction_side",
       nearestAcceptedTargetWeightKg: hasAcceptedTargetWeight ? gentlestKg : undefined,
     };
   }
-  if (progressOf(targetWeightKg) > progressOf(fastestKg)) {
+  if (!isOnDirectionSide({ direction, weightKg: fastestKg, comparedWeightKg: targetWeightKg })) {
     return {
       status: "rejected",
       reason: fastestEndReason,
