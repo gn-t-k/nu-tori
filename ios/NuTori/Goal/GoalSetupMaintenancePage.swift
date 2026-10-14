@@ -5,11 +5,12 @@ import SwiftUI
 /// 維持のページ。「65.0 kg を保ちます。1日の目安は 2,250 kcal です。」と塗ったボタン「維持で始める」。
 /// 値（目標体重は開始の日の体重の傾向）は目標案の要求で受け取り、届くまではその場に回る印を出す
 struct GoalSetupMaintenancePage: View {
-    let flow: GoalSetupFlow
+    let content: GoalSetupFlowContent
+    let actions: GoalSetupFlowActions
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if case .maintenance(let maintenance)? = flow.proposals?.plan {
+            if case .maintenance(let maintenance)? = content.proposals?.plan {
                 Group {
                     Text(
                         "\(WeightAmountText.kilograms(maintenance.targetWeightKilograms)) を保ちます。1日の目安は \(NutritionText.amount(.exactly(Double(maintenance.dailyGuide.energyKilocalories)), of: .energyKcal)) です。"
@@ -18,24 +19,25 @@ struct GoalSetupMaintenancePage: View {
                     .monospacedDigit()
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("goal-setup-maintenance")
-                    if flow.showsRecalculated {
+                    if content.showsRecalculated {
                         Text("新しい体重で計算し直しました。")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .opacity(isDeciding ? 0.4 : 1)
-                if flow.unreachableRequest == .decision {
+                if content.unreachableRequest == .decision {
                     Text(GoalSetupUnreachableText.decision)
                         .font(.footnote)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("goal-setup-unreachable")
                 }
                 GoalSetupStartButton(
-                    flow: flow, title: "維持で始める", identifier: "goal-setup-maintain-start")
-                GoalSetupFooter(flow: flow) {
-                    if flow.unreachableRequest == .decision {
-                        GoalSetupRetryButton(flow: flow)
+                    title: "維持で始める", identifier: "goal-setup-maintain-start",
+                    isDeciding: content.isDeciding, decide: actions.decide)
+                GoalSetupFooter(page: content.page, goBack: actions.goBack) {
+                    if content.unreachableRequest == .decision {
+                        GoalSetupRetryButton(retry: actions.retry)
                     }
                 }
                 .opacity(isDeciding ? 0.4 : 1)
@@ -43,12 +45,12 @@ struct GoalSetupMaintenancePage: View {
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 120)
-                GoalSetupFooter(flow: flow) { EmptyView() }
+                GoalSetupFooter(page: content.page, goBack: actions.goBack) { EmptyView() }
             }
         }
     }
 
     private var isDeciding: Bool {
-        flow.decision != .idle
+        content.isDeciding
     }
 }

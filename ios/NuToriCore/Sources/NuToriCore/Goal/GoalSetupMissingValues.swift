@@ -10,7 +10,7 @@ public struct GoalSetupMissingValues: Sendable, Equatable {
     public let selectableBirthYears: ClosedRange<Int>
 
     /// - Parameter asksCurrentWeight: 体重の記録が1つも無い人だけ、今の体重を尋ねる
-    init(health: HealthBodyData, asksCurrentWeight: Bool, today: CalendarDay) {
+    public init(health: HealthBodyData, asksCurrentWeight: Bool, today: CalendarDay) {
         self.health = health
         self.today = today
         var asked: [Field] = []

@@ -65,7 +65,7 @@ public struct GoalProposals: Sendable, Equatable {
         /// 出せる案
         public var offeredProposals: [OfferedProposal] {
             proposals.compactMap {
-                switch $0.availability {
+                switch $0 {
                 case .offered(let offered): offered
                 case .unavailable: nil
                 }
@@ -84,19 +84,17 @@ public struct GoalProposals: Sendable, Equatable {
         case hard
     }
 
-    public struct Proposal: Sendable, Equatable {
-        public let pace: Pace
-        public let availability: Availability
-
-        public init(pace: Pace, availability: Availability) {
-            self.pace = pace
-            self.availability = availability
-        }
-    }
-
-    public enum Availability: Sendable, Equatable {
+    /// 3つの枠の1つ。出せる案か、出せない枠
+    public enum Proposal: Sendable, Equatable {
         case offered(OfferedProposal)
-        case unavailable(UnavailableReason)
+        case unavailable(pace: Pace, reason: UnavailableReason)
+
+        public var pace: Pace {
+            switch self {
+            case .offered(let offered): offered.pace
+            case .unavailable(let pace, _): pace
+            }
+        }
     }
 
     public struct OfferedProposal: Sendable, Equatable {

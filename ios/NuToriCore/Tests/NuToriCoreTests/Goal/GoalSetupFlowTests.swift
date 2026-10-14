@@ -55,7 +55,8 @@ struct GoalSetupFlowTests {
                 #expect(harness.flow.page == .proposals)
                 #expect(harness.flow.progress == .init(count: 3, index: 2))
                 #expect(
-                    (try harness.sentBodies("proposals").first?["plan"] as? [String: Any])?["deadlineOn"]
+                    (try harness.sentBodies("proposals").first?["plan"] as? [String: Any])?[
+                        "deadlineOn"]
                         as? String
                         == "2026-04-01")
             }
@@ -244,7 +245,7 @@ struct GoalSetupFlowTests {
                 await harness.flow.proceedFromMissingValues()
 
                 #expect(
-                    harness.flow.usedBody
+                    harness.flow.submittedBody
                         == GoalSetupBody(
                             sex: .female, heightCentimeters: 160, ageYears: 35,
                             activity: .level(.standing)))
@@ -457,7 +458,8 @@ struct GoalSetupFlowTests {
 
                 #expect(harness.flow.page == .proposals)
                 #expect(
-                    (try harness.sentBodies("proposals").first?["plan"] as? [String: Any])?["deadlineOn"]
+                    (try harness.sentBodies("proposals").first?["plan"] as? [String: Any])?[
+                        "deadlineOn"]
                         as? String
                         == "2026-03-01")
             }
@@ -719,7 +721,8 @@ struct GoalSetupFlowTests {
                 await harness.flow.decide()
 
                 #expect(harness.flow.showsRecalculated == false)
-                #expect(harness.observations.all == [.decided(choice: .custom, recalculated: false)])
+                #expect(
+                    harness.observations.all == [.decided(choice: .custom, recalculated: false)])
             }
         }
 
@@ -831,7 +834,7 @@ struct GoalSetupFlowTests {
         }
 
         @MainActor
-        @Suite("決めたが、応答の記録をキャッシュに当てられなかったとき")
+        @Suite("決めたが、応答の記録をキャッシュに当てられなかったとき（記録は同期で届く）")
         struct DecidedButNotCached {
             let harness: GoalSetupFlowHarness
 
@@ -850,7 +853,7 @@ struct GoalSetupFlowTests {
                 harness.flow.open(from: .noticeCard)
             }
 
-            @Test("押せないまま残さずに閉じ、知らせに答えること（記録は同期で届く）")
+            @Test("押せないまま残さずに閉じ、知らせに答えること")
             func closes() async {
                 await harness.flow.decide()
 

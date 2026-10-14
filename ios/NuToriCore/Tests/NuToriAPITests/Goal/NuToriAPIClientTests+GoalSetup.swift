@@ -196,12 +196,9 @@ extension NuToriAPIClientTests {
                                         direction: .lose,
                                         deadlineOn: "2026-03-31",
                                         proposals: [
-                                            .init(pace: .gentle, availability: .offered(gentle)),
-                                            .init(
-                                                pace: .standard, availability: .offered(standard)),
-                                            .init(
-                                                pace: .hard,
-                                                availability: .unavailable(.dailyGuideBelowMinimum)),
+                                            .offered(gentle), .offered(standard),
+                                            .unavailable(
+                                                pace: .hard, reason: .dailyGuideBelowMinimum),
                                         ],
                                         acceptedTargetWeightRange: .init(
                                             minimumKilograms: 64.1, maximumKilograms: 69.9,

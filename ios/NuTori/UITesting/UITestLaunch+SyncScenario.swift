@@ -182,13 +182,11 @@
         nonisolated private static func offered(
             _ pace: GoalProposals.Pace, _ kilograms: Double, _ energy: Int
         ) -> GoalProposals.Proposal {
-            .init(
-                pace: pace,
-                availability: .offered(
-                    .init(
-                        pace: pace, targetWeightKilograms: kilograms,
-                        dailyGuide: dailyGuide(energy),
-                        difficulty: pace, dailyGuideDifferenceKilocalories: energy - 2250)))
+            .offered(
+                .init(
+                    pace: pace, targetWeightKilograms: kilograms,
+                    dailyGuide: dailyGuide(energy),
+                    difficulty: pace, dailyGuideDifferenceKilocalories: energy - 2250))
         }
 
         /// P・F・C は kcal によらず同じにする

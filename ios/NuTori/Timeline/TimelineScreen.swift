@@ -672,7 +672,7 @@ struct TimelineScreen: View {
     private func composer() -> some View {
         TimelineComposer(
             weightRecordedToday: records.contains { $0.day == today },
-            expandsGoalSetup: goalSetup.isOpen && currentGoal == nil,
+            expandsGoalSetup: goalSetup.flow?.isOpen == true && currentGoal == nil,
             preparingWeightEntry: weightEntryPhase == .preparing,
             showsCameraNotice: showsCameraNotice,
             initialDraft: TextDraft.empty,

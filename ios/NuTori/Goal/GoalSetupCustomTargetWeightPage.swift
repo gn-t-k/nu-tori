@@ -6,15 +6,16 @@ import SwiftUI
 /// 受け付ける端で − か ＋ が押せなくなり、外の値は端の値に直して1行を添える。
 /// 答えが届くまでは前の1日の目安と大変さのひとことを薄くし、横に回る印を出す。「この目標で始める」はいつも押せる
 struct GoalSetupCustomTargetWeightPage: View {
-    let flow: GoalSetupFlow
+    let content: GoalSetupFlowContent
+    let actions: GoalSetupFlowActions
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            GoalSetupUsedValuesLine(flow: flow)
-            Text("\(GoalSetupDayText.monthDay(flow.deadline))までの目標体重を決める")
+            GoalSetupUsedValuesLine(content: content, actions: actions)
+            Text("\(GoalSetupDayText.monthDay(content.deadline))までの目標体重を決める")
                 .font(.headline)
                 .fixedSize(horizontal: false, vertical: true)
-            if let custom = flow.customTargetWeight {
+            if let custom = content.customTargetWeight {
                 Group {
                     stepper(custom)
                     slider(custom)
@@ -31,7 +32,7 @@ struct GoalSetupCustomTargetWeightPage: View {
                 .opacity(isDeciding ? 0.4 : 1)
                 .disabled(isDeciding)
             }
-            if flow.showsRecalculated {
+            if content.showsRecalculated {
                 Text("新しい体重で計算し直しました。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -44,10 +45,11 @@ struct GoalSetupCustomTargetWeightPage: View {
                     .accessibilityIdentifier("goal-setup-unreachable")
             }
             GoalSetupStartButton(
-                flow: flow, title: "この目標で始める", identifier: "goal-setup-custom-start")
-            GoalSetupFooter(flow: flow) {
-                if flow.unreachableRequest != nil {
-                    GoalSetupRetryButton(flow: flow)
+                title: "この目標で始める", identifier: "goal-setup-custom-start",
+                isDeciding: content.isDeciding, decide: actions.decide)
+            GoalSetupFooter(page: content.page, goBack: actions.goBack) {
+                if content.unreachableRequest != nil {
+                    GoalSetupRetryButton(retry: actions.retry)
                 }
             }
             .opacity(isDeciding ? 0.4 : 1)
@@ -65,11 +67,11 @@ struct GoalSetupCustomTargetWeightPage: View {
     @FocusState private var typing: Bool
 
     private var isDeciding: Bool {
-        flow.decision != .idle
+        content.isDeciding
     }
 
     private var unreachableText: String? {
-        switch flow.unreachableRequest {
+        switch content.unreachableRequest {
         case .customTargetWeight: GoalSetupUnreachableText.customTargetWeight
         case .decision: GoalSetupUnreachableText.decision
         case nil: nil
@@ -186,7 +188,7 @@ struct GoalSetupCustomTargetWeightPage: View {
     }
 
     private var offeredProposals: [GoalProposals.OfferedProposal] {
-        guard case .weightChange(let weightChange)? = flow.proposals?.plan else { return [] }
+        guard case .weightChange(let weightChange)? = content.proposals?.plan else { return [] }
         return weightChange.offeredProposals
     }
 
@@ -229,7 +231,7 @@ struct GoalSetupCustomTargetWeightPage: View {
     /// 端の値に直したときの1行
     private func correctionText(_ custom: CustomTargetWeight) -> String? {
         guard let reason = custom.correctedReason else { return nil }
-        let deadline = GoalSetupDayText.monthDay(flow.deadline)
+        let deadline = GoalSetupDayText.monthDay(content.deadline)
         let kilograms = WeightAmountText.kilograms(custom.kilograms)
         switch reason {
         case .dailyGuideBelowMinimum:
@@ -245,7 +247,7 @@ struct GoalSetupCustomTargetWeightPage: View {
     }
 
     private func move(to kilograms: Double) {
-        Task { await flow.setCustomTargetWeight(kilograms) }
+        actions.setCustomTargetWeight(kilograms)
     }
 
     /// 打った値は、キーボードを閉じたときに受け取る。外の値は流れが端の値に直す

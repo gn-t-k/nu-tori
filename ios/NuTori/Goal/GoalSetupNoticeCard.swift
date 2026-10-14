@@ -19,8 +19,12 @@ struct GoalSetupNoticeCard: View {
             if let goal {
                 GoalDecidedCard(goal: goal, dailyGuide: dailyGuide)
             } else if let flow = session.flow, flow.isOpen {
-                GoalSetupFlowCard(flow: flow, timeZone: timeZone, close: session.close)
-                    .transition(expansion)
+                GoalSetupFlowCard(
+                    content: GoalSetupFlowContent(flow),
+                    actions: GoalSetupFlowActions(flow, close: flow.close),
+                    timeZone: timeZone
+                )
+                .transition(expansion)
             } else {
                 closedCard
                     .transition(expansion)
@@ -39,7 +43,7 @@ struct GoalSetupNoticeCard: View {
 
     private var form: Form {
         if goal != nil { return .decided }
-        return session.isOpen ? .expanded : .closed
+        return session.flow?.isOpen == true ? .expanded : .closed
     }
 
     /// 「視差効果を減らす」では、カードの広がりをフェードにする
@@ -90,12 +94,12 @@ struct GoalSetupNoticeCard: View {
     @ViewBuilder private var buttons: some View {
         if notice.response == nil {
             Button("あとで") {
-                Task { await session.later() }
+                Task { await session.answerLater() }
             }
             .buttonStyle(.bordered)
             .accessibilityIdentifier("goal-setup-later")
         }
-        Button(session.hasProgress ? "続ける" : "目標を立てる") {
+        Button(session.flow?.hasProgress == true ? "続ける" : "目標を立てる") {
             open(.noticeCard)
         }
         .buttonStyle(.borderedProminent)

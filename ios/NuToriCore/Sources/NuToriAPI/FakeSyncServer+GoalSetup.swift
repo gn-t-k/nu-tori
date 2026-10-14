@@ -137,9 +137,15 @@
         ) -> (SyncedGoal.Direction, GoalProposalsPlan) {
             switch direction {
             case .lose:
-                (.lose(weightChange), .weightChange(direction: .lose, deadlineOn: weightChange.deadlineOn))
+                (
+                    .lose(weightChange),
+                    .weightChange(direction: .lose, deadlineOn: weightChange.deadlineOn)
+                )
             case .gain:
-                (.gain(weightChange), .weightChange(direction: .gain, deadlineOn: weightChange.deadlineOn))
+                (
+                    .gain(weightChange),
+                    .weightChange(direction: .gain, deadlineOn: weightChange.deadlineOn)
+                )
             }
         }
 
@@ -181,8 +187,10 @@
         fileprivate init(_ wire: Components.Schemas.GoalProposalsPlan) {
             switch wire {
             case .maintain: self = .maintain
-            case .lose(let lose): self = .weightChange(direction: .lose, deadlineOn: lose.deadlineOn)
-            case .gain(let gain): self = .weightChange(direction: .gain, deadlineOn: gain.deadlineOn)
+            case .lose(let lose):
+                self = .weightChange(direction: .lose, deadlineOn: lose.deadlineOn)
+            case .gain(let gain):
+                self = .weightChange(direction: .gain, deadlineOn: gain.deadlineOn)
             }
         }
     }
@@ -227,9 +235,14 @@
                         targetWeightKg: maintenance.targetWeightKilograms,
                         dailyGuide: .init(maintenance.dailyGuide)))
             case .weightChange(let weightChange):
+                let direction =
+                    switch weightChange.direction {
+                    case .lose: "lose"
+                    case .gain: "gain"
+                    }
                 self.init(
                     startedOn: proposals.startedOn,
-                    direction: weightChange.direction == .lose ? "lose" : "gain",
+                    direction: direction,
                     expenditureKcal: proposals.expenditureKilocalories, expenditureSource: source,
                     startingWeightTrendKg: proposals.startingWeightTrendKilograms,
                     lastWeightRecordedOn: proposals.lastWeightRecordedOn,
@@ -246,7 +259,7 @@
 
     extension Components.Schemas.GoalProposal {
         fileprivate init(_ proposal: GoalProposals.Proposal) {
-            switch proposal.availability {
+            switch proposal {
             case .offered(let offered):
                 self.init(
                     pace: proposal.pace.rawValue, status: "offered",
@@ -254,7 +267,7 @@
                     dailyGuide: .init(offered.dailyGuide),
                     difficulty: offered.difficulty.rawValue,
                     dailyGuideDifferenceKcal: offered.dailyGuideDifferenceKilocalories)
-            case .unavailable(let reason):
+            case .unavailable(_, let reason):
                 let name =
                     switch reason {
                     case .dailyGuideBelowMinimum: "daily_guide_below_minimum"
