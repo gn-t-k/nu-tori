@@ -29,7 +29,6 @@
             conversation: sample.conversation,
             conversationActions: .noop,
             goalSetupFlow: .notStarted,
-            answerGoalSetupLater: {},
             openGoalSetupFlow: { _ in }
         )
     }

@@ -211,8 +211,7 @@ import SwiftData
                         Task { await session.capture(.goalSetup(observation)) }
                     }
                 )
-            },
-            answerLater: { await sync.respondToGoalSetupNotice() }
+            }
         )
         let model = RootModel(
             accountSession: session, recordSync: sync, reflector: reflector, health: health,

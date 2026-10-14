@@ -21,7 +21,7 @@ public struct Timeline: Sendable {
                 return (targetDay, notice)
             },
             by: \.day)
-        // 目標を立てる知らせは、答えたあとも（「あとで」、目標が決まった）カードを残す。
+        // 目標を立てる知らせは、答えたあとも（目標が決まった）カードを残す。
         // 出したときのタイムゾーンの日に置き、使い始めた日より前なら使い始めた日に置く
         let goalSetupNotice = input.notices.first { $0.kind == .goalSetup }
         let goalSetupNoticeDay = goalSetupNotice.map {

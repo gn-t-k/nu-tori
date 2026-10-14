@@ -41,8 +41,6 @@ struct TimelineScreen: View {
     let conversationActions: ConversationActions
     /// 目標を立てる知らせのカードが広げる、目標の設定の流れの形
     let goalSetupFlow: GoalSetupNoticeCard.Flow
-    /// 目標を立てる知らせの「あとで」
-    let answerGoalSetupLater: () async -> Void
     /// 目標を立てる知らせのカードを広げる。途中まで進めていれば同じページから
     let openGoalSetupFlow: (GoalSetupObservation.Entry) async -> Void
 
@@ -246,7 +244,7 @@ struct TimelineScreen: View {
     @State private var showsPhotoPicker = false
     /// 体重の知らせの中で記録した回数。触覚を鳴らす合図
     @State private var noticeRecordedCount = 0
-    /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
+    /// 答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
     /// 見える範囲の規則は NuToriCore の TimelineViewport が持つ。規則は前の出来事を覚えて決めるので、描き直しをまたいで持つために @State に置く。
@@ -572,7 +570,6 @@ struct TimelineScreen: View {
                 currentGoal: currentGoal,
                 flow: goalSetupFlow,
                 timeZone: timeZone,
-                answerLater: { Task { await answerGoalSetupLater() } },
                 open: { entry in openGoalSetup(from: entry) }
             )
             .id(item.id)
@@ -596,7 +593,10 @@ struct TimelineScreen: View {
     private func unansweredNoticeLines(in timeline: Timeline) -> some View {
         VStack(spacing: 0) {
             ForEach(
-                timeline.unansweredNoticeLines.filter { unansweredNoticeLineVisibility.shows($0) },
+                timeline.unansweredNoticeLines.filter {
+                    unansweredNoticeLineVisibility.shows(
+                        $0, listedDays: viewport.listedDays(of: timeline.days))
+                },
                 id: \.self
             ) { line in
                 switch line {

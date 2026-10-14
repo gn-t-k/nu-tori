@@ -47,12 +47,14 @@ struct UnansweredNoticeLineTests {
         @Suite("カードが画面の上へ流れたとき")
         struct CardAbove {
             let line: UnansweredNoticeLine
+            let days: [Timeline.Day]
             let visibility: UnansweredNoticeLineVisibility
 
             init() throws {
                 let notice = try UnansweredNoticeLineTests.goalSetup(
                     issuedAt: "2026-09-22T19:00:00+09:00")
                 line = .goalSetup(notice)
+                days = UnansweredNoticeLineTests.timeline(notices: [notice]).days
                 var visibility = UnansweredNoticeLineVisibility()
                 visibility.note(.init(noticeId: notice.id, maxY: -20))
                 self.visibility = visibility
@@ -60,7 +62,7 @@ struct UnansweredNoticeLineTests {
 
             @Test("1行を出すこと")
             func shows() {
-                #expect(visibility.shows(line))
+                #expect(visibility.shows(line, listedDays: days[...]))
             }
 
             @Test("カードが見えるところへ戻ると、1行を出さないこと")
@@ -68,7 +70,7 @@ struct UnansweredNoticeLineTests {
                 var visibility = visibility
                 visibility.note(.init(noticeId: line.notice.id, maxY: 120))
 
-                #expect(!visibility.shows(line))
+                #expect(!visibility.shows(line, listedDays: days[...]))
             }
         }
 
@@ -77,11 +79,32 @@ struct UnansweredNoticeLineTests {
             var visibility = UnansweredNoticeLineVisibility()
             visibility.note(.init(noticeId: notice.id, maxY: 300))
 
-            #expect(!visibility.shows(.goalSetup(notice)))
+            #expect(!visibility.shows(.goalSetup(notice), listedDays: timeline.days[...]))
+        }
+
+        @Suite("開き直して、カードを置いた日をまだ並べていないとき")
+        struct CardDayNotListed {
+            @Test("カードは並べた日より上にあるので、位置が届いていなくても1行を出すこと")
+            func shows() throws {
+                let notice = try UnansweredNoticeLineTests.goalSetup(
+                    issuedAt: "2026-09-22T19:00:00+09:00")
+                let days = UnansweredNoticeLineTests.timeline(notices: [notice]).days
+
+                #expect(
+                    UnansweredNoticeLineVisibility().shows(
+                        .goalSetup(notice), listedDays: days.suffix(2)))
+            }
+        }
+
+        @Test("カードを置いた日を並べていて、位置がまだ届いていないときは、1行を出さないこと")
+        func hidesUntilListedCardReportsPosition() {
+            #expect(
+                !UnansweredNoticeLineVisibility().shows(
+                    .goalSetup(notice), listedDays: timeline.days[...]))
         }
     }
 
-    @Suite("「あとで」か目標が決まって、目標を立てる知らせが答えた形になったとき")
+    @Suite("目標が決まって、目標を立てる知らせが答えた形になったとき")
     struct AnsweredGoalSetup {
         let timeline: Timeline
 
@@ -130,7 +153,10 @@ struct UnansweredNoticeLineTests {
             visibility.note(.init(noticeId: weightNotice.id, maxY: -40))
             visibility.note(.init(noticeId: goalSetup.id, maxY: 200))
 
-            #expect(timeline.unansweredNoticeLines.map(visibility.shows) == [true, false])
+            #expect(
+                timeline.unansweredNoticeLines.map {
+                    visibility.shows($0, listedDays: timeline.days[...])
+                } == [true, false])
         }
     }
 

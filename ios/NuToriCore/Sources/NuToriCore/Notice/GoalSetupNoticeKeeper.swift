@@ -26,8 +26,8 @@ public actor GoalSetupNoticeKeeper {
         await inOrder { await $0.issue() }
     }
 
-    /// 「あとで」を押したときと、目標が決まったときに呼ぶ。キャッシュの目標を立てる知らせが答えていなければ、答える。
-    /// 早いほうの1回だけが答えを積み、あとの呼び出しと、知らせが無いときは積まない。
+    /// 目標が決まったときに呼ぶ。キャッシュの目標を立てる知らせが答えていなければ、答える。
+    /// 最初の1回だけが答えを積み、あとの呼び出し（目標の立て直し）と、知らせが無いときは積まない。
     /// 答える書き込みを送り待ちに積んだかを返す
     @discardableResult
     public func respondIfUnanswered() async -> Bool {

@@ -64,7 +64,7 @@ extension RecordSyncTests {
                 #expect(device.server.pullTimes.count == 4)
             }
 
-            @Test("「あとで」か目標が決まると、答えた形にして、答える書き込みを裏で送ること", .timeLimit(.minutes(1)))
+            @Test("目標が決まると、答えた形にして、答える書き込みを裏で送ること", .timeLimit(.minutes(1)))
             func respondsAndSends() async throws {
                 _ = try await device.recordSync.sync()
                 await device.reflection.finishedSyncs.reaches(2)
