@@ -18,6 +18,10 @@ struct TimelineScreen: View {
     let meals: [MealCard]
     /// 答えた知らせも含む
     let notices: [Notice]
+    /// 閉じた目標も含む。1日の丸と日のまとめを、その日の1日の目安と比べるために引く
+    let goals: [Goal]
+    /// 目標がまだ届いていない1日の目安も含む
+    let dailyGuides: [DailyGuide]
     /// まだ届いていない記録（薄く描く）
     let undeliveredRecords: UndeliveredRecords
     let capture: (ClientUsageEvent) async -> Void
@@ -133,7 +137,7 @@ struct TimelineScreen: View {
                 if let summaryDay, let loaded {
                     DaySummarySheet(
                         timeline: loaded, day: summaryDay, weightRecords: records,
-                        weightTrend: weightTrend
+                        weightTrend: weightTrend, goalProgress: goalProgress, today: today
                     ) { chosen in
                         self.summaryDay = nil
                         waitingInstructions += viewport.dayChosen(chosen)
@@ -684,8 +688,16 @@ struct TimelineScreen: View {
         Timeline(
             input: Timeline.Input(
                 weightRecords: records, rejectedLines: rejectedLines, meals: meals,
-                notices: notices, undelivered: undeliveredRecords, conversation: conversation),
+                notices: notices, undelivered: undeliveredRecords, conversation: conversation,
+                goals: goals, dailyGuides: dailyGuides),
             firstDay: firstDay, today: today)
+    }
+
+    /// 日のまとめの進行中の要約。今日を含む目標で出す
+    private var goalProgress: GoalProgress? {
+        DailyGuideForDay(on: today, goals: goals, dailyGuides: dailyGuides).flatMap {
+            GoalProgress(goal: $0.goal, today: today, weightTrend: weightTrend)
+        }
     }
 }
 
