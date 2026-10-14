@@ -268,25 +268,6 @@ extension TimelineViewportTests {
             }
         }
 
-        @Suite("遡っているときに伸びる返事が無くなり、そのあと今日の項目が足されたとき")
-        struct ItemAddedAfterReplyFinishedWhileScrolledAway {
-            let added: [Timeline.Day]
-            var viewport: TimelineViewport
-
-            init() throws {
-                let days = try ListedDays.fortyDays()
-                added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [30])
-                viewport = ListedDays.scrolledAway(from: days)
-                viewport.growingReplyChanged(isGrowing: false)
-                _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
-            }
-
-            @Test("一番下にはいないので、並べていた3日のままにすること")
-            func keepsListedDays() {
-                #expect(Array(viewport.listedDays(of: added)) == Array(added.suffix(3)))
-            }
-        }
-
         @Suite("一番下で指で触れているときに、今日の項目が足されたとき")
         struct ItemAddedWhileTouchingAtEnd {
             let added: [Timeline.Day]

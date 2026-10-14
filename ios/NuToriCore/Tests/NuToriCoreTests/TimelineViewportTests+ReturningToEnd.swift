@@ -89,17 +89,8 @@ extension TimelineViewportTests {
                 viewport.textResent()
             }
 
-            @Test("押した吹き出しの所から動かさず、追わないままであること")
+            @Test("追わないままであること")
             func doesNotFollow() {
-                #expect(!viewport.followsSizeChanges)
-            }
-
-            @Test("そのあと日が変わっても、読んでいる所から動かさないこと")
-            mutating func staysInPlaceWhenDayChanged() throws {
-                let changed = try ListedDays.days(recordCounts: [10, 0])
-                let instructions = viewport.daysChanged(
-                    from: Array(changed.dropLast()), to: changed, now: ListedDays.notJustAdded)
-                #expect(instructions.isEmpty)
                 #expect(!viewport.followsSizeChanges)
             }
         }

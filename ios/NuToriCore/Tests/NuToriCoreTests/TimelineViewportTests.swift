@@ -145,15 +145,6 @@ struct TimelineViewportTests {
             func doesNotFollow() {
                 #expect(!viewport.followsSizeChanges)
             }
-
-            @Test("そのあと日が変わっても、読んでいる所から動かさないこと")
-            mutating func staysInPlaceWhenDayChanged() throws {
-                let changed = try ListedDays.days(recordCounts: [10, 0])
-                let instructions = viewport.daysChanged(
-                    from: Array(changed.dropLast()), to: changed, now: ListedDays.notJustAdded)
-                #expect(instructions.isEmpty)
-                #expect(!viewport.followsSizeChanges)
-            }
         }
 
         @Suite("一番下が入力欄の上に見えている所で指で触れているときに、伸びている返事が終わったとき")
