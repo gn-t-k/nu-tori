@@ -14,7 +14,7 @@ export const computeTargetWeightAtPace = ({
   daysFromStartToDeadline: number;
 }): number => {
   const changeRate = (weeklyPaceRate * daysFromStartToDeadline) / 7;
-  return direction === "loss"
+  return direction === "lose"
     ? roundToTenthKg(startingWeightTrendKg * (1 - changeRate), "ceil")
     : roundToTenthKg(startingWeightTrendKg * (1 + changeRate), "floor");
 };

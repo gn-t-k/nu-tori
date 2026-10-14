@@ -10,7 +10,7 @@ describe("1日の目安のカロリー", () => {
           computeDailyGuideEnergy({
             expenditureKcal: 2250,
             goal: {
-              direction: "loss",
+              direction: "lose",
               startingWeightTrendKg: 72.4,
               targetWeightKg: 68.1,
               daysFromStartToDeadline: 84,
@@ -27,7 +27,7 @@ describe("1日の目安のカロリー", () => {
           computeDailyGuideEnergy({
             expenditureKcal: 2000,
             goal: {
-              direction: "loss",
+              direction: "lose",
               startingWeightTrendKg: 70,
               targetWeightKg: 69.9,
               daysFromStartToDeadline: 3,
@@ -43,7 +43,7 @@ describe("1日の目安のカロリー", () => {
           computeDailyGuideEnergy({
             expenditureKcal: 2000,
             goal: {
-              direction: "loss",
+              direction: "lose",
               startingWeightTrendKg: 70,
               targetWeightKg: 71,
               daysFromStartToDeadline: 28,
@@ -60,7 +60,7 @@ describe("1日の目安のカロリー", () => {
           computeDailyGuideEnergy({
             expenditureKcal: 2000,
             goal: {
-              direction: "loss",
+              direction: "lose",
               startingWeightTrendKg: 70,
               targetWeightKg: 60,
               daysFromStartToDeadline: 28,
@@ -73,7 +73,7 @@ describe("1日の目安のカロリー", () => {
         const { energyKcal } = computeDailyGuideEnergy({
           expenditureKcal: 2000,
           goal: {
-            direction: "loss",
+            direction: "lose",
             startingWeightTrendKg: 70,
             targetWeightKg: 60,
             daysFromStartToDeadline: 28,
@@ -91,7 +91,7 @@ describe("1日の目安のカロリー", () => {
           computeDailyGuideEnergy({
             expenditureKcal: 1700,
             goal: {
-              direction: "loss",
+              direction: "lose",
               startingWeightTrendKg: 70,
               targetWeightKg: 68,
               daysFromStartToDeadline: 28,
@@ -107,7 +107,7 @@ describe("1日の目安のカロリー", () => {
           computeDailyGuideEnergy({
             expenditureKcal: 1700,
             goal: {
-              direction: "loss",
+              direction: "lose",
               startingWeightTrendKg: 70,
               targetWeightKg: 60,
               daysFromStartToDeadline: 28,
@@ -124,7 +124,7 @@ describe("1日の目安のカロリー", () => {
           computeDailyGuideEnergy({
             expenditureKcal: 1500,
             goal: {
-              direction: "loss",
+              direction: "lose",
               startingWeightTrendKg: 60,
               targetWeightKg: 56.8,
               daysFromStartToDeadline: 84,
@@ -192,7 +192,7 @@ describe("1日の目安のカロリー", () => {
         expect(
           computeDailyGuideEnergy({
             expenditureKcal: 2225,
-            goal: { direction: "maintenance", targetWeightKg: 65 },
+            goal: { direction: "maintain", targetWeightKg: 65 },
           }),
         ).toEqual({ energyKcal: 2250, limitHits: [] });
       });
@@ -203,7 +203,7 @@ describe("1日の目安のカロリー", () => {
         expect(
           computeDailyGuideEnergy({
             expenditureKcal: 2224,
-            goal: { direction: "maintenance", targetWeightKg: 65 },
+            goal: { direction: "maintain", targetWeightKg: 65 },
           }),
         ).toEqual({ energyKcal: 2200, limitHits: [] });
       });
@@ -214,7 +214,7 @@ describe("1日の目安のカロリー", () => {
         expect(
           computeDailyGuideEnergy({
             expenditureKcal: 1100,
-            goal: { direction: "maintenance", targetWeightKg: 40 },
+            goal: { direction: "maintain", targetWeightKg: 40 },
           }),
         ).toEqual({ energyKcal: 1200, limitHits: ["minimum_energy"] });
       });

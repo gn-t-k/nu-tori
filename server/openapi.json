@@ -1625,6 +1625,333 @@
           "record"
         ]
       },
+      "GoalSetupPreview": {
+        "type": "object",
+        "properties": {
+          "canBackCalculate": {
+            "type": "boolean",
+            "description": "初めての目標のときだけ付く。推定消費カロリーを記録から逆算できるか。false なら、身体データを添えてもう一度下見を求める"
+          },
+          "canOfferLoseProposals": {
+            "type": "boolean",
+            "description": "減量で、推定消費カロリーと体重の傾向を出せたときだけ付く。減量の目標案を1つでも出せるか。受け付けるいちばん短い期限（開始の日から 28 日）で確かめるので、true ならどの期限でも出せる"
+          }
+        }
+      },
+      "GoalSetupRejection": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "断った理由。malformed_request（形の誤り）・invalid_time_zone・body_data_out_of_range・deadline_out_of_range（開始の日から数えて 28〜182 日の外）・weight_record_missing（体重記録が1つも無い）・body_data_missing（逆算できず、身体データも無い）",
+            "example": "deadline_out_of_range"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "GoalSetupBodyData": {
+        "type": "object",
+        "properties": {
+          "sex": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female"
+            ]
+          },
+          "heightCentimeters": {
+            "type": "number"
+          },
+          "ageYears": {
+            "type": "integer",
+            "description": "生年月日か、手で入れた生まれた年から、端末が出した歳"
+          },
+          "activity": {
+            "$ref": "#/components/schemas/GoalSetupActivity"
+          }
+        },
+        "required": [
+          "sex",
+          "heightCentimeters",
+          "ageYears",
+          "activity"
+        ],
+        "description": "初めての目標で、下見が逆算できないと答えた人が、そのあとの要求に添える。保存しない"
+      },
+      "GoalSetupActivity": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GoalSetupStepsActivity"
+          },
+          {
+            "$ref": "#/components/schemas/GoalSetupLevelActivity"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "steps": "#/components/schemas/GoalSetupStepsActivity",
+            "level": "#/components/schemas/GoalSetupLevelActivity"
+          }
+        }
+      },
+      "GoalSetupStepsActivity": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "steps"
+            ]
+          },
+          "dailySteps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "calendarDay": {
+                  "type": "string",
+                  "description": "YYYY-MM-DD",
+                  "example": "2026-10-14"
+                },
+                "steps": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "calendarDay",
+                "steps"
+              ]
+            },
+            "maxItems": 31,
+            "description": "初期値の窓（今日を除く直前の 28 日）の、日ごとの歩数"
+          }
+        },
+        "required": [
+          "type",
+          "dailySteps"
+        ]
+      },
+      "GoalSetupLevelActivity": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "level"
+            ]
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "sedentary",
+              "standing",
+              "active"
+            ],
+            "description": "ほぼ座り仕事・立ち仕事が多い・よく動く。歩数が読めなかった人が選ぶ"
+          }
+        },
+        "required": [
+          "type",
+          "level"
+        ]
+      },
+      "GoalProposals": {
+        "type": "object",
+        "properties": {
+          "startedOn": {
+            "type": "string",
+            "description": "開始の日（YYYY-MM-DD）。端末の今のタイムゾーンでの今日。立て直すときに今日が今の目標の開始の日より前なら、今の目標の開始の日。期限の日数はこの日から数える"
+          },
+          "direction": {
+            "type": "string",
+            "description": "lose・gain・maintain",
+            "example": "lose"
+          },
+          "expenditureKcal": {
+            "type": "integer",
+            "description": "計算に使った推定消費カロリー"
+          },
+          "expenditureSource": {
+            "type": "string",
+            "description": "推定消費カロリーの出どころ。back_calculated（逆算）・formula（式）・current（今の推定。立て直すとき）",
+            "example": "back_calculated"
+          },
+          "startingWeightTrendKg": {
+            "type": "number",
+            "description": "計算に使った、開始の日の体重の傾向。丸めていない"
+          },
+          "lastWeightRecordedOn": {
+            "type": "string",
+            "description": "体重の傾向の元になった、開始の日以前で最後の体重記録の日（YYYY-MM-DD）"
+          },
+          "deadlineOn": {
+            "type": "string",
+            "description": "減量・増量のときだけ付く"
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalProposal"
+            },
+            "description": "減量・増量のときだけ付く。ゆるめ・標準・ハードの3つの枠を、いつもこの順に"
+          },
+          "acceptedTargetWeightRange": {
+            "type": "object",
+            "properties": {
+              "minimumKg": {
+                "type": "number"
+              },
+              "maximumKg": {
+                "type": "number"
+              },
+              "fastestEndReason": {
+                "type": "string",
+                "description": "いちばん速い端（減量は下の端、増量は上の端）を決めた理由。pace_too_fast（ハード案の速さ）・daily_guide_below_minimum（下限 1,200 kcal）"
+              }
+            },
+            "required": [
+              "minimumKg",
+              "maximumKg",
+              "fastestEndReason"
+            ],
+            "description": "自分で決める目標体重の受け付ける幅（0.1 kg 単位、両端を含む）。減量・増量で、受け付ける目標体重があるときだけ付く"
+          },
+          "maintenance": {
+            "type": "object",
+            "properties": {
+              "targetWeightKg": {
+                "type": "number"
+              },
+              "dailyGuide": {
+                "$ref": "#/components/schemas/DailyGuidePlan"
+              }
+            },
+            "required": [
+              "targetWeightKg",
+              "dailyGuide"
+            ],
+            "description": "維持のときだけ付く"
+          }
+        },
+        "required": [
+          "startedOn",
+          "direction",
+          "expenditureKcal",
+          "expenditureSource",
+          "startingWeightTrendKg",
+          "lastWeightRecordedOn"
+        ]
+      },
+      "GoalProposal": {
+        "type": "object",
+        "properties": {
+          "pace": {
+            "type": "string",
+            "description": "gentle・standard・hard",
+            "example": "gentle"
+          },
+          "status": {
+            "type": "string",
+            "description": "offered（出せる）・unavailable（出せない）",
+            "example": "offered"
+          },
+          "targetWeightKg": {
+            "type": "number",
+            "description": "offered のときだけ"
+          },
+          "dailyGuide": {
+            "$ref": "#/components/schemas/DailyGuidePlan"
+          },
+          "difficulty": {
+            "type": "string",
+            "description": "offered のときだけ。大変さ。案ではその案の段階（pace と同じ値）"
+          },
+          "dailyGuideDifferenceKcal": {
+            "type": "integer",
+            "description": "offered のときだけ。1日の目安と推定消費カロリーの差（50 kcal 単位。少ないときは負）"
+          },
+          "unavailableReason": {
+            "type": "string",
+            "description": "unavailable のときだけ。daily_guide_below_minimum（1日の目安が下限 1,200 kcal を下回る）"
+          }
+        },
+        "required": [
+          "pace",
+          "status"
+        ]
+      },
+      "DailyGuidePlan": {
+        "type": "object",
+        "properties": {
+          "energyKcal": {
+            "type": "integer"
+          },
+          "proteinG": {
+            "type": "integer"
+          },
+          "fatG": {
+            "type": "integer"
+          },
+          "carbohydrateG": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "energyKcal",
+          "proteinG",
+          "fatG",
+          "carbohydrateG"
+        ],
+        "description": "offered のときだけ"
+      },
+      "CustomTargetWeightAssessment": {
+        "type": "object",
+        "properties": {
+          "startedOn": {
+            "type": "string",
+            "description": "計算に使った開始の日（YYYY-MM-DD）"
+          },
+          "status": {
+            "type": "string",
+            "description": "accepted（受け付ける）・rejected（受け付けない）",
+            "example": "accepted"
+          },
+          "dailyGuide": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DailyGuidePlan"
+              },
+              {
+                "description": "accepted のときだけ"
+              }
+            ]
+          },
+          "difficulty": {
+            "type": "string",
+            "description": "accepted のときだけ。大変さ。必要な速さを案の速さで区切った gentle・standard・hard"
+          },
+          "dailyGuideDifferenceKcal": {
+            "type": "integer",
+            "description": "accepted のときだけ。1日の目安と推定消費カロリーの差（50 kcal 単位。少ないときは負）"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "rejected のときだけ。pace_too_fast（速すぎる）・daily_guide_below_minimum（下限 1,200 kcal）・not_on_direction_side（体重の傾向より向きの側に出ない）"
+          },
+          "nearestAcceptedTargetWeightKg": {
+            "type": "number",
+            "description": "rejected で、その期限に受け付ける目標体重があるときだけ。受け付けるいちばん近い目標体重"
+          }
+        },
+        "required": [
+          "startedOn",
+          "status"
+        ]
+      },
       "ReplyStreamEvent": {
         "oneOf": [
           {
@@ -2242,6 +2569,340 @@
           },
           "404": {
             "description": "まだ受け取っていないか、消した"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/goal-setup/preview": {
+      "post": {
+        "operationId": "previewGoalSetup",
+        "summary": "目標の下見",
+        "description": "向きを選んだ直後に、逆算できるかと、減量の目標案を1つでも出せるかを答える。初めての目標では、先に体重記録を同期で送り切る。何も書かない",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timeZone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "端末の今のタイムゾーン（IANA 名）。開始の日を決める",
+                    "example": "Asia/Tokyo"
+                  },
+                  "preUseEnergyIntakes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "calendarDay": {
+                          "type": "string",
+                          "description": "YYYY-MM-DD",
+                          "example": "2026-10-14"
+                        },
+                        "kcal": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "calendarDay",
+                        "kcal"
+                      ]
+                    },
+                    "maxItems": 31,
+                    "description": "初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない"
+                  },
+                  "bodyData": {
+                    "$ref": "#/components/schemas/GoalSetupBodyData"
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "lose",
+                      "gain",
+                      "maintain"
+                    ]
+                  }
+                },
+                "required": [
+                  "timeZone",
+                  "direction"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "下見の答え",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "要求の形が違う",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupRejection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "422": {
+            "description": "形は合っているが、値を受け付けない",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupRejection"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/goal-setup/proposals": {
+      "post": {
+        "operationId": "proposeGoals",
+        "summary": "目標案",
+        "description": "減量・増量は、期限までの3つの枠と、自分で決める目標体重の受け付ける幅を答える。維持は、目標体重と1日の目安を答える。そのときの体重の傾向で計算し、何も書かない",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timeZone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "端末の今のタイムゾーン（IANA 名）。開始の日を決める",
+                    "example": "Asia/Tokyo"
+                  },
+                  "preUseEnergyIntakes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "calendarDay": {
+                          "type": "string",
+                          "description": "YYYY-MM-DD",
+                          "example": "2026-10-14"
+                        },
+                        "kcal": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "calendarDay",
+                        "kcal"
+                      ]
+                    },
+                    "maxItems": 31,
+                    "description": "初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない"
+                  },
+                  "bodyData": {
+                    "$ref": "#/components/schemas/GoalSetupBodyData"
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "lose",
+                      "gain",
+                      "maintain"
+                    ]
+                  },
+                  "deadlineOn": {
+                    "type": "string",
+                    "description": "期限。減量・増量では必ず付ける。開始の日から数えて（両端を含む）28〜182 日の日",
+                    "example": "2026-10-14"
+                  }
+                },
+                "required": [
+                  "timeZone",
+                  "direction"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "目標案",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalProposals"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "要求の形が違う",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupRejection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "422": {
+            "description": "形は合っているが、値を受け付けない",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupRejection"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/goal-setup/custom-target-weight": {
+      "post": {
+        "operationId": "assessCustomTargetWeight",
+        "summary": "自分で決める目標体重",
+        "description": "受け付けるなら、その目標体重の1日の目安と大変さを答える。受け付けないなら、受け付けるいちばん近い目標体重と理由を答える。何も書かない",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timeZone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "端末の今のタイムゾーン（IANA 名）。開始の日を決める",
+                    "example": "Asia/Tokyo"
+                  },
+                  "preUseEnergyIntakes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "calendarDay": {
+                          "type": "string",
+                          "description": "YYYY-MM-DD",
+                          "example": "2026-10-14"
+                        },
+                        "kcal": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "calendarDay",
+                        "kcal"
+                      ]
+                    },
+                    "maxItems": 31,
+                    "description": "初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない"
+                  },
+                  "bodyData": {
+                    "$ref": "#/components/schemas/GoalSetupBodyData"
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "lose",
+                      "gain"
+                    ]
+                  },
+                  "deadlineOn": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD",
+                    "example": "2026-10-14"
+                  },
+                  "targetWeightKg": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "0.1 kg 単位に丸めて確かめる"
+                  }
+                },
+                "required": [
+                  "timeZone",
+                  "direction",
+                  "deadlineOn",
+                  "targetWeightKg"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "受け付けるかと、受け付けるときの1日の目安",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomTargetWeightAssessment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "要求の形が違う",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupRejection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "422": {
+            "description": "形は合っているが、値を受け付けない",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupRejection"
+                }
+              }
+            }
           },
           "429": {
             "description": "回数の歯止めにかかった"

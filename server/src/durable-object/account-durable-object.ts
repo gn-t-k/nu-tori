@@ -12,6 +12,9 @@ import { receiveMealPhoto, type MealPhotoReceiptFailedError } from "../domain/re
 import { runAccountAlarm } from "../domain/run-account-alarm";
 import type { SyncClientState } from "../domain/sync-client-state";
 import type { SyncWrite } from "../domain/sync-write";
+import { assessCustomTargetWeight } from "../goal/domain/assess-custom-target-weight";
+import { previewGoalSetup } from "../goal/domain/preview-goal-setup";
+import { proposeGoals } from "../goal/domain/propose-goals";
 import { createEstimationProvider } from "../estimation/durable-object/create-estimation-provider";
 import { readKeptMealPhoto } from "../meal/domain/read-kept-meal-photo";
 import { createMealPhotoArchive } from "../meal/durable-object/create-meal-photo-archive";
@@ -125,6 +128,29 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         this.replyWatchers,
         createRecordKindStores(this.ctx.storage),
         sentTextId,
+      );
+    }
+
+    // 目標の設定の、その場で答える要求。どれも記録を書かず、要求に載った身体データと摂取エネルギーを残さない
+    previewGoalSetup(accountId: string, request: Parameters<typeof previewGoalSetup>[1]) {
+      setUser({ id: accountId });
+      return previewGoalSetup(createRecordKindStores(this.ctx.storage), request, new Date());
+    }
+
+    proposeGoals(accountId: string, request: Parameters<typeof proposeGoals>[1]) {
+      setUser({ id: accountId });
+      return proposeGoals(createRecordKindStores(this.ctx.storage), request, new Date());
+    }
+
+    assessCustomTargetWeight(
+      accountId: string,
+      request: Parameters<typeof assessCustomTargetWeight>[1],
+    ) {
+      setUser({ id: accountId });
+      return assessCustomTargetWeight(
+        createRecordKindStores(this.ctx.storage),
+        request,
+        new Date(),
       );
     }
 

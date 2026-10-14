@@ -8,7 +8,7 @@ describe("目標案", () => {
 
       beforeEach(() => {
         proposals = computeGoalProposals({
-          direction: "loss",
+          direction: "lose",
           expenditureKcal: 2250,
           startingWeightTrendKg: 72.4,
           daysFromStartToDeadline: 84,
@@ -56,7 +56,7 @@ describe("目標案", () => {
       beforeEach(() => {
         // 1日に 300 kcal まで減らせて、84 日で 3.27 kg。標準の速さだと 3.6 kg、ハードだと 5.4 kg
         proposals = computeGoalProposals({
-          direction: "loss",
+          direction: "lose",
           expenditureKcal: 1500,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 84,
@@ -97,7 +97,7 @@ describe("目標案", () => {
       beforeEach(() => {
         // 1日に 100 kcal まで減らせて、84 日で 1.09 kg。ゆるめの速さだと 1.8 kg
         proposals = computeGoalProposals({
-          direction: "loss",
+          direction: "lose",
           expenditureKcal: 1300,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 84,
@@ -119,7 +119,7 @@ describe("目標案", () => {
       beforeEach(() => {
         // 1日に 5 kcal まで減らせて、84 日で 0.05 kg。59.95 kg を切り上げると 60.0 kg
         proposals = computeGoalProposals({
-          direction: "loss",
+          direction: "lose",
           expenditureKcal: 1205,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 84,
