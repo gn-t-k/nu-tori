@@ -152,13 +152,10 @@ struct DaySummarySheet: View {
         .overlay {
             ringCenter(food.figures)
         }
-        let facts = VStack(spacing: 8) {
-            ForEach(PFC.allCases, id: \.self) { pfc in
-                if pfc != .protein {
-                    Divider()
-                }
-                pfcFact(pfc, figures: food.figures, dailyGuide: dailyGuide)
-            }
+        // 名前と値の途中で改行させないため、1行でも横に収まらなければ3行とも値を名前の下に置く。行ごとに決めると、値の位置が行によってずれる
+        let facts = ViewThatFits(in: .horizontal) {
+            pfcFacts(figures: food.figures, dailyGuide: dailyGuide, valueBelowName: false)
+            pfcFacts(figures: food.figures, dailyGuide: dailyGuide, valueBelowName: true)
         }
         return Section {
             foodLayout {
@@ -202,10 +199,24 @@ struct DaySummarySheet: View {
         }
     }
 
-    /// 名前と値が1行に収まらないときは、値を名前の下に置く。名前と値の途中では改行しない
-    private func pfcFact(_ pfc: PFC, figures: DayFood.Figures?, dailyGuide: DailyGuide?)
+    private func pfcFacts(figures: DayFood.Figures?, dailyGuide: DailyGuide?, valueBelowName: Bool)
         -> some View
     {
+        VStack(spacing: 8) {
+            ForEach(PFC.allCases, id: \.self) { pfc in
+                if pfc != .protein {
+                    Divider()
+                }
+                pfcFact(
+                    pfc, figures: figures, dailyGuide: dailyGuide, valueBelowName: valueBelowName)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func pfcFact(
+        _ pfc: PFC, figures: DayFood.Figures?, dailyGuide: DailyGuide?, valueBelowName: Bool
+    ) -> some View {
         let name = HStack(alignment: .firstTextBaseline, spacing: 6) {
             pfc.key
             Text("\(pfc.letter) \(pfc.name)")
@@ -222,17 +233,18 @@ struct DaySummarySheet: View {
         .fontWeight(.semibold)
         .monospacedDigit()
         .contentTransition(.numericText())
-        return ViewThatFits(in: .horizontal) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                name.fixedSize()
-                Spacer(minLength: 0)
-                amount.fixedSize()
-            }
+        if valueBelowName {
             VStack(alignment: .leading, spacing: 2) {
                 name
                 amount
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                name.fixedSize()
+                Spacer(minLength: 0)
+                amount.fixedSize()
+            }
         }
     }
 
