@@ -191,7 +191,7 @@ nonisolated final class HealthKitHealthStore: HealthStore, @unchecked Sendable {
         }
     }
 
-    private let store = HKHealthStore()
+    let store = HKHealthStore()
     private let deliveryState = OSAllocatedUnfairLock(initialState: DeliveryState.notStarted)
     private static let bodyMass = HKQuantityType(.bodyMass)
     private static let bodyFatPercentage = HKQuantityType(.bodyFatPercentage)
