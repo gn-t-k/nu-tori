@@ -15,6 +15,21 @@
     { "name": "ヘルスケアの割合のままの 0.25", "value": 0.25, "accepted": false },
     { "name": "% の値の 25.0%", "value": 25.0, "accepted": true }
   ],
+  "heightCentimeters": [
+    { "name": "下限の 100 cm", "value": 100, "accepted": true },
+    { "name": "下限より 0.1 cm 低い 99.9 cm", "value": 99.9, "accepted": false },
+    { "name": "上限の 250 cm", "value": 250, "accepted": true },
+    { "name": "上限より 0.1 cm 高い 250.1 cm", "value": 250.1, "accepted": false },
+    { "name": "m で入れた 1.72", "value": 1.72, "accepted": false },
+    { "name": "1 cm 刻みでない 172.5 cm", "value": 172.5, "accepted": true }
+  ],
+  "ageYears": [
+    { "name": "下限の 10 歳", "value": 10, "accepted": true },
+    { "name": "下限より若い 9 歳", "value": 9, "accepted": false },
+    { "name": "上限の 120 歳", "value": 120, "accepted": true },
+    { "name": "上限より上の 121 歳", "value": 121, "accepted": false },
+    { "name": "35 歳", "value": 35, "accepted": true }
+  ],
   "mealPhotoCount": [
     { "name": "下限の 1 枚", "value": 1, "accepted": true },
     { "name": "写真の無い 0 枚", "value": 0, "accepted": false },

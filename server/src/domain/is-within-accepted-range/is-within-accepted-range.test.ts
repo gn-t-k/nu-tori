@@ -21,6 +21,21 @@ describe("受け付ける値の範囲", () => {
     );
   });
 
+  describe("身長", () => {
+    test.for(testCases.heightCentimeters)(
+      "$name を受け付けるかを決めること",
+      ({ value, accepted }) => {
+        expect(isWithinAcceptedRange("heightCentimeters", value)).toBe(accepted);
+      },
+    );
+  });
+
+  describe("年齢", () => {
+    test.for(testCases.ageYears)("$name を受け付けるかを決めること", ({ value, accepted }) => {
+      expect(isWithinAcceptedRange("ageYears", value)).toBe(accepted);
+    });
+  });
+
   describe("食事の写真の枚数", () => {
     test.for(testCases.mealPhotoCount)(
       "$name を受け付けるかを決めること",
