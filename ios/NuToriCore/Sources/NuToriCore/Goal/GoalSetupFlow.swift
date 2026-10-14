@@ -221,7 +221,7 @@ public final class GoalSetupFlow {
     public func openCustomTargetWeight() {
         guard case .weightChange(let weightChange)? = proposals?.plan,
             let range = weightChange.acceptedTargetWeightRange,
-            let opening = weightChange.openingProposal
+            let opening = proposals?.openingProposal
         else { return }
         if customTargetWeight == nil {
             customTargetWeight = CustomTargetWeight(
@@ -360,7 +360,7 @@ public final class GoalSetupFlow {
         if case .answered(let answer) = preview, answer.canOfferLoseProposals == false {
             return true
         }
-        if case .weightChange(let weightChange)? = proposals?.plan, weightChange.offersNothing {
+        if proposals?.offersNothing == true {
             return true
         }
         return false
@@ -389,7 +389,8 @@ public final class GoalSetupFlow {
         }
         switch preview {
         case .unreachable:
-            return .stopped(canBackCalculate == nil && isFirst ? .beforeMissingValues : .beforeProposals)
+            return .stopped(
+                canBackCalculate == nil && isFirst ? .beforeMissingValues : .beforeProposals)
         case .notRequested, .inFlight:
             if isFirst, canBackCalculate == nil {
                 return .awaitingPreview
@@ -469,7 +470,8 @@ public final class GoalSetupFlow {
             }
             if preUseEnergyIntakes == nil, case .first(let firstUseDay, _) = start {
                 // 読めなければ、使い始める前の分を使わずに逆算を問う
-                let intakes = (try? await health.intakeEnergyBeforeFirstUse(firstUseDay: firstUseDay)) ?? [:]
+                let intakes =
+                    (try? await health.intakeEnergyBeforeFirstUse(firstUseDay: firstUseDay)) ?? [:]
                 preUseEnergyIntakes = Dictionary(
                     uniqueKeysWithValues: intakes.map { ($0.key.yearMonthDay, $0.value) })
             }
@@ -567,7 +569,7 @@ public final class GoalSetupFlow {
         self.proposals = proposals
         if case .weightChange(let weightChange) = proposals.plan {
             if !weightChange.offeredProposals.contains(where: { $0.pace == selectedPace }) {
-                selectedPace = weightChange.openingProposal?.pace
+                selectedPace = proposals.openingProposal?.pace
             }
             if let range = weightChange.acceptedTargetWeightRange {
                 customTargetWeight = customTargetWeight?.rebased(on: range)
@@ -584,7 +586,8 @@ public final class GoalSetupFlow {
 
     private func assessCustomTargetWeight() async {
         guard let custom = customTargetWeight else { return }
-        customTargetWeight = custom.moved(to: custom.kilograms, correctedReason: custom.correctedReason)
+        customTargetWeight = custom.moved(
+            to: custom.kilograms, correctedReason: custom.correctedReason)
         assessmentGeneration += 1
         let generation = assessmentGeneration
         let task = Task { await self.sendAssessment(generation: generation) }
@@ -599,7 +602,9 @@ public final class GoalSetupFlow {
                 direction: custom.direction, deadlineOn: deadline.yearMonthDay,
                 targetWeightKilograms: custom.kilograms, inputs: inputs)
             // 最後に出した要求の答えだけを使う
-            guard generation == assessmentGeneration, let current = customTargetWeight else { return }
+            guard generation == assessmentGeneration, let current = customTargetWeight else {
+                return
+            }
             guard case .answered(let assessment) = await answer(of: result) else {
                 customTargetWeight = current.unassessed()
                 unreachableRequest = .customTargetWeight
@@ -621,7 +626,9 @@ public final class GoalSetupFlow {
             }
         } catch {
             await errorReporting.report(error, as: .goalSetupRequest)
-            guard generation == assessmentGeneration, let current = customTargetWeight else { return }
+            guard generation == assessmentGeneration, let current = customTargetWeight else {
+                return
+            }
             customTargetWeight = current.unassessed()
             unreachableRequest = .customTargetWeight
         }
@@ -692,7 +699,8 @@ public final class GoalSetupFlow {
         let dailyGuide: DailyGuidePlan
     }
 
-    private func decisionChoice(in proposals: GoalProposals) -> (GoalDecisionRequest.Choice, Shown)? {
+    private func decisionChoice(in proposals: GoalProposals) -> (GoalDecisionRequest.Choice, Shown)?
+    {
         switch proposals.plan {
         case .maintenance(let maintenance):
             return (
@@ -714,7 +722,9 @@ public final class GoalSetupFlow {
                 )
             }
             guard
-                let selected = weightChange.offeredProposals.first(where: { $0.pace == selectedPace })
+                let selected = weightChange.offeredProposals.first(where: {
+                    $0.pace == selectedPace
+                })
             else { return nil }
             return (
                 .proposal(
@@ -727,7 +737,8 @@ public final class GoalSetupFlow {
         }
     }
 
-    private func observedChoice(_ choice: GoalDecisionRequest.Choice) -> GoalSetupObservation.Choice {
+    private func observedChoice(_ choice: GoalDecisionRequest.Choice) -> GoalSetupObservation.Choice
+    {
         switch choice {
         case .maintain: .maintain
         case .custom: .custom
@@ -744,7 +755,9 @@ public final class GoalSetupFlow {
     }
 
     /// 断る応答（不具合のときだけ届く）とセッション切れ・歯止めは、答えが無いものとして扱う。断る応答は報告する
-    private func answer<Answer: Sendable & Equatable>(of result: GoalSetupResult<Answer>) async -> GoalSetupResult<Answer> {
+    private func answer<Answer: Sendable & Equatable>(of result: GoalSetupResult<Answer>) async
+        -> GoalSetupResult<Answer>
+    {
         switch result {
         case .answered, .sessionExpired, .rateLimited:
             break

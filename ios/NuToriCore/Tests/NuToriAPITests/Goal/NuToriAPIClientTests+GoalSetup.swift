@@ -196,7 +196,8 @@ extension NuToriAPIClientTests {
                                         deadlineOn: "2026-03-31",
                                         proposals: [
                                             .init(pace: .gentle, availability: .offered(gentle)),
-                                            .init(pace: .standard, availability: .offered(standard)),
+                                            .init(
+                                                pace: .standard, availability: .offered(standard)),
                                             .init(
                                                 pace: .hard,
                                                 availability: .unavailable(.dailyGuideBelowMinimum)),
@@ -367,7 +368,8 @@ extension NuToriAPIClientTests {
 
                 @Test("要求の ID・開始の日・選んだ案・見せていた値・直した回数を POST /v1/goal-setup/decisions に送ること")
                 func sendsDecision() async throws {
-                    _ = try await client.decideGoal(Decide.request, inputs: GoalSetup.firstGoalInputs)
+                    _ = try await client.decideGoal(
+                        Decide.request, inputs: GoalSetup.firstGoalInputs)
 
                     let sent = try #require(transport.requests.first)
                     #expect(sent.request.path == "/v1/goal-setup/decisions")
@@ -400,7 +402,8 @@ extension NuToriAPIClientTests {
                         Issue.record("決めた答えが無い")
                         return
                     }
-                    #expect(changes.map(\.recordKind) == [.goal, .dailyGuide, .expenditureEstimate])
+                    #expect(
+                        changes.map(\.recordKind) == [.goal, .dailyGuide, .expenditureEstimate])
                     guard case .goal(let goal) = changes.first else {
                         Issue.record("目標が無い")
                         return

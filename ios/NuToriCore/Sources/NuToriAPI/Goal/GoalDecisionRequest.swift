@@ -31,7 +31,8 @@ public struct GoalDecisionRequest: Sendable, Equatable {
     public enum Choice: Sendable, Equatable {
         case maintain
         /// 期限は YYYY-MM-DD
-        case proposal(direction: GoalProposals.Direction, deadlineOn: String, pace: GoalProposals.Pace)
+        case proposal(
+            direction: GoalProposals.Direction, deadlineOn: String, pace: GoalProposals.Pace)
         case custom(
             direction: GoalProposals.Direction, deadlineOn: String, targetWeightKilograms: Double)
     }

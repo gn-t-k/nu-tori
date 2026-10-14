@@ -134,7 +134,9 @@ public actor RecordSync {
     }
 
     /// 足りない値で入れた今の体重を、今日の体重記録にする。体重の記録が1つも無い人だけが入れるので、いつも作る書き込み
-    public func recordWeight(kilograms: Double, at instant: Date, in timeZone: TimeZone) async throws {
+    public func recordWeight(kilograms: Double, at instant: Date, in timeZone: TimeZone)
+        async throws
+    {
         try await save(.create(kilograms: kilograms, instant: instant, timeZone: timeZone))
     }
 

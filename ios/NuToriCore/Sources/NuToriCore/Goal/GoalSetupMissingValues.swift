@@ -36,7 +36,8 @@ public struct GoalSetupMissingValues: Sendable, Equatable {
             heightCentimeters: nil, birthYear: nil, sex: nil, activityLevel: nil,
             currentWeightKilograms: nil)
         let ages = AcceptedRange.ageYears.bounds
-        selectableBirthYears = (today.year - Int(ages.upperBound))...(today.year - Int(ages.lowerBound))
+        selectableBirthYears =
+            (today.year - Int(ages.upperBound))...(today.year - Int(ages.lowerBound))
     }
 
     private init(replacing values: GoalSetupMissingValues, entry: Entry) {
@@ -77,7 +78,8 @@ public struct GoalSetupMissingValues: Sendable, Equatable {
         } else {
             activity = .steps(
                 Dictionary(
-                    uniqueKeysWithValues: health.dailySteps.map { ($0.key.yearMonthDay, $0.value) }))
+                    uniqueKeysWithValues: health.dailySteps.map { ($0.key.yearMonthDay, $0.value) })
+            )
         }
         return GoalSetupBody(sex: sex, heightCentimeters: height, ageYears: age, activity: activity)
     }

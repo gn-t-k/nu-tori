@@ -19,7 +19,9 @@ public struct GoalDeadlineChoices: Sendable, Equatable {
             let day = Self.day(months: months, after: startDay)
             return day <= startDay.advanced(by: Self.maximumDays - 1)
                 ? Chip(label: .months(months), day: day)
-                : Chip(label: .weeks(Self.maximumDays / 7), day: startDay.advanced(by: Self.maximumDays - 1))
+                : Chip(
+                    label: .weeks(Self.maximumDays / 7),
+                    day: startDay.advanced(by: Self.maximumDays - 1))
         }
     }
 

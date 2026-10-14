@@ -190,9 +190,10 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     /// `respond` は経路の最後の部分（`preview`・`proposals`・`custom-target-weight`・`decisions`）と送った本文を受け取る。
     /// 待たせてから答えれば、答えが届く順を入れ替えられる。投げれば、つながらなかったことにする
     public static func goalSetup(
-        respond: @escaping @Sendable (_ endpoint: String, _ body: String) async throws -> (
-            status: HTTPResponse.Status, json: String?
-        )
+        respond:
+            @escaping @Sendable (_ endpoint: String, _ body: String) async throws -> (
+                status: HTTPResponse.Status, json: String?
+            )
     ) -> ClientTransportMock {
         ClientTransportMock { request, body in
             let endpoint = String((request.path ?? "").split(separator: "/").last ?? "")
@@ -234,9 +235,10 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     private let recorded = Mutex<[(request: HTTPRequest, body: String?)]>([])
 
     private init(
-        respond: @escaping @Sendable (HTTPRequest, String?) async throws -> (
-            HTTPResponse, HTTPBody?
-        )
+        respond:
+            @escaping @Sendable (HTTPRequest, String?) async throws -> (
+                HTTPResponse, HTTPBody?
+            )
     ) {
         self.respond = respond
     }

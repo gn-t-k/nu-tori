@@ -20,7 +20,9 @@ struct GoalSetupFlowTests {
             init() {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
                         "proposals": [.json(JSON.loseProposals())],
                     ],
                     health: .ok(goalSetup: .init(requestStatus: .notYetRequested)))
@@ -52,7 +54,9 @@ struct GoalSetupFlowTests {
 
                 #expect(harness.flow.page == .proposals)
                 #expect(harness.flow.progress == .init(count: 3, index: 2))
-                #expect(try harness.sentBodies("proposals").first?["deadlineOn"] as? String == "2026-04-01")
+                #expect(
+                    try harness.sentBodies("proposals").first?["deadlineOn"] as? String
+                        == "2026-04-01")
             }
 
             @Test("許可を2回は求めないこと")
@@ -77,7 +81,10 @@ struct GoalSetupFlowTests {
                 harness = GoalSetupFlowHarness(
                     answers: [
                         "preview": [
-                            .held(gate, json: JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                            .held(
+                                gate,
+                                json: JSON.preview(
+                                    canBackCalculate: true, canOfferLoseProposals: true))
                         ],
                         "proposals": [.json(JSON.loseProposals())],
                     ])
@@ -117,8 +124,10 @@ struct GoalSetupFlowTests {
                         hasWeightRecords: false),
                     answers: [
                         "preview": [
-                            .json(JSON.preview(canBackCalculate: false, canOfferLoseProposals: nil)),
-                            .json(JSON.preview(canBackCalculate: false, canOfferLoseProposals: true)),
+                            .json(
+                                JSON.preview(canBackCalculate: false, canOfferLoseProposals: nil)),
+                            .json(
+                                JSON.preview(canBackCalculate: false, canOfferLoseProposals: true)),
                         ],
                         "proposals": [.json(JSON.loseProposals())],
                     ],
@@ -144,7 +153,8 @@ struct GoalSetupFlowTests {
                 await harness.flow.proceedFromDeadline()
 
                 #expect(harness.flow.page == .missingValues)
-                #expect(harness.flow.missingValues?.asked == [.height, .activityLevel, .currentWeight])
+                #expect(
+                    harness.flow.missingValues?.asked == [.height, .activityLevel, .currentWeight])
             }
 
             @Test("そろうまで「次へ」で進まないこと")
@@ -174,7 +184,8 @@ struct GoalSetupFlowTests {
                     harness.records.calls == [
                         .sendWeightRecords, .recordWeight(kilograms: 70.2), .sendWeightRecords,
                     ])
-                let body = try #require(try harness.sentBodies("preview").last?["bodyData"] as? [String: Any])
+                let body = try #require(
+                    try harness.sentBodies("preview").last?["bodyData"] as? [String: Any])
                 #expect(body["heightCentimeters"] as? Double == 160)
                 #expect(body["ageYears"] as? Int == 35)
                 #expect(body["sex"] as? String == "female")
@@ -192,7 +203,9 @@ struct GoalSetupFlowTests {
             init() {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: nil))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: nil))
+                        ],
                         "proposals": [.json(JSON.maintenance())],
                     ])
             }
@@ -219,9 +232,12 @@ struct GoalSetupFlowTests {
 
             init() {
                 harness = GoalSetupFlowHarness(
-                    start: .restart(currentGoalStartedDay: CalendarDay(year: 2025, month: 11, day: 1)),
+                    start: .restart(
+                        currentGoalStartedDay: CalendarDay(year: 2025, month: 11, day: 1)),
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: nil, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: nil, canOfferLoseProposals: true))
+                        ],
                         "proposals": [.json(JSON.loseProposals())],
                     ],
                     health: .ok(goalSetup: .init(requestStatus: .notYetRequested)))
@@ -254,7 +270,10 @@ struct GoalSetupFlowTests {
             init() {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: false))],
+                        "preview": [
+                            .json(
+                                JSON.preview(canBackCalculate: true, canOfferLoseProposals: false))
+                        ],
                         "proposals": [.json(JSON.maintenance())],
                     ])
             }
@@ -297,8 +316,10 @@ struct GoalSetupFlowTests {
                 harness = GoalSetupFlowHarness(
                     answers: [
                         "preview": [
-                            .json(JSON.preview(canBackCalculate: false, canOfferLoseProposals: nil)),
-                            .json(JSON.preview(canBackCalculate: false, canOfferLoseProposals: false)),
+                            .json(
+                                JSON.preview(canBackCalculate: false, canOfferLoseProposals: nil)),
+                            .json(
+                                JSON.preview(canBackCalculate: false, canOfferLoseProposals: false)),
                         ]
                     ],
                     health: .ok(
@@ -334,7 +355,9 @@ struct GoalSetupFlowTests {
             init() {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
                         "proposals": [.json(JSON.loseProposals())],
                     ],
                     records: .ok(sendsWeightRecords: false))
@@ -361,7 +384,9 @@ struct GoalSetupFlowTests {
                 await harness.flow.retry()
 
                 #expect(harness.flow.page == .proposals)
-                #expect(try harness.sentBodies("proposals").first?["deadlineOn"] as? String == "2026-03-01")
+                #expect(
+                    try harness.sentBodies("proposals").first?["deadlineOn"] as? String
+                        == "2026-03-01")
             }
 
             @Test("閉じて開き直すと、同じ止まった場所から続けること")
@@ -391,7 +416,9 @@ struct GoalSetupFlowTests {
             init() {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
                         "proposals": [.offline, .json(JSON.loseProposals())],
                     ])
             }
@@ -420,7 +447,9 @@ struct GoalSetupFlowTests {
             init() {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
                         "proposals": [.json(JSON.loseProposals())],
                     ])
             }
@@ -442,9 +471,14 @@ struct GoalSetupFlowTests {
             init() {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
                         "proposals": [
-                            .json(JSON.loseProposals(offered: ["gentle": (68.5, 1300), "hard": (64.5, 1200)]))
+                            .json(
+                                JSON.loseProposals(offered: [
+                                    "gentle": (68.5, 1300), "hard": (64.5, 1200),
+                                ]))
                         ],
                     ])
             }
@@ -470,7 +504,9 @@ struct GoalSetupFlowTests {
             self.firstGate = firstGate
             harness = GoalSetupFlowHarness(
                 answers: [
-                    "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                    "preview": [
+                        .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                    ],
                     "proposals": [.json(JSON.loseProposals())],
                     "custom-target-weight": [
                         .held(firstGate, json: JSON.acceptedCustom(energyKcal: 1900)),
@@ -501,7 +537,9 @@ struct GoalSetupFlowTests {
             firstGate.open()
             await harness.clock.advance(by: .milliseconds(1))
             await moving.value
-            #expect(try harness.sentBodies("custom-target-weight").first?["targetWeightKg"] as? Double == 66.0)
+            #expect(
+                try harness.sentBodies("custom-target-weight").first?["targetWeightKg"] as? Double
+                    == 66.0)
             #expect(harness.flow.customTargetWeight?.isAssessing == false)
         }
 
@@ -516,7 +554,8 @@ struct GoalSetupFlowTests {
             await first.value
 
             #expect(harness.flow.customTargetWeight?.kilograms == 65.0)
-            #expect(harness.flow.customTargetWeight?.assessment.dailyGuide.energyKilocalories == 1800)
+            #expect(
+                harness.flow.customTargetWeight?.assessment.dailyGuide.energyKilocalories == 1800)
         }
 
         @Test("受け付ける幅の外は端の値に直し、直した回数を目標を決める要求に載せること", .timeLimit(.minutes(1)))
@@ -571,8 +610,10 @@ struct GoalSetupFlowTests {
                         hasWeightRecords: false),
                     answers: [
                         "preview": [
-                            .json(JSON.preview(canBackCalculate: false, canOfferLoseProposals: nil)),
-                            .json(JSON.preview(canBackCalculate: false, canOfferLoseProposals: true)),
+                            .json(
+                                JSON.preview(canBackCalculate: false, canOfferLoseProposals: nil)),
+                            .json(
+                                JSON.preview(canBackCalculate: false, canOfferLoseProposals: true)),
                         ],
                         "proposals": [.json(JSON.loseProposals())],
                         "decisions": [.json(JSON.decided)],
@@ -581,7 +622,8 @@ struct GoalSetupFlowTests {
                 await harness.flow.proceedFromDeadline()
                 harness.flow.enterMissingValues(
                     .init(
-                        heightCentimeters: 160, birthYear: 1990, sex: .female, activityLevel: .active,
+                        heightCentimeters: 160, birthYear: 1990, sex: .female,
+                        activityLevel: .active,
                         currentWeightKilograms: 70.2))
                 await harness.flow.proceedFromMissingValues()
             }
@@ -611,7 +653,8 @@ struct GoalSetupFlowTests {
                 #expect(harness.records.calls.last == .respondToGoalSetupNotice)
                 #expect(harness.flow.decision == .decided)
                 #expect(harness.flow.missingValues == nil)
-                #expect(harness.observations.all == [.decided(choice: .standard, recalculated: false)])
+                #expect(
+                    harness.observations.all == [.decided(choice: .standard, recalculated: false)])
             }
         }
 
@@ -623,13 +666,16 @@ struct GoalSetupFlowTests {
             init() async {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
                         "proposals": [.json(JSON.loseProposals())],
                         "decisions": [
                             .json(
                                 JSON.recalculated(
                                     JSON.loseProposals(offered: [
-                                        "gentle": (68.4, 2000), "standard": (66.3, 1800), "hard": (64.2, 1600),
+                                        "gentle": (68.4, 2000), "standard": (66.3, 1800),
+                                        "hard": (64.2, 1600),
                                     ]))),
                             .json(JSON.decided),
                         ],
@@ -650,7 +696,10 @@ struct GoalSetupFlowTests {
                     Issue.record("目標案が無い")
                     return
                 }
-                #expect(weightChange.offeredProposals.map(\.targetWeightKilograms) == [68.4, 66.3, 64.2])
+                #expect(
+                    weightChange.offeredProposals.map(\.targetWeightKilograms) == [
+                        68.4, 66.3, 64.2,
+                    ])
             }
 
             @Test("もう一度押すと、同じ要求の ID で決め、計算し直しを挟んだと知らせること")
@@ -673,12 +722,16 @@ struct GoalSetupFlowTests {
             init() async {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
                         "proposals": [.json(JSON.loseProposals())],
                         "decisions": [
                             .json(
                                 JSON.recalculated(
-                                    JSON.loseProposals(offered: ["gentle": (68.4, 1400), "standard": (66.3, 1200)])))
+                                    JSON.loseProposals(offered: [
+                                        "gentle": (68.4, 1400), "standard": (66.3, 1200),
+                                    ])))
                         ],
                     ])
                 await harness.flow.chooseDirection(.lose)
@@ -702,7 +755,9 @@ struct GoalSetupFlowTests {
             init() async {
                 harness = GoalSetupFlowHarness(
                     answers: [
-                        "preview": [.json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))],
+                        "preview": [
+                            .json(JSON.preview(canBackCalculate: true, canOfferLoseProposals: true))
+                        ],
                         "proposals": [.json(JSON.loseProposals())],
                         "decisions": [.offline, .json(JSON.decided)],
                     ])

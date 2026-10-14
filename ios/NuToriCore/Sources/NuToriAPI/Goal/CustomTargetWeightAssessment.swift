@@ -12,7 +12,8 @@ public struct CustomTargetWeightAssessment: Sendable, Equatable {
     public enum Outcome: Sendable, Equatable {
         case accepted(Accepted)
         /// 受け付けるいちばん近い目標体重は、その期限に受け付ける目標体重が無ければ nil
-        case rejected(reason: TargetWeightLimitReason, nearestAcceptedTargetWeightKilograms: Double?)
+        case rejected(
+            reason: TargetWeightLimitReason, nearestAcceptedTargetWeightKilograms: Double?)
     }
 
     public struct Accepted: Sendable, Equatable {

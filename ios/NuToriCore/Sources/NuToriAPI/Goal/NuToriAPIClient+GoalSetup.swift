@@ -12,7 +12,8 @@ extension NuToriAPIClient {
             body: .json(
                 Payload(
                     timeZone: inputs.timeZone.identifier,
-                    preUseEnergyIntakes: inputs.wireIntakes(Payload.PreUseEnergyIntakesPayloadPayload.init),
+                    preUseEnergyIntakes: inputs.wireIntakes(
+                        Payload.PreUseEnergyIntakesPayloadPayload.init),
                     bodyData: inputs.body.map(Components.Schemas.GoalSetupBodyData.init),
                     direction: Payload.DirectionPayload(direction)
                 )))
@@ -41,7 +42,8 @@ extension NuToriAPIClient {
             body: .json(
                 Payload(
                     timeZone: inputs.timeZone.identifier,
-                    preUseEnergyIntakes: inputs.wireIntakes(Payload.PreUseEnergyIntakesPayloadPayload.init),
+                    preUseEnergyIntakes: inputs.wireIntakes(
+                        Payload.PreUseEnergyIntakesPayloadPayload.init),
                     bodyData: inputs.body.map(Components.Schemas.GoalSetupBodyData.init),
                     direction: Payload.DirectionPayload(direction),
                     deadlineOn: deadlineOn
@@ -69,7 +71,8 @@ extension NuToriAPIClient {
             body: .json(
                 Payload(
                     timeZone: inputs.timeZone.identifier,
-                    preUseEnergyIntakes: inputs.wireIntakes(Payload.PreUseEnergyIntakesPayloadPayload.init),
+                    preUseEnergyIntakes: inputs.wireIntakes(
+                        Payload.PreUseEnergyIntakesPayloadPayload.init),
                     bodyData: inputs.body.map(Components.Schemas.GoalSetupBodyData.init),
                     direction: direction == .lose ? .lose : .gain,
                     deadlineOn: deadlineOn,
@@ -95,7 +98,8 @@ extension NuToriAPIClient {
             body: .json(
                 Payload(
                     timeZone: inputs.timeZone.identifier,
-                    preUseEnergyIntakes: inputs.wireIntakes(Payload.PreUseEnergyIntakesPayloadPayload.init),
+                    preUseEnergyIntakes: inputs.wireIntakes(
+                        Payload.PreUseEnergyIntakesPayloadPayload.init),
                     bodyData: inputs.body.map(Components.Schemas.GoalSetupBodyData.init),
                     requestId: request.requestId.canonicalString,
                     startedOn: request.startedOn,

@@ -66,7 +66,8 @@ final class GoalSetupServerStub: Sendable {
 
     /// 送った本文。経路ごとに送った順
     func bodies(_ endpoint: String) -> [String] {
-        transport.requests.filter { $0.request.path?.hasSuffix("/" + endpoint) == true }.compactMap(\.body)
+        transport.requests.filter { $0.request.path?.hasSuffix("/" + endpoint) == true }.compactMap(
+            \.body)
     }
 
     private let queue: Queue

@@ -24,7 +24,9 @@ public struct CustomTargetWeight: Sendable, Equatable {
     }
 
     /// 目標体重を替え、答えを待つ形にする
-    func moved(to kilograms: Double, correctedReason: TargetWeightLimitReason?) -> CustomTargetWeight {
+    func moved(to kilograms: Double, correctedReason: TargetWeightLimitReason?)
+        -> CustomTargetWeight
+    {
         CustomTargetWeight(
             kilograms: kilograms, direction: direction, range: range,
             correctedReason: correctedReason, assessment: assessment, isAssessing: true)

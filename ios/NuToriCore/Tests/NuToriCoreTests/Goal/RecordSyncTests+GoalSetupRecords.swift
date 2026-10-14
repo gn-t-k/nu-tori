@@ -16,7 +16,8 @@ extension RecordSyncTests {
             return try RecordSyncDevice(
                 clock: clock,
                 server: .passing(
-                    .init(records: [], startedOn: RecordSyncDevice.startedOn, connection: connection),
+                    .init(
+                        records: [], startedOn: RecordSyncDevice.startedOn, connection: connection),
                     clock: clock),
                 goals: goals)
         }
@@ -55,7 +56,10 @@ extension RecordSyncTests {
                 let start = try await device.recordSync.goalSetupStart(
                     today: CalendarDay(year: 2026, month: 10, day: 14))
 
-                #expect(start == .restart(currentGoalStartedDay: CalendarDay(year: 2026, month: 10, day: 1)))
+                #expect(
+                    start
+                        == .restart(
+                            currentGoalStartedDay: CalendarDay(year: 2026, month: 10, day: 1)))
             }
         }
 
