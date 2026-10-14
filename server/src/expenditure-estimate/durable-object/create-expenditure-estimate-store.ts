@@ -36,5 +36,13 @@ export const createExpenditureEstimateStore = (
         .get();
       return current === undefined ? undefined : find(current.id);
     },
+    insert: ({ initialSource, ...estimate }) => {
+      db.insert(expenditureEstimates).values(estimate).run();
+      if (initialSource !== undefined) {
+        db.insert(initialExpenditureEstimates)
+          .values({ expenditureEstimateId: estimate.id, source: initialSource })
+          .run();
+      }
+    },
   };
 };

@@ -1952,6 +1952,195 @@
           "status"
         ]
       },
+      "GoalDecision": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "decided（決めた。同じ要求の ID の再送を含む）・recalculated（開始の日か見せていた値が違ったので、決めずに計算し直した）・custom_target_weight_rejected（自分で決めた目標体重を受け付けないので、決めていない）",
+            "example": "decided"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalDecisionChange"
+            },
+            "description": "decided のときだけ。端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、立て直しなら閉じた前の目標、新しい目標、1日の目安、初めての目標なら推定消費カロリー"
+          },
+          "proposals": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoalProposals"
+              },
+              {
+                "description": "recalculated のときだけ。そのときの体重の傾向と開始の日で出し直した目標案"
+              }
+            ]
+          },
+          "startedOn": {
+            "type": "string",
+            "description": "custom_target_weight_rejected のときだけ。計算に使った開始の日（YYYY-MM-DD）"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "custom_target_weight_rejected のときだけ。pace_too_fast（速すぎる）・daily_guide_below_minimum（下限 1,200 kcal）・not_on_direction_side（体重の傾向より向きの側に出ない）"
+          },
+          "nearestAcceptedTargetWeightKg": {
+            "type": "number",
+            "description": "custom_target_weight_rejected で、その期限に受け付ける目標体重があるときだけ。受け付けるいちばん近い目標体重"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "GoalDecisionChange": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "goal・daily_guide・expenditure_estimate",
+            "example": "goal"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "record": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "kind",
+          "recordId",
+          "record"
+        ],
+        "description": "決めた記録。取りに行く変更（SyncChange）から通し番号を除いた形で、record は種類ごとの GoalRecord・DailyGuideRecord・ExpenditureEstimateRecord"
+      },
+      "GoalChoice": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GoalMaintainChoice"
+          },
+          {
+            "$ref": "#/components/schemas/GoalProposalChoice"
+          },
+          {
+            "$ref": "#/components/schemas/GoalCustomChoice"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "maintain": "#/components/schemas/GoalMaintainChoice",
+            "proposal": "#/components/schemas/GoalProposalChoice",
+            "custom": "#/components/schemas/GoalCustomChoice"
+          }
+        },
+        "description": "選んだもの。維持（maintain）、ゆるめ・標準・ハードの案（proposal）、自分で決めた目標体重（custom）"
+      },
+      "GoalMaintainChoice": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "maintain"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "GoalProposalChoice": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "proposal"
+            ]
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "lose",
+              "gain"
+            ]
+          },
+          "deadlineOn": {
+            "type": "string",
+            "description": "期限。開始の日から数えて（両端を含む）28〜182 日の日",
+            "example": "2026-10-14"
+          },
+          "pace": {
+            "type": "string",
+            "enum": [
+              "gentle",
+              "standard",
+              "hard"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "direction",
+          "deadlineOn",
+          "pace"
+        ]
+      },
+      "GoalCustomChoice": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "custom"
+            ]
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "lose",
+              "gain"
+            ]
+          },
+          "deadlineOn": {
+            "type": "string",
+            "description": "期限。開始の日から数えて（両端を含む）28〜182 日の日",
+            "example": "2026-10-14"
+          },
+          "targetWeightKg": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "自分で決めた目標体重。0.1 kg 単位に丸めて確かめる"
+          }
+        },
+        "required": [
+          "type",
+          "direction",
+          "deadlineOn",
+          "targetWeightKg"
+        ]
+      },
+      "GoalShownValues": {
+        "type": "object",
+        "properties": {
+          "targetWeightKg": {
+            "type": "number",
+            "description": "見せていた目標体重。自分で決めた目標体重のときは、その目標体重"
+          },
+          "dailyGuide": {
+            "$ref": "#/components/schemas/DailyGuidePlan"
+          }
+        },
+        "required": [
+          "targetWeightKg",
+          "dailyGuide"
+        ],
+        "description": "端末が見せていた値。サーバーがそのときの体重の傾向で計算し直した値と違えば、決めない"
+      },
       "ReplyStreamEvent": {
         "oneOf": [
           {
@@ -2877,6 +3066,130 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CustomTargetWeightAssessment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "要求の形が違う",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupRejection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "422": {
+            "description": "形は合っているが、値を受け付けない",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalSetupRejection"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/goal-setup/decisions": {
+      "post": {
+        "operationId": "decideGoal",
+        "summary": "目標を決める",
+        "description": "そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timeZone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "端末の今のタイムゾーン（IANA 名）。開始の日を決める",
+                    "example": "Asia/Tokyo"
+                  },
+                  "preUseEnergyIntakes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "calendarDay": {
+                          "type": "string",
+                          "description": "YYYY-MM-DD",
+                          "example": "2026-10-14"
+                        },
+                        "kcal": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "calendarDay",
+                        "kcal"
+                      ]
+                    },
+                    "maxItems": 31,
+                    "description": "初めての目標のときに添える。ヘルスケアから読んだ、使い始める前の日ごとの摂取エネルギー（初期値の窓に入る日だけ）。保存しない"
+                  },
+                  "bodyData": {
+                    "$ref": "#/components/schemas/GoalSetupBodyData"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+                    "description": "端末が振った要求の ID（UUID v4）。冪等の鍵。同じ ID の再送は、書かずに初めての応答と同じ形で返す"
+                  },
+                  "startedOn": {
+                    "type": "string",
+                    "description": "目標案の応答で受け取った開始の日。サーバーが出し直した開始の日と違えば、決めない",
+                    "example": "2026-10-14"
+                  },
+                  "choice": {
+                    "$ref": "#/components/schemas/GoalChoice"
+                  },
+                  "shown": {
+                    "$ref": "#/components/schemas/GoalShownValues"
+                  },
+                  "rejectedCustomTargetWeightCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "この目標の設定のあいだに、端末が端の値に直した自分の目標体重の数。観測に使う"
+                  }
+                },
+                "required": [
+                  "timeZone",
+                  "requestId",
+                  "startedOn",
+                  "choice",
+                  "shown",
+                  "rejectedCustomTargetWeightCount"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "決めた記録か、決めなかった理由",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDecision"
                 }
               }
             }

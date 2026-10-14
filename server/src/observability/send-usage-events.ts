@@ -111,6 +111,18 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
       name: deferred.name,
       properties: {},
     }))
+    .with({ name: "goal_decision_recorded" }, (recorded) => ({
+      name: recorded.name,
+      properties: {
+        direction: recorded.direction,
+        is_first_goal: recorded.isFirstGoal,
+        chosen_plan: recorded.chosenPlan,
+        had_slowed_proposal: recorded.hadSlowedProposal,
+        rejected_custom_target_weight_count: recorded.rejectedCustomTargetWeightCount,
+        expenditure_source: recorded.expenditureSource,
+        limit_hits: recorded.limitHits,
+      },
+    }))
     .with({ name: "sync_pending_writes_reported" }, (reported) => ({
       name: reported.name,
       properties: {

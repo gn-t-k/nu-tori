@@ -3,7 +3,7 @@ import { app } from "../../app";
 
 export const postGoalSetup = (
   sessionToken: string | undefined,
-  path: "preview" | "proposals" | "custom-target-weight",
+  path: "preview" | "proposals" | "custom-target-weight" | "decisions",
   body: Record<string, unknown>,
 ) =>
   app.request(

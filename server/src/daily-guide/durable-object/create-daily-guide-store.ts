@@ -1,13 +1,14 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import { dailyGuideLimitTypes } from "../domain/daily-guide";
+import type { RecordId } from "../../domain/record-id";
+import { type DailyGuide, dailyGuideLimitTypes } from "../domain/daily-guide";
 import type { DailyGuideStore } from "../domain/daily-guide-store";
 import { dailyGuideTables } from "./daily-guide-tables";
 
 const { dailyGuides, dailyGuideLimitHits } = dailyGuideTables;
 
-export const createDailyGuideStore = (db: DrizzleSqliteDODatabase): DailyGuideStore => ({
-  find: (id) => {
+export const createDailyGuideStore = (db: DrizzleSqliteDODatabase): DailyGuideStore => {
+  const find = (id: RecordId): DailyGuide | undefined => {
     const guide = db.select().from(dailyGuides).where(eq(dailyGuides.id, id)).get();
     if (guide === undefined) {
       return undefined;
@@ -24,5 +25,22 @@ export const createDailyGuideStore = (db: DrizzleSqliteDODatabase): DailyGuideSt
         hits.some((hit) => hit.limitType === limitType),
       ),
     };
-  },
-});
+  };
+  return {
+    find,
+    findByGoalAndEffectiveDay: (goalId, effectiveOn) => {
+      const guide = db
+        .select({ id: dailyGuides.id })
+        .from(dailyGuides)
+        .where(and(eq(dailyGuides.goalId, goalId), eq(dailyGuides.effectiveOn, effectiveOn)))
+        .get();
+      return guide === undefined ? undefined : find(guide.id);
+    },
+    insert: ({ limitHits, ...guide }) => {
+      db.insert(dailyGuides).values(guide).run();
+      for (const limitType of limitHits) {
+        db.insert(dailyGuideLimitHits).values({ dailyGuideId: guide.id, limitType }).run();
+      }
+    },
+  };
+};

@@ -1,0 +1,49 @@
+import { R } from "@praha/byethrow";
+import { match } from "ts-pattern";
+import { computeAcceptedTargetWeightRange } from "./compute-accepted-target-weight-range";
+import { computeGoalProposals } from "./compute-goal-proposals";
+import { computeMaintenancePlan } from "./compute-maintenance-plan";
+import { countAcceptedDaysToDeadline } from "./count-accepted-days-to-deadline";
+import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
+import type { GoalProposals, GoalProposalsPlan } from "./propose-goals";
+import type { CompleteGoalSetupBasis } from "./require-complete-goal-setup-basis";
+
+// 出し終えた計算の元から、目標案を出す。目標案の要求と、目標を決める要求が決めずに返す「新しい案」が使う
+export const proposeGoalsOnBasis = (
+  { startedOn, startingWeightTrend, expenditure }: CompleteGoalSetupBasis,
+  plan: GoalProposalsPlan,
+): R.Result<GoalProposals, GoalSetupRequestRejectedError> =>
+  R.pipe(
+    match(plan)
+      .returnType<R.Result<GoalProposals["plan"], GoalSetupRequestRejectedError>>()
+      .with({ direction: "maintain" }, ({ direction }) =>
+        R.succeed({
+          direction,
+          maintenance: computeMaintenancePlan({
+            expenditureKcal: expenditure.kcal,
+            startingWeightTrendKg: startingWeightTrend.trendKg,
+          }),
+        }),
+      )
+      .with({ direction: "lose" }, { direction: "gain" }, ({ direction, deadlineOn }) =>
+        R.pipe(
+          countAcceptedDaysToDeadline({ startedOn, deadlineOn }),
+          R.map((daysFromStartToDeadline) => {
+            const goal = {
+              direction,
+              expenditureKcal: expenditure.kcal,
+              startingWeightTrendKg: startingWeightTrend.trendKg,
+              daysFromStartToDeadline,
+            };
+            return {
+              direction,
+              deadlineOn,
+              proposals: computeGoalProposals(goal),
+              acceptedTargetWeightRange: computeAcceptedTargetWeightRange(goal),
+            };
+          }),
+        ),
+      )
+      .exhaustive(),
+    R.map((proposed) => ({ startedOn, startingWeightTrend, expenditure, plan: proposed })),
+  );

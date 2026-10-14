@@ -1,11 +1,10 @@
 import { R } from "@praha/byethrow";
-import { match } from "ts-pattern";
-import { computeAcceptedTargetWeightRange } from "./compute-accepted-target-weight-range";
-import { computeGoalProposals } from "./compute-goal-proposals";
-import { computeMaintenancePlan } from "./compute-maintenance-plan";
-import { countAcceptedDaysToDeadline } from "./count-accepted-days-to-deadline";
+import type { computeAcceptedTargetWeightRange } from "./compute-accepted-target-weight-range";
+import type { computeGoalProposals } from "./compute-goal-proposals";
+import type { computeMaintenancePlan } from "./compute-maintenance-plan";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
+import { proposeGoalsOnBasis } from "./propose-goals-on-basis";
 import {
   requireCompleteGoalSetupBasis,
   type CompleteGoalSetupBasis,
@@ -44,40 +43,5 @@ export const proposeGoals = (
   R.pipe(
     resolveGoalSetupBasis(stores, request, now),
     R.andThen(requireCompleteGoalSetupBasis),
-    R.andThen(({ startedOn, startingWeightTrend, expenditure }) =>
-      R.pipe(
-        match(request.plan)
-          .returnType<R.Result<GoalProposals["plan"], GoalSetupRequestRejectedError>>()
-          .with({ direction: "maintain" }, ({ direction }) =>
-            R.succeed({
-              direction,
-              maintenance: computeMaintenancePlan({
-                expenditureKcal: expenditure.kcal,
-                startingWeightTrendKg: startingWeightTrend.trendKg,
-              }),
-            }),
-          )
-          .with({ direction: "lose" }, { direction: "gain" }, ({ direction, deadlineOn }) =>
-            R.pipe(
-              countAcceptedDaysToDeadline({ startedOn, deadlineOn }),
-              R.map((daysFromStartToDeadline) => {
-                const goal = {
-                  direction,
-                  expenditureKcal: expenditure.kcal,
-                  startingWeightTrendKg: startingWeightTrend.trendKg,
-                  daysFromStartToDeadline,
-                };
-                return {
-                  direction,
-                  deadlineOn,
-                  proposals: computeGoalProposals(goal),
-                  acceptedTargetWeightRange: computeAcceptedTargetWeightRange(goal),
-                };
-              }),
-            ),
-          )
-          .exhaustive(),
-        R.map((plan) => ({ startedOn, startingWeightTrend, expenditure, plan })),
-      ),
-    ),
+    R.andThen((basis) => proposeGoalsOnBasis(basis, request.plan)),
   );
