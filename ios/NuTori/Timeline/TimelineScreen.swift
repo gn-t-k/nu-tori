@@ -146,7 +146,7 @@ struct TimelineScreen: View {
                         }
                     ) { chosen in
                         self.summaryDay = nil
-                        waitingInstructions += viewport.dayChosen(chosen)
+                        waitingInstructions += viewport.dayChosen(chosen, in: loaded.days)
                     }
                 }
             }
@@ -320,20 +320,22 @@ struct TimelineScreen: View {
     }
 
     private func timelineList(_ timeline: Timeline) -> some View {
-        GeometryReader { geo in
+        let listedDays = viewport.listedDays(of: timeline.days)
+        return GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView {
                     // 中身が画面より短いときは下に寄せ、長いときは下端から開く
                     VStack(alignment: .leading) {
                         Spacer(minLength: 0)
-                        LazyVStack(alignment: .leading) {
-                            if let startedDay {
+                        // 並べる日を新しいほうに絞り、遅れて読む並び（LazyVStack）にしない。理由は TimelineViewport
+                        VStack(alignment: .leading) {
+                            if let startedDay, listedDays.first?.day == timeline.days.first?.day {
                                 Text("\(TimelineDayText.label(for: startedDay))から記録しています")
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            ForEach(timeline.days, id: \.day) { day in
+                            ForEach(listedDays, id: \.day) { day in
                                 daySection(day, in: timeline)
                                     .id(day.day)
                             }
@@ -353,13 +355,8 @@ struct TimelineScreen: View {
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
                 .defaultScrollAnchor(
-                    viewport.followsSizeChanges(newestDay: timeline.newestDay)
-                        ? .bottom : .top, for: .sizeChanges
+                    viewport.followsSizeChanges ? .bottom : .top, for: .sizeChanges
                 )
-                // 足された日が今の位置のすぐ下に描かれてから届く
-                .onChange(of: timeline.newestDay, initial: true) { _, newest in
-                    perform(viewport.newestDayChanged(to: newest), with: proxy)
-                }
                 .onScrollGeometryChange(for: TimelineViewport.EndPosition.self) { geometry in
                     // 見えている所（visibleRect）は、下の入力欄に隠れた分（contentInsets.bottom）まで含む
                     TimelineViewport.EndPosition(
@@ -369,6 +366,12 @@ struct TimelineScreen: View {
                 } action: { _, position in
                     viewport.endPositionChanged(to: position)
                 }
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    // 位置は小数で届くので、1 までのずれは上端ちょうどとみなす
+                    geometry.contentOffset.y <= 1 - geometry.contentInsets.top
+                } action: { _, isAtStart in
+                    viewport.startReachedChanged(isAtStart: isAtStart)
+                }
                 .onScrollPhaseChange { oldPhase, phase in
                     if phase != .idle {
                         showsCameraNotice = false
@@ -377,9 +380,10 @@ struct TimelineScreen: View {
                         viewport.scrollPhaseChanged(
                             from: TimelineViewport.ScrollPhase(oldPhase),
                             to: TimelineViewport.ScrollPhase(phase)),
-                        with: proxy)
+                        in: timeline, with: proxy)
                 }
-                .onChange(of: timeline.days) { old, new in
+                // 開いたときにも渡して、並べる日を決める
+                .onChange(of: timeline.days, initial: true) { old, new in
                     let returning = viewport.daysChanged(from: old, to: new, now: now())
                     guard !returning.isEmpty else { return }
                     // 日のまとめを開いていても、足した項目を見せる
@@ -414,20 +418,27 @@ struct TimelineScreen: View {
                 .onChange(of: waitingInstructions) { _, instructions in
                     guard !instructions.isEmpty else { return }
                     waitingInstructions = []
-                    perform(instructions, with: proxy)
+                    perform(instructions, in: timeline, with: proxy)
                 }
                 // 目標の設定を広げた・ページを送ったら、カードの下端（塗ったボタン）が入力欄の上に見えるところまで、タイムラインごと送る
                 .onChange(of: goalSetupScrollKey) { _, key in
                     guard key.page != nil, let notice = timeline.goalSetupNotice else { return }
+                    let cardId = Timeline.Item.goalSetupNotice(notice).id
+                    // 並べていない日のカードなら、その日が並んでから送り直す
+                    guard viewport.revealItem(cardId, in: timeline.days) else {
+                        goalSetupScrollRequests += 1
+                        return
+                    }
                     withAnimation {
-                        proxy.scrollTo(Timeline.Item.goalSetupNotice(notice).id, anchor: .bottom)
+                        proxy.scrollTo(cardId, anchor: .bottom)
                     }
                 }
                 // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く
                 .onChange(of: reminderLanding, initial: true) { _, landing in
                     guard let landing else { return }
                     summaryDay = nil
-                    waitingInstructions += viewport.landingRequested(timeline.landing(for: landing))
+                    waitingInstructions += viewport.landingRequested(
+                        timeline.landing(for: landing), in: timeline.days)
                     noteReminderLanded()
                 }
             }
@@ -597,7 +608,7 @@ struct TimelineScreen: View {
             ) { line in
                 switch line {
                 case .missedWeightRecord(let card):
-                    unansweredNoticeLine(card)
+                    unansweredNoticeLine(card, in: timeline.days)
                 case .goalSetup:
                     unansweredGoalSetupLine
                 }
@@ -632,9 +643,10 @@ struct TimelineScreen: View {
     }
 
     /// 帯の下の1行。押すと、その知らせまで戻る
-    private func unansweredNoticeLine(_ card: NoticeCard) -> some View {
+    private func unansweredNoticeLine(_ card: NoticeCard, in days: [Timeline.Day]) -> some View {
         Button {
-            waitingInstructions += viewport.landingRequested(.item(Timeline.Item.notice(card).id))
+            waitingInstructions += viewport.landingRequested(
+                .item(Timeline.Item.notice(card).id), in: days)
             Task { await capture(.unansweredNoticeLineTapped) }
         } label: {
             HStack(spacing: 12) {
@@ -696,7 +708,8 @@ struct TimelineScreen: View {
     }
 
     private func perform(
-        _ instructions: [TimelineViewport.Instruction], with proxy: ScrollViewProxy
+        _ instructions: [TimelineViewport.Instruction], in timeline: Timeline,
+        with proxy: ScrollViewProxy
     ) {
         for instruction in instructions {
             switch instruction {
@@ -710,6 +723,9 @@ struct TimelineScreen: View {
                 }
             case .dismissKeyboard:
                 dismissKeyboard()
+            case .listOlderDays:
+                // 足した日が並んでから、見ていた日を上端に置き直す
+                waitingInstructions += viewport.listOlderDays(of: timeline.days)
             }
         }
     }
