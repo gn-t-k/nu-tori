@@ -16,7 +16,7 @@ import { signInTestAccount } from "../../http/testing";
 type Factory = ReturnType<typeof durableObjectFactory>;
 type Change = Parameters<RecordChangeWrites["addChange"]>[0];
 
-// 目標・1日の目安・推定消費カロリーはサーバーだけが書く。書く口（目標を決める要求）ができるまでは、表に行を置き、記録の変化を書く入口で変更を足して確かめる
+// 目標・1日の目安・推定消費カロリーはサーバーだけが書く。記録の形を1つずつ確かめるので、表に行を置き、記録の変化を書く入口で変更を足す（目標を決める要求から出ることは decide-goal.test.ts）
 describe("目標・1日の目安・推定消費カロリーの同期", () => {
   let sessionToken: string;
   // 行を置き、返した記録を変更の並びに足す

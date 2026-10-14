@@ -6,6 +6,8 @@ import { match } from "ts-pattern";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
 import { dailyGuidePlanSchema, toDailyGuidePlan } from "./daily-guide-plan-schema";
+import { goalDecisionRequestSchema, toGoalDecisionRequest } from "./goal-decision-request-schema";
+import { goalDecisionSchema, toGoalDecisionResponse } from "./goal-decision-schema";
 import { goalProposalsSchema, toGoalProposalsResponse } from "./goal-proposals-schema";
 import {
   calendarDaySchema,
@@ -289,6 +291,42 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
         },
         200,
       );
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/v1/goal-setup/decisions",
+      operationId: "decideGoal",
+      summary: "目標を決める",
+      description:
+        "そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す",
+      security: [{ session: [] }],
+      middleware: [authenticateAccount] as const,
+      request: {
+        body: {
+          required: true,
+          content: { "application/json": { schema: goalDecisionRequestSchema } },
+        },
+      },
+      responses: {
+        200: {
+          description: "決めた記録か、決めなかった理由",
+          content: { "application/json": { schema: goalDecisionSchema } },
+        },
+        ...rejectionResponses,
+      },
+    }),
+    async (c) => {
+      const decided = await getAccountDurableObject(c.env, c.var.accountId).decideGoal(
+        c.var.accountId,
+        toGoalDecisionRequest(c.req.valid("json")),
+      );
+      if (R.isFailure(decided)) {
+        captureException(decided.error);
+        return c.json({ code: decided.error.reason }, 422);
+      }
+      return c.json(toGoalDecisionResponse(decided.value), 200);
     },
   );
 
