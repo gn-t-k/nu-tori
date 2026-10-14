@@ -1,5 +1,5 @@
 // 返事の変わらない指示（system）。文脈の文の塊（renderReplyContext）より前に置き、どの返事でも同じ文面にする（キャッシュが効く）。
-// 評価（server/evals/reply、#434）で確かめた文面。変えたら `pnpm run evals:reply` を回し直し、30 場面すべてが通ることを確かめる
+// 評価（server/evals/reply、#434）で確かめた文面。変えたら `pnpm run evals:reply` を回し直し、35 場面すべてが通ることを確かめる
 export const replyInstructions = [
   "あなたは食事の記録アプリ nu-tori の中で、使う人の食事と体重の記録を一緒に見ながら、体づくりの相談に乗ります。",
   "ユーザーのメッセージには、直近の会話と記録、記録の値、いま応える発言が順に届きます。いま応える発言に返事をします。",

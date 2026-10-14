@@ -3,6 +3,7 @@ import type {
   MainNutrients,
   ReplyContext,
   ReplyContextDish,
+  ReplyContextGoal,
 } from "../../src/reply/domain/reply-context";
 
 // 評価の組の文脈の元になる2日（作り話。公開リポジトリなので、開発者の記録は使わない）。
@@ -175,7 +176,7 @@ const richDay: ReplyContext = {
       { firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: 68.3 },
     ],
     lastWeightRecord: { at: "2026-10-10T07:30", weightKg: 68.1 },
-    // 評価の場面は目標を立てる前の人（目標まで残りの体重を尋ねる場面が、渡していない数字を作らないことを見る）
+    // 元の日は目標を立てる前の人（目標まで残りの体重を尋ねる場面が、渡していない数字を作らないことを見る）。目標を立てた人の場面は evalGoals を重ねる
     goal: undefined,
   },
   newUtterance: { at: "2026-10-10T19:40", body: "" },
@@ -233,3 +234,32 @@ const emptyToday: ReplyContext = {
 };
 
 export const evalDays = { richDay, sparseDay, emptyToday };
+
+// 目標を立てた人の目標（作り話。仕様 #523 の「AI に渡す文脈」）。記録の多い日・少ない日に重ねて、目標を立てた人の場面を作る（cases.ts）。
+// 1日の目安は、仕様 #523 の「計算の決まり」に沿うように推定消費カロリー・期限・目標体重から逆に決めた値（評価は計算を確かめない）
+export const evalGoals = {
+  // 記録の多い日の人の減量。今日の合計（1,665 kcal）が1日の目安（1,600 kcal）を超えている
+  richLose: {
+    direction: "lose",
+    deadlineOn: "2026-12-31",
+    targetWeightKg: 63.2,
+    dailyGuide: { energyKcal: 1600, proteinG: 100, fatG: 45, carbohydrateG: 200 },
+    expenditureKcal: 2050,
+  },
+  // 記録の多い日の人の維持。今日の合計（1,665 kcal）は1日の目安（2,150 kcal）まで余裕がある
+  richMaintain: {
+    direction: "maintain",
+    deadlineOn: undefined,
+    targetWeightKg: 68.3,
+    dailyGuide: { energyKcal: 2150, proteinG: 110, fatG: 60, carbohydrateG: 290 },
+    expenditureKcal: 2150,
+  },
+  // 記録の少ない日の人の減量。昼の時点で、今日の合計（150 kcal）は1日の目安（1,700 kcal）まで余裕がある
+  sparseLose: {
+    direction: "lose",
+    deadlineOn: "2027-03-31",
+    targetWeightKg: 65.5,
+    dailyGuide: { energyKcal: 1700, proteinG: 105, fatG: 45, carbohydrateG: 220 },
+    expenditureKcal: 2000,
+  },
+} as const satisfies Record<string, ReplyContextGoal>;

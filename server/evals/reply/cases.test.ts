@@ -2,10 +2,10 @@ import { describe, expect, test } from "vitest";
 import { listReferableMealIds } from "../../src/reply/domain/list-referable-meal-ids";
 import { replyEvalCases, type ReplyEvalScene } from "./cases";
 
-// 返事の評価の組（仕様 #419 の「指示と評価」）。場面の数は仕様の 30 場面の内訳
+// 返事の評価の組（仕様 #419 の「指示と評価」）。場面の数は仕様の 30 場面の内訳と、仕様 #523 で足した目標を立てた人の 5 場面
 describe("返事の評価の組", () => {
-  test("30 場面あること", () => {
-    expect(replyEvalCases).toHaveLength(30);
+  test("35 場面あること", () => {
+    expect(replyEvalCases).toHaveLength(35);
   });
 
   test("場面の名前が重ならないこと", () => {
@@ -23,6 +23,7 @@ describe("返事の評価の組", () => {
           "off_topic",
           "correction",
           "unprovided_number",
+          "goal",
         ] as const satisfies readonly ReplyEvalScene[]
       ).map((scene) => [scene, replyEvalCases.filter((c) => c.scene === scene).length]),
     );
@@ -34,6 +35,7 @@ describe("返事の評価の組", () => {
       off_topic: 4,
       correction: 5,
       unprovided_number: 5,
+      goal: 5,
     });
   });
 
@@ -49,6 +51,14 @@ describe("返事の評価の組", () => {
         "次の食事のアドバイスをください。/sparse",
       ].toSorted(),
     );
+  });
+
+  test("目標を立てた人の場面だけが、記録の値に目標を持つこと", () => {
+    expect(
+      replyEvalCases
+        .filter(({ context }) => context.structuredValues.goal !== undefined)
+        .map(({ scene }) => scene),
+    ).toEqual(Array.from({ length: 5 }, () => "goal"));
   });
 
   test("いま応える発言が、受け付ける送った文章と同じく、前後の空白を除いて 1〜500 字であること", () => {
