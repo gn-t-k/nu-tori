@@ -76,6 +76,36 @@
 
         func deleteNutrition(syncId: UUID) async throws {}
 
+        /// UI テストは目標の設定の許可の画面を出さず、身体データも摂取エネルギーも読めなかったものにする
+        func goalSetupAuthorizationRequestStatus() async throws -> HealthAuthorizationRequestStatus
+        {
+            .alreadyRequested
+        }
+
+        func requestGoalSetupAuthorization() async throws {}
+
+        func earliestAuthorizedSampleDate(for quantity: HealthDailyQuantity) async throws -> Date? {
+            nil
+        }
+
+        func readDailyDietaryEnergyBySource(days: ClosedRange<CalendarDay>, in timeZone: TimeZone)
+            async throws -> [HealthDailySourceEnergy]
+        {
+            []
+        }
+
+        func readDailyStepCounts(days: ClosedRange<CalendarDay>, in timeZone: TimeZone)
+            async throws -> [CalendarDay: Int]
+        {
+            [:]
+        }
+
+        func readLatestHeightCentimeters() async throws -> Double? { nil }
+
+        func readDateOfBirth() async throws -> CalendarDay? { nil }
+
+        func readBiologicalSex() async throws -> BiologicalSex? { nil }
+
         enum Authorization {
             case notYetRequested
             case alreadyRequested
