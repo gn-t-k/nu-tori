@@ -26,6 +26,14 @@ public protocol RecordCacheReading: Sendable {
     /// 答えた知らせも含む
     func notices() async throws -> [Notice]
 
+    /// 閉じた目標も含む
+    func goals() async throws -> [Goal]
+
+    /// 目標がまだ届いていない1日の目安も含む
+    func dailyGuides() async throws -> [DailyGuide]
+
+    func expenditureEstimates() async throws -> [ExpenditureEstimate]
+
     /// まだ学んでいなければ nil
     func usualWeighingTime() async throws -> UsualWeighingTime?
 

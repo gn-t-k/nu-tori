@@ -7,11 +7,17 @@ public enum SyncChange: Sendable, Equatable {
     case accountSettings(SyncedAccountSettings)
     /// 返事は消えないので、削除の印を持たない
     case aiUtterance(SyncedAiUtterance)
+    /// 1日の目安は消えないので、削除の印を持たない。目標より先に届くことがある
+    case dailyGuide(SyncedDailyGuide)
     case dish(SyncedDish)
     case dishDeletion(dishId: UUID)
     case dishEstimationStatus(SyncedDishEstimationStatus)
     /// 料理の削除の印と、別の変更で届く。届く順は約束しない
     case dishEstimationStatusDeletion(dishId: UUID)
+    /// 推定消費カロリーは消えないので、削除の印を持たない
+    case expenditureEstimate(SyncedExpenditureEstimate)
+    /// 目標は消えないので、削除の印を持たない。閉じると、同じ ID でもう一度届く
+    case goal(SyncedGoal)
     case ingredient(SyncedIngredient)
     case ingredientDeletion(ingredientId: UUID)
     case meal(SyncedMeal)

@@ -149,6 +149,12 @@ import SwiftData
             now: clock.now,
             errorReporting: observation.errorReporting
         )
+        let goalSetupNoticeKeeper = GoalSetupNoticeKeeper(
+            cache: store,
+            timeZone: clock.timeZone,
+            now: clock.now,
+            errorReporting: observation.errorReporting
+        )
         let reflector = RecordSyncReflector()
         let sync = RecordSync(
             store: store,
@@ -163,6 +169,7 @@ import SwiftData
             reflection: reflector,
             accountSession: session,
             missedWeightRecordWatch: missedWeightRecordWatch,
+            goalSetupNoticeKeeper: goalSetupNoticeKeeper,
             mealPhotos: mealPhotos,
             errorReporting: observation.errorReporting,
             weightHealthExport: health.engine,

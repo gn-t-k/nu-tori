@@ -564,7 +564,7 @@
                             SyncedNotice(
                                 id: notice.id, noticeType: notice.noticeType,
                                 issuedAt: notice.issuedAt, timeZone: notice.timeZone,
-                                targetOn: notice.targetOn, response: nil)))
+                                response: nil)))
                 case .createSentText(_, let sentText):
                     guard entries[write.recordKey] == nil else { return }
                     put(.sentText(sentText))
@@ -617,7 +617,7 @@
                             SyncedNotice(
                                 id: notice.id, noticeType: notice.noticeType,
                                 issuedAt: notice.issuedAt, timeZone: notice.timeZone,
-                                targetOn: notice.targetOn, response: response)))
+                                response: response)))
                 }
             }
 

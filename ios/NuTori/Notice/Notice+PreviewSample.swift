@@ -13,11 +13,10 @@
             let issuedAt = calendar.date(
                 from: DateComponents(year: day.year, month: day.month, day: day.day, hour: 8))!
             return Notice(
-                id: Notice.id(kind: .missedWeightRecord, targetDay: day),
-                kind: .missedWeightRecord,
+                id: Notice.id(of: .missedWeightRecord(targetDay: day)),
+                kind: .missedWeightRecord(targetDay: day),
                 issuedAt: issuedAt,
                 timeZone: timeZone,
-                targetDay: day,
                 response: hourAndMinute.map { time in
                     Notice.Response(
                         respondedAt: calendar.date(
