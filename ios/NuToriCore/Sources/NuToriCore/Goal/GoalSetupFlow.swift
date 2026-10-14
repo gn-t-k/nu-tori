@@ -88,6 +88,11 @@ public final class GoalSetupFlow {
         public let count: Int
         /// 0 から
         public let index: Int
+
+        public init(count: Int, index: Int) {
+            self.count = count
+            self.index = index
+        }
     }
 
     public enum Decision: Sendable, Equatable {
@@ -250,7 +255,8 @@ public final class GoalSetupFlow {
                 // 次に動かした
                 return
             }
-            await self.sendAssessment(generation: generation)
+            // 出した要求は、次に動かしても取り消さない。届いた順が入れ替わっても、最後に出した要求の答えだけを使う
+            await Task { await self.sendAssessment(generation: generation) }.value
         }
         assessmentTask?.cancel()
         assessmentTask = task
@@ -582,7 +588,6 @@ public final class GoalSetupFlow {
         assessmentGeneration += 1
         let generation = assessmentGeneration
         let task = Task { await self.sendAssessment(generation: generation) }
-        assessmentTask?.cancel()
         assessmentTask = task
         await task.value
     }
