@@ -45,9 +45,14 @@ extension TimelineViewportTests {
                     now: added.sentAt[0].addingTimeInterval(1))
             }
 
-            @Test("一番下へ動かすこと")
-            func scrollsToEnd() {
-                #expect(instructions == [.scroll(to: .end, animated: false)])
+            @Test("日のまとめを開いていても閉じること")
+            func closesDaySummary() {
+                #expect(instructions == [.closeDaySummary])
+            }
+
+            @Test("足した項目が並んでから、一番下へ動かすこと")
+            func scrollsToEndAfterListing() {
+                #expect(viewport.waitingInstructions == [.scroll(to: .end, animated: false)])
             }
 
             @Test("そこから、中身が伸びたら一番下を追うこと")
@@ -72,6 +77,7 @@ extension TimelineViewportTests {
             @Test("読んでいる所から動かさないこと")
             func staysInPlace() {
                 #expect(instructions.isEmpty)
+                #expect(viewport.waitingInstructions.isEmpty)
             }
 
             @Test("追わないままであること")
@@ -138,10 +144,12 @@ extension TimelineViewportTests {
                 viewport = TimelineViewportTests.opened()
             }
 
-            @Test("その日の区切りへ動かすこと")
+            @Test("並んでから、その日の区切りへ動かすこと")
             mutating func scrollsToDay() {
+                viewport.dayChosen(TimelineViewportTests.yesterday, in: [])
+
                 #expect(
-                    viewport.dayChosen(TimelineViewportTests.yesterday, in: []) == [
+                    viewport.waitingInstructions == [
                         .scroll(to: .day(TimelineViewportTests.yesterday), animated: false)
                     ])
             }
@@ -155,12 +163,36 @@ extension TimelineViewportTests {
                 viewport = TimelineViewportTests.opened()
             }
 
-            @Test("そのカードへ、動きをつけて動かすこと")
+            @Test("並んでから、そのカードへ、動きをつけて動かすこと")
             mutating func scrollsToItem() {
+                viewport.landingRequested(.item("notice-1"), in: [])
+
                 #expect(
-                    viewport.landingRequested(.item("notice-1"), in: []) == [
+                    viewport.waitingInstructions == [
                         .scroll(to: .item("notice-1"), animated: true)
                     ])
+            }
+        }
+
+        @Suite("描き直して、待っている指示を受け取ったとき")
+        struct WaitingInstructionsTaken {
+            var viewport: TimelineViewport
+            let taken: [TimelineViewport.Instruction]
+
+            init() {
+                viewport = TimelineViewportTests.scrolledAway()
+                viewport.landingRequested(.end, in: [])
+                taken = viewport.takeWaitingInstructions()
+            }
+
+            @Test("待っていた指示を返すこと")
+            func returnsWaiting() {
+                #expect(taken == [.scroll(to: .end, animated: false)])
+            }
+
+            @Test("もう待っている指示が無いこと")
+            func clearsWaiting() {
+                #expect(viewport.waitingInstructions.isEmpty)
             }
         }
 
@@ -172,10 +204,11 @@ extension TimelineViewportTests {
                 viewport = TimelineViewportTests.scrolledAway()
             }
 
-            @Test("一番下へ動かすこと")
+            @Test("次に描いたあとで、一番下へ動かすこと")
             mutating func scrollsToEnd() {
-                #expect(
-                    viewport.landingRequested(.end, in: []) == [.scroll(to: .end, animated: false)])
+                viewport.landingRequested(.end, in: [])
+
+                #expect(viewport.waitingInstructions == [.scroll(to: .end, animated: false)])
             }
         }
     }

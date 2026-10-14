@@ -150,7 +150,7 @@ struct TimelineScreen: View {
                         }
                     ) { chosen in
                         self.summaryDay = nil
-                        waitingInstructions += viewport.dayChosen(chosen, in: loaded.days)
+                        viewport.dayChosen(chosen, in: loaded.days)
                     }
                 }
             }
@@ -249,10 +249,9 @@ struct TimelineScreen: View {
     /// 今日の答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
-    /// 見える範囲の規則は NuToriCore の TimelineViewport が持つ。規則は前の出来事を覚えて決めるので、描き直しをまたいで持つために @State に置く
+    /// 見える範囲の規則は NuToriCore の TimelineViewport が持つ。規則は前の出来事を覚えて決めるので、描き直しをまたいで持つために @State に置く。
+    /// 次に描いたあとで実行する指示（`waitingInstructions`）も持ち、変わったら動かす口（ScrollViewProxy）のある ScrollViewReader の中で実行する
     @State private var viewport = TimelineViewport()
-    /// 実行を待っている指示。動かす口（ScrollViewProxy）は ScrollViewReader の中にしか無く、通知から開いた直後のカードと、足したばかりの項目は、並んでからでないと着けないので、次の更新まで持ってから実行する
-    @State private var waitingInstructions: [TimelineViewport.Instruction] = []
     /// 返事の最初の文字を出したときの出来事を、送った文章ごとに1回だけ送る
     @State private var replyFirstText = ReplyFirstTextWatch()
     /// 目標を立てる知らせのカードまで送って広げるよう頼まれた回数。開いているページが同じでも送り直す合図
@@ -384,16 +383,12 @@ struct TimelineScreen: View {
                     perform(
                         viewport.scrollPhaseChanged(
                             from: TimelineViewport.ScrollPhase(oldPhase),
-                            to: TimelineViewport.ScrollPhase(phase)),
-                        in: timeline, with: proxy)
+                            to: TimelineViewport.ScrollPhase(phase), in: timeline.days),
+                        with: proxy)
                 }
                 // 開いたときにも渡して、並べる日を決める
                 .onChange(of: timeline.days, initial: true) { old, new in
-                    let returning = viewport.daysChanged(from: old, to: new, now: now())
-                    guard !returning.isEmpty else { return }
-                    // 日のまとめを開いていても、足した項目を見せる
-                    summaryDay = nil
-                    waitingInstructions += returning
+                    perform(viewport.daysChanged(from: old, to: new, now: now()), with: proxy)
                 }
                 .onChange(of: timeline.hasGrowingReply) { _, growing in
                     viewport.growingReplyChanged(isGrowing: growing)
@@ -420,10 +415,9 @@ struct TimelineScreen: View {
                         unansweredNoticeLineVisibility.note(position)
                     }
                 }
-                .onChange(of: waitingInstructions) { _, instructions in
+                .onChange(of: viewport.waitingInstructions) { _, instructions in
                     guard !instructions.isEmpty else { return }
-                    waitingInstructions = []
-                    perform(instructions, in: timeline, with: proxy)
+                    perform(viewport.takeWaitingInstructions(), with: proxy)
                 }
                 // 目標の設定を広げた・ページを送ったら、カードの下端（塗ったボタン）が入力欄の上に見えるところまで、タイムラインごと送る
                 .onChange(of: goalSetupScrollKey) { _, key in
@@ -442,8 +436,7 @@ struct TimelineScreen: View {
                 .onChange(of: reminderLanding, initial: true) { _, landing in
                     guard let landing else { return }
                     summaryDay = nil
-                    waitingInstructions += viewport.landingRequested(
-                        timeline.landing(for: landing), in: timeline.days)
+                    viewport.landingRequested(timeline.landing(for: landing), in: timeline.days)
                     noteReminderLanded()
                 }
             }
@@ -639,8 +632,7 @@ struct TimelineScreen: View {
     /// 帯の下の1行。押すと、その知らせまで戻る
     private func unansweredNoticeLine(_ card: NoticeCard, in days: [Timeline.Day]) -> some View {
         Button {
-            waitingInstructions += viewport.landingRequested(
-                .item(Timeline.Item.notice(card).id), in: days)
+            viewport.landingRequested(.item(Timeline.Item.notice(card).id), in: days)
             Task { await capture(.unansweredNoticeLineTapped) }
         } label: {
             UnansweredNoticeLineLabel(text: "今日の体重がまだです") {
@@ -691,8 +683,7 @@ struct TimelineScreen: View {
     }
 
     private func perform(
-        _ instructions: [TimelineViewport.Instruction], in timeline: Timeline,
-        with proxy: ScrollViewProxy
+        _ instructions: [TimelineViewport.Instruction], with proxy: ScrollViewProxy
     ) {
         for instruction in instructions {
             switch instruction {
@@ -706,9 +697,8 @@ struct TimelineScreen: View {
                 }
             case .dismissKeyboard:
                 dismissKeyboard()
-            case .listOlderDays:
-                // 足した日が並んでから、見ていた日を上端に置き直す
-                waitingInstructions += viewport.listOlderDays(of: timeline.days)
+            case .closeDaySummary:
+                summaryDay = nil
             }
         }
     }
