@@ -89,6 +89,53 @@ const recordWeight = async (options: MainFlowOptions, session: Session): Promise
 // 初めての目標を、端末と同じ順で決める。使い始めたばかりで食べた量の記録が無いので逆算できず、身体データを添えて式で出す。
 // 減量の標準の案を、見せていた値のとおりに決め、同じ要求の ID の再送と、取りに行く応答に届くことまでを確かめる
 const decideGoal = async (options: MainFlowOptions, session: Session): Promise<void> => {
+  // 身体データは作り話にする（公開リポジトリ）。サーバーは計算に使ったら捨てる
+  const bodyData = {
+    sex: "female",
+    heightCentimeters: 160,
+    ageYears: 35,
+    activity: { type: "level", level: "standing" },
+  };
+
+  const goalSetupPreviewSchema = z.object({
+    canBackCalculate: z.boolean().optional(),
+    canOfferLoseProposals: z.boolean().optional(),
+  });
+
+  const dailyGuidePlanSchema = z.object({
+    energyKcal: z.number(),
+    proteinG: z.number(),
+    fatG: z.number(),
+    carbohydrateG: z.number(),
+  });
+
+  const goalProposalsSchema = z.object({
+    startedOn: z.string(),
+    expenditureSource: z.string(),
+    deadlineOn: z.string(),
+    proposals: z.array(
+      z.object({
+        pace: z.string(),
+        status: z.string(),
+        targetWeightKg: z.number().optional(),
+        dailyGuide: dailyGuidePlanSchema.optional(),
+      }),
+    ),
+  });
+
+  const goalDecisionSchema = z.object({
+    status: z.string(),
+    changes: z
+      .array(
+        z.object({
+          kind: z.string(),
+          recordId: z.string(),
+          record: z.record(z.string(), z.unknown()),
+        }),
+      )
+      .optional(),
+  });
+
   const preview = goalSetupPreviewSchema.parse(
     await postGoalSetup(options, session, "preview", { direction: "lose" }),
   );
@@ -167,53 +214,6 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
 };
 
 const goalSetupTimeZone = "Asia/Tokyo";
-
-// 身体データは作り話にする（公開リポジトリ）。サーバーは計算に使ったら捨てる
-const bodyData = {
-  sex: "female",
-  heightCentimeters: 160,
-  ageYears: 35,
-  activity: { type: "level", level: "standing" },
-};
-
-const goalSetupPreviewSchema = z.object({
-  canBackCalculate: z.boolean().optional(),
-  canOfferLoseProposals: z.boolean().optional(),
-});
-
-const dailyGuidePlanSchema = z.object({
-  energyKcal: z.number(),
-  proteinG: z.number(),
-  fatG: z.number(),
-  carbohydrateG: z.number(),
-});
-
-const goalProposalsSchema = z.object({
-  startedOn: z.string(),
-  expenditureSource: z.string(),
-  deadlineOn: z.string(),
-  proposals: z.array(
-    z.object({
-      pace: z.string(),
-      status: z.string(),
-      targetWeightKg: z.number().optional(),
-      dailyGuide: dailyGuidePlanSchema.optional(),
-    }),
-  ),
-});
-
-const goalDecisionSchema = z.object({
-  status: z.string(),
-  changes: z
-    .array(
-      z.object({
-        kind: z.string(),
-        recordId: z.string(),
-        record: z.record(z.string(), z.unknown()),
-      }),
-    )
-    .optional(),
-});
 
 // 目標の設定の要求は同期の外でその場で答えるので、200 でなければ、断った理由（code）を添えて投げる
 const postGoalSetup = async (
