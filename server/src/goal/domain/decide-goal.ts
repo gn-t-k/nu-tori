@@ -24,7 +24,7 @@ import {
   type CompleteGoalSetupBasis,
   resolveCompleteGoalSetupBasis,
 } from "./resolve-complete-goal-setup-basis";
-import type { GoalSetupStores } from "./resolve-goal-setup-basis";
+import type { GoalSetupStores } from "./goal-setup-stores";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import type { WeightChangeDirection } from "./weight-change-direction";
 import { writeGoalDecision } from "./write-goal-decision";

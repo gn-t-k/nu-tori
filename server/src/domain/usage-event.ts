@@ -4,7 +4,7 @@ import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
 import type { MealPhotoReceiptFailedError } from "./receive-meal-photo";
 import type { DailyGuideLimitType } from "../daily-guide/domain/daily-guide";
-import type { GoalDirection } from "../goal/domain/compute-goal-direction";
+import type { GoalDirection } from "../goal/domain/goal-direction";
 import type { PacePlan } from "../goal/domain/goal";
 import type { ClassificationLabel } from "../reply/domain/conversation-provider";
 import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";

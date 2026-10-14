@@ -1,6 +1,6 @@
 import type { DayOfWeek } from "../../domain/day-of-week";
 import type { RecordId } from "../../domain/record-id";
-import type { GoalDirection } from "../../goal/domain/compute-goal-direction";
+import type { GoalDirection } from "../../goal/domain/goal-direction";
 import type { NutrientAmount } from "../../ingredient/domain/nutrient-amount";
 import type { MealEstimationProgress } from "./reply-context-source";
 

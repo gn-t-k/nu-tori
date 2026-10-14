@@ -1,14 +1,11 @@
 import { R } from "@praha/byethrow";
 import { acceptedDeadlineDays } from "./accepted-deadline-days";
-import type { GoalDirection } from "./compute-goal-direction";
 import { computeGoalProposals } from "./compute-goal-proposals";
+import type { GoalDirection } from "./goal-direction";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
-import {
-  resolveGoalSetupBasis,
-  type GoalSetupBasis,
-  type GoalSetupStores,
-} from "./resolve-goal-setup-basis";
+import type { GoalSetupStores } from "./goal-setup-stores";
+import { resolveGoalSetupBasis, type GoalSetupBasis } from "./resolve-goal-setup-basis";
 
 export type GoalSetupPreview = {
   // 初めての目標のときだけ答える。立て直すときは推定を作らないので無い
