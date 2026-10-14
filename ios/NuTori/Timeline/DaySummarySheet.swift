@@ -152,13 +152,10 @@ struct DaySummarySheet: View {
         .overlay {
             ringCenter(food.figures)
         }
-        let facts = VStack(spacing: 8) {
-            ForEach(PFC.allCases, id: \.self) { pfc in
-                if pfc != .protein {
-                    Divider()
-                }
-                pfcFact(pfc, figures: food.figures, dailyGuide: dailyGuide)
-            }
+        // 名前と値の途中で改行させないため、1行でも横に収まらなければ3行とも値を名前の下に置く。行ごとに決めると、値の位置が行によってずれる
+        let facts = ViewThatFits(in: .horizontal) {
+            pfcFacts(figures: food.figures, dailyGuide: dailyGuide, layout: .valueBesideName)
+            pfcFacts(figures: food.figures, dailyGuide: dailyGuide, layout: .valueBelowName)
         }
         return Section {
             foodLayout {
@@ -202,10 +199,28 @@ struct DaySummarySheet: View {
         }
     }
 
-    /// 名前と値が1行に収まらないときは、値を名前の下に置く。名前と値の途中では改行しない
-    private func pfcFact(_ pfc: PFC, figures: DayFood.Figures?, dailyGuide: DailyGuide?)
+    private enum PFCFactLayout {
+        case valueBesideName
+        case valueBelowName
+    }
+
+    private func pfcFacts(figures: DayFood.Figures?, dailyGuide: DailyGuide?, layout: PFCFactLayout)
         -> some View
     {
+        VStack(spacing: 8) {
+            ForEach(PFC.allCases, id: \.self) { pfc in
+                if pfc != .protein {
+                    Divider()
+                }
+                pfcFact(pfc, figures: figures, dailyGuide: dailyGuide, layout: layout)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func pfcFact(
+        _ pfc: PFC, figures: DayFood.Figures?, dailyGuide: DailyGuide?, layout: PFCFactLayout
+    ) -> some View {
         let name = HStack(alignment: .firstTextBaseline, spacing: 6) {
             pfc.key
             Text("\(pfc.letter) \(pfc.name)")
@@ -222,12 +237,14 @@ struct DaySummarySheet: View {
         .fontWeight(.semibold)
         .monospacedDigit()
         .contentTransition(.numericText())
-        return ViewThatFits(in: .horizontal) {
+        switch layout {
+        case .valueBesideName:
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 name.fixedSize()
                 Spacer(minLength: 0)
                 amount.fixedSize()
             }
+        case .valueBelowName:
             VStack(alignment: .leading, spacing: 2) {
                 name
                 amount
