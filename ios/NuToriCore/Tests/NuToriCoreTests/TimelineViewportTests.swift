@@ -141,6 +141,49 @@ struct TimelineViewportTests {
                 viewport.growingReplyChanged(isGrowing: false)
             }
 
+            @Test("追わないままであること")
+            func doesNotFollow() {
+                #expect(!viewport.followsSizeChanges)
+            }
+
+            @Test("そのあと日が変わっても、読んでいる所から動かさないこと")
+            mutating func staysInPlaceWhenDayChanged() throws {
+                let changed = try ListedDays.days(recordCounts: [10, 0])
+                let instructions = viewport.daysChanged(
+                    from: Array(changed.dropLast()), to: changed, now: ListedDays.notJustAdded)
+                #expect(instructions.isEmpty)
+                #expect(!viewport.followsSizeChanges)
+            }
+        }
+
+        @Suite("一番下が入力欄の上に見えている所で指で触れているときに、伸びている返事が終わったとき")
+        struct GrowingReplyFinishedAtEndShown {
+            var viewport: TimelineViewport
+
+            init() {
+                viewport = TimelineViewportTests.opened()
+                TimelineViewportTests.touch(&viewport)
+                viewport.endPositionChanged(to: .shown)
+                viewport.growingReplyChanged(isGrowing: false)
+            }
+
+            @Test("追い直すこと")
+            func followsAgain() {
+                #expect(viewport.followsSizeChanges)
+            }
+        }
+
+        @Suite("一番下が入力欄の下に隠れている所で指で触れているときに、伸びている返事が終わったとき")
+        struct GrowingReplyFinishedAtEndUnderComposer {
+            var viewport: TimelineViewport
+
+            init() {
+                viewport = TimelineViewportTests.opened()
+                TimelineViewportTests.touch(&viewport)
+                viewport.endPositionChanged(to: .underComposer)
+                viewport.growingReplyChanged(isGrowing: false)
+            }
+
             @Test("追い直すこと")
             func followsAgain() {
                 #expect(viewport.followsSizeChanges)

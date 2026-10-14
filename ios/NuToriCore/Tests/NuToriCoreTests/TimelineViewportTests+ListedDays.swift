@@ -277,7 +277,6 @@ extension TimelineViewportTests {
                 let days = try ListedDays.fortyDays()
                 added = try ListedDays.days(recordCounts: Array(repeating: 10, count: 39) + [30])
                 viewport = ListedDays.scrolledAway(from: days)
-                // 追うことになるが、一番下は画面の外のまま
                 viewport.growingReplyChanged(isGrowing: false)
                 _ = viewport.daysChanged(from: days, to: added, now: ListedDays.notJustAdded)
             }
