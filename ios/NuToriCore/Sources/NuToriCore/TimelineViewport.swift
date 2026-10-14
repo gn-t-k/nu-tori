@@ -91,7 +91,7 @@ public struct TimelineViewport: Equatable, Sendable {
         // 一番下にいるあいだは、新しい並びで数え直す（開いたあとに同期で届いた古い日を並べ、遡って足した日を片づける）。上の日が出入りしても、一番下からは見えない。
         // ただし、着く先の日は外さない。着くと決めてから動くまでは、まだ一番下にいる。
         // 遡っているあいだは、並べていた日のままにする。上の日が出入りすると、読んでいる所がずれる
-        if isAtEnd {
+        if isFollowingAtEnd {
             let recounted = Self.oldestDay(ofBatchBefore: nil, in: new)
             oldestListedDay = [recounted, landingDay].compactMap { $0 }.min()
         } else {
@@ -173,18 +173,18 @@ public struct TimelineViewport: Equatable, Sendable {
         return oldest
     }
 
-    /// その日が並んでいなければ、その日まで並べる。一番下にいるなら、一番下が画面の外に出るか、指で触れるか、一番下へ連れていくまで、その日を並べる日から外さない
+    /// その日が並んでいなければ、その日まで並べる。一番下を追っているなら、着く先の日（`landingDay`）として持つ
     private mutating func list(_ day: CalendarDay, in days: [Timeline.Day]) {
         guard let listedOldest = listedDays(of: days).first?.day else { return }
         oldestListedDay = min(listedOldest, day)
         // 遡っているあいだは、並べていた日のままにする（`daysChanged`）ので、持たなくても外れない
-        if isAtEnd {
+        if isFollowingAtEnd {
             landingDay = day
         }
     }
 
-    /// 一番下にいるか。追っていて、一番下が見えている（入力欄の下に隠れていても）
-    private var isAtEnd: Bool {
+    /// 指で動かしている途中は、一番下でも、並べる日を数え直さない
+    private var isFollowingAtEnd: Bool {
         followsEnd && endPosition.isAtEnd
     }
 
