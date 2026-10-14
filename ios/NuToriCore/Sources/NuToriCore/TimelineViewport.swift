@@ -120,7 +120,7 @@ public struct TimelineViewport: Equatable, Sendable {
         waitingInstructions.append(.scroll(to: .day(day), animated: false))
     }
 
-    /// 答えていない知らせの1行を押した、または記録忘れの通知を押して開いた
+    /// 答えていない知らせの1行を押した、または記録忘れの通知を押して開いた（`reminderOpened`）
     public mutating func landingRequested(_ landing: Timeline.Landing, in days: [Timeline.Day]) {
         switch landing {
         case .item(let itemId):
@@ -132,6 +132,15 @@ public struct TimelineViewport: Equatable, Sendable {
             landingDay = nil
             waitingInstructions.append(.scroll(to: .end, animated: false))
         }
+    }
+
+    /// 記録忘れの通知を押して開き、着き先が決まった。その日の知らせがあればその位置に、無ければ一番下に着く
+    public mutating func reminderOpened(_ reminder: ReminderLanding, in timeline: Timeline)
+        -> [Instruction]
+    {
+        landingRequested(timeline.landing(for: reminder), in: timeline.days)
+        // 日のまとめを開いていても、着いた所を見せる
+        return [.closeDaySummary]
     }
 
     /// 目標の設定のカードを広げた・ページを送った。カードの下端（塗ったボタン）が入力欄の上に見えるところまで送るので、上端に着く `landingRequested` とは分ける。

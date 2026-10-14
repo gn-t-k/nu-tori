@@ -211,5 +211,61 @@ extension TimelineViewportTests {
                 #expect(viewport.waitingInstructions == [.scroll(to: .end, animated: false)])
             }
         }
+
+        @Suite("記録忘れの通知を押して開き、その日の知らせが並んでいるとき")
+        struct ReminderOpenedWithNotice {
+            let card: Timeline.Item
+            var viewport: TimelineViewport
+            let instructions: [TimelineViewport.Instruction]
+
+            init() throws {
+                let notice = try Notice.missedWeightRecord(issuedAt: "2026-10-13T08:15:00+09:00")
+                let timeline = Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], notices: [notice],
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                    firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
+                card = .notice(NoticeCard(notice: notice, form: .awaitingAnswer))
+                viewport = TimelineViewportTests.scrolledAway()
+                instructions = viewport.reminderOpened(.notice(id: notice.id), in: timeline)
+            }
+
+            @Test("日のまとめを開いていても閉じること")
+            func closesDaySummary() {
+                #expect(instructions == [.closeDaySummary])
+            }
+
+            @Test("並んでから、その知らせのカードへ、動きをつけて動かすこと")
+            func scrollsToNoticeCard() {
+                #expect(
+                    viewport.waitingInstructions == [.scroll(to: .item(card.id), animated: true)])
+            }
+        }
+
+        @Suite("記録忘れの通知を押して開き、知らせが無いと決まったとき")
+        struct ReminderOpenedWithoutNotice {
+            var viewport: TimelineViewport
+            let instructions: [TimelineViewport.Instruction]
+
+            init() {
+                let timeline = Timeline(
+                    input: Timeline.Input(
+                        weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                    firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
+                viewport = TimelineViewportTests.scrolledAway()
+                instructions = viewport.reminderOpened(.timelineEnd, in: timeline)
+            }
+
+            @Test("日のまとめを開いていても閉じること")
+            func closesDaySummary() {
+                #expect(instructions == [.closeDaySummary])
+            }
+
+            @Test("次に描いたあとで、一番下へ動かすこと")
+            func scrollsToEnd() {
+                #expect(viewport.waitingInstructions == [.scroll(to: .end, animated: false)])
+            }
+        }
     }
 }

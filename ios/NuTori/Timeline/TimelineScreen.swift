@@ -427,11 +427,12 @@ struct TimelineScreen: View {
                             Timeline.Item.goalSetupNotice(notice).id, in: timeline.days),
                         with: proxy)
                 }
-                // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く
+                // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く。
+                // 着き先は RootModel がヘルスケアを読んでから決めて渡すので、受け取ったことを返して消してもらい、次に同じ着き先で開いたときにも変わったと届くようにする。
+                // この受け渡しは画面の外とのつなぎで、位置の規則を持たないので、TimelineViewport には移さない
                 .onChange(of: reminderLanding, initial: true) { _, landing in
                     guard let landing else { return }
-                    summaryDay = nil
-                    viewport.landingRequested(timeline.landing(for: landing), in: timeline.days)
+                    perform(viewport.reminderOpened(landing, in: timeline), with: proxy)
                     noteReminderLanded()
                 }
             }
