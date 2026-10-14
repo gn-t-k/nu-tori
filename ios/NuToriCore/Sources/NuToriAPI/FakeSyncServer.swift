@@ -14,7 +14,7 @@
         /// セッションを始める要求に返すアカウント ID
         public static let accountId = "stub-account"
 
-        private let scenario: Scenario
+        let scenario: Scenario
         private let writePolicies: [Components.Schemas.RecordKindName: WritePolicy]
         private let ledger: Mutex<Ledger>
 
@@ -68,6 +68,9 @@
                     return (HTTPResponse(status: .badRequest), nil)
                 }
                 return try json(.ok, try await pull(request))
+            case Operations.PreviewGoalSetup.id, Operations.ProposeGoals.id,
+                Operations.AssessCustomTargetWeight.id, Operations.DecideGoal.id:
+                return try await respondToGoalSetup(operationID: operationID, body: body)
             default:
                 return (HTTPResponse(status: .notFound), nil)
             }
@@ -95,6 +98,8 @@
             public let answerSentText: @Sendable (_ body: String) -> SentTextAnswer?
             /// 送った文章を受け付けてから（送り直されてから）、答えるまでの取得の回数。その回数めの取得で答える
             public let sentTextAnswerPulls: Int
+            /// 目標の設定の4つの要求への答え方。nil なら 404 を返す
+            public let goalSetup: GoalSetupAnswers?
 
             public init(
                 records: [SyncChange],
@@ -110,7 +115,8 @@
                 mealEstimationPulls: Int = 1,
                 answerSentText: @escaping @Sendable (_ body: String) -> SentTextAnswer? = { _ in nil
                 },
-                sentTextAnswerPulls: Int = 1
+                sentTextAnswerPulls: Int = 1,
+                goalSetup: GoalSetupAnswers? = nil
             ) {
                 precondition(mealEstimationPulls >= 1, "推定を終えるまでの取得は1回以上")
                 precondition(sentTextAnswerPulls >= 1, "送った文章に答えるまでの取得は1回以上")
@@ -125,6 +131,7 @@
                 self.mealEstimationPulls = mealEstimationPulls
                 self.answerSentText = answerSentText
                 self.sentTextAnswerPulls = sentTextAnswerPulls
+                self.goalSetup = goalSetup
             }
         }
 
@@ -261,7 +268,16 @@
             URLComponents(string: request.path ?? "")?.queryItems?.first { $0.name == name }?.value
         }
 
-        private func json(_ status: HTTPResponse.Status, _ payload: some Encodable) throws -> (
+        /// 応答の記録を、同期でも届くよう置く
+        func record(_ changes: [SyncChange]) {
+            ledger.withLock { ledger in
+                for change in changes {
+                    ledger.put(change)
+                }
+            }
+        }
+
+        func json(_ status: HTTPResponse.Status, _ payload: some Encodable) throws -> (
             HTTPResponse, HTTPBody?
         ) {
             var response = HTTPResponse(status: status)

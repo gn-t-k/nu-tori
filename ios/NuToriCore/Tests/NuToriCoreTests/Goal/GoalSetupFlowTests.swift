@@ -59,6 +59,26 @@ struct GoalSetupFlowTests {
                         == "2026-04-01")
             }
 
+            @Test("今日の体重の記録が無ければ、目標案に使った最後の体重記録の日を見せること")
+            func showsPastWeightRecordDay() async {
+                await harness.flow.chooseDirection(.lose)
+                await harness.flow.proceedFromDeadline()
+
+                #expect(
+                    harness.flow.pastWeightRecordDay == CalendarDay(year: 2025, month: 12, day: 31))
+            }
+
+            @Test("今日の体重の記録があれば、最後の体重記録の日を見せないこと")
+            func hidesTodaysWeightRecordDay() async {
+                harness.server.replace(
+                    "proposals",
+                    with: .json(JSON.loseProposals(lastWeightRecordedOn: "2026-01-01")))
+                await harness.flow.chooseDirection(.lose)
+                await harness.flow.proceedFromDeadline()
+
+                #expect(harness.flow.pastWeightRecordDay == nil)
+            }
+
             @Test("許可を2回は求めないこと")
             func asksAuthorizationOnce() async {
                 await harness.flow.chooseDirection(.lose)
@@ -192,6 +212,35 @@ struct GoalSetupFlowTests {
                 #expect(try harness.sentBodies("proposals").first?["bodyData"] != nil)
                 #expect(harness.flow.page == .proposals)
                 #expect(harness.flow.progress == .init(count: 4, index: 3))
+            }
+
+            @Test("目標案の上の1行に、足りない値の「次へ」で決めた身体データを見せること")
+            func showsUsedBody() async {
+                await harness.flow.chooseDirection(.lose)
+                await harness.flow.proceedFromDeadline()
+                harness.flow.enterMissingValues(entry)
+
+                await harness.flow.proceedFromMissingValues()
+
+                #expect(
+                    harness.flow.usedBody
+                        == GoalSetupBody(
+                            sex: .female, heightCentimeters: 160, ageYears: 35,
+                            activity: .level(.standing)))
+            }
+
+            @Test("自分で決める目標体重のページの「変える」で、答えを残して足りない値のページに戻ること")
+            func revisesMissingValuesFromCustom() async {
+                await harness.flow.chooseDirection(.lose)
+                await harness.flow.proceedFromDeadline()
+                harness.flow.enterMissingValues(entry)
+                await harness.flow.proceedFromMissingValues()
+                harness.flow.openCustomTargetWeight()
+
+                harness.flow.reviseMissingValues()
+
+                #expect(harness.flow.page == .missingValues)
+                #expect(harness.flow.missingValues?.entry == entry)
             }
         }
 
