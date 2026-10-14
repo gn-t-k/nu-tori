@@ -1760,25 +1760,40 @@
         ]
       },
       "GoalProposals": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/MaintainGoalProposals"
+          },
+          {
+            "$ref": "#/components/schemas/LoseGoalProposals"
+          },
+          {
+            "$ref": "#/components/schemas/GainGoalProposals"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "direction",
+          "mapping": {
+            "maintain": "#/components/schemas/MaintainGoalProposals",
+            "lose": "#/components/schemas/LoseGoalProposals",
+            "gain": "#/components/schemas/GainGoalProposals"
+          }
+        },
+        "description": "減量・増量は期限までの3つの枠と自分で決める目標体重の受け付ける幅、維持は目標体重と1日の目安"
+      },
+      "MaintainGoalProposals": {
         "type": "object",
         "properties": {
           "startedOn": {
             "type": "string",
             "description": "開始の日（YYYY-MM-DD）。端末の今のタイムゾーンでの今日。立て直すときに今日が今の目標の開始の日より前なら、今の目標の開始の日。期限の日数はこの日から数える"
           },
-          "direction": {
-            "type": "string",
-            "description": "lose・gain・maintain",
-            "example": "lose"
-          },
           "expenditureKcal": {
             "type": "integer",
             "description": "計算に使った推定消費カロリー"
           },
           "expenditureSource": {
-            "type": "string",
-            "description": "推定消費カロリーの出どころ。back_calculated（逆算）・formula（式）・current（今の推定。立て直すとき）",
-            "example": "back_calculated"
+            "$ref": "#/components/schemas/GoalSetupExpenditureSource"
           },
           "startingWeightTrendKg": {
             "type": "number",
@@ -1788,100 +1803,48 @@
             "type": "string",
             "description": "体重の傾向の元になった、開始の日以前で最後の体重記録の日（YYYY-MM-DD）"
           },
-          "deadlineOn": {
+          "direction": {
             "type": "string",
-            "description": "減量・増量のときだけ付く"
-          },
-          "proposals": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/GoalProposal"
-            },
-            "description": "減量・増量のときだけ付く。ゆるめ・標準・ハードの3つの枠を、いつもこの順に"
-          },
-          "acceptedTargetWeightRange": {
-            "type": "object",
-            "properties": {
-              "minimumKg": {
-                "type": "number"
-              },
-              "maximumKg": {
-                "type": "number"
-              },
-              "fastestEndReason": {
-                "type": "string",
-                "description": "いちばん速い端（減量は下の端、増量は上の端）を決めた理由。pace_too_fast（ハード案の速さ）・daily_guide_below_minimum（下限 1,200 kcal）"
-              }
-            },
-            "required": [
-              "minimumKg",
-              "maximumKg",
-              "fastestEndReason"
-            ],
-            "description": "自分で決める目標体重の受け付ける幅（0.1 kg 単位、両端を含む）。減量・増量で、受け付ける目標体重があるときだけ付く"
+            "enum": [
+              "maintain"
+            ]
           },
           "maintenance": {
-            "type": "object",
-            "properties": {
-              "targetWeightKg": {
-                "type": "number"
-              },
-              "dailyGuide": {
-                "$ref": "#/components/schemas/DailyGuidePlan"
-              }
-            },
-            "required": [
-              "targetWeightKg",
-              "dailyGuide"
-            ],
-            "description": "維持のときだけ付く"
+            "$ref": "#/components/schemas/GoalMaintenancePlan"
           }
         },
         "required": [
           "startedOn",
-          "direction",
           "expenditureKcal",
           "expenditureSource",
           "startingWeightTrendKg",
-          "lastWeightRecordedOn"
+          "lastWeightRecordedOn",
+          "direction",
+          "maintenance"
         ]
       },
-      "GoalProposal": {
+      "GoalSetupExpenditureSource": {
+        "type": "string",
+        "enum": [
+          "back_calculated",
+          "formula",
+          "current"
+        ],
+        "description": "推定消費カロリーの出どころ。back_calculated（逆算）・formula（式）・current（今の推定。立て直すとき）"
+      },
+      "GoalMaintenancePlan": {
         "type": "object",
         "properties": {
-          "pace": {
-            "type": "string",
-            "description": "gentle・standard・hard",
-            "example": "gentle"
-          },
-          "status": {
-            "type": "string",
-            "description": "offered（出せる）・unavailable（出せない）",
-            "example": "offered"
-          },
           "targetWeightKg": {
-            "type": "number",
-            "description": "offered のときだけ"
+            "type": "number"
           },
           "dailyGuide": {
             "$ref": "#/components/schemas/DailyGuidePlan"
-          },
-          "difficulty": {
-            "type": "string",
-            "description": "offered のときだけ。大変さ。案ではその案の段階（pace と同じ値）"
-          },
-          "dailyGuideDifferenceKcal": {
-            "type": "integer",
-            "description": "offered のときだけ。1日の目安と推定消費カロリーの差（50 kcal 単位。少ないときは負）"
-          },
-          "unavailableReason": {
-            "type": "string",
-            "description": "unavailable のときだけ。daily_guide_below_minimum（1日の目安が下限 1,200 kcal を下回る）"
           }
         },
         "required": [
-          "pace",
-          "status"
+          "targetWeightKg",
+          "dailyGuide"
         ]
       },
       "DailyGuidePlan": {
@@ -1905,8 +1868,225 @@
           "proteinG",
           "fatG",
           "carbohydrateG"
+        ]
+      },
+      "LoseGoalProposals": {
+        "type": "object",
+        "properties": {
+          "startedOn": {
+            "type": "string",
+            "description": "開始の日（YYYY-MM-DD）。端末の今のタイムゾーンでの今日。立て直すときに今日が今の目標の開始の日より前なら、今の目標の開始の日。期限の日数はこの日から数える"
+          },
+          "expenditureKcal": {
+            "type": "integer",
+            "description": "計算に使った推定消費カロリー"
+          },
+          "expenditureSource": {
+            "$ref": "#/components/schemas/GoalSetupExpenditureSource"
+          },
+          "startingWeightTrendKg": {
+            "type": "number",
+            "description": "計算に使った、開始の日の体重の傾向。丸めていない"
+          },
+          "lastWeightRecordedOn": {
+            "type": "string",
+            "description": "体重の傾向の元になった、開始の日以前で最後の体重記録の日（YYYY-MM-DD）"
+          },
+          "deadlineOn": {
+            "type": "string",
+            "description": "期限（YYYY-MM-DD）"
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalProposal"
+            },
+            "description": "ゆるめ・標準・ハードの3つの枠を、いつもこの順に"
+          },
+          "acceptedTargetWeightRange": {
+            "$ref": "#/components/schemas/AcceptedTargetWeightRange"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "lose"
+            ]
+          }
+        },
+        "required": [
+          "startedOn",
+          "expenditureKcal",
+          "expenditureSource",
+          "startingWeightTrendKg",
+          "lastWeightRecordedOn",
+          "deadlineOn",
+          "proposals",
+          "direction"
+        ]
+      },
+      "GoalProposal": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/OfferedGoalProposal"
+          },
+          {
+            "$ref": "#/components/schemas/UnavailableGoalProposal"
+          }
         ],
-        "description": "offered のときだけ"
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "offered": "#/components/schemas/OfferedGoalProposal",
+            "unavailable": "#/components/schemas/UnavailableGoalProposal"
+          }
+        },
+        "description": "ゆるめ・標準・ハードの枠の1つ"
+      },
+      "OfferedGoalProposal": {
+        "type": "object",
+        "properties": {
+          "pace": {
+            "$ref": "#/components/schemas/ProposalPace"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "offered"
+            ]
+          },
+          "targetWeightKg": {
+            "type": "number"
+          },
+          "dailyGuide": {
+            "$ref": "#/components/schemas/DailyGuidePlan"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/ProposalPace"
+          },
+          "dailyGuideDifferenceKcal": {
+            "type": "integer",
+            "description": "1日の目安と推定消費カロリーの差（50 kcal 単位。少ないときは負）"
+          }
+        },
+        "required": [
+          "pace",
+          "status",
+          "targetWeightKg",
+          "dailyGuide",
+          "difficulty",
+          "dailyGuideDifferenceKcal"
+        ],
+        "description": "出せる案。difficulty（大変さ）は、その案の段階（pace と同じ値）"
+      },
+      "ProposalPace": {
+        "type": "string",
+        "enum": [
+          "gentle",
+          "standard",
+          "hard"
+        ],
+        "description": "gentle・standard・hard"
+      },
+      "UnavailableGoalProposal": {
+        "type": "object",
+        "properties": {
+          "pace": {
+            "$ref": "#/components/schemas/ProposalPace"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unavailable"
+            ]
+          },
+          "unavailableReason": {
+            "type": "string",
+            "description": "daily_guide_below_minimum（1日の目安が下限 1,200 kcal を下回る）",
+            "example": "daily_guide_below_minimum"
+          }
+        },
+        "required": [
+          "pace",
+          "status",
+          "unavailableReason"
+        ],
+        "description": "出せない枠"
+      },
+      "AcceptedTargetWeightRange": {
+        "type": "object",
+        "properties": {
+          "minimumKg": {
+            "type": "number"
+          },
+          "maximumKg": {
+            "type": "number"
+          },
+          "fastestEndReason": {
+            "type": "string",
+            "description": "いちばん速い端（減量は下の端、増量は上の端）を決めた理由。pace_too_fast（ハード案の速さ）・daily_guide_below_minimum（下限 1,200 kcal）",
+            "example": "pace_too_fast"
+          }
+        },
+        "required": [
+          "minimumKg",
+          "maximumKg",
+          "fastestEndReason"
+        ],
+        "description": "自分で決める目標体重の受け付ける幅（0.1 kg 単位、両端を含む）"
+      },
+      "GainGoalProposals": {
+        "type": "object",
+        "properties": {
+          "startedOn": {
+            "type": "string",
+            "description": "開始の日（YYYY-MM-DD）。端末の今のタイムゾーンでの今日。立て直すときに今日が今の目標の開始の日より前なら、今の目標の開始の日。期限の日数はこの日から数える"
+          },
+          "expenditureKcal": {
+            "type": "integer",
+            "description": "計算に使った推定消費カロリー"
+          },
+          "expenditureSource": {
+            "$ref": "#/components/schemas/GoalSetupExpenditureSource"
+          },
+          "startingWeightTrendKg": {
+            "type": "number",
+            "description": "計算に使った、開始の日の体重の傾向。丸めていない"
+          },
+          "lastWeightRecordedOn": {
+            "type": "string",
+            "description": "体重の傾向の元になった、開始の日以前で最後の体重記録の日（YYYY-MM-DD）"
+          },
+          "deadlineOn": {
+            "type": "string",
+            "description": "期限（YYYY-MM-DD）"
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalProposal"
+            },
+            "description": "ゆるめ・標準・ハードの3つの枠を、いつもこの順に"
+          },
+          "acceptedTargetWeightRange": {
+            "$ref": "#/components/schemas/AcceptedTargetWeightRange"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "gain"
+            ]
+          }
+        },
+        "required": [
+          "startedOn",
+          "expenditureKcal",
+          "expenditureSource",
+          "startingWeightTrendKg",
+          "lastWeightRecordedOn",
+          "deadlineOn",
+          "proposals",
+          "direction"
+        ]
       },
       "GoalProposalsPlan": {
         "oneOf": [
@@ -1985,6 +2165,23 @@
         ]
       },
       "CustomTargetWeightAssessment": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AcceptedCustomTargetWeight"
+          },
+          {
+            "$ref": "#/components/schemas/RejectedCustomTargetWeight"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "accepted": "#/components/schemas/AcceptedCustomTargetWeight",
+            "rejected": "#/components/schemas/RejectedCustomTargetWeight"
+          }
+        }
+      },
+      "AcceptedCustomTargetWeight": {
         "type": "object",
         "properties": {
           "startedOn": {
@@ -1993,82 +2190,103 @@
           },
           "status": {
             "type": "string",
-            "description": "accepted（受け付ける）・rejected（受け付けない）",
-            "example": "accepted"
-          },
-          "dailyGuide": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/DailyGuidePlan"
-              },
-              {
-                "description": "accepted のときだけ"
-              }
+            "enum": [
+              "accepted"
             ]
           },
+          "dailyGuide": {
+            "$ref": "#/components/schemas/DailyGuidePlan"
+          },
           "difficulty": {
-            "type": "string",
-            "description": "accepted のときだけ。大変さ。必要な速さを案の速さで区切った gentle・standard・hard"
+            "$ref": "#/components/schemas/ProposalPace"
           },
           "dailyGuideDifferenceKcal": {
             "type": "integer",
-            "description": "accepted のときだけ。1日の目安と推定消費カロリーの差（50 kcal 単位。少ないときは負）"
-          },
-          "rejectionReason": {
-            "type": "string",
-            "description": "rejected のときだけ。pace_too_fast（速すぎる）・daily_guide_below_minimum（下限 1,200 kcal）・not_on_direction_side（体重の傾向より向きの側に出ない）"
-          },
-          "nearestAcceptedTargetWeightKg": {
-            "type": "number",
-            "description": "rejected で、その期限に受け付ける目標体重があるときだけ。受け付けるいちばん近い目標体重"
+            "description": "1日の目安と推定消費カロリーの差（50 kcal 単位。少ないときは負）"
           }
         },
         "required": [
           "startedOn",
-          "status"
-        ]
+          "status",
+          "dailyGuide",
+          "difficulty",
+          "dailyGuideDifferenceKcal"
+        ],
+        "description": "受け付ける。difficulty（大変さ）は、必要な速さを案の速さで区切った段階"
+      },
+      "RejectedCustomTargetWeight": {
+        "type": "object",
+        "properties": {
+          "startedOn": {
+            "type": "string",
+            "description": "計算に使った開始の日（YYYY-MM-DD）"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "rejected"
+            ]
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "pace_too_fast（速すぎる）・daily_guide_below_minimum（下限 1,200 kcal）・not_on_direction_side（体重の傾向より向きの側に出ない）",
+            "example": "pace_too_fast"
+          },
+          "nearestAcceptedTargetWeightKg": {
+            "type": "number",
+            "description": "その期限に受け付ける目標体重があるときだけ付く。受け付けるいちばん近い目標体重"
+          }
+        },
+        "required": [
+          "startedOn",
+          "status",
+          "rejectionReason"
+        ],
+        "description": "受け付けない"
       },
       "GoalDecision": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DecidedGoalDecision"
+          },
+          {
+            "$ref": "#/components/schemas/RecalculatedGoalDecision"
+          },
+          {
+            "$ref": "#/components/schemas/CustomTargetWeightRejectedGoalDecision"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "decided": "#/components/schemas/DecidedGoalDecision",
+            "recalculated": "#/components/schemas/RecalculatedGoalDecision",
+            "custom_target_weight_rejected": "#/components/schemas/CustomTargetWeightRejectedGoalDecision"
+          }
+        }
+      },
+      "DecidedGoalDecision": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "description": "decided（決めた。同じ要求の ID の再送を含む）・recalculated（開始の日か見せていた値が違ったので、決めずに計算し直した）・custom_target_weight_rejected（自分で決めた目標体重を受け付けないので、決めていない）",
-            "example": "decided"
+            "enum": [
+              "decided"
+            ]
           },
           "changes": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GoalDecisionChange"
             },
-            "description": "decided のときだけ。端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、立て直しなら閉じた前の目標、新しい目標、1日の目安、初めての目標なら推定消費カロリー"
-          },
-          "proposals": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/GoalProposals"
-              },
-              {
-                "description": "recalculated のときだけ。そのときの体重の傾向と開始の日で出し直した目標案"
-              }
-            ]
-          },
-          "startedOn": {
-            "type": "string",
-            "description": "custom_target_weight_rejected のときだけ。計算に使った開始の日（YYYY-MM-DD）"
-          },
-          "rejectionReason": {
-            "type": "string",
-            "description": "custom_target_weight_rejected のときだけ。pace_too_fast（速すぎる）・daily_guide_below_minimum（下限 1,200 kcal）・not_on_direction_side（体重の傾向より向きの側に出ない）"
-          },
-          "nearestAcceptedTargetWeightKg": {
-            "type": "number",
-            "description": "custom_target_weight_rejected で、その期限に受け付ける目標体重があるときだけ。受け付けるいちばん近い目標体重"
+            "description": "端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、立て直しなら閉じた前の目標、新しい目標、1日の目安、初めての目標なら推定消費カロリー"
           }
         },
         "required": [
-          "status"
-        ]
+          "status",
+          "changes"
+        ],
+        "description": "決めた。同じ要求の ID の再送を含む"
       },
       "GoalDecisionChange": {
         "type": "object",
@@ -2092,6 +2310,55 @@
           "record"
         ],
         "description": "決めた記録。取りに行く変更（SyncChange）から通し番号を除いた形で、record は種類ごとの GoalRecord・DailyGuideRecord・ExpenditureEstimateRecord"
+      },
+      "RecalculatedGoalDecision": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "recalculated"
+            ]
+          },
+          "proposals": {
+            "$ref": "#/components/schemas/GoalProposals"
+          }
+        },
+        "required": [
+          "status",
+          "proposals"
+        ],
+        "description": "開始の日か見せていた値が違ったので、決めずに、そのときの体重の傾向と開始の日で目標案を出し直した"
+      },
+      "CustomTargetWeightRejectedGoalDecision": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "custom_target_weight_rejected"
+            ]
+          },
+          "startedOn": {
+            "type": "string",
+            "description": "計算に使った開始の日（YYYY-MM-DD）"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "pace_too_fast（速すぎる）・daily_guide_below_minimum（下限 1,200 kcal）・not_on_direction_side（体重の傾向より向きの側に出ない）",
+            "example": "pace_too_fast"
+          },
+          "nearestAcceptedTargetWeightKg": {
+            "type": "number",
+            "description": "その期限に受け付ける目標体重があるときだけ付く。受け付けるいちばん近い目標体重"
+          }
+        },
+        "required": [
+          "status",
+          "startedOn",
+          "rejectionReason"
+        ],
+        "description": "自分で決めた目標体重を受け付けないので、決めていない"
       },
       "GoalChoice": {
         "oneOf": [
