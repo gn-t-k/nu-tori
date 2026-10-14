@@ -309,6 +309,8 @@ public actor RecordSync {
     private let takeStoreRecoveries: @Sendable () -> [HandledFailure]
     /// 初めての取得を測り始めた時刻。測る前と、終えたあとは無い
     private var initialPullStartedAt: Date?
+    /// 前の同期の終わりに目標を立てる知らせを出して、送るための同期を裏で始めたか。次の同期の1回が読んで倒す
+    private var isSendingIssuedGoalSetupNotice = false
     private var inFlight: Task<SyncResult?, any Error>?
     /// 段取りの外（画面）からその場で取り消せるよう、actor の状態にせず鍵で守る
     private let noticeTimer = Mutex(NoticeTimer.stopped)
@@ -447,6 +449,8 @@ public actor RecordSync {
         for failure in takeStoreRecoveries() {
             await errorReporting.report(failure, cause: nil)
         }
+        let sendsIssuedGoalSetupNotice = isSendingIssuedGoalSetupNotice
+        isSendingIssuedGoalSetupNotice = false
         let completedBefore = try await store.syncState()?.hasCompletedInitialPull ?? false
         if !completedBefore, initialPullStartedAt == nil {
             initialPullStartedAt = clock.now()
@@ -484,8 +488,12 @@ public actor RecordSync {
         _ = await noteToMissedWeightRecordWatch(after: .synced)
         if result.ending == .finished {
             // 取り切ったあとに決める（途中だと、ほかの端末で立てた目標がまだ届いていないことがある）。
-            // 作る書き込みは次の同期で送る（ここで送り直すと、受け付けられないときに繰り返すため）
-            await goalSetupNoticeKeeper.issueIfNoGoal()
+            // 出したら、すぐ裏で送る。送り待ちに残すと、サインインし直しの画面が「まだ送っていない記録」があると案内するため。
+            // その送るための同期では出さない。作る書き込みが断られて知らせが外れたとき（前の版のサーバー）に、出して送るのを繰り返すため
+            if !sendsIssuedGoalSetupNotice, await goalSetupNoticeKeeper.issueIfNoGoal() {
+                isSendingIssuedGoalSetupNotice = true
+                syncInBackground()
+            }
             await followReplies(engine)
         }
         if !result.rejectedWrites.isEmpty {
