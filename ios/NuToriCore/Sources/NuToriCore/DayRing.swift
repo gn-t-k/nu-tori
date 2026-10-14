@@ -3,10 +3,13 @@ public struct DayRing: Hashable, Sendable {
     public let hasWeightRecord: Bool
     /// その日の食べた量。丸を塗るかと、日のまとめの値はここから出す
     public let food: DayFood
+    /// その日の食べた量を比べる1日の目安。nil の日（目標を立てる前の日など）は比べず、P・F・C の割合で一周する
+    public let dailyGuide: DailyGuide?
 
-    public init(hasWeightRecord: Bool, food: DayFood) {
+    public init(hasWeightRecord: Bool, food: DayFood, dailyGuide: DailyGuide? = nil) {
         self.hasWeightRecord = hasWeightRecord
         self.food = food
+        self.dailyGuide = dailyGuide
     }
 
     /// 食事の無い日の丸
