@@ -4,15 +4,16 @@ import { computeGoalProposals } from "./index";
 describe("目標案", () => {
   describe("減量のとき", () => {
     describe("どの案も1日の目安が 1,200 kcal を下回らないとき", () => {
-      let proposals: ReturnType<typeof computeGoalProposals>;
+      let proposals: ReturnType<typeof computeGoalProposals>["proposals"];
+      let hadSlowedProposal: boolean;
 
       beforeEach(() => {
-        proposals = computeGoalProposals({
+        ({ proposals, hadSlowedProposal } = computeGoalProposals({
           direction: "lose",
           expenditureKcal: 2250,
           startingWeightTrendKg: 72.4,
           daysFromStartToDeadline: 84,
-        });
+        }));
       });
 
       test("ゆるめ・標準・ハードの順に、1週に 0.25%・0.5%・0.75% ずつ減らした目標体重を、0.1kg 単位に切り上げて返すこと", () => {
@@ -41,6 +42,10 @@ describe("目標案", () => {
         ]);
       });
 
+      test("速さを落とした案が無いと返すこと", () => {
+        expect(hadSlowedProposal).toBe(false);
+      });
+
       test("どの案の1日の目安も、上限にも下限にも当たらないこと", () => {
         expect(proposals).toMatchObject([
           { dailyGuide: { limitHits: [] } },
@@ -51,16 +56,21 @@ describe("目標案", () => {
     });
 
     describe("標準とハードの案の1日の目安が 1,200 kcal を下回るとき", () => {
-      let proposals: ReturnType<typeof computeGoalProposals>;
+      let proposals: ReturnType<typeof computeGoalProposals>["proposals"];
+      let hadSlowedProposal: boolean;
 
       beforeEach(() => {
         // 1日に 300 kcal まで減らせて、84 日で 3.27 kg。標準の速さだと 3.6 kg、ハードだと 5.4 kg
-        proposals = computeGoalProposals({
+        ({ proposals, hadSlowedProposal } = computeGoalProposals({
           direction: "lose",
           expenditureKcal: 1500,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 84,
-        });
+        }));
+      });
+
+      test("速さを落とした案があったと返すこと", () => {
+        expect(hadSlowedProposal).toBe(true);
       });
 
       test("ゆるめの案を、そのままの速さで出すこと", () => {
@@ -92,16 +102,21 @@ describe("目標案", () => {
     });
 
     describe("どの案の1日の目安も 1,200 kcal を下回るとき", () => {
-      let proposals: ReturnType<typeof computeGoalProposals>;
+      let proposals: ReturnType<typeof computeGoalProposals>["proposals"];
+      let hadSlowedProposal: boolean;
 
       beforeEach(() => {
         // 1日に 100 kcal まで減らせて、84 日で 1.09 kg。ゆるめの速さだと 1.8 kg
-        proposals = computeGoalProposals({
+        ({ proposals, hadSlowedProposal } = computeGoalProposals({
           direction: "lose",
           expenditureKcal: 1300,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 84,
-        });
+        }));
+      });
+
+      test("速さを落とした案があったと返すこと", () => {
+        expect(hadSlowedProposal).toBe(true);
       });
 
       test("ゆるめの案だけを、速さを落として出すこと", () => {
@@ -114,16 +129,21 @@ describe("目標案", () => {
     });
 
     describe("速さを落とすと、目標体重が 0.1kg の丸めで体重の傾向と同じになるとき", () => {
-      let proposals: ReturnType<typeof computeGoalProposals>;
+      let proposals: ReturnType<typeof computeGoalProposals>["proposals"];
+      let hadSlowedProposal: boolean;
 
       beforeEach(() => {
         // 1日に 5 kcal まで減らせて、84 日で 0.05 kg。59.95 kg を切り上げると 60.0 kg
-        proposals = computeGoalProposals({
+        ({ proposals, hadSlowedProposal } = computeGoalProposals({
           direction: "lose",
           expenditureKcal: 1205,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 84,
-        });
+        }));
+      });
+
+      test("速さを落とした案があったと返すこと", () => {
+        expect(hadSlowedProposal).toBe(true);
       });
 
       test("案を1つも出さないこと", () => {
@@ -138,15 +158,16 @@ describe("目標案", () => {
 
   describe("増量のとき", () => {
     describe("推定消費カロリーが 1,200 kcal 以上のとき", () => {
-      let proposals: ReturnType<typeof computeGoalProposals>;
+      let proposals: ReturnType<typeof computeGoalProposals>["proposals"];
+      let hadSlowedProposal: boolean;
 
       beforeEach(() => {
-        proposals = computeGoalProposals({
+        ({ proposals, hadSlowedProposal } = computeGoalProposals({
           direction: "gain",
           expenditureKcal: 2000,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 56,
-        });
+        }));
       });
 
       test("ゆるめ・標準・ハードの順に、1週に 0.15%・0.3%・0.5% ずつ増やした目標体重を、0.1kg 単位に切り捨てて返すこと", () => {
@@ -156,6 +177,10 @@ describe("目標案", () => {
           { pace: "standard", status: "offered", targetWeightKg: 61.4 },
           { pace: "hard", status: "offered", targetWeightKg: 62.4 },
         ]);
+      });
+
+      test("速さを落とした案が無いと返すこと", () => {
+        expect(hadSlowedProposal).toBe(false);
       });
 
       test("案ごとに、推定消費カロリーより多い1日の目安と、その差を返すこと", () => {
@@ -168,15 +193,20 @@ describe("目標案", () => {
     });
 
     describe("推定消費カロリーが 1,200 kcal を下回るとき", () => {
-      let proposals: ReturnType<typeof computeGoalProposals>;
+      let proposals: ReturnType<typeof computeGoalProposals>["proposals"];
+      let hadSlowedProposal: boolean;
 
       beforeEach(() => {
-        proposals = computeGoalProposals({
+        ({ proposals, hadSlowedProposal } = computeGoalProposals({
           direction: "gain",
           expenditureKcal: 1000,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 56,
-        });
+        }));
+      });
+
+      test("速さを落とした案が無いと返すこと", () => {
+        expect(hadSlowedProposal).toBe(false);
       });
 
       test("速さを落とさず、3つの案を出すこと", () => {

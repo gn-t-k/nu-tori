@@ -9,7 +9,6 @@ import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeGoalProposals } from "./compute-goal-proposals";
 import { computeMaintenancePlan } from "./compute-maintenance-plan";
-import { computeTargetWeightLimits } from "./compute-target-weight-limits";
 import { computeWeightChangeGoalInputs } from "./compute-weight-change-goal-inputs";
 import type { CustomTargetWeightRejectionReason } from "./custom-target-weight-rejection-reason";
 import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
@@ -174,15 +173,11 @@ const assessChoice = (
         computeWeightChangeGoalInputs(basis, weightChangeChoice),
         R.map((goal) => {
           const { deadlineOn } = weightChangeChoice;
-          // ハード案がいちばん速いので、速さを落とした案があれば、いちばん速い端は下限で決まっている
-          const hadSlowedProposal =
-            computeTargetWeightLimits(goal).fastestEndReason === "daily_guide_below_minimum";
+          const { proposals, hadSlowedProposal } = computeGoalProposals(goal);
           return match(weightChangeChoice)
             .returnType<AssessedChoice>()
             .with({ type: "proposal" }, ({ pace }) => {
-              const proposal = computeGoalProposals(goal).find(
-                (candidate) => candidate.pace === pace,
-              );
+              const proposal = proposals.find((candidate) => candidate.pace === pace);
               return proposal?.status === "offered"
                 ? {
                     status: "accepted",

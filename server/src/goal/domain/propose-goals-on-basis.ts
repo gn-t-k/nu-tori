@@ -32,7 +32,7 @@ export const proposeGoalsOnBasis = (
           R.map((goal) => ({
             direction: weightChangePlan.direction,
             deadlineOn: weightChangePlan.deadlineOn,
-            proposals: computeGoalProposals(goal),
+            proposals: computeGoalProposals(goal).proposals,
             acceptedTargetWeightRange: computeAcceptedTargetWeightRange(goal),
           })),
         ),

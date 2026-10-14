@@ -46,4 +46,4 @@ const canOfferLoseProposals = ({
         expenditureKcal: expenditure.kcal,
         startingWeightTrendKg: startingWeightTrend.trendKg,
         daysFromStartToDeadline: acceptedDeadlineDays.minimum,
-      }).some(({ status }) => status === "offered");
+      }).proposals.some(({ status }) => status === "offered");

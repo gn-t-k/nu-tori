@@ -1,6 +1,6 @@
 import { R } from "@praha/byethrow";
 import type { computeAcceptedTargetWeightRange } from "./compute-accepted-target-weight-range";
-import type { computeGoalProposals } from "./compute-goal-proposals";
+import type { GoalProposal } from "./compute-goal-proposals";
 import type { computeMaintenancePlan } from "./compute-maintenance-plan";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
@@ -28,7 +28,7 @@ export type GoalProposals = Pick<
         direction: WeightChangeDirection;
         deadlineOn: string;
         // ゆるめ・標準・ハードの3つの枠を、いつもこの順に持つ
-        proposals: ReturnType<typeof computeGoalProposals>;
+        proposals: GoalProposal[];
         // 自分で決める目標体重の受け付ける幅。受け付ける目標体重が1つも無いときは無い
         acceptedTargetWeightRange: ReturnType<typeof computeAcceptedTargetWeightRange>;
       };
