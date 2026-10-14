@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { match } from "ts-pattern";
-import type { GoalProposals } from "../../goal/domain/propose-goals";
+import type { GoalProposals } from "../../goal/domain/propose-goals-on-basis";
 import { dailyGuidePlanSchema, toDailyGuidePlan } from "./daily-guide-plan-schema";
 
 // 目標案の応答。目標を決める要求が決めずに返す「新しい案」も、この形にする。

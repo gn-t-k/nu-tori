@@ -9,7 +9,11 @@ import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeGoalProposals } from "./compute-goal-proposals";
 import { computeMaintenancePlan } from "./compute-maintenance-plan";
-import { computeWeightChangeGoalInputs } from "./compute-weight-change-goal-inputs";
+import {
+  type CompleteGoalSetupBasis,
+  computeWeightChangeGoalInputs,
+  resolveCompleteGoalSetupBasis,
+} from "./goal-setup-basis";
 import type { CustomTargetWeightRejectionReason } from "./custom-target-weight-rejection-reason";
 import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
 import type { GoalWeightChange } from "./goal";
@@ -17,13 +21,12 @@ import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejecte
 import type { GoalSetupSituation } from "./goal-setup-situation";
 import { moveDeadlineIntoAcceptedRange } from "./accepted-deadline";
 import type { ProposalPace } from "./proposal-pace";
-import type { GoalProposals, GoalProposalsPlan } from "./propose-goals";
-import { proposeGoalsOnBasis } from "./propose-goals-on-basis";
-import { type GoalDecisionRecord, readGoalDecisionRecords } from "./read-goal-decision-records";
 import {
-  type CompleteGoalSetupBasis,
-  resolveCompleteGoalSetupBasis,
-} from "./resolve-complete-goal-setup-basis";
+  proposeGoalsOnBasis,
+  type GoalProposals,
+  type GoalProposalsPlan,
+} from "./propose-goals-on-basis";
+import { type GoalDecisionRecord, readGoalDecisionRecords } from "./read-goal-decision-records";
 import type { GoalSetupStores } from "./goal-setup-stores";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import type { WeightChangeDirection } from "./weight-change-direction";

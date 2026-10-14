@@ -1,21 +1,20 @@
 import { R } from "@praha/byethrow";
 import { match } from "ts-pattern";
-import { addDays } from "../../domain/add-days";
-import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
-import { isTimeZoneName } from "../../domain/is-time-zone-name";
-import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
-import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
-import { computeInitialExpenditureEstimate } from "../../expenditure-estimate/domain/compute-initial-expenditure-estimate";
-import { readRecordedEnergyIntakes } from "../../expenditure-estimate/domain/read-recorded-energy-intakes";
-import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
-import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
-import { findStartingWeightTrend } from "../../weight-trend/domain/find-starting-weight-trend";
-import { decideGoalStartDay } from "./decide-goal-start-day";
-import type { Goal } from "./goal";
-import type { GoalSetupExpenditure } from "./goal-setup-expenditure";
-import { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
-import type { GoalSetupStores } from "./goal-setup-stores";
-import type { GoalSetupSituation } from "./goal-setup-situation";
+import { addDays } from "../../../domain/add-days";
+import { computeCalendarDayInTimeZone } from "../../../domain/compute-calendar-day-in-time-zone";
+import { isTimeZoneName } from "../../../domain/is-time-zone-name";
+import { isWithinAcceptedRange } from "../../../domain/is-within-accepted-range";
+import { millisecondsPerDay } from "../../../domain/milliseconds-per-day";
+import { computeInitialExpenditureEstimate } from "../../../expenditure-estimate/domain/compute-initial-expenditure-estimate";
+import { readRecordedEnergyIntakes } from "../../../expenditure-estimate/domain/read-recorded-energy-intakes";
+import { computeDailyRepresentativeWeights } from "../../../weight-record/domain/compute-daily-representative-weights";
+import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
+import { findStartingWeightTrend } from "../../../weight-trend/domain/find-starting-weight-trend";
+import type { Goal } from "../goal";
+import type { GoalSetupExpenditure } from "../goal-setup-expenditure";
+import { GoalSetupRequestRejectedError } from "../goal-setup-request-rejected-error";
+import type { GoalSetupStores } from "../goal-setup-stores";
+import type { GoalSetupSituation } from "../goal-setup-situation";
 
 // 目標の設定の計算の元。そのときの記録と、要求に載った端末の事情から、要求のたびに出し直す（何も残さない）
 export type GoalSetupBasis = {
@@ -45,10 +44,9 @@ export const resolveGoalSetupBasis = (
     R.andThen(() => {
       const today = computeCalendarDayInTimeZone(now, situation.timeZone);
       const currentGoal = stores.goal.findCurrent();
-      const startedOn = decideGoalStartDay({
-        today,
-        currentGoalStartDay: currentGoal?.startedOn,
-      });
+      // 開始の日は端末の今日。立て直すとき、西へ移って今日が今の目標の開始の日より前になっても、開始の日を戻さない
+      const startedOn =
+        currentGoal !== undefined && today < currentGoal.startedOn ? currentGoal.startedOn : today;
       const dailyWeights = computeDailyRepresentativeWeights(
         stores.weightRecord.findAllInMeasuredOrder(),
       ).map(({ calendarDay, weightRecord }) => ({ calendarDay, weightKg: weightRecord.weightKg }));

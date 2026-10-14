@@ -116,7 +116,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 目標の設定の要求
 
 - 目標の設定は、同期の外でその場で答える要求で進める。経路は `src/http/goal-setup-routes/`（`/v1/goal-setup/*`）、入口は `src/goal/domain/` の `previewGoalSetup`（目標の下見）・`proposeGoals`（目標案）・`assessCustomTargetWeight`（自分で決める目標体重）で、その人の Durable Object の同じ名前の RPC から呼ぶ。この3つは何も書かない
-- どの要求も、計算の元（開始の日、今の目標、開始の日の体重の傾向、推定消費カロリー）を `resolveGoalSetupBasis` で要求のたびに出し直す。初めての目標では推定消費カロリーを逆算か式で出し、今の目標があれば今の推定（`ExpenditureEstimateStore.findCurrent`）を使う。目標案から先は `requireCompleteGoalSetupBasis` で、体重記録と推定消費カロリーが揃っていることを確かめる
+- どの要求も、計算の元（開始の日、今の目標、開始の日の体重の傾向、推定消費カロリー）を `src/goal/domain/goal-setup-basis/` の `resolveGoalSetupBasis` で要求のたびに出し直す。初めての目標では推定消費カロリーを逆算か式で出し、今の目標があれば今の推定（`ExpenditureEstimateStore.findCurrent`）を使う。目標案から先は同じ module の `resolveCompleteGoalSetupBasis` で、体重記録と推定消費カロリーが揃っていることを確かめ、減量・増量の計算の元（期限までの日数を含む）は `computeWeightChangeGoalInputs` で出す
 - 断る要求（不具合のときだけ届く）は、形の誤りを 400、値の誤り（`GoalSetupRequestRejectedError` の `reason`）を 422 にして、本文の `code` に理由を入れ、受け口が Sentry に送る。エラーには理由と、誤っていた場所だけを持たせ、届いた値を載せない
 - 目標の下見の「減量の案を1つでも出せるか」は、期限を選ぶ前に答えるので、受け付けるいちばん短い期限（`src/goal/domain/accepted-deadline/` の `acceptedDeadlineDays.minimum`）で確かめる
 - 目標を決める要求（`POST /v1/goal-setup/decisions`、入口は `decideGoal`）だけが書く。記録の変化を書く入口（`RecordChangeWriter`）の `run` の中で、要求の受け取り（`goal_decision_receipts`）を見て、同じ計算の元で計算し直し、端末が見せていた値と同じときだけ、目標を決めたことを書く口（`src/goal/domain/write-goal-decision.ts`。テストは Durable Object の置き場に当てる `src/goal/durable-object/write-goal-decision.test.ts`）で行の組を書く
