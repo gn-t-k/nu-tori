@@ -79,6 +79,7 @@ enum GoalSetupJSON {
     /// 減量の目標案。`offered` に無い速さは出せない枠。kcal は案の1日の目安
     static func loseProposals(
         startedOn: String = "2026-01-01",
+        lastWeightRecordedOn: String = "2025-12-31",
         offered: [String: (targetWeightKg: Double, energyKcal: Int)] = [
             "gentle": (68.5, 2050), "standard": (66.5, 1850), "hard": (64.5, 1650),
         ]
@@ -101,7 +102,7 @@ enum GoalSetupJSON {
         return """
             {"startedOn":"\(startedOn)","direction":"lose","expenditureKcal":2250,
             "expenditureSource":"back_calculated","startingWeightTrendKg":70.0,
-            "lastWeightRecordedOn":"2025-12-31","deadlineOn":"2026-04-01",
+            "lastWeightRecordedOn":"\(lastWeightRecordedOn)","deadlineOn":"2026-04-01",
             "proposals":[\(proposals.joined(separator: ","))]\(range)}
             """
     }

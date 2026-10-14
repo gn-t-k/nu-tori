@@ -58,6 +58,20 @@ public final class GoalSetupFlow {
     /// 決めずに新しい案が返った。「新しい体重で計算し直しました。」を添える
     public private(set) var showsRecalculated = false
 
+    /// 目標案の上の1行に見せる、足りない値の「次へ」で決めた身体データ。逆算できる人と、決めたあとは nil
+    public var usedBody: GoalSetupBody? {
+        submittedBody
+    }
+
+    /// 今日の体重の記録が無いときの、目標案に使った最後の体重記録の日（「体重は 9月21日までの記録を使っています。」）。
+    /// 今日の記録があるときと、目標案が届く前は nil
+    public var pastWeightRecordDay: CalendarDay? {
+        guard let proposals, let day = CalendarDay(yearMonthDay: proposals.lastWeightRecordedOn),
+            day < CalendarDay(containing: now(), in: timeZone())
+        else { return nil }
+        return day
+    }
+
     public var page: GoalSetupPage {
         switch position {
         case .direction: .direction
@@ -185,6 +199,13 @@ public final class GoalSetupFlow {
             }
             position = steps[index - 1]
         }
+    }
+
+    /// 目標案の上の1行の「変える」。答えを残して足りない値のページへ戻る
+    public func reviseMissingValues() {
+        guard needsMissingValues, position == .final || position == .custom else { return }
+        unreachableRequest = nil
+        position = .missingValues
     }
 
     /// 止まった場所とページの中の「もう一度試す」
