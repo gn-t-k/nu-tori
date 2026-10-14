@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
+import { addDays } from "../../domain/add-days";
 import { generateRecordId } from "../../domain/record-id";
 import { runEstimationAlarm } from "../../estimation/http/testing/run-estimation-alarm";
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
+import { postGoalSetup } from "../../http/goal-setup-routes/testing/post-goal-setup";
+import { recordDailyWeights } from "../../http/goal-setup-routes/testing/record-daily-weights";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
@@ -128,6 +131,54 @@ describe("返事を作る", () => {
       ).toEqual([
         { window: [], newUtterance: "おはよう" },
         { window: ["おはよう", "「おはよう」への返事"], newUtterance: "今日は何を食べよう" },
+      ]);
+    });
+  });
+
+  describe("目標を決める要求で目標を立てたあと、会話の文章を送ったとき", () => {
+    let replySpy: ReturnType<typeof mockCreateConversationProviderOk>;
+    let deadlineOn: string;
+    beforeEach(async () => {
+      // 体重が 70 kg のまま、使い始める前の摂取エネルギーが毎日 2,400 kcal。
+      // 逆算した推定消費カロリーは 2,400 kcal で、標準の案は 65.5 kg、1日の目安 2,000 kcal
+      const today = todayInTokyo();
+      const windowDays = Array.from({ length: 28 }, (_, index) => addDays(today, index - 28));
+      deadlineOn = addDays(today, 90);
+      await recordDailyWeights(sessionToken, windowDays, 70);
+      const response = await postGoalSetup(sessionToken, "decisions", {
+        requestId: generateRecordId(),
+        startedOn: today,
+        choice: { type: "proposal", direction: "lose", deadlineOn, pace: "standard" },
+        shown: {
+          targetWeightKg: 65.5,
+          dailyGuide: { energyKcal: 2000, proteinG: 105, fatG: 55, carbohydrateG: 270 },
+        },
+        rejectedCustomTargetWeightCount: 0,
+        preUseEnergyIntakes: windowDays.map((calendarDay) => ({ calendarDay, kcal: 2400 })),
+      });
+      const decision = await response.json<{ status: string }>();
+      if (decision.status !== "decided") {
+        throw new Error(`目標を決められなかった: ${response.status} ${decision.status}`);
+      }
+      replySpy = mockCreateConversationProviderOk({
+        classification: "conversation",
+        reply: { body: "目標に向けて順調です。", mealIds: [] },
+      });
+      await sendText({ body: "今日はあと何を食べられる？" });
+      await runEstimationAlarm(accountId);
+    });
+
+    test("文脈に、目標と今日の1日の目安と推定消費カロリーが入ること", () => {
+      expect(
+        readGenerateReplyContexts(replySpy).map(({ structuredValues }) => structuredValues.goal),
+      ).toEqual([
+        {
+          direction: "lose",
+          deadlineOn,
+          targetWeightKg: 65.5,
+          dailyGuide: { energyKcal: 2000, proteinG: 105, fatG: 55, carbohydrateG: 270 },
+          expenditureKcal: 2400,
+        },
       ]);
     });
   });

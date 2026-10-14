@@ -1,3 +1,4 @@
+import { findDailyGuideForDay } from "../../../daily-guide/domain/find-daily-guide-for-day";
 import { addDays } from "../../../domain/add-days";
 import { computeCalendarDay } from "../../../domain/compute-calendar-day";
 import { computeCalendarDayInTimeZone } from "../../../domain/compute-calendar-day-in-time-zone";
@@ -7,10 +8,12 @@ import { computeNutrientTotal } from "../../../ingredient/domain/compute-nutrien
 import type { Ingredient } from "../../../ingredient/domain/ingredient";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import type { Meal } from "../../../meal/domain/meal";
+import { computeGoalDirection } from "../../../goal/domain/compute-goal-direction";
 import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type {
   MainNutrients,
   ReplyContext,
+  ReplyContextGoal,
   ReplyContextStructuredValues,
   ReplyContextWindowEntry,
 } from "../reply-context";
@@ -132,7 +135,7 @@ const assembleWindow = (
 };
 
 const assembleStructuredValues = (
-  { sentText, meals, weightRecords, weightTrend }: ReplyContextSource,
+  { sentText, meals, weightRecords, weightTrend, ...goalSource }: ReplyContextSource,
   toWallClock: (instant: Date) => string,
 ): ReplyContextStructuredValues => {
   const today = computeCalendarDayInTimeZone(sentText.sentAt, sentText.timeZone);
@@ -197,6 +200,50 @@ const assembleStructuredValues = (
       lastWeightRecord === undefined
         ? undefined
         : { at: toWallClock(lastWeightRecord.measuredAt), weightKg: lastWeightRecord.weightKg },
+    goal: assembleGoal(goalSource, today),
+  };
+};
+
+const assembleGoal = (
+  {
+    goals,
+    dailyGuides,
+    expenditureEstimates,
+  }: Pick<ReplyContextSource, "goals" | "dailyGuides" | "expenditureEstimates">,
+  today: string,
+): ReplyContextGoal | undefined => {
+  const found = findDailyGuideForDay(
+    today,
+    goals.map((goal) => ({ ...goal, endedOn: goal.closure?.endedOn })),
+    dailyGuides,
+  );
+  if (found === undefined) {
+    return undefined;
+  }
+  const { goal, dailyGuide } = found;
+  // 同じ日に始まる推定が2つあれば、あとで推定したほう（置き場の今の推定の引き方に合わせる）
+  const expenditureEstimate = expenditureEstimates
+    .filter(({ effectiveOn }) => effectiveOn <= today)
+    .toSorted(
+      (a, b) =>
+        a.effectiveOn.localeCompare(b.effectiveOn) ||
+        a.estimatedAt.getTime() - b.estimatedAt.getTime(),
+    )
+    .at(-1);
+  return {
+    direction: computeGoalDirection(goal),
+    deadlineOn: goal.weightChange?.deadlineOn,
+    targetWeightKg: goal.targetWeightKg,
+    dailyGuide:
+      dailyGuide === undefined
+        ? undefined
+        : {
+            energyKcal: dailyGuide.energyKcal,
+            proteinG: dailyGuide.proteinG,
+            fatG: dailyGuide.fatG,
+            carbohydrateG: dailyGuide.carbohydrateG,
+          },
+    expenditureKcal: expenditureEstimate?.expenditureKcal,
   };
 };
 

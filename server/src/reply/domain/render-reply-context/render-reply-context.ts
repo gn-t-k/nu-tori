@@ -5,6 +5,7 @@ import type { DayOfWeek } from "../../../domain/day-of-week";
 import type {
   MainNutrients,
   ReplyContext,
+  ReplyContextGoal,
   ReplyContextStructuredValues,
   ReplyContextWindowEntry,
 } from "../reply-context";
@@ -102,7 +103,35 @@ const renderStructuredValues = (values: ReplyContextStructuredValues): string =>
         ? "なし"
         : `${formatDateTime(values.lastWeightRecord.at)} ${formatNumber(values.lastWeightRecord.weightKg, 1)} kg`
     }`,
+    // 目標を立てる前の人には節ごと書かない（返事の指示が、1日の目安の無いときの代わりの文を持つ）
+    ...(values.goal === undefined ? [] : ["", ...renderGoal(values.goal)]),
   ].join("\n");
+
+const renderGoal = ({
+  direction,
+  deadlineOn,
+  targetWeightKg,
+  dailyGuide,
+  expenditureKcal,
+}: ReplyContextGoal): string[] => [
+  "## 目標",
+  `${match(direction)
+    .with("lose", () => "減量")
+    .with("gain", () => "増量")
+    .with("maintain", () => "維持")
+    .exhaustive()}。${deadlineOn === undefined ? "" : `期限 ${deadlineOn.slice(0, 4)}/${formatDate(deadlineOn)}、`}目標体重 ${formatNumber(targetWeightKg, 1)} kg`,
+  `今日の1日の目安: ${
+    dailyGuide === undefined
+      ? "なし"
+      : formatNutrients({
+          energyKcal: { type: "exactly", value: dailyGuide.energyKcal },
+          proteinG: { type: "exactly", value: dailyGuide.proteinG },
+          fatG: { type: "exactly", value: dailyGuide.fatG },
+          carbohydrateG: { type: "exactly", value: dailyGuide.carbohydrateG },
+        })
+  }`,
+  `推定消費カロリー: ${expenditureKcal === undefined ? "なし" : `${formatNumber(expenditureKcal, 0)} kcal`}`,
+];
 
 const formatNutrients = ({ energyKcal, proteinG, fatG, carbohydrateG }: MainNutrients): string =>
   [
