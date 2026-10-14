@@ -84,23 +84,44 @@ struct UnansweredNoticeLineTests {
 
         @Suite("開き直して、カードを置いた日をまだ並べていないとき")
         struct CardDayNotListed {
-            @Test("カードは並べた日より上にあるので、位置が届いていなくても1行を出すこと")
-            func shows() throws {
-                let notice = try UnansweredNoticeLineTests.goalSetup(
-                    issuedAt: "2026-09-22T19:00:00+09:00")
-                let days = UnansweredNoticeLineTests.timeline(notices: [notice]).days
+            let notice: Notice
+            let listedDays: ArraySlice<Timeline.Day>
 
+            init() throws {
+                notice = try UnansweredNoticeLineTests.goalSetup(
+                    issuedAt: "2026-09-22T19:00:00+09:00")
+                listedDays = UnansweredNoticeLineTests.timeline(notices: [notice]).days.suffix(2)
+                try #require(
+                    listedDays.map(\.day) == [
+                        CalendarDay(year: 2026, month: 9, day: 23), UnansweredNoticeLineTests.today,
+                    ])
+            }
+
+            @Test("カードは並べた日より上にあるので、位置が届いていなくても1行を出すこと")
+            func shows() {
                 #expect(
                     UnansweredNoticeLineVisibility().shows(
-                        .goalSetup(notice), listedDays: days.suffix(2)))
+                        .goalSetup(notice), listedDays: listedDays))
             }
         }
 
-        @Test("カードを置いた日を並べていて、位置がまだ届いていないときは、1行を出さないこと")
-        func hidesUntilListedCardReportsPosition() {
-            #expect(
-                !UnansweredNoticeLineVisibility().shows(
-                    .goalSetup(notice), listedDays: timeline.days[...]))
+        @Suite("カードを置いた日を並べていて、位置がまだ届いていないとき")
+        struct CardDayListedWithoutPosition {
+            let notice: Notice
+            let listedDays: ArraySlice<Timeline.Day>
+
+            init() throws {
+                notice = try UnansweredNoticeLineTests.goalSetup(
+                    issuedAt: "2026-09-22T19:00:00+09:00")
+                listedDays = UnansweredNoticeLineTests.timeline(notices: [notice]).days[...]
+            }
+
+            @Test("1行を出さないこと")
+            func hides() {
+                #expect(
+                    !UnansweredNoticeLineVisibility().shows(
+                        .goalSetup(notice), listedDays: listedDays))
+            }
         }
     }
 

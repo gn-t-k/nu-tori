@@ -17,26 +17,14 @@ public struct UnansweredNoticeLineVisibility: Equatable, Sendable {
         }
     }
 
-    /// そのカードが答えていない形で、画面の上へ流れて見えないか
-    public func shows(for card: NoticeCard) -> Bool {
-        card.form == .awaitingAnswer && noticeIdsAbove.contains(card.notice.id)
-    }
-
     /// その1行の知らせのカードが、画面の上へ流れて見えないか。
     /// カードを置いた日を並べていなければ、上にある（並べるのは新しいほうの日だけで、並べていない日はそれより古い）。
     /// 開き直したときは、何日も前のカードを並べておらず位置が届かないので、こうして決める
     /// - Parameter listedDays: タイムラインに並べている日（`TimelineViewport.listedDays(of:)`）
     public func shows(_ line: UnansweredNoticeLine, listedDays: ArraySlice<Timeline.Day>) -> Bool {
-        let item: Timeline.Item =
-            switch line {
-            case .missedWeightRecord(let card): .notice(card)
-            case .goalSetup(let notice): .goalSetupNotice(notice)
-            }
-        guard listedDays.contains(where: { $0.items.contains(item) }) else { return true }
-        return switch line {
-        case .missedWeightRecord(let card): shows(for: card)
-        case .goalSetup(let notice): noticeIdsAbove.contains(notice.id)
-        }
+        let noticeId = line.notice.id
+        let isListed = listedDays.contains { $0.items.contains { $0.noticeId == noticeId } }
+        return !isListed || noticeIdsAbove.contains(noticeId)
     }
 
     public struct CardPosition: Equatable, Sendable {

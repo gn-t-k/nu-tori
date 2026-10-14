@@ -591,11 +591,11 @@ struct TimelineScreen: View {
 
     /// 帯の下の1行。カードが画面の上へ流れて見えない、答えていない知らせだけを、出した時刻の古い順に出す
     private func unansweredNoticeLines(in timeline: Timeline) -> some View {
-        VStack(spacing: 0) {
+        let listedDays = viewport.listedDays(of: timeline.days)
+        return VStack(spacing: 0) {
             ForEach(
                 timeline.unansweredNoticeLines.filter {
-                    unansweredNoticeLineVisibility.shows(
-                        $0, listedDays: viewport.listedDays(of: timeline.days))
+                    unansweredNoticeLineVisibility.shows($0, listedDays: listedDays)
                 },
                 id: \.self
             ) { line in

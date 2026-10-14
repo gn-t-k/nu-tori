@@ -254,6 +254,17 @@ public struct Timeline: Sendable {
             }
         }
 
+        /// 知らせのカードなら、その知らせの ID
+        var noticeId: UUID? {
+            switch self {
+            case .notice(let card): card.notice.id
+            case .goalSetupNotice(let notice): notice.id
+            case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .sentText,
+                .rejectedSentTextLine, .reply:
+                nil
+            }
+        }
+
         public var id: String {
             switch self {
             case .weightRecord(let record): "record-\(record.id.uuidString)"
