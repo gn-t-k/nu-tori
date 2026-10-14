@@ -12,6 +12,10 @@ import { receiveMealPhoto, type MealPhotoReceiptFailedError } from "../domain/re
 import { runAccountAlarm } from "../domain/run-account-alarm";
 import type { SyncClientState } from "../domain/sync-client-state";
 import type { SyncWrite } from "../domain/sync-write";
+import { decideGoal } from "../goal/domain/decide-goal";
+import { assessCustomTargetWeight } from "../goal/domain/assess-custom-target-weight";
+import { previewGoalSetup } from "../goal/domain/preview-goal-setup";
+import { proposeGoals } from "../goal/domain/propose-goals";
 import { createEstimationProvider } from "../estimation/durable-object/create-estimation-provider";
 import { readKeptMealPhoto } from "../meal/domain/read-kept-meal-photo";
 import { createMealPhotoArchive } from "../meal/durable-object/create-meal-photo-archive";
@@ -125,6 +129,47 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         this.replyWatchers,
         createRecordKindStores(this.ctx.storage),
         sentTextId,
+      );
+    }
+
+    // 目標の設定の、その場で答える要求。下の3つは記録を書かない。どの要求も、要求に載った身体データと摂取エネルギーを残さない
+    previewGoalSetup(accountId: string, request: Parameters<typeof previewGoalSetup>[1]) {
+      setUser({ id: accountId });
+      return previewGoalSetup(createRecordKindStores(this.ctx.storage), request, new Date());
+    }
+
+    proposeGoals(accountId: string, request: Parameters<typeof proposeGoals>[1]) {
+      setUser({ id: accountId });
+      return proposeGoals(createRecordKindStores(this.ctx.storage), request, new Date());
+    }
+
+    assessCustomTargetWeight(
+      accountId: string,
+      request: Parameters<typeof assessCustomTargetWeight>[1],
+    ) {
+      setUser({ id: accountId });
+      return assessCustomTargetWeight(
+        createRecordKindStores(this.ctx.storage),
+        request,
+        new Date(),
+      );
+    }
+
+    // 目標を決める。決めたら、目標・1日の目安・推定消費カロリーの記録を、応答と同期の両方に出す
+    async decideGoal(accountId: string, request: Parameters<typeof decideGoal>[2]) {
+      setUser({ id: accountId });
+      const decided = decideGoal(
+        createRecordChangeWriter(this.ctx.storage),
+        createRecordKindStores(this.ctx.storage),
+        request,
+        new Date(),
+      );
+      if (R.isSuccess(decided)) {
+        await sendUsageEvents(this.env, accountId, decided.value.usageEvents);
+      }
+      return R.pipe(
+        decided,
+        R.map(({ decision }) => decision),
       );
     }
 

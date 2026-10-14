@@ -7,7 +7,7 @@ describe("自分で決める目標体重の受け付ける幅", () => {
       // 72.4 kg × (1 − 0.75% × 12 週) は 65.884 kg
       expect(
         computeAcceptedTargetWeightRange({
-          direction: "loss",
+          direction: "lose",
           expenditureKcal: 2250,
           startingWeightTrendKg: 72.4,
           daysFromStartToDeadline: 84,
@@ -21,7 +21,7 @@ describe("自分で決める目標体重の受け付ける幅", () => {
       // 1日に 300 kcal まで減らせて、84 日で 3.27 kg。60 − 3.27 は 56.73 kg
       expect(
         computeAcceptedTargetWeightRange({
-          direction: "loss",
+          direction: "lose",
           expenditureKcal: 1500,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 84,
@@ -38,7 +38,7 @@ describe("自分で決める目標体重の受け付ける幅", () => {
     test("上の端を、0.1kg に丸めた体重の傾向の 0.1kg 下にすること", () => {
       expect(
         computeAcceptedTargetWeightRange({
-          direction: "loss",
+          direction: "lose",
           expenditureKcal: 2250,
           startingWeightTrendKg: 72.43,
           daysFromStartToDeadline: 84,
@@ -51,7 +51,7 @@ describe("自分で決める目標体重の受け付ける幅", () => {
     test("幅が無いこと", () => {
       expect(
         computeAcceptedTargetWeightRange({
-          direction: "loss",
+          direction: "lose",
           expenditureKcal: 1200,
           startingWeightTrendKg: 60,
           daysFromStartToDeadline: 84,

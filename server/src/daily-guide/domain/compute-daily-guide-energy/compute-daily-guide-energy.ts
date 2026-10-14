@@ -1,4 +1,4 @@
-import { kcalPerKgOfBodyWeight } from "../../../goal/domain/kcal-per-kg-of-body-weight";
+import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
 import { weeklyPaceRates } from "../../../goal/domain/weekly-pace-rates";
 import type { DailyGuideGoal } from "../daily-guide-goal";
 import { minimumDailyGuideEnergyKcal } from "../minimum-daily-guide-energy-kcal";
@@ -12,7 +12,7 @@ export const computeDailyGuideEnergy = ({
   goal: DailyGuideGoal;
 }): { energyKcal: number; limitHits: ("required_pace" | "minimum_energy")[] } => {
   const pace = computeLimitedPace(goal);
-  const energyKcal = expenditureKcal + kcalPerKgOfBodyWeight * pace.kgPerDay;
+  const energyKcal = expenditureKcal + kilocaloriesPerKilogram * pace.kgPerDay;
   const isBelowMinimum = energyKcal < minimumDailyGuideEnergyKcal - tolerance;
   return {
     energyKcal: roundToFiftyKcal(Math.max(energyKcal, minimumDailyGuideEnergyKcal)),
@@ -25,12 +25,12 @@ export const computeDailyGuideEnergy = ({
 
 // 必要な速さ（kg/日。減量は負）を、目標の向きと逆にせず、ハード案の速さまでに抑える
 const computeLimitedPace = (goal: DailyGuideGoal): { kgPerDay: number; isLimited: boolean } => {
-  if (goal.direction === "maintenance") {
+  if (goal.direction === "maintain") {
     return { kgPerDay: 0, isLimited: false };
   }
   // 期限まで7日に満たないときは7日で割り、残りの日数で速さが跳ね上がらないようにする
   const days = Math.max(goal.daysFromStartToDeadline, 7);
-  const sign = goal.direction === "loss" ? -1 : 1;
+  const sign = goal.direction === "lose" ? -1 : 1;
   const towardGoalKgPerDay = Math.max(
     (sign * (goal.targetWeightKg - goal.startingWeightTrendKg)) / days,
     0,

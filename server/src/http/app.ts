@@ -4,6 +4,7 @@ import { createSentryOptions } from "../observability/create-sentry-options";
 import { accountRoutes } from "./account-routes";
 import { appleServerNotificationRoutes } from "./apple-server-notification-routes";
 import { e2eSessionRoutes } from "./e2e-session-routes";
+import { goalSetupRoutes } from "./goal-setup-routes";
 import { healthRoutes } from "./health-routes";
 import { mealPhotoRoutes } from "./meal-photo-routes";
 import { observeRequest } from "./observe-request";
@@ -24,6 +25,7 @@ app
   .route("/", accountRoutes)
   .route("/", syncRoutes)
   .route("/", mealPhotoRoutes)
+  .route("/", goalSetupRoutes)
   .route("/", replyStreamRoutes)
   .route("/", appleServerNotificationRoutes);
 

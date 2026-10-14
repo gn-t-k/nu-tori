@@ -35,7 +35,7 @@ export const evaluateCustomTargetWeight = ({
   const targetWeightKg = roundToTenthKg(enteredTargetWeightKg, "round");
   const { gentlestKg, fastestKg, fastestEndReason } = computeTargetWeightLimits(goal);
   // 向きの側へ進んだ量。減量は軽いほど、増量は重いほど大きい
-  const progressOf = (weightKg: number): number => (direction === "loss" ? -weightKg : weightKg);
+  const progressOf = (weightKg: number): number => (direction === "lose" ? -weightKg : weightKg);
   const hasAcceptedTargetWeight = progressOf(gentlestKg) <= progressOf(fastestKg);
   if (progressOf(targetWeightKg) < progressOf(gentlestKg)) {
     return {
