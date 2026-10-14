@@ -63,7 +63,9 @@ public struct Timeline: Sendable {
                     },
                     replies: conversation.replies
                 ),
-                food: DayFood(meals: mealsByEatenDay[day] ?? [])
+                food: DayFood(meals: mealsByEatenDay[day] ?? []),
+                dailyGuide: DailyGuideForDay(
+                    on: day, goals: input.goals, dailyGuides: input.dailyGuides)?.dailyGuide
             )
         }
     }
@@ -150,14 +152,21 @@ public struct Timeline: Sendable {
         public let notices: [Notice]
         public let undelivered: UndeliveredRecords
         public let conversation: Conversation
+        /// 閉じた目標も含む。1日の丸と日のまとめを、その日の1日の目安と比べるために引く
+        public let goals: [Goal]
+        /// 目標がまだ届いていない1日の目安も含む
+        public let dailyGuides: [DailyGuide]
 
+        /// `goals`・`dailyGuides` を渡さなければ、どの日も1日の目安と比べない
         public init(
             weightRecords: [WeightRecord],
             rejectedLines: [RejectedLine],
             meals: [MealCard],
             notices: [Notice],
             undelivered: UndeliveredRecords,
-            conversation: Conversation
+            conversation: Conversation,
+            goals: [Goal] = [],
+            dailyGuides: [DailyGuide] = []
         ) {
             self.weightRecords = weightRecords
             self.rejectedLines = rejectedLines
@@ -165,6 +174,8 @@ public struct Timeline: Sendable {
             self.notices = notices
             self.undelivered = undelivered
             self.conversation = conversation
+            self.goals = goals
+            self.dailyGuides = dailyGuides
         }
     }
 
@@ -175,11 +186,14 @@ public struct Timeline: Sendable {
         public let items: [Item]
         /// この日の食べた量。この日に食べた（食事の日がこの日の）食事から出す。カードを置く日の食事とは限らない
         public let food: DayFood
+        /// この日の食べた量を比べる1日の目安（`DailyGuideForDay`）。目標を立てる前の日と、目安がまだ届いていない日は nil で、比べない
+        public let dailyGuide: DailyGuide?
 
-        public init(day: CalendarDay, items: [Item], food: DayFood) {
+        public init(day: CalendarDay, items: [Item], food: DayFood, dailyGuide: DailyGuide? = nil) {
             self.day = day
             self.items = items
             self.food = food
+            self.dailyGuide = dailyGuide
         }
 
         public var representativeWeight: RepresentativeWeight? {
@@ -202,7 +216,7 @@ public struct Timeline: Sendable {
                 hasWeightRecord: items.contains {
                     if case .weightRecord = $0 { true } else { false }
                 },
-                food: food)
+                food: food, dailyGuide: dailyGuide)
         }
     }
 
