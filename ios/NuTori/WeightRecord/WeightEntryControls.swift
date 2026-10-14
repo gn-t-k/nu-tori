@@ -148,9 +148,9 @@ struct WeightEntryControls: View {
 }
 
 /// 値の欄とステッパーの角（DESIGN.md の value-field と stepper-button）
-private let weightControlShape = RoundedRectangle(cornerRadius: 10)
+let weightControlShape = RoundedRectangle(cornerRadius: 10)
 
-private struct WeightStepButton: View {
+struct WeightStepButton: View {
     let title: String
     let label: String
     let enabled: Bool

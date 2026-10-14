@@ -77,9 +77,10 @@ struct GoalSetupFlowCard: View {
             waitingPage
         case .missingValues:
             GoalSetupMissingValuesPage(flow: flow)
-        case .proposals, .customTargetWeight:
-            // 目標案と自分で決める目標体重のページは #540 が描く。それまでは、届く場所の高さで待つ形を出し、戻れるだけにする
-            waitingPage
+        case .proposals:
+            GoalSetupProposalsPage(flow: flow)
+        case .customTargetWeight:
+            GoalSetupCustomTargetWeightPage(flow: flow)
         case .maintenance:
             GoalSetupMaintenancePage(flow: flow)
         case .loseUnavailable:
@@ -170,6 +171,9 @@ enum GoalSetupUnreachableText {
             "ここまでの答えは残してあります。インターネットにつながると、目標案を出せます。"
         }
     }
+
+    /// 自分で決める目標体重の要求が届かなかった
+    static let customTargetWeight = "ここまでの答えは残してあります。インターネットにつながると、1日の目安を出せます。"
 
     /// 目標を決める要求が届かなかった
     static let decision = "ここまでの答えは残してあります。インターネットにつながると、目標を決められます。"

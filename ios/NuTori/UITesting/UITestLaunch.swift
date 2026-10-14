@@ -215,6 +215,8 @@
             case accountDeletionRateLimited = "account-deletion-rate-limited"
             case accountDeletionUnauthorized = "account-deletion-unauthorized"
             case appBuildUnsupported = "app-build-unsupported"
+            /// 今日 7:12 の体重を置き、目標の設定の4つの要求に答える（逆算できる人の初めての目標）
+            case goalSetup = "goal-setup"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

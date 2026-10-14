@@ -62,6 +62,10 @@
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
                     answerSentText: Self.answer(sentText:), sentTextAnswerPulls: 5)
+            case .goalSetup:
+                return .init(
+                    records: [todaysManualWeight], startedOn: today,
+                    goalSetup: goalSetupAnswers(today: today))
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
@@ -109,6 +113,83 @@
                     tomorrowsImportedWeight,
                 ] + between,
                 startedOn: TimelineDayText.startedOn(for: clock.today().advanced(by: -21)))
+        }
+
+        /// 逆算できる人の初めての目標。開始の日は今日、体重の傾向は 72.0 kg、推定消費カロリーは 2,250 kcal。
+        /// 案の値は期限によらず同じにする（計算はサーバーのテストで確かめる）
+        private func goalSetupAnswers(today: String) -> FakeSyncServer.GoalSetupAnswers {
+            let clock = clock
+            return FakeSyncServer.GoalSetupAnswers(
+                preview: GoalSetupPreview(canBackCalculate: true, canOfferLoseProposals: true),
+                proposals: { direction, deadlineOn in
+                    Self.goalProposals(direction: direction, deadlineOn: deadlineOn, today: today)
+                },
+                assessCustomTargetWeight: { _, kilograms in
+                    // 体重の傾向から離れるほど、1日の目安を推定消費カロリーから離す
+                    let difference = Int(((72.0 - kilograms).magnitude * 140 / 50).rounded()) * 50
+                    let energy = kilograms < 72.0 ? 2250 - difference : 2250 + difference
+                    return .accepted(
+                        .init(
+                            dailyGuide: Self.dailyGuide(energy),
+                            difficulty: difference > 400
+                                ? .hard : difference > 200 ? .standard : .gentle,
+                            dailyGuideDifferenceKilocalories: energy - 2250))
+                },
+                now: { clock.now() })
+        }
+
+        nonisolated private static func goalProposals(
+            direction: GoalSetupDirection, deadlineOn: String?, today: String
+        ) -> GoalProposals {
+            let plan: GoalProposals.Plan
+            switch (direction, deadlineOn) {
+            case (.lose, let deadlineOn?):
+                plan = .weightChange(
+                    .init(
+                        direction: .lose, deadlineOn: deadlineOn,
+                        proposals: [
+                            offered(.gentle, 70.6, 2050), offered(.standard, 69.2, 1850),
+                            offered(.hard, 67.8, 1650),
+                        ],
+                        acceptedTargetWeightRange: .init(
+                            minimumKilograms: 67.8, maximumKilograms: 71.9,
+                            fastestEndReason: .paceTooFast)))
+            case (.gain, let deadlineOn?):
+                plan = .weightChange(
+                    .init(
+                        direction: .gain, deadlineOn: deadlineOn,
+                        proposals: [
+                            offered(.gentle, 72.8, 2350), offered(.standard, 73.7, 2450),
+                            offered(.hard, 74.9, 2600),
+                        ],
+                        acceptedTargetWeightRange: .init(
+                            minimumKilograms: 72.1, maximumKilograms: 74.9,
+                            fastestEndReason: .paceTooFast)))
+            default:
+                plan = .maintenance(
+                    .init(targetWeightKilograms: 72.0, dailyGuide: dailyGuide(2250)))
+            }
+            return GoalProposals(
+                startedOn: today, expenditureKilocalories: 2250, expenditureSource: .backCalculated,
+                startingWeightTrendKilograms: 72.0, lastWeightRecordedOn: today, plan: plan)
+        }
+
+        nonisolated private static func offered(
+            _ pace: GoalProposals.Pace, _ kilograms: Double, _ energy: Int
+        ) -> GoalProposals.Proposal {
+            .init(
+                pace: pace,
+                availability: .offered(
+                    .init(
+                        pace: pace, targetWeightKilograms: kilograms,
+                        dailyGuide: dailyGuide(energy),
+                        difficulty: pace, dailyGuideDifferenceKilocalories: energy - 2250)))
+        }
+
+        /// P・F・C は kcal によらず同じにする
+        nonisolated private static func dailyGuide(_ energy: Int) -> DailyGuidePlan {
+            DailyGuidePlan(
+                energyKilocalories: energy, proteinGrams: 115, fatGrams: 50, carbohydrateGrams: 200)
         }
 
         /// 今日 7:12 に手で記録した 72.4 kg

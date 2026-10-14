@@ -31,7 +31,8 @@ struct GoalSetupMaintenancePage: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("goal-setup-unreachable")
                 }
-                startButton
+                GoalSetupStartButton(
+                    flow: flow, title: "維持で始める", identifier: "goal-setup-maintain-start")
                 GoalSetupFooter(flow: flow) {
                     if flow.unreachableRequest == .decision {
                         GoalSetupRetryButton(flow: flow)
@@ -49,24 +50,5 @@ struct GoalSetupMaintenancePage: View {
 
     private var isDeciding: Bool {
         flow.decision != .idle
-    }
-
-    /// 押すと、ボタンの中に回る印を文字と並べて出す（DESIGN.md の「待っている表示」）
-    private var startButton: some View {
-        Button {
-            Task { await flow.decide() }
-        } label: {
-            HStack(spacing: 8) {
-                if isDeciding {
-                    ProgressView()
-                        .tint(.white)
-                }
-                Text("維持で始める")
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .accessibilityIdentifier("goal-setup-maintain-start")
     }
 }

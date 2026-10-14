@@ -85,6 +85,10 @@ struct DayRingStrip: View {
                     [
                         hasWeightRecord ? "体重の記録あり" : "体重の記録なし",
                         dayRing.hasRecordedFood ? "食事の記録あり" : nil,
+                        // 1日の目安と比べる日は、一周が目安になる
+                        dayRing.dailyGuide.map {
+                            "1日の目安 \(NutritionText.amount(.exactly(Double($0.energyKilocalories)), of: .energyKcal))"
+                        },
                         dayRing.exceedsDailyGuide ? "1日の目安を超えた" : nil,
                     ]
                     .compactMap(\.self).joined(separator: "、")
