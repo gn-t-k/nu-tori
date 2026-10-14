@@ -1,3 +1,4 @@
+import type { DailyGuideAmounts } from "../../daily-guide/domain/daily-guide-amounts";
 import type { DayOfWeek } from "../../domain/day-of-week";
 import type { RecordId } from "../../domain/record-id";
 import type { GoalDirection } from "../../goal/domain/goal-direction";
@@ -54,9 +55,7 @@ export type ReplyContextGoal = {
   // 期限（YYYY-MM-DD）。維持の目標には無い
   deadlineOn: string | undefined;
   targetWeightKg: number;
-  dailyGuide:
-    | { energyKcal: number; proteinG: number; fatG: number; carbohydrateG: number }
-    | undefined;
+  dailyGuide: DailyGuideAmounts | undefined;
   // 今日以前で当てる始まりの日が最も遅い推定
   expenditureKcal: number | undefined;
 };

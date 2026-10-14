@@ -1,7 +1,8 @@
 import { R } from "@praha/byethrow";
 import { match } from "ts-pattern";
 import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
-import type { computeDailyGuide } from "../../daily-guide/domain/compute-daily-guide";
+import type { ComputedDailyGuide } from "../../daily-guide/domain/computed-daily-guide";
+import type { DailyGuideAmounts } from "../../daily-guide/domain/daily-guide-amounts";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordChangeWrites } from "../../domain/record-change-writes";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -49,7 +50,7 @@ export type GoalDecisionRequest = GoalSetupSituation & {
   // 端末が見せていた値。計算し直した値と違えば決めない
   shown: {
     targetWeightKg: number;
-    dailyGuide: { energyKcal: number; proteinG: number; fatG: number; carbohydrateG: number };
+    dailyGuide: DailyGuideAmounts;
   };
   // 端末が数えた、受け付けなかった自分の目標体重の数。観測にだけ使う
   rejectedCustomTargetWeightCount: number;
@@ -145,7 +146,7 @@ type AssessedChoice =
 type AcceptedChoice = {
   status: "accepted";
   targetWeightKg: number;
-  dailyGuide: ReturnType<typeof computeDailyGuide>;
+  dailyGuide: ComputedDailyGuide;
   weightChange: GoalWeightChange | undefined;
   // 1日の目安が下限を下回らないよう、速さを落とした案があったか
   hadSlowedProposal: boolean;
