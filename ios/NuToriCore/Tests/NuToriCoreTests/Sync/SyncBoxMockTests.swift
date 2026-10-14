@@ -196,6 +196,27 @@ struct SyncBoxMockTests {
         }
     }
 
+    @Suite("記録の種類で読むとき")
+    struct Reading {
+        @Test("登録簿の種類のキャッシュの口から読むこと")
+        func readsThroughRegisteredPort() async throws {
+            let record = try WeightRecord.manual(
+                70.0, at: "2026-09-23T07:12:00+09:00", in: "Asia/Tokyo")
+            let box = try Box.ok(records: [record])
+
+            #expect(try await box.read(WeightRecordSyncing.self) { try $0.all() } == [record])
+        }
+
+        @Test("登録簿に無い種類だと投げること")
+        func throwsUnregisteredKind() async throws {
+            let box = Box(kinds: RecordKindRegistry([]), cache: RecordCacheMock())
+
+            await #expect(throws: UnknownRecordKindError.notRegistered(.weightRecord)) {
+                try await box.read(WeightRecordSyncing.self) { try $0.all() }
+            }
+        }
+    }
+
     @Suite("全消去するとき")
     struct Erasing {
         let box: Box

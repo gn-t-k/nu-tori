@@ -19,6 +19,11 @@ public struct PortedRecordKind<Syncing: CacheApplying, BoxCache>: RecordKind {
         try syncing.erase(port(cache))
     }
 
+    /// 箱のキャッシュから取り出した、この種類のキャッシュの口。登録簿が、種類で読むときに使う
+    func cache(in boxCache: BoxCache) -> Syncing.Cache {
+        port(boxCache)
+    }
+
     private let syncing: Syncing
     private let port: @Sendable (BoxCache) -> Syncing.Cache
 }

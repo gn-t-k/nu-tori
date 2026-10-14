@@ -6,6 +6,9 @@ public import NuToriAPI
 public protocol CacheApplying: SyncedRecordKind {
     associatedtype Cache
 
+    /// 登録簿の名前。種類で読む（`RecordCacheReading.read`）ときに、登録簿に無い種類を名前で知らせる
+    static var kindName: RecordKindName { get }
+
     /// 取りに行った変更と今の値を、キャッシュに当てる。自分の種類でない変更は読み飛ばす。保存は箱が行う
     func apply(_ changes: [SyncChange], to cache: Cache) throws
 

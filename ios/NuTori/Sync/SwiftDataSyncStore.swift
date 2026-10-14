@@ -64,105 +64,14 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
-    func weightRecord(id: UUID) async throws -> WeightRecord? {
-        try await onMain { stores in
-            try CachedWeightRecord.find(id: id, in: stores.cache)?.record()
-        }
-    }
-
-    func weightRecords() async throws -> [WeightRecord] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedWeightRecord>(context: stores.cache).all()
-        }
-    }
-
-    func accountSettings() async throws -> AccountSettings? {
-        try await onMain { stores in
-            try SwiftDataSingleRecordCache<CachedAccountSettings>(context: stores.cache).read()
-        }
-    }
-
-    func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
-        try await onMain { stores in
-            try Self.statusesByParentId(of: CachedMealEstimationStatus.self, in: stores.cache) {
-                ($0.mealId, $0.status)
-            }
-        }
-    }
-
-    func meals() async throws -> [Meal] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedMeal>(context: stores.cache).all()
-        }
-    }
-
-    func dishes() async throws -> [Dish] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedDish>(context: stores.cache).all()
-        }
-    }
-
-    func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus] {
-        try await onMain { stores in
-            try Self.statusesByParentId(of: CachedDishEstimationStatus.self, in: stores.cache) {
-                ($0.dishId, $0.status)
-            }
-        }
-    }
-
-    func ingredients() async throws -> [Ingredient] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedIngredient>(context: stores.cache).all()
-        }
-    }
-
-    func notices() async throws -> [Notice] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedNotice>(context: stores.cache).all()
-        }
-    }
-
-    func goals() async throws -> [Goal] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedGoal>(context: stores.cache).all()
-        }
-    }
-
-    func dailyGuides() async throws -> [DailyGuide] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedDailyGuide>(context: stores.cache).all()
-        }
-    }
-
-    func expenditureEstimates() async throws -> [ExpenditureEstimate] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedExpenditureEstimate>(context: stores.cache).all()
-        }
-    }
-
-    func usualWeighingTime() async throws -> UsualWeighingTime? {
-        try await onMain { stores in
-            try SwiftDataSingleRecordCache<CachedUsualWeighingTime>(context: stores.cache).read()
-        }
-    }
-
-    func weightTrend() async throws -> WeightTrend? {
-        try await onMain { stores in
-            try SwiftDataWeightTrendCache(context: stores.cache).read()
-        }
-    }
-
-    func sentTexts() async throws -> [SentText] {
-        try await onMain { stores in
-            try SwiftDataKeyedRecordCache<CachedSentText>(context: stores.cache).all()
-        }
-    }
-
-    func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
-        try await onMain { stores in
-            try Self.statusesByParentId(of: CachedSentTextStatus.self, in: stores.cache) {
-                ($0.sentTextId, $0.status)
-            }
+    /// 登録簿の種類の SwiftData の adapter を、メインのコンテキストで読む
+    func read<Syncing: CacheApplying, Value: Sendable>(
+        _ kind: Syncing.Type,
+        _ body: @Sendable (Syncing.Cache) throws -> Value
+    ) async throws -> Value {
+        let kinds = kinds
+        return try await onMain { stores in
+            try body(try kinds.port(Syncing.self, in: stores.cache))
         }
     }
 
@@ -270,17 +179,6 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         let pending = pendingContainer.mainContext
         pending.autosaveEnabled = false
         return Contexts(cache: cache, pending: pending)
-    }
-
-    /// 親の ID で引く状態を、親の ID ごとにまとめる。同じ親の行が重なっていたら、あとの行を取る
-    @MainActor private static func statusesByParentId<Row: KeyedCacheRow, Status>(
-        of row: Row.Type,
-        in context: ModelContext,
-        _ parentIdAndStatus: (Row.Record) -> (UUID, Status)
-    ) throws -> [UUID: Status] {
-        Dictionary(
-            try SwiftDataKeyedRecordCache<Row>(context: context).all().map(parentIdAndStatus),
-            uniquingKeysWith: { _, last in last })
     }
 
     /// 結果を受け取った送り待ちを最後に消すのは、間で落ちても送り待ちが残り、次に送って同じ戻しに戻るため
