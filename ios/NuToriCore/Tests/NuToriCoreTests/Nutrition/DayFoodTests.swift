@@ -235,8 +235,6 @@ struct DayFoodTests {
 
     @Suite("日のまとめに添える文")
     struct Note {
-        static let ringNote = "目標がないので、丸は P・F・C の割合で一周します。"
-
         @Suite("推定が済んだ食事だけの日")
         struct OnlyEstimated {
             let food: DayFood
@@ -247,9 +245,9 @@ struct DayFoodTests {
                 ])
             }
 
-            @Test("丸の説明だけを添えること")
-            func onlyRingNote() {
-                #expect(food.notes == [Note.ringNote])
+            @Test("何も添えないこと")
+            func addsNothing() {
+                #expect(food.notes.isEmpty)
             }
         }
 
@@ -261,8 +259,7 @@ struct DayFoodTests {
             func saysEstimating() {
                 #expect(
                     food.notes == [
-                        Note.ringNote,
-                        "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。",
+                        "この日の食事は、まだ料理と栄養を推定しているところです。推定が済むと、ここに kcal と P・F・C が出ます。"
                     ])
             }
         }
@@ -283,8 +280,7 @@ struct DayFoodTests {
             func countsPendingMeals() {
                 #expect(
                     food.notes == [
-                        Note.ringNote,
-                        "まだ推定が済んでいない食事が2つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+                        "まだ推定が済んでいない食事が2つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。"
                     ])
             }
         }
@@ -297,8 +293,7 @@ struct DayFoodTests {
             func countsPendingMeals() {
                 #expect(
                     food.notes == [
-                        Note.ringNote,
-                        "まだ推定が済んでいない食事が1つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。",
+                        "まだ推定が済んでいない食事が1つあります。推定が済むと、その食事の kcal と P・F・C も、この合計に足されます。"
                     ])
             }
         }
@@ -311,7 +306,7 @@ struct DayFoodTests {
             func saysUnavailable() {
                 #expect(
                     food.notes == [
-                        Note.ringNote, "この日の食事からは、kcal と P・F・C を出せませんでした。",
+                        "この日の食事からは、kcal と P・F・C を出せませんでした。"
                     ])
             }
         }

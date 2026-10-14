@@ -70,7 +70,10 @@ public struct UndeliveredRecords: Hashable, Sendable {
                         || contents.ingredients.contains { ingredientIds.contains($0.id) }
                 }
         case .sentText(let bubble): containsSentText(id: bubble.sentText.id)
-        case .rejectedWeightLine, .rejectedMealLine, .notice, .rejectedSentTextLine, .reply: false
+        case .rejectedWeightLine, .rejectedMealLine, .notice, .goalSetupNotice,
+            .rejectedSentTextLine,
+            .reply:
+            false
         }
     }
 

@@ -21,6 +21,7 @@ public struct ReplyFirstTextWatch: Sendable {
                     shown[reply.sentTextId] = reply.isGrowing
                 }
             case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .notice,
+                .goalSetupNotice,
                 .rejectedSentTextLine:
                 continue
             }

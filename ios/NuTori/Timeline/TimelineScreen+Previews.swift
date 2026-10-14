@@ -27,7 +27,8 @@
             accountActions: .noop,
             mealActions: .noop,
             conversation: sample.conversation,
-            conversationActions: .noop
+            conversationActions: .noop,
+            goalSetup: .preview
         )
     }
 
@@ -171,9 +172,13 @@
 
             var notices: [Notice] {
                 switch self {
-                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals, .goalDecided, .undelivered, .writtenMeals:
+                case .loading, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .rejected, .meals, .undelivered, .writtenMeals:
                     []
+                case .firstDay:
+                    [.sampleGoalSetup(on: .sampleToday, answered: false)]
+                case .goalDecided:
+                    [.sampleGoalSetup(on: .sampleToday, answered: true)]
                 case .awaitingNotice:
                     [
                         .sampleMissedWeightRecord(

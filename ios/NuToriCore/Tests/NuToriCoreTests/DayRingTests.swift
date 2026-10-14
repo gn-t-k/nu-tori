@@ -51,13 +51,6 @@ struct DayRingTests {
 
             #expect(!ring.exceedsDailyGuide)
         }
-
-        @Test("食べた量の下の文に、目標がないことを書かないこと")
-        func omitsNoGoalNote() throws {
-            let food = try DayRingTests.food(kilocalories: 925)
-
-            #expect(food.notes(comparingWith: DayRingTests.guide).isEmpty)
-        }
     }
 
     @Suite("1日の目安と比べない日（目標を立てる前の日）")
@@ -69,14 +62,6 @@ struct DayRingTests {
 
             #expect(ring.arcs == DayRing.Arcs(protein: 0.2, fat: 0.45, carbohydrate: 0.35))
             #expect(!ring.exceedsDailyGuide)
-        }
-
-        @Test("食べた量の下の文は、今のまま目標がないことを書くこと")
-        func keepsNoGoalNote() throws {
-            let food = try DayRingTests.food(kilocalories: 925)
-
-            #expect(food.notes(comparingWith: nil) == food.notes)
-            #expect(food.notes == ["目標がないので、丸は P・F・C の割合で一周します。"])
         }
     }
 
