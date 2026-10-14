@@ -62,9 +62,9 @@ struct WeightEntryControls: View {
             showsField: $showsField,
             typing: typing,
             fieldLabel: "体重の値",
-            // まだ入れていないときは、見た目の「–」に合わせて値を読まず、入れる欄だと伝える
-            shownLabel: draft.kilograms.map(WeightAmountText.kilograms) ?? "体重の値",
-            shownValue: nil,
+            // まだ入れていないときは、見た目の「–」に合わせて値を読まない
+            shownLabel: "体重",
+            shownValue: draft.kilograms.map(WeightAmountText.kilograms),
             beginTyping: {
                 draft.beginTyping()
                 onBeginTyping()
