@@ -32,83 +32,11 @@ final class YieldingSyncBoxMock: SyncBox, RecordCacheReading {
         try await box.eraseAll()
     }
 
-    func weightRecord(id: UUID) async throws -> WeightRecord? {
+    func read<Syncing: CacheApplying, Value: Sendable>(
+        _ kind: Syncing.Type,
+        _ body: @Sendable (Syncing.Cache) throws -> Value
+    ) async throws -> Value {
         await Task.yield()
-        return try await box.weightRecord(id: id)
-    }
-
-    func weightRecords() async throws -> [WeightRecord] {
-        await Task.yield()
-        return try await box.weightRecords()
-    }
-
-    func accountSettings() async throws -> AccountSettings? {
-        await Task.yield()
-        return try await box.accountSettings()
-    }
-
-    func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
-        await Task.yield()
-        return try await box.mealEstimationStatuses()
-    }
-
-    func meals() async throws -> [Meal] {
-        await Task.yield()
-        return try await box.meals()
-    }
-
-    func dishes() async throws -> [Dish] {
-        await Task.yield()
-        return try await box.dishes()
-    }
-
-    func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus] {
-        await Task.yield()
-        return try await box.dishEstimationStatuses()
-    }
-
-    func ingredients() async throws -> [Ingredient] {
-        await Task.yield()
-        return try await box.ingredients()
-    }
-
-    func notices() async throws -> [Notice] {
-        await Task.yield()
-        return try await box.notices()
-    }
-
-    func goals() async throws -> [Goal] {
-        await Task.yield()
-        return try await box.goals()
-    }
-
-    func dailyGuides() async throws -> [DailyGuide] {
-        await Task.yield()
-        return try await box.dailyGuides()
-    }
-
-    func expenditureEstimates() async throws -> [ExpenditureEstimate] {
-        await Task.yield()
-        return try await box.expenditureEstimates()
-    }
-
-    func usualWeighingTime() async throws -> UsualWeighingTime? {
-        await Task.yield()
-        return try await box.usualWeighingTime()
-    }
-
-    func weightTrend() async throws -> WeightTrend? {
-        await Task.yield()
-        return try await box.weightTrend()
-    }
-
-    func sentTexts() async throws -> [SentText] {
-        await Task.yield()
-        return try await box.sentTexts()
-    }
-
-    func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
-        await Task.yield()
-        return try await box.sentTextStatuses()
+        return try await box.read(kind, body)
     }
 }

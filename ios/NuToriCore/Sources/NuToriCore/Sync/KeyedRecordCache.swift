@@ -13,6 +13,9 @@ public protocol KeyedRecordCache<Record, ID> {
 
     func removeAll() throws
 
+    /// キャッシュに無い ID は nil
+    func record(id: ID) throws -> Record?
+
     /// 並びの順は約束しない
     func all() throws -> [Record]
 }

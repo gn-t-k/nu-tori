@@ -24,6 +24,11 @@ nonisolated struct SwiftDataKeyedRecordCache<Row: KeyedCacheRow>: KeyedRecordCac
         try context.deleteAll(Row.self)
     }
 
+    /// 読めない行は nil
+    func record(id: Row.RecordID) throws -> Row.Record? {
+        try Row.find(id: id, in: context)?.record()
+    }
+
     /// 読めない行（知らないタイムゾーンなど）は飛ばす
     func all() throws -> [Row.Record] {
         try context.fetch(FetchDescriptor<Row>()).compactMap { $0.record() }
