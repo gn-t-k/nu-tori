@@ -69,6 +69,11 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       expect(messages).toEqual([
         "サインインした",
         "体重を記録した",
+        "目標の下見で、逆算できず、身体データを添えると減量の案を出せると答えた",
+        "目標案を受け取った（推定消費カロリーの出どころ formula）",
+        "目標を決めた（goal・daily_guide・expenditure_estimate）",
+        "同じ要求の ID の再送が、同じ応答で返った",
+        "取りに行くで目標と1日の目安と推定消費カロリーが届いた",
         "写真の食事を送った",
         "推定できた（料理 2、材料 3）",
         "推定でできた料理の名前を直した",
@@ -79,6 +84,26 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
         "取りに行くで返事が届いた",
         "アカウントを削除した",
       ]);
+    });
+  });
+
+  describe("目標の設定の要求の経路が無い Worker のとき", () => {
+    beforeEach(() => {
+      const { send } = flowOptions;
+      flowOptions = {
+        ...flowOptions,
+        send: (url, init) =>
+          url.includes("/v1/goal-setup/")
+            ? Promise.resolve(new Response(null, { status: 404 }))
+            : send(url, init),
+      };
+    });
+
+    test("断られた要求と状態コードを知らせて失敗し、アカウントは消すこと", async () => {
+      await expect(runMainFlow(flowOptions)).rejects.toThrow(
+        "目標の設定の要求 preview が断られた（状態コード 404、理由: なし）",
+      );
+      expect(await countCreatedAccount()).toBe(0);
     });
   });
 
