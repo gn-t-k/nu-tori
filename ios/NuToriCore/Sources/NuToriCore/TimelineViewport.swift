@@ -148,7 +148,7 @@ public struct TimelineViewport: Equatable, Sendable {
     public mutating func revealItem(_ itemId: Timeline.Item.ID, in days: [Timeline.Day])
         -> [Instruction]
     {
-        let reveal = Instruction.scroll(to: .itemBottom(itemId), animated: true)
+        let reveal = Instruction.scroll(to: .goalSetupNoticeBottom(itemId), animated: true)
         guard let day = days.first(where: { $0.items.contains { $0.id == itemId } }),
             !listedDays(of: days).contains(where: { $0.day == day.day })
         else { return [reveal] }
@@ -258,8 +258,8 @@ extension TimelineViewport {
         case day(CalendarDay)
         /// そのカードの上端
         case item(Timeline.Item.ID)
-        /// そのカードの下端
-        case itemBottom(Timeline.Item.ID)
+        /// 目標の設定のカードの下端。画面は、送る前に目標の設定が開いていて同じカードかを確かめる
+        case goalSetupNoticeBottom(Timeline.Item.ID)
     }
 
     public struct DayPosition: Equatable, Sendable {

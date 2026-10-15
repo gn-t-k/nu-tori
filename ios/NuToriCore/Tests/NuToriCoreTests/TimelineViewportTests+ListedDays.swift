@@ -505,7 +505,7 @@ extension TimelineViewportTests {
                 #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(35)))
                 #expect(
                     viewport.waitingInstructions == [
-                        .scroll(to: .itemBottom(item.id), animated: true)
+                        .scroll(to: .goalSetupNoticeBottom(item.id), animated: true)
                     ])
             }
 
@@ -516,7 +516,8 @@ extension TimelineViewportTests {
 
                 let instructions = viewport.revealItem(item.id, in: days)
 
-                #expect(instructions == [.scroll(to: .itemBottom(item.id), animated: true)])
+                #expect(
+                    instructions == [.scroll(to: .goalSetupNoticeBottom(item.id), animated: true)])
                 #expect(viewport.waitingInstructions.isEmpty)
                 #expect(Array(viewport.listedDays(of: days)) == listed)
             }

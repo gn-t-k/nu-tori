@@ -703,7 +703,7 @@ struct TimelineScreen: View {
         case .end: proxy.scrollTo(Self.contentId, anchor: .bottom)
         case .day(let day): proxy.scrollTo(day, anchor: .top)
         case .item(let itemId): proxy.scrollTo(itemId, anchor: .top)
-        case .itemBottom(let itemId):
+        case .goalSetupNoticeBottom(let itemId):
             // カードの日が並ぶのを待つあいだに、目標の設定を閉じた・カードが変わったら送らない
             guard goalSetupFlow.expandedPage != nil,
                 let notice = timeline().goalSetupNotice,
