@@ -1,6 +1,8 @@
-import { computeTargetWeightLimits } from "../compute-target-weight-limits";
+import {
+  computeTargetWeightLimits,
+  hasAcceptedTargetWeight,
+} from "../compute-target-weight-limits";
 import type { FastestEndReason } from "../fastest-end-reason";
-import { isOnDirectionSide } from "../is-on-direction-side";
 import type { WeightChangeGoalInputs } from "../weight-change-goal-inputs";
 
 // 自分で決める目標体重の受け付ける幅（0.1kg 単位、両端を含む）。受け付ける目標体重が1つも無いときは、幅が無い
@@ -15,11 +17,7 @@ export const computeAcceptedTargetWeightRange = (
     }
   | undefined => {
   const { gentlestKg, fastestKg, fastestEndReason } = computeTargetWeightLimits(goal);
-  return isOnDirectionSide({
-    direction: goal.direction,
-    weightKg: fastestKg,
-    comparedWeightKg: gentlestKg,
-  })
+  return hasAcceptedTargetWeight(goal.direction, { gentlestKg, fastestKg })
     ? {
         minimumKg: Math.min(gentlestKg, fastestKg),
         maximumKg: Math.max(gentlestKg, fastestKg),

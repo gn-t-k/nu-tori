@@ -5,6 +5,8 @@ import { roundToTenthKg } from "./round-to-tenth-kg";
 import { weeklyPaceRates } from "./weekly-pace-rates";
 import type { FastestEndReason } from "./fastest-end-reason";
 import type { WeightChangeGoalInputs } from "./weight-change-goal-inputs";
+import { isOnDirectionSide } from "./is-on-direction-side";
+import type { WeightChangeDirection } from "./weight-change-direction";
 
 // 受け付ける目標体重の両端（0.1kg 単位）。いちばん速い端が、いちばんゆるい端より体重の傾向の側にあるときは、受け付ける目標体重が無い
 export const computeTargetWeightLimits = ({
@@ -45,3 +47,9 @@ export const computeTargetWeightLimits = ({
     fastestEndReason: minimumEnergyKg > hardPaceKg ? "daily_guide_below_minimum" : "pace_too_fast",
   };
 };
+
+// 受け付ける目標体重があるか。いちばん速い端が、いちばんゆるい端と同じか、それより向きの側にあるとき
+export const hasAcceptedTargetWeight = (
+  direction: WeightChangeDirection,
+  { gentlestKg, fastestKg }: { gentlestKg: number; fastestKg: number },
+): boolean => isOnDirectionSide({ direction, weightKg: fastestKg, comparedWeightKg: gentlestKg });

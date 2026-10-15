@@ -1,7 +1,10 @@
 import { computeDailyGuide } from "../../../daily-guide/domain/compute-daily-guide";
 import type { ComputedDailyGuide } from "../../../daily-guide/domain/computed-daily-guide";
 import { computeDailyGuideDifferenceKcal } from "../../../daily-guide/domain/compute-daily-guide-difference-kcal";
-import { computeTargetWeightLimits } from "../compute-target-weight-limits";
+import {
+  computeTargetWeightLimits,
+  hasAcceptedTargetWeight,
+} from "../compute-target-weight-limits";
 import type { CustomTargetWeightRejectionReason } from "../custom-target-weight-rejection-reason";
 import { isOnDirectionSide } from "../is-on-direction-side";
 import type { ProposalPace } from "../proposal-pace";
@@ -33,23 +36,19 @@ export const evaluateCustomTargetWeight = ({
   const { direction, expenditureKcal, startingWeightTrendKg, daysFromStartToDeadline } = goal;
   const targetWeightKg = roundToTenthKg(enteredTargetWeightKg, "round");
   const { gentlestKg, fastestKg, fastestEndReason } = computeTargetWeightLimits(goal);
-  const hasAcceptedTargetWeight = isOnDirectionSide({
-    direction,
-    weightKg: fastestKg,
-    comparedWeightKg: gentlestKg,
-  });
+  const acceptsSomeTargetWeight = hasAcceptedTargetWeight(direction, { gentlestKg, fastestKg });
   if (!isOnDirectionSide({ direction, weightKg: targetWeightKg, comparedWeightKg: gentlestKg })) {
     return {
       status: "rejected",
       reason: "not_on_direction_side",
-      nearestAcceptedTargetWeightKg: hasAcceptedTargetWeight ? gentlestKg : undefined,
+      nearestAcceptedTargetWeightKg: acceptsSomeTargetWeight ? gentlestKg : undefined,
     };
   }
   if (!isOnDirectionSide({ direction, weightKg: fastestKg, comparedWeightKg: targetWeightKg })) {
     return {
       status: "rejected",
       reason: fastestEndReason,
-      nearestAcceptedTargetWeightKg: hasAcceptedTargetWeight ? fastestKg : undefined,
+      nearestAcceptedTargetWeightKg: acceptsSomeTargetWeight ? fastestKg : undefined,
     };
   }
   const dailyGuide = computeDailyGuide({
