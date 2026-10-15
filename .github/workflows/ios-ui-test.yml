@@ -69,14 +69,15 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       REPORT: ${{ needs.ios-ui-test.outputs.artifact-url || '無い（UI テストの前に止まったので、ログを見る）' }}
-      FAILURES: ${{ needs.ios-ui-test.outputs.failures }}
       TITLE: main の ios-ui-test が落ちている
+      # 落ちたテストごとの Issue の題は、これにテストの名前をつなげる
+      TEST_TITLE_PREFIX: "main の ios-ui-test が落ちている: "
     steps:
       - id: open-issues
         name: 開いている Issue を探す
         run: |
           issues="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
-            --jq '.[] | select(.pull_request == null and (.title == env.TITLE or (.title | startswith(env.TITLE + ": ")))) | {number, title}' |
+            --jq '.[] | select(.pull_request == null and (.title == env.TITLE or (.title | startswith(env.TEST_TITLE_PREFIX)))) | {number, title}' |
             jq -sc .)"
           echo "issues=$issues" >> "$GITHUB_OUTPUT"
       - name: 緑に戻ったので Issue を閉じる
@@ -92,15 +93,15 @@ jobs:
         if: needs.ios-ui-test.result == 'failure'
         env:
           ISSUES: ${{ steps.open-issues.outputs.issues }}
+          FAILURES: ${{ needs.ios-ui-test.outputs.failures }}
         run: |
-          report() {
-            local title="$1" details="$2" number body
-            number="$(jq -r --arg title "$title" '.[] | select(.title == $title) | .number' <<< "$ISSUES" | head -n 1)"
-            if [ -n "$number" ]; then
-              body="$(printf 'また落ちた: %s\n失敗の要約とスクリーンショット: %s\n%s' "$RUN_URL" "$REPORT" "$details")"
-              gh api "repos/$GITHUB_REPOSITORY/issues/$number/comments" -f body="$body" > /dev/null
-              return
-            fi
+          comment_on_issue() {
+            local number="$1" details="$2" body
+            body="$(printf 'また落ちた: %s\n失敗の要約とスクリーンショット: %s\n%s' "$RUN_URL" "$REPORT" "$details")"
+            gh api "repos/$GITHUB_REPOSITORY/issues/$number/comments" -f body="$body" > /dev/null
+          }
+          open_issue() {
+            local title="$1" details="$2" body number
             body="$(printf '%s\n\n- 落ちた回: %s\n- 失敗の要約とスクリーンショット: %s\n%s\n\n%s' \
               'main の ios-ui-test（パッケージのテスト、アプリのビルド、UI テスト）が落ちた。次の PR より先に直す。' \
               "$RUN_URL" "$REPORT" "$details" \
@@ -109,14 +110,23 @@ jobs:
             # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
             gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
           }
+          comment_on_or_open_issue() {
+            local title="$1" details="$2" number
+            number="$(jq -r --arg title "$title" '.[] | select(.title == $title) | .number' <<< "$ISSUES" | head -n 1)"
+            if [ -n "$number" ]; then
+              comment_on_issue "$number" "$details"
+            else
+              open_issue "$title" "$details"
+            fi
+          }
 
           failures="${FAILURES:-[]}"
           if [ "$(jq length <<< "$failures")" -eq 0 ]; then
-            report "$TITLE" ""
+            comment_on_or_open_issue "$TITLE" ""
             exit 0
           fi
           jq -c '.[]' <<< "$failures" | while read -r failure; do
-            test="$(jq -r .test <<< "$failure")"
+            test_name="$(jq -r .test <<< "$failure")"
             details="$(jq -r '"\n```text\n" + (.texts | join("\n")) + "\n```"' <<< "$failure")"
-            report "$TITLE: $test" "$details"
+            comment_on_or_open_issue "$TEST_TITLE_PREFIX$test_name" "$details"
           done
