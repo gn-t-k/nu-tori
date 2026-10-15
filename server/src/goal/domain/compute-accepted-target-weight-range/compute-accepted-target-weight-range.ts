@@ -1,4 +1,7 @@
-import { computeTargetWeightLimits } from "../compute-target-weight-limits";
+import {
+  computeTargetWeightLimits,
+  hasAcceptedTargetWeight,
+} from "../compute-target-weight-limits";
 import type { FastestEndReason } from "../fastest-end-reason";
 import type { WeightChangeGoalInputs } from "../weight-change-goal-inputs";
 
@@ -14,9 +17,11 @@ export const computeAcceptedTargetWeightRange = (
     }
   | undefined => {
   const { gentlestKg, fastestKg, fastestEndReason } = computeTargetWeightLimits(goal);
-  const minimumKg = Math.min(gentlestKg, fastestKg);
-  const maximumKg = Math.max(gentlestKg, fastestKg);
-  const isFastestOnDirectionSide =
-    goal.direction === "lose" ? fastestKg <= gentlestKg : fastestKg >= gentlestKg;
-  return isFastestOnDirectionSide ? { minimumKg, maximumKg, fastestEndReason } : undefined;
+  return hasAcceptedTargetWeight(goal.direction, { gentlestKg, fastestKg })
+    ? {
+        minimumKg: Math.min(gentlestKg, fastestKg),
+        maximumKg: Math.max(gentlestKg, fastestKg),
+        fastestEndReason,
+      }
+    : undefined;
 };

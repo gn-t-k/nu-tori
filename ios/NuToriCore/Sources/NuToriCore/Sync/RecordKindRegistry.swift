@@ -13,6 +13,19 @@ public struct RecordKindRegistry<Cache>: Sendable {
         kinds.first { $0.name == name }
     }
 
+    /// 種類 `Syncing` のキャッシュの口を、箱のキャッシュから取り出す。
+    /// 登録簿に無い種類（テスト用の種類に替えた種類を含む）は `UnknownRecordKindError.notRegistered` を投げる
+    public func port<Syncing: CacheApplying>(_ kind: Syncing.Type, in cache: Cache) throws
+        -> Syncing.Cache
+    {
+        for registered in kinds {
+            if let ported = registered as? PortedRecordKind<Syncing, Cache> {
+                return ported.cache(in: cache)
+            }
+        }
+        throw UnknownRecordKindError.notRegistered(Syncing.kindName)
+    }
+
     /// 登録簿の名前の集合。今読める種類として、前に取りに行ったときの集合と比べる
     public var names: Set<RecordKindName> {
         Set(kinds.map(\.name))

@@ -1,9 +1,8 @@
 import { R } from "@praha/byethrow";
-import { computeWeightChangeGoalInputs } from "./compute-weight-change-goal-inputs";
+import { computeWeightChangeGoalInputs, resolveCompleteGoalSetupBasis } from "./goal-setup-basis";
 import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
-import { resolveCompleteGoalSetupBasis } from "./resolve-complete-goal-setup-basis";
 import type { GoalSetupStores } from "./goal-setup-stores";
 import type { WeightChangeDirection } from "./weight-change-direction";
 

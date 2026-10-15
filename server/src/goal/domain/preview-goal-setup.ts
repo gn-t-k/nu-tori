@@ -1,11 +1,11 @@
 import { R } from "@praha/byethrow";
-import { acceptedDeadlineDays } from "./accepted-deadline-days";
+import { acceptedDeadlineDays } from "./accepted-deadline";
 import { computeGoalProposals } from "./compute-goal-proposals";
 import type { GoalDirection } from "./goal-direction";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
 import type { GoalSetupStores } from "./goal-setup-stores";
-import { resolveGoalSetupBasis, type GoalSetupBasis } from "./resolve-goal-setup-basis";
+import { resolveGoalSetupBasis, type GoalSetupBasis } from "./goal-setup-basis";
 
 export type GoalSetupPreview = {
   // 初めての目標のときだけ答える。立て直すときは推定を作らないので無い
@@ -46,4 +46,4 @@ const canOfferLoseProposals = ({
         expenditureKcal: expenditure.kcal,
         startingWeightTrendKg: startingWeightTrend.trendKg,
         daysFromStartToDeadline: acceptedDeadlineDays.minimum,
-      }).some(({ status }) => status === "offered");
+      }).proposals.some(({ status }) => status === "offered");

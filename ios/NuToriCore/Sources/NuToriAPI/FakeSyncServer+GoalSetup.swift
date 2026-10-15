@@ -62,8 +62,9 @@
                     .weightChange(
                         direction: GoalProposals.Direction(request.direction),
                         deadlineOn: request.deadlineOn))
-                return try jsonObject(
-                    customTargetWeightAssessment(
+                return try json(
+                    .ok,
+                    Components.Schemas.CustomTargetWeightAssessment(
                         startedOn: proposals.startedOn,
                         outcome: answers.assessCustomTargetWeight(
                             request.deadlineOn, request.targetWeightKg)))
@@ -74,9 +75,10 @@
                 record(changes)
                 return try json(
                     .ok,
-                    Components.Schemas.GoalDecision(
-                        status: "decided",
-                        changes: try changes.map(Components.Schemas.GoalDecisionChange.init)))
+                    Components.Schemas.GoalDecision.decided(
+                        .init(
+                            status: .decided,
+                            changes: try changes.map(Components.Schemas.GoalDecisionChange.init))))
             default:
                 return (HTTPResponse(status: .notFound), nil)
             }
@@ -148,39 +150,6 @@
                 )
             }
         }
-
-        /// 1日の目安が allOf の入れ物なので、生成した型を通さずに書く
-        private func customTargetWeightAssessment(
-            startedOn: String, outcome: CustomTargetWeightAssessment.Outcome
-        ) -> [String: Any] {
-            switch outcome {
-            case .accepted(let accepted):
-                return [
-                    "startedOn": startedOn, "status": "accepted",
-                    "dailyGuide": [
-                        "energyKcal": accepted.dailyGuide.energyKilocalories,
-                        "proteinG": accepted.dailyGuide.proteinGrams,
-                        "fatG": accepted.dailyGuide.fatGrams,
-                        "carbohydrateG": accepted.dailyGuide.carbohydrateGrams,
-                    ],
-                    "difficulty": accepted.difficulty.rawValue,
-                    "dailyGuideDifferenceKcal": accepted.dailyGuideDifferenceKilocalories,
-                ]
-            case .rejected(let reason, let nearest):
-                var object: [String: Any] = [
-                    "startedOn": startedOn, "status": "rejected",
-                    "rejectionReason": reason.serverName,
-                ]
-                object["nearestAcceptedTargetWeightKg"] = nearest
-                return object
-            }
-        }
-
-        private func jsonObject(_ object: [String: Any]) throws -> (HTTPResponse, HTTPBody?) {
-            var response = HTTPResponse(status: .ok)
-            response.headerFields[.contentType] = "application/json"
-            return (response, HTTPBody(try JSONSerialization.data(withJSONObject: object)))
-        }
     }
 
     extension GoalProposalsPlan {
@@ -218,41 +187,59 @@
 
     extension Components.Schemas.GoalProposals {
         fileprivate init(_ proposals: GoalProposals) {
-            let source =
+            let source: Components.Schemas.GoalSetupExpenditureSource =
                 switch proposals.expenditureSource {
-                case .backCalculated: "back_calculated"
-                case .formula: "formula"
-                case .current: "current"
+                case .backCalculated: .backCalculated
+                case .formula: .formula
+                case .current: .current
                 }
             switch proposals.plan {
             case .maintenance(let maintenance):
-                self.init(
-                    startedOn: proposals.startedOn, direction: "maintain",
-                    expenditureKcal: proposals.expenditureKilocalories, expenditureSource: source,
-                    startingWeightTrendKg: proposals.startingWeightTrendKilograms,
-                    lastWeightRecordedOn: proposals.lastWeightRecordedOn,
-                    maintenance: .init(
-                        targetWeightKg: maintenance.targetWeightKilograms,
-                        dailyGuide: .init(maintenance.dailyGuide)))
+                self = .maintain(
+                    .init(
+                        startedOn: proposals.startedOn,
+                        expenditureKcal: proposals.expenditureKilocalories,
+                        expenditureSource: source,
+                        startingWeightTrendKg: proposals.startingWeightTrendKilograms,
+                        lastWeightRecordedOn: proposals.lastWeightRecordedOn,
+                        direction: .maintain,
+                        maintenance: .init(
+                            targetWeightKg: maintenance.targetWeightKilograms,
+                            dailyGuide: .init(maintenance.dailyGuide))))
             case .weightChange(let weightChange):
-                let direction =
-                    switch weightChange.direction {
-                    case .lose: "lose"
-                    case .gain: "gain"
-                    }
-                self.init(
-                    startedOn: proposals.startedOn,
-                    direction: direction,
-                    expenditureKcal: proposals.expenditureKilocalories, expenditureSource: source,
-                    startingWeightTrendKg: proposals.startingWeightTrendKilograms,
-                    lastWeightRecordedOn: proposals.lastWeightRecordedOn,
-                    deadlineOn: weightChange.deadlineOn,
-                    proposals: weightChange.proposals.map(Components.Schemas.GoalProposal.init),
-                    acceptedTargetWeightRange: weightChange.acceptedTargetWeightRange.map {
+                let proposalsOfPlan = weightChange.proposals.map(
+                    Components.Schemas.GoalProposal.init)
+                let range = weightChange.acceptedTargetWeightRange.map {
+                    Components.Schemas.AcceptedTargetWeightRange(
+                        minimumKg: $0.minimumKilograms, maximumKg: $0.maximumKilograms,
+                        fastestEndReason: $0.fastestEndReason.serverName)
+                }
+                switch weightChange.direction {
+                case .lose:
+                    self = .lose(
                         .init(
-                            minimumKg: $0.minimumKilograms, maximumKg: $0.maximumKilograms,
-                            fastestEndReason: $0.fastestEndReason.serverName)
-                    })
+                            startedOn: proposals.startedOn,
+                            expenditureKcal: proposals.expenditureKilocalories,
+                            expenditureSource: source,
+                            startingWeightTrendKg: proposals.startingWeightTrendKilograms,
+                            lastWeightRecordedOn: proposals.lastWeightRecordedOn,
+                            deadlineOn: weightChange.deadlineOn,
+                            proposals: proposalsOfPlan,
+                            acceptedTargetWeightRange: range,
+                            direction: .lose))
+                case .gain:
+                    self = .gain(
+                        .init(
+                            startedOn: proposals.startedOn,
+                            expenditureKcal: proposals.expenditureKilocalories,
+                            expenditureSource: source,
+                            startingWeightTrendKg: proposals.startingWeightTrendKilograms,
+                            lastWeightRecordedOn: proposals.lastWeightRecordedOn,
+                            deadlineOn: weightChange.deadlineOn,
+                            proposals: proposalsOfPlan,
+                            acceptedTargetWeightRange: range,
+                            direction: .gain))
+                }
             }
         }
     }
@@ -261,16 +248,48 @@
         fileprivate init(_ proposal: GoalProposals.Proposal) {
             switch proposal {
             case .offered(let offered):
-                self.init(
-                    pace: proposal.pace.rawValue, status: "offered",
-                    targetWeightKg: offered.targetWeightKilograms,
-                    dailyGuide: .init(offered.dailyGuide),
-                    difficulty: offered.difficulty.rawValue,
-                    dailyGuideDifferenceKcal: offered.dailyGuideDifferenceKilocalories)
-            case .unavailable(_, let reason):
-                self.init(
-                    pace: proposal.pace.rawValue, status: "unavailable",
-                    unavailableReason: reason.serverName)
+                self = .offered(
+                    .init(
+                        pace: .init(offered.pace), status: .offered,
+                        targetWeightKg: offered.targetWeightKilograms,
+                        dailyGuide: .init(offered.dailyGuide),
+                        difficulty: .init(offered.difficulty),
+                        dailyGuideDifferenceKcal: offered.dailyGuideDifferenceKilocalories))
+            case .unavailable(let pace, let reason):
+                self = .unavailable(
+                    .init(
+                        pace: .init(pace), status: .unavailable,
+                        unavailableReason: reason.serverName))
+            }
+        }
+    }
+
+    extension Components.Schemas.CustomTargetWeightAssessment {
+        fileprivate init(startedOn: String, outcome: CustomTargetWeightAssessment.Outcome) {
+            switch outcome {
+            case .accepted(let accepted):
+                self = .accepted(
+                    .init(
+                        startedOn: startedOn, status: .accepted,
+                        dailyGuide: .init(accepted.dailyGuide),
+                        difficulty: .init(accepted.difficulty),
+                        dailyGuideDifferenceKcal: accepted.dailyGuideDifferenceKilocalories))
+            case .rejected(let reason, let nearest):
+                self = .rejected(
+                    .init(
+                        startedOn: startedOn, status: .rejected,
+                        rejectionReason: reason.serverName,
+                        nearestAcceptedTargetWeightKg: nearest))
+            }
+        }
+    }
+
+    extension Components.Schemas.ProposalPace {
+        fileprivate init(_ pace: GoalProposals.Pace) {
+            switch pace {
+            case .gentle: self = .gentle
+            case .standard: self = .standard
+            case .hard: self = .hard
             }
         }
     }

@@ -1,16 +1,19 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { R } from "@praha/byethrow";
 import { captureException } from "@sentry/cloudflare";
-import { match } from "ts-pattern";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { goalDirections } from "../../goal/domain/goal-direction";
 import { authenticateAccount } from "../authenticate-account";
-import { dailyGuidePlanSchema, toDailyGuidePlan } from "./daily-guide-plan-schema";
+import {
+  customTargetWeightAssessmentSchema,
+  toCustomTargetWeightAssessmentResponse,
+} from "./custom-target-weight-assessment-schema";
 import { deadlineOnSchema } from "./deadline-on-schema";
 import { goalDecisionRequestSchema, toGoalDecisionRequest } from "./goal-decision-request-schema";
 import { goalDecisionSchema, toGoalDecisionResponse } from "./goal-decision-schema";
 import { GoalSetupRequestMalformedError } from "./goal-setup-request-malformed-error";
 import { goalProposalsSchema, toGoalProposalsResponse } from "./goal-proposals-schema";
+import { goalSetupPreviewSchema } from "./goal-setup-preview-schema";
 import { goalSetupSituationSchema, toGoalSetupSituation } from "./goal-setup-situation-schema";
 import { rejectUnreadableJsonBody } from "./reject-unreadable-json-body";
 import { respondGoalSetupRejected } from "./respond-goal-setup-rejected";
@@ -94,18 +97,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
           description: "下見の答え",
           content: {
             "application/json": {
-              schema: z
-                .object({
-                  canBackCalculate: z.boolean().optional().openapi({
-                    description:
-                      "初めての目標のときだけ付く。推定消費カロリーを記録から逆算できるか。false なら、身体データを添えてもう一度下見を求める",
-                  }),
-                  canOfferLoseProposals: z.boolean().optional().openapi({
-                    description:
-                      "減量で、推定消費カロリーと体重の傾向を出せたときだけ付く。減量の目標案を1つでも出せるか。受け付けるいちばん短い期限（開始の日から 28 日）で確かめるので、true ならどの期限でも出せる",
-                  }),
-                })
-                .openapi("GoalSetupPreview"),
+              schema: goalSetupPreviewSchema,
             },
           },
         },
@@ -202,36 +194,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
           description: "受け付けるかと、受け付けるときの1日の目安",
           content: {
             "application/json": {
-              schema: z
-                .object({
-                  startedOn: z.string().openapi({
-                    description: "計算に使った開始の日（YYYY-MM-DD）",
-                  }),
-                  status: z.string().openapi({
-                    description: "accepted（受け付ける）・rejected（受け付けない）",
-                    example: "accepted",
-                  }),
-                  dailyGuide: dailyGuidePlanSchema.optional().openapi({
-                    description: "accepted のときだけ",
-                  }),
-                  difficulty: z.string().optional().openapi({
-                    description:
-                      "accepted のときだけ。大変さ。必要な速さを案の速さで区切った gentle・standard・hard",
-                  }),
-                  dailyGuideDifferenceKcal: z.number().int().optional().openapi({
-                    description:
-                      "accepted のときだけ。1日の目安と推定消費カロリーの差（50 kcal 単位。少ないときは負）",
-                  }),
-                  rejectionReason: z.string().optional().openapi({
-                    description:
-                      "rejected のときだけ。pace_too_fast（速すぎる）・daily_guide_below_minimum（下限 1,200 kcal）・not_on_direction_side（体重の傾向より向きの側に出ない）",
-                  }),
-                  nearestAcceptedTargetWeightKg: z.number().optional().openapi({
-                    description:
-                      "rejected で、その期限に受け付ける目標体重があるときだけ。受け付けるいちばん近い目標体重",
-                  }),
-                })
-                .openapi("CustomTargetWeightAssessment"),
+              schema: customTargetWeightAssessmentSchema,
             },
           },
         },
@@ -252,31 +215,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       if (R.isFailure(assessed)) {
         return respondGoalSetupRejected(c, assessed.error);
       }
-      const { startedOn, evaluation } = assessed.value;
-      return c.json(
-        {
-          startedOn,
-          ...match(evaluation)
-            .with(
-              { status: "accepted" },
-              ({ status, dailyGuide, difficulty, dailyGuideDifferenceKcal }) => ({
-                status,
-                dailyGuide: toDailyGuidePlan(dailyGuide),
-                difficulty,
-                dailyGuideDifferenceKcal,
-              }),
-            )
-            .with({ status: "rejected" }, ({ status, reason, nearestAcceptedTargetWeightKg }) => ({
-              status,
-              rejectionReason: reason,
-              ...(nearestAcceptedTargetWeightKg === undefined
-                ? {}
-                : { nearestAcceptedTargetWeightKg }),
-            }))
-            .exhaustive(),
-        },
-        200,
-      );
+      return c.json(toCustomTargetWeightAssessmentResponse(assessed.value), 200);
     },
   )
   .openapi(

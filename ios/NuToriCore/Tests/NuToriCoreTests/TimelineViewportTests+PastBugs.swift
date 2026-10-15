@@ -34,13 +34,13 @@ extension TimelineViewportTests {
 
             init() {
                 viewport = TimelineViewportTests.opened()
-                _ = viewport.scrollPhaseChanged(from: .idle, to: .tracking)
+                _ = viewport.scrollPhaseChanged(from: .idle, to: .tracking, in: [])
             }
 
             @Test("指がキーボードに届くのを待たずに、キーボードを下げること")
             mutating func dismissesKeyboard() {
                 #expect(
-                    viewport.scrollPhaseChanged(from: .tracking, to: .interacting)
+                    viewport.scrollPhaseChanged(from: .tracking, to: .interacting, in: [])
                         == [.dismissKeyboard])
             }
         }
@@ -54,14 +54,14 @@ extension TimelineViewportTests {
                 let added = try ReturningToEnd.MealAdditions(count: 5)
                 viewport = TimelineViewportTests.opened()
                 for index in 0..<5 {
-                    instructions.append(
-                        viewport.daysChanged(
-                            from: added.days[index], to: added.days[index + 1],
-                            now: added.sentAt[index].addingTimeInterval(1)))
+                    _ = viewport.daysChanged(
+                        from: added.days[index], to: added.days[index + 1],
+                        now: added.sentAt[index].addingTimeInterval(1))
+                    instructions.append(viewport.takeWaitingInstructions())
                     // 動かして着く
-                    _ = viewport.scrollPhaseChanged(from: .idle, to: .animating)
+                    _ = viewport.scrollPhaseChanged(from: .idle, to: .animating, in: [])
                     viewport.endPositionChanged(to: .shown)
-                    _ = viewport.scrollPhaseChanged(from: .animating, to: .idle)
+                    _ = viewport.scrollPhaseChanged(from: .animating, to: .idle, in: [])
                 }
             }
 

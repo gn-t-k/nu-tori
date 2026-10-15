@@ -1,1 +1,1 @@
-export { computeGoalProposals } from "./compute-goal-proposals";
+export { computeGoalProposals, type GoalProposal } from "./compute-goal-proposals";

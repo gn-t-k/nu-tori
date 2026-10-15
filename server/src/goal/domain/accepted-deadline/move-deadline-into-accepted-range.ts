@@ -1,4 +1,4 @@
-import { addDays } from "../../domain/add-days";
+import { addDays } from "../../../domain/add-days";
 import { acceptedDeadlineDays } from "./accepted-deadline-days";
 import { countDaysInclusive } from "./count-days-inclusive";
 

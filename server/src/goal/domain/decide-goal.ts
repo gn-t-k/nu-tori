@@ -9,22 +9,24 @@ import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeGoalProposals } from "./compute-goal-proposals";
 import { computeMaintenancePlan } from "./compute-maintenance-plan";
-import { computeTargetWeightLimits } from "./compute-target-weight-limits";
-import { computeWeightChangeGoalInputs } from "./compute-weight-change-goal-inputs";
+import {
+  type CompleteGoalSetupBasis,
+  computeWeightChangeGoalInputs,
+  resolveCompleteGoalSetupBasis,
+} from "./goal-setup-basis";
 import type { CustomTargetWeightRejectionReason } from "./custom-target-weight-rejection-reason";
 import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
 import type { GoalWeightChange } from "./goal";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
-import { moveDeadlineIntoAcceptedRange } from "./move-deadline-into-accepted-range";
+import { moveDeadlineIntoAcceptedRange } from "./accepted-deadline";
 import type { ProposalPace } from "./proposal-pace";
-import type { GoalProposals, GoalProposalsPlan } from "./propose-goals";
-import { proposeGoalsOnBasis } from "./propose-goals-on-basis";
-import { type GoalDecisionRecord, readGoalDecisionRecords } from "./read-goal-decision-records";
 import {
-  type CompleteGoalSetupBasis,
-  resolveCompleteGoalSetupBasis,
-} from "./resolve-complete-goal-setup-basis";
+  proposeGoalsOnBasis,
+  type GoalProposals,
+  type GoalProposalsPlan,
+} from "./propose-goals-on-basis";
+import { type GoalDecisionRecord, readGoalDecisionRecords } from "./read-goal-decision-records";
 import type { GoalSetupStores } from "./goal-setup-stores";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import type { WeightChangeDirection } from "./weight-change-direction";
@@ -174,15 +176,11 @@ const assessChoice = (
         computeWeightChangeGoalInputs(basis, weightChangeChoice),
         R.map((goal) => {
           const { deadlineOn } = weightChangeChoice;
-          // ハード案がいちばん速いので、速さを落とした案があれば、いちばん速い端は下限で決まっている
-          const hadSlowedProposal =
-            computeTargetWeightLimits(goal).fastestEndReason === "daily_guide_below_minimum";
+          const { proposals, hadSlowedProposal } = computeGoalProposals(goal);
           return match(weightChangeChoice)
             .returnType<AssessedChoice>()
             .with({ type: "proposal" }, ({ pace }) => {
-              const proposal = computeGoalProposals(goal).find(
-                (candidate) => candidate.pace === pace,
-              );
+              const proposal = proposals.find((candidate) => candidate.pace === pace);
               return proposal?.status === "offered"
                 ? {
                     status: "accepted",
@@ -198,7 +196,7 @@ const assessChoice = (
               return evaluation.status === "accepted"
                 ? {
                     status: "accepted",
-                    targetWeightKg: roundToTenthKg(targetWeightKg, "round"),
+                    targetWeightKg: evaluation.targetWeightKg,
                     dailyGuide: evaluation.dailyGuide,
                     weightChange: { deadlineOn, pacePlan: "custom" },
                     hadSlowedProposal,
@@ -301,12 +299,12 @@ const proposalsPlanOf = (choice: GoalChoice): GoalProposalsPlan =>
     }))
     .exhaustive();
 
-// 目標体重は 0.1 kg 単位、1日の目安は整数で見せているので、その単位で比べる
+// 目標体重は 0.1 kg 単位、1日の目安は整数で見せているので、その単位で比べる。計算し直した目標体重は 0.1 kg 単位になっている
 const isSameAsShown = (
   accepted: Pick<AcceptedChoice, "targetWeightKg" | "dailyGuide">,
   shown: GoalDecisionRequest["shown"],
 ): boolean =>
-  Math.round(accepted.targetWeightKg * 10) === Math.round(shown.targetWeightKg * 10) &&
+  accepted.targetWeightKg === roundToTenthKg(shown.targetWeightKg, "round") &&
   accepted.dailyGuide.energyKcal === shown.dailyGuide.energyKcal &&
   accepted.dailyGuide.proteinG === shown.dailyGuide.proteinG &&
   accepted.dailyGuide.fatG === shown.dailyGuide.fatG &&

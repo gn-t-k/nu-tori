@@ -174,85 +174,13 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
     }
 }
 
-extension SyncBoxMock: RecordCacheReading where Cache == RecordCacheMock {
-    public func weightRecord(id: UUID) async throws -> WeightRecord? {
+extension SyncBoxMock: RecordCacheReading {
+    public func read<Syncing: CacheApplying, Value: Sendable>(
+        _ kind: Syncing.Type,
+        _ body: @Sendable (Syncing.Cache) throws -> Value
+    ) async throws -> Value {
         try failIfNeeded()
-        return cache.records[id]
-    }
-
-    public func weightRecords() async throws -> [WeightRecord] {
-        try failIfNeeded()
-        return Array(cache.records.values)
-    }
-
-    public func accountSettings() async throws -> AccountSettings? {
-        try failIfNeeded()
-        return cache.settings
-    }
-
-    public func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
-        try failIfNeeded()
-        return cache.estimationStatuses
-    }
-
-    public func meals() async throws -> [Meal] {
-        try failIfNeeded()
-        return Array(cache.meals.values)
-    }
-
-    public func dishes() async throws -> [Dish] {
-        try failIfNeeded()
-        return Array(cache.dishes.values)
-    }
-
-    public func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus] {
-        try failIfNeeded()
-        return cache.dishEstimationStatuses
-    }
-
-    public func ingredients() async throws -> [Ingredient] {
-        try failIfNeeded()
-        return Array(cache.ingredients.values)
-    }
-
-    public func notices() async throws -> [Notice] {
-        try failIfNeeded()
-        return Array(cache.notices.values)
-    }
-
-    public func goals() async throws -> [Goal] {
-        try failIfNeeded()
-        return Array(cache.goals.values)
-    }
-
-    public func dailyGuides() async throws -> [DailyGuide] {
-        try failIfNeeded()
-        return Array(cache.dailyGuides.values)
-    }
-
-    public func expenditureEstimates() async throws -> [ExpenditureEstimate] {
-        try failIfNeeded()
-        return Array(cache.expenditureEstimates.values)
-    }
-
-    public func usualWeighingTime() async throws -> UsualWeighingTime? {
-        try failIfNeeded()
-        return cache.usualWeighingTime
-    }
-
-    public func weightTrend() async throws -> WeightTrend? {
-        try failIfNeeded()
-        return cache.weightTrend
-    }
-
-    public func sentTexts() async throws -> [SentText] {
-        try failIfNeeded()
-        return Array(cache.sentTexts.values)
-    }
-
-    public func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
-        try failIfNeeded()
-        return cache.sentTextStatuses
+        return try body(try kinds.port(kind, in: cache))
     }
 }
 

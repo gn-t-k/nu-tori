@@ -4,6 +4,9 @@ import { mealTextBody } from "./meal-text-body";
 import { addDays } from "../src/domain/add-days";
 import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day-in-time-zone";
 import { generateRecordId } from "../src/domain/record-id";
+import { goalDecisionSchema } from "../src/http/goal-setup-routes/goal-decision-schema";
+import { goalProposalsSchema } from "../src/http/goal-setup-routes/goal-proposals-schema";
+import { goalSetupPreviewSchema } from "../src/http/goal-setup-routes/goal-setup-preview-schema";
 import { replyStreamEventSchema } from "../src/http/reply-stream-routes/reply-stream-event-schema";
 
 // 送る文章は作り話にする（公開リポジトリ）
@@ -97,45 +100,6 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
     activity: { type: "level", level: "standing" },
   };
 
-  const goalSetupPreviewSchema = z.object({
-    canBackCalculate: z.boolean().optional(),
-    canOfferLoseProposals: z.boolean().optional(),
-  });
-
-  const dailyGuidePlanSchema = z.object({
-    energyKcal: z.number(),
-    proteinG: z.number(),
-    fatG: z.number(),
-    carbohydrateG: z.number(),
-  });
-
-  const goalProposalsSchema = z.object({
-    startedOn: z.string(),
-    expenditureSource: z.string(),
-    deadlineOn: z.string(),
-    proposals: z.array(
-      z.object({
-        pace: z.string(),
-        status: z.string(),
-        targetWeightKg: z.number().optional(),
-        dailyGuide: dailyGuidePlanSchema.optional(),
-      }),
-    ),
-  });
-
-  const goalDecisionSchema = z.object({
-    status: z.string(),
-    changes: z
-      .array(
-        z.object({
-          kind: z.string(),
-          recordId: z.string(),
-          record: z.record(z.string(), z.unknown()),
-        }),
-      )
-      .optional(),
-  });
-
   const preview = goalSetupPreviewSchema.parse(
     await postGoalSetup(options, session, "preview", { direction: "lose" }),
   );
@@ -162,8 +126,11 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
       bodyData,
     }),
   );
+  if (proposals.direction !== "lose") {
+    throw new Error(`減量の目標案を求めたのに、${proposals.direction} の目標案が返った`);
+  }
   const standard = proposals.proposals.find(({ pace }) => pace === "standard");
-  if (standard?.status !== "offered" || standard.targetWeightKg === undefined) {
+  if (standard?.status !== "offered") {
     throw new Error(`目標案に、出せる標準の案が無い（${standard?.status ?? "枠が無い"}）`);
   }
   options.log(`目標案を受け取った（推定消費カロリーの出どころ ${proposals.expenditureSource}）`);
@@ -183,7 +150,7 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
   };
   const decision = await postGoalSetup(options, session, "decisions", decisionRequest);
   const decided = goalDecisionSchema.parse(decision);
-  if (decided.status !== "decided" || decided.changes === undefined) {
+  if (decided.status !== "decided") {
     throw new Error(`目標が決まらず、${decided.status} が返った`);
   }
   const decidedKinds = decided.changes.map(({ kind }) => kind);
