@@ -429,7 +429,6 @@ struct TimelineScreen: View {
                 }
                 // 通知を押して開いたら、その日の知らせの位置に、無ければいちばん下に着く。
                 // 着き先は RootModel がヘルスケアを読んでから決めて渡すので、受け取ったことを返して消してもらい、次に同じ着き先で開いたときにも変わったと届くようにする。
-                // この受け渡しは画面の外とのつなぎで、位置の規則を持たないので、TimelineViewport には移さない
                 .onChange(of: reminderLanding, initial: true) { _, landing in
                     guard let landing else { return }
                     perform(viewport.reminderOpened(landing, in: timeline), with: proxy)
@@ -704,7 +703,13 @@ struct TimelineScreen: View {
         case .end: proxy.scrollTo(Self.contentId, anchor: .bottom)
         case .day(let day): proxy.scrollTo(day, anchor: .top)
         case .item(let itemId): proxy.scrollTo(itemId, anchor: .top)
-        case .itemBottom(let itemId): proxy.scrollTo(itemId, anchor: .bottom)
+        case .itemBottom(let itemId):
+            // カードの日が並ぶのを待つあいだに、目標の設定を閉じた・カードが変わったら送らない
+            guard goalSetupFlow.expandedPage != nil,
+                let notice = timeline().goalSetupNotice,
+                Timeline.Item.goalSetupNotice(notice).id == itemId
+            else { return }
+            proxy.scrollTo(itemId, anchor: .bottom)
         }
     }
 
