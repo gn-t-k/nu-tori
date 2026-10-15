@@ -1,0 +1,1212 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>週の見直しと目標の経過の見た目</title>
+<!--
+  PROTOTYPE（捨てる前提）。「週の見直しと目標の経過の見た目を見比べる」（gn-t-k/nu-tori#576）の試作。
+  仕様「週の見直しと目標の経過」の申し送りのうち、見た目で決めるもの 6 項目を 21 の論点に分け、論点ごとに 2〜4 の案で並べる。
+  上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #tlcard-2）。
+  「条件」で、目標の状態、いちばん新しい週の見直しの結果、何週ぶりに開いたか、目標を立てた週か、体重の記録の数、インターネットを切り替える。
+  どの論点も、1枚めの図は「いまの条件」で描き、2枚め以降は条件によらない決まった場面を描く。
+  土台は main の画面のコード（コミット 21ce33e の ios/NuTori/Timeline/、Goal/、WeightRecord/、WeightTrend/）。
+  形は「目標を立てるの見た目を見比べる」の試作（prototype/0001-goal-setup-look の prototype-goal-setup-look.html、コミット 73b111e）にそろえた。main には入れない。
+  値はすべて作ったもの。開発者の健康データは入れていない。
+-->
+<style>
+/* ── トークン（ライト） ── */
+:root{
+  --bg:#f2f2f7; --surface:#ffffff; --surface2:#f2f2f7;
+  --ink:#000000; --ink2:rgb(60 60 67 / .6); --ink3:rgb(60 60 67 / .3);
+  --sep:rgb(60 60 67 / .29); --fill:rgb(120 120 128 / .12);
+  --tint:#6155f5; --on-tint:#ffffff; --destructive:#ff383c;
+  --scrim:rgb(0 0 0 / .2); --chrome:rgb(249 249 249 / .94);
+  --p:#f07f1a; --f:#15803d; --c:#2c7be5; --track:#e5e5ea;
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#6c6c70; --frame:#c7c7cc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e;
+    --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+    --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245; --scrim:rgb(0 0 0 / .5); --chrome:rgb(22 22 24 / .94);
+    --p:#e8903a; --f:#228c48; --c:#4290f4; --track:#2c2c2e;
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#98989f; --frame:#3a3a3c;
+    color-scheme:dark;
+  }
+}
+:root{
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  --t-title2:22px; --t-title3:20px; --t-headline:17px; --t-body:17px; --t-sub:15px; --t-foot:13px; --t-cap:12px; --t-cap2:11px;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:16px 16px 104px;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ── 試作のページ ── */
+.intro{max-width:1280px;margin:0 auto 12px;display:flex;flex-direction:column;gap:8px}
+.intro h1{font-size:20px;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--page-muted);max-width:820px}
+.cond{max-width:1280px;margin:0 auto 12px;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;padding:10px 14px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 .5px var(--frame)}
+.cond b{margin-right:4px}
+.cond label{display:flex;align-items:center;gap:6px;color:var(--page-muted)}
+.cond select{font:inherit;font-size:13px;color:var(--page-ink);max-width:100%}
+.topics{max-width:1280px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:6px}
+.topics button{font-size:13px;padding:6px 12px;border-radius:999px;background:var(--surface);color:var(--page-ink);box-shadow:0 0 0 .5px var(--frame)}
+.topics button[aria-current="true"]{background:var(--tint);color:var(--on-tint);box-shadow:none}
+.topics .grp{width:100%;font-size:12px;color:var(--page-muted);margin:4px 0 -2px}
+.topic{max-width:1280px;margin:0 auto}
+.topic > h2{font-size:17px;margin:0 0 4px;text-wrap:balance}
+.topic > .q{margin:0 0 4px;max-width:820px}
+.topic > .fixed{margin:0 0 16px;max-width:820px;color:var(--page-muted);font-size:13px}
+.vhead{max-width:1280px;margin:0 auto 12px;display:flex;flex-direction:column;gap:2px}
+.vhead b{font-size:15px}
+.vhead span{color:var(--page-muted);font-size:13px;max-width:820px}
+.vhead .flag{color:var(--page-ink);border-left:3px solid var(--tint);padding-left:8px;margin-top:4px}
+.states{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr));gap:20px;align-items:start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+figcaption{color:var(--page-muted);font-size:12.5px}
+figcaption b{color:var(--page-ink)}
+.fit{display:block;margin-top:2px;font-size:12px}
+.blank{border:1px dashed var(--frame);border-radius:38px;min-height:200px;display:grid;place-items:center;padding:24px;text-align:center;color:var(--page-muted);font-size:13px}
+.switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
+.switcher button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--page)}
+.switcher button:hover{background:color-mix(in srgb,var(--page) 15%,transparent)}
+.switcher .lab{padding:0 10px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lab b{font-weight:700;margin-right:6px}
+
+/* ── 電話の枠。全体が見えるよう、足りなければ縦に伸ばす（1画面は 780） ── */
+.phone{position:relative;min-height:780px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;font-size:var(--t-body);line-height:1.3}
+.status{height:34px;flex:none}
+.home{height:22px;flex:none}
+.nav{height:44px;flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 12px;background:var(--bg);gap:6px}
+.nav .l{justify-self:start;color:var(--tint);display:flex;align-items:center;gap:2px;font-size:var(--t-body);white-space:nowrap}
+.nav .l .chev{font-size:26px;line-height:1;margin-top:-3px}
+.nav .t{font-size:var(--t-headline);font-weight:600;text-align:center;white-space:nowrap}
+.nav .r{justify-self:end;color:var(--tint);white-space:nowrap}
+.nav .r b{font-weight:600}
+.nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font-size:var(--t-sub);font-weight:600;white-space:nowrap;flex:none}
+.btn.filled{background:var(--tint);color:var(--on-tint)}
+.btn.gray{background:var(--fill);color:var(--tint)}
+.tbtn{color:var(--tint);font-size:var(--t-sub);display:inline-flex;align-items:center;gap:4px;min-height:44px}
+.tbtn.b{font-weight:600}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink3);border-top-color:var(--ink2);animation:spin 1s linear infinite;flex:none;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+.faded{opacity:.55}
+
+/* 帯（DayRingStrip） */
+.band{display:flex;padding:12px 16px;flex:none;background:var(--bg)}
+.band .day{flex:1;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:var(--t-cap2);color:var(--ink2);border-radius:10px;padding:4px 0}
+.band .day.sel{background:var(--fill);color:var(--ink);font-weight:600}
+.band .day.future{opacity:.45}
+.ring{display:block}
+.line1{margin:0 16px;min-height:44px;display:flex;align-items:center;gap:12px;padding:0 16px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);font-size:var(--t-foot);flex:none}
+.line1 + .line1{margin-top:8px}
+.line1 span{flex:1}
+.line1 b{color:var(--tint)}
+
+/* タイムライン（TimelineScreen） */
+.tl{flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:12px 16px}
+.tl > *{flex:none}
+.tl > * + *{margin-top:8px}
+.tl > .apart{margin-top:24px}
+.dayh{font-size:var(--t-foot);color:var(--ink2);text-align:center}
+.tl > .dayh{margin-top:24px}
+.tl > .dayh:first-child{margin-top:0}
+.wrow{align-self:flex-end;display:flex;align-items:center;gap:8px;padding:16px;border-radius:12px;background:color-mix(in srgb,var(--tint) 22%,var(--surface));font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.wrow .tm{font-size:var(--t-cap);color:var(--ink2)}
+.disc{color:var(--ink3);font-size:var(--t-cap);flex:none}
+.mc{align-self:flex-end;width:72%;border-radius:12px;background:color-mix(in srgb,var(--tint) 22%,var(--surface));overflow:hidden}
+.mc .row2{display:flex;align-items:center;gap:8px;padding:12px 16px}
+.mc .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mc .nm{font-size:var(--t-sub);font-weight:600}
+.mc .tm{font-size:var(--t-cap);color:var(--ink2);font-variant-numeric:tabular-nums}
+.mc .nu{display:flex;flex-wrap:wrap;gap:0 8px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.mc .pic{height:64px;background:linear-gradient(135deg,#e7c889,#b87a3a 60%,#f1e3c2)}
+.mc .pic.n{background:linear-gradient(135deg,#d9a35b,#7d4b2a 60%,#e7d1a6)}
+
+/* 入力欄（TimelineComposer） */
+.compwrap{flex:none;background:var(--chrome);border-top:.5px solid var(--sep)}
+.comp{display:flex;flex-direction:column;gap:8px;padding:8px 16px}
+.comp .rowx{display:flex;align-items:flex-end;gap:12px}
+.cb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--fill);color:var(--tint)}
+.cb.on{background:var(--tint);color:var(--on-tint)}
+.in{flex:1;min-height:36px;border-radius:18px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);color:var(--ink3);font-size:var(--t-body);display:flex;align-items:center;padding:0 14px;margin-bottom:4px}
+.ainote{font-size:var(--t-cap);color:var(--ink2);text-align:center;padding:0 16px 6px}
+
+/* ── タイムラインの知らせのカード（GoalSetupNoticeCard と並ぶ形。全幅の白いカード、角 12、内側 16、間 12） ── */
+.ncard{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;font-size:var(--t-sub)}
+.ncard.tight{gap:6px}
+.gh{display:flex;align-items:baseline;gap:8px}
+.gh b{font-size:var(--t-sub);font-weight:600}
+.gh .sub{font-size:var(--t-sub);color:var(--ink2);font-variant-numeric:tabular-nums}
+.gh .time{margin-left:auto;font-size:var(--t-cap);color:var(--ink2);font-variant-numeric:tabular-nums}
+.gh .disc{margin-left:auto;font-size:var(--t-sub)}
+.nd{font-size:var(--t-sub);margin:0;font-variant-numeric:tabular-nums}
+.nd2{font-size:var(--t-foot);color:var(--ink2);margin:0;font-variant-numeric:tabular-nums}
+.acts{display:flex;justify-content:flex-end;gap:12px}
+.big{font-size:var(--t-title2);font-variant-numeric:tabular-nums;line-height:1.2}
+.big small{font-size:var(--t-sub);color:var(--ink2);margin-left:4px}
+.kvs{display:flex;flex-direction:column;gap:6px;font-size:var(--t-foot);font-variant-numeric:tabular-nums}
+.kvs > div{display:flex;justify-content:space-between;gap:12px}
+.kvs > div span:first-child{color:var(--ink2)}
+.minirings{display:flex;justify-content:space-between}
+.minirings span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:var(--t-cap2);color:var(--ink2)}
+.divider{border-top:.5px solid var(--sep);margin:0 -16px 0 0}
+.badge{font-size:var(--t-cap2);color:var(--ink2);border:.5px solid var(--ink3);border-radius:4px;padding:0 4px;line-height:1.5;white-space:nowrap;font-weight:400}
+.pfc{display:flex;gap:14px;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.key{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.key.p{background:var(--p)} .key.f{background:var(--f)} .key.c{background:var(--c)}
+.wait{display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:var(--t-foot);min-height:44px}
+.bar{position:relative;height:6px;border-radius:3px;background:var(--track);margin:14px 0 18px}
+.bar i{position:absolute;top:0;bottom:0;left:0;border-radius:3px;background:var(--tint)}
+.bar em{position:absolute;top:12px;font-style:normal;font-size:var(--t-cap2);color:var(--ink2);transform:translateX(-50%);white-space:nowrap;font-variant-numeric:tabular-nums}
+.bar em.l{transform:none}
+.bar em.r{transform:translateX(-100%)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stats > div{display:flex;flex-direction:column;gap:2px}
+.stats small{font-size:var(--t-cap);color:var(--ink2)}
+.stats b{font-size:var(--t-headline);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* 画面とシート（週の振り返り、目標、日のまとめ、体重の画面） */
+.scroll{flex:1;display:flex;flex-direction:column;gap:20px;padding:12px 16px 24px}
+.scrim{position:absolute;inset:0;background:var(--scrim);display:flex;flex-direction:column;justify-content:flex-end;z-index:2}
+.sheet{background:var(--bg);border-radius:16px 16px 0 0;display:flex;flex-direction:column;min-height:0}
+.sheet.full{flex:1;margin-top:44px}
+.sheet .grab{width:36px;height:5px;border-radius:3px;background:var(--ink3);align-self:center;margin-top:6px}
+.sheet .nav{background:none}
+.list{background:var(--surface);border-radius:10px;overflow:hidden}
+.list > .cell{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative;font-size:var(--t-body)}
+.list > .cell + .cell::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.cell .grow{flex:1;min-width:0}
+.cell .v{color:var(--ink2);font-variant-numeric:tabular-nums;text-align:right}
+.cell .v2{display:block;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.cell.link{color:var(--tint)}
+.cell.btnrow{justify-content:flex-end}
+.cell.col{flex-direction:column;align-items:stretch;gap:6px}
+.group-h{font-size:var(--t-foot);color:var(--ink2);padding:0 16px 6px;margin:0}
+.group-f{font-size:var(--t-foot);color:var(--ink2);padding:6px 16px 0;margin:0}
+.wk{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;text-align:center}
+.wk .arr{color:var(--tint);font-size:26px;line-height:1}
+.wk .arr.off{color:var(--ink3)}
+.wk b{font-size:var(--t-headline);font-weight:600;display:block;font-variant-numeric:tabular-nums}
+.wk span.s{font-size:var(--t-foot);color:var(--ink2)}
+.pace{background:var(--surface);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+.pace b{font-size:var(--t-title3);font-weight:700}
+.pace p{margin:0;font-size:var(--t-sub);color:var(--ink2);line-height:1.4;font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border-radius:10px;padding:16px 16px 12px}
+.card .ch{font-size:var(--t-sub);font-weight:600;margin:0 0 8px}
+.card .kv{display:flex;justify-content:space-between;gap:12px;font-size:var(--t-foot);padding:8px 0 0;font-variant-numeric:tabular-nums}
+.card .kv span:last-child{color:var(--ink2);text-align:right}
+.card .note{font-size:var(--t-foot);color:var(--ink2);margin:8px 0 0}
+.chart{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font:11px var(--font);fill:var(--ink2)}
+.days .cell{gap:12px;padding:8px 16px}
+.days .cell .dt{width:104px;white-space:nowrap;flex:none;font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.days .cell .dt small{color:var(--ink2);font-size:var(--t-foot)}
+.days .cell .k{flex:1;font-variant-numeric:tabular-nums;font-size:var(--t-sub)}
+.days .cell .k.none{color:var(--ink3)}
+.days .cell .w{width:62px;text-align:right;color:var(--ink2);font-variant-numeric:tabular-nums;font-size:var(--t-sub)}
+.days .cell.pre{opacity:.45}
+.next .cell{flex-direction:column;align-items:stretch;gap:6px;padding:12px 16px}
+.next .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.next .top b{font-size:var(--t-title2);font-weight:700;font-variant-numeric:tabular-nums}
+.next .top span{color:var(--ink2);font-variant-numeric:tabular-nums;display:flex;gap:6px;align-items:baseline}
+.next p{margin:0;font-size:var(--t-foot);color:var(--ink2);font-variant-numeric:tabular-nums}
+.gcard{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.gcard .h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:var(--t-foot);color:var(--ink2)}
+.gcard .h .sw{color:var(--tint);font-size:var(--t-sub);white-space:nowrap}
+.gcard .bigb{font-size:var(--t-title2);font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.gcard .line{font-size:var(--t-sub);font-variant-numeric:tabular-nums}
+.gcard .d{font-size:var(--t-foot);color:var(--ink2);margin:2px 0 0}
+.gcard .btn{margin-top:6px;align-self:flex-start}
+.today{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.today .h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:var(--t-foot);color:var(--ink2)}
+.today .k{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.today .k small{font-size:var(--t-sub);font-weight:400;color:var(--ink2);margin-left:4px}
+.today .m{display:flex;gap:16px;font-size:var(--t-foot);font-variant-numeric:tabular-nums}
+.food{display:flex;align-items:center;gap:16px;padding:12px 16px}
+.food .rc{position:relative;flex:none}
+.food .rc .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.food .rc .ctr b{font-size:var(--t-title2);font-weight:600;font-variant-numeric:tabular-nums}
+.food .rc .ctr span{font-size:var(--t-cap);color:var(--ink2)}
+.food .facts{flex:1;display:flex;flex-direction:column;gap:8px}
+.food .facts div{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--t-foot);color:var(--ink2)}
+.food .facts div + div{border-top:.5px solid var(--sep);padding-top:8px}
+.food .facts b{font-size:var(--t-sub);color:var(--ink);font-variant-numeric:tabular-nums}
+.wval{font-size:var(--t-title2);font-variant-numeric:tabular-nums}
+.wval small{font-size:var(--t-body);color:var(--ink2);margin-left:3px}
+</style>
+
+<header class="intro">
+  <h1>週の見直しと目標の経過の見た目を見比べる</h1>
+  <p>仕様「週の見直しと目標の経過」の前に、見た目で決めるものを並べた試作（捨てる前提。gn-t-k/nu-tori#576）。上の論点を選び、下のバーの ‹ › か矢印キーで案を切り替える。<code>#&lt;論点&gt;-&lt;案の番号&gt;</code>（例: <code>#tlcard-2</code>）で開ける。今のアプリ（main のコミット 21ce33e の <code>TimelineScreen.swift</code>、<code>GoalSetupNoticeCard.swift</code>・<code>GoalDecidedCard.swift</code>、<code>DaySummarySheet.swift</code>、<code>WeightScreen.swift</code>）の上に、振り返りのカード、1日の目安の変更の知らせ、週の振り返り、目標の画面、達成と期限の知らせを足して描いた。</p>
+  <p>例は凍結済みの見本と同じ人（減量、9月1日〜11月30日、74.0 → 70.0 kg）。値はすべて作ったもので、計算の細かいところ（見直しの式）は合わせていない。写真は色の四角で仮置きにした。決まっていることは論点ごとに灰色の段落に書き、どの案も守る。決まっていることを変える案には、案の説明に紫の線で印を付けた。どの論点も、<b>1枚めの図は上の「条件」どおり</b>に描き、2枚め以降は条件によらない決まった場面を描く。ある論点で見ている案は、ほかの論点の図にもそのまま使う（たとえば、タイムラインのどの図にも、いま見ているカードの形と知らせの文言が出る）。電話は全体が見えるよう縦に伸ばして描き、図の下にカードの高さを書く。用語は <code>GLOSSARY.md</code> に合わせ、凍結済みの見本の「消費量」は「推定消費カロリー」と書いた。</p>
+</header>
+
+<form class="cond" id="cond" onsubmit="return false" aria-label="条件（試作の道具）">
+  <b>条件</b>
+  <label>目標の状態
+    <select name="state">
+      <option value="active">進行中（減量）</option>
+      <option value="keep">進行中（維持を選んだ）</option>
+      <option value="achieved">期限より前に達成</option>
+      <option value="deadline">期限が来た</option>
+      <option value="after">期限後に選ばなかった（期限後の維持）</option>
+      <option value="none">目標がない</option>
+    </select></label>
+  <label>いちばん新しい週
+    <select name="week">
+      <option value="normal">見直した</option>
+      <option value="cap150">見直した・変化が ±150 kcal に当たった</option>
+      <option value="speed">見直した・必要な速さの上限に当たった</option>
+      <option value="floor">見直した・下限 1,200 kcal に当たった</option>
+      <option value="skipMeals">見送った（食事の記録が少ない）</option>
+      <option value="skipWeight">見送った（体重の記録が無い）</option>
+      <option value="skipNew">見送った（使い始めて7日未満）</option>
+    </select></label>
+  <label>開いたのは
+    <select name="gap"><option value="1">週の区切りのあと、はじめて</option><option value="3">3週ぶり（3週をまとめて見直す）</option></select></label>
+  <label>その週は
+    <select name="first"><option value="0">目標を立てて3週目より後</option><option value="1">目標を立てた週（1週目。進行中のときだけ）</option></select></label>
+  <label>体重の記録
+    <select name="few"><option value="0">ふつう（その週に6日）</option><option value="1">少ない（その週に2日、直近14日に3日）</option></select></label>
+  <label>インターネット
+    <select name="net"><option value="1">つながる</option><option value="0">つながらない（月曜の朝）</option></select></label>
+</form>
+
+<nav class="topics" aria-label="論点" id="topics"></nav>
+<main id="main"></main>
+
+<div class="switcher" id="switcher" role="group" aria-label="案の切り替え（試作の道具）">
+  <button type="button" id="prev" aria-label="前の案">‹</button>
+  <span class="lab" id="lab" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="次の案">›</button>
+</div>
+
+<script>
+// ── アイコン（SF Symbols の代わり） ──
+const I = {
+  cam: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  wt: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><path d="M12 9.5l1.5-2"/></svg>',
+  photo: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="15" height="13" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v10"/><path d="M4 16l4-4 3 3 2-2 4 4"/></svg>',
+  person: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>',
+};
+
+// ── 日付と数 ──
+const D = (y, m, d) => new Date(y, m - 1, d);
+const addD = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const daysIncl = (a, b) => Math.round((b - a) / 864e5) + 1; // 両端を含めて数える
+const WD = '日月火水木金土';
+const fmtD = d => `${d.getMonth() + 1}月${d.getDate()}日`;
+const fmtDW = d => `${fmtD(d)}（${WD[d.getDay()]}）`;
+const fmtR = (a, b) => a.getMonth() === b.getMonth() ? `${fmtD(a)}〜${b.getDate()}日` : `${fmtD(a)}〜${fmtD(b)}`;
+const kc = n => Math.round(n).toLocaleString('en-US');
+const f1 = x => x.toFixed(1);
+const sg = x => (x < 0 ? '−' : x > 0 ? '+' : '±') + Math.abs(x).toFixed(1);
+const sgk = n => (n < 0 ? '−' : n > 0 ? '+' : '±') + kc(Math.abs(n));
+const r5 = x => Math.round(x / 5) * 5;
+const DIRNAME = {loss: '減量', keep: '維持', gain: '増量'};
+function pfcOf(kcal, targetKg){
+  let p = r5(1.6 * targetKg); if (p * 4 > kcal * .35) p = r5(kcal * .35 / 4);
+  const f = r5(kcal * .25 / 9);
+  return {p, f, c: r5((kcal - p * 4 - f * 9) / 4)};
+}
+
+// ── 場面（条件から作る。値はすべて作ったもの） ──
+// wk: いちばん新しい週の見直し。g: 1日の目安 [その週, 次の週]、e: 推定消費カロリー [前, 新]、why: 主な理由、lim: 当たった上限・下限、skip: 見送った理由
+const BASES = {
+  active: () => ({state: 'active', today: D(2026, 9, 24), wToday: 72.8, trendNow: 72.8,
+    goal: {dir: 'loss', start: D(2026, 9, 1), dl: D(2026, 11, 30), st: 74.0, t: 70.0},
+    wk: {from: D(2026, 9, 14), n: 3, kcal: [1890, 1770, 1770, 1760, 1740, 2110, 1620], w: [73.4, 73.3, 73.1, 73.2, 73.0, 72.9, null], tr: [73.4, 72.9],
+      pace: {k: 'ok', v: -0.5, need: -0.3, proj: 67.8}, g: [1880, 1850], e: [2190, 2140], why: 'est', lim: null, skip: null}}),
+  keep: () => ({state: 'keep', today: D(2026, 9, 24), wToday: 72.4, trendNow: 72.3,
+    goal: {dir: 'keep', start: D(2026, 9, 1), st: 72.0, t: 72.0},
+    wk: {from: D(2026, 9, 14), n: 3, kcal: [2150, 2210, 2080, 2300, 2190, 2450, 1980], w: [72.4, 72.2, 72.3, 72.1, 72.3, 72.4, null], tr: [72.3, 72.3],
+      pace: {k: 'keepIn'}, g: [2190, 2140], e: [2190, 2140], why: 'est', lim: null, skip: null}}),
+  achieved: () => ({state: 'achieved', today: D(2026, 11, 10), wToday: 69.8, trendNow: 69.8,
+    goal: {dir: 'loss', start: D(2026, 9, 1), dl: D(2026, 11, 30), st: 74.0, t: 70.0, ach: D(2026, 11, 8)},
+    wk: {from: D(2026, 11, 2), n: 10, kcal: [1720, 1690, 1800, 1750, 1680, 1950, 1600], w: [70.4, 70.3, 70.2, 70.2, 70.1, 69.8, 69.7], tr: [70.3, 69.9],
+      pace: {k: 'none', why: 'achieved'}, g: [1760, 1910], e: [2020, 2010], why: 'achieved', lim: '150', skip: null}}),
+  deadline: () => ({state: 'deadline', today: D(2026, 12, 1), wToday: 70.3, trendNow: 70.4,
+    goal: {dir: 'loss', start: D(2026, 9, 1), dl: D(2026, 11, 30), st: 74.0, t: 70.0, res: 70.4},
+    wk: {from: D(2026, 11, 23), n: 13, kcal: [1600, 1720, 1650, 1580, 1700, 1880, 1550], w: [70.8, 70.7, 70.6, null, 70.6, 70.5, 70.5], tr: [70.7, 70.5],
+      pace: {k: 'short', v: -0.3, need: -3.5, proj: 70.5, short: 0.5}, g: [1760, 1610], e: [2000, 1990], why: 'deficit', lim: '150', skip: null}}),
+  after: () => ({state: 'after', today: D(2026, 12, 10), wToday: 70.6, trendNow: 70.6,
+    goal: {dir: 'keep', start: D(2026, 12, 7), st: 70.5, t: 70.5, auto: true},
+    prevGoal: {dir: 'loss', start: D(2026, 9, 1), dl: D(2026, 11, 30), st: 74.0, t: 70.0, res: 70.4},
+    wk: {from: D(2026, 11, 30), n: 14, kcal: [1640, 1700, 1900, 1820, 1750, 2050, 1700], w: [70.4, 70.5, 70.6, 70.4, null, 70.5, 70.6], tr: [70.4, 70.5],
+      pace: {k: 'none', why: 'deadline'}, g: [1610, 1760], e: [1990, 1980], why: 'after', lim: '150', skip: null}}),
+  none: () => ({state: 'none', today: D(2026, 9, 24), wToday: 72.8, trendNow: 72.8}),
+};
+const clone = o => JSON.parse(JSON.stringify(o), (k, v) => typeof v === 'string' && /^\d{4}-\d\d-\d\dT/.test(v) ? new Date(v) : v);
+function scenario(c){
+  const S = BASES[c.state](); S.c = c; S.net = c.net;
+  if (S.state === 'none') { S.weeks = []; S.mon = D(2026, 9, 21); return S; }
+  const w = S.wk;
+  w.goal = S.state === 'after' ? S.prevGoal : S.goal; // その週に当てた目標
+  if (c.first && (S.state === 'active' || S.state === 'keep')) {
+    S.goal.start = addD(w.from, 3); w.n = 1;
+    if (S.goal.dir === 'loss') Object.assign(S.goal, {st: 73.2, t: 70.5, dl: D(2026, 12, 16)}); else Object.assign(S.goal, {st: 72.3, t: 72.3});
+    w.pace = {k: 'few', why: 'new'}; w.g = S.goal.dir === 'loss' ? [1850, 1820] : [2190, 2160]; w.e = [2190, 2160]; w.why = 'est';
+  }
+  if (c.few) { w.w = w.w.map((x, i) => i === 2 || i === 5 ? x : null); if (['ok', 'short', 'keepIn'].includes(w.pace.k)) w.pace = {k: 'few', why: 'records', rec: 3}; }
+  const keepG = w.goal.dir === 'keep';
+  switch (c.week) {
+    case 'cap150': if (w.lim !== '150') { w.lim = '150'; w.g = [w.g[0], w.g[0] - 150]; w.e = [w.e[0], w.e[0] - 240]; w.why = 'est'; } break;
+    case 'speed': if (!keepG) { w.lim = 'speed'; w.g = [w.g[0], w.g[0] - 70]; w.why = 'deficit'; } break;
+    case 'floor': w.lim = 'floor'; w.g = [1250, 1200]; w.e = [1690, 1640]; w.why = 'est'; break;
+    case 'skipMeals': w.skip = 'meals'; w.kcal = w.kcal.map((x, i) => [0, 3, 5].includes(i) ? x : null); break;
+    case 'skipWeight': w.skip = 'weight'; w.w = w.w.map(() => null); if (w.pace.k !== 'none') w.pace = {k: 'few', why: 'records', rec: 2}; break;
+    case 'skipNew': w.skip = 'new'; break;
+  }
+  if (w.skip) { w.g = [w.g[0], w.g[0]]; w.e = [w.e[0], w.e[0]]; w.lim = null; }
+  w.to = addD(w.from, 6);
+  S.mon = addD(w.to, 1);
+  S.weeks = [w];
+  // 3週ぶり: 古い週から順に、見直した週、見送った週、いちばん新しい週（条件どおり）
+  if (c.gap > 1 && !c.first) {
+    const w1 = clone(w); Object.assign(w1, {from: addD(w.from, -7), n: w.n - 1, skip: 'meals', kcal: [1840, 1910, null, null, null, null, null], w: [w.w[0] != null ? +(w.tr[0] + .3).toFixed(1) : null, null, null, null, null, null, null], tr: [w.tr[0] + .3, w.tr[0] + .1], lim: null, pace: {k: 'few', why: 'records', rec: 3}, g: [w.g[0], w.g[0]], e: [w.e[0], w.e[0]], goal: w.goal});
+    const w0 = clone(w); Object.assign(w0, {from: addD(w.from, -14), n: w.n - 2, skip: null, lim: null, why: 'est', g: [w.g[0] + 30, w.g[0]], e: [w.e[0] + 40, w.e[0]], tr: [w.tr[0] + .7, w.tr[0] + .3], w: w.w.map(x => x == null ? null : +(x + .5).toFixed(1)), pace: keepG ? {k: 'keepIn'} : {k: 'ok', v: -0.4, need: -0.3, proj: 68.4}, goal: w.goal});
+    [w0, w1].forEach(x => { x.to = addD(x.from, 6); });
+    S.weeks = [w0, w1, w];
+  }
+  return S;
+}
+
+// ── 文 ──
+const cut = dir => dir === 'loss' ? '減らす分' : dir === 'gain' ? '足す分' : '戻す分';
+function reason(w, short){
+  const [e0, e1] = w.e, dn = e1 < e0;
+  switch (w.why){
+    case 'est': return short ? `推定消費カロリーを${dn ? '下げました' : '上げました'}` : `推定消費カロリーが ${kc(e0)} から ${kc(e1)} kcal に${dn ? '下がった' : '上がった'}ためです。`;
+    case 'deficit': return short ? '1日に減らす分を増やしました' : '期限までの日が減り、1日に減らす分を増やしたためです。';
+    case 'achieved': return short ? '目標に届いたので、減らす分を小さくしました' : '目標に届いたので、1日に減らす分をなくしていくためです。';
+    case 'after': return short ? '今の体重を保つ目標に変わりました' : '今の体重を保つ目標に切り替えたためです。';
+  }
+}
+const LIM = {'150': '1週間に変える量は 150 kcal までにしています。', speed: '減らす速さは、1週間に体重の 0.75% までにしています。', floor: '1日の目安は 1,200 kcal より下げません。'};
+const LIMSHORT = {'150': '変える量の上限', speed: '速さの上限', floor: '下限'};
+const mealDays = w => w.kcal.filter(x => x != null).length;
+const wDays = w => w.w.filter(x => x != null).length;
+const SKIP = w => ({meals: `食事の記録が ${mealDays(w)} 日だったため`, weight: '体重の記録が無かったため', new: '使い始めて7日たっていないため'})[w.skip];
+const SKIPSHORT = {meals: '食事の記録が少ない', weight: '体重の記録が無い', new: '使い始めて7日未満'};
+const dlOf = w => w.goal.dl ? fmtD(w.goal.dl) : '';
+const weekName = w => `${DIRNAME[w.goal.dir]}の${w.n}週目`;
+// 1行のペース（カード、日のまとめ）
+function paceLine(w){
+  const p = w.pace;
+  switch (p.k){
+    case 'ok': return `間に合うペース・${sg(p.v)} kg／週`;
+    case 'short': return `このままだと期限に ${f1(p.short)} kg 届きません`;
+    case 'keepIn': return '保てています';
+    case 'few': return p.why === 'new' ? 'ペースは目標を立てて 14 日たつと出ます' : `体重の記録が ${p.rec} 日で、ペースはまだ言い切れません`;
+    case 'none': return p.why === 'achieved' ? `${fmtD(w.goal.ach)}に目標に届きました` : `${fmtD(w.goal.dl)}が期限でした`;
+  }
+}
+
+// ── 共通の部品 ──
+function RING(size, stroke, segs, dot){
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r, gap = stroke / 3;
+  let off = 0;
+  const arcs = segs.filter(s => s.f > 0).map(s => {
+    const len = Math.max(0, s.f * c - gap), o = off; off += s.f * c;
+    return `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--${s.k})" stroke-width="${stroke}" stroke-dasharray="${len} ${c - len}" stroke-dashoffset="${-o - gap / 2}"/>`;
+  }).join('');
+  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--track)" stroke-width="${stroke}"/><g transform="rotate(-90 ${size / 2} ${size / 2})">${arcs}</g>${dot ? `<circle cx="${size / 2}" cy="${size / 2}" r="${dot === 'ov' ? 0 : 3}" fill="var(--ink2)"/>` : ''}</svg>`;
+}
+const shares = (scale = 1) => [{k: 'p', f: .19 * scale}, {k: 'f', f: .35 * scale}, {k: 'c', f: .46 * scale}];
+const EATEN = 358; // 今日の朝ここまで（トースト・ゆで卵）
+// 帯。guide: 今日の丸を比べる1日の目安（null なら割合で一周）。past: 過ぎた日の目安との比
+function BAND(today, guide, o = {}){
+  const ti = (today.getDay() + 6) % 7, mon = addD(today, -ti);
+  return `<div class="band">${'月火水木金土日'.split('').map((d, i) => {
+    const day = addD(mon, i);
+    const ring = i > ti ? RING(28, 4.5, []) : i === ti ? RING(28, 4.5, guide ? shares(Math.min(1, EATEN / guide)) : shares(), o.tw !== false) : RING(28, 4.5, guide ? shares([.96, .9, 1, .93, .97, 1, .88][i]) : shares(), true);
+    return `<span class="day${i === ti ? ' sel' : ''}${i > ti ? ' future' : ''}">${ring}${d}</span>`;
+  }).join('')}</div>`;
+}
+const NAVT = t => `<div class="nav"><span class="l"></span><span class="t">${t}</span><span class="r"><span class="person">${I.person}</span></span></div>`;
+const NAV = (l, t, r = '') => `<div class="nav"><span class="l">${l ? `<span class="chev">‹</span>${l}` : ''}</span><span class="t">${t}</span><span class="r">${r}</span></div>`;
+const WROW = (tm, v, faded) => `<div class="wrow${faded ? ' faded' : ''}"><span class="tm">${tm}</span>体重 ${f1(v)} kg<span class="disc">›</span></div>`;
+const MEAL = (tm, name, kcal, faded, night) => `<div class="mc${faded ? ' faded' : ''}"><div class="pic${night ? ' n' : ''}"></div><div class="row2"><div class="bd"><span class="nm">${name}</span><span class="tm">${tm}</span><span class="nu"><b>${kc(kcal)} kcal</b><span>P ${Math.round(kcal * .045)} g</span><span>F ${Math.round(kcal * .04)} g</span><span>C ${Math.round(kcal * .12)} g</span></span></div><span class="disc">›</span></div></div>`;
+const COMP = () => `<div class="compwrap"><div class="comp"><div class="rowx"><span class="cb on">${I.cam}</span><span class="cb">${I.photo}</span><span class="cb">${I.wt}</span><span class="in">書く</span></div></div><div class="ainote">AI が読んで返事をします</div></div>`;
+const LINE1 = (t, a = '›') => `<div class="line1"><span>${t}</span><b>${a}</b></div>`;
+// タイムラインの電話
+function PHONE_TL(today, items, o = {}){
+  return `<div class="phone"><div class="status"></div>${NAVT(fmtDW(today))}${BAND(today, o.guide, o)}${o.line || ''}<div class="tl">${items}</div>${COMP()}<div class="home"></div>${o.over || ''}</div>`;
+}
+// 押して進む画面の電話
+const PHONE_PUSH = (nav, body) => `<div class="phone"><div class="status"></div>${nav}<div class="scroll">${body}</div><div class="home"></div></div>`;
+// シートの電話。後ろはタイムライン（色だけ）
+const PHONE_SHEET = (nav, body) => `<div class="phone" style="background:color-mix(in srgb,var(--bg) 75%,#000)"><div class="status"></div><div class="sheet full"><span class="grab"></span>${nav}<div class="scroll">${body}</div><div class="home"></div></div></div>`;
+const fig = (html, cap) => ({html, cap});
+const blank = (t, cap) => fig(`<div class="blank">${t}</div>`, cap);
+
+// ── 1. タイムラインの振り返りのカードと、1日の目安の変更の知らせ ──
+function miniRings(w){
+  return `<div class="minirings">${'月火水木金土日'.split('').map((d, i) => `<span>${RING(22, 3.5, w.kcal[i] == null ? [] : shares(Math.min(1, w.kcal[i] / w.g[0])), w.w[i] != null)}${d}</span>`).join('')}</div>`;
+}
+const skipLine = w => `<p class="nd2">次の週も ${kc(w.g[0])} kcal のままです。${SKIP(w)}です。</p>`;
+// 振り返りのカード。o.older: まとめて見直した、ほかの週の数
+function reviewCard(S, w, pk, o = {}){
+  const v = pk.tlcard, lim = pk.limits;
+  const skipNote = w.skip ? (lim === 1 ? `<p class="nd2">1日の目安はそのままです。</p>` : lim === 0 ? skipLine(w) : '') : '';
+  const older = o.older ? `<p class="nd2">ほかに ${o.older} 週を見直しました。‹ で前の週へ送れます。</p>` : '';
+  const head = `<div class="gh"><b>週の振り返り</b><span class="sub">${fmtR(w.from, w.to)}</span><span class="disc">›</span></div>`;
+  if (v === 0) return `<div class="ncard tight" data-h="振り返りのカード">${head}<p class="nd2">${paceLine(w)}</p>${skipNote}${older}</div>`;
+  if (v === 1) {
+    const avg = Math.round(w.kcal.filter(x => x != null).reduce((a, b) => a + b, 0) / Math.max(1, mealDays(w)));
+    const tr = wDays(w) >= 4 ? `${f1(w.tr[0])} → ${f1(w.tr[1])} kg` : `記録 ${wDays(w)} 日`;
+    const nx = w.skip ? `${kc(w.g[0])} kcal のまま` : `${kc(w.g[1])} kcal（${sgk(w.g[1] - w.g[0])}）`;
+    return `<div class="ncard" data-h="振り返りのカード">${head}<p class="nd" style="font-weight:600">${paceLine(w)}</p><div class="kvs"><div><span>体重の傾向</span><span>${tr}</span></div><div><span>食べた量の平均</span><span>${kc(avg)} kcal</span></div><div><span>次の週の1日の目安</span><span>${nx}</span></div></div>${skipNote}${older}</div>`;
+  }
+  if (v === 2) return `<div class="ncard" data-h="振り返りのカード">${head}${miniRings(w)}<p class="nd2">${paceLine(w)}</p>${skipNote}${older}</div>`;
+  // v === 3: 振り返りと変更を1枚に
+  const change = w.skip ? (lim === 1 ? '<p class="nd2">1日の目安はそのままです。</p>' : skipLine(w)) : `<div class="divider"></div><p class="nd">1日の目安 ${kc(w.g[0])} → <b>${kc(w.g[1])} kcal</b></p><p class="nd2">${reason(w)}${lim !== 1 && w.lim ? LIM[w.lim] : ''}</p>`;
+  return `<div class="ncard" data-h="振り返りのカード">${head}<p class="nd">${paceLine(w)}</p>${change}${older}</div>`;
+}
+// 1日の目安の変更の知らせ。w.skip のときは、案によって「そのまま」の知らせか、出さない
+function changeNotice(S, w, pk, o = {}){
+  const lim = pk.limits, tm = o.time ?? S.time;
+  if (pk.tlcard === 3) return '';
+  if (w.skip) {
+    if (lim !== 2) return '';
+    return `<div class="ncard tight" data-h="変更の知らせ"><div class="gh"><b>1日の目安はそのままです</b><span class="time">${tm}</span></div><p class="nd">${kc(w.g[0])} kcal。${SKIP(w)}です。</p></div>`;
+  }
+  const limLine = lim !== 1 && w.lim ? `<p class="nd2">${LIM[w.lim]}</p>` : '';
+  const span = o.span ? `<p class="nd2">${o.span}</p>` : '';
+  const link = '<span class="tbtn" style="align-self:flex-end;min-height:24px">目標 ›</span>';
+  const v = pk.change, m = pfcOf(w.g[1], (S.goal || w.goal).t);
+  if (v === 0) return `<div class="ncard tight" data-h="変更の知らせ"><div class="gh"><b>1日の目安が変わりました</b><span class="time">${tm}</span></div><p class="nd">${kc(w.g[0])} → <b>${kc(w.g[1])} kcal</b>。${reason(w)}</p>${limLine}${span}${link}</div>`;
+  if (v === 1) return `<div class="ncard tight" data-h="変更の知らせ"><div class="gh"><b>今週の1日の目安</b><span class="time">${tm}</span></div><div class="big">${kc(w.g[1])}<small>kcal</small><small>${sgk(w.g[1] - w.g[0])} kcal</small></div><div class="pfc"><span><i class="key p"></i>P ${m.p} g</span><span><i class="key f"></i>F ${m.f} g</span><span><i class="key c"></i>C ${m.c} g</span></div><p class="nd2">${reason(w, true)}。</p>${limLine}${span}${link}</div>`;
+  const cutNow = w.e[1] - w.g[1], cutPrev = w.e[0] - w.g[0];
+  return `<div class="ncard tight" data-h="変更の知らせ"><div class="gh"><b>1日の目安が変わりました</b><span class="time">${tm}</span></div><p class="nd">${kc(w.g[0])} → <b>${kc(w.g[1])} kcal</b></p><div class="kvs"><div><span>推定消費カロリー</span><span>${kc(w.e[0])} → ${kc(w.e[1])}（${sgk(w.e[1] - w.e[0])}）</span></div><div><span>1日に${cut(w.goal.dir === 'keep' || w.why === 'after' ? 'keep' : w.goal.dir)}</span><span>${kc(Math.abs(cutPrev))} → ${kc(Math.abs(cutNow))}（${sgk(Math.abs(cutNow) - Math.abs(cutPrev))}）</span></div></div>${limLine}${span}${link}</div>`;
+}
+// まとめて見直した週を1つにしたもの（変更の知らせ用）
+function merged(ws){
+  const a = ws[0], z = ws[ws.length - 1], m = clone(z);
+  m.goal = z.goal; m.g = [a.g[0], z.g[1]]; m.e = [a.e[0], z.e[1]];
+  m.skip = ws.every(x => x.skip) ? z.skip : null;
+  if (z.skip && !m.skip) { m.why = 'est'; m.lim = null; }
+  return m;
+}
+function multiCard(S, ws){
+  return `<div class="ncard" data-h="振り返りのカード"><div class="gh"><b>${ws.length}週分の振り返り</b></div><div class="list" style="background:none;margin:-4px -16px -8px">${ws.map(w => `<div class="cell" style="font-size:var(--t-sub)"><span class="grow">${fmtR(w.from, w.to)}<span class="v2">${w.skip ? `見送り・${SKIPSHORT[w.skip]}` : paceLine(w)}</span></span><span class="v">${w.skip ? 'そのまま' : `${kc(w.g[1])} kcal`}</span><span class="disc">›</span></div>`).join('')}</div></div>`;
+}
+// 今日の位置に出す、振り返りのカードと変更の知らせ
+function reviewItems(S, pk, o = {}){
+  const ws = S.weeks, z = ws[ws.length - 1], t = o.time ?? S.time;
+  const pair = w => reviewCard(S, w, pk) + changeNotice(S, w, pk, {time: t});
+  if (ws.length === 1) return pair(z);
+  const span = `${fmtD(ws[0].from)}からの ${ws.length} 週分の見直しをまとめた値です。`;
+  if (pk.multi === 0) return ws.map(pair).join('');
+  if (pk.multi === 1) return reviewCard(S, z, pk, {older: ws.length - 1}) + changeNotice(S, merged(ws), pk, {time: t, span});
+  if (pk.multi === 2) return multiCard(S, ws) + changeNotice(S, merged(ws), pk, {time: t, span});
+  return pair(z);
+}
+const stateNotice = (S, pk, tm) => S.state === 'after' ? goalNotice(S, pk, 'after', tm) : '';
+// 週の区切りのあとの朝のタイムライン。o.arrived: つながらなかったあと、届いたところ
+function tlMonday(S, pk, o = {}){
+  const t = S.mon, y = addD(t, -1);
+  if (S.state === 'none') return PHONE_TL(t, `<div class="dayh">昨日 ${fmtDW(y)}</div>${MEAL('19:10', '鍋', 620, false, true)}<div class="dayh">今日 ${fmtDW(t)}</div>${WROW('7:01', S.wToday)}${MEAL('7:40', 'トースト・ゆで卵', EATEN)}`);
+  const ws = S.weeks, z = ws[ws.length - 1];
+  const net = S.net || o.arrived, off = pk.offline;
+  S.time = S.net ? '6:58' : '8:15';
+  const guide = net ? z.g[1] : off === 2 ? null : ws[0].g[0];
+  let pre = `<div class="dayh">昨日 ${fmtDW(y)}</div>`;
+  if (S.state === 'achieved') pre += goalNotice(S, pk, 'achieved', '7:05');
+  pre += MEAL('19:10', '鍋', 620, false, true);
+  const faded = !S.net && !o.arrived;
+  const mine = WROW('7:01', S.wToday, faded) + MEAL('7:40', 'トースト・ゆで卵', EATEN, faded);
+  const today = `<div class="dayh">今日 ${fmtDW(t)}</div>`;
+  let items;
+  if (ws.length > 1 && pk.multi === 3 && net) {
+    // それぞれの週の月曜の位置に差し込む（使っていなかった日は記録が無いので、月曜どうしが並ぶ）
+    items = `<div class="dayh">昨日より前</div>${MEAL('19:30', 'カレー', 780, false, true)}${ws.slice(0, -1).map(w => `<div class="dayh">${fmtDW(addD(w.to, 1))}</div>${reviewCard(S, w, pk)}${changeNotice(S, w, pk, {time: '0:00'})}`).join('')}${today}${reviewCard(S, z, pk)}${changeNotice(S, z, pk, {time: '0:00'})}${stateNotice(S, pk, S.time)}${mine}`;
+    return PHONE_TL(t, items, {guide, line: o.line});
+  }
+  if (S.net) items = pre + today + reviewItems(S, pk) + stateNotice(S, pk, S.time) + mine;
+  else if (!o.arrived) items = pre + today + (off === 1 ? `<div class="ncard tight faded" data-h="振り返りのカード（待つ）"><div class="gh"><b>週の振り返り</b><span class="sub">${fmtR(z.from, z.to)}</span></div><div class="wait"><span class="spinner"></span></div></div>` : '') + mine;
+  else if (off === 1) items = pre + today + reviewItems(S, pk, {time: ''}) + stateNotice(S, pk, '') + mine;
+  else items = pre + today + mine + reviewItems(S, pk) + stateNotice(S, pk, S.time);
+  return PHONE_TL(t, items, {guide, line: o.line});
+}
+
+// ── 2. 週の振り返り ──
+function svgW(){ return 300; }
+function weekWeightChart(w, o = {}){
+  const W = 300, H = 120, pts = w.w.map((v, i) => v == null ? null : [i, v]).filter(Boolean);
+  const g = w.goal, at = d => g.dl ? g.st + (g.t - g.st) * (d - g.start) / (g.dl - g.start) : g.t;
+  const path = [0, 6].map(i => at(addD(w.from, i)));
+  const trs = [0, 1, 2, 3, 4, 5, 6].map(i => w.tr[0] + (w.tr[1] - w.tr[0]) * i / 6);
+  const vals = [...pts.map(p => p[1]), ...trs, ...path];
+  let lo = Math.min(...vals) - .2, hi = Math.max(...vals) + .2;
+  const x = i => 24 + i * (W - 40) / 6, y = v => 8 + (hi - v) / (hi - lo) * (H - 30);
+  const showTrend = wDays(w) >= 4;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    ${[lo + .2, (lo + hi) / 2, hi - .2].map(v => `<line x1="20" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--sep)" stroke-width=".5"/><text x="0" y="${y(v) + 4}">${f1(v)}</text>`).join('')}
+    <line x1="${x(0)}" x2="${x(6)}" y1="${y(path[0])}" y2="${y(path[1])}" stroke="var(--ink2)" stroke-width="1.2" stroke-dasharray="3 3"/>
+    ${showTrend ? `<polyline points="${trs.map((v, i) => `${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="var(--tint)" stroke-width="2"/>` : ''}
+    ${pts.map(p => `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="3" fill="var(--ink3)"/>`).join('')}
+    ${'月火水木金土日'.split('').map((d, i) => `<text x="${x(i) - 5}" y="${H - 2}" ${o.pre && o.pre(i) ? 'opacity=".45"' : ''}>${d}</text>`).join('')}
+  </svg>`;
+}
+function weekKcalChart(w, o = {}){
+  const W = 300, H = 120, max = 2600, x = i => 46 + i * (W - 58) / 6, y = v => 8 + (1 - v / max) * (H - 30);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    ${[0, 1000, 2000].map(v => `<line x1="34" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--sep)" stroke-width=".5"/><text x="0" y="${y(v) + 4}">${kc(v)}</text>`).join('')}
+    ${w.kcal.map((v, i) => { const pre = o.pre && o.pre(i); return v == null ? `<text x="${x(i) - 9}" y="${y(0) - 4}" ${pre ? 'opacity=".45"' : ''}>なし</text>` : `<rect x="${x(i) - 9}" y="${y(v)}" width="18" height="${y(0) - y(v)}" rx="3" fill="var(--tint)" opacity="${pre ? .3 : 1}"/>`; }).join('')}
+    <line x1="34" x2="${W}" y1="${y(w.g[0])}" y2="${y(w.g[0])}" stroke="var(--ink2)" stroke-width="1.2" stroke-dasharray="3 3"/><text x="0" y="${y(w.g[0]) - 4}">目安 ${kc(w.g[0])}</text>
+    ${'月火水木金土日'.split('').map((d, i) => `<text x="${x(i) - 5}" y="${H - 2}" ${o.pre && o.pre(i) ? 'opacity=".45"' : ''}>${d}</text>`).join('')}
+  </svg>`;
+}
+function weekTop(S, w, pk){
+  const p = w.pace, g = w.goal, dl = g.dl ? fmtD(g.dl) : '';
+  const has = ['ok', 'short', 'keepIn'].includes(p.k);
+  if (has) {
+    const v = pk.wktop;
+    let b, t;
+    if (p.k === 'keepIn') { b = '保てています'; t = v === 1 ? `${f1(g.t)} kg ±0.7 kg に入っています。` : `体重の傾向は ${f1(w.tr[1])} kg で、${f1(g.t)} kg を保つ幅（±0.7 kg）に入っています。`; }
+    else {
+      b = p.k === 'ok' ? '間に合うペースです' : `このままだと期限に ${f1(p.short)} kg 届きません`;
+      t = v === 1 ? `このままなら、${dl}に ${f1(p.proj)} kg の見込みです（目標 ${f1(g.t)} kg）。`
+        : `傾向で1週間に ${sg(p.v)} kg。期限の${dl}に ${f1(g.t)} kg へは、1週間に ${sg(p.need)} kg で届きます。`;
+    }
+    if (v === 2 && p.k !== 'keepIn') {
+      const lo = Math.min(p.proj, g.t, w.tr[1]) - .5, hi = Math.max(p.proj, g.t, w.tr[1]) + .5, pos = v => (hi - v) / (hi - lo) * 100;
+      return `<div class="pace"><b>${b}</b><div class="bar"><i style="left:${pos(w.tr[1])}%;width:${pos(p.proj) - pos(w.tr[1])}%;opacity:.35"></i><em class="l" style="left:${pos(w.tr[1])}%">今 ${f1(w.tr[1])}</em><em style="left:${pos(g.t)}%;top:-18px">目標 ${f1(g.t)} ▾</em><em style="left:${pos(p.proj)}%">${dl}の見込み ${f1(p.proj)}</em></div><p>傾向の1週間 ${sg(p.v)} kg のままのとき。</p></div>`;
+    }
+    return `<div class="pace"><b>${b}</b><p>${t}</p></div>`;
+  }
+  // ペースが返らない週と、言い切らない週
+  const v = pk.wknopace;
+  const alt = p.k === 'few' ? (p.why === 'new' ? ['まだ言い切れません', '目標を立てて 14 日たつと、間に合うペースかを出します。'] : ['まだ言い切れません', `直近 14 日の体重の記録が ${p.rec} 日なので、傾向が定まっていません。`])
+    : p.why === 'achieved' ? ['目標に届いた週です', `${fmtD(g.ach)}に、体重の傾向が ${f1(g.t)} kg に届きました。`]
+    : ['期限の週です', `${fmtD(g.dl)}の結果は、開始から ${sg(g.res - g.st)} kg・目標まであと ${f1(Math.abs(g.res - g.t))} kg でした。`];
+  if (v === 0) return `<div class="pace"><b>${alt[0]}</b><p>${alt[1]}</p></div>`;
+  if (v === 1) return '';
+  return `<div class="pace"><b>${f1(w.tr[0])} → ${f1(w.tr[1])} kg</b><p>この週の体重の傾向（${sg(w.tr[1] - w.tr[0])} kg）。${alt[1]}</p></div>`;
+}
+function weekNext(S, w, pk){
+  const v = pk.wknext, lim = w.lim, d = w.g[1] - w.g[0];
+  const nextMon = fmtD(addD(w.to, 1));
+  if (v === 2) {
+    const c0 = Math.abs(w.e[0] - w.g[0]), c1 = Math.abs(w.e[1] - w.g[1]);
+    const rows = w.skip ? `<div class="cell"><span class="grow">見送った理由</span><span class="v">${SKIPSHORT[w.skip]}</span></div><div class="cell"><span class="grow">1日の目安</span><span class="v">${kc(w.g[0])} kcal のまま</span></div>`
+      : `<div class="cell"><span class="grow">推定消費カロリー</span><span class="v">${kc(w.e[0])} → ${kc(w.e[1])}</span></div><div class="cell"><span class="grow">1日に${cut(w.goal.dir)}</span><span class="v">${kc(c0)} → ${kc(c1)}</span></div><div class="cell"><span class="grow"><b style="font-weight:600">1日の目安</b></span><span class="v" style="color:var(--ink)">${kc(w.g[0])} → ${kc(w.g[1])} kcal</span></div>${lim ? `<div class="cell"><span class="grow">当たった決まり</span><span class="v">${LIMSHORT[lim]}${lim === 'floor' ? ' 1,200 kcal' : lim === '150' ? ' 150 kcal' : ' 0.75%／週'}</span></div>` : ''}`;
+    return `<div class="sec"><p class="group-h">次の週の1日の目安（${nextMon}から）</p><div class="list">${rows}</div><p class="group-f">推移は目標で見られます。</p></div>`;
+  }
+  const badge = v === 1 && (w.skip || lim) ? `<span class="badge">${w.skip ? '見送り' : LIMSHORT[lim]}</span>` : '';
+  const top = `<div class="top"><b>${kc(w.g[1])} kcal</b><span>${badge}${w.skip ? 'そのまま' : `${sgk(d)} kcal`}</span></div>`;
+  const text = w.skip ? (v === 1 ? `${SKIPSHORT[w.skip]}ので、前の週のままです。` : `${kc(w.g[0])} kcal のままです。${SKIP(w)}です。`)
+    : `${kc(w.g[0])} → ${kc(w.g[1])} kcal。${v === 1 ? reason(w, true) + '。' : reason(w)}${v === 0 && lim ? LIM[lim] : ''}推移は目標で見られます。`;
+  return `<div class="sec next"><p class="group-h">次の週の1日の目安</p><div class="list"><div class="cell">${top}<p>${text}</p></div></div></div>`;
+}
+function weeklyContent(S, w, pk){
+  const g = w.goal, first = w.n === 1 && S.c.first;
+  const startIdx = first ? Math.round((S.goal.start - w.from) / 864e5) : 0;
+  const v1 = pk.wk1;
+  const pre = first && v1 === 2 ? i => i < startIdx : null;
+  const from = first && v1 !== 2 ? S.goal.start : w.from;
+  const idxs = [0, 1, 2, 3, 4, 5, 6].filter(i => !(first && v1 !== 2 && i < startIdx));
+  const rec = idxs.filter(i => w.kcal[i] != null);
+  const avg = rec.length ? Math.round(rec.reduce((a, i) => a + w.kcal[i], 0) / rec.length) : 0;
+  const wd = idxs.filter(i => w.w[i] != null).length;
+  const m = pfcOf(w.g[0], g.t), a = {p: Math.round(avg * .24 / 4), f: Math.round(avg * .3 / 9), c: Math.round(avg * .46 / 4)};
+  const avgLabel = rec.length < idxs.length ? `記録した ${rec.length} 日の平均` : '平均';
+  const wkhead = `<div class="wk"><span class="arr">‹</span><span><b>${fmtR(from, w.to)}</b><span class="s">${weekName(w)}</span></span><span class="arr off">›</span></div>`;
+  const firstNote = first && v1 === 1 ? `<p class="note">1日の目安の見直しには、${fmtR(w.from, w.to)}の 7 日の記録を使っています。</p>` : first && v1 === 2 ? `<p class="note">薄い日は目標を立てる前。平均は、目標を立てた${fmtD(S.goal.start)}からの ${idxs.filter(i => i >= startIdx && w.kcal[i] != null).length} 日。</p>` : '';
+  const weightCard = `<div class="card"><p class="ch">体重</p>${weekWeightChart(w, {pre})}<div class="kv"><span>${wd >= 4 ? '傾向' : '傾向の線は、記録がたまると引きます'}</span><span>${wd >= 4 ? `${f1(w.tr[0])} → ${f1(w.tr[1])} kg` : ''}</span></div><div class="kv"><span>記録</span><span>${wd} 日（${idxs.length}日中）</span></div></div>`;
+  const kcalCard = `<div class="card"><p class="ch">食べた量</p>${weekKcalChart(w, {pre})}<div class="kv"><span>${avgLabel}</span><span>${rec.length ? kc(avg) + ' kcal' : '—'}</span></div><div class="kv"><span>1日の目安</span><span>${kc(w.g[0])} kcal</span></div>${firstNote}</div>`;
+  const pfc = `<div class="sec"><p class="group-h">P・F・C の1日の平均</p><div class="list">${[['p', 'たんぱく質'], ['f', '脂質'], ['c', '炭水化物']].map(([k, n]) => `<div class="cell"><span class="grow"><i class="key ${k}"></i>${k.toUpperCase()} ${n}</span><span class="v">${rec.length ? a[k] : '—'} / ${m[k]} g</span></div>`).join('')}</div><p class="group-f">${avgLabel} / 1日の目安</p></div>`;
+  const days = `<div class="sec days"><p class="group-h">日ごと</p><div class="list">${[0, 1, 2, 3, 4, 5, 6].filter(i => idxs.includes(i) || pre).map(i => { const d = addD(w.from, i); const isPre = pre && pre(i); return `<div class="cell${isPre ? ' pre' : ''}"><span class="dt">${fmtD(d)} <small>（${WD[d.getDay()]}）</small></span><span class="k${w.kcal[i] == null ? ' none' : ''}">${isPre ? '目標の前・' : ''}${w.kcal[i] == null ? '記録なし' : kc(w.kcal[i]) + ' kcal'}</span><span class="w">${w.w[i] == null ? '—' : f1(w.w[i]) + ' kg'}</span><span class="disc">›</span></div>`; }).join('')}</div><p class="group-f">押すと、タイムラインのその日に戻ります。</p></div>`;
+  return wkhead + weekTop(S, w, pk) + weightCard + kcalCard + pfc + days + weekNext(S, w, pk);
+}
+// 週の振り返りの画面。from: 'card'（タイムラインのカード）か 'goal'（目標の画面）か 'day'（日のまとめ）
+function weeklyScreen(S, pk, o = {}){
+  if (S.state === 'none') return null;
+  const w = o.w || S.weeks[S.weeks.length - 1], from = o.from || 'card';
+  const body = weeklyContent(S, w, pk);
+  const back = from === 'goal' ? '目標' : fmtDW(from === 'day' ? S.today : S.mon);
+  if (pk.wkform === 0) return PHONE_PUSH(NAV(back, '週の振り返り'), body);
+  if (pk.wkform === 1) return PHONE_SHEET(NAV('', '週の振り返り', '<b>完了</b>'), body);
+  // シートの中で潜る。日のまとめからだけ。タイムラインのカードからは日のまとめを経ずにシートで開く
+  return PHONE_SHEET(NAV(from === 'card' ? '' : from === 'goal' ? '目標' : fmtDW(S.today), '週の振り返り', '<b>完了</b>'), body);
+}
+
+// ── 4. 目標の画面 ──
+function goalRemain(S){
+  const g = S.goal;
+  return {kg: Math.abs(S.trendNow - g.t), days: g.dl ? daysIncl(S.today, g.dl) : null};
+}
+const curPace = S => { const w = S.weeks[S.weeks.length - 1]; return w ? w.pace : {k: 'few'}; };
+const paceWord = p => ({ok: '間に合うペースです', short: `このままだと期限に ${f1(p.short || 0)} kg 届きません`, keepIn: '保てています', few: 'ペースはまだ言い切れません', none: ''})[p.k];
+function goalCard(S, pk){
+  const g = S.goal, r = goalRemain(S), p = curPace(S), v = pk.gcard;
+  const period = g.dl ? `${DIRNAME[g.dir]}　${fmtD(g.start)}〜${fmtD(g.dl)}` : `維持　${fmtD(g.start)}から・期限なし`;
+  const sw = pk.gswitch === 1 ? '目標を切り替える' : '目標を切り替える';
+  let main, desc = '', btn = '';
+  if (S.state === 'achieved') { main = `${f1(g.t)} kg に届きました`; desc = `期限より ${daysIncl(g.ach, g.dl) - 1} 日早い・傾向 ${f1(S.trendNow)} kg。次の目標を選ぶまで、今の目標を続けます。`; btn = '次の目標を選ぶ'; }
+  else if (S.state === 'deadline') { main = `${f1(g.res)} kg で期限を迎えました`; desc = `開始から ${sg(g.res - g.st)} kg・目標まであと ${f1(g.res - g.t)} kg。選ばなければ、12月7日（月）から今の体重を保つ目標で続けます。`; btn = '次の目標を選ぶ'; }
+  else if (S.state === 'after') { main = `${f1(g.t)} kg を保つ`; desc = `傾向 ${f1(S.trendNow)} kg・保てています。11月30日の期限のあと次の目標を選ばなかったので、今の体重を保つ目標で続けています。`; btn = '次の目標を立てる'; }
+  else if (g.dir === 'keep') { main = `${f1(g.t)} kg を保つ`; desc = `傾向 ${f1(S.trendNow)} kg・${paceWord(p)}`; }
+  else main = null;
+  const prog = S.state === 'active' ? r : null;
+  if (v === 0) {
+    const swb = btn ? '' : pk.gswitch === 1 ? '' : `<span class="sw">${sw}</span>`;
+    const body = prog ? `<div class="bigb">${f1(g.t)} kg まで あと ${f1(prog.kg)} kg</div><div class="line">あと ${prog.days} 日・${paceWord(p)}</div>` : `<div class="bigb">${main}</div><p class="d">${desc}</p>`;
+    return `<div class="gcard" data-h="今の目標のカード"><div class="h"><span>${period}</span>${swb}</div>${body}${btn ? `<span class="btn filled">${btn}</span>` : pk.gswitch === 1 ? `<span class="btn gray">${sw}</span>` : ''}</div>`;
+  }
+  if (v === 1) {
+    const head = g.dl ? `${DIRNAME[g.dir]}・${fmtD(g.dl)}までに ${f1(g.t)} kg` : `維持・${f1(g.t)} kg を保つ`;
+    const stats = prog ? `<div class="stats"><div><small>あと</small><b>${f1(prog.kg)} kg</b></div><div><small>期限まで</small><b>${prog.days} 日</b></div><div><small>ペース</small><b style="font-size:var(--t-sub)">${p.k === 'ok' ? '間に合う' : p.k === 'short' ? `${f1(p.short)} kg 届かない` : '言い切れない'}</b></div></div>` : `<div class="bigb" style="font-size:var(--t-headline)">${main}</div><p class="d">${desc}</p>`;
+    return `<div class="gcard" data-h="今の目標のカード"><div class="h"><span style="color:var(--ink);font-size:var(--t-sub);font-weight:600">${head}</span></div><p class="d" style="margin:0">${fmtD(g.start)}から</p>${stats}<span class="btn ${btn ? 'filled' : 'gray'}">${btn || sw}</span></div>`;
+  }
+  // v === 2: 進み具合のバー。切り替えはナビゲーションバー
+  const lo = Math.min(g.st, g.t), hi = Math.max(g.st, g.t), pct = g.dl ? Math.max(0, Math.min(100, (g.st - S.trendNow) / (g.st - g.t) * 100)) : 50;
+  const bar = g.dl ? `<div class="bar"><i style="width:${pct}%"></i><em class="l" style="left:0">${f1(g.st)} kg</em><em style="left:${pct}%;top:-18px">今 ${f1(S.trendNow)}</em><em class="r" style="left:100%">${f1(g.t)} kg</em></div>` : '';
+  const body = prog ? `<div class="line">あと ${f1(prog.kg)} kg・あと ${prog.days} 日</div><div class="line" style="font-weight:600">${paceWord(p)}</div>` : `<div class="line" style="font-weight:600">${main}</div><p class="d">${desc}</p>`;
+  return `<div class="gcard" data-h="今の目標のカード"><div class="h"><span>${period}</span></div>${bar}${body}${btn ? `<span class="btn filled">${btn}</span>` : ''}</div>`;
+}
+function guideNow(S){
+  const w = S.weeks[S.weeks.length - 1];
+  return {from: S.mon, kcal: w.g[1]};
+}
+// 推定消費カロリーと1日の目安の週ごとの値（目標の期間）
+function estSeries(S, o = {}){
+  const g = S.goal, z = S.weeks[S.weeks.length - 1];
+  if (S.state === 'after' && !o.prev) return [{d: g.start, e: z.e[1], gd: z.g[1]}];
+  const gg = S.state === 'after' ? S.prevGoal : g;
+  const mons = []; for (let d = gg.start; d <= (S.state === 'after' ? addD(S.mon, -7) : S.mon); d = d.getDay() === 1 ? addD(d, 7) : addD(d, (8 - d.getDay()) % 7 || 7)) mons.push(d);
+  const n = mons.length, e0 = 2250, e1 = z.e[1], g0 = gg.dir === 'keep' ? 2250 : 1900;
+  return mons.map((d, i) => {
+    const last = i === n - 1, t = n > 1 ? i / (n - 1) : 0;
+    const e = last ? (S.state === 'after' ? z.e[0] : e1) : Math.round((e0 + (e1 - e0) * t) / 10) * 10;
+    const gd = last ? (S.state === 'after' ? z.g[0] : z.g[1]) : gg.dir === 'keep' ? e : r5((g0 + (z.g[0] - g0) * t) / 10) * 10;
+    return {d, e, gd: Math.round(gd / 10) * 10, skip: i === 1 && n > 2};
+  });
+}
+function estChart(S, pk, o = {}){
+  const v = pk.gchart;
+  let ser = estSeries(S, {prev: v === 2 && S.state === 'after'});
+  if (S.state === 'after' && v === 2) ser = [...ser, {d: S.goal.start, e: S.weeks[0].e[1], gd: S.weeks[0].g[1], split: true}];
+  if (o.one) ser = [{d: S.goal.start, e: 2250, gd: 1900}];
+  const W = 300, H = 140, end = S.goal.dl || addD(S.today, 21), start = ser[0].d;
+  const span = Math.max(1, (end - start) / 864e5);
+  const x = d => 34 + (d - start) / 864e5 / span * (W - 44), y = v => 8 + (2600 - v) / (2600 - 1400) * (H - 30);
+  if (v === 1 && ser.length < 3) {
+    const z = ser[ser.length - 1];
+    return `<div class="kvs" style="font-size:var(--t-sub)"><div><span>推定消費カロリー</span><span>${kc(z.e)} kcal</span></div><div><span>1日の目安</span><span>${kc(z.gd)} kcal</span></div><div><span>1日に${cut(S.goal.dir)}</span><span>${kc(Math.abs(z.e - z.gd))} kcal</span></div></div><p class="note">週ごとの見直しが ${3 - ser.length} 回たまると、グラフで見せます。</p>`;
+  }
+  const step = ser.map((p, i) => { const nx = ser[i + 1] ? ser[i + 1].d : (S.state === 'after' && v !== 2 ? addD(S.today, 1) : addD(p.d, 7)); return `M${x(p.d)},${y(p.gd)} H${x(nx)}`; }).join(' ');
+  const line = ser.map(p => `${x(p.d)},${y(p.e)}`).join(' ');
+  const fill = `${ser.map(p => `${x(p.d)},${y(p.e)}`).join(' ')} ${[...ser].reverse().map(p => `${x(p.d)},${y(p.gd)}`).join(' ')}`;
+  const z = ser[ser.length - 1];
+  const marks = v === 1 ? ser.filter(p => p.skip).map(p => `<text x="${x(p.d) - 12}" y="${H - 16}">見送り</text><line x1="${x(p.d)}" x2="${x(p.d)}" y1="${y(p.gd) + 4}" y2="${H - 26}" stroke="var(--ink3)" stroke-dasharray="2 2"/>`).join('') : '';
+  const split = ser.find(p => p.split);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    ${[1500, 2000, 2500].map(t => `<line x1="30" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="var(--sep)" stroke-width=".5"/><text x="0" y="${y(t) + 4}">${kc(t)}</text>`).join('')}
+    ${ser.length > 1 ? `<polygon points="${fill}" fill="var(--tint)" opacity=".1"/><polyline points="${line}" fill="none" stroke="var(--tint)" stroke-width="2"/>` : ''}
+    ${ser.map(p => `<circle cx="${x(p.d)}" cy="${y(p.e)}" r="${ser.length > 1 ? 2 : 3.5}" fill="var(--tint)"/>`).join('')}
+    <path d="${step}" fill="none" stroke="var(--ink2)" stroke-width="1.4" stroke-dasharray="3 3"/>
+    ${ser.length === 1 ? `<circle cx="${x(z.d)}" cy="${y(z.gd)}" r="3" fill="var(--ink2)"/>` : ''}
+    ${split ? `<line x1="${x(split.d)}" x2="${x(split.d)}" y1="4" y2="${H - 24}" stroke="var(--ink3)"/><text x="${x(split.d) + 3}" y="14">維持</text>` : ''}
+    ${marks}
+    <text x="${Math.min(W - 70, x(z.d) + 6)}" y="${y(z.e) - 6}">推定 ${kc(z.e)}</text><text x="${Math.min(W - 70, x(z.d) + 6)}" y="${y(z.gd) + 14}">目安 ${kc(z.gd)}</text>
+    <text x="34" y="${H - 2}">${fmtD(start)}</text><text x="${W - 50}" y="${H - 2}">${S.goal.dl ? fmtD(end) : '今日'}</text>
+  </svg>${v === 2 ? `<p class="note">${fmtD(z.d)}の週: 推定消費カロリー ${kc(z.e)}・1日の目安 ${kc(z.gd)}・差 ${kc(Math.abs(z.e - z.gd))} kcal（押した週に変わる）</p>` : ''}`;
+}
+function goalWeightChart(S, pk){
+  const g = S.goal, W = 300, H = 130, pre = pk.gpre === 1;
+  const start = g.start, end = g.dl || addD(S.today, 21), first = pre ? addD(start, -28) : start;
+  const span = (end - first) / 864e5;
+  const now = S.today, x = d => 30 + (d - first) / 864e5 / span * (W - 40);
+  const lo = Math.min(g.t, S.trendNow, g.st) - .6, hi = Math.max(g.st + (pre ? 1 : .4), S.trendNow + .4, g.t + .4, lo + 2);
+  const y = v => 8 + (hi - v) / (hi - lo) * (H - 30);
+  const n = Math.max(2, Math.round((now - start) / 864e5 / 3));
+  const tr = Array.from({length: n + 1}, (_, i) => { const d = addD(start, Math.round(i * (now - start) / 864e5 / n)); return [d, g.st + (S.trendNow - g.st) * Math.pow(i / n, .9)]; });
+  const preDots = pre ? Array.from({length: 9}, (_, i) => [addD(first, i * 3), g.st + .9 - i * .08 + (i % 2 ? .25 : -.15)]) : [];
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    ${[lo + .6, hi - .4].map(v => `<line x1="26" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--sep)" stroke-width=".5"/><text x="0" y="${y(v) + 4}">${f1(v)}</text>`).join('')}
+    ${g.dl ? `<line x1="${x(start)}" x2="${x(end)}" y1="${y(g.st)}" y2="${y(g.t)}" stroke="var(--ink2)" stroke-width="1.2" stroke-dasharray="3 3"/>` : `<line x1="${x(start)}" x2="${x(end)}" y1="${y(g.t)}" y2="${y(g.t)}" stroke="var(--ink2)" stroke-width="1.2" stroke-dasharray="3 3"/>`}
+    ${pre ? `<line x1="${x(start)}" x2="${x(start)}" y1="4" y2="${H - 24}" stroke="var(--ink3)"/><text x="${x(first)}" y="14" opacity=".8">使い始める前</text>${preDots.map(p => `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="2.5" fill="var(--ink3)" opacity=".6"/>`).join('')}` : ''}
+    <polyline points="${tr.map(p => `${x(p[0])},${y(p[1])}`).join(' ')}" fill="none" stroke="var(--tint)" stroke-width="2"/>
+    <text x="${x(now) + 4}" y="${y(S.trendNow) - 6}">${f1(S.trendNow)}</text>
+    <text x="${x(first)}" y="${H - 2}">${fmtD(first)}</text><text x="${W - 46}" y="${H - 2}">${g.dl ? fmtD(end) : '今日'}</text>
+  </svg>`;
+}
+function goalBody(S, pk, o = {}){
+  if (o.expanded) return expandedSwitch(S) + goalRest(S, pk);
+  return goalCard(S, pk) + goalRest(S, pk);
+}
+function goalRest(S, pk){
+  const gn = guideNow(S), m = pfcOf(gn.kcal, S.goal.t), g = S.goal;
+  const deadlineLike = S.state === 'deadline';
+  const past = S.state === 'after' ? `<div class="sec"><p class="group-h">過去の目標</p><div class="list"><div class="cell"><span class="grow">減量　9月1日〜11月30日<span class="v2">74.0 → 70.4 kg</span></span><span class="v">−3.6 kg</span></div></div></div>` : '';
+  const showEst = !['achieved', 'deadline'].includes(S.state);
+  const z = S.weeks[S.weeks.length - 1];
+  return `<div class="today"><div class="h"><span>今の1日の目安</span><span>${fmtD(gn.from)}から</span></div><div class="k">${kc(gn.kcal)}<small>kcal</small></div><div class="m"><span><i class="key p"></i>P ${m.p} g</span><span><i class="key f"></i>F ${m.f} g</span><span><i class="key c"></i>C ${m.c} g</span></div></div>
+    <div class="card"><p class="ch">${deadlineLike ? '体重の歩み' : '体重の傾向'}</p>${goalWeightChart(S, pk)}</div>
+    ${showEst ? `<div class="card"><p class="ch">推定消費カロリーと1日の目安</p>${estChart(S, pk)}</div>` : ''}
+    <div class="list"><div class="cell link"><span class="grow">週の振り返り</span><span class="v">${fmtR(z.from, z.to)}</span><span class="disc">›</span></div></div>${past}`;
+}
+function expandedSwitch(S){
+  return `<div class="gcard" data-h="広げたカード"><div class="h"><span style="color:var(--ink);font-weight:600;font-size:var(--t-sub)">目標を立てる</span><span class="sw">閉じる</span></div><p style="margin:4px 0;font-size:var(--t-headline);font-weight:600">何を目指しますか</p>${['減量|体重を減らす', '維持|今の体重を保つ', '増量|体重を増やす'].map(s => { const [a, b] = s.split('|'); return `<div style="display:flex;align-items:center;min-height:44px;padding:8px 14px;border-radius:10px;background:var(--fill);margin-top:6px"><span style="flex:1">${a}<span style="display:block;font-size:var(--t-foot);color:var(--ink2)">${b}</span></span><span class="disc">›</span></div>`; }).join('')}<p class="d">今の目標（減量・11月30日までに 70.0 kg）は、新しい目標が決まるまで続きます。</p></div>`;
+}
+function goalScreen(S, pk, o = {}){
+  if (S.state === 'none') return null;
+  const from = o.from || 'weight';
+  const back = from === 'weight' ? '体重' : from === 'day' ? fmtDW(S.today) : fmtDW(S.today);
+  const navR = pk.gcard === 2 && !['achieved', 'deadline', 'after'].includes(S.state) ? '切り替える' : '';
+  const body = goalBody(S, pk, o);
+  if (pk.gform === 1) return PHONE_SHEET(NAV('', '目標', `<b>完了</b>`), body);
+  if (pk.gform === 2 && from === 'day') return PHONE_SHEET(NAV(fmtDW(S.today), '目標', `${navR ? navR + '　' : ''}<b>完了</b>`), body);
+  return PHONE_PUSH(NAV(back, '目標', navR), body);
+}
+function goalSwitchSheet(S){
+  const body = `<div class="gcard"><div class="h"><span>今の目標</span></div><div class="line">減量・11月30日までに 70.0 kg</div><p class="d">新しい目標が決まるまで、今の目標が続きます。</p></div><div><p class="group-h">何を目指しますか</p><div class="list">${['減量|体重を減らす', '維持|今の体重を保つ', '増量|体重を増やす'].map(s => { const [a, b] = s.split('|'); return `<div class="cell"><span class="grow">${a}<span class="v2">${b}</span></span><span class="disc">›</span></div>`; }).join('')}</div></div>`;
+  return PHONE_SHEET(NAV('', '目標を切り替える', '<span>キャンセル</span>'), body);
+}
+
+// ── 5. 達成・期限・期限後の維持の知らせ ──
+function goalNotice(S, pk, kind, tm, o = {}){
+  const g = kind === 'after' ? S.prevGoal || S.goal : S.goal, v = pk.notices;
+  let title, body, btn;
+  if (kind === 'achieved') { title = `目標の ${f1(g.t)} kg に届きました`; body = o.lateAch ? `期限の${fmtD(g.dl)}のあと、${fmtD(o.lateAch)}に届きました。次の目標を選ぶまで、今の目標を続けます。` : `期限の${fmtD(g.dl)}より ${daysIncl(g.ach, g.dl) - 1} 日早く届きました。次の目標を選ぶまで、今の目標を続けます。`; btn = '次の目標を選ぶ'; }
+  else if (kind === 'deadline') { const res = o.res ?? g.res; title = o.today ? `今日が期限の${fmtD(g.dl)}です` : `期限の${fmtD(g.dl)}を迎えました`; body = o.today ? `今のところ、開始から ${sg(res - g.st)} kg・目標まであと ${f1(res - g.t)} kg です。今日の体重の記録で変わります。` : `開始から ${sg(res - g.st)} kg・目標まであと ${f1(res - g.t)} kg でした。選ばなければ、12月7日（月）から今の体重を保つ目標で続けます。`; if (o.lateAch) body += `<br>${fmtD(o.lateAch)}に ${f1(g.t)} kg に届きました。`; btn = '次の目標を選ぶ'; }
+  else { title = '今の体重を保つ目標に切り替えました'; body = `${fmtD(g.dl)}の期限のあと次の目標を選ばなかったので、${f1(S.goal.t)} kg を保つ目標で続けています。`; btn = '次の目標を立てる'; }
+  const time = tm ? `<span class="time">${tm}</span>` : '';
+  if (v === 2) return `<div class="ncard tight${o.faded ? ' faded' : ''}" data-h="目標の知らせ"><div class="gh"><b>${title}</b>${time}</div><span class="tbtn b" style="align-self:flex-end;min-height:32px">${btn} ›</span></div>`;
+  const acts = v === 0 ? `<div class="acts"><span class="btn gray">あとで</span><span class="btn filled">${btn}</span></div>` : `<div class="acts"><span class="btn filled">${btn}</span></div>`;
+  return `<div class="ncard${o.faded ? ' faded' : ''}" data-h="目標の知らせ"><div class="gh"><b>${title}</b>${time}</div><p class="nd">${body}</p>${acts}</div>`;
+}
+const lineFor = (pk, kind) => LINE1(pk.notices === 2 ? (kind === 'achieved' ? '目標に届きました' : kind === 'deadline' ? '期限を迎えました' : '今の体重を保つ目標にしました') : (kind === 'after' ? '次の目標を立てる' : '次の目標を選ぶ'), pk.notices === 2 ? '見る' : '›');
+function noticePhone(S, pk, kind, o = {}){
+  const day = o.day, items = `${o.before || ''}<div class="dayh">今日 ${fmtDW(day)}</div>${o.items || ''}`;
+  return PHONE_TL(day, items, {guide: o.guide || 1760, line: o.line});
+}
+
+// ── 6. 日のまとめと体重の画面 ──
+function daySummary(S, pk, o = {}){
+  const g = S.goal, w = S.weeks[S.weeks.length - 1];
+  const guide = S.state === 'none' ? null : w.g[1];
+  const m = guide ? pfcOf(guide, g.t) : null, e = {p: 17, f: 14, c: 40};
+  const food = `<div class="sec"><p class="group-h">食事と栄養</p><div class="list"><div class="food"><div class="rc">${RING(128, 14, guide ? shares(EATEN / guide) : shares())}<div class="ctr"><b>${EATEN}</b><span>kcal</span></div></div><div class="facts">${[['p', 'たんぱく質'], ['f', '脂質'], ['c', '炭水化物']].map(([k, n]) => `<div><span><i class="key ${k}"></i>${k.toUpperCase()} ${n}</span><b>${e[k]}${m ? ` / ${m[k]}` : ''} g</b></div>`).join('')}</div></div></div>${guide ? `<p class="group-f">1日の目安 ${kc(guide)} kcal</p>` : ''}</div>`;
+  const wrows = `<div class="cell"><span class="grow">この日の体重</span><span class="v">${f1(S.wToday)} kg</span></div><div class="cell"><span class="grow">体重の傾向</span><span class="v">1週間で ${sg(w ? w.tr[1] - w.tr[0] : -0.3)} kg</span></div>`;
+  let goalSec = '';
+  const v = pk.dspace, p = curPace(S), r = S.state === 'none' ? null : goalRemain(S);
+  if (S.state === 'none') goalSec = '<div class="cell link">目標を立てる</div>';
+  else {
+    const wkRange = v === 2 ? `${fmtR(w.from, w.to)}` : `${fmtR(addD(S.mon, 0), addD(S.mon, 6))}（途中）`;
+    const stateRows = {
+      achieved: [`${f1(g.t)} kg に届きました`, '次の目標を選ぶ'],
+      deadline: [`期限を迎えました・あと ${f1(g.res - g.t)} kg`, '次の目標を選ぶ'],
+      after: [`${f1(g.t)} kg を保つ・保てています`, '次の目標を立てる'],
+    }[S.state];
+    const sum = g.dl ? `あと ${f1(r.kg)} kg・あと ${r.days} 日` : `${f1(g.t)} kg を保つ`;
+    const pw = p.k === 'ok' ? '間に合うペース' : p.k === 'short' ? `期限に ${f1(p.short)} kg 届かない` : p.k === 'keepIn' ? '保てています' : 'まだ言い切れません';
+    if (v === 0) {
+      goalSec = stateRows ? `<div class="cell"><span class="grow">目標</span><span class="v">${stateRows[0]}</span><span class="disc">›</span></div><div class="cell btnrow"><span class="btn filled">${stateRows[1]}</span></div>`
+        : `<div class="cell"><span class="grow">目標</span><span class="v">${sum}</span><span class="disc">›</span></div><div class="cell"><span class="grow">ペース</span><span class="v">${pw}</span></div>`;
+      goalSec += `</div></div><div class="sec"><div class="list"><div class="cell"><span class="grow">週の振り返り</span><span class="v">${wkRange}</span><span class="disc">›</span></div>`;
+    } else if (v === 1) {
+      goalSec = stateRows ? `<div class="cell"><span class="grow">目標<span class="v2">${stateRows[0]}</span></span><span class="disc">›</span></div><div class="cell link">${stateRows[1]}</div>`
+        : `<div class="cell"><span class="grow">目標<span class="v2">${sum}・${pw}</span></span><span class="disc">›</span></div>`;
+      goalSec += `<div class="cell"><span class="grow">週の振り返り<span class="v2">${wkRange}</span></span><span class="disc">›</span></div>`;
+    } else {
+      const head = g.dl ? `${DIRNAME[g.dir]}・${fmtD(g.dl)}までに ${f1(g.t)} kg` : `維持・${f1(g.t)} kg を保つ`;
+      goalSec = `</div></div><div class="sec"><p class="group-h">目標</p><div class="list"><div class="cell"><span class="grow">${head}</span><span class="disc">›</span></div>${stateRows ? `<div class="cell"><span class="grow">${stateRows[0]}</span></div><div class="cell link">${stateRows[1]}</div>` : `<div class="cell"><span class="grow">${sum}</span></div><div class="cell"><span class="grow">${pw}</span></div>`}</div></div><div class="sec"><p class="group-h">週の振り返り</p><div class="list"><div class="cell"><span class="grow">${wkRange}<span class="v2">${paceLine(w)}</span></span><span class="disc">›</span></div>`;
+    }
+  }
+  // 届いていない体重から出る値（目標の行）を薄く描く案のため
+  if (o.fadeGoal) goalSec = goalSec.replace(/class="cell"(?=><span class="grow">(目標|あと|間に合う|ペース))/g, 'class="cell faded"');
+  const body = `${food}<div class="sec"><div class="list">${wrows}${goalSec}</div></div><div class="list"><div class="cell link">タイムラインでこの日を見る</div></div>`;
+  return PHONE_SHEET(`<div class="nav"><span class="l"></span><span class="t" style="color:var(--ink)"><span style="color:var(--tint);margin-right:14px">‹</span>${fmtDW(S.today)}<span style="color:var(--ink3);margin-left:14px">›</span></span><span class="r"><b>完了</b></span></div>`, body);
+}
+function weightChart(S, pk, o = {}){
+  const g = S.goal, W = 300, H = 130, v = pk.wline, keep = g && g.dir === 'keep';
+  const dots = Array.from({length: 14}, (_, i) => [i * 2, S.trendNow + (13 - i) * (o.slope ?? .055) + (i % 3 === 0 ? .2 : i % 3 === 1 ? -.15 : 0)]);
+  const tr = dots.map((p, i) => [p[0], S.trendNow + (13 - i) * (o.slope ?? .055)]);
+  const vals = [...dots.map(p => p[1])];
+  let lo = Math.min(...vals) - .3, hi = Math.max(...vals) + .3;
+  const target = g && S.state !== 'none' ? g.t : null;
+  const inRange = target != null && target >= lo && target <= hi;
+  if (target != null && v === 0) { lo = Math.min(lo, target - (keep ? .9 : .3)); hi = Math.max(hi, target + (keep ? .9 : .3)); }
+  if (target != null && v === 1 && keep) { lo = Math.min(lo, target - .9); hi = Math.max(hi, target + .9); }
+  const x = d => 26 + d / 27 * (W - 36), y = val => 8 + (hi - val) / (hi - lo) * (H - 28);
+  let tline = '';
+  if (target != null) {
+    const drawn = v === 0 || (v === 1 && (inRange || keep));
+    if (drawn) tline = `${keep && v === 1 ? `<rect x="26" width="${W - 26}" y="${y(target + .7)}" height="${y(target - .7) - y(target + .7)}" fill="var(--ink3)" opacity=".18"/>` : ''}<line x1="26" x2="${W}" y1="${y(target)}" y2="${y(target)}" stroke="var(--ink2)" stroke-width="1.2" stroke-dasharray="3 3"/><text x="${W - 58}" y="${y(target) - 4}">${keep ? '保つ' : '目標'} ${f1(target)}</text>`;
+    else if (v === 1) tline = `<text x="${W - 80}" y="${target < lo ? H - 18 : 12}">${target < lo ? '↓' : '↑'} 目標 ${f1(target)} kg</text>`;
+    else tline = `<text x="${W - 92}" y="12">${keep ? '保つ' : '目標'} ${f1(target)} kg</text>`;
+  }
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    ${[lo + .3, hi - .3].map(val => `<line x1="22" x2="${W}" y1="${y(val)}" y2="${y(val)}" stroke="var(--sep)" stroke-width=".5"/><text x="0" y="${y(val) + 4}">${f1(val)}</text>`).join('')}
+    ${tline}
+    <polyline points="${tr.map(p => `${x(p[0])},${y(p[1])}`).join(' ')}" fill="none" stroke="var(--tint)" stroke-width="2"/>
+    ${dots.map(p => `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="2.5" fill="var(--ink3)"/>`).join('')}
+    <text x="26" y="${H - 2}">4週前</text><text x="${W - 26}" y="${H - 2}">今日</text>
+  </svg>`;
+}
+function weightScreen(S, pk, o = {}){
+  const g = S.goal, v = pk.wpath, p = curPace(S), r = S.state === 'none' ? null : goalRemain(S);
+  const head = `<div><div class="list"><div class="cell"><span class="grow wval">${f1(S.wToday)}<small>kg</small></span><span class="v">7:01</span></div></div><p class="group-f">この日の最初の記録を、この日の体重として使います。</p></div>`;
+  let note = '', path = '';
+  const stateLine = g && {achieved: () => `${f1(g.t)} kg に届きました`, deadline: () => `期限を迎えました・あと ${f1(g.res - g.t)} kg`, after: () => `${f1(g.t)} kg を保つ・保てています`}[S.state]?.();
+  const pw = p.k === 'ok' ? `最近の傾向は ${sg(p.v)} kg／週で、期限に間に合うペースです。` : p.k === 'short' ? `このままだと期限に ${f1(p.short)} kg 届きません。` : p.k === 'keepIn' ? '体重の傾向は保つ幅に入っています。' : '体重の記録が少なく、ペースはまだ言い切れません。';
+  if (S.state === 'none') path = '<div class="list"><div class="cell link">目標を立てる</div></div>';
+  else if (v === 0) {
+    const rows = stateLine ? `<div class="cell"><span class="grow">${DIRNAME[g.dir]}</span><span class="v">${stateLine}</span></div>` : g.dl ? `<div class="cell"><span class="grow">${DIRNAME[g.dir]}</span><span class="v">${f1(g.t)} kg まで あと ${f1(r.kg)} kg</span></div><div class="cell"><span class="grow">期限</span><span class="v">${fmtD(g.dl)} あと ${r.days} 日</span></div>` : `<div class="cell"><span class="grow">維持</span><span class="v">${f1(g.t)} kg を保つ</span></div>`;
+    path = `<div><p class="group-h">目標までの道のり</p><div class="list">${rows}<div class="cell link"><span class="grow">目標</span><span class="disc">›</span></div></div>${stateLine ? '' : `<p class="group-f">${pw}</p>`}</div>`;
+  } else if (v === 1) {
+    const pct = g.dl ? Math.max(0, Math.min(100, (g.st - S.trendNow) / (g.st - g.t) * 100)) : 50;
+    path = `<div><p class="group-h">目標までの道のり</p><div class="list"><div class="cell col"><div style="display:flex;align-items:center;gap:8px"><span class="grow">${stateLine || (g.dl ? `あと ${f1(r.kg)} kg・あと ${r.days} 日` : `${f1(g.t)} kg を保つ`)}</span><span class="disc">›</span></div>${g.dl && !stateLine ? `<div class="bar" style="margin:6px 0 16px"><i style="width:${pct}%"></i><em class="l" style="left:0">${fmtD(g.start)} ${f1(g.st)}</em><em class="r" style="left:100%">${fmtD(g.dl)} ${f1(g.t)}</em></div>` : ''}${stateLine ? '' : `<span style="font-size:var(--t-foot);color:var(--ink2)">${pw}</span>`}</div></div></div>`;
+  } else {
+    note = stateLine ? stateLine + '。' : `点線は目標の ${f1(g.t)} kg${g.dl ? `（${fmtD(g.dl)}まで）` : ''}。${pw}`;
+    path = `<div class="list"><div class="cell link"><span class="grow">目標</span><span class="v">${stateLine ? '' : g.dl ? `あと ${f1(r.kg)} kg` : ''}</span><span class="disc">›</span></div></div>`;
+  }
+  const chart = `<div><p class="group-h">最近4週の傾向</p><div class="list"><div style="padding:16px">${weightChart(S, pk, o)}</div></div>${note ? `<p class="group-f">${note}</p>` : ''}</div>`;
+  const recent = `<div><p class="group-h">最近の記録</p><div class="list">${[0, 1, 2].map(i => `<div class="cell"><span class="grow">${fmtDW(addD(S.today, -i))}</span><span class="v" style="color:var(--tint)">${f1(S.wToday + i * .1)} kg</span></div>`).join('')}</div></div>`;
+  return PHONE_PUSH(NAV(fmtDW(S.today), '体重', '<b>完了</b>'), head + chart + path + recent);
+}
+
+// ── 論点 ──
+const T = [];
+const cur = c => scenario({...C, ...c});
+const condCap = S => `<b>いまの条件:</b> ${condName(S.c)}。`;
+// 図: [いまの条件の図, ...決まった場面の図]。cases: [{c: 条件, cap, f?: 描く関数}]
+const figsBy = (render, cases = []) => pk => {
+  const S0 = cur({});
+  const first = render(S0, pk);
+  return [first ? fig(first, condCap(S0)) : blank(S0.state === 'none' ? '目標がないあいだは出さない' : 'この条件では出ない', condCap(S0)), ...cases.map(k => { const S = scenario({...DEF, ...k.c}); const h = (k.f || render)(S, pk); return h ? fig(h, k.cap) : blank('出さない', k.cap); })];
+};
+const DEF = {state: 'active', week: 'normal', gap: 1, first: false, few: false, net: true};
+
+// 1. タイムライン
+T.push({grp: '1. タイムラインの振り返りのカードと変更の知らせ', id: 'tlcard', label: 'カードの形と高さ', title: '振り返りのカードの形と高さ',
+  q: '1日の目安が切り替わる時点に、タイムラインへ出す振り返りのカードに、何を載せるか。要約だけを載せて押して開くか、ペースと次の週の1日の目安まで載せるか。',
+  fixed: '決まっていること: 1日の目安が切り替わる時点に振り返りのカードを出し、すぐ下に変更の知らせを並べる。見送った週もカードは出し、変更の知らせは出さない。目標がないあいだは出さない（<code>06-layout.md</code>「週の振り返り」）。切り替わるのは、週の区切りのあとに端末の要求が届いてサーバーが見直してから（#31 の追記の「見直す時点」）。なので図では、月曜の朝にアプリを開いた 6:58 にカードと知らせが出る（凍結済みの見本の 0:00 ではない）。帯は新しい週に変わり、今日の丸は新しい1日の目安と比べる。',
+  variants: [
+    {name: '1行の要約（凍結済みの見本の形）', desc: '見出し「週の振り返り」と週の日付、その下にペースの1行。押すと週の振り返りを開く。低く、すぐ下の変更の知らせが主になる。', figs: figsBy(tlMonday, [{c: {}, cap: '<b>ふだんの週。</b>'}, {c: {week: 'skipMeals'}, cap: '<b>見送った週。</b>変更の知らせは出ない（論点「上限・下限・見送り」で見ている案の文が付く）。'}, {c: {state: 'keep'}, cap: '<b>維持の目標。</b>'}])},
+    {name: 'ペースと数値まで載せる', desc: 'ペースを太字の1行にし、体重の傾向、食べた量の平均、次の週の1日の目安の3行を載せる。開かなくても週の様子が分かる。次の週の1日の目安は、すぐ下の変更の知らせと重なる。', figs: figsBy(tlMonday, [{c: {}, cap: '<b>ふだんの週。</b>'}, {c: {week: 'skipMeals'}, cap: '<b>見送った週。</b>'}, {c: {few: true}, cap: '<b>体重の記録が少ない週。</b>傾向の行は記録の日数に変わる。'}])},
+    {name: '7日の丸を載せる', desc: 'その週の1日の丸（その週の1日の目安と比べたもの）を小さく7つ並べ、下にペースの1行。帯で毎日見ていた丸を、週の終わりにまとめて見返す。体重を記録した日は丸の中に点。', figs: figsBy(tlMonday, [{c: {}, cap: '<b>ふだんの週。</b>'}, {c: {week: 'skipMeals'}, cap: '<b>見送った週。</b>記録の無い日は空の丸。'}])},
+    {name: '振り返りと変更の知らせを1枚にする', desc: '1枚のカードの上にペース、線の下に1日の目安の変化と理由。タイムラインに並ぶものが1つ減る。見送った週は、線の下が「そのまま」の1行になる。', flag: '「すぐ下に1日の目安の変更の知らせを並べる」（<code>06-layout.md</code>「週の振り返り」）を、1枚にまとめる形に変える。', figs: figsBy(tlMonday, [{c: {}, cap: '<b>ふだんの週。</b>'}, {c: {week: 'skipMeals'}, cap: '<b>見送った週。</b>'}, {c: {week: 'cap150'}, cap: '<b>変化が ±150 kcal に当たった週。</b>'}])},
+  ]});
+T.push({id: 'change', label: '変更の知らせの文言', title: '1日の目安の変更の知らせの文言と「ひとことの理由」',
+  q: '変更の知らせに、新しい1日の目安と理由をどう書くか。理由は、週ごとに残す主な理由（1日の目安の変化を「推定消費カロリーの変化」と「1日に減らす分の変化」に分けた、大きいほう）から出す。',
+  fixed: '決まっていること: 変更の知らせの理由は、週ごとに残す主な理由から出す（#31 の追記の「週ごとに残すもの」）。週の振り返りから目標へは潜らないが、変更の知らせから目標へは潜れる（凍結済みの見本の「目標 ›」）。文言は事実だけで、責めない（<code>DESIGN.md</code> の Don\'t）。2〜4枚めの図で、主な理由の違う週を並べた。',
+  variants: [
+    {name: '前と後の値と、理由の文（凍結済みの見本の形）', desc: '「1日の目安が変わりました」「1,880 → 1,850 kcal。推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。」と「目標 ›」。', figs: changeFigs},
+    {name: '今週の値を大きく、理由は短く', desc: '見出しを「今週の1日の目安」にし、新しい値を大きく、変わった量と P・F・C を添える。理由は「推定消費カロリーを下げました」のように短く、数値は書かない。', figs: changeFigs},
+    {name: '内訳の2行で示す', desc: '理由を文にせず、「推定消費カロリー 2,190 → 2,140」「1日に減らす分 310 → 290」の2行を並べる。主な理由を選ばず、2つの変化をそのまま見せる（どちらが大きいかは数字で読む）。', figs: changeFigs},
+  ]});
+function changeFigs(pk){
+  return figsBy(tlMonday, [
+    {c: {state: 'achieved'}, cap: '<b>主な理由が「1日に減らす分」の週（目標に届いた次の週）。</b>必要な速さが 0 になり、1日の目安が上がる。±150 kcal に当たっている。'},
+    {c: {state: 'deadline'}, cap: '<b>期限の直前の週。</b>期限までの日が少なく、1日に減らす分が増える（±150 kcal に当たった）。'},
+    {c: {state: 'after'}, cap: '<b>期限後の維持に移った週。</b>維持の知らせも並ぶ（論点「知らせの文言と高さ」の案の形）。'}])(pk);
+}
+T.push({id: 'limits', label: '上限・下限・見送り', title: '上限や下限に当たった週と、見送った週を、カードと知らせでどう伝えるか',
+  q: '見直しで当たった上限・下限（変化の ±150 kcal、必要な速さの上限、下限 1,200 kcal）と、見送った理由（食事の記録が少ない、体重の記録が無い、使い始めて7日未満）は、サーバーに残る。タイムラインでそれを伝えるか、どこで伝えるか。',
+  fixed: '決まっていること: 見送った週は、推定消費カロリーも1日の目安も前の週のままで、振り返りのカードは出し、変更の知らせは出さない（#31 の追記の「見送り」、<code>06-layout.md</code>「週の振り返り」）。週の振り返りの中での伝え方は、論点「次の週の1日の目安」で別に見る。上の「いちばん新しい週」で6つを切り替えられる。',
+  variants: [
+    {name: '当たった決まりと見送った理由を、それぞれ1行で書く', desc: '当たった週は変更の知らせに「1週間に変える量は 150 kcal までにしています。」のような1行を足す。見送った週は振り返りのカードに「次の週も 1,880 kcal のままです。食事の記録が 3 日だったためです。」を足す。', figs: limitFigs},
+    {name: '当たった決まりは書かず、見送った週は「そのまま」だけ', desc: 'タイムラインには結果だけを出す。当たった決まりと見送った理由は、週の振り返りの中で見る。カードと知らせが低いまま。', figs: limitFigs},
+    {name: '見送った週も「1日の目安はそのまま」の知らせを出す', desc: '見送った週は、変更の知らせの場所に「1日の目安はそのままです」の知らせを出し、理由を添える。週ごとに、振り返りのカードと知らせの組がいつも並ぶ。当たった週は案 A と同じく1行を足す。', flag: '「見送った週は、目安の変更の知らせを出さない」（<code>06-layout.md</code>「週の振り返り」）を変える。', figs: limitFigs},
+  ]});
+function limitFigs(pk){
+  return figsBy(tlMonday, [
+    {c: {week: 'cap150'}, cap: '<b>変化が ±150 kcal に当たった週。</b>'},
+    {c: {week: 'floor'}, cap: '<b>下限 1,200 kcal に当たった週。</b>'},
+    {c: {week: 'skipMeals'}, cap: '<b>見送った週（食事の記録が少ない）。</b>'},
+    {c: {week: 'skipWeight'}, cap: '<b>見送った週（体重の記録が無い）。</b>'}])(pk);
+}
+T.push({id: 'multi', label: '何週もまとめて見直したとき', title: 'しばらくアプリを開かなかったあと、何週もまとめて見直したとき',
+  q: '見直しはアラームを使わず、端末の要求が届いたときに、まだ見直していない週を古い順に見直す。3週ぶりに開くと、3週分の見直しが一度に起きる。カードと知らせを週ごとに並べるか、まとめるか。',
+  fixed: '決まっていること: 見直していない週（見送る週も含む）を古い順に見直し、見直した週の値は確定する（#31 の追記の「見直す時点」）。新しい1日の目安は、それぞれの週の月曜から当たる（同じ追記の「週ごとに残すもの」）。図の3週は、古い順に「見直した週」「見送った週（食事の記録が少ない）」「いちばん新しい週（条件の『いちばん新しい週』どおり）」。1枚めの図は、条件の「開いたのは」が「週の区切りのあと、はじめて」なら1週分だけになる。',
+  variants: [
+    {name: '週ごとに並べる', desc: '今日の位置に、古い週から順に、振り返りのカードと変更の知らせの組を3つ並べる。見送った週は知らせが無い。どの週に何があったかを1つずつ見られるが、縦に長くなる。', figs: multiFigs},
+    {name: 'いちばん新しい週だけ出す', desc: 'いちばん新しい週の振り返りのカードと、3週分をまとめた変更の知らせ（いちばん古い週の前 → 今週）を1つずつ出す。カードに「ほかに 2 週を見直しました」と添え、前の週へは週の振り返りの ‹ で遡る。', figs: multiFigs},
+    {name: 'まとめの1枚にする', desc: '「3週分の振り返り」の1枚に、週ごとの行（週の日付、ペースか見送り、1日の目安）を並べ、行を押すとその週の振り返りを開く。変更の知らせは3週分をまとめた1つ。', figs: multiFigs},
+    {name: 'それぞれの週の月曜の位置に差し込む', desc: '振り返りのカードと変更の知らせを、それぞれの週の月曜（0:00）の位置に置く。新しい1日の目安がその月曜から当たることと、タイムラインの並びがそろう。使っていなかった日は記録が無いので、月曜どうしが並んで見える。今日の位置には今週の分だけ。', flag: '「1日の目安が切り替わる時点に出す」の「時点」を、見直した時刻でなく当てる週の月曜と読む。', figs: multiFigs},
+  ]});
+function multiFigs(pk){ return figsBy(tlMonday, [{c: {gap: 3}, cap: '<b>3週ぶりに開いたとき</b>（いちばん新しい週は見直した週）。'}, {c: {gap: 3, week: 'skipMeals'}, cap: '<b>3週ぶりで、いちばん新しい週も見送ったとき。</b>見直したのは、いちばん古い週だけ。'}])(pk); }
+T.push({grp: '3. 電波がない月曜', id: 'offline', label: '電波がない月曜', title: '電波がない月曜に、見直しが届くまで何を見せるか',
+  q: '見直しはサーバーが行うので、月曜にインターネットにつながらないと、新しい1日の目安も振り返りのカードも届かない。届くまで、今日の1日の丸と日のまとめを何と比べるか。振り返りのカードと変更の知らせを、いつ、どこに出すか。',
+  fixed: '決まっていること: 待っている表示は待っているもののその場に出し、電波が無いことや同期を待っていることは文で注記しない。届いていない記録は不透明度 0.55 で描く（<code>DESIGN.md</code>「待っている表示」と Do\'s and Don\'ts、#26 の追記）。その日の1日の目安は、端末がキャッシュの記録で引く（当てる始まりの日が、その日以前で最も遅いもの。#523「決まったあと」）。なので何もしなければ、届くまでは前の週の1日の目安と比べることになる。1枚めは条件どおり、2・3枚めは「つながらない月曜の朝」と「8:15 につながって届いたあと」。',
+  variants: [
+    {name: '前の週の1日の目安のまま。届いたら、届いた時刻の位置に出す', desc: '届くまでは前の週の1日の目安で丸を描き、カードは出さない。8:15 につながると、その時刻の位置（朝食の下）にカードと知らせが出て、今日の丸が新しい1日の目安で描き直る。', figs: offFigs},
+    {name: '前の週の1日の目安のまま。週の区切りの位置に、待つカードを出す', desc: '今日の一番上（週の区切り）に、振り返りのカードの枠を薄く出し、回る印を置く。届くと同じ場所に中身が入り、すぐ下に変更の知らせが出る（時刻は書かない）。待っているものの場所は分かるが、何も起きないままの枠が残ることがある。', figs: offFigs},
+    {name: '届くまで、今日は1日の目安と比べない', desc: '届くまで、今日の丸を P・F・C の割合で一周させ、日のまとめに1日の目安を出さない（目標を立てる前の日と同じ形）。前の週の値で比べて、届いてから丸が変わることがない。届いたら案 A と同じ場所に出る。', flag: '端末の「その日の1日の目安」の引き方（#523「決まったあと」。前の週の目安が当たる）に、月曜は見直しが届くまで比べない、を足す。', figs: offFigs},
+  ]});
+function offFigs(pk){ return figsBy(tlMonday, [{c: {net: false}, cap: '<b>つながらない月曜の朝。</b>体重と朝食は届いていないので薄い。'}, {c: {net: false}, f: (S, pk) => tlMonday(S, pk, {arrived: true}), cap: '<b>8:15 につながって届いたあと。</b>'}])(pk); }
+
+// 2. 週の振り返り
+T.push({grp: '2. 週の振り返り', id: 'wkform', label: '開く形', title: '週の振り返りを開く形',
+  q: '振り返りのカード、日のまとめ、目標の画面から開く週の振り返りを、押して進む画面にするか、シートにするか。日のまとめはシートで、体重の画面は押して進む画面（main）。',
+  fixed: '決まっていること: 並び（週の区切り、ペース、体重、食べた量、P・F・C の平均、日ごと、次の週の1日の目安）、日ごとの行を押すとタイムラインのその日に戻ること、‹ › で週を送ること、週の振り返りから目標へ潜らないこと（<code>06-layout.md</code>「週の振り返り」）。中の並びは、ほかの論点でいま見ている案の形で描く。',
+  variants: [
+    {name: '押して進む画面（凍結済みの見本の形）', desc: 'タイムラインのカードからは「‹ 9月21日（月）」、目標の画面からは「‹ 目標」で戻る。日のまとめから開くときは、シートを閉じてタイムラインの上に押して進む。', figs: wkFigs},
+    {name: 'シート', desc: 'どこから開いても、大きなシートで出し、右上の「完了」で閉じる。日のまとめ（シート）の上に開くときは、日のまとめを閉じてから出す（シートは一度に1つ）。目標の画面（押して進む画面）の上にも重ねて出す。', figs: wkFigs},
+    {name: '日のまとめのシートの中で潜る', desc: '日のまとめから開くときは、シートの中で押して進み、「‹ 9月24日（木）」で日のまとめへ戻る。タイムラインのカードからはシートで開き、目標の画面からは押して進む。開いた場所によって形が変わる。', figs: wkFigs},
+  ]});
+function wkFigs(pk){ return figsBy((S, pk) => weeklyScreen(S, pk), [{c: {}, f: (S, pk) => weeklyScreen(S, pk, {from: 'day'}), cap: '<b>日のまとめから開いたとき。</b>'}, {c: {}, f: (S, pk) => weeklyScreen(S, pk, {from: 'goal'}), cap: '<b>目標の画面から開いたとき。</b>'}])(pk); }
+T.push({id: 'wktop', label: '一番上のペース', title: '週の振り返りの一番上の、ペースの見せ方',
+  q: '一番上に期限に間に合うペースかを置く。凍結済みの見本は「要るペース」（期限に届くのに要る1週間の変化）を添えている。ペースは #32 の追記の「ペース」で判定し、1日の目安の「必要な速さ」は使わない。要るペースを出すか、出すなら何を出すか。',
+  fixed: '決まっていること: ペースは、判定する日（その週の日曜）の体重の傾向と、その 14 日前の傾向から出す実際の速さと、それを期限まで延ばした見込みで判定する。見込みが目標体重に届けば間に合うペース、届かなければ届かない kg（#32 の追記の「ペース」）。維持では、傾向が保つ幅（±0.7 kg）に入っているか。間に合わない週も責めず、事実だけ（<code>DESIGN.md</code> の Don\'t）。',
+  variants: [
+    {name: '実際の速さと、要るペース（凍結済みの見本の形）', desc: '「傾向で1週間に −0.5 kg。期限の11月30日に 70.0 kg へは、1週間に −0.3 kg で届きます。」要るペースは（目標体重 − その日曜の傾向）÷ 残りの週数で、必要な速さ（上限と向きの決まりが掛かる値）とは別に出す。期限の直前の週は、要るペースが大きく出る（3枚め: あと1日で 0.5 kg → 1週間に −3.5 kg）。', figs: wktopFigs},
+    {name: '見込みだけ', desc: '「このままなら、11月30日に 67.8 kg の見込みです（目標 70.0 kg）。」判定に使った見込みをそのまま書き、要るペースは出さない。期限の直前でも数字が跳ねない。', figs: wktopFigs},
+    {name: '見込みを線で見せる', desc: '今の傾向、目標体重、期限の日の見込みを、1本の線の上に置く。どれだけ余裕があるか（足りないか）を長さで見せ、文は短くする。', figs: wktopFigs},
+  ]});
+function wktopFigs(pk){ return figsBy((S, pk) => weeklyScreen(S, pk), [{c: {}, cap: '<b>間に合う週。</b>'}, {c: {state: 'deadline'}, cap: '<b>届かない週（期限の直前の週）。</b>'}, {c: {state: 'keep'}, cap: '<b>維持の目標。</b>'}])(pk); }
+T.push({id: 'wknopace', label: 'ペースが返らない週', title: 'ペースが返らない週と、言い切らない週の、一番上の見せ方',
+  q: 'ペースは、判定する日が期限の日以降か達成した日以降の週には返らない。直近 14 日の体重の記録が4日未満か、目標を立てて 14 日未満の週は、判定せず記録の日数が返る。そのとき一番上に何を置くか。',
+  fixed: '決まっていること: 記録が少ない週は、ペースを言い切らず、記録の日数を示す（<code>06-layout.md</code>「週の振り返り」）。ペースが返らない条件と、言い切らない条件は #32 の追記の「ペース」。凍結済みの見本は 7 日の記録で数えていたが、判定は 14 日の記録で数える（その週に2日でも、前の週に多ければ判定する）。',
+  variants: [
+    {name: '代わりの1行を置く', desc: '言い切らない週は「まだ言い切れません」と理由。達成した週は「目標に届いた週です」と届いた日、期限の週は「期限の週です」と期限の日の結果。一番上の場所はいつも同じ。', figs: nopaceFigs},
+    {name: '一番上を出さない', desc: 'ペースが無い週は、体重のグラフから始める。言い切らない理由は、体重の段の「記録 2 日（7日中）」で読む。言うことが無いときは何も言わない。', figs: nopaceFigs},
+    {name: '週の体重の傾向の変化を一番上に置く', desc: 'ペースの代わりに、その週の体重の傾向（73.4 → 72.9 kg）を大きく置き、理由の文を下に添える。どの週でも一番上に数字がある。', figs: nopaceFigs},
+  ]});
+function nopaceFigs(pk){ return figsBy((S, pk) => weeklyScreen(S, pk), [{c: {few: true}, cap: '<b>記録が少ない週</b>（直近 14 日に3日）。'}, {c: {first: true}, cap: '<b>目標を立てた週</b>（14 日未満）。'}, {c: {state: 'achieved'}, cap: '<b>達成した週。</b>'}, {c: {state: 'after'}, cap: '<b>期限の日を含む週。</b>'}])(pk); }
+T.push({id: 'wk1', label: '1週目の平均', title: '1週目の振り返りの平均が、見直しの平均と違うことを見せるか',
+  q: '目標を立てた週は、立てた日から日曜までを1週目として振り返る。見直しは立てた日より前も含めた月〜日の記録を使うので、振り返りの平均と見直しで使った平均が一致しない。それを見せ方で添えるか。',
+  fixed: '決まっていること: 目標を立てた週は、立てた日から日曜までを1週目とする（<code>06-layout.md</code>「週の振り返り」）。見直しは直前の月〜日（目標を立てた週も、立てた日より前を含めた月〜日）を使う（#31 の追記の「見直し」）。図は条件によらず、木曜（9月17日）に目標を立てた週。',
+  variants: [
+    {name: '添えない', desc: '立てた日から日曜までの4日だけを並べ、平均もその4日で出す。見直しの平均との違いは見せない。', figs: wk1Figs},
+    {name: '食べた量の段に1行添える', desc: '案 A のまま、食べた量の段の下に「1日の目安の見直しには、9月14日〜20日の 7 日の記録を使っています。」と書く。', figs: wk1Figs},
+    {name: '月〜日の7日を並べ、立てる前の日を薄くする', desc: 'グラフと日ごとに月〜日の7日を出し、目標を立てる前の3日を薄くして「目標の前」と書く。平均は立てた日からの分。見直しが何を見たかが日の並びで分かる。', flag: '1週目に立てる前の日も並べる（「立てた日から日曜までを1週目とする」を、並べる日について変える。平均は変えない）。', figs: wk1Figs},
+  ]});
+function wk1Figs(pk){ return [fig(weeklyScreen(scenario({...DEF, first: true}), pk), '<b>木曜に目標を立てた週の振り返り。</b>')]; }
+T.push({id: 'wknext', label: '次の週の1日の目安', title: '週の振り返りの「次の週の1日の目安」で、上限・下限と見送りをどう伝えるか',
+  q: '次の週の1日の目安には、値と変わった量と、ひとことの理由を示す。上限や下限に当たった週と、見送った週を、ここでどう伝えるか（論点「上限・下限・見送り」と同じ問いの、こちらの置き場の分）。',
+  fixed: '決まっていること: 値と変わった量、ひとことの理由を示し、詳しい推移は目標の画面で見る（<code>06-layout.md</code>「週の振り返り」）。週ごとに残すもの（推定消費カロリー、1日の目安、見送った理由、当たった上限と下限、主な理由）は #31 の追記。',
+  variants: [
+    {name: '文で添える', desc: '値と変わった量の下に、理由の文と、当たった決まり（「1週間に変える量は 150 kcal までにしています。」）を続ける。見送った週は「1,880 kcal のままです。食事の記録が 3 日だったためです。」', figs: nextFigs},
+    {name: '小さな印を付ける', desc: '値の横に「変える量の上限」「見送り」のような枠線の小さな印（推定の印と同じ形）を付け、理由は短く書く。', figs: nextFigs},
+    {name: '内訳の行にする', desc: '推定消費カロリー、1日に減らす分、1日の目安を前と後の値で1行ずつ並べ、当たった決まりや見送った理由も1行にする。文を読まなくても、何が動いたかが並びで分かる。', figs: nextFigs},
+  ]});
+function nextFigs(pk){ return figsBy((S, pk) => weeklyScreen(S, pk), [{c: {}, cap: '<b>ふだんの週。</b>'}, {c: {week: 'cap150'}, cap: '<b>±150 kcal に当たった週。</b>'}, {c: {week: 'floor'}, cap: '<b>下限 1,200 kcal に当たった週。</b>'}, {c: {week: 'skipMeals'}, cap: '<b>見送った週。</b>'}])(pk); }
+
+// 4. 目標の画面
+T.push({grp: '4. 目標の画面', id: 'gform', label: '開く形と入口', title: '目標の画面を開く形と、入口（日のまとめ、体重の画面の「目標 ›」）からの出し方',
+  q: '目標の画面を、押して進む画面にするか、シートにするか。日のまとめ（シート）と体重の画面（押して進む画面）から、どう出すか。',
+  fixed: '決まっていること: 並び（今の目標のカード、今の1日の目安、体重の傾向、推定消費カロリーと1日の目安、週の振り返りへの1行、過去の目標）、グラフを3つに分けないこと、目標がないときは開かないこと（<code>06-layout.md</code>「目標」）。中のカードとグラフは、ほかの論点でいま見ている案の形で描く。',
+  variants: [
+    {name: '押して進む画面', desc: '体重の画面からは押して進み、「‹ 体重」で戻る。日のまとめからは、シートを閉じてタイムラインの上に押して進む。凍結済みの見本の形。', figs: gformFigs},
+    {name: 'シート', desc: 'どこから開いても大きなシートで出し、「完了」で閉じる。体重の画面の上にも重ねる。日のまとめからは、日のまとめを閉じてから出す。', figs: gformFigs},
+    {name: '開いた場所の中で潜る', desc: '体重の画面からは押して進む。日のまとめからは、シートの中で押して進み、「‹ 9月24日（木）」で日のまとめに戻る（週の振り返りの論点「開く形」の案 C と同じ形）。', figs: gformFigs},
+  ]});
+function gformFigs(pk){ return figsBy((S, pk) => goalScreen(S, pk, {from: 'weight'}), [{c: {}, f: (S, pk) => goalScreen(S, pk, {from: 'day'}), cap: '<b>日のまとめから開いたとき。</b>'}])(pk); }
+T.push({id: 'gcard', label: '今の目標のカード', title: '今の目標のカードに書く値の順と大きさ',
+  q: '今の目標のカードに、向きと期間、あと何 kg、あと何日、間に合うペースかを示す。どの順で、どれを大きく書くか。「目標を切り替える」をどこに置くか。',
+  fixed: '決まっていること: 向きと期間、あと何 kg、あと何日、間に合うペースかを示す。状態で中身を変え、達成・期限・期限後の維持ではカードのボタンが「目標を切り替える」の代わりになる（<code>06-layout.md</code>「目標」）。大変さは保存しないので出さない（#32 の追記の「目標が持つもの」）。2〜4枚めは状態ごとのカード。',
+  variants: [
+    {name: 'あと何 kg を大きく。右上に「目標を切り替える」（凍結済みの見本の形）', desc: '小さな見出しに向きと期間、右上に「目標を切り替える」の文字のボタン。大きく「70.0 kg まで あと 2.8 kg」、下に「あと 68 日・間に合うペースです」。', figs: gcardFigs},
+    {name: '3つの数を横に並べる。下に灰色のボタン', desc: '見出しに「減量・11月30日までに 70.0 kg」（決まったあとのカードの1行と同じ書き方）。あと何 kg、期限まで何日、ペースを同じ大きさで横に並べる。「目標を切り替える」はカードの下の灰色のボタン。', figs: gcardFigs},
+    {name: '進み具合の線。切り替えはナビゲーションバー', desc: '開始の体重から目標体重までの線に、今の傾向の位置を示す。下に「あと 2.8 kg・あと 68 日」とペース。「切り替える」はナビゲーションバーの右に置く。', flag: '「進行中は右上に『目標を切り替える』を置く」（<code>06-layout.md</code>「目標」）を、カードの外（ナビゲーションバー）に移す。', figs: gcardFigs},
+  ]});
+function gcardFigs(pk){ return figsBy((S, pk) => goalScreen(S, pk), [{c: {state: 'achieved'}, cap: '<b>期限より前に達成。</b>'}, {c: {state: 'deadline'}, cap: '<b>期限が来た。</b>体重の傾向の見出しが「体重の歩み」に変わる。'}, {c: {state: 'after'}, cap: '<b>期限後の維持。</b>前の目標は過去の目標に移る。'}])(pk); }
+T.push({id: 'gswitch', label: '目標を切り替える', title: '「目標を切り替える」を押したときの開き方（開き直すこと）',
+  q: '決まっていること（今の目標のカードをその場で広げる）は、iOS の標準の形（編集はシートで開く）と違う。決まった形と標準の形を比べる。',
+  fixed: '決まっていること: 「目標を切り替える」は今の目標のカードをその場で広げ、目標の設定を始める。選び終えるまで今の目標は続く（<code>06-layout.md</code>「目標」と「目標の設定の流れ」の「開くところ」）。広げた中身は main の立て直す流れ（ページ1の向きから）。タイムラインで広げる理由は、ヘルスケアの許可のシートと重ねないため（<code>06-layout.md</code>「シートにしない理由」）だが、立て直しではヘルスケアの許可を求め直さない（すでに求めてある）。',
+  variants: [
+    {name: 'その場で広げる（決まった形）', desc: '目標の画面の一番上のカードが、その場で目標の設定のカードに変わる。下の1日の目安やグラフは、そのまま下に押し下げられる。閉じると今の目標のカードに戻る。', figs: gswitchFigs},
+    {name: 'シートで開く（iOS の標準の形）', desc: '「目標を切り替える」をカードの下の灰色のボタンにし、押すと目標の設定をシートで開く。今の目標の要約をシートの一番上に置く。立て直しではヘルスケアの許可が出ないので、シートが重なることは無い。', flag: 'その場で広げる決まりを、目標の画面からの立て直しだけシートに変える（タイムラインの知らせは、その場で広げるまま）。', figs: gswitchFigs},
+  ]});
+function gswitchFigs(pk){
+  const S = scenario({...DEF});
+  return [fig(goalScreen(S, pk), '<b>押す前。</b>'), fig(pk.gswitch === 0 ? goalScreen(S, pk, {expanded: true}) : goalSwitchSheet(S), '<b>押したあと。</b>')];
+}
+T.push({id: 'gchart', label: '推定消費カロリーのグラフ', title: '推定消費カロリーと1日の目安のグラフの見せ方',
+  q: '推定消費カロリーの線と1日の目安の階段を1つのグラフに重ねる。目標を立てたばかりで点が1つのとき、見送った週、期限後の維持に移ったあとをどう見せるか。',
+  fixed: '決まっていること: 推定消費カロリーの線と1日の目安の階段の線を1つの kcal のグラフに重ね、2本の間を1日に減らす分（増量では足す分）として示す。グラフは目標の期間に収まる。週を押すとその週の値をグラフの上に出す（<code>06-layout.md</code>「目標」、比較はブランチ <code>prototype/0001-goal-charts</code>）。期限後の維持は新しい目標なので、そのグラフは維持の開始の日から。',
+  variants: [
+    {name: '線と階段だけ（凍結済みの見本の形）', desc: '点が1つのときも、点を1つだけ描く。見送った週は、階段が平らに続くだけで印は付けない。', figs: gchartFigs},
+    {name: '点が少ないあいだは数字で。見送った週に印', desc: '見直しが3回たまるまでは、グラフの代わりに推定消費カロリー・1日の目安・差の3行を出す。見送った週は、階段の下に「見送り」と点線を付ける。', figs: gchartFigs},
+    {name: '選んだ週の値をいつも添え、維持は前の目標から続けて描く', desc: 'グラフの下に、いちばん新しい週（押した週）の値を1行で添える。期限後の維持では、前の目標の線から続けて描き、維持に移った月曜に縦の線を引く。点が1つになることが無い。', flag: '「グラフは目標の期間に収まる」を、期限後の維持に限って前の目標まで延ばす。', figs: gchartFigs},
+  ]});
+function gchartFigs(pk){
+  return figsBy((S, pk) => goalScreen(S, pk), [
+    {c: {}, f: (S, pk) => { const h = `<div class="phone" style="min-height:0;padding:16px"><div class="card"><p class="ch">推定消費カロリーと1日の目安</p>${estChart(S, pk, {one: true})}</div></div>`; return h; }, cap: '<b>目標を立てたばかり（点が1つ）。</b>グラフの段だけを描いた。'},
+    {c: {}, cap: '<b>見送った週がある（9月7日の週。使い始めて7日未満）。</b>'},
+    {c: {state: 'after'}, cap: '<b>期限後の維持に移ったあと。</b>'}])(pk);
+}
+T.push({id: 'gpre', label: '使い始める前の体重', title: '目標の画面の体重の傾向に、使い始める前の体重記録を出すか',
+  q: 'ヘルスケアから読んだ使い始める前の体重記録は、体重の傾向と推定消費カロリーの初期値に使う。目標の画面の体重の傾向（開始から期限まで）に、それを出すか（#27 の件）。',
+  fixed: '決まっていること: 使い始める前の体重記録はタイムラインには並べない（#27）。体重の画面は、最近4週の傾向に出し、最近の記録の下に「使い始める前（ヘルスケア）」として区切って出す（main）。目標の画面の体重の傾向は、開始から期限まで（<code>06-layout.md</code>「目標」）。',
+  variants: [
+    {name: '出さない（開始の日から）', desc: '目標の期間だけを描く。目標を立てた日が使い始めた日に近い人は、左端から線が始まる。', figs: gpreFigs},
+    {name: '開始の前の4週を薄く足す', desc: '開始の日の左に4週を足し、使い始める前の記録を薄い点で描く。縦の線で開始の日を区切る。目標を立てる前からの流れが見える。', flag: '「体重の傾向（開始から期限まで）」の左端を、開始の4週前まで延ばす。', figs: gpreFigs},
+  ]});
+function gpreFigs(pk){ return figsBy((S, pk) => goalScreen(S, pk))(pk); }
+
+// 5. 達成・期限・期限後の維持
+T.push({grp: '5. 達成・期限・期限後の維持', id: 'notices', label: '知らせの文言と高さ', title: '知らせ「次の目標を選ぶ」「次の目標を立てる」の文言と高さ、「あとで」を置くか',
+  q: '達成したとき、期限が来たとき、期限後の維持に移ったときに、タイムラインに出す知らせをどう書き、どれだけの高さにするか。目標を立てる知らせから「あとで」をなくした（main のコミット 9b2c5ad）のにそろえ、この2つの知らせにも「あとで」を置かないか。答えていないまま上へ流れたときの、帯の下の1行の文言。',
+  fixed: '決まっていること: 状態ごとに、タイムラインに何を出し、どこから流れを開くか（<code>05-navigation.md</code>「目標の状態と入口」）。開いた流れは main の立て直す流れで、ページ1から始まる。次の目標を選ぶまで今の目標を続ける。目標の知らせは答えを待つ知らせで、答えないまま上へ流れたら帯の下に1行で示す（<code>06-layout.md</code>「答えていない知らせ」）。答えるのは、次の目標が決まったとき（「あとで」を置くなら、それを押したときも）。',
+  variants: [
+    {name: '見出し、文、「あとで」と塗ったボタン（凍結済みの見本の形）', desc: '見出しに結果、文に期限との関係と「選ぶまで今の目標を続けます」、右下に灰色の「あとで」と塗った「次の目標を選ぶ」。「あとで」で帯の下の1行が消える。', figs: noticeFigs},
+    {name: '「あとで」を置かない（目標を立てる知らせにそろえる）', desc: '案 A から「あとで」を外し、塗ったボタン1つを右下に置く。答えないままにしておくことが「あとで」になり、帯の下の1行は次の目標が決まるまで出る。', figs: noticeFigs},
+    {name: '見出しと文字のボタンだけの低いカード', desc: '文を外し、見出し（結果）と、右下の文字のボタン「次の目標を選ぶ ›」だけにする。詳しいこと（期限との関係、続けること）は、押すと開く流れの1ページ目と目標の画面で読む。帯の下の1行は「目標に届きました　見る」。', figs: noticeFigs},
+  ]});
+function noticeFigs(pk){
+  const Sa = scenario({...DEF, state: 'achieved'}), Sd = scenario({...DEF, state: 'deadline'}), Sf = scenario({...DEF, state: 'after'});
+  const pre = `<div class="dayh">昨日 ${fmtDW(addD(D(2026, 11, 8), -1))}</div>${MEAL('19:10', '鍋', 620, false, true)}`;
+  return [
+    fig(noticePhone(Sa, pk, 'achieved', {day: D(2026, 11, 8), before: pre, items: WROW('7:05', 69.8) + goalNotice(Sa, pk, 'achieved', '7:05')}), '<b>期限より前に達成した朝（11月8日）。</b>'),
+    fig(noticePhone(Sd, pk, 'deadline', {day: D(2026, 12, 1), before: `<div class="dayh">昨日 11月30日（月）</div>${MEAL('19:10', '鍋', 620, false, true)}`, items: goalNotice(Sd, pk, 'deadline', '6:58') + WROW('7:01', 70.3)}), '<b>期限が来た（期限の翌日の朝。いつ出すかは論点「期限のあと」）。</b>'),
+    fig(noticePhone(Sf, pk, 'after', {day: D(2026, 12, 7), items: goalNotice(Sf, pk, 'after', '6:58') + WROW('7:01', 70.6) + MEAL('7:40', 'トースト・ゆで卵', EATEN), guide: 1760}), '<b>期限後の維持に移った月曜。</b>同じ時刻に振り返りのカードと変更の知らせも出る（ここでは目標の知らせだけを描いた）。'),
+    fig(noticePhone(Sa, pk, 'achieved', {day: D(2026, 11, 10), line: lineFor(pk, 'achieved'), items: WROW('7:02', 69.8) + MEAL('7:40', 'トースト・ゆで卵', EATEN) + MEAL('12:20', '親子丼', 690)}), '<b>答えないまま上へ流れたとき。</b>帯の下の1行。'),
+  ];
+}
+T.push({id: 'aftdl', label: '期限のあと', title: '「期限が来た」をいつ出すか。期限のあとに達成したときの見せ方',
+  q: '期限の日の結果は、期限の日のうちは体重記録が届くたびに出し直し、日が終わってから最初の要求で確定する。「期限が来た」のカードと知らせを期限の日のうちに出すか翌日に出すか。期限のあと、期限後の維持に移るまで（週の区切りの月曜が期限の日より後である最初の見直しまで）に、体重の傾向が目標体重に届くと「達成」になる。そのときどう見せるか。',
+  fixed: '決まっていること: 期限の日の結果は、開始の日からの変化と目標体重との差。期限の日のあとに達成しても変えない。達成した日は、期限の日のあとも期限後の維持に移るまでは付く（#32 の追記の「期限の日の結果」「達成」）。期限の日は 11月30日（月）、期限後の維持に移るのは 12月7日（月）。図は条件によらない。',
+  variants: [
+    {name: '翌日に出す。あとで届いたら別の知らせ', desc: '期限の日が終わってから最初に開いたとき（12月1日）に、確定した結果で「期限を迎えました」を出す。そのあと 12月3日に届いたら、「目標に届きました」の知らせを別に出す。', figs: aftFigs},
+    {name: '期限の日の朝に出し、日が終わるまで値を出し直す。届いたらカードに1行足す', desc: '期限の日の朝に「今日が期限の11月30日です」を出し、体重を記録するたびに「今のところ」の値が変わる。翌日、確定した文に変わる。あとで届いたら、同じカードに「12月3日に 70.0 kg に届きました」を足し、新しい知らせは出さない。', figs: aftFigs},
+    {name: '翌日に出す。あとで届いても、タイムラインには出さない', desc: '「期限を迎えました」は案 A と同じ。期限のあとに届いたことは、目標の画面のカードと日のまとめにだけ書く。期限を迎えた知らせに答えていなければ、それで足りる。', figs: aftFigs},
+  ]});
+function aftFigs(pk){
+  const S = scenario({...DEF, state: 'deadline'}), v = pk.aftdl;
+  const y = `<div class="dayh">昨日 11月29日（日）</div>${MEAL('19:10', '鍋', 620, false, true)}`;
+  const f1x = v === 1 ? noticePhone(S, pk, 'deadline', {day: D(2026, 11, 30), before: y, items: goalNotice(S, pk, 'deadline', '6:58', {today: true, res: 70.5}) + WROW('7:01', 70.3)}) : noticePhone(S, pk, 'deadline', {day: D(2026, 11, 30), before: y, items: WROW('7:01', 70.3) + MEAL('7:40', 'トースト・ゆで卵', EATEN)});
+  const f2 = noticePhone(S, pk, 'deadline', {day: D(2026, 12, 1), before: `<div class="dayh">昨日 11月30日（月）</div>${v === 1 ? '' : ''}${MEAL('19:10', '鍋', 620, false, true)}`, items: goalNotice(S, pk, 'deadline', v === 1 ? '6:58' : '6:58') + WROW('7:01', 70.2)});
+  const late = D(2026, 12, 3);
+  const f3 = v === 0 ? noticePhone(S, pk, 'achieved', {day: late, before: `<div class="dayh">12月1日（火）</div>${goalNotice(S, pk, 'deadline', '6:58')}`, items: WROW('7:02', 69.8) + goalNotice({...S, goal: {...S.goal}}, pk, 'achieved', '7:02', {lateAch: late})})
+    : v === 1 ? noticePhone(S, pk, 'deadline', {day: late, before: '<div class="dayh">12月1日（火）</div>', items: goalNotice(S, pk, 'deadline', '6:58', {lateAch: late}) + `<div class="dayh">今日 ${fmtDW(late)}</div>` + WROW('7:02', 69.8)})
+    : noticePhone(S, pk, 'deadline', {day: late, before: `<div class="dayh">12月1日（火）</div>${goalNotice(S, pk, 'deadline', '6:58')}`, items: WROW('7:02', 69.8)});
+  return [fig(f1x, `<b>期限の日（11月30日）の朝。</b>${v === 1 ? '今のところの値で出す。' : 'まだ出さない。'}`), fig(f2, '<b>翌日（12月1日）の朝。</b>結果が確定している。'), fig(f3, `<b>期限のあと、12月3日に体重の傾向が 70.0 kg に届いた。</b>${v === 2 ? '目標の画面のカードと日のまとめにだけ書く。' : ''}`)];
+}
+T.push({id: 'offgoal', label: '電波がないときに届いた', title: '電波がないときに記録した体重で目標に届いたとき',
+  q: '体重の傾向も達成の判定もサーバーが行うので、電波がないときに記録した体重で目標に届いても、同期するまで「目標に届いた」の知らせは出ない（#25 の件）。そのあいだと、同期したあとをどう見せるか。',
+  fixed: '決まっていること: 電波がないあいだに受け付けた記録に、電波がないことや同期を待っていることを文で注記しない。届いていない記録は薄く描く（<code>DESIGN.md</code> の Don\'t と「待っている表示」）。達成した日は、体重記録が届いて体重の傾向を出し直したときに判定する（#32 の追記の「達成」）。図は、11月8日 7:05 につながらないまま 69.8 kg を記録し、12:30 につながったとき。',
+  variants: [
+    {name: '同期した時刻の位置に出す', desc: 'つながらないあいだは、体重の行が薄いだけ。12:30 につながると、その時刻の位置（昼食の下）に「目標に届きました」が出る。知らせの時刻と体重の時刻は離れる。', figs: offgoalFigs},
+    {name: '体重を記録した時刻の位置に差し込む', desc: '知らせの時刻を、届かせた体重の時刻（7:05）にし、体重の行のすぐ下に差し込む。画面より上に差し込まれるので、帯の下の1行で知らせる。', figs: offgoalFigs},
+    {name: '案 A に加え、日のまとめの目標の行も薄く描く', desc: 'つながらないあいだ、日のまとめの「あと 0.2 kg」の行も、届いていない体重から出る値として薄く描く。届くと濃くなり、「目標に届きました」に変わる。', flag: '「待っている表示」の、まだ届いていない記録を薄く描く決まりを、その記録から出る値にも広げる。', figs: offgoalFigs},
+  ]});
+function offgoalFigs(pk){
+  const S = scenario({...DEF, state: 'achieved'}), v = pk.offgoal, day = D(2026, 11, 8);
+  S.today = day; S.trendNow = 70.2;
+  const pre = `<div class="dayh">昨日 11月7日（土）</div>${MEAL('19:10', '鍋', 620, false, true)}`;
+  const offPh = noticePhone(S, pk, 'achieved', {day, before: pre, items: WROW('7:05', 69.8, true) + MEAL('7:40', 'トースト・ゆで卵', EATEN, true) + MEAL('12:10', '親子丼', 690, true)});
+  const S2 = {...S, trendNow: 70.2};
+  const ds = daySummaryAch(S2, pk, v === 2);
+  const onPh = v === 1 ? noticePhone(S, pk, 'achieved', {day, before: pre, line: lineFor(pk, 'achieved'), items: WROW('7:05', 69.8) + goalNotice(S, pk, 'achieved', '7:05') + MEAL('7:40', 'トースト・ゆで卵', EATEN) + MEAL('12:10', '親子丼', 690)})
+    : noticePhone(S, pk, 'achieved', {day, before: pre, items: WROW('7:05', 69.8) + MEAL('7:40', 'トースト・ゆで卵', EATEN) + MEAL('12:10', '親子丼', 690) + goalNotice(S, pk, 'achieved', '12:30')});
+  return [fig(offPh, '<b>つながらないあいだ（12:15）。</b>記録は薄い。'), fig(ds, '<b>そのあいだの日のまとめ。</b>体重の傾向は前の値のまま、あと 0.2 kg。'), fig(onPh, '<b>12:30 につながったあと。</b>')];
+}
+function daySummaryAch(S, pk, fade){
+  const SS = scenario({...DEF}); SS.today = S.today; SS.wToday = 69.8; SS.trendNow = 70.2; SS.goal = {...S.goal};
+  return daySummary(SS, pk, {fadeGoal: fade});
+}
+
+// 6. 日のまとめと体重の画面
+T.push({grp: '6. 日のまとめと体重の画面', id: 'dspace', label: '日のまとめの目標と振り返り', title: '日のまとめに足す「間に合うペースか」と週の振り返りの置き場、目標の画面への入口',
+  q: '日のまとめの「進行中」の1行（あと何 kg・あと何日）に、間に合うペースかを足す。週の振り返りと、目標の画面への入口をどこに置くか。どの週の振り返りを指すか（今週はまだ途中）。',
+  fixed: '決まっていること: 日のまとめは、食事と栄養、体重と目標（その日の体重、体重の傾向、目標の要約）、週の振り返り、「タイムラインでこの日を見る」の並び（<code>06-layout.md</code>「タイムラインの並べ方と、1日の丸」）。進行中の1行は main のとおり「あと 2.8 kg・あと 68 日」で、間に合うペースかを足すのはこの仕様。状態ごとに、日のまとめに何を出し、どこへ開くか（<code>05-navigation.md</code>「目標の状態と入口」）。目標がないときは「目標を立てる」（main）。',
+  variants: [
+    {name: '目標の行とペースの行を分け、週の振り返りは別のまとまりに', desc: '「目標　あと 2.8 kg・あと 68 日 ›」「ペース　間に合うペース」の2行。目標の行を押すと目標の画面。週の振り返りは下のまとまりに1行で、見ている日を含む週（今週は「途中」）。', figs: dsFigs},
+    {name: '目標を1行にまとめ、週の振り返りを同じまとまりに', desc: '「目標」の下に「あと 2.8 kg・あと 68 日・間に合うペース」を小さく書いた1行（押すと目標の画面）と、「週の振り返り」の1行を、体重と同じまとまりに並べる。', figs: dsFigs},
+    {name: '「目標」と「週の振り返り」の見出しを立てる', desc: '見出し「目標」のまとまりに、目標の1行（押すと目標の画面）、あと何 kg・何日、ペースを1行ずつ。見出し「週の振り返り」に、いちばん新しい振り返り（先週）の1行とペース。', figs: dsFigs},
+  ]});
+function dsFigs(pk){ return figsBy((S, pk) => daySummary(S, pk), [{c: {state: 'achieved'}, cap: '<b>期限より前に達成。</b>'}, {c: {state: 'deadline'}, cap: '<b>期限が来た。</b>'}, {c: {state: 'after'}, cap: '<b>期限後の維持。</b>'}])(pk); }
+T.push({id: 'wpath', label: '体重の画面の道のり', title: '体重の画面の、目標までの道のりの形',
+  q: '体重の画面の傾向のグラフの下に、目標までの道のり（あと何 kg、間に合うペースか、「目標 ›」）を置く。どんな形にするか。',
+  fixed: '決まっていること: 並びは、押した日の値、最近4週の傾向（目標体重の点線）、目標までの道のり、最近の記録（<code>06-layout.md</code>「体重の画面」）。目標がないときは「目標を立てる」（main）。状態ごとの出し方は <code>05-navigation.md</code>「目標の状態と入口」。',
+  variants: [
+    {name: '一覧の行（凍結済みの見本の形）', desc: '見出し「目標までの道のり」の下に「減量　70.0 kg まで あと 2.8 kg」「期限　11月30日 あと 68 日」「目標 ›」の3行、注記にペースの文。', figs: wpathFigs},
+    {name: '1行と進み具合の線', desc: '「あと 2.8 kg・あと 68 日 ›」の1行の下に、開始から目標までの線と今の位置、ペースの文を1つのまとまりにする。押すと目標の画面。', figs: wpathFigs},
+    {name: 'グラフの注記に寄せ、行は「目標 ›」だけ', desc: '傾向のグラフの注記に「点線は目標の 70.0 kg（11月30日まで）。」とペースを書き、下には「目標　あと 2.8 kg ›」の1行だけを置く。道のりのまとまりを作らない。', figs: wpathFigs},
+  ]});
+function wpathFigs(pk){ return figsBy((S, pk) => weightScreen(S, pk), [{c: {state: 'achieved'}, cap: '<b>期限より前に達成。</b>'}, {c: {state: 'keep'}, cap: '<b>維持の目標。</b>'}])(pk); }
+T.push({id: 'wline', label: '目標体重の点線', title: '体重の画面の傾向のグラフの、目標体重の点線の引き方',
+  q: '最近4週の傾向のグラフに、目標体重の点線を引く。目標体重が4週の幅に入らないとき（減量を始めたばかりで、目標がずっと下にあるとき）と、維持のときにどう引くか。',
+  fixed: '決まっていること: 目標があれば目標体重の点線を引く（<code>06-layout.md</code>「体重の画面」）。グラフは系列を Primary の1色、目安と目標の道筋は点線（<code>DESIGN.md</code>「グラフ」）。維持では、傾向が目標体重の ±0.7 kg に収まっていれば保てている（#32 の追記の「ペース」）。',
+  variants: [
+    {name: '縦軸を広げて、いつも点線を入れる', desc: '目標体重が入るまで縦軸を広げる。目標が遠いと、4週の変化が平らに見える。', figs: wlineFigs},
+    {name: '入るときだけ点線。入らなければ端に矢印。維持は幅を塗る', desc: '縦軸は4週の記録の幅のまま。入らなければ、点線の代わりにグラフの下端に「↓ 目標 70.0 kg」。維持は、点線のまわりに ±0.7 kg の幅を薄く塗る。', figs: wlineFigs},
+    {name: '点線を引かず、値だけ添える', desc: 'グラフには線を引かず、右上に「目標 70.0 kg」と書く。グラフはいつも4週の記録の幅。', flag: '「目標があれば目標体重の点線」を、点線を引かない形に変える。', figs: wlineFigs},
+  ]});
+function wlineFigs(pk){ return figsBy((S, pk) => weightScreen(S, pk), [{c: {}, cap: '<b>目標が4週の幅に入らない（進行中の減量）。</b>'}, {c: {state: 'achieved'}, f: (S, pk) => weightScreen(S, pk, {slope: .03}), cap: '<b>目標が幅に入る（達成のころ）。</b>'}, {c: {state: 'keep'}, f: (S, pk) => weightScreen(S, pk, {slope: .005}), cap: '<b>維持の目標。</b>'}])(pk); }
+
+// 電波がない月曜（項目3）は、週の振り返り（項目2）のあとに並べる
+{ const off = T.splice(T.findIndex(t => t.id === 'offline'), 1); T.splice(T.findIndex(t => t.id === 'gform'), 0, ...off); }
+
+// ── 描く ──
+const STATE_NAME = {active: '進行中（減量）', keep: '進行中（維持）', achieved: '期限より前に達成', deadline: '期限が来た', after: '期限後の維持', none: '目標がない'};
+const WEEK_NAME = {normal: '見直した', cap150: '±150 kcal に当たった', speed: '必要な速さの上限に当たった', floor: '下限 1,200 kcal に当たった', skipMeals: '見送った（食事の記録が少ない）', skipWeight: '見送った（体重の記録が無い）', skipNew: '見送った（使い始めて7日未満）'};
+const condName = c => [STATE_NAME[c.state], `いちばん新しい週は${WEEK_NAME[c.week]}`, c.gap > 1 ? '3週ぶり' : '', c.first ? '目標を立てた週' : '', c.few ? '体重の記録が少ない' : '', c.net ? '' : 'つながらない'].filter(Boolean).join('・');
+const C = {...DEF};
+const P = {};
+const main = document.getElementById('main');
+main.innerHTML = T.map(t => `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${t.variants.map(v => `<div class="variant" data-v="${v.name}"><div class="vhead"><b>${v.name}</b><span>${v.desc}</span>${v.flag ? `<span class="flag">決まっていることを変える: ${v.flag}</span>` : ''}</div><div class="states"></div></div>`).join('')}</section>`).join('');
+T.forEach(t => { P[t.id] = 0; });
+
+// カードの高さを、図の下に書く
+function noteFit(root){
+  root.querySelectorAll('figure').forEach(f => {
+    const cap = f.querySelector('figcaption'); if (!cap) return;
+    cap.querySelectorAll('.fit').forEach(x => x.remove());
+    const hs = [...f.querySelectorAll('[data-h]')].map(e => `${e.dataset.h} ${e.offsetHeight}`);
+    if (hs.length) cap.insertAdjacentHTML('beforeend', `<span class="fit">高さ: ${[...new Set(hs)].join('、')}（1画面は 780、タイムラインに見える高さはおよそ 520）。</span>`);
+  });
+}
+
+// ── 論点と案の切り替え（試作の道具） ──
+const topics = [...document.querySelectorAll('.topic')];
+const nav = document.getElementById('topics');
+let ti = 0, vi = 0, n = 0;
+topics.forEach((t, i) => {
+  if (T[i].grp) { const g = document.createElement('span'); g.className = 'grp'; g.textContent = T[i].grp; nav.appendChild(g); }
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.i = i;
+  b.textContent = t.dataset.label;
+  b.addEventListener('click', () => show(i, P[t.dataset.topic], true));
+  nav.appendChild(b);
+});
+function variants(){ return [...topics[ti].querySelectorAll('.variant')]; }
+function show(t, v, scroll){
+  ti = (t + topics.length) % topics.length;
+  const vs = variants();
+  vi = (v + vs.length) % vs.length;
+  const id = topics[ti].dataset.topic;
+  P[id] = vi;
+  topics.forEach((x, i) => { x.hidden = i !== ti; });
+  vs.forEach((x, i) => { x.hidden = i !== vi; });
+  nav.querySelectorAll('button').forEach(b => b.setAttribute('aria-current', String(+b.dataset.i === ti)));
+  document.getElementById('lab').innerHTML = `<b>${String.fromCharCode(65 + vi)}</b>${vs[vi].dataset.v}（${vi + 1}/${vs.length}）`;
+  try { history.replaceState(null, '', `#${id}-${vi + 1}`); } catch (e) {}
+  const box = vs[vi].querySelector('.states');
+  box.innerHTML = T[ti].variants[vi].figs({...P}).map(f => `<figure>${f.html}<figcaption>${f.cap}</figcaption></figure>`).join('');
+  noteFit(box);
+  if (scroll) topics[ti].scrollIntoView({block: 'start'});
+}
+document.getElementById('prev').addEventListener('click', () => show(ti, vi - 1));
+document.getElementById('next').addEventListener('click', () => show(ti, vi + 1));
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,select,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') show(ti, vi - 1);
+  if (e.key === 'ArrowRight') show(ti, vi + 1);
+});
+document.getElementById('cond').addEventListener('change', e => {
+  const f = e.currentTarget;
+  Object.assign(C, {state: f.state.value, week: f.week.value, gap: +f.gap.value, first: f.first.value === '1', few: f.few.value === '1', net: f.net.value === '1'});
+  show(ti, vi);
+});
+(() => {
+  const m = location.hash.match(/^#([a-z0-9]+)-(\d+)$/);
+  const t = m ? topics.findIndex(x => x.dataset.topic === m[1]) : -1;
+  show(t < 0 ? 0 : t, m && t >= 0 ? +m[2] - 1 : 0);
+})();
+</script>
+</html>
