@@ -70,11 +70,11 @@ jobs:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       REPORT: ${{ needs.ios-ui-test.outputs.artifact-url || '無い（UI テストの前に止まったので、ログを見る）' }}
       TITLE: main の ios-ui-test が落ちている
-      # 落ちたテストごとの Issue の題は、これにテストの名前をつなげる
-      TEST_TITLE_PREFIX: "main の ios-ui-test が落ちている: "
     steps:
       - id: open-issues
         name: 開いている Issue を探す
+        env:
+          TEST_TITLE_PREFIX: "${{ env.TITLE }}: "
         run: |
           issues="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
             --jq '.[] | select(.pull_request == null and (.title == env.TITLE or (.title | startswith(env.TEST_TITLE_PREFIX)))) | {number, title}' |
@@ -94,13 +94,23 @@ jobs:
         env:
           ISSUES: ${{ steps.open-issues.outputs.issues }}
           FAILURES: ${{ needs.ios-ui-test.outputs.failures }}
+          TEST_TITLE_PREFIX: "${{ env.TITLE }}: "
         run: |
+          comment_on_or_create_issue() {
+            local title="$1" details="$2" number
+            number="$(jq -r --arg title "$title" '.[] | select(.title == $title) | .number' <<< "$ISSUES" | head -n 1)"
+            if [ -n "$number" ]; then
+              comment_on_issue "$number" "$details"
+            else
+              create_issue "$title" "$details"
+            fi
+          }
           comment_on_issue() {
             local number="$1" details="$2" body
             body="$(printf 'また落ちた: %s\n失敗の要約とスクリーンショット: %s\n%s' "$RUN_URL" "$REPORT" "$details")"
             gh api "repos/$GITHUB_REPOSITORY/issues/$number/comments" -f body="$body" > /dev/null
           }
-          open_issue() {
+          create_issue() {
             local title="$1" details="$2" body number
             body="$(printf '%s\n\n- 落ちた回: %s\n- 失敗の要約とスクリーンショット: %s\n%s\n\n%s' \
               'main の ios-ui-test（パッケージのテスト、アプリのビルド、UI テスト）が落ちた。次の PR より先に直す。' \
@@ -110,23 +120,14 @@ jobs:
             # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
             gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
           }
-          comment_on_or_open_issue() {
-            local title="$1" details="$2" number
-            number="$(jq -r --arg title "$title" '.[] | select(.title == $title) | .number' <<< "$ISSUES" | head -n 1)"
-            if [ -n "$number" ]; then
-              comment_on_issue "$number" "$details"
-            else
-              open_issue "$title" "$details"
-            fi
-          }
 
           failures="${FAILURES:-[]}"
           if [ "$(jq length <<< "$failures")" -eq 0 ]; then
-            comment_on_or_open_issue "$TITLE" ""
+            comment_on_or_create_issue "$TITLE" ""
             exit 0
           fi
           jq -c '.[]' <<< "$failures" | while read -r failure; do
             test_name="$(jq -r .test <<< "$failure")"
             details="$(jq -r '"\n```text\n" + (.texts | join("\n")) + "\n```"' <<< "$failure")"
-            comment_on_or_open_issue "$TEST_TITLE_PREFIX$test_name" "$details"
+            comment_on_or_create_issue "$TEST_TITLE_PREFIX$test_name" "$details"
           done
