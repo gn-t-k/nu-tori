@@ -10,24 +10,18 @@ final class GoalSetupSession {
     /// - Parameters:
     ///   - start: その人の状況をキャッシュから決める（`RecordSync.goalSetupStart(today:)`）
     ///   - makeFlow: 状況から流れを作る。要求のクライアントと同期の段取り、ヘルスケアの口は作る側が渡す
-    ///   - answerLater: 知らせの「あとで」。目標を立てる知らせに答える
     init(
         today: @escaping () -> CalendarDay,
         start: @escaping (CalendarDay) async throws -> GoalSetupStart,
-        makeFlow: @escaping (GoalSetupStart) -> GoalSetupFlow,
-        answerLater: @escaping () async -> Void
+        makeFlow: @escaping (GoalSetupStart) -> GoalSetupFlow
     ) {
         self.today = today
         self.start = start
         self.makeFlow = makeFlow
-        self.answerLater = answerLater
     }
 
     /// 開いたことのある流れ。まだ開いていなければ nil。広げているか、「続ける」にするかは流れが持つ
     private(set) var flow: GoalSetupFlow?
-
-    /// 知らせの「あとで」。帯の下の1行が消え、カードは残る
-    let answerLater: () async -> Void
 
     /// カードを広げる。途中まで進めていれば同じページから。決めたあとに開くときは、新しく始める
     func open(from entry: GoalSetupObservation.Entry) async {

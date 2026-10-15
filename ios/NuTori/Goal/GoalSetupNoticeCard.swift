@@ -2,7 +2,7 @@ import NuToriCore
 import SwiftUI
 
 /// タイムラインの目標を立てる知らせのカード。広げる前、広げた目標の設定の流れ、決まったあとの3つの形をとる。
-/// 「あとで」のあとも、目標が決まったあとも、タイムラインに残る
+/// 目標が決まったあとも、タイムラインに残る
 struct GoalSetupNoticeCard: View {
     let notice: Notice
     /// 今の目標。決まっていれば、決めた目標を示す形にする
@@ -10,8 +10,6 @@ struct GoalSetupNoticeCard: View {
     /// 目標が決まっていないときの、目標の設定の流れの形
     let flow: Flow
     let timeZone: () -> TimeZone
-    /// 知らせの「あとで」
-    let answerLater: () -> Void
     /// 「目標を立てる」「続ける」。開くところを添えて、カードを広げる
     let open: (GoalSetupObservation.Entry) -> Void
 
@@ -87,17 +85,13 @@ struct GoalSetupNoticeCard: View {
             Text("目標を立てると、1日に食べる量の目安が出ます。")
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
-            // DESIGN.md のボタン: 主な操作は塗ったボタン、並べる副の操作（あとで）は灰色のボタン。大きな文字では縦に並べる
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) {
-                    Spacer(minLength: 0)
-                    buttons
-                }
-                VStack(alignment: .trailing, spacing: 12) {
-                    buttons
-                }
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            // 答えないままにしておくことが「あとで」になるので、断るボタンは置かない
+            Button(isPaused ? "続ける" : "目標を立てる") {
+                open(.noticeCard)
             }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("goal-setup-start")
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -107,20 +101,6 @@ struct GoalSetupNoticeCard: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("goal-setup-notice")
-    }
-
-    /// 「あとで」は答えていないあいだだけ。押すと帯の下の1行が消え、カードは残る
-    @ViewBuilder private var buttons: some View {
-        if notice.response == nil {
-            Button("あとで", action: answerLater)
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("goal-setup-later")
-        }
-        Button(isPaused ? "続ける" : "目標を立てる") {
-            open(.noticeCard)
-        }
-        .buttonStyle(.borderedProminent)
-        .accessibilityIdentifier("goal-setup-start")
     }
 }
 

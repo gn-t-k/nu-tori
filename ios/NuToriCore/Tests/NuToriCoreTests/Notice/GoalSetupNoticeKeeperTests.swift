@@ -171,7 +171,7 @@ struct GoalSetupNoticeKeeperTests {
             keeper = try GoalSetupNoticeKeeperTests.keeper(store: store)
         }
 
-        @Test("「あとで」か目標が決まったときに、今答えた形にしてキャッシュに置くこと")
+        @Test("目標が決まったときに、今答えた形にしてキャッシュに置くこと")
         func respondsNow() async throws {
             let enqueued = await keeper.respondIfUnanswered()
 
@@ -200,7 +200,7 @@ struct GoalSetupNoticeKeeperTests {
             #expect(noticeId == GoalSetupNoticeKeeperTests.noticeId)
         }
 
-        @Test("「あとで」のあとに目標が決まっても、答えを足すのは早いほうの1回だけであること")
+        @Test("目標を立て直して2回目に決まっても、答えを足すのは最初の1回だけであること")
         func respondsOnlyOnce() async {
             await keeper.respondIfUnanswered()
             let enqueuedAgain = await keeper.respondIfUnanswered()

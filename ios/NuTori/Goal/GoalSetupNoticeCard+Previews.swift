@@ -9,7 +9,6 @@
                 currentGoal: sample.currentGoal,
                 flow: sample.flow,
                 timeZone: DeviceClock.live.timeZone,
-                answerLater: {},
                 open: { _ in }
             )
             .padding()
@@ -19,10 +18,8 @@
 
     extension GoalSetupNoticeCard {
         fileprivate enum Sample: CaseIterable {
-            /// 広げる前の、答えていない知らせ。「あとで」と「目標を立てる」
+            /// 広げる前の、答えていない知らせ。「目標を立てる」
             case unanswered
-            /// 「あとで」で答えたあと。「目標を立てる」だけが残る
-            case answeredLater
             /// 途中まで進めて閉じたあと。「続ける」
             case paused
             /// 広げている。中のページごとの形は `GoalSetupFlowCard` のプレビューで見る
@@ -32,21 +29,21 @@
 
             var answered: Bool {
                 switch self {
-                case .unanswered, .expanded: false
-                case .answeredLater, .paused, .decided: true
+                case .unanswered, .paused, .expanded: false
+                case .decided: true
                 }
             }
 
             var currentGoal: CurrentGoal? {
                 switch self {
-                case .unanswered, .answeredLater, .paused, .expanded: nil
+                case .unanswered, .paused, .expanded: nil
                 case .decided: Self.decidedGoal
                 }
             }
 
             var flow: GoalSetupNoticeCard.Flow {
                 switch self {
-                case .unanswered, .answeredLater, .decided: .notStarted
+                case .unanswered, .decided: .notStarted
                 case .paused: .paused
                 case .expanded:
                     .expanded(

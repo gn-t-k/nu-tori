@@ -21,7 +21,7 @@ public struct Timeline: Sendable {
                 return (targetDay, notice)
             },
             by: \.day)
-        // 目標を立てる知らせは、答えたあとも（「あとで」、目標が決まった）カードを残す。
+        // 目標を立てる知らせは、答えたあとも（目標が決まった）カードを残す。
         // 出したときのタイムゾーンの日に置き、使い始めた日より前なら使い始めた日に置く
         let goalSetupNotice = input.notices.first { $0.kind == .goalSetup }
         let goalSetupNoticeDay = goalSetupNotice.map {
@@ -251,6 +251,17 @@ public struct Timeline: Sendable {
                 .me
             case .reply: .ai
             case .notice, .goalSetupNotice: .app
+            }
+        }
+
+        /// 知らせのカードなら、その知らせの ID
+        var noticeId: UUID? {
+            switch self {
+            case .notice(let card): card.notice.id
+            case .goalSetupNotice(let notice): notice.id
+            case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .sentText,
+                .rejectedSentTextLine, .reply:
+                nil
             }
         }
 

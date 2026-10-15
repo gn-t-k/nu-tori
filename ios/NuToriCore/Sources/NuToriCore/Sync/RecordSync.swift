@@ -104,8 +104,8 @@ public actor RecordSync {
         stopped.cancel()
     }
 
-    /// 目標を立てる知らせの「あとで」を押したときと、目標が決まったとき（目標を決める要求の応答を受け取ったとき）。
-    /// 知らせが答えていなければ、答えた形にして、答える書き込みを裏で送る。早いほうの1回だけが答えになる。
+    /// 目標が決まったとき（目標を決める要求の応答を受け取ったとき）。
+    /// 知らせが答えていなければ、答えた形にして、答える書き込みを裏で送る。最初の1回だけが答えになる。
     /// サインインしていなければ何もしない
     public func respondToGoalSetupNotice() async {
         guard await engines.hasSession(), await engines.signedInAccountId() != nil else { return }

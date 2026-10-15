@@ -3,7 +3,7 @@
 public enum UnansweredNoticeLine: Hashable, Sendable {
     /// 今日の答えていない体重の知らせ
     case missedWeightRecord(NoticeCard)
-    /// 答えていない、目標を立てる知らせ（「目標を立てる ›」）。「あとで」か目標が決まると答えた形になり、並ばなくなる
+    /// 答えていない、目標を立てる知らせ（「目標を立てる ›」）。目標が決まると答えた形になり、並ばなくなる
     case goalSetup(Notice)
 
     public var notice: Notice {

@@ -54,7 +54,6 @@ struct TimelineScreenContainer: View {
             conversation: conversation,
             conversationActions: conversationActions,
             goalSetupFlow: GoalSetupNoticeCard.Flow(goalSetup.flow),
-            answerGoalSetupLater: goalSetup.answerLater,
             openGoalSetupFlow: goalSetup.open(from:)
         )
         .task(id: cachedMeals.map(\.mealId)) {

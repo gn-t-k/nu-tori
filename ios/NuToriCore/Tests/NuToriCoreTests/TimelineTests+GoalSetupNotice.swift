@@ -55,7 +55,7 @@ extension TimelineTests {
             }
         }
 
-        @Suite("「あとで」で答えたとき")
+        @Suite("目標が決まって答えたとき")
         struct Answered {
             let notice: Notice
             let timeline: Timeline
