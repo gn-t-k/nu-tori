@@ -27,23 +27,13 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if ! files="$(git diff --name-only "$BASE" "$GITHUB_SHA")"; then
+          if ! files="$(git -c core.quotePath=false diff --name-only "$BASE" "$GITHUB_SHA")"; then
             echo "ios=true" >> "$GITHUB_OUTPUT"
             echo "server=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # 文書（*.md）だけの変更では、確かめるものが無いのでジョブを飛ばす
-          files="$(grep -vE '\.md$' <<< "$files" || true)"
-          for target in ios server; do
-            paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
-            # アプリの API のクライアントは、サーバーの OpenAPI の文書から生成する
-            if [ "$target" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
-            if grep -qE "^($paths)" <<< "$files"; then
-              echo "$target=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "$target=false" >> "$GITHUB_OUTPUT"
-            fi
-          done
+          # どのパスでどの対象を回すかは、手元の引数なしの scripts/check と同じ決まりを使う
+          scripts/check --pick-targets <<< "$files" >> "$GITHUB_OUTPUT"
 
   ios:
     needs: changes
