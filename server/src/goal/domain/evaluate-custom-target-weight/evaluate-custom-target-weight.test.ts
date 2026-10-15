@@ -34,10 +34,18 @@ describe("自分で決める目標体重", () => {
       });
     });
 
-    test("受け付ける目標体重を、0.1kg 単位に四捨五入して返すこと", () => {
-      expect(evaluateCustomTargetWeight({ ...goal, targetWeightKg: 68.06 })).toMatchObject({
-        status: "accepted",
-        targetWeightKg: 68.1,
+    describe("0.1kg より細かい端数のある目標体重を入れたとき", () => {
+      let input: Parameters<typeof evaluateCustomTargetWeight>[0];
+
+      beforeEach(() => {
+        input = { ...goal, targetWeightKg: 68.06 };
+      });
+
+      test("受け付ける目標体重を、0.1kg 単位に四捨五入して返すこと", () => {
+        expect(evaluateCustomTargetWeight(input)).toMatchObject({
+          status: "accepted",
+          targetWeightKg: 68.1,
+        });
       });
     });
 
