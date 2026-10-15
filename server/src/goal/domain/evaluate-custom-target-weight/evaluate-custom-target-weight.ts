@@ -32,8 +32,12 @@ export const evaluateCustomTargetWeight = ({
     } => {
   const { direction, expenditureKcal, startingWeightTrendKg, daysFromStartToDeadline } = goal;
   const targetWeightKg = roundToTenthKg(enteredTargetWeightKg, "round");
-  const { gentlestKg, fastestKg, fastestEndReason, hasAcceptedTargetWeight } =
-    computeTargetWeightLimits(goal);
+  const { gentlestKg, fastestKg, fastestEndReason } = computeTargetWeightLimits(goal);
+  const hasAcceptedTargetWeight = isOnDirectionSide({
+    direction,
+    weightKg: fastestKg,
+    comparedWeightKg: gentlestKg,
+  });
   if (!isOnDirectionSide({ direction, weightKg: targetWeightKg, comparedWeightKg: gentlestKg })) {
     return {
       status: "rejected",
