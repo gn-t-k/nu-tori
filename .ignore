@@ -1,2 +1,2 @@
-# ripgrep と Grep の道具が読む。隠しフォルダまで探すときや .gitignore を読まないときも、Swift のビルド生成物を検索から外す
+# ripgrep と Grep の道具が読む。.gitignore を読まないときも、Swift のビルド生成物を検索から外す
 .build/

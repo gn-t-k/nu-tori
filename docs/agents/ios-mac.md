@@ -3,7 +3,7 @@
 - MobileBuildMCP で、変えたら `test_sim` を回し、関係する画面を開いて `screenshot` で確かめる。`test_sim` が行き先を見つけられずに失敗したら、開発者に `xcodebuild -downloadPlatform iOS`（数 GB）を頼む。computer use は、これらで確かめられないときにだけ使う
 - UI を変えたら、状態ごとのプレビューを RenderPreview（下の「Xcode の道具」）で描いて確かめる。ライトのほか、ダーク（`Color Scheme`）と最大の文字（`Dynamic Type` の `AX 5`）も `previewVariantOverrides` で描く
 - Mac のシェルは zsh で、合うファイルの無いグロブは「no matches found」で止まる。`grep --include='*.swift'` のように、グロブは引用符で囲む
-- `ios` の中を探すときは、`rg` か Grep の道具を使う。どちらも Swift のビルド生成物（`.build/`）を飛ばし、隠しフォルダまで探すときもリポジトリ直下の `.ignore` で飛ばす。`grep -r` は生成物まで読み、120 秒を超えた
+- `ios` の中を探すときは、`rg` か Grep の道具を使う。どちらも `.gitignore` で Swift のビルド生成物（`.build/`）を飛ばし、`.gitignore` を読まないときもリポジトリ直下の `.ignore` で飛ばす。`grep -r` は生成物まで読み、120 秒を超えた
 - 整形の正は、`ios/.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
 
 ## Xcode の道具
