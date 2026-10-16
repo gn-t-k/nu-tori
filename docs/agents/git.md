@@ -40,3 +40,4 @@ Claude Code on the web のセッション（`CLAUDE_CODE_REMOTE=true`）では�
 - ワークフローのやり直しは `gh api -X POST repos/gn-t-k/nu-tori/actions/runs/<id>/rerun`（落ちたジョブだけなら `.../rerun-failed-jobs`）でできる（#394）
 - ほかのツール（Codex、Cursor、Dependabot）が作った PR の CI の失敗は、その PR のブランチで始めたセッションで直す。クラウドのセッションは、作業ブランチにだけ push できるため
 - `mcp__github__*` のツールも使える。Issue、サブ Issue、コメント、PR は扱えるが、依存関係のツールは無いので `gh api` で張る
+- Issue と PR を言葉で探すときは、`mcp__github__search_issues`（PR は `mcp__github__search_pull_requests`）を、検索の条件に `repo:gn-t-k/nu-tori` を付けて呼ぶ。`gh api search/*` は「sessions are bound to their configured repositories」の 403 で通らない（#572）
