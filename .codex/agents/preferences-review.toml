@@ -1,0 +1,6 @@
+# 中身の正本は .claude/agents/preferences-review.md。ここには読む先だけを置く
+name = "preferences-review"
+description = "好みのレビュー（docs/agents/git.md）を1周回す。PR を出す前と PR に push する前に、マージ先のブランチと、push の前なら照らしたコミットを渡して使う。"
+developer_instructions = """
+.claude/agents/preferences-review.md を読み、先頭の --- で囲んだ部分より後ろの本文に従って、好みのレビューを1周回す。
+"""

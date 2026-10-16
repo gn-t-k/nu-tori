@@ -8,6 +8,12 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
+## サブエージェント
+
+決まった頼みで繰り返し立てるサブエージェントは、定義にしてリポジトリに置く。中身の正本は Claude Code の `.claude/agents/<名前>.md` に書き、Codex の `.codex/agents/<名前>.toml` には、その本文を読むよう指す1行だけを置く。Cursor は両方を読む。
+
+- `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「好みのレビュー」）。ファイルを書く道具と `Agent` を持たせず、入れ子のサブエージェントを立てない
+
 ## hook
 
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
