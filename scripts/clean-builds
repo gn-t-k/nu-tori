@@ -9,10 +9,13 @@ derived_data="$HOME/Library/Developer/Xcode/DerivedData"
 mobilebuildmcp_workspaces="$HOME/Library/Developer/MobileBuildMCP/workspaces"
 
 main() {
-    local delete=false
+    local delete=false verb=消せる
     case "${1-}" in
         "") ;;
-        --delete) delete=true ;;
+        --delete)
+            delete=true
+            verb=消した
+            ;;
         *)
             print_usage >&2
             exit 2
@@ -35,18 +38,15 @@ main() {
     done < <(classify_build_places "$root")
 
     local stale_total=0 size
-    if $delete; then
-        echo "== 消した（元の worktree が無いビルドの置き場）"
-    else
-        echo "== 消す（元の worktree が無いビルドの置き場。--delete で消す）"
-    fi
+    echo "== ${verb}もの（元の worktree が無いビルドの置き場）"
     while IFS=$'\t' read -r path origin; do
         [ -n "$path" ] || continue
         size="$(size_kilobytes "$path")"
         stale_total=$((stale_total + size))
         printf '  %8s  %s（元: %s）\n' "$(format_size "$size")" "$path" "$origin"
-        if $delete; then
-            rm -rf "$path"
+        # 1つ消せなくても、残りを消して合計を出す
+        if $delete && ! rm -rf "$path"; then
+            echo "  消せなかった: $path" >&2
         fi
     done <<< "$stale"
 
@@ -58,19 +58,16 @@ main() {
         done <<< "$unknown"
     fi
 
-    echo "== 済んだ worktree（消してよい候補。このスクリプトは消さない）"
-    local finished_total=0 lock
-    while IFS=$'\t' read -r path lock; do
+    # git status は gitignore したファイルを見ないので、手元にだけ置いたデータがあっても並ぶ
+    echo "== 済んだ worktree（消してよい候補。このスクリプトは消さない。gitignore したファイルは見ていない）"
+    local finished_total=0 lock_note
+    while IFS=$'\t' read -r path lock_note; do
         size="$(size_kilobytes "$path")"
         finished_total=$((finished_total + size))
-        printf '  %8s  %s（%s）\n' "$(format_size "$size")" "$path" "$lock"
+        printf '  %8s  %s（%s）\n' "$(format_size "$size")" "$path" "$lock_note"
     done < <(finished_worktrees "$root")
 
-    if $delete; then
-        echo "消した合計: $(format_size "$stale_total")"
-    else
-        echo "消せる合計: $(format_size "$stale_total")"
-    fi
+    echo "${verb}合計: $(format_size "$stale_total")"
     echo "済んだ worktree の合計: $(format_size "$finished_total")"
 }
 
@@ -141,7 +138,10 @@ finished_worktrees() {
             bases="$bases $base"
         fi
     done
-    # 空行が1つの worktree の終わりなので、最後の worktree のために空行を足す
+    if [ -z "$bases" ]; then
+        echo "main も origin/main も無いので、済んだ worktree を探せない" >&2
+        return
+    fi
     while IFS= read -r line; do
         case "$line" in
             "worktree "*) path="${line#worktree }" ;;
@@ -162,6 +162,7 @@ finished_worktrees() {
         esac
     done < <(
         git -C "$root" worktree list --porcelain
+        # 空行が1つの worktree の終わりなので、最後の worktree のために空行を足す
         echo
     )
 }
