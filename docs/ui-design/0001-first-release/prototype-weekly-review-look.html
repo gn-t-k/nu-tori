@@ -6,6 +6,8 @@
 <!--
   PROTOTYPE（捨てる前提）。「週の見直しと目標の経過の見た目を見比べる」（gn-t-k/nu-tori#576）の試作。
   仕様「週の見直しと目標の経過」の申し送りのうち、見た目で決めるもの 6 項目を 21 の論点に分け、論点ごとに 2〜4 の案で並べる。
+  21 のうち、開発者に見てもらうのは4つ（tlcard・change・wktop・gcard）。残りの 17 はエージェントのおすすめの案で決め（REC）、ボタンを「エージェントが決めたもの」にまとめて後ろに下げた（#576 の Q7）。
+  一番上の「おすすめで通して見る」（#tour-1）は、月曜の朝のタイムライン → 週の振り返り → 目標の画面を、いま選んでいる案でひと続きに描く。
   上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #tlcard-2）。
   「条件」で、目標の状態、いちばん新しい週の見直しの結果、何週ぶりに開いたか、目標を立てた週か、体重の記録の数、インターネットを切り替える。
   どの論点も、1枚めの図は「いまの条件」で描き、2枚め以降は条件によらない決まった場面を描く。
@@ -58,6 +60,12 @@ code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
 .topics button{font-size:13px;padding:6px 12px;border-radius:999px;background:var(--surface);color:var(--page-ink);box-shadow:0 0 0 .5px var(--frame)}
 .topics button[aria-current="true"]{background:var(--tint);color:var(--on-tint);box-shadow:none}
 .topics .grp{width:100%;font-size:12px;color:var(--page-muted);margin:4px 0 -2px}
+.topics .tour{font-weight:600}
+.topics .more{background:none;box-shadow:none;color:var(--tint);padding:6px 4px}
+.topics .rest{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.topics .rest[hidden]{display:none}
+.topic > .rec{margin:0 0 16px;max-width:820px;font-size:13px;border-left:3px solid var(--f);padding-left:8px}
+.vhead .recb{display:inline-block;margin-left:8px;font-size:11px;font-weight:600;color:var(--f);border:1px solid currentColor;border-radius:4px;padding:0 4px;vertical-align:2px}
 .topic{max-width:1280px;margin:0 auto}
 .topic > h2{font-size:17px;margin:0 0 4px;text-wrap:balance}
 .topic > .q{margin:0 0 4px;max-width:820px}
@@ -245,6 +253,7 @@ figcaption b{color:var(--page-ink)}
 
 <header class="intro">
   <h1>週の見直しと目標の経過の見た目を見比べる</h1>
+  <p><b>見る順:</b> まず「おすすめで通して見る」を1回見る。次に「見てほしい4つ」を1つずつ、下のバーで案を切り替えて選ぶ。ほかの 17 の論点は、エージェントがおすすめの案で決めた（「エージェントが決めたもの」を開けば、今までどおり案を見比べられる。おすすめの案には「おすすめ」と付けた）。</p>
   <p>仕様「週の見直しと目標の経過」の前に、見た目で決めるものを並べた試作（捨てる前提。gn-t-k/nu-tori#576）。上の論点を選び、下のバーの ‹ › か矢印キーで案を切り替える。<code>#&lt;論点&gt;-&lt;案の番号&gt;</code>（例: <code>#tlcard-2</code>）で開ける。今のアプリ（main のコミット 21ce33e の <code>TimelineScreen.swift</code>、<code>GoalSetupNoticeCard.swift</code>・<code>GoalDecidedCard.swift</code>、<code>DaySummarySheet.swift</code>、<code>WeightScreen.swift</code>）の上に、振り返りのカード、1日の目安の変更の知らせ、週の振り返り、目標の画面、達成と期限の知らせを足して描いた。</p>
   <p>例は凍結済みの見本と同じ人（減量、9月1日〜11月30日、74.0 → 70.0 kg）。値はすべて作ったもので、計算の細かいところ（見直しの式）は合わせていない。写真は色の四角で仮置きにした。決まっていることは論点ごとに灰色の段落に書き、どの案も守る。決まっていることを変える案には、案の説明に紫の線で印を付けた。どの論点も、<b>1枚めの図は上の「条件」どおり</b>に描き、2枚め以降は条件によらない決まった場面を描く。ある論点で見ている案は、ほかの論点の図にもそのまま使う（たとえば、タイムラインのどの図にも、いま見ているカードの形と知らせの文言が出る）。電話は全体が見えるよう縦に伸ばして描き、図の下にカードの高さを書く。用語は <code>GLOSSARY.md</code> に合わせ、凍結済みの見本の「消費量」は「推定消費カロリー」と書いた。</p>
 </header>
@@ -1142,6 +1151,42 @@ function wlineFigs(pk){ return figsBy((S, pk) => weightScreen(S, pk), [{c: {}, c
 // 電波がない月曜（項目3）は、週の振り返り（項目2）のあとに並べる
 { const off = T.splice(T.findIndex(t => t.id === 'offline'), 1); T.splice(T.findIndex(t => t.id === 'gform'), 0, ...off); }
 
+// ── 開発者に見てもらう4つと、エージェントがおすすめで決めた 17（#576 の Q7） ──
+// 月曜にアプリを開くたびに目に入るものを4つ前に出す。ほかは、今のアプリの形か「目標を立てる」の試作（#506）で選んだ形にそろえて決めた
+const FOCUS = ['tlcard', 'change', 'wktop', 'gcard'];
+// REC: 論点ごとのおすすめの案（0 から数える）と理由。#576 のコメントにも同じものを書いた
+const REC = {
+  limits: [1, 'タイムラインのカードと知らせを低いまま保つ。当たった決まりと見送った理由は、週の振り返りの「次の週の1日の目安」で読める。'],
+  multi: [1, '何週ぶりでも、今日の位置に出るのはカードと知らせの1組だけ。前の週へは週の振り返りの ‹ で遡れる。'],
+  offline: [0, '決まっていること（端末は当てる日が最も遅い1日の目安を引く）を変えずに済み、何も起きない枠も残らない。届いたものは届いた時刻の位置に出て、タイムラインの時刻の並びとそろう。'],
+  wkform: [0, '凍結済みの見本の形。中身を見て戻る画面なので、iOS の標準の押して進む画面にする。体重の画面と目標の画面も押して進む画面。'],
+  wknopace: [0, '一番上の場所がいつも同じで、なぜ言い切らないか・何が起きた週かを一言で読める。'],
+  wk1: [1, '並べる日と平均は決まりのまま。見直しが何を見たかは1行で分かる。'],
+  wknext: [0, '凍結済みの見本の形。タイムラインで書かない当たった決まりと見送った理由（limits の案 B）を、ここで文で読む。'],
+  gform: [0, '凍結済みの見本の形。体重の画面と同じ押して進む画面にそろえる。'],
+  gswitch: [0, '決まった形のまま。目標を立てる流れ（#506）もカードをその場で広げる形で、立て直す流れは main にある。'],
+  gchart: [1, '目標を立てたばかりの点1つのグラフを見せずに済む。見送った週に印があると、階段が平らな理由が分かる。決まっていることは変えない。'],
+  gpre: [0, '決まりのまま（開始から期限まで）。使い始める前の記録は、体重の画面の最近4週と最近の記録で見られる。'],
+  notices: [1, '目標を立てる知らせから「あとで」をなくした（main のコミット 9b2c5ad）のにそろえる。'],
+  aftdl: [2, '期限のあとに届いても、期限を迎えた知らせに答えれば次の目標に移る。同じ「次の目標を選ぶ」の知らせを2つ並べずに済む。'],
+  offgoal: [0, '電波がない月曜（offline の案 A）と同じく、届いた時刻の位置に出す。'],
+  dspace: [1, 'main の「進行中」の1行（あと何 kg・あと何日）に、ペースを足すだけで済む。'],
+  wpath: [0, '凍結済みの見本の形。日のまとめと同じ一覧の行。'],
+  wline: [1, '目標が遠くても、4週の変化が平らにならない。維持は保つ幅が見える。決まっていること（点線を引く）も保つ。'],
+};
+// 論点の項目（1〜6）を覚えておく。並べ替えたあとも、17 の論点のボタンを項目ごとに分けて出すため
+{ let g = ''; T.forEach(t => { if (t.grp) g = t.grp; t.sec = g; }); }
+T.sort((a, b) => (FOCUS.includes(b.id) - FOCUS.includes(a.id)) || (FOCUS.indexOf(a.id) - FOCUS.indexOf(b.id)));
+// おすすめで通して見る。図はいま選んでいる案で描く（17 はおすすめの案から始まる）
+T.unshift({id: 'tour', label: 'おすすめで通して見る', title: 'おすすめで通して見る: 月曜の朝 → 週の振り返り → 目標の画面',
+  q: '17 の論点をおすすめの案で決めたうえで、月曜の朝にアプリを開いてから、振り返りのカードを押し、目標の画面を開くまでを、ひと続きに描いた。見てほしい4つ（振り返りのカード、変更の知らせ、週の振り返りの一番上、今の目標のカード）は、いまそれぞれで選んでいる案で描く（はじめはどれも案 A）。',
+  fixed: '上の「条件」を変えると、3枚とも変わる。17 の論点のどれかで案を変えると、ここにも出る。週の振り返りから目標の画面へは潜らないので、3枚めは体重の画面の「目標 ›」から開いたところ。',
+  variants: [{name: '月曜の朝のひと続き', desc: '1. 月曜の朝、アプリを開いたタイムライン。2. 振り返りのカードを押して開いた週の振り返り。3. 目標の画面。', figs: pk => {
+    const S = cur({});
+    const g = (h, cap) => h ? fig(h, cap) : blank(S.state === 'none' ? '目標がないあいだは出さない' : 'この条件では出ない', cap);
+    return [g(tlMonday(S, pk), `<b>1. 月曜の朝のタイムライン。</b>${condName(S.c)}。`), g(weeklyScreen(S, pk, {from: 'card'}), '<b>2. 振り返りのカードを押したとき。</b>'), g(goalScreen(S, pk, {from: 'weight'}), '<b>3. 目標の画面。</b>')];
+  }}]});
+
 // ── 描く ──
 const STATE_NAME = {active: '進行中（減量）', keep: '進行中（維持）', achieved: '期限より前に達成', deadline: '期限が来た', after: '期限後の維持', none: '目標がない'};
 const WEEK_NAME = {normal: '見直した', cap150: '±150 kcal に当たった', speed: '必要な速さの上限に当たった', floor: '下限 1,200 kcal に当たった', skipMeals: '見送った（食事の記録が少ない）', skipWeight: '見送った（体重の記録が無い）', skipNew: '見送った（使い始めて7日未満）'};
@@ -1149,8 +1194,9 @@ const condName = c => [STATE_NAME[c.state], `いちばん新しい週は${WEEK_N
 const C = {...DEF};
 const P = {};
 const main = document.getElementById('main');
-main.innerHTML = T.map(t => `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${t.variants.map(v => `<div class="variant" data-v="${v.name}"><div class="vhead"><b>${v.name}</b><span>${v.desc}</span>${v.flag ? `<span class="flag">決まっていることを変える: ${v.flag}</span>` : ''}</div><div class="states"></div></div>`).join('')}</section>`).join('');
-T.forEach(t => { P[t.id] = 0; });
+const AB = i => String.fromCharCode(65 + i);
+main.innerHTML = T.map(t => { const r = REC[t.id]; return `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${r ? `<p class="rec"><b>エージェントが決めた: 案 ${AB(r[0])}「${t.variants[r[0]].name}」。</b>${r[1]}</p>` : ''}${t.variants.map((v, i) => `<div class="variant" data-v="${v.name}"><div class="vhead"><b>${v.name}${r && r[0] === i ? '<span class="recb">おすすめ</span>' : ''}</b><span>${v.desc}</span>${v.flag ? `<span class="flag">決まっていることを変える: ${v.flag}</span>` : ''}</div><div class="states"></div></div>`).join('')}</section>`; }).join('');
+T.forEach(t => { P[t.id] = REC[t.id] ? REC[t.id][0] : 0; });
 
 // カードの高さを、図の下に書く
 function noteFit(root){
@@ -1166,13 +1212,23 @@ function noteFit(root){
 const topics = [...document.querySelectorAll('.topic')];
 const nav = document.getElementById('topics');
 let ti = 0, vi = 0, n = 0;
+// 並び: おすすめで通して見る、見てほしい4つ、「エージェントが決めたもの」（開くと 17 の論点のボタン）
+const rest = document.createElement('div'); rest.className = 'rest'; rest.hidden = true;
+const more = document.createElement('button'); more.type = 'button'; more.className = 'more';
+const moreLabel = () => { more.textContent = `エージェントが決めたもの（${Object.keys(REC).length}）${rest.hidden ? ' ▸' : ' ▾'}`; more.setAttribute('aria-expanded', String(!rest.hidden)); };
+more.addEventListener('click', () => { rest.hidden = !rest.hidden; moreLabel(); });
+const grpLabel = (box, text) => { const g = document.createElement('span'); g.className = 'grp'; g.textContent = text; box.appendChild(g); };
+let lastSec = '';
 topics.forEach((t, i) => {
-  if (T[i].grp) { const g = document.createElement('span'); g.className = 'grp'; g.textContent = T[i].grp; nav.appendChild(g); }
-  const b = document.createElement('button');
+  const id = T[i].id, b = document.createElement('button');
   b.type = 'button'; b.dataset.i = i;
   b.textContent = t.dataset.label;
-  b.addEventListener('click', () => show(i, P[t.dataset.topic], true));
-  nav.appendChild(b);
+  b.addEventListener('click', () => show(i, P[id], true));
+  if (id === 'tour') { b.classList.add('tour'); nav.appendChild(b); grpLabel(nav, '見てほしい4つ'); return; }
+  if (FOCUS.includes(id)) { nav.appendChild(b); return; }
+  if (!rest.isConnected) { const g = document.createElement('span'); g.className = 'grp'; g.appendChild(more); nav.appendChild(g); nav.appendChild(rest); moreLabel(); }
+  if (T[i].sec !== lastSec) { lastSec = T[i].sec; grpLabel(rest, lastSec); }
+  rest.appendChild(b);
 });
 function variants(){ return [...topics[ti].querySelectorAll('.variant')]; }
 function show(t, v, scroll){
@@ -1183,8 +1239,9 @@ function show(t, v, scroll){
   P[id] = vi;
   topics.forEach((x, i) => { x.hidden = i !== ti; });
   vs.forEach((x, i) => { x.hidden = i !== vi; });
-  nav.querySelectorAll('button').forEach(b => b.setAttribute('aria-current', String(+b.dataset.i === ti)));
-  document.getElementById('lab').innerHTML = `<b>${String.fromCharCode(65 + vi)}</b>${vs[vi].dataset.v}（${vi + 1}/${vs.length}）`;
+  nav.querySelectorAll('button[data-i]').forEach(b => b.setAttribute('aria-current', String(+b.dataset.i === ti)));
+  if (REC[id] && rest.hidden) { rest.hidden = false; moreLabel(); }
+  document.getElementById('lab').innerHTML = `<b>${AB(vi)}</b>${vs[vi].dataset.v}${REC[id] && REC[id][0] === vi ? '・おすすめ' : ''}（${vi + 1}/${vs.length}）`;
   try { history.replaceState(null, '', `#${id}-${vi + 1}`); } catch (e) {}
   const box = vs[vi].querySelector('.states');
   box.innerHTML = T[ti].variants[vi].figs({...P}).map(f => `<figure>${f.html}<figcaption>${f.cap}</figcaption></figure>`).join('');
