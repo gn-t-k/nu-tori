@@ -3,7 +3,7 @@
 - MobileBuildMCP で、変えたら `test_sim` を回し、関係する画面を開いて `screenshot` で確かめる。`test_sim` が行き先を見つけられずに失敗したら、開発者に `xcodebuild -downloadPlatform iOS`（数 GB）を頼む。computer use は、これらで確かめられないときにだけ使う
 - UI を変えたら、状態ごとのプレビューを RenderPreview（下の「Xcode の道具」）で描いて確かめる。ライトのほか、ダーク（`Color Scheme`）と最大の文字（`Dynamic Type` の `AX 5`）も `previewVariantOverrides` で描く
 - Mac のシェルは zsh で、合うファイルの無いグロブは「no matches found」で止まる。`grep --include='*.swift'` のように、グロブは引用符で囲む
-- `ios` の中を探すときは、`rg` か Grep の道具を使う。どちらもリポジトリ直下の `.ignore` を読み、Swift のビルド生成物（`.build/`）を飛ばす。`grep -r` は生成物まで読み、120 秒を超えた
+- `ios` の中を探すときは、`rg` か Grep の道具を使う。どちらも Swift のビルド生成物（`.build/`）を飛ばし、隠しフォルダまで探すときもリポジトリ直下の `.ignore` で飛ばす。`grep -r` は生成物まで読み、120 秒を超えた
 - 整形の正は、`ios/.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
 
 ## Xcode の道具
@@ -12,9 +12,9 @@ SwiftUI プレビュー（`RenderPreview`）やビルドログ（`GetBuildLog`�
 
 道具の一覧に `xcode_tools_<名前>`（`xcode_tools_RenderPreview` など）があれば、それを呼ぶ。中身をそのまま返す。無ければ `xcode_ide_call_tool` の `remoteTool` に名前を渡す。こちらは中身が `content: []` で返るので、返った `rawResponseJsonPath` のファイルの `response` を読む。
 
-1. `XcodeListWorkspaces` で、作業しているワークツリーの `ios/NuTori.xcodeproj` が開いているか見る。開いていれば、その `workspaceIdentifier` で4へ進む
+1. `XcodeListWorkspaces` で、作業しているワークツリーの `ios/NuTori.xcodeproj` が開いているか見る。開いていれば、その `workspaceIdentifier` で3へ進む
 2. `XcodeOpenWorkspace` に、ワークツリーの `ios/NuTori.xcodeproj` の絶対パスを渡す。返る `workspaceIdentifier` を、以後の道具すべてに渡す。ID は開き直すたびに変わる。Xcode はフォルダごとに承認を求めるので、ワークツリーごとに1回、開発者に Mac で承認してもらう。Remote Control のセッションでは開発者が承認を押せないので、Xcode の道具を使わず `screenshot` で確かめる
-3. 返った `activeRunDestination` が `nu-tori ui-test-base`（UI テストの複製の元）なら、`XcodeSwitchRunDestination` で `iPhone 17` に替える
+3. 行き先（`XcodeOpenWorkspace` が返す `activeRunDestination`、または `XcodeListRunDestinations`）が `nu-tori ui-test-base`（UI テストの複製の元）なら、`XcodeSwitchRunDestination` で `.mobilebuildmcp/config.yaml` の `simulatorName` の端末に替える。開き直すと戻ることがある
 4. `BuildProject` を1回呼ぶ。ビルドが終わるまで返らないので、パッケージの読み込みもこれで待てる。新しいワークツリーで先に `RenderPreview` を呼ぶと、「Waiting for packages to load」で止まる
 5. `RenderPreview` を呼ぶ。`sourceFilePath` は Xcode のプロジェクトの中のパスで、`NuTori/NuTori/Goal/GoalDecidedCard+Previews.swift` のようにプロジェクトの名前から書く。描いた画像は、返った `previewSnapshotPath` を Read で読む
 
@@ -22,11 +22,11 @@ SwiftUI プレビュー（`RenderPreview`）やビルドログ（`GetBuildLog`�
 
 - すでにあるフォルダには、シェルや Write で足してよい。Xcode Service がすぐ拾う
 - 新しいフォルダは、親のフォルダを `XcodeLS` で一度読んでから、`XcodeMakeDir` で作る。中のファイルはシェルや Write で書いてよい。シェルで作ったフォルダは、開き直しても Xcode Service が拾わない。`XcodeWrite` で Xcode の知らないフォルダに書くと、`<フォルダ> 2` という別のフォルダができる
-- 足したファイルを Xcode Service が拾っていないと、`RenderPreview` が「File not found in project structure」や「Active scheme does not build this file」で落ちる。`XcodeListWorkspaces` でほかのワークツリーが開いていないことを確かめてから、`pkill -x 'Xcode Service'` で止め、2から開き直す。ほかのワークツリーが開いていたら、止めるとそのセッションの道具も切れるので、開発者に聞く
+- 足したファイルを Xcode Service が拾っていないと、`RenderPreview` が「File not found in project structure」で落ちる。`XcodeListWorkspaces` でほかのワークツリーが開いていないことを確かめてから、`pkill -x 'Xcode Service'` で止め、2から開き直す。ほかのワークツリーが開いていたら、止めるとそのセッションの道具も切れるので、開発者に聞く
 
 ### `project.pbxproj` が書き換わったら
 
-Xcode は開いたときに、`project.pbxproj` を自分の書き方に直す。Linux で手で書いた形を Xcode 27.1 の形に直した差分は、[#567](https://github.com/gn-t-k/nu-tori/issues/567) の PR で取り込んだ。自分で変えていないのに書き換わったら、差分を読み、`scripts/check ios` が通ることを確かめてから、作業とは別のコミットで取り込む。戻すと、開くたびにまた書き換わる
+Xcode は開いたときに、`project.pbxproj` を自分の書き方に直すことがある。自分で変えていないのに書き換わったら、差分を読み、`scripts/check ios` が通ることを確かめてから、作業とは別のコミットで取り込む。戻すと、開くたびにまた書き換わる
 
 ## UI テストのシミュレータ
 
