@@ -1,6 +1,6 @@
 ---
 name: preferences-review
-description: 好みのレビュー（docs/agents/git.md）を1周回す。PR を出す前と PR に push する前に、マージ先のブランチと、push の前なら照らしたコミットを渡して使う。
+description: 好みのレビュー（docs/agents/git.md）を1周回す。PR を出す前と PR に push する前に、マージ先のブランチと、2周目か push の前なら照らしたコミットを渡して使う。
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 頼む側から受け取るもの:
 
 - マージ先のブランチ
-- PR に push する前なら、PR の本文にある照らしたコミット
+- 2周目か PR に push する前なら、照らしたコミット（前の周の返事の1行目か、PR の本文にあるもの）
 
 頼む側が `git fetch origin <マージ先のブランチ>` を済ませている。手元の `origin/<マージ先のブランチ>` をそのまま使う。
 
@@ -17,8 +17,8 @@ tools: Read, Grep, Glob, Bash
 
 1. `CODING_STANDARDS.md` と、そこから指す文書を、1ファイルずつ読む。まとめて読むと出力が大きすぎてファイルに退避され、それを読み直すことになる。言語ごとの文書は、照らす範囲で変えたファイルの言語のものだけを読む
 2. 照らす範囲の差分を読む。判断に要るだけ、変更したファイルの前後や関係するファイルも読む
-   - 照らしたコミットを受け取らなかったとき（PR を出す前）: `git diff origin/<マージ先のブランチ>...HEAD`
-   - 照らしたコミットを受け取ったとき（PR に push する前）: 照らしたコミットより後に、このブランチで書いた変更だけ。`git log -p --no-merges <照らしたコミット>..HEAD ^origin/<マージ先のブランチ>` と、衝突を解いた merge コミットごとの `git show --remerge-diff <コミット>`
+   - 照らしたコミットを受け取らなかったとき（PR を出す前の1周目）: `git diff origin/<マージ先のブランチ>...HEAD`
+   - 照らしたコミットを受け取ったとき（2周目と、PR に push する前）: 照らしたコミットより後に、このブランチで書いた変更だけ。`git log -p --no-merges <照らしたコミット>..HEAD ^origin/<マージ先のブランチ>` と、衝突を解いた merge コミットごとの `git show --remerge-diff <コミット>`
 3. 照らす範囲で足した行と変えた行のすべてに、`CODING_STANDARDS.md` の「指摘するもの」を当てて挙げる。範囲の外は対象にしない。終わりは、範囲のすべてのファイルを当て終えたとき
 
 ## 返す形

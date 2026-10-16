@@ -12,7 +12,7 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 
 決まった頼みで繰り返し立てるサブエージェントは、定義にしてリポジトリに置く。中身の正本は Claude Code の `.claude/agents/<名前>.md` に書き、Codex の `.codex/agents/<名前>.toml` には、その本文を読むよう指す1行だけを置く。Cursor は両方を読む。
 
-- `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「好みのレビュー」）。ファイルを書く道具と `Agent` を持たせず、入れ子のサブエージェントを立てない
+- `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「好みのレビュー」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
 
 ## hook
 
