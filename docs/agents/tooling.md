@@ -8,6 +8,12 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
+## サブエージェント
+
+決まった頼みで繰り返し立てるサブエージェントは、定義にしてリポジトリに置く。中身の正本は Claude Code の `.claude/agents/<名前>.md` に書き、Codex の `.codex/agents/<名前>.toml` には、その本文を読むよう指す1行だけを置く。Cursor は両方を読む。
+
+- `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「好みのレビュー」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
+
 ## hook
 
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
@@ -93,7 +99,7 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
 - 依存の PR をマージし、落ちた PR の Issue を扱う `dependency-pr.yml` と、Swift Package を上げる `update-swift-packages.yml` は、`GITHUB_TOKEN` でなく、このリポジトリ用の GitHub App のトークン（`actions/create-github-app-token`）で GitHub を操作する。`GITHUB_TOKEN` で出した PR やマージは、ほかのワークフロー（check、deploy、`ios-ui-test.yml`）を起動しないため。App の Client ID は変数 `DEPENDENCY_APP_CLIENT_ID`、秘密鍵は秘密の値 `DEPENDENCY_APP_PRIVATE_KEY` として、main からだけ使える Environment `dependency-updates` に置く。依存の PR の扱い方は `docs/agents/dependencies.md`
 - 開発用の環境で主な流れを確かめるジョブ（`deploy.yml` の `verify-development`）は、開発用の Worker のデプロイのあとに、`server/e2e/verify-development.ts` が本物の API を通す。必須のチェックにせず、落ちたらこのジョブが赤くなるだけで、本番のデプロイは待たない。使う秘密の値 `E2E_SIGN_IN_SECRET` は、開発用の Environment の GitHub Actions の秘密の値と、開発用の Worker の秘密の値（`wrangler secret put E2E_SIGN_IN_SECRET`）に、同じ値を置く。本番の Environment にも本番の Worker にも置かない（守り方は `server/AGENTS.md` の「確かめのジョブのためのサインインの口」）
-- iOS のアプリは、PR ではビルド（UI テストのビルドを含む）までを確かめ、UI テストは main への push と、手で始めたときだけ回す。PR は Mac の結果で merge する（手順は `ios/AGENTS.md` の「確かめる」）。main で落ちたら、ワークフローが Issue を1つ立て、緑に戻ったら閉じる。その Issue は次の PR より先に直す
+- iOS のアプリは、PR ではビルド（UI テストのビルドを含む）までを確かめ、UI テストは main への push と、手で始めたときだけ回す。PR は Mac の結果で merge する（手順は `ios/AGENTS.md` の「確かめる」）。main で落ちたら、ワークフローが落ちたテストごとに Issue を立て（題と本文に、テストの名前と失敗の要約を書く。テストの前に止まった回は、ワークフローの名前の Issue を1つ）、緑に戻ったら閉じる。その Issue は次の PR より先に直す
 
   **Why:** PR の回は merge の判断に使われず、落ちるのも PR のせいでない揺れだった。CI でしか出ない落ち方（競り合い、Mac と CI の Xcode の版のずれ）は、main の回で気づける。手で始める回は、Mac が閉じている日の PR が UI テストの結果無しで merge されないために残す（経緯は [#478](https://github.com/gn-t-k/nu-tori/issues/478) の解決コメント）
 
