@@ -9,7 +9,7 @@
 - `docs/agents/coding-style.md`: 言語に寄らない好み
 - `docs/agents/testing.md`: テストの好み
 - `docs/agents/languages/<言語>.md`: 言語ごとの当てはめ。変えたファイルの言語のものを読む
-- `.agents/skills/writing-for-agents/SKILL.md`: エージェントが読む文書（`AGENTS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`）の書き方。それらを変えたときに読む
+- `.agents/skills/writing-for-agents/SKILL.md`: エージェントが読む文書（`AGENTS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）の書き方。それらを変えたときに読む
 
 ## 指摘するもの
 
