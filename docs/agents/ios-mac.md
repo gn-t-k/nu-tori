@@ -4,6 +4,7 @@
 - SwiftUI プレビュー（`RenderPreview`）とビルドログ（`GetBuildLog`）は、MobileBuildMCP の `xcode_ide_call_tool` で Xcode の道具を呼ぶ。Xcode の画面は開かなくてよい。先に `XcodeOpenWorkspace` で、作業しているワークツリーの `ios/NuTori.xcodeproj` を開く。Xcode はフォルダごとに承認を求めるので、ワークツリーごとに1回、開発者に Mac で承認してもらう。Remote Control のセッションでは開発者が承認を押せないので、Xcode の道具を使わず `screenshot` で確かめる
 - UI を変えたら、状態ごとのプレビューを RenderPreview で描いて確かめる。ライトのほか、ダーク（`Color Scheme`）と最大の文字（`Dynamic Type` の `AX 5`）も `previewVariantOverrides` で描く
 - Mac のシェルは zsh で、合うファイルの無いグロブは「no matches found」で止まる。`grep --include='*.swift'` のように、グロブは引用符で囲む
+- ディスクが溜まったら、`scripts/clean-builds` を回す。引数なしで、元の worktree が無い DerivedData と MobileBuildMCP の置き場、済んだ worktree を並べ、`--delete` で前の2つを消す。済んだ worktree は消さないので、並んだものを見て消すかを決める
 - 整形の正は、`ios/.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
 
 ## UI テストのシミュレータ

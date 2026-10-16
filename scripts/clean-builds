@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+# 元の worktree が無くなったビルドの置き場を消し、済んだ worktree を消してよい候補として並べる
+# worktree は消さない。claude rc のロックがあるものを消してよいかは、開発者が決める
+set -euo pipefail
+
+# Xcode の DerivedData。NuTori-<ハッシュ>/info.plist の WorkspacePath が元のプロジェクトを指す
+derived_data="$HOME/Library/Developer/Xcode/DerivedData"
+# MobileBuildMCP の置き場。<起動した場所の名前>-<起動した場所のパスの sha256 の先頭12桁> で、中に DerivedData/NuTori-<ハッシュ> を持つ
+mobilebuildmcp_workspaces="$HOME/Library/Developer/MobileBuildMCP/workspaces"
+
+main() {
+    local delete=false
+    case "${1-}" in
+        "") ;;
+        --delete) delete=true ;;
+        *)
+            print_usage >&2
+            exit 2
+            ;;
+    esac
+    if [ "$(uname -s)" != Darwin ]; then
+        echo "macOS の外なので、何もしない"
+        return
+    fi
+
+    local root
+    root="$(git -C "$(dirname "$0")/.." worktree list --porcelain | sed -n '1s/^worktree //p')"
+
+    local stale="" unknown="" kind path origin
+    while IFS=$'\t' read -r kind path origin; do
+        case "$kind" in
+            stale) stale="$stale$path"$'\t'"$origin"$'\n' ;;
+            unknown) unknown="$unknown$path"$'\n' ;;
+        esac
+    done < <(classify_build_places "$root")
+
+    local stale_total=0 size
+    if $delete; then
+        echo "== 消した（元の worktree が無いビルドの置き場）"
+    else
+        echo "== 消す（元の worktree が無いビルドの置き場。--delete で消す）"
+    fi
+    while IFS=$'\t' read -r path origin; do
+        [ -n "$path" ] || continue
+        size="$(size_kilobytes "$path")"
+        stale_total=$((stale_total + size))
+        printf '  %8s  %s（元: %s）\n' "$(format_size "$size")" "$path" "$origin"
+        if $delete; then
+            rm -rf "$path"
+        fi
+    done <<< "$stale"
+
+    if [ -n "$unknown" ]; then
+        echo "== 元のパスが読めないので残す"
+        while IFS= read -r path; do
+            [ -n "$path" ] || continue
+            printf '  %8s  %s\n' "$(format_size "$(size_kilobytes "$path")")" "$path"
+        done <<< "$unknown"
+    fi
+
+    echo "== 済んだ worktree（消してよい候補。このスクリプトは消さない）"
+    local finished_total=0 lock
+    while IFS=$'\t' read -r path lock; do
+        size="$(size_kilobytes "$path")"
+        finished_total=$((finished_total + size))
+        printf '  %8s  %s（%s）\n' "$(format_size "$size")" "$path" "$lock"
+    done < <(finished_worktrees "$root")
+
+    if $delete; then
+        echo "消した合計: $(format_size "$stale_total")"
+    else
+        echo "消せる合計: $(format_size "$stale_total")"
+    fi
+    echo "済んだ worktree の合計: $(format_size "$finished_total")"
+}
+
+print_usage() {
+    cat << 'USAGE'
+使い方: scripts/clean-builds [--delete]
+  引数なし: 元の worktree が無いビルドの置き場と、済んだ worktree を、大きさとともに並べる。何も消さない
+  --delete: 元の worktree が無いビルドの置き場を消す。済んだ worktree は並べるだけで消さない
+USAGE
+}
+
+# ビルドの置き場を「stale<タブ>パス<タブ>元のパス」か「unknown<タブ>パス」で並べる。元のパスが今もあるものは出さない
+classify_build_places() {
+    local root="$1" workspace place origin
+    for place in "$derived_data"/NuTori-*; do
+        classify_derived_data "$place"
+    done
+    for workspace in "$mobilebuildmcp_workspaces"/*; do
+        [ -d "$workspace" ] || continue
+        if ! origin="$(mobilebuildmcp_workspace_origin "$root" "$workspace")"; then
+            printf 'unknown\t%s\n' "$workspace"
+        elif [ ! -e "$origin" ]; then
+            printf 'stale\t%s\t%s\n' "$workspace" "$origin"
+            # 中の DerivedData は置き場ごと消える
+            continue
+        fi
+        for place in "$workspace"/DerivedData/NuTori-*; do
+            classify_derived_data "$place"
+        done
+    done
+}
+
+classify_derived_data() {
+    local place="$1" origin
+    [ -d "$place" ] || return 0
+    if ! origin="$(/usr/libexec/PlistBuddy -c 'Print :WorkspacePath' "$place/info.plist" 2> /dev/null)" || [ -z "$origin" ]; then
+        printf 'unknown\t%s\n' "$place"
+    elif [ ! -e "$origin" ]; then
+        printf 'stale\t%s\t%s\n' "$place" "$origin"
+    fi
+}
+
+# 置き場の名前のハッシュは元に戻せないので、名前から元の場所の候補を作り、ハッシュが合うものを元のパスとする
+mobilebuildmcp_workspace_origin() {
+    local root="$1" place="$2"
+    local name="${place##*/}"
+    local hash="${name##*-}" base="${name%-*}"
+    [[ "$hash" =~ ^[0-9a-f]{12}$ ]] || return 1
+    local candidate
+    while IFS= read -r candidate; do
+        if [ "${candidate##*/}" = "$base" ] && [ "$(printf '%s' "$candidate" | shasum -a 256 | cut -c1-12)" = "$hash" ]; then
+            echo "$candidate"
+            return
+        fi
+    done < <(
+        git -C "$root" worktree list --porcelain | sed -n 's/^worktree //p'
+        echo "$root/.claude/worktrees/$base"
+        echo "$(dirname "$root")/$base"
+    )
+    return 1
+}
+
+# 本体のチェックアウトを除く worktree のうち、未コミットの変更も main より先のコミットも無いものを「パス<タブ>ロックの有無」で並べる
+finished_worktrees() {
+    local root="$1" line path="" locked=false reason="" bases="" base
+    for base in main origin/main; do
+        if git -C "$root" rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
+            bases="$bases $base"
+        fi
+    done
+    # 空行が1つの worktree の終わりなので、最後の worktree のために空行を足す
+    while IFS= read -r line; do
+        case "$line" in
+            "worktree "*) path="${line#worktree }" ;;
+            locked) locked=true ;;
+            "locked "*)
+                locked=true
+                reason="${line#locked }"
+                ;;
+            "")
+                # $bases は空白区切りの ref の並びなので、分けて渡す
+                if [ "$path" != "$root" ] && [ -d "$path" ] && is_finished_worktree "$path" $bases; then
+                    printf '%s\t%s\n' "$path" "$(describe_lock "$locked" "$reason")"
+                fi
+                path=""
+                locked=false
+                reason=""
+                ;;
+        esac
+    done < <(
+        git -C "$root" worktree list --porcelain
+        echo
+    )
+}
+
+is_finished_worktree() {
+    local path="$1" changes ahead
+    shift
+    # 中の .git が壊れて git で読めないものは、済んだかが分からないので候補にしない
+    changes="$(git -C "$path" status --porcelain 2> /dev/null)" || return 1
+    ahead="$(git -C "$path" rev-list --count HEAD --not "$@" 2> /dev/null)" || return 1
+    [ -z "$changes" ] && [ "$ahead" -eq 0 ]
+}
+
+# ロックの理由に pid があれば、そのプロセスが今も動いているかを添える
+describe_lock() {
+    local locked="$1" reason="$2" pid
+    if ! $locked; then
+        echo "ロック無し"
+        return
+    fi
+    pid="$(sed -nE 's/.*pid ([0-9]+).*/\1/p' <<< "$reason")"
+    if [ -z "$pid" ]; then
+        echo "ロック有り${reason:+: $reason}"
+    elif ps -p "$pid" > /dev/null; then
+        echo "ロック有り、pid $pid は動いている: $reason"
+    else
+        echo "ロック有り、pid $pid はもう居ない: $reason"
+    fi
+}
+
+# 読めないファイルがあると du は 1 で終わるが、読めた分の大きさは出す
+size_kilobytes() {
+    { du -sk "$1" 2> /dev/null || true; } | awk '{ kb = $1 } END { print kb + 0 }'
+}
+
+format_size() {
+    awk -v kb="$1" 'BEGIN {
+        if (kb >= 1048576) printf "%.1fG", kb / 1048576
+        else if (kb >= 1024) printf "%.1fM", kb / 1024
+        else printf "%dK", kb
+    }'
+}
+
+main "$@"
