@@ -8,7 +8,7 @@
 
 ## 好みのレビュー
 
-コード・テスト・依存を変えたブランチは、PR を出す前と、PR に push する前に、好みのレビューを通す。`git fetch origin <マージ先のブランチ>` を済ませてから、サブエージェント `preferences-review` を立て、マージ先のブランチと、push の前なら PR の本文にある照らしたコミットを渡す。サブエージェントが fetch すると、auto mode が外への書き込みと見て止めることがある。読む文書、照らす範囲、返す形は、定義（`.claude/agents/preferences-review.md`）にある。`/implement` の中で回す `/code-review` は、この周に数えない。
+コード・テスト・依存・エージェントが読む文書（`AGENTS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）を変えたブランチは、PR を出す前と、PR に push する前に、好みのレビューを通す。`git fetch origin <マージ先のブランチ>` を済ませてから、サブエージェント `preferences-review` を立て、マージ先のブランチと、push の前なら PR の本文にある照らしたコミットを渡す。サブエージェントが fetch すると、auto mode が外への書き込みと見て止めることがある。読む文書、照らす範囲、返す形は、定義（`.claude/agents/preferences-review.md`）にある。`/implement` の中で回す `/code-review` は、この周に数えない。
 
 挙がった箇所を直したら、新しい `preferences-review` を立て、直した分をもう一度照らす。照らすのは2周まで。2周目で挙がった箇所のうち、コメント・名前・並び順のようにその場で閉じるものは直して、照らさずに push する。振る舞いや設計にかかるものは直さずに PR の本文に書き、開発者の判断を待つ。
 
