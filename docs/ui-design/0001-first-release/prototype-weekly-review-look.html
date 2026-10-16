@@ -8,6 +8,7 @@
   仕様「週の見直しと目標の経過」の申し送りのうち、見た目で決めるもの 6 項目を 21 の論点に分け、論点ごとに 2〜4 の案で並べる。
   21 のうち、開発者に見てもらうのは4つ（tlcard・change・wktop・gcard）。残りの 17 はエージェントのおすすめの案で決め（REC）、ボタンを「エージェントが決めたもの」にまとめて後ろに下げた（#576 の Q7）。
   開発者の答え（#576、2026-10-16）: tlcard は C、wktop は A、gcard は A、17 はおすすめのまま（CHOSEN）。change は「A の理由の文と B の強調」を合わせた案 D・E を足し、目標の画面への入口（gentry）を見てほしいものに足した。
+  開発者の答え（#576、2026-10-17）: change は D、gentry は C（タイムラインの左上）。左上の入口の見せ方（glink）を見てほしいものに足した。
   一番上の「おすすめで通して見る」（#tour-1）は、月曜の朝のタイムライン → 週の振り返り → 目標の画面を、いま選んでいる案でひと続きに描く。
   上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #tlcard-2）。
   「条件」で、目標の状態、いちばん新しい週の見直しの結果、何週ぶりに開いたか、目標を立てた週か、体重の記録の数、インターネットを切り替える。
@@ -98,6 +99,14 @@ figcaption b{color:var(--page-ink)}
 .nav .r{justify-self:end;color:var(--tint);white-space:nowrap}
 .nav .r b{font-weight:600}
 .nav .l .gbtn{font-size:var(--t-body)}
+.gl{display:inline-flex;align-items:center;gap:6px;color:var(--tint);font-variant-numeric:tabular-nums}
+.gl .ic{width:30px;height:30px;border-radius:50%;background:var(--fill);display:grid;place-items:center;flex:none}
+.gl .two{display:flex;flex-direction:column;line-height:1.15;font-size:var(--t-cap2);text-align:left}
+.gl .two b{font-size:var(--t-foot);font-weight:600}
+.gl .capsule{height:30px;padding:0 10px 0 8px;border-radius:999px;background:var(--fill);display:inline-flex;align-items:center;gap:4px;font-size:var(--t-foot);font-weight:600}
+.navstrip{background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:16px;overflow:hidden;font-size:var(--t-body);line-height:1.3}
+.navstrip .lbl{font-size:12px;color:var(--page-muted);padding:8px 12px 0;border-top:.5px solid var(--frame)}
+.navstrip .lbl:first-child{border-top:0}
 .nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font-size:var(--t-sub);font-weight:600;white-space:nowrap;flex:none}
 .btn.filled{background:var(--tint);color:var(--on-tint)}
@@ -255,7 +264,7 @@ figcaption b{color:var(--page-ink)}
 
 <header class="intro">
   <h1>週の見直しと目標の経過の見た目を見比べる</h1>
-  <p><b>いま見てほしいもの（2026-10-16 の答えのあと）:</b> 「変更の知らせの文言」の案 D・E（A の理由の文に、B の強調。D は新しい値、E は変わった量を大きく）と、新しく足した「目標の画面への入口」。選んだ案には「選んだ」と付けた。</p>
+  <p><b>いま見てほしいもの（2026-10-17 の答えのあと）:</b> 新しく足した「左上の入口の見せ方」。目標の画面への入口はタイムラインの左上（「目標の画面への入口」の案 C）、変更の知らせは案 D に決まった。選んだ案には「選んだ」と付けた。</p>
   <p><b>見る順:</b> まず「おすすめで通して見る」を1回見る。次に「見てほしい4つ」を1つずつ、下のバーで案を切り替えて選ぶ。ほかの 17 の論点は、エージェントがおすすめの案で決めた（「エージェントが決めたもの」を開けば、今までどおり案を見比べられる。おすすめの案には「おすすめ」と付けた）。</p>
   <p>仕様「週の見直しと目標の経過」の前に、見た目で決めるものを並べた試作（捨てる前提。gn-t-k/nu-tori#576）。上の論点を選び、下のバーの ‹ › か矢印キーで案を切り替える。<code>#&lt;論点&gt;-&lt;案の番号&gt;</code>（例: <code>#tlcard-2</code>）で開ける。今のアプリ（main のコミット 21ce33e の <code>TimelineScreen.swift</code>、<code>GoalSetupNoticeCard.swift</code>・<code>GoalDecidedCard.swift</code>、<code>DaySummarySheet.swift</code>、<code>WeightScreen.swift</code>）の上に、振り返りのカード、1日の目安の変更の知らせ、週の振り返り、目標の画面、達成と期限の知らせを足して描いた。</p>
   <p>例は凍結済みの見本と同じ人（減量、9月1日〜11月30日、74.0 → 70.0 kg）。値はすべて作ったもので、計算の細かいところ（見直しの式）は合わせていない。写真は色の四角で仮置きにした。決まっていることは論点ごとに灰色の段落に書き、どの案も守る。決まっていることを変える案には、案の説明に紫の線で印を付けた。どの論点も、<b>1枚めの図は上の「条件」どおり</b>に描き、2枚め以降は条件によらない決まった場面を描く。ある論点で見ている案は、ほかの論点の図にもそのまま使う（たとえば、タイムラインのどの図にも、いま見ているカードの形と知らせの文言が出る）。電話は全体が見えるよう縦に伸ばして描き、図の下にカードの高さを書く。用語は <code>GLOSSARY.md</code> に合わせ、凍結済みの見本の「消費量」は「推定消費カロリー」と書いた。</p>
@@ -444,7 +453,28 @@ function BAND(today, guide, o = {}){
   }).join('')}</div>`;
 }
 let PK = {};
-const NAVT = t => `<div class="nav"><span class="l">${PK.gentry === 2 ? '<span class="gbtn">目標</span>' : ''}</span><span class="t">${t}</span><span class="r"><span class="person">${I.person}</span></span></div>`;
+let NAVS = null;
+const FLAG = (sz = 16) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>`;
+// タイムラインの左上の、目標の画面への入口（論点 glink の案で描く）。目標がないあいだは置かない
+function GLINK(S){
+  if (!S || S.state === 'none' || !S.goal) return '';
+  const g = S.goal, v = PK.glink || 0, keep = g.dir === 'keep', r = goalRemain(S);
+  const done = S.state === 'achieved', dl = S.state === 'deadline';
+  if (v === 0) return '<span class="gbtn">目標</span>';
+  if (v === 1) {
+    const [a, b] = done ? [`${f1(g.t)} kg に`, '届きました'] : keep ? [`${f1(g.t)} kg を`, '保つ'] : dl ? ['期限を迎えた', `あと ${f1(r.kg)} kg`] : [`${f1(g.t)} kg まで`, `あと ${f1(r.kg)} kg`];
+    return `<span class="gl"><span class="two">${a}<b>${b}</b></span></span>`;
+  }
+  if (v === 2) return `<span class="gl"><span class="ic">${FLAG()}</span></span>`;
+  if (v === 3) {
+    const pct = done || keep ? 1 : Math.max(0, Math.min(1, (g.st - S.trendNow) / (g.st - g.t)));
+    const R = 12, c = 2 * Math.PI * R;
+    return `<span class="gl"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="${R}" fill="none" stroke="var(--track)" stroke-width="3.5"/><circle cx="15" cy="15" r="${R}" fill="none" stroke="var(--tint)" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${pct * c} ${c}" transform="rotate(-90 15 15)"/><g transform="translate(8 8) scale(.58)" color="var(--tint)">${FLAG(24)}</g></svg></span>`;
+  }
+  const t = done ? '届きました' : keep ? `${f1(g.t)} kg を保つ` : `あと ${f1(r.kg)} kg`;
+  return `<span class="gl"><span class="capsule">${FLAG(14)}${t}</span></span>`;
+}
+const NAVT = t => `<div class="nav"><span class="l">${PK.gentry === 2 ? GLINK(NAVS) : ''}</span><span class="t">${t}</span><span class="r"><span class="person">${I.person}</span></span></div>`;
 const NAV = (l, t, r = '') => `<div class="nav"><span class="l">${l ? `<span class="chev">‹</span>${l}` : ''}</span><span class="t">${t}</span><span class="r">${r}</span></div>`;
 const WROW = (tm, v, faded) => `<div class="wrow${faded ? ' faded' : ''}"><span class="tm">${tm}</span>体重 ${f1(v)} kg<span class="disc">›</span></div>`;
 const MEAL = (tm, name, kcal, faded, night) => `<div class="mc${faded ? ' faded' : ''}"><div class="pic${night ? ' n' : ''}"></div><div class="row2"><div class="bd"><span class="nm">${name}</span><span class="tm">${tm}</span><span class="nu"><b>${kc(kcal)} kcal</b><span>P ${Math.round(kcal * .045)} g</span><span>F ${Math.round(kcal * .04)} g</span><span>C ${Math.round(kcal * .12)} g</span></span></div><span class="disc">›</span></div></div>`;
@@ -530,6 +560,7 @@ function reviewItems(S, pk, o = {}){
 const stateNotice = (S, pk, tm) => S.state === 'after' ? goalNotice(S, pk, 'after', tm) : '';
 // 週の区切りのあとの朝のタイムライン。o.arrived: つながらなかったあと、届いたところ
 function tlMonday(S, pk, o = {}){
+  NAVS = S;
   const t = S.mon, y = addD(t, -1);
   if (S.state === 'none') return PHONE_TL(t, `<div class="dayh">昨日 ${fmtDW(y)}</div>${MEAL('19:10', '鍋', 620, false, true)}<div class="dayh">今日 ${fmtDW(t)}</div>${WROW('7:01', S.wToday)}${MEAL('7:40', 'トースト・ゆで卵', EATEN)}`);
   const ws = S.weeks, z = ws[ws.length - 1];
@@ -806,6 +837,7 @@ function goalNotice(S, pk, kind, tm, o = {}){
 }
 const lineFor = (pk, kind) => LINE1(pk.notices === 2 ? (kind === 'achieved' ? '目標に届きました' : kind === 'deadline' ? '期限を迎えました' : '今の体重を保つ目標にしました') : (kind === 'after' ? '次の目標を立てる' : '次の目標を選ぶ'), pk.notices === 2 ? '見る' : '›');
 function noticePhone(S, pk, kind, o = {}){
+  NAVS = S;
   const day = o.day, items = `${o.before || ''}<div class="dayh">今日 ${fmtDW(day)}</div>${o.items || ''}`;
   return PHONE_TL(day, items, {guide: o.guide || 1760, line: o.line});
 }
@@ -1177,14 +1209,31 @@ function gentryFigs(pk){
   return [tl, wk, ds, go].map(k => { const h = k.f(S, pk); return h ? fig(h, k.cap) : blank(S.state === 'none' ? '目標がないあいだは出さない' : 'この条件では出ない', k.cap); });
 }
 
+T.push({id: 'glink', label: '左上の入口の見せ方', title: 'タイムラインの左上に置く、目標の画面への入口の見せ方',
+  q: '目標の画面への入口は、タイムラインのナビゲーションバーの左に置くと決めた（「目標の画面への入口」の案 C）。そこに何を見せるか。文字の「目標」か、目標までの残りの数か、アイコンか、進み具合を図にしたものか。',
+  fixed: '決まっていること: 置き場はナビゲーションバーの左。真ん中は見ている日の日付、右は今の設定の人のボタン（main）。押すと目標の画面を開く。目標がないあいだは置かない。残りの kg は体重の傾向から出す（日のまとめの「あと 2.8 kg」と同じ値）。数を出すなら、責めずに事実だけ（<code>DESIGN.md</code> の Don\'t）。1枚めは上の「条件」どおりのタイムライン、2枚めは状態ごとにナビゲーションバーだけを並べた。',
+  variants: [
+    {name: '文字の「目標」', desc: '標準のナビゲーションバーの文字のボタン。何が開くかがいちばん分かる。目標の値は、開くまで見えない。', figs: glinkFigs},
+    {name: '目標までの残りを2行で', desc: '小さな2行で「70.0 kg まで」「あと 2.8 kg」。開かなくても残りが分かる。毎朝数字が目に入る。真ん中の日付と並ぶので、字は小さい（11〜13 pt）。', figs: glinkFigs},
+    {name: 'アイコン', desc: '右の人のボタンと同じ灰色の丸に、旗のアイコン。左右がそろって静か。旗が目標を指すと覚えるまでは、何が開くか分かりにくい。', figs: glinkFigs},
+    {name: '進み具合の輪', desc: '開始の体重から目標体重までの進み具合を、旗を囲む輪で示す。届くと一周する（維持は一周のまま）。数字は読めないが、週ごとに少しずつ伸びるのが見える。1日の丸の帯のすぐ上にあるので、輪どうしが似て見える。', figs: glinkFigs},
+    {name: '旗と残りのカプセル', desc: '灰色のカプセルに旗と「あと 2.8 kg」の1行。B より短く、アイコンと数字の両方がある。', figs: glinkFigs},
+  ]});
+function glinkFigs(pk){
+  const S0 = cur({});
+  const first = S0.state === 'none' ? blank('目標がないあいだは置かない', condCap(S0)) : fig(tlMonday(S0, pk), condCap(S0));
+  const rows = ['active', 'keep', 'achieved', 'deadline', 'after', 'none'].map(st => { const S = scenario({...DEF, state: st}); NAVS = S; return `<div class="lbl">${STATE_NAME[st]}</div>${NAVT(fmtDW(S.today))}`; }).join('');
+  return [first, fig(`<div class="navstrip">${rows}</div>`, '<b>状態ごとのナビゲーションバー。</b>目標がないあいだは置かない。')];
+}
+
 // 電波がない月曜（項目3）は、週の振り返り（項目2）のあとに並べる
 { const off = T.splice(T.findIndex(t => t.id === 'offline'), 1); T.splice(T.findIndex(t => t.id === 'gform'), 0, ...off); }
 
 // ── 開発者に見てもらう4つと、エージェントがおすすめで決めた 17（#576 の Q7） ──
 // 月曜にアプリを開くたびに目に入るものを4つ前に出す。ほかは、今のアプリの形か「目標を立てる」の試作（#506）で選んだ形にそろえて決めた
-const FOCUS = ['tlcard', 'change', 'wktop', 'gcard', 'gentry'];
+const FOCUS = ['tlcard', 'change', 'wktop', 'gcard', 'gentry', 'glink'];
 // CHOSEN: 開発者が選んだ案（0 から数える。#576、2026-10-16）
-const CHOSEN = {tlcard: 2, wktop: 0, gcard: 0};
+const CHOSEN = {tlcard: 2, wktop: 0, gcard: 0, change: 3, gentry: 2};
 // REC: 論点ごとのおすすめの案（0 から数える）と理由。#576 のコメントにも同じものを書いた
 const REC = {
   limits: [1, 'タイムラインのカードと知らせを低いまま保つ。当たった決まりと見送った理由は、週の振り返りの「次の週の1日の目安」で読める。'],
