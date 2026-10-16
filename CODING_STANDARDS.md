@@ -1,6 +1,6 @@
 # コーディング規約
 
-コードとテストのレビュー役（`docs/agents/git.md` の好みのレビューと、`/code-review` の Standards の軸）が読む入口。実装役は、書く前に読まなくてよい。
+コード・テスト・エージェントが読む文書を照らすレビュー役（`docs/agents/git.md` の好みのレビューと、`/code-review` の Standards の軸）が読む入口。実装役は、書く前に読まなくてよい。
 
 **Why:** 実装役は、調べる・書く・失敗を直すで文脈が埋まっている。差分だけを受け取るレビュー役のほうが、規約を当てる余裕がある（mattpocock/skills の `/retro` の考え）。
 
@@ -9,6 +9,7 @@
 - `docs/agents/coding-style.md`: 言語に寄らない好み
 - `docs/agents/testing.md`: テストの好み
 - `docs/agents/languages/<言語>.md`: 言語ごとの当てはめ。変えたファイルの言語のものを読む
+- `.agents/skills/writing-for-agents/SKILL.md`: エージェントが読む文書（`AGENTS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）の書き方。それらを変えたときに読む
 
 ## 指摘するもの
 

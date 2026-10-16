@@ -25,10 +25,12 @@ jobs:
     runs-on: xcode-27
     outputs:
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
+      failures: ${{ steps.report.outputs.failures }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: scripts/check ios-ui-test
-      - name: 失敗の要約とスクリーンショットを書き出す
+      - id: report
+        name: 失敗の要約とスクリーンショットを書き出す
         if: failure()
         run: |
           results=ios/.build/NuTori.xcresult
@@ -40,6 +42,10 @@ jobs:
           xcrun xcresulttool get test-results summary --path "$results" --compact > ios/.build/report/summary.json
           jq -r '.testFailures[]? | "- \(.testIdentifierString): \(.failureText)"' ios/.build/report/summary.json |
             tee ios/.build/report/failures.txt >> "$GITHUB_STEP_SUMMARY"
+          # main で落ちたときの Issue をテストごとに分けるため、テストごとにまとめて渡す
+          jq -c '[.testFailures[]? | {test: .testIdentifierString, text: .failureText}]
+            | group_by(.test) | map({test: .[0].test, texts: map(.text)})' ios/.build/report/summary.json |
+            sed 's/^/failures=/' >> "$GITHUB_OUTPUT"
           xcrun xcresulttool export attachments --path "$results" --output-path ios/.build/report/attachments
       - id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -49,7 +55,8 @@ jobs:
           path: ios/.build/report
           retention-days: 3
 
-  # main で落ちたら Issue を1つ立て、緑に戻ったら閉じる。ほかのブランチで手で始めた回は、その場で見る人がいるので立てない
+  # main で落ちたら、落ちたテストごとに Issue を立て、緑に戻ったら閉じる。テストの前に止まった回は、落ちたテストが無いので、ワークフローの名前の Issue を立てる
+  # ほかのブランチで手で始めた回は、その場で見る人がいるので立てない
   track-main-failure:
     needs: ios-ui-test
     if: >-
@@ -64,38 +71,63 @@ jobs:
       REPORT: ${{ needs.ios-ui-test.outputs.artifact-url || '無い（UI テストの前に止まったので、ログを見る）' }}
       TITLE: main の ios-ui-test が落ちている
     steps:
-      - id: open-issue
+      - id: open-issues
         name: 開いている Issue を探す
+        env:
+          TEST_TITLE_PREFIX: "${{ env.TITLE }}: "
         run: |
-          number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
-            --jq '.[] | select(.title == env.TITLE and .pull_request == null) | .number' | head -n 1)"
-          echo "number=$number" >> "$GITHUB_OUTPUT"
+          issues="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select(.pull_request == null and (.title == env.TITLE or (.title | startswith(env.TEST_TITLE_PREFIX)))) | {number, title}' |
+            jq -sc .)"
+          echo "issues=$issues" >> "$GITHUB_OUTPUT"
       - name: 緑に戻ったので Issue を閉じる
-        if: needs.ios-ui-test.result == 'success' && steps.open-issue.outputs.number != ''
+        if: needs.ios-ui-test.result == 'success'
         env:
-          NUMBER: ${{ steps.open-issue.outputs.number }}
+          ISSUES: ${{ steps.open-issues.outputs.issues }}
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="main の ios-ui-test が緑に戻った: $RUN_URL" > /dev/null
-          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/$NUMBER" -f state=closed -f state_reason=completed > /dev/null
-      - name: 開いている Issue に、また落ちたことを書き足す
-        if: needs.ios-ui-test.result == 'failure' && steps.open-issue.outputs.number != ''
+          for number in $(jq -r '.[].number' <<< "$ISSUES"); do
+            gh api "repos/$GITHUB_REPOSITORY/issues/$number/comments" -f body="main の ios-ui-test が緑に戻った: $RUN_URL" > /dev/null
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/$number" -f state=closed -f state_reason=completed > /dev/null
+          done
+      - name: 落ちたテストごとに、Issue を立てるか、また落ちたことを書き足す
+        if: needs.ios-ui-test.result == 'failure'
         env:
-          NUMBER: ${{ steps.open-issue.outputs.number }}
+          ISSUES: ${{ steps.open-issues.outputs.issues }}
+          FAILURES: ${{ needs.ios-ui-test.outputs.failures }}
+          TEST_TITLE_PREFIX: "${{ env.TITLE }}: "
         run: |
-          body="$(printf 'また落ちた: %s\n失敗の要約とスクリーンショット: %s' "$RUN_URL" "$REPORT")"
-          gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="$body" > /dev/null
-      - name: Issue を立てる
-        if: needs.ios-ui-test.result == 'failure' && steps.open-issue.outputs.number == ''
-        run: |
-          body="$(cat << BODY
-          main の ios-ui-test（パッケージのテスト、アプリのビルド、UI テスト）が落ちた。次の PR より先に直す。
+          comment_on_or_create_issue() {
+            local title="$1" details="$2" number
+            number="$(jq -r --arg title "$title" '.[] | select(.title == $title) | .number' <<< "$ISSUES" | head -n 1)"
+            if [ -n "$number" ]; then
+              comment_on_issue "$number" "$details"
+            else
+              create_issue "$title" "$details"
+            fi
+          }
+          comment_on_issue() {
+            local number="$1" details="$2" body
+            body="$(printf 'また落ちた: %s\n失敗の要約とスクリーンショット: %s\n%s' "$RUN_URL" "$REPORT" "$details")"
+            gh api "repos/$GITHUB_REPOSITORY/issues/$number/comments" -f body="$body" > /dev/null
+          }
+          create_issue() {
+            local title="$1" details="$2" body number
+            body="$(printf '%s\n\n- 落ちた回: %s\n- 失敗の要約とスクリーンショット: %s\n%s\n\n%s' \
+              'main の ios-ui-test（パッケージのテスト、アプリのビルド、UI テスト）が落ちた。次の PR より先に直す。' \
+              "$RUN_URL" "$REPORT" "$details" \
+              'main で ios-ui-test が緑に戻ると、ワークフローがこの Issue を閉じる。')"
+            number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$title" -f body="$body" -f "labels[]=ready-for-agent" --jq .number)"
+            # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
+          }
 
-          - 落ちた回: $RUN_URL
-          - 失敗の要約とスクリーンショット: $REPORT
-
-          main で ios-ui-test が緑に戻ると、ワークフローがこの Issue を閉じる。
-          BODY
-          )"
-          number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$TITLE" -f body="$body" -f "labels[]=ready-for-agent" --jq .number)"
-          # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
-          gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
+          failures="${FAILURES:-[]}"
+          if [ "$(jq length <<< "$failures")" -eq 0 ]; then
+            comment_on_or_create_issue "$TITLE" ""
+            exit 0
+          fi
+          jq -c '.[]' <<< "$failures" | while read -r failure; do
+            test_name="$(jq -r .test <<< "$failure")"
+            details="$(jq -r '"\n```text\n" + (.texts | join("\n")) + "\n```"' <<< "$failure")"
+            comment_on_or_create_issue "$TEST_TITLE_PREFIX$test_name" "$details"
+          done
