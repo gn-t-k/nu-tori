@@ -7,6 +7,7 @@
   PROTOTYPE（捨てる前提）。「週の見直しと目標の経過の見た目を見比べる」（gn-t-k/nu-tori#576）の試作。
   仕様「週の見直しと目標の経過」の申し送りのうち、見た目で決めるもの 6 項目を 21 の論点に分け、論点ごとに 2〜4 の案で並べる。
   21 のうち、開発者に見てもらうのは4つ（tlcard・change・wktop・gcard）。残りの 17 はエージェントのおすすめの案で決め（REC）、ボタンを「エージェントが決めたもの」にまとめて後ろに下げた（#576 の Q7）。
+  開発者の答え（#576、2026-10-16）: tlcard は C、wktop は A、gcard は A、17 はおすすめのまま（CHOSEN）。change は「A の理由の文と B の強調」を合わせた案 D・E を足し、目標の画面への入口（gentry）を見てほしいものに足した。
   一番上の「おすすめで通して見る」（#tour-1）は、月曜の朝のタイムライン → 週の振り返り → 目標の画面を、いま選んでいる案でひと続きに描く。
   上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #tlcard-2）。
   「条件」で、目標の状態、いちばん新しい週の見直しの結果、何週ぶりに開いたか、目標を立てた週か、体重の記録の数、インターネットを切り替える。
@@ -96,6 +97,7 @@ figcaption b{color:var(--page-ink)}
 .nav .t{font-size:var(--t-headline);font-weight:600;text-align:center;white-space:nowrap}
 .nav .r{justify-self:end;color:var(--tint);white-space:nowrap}
 .nav .r b{font-weight:600}
+.nav .l .gbtn{font-size:var(--t-body)}
 .nav .r .person{width:30px;height:30px;border-radius:50%;background:var(--fill);color:var(--tint);display:grid;place-items:center}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font-size:var(--t-sub);font-weight:600;white-space:nowrap;flex:none}
 .btn.filled{background:var(--tint);color:var(--on-tint)}
@@ -253,6 +255,7 @@ figcaption b{color:var(--page-ink)}
 
 <header class="intro">
   <h1>週の見直しと目標の経過の見た目を見比べる</h1>
+  <p><b>いま見てほしいもの（2026-10-16 の答えのあと）:</b> 「変更の知らせの文言」の案 D・E（A の理由の文に、B の強調。D は新しい値、E は変わった量を大きく）と、新しく足した「目標の画面への入口」。選んだ案には「選んだ」と付けた。</p>
   <p><b>見る順:</b> まず「おすすめで通して見る」を1回見る。次に「見てほしい4つ」を1つずつ、下のバーで案を切り替えて選ぶ。ほかの 17 の論点は、エージェントがおすすめの案で決めた（「エージェントが決めたもの」を開けば、今までどおり案を見比べられる。おすすめの案には「おすすめ」と付けた）。</p>
   <p>仕様「週の見直しと目標の経過」の前に、見た目で決めるものを並べた試作（捨てる前提。gn-t-k/nu-tori#576）。上の論点を選び、下のバーの ‹ › か矢印キーで案を切り替える。<code>#&lt;論点&gt;-&lt;案の番号&gt;</code>（例: <code>#tlcard-2</code>）で開ける。今のアプリ（main のコミット 21ce33e の <code>TimelineScreen.swift</code>、<code>GoalSetupNoticeCard.swift</code>・<code>GoalDecidedCard.swift</code>、<code>DaySummarySheet.swift</code>、<code>WeightScreen.swift</code>）の上に、振り返りのカード、1日の目安の変更の知らせ、週の振り返り、目標の画面、達成と期限の知らせを足して描いた。</p>
   <p>例は凍結済みの見本と同じ人（減量、9月1日〜11月30日、74.0 → 70.0 kg）。値はすべて作ったもので、計算の細かいところ（見直しの式）は合わせていない。写真は色の四角で仮置きにした。決まっていることは論点ごとに灰色の段落に書き、どの案も守る。決まっていることを変える案には、案の説明に紫の線で印を付けた。どの論点も、<b>1枚めの図は上の「条件」どおり</b>に描き、2枚め以降は条件によらない決まった場面を描く。ある論点で見ている案は、ほかの論点の図にもそのまま使う（たとえば、タイムラインのどの図にも、いま見ているカードの形と知らせの文言が出る）。電話は全体が見えるよう縦に伸ばして描き、図の下にカードの高さを書く。用語は <code>GLOSSARY.md</code> に合わせ、凍結済みの見本の「消費量」は「推定消費カロリー」と書いた。</p>
@@ -440,7 +443,8 @@ function BAND(today, guide, o = {}){
     return `<span class="day${i === ti ? ' sel' : ''}${i > ti ? ' future' : ''}">${ring}${d}</span>`;
   }).join('')}</div>`;
 }
-const NAVT = t => `<div class="nav"><span class="l"></span><span class="t">${t}</span><span class="r"><span class="person">${I.person}</span></span></div>`;
+let PK = {};
+const NAVT = t => `<div class="nav"><span class="l">${PK.gentry === 2 ? '<span class="gbtn">目標</span>' : ''}</span><span class="t">${t}</span><span class="r"><span class="person">${I.person}</span></span></div>`;
 const NAV = (l, t, r = '') => `<div class="nav"><span class="l">${l ? `<span class="chev">‹</span>${l}` : ''}</span><span class="t">${t}</span><span class="r">${r}</span></div>`;
 const WROW = (tm, v, faded) => `<div class="wrow${faded ? ' faded' : ''}"><span class="tm">${tm}</span>体重 ${f1(v)} kg<span class="disc">›</span></div>`;
 const MEAL = (tm, name, kcal, faded, night) => `<div class="mc${faded ? ' faded' : ''}"><div class="pic${night ? ' n' : ''}"></div><div class="row2"><div class="bd"><span class="nm">${name}</span><span class="tm">${tm}</span><span class="nu"><b>${kc(kcal)} kcal</b><span>P ${Math.round(kcal * .045)} g</span><span>F ${Math.round(kcal * .04)} g</span><span>C ${Math.round(kcal * .12)} g</span></span></div><span class="disc">›</span></div></div>`;
@@ -494,6 +498,10 @@ function changeNotice(S, w, pk, o = {}){
   const v = pk.change, m = pfcOf(w.g[1], (S.goal || w.goal).t);
   if (v === 0) return `<div class="ncard tight" data-h="変更の知らせ"><div class="gh"><b>1日の目安が変わりました</b><span class="time">${tm}</span></div><p class="nd">${kc(w.g[0])} → <b>${kc(w.g[1])} kcal</b>。${reason(w)}</p>${limLine}${span}${link}</div>`;
   if (v === 1) return `<div class="ncard tight" data-h="変更の知らせ"><div class="gh"><b>今週の1日の目安</b><span class="time">${tm}</span></div><div class="big">${kc(w.g[1])}<small>kcal</small><small>${sgk(w.g[1] - w.g[0])} kcal</small></div><div class="pfc"><span><i class="key p"></i>P ${m.p} g</span><span><i class="key f"></i>F ${m.f} g</span><span><i class="key c"></i>C ${m.c} g</span></div><p class="nd2">${reason(w, true)}。</p>${limLine}${span}${link}</div>`;
+  const head = `<div class="gh"><b>1日の目安が変わりました</b><span class="time">${tm}</span></div>`;
+  const pfcRow = `<div class="pfc"><span><i class="key p"></i>P ${m.p} g</span><span><i class="key f"></i>F ${m.f} g</span><span><i class="key c"></i>C ${m.c} g</span></div>`;
+  if (v === 3) return `<div class="ncard tight" data-h="変更の知らせ">${head}<div class="big">${kc(w.g[1])}<small>kcal</small><small>${sgk(w.g[1] - w.g[0])} kcal</small></div>${pfcRow}<p class="nd2">${reason(w)}</p>${limLine}${span}${link}</div>`;
+  if (v === 4) return `<div class="ncard tight" data-h="変更の知らせ">${head}<div class="big">${sgk(w.g[1] - w.g[0])}<small>kcal</small><small>${kc(w.g[0])} → ${kc(w.g[1])} kcal</small></div>${pfcRow}<p class="nd2">${reason(w)}</p>${limLine}${span}${link}</div>`;
   const cutNow = w.e[1] - w.g[1], cutPrev = w.e[0] - w.g[0];
   return `<div class="ncard tight" data-h="変更の知らせ"><div class="gh"><b>1日の目安が変わりました</b><span class="time">${tm}</span></div><p class="nd">${kc(w.g[0])} → <b>${kc(w.g[1])} kcal</b></p><div class="kvs"><div><span>推定消費カロリー</span><span>${kc(w.e[0])} → ${kc(w.e[1])}（${sgk(w.e[1] - w.e[0])}）</span></div><div><span>1日に${cut(w.goal.dir === 'keep' || w.why === 'after' ? 'keep' : w.goal.dir)}</span><span>${kc(Math.abs(cutPrev))} → ${kc(Math.abs(cutNow))}（${sgk(Math.abs(cutNow) - Math.abs(cutPrev))}）</span></div></div>${limLine}${span}${link}</div>`;
 }
@@ -614,8 +622,9 @@ function weekNext(S, w, pk){
   const badge = v === 1 && (w.skip || lim) ? `<span class="badge">${w.skip ? '見送り' : LIMSHORT[lim]}</span>` : '';
   const top = `<div class="top"><b>${kc(w.g[1])} kcal</b><span>${badge}${w.skip ? 'そのまま' : `${sgk(d)} kcal`}</span></div>`;
   const text = w.skip ? (v === 1 ? `${SKIPSHORT[w.skip]}ので、前の週のままです。` : `${kc(w.g[0])} kcal のままです。${SKIP(w)}です。`)
-    : `${kc(w.g[0])} → ${kc(w.g[1])} kcal。${v === 1 ? reason(w, true) + '。' : reason(w)}${v === 0 && lim ? LIM[lim] : ''}推移は目標で見られます。`;
-  return `<div class="sec next"><p class="group-h">次の週の1日の目安</p><div class="list"><div class="cell">${top}<p>${text}</p></div></div></div>`;
+    : `${kc(w.g[0])} → ${kc(w.g[1])} kcal。${v === 1 ? reason(w, true) + '。' : reason(w)}${v === 0 && lim ? LIM[lim] : ''}${pk.gentry === 1 ? '' : '推移は目標で見られます。'}`;
+  const toGoal = pk.gentry === 1 ? '<div class="cell link"><span class="grow">1日の目安の推移と目標</span><span class="disc">›</span></div>' : '';
+  return `<div class="sec next"><p class="group-h">次の週の1日の目安</p><div class="list"><div class="cell">${top}<p>${text}</p></div>${toGoal}</div></div>`;
 }
 function weeklyContent(S, w, pk){
   const g = w.goal, first = w.n === 1 && S.c.first;
@@ -771,7 +780,7 @@ function expandedSwitch(S){
 function goalScreen(S, pk, o = {}){
   if (S.state === 'none') return null;
   const from = o.from || 'weight';
-  const back = from === 'weight' ? '体重' : from === 'day' ? fmtDW(S.today) : fmtDW(S.today);
+  const back = from === 'weight' ? '体重' : from === 'week' ? '週の振り返り' : from === 'notice' || from === 'tl' ? fmtDW(S.mon) : fmtDW(S.today);
   const navR = pk.gcard === 2 && !['achieved', 'deadline', 'after'].includes(S.state) ? '切り替える' : '';
   const body = goalBody(S, pk, o);
   if (pk.gform === 1) return PHONE_SHEET(NAV('', '目標', `<b>完了</b>`), body);
@@ -914,6 +923,8 @@ T.push({id: 'change', label: '変更の知らせの文言', title: '1日の目�
   variants: [
     {name: '前と後の値と、理由の文（凍結済みの見本の形）', desc: '「1日の目安が変わりました」「1,880 → 1,850 kcal。推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。」と「目標 ›」。', figs: changeFigs},
     {name: '今週の値を大きく、理由は短く', desc: '見出しを「今週の1日の目安」にし、新しい値を大きく、変わった量と P・F・C を添える。理由は「推定消費カロリーを下げました」のように短く、数値は書かない。', figs: changeFigs},
+    {name: '新しい値を大きく、理由は文（A と B を合わせる）', desc: '見出しは A の「1日の目安が変わりました」。新しい値 1,850 kcal を大きく、変わった量と P・F・C を添え、理由は A の文で書く。今日の丸が比べるのは 1,850 なので、覚える数を大きくする。', figs: changeFigs},
+    {name: '変わった量を大きく、理由は文（A と B を合わせる）', desc: 'D と同じで、大きくするのを変わった量（−30 kcal）にし、前と後の値を添える。知らせの「何が起きたか」を大きくする。', figs: changeFigs},
     {name: '内訳の2行で示す', desc: '理由を文にせず、「推定消費カロリー 2,190 → 2,140」「1日に減らす分 310 → 290」の2行を並べる。主な理由を選ばず、2つの変化をそのまま見せる（どちらが大きいかは数字で読む）。', figs: changeFigs},
   ]});
 function changeFigs(pk){
@@ -1148,12 +1159,32 @@ T.push({id: 'wline', label: '目標体重の点線', title: '体重の画面の�
   ]});
 function wlineFigs(pk){ return figsBy((S, pk) => weightScreen(S, pk), [{c: {}, cap: '<b>目標が4週の幅に入らない（進行中の減量）。</b>'}, {c: {state: 'achieved'}, f: (S, pk) => weightScreen(S, pk, {slope: .03}), cap: '<b>目標が幅に入る（達成のころ）。</b>'}, {c: {state: 'keep'}, f: (S, pk) => weightScreen(S, pk, {slope: .005}), cap: '<b>維持の目標。</b>'}])(pk); }
 
+T.push({id: 'gentry', label: '目標の画面への入口', title: '目標の画面への入口（どこから開くか）',
+  q: '目標の画面は、今の main にはまだ無い（この仕様で作る）。決まった形では、入口は日のまとめ、体重の画面、変更の知らせ、達成と期限の知らせで、いつも見えている入口は無い。週の振り返りからは潜らない。これで足りるか。（2026-10-16 の開発者の問い「目標の画面ってどこからも遷移できない？」）',
+  fixed: '決まっていること: 目標の画面へは、日のまとめ、体重の画面の目標までの道のり、1日の目安の変更の知らせ、達成と期限の知らせから入る。タブは採らない（場所を取りすぎる）。一番上に目標の要約を常に置く形も採らない（<code>05-navigation.md</code> の「根」と「目標の状態と入口」）。週の振り返りから目標へは潜らない（<code>06-layout.md</code>「週の振り返り」）。目標がないときは目標の画面を開かない。',
+  variants: [
+    {name: '決まった形のまま', desc: 'タイムラインからは、1日の丸 → 日のまとめの目標の行、体重の記録 → 体重の画面の道のり、月曜は変更の知らせの「目標 ›」。いつも見える入口は無い。', figs: gentryFigs},
+    {name: '週の振り返りの下から潜る', desc: '週の振り返りの「次の週の1日の目安」の下に「1日の目安の推移と目標 ›」の行を足す。振り返りのカードから開いた流れが、目標の画面まで続く。', flag: '「週の振り返りから目標へは潜らない」（<code>06-layout.md</code>「週の振り返り」）を変える。', figs: gentryFigs},
+    {name: 'タイムラインの上の左に「目標」', desc: 'タイムラインのナビゲーションバーの左に「目標」のボタンを置く（右は今の設定の人のボタン）。いつでも1回で開ける。目標がないあいだは置かない。', flag: '<code>05-navigation.md</code>「目標の状態と入口」の入口に、タイムラインの上のボタンを足す。', figs: gentryFigs},
+  ]});
+function gentryFigs(pk){
+  const v = pk.gentry;
+  const tl = {c: {}, f: tlMonday, cap: v === 2 ? '<b>タイムライン。</b>左上の「目標」で開く。' : '<b>タイムライン。</b>月曜は変更の知らせの「目標 ›」で開く。ほかの日は、1日の丸か体重の記録から。'};
+  const wk = {c: {}, f: (S, pk) => weeklyScreen(S, pk, {from: 'card'}), cap: v === 1 ? '<b>週の振り返り。</b>一番下の行から目標の画面へ。' : '<b>週の振り返り。</b>目標へは潜らない。'};
+  const ds = {c: {}, f: daySummary, cap: '<b>日のまとめ。</b>目標の行から開く（どの案でも）。'};
+  const go = {c: {}, f: (S, pk) => goalScreen(S, pk, {from: v === 1 ? 'week' : v === 2 ? 'tl' : 'notice'}), cap: `<b>開いた目標の画面。</b>戻ると${v === 1 ? '週の振り返り' : 'タイムライン'}。`};
+  const S = cur({});
+  return [tl, wk, ds, go].map(k => { const h = k.f(S, pk); return h ? fig(h, k.cap) : blank(S.state === 'none' ? '目標がないあいだは出さない' : 'この条件では出ない', k.cap); });
+}
+
 // 電波がない月曜（項目3）は、週の振り返り（項目2）のあとに並べる
 { const off = T.splice(T.findIndex(t => t.id === 'offline'), 1); T.splice(T.findIndex(t => t.id === 'gform'), 0, ...off); }
 
 // ── 開発者に見てもらう4つと、エージェントがおすすめで決めた 17（#576 の Q7） ──
 // 月曜にアプリを開くたびに目に入るものを4つ前に出す。ほかは、今のアプリの形か「目標を立てる」の試作（#506）で選んだ形にそろえて決めた
-const FOCUS = ['tlcard', 'change', 'wktop', 'gcard'];
+const FOCUS = ['tlcard', 'change', 'wktop', 'gcard', 'gentry'];
+// CHOSEN: 開発者が選んだ案（0 から数える。#576、2026-10-16）
+const CHOSEN = {tlcard: 2, wktop: 0, gcard: 0};
 // REC: 論点ごとのおすすめの案（0 から数える）と理由。#576 のコメントにも同じものを書いた
 const REC = {
   limits: [1, 'タイムラインのカードと知らせを低いまま保つ。当たった決まりと見送った理由は、週の振り返りの「次の週の1日の目安」で読める。'],
@@ -1180,11 +1211,11 @@ T.sort((a, b) => (FOCUS.includes(b.id) - FOCUS.includes(a.id)) || (FOCUS.indexOf
 // おすすめで通して見る。図はいま選んでいる案で描く（17 はおすすめの案から始まる）
 T.unshift({id: 'tour', label: 'おすすめで通して見る', title: 'おすすめで通して見る: 月曜の朝 → 週の振り返り → 目標の画面',
   q: '17 の論点をおすすめの案で決めたうえで、月曜の朝にアプリを開いてから、振り返りのカードを押し、目標の画面を開くまでを、ひと続きに描いた。見てほしい4つ（振り返りのカード、変更の知らせ、週の振り返りの一番上、今の目標のカード）は、いまそれぞれで選んでいる案で描く（はじめはどれも案 A）。',
-  fixed: '上の「条件」を変えると、3枚とも変わる。17 の論点のどれかで案を変えると、ここにも出る。週の振り返りから目標の画面へは潜らないので、3枚めは体重の画面の「目標 ›」から開いたところ。',
+  fixed: '上の「条件」を変えると、3枚とも変わる。17 の論点のどれかで案を変えると、ここにも出る。3枚めの目標の画面は、「目標の画面への入口」でいま見ている案の入口から開いたところ（案 A は変更の知らせの「目標 ›」）。',
   variants: [{name: '月曜の朝のひと続き', desc: '1. 月曜の朝、アプリを開いたタイムライン。2. 振り返りのカードを押して開いた週の振り返り。3. 目標の画面。', figs: pk => {
     const S = cur({});
     const g = (h, cap) => h ? fig(h, cap) : blank(S.state === 'none' ? '目標がないあいだは出さない' : 'この条件では出ない', cap);
-    return [g(tlMonday(S, pk), `<b>1. 月曜の朝のタイムライン。</b>${condName(S.c)}。`), g(weeklyScreen(S, pk, {from: 'card'}), '<b>2. 振り返りのカードを押したとき。</b>'), g(goalScreen(S, pk, {from: 'weight'}), '<b>3. 目標の画面。</b>')];
+    return [g(tlMonday(S, pk), `<b>1. 月曜の朝のタイムライン。</b>${condName(S.c)}。`), g(weeklyScreen(S, pk, {from: 'card'}), '<b>2. 振り返りのカードを押したとき。</b>'), g(goalScreen(S, pk, {from: pk.gentry === 1 ? 'week' : pk.gentry === 2 ? 'tl' : 'notice'}), `<b>3. 目標の画面。</b>${pk.gentry === 1 ? '週の振り返りの一番下の行から開いた。' : pk.gentry === 2 ? 'タイムラインの左上の「目標」から開いた。' : '1枚めの変更の知らせの「目標 ›」から開いた。'}`)];
   }}]});
 
 // ── 描く ──
@@ -1195,8 +1226,9 @@ const C = {...DEF};
 const P = {};
 const main = document.getElementById('main');
 const AB = i => String.fromCharCode(65 + i);
-main.innerHTML = T.map(t => { const r = REC[t.id]; return `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${r ? `<p class="rec"><b>エージェントが決めた: 案 ${AB(r[0])}「${t.variants[r[0]].name}」。</b>${r[1]}</p>` : ''}${t.variants.map((v, i) => `<div class="variant" data-v="${v.name}"><div class="vhead"><b>${v.name}${r && r[0] === i ? '<span class="recb">おすすめ</span>' : ''}</b><span>${v.desc}</span>${v.flag ? `<span class="flag">決まっていることを変える: ${v.flag}</span>` : ''}</div><div class="states"></div></div>`).join('')}</section>`; }).join('');
-T.forEach(t => { P[t.id] = REC[t.id] ? REC[t.id][0] : 0; });
+main.innerHTML = T.map(t => { const r = REC[t.id]; return `<section class="topic" data-topic="${t.id}" data-label="${t.label}"><h2>${t.title}</h2><p class="q">${t.q}</p><p class="fixed">${t.fixed}</p>${r ? `<p class="rec"><b>エージェントが決めた: 案 ${AB(r[0])}「${t.variants[r[0]].name}」。</b>${r[1]}</p>` : ''}${t.variants.map((v, i) => `<div class="variant" data-v="${v.name}"><div class="vhead"><b>${v.name}${r && r[0] === i ? '<span class="recb">おすすめ</span>' : ''}${CHOSEN[t.id] === i ? '<span class="recb">選んだ</span>' : ''}</b><span>${v.desc}</span>${v.flag ? `<span class="flag">決まっていることを変える: ${v.flag}</span>` : ''}</div><div class="states"></div></div>`).join('')}</section>`; }).join('');
+T.forEach(t => { P[t.id] = REC[t.id] ? REC[t.id][0] : CHOSEN[t.id] ?? 0; });
+P.change = 3;
 
 // カードの高さを、図の下に書く
 function noteFit(root){
@@ -1224,7 +1256,7 @@ topics.forEach((t, i) => {
   b.type = 'button'; b.dataset.i = i;
   b.textContent = t.dataset.label;
   b.addEventListener('click', () => show(i, P[id], true));
-  if (id === 'tour') { b.classList.add('tour'); nav.appendChild(b); grpLabel(nav, '見てほしい4つ'); return; }
+  if (id === 'tour') { b.classList.add('tour'); nav.appendChild(b); grpLabel(nav, '見てほしいもの'); return; }
   if (FOCUS.includes(id)) { nav.appendChild(b); return; }
   if (!rest.isConnected) { const g = document.createElement('span'); g.className = 'grp'; g.appendChild(more); nav.appendChild(g); nav.appendChild(rest); moreLabel(); }
   if (T[i].sec !== lastSec) { lastSec = T[i].sec; grpLabel(rest, lastSec); }
@@ -1241,9 +1273,10 @@ function show(t, v, scroll){
   vs.forEach((x, i) => { x.hidden = i !== vi; });
   nav.querySelectorAll('button[data-i]').forEach(b => b.setAttribute('aria-current', String(+b.dataset.i === ti)));
   if (REC[id] && rest.hidden) { rest.hidden = false; moreLabel(); }
-  document.getElementById('lab').innerHTML = `<b>${AB(vi)}</b>${vs[vi].dataset.v}${REC[id] && REC[id][0] === vi ? '・おすすめ' : ''}（${vi + 1}/${vs.length}）`;
+  document.getElementById('lab').innerHTML = `<b>${AB(vi)}</b>${vs[vi].dataset.v}${REC[id] && REC[id][0] === vi ? '・おすすめ' : ''}${CHOSEN[id] === vi ? '・選んだ' : ''}（${vi + 1}/${vs.length}）`;
   try { history.replaceState(null, '', `#${id}-${vi + 1}`); } catch (e) {}
   const box = vs[vi].querySelector('.states');
+  PK = {...P};
   box.innerHTML = T[ti].variants[vi].figs({...P}).map(f => `<figure>${f.html}<figcaption>${f.cap}</figcaption></figure>`).join('');
   noteFit(box);
   if (scroll) topics[ti].scrollIntoView({block: 'start'});
