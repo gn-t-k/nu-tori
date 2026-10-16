@@ -3,6 +3,7 @@ import { R } from "@praha/byethrow";
 import { computeWrittenMealEatenAt } from "../../src/estimation/domain/compute-written-meal-eaten-at";
 import { toWrittenMealsRequest } from "../../src/estimation/domain/to-written-meals-request";
 import { identifyWrittenMeals } from "../../src/estimation/durable-object/create-estimation-provider/identify-written-meals";
+import { describeLlmCallFailure } from "../describe-llm-call-failure";
 
 // 文章の食事の ① が決める食べた時刻の揺れを、本番と同じ指示とモデル（#188 の推定と同じ）で確かめる（#419 の「時刻の決め方」、#434）。
 // 目安の時刻は指示に書かず LLM に決めさせているので、同じ文章を何回か読ませ、時刻が回ごとにどれだけ違うかを見る。
@@ -38,7 +39,7 @@ const readOnce = async (body: string, sentAt: Date): Promise<string> => {
     AbortSignal.timeout(90_000),
   );
   if (R.isFailure(identified)) {
-    return `（失敗: ${identified.error.name}）`;
+    return `（失敗: ${describeLlmCallFailure(identified.error)}）`;
   }
   return identified.value.output.meals
     .map(({ eatenAt }) => {

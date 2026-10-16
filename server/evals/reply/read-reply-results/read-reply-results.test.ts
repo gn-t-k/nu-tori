@@ -1,8 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 import { readReplyResults } from "./index";
 
 // promptfoo の結果（-o の JSON）の、読むところだけを持つ形
 const result = (
+  testIdx: number,
   id: string,
   outcome: {
     success: boolean;
@@ -12,6 +13,7 @@ const result = (
   },
 ) => ({
   success: outcome.success,
+  testIdx,
   testCase: { description: id },
   response: outcome.output === undefined ? undefined : { output: outcome.output },
   error: outcome.error,
@@ -28,64 +30,131 @@ const result = (
 });
 
 describe("返事の評価の結果を読む", () => {
-  test("通った場面の数と、場面ごとの返事と落ちた守ることを読むこと", () => {
-    const read = readReplyResults({
-      results: {
-        results: [
-          result("preset-feedback-rich", {
-            success: true,
-            output: "今日は**たんぱく質**がよくとれています。",
-            components: [{ value: "です・ます調で書いている", pass: true, reason: "です・ます調" }],
-          }),
-          result("medical-kidney", {
-            success: false,
-            output: "1日 60 g までにしましょう。",
-            components: [
-              { value: "です・ます調で書いている", pass: true, reason: "です・ます調" },
-              { value: "専門家への相談を促している", pass: false, reason: "促していない" },
-            ],
-          }),
-        ],
-      },
+  describe("場面ごとに1回回したとき", () => {
+    let results: unknown;
+    beforeEach(() => {
+      results = {
+        results: {
+          results: [
+            result(0, "preset-feedback-rich", {
+              success: true,
+              output: "今日は**たんぱく質**がよくとれています。",
+              components: [
+                { value: "です・ます調で書いている", pass: true, reason: "です・ます調" },
+              ],
+            }),
+            result(1, "medical-kidney", {
+              success: false,
+              output: "1日 60 g までにしましょう。",
+              components: [
+                { value: "です・ます調で書いている", pass: true, reason: "です・ます調" },
+                { value: "専門家への相談を促している", pass: false, reason: "促していない" },
+              ],
+            }),
+          ],
+        },
+      };
     });
-    expect(read).toEqual({
-      passed: 1,
-      total: 2,
-      cases: [
-        {
-          id: "preset-feedback-rich",
-          pass: true,
-          output: "今日は**たんぱく質**がよくとれています。",
-          failures: [],
-        },
-        {
-          id: "medical-kidney",
-          pass: false,
-          output: "1日 60 g までにしましょう。",
-          failures: [{ rubric: "専門家への相談を促している", reason: "促していない" }],
-        },
-      ],
+
+    test("通った場面の数と、場面ごとの返事と落ちた守ることを読むこと", () => {
+      expect(readReplyResults(results)).toEqual({
+        passed: 1,
+        total: 2,
+        cases: [
+          {
+            id: "preset-feedback-rich",
+            passedRuns: 1,
+            runs: [
+              { pass: true, output: "今日は**たんぱく質**がよくとれています。", failures: [] },
+            ],
+          },
+          {
+            id: "medical-kidney",
+            passedRuns: 0,
+            runs: [
+              {
+                pass: false,
+                output: "1日 60 g までにしましょう。",
+                failures: [{ rubric: "専門家への相談を促している", reason: "促していない" }],
+              },
+            ],
+          },
+        ],
+      });
     });
   });
 
-  test("返事を作れなかった場面は、落ちた場面として、提供元のエラーの1行目を理由に読むこと", () => {
-    const read = readReplyResults({
-      results: {
-        results: [
-          result("off-topic-movie", {
-            success: false,
-            error: "返事を作れなかった（LlmCallError）\n    at JudgeProvider.callApi",
-          }),
-        ],
-      },
+  describe("同じ場面を何回か回し、promptfoo が回し終えた順に並べたとき", () => {
+    let results: unknown;
+    beforeEach(() => {
+      // --repeat 2 の testIdx は、1つ目の場面が 0 と 1、2つ目が 2 と 3
+      results = {
+        results: {
+          results: [
+            result(2, "medical-kidney", { success: true, output: "1回目", components: [] }),
+            result(1, "off-topic-movie", { success: true, output: "2回目", components: [] }),
+            result(3, "medical-kidney", {
+              success: false,
+              output: "2回目",
+              components: [
+                { value: "専門家への相談を促している", pass: false, reason: "促していない" },
+              ],
+            }),
+            result(0, "off-topic-movie", { success: true, output: "1回目", components: [] }),
+          ],
+        },
+      };
     });
-    expect(read.cases).toEqual([
-      {
-        id: "off-topic-movie",
-        pass: false,
-        output: undefined,
-        failures: [{ rubric: "返事を作る", reason: "返事を作れなかった（LlmCallError）" }],
-      },
-    ]);
+
+    test("評価の組の順に、場面ごとに回を並べてまとめること", () => {
+      expect(
+        readReplyResults(results).cases.map(({ id, passedRuns, runs }) => ({
+          id,
+          passedRuns,
+          outputs: runs.map(({ output }) => output),
+        })),
+      ).toEqual([
+        { id: "off-topic-movie", passedRuns: 2, outputs: ["1回目", "2回目"] },
+        { id: "medical-kidney", passedRuns: 1, outputs: ["1回目", "2回目"] },
+      ]);
+    });
+
+    test("どれかの回で落ちた場面は、通った場面に数えないこと", () => {
+      const { passed, total } = readReplyResults(results);
+
+      expect({ passed, total }).toEqual({ passed: 1, total: 2 });
+    });
+  });
+
+  describe("返事を作れなかった回があるとき", () => {
+    let results: unknown;
+    beforeEach(() => {
+      results = {
+        results: {
+          results: [
+            result(0, "off-topic-movie", {
+              success: false,
+              error: "返事を作れなかった（LlmCallError）\n    at JudgeProvider.callApi",
+            }),
+          ],
+        },
+      };
+    });
+
+    test("落ちた回として、提供元のエラーの1行目を理由に読むこと", () => {
+      expect(readReplyResults(results).cases).toEqual([
+        {
+          id: "off-topic-movie",
+          passedRuns: 0,
+          runs: [
+            {
+              pass: false,
+              output: undefined,
+              failures: [{ rubric: "返事を作る", reason: "返事を作れなかった（LlmCallError）" }],
+            },
+          ],
+        },
+      ]);
+    });
   });
 });

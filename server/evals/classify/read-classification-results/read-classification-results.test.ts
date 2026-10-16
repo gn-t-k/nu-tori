@@ -17,6 +17,7 @@ describe("promptfoo の結果から、間違いの数を読む", () => {
               },
             },
           ],
+          results: [{ vars: { text: "親子丼を食べた" }, error: null }],
         },
       };
     });
@@ -35,15 +36,35 @@ describe("promptfoo の結果から、間違いの数を読む", () => {
     beforeEach(() => {
       results = {
         results: {
-          prompts: [{ provider: "haiku", metrics: { testErrorCount: 3, namedScores: {} } }],
+          prompts: [{ provider: "haiku", metrics: { testErrorCount: 2, namedScores: {} } }],
+          results: [
+            {
+              vars: { text: "親子丼を食べた" },
+              error:
+                "Haiku 5.5 を呼べなかった（LlmCallBadRequestError（invalid_request_error: 上限））\n    at",
+            },
+            { vars: { text: "おはよう" }, error: null },
+            {
+              vars: { text: "今日は寒い" },
+              error: "Haiku 5.5 を呼べなかった（LlmCallTimedOutError）",
+            },
+          ],
         },
       };
     });
 
-    test("数えずに、失敗の数を返すこと", () => {
+    test("数えずに、失敗の数と、失敗した文章ごとの理由（エラーの1行目）を返すこと", () => {
       expect(readClassificationResults(results)).toEqual({
         status: "incomplete",
-        errorCount: 3,
+        errorCount: 2,
+        failures: [
+          {
+            text: "親子丼を食べた",
+            reason:
+              "Haiku 5.5 を呼べなかった（LlmCallBadRequestError（invalid_request_error: 上限））",
+          },
+          { text: "今日は寒い", reason: "Haiku 5.5 を呼べなかった（LlmCallTimedOutError）" },
+        ],
       });
     });
   });

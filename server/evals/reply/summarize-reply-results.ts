@@ -1,38 +1,40 @@
-import { readFile } from "node:fs/promises";
 import { replyEvalCases } from "./cases";
 import { readReplyResults } from "./read-reply-results";
 
-// 返事の評価の結果を、PR の本文に貼る形（通った数、落ちた場面と理由、プリセットの返事の本文）にして出す。
-// 回し方（手で。CI と scripts/check には入れない）: server/ で `pnpm run evals:reply`。
-// 鍵は開発用のワークスペースのキー NU_TORI_ANTHROPIC_API_KEY（返事の Sonnet 5.5 と判定役の Opus 5.5）。結果の JSON は .scratch/（gitignore）に書く。
-// 指示（src/reply/durable-object/create-conversation-provider/reply-instructions.ts）や文脈の文面を変えたら回し直す
-const resultsPath = process.argv[2];
-if (resultsPath === undefined) {
-  throw new Error("使い方: tsx evals/reply/summarize-reply-results.ts <results.json>");
-}
-const { passed, total, cases } = readReplyResults(JSON.parse(await readFile(resultsPath, "utf8")));
-
-const presetIds = new Set(
-  replyEvalCases.filter(({ scene }) => scene === "preset").map(({ id }) => id),
-);
-console.log(
-  [
-    `通った場面: ${passed} / ${total}`,
+// 返事の評価の結果を、PR の本文に貼る形（すべての回で通った場面の数、場面ごとの通った回、落ちた回と理由、プリセットの返事の本文）にする。
+// 回し方は evals/run-eval.ts。指示（src/reply/durable-object/create-conversation-provider/reply-instructions.ts）や文脈の文面を変えたら回し直す
+export const summarizeReplyResults = (results: unknown): { summary: string; passed: boolean } => {
+  const { passed, total, cases } = readReplyResults(results);
+  const presetIds = new Set(
+    replyEvalCases.filter(({ scene }) => scene === "preset").map(({ id }) => id),
+  );
+  const summary = [
+    `すべての回で通った場面: ${passed} / ${total}`,
+    "",
+    ...cases.map(({ id, passedRuns, runs }) => `- ${id}: ${passedRuns} / ${runs.length} 回通った`),
     "",
     ...cases
-      .filter(({ pass }) => !pass)
-      .flatMap(({ id, output, failures }) => [
+      .filter(({ passedRuns, runs }) => passedRuns < runs.length)
+      .flatMap(({ id, runs }) => [
         `## 落ちた場面: ${id}`,
-        ...failures.map(({ rubric, reason }) => `- ${rubric}: ${reason}`),
         "",
-        output ?? "（返事なし）",
-        "",
+        ...runs
+          .filter(({ pass }) => !pass)
+          .flatMap(({ output, failures }) => [
+            ...failures.map(({ rubric, reason }) => `- ${rubric}: ${reason}`),
+            "",
+            output ?? "（返事なし）",
+            "",
+          ]),
       ]),
     ...cases
       .filter(({ id }) => presetIds.has(id))
-      .flatMap(({ id, output }) => [`## プリセット: ${id}`, "", output ?? "（返事なし）", ""]),
-  ].join("\n"),
-);
-if (passed < total) {
-  process.exitCode = 1;
-}
+      .flatMap(({ id, runs }) => [
+        `## プリセット: ${id}`,
+        "",
+        runs[0]?.output ?? "（返事なし）",
+        "",
+      ]),
+  ].join("\n");
+  return { summary, passed: passed === total };
+};
