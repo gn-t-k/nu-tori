@@ -41,7 +41,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				NuTori.entitlements,
 			);
 			target = 0A0000000000000000000008 /* NuTori */;
 		};
@@ -311,11 +310,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_SWIFT_FLAGS = (
-					"$(inherited)",
-					"-enable-upcoming-feature",
-					ImmutableWeakCaptures,
-				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature ImmutableWeakCaptures";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -339,11 +334,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				OTHER_SWIFT_FLAGS = (
-					"$(inherited)",
-					"-enable-upcoming-feature",
-					ImmutableWeakCaptures,
-				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature ImmutableWeakCaptures";
 				SDKROOT = iphoneos;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -368,6 +359,7 @@
 				DEVELOPMENT_TEAM = M962QB54YW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NuTori/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "nu-tori";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "食事を撮って、料理と栄養を推定するために使います。";
@@ -375,7 +367,6 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と、食事の栄養（エネルギー、たんぱく質・脂質・炭水化物、ビタミン・ミネラルなど）を書き込みます。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_FILE = NuTori/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -401,6 +392,7 @@
 				DEVELOPMENT_TEAM = M962QB54YW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NuTori/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "nu-tori";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "食事を撮って、料理と栄養を推定するために使います。";
@@ -408,7 +400,6 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "nu-tori で記録した体重と、食事の栄養（エネルギー、たんぱく質・脂質・炭水化物、ビタミン・ミネラルなど）を書き込みます。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_FILE = NuTori/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

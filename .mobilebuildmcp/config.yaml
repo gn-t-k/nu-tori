@@ -3,3 +3,5 @@ enabledWorkflows: ['simulator', 'ui-automation', 'debugging', 'xcode-ide']
 sessionDefaults:
   projectPath: './ios/NuTori.xcodeproj'
   scheme: 'NuTori'
+  bundleId: 'app.nu-tori'
+  simulatorName: 'iPhone 17'
