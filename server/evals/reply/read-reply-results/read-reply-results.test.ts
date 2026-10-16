@@ -63,14 +63,12 @@ describe("返事の評価の結果を読む", () => {
         cases: [
           {
             id: "preset-feedback-rich",
-            passedRuns: 1,
             runs: [
               { pass: true, output: "今日は**たんぱく質**がよくとれています。", failures: [] },
             ],
           },
           {
             id: "medical-kidney",
-            passedRuns: 0,
             runs: [
               {
                 pass: false,
@@ -108,14 +106,25 @@ describe("返事の評価の結果を読む", () => {
 
     test("評価の組の順に、場面ごとに回を並べてまとめること", () => {
       expect(
-        readReplyResults(results).cases.map(({ id, passedRuns, runs }) => ({
+        readReplyResults(results).cases.map(({ id, runs }) => ({
           id,
-          passedRuns,
-          outputs: runs.map(({ output }) => output),
+          runs: runs.map(({ pass, output }) => ({ pass, output })),
         })),
       ).toEqual([
-        { id: "off-topic-movie", passedRuns: 2, outputs: ["1回目", "2回目"] },
-        { id: "medical-kidney", passedRuns: 1, outputs: ["1回目", "2回目"] },
+        {
+          id: "off-topic-movie",
+          runs: [
+            { pass: true, output: "1回目" },
+            { pass: true, output: "2回目" },
+          ],
+        },
+        {
+          id: "medical-kidney",
+          runs: [
+            { pass: true, output: "1回目" },
+            { pass: false, output: "2回目" },
+          ],
+        },
       ]);
     });
 
@@ -145,7 +154,6 @@ describe("返事の評価の結果を読む", () => {
       expect(readReplyResults(results).cases).toEqual([
         {
           id: "off-topic-movie",
-          passedRuns: 0,
           runs: [
             {
               pass: false,

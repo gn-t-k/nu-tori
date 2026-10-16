@@ -11,10 +11,13 @@ export const summarizeReplyResults = (results: unknown): { summary: string; pass
   const summary = [
     `すべての回で通った場面: ${passed} / ${total}`,
     "",
-    ...cases.map(({ id, passedRuns, runs }) => `- ${id}: ${passedRuns} / ${runs.length} 回通った`),
+    ...cases.map(
+      ({ id, runs }) =>
+        `- ${id}: ${runs.filter(({ pass }) => pass).length} / ${runs.length} 回通った`,
+    ),
     "",
     ...cases
-      .filter(({ passedRuns, runs }) => passedRuns < runs.length)
+      .filter(({ runs }) => runs.some(({ pass }) => !pass))
       .flatMap(({ id, runs }) => [
         `## 落ちた場面: ${id}`,
         "",

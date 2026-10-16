@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import type { CasePassCount } from "../case-pass-count";
 import { formatCaseComparison } from "./index";
 
-type ComparedRun = { label: string; cases: CasePassCount[] };
+type ComparedRun = Parameters<typeof formatCaseComparison>[0];
 
 describe("2つの版の評価の結果を、場面ごとに並べる", () => {
   describe("両方の版に同じ場面があるとき", () => {

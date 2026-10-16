@@ -10,7 +10,6 @@ export const readReplyResults = (
   total: number;
   cases: {
     id: string;
-    passedRuns: number;
     runs: {
       pass: boolean;
       output: string | undefined;
@@ -44,10 +43,10 @@ export const readReplyResults = (
     const caseRuns = runs
       .filter((run) => run.id === id)
       .map(({ pass, output, failures }) => ({ pass, output, failures }));
-    return { id, passedRuns: caseRuns.filter(({ pass }) => pass).length, runs: caseRuns };
+    return { id, runs: caseRuns };
   });
   return {
-    passed: cases.filter((evalCase) => evalCase.passedRuns === evalCase.runs.length).length,
+    passed: cases.filter((evalCase) => evalCase.runs.every(({ pass }) => pass)).length,
     total: cases.length,
     cases,
   };

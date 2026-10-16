@@ -152,7 +152,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - テストは Workers の実行環境の中で回す
 - D1 と Durable Object の中身は、テストのあいだ消えない。テストごとに新しい ID（`generateRecordId()`）で書く
-- LLM の評価（`evals/`）は手で回し、CI と `scripts/check` には入れない。鍵は開発用のワークスペースのキー `NU_TORI_ANTHROPIC_API_KEY`。`pnpm run evals:classify`・`pnpm run evals:reply` は、場面を回す前に鍵で 1 回小さく呼んで確かめ、呼べなければ（月の支出の上限の 400 を含む）理由を出して止まる。上限ぎりぎりの場面の揺れを見るときは `--repeat N` で場面ごとの通った回を出し、別の版（main など）と比べるときは `pnpm run evals:compare <classify|reply> <ref> [--repeat N]` で、今の評価のスクリプトのまま両方の版を回して場面ごとに並べる。PR の本文には、出た要約を、評価したコミットの SHA ごと貼る
+- LLM の評価（`evals/`）は手で回し、CI と `scripts/check` には入れない。回し方（揺れを見る回数、別の版との比べ）は入口の `evals/run-eval.ts`・`evals/compare-eval.ts` にある。PR の本文には、出た要約を、評価したコミットの SHA ごと貼る
 
 ## デプロイ
 

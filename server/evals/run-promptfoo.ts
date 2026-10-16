@@ -4,7 +4,8 @@ import path from "node:path";
 import { serverDirectory } from "./server-directory";
 
 // promptfoo で評価を1回回し、結果（-o の JSON）を読んで返す。
-// directory は評価を回す server/（版を比べるときは、もとの版の worktree の server/）。promptfoo は、この server/ に入っているものを使う。
+// directory は promptfoo を回す場所（設定と、設定が import するものを読む server/。版を比べるときは、もとの版の worktree の server/）。
+// promptfoo そのものは、今の作業ツリーの server/ に入っているものを使う。
 // 通らない場面があると promptfoo は 100 で終わるので、それは回し終えたとみなす
 export const runPromptfoo = async ({
   directory,

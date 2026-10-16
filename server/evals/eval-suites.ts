@@ -16,9 +16,9 @@ export const evalSuites = {
     configPath: "evals/reply/promptfooconfig.ts",
     summarize: summarizeReplyResults,
     readCases: (results) =>
-      readReplyResults(results).cases.map(({ id, passedRuns, runs }) => ({
+      readReplyResults(results).cases.map(({ id, runs }) => ({
         id,
-        passedRuns,
+        passedRuns: runs.filter(({ pass }) => pass).length,
         runCount: runs.length,
       })),
   },
