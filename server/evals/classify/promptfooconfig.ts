@@ -3,7 +3,7 @@ import type { ClassificationErrorKind } from "./judge-classification-error/judge
 
 // 読み分けの評価（#419 の「読み分け」、#423）。
 // 評価の組を Claude Haiku 5.5 に読ませ、間違いの種類ごとの件数を namedScores に出す。
-// 表と回し方と鍵は summarize-classification-results.ts
+// 回し方と鍵は run-eval.ts
 const config: Partial<UnifiedConfig> = {
   description: "読み分けの評価（Claude Haiku 5.5）",
   prompts: ["{{text}}"],
