@@ -265,7 +265,7 @@ struct FakeSyncServerTests {
         }
     }
 
-    @Suite("推定を時刻を直したあとに終える場面で、食事を作る書き込みを受け付けたとき")
+    @Suite("推定を時刻を直したあとに終える場面で、食事を作る書き込みを受け付け、推定中を返したとき")
     struct MealEstimationAfterEatenAtCorrected {
         let meal: SyncedMeal
         let dish: SyncedDish
@@ -284,11 +284,11 @@ struct FakeSyncServerTests {
             _ = try await client.pushSyncWrites(
                 [.createMeal(writeId: UUID(), meal: meal)], isFinalBatch: true,
                 clientState: .fixture())
+            _ = try await client.pullSyncChanges(afterSequence: 0, clientState: .fixture())
         }
 
         @Test("時刻を直す書き込みを受けるまでは、何度取りに行かれても推定を終えないこと")
         func keepsEstimatingUntilCorrected() async throws {
-            _ = try await client.pullSyncChanges(afterSequence: 0, clientState: .fixture())
             for _ in 0..<5 {
                 let pulled = try await client.pullSyncChanges(
                     afterSequence: 2, clientState: .fixture())
@@ -304,8 +304,6 @@ struct FakeSyncServerTests {
         @Test("時刻を直す書き込みを受けたら、次の取得で直した食事と推定できたことと料理を返すこと")
         func estimatesOnPullAfterCorrection() async throws {
             let eatenAt = meal.eatenAt.addingTimeInterval(-3600)
-            _ = try await client.pullSyncChanges(afterSequence: 0, clientState: .fixture())
-            _ = try await client.pullSyncChanges(afterSequence: 2, clientState: .fixture())
             _ = try await client.pushSyncWrites(
                 [.updateMeal(writeId: UUID(), mealId: meal.id, eatenAt: eatenAt)],
                 isFinalBatch: true, clientState: .fixture())
