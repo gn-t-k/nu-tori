@@ -2,7 +2,6 @@ import { replyEvalCases } from "../cases";
 import { readReplyResults } from "../read-reply-results";
 
 // 返事の評価の結果を、PR の本文に貼る形（すべての回で通った場面の数、場面ごとの通った回、落ちた回と理由、プリセットの返事の本文）にする。
-// どれかの回で落ちた場面を落ちた場面とし、通った場面の数も同じ判定から数える
 // 回し方は evals/run-eval.ts。指示（src/reply/durable-object/create-conversation-provider/reply-instructions.ts）や文脈の文面を変えたら回し直す
 export const summarizeReplyResults = (results: unknown): { summary: string; passed: boolean } => {
   const cases = readReplyResults(results);
