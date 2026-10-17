@@ -10,6 +10,10 @@ mobilebuildmcp_workspaces="$HOME/Library/Developer/MobileBuildMCP/workspaces"
 
 main() {
     local delete=false verb=消せる
+    if [ $# -gt 1 ]; then
+        print_usage >&2
+        exit 2
+    fi
     case "${1-}" in
         "") ;;
         --delete)
@@ -51,7 +55,7 @@ main() {
     done <<< "$stale"
 
     if [ -n "$unknown" ]; then
-        echo "== 元のパスが読めないので残す"
+        echo "== 元のパスが読めないので残す（乾いた走りでは、中の消せるものも大きさに含む）"
         while IFS= read -r path; do
             [ -n "$path" ] || continue
             printf '  %8s  %s\n' "$(format_size "$(size_kilobytes "$path")")" "$path"
