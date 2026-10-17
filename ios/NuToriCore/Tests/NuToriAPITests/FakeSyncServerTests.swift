@@ -235,7 +235,7 @@ struct FakeSyncServerTests {
             client = FakeSyncServerTests.client(
                 .init(
                     records: [], startedOn: FakeSyncServerTests.startedOn,
-                    estimatedDishes: { _ in [.dish(dish)] }, mealEstimationPulls: 2))
+                    estimatedDishes: { _ in [.dish(dish)] }, mealEstimation: .afterPulls(2)))
             _ = try await client.pushSyncWrites(
                 [.createMeal(writeId: UUID(), meal: meal)], isFinalBatch: true,
                 clientState: .fixture())
@@ -261,6 +261,68 @@ struct FakeSyncServerTests {
                                 .mealEstimationStatus(.init(mealId: meal.id, status: .estimated)),
                                 .dish(dish),
                             ], hasMore: false, nextAfterSequence: 4,
+                            startedOn: FakeSyncServerTests.startedOn)))
+        }
+    }
+
+    @Suite("推定を時刻を直したあとに終える場面で、食事を作る書き込みを受け付け、推定中を返したとき")
+    struct MealEstimationAfterEatenAtCorrected {
+        let meal: SyncedMeal
+        let dish: SyncedDish
+        let client: NuToriAPIClient
+
+        init() async throws {
+            let meal = try SyncedMeal.fixture()
+            let dish = try SyncedDish.fixture(mealId: meal.id)
+            self.meal = meal
+            self.dish = dish
+            client = FakeSyncServerTests.client(
+                .init(
+                    records: [], startedOn: FakeSyncServerTests.startedOn,
+                    estimatedDishes: { _ in [.dish(dish)] },
+                    mealEstimation: .afterEatenAtCorrected))
+            _ = try await client.pushSyncWrites(
+                [.createMeal(writeId: UUID(), meal: meal)], isFinalBatch: true,
+                clientState: .fixture())
+            _ = try await client.pullSyncChanges(afterSequence: 0, clientState: .fixture())
+        }
+
+        @Test("時刻を直す書き込みを受けるまでは、何度取りに行かれても推定を終えないこと")
+        func keepsEstimatingUntilCorrected() async throws {
+            for _ in 0..<5 {
+                let pulled = try await client.pullSyncChanges(
+                    afterSequence: 2, clientState: .fixture())
+                #expect(
+                    pulled
+                        == .pulled(
+                            SyncChangesPage(
+                                changes: [], hasMore: false, nextAfterSequence: 2,
+                                startedOn: FakeSyncServerTests.startedOn)))
+            }
+        }
+
+        @Test("時刻を直す書き込みを受けたら、次の取得で直した食事と推定できたことと料理を返すこと")
+        func estimatesOnPullAfterCorrection() async throws {
+            let eatenAt = meal.eatenAt.addingTimeInterval(-3600)
+            _ = try await client.pushSyncWrites(
+                [.updateMeal(writeId: UUID(), mealId: meal.id, eatenAt: eatenAt)],
+                isFinalBatch: true, clientState: .fixture())
+            let pulled = try await client.pullSyncChanges(afterSequence: 2, clientState: .fixture())
+
+            #expect(
+                pulled
+                    == .pulled(
+                        SyncChangesPage(
+                            changes: [
+                                .meal(
+                                    SyncedMeal(
+                                        id: meal.id, eatenAt: eatenAt,
+                                        eatenUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
+                                        sentAt: meal.sentAt, sentTimeZone: meal.sentTimeZone,
+                                        entryMethod: meal.entryMethod, photoIds: meal.photoIds)),
+                                .mealEstimationStatus(.init(mealId: meal.id, status: .estimated)),
+                                .dish(dish),
+                            ], hasMore: false, nextAfterSequence: 5,
                             startedOn: FakeSyncServerTests.startedOn)))
         }
     }

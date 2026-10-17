@@ -4,7 +4,7 @@ name: ios-ui-test
 on:
   push:
     branches: [main]
-    # 必須のチェックではないので、ワークフローの paths で飛ばしてよい。check.yml の changes の ios と同じパス（文書の *.md を除く）
+    # 必須のチェックではないので、ワークフローの paths で飛ばしてよい。scripts/check --pick-targets が ios を選ぶパスに合わせ、check.yml の代わりにこのファイルを見る。pick_targets を変えたらここも揃える
     paths:
       - "ios/**"
       - "shared/**"

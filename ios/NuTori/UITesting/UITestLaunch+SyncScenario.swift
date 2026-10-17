@@ -55,10 +55,11 @@
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:))
             case .mealEdit:
-                // 推定中の食事の画面を開いて見られるよう、推定を、推定中を返してから3回あとの取得まで終えない。取りに行くのは3秒おき（`EstimationFollowUpTests`）だが、写真を送り終えたあとの取得がアプリのターゲットから挟まるので、この 3 が何秒あとになるかを確かめる NuToriCore の単体テストは無い。シミュレーターでは、写真を選んでから6秒ほどあと
+                // 推定中の食事の画面を、画面の読み取りが遅い CI でも見られるよう、推定を時刻を直すまで終えない。推定が届く時機を、テストが時刻を直す操作で決める（#513）
                 return .init(
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
-                    estimateDish: Self.reestimate(dishId:name:), mealEstimationPulls: 3)
+                    estimateDish: Self.reestimate(dishId:name:),
+                    mealEstimation: .afterEatenAtCorrected)
             case .conversation:
                 // 読んでいますを、画面の読み取りが遅い CI でも見られるよう、答えるのを5回めの取得まで待つ。5 は、NuToriCore の `RecordSyncTests` の「文章を送ったあと」の `RepliedAtFifthPull` が確かめる取得の並び（送ってすぐ、見守る要求が閉じてすぐ、そのあと3秒おきの [0, 0, 3, 6, 9] 秒）に合わせた数で、答えは送ってから9秒あとに届く。食事と読み分ける文章は、同じ5回めに読み分けが届き、その次の取得（3秒あと）で推定を終える（同じ並びを `ClassifiedAsMealAtThirdPull` が確かめる）。段取りの並びを変えたら、この数も数え直す
                 return .init(

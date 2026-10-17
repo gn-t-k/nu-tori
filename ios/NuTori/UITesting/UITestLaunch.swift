@@ -232,7 +232,7 @@
             case dayRing = "day-ring"
             case unevenDays = "uneven-days"
             case mealEstimation = "meal-estimation"
-            /// 食事の推定に加えて、料理を足す・名前を直すと、次に取りに行ったときに推定し直しが届く
+            /// 食事の推定は時刻を直すまで届かず、直したあとに取りに行ったときに届く。料理を足す・名前を直すと、次に取りに行ったときに推定し直しが届く
             case mealEdit = "meal-edit"
             /// 送った文章を本文で読み分けて答える。食事の文章には推定（親子丼）が届く
             case conversation
