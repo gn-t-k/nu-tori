@@ -8,7 +8,7 @@
   仕様「週の見直しと目標の経過」の申し送りのうち、見た目で決めるもの 6 項目を 21 の論点に分け、論点ごとに 2〜4 の案で並べる。
   21 のうち、開発者に見てもらうのは4つ（tlcard・change・wktop・gcard）。残りの 17 はエージェントのおすすめの案で決め（REC）、ボタンを「エージェントが決めたもの」にまとめて後ろに下げた（#576 の Q7）。
   開発者の答え（#576、2026-10-16）: tlcard は C、wktop は A、gcard は A、17 はおすすめのまま（CHOSEN）。change は「A の理由の文と B の強調」を合わせた案 D・E を足し、目標の画面への入口（gentry）を見てほしいものに足した。
-  開発者の答え（#576、2026-10-17）: change は D、gentry は C（タイムラインの左上）。左上の入口の見せ方（glink）を見てほしいものに足した。開発者の問い「D と E の組み合わせは？」を受けて、glink に案 F（輪と残りのカプセル）と G（残りと進み具合の線）を足した。
+  開発者の答え（#576、2026-10-17）: change は D、gentry は C（タイムラインの左上）。左上の入口の見せ方（glink）を見てほしいものに足した。開発者の問い「D と E の組み合わせは？」を受けて、glink に案 F（輪と残りのカプセル）と G（残りと進み具合の線）を足した。開発者は glink を F に決め、達成したときの文言を「達成しました」にした。
   一番上の「おすすめで通して見る」（#tour-1）は、月曜の朝のタイムライン → 週の振り返り → 目標の画面を、いま選んでいる案でひと続きに描く。
   上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #tlcard-2）。
   「条件」で、目標の状態、いちばん新しい週の見直しの結果、何週ぶりに開いたか、目標を立てた週か、体重の記録の数、インターネットを切り替える。
@@ -473,7 +473,7 @@ function GLINK(S){
   // 旗を囲む輪。size は外の大きさ
   const ring = (size, sw, flag = true) => { const R = (size - sw) / 2, c = 2 * Math.PI * R, h = size / 2, k = size * .58 / 24; return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle cx="${h}" cy="${h}" r="${R}" fill="none" stroke="var(--track)" stroke-width="${sw}"/><circle cx="${h}" cy="${h}" r="${R}" fill="none" stroke="var(--tint)" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${pct * c} ${c}" transform="rotate(-90 ${h} ${h})"/>${flag ? `<g transform="translate(${size * .21} ${size * .21}) scale(${k})" color="var(--tint)">${FLAG(24)}</g>` : ''}</svg>`; };
   if (v === 3) return `<span class="gl">${ring(30, 3.5)}</span>`;
-  const t = done ? '届きました' : keep ? `${f1(g.t)} kg を保つ` : `あと ${f1(r.kg)} kg`;
+  const t = done ? '達成しました' : keep ? `${f1(g.t)} kg を保つ` : `あと ${f1(r.kg)} kg`;
   if (v === 5) return `<span class="gl"><span class="capsule" style="padding-left:6px">${ring(20, 3.5, false)}${t}</span></span>`;
   if (v === 6) return `<span class="gl"><span class="capsule col"><span>${t}</span>${keep ? '' : `<span class="pbar"><i style="width:${pct * 100}%"></i></span>`}</span></span>`;
   return `<span class="gl"><span class="capsule">${FLAG(14)}${t}</span></span>`;
@@ -1239,7 +1239,7 @@ function glinkFigs(pk){
 // 月曜にアプリを開くたびに目に入るものを4つ前に出す。ほかは、今のアプリの形か「目標を立てる」の試作（#506）で選んだ形にそろえて決めた
 const FOCUS = ['tlcard', 'change', 'wktop', 'gcard', 'gentry', 'glink'];
 // CHOSEN: 開発者が選んだ案（0 から数える。#576、2026-10-16）
-const CHOSEN = {tlcard: 2, wktop: 0, gcard: 0, change: 3, gentry: 2};
+const CHOSEN = {tlcard: 2, wktop: 0, gcard: 0, change: 3, gentry: 2, glink: 5};
 // REC: 論点ごとのおすすめの案（0 から数える）と理由。#576 のコメントにも同じものを書いた
 const REC = {
   limits: [1, 'タイムラインのカードと知らせを低いまま保つ。当たった決まりと見送った理由は、週の振り返りの「次の週の1日の目安」で読める。'],
