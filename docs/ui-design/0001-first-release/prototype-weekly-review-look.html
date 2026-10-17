@@ -8,7 +8,7 @@
   仕様「週の見直しと目標の経過」の申し送りのうち、見た目で決めるもの 6 項目を 21 の論点に分け、論点ごとに 2〜4 の案で並べる。
   21 のうち、開発者に見てもらうのは4つ（tlcard・change・wktop・gcard）。残りの 17 はエージェントのおすすめの案で決め（REC）、ボタンを「エージェントが決めたもの」にまとめて後ろに下げた（#576 の Q7）。
   開発者の答え（#576、2026-10-16）: tlcard は C、wktop は A、gcard は A、17 はおすすめのまま（CHOSEN）。change は「A の理由の文と B の強調」を合わせた案 D・E を足し、目標の画面への入口（gentry）を見てほしいものに足した。
-  開発者の答え（#576、2026-10-17）: change は D、gentry は C（タイムラインの左上）。左上の入口の見せ方（glink）を見てほしいものに足した。
+  開発者の答え（#576、2026-10-17）: change は D、gentry は C（タイムラインの左上）。左上の入口の見せ方（glink）を見てほしいものに足した。開発者の問い「D と E の組み合わせは？」を受けて、glink に案 F（輪と残りのカプセル）と G（残りと進み具合の線）を足した。
   一番上の「おすすめで通して見る」（#tour-1）は、月曜の朝のタイムライン → 週の振り返り → 目標の画面を、いま選んでいる案でひと続きに描く。
   上の論点のボタンで論点を、下のバーの ‹ › か矢印キーで案を切り替える。#<論点>-<案の番号> で開ける（例: #tlcard-2）。
   「条件」で、目標の状態、いちばん新しい週の見直しの結果、何週ぶりに開いたか、目標を立てた週か、体重の記録の数、インターネットを切り替える。
@@ -104,6 +104,9 @@ figcaption b{color:var(--page-ink)}
 .gl .two{display:flex;flex-direction:column;line-height:1.15;font-size:var(--t-cap2);text-align:left}
 .gl .two b{font-size:var(--t-foot);font-weight:600}
 .gl .capsule{height:30px;padding:0 10px 0 8px;border-radius:999px;background:var(--fill);display:inline-flex;align-items:center;gap:4px;font-size:var(--t-foot);font-weight:600}
+.gl .capsule .pbar{display:block;height:3px;border-radius:2px;background:var(--track);margin-top:2px;overflow:hidden}
+.gl .capsule .pbar i{display:block;height:100%;background:var(--tint);border-radius:2px}
+.gl .capsule.col{flex-direction:column;align-items:stretch;justify-content:center;gap:0;padding:0 12px;line-height:1.1}
 .navstrip{background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:16px;overflow:hidden;font-size:var(--t-body);line-height:1.3}
 .navstrip .lbl{font-size:12px;color:var(--page-muted);padding:8px 12px 0;border-top:.5px solid var(--frame)}
 .navstrip .lbl:first-child{border-top:0}
@@ -466,12 +469,13 @@ function GLINK(S){
     return `<span class="gl"><span class="two">${a}<b>${b}</b></span></span>`;
   }
   if (v === 2) return `<span class="gl"><span class="ic">${FLAG()}</span></span>`;
-  if (v === 3) {
-    const pct = done || keep ? 1 : Math.max(0, Math.min(1, (g.st - S.trendNow) / (g.st - g.t)));
-    const R = 12, c = 2 * Math.PI * R;
-    return `<span class="gl"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="${R}" fill="none" stroke="var(--track)" stroke-width="3.5"/><circle cx="15" cy="15" r="${R}" fill="none" stroke="var(--tint)" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${pct * c} ${c}" transform="rotate(-90 15 15)"/><g transform="translate(8 8) scale(.58)" color="var(--tint)">${FLAG(24)}</g></svg></span>`;
-  }
+  const pct = done || keep ? 1 : Math.max(0, Math.min(1, (g.st - S.trendNow) / (g.st - g.t)));
+  // 旗を囲む輪。size は外の大きさ
+  const ring = (size, sw, flag = true) => { const R = (size - sw) / 2, c = 2 * Math.PI * R, h = size / 2, k = size * .58 / 24; return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle cx="${h}" cy="${h}" r="${R}" fill="none" stroke="var(--track)" stroke-width="${sw}"/><circle cx="${h}" cy="${h}" r="${R}" fill="none" stroke="var(--tint)" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${pct * c} ${c}" transform="rotate(-90 ${h} ${h})"/>${flag ? `<g transform="translate(${size * .21} ${size * .21}) scale(${k})" color="var(--tint)">${FLAG(24)}</g>` : ''}</svg>`; };
+  if (v === 3) return `<span class="gl">${ring(30, 3.5)}</span>`;
   const t = done ? '届きました' : keep ? `${f1(g.t)} kg を保つ` : `あと ${f1(r.kg)} kg`;
+  if (v === 5) return `<span class="gl"><span class="capsule" style="padding-left:6px">${ring(20, 3.5, false)}${t}</span></span>`;
+  if (v === 6) return `<span class="gl"><span class="capsule col"><span>${t}</span>${keep ? '' : `<span class="pbar"><i style="width:${pct * 100}%"></i></span>`}</span></span>`;
   return `<span class="gl"><span class="capsule">${FLAG(14)}${t}</span></span>`;
 }
 const NAVT = t => `<div class="nav"><span class="l">${PK.gentry === 2 ? GLINK(NAVS) : ''}</span><span class="t">${t}</span><span class="r"><span class="person">${I.person}</span></span></div>`;
@@ -1218,6 +1222,8 @@ T.push({id: 'glink', label: '左上の入口の見せ方', title: 'タイムラ�
     {name: 'アイコン', desc: '右の人のボタンと同じ灰色の丸に、旗のアイコン。左右がそろって静か。旗が目標を指すと覚えるまでは、何が開くか分かりにくい。', figs: glinkFigs},
     {name: '進み具合の輪', desc: '開始の体重から目標体重までの進み具合を、旗を囲む輪で示す。届くと一周する（維持は一周のまま）。数字は読めないが、週ごとに少しずつ伸びるのが見える。1日の丸の帯のすぐ上にあるので、輪どうしが似て見える。', figs: glinkFigs},
     {name: '旗と残りのカプセル', desc: '灰色のカプセルに旗と「あと 2.8 kg」の1行。B より短く、アイコンと数字の両方がある。', figs: glinkFigs},
+    {name: '輪と残りのカプセル（D と E を合わせる）', desc: 'E の旗を、D の進み具合の輪に替える。残りの kg を数で、どこまで来たかを輪で見せる。輪は 20 pt と小さいので、中の旗は外した。1日の丸（P・F・C の3色）と違って紫の1色。維持と達成では一周のまま。', figs: glinkFigs},
+    {name: '残りと進み具合の線のカプセル', desc: 'F の輪を、文字の下の細い線に替える。1日の丸の帯の輪と形が重ならない。線は開始の体重から目標体重まで。維持では線を出さない。', figs: glinkFigs},
   ]});
 function glinkFigs(pk){
   const S0 = cur({});
