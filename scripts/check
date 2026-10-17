@@ -3,6 +3,13 @@
 set -euo pipefail
 
 main() {
+    if [ "${1-}" = --pick-targets ]; then
+        # 出力は CI が $GITHUB_OUTPUT に書くので、結果の行（on_exit）を混ぜない
+        [ $# -eq 1 ] || usage_error
+        pick_targets
+        return
+    fi
+
     local targets="" target
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -27,16 +34,95 @@ main() {
     fi
 
     trap on_exit EXIT
-    for target in ${targets:-ios server}; do
-        # 対象の前提（swift や xcodebuild があるか）で落ちたとき、前の対象の手順の名前を出さない
-        current_step=""
-        case "$target" in
-            ios) check_ios ;;
-            ios-app) check_ios_app ;;
-            ios-ui-test) check_ios_ui_test ;;
-            server) check_server ;;
-        esac
+    if [ -z "$targets" ]; then
+        check_changed
+        return
+    fi
+    for target in $targets; do
+        check_target "$target"
     done
+}
+
+check_target() {
+    # 対象の前提（swift や xcodebuild があるか）で落ちたとき、前の対象の手順の名前を出さない
+    current_step=""
+    case "$1" in
+        ios) check_ios ;;
+        ios-app) check_ios_app ;;
+        ios-ui-test) check_ios_ui_test ;;
+        server) check_server ;;
+    esac
+}
+
+# CI の changes ジョブもこれを呼び、出力を $GITHUB_OUTPUT に書く
+pick_targets() {
+    local files target paths
+    # 文書（*.md）だけの変更では、確かめるものが無い
+    files="$(grep -vE '\.md$' || true)"
+    for target in ios server; do
+        paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
+        # アプリの API のクライアントは、サーバーの OpenAPI の文書から生成する
+        if [ "$target" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
+        if grep -qE "^($paths)" <<< "$files"; then
+            echo "$target=true"
+        else
+            echo "$target=false"
+        fi
+    done
+}
+
+# CI がまだ見ていない分（まだ push していない変更と作業中の変更）が関わる対象だけを確かめる
+check_changed() {
+    local upstream base files picked run_ios=false run_server=false
+    step "確かめる対象を選ぶ"
+    upstream="$(git -C "$root" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null)" ||
+        upstream=origin/main
+    base="$(git -C "$root" merge-base "$upstream" HEAD 2> /dev/null)" || base=""
+    if [ -z "$base" ] || ! files="$(changed_files "$base")"; then
+        echo "${upstream} と比べられないので、server と ios の両方を確かめる"
+        check_target server
+        check_target ios
+        return
+    fi
+    echo "${upstream} と比べて、まだ push していない変更と作業中の変更から選ぶ"
+
+    picked="$(pick_targets <<< "$files")"
+    [[ "$picked" == *ios=true* ]] && run_ios=true
+    [[ "$picked" == *server=true* ]] && run_server=true
+    report_target server "$run_server"
+    report_target ios "$run_ios"
+    if ! $run_ios && ! $run_server; then
+        echo "確かめる対象が無い（文書だけの変更か、変更が無い）"
+        return
+    fi
+
+    if $run_server; then
+        check_target server
+        # --fix が server/openapi.json を書き出し直すと、アプリの API のクライアントも生成し直す
+        if ! $run_ios && files="$(changed_files "$base")" &&
+            [[ "$(pick_targets <<< "$files")" == *ios=true* ]]; then
+            echo "server の確かめのあとに ios に関わる変更（server/openapi.json など）があるので、ios も確かめる"
+            run_ios=true
+        fi
+    fi
+    if $run_ios; then
+        check_target ios
+    fi
+}
+
+# 呼ぶ側が ! や && の中で呼ぶと set -e が効かないので、git diff の失敗を自分で返す
+# ファイルを移したとき、移す前のパスでも対象を選ぶので、移したとみなさず消えたと足したの2つで出す
+changed_files() {
+    git -C "$root" diff --name-only --no-renames "$1" || return 1
+    git -C "$root" ls-files --others --exclude-standard
+}
+
+report_target() {
+    if $2; then
+        echo "  ${1}: 確かめる"
+    else
+        echo "  ${1}: 飛ばす（関わる変更が無い）"
+    fi
 }
 
 check_ios() {
@@ -241,7 +327,9 @@ print_usage() {
     cat << 'USAGE'
 使い方: scripts/check [ios | ios-app | ios-ui-test | server] [--fix]
        scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
-  引数なし     ios と server
+       scripts/check --pick-targets < <変わったファイルの一覧>
+  引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と ios。
+               文書（*.md）だけなら何も回さない。比べる先が取れなければ両方。全部を回すときは ios server と並べる
   ios          整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
@@ -249,6 +337,7 @@ print_usage() {
   --fix        直せるものを直してから確かめる
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
   --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
+  --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false> と server=<true|false> の2行で出す（CI 向け）
 USAGE
 }
 
