@@ -10,13 +10,13 @@
 > - 本文や関連ページを探しても記述が無かったものは「本文を探したが記述なし」と書き、探したページを添える。
 > - **GitHub の API はこのセッションから使えなかった**（リポジトリのアクセスが許されていない）。リリースの日付は npm の公開日時で代え、Hugo だけ GitHub のリリースのページ（HTML）を読んだ。スター数やコミットの頻度は見ていない。
 > - **どの道具も、実際にプロジェクトを作ってビルドしてはいない。** ビルドの速さ、出る HTML の綺麗さ、`scripts/check` との相性は試していない。
-> - 英語の本文は原文のまま引用し、訳はこの文書で付けた。
+> - 英語の本文は原文のまま引用した。訳は要点だけを地の文に書いた。
 > - 二次情報（解説ブログ、まとめ記事、コミュニティ投稿、Wikipedia）は使っていない。検索の結果に出た二次情報（Eleventy の改名の中止を伝える個人ブログなど）は、一次の本文と食い違うものがあったが、根拠にしていない。
 
 ## 結論の要約
 
 - **Astro の開発元（The Astro Technology Company）は 2026-01-16 に Cloudflare に加わった。** 常勤の全員が Cloudflare の社員になり、Astro は MIT のまま、特定の配信先に縛らない（platform-agnostic）方針を続けると両社が書いている【本文で確認 AS1,CF9】。さらに **2026-06-04 には Vite・Rolldown・Oxc（oxlint・oxfmt）の VoidZero も Cloudflare に加わった**【本文で確認 VZ1】。nu-tori がすでに使う oxlint・oxfmt と、Astro・SvelteKit・Hono の Vite 系の道具の多くが、今は Cloudflare の社員の手で保守されている。
-- **最新版（npm の latest、2026-10-17 時点）**: Astro 7.4.0（10-15。7.0 は 06-22）、`@astrojs/cloudflare` 14.4.0、Eleventy 3.1.7（10-15。v4 は 07-01 の alpha.10 から止まっている）、Hugo v0.168.0（10-13）、Next.js 16.4.2（10-15）、Hono 4.13.13（10-04）と `@hono/vite-ssg` 0.3.3（2026-01-15）、SvelteKit 3.1.0（3.0 は 10-01）と `adapter-static` 4.0.0、VitePress 1.6.4（**2025-08-05 から latest が出ていない**。2.0 は alpha.20 が 09-04）【本文で確認 NPM1〜NPM9,HU1】。
+- **最新版（npm の latest、2026-10-17 時点）**: Astro 7.4.0（10-15。7.0 は 06-22）、`@astrojs/cloudflare` 14.4.0、Eleventy 3.1.7（10-15。v4 は 07-01 の alpha.10 から止まっている）、Hugo v0.168.0（10-13）、Next.js 16.4.2（10-15）、Hono 4.13.13（10-04）と `@hono/vite-ssg` 0.3.3（2026-01-15）、SvelteKit 3.1.0（3.0 は 10-01）と `adapter-static` 4.0.0、VitePress 1.6.4（**2025-08-05 から latest が出ていない**。2.0 は alpha.20 が 09-04）【本文で確認 NPM1,NPM3〜NPM9,HU1】。
 - **Eleventy は Font Awesome の下で「Build Awesome」に改名すると 2026-03-03 に発表した。** 「Eleventy v4 will be Build Awesome v4」。有料の「Build Awesome Pro」は使うのに要らない、とする【本文で確認 EL1】。npm のリポジトリの URL は `11ty/buildawesome` に変わっているが、パッケージ名は `@11ty/eleventy` のまま【本文で確認 NPM3】。v4 の公開日と v4 のパッケージ名は【本文を探したが記述なし EL1】。
 - **A/B の土台は Cloudflare 側にある。** `assets.run_worker_first` に道のパターン（`*` と、`!` の否定）の配列を書くと、そのパスだけ Worker が先に動き、`env.ASSETS.fetch()` で群ごとの静的 HTML を返せる。Cloudflare は使いみちに「A/B testing」を挙げている【本文で確認 CF1】。**静的 assets への要求は無料・無制限だが、Worker が先に動く要求は Worker の呼び出しとして数える**【本文で確認 CF2】。**`_headers` のヘッダーは Worker が作った応答には付かない**ので、A/B を通すパスでは Worker でヘッダーを付ける【本文で確認 CF3】。
 - **どの SSG でも「群ごとに別の HTML を書き出す」ことはできる。** 差は、群を別のパス（例: `/lp/a/`、`/lp/b/`）として作る手間と、JavaScript を出さないかどうか。**JavaScript を出さないのが既定なのは Astro、Eleventy、Hugo、Hono（SSG）**。SvelteKit は `csr = false` で出さなくできる。Next.js の静的書き出しはクライアントでの遷移の JavaScript を出す。VitePress は実験的な `mpa` を使わない限り出す【本文で確認 AS6,SV2,NX1,VP1、Hugo・Eleventy・Hono は本文からの読み取り】。
@@ -209,11 +209,11 @@ flowchart TB
   end
 ```
 
-- **Astro**: 欲しいもの（JavaScript なしが既定、ビルドのときの画像の変換、公式の sitemap、`llms.txt` を静的エンドポイントで書き出す、アダプター不要の静的配信）がそろう。配信先の Cloudflare が開発元を抱え、Cloudflare の文書でも先頭に出る。弱いところは、依存が最も多いこと（lock に 260〜328。AGENTS が嫌う「依存の更新で壊れる」面が広い）、`@astrojs/check` が TypeScript 7 を peer に含まないこと（`scripts/check` の型検査を `tsc` 7 で通すか、Astro 側の型検査を別に回すかを決める必要がある）、匿名のテレメトリーを既定で集めること（`astro telemetry disable` で止める）、pnpm で Sharp を手で入れる必要があること。
+- **Astro**: 欲しいもの（JavaScript なしが既定、ビルドのときの画像の変換、公式の sitemap、`llms.txt` を静的エンドポイントで書き出す、アダプター不要の静的配信）がそろう。配信先の Cloudflare が開発元を抱え、Cloudflare の文書でも先頭に出る。弱いところは、依存が最も多いこと（lock に 260〜328。依存の更新で壊れる面が広い）、`@astrojs/check` が TypeScript 7 を peer に含まないこと（`scripts/check` の型検査を `tsc` 7 で通すか、Astro 側の型検査を別に回すかを決める必要がある）、匿名のテレメトリーを既定で集めること（`astro telemetry disable` で止める）、pnpm で Sharp を手で入れる必要があること。
 - **Hono（`hono/ssg` + `@hono/vite-ssg`）**: server と同じ `hono` 4.13.13 と同じ書き方で、依存は最も少ない（lock に 42）。振り分けの Worker も同じ道具で書け、エージェントが server の書き方をそのまま使える。弱いところは、画像の変換・sitemap・`<head>` の部品を自分で作ること（ページが 5〜10 枚で画像が少なければ小さい）、`@hono/vite-ssg` が 0.x で最後の版が 2026-01-15 であること、README の配信の例が Pages であること。
 - **Eleventy**: 依存は中くらい（114）で、JavaScript を出さず、TypeScript の設定ファイルも書ける。ただ、Build Awesome への改名と v4 の途中で、パッケージ名がこれから変わる見込みがあり、今入れると移行が控えている。
 - **外してよさそうなもの**: Next.js の静的書き出し（遷移の JavaScript を出し、Cookies・Headers・Proxy が使えない）、VitePress（安定版が 1 年以上止まり、文書のサイト向け）、Hugo（TypeScript で書けず、構造化データの組み込みが microdata で、pnpm のモノレポの道具の外にある Go のバイナリ）、SvelteKit（`csr = false` で静的にできるが、Svelte という別の書き方を足す割に得が無い。`svelte-check` も TypeScript 7 を peer に含まない）、Void・vinext（全部入りの枠組み）。
-- **A/B はどの案でも同じ形**: 群のページを別のパスに書き出し、`run_worker_first` を LP のパスだけに当てた Worker で振り分ける（CF1、CF2、CF4）。Worker を通るパスは有料の呼び出しになり、`_headers` が効かない（CF2、CF3）。
+- **A/B はどの案でも同じ形**: 群のページを別のパスに書き出し、`run_worker_first` を LP のパスだけに当てた Worker で振り分ける（CF1、CF2、CF4）。Worker を通るパスは Worker の呼び出しとして数え（無料プランでは上限を超えると 429）、`_headers` が効かない（CF2、CF3）。
 
 ## 出典一覧
 
