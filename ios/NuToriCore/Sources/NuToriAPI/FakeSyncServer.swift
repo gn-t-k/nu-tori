@@ -92,8 +92,7 @@
             public let estimatedDishes: @Sendable (UUID) -> [SyncChange]
             /// 推定し直し（料理を足した・名前を直した）を終えた料理に、料理の ID と名前から作る量と材料。nil なら材料を推定できない（料理なし）
             public let estimateDish: @Sendable (_ dishId: UUID, _ name: String) -> DishEstimate?
-            /// 食事の推定中を返してから、推定を終えるまでの取得の回数。その回数めの取得で終える
-            public let mealEstimationPulls: Int
+            public let mealEstimation: MealEstimation
             /// 送った文章の本文から、読み分けと返事の答え方を決める。nil なら読み分けを待ったままにする
             public let answerSentText: @Sendable (_ body: String) -> SentTextAnswer?
             /// 送った文章を受け付けてから（送り直されてから）、答えるまでの取得の回数。その回数めの取得で答える
@@ -112,13 +111,15 @@
                 estimateDish:
                     @escaping @Sendable (_ dishId: UUID, _ name: String) -> DishEstimate? =
                     { _, _ in nil },
-                mealEstimationPulls: Int = 1,
+                mealEstimation: MealEstimation = .afterPulls(1),
                 answerSentText: @escaping @Sendable (_ body: String) -> SentTextAnswer? = { _ in nil
                 },
                 sentTextAnswerPulls: Int = 1,
                 goalSetup: GoalSetupAnswers? = nil
             ) {
-                precondition(mealEstimationPulls >= 1, "推定を終えるまでの取得は1回以上")
+                if case .afterPulls(let pulls) = mealEstimation {
+                    precondition(pulls >= 1, "推定を終えるまでの取得は1回以上")
+                }
                 precondition(sentTextAnswerPulls >= 1, "送った文章に答えるまでの取得は1回以上")
                 self.records = records
                 self.startedOn = startedOn
@@ -128,11 +129,19 @@
                 self.accountDeletion = accountDeletion
                 self.estimatedDishes = estimatedDishes
                 self.estimateDish = estimateDish
-                self.mealEstimationPulls = mealEstimationPulls
+                self.mealEstimation = mealEstimation
                 self.answerSentText = answerSentText
                 self.sentTextAnswerPulls = sentTextAnswerPulls
                 self.goalSetup = goalSetup
             }
+        }
+
+        /// 食事の推定を終える時機
+        public enum MealEstimation: Sendable {
+            /// 推定中を返してから、その回数めの取得で終える
+            case afterPulls(Int)
+            /// 時刻を直す書き込みを受けるまで終えず、受けたあとの取得で終える。推定が届く時機を、UI テストが時刻を直す操作で決めるため
+            case afterEatenAtCorrected
         }
 
         /// 送った文章への答え方。返事は指し示す食事を持たない
@@ -299,6 +308,8 @@
             private var entries: [RecordKey: Entry] = [:]
             /// 推定中を返した食事
             private var estimatingMeals: [EstimatingMeal] = []
+            /// 時刻を直す書き込みを受けた食事
+            private var eatenAtCorrectedMealIds: Set<UUID> = []
             /// 推定中を返した料理。次に取りに行かれたら推定し直しを終える
             private var estimatingDishIds: [UUID] = []
             /// 答えを待っている送った文章と、答えるまでに残る取得の回数（0 は、まだ1回も取りに行かれていない）
@@ -311,10 +322,22 @@
                 let change: SyncChange
             }
 
-            /// 推定中を返した食事と、推定を終えるまでに残る取得の回数。0 になった取得で推定を終える
+            /// 推定中を返した食事と、推定を終えるまでの残り。取得の回数なら、残る回数
             struct EstimatingMeal {
                 let mealId: UUID
-                let remainingPulls: Int
+                let remaining: MealEstimation
+
+                /// 取りに行かれたあと。この取得で推定を終えるなら nil
+                func pulled(eatenAtCorrected: Bool) -> EstimatingMeal? {
+                    switch remaining {
+                    case .afterPulls(let pulls):
+                        pulls == 1
+                            ? nil
+                            : EstimatingMeal(mealId: mealId, remaining: .afterPulls(pulls - 1))
+                    case .afterEatenAtCorrected:
+                        eatenAtCorrected ? nil : self
+                    }
+                }
             }
 
             mutating func put(_ change: SyncChange) {
@@ -329,10 +352,14 @@
 
             mutating func pull(after afterSequence: Int, scenario: Scenario) -> [Entry] {
                 answerSentTexts(scenario: scenario)
-                let pulled = estimatingMeals.map {
-                    EstimatingMeal(mealId: $0.mealId, remainingPulls: $0.remainingPulls - 1)
-                }
-                for meal in pulled where meal.remainingPulls == 0 {
+                var stillEstimating: [EstimatingMeal] = []
+                for meal in estimatingMeals {
+                    if let pulled = meal.pulled(
+                        eatenAtCorrected: eatenAtCorrectedMealIds.contains(meal.mealId))
+                    {
+                        stillEstimating.append(pulled)
+                        continue
+                    }
                     put(.mealEstimationStatus(.init(mealId: meal.mealId, status: .estimated)))
                     for change in scenario.estimatedDishes(meal.mealId) {
                         put(change)
@@ -343,14 +370,12 @@
                 }
                 let page = entries.values.filter { $0.sequence > afterSequence }
                     .sorted { $0.sequence < $1.sequence }
-                let stillEstimating = pulled.filter { $0.remainingPulls > 0 }
                 let newlyEstimating = page.compactMap { entry -> EstimatingMeal? in
                     guard case .mealEstimationStatus(let status) = entry.change,
                         status.status == .estimating,
                         !stillEstimating.contains(where: { $0.mealId == status.mealId })
                     else { return nil }
-                    return EstimatingMeal(
-                        mealId: status.mealId, remainingPulls: scenario.mealEstimationPulls)
+                    return EstimatingMeal(mealId: status.mealId, remaining: scenario.mealEstimation)
                 }
                 estimatingMeals = stillEstimating + newlyEstimating
                 estimatingDishIds = page.compactMap {
@@ -544,6 +569,7 @@
                                 eatenUtcOffsetSeconds: meal.eatenUtcOffsetSeconds,
                                 sentAt: meal.sentAt, sentTimeZone: meal.sentTimeZone,
                                 entryMethod: meal.entryMethod, photoIds: meal.photoIds)))
+                    eatenAtCorrectedMealIds.insert(meal.id)
                 case .deleteMeal(_, let mealId):
                     put(.mealDeletion(mealId: mealId))
                     estimatingMeals.removeAll { $0.mealId == mealId }
