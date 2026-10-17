@@ -111,8 +111,9 @@ check_changed() {
 }
 
 # 呼ぶ側が ! や && の中で呼ぶと set -e が効かないので、git diff の失敗を自分で返す
+# ファイルを移したとき、移す前のパスでも対象を選ぶので、移したとみなさず消えたと足したの2つで出す
 changed_files() {
-    git -C "$root" diff --name-only "$1" || return 1
+    git -C "$root" diff --name-only --no-renames "$1" || return 1
     git -C "$root" ls-files --others --exclude-standard
 }
 
