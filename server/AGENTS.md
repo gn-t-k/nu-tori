@@ -152,6 +152,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - テストは Workers の実行環境の中で回す
 - D1 と Durable Object の中身は、テストのあいだ消えない。テストごとに新しい ID（`generateRecordId()`）で書く
+- LLM の評価（`evals/`）は手で回し、CI と `scripts/check` には入れない。回し方（揺れを見る回数、別の版との比べ）は入口の `evals/run-eval.ts`・`evals/compare-eval.ts` にある。PR の本文には、出た要約を、評価したコミットの SHA ごと貼る
 
 ## デプロイ
 

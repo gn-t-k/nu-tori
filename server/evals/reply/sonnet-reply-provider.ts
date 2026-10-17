@@ -3,6 +3,7 @@ import { R } from "@praha/byethrow";
 import type { ApiProvider, ProviderResponse } from "promptfoo";
 import { replyAttemptTimeLimitMs } from "../../src/reply/domain/reply-attempt-time-limit-ms";
 import { createAnthropicConversationProvider } from "../../src/reply/durable-object/create-conversation-provider/create-anthropic-conversation-provider";
+import { describeLlmCallFailure } from "../describe-llm-call-failure";
 import { replyEvalCases } from "./cases";
 
 // promptfoo の custom provider。場面の文脈で、本番と同じ道（指示・要求・流した本文の読み取り）を通して Claude Sonnet 5.5 に返事を作らせる。
@@ -29,7 +30,7 @@ export default class SonnetReplyProvider implements ApiProvider {
       AbortSignal.timeout(replyAttemptTimeLimitMs),
     );
     if (R.isFailure(generated)) {
-      return { error: `返事を作れなかった（${generated.error.name}）` };
+      return { error: `返事を作れなかった（${describeLlmCallFailure(generated.error)}）` };
     }
     const { body, mealIds, usage } = generated.value;
     return {

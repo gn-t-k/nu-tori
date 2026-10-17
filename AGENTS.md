@@ -27,7 +27,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 - ユーザーへの返事と、リポジトリに置く文書は日本語で書く
 - 比べるものや流れは、表より図で見せる
 - 選択肢を尋ねるときは、今の形と、具体の場面（どの操作で何が起きるか）と、変えたあとの形（フォルダの木・型・表）を見せる。`GLOSSARY.md` に無い語は、使う前に一言で定義する
-- UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る
+- UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る。作った HTML は Artifact（claude.ai の非公開のページ）にも載せ、リンクを Issue に書く。開発者が iPad の Claude アプリで開いて見比べるため。正本はブランチのファイルで、直したら同じページに載せ直す
 - 工程のゲートや引き継ぎなどの大きな確認をするときは、`docs/agents/gate-review.md` を読む
 
 ### 情報の置き場
@@ -38,7 +38,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 - アプリは `ios/`、サーバーは `server/` に置く（モノレポ）。`ios/`・`server/` のファイルを読み書きする前に、そのディレクトリの `AGENTS.md` を読む
 - 確かめる手順の入口は `scripts/check` の1本にする。引数なしで両方、`ios`・`server` で片方を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。エージェントは、変えたらコミットの前に `scripts/check --fix` を回し、0 で終わるまで直す
-- スキルを足す・直すとき、`/wizard` でウィザードを書くとき、hook・MCP・CI の設定を足す・直すとき、Sentry・App Store Connect・Cloudflare・PostHog を読むとき、本番の知らせを Issue にする仕組み（`production-alerts`）に触るときは、`docs/agents/tooling.md` を読む
+- スキルやサブエージェントの定義を足す・直すとき、`/wizard` でウィザードを書くとき、hook・MCP・CI の設定を足す・直すとき、Sentry・App Store Connect・Cloudflare・PostHog を読むとき、本番の知らせを Issue にする仕組み（`production-alerts`）に触るときは、`docs/agents/tooling.md` を読む
 - 依存と道具（Swift・Node・pnpm など）の版を上げるとき、依存の PR とその落ちた Issue を扱うとき、依存の更新で壊れた本番を戻すときは、`docs/agents/dependencies.md` を読む
 - 環境は本番と開発用の2つ。TestFlight と App Store の版は本番に、デバッグビルドは開発用につなぐ。DB、写真の置き場、LLM の API キー、Sign in with Apple の鍵は環境ごとに分け、開発用の LLM のキーには低い費用の上限をかける。Workers AI は、呼ぶときに環境ごとの AI Gateway を通し、開発用のゲートウェイに低い支出の上限をかける
 - 計算・判定・検証の決めごと（ドメイン知識）の正本は、既定でサーバーのドメイン層に置く。見た目の決めごと（`DESIGN.md`）と、ヘルスケアとの対応づけのような端末の入出力の変換は、ドメイン知識に含めない。端末に置くのは、サーバーに置くと次のどれかでユーザーが不利益を被るものだけにする（今の一覧は `ios/AGENTS.md`）
