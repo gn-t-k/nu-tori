@@ -1,22 +1,18 @@
 import { z } from "zod";
 
 // promptfoo の結果（-o の JSON）から、場面ごとの回の合否・返事の本文・落ちた守ることと判定の理由を読む。
-// --repeat で何回か回した結果は、場面ごとに回の並びにまとめる。すべての回で通った場面を、通った場面に数える。
+// --repeat で何回か回した結果は、場面ごとに回の並びにまとめる。
 // 返事を作れなかった回は、落ちた回として提供元のエラーの1行目（スタックを除く）を理由にする（回し直すかは読む人が決める）
 export const readReplyResults = (
   results: unknown,
 ): {
-  passed: number;
-  total: number;
-  cases: {
-    id: string;
-    runs: {
-      pass: boolean;
-      output: string | undefined;
-      failures: { rubric: string; reason: string }[];
-    }[];
+  id: string;
+  runs: {
+    pass: boolean;
+    output: string | undefined;
+    failures: { rubric: string; reason: string }[];
   }[];
-} => {
+}[] => {
   // promptfoo は回し終えた順に並べるので、評価の組の順（--repeat の回は続けて並ぶ）に並べ直す
   const rows = resultsSchema
     .parse(results)
@@ -39,17 +35,12 @@ export const readReplyResults = (
     };
   });
   const ids = [...new Set(runs.map(({ id }) => id))];
-  const cases = ids.map((id) => {
-    const caseRuns = runs
+  return ids.map((id) => ({
+    id,
+    runs: runs
       .filter((run) => run.id === id)
-      .map(({ pass, output, failures }) => ({ pass, output, failures }));
-    return { id, runs: caseRuns };
-  });
-  return {
-    passed: cases.filter((evalCase) => evalCase.runs.every(({ pass }) => pass)).length,
-    total: cases.length,
-    cases,
-  };
+      .map(({ pass, output, failures }) => ({ pass, output, failures })),
+  }));
 };
 
 const resultsSchema = z.object({

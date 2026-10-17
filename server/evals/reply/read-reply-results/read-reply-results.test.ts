@@ -56,29 +56,23 @@ describe("返事の評価の結果を読む", () => {
       };
     });
 
-    test("通った場面の数と、場面ごとの返事と落ちた守ることを読むこと", () => {
-      expect(readReplyResults(results)).toEqual({
-        passed: 1,
-        total: 2,
-        cases: [
-          {
-            id: "preset-feedback-rich",
-            runs: [
-              { pass: true, output: "今日は**たんぱく質**がよくとれています。", failures: [] },
-            ],
-          },
-          {
-            id: "medical-kidney",
-            runs: [
-              {
-                pass: false,
-                output: "1日 60 g までにしましょう。",
-                failures: [{ rubric: "専門家への相談を促している", reason: "促していない" }],
-              },
-            ],
-          },
-        ],
-      });
+    test("場面ごとの返事と落ちた守ることを読むこと", () => {
+      expect(readReplyResults(results)).toEqual([
+        {
+          id: "preset-feedback-rich",
+          runs: [{ pass: true, output: "今日は**たんぱく質**がよくとれています。", failures: [] }],
+        },
+        {
+          id: "medical-kidney",
+          runs: [
+            {
+              pass: false,
+              output: "1日 60 g までにしましょう。",
+              failures: [{ rubric: "専門家への相談を促している", reason: "促していない" }],
+            },
+          ],
+        },
+      ]);
     });
   });
 
@@ -106,7 +100,7 @@ describe("返事の評価の結果を読む", () => {
 
     test("評価の組の順に、場面ごとに回を並べてまとめること", () => {
       expect(
-        readReplyResults(results).cases.map(({ id, runs }) => ({
+        readReplyResults(results).map(({ id, runs }) => ({
           id,
           runs: runs.map(({ pass, output }) => ({ pass, output })),
         })),
@@ -127,12 +121,6 @@ describe("返事の評価の結果を読む", () => {
         },
       ]);
     });
-
-    test("どれかの回で落ちた場面は、通った場面に数えないこと", () => {
-      const { passed, total } = readReplyResults(results);
-
-      expect({ passed, total }).toEqual({ passed: 1, total: 2 });
-    });
   });
 
   describe("返事を作れなかった回があるとき", () => {
@@ -151,7 +139,7 @@ describe("返事の評価の結果を読む", () => {
     });
 
     test("落ちた回として、提供元のエラーの1行目を理由に読むこと", () => {
-      expect(readReplyResults(results).cases).toEqual([
+      expect(readReplyResults(results)).toEqual([
         {
           id: "off-topic-movie",
           runs: [
