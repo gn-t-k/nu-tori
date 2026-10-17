@@ -9,7 +9,7 @@ enum UITestNow: String {
     case morningAfterNotice = "2026-10-05T09:00"
 
     /// 止めた時刻を、そのタイムゾーンの時刻として読む。テストの側で、アプリと同じ「今日」を数えるため。
-    /// アプリの側の `DeviceClock.frozen(atLaunchValue:in:)` と同じ形で読む
+    /// アプリの側の `DeviceClock.frozen(atLaunchValue:in:elapsed:)` と同じ形で読む
     func date(in timeZone: TimeZone) throws -> Date {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)

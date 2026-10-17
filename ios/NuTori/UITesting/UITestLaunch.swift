@@ -17,7 +17,7 @@
         /// 締め出しの記憶を置く UserDefaults の名前。同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている。
         /// nil なら、ほかの記憶と同じく、起動のたびに空から始める
         let lockoutDefaultsName: String?
-        /// `UI_TEST_NOW` の時刻で止めた時計
+        /// `UI_TEST_NOW` の時刻でほとんど止めた時計（`DeviceClock.frozen`）
         let clock: DeviceClock
         /// アプリの時計を、ホームへ出てから開き直すたびに1日進める。閉じているあいだに日付が変わったことにする
         let dayPassesOnReturn: Bool
@@ -148,7 +148,9 @@
 
         /// 本物の時計に戻すと、結果が開いた時刻でまた変わるので、渡し忘れと読めない値はその場で止める
         private static func frozenClock(_ value: String?) -> DeviceClock {
-            guard let value, let clock = DeviceClock.frozen(atLaunchValue: value, in: .current)
+            guard let value,
+                let clock = DeviceClock.frozen(
+                    atLaunchValue: value, in: .current, elapsed: DeviceClock.elapsedSinceCreated())
             else {
                 preconditionFailure("UI_TEST_NOW を yyyy-MM-ddTHH:mm の形で渡す")
             }
