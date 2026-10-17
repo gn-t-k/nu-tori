@@ -1,0 +1,487 @@
+<title>課金の画面の見比べ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE（捨てる前提）。「課金の形を決める」（gn-t-k/nu-tori#461）の解決コメントの「課金画面と退会」の試作。
+  課金画面・残り3日の知らせ・サブスク切れの画面・退会の案内の4つを、それぞれ3案で並べる。
+  上のタブで画面を、下のバーの ‹ › か矢印キーで案を切り替える。#pay-A、#notice-B、#expired-C、#delete-A のように開ける。
+  土台は main の ios/NuTori/Timeline/TimelineScreen.swift・TimelineComposer.swift・Account/AccountScreen.swift と、
+  「残り N」の試作（prototype/0001-remaining-count）の電話の枠。日付・価格・文言はすべて例。main には入れない。
+-->
+<style>
+/* 見本を並べる灰色のページに、iOS の電話の枠を横に並べる。電話の中の色は iOS のシステムの色（DESIGN.md の Colors）だけ */
+:root{
+  --bg:#f2f2f7; --surface:#ffffff; --ink:#000000;
+  --ink2:rgb(60 60 67 / .6); --ink3:rgb(60 60 67 / .3);
+  --sep:rgb(60 60 67 / .29); --fill:rgb(120 120 128 / .12);
+  --tint:#6155f5; --on-tint:#ffffff; --destructive:#ff383c;
+  --own:color-mix(in srgb,#6155f5 22%,#ffffff);
+  --chrome:rgb(249 249 249 / .94); --alert:rgb(242 242 247 / .97); --dim:rgb(0 0 0 / .32);
+  --page:#e4e5ea; --page-ink:#1c1c1e; --page-muted:#5f5f66; --frame:#c7c7cc;
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --ink:#ffffff;
+    --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+    --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245;
+    --own:color-mix(in srgb,#6d7cff 22%,#1c1c1e);
+    --chrome:rgb(22 22 24 / .94); --alert:rgb(44 44 46 / .97); --dim:rgb(0 0 0 / .5);
+    --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#a1a1a8; --frame:#3a3a3c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --ink:#ffffff;
+  --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:rgb(118 118 128 / .24);
+  --tint:#6d7cff; --on-tint:#ffffff; --destructive:#ff4245;
+  --own:color-mix(in srgb,#6d7cff 22%,#1c1c1e);
+  --chrome:rgb(22 22 24 / .94); --alert:rgb(44 44 46 / .97); --dim:rgb(0 0 0 / .5);
+  --page:#0c0c0d; --page-ink:#e5e5ea; --page-muted:#a1a1a8; --frame:#3a3a3c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;padding-block:16px 104px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));background:var(--page);color:var(--page-ink);font:14px/1.55 var(--font)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:21px;margin:0;text-wrap:balance}
+h2{font-size:17px;margin:0;text-wrap:balance}
+p{margin:0;max-width:820px}
+.muted{color:var(--page-muted)}
+.facts{margin:0;padding-left:1.2em;max-width:820px;color:var(--page-muted);font-size:13px}
+.facts b{color:var(--page-ink)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;font-size:13px;align-items:center}
+.pills button{padding:6px 12px;border-radius:999px;background:var(--surface);color:var(--page-ink);box-shadow:0 0 0 .5px var(--frame)}
+.pills button[aria-pressed="true"]{background:var(--tint);color:var(--on-tint);box-shadow:none}
+.vhead{display:flex;flex-direction:column;gap:6px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
+.tags span{padding:2px 8px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 .5px var(--frame)}
+.tags span.warn{box-shadow:0 0 0 1px var(--destructive)}
+.states{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:20px;align-items:start}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+figcaption{color:var(--page-muted);font-size:12.5px}
+figcaption b{color:var(--page-ink)}
+
+/* 電話の枠 */
+.phone{position:relative;height:620px;background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;font-size:17px;line-height:1.3}
+.status{height:34px;flex:none}
+.nav{height:44px;flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 16px;font-size:17px}
+.nav .t{font-weight:600;white-space:nowrap}
+.nav .l{justify-self:start;color:var(--tint)}
+.nav .r{justify-self:end;color:var(--tint);display:flex;align-items:center}
+.nav .r.b{font-weight:600}
+.acct{position:relative;display:grid}
+.acct .dot{position:absolute;top:-1px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--tint);box-shadow:0 0 0 2px var(--bg)}
+.strip{flex:none;display:flex;justify-content:space-between;padding:2px 16px 8px;font-size:11px;color:var(--ink2)}
+.strip span{display:flex;flex-direction:column;align-items:center;gap:3px}
+.strip i{display:block;width:26px;height:26px;border-radius:50%;border:4px solid var(--fill)}
+.strip span.on i{border-color:var(--tint) var(--fill) var(--fill) var(--tint)}
+.banner{flex:none;display:flex;align-items:center;gap:8px;margin:0 16px 6px;padding:9px 12px;border-radius:10px;background:var(--surface);font-size:15px}
+.banner .x{margin-left:auto;color:var(--tint);font-size:15px;white-space:nowrap}
+.tl{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding:8px 16px 12px;min-height:0;overflow:hidden}
+.day{align-self:center;font-size:13px;color:var(--ink2)}
+.card{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;font-size:15px}
+.card .h{display:flex;align-items:baseline;gap:8px}
+.card .h b{font-size:15px;font-weight:600}
+.card .h small{margin-left:auto;font-size:12px;color:var(--ink2)}
+.card .fn{font-size:13px;color:var(--ink2)}
+.card .acts{display:flex;justify-content:flex-end;gap:12px;align-items:center}
+.own{align-self:flex-end;max-width:78%;background:var(--own);border-radius:12px;padding:12px 16px;font-size:15px;display:flex;flex-direction:column;gap:4px;min-width:200px}
+.own .h{display:flex;justify-content:space-between;gap:12px}
+.own .s{font-size:13px;color:var(--ink2)}
+.own .ph{height:64px;border-radius:8px;background:linear-gradient(135deg,#d8b98a,#b07a4c 60%,#7a4f2e);opacity:.9}
+.own.dim{opacity:.55}
+.me{align-self:flex-end;max-width:78%;background:var(--tint);color:var(--on-tint);padding:8px 12px;border-radius:18px;font-size:15px}
+.reply{font-size:15px}
+.wait{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
+.wait .lock{display:inline-grid;place-items:center;width:16px;height:16px}
+
+/* 入力欄 */
+.compwrap{flex:none;background:var(--chrome);border-top:.5px solid var(--sep);padding:8px 16px 6px;display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;gap:8px;overflow:hidden}
+.chip{flex:none;height:32px;padding:0 12px;border-radius:999px;background:var(--surface);display:flex;align-items:center;font-size:13px;white-space:nowrap}
+.chip.tint{color:var(--tint)}
+.rowx{display:flex;align-items:flex-end;gap:12px}
+.cb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--fill);color:var(--tint)}
+.cb.on{background:var(--tint);color:var(--on-tint)}
+.cb.mute{background:var(--fill);color:var(--ink2)}
+.in{flex:1;min-width:0;height:36px;border-radius:18px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);display:flex;align-items:center;padding:0 14px;margin-bottom:4px;color:var(--ink3);font-size:17px;white-space:nowrap;overflow:hidden}
+.lockbox{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:var(--surface);font-size:13px;color:var(--ink2)}
+.ainote{font-size:12px;color:var(--ink2);text-align:center}
+.home{height:20px;flex:none}
+
+/* ボタン（SwiftUI の .borderedProminent と .bordered） */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font-size:15px;font-weight:600;white-space:nowrap}
+.btn.p{background:var(--tint);color:var(--on-tint)}
+.btn.s{background:var(--fill);color:var(--tint)}
+.btn.lg{height:50px;width:100%}
+.btn.txt{background:none;color:var(--tint);padding:0;font-weight:400}
+
+/* 一覧（Inset Grouped） */
+.scroll{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.scroll.end{justify-content:flex-end}
+.ls{padding:0 16px;display:flex;flex-direction:column;gap:6px;margin-bottom:22px}
+.ls .sh{padding:0 16px;font-size:13px;color:var(--ink2)}
+.ls .sf{padding:0 16px;font-size:13px;color:var(--ink2)}
+.rows{background:var(--surface);border-radius:10px;overflow:hidden}
+.row{min-height:44px;padding:11px 16px;display:flex;align-items:center;gap:10px;position:relative;font-size:17px}
+.row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.row .v{margin-left:auto;color:var(--ink2);text-align:right;font-size:17px}
+.row .v.sm{font-size:15px}
+.row .ch{color:var(--ink3);flex:none}
+.row.tint{color:var(--tint)}
+.row.red{color:var(--destructive)}
+.row .sub{display:flex;flex-direction:column;gap:2px;min-width:0}
+.row .sub small{font-size:13px;color:var(--ink2)}
+.radio{width:22px;height:22px;flex:none;border-radius:50%;border:1.5px solid var(--ink3);display:grid;place-items:center}
+.radio.on{border:0;background:var(--tint);color:var(--on-tint)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;font-size:15px}
+.kv dt{color:var(--ink2)}
+.kv dd{margin:0;text-align:left;font-variant-numeric:tabular-nums}
+.kv dd.l{text-align:left}
+
+/* シートとダイアログ */
+.behind{position:absolute;inset:0;display:flex;flex-direction:column}
+.dimmer{position:absolute;inset:0;background:var(--dim)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:46px;background:var(--bg);border-radius:12px 12px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.sheet .grab{width:36px;height:5px;border-radius:3px;background:var(--ink3);margin:6px auto 0;flex:none}
+.foot{flex:none;padding:10px 16px 8px;background:var(--chrome);border-top:.5px solid var(--sep);display:flex;flex-direction:column;gap:8px}
+.foot .fine{font-size:12px;color:var(--ink2);text-align:center}
+.links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:12px;color:var(--tint)}
+.alert{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:270px;background:var(--alert);border-radius:14px;overflow:hidden;text-align:center}
+.alert .body{padding:18px 16px 16px;display:flex;flex-direction:column;gap:4px}
+.alert .body b{font-size:17px;font-weight:600}
+.alert .body span{font-size:13px}
+.alert .ab{border-top:.5px solid var(--sep);height:44px;display:grid;place-items:center;color:var(--tint);font-size:17px}
+.alert .ab.red{color:var(--destructive)}
+.alert .ab.bold{font-weight:600}
+.hero{padding:6px 20px 14px;display:flex;flex-direction:column;gap:8px}
+.hero .mark{width:56px;height:56px;border-radius:13px;background:var(--tint);color:var(--on-tint);display:grid;place-items:center;font-weight:700;font-size:20px}
+.hero h3{margin:0;font-size:22px;font-weight:700;line-height:1.25}
+.hero p{font-size:15px;color:var(--ink2)}
+.feat{display:flex;flex-direction:column;gap:8px;font-size:15px}
+.feat div{display:flex;gap:10px;align-items:flex-start}
+.feat svg{flex:none;margin-top:2px;color:var(--tint)}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.plan{background:var(--surface);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:2px;box-shadow:0 0 0 1px var(--sep)}
+.plan.on{box-shadow:0 0 0 2px var(--tint)}
+.plan b{font-size:15px}
+.plan .pr{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.plan small{font-size:12px;color:var(--ink2)}
+.sk{padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.sk .opt{background:var(--surface);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 0 0 1px var(--sep)}
+.sk .opt.on{box-shadow:0 0 0 2px var(--tint)}
+.sk .opt .sub{display:flex;flex-direction:column;gap:1px;font-size:15px}
+.sk .opt .sub small{font-size:12px;color:var(--ink2)}
+.sk .opt .pr{margin-left:auto;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.skflag{position:absolute;right:10px;font-size:10px;padding:1px 6px;border-radius:999px;border:1px dashed var(--ink3);color:var(--ink2);background:var(--bg)}
+.callout{margin:0 16px 12px;padding:12px 14px;border-radius:12px;background:var(--surface);font-size:13px;display:flex;flex-direction:column;gap:6px}
+.callout b{font-size:15px}
+.step{display:flex;gap:10px;align-items:flex-start}
+.step .n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--fill);display:grid;place-items:center;font-size:13px;font-weight:600}
+.step .n.done{background:var(--tint);color:var(--on-tint)}
+
+/* 切り替えのバー（試作の道具。設計の一部ではない） */
+.switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
+.switcher button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--page);flex:none}
+.switcher .lab{padding:0 10px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lab b{font-weight:700;margin-right:6px}
+@media (prefers-reduced-motion: no-preference){ .pills button{transition:background .15s} }
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <h1>課金の画面を見比べる（#461）</h1>
+    <p class="muted">#461 の解決コメントで決めた形の上に、まだ決めていない4つの画面の見せ方を3案ずつ並べる。画面はタブで、案は下のバーで切り替える。各案の札には、DESIGN.md から外れるところと、SwiftUI で作るときの手間を書いた。</p>
+    <ul class="facts">
+      <li><b>決まっていること</b>: 月 980円・年 8,800円。無料体験はアカウントを作ってから30日で、サーバーが数える。無料体験中も買える。買うとその日から請求され、無料体験の残りの日はなくなる</li>
+      <li>課金画面には「残りの n 日はなくなります」を書く。「30日無料」を購入ボタンの横で強調しない。体験が終わる日、払う額、自動更新、解約の方法をまとめて目立たせる（特商法 12 条の 6 の最終確認画面に当たる見込み）</li>
+      <li>サブスク切れのあいだは、撮る・書いて送るを押すと課金画面を出す。体重の記録と見返しはできる。無料体験の終わりより前に撮って、終わったあとに届いた食事は「サブスクを待っている」になる</li>
+      <li>退会の画面では、サブスク中の人に「アカウントを消しても Apple の請求は続く」と知らせ、解約の画面（<code>showManageSubscriptions</code>）へ案内する</li>
+      <li><b>どの案にも共通</b>: アカウントの画面の一番上に「サブスク」の行を置く。審査の人は無料体験中の新しいアカウントで入るので、この行から課金画面に届く（#461 の追記の6）</li>
+    </ul>
+    <div class="pills" id="tabs" role="tablist" aria-label="画面"></div>
+    <div class="pills"><span class="muted">見た目</span>
+      <button type="button" data-t="" aria-pressed="true">端末に合わせる</button>
+      <button type="button" data-t="light" aria-pressed="false">ライト</button>
+      <button type="button" data-t="dark" aria-pressed="false">ダーク</button>
+    </div>
+  </header>
+  <section id="variant" class="wrap" style="gap:12px"></section>
+</div>
+
+<nav class="switcher" aria-label="案の切り替え">
+  <button type="button" id="prev" aria-label="前の案">‹</button>
+  <span class="lab" id="lab"></span>
+  <button type="button" id="next" aria-label="次の案">›</button>
+</nav>
+
+<script>
+// ---- 例の値（日付・価格はすべて例） ----
+const D = {
+  trialToday:'10月20日（火）', trialEnd:'11月1日（日）', left:12, renewM:'11月20日（金）', renewY:'2027年10月20日（水）', dayM:'20日',
+  noticeToday:'10月29日（木）', lastDay:'11月1日（日）',
+  expiredToday:'11月3日（火）', renewMx:'12月3日（木）', renewYx:'2027年11月3日（水）', dayMx:'3日',
+};
+
+const I = {
+  cam:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 4h6l1.5 2H20a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3.5z"/><circle cx="12" cy="12.5" r="3.6" fill="var(--bg)"/></svg>',
+  photo:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="15" height="13" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v10"/><path d="M4 16l4-4 3 3 2-2 4 4"/></svg>',
+  scale:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M7.5 10a6 6 0 0 1 9 0"/><path d="M12 10.5l1.5-2.5"/></svg>',
+  person:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3.2"/><path d="M5.8 18.6a7.5 7.5 0 0 1 12.4 0"/></svg>',
+  chev:'<svg class="ch" width="8" height="13" viewBox="0 0 8 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M1.5 1.5 6.5 6.5 1.5 11.5"/></svg>',
+  ext:'<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M5 2H2v9h9V8M7 1.5h4.5V6M11.5 1.5 6 7"/></svg>',
+  check:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 7.5 5.5 10.5 11.5 3.5"/></svg>',
+  dot:'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5V8l2.2 1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+};
+
+// ---- 部品 ----
+const phone = inner => `<div class="phone">${inner}</div>`;
+const status = () => '<div class="status"></div>';
+const nav = (t, o = {}) => `<div class="nav"><span class="l">${o.l || ''}</span><span class="t">${t}</span><span class="r ${o.rb ? 'b' : ''}">${o.r ?? ''}</span></div>`;
+const acct = dot => `<span class="acct">${I.person}${dot ? '<span class="dot"></span>' : ''}</span>`;
+const strip = () => `<div class="strip">${['月','火','水','木','金','土','日'].map((d, i) => `<span class="${i === 3 ? 'on' : ''}"><i></i>${d}</span>`).join('')}</div>`;
+const weightRow = (t = '7:12') => `<div class="own"><div class="h"><span>体重</span><span class="s">${t}</span></div><b style="font-size:22px;font-weight:400">72.4 kg</b></div>`;
+const meal = (name, kcal, t) => `<div class="own"><div class="h"><span>${name}</span><span class="s">${t}</span></div><div class="s">${kcal}</div></div>`;
+const waitingMeal = (note, t = '21:48') => `<div class="own"><div class="ph"></div><div class="h"><span>食事</span><span class="s">${t}</span></div><div class="wait">${I.dot}${note}</div></div>`;
+const reply = t => `<div class="reply">${t}</div>`;
+const tl = items => `<div class="tl">${items.join('')}</div>`;
+const card = (title, body, acts, small = '') => `<div class="card"><div class="h"><b>${title}</b>${small ? `<small>${small}</small>` : ''}</div>${body ? `<div class="fn">${body}</div>` : ''}${acts ? `<div class="acts">${acts}</div>` : ''}</div>`;
+const composer = (o = {}) => `<div class="compwrap">
+  ${o.chips ? `<div class="chips">${o.chips}</div>` : ''}
+  ${o.replace ? `<div class="rowx"><span class="cb">${I.scale}</span>${o.replace}</div>` :
+  `<div class="rowx"><span class="cb ${o.mute ? 'mute' : 'on'}">${I.cam}</span><span class="cb ${o.mute ? 'mute' : ''}">${I.photo}</span><span class="cb">${I.scale}</span><span class="in">${o.ph ?? '食べたものや気になること'}</span></div>`}
+  <div class="ainote">AI が読んで返事をします</div></div><div class="home" style="background:var(--chrome)"></div>`;
+const row = (t, o = {}) => `<div class="row ${o.cls || ''}">${o.pre || ''}${o.sub ? `<span class="sub"><span>${t}</span><small>${o.sub}</small></span>` : `<span>${t}</span>`}${o.v ? `<span class="v ${o.vs ? 'sm' : ''}">${o.v}</span>` : ''}${o.ext ? `<span style="margin-left:${o.v ? '0' : 'auto'};color:var(--ink3)">${I.ext}</span>` : ''}${o.chev ? (o.v ? '' : '<span style="margin-left:auto"></span>') + I.chev : ''}</div>`;
+const sec = (rows, o = {}) => `<div class="ls">${o.h ? `<div class="sh">${o.h}</div>` : ''}<div class="rows">${rows.join('')}</div>${o.f ? `<div class="sf">${o.f}</div>` : ''}</div>`;
+const sheet = (inner, behind = '') => `<div class="behind">${behind}</div><div class="dimmer"></div><div class="sheet"><div class="grab"></div>${inner}</div>`;
+const alertBox = (t, m, btns) => `<div class="alert"><div class="body"><b>${t}</b><span>${m}</span></div>${btns.map(([x, c]) => `<div class="ab ${c || ''}">${x}</div>`).join('')}</div>`;
+const timelineBehind = (today, items, o = {}) => status() + nav(today, {r: acct(o.dot)}) + strip() + tl(items) + composer(o.comp || {});
+
+// 課金画面で買えるもの
+const FEATS = ['撮った写真から、料理と量を推定する', '体重の傾向と食べた量から、1日の目安を見直す', '書いた文に返事をする'];
+const KEEPS = '体重の記録と傾向、これまでの記録の見返しは、買わなくてもずっとできます。';
+const feats = () => `<div class="feat">${FEATS.map(f => `<div>${I.check}<span>${f}</span></div>`).join('')}</div>`;
+const links = () => '<div class="links"><span>購入を復元</span><span>利用規約</span><span>プライバシーポリシー</span><span>特定商取引法に基づく表記</span></div>';
+// まとめ（最終確認）。st: trial | expired、plan: m | y
+function summary(st, plan){
+  const t = st === 'trial';
+  const pay = plan === 'm' ? '980円' : '8,800円';
+  const next = plan === 'm' ? `毎月${t ? D.dayM : D.dayMx}に 980円` : `毎年 ${(t ? D.renewY : D.renewYx).replace(/（.）/, '').replace(/^\d+年/, '')}に 8,800円`;
+  const first = plan === 'm' ? (t ? D.renewM : D.renewMx) : (t ? D.renewY : D.renewYx);
+  return [
+    ['今日払う額', `<b>${pay}</b>`],
+    ['次の更新', `${first}<br>${next}（自動で更新）`],
+    ...(plan === 'm' ? [['1年で払う額', '11,760円']] : []),
+    ...(t ? [['無料体験', `残りの ${D.left} 日はなくなります`]] : []),
+    ['解約', '次の更新日の24時間前までに、iPhone の設定の「サブスクリプション」で'],
+  ];
+}
+const kv = rows => `<dl class="kv">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+
+// ===================== 課金画面 =====================
+const PAY = [
+  {key:'A', name:'一覧のシート（1画面）',
+   desc:'入口（アカウントの「サブスク」の行、撮る、知らせ）から下のシートで開く。iOS の設定と同じ一覧で、いまの状態 → 使えるもの → 選ぶ → まとめ → 買う、を上から順に並べる。まとめは「買う」のすぐ上に置き、プランを選び直すとまとめの数字が変わる。',
+   tags:[['DESIGN.md の部品だけで作れる'], ['SwiftUI: List と Product.purchase()。自前の画面なので文言と並びを全部決められる'], ['まとめはスクロールした先にある。シートを開いた直後には見えない', 'warn']],
+   phones:[
+     ['<b>無料体験中（あと 12 日）、開いた直後。</b>一番上で、いまの状態と、終わったあとも残るものを言う。', () => status() + sheet(`${nav('サブスク', {l:'キャンセル'})}<div class="scroll">
+        ${sec([row('無料体験中', {v:`${D.trialEnd}まで`, vs:1})], {f:'買うと今日から請求が始まり、無料体験の残りの日はなくなります。'})}
+        ${sec([`<div class="row" style="padding:14px 16px">${feats()}</div>`], {h:'サブスクで使えるもの', f:KEEPS})}
+        ${sec([row('月額', {pre:'<span class="radio on">' + I.check + '</span>', v:'980円'}), row('年額', {pre:'<span class="radio"></span>', sub:'月あたり 733円', v:'8,800円'})], {h:'プラン'})}
+      </div>`, timelineBehind(D.trialToday, [weightRow()]))],
+     ['<b>同じシートを下までスクロール。</b>まとめと「買う」。下の4つのリンクは Apple と特商法が求めるもの。', () => status() + sheet(`${nav('サブスク', {l:'キャンセル'})}<div class="scroll end">
+        ${sec([row('月額', {pre:'<span class="radio on">' + I.check + '</span>', v:'980円'}), row('年額', {pre:'<span class="radio"></span>', sub:'月あたり 733円', v:'8,800円'})], {h:'プラン'})}
+        ${sec([`<div class="row" style="padding:14px 16px;display:block">${kv(summary('trial', 'm'))}</div>`], {h:'買う内容'})}
+      </div><div class="foot"><span class="btn p lg">月額 980円で買う</span>${links()}</div>`, timelineBehind(D.trialToday, [weightRow()]))],
+     ['<b>サブスク切れ。撮るを押して開いた。</b>状態の行が変わり、「残りの日はなくなります」が消える。年額を選ぶとまとめも年額になる。', () => status() + sheet(`${nav('サブスク', {l:'キャンセル'})}<div class="scroll end">
+        ${sec([row('無料体験', {v:`${D.trialEnd}に終了`, vs:1})], {f:'撮って記録するには、サブスクを買います。' + KEEPS})}
+        ${sec([row('月額', {pre:'<span class="radio"></span>', v:'980円'}), row('年額', {pre:'<span class="radio on">' + I.check + '</span>', sub:'月あたり 733円', v:'8,800円'})], {h:'プラン'})}
+        ${sec([`<div class="row" style="padding:14px 16px;display:block">${kv(summary('expired', 'y'))}</div>`], {h:'買う内容'})}
+      </div><div class="foot"><span class="btn p lg">年額 8,800円で買う</span>${links()}</div>`, timelineBehind(D.expiredToday, [weightRow('7:05')]))],
+   ]},
+  {key:'B', name:'StoreKit の標準の課金画面',
+   desc:'SwiftUI の SubscriptionStoreView を使う。上の宣伝の部分（使えるもの、無料体験の残り）だけを自前で書き、プランの選び方・購入ボタン・復元・規約のリンクは StoreKit が描く。点線の札のところが StoreKit の描く部分。',
+   tags:[['作る量が一番少ない。価格や期間の表示を StoreKit が App Store の値から出すので、書き間違えない'], ['ボタンの文言・並び・まとめの置き場を自由に決められない。「今日払う額」「残りの日はなくなる」を、購入ボタンのそばにまとめて置きにくい', 'warn'], ['日本語の実物の文言は実機で確かめる（ここの文言は近似）']],
+   phones:[
+     ['<b>無料体験中。</b>上の宣伝の部分に、無料体験の終わる日と「残りの日はなくなる」を書くしかない。', () => status() + sheet(`${nav('', {r:'閉じる'})}<div class="scroll">
+        <div class="hero"><div class="mark">nu</div><h3>撮るだけで、1日の目安が体に合っていく</h3>${feats()}<p>無料体験は${D.trialEnd}まで。買うと今日から請求が始まり、残りの ${D.left} 日はなくなります。</p></div>
+        <div class="sk" style="position:relative"><span class="skflag" style="top:-14px">StoreKit が描く</span>
+          <div class="opt on"><span class="radio on">${I.check}</span><span class="sub">月額<small>1か月ごとに自動更新</small></span><span class="pr">¥980/月</span></div>
+          <div class="opt"><span class="radio"></span><span class="sub">年額<small>1年ごとに自動更新</small></span><span class="pr">¥8,800/年</span></div>
+        </div></div>
+        <div class="foot" style="position:relative"><span class="skflag" style="top:-10px">StoreKit が描く</span><span class="btn p lg">サブスクリプションに登録</span><div class="links"><span>購入を復元</span><span>利用規約</span><span>プライバシーポリシー</span></div></div>`, timelineBehind(D.trialToday, [weightRow()]))],
+     ['<b>サブスク切れ。</b>宣伝の部分の文だけを替える。特商法の表記のリンクは宣伝の部分の中に置く。', () => status() + sheet(`${nav('', {r:'閉じる'})}<div class="scroll">
+        <div class="hero"><div class="mark">nu</div><h3>撮って記録するには、サブスクを買います</h3>${feats()}<p>${KEEPS}</p><p style="color:var(--tint);font-size:13px">特定商取引法に基づく表記</p></div>
+        <div class="sk" style="position:relative"><span class="skflag" style="top:-14px">StoreKit が描く</span>
+          <div class="opt"><span class="radio"></span><span class="sub">月額<small>1か月ごとに自動更新</small></span><span class="pr">¥980/月</span></div>
+          <div class="opt on"><span class="radio on">${I.check}</span><span class="sub">年額<small>1年ごとに自動更新</small></span><span class="pr">¥8,800/年</span></div>
+        </div></div>
+        <div class="foot" style="position:relative"><span class="skflag" style="top:-10px">StoreKit が描く</span><span class="btn p lg">サブスクリプションに登録</span><div class="links"><span>購入を復元</span><span>利用規約</span><span>プライバシーポリシー</span></div></div>`, timelineBehind(D.expiredToday, [weightRow('7:05')]))],
+   ]},
+  {key:'C', name:'選ぶ画面と、確かめる画面の2段',
+   desc:'1枚目でプランを選び、「次へ」で潜った2枚目に、買う内容のまとめだけを大きく出して「買う」を置く。2枚目は特商法の最終確認画面そのものの形。押すと Apple の購入のシートが出るので、確かめが2回になる。',
+   tags:[['まとめが「買う」と同じ画面に必ず全部見える'], ['SwiftUI: シートの中の NavigationStack で潜る'], ['買うまでの操作が1つ増える（DESIGN.md の「ユーザーの操作を増やさない」と引き換え）', 'warn']],
+   phones:[
+     ['<b>無料体験中、1枚目。</b>プランを横に並べ、残りの日のことは上の1行で言う。', () => status() + sheet(`${nav('サブスク', {l:'キャンセル'})}<div class="scroll">
+        <div class="callout"><b>無料体験は${D.trialEnd}まで</b><span>買うと今日から請求が始まり、残りの ${D.left} 日はなくなります。</span></div>
+        <div class="hero" style="padding-top:0">${feats()}<p style="font-size:13px">${KEEPS}</p></div>
+        <div class="plans"><div class="plan on"><b>月額</b><span class="pr">980円</span><small>1か月ごとに更新</small></div><div class="plan"><b>年額</b><span class="pr">8,800円</span><small>月あたり 733円</small></div></div>
+      </div><div class="foot"><span class="btn p lg">次へ</span>${links()}</div>`, timelineBehind(D.trialToday, [weightRow()]))],
+     ['<b>無料体験中、2枚目（確かめる）。</b>払う額・更新日・自動更新・解約の方法・なくなる日数を、ここだけで読める。', () => status() + sheet(`${nav('買う内容', {l:'‹ 戻る'})}<div class="scroll">
+        ${sec([row('nu-tori サブスク（月額）')], {})}
+        ${sec([`<div class="row" style="padding:14px 16px;display:block">${kv(summary('trial', 'm'))}</div>`])}
+      </div><div class="foot"><span class="btn p lg">980円で買う</span><span class="fine">押すと Apple の購入の確認が出ます</span></div>`, timelineBehind(D.trialToday, [weightRow()]))],
+     ['<b>サブスク切れ、2枚目（年額を選んだ）。</b>無料体験の行が消え、1年の額だけになる。', () => status() + sheet(`${nav('買う内容', {l:'‹ 戻る'})}<div class="scroll">
+        ${sec([row('nu-tori サブスク（年額）')], {})}
+        ${sec([`<div class="row" style="padding:14px 16px;display:block">${kv(summary('expired', 'y'))}</div>`])}
+      </div><div class="foot"><span class="btn p lg">8,800円で買う</span><span class="fine">押すと Apple の購入の確認が出ます</span></div>`, timelineBehind(D.expiredToday, [weightRow('7:05')]))],
+   ]},
+];
+
+// ===================== 残り3日の知らせ =====================
+const trialRow = (left, end) => sec([row('サブスク', {v:`無料体験 あと ${left} 日`, vs:1, chev:1})], {f:`無料体験は${end}まで。そのあとも体重の記録と、これまでの記録の見返しはできます。`});
+const NOTICE = [
+  {key:'A', name:'タイムラインの知らせのカード',
+   desc:'体重の知らせと同じ、全幅の白いカードを今日の一番上に出す。「サブスクを見る」で課金画面、「閉じる」で消える。あと3日の日に1回出し、閉じなければ最後の日まで残り、日数だけが変わる。',
+   tags:[['DESIGN.md の timeline-card をそのまま使う'], ['サーバーの知らせ（Notice）に種類を1つ足す'], ['閉じたあとはアカウントの行でしか残りの日数が分からない']],
+   phones:[
+     [`<b>${D.noticeToday}、あと 3 日。</b>朝の体重を記録したあとのタイムライン。`, () => status() + nav(D.noticeToday, {r:acct()}) + strip() + tl([
+        card('無料体験はあと 3 日', `${D.lastDay}で終わります。そのあとも体重の記録と、これまでの記録の見返しはできます。`, '<span class="btn txt">閉じる</span><span class="btn s">サブスクを見る</span>'),
+        weightRow(), meal('鮭おにぎりとサラダ', '420 kcal', '12:30')]) + composer()],
+     [`<b>${D.lastDay}、最後の日。</b>閉じていなければ、同じカードの文だけが変わる。`, () => status() + nav(D.lastDay, {r:acct()}) + strip() + tl([
+        card('無料体験は今日まで', '明日から、撮って記録するにはサブスクを買います。体重の記録と見返しはそのままできます。', '<span class="btn txt">閉じる</span><span class="btn s">サブスクを見る</span>'),
+        weightRow('7:20')]) + composer()],
+     ['<b>アカウントの画面（どの案にも共通）。</b>無料体験中は、ここにいつも残りの日数を出す。押すと課金画面。', () => status() + nav('アカウント', {r:'完了', rb:1}) + `<div class="scroll">${trialRow(3, D.lastDay)}${sec([row('ヘルスケア', {v:'読む・書く', chev:1})])}${sec([row('記録忘れ（体重）', {v:'オン'}), row('iPhone の設定を開く', {cls:'tint', ext:1})], {h:'通知'})}</div>`],
+   ]},
+  {key:'B', name:'日付の帯の下の細い帯',
+   desc:'あと3日から最後の日まで、ナビゲーションバーと1日の丸の帯の下に1行の帯を出したままにする。閉じられない。押すと課金画面。タイムラインの記録の並びには混ぜない。',
+   tags:[['DESIGN.md に無い部品（帯）を足す', 'warn'], ['どの日を見ていても目に入る。代わりにタイムラインの縦の幅を1行ぶん取る'], ['SwiftUI: safeAreaInset(edge: .top) で足せる']],
+   phones:[
+     [`<b>${D.noticeToday}、あと 3 日。</b>`, () => status() + nav(D.noticeToday, {r:acct()}) + strip() + `<div class="banner"><span>無料体験 あと 3 日（${D.lastDay}まで）</span><span class="x">見る ›</span></div>` + tl([weightRow(), meal('鮭おにぎりとサラダ', '420 kcal', '12:30')]) + composer()],
+     [`<b>${D.lastDay}、最後の日。</b>`, () => status() + nav(D.lastDay, {r:acct()}) + strip() + `<div class="banner"><span>無料体験は今日まで</span><span class="x">見る ›</span></div>` + tl([weightRow('7:20')]) + composer()],
+     ['<b>過去の日を見ているとき。</b>帯は今日以外の日にも出る。', () => status() + nav('10月26日（月）', {r:acct()}) + strip() + `<div class="banner"><span>無料体験 あと 3 日（${D.lastDay}まで）</span><span class="x">見る ›</span></div>` + tl([weightRow('7:02'), meal('カレーライス', '760 kcal', '19:10'), reply('昨日より脂質が多めです。')]) + composer()],
+   ]},
+  {key:'C', name:'アカウントのボタンに点だけ',
+   desc:'タイムラインには何も出さず、右上のアカウントのボタンに点を付ける。開くと一番上の「サブスク」の行で残りの日数を読める。開いたら点は消える。「求められていないことは言わない」に一番近い。',
+   tags:[['気づかないまま最後の日を越えやすい。越えた日は「サブスク切れ」の画面で初めて知る', 'warn'], ['DESIGN.md に無い印（点）を足す', 'warn'], ['作る量が一番少ない']],
+   phones:[
+     [`<b>${D.noticeToday}、あと 3 日。</b>右上に点が付くだけ。`, () => status() + nav(D.noticeToday, {r:acct(true)}) + strip() + tl([weightRow(), meal('鮭おにぎりとサラダ', '420 kcal', '12:30')]) + composer()],
+     ['<b>アカウントを開いた。</b>一番上の行を太くし、知らせの1行を添える。', () => status() + nav('アカウント', {r:'完了', rb:1}) + `<div class="scroll">${sec([row('サブスク', {v:'<b style="color:var(--ink)">無料体験 あと 3 日</b>', vs:1, chev:1})], {f:`無料体験は${D.lastDay}まで。明後日から、撮って記録するにはサブスクを買います。`})}${sec([row('ヘルスケア', {v:'読む・書く', chev:1})])}${sec([row('記録忘れ（体重）', {v:'オン'}), row('iPhone の設定を開く', {cls:'tint', ext:1})], {h:'通知'})}</div>`],
+   ]},
+];
+
+// ===================== サブスク切れの画面 =====================
+const EXPIRED = [
+  {key:'A', name:'入力欄を「買う」に置き換える',
+   desc:'撮る・写真・書く欄を外し、体重のボタンと、課金画面を開く欄に置き換える。押してから断られる、が起きない。終わった日に届いた食事は「サブスクを待っている」で薄く残る。',
+   tags:[['入力欄の形が状態で変わる（DESIGN.md の入力欄の決まりに例外が要る）', 'warn'], ['「AI が読んで返事をします」の1行は出したまま']],
+   phones:[
+     [`<b>${D.expiredToday}、開いたとき。</b>${D.lastDay}の夜に撮り、11月2日に届いた食事は推定されていない。`, () => status() + nav(D.expiredToday, {r:acct()}) + strip() + tl([
+        '<div class="day">11月1日（日）</div>', waitingMeal('サブスクを買うと推定します'), '<div class="day">11月3日（火）</div>', weightRow('7:05')]) +
+        composer({replace:'<div class="lockbox"><span>撮って記録するには、サブスクを買います。</span><span class="btn p" style="align-self:flex-start">サブスクを見る</span></div>'})],
+     ['<b>体重はいつもどおり記録できる。</b>体重のボタンだけ残る。', () => status() + nav(D.expiredToday, {r:acct()}) + strip() + tl([weightRow('7:05'), card('週の振り返り', '体重は 1 週間で 0.3 kg 減りました。', '')]) +
+        composer({replace:'<div class="lockbox"><span>撮って記録するには、サブスクを買います。</span><span class="btn p" style="align-self:flex-start">サブスクを見る</span></div>'})],
+   ]},
+  {key:'B', name:'入力欄はそのまま、押すと課金画面',
+   desc:'見た目は無料体験中と同じにし、撮る・写真・送るを押したときに課金画面のシートを出す（#461 で決めた振る舞いをそのまま）。終わった最初の日にだけ、タイムラインに知らせのカードを出す。',
+   tags:[['DESIGN.md のモードレスに沿う。入力欄の形が変わらない'], ['押して初めて断られる。書いた文は消さずに残す'], ['知らせのカードは「残り3日」の A 案と同じ部品']],
+   phones:[
+     [`<b>${D.expiredToday}、開いたとき。</b>最初の日だけ知らせのカード。`, () => status() + nav(D.expiredToday, {r:acct()}) + strip() + tl([
+        '<div class="day">11月1日（日）</div>', waitingMeal('サブスクを買うと推定します'), '<div class="day">11月3日（火）</div>',
+        card('無料体験が終わりました', `体重の記録と、これまでの記録の見返しはこれまでどおりできます。撮って記録するには、サブスクを買います。`, '<span class="btn txt">閉じる</span><span class="btn s">サブスクを見る</span>')]) + composer()],
+     ['<b>撮るを押した。</b>カメラは開かず、課金画面のシート（課金画面の選んだ案）が出る。', () => status() + sheet(`${nav('サブスク', {l:'キャンセル'})}<div class="scroll">
+        ${sec([row('無料体験', {v:`${D.trialEnd}に終了`, vs:1})], {f:'撮って記録するには、サブスクを買います。' + KEEPS})}
+        ${sec([`<div class="row" style="padding:14px 16px">${feats()}</div>`], {h:'サブスクで使えるもの'})}</div><div class="foot"><span class="btn p lg">…</span></div>`, timelineBehind(D.expiredToday, [weightRow('7:05')]))],
+     ['<b>書いて送るを押した。</b>同じシートが出て、書いた文は欄に残る。', () => status() + sheet(`${nav('サブスク', {l:'キャンセル'})}<div class="scroll">
+        ${sec([row('無料体験', {v:`${D.trialEnd}に終了`, vs:1})], {f:'返事をもらうには、サブスクを買います。' + KEEPS})}</div><div class="foot"><span class="btn p lg">…</span></div>`, timelineBehind(D.expiredToday, [weightRow('7:05')], {comp:{ph:'<span style="color:var(--ink)">昼は外で食べる予定</span>'}}))],
+   ]},
+  {key:'C', name:'ボタンを灰色にし、上に1行のチップ',
+   desc:'撮る・写真を灰色の丸にして「押しても撮れない」ことを形で見せ、プリセットのチップの位置に「サブスクを買うと、撮って記録できます」のチップを常に出す。押すとどれも課金画面。',
+   tags:[['「撮る」をいつも Primary で塗る決まりに例外が要る', 'warn'], ['知らせのカードを出さずに済む'], ['押せるのに灰色、はシステムの無効の表示と紛れる', 'warn']],
+   phones:[
+     [`<b>${D.expiredToday}、開いたとき。</b>`, () => status() + nav(D.expiredToday, {r:acct()}) + strip() + tl([
+        '<div class="day">11月1日（日）</div>', waitingMeal('サブスクを買うと推定します'), '<div class="day">11月3日（火）</div>', weightRow('7:05')]) +
+        composer({mute:1, chips:'<span class="chip tint">サブスクを買うと、撮って記録できます ›</span>', ph:'書くにはサブスクを買います'})],
+     ['<b>待っている食事を押した。</b>食事の画面で、推定されていない理由と買う道を出す。', () => status() + nav('食事', {l:'‹ 11月1日', r:''}) + `<div class="scroll">
+        <div style="padding:0 16px 16px"><div class="ph" style="height:180px;border-radius:12px"></div></div>
+        ${sec([row('食べた時刻', {v:'21:48'}), row('推定', {v:'サブスクを待っている', vs:1})], {f:'無料体験の終わりのあとに届いたので、まだ推定していません。サブスクを買うと、その日の回数の範囲で推定します。'})}
+        ${sec([row('サブスクを見る', {cls:'tint'})])}
+        ${sec([row('食事を削除', {cls:'red'})])}</div>`],
+   ]},
+];
+
+// ===================== 退会の案内 =====================
+const subRow = () => sec([row('サブスク', {v:`月額・${D.renewM}に更新`, vs:1, chev:1})]);
+const acctTop = (extra = '') => status() + nav('アカウント', {r:'完了', rb:1}) + `<div class="scroll end">${subRow()}${sec([row('プライバシーポリシー', {cls:'tint', ext:1}), row('問い合わせ', {cls:'tint', ext:1})])}${extra}</div>`;
+const delSec = () => sec([row('アカウントを削除', {cls:'red'})], {f:'食事、体重、目標、会話の記録はすぐに消え、元に戻せません。エラーの報告と利用状況のデータは、最長 90 日で消えます。'});
+const DELETE = [
+  {key:'A', name:'確かめのダイアログに書き足す',
+   desc:'アカウントの画面は今のまま。「アカウントを削除」を押したときの確かめに、サブスク中なら請求が続くことを書き、「サブスクを解約」を足す。サブスク中でない人には今のダイアログのまま。',
+   tags:[['今の画面への足し算が一番小さい'], ['ダイアログのボタンが3つになる（否定は「キャンセル」1つのまま）'], ['「解約」を押すと showManageSubscriptions が開き、戻ると削除は始まっていない']],
+   phones:[
+     ['<b>サブスク中のアカウントの画面。</b>今と同じ。', () => acctTop(delSec())],
+     ['<b>削除を押した。</b>', () => acctTop(delSec()) + '<div class="dimmer"></div>' + alertBox('アカウントを削除しますか？', '記録はすぐに消え、元に戻せません。<br><br>サブスクは、アカウントを削除しても Apple の請求が続きます。先に解約してください。', [['サブスクを解約', 'bold'], ['アカウントを削除', 'red'], ['キャンセル']])],
+   ]},
+  {key:'B', name:'削除の節に「サブスクを解約」を先に置く',
+   desc:'サブスク中のあいだは、削除の節の「アカウントを削除」の上に「サブスクを解約」の行を置き、節の注記に請求が続くことを書く。押す前に読める。ダイアログには1文だけ足す。',
+   tags:[['押す前に分かる'], ['行が状態で増減する（サブスク中のときだけ）'], ['注記が長くなる']],
+   phones:[
+     ['<b>サブスク中のアカウントの画面。</b>', () => acctTop(sec([row('サブスクを解約', {cls:'tint', ext:1}), row('アカウントを削除', {cls:'red'})], {f:`サブスクは、アカウントを削除しても Apple の請求が続きます（次は${D.renewM}に 980円）。先に解約してください。<br>食事、体重、目標、会話の記録はすぐに消え、元に戻せません。`}))],
+     ['<b>解約せずに削除を押した。</b>', () => acctTop(sec([row('サブスクを解約', {cls:'tint', ext:1}), row('アカウントを削除', {cls:'red'})], {f:'…'})) + '<div class="dimmer"></div>' + alertBox('アカウントを削除しますか？', '記録はすぐに消え、元に戻せません。サブスクの請求は続きます。', [['アカウントを削除', 'red'], ['キャンセル', 'bold']])],
+   ]},
+  {key:'C', name:'削除の前に案内のシート',
+   desc:'サブスク中に「アカウントを削除」を押すと、確かめの前に案内のシートを出す。1. 解約する、2. 削除する、の順を見せ、解約の画面から戻るとサブスクの状態が「解約済み」に変わる。解約しなくても削除はできる（Apple の「削除を難しくしない」）。',
+   tags:[['状態の移り変わりが一番分かる'], ['シートが1枚増える。モードの入れ子が2階層（アカウント → シート → 確かめ）'], ['解約が届いたかを、サーバーへの通知が来るまで待つか、端末の StoreKit で読むかを決める必要がある', 'warn']],
+   phones:[
+     ['<b>削除を押した（サブスク中）。</b>', () => status() + sheet(`${nav('アカウントの削除', {l:'キャンセル'})}<div class="scroll">
+        ${sec([row('サブスク', {v:'月額・自動更新', vs:1}), row('次の請求', {v:`${D.renewM}に 980円`, vs:1})], {f:'アカウントを削除しても、Apple の請求は続きます。'})}
+        <div class="callout"><div class="step"><span class="n">1</span><span>サブスクを解約する。解約しても、${D.renewM}まで使えます。</span></div><span class="btn s" style="align-self:flex-start;margin-left:32px">サブスクを解約</span></div>
+        <div class="callout"><div class="step"><span class="n">2</span><span>アカウントを削除する。記録はすぐに消え、元に戻せません。</span></div><span class="btn txt" style="color:var(--destructive);margin-left:32px">アカウントを削除</span></div>
+      </div>`, acctTop(delSec()))],
+     ['<b>解約の画面から戻った。</b>1 に印が付き、次の請求が消える。', () => status() + sheet(`${nav('アカウントの削除', {l:'キャンセル'})}<div class="scroll">
+        ${sec([row('サブスク', {v:'解約済み', vs:1}), row('使える日', {v:`${D.renewM}まで`, vs:1})], {f:'これから先の請求はありません。'})}
+        <div class="callout"><div class="step"><span class="n done">${I.check}</span><span>サブスクを解約しました。</span></div></div>
+        <div class="callout"><div class="step"><span class="n">2</span><span>アカウントを削除する。記録はすぐに消え、元に戻せません。</span></div><span class="btn txt" style="color:var(--destructive);margin-left:32px">アカウントを削除</span></div>
+      </div>`, acctTop(delSec()))],
+   ]},
+];
+
+const SURF = [
+  {id:'pay', name:'課金画面', V:PAY},
+  {id:'notice', name:'残り3日の知らせ', V:NOTICE},
+  {id:'expired', name:'サブスク切れの画面', V:EXPIRED},
+  {id:'delete', name:'退会の案内', V:DELETE},
+];
+
+let s = 0, v = 0;
+function render(){
+  const S = SURF[s], x = S.V[v];
+  document.getElementById('tabs').innerHTML = SURF.map((t, i) => `<button type="button" role="tab" data-i="${i}" aria-pressed="${i === s}" aria-selected="${i === s}">${t.name}</button>`).join('');
+  document.getElementById('variant').innerHTML = `
+    <div class="vhead"><h2>${S.name} ${x.key}. ${x.name}</h2><p class="muted">${x.desc}</p>
+      <div class="tags">${x.tags.map(([t, c]) => `<span class="${c || ''}">${t}</span>`).join('')}</div></div>
+    <div class="states">${x.phones.map(([cap, f]) => `<figure>${phone(f())}<figcaption>${cap}</figcaption></figure>`).join('')}</div>`;
+  document.getElementById('lab').innerHTML = `<b>${x.key}</b>${S.name}：${x.name}`;
+  const h = `${S.id}-${x.key}`;
+  if (location.hash.slice(1) !== h) history.replaceState(null, '', '#' + h);
+}
+function go(d){ const n = SURF[s].V.length; v = (v + d + n) % n; render(); }
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+document.getElementById('tabs').onclick = e => { const b = e.target.closest('button'); if (b){ s = +b.dataset.i; v = 0; render(); } };
+addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  if (b.dataset.t) document.documentElement.dataset.theme = b.dataset.t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('[data-t]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+});
+const m = location.hash.slice(1).match(/^(\w+)-([A-Z])$/);
+if (m){ const i = SURF.findIndex(t => t.id === m[1]); if (i >= 0){ s = i; v = Math.max(0, SURF[i].V.findIndex(x => x.key === m[2])); } }
+render();
+</script>
