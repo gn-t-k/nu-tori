@@ -1,18 +1,20 @@
 <title>nu-tori LP 試作</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <!--
-  PROTOTYPE（捨てる前提）: 「LP の見た目と文言を見比べる」(#594) の試作。
-  LP（nu-tori.app のトップ）を、下のバーで3つの軸に切り替えて見比べる。
-    見出し: H1 柱を2つ並べる ／ H2 入力しない ／ H3 体重が目安を決める（ファーストビューの組み方も変わる）
+  PROTOTYPE（捨てる前提）: 「LP の見た目と文言を見比べる」(#594) の試作、2版目。
+  docs/research/landing-page-skills.md の「nu-tori への当てはめ」のチェックリストに合わせて作り直した。
+  下のバーで2つの軸を切り替えて見比べる。
+    見出し: H1 柱を2つ並べる ／ H2 操作は2つだけ ／ H3 体重が目安を決める（ファーストビューの組み方も変わる）
     並び:   O1 方針どおり ／ O2 不満の多い順 ／ O3 競合が書いていない順
-    書き方: 機能を見出しにする ／ 不満を見出しにする
-  「根拠」を入れると、各節の文言の根拠（調査の文書・決定）と、推測かどうかを出す（docs/agents/marketing.md）。
-  状態は URL の # に入れる（例 #h2-o3-p-n）。← → で見出しを回す。
+  「根拠」を入れると、各節の文言の根拠（調査・決定）と、推測かどうかを出す（docs/agents/marketing.md）。
+  状態は URL の # に入れる（例 #h2-o3-n）。← → で見出しを回す。
   画面と数値は見本で、開発者の記録ではない。料金は「課金の形を決める」(#461) まで未定。
   色と文字は DESIGN.md のトークンを写す（システムのフォント、Primary は systemIndigo）。
+  App Store のバッジは Apple のマーケティングの道具から取った日本語の公式のもの。予約注文のバッジは取り方を
+  確かめていない（調査の AP9）ので、ダウンロードのバッジで代わりに置いている。
 -->
 <style>
-  /* 組み方: 灰色の地に白い面を重ねる iOS の見た目を、そのまま Web の LP に広げる。影は付けない */
+  /* 組み方: 灰色の地に白い面を重ねる iOS の見た目を、そのまま Web の LP に広げる。影も動きも付けない */
   :root {
     --primary: #6155F5;
     --on-primary: #FFFFFF;
@@ -100,45 +102,41 @@
   a { color: var(--primary); }
   :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 
-  /* ヘッダー */
-  .site-header { padding-block: 16px; }
-  .site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .site-header { padding-block: 16px 0; }
   .logo { font-weight: 700; font-size: 20px; letter-spacing: 0.01em; }
   .logo small { font-weight: 400; font-size: 13px; color: var(--secondary); margin-left: 8px; }
 
-  .cta {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    height: 50px; padding-inline: 28px; border-radius: 9999px;
-    background: var(--primary); color: var(--on-primary);
-    font-weight: 600; font-size: 15px; text-decoration: none; white-space: nowrap;
-  }
-  .cta.small { height: 36px; padding-inline: 16px; }
-  .cta-note { font-size: 13px; color: var(--secondary); }
+  /* App Store のバッジ: 高さ 40、周りに高さの 1/4 の余白。目立たせすぎない（Apple のガイドライン） */
+  .badge { display: inline-block; padding: 10px; margin: -10px; line-height: 0; }
+  .badge img { height: 40px; width: auto; display: block; }
+  .badge-note { font-size: 13px; color: var(--secondary); }
 
   /* ヒーロー共通 */
-  .hero { padding-block: 24px 56px; }
-  .hero h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.25; letter-spacing: -0.01em; font-weight: 800; }
-  .hero .lead { font-size: clamp(17px, 2.2vw, 20px); color: var(--secondary); margin-top: 16px; max-width: 34em; }
-  .hero .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 28px; }
+  .hero { padding-block: 24px 48px; }
+  .hero h1 { font-size: clamp(30px, 5.6vw, 48px); line-height: 1.25; letter-spacing: -0.01em; font-weight: 800; }
+  .hero .lead { font-size: clamp(16px, 2.1vw, 19px); color: var(--secondary); margin-top: 14px; max-width: 34em; }
+  .hero .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 24px; }
 
   /* H1: 文と画面を左右に */
+  .hero-h1 h1 { font-size: clamp(30px, 4.4vw, 42px); }
   .hero-h1 .grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 40px; align-items: center; }
   .pillars { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 28px; }
   .pillar { background: var(--surface); border-radius: 12px; padding: 16px; }
   .pillar b { display: block; font-size: 15px; }
   .pillar span { font-size: 15px; color: var(--secondary); }
 
-  /* H2: 大きな見出しを真ん中に、下に3つの操作の帯 */
+  /* H2: 大きな見出しを真ん中に、下に2つの操作と、その結果 */
   .hero-h2 { text-align: center; }
-  .hero-h2 h1 { font-size: clamp(36px, 8vw, 72px); }
+  .hero-h2 h1 { font-size: clamp(32px, 7vw, 60px); }
   .hero-h2 .lead { margin-inline: auto; }
-  .hero-h2 .actions { justify-content: center; }
-  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 40px; text-align: left; }
-  .step { background: var(--surface); border-radius: 12px; padding: 16px; display: grid; gap: 12px; align-content: start; }
-  .step .who { font-size: 12px; letter-spacing: 0.06em; color: var(--secondary); }
+  .hero-h2 .actions { justify-content: center; flex-direction: column; }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 36px; text-align: left; }
+  .step { background: var(--surface); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-content: start; }
+  .step .when { font-size: 13px; color: var(--secondary); }
   .step b { font-size: 17px; }
   .step span { font-size: 15px; color: var(--secondary); }
-  .step .mini { height: 120px; border-radius: 10px; background: var(--fill); display: grid; place-items: center; overflow: hidden; }
+  .step .mini { height: 110px; border-radius: 10px; background: var(--fill); display: grid; place-items: center; overflow: hidden; }
+  .step.result { background: transparent; border: 1px solid var(--separator); }
 
   /* H3: グラフを主役に */
   .hero-h3 h1 { font-size: clamp(30px, 4.6vw, 44px); }
@@ -146,35 +144,34 @@
   .charts { background: var(--surface); border-radius: 18px; padding: 20px; display: grid; gap: 16px; }
   .charts .label { font-size: 13px; color: var(--secondary); display: flex; justify-content: space-between; gap: 8px; }
   .charts svg { width: 100%; height: auto; display: block; }
-  .sample-tag { font-size: 11px; color: var(--secondary); border: 1px solid var(--tertiary); border-radius: 4px; padding: 0 6px; }
+  .sample-tag { font-size: 11px; color: var(--secondary); border: 1px solid var(--tertiary); border-radius: 4px; padding: 0 6px; white-space: nowrap; }
 
-  /* 仮の iPhone の画面 */
-  .phone {
-    width: 100%; max-width: 300px; margin-inline: auto; aspect-ratio: 9 / 19.5;
-    border-radius: 44px; border: 10px solid var(--on-surface); background: var(--background);
-    overflow: hidden; display: flex; flex-direction: column; position: relative;
+  /* 仮の画面。iPhone の絵は描かない（Apple は製品を模した絵を認めない）。公開の LP では
+     UI テストで撮った画面を Apple の配る枠に入れる */
+  .screen {
+    width: 100%; max-width: 280px; margin-inline: auto; aspect-ratio: 9 / 19.5;
+    border-radius: 28px; background: var(--background); border: 1px solid var(--separator);
+    overflow: hidden; display: flex; flex-direction: column;
   }
-  .phone .bar { display: flex; align-items: center; justify-content: space-between; padding: 26px 14px 8px; font-size: 13px; font-weight: 600; }
-  .phone .rings { display: flex; justify-content: space-between; padding: 0 12px 8px; }
-  .phone .rings div { display: grid; justify-items: center; gap: 2px; font-size: 10px; color: var(--secondary); }
+  .screen-caption { text-align: center; margin-top: 10px; }
+  .screen .bar { display: flex; align-items: center; justify-content: center; padding: 14px 14px 8px; font-size: 13px; font-weight: 600; }
+  .screen .rings { display: flex; justify-content: space-between; padding: 0 12px 8px; }
+  .screen .rings div { display: grid; justify-items: center; gap: 2px; font-size: 10px; color: var(--secondary); }
   .ring { width: 26px; height: 26px; border-radius: 50%; position: relative; }
   .ring::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--background); }
-  .phone .tl { flex: 1; padding: 4px 10px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .screen .tl { flex: 1; padding: 4px 10px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
   .day-head { text-align: center; font-size: 11px; color: var(--secondary); }
-  .rec { align-self: flex-end; width: 80%; background: var(--own-record); border-radius: 12px; padding: 8px; display: grid; grid-template-columns: 44px 1fr; gap: 8px; font-size: 11px; line-height: 1.35; }
+  .rec { align-self: flex-end; width: 82%; background: var(--own-record); border-radius: 12px; padding: 8px; display: grid; grid-template-columns: 44px 1fr; gap: 8px; font-size: 11px; line-height: 1.35; text-align: left; }
   .rec .photo { width: 44px; height: 44px; border-radius: 8px; }
   .rec b { font-size: 12px; display: block; }
   .rec .muted { color: var(--secondary); }
   .rec.pending { opacity: 0.55; }
   .pfc { display: flex; gap: 6px; margin-top: 2px; }
-  .pfc i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 2px; vertical-align: 0; }
-  .reply { font-size: 11px; line-height: 1.45; padding: 0 4px; }
-  .composer { padding: 8px 10px 18px; display: flex; gap: 6px; align-items: center; background: var(--background); }
-  .composer .btn { width: 30px; height: 30px; border-radius: 50%; background: var(--fill); flex: none; display: grid; place-items: center; }
+  .pfc i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 2px; }
+  .composer { padding: 8px 10px 16px; display: flex; gap: 6px; align-items: center; }
+  .composer .btn { width: 30px; height: 30px; border-radius: 50%; background: var(--fill); flex: none; }
   .composer .btn.p { background: var(--primary); }
   .composer .field { flex: 1; height: 28px; border-radius: 14px; background: var(--surface); font-size: 11px; color: var(--tertiary); display: flex; align-items: center; padding-left: 10px; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--on-primary); opacity: 0.9; }
-  .composer .btn:not(.p) .dot { background: var(--primary); }
 
   /* 工夫の節 */
   .features { padding-block: 24px 40px; }
@@ -186,12 +183,11 @@
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); gap: 24px; align-items: center;
   }
   .feature.no-visual { grid-template-columns: minmax(0, 1fr); }
-  .feature .kicker { font-size: 13px; color: var(--secondary); letter-spacing: 0.04em; }
-  .feature h3 { font-size: clamp(20px, 2.6vw, 26px); line-height: 1.35; margin-top: 4px; font-weight: 700; }
+  .feature h3 { font-size: clamp(20px, 2.6vw, 26px); line-height: 1.35; font-weight: 700; }
   .feature .body { margin-top: 12px; display: grid; gap: 8px; max-width: 34em; }
   .feature .body p { font-size: 16px; }
-  .feature .fine { font-size: 13px; color: var(--secondary); }
-  .visual { border-radius: 12px; background: var(--fill); min-height: 160px; padding: 16px; display: grid; align-content: center; gap: 8px; font-size: 14px; }
+  .fine { font-size: 13px; color: var(--secondary); }
+  .visual { border-radius: 12px; background: var(--fill); min-height: 150px; padding: 16px; display: grid; align-content: center; gap: 8px; font-size: 14px; }
   .kv { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
   .kv span:first-child { color: var(--secondary); }
   .price-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -200,22 +196,30 @@
   .price-box span { font-size: 12px; color: var(--secondary); }
 
   /* 他のアプリを使ったことがある方へ */
-  .switchers { padding-block: 16px 40px; }
+  .switchers { padding-block: 8px 32px; }
   .switchers .box { border: 1px solid var(--separator); border-radius: 18px; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
-  .compare { display: grid; gap: 8px; font-size: 14px; }
-  .compare .row { display: grid; grid-template-columns: 5.5em 1fr; gap: 8px; align-items: center; }
+  .eyebrow { font-size: 13px; color: var(--secondary); }
+  .compare { display: grid; gap: 10px; font-size: 14px; }
+  .compare .row { display: grid; grid-template-columns: 6em 1fr; gap: 8px; align-items: center; }
   .compare .row span:first-child { color: var(--secondary); font-size: 13px; }
   .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .flow em { font-style: normal; background: var(--fill); border-radius: 9999px; padding: 2px 10px; font-size: 13px; }
-  .flow em.strike { text-decoration: line-through; color: var(--secondary); }
   .flow .arrow { color: var(--tertiary); }
 
-  /* 最後の CTA と足 */
-  .closing { padding-block: 24px 48px; text-align: center; }
-  .closing h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; }
-  .closing .actions { display: flex; justify-content: center; margin-top: 20px; }
+  /* よくある質問（異論への答え） */
+  .faq { padding-block: 8px 32px; }
+  .faq dl { margin: 20px 0 0; display: grid; gap: 0; background: var(--surface); border-radius: 10px; overflow: hidden; }
+  .faq .qa { padding: 16px; border-top: 1px solid var(--separator); }
+  .faq .qa:first-child { border-top: 0; }
+  .faq dt { font-weight: 600; }
+  .faq dd { margin: 4px 0 0; color: var(--secondary); font-size: 15px; }
+
+  .closing { padding-block: 16px 48px; text-align: center; }
+  .closing h2 { font-size: clamp(22px, 3vw, 28px); font-weight: 800; }
+  .closing p { margin-top: 10px; }
+
   footer { border-top: 1px solid var(--separator); padding-block: 24px 140px; font-size: 13px; color: var(--secondary); }
-  footer .wrap { display: grid; gap: 12px; }
+  footer .wrap { display: grid; gap: 10px; }
   footer nav { display: flex; flex-wrap: wrap; gap: 8px 20px; }
   footer nav a { color: var(--secondary); }
 
@@ -226,15 +230,15 @@
     font-size: 13px; line-height: 1.55; text-align: left;
   }
   .show-notes .note { display: block; }
-  .note b { font-weight: 700; }
   .note .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 4px; border: 1px solid var(--note-border); margin-right: 6px; }
+  .note code { font-size: 12px; }
 
   /* 試作の切り替えバー（LP の一部ではない） */
   .proto-bar {
     position: fixed; z-index: 20;
     left: 50%; transform: translateX(-50%);
     bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    width: min(760px, calc(100% - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+    width: min(640px, calc(100% - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
     background: var(--bar-bg); color: var(--bar-fg);
     border-radius: 18px; padding: 10px 12px;
     display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: center;
@@ -243,30 +247,20 @@
   .proto-bar .grp { display: flex; align-items: center; gap: 6px; }
   .proto-bar .grp > span { opacity: 0.7; }
   .seg { display: flex; border-radius: 9999px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--bar-fg) 30%, transparent); }
-  .seg button {
-    background: transparent; color: inherit; border: 0; font: inherit; padding: 6px 10px; cursor: pointer; min-height: 32px;
-  }
+  .seg button { background: transparent; color: inherit; border: 0; font: inherit; padding: 6px 10px; cursor: pointer; min-height: 32px; }
   .seg button[aria-pressed="true"] { background: var(--bar-fg); color: var(--bar-bg); font-weight: 700; }
   .proto-bar .current { width: 100%; text-align: center; opacity: 0.85; }
 
   @media (max-width: 760px) {
     .hero-h1 .grid, .hero-h3 .grid, .feature, .switchers .box { grid-template-columns: minmax(0, 1fr); }
-    .steps { grid-template-columns: minmax(0, 1fr); }
-    .pillars { grid-template-columns: minmax(0, 1fr); }
-    .phone { max-width: 240px; }
+    .steps, .pillars { grid-template-columns: minmax(0, 1fr); }
+    .screen { max-width: 230px; }
     .proto-bar .current { display: none; }
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .hero, .feature { animation: rise 0.35s ease-out both; }
-    @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
   }
 </style>
 
 <header class="site-header">
-  <div class="wrap">
-    <div class="logo">nu-tori<small>にゅーとり</small></div>
-    <a class="cta small" href="#" onclick="return false">App Store で予約注文</a>
-  </div>
+  <div class="wrap"><div class="logo">nu-tori<small>にゅーとり</small></div></div>
 </header>
 
 <main id="lp"></main>
@@ -280,20 +274,24 @@
       <a href="#" onclick="return false">サポート</a>
     </nav>
     <p>nu-tori は医療の助言をするものではありません。持病のある方や治療中の方は、目標を立てる前に医師に相談してください。</p>
-    <p>iPhone 用。日本の App Store で配信予定。</p>
+    <p>nu-tori for iPhone。日本の App Store で配信予定。</p>
+    <p>Apple および Apple ロゴは、米国その他の国で登録された Apple Inc. の商標です。App Store は Apple Inc. のサービスマークです。</p>
   </div>
 </footer>
 
 <div class="proto-bar" role="toolbar" aria-label="試作の切り替え">
   <div class="grp"><span>見出し</span><div class="seg" id="seg-h"></div></div>
   <div class="grp"><span>並び</span><div class="seg" id="seg-o"></div></div>
-  <div class="grp"><span>書き方</span><div class="seg" id="seg-c"></div></div>
   <div class="grp"><span>根拠</span><div class="seg" id="seg-n"></div></div>
   <div class="current" id="current"></div>
 </div>
 
 <script>
 (function () {
+  const BADGE = 'data:image/svg+xml;base64,PHN2ZyBpZD0iSlAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwOC44NTE1NyIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDEwOC44NTE1NyA0MCI+CiAgPHRpdGxlPkRvd25sb2FkX29uX3RoZV9BcHBfU3RvcmVfQmFkZ2VfSlBfUkdCX2Jsa18xMDAzMTc8L3RpdGxlPgogIDxnPgogICAgPGc+CiAgICAgIDxwYXRoIGQ9Ik05OS4zMjIyNywwSDkuNTM0NjhjLS4zNjY3LDAtLjcyOSwwLTEuMDk0NzMuMDAyLS4zMDYxNS4wMDItLjYwOTg2LjAwNzgxLS45MTg5NS4wMTI3QTEzLjIxNDc2LDEzLjIxNDc2LDAsMCwwLDUuNTE3MS4xOTE0MWE2LjY2NTA5LDYuNjY1MDksMCwwLDAtMS45MDA4OC42MjdBNi40Mzc3OSw2LjQzNzc5LDAsMCwwLDEuOTk3NTcsMS45OTcwNyw2LjI1ODQ0LDYuMjU4NDQsMCwwLDAsLjgxOTM1LDMuNjE4MTZhNi42MDExOSw2LjYwMTE5LDAsMCwwLS42MjUsMS45MDMzMiwxMi45OTMsMTIuOTkzLDAsMCwwLS4xNzkyLDIuMDAyQy4wMDU4Nyw3LjgzMDA4LjAwNDg5LDguMTM3NywwLDguNDQ0MzRWMzEuNTU4NmMuMDA0ODkuMzEwNS4wMDU4Ny42MTEzLjAxNTE1LjkyMTlhMTIuOTkyMzIsMTIuOTkyMzIsMCwwLDAsLjE3OTIsMi4wMDE5LDYuNTg3NTYsNi41ODc1NiwwLDAsMCwuNjI1LDEuOTA0M0E2LjIwNzc4LDYuMjA3NzgsMCwwLDAsMS45OTc1NywzOC4wMDFhNi4yNzQ0NSw2LjI3NDQ1LDAsMCwwLDEuNjE4NjUsMS4xNzg3LDYuNzAwODIsNi43MDA4MiwwLDAsMCwxLjkwMDg4LjYzMDgsMTMuNDU1MTQsMTMuNDU1MTQsMCwwLDAsMi4wMDM5LjE3NjhjLjMwOTA5LjAwNjguNjEyOC4wMTA3LjkxODk1LjAxMDdDOC44MDU2Nyw0MCw5LjE2OCw0MCw5LjUzNDY4LDQwSDk5LjMyMjI3Yy4zNTk0LDAsLjcyNDYsMCwxLjA4NC0uMDAyLjMwNDcsMCwuNjE3Mi0uMDAzOS45MjE5LS4wMTA3YTEzLjI3OSwxMy4yNzksMCwwLDAsMi0uMTc2OCw2LjgwNDMyLDYuODA0MzIsMCwwLDAsMS45MDgyLS42MzA4LDYuMjc3NDIsNi4yNzc0MiwwLDAsMCwxLjYxNzItMS4xNzg3LDYuMzk0ODIsNi4zOTQ4MiwwLDAsMCwxLjE4MTYtMS42MTQzLDYuNjA0MTMsNi42MDQxMywwLDAsMCwuNjE5MS0xLjkwNDMsMTMuNTA2NDMsMTMuNTA2NDMsMCwwLDAsLjE4NTYtMi4wMDE5Yy4wMDM5LS4zMTA2LjAwMzktLjYxMTQuMDAzOS0uOTIxOS4wMDc4LS4zNjMzLjAwNzgtLjcyNDYuMDA3OC0xLjA5MzhWOS41MzYxM2MwLS4zNjYyMSwwLS43Mjk0OS0uMDA3OC0xLjA5MTc5LDAtLjMwNjY0LDAtLjYxNDI2LS4wMDM5LS45MjA5YTEzLjUwNzEsMTMuNTA3MSwwLDAsMC0uMTg1Ni0yLjAwMiw2LjYxNzcsNi42MTc3LDAsMCwwLS42MTkxLTEuOTAzMzIsNi40NjYxOSw2LjQ2NjE5LDAsMCwwLTIuNzk4OC0yLjc5OTgsNi43Njc1NCw2Ljc2NzU0LDAsMCwwLTEuOTA4Mi0uNjI3LDEzLjA0Mzk0LDEzLjA0Mzk0LDAsMCwwLTItLjE3Njc2Yy0uMzA0Ny0uMDA0ODgtLjYxNzItLjAxMDc0LS45MjE5LS4wMTI2OUMxMDAuMDQ2ODcsMCw5OS42ODE2NywwLDk5LjMyMjI3LDBaIiBzdHlsZT0iZmlsbDogI2E2YTZhNiIvPgogICAgICA8cGF0aCBkPSJNOC40NDQ4MywzOS4xMjVjLS4zMDQ2OCwwLS42MDItLjAwMzktLjkwNDI5LS4wMTA3YTEyLjY4NzE0LDEyLjY4NzE0LDAsMCwxLTEuODY5MTQtLjE2MzEsNS44ODM4MSw1Ljg4MzgxLDAsMCwxLTEuNjU2NzQtLjU0NzksNS40MDU3Myw1LjQwNTczLDAsMCwxLTEuMzk3LTEuMDE2Niw1LjMyMDgyLDUuMzIwODIsMCwwLDEtMS4wMjA1MS0xLjM5NjUsNS43MjE4Niw1LjcyMTg2LDAsMCwxLS41NDMtMS42NTcyLDEyLjQxMzUxLDEyLjQxMzUxLDAsMCwxLS4xNjY1LTEuODc1Yy0uMDA2MzQtLjIxMDktLjAxNDY0LS45MTMxLS4wMTQ2NC0uOTEzMVY4LjQ0NDM0Uy44ODE4NSw3Ljc1MjkzLjg4NzcsNy41NDk4YTEyLjM3MDM5LDEyLjM3MDM5LDAsMCwxLC4xNjU1My0xLjg3MjA3LDUuNzU1NSw1Ljc1NTUsMCwwLDEsLjU0MzQ2LTEuNjYyMUE1LjM3MzQ5LDUuMzczNDksMCwwLDEsMi42MTE4MywyLjYxNzY4LDUuNTY1NDMsNS41NjU0MywwLDAsMSw0LjAxNDE3LDEuNTk1MjFhNS44MjMwOSw1LjgyMzA5LDAsMCwxLDEuNjUzMzItLjU0Mzk0QTEyLjU4NTg5LDEyLjU4NTg5LDAsMCwxLDcuNTQzLjg4NzIxTDguNDQ1MzIuODc1aDkxLjk1NmwuOTEzMS4wMTI3YTEyLjM4NDkzLDEyLjM4NDkzLDAsMCwxLDEuODU4NC4xNjI1OSw1LjkzODMzLDUuOTM4MzMsMCwwLDEsMS42NzA5LjU0Nzg1LDUuNTkzNzQsNS41OTM3NCwwLDAsMSwyLjQxNSwyLjQxOTkzQTUuNzYyNjcsNS43NjI2NywwLDAsMSwxMDcuNzk0LDUuNjY3YTEyLjk5NSwxMi45OTUsMCwwLDEsLjE3MzgsMS44ODcyMWMuMDAyOS4yODMyLjAwMjkuNTg3NC4wMDI5Ljg5MDE0LjAwNzkuMzc1LjAwNzkuNzMxOTMuMDA3OSwxLjA5MTc5VjMwLjQ2NDhjMCwuMzYzMywwLC43MTc4LS4wMDc5LDEuMDc1MiwwLC4zMjUyLDAsLjYyMzEtLjAwMzkuOTI5N2ExMi43MzEyNiwxMi43MzEyNiwwLDAsMS0uMTcwOSwxLjg1MzUsNS43MzksNS43MzksMCwwLDEtLjU0LDEuNjcsNS40ODAyOSw1LjQ4MDI5LDAsMCwxLTEuMDE1NiwxLjM4NTcsNS40MTI5LDUuNDEyOSwwLDAsMS0xLjM5OTQsMS4wMjI1LDUuODYxNjgsNS44NjE2OCwwLDAsMS0xLjY2OC41NDk4LDEyLjU0MjE4LDEyLjU0MjE4LDAsMCwxLTEuODY5Mi4xNjMxYy0uMjkyOS4wMDY4LS41OTk2LjAxMDctLjg5NzQuMDEwN2wtMS4wODQuMDAyWiIvPgogICAgPC9nPgogICAgPGc+CiAgICAgIDxwYXRoIGQ9Ik00MS4xNjc0MiwxNi41NTQ2MkgzNy4xMTU4NWwtLjk3MywyLjg3M0gzNC40MjY3OEwzOC4yNjQzNyw4Ljc5ODM3aDEuNzgzbDMuODM3NTksMTAuNjI5MjJINDIuMTM5NTdabS0zLjYzMi0xLjMyNTczSDQwLjc0N2wtMS41ODMxOC00LjY2MjYxaC0uMDQ0M1oiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgIDxwYXRoIGQ9Ik01Mi4xNzI4LDE1LjU1MzIyYzAsMi40MDgyMS0xLjI4ODk1LDMuOTU1NDUtMy4yMzQwNywzLjk1NTQ1YTIuNjI3MTksMi42MjcxOSwwLDAsMS0yLjQzODMtMS4zNTU4MmgtLjAzNjc4djMuODM4NDJINDQuODcyOTRWMTEuNjc4aDEuNTM5NzJWMTIuOTY3aC4wMjkyNmEyLjc0OSwyLjc0OSwwLDAsMSwyLjQ2NzU2LTEuMzdDNTAuODc2MzMsMTEuNTk2OTQsNTIuMTcyOCwxMy4xNTE3LDUyLjE3MjgsMTUuNTUzMjJabS0xLjYzNSwwYzAtMS41NjktLjgxMDgyLTIuNjAwNDYtMi4wNDc5NC0yLjYwMDQ2LTEuMjE1MzksMC0yLjAzMjg5LDEuMDUzMjMtMi4wMzI4OSwyLjYwMDQ2LDAsMS41NjE0NS44MTc1LDIuNjA3MTUsMi4wMzI4OSwyLjYwNzE1QzQ5LjcyNywxOC4xNjAzNyw1MC41Mzc3OSwxNy4xMzY0LDUwLjUzNzc5LDE1LjU1MzIyWiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTYwLjcwMjY3LDE1LjU1MzIyYzAsMi40MDgyMS0xLjI4OTM3LDMuOTU1NDUtMy4yMzQ0OSwzLjk1NTQ1YTIuNjI3MTksMi42MjcxOSwwLDAsMS0yLjQzODMtMS4zNTU4Mkg1NC45OTMxdjMuODM4NDJINTMuNDAyNFYxMS42NzhoMS41Mzk3MlYxMi45NjdoLjAyOTI2YTIuNzQ5LDIuNzQ5LDAsMCwxLDIuNDY3NTYtMS4zN0M1OS40MDU3OCwxMS41OTY5NCw2MC43MDI2NywxMy4xNTE3LDYwLjcwMjY3LDE1LjU1MzIyWm0tMS42MzU0MywwYzAtMS41NjktLjgxMDgyLTIuNjAwNDYtMi4wNDc5NC0yLjYwMDQ2LTEuMjE1MzksMC0yLjAzMjg5LDEuMDUzMjMtMi4wMzI4OSwyLjYwMDQ2LDAsMS41NjE0NS44MTc1LDIuNjA3MTUsMi4wMzI4OSwyLjYwNzE1QzU4LjI1NjQzLDE4LjE2MDM3LDU5LjA2NzI1LDE3LjEzNjQsNTkuMDY3MjUsMTUuNTUzMjJaIiBzdHlsZT0iZmlsbDogI2ZmZiIvPgogICAgICA8cGF0aCBkPSJNNjYuMzM5MSwxNi40NjZjLjExNzg2LDEuMDU0MDYsMS4xNDE4MywxLjc0NjE4LDIuNTQxMTIsMS43NDYxOCwxLjM0MDc3LDAsMi4zMDUzOS0uNjkyMTIsMi4zMDUzOS0xLjY0MjUzLDAtLjgyNS0uNTgxNzgtMS4zMTktMS45NTkzMy0xLjY1NzU4bC0xLjM3NzU1LS4zMzE4NWMtMS45NTE4MS0uNDcxNDQtMi44NTc5Mi0xLjM4NDI0LTIuODU3OTItMi44NjU0NCwwLTEuODM0LDEuNTk4MjMtMy4wOTM2NCwzLjg2Njg0LTMuMDkzNjQsMi4yNDY4OCwwLDMuNzg2NiwxLjI1OTY5LDMuODM4NDIsMy4wOTM2NEg3MS4wOTAzMmMtLjA5NjEzLTEuMDYwNzUtLjk3My0xLjcwMS0yLjI1NDQtMS43MDFzLTIuMTU4MjguNjQ3ODItMi4xNTgyOCwxLjU5MDcxYzAsLjc1MTQ3LjU2LDEuMTkzNjYsMS45MzAwOCwxLjUzMjE5bDEuMTcxMDkuMjg3NTVjMi4xODA4NS41MTU3NSwzLjA4NjEyLDEuMzkxNzYsMy4wODYxMiwyLjk0NjUyLDAsMS45ODg1OS0xLjU4MzE4LDMuMjM0MDctNC4xMDI1NywzLjIzNDA3LTIuMzU3MjIsMC0zLjk0ODc2LTEuMjE2MjMtNC4wNTE1OC0zLjEzODc4WiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTc2LjI5OTYxLDkuODQ0MDd2MS44MzRoMS40NzM2OHYxLjI1OTY5SDc2LjI5OTYxVjE3LjIxYzAsLjY2MzcuMjk1MDcuOTczLjk0Mjg5Ljk3M2E0Ljk3MSw0Ljk3MSwwLDAsMCwuNTIzMjctLjAzNjc4djEuMjUyMTdhNC4zNjgzOCw0LjM2ODM4LDAsMCwxLS44ODM1NC4wNzM1NmMtMS41NjksMC0yLjE4MDg1LS41ODkzLTIuMTgwODUtMi4wOTIyNFYxMi45Mzc3MUg3My41NzQ2VjExLjY3OGgxLjEyNjc4di0xLjgzNFoiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgIDxwYXRoIGQ9Ik03OC42MjU5LDE1LjU1MzIyYzAtMi40MzgzLDEuNDM2MDctMy45NzA0OSwzLjY3NTQyLTMuOTcwNDksMi4yNDY4OCwwLDMuNjc2MjYsMS41MzIxOSwzLjY3NjI2LDMuOTcwNDksMCwyLjQ0NS0xLjQyMTg1LDMuOTcwNDktMy42NzYyNiwzLjk3MDQ5QzgwLjA0Nzc2LDE5LjUyMzcyLDc4LjYyNTksMTcuOTk4MjEsNzguNjI1OSwxNS41NTMyMlptNS43MzA4OSwwYzAtMS42NzI2Mi0uNzY2NTEtMi42NTk4MS0yLjA1NTQ2LTIuNjU5ODFzLTIuMDU1NDYuOTk0NzEtMi4wNTU0NiwyLjY1OTgxYzAsMS42NzkzMS43NjY1MSwyLjY1OSwyLjA1NTQ2LDIuNjU5Uzg0LjM1Njc5LDE3LjIzMjUzLDg0LjM1Njc5LDE1LjU1MzIyWiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTg3LjI4OTEsMTEuNjc4aDEuNTE3MTV2MS4zMTlIODguODQzYTEuODQ4MzUsMS44NDgzNSwwLDAsMSwxLjg2NC0xLjQwMDEyLDIuNDUzMywyLjQ1MzMsMCwwLDEsLjU0NS4wNTkzNXYxLjQ4Nzg5YTIuMjIzNzIsMi4yMjM3MiwwLDAsMC0uNzE0NjktLjA5NjEzLDEuNjAyOSwxLjYwMjksMCwwLDAtMS42NTc1OCwxLjc4M3Y0LjU5NjU4SDg3LjI4OTFaIiBzdHlsZT0iZmlsbDogI2ZmZiIvPgogICAgICA8cGF0aCBkPSJNOTguNTg2MiwxNy4xNTE0NWEzLjExMDExLDMuMTEwMTEsMCwwLDEtMy4zMzY4OSwyLjM3MjI3Yy0yLjI1NDQsMC0zLjY1MzY5LTEuNTEwNDYtMy42NTM2OS0zLjkzMzcyLDAtMi40MzA3OCwxLjQwNjgxLTQuMDA3MjcsMy41ODY4Mi00LjAwNzI3LDIuMTQ0MDcsMCwzLjQ5MjM2LDEuNDcyODQsMy40OTIzNiwzLjgyMjU0di41NDVIOTMuMjAxMzh2LjA5NjEzYTIuMDE4MzcsMi4wMTgzNywwLDAsMCwyLjA4NDcyLDIuMTk1MDYsMS43NTMyOSwxLjc1MzI5LDAsMCwwLDEuNzg5NjUtMS4wOVptLTUuMzc3My0yLjMxMjkyaDMuODc0MzdhMS44NjM2NywxLjg2MzY3LDAsMCwwLTEuOTAwODItMS45NjY4NkExLjk2MTg4LDEuOTYxODgsMCwwLDAsOTMuMjA4OSwxNC44Mzg1M1oiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgPHBhdGggZD0iTTM2LjQzNjU0LDMwLjgxMTUybC4wNjU5Mi0uODE5MzRhMy4xMzI0NSwzLjEzMjQ1LDAsMCwwLC45NTA2OC4xNTEzN2MuMjkyLDAsLjQwNDc5LS4wMjgzMi41NDYzOS0uMjI2NTZhNC41NjUxMiw0LjU2NTEyLDAsMCwwLC40MzI2Mi0yLjMxNTQzYzAtLjg0NzY2LS4yNjMxOC0xLjA5Mjc3LS45MzE2NC0xLjA5Mjc3LS4xNTA4OCwwLS4zMjAzMS4wMDk3Ny0uNTA4NzkuMDE5NTNhMTMuNzI3MTIsMTMuNzI3MTIsMCwwLDEtMS43Njk1Myw0LjEyM2wtLjc4MTc0LS40MjM4M2ExMS4wNzE0LDExLjA3MTQsMCwwLDAsMS42NDc0Ni0zLjYxNTIzLDEzLjY3NjU4LDEzLjY3NjU4LDAsMCwwLTEuNTM0MTguMjU0ODhsLS4xNjk0My0uODI5MWMuNTc0MjItLjEwMzUyLDEuMjYxMjMtLjE5NzI3LDEuOTAxMzctLjI1MzkxYTE3LjYwOSwxNy42MDksMCwwLDAsLjI5Mi0xLjg5MjU4bC45MjI4NS4xMDM1MmMtLjA4NS41NzQyMi0uMTg4NDgsMS4xNDk0MS0uMzIwMzEsMS43MTM4N2guMzY3MTljMS4xOTU4LDAsMS43Ny41OTI3NywxLjc3LDEuODU0NDlhNS44MzM2MSw1LjgzMzYxLDAsMCwxLS41NDU5LDIuNzk1OSwxLjE1NjUsMS4xNTY1LDAsMCwxLTEuMTI5ODguNjAyNTRBNS4xODE0NSw1LjE4MTQ1LDAsMCwxLDM2LjQzNjU0LDMwLjgxMTUyWm0zLjAzMTI1LTUuMDc0MjIuNjg3NS0uNDYxOTFhNS4yOTg3Miw1LjI5ODcyLDAsMCwxLDEuNjA5ODYsMy40ODQzOGwtLjkwMzgxLjE0MDYzQTQuMzk4NTEsNC4zOTg1MSwwLDAsMCwzOS40Njc3OSwyNS43MzczWiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTQ0Ljg4Njc0LDMwLjk0MzM2bC0uMTg4LS44NDc2NmMuMjM1MzUuMDE5NTMuNTQ1OS4wMjgzMi43MzQzOC4wMjgzMiwxLjg2Mzc3LDAsMi41Njk4Mi0uNTI2MzcsMi41Njk4Mi0xLjMwODU5LDAtLjYyMTA5LS40MDQ3OS0uOTc4NTItMS4zMDg1OS0uOTc4NTJhNC4wMzg2NCw0LjAzODY0LDAsMCwwLTIuNTc5NTksMS4yNjE3MmwtLjcyNTEtLjMyMDMxQTUuNTIzOCw1LjUyMzgsMCwwLDEsNDQuMTksMjUuMjQ4bC44Mzc4OS4yNzI0NmEzLjY4NzQsMy42ODc0LDAsMCwwLS43MTUzMywyLjQ0ODI0LDQuODE2NjEsNC44MTY2MSwwLDAsMSwyLjU3MDMxLS44NzZjMS4yNjE3MiwwLDIuMDQzLjY0OTQxLDIuMDQzLDEuNzA0MSwwLDEuMzM2OTEtMS4wNTQ2OSwyLjE1NjI1LTMuNTg2OTEsMi4xNTYyNUM0NS4yMTYzMywzMC45NTMxMyw0NS4wMzc2MiwzMC45NDMzNiw0NC44ODY3NCwzMC45NDMzNlptLS44NzU0OS02LjI1MS4yMzUzNS0uODI5MWEyNS44ODUxNywyNS44ODUxNywwLDAsMSwzLjcwMDIuODQ3NjZsLS4yMjYwNy44MTkzNEEyMS4xNDIwNiwyMS4xNDIwNiwwLDAsMCw0NC4wMTEyNSwyNC42OTIzOFoiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgIDxwYXRoIGQ9Ik01MS42NTIzNiwzMC4yOTM5NWE1Ljk0NzY3LDUuOTQ3NjcsMCwwLDAsMi41MzIyMy0xLjYzODY3LDEwLjY5NDcyLDEwLjY5NDcyLDAsMCwwLTEuNzYwMjUtMS4xODU1NWwuNTE3NTgtLjY0OTQxYTExLjQ0NTA5LDExLjQ0NTA5LDAsMCwxLDEuNzg4NTcsMS4xMjg5MSw1Ljk1Mzc2LDUuOTUzNzYsMCwwLDAsLjkyMjg1LTIuMTc0OEg1My4yNTI0NmE5LjcwMjE0LDkuNzAyMTQsMCwwLDEtMi4wNTIyNSwyLjM2MzI4bC0uNjg3NS0uNTkyNzdhOC45MjM2NSw4LjkyMzY1LDAsMCwwLDIuNjE3NjgtMy41OTY2OGwuOTAzODEuMjE2OGMtLjEwMzUyLjI2MzY3LS4yMDcuNTM2MTMtLjMyOTU5Ljc5MWgyLjMzNWwuNjY4NDYuMzEwNTVhNy4xNDEsNy4xNDEsMCwwLDEtNC41MDk3Nyw1Ljc2MTcyWk01NS42MjUsMjMuNzIyNjZsLjUyNzM0LS4yNTQ4OGE1LjY3NzIyLDUuNjc3MjIsMCwwLDEsLjY2ODQ2LDEuMTU4MmwtLjU5MzI2LjI3MzQ0QTUuMTM0NjYsNS4xMzQ2NiwwLDAsMCw1NS42MjUsMjMuNzIyNjZabTEuMTc2NzYtLjA5NDczLjUzNjYyLS4yNTM5MWE2LjM1NjE0LDYuMzU2MTQsMCwwLDEsLjY4NzUsMS4xODY1MmwtLjU5MzI2LjI1MzkxQTUuMTY4NCw1LjE2ODQsMCwwLDAsNTYuODAxNzgsMjMuNjI3OTNaIiBzdHlsZT0iZmlsbDogI2ZmZiIvPgogICAgICA8cGF0aCBkPSJNNjAuOTIxNDEsMzAuOTkwMjNsLS40OC0uNzYyN2EzLjk0MzgyLDMuOTQzODIsMCwwLDAsMy4zMTQtNC4xNTEzN2gtMy45NTQxdjEuODkyNThoLS45NTExN1YyNS4yNzUzOUg2MS4yMTM0VjIzLjg5MTZoLjk1MDY4djEuMzgzNzloMS43NjA3NGwuODY2MjEuMjQ1MTJDNjQuNjc3NzUsMjguMTk0MzQsNjMuNzgzNzEsMzAuMjM3Myw2MC45MjE0MSwzMC45OTAyM1oiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgIDxwYXRoIGQ9Ik02Ni42MjI1OCwyNS4zNDE4bC41MjczNC0uNzcyNDZhMTEuNjgzNDEsMTEuNjgzNDEsMCwwLDEsMi4zMTU0MywxLjQwMzMybC0uNjAyNTQuODA5NTdBMTEuMDUzNCwxMS4wNTM0LDAsMCwwLDY2LjYyMjU4LDI1LjM0MThabS4xNzg3MSw0LjY0MTZhNy4zMTc0OCw3LjMxNzQ4LDAsMCwwLDUuNDMyNjItMy45MTdsLjYyMTA5LjY5NzI3YTcuOTYzNTIsNy45NjM1MiwwLDAsMS01LjY5NTMxLDQuMDk0NzNaIiBzdHlsZT0iZmlsbDogI2ZmZiIvPgogICAgICA8cGF0aCBkPSJNODAuNTcwODIsMzAuNDM1NTVINzQuNjQ4OTVWMjQuODMzaDUuOTIxODhabS00Ljk4OTI2LTQuNzM2MzN2My44NzAxMmg0LjA0Nzg1VjI1LjY5OTIyWiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTg5LjA0OTM0LDI3LjkyMDlIODIuMzkzMDl2LS45Nmg2LjY1NjI1WiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTkxLjMxNCwyMy45MTk5MmguOTMxNjR2Mi40MTAxNmEyOS4wMTMsMjkuMDEzLDAsMCwxLDMuNTk2NjgsMS43OTg4M0w5NS4zMTUsMjguOTU3YTIyLjcyNCwyMi43MjQsMCwwLDAtMy4wNjkzNC0xLjY0NzQ2djMuNjMzNzlIOTEuMzE0Wm0yLjIxMTkxLjUwODc5LjU1NTY2LS4yNjM2N2E2LjE5NDA5LDYuMTk0MDksMCwwLDEsLjY2ODk1LDEuMjgwMjdsLS42MTIzLjI3MzQ0QTUuNTE2Miw1LjUxNjIsMCwwLDAsOTMuNTI1OSwyNC40Mjg3MVptMS4wNzMyNC0uNDA1MjcuNTY1NDMtLjI2MzY3QTYuMTA1MTQsNi4xMDUxNCwwLDAsMSw5NS44NzA2MywyNS4wNGwtLjYxMjMuMjczNDRBNi4xMjcyMyw2LjEyNzIzLDAsMCwwLDk0LjU5OTE0LDI0LjAyMzQ0WiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgIDwvZz4KICAgIDxnIGlkPSJfR3JvdXBfIiBkYXRhLW5hbWU9IiZsdDtHcm91cCZndDsiPgogICAgICA8ZyBpZD0iX0dyb3VwXzIiIGRhdGEtbmFtZT0iJmx0O0dyb3VwJmd0OyI+CiAgICAgICAgPHBhdGggaWQ9Il9QYXRoXyIgZGF0YS1uYW1lPSImbHQ7UGF0aCZndDsiIGQ9Ik0yNC43Njg4OCwyMC4zMDA2OGE0Ljk0ODgxLDQuOTQ4ODEsMCwwLDEsMi4zNTY1Ni00LjE1MjA2LDUuMDY1NjYsNS4wNjU2NiwwLDAsMC0zLjk5MTE2LTIuMTU3NjhjLTEuNjc5MjQtLjE3NjI2LTMuMzA3MTksMS4wMDQ4My00LjE2MjksMS4wMDQ4My0uODcyMjcsMC0yLjE4OTc3LS45ODczMy0zLjYwODUtLjk1ODE0YTUuMzE1MjksNS4zMTUyOSwwLDAsMC00LjQ3MjkyLDIuNzI3ODdjLTEuOTM0LDMuMzQ4NDItLjQ5MTQxLDguMjY5NDcsMS4zNjEyLDEwLjk3NjA4LjkyNjksMS4zMjUzNSwyLjAxMDE4LDIuODA1OCwzLjQyNzYzLDIuNzUzMywxLjM4NzA2LS4wNTc1MywxLjkwNTEtLjg4NDQ4LDMuNTc5NC0uODg0NDgsMS42NTg3NiwwLDIuMTQ0NzkuODg0NDgsMy41OTEuODUxMSwxLjQ4ODM4LS4wMjQxNiwyLjQyNjEzLTEuMzMxMjQsMy4zMjA1MS0yLjY2OTE0YTEwLjk2MiwxMC45NjIsMCwwLDAsMS41MTg0Mi0zLjA5MjUxQTQuNzgyMDUsNC43ODIwNSwwLDAsMSwyNC43Njg4OCwyMC4zMDA2OFoiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgICAgPHBhdGggaWQ9Il9QYXRoXzIiIGRhdGEtbmFtZT0iJmx0O1BhdGgmZ3Q7IiBkPSJNMjIuMDM3MjUsMTIuMjEwODlhNC44NzI0OCw0Ljg3MjQ4LDAsMCwwLDEuMTE0NTItMy40OTA2Miw0Ljk1NzQ2LDQuOTU3NDYsMCwwLDAtMy4yMDc1OCwxLjY1OTYxLDQuNjM2MzQsNC42MzYzNCwwLDAsMC0xLjE0MzcxLDMuMzYxMzlBNC4wOTkwNSw0LjA5OTA1LDAsMCwwLDIyLjAzNzI1LDEyLjIxMDg5WiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPC9nPgogICAgPC9nPgogIDwvZz4KPC9zdmc+Cg==';
+  const doc = '<code>docs/research/landing-page-skills.md</code>';
+  const comp = '<code>docs/research/competitor-app-store-listings.md</code>';
+
   // ---- 見本の画面の部品 ----
   function ringStyle(p, f, c) {
     // P・F・C の kcal の割合で起点から時計回りに塗り、残りは輪の地（DESIGN.md の1日の丸）
@@ -302,11 +300,11 @@
   }
   const photo = (h1, h2) => `background: linear-gradient(135deg, ${h1}, ${h2})`;
 
-  function phone() {
+  function screen() {
     const days = [['月', 22, 30, 40], ['火', 20, 28, 45], ['水', 25, 25, 38], ['木', 18, 30, 42], ['金', 21, 26, 44], ['土', 24, 31, 36], ['日', 12, 14, 20]];
     return `
-      <div class="phone" aria-label="アプリの画面の見本">
-        <div class="bar"><span>10月18日（日）</span><span style="color:var(--primary)">●</span></div>
+      <div class="screen" aria-label="アプリの画面の見本">
+        <div class="bar">10月18日（日）</div>
         <div class="rings">${days.map(([d, p, f, c]) => `<div><span class="ring" style="${ringStyle(p, f, c)}"></span>${d}</div>`).join('')}</div>
         <div class="tl">
           <div class="day-head">10月18日（日）</div>
@@ -319,11 +317,12 @@
           <div class="rec pending"><span class="photo" style="${photo('#e3c08a', '#b0703a')}"></span>
             <div><b>　</b><span class="muted">写真を読んでいます</span></div></div>
         </div>
-        <div class="composer"><span class="btn p"><span class="dot"></span></span><span class="btn"><span class="dot"></span></span><span class="btn"><span class="dot"></span></span><span class="field">書く</span></div>
-      </div>`;
+        <div class="composer"><span class="btn p"></span><span class="btn"></span><span class="btn"></span><span class="field">書く</span></div>
+      </div>
+      <p class="fine screen-caption">仮の画面。公開の LP では、撮った画面を Apple の端末の枠に入れる</p>`;
   }
 
-  // 見本の体重の傾向と1日の目安（作り物）。体重は下がり、目安は週ごとに少しずつ動く
+  // 見本の体重の傾向と1日の目安（作り物）。縦軸を2本にせず、グラフを2つに分ける（DESIGN.md）
   function charts() {
     const W = 520, H = 130, padL = 40, padR = 12, padT = 10, padB = 22;
     const weeks = 8;
@@ -335,7 +334,6 @@
     const dots = raw.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${yW(v).toFixed(1)}" r="2" fill="var(--tertiary)"/>`).join('');
     const line = trend.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${yW(v).toFixed(1)}`).join('');
     const ticksW = [66, 67, 68].map(v => `<line x1="${padL}" x2="${W - padR}" y1="${yW(v)}" y2="${yW(v)}" stroke="var(--separator)" stroke-width="0.5"/><text x="${padL - 6}" y="${yW(v) + 4}" font-size="11" text-anchor="end" fill="var(--secondary)">${v}</text>`).join('');
-
     const targets = [1800, 1800, 1750, 1720, 1760, 1740, 1780, 1770];
     const minK = 1600, maxK = 1900;
     const yK = v => padT + (H - padT - padB) * (maxK - v) / (maxK - minK);
@@ -354,13 +352,15 @@
   }
 
   function note(kind, html) {
-    const tags = { fact: '調査', guess: '推測', decision: '決定', check: '要確認' };
+    const tags = { fact: '調査', guess: '推測', decision: '決定', check: '要確認', rule: '決まり' };
     return `<div class="note"><span class="tag">${tags[kind]}</span>${html}</div>`;
   }
   const notes = (...n) => n.join('');
 
-  const cta = `<a class="cta" href="#" onclick="return false">App Store で予約注文</a>`;
-  const ctaNote = `<span class="cta-note">30日間、無料ですべての機能を使えます。支払いの登録は要りません。</span>`;
+  // バッジは1ページに1つだけ、ファーストビューに置く（Apple の「1つのレイアウトにバッジは1つ」）
+  const badge = `<a class="badge" href="#" onclick="return false" aria-label="App Store で予約注文"><img src="${BADGE}" alt="App Store からダウンロード" width="109" height="40"></a>`;
+  const badgeNote = `<span class="badge-note">30日間、無料ですべての機能を使えます。支払いの登録は要りません。</span>`;
+  const badgeRules = note('rule', `App Store のバッジは公式の日本語のものを1つだけ、高さ 40px、周りに高さの 1/4 の余白で置き、ほかより目立たせない。自作のボタンにしない。予約注文のバッジは取り方を確かめていないので、ここではダウンロードのバッジで代わりに置いている（${doc} の AP1・AP2・AP9）。`);
 
   // ---- ファーストビュー ----
   const heroes = {
@@ -370,42 +370,44 @@
         <section class="hero hero-h1"><div class="wrap grid">
           <div>
             <h1>撮るだけで記録。<br>体重の動きで、目安が変わる。</h1>
-            <p class="lead">食べる前に写真を撮り、朝に体重を量る。操作はその2つだけ。体重の動きを見て、あなたの1日の目安を毎週合わせ直します。</p>
+            <p class="lead">食べる前に写真を撮り、朝に体重を量る。体重の動きを見て、あなたの1日の目安を毎週合わせ直します。</p>
+            <div class="actions">${badge}${badgeNote}</div>
             <div class="pillars">
               <div class="pillar"><b>撮るだけ</b><span>料理と材料と量から、kcal と P・F・C を出します</span></div>
               <div class="pillar"><b>目安が毎週変わる</b><span>体重の傾向と食べた量から、消費カロリーを推し量ります</span></div>
             </div>
-            <div class="actions">${cta}${ctaNote}</div>
             ${notes(
               note('decision', '2つの柱（撮るだけ／体重の動きで1日の目安が変わる）を先頭に置く（「一般公開の準備の範囲と方針を決める」の 16）。'),
-              note('fact', '星5で褒められるのは、写真のアプリでは「撮るだけ」（カルシー 8 件中 7 件）、あすけんでは「痩せた」（29 件中 16 件）。2つの柱はそれぞれに当たる（<code>docs/research/competitor-app-store-listings.md</code> 問い3）。'),
-              note('guess', '見出しに2つを入れると長く、どちらも弱まるかもしれない。公開のあと A/B で H2・H3 と比べる。')
+              note('fact', `星5で褒められるのは、写真のアプリでは「撮るだけ」（カルシー 8 件中 7 件）、あすけんでは「痩せた」（29 件中 16 件）（${comp} 問い3）。`),
+              note('fact', `見る時間の 57% がファーストビュー、74% が最初の2画面に入る（${doc} の N4）。携帯の幅でもバッジまでが最初の1画面に入るよう、柱の箱はバッジの下に置いた。`),
+              note('guess', '見出しに2つを入れると長く、どちらも弱まるかもしれない。公開のあと、H2 か H3 の1つと 2版で比べる。')
             )}
+            ${badgeRules}
           </div>
-          <div>${phone()}</div>
+          <div>${screen()}</div>
         </div></section>`
     },
     h2: {
-      name: '入力しない',
+      name: '操作は2つだけ',
       html: () => `
         <section class="hero hero-h2"><div class="wrap">
-          <h1>食事の記録を、<br>入力しない。</h1>
+          <h1>操作は、朝の体重と、<br>食べる前の1枚だけ。</h1>
           <p class="lead">撮れば、料理と量と栄養が並びます。1日の目安は、体重の動きを見て毎週変わります。</p>
-          <div class="actions">${cta}</div>
-          <p class="cta-note" style="margin-top:12px">30日間、無料ですべての機能を使えます。支払いの登録は要りません。</p>
+          <div class="actions">${badge}${badgeNote}</div>
           <div class="steps">
-            <div class="step"><span class="who">朝</span><b>体重を量る</b><span>ヘルスケアに入る体重計なら、量るだけ</span>
+            <div class="step"><span class="when">朝</span><b>体重を量る</b><span>ヘルスケアにつながる体重計なら、量るだけで入ります</span>
               <div class="mini"><span style="font-size:28px;font-weight:300;font-variant-numeric:tabular-nums">67.4 kg</span></div></div>
-            <div class="step"><span class="who">食べるとき</span><b>撮る</b><span>撮り忘れたら「昼にカレー」と書く</span>
+            <div class="step"><span class="when">食べる前</span><b>撮る</b><span>撮り忘れたら「昼にカレー」と書きます</span>
               <div class="mini"><span class="rec" style="width:85%;align-self:center"><span class="photo" style="${photo('#d9a066', '#8a5a2b')}"></span><span><b>鮭の塩焼き定食</b><span class="muted">612 kcal</span></span></span></div></div>
-            <div class="step"><span class="who">毎週</span><b>目安が変わる</b><span>体重の傾向から、1日の目安を直します</span>
+            <div class="step result"><span class="when">毎週、自動で</span><b>目安が変わる</b><span>体重の傾向から、1日の目安を直します</span>
               <div class="mini"><span style="font-size:15px;color:var(--secondary)">1,800 → <b style="color:var(--on-surface);font-size:24px">1,750</b> kcal</span></div></div>
           </div>
           ${notes(
-            note('fact', '星1〜3の不満で一番多いのは「入力・操作が面倒」（5本で計 65 件）（<code>docs/research/competitor-app-store-listings.md</code> 問い3）。'),
-            note('fact', '写真のアプリ（カルシー・カロミー・カロサポ）は、説明文の最初の 1〜2 文で「面倒な入力は不要」と言い切っている（同 問い2）。'),
-            note('guess', '同じ言い方の競合が多く、差にならないかもしれない。「撮るだけ」で入れても、推定がずれると「直す手間」の不満に変わる（同、写真のずれ 27 件）。')
+            note('fact', `前の版の「食事の記録を、入力しない」は、写真のアプリ（カルシー・カロミー・カロサポ）が説明文の最初に同じことを書いている（${comp} 問い2）。copywriting のスキルの「競合も同じ文を書けるなら落とす」（${doc} の K3）に当たるので、数えられる言い方（操作は2つ）に替えた。`),
+            note('fact', `星1〜3の不満で一番多いのは「入力・操作が面倒」（5本で計 65 件）（${comp} 問い3）。`),
+            note('guess', '「2つだけ」は、確定の操作がある競合と比べたときに初めて効くかもしれない。外部テスターに見せて、何のアプリか伝わるかを確かめる。')
           )}
+          ${badgeRules}
         </div></section>`
     },
     h3: {
@@ -415,81 +417,70 @@
           <div>
             <h1>あなたの体重が、<br>食べる量を決める。</h1>
             <p class="lead">体重の傾向と食べた量から、あなたの消費カロリーを推し量り、1日の目安を毎週直します。記録は撮るだけ。</p>
-            <div class="actions">${cta}${ctaNote}</div>
+            <div class="actions">${badge}${badgeNote}</div>
             ${notes(
-              note('fact', '体重の傾向から目安を見直すことを説明文に書くのは、調べた 11 本で MacroFactor だけ。MacroFactor の星5には体重の傾向と推定消費カロリーを褒める声がある（<code>docs/research/competitor-app-store-listings.md</code> 問い2・3）。'),
-              note('fact', '「ダイエット 記録」「体重管理」の検索の上位は体重だけを付けるアプリが占める（同 問い1）。体重だけを前に出すと、それらと並ぶ恐れ（読み取り）。'),
-              note('guess', '「推し量る」「傾向」は、説明しないと伝わらないかもしれない。グラフで見せて補う。外部テスターに見せて確かめる。')
+              note('fact', `体重の傾向から目安を見直すことを説明文に書くのは、調べた 11 本で MacroFactor だけ（${comp} 問い2）。`),
+              note('fact', `「ダイエット 記録」「体重管理」の検索の上位は体重だけを付けるアプリが占める（${comp} 問い1）。体重だけを前に出すと、それらと並ぶ恐れ（読み取り）。`),
+              note('guess', '見出しが比喩に寄るので、すぐ下の一文で何のアプリかを言う（taste-skill の「見出しが比喩ならすぐ下の一文が何かを言う」、K13）。伝わるかは外部テスターで確かめる。')
             )}
+            ${badgeRules}
           </div>
           <div>${charts()}</div>
         </div></section>`
     }
   };
 
-  // ---- 工夫（機能の見出し／不満の見出し）----
+  // ---- 工夫。見出しは「思い浮かべられるか・確かめられるか・競合も書けるか」の3つを通した1案 ----
   const features = {
     ad: {
-      kicker: '広告',
-      fn: '広告は出ません',
-      pain: '記録の途中で、広告に邪魔されない',
-      body: `<p>無料版も広告も作らない作りにしました。体験のあいだも、続けてからも、画面に広告や物の宣伝は出ません。</p>`,
+      title: '広告は出ません。体験のあいだも、続けてからも',
+      body: `<p>無料版も広告も作っていません。記録の途中に広告や物の宣伝がはさまることはありません。</p>`,
       visual: null,
       note: notes(
-        note('fact', '「広告・宣伝・勧誘」の不満は、あすけん 7・カロミル 13・カルシー 1。日本の大手は広告を消すことを有料の特典にしている（<code>docs/research/competitor-app-store-listings.md</code>）。'),
+        note('fact', `「広告・宣伝・勧誘」の不満は、あすけん 7・カロミル 13・カルシー 1。日本の大手は広告を消すことを有料の特典にしている（${comp}）。`),
+        note('fact', `copywriting のスキルは「無いことの列挙」を避け、本当に無いことは一度だけ言え、とする（${doc} の K3）。広告の無さはこの節で一度だけ言う。`),
         note('decision', 'ADR-0024（無料版と広告を作らない）。')
       )
     },
     snap: {
-      kicker: '記録',
-      fn: '撮るだけ。忘れたら、書くだけ。',
-      pain: '入力が面倒、を最初から無くす',
-      body: `<p>写真から料理と材料と量を推し量り、栄養を出します。撮り忘れた食事は「昼にカレー」と書けば入ります。</p>
+      title: '撮るだけ。撮り忘れたら「昼にカレー」と書くだけ',
+      body: `<p>写真から料理と材料と量を推し量り、栄養を出します。撮り忘れた食事は、書けば入ります。</p>
              <p>量が少しずれていても、直さなくてかまいません。1日の目安は体重の動きを見て合わせ直すので、ずれはそこでならされます。気になるときだけ、あとで直せます。</p>`,
-      visual: `<div class="visual"><div class="kv"><span>ごはん</span><span>180 g</span></div><div class="kv"><span>鮭（塩ざけ・焼き）</span><span>80 g</span></div><div class="kv"><span>味噌汁</span><span>1 杯</span></div><div class="kv"><span>ほうれん草のおひたし</span><span>60 g</span></div><div class="kv" style="border-top:1px solid var(--separator);padding-top:8px"><span>合計</span><span><b>612 kcal</b></span></div></div>`,
+      visual: `<div class="visual"><div class="kv"><span>ごはん</span><span>180 g</span></div><div class="kv"><span>鮭（塩ざけ・焼き）</span><span>80 g</span></div><div class="kv"><span>味噌汁</span><span>1 杯</span></div><div class="kv"><span>ほうれん草のおひたし</span><span>60 g</span></div><div class="kv" style="border-top:1px solid var(--separator);padding-top:8px"><span>合計</span><span><b>612 kcal</b></span></div><span class="sample-tag" style="justify-self:start">見本</span></div>`,
       note: notes(
-        note('fact', '「入力・操作が面倒」計 65 件、「写真の推定がずれて手で直す」計 27 件（「修正、修正で手打ちする羽目に」）（<code>docs/research/competitor-app-store-listings.md</code>）。'),
-        note('check', '「ずれは体重の動きでならされる」は ADR-0007（体重の傾向と食べた量から推定消費カロリーを出す）からの言い方。いつも同じ向きにずれるなら目安に吸収されるが、写真ごとにばらつくずれまで言い切れるか、開発者に確かめる。')
+        note('fact', `「入力・操作が面倒」計 65 件、「写真の推定がずれて手で直す」計 27 件（${comp}）。`),
+        note('check', '「ずれは体重の動きでならされる」は ADR-0007 からの言い方。いつも同じ向きにずれるなら目安に吸収されるが、写真ごとにばらつくずれまで言い切れるか、開発者に確かめる。')
       )
     },
     table: {
-      kicker: '栄養の数え方',
-      fn: '栄養は、日本食品標準成分表から',
-      pain: '日本の食べ物を、日本の表で数える',
+      title: '栄養は、日本食品標準成分表の値で数えます',
       body: `<p>料理を材料に分け、材料ごとに文部科学省の日本食品標準成分表の値を引いて数えます。どの食品の値を使ったかは、食事を開けば見られます。</p>
              <p class="fine">写真に栄養成分表示が写っていれば、その表示を使います。</p>`,
-      visual: `<div class="visual"><div class="kv"><span>食品番号</span><span>—</span></div><div class="kv"><span>しろさけ 塩ざけ 焼き</span><span>100 g あたり</span></div><div class="kv"><span>エネルギー</span><span>— kcal</span></div><div class="kv"><span>出どころ</span><span>成分表</span></div><span class="sample-tag" style="justify-self:start">見本・値は仮</span></div>`,
+      visual: `<div class="visual"><div class="kv"><span>しろさけ 塩ざけ 焼き</span><span>80 g</span></div><div class="kv"><span>栄養の出どころ</span><span>成分表</span></div><div class="kv"><span>こめ 精白米 めし</span><span>180 g</span></div><div class="kv"><span>栄養の出どころ</span><span>成分表</span></div><span class="sample-tag" style="justify-self:start">見本</span></div>`,
       note: notes(
-        note('fact', '日本食品標準成分表を説明文に書いているアプリは、調べた 11 本の中に無い（<code>docs/research/competitor-app-store-listings.md</code> 問い2）。「食品が無い」の不満は、あすけん 7・MacroFactor 6・WiseMeal 12。'),
-        note('decision', 'ADR-0015（栄養は成分表から引く。出どころは表示 → 成分表 → 推定の順）。'),
-        note('check', '食品番号の見本は形を見せるための仮。公開のページに載せる前に、成分表の版と値を確かめる。')
+        note('fact', `日本食品標準成分表を説明文に書いているアプリは、調べた 11 本の中に無い（${comp} 問い2）。「食品が無い」の不満は、あすけん 7・MacroFactor 6・WiseMeal 12。`),
+        note('decision', 'ADR-0015（栄養は成分表から引く。出どころは表示 → 成分表 → 推定の順）。')
       )
     },
     weekly: {
-      kicker: '1日の目安',
-      fn: '1日の目安は、毎週あなたに合わせて直ります',
-      pain: '目安が自分に合わない、を毎週直す',
+      title: '1日の目安は、毎週の体重の動きで直ります',
       body: `<p>毎週、その週の体重の傾向と食べた量から推定消費カロリーを出し直し、1日の目安を直します。</p>
-             <p><b>最初の目安の出し方</b>：ヘルスケアに直前 28 日の食べた量と体重があれば、そこから逆算します。無ければ、身長・生まれた年・性別・活動量から式で出し、使うほど記録に合わせて直ります。</p>
-             <p class="fine">nu-tori は医療の助言をするものではありません。持病のある方は医師に相談してください。</p>`,
+             <p><b>最初の目安の出し方</b>：ヘルスケアに直前 28 日の食べた量と体重があれば、そこから逆算します。無ければ、身長・生まれた年・性別・活動量から式で出し、使うほど記録に合わせて直ります。</p>`,
       visual: `<div class="visual"><div class="kv"><span>1週目</span><span>1,800 kcal</span></div><div class="kv"><span>2週目</span><span>1,800 kcal</span></div><div class="kv"><span>3週目</span><span>1,750 kcal</span></div><div class="kv"><span>4週目</span><span>1,720 kcal</span></div><span class="sample-tag" style="justify-self:start">見本</span></div>`,
       note: notes(
-        note('fact', '「目標・計算が合わない」はあすけん 8・カロミル 6・MacroFactor 4。MacroFactor の 4 件はどれも「目安が低すぎる」（1,100〜1,500 kcal）（<code>docs/research/competitor-app-store-listings.md</code>）。毎週直す形でも消えないので、最初の目安の出し方を見せる。'),
-        note('decision', '出し方の説明と医療の助言でない旨の一文は、「一般公開の準備の範囲と方針を決める」の 3。逆算と足りない値は <code>GLOSSARY.md</code>。'),
+        note('fact', `「目標・計算が合わない」はあすけん 8・カロミル 6・MacroFactor 4。MacroFactor の 4 件はどれも「目安が低すぎる」（${comp}）。毎週直す形でも消えないので、最初の目安の出し方を見せる。`),
         note('check', '最初の目安をアプリでどう見せるかは仕様7「週の見直しと目標の経過」で決める。ここの文はそれに合わせて直す。')
       )
     },
     price: {
-      kicker: '料金',
-      fn: '30日間、すべての機能を無料で。支払いの登録は要りません',
-      pain: '気づいたら課金されていた、が起きない',
+      title: '30日間、支払いの登録なしで、すべての機能を使えます',
       body: `<p>体験が終わる日は、アプリの中でいつでも見られます。終わっても自動で課金されることはありません。続けたいときにだけ、月額か年額を選びます。</p>
              <p class="fine">体験が終わったあとも、体重の記録と、これまでの記録の見返しはそのまま使えます。</p>`,
       visual: `<div class="visual"><div class="price-row"><div class="price-box"><b>— 円</b><span>月額</span></div><div class="price-box"><b>— 円</b><span>年額</span></div></div><span class="fine">料金は未定（試作）</span></div>`,
       note: notes(
-        note('fact', '「思わぬ請求・試用の分かりにくさ」はあすけん 1・カルシー 3・WiseMeal 5（「勝手に年間プランにされていた」）（<code>docs/research/competitor-app-store-listings.md</code>）。'),
-        note('decision', 'ADR-0024（支払いの登録なしの 30 日の体験。切れても体重の記録と見返しは残る）。体験はサーバーが数え、自動で有料に移らない（「一般公開に要る法と App Store の要件を確かめる」）。'),
-        note('check', '料金は「課金の形を決める」で決まるまで未定。')
+        note('fact', `「思わぬ請求・試用の分かりにくさ」はあすけん 1・カルシー 3・WiseMeal 5（${comp}）。`),
+        note('decision', 'ADR-0024（支払いの登録なしの 30 日の体験）。体験はサーバーが数え、自動で有料に移らない（「一般公開に要る法と App Store の要件を確かめる」）。'),
+        note('check', `料金は「課金の形を決める」で決まるまで未定。公開の LP では、決まるまでこの節を出さない（${doc} の当てはめ 8）。`)
       )
     }
   };
@@ -503,18 +494,15 @@
       why: '説明文に書いている競合の少ない順（成分表 0 本 → 目安の見直し 1 本 → 広告なし 2 本 → 撮るだけ ほぼ全部）。料金はいつも最後。' }
   };
 
-  function renderFeatures(order, copy) {
+  function renderFeatures(order) {
     const o = orders[order];
     const items = o.keys.map(k => {
       const f = features[k];
-      const title = copy === 'p' ? f.pain : f.fn;
-      const sub = copy === 'p' ? `<p class="fine">${f.fn}</p>` : '';
       return `
         <article class="feature${f.visual ? '' : ' no-visual'}">
           <div>
-            <span class="kicker">${f.kicker}</span>
-            <h3>${title}</h3>
-            <div class="body">${sub}${f.body}</div>
+            <h3>${f.title}</h3>
+            <div class="body">${f.body}</div>
             ${f.note}
           </div>
           ${f.visual || ''}
@@ -522,10 +510,9 @@
     }).join('');
     return `
       <section class="features"><div class="wrap">
-        <h2 class="section-title">続けられるように、作りました</h2>
-        <p class="section-sub">食事の記録が続かなかった理由を、ひとつずつ減らしています。</p>
+        <h2 class="section-title">食事の記録が続かなかった理由を、ひとつずつ減らしました</h2>
         ${note('decision', `並び「${o.name}」：${o.why}`)}
-        ${copy === 'p' ? note('guess', '不満を見出しにすると、他のアプリを使った人には刺さるが、初めての人には意味が通りにくいかもしれない。機能の見出しと A/B で比べる。') : ''}
+        ${note('fact', `並びは A/B で比べない。予約注文の期間はキャンペーンのリンクが作れず、クリック率 10% で 20% の差を見るには 1版に約 3,800 の訪問が要る（${doc} の AP5・C1）。試作と外部テスターへの聞き取りで決める。`)}
         <div class="feature-list">${items}</div>
       </div></section>`;
   }
@@ -534,12 +521,12 @@
     return `
       <section class="switchers"><div class="wrap"><div class="box">
         <div>
-          <span class="kicker" style="font-size:13px;color:var(--secondary)">他のアプリを使ったことがある方へ</span>
+          <span class="eyebrow">他のアプリを使ったことがある方へ</span>
           <h2 class="section-title" style="margin-top:4px">撮ったら、確定を押さずに食べはじめられます</h2>
           <p class="section-sub">写真を読むのは裏で進みます。候補を選んで確定する操作はありません。違っていたら、あとで食事を開いて直せます。</p>
           ${notes(
-            note('fact', '調べた 5 本とも、結果を見て選ぶ・直す・確定する操作がある。待つことへの不満はレビュー 320 件中 2〜3 件と少ない。差になりうるのは「待たなくてよい」より「確定の操作が要らない」のほう（「競合の撮ってから記録になるまでの流れを確かめる」）。'),
-            note('guess', '開発者の実感（n=1）からの仮説。ファーストビューに上げず、ここと App Store のカスタムプロダクトページで試す。外部テスターへの聞き取りで確かめる（方針の 17）。')
+            note('fact', '調べた 5 本とも、結果を見て選ぶ・直す・確定する操作がある。差になりうるのは「待たなくてよい」より「確定の操作が要らない」のほう（「競合の撮ってから記録になるまでの流れを確かめる」）。'),
+            note('guess', '開発者の実感（n=1）からの仮説。ファーストビューに上げず、ここと、公開のあとの App Store のカスタムプロダクトページで試す（方針の 17。予約注文の期間に使えるかは Apple の文書で読み方が分かれる、AP4・AP7）。')
           )}
         </div>
         <div class="compare">
@@ -549,12 +536,30 @@
       </div></div></section>`;
   }
 
+  function renderFaq() {
+    return `
+      <section class="faq"><div class="wrap">
+        <h2 class="section-title">よくある質問</h2>
+        <dl>
+          <div class="qa"><dt>推定が違っていたら？</dt><dd>食事を開いて、料理や量を直せます。毎回直さなくても、1日の目安は体重の動きで合わせ直されます。</dd></div>
+          <div class="qa"><dt>体重計がヘルスケアにつながっていなくても使えますか？</dt><dd>使えます。量った体重をアプリで入れられます。</dd></div>
+          <div class="qa"><dt>Android や iPad で使えますか？</dt><dd>iPhone だけです。</dd></div>
+        </dl>
+        ${notes(
+          note('fact', `スキルはどれも、異論に答える節を置け、とする（${doc} の K2・K3・K8）。効果を確かめた一次の調査は見つからなかった。何に答えるかは、競合のレビューの不満から選んだ（推定のずれ 27 件、体重の連携 2 件）。`),
+          note('decision', 'iPhone だけは ADR-0004。体重を手で入れられるのは今のアプリの入力欄の「体重」。'),
+          note('check', '1つめの答えの後半は、工夫の「撮るだけ」の節と同じ要確認の言い方。')
+        )}
+      </div></section>`;
+  }
+
+  // 最後はバッジでなく文のリンクにする（バッジは1ページに1つ）
   function renderClosing() {
     return `
       <section class="closing"><div class="wrap">
         <h2>まずは 30 日、撮って量るだけ</h2>
-        <div class="actions">${cta}</div>
-        <p class="cta-note" style="margin-top:12px">支払いの登録なしで始められます。</p>
+        <p><a href="#" onclick="return false">App Store で nu-tori を見る</a></p>
+        ${note('check', `Apple の「1つのレイアウトにバッジは1つ」の「レイアウト」が、ページ全体か見えている範囲かは書かれていない（${doc} の AP1・AP2）。ここでは安全な側を取り、最後は文のリンクにした。開発者の判断が要る。`)}
       </div></section>`;
   }
 
@@ -562,33 +567,31 @@
   const axes = {
     h: { el: 'seg-h', opts: [['h1', 'H1'], ['h2', 'H2'], ['h3', 'H3']] },
     o: { el: 'seg-o', opts: [['o1', 'O1'], ['o2', 'O2'], ['o3', 'O3']] },
-    c: { el: 'seg-c', opts: [['f', '機能'], ['p', '不満']] },
     n: { el: 'seg-n', opts: [['x', 'なし'], ['n', 'あり']] }
   };
-  const state = { h: 'h1', o: 'o1', c: 'f', n: 'x' };
+  const state = { h: 'h1', o: 'o1', n: 'x' };
 
   function readHash() {
-    const parts = location.hash.replace(/^#/, '').split('-');
-    for (const p of parts) {
+    for (const p of location.hash.replace(/^#/, '').split('-')) {
       for (const [k, ax] of Object.entries(axes)) {
         if (ax.opts.some(([v]) => v === p)) state[k] = p;
       }
     }
   }
   function writeHash() {
-    const h = `#${state.h}-${state.o}-${state.c}-${state.n}`;
+    const h = `#${state.h}-${state.o}-${state.n}`;
     if (location.hash !== h) history.replaceState(null, '', h);
   }
 
   function render() {
     document.getElementById('lp').innerHTML =
-      heroes[state.h].html() + renderFeatures(state.o, state.c) + renderSwitchers() + renderClosing();
+      heroes[state.h].html() + renderFeatures(state.o) + renderSwitchers() + renderFaq() + renderClosing();
     document.body.classList.toggle('show-notes', state.n === 'n');
     for (const [k, ax] of Object.entries(axes)) {
       document.querySelectorAll(`#${ax.el} button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === state[k])));
     }
     document.getElementById('current').textContent =
-      `${state.h.toUpperCase()} ${heroes[state.h].name} ／ ${state.o.toUpperCase()} ${orders[state.o].name} ／ ${state.c === 'p' ? '不満を見出しに' : '機能を見出しに'}`;
+      `${state.h.toUpperCase()} ${heroes[state.h].name} ／ ${state.o.toUpperCase()} ${orders[state.o].name}`;
     writeHash();
   }
 
