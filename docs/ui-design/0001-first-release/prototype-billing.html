@@ -107,6 +107,8 @@ figcaption b{color:var(--page-ink)}
 .cb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--fill);color:var(--tint)}
 .cb.on{background:var(--tint);color:var(--on-tint)}
 .cb.mute{background:var(--fill);color:var(--ink2)}
+.cb.dis{background:var(--fill);color:var(--ink3)}
+.in.dis{background:var(--fill);box-shadow:none}
 .in{flex:1;min-width:0;height:36px;border-radius:18px;background:var(--surface);box-shadow:0 0 0 .5px var(--sep);display:flex;align-items:center;padding:0 14px;margin-bottom:4px;color:var(--ink3);font-size:17px;white-space:nowrap;overflow:hidden}
 .lockbox{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:var(--surface);font-size:13px;color:var(--ink2)}
 .ainote{font-size:12px;color:var(--ink2);text-align:center}
@@ -252,7 +254,7 @@ const card = (title, body, acts, small = '') => `<div class="card"><div class="h
 const composer = (o = {}) => `<div class="compwrap">
   ${o.chips ? `<div class="chips">${o.chips}</div>` : ''}
   ${o.replace ? `<div class="rowx"><span class="cb">${I.scale}</span>${o.replace}</div>` :
-  `<div class="rowx"><span class="cb ${o.mute ? 'mute' : 'on'}">${I.cam}</span><span class="cb ${o.mute ? 'mute' : ''}">${I.photo}</span><span class="cb">${I.scale}</span><span class="in">${o.ph ?? '食べたものや気になること'}</span></div>`}
+  `<div class="rowx"><span class="cb ${o.dis ? 'dis' : o.mute ? 'mute' : 'on'}">${I.cam}</span><span class="cb ${o.dis ? 'dis' : o.mute ? 'mute' : ''}">${I.photo}</span><span class="cb">${I.scale}</span><span class="in ${o.dis ? 'dis' : ''}">${o.ph ?? '食べたものや気になること'}</span></div>`}
   <div class="ainote">AI が読んで返事をします</div></div><div class="home" style="background:var(--chrome)"></div>`;
 const row = (t, o = {}) => `<div class="row ${o.cls || ''}">${o.pre || ''}${o.sub ? `<span class="sub"><span>${t}</span><small>${o.sub}</small></span>` : `<span>${t}</span>`}${o.v ? `<span class="v ${o.vs ? 'sm' : ''}">${o.v}</span>` : ''}${o.ext ? `<span style="margin-left:${o.v ? '0' : 'auto'};color:var(--ink3)">${I.ext}</span>` : ''}${o.chev ? (o.v ? '' : '<span style="margin-left:auto"></span>') + I.chev : ''}</div>`;
 const sec = (rows, o = {}) => `<div class="ls">${o.h ? `<div class="sh">${o.h}</div>` : ''}<div class="rows">${rows.join('')}</div>${o.f ? `<div class="sf">${o.f}</div>` : ''}</div>`;
@@ -302,7 +304,7 @@ const PAY = [
         ${sec([`<div class="row" style="padding:14px 16px;display:block">${kv(summary('expired', 'y'))}</div>`], {h:'買う内容'})}
       </div><div class="foot"><span class="btn p lg">年額 8,800円で買う</span>${links()}</div>`, timelineBehind(D.expiredToday, [weightRow('7:05')]))],
    ]},
-  {key:'B', name:'StoreKit の標準の課金画面',
+  {key:'B', name:'StoreKit の標準の課金画面（選んだ）',
    desc:'SwiftUI の SubscriptionStoreView を使う。上の宣伝の部分（使えるもの、無料体験の残り）だけを自前で書き、プランの選び方・購入ボタン・復元・規約のリンクは StoreKit が描く。点線の札のところが StoreKit の描く部分。',
    tags:[['作る量が一番少ない。価格や期間の表示を StoreKit が App Store の値から出すので、書き間違えない'], ['ボタンの文言・並び・まとめの置き場を自由に決められない。「今日払う額」「残りの日はなくなる」を、購入ボタンのそばにまとめて置きにくい', 'warn'], ['日本語の実物の文言は実機で確かめる（ここの文言は近似）']],
    phones:[
@@ -344,21 +346,21 @@ const PAY = [
 // ===================== 残り3日の知らせ =====================
 const trialRow = (left, end) => sec([row('サブスクリプション', {v:`無料体験 あと ${left} 日`, vs:1, chev:1})], {f:`無料体験は${end}まで。そのあとも体重の記録と、これまでの記録の見返しはできます。`});
 const NOTICE = [
-  {key:'A', name:'タイムラインの知らせのカード',
-   desc:'体重の知らせと同じ、全幅の白いカードを今日の一番上に出す。「サブスクリプションを見る」で課金画面、「閉じる」で消える。あと3日の日に1回出し、閉じなければ最後の日まで残り、日数だけが変わる。',
-   tags:[['DESIGN.md の timeline-card をそのまま使う'], ['サーバーの知らせ（Notice）に種類を1つ足す'], ['閉じたあとはアカウントの行でしか残りの日数が分からない']],
+  {key:'A', name:'タイムラインの知らせのカード（選んだ）',
+   desc:'体重の知らせと同じ、全幅の白いカードを、あと3日の日のタイムラインに出す。「サブスクリプションを見る」で課金画面。閉じるボタンは置かず、気にしない人はそのまま流す。最後の日にもう一度、文を変えて出す。',
+   tags:[['DESIGN.md の timeline-card をそのまま使う'], ['サーバーの知らせ（Notice）に種類を1つ足す'], ['流れて見えなくなっても、アカウントの「サブスクリプション」の行で残りの日数を読める']],
    phones:[
      [`<b>${D.noticeToday}、あと 3 日。</b>朝の体重を記録したあとのタイムライン。`, () => status() + nav(D.noticeToday, {r:acct()}) + strip() + tl([
-        card('無料体験はあと 3 日', `${D.lastDay}で終わります。そのあとも体重の記録と、これまでの記録の見返しはできます。`, '<span class="btn txt">閉じる</span><span class="btn s">サブスクリプションを見る</span>'),
+        card('無料体験はあと 3 日', `${D.lastDay}で終わります。そのあとも体重の記録と、これまでの記録の見返しはできます。`, '<span class="btn s">サブスクリプションを見る</span>'),
         weightRow(), meal('鮭おにぎりとサラダ', '420 kcal', '12:30')]) + composer()],
-     [`<b>${D.lastDay}、最後の日。</b>閉じていなければ、同じカードの文だけが変わる。`, () => status() + nav(D.lastDay, {r:acct()}) + strip() + tl([
-        card('無料体験は今日まで', '明日から、撮って記録するにはサブスクリプションを買います。体重の記録と見返しはそのままできます。', '<span class="btn txt">閉じる</span><span class="btn s">サブスクリプションを見る</span>'),
+     [`<b>${D.lastDay}、最後の日。</b>この日の知らせとして、文を変えてもう一度出す。`, () => status() + nav(D.lastDay, {r:acct()}) + strip() + tl([
+        card('無料体験は今日まで', '明日から、撮って記録するにはサブスクリプションを買います。体重の記録と見返しはそのままできます。', '<span class="btn s">サブスクリプションを見る</span>'),
         weightRow('7:20')]) + composer()],
      ['<b>アカウントの画面（どの案にも共通）。</b>無料体験中は、ここにいつも残りの日数を出す。押すと課金画面。', () => status() + nav('アカウント', {r:'完了', rb:1}) + `<div class="scroll">${trialRow(3, D.lastDay)}${sec([row('ヘルスケア', {v:'読む・書く', chev:1})])}${sec([row('記録忘れ（体重）', {v:'オン'}), row('iPhone の設定を開く', {cls:'tint', ext:1})], {h:'通知'})}</div>`],
    ]},
   {key:'B', name:'日付の帯の下の細い帯',
    desc:'あと3日から最後の日まで、ナビゲーションバーと1日の丸の帯の下に1行の帯を出したままにする。閉じられない。押すと課金画面。タイムラインの記録の並びには混ぜない。',
-   tags:[['DESIGN.md に無い部品（帯）を足す', 'warn'], ['どの日を見ていても目に入る。代わりにタイムラインの縦の幅を1行ぶん取る'], ['SwiftUI: safeAreaInset(edge: .top) で足せる']],
+   tags:[['DESIGN.md に無い部品（帯）を足す。目標を立てる知らせも帯ではなく、タイムラインのカード（GoalSetupNoticeCard）', 'warn'], ['どの日を見ていても目に入る。代わりにタイムラインの縦の幅を1行ぶん取る'], ['SwiftUI: safeAreaInset(edge: .top) で足せる']],
    phones:[
      [`<b>${D.noticeToday}、あと 3 日。</b>`, () => status() + nav(D.noticeToday, {r:acct()}) + strip() + `<div class="banner"><span>無料体験 あと 3 日（${D.lastDay}まで）</span><span class="x">見る ›</span></div>` + tl([weightRow(), meal('鮭おにぎりとサラダ', '420 kcal', '12:30')]) + composer()],
      [`<b>${D.lastDay}、最後の日。</b>`, () => status() + nav(D.lastDay, {r:acct()}) + strip() + `<div class="banner"><span>無料体験は今日まで</span><span class="x">見る ›</span></div>` + tl([weightRow('7:20')]) + composer()],
@@ -391,7 +393,7 @@ const EXPIRED = [
    phones:[
      [`<b>${D.expiredToday}、開いたとき。</b>最初の日だけ知らせのカード。`, () => status() + nav(D.expiredToday, {r:acct()}) + strip() + tl([
         '<div class="day">11月1日（日）</div>', waitingMeal('サブスクリプションを買うと推定します'), '<div class="day">11月3日（火）</div>',
-        card('無料体験が終わりました', `体重の記録と、これまでの記録の見返しはこれまでどおりできます。撮って記録するには、サブスクリプションを買います。`, '<span class="btn txt">閉じる</span><span class="btn s">サブスクリプションを見る</span>')]) + composer()],
+        card('無料体験が終わりました', `体重の記録と、これまでの記録の見返しはこれまでどおりできます。撮って記録するには、サブスクリプションを買います。`, '<span class="btn s">サブスクリプションを見る</span>')]) + composer()],
      ['<b>撮るを押した。</b>カメラは開かず、課金画面のシート（課金画面の選んだ案）が出る。', () => status() + sheet(`${nav('サブスクリプション', {l:'キャンセル'})}<div class="scroll">
         ${sec([row('無料体験', {v:`${D.trialEnd}に終了`, vs:1})], {f:'撮って記録するには、サブスクリプションを買います。' + KEEPS})}
         ${sec([`<div class="row" style="padding:14px 16px">${feats()}</div>`], {h:'サブスクリプションで使えるもの'})}</div><div class="foot"><span class="btn p lg">…</span></div>`, timelineBehind(D.expiredToday, [weightRow('7:05')]))],
@@ -410,6 +412,17 @@ const EXPIRED = [
         ${sec([row('食べた時刻', {v:'21:48'}), row('推定', {v:'サブスクリプションを待っている', vs:1})], {f:'無料体験の終わりのあとに届いたので、まだ推定していません。サブスクリプションを買うと、その日の回数の範囲で推定します。'})}
         ${sec([row('サブスクリプションを見る', {cls:'tint'})])}
         ${sec([row('食事を削除', {cls:'red'})])}</div>`],
+   ]},
+  {key:'D', name:'知らせのカードと、押せない入力欄（選んだ）',
+   desc:'B の知らせのカードで、何ができて何ができなくなったかを説明する（閉じるボタンは置かない）。入力欄は C のように、撮る・写真・書く欄を押せない表示（システムの .disabled）にし、上のチップだけが課金画面を開く。撮るを押してカメラ以外が開く、は起きない。体重はいつもどおり。',
+   tags:[['押せないボタンはシステムの無効の表示に任せる（DESIGN.md の「押せないボタン」どおり）'], ['「撮る」をいつも Primary で塗る決まりに、サブスクリプション切れの例外が要る', 'warn'], ['知らせのカードは「残り3日」の A 案と同じ部品']],
+   phones:[
+     [`<b>${D.expiredToday}、開いたとき。</b>${D.lastDay}の夜に撮り、11月2日に届いた食事は推定されていない。撮る・写真・書く欄は押しても何も起きない。`, () => status() + nav(D.expiredToday, {r:acct()}) + strip() + tl([
+        '<div class="day">11月1日（日）</div>', waitingMeal('サブスクリプションを買うと推定します'), '<div class="day">11月3日（火）</div>',
+        card('無料体験が終わりました', '体重の記録と、これまでの記録の見返しはこれまでどおりできます。写真から食事を記録すること、1日の目安の見直し、書いた文への返事は、サブスクリプションを買うとまた使えます。', '<span class="btn s">サブスクリプションを見る</span>')]) +
+        composer({dis:1, chips:'<span class="chip tint">サブスクリプションを買うと、撮って記録できます ›</span>'})],
+     ['<b>数日あと。</b>カードは流れて見えなくなっても、入力欄の形とチップで今できることが分かる。', () => status() + nav('11月6日（金）', {r:acct()}) + strip() + tl([weightRow('7:08'), card('週の振り返り', '体重は 1 週間で 0.3 kg 減りました。', '')]) +
+        composer({dis:1, chips:'<span class="chip tint">サブスクリプションを買うと、撮って記録できます ›</span>'})],
    ]},
 ];
 
@@ -432,9 +445,9 @@ const DELETE = [
      ['<b>サブスクリプション中のアカウントの画面。</b>', () => acctTop(sec([row('サブスクリプションを解約', {cls:'tint', ext:1}), row('アカウントを削除', {cls:'red'})], {f:`サブスクリプションは、アカウントを削除しても Apple の請求が続きます（次は${D.renewM}に 980円）。先に解約してください。<br>食事、体重、目標、会話の記録はすぐに消え、元に戻せません。`}))],
      ['<b>解約せずに削除を押した。</b>', () => acctTop(sec([row('サブスクリプションを解約', {cls:'tint', ext:1}), row('アカウントを削除', {cls:'red'})], {f:'…'})) + '<div class="dimmer"></div>' + alertBox('アカウントを削除しますか？', '記録はすぐに消え、元に戻せません。サブスクリプションの請求は続きます。', [['アカウントを削除', 'red'], ['キャンセル', 'bold']])],
    ]},
-  {key:'C', name:'削除の前に案内のシート',
+  {key:'C', name:'削除の前に案内のシート（選んだ）',
    desc:'サブスクリプション中に「アカウントを削除」を押すと、確かめの前に案内のシートを出す。1. 解約する、2. 削除する、の順を見せ、解約の画面から戻るとサブスクリプションの状態が「解約済み」に変わる。解約しなくても削除はできる（Apple の「削除を難しくしない」）。',
-   tags:[['状態の移り変わりが一番分かる'], ['シートが1枚増える。モードの入れ子が2階層（アカウント → シート → 確かめ）'], ['解約が届いたかを、サーバーへの通知が来るまで待つか、端末の StoreKit で読むかを決める必要がある', 'warn']],
+   tags:[['状態の移り変わりが一番分かる'], ['シートが1枚増える。モードの入れ子が2階層（アカウント → シート → 確かめ）'], ['解約したことは、端末の StoreKit（更新の情報の willAutoRenew）で読んですぐ出す。使えるかどうかの正本はサーバーのまま']],
    phones:[
      ['<b>削除を押した（サブスクリプション中）。</b>', () => status() + sheet(`${nav('アカウントの削除', {l:'キャンセル'})}<div class="scroll">
         ${sec([row('サブスクリプション', {v:'月額・自動更新', vs:1}), row('次の請求', {v:`${D.renewM}に 980円`, vs:1})], {f:'アカウントを削除しても、Apple の請求は続きます。'})}
