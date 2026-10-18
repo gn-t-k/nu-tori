@@ -45,11 +45,10 @@ final class ReturnToTimelineEndWhenScrolledBackUITests: XCTestCase {
         app.composerField.typeText("散歩した")
         app.buttons["composer-send"].tap()
 
-        // 時計を止めているので、吹き出しは同じ時刻の食事のカードより上に並ぶ。一番下に戻ったことは、いちばん下のカードで確かめる
-        let newest = mealCards.element(boundBy: Self.mealsFillingScreen - 1)
-        let returned = waitUntilHittable(newest)
+        let bubble = app.element("sent-text-bubble", containing: "散歩した")
+        let returned = waitUntilHittable(bubble)
         attachScreenshot(of: app, named: "文章を送って一番下に戻ったタイムライン")
-        XCTAssertTrue(returned, "いちばん下の食事のカードが見える位置に戻っていない")
+        XCTAssertTrue(returned, "送った文章の吹き出しが見える位置に戻っていない")
     }
 
     /// カードが画面の高さを超えて並び、遡れるようになる数
