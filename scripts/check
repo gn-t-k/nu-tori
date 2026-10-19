@@ -351,7 +351,7 @@ print_usage() {
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
   server       整形、Lint、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   --fix        直せるものを直してから確かめる
-  --lint       ios と server の整形と Lint だけを回す。書いたらまずこれを回し、通ってから全部を回す。対象を省くと、引数なしと同じ選び方をする
+  --lint       ios と server の整形と Lint だけを回す。対象を省くと、引数なしと同じ選び方をする
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
   --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
   --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false> と server=<true|false> の2行で出す（CI 向け）
