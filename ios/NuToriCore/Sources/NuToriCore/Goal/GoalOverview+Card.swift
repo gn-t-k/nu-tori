@@ -105,9 +105,7 @@ extension GoalOverview {
         private init(deadlineReached goal: Goal, records: GoalRecords) {
             let result = DeadlineResult(goal: goal, records: records)
             // 期限の日より後の最初の月曜に、期限後の維持に移る
-            let maintenanceDay = goal.direction.weightChange.map {
-                $0.deadlineDay.startOfWeek.advanced(by: 7)
-            }
+            let maintenanceDay = goal.direction.weightChange.map(\.deadlineDay.firstMondayAfter)
             let title = result.map {
                 "\(WeightAmountText.kilograms($0.deadlineWeightTrendKilograms)) で期限を迎えました"
             }
