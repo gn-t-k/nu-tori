@@ -14,6 +14,7 @@ import { decideGoal } from "../../goal/domain/decide-goal";
 import { previewGoalSetup } from "../../goal/domain/preview-goal-setup";
 import { proposeGoals } from "../../goal/domain/propose-goals";
 import { readKeptMealPhoto } from "../../meal/domain/read-kept-meal-photo";
+import { reviewUnreviewedWeeks } from "../../weekly-review/domain/review-unreviewed-weeks";
 import type { AccountResponse } from "./account-response";
 import type { AccountStores } from "./account-stores";
 
@@ -28,8 +29,9 @@ export const accountRequests = {
     return respond(undefined);
   },
 
+  // 送り待ちを送り切った印のある要求だけ、送った記録を当ててから、まだ見直していない週を見る
   pushSyncWrites: (
-    stores: Pick<AccountStores, "ledger" | "records">,
+    stores: Pick<AccountStores, "ledger" | "records" | "writeRecordChanges">,
     request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     now: Date,
   ) => {
@@ -37,6 +39,12 @@ export const accountRequests = {
       ...request,
       receivedAt: now,
     });
+    if (request.isFinalBatch) {
+      reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, {
+        timeZone: request.clientState.timeZone,
+        now,
+      });
+    }
     return {
       result: results,
       nextAlarmAt: computeNextAlarmAt(stores.records, now),
@@ -44,11 +52,16 @@ export const accountRequests = {
     } satisfies AccountResponse<unknown>;
   },
 
+  // 見直しで変えた記録を同じ応答で届けるため、取りに行く前に見る
   pullSyncChanges: (
-    stores: Pick<AccountStores, "ledger" | "records">,
+    stores: Pick<AccountStores, "ledger" | "records" | "writeRecordChanges">,
     request: { clientState: SyncClientState; afterSequence: number },
     now: Date,
   ) => {
+    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, {
+      timeZone: request.clientState.timeZone,
+      now,
+    });
     const { usageEvents, ...pulled } = pullSyncChanges(stores.ledger, stores.records, {
       ...request,
       receivedAt: now,
@@ -94,30 +107,42 @@ export const accountRequests = {
   ): AccountResponse<ReadableStream<Uint8Array> | undefined> =>
     respond(stores.openReplyStream(sentTextId)),
 
-  // 目標の設定の、その場で答える要求。下の3つは記録を書かない
+  // 目標の設定の、その場で答える要求。どれも、まだ見直していない週を先に見て、その新しい状態から答える。
+  // 下の3つは、見直しのほかは記録を書かない
   previewGoalSetup: (
-    stores: Pick<AccountStores, "records">,
+    stores: Pick<AccountStores, "records" | "writeRecordChanges">,
     request: Parameters<typeof previewGoalSetup>[1],
     now: Date,
-  ) => respond(previewGoalSetup(stores.records, request, now)),
+  ) => {
+    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, { ...request, now });
+    return respond(previewGoalSetup(stores.records, request, now));
+  },
 
   proposeGoals: (
-    stores: Pick<AccountStores, "records">,
+    stores: Pick<AccountStores, "records" | "writeRecordChanges">,
     request: Parameters<typeof proposeGoals>[1],
     now: Date,
-  ) => respond(proposeGoals(stores.records, request, now)),
+  ) => {
+    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, { ...request, now });
+    return respond(proposeGoals(stores.records, request, now));
+  },
 
   assessCustomTargetWeight: (
-    stores: Pick<AccountStores, "records">,
+    stores: Pick<AccountStores, "records" | "writeRecordChanges">,
     request: Parameters<typeof assessCustomTargetWeight>[1],
     now: Date,
-  ) => respond(assessCustomTargetWeight(stores.records, request, now)),
+  ) => {
+    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, { ...request, now });
+    return respond(assessCustomTargetWeight(stores.records, request, now));
+  },
 
+  // 月曜に立て直すと、その月曜の見直しは前の目標に当たり、新しい目標はそのあとに決める
   decideGoal: (
     stores: Pick<AccountStores, "writeRecordChanges" | "records">,
     request: Parameters<typeof decideGoal>[2],
     now: Date,
   ) => {
+    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, { ...request, now });
     const decided = decideGoal(stores.writeRecordChanges, stores.records, request, now);
     return {
       result: R.pipe(

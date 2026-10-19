@@ -1,7 +1,13 @@
 import type { RecordId } from "../../domain/record-id";
-import type { WeeklyReview } from "./weekly-review";
+import type { WeeklyReview, WeeklyReviewDeferral } from "./weekly-review";
 
-// 週の見直しの置き場。行を書く口は、週の見直しを書く口と一緒に足す
 export type WeeklyReviewStore = {
   find: (id: RecordId) => WeeklyReview | undefined;
+  // 新しい1日の目安を当てる月曜が最も遅い見直し（見送りを含む）。まだ1週も見直していなければ無い
+  findLatest: () => WeeklyReview | undefined;
+  // 行を書くのは、週の見直しを書く口（writeWeeklyReview）だけにする。表をまたぐ決まりは口が確かめる
+  insert: (review: Omit<WeeklyReview, "outcome">) => void;
+  insertDeferral: (
+    deferral: Omit<WeeklyReviewDeferral, "type"> & { weeklyReviewId: RecordId },
+  ) => void;
 };

@@ -25,7 +25,8 @@ extension TimelineTests {
                 input: Timeline.Input(
                     weightRecords: [], rejectedLines: [], meals: [], notices: [],
                     undelivered: .none, conversation: .none, goals: [startedGoal],
-                    dailyGuides: [guide]),
+                    dailyGuides: [guide], weeklyReviews: [], expenditureEstimates: [],
+                    weightTrend: nil),
                 firstDay: CalendarDay(year: 2026, month: 10, day: 5),
                 today: CalendarDay(year: 2026, month: 10, day: 7)
             )
@@ -44,7 +45,8 @@ extension TimelineTests {
             let timeline = Timeline(
                 input: Timeline.Input(
                     weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                    undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                 firstDay: CalendarDay(year: 2026, month: 10, day: 5),
                 today: CalendarDay(year: 2026, month: 10, day: 6)
             )

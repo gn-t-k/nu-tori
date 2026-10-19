@@ -52,7 +52,8 @@ extension TimelineTests {
                                 classification: .meal, reply: .notRequested),
                             snackQuestion.id: replied, afterWeight.id: replied,
                         ],
-                        replies: [reply, snackReply], streams: [:]), goals: [], dailyGuides: []),
+                        replies: [reply, snackReply], streams: [:]), goals: [], dailyGuides: [],
+                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                 firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                 today: CalendarDay(year: 2026, month: 9, day: 24))
         }

@@ -25,7 +25,8 @@ extension TimelineTests {
                     input: Timeline.Input(
                         weightRecords: [morning], rejectedLines: [], meals: [meal],
                         notices: [notice], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: PlacingNotices.today
                 )
@@ -71,7 +72,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [], notices: [notice],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: PlacingNotices.today,
                     today: PlacingNotices.today
                 )
@@ -104,7 +106,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [], notices: [notice],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: PlacingNotices.today
                 )
@@ -147,7 +150,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [], notices: [notice],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: ReminderLandings.today)
             }
@@ -171,7 +175,8 @@ extension TimelineTests {
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [],
                         notices: [try .missedWeightRecord(issuedAt: "2026-09-24T08:15:00+09:00")],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: ReminderLandings.today)
             }
@@ -192,7 +197,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: ReminderLandings.today)
             }

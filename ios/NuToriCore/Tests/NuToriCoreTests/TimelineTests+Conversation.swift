@@ -16,7 +16,8 @@ extension TimelineTests {
             Timeline(
                 input: Timeline.Input(
                     weightRecords: weightRecords, rejectedLines: [], meals: meals, notices: [],
-                    undelivered: .none, conversation: conversation, goals: [], dailyGuides: []),
+                    undelivered: .none, conversation: conversation, goals: [], dailyGuides: [],
+                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                 firstDay: firstDay, today: day)
         }
 

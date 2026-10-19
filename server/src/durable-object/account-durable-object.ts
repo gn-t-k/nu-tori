@@ -154,14 +154,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       setUser({ id: accountId });
       return this.respond(
         accountId,
-        accountRequests.decideGoal(
-          {
-            writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
-            records: createRecordKindStores(this.ctx.storage),
-          },
-          request,
-          new Date(),
-        ),
+        accountRequests.decideGoal(this.createRecordStores(), request, new Date()),
       );
     }
 
@@ -222,12 +215,15 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     private createSyncStores() {
       return {
         ledger: createLedgerStore(this.ctx.storage),
-        records: createRecordKindStores(this.ctx.storage),
+        ...this.createRecordStores(),
       };
     }
 
     private createRecordStores() {
-      return { records: createRecordKindStores(this.ctx.storage) };
+      return {
+        writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
+        records: createRecordKindStores(this.ctx.storage),
+      };
     }
 
     // 答えの時刻に張り、出来事を送ってから、結果を返す

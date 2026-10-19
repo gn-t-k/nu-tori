@@ -24,7 +24,8 @@ extension TimelineViewportTests {
                             notices: [], undelivered: .none,
                             conversation: Timeline.Conversation(
                                 sentTexts: [], statuses: [:], replies: [], streams: [:]), goals: [],
-                            dailyGuides: []),
+                            dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                            weightTrend: nil),
                         firstDay: TimelineViewportTests.today, today: TimelineViewportTests.today
                     ).days
                 }
@@ -223,7 +224,8 @@ extension TimelineViewportTests {
                 let timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [], notices: [notice],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
                 card = .notice(NoticeCard(notice: notice, form: .awaitingAnswer))
                 viewport = TimelineViewportTests.scrolledAway()
@@ -251,7 +253,8 @@ extension TimelineViewportTests {
                 let timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
                 viewport = TimelineViewportTests.scrolledAway()
                 instructions = viewport.reminderOpened(.timelineEnd, in: timeline)

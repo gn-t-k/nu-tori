@@ -20,7 +20,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [meal], notices: [],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: PlacingMeals.day
                 )
@@ -44,7 +45,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [meal], notices: [],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -75,7 +77,8 @@ extension TimelineTests {
                     input: Timeline.Input(
                         weightRecords: [evening, morning], rejectedLines: [], meals: [lunch],
                         notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -112,7 +115,8 @@ extension TimelineTests {
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [], meals: [dinner, breakfast, lunch],
                         notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -147,7 +151,8 @@ extension TimelineTests {
                     input: Timeline.Input(
                         weightRecords: [morning], rejectedLines: [.meal(line)], meals: [before],
                         notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -176,7 +181,8 @@ extension TimelineTests {
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: lines.map { .meal($0) }, meals: meals,
                         notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -252,7 +258,8 @@ extension TimelineTests {
                     input: Timeline.Input(
                         weightRecords: [], rejectedLines: [.weight(line)], meals: [lunch],
                         notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
