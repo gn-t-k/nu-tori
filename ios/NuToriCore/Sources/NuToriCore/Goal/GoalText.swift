@@ -1,6 +1,6 @@
 import Foundation
 
-/// 目標の経過（週の振り返り・目標の画面）の文に入れる、日付・量・向きの書き方
+/// 目標の経過（週の振り返り・目標の画面・週の見直しと目標の知らせ・目標の入口）の文に入れる、日付・量・向きの書き方
 enum GoalText {
     /// 「9月14日」
     static func monthDay(_ day: CalendarDay) -> String {
@@ -38,12 +38,17 @@ enum GoalText {
 
     /// 0.1 kg 単位の値の「−0.5 kg」「+0.3 kg」「0.0 kg」。負の符号は「−」（U+2212）
     static func signedKilograms(tenths: Int) -> String {
-        "\(sign(of: tenths))\(kilograms(tenths: abs(tenths)))"
+        "\(sign(of: tenths))\(kilograms(tenths: tenths))"
     }
 
-    /// 0.1 kg 単位の、0 以上の値の「0.4 kg」
+    /// 0.1 kg 単位の値の大きさの「0.4 kg」。符号は書かない
     static func kilograms(tenths: Int) -> String {
-        "\(tenths / 10).\(tenths % 10) kg"
+        "\(abs(tenths) / 10).\(abs(tenths) % 10) kg"
+    }
+
+    /// 「−30 kcal」「+20 kcal」「0 kcal」
+    static func signedKilocalories(_ kilocalories: Int) -> String {
+        "\(sign(of: kilocalories))\(NutritionText.kilocalories(abs(kilocalories)))"
     }
 
     /// kg を 0.1 kg 単位に丸める

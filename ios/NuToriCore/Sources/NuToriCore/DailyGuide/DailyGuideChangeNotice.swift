@@ -26,7 +26,7 @@ public struct DailyGuideChangeNotice: Hashable, Sendable {
 
     /// 「−30 kcal」
     public var changeText: String {
-        NoticeAmountText.signedKilocalories(changeKilocalories)
+        GoalText.signedKilocalories(changeKilocalories)
     }
 
     public var reasonText: String {
@@ -35,7 +35,7 @@ public struct DailyGuideChangeNotice: Hashable, Sendable {
 
     public var batchText: String? {
         batch.map {
-            "\(NoticeAmountText.monthDay($0.firstWeekMonday))からの \($0.weekCount) 週分の見直しをまとめた値です。"
+            "\(GoalText.monthDay($0.firstWeekMonday))からの \($0.weekCount) 週分の見直しをまとめた値です。"
         }
     }
 
@@ -52,7 +52,7 @@ public struct DailyGuideChangeNotice: Hashable, Sendable {
         public var text: String {
             switch self {
             case .expenditureChanged(let from, let to):
-                "推定消費カロリーが \(NoticeAmountText.kilocalories(from)) から \(NoticeAmountText.kilocalories(to)) kcal に\(to < from ? "下がった" : "上がった")ためです。"
+                "推定消費カロリーが \(NutritionText.number(.exactly(Double(from)), of: .energyKcal)) から \(NutritionText.kilocalories(to)) に\(to < from ? "下がった" : "上がった")ためです。"
             case .balanceChanged(.maintain, let increased):
                 "1日に戻す分を\(increased ? "増やした" : "減らした")ためです。"
             case .balanceChanged(let balance, true):

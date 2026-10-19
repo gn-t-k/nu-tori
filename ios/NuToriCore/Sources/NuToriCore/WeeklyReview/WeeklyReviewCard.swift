@@ -25,12 +25,7 @@ public struct WeeklyReviewCard: Hashable, Sendable {
 
     /// 見出しの週の日付。「9月14日〜20日」。月をまたぐ週は「9月28日〜10月4日」
     public var daysText: String {
-        let first = days.lowerBound
-        let last = days.upperBound
-        let end =
-            first.year == last.year && first.month == last.month
-            ? "\(last.day)日" : NoticeAmountText.monthDay(last)
-        return "\(NoticeAmountText.monthDay(first))〜\(end)"
+        GoalText.dayRange(days.lowerBound, days.upperBound)
     }
 
     /// ペースの1行
@@ -94,9 +89,9 @@ public struct WeeklyReviewCard: Hashable, Sendable {
         public var text: String {
             switch self {
             case .onTrack(let actual):
-                "間に合うペース・\(NoticeAmountText.signedKilograms(tenths: actual))／週"
+                "間に合うペース・\(GoalText.signedKilograms(tenths: actual))／週"
             case .behind(let shortfall):
-                "このままだと期限に \(NoticeAmountText.kilograms(tenths: shortfall)) 届きません"
+                "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
             case .inconclusive(let count):
                 "体重の記録が \(count) 日で、ペースはまだ言い切れません"
             case .pending:
@@ -104,9 +99,9 @@ public struct WeeklyReviewCard: Hashable, Sendable {
             case .maintenance(let isWithinBand):
                 isWithinBand ? "保てています" : "幅から外れています"
             case .achieved(let day, let kilograms):
-                "\(NoticeAmountText.monthDay(day))に \(WeightAmountText.kilograms(kilograms)) を達成しました"
+                "\(GoalText.monthDay(day))に \(WeightAmountText.kilograms(kilograms)) を達成しました"
             case .deadlinePassed(let day):
-                "\(NoticeAmountText.monthDay(day))が期限でした"
+                "\(GoalText.monthDay(day))が期限でした"
             }
         }
     }

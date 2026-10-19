@@ -74,9 +74,7 @@ extension WeekRecap {
 
         /// 「−30 kcal」。見送った週は「そのまま」
         public var changeText: String {
-            guard let changeKilocalories else { return "そのまま" }
-            let sign = changeKilocalories > 0 ? "+" : changeKilocalories < 0 ? "−" : ""
-            return "\(sign)\(NutritionText.kilocalories(abs(changeKilocalories)))"
+            changeKilocalories.map(GoalText.signedKilocalories) ?? "そのまま"
         }
 
         private static func reason(
