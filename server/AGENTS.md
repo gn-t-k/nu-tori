@@ -32,7 +32,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
 - ドメイン層は、実行基盤の型や API に触れない。ドメイン層が要る置き場と外への呼び出し（記録の置き場、写真の控え、LLM の提供元など）は、ドメイン層が型を定め、基盤に固有の層（Durable Object、D1・R2・LLM の提供元・Apple の API への入出力）がそれを実装する
-- 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。入口（受け口の Worker からの要求と、アラーム）ごとの処理は、アカウントの口（`src/account/domain/account-requests.ts` の `accountRequests`）に関数を1つずつ置く。関数は、ドメイン層が型を定めたストア（`AccountStores` のうち要るもの）と要求と今の時刻（要るときだけ）を受け、結果と、次に張るアラームの時刻と、送る利用状況の出来事（`AccountResponse`）を返す。送るかどうか（利用状況の設定）は口の中で決める
+- 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。入口（受け口の Worker からの要求と、アラーム）ごとの処理は、アカウントの口（`src/account/domain/account-requests.ts` の `accountRequests`）に関数を1つずつ置く。関数は、ドメイン層が型を定めたストア（`AccountStores` のうち要るもの）と要求と今の時刻（要るときだけ）を受け、結果と、次に張るアラームの時刻と、送る利用状況の出来事（`AccountResponse`）を返す。見直しを起こす要求は、要求ごとのログに足す値（`LoggedAccountResponse` の `requestLog`）も返す。送るかどうか（利用状況の設定）は口の中で決める
 - Durable Object のクラスは、`setUser` でアカウント ID を付ける、ストアを組んで口を呼ぶ、返った時刻にアラームを張る、返った出来事を送る、だけをする薄い層にする。`alarm()` も同じ形にし、ログと Sentry への報告だけを足す。入口を足すときは、口に関数を足してから、Durable Object に同じ形のメソッドを足す
 - HTTP の受け口は、記録を読み書きする要求なら、セッションを確かめ、回数の歯止めをかけてから、その人の Durable Object を呼ぶだけにする。まだセッションのないサインインと Apple のサーバー間通知は、受け口の Worker の認証で受ける。アカウントの削除は、受け口の Worker でドメイン層を呼ぶ。Durable Object の中身を消すときも、その Durable Object の入口を呼んで行う
 - 受け口は、Durable Object を呼ぶたびにアカウント ID を渡す。Durable Object の中では、その呼び出しの Sentry の報告に user の ID として付ける
@@ -133,6 +133,9 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 週の見直しの行は、週の見直しを書く口（`src/weekly-review/domain/write-weekly-review.ts`。テストは `src/weekly-review/durable-object/write-weekly-review.test.ts`）を通してだけ書く。見直せた週は、推定・見直した推定・1日の目安・見直した1日の目安を外部キーが指す行を先にして書き、変更は推定消費カロリー → 1日の目安 → 週の見直しの順に足す。口は、表で守らない決まり（当てる日は最も遅い推定より後の月曜、見送りと1日の目安は今の目標を指す、区分の値）を書く前に確かめて投げる
 - 期限後の維持は、今の減量・増量の目標の期限の日より後の最初の見直し（見送る週も含む）で、その週の見直しと同じ `run` の中で、週の見直しを書く口が書く。移るかと維持の目標体重は `src/goal/domain/plan-post-deadline-maintenance/` が出す。推定は新しく出さず、見送った週は前の目標の最後の1日の目安を写す
 - 達成と期限の日の結果は、見直しを起こす要求で、まだ見直していない週を見る前に `src/goal/domain/judge-goal-progress.ts` の `judgeGoalProgress` が判定する（アカウントの口が両方を続けて呼ぶ）。達成した日は `find-achieved-day/`、期限の日の確定は `judge-deadline-confirmation/` が出し、目標の経過を書く口（`src/goal/domain/write-goal-progress.ts`）を通してだけ書く
+- 見直し・達成・期限の日の確定・期限後の維持を書いたら、PostHog に週ごとの `weekly_review`、`goal_achieved`、`goal_deadline_confirmed`、`goal_moved_to_maintenance` を送る。`judgeGoalProgress` と `reviewUnreviewedWeeks` が出来事を返し、アカウントの口が利用状況の設定で絞る。体重・目標体重・kcal の値は載せず、差・日数・数・区分だけを載せる
+- 見直しを起こす要求は、要求ごとのログに見直した週の数（`reviewedWeekCount`。見なかった要求では無い）を出す。アカウントの口が答えの `requestLog` に載せ、Durable Object が結果と一緒に受け口へ返し、受け口が `c.set("requestLog", …)` で `observeRequest` に渡す
+- 返事の文脈（`assembleReplyContext`）には、文章を送った日の目標の、その日以前に当てた直近の見直し（見送りを含む）と、その日で判定したペース（`computePace`）を入れる。月曜に立て直した日の、前の目標の見直しは入れない
 
 ## DB
 

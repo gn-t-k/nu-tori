@@ -280,4 +280,77 @@ describe("まだ見直していない週を見る要求", () => {
       ).toEqual([0, 7, 14].map((offset) => addDays(firstMonday, offset)));
     });
   });
+
+  describe("要求ごとのログ", () => {
+    let logSpy: ReturnType<typeof vi.spyOn>;
+    // 受け口の要求ごとのログのうち、その経路のものの、見直した週の数
+    const readReviewedWeekCounts = (route: string): unknown[] =>
+      logSpy.mock.calls.flatMap(([entry]: unknown[]) =>
+        typeof entry === "object" && entry !== null && Reflect.get(entry, "route") === route
+          ? [Reflect.get(entry, "reviewedWeekCount")]
+          : [],
+      );
+    beforeEach(() => {
+      logSpy = vi.spyOn(console, "log");
+    });
+
+    describe("最初の月曜から2週あとに取りに行き、もう一度取りに行ったとき", () => {
+      beforeEach(async () => {
+        vi.setSystemTime(Date.now() + 14 * millisecondsPerDay);
+        await pullSyncChanges(sessionToken);
+        await pullSyncChanges(sessionToken);
+      });
+
+      test("見直した週の数を、要求ごとに出すこと", () => {
+        expect(readReviewedWeekCounts("GET /v1/sync/changes")).toEqual([3, 0]);
+      });
+    });
+
+    describe("月曜 0:00 を過ぎた最初の要求が、目標の下見の要求のとき", () => {
+      beforeEach(async () => {
+        await postGoalSetup(sessionToken, "preview", { direction: "maintain" });
+      });
+
+      test("見直した週の数を出すこと", () => {
+        expect(readReviewedWeekCounts("POST /v1/goal-setup/preview")).toEqual([1]);
+      });
+    });
+
+    describe("見直しが失敗したとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        // 今の目標が無い、書く口が作らない状態にして、見直しを失敗させる
+        await runInDurableObject(getAccountDurableObject(env, accountId), async (_, state) => {
+          const factory = durableObjectFactory(
+            drizzle(state.storage, { schema: durableObjectTables }),
+          );
+          await factory.goalClosures.create({ goalId, nextGoalId: goalId });
+        });
+        response = await pullSyncChanges(sessionToken);
+      });
+
+      test("要求の失敗にし、例外の名前をログに出すこと", () => {
+        expect({
+          status: response.status,
+          logged: logSpy.mock.calls.flatMap(([entry]: unknown[]) =>
+            typeof entry === "object" &&
+            entry !== null &&
+            Reflect.get(entry, "route") === "GET /v1/sync/changes"
+              ? [{ status: Reflect.get(entry, "status"), error: Reflect.get(entry, "error") }]
+              : [],
+          ),
+        }).toEqual({ status: 500, logged: [{ status: 500, error: "Error" }] });
+      });
+    });
+
+    describe("送り切っていない送る要求のとき", () => {
+      beforeEach(async () => {
+        await pushSyncWrites(sessionToken, { writes: [], isFinalBatch: false });
+      });
+
+      test("見直さないので、見直した週の数を出さないこと", () => {
+        expect(readReviewedWeekCounts("POST /v1/sync/writes")).toEqual([undefined]);
+      });
+    });
+  });
 });

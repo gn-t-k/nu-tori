@@ -17,7 +17,7 @@ import { previewGoalSetup } from "../../goal/domain/preview-goal-setup";
 import { proposeGoals } from "../../goal/domain/propose-goals";
 import { readKeptMealPhoto } from "../../meal/domain/read-kept-meal-photo";
 import { reviewUnreviewedWeeks } from "../../weekly-review/domain/review-unreviewed-weeks";
-import type { AccountResponse } from "./account-response";
+import type { AccountResponse, LoggedAccountResponse } from "./account-response";
 import type { AccountStores } from "./account-stores";
 
 // アカウントの Durable Object の受け口とアラームの、要求ごとの処理。
@@ -43,12 +43,13 @@ export const accountRequests = {
     });
     const caughtUp = request.isFinalBatch
       ? catchUpGoalProgress(stores, { timeZone: request.clientState.timeZone, now })
-      : { usageEvents: [] };
+      : { reviewedWeekCount: undefined, usageEvents: [] };
     return {
       result: results,
       nextAlarmAt: computeNextAlarmAt(stores.records, now),
       usageEvents: [...usageEvents, ...caughtUp.usageEvents],
-    } satisfies AccountResponse<unknown>;
+      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
+    } satisfies LoggedAccountResponse<unknown>;
   },
 
   // 見直しで変えた記録を同じ応答で届けるため、取りに行く前に見る
@@ -69,7 +70,8 @@ export const accountRequests = {
       result: pulled,
       nextAlarmAt: undefined,
       usageEvents: [...caughtUp.usageEvents, ...usageEvents],
-    } satisfies AccountResponse<unknown>;
+      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
+    } satisfies LoggedAccountResponse<unknown>;
   },
 
   // 受け取れなかったら、失敗した段を出来事に載せ、アラームは張り直さない
@@ -117,7 +119,8 @@ export const accountRequests = {
     return {
       ...respond(previewGoalSetup(stores.records, request, now)),
       usageEvents: caughtUp.usageEvents,
-    };
+      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
+    } satisfies LoggedAccountResponse<unknown>;
   },
 
   proposeGoals: (
@@ -129,7 +132,8 @@ export const accountRequests = {
     return {
       ...respond(proposeGoals(stores.records, request, now)),
       usageEvents: caughtUp.usageEvents,
-    };
+      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
+    } satisfies LoggedAccountResponse<unknown>;
   },
 
   assessCustomTargetWeight: (
@@ -141,7 +145,8 @@ export const accountRequests = {
     return {
       ...respond(assessCustomTargetWeight(stores.records, request, now)),
       usageEvents: caughtUp.usageEvents,
-    };
+      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
+    } satisfies LoggedAccountResponse<unknown>;
   },
 
   // 月曜に立て直すと、その月曜の見直しは前の目標に当たり、新しい目標はそのあとに決める
@@ -162,7 +167,8 @@ export const accountRequests = {
         ...caughtUp.usageEvents,
         ...(R.isSuccess(decided) ? decided.value.usageEvents : []),
       ],
-    } satisfies AccountResponse<unknown>;
+      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
+    } satisfies LoggedAccountResponse<unknown>;
   },
 
   deleteRecords: async (
