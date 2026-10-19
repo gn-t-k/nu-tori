@@ -70,11 +70,11 @@
                     records: [todaysManualWeight], startedOn: today,
                     goalSetup: goalSetupAnswers(today: today))
             case .weeklyReview:
-                return weeklyReview(achieved: false)
+                return weeklyReview(.reviewed)
             case .goalAchieved:
-                return weeklyReview(achieved: true)
+                return weeklyReview(.achieved)
             case .goalSwitchedAfterAchieved:
-                return weeklyReview(achieved: true, switched: true)
+                return weeklyReview(.switchedAfterAchieved)
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
@@ -395,10 +395,21 @@
 
         /// 先週の月曜に 72.4 kg から 70.1 kg へ減らす目標を立て、今日の 0:05 にその週を見直した。
         /// 1日の目安は 1,880 kcal から 1,850 kcal に、推定消費カロリーは 2,190 kcal から 2,140 kcal に下がった。
-        /// `achieved` なら、昨日の 21:00 に目標を達成したと判定した。`switched` なら、今日の 8:00 に 72.0 kg を保つ目標に立て直した。
         /// 立て直すときは、目標の設定の4つの要求に答える
-        private func weeklyReview(achieved: Bool, switched: Bool = false) -> FakeSyncServer.Scenario
-        {
+        private func weeklyReview(_ progress: WeeklyReviewProgress) -> FakeSyncServer.Scenario {
+            let achieved: Bool
+            let switched: Bool
+            switch progress {
+            case .reviewed:
+                achieved = false
+                switched = false
+            case .achieved:
+                achieved = true
+                switched = false
+            case .switchedAfterAchieved:
+                achieved = true
+                switched = true
+            }
             let today = clock.today()
             let monday = today.startOfWeek
             let goalStart = monday.advanced(by: -7)
@@ -479,6 +490,16 @@
                 ] + weights + (switched ? switchedGoal(startedOn: day(today)) : []),
                 startedOn: day(goalStart),
                 goalSetup: goalSetupAnswers(today: day(today)))
+        }
+
+        /// 見直したあとの目標の進み具合
+        private enum WeeklyReviewProgress {
+            /// 達成していない
+            case reviewed
+            /// 昨日の 21:00 に目標を達成したと判定した
+            case achieved
+            /// 達成したあと、今日の 8:00 に 72.0 kg を保つ目標に立て直した
+            case switchedAfterAchieved
         }
 
         private static let switchedGoalId = fixedId(

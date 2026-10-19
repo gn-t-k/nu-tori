@@ -11,6 +11,9 @@ public struct WeeklyReview: Hashable, Sendable {
     public let timeZone: TimeZone
     public let outcome: Outcome
 
+    /// 見直すのに要る、食事を記録した日の数。これより少ない週は見送る。文に出すだけで判定には使わない。正本はサーバーの `minimumMealDays`（`judge-review-week.ts`）
+    static let minimumMealDayCount = 4
+
     public init(
         id: UUID, effectiveDay: CalendarDay, reviewedAt: Date, timeZone: TimeZone,
         outcome: Outcome

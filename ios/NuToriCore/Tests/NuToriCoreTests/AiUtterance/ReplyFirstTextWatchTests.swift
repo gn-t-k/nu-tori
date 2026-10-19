@@ -17,9 +17,7 @@ struct ReplyFirstTextWatchTests {
     ) -> Timeline {
         Timeline(
             input: Timeline.Input(
-                goalRecords: GoalRecords(
-                    goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                    weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [], notices: [],
+                goalRecords: .fixture(), rejectedLines: [], meals: [], notices: [],
                 undelivered: undelivered,
                 conversation: Timeline.Conversation(
                     sentTexts: [sentText],

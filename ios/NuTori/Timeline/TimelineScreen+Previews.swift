@@ -66,18 +66,17 @@
             case weeklyReviewed
 
             var weightTrend: WeightTrend? {
-                self == .weeklyReviewed ? WeeklyReviewPreviewScene.weightTrend : nil
+                self == .weeklyReviewed ? WeightTrend.sampleWeeklyReviewed : nil
             }
 
             var weeklyReviews: [WeeklyReview] {
-                self == .weeklyReviewed ? [WeeklyReviewPreviewScene.review()] : []
+                self == .weeklyReviewed ? [WeeklyReview.sampleReviewed] : []
             }
 
             var expenditureEstimates: [ExpenditureEstimate] {
                 self == .weeklyReviewed
                     ? [
-                        WeeklyReviewPreviewScene.firstEstimate,
-                        WeeklyReviewPreviewScene.reviewedEstimate,
+                        ExpenditureEstimate.sampleFirst, ExpenditureEstimate.sampleReviewed,
                     ] : []
             }
 
@@ -91,7 +90,7 @@
                     .completed(startedDay: Self.startedDay)
                 case .startedDayUndecided: .completed(startedDay: nil)
                 case .weeklyReviewed:
-                    .completed(startedDay: WeeklyReviewPreviewScene.goal.startedDay)
+                    .completed(startedDay: Goal.sampleWeeklyReviewed.startedDay)
                 }
             }
 
@@ -105,7 +104,7 @@
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 9, 30, from: .manual)]
                 case .undelivered: Self.pastRecords + [Self.undeliveredRecord]
                 case .rejected: [Self.correctedRecord]
-                case .weeklyReviewed: WeeklyReviewPreviewScene.weightRecords
+                case .weeklyReviewed: WeeklyReview.sampleWeekWeightRecords
                 }
             }
 
@@ -142,7 +141,7 @@
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .awaitingNotice, .answeredNotice:
                     []
-                case .weeklyReviewed: WeeklyReviewPreviewScene.meals
+                case .weeklyReviewed: WeeklyReview.sampleWeekMeals
                 case .undelivered:
                     [MealCard(meal: Self.undeliveredMeal, status: nil, recordedOnThisDevice: true)]
                 case .meals, .goalDecided:
@@ -223,7 +222,7 @@
             var goals: [Goal] {
                 switch self {
                 case .goalDecided: [Self.goal]
-                case .weeklyReviewed: [WeeklyReviewPreviewScene.goal]
+                case .weeklyReviewed: [Goal.sampleWeeklyReviewed]
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered,
                     .writtenMeals:
@@ -235,7 +234,7 @@
                 switch self {
                 case .goalDecided: [.sample(for: Self.goal)]
                 case .weeklyReviewed:
-                    [WeeklyReviewPreviewScene.firstGuide, WeeklyReviewPreviewScene.reviewedGuide]
+                    [DailyGuide.sampleFirst, DailyGuide.sampleReviewed]
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered,
                     .writtenMeals:

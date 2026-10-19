@@ -23,11 +23,8 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { recordMealEnergies } from "./testing/record-meal-energies";
-
-const millisecondsPerDay = 86_400_000;
-
-const daysFrom = (from: string, count: number): string[] =>
-  Array.from({ length: count }, (_, offset) => addDays(from, offset));
+import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
+import { daysFrom } from "../testing/days-from";
 
 // 週の見直しで PostHog に送る出来事を、受け口から確かめる。
 // 維持の目標（70 kg）に、逆算した推定 2,400 kcal と1日の目安 2,400 kcal が当たっている。
@@ -113,9 +110,14 @@ describe("週の見直しの出来事", () => {
       );
     });
 
-    test("同じ週を2回見直さず、2回めの要求では送らないこと", async () => {
-      await pullSyncChanges(sessionToken);
-      expect(readWeeklyReviewEvents()).toHaveLength(1);
+    describe("同じ週にもう一度取りに行ったとき", () => {
+      beforeEach(async () => {
+        await pullSyncChanges(sessionToken);
+      });
+
+      test("同じ週を2回見直さず、2回めの要求では送らないこと", () => {
+        expect(readWeeklyReviewEvents()).toHaveLength(1);
+      });
     });
   });
 

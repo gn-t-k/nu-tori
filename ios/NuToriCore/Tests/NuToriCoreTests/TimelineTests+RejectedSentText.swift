@@ -18,9 +18,7 @@ extension TimelineTests {
                 subject: .send)
             let timeline = Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: [morning, evening]),
+                    goalRecords: .fixture(weightRecords: [morning, evening]),
                     rejectedLines: [.sentText(line)], meals: [], notices: [], undelivered: .none,
                     conversation: .none),
                 firstDay: Self.day, today: Self.day)
@@ -38,9 +36,7 @@ extension TimelineTests {
                 classification: .conversation, reply: .failed(.retriesExhausted))
             let timeline = Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: []), rejectedLines: [.sentText(line)],
+                    goalRecords: .fixture(), rejectedLines: [.sentText(line)],
                     meals: [], notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText], statuses: [sentText.id: failed], replies: [],

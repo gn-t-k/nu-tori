@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { addDays } from "../../../domain/add-days";
 import { generateRecordId } from "../../../domain/record-id";
 import { judgeDeadlineConfirmation } from "./index";
+import { trendFrom } from "../testing/trend-from";
 
 type Input = Parameters<typeof judgeDeadlineConfirmation>[0];
 
@@ -11,9 +11,6 @@ const goal: Input["goal"] = {
   deadlineConfirmation: undefined,
   closure: undefined,
 };
-
-const trendFrom = (from: string, trendKgs: readonly number[]) =>
-  trendKgs.map((trendKg, offset) => ({ calendarDay: addDays(from, offset), trendKg }));
 
 // 11月28日〜12月1日の体重の傾向。期限の日は 70.4 kg
 const weightTrend = trendFrom("2026-11-28", [70.6, 70.5, 70.4, 70.2]);

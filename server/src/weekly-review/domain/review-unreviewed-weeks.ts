@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { computeReviewedDailyGuide } from "../../daily-guide/domain/compute-reviewed-daily-guide";
 import type { RequiredPaceGoal } from "../../daily-guide/domain/compute-required-pace";
 import { addDays } from "../../domain/add-days";
@@ -150,13 +151,7 @@ export const reviewUnreviewedWeeks = (
               ),
             },
           ];
-    const weeklyReview: UsageEvent = {
-      name: "weekly_review",
-      deferralReason: outcome.type === "deferred" ? outcome.reason : undefined,
-      limitHits: outcome.type === "reviewed" ? outcome.dailyGuide.limitHits : [],
-      mainReason: outcome.type === "reviewed" ? outcome.dailyGuide.mainReason : undefined,
-      expenditureChangeKcal:
-        outcome.type === "reviewed" ? expenditureKcal - previousExpenditureKcal : undefined,
+    const reported = {
       initialExpenditureSource,
       expenditureChangeFromInitialKcal:
         initialEstimate !== undefined && reviewNumbersComparedWithInitial.includes(reviewNumber)
@@ -164,6 +159,22 @@ export const reviewUnreviewedWeeks = (
           : undefined,
       reviewedWeekCount: mondays.length,
     };
+    const weeklyReview = match(outcome)
+      .with({ type: "deferred" }, ({ reason }): UsageEvent => ({
+        name: "weekly_review",
+        ...reported,
+        outcome: "deferred",
+        deferralReason: reason,
+      }))
+      .with({ type: "reviewed" }, ({ dailyGuide }): UsageEvent => ({
+        name: "weekly_review",
+        ...reported,
+        outcome: "reviewed",
+        limitHits: dailyGuide.limitHits,
+        mainReason: dailyGuide.mainReason,
+        expenditureChangeKcal: expenditureKcal - previousExpenditureKcal,
+      }))
+      .exhaustive();
     return [weeklyReview, ...movedToMaintenance];
   });
   return { reviewedWeekCount: mondays.length, usageEvents };

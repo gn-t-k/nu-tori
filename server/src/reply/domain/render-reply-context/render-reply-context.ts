@@ -12,6 +12,8 @@ import type {
   ReplyContextWindowEntry,
 } from "../reply-context";
 import { maintenanceBandKg } from "../../../goal/domain/maintenance-band-kg";
+import { paceWindowDays } from "../../../goal/domain/pace-window-days";
+import { maximumWeeklyChangeKcal } from "../../../daily-guide/domain/maximum-weekly-change-kcal";
 
 // 提供元に渡す文脈の文の塊。変わらない指示のあとに、この並びのまま置く（前の塊ほど変わらないので、キャッシュが効く）
 export type ReplyContextBlock = {
@@ -153,9 +155,12 @@ const renderPace = (pace: Pace | undefined): string =>
         .with(
           { status: "inconclusive" },
           ({ weightRecordDayCount }) =>
-            `言い切れない（直近 14 日に体重を記録した日が ${weightRecordDayCount} 日しかない）`,
+            `言い切れない（直近 ${paceWindowDays} 日に体重を記録した日が ${weightRecordDayCount} 日しかない）`,
         )
-        .with({ status: "pending" }, () => "まだ出ない（目標を立てて 14 日たっていない）")
+        .with(
+          { status: "pending" },
+          () => `まだ出ない（目標を立てて ${paceWindowDays} 日たっていない）`,
+        )
         .with({ status: "unavailable" }, () => "なし（期限の日か達成した日を迎えた）")
         .with(
           { status: "maintenance" },
@@ -188,7 +193,10 @@ const renderWeeklyReview = (review: ReplyContextWeeklyReview): string[] => {
             : limitHits
                 .map((limitHit) =>
                   match(limitHit)
-                    .with("weekly_change", () => "前の週からの変化の上限（±150 kcal）")
+                    .with(
+                      "weekly_change",
+                      () => `前の週からの変化の上限（±${maximumWeeklyChangeKcal} kcal）`,
+                    )
                     .with("required_pace", () => "必要な速さの上限")
                     .with("minimum_energy", () => "1日の目安の下限")
                     .exhaustive(),

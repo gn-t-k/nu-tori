@@ -68,17 +68,10 @@ public struct GoalNotice: Hashable, Sendable {
                 ? "期限の\(deadlineText(of: goal))より \(daysEarly) 日早く届きました。次の目標を選ぶまで、今の目標を続けます。"
                 : "期限の\(deadlineText(of: goal))に届きました。次の目標を選ぶまで、今の目標を続けます。"
         case .deadlineReached(let confirmation):
-            let fromStart = GoalText.tenths(
-                confirmation.deadlineWeightTrendKilograms
-                    - goal.startingWeightTrendKilograms)
-            let remaining = GoalText.tenths(
-                abs(
-                    goal.targetWeightKilograms - confirmation.deadlineWeightTrendKilograms))
-            let monday = goal.direction.weightChange.map {
-                Self.maintenanceMonday(afterDeadline: $0.deadlineDay)
-            }
-            return
-                "開始から \(GoalText.signedKilograms(tenths: fromStart))・目標まであと \(GoalText.kilograms(tenths: remaining)) でした。"
+            let result = DeadlineResult(goal: goal, confirmation: confirmation)
+            // 期限の日より後の最初の月曜に、期限後の維持に移る
+            let monday = goal.direction.weightChange.map(\.deadlineDay.firstMondayAfter)
+            return (result.map { "\($0.text) でした。" } ?? "")
                 + (monday.map {
                     "選ばなければ、\(GoalText.monthDay($0))（月）から今の体重を保つ目標で続けます。"
                 } ?? "")
@@ -137,12 +130,6 @@ public struct GoalNotice: Hashable, Sendable {
             }
             return kinds.map { GoalNotice(goal: goal, kind: $0, unavailability: unavailability) }
         }
-    }
-
-    /// 期限の日より後の最初の月曜。期限のあと次の目標を選ばなければ、この日から期限後の維持に移る
-    private static func maintenanceMonday(afterDeadline deadlineDay: CalendarDay) -> CalendarDay {
-        let nextDay = deadlineDay.advanced(by: 1)
-        return nextDay.startOfWeek == nextDay ? nextDay : nextDay.startOfWeek.advanced(by: 7)
     }
 
     private func deadlineText(of goal: Goal) -> String {

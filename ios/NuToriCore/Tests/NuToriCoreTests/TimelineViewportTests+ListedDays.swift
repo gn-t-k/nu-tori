@@ -29,9 +29,7 @@ extension TimelineViewportTests {
             }
             return Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: records), rejectedLines: [], meals: [],
+                    goalRecords: .fixture(weightRecords: records), rejectedLines: [], meals: [],
                     notices: [], undelivered: .none, conversation: .none),
                 firstDay: firstDay, today: today
             ).days

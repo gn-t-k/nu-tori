@@ -7,30 +7,16 @@ enum GoalNoticeScene {
     static func losing(achievedAt: String, achievedDay: CalendarDay, closure: Goal.Closure? = nil)
         throws -> Goal
     {
-        let losing = try Goal.losing()
-        return Goal(
-            id: losing.id, startedDay: losing.startedDay,
-            startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-            targetWeightKilograms: losing.targetWeightKilograms, decidedAt: losing.decidedAt,
-            timeZone: losing.timeZone, direction: losing.direction,
-            achievement: Goal.Achievement(
-                achievedDay: achievedDay, judgedAt: try Date(achievedAt, strategy: .iso8601),
-                timeZone: losing.timeZone),
-            deadlineConfirmation: nil, closure: closure)
+        try Goal.losing(
+            achievement: .inTokyo(on: achievedDay, judgedAt: achievedAt), closure: closure)
     }
 
     static func losing(
         confirmedAt: String, deadlineWeightTrendKilograms: Double, closure: Goal.Closure? = nil
     ) throws -> Goal {
-        let losing = try Goal.losing()
-        return Goal(
-            id: losing.id, startedDay: losing.startedDay,
-            startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-            targetWeightKilograms: losing.targetWeightKilograms, decidedAt: losing.decidedAt,
-            timeZone: losing.timeZone, direction: losing.direction, achievement: nil,
-            deadlineConfirmation: Goal.DeadlineConfirmation(
-                deadlineWeightTrendKilograms: deadlineWeightTrendKilograms,
-                confirmedAt: try Date(confirmedAt, strategy: .iso8601), timeZone: losing.timeZone),
+        try Goal.losing(
+            deadlineConfirmation: .inTokyo(
+                weightTrendKilograms: deadlineWeightTrendKilograms, confirmedAt: confirmedAt),
             closure: closure)
     }
 
@@ -40,9 +26,8 @@ enum GoalNoticeScene {
     {
         Timeline(
             input: Timeline.Input(
-                goalRecords: GoalRecords(
-                    goals: goals, dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                    weightTrend: nil, weightRecords: weightRecords), rejectedLines: [], meals: [],
+                goalRecords: .fixture(goals: goals, weightRecords: weightRecords),
+                rejectedLines: [], meals: [],
                 notices: [], undelivered: .none, conversation: .none),
             firstDay: CalendarDay(year: 2026, month: 10, day: 1), today: today)
     }

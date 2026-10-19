@@ -66,6 +66,11 @@ public struct CalendarDay: Hashable, Sendable {
         let daysSinceMonday = (Self.utcCalendar.component(.weekday, from: startInUTC) + 5) % 7
         return advanced(by: -daysSinceMonday)
     }
+
+    /// この日より後の最初の月曜（この日が月曜なら次の週の月曜）
+    var firstMondayAfter: CalendarDay {
+        startOfWeek.advanced(by: 7)
+    }
 }
 
 extension CalendarDay: Strideable {

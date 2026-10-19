@@ -38,6 +38,10 @@
             )
         }
 
+        /// プレビューの見本の、9月14日（月）に立て、1週目を見直した減量の目標
+        static let sampleWeeklyReviewed = sampleLosing(
+            startedOn: CalendarDay(year: 2026, month: 9, day: 14))
+
         private static let sampleTimeZone = TimeZone(identifier: "Asia/Tokyo")!
 
         private static func sampleDecidedAt(on day: CalendarDay) -> Date {

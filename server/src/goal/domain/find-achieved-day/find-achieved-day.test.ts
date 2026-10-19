@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { addDays } from "../../../domain/add-days";
 import { generateRecordId } from "../../../domain/record-id";
 import { findAchievedDay } from "./index";
+import { trendFrom } from "../testing/trend-from";
 
 type Input = Parameters<typeof findAchievedDay>[0];
 
@@ -15,10 +15,6 @@ const losingGoal: Input["goal"] = {
   deadlineConfirmation: undefined,
   closure: undefined,
 };
-
-// 日ごとの体重の傾向を、from の日から順に並べる
-const trendFrom = (from: string, trendKgs: readonly number[]) =>
-  trendKgs.map((trendKg, offset) => ({ calendarDay: addDays(from, offset), trendKg }));
 
 describe("達成した日", () => {
   let input: Input;

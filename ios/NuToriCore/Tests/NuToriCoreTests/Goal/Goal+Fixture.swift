@@ -4,11 +4,17 @@ import NuToriCore
 import Testing
 
 extension Goal {
-    /// 2026-10-01（東京）に決めた、12月24日までに 72.4 kg から 68.0 kg へ減らす標準の目標。閉じていない
-    static func losing(id: UUID = UUID(), closure: Closure? = nil) throws -> Goal {
+    /// 2026-10-01（東京）に決めた、12月24日までに 72.4 kg から 68.0 kg へ減らす標準の目標。
+    /// 既定では、10月1日に始め、達成も期限の日の確定も無く、閉じていない
+    static func losing(
+        id: UUID = UUID(),
+        startedOn startedDay: CalendarDay = CalendarDay(year: 2026, month: 10, day: 1),
+        achievement: Achievement? = nil, deadlineConfirmation: DeadlineConfirmation? = nil,
+        closure: Closure? = nil
+    ) throws -> Goal {
         Goal(
             id: id,
-            startedDay: CalendarDay(year: 2026, month: 10, day: 1),
+            startedDay: startedDay,
             startingWeightTrendKilograms: 72.4,
             targetWeightKilograms: 68.0,
             decidedAt: try Date("2026-10-01T08:30:00+09:00", strategy: .iso8601),
@@ -16,37 +22,52 @@ extension Goal {
             direction: .lose(
                 WeightChange(
                     deadlineDay: CalendarDay(year: 2026, month: 12, day: 24), pacePlan: .standard)),
+            achievement: achievement,
+            deadlineConfirmation: deadlineConfirmation,
+            closure: closure
+        )
+    }
+
+    /// `decidedAt`（東京）に決めた、`kilograms` を保つ目標。既定では、2026-10-20 21:00 に決めた 65.0 kg を保つ目標で、閉じていない
+    static func maintaining(
+        id: UUID = UUID(),
+        startedOn startedDay: CalendarDay = CalendarDay(year: 2026, month: 10, day: 20),
+        kilograms: Double = 65.0, decidedAt: String = "2026-10-20T21:00:00+09:00",
+        closure: Closure? = nil
+    ) throws -> Goal {
+        Goal(
+            id: id,
+            startedDay: startedDay,
+            startingWeightTrendKilograms: kilograms,
+            targetWeightKilograms: kilograms,
+            decidedAt: try Date(decidedAt, strategy: .iso8601),
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+            direction: .maintain,
             achievement: nil,
             deadlineConfirmation: nil,
             closure: closure
         )
     }
+}
 
-    /// `losing()` の開始の日（10月1日）を、`day` に替えたもの
-    static func losing(startedOn day: CalendarDay) throws -> Goal {
-        let losing = try Goal.losing()
-        return Goal(
-            id: losing.id, startedDay: day,
-            startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-            targetWeightKilograms: losing.targetWeightKilograms, decidedAt: losing.decidedAt,
-            timeZone: losing.timeZone, direction: losing.direction, achievement: nil,
-            deadlineConfirmation: nil, closure: nil)
+extension Goal.Achievement {
+    /// `judgedAt`（東京）に判定した、`day` の達成
+    static func inTokyo(on day: CalendarDay, judgedAt: String) throws -> Goal.Achievement {
+        Goal.Achievement(
+            achievedDay: day, judgedAt: try Date(judgedAt, strategy: .iso8601),
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))
     }
+}
 
-    /// 2026-10-20（東京）に決めた、65.0 kg を保つ目標
-    static func maintaining(id: UUID = UUID()) throws -> Goal {
-        Goal(
-            id: id,
-            startedDay: CalendarDay(year: 2026, month: 10, day: 20),
-            startingWeightTrendKilograms: 65.0,
-            targetWeightKilograms: 65.0,
-            decidedAt: try Date("2026-10-20T21:00:00+09:00", strategy: .iso8601),
-            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
-            direction: .maintain,
-            achievement: nil,
-            deadlineConfirmation: nil,
-            closure: nil
-        )
+extension Goal.DeadlineConfirmation {
+    /// `confirmedAt`（東京）に確定した、期限の日の体重の傾向
+    static func inTokyo(weightTrendKilograms: Double, confirmedAt: String) throws
+        -> Goal.DeadlineConfirmation
+    {
+        Goal.DeadlineConfirmation(
+            deadlineWeightTrendKilograms: weightTrendKilograms,
+            confirmedAt: try Date(confirmedAt, strategy: .iso8601),
+            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))
     }
 }
 

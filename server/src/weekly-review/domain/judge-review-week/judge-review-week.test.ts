@@ -1,13 +1,9 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { addDays } from "../../../domain/add-days";
 import { judgeReviewWeek, type ReviewWeekInputs, type ReviewWeekJudgement } from "./index";
+import { daysFrom } from "../../testing/days-from";
 
 // 見直す月曜は 2026-10-19。見直す入力の週は 2026-10-12（月）〜 2026-10-18（日）、その前の日曜は 2026-10-11
 const reviewedMonday = "2026-10-19";
-
-// from から count 日の日付
-const daysFrom = (from: string, count: number): string[] =>
-  Array.from({ length: count }, (_, offset) => addDays(from, offset));
 
 const weightsOn = (calendarDays: string[]) =>
   calendarDays.map((calendarDay) => ({ calendarDay, weightKg: 70 }));

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { addDays } from "../../../domain/add-days";
 import { planPostDeadlineMaintenance } from "./index";
+import { trendFrom } from "../testing/trend-from";
 
 type Input = Parameters<typeof planPostDeadlineMaintenance>[0];
 
@@ -10,9 +10,6 @@ const goal: Input["goal"] = {
   targetWeightKg: 70,
   weightChange: { deadlineOn: "2026-11-29", pacePlan: "standard" },
 };
-
-const trendFrom = (from: string, trendKgs: readonly number[]) =>
-  trendKgs.map((trendKg, offset) => ({ calendarDay: addDays(from, offset), trendKg }));
 
 describe("期限後の維持", () => {
   let input: Input;
