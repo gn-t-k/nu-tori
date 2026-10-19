@@ -128,15 +128,17 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 ## 週の見直し
 
-- 週の見直しは、端末の要求の中で行い、アラームは使わない。入口は `src/weekly-review/domain/review-unreviewed-weeks.ts` の `reviewUnreviewedWeeks` で、アカウントの口が、送り切った印（`isFinalBatch`）のある送る要求では記録を当てたあとに、取りに行く要求では取りに行く前に、目標の4つの要求では答える前に呼ぶ。ほかの要求（送り切っていない送る要求、写真、見守る、セッション）では呼ばない
-- まだ見直していない週（`find-unreviewed-week-mondays/`）を古い順に1週ずつ見て、1週を記録の変化を書く入口の1つの `run` にする。週の区切りと今日は要求のタイムゾーンで決め、読めないタイムゾーンの要求では見ない。見送るかと見直しに使う値は `judge-review-week/` が出す
-- 見直せた週は、新しい推定消費カロリーを `compute-reviewed-expenditure/` が、1日の目安を `src/daily-guide/domain/compute-reviewed-daily-guide/` が出す。必要な速さ（維持の幅を含む）は、目標を立てたときと同じ `src/daily-guide/domain/compute-required-pace.ts` で出す。続いた週の数は残さず、見直すたびにずれの向きの並び（`findDeviationHistory`）から数える
-- 週の見直しの行は、週の見直しを書く口（`src/weekly-review/domain/write-weekly-review.ts`。テストは `src/weekly-review/durable-object/write-weekly-review.test.ts`）を通してだけ書く。見直せた週は、推定・見直した推定・1日の目安・見直した1日の目安を外部キーが指す行を先にして書き、変更は推定消費カロリー → 1日の目安 → 週の見直しの順に足す。口は、表で守らない決まり（当てる日は最も遅い推定より後の月曜、見送りと1日の目安は今の目標を指す、区分の値）を書く前に確かめて投げる
-- 期限後の維持は、今の減量・増量の目標の期限の日より後の最初の見直し（見送る週も含む）で、その週の見直しと同じ `run` の中で、週の見直しを書く口が書く。移るかと維持の目標体重は `src/goal/domain/plan-post-deadline-maintenance/` が出す。推定は新しく出さず、見送った週は前の目標の最後の1日の目安を写す
-- 達成と期限の日の結果は、見直しを起こす要求で、まだ見直していない週を見る前に `src/goal/domain/judge-goal-progress.ts` の `judgeGoalProgress` が判定する（アカウントの口が両方を続けて呼ぶ）。達成した日は `find-achieved-day/`、期限の日の確定は `judge-deadline-confirmation/` が出し、達成を書く口（`src/goal/domain/write-goal-achievement.ts`）と期限の日の確定を書く口（`src/goal/domain/write-goal-deadline-confirmation.ts`）を通してだけ書く
-- 見直し・達成・期限の日の確定・期限後の維持を書いたら、PostHog に週ごとの `weekly_review`、`goal_achieved`、`goal_deadline_confirmed`、`goal_moved_to_maintenance` を送る。`judgeGoalProgress` と `reviewUnreviewedWeeks` が出来事を返し、アカウントの口が利用状況の設定で絞る。体重・目標体重・kcal の値は載せず、差・日数・数・区分だけを載せる
-- 見直しを起こす要求は、要求ごとのログに見直した週の数（`reviewedWeekCount`。見なかった要求では無い）を出す。アカウントの口が答えの `requestLog` に載せ、Durable Object が結果と一緒に受け口へ返し、受け口が `c.set("requestLog", …)` で `observeRequest` に渡す
-- 返事の文脈（`assembleReplyContext`）には、文章を送った日の目標の、その日以前に当てた直近の見直し（見送りを含む）と、その日で判定したペース（`computePace`）を入れる。月曜に立て直した日の、前の目標の見直しは入れない
+- 週の見直しと、達成・期限の日の確定は、端末の要求の中で行い、アラームは使わない。起こすのは次の要求だけで、ほか（送り切っていない送る要求、写真、見守る、セッション）では起こさない
+  - 送り切った印（`isFinalBatch`）のある送る要求: 送った記録を当てたあと
+  - 取りに行く要求: 取りに行く前（見直しで変えた記録を同じ応答で届けるため）
+  - 目標の設定の4つの要求: 答える前。月曜に立て直すと、その月曜の見直しは前の目標に当たり、新しい目標はそのあとに決める
+- 要求の中では、達成と期限の日の確定（`judgeGoalProgress`）を、まだ見直していない週（`reviewUnreviewedWeeks`）より先に判定する。期限の日の翌日の最初の要求で届いた期限の日以前の体重は、確定の前の達成として数える
+- 週の区切りと今日は要求のタイムゾーンで決め、読めないタイムゾーンの要求では見ずに次の要求に任せる。週は古い順に1週ずつ、1週を記録の変化を書く入口の1つの `run` にする（次の週が、前の週に書いた推定と1日の目安を読む）
+- 必要な速さ（維持の幅を含む）は、目標を立てたときと同じ式（`computeRequiredPace`）で出す。続いた週の数は残さず、見直すたびにずれの向きの並びから数える
+- 期限後の維持には、今の減量・増量の目標の期限の日より後の最初の見直し（見送る週も含む）で、その週の見直しと同じ `run` の中で移る。推定は新しく出さず、見送った週は前の目標の最後の1日の目安を写す
+- 週の見直し・達成・期限の日の確定の行は、それぞれの書く口（`writeWeeklyReview`、`writeGoalAchievement`、`writeGoalDeadlineConfirmation`）を通してだけ書く。表で守れない決まりは口が書く前に確かめて投げる。週の見直しを書く口のテストは、Durable Object の置き場に当てる `src/weekly-review/durable-object/write-weekly-review.test.ts`
+- 見直しと目標の経過の PostHog の出来事は、`judgeGoalProgress` と `reviewUnreviewedWeeks` が返し、アカウントの口が利用状況の設定で絞る。体重・目標体重・kcal の値は載せず、差・日数・数・区分だけを載せる
+- 見直しを起こす要求は、要求ごとのログに見直した週の数（`reviewedWeekCount`）を出す。見直しを起こさない要求では出さない
 
 ## DB
 
