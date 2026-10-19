@@ -71,6 +71,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 `scripts/check` を通したうえで、変えたものを動かして確かめる。Mac で作業するときは `docs/agents/ios-mac.md` を読む。
 
+- 書いたら、まず `scripts/check ios --lint --fix` で整形と Lint だけを回す（数秒〜20秒ほど。全部は4〜5分）。Swift の決まりのうち機械で見分けられるもの（`.swiftlint.yml` の `custom_rules`）はここで落ちるので、通してから全部を回す
 - Linux で `swift` が無いときは、`scripts/install-swift` で入れる
 - Linux では、アプリのビルドを CI の `ios-app` に任せる
 - UI テストは、PR では CI で回さない。UI テストか画面の経路を変える PR は、PR の先頭のコミットで Mac の `scripts/check ios-ui-test` を回し、コミットと結果を PR の本文に書いてから merge する。Mac のセッションでは自分で回す。Linux のセッションでは、開発者にそのコミットの SHA を添えて回すよう頼む

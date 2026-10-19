@@ -17,7 +17,10 @@ public struct SyncBoxResult: Sendable, Equatable {
         enqueuing: [PendingEntry] = [],
         resolvedWriteIds: [UUID] = [],
         kindChanges: [KindChanges] = [],
+        // nil は「書かない」で、上の空の配列と同じく当てるものが無いことを表す。結果はどれも一部の欄だけを持つので、無い欄を省いて組む
+        // swiftlint:disable:next no_nil_default_argument
         syncState: SyncState? = nil,
+        // swiftlint:disable:next no_nil_default_argument
         healthSyncState: HealthSyncState? = nil
     ) {
         self.enqueuing = enqueuing

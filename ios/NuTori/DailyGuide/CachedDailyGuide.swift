@@ -56,6 +56,7 @@ nonisolated final class CachedDailyGuide {
         case "weekly_change": .weeklyChange
         case "required_pace": .requiredPace
         case "minimum_energy": .minimumEnergy
+        // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
         default: nil
         }
     }

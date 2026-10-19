@@ -129,6 +129,7 @@ extension SyncWriteResult {
                 outcome: .rejected(RejectionReason(reason)),
                 current: result.current.flatMap(Current.init)
             )
+        // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
         default:
             self.init(writeId: writeId, outcome: .unknown(result: result.result), current: nil)
         }
@@ -147,6 +148,7 @@ extension SyncWriteResult.Current {
             self = .deleted(change)
         case "absent":
             self = .absent
+        // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
         default:
             return nil
         }
@@ -170,6 +172,7 @@ extension SyncWriteResult.RejectionReason {
         case "awaiting_estimation": self = .awaitingEstimation
         case "not_classified_as_meal": self = .notClassifiedAsMeal
         case "reply_not_failed": self = .replyNotFailed
+        // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
         default: self = .unknown(reason: reason)
         }
     }

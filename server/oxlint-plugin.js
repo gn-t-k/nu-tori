@@ -13,6 +13,38 @@ export default {
         },
       }),
     },
+    "no-setup-in-describe": {
+      create: (context) => ({
+        CallExpression: (node) => {
+          if (!isDescribe(node.callee)) {
+            return;
+          }
+          const callback = node.arguments.at(-1);
+          if (
+            callback === undefined ||
+            !isFunction(callback) ||
+            callback.body.type !== "BlockStatement"
+          ) {
+            return;
+          }
+          // 準備の補助（関数）は、呼ぶまで何も作らないので置いてよい
+          for (const statement of callback.body.body) {
+            if (
+              statement.type === "VariableDeclaration" &&
+              statement.declarations.some(
+                (declarator) => declarator.init !== null && !isFunction(declarator.init),
+              )
+            ) {
+              context.report({
+                node: statement,
+                message:
+                  "入力と準備は、describe の直下で作らず、beforeEach で作る。describe の直下には、let の宣言と準備の補助の関数だけを置く（docs/agents/testing.md「テストの構造」）",
+              });
+            }
+          }
+        },
+      }),
+    },
     "no-random-uuid": {
       create: (context) => ({
         MemberExpression: (node) => {
@@ -33,3 +65,13 @@ export default {
     },
   },
 };
+
+const isFunction = (node) =>
+  node.type === "ArrowFunctionExpression" || node.type === "FunctionExpression";
+
+// describe とその skip・only など。each・for の表から作るまとまりは数えない
+const isDescribe = (callee) =>
+  (callee.type === "Identifier" && callee.name === "describe") ||
+  (callee.type === "MemberExpression" &&
+    callee.object.type === "Identifier" &&
+    callee.object.name === "describe");

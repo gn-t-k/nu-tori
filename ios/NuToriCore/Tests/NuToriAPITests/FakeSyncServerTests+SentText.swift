@@ -17,6 +17,7 @@ extension FakeSyncServerTests {
         case "昼はうどん": .meal(replyAsConversation: "うどんの話ですね。")
         case "こんにちは": .reply("こんにちは。")
         case "次は？": .failsThenReply("野菜を足しましょう。")
+        // swiftlint:disable:next no_default_in_switch - テストで決めた文章のほかには答えない
         default: nil
         }
     }

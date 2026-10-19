@@ -54,6 +54,7 @@ public struct SyncedNotice: Sendable, Equatable {
                 self = .missedWeightRecord(targetOn: targetOn)
             case "goal_setup":
                 self = .goalSetup
+            // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
             default:
                 return nil
             }

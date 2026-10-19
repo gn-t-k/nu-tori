@@ -79,6 +79,7 @@
                         .init(
                             status: .decided,
                             changes: try changes.map(Components.Schemas.GoalDecisionChange.init))))
+            // swiftlint:disable:next no_default_in_switch - 操作の ID は文字列で、偽のサーバーが持たない操作が来る
             default:
                 return (HTTPResponse(status: .notFound), nil)
             }
@@ -170,6 +171,7 @@
             switch wire.rawValue {
             case "lose": self = .lose
             case "gain": self = .gain
+            // swiftlint:disable:next no_default_in_switch - 生成した型は要求ごとに別の enum なので、文字列で読む
             default: preconditionFailure("目標の設定の要求に、減量と増量のほかの向きが届いた: \(wire.rawValue)")
             }
         }

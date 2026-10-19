@@ -18,6 +18,7 @@ nonisolated struct KeychainSessionKeychain: SessionKeychain {
             return String(decoding: data, as: UTF8.self)
         case errSecItemNotFound:
             return nil
+        // swiftlint:disable:next no_default_in_switch - OSStatus は数で、見分けないものはエラーにする
         default:
             throw KeychainError(status: status)
         }
@@ -40,6 +41,7 @@ nonisolated struct KeychainSessionKeychain: SessionKeychain {
             guard addStatus == errSecSuccess else {
                 throw KeychainError(status: addStatus)
             }
+        // swiftlint:disable:next no_default_in_switch - OSStatus は数で、見分けないものはエラーにする
         default:
             throw KeychainError(status: updateStatus)
         }

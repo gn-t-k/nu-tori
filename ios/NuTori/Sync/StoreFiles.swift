@@ -81,6 +81,7 @@ nonisolated enum StoreFiles {
         switch error {
         case SwiftDataError.backwardMigration, SwiftDataError.unknownSchema:
             return true
+        // swiftlint:disable:next no_default_in_switch - エラーは型が開いていて、見分けないものが来る
         default:
             break
         }
@@ -111,6 +112,7 @@ nonisolated enum StoreFiles {
         switch error {
         case SwiftDataError.loadIssueModelContainer:
             return true
+        // swiftlint:disable:next no_default_in_switch - エラーは型が開いていて、見分けないものが来る
         default:
             return false
         }

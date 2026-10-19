@@ -30,6 +30,26 @@ custom_rules:
     regex: "@Test\\([^)]*arguments:"
     message: "既定では、条件を名前にした @Suite と個別の @Test で書く。要るときは理由を PR に書いて抑止する（docs/agents/testing.md「テストの構造」）"
     severity: error
+  no_default_in_switch:
+    name: "自分たちの enum の switch に default を置かない"
+    # 型を見られないので、どの switch の default も落とす。@unknown default と、辞書の [key, default:] は行の頭に来ないので当たらない
+    regex: "^\\s*default\\s*:"
+    match_kinds: [keyword]
+    message: "自分たちの enum の switch では、case を並べて default を置かない。文字列・数・エラー・外の型の switch のように default が要るときは、swiftlint:disable:next に「 - 」で理由を添えて外し、PR にも書く（docs/agents/languages/swift.md「関数は処理の流れで分ける」）"
+    severity: error
+  no_nil_default_argument:
+    name: "引数に = nil を付けない"
+    # var と let の宣言は当てない。@State の初期値のように、宣言の = nil は意味が分かれる
+    regex: "(?:^|[(,])[ \\t]*(?!(?:var|let|case|static|private|fileprivate|public|internal|guard|if|return)\\b)\\w+(?:\\s+\\w+)?\\s*:\\s*[^=\\n]+?\\?\\s*=\\s*nil\\b"
+    excluded_match_kinds: [comment, doccomment, string]
+    # テストの差し替えと見本は、既定のデータを持って引数で一部を上書きする（docs/agents/testing.md「依存の差し替え」）
+    excluded:
+      - ".*Tests/.*"
+      - ".*/NuToriTestSupport/.*"
+      - ".*/UITesting/.*"
+      - ".*/FakeSyncServer[^/]*\\.swift"
+    message: "引数の = nil は、渡し忘れが型で見えなくなる。既定値を外して呼ぶ側で nil を渡す（docs/agents/languages/swift.md「値が無いことを許すのは、必要な事情があるときだけ」）"
+    severity: error
   test_display_name_koto:
     name: "@Test の表示名は「〜こと」"
     regex: "@Test(?!\\(\\s*\"[^\"]*こと\")"

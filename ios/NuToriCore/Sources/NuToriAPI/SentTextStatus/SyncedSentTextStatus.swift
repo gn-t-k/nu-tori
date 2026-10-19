@@ -40,6 +40,7 @@ public struct SyncedSentTextStatus: Sendable, Equatable {
                     return nil
                 }
                 self = .failed(reason)
+            // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
             default: return nil
             }
         }

@@ -147,6 +147,7 @@ struct NutrientTotalsTests {
                     foodNumber: try container.decode(String.self, forKey: .foodNumber))
             case "estimated":
                 nutrientSource = .estimated
+            // swiftlint:disable:next no_default_in_switch - テストの場面の文字列は、知らない値を読めないとみなす
             default:
                 throw DecodingError.dataCorruptedError(
                     forKey: .type, in: container, debugDescription: "知らない出どころ: \(type)")
@@ -170,6 +171,7 @@ struct NutrientTotalsTests {
             case "exactly": amount = .exactly(try container.decode(Double.self, forKey: .value))
             case "at_least": amount = .atLeast(try container.decode(Double.self, forKey: .value))
             case "unknown": amount = .unknown
+            // swiftlint:disable:next no_default_in_switch - テストの場面の文字列は、知らない値を読めないとみなす
             default:
                 throw DecodingError.dataCorruptedError(
                     forKey: .type, in: container, debugDescription: "知らない合計の形: \(type)")

@@ -1,58 +1,62 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { recordIdSchema } from "../../../domain/record-id";
+import { type RecordId, recordIdSchema } from "../../../domain/record-id";
 import type { ReplyContext } from "../reply-context";
 import { type ReplyContextBlock, renderReplyContext } from "./index";
 
 describe("返事に渡す文脈の文", () => {
-  const mealId = recordIdSchema.parse("00000000-0000-4000-8000-000000000004");
-  const context: ReplyContext = {
-    window: [
-      { type: "user_utterance", at: "2026-10-10T07:00", body: "朝ごはん何がいい？" },
-      { type: "ai_utterance", at: "2026-10-10T07:00", body: "たんぱく質を足しましょう" },
-      { type: "weight_recorded", at: "2026-10-10T07:50", weightKg: 72.4 },
-      {
-        type: "meal_recorded",
-        at: "2026-10-10T12:40",
-        mealId,
-        eatenAt: "2026-10-10T12:30",
-        dishNames: ["親子丼", "味噌汁"],
-      },
-    ],
-    structuredValues: {
-      sentAt: { at: "2026-10-10T13:00", dayOfWeek: "saturday" },
-      todayMeals: [
+  let mealId: RecordId;
+  let context: ReplyContext;
+  beforeEach(() => {
+    mealId = recordIdSchema.parse("00000000-0000-4000-8000-000000000004");
+    context = {
+      window: [
+        { type: "user_utterance", at: "2026-10-10T07:00", body: "朝ごはん何がいい？" },
+        { type: "ai_utterance", at: "2026-10-10T07:00", body: "たんぱく質を足しましょう" },
+        { type: "weight_recorded", at: "2026-10-10T07:50", weightKg: 72.4 },
         {
+          type: "meal_recorded",
+          at: "2026-10-10T12:40",
           mealId,
           eatenAt: "2026-10-10T12:30",
-          estimation: "settled",
-          dishes: [
-            {
-              name: "親子丼",
-              quantity: { value: 1, unit: "杯" },
-              nutrients: {
-                energyKcal: { type: "exactly", value: 650.4 },
-                proteinG: { type: "exactly", value: 30.26 },
-                fatG: { type: "at_least", value: 18 },
-                carbohydrateG: { type: "unknown" },
-              },
-            },
-          ],
+          dishNames: ["親子丼", "味噌汁"],
         },
       ],
-      todayNutrients: {
-        energyKcal: { type: "exactly", value: 650.4 },
-        proteinG: { type: "exactly", value: 30.26 },
-        fatG: { type: "at_least", value: 18 },
-        carbohydrateG: { type: "unknown" },
+      structuredValues: {
+        sentAt: { at: "2026-10-10T13:00", dayOfWeek: "saturday" },
+        todayMeals: [
+          {
+            mealId,
+            eatenAt: "2026-10-10T12:30",
+            estimation: "settled",
+            dishes: [
+              {
+                name: "親子丼",
+                quantity: { value: 1, unit: "杯" },
+                nutrients: {
+                  energyKcal: { type: "exactly", value: 650.4 },
+                  proteinG: { type: "exactly", value: 30.26 },
+                  fatG: { type: "at_least", value: 18 },
+                  carbohydrateG: { type: "unknown" },
+                },
+              },
+            ],
+          },
+        ],
+        todayNutrients: {
+          energyKcal: { type: "exactly", value: 650.4 },
+          proteinG: { type: "exactly", value: 30.26 },
+          fatG: { type: "at_least", value: 18 },
+          carbohydrateG: { type: "unknown" },
+        },
+        yesterdayMeals: [],
+        previousDays: [{ calendarDay: "2026-10-09", recorded: false }],
+        weeklyWeightTrend: [{ firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: 72.45 }],
+        lastWeightRecord: { at: "2026-10-10T07:50", weightKg: 72.4 },
+        goal: undefined,
       },
-      yesterdayMeals: [],
-      previousDays: [{ calendarDay: "2026-10-09", recorded: false }],
-      weeklyWeightTrend: [{ firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: 72.45 }],
-      lastWeightRecord: { at: "2026-10-10T07:50", weightKg: 72.4 },
-      goal: undefined,
-    },
-    newUtterance: { at: "2026-10-10T13:00", body: "このあと何を食べたらいい？" },
-  };
+      newUtterance: { at: "2026-10-10T13:00", body: "このあと何を食べたらいい？" },
+    };
+  });
 
   describe("窓に発言と記録の印があるとき", () => {
     let blocks: readonly ReplyContextBlock[];
