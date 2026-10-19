@@ -18,9 +18,11 @@ extension TimelineTests {
                 subject: .send)
             let timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [morning, evening], rejectedLines: [.sentText(line)],
-                    meals: [], notices: [], undelivered: .none, conversation: .none, goals: [],
-                    dailyGuides: [], weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: [morning, evening]),
+                    rejectedLines: [.sentText(line)], meals: [], notices: [], undelivered: .none,
+                    conversation: .none),
                 firstDay: Self.day, today: Self.day)
             #expect(
                 timeline.days.map(\.items) == [
@@ -36,12 +38,13 @@ extension TimelineTests {
                 classification: .conversation, reply: .failed(.retriesExhausted))
             let timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [.sentText(line)], meals: [], notices: [],
-                    undelivered: .none,
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: []), rejectedLines: [.sentText(line)],
+                    meals: [], notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText], statuses: [sentText.id: failed], replies: [],
-                        streams: [:]), goals: [], dailyGuides: [], weeklyReviews: [],
-                    expenditureEstimates: [], weightTrend: nil),
+                        streams: [:])),
                 firstDay: Self.day, today: Self.day)
             #expect(
                 timeline.days.map(\.items) == [

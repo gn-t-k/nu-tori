@@ -18,9 +18,10 @@ struct UnansweredNoticeLineTests {
     static func timeline(notices: [Notice]) -> Timeline {
         Timeline(
             input: Timeline.Input(
-                weightRecords: [], rejectedLines: [], meals: [], notices: notices,
-                undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
-                weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                goalRecords: GoalRecords(
+                    goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                    weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                notices: notices, undelivered: .none, conversation: .none),
             firstDay: CalendarDay(year: 2026, month: 9, day: 20), today: today)
     }
 

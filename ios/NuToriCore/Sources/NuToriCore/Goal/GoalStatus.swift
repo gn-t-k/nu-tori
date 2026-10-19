@@ -20,9 +20,7 @@ public enum GoalStatus: Hashable, Sendable {
             self = .noGoal
             return
         }
-        if let previous = goals.first(where: {
-            $0.closure?.nextGoalId == goal.id && $0.closure?.endReason == .movedToMaintenance
-        }) {
+        if let previous = goal.goalMovedToMaintenance(from: goals) {
             self = .maintainingAfterDeadline(goal, previous: previous)
             return
         }

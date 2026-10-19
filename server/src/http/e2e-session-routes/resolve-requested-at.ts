@@ -1,5 +1,5 @@
 import { checkE2eAccess } from "./check-e2e-access";
-import { e2eRequestedAtHeader, e2eSecretHeader } from "./e2e-request-headers";
+import { e2eRequestHeaders } from "./e2e-request-headers";
 
 // 要求を受けた時刻。確かめのジョブは、新しいアカウントに前の週を作るため、目標の設定の要求を過去の時刻に送ったことにする。
 // 差し替えは、確かめのジョブのための口が開いていて（check-e2e-access.ts）、時刻が読めるときだけ受け付ける。
@@ -9,14 +9,14 @@ export const resolveRequestedAt = async (
   readHeader: (name: string) => string | undefined,
 ): Promise<Date> => {
   const now = new Date();
-  const requestedAt = readHeader(e2eRequestedAtHeader);
+  const requestedAt = readHeader(e2eRequestHeaders.requestedAt);
   if (requestedAt === undefined) {
     return now;
   }
   const requestedTime = Date.parse(requestedAt);
   if (
     Number.isNaN(requestedTime) ||
-    (await checkE2eAccess(env, readHeader(e2eSecretHeader))) !== "allowed"
+    (await checkE2eAccess(env, readHeader(e2eRequestHeaders.signInSecret))) !== "allowed"
   ) {
     return now;
   }

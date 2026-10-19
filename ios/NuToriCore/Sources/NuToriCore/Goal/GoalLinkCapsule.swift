@@ -34,7 +34,7 @@ public struct GoalLinkCapsule: Hashable, Sendable {
                 let overshot = whole == 0 || moved / whole >= 1
                 self.init(
                     progress: whole == 0 ? 1 : min(max(moved / whole, 0), 1),
-                    text: "あと \(NoticeAmountText.kilograms(tenths: overshot ? 0 : remainingTenths))"
+                    text: "あと \(GoalText.kilograms(tenths: overshot ? 0 : remainingTenths))"
                 )
             }
         }

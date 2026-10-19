@@ -174,7 +174,9 @@ public struct Timeline: Sendable {
 
     /// タイムラインに並べる元になるもの。種類が増えたら欄を足す
     public struct Input: Sendable {
-        public let weightRecords: [WeightRecord]
+        /// 目標・1日の目安・推定消費カロリー・週の見直し・体重の傾向・体重記録。1日の丸と日のまとめを、その日の1日の目安と比べ、
+        /// 振り返りのカードと変更の知らせを組むために引く。目標・1日の目安・推定消費カロリーがまだ届いていない見直しも含む
+        public let goalRecords: GoalRecords
         /// サーバーが受け付けなかった体重記録と食事の行
         public let rejectedLines: [RejectedLine]
         public let meals: [MealCard]
@@ -182,42 +184,29 @@ public struct Timeline: Sendable {
         public let notices: [Notice]
         public let undelivered: UndeliveredRecords
         public let conversation: Conversation
-        /// 閉じた目標も含む。1日の丸と日のまとめを、その日の1日の目安と比べるために引く
-        public let goals: [Goal]
-        /// 目標がまだ届いていない1日の目安も含む
-        public let dailyGuides: [DailyGuide]
-        /// 指す推定消費カロリー・1日の目安・目標がまだ届いていない見直しも含む
-        public let weeklyReviews: [WeeklyReview]
-        /// 変更の知らせの理由の文に、見直しの前とあとの推定消費カロリーを出すために引く
-        public let expenditureEstimates: [ExpenditureEstimate]
-        /// 振り返りのカードのペースに使う。体重記録が1つも無ければ nil
-        public let weightTrend: WeightTrend?
 
         public init(
-            weightRecords: [WeightRecord],
+            goalRecords: GoalRecords,
             rejectedLines: [RejectedLine],
             meals: [MealCard],
             notices: [Notice],
             undelivered: UndeliveredRecords,
-            conversation: Conversation,
-            goals: [Goal],
-            dailyGuides: [DailyGuide],
-            weeklyReviews: [WeeklyReview],
-            expenditureEstimates: [ExpenditureEstimate],
-            weightTrend: WeightTrend?
+            conversation: Conversation
         ) {
-            self.weightRecords = weightRecords
+            self.goalRecords = goalRecords
             self.rejectedLines = rejectedLines
             self.meals = meals
             self.notices = notices
             self.undelivered = undelivered
             self.conversation = conversation
-            self.goals = goals
-            self.dailyGuides = dailyGuides
-            self.weeklyReviews = weeklyReviews
-            self.expenditureEstimates = expenditureEstimates
-            self.weightTrend = weightTrend
         }
+
+        /// 送り待ちを含む
+        public var weightRecords: [WeightRecord] { goalRecords.weightRecords }
+        /// 閉じた目標も含む
+        var goals: [Goal] { goalRecords.goals }
+        /// 目標がまだ届いていない1日の目安も含む
+        var dailyGuides: [DailyGuide] { goalRecords.dailyGuides }
     }
 
     public struct Day: Hashable, Sendable {

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../domain/record-id";
 import { type DailyGuide, dailyGuideLimitTypes } from "../domain/daily-guide";
@@ -39,6 +39,16 @@ export const createDailyGuideStore = (db: DrizzleSqliteDODatabase): DailyGuideSt
         .select({ id: dailyGuides.id })
         .from(dailyGuides)
         .where(and(eq(dailyGuides.goalId, goalId), eq(dailyGuides.effectiveOn, effectiveOn)))
+        .get();
+      return guide === undefined ? undefined : find(guide.id);
+    },
+    findLatestOfGoalBefore: (goalId, calendarDay) => {
+      const guide = db
+        .select({ id: dailyGuides.id })
+        .from(dailyGuides)
+        .where(and(eq(dailyGuides.goalId, goalId), lt(dailyGuides.effectiveOn, calendarDay)))
+        .orderBy(desc(dailyGuides.effectiveOn))
+        .limit(1)
         .get();
       return guide === undefined ? undefined : find(guide.id);
     },

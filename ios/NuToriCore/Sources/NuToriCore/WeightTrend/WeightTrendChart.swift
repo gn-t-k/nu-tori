@@ -46,7 +46,7 @@ public struct WeightTrendChart: Hashable, Sendable {
         let targetKilograms = goal.targetWeightKilograms
         if goal.direction.weightChange == nil {
             // 縦軸は保つ幅が入るまで広げる
-            let band = Self.maintenanceBandKilograms
+            let band = Pace.maintenanceBandKilograms
             target = .band(kilograms: targetKilograms, halfWidthKilograms: band)
             kilogramsRange = Self.range(
                 containing: recorded + [targetKilograms - band, targetKilograms + band])
@@ -71,9 +71,6 @@ public struct WeightTrendChart: Hashable, Sendable {
         let upper = max((((maximum + 0.3) * 10).rounded() / 10).rounded(.up), lower + 2)
         return lower...upper
     }
-
-    /// 保つ幅。ペースの維持と同じ ±0.7 kg
-    private static let maintenanceBandKilograms = 0.7
 
     /// グラフの下に添える文。線を引くまでだけ出す
     public var note: String? {

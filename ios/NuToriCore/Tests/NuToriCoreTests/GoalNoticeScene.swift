@@ -40,9 +40,10 @@ enum GoalNoticeScene {
     {
         Timeline(
             input: Timeline.Input(
-                weightRecords: weightRecords, rejectedLines: [], meals: [], notices: [],
-                undelivered: .none, conversation: .none, goals: goals, dailyGuides: [],
-                weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                goalRecords: GoalRecords(
+                    goals: goals, dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                    weightTrend: nil, weightRecords: weightRecords), rejectedLines: [], meals: [],
+                notices: [], undelivered: .none, conversation: .none),
             firstDay: CalendarDay(year: 2026, month: 10, day: 1), today: today)
     }
 

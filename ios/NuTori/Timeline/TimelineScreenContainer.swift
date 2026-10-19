@@ -57,8 +57,11 @@ struct TimelineScreenContainer: View {
             mealActions: mealActions,
             conversation: conversation,
             conversationActions: conversationActions,
-            goalSetupFlow: GoalSetupNoticeCard.Flow(goalSetup.flow),
-            openGoalSetupFlow: goalSetup.open(from:)
+            goalSetupFlow: GoalSetupNoticeCard.Flow(
+                goalSetup.flow, on: .timeline, openedOn: goalSetup.place),
+            goalScreenGoalSetupFlow: GoalSetupNoticeCard.Flow(
+                goalSetup.flow, on: .goalScreen, openedOn: goalSetup.place),
+            openGoalSetupFlow: goalSetup.open(from:on:)
         )
         .task(id: cachedMeals.map(\.mealId)) {
             await readMealsRecordedHere()

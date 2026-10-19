@@ -12,12 +12,16 @@ struct RingStripTests {
             strip = RingStrip(
                 timeline: Timeline(
                     input: Timeline.Input(
-                        weightRecords: [
-                            try .imported(73.0, at: "2026-09-22T06:48:00+09:00", in: "Asia/Tokyo"),
-                            try .imported(72.8, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo"),
-                        ], rejectedLines: [], meals: [], notices: [], undelivered: .none,
-                        conversation: .none, goals: [], dailyGuides: [], weeklyReviews: [],
-                        expenditureEstimates: [], weightTrend: nil),
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil,
+                            weightRecords: [
+                                try .imported(
+                                    73.0, at: "2026-09-22T06:48:00+09:00", in: "Asia/Tokyo"),
+                                try .imported(
+                                    72.8, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo"),
+                            ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
+                        conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -57,9 +61,10 @@ struct RingStripTests {
             strip = RingStrip(
                 timeline: Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
-                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 10, day: 7)
                 )
@@ -86,11 +91,13 @@ struct RingStripTests {
             strip = RingStrip(
                 timeline: Timeline(
                     input: Timeline.Input(
-                        weightRecords: [
-                            try .manual(72.4, at: "2026-09-28T07:12:00+09:00", in: "Asia/Tokyo")
-                        ], rejectedLines: [], meals: [], notices: [], undelivered: .none,
-                        conversation: .none, goals: [], dailyGuides: [], weeklyReviews: [],
-                        expenditureEstimates: [], weightTrend: nil),
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil,
+                            weightRecords: [
+                                try .manual(72.4, at: "2026-09-28T07:12:00+09:00", in: "Asia/Tokyo")
+                            ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
+                        conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 21),
                     today: CalendarDay(year: 2026, month: 9, day: 27)
                 )

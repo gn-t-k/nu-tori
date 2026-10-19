@@ -12,6 +12,7 @@ import { roundToTenthKg } from "../round-to-tenth-kg";
 import { weeklyPaceRates } from "../weekly-pace-rates";
 import type { WeightChangeDirection } from "../weight-change-direction";
 import type { WeightChangeGoalInputs } from "../weight-change-goal-inputs";
+import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 
 // 自分で決めた目標体重を受け付けるかを決め、受け付けるなら1日の目安と大変さを返す
 export const evaluateCustomTargetWeight = ({
@@ -81,10 +82,9 @@ const classifyDifficulty = ({
   weeklyPaceRate: number;
 }): ProposalPace => {
   // 案の目標体重は案の速さちょうどになりうるので、浮動小数の誤差でひとつ上の段階にしない
-  const tolerance = 1e-9;
   const { gentle, standard } = weeklyPaceRates[direction];
-  if (weeklyPaceRate <= gentle * (1 + tolerance)) {
+  if (weeklyPaceRate <= gentle * (1 + floatingPointTolerance)) {
     return "gentle";
   }
-  return weeklyPaceRate <= standard * (1 + tolerance) ? "standard" : "hard";
+  return weeklyPaceRate <= standard * (1 + floatingPointTolerance) ? "standard" : "hard";
 };

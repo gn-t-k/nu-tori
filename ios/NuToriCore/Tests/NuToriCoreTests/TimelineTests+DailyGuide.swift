@@ -23,10 +23,10 @@ extension TimelineTests {
                 proteinGrams: 130, fatGrams: 50, carbohydrateGrams: 220, limitHits: [])
             timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none, goals: [startedGoal],
-                    dailyGuides: [guide], weeklyReviews: [], expenditureEstimates: [],
-                    weightTrend: nil),
+                    goalRecords: GoalRecords(
+                        goals: [startedGoal], dailyGuides: [guide], expenditureEstimates: [],
+                        weeklyReviews: [], weightTrend: nil, weightRecords: []), rejectedLines: [],
+                    meals: [], notices: [], undelivered: .none, conversation: .none),
                 firstDay: CalendarDay(year: 2026, month: 10, day: 5),
                 today: CalendarDay(year: 2026, month: 10, day: 7)
             )
@@ -44,9 +44,10 @@ extension TimelineTests {
         func comparesNoDay() {
             let timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
-                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                    notices: [], undelivered: .none, conversation: .none),
                 firstDay: CalendarDay(year: 2026, month: 10, day: 5),
                 today: CalendarDay(year: 2026, month: 10, day: 6)
             )

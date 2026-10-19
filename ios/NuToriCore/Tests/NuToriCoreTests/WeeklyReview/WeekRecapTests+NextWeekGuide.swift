@@ -128,15 +128,49 @@ extension WeekRecapTests {
 
         @Suite("1日に減らす分の変化で変わったとき")
         struct BalanceChange {
-            @Test("期限までの日が減ったことを理由にすること")
+            @Test("1日に減らす分を増やしたときは、期限までの日が減ったことを理由にすること")
             func explainsBalance() throws {
+                // 推定消費カロリー 2,190 → 2,140、1日に減らす分 310 → 390 kcal
                 let guide = try #require(
-                    try NextWeekGuide.recap(outcome: NextWeekGuide.reviewed(.balanceChange))
-                        .nextWeekGuide)
+                    try NextWeekGuide.recap(
+                        outcome: NextWeekGuide.reviewed(.balanceChange), newGuideKilocalories: 1750
+                    ).nextWeekGuide)
 
                 #expect(
                     guide.sentence
-                        == "1,880 → 1,850 kcal。期限までの日が減り、1日に減らす分を増やしたためです。推移は目標で見られます。")
+                        == "1,880 → 1,750 kcal。期限までの日が減り、1日に減らす分を増やしたためです。推移は目標で見られます。")
+            }
+
+            @Test("1日に減らす分を減らしたときは、予定より進んでいることを理由にすること")
+            func explainsBalanceDecrease() throws {
+                let guide = try #require(
+                    try NextWeekGuide.recap(
+                        outcome: NextWeekGuide.reviewed(.balanceChange), newGuideKilocalories: 1900
+                    ).nextWeekGuide)
+
+                #expect(
+                    guide.sentence
+                        == "1,880 → 1,900 kcal。予定より進んでいるので、1日に減らす分を減らしたためです。推移は目標で見られます。")
+            }
+
+            @Test("維持で1日に戻す分を増やしたときは、体重の傾向に合わせたことを理由にすること")
+            func explainsMaintenanceBalance() throws {
+                let losing = try Goal.losing()
+                let maintaining = Goal(
+                    id: losing.id, startedDay: losing.startedDay,
+                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
+                    targetWeightKilograms: losing.startingWeightTrendKilograms,
+                    decidedAt: losing.decidedAt, timeZone: losing.timeZone, direction: .maintain,
+                    achievement: nil, deadlineConfirmation: nil, closure: nil)
+                let guide = try #require(
+                    try NextWeekGuide.recap(
+                        goal: maintaining, outcome: NextWeekGuide.reviewed(.balanceChange),
+                        newGuideKilocalories: 1800
+                    ).nextWeekGuide)
+
+                #expect(
+                    guide.sentence
+                        == "1,880 → 1,800 kcal。体重の傾向に合わせて、1日に戻す分を増やしたためです。推移は目標で見られます。")
             }
         }
 

@@ -17,6 +17,7 @@ import {
   type WeeklyReviewDeferral,
   weeklyReviewDeferralReasons,
 } from "./weekly-review";
+import { isListed } from "../../domain/is-listed";
 
 // 書く週の見直し。見送った週は見送りを、見直せた週は新しい推定と、それを使った今の目標の1日の目安を持つ。
 // 期限後の維持に移る週は、作る維持の目標も持ち、見送りと1日の目安はその維持の目標を指す
@@ -60,6 +61,19 @@ export const writeWeeklyReview = (
   const { postDeadlineMaintenance } = review;
   // 書く前に読む。維持の目標を作ると今の目標が変わり、見送った週に写す1日の目安も前の目標から引く
   const previousGoal = stores.goal.findCurrent();
+  // 期限後の維持に移る週だけ、前の目標を閉じて維持の目標を作る。移る週に今の目標があることは requireWritable が確かめた
+  const maintenanceMove =
+    postDeadlineMaintenance === undefined || previousGoal === undefined
+      ? { writeRows: () => {}, changes: [] }
+      : {
+          writeRows: () =>
+            writePostDeadlineMaintenance(stores, review, postDeadlineMaintenance, previousGoal.id),
+          // 閉じた前の目標 → 維持の目標
+          changes: [
+            { recordType: "goal" as const, recordId: previousGoal.id },
+            { recordType: "goal" as const, recordId: postDeadlineMaintenance.goalId },
+          ],
+        };
   const copiedDailyGuide =
     postDeadlineMaintenance !== undefined && outcome.type === "deferred"
       ? findCopiedDailyGuide(stores, {
@@ -71,9 +85,7 @@ export const writeWeeklyReview = (
   const id = generateRecordId();
   stores.weeklyReview.insert({ ...weeklyReview, id });
   if (outcome.type === "deferred") {
-    if (postDeadlineMaintenance !== undefined && previousGoal !== undefined) {
-      writePostDeadlineMaintenance(stores, review, postDeadlineMaintenance, previousGoal.id);
-    }
+    maintenanceMove.writeRows();
     if (copiedDailyGuide !== undefined) {
       stores.dailyGuide.insert(copiedDailyGuide);
     }
@@ -82,10 +94,7 @@ export const writeWeeklyReview = (
       reason: outcome.reason,
       goalId: outcome.goalId,
     });
-    if (postDeadlineMaintenance !== undefined && previousGoal !== undefined) {
-      addChange({ recordType: "goal", recordId: previousGoal.id });
-      addChange({ recordType: "goal", recordId: postDeadlineMaintenance.goalId });
-    }
+    maintenanceMove.changes.forEach(addChange);
     if (copiedDailyGuide !== undefined) {
       addChange({ recordType: "daily_guide", recordId: copiedDailyGuide.id });
     }
@@ -108,9 +117,7 @@ export const writeWeeklyReview = (
     weeklyReviewId: id,
     deviationDirection: outcome.expenditure.deviationDirection,
   });
-  if (postDeadlineMaintenance !== undefined && previousGoal !== undefined) {
-    writePostDeadlineMaintenance(stores, review, postDeadlineMaintenance, previousGoal.id);
-  }
+  maintenanceMove.writeRows();
   stores.dailyGuide.insert({
     ...dailyGuide,
     id: dailyGuideId,
@@ -120,10 +127,7 @@ export const writeWeeklyReview = (
   stores.weeklyReview.insertReviewedDailyGuide({ dailyGuideId, mainReason });
 
   addChange({ recordType: "expenditure_estimate", recordId: expenditureEstimateId });
-  if (postDeadlineMaintenance !== undefined && previousGoal !== undefined) {
-    addChange({ recordType: "goal", recordId: previousGoal.id });
-    addChange({ recordType: "goal", recordId: postDeadlineMaintenance.goalId });
-  }
+  maintenanceMove.changes.forEach(addChange);
   addChange({ recordType: "daily_guide", recordId: dailyGuideId });
   addChange({ recordType: "weekly_review", recordId: id });
   return id;
@@ -155,12 +159,12 @@ const findCopiedDailyGuide = (
   stores: Pick<RecordKindStores, "goal" | "dailyGuide" | "expenditureEstimate">,
   { effectiveOn, goalId }: { effectiveOn: string; goalId: RecordId },
 ): DailyGuide => {
-  const previousGoalId = stores.goal.findCurrent()?.id;
-  const lastDailyGuide = stores.dailyGuide
-    .findAll()
-    .filter((dailyGuide) => dailyGuide.goalId === previousGoalId)
-    .toSorted((left, right) => left.effectiveOn.localeCompare(right.effectiveOn))
-    .at(-1);
+  const previousGoal = stores.goal.findCurrent();
+  // 見直す月曜はまだ見直していないので、前の目標の1日の目安はどれもその月曜より前から当たる
+  const lastDailyGuide =
+    previousGoal === undefined
+      ? undefined
+      : stores.dailyGuide.findLatestOfGoalBefore(previousGoal.id, effectiveOn);
   const currentEstimate = stores.expenditureEstimate.findCurrent();
   if (lastDailyGuide === undefined || currentEstimate === undefined) {
     throw new Error("期限後の維持に移る前の目標に、1日の目安か推定が無い");
@@ -222,5 +226,3 @@ const requireWritable = (
     throw new Error("当たった上限と下限の値が一覧に無い");
   }
 };
-
-const isListed = (values: readonly string[], value: string): boolean => values.includes(value);

@@ -7,6 +7,7 @@ import {
   initialExpenditureSources,
 } from "../../expenditure-estimate/domain/expenditure-estimate";
 import { type DecidedGoal, type Goal, pacePlans } from "./goal";
+import { isListed } from "../../domain/is-listed";
 
 // 目標を決めたことを書く口。初めての目標と立て直しの行の組を、外部キーが指す行を先にして書き、変えた記録を足す。
 // 記録の変化を書く入口（RecordChangeWriter）の run の中で呼ぶ。
@@ -111,5 +112,3 @@ const requireWritable = ({
     throw new Error("当たった上限と下限の値が一覧に無い");
   }
 };
-
-const isListed = (values: readonly string[], value: string): boolean => values.includes(value);

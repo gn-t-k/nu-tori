@@ -16,15 +16,15 @@ extension TimelineTests {
             init() throws {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [],
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil, weightRecords: []), rejectedLines: [],
                         meals: [
                             try .fixture(
                                 eatenAt: "2026-09-23T19:40:00+09:00",
                                 sentAt: "2026-09-24T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
-                        ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
-                        weightTrend: nil),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -50,15 +50,15 @@ extension TimelineTests {
             init() throws {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [],
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil, weightRecords: []), rejectedLines: [],
                         meals: [
                             try .fixture(
                                 eatenAt: "2026-09-22T19:40:00+09:00",
                                 sentAt: "2026-09-23T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
-                        ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
-                        weightTrend: nil),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 23)
                 )
@@ -79,15 +79,15 @@ extension TimelineTests {
             init() throws {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [],
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil, weightRecords: []), rejectedLines: [],
                         meals: [
                             try .fixture(
                                 eatenAt: "2026-09-24T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients),
                             try .fixture(eatenAt: "2026-09-24T12:00:00+09:00", status: .estimating),
-                        ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
-                        weightTrend: nil),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -108,16 +108,17 @@ extension TimelineTests {
             func keepsWeightAndFood() throws {
                 let timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [
-                            try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                        ], rejectedLines: [],
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil,
+                            weightRecords: [
+                                try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                            ]), rejectedLines: [],
                         meals: [
                             try .fixture(
                                 eatenAt: "2026-09-24T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
-                        ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
-                        weightTrend: nil),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )

@@ -15,10 +15,11 @@ import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { postGoalSetup } from "../../http/goal-setup-routes/testing/post-goal-setup";
 import { recordDailyWeights } from "../../http/goal-setup-routes/testing/record-daily-weights";
 import { putMealPhoto } from "../../http/meal-photo-routes/testing/put-meal-photo";
+import { watchReplyStream } from "../../http/reply-stream-routes/testing";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
-import { signInTestAccount } from "../../http/testing";
+import { signInTestAccount, signInWithApple } from "../../http/testing";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 
@@ -27,6 +28,7 @@ const millisecondsPerDay = 86_400_000;
 // 起こす要求と起こさない要求、要求の中の順を受け口から確かめる。書いた行を見分けやすいよう、どの場面も見送る週にする。
 // 見直せる週を書くことは write-reviewed-weeks.test.ts で確かめる
 describe("まだ見直していない週を見る要求", () => {
+  let appleUserId: string;
   let accountId: string;
   let sessionToken: string;
   let goalId: RecordId;
@@ -36,7 +38,8 @@ describe("まだ見直していない週を見る要求", () => {
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    ({ accountId, sessionToken } = await signInTestAccount(generateRecordId(), {
+    appleUserId = generateRecordId();
+    ({ accountId, sessionToken } = await signInTestAccount(appleUserId, {
       timeZone: "Asia/Tokyo",
     }));
     // 時計をサインインの1日あとで止め、その日に目標を立てたことにする
@@ -129,6 +132,27 @@ describe("まだ見直していない週を見る要求", () => {
         isFinalBatch: false,
       });
       await putMealPhoto(sessionToken, photoId);
+    });
+
+    test("見直さないこと", async () => {
+      expect(await readReviews()).toEqual([]);
+    });
+  });
+
+  describe("月曜 0:00 を過ぎた最初の要求が、見守る要求のとき", () => {
+    beforeEach(async () => {
+      // まだ受け取っていない送った文章を見守る（Durable Object まで届き、404 で答える）
+      await watchReplyStream(sessionToken, generateRecordId());
+    });
+
+    test("見直さないこと", async () => {
+      expect(await readReviews()).toEqual([]);
+    });
+  });
+
+  describe("月曜 0:00 を過ぎた最初の要求が、セッションの要求のとき", () => {
+    beforeEach(async () => {
+      await signInWithApple(appleUserId, { timeZone: "Asia/Tokyo" });
     });
 
     test("見直さないこと", async () => {

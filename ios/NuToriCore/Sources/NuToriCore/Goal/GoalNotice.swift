@@ -68,19 +68,19 @@ public struct GoalNotice: Hashable, Sendable {
                 ? "期限の\(deadlineText(of: goal))より \(daysEarly) 日早く届きました。次の目標を選ぶまで、今の目標を続けます。"
                 : "期限の\(deadlineText(of: goal))に届きました。次の目標を選ぶまで、今の目標を続けます。"
         case .deadlineReached(let confirmation):
-            let fromStart = NoticeAmountText.tenths(
-                ofKilograms: confirmation.deadlineWeightTrendKilograms
+            let fromStart = GoalText.tenths(
+                confirmation.deadlineWeightTrendKilograms
                     - goal.startingWeightTrendKilograms)
-            let remaining = NoticeAmountText.tenths(
-                ofKilograms: abs(
+            let remaining = GoalText.tenths(
+                abs(
                     goal.targetWeightKilograms - confirmation.deadlineWeightTrendKilograms))
             let monday = goal.direction.weightChange.map {
                 Self.maintenanceMonday(afterDeadline: $0.deadlineDay)
             }
             return
-                "開始から \(NoticeAmountText.signedKilograms(tenths: fromStart))・目標まであと \(NoticeAmountText.kilograms(tenths: remaining)) でした。"
+                "開始から \(GoalText.signedKilograms(tenths: fromStart))・目標まであと \(GoalText.kilograms(tenths: remaining)) でした。"
                 + (monday.map {
-                    "選ばなければ、\(NoticeAmountText.monthDay($0))（月）から今の体重を保つ目標で続けます。"
+                    "選ばなければ、\(GoalText.monthDay($0))（月）から今の体重を保つ目標で続けます。"
                 } ?? "")
         case .movedToMaintenance(let previous):
             return
@@ -132,9 +132,7 @@ public struct GoalNotice: Hashable, Sendable {
             case (nil, let confirmation?): kinds.append(.deadlineReached(confirmation))
             case (nil, nil): break
             }
-            if let previous = goals.first(where: {
-                $0.closure?.nextGoalId == goal.id && $0.closure?.endReason == .movedToMaintenance
-            }) {
+            if let previous = goal.goalMovedToMaintenance(from: goals) {
                 kinds.append(.movedToMaintenance(previous: previous))
             }
             return kinds.map { GoalNotice(goal: goal, kind: $0, unavailability: unavailability) }
@@ -148,6 +146,6 @@ public struct GoalNotice: Hashable, Sendable {
     }
 
     private func deadlineText(of goal: Goal) -> String {
-        goal.direction.weightChange.map { NoticeAmountText.monthDay($0.deadlineDay) } ?? ""
+        goal.direction.weightChange.map { GoalText.monthDay($0.deadlineDay) } ?? ""
     }
 }

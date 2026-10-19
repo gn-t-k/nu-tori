@@ -2,8 +2,9 @@ import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogr
 import type { ComputedDailyGuide } from "../computed-daily-guide";
 import type { DailyGuideGoal } from "../daily-guide-goal";
 import { minimumDailyGuideEnergyKcal } from "../minimum-daily-guide-energy-kcal";
-import { computeRequiredPace, type RequiredPaceGoal } from "../required-pace";
+import { computeRequiredPace, type RequiredPaceGoal } from "../compute-required-pace";
 import { roundToFiftyKcal } from "../round-to-fifty-kcal";
+import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 
 // 目標を立てた・立て直したときの1日の目安のカロリー。前の週からの変化を抑えるのは見直しだけなので、ここでは抑えない
 export const computeDailyGuideEnergy = ({
@@ -15,7 +16,7 @@ export const computeDailyGuideEnergy = ({
 }): Pick<ComputedDailyGuide, "energyKcal" | "limitHits"> => {
   const pace = computeRequiredPace(toRequiredPaceGoal(goal));
   const energyKcal = expenditureKcal + kilocaloriesPerKilogram * pace.kgPerDay;
-  const isBelowMinimum = energyKcal < minimumDailyGuideEnergyKcal - tolerance;
+  const isBelowMinimum = energyKcal < minimumDailyGuideEnergyKcal - floatingPointTolerance;
   return {
     energyKcal: roundToFiftyKcal(Math.max(energyKcal, minimumDailyGuideEnergyKcal)),
     limitHits: [
@@ -36,5 +37,3 @@ const toRequiredPaceGoal = (goal: DailyGuideGoal): RequiredPaceGoal =>
         weightTrendKg: goal.startingWeightTrendKg,
         daysToDeadline: goal.daysFromStartToDeadline,
       };
-
-const tolerance = 1e-9;

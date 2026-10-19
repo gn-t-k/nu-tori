@@ -62,12 +62,12 @@
         static func timeline(deferred: Bool = false) -> Timeline {
             Timeline(
                 input: Timeline.Input(
-                    weightRecords: weightRecords, rejectedLines: [], meals: meals, notices: [],
-                    undelivered: .none, conversation: .none, goals: [goal],
-                    dailyGuides: [firstGuide, reviewedGuide],
-                    weeklyReviews: [review(deferred: deferred)],
-                    expenditureEstimates: [firstEstimate, reviewedEstimate],
-                    weightTrend: weightTrend),
+                    goalRecords: GoalRecords(
+                        goals: [goal], dailyGuides: [firstGuide, reviewedGuide],
+                        expenditureEstimates: [firstEstimate, reviewedEstimate],
+                        weeklyReviews: [review(deferred: deferred)], weightTrend: weightTrend,
+                        weightRecords: weightRecords), rejectedLines: [], meals: meals, notices: [],
+                    undelivered: .none, conversation: .none),
                 firstDay: goal.startedDay, today: .sampleToday)
         }
 

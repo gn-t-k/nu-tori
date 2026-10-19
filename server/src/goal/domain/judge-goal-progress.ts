@@ -4,13 +4,14 @@ import type { UsageEvent } from "../../domain/usage-event";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
+import { readDailyWeights } from "../../weight-trend/domain/read-daily-weights";
 import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
 import { findAchievedDay } from "./find-achieved-day";
 import type { Goal } from "./goal";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import { judgeDeadlineConfirmation } from "./judge-deadline-confirmation";
-import { writeGoalAchievement, writeGoalDeadlineConfirmation } from "./write-goal-progress";
+import { writeGoalAchievement } from "./write-goal-achievement";
+import { writeGoalDeadlineConfirmation } from "./write-goal-deadline-confirmation";
 
 // 達成と期限の日の結果を判定して書く。記録を当てたあと、まだ見直していない週を見る前に呼ぶ。
 // 達成は今の目標だけを見る。期限の日の確定は、期限の日以降に閉じた目標も見る。
@@ -30,11 +31,7 @@ export const judgeGoalProgress = (
   if (goals.length === 0) {
     return { usageEvents: [] };
   }
-  const weightTrend = computeWeightTrend(
-    computeDailyRepresentativeWeights(stores.weightRecord.findAllInMeasuredOrder()).map(
-      ({ calendarDay, weightRecord }) => ({ calendarDay, weightKg: weightRecord.weightKg }),
-    ),
-  );
+  const weightTrend = computeWeightTrend(readDailyWeights(stores.weightRecord));
   const today = computeCalendarDayInTimeZone(now, timeZone);
   const currentGoal = stores.goal.findCurrent();
   const achievedOn =

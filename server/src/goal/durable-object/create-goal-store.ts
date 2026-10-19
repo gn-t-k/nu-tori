@@ -39,7 +39,7 @@ export const createGoalStore = (db: DrizzleSqliteDODatabase): GoalStore => {
         },
         closure: { endedOn: nextGoals.startedOn, nextGoalId: nextGoals.id },
         // 次の目標が期限後の維持の目標なら、期限後の維持に移って閉じた
-        nextGoalIsPostDeadlineMaintenance: postDeadlineMaintenanceGoals.goalId,
+        nextPostDeadlineMaintenanceGoalId: postDeadlineMaintenanceGoals.goalId,
       })
       .from(goals)
       .leftJoin(weightChangeGoals, eq(weightChangeGoals.goalId, goals.id))
@@ -67,7 +67,7 @@ export const createGoalStore = (db: DrizzleSqliteDODatabase): GoalStore => {
           : {
               ...row.closure,
               endReason:
-                row.nextGoalIsPostDeadlineMaintenance === null
+                row.nextPostDeadlineMaintenanceGoalId === null
                   ? "switched"
                   : "moved_to_maintenance",
             },

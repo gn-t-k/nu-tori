@@ -22,10 +22,15 @@ final class GoalSetupSession {
 
     /// 開いたことのある流れ。まだ開いていなければ nil。広げているか、「続ける」にするかは流れが持つ
     private(set) var flow: GoalSetupFlow?
+    /// 流れを最後に開いた場所。広げたカードは、この場所にだけ描く
+    private(set) var place: Place = .timeline
 
-    /// カードを広げる。途中まで進めていれば同じページから。決めたあとに開くときは、新しく始める
-    func open(from entry: GoalSetupObservation.Entry) async {
-        guard !isOpening, flow?.isOpen != true else { return }
+    /// カードを広げる。途中まで進めていれば同じページから。決めたあとに開くときは、新しく始める。
+    /// 広げたまま別の場所から開いたときは、描く場所だけを移す
+    func open(from entry: GoalSetupObservation.Entry, on place: Place) async {
+        guard !isOpening else { return }
+        self.place = place
+        guard flow?.isOpen != true else { return }
         if flow == nil || flow?.decision == .decided {
             isOpening = true
             defer { isOpening = false }
@@ -39,6 +44,14 @@ final class GoalSetupSession {
     /// サインアウトとアカウントの削除。前のアカウントの答え（身体データを含む）を次のアカウントに持ち越さない
     func discard() {
         flow = nil
+    }
+
+    /// 流れを開いた場所
+    enum Place {
+        /// タイムライン（知らせのカードと、目標があるあいだは一番下のカード）。日のまとめと体重の画面から開いたときもここに戻って描く
+        case timeline
+        /// 目標の画面の、今の目標のカードの場所
+        case goalScreen
     }
 
     private let today: () -> CalendarDay

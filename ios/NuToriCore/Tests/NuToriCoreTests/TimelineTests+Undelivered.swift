@@ -13,10 +13,11 @@ extension TimelineTests {
         ) -> Timeline {
             Timeline(
                 input: Timeline.Input(
-                    weightRecords: weightRecords, rejectedLines: [], meals: meals, notices: [],
-                    undelivered: UndeliveredRecords(pendingEntries: pending), conversation: .none,
-                    goals: [], dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
-                    weightTrend: nil),
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: weightRecords), rejectedLines: [],
+                    meals: meals, notices: [],
+                    undelivered: UndeliveredRecords(pendingEntries: pending), conversation: .none),
                 firstDay: day, today: day)
         }
 
@@ -151,16 +152,17 @@ extension TimelineTests {
             static func timeline(sentText: SentText, pending: [SentTextWrite]) throws -> Timeline {
                 Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        notices: [],
                         undelivered: UndeliveredRecords(
                             pendingEntries: try pending.map {
                                 try PendingSentTextWrite(enqueuedAt: sentText.sentAt, write: $0)
                                     .entry()
                             }),
                         conversation: Timeline.Conversation(
-                            sentTexts: [sentText], statuses: [:], replies: [], streams: [:]),
-                        goals: [], dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
-                        weightTrend: nil),
+                            sentTexts: [sentText], statuses: [:], replies: [], streams: [:])),
                     firstDay: Undelivered.day, today: Undelivered.day)
             }
 

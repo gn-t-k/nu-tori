@@ -44,22 +44,15 @@ extension WeekRecap {
                 self.init(
                     energyKilocalories: guideOfWeek.energyKilocalories, changeKilocalories: nil,
                     sentence: "\(previous) kcal のままです。\(because)")
-            case .reviewed(let estimateId, let guideId, let mainReason):
+            case .reviewed(_, let guideId, let mainReason):
                 guard let guide = records.dailyGuides.first(where: { $0.id == guideId }),
-                    let estimate = records.expenditureEstimates.first(where: { $0.id == estimateId }
-                    ),
-                    let previousEstimate = records.expenditureEstimates.first(where: {
-                        $0.id == guideOfWeek.expenditureEstimateId
-                    }),
                     let goal = records.goals.first(where: { $0.id == guide.goalId }),
                     DailyGuideForDay(
                         on: nextMonday, goals: records.goals, dailyGuides: records.dailyGuides)?
-                        .goal.id == goal.id
+                        .goal.id == goal.id,
+                    let reason = DailyGuideChangeReason(
+                        mainReason: mainReason, from: guideOfWeek, to: guide, records: records)
                 else { return nil }
-                let reason = Self.reason(
-                    mainReason: mainReason, goal: goal, nextMonday: nextMonday,
-                    change: guide.energyKilocalories - guideOfWeek.energyKilocalories,
-                    previousEstimate: previousEstimate, estimate: estimate, goals: records.goals)
                 let limits = guide.limitHits.map {
                     Self.limitSentence($0, direction: goal.direction)
                 }
@@ -67,64 +60,14 @@ extension WeekRecap {
                 self.init(
                     energyKilocalories: guide.energyKilocalories,
                     changeKilocalories: guide.energyKilocalories - guideOfWeek.energyKilocalories,
-                    sentence: "\(previous) → \(current)。\(reason)推移は目標で見られます。"
+                    sentence: "\(previous) → \(current)。\(reason.text)推移は目標で見られます。"
                         + limits.joined())
             }
         }
 
         /// 「−30 kcal」。見送った週は「そのまま」
         public var changeText: String {
-            guard let changeKilocalories else { return "そのまま" }
-            let sign = changeKilocalories > 0 ? "+" : changeKilocalories < 0 ? "−" : ""
-            return "\(sign)\(NutritionText.kilocalories(abs(changeKilocalories)))"
-        }
-
-        private static func reason(
-            mainReason: WeeklyReview.MainReason, goal: Goal, nextMonday: CalendarDay, change: Int,
-            previousEstimate: ExpenditureEstimate, estimate: ExpenditureEstimate, goals: [Goal]
-        ) -> String {
-            let movedToMaintenance = goals.contains {
-                $0.closure?.nextGoalId == goal.id && $0.closure?.endReason == .movedToMaintenance
-            }
-            if movedToMaintenance, goal.startedDay == nextMonday {
-                return "今の体重を保つ目標に切り替えたためです。"
-            }
-            switch mainReason {
-            case .expenditureChange:
-                let from = NutritionText.number(
-                    .exactly(Double(previousEstimate.expenditureKilocalories)), of: .energyKcal)
-                let to = NutritionText.kilocalories(estimate.expenditureKilocalories)
-                let moved =
-                    estimate.expenditureKilocalories > previousEstimate.expenditureKilocalories
-                    ? "上がった" : "下がった"
-                return "推定消費カロリーが \(from) から \(to) に\(moved)ためです。"
-            case .balanceChange:
-                return balanceReason(goal: goal, nextMonday: nextMonday, change: change)
-            }
-        }
-
-        /// 1日に減らす（足す）分の変化の理由。目標に向かう側へ1日の目安が動いたら、期限までの日が減って分を増やした
-        private static func balanceReason(goal: Goal, nextMonday: CalendarDay, change: Int)
-            -> String
-        {
-            let towardTarget: Bool
-            let amount: String
-            switch goal.direction {
-            case .lose:
-                amount = "減らす分"
-                towardTarget = change <= 0
-            case .gain:
-                amount = "足す分"
-                towardTarget = change >= 0
-            case .maintain:
-                return "体重の傾向に合わせて、1日に戻す分を変えたためです。"
-            }
-            if let achievement = goal.achievement, achievement.achievedDay < nextMonday {
-                return "目標に届いたので、1日に\(amount)をなくしていくためです。"
-            }
-            return towardTarget
-                ? "期限までの日が減り、1日に\(amount)を増やしたためです。"
-                : "予定より進んでいるので、1日に\(amount)を減らしたためです。"
+            changeKilocalories.map(GoalText.signedKilocalories) ?? "そのまま"
         }
 
         private static func limitSentence(_ hit: DailyGuide.LimitHit, direction: Goal.Direction)
@@ -132,13 +75,17 @@ extension WeekRecap {
         {
             switch hit {
             case .weeklyChange:
-                return "1週間に変える量は 150 kcal までにしています。"
+                return
+                    "1週間に変える量は \(NutritionText.kilocalories(DailyGuide.weeklyChangeLimitKilocalories)) までにしています。"
             case .requiredPace:
-                switch direction {
-                case .lose: return "減らす速さは、1週間に体重の 0.75% までにしています。"
-                case .gain: return "足す速さは、1週間に体重の 0.5% までにしています。"
-                case .maintain: return "戻す速さは、1週間に体重の 0.15% までにしています。"
-                }
+                let verb =
+                    switch direction {
+                    case .lose: "減らす"
+                    case .gain: "足す"
+                    case .maintain: "戻す"
+                    }
+                return
+                    "\(verb)速さは、1週間に体重の \(DailyGuide.requiredPaceLimitPercent(direction))% までにしています。"
             case .minimumEnergy:
                 return
                     "1日の目安は \(NutritionText.kilocalories(DailyGuide.minimumEnergyKilocalories)) より下げません。"

@@ -1,5 +1,7 @@
 import { weeklyPaceRates } from "../../goal/domain/weekly-pace-rates";
 import type { WeightChangeDirection } from "../../goal/domain/weight-change-direction";
+import { floatingPointTolerance } from "../../domain/floating-point-tolerance";
+import { maintenanceBandKg } from "../../goal/domain/maintenance-band-kg";
 
 // 必要な速さを出すのに使う、目標と体重の傾向の値。
 // 目標を立てた・立て直したときは開始の日の値、見直しでは見直す月曜 M の前の日曜の体重の傾向と M から期限の日までの日数
@@ -16,13 +18,13 @@ export type RequiredPaceGoal =
     };
 
 // 必要な速さ（kg/日。減量は負）。減量・増量は目標の向きと逆にせず、ハード案の速さまでに抑える。
-// 維持は、体重の傾向が目標体重の ±0.7 kg の中なら 0、外れたら体重の傾向の 0.15%/週の速さで目標体重へ戻す
+// 維持は、体重の傾向が維持の幅の中なら 0、外れたら体重の傾向の 0.15%/週の速さで目標体重へ戻す
 export const computeRequiredPace = (
   goal: RequiredPaceGoal,
 ): { kgPerDay: number; isLimited: boolean } => {
   if (goal.direction === "maintain") {
     const differenceKg = goal.targetWeightKg - goal.weightTrendKg;
-    if (Math.abs(differenceKg) <= maintenanceToleranceKg + tolerance) {
+    if (Math.abs(differenceKg) <= maintenanceBandKg + floatingPointTolerance) {
       return { kgPerDay: 0, isLimited: false };
     }
     return {
@@ -41,12 +43,9 @@ export const computeRequiredPace = (
   const maximumKgPerDay =
     (weeklyPaceRates[goal.direction].hard * goal.goalStartingWeightTrendKg) / 7;
   // ハード案の目標体重は上限ちょうどの速さになるので、浮動小数の誤差で上限に当たったことにしない
-  const isLimited = towardGoalKgPerDay > maximumKgPerDay * (1 + tolerance);
+  const isLimited = towardGoalKgPerDay > maximumKgPerDay * (1 + floatingPointTolerance);
   return { kgPerDay: sign * Math.min(towardGoalKgPerDay, maximumKgPerDay), isLimited };
 };
 
-// 維持で保つ幅と、外れたときに戻す速さ（体重の傾向に対する、1週間に変わる割合）。出荷後に調整する初期値
-const maintenanceToleranceKg = 0.7;
+// 維持で幅を外れたときに戻す速さ（体重の傾向に対する、1週間に変わる割合）。出荷後に調整する初期値
 const maintenanceWeeklyRate = 0.0015;
-
-const tolerance = 1e-9;
