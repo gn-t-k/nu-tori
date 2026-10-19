@@ -41,7 +41,6 @@ export const readReplyContextSource = (
 ): ReplyContextSource => {
   const from = new Date(sentText.sentAt.getTime() - sourceDays * 86_400_000);
   const today = computeCalendarDayInTimeZone(sentText.sentAt, sentText.timeZone);
-  const latestWeeklyReview = stores.weeklyReview.findLatestEffectiveOnOrBefore(today);
   const weightTrend = createWeightTrendKind(stores.weightRecord).readCurrent(weightTrendRecordId);
   return {
     sentText,
@@ -62,7 +61,7 @@ export const readReplyContextSource = (
     goals: stores.goal.findAll(),
     dailyGuides: stores.dailyGuide.findAll(),
     expenditureEstimates: stores.expenditureEstimate.findEffectiveOnOrBefore(today),
-    weeklyReviews: latestWeeklyReview === undefined ? [] : [latestWeeklyReview],
+    latestWeeklyReview: stores.weeklyReview.findLatestEffectiveOnOrBefore(today),
   };
 };
 

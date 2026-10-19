@@ -12,7 +12,7 @@ export type GoalStore = {
   // 目標を決める要求の受け取りが指す目標。受け取っていない要求には無い
   findByDecisionRequest: (requestId: string) => Goal | undefined;
   // 目標と閉じる行を書くのは、目標を決めたことを書く口（writeGoalDecision）と、期限後の維持に移る週の見直しを書く口（writeWeeklyReview）だけにする。
-  // 達成と期限の日の確定を書くのは、目標の経過を書く口（write-goal-progress.ts）だけにする。表をまたぐ決まりは口が確かめる
+  // 達成と期限の日の確定を書くのは、達成を書く口（write-goal-achievement.ts）と期限の日の確定を書く口（write-goal-deadline-confirmation.ts）だけにする。表をまたぐ決まりは口が確かめる
   insert: (goal: DecidedGoal) => void;
   insertClosure: (closure: { goalId: RecordId; nextGoalId: RecordId }) => void;
   insertDecisionReceipt: (receipt: { requestId: string; goalId: RecordId }) => void;

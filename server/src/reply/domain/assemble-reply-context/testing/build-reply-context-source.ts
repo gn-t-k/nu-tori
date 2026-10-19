@@ -24,7 +24,7 @@ export const buildReplyContextSource = {
     goals: [],
     dailyGuides: [],
     expenditureEstimates: [],
-    weeklyReviews: [],
+    latestWeeklyReview: undefined,
     ...overrides,
   }),
 

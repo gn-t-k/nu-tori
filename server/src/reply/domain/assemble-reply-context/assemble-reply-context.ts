@@ -8,10 +8,11 @@ import { computeNutrientTotal } from "../../../ingredient/domain/compute-nutrien
 import type { Ingredient } from "../../../ingredient/domain/ingredient";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import type { Meal } from "../../../meal/domain/meal";
+import { classifyGoal } from "../../../goal/domain/classify-goal";
 import { computeGoalDirection } from "../../../goal/domain/compute-goal-direction";
 import { computePace, type Pace } from "../../../goal/domain/compute-pace";
 import type { Goal } from "../../../goal/domain/goal";
-import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
+import { findWeightTrendOnOrBefore } from "../../../weight-trend/domain/find-weight-trend-on-or-before";
 import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type {
   MainNutrients,
@@ -213,7 +214,7 @@ type GoalSource = Pick<
   | "goals"
   | "dailyGuides"
   | "expenditureEstimates"
-  | "weeklyReviews"
+  | "latestWeeklyReview"
   | "weightTrend"
   | "weightRecordDays"
 >;
@@ -248,7 +249,7 @@ const assembleGoal = (source: GoalSource, today: string): ReplyContextGoal | und
             carbohydrateG: dailyGuide.carbohydrateG,
           },
     expenditureKcal: expenditureEstimate?.expenditureKcal,
-    latestWeeklyReview: assembleLatestWeeklyReview(source, { goalId: goal.id, today }),
+    latestWeeklyReview: assembleLatestWeeklyReview(source, goal.id),
     pace: assemblePace(source, { goal, today }),
   };
 };
@@ -258,29 +259,26 @@ const assemblePace = (
   { weightTrend, weightRecordDays }: Pick<ReplyContextSource, "weightTrend" | "weightRecordDays">,
   { goal, today }: { goal: Goal; today: string },
 ): Pace | undefined => {
-  if (!hasTrendOnOrBefore(weightTrend, goal.startedOn)) {
+  if (findWeightTrendOnOrBefore(weightTrend, goal.startedOn) === undefined) {
     return undefined;
   }
-  const direction = computeGoalDirection(goal);
+  const classified = classifyGoal(goal);
   return computePace({
     judgedOn: today,
     weightTrend,
     weightRecordDays,
     goal:
-      direction === "maintain" || goal.weightChange === undefined
+      classified.direction === "maintain"
         ? { direction: "maintain", targetWeightKg: goal.targetWeightKg }
         : {
-            direction,
+            direction: classified.direction,
             startedOn: goal.startedOn,
-            deadlineOn: goal.weightChange.deadlineOn,
+            deadlineOn: classified.weightChange.deadlineOn,
             targetWeightKg: goal.targetWeightKg,
           },
     achievedOn: goal.achievement?.achievedOn,
   });
 };
-
-const hasTrendOnOrBefore = (weightTrend: WeightTrend, calendarDay: string): boolean =>
-  weightTrend.some((entry) => entry.calendarDay <= calendarDay);
 
 const findGoalDailyGuideForDay = (
   { goals, dailyGuides }: Pick<ReplyContextSource, "goals" | "dailyGuides">,
@@ -295,12 +293,9 @@ const findGoalDailyGuideForDay = (
 // 今日以前に当てた最も新しい見直しが、今日の目標の見直しなら渡す。月曜に立て直した日は、その月曜の見直しが前の目標のものなので渡さない
 const assembleLatestWeeklyReview = (
   source: GoalSource,
-  { goalId, today }: { goalId: string; today: string },
+  goalId: string,
 ): ReplyContextWeeklyReview | undefined => {
-  const review = source.weeklyReviews
-    .filter(({ effectiveOn }) => effectiveOn <= today)
-    .toSorted((a, b) => a.effectiveOn.localeCompare(b.effectiveOn))
-    .at(-1);
+  const review = source.latestWeeklyReview;
   if (review === undefined) {
     return undefined;
   }

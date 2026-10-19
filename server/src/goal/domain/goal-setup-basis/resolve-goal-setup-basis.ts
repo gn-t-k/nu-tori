@@ -7,9 +7,9 @@ import { isWithinAcceptedRange } from "../../../domain/is-within-accepted-range"
 import { millisecondsPerDay } from "../../../domain/milliseconds-per-day";
 import { computeInitialExpenditureEstimate } from "../../../expenditure-estimate/domain/compute-initial-expenditure-estimate";
 import { readRecordedEnergyIntakes } from "../../../expenditure-estimate/domain/read-recorded-energy-intakes";
-import { computeDailyRepresentativeWeights } from "../../../weight-record/domain/compute-daily-representative-weights";
+import { readDailyWeights } from "../../../weight-trend/domain/read-daily-weights";
 import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
-import { findStartingWeightTrend } from "../../../weight-trend/domain/find-starting-weight-trend";
+import { findWeightTrendOnOrBefore } from "../../../weight-trend/domain/find-weight-trend-on-or-before";
 import type { Goal } from "../goal";
 import type { GoalSetupExpenditure } from "../goal-setup-expenditure";
 import { GoalSetupRequestRejectedError } from "../goal-setup-request-rejected-error";
@@ -47,10 +47,8 @@ export const resolveGoalSetupBasis = (
       // 開始の日は端末の今日。立て直すとき、西へ移って今日が今の目標の開始の日より前になっても、開始の日を戻さない
       const startedOn =
         currentGoal !== undefined && today < currentGoal.startedOn ? currentGoal.startedOn : today;
-      const dailyWeights = computeDailyRepresentativeWeights(
-        stores.weightRecord.findAllInMeasuredOrder(),
-      ).map(({ calendarDay, weightRecord }) => ({ calendarDay, weightKg: weightRecord.weightKg }));
-      const trend = findStartingWeightTrend(computeWeightTrend(dailyWeights), startedOn);
+      const dailyWeights = readDailyWeights(stores.weightRecord);
+      const trend = findWeightTrendOnOrBefore(computeWeightTrend(dailyWeights), startedOn);
       const lastWeightRecordedOn = dailyWeights.findLast(
         ({ calendarDay }) => calendarDay <= startedOn,
       )?.calendarDay;

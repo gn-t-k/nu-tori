@@ -1,5 +1,5 @@
 import { computeReviewedDailyGuide } from "../../daily-guide/domain/compute-reviewed-daily-guide";
-import type { RequiredPaceGoal } from "../../daily-guide/domain/required-pace";
+import type { RequiredPaceGoal } from "../../daily-guide/domain/compute-required-pace";
 import { addDays } from "../../domain/add-days";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { countDaysBetween } from "../../domain/count-days-between";
@@ -9,13 +9,13 @@ import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import { readRecordedEnergyIntakes } from "../../expenditure-estimate/domain/read-recorded-energy-intakes";
 import { countDaysInclusive } from "../../goal/domain/accepted-deadline/count-days-inclusive";
-import { computeGoalDirection } from "../../goal/domain/compute-goal-direction";
+import { classifyGoal } from "../../goal/domain/classify-goal";
 import type { Goal } from "../../goal/domain/goal";
 import { planPostDeadlineMaintenance } from "../../goal/domain/plan-post-deadline-maintenance";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
-import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
+import { readDailyWeights } from "../../weight-trend/domain/read-daily-weights";
 import { computeReviewedExpenditure } from "./compute-reviewed-expenditure";
 import { findUnreviewedWeekMondays } from "./find-unreviewed-week-mondays";
 import { judgeReviewWeek, type ReviewWeekJudgement } from "./judge-review-week";
@@ -68,10 +68,8 @@ export const reviewUnreviewedWeeks = (
     .find(({ initialSource }) => initialSource !== undefined);
   const initialExpenditureSource = initialEstimate?.initialSource;
   // 推定の始まりは最初の目標を決めたときに書き、見直しはそのあとにだけあるので、どの見直しも推定の始まりのあと
-  const previousReviewCount = stores.weeklyReview.findDeviationHistory().length;
-  const dailyWeights = computeDailyRepresentativeWeights(
-    stores.weightRecord.findAllInMeasuredOrder(),
-  ).map(({ calendarDay, weightRecord }) => ({ calendarDay, weightKg: weightRecord.weightKg }));
+  const previousReviewCount = stores.weeklyReview.countReviews();
+  const dailyWeights = readDailyWeights(stores.weightRecord);
   // 最初の月曜の前の 28 日より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
   const recordedEnergyIntakes = readRecordedEnergyIntakes(
     stores,
@@ -194,11 +192,10 @@ const computeReviewedOutcome = (
 ): Extract<WeeklyReviewToWrite["outcome"], { type: "reviewed" }> => {
   const previousEstimate = stores.expenditureEstimate.findCurrent();
   // 今の目標を決めるたびに1日の目安を書くので、目標の開始の日から当てる1日の目安がある
-  const previousDailyGuide = stores.dailyGuide
-    .findAll()
-    .filter(({ goalId, effectiveOn }) => goalId === currentGoal.id && effectiveOn < reviewedMonday)
-    .toSorted((left, right) => left.effectiveOn.localeCompare(right.effectiveOn))
-    .at(-1);
+  const previousDailyGuide = stores.dailyGuide.findLatestOfGoalBefore(
+    currentGoal.id,
+    reviewedMonday,
+  );
   const previousDailyGuideEstimate =
     previousDailyGuide === undefined
       ? undefined
@@ -240,15 +237,15 @@ const toRequiredPaceGoal = (
   goal: Goal,
   { reviewedMonday, weightTrendKg }: { reviewedMonday: string; weightTrendKg: number },
 ): RequiredPaceGoal => {
-  const direction = computeGoalDirection(goal);
-  if (direction === "maintain" || goal.weightChange === undefined) {
+  const classified = classifyGoal(goal);
+  if (classified.direction === "maintain") {
     return { direction: "maintain", targetWeightKg: goal.targetWeightKg, weightTrendKg };
   }
   return {
-    direction,
+    direction: classified.direction,
     goalStartingWeightTrendKg: goal.startingWeightTrendKg,
     targetWeightKg: goal.targetWeightKg,
     weightTrendKg,
-    daysToDeadline: countDaysInclusive(reviewedMonday, goal.weightChange.deadlineOn),
+    daysToDeadline: countDaysInclusive(reviewedMonday, classified.weightChange.deadlineOn),
   };
 };

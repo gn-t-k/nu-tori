@@ -11,6 +11,7 @@ import type {
   ReplyContextWeeklyReview,
   ReplyContextWindowEntry,
 } from "../reply-context";
+import { maintenanceBandKg } from "../../../goal/domain/maintenance-band-kg";
 
 // 提供元に渡す文脈の文の塊。変わらない指示のあとに、この並びのまま置く（前の塊ほど変わらないので、キャッシュが効く）
 export type ReplyContextBlock = {
@@ -159,7 +160,7 @@ const renderPace = (pace: Pace | undefined): string =>
         .with(
           { status: "maintenance" },
           ({ isWithinBand }) =>
-            `体重の傾向が目標体重の ±0.7 kg ${isWithinBand ? "に収まっている" : "を外れている"}`,
+            `体重の傾向が目標体重の ±${maintenanceBandKg} kg ${isWithinBand ? "に収まっている" : "を外れている"}`,
         )
         .exhaustive();
 

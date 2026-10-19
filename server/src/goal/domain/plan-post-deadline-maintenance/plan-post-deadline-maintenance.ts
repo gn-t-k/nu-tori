@@ -1,5 +1,5 @@
 import { addDays } from "../../../domain/add-days";
-import { findStartingWeightTrend } from "../../../weight-trend/domain/find-starting-weight-trend";
+import { findWeightTrendOnOrBefore } from "../../../weight-trend/domain/find-weight-trend-on-or-before";
 import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
 import type { Goal } from "../goal";
 import { roundToTenthKg } from "../round-to-tenth-kg";
@@ -25,7 +25,7 @@ export const planPostDeadlineMaintenance = ({
   if (goal.weightChange === undefined || reviewedMonday <= goal.weightChange.deadlineOn) {
     return undefined;
   }
-  const sundayTrend = findStartingWeightTrend(weightTrend, addDays(reviewedMonday, -1));
+  const sundayTrend = findWeightTrendOnOrBefore(weightTrend, addDays(reviewedMonday, -1));
   // 減量・増量の目標は開始の日以前の体重の傾向から立てるので、期限のあとの日曜の傾向はある
   if (sundayTrend === undefined) {
     throw new Error("期限後の維持に移る月曜の前の日曜に、体重の傾向が無い");

@@ -1,4 +1,4 @@
-import { findStartingWeightTrend } from "../../../weight-trend/domain/find-starting-weight-trend";
+import { findWeightTrendOnOrBefore } from "../../../weight-trend/domain/find-weight-trend-on-or-before";
 import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
 import type { Goal } from "../goal";
 
@@ -28,6 +28,6 @@ export const judgeDeadlineConfirmation = ({
   if (today <= deadlineOn || (goal.closure !== undefined && goal.closure.endedOn < deadlineOn)) {
     return undefined;
   }
-  const deadlineTrend = findStartingWeightTrend(weightTrend, deadlineOn);
+  const deadlineTrend = findWeightTrendOnOrBefore(weightTrend, deadlineOn);
   return deadlineTrend === undefined ? undefined : { deadlineWeightTrendKg: deadlineTrend.trendKg };
 };

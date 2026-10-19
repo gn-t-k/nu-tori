@@ -114,40 +114,19 @@ export const accountRequests = {
     stores: Pick<AccountStores, "records" | "writeRecordChanges">,
     request: Parameters<typeof previewGoalSetup>[1],
     now: Date,
-  ) => {
-    const caughtUp = catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
-    return {
-      ...respond(previewGoalSetup(stores.records, request, now)),
-      usageEvents: caughtUp.usageEvents,
-      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
-    } satisfies LoggedAccountResponse<unknown>;
-  },
+  ) => answerGoalSetup(stores, request, now, previewGoalSetup),
 
   proposeGoals: (
     stores: Pick<AccountStores, "records" | "writeRecordChanges">,
     request: Parameters<typeof proposeGoals>[1],
     now: Date,
-  ) => {
-    const caughtUp = catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
-    return {
-      ...respond(proposeGoals(stores.records, request, now)),
-      usageEvents: caughtUp.usageEvents,
-      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
-    } satisfies LoggedAccountResponse<unknown>;
-  },
+  ) => answerGoalSetup(stores, request, now, proposeGoals),
 
   assessCustomTargetWeight: (
     stores: Pick<AccountStores, "records" | "writeRecordChanges">,
     request: Parameters<typeof assessCustomTargetWeight>[1],
     now: Date,
-  ) => {
-    const caughtUp = catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
-    return {
-      ...respond(assessCustomTargetWeight(stores.records, request, now)),
-      usageEvents: caughtUp.usageEvents,
-      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
-    } satisfies LoggedAccountResponse<unknown>;
-  },
+  ) => answerGoalSetup(stores, request, now, assessCustomTargetWeight),
 
   // 月曜に立て直すと、その月曜の見直しは前の目標に当たり、新しい目標はそのあとに決める
   decideGoal: (
@@ -219,6 +198,21 @@ const catchUpGoalProgress = (
     usageEvents: sendsUsageData(stores.records.accountSettings)
       ? [...judged.usageEvents, ...reviewed.usageEvents]
       : [],
+  };
+};
+
+// 目標の設定の、見直しのほかは記録を書かずに答える要求。まだ見直していない週を先に見て、その新しい状態から答える
+const answerGoalSetup = <Request extends { timeZone: string }, Result>(
+  stores: Pick<AccountStores, "records" | "writeRecordChanges">,
+  request: Request,
+  now: Date,
+  answer: (records: AccountStores["records"], request: Request, now: Date) => Result,
+): LoggedAccountResponse<Result> => {
+  const caughtUp = catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
+  return {
+    ...respond(answer(stores.records, request, now)),
+    usageEvents: caughtUp.usageEvents,
+    requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
   };
 };
 

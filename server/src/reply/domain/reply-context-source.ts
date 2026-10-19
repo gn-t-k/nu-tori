@@ -29,7 +29,8 @@ export type ReplyContextSource = {
   goals: readonly Goal[];
   dailyGuides: readonly DailyGuide[];
   expenditureEstimates: readonly ExpenditureEstimate[];
-  weeklyReviews: readonly WeeklyReview[];
+  // 応える文章の日以前に当てた最も新しい週の見直し（見送りを含む）。まだ1週も見直していなければ無い
+  latestWeeklyReview: WeeklyReview | undefined;
 };
 
 export type ReplyContextSourceMeal = {
