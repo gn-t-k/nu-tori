@@ -245,6 +245,7 @@ export const evalGoals = {
     targetWeightKg: 63.2,
     dailyGuide: { energyKcal: 1600, proteinG: 100, fatG: 45, carbohydrateG: 200 },
     expenditureKcal: 2050,
+    latestWeeklyReview: undefined,
   },
   // 記録の多い日の人の維持。今日の合計（1,665 kcal）は1日の目安（2,150 kcal）まで余裕がある
   richMaintain: {
@@ -253,6 +254,7 @@ export const evalGoals = {
     targetWeightKg: 68.3,
     dailyGuide: { energyKcal: 2150, proteinG: 110, fatG: 60, carbohydrateG: 290 },
     expenditureKcal: 2150,
+    latestWeeklyReview: undefined,
   },
   // 記録の少ない日の人の減量。昼の時点で、今日の合計（150 kcal）は1日の目安（1,700 kcal）まで余裕がある
   sparseLose: {
@@ -261,5 +263,6 @@ export const evalGoals = {
     targetWeightKg: 65.5,
     dailyGuide: { energyKcal: 1700, proteinG: 105, fatG: 45, carbohydrateG: 220 },
     expenditureKcal: 2000,
+    latestWeeklyReview: undefined,
   },
 } as const satisfies Record<string, ReplyContextGoal>;

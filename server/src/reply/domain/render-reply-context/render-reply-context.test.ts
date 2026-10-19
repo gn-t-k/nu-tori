@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { recordIdSchema } from "../../../domain/record-id";
-import type { ReplyContext } from "../reply-context";
+import type { ReplyContext, ReplyContextWeeklyReview } from "../reply-context";
 import { type ReplyContextBlock, renderReplyContext } from "./index";
 
 describe("返事に渡す文脈の文", () => {
@@ -104,6 +104,7 @@ describe("返事に渡す文脈の文", () => {
             targetWeightKg: 68.45,
             dailyGuide: { energyKcal: 2000, proteinG: 105, fatG: 55, carbohydrateG: 270 },
             expenditureKcal: 2350,
+            latestWeeklyReview: undefined,
           },
         },
       })[1]?.text;
@@ -134,6 +135,7 @@ describe("返事に渡す文脈の文", () => {
             targetWeightKg: 72,
             dailyGuide: undefined,
             expenditureKcal: undefined,
+            latestWeeklyReview: undefined,
           },
         },
       })[1]?.text;
@@ -144,6 +146,74 @@ describe("返事に渡す文脈の文", () => {
         ["## 目標", "維持。目標体重 72 kg", "今日の1日の目安: なし", "推定消費カロリー: なし"].join(
           "\n",
         ),
+      );
+    });
+  });
+
+  const renderWithReview = (latestWeeklyReview: ReplyContextWeeklyReview) =>
+    renderReplyContext({
+      ...context,
+      structuredValues: {
+        ...context.structuredValues,
+        goal: {
+          direction: "lose",
+          deadlineOn: "2027-02-01",
+          targetWeightKg: 68.5,
+          dailyGuide: { energyKcal: 1850, proteinG: 105, fatG: 55, carbohydrateG: 270 },
+          expenditureKcal: 2330,
+          latestWeeklyReview,
+        },
+      },
+    })[1]?.text;
+
+  describe("目標に直近の週の見直しがあるとき", () => {
+    test("見直せた週は、月曜と、前の週からの変化と、主な理由と、当たった上限と下限を書くこと", () => {
+      expect(
+        renderWithReview({
+          type: "reviewed",
+          effectiveOn: "2026-10-05",
+          limitHits: ["weekly_change", "minimum_energy"],
+          mainReason: "balance_change",
+          dailyGuideChangeKcal: -150,
+          expenditureChangeKcal: 20,
+        }),
+      ).toContain(
+        [
+          "直近の週の見直し: 10/05(月)から。前の週から1日の目安 -150 kcal、推定消費カロリー +20 kcal",
+          "  主な理由: 1日に減らす（足す）分の変化",
+          "  当たった上限と下限: 前の週からの変化の上限（±150 kcal）、1日の目安の下限",
+        ].join("\n"),
+      );
+    });
+
+    test("上限にも下限にも当たらなかった週は、なしと書くこと", () => {
+      expect(
+        renderWithReview({
+          type: "reviewed",
+          effectiveOn: "2026-10-05",
+          limitHits: [],
+          mainReason: "expenditure_change",
+          dailyGuideChangeKcal: 0,
+          expenditureChangeKcal: 0,
+        }),
+      ).toContain(
+        [
+          "直近の週の見直し: 10/05(月)から。前の週から1日の目安 ±0 kcal、推定消費カロリー ±0 kcal",
+          "  主な理由: 推定消費カロリーの変化",
+          "  当たった上限と下限: なし",
+        ].join("\n"),
+      );
+    });
+
+    test("見送った週は、月曜と理由と、前の週のままであることを書くこと", () => {
+      expect(
+        renderWithReview({
+          type: "deferred",
+          effectiveOn: "2026-10-12",
+          reason: "few_meal_records",
+        }),
+      ).toContain(
+        "直近の週の見直し: 10/12(月)から。見送った（食事の記録が少ない）。1日の目安と推定消費カロリーは前の週のまま",
       );
     });
   });

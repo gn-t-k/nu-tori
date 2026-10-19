@@ -1,8 +1,13 @@
+import type {
+  DailyGuideLimitType,
+  DailyGuideMainReason,
+} from "../../daily-guide/domain/daily-guide";
 import type { DailyGuideAmounts } from "../../daily-guide/domain/daily-guide-amounts";
 import type { DayOfWeek } from "../../domain/day-of-week";
 import type { RecordId } from "../../domain/record-id";
 import type { GoalDirection } from "../../goal/domain/goal-direction";
 import type { NutrientAmount } from "../../ingredient/domain/nutrient-amount";
+import type { WeeklyReviewDeferralReason } from "../../weekly-review/domain/weekly-review";
 import type { MealEstimationProgress } from "./reply-context-source";
 
 // 返事を作るときに AI に渡す文脈。並べる順は、変わらない指示 → 文脈の窓 → 構造化した値 → 新しい発言（キャッシュが効く順）。
@@ -58,7 +63,22 @@ export type ReplyContextGoal = {
   dailyGuide: DailyGuideAmounts | undefined;
   // 今日以前で当てる始まりの日が最も遅い推定
   expenditureKcal: number | undefined;
+  // この目標の、今日以前に当てた直近の見直し（見送りを含む）。まだ見直していなければ無い
+  latestWeeklyReview: ReplyContextWeeklyReview | undefined;
 };
+
+// 見直しの月曜（新しい1日の目安を当てる日。YYYY-MM-DD）と結果。見送った週は、1日の目安も推定消費カロリーも前の週のまま
+export type ReplyContextWeeklyReview =
+  | { type: "deferred"; effectiveOn: string; reason: WeeklyReviewDeferralReason }
+  | {
+      type: "reviewed";
+      effectiveOn: string;
+      limitHits: readonly DailyGuideLimitType[];
+      mainReason: DailyGuideMainReason;
+      // 前の週（月曜の前の日）に当たっていた値からの変化
+      dailyGuideChangeKcal: number;
+      expenditureChangeKcal: number;
+    };
 
 export type ReplyContextDish = {
   name: string;

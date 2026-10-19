@@ -15,6 +15,7 @@ import type {
   ReplyContext,
   ReplyContextGoal,
   ReplyContextStructuredValues,
+  ReplyContextWeeklyReview,
   ReplyContextWindowEntry,
 } from "../reply-context";
 import type { ReplyContextSource, ReplyContextSourceMeal } from "../reply-context-source";
@@ -204,19 +205,14 @@ const assembleStructuredValues = (
   };
 };
 
-const assembleGoal = (
-  {
-    goals,
-    dailyGuides,
-    expenditureEstimates,
-  }: Pick<ReplyContextSource, "goals" | "dailyGuides" | "expenditureEstimates">,
-  today: string,
-): ReplyContextGoal | undefined => {
-  const found = findDailyGuideForDay(
-    today,
-    goals.map((goal) => ({ ...goal, endedOn: goal.closure?.endedOn })),
-    dailyGuides,
-  );
+type GoalSource = Pick<
+  ReplyContextSource,
+  "goals" | "dailyGuides" | "expenditureEstimates" | "weeklyReviews"
+>;
+
+const assembleGoal = (source: GoalSource, today: string): ReplyContextGoal | undefined => {
+  const { expenditureEstimates } = source;
+  const found = findGoalDailyGuideForDay(source, today);
   if (found === undefined) {
     return undefined;
   }
@@ -244,6 +240,62 @@ const assembleGoal = (
             carbohydrateG: dailyGuide.carbohydrateG,
           },
     expenditureKcal: expenditureEstimate?.expenditureKcal,
+    latestWeeklyReview: assembleLatestWeeklyReview(source, { goalId: goal.id, today }),
+  };
+};
+
+const findGoalDailyGuideForDay = (
+  { goals, dailyGuides }: Pick<ReplyContextSource, "goals" | "dailyGuides">,
+  calendarDay: string,
+) =>
+  findDailyGuideForDay(
+    calendarDay,
+    goals.map((goal) => ({ ...goal, endedOn: goal.closure?.endedOn })),
+    dailyGuides,
+  );
+
+// 今日以前に当てた最も新しい見直しが、今日の目標の見直しなら渡す。月曜に立て直した日は、その月曜の見直しが前の目標のものなので渡さない
+const assembleLatestWeeklyReview = (
+  source: GoalSource,
+  { goalId, today }: { goalId: string; today: string },
+): ReplyContextWeeklyReview | undefined => {
+  const review = source.weeklyReviews
+    .filter(({ effectiveOn }) => effectiveOn <= today)
+    .toSorted((a, b) => a.effectiveOn.localeCompare(b.effectiveOn))
+    .at(-1);
+  if (review === undefined) {
+    return undefined;
+  }
+  const { effectiveOn, outcome } = review;
+  if (outcome.type === "deferred") {
+    return outcome.goalId === goalId
+      ? { type: "deferred", effectiveOn, reason: outcome.reason }
+      : undefined;
+  }
+  const findEstimate = (id: string) => source.expenditureEstimates.find((e) => e.id === id);
+  const dailyGuide = source.dailyGuides.find(({ id }) => id === outcome.dailyGuideId);
+  const estimate = findEstimate(outcome.expenditureEstimateId);
+  const previousDailyGuide = findGoalDailyGuideForDay(source, addDays(effectiveOn, -1))?.dailyGuide;
+  const previousEstimate =
+    previousDailyGuide === undefined
+      ? undefined
+      : findEstimate(previousDailyGuide.expenditureEstimateId);
+  // 書く口が、見直した推定と1日の目安を、前の週に当たっていたものを残したまま書く。読めないのは不具合なので、見直しを渡さない
+  if (
+    dailyGuide?.goalId !== goalId ||
+    estimate === undefined ||
+    previousDailyGuide === undefined ||
+    previousEstimate === undefined
+  ) {
+    return undefined;
+  }
+  return {
+    type: "reviewed",
+    effectiveOn,
+    limitHits: dailyGuide.limitHits,
+    mainReason: outcome.mainReason,
+    dailyGuideChangeKcal: dailyGuide.energyKcal - previousDailyGuide.energyKcal,
+    expenditureChangeKcal: estimate.expenditureKcal - previousEstimate.expenditureKcal,
   };
 };
 

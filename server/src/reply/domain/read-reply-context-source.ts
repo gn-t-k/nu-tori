@@ -17,7 +17,7 @@ import type {
 
 // 返事の文脈を組み立てる元の記録を、置き場から読む。組み立てる関数（assembleReplyContext）が範囲で絞るので、多めに読む。
 // 範囲は、応える文章の 9 日前から（72 時間の窓と、今日の 7 日前の 0:00 を、タイムゾーンによらず含む）。
-// 目標と1日の目安はすべて、推定消費カロリーは今日以前に始まるものを読む
+// 目標と1日の目安はすべて、推定消費カロリーは今日以前に始まるものを、週の見直しは今日以前に当てた最も新しいものを読む
 export const readReplyContextSource = (
   stores: Pick<
     RecordKindStores,
@@ -33,11 +33,14 @@ export const readReplyContextSource = (
     | "goal"
     | "dailyGuide"
     | "expenditureEstimate"
+    | "weeklyReview"
   >,
   sentText: SentText,
   now: Date,
 ): ReplyContextSource => {
   const from = new Date(sentText.sentAt.getTime() - sourceDays * 86_400_000);
+  const today = computeCalendarDayInTimeZone(sentText.sentAt, sentText.timeZone);
+  const latestWeeklyReview = stores.weeklyReview.findLatestEffectiveOnOrBefore(today);
   const weightTrend = createWeightTrendKind(stores.weightRecord).readCurrent(weightTrendRecordId);
   return {
     sentText,
@@ -54,9 +57,8 @@ export const readReplyContextSource = (
     weightTrend: weightTrend.status === "value" ? weightTrend.value : [],
     goals: stores.goal.findAll(),
     dailyGuides: stores.dailyGuide.findAll(),
-    expenditureEstimates: stores.expenditureEstimate.findEffectiveOnOrBefore(
-      computeCalendarDayInTimeZone(sentText.sentAt, sentText.timeZone),
-    ),
+    expenditureEstimates: stores.expenditureEstimate.findEffectiveOnOrBefore(today),
+    weeklyReviews: latestWeeklyReview === undefined ? [] : [latestWeeklyReview],
   };
 };
 
