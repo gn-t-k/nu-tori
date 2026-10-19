@@ -4,7 +4,7 @@ import { captureException } from "@sentry/cloudflare";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { goalDirections } from "../../goal/domain/goal-direction";
 import { authenticateAccount } from "../authenticate-account";
-import { resolveRequestedAt } from "../e2e-session-routes/resolve-requested-at";
+import { attachRequestedAt } from "./attach-requested-at";
 import {
   customTargetWeightAssessmentSchema,
   toCustomTargetWeightAssessmentResponse,
@@ -81,7 +81,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       description:
         "向きを選んだ直後に、逆算できるかと、減量の目標案を1つでも出せるかを答える。初めての目標では、先に体重記録を同期で送り切る。何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody, attachRequestedAt] as const,
       request: {
         body: {
           required: true,
@@ -114,7 +114,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       ).previewGoalSetup(
         c.var.accountId,
         { ...toGoalSetupSituation(situation), direction },
-        await resolveRequestedAt(c.env, (name) => c.req.header(name)),
+        c.var.requestedAt,
       );
       c.set("requestLog", requestLog);
       if (R.isFailure(previewed)) {
@@ -139,7 +139,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       description:
         "減量・増量は、期限までの3つの枠と、自分で決める目標体重の受け付ける幅を答える。維持は、目標体重と1日の目安を答える。そのときの体重の傾向で計算し、何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody, attachRequestedAt] as const,
       request: {
         body: {
           required: true,
@@ -166,7 +166,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       ).proposeGoals(
         c.var.accountId,
         { ...toGoalSetupSituation(situation), plan },
-        await resolveRequestedAt(c.env, (name) => c.req.header(name)),
+        c.var.requestedAt,
       );
       c.set("requestLog", requestLog);
       if (R.isFailure(proposed)) {
@@ -184,7 +184,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       description:
         "受け付けるなら、その目標体重の1日の目安と大変さを答える。受け付けないなら、受け付けるいちばん近い目標体重と理由を答える。何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody, attachRequestedAt] as const,
       request: {
         body: {
           required: true,
@@ -221,7 +221,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       ).assessCustomTargetWeight(
         c.var.accountId,
         { ...toGoalSetupSituation(situation), direction, deadlineOn, targetWeightKg },
-        await resolveRequestedAt(c.env, (name) => c.req.header(name)),
+        c.var.requestedAt,
       );
       c.set("requestLog", requestLog);
       if (R.isFailure(assessed)) {
@@ -239,7 +239,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       description:
         "そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す（開始の日がずれて期限が受け付ける幅の外に出たら、受け付けるいちばん近い日を期限にする）。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す",
       security: [{ session: [] }],
-      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody, attachRequestedAt] as const,
       request: {
         body: {
           required: true,
@@ -258,11 +258,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       const { result: decided, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).decideGoal(
-        c.var.accountId,
-        toGoalDecisionRequest(c.req.valid("json")),
-        await resolveRequestedAt(c.env, (name) => c.req.header(name)),
-      );
+      ).decideGoal(c.var.accountId, toGoalDecisionRequest(c.req.valid("json")), c.var.requestedAt);
       c.set("requestLog", requestLog);
       if (R.isFailure(decided)) {
         return respondGoalSetupRejected(c, decided.error);
