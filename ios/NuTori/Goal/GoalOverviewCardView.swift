@@ -10,23 +10,18 @@ struct GoalOverviewCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(card.summary)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                if card.action == .switchGoal {
-                    Button("目標を切り替える") {
-                        act(.switchGoal)
-                    }
-                    .font(.subheadline)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
+            // 大きな文字で横に詰めると、期間が日付の途中で折り返すので、横に収まらなければ「目標を切り替える」を期間の下に置く
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    summary
+                    Spacer(minLength: 0)
                     // 押せる高さは 44 のまま、見た目は上の行にそろえる。カードの上の余白に押せる範囲をはみ出させる
-                    .padding(.vertical, -12)
-                    .accessibilityIdentifier("goal-switch")
+                    switchButton
+                        .padding(.vertical, -12)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    summary
+                    switchButton
                 }
             }
             Text(card.title)
@@ -66,6 +61,32 @@ struct GoalOverviewCardView: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("goal-card")
+    }
+
+    /// 「減量 9月1日〜11月30日」
+    private var summary: some View {
+        Text(card.summary)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// 進行中だけ置く「目標を切り替える」
+    @ViewBuilder private var switchButton: some View {
+        if card.action == .switchGoal {
+            Button {
+                act(.switchGoal)
+            } label: {
+                // 期間の下に置いて折り返すとき、期間と左をそろえる
+                Text("目標を切り替える")
+                    .multilineTextAlignment(.leading)
+            }
+            .font(.subheadline)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .accessibilityIdentifier("goal-switch")
+        }
     }
 
     /// 塗ったボタンの文字。進行中は右上の文字のボタンにするので nil

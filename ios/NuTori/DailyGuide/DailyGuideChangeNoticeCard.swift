@@ -24,10 +24,19 @@ struct DailyGuideChangeNoticeCard: View {
                 .monospacedDigit()
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text(
-                    "\(Text(NutritionText.kilocalories(notice.dailyGuide.energyKilocalories)).font(.title2))　\(Text(notice.changeText).font(.subheadline).foregroundStyle(.secondary))"
-                )
+                // 大きな文字で1つの文につなげると、変わった量が「−」の後ろで折り返すので、横に収まらなければ値の下に置く
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        energyText
+                        changeText
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        energyText
+                        changeText
+                    }
+                }
                 .monospacedDigit()
+                .accessibilityElement(children: .combine)
                 .accessibilityLabel(
                     "新しい1日の目安 \(NutritionText.kilocalories(notice.dailyGuide.energyKilocalories))、\(notice.changeText)"
                 )
@@ -74,6 +83,19 @@ struct DailyGuideChangeNoticeCard: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("daily-guide-change-notice")
+    }
+
+    /// 大きく新しい値「1,850 kcal」
+    private var energyText: some View {
+        Text(NutritionText.kilocalories(notice.dailyGuide.energyKilocalories))
+            .font(.title2)
+    }
+
+    /// 変わった量「−30 kcal」
+    private var changeText: some View {
+        Text(notice.changeText)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
     }
 
     private var pfcGuides: some View {

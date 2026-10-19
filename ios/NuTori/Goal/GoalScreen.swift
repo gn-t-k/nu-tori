@@ -116,15 +116,16 @@ struct GoalScreen: View {
     /// 「今の1日の目安」「9月21日から」、「1,850 kcal」と P・F・C
     private func dailyGuideCard(_ dailyGuide: DailyGuide, since: String?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("今の1日の目安")
-                    .font(.headline)
-                Spacer(minLength: 8)
-                if let since {
-                    Text(since)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+            // 大きな文字で横に詰めると、日付の途中で折り返すので、横に収まらなければ日付を見出しの下に置く
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    dailyGuideHeading
+                    Spacer(minLength: 8)
+                    dailyGuideSince(since)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    dailyGuideHeading
+                    dailyGuideSince(since)
                 }
             }
             Text(NutritionText.kilocalories(dailyGuide.energyKilocalories))
@@ -148,6 +149,33 @@ struct GoalScreen: View {
         .accessibilityIdentifier("goal-daily-guide")
     }
 
+    private var dailyGuideHeading: some View {
+        Text("今の1日の目安")
+            .font(.headline)
+    }
+
+    /// 「9月21日から」
+    @ViewBuilder private func dailyGuideSince(_ since: String?) -> some View {
+        if let since {
+            Text(since)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+    }
+
+    private var weeklyReviewName: some View {
+        Text("週の振り返り")
+            .foregroundStyle(Color.primary)
+    }
+
+    /// 「9月14日〜20日」
+    private func weeklyReviewTitle(_ title: String) -> some View {
+        Text(title)
+            .foregroundStyle(Color(.secondaryLabel))
+            .monospacedDigit()
+    }
+
     private func pfcGuides(_ dailyGuide: DailyGuide) -> some View {
         ForEach(PFC.allCases, id: \.self) { pfc in
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -165,12 +193,20 @@ struct GoalScreen: View {
             openWeeklyReview(monday)
         } label: {
             HStack(spacing: 12) {
-                Text("週の振り返り")
-                    .foregroundStyle(Color.primary)
-                Spacer(minLength: 0)
-                Text(title)
-                    .foregroundStyle(Color(.secondaryLabel))
-                    .monospacedDigit()
+                // 大きな文字で横に詰めると、週の日付の途中で折り返すので、横に収まらなければ日付を名前の下に置く
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        weeklyReviewName
+                        Spacer(minLength: 0)
+                        weeklyReviewTitle(title)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        weeklyReviewName
+                        weeklyReviewTitle(title)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 10)
+                }
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
@@ -201,20 +237,18 @@ struct GoalScreen: View {
                         Divider()
                             .padding(.leading)
                     }
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    // 大きな文字で横に詰めると、期間が日付の途中で折り返すので、横に収まらなければ結果を期間の下に置く
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            pastGoalPeriod(past)
+                            Spacer(minLength: 0)
+                            pastGoalResult(past)
+                        }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(past.summary)
-                            if let weights = past.weightsText {
-                                Text(weights)
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
+                            pastGoalPeriod(past)
+                            pastGoalResult(past)
                         }
-                        Spacer(minLength: 0)
-                        if let result = past.resultText {
-                            Text(result)
-                                .foregroundStyle(.secondary)
-                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .monospacedDigit()
                     .padding(.horizontal)
@@ -227,6 +261,26 @@ struct GoalScreen: View {
             .background(
                 Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10)
             )
+        }
+    }
+
+    /// 「減量 9月1日〜11月30日」「74.0 → 70.4 kg」
+    private func pastGoalPeriod(_ past: GoalOverview.PastGoal) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(past.summary)
+            if let weights = past.weightsText {
+                Text(weights)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// 「−3.6 kg」
+    @ViewBuilder private func pastGoalResult(_ past: GoalOverview.PastGoal) -> some View {
+        if let result = past.resultText {
+            Text(result)
+                .foregroundStyle(.secondary)
         }
     }
 }
