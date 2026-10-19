@@ -6,10 +6,7 @@ import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day
 import { computeStartOfWeek } from "../src/domain/compute-start-of-week";
 import { millisecondsPerDay } from "../src/domain/milliseconds-per-day";
 import { generateRecordId } from "../src/domain/record-id";
-import {
-  e2eRequestedAtHeader,
-  e2eSecretHeader,
-} from "../src/http/e2e-session-routes/e2e-request-headers";
+import { e2eRequestHeaders } from "../src/http/e2e-session-routes/e2e-request-headers";
 import { goalDecisionSchema } from "../src/http/goal-setup-routes/goal-decision-schema";
 import { goalProposalsSchema } from "../src/http/goal-setup-routes/goal-proposals-schema";
 import { goalSetupPreviewSchema } from "../src/http/goal-setup-routes/goal-setup-preview-schema";
@@ -256,8 +253,8 @@ const postGoalSetup = async (
   const response = await callApi(options, session, "POST", `/v1/goal-setup/${path}`, {
     headers: {
       "content-type": "application/json",
-      [e2eSecretHeader]: options.signInSecret,
-      [e2eRequestedAtHeader]: requestedAt.toISOString(),
+      [e2eRequestHeaders.signInSecret]: options.signInSecret,
+      [e2eRequestHeaders.requestedAt]: requestedAt.toISOString(),
     },
     body: JSON.stringify({ timeZone: goalSetupTimeZone, ...body }),
   });

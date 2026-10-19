@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createAuthentication } from "../../auth/create-authentication";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { checkE2eAccess } from "./check-e2e-access";
-import { e2eSecretHeader } from "./e2e-request-headers";
+import { e2eRequestHeaders } from "./e2e-request-headers";
 
 // 開発用の環境で主な流れを確かめるジョブ（.github/workflows/deploy.yml）のための、Apple を通さないサインインの口。
 // 開くかは checkE2eAccess が決め、開かないときは口が無いのと同じ 404 に、秘密の値が違えば 401 にする。
@@ -10,7 +10,7 @@ import { e2eSecretHeader } from "./e2e-request-headers";
 export const e2eSessionRoutes = new Hono<{ Bindings: Env }>().post(
   "/v1/e2e/sessions",
   async (c) => {
-    const access = await checkE2eAccess(c.env, c.req.header(e2eSecretHeader));
+    const access = await checkE2eAccess(c.env, c.req.header(e2eRequestHeaders.signInSecret));
     if (access === "closed") {
       return c.notFound();
     }

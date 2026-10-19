@@ -3,7 +3,7 @@ import { computeMacronutrientGuides } from "../compute-macronutrient-guides";
 import type { ComputedReviewedDailyGuide } from "../computed-daily-guide";
 import type { DailyGuideMainReason } from "../daily-guide";
 import { minimumDailyGuideEnergyKcal } from "../minimum-daily-guide-energy-kcal";
-import { computeRequiredPace, type RequiredPaceGoal } from "../required-pace";
+import { computeRequiredPace, type RequiredPaceGoal } from "../compute-required-pace";
 import { roundToFiftyKcal } from "../round-to-fifty-kcal";
 
 // 見直せた週の1日の目安。目標を立てたときと同じ式を、新しい推定消費カロリーと、

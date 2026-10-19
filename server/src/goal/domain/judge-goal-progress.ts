@@ -10,7 +10,8 @@ import { findAchievedDay } from "./find-achieved-day";
 import type { Goal } from "./goal";
 import { roundToTenthKg } from "./round-to-tenth-kg";
 import { judgeDeadlineConfirmation } from "./judge-deadline-confirmation";
-import { writeGoalAchievement, writeGoalDeadlineConfirmation } from "./write-goal-progress";
+import { writeGoalAchievement } from "./write-goal-achievement";
+import { writeGoalDeadlineConfirmation } from "./write-goal-deadline-confirmation";
 
 // 達成と期限の日の結果を判定して書く。記録を当てたあと、まだ見直していない週を見る前に呼ぶ。
 // 達成は今の目標だけを見る。期限の日の確定は、期限の日以降に閉じた目標も見る。

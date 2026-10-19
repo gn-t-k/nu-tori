@@ -1,5 +1,5 @@
 import { computeReviewedDailyGuide } from "../../daily-guide/domain/compute-reviewed-daily-guide";
-import type { RequiredPaceGoal } from "../../daily-guide/domain/required-pace";
+import type { RequiredPaceGoal } from "../../daily-guide/domain/compute-required-pace";
 import { addDays } from "../../domain/add-days";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { countDaysBetween } from "../../domain/count-days-between";

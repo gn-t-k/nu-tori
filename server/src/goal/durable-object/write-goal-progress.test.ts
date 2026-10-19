@@ -6,7 +6,8 @@ import { createRecordChangeWriter } from "../../durable-object/create-record-cha
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
-import { writeGoalAchievement, writeGoalDeadlineConfirmation } from "../domain/write-goal-progress";
+import { writeGoalAchievement } from "../domain/write-goal-achievement";
+import { writeGoalDeadlineConfirmation } from "../domain/write-goal-deadline-confirmation";
 
 type Factory = ReturnType<typeof durableObjectFactory>;
 type Write =
