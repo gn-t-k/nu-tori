@@ -80,14 +80,19 @@ struct TimelineScreen: View {
                         weightRecords: records,
                         trend: weightTrend,
                         firstDay: firstDay,
-                        today: today
+                        today: today,
+                        goal: currentGoal?.goal
                     ),
                     rejectedLines: rejectedLines,
                     capture: capture,
                     saveWeight: saveWeight,
                     startGoalSetup: loaded.flatMap(goalSetupStarter(in:)).map { start in
                         { start(.weightScreen) }
-                    }
+                    },
+                    goalPath: WeightGoalPath(
+                        status: goalStatus, today: today, records: goalRecords),
+                    // 体重の画面の上に積むので、戻るは「‹ 体重」
+                    openGoalScreen: { openGoalScreen(from: .weightScreen) }
                 )
             }
             .navigationDestination(for: WeeklyReviewRoute.self) { route in
@@ -178,14 +183,23 @@ struct TimelineScreen: View {
                 if let summaryDay, let loaded {
                     DaySummarySheet(
                         timeline: loaded, day: summaryDay, weightRecords: records,
-                        weightTrend: weightTrend, goalProgress: goalProgress, today: today,
+                        weightTrend: weightTrend, goalRecords: goalRecords, today: today,
                         startGoalSetup: goalSetupStarter(in: loaded).map { start in
                             { start(.daySummary) }
-                        }
-                    ) { chosen in
-                        self.summaryDay = nil
-                        viewport.dayChosen(chosen, in: loaded.days)
-                    }
+                        },
+                        weekRecapTitle: { weekRecap(monday: $0.startOfWeek)?.title },
+                        openGoalScreen: { openGoalScreen(from: .daySummary) },
+                        openWeeklyReview: { openWeeklyReview(weekOf: $0, from: .daySummary) },
+                        openNextGoal: { nextGoal in
+                            switch nextGoal {
+                            case .choose: openGoalSetup(from: .chooseNextGoal)
+                            case .set: openGoalSetup(from: .setNextGoal)
+                            }
+                        },
+                        onSeeOnTimeline: { chosen in
+                            self.summaryDay = nil
+                            viewport.dayChosen(chosen, in: loaded.days)
+                        })
                 }
             }
         }
@@ -875,9 +889,12 @@ struct TimelineScreen: View {
 
     /// 左上の目標の入口。目標がないあいだは nil
     private var goalLink: GoalLinkCapsule? {
-        GoalLinkCapsule(
-            status: GoalStatus(currentGoal: currentGoal?.goal, goals: goals), today: today,
-            weightTrend: weightTrend)
+        GoalLinkCapsule(status: goalStatus, today: today, weightTrend: weightTrend)
+    }
+
+    /// 今の目標の状態
+    private var goalStatus: GoalStatus {
+        GoalStatus(currentGoal: currentGoal?.goal, goals: goals)
     }
 
     /// 目標の画面を、タイムラインの上に押して進む。目標がないときは開かない。日のまとめから開くときは、シートを閉じてから進む
@@ -916,12 +933,6 @@ struct TimelineScreen: View {
         GoalRecords(
             goals: goals, dailyGuides: dailyGuides, expenditureEstimates: expenditureEstimates,
             weeklyReviews: weeklyReviews, weightTrend: weightTrend, weightRecords: records)
-    }
-
-    /// 日のまとめの進行中の要約。今日を含む目標で出す
-    private var goalProgress: GoalProgress? {
-        GoalProgress(
-            today: today, goals: goals, dailyGuides: dailyGuides, weightTrend: weightTrend)
     }
 }
 
