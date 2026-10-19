@@ -20,105 +20,189 @@ struct GoalStatusTests {
             closure: closure)
     }
 
-    @Test("今の目標が無ければ、目標がないこと")
-    func noGoal() throws {
-        let closed = try Self.losing(
-            closure: Goal.Closure(
-                endedDay: CalendarDay(year: 2026, month: 10, day: 20), nextGoalId: UUID(),
-                endReason: .switched))
+    @Suite("今の目標が無いとき")
+    struct NoCurrentGoal {
+        let status: GoalStatus
 
-        #expect(GoalStatus(currentGoal: nil, goals: [closed]) == .noGoal)
+        init() throws {
+            let closed = try GoalStatusTests.losing(
+                closure: Goal.Closure(
+                    endedDay: CalendarDay(year: 2026, month: 10, day: 20), nextGoalId: UUID(),
+                    endReason: .switched))
+            status = GoalStatus(currentGoal: nil, goals: [closed])
+        }
+
+        @Test("目標がないこと")
+        func isNoGoal() {
+            #expect(status == .noGoal)
+        }
     }
 
-    @Test("達成も期限の日の確定も無い今の目標は、進行中であること")
-    func inProgress() throws {
-        let goal = try Self.losing()
+    @Suite("今の目標に達成も期限の日の確定も無いとき")
+    struct NeitherAchievedNorConfirmed {
+        let goal: Goal
+        let status: GoalStatus
 
-        #expect(GoalStatus(currentGoal: goal, goals: [goal]) == .inProgress(goal))
+        init() throws {
+            goal = try GoalStatusTests.losing()
+            status = GoalStatus(currentGoal: goal, goals: [goal])
+        }
+
+        @Test("進行中であること")
+        func isInProgress() {
+            #expect(status == .inProgress(goal))
+        }
     }
 
-    @Test("達成した日だけがあれば、期限より前に達成したこと")
-    func achievedBeforeDeadline() throws {
-        let goal = try Self.losing(achievedAt: "2026-12-11T07:00:00+09:00")
+    @Suite("達成した日だけがあるとき")
+    struct OnlyAchieved {
+        let goal: Goal
+        let status: GoalStatus
 
-        #expect(GoalStatus(currentGoal: goal, goals: [goal]) == .achievedBeforeDeadline(goal))
+        init() throws {
+            goal = try GoalStatusTests.losing(achievedAt: "2026-12-11T07:00:00+09:00")
+            status = GoalStatus(currentGoal: goal, goals: [goal])
+        }
+
+        @Test("期限より前に達成したこと")
+        func isAchievedBeforeDeadline() {
+            #expect(status == .achievedBeforeDeadline(goal))
+        }
     }
 
-    @Test("期限の日の確定だけがあれば、期限が来たこと")
-    func deadlineReached() throws {
-        let goal = try Self.losing(confirmedAt: "2026-12-25T07:00:00+09:00")
+    @Suite("期限の日の確定だけがあるとき")
+    struct OnlyConfirmed {
+        let goal: Goal
+        let status: GoalStatus
 
-        #expect(GoalStatus(currentGoal: goal, goals: [goal]) == .deadlineReached(goal))
+        init() throws {
+            goal = try GoalStatusTests.losing(confirmedAt: "2026-12-25T07:00:00+09:00")
+            status = GoalStatus(currentGoal: goal, goals: [goal])
+        }
+
+        @Test("期限が来たこと")
+        func isDeadlineReached() {
+            #expect(status == .deadlineReached(goal))
+        }
     }
 
-    @Test("期限の日を確定したあとで達成しても、早いほうの期限が来たこと")
-    func confirmedBeforeAchieved() throws {
-        let goal = try Self.losing(
-            achievedAt: "2026-12-27T07:00:00+09:00", confirmedAt: "2026-12-25T07:00:00+09:00")
+    @Suite("期限の日を確定したあとで達成したとき")
+    struct ConfirmedBeforeAchieved {
+        let goal: Goal
+        let status: GoalStatus
 
-        #expect(GoalStatus(currentGoal: goal, goals: [goal]) == .deadlineReached(goal))
+        init() throws {
+            goal = try GoalStatusTests.losing(
+                achievedAt: "2026-12-27T07:00:00+09:00", confirmedAt: "2026-12-25T07:00:00+09:00")
+            status = GoalStatus(currentGoal: goal, goals: [goal])
+        }
+
+        @Test("早いほうの期限が来たこと")
+        func isDeadlineReached() {
+            #expect(status == .deadlineReached(goal))
+        }
     }
 
-    @Test("達成したあとで期限の日を確定しても、早いほうの期限より前に達成したこと")
-    func achievedBeforeConfirmed() throws {
-        let goal = try Self.losing(
-            achievedAt: "2026-12-11T07:00:00+09:00", confirmedAt: "2026-12-25T07:00:00+09:00")
+    @Suite("達成したあとで期限の日を確定したとき")
+    struct AchievedBeforeConfirmed {
+        let goal: Goal
+        let status: GoalStatus
 
-        #expect(GoalStatus(currentGoal: goal, goals: [goal]) == .achievedBeforeDeadline(goal))
+        init() throws {
+            goal = try GoalStatusTests.losing(
+                achievedAt: "2026-12-11T07:00:00+09:00", confirmedAt: "2026-12-25T07:00:00+09:00")
+            status = GoalStatus(currentGoal: goal, goals: [goal])
+        }
+
+        @Test("早いほうの期限より前に達成したこと")
+        func isAchievedBeforeDeadline() {
+            #expect(status == .achievedBeforeDeadline(goal))
+        }
     }
 
-    @Test("同じ要求で達成と確定をしたときは、期限より前に達成したこと")
-    func achievedAndConfirmedAtOnce() throws {
-        let goal = try Self.losing(
-            achievedAt: "2026-12-25T07:00:00+09:00", confirmedAt: "2026-12-25T07:00:00+09:00")
+    @Suite("同じ要求で達成と確定をしたとき")
+    struct AchievedAndConfirmedAtOnce {
+        let goal: Goal
+        let status: GoalStatus
 
-        #expect(GoalStatus(currentGoal: goal, goals: [goal]) == .achievedBeforeDeadline(goal))
+        init() throws {
+            goal = try GoalStatusTests.losing(
+                achievedAt: "2026-12-25T07:00:00+09:00", confirmedAt: "2026-12-25T07:00:00+09:00")
+            status = GoalStatus(currentGoal: goal, goals: [goal])
+        }
+
+        @Test("期限より前に達成したこと")
+        func isAchievedBeforeDeadline() {
+            #expect(status == .achievedBeforeDeadline(goal))
+        }
     }
 
-    @Test("期限後の維持に移った前の目標があれば、期限後に選ばなかったこと")
-    func maintainingAfterDeadline() throws {
-        let maintenance = try Goal.maintaining()
-        let previous = try Self.losing(
-            confirmedAt: "2026-12-25T07:00:00+09:00",
-            closure: Goal.Closure(
-                endedDay: CalendarDay(year: 2026, month: 12, day: 28),
-                nextGoalId: maintenance.id, endReason: .movedToMaintenance))
+    @Suite("期限後の維持に移った前の目標があるとき")
+    struct MovedToMaintenance {
+        let maintenance: Goal
+        let previous: Goal
+        let status: GoalStatus
 
-        #expect(
-            GoalStatus(currentGoal: maintenance, goals: [previous, maintenance])
-                == .maintainingAfterDeadline(maintenance, previous: previous))
+        init() throws {
+            maintenance = try Goal.maintaining()
+            previous = try GoalStatusTests.losing(
+                confirmedAt: "2026-12-25T07:00:00+09:00",
+                closure: Goal.Closure(
+                    endedDay: CalendarDay(year: 2026, month: 12, day: 28),
+                    nextGoalId: maintenance.id, endReason: .movedToMaintenance))
+            status = GoalStatus(currentGoal: maintenance, goals: [previous, maintenance])
+        }
+
+        @Test("期限後に選ばなかったこと")
+        func isMaintainingAfterDeadline() {
+            #expect(status == .maintainingAfterDeadline(maintenance, previous: previous))
+        }
     }
 
-    @Test("立て直して切り替えた維持の目標は、進行中であること")
-    func switchedMaintenanceIsInProgress() throws {
-        let maintenance = try Goal.maintaining()
-        let previous = try Self.losing(
-            closure: Goal.Closure(
-                endedDay: CalendarDay(year: 2026, month: 10, day: 20),
-                nextGoalId: maintenance.id, endReason: .switched))
+    @Suite("立て直して維持の目標に切り替えたとき")
+    struct SwitchedToMaintenance {
+        let maintenance: Goal
+        let status: GoalStatus
 
-        #expect(
-            GoalStatus(currentGoal: maintenance, goals: [previous, maintenance])
-                == .inProgress(maintenance))
+        init() throws {
+            maintenance = try Goal.maintaining()
+            let previous = try GoalStatusTests.losing(
+                closure: Goal.Closure(
+                    endedDay: CalendarDay(year: 2026, month: 10, day: 20),
+                    nextGoalId: maintenance.id, endReason: .switched))
+            status = GoalStatus(currentGoal: maintenance, goals: [previous, maintenance])
+        }
+
+        @Test("維持の目標が進行中であること")
+        func isInProgress() {
+            #expect(status == .inProgress(maintenance))
+        }
     }
 
-    @Test("期限後の維持の目標を立て直して閉じたあとの目標は、進行中であること")
-    func switchedFromMaintenanceIsInProgress() throws {
-        let next = try Self.losing()
-        let maintenance = try Goal.maintaining()
-        let closedMaintenance = try Goal.maintaining(
-            id: maintenance.id,
-            closure: Goal.Closure(
-                endedDay: CalendarDay(year: 2027, month: 1, day: 5), nextGoalId: next.id,
-                endReason: .switched))
-        let previous = try Self.losing(
-            confirmedAt: "2026-12-25T07:00:00+09:00",
-            closure: Goal.Closure(
-                endedDay: CalendarDay(year: 2026, month: 12, day: 28),
-                nextGoalId: maintenance.id, endReason: .movedToMaintenance))
+    @Suite("期限後の維持の目標を立て直して閉じたとき")
+    struct SwitchedFromMaintenance {
+        let next: Goal
+        let status: GoalStatus
 
-        #expect(
-            GoalStatus(currentGoal: next, goals: [previous, closedMaintenance, next])
-                == .inProgress(next))
+        init() throws {
+            next = try GoalStatusTests.losing()
+            let maintenance = try Goal.maintaining()
+            let closedMaintenance = try Goal.maintaining(
+                id: maintenance.id,
+                closure: Goal.Closure(
+                    endedDay: CalendarDay(year: 2027, month: 1, day: 5), nextGoalId: next.id,
+                    endReason: .switched))
+            let previous = try GoalStatusTests.losing(
+                confirmedAt: "2026-12-25T07:00:00+09:00",
+                closure: Goal.Closure(
+                    endedDay: CalendarDay(year: 2026, month: 12, day: 28),
+                    nextGoalId: maintenance.id, endReason: .movedToMaintenance))
+            status = GoalStatus(currentGoal: next, goals: [previous, closedMaintenance, next])
+        }
+
+        @Test("あとの目標が進行中であること")
+        func isInProgress() {
+            #expect(status == .inProgress(next))
+        }
     }
 }

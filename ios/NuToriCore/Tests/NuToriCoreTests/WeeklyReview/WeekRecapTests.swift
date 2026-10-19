@@ -26,66 +26,103 @@ struct WeekRecapTests {
 
     @Suite("週の日の並び")
     struct Days {
-        @Test("目標を立てた週は、立てた日から日曜までを並べ、1週目にすること")
-        func firstWeekStartsOnStartedDay() throws {
-            let recap = try #require(
-                try WeekRecapTests.recap(
-                    weekOf: WeekRecapTests.day(9, 30), today: WeekRecapTests.day(10, 10)))
+        @Suite("目標を立てた週")
+        struct FirstWeek {
+            let recap: WeekRecap
 
-            #expect(
-                recap.days.map(\.day)
-                    == Array(WeekRecapTests.day(10, 1)...WeekRecapTests.day(10, 4)))
-            #expect(recap.weekNumber == 1)
-            #expect(recap.title == "10月1日〜4日")
-            #expect(recap.weekLabel == "減量の1週目")
+            init() throws {
+                recap = try #require(
+                    try WeekRecapTests.recap(
+                        weekOf: WeekRecapTests.day(9, 30), today: WeekRecapTests.day(10, 10)))
+            }
+
+            @Test("立てた日から日曜までを並べ、1週目にすること")
+            func startsOnStartedDay() {
+                #expect(
+                    recap.days.map(\.day)
+                        == Array(WeekRecapTests.day(10, 1)...WeekRecapTests.day(10, 4)))
+                #expect(recap.weekNumber == 1)
+                #expect(recap.title == "10月1日〜4日")
+                #expect(recap.weekLabel == "減量の1週目")
+            }
         }
 
-        @Test("そのあとの週は、月曜から日曜までの7日を並べ、開始の日の週から数えること")
-        func laterWeekHasSevenDays() throws {
-            let recap = try #require(
-                try WeekRecapTests.recap(
-                    weekOf: WeekRecapTests.day(10, 15), today: WeekRecapTests.day(10, 20)))
+        @Suite("そのあとの週")
+        struct LaterWeek {
+            let recap: WeekRecap
 
-            #expect(
-                recap.days.map(\.day)
-                    == Array(WeekRecapTests.day(10, 12)...WeekRecapTests.day(10, 18)))
-            #expect(recap.weekNumber == 3)
-            #expect(recap.title == "10月12日〜18日")
+            init() throws {
+                recap = try #require(
+                    try WeekRecapTests.recap(
+                        weekOf: WeekRecapTests.day(10, 15), today: WeekRecapTests.day(10, 20)))
+            }
+
+            @Test("月曜から日曜までの7日を並べ、開始の日の週から数えること")
+            func hasSevenDays() {
+                #expect(
+                    recap.days.map(\.day)
+                        == Array(WeekRecapTests.day(10, 12)...WeekRecapTests.day(10, 18)))
+                #expect(recap.weekNumber == 3)
+                #expect(recap.title == "10月12日〜18日")
+            }
         }
 
-        @Test("月をまたぐ週は、終わりの日にも月を書くこと")
-        func spansMonths() throws {
-            let recap = try #require(
-                try WeekRecapTests.recap(
-                    weekOf: WeekRecapTests.day(10, 26), today: WeekRecapTests.day(11, 5)))
+        @Suite("月をまたぐ週")
+        struct SpanningMonths {
+            let recap: WeekRecap
 
-            #expect(recap.title == "10月26日〜11月1日")
+            init() throws {
+                recap = try #require(
+                    try WeekRecapTests.recap(
+                        weekOf: WeekRecapTests.day(10, 26), today: WeekRecapTests.day(11, 5)))
+            }
+
+            @Test("終わりの日にも月を書くこと")
+            func writesMonthOfLastDay() {
+                #expect(recap.title == "10月26日〜11月1日")
+            }
         }
 
-        @Test("今日を含む週は、今日までを並べ、途中と書くこと")
-        func inProgressWeekEndsToday() throws {
-            let recap = try #require(
-                try WeekRecapTests.recap(
-                    weekOf: WeekRecapTests.day(10, 14), today: WeekRecapTests.day(10, 14)))
+        @Suite("今日を含む週")
+        struct InProgressWeek {
+            let recap: WeekRecap
 
-            #expect(recap.isInProgress)
-            #expect(
-                recap.days.map(\.day)
-                    == Array(WeekRecapTests.day(10, 12)...WeekRecapTests.day(10, 14)))
-            #expect(recap.title == "10月12日〜18日（途中）")
+            init() throws {
+                recap = try #require(
+                    try WeekRecapTests.recap(
+                        weekOf: WeekRecapTests.day(10, 14), today: WeekRecapTests.day(10, 14)))
+            }
+
+            @Test("今日までを並べ、途中と書くこと")
+            func endsToday() {
+                #expect(recap.isInProgress)
+                #expect(
+                    recap.days.map(\.day)
+                        == Array(WeekRecapTests.day(10, 12)...WeekRecapTests.day(10, 14)))
+                #expect(recap.title == "10月12日〜18日（途中）")
+            }
         }
 
-        @Test("目標を立てる前の週は、振り返りを出さないこと")
-        func noRecapBeforeGoal() throws {
-            #expect(
-                try WeekRecapTests.recap(
-                    weekOf: WeekRecapTests.day(9, 24), today: WeekRecapTests.day(10, 10)) == nil)
+        @Suite("目標を立てる前の週")
+        struct BeforeGoal {
+            let recap: WeekRecap?
+
+            init() throws {
+                recap = try WeekRecapTests.recap(
+                    weekOf: WeekRecapTests.day(9, 24), today: WeekRecapTests.day(10, 10))
+            }
+
+            @Test("振り返りを出さないこと")
+            func hasNoRecap() {
+                #expect(recap == nil)
+            }
         }
     }
 
     @Suite("食べた量")
     struct Food {
         let recap: WeekRecap
+        let average: WeekRecap.AverageFood
         let secondWeekGuide: DailyGuide
 
         init() throws {
@@ -124,6 +161,7 @@ struct WeekRecapTests {
                             ]),
                         try .fixture(eatenAt: "2026-10-07T21:00:00+09:00", status: .estimating),
                     ]))
+            average = try #require(recap.averageFood)
         }
 
         @Test("その週に当たっていた1日の目安と比べること")
@@ -132,9 +170,7 @@ struct WeekRecapTests {
         }
 
         @Test("平均は、食べた量が分かった日だけで出すこと")
-        func averagesRecordedDays() throws {
-            let average = try #require(recap.averageFood)
-
+        func averagesRecordedDays() {
             #expect(average.energyKilocalories == 1951)
             #expect(average.proteinGrams == 110)
             #expect(average.fatGrams == 51)
@@ -142,15 +178,16 @@ struct WeekRecapTests {
         }
 
         @Test("記録の無い日があれば、記録した日の数を添えること")
-        func labelsRecordedDayCount() throws {
-            #expect(try #require(recap.averageFood).label == "記録した 2 日の平均")
+        func labelsRecordedDayCount() {
+            #expect(average.label == "記録した 2 日の平均")
         }
     }
 
     @Suite("どの日も食べた量が分かったとき")
     struct EveryDayRecorded {
-        @Test("平均にだけすること")
-        func labelsPlainAverage() throws {
+        let average: WeekRecap.AverageFood
+
+        init() throws {
             let recap = try #require(
                 try WeekRecapTests.recap(
                     weekOf: WeekRecapTests.day(10, 5), today: WeekRecapTests.day(10, 5),
@@ -159,19 +196,27 @@ struct WeekRecapTests {
                             eatenAt: "2026-10-05T12:00:00+09:00", status: .estimated,
                             nutrients: [.energyKcal: 1800])
                     ]))
+            average = try #require(recap.averageFood)
+        }
 
-            #expect(try #require(recap.averageFood).label == "平均")
+        @Test("平均にだけすること")
+        func labelsPlainAverage() {
+            #expect(average.label == "平均")
         }
     }
 
     @Suite("食べた量が分かった日が無いとき")
     struct NoRecordedDay {
-        @Test("平均を出さないこと")
-        func hasNoAverage() throws {
-            let recap = try #require(
+        let recap: WeekRecap
+
+        init() throws {
+            recap = try #require(
                 try WeekRecapTests.recap(
                     weekOf: WeekRecapTests.day(10, 5), today: WeekRecapTests.day(10, 6)))
+        }
 
+        @Test("平均を出さないこと")
+        func hasNoAverage() {
             #expect(recap.averageFood == nil)
         }
     }
@@ -194,10 +239,10 @@ struct WeekRecapTests {
     struct TopLine {
         @Suite("間に合うとき")
         struct OnTrack {
-            let recap: WeekRecap
+            let line: WeekRecap.TopLine
 
             init() throws {
-                recap = try #require(
+                let recap = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(10, 19), today: WeekRecapTests.day(10, 27),
                         weightTrend: WeekRecapTests.trend([
@@ -207,12 +252,11 @@ struct WeekRecapTests {
                             WeekRecapTests.day(10, 13), WeekRecapTests.day(10, 17),
                             WeekRecapTests.day(10, 21), WeekRecapTests.day(10, 25),
                         ])))
+                line = try #require(recap.topLine)
             }
 
             @Test("その週の日曜の実際の速さと、期限に届くのに要るペースを並べること")
-            func showsActualAndRequiredPace() throws {
-                let line = try #require(recap.topLine)
-
+            func showsActualAndRequiredPace() {
                 #expect(line.headline == "間に合うペースです")
                 #expect(
                     line.sentence
@@ -222,8 +266,9 @@ struct WeekRecapTests {
 
         @Suite("届かないとき")
         struct Behind {
-            @Test("届かない量と、実際の速さと要るペースを並べること")
-            func showsShortfall() throws {
+            let line: WeekRecap.TopLine
+
+            init() throws {
                 let recap = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(10, 19), today: WeekRecapTests.day(10, 27),
@@ -234,8 +279,11 @@ struct WeekRecapTests {
                             WeekRecapTests.day(10, 13), WeekRecapTests.day(10, 17),
                             WeekRecapTests.day(10, 21), WeekRecapTests.day(10, 25),
                         ])))
-                let line = try #require(recap.topLine)
+                line = try #require(recap.topLine)
+            }
 
+            @Test("届かない量と、実際の速さと要るペースを並べること")
+            func showsShortfall() {
                 #expect(line.headline == "このままだと期限に 1.2 kg 届きません")
                 #expect(
                     line.sentence
@@ -245,8 +293,9 @@ struct WeekRecapTests {
 
         @Suite("直近 14 日の体重の記録が少ないとき")
         struct FewWeightRecords {
-            @Test("言い切らず、記録の日数を書くこと")
-            func showsRecordDayCount() throws {
+            let line: WeekRecap.TopLine
+
+            init() throws {
                 let recap = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(10, 19), today: WeekRecapTests.day(10, 27),
@@ -257,8 +306,11 @@ struct WeekRecapTests {
                             WeekRecapTests.day(10, 13), WeekRecapTests.day(10, 21),
                             WeekRecapTests.day(10, 25),
                         ])))
-                let line = try #require(recap.topLine)
+                line = try #require(recap.topLine)
+            }
 
+            @Test("言い切らず、記録の日数を書くこと")
+            func showsRecordDayCount() {
                 #expect(line.headline == "まだ言い切れません")
                 #expect(line.sentence == "直近 14 日の体重の記録が 3 日なので、傾向が定まっていません。")
             }
@@ -266,14 +318,18 @@ struct WeekRecapTests {
 
         @Suite("目標を立てて 14 日たっていないとき")
         struct BeforeFourteenDays {
-            @Test("いつペースを出すかを書くこと")
-            func showsWhenPaceAppears() throws {
+            let line: WeekRecap.TopLine
+
+            init() throws {
                 let recap = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(10, 5), today: WeekRecapTests.day(10, 13),
                         weightTrend: WeekRecapTests.trend([(WeekRecapTests.day(10, 11), 71.0)])))
-                let line = try #require(recap.topLine)
+                line = try #require(recap.topLine)
+            }
 
+            @Test("いつペースを出すかを書くこと")
+            func showsWhenPaceAppears() {
                 #expect(line.headline == "まだ言い切れません")
                 #expect(line.sentence == "目標を立てて 14 日たつと、間に合うペースかを出します。")
             }
@@ -281,24 +337,28 @@ struct WeekRecapTests {
 
         @Suite("今週のとき")
         struct InProgress {
-            @Test("日曜でなく今日で判定すること")
-            func judgesToday() throws {
+            let line: WeekRecap.TopLine
+
+            init() throws {
                 // 日曜（10月18日）なら 17 日たっているが、今日（10月13日）は 12 日
                 let recap = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(10, 13), today: WeekRecapTests.day(10, 13),
                         weightTrend: WeekRecapTests.trend([(WeekRecapTests.day(10, 13), 71.0)])))
+                line = try #require(recap.topLine)
+            }
 
-                #expect(
-                    try #require(recap.topLine).sentence
-                        == "目標を立てて 14 日たつと、間に合うペースかを出します。")
+            @Test("日曜でなく今日で判定すること")
+            func judgesToday() {
+                #expect(line.sentence == "目標を立てて 14 日たつと、間に合うペースかを出します。")
             }
         }
 
         @Suite("達成した週のとき")
         struct Achieved {
-            @Test("その週に起きたことを書くこと")
-            func showsAchievement() throws {
+            let line: WeekRecap.TopLine
+
+            init() throws {
                 let goal = try Goal.losing(
                     achievement: .inTokyo(
                         on: WeekRecapTests.day(11, 8), judgedAt: "2026-11-08T07:10:00+09:00"))
@@ -307,8 +367,11 @@ struct WeekRecapTests {
                         weekOf: WeekRecapTests.day(11, 2), today: WeekRecapTests.day(11, 10),
                         goals: [goal],
                         weightTrend: WeekRecapTests.trend([(WeekRecapTests.day(11, 8), 67.9)])))
-                let line = try #require(recap.topLine)
+                line = try #require(recap.topLine)
+            }
 
+            @Test("その週に起きたことを書くこと")
+            func showsAchievement() {
                 #expect(line.headline == "目標に届いた週です")
                 #expect(line.sentence == "11月8日に、体重の傾向が 68.0 kg に届きました。")
             }
@@ -372,8 +435,9 @@ struct WeekRecapTests {
 
         @Suite("期限の日を含む週のとき")
         struct DeadlineWeek {
-            @Test("期限の日の結果を書くこと")
-            func showsDeadlineResult() throws {
+            let line: WeekRecap.TopLine
+
+            init() throws {
                 let goal = try Goal.losing(
                     deadlineConfirmation: .inTokyo(
                         weightTrendKilograms: 68.4, confirmedAt: "2026-12-25T07:10:00+09:00"))
@@ -382,8 +446,11 @@ struct WeekRecapTests {
                         weekOf: WeekRecapTests.day(12, 21), today: WeekRecapTests.day(12, 29),
                         goals: [goal],
                         weightTrend: WeekRecapTests.trend([(WeekRecapTests.day(12, 27), 68.1)])))
-                let line = try #require(recap.topLine)
+                line = try #require(recap.topLine)
+            }
 
+            @Test("期限の日の結果を書くこと")
+            func showsDeadlineResult() {
                 #expect(line.headline == "期限の週です")
                 #expect(line.sentence == "12月24日の結果は、開始から −4.0 kg・目標まであと 0.4 kg でした。")
             }
@@ -391,31 +458,46 @@ struct WeekRecapTests {
 
         @Suite("維持の目標のとき")
         struct Maintaining {
-            static func recap(trend kilograms: Double) throws -> WeekRecap {
+            static func topLine(trend kilograms: Double) throws -> WeekRecap.TopLine {
                 // 10月20日に始めた、65.0 kg を保つ目標
-                try #require(
+                let recap = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(10, 26), today: WeekRecapTests.day(11, 3),
                         goals: [.maintaining()],
                         weightTrend: WeekRecapTests.trend([
                             (WeekRecapTests.day(11, 1), kilograms)
                         ])))
+                return try #require(recap.topLine)
             }
 
-            @Test("体重の傾向が幅に入っていれば、保てていると書くこと")
-            func withinBand() throws {
-                let line = try #require(try Self.recap(trend: 65.3).topLine)
+            @Suite("体重の傾向が幅に入っていれば")
+            struct WithinBand {
+                let line: WeekRecap.TopLine
 
-                #expect(line.headline == "保てています")
-                #expect(line.sentence == "体重の傾向は 65.3 kg で、65.0 kg を保つ幅（±0.7 kg）に入っています。")
+                init() throws {
+                    line = try Maintaining.topLine(trend: 65.3)
+                }
+
+                @Test("保てていると書くこと")
+                func saysKept() {
+                    #expect(line.headline == "保てています")
+                    #expect(line.sentence == "体重の傾向は 65.3 kg で、65.0 kg を保つ幅（±0.7 kg）に入っています。")
+                }
             }
 
-            @Test("体重の傾向が幅から外れていれば、外れていると書くこと")
-            func outsideBand() throws {
-                let line = try #require(try Self.recap(trend: 65.8).topLine)
+            @Suite("体重の傾向が幅から外れていれば")
+            struct OutsideBand {
+                let line: WeekRecap.TopLine
 
-                #expect(line.headline == "幅から外れています")
-                #expect(line.sentence == "体重の傾向は 65.8 kg で、65.0 kg を保つ幅（±0.7 kg）から外れています。")
+                init() throws {
+                    line = try Maintaining.topLine(trend: 65.8)
+                }
+
+                @Test("外れていると書くこと")
+                func saysOutside() {
+                    #expect(line.headline == "幅から外れています")
+                    #expect(line.sentence == "体重の傾向は 65.8 kg で、65.0 kg を保つ幅（±0.7 kg）から外れています。")
+                }
             }
         }
     }

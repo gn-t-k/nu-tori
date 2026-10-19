@@ -44,9 +44,10 @@ extension WeekRecapTests {
 
         @Suite("記録が4日未満のとき")
         struct FewRecords {
-            @Test("傾向の線を引かないこと")
-            func skipsTrendLine() throws {
-                let weight = try #require(
+            let weight: WeekRecap.Weight
+
+            init() throws {
+                weight = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(10, 12), today: WeekRecapTests.day(10, 20),
                         weightTrend: WeekRecapTests.trend([(WeekRecapTests.day(10, 14), 71.0)]),
@@ -54,7 +55,10 @@ extension WeekRecapTests {
                             WeekRecapTests.day(10, 14)
                         ]))
                 ).weight
+            }
 
+            @Test("傾向の線を引かないこと")
+            func skipsTrendLine() {
                 #expect(weight.trendLine == .tooFewRecordedDays)
                 #expect(weight.note == "傾向の線は、記録がたまると引きます")
             }

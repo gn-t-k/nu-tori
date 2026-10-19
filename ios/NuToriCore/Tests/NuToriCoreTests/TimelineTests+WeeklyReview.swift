@@ -327,7 +327,7 @@ extension TimelineTests {
             static func notice(
                 scene: WeeklyReviewScene, goals: [Goal]? = nil, guideGoalId: UUID? = nil,
                 kilocalories: Int, guideKilocalories: Int, mainReason: WeeklyReview.MainReason
-            ) throws -> DailyGuideChangeNotice? {
+            ) throws -> DailyGuideChangeNotice {
                 let estimate = scene.estimate(effectiveOn: monday, kilocalories: kilocalories)
                 let guide = scene.guide(
                     estimate: estimate, effectiveOn: monday, kilocalories: guideKilocalories,
@@ -340,174 +340,242 @@ extension TimelineTests {
                     ],
                     goals: goals, extraEstimates: [estimate], extraGuides: [guide],
                     weightRecords: [], today: monday)
-                return WeeklyReviewScene.changeNotice(in: timeline)
+                return try #require(WeeklyReviewScene.changeNotice(in: timeline))
             }
 
-            @Test("推定消費カロリーが上がったときは、上がったことを言うこと")
-            func expenditureIncreased() throws {
-                let notice = try #require(
-                    try Self.notice(
+            @Suite("推定消費カロリーが上がったとき")
+            struct ExpenditureIncreased {
+                let notice: DailyGuideChangeNotice
+
+                init() throws {
+                    notice = try ChangeReason.notice(
                         scene: try WeeklyReviewScene(), kilocalories: 2230,
-                        guideKilocalories: 1920, mainReason: .expenditureChange))
-                #expect(notice.reasonText == "推定消費カロリーが 2,190 から 2,230 kcal に上がったためです。")
-                #expect(notice.changeText == "+40 kcal")
+                        guideKilocalories: 1920, mainReason: .expenditureChange)
+                }
+
+                @Test("上がったことを言うこと")
+                func saysIncreased() {
+                    #expect(notice.reasonText == "推定消費カロリーが 2,190 から 2,230 kcal に上がったためです。")
+                    #expect(notice.changeText == "+40 kcal")
+                }
             }
 
-            @Test("1日に減らす分を増やしたときは、期限までの日が減ったことを言うこと")
-            func balanceIncreased() throws {
-                let notice = try #require(
-                    try Self.notice(
+            @Suite("1日に減らす分を増やしたとき")
+            struct BalanceIncreased {
+                let notice: DailyGuideChangeNotice
+
+                init() throws {
+                    notice = try ChangeReason.notice(
                         scene: try WeeklyReviewScene(), kilocalories: 2190,
-                        guideKilocalories: 1850, mainReason: .balanceChange))
-                #expect(notice.reasonText == "期限までの日が減り、1日に減らす分を増やしたためです。")
+                        guideKilocalories: 1850, mainReason: .balanceChange)
+                }
+
+                @Test("期限までの日が減ったことを言うこと")
+                func saysFewerDays() {
+                    #expect(notice.reasonText == "期限までの日が減り、1日に減らす分を増やしたためです。")
+                }
             }
 
-            @Test("1日に減らす分を減らしたときは、予定より進んでいることを言うこと")
-            func balanceDecreased() throws {
-                let notice = try #require(
-                    try Self.notice(
+            @Suite("1日に減らす分を減らしたとき")
+            struct BalanceDecreased {
+                let notice: DailyGuideChangeNotice
+
+                init() throws {
+                    notice = try ChangeReason.notice(
                         scene: try WeeklyReviewScene(), kilocalories: 2140,
-                        guideKilocalories: 1900, mainReason: .balanceChange))
-                #expect(notice.reasonText == "予定より進んでいるので、1日に減らす分を減らしたためです。")
+                        guideKilocalories: 1900, mainReason: .balanceChange)
+                }
+
+                @Test("予定より進んでいることを言うこと")
+                func saysAhead() {
+                    #expect(notice.reasonText == "予定より進んでいるので、1日に減らす分を減らしたためです。")
+                }
             }
 
-            @Test("維持で1日に戻す分を増やしたときは、体重の傾向に合わせたことを言うこと")
-            func maintenanceBalanceIncreased() throws {
-                let maintaining = try Goal.maintaining(
-                    startedOn: CalendarDay(year: 2026, month: 10, day: 1), kilograms: 72.4,
-                    decidedAt: "2026-10-01T08:30:00+09:00")
-                let notice = try #require(
-                    try Self.notice(
+            @Suite("維持で1日に戻す分を増やしたとき")
+            struct MaintenanceBalanceIncreased {
+                let notice: DailyGuideChangeNotice
+
+                init() throws {
+                    let maintaining = try Goal.maintaining(
+                        startedOn: CalendarDay(year: 2026, month: 10, day: 1), kilograms: 72.4,
+                        decidedAt: "2026-10-01T08:30:00+09:00")
+                    notice = try ChangeReason.notice(
                         scene: try WeeklyReviewScene(goal: maintaining), kilocalories: 2190,
-                        guideKilocalories: 1850, mainReason: .balanceChange))
-                #expect(notice.reasonText == "体重の傾向に合わせて、1日に戻す分を増やしたためです。")
+                        guideKilocalories: 1850, mainReason: .balanceChange)
+                }
+
+                @Test("体重の傾向に合わせたことを言うこと")
+                func saysFollowingTrend() {
+                    #expect(notice.reasonText == "体重の傾向に合わせて、1日に戻す分を増やしたためです。")
+                }
             }
 
-            @Test("達成したあとは、1日に減らす分をなくしていくことを言うこと")
-            func afterAchievement() throws {
-                let achieved = try Goal.losing(
-                    achievement: .inTokyo(
-                        on: CalendarDay(year: 2026, month: 10, day: 3),
-                        judgedAt: "2026-10-03T07:30:00+09:00"))
-                let notice = try #require(
-                    try Self.notice(
+            @Suite("達成したあと")
+            struct AfterAchievement {
+                let notice: DailyGuideChangeNotice
+
+                init() throws {
+                    let achieved = try Goal.losing(
+                        achievement: .inTokyo(
+                            on: CalendarDay(year: 2026, month: 10, day: 3),
+                            judgedAt: "2026-10-03T07:30:00+09:00"))
+                    notice = try ChangeReason.notice(
                         scene: try WeeklyReviewScene(goal: achieved), kilocalories: 2190,
-                        guideKilocalories: 1990, mainReason: .balanceChange))
-                #expect(notice.reasonText == "目標に届いたので、1日に減らす分をなくしていくためです。")
+                        guideKilocalories: 1990, mainReason: .balanceChange)
+                }
+
+                @Test("1日に減らす分をなくしていくことを言うこと")
+                func saysEndingDeficit() {
+                    #expect(notice.reasonText == "目標に届いたので、1日に減らす分をなくしていくためです。")
+                }
             }
 
-            @Test("期限後の維持に移った週は、今の体重を保つ目標に切り替えたことを言うこと")
-            func movedToMaintenance() throws {
-                let scene = try WeeklyReviewScene()
-                let maintenance = try Goal.maintaining(
-                    startedOn: Self.monday, kilograms: 70.5,
-                    decidedAt: "2026-10-05T06:10:00+09:00")
-                let closed = try Goal.losing(
-                    id: scene.goal.id,
-                    closure: Goal.Closure(
-                        endedDay: Self.monday, nextGoalId: maintenance.id,
-                        endReason: .movedToMaintenance))
-                let notice = try #require(
-                    try Self.notice(
+            @Suite("期限後の維持に移った週")
+            struct MovedToMaintenance {
+                let notice: DailyGuideChangeNotice
+
+                init() throws {
+                    let scene = try WeeklyReviewScene()
+                    let maintenance = try Goal.maintaining(
+                        startedOn: ChangeReason.monday, kilograms: 70.5,
+                        decidedAt: "2026-10-05T06:10:00+09:00")
+                    let closed = try Goal.losing(
+                        id: scene.goal.id,
+                        closure: Goal.Closure(
+                            endedDay: ChangeReason.monday, nextGoalId: maintenance.id,
+                            endReason: .movedToMaintenance))
+                    notice = try ChangeReason.notice(
                         scene: scene, goals: [closed, maintenance], guideGoalId: maintenance.id,
-                        kilocalories: 2190, guideKilocalories: 2190, mainReason: .balanceChange))
-                #expect(notice.reasonText == "今の体重を保つ目標に切り替えたためです。")
+                        kilocalories: 2190, guideKilocalories: 2190, mainReason: .balanceChange)
+                }
+
+                @Test("今の体重を保つ目標に切り替えたことを言うこと")
+                func saysSwitchedToMaintenance() {
+                    #expect(notice.reasonText == "今の体重を保つ目標に切り替えたためです。")
+                }
             }
         }
 
-        @Test("見出しの週の日付は、月をまたぐ週なら終わりの日にも月を書くこと")
-        func cardDaysTextAcrossMonths() throws {
-            let scene = try WeeklyReviewScene(
-                goal: try Goal.losing(startedOn: CalendarDay(year: 2026, month: 9, day: 1)))
-            let timeline = scene.timeline(
-                reviews: [
-                    try scene.deferred(
-                        effectiveOn: CalendarDay(year: 2026, month: 10, day: 5),
-                        reviewedAt: "2026-10-05T06:10:00+09:00")
-                ],
-                weightRecords: [], today: CalendarDay(year: 2026, month: 10, day: 5))
+        @Suite("月をまたぐ週の振り返りのカード")
+        struct AcrossMonths {
+            let card: WeeklyReviewCard
 
-            let card = try #require(WeeklyReviewScene.card(in: timeline))
-            #expect(card.daysText == "9月28日〜10月4日")
+            init() throws {
+                let scene = try WeeklyReviewScene(
+                    goal: try Goal.losing(startedOn: CalendarDay(year: 2026, month: 9, day: 1)))
+                let timeline = scene.timeline(
+                    reviews: [
+                        try scene.deferred(
+                            effectiveOn: CalendarDay(year: 2026, month: 10, day: 5),
+                            reviewedAt: "2026-10-05T06:10:00+09:00")
+                    ],
+                    weightRecords: [], today: CalendarDay(year: 2026, month: 10, day: 5))
+                card = try #require(WeeklyReviewScene.card(in: timeline))
+            }
+
+            @Test("見出しの週の日付は、終わりの日にも月を書くこと")
+            func cardDaysTextAcrossMonths() {
+                #expect(card.daysText == "9月28日〜10月4日")
+            }
         }
 
         @Suite("振り返りのカードのペースの1行")
         struct PaceLine {
-            @Test("間に合うときは、傾向の1週間の変化を出すこと")
-            func onTrack() throws {
-                let scene = try WeeklyReviewScene(
-                    goal: try Goal.losing(startedOn: CalendarDay(year: 2026, month: 9, day: 1)))
-                let records = try ["02", "04", "06", "08"].map {
-                    try WeightRecord.manual(
-                        71.5, at: "2026-10-\($0)T07:00:00+09:00", in: "Asia/Tokyo")
+            /// `goal` の、`monday` に見送った週の振り返りのカード
+            static func card(
+                goal: Goal? = nil, deferredOn monday: CalendarDay, reviewedAt: String,
+                weightRecords: [WeightRecord] = [], weightTrend: WeightTrend? = nil
+            ) throws -> WeeklyReviewCard {
+                let scene = try WeeklyReviewScene(goal: goal)
+                let timeline = scene.timeline(
+                    reviews: [try scene.deferred(effectiveOn: monday, reviewedAt: reviewedAt)],
+                    weightRecords: weightRecords, weightTrend: weightTrend, today: monday)
+                return try #require(WeeklyReviewScene.card(in: timeline))
+            }
+
+            /// 11月8日に達成した `Goal.losing()`
+            static func achieved() throws -> Goal {
+                try Goal.losing(
+                    achievement: .inTokyo(
+                        on: CalendarDay(year: 2026, month: 11, day: 8),
+                        judgedAt: "2026-11-08T07:30:00+09:00"))
+            }
+
+            @Suite("間に合うとき")
+            struct OnTrack {
+                let card: WeeklyReviewCard
+
+                init() throws {
+                    let records = try ["02", "04", "06", "08"].map {
+                        try WeightRecord.manual(
+                            71.5, at: "2026-10-\($0)T07:00:00+09:00", in: "Asia/Tokyo")
+                    }
+                    card = try PaceLine.card(
+                        goal: try Goal.losing(startedOn: CalendarDay(year: 2026, month: 9, day: 1)),
+                        deferredOn: CalendarDay(year: 2026, month: 10, day: 12),
+                        reviewedAt: "2026-10-12T06:10:00+09:00", weightRecords: records,
+                        weightTrend: WeightTrend(days: [
+                            .init(day: CalendarDay(year: 2026, month: 9, day: 27), kilograms: 72.0),
+                            .init(
+                                day: CalendarDay(year: 2026, month: 10, day: 11), kilograms: 71.0),
+                        ]))
                 }
-                let timeline = scene.timeline(
-                    reviews: [
-                        try scene.deferred(
-                            effectiveOn: CalendarDay(year: 2026, month: 10, day: 12),
-                            reviewedAt: "2026-10-12T06:10:00+09:00")
-                    ],
-                    weightRecords: records,
-                    weightTrend: WeightTrend(days: [
-                        .init(day: CalendarDay(year: 2026, month: 9, day: 27), kilograms: 72.0),
-                        .init(day: CalendarDay(year: 2026, month: 10, day: 11), kilograms: 71.0),
-                    ]), today: CalendarDay(year: 2026, month: 10, day: 12))
 
-                let card = try #require(WeeklyReviewScene.card(in: timeline))
-                #expect(card.paceText == "間に合うペース・−0.5 kg／週")
+                @Test("傾向の1週間の変化を出すこと")
+                func showsWeeklyChange() {
+                    #expect(card.paceText == "間に合うペース・−0.5 kg／週")
+                }
             }
 
-            @Test("その週に達成していたら、達成した日を出すこと")
-            func achieved() throws {
-                let goal = try Goal.losing(
-                    achievement: .inTokyo(
-                        on: CalendarDay(year: 2026, month: 11, day: 8),
-                        judgedAt: "2026-11-08T07:30:00+09:00"))
-                let scene = try WeeklyReviewScene(goal: goal)
-                let timeline = scene.timeline(
-                    reviews: [
-                        try scene.deferred(
-                            effectiveOn: CalendarDay(year: 2026, month: 11, day: 9),
-                            reviewedAt: "2026-11-09T06:10:00+09:00")
-                    ],
-                    weightRecords: [], today: CalendarDay(year: 2026, month: 11, day: 9))
+            @Suite("その週に達成していたとき")
+            struct AchievedThisWeek {
+                let card: WeeklyReviewCard
 
-                let card = try #require(WeeklyReviewScene.card(in: timeline))
-                #expect(card.paceText == "11月8日に 68.0 kg を達成しました")
+                init() throws {
+                    card = try PaceLine.card(
+                        goal: try PaceLine.achieved(),
+                        deferredOn: CalendarDay(year: 2026, month: 11, day: 9),
+                        reviewedAt: "2026-11-09T06:10:00+09:00")
+                }
+
+                @Test("達成した日を出すこと")
+                func showsAchievedDay() {
+                    #expect(card.paceText == "11月8日に 68.0 kg を達成しました")
+                }
             }
 
-            @Test("達成した週のあとの週は、目標に届いていて次の目標を選べることを出すこと")
-            func afterAchievedWeek() throws {
-                let goal = try Goal.losing(
-                    achievement: .inTokyo(
-                        on: CalendarDay(year: 2026, month: 11, day: 8),
-                        judgedAt: "2026-11-08T07:30:00+09:00"))
-                let scene = try WeeklyReviewScene(goal: goal)
-                let timeline = scene.timeline(
-                    reviews: [
-                        try scene.deferred(
-                            effectiveOn: CalendarDay(year: 2026, month: 11, day: 16),
-                            reviewedAt: "2026-11-16T06:10:00+09:00")
-                    ],
-                    weightRecords: [], today: CalendarDay(year: 2026, month: 11, day: 16))
+            @Suite("達成した週のあとの週のとき")
+            struct AfterAchievedWeek {
+                let card: WeeklyReviewCard
 
-                let card = try #require(WeeklyReviewScene.card(in: timeline))
-                #expect(card.paceText == "目標に届いています・次の目標を選べます")
+                init() throws {
+                    card = try PaceLine.card(
+                        goal: try PaceLine.achieved(),
+                        deferredOn: CalendarDay(year: 2026, month: 11, day: 16),
+                        reviewedAt: "2026-11-16T06:10:00+09:00")
+                }
+
+                @Test("目標に届いていて次の目標を選べることを出すこと")
+                func showsReachedAndNextGoal() {
+                    #expect(card.paceText == "目標に届いています・次の目標を選べます")
+                }
             }
 
-            @Test("期限の日を過ぎた週は、期限の日を出すこと")
-            func deadlinePassed() throws {
-                let scene = try WeeklyReviewScene()
-                let timeline = scene.timeline(
-                    reviews: [
-                        try scene.deferred(
-                            effectiveOn: CalendarDay(year: 2026, month: 12, day: 28),
-                            reviewedAt: "2026-12-28T06:10:00+09:00")
-                    ],
-                    weightRecords: [], today: CalendarDay(year: 2026, month: 12, day: 28))
+            @Suite("期限の日を過ぎた週のとき")
+            struct DeadlinePassed {
+                let card: WeeklyReviewCard
 
-                let card = try #require(WeeklyReviewScene.card(in: timeline))
-                #expect(card.paceText == "12月24日が期限でした")
+                init() throws {
+                    card = try PaceLine.card(
+                        deferredOn: CalendarDay(year: 2026, month: 12, day: 28),
+                        reviewedAt: "2026-12-28T06:10:00+09:00")
+                }
+
+                @Test("期限の日を出すこと")
+                func showsDeadline() {
+                    #expect(card.paceText == "12月24日が期限でした")
+                }
             }
         }
 
