@@ -32,7 +32,8 @@
                     undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [second, first], statuses: [:], replies: [], streams: [:]),
-                    goals: [], dailyGuides: [])
+                    goals: [], dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                    weightTrend: nil)
             }
 
             @Test("サーバーがミリ秒に丸めても、送った順に並ぶこと")

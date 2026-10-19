@@ -22,7 +22,8 @@ extension TimelineTests {
                                 classification: .conversation, reply: .awaiting)
                         ],
                         replies: replies,
-                        streams: [sentText.id: stream]), goals: [], dailyGuides: []),
+                        streams: [sentText.id: stream]), goals: [], dailyGuides: [],
+                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                 firstDay: day, today: day
             ).days.flatMap(\.items)
         }
@@ -105,7 +106,8 @@ extension TimelineTests {
                                     classification: .conversation, reply: .awaiting)
                             ],
                             replies: replies,
-                            streams: [sentText.id: stream]), goals: [], dailyGuides: []),
+                            streams: [sentText.id: stream]), goals: [], dailyGuides: [],
+                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                     firstDay: Self.day, today: Self.day)
             }
             let growing = Self.stream([.replyStarted(replyId: replyId), .textDelta("野菜の")])

@@ -71,7 +71,7 @@ public struct UndeliveredRecords: Hashable, Sendable {
                 }
         case .sentText(let bubble): containsSentText(id: bubble.sentText.id)
         case .rejectedWeightLine, .rejectedMealLine, .notice, .goalSetupNotice,
-            .rejectedSentTextLine,
+            .rejectedSentTextLine, .weeklyReviewCard, .dailyGuideChangeNotice, .goalNotice,
             .reply:
             false
         }

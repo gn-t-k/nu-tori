@@ -36,7 +36,8 @@ extension TimelineTests {
                             AiUtterance(
                                 id: UUID(), body: "この食事のことですね。", sentTextId: sentText.id,
                                 mealIds: [dinner.meal.id, deletedMealId, lunch.meal.id])
-                        ], streams: [:]), goals: [], dailyGuides: []),
+                        ], streams: [:]), goals: [], dailyGuides: [], weeklyReviews: [],
+                    expenditureEstimates: [], weightTrend: nil),
                 // 使い始めた日より前の食事も指せる
                 firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                 today: CalendarDay(year: 2026, month: 9, day: 24))
