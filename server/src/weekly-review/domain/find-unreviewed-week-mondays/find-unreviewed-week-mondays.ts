@@ -1,5 +1,6 @@
 import { addDays } from "../../../domain/add-days";
 import { computeStartOfWeek } from "../../../domain/compute-start-of-week";
+import { daysPerWeek } from "../../../domain/days-per-week";
 
 // まだ見直していない週を、新しい1日の目安を当てる月曜（YYYY-MM-DD）の古い順に返す。
 // 最も遅い見直し（見送りを含む）の次の月曜から、無ければ最初の目標の開始の日のあとの最初の月曜から、今週の月曜まで。
@@ -36,5 +37,3 @@ export const findUnreviewedWeekMondays = ({
   }
   return mondays;
 };
-
-const daysPerWeek = 7;

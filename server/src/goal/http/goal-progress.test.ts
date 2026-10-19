@@ -6,6 +6,7 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { addDays } from "../../domain/add-days";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
+import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
@@ -21,8 +22,6 @@ import {
 } from "../../observability/testing";
 import { updateAccountSettingsWrite } from "../../account-settings/http/testing/update-account-settings-write";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
-
-const millisecondsPerDay = 86_400_000;
 
 // その日（YYYY-MM-DD）の日本時間の正午に時計を合わせる
 const setClockTo = (calendarDay: string) => {

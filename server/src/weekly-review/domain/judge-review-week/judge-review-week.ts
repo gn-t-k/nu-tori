@@ -4,6 +4,7 @@ import { excludePartiallyRecordedDays } from "../../../expenditure-estimate/doma
 import type { InitialExpenditureSource } from "../../../expenditure-estimate/domain/expenditure-estimate";
 import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
 import type { WeeklyReviewDeferralReason } from "../weekly-review";
+import { daysPerWeek } from "../../../domain/days-per-week";
 
 export type ReviewWeekInputs = {
   // 見直す月曜 M（YYYY-MM-DD）。見直す入力の週は M の前の月〜日
@@ -95,8 +96,6 @@ const computeWeightChange = (
     ? undefined
     : { actualWeightChangeKg: end.trendKg - start.trendKg, sundayWeightTrendKg: end.trendKg };
 };
-
-const daysPerWeek = 7;
 
 // 部分的な記録の日を決める中央値を出す日数（M より前）
 const partialDayWindowDays = 28;

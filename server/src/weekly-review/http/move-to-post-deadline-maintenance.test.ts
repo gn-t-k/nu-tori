@@ -23,11 +23,8 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { recordMealEnergies } from "./testing/record-meal-energies";
-
-const millisecondsPerDay = 86_400_000;
-
-const daysFrom = (from: string, count: number): string[] =>
-  Array.from({ length: count }, (_, offset) => addDays(from, offset));
+import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
+import { daysFrom } from "../testing/days-from";
 
 type Change = Omit<PullResult["changes"][number], "sequence">;
 

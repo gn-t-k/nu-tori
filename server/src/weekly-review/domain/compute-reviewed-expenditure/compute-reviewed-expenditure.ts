@@ -1,6 +1,7 @@
 import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
 import type { ExpenditureDeviationDirection } from "../../../expenditure-estimate/domain/expenditure-estimate";
 import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
+import { daysPerWeek } from "../../../domain/days-per-week";
 
 export type ReviewedExpenditureInputs = {
   // 見直す週に当たっていた推定（最も遅い推定）
@@ -73,8 +74,6 @@ const countContinuedWeeks = (
   const changedAt = reviewedDirections.findIndex((direction) => direction !== deviationDirection);
   return changedAt === -1 ? reviewedDirections.length : changedAt;
 };
-
-const daysPerWeek = 7;
 
 // k の係数と上限。出荷後に調整する初期値
 const baseGain = 0.25;
