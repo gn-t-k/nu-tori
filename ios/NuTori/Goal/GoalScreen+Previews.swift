@@ -22,39 +22,40 @@
             case achieved
 
             var overview: GoalOverview? {
-                let scene = WeeklyReviewPreviewScene.self
+                let goal = Goal.sampleWeeklyReviewed
+                let monday = WeeklyReview.sampleMonday
                 switch self {
                 case .inProgressFigures:
                     return overview(
-                        goal: scene.goal, guides: [scene.firstGuide, scene.reviewedGuide],
-                        estimates: [scene.firstEstimate, scene.reviewedEstimate],
-                        reviews: [scene.review()])
+                        goal: goal, guides: [DailyGuide.sampleFirst, .sampleReviewed],
+                        estimates: [ExpenditureEstimate.sampleFirst, .sampleReviewed],
+                        reviews: [WeeklyReview.sampleReviewed])
                 case .inProgressDrawn:
                     let later = (1...3).map { week in
-                        let monday = scene.monday.advanced(by: 7 * week)
+                        let weekMonday = monday.advanced(by: 7 * week)
                         let estimate = ExpenditureEstimate(
-                            id: UUID(), effectiveDay: monday,
+                            id: UUID(), effectiveDay: weekMonday,
                             expenditureKilocalories: 2140 - week * 20,
-                            estimatedAt: scene.goal.decidedAt, initialSource: nil)
+                            estimatedAt: goal.decidedAt, initialSource: nil)
                         let guide = DailyGuide(
-                            id: UUID(), goalId: scene.goal.id, expenditureEstimateId: estimate.id,
-                            effectiveDay: monday, energyKilocalories: 1850 - week * 15,
+                            id: UUID(), goalId: goal.id, expenditureEstimateId: estimate.id,
+                            effectiveDay: weekMonday, energyKilocalories: 1850 - week * 15,
                             proteinGrams: 130, fatGrams: 50, carbohydrateGrams: 215,
                             limitHits: [])
                         return (estimate, guide)
                     }
                     let deferred = WeeklyReview(
-                        id: UUID(), effectiveDay: scene.monday.advanced(by: 28),
-                        reviewedAt: scene.goal.decidedAt, timeZone: scene.goal.timeZone,
-                        outcome: .deferred(reason: .fewMealRecords, goalId: scene.goal.id))
+                        id: UUID(), effectiveDay: monday.advanced(by: 28),
+                        reviewedAt: goal.decidedAt, timeZone: goal.timeZone,
+                        outcome: .deferred(reason: .fewMealRecords, goalId: goal.id))
                     return overview(
-                        goal: scene.goal,
-                        guides: [scene.firstGuide, scene.reviewedGuide] + later.map(\.1),
-                        estimates: [scene.firstEstimate, scene.reviewedEstimate] + later.map(\.0),
-                        reviews: [scene.review(), deferred],
-                        today: scene.monday.advanced(by: 30))
+                        goal: goal,
+                        guides: [DailyGuide.sampleFirst, .sampleReviewed] + later.map(\.1),
+                        estimates: [ExpenditureEstimate.sampleFirst, .sampleReviewed]
+                            + later.map(\.0),
+                        reviews: [WeeklyReview.sampleReviewed, deferred],
+                        today: monday.advanced(by: 30))
                 case .achieved:
-                    let goal = scene.goal
                     let achieved = Goal(
                         id: goal.id, startedDay: goal.startedDay,
                         startingWeightTrendKilograms: goal.startingWeightTrendKilograms,
@@ -66,9 +67,9 @@
                             timeZone: goal.timeZone),
                         deadlineConfirmation: nil, closure: nil)
                     return overview(
-                        goal: achieved, guides: [scene.firstGuide, scene.reviewedGuide],
-                        estimates: [scene.firstEstimate, scene.reviewedEstimate],
-                        reviews: [scene.review()])
+                        goal: achieved, guides: [DailyGuide.sampleFirst, .sampleReviewed],
+                        estimates: [ExpenditureEstimate.sampleFirst, .sampleReviewed],
+                        reviews: [WeeklyReview.sampleReviewed])
                 }
             }
 
@@ -81,8 +82,8 @@
                     records: GoalRecords(
                         goals: [goal], dailyGuides: guides, expenditureEstimates: estimates,
                         weeklyReviews: reviews,
-                        weightTrend: WeeklyReviewPreviewScene.weightTrend,
-                        weightRecords: WeeklyReviewPreviewScene.weightRecords))
+                        weightTrend: .sampleWeeklyReviewed,
+                        weightRecords: WeeklyReview.sampleWeekWeightRecords))
             }
         }
     }

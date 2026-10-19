@@ -24,22 +24,28 @@
             var monday: CalendarDay {
                 switch self {
                 case .reviewedFirstWeek, .deferred, .unavailable:
-                    WeeklyReviewPreviewScene.goal.startedDay.startOfWeek
-                case .inProgress: WeeklyReviewPreviewScene.monday
+                    Goal.sampleWeeklyReviewed.startedDay.startOfWeek
+                case .inProgress: WeeklyReview.sampleMonday
                 }
             }
 
             func recap(monday: CalendarDay) -> WeekRecap? {
-                let scene = WeeklyReviewPreviewScene.self
-                let goals = self == .unavailable ? [] : [scene.goal]
+                let goals: [Goal] = self == .unavailable ? [] : [.sampleWeeklyReviewed]
                 return WeekRecap(
                     weekOf: monday, today: .sampleToday,
                     records: GoalRecords(
-                        goals: goals, dailyGuides: [scene.firstGuide, scene.reviewedGuide],
-                        expenditureEstimates: [scene.firstEstimate, scene.reviewedEstimate],
-                        weeklyReviews: [scene.review(deferred: self == .deferred)],
-                        weightTrend: scene.weightTrend, weightRecords: scene.weightRecords),
-                    meals: scene.meals)
+                        goals: goals, dailyGuides: [.sampleFirst, .sampleReviewed],
+                        expenditureEstimates: [.sampleFirst, .sampleReviewed],
+                        weeklyReviews: [review], weightTrend: .sampleWeeklyReviewed,
+                        weightRecords: WeeklyReview.sampleWeekWeightRecords),
+                    meals: WeeklyReview.sampleWeekMeals)
+            }
+
+            private var review: WeeklyReview {
+                switch self {
+                case .reviewedFirstWeek, .inProgress, .unavailable: .sampleReviewed
+                case .deferred: .sampleDeferred
+                }
             }
         }
     }
