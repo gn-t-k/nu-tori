@@ -17,8 +17,7 @@
 
             var notice: DailyGuideChangeNotice {
                 DailyGuideChangeNotice(
-                    review: WeeklyReviewPreviewScene.review(),
-                    dailyGuide: WeeklyReviewPreviewScene.reviewedGuide,
+                    review: .sampleReviewed, dailyGuide: .sampleReviewed,
                     changeKilocalories: -30,
                     reason: .expenditureChanged(fromKilocalories: 2190, toKilocalories: 2140),
                     batch: self == .batch

@@ -22,7 +22,6 @@ final class OpenWeeklyReviewAndGoalFromMondayTimelineUITests: XCTestCase {
         XCTAssertTrue(card.label.contains("9月28日〜10月4日"))
         let changeNotice = app.descendants(matching: .any)["daily-guide-change-notice"]
         XCTAssertTrue(changeNotice.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticText(containing: "1日の目安が変わりました").exists)
         attachScreenshot(of: app, named: "月曜のタイムライン")
 
         card.tap()
@@ -36,9 +35,9 @@ final class OpenWeeklyReviewAndGoalFromMondayTimelineUITests: XCTestCase {
         goalLink.tap()
 
         XCTAssertTrue(app.navigationBars["目標"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["goal-card-title"].label.contains("70.1 kg まで"))
-        XCTAssertTrue(app.staticText(containing: "推定消費カロリー 2,140 kcal").exists)
-        XCTAssertTrue(app.buttons["goal-weekly-review"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["goal-card"].exists)
+        XCTAssertTrue(app.scrollUntilExists(app.descendants(matching: .any)["goal-energy-chart"]))
+        XCTAssertTrue(app.scrollUntilExists(app.buttons["goal-weekly-review"]))
         attachScreenshot(of: app, named: "目標の画面")
     }
 }

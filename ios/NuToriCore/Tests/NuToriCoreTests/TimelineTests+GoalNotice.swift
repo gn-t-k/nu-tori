@@ -85,6 +85,30 @@ extension TimelineTests {
             }
         }
 
+        @Suite("期限の日の体重の傾向が目標体重を越えて確定したとき")
+        struct DeadlineReachedBeyondTarget {
+            let notice: GoalNotice?
+
+            init() throws {
+                let goal = try GoalNoticeScene.losing(
+                    confirmedAt: "2026-12-25T06:10:00+09:00", deadlineWeightTrendKilograms: 67.6)
+                notice =
+                    GoalNoticeScene.notices(
+                        in: GoalNoticeScene.timeline(
+                            goals: [goal], weightRecords: [],
+                            today: CalendarDay(year: 2026, month: 12, day: 25))
+                    ).first
+            }
+
+            @Test("目標まであと 0.0 kg だったと言うこと")
+            func saysNoneRemaining() {
+                #expect(
+                    notice?.body
+                        == "開始から −4.8 kg・目標まであと 0.0 kg でした。選ばなければ、12月28日（月）から今の体重を保つ目標で続けます。"
+                )
+            }
+        }
+
         @Suite("達成と期限の日の確定の両方があるとき")
         struct BothAchievedAndConfirmed {
             let goal: Goal
