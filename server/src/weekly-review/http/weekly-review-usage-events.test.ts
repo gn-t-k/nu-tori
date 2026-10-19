@@ -113,9 +113,14 @@ describe("週の見直しの出来事", () => {
       );
     });
 
-    test("同じ週を2回見直さず、2回めの要求では送らないこと", async () => {
-      await pullSyncChanges(sessionToken);
-      expect(readWeeklyReviewEvents()).toHaveLength(1);
+    describe("同じ週にもう一度取りに行ったとき", () => {
+      beforeEach(async () => {
+        await pullSyncChanges(sessionToken);
+      });
+
+      test("同じ週を2回見直さず、2回めの要求では送らないこと", () => {
+        expect(readWeeklyReviewEvents()).toHaveLength(1);
+      });
     });
   });
 

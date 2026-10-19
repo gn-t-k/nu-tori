@@ -175,12 +175,17 @@ describe("期限後の維持に移る見直し", () => {
       ).toEqual(["previous_goal", "maintenance_goal", "daily_guide", "weekly_review"]);
     });
 
-    test("次の週の見直しでは、もう移らないこと", async () => {
-      vi.setSystemTime(Date.now() + 7 * millisecondsPerDay);
-      await pullChanges();
-      expect(
-        await readRows(accountId, "SELECT goal_id FROM post_deadline_maintenance_goals"),
-      ).toEqual([{ goal_id: maintenanceGoalId }]);
+    describe("次の週の見直しのとき", () => {
+      beforeEach(async () => {
+        vi.setSystemTime(Date.now() + 7 * millisecondsPerDay);
+        await pullChanges();
+      });
+
+      test("もう移らないこと", async () => {
+        expect(
+          await readRows(accountId, "SELECT goal_id FROM post_deadline_maintenance_goals"),
+        ).toEqual([{ goal_id: maintenanceGoalId }]);
+      });
     });
   });
 

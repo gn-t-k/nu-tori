@@ -143,30 +143,51 @@ describe("目標の達成と期限の日の結果", () => {
       });
     });
 
-    test("期限の日のうちは確定しないこと", async () => {
-      setClockTo(addDays(goalStartedOn, 2));
-      expect((await pullGoal())?.["deadlineConfirmation"]).toBeUndefined();
-    });
+    describe("期限の日のうちのとき", () => {
+      let goal: Awaited<ReturnType<typeof pullGoal>>;
+      beforeEach(async () => {
+        setClockTo(addDays(goalStartedOn, 2));
+        goal = await pullGoal();
+      });
 
-    test("期限の日の翌日の最初の要求で、期限の日の体重の傾向を確定すること", async () => {
-      setClockTo(addDays(goalStartedOn, 3));
-      expect((await pullGoal())?.["deadlineConfirmation"]).toEqual({
-        deadlineWeightTrendKg: 71,
-        confirmedAt: Date.now(),
-        timeZone: "Asia/Tokyo",
+      test("確定しないこと", () => {
+        expect(goal?.["deadlineConfirmation"]).toBeUndefined();
       });
     });
 
-    test("確定のあとに遅れて届いた期限の日の体重では、確定した値を変えず、達成にもしないこと", async () => {
-      setClockTo(addDays(goalStartedOn, 3));
-      const confirmed = (await pullGoal())?.["deadlineConfirmation"];
-      setClockTo(addDays(goalStartedOn, 4));
-      await sendWeights([addDays(goalStartedOn, 2)], 60, { isFinalBatch: true });
-      const goal = await pullGoal();
-      expect({
-        deadlineConfirmation: goal?.["deadlineConfirmation"],
-        achievement: goal?.["achievement"],
-      }).toEqual({ deadlineConfirmation: confirmed, achievement: undefined });
+    describe("期限の日の翌日のとき", () => {
+      let goal: Awaited<ReturnType<typeof pullGoal>>;
+      beforeEach(async () => {
+        setClockTo(addDays(goalStartedOn, 3));
+        goal = await pullGoal();
+      });
+
+      test("最初の要求で、期限の日の体重の傾向を確定すること", () => {
+        expect(goal?.["deadlineConfirmation"]).toEqual({
+          deadlineWeightTrendKg: 71,
+          confirmedAt: Date.now(),
+          timeZone: "Asia/Tokyo",
+        });
+      });
+    });
+
+    describe("確定のあとに期限の日の体重が遅れて届いたとき", () => {
+      let confirmed: unknown;
+      let goal: Awaited<ReturnType<typeof pullGoal>>;
+      beforeEach(async () => {
+        setClockTo(addDays(goalStartedOn, 3));
+        confirmed = (await pullGoal())?.["deadlineConfirmation"];
+        setClockTo(addDays(goalStartedOn, 4));
+        await sendWeights([addDays(goalStartedOn, 2)], 60, { isFinalBatch: true });
+        goal = await pullGoal();
+      });
+
+      test("確定した値を変えず、達成にもしないこと", () => {
+        expect({
+          deadlineConfirmation: goal?.["deadlineConfirmation"],
+          achievement: goal?.["achievement"],
+        }).toEqual({ deadlineConfirmation: confirmed, achievement: undefined });
+      });
     });
   });
 
