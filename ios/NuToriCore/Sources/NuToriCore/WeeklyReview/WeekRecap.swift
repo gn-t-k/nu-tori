@@ -20,6 +20,12 @@ public struct WeekRecap: Hashable, Sendable {
     public let topLine: TopLine?
     /// 次の週の1日の目安。今週と、見直しやその指す記録がまだ届いていない週は nil
     public let nextWeekGuide: NextWeekGuide?
+    /// ‹ で送る前の週の月曜。前の週を含む目標が無ければ（目標を立てた週）nil
+    public let previousMonday: CalendarDay?
+    /// › で送る次の週の月曜。今週はいちばん新しい週なので nil
+    public let nextMonday: CalendarDay?
+    /// 今日を含む週から何週前か。今週は 0
+    public let weeksAgo: Int
 
     /// その週の日曜を含む目標が無ければ（目標を立てる前の週）nil
     /// - Parameters:
@@ -41,6 +47,18 @@ public struct WeekRecap: Hashable, Sendable {
         dailyGuide = guideOfWeek.dailyGuide
         weekNumber = goal.startedDay.startOfWeek.distance(to: monday) / 7 + 1
         isInProgress = today <= sunday
+        weeksAgo = monday.distance(to: today.startOfWeek) / 7
+        previousMonday =
+            DailyGuideForDay(
+                on: monday.advanced(by: -1), goals: records.goals, dailyGuides: records.dailyGuides
+            )
+            .map { _ in monday.advanced(by: -7) }
+        nextMonday =
+            !isInProgress
+                && DailyGuideForDay(
+                    on: sunday.advanced(by: 7), goals: records.goals,
+                    dailyGuides: records.dailyGuides) != nil
+            ? monday.advanced(by: 7) : nil
         let mealsByDay = Dictionary(grouping: meals, by: \.meal.day)
         let weightsByDay = Dictionary(
             RepresentativeWeight.daily(of: records.weightRecords).map {
@@ -55,7 +73,8 @@ public struct WeekRecap: Hashable, Sendable {
                 weightKilograms: weightsByDay[$0])
         }
         averageFood = AverageFood(days: days)
-        weight = Weight(shownDays: firstShownDay...lastShownDay, days: days, records: records)
+        weight = Weight(
+            goal: goal, shownDays: firstShownDay...lastShownDay, days: days, records: records)
         topLine = TopLine(goal: goal, judgedDay: min(sunday, today), records: records)
         nextWeekGuide =
             isInProgress
