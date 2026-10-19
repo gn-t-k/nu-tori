@@ -159,7 +159,7 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
       });
     });
 
-    test("閉じた目標が、向きが増量で、次の目標の開始の日を終わった日として、次の目標の ID と一緒に届くこと", async () => {
+    test("閉じた目標が、向きが増量で、次の目標の開始の日を終わった日として、次の目標の ID と、切り替えの終わり方と一緒に届くこと", async () => {
       const [closed] = await pullChanges();
       expect(closed).toEqual({
         kind: "goal",
@@ -173,7 +173,7 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
           timeZone: "Asia/Tokyo",
           direction: "gain",
           weightChange: { deadlineOn: "2027-01-31", pacePlan: "custom" },
-          closure: { endedOn: "2026-10-20", nextGoalId },
+          closure: { endedOn: "2026-10-20", nextGoalId, endReason: "switched" },
         },
       });
     });
@@ -190,6 +190,106 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
           targetWeightKg: 56,
           decidedAt: Date.parse("2026-10-20T10:00:00Z"),
           timeZone: "America/Los_Angeles",
+          direction: "maintain",
+        },
+      });
+    });
+  });
+
+  describe("達成して期限の日が確定した減量の目標を、期限後の維持の目標で閉じたとき", () => {
+    let closedGoalId: RecordId;
+    let maintenanceGoalId: RecordId;
+    beforeEach(async () => {
+      closedGoalId = generateRecordId();
+      maintenanceGoalId = generateRecordId();
+      await seed(async (factory) => {
+        await factory.goals.create({
+          id: closedGoalId,
+          startedOn: "2026-08-01",
+          startingWeightTrendKg: 72,
+          targetWeightKg: 68,
+          decidedAt: new Date("2026-08-01T03:00:00Z"),
+          timeZone: "Asia/Tokyo",
+        });
+        await factory.weightChangeGoals.create({
+          goalId: closedGoalId,
+          deadlineOn: "2026-10-11",
+          pacePlan: "standard",
+        });
+        await factory.goalAchievements.create({
+          goalId: closedGoalId,
+          achievedOn: "2026-10-03",
+          judgedAt: new Date("2026-10-04T23:00:00Z"),
+          timeZone: "America/Los_Angeles",
+        });
+        await factory.goalDeadlineConfirmations.create({
+          goalId: closedGoalId,
+          deadlineWeightTrendKg: 67.8,
+          confirmedAt: new Date("2026-10-12T00:30:00Z"),
+          timeZone: "Asia/Tokyo",
+        });
+        await factory.goals.create({
+          id: maintenanceGoalId,
+          startedOn: "2026-10-12",
+          startingWeightTrendKg: 67.8,
+          targetWeightKg: 67.8,
+          decidedAt: new Date("2026-10-12T00:30:00Z"),
+          timeZone: "Asia/Tokyo",
+        });
+        await factory.goalClosures.create({ goalId: closedGoalId, nextGoalId: maintenanceGoalId });
+        await factory.postDeadlineMaintenanceGoals.create({ goalId: maintenanceGoalId });
+        return [
+          { recordType: "goal", recordId: closedGoalId },
+          { recordType: "goal", recordId: maintenanceGoalId },
+        ];
+      });
+    });
+
+    test("閉じた目標が、達成と期限の日の確定と、期限後の維持に移った終わり方と一緒に届くこと", async () => {
+      const [closed] = await pullChanges();
+      expect(closed).toEqual({
+        kind: "goal",
+        recordId: closedGoalId,
+        record: {
+          id: closedGoalId,
+          startedOn: "2026-08-01",
+          startingWeightTrendKg: 72,
+          targetWeightKg: 68,
+          decidedAt: Date.parse("2026-08-01T03:00:00Z"),
+          timeZone: "Asia/Tokyo",
+          direction: "lose",
+          weightChange: { deadlineOn: "2026-10-11", pacePlan: "standard" },
+          achievement: {
+            achievedOn: "2026-10-03",
+            judgedAt: Date.parse("2026-10-04T23:00:00Z"),
+            timeZone: "America/Los_Angeles",
+          },
+          deadlineConfirmation: {
+            deadlineWeightTrendKg: 67.8,
+            confirmedAt: Date.parse("2026-10-12T00:30:00Z"),
+            timeZone: "Asia/Tokyo",
+          },
+          closure: {
+            endedOn: "2026-10-12",
+            nextGoalId: maintenanceGoalId,
+            endReason: "moved_to_maintenance",
+          },
+        },
+      });
+    });
+
+    test("期限後の維持の目標が、達成も確定も終わりも持たずに届くこと", async () => {
+      const [, maintenance] = await pullChanges();
+      expect(maintenance).toEqual({
+        kind: "goal",
+        recordId: maintenanceGoalId,
+        record: {
+          id: maintenanceGoalId,
+          startedOn: "2026-10-12",
+          startingWeightTrendKg: 67.8,
+          targetWeightKg: 67.8,
+          decidedAt: Date.parse("2026-10-12T00:30:00Z"),
+          timeZone: "Asia/Tokyo",
           direction: "maintain",
         },
       });

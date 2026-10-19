@@ -135,6 +135,8 @@ export const buildReplyContextSource = {
     decidedAt: new Date(`${startedOn}T03:00:00Z`),
     timeZone: "Asia/Tokyo",
     weightChange,
+    achievement: undefined,
+    deadlineConfirmation: undefined,
     closure,
   }),
 

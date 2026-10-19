@@ -1,6 +1,10 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import type { RecordId } from "../../domain/record-id";
-import { initialExpenditureSources } from "../domain/expenditure-estimate";
+import { weeklyReviewTables } from "../../weekly-review/durable-object/weekly-review-tables";
+import {
+  expenditureDeviationDirections,
+  initialExpenditureSources,
+} from "../domain/expenditure-estimate";
 
 const expenditureEstimates = sqliteTable("expenditure_estimates", {
   id: text("id").$type<RecordId>().primaryKey(),
@@ -18,8 +22,30 @@ const initialExpenditureEstimates = sqliteTable("initial_expenditure_estimates",
   source: text("source", { enum: initialExpenditureSources }).notNull(),
 });
 
-// 推定消費カロリーの表（#523）。どの表も書き足すだけ。宣言は durable-object-migrations/ の SQL に合わせる
+// 週の見直しが書いた推定（#613）。1つの見直しに1行。ずれの向きは次の見直しで続いた週の数を数えるのに使う
+const reviewedExpenditureEstimates = sqliteTable(
+  "reviewed_expenditure_estimates",
+  {
+    expenditureEstimateId: text("expenditure_estimate_id")
+      .$type<RecordId>()
+      .primaryKey()
+      .references(() => expenditureEstimates.id),
+    weeklyReviewId: text("weekly_review_id")
+      .$type<RecordId>()
+      .notNull()
+      .references(() => weeklyReviewTables.weeklyReviews.id),
+    deviationDirection: text("deviation_direction", {
+      enum: expenditureDeviationDirections,
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("reviewed_expenditure_estimates_weekly_review_id").on(table.weeklyReviewId),
+  ],
+);
+
+// 推定消費カロリーの表（#523・#613）。どの表も書き足すだけ。宣言は durable-object-migrations/ の SQL に合わせる
 export const expenditureEstimateTables = {
   expenditureEstimates,
   initialExpenditureEstimates,
+  reviewedExpenditureEstimates,
 };

@@ -415,6 +415,101 @@ const dailyGuideLimitHits = defineFactory({
   }),
 });
 
+const goalAchievements = defineFactory({
+  schema,
+  table: "goalAchievements",
+  resolver: ({ use }) => ({
+    goalId: () =>
+      use(weightChangeGoals)
+        .create()
+        .then((weightChange) => weightChange.goalId),
+    achievedOn: "2026-02-01",
+    judgedAt: new Date("2026-02-01T00:00:00Z"),
+    timeZone: "Asia/Tokyo",
+  }),
+});
+
+const goalDeadlineConfirmations = defineFactory({
+  schema,
+  table: "goalDeadlineConfirmations",
+  resolver: ({ use }) => ({
+    goalId: () =>
+      use(weightChangeGoals)
+        .create()
+        .then((weightChange) => weightChange.goalId),
+    deadlineWeightTrendKg: 66,
+    confirmedAt: new Date("2026-04-01T00:00:00Z"),
+    timeZone: "Asia/Tokyo",
+  }),
+});
+
+const postDeadlineMaintenanceGoals = defineFactory({
+  schema,
+  table: "postDeadlineMaintenanceGoals",
+  resolver: ({ use }) => ({
+    goalId: () =>
+      use(goals)
+        .create()
+        .then((goal) => goal.id),
+  }),
+});
+
+const weeklyReviews = defineFactory({
+  schema,
+  table: "weeklyReviews",
+  resolver: ({ sequence }) => ({
+    id: generateRecordId(),
+    // 一意なので、行ごとに別の月曜にする
+    effectiveOn: new Date(Date.UTC(2026, 0, 5 + 7 * sequence)).toISOString().slice(0, 10),
+    reviewedAt: new Date("2026-01-05T00:00:00Z"),
+    timeZone: "Asia/Tokyo",
+  }),
+});
+
+const deferredWeeklyReviews = defineFactory({
+  schema,
+  table: "deferredWeeklyReviews",
+  resolver: ({ use }) => ({
+    weeklyReviewId: () =>
+      use(weeklyReviews)
+        .create()
+        .then((review) => review.id),
+    goalId: () =>
+      use(goals)
+        .create()
+        .then((goal) => goal.id),
+    reason: "no_weight" as const,
+  }),
+});
+
+const reviewedExpenditureEstimates = defineFactory({
+  schema,
+  table: "reviewedExpenditureEstimates",
+  resolver: ({ use }) => ({
+    expenditureEstimateId: () =>
+      use(expenditureEstimates)
+        .create()
+        .then((estimate) => estimate.id),
+    weeklyReviewId: () =>
+      use(weeklyReviews)
+        .create()
+        .then((review) => review.id),
+    deviationDirection: "zero" as const,
+  }),
+});
+
+const reviewedDailyGuides = defineFactory({
+  schema,
+  table: "reviewedDailyGuides",
+  resolver: ({ use }) => ({
+    dailyGuideId: () =>
+      use(dailyGuides)
+        .create()
+        .then((guide) => guide.id),
+    mainReason: "expenditure_change" as const,
+  }),
+});
+
 // 置き場のテストで行を作る。create() は Promise を返すので、テストで await する。transactionSync の中では使わない
 export const durableObjectFactory = composeFactory({
   firstSignIns,
@@ -449,4 +544,11 @@ export const durableObjectFactory = composeFactory({
   initialExpenditureEstimates,
   dailyGuides,
   dailyGuideLimitHits,
+  goalAchievements,
+  goalDeadlineConfirmations,
+  postDeadlineMaintenanceGoals,
+  weeklyReviews,
+  deferredWeeklyReviews,
+  reviewedExpenditureEstimates,
+  reviewedDailyGuides,
 });

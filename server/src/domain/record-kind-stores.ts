@@ -21,6 +21,7 @@ import type { LatestTimeZoneStore } from "./latest-time-zone-store";
 import type { FirstSignInStore } from "./record-first-sign-in";
 import type { UsualWeighingTimeStore } from "../usual-weighing-time/domain/usual-weighing-time-store";
 import type { RecordChangeTarget } from "./sync-ledger/record-change-target";
+import type { WeeklyReviewStore } from "../weekly-review/domain/weekly-review-store";
 import type { WeightRecordStore } from "../weight-record/domain/weight-record-store";
 
 // 登録簿の種類が使う置き場。種類を足すときは、種類の名前の順に1つずつ足す
@@ -39,6 +40,7 @@ export type RecordKindStores = {
   sentText: SentTextStore;
   sentTextStatus: SentTextStatusStore;
   usualWeighingTime: UsualWeighingTimeStore;
+  weeklyReview: WeeklyReviewStore;
   weightRecord: WeightRecordStore;
   // 使い始めた日を読むために、体重記録の種類と応答の startedOn が使う
   firstSignIn: FirstSignInStore;

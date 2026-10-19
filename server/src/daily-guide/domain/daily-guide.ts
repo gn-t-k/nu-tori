@@ -20,3 +20,8 @@ export type DailyGuide = {
 export const dailyGuideLimitTypes = ["weekly_change", "required_pace", "minimum_energy"] as const;
 
 export type DailyGuideLimitType = (typeof dailyGuideLimitTypes)[number];
+
+// 週の見直しで1日の目安が変わった主な理由。推定消費カロリーの変化と、残りの差の変化
+export const dailyGuideMainReasons = ["expenditure_change", "balance_change"] as const;
+
+export type DailyGuideMainReason = (typeof dailyGuideMainReasons)[number];

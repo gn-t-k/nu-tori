@@ -521,7 +521,7 @@ describe("返事に渡す文脈の組み立て", () => {
       const firstGoal = build.goal(10, "2026-10-03", {
         targetWeightKg: 70,
         weightChange: { deadlineOn: "2027-01-01", pacePlan: "standard" },
-        closure: { endedOn: "2026-10-10", nextGoalId: build.id(11) },
+        closure: { endedOn: "2026-10-10", nextGoalId: build.id(11), endReason: "switched" },
       });
       const secondGoal = build.goal(11, "2026-10-10", {
         targetWeightKg: 68.5,

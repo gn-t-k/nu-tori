@@ -1,5 +1,5 @@
 import type { RecordId } from "../../domain/record-id";
-import type { Goal } from "./goal";
+import type { DecidedGoal, Goal } from "./goal";
 
 export type GoalStore = {
   find: (id: RecordId) => Goal | undefined;
@@ -12,7 +12,7 @@ export type GoalStore = {
   // 目標を決める要求の受け取りが指す目標。受け取っていない要求には無い
   findByDecisionRequest: (requestId: string) => Goal | undefined;
   // 行を書くのは、目標を決めたことを書く口（writeGoalDecision）だけにする。表をまたぐ決まりは口が確かめる
-  insert: (goal: Omit<Goal, "closure">) => void;
+  insert: (goal: DecidedGoal) => void;
   insertClosure: (closure: { goalId: RecordId; nextGoalId: RecordId }) => void;
   insertDecisionReceipt: (receipt: { requestId: string; goalId: RecordId }) => void;
 };

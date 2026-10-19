@@ -2,7 +2,7 @@ import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm
 import type { RecordId } from "../../domain/record-id";
 import { expenditureEstimateTables } from "../../expenditure-estimate/durable-object/expenditure-estimate-tables";
 import { goalTables } from "../../goal/durable-object/goal-tables";
-import { dailyGuideLimitTypes } from "../domain/daily-guide";
+import { dailyGuideLimitTypes, dailyGuideMainReasons } from "../domain/daily-guide";
 
 // 1日の目安。目標と当てる始まりの日に1行。立てた・立て直したときの行は、当てる始まりの日が目標の開始の日のもの
 const dailyGuides = sqliteTable(
@@ -39,8 +39,18 @@ const dailyGuideLimitHits = sqliteTable(
   (table) => [primaryKey({ columns: [table.dailyGuideId, table.limitType] })],
 );
 
-// 1日の目安の表（#523）。どの表も書き足すだけ。宣言は durable-object-migrations/ の SQL に合わせる
+// 週の見直しが書いた1日の目安（#613）。見直しは指さず、同じ見直しが書いた推定を通してたどる
+const reviewedDailyGuides = sqliteTable("reviewed_daily_guides", {
+  dailyGuideId: text("daily_guide_id")
+    .$type<RecordId>()
+    .primaryKey()
+    .references(() => dailyGuides.id),
+  mainReason: text("main_reason", { enum: dailyGuideMainReasons }).notNull(),
+});
+
+// 1日の目安の表（#523・#613）。どの表も書き足すだけ。宣言は durable-object-migrations/ の SQL に合わせる
 export const dailyGuideTables = {
   dailyGuides,
   dailyGuideLimitHits,
+  reviewedDailyGuides,
 };
