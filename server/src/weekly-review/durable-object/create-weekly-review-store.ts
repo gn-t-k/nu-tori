@@ -1,4 +1,4 @@
-import { desc, eq, lte } from "drizzle-orm";
+import { count, desc, eq, lte, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dailyGuideTables } from "../../daily-guide/durable-object/daily-guide-tables";
 import type { RecordId } from "../../domain/record-id";
@@ -47,27 +47,23 @@ export const createWeeklyReviewStore = (db: DrizzleSqliteDODatabase): WeeklyRevi
     }
     return { ...review, outcome: { type: "reviewed", ...result } };
   };
+  // 当てる月曜が最も遅い見直し。条件が無ければすべての見直しから選ぶ
+  const findLatestWhere = (condition: SQL | undefined): WeeklyReview | undefined => {
+    const latest = db
+      .select({ id: weeklyReviews.id })
+      .from(weeklyReviews)
+      .where(condition)
+      .orderBy(desc(weeklyReviews.effectiveOn))
+      .limit(1)
+      .get();
+    return latest === undefined ? undefined : find(latest.id);
+  };
   return {
     find,
-    findLatest: () => {
-      const latest = db
-        .select({ id: weeklyReviews.id })
-        .from(weeklyReviews)
-        .orderBy(desc(weeklyReviews.effectiveOn))
-        .limit(1)
-        .get();
-      return latest === undefined ? undefined : find(latest.id);
-    },
-    findLatestEffectiveOnOrBefore: (calendarDay) => {
-      const latest = db
-        .select({ id: weeklyReviews.id })
-        .from(weeklyReviews)
-        .where(lte(weeklyReviews.effectiveOn, calendarDay))
-        .orderBy(desc(weeklyReviews.effectiveOn))
-        .limit(1)
-        .get();
-      return latest === undefined ? undefined : find(latest.id);
-    },
+    findLatest: () => findLatestWhere(undefined),
+    findLatestEffectiveOnOrBefore: (calendarDay) =>
+      findLatestWhere(lte(weeklyReviews.effectiveOn, calendarDay)),
+    countReviews: () => db.select({ count: count() }).from(weeklyReviews).get()?.count ?? 0,
     findDeviationHistory: () =>
       db
         .select({ deviationDirection: reviewedExpenditureEstimates.deviationDirection })

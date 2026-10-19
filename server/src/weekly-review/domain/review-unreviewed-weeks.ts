@@ -68,7 +68,7 @@ export const reviewUnreviewedWeeks = (
     .find(({ initialSource }) => initialSource !== undefined);
   const initialExpenditureSource = initialEstimate?.initialSource;
   // 推定の始まりは最初の目標を決めたときに書き、見直しはそのあとにだけあるので、どの見直しも推定の始まりのあと
-  const previousReviewCount = stores.weeklyReview.findDeviationHistory().length;
+  const previousReviewCount = stores.weeklyReview.countReviews();
   const dailyWeights = readDailyWeights(stores.weightRecord);
   // 最初の月曜の前の 28 日より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
   const recordedEnergyIntakes = readRecordedEnergyIntakes(

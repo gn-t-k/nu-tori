@@ -213,7 +213,7 @@ type GoalSource = Pick<
   | "goals"
   | "dailyGuides"
   | "expenditureEstimates"
-  | "weeklyReviews"
+  | "latestWeeklyReview"
   | "weightTrend"
   | "weightRecordDays"
 >;
@@ -248,7 +248,7 @@ const assembleGoal = (source: GoalSource, today: string): ReplyContextGoal | und
             carbohydrateG: dailyGuide.carbohydrateG,
           },
     expenditureKcal: expenditureEstimate?.expenditureKcal,
-    latestWeeklyReview: assembleLatestWeeklyReview(source, { goalId: goal.id, today }),
+    latestWeeklyReview: assembleLatestWeeklyReview(source, goal.id),
     pace: assemblePace(source, { goal, today }),
   };
 };
@@ -292,12 +292,9 @@ const findGoalDailyGuideForDay = (
 // 今日以前に当てた最も新しい見直しが、今日の目標の見直しなら渡す。月曜に立て直した日は、その月曜の見直しが前の目標のものなので渡さない
 const assembleLatestWeeklyReview = (
   source: GoalSource,
-  { goalId, today }: { goalId: string; today: string },
+  goalId: string,
 ): ReplyContextWeeklyReview | undefined => {
-  const review = source.weeklyReviews
-    .filter(({ effectiveOn }) => effectiveOn <= today)
-    .toSorted((a, b) => a.effectiveOn.localeCompare(b.effectiveOn))
-    .at(-1);
+  const review = source.latestWeeklyReview;
   if (review === undefined) {
     return undefined;
   }

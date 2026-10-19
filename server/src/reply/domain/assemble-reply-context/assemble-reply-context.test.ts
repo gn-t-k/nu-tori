@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
+import type { WeeklyReview } from "../../../weekly-review/domain/weekly-review";
 import type { ReplyContext } from "../reply-context";
 import type { ReplyContextSource } from "../reply-context-source";
 import { assembleReplyContext } from "./index";
@@ -625,10 +626,9 @@ describe("返事に渡す文脈の組み立て", () => {
 
   describe("直近の週の見直し", () => {
     // 10/03（土）に減量の目標を立て、10/05（月）に見直し、10/12（月）は見送った
-    let reviewRecords: Pick<
-      ReplyContextSource,
-      "goals" | "dailyGuides" | "expenditureEstimates" | "weeklyReviews"
-    >;
+    let reviewRecords: Pick<ReplyContextSource, "goals" | "dailyGuides" | "expenditureEstimates">;
+    let reviewedWeek: WeeklyReview;
+    let deferredWeek: WeeklyReview;
     beforeEach(() => {
       const goal = build.goal(10, "2026-10-03", {
         targetWeightKg: 70,
@@ -644,20 +644,18 @@ describe("返事に渡す文脈の組み立て", () => {
           build.expenditureEstimate(120, "2026-10-03", 2400),
           build.expenditureEstimate(121, "2026-10-05", 2330),
         ],
-        weeklyReviews: [
-          build.weeklyReview(40, "2026-10-05", {
-            type: "reviewed",
-            expenditureEstimateId: build.id(121),
-            dailyGuideId: build.id(21),
-            mainReason: "expenditure_change",
-          }),
-          build.weeklyReview(41, "2026-10-12", {
-            type: "deferred",
-            reason: "few_meal_records",
-            goalId: goal.id,
-          }),
-        ],
       };
+      reviewedWeek = build.weeklyReview(40, "2026-10-05", {
+        type: "reviewed",
+        expenditureEstimateId: build.id(121),
+        dailyGuideId: build.id(21),
+        mainReason: "expenditure_change",
+      });
+      deferredWeek = build.weeklyReview(41, "2026-10-12", {
+        type: "deferred",
+        reason: "few_meal_records",
+        goalId: goal.id,
+      });
     });
 
     describe("見直せた週のあとの文章のとき", () => {
@@ -665,7 +663,11 @@ describe("返事に渡す文脈の組み立て", () => {
       beforeEach(() => {
         // 10/07 12:00（東京）
         context = assembleReplyContext(
-          build.source({ sentText: build.sentText(1, "2026-10-07T03:00:00Z"), ...reviewRecords }),
+          build.source({
+            sentText: build.sentText(1, "2026-10-07T03:00:00Z"),
+            ...reviewRecords,
+            latestWeeklyReview: reviewedWeek,
+          }),
         );
       });
 
@@ -686,7 +688,11 @@ describe("返事に渡す文脈の組み立て", () => {
       beforeEach(() => {
         // 10/13 12:00（東京）
         context = assembleReplyContext(
-          build.source({ sentText: build.sentText(1, "2026-10-13T03:00:00Z"), ...reviewRecords }),
+          build.source({
+            sentText: build.sentText(1, "2026-10-13T03:00:00Z"),
+            ...reviewRecords,
+            latestWeeklyReview: deferredWeek,
+          }),
         );
       });
 
@@ -729,6 +735,7 @@ describe("返事に渡す文脈の組み立て", () => {
             // 10/12 12:00（東京）
             sentText: build.sentText(1, "2026-10-12T03:00:00Z"),
             ...reviewRecords,
+            latestWeeklyReview: deferredWeek,
             goals: [
               {
                 ...firstGoal,
