@@ -243,6 +243,12 @@
             case appBuildUnsupported = "app-build-unsupported"
             /// 今日 7:12 の体重を置き、目標の設定の4つの要求に答える（逆算できる人の初めての目標）
             case goalSetup = "goal-setup"
+            /// 先週の月曜に立てた減量の目標の1週目を、今日の 0:05 に見直した。振り返りのカードと変更の知らせ、左上の目標の入口
+            case weeklyReview = "weekly-review"
+            /// `weeklyReview` に加えて、昨日の 21:00 に目標を達成したと判定した。達成の知らせから立て直す流れを開ける
+            case goalAchieved = "goal-achieved"
+            /// `goalAchieved` に加えて、今日の 8:00 に 72.0 kg を保つ目標に立て直した。達成の知らせのボタンは押せない
+            case goalSwitchedAfterAchieved = "goal-switched-after-achieved"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

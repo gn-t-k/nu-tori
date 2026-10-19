@@ -96,6 +96,14 @@ public struct GoalNotice: Hashable, Sendable {
         }
     }
 
+    /// ボタンから立て直す流れを開いたところ（`goal_setup_opened`）
+    public var setupEntry: GoalSetupObservation.Entry {
+        switch kind {
+        case .achieved, .deadlineReached: .chooseNextGoal
+        case .movedToMaintenance: .setNextGoal
+        }
+    }
+
     /// ボタンを押せないときに、すぐ下に添える理由
     public var unavailableText: String? {
         unavailability.map {

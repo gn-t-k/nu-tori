@@ -58,6 +58,12 @@ extension TimelineTests {
                             year: 2026, month: 10, day: 4))
             }
 
+            @Test("見出しの週の日付は、月をまたがなければ終わりの日の月を省くこと")
+            func cardDaysTextOmitsSameMonth() throws {
+                let card = try #require(WeeklyReviewScene.card(in: timeline))
+                #expect(card.daysText == "10月1日〜4日")
+            }
+
             @Test("7日の丸は月〜日に並べ、その週に当たっていた1日の目安と比べること")
             func ringsCompareWithGuideOfTheWeek() throws {
                 let card = try #require(WeeklyReviewScene.card(in: timeline))
@@ -406,6 +412,22 @@ extension TimelineTests {
                         kilocalories: 2190, guideKilocalories: 2190, mainReason: .balanceChange))
                 #expect(notice.reasonText == "今の体重を保つ目標に切り替えたためです。")
             }
+        }
+
+        @Test("見出しの週の日付は、月をまたぐ週なら終わりの日にも月を書くこと")
+        func cardDaysTextAcrossMonths() throws {
+            let scene = try WeeklyReviewScene(
+                goal: try Goal.losing(startedOn: CalendarDay(year: 2026, month: 9, day: 1)))
+            let timeline = scene.timeline(
+                reviews: [
+                    try scene.deferred(
+                        effectiveOn: CalendarDay(year: 2026, month: 10, day: 5),
+                        reviewedAt: "2026-10-05T06:10:00+09:00")
+                ],
+                weightRecords: [], today: CalendarDay(year: 2026, month: 10, day: 5))
+
+            let card = try #require(WeeklyReviewScene.card(in: timeline))
+            #expect(card.daysText == "9月28日〜10月4日")
         }
 
         @Suite("振り返りのカードのペースの1行")

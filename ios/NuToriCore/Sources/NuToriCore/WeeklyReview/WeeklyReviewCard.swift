@@ -23,6 +23,16 @@ public struct WeeklyReviewCard: Hashable, Sendable {
         self.otherReviewedWeekCount = otherReviewedWeekCount
     }
 
+    /// 見出しの週の日付。「9月14日〜20日」。月をまたぐ週は「9月28日〜10月4日」
+    public var daysText: String {
+        let first = days.lowerBound
+        let last = days.upperBound
+        let end =
+            first.year == last.year && first.month == last.month
+            ? "\(last.day)日" : NoticeAmountText.monthDay(last)
+        return "\(NoticeAmountText.monthDay(first))〜\(end)"
+    }
+
     /// ペースの1行
     public var paceText: String? {
         pace?.text

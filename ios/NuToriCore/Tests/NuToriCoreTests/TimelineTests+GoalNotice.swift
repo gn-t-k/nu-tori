@@ -40,6 +40,7 @@ extension TimelineTests {
                     notice.body
                         == "期限の12月24日より 46 日早く届きました。次の目標を選ぶまで、今の目標を続けます。")
                 #expect(notice.actionTitle == "次の目標を選ぶ")
+                #expect(notice.setupEntry == .chooseNextGoal)
                 #expect(notice.unavailableText == nil)
             }
 
@@ -80,6 +81,7 @@ extension TimelineTests {
                         == "開始から −3.6 kg・目標まであと 0.8 kg でした。選ばなければ、12月28日（月）から今の体重を保つ目標で続けます。"
                 )
                 #expect(notice.actionTitle == "次の目標を選ぶ")
+                #expect(notice.setupEntry == .chooseNextGoal)
             }
         }
 
@@ -160,6 +162,7 @@ extension TimelineTests {
                     notice.body
                         == "12月24日の期限のあと次の目標を選ばなかったので、68.8 kg を保つ目標で続けています。")
                 #expect(notice.actionTitle == "次の目標を立てる")
+                #expect(notice.setupEntry == .setNextGoal)
                 #expect(notice.unavailableText == nil)
             }
 
