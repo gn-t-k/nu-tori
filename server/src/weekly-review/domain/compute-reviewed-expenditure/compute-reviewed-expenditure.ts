@@ -1,5 +1,6 @@
 import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
 import type { ExpenditureDeviationDirection } from "../../../expenditure-estimate/domain/expenditure-estimate";
+import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 
 export type ReviewedExpenditureInputs = {
   // 見直す週に当たっていた推定（最も遅い推定）
@@ -51,7 +52,7 @@ export const computeReviewedExpenditure = ({
 
 // 浮動小数の誤差で、等しい値の引き算を正か負にしない
 const toDeviationDirection = (deviationKg: number): ExpenditureDeviationDirection => {
-  if (Math.abs(deviationKg) < tolerance) {
+  if (Math.abs(deviationKg) < floatingPointTolerance) {
     return "zero";
   }
   return deviationKg > 0 ? "positive" : "negative";
@@ -78,5 +79,3 @@ const daysPerWeek = 7;
 // k の係数と上限。出荷後に調整する初期値
 const baseGain = 0.25;
 const maximumGain = 0.75;
-
-const tolerance = 1e-9;

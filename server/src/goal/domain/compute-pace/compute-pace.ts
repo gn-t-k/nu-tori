@@ -3,6 +3,8 @@ import { countDaysBetween } from "../../../domain/count-days-between";
 import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
 import { roundToTenthKg } from "../round-to-tenth-kg";
 import type { WeightChangeDirection } from "../weight-change-direction";
+import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
+import { maintenanceBandKg } from "../maintenance-band-kg";
 
 export type PaceGoal =
   | {
@@ -25,7 +27,7 @@ export type Pace =
   | { status: "pending" }
   // 返さない。期限の日か達成した日を迎えた
   | { status: "unavailable" }
-  // 維持（期限後の維持を含む）。体重の傾向が目標体重の ±0.7 kg に収まっているか
+  // 維持（期限後の維持を含む）。体重の傾向が維持の幅に収まっているか
   | { status: "maintenance"; isWithinBand: boolean };
 
 // ペース。端末にも同じ手順を置く（docs/agents/shared-rules.md の「ペース」）
@@ -50,7 +52,8 @@ export const computePace = ({
       throw new Error("目標の開始の日より前に体重の傾向が無い");
     }
     // ちょうど幅の端にある傾向は、浮動小数の誤差で幅の外にしない
-    const isWithinBand = Math.abs(trendKg - goal.targetWeightKg) <= maintenanceBandKg + tolerance;
+    const isWithinBand =
+      Math.abs(trendKg - goal.targetWeightKg) <= maintenanceBandKg + floatingPointTolerance;
     return { status: "maintenance", isWithinBand };
   }
   if (judgedOn >= goal.deadlineOn || (achievedOn !== undefined && judgedOn >= achievedOn)) {
@@ -85,7 +88,7 @@ export const computePace = ({
   const sign = goal.direction === "lose" ? -1 : 1;
   // 目標体重へ向かう側に、あとどれだけ足りないか。ちょうど目標体重に届く見込みは、浮動小数の誤差で届かないことにしない
   const shortfallKg = sign * (goal.targetWeightKg - projectedKg);
-  if (shortfallKg <= tolerance) {
+  if (shortfallKg <= floatingPointTolerance) {
     return { status: "onTrack", ...rounded };
   }
   // 0.1 kg に満たない不足を「0.0 kg 届かない」と言わないよう、切り上げる
@@ -99,10 +102,6 @@ const findTrendKgOnOrBefore = (trend: WeightTrend, calendarDay: string): number 
 // -0.04 kg/週のような値が -0 にならないよう、0 を足して -0 を 0 にする（端末の JSON では 0 と -0 を分けない）
 const roundRateKg = (kgPerWeek: number): number => roundToTenthKg(kgPerWeek, "round") + 0;
 
-const maintenanceBandKg = 0.7;
-
 const windowDays = 14;
 
 const minimumWeightRecordDayCount = 4;
-
-const tolerance = 1e-9;

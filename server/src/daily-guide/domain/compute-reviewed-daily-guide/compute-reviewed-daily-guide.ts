@@ -5,6 +5,7 @@ import type { DailyGuideMainReason } from "../daily-guide";
 import { minimumDailyGuideEnergyKcal } from "../minimum-daily-guide-energy-kcal";
 import { computeRequiredPace, type RequiredPaceGoal } from "../compute-required-pace";
 import { roundToFiftyKcal } from "../round-to-fifty-kcal";
+import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 
 // 見直せた週の1日の目安。目標を立てたときと同じ式を、新しい推定消費カロリーと、
 // 見直す月曜 M の前の日曜の体重の傾向と M から期限の日までの日数で出し、前の週の1日の目安からの変化を ±150 kcal までに抑える
@@ -21,12 +22,13 @@ export const computeReviewedDailyGuide = ({
 }): ComputedReviewedDailyGuide => {
   const pace = computeRequiredPace(goal);
   const formulaKcal = expenditureKcal + kilocaloriesPerKilogram * pace.kgPerDay;
-  const isBelowMinimum = formulaKcal < minimumDailyGuideEnergyKcal - tolerance;
+  const isBelowMinimum = formulaKcal < minimumDailyGuideEnergyKcal - floatingPointTolerance;
   const atLeastMinimumKcal = Math.max(formulaKcal, minimumDailyGuideEnergyKcal);
   const lowerKcal = previous.energyKcal - maximumWeeklyChangeKcal;
   const upperKcal = previous.energyKcal + maximumWeeklyChangeKcal;
   const isWeeklyChangeLimited =
-    atLeastMinimumKcal < lowerKcal - tolerance || atLeastMinimumKcal > upperKcal + tolerance;
+    atLeastMinimumKcal < lowerKcal - floatingPointTolerance ||
+    atLeastMinimumKcal > upperKcal + floatingPointTolerance;
   // 前の週の1日の目安は 1,200 kcal 以上なので、抑えても下限を割らない
   const unroundedKcal = Math.min(Math.max(atLeastMinimumKcal, lowerKcal), upperKcal);
   const energyKcal = roundToFiftyKcal(unroundedKcal);
@@ -57,12 +59,10 @@ const computeMainReason = ({
   const expenditureChangeKcal = expenditureKcal - previous.expenditureKcal;
   const balanceChangeKcal =
     unroundedKcal - expenditureKcal - (previous.energyKcal - previous.expenditureKcal);
-  return Math.abs(balanceChangeKcal) > Math.abs(expenditureChangeKcal) + tolerance
+  return Math.abs(balanceChangeKcal) > Math.abs(expenditureChangeKcal) + floatingPointTolerance
     ? "balance_change"
     : "expenditure_change";
 };
 
 // 前の週の1日の目安からの変化の上限。出荷後に調整する初期値
 const maximumWeeklyChangeKcal = 150;
-
-const tolerance = 1e-9;
