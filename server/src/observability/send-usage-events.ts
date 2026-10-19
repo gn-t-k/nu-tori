@@ -123,11 +123,24 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         limit_hits: recorded.limitHits,
       },
     }))
-    .with({ name: "weekly_review" }, (reviewed) => ({
+    .with({ name: "weekly_review", outcome: "deferred" }, (deferred) => ({
+      name: deferred.name,
+      properties: {
+        deferred: true,
+        deferral_reason: deferred.deferralReason,
+        limit_hits: [],
+        main_reason: undefined,
+        expenditure_change_kcal: undefined,
+        initial_expenditure_source: deferred.initialExpenditureSource,
+        expenditure_change_from_initial_kcal: deferred.expenditureChangeFromInitialKcal,
+        reviewed_week_count: deferred.reviewedWeekCount,
+      },
+    }))
+    .with({ name: "weekly_review", outcome: "reviewed" }, (reviewed) => ({
       name: reviewed.name,
       properties: {
-        deferred: reviewed.deferralReason !== undefined,
-        deferral_reason: reviewed.deferralReason,
+        deferred: false,
+        deferral_reason: undefined,
         limit_hits: reviewed.limitHits,
         main_reason: reviewed.mainReason,
         expenditure_change_kcal: reviewed.expenditureChangeKcal,
