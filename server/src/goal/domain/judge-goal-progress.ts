@@ -4,7 +4,7 @@ import type { UsageEvent } from "../../domain/usage-event";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
+import { readDailyWeights } from "../../weight-trend/domain/read-daily-weights";
 import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
 import { findAchievedDay } from "./find-achieved-day";
 import type { Goal } from "./goal";
@@ -31,11 +31,7 @@ export const judgeGoalProgress = (
   if (goals.length === 0) {
     return { usageEvents: [] };
   }
-  const weightTrend = computeWeightTrend(
-    computeDailyRepresentativeWeights(stores.weightRecord.findAllInMeasuredOrder()).map(
-      ({ calendarDay, weightRecord }) => ({ calendarDay, weightKg: weightRecord.weightKg }),
-    ),
-  );
+  const weightTrend = computeWeightTrend(readDailyWeights(stores.weightRecord));
   const today = computeCalendarDayInTimeZone(now, timeZone);
   const currentGoal = stores.goal.findCurrent();
   const achievedOn =

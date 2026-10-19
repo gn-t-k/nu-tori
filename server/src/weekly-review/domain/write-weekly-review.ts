@@ -17,6 +17,7 @@ import {
   type WeeklyReviewDeferral,
   weeklyReviewDeferralReasons,
 } from "./weekly-review";
+import { isListed } from "../../domain/is-listed";
 
 // 書く週の見直し。見送った週は見送りを、見直せた週は新しい推定と、それを使った今の目標の1日の目安を持つ。
 // 期限後の維持に移る週は、作る維持の目標も持ち、見送りと1日の目安はその維持の目標を指す
@@ -155,12 +156,12 @@ const findCopiedDailyGuide = (
   stores: Pick<RecordKindStores, "goal" | "dailyGuide" | "expenditureEstimate">,
   { effectiveOn, goalId }: { effectiveOn: string; goalId: RecordId },
 ): DailyGuide => {
-  const previousGoalId = stores.goal.findCurrent()?.id;
-  const lastDailyGuide = stores.dailyGuide
-    .findAll()
-    .filter((dailyGuide) => dailyGuide.goalId === previousGoalId)
-    .toSorted((left, right) => left.effectiveOn.localeCompare(right.effectiveOn))
-    .at(-1);
+  const previousGoal = stores.goal.findCurrent();
+  // 見直す月曜はまだ見直していないので、前の目標の1日の目安はどれもその月曜より前から当たる
+  const lastDailyGuide =
+    previousGoal === undefined
+      ? undefined
+      : stores.dailyGuide.findLatestOfGoalBefore(previousGoal.id, effectiveOn);
   const currentEstimate = stores.expenditureEstimate.findCurrent();
   if (lastDailyGuide === undefined || currentEstimate === undefined) {
     throw new Error("期限後の維持に移る前の目標に、1日の目安か推定が無い");
@@ -222,5 +223,3 @@ const requireWritable = (
     throw new Error("当たった上限と下限の値が一覧に無い");
   }
 };
-
-const isListed = (values: readonly string[], value: string): boolean => values.includes(value);

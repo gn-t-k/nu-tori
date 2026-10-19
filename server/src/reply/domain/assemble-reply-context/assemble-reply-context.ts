@@ -11,7 +11,7 @@ import type { Meal } from "../../../meal/domain/meal";
 import { computeGoalDirection } from "../../../goal/domain/compute-goal-direction";
 import { computePace, type Pace } from "../../../goal/domain/compute-pace";
 import type { Goal } from "../../../goal/domain/goal";
-import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
+import { findWeightTrendOnOrBefore } from "../../../weight-trend/domain/find-weight-trend-on-or-before";
 import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type {
   MainNutrients,
@@ -258,7 +258,7 @@ const assemblePace = (
   { weightTrend, weightRecordDays }: Pick<ReplyContextSource, "weightTrend" | "weightRecordDays">,
   { goal, today }: { goal: Goal; today: string },
 ): Pace | undefined => {
-  if (!hasTrendOnOrBefore(weightTrend, goal.startedOn)) {
+  if (findWeightTrendOnOrBefore(weightTrend, goal.startedOn) === undefined) {
     return undefined;
   }
   const direction = computeGoalDirection(goal);
@@ -278,9 +278,6 @@ const assemblePace = (
     achievedOn: goal.achievement?.achievedOn,
   });
 };
-
-const hasTrendOnOrBefore = (weightTrend: WeightTrend, calendarDay: string): boolean =>
-  weightTrend.some((entry) => entry.calendarDay <= calendarDay);
 
 const findGoalDailyGuideForDay = (
   { goals, dailyGuides }: Pick<ReplyContextSource, "goals" | "dailyGuides">,

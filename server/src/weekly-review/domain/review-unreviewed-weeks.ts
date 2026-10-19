@@ -15,7 +15,7 @@ import { planPostDeadlineMaintenance } from "../../goal/domain/plan-post-deadlin
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
-import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
+import { readDailyWeights } from "../../weight-trend/domain/read-daily-weights";
 import { computeReviewedExpenditure } from "./compute-reviewed-expenditure";
 import { findUnreviewedWeekMondays } from "./find-unreviewed-week-mondays";
 import { judgeReviewWeek, type ReviewWeekJudgement } from "./judge-review-week";
@@ -69,9 +69,7 @@ export const reviewUnreviewedWeeks = (
   const initialExpenditureSource = initialEstimate?.initialSource;
   // 推定の始まりは最初の目標を決めたときに書き、見直しはそのあとにだけあるので、どの見直しも推定の始まりのあと
   const previousReviewCount = stores.weeklyReview.findDeviationHistory().length;
-  const dailyWeights = computeDailyRepresentativeWeights(
-    stores.weightRecord.findAllInMeasuredOrder(),
-  ).map(({ calendarDay, weightRecord }) => ({ calendarDay, weightKg: weightRecord.weightKg }));
+  const dailyWeights = readDailyWeights(stores.weightRecord);
   // 最初の月曜の前の 28 日より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
   const recordedEnergyIntakes = readRecordedEnergyIntakes(
     stores,
@@ -194,11 +192,10 @@ const computeReviewedOutcome = (
 ): Extract<WeeklyReviewToWrite["outcome"], { type: "reviewed" }> => {
   const previousEstimate = stores.expenditureEstimate.findCurrent();
   // 今の目標を決めるたびに1日の目安を書くので、目標の開始の日から当てる1日の目安がある
-  const previousDailyGuide = stores.dailyGuide
-    .findAll()
-    .filter(({ goalId, effectiveOn }) => goalId === currentGoal.id && effectiveOn < reviewedMonday)
-    .toSorted((left, right) => left.effectiveOn.localeCompare(right.effectiveOn))
-    .at(-1);
+  const previousDailyGuide = stores.dailyGuide.findLatestOfGoalBefore(
+    currentGoal.id,
+    reviewedMonday,
+  );
   const previousDailyGuideEstimate =
     previousDailyGuide === undefined
       ? undefined

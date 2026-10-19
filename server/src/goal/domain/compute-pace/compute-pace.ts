@@ -1,5 +1,6 @@
 import { addDays } from "../../../domain/add-days";
 import { countDaysBetween } from "../../../domain/count-days-between";
+import { findWeightTrendOnOrBefore } from "../../../weight-trend/domain/find-weight-trend-on-or-before";
 import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
 import { roundToTenthKg } from "../round-to-tenth-kg";
 import type { WeightChangeDirection } from "../weight-change-direction";
@@ -47,7 +48,7 @@ export const computePace = ({
   achievedOn: string | undefined;
 }): Pace => {
   if (goal.direction === "maintain") {
-    const trendKg = findTrendKgOnOrBefore(weightTrend, judgedOn);
+    const trendKg = findWeightTrendOnOrBefore(weightTrend, judgedOn)?.trendKg;
     if (trendKg === undefined) {
       throw new Error("目標の開始の日より前に体重の傾向が無い");
     }
@@ -71,8 +72,11 @@ export const computePace = ({
   if (weightRecordDayCount < minimumWeightRecordDayCount) {
     return { status: "inconclusive", weightRecordDayCount };
   }
-  const judgedTrendKg = findTrendKgOnOrBefore(weightTrend, judgedOn);
-  const earlierTrendKg = findTrendKgOnOrBefore(weightTrend, addDays(judgedOn, -windowDays));
+  const judgedTrendKg = findWeightTrendOnOrBefore(weightTrend, judgedOn)?.trendKg;
+  const earlierTrendKg = findWeightTrendOnOrBefore(
+    weightTrend,
+    addDays(judgedOn, -windowDays),
+  )?.trendKg;
   // 開始の日以前に体重の傾向がある目標だけが立つので、開始の日から 14 日たてば両方ある
   if (judgedTrendKg === undefined || earlierTrendKg === undefined) {
     throw new Error("目標の開始の日より前に体重の傾向が無い");
@@ -94,10 +98,6 @@ export const computePace = ({
   // 0.1 kg に満たない不足を「0.0 kg 届かない」と言わないよう、切り上げる
   return { status: "behind", shortfallKg: roundToTenthKg(shortfallKg, "ceil"), ...rounded };
 };
-
-// 体重の傾向は最後の体重記録の日で終わるので、その日以前で最も新しい日の値を使う
-const findTrendKgOnOrBefore = (trend: WeightTrend, calendarDay: string): number | undefined =>
-  trend.findLast((entry) => entry.calendarDay <= calendarDay)?.trendKg;
 
 // -0.04 kg/週のような値が -0 にならないよう、0 を足して -0 を 0 にする（端末の JSON では 0 と -0 を分けない）
 const roundRateKg = (kgPerWeek: number): number => roundToTenthKg(kgPerWeek, "round") + 0;
