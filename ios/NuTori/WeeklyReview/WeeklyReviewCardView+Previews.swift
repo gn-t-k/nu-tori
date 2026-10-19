@@ -25,8 +25,8 @@
                             dailyGuides: [.sampleFirst, .sampleReviewed],
                             expenditureEstimates: [.sampleFirst, .sampleReviewed],
                             weeklyReviews: [review], weightTrend: .sampleWeeklyReviewed,
-                            weightRecords: WeeklyReview.sampleWeekWeightRecords),
-                        rejectedLines: [], meals: WeeklyReview.sampleWeekMeals, notices: [],
+                            weightRecords: WeightRecord.sampleWeeklyReviewedWeek),
+                        rejectedLines: [], meals: MealCard.sampleWeeklyReviewedWeek, notices: [],
                         undelivered: .none, conversation: .none),
                     firstDay: Goal.sampleWeeklyReviewed.startedDay, today: .sampleToday)
                 return timeline.days.lazy.flatMap(\.items).compactMap { item in

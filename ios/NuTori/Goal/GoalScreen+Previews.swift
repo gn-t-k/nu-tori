@@ -83,7 +83,7 @@
                         goals: [goal], dailyGuides: guides, expenditureEstimates: estimates,
                         weeklyReviews: reviews,
                         weightTrend: .sampleWeeklyReviewed,
-                        weightRecords: WeeklyReview.sampleWeekWeightRecords))
+                        weightRecords: WeightRecord.sampleWeeklyReviewedWeek))
             }
         }
     }

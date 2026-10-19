@@ -104,7 +104,7 @@
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 9, 30, from: .manual)]
                 case .undelivered: Self.pastRecords + [Self.undeliveredRecord]
                 case .rejected: [Self.correctedRecord]
-                case .weeklyReviewed: WeeklyReview.sampleWeekWeightRecords
+                case .weeklyReviewed: WeightRecord.sampleWeeklyReviewedWeek
                 }
             }
 
@@ -141,7 +141,7 @@
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .awaitingNotice, .answeredNotice:
                     []
-                case .weeklyReviewed: WeeklyReview.sampleWeekMeals
+                case .weeklyReviewed: MealCard.sampleWeeklyReviewedWeek
                 case .undelivered:
                     [MealCard(meal: Self.undeliveredMeal, status: nil, recordedOnThisDevice: true)]
                 case .meals, .goalDecided:

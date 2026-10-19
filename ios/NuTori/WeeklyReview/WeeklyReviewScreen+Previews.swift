@@ -37,8 +37,8 @@
                         goals: goals, dailyGuides: [.sampleFirst, .sampleReviewed],
                         expenditureEstimates: [.sampleFirst, .sampleReviewed],
                         weeklyReviews: [review], weightTrend: .sampleWeeklyReviewed,
-                        weightRecords: WeeklyReview.sampleWeekWeightRecords),
-                    meals: WeeklyReview.sampleWeekMeals)
+                        weightRecords: WeightRecord.sampleWeeklyReviewedWeek),
+                    meals: MealCard.sampleWeeklyReviewedWeek)
             }
 
             private var review: WeeklyReview {

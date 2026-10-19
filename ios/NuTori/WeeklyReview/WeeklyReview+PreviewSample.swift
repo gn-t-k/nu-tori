@@ -28,20 +28,6 @@
                 from: DateComponents(year: 2026, month: 9, day: 24, hour: 6, minute: 10))!
         }()
 
-        /// 見直した週の月〜日の体重記録（水・金・土）
-        static let sampleWeekWeightRecords: [WeightRecord] = [2, 4, 5].map {
-            .sample(
-                72.2 - Double($0) * 0.1,
-                on: Goal.sampleWeeklyReviewed.startedDay.advanced(by: $0), at: 7, 0,
-                from: .manual)
-        }
-
-        /// 見直した週の、日ごとに推定できた食事（月・火・水・金・土）
-        static let sampleWeekMeals: [MealCard] = [0, 1, 2, 4, 5].map {
-            .sampleEstimated(
-                .sample(on: Goal.sampleWeeklyReviewed.startedDay.advanced(by: $0), at: 12, 10))
-        }
-
         private static let sampleId = UUID(uuidString: "6F1C2A40-0000-4000-8000-0000000000F1")!
 
         private static let sampleTimeZone = TimeZone(identifier: "Asia/Tokyo")!

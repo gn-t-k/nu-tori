@@ -22,6 +22,15 @@
                 version: 1
             )
         }
+
+        /// プレビューの見本の、9月14日（月）に立てた減量の目標（`Goal.sampleWeeklyReviewed`）の1週目の月〜日の体重記録（水・金・土）。
+        /// 週の振り返り（`WeeklyReview.sampleReviewed`）で見直した週
+        static let sampleWeeklyReviewedWeek: [WeightRecord] = [2, 4, 5].map {
+            .sample(
+                72.2 - Double($0) * 0.1,
+                on: Goal.sampleWeeklyReviewed.startedDay.advanced(by: $0), at: 7, 0,
+                from: .manual)
+        }
     }
 
     extension WeightRecord.InputSource {
