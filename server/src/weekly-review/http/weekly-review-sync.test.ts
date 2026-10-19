@@ -16,11 +16,13 @@ import { signInTestAccount } from "../../http/testing";
 type Factory = ReturnType<typeof durableObjectFactory>;
 type Change = Parameters<RecordChangeWrites["addChange"]>[0];
 
-// 週の見直しはサーバーだけが書く。記録の形を確かめるので、表に行を置き、記録の変化を書く入口で変更を足す
+// 週の見直しはサーバーだけが書く。記録の形を確かめるので、表に行を置き、記録の変化を書く入口で変更を足す。
+// 取りに行く要求は、今日までのまだ見直していない週も見送るので、置いた記録の変更だけを比べる
 describe("週の見直しの同期", () => {
   let seed: (rows: (factory: Factory) => Promise<Change[]>) => Promise<void>;
   let pullChanges: () => Promise<Omit<PullResult["changes"][number], "sequence">[]>;
   beforeEach(async () => {
+    const seededRecordIds = new Set<string>();
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
     const signedIn = await signInTestAccount(generateRecordId());
@@ -32,13 +34,14 @@ describe("週の見直しの同期", () => {
         createRecordChangeWriter(state.storage)(({ addChange }) => {
           for (const change of changes) {
             addChange(change);
+            seededRecordIds.add(change.recordId);
           }
         });
       });
     pullChanges = async () =>
-      (await (await pullSyncChanges(signedIn.sessionToken)).json<PullResult>()).changes.map(
-        ({ kind, recordId, record }) => ({ kind, recordId, record }),
-      );
+      (await (await pullSyncChanges(signedIn.sessionToken)).json<PullResult>()).changes
+        .filter(({ recordId }) => seededRecordIds.has(recordId))
+        .map(({ kind, recordId, record }) => ({ kind, recordId, record }));
   });
 
   describe("体重が無くて見送った週があるとき", () => {

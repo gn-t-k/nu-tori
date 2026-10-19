@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dailyGuideTables } from "../../daily-guide/durable-object/daily-guide-tables";
 import type { RecordId } from "../../domain/record-id";
@@ -11,8 +11,8 @@ const { weeklyReviews, deferredWeeklyReviews } = weeklyReviewTables;
 const { reviewedExpenditureEstimates } = expenditureEstimateTables;
 const { dailyGuides, reviewedDailyGuides } = dailyGuideTables;
 
-export const createWeeklyReviewStore = (db: DrizzleSqliteDODatabase): WeeklyReviewStore => ({
-  find: (id: RecordId): WeeklyReview | undefined => {
+export const createWeeklyReviewStore = (db: DrizzleSqliteDODatabase): WeeklyReviewStore => {
+  const find = (id: RecordId): WeeklyReview | undefined => {
     const review = db.select().from(weeklyReviews).where(eq(weeklyReviews.id, id)).get();
     if (review === undefined) {
       return undefined;
@@ -46,5 +46,23 @@ export const createWeeklyReviewStore = (db: DrizzleSqliteDODatabase): WeeklyRevi
       throw new Error(`見送りも見直しも無い週の見直し: ${id}`);
     }
     return { ...review, outcome: { type: "reviewed", ...result } };
-  },
-});
+  };
+  return {
+    find,
+    findLatest: () => {
+      const latest = db
+        .select({ id: weeklyReviews.id })
+        .from(weeklyReviews)
+        .orderBy(desc(weeklyReviews.effectiveOn))
+        .limit(1)
+        .get();
+      return latest === undefined ? undefined : find(latest.id);
+    },
+    insert: (review) => {
+      db.insert(weeklyReviews).values(review).run();
+    },
+    insertDeferral: (deferral) => {
+      db.insert(deferredWeeklyReviews).values(deferral).run();
+    },
+  };
+};
