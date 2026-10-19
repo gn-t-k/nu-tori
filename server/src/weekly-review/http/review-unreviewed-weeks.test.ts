@@ -22,8 +22,7 @@ import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { signInTestAccount, signInWithApple } from "../../http/testing";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
-
-const millisecondsPerDay = 86_400_000;
+import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
 
 // 起こす要求と起こさない要求、要求の中の順を受け口から確かめる。書いた行を見分けやすいよう、どの場面も見送る週にする。
 // 見直せる週を書くことは write-reviewed-weeks.test.ts で確かめる

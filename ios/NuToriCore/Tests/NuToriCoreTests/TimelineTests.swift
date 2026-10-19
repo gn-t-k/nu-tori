@@ -14,9 +14,7 @@ struct TimelineTests {
             init() {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [],
                         notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 25)
@@ -50,12 +48,9 @@ struct TimelineTests {
             init() throws {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil,
-                            weightRecords: [
-                                try .manual(72.4, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo")
-                            ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
+                        goalRecords: .fixture(weightRecords: [
+                            try .manual(72.4, at: "2026-09-25T07:12:00+09:00", in: "Asia/Tokyo")
+                        ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
@@ -80,13 +75,10 @@ struct TimelineTests {
             init() throws {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil,
-                            weightRecords: [
-                                try .imported(
-                                    73.0, at: "2026-09-20T06:48:00+09:00", in: "Asia/Tokyo")
-                            ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
+                        goalRecords: .fixture(weightRecords: [
+                            try .imported(
+                                73.0, at: "2026-09-20T06:48:00+09:00", in: "Asia/Tokyo")
+                        ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 23)
@@ -107,9 +99,7 @@ struct TimelineTests {
             init() {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [],
                         notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 23)
@@ -138,9 +128,7 @@ struct TimelineTests {
                     72.6, at: "2026-09-24T07:00:00-07:00", in: "America/Los_Angeles")
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: [losAngelesMorning, tokyoMorning]),
+                        goalRecords: .fixture(weightRecords: [losAngelesMorning, tokyoMorning]),
                         rejectedLines: [], meals: [], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
@@ -182,9 +170,7 @@ struct TimelineTests {
                 line = RejectedWeightLine(record: rejected, serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: [after, before]),
+                        goalRecords: .fixture(weightRecords: [after, before]),
                         rejectedLines: [.weight(line)], meals: [], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: PlacingRejectedLines.day,
@@ -215,9 +201,7 @@ struct TimelineTests {
                 line = RejectedWeightLine(record: restored, serverHasValue: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: [restored, first]),
+                        goalRecords: .fixture(weightRecords: [restored, first]),
                         rejectedLines: [.weight(line)], meals: [], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: PlacingRejectedLines.day,
@@ -249,9 +233,7 @@ struct TimelineTests {
                 line = RejectedWeightLine(record: corrected, serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: [after, before]),
+                        goalRecords: .fixture(weightRecords: [after, before]),
                         rejectedLines: [.weight(line)], meals: [], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: PlacingRejectedLines.day,
@@ -278,9 +260,7 @@ struct TimelineTests {
                 let line = RejectedWeightLine(record: rejected, serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [.weight(line)],
+                        goalRecords: .fixture(), rejectedLines: [.weight(line)],
                         meals: [], notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingRejectedLines.day,
                     today: CalendarDay(year: 2026, month: 9, day: 25)
@@ -303,12 +283,9 @@ struct TimelineTests {
             init() throws {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil,
-                            weightRecords: [
-                                try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
-                            ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
+                        goalRecords: .fixture(weightRecords: [
+                            try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                        ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
@@ -333,9 +310,7 @@ struct TimelineTests {
                     72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo", version: 1)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []),
+                        goalRecords: .fixture(),
                         rejectedLines: [
                             .weight(RejectedWeightLine(record: rejected, serverHasValue: false))
                         ], meals: [], notices: [], undelivered: .none, conversation: .none),
@@ -360,9 +335,7 @@ struct TimelineTests {
             init() {
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [],
                         notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
@@ -384,16 +357,13 @@ struct TimelineTests {
                 earliest = try .imported(72.3, at: "2026-09-24T06:48:00+09:00", in: "Asia/Tokyo")
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil,
-                            weightRecords: [
-                                try .manual(
-                                    72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
-                                earliest,
-                                try .manual(
-                                    72.9, at: "2026-09-24T21:30:00+09:00", in: "Asia/Tokyo"),
-                            ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
+                        goalRecords: .fixture(weightRecords: [
+                            try .manual(
+                                72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
+                            earliest,
+                            try .manual(
+                                72.9, at: "2026-09-24T21:30:00+09:00", in: "Asia/Tokyo"),
+                        ]), rejectedLines: [], meals: [], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)

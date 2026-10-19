@@ -79,7 +79,7 @@ struct WeeklyReviewScene {
     ) -> Timeline {
         Timeline(
             input: Timeline.Input(
-                goalRecords: GoalRecords(
+                goalRecords: .fixture(
                     goals: goals ?? [goal],
                     dailyGuides: [initialGuide] + (includesReviewedGuide ? [reviewedGuide] : [])
                         + extraGuides,

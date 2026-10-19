@@ -13,9 +13,7 @@ struct UnansweredNoticeLineVisibilityTests {
             let today = CalendarDay(year: 2026, month: 9, day: 22)
             let timeline = Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                    goalRecords: .fixture(), rejectedLines: [], meals: [],
                     notices: [try .missedWeightRecord(issuedAt: "2026-09-22T08:15:00+09:00")],
                     undelivered: .none, conversation: .none),
                 firstDay: today, today: today)

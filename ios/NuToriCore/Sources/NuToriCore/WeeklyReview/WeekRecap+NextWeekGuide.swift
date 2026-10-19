@@ -35,11 +35,12 @@ extension WeekRecap {
                     because = "体重の記録が無かったためです。"
                 case .fewMealRecords:
                     // サーバーは部分的な記録の日を数えないので、数えた日がサーバーより多いことがある。
-                    // 見送りの決まり（4日未満）に当たる数のときだけ日数を書く
+                    // 見送りの決まりに当たる数のときだけ日数を書く
                     let count = Self.recordedFoodDayCount(
                         in: monday...monday.advanced(by: 6), meals: meals)
                     because =
-                        count < 4 ? "食事の記録が \(count) 日だったためです。" : "食事の記録が少なかったためです。"
+                        count < WeeklyReview.minimumMealDayCount
+                        ? "食事の記録が \(count) 日だったためです。" : "食事の記録が少なかったためです。"
                 }
                 self.init(
                     energyKilocalories: guideOfWeek.energyKilocalories, changeKilocalories: nil,

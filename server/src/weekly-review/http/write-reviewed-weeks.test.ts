@@ -18,12 +18,8 @@ import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing
 import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { signInTestAccount } from "../../http/testing";
 import { recordMealEnergies } from "./testing/record-meal-energies";
-
-const millisecondsPerDay = 86_400_000;
-
-// from から count 日の日付
-const daysFrom = (from: string, count: number): string[] =>
-  Array.from({ length: count }, (_, offset) => addDays(from, offset));
+import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
+import { daysFrom } from "../testing/days-from";
 
 // 見直せる週を受け口から書く。どの週も、毎日 70 kg で体重が変わらず、食事を7日とも 2,200 kcal 記録した週にする。
 // 維持の目標（70 kg）に、推定 2,400 kcal と1日の目安 2,400 kcal が当たっている。

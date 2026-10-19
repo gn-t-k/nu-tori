@@ -2,6 +2,7 @@ import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogr
 import { computeMacronutrientGuides } from "../compute-macronutrient-guides";
 import type { ComputedReviewedDailyGuide } from "../computed-daily-guide";
 import type { DailyGuideMainReason } from "../daily-guide";
+import { maximumWeeklyChangeKcal } from "../maximum-weekly-change-kcal";
 import { minimumDailyGuideEnergyKcal } from "../minimum-daily-guide-energy-kcal";
 import { computeRequiredPace, type RequiredPaceGoal } from "../compute-required-pace";
 import { roundToFiftyKcal } from "../round-to-fifty-kcal";
@@ -63,6 +64,3 @@ const computeMainReason = ({
     ? "balance_change"
     : "expenditure_change";
 };
-
-// 前の週の1日の目安からの変化の上限。出荷後に調整する初期値
-const maximumWeeklyChangeKcal = 150;

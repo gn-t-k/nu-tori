@@ -6,6 +6,7 @@ import { roundToTenthKg } from "../round-to-tenth-kg";
 import type { WeightChangeDirection } from "../weight-change-direction";
 import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 import { maintenanceBandKg } from "../maintenance-band-kg";
+import { paceWindowDays } from "../pace-window-days";
 
 export type PaceGoal =
   | {
@@ -61,11 +62,11 @@ export const computePace = ({
     return { status: "unavailable" };
   }
   // 14 日前の体重の傾向が目標の中にあるよう、開始の日から 14 日たつまでは出さない
-  if (countDaysBetween(goal.startedOn, judgedOn) < 14) {
+  if (countDaysBetween(goal.startedOn, judgedOn) < paceWindowDays) {
     return { status: "pending" };
   }
   // 判定する日とその前の 13 日
-  const windowStartOn = addDays(judgedOn, -(windowDays - 1));
+  const windowStartOn = addDays(judgedOn, -(paceWindowDays - 1));
   const weightRecordDayCount = new Set(
     weightRecordDays.filter((day) => windowStartOn <= day && day <= judgedOn),
   ).size;
@@ -75,7 +76,7 @@ export const computePace = ({
   const judgedTrendKg = findWeightTrendOnOrBefore(weightTrend, judgedOn)?.trendKg;
   const earlierTrendKg = findWeightTrendOnOrBefore(
     weightTrend,
-    addDays(judgedOn, -windowDays),
+    addDays(judgedOn, -paceWindowDays),
   )?.trendKg;
   // 開始の日以前に体重の傾向がある目標だけが立つので、開始の日から 14 日たてば両方ある
   if (judgedTrendKg === undefined || earlierTrendKg === undefined) {
@@ -101,7 +102,5 @@ export const computePace = ({
 
 // -0.04 kg/週のような値が -0 にならないよう、0 を足して -0 を 0 にする（端末の JSON では 0 と -0 を分けない）
 const roundRateKg = (kgPerWeek: number): number => roundToTenthKg(kgPerWeek, "round") + 0;
-
-const windowDays = 14;
 
 const minimumWeightRecordDayCount = 4;

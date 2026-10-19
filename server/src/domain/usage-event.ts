@@ -122,24 +122,26 @@ export type UsageEvent =
       expenditureSource: InitialExpenditureSource | "previous";
       limitHits: DailyGuideLimitType[];
     }
-  | {
+  | ({
       // 週の見直し（見送りを含む）を書いたとき（週ごと）。出荷後に k と見送る条件を調整するのに見る。
       // 体重・kcal の値は含めず、推定消費カロリーは差だけを送る
       name: "weekly_review";
-      // 見送った理由。見直せた週は undefined
-      deferralReason: WeeklyReviewDeferralReason | undefined;
-      // 見直せた週の1日の目安が当たった上限と下限。見送った週は空
-      limitHits: DailyGuideLimitType[];
-      // 見直せた週だけ
-      mainReason: DailyGuideMainReason | undefined;
-      // 見直した推定 − 前の推定（kcal）。見送った週は undefined
-      expenditureChangeKcal: number | undefined;
       initialExpenditureSource: InitialExpenditureSource | undefined;
       // 推定の始まりのあとの 4 回めと 8 回めの見直し（見送りを含む）だけ、そのときの推定 − 推定の始まり（kcal）
       expenditureChangeFromInitialKcal: number | undefined;
       // 同じ要求でまとめて見直した週の数
       reviewedWeekCount: number;
-    }
+    } & (
+      | { outcome: "deferred"; deferralReason: WeeklyReviewDeferralReason }
+      | {
+          outcome: "reviewed";
+          // 1日の目安が当たった上限と下限
+          limitHits: DailyGuideLimitType[];
+          mainReason: DailyGuideMainReason;
+          // 見直した推定 − 前の推定（kcal）
+          expenditureChangeKcal: number;
+        }
+    ))
   | {
       // 減量・増量の目標の達成を書いたとき。体重・目標体重の値は含めない
       name: "goal_achieved";

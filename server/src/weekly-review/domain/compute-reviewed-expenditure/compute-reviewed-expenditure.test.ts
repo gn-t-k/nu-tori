@@ -38,108 +38,131 @@ describe("見直した推定消費カロリー", () => {
   });
 
   describe("予測より体重が減らなかったとき", () => {
-    test("推定を下げ、ずれの向きを負にすること", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
       // 予測した変化 −0.1818 kg、実際の変化 0 kg で、ずれは −0.1818 kg。0.25 × 7,700 × ずれ ÷ 7 = −50 kcal
-      expect(computeReviewedExpenditure(inputs({ actualWeightChangeKg: 0 }))).toMatchObject({
-        expenditureKcal: 2350,
-        deviationDirection: "negative",
-      });
+      reviewed = computeReviewedExpenditure(inputs({ actualWeightChangeKg: 0 }));
+    });
+
+    test("推定を下げ、ずれの向きを負にすること", () => {
+      expect(reviewed).toMatchObject({ expenditureKcal: 2350, deviationDirection: "negative" });
     });
   });
 
   describe("予測と実際の変化が同じとき", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
+      reviewed = computeReviewedExpenditure(
+        inputs({
+          averageEnergyIntakeKcal: 2400,
+          actualWeightChangeKg: 0,
+          previousWeeks: [{ type: "reviewed", deviationDirection: "zero" }],
+        }),
+      );
+    });
+
     test("推定を変えず、ずれの向きを 0 にすること", () => {
-      expect(
-        computeReviewedExpenditure(
-          inputs({
-            averageEnergyIntakeKcal: 2400,
-            actualWeightChangeKg: 0,
-            previousWeeks: [{ type: "reviewed", deviationDirection: "zero" }],
-          }),
-        ),
-      ).toMatchObject({ expenditureKcal: 2400, deviationDirection: "zero" });
+      expect(reviewed).toMatchObject({ expenditureKcal: 2400, deviationDirection: "zero" });
     });
   });
 
   describe("食事を記録した日が4日のとき", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
+      reviewed = computeReviewedExpenditure(inputs({ recordedMealDayCount: 4 }));
+    });
+
     test("k を 0.25 × 4 / 7 にすること", () => {
       // 240 kcal × 4 / 7 = 137.1 kcal × 0.25 = 34.3 kcal
-      expect(computeReviewedExpenditure(inputs({ recordedMealDayCount: 4 })).expenditureKcal).toBe(
-        2434,
-      );
+      expect(reviewed.expenditureKcal).toBe(2434);
     });
   });
 
   describe("続いた週の数", () => {
     describe("前に見直せた週が同じ向きのとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({ previousWeeks: [{ type: "reviewed", deviationDirection: "positive" }] }),
+        );
+      });
+
       test("1つ増やして k を 0.5 にすること", () => {
-        expect(
-          computeReviewedExpenditure(
-            inputs({ previousWeeks: [{ type: "reviewed", deviationDirection: "positive" }] }),
-          ).expenditureKcal,
-        ).toBe(2520);
+        expect(reviewed.expenditureKcal).toBe(2520);
       });
     });
 
     describe("前の週を見送り、その前に見直せた週が同じ向きのとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({
+            previousWeeks: [
+              { type: "deferred" },
+              { type: "reviewed", deviationDirection: "positive" },
+            ],
+          }),
+        );
+      });
+
       test("見送った週を飛ばして数えること", () => {
-        expect(
-          computeReviewedExpenditure(
-            inputs({
-              previousWeeks: [
-                { type: "deferred" },
-                { type: "reviewed", deviationDirection: "positive" },
-              ],
-            }),
-          ).expenditureKcal,
-        ).toBe(2520);
+        expect(reviewed.expenditureKcal).toBe(2520);
       });
     });
 
     describe("前に見直せた週と向きが変わったとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({
+            previousWeeks: [
+              { type: "reviewed", deviationDirection: "negative" },
+              { type: "reviewed", deviationDirection: "positive" },
+            ],
+          }),
+        );
+      });
+
       test("0 に戻すこと", () => {
-        expect(
-          computeReviewedExpenditure(
-            inputs({
-              previousWeeks: [
-                { type: "reviewed", deviationDirection: "negative" },
-                { type: "reviewed", deviationDirection: "positive" },
-              ],
-            }),
-          ).expenditureKcal,
-        ).toBe(2460);
+        expect(reviewed.expenditureKcal).toBe(2460);
       });
     });
 
     describe("前に見直せた週のずれが 0 のとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({
+            previousWeeks: [
+              { type: "reviewed", deviationDirection: "zero" },
+              { type: "reviewed", deviationDirection: "positive" },
+            ],
+          }),
+        );
+      });
+
       test("0 に戻すこと", () => {
-        expect(
-          computeReviewedExpenditure(
-            inputs({
-              previousWeeks: [
-                { type: "reviewed", deviationDirection: "zero" },
-                { type: "reviewed", deviationDirection: "positive" },
-              ],
-            }),
-          ).expenditureKcal,
-        ).toBe(2460);
+        expect(reviewed.expenditureKcal).toBe(2460);
       });
     });
 
     describe("同じ向きの週が3つ続いたとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({
+            previousWeeks: [
+              { type: "reviewed", deviationDirection: "positive" },
+              { type: "reviewed", deviationDirection: "positive" },
+              { type: "reviewed", deviationDirection: "positive" },
+            ],
+          }),
+        );
+      });
+
       test("k を上限の 0.75 で止めること", () => {
         // 続いた週の数は 3 で、0.25 ×（1 + 3）= 1.0 になるところを 0.75 で止める
-        expect(
-          computeReviewedExpenditure(
-            inputs({
-              previousWeeks: [
-                { type: "reviewed", deviationDirection: "positive" },
-                { type: "reviewed", deviationDirection: "positive" },
-                { type: "reviewed", deviationDirection: "positive" },
-              ],
-            }),
-          ).expenditureKcal,
-        ).toBe(2580);
+        expect(reviewed.expenditureKcal).toBe(2580);
       });
     });
   });

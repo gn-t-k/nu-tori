@@ -9,11 +9,21 @@ public struct DeadlineResult: Hashable, Sendable {
     /// 確定した値を使い、確定する前（期限の日のうち）は、届いている体重の傾向で出し直す。
     /// 減量・増量でない目標と、期限の日以前の体重の傾向が無いときは nil
     init?(goal: Goal, records: GoalRecords) {
-        let towardTarget: Double
         guard let weightChange = goal.direction.weightChange,
             let trend = goal.deadlineConfirmation?.deadlineWeightTrendKilograms
                 ?? records.trendKilograms(onOrBefore: weightChange.deadlineDay)
         else { return nil }
+        self.init(goal: goal, deadlineWeightTrendKilograms: trend)
+    }
+
+    /// 確定した値で出す。減量・増量でない目標では nil
+    init?(goal: Goal, confirmation: Goal.DeadlineConfirmation) {
+        self.init(
+            goal: goal, deadlineWeightTrendKilograms: confirmation.deadlineWeightTrendKilograms)
+    }
+
+    private init?(goal: Goal, deadlineWeightTrendKilograms trend: Double) {
+        let towardTarget: Double
         switch goal.direction {
         case .lose: towardTarget = trend - goal.targetWeightKilograms
         case .gain: towardTarget = goal.targetWeightKilograms - trend

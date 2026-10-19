@@ -17,9 +17,7 @@ extension TimelineTests {
         ) throws -> SentTextBubble? {
             let timeline = Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                    goalRecords: .fixture(), rejectedLines: [], meals: [],
                     notices: [],
                     undelivered: UndeliveredRecords(
                         pendingEntries: try pending.map {

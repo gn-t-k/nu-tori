@@ -169,12 +169,9 @@ extension GoalOverviewTests {
                     closure: Goal.Closure(
                         endedDay: GoalOverviewTests.day(12, 28), nextGoalId: maintenanceId,
                         endReason: .movedToMaintenance))
-                let maintenance = Goal(
-                    id: maintenanceId, startedDay: GoalOverviewTests.day(12, 28),
-                    startingWeightTrendKilograms: 68.3, targetWeightKilograms: 68.3,
-                    decidedAt: try Date("2026-12-28T07:00:00+09:00", strategy: .iso8601),
-                    timeZone: previous.timeZone, direction: .maintain, achievement: nil,
-                    deadlineConfirmation: nil, closure: nil)
+                let maintenance = try Goal.maintaining(
+                    id: maintenanceId, startedOn: GoalOverviewTests.day(12, 28),
+                    kilograms: 68.3, decidedAt: "2026-12-28T07:00:00+09:00")
                 card = try #require(
                     GoalOverviewTests.overview(
                         today: GoalOverviewTests.day(12, 30), goals: [previous, maintenance],

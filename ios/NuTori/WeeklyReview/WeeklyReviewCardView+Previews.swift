@@ -18,10 +18,27 @@
             case deferred
 
             var card: WeeklyReviewCard? {
-                let timeline = WeeklyReviewPreviewScene.timeline(deferred: self == .deferred)
+                let timeline = Timeline(
+                    input: Timeline.Input(
+                        goalRecords: GoalRecords(
+                            goals: [.sampleWeeklyReviewed],
+                            dailyGuides: [.sampleFirst, .sampleReviewed],
+                            expenditureEstimates: [.sampleFirst, .sampleReviewed],
+                            weeklyReviews: [review], weightTrend: .sampleWeeklyReviewed,
+                            weightRecords: WeeklyReview.sampleWeekWeightRecords),
+                        rejectedLines: [], meals: WeeklyReview.sampleWeekMeals, notices: [],
+                        undelivered: .none, conversation: .none),
+                    firstDay: Goal.sampleWeeklyReviewed.startedDay, today: .sampleToday)
                 return timeline.days.lazy.flatMap(\.items).compactMap { item in
                     if case .weeklyReviewCard(let card) = item { card } else { nil }
                 }.first
+            }
+
+            private var review: WeeklyReview {
+                switch self {
+                case .reviewed: .sampleReviewed
+                case .deferred: .sampleDeferred
+                }
             }
         }
     }

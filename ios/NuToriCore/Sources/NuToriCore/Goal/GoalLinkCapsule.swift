@@ -21,21 +21,20 @@ public struct GoalLinkCapsule: Hashable, Sendable {
             case .maintain:
                 self.init(maintaining: goal)
             case .lose, .gain:
-                // 体重の傾向は最後の体重記録の日で終わるので、今日以前で最も新しい日の値を今日の傾向にする（`GoalProgress` と同じ）。
-                // まだ届いていなければ開始の体重の傾向にして、入口を消さない
-                let trend =
-                    weightTrend?.days.last { $0.day <= today }?.kilograms
-                    ?? goal.startingWeightTrendKilograms
-                let whole = goal.targetWeightKilograms - goal.startingWeightTrendKilograms
-                let moved = trend - goal.startingWeightTrendKilograms
-                // 目標体重を越えたら 0 で止める（`GoalProgress` と同じ）
-                let remainingTenths = max(
-                    Int((abs(goal.targetWeightKilograms - trend) * 10).rounded()), 0)
-                let overshot = whole == 0 || moved / whole >= 1
+                let wholeTenths = abs(
+                    GoalText.tenths(
+                        goal.targetWeightKilograms - goal.startingWeightTrendKilograms))
+                // 今日以前の体重の傾向がまだ届いていなければ、開始の体重から数えて、入口を消さない
+                let remainingTenths =
+                    switch GoalProgress(goal: goal, today: today, weightTrend: weightTrend) {
+                    case .weightChange(let remainingTenthsOfKilogram, _): remainingTenthsOfKilogram
+                    case .maintain, nil: wholeTenths
+                    }
+                // 輪と残りの kg が食い違わないよう、進み具合も 0.1 kg 単位の残りから出す
                 self.init(
-                    progress: whole == 0 ? 1 : min(max(moved / whole, 0), 1),
-                    text: "あと \(GoalText.kilograms(tenths: overshot ? 0 : remainingTenths))"
-                )
+                    progress: wholeTenths == 0
+                        ? 1 : max(1 - Double(remainingTenths) / Double(wholeTenths), 0),
+                    text: "あと \(GoalText.kilograms(tenths: remainingTenths))")
             }
         }
     }
