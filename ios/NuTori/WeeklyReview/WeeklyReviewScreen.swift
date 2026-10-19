@@ -84,12 +84,17 @@ struct WeeklyReviewScreen: View {
             if let next = shown.nextWeekGuide {
                 Section("次の週の1日の目安") {
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(NutritionText.kilocalories(next.energyKilocalories))
-                                .font(.title2)
-                            Spacer(minLength: 8)
-                            Text(next.changeText)
-                                .foregroundStyle(.secondary)
+                        // 大きな文字で横に詰めると、値が単位の途中で折り返すので、横に収まらなければ変わった量を値の下に置く
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .firstTextBaseline) {
+                                nextWeekEnergy(next)
+                                Spacer(minLength: 8)
+                                nextWeekChange(next)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                nextWeekEnergy(next)
+                                nextWeekChange(next)
+                            }
                         }
                         .monospacedDigit()
                         Text(next.sentence)
@@ -103,6 +108,16 @@ struct WeeklyReviewScreen: View {
                 }
             }
         }
+    }
+
+    private func nextWeekEnergy(_ next: WeekRecap.NextWeekGuide) -> some View {
+        Text(NutritionText.kilocalories(next.energyKilocalories))
+            .font(.title2)
+    }
+
+    private func nextWeekChange(_ next: WeekRecap.NextWeekGuide) -> some View {
+        Text(next.changeText)
+            .foregroundStyle(.secondary)
     }
 
     /// ‹ 「9月14日〜20日」「減量の3週目」 ›。いちばん新しい週の › は押せない（薄い）
@@ -219,14 +234,21 @@ struct WeeklyReviewScreen: View {
                     returnToTimeline(day.day)
                 } label: {
                     HStack(spacing: 12) {
-                        Text(TimelineDayText.label(for: day.day))
-                            .foregroundStyle(Color.primary)
-                        Spacer(minLength: 0)
-                        // ボタンの中の階層の色は押せる色に染まるので、文字の色をじかに指す
-                        Text(Self.foodText(day.food))
-                            .foregroundStyle(Color(.secondaryLabel))
-                        Text(day.weightKilograms.map(WeightAmountText.kilograms) ?? "—")
-                            .foregroundStyle(Color(.secondaryLabel))
+                        // 大きな文字で横に詰めると、値が数字の途中で折り返すので、横に収まらなければ値を日付の下に置く
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 12) {
+                                Text(TimelineDayText.label(for: day.day))
+                                    .foregroundStyle(Color.primary)
+                                Spacer(minLength: 0)
+                                dayValues(day)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(TimelineDayText.label(for: day.day))
+                                    .foregroundStyle(Color.primary)
+                                dayValues(day)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         Image(systemName: "chevron.right")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(Color(.tertiaryLabel))
@@ -242,6 +264,23 @@ struct WeeklyReviewScreen: View {
         } footer: {
             Text("押すと、タイムラインのその日に戻ります。")
         }
+    }
+
+    /// 「1,890 kcal 73.4 kg」。横に収まらなければ縦に並べる。ボタンの中の階層の色は押せる色に染まるので、文字の色をじかに指す
+    private func dayValues(_ day: WeekRecap.Day) -> some View {
+        let food = Text(Self.foodText(day.food))
+        let weight = Text(day.weightKilograms.map(WeightAmountText.kilograms) ?? "—")
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                food
+                weight
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                food
+                weight
+            }
+        }
+        .foregroundStyle(Color(.secondaryLabel))
     }
 
     /// 食事の無い日は「記録なし」、kcal が出ない日は「—」
