@@ -68,17 +68,11 @@ public struct GoalNotice: Hashable, Sendable {
                 ? "期限の\(deadlineText(of: goal))より \(daysEarly) 日早く届きました。次の目標を選ぶまで、今の目標を続けます。"
                 : "期限の\(deadlineText(of: goal))に届きました。次の目標を選ぶまで、今の目標を続けます。"
         case .deadlineReached(let confirmation):
-            let fromStart = GoalText.tenths(
-                confirmation.deadlineWeightTrendKilograms
-                    - goal.startingWeightTrendKilograms)
-            let remaining = GoalText.tenths(
-                abs(
-                    goal.targetWeightKilograms - confirmation.deadlineWeightTrendKilograms))
+            let result = DeadlineResult(goal: goal, confirmation: confirmation)
             let monday = goal.direction.weightChange.map {
                 Self.maintenanceMonday(afterDeadline: $0.deadlineDay)
             }
-            return
-                "開始から \(GoalText.signedKilograms(tenths: fromStart))・目標まであと \(GoalText.kilograms(tenths: remaining)) でした。"
+            return (result.map { "\($0.text) でした。" } ?? "")
                 + (monday.map {
                     "選ばなければ、\(GoalText.monthDay($0))（月）から今の体重を保つ目標で続けます。"
                 } ?? "")
