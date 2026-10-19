@@ -39,7 +39,7 @@ extension WeekRecap {
             case .maintenance(let isWithinBand):
                 guard let trend = records.trendKilograms(onOrBefore: judgedDay) else { return nil }
                 let band =
-                    "体重の傾向は \(WeightAmountText.kilograms(trend)) で、\(WeightAmountText.kilograms(goal.targetWeightKilograms)) を保つ幅（±0.7 kg）"
+                    "体重の傾向は \(WeightAmountText.kilograms(trend)) で、\(WeightAmountText.kilograms(goal.targetWeightKilograms)) を保つ幅（±\(WeightAmountText.kilograms(Pace.maintenanceBandKilograms))）"
                 self.init(
                     headline: isWithinBand ? "保てています" : "幅から外れています",
                     sentence: isWithinBand ? "\(band)に入っています。" : "\(band)から外れています。")
