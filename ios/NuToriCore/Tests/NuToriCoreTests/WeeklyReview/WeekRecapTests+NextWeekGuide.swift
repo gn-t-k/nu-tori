@@ -78,13 +78,7 @@ extension WeekRecapTests {
 
         /// `Goal.losing()` を、10月19日の月曜に閉じたもの
         static func losingClosed(nextGoalId: UUID, endReason: Goal.EndReason) throws -> Goal {
-            let losing = try Goal.losing()
-            return Goal(
-                id: losing.id, startedDay: losing.startedDay,
-                startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                targetWeightKilograms: losing.targetWeightKilograms,
-                decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                direction: losing.direction, achievement: nil, deadlineConfirmation: nil,
+            try Goal.losing(
                 closure: Goal.Closure(
                     endedDay: WeekRecapTests.day(10, 19), nextGoalId: nextGoalId,
                     endReason: endReason))
@@ -92,13 +86,9 @@ extension WeekRecapTests {
 
         /// 10月19日の月曜に始めた、70.5 kg を保つ目標
         static func maintainingFromMonday(id: UUID) throws -> Goal {
-            Goal(
-                id: id, startedDay: WeekRecapTests.day(10, 19),
-                startingWeightTrendKilograms: 70.5, targetWeightKilograms: 70.5,
-                decidedAt: try Date("2026-10-19T07:00:00+09:00", strategy: .iso8601),
-                timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
-                direction: .maintain, achievement: nil, deadlineConfirmation: nil,
-                closure: nil)
+            try Goal.maintaining(
+                id: id, startedOn: WeekRecapTests.day(10, 19), kilograms: 70.5,
+                decidedAt: "2026-10-19T07:00:00+09:00")
         }
 
         @Suite("推定消費カロリーの変化で変わったとき")
@@ -155,13 +145,9 @@ extension WeekRecapTests {
 
             @Test("維持で1日に戻す分を増やしたときは、体重の傾向に合わせたことを理由にすること")
             func explainsMaintenanceBalance() throws {
-                let losing = try Goal.losing()
-                let maintaining = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.startingWeightTrendKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone, direction: .maintain,
-                    achievement: nil, deadlineConfirmation: nil, closure: nil)
+                let maintaining = try Goal.maintaining(
+                    startedOn: WeekRecapTests.day(10, 1), kilograms: 72.4,
+                    decidedAt: "2026-10-01T08:30:00+09:00")
                 let guide = try #require(
                     try NextWeekGuide.recap(
                         goal: maintaining, outcome: NextWeekGuide.reviewed(.balanceChange),
@@ -178,18 +164,9 @@ extension WeekRecapTests {
         struct AfterAchievement {
             @Test("減らす分をなくしていくことを理由にすること")
             func explainsAchievement() throws {
-                let losing = try Goal.losing()
-                let goal = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction,
-                    achievement: Goal.Achievement(
-                        achievedDay: WeekRecapTests.day(10, 15),
-                        judgedAt: try Date("2026-10-15T07:10:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    deadlineConfirmation: nil, closure: nil)
+                let goal = try Goal.losing(
+                    achievement: .inTokyo(
+                        on: WeekRecapTests.day(10, 15), judgedAt: "2026-10-15T07:10:00+09:00"))
                 let guide = try #require(
                     try NextWeekGuide.recap(
                         goal: goal, outcome: NextWeekGuide.reviewed(.balanceChange),

@@ -13,9 +13,7 @@ extension TimelineTests {
         ) -> [Timeline.Item] {
             Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                    goalRecords: .fixture(), rejectedLines: [], meals: [],
                     notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
@@ -98,9 +96,7 @@ extension TimelineTests {
             func timeline(_ stream: ReplyStream, replies: [AiUtterance] = []) -> Timeline {
                 Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [],
                         notices: [], undelivered: .none,
                         conversation: Timeline.Conversation(
                             sentTexts: [sentText],

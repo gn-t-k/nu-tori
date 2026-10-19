@@ -297,15 +297,10 @@ extension TimelineTests {
                 let scene = try WeeklyReviewScene()
                 let monday = CalendarDay(year: 2026, month: 10, day: 5)
                 let next = try Goal.maintaining(id: UUID())
-                let switched = Goal(
-                    id: scene.goal.id, startedDay: scene.goal.startedDay,
-                    startingWeightTrendKilograms: scene.goal.startingWeightTrendKilograms,
-                    targetWeightKilograms: scene.goal.targetWeightKilograms,
-                    decidedAt: scene.goal.decidedAt, timeZone: scene.goal.timeZone,
-                    direction: scene.goal.direction, achievement: nil, deadlineConfirmation: nil,
+                let switched = try Goal.losing(
+                    id: scene.goal.id,
                     closure: Goal.Closure(
-                        endedDay: monday, nextGoalId: next.id, endReason: .switched)
-                )
+                        endedDay: monday, nextGoalId: next.id, endReason: .switched))
                 review = try scene.reviewed(
                     effectiveOn: monday, reviewedAt: "2026-10-05T06:10:00+09:00",
                     guide: scene.reviewedGuide, estimate: scene.reviewedEstimate,
@@ -378,13 +373,9 @@ extension TimelineTests {
 
             @Test("維持で1日に戻す分を増やしたときは、体重の傾向に合わせたことを言うこと")
             func maintenanceBalanceIncreased() throws {
-                let losing = try Goal.losing()
-                let maintaining = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.startingWeightTrendKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone, direction: .maintain,
-                    achievement: nil, deadlineConfirmation: nil, closure: nil)
+                let maintaining = try Goal.maintaining(
+                    startedOn: CalendarDay(year: 2026, month: 10, day: 1), kilograms: 72.4,
+                    decidedAt: "2026-10-01T08:30:00+09:00")
                 let notice = try #require(
                     try Self.notice(
                         scene: try WeeklyReviewScene(goal: maintaining), kilocalories: 2190,
@@ -394,18 +385,10 @@ extension TimelineTests {
 
             @Test("達成したあとは、1日に減らす分をなくしていくことを言うこと")
             func afterAchievement() throws {
-                let losing = try Goal.losing()
-                let achieved = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction,
-                    achievement: Goal.Achievement(
-                        achievedDay: CalendarDay(year: 2026, month: 10, day: 3),
-                        judgedAt: try Date("2026-10-03T07:30:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    deadlineConfirmation: nil, closure: nil)
+                let achieved = try Goal.losing(
+                    achievement: .inTokyo(
+                        on: CalendarDay(year: 2026, month: 10, day: 3),
+                        judgedAt: "2026-10-03T07:30:00+09:00"))
                 let notice = try #require(
                     try Self.notice(
                         scene: try WeeklyReviewScene(goal: achieved), kilocalories: 2190,
@@ -416,18 +399,11 @@ extension TimelineTests {
             @Test("期限後の維持に移った週は、今の体重を保つ目標に切り替えたことを言うこと")
             func movedToMaintenance() throws {
                 let scene = try WeeklyReviewScene()
-                let maintenance = Goal(
-                    id: UUID(), startedDay: Self.monday, startingWeightTrendKilograms: 70.5,
-                    targetWeightKilograms: 70.5,
-                    decidedAt: try Date("2026-10-05T06:10:00+09:00", strategy: .iso8601),
-                    timeZone: scene.tokyo, direction: .maintain, achievement: nil,
-                    deadlineConfirmation: nil, closure: nil)
-                let closed = Goal(
-                    id: scene.goal.id, startedDay: scene.goal.startedDay,
-                    startingWeightTrendKilograms: scene.goal.startingWeightTrendKilograms,
-                    targetWeightKilograms: scene.goal.targetWeightKilograms,
-                    decidedAt: scene.goal.decidedAt, timeZone: scene.goal.timeZone,
-                    direction: scene.goal.direction, achievement: nil, deadlineConfirmation: nil,
+                let maintenance = try Goal.maintaining(
+                    startedOn: Self.monday, kilograms: 70.5,
+                    decidedAt: "2026-10-05T06:10:00+09:00")
+                let closed = try Goal.losing(
+                    id: scene.goal.id,
                     closure: Goal.Closure(
                         endedDay: Self.monday, nextGoalId: maintenance.id,
                         endReason: .movedToMaintenance))
@@ -483,18 +459,10 @@ extension TimelineTests {
 
             @Test("その週に達成していたら、達成した日を出すこと")
             func achieved() throws {
-                let losing = try Goal.losing()
-                let goal = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction,
-                    achievement: Goal.Achievement(
-                        achievedDay: CalendarDay(year: 2026, month: 11, day: 8),
-                        judgedAt: try Date("2026-11-08T07:30:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    deadlineConfirmation: nil, closure: nil)
+                let goal = try Goal.losing(
+                    achievement: .inTokyo(
+                        on: CalendarDay(year: 2026, month: 11, day: 8),
+                        judgedAt: "2026-11-08T07:30:00+09:00"))
                 let scene = try WeeklyReviewScene(goal: goal)
                 let timeline = scene.timeline(
                     reviews: [
@@ -510,18 +478,10 @@ extension TimelineTests {
 
             @Test("達成した週のあとの週は、目標に届いていて次の目標を選べることを出すこと")
             func afterAchievedWeek() throws {
-                let losing = try Goal.losing()
-                let goal = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction,
-                    achievement: Goal.Achievement(
-                        achievedDay: CalendarDay(year: 2026, month: 11, day: 8),
-                        judgedAt: try Date("2026-11-08T07:30:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    deadlineConfirmation: nil, closure: nil)
+                let goal = try Goal.losing(
+                    achievement: .inTokyo(
+                        on: CalendarDay(year: 2026, month: 11, day: 8),
+                        judgedAt: "2026-11-08T07:30:00+09:00"))
                 let scene = try WeeklyReviewScene(goal: goal)
                 let timeline = scene.timeline(
                     reviews: [

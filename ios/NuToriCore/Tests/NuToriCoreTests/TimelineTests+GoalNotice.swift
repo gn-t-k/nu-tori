@@ -91,22 +91,12 @@ extension TimelineTests {
             let timeline: Timeline
 
             init() throws {
-                let losing = try Goal.losing()
-                goal = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction,
-                    achievement: Goal.Achievement(
-                        achievedDay: CalendarDay(year: 2026, month: 12, day: 26),
-                        judgedAt: try Date("2026-12-26T07:30:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    deadlineConfirmation: Goal.DeadlineConfirmation(
-                        deadlineWeightTrendKilograms: 68.4,
-                        confirmedAt: try Date("2026-12-25T06:10:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    closure: nil)
+                goal = try Goal.losing(
+                    achievement: .inTokyo(
+                        on: CalendarDay(year: 2026, month: 12, day: 26),
+                        judgedAt: "2026-12-26T07:30:00+09:00"),
+                    deadlineConfirmation: .inTokyo(
+                        weightTrendKilograms: 68.4, confirmedAt: "2026-12-25T06:10:00+09:00"))
                 timeline = GoalNoticeScene.timeline(
                     goals: [goal], weightRecords: [],
                     today: CalendarDay(year: 2026, month: 12, day: 26))
@@ -129,13 +119,8 @@ extension TimelineTests {
 
             init() throws {
                 let monday = CalendarDay(year: 2026, month: 12, day: 28)
-                maintenance = Goal(
-                    id: UUID(), startedDay: monday, startingWeightTrendKilograms: 68.8,
-                    targetWeightKilograms: 68.8,
-                    decidedAt: try Date("2026-12-28T06:10:00+09:00", strategy: .iso8601),
-                    timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
-                    direction: .maintain, achievement: nil, deadlineConfirmation: nil,
-                    closure: nil)
+                maintenance = try Goal.maintaining(
+                    startedOn: monday, kilograms: 68.8, decidedAt: "2026-12-28T06:10:00+09:00")
                 previous = try GoalNoticeScene.losing(
                     confirmedAt: "2026-12-25T06:10:00+09:00", deadlineWeightTrendKilograms: 68.8,
                     closure: Goal.Closure(
@@ -186,12 +171,9 @@ extension TimelineTests {
                     closure: Goal.Closure(
                         endedDay: CalendarDay(year: 2026, month: 11, day: 10),
                         nextGoalId: next.id, endReason: .switched))
-                let nextStarted = Goal(
-                    id: next.id, startedDay: CalendarDay(year: 2026, month: 11, day: 10),
-                    startingWeightTrendKilograms: 67.9, targetWeightKilograms: 67.9,
-                    decidedAt: try Date("2026-11-10T21:00:00+09:00", strategy: .iso8601),
-                    timeZone: next.timeZone, direction: .maintain, achievement: nil,
-                    deadlineConfirmation: nil, closure: nil)
+                let nextStarted = try Goal.maintaining(
+                    id: next.id, startedOn: CalendarDay(year: 2026, month: 11, day: 10),
+                    kilograms: 67.9, decidedAt: "2026-11-10T21:00:00+09:00")
                 timeline = GoalNoticeScene.timeline(
                     goals: [achieved, nextStarted], weightRecords: [],
                     today: CalendarDay(year: 2026, month: 11, day: 10))

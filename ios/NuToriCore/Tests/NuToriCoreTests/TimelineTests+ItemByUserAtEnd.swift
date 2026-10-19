@@ -22,9 +22,7 @@ extension TimelineTests {
         ) -> [Timeline.Day] {
             Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: weightRecords), rejectedLines: [],
+                    goalRecords: .fixture(weightRecords: weightRecords), rejectedLines: [],
                     meals: meals, notices: notices, undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: sentTexts,

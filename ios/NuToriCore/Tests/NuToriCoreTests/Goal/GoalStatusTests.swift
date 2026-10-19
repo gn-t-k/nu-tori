@@ -9,21 +9,13 @@ struct GoalStatusTests {
         id: UUID = UUID(), achievedAt: String? = nil, confirmedAt: String? = nil,
         closure: Goal.Closure? = nil
     ) throws -> Goal {
-        let losing = try Goal.losing()
-        return Goal(
-            id: id, startedDay: losing.startedDay,
-            startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-            targetWeightKilograms: losing.targetWeightKilograms, decidedAt: losing.decidedAt,
-            timeZone: losing.timeZone, direction: losing.direction,
+        try Goal.losing(
+            id: id,
             achievement: try achievedAt.map {
-                Goal.Achievement(
-                    achievedDay: CalendarDay(year: 2026, month: 12, day: 10),
-                    judgedAt: try Date($0, strategy: .iso8601), timeZone: losing.timeZone)
+                try .inTokyo(on: CalendarDay(year: 2026, month: 12, day: 10), judgedAt: $0)
             },
             deadlineConfirmation: try confirmedAt.map {
-                Goal.DeadlineConfirmation(
-                    deadlineWeightTrendKilograms: 67.8,
-                    confirmedAt: try Date($0, strategy: .iso8601), timeZone: losing.timeZone)
+                try .inTokyo(weightTrendKilograms: 67.8, confirmedAt: $0)
             },
             closure: closure)
     }
@@ -114,12 +106,8 @@ struct GoalStatusTests {
     func switchedFromMaintenanceIsInProgress() throws {
         let next = try Self.losing()
         let maintenance = try Goal.maintaining()
-        let closedMaintenance = Goal(
-            id: maintenance.id, startedDay: maintenance.startedDay,
-            startingWeightTrendKilograms: maintenance.startingWeightTrendKilograms,
-            targetWeightKilograms: maintenance.targetWeightKilograms,
-            decidedAt: maintenance.decidedAt, timeZone: maintenance.timeZone,
-            direction: maintenance.direction, achievement: nil, deadlineConfirmation: nil,
+        let closedMaintenance = try Goal.maintaining(
+            id: maintenance.id,
             closure: Goal.Closure(
                 endedDay: CalendarDay(year: 2027, month: 1, day: 5), nextGoalId: next.id,
                 endReason: .switched))

@@ -17,7 +17,7 @@ struct WeekRecapTests {
     ) throws -> WeekRecap? {
         WeekRecap(
             weekOf: day, today: today,
-            records: GoalRecords(
+            records: .fixture(
                 goals: try goals ?? [.losing()], dailyGuides: dailyGuides,
                 expenditureEstimates: expenditureEstimates, weeklyReviews: weeklyReviews,
                 weightTrend: weightTrend, weightRecords: weightRecords),
@@ -299,18 +299,9 @@ struct WeekRecapTests {
         struct Achieved {
             @Test("その週に起きたことを書くこと")
             func showsAchievement() throws {
-                let losing = try Goal.losing()
-                let goal = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction,
-                    achievement: Goal.Achievement(
-                        achievedDay: WeekRecapTests.day(11, 8),
-                        judgedAt: try Date("2026-11-08T07:10:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    deadlineConfirmation: nil, closure: nil)
+                let goal = try Goal.losing(
+                    achievement: .inTokyo(
+                        on: WeekRecapTests.day(11, 8), judgedAt: "2026-11-08T07:10:00+09:00"))
                 let recap = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(11, 2), today: WeekRecapTests.day(11, 10),
@@ -327,18 +318,10 @@ struct WeekRecapTests {
         struct AfterAchievedWeek {
             /// 11月8日に達成した `Goal.losing()`
             static func achieved(closure: Goal.Closure?) throws -> Goal {
-                let losing = try Goal.losing()
-                return Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction,
-                    achievement: Goal.Achievement(
-                        achievedDay: WeekRecapTests.day(11, 8),
-                        judgedAt: try Date("2026-11-08T07:10:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    deadlineConfirmation: nil, closure: closure)
+                try Goal.losing(
+                    achievement: .inTokyo(
+                        on: WeekRecapTests.day(11, 8), judgedAt: "2026-11-08T07:10:00+09:00"),
+                    closure: closure)
             }
 
             /// 11月9日〜15日の週
@@ -391,18 +374,9 @@ struct WeekRecapTests {
         struct DeadlineWeek {
             @Test("期限の日の結果を書くこと")
             func showsDeadlineResult() throws {
-                let losing = try Goal.losing()
-                let goal = Goal(
-                    id: losing.id, startedDay: losing.startedDay,
-                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-                    targetWeightKilograms: losing.targetWeightKilograms,
-                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
-                    direction: losing.direction, achievement: nil,
-                    deadlineConfirmation: Goal.DeadlineConfirmation(
-                        deadlineWeightTrendKilograms: 68.4,
-                        confirmedAt: try Date("2026-12-25T07:10:00+09:00", strategy: .iso8601),
-                        timeZone: losing.timeZone),
-                    closure: nil)
+                let goal = try Goal.losing(
+                    deadlineConfirmation: .inTokyo(
+                        weightTrendKilograms: 68.4, confirmedAt: "2026-12-25T07:10:00+09:00"))
                 let recap = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(12, 21), today: WeekRecapTests.day(12, 29),

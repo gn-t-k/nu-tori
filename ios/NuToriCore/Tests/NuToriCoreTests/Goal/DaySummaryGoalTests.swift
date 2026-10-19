@@ -15,9 +15,7 @@ struct DaySummaryGoalTests {
     ) -> DaySummaryGoal? {
         DaySummaryGoal(
             day: day, today: today,
-            records: GoalRecords(
-                goals: goals, dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                weightTrend: weightTrend, weightRecords: weightRecords))
+            records: .fixture(goals: goals, weightTrend: weightTrend, weightRecords: weightRecords))
     }
 
     static func trend(_ days: [(CalendarDay, Double)]) -> WeightTrend {
@@ -165,12 +163,9 @@ struct DaySummaryGoalTests {
                 closure: Goal.Closure(
                     endedDay: DaySummaryGoalTests.day(12, 28), nextGoalId: maintenanceId,
                     endReason: .movedToMaintenance))
-            let maintenance = Goal(
-                id: maintenanceId, startedDay: DaySummaryGoalTests.day(12, 28),
-                startingWeightTrendKilograms: 68.3, targetWeightKilograms: 68.3,
-                decidedAt: try Date("2026-12-28T07:00:00+09:00", strategy: .iso8601),
-                timeZone: previous.timeZone, direction: .maintain, achievement: nil,
-                deadlineConfirmation: nil, closure: nil)
+            let maintenance = try Goal.maintaining(
+                id: maintenanceId, startedOn: DaySummaryGoalTests.day(12, 28), kilograms: 68.3,
+                decidedAt: "2026-12-28T07:00:00+09:00")
             goals = [previous, maintenance]
         }
 
