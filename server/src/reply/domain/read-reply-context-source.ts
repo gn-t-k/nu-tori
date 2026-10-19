@@ -6,6 +6,7 @@ import type { RecordKindStores } from "../../domain/record-kind-stores";
 import { computeMealEstimationStatus } from "../../meal-estimation-status/domain/compute-meal-estimation-status";
 import type { MealEstimationStatus } from "../../meal-estimation-status/domain/meal-estimation-status";
 import type { SentText } from "../../sent-text/domain/sent-text";
+import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
 import type { WeightRecord } from "../../weight-record/domain/weight-record";
 import { createWeightTrendKind } from "../../weight-trend/domain/create-weight-trend-kind";
 import { weightTrendRecordId } from "../../weight-trend/domain/weight-trend-record-id";
@@ -55,6 +56,9 @@ export const readReplyContextSource = (
       .flatMap((mealId) => readMeal(stores, mealId, now)),
     weightRecords: readWeightRecords(stores, from, now),
     weightTrend: weightTrend.status === "value" ? weightTrend.value : [],
+    weightRecordDays: computeDailyRepresentativeWeights(
+      stores.weightRecord.findAllInMeasuredOrder(),
+    ).map(({ calendarDay }) => calendarDay),
     goals: stores.goal.findAll(),
     dailyGuides: stores.dailyGuide.findAll(),
     expenditureEstimates: stores.expenditureEstimate.findEffectiveOnOrBefore(today),

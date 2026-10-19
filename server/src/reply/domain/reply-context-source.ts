@@ -24,6 +24,8 @@ export type ReplyContextSource = {
   meals: readonly ReplyContextSourceMeal[];
   weightRecords: readonly WeightRecord[];
   weightTrend: WeightTrend;
+  // 体重記録のある日（記録のタイムゾーンでの YYYY-MM-DD）。ペースに使う
+  weightRecordDays: readonly string[];
   goals: readonly Goal[];
   dailyGuides: readonly DailyGuide[];
   expenditureEstimates: readonly ExpenditureEstimate[];

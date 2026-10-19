@@ -20,6 +20,7 @@ export const buildReplyContextSource = {
     meals: [],
     weightRecords: [],
     weightTrend: [],
+    weightRecordDays: [],
     goals: [],
     dailyGuides: [],
     expenditureEstimates: [],

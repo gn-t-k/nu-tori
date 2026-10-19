@@ -5,6 +5,7 @@ import type {
 import type { DailyGuideAmounts } from "../../daily-guide/domain/daily-guide-amounts";
 import type { DayOfWeek } from "../../domain/day-of-week";
 import type { RecordId } from "../../domain/record-id";
+import type { Pace } from "../../goal/domain/compute-pace";
 import type { GoalDirection } from "../../goal/domain/goal-direction";
 import type { NutrientAmount } from "../../ingredient/domain/nutrient-amount";
 import type { WeeklyReviewDeferralReason } from "../../weekly-review/domain/weekly-review";
@@ -65,6 +66,8 @@ export type ReplyContextGoal = {
   expenditureKcal: number | undefined;
   // この目標の、今日以前に当てた直近の見直し（見送りを含む）。まだ見直していなければ無い
   latestWeeklyReview: ReplyContextWeeklyReview | undefined;
+  // 今日で判定したペース。目標の開始の日以前の体重の傾向が無ければ（体重記録を消したなど）出さない
+  pace: Pace | undefined;
 };
 
 // 見直しの月曜（新しい1日の目安を当てる日。YYYY-MM-DD）と結果。見送った週は、1日の目安も推定消費カロリーも前の週のまま

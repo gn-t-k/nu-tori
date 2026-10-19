@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import type { Pace } from "../../../goal/domain/compute-pace";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type { DayOfWeek } from "../../../domain/day-of-week";
@@ -115,6 +116,7 @@ const renderGoal = ({
   dailyGuide,
   expenditureKcal,
   latestWeeklyReview,
+  pace,
 }: ReplyContextGoal): string[] => [
   "## 目標",
   `${match(direction)
@@ -133,8 +135,33 @@ const renderGoal = ({
         })
   }`,
   `推定消費カロリー: ${expenditureKcal === undefined ? "なし" : `${formatNumber(expenditureKcal, 0)} kcal`}`,
+  `ペース: ${renderPace(pace)}`,
   ...(latestWeeklyReview === undefined ? [] : renderWeeklyReview(latestWeeklyReview)),
 ];
+
+const renderPace = (pace: Pace | undefined): string =>
+  pace === undefined
+    ? "なし"
+    : match(pace)
+        .with({ status: "onTrack" }, () => "今の体重の傾向の動きのままなら、期限に目標体重へ届く")
+        .with(
+          { status: "behind" },
+          ({ shortfallKg }) =>
+            `今の体重の傾向の動きのままだと、期限に目標体重まで ${shortfallKg.toFixed(1)} kg 届かない`,
+        )
+        .with(
+          { status: "inconclusive" },
+          ({ weightRecordDayCount }) =>
+            `言い切れない（直近 14 日に体重を記録した日が ${weightRecordDayCount} 日しかない）`,
+        )
+        .with({ status: "pending" }, () => "まだ出ない（目標を立てて 14 日たっていない）")
+        .with({ status: "unavailable" }, () => "なし（期限の日か達成した日を迎えた）")
+        .with(
+          { status: "maintenance" },
+          ({ isWithinBand }) =>
+            `体重の傾向が目標体重の ±0.7 kg ${isWithinBand ? "に収まっている" : "を外れている"}`,
+        )
+        .exhaustive();
 
 const renderWeeklyReview = (review: ReplyContextWeeklyReview): string[] => {
   const heading = `直近の週の見直し: ${formatDate(review.effectiveOn)}から。`;

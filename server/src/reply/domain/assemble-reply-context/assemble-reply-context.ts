@@ -9,6 +9,9 @@ import type { Ingredient } from "../../../ingredient/domain/ingredient";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import type { Meal } from "../../../meal/domain/meal";
 import { computeGoalDirection } from "../../../goal/domain/compute-goal-direction";
+import { computePace, type Pace } from "../../../goal/domain/compute-pace";
+import type { Goal } from "../../../goal/domain/goal";
+import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
 import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type {
   MainNutrients,
@@ -201,13 +204,18 @@ const assembleStructuredValues = (
       lastWeightRecord === undefined
         ? undefined
         : { at: toWallClock(lastWeightRecord.measuredAt), weightKg: lastWeightRecord.weightKg },
-    goal: assembleGoal(goalSource, today),
+    goal: assembleGoal({ ...goalSource, weightTrend }, today),
   };
 };
 
 type GoalSource = Pick<
   ReplyContextSource,
-  "goals" | "dailyGuides" | "expenditureEstimates" | "weeklyReviews"
+  | "goals"
+  | "dailyGuides"
+  | "expenditureEstimates"
+  | "weeklyReviews"
+  | "weightTrend"
+  | "weightRecordDays"
 >;
 
 const assembleGoal = (source: GoalSource, today: string): ReplyContextGoal | undefined => {
@@ -241,8 +249,38 @@ const assembleGoal = (source: GoalSource, today: string): ReplyContextGoal | und
           },
     expenditureKcal: expenditureEstimate?.expenditureKcal,
     latestWeeklyReview: assembleLatestWeeklyReview(source, { goalId: goal.id, today }),
+    pace: assemblePace(source, { goal, today }),
   };
 };
+
+// ペースは、目標の開始の日以前に体重の傾向がある目標だけを判定できる（目標を立てたあとに、その前の体重記録を消すと無くなる）
+const assemblePace = (
+  { weightTrend, weightRecordDays }: Pick<ReplyContextSource, "weightTrend" | "weightRecordDays">,
+  { goal, today }: { goal: Goal; today: string },
+): Pace | undefined => {
+  if (!hasTrendOnOrBefore(weightTrend, goal.startedOn)) {
+    return undefined;
+  }
+  const direction = computeGoalDirection(goal);
+  return computePace({
+    judgedOn: today,
+    weightTrend,
+    weightRecordDays,
+    goal:
+      direction === "maintain" || goal.weightChange === undefined
+        ? { direction: "maintain", targetWeightKg: goal.targetWeightKg }
+        : {
+            direction,
+            startedOn: goal.startedOn,
+            deadlineOn: goal.weightChange.deadlineOn,
+            targetWeightKg: goal.targetWeightKg,
+          },
+    achievedOn: goal.achievement?.achievedOn,
+  });
+};
+
+const hasTrendOnOrBefore = (weightTrend: WeightTrend, calendarDay: string): boolean =>
+  weightTrend.some((entry) => entry.calendarDay <= calendarDay);
 
 const findGoalDailyGuideForDay = (
   { goals, dailyGuides }: Pick<ReplyContextSource, "goals" | "dailyGuides">,
