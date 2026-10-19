@@ -8,36 +8,36 @@
     "evals:reply": "tsx evals/run-eval.ts reply"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "0.132.1",
+    "@anthropic-ai/sdk": "0.135.0",
     "@hono/zod-openapi": "1.6.3",
     "@praha/byethrow": "0.12.0",
     "@praha/error-factory": "1.4.1",
-    "@sentry/cloudflare": "11.6.0",
-    "@sentry/hono": "11.6.0",
-    "better-auth": "1.7.7",
+    "@sentry/cloudflare": "11.8.0",
+    "@sentry/hono": "11.8.0",
+    "better-auth": "1.7.10",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.13",
     "jose": "6.2.12",
-    "ts-pattern": "5.9.0",
-    "zod": "4.6.5"
+    "ts-pattern": "5.9.2",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "1.4.0",
+    "@cloudflare/vitest-plugin": "1.4.3",
     "@praha/byethrow-docs": "0.12.0",
     "@praha/byethrow-oxlint": "0.12.0",
     "@praha/byethrow-testing": "0.12.0",
     "@praha/drizzle-factory": "1.4.2",
     "@tsconfig/strictest": "2.0.8",
-    "@types/node": "26.6.4",
-    "oxfmt": "0.72.0",
-    "oxlint": "1.87.0",
-    "oxlint-tsgolint": "7.0.2003",
+    "@types/node": "26.6.5",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
     "promptfoo": "0.124.1",
     "read-excel-file": "9.3.12",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "4.1.11",
-    "wrangler": "4.149.0"
+    "vitest": "4.1.12",
+    "wrangler": "4.151.0"
   },
   "packageManager": "pnpm@12.6.0"
 }
