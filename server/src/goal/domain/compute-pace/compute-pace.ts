@@ -24,7 +24,9 @@ export type Pace =
   // まだ出ない。目標を立てて 14 日たっていない
   | { status: "pending" }
   // 返さない。期限の日か達成した日を迎えた
-  | { status: "unavailable" };
+  | { status: "unavailable" }
+  // 維持（期限後の維持を含む）。体重の傾向が目標体重の ±0.7 kg に収まっているか
+  | { status: "maintenance"; isWithinBand: boolean };
 
 // ペース。端末にも同じ手順を置く（docs/agents/shared-rules.md の「ペース」）
 export const computePace = ({
@@ -43,7 +45,13 @@ export const computePace = ({
   achievedOn: string | undefined;
 }): Pace => {
   if (goal.direction === "maintain") {
-    throw new Error("まだ無い");
+    const trendKg = findTrendKgOnOrBefore(weightTrend, judgedOn);
+    if (trendKg === undefined) {
+      throw new Error("目標の開始の日より前に体重の傾向が無い");
+    }
+    // ちょうど幅の端にある傾向は、浮動小数の誤差で幅の外にしない
+    const isWithinBand = Math.abs(trendKg - goal.targetWeightKg) <= maintenanceBandKg + tolerance;
+    return { status: "maintenance", isWithinBand };
   }
   if (judgedOn >= goal.deadlineOn || (achievedOn !== undefined && judgedOn >= achievedOn)) {
     return { status: "unavailable" };
@@ -90,6 +98,8 @@ const findTrendKgOnOrBefore = (trend: WeightTrend, calendarDay: string): number 
 
 // -0.04 kg/週のような値が -0 にならないよう、0 を足して -0 を 0 にする（端末の JSON では 0 と -0 を分けない）
 const roundRateKg = (kgPerWeek: number): number => roundToTenthKg(kgPerWeek, "round") + 0;
+
+const maintenanceBandKg = 0.7;
 
 const windowDays = 14;
 

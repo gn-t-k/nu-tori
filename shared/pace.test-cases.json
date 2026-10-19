@@ -577,5 +577,117 @@
       "actualKgPerWeek": -0.5,
       "requiredKgPerWeek": -0.3
     }
+  },
+  {
+    "name": "維持で、体重の傾向が目標体重のちょうど 0.7 kg 上",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 72.0
+      },
+      {
+        "calendarDay": "2026-10-02",
+        "trendKg": 72.7
+      }
+    ],
+    "weightRecordDays": [
+      "2026-10-02"
+    ],
+    "goal": {
+      "direction": "maintain",
+      "startedOn": "2026-09-28",
+      "deadlineOn": null,
+      "targetWeightKg": 72.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "maintenance",
+      "isWithinBand": true
+    }
+  },
+  {
+    "name": "維持で、体重の傾向が目標体重のちょうど 0.7 kg 下",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 72.0
+      },
+      {
+        "calendarDay": "2026-10-02",
+        "trendKg": 71.3
+      }
+    ],
+    "weightRecordDays": [
+      "2026-10-02"
+    ],
+    "goal": {
+      "direction": "maintain",
+      "startedOn": "2026-09-28",
+      "deadlineOn": null,
+      "targetWeightKg": 72.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "maintenance",
+      "isWithinBand": true
+    }
+  },
+  {
+    "name": "維持で、体重の傾向が目標体重の 0.8 kg 上",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 72.0
+      },
+      {
+        "calendarDay": "2026-10-02",
+        "trendKg": 72.8
+      }
+    ],
+    "weightRecordDays": [
+      "2026-10-02"
+    ],
+    "goal": {
+      "direction": "maintain",
+      "startedOn": "2026-09-28",
+      "deadlineOn": null,
+      "targetWeightKg": 72.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "maintenance",
+      "isWithinBand": false
+    }
+  },
+  {
+    "name": "維持で、体重の傾向が目標体重の 0.8 kg 下",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 72.0
+      },
+      {
+        "calendarDay": "2026-10-02",
+        "trendKg": 71.2
+      }
+    ],
+    "weightRecordDays": [
+      "2026-10-02"
+    ],
+    "goal": {
+      "direction": "maintain",
+      "startedOn": "2026-09-28",
+      "deadlineOn": null,
+      "targetWeightKg": 72.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "maintenance",
+      "isWithinBand": false
+    }
   }
 ]
