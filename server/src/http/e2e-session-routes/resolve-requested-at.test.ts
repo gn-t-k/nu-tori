@@ -19,7 +19,10 @@ describe("確かめのジョブのための、目標の設定の要求の時刻�
   const weighedOn = "2026-01-04";
   const requestedAt = "2026-01-05T03:00:00.000Z";
   let today: string;
-  const proposeMaintenance = (testEnv: Env, headers: Record<string, string>) =>
+  let testEnv: Env;
+  let headers: Record<string, string>;
+  // 準備で決めた環境とヘッダーで、維持の目標案を求める
+  const proposeMaintenance = () =>
     app.request(
       "/v1/goal-setup/proposals",
       {
@@ -54,42 +57,46 @@ describe("確かめのジョブのための、目標の設定の要求の時刻�
   });
 
   describe("開発用の環境で、秘密の値と時刻を送ったとき", () => {
+    beforeEach(() => {
+      testEnv = { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: secret };
+      headers = { "x-e2e-sign-in-secret": secret, "x-e2e-requested-at": requestedAt };
+    });
+
     test("その時刻に送ったことにすること", async () => {
-      const response = await proposeMaintenance(
-        { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: secret },
-        { "x-e2e-sign-in-secret": secret, "x-e2e-requested-at": requestedAt },
-      );
-      expect(await readStartedOn(response)).toBe("2026-01-05");
+      expect(await readStartedOn(await proposeMaintenance())).toBe("2026-01-05");
     });
   });
 
   describe("開発用の環境で、違う秘密の値と時刻を送ったとき", () => {
+    beforeEach(() => {
+      testEnv = { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: secret };
+      headers = { "x-e2e-sign-in-secret": `${secret}x`, "x-e2e-requested-at": requestedAt };
+    });
+
     test("差し替えず、今の時刻にすること", async () => {
-      const response = await proposeMaintenance(
-        { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: secret },
-        { "x-e2e-sign-in-secret": `${secret}x`, "x-e2e-requested-at": requestedAt },
-      );
-      expect(await readStartedOn(response)).toBe(today);
+      expect(await readStartedOn(await proposeMaintenance())).toBe(today);
     });
   });
 
   describe("開発用の環境で、読めない時刻を送ったとき", () => {
+    beforeEach(() => {
+      testEnv = { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: secret };
+      headers = { "x-e2e-sign-in-secret": secret, "x-e2e-requested-at": "yesterday" };
+    });
+
     test("差し替えず、今の時刻にすること", async () => {
-      const response = await proposeMaintenance(
-        { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: secret },
-        { "x-e2e-sign-in-secret": secret, "x-e2e-requested-at": "yesterday" },
-      );
-      expect(await readStartedOn(response)).toBe(today);
+      expect(await readStartedOn(await proposeMaintenance())).toBe(today);
     });
   });
 
   describe("本番の環境で、秘密の値が置かれてしまい、それと時刻を送ったとき", () => {
+    beforeEach(() => {
+      testEnv = { ...env, SENTRY_ENVIRONMENT: "production", E2E_SIGN_IN_SECRET: secret };
+      headers = { "x-e2e-sign-in-secret": secret, "x-e2e-requested-at": requestedAt };
+    });
+
     test("差し替えず、今の時刻にすること", async () => {
-      const response = await proposeMaintenance(
-        { ...env, SENTRY_ENVIRONMENT: "production", E2E_SIGN_IN_SECRET: secret },
-        { "x-e2e-sign-in-secret": secret, "x-e2e-requested-at": requestedAt },
-      );
-      expect(await readStartedOn(response)).toBe(today);
+      expect(await readStartedOn(await proposeMaintenance())).toBe(today);
     });
   });
 });
