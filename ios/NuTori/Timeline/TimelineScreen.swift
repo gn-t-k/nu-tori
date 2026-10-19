@@ -586,6 +586,9 @@ struct TimelineScreen: View {
                     }
                 }
             }
+        case .weeklyReviewCard, .dailyGuideChangeNotice, .goalNotice:
+            // 振り返りのカードと目標の知らせの見た目は、タイムラインを描くチケット（#628）で作る
+            EmptyView()
         }
     }
 
@@ -755,7 +758,8 @@ struct TimelineScreen: View {
             timeline: Timeline(
                 input: Timeline.Input(
                     weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                    undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
+                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                 firstDay: monday,
                 today: today)
         ).weeks
@@ -766,7 +770,9 @@ struct TimelineScreen: View {
             input: Timeline.Input(
                 weightRecords: records, rejectedLines: rejectedLines, meals: meals,
                 notices: notices, undelivered: undeliveredRecords, conversation: conversation,
-                goals: goals, dailyGuides: dailyGuides),
+                goals: goals, dailyGuides: dailyGuides,
+                // 週の見直しと推定消費カロリーのキャッシュは、タイムラインを描くチケット（#628）で読む
+                weeklyReviews: [], expenditureEstimates: [], weightTrend: weightTrend),
             firstDay: firstDay, today: today)
     }
 

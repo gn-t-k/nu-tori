@@ -23,7 +23,8 @@ extension TimelineTests {
                                 sentAt: "2026-09-24T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
                         ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -56,7 +57,8 @@ extension TimelineTests {
                                 sentAt: "2026-09-23T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
                         ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: CalendarDay(year: 2026, month: 9, day: 23)
                 )
@@ -84,7 +86,8 @@ extension TimelineTests {
                                 nutrients: FoodOfDay.nutrients),
                             try .fixture(eatenAt: "2026-09-24T12:00:00+09:00", status: .estimating),
                         ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
@@ -113,7 +116,8 @@ extension TimelineTests {
                                 eatenAt: "2026-09-24T08:00:00+09:00", status: .estimated,
                                 nutrients: FoodOfDay.nutrients)
                         ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                        dailyGuides: []),
+                        dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
+                        weightTrend: nil),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                     today: CalendarDay(year: 2026, month: 9, day: 24)
                 )
