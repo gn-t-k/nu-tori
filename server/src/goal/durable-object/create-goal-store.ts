@@ -123,5 +123,11 @@ export const createGoalStore = (db: DrizzleSqliteDODatabase): GoalStore => {
     insertDecisionReceipt: ({ requestId, goalId }) => {
       db.insert(goalDecisionReceipts).values({ id: requestId, goalId }).run();
     },
+    insertAchievement: (achievement) => {
+      db.insert(goalAchievements).values(achievement).run();
+    },
+    insertDeadlineConfirmation: (confirmation) => {
+      db.insert(goalDeadlineConfirmations).values(confirmation).run();
+    },
   };
 };
