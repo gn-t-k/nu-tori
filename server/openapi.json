@@ -298,6 +298,55 @@
             ],
             "description": "減量・増量の目標だけに付く"
           },
+          "achievement": {
+            "type": "object",
+            "properties": {
+              "achievedOn": {
+                "type": "string",
+                "description": "達成した日（YYYY-MM-DD）",
+                "example": "2026-12-10"
+              },
+              "judgedAt": {
+                "type": "integer",
+                "description": "UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "description": "達成を判定した要求のタイムゾーン",
+                "example": "Asia/Tokyo"
+              }
+            },
+            "required": [
+              "achievedOn",
+              "judgedAt",
+              "timeZone"
+            ],
+            "description": "達成した減量・増量の目標だけに付く。達成すると、同じ目標の変更がもう一度届く"
+          },
+          "deadlineConfirmation": {
+            "type": "object",
+            "properties": {
+              "deadlineWeightTrendKg": {
+                "type": "number",
+                "description": "期限の日の体重の傾向"
+              },
+              "confirmedAt": {
+                "type": "integer",
+                "description": "UNIX 時刻のミリ秒（UTC）"
+              },
+              "timeZone": {
+                "type": "string",
+                "description": "期限の日を確定した要求のタイムゾーン",
+                "example": "Asia/Tokyo"
+              }
+            },
+            "required": [
+              "deadlineWeightTrendKg",
+              "confirmedAt",
+              "timeZone"
+            ],
+            "description": "期限の日が確定した減量・増量の目標だけに付く。確定すると、同じ目標の変更がもう一度届く"
+          },
           "closure": {
             "type": "object",
             "properties": {
@@ -308,11 +357,20 @@
               },
               "nextGoalId": {
                 "type": "string"
+              },
+              "endReason": {
+                "type": "string",
+                "enum": [
+                  "switched",
+                  "moved_to_maintenance"
+                ],
+                "description": "終わり方。立て直しによる切り替え（switched）と、期限後の維持に移ったこと（moved_to_maintenance）"
               }
             },
             "required": [
               "endedOn",
-              "nextGoalId"
+              "nextGoalId",
+              "endReason"
             ],
             "description": "閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く"
           }

@@ -1,7 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import { computeGoalDirection } from "../domain/compute-goal-direction";
-import { type Goal, pacePlans } from "../domain/goal";
+import { type Goal, goalEndReasons, pacePlans } from "../domain/goal";
 import { goalDirections } from "../domain/goal-direction";
 
 // 取りに行く変更の record の形。応答の SyncChange は種類によらず record を任意のオブジェクトで持つので、応答のスキーマからは指さない
@@ -36,6 +36,35 @@ const goalRecordSchema = z
       })
       .optional()
       .openapi({ description: "減量・増量の目標だけに付く" }),
+    achievement: z
+      .object({
+        achievedOn: z
+          .string()
+          .openapi({ description: "達成した日（YYYY-MM-DD）", example: "2026-12-10" }),
+        judgedAt: z.number().int().openapi({ description: "UNIX 時刻のミリ秒（UTC）" }),
+        timeZone: z.string().openapi({
+          description: "達成を判定した要求のタイムゾーン",
+          example: "Asia/Tokyo",
+        }),
+      })
+      .optional()
+      .openapi({
+        description: "達成した減量・増量の目標だけに付く。達成すると、同じ目標の変更がもう一度届く",
+      }),
+    deadlineConfirmation: z
+      .object({
+        deadlineWeightTrendKg: z.number().openapi({ description: "期限の日の体重の傾向" }),
+        confirmedAt: z.number().int().openapi({ description: "UNIX 時刻のミリ秒（UTC）" }),
+        timeZone: z.string().openapi({
+          description: "期限の日を確定した要求のタイムゾーン",
+          example: "Asia/Tokyo",
+        }),
+      })
+      .optional()
+      .openapi({
+        description:
+          "期限の日が確定した減量・増量の目標だけに付く。確定すると、同じ目標の変更がもう一度届く",
+      }),
     closure: z
       .object({
         endedOn: z.string().openapi({
@@ -43,6 +72,10 @@ const goalRecordSchema = z
           example: "2026-10-20",
         }),
         nextGoalId: z.string(),
+        endReason: z.enum(goalEndReasons).openapi({
+          description:
+            "終わり方。立て直しによる切り替え（switched）と、期限後の維持に移ったこと（moved_to_maintenance）",
+        }),
       })
       .optional()
       .openapi({ description: "閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く" }),
@@ -64,6 +97,17 @@ export const goalHttpKind: HttpRecordKind<Goal, never, typeof goalRecordSchema> 
     timeZone: value.timeZone,
     direction: computeGoalDirection(value),
     weightChange: value.weightChange,
+    achievement:
+      value.achievement === undefined
+        ? undefined
+        : { ...value.achievement, judgedAt: value.achievement.judgedAt.getTime() },
+    deadlineConfirmation:
+      value.deadlineConfirmation === undefined
+        ? undefined
+        : {
+            ...value.deadlineConfirmation,
+            confirmedAt: value.deadlineConfirmation.confirmedAt.getTime(),
+          },
     closure: value.closure,
   }),
 };
