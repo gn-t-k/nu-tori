@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { recordIdSchema } from "../../../domain/record-id";
-import type { ReplyContext } from "../reply-context";
+import type { Pace } from "../../../goal/domain/compute-pace";
+import type { ReplyContext, ReplyContextWeeklyReview } from "../reply-context";
 import { type ReplyContextBlock, renderReplyContext } from "./index";
 
 describe("返事に渡す文脈の文", () => {
@@ -104,6 +105,8 @@ describe("返事に渡す文脈の文", () => {
             targetWeightKg: 68.45,
             dailyGuide: { energyKcal: 2000, proteinG: 105, fatG: 55, carbohydrateG: 270 },
             expenditureKcal: 2350,
+            latestWeeklyReview: undefined,
+            pace: undefined,
           },
         },
       })[1]?.text;
@@ -134,6 +137,8 @@ describe("返事に渡す文脈の文", () => {
             targetWeightKg: 72,
             dailyGuide: undefined,
             expenditureKcal: undefined,
+            latestWeeklyReview: undefined,
+            pace: undefined,
           },
         },
       })[1]?.text;
@@ -145,6 +150,126 @@ describe("返事に渡す文脈の文", () => {
           "\n",
         ),
       );
+    });
+  });
+
+  const renderWithReview = (latestWeeklyReview: ReplyContextWeeklyReview) =>
+    renderReplyContext({
+      ...context,
+      structuredValues: {
+        ...context.structuredValues,
+        goal: {
+          direction: "lose",
+          deadlineOn: "2027-02-01",
+          targetWeightKg: 68.5,
+          dailyGuide: { energyKcal: 1850, proteinG: 105, fatG: 55, carbohydrateG: 270 },
+          expenditureKcal: 2330,
+          latestWeeklyReview,
+          pace: undefined,
+        },
+      },
+    })[1]?.text;
+
+  describe("目標に直近の週の見直しがあるとき", () => {
+    test("見直せた週は、月曜と、前の週からの変化と、主な理由と、当たった上限と下限を書くこと", () => {
+      expect(
+        renderWithReview({
+          type: "reviewed",
+          effectiveOn: "2026-10-05",
+          limitHits: ["weekly_change", "minimum_energy"],
+          mainReason: "balance_change",
+          dailyGuideChangeKcal: -150,
+          expenditureChangeKcal: 20,
+        }),
+      ).toContain(
+        [
+          "直近の週の見直し: 10/05(月)から。前の週から1日の目安 -150 kcal、推定消費カロリー +20 kcal",
+          "  主な理由: 1日に減らす（足す）分の変化",
+          "  当たった上限と下限: 前の週からの変化の上限（±150 kcal）、1日の目安の下限",
+        ].join("\n"),
+      );
+    });
+
+    test("上限にも下限にも当たらなかった週は、なしと書くこと", () => {
+      expect(
+        renderWithReview({
+          type: "reviewed",
+          effectiveOn: "2026-10-05",
+          limitHits: [],
+          mainReason: "expenditure_change",
+          dailyGuideChangeKcal: 0,
+          expenditureChangeKcal: 0,
+        }),
+      ).toContain(
+        [
+          "直近の週の見直し: 10/05(月)から。前の週から1日の目安 ±0 kcal、推定消費カロリー ±0 kcal",
+          "  主な理由: 推定消費カロリーの変化",
+          "  当たった上限と下限: なし",
+        ].join("\n"),
+      );
+    });
+
+    test("見送った週は、月曜と理由と、前の週のままであることを書くこと", () => {
+      expect(
+        renderWithReview({
+          type: "deferred",
+          effectiveOn: "2026-10-12",
+          reason: "few_meal_records",
+        }),
+      ).toContain(
+        "直近の週の見直し: 10/12(月)から。見送った（食事の記録が少ない）。1日の目安と推定消費カロリーは前の週のまま",
+      );
+    });
+  });
+
+  describe("目標にその日のペースがあるとき", () => {
+    test.for<[string, Pace | undefined, string]>([
+      [
+        "間に合う",
+        { status: "onTrack", actualKgPerWeek: -0.5, requiredKgPerWeek: -0.3 },
+        "ペース: 今の体重の傾向の動きのままなら、期限に目標体重へ届く",
+      ],
+      [
+        "届かない",
+        { status: "behind", shortfallKg: 1.2, actualKgPerWeek: -0.1, requiredKgPerWeek: -0.3 },
+        "ペース: 今の体重の傾向の動きのままだと、期限に目標体重まで 1.2 kg 届かない",
+      ],
+      [
+        "言い切らない",
+        { status: "inconclusive", weightRecordDayCount: 2 },
+        "ペース: 言い切れない（直近 14 日に体重を記録した日が 2 日しかない）",
+      ],
+      ["まだ出ない", { status: "pending" }, "ペース: まだ出ない（目標を立てて 14 日たっていない）"],
+      ["返さない", { status: "unavailable" }, "ペース: なし（期限の日か達成した日を迎えた）"],
+      [
+        "維持の幅に収まる",
+        { status: "maintenance", isWithinBand: true },
+        "ペース: 体重の傾向が目標体重の ±0.7 kg に収まっている",
+      ],
+      [
+        "維持の幅を外れる",
+        { status: "maintenance", isWithinBand: false },
+        "ペース: 体重の傾向が目標体重の ±0.7 kg を外れている",
+      ],
+      ["出せない", undefined, "ペース: なし"],
+    ])("%s とき、そのことを1行で書くこと", ([, pace, line]) => {
+      expect(
+        renderReplyContext({
+          ...context,
+          structuredValues: {
+            ...context.structuredValues,
+            goal: {
+              direction: "lose",
+              deadlineOn: "2027-02-01",
+              targetWeightKg: 68.5,
+              dailyGuide: undefined,
+              expenditureKcal: undefined,
+              latestWeeklyReview: undefined,
+              pace,
+            },
+          },
+        })[1]?.text.split("\n"),
+      ).toContain(line);
     });
   });
 });

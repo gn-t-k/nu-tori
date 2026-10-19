@@ -2,7 +2,11 @@ import { drizzle } from "drizzle-orm/durable-sqlite";
 import { captureException, instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
 import { accountRequests } from "../account/domain/account-requests";
-import type { AccountResponse } from "../account/domain/account-response";
+import type {
+  AccountRequestLog,
+  AccountResponse,
+  LoggedAccountResponse,
+} from "../account/domain/account-response";
 import type { RecordId } from "../domain/record-id";
 import type { SyncClientState } from "../domain/sync-client-state";
 import type { SyncWrite } from "../domain/sync-write";
@@ -52,7 +56,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondWithRequestLog(
         accountId,
         accountRequests.pushSyncWrites(this.createSyncStores(), request, new Date()),
       );
@@ -63,7 +67,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: { clientState: SyncClientState; afterSequence: number },
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondWithRequestLog(
         accountId,
         accountRequests.pullSyncChanges(this.createSyncStores(), request, new Date()),
       );
@@ -126,7 +130,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       now: Date,
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondWithRequestLog(
         accountId,
         accountRequests.previewGoalSetup(this.createRecordStores(), request, now),
       );
@@ -138,7 +142,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       now: Date,
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondWithRequestLog(
         accountId,
         accountRequests.proposeGoals(this.createRecordStores(), request, now),
       );
@@ -150,7 +154,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       now: Date,
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondWithRequestLog(
         accountId,
         accountRequests.assessCustomTargetWeight(this.createRecordStores(), request, now),
       );
@@ -163,7 +167,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       now: Date,
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondWithRequestLog(
         accountId,
         accountRequests.decideGoal(this.createRecordStores(), request, now),
       );
@@ -235,6 +239,14 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
         records: createRecordKindStores(this.ctx.storage),
       };
+    }
+
+    // 要求ごとのログに足す値も、結果と一緒に受け口へ返す
+    private async respondWithRequestLog<Result>(
+      accountId: string,
+      response: LoggedAccountResponse<Result>,
+    ): Promise<{ result: Result; requestLog: AccountRequestLog }> {
+      return { result: await this.respond(accountId, response), requestLog: response.requestLog };
     }
 
     // 答えの時刻に張り、出来事を送ってから、結果を返す

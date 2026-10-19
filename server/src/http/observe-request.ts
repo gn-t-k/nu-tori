@@ -1,13 +1,17 @@
 import { setTag } from "@sentry/cloudflare";
 import { createMiddleware } from "hono/factory";
 import { routePath } from "hono/route";
+import type { AccountRequestLog } from "../account/domain/account-response";
+
+// Durable Object の答えが持つ、要求ごとのログに足す値。受け口が置き、observeRequest が出す
+export type RequestLogVariables = { requestLog?: AccountRequestLog };
 
 // 要求 ID は Cloudflare の Ray ID にし、Workers Logs と Sentry の報告を同じ ID で辿れるようにする。
 // 失敗した段は、例外の stage の欄に持たせる（Durable Object の RPC を越えても独自の欄は届く）。
 // ビルド番号は、古いビルドを締め出したとき（426）だけ足す
 export const observeRequest = createMiddleware<{
   Bindings: Env;
-  Variables: { accountId?: string; unsupportedAppBuild?: number };
+  Variables: { accountId?: string; unsupportedAppBuild?: number } & RequestLogVariables;
 }>(async (c, next) => {
   // oxlint-disable-next-line nu-tori/no-random-uuid -- ログを結ぶ ID で、DB にも API にも出さない
   const requestId = c.req.header("cf-ray") ?? crypto.randomUUID();
@@ -22,6 +26,7 @@ export const observeRequest = createMiddleware<{
     appBuild: c.get("unsupportedAppBuild"),
     error: c.error?.name,
     failedStage: c.error !== undefined && "stage" in c.error ? c.error.stage : undefined,
+    reviewedWeekCount: c.get("requestLog")?.reviewedWeekCount,
     durationMs: Date.now() - startedAt,
   });
 });

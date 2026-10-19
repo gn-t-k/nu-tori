@@ -123,6 +123,37 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         limit_hits: recorded.limitHits,
       },
     }))
+    .with({ name: "weekly_review" }, (reviewed) => ({
+      name: reviewed.name,
+      properties: {
+        deferred: reviewed.deferralReason !== undefined,
+        deferral_reason: reviewed.deferralReason,
+        limit_hits: reviewed.limitHits,
+        main_reason: reviewed.mainReason,
+        expenditure_change_kcal: reviewed.expenditureChangeKcal,
+        initial_expenditure_source: reviewed.initialExpenditureSource,
+        expenditure_change_from_initial_kcal: reviewed.expenditureChangeFromInitialKcal,
+        reviewed_week_count: reviewed.reviewedWeekCount,
+      },
+    }))
+    .with({ name: "goal_achieved" }, (achieved) => ({
+      name: achieved.name,
+      properties: {
+        days_from_start: achieved.daysFromStart,
+        days_until_deadline: achieved.daysUntilDeadline,
+      },
+    }))
+    .with({ name: "goal_deadline_confirmed" }, (confirmed) => ({
+      name: confirmed.name,
+      properties: {
+        difference_from_target_kg: confirmed.differenceFromTargetKg,
+        achieved: confirmed.achieved,
+      },
+    }))
+    .with({ name: "goal_moved_to_maintenance" }, (moved) => ({
+      name: moved.name,
+      properties: { days_after_deadline: moved.daysAfterDeadline },
+    }))
     .with({ name: "sync_pending_writes_reported" }, (reported) => ({
       name: reported.name,
       properties: {

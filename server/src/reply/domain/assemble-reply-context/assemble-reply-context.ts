@@ -9,12 +9,16 @@ import type { Ingredient } from "../../../ingredient/domain/ingredient";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import type { Meal } from "../../../meal/domain/meal";
 import { computeGoalDirection } from "../../../goal/domain/compute-goal-direction";
+import { computePace, type Pace } from "../../../goal/domain/compute-pace";
+import type { Goal } from "../../../goal/domain/goal";
+import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
 import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type {
   MainNutrients,
   ReplyContext,
   ReplyContextGoal,
   ReplyContextStructuredValues,
+  ReplyContextWeeklyReview,
   ReplyContextWindowEntry,
 } from "../reply-context";
 import type { ReplyContextSource, ReplyContextSourceMeal } from "../reply-context-source";
@@ -200,23 +204,23 @@ const assembleStructuredValues = (
       lastWeightRecord === undefined
         ? undefined
         : { at: toWallClock(lastWeightRecord.measuredAt), weightKg: lastWeightRecord.weightKg },
-    goal: assembleGoal(goalSource, today),
+    goal: assembleGoal({ ...goalSource, weightTrend }, today),
   };
 };
 
-const assembleGoal = (
-  {
-    goals,
-    dailyGuides,
-    expenditureEstimates,
-  }: Pick<ReplyContextSource, "goals" | "dailyGuides" | "expenditureEstimates">,
-  today: string,
-): ReplyContextGoal | undefined => {
-  const found = findDailyGuideForDay(
-    today,
-    goals.map((goal) => ({ ...goal, endedOn: goal.closure?.endedOn })),
-    dailyGuides,
-  );
+type GoalSource = Pick<
+  ReplyContextSource,
+  | "goals"
+  | "dailyGuides"
+  | "expenditureEstimates"
+  | "weeklyReviews"
+  | "weightTrend"
+  | "weightRecordDays"
+>;
+
+const assembleGoal = (source: GoalSource, today: string): ReplyContextGoal | undefined => {
+  const { expenditureEstimates } = source;
+  const found = findGoalDailyGuideForDay(source, today);
   if (found === undefined) {
     return undefined;
   }
@@ -244,6 +248,92 @@ const assembleGoal = (
             carbohydrateG: dailyGuide.carbohydrateG,
           },
     expenditureKcal: expenditureEstimate?.expenditureKcal,
+    latestWeeklyReview: assembleLatestWeeklyReview(source, { goalId: goal.id, today }),
+    pace: assemblePace(source, { goal, today }),
+  };
+};
+
+// ペースは、目標の開始の日以前に体重の傾向がある目標だけを判定できる（目標を立てたあとに、その前の体重記録を消すと無くなる）
+const assemblePace = (
+  { weightTrend, weightRecordDays }: Pick<ReplyContextSource, "weightTrend" | "weightRecordDays">,
+  { goal, today }: { goal: Goal; today: string },
+): Pace | undefined => {
+  if (!hasTrendOnOrBefore(weightTrend, goal.startedOn)) {
+    return undefined;
+  }
+  const direction = computeGoalDirection(goal);
+  return computePace({
+    judgedOn: today,
+    weightTrend,
+    weightRecordDays,
+    goal:
+      direction === "maintain" || goal.weightChange === undefined
+        ? { direction: "maintain", targetWeightKg: goal.targetWeightKg }
+        : {
+            direction,
+            startedOn: goal.startedOn,
+            deadlineOn: goal.weightChange.deadlineOn,
+            targetWeightKg: goal.targetWeightKg,
+          },
+    achievedOn: goal.achievement?.achievedOn,
+  });
+};
+
+const hasTrendOnOrBefore = (weightTrend: WeightTrend, calendarDay: string): boolean =>
+  weightTrend.some((entry) => entry.calendarDay <= calendarDay);
+
+const findGoalDailyGuideForDay = (
+  { goals, dailyGuides }: Pick<ReplyContextSource, "goals" | "dailyGuides">,
+  calendarDay: string,
+) =>
+  findDailyGuideForDay(
+    calendarDay,
+    goals.map((goal) => ({ ...goal, endedOn: goal.closure?.endedOn })),
+    dailyGuides,
+  );
+
+// 今日以前に当てた最も新しい見直しが、今日の目標の見直しなら渡す。月曜に立て直した日は、その月曜の見直しが前の目標のものなので渡さない
+const assembleLatestWeeklyReview = (
+  source: GoalSource,
+  { goalId, today }: { goalId: string; today: string },
+): ReplyContextWeeklyReview | undefined => {
+  const review = source.weeklyReviews
+    .filter(({ effectiveOn }) => effectiveOn <= today)
+    .toSorted((a, b) => a.effectiveOn.localeCompare(b.effectiveOn))
+    .at(-1);
+  if (review === undefined) {
+    return undefined;
+  }
+  const { effectiveOn, outcome } = review;
+  if (outcome.type === "deferred") {
+    return outcome.goalId === goalId
+      ? { type: "deferred", effectiveOn, reason: outcome.reason }
+      : undefined;
+  }
+  const findEstimate = (id: string) => source.expenditureEstimates.find((e) => e.id === id);
+  const dailyGuide = source.dailyGuides.find(({ id }) => id === outcome.dailyGuideId);
+  const estimate = findEstimate(outcome.expenditureEstimateId);
+  const previousDailyGuide = findGoalDailyGuideForDay(source, addDays(effectiveOn, -1))?.dailyGuide;
+  const previousEstimate =
+    previousDailyGuide === undefined
+      ? undefined
+      : findEstimate(previousDailyGuide.expenditureEstimateId);
+  // 書く口が、見直した推定と1日の目安を、前の週に当たっていたものを残したまま書く。読めないのは不具合なので、見直しを渡さない
+  if (
+    dailyGuide?.goalId !== goalId ||
+    estimate === undefined ||
+    previousDailyGuide === undefined ||
+    previousEstimate === undefined
+  ) {
+    return undefined;
+  }
+  return {
+    type: "reviewed",
+    effectiveOn,
+    limitHits: dailyGuide.limitHits,
+    mainReason: outcome.mainReason,
+    dailyGuideChangeKcal: dailyGuide.energyKcal - previousDailyGuide.energyKcal,
+    expenditureChangeKcal: estimate.expenditureKcal - previousEstimate.expenditureKcal,
   };
 };
 

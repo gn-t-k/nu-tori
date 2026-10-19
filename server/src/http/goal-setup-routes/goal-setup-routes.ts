@@ -19,6 +19,7 @@ import { goalSetupSituationSchema, toGoalSetupSituation } from "./goal-setup-sit
 import { rejectUnreadableJsonBody } from "./reject-unreadable-json-body";
 import { respondGoalSetupRejected } from "./respond-goal-setup-rejected";
 import { weightChangeDirectionSchema } from "./weight-change-direction-schema";
+import type { RequestLogVariables } from "../observe-request";
 
 const rejectionSchema = z
   .object({
@@ -57,7 +58,7 @@ const goalProposalsPlanSchema = z
   ])
   .openapi("GoalProposalsPlan", { description: "選んだ向きと、減量・増量の期限" });
 
-export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
+export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: RequestLogVariables }>({
   // 形の誤りも Sentry に送る。誤っていた場所と種類だけを持たせ、届いた値は載せない
   defaultHook: (result, c) => {
     if (result.success) {
@@ -107,11 +108,15 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
     }),
     async (c) => {
       const { direction, ...situation } = c.req.valid("json");
-      const previewed = await getAccountDurableObject(c.env, c.var.accountId).previewGoalSetup(
+      const { result: previewed, requestLog } = await getAccountDurableObject(
+        c.env,
+        c.var.accountId,
+      ).previewGoalSetup(
         c.var.accountId,
         { ...toGoalSetupSituation(situation), direction },
         await resolveRequestedAt(c.env, (name) => c.req.header(name)),
       );
+      c.set("requestLog", requestLog);
       if (R.isFailure(previewed)) {
         return respondGoalSetupRejected(c, previewed.error);
       }
@@ -155,11 +160,15 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
     }),
     async (c) => {
       const { plan, ...situation } = c.req.valid("json");
-      const proposed = await getAccountDurableObject(c.env, c.var.accountId).proposeGoals(
+      const { result: proposed, requestLog } = await getAccountDurableObject(
+        c.env,
+        c.var.accountId,
+      ).proposeGoals(
         c.var.accountId,
         { ...toGoalSetupSituation(situation), plan },
         await resolveRequestedAt(c.env, (name) => c.req.header(name)),
       );
+      c.set("requestLog", requestLog);
       if (R.isFailure(proposed)) {
         return respondGoalSetupRejected(c, proposed.error);
       }
@@ -206,7 +215,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
     }),
     async (c) => {
       const { direction, deadlineOn, targetWeightKg, ...situation } = c.req.valid("json");
-      const assessed = await getAccountDurableObject(
+      const { result: assessed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
       ).assessCustomTargetWeight(
@@ -214,6 +223,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
         { ...toGoalSetupSituation(situation), direction, deadlineOn, targetWeightKg },
         await resolveRequestedAt(c.env, (name) => c.req.header(name)),
       );
+      c.set("requestLog", requestLog);
       if (R.isFailure(assessed)) {
         return respondGoalSetupRejected(c, assessed.error);
       }
@@ -245,11 +255,15 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       },
     }),
     async (c) => {
-      const decided = await getAccountDurableObject(c.env, c.var.accountId).decideGoal(
+      const { result: decided, requestLog } = await getAccountDurableObject(
+        c.env,
+        c.var.accountId,
+      ).decideGoal(
         c.var.accountId,
         toGoalDecisionRequest(c.req.valid("json")),
         await resolveRequestedAt(c.env, (name) => c.req.header(name)),
       );
+      c.set("requestLog", requestLog);
       if (R.isFailure(decided)) {
         return respondGoalSetupRejected(c, decided.error);
       }

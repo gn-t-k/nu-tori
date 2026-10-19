@@ -7,6 +7,8 @@ export type WeeklyReviewStore = {
   find: (id: RecordId) => WeeklyReview | undefined;
   // 新しい1日の目安を当てる月曜が最も遅い見直し（見送りを含む）。まだ1週も見直していなければ無い
   findLatest: () => WeeklyReview | undefined;
+  // 新しい1日の目安を当てる月曜がその日（YYYY-MM-DD）以前で最も遅い見直し（見送りを含む）
+  findLatestEffectiveOnOrBefore: (calendarDay: string) => WeeklyReview | undefined;
   // 見直した週（見送りを含む）の、見送ったか、見直せた週のずれの向き。当てる月曜の新しい順に
   findDeviationHistory: () => (
     | { type: "deferred" }

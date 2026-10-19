@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, lte } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dailyGuideTables } from "../../daily-guide/durable-object/daily-guide-tables";
 import type { RecordId } from "../../domain/record-id";
@@ -53,6 +53,16 @@ export const createWeeklyReviewStore = (db: DrizzleSqliteDODatabase): WeeklyRevi
       const latest = db
         .select({ id: weeklyReviews.id })
         .from(weeklyReviews)
+        .orderBy(desc(weeklyReviews.effectiveOn))
+        .limit(1)
+        .get();
+      return latest === undefined ? undefined : find(latest.id);
+    },
+    findLatestEffectiveOnOrBefore: (calendarDay) => {
+      const latest = db
+        .select({ id: weeklyReviews.id })
+        .from(weeklyReviews)
+        .where(lte(weeklyReviews.effectiveOn, calendarDay))
         .orderBy(desc(weeklyReviews.effectiveOn))
         .limit(1)
         .get();

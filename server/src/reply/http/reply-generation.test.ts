@@ -178,6 +178,9 @@ describe("返事を作る", () => {
           targetWeightKg: 65.5,
           dailyGuide: { energyKcal: 2000, proteinG: 105, fatG: 55, carbohydrateG: 270 },
           expenditureKcal: 2400,
+          latestWeeklyReview: undefined,
+          // 今日立てた目標なので、まだ出ない
+          pace: { status: "pending" },
         },
       ]);
     });

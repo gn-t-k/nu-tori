@@ -556,6 +556,8 @@ describe("返事に渡す文脈の組み立て", () => {
           targetWeightKg: 68.5,
           dailyGuide: { energyKcal: 2000, proteinG: 105, fatG: 55, carbohydrateG: 270 },
           expenditureKcal: 2350,
+          latestWeeklyReview: undefined,
+          pace: undefined,
         });
       });
     });
@@ -576,6 +578,8 @@ describe("返事に渡す文脈の組み立て", () => {
           targetWeightKg: 70,
           dailyGuide: { energyKcal: 1900, proteinG: 105, fatG: 55, carbohydrateG: 270 },
           expenditureKcal: 2400,
+          latestWeeklyReview: undefined,
+          pace: undefined,
         });
       });
     });
@@ -615,6 +619,243 @@ describe("返事に渡す文脈の組み立て", () => {
 
       test("目標も1日の目安も推定消費カロリーも入れないこと", () => {
         expect(context.structuredValues.goal).toBeUndefined();
+      });
+    });
+  });
+
+  describe("直近の週の見直し", () => {
+    // 10/03（土）に減量の目標を立て、10/05（月）に見直し、10/12（月）は見送った
+    let reviewRecords: Pick<
+      ReplyContextSource,
+      "goals" | "dailyGuides" | "expenditureEstimates" | "weeklyReviews"
+    >;
+    beforeEach(() => {
+      const goal = build.goal(10, "2026-10-03", {
+        targetWeightKg: 70,
+        weightChange: { deadlineOn: "2027-01-01", pacePlan: "standard" },
+      });
+      reviewRecords = {
+        goals: [goal],
+        dailyGuides: [
+          build.dailyGuide(20, goal.id, "2026-10-03", 1900),
+          build.dailyGuide(21, goal.id, "2026-10-05", 1850, ["weekly_change"]),
+        ],
+        expenditureEstimates: [
+          build.expenditureEstimate(120, "2026-10-03", 2400),
+          build.expenditureEstimate(121, "2026-10-05", 2330),
+        ],
+        weeklyReviews: [
+          build.weeklyReview(40, "2026-10-05", {
+            type: "reviewed",
+            expenditureEstimateId: build.id(121),
+            dailyGuideId: build.id(21),
+            mainReason: "expenditure_change",
+          }),
+          build.weeklyReview(41, "2026-10-12", {
+            type: "deferred",
+            reason: "few_meal_records",
+            goalId: goal.id,
+          }),
+        ],
+      };
+    });
+
+    describe("見直せた週のあとの文章のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        // 10/07 12:00（東京）
+        context = assembleReplyContext(
+          build.source({ sentText: build.sentText(1, "2026-10-07T03:00:00Z"), ...reviewRecords }),
+        );
+      });
+
+      test("見直した週の月曜、当たった上限と下限、主な理由、前の週からの1日の目安と推定消費カロリーの変化を入れること", () => {
+        expect(context.structuredValues.goal?.latestWeeklyReview).toEqual({
+          type: "reviewed",
+          effectiveOn: "2026-10-05",
+          limitHits: ["weekly_change"],
+          mainReason: "expenditure_change",
+          dailyGuideChangeKcal: -50,
+          expenditureChangeKcal: -70,
+        });
+      });
+    });
+
+    describe("見送った週のあとの文章のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        // 10/13 12:00（東京）
+        context = assembleReplyContext(
+          build.source({ sentText: build.sentText(1, "2026-10-13T03:00:00Z"), ...reviewRecords }),
+        );
+      });
+
+      test("見送った週の月曜と理由だけを入れること", () => {
+        expect(context.structuredValues.goal?.latestWeeklyReview).toEqual({
+          type: "deferred",
+          effectiveOn: "2026-10-12",
+          reason: "few_meal_records",
+        });
+      });
+    });
+
+    describe("目標を立てて、まだ見直していない日の文章のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        // 10/04 12:00（東京）
+        context = assembleReplyContext(
+          build.source({ sentText: build.sentText(1, "2026-10-04T03:00:00Z"), ...reviewRecords }),
+        );
+      });
+
+      test("見直しを入れないこと", () => {
+        expect(context.structuredValues.goal?.latestWeeklyReview).toBeUndefined();
+      });
+    });
+
+    describe("見送った月曜に、新しい目標を立てた日の文章のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        const [firstGoal] = reviewRecords.goals;
+        if (firstGoal === undefined) {
+          throw new Error("目標が無い");
+        }
+        const secondGoal = build.goal(11, "2026-10-12", {
+          targetWeightKg: 72,
+          weightChange: undefined,
+        });
+        context = assembleReplyContext(
+          build.source({
+            // 10/12 12:00（東京）
+            sentText: build.sentText(1, "2026-10-12T03:00:00Z"),
+            ...reviewRecords,
+            goals: [
+              {
+                ...firstGoal,
+                closure: {
+                  endedOn: "2026-10-12",
+                  nextGoalId: secondGoal.id,
+                  endReason: "switched",
+                },
+              },
+              secondGoal,
+            ],
+            dailyGuides: [
+              ...reviewRecords.dailyGuides,
+              build.dailyGuide(22, secondGoal.id, "2026-10-12", 2330),
+            ],
+          }),
+        );
+      });
+
+      test("前の目標の見直しを入れないこと", () => {
+        expect(context.structuredValues.goal).toMatchObject({
+          direction: "maintain",
+          latestWeeklyReview: undefined,
+          pace: undefined,
+        });
+      });
+    });
+  });
+
+  describe("その日のペース", () => {
+    // 10/03（土）に、期限 2027/01/01、目標体重 70 kg の減量の目標を立てた
+    let paceRecords: Pick<ReplyContextSource, "goals" | "dailyGuides" | "weightTrend">;
+    beforeEach(() => {
+      const goal = build.goal(10, "2026-10-03", {
+        targetWeightKg: 70,
+        weightChange: { deadlineOn: "2027-01-01", pacePlan: "standard" },
+      });
+      paceRecords = {
+        goals: [goal],
+        dailyGuides: [build.dailyGuide(20, goal.id, "2026-10-03", 1900)],
+        weightTrend: [
+          { calendarDay: "2026-10-01", trendKg: 72.2 },
+          { calendarDay: "2026-10-06", trendKg: 72 },
+          { calendarDay: "2026-10-20", trendKg: 71 },
+        ],
+      };
+    });
+
+    describe("目標を立てて 14 日たち、直近 14 日に体重記録のある日が4日あるとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        context = assembleReplyContext(
+          build.source({
+            // 10/20 12:00（東京）
+            sentText: build.sentText(1, "2026-10-20T03:00:00Z"),
+            ...paceRecords,
+            weightRecordDays: [
+              "2026-10-06",
+              "2026-10-14",
+              "2026-10-15",
+              "2026-10-16",
+              "2026-10-20",
+            ],
+          }),
+        );
+      });
+
+      test("文章を送った日で判定した、間に合うかを入れること", () => {
+        // 速さは（71 − 72）÷ 2 = −0.5 kg/週、見込みは 71 − 0.5 × 73 ÷ 7 = 65.8 kg で目標体重に届く
+        expect(context.structuredValues.goal?.pace).toEqual({
+          status: "onTrack",
+          actualKgPerWeek: -0.5,
+          requiredKgPerWeek: -0.1,
+        });
+      });
+    });
+
+    describe("直近 14 日に体重記録のある日が2日のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        context = assembleReplyContext(
+          build.source({
+            sentText: build.sentText(1, "2026-10-20T03:00:00Z"),
+            ...paceRecords,
+            // 10/06 は 14 日の外
+            weightRecordDays: ["2026-10-06", "2026-10-07", "2026-10-19"],
+          }),
+        );
+      });
+
+      test("言い切らないことと、記録のある日数を入れること", () => {
+        expect(context.structuredValues.goal?.pace).toEqual({
+          status: "inconclusive",
+          weightRecordDayCount: 2,
+        });
+      });
+    });
+
+    describe("目標を立てて 14 日たっていない日の文章のとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        context = assembleReplyContext(
+          build.source({ sentText: build.sentText(1, "2026-10-16T03:00:00Z"), ...paceRecords }),
+        );
+      });
+
+      test("まだ出ないことを入れること", () => {
+        expect(context.structuredValues.goal?.pace).toEqual({ status: "pending" });
+      });
+    });
+
+    describe("目標の開始の日以前の体重の傾向が無いとき", () => {
+      let context: ReplyContext;
+      beforeEach(() => {
+        context = assembleReplyContext(
+          build.source({
+            sentText: build.sentText(1, "2026-10-20T03:00:00Z"),
+            ...paceRecords,
+            weightTrend: paceRecords.weightTrend.filter(
+              ({ calendarDay }) => calendarDay > "2026-10-03",
+            ),
+          }),
+        );
+      });
+
+      test("ペースを入れないこと", () => {
+        expect(context.structuredValues.goal?.pace).toBeUndefined();
       });
     });
   });

@@ -11,6 +11,7 @@ import { toSyncChangeResponse } from "./to-sync-change-response";
 import { toSyncClientState } from "./to-sync-client-state";
 import { toSyncWriteCurrent } from "./to-sync-write-current";
 import { toSyncWrite } from "./to-sync-write";
+import type { RequestLogVariables } from "../observe-request";
 
 const maximumWritesPerRequest = 500;
 // coerce は入力の型が不明になり、OpenAPI の文書ではクエリが省略できることになってしまうので、必須と書く
@@ -20,7 +21,7 @@ const queryCount = z.coerce
   .nonnegative()
   .openapi({ param: { required: true } });
 
-const routes = new OpenAPIHono<{ Bindings: Env }>()
+const routes = new OpenAPIHono<{ Bindings: Env; Variables: RequestLogVariables }>()
   .openapi(
     createRoute({
       method: "post",
@@ -81,14 +82,15 @@ const routes = new OpenAPIHono<{ Bindings: Env }>()
     }),
     async (c) => {
       const { clientState, writes, isFinalBatch } = c.req.valid("json");
-      const results = await getAccountDurableObject(c.env, c.var.accountId).pushSyncWrites(
+      const { result: results, requestLog } = await getAccountDurableObject(
+        c.env,
         c.var.accountId,
-        {
-          clientState: toSyncClientState(clientState),
-          writes: writes.map(toSyncWrite),
-          isFinalBatch,
-        },
-      );
+      ).pushSyncWrites(c.var.accountId, {
+        clientState: toSyncClientState(clientState),
+        writes: writes.map(toSyncWrite),
+        isFinalBatch,
+      });
+      c.set("requestLog", requestLog);
       return c.json(
         {
           results: results.map(({ writeId, outcome, rejectedRecord }) => ({
@@ -152,10 +154,14 @@ const routes = new OpenAPIHono<{ Bindings: Env }>()
     }),
     async (c) => {
       const { afterSequence, ...clientState } = c.req.valid("query");
-      const pulled = await getAccountDurableObject(c.env, c.var.accountId).pullSyncChanges(
+      const { result: pulled, requestLog } = await getAccountDurableObject(
+        c.env,
         c.var.accountId,
-        { clientState: toSyncClientState(clientState), afterSequence },
-      );
+      ).pullSyncChanges(c.var.accountId, {
+        clientState: toSyncClientState(clientState),
+        afterSequence,
+      });
+      c.set("requestLog", requestLog);
       return c.json(
         {
           changes: pulled.changes.map(toSyncChangeResponse),
