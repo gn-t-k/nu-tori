@@ -1,0 +1,648 @@
+<title>nu-tori LP 試作</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE（捨てる前提）: 「LP の見た目と文言を見比べる」(#594) の試作の、taste-skill の版。
+  Leonxlnx/taste-skill（MIT、a9c73c3）の手順で作った。配られた方向は「The quiet instrument」
+  （seed 950083237）、ファーストビューは「Two doors on a dark wall」。
+  アイデア: この頁では、nu-tori の2つの操作（朝の体重と食べる前の1枚）が、暗い壁の2つの扉になる。
+  動かせるもの: 目安の決まり方（食べた量・体重の傾向・ペース）と、成分表で数える食事（料理と量）。
+  方向の紙から外したところ（理由はページの「根拠」に書く）:
+    - 差し色は配られたピンクでなく、アプリの Primary（systemIndigo）にした。開発者の決定。taste-skill の
+      「紫を使わない」の決まりには当たる
+    - 字は Jost（配られたもの）に、日本語の Zen Kaku Gothic New を足した。Jost に日本語が無いため
+    - 主な行動は taste-skill の「小さなボタン」でなく、Apple の公式の日本語のバッジ。Apple の決まりが先
+  数値は server/src/domain/food-composition/food-composition-table.json（成分表 八訂 増補2023年）の値。
+  目安の計算は見本で、アプリの計算そのものではない。写真は Wikimedia Commons の CC0（credits.json）。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* 組み方: 暗い壁（上と下）が白い中ほどを挟む。中ほどは1本の細い柱（560px）に、小さく正確な見本を置く */
+  :root {
+    --bg: #0c0b10;
+    --surface: #18161f;
+    --ink: #ffffff;
+    --muted: #aaa6b5;
+    --accent: #7d8bff;
+    --accent-ink: #0c0b10;
+    --field-1: #1d1a44;
+    --field-1-ink: #ffffff;
+    --field-1-muted: #bdb9e0;
+    --paper: #ffffff;
+    --paper-ink: #12111a;
+    --paper-muted: #5b5867;
+    --paper-step: #f0eff5;
+    --paper-step-2: #e4e2ec;
+    --paper-accent: #6155F5;
+    --protein: #F07F1A;
+    --fat: #15803D;
+    --carb: #2C7BE5;
+    --track: #e4e2ec;
+    --font: "Jost", "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+    --step-small: 14px;
+    --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+    --step-lead: 22px;
+    --step-head: clamp(28px, 1.6vw + 16px, 40px);
+    --step-display: clamp(31px, 2.6vw + 16px, 52px);
+    --margin: max(20px, env(safe-area-inset-left, 0px));
+    --margin-r: max(20px, env(safe-area-inset-right, 0px));
+    --col: 560px;
+  }
+  @media (min-width: 900px) { :root { --margin: max(32px, env(safe-area-inset-left, 0px)); --margin-r: max(32px, env(safe-area-inset-right, 0px)); } }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--font); font-size: var(--step-body); line-height: 1.6;
+    font-feature-settings: "palt" 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, p { margin: 0; }
+  h1, h2, h3 { text-wrap: balance; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; transition: color 180ms ease; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .num { font-family: "Jost", sans-serif; font-variant-numeric: tabular-nums; }
+  .frame { padding-left: var(--margin); padding-right: var(--margin-r); }
+  .column { width: min(var(--col), 100%); margin-inline: auto; }
+
+  /* ---- 暗い壁: ファーストビュー ---- */
+  .hero { min-height: auto; display: grid; grid-template-rows: auto 1fr; padding-block: 28px 64px; }
+  .nav { display: flex; justify-content: space-between; align-items: baseline; font-size: var(--step-small); }
+  .wordmark { font-family: "Jost", sans-serif; font-weight: 500; font-size: var(--step-lead); letter-spacing: 0.01em; }
+  .nav a { text-decoration: none; }
+  .nav a:hover { color: var(--accent); }
+  .hero-body { display: grid; justify-items: center; align-content: start; gap: 0; text-align: center; padding-top: 72px; }
+  .hero h1 { font-size: var(--step-display); line-height: 1.15; }
+  .hero .lead { margin-top: 32px; max-width: 30em; font-size: var(--step-lead); line-height: 1.5; }
+  .doors { display: grid; grid-template-columns: repeat(2, 280px); gap: 80px; margin-top: 48px; text-align: left; }
+  .door { text-decoration: none; display: grid; gap: 14px; }
+  .door img { width: 280px; height: 373px; object-fit: cover; display: block; transition: opacity 180ms ease; }
+  .doors:hover .door img { opacity: 0.5; }
+  .doors .door:hover img, .doors .door:focus-visible img { opacity: 1; }
+  .door b { font-weight: 500; font-size: var(--step-lead); line-height: 1.3; }
+  .door > span:not(.pic) { color: var(--ink); font-size: var(--step-body); line-height: 1.5; }
+  .door:hover b { color: var(--accent); }
+  .get { margin-top: 28px; display: grid; justify-items: center; gap: 8px; }
+  /* App Store のバッジ: 公式のものを1つ、高さ 40、周りに高さの 1/4 の余白（Apple のガイドライン） */
+  .badge { display: inline-block; padding: 10px; line-height: 0; transition: transform 140ms ease; }
+  .badge:active { transform: scale(0.97); }
+  .badge img { height: 40px; width: auto; display: block; }
+  .get p { font-size: var(--step-small); color: var(--muted); }
+
+  /* ---- 白い中ほど ---- */
+  .paper { background: var(--paper); color: var(--paper-ink); }
+  .paper a:hover { color: var(--paper-accent); }
+  .section { padding-block: 128px; }
+  .section + .section { padding-top: 0; }
+  .section h2 { font-size: var(--step-head); line-height: 1.3; }
+  .section .intro { margin-top: 16px; color: var(--paper-ink); }
+
+  /* 量って、撮るだけ（呼びかけと応え） */
+  .exchange { margin-top: 88px; display: grid; gap: 16px; }
+  .exchange:first-of-type { margin-top: 56px; }
+  .exchange h3 { font-size: var(--step-lead); line-height: 1.45; }
+  .exchange .say { color: var(--paper-ink); font-size: var(--step-body); }
+  .call { background: var(--paper-step); padding: 20px; }
+  .response { margin-left: 56px; background: var(--paper-step-2); padding: 20px; }
+  .exchange.wide .response { width: min(760px, calc(100vw - var(--margin) - var(--margin-r))); max-width: none; }
+  /* アプリの画面の切れ端（data-ui）。アプリの言葉と大きさで描く */
+  [data-ui] { font-size: var(--step-small); line-height: 1.4; }
+  .ui-row { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; }
+  .ui-label { color: var(--paper-muted); font-size: var(--step-small); }
+  .ui-weight { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ui-weight .v { font-size: 40px; font-weight: 400; }
+  .stepper { display: flex; gap: 12px; }
+  .stepper span { width: 44px; height: 44px; display: grid; place-items: center; background: var(--paper); color: var(--paper-accent); font-size: var(--step-lead); }
+  .call img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+  .meal-card { display: grid; gap: 6px; }
+  .meal-card .total { padding-top: 8px; font-weight: 500; }
+  .pfc { display: flex; flex-wrap: wrap; gap: 4px 14px; white-space: nowrap; font-size: var(--step-small); color: var(--paper-muted); }
+  .key { display: inline-block; width: 9px; height: 9px; margin-right: 4px; }
+  .week { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 24px; align-items: center; }
+  .week .big { font-size: 40px; }
+  .week svg { width: 100%; height: auto; display: block; }
+
+  /* 目安の決まり方（止まる出力と、動かす操作） */
+  .rules { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--paper); color: var(--paper-ink); }
+  .rules .pin { position: sticky; top: 0; height: 100svh; background: var(--field-1); color: var(--field-1-ink); display: grid; place-items: center; padding: 32px; }
+  .out { width: min(420px, 100%); background: var(--bg); color: var(--ink); padding: 28px; display: grid; gap: 14px; }
+  .out .ui-label { color: var(--muted); }
+  .out .target { font-size: 40px; line-height: 1; font-weight: 400; }
+  .out .ui-row span:first-child { color: var(--muted); }
+  .out .sep { height: 0; border: 0; margin: 4px 0; }
+  .out .method { color: var(--field-1-muted); font-size: var(--step-small); }
+  .rules .read { padding: 72px var(--margin-r) 25vh 48px; }
+  .rules .read > * { max-width: 44ch; margin-left: auto; margin-right: 0; }
+  .rules h2 { font-size: var(--step-head); line-height: 1.25; }
+  .block { margin-top: 50vh; display: grid; gap: 14px; }
+  .block:first-of-type { margin-top: 64px; }
+  .block h3 { font-size: var(--step-lead); line-height: 1.35; }
+  .block p { font-size: var(--step-body); }
+  .block .small { font-size: 14px; color: var(--paper-muted); }
+  .control { display: grid; gap: 8px; }
+  .control label { font-size: 14px; color: var(--paper-muted); display: flex; justify-content: space-between; }
+  .control label output { color: var(--paper-ink); font-size: var(--step-body); }
+  input[type="range"] { width: 100%; accent-color: var(--paper-accent); height: 44px; margin: 0; }
+  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .seg button {
+    font: inherit; font-size: var(--step-small); min-height: 44px; padding: 0 16px; border: 0; cursor: pointer;
+    background: var(--paper-step); color: var(--paper-ink); transition: background 140ms ease, transform 140ms ease;
+  }
+  .seg button:active { transform: scale(0.98); }
+  .seg button[aria-pressed="true"] { background: var(--paper-accent); color: #fff; }
+
+  /* 成分表で数える（見本と操作の板） */
+  .demo { width: min(760px, 100%); margin: 40px auto 0; display: grid; grid-template-columns: 62fr 38fr; background: var(--paper-step); }
+  .demo .show { padding: 24px; display: grid; gap: 16px; align-content: start; }
+  .demo .show img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+  .demo .rows { display: grid; gap: 8px; font-size: var(--step-small); }
+  .demo .rows .fn { color: var(--paper-muted); font-size: var(--step-small); margin-right: 8px; }
+  .demo .sum { display: flex; align-items: center; gap: 20px; }
+  .demo .sum .kcal { font-size: 40px; }
+  .ring { width: 72px; height: 72px; flex: none; }
+  .demo .ctrl { background: var(--paper-step-2); padding: 20px; display: grid; gap: 12px; align-content: start; }
+  .demo .ctrl .seg button { background: var(--paper); }
+  .demo .ctrl .seg button[aria-pressed="true"] { background: var(--paper-accent); }
+  .demo .src { font-size: 14px; }
+  .demo-note { width: min(760px, 100%); margin: 16px auto 0; font-size: var(--step-body); color: var(--paper-ink); }
+
+  /* ---- 暗い壁: 料金、質問、終わり ---- */
+  .dark { background: var(--bg); color: var(--ink); }
+  .dark .section { padding-block: 128px; }
+  .menu { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: 64px; max-width: 1100px; margin-inline: auto; }
+  .menu h2 { font-size: var(--step-head); line-height: 1.25; }
+  .menu figure { margin: 24px 0 0; }
+  .menu figure img { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; display: block; }
+  .menu figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 64px; align-content: start; }
+  .group { margin-top: 48px; display: grid; gap: 22px; align-content: start; }
+  .group:nth-child(-n+2) { margin-top: 0; }
+  .group h3 { font-size: var(--step-lead); }
+  .item .line { display: flex; justify-content: space-between; gap: 16px; font-size: var(--step-body); }
+  .item p { font-size: var(--step-body); color: var(--ink); max-width: 36ch; margin-top: 4px; }
+
+  .faq { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; max-width: 1100px; margin-inline: auto; }
+  .faq ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; font-size: var(--step-body); }
+  .faq .head { color: var(--muted); }
+  .faq button {
+    font: inherit; color: var(--muted); background: none; border: 0; padding: 0; text-align: left; cursor: pointer;
+    display: flex; gap: 14px; align-items: baseline; min-height: 32px;
+  }
+  .faq button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; transform: translateY(-2px); }
+  .faq button[aria-selected="true"] { color: var(--ink); }
+  .faq button[aria-selected="true"]::before { background: var(--accent); }
+  .faq .pane { position: sticky; top: 120px; align-self: start; font-size: var(--step-lead); line-height: 1.4; max-width: 30ch; transition: opacity 150ms ease; }
+  .faq .inline { display: none; }
+
+  .faq-field { background: var(--field-1); color: var(--field-1-ink); }
+  .faq-field .faq button, .faq-field .faq .head { color: var(--field-1-muted); }
+  .faq-field .faq button[aria-selected="true"] { color: var(--field-1-ink); }
+  footer { padding-top: 96px; padding-bottom: 30px; font-size: 14px; color: var(--muted); }
+  footer .line { display: grid; grid-template-columns: 1fr auto 1fr; gap: 24px; align-items: baseline; }
+  footer nav { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  footer nav a { color: var(--ink); text-decoration: none; }
+  footer nav a:hover { color: var(--accent); }
+  footer .end { text-align: right; }
+  footer .fine { margin-top: 24px; display: grid; gap: 6px; font-size: var(--step-small); max-width: 60ch; }
+  footer .fine a { color: var(--muted); }
+  footer summary { cursor: pointer; color: var(--ink); min-height: 32px; }
+
+  /* 根拠のメモ（評価のためのもので、LP の一部ではない） */
+  .note { display: none; margin-top: 16px; padding: 10px 12px; background: #fff5d6; color: #4d3900; font-size: var(--step-small); line-height: 1.55; text-align: left; }
+  .show-notes .note { display: block; }
+  .note b { font-weight: 700; }
+
+  /* 試作の切り替えバー（LP の一部ではない） */
+  .proto-bar {
+    position: fixed; z-index: 20; right: calc(12px + env(safe-area-inset-right, 0px));
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: #fff; color: #000; padding: 4px; display: flex; gap: 4px; align-items: center;
+    font-size: 11px; box-shadow: 0 6px 24px rgba(0,0,0,0.35); /* taste-skill-ignore: 浮いている試作のバー */
+  }
+  .proto-bar a, .proto-bar button { font: inherit; color: inherit; background: #eee; border: 0; padding: 4px 8px; min-height: 28px; display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
+  .proto-bar .on { background: #000; color: #fff; }
+
+  @media (max-width: 899px) {
+    .doors { grid-template-columns: repeat(2, minmax(0, 168px)); gap: 14px; margin-top: 40px; }
+    .door img { width: 100%; height: auto; aspect-ratio: 3 / 4; }
+    .door b { font-size: var(--step-body); }
+    .hero h1 { font-size: 8vw; }
+    .response { margin-left: 0; }
+    .exchange.wide .response { width: auto; margin-inline: calc(-1 * var(--margin)) calc(-1 * var(--margin-r)); }
+    .week { grid-template-columns: minmax(0, 1fr); }
+    .rules { grid-template-columns: minmax(0, 1fr); }
+    .rules .pin { position: static; height: auto; padding: 24px var(--margin-r) 24px var(--margin); }
+    .out { padding: 18px; gap: 8px; }
+    .out .target { font-size: 40px; }
+        .rules .read { padding: 40px var(--margin-r) 64px var(--margin); }
+    .block { margin-top: 64px; }
+    .block h3 { font-size: var(--step-lead); }
+    .demo { grid-template-columns: minmax(0, 1fr); }
+    .menu, .faq { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .groups { grid-template-columns: minmax(0, 1fr); }
+    .group:nth-child(2) { margin-top: 40px; }
+    .menu figure img { width: 60%; }
+    .faq .pane { display: none; }
+    .faq .inline { display: block; margin: 8px 0 0 22px; font-size: var(--step-body); color: var(--ink); }
+    footer { padding-top: 20svh; padding-bottom: 24px; }
+    footer .line { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    footer nav { justify-content: flex-start; }
+    footer .end { text-align: left; }
+  }
+
+  /* 動き: 各節の部品が、見出し・文・絵の順に 70ms ずつずれて 20px 上がって現れる。スクリプトが動かなければ最初から見えている。
+     App Store のバッジは動かさない（Apple のガイドライン） */
+  .js .rise { opacity: 0; transform: translateY(20px); transition: opacity 520ms ease, transform 520ms cubic-bezier(.2,.7,.2,1); transition-delay: calc(var(--i, 0) * 70ms); }
+  .js .rise.in { opacity: 1; transform: none; }
+  /* 動く絵: 扉の写真がゆっくり寄る */
+  .door .pic { display: block; overflow: hidden; line-height: 0; }
+  .door img { animation: drift 18s ease-in-out infinite alternate; transform-origin: 50% 40%; }
+  .door:nth-child(2) img { animation-delay: -9s; }
+  @keyframes drift { from { transform: scale(1); } to { transform: scale(1.06); } }
+  @media (prefers-reduced-motion: reduce) { .js .rise { opacity: 1; transform: none; } .door img { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<!-- ファーストビュー: 暗い壁の2つの扉 -->
+<header class="hero frame" id="top">
+  <div class="nav"><span class="wordmark">nu-tori</span><a href="#faq">よくある質問</a></div>
+  <div class="hero-body">
+    <h1>朝に量る。<br>食べる前に撮る。</h1>
+    <p class="lead">nu-tori は、体重の動きを見て、1日に食べる量の目安を毎週直す iPhone アプリです。</p>
+    <div class="get">
+      <a class="badge" href="#" onclick="return false" aria-label="App Store で予約注文"><img id="badge" alt="App Store からダウンロード" width="109" height="40"></a>
+      <p>30日間、無料ですべての機能を使えます。支払いの登録は要りません。</p>
+    </div>
+    <div class="doors">
+      <a class="door" href="#weigh"><span class="pic"><img src="img/scale.jpg" alt="体重計の目盛り" width="280" height="373"></span><b>朝の体重</b><span>ヘルスケアにつながる体重計なら、量るだけで入ります。</span></a>
+      <a class="door" href="#photo"><span class="pic"><img src="img/breakfast-door.jpg" alt="ごはん、焼き鮭、さば、冷ややっこ、みそ汁の朝の膳" width="280" height="373"></span><b>食べる前の1枚</b><span>写真から、料理と材料と量と栄養を出します。</span></a>
+    </div>
+    <div class="note"><b>taste-skill の手順で作った版。</b>方向「The quiet instrument」、ファーストビュー「Two doors on a dark wall」。アイデアは「nu-tori の2つの操作が、暗い壁の2つの扉になる」。競合（あすけん・カロミル）に当てはめると扉が1つ（食事）か、キャラクターになるので、nu-tori だけのものと判断した。差し色は配られたピンクでなくアプリの Primary（開発者の決定。taste-skill の「紫を使わない」には当たる）。主な行動は Apple の公式のバッジ1つ（Apple の決まりが先。予約注文のバッジは取り方を確かめていないので、ダウンロードのバッジで代わりに置いている）。</div>
+  </div>
+</header>
+
+<main>
+  <div class="paper">
+    <section class="section frame" aria-labelledby="how-title">
+      <div class="column">
+        <h2 id="how-title">量って、撮るだけ</h2>
+        <p class="intro">することは2つ。あとは nu-tori が数えて、毎週の目安に直します。</p>
+
+        <div class="exchange" id="weigh">
+          <h3>まず、朝に体重を量る。</h3>
+          <div class="call" data-ui>
+            <div class="ui-label">今日の体重</div>
+            <div class="ui-weight"><span class="v num">67.4 kg</span><span class="stepper" aria-hidden="true"><span>−</span><span>＋</span></span></div>
+          </div>
+          <div class="response" data-ui>
+            <div class="ui-row"><span class="ui-label">体重の傾向（7日）</span><span class="num">週 −0.15 kg</span></div>
+            <p class="say" style="margin-top:6px">日々の上下でなく、傾向を見ます。量り忘れた日があってもかまいません。</p>
+          </div>
+        </div>
+
+        <div class="exchange" id="photo">
+          <h3>次に、食べる前に撮る。確定は押さない。</h3>
+          <div class="call"><img src="img/breakfast.jpg" alt="朝の膳の写真" width="960" height="540" loading="lazy"></div>
+          <div class="response meal-card" data-ui id="photo-response"></div>
+          <p class="say">撮ったら、スマホを置いて食べられます。推し量るのは裏で進み、違っていたらあとで直せます。</p>
+        </div>
+
+        <div class="exchange wide">
+          <h3>週に一度、目安が変わる。</h3>
+          <div class="response" data-ui>
+            <div class="week">
+              <div>
+                <div class="ui-label">今週の見直し</div>
+                <div class="big num">1,760 kcal</div>
+                <div class="ui-label" style="margin-top:4px">1日の目安。先週は 1,800 kcal</div>
+              </div>
+              <svg viewBox="0 0 400 120" role="img" aria-label="体重の傾向の見本。4週で 0.6 kg 下がる" id="trend"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="rules" aria-labelledby="rules-title">
+    <div class="pin">
+      <div class="out" data-ui aria-live="polite">
+        <div class="ui-label">1日の目安</div>
+        <div class="target num" id="o-target"></div>
+        <div class="detail" style="display:grid;gap:10px">
+          <div class="ui-row"><span>1週間の食べた量（1日平均）</span><span class="num" id="o-intake"></span></div>
+          <div class="ui-row"><span>体重の傾向</span><span class="num" id="o-trend"></span></div>
+          <div class="ui-row"><span>推定消費カロリー</span><span class="num" id="o-tdee"></span></div>
+          <div class="ui-row"><span>目標のペース</span><span class="num" id="o-pace"></span></div>
+        </div>
+        <div class="method" id="o-method"></div>
+      </div>
+    </div>
+    <div class="read">
+      <h2 id="rules-title">目安の決まり方</h2>
+      <div class="block">
+        <h3>食べた量は、撮った記録から数えます。</h3>
+        <p>1週間の記録から、1日あたりの食べた量を出します。</p>
+        <div class="control"><label for="c-intake">1日平均の食べた量 <output class="num" id="v-intake"></output></label><input type="range" id="c-intake" min="1400" max="2800" step="10" value="1880"></div>
+      </div>
+      <div class="block">
+        <h3>体重は、傾向だけを見ます。</h3>
+        <p>食べた量と体重の傾向から、あなたの体が1日に使うカロリーを推し量ります。体重 1 kg を約 7,700 kcal として数えます。</p>
+        <div class="control"><label for="c-trend">体重の傾向（週あたり） <output class="num" id="v-trend"></output></label><input type="range" id="c-trend" min="-1" max="0.6" step="0.05" value="-0.15"></div>
+      </div>
+      <div class="block">
+        <h3>ペースは、あなたが決めます。</h3>
+        <p>推定消費カロリーから、選んだペースの分を引いた量が、1日の目安になります。</p>
+        <div class="seg" role="group" aria-label="目標のペース" id="c-pace">
+          <button type="button" data-v="0">維持する</button>
+          <button type="button" data-v="-0.25" aria-pressed="true">週 0.25 kg 減らす</button>
+          <button type="button" data-v="-0.5">週 0.5 kg 減らす</button>
+        </div>
+      </div>
+      <div class="block">
+        <h3>最初の目安も、出し方を見せます。</h3>
+        <p>ヘルスケアに直前 28 日の食べた量と体重があれば、そこから逆算します。無ければ、身長・生まれた年・性別・活動量から式で出し、使うほど記録に合わせて直ります。</p>
+        <div class="seg" role="group" aria-label="最初の目安の出し方" id="c-first">
+          <button type="button" data-v="back" aria-pressed="true">28 日の記録がある</button>
+          <button type="button" data-v="formula">記録が無い</button>
+        </div>
+        <p class="small">ここの計算は見本で、アプリの計算そのものではありません。nu-tori は医療の助言をするものではありません。持病のある方は医師に相談してください。</p>
+        <div class="note">taste-skill の「Fixed output, live controls」。動かすと左の目安がすぐ変わる。計算は「推定消費 = 食べた量 − 傾向 × 7,700 ÷ 7」「目安 = 推定消費 + ペース × 7,700 ÷ 7」の見本（7,700 は <code>server/src/domain/kilocalories-per-kilogram.ts</code>）。アプリの見直しの計算（ADR-0007）と同じかは確かめていない。</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="paper">
+    <section class="section frame" aria-labelledby="table-title" style="padding-top:128px">
+      <div class="column">
+        <h2 id="table-title">成分表で数える</h2>
+        <p class="intro">料理を材料に分け、材料ごとに文部科学省の日本食品標準成分表（八訂）の値で数えます。写真に栄養成分表示が写っていれば、その表示を使います。</p>
+      </div>
+      <div class="demo">
+        <div class="show" data-ui>
+          <img id="d-img" src="img/breakfast.jpg" alt="" width="960" height="720" loading="lazy">
+          <div class="rows" id="d-rows"></div>
+          <div class="sum">
+            <svg class="ring" viewBox="0 0 72 72" id="d-ring" role="img" aria-label="1日の目安に占める割合"></svg>
+            <div><div class="kcal num" id="d-kcal"></div><div class="pfc" id="d-pfc"></div></div>
+          </div>
+        </div>
+        <div class="ctrl">
+          <div class="seg" role="group" aria-label="食事" id="d-meal"></div>
+          <div id="d-sliders" style="display:grid;gap:4px"></div>
+          <a class="src" href="https://www.mext.go.jp/a_menu/syokuhinseibun/mext_00001.html">日本食品標準成分表（文部科学省）</a>
+        </div>
+      </div>
+      <p class="demo-note">量を動かすと、kcal と P・F・C がすぐ変わります。丸は、1日の目安 1,760 kcal に占める割合です。</p>
+      <div class="column"><div class="note">taste-skill の「Live demo with controls」。値は <code>server/src/domain/food-composition/food-composition-table.json</code> の成分表（八訂 増補2023年）の 100 g あたりの値に量を掛けたもの。kcal は成分表の kcal を足し、丸の P・F・C は P×4 : F×9 : C×4 の比で按分する（ADR-0016）。写真は Wikimedia Commons の CC0 で、nu-tori の利用者の食事ではない。</div></div>
+    </section>
+  </div>
+
+  <div class="dark">
+    <section class="section frame" aria-labelledby="price-title">
+      <div class="menu">
+        <div>
+          <h2 id="price-title">料金</h2>
+          <figure><img src="img/yaki-onigiri.jpg" alt="焼きおにぎり2つ" width="480" height="600" loading="lazy"><figcaption>焼きおにぎり</figcaption></figure>
+        </div>
+        <div class="groups">
+          <div class="group">
+            <h3>はじめの 30 日</h3>
+            <div class="item"><div class="line"><span>すべての機能</span><span class="num">0 円</span></div><p>支払いの登録は要りません。終わっても自動で課金されません。</p></div>
+            <div class="item"><div class="line"><span>体験が終わる日</span><span>いつでも見られる</span></div><p>アプリの中に、いつも出ています。</p></div>
+          </div>
+          <div class="group">
+            <h3>続けるとき</h3>
+            <div class="item"><div class="line"><span>月額</span><span class="num">未定</span></div><p>料金は決まりしだい載せます（試作）。</p></div>
+            <div class="item"><div class="line"><span>年額</span><span class="num">未定</span></div><p>続けたいときにだけ選びます。</p></div>
+          </div>
+          <div class="group">
+            <h3>続けないとき</h3>
+            <div class="item"><div class="line"><span>体重の記録</span><span class="num">0 円</span></div><p>体験が終わったあとも、そのまま使えます。</p></div>
+            <div class="item"><div class="line"><span>これまでの記録の見返し</span><span class="num">0 円</span></div><p>消えずに残ります。</p></div>
+          </div>
+          <div class="group">
+            <h3>広告</h3>
+            <div class="item"><div class="line"><span>どの画面にも</span><span>出ません</span></div><p>無料版も広告も作っていません。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section frame faq-field" id="faq" aria-labelledby="faq-title">
+      <div class="faq">
+        <ul role="tablist" aria-labelledby="faq-title" id="faq-list">
+          <li class="head" id="faq-title">よくある質問</li>
+        </ul>
+        <p class="pane" id="faq-pane" role="tabpanel"></p>
+      </div>
+    </section>
+
+    <footer class="frame">
+      <div class="line">
+        <span>食事と体重の iPhone アプリ</span>
+        <nav><a href="#" onclick="return false">利用規約</a><a href="#" onclick="return false">特定商取引法に基づく表記</a><a href="#" onclick="return false">サポート</a></nav>
+        <span class="end">2026 · <a href="#" onclick="return false" style="color:var(--ink)">プライバシーポリシー</a></span>
+      </div>
+      <div class="fine">
+        <p>nu-tori for iPhone。日本の App Store で配信予定。nu-tori は医療の助言をするものではありません。</p>
+        <p>Apple および Apple ロゴは、米国その他の国で登録された Apple Inc. の商標です。App Store は Apple Inc. のサービスマークです。</p>
+        <details><summary>写真の出典</summary><p><a href="https://commons.wikimedia.org/w/index.php?curid=14941204">“Japanese breakfast”</a> Brücke-Osteuropa、<a href="https://commons.wikimedia.org/w/index.php?curid=51518277">“SalterBathroomScales”</a> Simon Speed、<a href="https://commons.wikimedia.org/w/index.php?curid=110007929">“Onigiri 002”</a> と <a href="https://commons.wikimedia.org/w/index.php?curid=110064229">“Yaki-Onigiri 001”</a> Ocdp、<a href="https://commons.wikimedia.org/wiki/File:Grilled_salmon_and_mentaiko_on_rice_bento_of_7-Eleven_in_Japan.jpg">“Grilled salmon and mentaiko on rice bento”</a> 毒島みるく。いずれも CC0、Wikimedia Commons。</p></details>
+      </div>
+    </footer>
+  </div>
+</main>
+
+<div class="proto-bar" role="toolbar" aria-label="試作の切り替え">
+  <a href="../index.html">今の版</a><a class="on" href="#top" aria-current="page">taste-skill の版</a>
+  <button type="button" id="notes-toggle" aria-pressed="false">根拠</button>
+</div>
+
+<script>
+(function () {
+  document.getElementById('badge').src = 'data:image/svg+xml;base64,PHN2ZyBpZD0iSlAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwOC44NTE1NyIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDEwOC44NTE1NyA0MCI+CiAgPHRpdGxlPkRvd25sb2FkX29uX3RoZV9BcHBfU3RvcmVfQmFkZ2VfSlBfUkdCX2Jsa18xMDAzMTc8L3RpdGxlPgogIDxnPgogICAgPGc+CiAgICAgIDxwYXRoIGQ9Ik05OS4zMjIyNywwSDkuNTM0NjhjLS4zNjY3LDAtLjcyOSwwLTEuMDk0NzMuMDAyLS4zMDYxNS4wMDItLjYwOTg2LjAwNzgxLS45MTg5NS4wMTI3QTEzLjIxNDc2LDEzLjIxNDc2LDAsMCwwLDUuNTE3MS4xOTE0MWE2LjY2NTA5LDYuNjY1MDksMCwwLDAtMS45MDA4OC42MjdBNi40Mzc3OSw2LjQzNzc5LDAsMCwwLDEuOTk3NTcsMS45OTcwNyw2LjI1ODQ0LDYuMjU4NDQsMCwwLDAsLjgxOTM1LDMuNjE4MTZhNi42MDExOSw2LjYwMTE5LDAsMCwwLS42MjUsMS45MDMzMiwxMi45OTMsMTIuOTkzLDAsMCwwLS4xNzkyLDIuMDAyQy4wMDU4Nyw3LjgzMDA4LjAwNDg5LDguMTM3NywwLDguNDQ0MzRWMzEuNTU4NmMuMDA0ODkuMzEwNS4wMDU4Ny42MTEzLjAxNTE1LjkyMTlhMTIuOTkyMzIsMTIuOTkyMzIsMCwwLDAsLjE3OTIsMi4wMDE5LDYuNTg3NTYsNi41ODc1NiwwLDAsMCwuNjI1LDEuOTA0M0E2LjIwNzc4LDYuMjA3NzgsMCwwLDAsMS45OTc1NywzOC4wMDFhNi4yNzQ0NSw2LjI3NDQ1LDAsMCwwLDEuNjE4NjUsMS4xNzg3LDYuNzAwODIsNi43MDA4MiwwLDAsMCwxLjkwMDg4LjYzMDgsMTMuNDU1MTQsMTMuNDU1MTQsMCwwLDAsMi4wMDM5LjE3NjhjLjMwOTA5LjAwNjguNjEyOC4wMTA3LjkxODk1LjAxMDdDOC44MDU2Nyw0MCw5LjE2OCw0MCw5LjUzNDY4LDQwSDk5LjMyMjI3Yy4zNTk0LDAsLjcyNDYsMCwxLjA4NC0uMDAyLjMwNDcsMCwuNjE3Mi0uMDAzOS45MjE5LS4wMTA3YTEzLjI3OSwxMy4yNzksMCwwLDAsMi0uMTc2OCw2LjgwNDMyLDYuODA0MzIsMCwwLDAsMS45MDgyLS42MzA4LDYuMjc3NDIsNi4yNzc0MiwwLDAsMCwxLjYxNzItMS4xNzg3LDYuMzk0ODIsNi4zOTQ4MiwwLDAsMCwxLjE4MTYtMS42MTQzLDYuNjA0MTMsNi42MDQxMywwLDAsMCwuNjE5MS0xLjkwNDMsMTMuNTA2NDMsMTMuNTA2NDMsMCwwLDAsLjE4NTYtMi4wMDE5Yy4wMDM5LS4zMTA2LjAwMzktLjYxMTQuMDAzOS0uOTIxOS4wMDc4LS4zNjMzLjAwNzgtLjcyNDYuMDA3OC0xLjA5MzhWOS41MzYxM2MwLS4zNjYyMSwwLS43Mjk0OS0uMDA3OC0xLjA5MTc5LDAtLjMwNjY0LDAtLjYxNDI2LS4wMDM5LS45MjA5YTEzLjUwNzEsMTMuNTA3MSwwLDAsMC0uMTg1Ni0yLjAwMiw2LjYxNzcsNi42MTc3LDAsMCwwLS42MTkxLTEuOTAzMzIsNi40NjYxOSw2LjQ2NjE5LDAsMCwwLTIuNzk4OC0yLjc5OTgsNi43Njc1NCw2Ljc2NzU0LDAsMCwwLTEuOTA4Mi0uNjI3LDEzLjA0Mzk0LDEzLjA0Mzk0LDAsMCwwLTItLjE3Njc2Yy0uMzA0Ny0uMDA0ODgtLjYxNzItLjAxMDc0LS45MjE5LS4wMTI2OUMxMDAuMDQ2ODcsMCw5OS42ODE2NywwLDk5LjMyMjI3LDBaIiBzdHlsZT0iZmlsbDogI2E2YTZhNiIvPgogICAgICA8cGF0aCBkPSJNOC40NDQ4MywzOS4xMjVjLS4zMDQ2OCwwLS42MDItLjAwMzktLjkwNDI5LS4wMTA3YTEyLjY4NzE0LDEyLjY4NzE0LDAsMCwxLTEuODY5MTQtLjE2MzEsNS44ODM4MSw1Ljg4MzgxLDAsMCwxLTEuNjU2NzQtLjU0NzksNS40MDU3Myw1LjQwNTczLDAsMCwxLTEuMzk3LTEuMDE2Niw1LjMyMDgyLDUuMzIwODIsMCwwLDEtMS4wMjA1MS0xLjM5NjUsNS43MjE4Niw1LjcyMTg2LDAsMCwxLS41NDMtMS42NTcyLDEyLjQxMzUxLDEyLjQxMzUxLDAsMCwxLS4xNjY1LTEuODc1Yy0uMDA2MzQtLjIxMDktLjAxNDY0LS45MTMxLS4wMTQ2NC0uOTEzMVY4LjQ0NDM0Uy44ODE4NSw3Ljc1MjkzLjg4NzcsNy41NDk4YTEyLjM3MDM5LDEyLjM3MDM5LDAsMCwxLC4xNjU1My0xLjg3MjA3LDUuNzU1NSw1Ljc1NTUsMCwwLDEsLjU0MzQ2LTEuNjYyMUE1LjM3MzQ5LDUuMzczNDksMCwwLDEsMi42MTE4MywyLjYxNzY4LDUuNTY1NDMsNS41NjU0MywwLDAsMSw0LjAxNDE3LDEuNTk1MjFhNS44MjMwOSw1LjgyMzA5LDAsMCwxLDEuNjUzMzItLjU0Mzk0QTEyLjU4NTg5LDEyLjU4NTg5LDAsMCwxLDcuNTQzLjg4NzIxTDguNDQ1MzIuODc1aDkxLjk1NmwuOTEzMS4wMTI3YTEyLjM4NDkzLDEyLjM4NDkzLDAsMCwxLDEuODU4NC4xNjI1OSw1LjkzODMzLDUuOTM4MzMsMCwwLDEsMS42NzA5LjU0Nzg1LDUuNTkzNzQsNS41OTM3NCwwLDAsMSwyLjQxNSwyLjQxOTkzQTUuNzYyNjcsNS43NjI2NywwLDAsMSwxMDcuNzk0LDUuNjY3YTEyLjk5NSwxMi45OTUsMCwwLDEsLjE3MzgsMS44ODcyMWMuMDAyOS4yODMyLjAwMjkuNTg3NC4wMDI5Ljg5MDE0LjAwNzkuMzc1LjAwNzkuNzMxOTMuMDA3OSwxLjA5MTc5VjMwLjQ2NDhjMCwuMzYzMywwLC43MTc4LS4wMDc5LDEuMDc1MiwwLC4zMjUyLDAsLjYyMzEtLjAwMzkuOTI5N2ExMi43MzEyNiwxMi43MzEyNiwwLDAsMS0uMTcwOSwxLjg1MzUsNS43MzksNS43MzksMCwwLDEtLjU0LDEuNjcsNS40ODAyOSw1LjQ4MDI5LDAsMCwxLTEuMDE1NiwxLjM4NTcsNS40MTI5LDUuNDEyOSwwLDAsMS0xLjM5OTQsMS4wMjI1LDUuODYxNjgsNS44NjE2OCwwLDAsMS0xLjY2OC41NDk4LDEyLjU0MjE4LDEyLjU0MjE4LDAsMCwxLTEuODY5Mi4xNjMxYy0uMjkyOS4wMDY4LS41OTk2LjAxMDctLjg5NzQuMDEwN2wtMS4wODQuMDAyWiIvPgogICAgPC9nPgogICAgPGc+CiAgICAgIDxwYXRoIGQ9Ik00MS4xNjc0MiwxNi41NTQ2MkgzNy4xMTU4NWwtLjk3MywyLjg3M0gzNC40MjY3OEwzOC4yNjQzNyw4Ljc5ODM3aDEuNzgzbDMuODM3NTksMTAuNjI5MjJINDIuMTM5NTdabS0zLjYzMi0xLjMyNTczSDQwLjc0N2wtMS41ODMxOC00LjY2MjYxaC0uMDQ0M1oiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgIDxwYXRoIGQ9Ik01Mi4xNzI4LDE1LjU1MzIyYzAsMi40MDgyMS0xLjI4ODk1LDMuOTU1NDUtMy4yMzQwNywzLjk1NTQ1YTIuNjI3MTksMi42MjcxOSwwLDAsMS0yLjQzODMtMS4zNTU4MmgtLjAzNjc4djMuODM4NDJINDQuODcyOTRWMTEuNjc4aDEuNTM5NzJWMTIuOTY3aC4wMjkyNmEyLjc0OSwyLjc0OSwwLDAsMSwyLjQ2NzU2LTEuMzdDNTAuODc2MzMsMTEuNTk2OTQsNTIuMTcyOCwxMy4xNTE3LDUyLjE3MjgsMTUuNTUzMjJabS0xLjYzNSwwYzAtMS41NjktLjgxMDgyLTIuNjAwNDYtMi4wNDc5NC0yLjYwMDQ2LTEuMjE1MzksMC0yLjAzMjg5LDEuMDUzMjMtMi4wMzI4OSwyLjYwMDQ2LDAsMS41NjE0NS44MTc1LDIuNjA3MTUsMi4wMzI4OSwyLjYwNzE1QzQ5LjcyNywxOC4xNjAzNyw1MC41Mzc3OSwxNy4xMzY0LDUwLjUzNzc5LDE1LjU1MzIyWiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTYwLjcwMjY3LDE1LjU1MzIyYzAsMi40MDgyMS0xLjI4OTM3LDMuOTU1NDUtMy4yMzQ0OSwzLjk1NTQ1YTIuNjI3MTksMi42MjcxOSwwLDAsMS0yLjQzODMtMS4zNTU4Mkg1NC45OTMxdjMuODM4NDJINTMuNDAyNFYxMS42NzhoMS41Mzk3MlYxMi45NjdoLjAyOTI2YTIuNzQ5LDIuNzQ5LDAsMCwxLDIuNDY3NTYtMS4zN0M1OS40MDU3OCwxMS41OTY5NCw2MC43MDI2NywxMy4xNTE3LDYwLjcwMjY3LDE1LjU1MzIyWm0tMS42MzU0MywwYzAtMS41NjktLjgxMDgyLTIuNjAwNDYtMi4wNDc5NC0yLjYwMDQ2LTEuMjE1MzksMC0yLjAzMjg5LDEuMDUzMjMtMi4wMzI4OSwyLjYwMDQ2LDAsMS41NjE0NS44MTc1LDIuNjA3MTUsMi4wMzI4OSwyLjYwNzE1QzU4LjI1NjQzLDE4LjE2MDM3LDU5LjA2NzI1LDE3LjEzNjQsNTkuMDY3MjUsMTUuNTUzMjJaIiBzdHlsZT0iZmlsbDogI2ZmZiIvPgogICAgICA8cGF0aCBkPSJNNjYuMzM5MSwxNi40NjZjLjExNzg2LDEuMDU0MDYsMS4xNDE4MywxLjc0NjE4LDIuNTQxMTIsMS43NDYxOCwxLjM0MDc3LDAsMi4zMDUzOS0uNjkyMTIsMi4zMDUzOS0xLjY0MjUzLDAtLjgyNS0uNTgxNzgtMS4zMTktMS45NTkzMy0xLjY1NzU4bC0xLjM3NzU1LS4zMzE4NWMtMS45NTE4MS0uNDcxNDQtMi44NTc5Mi0xLjM4NDI0LTIuODU3OTItMi44NjU0NCwwLTEuODM0LDEuNTk4MjMtMy4wOTM2NCwzLjg2Njg0LTMuMDkzNjQsMi4yNDY4OCwwLDMuNzg2NiwxLjI1OTY5LDMuODM4NDIsMy4wOTM2NEg3MS4wOTAzMmMtLjA5NjEzLTEuMDYwNzUtLjk3My0xLjcwMS0yLjI1NDQtMS43MDFzLTIuMTU4MjguNjQ3ODItMi4xNTgyOCwxLjU5MDcxYzAsLjc1MTQ3LjU2LDEuMTkzNjYsMS45MzAwOCwxLjUzMjE5bDEuMTcxMDkuMjg3NTVjMi4xODA4NS41MTU3NSwzLjA4NjEyLDEuMzkxNzYsMy4wODYxMiwyLjk0NjUyLDAsMS45ODg1OS0xLjU4MzE4LDMuMjM0MDctNC4xMDI1NywzLjIzNDA3LTIuMzU3MjIsMC0zLjk0ODc2LTEuMjE2MjMtNC4wNTE1OC0zLjEzODc4WiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTc2LjI5OTYxLDkuODQ0MDd2MS44MzRoMS40NzM2OHYxLjI1OTY5SDc2LjI5OTYxVjE3LjIxYzAsLjY2MzcuMjk1MDcuOTczLjk0Mjg5Ljk3M2E0Ljk3MSw0Ljk3MSwwLDAsMCwuNTIzMjctLjAzNjc4djEuMjUyMTdhNC4zNjgzOCw0LjM2ODM4LDAsMCwxLS44ODM1NC4wNzM1NmMtMS41NjksMC0yLjE4MDg1LS41ODkzLTIuMTgwODUtMi4wOTIyNFYxMi45Mzc3MUg3My41NzQ2VjExLjY3OGgxLjEyNjc4di0xLjgzNFoiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgIDxwYXRoIGQ9Ik03OC42MjU5LDE1LjU1MzIyYzAtMi40MzgzLDEuNDM2MDctMy45NzA0OSwzLjY3NTQyLTMuOTcwNDksMi4yNDY4OCwwLDMuNjc2MjYsMS41MzIxOSwzLjY3NjI2LDMuOTcwNDksMCwyLjQ0NS0xLjQyMTg1LDMuOTcwNDktMy42NzYyNiwzLjk3MDQ5QzgwLjA0Nzc2LDE5LjUyMzcyLDc4LjYyNTksMTcuOTk4MjEsNzguNjI1OSwxNS41NTMyMlptNS43MzA4OSwwYzAtMS42NzI2Mi0uNzY2NTEtMi42NTk4MS0yLjA1NTQ2LTIuNjU5ODFzLTIuMDU1NDYuOTk0NzEtMi4wNTU0NiwyLjY1OTgxYzAsMS42NzkzMS43NjY1MSwyLjY1OSwyLjA1NTQ2LDIuNjU5Uzg0LjM1Njc5LDE3LjIzMjUzLDg0LjM1Njc5LDE1LjU1MzIyWiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTg3LjI4OTEsMTEuNjc4aDEuNTE3MTV2MS4zMTlIODguODQzYTEuODQ4MzUsMS44NDgzNSwwLDAsMSwxLjg2NC0xLjQwMDEyLDIuNDUzMywyLjQ1MzMsMCwwLDEsLjU0NS4wNTkzNXYxLjQ4Nzg5YTIuMjIzNzIsMi4yMjM3MiwwLDAsMC0uNzE0NjktLjA5NjEzLDEuNjAyOSwxLjYwMjksMCwwLDAtMS42NTc1OCwxLjc4M3Y0LjU5NjU4SDg3LjI4OTFaIiBzdHlsZT0iZmlsbDogI2ZmZiIvPgogICAgICA8cGF0aCBkPSJNOTguNTg2MiwxNy4xNTE0NWEzLjExMDExLDMuMTEwMTEsMCwwLDEtMy4zMzY4OSwyLjM3MjI3Yy0yLjI1NDQsMC0zLjY1MzY5LTEuNTEwNDYtMy42NTM2OS0zLjkzMzcyLDAtMi40MzA3OCwxLjQwNjgxLTQuMDA3MjcsMy41ODY4Mi00LjAwNzI3LDIuMTQ0MDcsMCwzLjQ5MjM2LDEuNDcyODQsMy40OTIzNiwzLjgyMjU0di41NDVIOTMuMjAxMzh2LjA5NjEzYTIuMDE4MzcsMi4wMTgzNywwLDAsMCwyLjA4NDcyLDIuMTk1MDYsMS43NTMyOSwxLjc1MzI5LDAsMCwwLDEuNzg5NjUtMS4wOVptLTUuMzc3My0yLjMxMjkyaDMuODc0MzdhMS44NjM2NywxLjg2MzY3LDAsMCwwLTEuOTAwODItMS45NjY4NkExLjk2MTg4LDEuOTYxODgsMCwwLDAsOTMuMjA4OSwxNC44Mzg1M1oiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgPHBhdGggZD0iTTM2LjQzNjU0LDMwLjgxMTUybC4wNjU5Mi0uODE5MzRhMy4xMzI0NSwzLjEzMjQ1LDAsMCwwLC45NTA2OC4xNTEzN2MuMjkyLDAsLjQwNDc5LS4wMjgzMi41NDYzOS0uMjI2NTZhNC41NjUxMiw0LjU2NTEyLDAsMCwwLC40MzI2Mi0yLjMxNTQzYzAtLjg0NzY2LS4yNjMxOC0xLjA5Mjc3LS45MzE2NC0xLjA5Mjc3LS4xNTA4OCwwLS4zMjAzMS4wMDk3Ny0uNTA4NzkuMDE5NTNhMTMuNzI3MTIsMTMuNzI3MTIsMCwwLDEtMS43Njk1Myw0LjEyM2wtLjc4MTc0LS40MjM4M2ExMS4wNzE0LDExLjA3MTQsMCwwLDAsMS42NDc0Ni0zLjYxNTIzLDEzLjY3NjU4LDEzLjY3NjU4LDAsMCwwLTEuNTM0MTguMjU0ODhsLS4xNjk0My0uODI5MWMuNTc0MjItLjEwMzUyLDEuMjYxMjMtLjE5NzI3LDEuOTAxMzctLjI1MzkxYTE3LjYwOSwxNy42MDksMCwwLDAsLjI5Mi0xLjg5MjU4bC45MjI4NS4xMDM1MmMtLjA4NS41NzQyMi0uMTg4NDgsMS4xNDk0MS0uMzIwMzEsMS43MTM4N2guMzY3MTljMS4xOTU4LDAsMS43Ny41OTI3NywxLjc3LDEuODU0NDlhNS44MzM2MSw1LjgzMzYxLDAsMCwxLS41NDU5LDIuNzk1OSwxLjE1NjUsMS4xNTY1LDAsMCwxLTEuMTI5ODguNjAyNTRBNS4xODE0NSw1LjE4MTQ1LDAsMCwxLDM2LjQzNjU0LDMwLjgxMTUyWm0zLjAzMTI1LTUuMDc0MjIuNjg3NS0uNDYxOTFhNS4yOTg3Miw1LjI5ODcyLDAsMCwxLDEuNjA5ODYsMy40ODQzOGwtLjkwMzgxLjE0MDYzQTQuMzk4NTEsNC4zOTg1MSwwLDAsMCwzOS40Njc3OSwyNS43MzczWiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTQ0Ljg4Njc0LDMwLjk0MzM2bC0uMTg4LS44NDc2NmMuMjM1MzUuMDE5NTMuNTQ1OS4wMjgzMi43MzQzOC4wMjgzMiwxLjg2Mzc3LDAsMi41Njk4Mi0uNTI2MzcsMi41Njk4Mi0xLjMwODU5LDAtLjYyMTA5LS40MDQ3OS0uOTc4NTItMS4zMDg1OS0uOTc4NTJhNC4wMzg2NCw0LjAzODY0LDAsMCwwLTIuNTc5NTksMS4yNjE3MmwtLjcyNTEtLjMyMDMxQTUuNTIzOCw1LjUyMzgsMCwwLDEsNDQuMTksMjUuMjQ4bC44Mzc4OS4yNzI0NmEzLjY4NzQsMy42ODc0LDAsMCwwLS43MTUzMywyLjQ0ODI0LDQuODE2NjEsNC44MTY2MSwwLDAsMSwyLjU3MDMxLS44NzZjMS4yNjE3MiwwLDIuMDQzLjY0OTQxLDIuMDQzLDEuNzA0MSwwLDEuMzM2OTEtMS4wNTQ2OSwyLjE1NjI1LTMuNTg2OTEsMi4xNTYyNUM0NS4yMTYzMywzMC45NTMxMyw0NS4wMzc2MiwzMC45NDMzNiw0NC44ODY3NCwzMC45NDMzNlptLS44NzU0OS02LjI1MS4yMzUzNS0uODI5MWEyNS44ODUxNywyNS44ODUxNywwLDAsMSwzLjcwMDIuODQ3NjZsLS4yMjYwNy44MTkzNEEyMS4xNDIwNiwyMS4xNDIwNiwwLDAsMCw0NC4wMTEyNSwyNC42OTIzOFoiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgIDxwYXRoIGQ9Ik01MS42NTIzNiwzMC4yOTM5NWE1Ljk0NzY3LDUuOTQ3NjcsMCwwLDAsMi41MzIyMy0xLjYzODY3LDEwLjY5NDcyLDEwLjY5NDcyLDAsMCwwLTEuNzYwMjUtMS4xODU1NWwuNTE3NTgtLjY0OTQxYTExLjQ0NTA5LDExLjQ0NTA5LDAsMCwxLDEuNzg4NTcsMS4xMjg5MSw1Ljk1Mzc2LDUuOTUzNzYsMCwwLDAsLjkyMjg1LTIuMTc0OEg1My4yNTI0NmE5LjcwMjE0LDkuNzAyMTQsMCwwLDEtMi4wNTIyNSwyLjM2MzI4bC0uNjg3NS0uNTkyNzdhOC45MjM2NSw4LjkyMzY1LDAsMCwwLDIuNjE3NjgtMy41OTY2OGwuOTAzODEuMjE2OGMtLjEwMzUyLjI2MzY3LS4yMDcuNTM2MTMtLjMyOTU5Ljc5MWgyLjMzNWwuNjY4NDYuMzEwNTVhNy4xNDEsNy4xNDEsMCwwLDEtNC41MDk3Nyw1Ljc2MTcyWk01NS42MjUsMjMuNzIyNjZsLjUyNzM0LS4yNTQ4OGE1LjY3NzIyLDUuNjc3MjIsMCwwLDEsLjY2ODQ2LDEuMTU4MmwtLjU5MzI2LjI3MzQ0QTUuMTM0NjYsNS4xMzQ2NiwwLDAsMCw1NS42MjUsMjMuNzIyNjZabTEuMTc2NzYtLjA5NDczLjUzNjYyLS4yNTM5MWE2LjM1NjE0LDYuMzU2MTQsMCwwLDEsLjY4NzUsMS4xODY1MmwtLjU5MzI2LjI1MzkxQTUuMTY4NCw1LjE2ODQsMCwwLDAsNTYuODAxNzgsMjMuNjI3OTNaIiBzdHlsZT0iZmlsbDogI2ZmZiIvPgogICAgICA8cGF0aCBkPSJNNjAuOTIxNDEsMzAuOTkwMjNsLS40OC0uNzYyN2EzLjk0MzgyLDMuOTQzODIsMCwwLDAsMy4zMTQtNC4xNTEzN2gtMy45NTQxdjEuODkyNThoLS45NTExN1YyNS4yNzUzOUg2MS4yMTM0VjIzLjg5MTZoLjk1MDY4djEuMzgzNzloMS43NjA3NGwuODY2MjEuMjQ1MTJDNjQuNjc3NzUsMjguMTk0MzQsNjMuNzgzNzEsMzAuMjM3Myw2MC45MjE0MSwzMC45OTAyM1oiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgIDxwYXRoIGQ9Ik02Ni42MjI1OCwyNS4zNDE4bC41MjczNC0uNzcyNDZhMTEuNjgzNDEsMTEuNjgzNDEsMCwwLDEsMi4zMTU0MywxLjQwMzMybC0uNjAyNTQuODA5NTdBMTEuMDUzNCwxMS4wNTM0LDAsMCwwLDY2LjYyMjU4LDI1LjM0MThabS4xNzg3MSw0LjY0MTZhNy4zMTc0OCw3LjMxNzQ4LDAsMCwwLDUuNDMyNjItMy45MTdsLjYyMTA5LjY5NzI3YTcuOTYzNTIsNy45NjM1MiwwLDAsMS01LjY5NTMxLDQuMDk0NzNaIiBzdHlsZT0iZmlsbDogI2ZmZiIvPgogICAgICA8cGF0aCBkPSJNODAuNTcwODIsMzAuNDM1NTVINzQuNjQ4OTVWMjQuODMzaDUuOTIxODhabS00Ljk4OTI2LTQuNzM2MzN2My44NzAxMmg0LjA0Nzg1VjI1LjY5OTIyWiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTg5LjA0OTM0LDI3LjkyMDlIODIuMzkzMDl2LS45Nmg2LjY1NjI1WiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPHBhdGggZD0iTTkxLjMxNCwyMy45MTk5MmguOTMxNjR2Mi40MTAxNmEyOS4wMTMsMjkuMDEzLDAsMCwxLDMuNTk2NjgsMS43OTg4M0w5NS4zMTUsMjguOTU3YTIyLjcyNCwyMi43MjQsMCwwLDAtMy4wNjkzNC0xLjY0NzQ2djMuNjMzNzlIOTEuMzE0Wm0yLjIxMTkxLjUwODc5LjU1NTY2LS4yNjM2N2E2LjE5NDA5LDYuMTk0MDksMCwwLDEsLjY2ODk1LDEuMjgwMjdsLS42MTIzLjI3MzQ0QTUuNTE2Miw1LjUxNjIsMCwwLDAsOTMuNTI1OSwyNC40Mjg3MVptMS4wNzMyNC0uNDA1MjcuNTY1NDMtLjI2MzY3QTYuMTA1MTQsNi4xMDUxNCwwLDAsMSw5NS44NzA2MywyNS4wNGwtLjYxMjMuMjczNDRBNi4xMjcyMyw2LjEyNzIzLDAsMCwwLDk0LjU5OTE0LDI0LjAyMzQ0WiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgIDwvZz4KICAgIDxnIGlkPSJfR3JvdXBfIiBkYXRhLW5hbWU9IiZsdDtHcm91cCZndDsiPgogICAgICA8ZyBpZD0iX0dyb3VwXzIiIGRhdGEtbmFtZT0iJmx0O0dyb3VwJmd0OyI+CiAgICAgICAgPHBhdGggaWQ9Il9QYXRoXyIgZGF0YS1uYW1lPSImbHQ7UGF0aCZndDsiIGQ9Ik0yNC43Njg4OCwyMC4zMDA2OGE0Ljk0ODgxLDQuOTQ4ODEsMCwwLDEsMi4zNTY1Ni00LjE1MjA2LDUuMDY1NjYsNS4wNjU2NiwwLDAsMC0zLjk5MTE2LTIuMTU3NjhjLTEuNjc5MjQtLjE3NjI2LTMuMzA3MTksMS4wMDQ4My00LjE2MjksMS4wMDQ4My0uODcyMjcsMC0yLjE4OTc3LS45ODczMy0zLjYwODUtLjk1ODE0YTUuMzE1MjksNS4zMTUyOSwwLDAsMC00LjQ3MjkyLDIuNzI3ODdjLTEuOTM0LDMuMzQ4NDItLjQ5MTQxLDguMjY5NDcsMS4zNjEyLDEwLjk3NjA4LjkyNjksMS4zMjUzNSwyLjAxMDE4LDIuODA1OCwzLjQyNzYzLDIuNzUzMywxLjM4NzA2LS4wNTc1MywxLjkwNTEtLjg4NDQ4LDMuNTc5NC0uODg0NDgsMS42NTg3NiwwLDIuMTQ0NzkuODg0NDgsMy41OTEuODUxMSwxLjQ4ODM4LS4wMjQxNiwyLjQyNjEzLTEuMzMxMjQsMy4zMjA1MS0yLjY2OTE0YTEwLjk2MiwxMC45NjIsMCwwLDAsMS41MTg0Mi0zLjA5MjUxQTQuNzgyMDUsNC43ODIwNSwwLDAsMSwyNC43Njg4OCwyMC4zMDA2OFoiIHN0eWxlPSJmaWxsOiAjZmZmIi8+CiAgICAgICAgPHBhdGggaWQ9Il9QYXRoXzIiIGRhdGEtbmFtZT0iJmx0O1BhdGgmZ3Q7IiBkPSJNMjIuMDM3MjUsMTIuMjEwODlhNC44NzI0OCw0Ljg3MjQ4LDAsMCwwLDEuMTE0NTItMy40OTA2Miw0Ljk1NzQ2LDQuOTU3NDYsMCwwLDAtMy4yMDc1OCwxLjY1OTYxLDQuNjM2MzQsNC42MzYzNCwwLDAsMC0xLjE0MzcxLDMuMzYxMzlBNC4wOTkwNSw0LjA5OTA1LDAsMCwwLDIyLjAzNzI1LDEyLjIxMDg5WiIgc3R5bGU9ImZpbGw6ICNmZmYiLz4KICAgICAgPC9nPgogICAgPC9nPgogIDwvZz4KPC9zdmc+Cg==';
+
+  // 成分表（八訂 増補2023年）の 100 g あたりの値: [食品番号, 名前, kcal, P, F, C]
+  const F = {
+    rice: ['01088', 'ごはん（精白米 うるち米）', 156, 2, 0.2, 34.6],
+    saltSalmon: ['10139', 'しろさけ 塩ざけ', 183, 19.4, 9.7, 0.1],
+    mackerel: ['10156', 'まさば 焼き', 264, 21.8, 17.1, 0.3],
+    tofu: ['04033', '絹ごし豆腐', 56, 5.3, 3.2, 0.9],
+    miso: ['17045', '米みそ 淡色辛みそ', 182, 11.1, 5.9, 11.8],
+    wakame: ['09041', 'わかめ 水戻し', 20, 1.3, 0.1, 1.2],
+    nori: ['09004', '焼きのり', 297, 32, 2.2, 1.7],
+    salmon: ['10136', 'しろさけ 焼き', 160, 23.7, 4.6, 0.1],
+    mentaiko: ['10204', 'からしめんたいこ', 121, 18.4, 2.3, 6.6],
+    spinach: ['06268', 'ほうれんそう ゆで', 23, 2.1, 0.3, 0.4]
+  };
+  const meals = {
+    breakfast: { name: '朝の膳', img: 'img/breakfast.jpg', alt: '朝の膳の写真', items: [['rice', 150], ['saltSalmon', 50], ['mackerel', 60], ['tofu', 75], ['miso', 12], ['wakame', 10]] },
+    onigiri: { name: 'おにぎり 2 個', img: 'img/onigiri.jpg', alt: 'のりを巻いたおにぎり2つ', items: [['rice', 200], ['nori', 3]] },
+    bento: { name: '鮭とめんたいこの弁当', img: 'img/salmon-bento.jpg', alt: '鮭とめんたいこの弁当', items: [['rice', 220], ['salmon', 60], ['mentaiko', 15], ['spinach', 30], ['nori', 2]] }
+  };
+  const TARGET = 1760;
+  const fmt = n => Math.round(n).toLocaleString('ja-JP');
+
+  function totals(items) {
+    let k = 0, p = 0, f = 0, c = 0;
+    for (const [key, g] of items) { const r = F[key]; k += r[2] * g / 100; p += r[3] * g / 100; f += r[4] * g / 100; c += r[5] * g / 100; }
+    return { k, p, f, c };
+  }
+  const keyBox = v => `<i class="key" style="background:var(--${v})"></i>`;
+  const pfcLine = t => `<span>${keyBox('protein')}P <span class="num">${t.p.toFixed(1)}</span> g</span><span>${keyBox('fat')}F <span class="num">${t.f.toFixed(1)}</span> g</span><span>${keyBox('carb')}C <span class="num">${t.c.toFixed(1)}</span> g</span>`;
+
+  // 撮った写真の応え（朝の膳）
+  (function () {
+    const m = meals.breakfast, t = totals(m.items);
+    document.getElementById('photo-response').innerHTML =
+      `<div class="ui-label">朝の膳</div>` +
+      m.items.map(([key, g]) => `<div class="ui-row"><span>${F[key][1]}</span><span class="num">${g} g</span></div>`).join('') +
+      `<div class="ui-row total"><span>合計</span><span class="num">${fmt(t.k)} kcal</span></div><div class="pfc">${pfcLine(t)}</div>`;
+  })();
+
+  // 体重の傾向の見本（作り物）
+  (function () {
+    const svg = document.getElementById('trend');
+    const n = 28, x = i => 8 + 384 * i / (n - 1), y = v => 10 + 100 * (68.2 - v) / 1.4;
+    const trend = i => 68.0 - 0.6 * i / (n - 1);
+    let dots = '', line = '';
+    for (let i = 0; i < n; i++) {
+      const raw = trend(i) + Math.sin(i * 1.9) * 0.28 + Math.cos(i * 0.7) * 0.12;
+      dots += `<circle cx="${x(i).toFixed(1)}" cy="${y(raw).toFixed(1)}" r="2.5" fill="var(--paper-muted)" opacity="0.6"/>`;
+      line += `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(trend(i)).toFixed(1)}`;
+    }
+    svg.innerHTML = dots + `<path d="${line}" fill="none" stroke="var(--paper-accent)" stroke-width="3"/>`;
+  })();
+
+  // 目安の決まり方
+  const st = { intake: 1880, trend: -0.15, pace: -0.25, first: 'back' };
+  const KPK = 7700;
+  function renderRules() {
+    const tdee = st.intake - st.trend * KPK / 7;
+    const target = tdee + st.pace * KPK / 7;
+    document.getElementById('o-target').textContent = `${fmt(target)} kcal`;
+    document.getElementById('o-intake').textContent = `${fmt(st.intake)} kcal`;
+    document.getElementById('o-trend').textContent = `週 ${st.trend > 0 ? '+' : st.trend < 0 ? '−' : '±'}${Math.abs(st.trend).toFixed(2)} kg`;
+    document.getElementById('o-tdee').textContent = `${fmt(tdee)} kcal`;
+    document.getElementById('o-pace').textContent = st.pace === 0 ? '維持' : `週 −${Math.abs(st.pace)} kg`;
+    document.getElementById('o-method').textContent = st.first === 'back'
+      ? '最初の目安: 直前 28 日の記録から逆算（見本の計算）'
+      : '最初の目安: 身長・生まれた年・性別・活動量から式で出す（見本の計算）';
+    document.getElementById('v-intake').textContent = `${fmt(st.intake)} kcal`;
+    document.getElementById('v-trend').textContent = `${st.trend > 0 ? '+' : st.trend < 0 ? '−' : '±'}${Math.abs(st.trend).toFixed(2)} kg`;
+  }
+  document.getElementById('c-intake').addEventListener('input', e => { st.intake = +e.target.value; renderRules(); });
+  document.getElementById('c-trend').addEventListener('input', e => { st.trend = +e.target.value; renderRules(); });
+  function segGroup(id, onPick) {
+    const el = document.getElementById(id);
+    el.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      onPick(b.dataset.v);
+    });
+  }
+  segGroup('c-pace', v => { st.pace = +v; renderRules(); });
+  segGroup('c-first', v => { st.first = v; renderRules(); });
+  renderRules();
+
+  // 成分表で数える
+  const dm = { meal: 'breakfast', grams: {} };
+  function ring(t) {
+    const total = t.p * 4 + t.f * 9 + t.c * 4 || 1;
+    const share = Math.min(t.k / TARGET, 1);
+    const parts = [['protein', t.p * 4 / total], ['fat', t.f * 9 / total], ['carb', t.c * 4 / total]];
+    const r = 30, C = 2 * Math.PI * r;
+    let off = 0, out = `<circle cx="36" cy="36" r="${r}" fill="none" stroke="var(--track)" stroke-width="9"/>`;
+    for (const [v, frac] of parts) {
+      const len = C * share * frac;
+      out += `<circle cx="36" cy="36" r="${r}" fill="none" stroke="var(--${v})" stroke-width="9" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 36 36)"/>`;
+      off += len;
+    }
+    return out;
+  }
+  function renderDemo() {
+    const m = meals[dm.meal];
+    const items = m.items.map(([key, g]) => [key, dm.grams[key] ?? g]);
+    const t = totals(items);
+    const img = document.getElementById('d-img'); img.src = m.img; img.alt = m.alt;
+    document.getElementById('d-rows').innerHTML = items.map(([key, g]) =>
+      `<div class="ui-row"><span><span class="fn num">${F[key][0]}</span>${F[key][1]}</span><span class="num">${fmt(F[key][2] * g / 100)} kcal</span></div>`).join('');
+    document.getElementById('d-kcal').textContent = `${fmt(t.k)} kcal`;
+    document.getElementById('d-pfc').innerHTML = pfcLine(t);
+    document.getElementById('d-ring').innerHTML = ring(t);
+  }
+  function renderSliders() {
+    const m = meals[dm.meal];
+    document.getElementById('d-sliders').innerHTML = m.items.map(([key, g]) => {
+      const max = Math.max(20, Math.round(g * 2.5 / 10) * 10);
+      return `<div class="control"><label for="s-${key}">${F[key][1]} <output class="num" id="o-${key}">${g} g</output></label><input type="range" id="s-${key}" data-k="${key}" min="0" max="${max}" step="${g < 20 ? 1 : 5}" value="${g}"></div>`;
+    }).join('');
+  }
+  document.getElementById('d-sliders').addEventListener('input', e => {
+    const k = e.target.dataset.k; if (!k) return;
+    dm.grams[k] = +e.target.value;
+    document.getElementById(`o-${k}`).textContent = `${e.target.value} g`;
+    renderDemo();
+  });
+  const mealSeg = document.getElementById('d-meal');
+  mealSeg.innerHTML = Object.entries(meals).map(([k, m]) => `<button type="button" data-v="${k}" aria-pressed="${k === dm.meal}">${m.name}</button>`).join('');
+  segGroup('d-meal', v => { dm.meal = v; dm.grams = {}; renderSliders(); renderDemo(); });
+  renderSliders(); renderDemo();
+
+  // よくある質問
+  const faqs = [
+    ['推定が違っていたら？', '食事を開いて、料理や量を直せます。毎回直さなくても、1日の目安は体重の動きを見て合わせ直されます。'],
+    ['体重計がヘルスケアにつながっていなくても使えますか？', '使えます。量った体重をアプリで入れられます。'],
+    ['Android や iPad で使えますか？', 'iPhone だけです。'],
+    ['体験が終わったら、勝手にお金がかかりますか？', 'かかりません。支払いの登録をしていないので、続けると決めたときにだけ払います。'],
+    ['医療の助言をしてくれますか？', 'しません。持病のある方や治療中の方は、目標を立てる前に医師に相談してください。']
+  ];
+  const list = document.getElementById('faq-list'), pane = document.getElementById('faq-pane');
+  faqs.forEach(([q, a], i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<button type="button" role="tab" aria-selected="${i === 0}" id="q${i}">${q}</button><p class="inline" ${i === 0 ? '' : 'hidden'}>${a}</p>`;
+    list.appendChild(li);
+  });
+  function pick(i) {
+    list.querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-selected', String(i === j)));
+    list.querySelectorAll('.inline').forEach((p, j) => { p.hidden = i !== j; });
+    pane.style.opacity = 0;
+    setTimeout(() => { pane.textContent = faqs[i][1]; pane.style.opacity = 1; }, 150);
+  }
+  pane.textContent = faqs[0][1];
+  list.addEventListener('click', e => { const b = e.target.closest('button'); if (b) pick([...list.querySelectorAll('button')].indexOf(b)); });
+  list.addEventListener('mouseover', e => { const b = e.target.closest('button'); if (b && matchMedia('(min-width: 900px)').matches) pick([...list.querySelectorAll('button')].indexOf(b)); });
+  list.addEventListener('focusin', e => { const b = e.target.closest('button'); if (b) pick([...list.querySelectorAll('button')].indexOf(b)); });
+
+
+  // 各節の部品の入り。見出し → 文 → 絵の順に並べて、一度だけ現す
+  (function () {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+    document.documentElement.classList.add('js');
+    const groups = document.querySelectorAll('.hero-body, .column, .exchange, .rules .read, .rules .pin, .demo, .menu, .faq, footer');
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (!e.isIntersecting) return;
+      e.target.querySelectorAll('.rise').forEach(el => el.classList.add('in'));
+      if (e.target.classList.contains('rise')) e.target.classList.add('in');
+      io.unobserve(e.target);
+    }), { rootMargin: '0px 0px -10% 0px' });
+    groups.forEach(g => {
+      const parts = g.querySelectorAll(':scope > h1, :scope > h2, :scope > h3, :scope > p, :scope > .doors > .door, :scope > .call, :scope > .response, :scope > .block, :scope > .out, :scope > .show, :scope > .ctrl, :scope > div > h2, :scope > div > figure, :scope > .groups > .group, :scope > ul, :scope > .pane, :scope > .line');
+      parts.forEach((el, i) => { el.classList.add('rise'); el.style.setProperty('--i', Math.min(i, 6)); });
+      io.observe(g);
+    });
+    // 最初の画面は読み込んですぐ
+    requestAnimationFrame(() => document.querySelectorAll('.hero-body .rise').forEach(el => el.classList.add('in')));
+  })();
+
+  // 根拠のメモ
+  const nt = document.getElementById('notes-toggle');
+  nt.addEventListener('click', () => {
+    const on = !document.body.classList.contains('show-notes');
+    document.body.classList.toggle('show-notes', on);
+    nt.setAttribute('aria-pressed', String(on)); nt.classList.toggle('on', on);
+  });
+})();
+</script>
