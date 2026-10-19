@@ -20,19 +20,28 @@ final class ReadGoalAndWeeklyReviewAtLargestTextUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["目標"].waitForExistence(timeout: 5))
     }
 
-    func test_目標の画面で期間と日付を名前の下に置くこと() {
+    func test_今の目標のカードで目標を切り替えるを期間の下に置くこと() {
         let card = app.descendants(matching: .any)["goal-card"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "いちばん大きな文字の今の目標のカード")
         XCTAssertGreaterThanOrEqual(
             app.buttons["goal-switch"].frame.minY,
             card.staticTexts["減量 9月28日〜12月27日"].frame.maxY)
+    }
+
+    func test_今の1日の目安で日付を見出しの下に置くこと() {
         let dailyGuide = app.descendants(matching: .any)["goal-daily-guide"]
+        XCTAssertTrue(dailyGuide.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "いちばん大きな文字の今の1日の目安")
         XCTAssertGreaterThanOrEqual(
             dailyGuide.staticTexts["10月5日から"].frame.minY,
             dailyGuide.staticTexts["今の1日の目安"].frame.maxY)
+    }
+
+    func test_週の振り返りの行で日付を名前の下に置くこと() {
         let weeklyReviewRow = app.buttons["goal-weekly-review"]
         XCTAssertTrue(app.scrollUntilExists(weeklyReviewRow, maxSwipes: 15))
+        attachScreenshot(of: app, named: "いちばん大きな文字の週の振り返りの行")
         XCTAssertGreaterThanOrEqual(
             weeklyReviewRow.staticTexts["9月28日〜10月4日"].frame.minY,
             weeklyReviewRow.staticTexts["週の振り返り"].frame.maxY)
