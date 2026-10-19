@@ -11,6 +11,7 @@ import type { SyncClientState } from "../../domain/sync-client-state";
 import type { SyncWrite } from "../../domain/sync-write";
 import { assessCustomTargetWeight } from "../../goal/domain/assess-custom-target-weight";
 import { decideGoal } from "../../goal/domain/decide-goal";
+import { judgeGoalProgress } from "../../goal/domain/judge-goal-progress";
 import { previewGoalSetup } from "../../goal/domain/preview-goal-setup";
 import { proposeGoals } from "../../goal/domain/propose-goals";
 import { readKeptMealPhoto } from "../../meal/domain/read-kept-meal-photo";
@@ -29,7 +30,7 @@ export const accountRequests = {
     return respond(undefined);
   },
 
-  // 送り待ちを送り切った印のある要求だけ、送った記録を当ててから、まだ見直していない週を見る
+  // 送り待ちを送り切った印のある要求だけ、送った記録を当ててから、目標の経過とまだ見直していない週を見る
   pushSyncWrites: (
     stores: Pick<AccountStores, "ledger" | "records" | "writeRecordChanges">,
     request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
@@ -40,10 +41,7 @@ export const accountRequests = {
       receivedAt: now,
     });
     if (request.isFinalBatch) {
-      reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, {
-        timeZone: request.clientState.timeZone,
-        now,
-      });
+      catchUpGoalProgress(stores, { timeZone: request.clientState.timeZone, now });
     }
     return {
       result: results,
@@ -58,10 +56,7 @@ export const accountRequests = {
     request: { clientState: SyncClientState; afterSequence: number },
     now: Date,
   ) => {
-    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, {
-      timeZone: request.clientState.timeZone,
-      now,
-    });
+    catchUpGoalProgress(stores, { timeZone: request.clientState.timeZone, now });
     const { usageEvents, ...pulled } = pullSyncChanges(stores.ledger, stores.records, {
       ...request,
       receivedAt: now,
@@ -114,7 +109,7 @@ export const accountRequests = {
     request: Parameters<typeof previewGoalSetup>[1],
     now: Date,
   ) => {
-    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, { ...request, now });
+    catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
     return respond(previewGoalSetup(stores.records, request, now));
   },
 
@@ -123,7 +118,7 @@ export const accountRequests = {
     request: Parameters<typeof proposeGoals>[1],
     now: Date,
   ) => {
-    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, { ...request, now });
+    catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
     return respond(proposeGoals(stores.records, request, now));
   },
 
@@ -132,7 +127,7 @@ export const accountRequests = {
     request: Parameters<typeof assessCustomTargetWeight>[1],
     now: Date,
   ) => {
-    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, { ...request, now });
+    catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
     return respond(assessCustomTargetWeight(stores.records, request, now));
   },
 
@@ -142,7 +137,7 @@ export const accountRequests = {
     request: Parameters<typeof decideGoal>[2],
     now: Date,
   ) => {
-    reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, { ...request, now });
+    catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
     const decided = decideGoal(stores.writeRecordChanges, stores.records, request, now);
     return {
       result: R.pipe(
@@ -187,6 +182,15 @@ export const accountRequests = {
     );
     return { result: ran, nextAlarmAt, usageEvents } satisfies AccountResponse<unknown>;
   },
+};
+
+// 記録を当てたあと、応える前に、達成と期限の日の結果を判定し、まだ見直していない週を古い順に見直す
+const catchUpGoalProgress = (
+  stores: Pick<AccountStores, "records" | "writeRecordChanges">,
+  situation: { timeZone: string; now: Date },
+): void => {
+  judgeGoalProgress(stores.writeRecordChanges, stores.records, situation);
+  reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, situation);
 };
 
 // 張り直すものも送るものも無い答え
