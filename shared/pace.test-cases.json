@@ -3,10 +3,22 @@
     "name": "減量で、見込みが目標体重より軽い",
     "judgedOn": "2026-10-04",
     "weightTrend": [
-      { "calendarDay": "2026-09-20", "trendKg": 73.4 },
-      { "calendarDay": "2026-10-04", "trendKg": 72.4 }
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
     ],
-    "weightRecordDays": ["2026-09-21", "2026-09-24", "2026-09-27", "2026-09-30", "2026-10-04"],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
     "goal": {
       "direction": "lose",
       "startedOn": "2026-09-07",
@@ -14,16 +26,32 @@
       "targetWeightKg": 70.0
     },
     "achievedOn": null,
-    "expected": { "status": "onTrack", "actualKgPerWeek": -0.5, "requiredKgPerWeek": -0.3 }
+    "expected": {
+      "status": "onTrack",
+      "actualKgPerWeek": -0.5,
+      "requiredKgPerWeek": -0.3
+    }
   },
   {
     "name": "減量で、見込みがちょうど目標体重",
     "judgedOn": "2026-10-04",
     "weightTrend": [
-      { "calendarDay": "2026-09-20", "trendKg": 73.0 },
-      { "calendarDay": "2026-10-04", "trendKg": 72.4 }
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.0
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
     ],
-    "weightRecordDays": ["2026-09-21", "2026-09-24", "2026-09-27", "2026-09-30", "2026-10-04"],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
     "goal": {
       "direction": "lose",
       "startedOn": "2026-09-07",
@@ -31,16 +59,32 @@
       "targetWeightKg": 70.0
     },
     "achievedOn": null,
-    "expected": { "status": "onTrack", "actualKgPerWeek": -0.3, "requiredKgPerWeek": -0.3 }
+    "expected": {
+      "status": "onTrack",
+      "actualKgPerWeek": -0.3,
+      "requiredKgPerWeek": -0.3
+    }
   },
   {
     "name": "減量で、見込みが目標体重に 0.8 kg 届かない",
     "judgedOn": "2026-10-04",
     "weightTrend": [
-      { "calendarDay": "2026-09-20", "trendKg": 72.8 },
-      { "calendarDay": "2026-10-04", "trendKg": 72.4 }
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 72.8
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
     ],
-    "weightRecordDays": ["2026-09-21", "2026-09-24", "2026-09-27", "2026-09-30", "2026-10-04"],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
     "goal": {
       "direction": "lose",
       "startedOn": "2026-09-07",
@@ -59,10 +103,22 @@
     "name": "増量で、見込みが目標体重より重い",
     "judgedOn": "2026-10-04",
     "weightTrend": [
-      { "calendarDay": "2026-09-20", "trendKg": 59.4 },
-      { "calendarDay": "2026-10-04", "trendKg": 60.4 }
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 59.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 60.4
+      }
     ],
-    "weightRecordDays": ["2026-09-21", "2026-09-24", "2026-09-27", "2026-09-30", "2026-10-04"],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
     "goal": {
       "direction": "gain",
       "startedOn": "2026-09-07",
@@ -70,16 +126,32 @@
       "targetWeightKg": 62.0
     },
     "achievedOn": null,
-    "expected": { "status": "onTrack", "actualKgPerWeek": 0.5, "requiredKgPerWeek": 0.2 }
+    "expected": {
+      "status": "onTrack",
+      "actualKgPerWeek": 0.5,
+      "requiredKgPerWeek": 0.2
+    }
   },
   {
     "name": "増量で、見込みがちょうど目標体重",
     "judgedOn": "2026-10-04",
     "weightTrend": [
-      { "calendarDay": "2026-09-20", "trendKg": 60.0 },
-      { "calendarDay": "2026-10-04", "trendKg": 60.4 }
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 60.0
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 60.4
+      }
     ],
-    "weightRecordDays": ["2026-09-21", "2026-09-24", "2026-09-27", "2026-09-30", "2026-10-04"],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
     "goal": {
       "direction": "gain",
       "startedOn": "2026-09-07",
@@ -87,16 +159,32 @@
       "targetWeightKg": 62.0
     },
     "achievedOn": null,
-    "expected": { "status": "onTrack", "actualKgPerWeek": 0.2, "requiredKgPerWeek": 0.2 }
+    "expected": {
+      "status": "onTrack",
+      "actualKgPerWeek": 0.2,
+      "requiredKgPerWeek": 0.2
+    }
   },
   {
     "name": "増量で、見込みが目標体重に 0.8 kg 届かない",
     "judgedOn": "2026-10-04",
     "weightTrend": [
-      { "calendarDay": "2026-09-20", "trendKg": 60.2 },
-      { "calendarDay": "2026-10-04", "trendKg": 60.4 }
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 60.2
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 60.4
+      }
     ],
-    "weightRecordDays": ["2026-09-21", "2026-09-24", "2026-09-27", "2026-09-30", "2026-10-04"],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
     "goal": {
       "direction": "gain",
       "startedOn": "2026-09-07",
@@ -109,6 +197,385 @@
       "shortfallKg": 0.8,
       "actualKgPerWeek": 0.1,
       "requiredKgPerWeek": 0.2
+    }
+  },
+  {
+    "name": "期限の日の前の日",
+    "judgedOn": "2026-11-28",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-11-14",
+        "trendKg": 71.0
+      },
+      {
+        "calendarDay": "2026-11-28",
+        "trendKg": 70.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-11-15",
+      "2026-11-19",
+      "2026-11-23",
+      "2026-11-28"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "behind",
+      "shortfallKg": 0.4,
+      "actualKgPerWeek": -0.3,
+      "requiredKgPerWeek": -2.8
+    }
+  },
+  {
+    "name": "期限の日",
+    "judgedOn": "2026-11-29",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-11-15",
+        "trendKg": 71.0
+      },
+      {
+        "calendarDay": "2026-11-29",
+        "trendKg": 70.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-11-16",
+      "2026-11-20",
+      "2026-11-24",
+      "2026-11-29"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "unavailable"
+    }
+  },
+  {
+    "name": "達成した日の前の日",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": "2026-10-05",
+    "expected": {
+      "status": "onTrack",
+      "actualKgPerWeek": -0.5,
+      "requiredKgPerWeek": -0.3
+    }
+  },
+  {
+    "name": "達成した日",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": "2026-10-04",
+    "expected": {
+      "status": "unavailable"
+    }
+  },
+  {
+    "name": "達成した日のあと",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": "2026-10-01",
+    "expected": {
+      "status": "unavailable"
+    }
+  },
+  {
+    "name": "目標を立てて 13 日",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-21",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "pending"
+    }
+  },
+  {
+    "name": "目標を立てて 14 日",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-09-30",
+      "2026-10-04"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-20",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "onTrack",
+      "actualKgPerWeek": -0.5,
+      "requiredKgPerWeek": -0.3
+    }
+  },
+  {
+    "name": "直近 14 日に体重記録のある日が 3 日（14 日より前の日は数えない）",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-20",
+      "2026-09-22",
+      "2026-09-27",
+      "2026-10-04"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "inconclusive",
+      "weightRecordDayCount": 3
+    }
+  },
+  {
+    "name": "直近 14 日に体重記録のある日が 4 日",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-22",
+      "2026-09-27",
+      "2026-10-04"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "onTrack",
+      "actualKgPerWeek": -0.5,
+      "requiredKgPerWeek": -0.3
+    }
+  },
+  {
+    "name": "目標を立てて 14 日たたず、体重記録のある日も 3 日",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-04",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-28",
+      "2026-10-01",
+      "2026-10-04"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-28",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "pending"
+    }
+  },
+  {
+    "name": "期限の日を過ぎ、体重記録のある日も 3 日",
+    "judgedOn": "2026-12-06",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-11-22",
+        "trendKg": 71.0
+      },
+      {
+        "calendarDay": "2026-12-06",
+        "trendKg": 70.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-11-23",
+      "2026-11-30",
+      "2026-12-06"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "unavailable"
+    }
+  },
+  {
+    "name": "最後の体重記録が判定する日より前（その日以前で最も新しい傾向を使う）",
+    "judgedOn": "2026-10-04",
+    "weightTrend": [
+      {
+        "calendarDay": "2026-09-18",
+        "trendKg": 73.6
+      },
+      {
+        "calendarDay": "2026-09-20",
+        "trendKg": 73.4
+      },
+      {
+        "calendarDay": "2026-10-02",
+        "trendKg": 72.4
+      }
+    ],
+    "weightRecordDays": [
+      "2026-09-21",
+      "2026-09-24",
+      "2026-09-27",
+      "2026-10-02"
+    ],
+    "goal": {
+      "direction": "lose",
+      "startedOn": "2026-09-07",
+      "deadlineOn": "2026-11-29",
+      "targetWeightKg": 70.0
+    },
+    "achievedOn": null,
+    "expected": {
+      "status": "onTrack",
+      "actualKgPerWeek": -0.5,
+      "requiredKgPerWeek": -0.3
     }
   }
 ]
