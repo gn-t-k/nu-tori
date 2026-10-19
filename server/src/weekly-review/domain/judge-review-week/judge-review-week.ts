@@ -10,8 +10,8 @@ export type ReviewWeekInputs = {
   reviewedMonday: string;
   // 使い始めた日。読めない人には undefined
   startedUsingOn: string | undefined;
-  // 推定の始まりの出どころ
-  initialExpenditureSource: InitialExpenditureSource;
+  // 推定の始まりの出どころ。推定の始まりが読めなければ undefined（逆算ではないとみなす）
+  initialExpenditureSource: InitialExpenditureSource | undefined;
   // 日の代表値を日の順に
   dailyWeights: readonly { calendarDay: string; weightKg: number }[];
   // nu-tori の記録から出した、日ごとの食べた量。M より前の 28 日を含む
