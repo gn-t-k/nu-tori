@@ -102,7 +102,7 @@ public enum Pace: Hashable, Sendable {
         Int((kilograms * 10 + 0.5).rounded(.down))
     }
 
-    /// 維持で、体重の傾向が収まっていればよい目標体重からの幅（±）。正本はサーバーの `computePace` の維持の幅
+    /// 維持で、体重の傾向が収まっていればよい目標体重からの幅（±）。正本はサーバーの `maintenanceBandKg`
     static let maintenanceBandKilograms = 0.7
 
     private static let windowDays = 14
