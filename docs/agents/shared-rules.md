@@ -78,7 +78,7 @@
 
 維持（期限後の維持を含む）は、判定する日の体重の傾向が目標体重の ±0.7 kg（端を含む）に収まっているかだけを返す。
 
-- サーバーは `computePace`（`server/src/goal/domain/compute-pace/`）。入力（判定する日、体重の傾向の日ごとの並び、体重記録のある日、目標の向き・開始の日・期限の日・目標体重、達成した日）と期待値（`status` が `onTrack`・`behind`・`inconclusive`・`pending`・`unavailable`・`maintenance` と、それぞれに添える値）は `shared/pace.test-cases.json`。維持の目標は期限の日を `null` で持つ
+- サーバーは `computePace`（`server/src/goal/domain/compute-pace/`）、端末は NuToriCore の `Pace`（kg を 0.1 kg 単位の整数で持つ。判定に要る体重の傾向がまだ届いていなければ nil）。入力（判定する日、体重の傾向の日ごとの並び、体重記録のある日、目標の向き・開始の日・期限の日・目標体重、達成した日）と期待値（`status` が `onTrack`・`behind`・`inconclusive`・`pending`・`unavailable`・`maintenance` と、それぞれに添える値）は `shared/pace.test-cases.json`。維持の目標は期限の日を `null` で持つ
 - 期限の日とその前の日、達成した日とその前の日、開始の日から 13 日と 14 日、記録のある日 3 と 4 日（14 日より前の日を数えないこと）、見込みがちょうど目標体重、維持の幅のちょうど端、最後の体重記録が判定する日より前の場面を含む
 
 ## 今は片側だけの決めごと
