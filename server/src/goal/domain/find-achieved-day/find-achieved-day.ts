@@ -1,5 +1,5 @@
 import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
-import { computeGoalDirection } from "../compute-goal-direction";
+import { classifyGoal } from "../classify-goal";
 import type { Goal } from "../goal";
 
 export type AchievementGoal = Pick<
@@ -27,11 +27,14 @@ export const findAchievedDay = ({
   if (goal.achievement !== undefined) {
     return goal.achievement.achievedOn;
   }
-  const direction = computeGoalDirection(goal);
-  if (direction === "maintain" || goal.weightChange === undefined) {
+  const classified = classifyGoal(goal);
+  if (classified.direction === "maintain") {
     return undefined;
   }
-  const { deadlineOn } = goal.weightChange;
+  const {
+    direction,
+    weightChange: { deadlineOn },
+  } = classified;
   const isSearched = (calendarDay: string) =>
     goal.startedOn <= calendarDay &&
     (goal.closure === undefined || calendarDay < goal.closure.endedOn) &&

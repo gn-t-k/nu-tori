@@ -61,6 +61,19 @@ export const writeWeeklyReview = (
   const { postDeadlineMaintenance } = review;
   // 書く前に読む。維持の目標を作ると今の目標が変わり、見送った週に写す1日の目安も前の目標から引く
   const previousGoal = stores.goal.findCurrent();
+  // 期限後の維持に移る週だけ、前の目標を閉じて維持の目標を作る。移る週に今の目標があることは requireWritable が確かめた
+  const maintenanceMove =
+    postDeadlineMaintenance === undefined || previousGoal === undefined
+      ? { writeRows: () => {}, changes: [] }
+      : {
+          writeRows: () =>
+            writePostDeadlineMaintenance(stores, review, postDeadlineMaintenance, previousGoal.id),
+          // 閉じた前の目標 → 維持の目標
+          changes: [
+            { recordType: "goal" as const, recordId: previousGoal.id },
+            { recordType: "goal" as const, recordId: postDeadlineMaintenance.goalId },
+          ],
+        };
   const copiedDailyGuide =
     postDeadlineMaintenance !== undefined && outcome.type === "deferred"
       ? findCopiedDailyGuide(stores, {
@@ -72,9 +85,7 @@ export const writeWeeklyReview = (
   const id = generateRecordId();
   stores.weeklyReview.insert({ ...weeklyReview, id });
   if (outcome.type === "deferred") {
-    if (postDeadlineMaintenance !== undefined && previousGoal !== undefined) {
-      writePostDeadlineMaintenance(stores, review, postDeadlineMaintenance, previousGoal.id);
-    }
+    maintenanceMove.writeRows();
     if (copiedDailyGuide !== undefined) {
       stores.dailyGuide.insert(copiedDailyGuide);
     }
@@ -83,10 +94,7 @@ export const writeWeeklyReview = (
       reason: outcome.reason,
       goalId: outcome.goalId,
     });
-    if (postDeadlineMaintenance !== undefined && previousGoal !== undefined) {
-      addChange({ recordType: "goal", recordId: previousGoal.id });
-      addChange({ recordType: "goal", recordId: postDeadlineMaintenance.goalId });
-    }
+    maintenanceMove.changes.forEach(addChange);
     if (copiedDailyGuide !== undefined) {
       addChange({ recordType: "daily_guide", recordId: copiedDailyGuide.id });
     }
@@ -109,9 +117,7 @@ export const writeWeeklyReview = (
     weeklyReviewId: id,
     deviationDirection: outcome.expenditure.deviationDirection,
   });
-  if (postDeadlineMaintenance !== undefined && previousGoal !== undefined) {
-    writePostDeadlineMaintenance(stores, review, postDeadlineMaintenance, previousGoal.id);
-  }
+  maintenanceMove.writeRows();
   stores.dailyGuide.insert({
     ...dailyGuide,
     id: dailyGuideId,
@@ -121,10 +127,7 @@ export const writeWeeklyReview = (
   stores.weeklyReview.insertReviewedDailyGuide({ dailyGuideId, mainReason });
 
   addChange({ recordType: "expenditure_estimate", recordId: expenditureEstimateId });
-  if (postDeadlineMaintenance !== undefined && previousGoal !== undefined) {
-    addChange({ recordType: "goal", recordId: previousGoal.id });
-    addChange({ recordType: "goal", recordId: postDeadlineMaintenance.goalId });
-  }
+  maintenanceMove.changes.forEach(addChange);
   addChange({ recordType: "daily_guide", recordId: dailyGuideId });
   addChange({ recordType: "weekly_review", recordId: id });
   return id;

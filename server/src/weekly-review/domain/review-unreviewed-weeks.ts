@@ -9,7 +9,7 @@ import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import { readRecordedEnergyIntakes } from "../../expenditure-estimate/domain/read-recorded-energy-intakes";
 import { countDaysInclusive } from "../../goal/domain/accepted-deadline/count-days-inclusive";
-import { computeGoalDirection } from "../../goal/domain/compute-goal-direction";
+import { classifyGoal } from "../../goal/domain/classify-goal";
 import type { Goal } from "../../goal/domain/goal";
 import { planPostDeadlineMaintenance } from "../../goal/domain/plan-post-deadline-maintenance";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
@@ -237,15 +237,15 @@ const toRequiredPaceGoal = (
   goal: Goal,
   { reviewedMonday, weightTrendKg }: { reviewedMonday: string; weightTrendKg: number },
 ): RequiredPaceGoal => {
-  const direction = computeGoalDirection(goal);
-  if (direction === "maintain" || goal.weightChange === undefined) {
+  const classified = classifyGoal(goal);
+  if (classified.direction === "maintain") {
     return { direction: "maintain", targetWeightKg: goal.targetWeightKg, weightTrendKg };
   }
   return {
-    direction,
+    direction: classified.direction,
     goalStartingWeightTrendKg: goal.startingWeightTrendKg,
     targetWeightKg: goal.targetWeightKg,
     weightTrendKg,
-    daysToDeadline: countDaysInclusive(reviewedMonday, goal.weightChange.deadlineOn),
+    daysToDeadline: countDaysInclusive(reviewedMonday, classified.weightChange.deadlineOn),
   };
 };

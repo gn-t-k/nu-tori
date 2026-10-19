@@ -8,6 +8,7 @@ import { computeNutrientTotal } from "../../../ingredient/domain/compute-nutrien
 import type { Ingredient } from "../../../ingredient/domain/ingredient";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import type { Meal } from "../../../meal/domain/meal";
+import { classifyGoal } from "../../../goal/domain/classify-goal";
 import { computeGoalDirection } from "../../../goal/domain/compute-goal-direction";
 import { computePace, type Pace } from "../../../goal/domain/compute-pace";
 import type { Goal } from "../../../goal/domain/goal";
@@ -261,18 +262,18 @@ const assemblePace = (
   if (findWeightTrendOnOrBefore(weightTrend, goal.startedOn) === undefined) {
     return undefined;
   }
-  const direction = computeGoalDirection(goal);
+  const classified = classifyGoal(goal);
   return computePace({
     judgedOn: today,
     weightTrend,
     weightRecordDays,
     goal:
-      direction === "maintain" || goal.weightChange === undefined
+      classified.direction === "maintain"
         ? { direction: "maintain", targetWeightKg: goal.targetWeightKg }
         : {
-            direction,
+            direction: classified.direction,
             startedOn: goal.startedOn,
-            deadlineOn: goal.weightChange.deadlineOn,
+            deadlineOn: classified.weightChange.deadlineOn,
             targetWeightKg: goal.targetWeightKg,
           },
     achievedOn: goal.achievement?.achievedOn,
