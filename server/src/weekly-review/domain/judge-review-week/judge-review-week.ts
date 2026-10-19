@@ -28,6 +28,8 @@ export type ReviewWeekJudgement =
       recordedMealDayCount: number;
       // M の前の日曜の体重の傾向 − その前の日曜（無ければ入力の週の月曜）の体重の傾向
       actualWeightChangeKg: number;
+      // M の前の日曜の体重の傾向。1日の目安の必要な速さを出す元
+      sundayWeightTrendKg: number;
     };
 
 // 見直す週を見送るかを決める。当たる理由が2つ以上あれば、使い始めて7日未満、体重が無い、食事の記録が少ないの順で最初の1つを返す
@@ -52,10 +54,10 @@ export const judgeReviewWeek = ({
     return { type: "deferred", reason: "within_first_week" };
   }
 
-  const actualWeightChangeKg = dailyWeights.some(({ calendarDay }) => isInWeek(calendarDay))
-    ? computeActualWeightChangeKg(dailyWeights, { weekStart, weekEnd })
+  const weightChange = dailyWeights.some(({ calendarDay }) => isInWeek(calendarDay))
+    ? computeWeightChange(dailyWeights, { weekStart, weekEnd })
     : undefined;
-  if (actualWeightChangeKg === undefined) {
+  if (weightChange === undefined) {
     return { type: "deferred", reason: "no_weight" };
   }
 
@@ -73,23 +75,25 @@ export const judgeReviewWeek = ({
     type: "reviewable",
     averageEnergyIntakeKcal: mealDays.reduce((sum, { kcal }) => sum + kcal, 0) / mealDays.length,
     recordedMealDayCount: mealDays.length,
-    actualWeightChangeKg,
+    ...weightChange,
   };
 };
 
 // 体重の傾向は最後の体重記録の日で終わるので、日曜の値はその日以前で最も新しい値を使う。
 // その前の日曜にまだ傾向が無ければ入力の週の月曜の値を使い、月曜にも無ければ出せない（undefined）
-const computeActualWeightChangeKg = (
+const computeWeightChange = (
   dailyWeights: ReviewWeekInputs["dailyWeights"],
   { weekStart, weekEnd }: { weekStart: string; weekEnd: string },
-): number | undefined => {
+): { actualWeightChangeKg: number; sundayWeightTrendKg: number } | undefined => {
   const trend = computeWeightTrend(dailyWeights);
   const previousSunday = addDays(weekStart, -1);
   const start =
     trend.findLast(({ calendarDay }) => calendarDay <= previousSunday) ??
     trend.find(({ calendarDay }) => calendarDay === weekStart);
   const end = trend.findLast(({ calendarDay }) => calendarDay <= weekEnd);
-  return start === undefined || end === undefined ? undefined : end.trendKg - start.trendKg;
+  return start === undefined || end === undefined
+    ? undefined
+    : { actualWeightChangeKg: end.trendKg - start.trendKg, sundayWeightTrendKg: end.trendKg };
 };
 
 const daysPerWeek = 7;
