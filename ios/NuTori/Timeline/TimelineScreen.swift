@@ -42,10 +42,12 @@ struct TimelineScreen: View {
     /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
     let conversation: Timeline.Conversation
     let conversationActions: ConversationActions
-    /// 目標を立てる知らせのカードが広げる、目標の設定の流れの形
+    /// タイムライン（目標を立てる知らせのカードと、立て直すあいだの一番下のカード）に描く、目標の設定の流れの形
     let goalSetupFlow: GoalSetupNoticeCard.Flow
-    /// 目標を立てる知らせのカードを広げる。途中まで進めていれば同じページから
-    let openGoalSetupFlow: (GoalSetupObservation.Entry) async -> Void
+    /// 目標の画面の、今の目標のカードの場所に描く、目標の設定の流れの形
+    let goalScreenGoalSetupFlow: GoalSetupNoticeCard.Flow
+    /// 目標の設定のカードを、開いた場所で広げる。途中まで進めていれば同じページから
+    let openGoalSetupFlow: (GoalSetupObservation.Entry, GoalSetupSession.Place) async -> Void
 
     var body: some View {
         let loaded = showsLoading ? nil : timeline()
@@ -108,11 +110,12 @@ struct TimelineScreen: View {
             }
             .navigationDestination(for: GoalRoute.self) { route in
                 GoalScreen(
-                    overview: goalOverview, entry: route.entry, goalSetupFlow: goalSetupFlow,
+                    overview: goalOverview, entry: route.entry,
+                    goalSetupFlow: goalScreenGoalSetupFlow,
                     timeZone: timeZone, recapTitle: { weekRecap(monday: $0)?.title },
                     capture: capture,
                     openGoalSetup: { entry in
-                        Task { await openGoalSetupFlow(entry) }
+                        Task { await openGoalSetupFlow(entry, .goalScreen) }
                     },
                     openWeeklyReview: { monday in
                         openWeeklyReview(weekOf: monday, from: .goalScreen)
@@ -865,7 +868,7 @@ struct TimelineScreen: View {
         summaryDay = nil
         navigationPath = NavigationPath()
         Task {
-            await openGoalSetupFlow(entry)
+            await openGoalSetupFlow(entry, .timeline)
             goalSetupScrollRequests += 1
         }
     }
@@ -877,8 +880,8 @@ struct TimelineScreen: View {
             page: goalSetupFlow.expandedPage)
     }
 
-    /// 立て直す流れを広げているあいだ、タイムラインの一番下に出す目標の設定のカード。
-    /// 目標がないあいだは、目標を立てる知らせのカードがその場で広がるので出さない
+    /// 立て直す流れを知らせのボタン（と日のまとめ）から広げているあいだ、タイムラインの一番下に出す目標の設定のカード。
+    /// 目標がないあいだは、目標を立てる知らせのカードがその場で広がるので出さない。目標の画面から広げたときは目標の画面にだけ描く
     @ViewBuilder private var restartGoalSetupCard: some View {
         if currentGoal != nil, case .expanded(let content, let actions) = goalSetupFlow {
             GoalSetupFlowCard(content: content, actions: actions, timeZone: timeZone)

@@ -31,7 +31,8 @@
             conversation: sample.conversation,
             conversationActions: .noop,
             goalSetupFlow: .notStarted,
-            openGoalSetupFlow: { _ in }
+            goalScreenGoalSetupFlow: .notStarted,
+            openGoalSetupFlow: { _, _ in }
         )
     }
 
