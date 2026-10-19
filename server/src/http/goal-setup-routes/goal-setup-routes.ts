@@ -4,6 +4,7 @@ import { captureException } from "@sentry/cloudflare";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { goalDirections } from "../../goal/domain/goal-direction";
 import { authenticateAccount } from "../authenticate-account";
+import { resolveRequestedAt } from "../e2e-session-routes/resolve-requested-at";
 import {
   customTargetWeightAssessmentSchema,
   toCustomTargetWeightAssessmentResponse,
@@ -110,7 +111,11 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       const { result: previewed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).previewGoalSetup(c.var.accountId, { ...toGoalSetupSituation(situation), direction });
+      ).previewGoalSetup(
+        c.var.accountId,
+        { ...toGoalSetupSituation(situation), direction },
+        await resolveRequestedAt(c.env, (name) => c.req.header(name)),
+      );
       c.set("requestLog", requestLog);
       if (R.isFailure(previewed)) {
         return respondGoalSetupRejected(c, previewed.error);
@@ -158,7 +163,11 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       const { result: proposed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).proposeGoals(c.var.accountId, { ...toGoalSetupSituation(situation), plan });
+      ).proposeGoals(
+        c.var.accountId,
+        { ...toGoalSetupSituation(situation), plan },
+        await resolveRequestedAt(c.env, (name) => c.req.header(name)),
+      );
       c.set("requestLog", requestLog);
       if (R.isFailure(proposed)) {
         return respondGoalSetupRejected(c, proposed.error);
@@ -209,12 +218,11 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       const { result: assessed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).assessCustomTargetWeight(c.var.accountId, {
-        ...toGoalSetupSituation(situation),
-        direction,
-        deadlineOn,
-        targetWeightKg,
-      });
+      ).assessCustomTargetWeight(
+        c.var.accountId,
+        { ...toGoalSetupSituation(situation), direction, deadlineOn, targetWeightKg },
+        await resolveRequestedAt(c.env, (name) => c.req.header(name)),
+      );
       c.set("requestLog", requestLog);
       if (R.isFailure(assessed)) {
         return respondGoalSetupRejected(c, assessed.error);
@@ -250,7 +258,11 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       const { result: decided, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).decideGoal(c.var.accountId, toGoalDecisionRequest(c.req.valid("json")));
+      ).decideGoal(
+        c.var.accountId,
+        toGoalDecisionRequest(c.req.valid("json")),
+        await resolveRequestedAt(c.env, (name) => c.req.header(name)),
+      );
       c.set("requestLog", requestLog);
       if (R.isFailure(decided)) {
         return respondGoalSetupRejected(c, decided.error);

@@ -14,14 +14,82 @@ struct WeightTrendChartTests {
     static func chart(
         weightRecords: [WeightRecord],
         trend: WeightTrend?,
-        firstDay: CalendarDay
+        firstDay: CalendarDay,
+        goal: Goal? = nil
     ) -> WeightTrendChart {
         WeightTrendChart(
             weightRecords: weightRecords,
             trend: trend,
             firstDay: firstDay,
-            today: today
+            today: today,
+            goal: goal
         )
+    }
+
+    @Suite("目標体重の線")
+    struct TargetWeight {
+        /// 9月18日〜24日の7日、どれも 72.0 kg。縦軸は 71〜73 kg
+        static func chart(goal: Goal?) throws -> WeightTrendChart {
+            WeightTrendChartTests.chart(
+                weightRecords: try WeightTrendChartTests.morningRecords([
+                    "2026-09-18", "2026-09-19", "2026-09-20", "2026-09-21", "2026-09-22",
+                    "2026-09-23", "2026-09-24",
+                ]),
+                trend: .starting(
+                    CalendarDay(year: 2026, month: 9, day: 18),
+                    kilograms: Array(repeating: 72.0, count: 7)),
+                firstDay: CalendarDay(year: 2026, month: 9, day: 1),
+                goal: goal)
+        }
+
+        /// `Goal.losing()` の目標体重を替えたもの
+        static func losing(to kilograms: Double) throws -> Goal {
+            let losing = try Goal.losing()
+            return Goal(
+                id: losing.id, startedDay: losing.startedDay,
+                startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
+                targetWeightKilograms: kilograms, decidedAt: losing.decidedAt,
+                timeZone: losing.timeZone, direction: losing.direction, achievement: nil,
+                deadlineConfirmation: nil, closure: nil)
+        }
+
+        @Test("目標がなければ、線を引かず、縦軸は記録の幅のままであること")
+        func noGoal() throws {
+            let chart = try Self.chart(goal: nil)
+            #expect(chart.target == nil)
+            #expect(chart.kilogramsRange == 71...73)
+        }
+
+        @Test("目標体重が記録の幅に入れば、点線を引くこと")
+        func lineWithinRange() throws {
+            let chart = try Self.chart(goal: try Self.losing(to: 71.5))
+            #expect(chart.target == .line(kilograms: 71.5))
+            #expect(chart.target?.label == "目標 71.5")
+            #expect(chart.kilogramsRange == 71...73)
+        }
+
+        @Test("目標体重が記録の幅より下なら、縦軸を広げず、下の端に矢印を置くこと")
+        func arrowBelowRange() throws {
+            let chart = try Self.chart(goal: try .losing())
+            #expect(chart.target == .beyondRange(kilograms: 68.0, isAbove: false))
+            #expect(chart.target?.label == "↓ 目標 68.0 kg")
+            #expect(chart.kilogramsRange == 71...73)
+        }
+
+        @Test("目標体重が記録の幅より上なら、上の端に矢印を置くこと")
+        func arrowAboveRange() throws {
+            let chart = try Self.chart(goal: try Self.losing(to: 74.2))
+            #expect(chart.target == .beyondRange(kilograms: 74.2, isAbove: true))
+            #expect(chart.target?.label == "↑ 目標 74.2 kg")
+        }
+
+        @Test("維持の目標なら、保つ幅を塗り、幅が入るまで縦軸を広げること")
+        func bandForMaintenance() throws {
+            let chart = try Self.chart(goal: try .maintaining())
+            #expect(chart.target == .band(kilograms: 65.0, halfWidthKilograms: 0.7))
+            #expect(chart.target?.label == "保つ 65.0")
+            #expect(chart.kilogramsRange == 64...73)
+        }
     }
 
     @Suite("1日に複数の記録があるとき")

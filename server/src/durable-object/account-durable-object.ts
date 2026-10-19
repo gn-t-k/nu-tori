@@ -122,43 +122,54 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    // 目標の設定の、その場で答える要求。どの要求も、要求に載った身体データと摂取エネルギーを残さない
+    // 目標の設定の、その場で答える要求。どの要求も、要求に載った身体データと摂取エネルギーを残さない。
+    // 時刻は受け口が渡す（確かめのジョブが、開発用の環境で過去の時刻に差し替えるため。resolve-requested-at.ts）
     previewGoalSetup(
       accountId: string,
       request: Parameters<typeof accountRequests.previewGoalSetup>[1],
+      now: Date,
     ) {
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.previewGoalSetup(this.createRecordStores(), request, new Date()),
+        accountRequests.previewGoalSetup(this.createRecordStores(), request, now),
       );
     }
 
-    proposeGoals(accountId: string, request: Parameters<typeof accountRequests.proposeGoals>[1]) {
+    proposeGoals(
+      accountId: string,
+      request: Parameters<typeof accountRequests.proposeGoals>[1],
+      now: Date,
+    ) {
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.proposeGoals(this.createRecordStores(), request, new Date()),
+        accountRequests.proposeGoals(this.createRecordStores(), request, now),
       );
     }
 
     assessCustomTargetWeight(
       accountId: string,
       request: Parameters<typeof accountRequests.assessCustomTargetWeight>[1],
+      now: Date,
     ) {
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.assessCustomTargetWeight(this.createRecordStores(), request, new Date()),
+        accountRequests.assessCustomTargetWeight(this.createRecordStores(), request, now),
       );
     }
 
     // 目標を決める。決めたら、目標・1日の目安・推定消費カロリーの記録を、応答と同期の両方に出す
-    decideGoal(accountId: string, request: Parameters<typeof accountRequests.decideGoal>[1]) {
+    decideGoal(
+      accountId: string,
+      request: Parameters<typeof accountRequests.decideGoal>[1],
+      now: Date,
+    ) {
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.decideGoal(this.createRecordStores(), request, new Date()),
+        accountRequests.decideGoal(this.createRecordStores(), request, now),
       );
     }
 
