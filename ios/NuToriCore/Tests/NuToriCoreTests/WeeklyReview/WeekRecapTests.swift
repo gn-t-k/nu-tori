@@ -323,6 +323,70 @@ struct WeekRecapTests {
             }
         }
 
+        @Suite("達成した週のあとの週のとき")
+        struct AfterAchievedWeek {
+            /// 11月8日に達成した `Goal.losing()`
+            static func achieved(closure: Goal.Closure?) throws -> Goal {
+                let losing = try Goal.losing()
+                return Goal(
+                    id: losing.id, startedDay: losing.startedDay,
+                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
+                    targetWeightKilograms: losing.targetWeightKilograms,
+                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
+                    direction: losing.direction,
+                    achievement: Goal.Achievement(
+                        achievedDay: WeekRecapTests.day(11, 8),
+                        judgedAt: try Date("2026-11-08T07:10:00+09:00", strategy: .iso8601),
+                        timeZone: losing.timeZone),
+                    deadlineConfirmation: nil, closure: closure)
+            }
+
+            /// 11月9日〜15日の週
+            static func topLine(of goal: Goal) throws -> WeekRecap.TopLine {
+                let recap = try #require(
+                    try WeekRecapTests.recap(
+                        weekOf: WeekRecapTests.day(11, 9), today: WeekRecapTests.day(11, 17),
+                        goals: [goal],
+                        weightTrend: WeekRecapTests.trend([(WeekRecapTests.day(11, 15), 68.1)])))
+                return try #require(recap.topLine)
+            }
+
+            @Suite("次の目標をまだ選んでいなければ")
+            struct NextGoalNotChosen {
+                let line: WeekRecap.TopLine
+
+                init() throws {
+                    line = try AfterAchievedWeek.topLine(
+                        of: try AfterAchievedWeek.achieved(closure: nil))
+                }
+
+                @Test("目標に届いていて、次の目標を選べることを書くこと")
+                func showsReachedAndNextGoal() {
+                    #expect(line.headline == "目標に届いています")
+                    #expect(line.sentence == "11月8日に、体重の傾向が 68.0 kg に届きました。次の目標を選べます。")
+                }
+            }
+
+            @Suite("次の目標に切り替えたあとなら")
+            struct SwitchedLater {
+                let line: WeekRecap.TopLine
+
+                init() throws {
+                    line = try AfterAchievedWeek.topLine(
+                        of: try AfterAchievedWeek.achieved(
+                            closure: Goal.Closure(
+                                endedDay: WeekRecapTests.day(11, 20), nextGoalId: UUID(),
+                                endReason: .switched)))
+                }
+
+                @Test("次の目標を選べることを書かないこと")
+                func omitsNextGoal() {
+                    #expect(line.headline == "目標に届いています")
+                    #expect(line.sentence == "11月8日に、体重の傾向が 68.0 kg に届きました。")
+                }
+            }
+        }
+
         @Suite("期限の日を含む週のとき")
         struct DeadlineWeek {
             @Test("期限の日の結果を書くこと")

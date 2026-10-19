@@ -483,6 +483,33 @@ extension TimelineTests {
                 #expect(card.paceText == "11月8日に 68.0 kg を達成しました")
             }
 
+            @Test("達成した週のあとの週は、目標に届いていて次の目標を選べることを出すこと")
+            func afterAchievedWeek() throws {
+                let losing = try Goal.losing()
+                let goal = Goal(
+                    id: losing.id, startedDay: losing.startedDay,
+                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
+                    targetWeightKilograms: losing.targetWeightKilograms,
+                    decidedAt: losing.decidedAt, timeZone: losing.timeZone,
+                    direction: losing.direction,
+                    achievement: Goal.Achievement(
+                        achievedDay: CalendarDay(year: 2026, month: 11, day: 8),
+                        judgedAt: try Date("2026-11-08T07:30:00+09:00", strategy: .iso8601),
+                        timeZone: losing.timeZone),
+                    deadlineConfirmation: nil, closure: nil)
+                let scene = try WeeklyReviewScene(goal: goal)
+                let timeline = scene.timeline(
+                    reviews: [
+                        try scene.deferred(
+                            effectiveOn: CalendarDay(year: 2026, month: 11, day: 16),
+                            reviewedAt: "2026-11-16T06:10:00+09:00")
+                    ],
+                    weightRecords: [], today: CalendarDay(year: 2026, month: 11, day: 16))
+
+                let card = try #require(WeeklyReviewScene.card(in: timeline))
+                #expect(card.paceText == "目標に届いています・次の目標を選べます")
+            }
+
             @Test("期限の日を過ぎた週は、期限の日を出すこと")
             func deadlinePassed() throws {
                 let scene = try WeeklyReviewScene()

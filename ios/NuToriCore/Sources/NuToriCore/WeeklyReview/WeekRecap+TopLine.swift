@@ -46,18 +46,23 @@ extension WeekRecap {
             }
         }
 
-        /// ペースを返さない週。期限の日より前に達成していれば達成、ほかは期限の日を迎えた
+        /// ペースを返さない週。期限の日より前に達成していれば達成（達成した週と、そのあとの週で分ける）、ほかは期限の日を迎えた
         private init?(unavailableFor goal: Goal, judgedDay: CalendarDay, records: GoalRecords) {
             guard let weightChange = goal.direction.weightChange else { return nil }
             let deadline = weightChange.deadlineDay
             if let achievement = goal.achievement, achievement.achievedDay <= judgedDay,
                 achievement.achievedDay <= deadline
             {
-                self.init(
-                    headline: "目標に届いた週です",
-                    sentence:
-                        "\(GoalText.monthDay(achievement.achievedDay))に、体重の傾向が \(WeightAmountText.kilograms(goal.targetWeightKilograms)) に届きました。"
-                )
+                let reached =
+                    "\(GoalText.monthDay(achievement.achievedDay))に、体重の傾向が \(WeightAmountText.kilograms(goal.targetWeightKilograms)) に届きました。"
+                if achievement.achievedDay >= judgedDay.startOfWeek {
+                    self.init(headline: "目標に届いた週です", sentence: reached)
+                } else {
+                    // 次の目標を選ぶまでは、達成した目標が続く。選んだあとの目標の週には、選べるとは書かない
+                    self.init(
+                        headline: "目標に届いています",
+                        sentence: goal.closure == nil ? "\(reached)次の目標を選べます。" : reached)
+                }
                 return
             }
             let result = DeadlineResult(goal: goal, records: records).map {
