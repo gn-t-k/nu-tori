@@ -69,6 +69,12 @@
                 return .init(
                     records: [todaysManualWeight], startedOn: today,
                     goalSetup: goalSetupAnswers(today: today))
+            case .weeklyReview:
+                return weeklyReview(achieved: false)
+            case .goalAchieved:
+                return weeklyReview(achieved: true)
+            case .goalSwitchedAfterAchieved:
+                return weeklyReview(achieved: true, switched: true)
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
@@ -385,6 +391,121 @@
                 quantitySource: .estimated, unit: "g", edibleGramsPerUnit: 1,
                 positionInDish: position, nutrientSource: .foodComposition(foodNumber: foodNumber),
                 nutrients: nutrients)
+        }
+
+        /// 先週の月曜に 72.4 kg から 70.1 kg へ減らす目標を立て、今日の 0:05 にその週を見直した。
+        /// 1日の目安は 1,880 kcal から 1,850 kcal に、推定消費カロリーは 2,190 kcal から 2,140 kcal に下がった。
+        /// `achieved` なら、昨日の 21:00 に目標を達成したと判定した。`switched` なら、今日の 8:00 に 72.0 kg を保つ目標に立て直した。
+        /// 立て直すときは、目標の設定の4つの要求に答える
+        private func weeklyReview(achieved: Bool, switched: Bool = false) -> FakeSyncServer.Scenario
+        {
+            let today = clock.today()
+            let monday = today.startOfWeek
+            let goalStart = monday.advanced(by: -7)
+            let startOffset = today.distance(to: goalStart)
+            let goalId = Self.fixedId("61616161-6161-4161-8161-616161616161")
+            let firstEstimateId = Self.fixedId("62626262-6262-4262-8262-626262626261")
+            let reviewedEstimateId = Self.fixedId("62626262-6262-4262-8262-626262626262")
+            let firstGuideId = Self.fixedId("63636363-6363-4363-8363-636363636361")
+            let reviewedGuideId = Self.fixedId("63636363-6363-4363-8363-636363636362")
+            let reviewedAt = date(dayOffset: 0, hour: 0, minute: 5)
+            let day = { (day: CalendarDay) in TimelineDayText.startedOn(for: day) }
+            let goal = SyncedGoal(
+                id: goalId, startedOn: day(goalStart), startingWeightTrendKilograms: 72.4,
+                targetWeightKilograms: 70.1,
+                decidedAt: date(dayOffset: startOffset, hour: 8, minute: 2),
+                timeZone: clock.timeZone(),
+                direction: .lose(
+                    .init(deadlineOn: day(goalStart.advanced(by: 90)), pacePlan: .standard)),
+                achievement: achieved
+                    ? .init(
+                        achievedOn: day(today.advanced(by: -1)),
+                        judgedAt: date(dayOffset: -1, hour: 21, minute: 0),
+                        timeZone: clock.timeZone())
+                    : nil,
+                deadlineConfirmation: nil,
+                closure: switched
+                    ? .init(
+                        endedOn: day(today), nextGoalId: Self.switchedGoalId, endReason: .switched)
+                    : nil)
+            // 今日の 7:00 にも量った
+            let weights = [0, 2, 4, 6, 7].enumerated().map { index, offset in
+                weight(
+                    Self.fixedId(String(format: "64646464-6464-4464-8464-%012d", index)),
+                    72.3 - Double(offset) * 0.1, dayOffset: startOffset + offset, hour: 7,
+                    minute: 0, imported: nil)
+            }
+            return .init(
+                records: [
+                    .goal(goal),
+                    .expenditureEstimate(
+                        SyncedExpenditureEstimate(
+                            id: firstEstimateId, effectiveOn: day(goalStart),
+                            expenditureKilocalories: 2190, estimatedAt: goal.decidedAt,
+                            initialSource: .backCalculated)),
+                    .dailyGuide(
+                        SyncedDailyGuide(
+                            id: firstGuideId, goalId: goalId,
+                            expenditureEstimateId: firstEstimateId, effectiveOn: day(goalStart),
+                            energyKilocalories: 1880, proteinGrams: 115, fatGrams: 52,
+                            carbohydrateGrams: 220, limitHits: [])),
+                    .expenditureEstimate(
+                        SyncedExpenditureEstimate(
+                            id: reviewedEstimateId, effectiveOn: day(monday),
+                            expenditureKilocalories: 2140, estimatedAt: reviewedAt,
+                            initialSource: nil)),
+                    .dailyGuide(
+                        SyncedDailyGuide(
+                            id: reviewedGuideId, goalId: goalId,
+                            expenditureEstimateId: reviewedEstimateId, effectiveOn: day(monday),
+                            energyKilocalories: 1850, proteinGrams: 115, fatGrams: 50,
+                            carbohydrateGrams: 215, limitHits: [])),
+                    .weeklyReview(
+                        SyncedWeeklyReview(
+                            id: Self.fixedId("65656565-6565-4565-8565-656565656565"),
+                            effectiveOn: day(monday), reviewedAt: reviewedAt,
+                            timeZone: clock.timeZone(),
+                            outcome: .reviewed(
+                                expenditureEstimateId: reviewedEstimateId,
+                                dailyGuideId: reviewedGuideId, mainReason: .expenditureChange))),
+                    .weightTrend(
+                        SyncedWeightTrend(
+                            days: (0...(-startOffset)).map {
+                                .init(
+                                    calendarDay: day(goalStart.advanced(by: $0)),
+                                    trendKilograms: achieved
+                                        ? 72.4 - Double($0) * 0.2 : 72.4 - Double($0) * 0.05)
+                            })),
+                ] + weights + (switched ? switchedGoal(startedOn: day(today)) : []),
+                startedOn: day(goalStart),
+                goalSetup: goalSetupAnswers(today: day(today)))
+        }
+
+        private static let switchedGoalId = fixedId(
+            "66666666-6666-4666-8666-666666666666")
+
+        /// 今日の 8:00 に立て直した、72.0 kg を保つ目標と、その推定消費カロリーと1日の目安
+        private func switchedGoal(startedOn: String) -> [SyncChange] {
+            let estimateId = Self.fixedId("67676767-6767-4767-8767-676767676767")
+            let decidedAt = date(dayOffset: 0, hour: 8, minute: 0)
+            return [
+                .goal(
+                    SyncedGoal(
+                        id: Self.switchedGoalId, startedOn: startedOn,
+                        startingWeightTrendKilograms: 72.0, targetWeightKilograms: 72.0,
+                        decidedAt: decidedAt, timeZone: clock.timeZone(), direction: .maintain,
+                        achievement: nil, deadlineConfirmation: nil, closure: nil)),
+                .expenditureEstimate(
+                    SyncedExpenditureEstimate(
+                        id: estimateId, effectiveOn: startedOn, expenditureKilocalories: 2250,
+                        estimatedAt: decidedAt, initialSource: nil)),
+                .dailyGuide(
+                    SyncedDailyGuide(
+                        id: Self.fixedId("68686868-6868-4868-8868-686868686868"),
+                        goalId: Self.switchedGoalId, expenditureEstimateId: estimateId,
+                        effectiveOn: startedOn, energyKilocalories: 2250, proteinGrams: 115,
+                        fatGrams: 50, carbohydrateGrams: 200, limitHits: [])),
+            ]
         }
 
         private static func fixedId(_ text: String) -> UUID {
