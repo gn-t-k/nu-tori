@@ -19,9 +19,7 @@ extension TimelineTests {
                     status: .estimated, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [meal],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [meal],
                         notices: [], undelivered: .none, conversation: .none),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: PlacingMeals.day
@@ -45,9 +43,7 @@ extension TimelineTests {
                     status: nil, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [meal],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [meal],
                         notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
@@ -77,9 +73,7 @@ extension TimelineTests {
                     status: .estimating, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: [evening, morning]), rejectedLines: [],
+                        goalRecords: .fixture(weightRecords: [evening, morning]), rejectedLines: [],
                         meals: [lunch], notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
@@ -115,9 +109,7 @@ extension TimelineTests {
                     status: nil, recordedOnThisDevice: true)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [],
+                        goalRecords: .fixture(), rejectedLines: [],
                         meals: [dinner, breakfast, lunch], notices: [], undelivered: .none,
                         conversation: .none),
                     firstDay: PlacingMeals.day,
@@ -152,9 +144,7 @@ extension TimelineTests {
                         eatenAt: "2026-09-24T06:10:00+09:00", sentAt: "2026-09-24T12:11:00+09:00"))
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: [morning]),
+                        goalRecords: .fixture(weightRecords: [morning]),
                         rejectedLines: [.meal(line)], meals: [before], notices: [],
                         undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
@@ -183,9 +173,7 @@ extension TimelineTests {
             static func timeline(meals: [MealCard], lines: [RejectedMealLine]) -> Timeline {
                 Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []),
+                        goalRecords: .fixture(),
                         rejectedLines: lines.map { .meal($0) }, meals: meals, notices: [],
                         undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
@@ -261,9 +249,7 @@ extension TimelineTests {
                     serverHasValue: false)
                 timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [.weight(line)],
+                        goalRecords: .fixture(), rejectedLines: [.weight(line)],
                         meals: [lunch], notices: [], undelivered: .none, conversation: .none),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day

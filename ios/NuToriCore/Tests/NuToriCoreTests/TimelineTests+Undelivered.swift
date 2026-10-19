@@ -13,9 +13,7 @@ extension TimelineTests {
         ) -> Timeline {
             Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: weightRecords), rejectedLines: [],
+                    goalRecords: .fixture(weightRecords: weightRecords), rejectedLines: [],
                     meals: meals, notices: [],
                     undelivered: UndeliveredRecords(pendingEntries: pending), conversation: .none),
                 firstDay: day, today: day)
@@ -152,9 +150,7 @@ extension TimelineTests {
             static func timeline(sentText: SentText, pending: [SentTextWrite]) throws -> Timeline {
                 Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [],
                         notices: [],
                         undelivered: UndeliveredRecords(
                             pendingEntries: try pending.map {

@@ -20,9 +20,7 @@ extension TimelineViewportTests {
                 days = (0...count).map { added in
                     Timeline(
                         input: Timeline.Input(
-                            goalRecords: GoalRecords(
-                                goals: [], dailyGuides: [], expenditureEstimates: [],
-                                weeklyReviews: [], weightTrend: nil, weightRecords: []),
+                            goalRecords: .fixture(),
                             rejectedLines: [], meals: Array(meals.prefix(added)), notices: [],
                             undelivered: .none,
                             conversation: Timeline.Conversation(
@@ -224,9 +222,7 @@ extension TimelineViewportTests {
                 let notice = try Notice.missedWeightRecord(issuedAt: "2026-10-13T08:15:00+09:00")
                 let timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [],
                         notices: [notice], undelivered: .none, conversation: .none),
                     firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
                 card = .notice(NoticeCard(notice: notice, form: .awaitingAnswer))
@@ -254,9 +250,7 @@ extension TimelineViewportTests {
             init() {
                 let timeline = Timeline(
                     input: Timeline.Input(
-                        goalRecords: GoalRecords(
-                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        goalRecords: .fixture(), rejectedLines: [], meals: [],
                         notices: [], undelivered: .none, conversation: .none),
                     firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
                 viewport = TimelineViewportTests.scrolledAway()

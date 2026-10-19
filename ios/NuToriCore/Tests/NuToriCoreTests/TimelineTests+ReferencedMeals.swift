@@ -24,9 +24,7 @@ extension TimelineTests {
                 "昼と昨日の夜の記録を直して", sentAt: "2026-09-24T13:00:00+09:00")
             timeline = Timeline(
                 input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: []), rejectedLines: [],
+                    goalRecords: .fixture(), rejectedLines: [],
                     meals: [lunch, dinner], notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],

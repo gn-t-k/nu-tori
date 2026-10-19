@@ -16,10 +16,10 @@ struct GoalOverviewTests {
     ) -> GoalOverview? {
         GoalOverview(
             today: today,
-            records: GoalRecords(
-                goals: goals, dailyGuides: dailyGuides,
-                expenditureEstimates: expenditureEstimates, weeklyReviews: weeklyReviews,
-                weightTrend: weightTrend, weightRecords: weightRecords))
+            records: .fixture(
+                goals: goals, dailyGuides: dailyGuides, expenditureEstimates: expenditureEstimates,
+                weeklyReviews: weeklyReviews, weightTrend: weightTrend, weightRecords: weightRecords
+            ))
     }
 
     static func trend(_ days: [(CalendarDay, Double)]) -> WeightTrend {
@@ -31,24 +31,12 @@ struct GoalOverviewTests {
         achievedOn achievedDay: CalendarDay? = nil, confirmedTrend: Double? = nil,
         closure: Goal.Closure? = nil
     ) throws -> Goal {
-        let losing = try Goal.losing()
-        return Goal(
-            id: losing.id, startedDay: losing.startedDay,
-            startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
-            targetWeightKilograms: losing.targetWeightKilograms, decidedAt: losing.decidedAt,
-            timeZone: losing.timeZone, direction: losing.direction,
+        try Goal.losing(
             achievement: try achievedDay.map {
-                Goal.Achievement(
-                    achievedDay: $0,
-                    judgedAt: try Date(
-                        "\($0.yearMonthDay)T07:10:00+09:00", strategy: .iso8601),
-                    timeZone: losing.timeZone)
+                try .inTokyo(on: $0, judgedAt: "\($0.yearMonthDay)T07:10:00+09:00")
             },
             deadlineConfirmation: try confirmedTrend.map {
-                Goal.DeadlineConfirmation(
-                    deadlineWeightTrendKilograms: $0,
-                    confirmedAt: try Date("2026-12-25T07:10:00+09:00", strategy: .iso8601),
-                    timeZone: losing.timeZone)
+                try .inTokyo(weightTrendKilograms: $0, confirmedAt: "2026-12-25T07:10:00+09:00")
             },
             closure: closure)
     }
