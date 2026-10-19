@@ -164,18 +164,6 @@ struct GoalScreen: View {
         }
     }
 
-    private var weeklyReviewName: some View {
-        Text("週の振り返り")
-            .foregroundStyle(Color.primary)
-    }
-
-    /// 「9月14日〜20日」
-    private func weeklyReviewTitle(_ title: String) -> some View {
-        Text(title)
-            .foregroundStyle(Color(.secondaryLabel))
-            .monospacedDigit()
-    }
-
     private func pfcGuides(_ dailyGuide: DailyGuide) -> some View {
         ForEach(PFC.allCases, id: \.self) { pfc in
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -222,6 +210,18 @@ struct GoalScreen: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("goal-weekly-review")
+    }
+
+    private var weeklyReviewName: some View {
+        Text("週の振り返り")
+            .foregroundStyle(Color.primary)
+    }
+
+    /// 「9月14日〜20日」
+    private func weeklyReviewTitle(_ title: String) -> some View {
+        Text(title)
+            .foregroundStyle(Color(.secondaryLabel))
+            .monospacedDigit()
     }
 
     /// 「減量 9月1日〜11月30日」「74.0 → 70.4 kg」、右に「−3.6 kg」。新しい順。潜らない
