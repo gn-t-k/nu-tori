@@ -13,6 +13,7 @@ import { noticeHttpKind } from "../../notice/http/notice-http-kind";
 import { sentTextHttpKind } from "../../sent-text/http/sent-text-http-kind";
 import { sentTextStatusHttpKind } from "../../sent-text-status/http/sent-text-status-http-kind";
 import { usualWeighingTimeHttpKind } from "../../usual-weighing-time/http/usual-weighing-time-http-kind";
+import { weeklyReviewHttpKind } from "../../weekly-review/http/weekly-review-http-kind";
 import { weightRecordHttpKind } from "../../weight-record/http/weight-record-http-kind";
 import { weightTrendHttpKind } from "../../weight-trend/http/weight-trend-http-kind";
 import type { HttpRecordKind } from "./http-record-kind";
@@ -34,6 +35,7 @@ export const httpRecordKinds = {
   sent_text: sentTextHttpKind,
   sent_text_status: sentTextStatusHttpKind,
   usual_weighing_time: usualWeighingTimeHttpKind,
+  weekly_review: weeklyReviewHttpKind,
   weight_record: weightRecordHttpKind,
   weight_trend: weightTrendHttpKind,
 } as const satisfies { [K in RecordType]: HttpRecordKind };

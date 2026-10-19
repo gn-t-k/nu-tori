@@ -29,6 +29,7 @@
           "sent_text",
           "sent_text_status",
           "usual_weighing_time",
+          "weekly_review",
           "weight_record",
           "weight_trend"
         ],
@@ -628,6 +629,85 @@
           "minuteOfDay"
         ],
         "description": "kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない"
+      },
+      "WeeklyReviewRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "effectiveOn": {
+            "type": "string",
+            "description": "新しい1日の目安を当てる月曜（YYYY-MM-DD）。見直す入力の月〜日はその前の週",
+            "example": "2026-10-19"
+          },
+          "reviewedAt": {
+            "type": "integer",
+            "description": "UNIX 時刻のミリ秒（UTC）"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "見直しを起こした要求のタイムゾーン",
+            "example": "Asia/Tokyo"
+          },
+          "deferral": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "within_first_week",
+                  "no_weight",
+                  "few_meal_records"
+                ],
+                "description": "見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）"
+              },
+              "goalId": {
+                "type": "string",
+                "description": "その週に当てた目標の ID。目標の変更より先に届くことがある"
+              }
+            },
+            "required": [
+              "reason",
+              "goalId"
+            ],
+            "description": "見送った週だけに付く。review とどちらか一方が付く"
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "expenditureEstimateId": {
+                "type": "string",
+                "description": "見直した推定消費カロリーの推定の ID。推定の変更より先に届くことがある"
+              },
+              "dailyGuideId": {
+                "type": "string",
+                "description": "見直した1日の目安の ID。1日の目安の変更より先に届くことがある"
+              },
+              "mainReason": {
+                "type": "string",
+                "enum": [
+                  "expenditure_change",
+                  "balance_change"
+                ],
+                "description": "1日の目安が変わった主な理由。推定消費カロリーの変化（expenditure_change）、残りの差の変化（balance_change）"
+              }
+            },
+            "required": [
+              "expenditureEstimateId",
+              "dailyGuideId",
+              "mainReason"
+            ],
+            "description": "見直せた週だけに付く。deferral とどちらか一方が付く"
+          }
+        },
+        "required": [
+          "id",
+          "effectiveOn",
+          "reviewedAt",
+          "timeZone"
+        ],
+        "description": "kind が weekly_review の変更の record。週の見直しは消えない"
       },
       "WeightRecordRecord": {
         "type": "object",
