@@ -8,7 +8,10 @@ import Testing
 @Suite("目標のキャッシュの行")
 struct CachedGoalCacheTests {
     /// 2026-10-01（東京）に決めた、12月24日までに 72.4 kg から 68.0 kg へ減らす、自分で決めた目標
-    static func losing(id: UUID = UUID(), closure: Goal.Closure?) throws -> Goal {
+    static func losing(
+        id: UUID = UUID(), achievement: Goal.Achievement? = nil,
+        deadlineConfirmation: Goal.DeadlineConfirmation? = nil, closure: Goal.Closure?
+    ) throws -> Goal {
         Goal(
             id: id, startedDay: CalendarDay(year: 2026, month: 10, day: 1),
             startingWeightTrendKilograms: 72.4, targetWeightKilograms: 68.0,
@@ -17,6 +20,7 @@ struct CachedGoalCacheTests {
             direction: .lose(
                 Goal.WeightChange(
                     deadlineDay: CalendarDay(year: 2026, month: 12, day: 24), pacePlan: .custom)),
+            achievement: achievement, deadlineConfirmation: deadlineConfirmation,
             closure: closure)
     }
 
@@ -27,7 +31,24 @@ struct CachedGoalCacheTests {
             startingWeightTrendKilograms: 65.0, targetWeightKilograms: 65.0,
             decidedAt: Date(timeIntervalSince1970: 1_792_454_400),
             timeZone: try #require(TimeZone(identifier: "America/Los_Angeles")),
-            direction: .maintain, closure: nil)
+            direction: .maintain, achievement: nil, deadlineConfirmation: nil, closure: nil)
+    }
+
+    /// `losing` を、12月10日に達成し、期限の日を確定し、12月28日に期限後の維持に移って閉じたもの
+    static func finished(id: UUID = UUID(), nextGoalId: UUID = UUID()) throws -> Goal {
+        try losing(
+            id: id,
+            achievement: Goal.Achievement(
+                achievedDay: CalendarDay(year: 2026, month: 12, day: 10),
+                judgedAt: Date(timeIntervalSince1970: 1_796_860_800),
+                timeZone: try #require(TimeZone(identifier: "Asia/Tokyo"))),
+            deadlineConfirmation: Goal.DeadlineConfirmation(
+                deadlineWeightTrendKilograms: 67.8,
+                confirmedAt: Date(timeIntervalSince1970: 1_797_033_600),
+                timeZone: try #require(TimeZone(identifier: "America/Los_Angeles"))),
+            closure: Goal.Closure(
+                endedDay: CalendarDay(year: 2026, month: 12, day: 28), nextGoalId: nextGoalId,
+                endReason: .movedToMaintenance))
     }
 
     /// 減量の目標と維持の目標を保存してあるキャッシュ。置き場は、キャッシュを使うあいだ持っておく
@@ -68,13 +89,23 @@ struct CachedGoalCacheTests {
                 id: losing.id,
                 closure: Goal.Closure(
                     endedDay: CalendarDay(year: 2026, month: 10, day: 20),
-                    nextGoalId: maintaining.id))
+                    nextGoalId: maintaining.id, endReason: .switched))
 
             try cache.upsert(closed)
 
             let saved = try cache.savedRecords()
             #expect(saved.count == 2)
             #expect(Set(saved) == [closed, maintaining])
+        }
+
+        @Test("同じ ID の、達成して期限の日を確定し期限後の維持に移って閉じた目標を足すと、その値を持つこと")
+        func replacesWithFinish() throws {
+            let finished = try CachedGoalCacheTests.finished(
+                id: losing.id, nextGoalId: maintaining.id)
+
+            try cache.upsert(finished)
+
+            #expect(Set(try cache.savedRecords()) == [finished, maintaining])
         }
 
         @Test("同じ ID の維持の目標を足すと、期限と速さの案が無くなること")
@@ -101,7 +132,7 @@ struct CachedGoalCacheTests {
         }
     }
 
-    @Suite("知らない向き・知らない速さの案・期限の無い減量・読めない開始の日・次の目標の無い閉じた行があるとき")
+    @Suite("知らない向き・知らない速さの案・期限の無い減量・読めない開始の日・次の目標の無い閉じた行・知らない終わり方・読めない達成した日・タイムゾーンの無い確定の行があるとき")
     @MainActor
     struct Unreadable {
         let store: SwiftDataSyncStore
@@ -118,9 +149,13 @@ struct CachedGoalCacheTests {
             let withoutDeadline = try CachedGoalCacheTests.losing(closure: nil)
             let unreadableStartedDay = try CachedGoalCacheTests.maintaining()
             let closedWithoutNextGoal = try CachedGoalCacheTests.maintaining()
+            let unknownEndReason = try CachedGoalCacheTests.finished()
+            let unreadableAchievedDay = try CachedGoalCacheTests.finished()
+            let confirmationWithoutTimeZone = try CachedGoalCacheTests.finished()
             for goal in [
                 readable, unknownDirection, unknownPacePlan, withoutDeadline,
-                unreadableStartedDay, closedWithoutNextGoal,
+                unreadableStartedDay, closedWithoutNextGoal, unknownEndReason,
+                unreadableAchievedDay, confirmationWithoutTimeZone,
             ] {
                 try cache.upsert(goal)
             }
@@ -133,6 +168,12 @@ struct CachedGoalCacheTests {
                 .startedDay = "2026/10/20"
             try #require(try CachedGoal.find(id: closedWithoutNextGoal.id, in: context)).endedDay =
                 "2026-11-01"
+            try #require(try CachedGoal.find(id: unknownEndReason.id, in: context)).endReason =
+                "reason_added_later"
+            try #require(try CachedGoal.find(id: unreadableAchievedDay.id, in: context))
+                .achievedDay = "12月10日"
+            try #require(try CachedGoal.find(id: confirmationWithoutTimeZone.id, in: context))
+                .deadlineConfirmationTimeZoneIdentifier = nil
             try context.save()
         }
 
