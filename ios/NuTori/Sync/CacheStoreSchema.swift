@@ -10,6 +10,7 @@ nonisolated enum CacheStoreSchema {
             CachedNotice.self, CachedUsualWeighingTime.self, CachedWeightTrendDay.self,
             CachedSentText.self, CachedSentTextStatus.self, CachedAiUtterance.self,
             CachedGoal.self, CachedDailyGuide.self, CachedExpenditureEstimate.self,
+            CachedWeeklyReview.self,
             CachedSyncState.self, CachedHealthDishWrite.self,
         ])
     }

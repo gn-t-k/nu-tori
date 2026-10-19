@@ -25,6 +25,7 @@ extension Components {
             case sentText = "sent_text"
             case sentTextStatus = "sent_text_status"
             case usualWeighingTime = "usual_weighing_time"
+            case weeklyReview = "weekly_review"
             case weightRecord = "weight_record"
             case weightTrend = "weight_trend"
         }
@@ -420,6 +421,88 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/GoalRecord/weightChange`.
             internal var weightChange: Components.Schemas.GoalRecord.WeightChangePayload?
+            /// 達成した減量・増量の目標だけに付く。達成すると、同じ目標の変更がもう一度届く
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/achievement`.
+            internal struct AchievementPayload: Codable, Hashable, Sendable {
+                /// 達成した日（YYYY-MM-DD）
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/achievement/achievedOn`.
+                internal var achievedOn: Swift.String
+                /// UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/achievement/judgedAt`.
+                internal var judgedAt: Swift.Int
+                /// 達成を判定した要求のタイムゾーン
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/achievement/timeZone`.
+                internal var timeZone: Swift.String
+                /// Creates a new `AchievementPayload`.
+                ///
+                /// - Parameters:
+                ///   - achievedOn: 達成した日（YYYY-MM-DD）
+                ///   - judgedAt: UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone: 達成を判定した要求のタイムゾーン
+                internal init(
+                    achievedOn: Swift.String,
+                    judgedAt: Swift.Int,
+                    timeZone: Swift.String
+                ) {
+                    self.achievedOn = achievedOn
+                    self.judgedAt = judgedAt
+                    self.timeZone = timeZone
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case achievedOn
+                    case judgedAt
+                    case timeZone
+                }
+            }
+            /// 達成した減量・増量の目標だけに付く。達成すると、同じ目標の変更がもう一度届く
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/achievement`.
+            internal var achievement: Components.Schemas.GoalRecord.AchievementPayload?
+            /// 期限の日が確定した減量・増量の目標だけに付く。確定すると、同じ目標の変更がもう一度届く
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/deadlineConfirmation`.
+            internal struct DeadlineConfirmationPayload: Codable, Hashable, Sendable {
+                /// 期限の日の体重の傾向
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/deadlineConfirmation/deadlineWeightTrendKg`.
+                internal var deadlineWeightTrendKg: Swift.Double
+                /// UNIX 時刻のミリ秒（UTC）
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/deadlineConfirmation/confirmedAt`.
+                internal var confirmedAt: Swift.Int
+                /// 期限の日を確定した要求のタイムゾーン
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/deadlineConfirmation/timeZone`.
+                internal var timeZone: Swift.String
+                /// Creates a new `DeadlineConfirmationPayload`.
+                ///
+                /// - Parameters:
+                ///   - deadlineWeightTrendKg: 期限の日の体重の傾向
+                ///   - confirmedAt: UNIX 時刻のミリ秒（UTC）
+                ///   - timeZone: 期限の日を確定した要求のタイムゾーン
+                internal init(
+                    deadlineWeightTrendKg: Swift.Double,
+                    confirmedAt: Swift.Int,
+                    timeZone: Swift.String
+                ) {
+                    self.deadlineWeightTrendKg = deadlineWeightTrendKg
+                    self.confirmedAt = confirmedAt
+                    self.timeZone = timeZone
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case deadlineWeightTrendKg
+                    case confirmedAt
+                    case timeZone
+                }
+            }
+            /// 期限の日が確定した減量・増量の目標だけに付く。確定すると、同じ目標の変更がもう一度届く
+            ///
+            /// - Remark: Generated from `#/components/schemas/GoalRecord/deadlineConfirmation`.
+            internal var deadlineConfirmation: Components.Schemas.GoalRecord.DeadlineConfirmationPayload?
             /// 閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く
             ///
             /// - Remark: Generated from `#/components/schemas/GoalRecord/closure`.
@@ -430,21 +513,36 @@ extension Components {
                 internal var endedOn: Swift.String
                 /// - Remark: Generated from `#/components/schemas/GoalRecord/closure/nextGoalId`.
                 internal var nextGoalId: Swift.String
+                /// 終わり方。立て直しによる切り替え（switched）と、期限後の維持に移ったこと（moved_to_maintenance）
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/closure/endReason`.
+                internal enum EndReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case switched = "switched"
+                    case movedToMaintenance = "moved_to_maintenance"
+                }
+                /// 終わり方。立て直しによる切り替え（switched）と、期限後の維持に移ったこと（moved_to_maintenance）
+                ///
+                /// - Remark: Generated from `#/components/schemas/GoalRecord/closure/endReason`.
+                internal var endReason: Components.Schemas.GoalRecord.ClosurePayload.EndReasonPayload
                 /// Creates a new `ClosurePayload`.
                 ///
                 /// - Parameters:
                 ///   - endedOn: 終わった日（YYYY-MM-DD）。次の目標の開始の日
                 ///   - nextGoalId:
+                ///   - endReason: 終わり方。立て直しによる切り替え（switched）と、期限後の維持に移ったこと（moved_to_maintenance）
                 internal init(
                     endedOn: Swift.String,
-                    nextGoalId: Swift.String
+                    nextGoalId: Swift.String,
+                    endReason: Components.Schemas.GoalRecord.ClosurePayload.EndReasonPayload
                 ) {
                     self.endedOn = endedOn
                     self.nextGoalId = nextGoalId
+                    self.endReason = endReason
                 }
                 internal enum CodingKeys: String, CodingKey {
                     case endedOn
                     case nextGoalId
+                    case endReason
                 }
             }
             /// 閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く
@@ -462,6 +560,8 @@ extension Components {
             ///   - timeZone: 目標を決めた要求のタイムゾーン
             ///   - direction: 向き（減量・増量・維持）。weightChange が無ければ維持、あれば目標体重が開始の日の体重の傾向より小さいとき減量、ほかは増量
             ///   - weightChange: 減量・増量の目標だけに付く
+            ///   - achievement: 達成した減量・増量の目標だけに付く。達成すると、同じ目標の変更がもう一度届く
+            ///   - deadlineConfirmation: 期限の日が確定した減量・増量の目標だけに付く。確定すると、同じ目標の変更がもう一度届く
             ///   - closure: 閉じた目標だけに付く。閉じると、同じ目標の変更がもう一度届く
             internal init(
                 id: Swift.String,
@@ -472,6 +572,8 @@ extension Components {
                 timeZone: Swift.String,
                 direction: Components.Schemas.GoalRecord.DirectionPayload,
                 weightChange: Components.Schemas.GoalRecord.WeightChangePayload? = nil,
+                achievement: Components.Schemas.GoalRecord.AchievementPayload? = nil,
+                deadlineConfirmation: Components.Schemas.GoalRecord.DeadlineConfirmationPayload? = nil,
                 closure: Components.Schemas.GoalRecord.ClosurePayload? = nil
             ) {
                 self.id = id
@@ -482,6 +584,8 @@ extension Components {
                 self.timeZone = timeZone
                 self.direction = direction
                 self.weightChange = weightChange
+                self.achievement = achievement
+                self.deadlineConfirmation = deadlineConfirmation
                 self.closure = closure
             }
             internal enum CodingKeys: String, CodingKey {
@@ -493,6 +597,8 @@ extension Components {
                 case timeZone
                 case direction
                 case weightChange
+                case achievement
+                case deadlineConfirmation
                 case closure
             }
         }
@@ -1014,6 +1120,146 @@ extension Components {
             }
             internal enum CodingKeys: String, CodingKey {
                 case minuteOfDay
+            }
+        }
+        /// kind が weekly_review の変更の record。週の見直しは消えない
+        ///
+        /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord`.
+        internal struct WeeklyReviewRecord: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/id`.
+            internal var id: Swift.String
+            /// 新しい1日の目安を当てる月曜（YYYY-MM-DD）。見直す入力の月〜日はその前の週
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/effectiveOn`.
+            internal var effectiveOn: Swift.String
+            /// UNIX 時刻のミリ秒（UTC）
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/reviewedAt`.
+            internal var reviewedAt: Swift.Int
+            /// 見直しを起こした要求のタイムゾーン
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/timeZone`.
+            internal var timeZone: Swift.String
+            /// 見送った週だけに付く。review とどちらか一方が付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/deferral`.
+            internal struct DeferralPayload: Codable, Hashable, Sendable {
+                /// 見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/deferral/reason`.
+                internal enum ReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case withinFirstWeek = "within_first_week"
+                    case noWeight = "no_weight"
+                    case fewMealRecords = "few_meal_records"
+                }
+                /// 見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/deferral/reason`.
+                internal var reason: Components.Schemas.WeeklyReviewRecord.DeferralPayload.ReasonPayload
+                /// その週に当てた目標の ID。目標の変更より先に届くことがある
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/deferral/goalId`.
+                internal var goalId: Swift.String
+                /// Creates a new `DeferralPayload`.
+                ///
+                /// - Parameters:
+                ///   - reason: 見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
+                ///   - goalId: その週に当てた目標の ID。目標の変更より先に届くことがある
+                internal init(
+                    reason: Components.Schemas.WeeklyReviewRecord.DeferralPayload.ReasonPayload,
+                    goalId: Swift.String
+                ) {
+                    self.reason = reason
+                    self.goalId = goalId
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case reason
+                    case goalId
+                }
+            }
+            /// 見送った週だけに付く。review とどちらか一方が付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/deferral`.
+            internal var deferral: Components.Schemas.WeeklyReviewRecord.DeferralPayload?
+            /// 見直せた週だけに付く。deferral とどちらか一方が付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/review`.
+            internal struct ReviewPayload: Codable, Hashable, Sendable {
+                /// 見直した推定消費カロリーの推定の ID。推定の変更より先に届くことがある
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/review/expenditureEstimateId`.
+                internal var expenditureEstimateId: Swift.String
+                /// 見直した1日の目安の ID。1日の目安の変更より先に届くことがある
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/review/dailyGuideId`.
+                internal var dailyGuideId: Swift.String
+                /// 1日の目安が変わった主な理由。推定消費カロリーの変化（expenditure_change）、残りの差の変化（balance_change）
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/review/mainReason`.
+                internal enum MainReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case expenditureChange = "expenditure_change"
+                    case balanceChange = "balance_change"
+                }
+                /// 1日の目安が変わった主な理由。推定消費カロリーの変化（expenditure_change）、残りの差の変化（balance_change）
+                ///
+                /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/review/mainReason`.
+                internal var mainReason: Components.Schemas.WeeklyReviewRecord.ReviewPayload.MainReasonPayload
+                /// Creates a new `ReviewPayload`.
+                ///
+                /// - Parameters:
+                ///   - expenditureEstimateId: 見直した推定消費カロリーの推定の ID。推定の変更より先に届くことがある
+                ///   - dailyGuideId: 見直した1日の目安の ID。1日の目安の変更より先に届くことがある
+                ///   - mainReason: 1日の目安が変わった主な理由。推定消費カロリーの変化（expenditure_change）、残りの差の変化（balance_change）
+                internal init(
+                    expenditureEstimateId: Swift.String,
+                    dailyGuideId: Swift.String,
+                    mainReason: Components.Schemas.WeeklyReviewRecord.ReviewPayload.MainReasonPayload
+                ) {
+                    self.expenditureEstimateId = expenditureEstimateId
+                    self.dailyGuideId = dailyGuideId
+                    self.mainReason = mainReason
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case expenditureEstimateId
+                    case dailyGuideId
+                    case mainReason
+                }
+            }
+            /// 見直せた週だけに付く。deferral とどちらか一方が付く
+            ///
+            /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/review`.
+            internal var review: Components.Schemas.WeeklyReviewRecord.ReviewPayload?
+            /// Creates a new `WeeklyReviewRecord`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - effectiveOn: 新しい1日の目安を当てる月曜（YYYY-MM-DD）。見直す入力の月〜日はその前の週
+            ///   - reviewedAt: UNIX 時刻のミリ秒（UTC）
+            ///   - timeZone: 見直しを起こした要求のタイムゾーン
+            ///   - deferral: 見送った週だけに付く。review とどちらか一方が付く
+            ///   - review: 見直せた週だけに付く。deferral とどちらか一方が付く
+            internal init(
+                id: Swift.String,
+                effectiveOn: Swift.String,
+                reviewedAt: Swift.Int,
+                timeZone: Swift.String,
+                deferral: Components.Schemas.WeeklyReviewRecord.DeferralPayload? = nil,
+                review: Components.Schemas.WeeklyReviewRecord.ReviewPayload? = nil
+            ) {
+                self.id = id
+                self.effectiveOn = effectiveOn
+                self.reviewedAt = reviewedAt
+                self.timeZone = timeZone
+                self.deferral = deferral
+                self.review = review
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case id
+                case effectiveOn
+                case reviewedAt
+                case timeZone
+                case deferral
+                case review
             }
         }
         /// kind が weight_record の変更の record。消えたら kind が weight_record_deletion で record が空の変更が届く

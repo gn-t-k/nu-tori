@@ -15,7 +15,8 @@ extension TimelineTests {
                 id: goal.id, startedDay: CalendarDay(year: 2026, month: 10, day: 6),
                 startingWeightTrendKilograms: goal.startingWeightTrendKilograms,
                 targetWeightKilograms: goal.targetWeightKilograms, decidedAt: goal.decidedAt,
-                timeZone: goal.timeZone, direction: goal.direction, closure: nil)
+                timeZone: goal.timeZone, direction: goal.direction,
+                achievement: nil, deadlineConfirmation: nil, closure: nil)
             guide = DailyGuide(
                 id: UUID(), goalId: goal.id, expenditureEstimateId: UUID(),
                 effectiveDay: CalendarDay(year: 2026, month: 10, day: 6), energyKilocalories: 1850,

@@ -16,6 +16,8 @@ extension Goal {
             direction: .lose(
                 WeightChange(
                     deadlineDay: CalendarDay(year: 2026, month: 12, day: 24), pacePlan: .standard)),
+            achievement: nil,
+            deadlineConfirmation: nil,
             closure: closure
         )
     }
@@ -27,7 +29,8 @@ extension Goal {
             id: losing.id, startedDay: day,
             startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
             targetWeightKilograms: losing.targetWeightKilograms, decidedAt: losing.decidedAt,
-            timeZone: losing.timeZone, direction: losing.direction, closure: nil)
+            timeZone: losing.timeZone, direction: losing.direction, achievement: nil,
+            deadlineConfirmation: nil, closure: nil)
     }
 
     /// 2026-10-20（東京）に決めた、65.0 kg を保つ目標
@@ -40,6 +43,8 @@ extension Goal {
             decidedAt: try Date("2026-10-20T21:00:00+09:00", strategy: .iso8601),
             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
             direction: .maintain,
+            achievement: nil,
+            deadlineConfirmation: nil,
             closure: nil
         )
     }
@@ -59,6 +64,8 @@ extension SyncedGoal {
             decidedAt: try Date("2026-10-01T08:30:00+09:00", strategy: .iso8601),
             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
             direction: .lose(.init(deadlineOn: deadlineOn, pacePlan: .standard)),
+            achievement: nil,
+            deadlineConfirmation: nil,
             closure: closure
         )
     }
@@ -73,6 +80,8 @@ extension SyncedGoal {
             decidedAt: try Date("2026-10-20T21:00:00+09:00", strategy: .iso8601),
             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
             direction: .maintain,
+            achievement: nil,
+            deadlineConfirmation: nil,
             closure: nil
         )
     }
