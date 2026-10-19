@@ -14,12 +14,22 @@
                     weightRecords: sample.records,
                     trend: sample.trend,
                     firstDay: sample.startedDay,
-                    today: .sampleToday
+                    today: .sampleToday,
+                    goal: sample.goal
                 ),
                 rejectedLines: sample.rejectedLines,
                 capture: { _ in },
                 saveWeight: { _ in },
-                startGoalSetup: sample.startsGoalSetup ? {} : nil
+                startGoalSetup: sample.startsGoalSetup ? {} : nil,
+                goalPath: sample.goal.flatMap { goal in
+                    WeightGoalPath(
+                        status: GoalStatus(currentGoal: goal, goals: [goal]), today: .sampleToday,
+                        records: GoalRecords(
+                            goals: [goal], dailyGuides: [], expenditureEstimates: [],
+                            weeklyReviews: [], weightTrend: sample.trend,
+                            weightRecords: sample.records))
+                },
+                openGoalScreen: {}
             )
         }
     }
@@ -44,6 +54,10 @@
             case trendLineAcrossFirstDay
             /// 目標が無く、目標を立てる知らせのカードがタイムラインにある。傾向のグラフの下に「目標を立てる」
             case goalSetupAvailable
+            /// 傾向の線を引く記録に、減量の目標がある。目標体重が4週の幅に入らないので、下の端に矢印。下に目標までの道のり
+            case goalLosing
+            /// 傾向の線を引く記録に、今の体重のまわりを保つ維持の目標がある。保つ幅を塗る
+            case goalMaintaining
 
             static let day = CalendarDay.sampleToday.advanced(by: -1)
             static let firstDay = CalendarDay.sampleToday.advanced(by: -6)
@@ -53,7 +67,8 @@
                 case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected,
                     .goalSetupAvailable:
                     Self.firstDay
-                case .trendLine: CalendarDay.sampleToday.advanced(by: -40)
+                case .trendLine, .goalLosing, .goalMaintaining:
+                    CalendarDay.sampleToday.advanced(by: -40)
                 case .trendLineAcrossFirstDay: CalendarDay.sampleToday.advanced(by: -10)
                 }
             }
@@ -64,7 +79,7 @@
                 case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected,
                     .goalSetupAvailable:
                     nil
-                case .trendLine, .trendLineAcrossFirstDay:
+                case .trendLine, .trendLineAcrossFirstDay, .goalLosing, .goalMaintaining:
                     WeightTrend.sample(
                         from: Self.dailyFirstDay, through: Self.day, startingAt: 73.4,
                         perDay: -0.03)
@@ -73,7 +88,8 @@
 
             var records: [WeightRecord] {
                 switch self {
-                case .trendLine, .trendLineAcrossFirstDay: Self.dailyRecords
+                case .trendLine, .trendLineAcrossFirstDay, .goalLosing, .goalMaintaining:
+                    Self.dailyRecords
                 case .oneRecord, .rejected, .goalSetupAvailable: Self.dayRecord + Self.otherDays
                 case .severalRecords:
                     Self.dayRecord + Self.otherDays + [
@@ -96,7 +112,7 @@
             var rejectedLines: [RejectedLine] {
                 switch self {
                 case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .trendLine,
-                    .trendLineAcrossFirstDay, .goalSetupAvailable:
+                    .trendLineAcrossFirstDay, .goalSetupAvailable, .goalLosing, .goalMaintaining:
                     []
                 case .rejected:
                     [
@@ -120,8 +136,29 @@
                 switch self {
                 case .goalSetupAvailable: true
                 case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected,
-                    .trendLine, .trendLineAcrossFirstDay:
+                    .trendLine, .trendLineAcrossFirstDay, .goalLosing, .goalMaintaining:
                     false
+                }
+            }
+
+            /// 今の目標。30 日前に立てた
+            var goal: Goal? {
+                let startedDay = CalendarDay.sampleToday.advanced(by: -30)
+                return switch self {
+                case .oneRecord, .severalRecords, .noRecord, .beforeFirstDay, .rejected,
+                    .trendLine, .trendLineAcrossFirstDay, .goalSetupAvailable:
+                    nil
+                case .goalLosing: Goal.sampleLosing(startedOn: startedDay)
+                case .goalMaintaining:
+                    {
+                        let maintaining = Goal.sampleMaintaining(startedOn: startedDay)
+                        return Goal(
+                            id: maintaining.id, startedDay: startedDay,
+                            startingWeightTrendKilograms: 72.3, targetWeightKilograms: 72.3,
+                            decidedAt: maintaining.decidedAt, timeZone: maintaining.timeZone,
+                            direction: .maintain, achievement: nil, deadlineConfirmation: nil,
+                            closure: nil)
+                    }()
                 }
             }
 
