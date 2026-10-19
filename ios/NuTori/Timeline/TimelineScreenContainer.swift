@@ -41,6 +41,10 @@ struct TimelineScreenContainer: View {
             notices: cachedNotices.compactMap { $0.notice() },
             goals: cachedGoals.compactMap { $0.goal() },
             dailyGuides: cachedDailyGuides.compactMap { $0.dailyGuide() },
+            weeklyReviews: cachedWeeklyReviews.compactMap { $0.record() },
+            expenditureEstimates: cachedExpenditureEstimates.compactMap {
+                $0.expenditureEstimate()
+            },
             undeliveredRecords: undeliveredRecords,
             capture: capture,
             reminderLanding: reminderLanding,
@@ -71,6 +75,8 @@ struct TimelineScreenContainer: View {
     @Query private var cachedNotices: [CachedNotice]
     @Query private var cachedGoals: [CachedGoal]
     @Query private var cachedDailyGuides: [CachedDailyGuide]
+    @Query private var cachedWeeklyReviews: [CachedWeeklyReview]
+    @Query private var cachedExpenditureEstimates: [CachedExpenditureEstimate]
     @Query private var cachedWeightTrendDays: [CachedWeightTrendDay]
     @Query private var cachedSentTexts: [CachedSentText]
     @Query private var cachedSentTextStatuses: [CachedSentTextStatus]
