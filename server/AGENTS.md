@@ -27,12 +27,13 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 層
 
 - 置き場: HTTP の受け口は `src/http/`、Durable Object は `src/durable-object/`、ドメイン層は `src/domain/`、認証（Better Auth と、Apple の API への入出力）は `src/auth/`、観測（Sentry の設定と、PostHog の API への入出力）は `src/observability/`
-- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/dish-estimation-status/`、`src/ingredient/`、`src/notice/`、`src/usual-weighing-time/`、`src/weight-trend/`、`src/sent-text/`、`src/sent-text-status/`、`src/ai-utterance/`、`src/goal/`、`src/daily-guide/`、`src/expenditure-estimate/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/`、返事の流れと、読み分けと返事の提供元は `src/reply/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
+- 記録の種類ごとのまとまりは `src/<種類>/` に置き、中を層のサブフォルダ（`domain/`、`durable-object/`、`http/`）に分ける。置くもの: 種類の型、その種類だけにかかる受け付けの決まり、置き場の型と実装、受け口のスキーマと変換、その種類の同期のテスト。今は `src/weight-record/`、`src/account-settings/`、`src/meal/`、`src/meal-estimation-status/`、`src/dish/`、`src/dish-estimation-status/`、`src/ingredient/`、`src/notice/`、`src/usual-weighing-time/`、`src/weight-trend/`、`src/sent-text/`、`src/sent-text-status/`、`src/ai-utterance/`、`src/goal/`、`src/daily-guide/`、`src/expenditure-estimate/`。記録の種類ではない推定の出来事と推定の流れは `src/estimation/`、返事の流れと、読み分けと返事の提供元は `src/reply/`、Durable Object の入口ごとの処理（アカウントの口）は `src/account/domain/` に置く。経路、認証、観測、`AccountDurableObject`、Durable Object の移行の並び、種類をまたぐ同期の仕組み（書き込みの当て方、同期の置き場の型と実装）は、今の層の置き場に残す
 - 層は oxlint の `no-restricted-imports`（`.oxlintrc.json` の `overrides`）で守る。`src/domain/` と `src/<種類>/domain/` からは、受け口（`http`）、Durable Object（`durable-object`）、`cloudflare:*`、`hono` を import できない。import の文字列だけを見るので、別名の import を使い始めたら dependency-cruiser を考える
 - 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
 - ドメイン層は、実行基盤の型や API に触れない。ドメイン層が要る置き場と外への呼び出し（記録の置き場、写真の控え、LLM の提供元など）は、ドメイン層が型を定め、基盤に固有の層（Durable Object、D1・R2・LLM の提供元・Apple の API への入出力）がそれを実装する
-- 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。Durable Object のクラスは、ドメイン層を呼ぶ入口（受け口の Worker から、アラームから）と、ドメイン層が定めた記録の置き場の実装と、ほかの基盤に固有の実装をドメイン層に渡すことだけを持つ薄い層にする
+- 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。入口（受け口の Worker からの要求と、アラーム）ごとの処理は、アカウントの口（`src/account/domain/account-requests.ts` の `accountRequests`）に関数を1つずつ置く。関数は、ドメイン層が型を定めたストア（`AccountStores` のうち要るもの）と要求と今の時刻（要るときだけ）を受け、結果と、次に張るアラームの時刻と、送る利用状況の出来事（`AccountResponse`）を返す。送るかどうか（利用状況の設定）は口の中で決める
+- Durable Object のクラスは、`setUser` でアカウント ID を付ける、ストアを組んで口を呼ぶ、返った時刻にアラームを張る、返った出来事を送る、だけをする薄い層にする。`alarm()` も同じ形にし、ログと Sentry への報告だけを足す。入口を足すときは、口に関数を足してから、Durable Object に同じ形のメソッドを足す
 - HTTP の受け口は、記録を読み書きする要求なら、セッションを確かめ、回数の歯止めをかけてから、その人の Durable Object を呼ぶだけにする。まだセッションのないサインインと Apple のサーバー間通知は、受け口の Worker の認証で受ける。アカウントの削除は、受け口の Worker でドメイン層を呼ぶ。Durable Object の中身を消すときも、その Durable Object の入口を呼んで行う
 - 受け口は、Durable Object を呼ぶたびにアカウント ID を渡す。Durable Object の中では、その呼び出しの Sentry の報告に user の ID として付ける
 - 受け口のスキーマは要求の形だけを確かめる。受け付ける値の範囲はドメイン層で確かめる
@@ -143,7 +144,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 索引は、同期の要求ごとに走る引き方に加え、アラームや推定の開始ごと、記録を受け取るごとに走る引き方にも置く。行が食事の数ほど増え続ける表（予定・推定・試み・料理・材料など）が対象になる。引く道が無いもの（控えから削除の印を引く）や、索引が効かない引き方（待っている予定を、推定も見送りも無いことで出す）には置かない
 - Durable Object のアラームは一度に1つしか張れない。アラームで動かすもの（推定など）は、予定を DB に持ち、いちばん早い予定にアラームを合わせる
   - アラームで動かす仕事（読み分け、推定、返事、写真の控えの消し残しの消し直し）は、「進める」と「次に動く時刻」を対にした値（`src/domain/alarm-job.ts`）にして、1つの並び（`src/domain/account-alarm-jobs.ts`）に置く。アラームで動かすものを足すときは、この並びに足す。アラームは並びの順に進め、エラーは並びで先の仕事のものを報告する
-  - アラーム1回分（仕事を順に進め、次に張る時刻と報告するエラーを決める）は `src/domain/run-account-alarm.ts` が、入口（送る要求と写真の要求）で張るいちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が、どちらもこの並びから出す。Durable Object の `alarm()` は、返った時刻に張り、Sentry・PostHog・ログに出し、エラーを投げるだけにする
+  - アラーム1回分（仕事を順に進め、次に張る時刻と報告するエラーを決める）は `src/domain/run-account-alarm.ts` が、入口（送る要求と写真の要求）で張るいちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が、どちらもこの並びから出し、どちらもアカウントの口が呼ぶ。Durable Object の `alarm()` は、口から返った時刻に張り、Sentry・PostHog・ログに出し、エラーを投げるだけにする
   - 写真の控えの消し直しに失敗したアラームは、消し残しの時刻（今）を除いたいちばん早い時刻に張り直す（今に張り直さず、Cloudflare のアラームのやり直しに任せる）。仕事が `left_to_alarm_retry` を返すと、その仕事の時刻を除く
   - アラームの中のアカウント ID は `ctx.id.name`（`idFromName` で付けた名前）から得る。テストの実行環境でも、張ったアラームはひとりでに動くので、アラームの結果を確かめるテストは `runDurableObjectAlarm` で動かしたうえで `vi.waitFor` で待つ
 - 記録に対しては、全員をまたぐ SQL は書けない。全員をまたぐ分析は、記録を書くときに分析用の出来事を PostHog に送って行う
