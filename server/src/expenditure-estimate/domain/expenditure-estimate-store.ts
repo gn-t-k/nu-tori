@@ -7,6 +7,6 @@ export type ExpenditureEstimateStore = {
   findEffectiveOnOrBefore: (calendarDay: string) => ExpenditureEstimate[];
   // 今の推定（当てる始まりの日が最も遅いもの）。初めて目標を立てる前は無い
   findCurrent: () => ExpenditureEstimate | undefined;
-  // 行を書くのは、目標を決めたことを書く口（writeGoalDecision）だけにする。推定の始まりが1つであることは口が確かめる
+  // 行を書くのは、目標を決めたことを書く口（writeGoalDecision）と週の見直しを書く口（writeWeeklyReview）だけにする。推定の始まりが1つであることは口が確かめる
   insert: (estimate: ExpenditureEstimate) => void;
 };

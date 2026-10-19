@@ -58,11 +58,32 @@ export const createWeeklyReviewStore = (db: DrizzleSqliteDODatabase): WeeklyRevi
         .get();
       return latest === undefined ? undefined : find(latest.id);
     },
+    findDeviationHistory: () =>
+      db
+        .select({ deviationDirection: reviewedExpenditureEstimates.deviationDirection })
+        .from(weeklyReviews)
+        .leftJoin(
+          reviewedExpenditureEstimates,
+          eq(reviewedExpenditureEstimates.weeklyReviewId, weeklyReviews.id),
+        )
+        .orderBy(desc(weeklyReviews.effectiveOn))
+        .all()
+        .map(({ deviationDirection }) =>
+          deviationDirection === null
+            ? { type: "deferred" as const }
+            : { type: "reviewed" as const, deviationDirection },
+        ),
     insert: (review) => {
       db.insert(weeklyReviews).values(review).run();
     },
     insertDeferral: (deferral) => {
       db.insert(deferredWeeklyReviews).values(deferral).run();
+    },
+    insertReviewedExpenditureEstimate: (reviewed) => {
+      db.insert(reviewedExpenditureEstimates).values(reviewed).run();
+    },
+    insertReviewedDailyGuide: (reviewed) => {
+      db.insert(reviewedDailyGuides).values(reviewed).run();
     },
   };
 };
