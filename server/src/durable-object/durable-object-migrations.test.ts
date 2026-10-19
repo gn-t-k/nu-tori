@@ -558,6 +558,104 @@ describe("Durable Object の移行の版 9（目標・推定消費カロリー�
   });
 });
 
+// 版 9 までの形の目標・減量のサブセット・閉じた目標・推定・1日の目安。版 10 の表が指す親の行
+const seedVersion9GoalRows = (sql: Sql) => {
+  sql.exec(
+    "INSERT INTO goals (id, started_on, starting_weight_trend_kg, target_weight_kg, decided_at, time_zone) VALUES ('goal-1', '2026-09-01', 70, 65, 0, 'Asia/Tokyo'), ('goal-2', '2026-09-08', 69.5, 69.5, 1, 'Asia/Tokyo')",
+  );
+  sql.exec(
+    "INSERT INTO weight_change_goals (goal_id, deadline_on, pace_plan) VALUES ('goal-1', '2026-12-31', 'standard')",
+  );
+  sql.exec("INSERT INTO goal_closures (goal_id, next_goal_id) VALUES ('goal-1', 'goal-2')");
+  sql.exec(
+    "INSERT INTO expenditure_estimates (id, effective_on, expenditure_kcal, estimated_at) VALUES ('estimate-1', '2026-09-01', 2200, 0)",
+  );
+  sql.exec(
+    "INSERT INTO initial_expenditure_estimates (expenditure_estimate_id, source) VALUES ('estimate-1', 'formula')",
+  );
+  sql.exec(
+    "INSERT INTO daily_guides (id, goal_id, expenditure_estimate_id, effective_on, energy_kcal, protein_g, fat_g, carbohydrate_g) VALUES ('guide-1', 'goal-1', 'estimate-1', '2026-09-01', 1800, 100, 50, 230), ('guide-2', 'goal-2', 'estimate-1', '2026-09-08', 2200, 100, 60, 300)",
+  );
+};
+
+describe("Durable Object の移行の版 10（週の見直しと目標の経過の表）", () => {
+  describe("版 9 までの形の食事・料理・材料・控え・目標・推定・1日の目安があるとき", () => {
+    let account: DurableObjectStub;
+    let rowsBefore: Record<string, unknown[]>;
+    beforeEach(async () => {
+      account = env.ACCOUNT.get(env.ACCOUNT.newUniqueId());
+      rowsBefore = await runInDurableObject(account, async (_, state) => {
+        await state.storage.deleteAll();
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 6),
+        );
+        seedVersion6Rows(state.storage.sql);
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 9),
+        );
+        seedVersion9GoalRows(state.storage.sql);
+        const rows = readAllRows(state.storage.sql);
+        applyDurableObjectMigrations(state.storage, durableObjectMigrations);
+        return rows;
+      });
+    });
+
+    test("週の見直しと目標の経過の 7 つの表ができること", async () => {
+      const tables = await runInAccount(account, (sql) =>
+        sql
+          .exec<{ name: string }>(
+            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('weekly_reviews', 'deferred_weekly_reviews', 'reviewed_expenditure_estimates', 'reviewed_daily_guides', 'goal_achievements', 'goal_deadline_confirmations', 'post_deadline_maintenance_goals') ORDER BY name",
+          )
+          .toArray()
+          .map(({ name }) => name),
+      );
+      expect(tables).toEqual([
+        "deferred_weekly_reviews",
+        "goal_achievements",
+        "goal_deadline_confirmations",
+        "post_deadline_maintenance_goals",
+        "reviewed_daily_guides",
+        "reviewed_expenditure_estimates",
+        "weekly_reviews",
+      ]);
+    });
+
+    test("2 つの一意の索引が、それぞれの表にできること", async () => {
+      const indexes = await runInAccount(account, (sql) =>
+        sql
+          .exec(
+            "SELECT s.name AS name, s.tbl_name AS tbl_name, l.\"unique\" AS is_unique FROM sqlite_schema AS s JOIN pragma_index_list(s.tbl_name) AS l ON l.name = s.name WHERE s.type = 'index' AND s.name IN ('weekly_reviews_effective_on', 'reviewed_expenditure_estimates_weekly_review_id') ORDER BY s.name",
+          )
+          .toArray(),
+      );
+      expect(indexes).toEqual([
+        {
+          name: "reviewed_expenditure_estimates_weekly_review_id",
+          tbl_name: "reviewed_expenditure_estimates",
+          is_unique: 1,
+        },
+        { name: "weekly_reviews_effective_on", tbl_name: "weekly_reviews", is_unique: 1 },
+      ]);
+    });
+
+    test("既存の表の行が変わらないこと", async () => {
+      const rowsAfter = await runInAccount(account, readAllRows);
+      expect(
+        Object.fromEntries(Object.keys(rowsBefore).map((name) => [name, rowsAfter[name]])),
+      ).toEqual(rowsBefore);
+    });
+
+    test("外部キーの違反が無いこと", async () => {
+      const violations = await runInAccount(account, (sql) =>
+        sql.exec("PRAGMA foreign_key_check").toArray(),
+      );
+      expect(violations).toEqual([]);
+    });
+  });
+});
+
 // 移行の版の表と Cloudflare・SQLite の表を除く、すべての表の行を、表の名前ごとに読む
 const readAllRows = (sql: Sql): Record<string, unknown[]> =>
   Object.fromEntries(
