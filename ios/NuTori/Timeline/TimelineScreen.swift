@@ -90,6 +90,17 @@ struct TimelineScreen: View {
                     }
                 )
             }
+            .navigationDestination(for: WeeklyReviewRoute.self) { route in
+                WeeklyReviewScreen(
+                    monday: route.monday, entry: route.entry, recap: weekRecap(monday:),
+                    capture: capture
+                ) { day in
+                    navigationPath = NavigationPath()
+                    if let loaded {
+                        viewport.dayChosen(day, in: loaded.days)
+                    }
+                }
+            }
             .navigationDestination(for: MealRoute.self) { route in
                 MealDestination(card: meals.first { $0.meal.id == route.mealId }) { card in
                     MealScreen(
@@ -858,9 +869,29 @@ struct TimelineScreen: View {
         showsCameraNotice = false
     }
 
-    /// 週の振り返りの画面は #629 で作る。振り返りのカードから、その週を開く
+    /// 振り返りのカードから、その週の週の振り返りを開く
     private func openWeeklyReview(_ card: WeeklyReviewCard) {
+        openWeeklyReview(weekOf: card.days.lowerBound, from: .weeklyReviewCard)
+    }
+
+    /// 週の振り返りを、タイムラインの上に押して進む。日のまとめから開くときは、シートを閉じてから進む
+    private func openWeeklyReview(
+        weekOf day: CalendarDay, from entry: ClientUsageEvent.WeeklyReviewEntry
+    ) {
         showsCameraNotice = false
+        summaryDay = nil
+        navigationPath.append(WeeklyReviewRoute(monday: day.startOfWeek, entry: entry))
+    }
+
+    /// 週の振り返りの中身。キャッシュの記録から組むので、同期で届くと描き直る
+    private func weekRecap(monday: CalendarDay) -> WeekRecap? {
+        WeekRecap(
+            weekOf: monday, today: today,
+            records: GoalRecords(
+                goals: goals, dailyGuides: dailyGuides,
+                expenditureEstimates: expenditureEstimates, weeklyReviews: weeklyReviews,
+                weightTrend: weightTrend, weightRecords: records),
+            meals: meals)
     }
 
     /// 日のまとめの進行中の要約。今日を含む目標で出す
@@ -887,6 +918,12 @@ extension TimelineViewport.ScrollPhase {
 /// 食事の画面へ潜る行き先。画面は、そのときのカードを食事の ID で引いて描く
 nonisolated private struct MealRoute: Hashable {
     let mealId: UUID
+}
+
+/// 週の振り返りへ潜る行き先。‹ › で送った週は画面の中で持つ
+nonisolated private struct WeeklyReviewRoute: Hashable {
+    let monday: CalendarDay
+    let entry: ClientUsageEvent.WeeklyReviewEntry
 }
 
 /// 開いている食事が消えたら（ほかの端末で消して同期で届いた）、タイムラインに戻る
