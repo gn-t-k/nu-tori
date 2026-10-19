@@ -49,7 +49,7 @@ public struct UndeliveredRecords: Hashable, Sendable {
                 sentTextIds.insert(pending.write.sentTextId)
             case .accountSettings, .aiUtterance, .dailyGuide, .dishEstimationStatus,
                 .expenditureEstimate, .goal, .mealEstimationStatus, .notice,
-                .sentTextStatus, .usualWeighingTime, .weightTrend:
+                .sentTextStatus, .usualWeighingTime, .weeklyReview, .weightTrend:
                 continue
             }
         }

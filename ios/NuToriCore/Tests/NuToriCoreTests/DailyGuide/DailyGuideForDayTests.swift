@@ -60,7 +60,8 @@ struct DailyGuideForDayTests {
             let closure: Goal.Closure? =
                 container.contains(.endedOn)
                 ? Goal.Closure(
-                    endedDay: try container.decodeCalendarDay(forKey: .endedOn), nextGoalId: UUID())
+                    endedDay: try container.decodeCalendarDay(forKey: .endedOn), nextGoalId: UUID(),
+                    endReason: .switched)
                 : nil
             goal = Goal(
                 id: id,
@@ -70,6 +71,7 @@ struct DailyGuideForDayTests {
                 decidedAt: try container.decode(Date.self, forKey: .decidedAt),
                 timeZone: .gmt,
                 direction: .maintain,
+                achievement: nil, deadlineConfirmation: nil,
                 closure: closure
             )
         }

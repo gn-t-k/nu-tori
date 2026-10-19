@@ -67,6 +67,10 @@ nonisolated enum AppRecordKinds {
             SwiftDataSingleRecordCache<CachedUsualWeighingTime>(context: context)
         }
 
+        func weeklyReview(in context: ModelContext) -> WeeklyReviewSyncing.Cache {
+            SwiftDataKeyedRecordCache<CachedWeeklyReview>(context: context)
+        }
+
         func weightRecord(in context: ModelContext) -> WeightRecordSyncing.Cache {
             SwiftDataKeyedRecordCache<CachedWeightRecord>(context: context)
         }

@@ -16,7 +16,7 @@ public struct GoalSyncing: CacheApplying {
         change.kindName == name
     }
 
-    /// 届いた順に目標を書く。閉じた目標は同じ ID で届き直すので、その値にそろえる。目標は消えない
+    /// 届いた順に目標を書く。達成した・期限の日を確定した・閉じた目標は同じ ID で届き直すので、その値にそろえる。目標は消えない
     public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<Goal, UUID>) throws {
         for goal in current(from: changes) {
             try cache.upsert(goal)
@@ -37,17 +37,27 @@ public struct GoalSyncing: CacheApplying {
 }
 
 extension Goal {
-    /// 開始の日・期限・終わった日が読めない目標は nil
+    /// 開始の日・期限・達成した日・終わった日が読めない目標は nil
     init?(_ goal: SyncedGoal) {
         guard let startedDay = CalendarDay(yearMonthDay: goal.startedOn),
             let direction = Direction(goal.direction)
         else {
             return nil
         }
+        var achievement: Achievement?
+        if let synced = goal.achievement {
+            guard let achievedDay = CalendarDay(yearMonthDay: synced.achievedOn) else {
+                return nil
+            }
+            achievement = Achievement(
+                achievedDay: achievedDay, judgedAt: synced.judgedAt, timeZone: synced.timeZone)
+        }
         var closure: Closure?
         if let synced = goal.closure {
             guard let endedDay = CalendarDay(yearMonthDay: synced.endedOn) else { return nil }
-            closure = Closure(endedDay: endedDay, nextGoalId: synced.nextGoalId)
+            closure = Closure(
+                endedDay: endedDay, nextGoalId: synced.nextGoalId,
+                endReason: EndReason(synced.endReason))
         }
         self.init(
             id: goal.id,
@@ -57,6 +67,12 @@ extension Goal {
             decidedAt: goal.decidedAt,
             timeZone: goal.timeZone,
             direction: direction,
+            achievement: achievement,
+            deadlineConfirmation: goal.deadlineConfirmation.map {
+                DeadlineConfirmation(
+                    deadlineWeightTrendKilograms: $0.deadlineWeightTrendKilograms,
+                    confirmedAt: $0.confirmedAt, timeZone: $0.timeZone)
+            },
             closure: closure
         )
     }
@@ -93,6 +109,15 @@ extension Goal.PacePlan {
         case .standard: self = .standard
         case .hard: self = .hard
         case .custom: self = .custom
+        }
+    }
+}
+
+extension Goal.EndReason {
+    init(_ endReason: SyncedGoal.EndReason) {
+        switch endReason {
+        case .switched: self = .switched
+        case .movedToMaintenance: self = .movedToMaintenance
         }
     }
 }

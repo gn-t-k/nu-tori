@@ -16,6 +16,8 @@
                     WeightChange(
                         deadlineDay: CalendarDay(year: 2026, month: 12, day: 24),
                         pacePlan: .standard)),
+                achievement: nil,
+                deadlineConfirmation: nil,
                 closure: nil
             )
         }
@@ -30,6 +32,8 @@
                 decidedAt: sampleDecidedAt(on: startedDay),
                 timeZone: sampleTimeZone,
                 direction: .maintain,
+                achievement: nil,
+                deadlineConfirmation: nil,
                 closure: nil
             )
         }

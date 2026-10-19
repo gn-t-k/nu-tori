@@ -98,6 +98,7 @@ struct PaceTests {
                 decidedAt: Date(timeIntervalSince1970: 0),
                 timeZone: .gmt,
                 direction: direction,
+                achievement: nil, deadlineConfirmation: nil,
                 closure: nil
             )
         }

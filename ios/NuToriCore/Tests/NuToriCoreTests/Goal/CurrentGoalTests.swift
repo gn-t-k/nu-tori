@@ -32,7 +32,8 @@ struct CurrentGoalTests {
         init() throws {
             let closed = try Goal.losing(
                 closure: Goal.Closure(
-                    endedDay: CalendarDay(year: 2026, month: 10, day: 1), nextGoalId: UUID()))
+                    endedDay: CalendarDay(year: 2026, month: 10, day: 1), nextGoalId: UUID(),
+                    endReason: .switched))
             goal = try Goal.losing(
                 startedOn: CalendarDay(year: 2026, month: 10, day: 1))
             olderGuide = CurrentGoalTests.guide(
