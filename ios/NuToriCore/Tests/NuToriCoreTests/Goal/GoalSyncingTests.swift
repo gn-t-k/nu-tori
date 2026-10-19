@@ -54,7 +54,9 @@ struct GoalSyncingTests {
                         .goal(
                             try .losing(
                                 id: losing.id,
-                                closure: .init(endedOn: "2026-10-20", nextGoalId: maintaining.id)))
+                                closure: .init(
+                                    endedOn: "2026-10-20", nextGoalId: maintaining.id,
+                                    endReason: .switched)))
                     ], to: cache)
 
                 let closed = try Goal.losing(

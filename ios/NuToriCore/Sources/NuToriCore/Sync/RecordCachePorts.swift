@@ -32,6 +32,8 @@ public protocol RecordCachePorts<Cache>: Sendable {
 
     func usualWeighingTime(in cache: Cache) -> UsualWeighingTimeSyncing.Cache
 
+    func weeklyReview(in cache: Cache) -> WeeklyReviewSyncing.Cache
+
     func weightRecord(in cache: Cache) -> WeightRecordSyncing.Cache
 
     func weightTrend(in cache: Cache) -> WeightTrendSyncing.Cache
@@ -55,6 +57,7 @@ extension RecordKindRegistry {
             PortedRecordKind(SentTextSyncing()) { ports.sentText(in: $0) },
             PortedRecordKind(SentTextStatusSyncing()) { ports.sentTextStatus(in: $0) },
             PortedRecordKind(UsualWeighingTimeSyncing()) { ports.usualWeighingTime(in: $0) },
+            PortedRecordKind(WeeklyReviewSyncing()) { ports.weeklyReview(in: $0) },
             PortedRecordKind(WeightRecordSyncing()) { ports.weightRecord(in: $0) },
             PortedRecordKind(WeightTrendSyncing()) { ports.weightTrend(in: $0) },
         ])

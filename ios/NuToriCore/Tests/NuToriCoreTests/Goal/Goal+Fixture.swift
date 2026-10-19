@@ -59,6 +59,8 @@ extension SyncedGoal {
             decidedAt: try Date("2026-10-01T08:30:00+09:00", strategy: .iso8601),
             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
             direction: .lose(.init(deadlineOn: deadlineOn, pacePlan: .standard)),
+            achievement: nil,
+            deadlineConfirmation: nil,
             closure: closure
         )
     }
@@ -73,6 +75,8 @@ extension SyncedGoal {
             decidedAt: try Date("2026-10-20T21:00:00+09:00", strategy: .iso8601),
             timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
             direction: .maintain,
+            achievement: nil,
+            deadlineConfirmation: nil,
             closure: nil
         )
     }

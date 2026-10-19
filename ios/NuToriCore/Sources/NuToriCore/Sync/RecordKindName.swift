@@ -16,6 +16,7 @@ public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
     case sentText = "sent-text"
     case sentTextStatus = "sent-text-status"
     case usualWeighingTime = "usual-weighing-time"
+    case weeklyReview = "weekly-review"
     case weightRecord = "weight-record"
     case weightTrend = "weight-trend"
 
@@ -37,6 +38,7 @@ public enum RecordKindName: String, Sendable, CaseIterable, Comparable {
         case .sentText: "sent_text"
         case .sentTextStatus: "sent_text_status"
         case .usualWeighingTime: "usual_weighing_time"
+        case .weeklyReview: "weekly_review"
         case .weightRecord: "weight_record"
         case .weightTrend: "weight_trend"
         }

@@ -93,7 +93,12 @@ extension NuToriAPIClientTests {
                                  "startingWeightTrendKg":72.4,"targetWeightKg":68,"decidedAt":1790812800123,
                                  "timeZone":"Asia/Tokyo","direction":"lose",
                                  "weightChange":{"deadlineOn":"2026-12-24","pacePlan":"custom"},
-                                 "closure":{"endedOn":"2026-10-20","nextGoalId":"\(GoalSync.nextGoalId)"}}},
+                                 "achievement":{"achievedOn":"2026-12-10","judgedAt":1796860800123,
+                                   "timeZone":"Asia/Tokyo"},
+                                 "deadlineConfirmation":{"deadlineWeightTrendKg":68.4,
+                                   "confirmedAt":1797033600000,"timeZone":"America/Los_Angeles"},
+                                 "closure":{"endedOn":"2026-12-28","nextGoalId":"\(GoalSync.nextGoalId)",
+                                   "endReason":"moved_to_maintenance"}}},
                               {"sequence":4,"kind":"goal","recordId":"\(GoalSync.nextGoalId)",
                                "record":{"id":"\(GoalSync.nextGoalId)","startedOn":"2026-10-20",
                                  "startingWeightTrendKg":70.1,"targetWeightKg":70.1,"decidedAt":1792454400000,
@@ -115,13 +120,22 @@ extension NuToriAPIClientTests {
                                  "timeZone":"Asia/Tokyo","direction":"gain"}},
                               {"sequence":9,"kind":"notice","recordId":"\(GoalSync.noticeId)",
                                "record":{"id":"\(GoalSync.noticeId)","noticeType":"missed_weight_record",
-                                 "issuedAt":1767225600123,"timeZone":"Asia/Tokyo"}}
-                            ],"hasMore":false,"nextAfterSequence":9,"startedOn":"2026-09-29"}
+                                 "issuedAt":1767225600123,"timeZone":"Asia/Tokyo"}},
+                              {"sequence":10,"kind":"goal","recordId":"\(GoalSync.goalId)",
+                               "record":{"id":"\(GoalSync.goalId)","startedOn":"2026-10-01",
+                                 "startingWeightTrendKg":72.4,"targetWeightKg":68,"decidedAt":1790812800123,
+                                 "timeZone":"Asia/Tokyo","direction":"lose",
+                                 "weightChange":{"deadlineOn":"2026-12-24","pacePlan":"custom"},
+                                 "closure":{"endedOn":"2026-10-20","nextGoalId":"\(GoalSync.nextGoalId)",
+                                   "endReason":"reason_added_later"}}}
+                            ],"hasMore":false,"nextAfterSequence":10,"startedOn":"2026-09-29"}
                             """
                     ))
             }
 
-            @Test("3つの種類と対象の日付の無い目標を立てる知らせを解き、知らない速さの案・期限の無い増量・対象の日付の無い記録忘れの知らせは読み飛ばせる形で返すこと")
+            @Test(
+                "3つの種類（目標の達成・期限の日の確定・終わり方を含む）と対象の日付の無い目標を立てる知らせを解き、知らない速さの案・期限の無い増量・対象の日付の無い記録忘れの知らせ・知らない終わり方は読み飛ばせる形で返すこと"
+            )
             func returnsChanges() async throws {
                 let result = try await client.pullSyncChanges(
                     afterSequence: 0, clientState: .fixture())
@@ -162,8 +176,19 @@ extension NuToriAPIClientTests {
                                             timeZone: tokyo,
                                             direction: .lose(
                                                 .init(deadlineOn: "2026-12-24", pacePlan: .custom)),
+                                            achievement: .init(
+                                                achievedOn: "2026-12-10",
+                                                judgedAt: Date(
+                                                    timeIntervalSince1970: 1_796_860_800.123),
+                                                timeZone: tokyo),
+                                            deadlineConfirmation: .init(
+                                                deadlineWeightTrendKilograms: 68.4,
+                                                confirmedAt: Date(
+                                                    timeIntervalSince1970: 1_797_033_600),
+                                                timeZone: losAngeles),
                                             closure: .init(
-                                                endedOn: "2026-10-20", nextGoalId: nextGoalId))),
+                                                endedOn: "2026-12-28", nextGoalId: nextGoalId,
+                                                endReason: .movedToMaintenance))),
                                     .goal(
                                         SyncedGoal(
                                             id: nextGoalId, startedOn: "2026-10-20",
@@ -171,6 +196,7 @@ extension NuToriAPIClientTests {
                                             targetWeightKilograms: 70.1,
                                             decidedAt: Date(timeIntervalSince1970: 1_792_454_400),
                                             timeZone: losAngeles, direction: .maintain,
+                                            achievement: nil, deadlineConfirmation: nil,
                                             closure: nil)),
                                     .expenditureEstimate(
                                         SyncedExpenditureEstimate(
@@ -187,9 +213,10 @@ extension NuToriAPIClientTests {
                                     .unknown(kind: "goal"),
                                     .unknown(kind: "goal"),
                                     .unknown(kind: "notice"),
+                                    .unknown(kind: "goal"),
                                 ],
                                 hasMore: false,
-                                nextAfterSequence: 9,
+                                nextAfterSequence: 10,
                                 startedOn: "2026-09-29"
                             )))
             }

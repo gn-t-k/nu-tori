@@ -41,6 +41,8 @@ public enum SyncChange: Sendable, Equatable {
     case weightTrend(SyncedWeightTrend)
     /// 体重記録が1つも無くなった。傾向のキャッシュを空にする
     case weightTrendAbsence
+    /// 週の見直しは消えないので、削除の印を持たない。指す推定消費カロリー・1日の目安・目標より先に届くことがある
+    case weeklyReview(SyncedWeeklyReview)
     /// 知らない種類と読めない中身。サーバーが種類を足しても、古い版のアプリの同期が止まらないように、落とさずに持つ
     case unknown(kind: String)
 }
