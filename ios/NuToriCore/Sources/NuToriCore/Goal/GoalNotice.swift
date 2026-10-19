@@ -132,9 +132,7 @@ public struct GoalNotice: Hashable, Sendable {
             case (nil, let confirmation?): kinds.append(.deadlineReached(confirmation))
             case (nil, nil): break
             }
-            if let previous = goals.first(where: {
-                $0.closure?.nextGoalId == goal.id && $0.closure?.endReason == .movedToMaintenance
-            }) {
+            if let previous = goal.goalMovedToMaintenance(from: goals) {
                 kinds.append(.movedToMaintenance(previous: previous))
             }
             return kinds.map { GoalNotice(goal: goal, kind: $0, unavailability: unavailability) }

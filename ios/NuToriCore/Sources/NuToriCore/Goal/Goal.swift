@@ -127,3 +127,13 @@ public struct Goal: Hashable, Sendable {
         case movedToMaintenance
     }
 }
+
+extension Goal {
+    /// この目標が期限後の維持の目標なら、期限のあと次の目標が選ばれないまま閉じた前の目標。ほかは nil
+    /// - Parameter goals: 閉じた目標も含む
+    func goalMovedToMaintenance(from goals: [Goal]) -> Goal? {
+        goals.first {
+            $0.closure?.nextGoalId == id && $0.closure?.endReason == .movedToMaintenance
+        }
+    }
+}

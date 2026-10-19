@@ -214,10 +214,10 @@ extension TimelineTests {
                 #expect(notice.changeKilocalories == -60)
             }
 
-            @Test("理由は、まとめた最初の週の前と比べて大きく変わったほうにすること")
-            func reasonComparesWithBeforeFirstWeek() throws {
+            @Test("理由の種類は、いちばん新しい週にサーバーが決めた主な理由にすること")
+            func reasonUsesLatestMainReason() throws {
                 let notice = try #require(WeeklyReviewScene.changeNotice(in: timeline))
-                #expect(notice.reasonText == "推定消費カロリーが 2,190 から 2,100 kcal に下がったためです。")
+                #expect(notice.reasonText == "予定より進んでいるので、1日に減らす分を減らしたためです。")
             }
 
             @Test("変更の知らせに、まとめた週の始まりと数を出すこと")
@@ -365,6 +365,31 @@ extension TimelineTests {
                         scene: try WeeklyReviewScene(), kilocalories: 2190,
                         guideKilocalories: 1850, mainReason: .balanceChange))
                 #expect(notice.reasonText == "期限までの日が減り、1日に減らす分を増やしたためです。")
+            }
+
+            @Test("1日に減らす分を減らしたときは、予定より進んでいることを言うこと")
+            func balanceDecreased() throws {
+                let notice = try #require(
+                    try Self.notice(
+                        scene: try WeeklyReviewScene(), kilocalories: 2140,
+                        guideKilocalories: 1900, mainReason: .balanceChange))
+                #expect(notice.reasonText == "予定より進んでいるので、1日に減らす分を減らしたためです。")
+            }
+
+            @Test("維持で1日に戻す分を増やしたときは、体重の傾向に合わせたことを言うこと")
+            func maintenanceBalanceIncreased() throws {
+                let losing = try Goal.losing()
+                let maintaining = Goal(
+                    id: losing.id, startedDay: losing.startedDay,
+                    startingWeightTrendKilograms: losing.startingWeightTrendKilograms,
+                    targetWeightKilograms: losing.startingWeightTrendKilograms,
+                    decidedAt: losing.decidedAt, timeZone: losing.timeZone, direction: .maintain,
+                    achievement: nil, deadlineConfirmation: nil, closure: nil)
+                let notice = try #require(
+                    try Self.notice(
+                        scene: try WeeklyReviewScene(goal: maintaining), kilocalories: 2190,
+                        guideKilocalories: 1850, mainReason: .balanceChange))
+                #expect(notice.reasonText == "体重の傾向に合わせて、1日に戻す分を増やしたためです。")
             }
 
             @Test("達成したあとは、1日に減らす分をなくしていくことを言うこと")
