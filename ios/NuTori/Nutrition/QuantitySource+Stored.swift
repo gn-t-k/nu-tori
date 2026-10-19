@@ -6,6 +6,7 @@ extension QuantitySource {
         switch stored {
         case "estimated": self = .estimated
         case "corrected": self = .corrected
+        // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
         default: return nil
         }
     }

@@ -90,6 +90,7 @@ nonisolated final class CachedIngredient {
         case "nutrition_label": labelBasisGrams.map { .nutritionLabel(basisGrams: $0) }
         case "food_composition": foodNumber.map { .foodComposition(foodNumber: $0) }
         case "estimated": .estimated
+        // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
         default: nil
         }
     }

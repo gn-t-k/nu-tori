@@ -139,6 +139,7 @@ public struct GoalProposals: Sendable, Equatable {
         init(serverName: String) {
             switch serverName {
             case "daily_guide_below_minimum": self = .dailyGuideBelowMinimum
+            // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
             default: self = .unknown(serverName)
             }
         }

@@ -25,6 +25,7 @@ public enum TargetWeightLimitReason: Sendable, Equatable {
         case "pace_too_fast": self = .paceTooFast
         case "daily_guide_below_minimum": self = .dailyGuideBelowMinimum
         case "not_on_direction_side": self = .notOnDirectionSide
+        // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
         default: self = .unknown(serverName)
         }
     }

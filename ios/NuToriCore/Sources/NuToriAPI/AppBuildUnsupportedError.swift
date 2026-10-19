@@ -11,6 +11,7 @@ extension Error {
             return true
         case let error as ClientError:
             return error.underlyingError.isAppBuildUnsupported
+        // swiftlint:disable:next no_default_in_switch - エラーは型が開いていて、見分けないものが来る
         default:
             return false
         }

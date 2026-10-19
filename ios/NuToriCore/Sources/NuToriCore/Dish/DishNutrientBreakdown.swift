@@ -49,6 +49,7 @@ public struct DishNutrientBreakdown: Hashable, Sendable {
                 return String(format: "%.0f", locale: posix, value)
             case "g":
                 return String(format: "%.1f", locale: posix, value)
+            // swiftlint:disable:next no_default_in_switch - 単位は文字列で、kcal と g のほかは mg と µg の桁で書く
             default:
                 if value == 0 { return "0" }
                 if value >= 10 { return String(format: "%.0f", locale: posix, value) }

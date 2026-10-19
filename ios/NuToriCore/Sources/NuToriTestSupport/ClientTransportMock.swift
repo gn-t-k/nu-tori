@@ -141,6 +141,7 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
                 return (HTTPResponse(status: startStatus), nil)
             case "/v1/account":
                 return (HTTPResponse(status: deleteStatus), nil)
+            // swiftlint:disable:next no_default_in_switch - パスは文字列で、差し替えが持たない経路が来る
             default:
                 return (HTTPResponse(status: .notFound), nil)
             }

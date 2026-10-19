@@ -12,6 +12,7 @@ public struct FailureCause: Sendable, Equatable {
         let cause: any Error =
             switch error {
             case let error as ClientError: error.underlyingError
+            // swiftlint:disable:next no_default_in_switch - エラーは型が開いていて、見分けないものが来る
             default: error
             }
         let bridged = cause as NSError

@@ -38,6 +38,7 @@ nonisolated final class CachedExpenditureEstimate {
         case nil: source = nil
         case "back_calculated": source = .backCalculated
         case "formula": source = .formula
+        // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
         default: return nil
         }
         return ExpenditureEstimate(

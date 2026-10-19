@@ -14,6 +14,7 @@ main() {
     while [ $# -gt 0 ]; do
         case "$1" in
             --fix) fix=true ;;
+            --lint) lint_only=true ;;
             --only)
                 [ $# -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || usage_error
                 only_testing+=("-only-testing:NuToriUITests/$2")
@@ -32,6 +33,10 @@ main() {
     if [ -n "${only_testing[*]-}$repeat" ] && [[ "$targets " != *" ios-ui-test "* ]]; then
         usage_error
     fi
+    # ios-app と ios-ui-test は整形と Lint を回さないので、--lint と組み合わせない
+    if $lint_only && [[ "$targets " == *" ios-app "* || "$targets " == *" ios-ui-test "* ]]; then
+        usage_error
+    fi
 
     trap on_exit EXIT
     if [ -z "$targets" ]; then
@@ -47,10 +52,10 @@ check_target() {
     # 対象の前提（swift や xcodebuild があるか）で落ちたとき、前の対象の手順の名前を出さない
     current_step=""
     case "$1" in
-        ios) check_ios ;;
+        ios) if $lint_only; then lint_ios; else check_ios; fi ;;
         ios-app) check_ios_app ;;
         ios-ui-test) check_ios_ui_test ;;
-        server) check_server ;;
+        server) if $lint_only; then lint_server; else check_server; fi ;;
     esac
 }
 
@@ -126,23 +131,7 @@ report_target() {
 }
 
 check_ios() {
-    if ! command -v swift > /dev/null; then
-        echo "swift が無い。Linux では scripts/install-swift で入れる（SessionStart hook が入れている途中なら、install-swift はそれが終わるのを待つ）" >&2
-        return 1
-    fi
-
-    step "整形（swift-format）"
-    if $fix; then
-        swift format format --in-place --recursive --parallel "$ios"
-    fi
-    swift format lint --strict --recursive --parallel "$ios"
-
-    step "Lint（SwiftLint ${swiftlint_version}）"
-    install_swiftlint
-    if $fix; then
-        (cd "$ios" && "$swiftlint" lint --fix --quiet)
-    fi
-    (cd "$ios" && "$swiftlint" lint --strict --quiet)
+    lint_ios
 
     step "UI テストが確かめた画面のスクリーンショットを残しているか"
     local missing
@@ -216,6 +205,27 @@ check_ios() {
     fi
 }
 
+# 全部は数分かかるので、機械で見分けられる決まりの破れを、書いた直後に早く見られるよう分けておく（--lint）
+lint_ios() {
+    if ! command -v swift > /dev/null; then
+        echo "swift が無い。Linux では scripts/install-swift で入れる（SessionStart hook が入れている途中なら、install-swift はそれが終わるのを待つ）" >&2
+        return 1
+    fi
+
+    step "整形（swift-format）"
+    if $fix; then
+        swift format format --in-place --recursive --parallel "$ios"
+    fi
+    swift format lint --strict --recursive --parallel "$ios"
+
+    step "Lint（SwiftLint ${swiftlint_version}）"
+    install_swiftlint
+    if $fix; then
+        (cd "$ios" && "$swiftlint" lint --fix --quiet)
+    fi
+    (cd "$ios" && "$swiftlint" lint --strict --quiet)
+}
+
 check_ios_app() {
     if ! command -v xcodebuild > /dev/null; then
         echo "ios-app は macOS でだけ動く" >&2
@@ -274,23 +284,7 @@ check_ios_package() {
 }
 
 check_server() {
-    step "サーバーの依存（pnpm）"
-    (cd "$server" && pnpm install --frozen-lockfile)
-
-    step "整形（oxfmt）"
-    if $fix; then
-        (cd "$server" && pnpm exec oxfmt)
-    fi
-    (cd "$server" && pnpm exec oxfmt --check)
-
-    step "Worker の型の宣言（wrangler types）"
-    (cd "$server" && pnpm exec wrangler types > /dev/null)
-
-    step "Lint（oxlint）"
-    if $fix; then
-        (cd "$server" && pnpm exec oxlint --fix)
-    fi
-    (cd "$server" && pnpm exec oxlint)
+    lint_server
 
     step "型検査（tsc）"
     (cd "$server" && pnpm exec tsc)
@@ -323,9 +317,31 @@ MESSAGE
     (cd "$server" && pnpm exec vitest run)
 }
 
+# 整形と Lint だけ。oxlint は型を見るので、Worker の型の宣言も書き出す（--lint）
+lint_server() {
+    step "サーバーの依存（pnpm）"
+    (cd "$server" && pnpm install --frozen-lockfile)
+
+    step "整形（oxfmt）"
+    if $fix; then
+        (cd "$server" && pnpm exec oxfmt)
+    fi
+    (cd "$server" && pnpm exec oxfmt --check)
+
+    step "Worker の型の宣言（wrangler types）"
+    (cd "$server" && pnpm exec wrangler types > /dev/null)
+
+    step "Lint（oxlint）"
+    if $fix; then
+        (cd "$server" && pnpm exec oxlint --fix)
+    fi
+    (cd "$server" && pnpm exec oxlint)
+}
+
 print_usage() {
     cat << 'USAGE'
 使い方: scripts/check [ios | ios-app | ios-ui-test | server] [--fix]
+       scripts/check [ios | server] --lint [--fix]
        scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
        scripts/check --pick-targets < <変わったファイルの一覧>
   引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と ios。
@@ -335,6 +351,7 @@ print_usage() {
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
   server       整形、Lint、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   --fix        直せるものを直してから確かめる
+  --lint       ios と server の整形と Lint だけを回す。対象を省くと、引数なしと同じ選び方をする
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
   --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
   --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false> と server=<true|false> の2行で出す（CI 向け）
@@ -525,5 +542,6 @@ current_step=""
 only_testing=()
 repeat=""
 fix=false
+lint_only=false
 
 main "$@"

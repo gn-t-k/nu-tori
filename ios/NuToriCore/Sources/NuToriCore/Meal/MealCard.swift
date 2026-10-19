@@ -125,6 +125,7 @@ public struct MealCard: Hashable, Sendable {
         switch meal.photoIds.count {
         case 0: .none
         case 1: .single(meal.photoIds[0])
+        // swiftlint:disable:next no_default_in_switch - 写真の数は数で、2枚より多い数をまとめる
         default: .pair(meal.photoIds[0], meal.photoIds[1], remaining: meal.photoIds.count - 2)
         }
     }

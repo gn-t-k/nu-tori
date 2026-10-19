@@ -290,9 +290,14 @@ describe("推定の書き込みの口", () => {
   });
 
   describe("文章の食事の推定", () => {
-    const sentText = generateRecordId();
-    const createdEatenAt = new Date("2026-01-01T00:00:00Z");
-    const estimatedEatenAt = new Date("2025-12-31T10:00:00Z");
+    let sentText: RecordId;
+    let createdEatenAt: Date;
+    let estimatedEatenAt: Date;
+    beforeEach(() => {
+      sentText = generateRecordId();
+      createdEatenAt = new Date("2026-01-01T00:00:00Z");
+      estimatedEatenAt = new Date("2025-12-31T10:00:00Z");
+    });
 
     // 同じ送った文章の文章の食事が2つあり、1つ目（meal1）だけが予定のつなぎを持って推定中
     const seedWrittenMeals: Seed = async (factory) => {

@@ -71,6 +71,7 @@
             case Operations.PreviewGoalSetup.id, Operations.ProposeGoals.id,
                 Operations.AssessCustomTargetWeight.id, Operations.DecideGoal.id:
                 return try await respondToGoalSetup(operationID: operationID, body: body)
+            // swiftlint:disable:next no_default_in_switch - 操作の ID は文字列で、偽のサーバーが持たない操作が来る
             default:
                 return (HTTPResponse(status: .notFound), nil)
             }

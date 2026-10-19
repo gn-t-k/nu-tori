@@ -81,6 +81,7 @@ extension SyncChange {
                     foodNumber.map { .foodComposition(foodNumber: $0) }
                 case "estimated":
                     .estimated
+                // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
                 default:
                     nil
                 }

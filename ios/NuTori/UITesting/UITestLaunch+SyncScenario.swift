@@ -329,6 +329,7 @@
                 .meal(replyAsConversation: "親子丼の話ですね。卵と鶏肉でたんぱく質がとれます。")
             case "次の食事は？":
                 .failsThenReply("野菜の多い定食はどうでしょう。")
+            // swiftlint:disable:next no_default_in_switch - UI テストの場面は、決めた文章のほかに答えない
             default:
                 nil
             }
@@ -370,6 +371,7 @@
                                 "carbohydrate_g": 21.9,
                             ])
                     ])
+            // swiftlint:disable:next no_default_in_switch - UI テストの場面は、決めた料理のほかを推定し直さない
             default:
                 nil
             }

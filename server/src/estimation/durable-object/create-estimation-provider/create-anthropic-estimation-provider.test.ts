@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { EstimationProvider, IngredientMatchRequest } from "../../domain/estimation-provider";
+import type {
+  EstimationProvider,
+  IngredientMatchRequest,
+  WrittenMealsRequest,
+} from "../../domain/estimation-provider";
 import { createAnthropicEstimationProvider } from "./create-anthropic-estimation-provider";
 import { replyWithError } from "./testing/reply-with-error";
 import { replyWithText } from "./testing/reply-with-text";
@@ -429,10 +433,13 @@ describe("createAnthropicEstimationProvider", () => {
   });
 
   describe("① 送った文章から食事を読み取る", () => {
-    const request = {
-      body: "昨日の夜はパン、今朝はうどん",
-      sentAt: { localDateTime: "2026-10-10T08:30", dayOfWeek: "saturday" as const },
-    };
+    let request: WrittenMealsRequest;
+    beforeEach(() => {
+      request = {
+        body: "昨日の夜はパン、今朝はうどん",
+        sentAt: { localDateTime: "2026-10-10T08:30", dayOfWeek: "saturday" },
+      };
+    });
 
     describe("時刻の違う食事を答えたとき", () => {
       let provider: EstimationProvider;

@@ -2,9 +2,14 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { judgeReplyShape, type ReplyShapeConfig } from "./index";
 
 describe("返事の長さと指し示す食事を確かめる", () => {
-  const salad = "7d1c2a4e-3b5f-4c8a-9e6d-000000000112";
-  const ramen = "7d1c2a4e-3b5f-4c8a-9e6d-000000000103";
-  const unknown = "7d1c2a4e-3b5f-4c8a-9e6d-000000000999";
+  let salad: string;
+  let ramen: string;
+  let unknown: string;
+  beforeEach(() => {
+    salad = "7d1c2a4e-3b5f-4c8a-9e6d-000000000112";
+    ramen = "7d1c2a4e-3b5f-4c8a-9e6d-000000000103";
+    unknown = "7d1c2a4e-3b5f-4c8a-9e6d-000000000999";
+  });
 
   describe("長さ", () => {
     let config: ReplyShapeConfig;

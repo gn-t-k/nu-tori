@@ -79,6 +79,7 @@ nonisolated final class CachedGoal {
         case "lose": weightChange().map { .lose($0) }
         case "gain": weightChange().map { .gain($0) }
         case "maintain": .maintain
+        // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
         default: nil
         }
     }
@@ -93,6 +94,7 @@ nonisolated final class CachedGoal {
             case "standard": .standard
             case "hard": .hard
             case "custom": .custom
+            // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
             default: nil
             }
         return plan.map { Goal.WeightChange(deadlineDay: deadlineDay, pacePlan: $0) }
