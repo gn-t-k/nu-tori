@@ -129,8 +129,8 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - 週の見直しは、端末の要求の中で行い、アラームは使わない。入口は `src/weekly-review/domain/review-unreviewed-weeks.ts` の `reviewUnreviewedWeeks` で、アカウントの口が、送り切った印（`isFinalBatch`）のある送る要求では記録を当てたあとに、取りに行く要求では取りに行く前に、目標の4つの要求では答える前に呼ぶ。ほかの要求（送り切っていない送る要求、写真、見守る、セッション）では呼ばない
 - まだ見直していない週（`find-unreviewed-week-mondays/`）を古い順に1週ずつ見て、1週を記録の変化を書く入口の1つの `run` にする。週の区切りと今日は要求のタイムゾーンで決め、読めないタイムゾーンの要求では見ない。見送るかと見直しに使う値は `judge-review-week/` が出す
-- 週の見直しの行は、週の見直しを書く口（`src/weekly-review/domain/write-weekly-review.ts`。テストは `src/weekly-review/durable-object/write-weekly-review.test.ts`）を通してだけ書く。口は、表で守らない決まり（当てる日は最も遅い推定より後の月曜、見送りは今の目標を指す、区分の値）を書く前に確かめて投げる
-- 今は見送る週だけを書き、見直せる週は書かない（次のチケット #618 で書く）
+- 見直せた週は、新しい推定消費カロリーを `compute-reviewed-expenditure/` が、1日の目安を `src/daily-guide/domain/compute-reviewed-daily-guide/` が出す。必要な速さ（維持の幅を含む）は、目標を立てたときと同じ `src/daily-guide/domain/required-pace.ts` で出す。続いた週の数は残さず、見直すたびにずれの向きの並び（`findDeviationHistory`）から数える
+- 週の見直しの行は、週の見直しを書く口（`src/weekly-review/domain/write-weekly-review.ts`。テストは `src/weekly-review/durable-object/write-weekly-review.test.ts`）を通してだけ書く。見直せた週は、推定・見直した推定・1日の目安・見直した1日の目安を外部キーが指す行を先にして書き、変更は推定消費カロリー → 1日の目安 → 週の見直しの順に足す。口は、表で守らない決まり（当てる日は最も遅い推定より後の月曜、見送りと1日の目安は今の目標を指す、区分の値）を書く前に確かめて投げる
 
 ## DB
 

@@ -31,12 +31,13 @@ describe("見直す週の判定", () => {
       judged = judgeReviewWeek(reviewableInputs());
     });
 
-    test("見送らず、食べた量の平均・食事を記録した日数・実際の変化を返すこと", () => {
+    test("見送らず、食べた量の平均・食事を記録した日数・実際の変化・日曜の体重の傾向を返すこと", () => {
       expect(judged).toEqual({
         type: "reviewable",
         averageEnergyIntakeKcal: 2000,
         recordedMealDayCount: 7,
         actualWeightChangeKg: 0,
+        sundayWeightTrendKg: 70,
       });
     });
   });

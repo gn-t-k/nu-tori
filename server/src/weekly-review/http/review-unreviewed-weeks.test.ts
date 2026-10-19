@@ -24,7 +24,8 @@ import { createWeightRecordWrite } from "../../weight-record/http/testing/create
 
 const millisecondsPerDay = 86_400_000;
 
-// 起こす要求と起こさない要求、要求の中の順を受け口から確かめる。見直せる週は次のチケットで書くので、どの場面も見送る週にする
+// 起こす要求と起こさない要求、要求の中の順を受け口から確かめる。書いた行を見分けやすいよう、どの場面も見送る週にする。
+// 見直せる週を書くことは write-reviewed-weeks.test.ts で確かめる
 describe("まだ見直していない週を見る要求", () => {
   let accountId: string;
   let sessionToken: string;
