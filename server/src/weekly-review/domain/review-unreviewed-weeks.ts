@@ -10,6 +10,9 @@ import { readRecordedEnergyIntakes } from "../../expenditure-estimate/domain/rea
 import { countDaysInclusive } from "../../goal/domain/accepted-deadline/count-days-inclusive";
 import { computeGoalDirection } from "../../goal/domain/compute-goal-direction";
 import type { Goal } from "../../goal/domain/goal";
+import { planPostDeadlineMaintenance } from "../../goal/domain/plan-post-deadline-maintenance";
+import { generateRecordId, type RecordId } from "../../domain/record-id";
+import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
 import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
 import { computeReviewedExpenditure } from "./compute-reviewed-expenditure";
 import { findUnreviewedWeekMondays } from "./find-unreviewed-week-mondays";
@@ -68,6 +71,7 @@ export const reviewUnreviewedWeeks = (
     new Date(Date.parse(`${addDays(firstMonday, -28)}T00:00:00Z`) - millisecondsPerDay),
   );
   const startedUsingOn = stores.firstSignIn.findStartedOn();
+  const weightTrend = computeWeightTrend(dailyWeights);
 
   for (const reviewedMonday of mondays) {
     const judgement = judgeReviewWeek({
@@ -81,30 +85,62 @@ export const reviewUnreviewedWeeks = (
     if (currentGoal === undefined) {
       throw new Error("目標があるのに、今の目標が無い");
     }
+    // 期限のあと次の目標が選ばれないまま、期限の日より後の月曜が来たら、見送る週もその見直しで期限後の維持に移る
+    const maintenance = planPostDeadlineMaintenance({
+      goal: currentGoal,
+      reviewedMonday,
+      weightTrend,
+    });
+    const postDeadlineMaintenance =
+      maintenance === undefined ? undefined : { ...maintenance, goalId: generateRecordId() };
+    const reviewedGoalId = postDeadlineMaintenance?.goalId ?? currentGoal.id;
     // 前の週に書いた推定と1日の目安を読むので、計算も1週ずつ run の中で行う
     writeRecordChanges(({ addChange }) =>
       writeWeeklyReview(stores, addChange, {
         effectiveOn: reviewedMonday,
         reviewedAt: now,
         timeZone,
+        postDeadlineMaintenance,
         outcome:
           judgement.type === "deferred"
-            ? { type: "deferred", reason: judgement.reason, goalId: currentGoal.id }
-            : computeReviewedOutcome(stores, { currentGoal, reviewedMonday, judgement }),
+            ? { type: "deferred", reason: judgement.reason, goalId: reviewedGoalId }
+            : computeReviewedOutcome(stores, {
+                currentGoal,
+                reviewedGoalId,
+                // 期限後の維持に移る週は、維持の式で出す
+                requiredPaceGoal:
+                  postDeadlineMaintenance === undefined
+                    ? toRequiredPaceGoal(currentGoal, {
+                        reviewedMonday,
+                        weightTrendKg: judgement.sundayWeightTrendKg,
+                      })
+                    : {
+                        direction: "maintain",
+                        targetWeightKg: postDeadlineMaintenance.targetWeightKg,
+                        weightTrendKg: judgement.sundayWeightTrendKg,
+                      },
+                reviewedMonday,
+                judgement,
+              }),
       }),
     );
   }
 };
 
-// 見直せた週の、新しい推定と、それを使った今の目標の1日の目安
+// 見直せた週の、新しい推定と、それを使った1日の目安。1日の目安は、今の目標か、期限後の維持に移る週は維持の目標に書き、
+// 前の週からの変化は今の目標の前の週の1日の目安から抑える
 const computeReviewedOutcome = (
   stores: WeeklyReviewStores,
   {
     currentGoal,
+    reviewedGoalId,
+    requiredPaceGoal,
     reviewedMonday,
     judgement,
   }: {
     currentGoal: Goal;
+    reviewedGoalId: RecordId;
+    requiredPaceGoal: RequiredPaceGoal;
     reviewedMonday: string;
     judgement: Extract<ReviewWeekJudgement, { type: "reviewable" }>;
   },
@@ -140,10 +176,7 @@ const computeReviewedOutcome = (
       energyKcal: previousDailyGuide.energyKcal,
       expenditureKcal: previousDailyGuideEstimate.expenditureKcal,
     },
-    goal: toRequiredPaceGoal(currentGoal, {
-      reviewedMonday,
-      weightTrendKg: judgement.sundayWeightTrendKg,
-    }),
+    goal: requiredPaceGoal,
   });
   return {
     type: "reviewed",
@@ -151,7 +184,7 @@ const computeReviewedOutcome = (
       expenditureKcal: expenditure.expenditureKcal,
       deviationDirection: expenditure.deviationDirection,
     },
-    dailyGuide: { ...dailyGuide, goalId: currentGoal.id },
+    dailyGuide: { ...dailyGuide, goalId: reviewedGoalId },
   };
 };
 

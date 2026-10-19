@@ -16,6 +16,8 @@ export type GoalStore = {
   insert: (goal: DecidedGoal) => void;
   insertClosure: (closure: { goalId: RecordId; nextGoalId: RecordId }) => void;
   insertDecisionReceipt: (receipt: { requestId: string; goalId: RecordId }) => void;
+  // 期限後の維持の目標のサブセット。目標の行のあとに書く
+  insertPostDeadlineMaintenance: (goalId: RecordId) => void;
   insertAchievement: (achievement: GoalAchievement & { goalId: RecordId }) => void;
   insertDeadlineConfirmation: (
     confirmation: GoalDeadlineConfirmation & { goalId: RecordId },

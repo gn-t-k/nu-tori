@@ -95,6 +95,7 @@ const deferral =
     effectiveOn: overrides.effectiveOn ?? "2026-10-12",
     reviewedAt: new Date("2026-10-19T00:30:00Z"),
     timeZone: "Asia/Tokyo",
+    postDeadlineMaintenance: undefined,
     outcome: {
       type: "deferred",
       reason: overrides.reason ?? "no_weight",
@@ -108,6 +109,7 @@ const review =
     effectiveOn: overrides.effectiveOn ?? "2026-10-12",
     reviewedAt: new Date("2026-10-19T00:30:00Z"),
     timeZone: "Asia/Tokyo",
+    postDeadlineMaintenance: undefined,
     outcome: {
       type: "reviewed",
       expenditure: { expenditureKcal: 2600, deviationDirection: "positive" },
@@ -258,6 +260,53 @@ describe("週の見直しを書く口", () => {
     test("投げて、何も書かないこと", () => {
       expect({ errors: written.errors, rows: written.rows }).toEqual({
         errors: ["見直しの目標が、今の目標ではない"],
+        rows: emptyRows,
+      });
+    });
+  });
+
+  describe("期限の無い維持の目標から、期限後の維持に移そうとしたとき", () => {
+    let written: Written;
+    beforeEach(async () => {
+      const maintenanceGoalId = generateRecordId();
+      written = await writeInAccount([
+        (goalId) => ({
+          ...deferral({ goalId: maintenanceGoalId })(goalId),
+          postDeadlineMaintenance: {
+            goalId: maintenanceGoalId,
+            targetWeightKg: 70,
+            startingWeightTrendKg: 70,
+          },
+        }),
+      ]);
+    });
+
+    test("投げて、何も書かないこと", () => {
+      expect({ errors: written.errors, rows: written.rows }).toEqual({
+        errors: ["期限後の維持に移るのが、今の減量・増量の目標の期限の日より後の月曜ではない"],
+        rows: emptyRows,
+      });
+    });
+  });
+
+  describe("期限後の維持に移る週の見送りが、作る維持の目標でない目標を指すとき", () => {
+    let written: Written;
+    beforeEach(async () => {
+      written = await writeInAccount([
+        (goalId) => ({
+          ...deferral()(goalId),
+          postDeadlineMaintenance: {
+            goalId: generateRecordId(),
+            targetWeightKg: 70,
+            startingWeightTrendKg: 70,
+          },
+        }),
+      ]);
+    });
+
+    test("投げて、何も書かないこと", () => {
+      expect({ errors: written.errors, rows: written.rows }).toEqual({
+        errors: ["期限後の維持に移る週の見直しの目標が、作る維持の目標ではない"],
         rows: emptyRows,
       });
     });
