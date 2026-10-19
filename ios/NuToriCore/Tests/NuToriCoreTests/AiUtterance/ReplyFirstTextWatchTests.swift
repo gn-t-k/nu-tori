@@ -23,7 +23,8 @@ struct ReplyFirstTextWatchTests {
                     sentTexts: [sentText],
                     statuses: status.map { [sentText.id: $0] } ?? [:],
                     replies: replies,
-                    streams: stream.map { [sentText.id: $0] } ?? [:]), goals: [], dailyGuides: []),
+                    streams: stream.map { [sentText.id: $0] } ?? [:]), goals: [], dailyGuides: [],
+                weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
             firstDay: day, today: day)
     }
 

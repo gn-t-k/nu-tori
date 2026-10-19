@@ -102,7 +102,8 @@
                             .sampleEstimated(.sample(on: yesterday, at: 19, 30)),
                             .sampleEstimated(.sample(on: .sampleToday, at: 7, 40)),
                         ], notices: [], undelivered: .none, conversation: .none,
-                        goals: [goal], dailyGuides: [.sample(for: goal)]),
+                        goals: [goal], dailyGuides: [.sample(for: goal)], weeklyReviews: [],
+                        expenditureEstimates: [], weightTrend: nil),
                     firstDay: startedDay,
                     today: .sampleToday)
             }
@@ -140,7 +141,7 @@
                             status: .deferredToNextDay, recordedOnThisDevice: true),
                         .sampleBlackCoffee(.sample(on: Self.day(of: .foodWithoutMacros), at: 9, 0)),
                     ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                    dailyGuides: []),
+                    dailyGuides: [], weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
                 firstDay: startedDay,
                 today: .sampleToday
             )
