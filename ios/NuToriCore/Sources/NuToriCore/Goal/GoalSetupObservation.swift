@@ -15,6 +15,10 @@ public enum GoalSetupObservation: Sendable, Equatable {
         case unansweredNoticeLine
         case daySummary
         case weightScreen
+        /// 達成・期限の知らせの「次の目標を選ぶ」
+        case chooseNextGoal
+        /// 期限後の維持の知らせの「次の目標を立てる」
+        case setNextGoal
     }
 
     /// 閉じたページ

@@ -293,6 +293,8 @@ extension GoalSetupObservation.Entry {
         case .unansweredNoticeLine: "unanswered_notice_line"
         case .daySummary: "day_summary"
         case .weightScreen: "weight_screen"
+        case .chooseNextGoal: "choose_next_goal"
+        case .setNextGoal: "set_next_goal"
         }
     }
 }
