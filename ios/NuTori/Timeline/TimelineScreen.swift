@@ -101,6 +101,18 @@ struct TimelineScreen: View {
                     }
                 }
             }
+            .navigationDestination(for: GoalRoute.self) { route in
+                GoalScreen(
+                    overview: goalOverview, entry: route.entry, goalSetupFlow: goalSetupFlow,
+                    timeZone: timeZone, recapTitle: { weekRecap(monday: $0)?.title },
+                    capture: capture,
+                    openGoalSetup: { entry in
+                        Task { await openGoalSetupFlow(entry) }
+                    },
+                    openWeeklyReview: { monday in
+                        openWeeklyReview(weekOf: monday, from: .goalScreen)
+                    })
+            }
             .navigationDestination(for: MealRoute.self) { route in
                 MealDestination(card: meals.first { $0.meal.id == route.mealId }) { card in
                     MealScreen(
@@ -139,7 +151,9 @@ struct TimelineScreen: View {
                 // 左上の目標の入口。目標がないあいだは置かない
                 if let goalLink {
                     ToolbarItem(placement: .topBarLeading) {
-                        GoalLinkCapsuleButton(capsule: goalLink, open: openGoalScreen)
+                        GoalLinkCapsuleButton(capsule: goalLink) {
+                            openGoalScreen(from: .goalLink)
+                        }
                     }
                     // 灰色のカプセルそのものを入口の見た目にするので、ツールバーのガラスの地を重ねない
                     .sharedBackgroundVisibility(.hidden)
@@ -623,8 +637,10 @@ struct TimelineScreen: View {
             }
             .id(item.id)
         case .dailyGuideChangeNotice(let notice):
-            DailyGuideChangeNoticeCard(notice: notice, openGoal: openGoalScreen)
-                .id(item.id)
+            DailyGuideChangeNoticeCard(notice: notice) {
+                openGoalScreen(from: .dailyGuideChangeNotice)
+            }
+            .id(item.id)
         case .goalNotice(let notice):
             GoalNoticeCard(notice: notice) { entry in
                 openGoalSetup(from: entry)
@@ -864,9 +880,17 @@ struct TimelineScreen: View {
             weightTrend: weightTrend)
     }
 
-    /// 目標の画面は #630 で作る。左上の入口と変更の知らせの「目標 ›」から開く
-    private func openGoalScreen() {
+    /// 目標の画面を、タイムラインの上に押して進む。目標がないときは開かない。日のまとめから開くときは、シートを閉じてから進む
+    private func openGoalScreen(from entry: ClientUsageEvent.GoalScreenEntry) {
         showsCameraNotice = false
+        guard goalOverview != nil else { return }
+        summaryDay = nil
+        navigationPath.append(GoalRoute(entry: entry))
+    }
+
+    /// 目標の画面の中身。キャッシュの記録から組むので、同期で届くと描き直る
+    private var goalOverview: GoalOverview? {
+        GoalOverview(today: today, records: goalRecords)
     }
 
     /// 振り返りのカードから、その週の週の振り返りを開く
@@ -885,13 +909,13 @@ struct TimelineScreen: View {
 
     /// 週の振り返りの中身。キャッシュの記録から組むので、同期で届くと描き直る
     private func weekRecap(monday: CalendarDay) -> WeekRecap? {
-        WeekRecap(
-            weekOf: monday, today: today,
-            records: GoalRecords(
-                goals: goals, dailyGuides: dailyGuides,
-                expenditureEstimates: expenditureEstimates, weeklyReviews: weeklyReviews,
-                weightTrend: weightTrend, weightRecords: records),
-            meals: meals)
+        WeekRecap(weekOf: monday, today: today, records: goalRecords, meals: meals)
+    }
+
+    private var goalRecords: GoalRecords {
+        GoalRecords(
+            goals: goals, dailyGuides: dailyGuides, expenditureEstimates: expenditureEstimates,
+            weeklyReviews: weeklyReviews, weightTrend: weightTrend, weightRecords: records)
     }
 
     /// 日のまとめの進行中の要約。今日を含む目標で出す
@@ -918,6 +942,11 @@ extension TimelineViewport.ScrollPhase {
 /// 食事の画面へ潜る行き先。画面は、そのときのカードを食事の ID で引いて描く
 nonisolated private struct MealRoute: Hashable {
     let mealId: UUID
+}
+
+/// 目標の画面へ潜る行き先。画面は、そのときのキャッシュの記録で中身を組む
+nonisolated private struct GoalRoute: Hashable {
+    let entry: ClientUsageEvent.GoalScreenEntry
 }
 
 /// 週の振り返りへ潜る行き先。‹ › で送った週は画面の中で持つ

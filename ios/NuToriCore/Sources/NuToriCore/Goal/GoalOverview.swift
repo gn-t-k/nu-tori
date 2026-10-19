@@ -5,6 +5,10 @@ public struct GoalOverview: Hashable, Sendable {
     public let card: Card
     /// 今の1日の目安。まだ届いていなければ nil
     public let currentDailyGuide: DailyGuide?
+    /// 今の1日の目安を当て始めた日。「9月21日から」
+    public var currentDailyGuideSince: String? {
+        currentDailyGuide.map { "\(GoalText.monthDay($0.effectiveDay))から" }
+    }
     public let weightChart: WeightChart
     /// 期限より前に達成したとき・期限が来たときと、今の目標の1日の目安がまだ届いていないときは nil
     public let energyChart: EnergyChart?

@@ -19,6 +19,8 @@ public enum GoalSetupObservation: Sendable, Equatable {
         case chooseNextGoal
         /// 期限後の維持の知らせの「次の目標を立てる」
         case setNextGoal
+        /// 目標の画面の「目標を切り替える」
+        case switchGoal
     }
 
     /// 閉じたページ
