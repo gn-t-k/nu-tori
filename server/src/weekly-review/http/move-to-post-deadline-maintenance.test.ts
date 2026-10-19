@@ -16,7 +16,12 @@ import { postGoalSetup } from "../../http/goal-setup-routes/testing/post-goal-se
 import { recordDailyWeights } from "../../http/goal-setup-routes/testing/record-daily-weights";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
+import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { signInTestAccount } from "../../http/testing";
+import {
+  mockPostHogCaptureEndpointOk,
+  readPostHogCapturedEvents,
+} from "../../observability/testing";
 import { recordMealEnergies } from "./testing/record-meal-energies";
 
 const millisecondsPerDay = 86_400_000;
@@ -270,6 +275,29 @@ describe("期限後の維持に移る見直し", () => {
           { goal_id: maintenanceGoalId, ended_on: monday },
         ],
       });
+    });
+  });
+
+  describe("利用状況を送る人が、期限の日より後の最初の月曜に取りに行ったとき", () => {
+    let fetchSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
+    beforeEach(async () => {
+      await enableUsageEventSending(accountId);
+      fetchSpy = mockPostHogCaptureEndpointOk();
+      await pullChanges();
+    });
+
+    test("期限の日から何日後に期限後の維持に移ったかを送ること", () => {
+      expect(
+        readPostHogCapturedEvents(fetchSpy).filter(
+          ({ event }) => event === "goal_moved_to_maintenance",
+        ),
+      ).toEqual([
+        {
+          event: "goal_moved_to_maintenance",
+          distinct_id: accountId,
+          properties: { days_after_deadline: 1, $geoip_disable: true },
+        },
+      ]);
     });
   });
 });

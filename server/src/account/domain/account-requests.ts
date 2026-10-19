@@ -9,6 +9,7 @@ import type { RecordId } from "../../domain/record-id";
 import { runAccountAlarm } from "../../domain/run-account-alarm";
 import type { SyncClientState } from "../../domain/sync-client-state";
 import type { SyncWrite } from "../../domain/sync-write";
+import type { UsageEvent } from "../../domain/usage-event";
 import { assessCustomTargetWeight } from "../../goal/domain/assess-custom-target-weight";
 import { decideGoal } from "../../goal/domain/decide-goal";
 import { judgeGoalProgress } from "../../goal/domain/judge-goal-progress";
@@ -40,13 +41,13 @@ export const accountRequests = {
       ...request,
       receivedAt: now,
     });
-    if (request.isFinalBatch) {
-      catchUpGoalProgress(stores, { timeZone: request.clientState.timeZone, now });
-    }
+    const caughtUp = request.isFinalBatch
+      ? catchUpGoalProgress(stores, { timeZone: request.clientState.timeZone, now })
+      : { usageEvents: [] };
     return {
       result: results,
       nextAlarmAt: computeNextAlarmAt(stores.records, now),
-      usageEvents,
+      usageEvents: [...usageEvents, ...caughtUp.usageEvents],
     } satisfies AccountResponse<unknown>;
   },
 
@@ -56,7 +57,10 @@ export const accountRequests = {
     request: { clientState: SyncClientState; afterSequence: number },
     now: Date,
   ) => {
-    catchUpGoalProgress(stores, { timeZone: request.clientState.timeZone, now });
+    const caughtUp = catchUpGoalProgress(stores, {
+      timeZone: request.clientState.timeZone,
+      now,
+    });
     const { usageEvents, ...pulled } = pullSyncChanges(stores.ledger, stores.records, {
       ...request,
       receivedAt: now,
@@ -64,7 +68,7 @@ export const accountRequests = {
     return {
       result: pulled,
       nextAlarmAt: undefined,
-      usageEvents,
+      usageEvents: [...caughtUp.usageEvents, ...usageEvents],
     } satisfies AccountResponse<unknown>;
   },
 
@@ -109,8 +113,11 @@ export const accountRequests = {
     request: Parameters<typeof previewGoalSetup>[1],
     now: Date,
   ) => {
-    catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
-    return respond(previewGoalSetup(stores.records, request, now));
+    const caughtUp = catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
+    return {
+      ...respond(previewGoalSetup(stores.records, request, now)),
+      usageEvents: caughtUp.usageEvents,
+    };
   },
 
   proposeGoals: (
@@ -118,8 +125,11 @@ export const accountRequests = {
     request: Parameters<typeof proposeGoals>[1],
     now: Date,
   ) => {
-    catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
-    return respond(proposeGoals(stores.records, request, now));
+    const caughtUp = catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
+    return {
+      ...respond(proposeGoals(stores.records, request, now)),
+      usageEvents: caughtUp.usageEvents,
+    };
   },
 
   assessCustomTargetWeight: (
@@ -127,8 +137,11 @@ export const accountRequests = {
     request: Parameters<typeof assessCustomTargetWeight>[1],
     now: Date,
   ) => {
-    catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
-    return respond(assessCustomTargetWeight(stores.records, request, now));
+    const caughtUp = catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
+    return {
+      ...respond(assessCustomTargetWeight(stores.records, request, now)),
+      usageEvents: caughtUp.usageEvents,
+    };
   },
 
   // 月曜に立て直すと、その月曜の見直しは前の目標に当たり、新しい目標はそのあとに決める
@@ -137,7 +150,7 @@ export const accountRequests = {
     request: Parameters<typeof decideGoal>[2],
     now: Date,
   ) => {
-    catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
+    const caughtUp = catchUpGoalProgress(stores, { timeZone: request.timeZone, now });
     const decided = decideGoal(stores.writeRecordChanges, stores.records, request, now);
     return {
       result: R.pipe(
@@ -145,7 +158,10 @@ export const accountRequests = {
         R.map(({ decision }) => decision),
       ),
       nextAlarmAt: undefined,
-      usageEvents: R.isSuccess(decided) ? decided.value.usageEvents : [],
+      usageEvents: [
+        ...caughtUp.usageEvents,
+        ...(R.isSuccess(decided) ? decided.value.usageEvents : []),
+      ],
     } satisfies AccountResponse<unknown>;
   },
 
@@ -184,13 +200,20 @@ export const accountRequests = {
   },
 };
 
-// 記録を当てたあと、応える前に、達成と期限の日の結果を判定し、まだ見直していない週を古い順に見直す
+// 記録を当てたあと、応える前に、達成と期限の日の結果を判定し、まだ見直していない週を古い順に見直す。
+// 送る出来事は、利用状況の設定で絞ってから返す
 const catchUpGoalProgress = (
   stores: Pick<AccountStores, "records" | "writeRecordChanges">,
   situation: { timeZone: string; now: Date },
-): void => {
-  judgeGoalProgress(stores.writeRecordChanges, stores.records, situation);
-  reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, situation);
+): { reviewedWeekCount: number; usageEvents: UsageEvent[] } => {
+  const judged = judgeGoalProgress(stores.writeRecordChanges, stores.records, situation);
+  const reviewed = reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, situation);
+  return {
+    reviewedWeekCount: reviewed.reviewedWeekCount,
+    usageEvents: sendsUsageData(stores.records.accountSettings)
+      ? [...judged.usageEvents, ...reviewed.usageEvents]
+      : [],
+  };
 };
 
 // 張り直すものも送るものも無い答え

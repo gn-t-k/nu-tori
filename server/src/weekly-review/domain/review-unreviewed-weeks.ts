@@ -2,6 +2,7 @@ import { computeReviewedDailyGuide } from "../../daily-guide/domain/compute-revi
 import type { RequiredPaceGoal } from "../../daily-guide/domain/required-pace";
 import { addDays } from "../../domain/add-days";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
+import { countDaysBetween } from "../../domain/count-days-between";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
@@ -12,6 +13,7 @@ import { computeGoalDirection } from "../../goal/domain/compute-goal-direction";
 import type { Goal } from "../../goal/domain/goal";
 import { planPostDeadlineMaintenance } from "../../goal/domain/plan-post-deadline-maintenance";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
+import type { UsageEvent } from "../../domain/usage-event";
 import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
 import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
 import { computeReviewedExpenditure } from "./compute-reviewed-expenditure";
@@ -34,15 +36,17 @@ export type WeeklyReviewStores = Pick<
 
 // まだ見直していない週を古い順に1週ずつ見て、見送るか、新しい推定と1日の目安をその月曜から当てて書く。
 // 週の区切りと今日は要求のタイムゾーンで決める。
-// 記録を当てたあと、応える前に呼ぶ。1つの週を記録の変化を書く入口の1つの run にし、変えた記録は同期で届く
+// 記録を当てたあと、応える前に呼ぶ。1つの週を記録の変化を書く入口の1つの run にし、変えた記録は同期で届く。
+// 見直した週の数（見送りを含む）と、週ごとの出来事を返す。出来事を送るかどうかは呼ぶ側が決める
 export const reviewUnreviewedWeeks = (
   writeRecordChanges: RecordChangeWriter,
   stores: WeeklyReviewStores,
   { timeZone, now }: { timeZone: string; now: Date },
-): void => {
+): { reviewedWeekCount: number; usageEvents: UsageEvent[] } => {
+  const reviewedNothing = { reviewedWeekCount: 0, usageEvents: [] };
   // 同期の要求のタイムゾーンは形しか確かめていないので、読めない要求では日を決めず、次の要求に任せる
   if (!isTimeZoneName(timeZone)) {
-    return;
+    return reviewedNothing;
   }
   const latestEstimate = stores.expenditureEstimate.findCurrent();
   const mondays = findUnreviewedWeekMondays({
@@ -57,11 +61,14 @@ export const reviewUnreviewedWeeks = (
   });
   const firstMonday = mondays.at(0);
   if (firstMonday === undefined || latestEstimate === undefined) {
-    return;
+    return reviewedNothing;
   }
-  const initialExpenditureSource = stores.expenditureEstimate
+  const initialEstimate = stores.expenditureEstimate
     .findEffectiveOnOrBefore(latestEstimate.effectiveOn)
-    .find(({ initialSource }) => initialSource !== undefined)?.initialSource;
+    .find(({ initialSource }) => initialSource !== undefined);
+  const initialExpenditureSource = initialEstimate?.initialSource;
+  // 推定の始まりは最初の目標を決めたときに書き、見直しはそのあとにだけあるので、どの見直しも推定の始まりのあと
+  const previousReviewCount = stores.weeklyReview.findDeviationHistory().length;
   const dailyWeights = computeDailyRepresentativeWeights(
     stores.weightRecord.findAllInMeasuredOrder(),
   ).map(({ calendarDay, weightRecord }) => ({ calendarDay, weightKg: weightRecord.weightKg }));
@@ -73,7 +80,7 @@ export const reviewUnreviewedWeeks = (
   const startedUsingOn = stores.firstSignIn.findStartedOn();
   const weightTrend = computeWeightTrend(dailyWeights);
 
-  for (const reviewedMonday of mondays) {
+  const usageEvents = mondays.flatMap((reviewedMonday, index): UsageEvent[] => {
     const judgement = judgeReviewWeek({
       reviewedMonday,
       startedUsingOn,
@@ -94,38 +101,78 @@ export const reviewUnreviewedWeeks = (
     const postDeadlineMaintenance =
       maintenance === undefined ? undefined : { ...maintenance, goalId: generateRecordId() };
     const reviewedGoalId = postDeadlineMaintenance?.goalId ?? currentGoal.id;
+    const previousExpenditureKcal = stores.expenditureEstimate.findCurrent()?.expenditureKcal;
+    if (previousExpenditureKcal === undefined) {
+      throw new Error("見直す週に当たっていた推定が無い");
+    }
     // 前の週に書いた推定と1日の目安を読むので、計算も1週ずつ run の中で行う
-    writeRecordChanges(({ addChange }) =>
+    const outcome = writeRecordChanges(({ addChange }) => {
+      const written: WeeklyReviewToWrite["outcome"] =
+        judgement.type === "deferred"
+          ? { type: "deferred", reason: judgement.reason, goalId: reviewedGoalId }
+          : computeReviewedOutcome(stores, {
+              currentGoal,
+              reviewedGoalId,
+              // 期限後の維持に移る週は、維持の式で出す
+              requiredPaceGoal:
+                postDeadlineMaintenance === undefined
+                  ? toRequiredPaceGoal(currentGoal, {
+                      reviewedMonday,
+                      weightTrendKg: judgement.sundayWeightTrendKg,
+                    })
+                  : {
+                      direction: "maintain",
+                      targetWeightKg: postDeadlineMaintenance.targetWeightKg,
+                      weightTrendKg: judgement.sundayWeightTrendKg,
+                    },
+              reviewedMonday,
+              judgement,
+            });
       writeWeeklyReview(stores, addChange, {
         effectiveOn: reviewedMonday,
         reviewedAt: now,
         timeZone,
         postDeadlineMaintenance,
-        outcome:
-          judgement.type === "deferred"
-            ? { type: "deferred", reason: judgement.reason, goalId: reviewedGoalId }
-            : computeReviewedOutcome(stores, {
-                currentGoal,
-                reviewedGoalId,
-                // 期限後の維持に移る週は、維持の式で出す
-                requiredPaceGoal:
-                  postDeadlineMaintenance === undefined
-                    ? toRequiredPaceGoal(currentGoal, {
-                        reviewedMonday,
-                        weightTrendKg: judgement.sundayWeightTrendKg,
-                      })
-                    : {
-                        direction: "maintain",
-                        targetWeightKg: postDeadlineMaintenance.targetWeightKg,
-                        weightTrendKg: judgement.sundayWeightTrendKg,
-                      },
+        outcome: written,
+      });
+      return written;
+    });
+    const expenditureKcal =
+      outcome.type === "reviewed" ? outcome.expenditure.expenditureKcal : previousExpenditureKcal;
+    const reviewNumber = previousReviewCount + index + 1;
+    const movedToMaintenance: UsageEvent[] =
+      postDeadlineMaintenance === undefined || currentGoal.weightChange === undefined
+        ? []
+        : [
+            {
+              name: "goal_moved_to_maintenance",
+              daysAfterDeadline: countDaysBetween(
+                currentGoal.weightChange.deadlineOn,
                 reviewedMonday,
-                judgement,
-              }),
-      }),
-    );
-  }
+              ),
+            },
+          ];
+    const weeklyReview: UsageEvent = {
+      name: "weekly_review",
+      deferralReason: outcome.type === "deferred" ? outcome.reason : undefined,
+      limitHits: outcome.type === "reviewed" ? outcome.dailyGuide.limitHits : [],
+      mainReason: outcome.type === "reviewed" ? outcome.dailyGuide.mainReason : undefined,
+      expenditureChangeKcal:
+        outcome.type === "reviewed" ? expenditureKcal - previousExpenditureKcal : undefined,
+      initialExpenditureSource,
+      expenditureChangeFromInitialKcal:
+        initialEstimate !== undefined && reviewNumbersComparedWithInitial.includes(reviewNumber)
+          ? expenditureKcal - initialEstimate.expenditureKcal
+          : undefined,
+      reviewedWeekCount: mondays.length,
+    };
+    return [weeklyReview, ...movedToMaintenance];
+  });
+  return { reviewedWeekCount: mondays.length, usageEvents };
 };
+
+// 推定の始まりから 4 週後と 8 週後の見直しで、推定が初期値からどれだけ動いたかを見る
+const reviewNumbersComparedWithInitial: readonly number[] = [4, 8];
 
 // 見直せた週の、新しい推定と、それを使った1日の目安。1日の目安は、今の目標か、期限後の維持に移る週は維持の目標に書き、
 // 前の週からの変化は今の目標の前の週の1日の目安から抑える

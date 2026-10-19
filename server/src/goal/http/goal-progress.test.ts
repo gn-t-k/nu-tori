@@ -13,7 +13,13 @@ import { durableObjectFactory } from "../../durable-object/testing/durable-objec
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
+import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { signInTestAccount } from "../../http/testing";
+import {
+  mockPostHogCaptureEndpointOk,
+  readPostHogCapturedEvents,
+} from "../../observability/testing";
+import { updateAccountSettingsWrite } from "../../account-settings/http/testing/update-account-settings-write";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 
 const millisecondsPerDay = 86_400_000;
@@ -161,6 +167,88 @@ describe("目標の達成と期限の日の結果", () => {
         deadlineConfirmation: goal?.["deadlineConfirmation"],
         achievement: goal?.["achievement"],
       }).toEqual({ deadlineConfirmation: confirmed, achievement: undefined });
+    });
+  });
+
+  describe("利用状況の出来事", () => {
+    let fetchSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
+    const readGoalEvents = () =>
+      readPostHogCapturedEvents(fetchSpy).filter(({ event }) => event.startsWith("goal_"));
+    beforeEach(async () => {
+      await enableUsageEventSending(accountId);
+      fetchSpy = mockPostHogCaptureEndpointOk();
+    });
+
+    describe("開始の日に目標体重に届いたとき", () => {
+      beforeEach(async () => {
+        await sendWeights([goalStartedOn], 69.8, { isFinalBatch: true });
+      });
+
+      test("開始の日からの日数と、期限までの残りの日数を送ること", () => {
+        expect(readGoalEvents()).toEqual([
+          {
+            event: "goal_achieved",
+            distinct_id: accountId,
+            properties: { days_from_start: 0, days_until_deadline: 2, $geoip_disable: true },
+          },
+        ]);
+      });
+    });
+
+    describe("期限の日まで目標体重に届かず、期限の日の翌日に取りに行ったとき", () => {
+      beforeEach(async () => {
+        await sendWeights(
+          [goalStartedOn, addDays(goalStartedOn, 1), addDays(goalStartedOn, 2)],
+          71.04,
+          { isFinalBatch: false },
+        );
+        setClockTo(addDays(goalStartedOn, 3));
+        await pullSyncChanges(sessionToken);
+      });
+
+      test("期限の日の体重の傾向と目標体重との差を 0.1 kg 単位で、達成していなかったことと一緒に送ること", () => {
+        expect(readGoalEvents()).toEqual([
+          {
+            event: "goal_deadline_confirmed",
+            distinct_id: accountId,
+            properties: { difference_from_target_kg: 1, achieved: false, $geoip_disable: true },
+          },
+        ]);
+      });
+
+      test("体重の値を含めないこと", () => {
+        // 体重（71.04）、目標体重（70）、開始の日の体重の傾向（72）
+        expect(JSON.stringify(readGoalEvents())).not.toMatch(/[:,[]"?(?:71\.04|70|72)"?[,}\]]/u);
+      });
+    });
+
+    describe("期限の日の前に達成し、期限の日の翌日に取りに行ったとき", () => {
+      beforeEach(async () => {
+        await sendWeights([goalStartedOn], 69.8, { isFinalBatch: true });
+        setClockTo(addDays(goalStartedOn, 3));
+        await pullSyncChanges(sessionToken);
+      });
+
+      test("達成していたことを送ること", () => {
+        expect(
+          readGoalEvents()
+            .filter(({ event }) => event === "goal_deadline_confirmed")
+            .map(({ properties }) => properties["achieved"]),
+        ).toEqual([true]);
+      });
+    });
+
+    describe("利用状況を送らない人が、目標体重に届いたとき", () => {
+      beforeEach(async () => {
+        await pushSyncWrites(sessionToken, {
+          writes: [updateAccountSettingsWrite({ accountSettings: { sendsUsageData: false } })],
+        });
+        await sendWeights([goalStartedOn], 69.8, { isFinalBatch: true });
+      });
+
+      test("目標の出来事を送らないこと", () => {
+        expect(readGoalEvents()).toEqual([]);
+      });
     });
   });
 });

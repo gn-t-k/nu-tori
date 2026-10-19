@@ -3,13 +3,14 @@ import type { TokenUsage } from "./token-usage";
 import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
 import type { MealPhotoReceiptFailedError } from "./receive-meal-photo";
-import type { DailyGuideLimitType } from "../daily-guide/domain/daily-guide";
+import type { DailyGuideLimitType, DailyGuideMainReason } from "../daily-guide/domain/daily-guide";
 import type { InitialExpenditureSource } from "../expenditure-estimate/domain/expenditure-estimate";
 import type { GoalDirection } from "../goal/domain/goal-direction";
 import type { PacePlan } from "../goal/domain/goal";
 import type { ClassificationLabel } from "../reply/domain/conversation-provider";
 import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";
 import type { SentTextClassification } from "../sent-text/domain/sent-text-classification";
+import type { WeeklyReviewDeferralReason } from "../weekly-review/domain/weekly-review";
 import type { ReplyFailureReason } from "../sent-text-status/domain/sent-text-status";
 import type { RecordType } from "./record-type";
 import type { RejectionReason } from "./rejection-reason";
@@ -120,6 +121,46 @@ export type UsageEvent =
       // 推定消費カロリーの出どころ。立て直しは前の値
       expenditureSource: InitialExpenditureSource | "previous";
       limitHits: DailyGuideLimitType[];
+    }
+  | {
+      // 週の見直し（見送りを含む）を書いたとき（週ごと）。出荷後に k と見送る条件を調整するのに見る。
+      // 体重・kcal の値は含めず、推定消費カロリーは差だけを送る
+      name: "weekly_review";
+      // 見送った理由。見直せた週は undefined
+      deferralReason: WeeklyReviewDeferralReason | undefined;
+      // 見直せた週の1日の目安が当たった上限と下限。見送った週は空
+      limitHits: DailyGuideLimitType[];
+      // 見直せた週だけ
+      mainReason: DailyGuideMainReason | undefined;
+      // 見直した推定 − 前の推定（kcal）。見送った週は undefined
+      expenditureChangeKcal: number | undefined;
+      initialExpenditureSource: InitialExpenditureSource | undefined;
+      // 推定の始まりのあとの 4 回めと 8 回めの見直し（見送りを含む）だけ、そのときの推定 − 推定の始まり（kcal）
+      expenditureChangeFromInitialKcal: number | undefined;
+      // 同じ要求でまとめて見直した週の数
+      reviewedWeekCount: number;
+    }
+  | {
+      // 減量・増量の目標の達成を書いたとき。体重・目標体重の値は含めない
+      name: "goal_achieved";
+      // 開始の日から達成した日までの日数
+      daysFromStart: number;
+      // 達成した日から期限の日までの日数。期限のあとに達成したらマイナス
+      daysUntilDeadline: number;
+    }
+  | {
+      // 減量・増量の目標の期限の日の結果を確定したとき。体重・目標体重の値は含めない
+      name: "goal_deadline_confirmed";
+      // 期限の日の体重の傾向 − 目標体重（kg、0.1 kg 単位）
+      differenceFromTargetKg: number;
+      // 確定したときに達成していたか
+      achieved: boolean;
+    }
+  | {
+      // 期限後の維持に移ったとき
+      name: "goal_moved_to_maintenance";
+      // 期限の日から、維持に移った月曜までの日数
+      daysAfterDeadline: number;
     }
   | {
       name: "sync_pending_writes_reported";
