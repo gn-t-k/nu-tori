@@ -38,6 +38,13 @@ extension GoalOverviewTests {
                 #expect(card.action == .switchGoal)
                 #expect(card.lateAchievement == nil)
             }
+
+            @Test("切り替えるあいだ、今の目標が続くことを書くこと")
+            func notesContinuing() {
+                #expect(
+                    card.continuingNote
+                        == "今の目標（減量・12月24日までに 68.0 kg）は、新しい目標が決まるまで続きます。")
+            }
         }
 
         @Suite("目標を立てて 14 日たっていないとき")
@@ -72,6 +79,7 @@ extension GoalOverviewTests {
                 #expect(card.title == "65.0 kg を保つ")
                 #expect(card.detail == "傾向 65.3 kg・保てています")
                 #expect(card.action == .switchGoal)
+                #expect(card.continuingNote == "今の目標（維持・65.0 kg を保つ）は、新しい目標が決まるまで続きます。")
             }
         }
 

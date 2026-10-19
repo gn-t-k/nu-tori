@@ -56,6 +56,18 @@ extension ClientUsageEventTests {
                 ])
         }
 
+        @Test("目標の画面の「目標を切り替える」から開いたところを載せること")
+        func openedFromGoalScreen() {
+            let event = ClientUsageEvent.goalSetup(
+                .opened(entry: .switchGoal, isRestart: true, resumed: false))
+
+            #expect(
+                event.fields == [
+                    "entry": .token("switch_goal"), "is_restart": .flag(true),
+                    "resumed": .flag(false),
+                ])
+        }
+
         @Test("閉じたページを載せること")
         func closed() {
             let pages: [GoalSetupObservation.Page] = [

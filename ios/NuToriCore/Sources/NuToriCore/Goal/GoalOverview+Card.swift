@@ -10,16 +10,19 @@ extension GoalOverview {
         /// 期限が来たあとに達成したときだけ足す1行
         public let lateAchievement: String?
         public let action: Action
+        /// 切り替える流れを広げているあいだ、カードの下に添える文。「今の目標（減量・11月30日までに 70.0 kg）は、新しい目標が決まるまで続きます。」
+        public let continuingNote: String
 
         public init(
             summary: String, title: String, detail: String?, lateAchievement: String?,
-            action: Action
+            action: Action, continuingNote: String
         ) {
             self.summary = summary
             self.title = title
             self.detail = detail
             self.lateAchievement = lateAchievement
             self.action = action
+            self.continuingNote = continuingNote
         }
 
         /// 目標がなければ nil
@@ -45,7 +48,8 @@ extension GoalOverview {
                         },
                         "\(deadline ?? "期限のあと")次の目標を選ばなかったので、今の体重を保つ目標で続けています。",
                     ].compactMap(\.self).joined(),
-                    lateAchievement: nil, action: .setNextGoal)
+                    lateAchievement: nil, action: .setNextGoal,
+                    continuingNote: Self.continuingNote(goal))
             }
         }
 
@@ -54,7 +58,8 @@ extension GoalOverview {
                 self.init(
                     summary: Self.summary(of: goal), title: Self.keepingTitle(goal),
                     detail: Self.bandDetail(goal: goal, today: today, records: records),
-                    lateAchievement: nil, action: .switchGoal)
+                    lateAchievement: nil, action: .switchGoal,
+                    continuingNote: Self.continuingNote(goal))
                 return
             }
             let target = WeightAmountText.kilograms(goal.targetWeightKilograms)
@@ -74,7 +79,8 @@ extension GoalOverview {
                 title: "\(target) まで\(remainingKilograms ?? "")",
                 detail: (["あと \(remainingDays) 日"] + [pace].compactMap(\.self)).joined(
                     separator: "・"),
-                lateAchievement: nil, action: .switchGoal)
+                lateAchievement: nil, action: .switchGoal, continuingNote: Self.continuingNote(goal)
+            )
         }
 
         private init(achieved goal: Goal, today: CalendarDay, records: GoalRecords) {
@@ -92,7 +98,8 @@ extension GoalOverview {
                 summary: Self.summary(of: goal),
                 title: "\(WeightAmountText.kilograms(goal.targetWeightKilograms)) を達成しました",
                 detail: (facts.isEmpty ? "" : "\(facts)。") + "次の目標を選ぶまで、今の目標を続けます。",
-                lateAchievement: nil, action: .chooseNextGoal)
+                lateAchievement: nil, action: .chooseNextGoal,
+                continuingNote: Self.continuingNote(goal))
         }
 
         private init(deadlineReached goal: Goal, records: GoalRecords) {
@@ -113,7 +120,7 @@ extension GoalOverview {
                 lateAchievement: goal.achievement.map {
                     "\(GoalText.monthDay($0.achievedDay))に \(WeightAmountText.kilograms(goal.targetWeightKilograms)) を達成しました"
                 },
-                action: .chooseNextGoal)
+                action: .chooseNextGoal, continuingNote: Self.continuingNote(goal))
         }
 
         /// 「減量 9月1日〜11月30日」「維持 9月1日から・期限なし」
@@ -123,6 +130,19 @@ extension GoalOverview {
                 return "\(name) \(GoalText.monthDay(goal.startedDay))から・期限なし"
             }
             return "\(name) \(GoalText.dayRange(goal.startedDay, weightChange.deadlineDay))"
+        }
+
+        /// 「今の目標（減量・11月30日までに 70.0 kg）は、新しい目標が決まるまで続きます。」維持は「維持・72.0 kg を保つ」
+        private static func continuingNote(_ goal: Goal) -> String {
+            let name = GoalText.directionName(goal.direction)
+            let target = WeightAmountText.kilograms(goal.targetWeightKilograms)
+            let current =
+                if let weightChange = goal.direction.weightChange {
+                    "\(name)・\(GoalText.monthDay(weightChange.deadlineDay))までに \(target)"
+                } else {
+                    "\(name)・\(target) を保つ"
+                }
+            return "今の目標（\(current)）は、新しい目標が決まるまで続きます。"
         }
 
         /// 「72.0 kg を保つ」
