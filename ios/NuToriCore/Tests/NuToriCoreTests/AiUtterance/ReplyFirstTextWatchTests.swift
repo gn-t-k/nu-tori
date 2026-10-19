@@ -17,14 +17,15 @@ struct ReplyFirstTextWatchTests {
     ) -> Timeline {
         Timeline(
             input: Timeline.Input(
-                weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                goalRecords: GoalRecords(
+                    goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                    weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [], notices: [],
                 undelivered: undelivered,
                 conversation: Timeline.Conversation(
                     sentTexts: [sentText],
                     statuses: status.map { [sentText.id: $0] } ?? [:],
                     replies: replies,
-                    streams: stream.map { [sentText.id: $0] } ?? [:]), goals: [], dailyGuides: [],
-                weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                    streams: stream.map { [sentText.id: $0] } ?? [:])),
             firstDay: day, today: day)
     }
 

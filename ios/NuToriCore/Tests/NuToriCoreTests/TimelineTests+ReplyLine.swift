@@ -17,7 +17,10 @@ extension TimelineTests {
         ) throws -> SentTextBubble? {
             let timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                    notices: [],
                     undelivered: UndeliveredRecords(
                         pendingEntries: try pending.map {
                             try PendingSentTextWrite(enqueuedAt: sentText.sentAt, write: $0).entry()
@@ -25,8 +28,7 @@ extension TimelineTests {
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
                         statuses: status.map { [sentText.id: $0] } ?? [:],
-                        replies: replies, streams: [:]), goals: [], dailyGuides: [],
-                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                        replies: replies, streams: [:])),
                 firstDay: day, today: day)
             return timeline.days.flatMap(\.items).lazy.compactMap { item in
                 if case .sentText(let bubble) = item { bubble } else { nil }

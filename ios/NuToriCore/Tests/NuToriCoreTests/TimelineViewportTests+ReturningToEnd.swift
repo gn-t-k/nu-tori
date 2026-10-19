@@ -20,12 +20,13 @@ extension TimelineViewportTests {
                 days = (0...count).map { added in
                     Timeline(
                         input: Timeline.Input(
-                            weightRecords: [], rejectedLines: [], meals: Array(meals.prefix(added)),
-                            notices: [], undelivered: .none,
+                            goalRecords: GoalRecords(
+                                goals: [], dailyGuides: [], expenditureEstimates: [],
+                                weeklyReviews: [], weightTrend: nil, weightRecords: []),
+                            rejectedLines: [], meals: Array(meals.prefix(added)), notices: [],
+                            undelivered: .none,
                             conversation: Timeline.Conversation(
-                                sentTexts: [], statuses: [:], replies: [], streams: [:]), goals: [],
-                            dailyGuides: [], weeklyReviews: [], expenditureEstimates: [],
-                            weightTrend: nil),
+                                sentTexts: [], statuses: [:], replies: [], streams: [:])),
                         firstDay: TimelineViewportTests.today, today: TimelineViewportTests.today
                     ).days
                 }
@@ -223,9 +224,10 @@ extension TimelineViewportTests {
                 let notice = try Notice.missedWeightRecord(issuedAt: "2026-10-13T08:15:00+09:00")
                 let timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [], notices: [notice],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
-                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        notices: [notice], undelivered: .none, conversation: .none),
                     firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
                 card = .notice(NoticeCard(notice: notice, form: .awaitingAnswer))
                 viewport = TimelineViewportTests.scrolledAway()
@@ -252,9 +254,10 @@ extension TimelineViewportTests {
             init() {
                 let timeline = Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                        undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
-                        weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                        goalRecords: GoalRecords(
+                            goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                            weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                        notices: [], undelivered: .none, conversation: .none),
                     firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
                 viewport = TimelineViewportTests.scrolledAway()
                 instructions = viewport.reminderOpened(.timelineEnd, in: timeline)

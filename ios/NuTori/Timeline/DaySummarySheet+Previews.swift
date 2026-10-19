@@ -114,15 +114,16 @@
                 let yesterday = CalendarDay.sampleToday.advanced(by: -1)
                 return Timeline(
                     input: Timeline.Input(
-                        weightRecords: weightRecords, rejectedLines: [],
+                        goalRecords: GoalRecords(
+                            goals: [goal], dailyGuides: [.sample(for: goal)],
+                            expenditureEstimates: [], weeklyReviews: [], weightTrend: nil,
+                            weightRecords: weightRecords), rejectedLines: [],
                         meals: [
                             .sampleEstimated(.sample(on: yesterday, at: 7, 40)),
                             .sampleEstimated(.sample(on: yesterday, at: 12, 10)),
                             .sampleEstimated(.sample(on: yesterday, at: 19, 30)),
                             .sampleEstimated(.sample(on: .sampleToday, at: 7, 40)),
-                        ], notices: [], undelivered: .none, conversation: .none,
-                        goals: [goal], dailyGuides: [.sample(for: goal)], weeklyReviews: [],
-                        expenditureEstimates: [], weightTrend: nil),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: startedDay,
                     today: .sampleToday)
             }
@@ -130,8 +131,9 @@
             /// 目標を立てる前の日々
             private static let beforeGoalTimeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: weightRecords,
-                    rejectedLines: [],
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: weightRecords), rejectedLines: [],
                     meals: [
                         .sampleEstimated(.sample(on: Self.day(of: .foodEstimated), at: 12, 10)),
                         .sampleEstimated(
@@ -159,8 +161,7 @@
                             meal: .sample(on: Self.day(of: .foodUnavailableWithPending), at: 19, 0),
                             status: .deferredToNextDay, recordedOnThisDevice: true),
                         .sampleBlackCoffee(.sample(on: Self.day(of: .foodWithoutMacros), at: 9, 0)),
-                    ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                    dailyGuides: [], weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                    ], notices: [], undelivered: .none, conversation: .none),
                 firstDay: startedDay,
                 today: .sampleToday
             )

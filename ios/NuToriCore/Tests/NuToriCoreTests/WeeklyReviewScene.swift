@@ -79,13 +79,13 @@ struct WeeklyReviewScene {
     ) -> Timeline {
         Timeline(
             input: Timeline.Input(
-                weightRecords: weightRecords, rejectedLines: [], meals: [], notices: [],
-                undelivered: .none, conversation: .none, goals: goals ?? [goal],
-                dailyGuides: [initialGuide] + (includesReviewedGuide ? [reviewedGuide] : [])
-                    + extraGuides,
-                weeklyReviews: reviews,
-                expenditureEstimates: [initialEstimate, reviewedEstimate] + extraEstimates,
-                weightTrend: weightTrend),
+                goalRecords: GoalRecords(
+                    goals: goals ?? [goal],
+                    dailyGuides: [initialGuide] + (includesReviewedGuide ? [reviewedGuide] : [])
+                        + extraGuides,
+                    expenditureEstimates: [initialEstimate, reviewedEstimate] + extraEstimates,
+                    weeklyReviews: reviews, weightTrend: weightTrend, weightRecords: weightRecords),
+                rejectedLines: [], meals: [], notices: [], undelivered: .none, conversation: .none),
             firstDay: CalendarDay(year: 2026, month: 10, day: 1), today: today)
     }
 

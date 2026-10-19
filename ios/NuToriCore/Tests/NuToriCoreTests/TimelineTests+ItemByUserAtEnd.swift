@@ -22,8 +22,10 @@ extension TimelineTests {
         ) -> [Timeline.Day] {
             Timeline(
                 input: Timeline.Input(
-                    weightRecords: weightRecords, rejectedLines: [], meals: meals, notices: notices,
-                    undelivered: .none,
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: weightRecords), rejectedLines: [],
+                    meals: meals, notices: notices, undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: sentTexts,
                         statuses: Dictionary(
@@ -33,8 +35,7 @@ extension TimelineTests {
                                     SentTextStatus(classification: .conversation, reply: .replied)
                                 )
                             }),
-                        replies: replies, streams: [:]), goals: [], dailyGuides: [],
-                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                        replies: replies, streams: [:])),
                 firstDay: yesterday, today: today
             ).days
         }

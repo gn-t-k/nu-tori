@@ -831,9 +831,10 @@ struct TimelineScreen: View {
         return RingStrip(
             timeline: Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none, goals: [], dailyGuides: [],
-                    weeklyReviews: [], expenditureEstimates: [], weightTrend: nil),
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                    notices: [], undelivered: .none, conversation: .none),
                 firstDay: monday,
                 today: today)
         ).weeks
@@ -842,11 +843,8 @@ struct TimelineScreen: View {
     private func timeline() -> Timeline {
         Timeline(
             input: Timeline.Input(
-                weightRecords: records, rejectedLines: rejectedLines, meals: meals,
-                notices: notices, undelivered: undeliveredRecords, conversation: conversation,
-                goals: goals, dailyGuides: dailyGuides,
-                weeklyReviews: weeklyReviews, expenditureEstimates: expenditureEstimates,
-                weightTrend: weightTrend),
+                goalRecords: goalRecords, rejectedLines: rejectedLines, meals: meals,
+                notices: notices, undelivered: undeliveredRecords, conversation: conversation),
             firstDay: firstDay, today: today)
     }
 
