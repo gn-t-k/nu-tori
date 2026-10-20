@@ -93,7 +93,7 @@ private struct GoalEnergyGraph: View {
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
-                        .accessibilityLabel("\(TimelineDayText.label(for: day))の週は見送り")
+                        .accessibilityLabel("\(TimelineDayText.label(for: day))の週は、1日の目安をそのままにしました")
                 }
                 if let last = graph.points.last {
                     // 系列が2本あるので、線の端に名前を添える（DESIGN.md の「グラフ」）

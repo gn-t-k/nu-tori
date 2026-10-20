@@ -87,7 +87,7 @@ struct WeightTrendChartTests {
         func bandForMaintenance() throws {
             let chart = try Self.chart(goal: try .maintaining())
             #expect(chart.target == .band(kilograms: 65.0, halfWidthKilograms: 0.7))
-            #expect(chart.target?.label == "保つ 65.0")
+            #expect(chart.target?.label == "維持 65.0 kg")
             #expect(chart.kilogramsRange == 64...73)
         }
     }

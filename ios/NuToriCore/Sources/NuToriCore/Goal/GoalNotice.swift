@@ -64,9 +64,10 @@ public struct GoalNotice: Hashable, Sendable {
                 goal.direction.weightChange.map {
                     achievement.achievedDay.distance(to: $0.deadlineDay)
                 } ?? 0
+            let target = WeightAmountText.kilograms(goal.targetWeightKilograms)
             return daysEarly > 0
-                ? "期限の\(deadlineText(of: goal))より \(daysEarly) 日早く届きました。次の目標を選ぶまで、今の目標を続けます。"
-                : "期限の\(deadlineText(of: goal))に届きました。次の目標を選ぶまで、今の目標を続けます。"
+                ? "期限の\(deadlineText(of: goal))より \(daysEarly) 日早く、体重の傾向が \(target) に届きました。次の目標を選ぶまで、今の目標を続けます。"
+                : "期限の\(deadlineText(of: goal))に、体重の傾向が \(target) に届きました。次の目標を選ぶまで、今の目標を続けます。"
         case .deadlineReached(let confirmation):
             let result = DeadlineResult(goal: goal, confirmation: confirmation)
             // 期限の日より後の最初の月曜に、期限後の維持に移る

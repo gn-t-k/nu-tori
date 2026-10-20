@@ -91,7 +91,7 @@ extension TimelineTests {
             @Test("ペースの1行は、目標を立てて 14 日たっていないことを言うこと")
             func paceLineSaysPending() throws {
                 let card = try #require(WeeklyReviewScene.card(in: timeline))
-                #expect(card.paceText == "ペースは目標を立てて 14 日たつと出ます")
+                #expect(card.paceText == "間に合うかは、目標を立てて 14 日たつと出ます")
             }
 
             @Test("カードに見送りとまとめた週の文を出さないこと")
@@ -205,7 +205,7 @@ extension TimelineTests {
             @Test("カードに、ほかに見直した週の数を出すこと")
             func cardSaysOtherWeeks() throws {
                 let card = try #require(WeeklyReviewScene.card(in: timeline))
-                #expect(card.batchText == "ほかに 2 週を見直しました。‹ で前の週へ送れます。")
+                #expect(card.batchText == "ほかに 2 週を見直しました。‹ で前の週を見られます。")
             }
 
             @Test("変わった量は、まとめた最初の週の前の1日の目安と比べること")
@@ -217,7 +217,7 @@ extension TimelineTests {
             @Test("理由の種類は、いちばん新しい週にサーバーが決めた主な理由にすること")
             func reasonUsesLatestMainReason() throws {
                 let notice = try #require(WeeklyReviewScene.changeNotice(in: timeline))
-                #expect(notice.reasonText == "予定より進んでいるので、1日に減らす分を減らしたためです。")
+                #expect(notice.reasonText == "体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。")
             }
 
             @Test("変更の知らせに、まとめた週の始まりと数を出すこと")
@@ -360,7 +360,7 @@ extension TimelineTests {
                 }
             }
 
-            @Suite("1日に減らす分を増やしたとき")
+            @Suite("1日の目安を推定消費カロリーからさらに下げたとき")
             struct BalanceIncreased {
                 let notice: DailyGuideChangeNotice
 
@@ -372,11 +372,11 @@ extension TimelineTests {
 
                 @Test("期限までの日が減ったことを言うこと")
                 func saysFewerDays() {
-                    #expect(notice.reasonText == "期限までの日が減り、1日に減らす分を増やしたためです。")
+                    #expect(notice.reasonText == "期限に間に合うよう、1日の目安を推定消費カロリーよりさらに下げたためです。")
                 }
             }
 
-            @Suite("1日に減らす分を減らしたとき")
+            @Suite("1日の目安を推定消費カロリーに近づけたとき")
             struct BalanceDecreased {
                 let notice: DailyGuideChangeNotice
 
@@ -388,11 +388,11 @@ extension TimelineTests {
 
                 @Test("予定より進んでいることを言うこと")
                 func saysAhead() {
-                    #expect(notice.reasonText == "予定より進んでいるので、1日に減らす分を減らしたためです。")
+                    #expect(notice.reasonText == "体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。")
                 }
             }
 
-            @Suite("維持で1日に戻す分を増やしたとき")
+            @Suite("維持で1日の目安を推定消費カロリーより下げたとき")
             struct MaintenanceBalanceIncreased {
                 let notice: DailyGuideChangeNotice
 
@@ -407,7 +407,8 @@ extension TimelineTests {
 
                 @Test("体重の傾向に合わせたことを言うこと")
                 func saysFollowingTrend() {
-                    #expect(notice.reasonText == "体重の傾向に合わせて、1日に戻す分を増やしたためです。")
+                    #expect(
+                        notice.reasonText == "体重の傾向が 72.4 kg を上回っているので、1日の目安を推定消費カロリーより下げたためです。")
                 }
             }
 
@@ -425,9 +426,9 @@ extension TimelineTests {
                         guideKilocalories: 1990, mainReason: .balanceChange)
                 }
 
-                @Test("1日に減らす分をなくしていくことを言うこと")
+                @Test("1日の目安を推定消費カロリーに近づけていくことを言うこと")
                 func saysEndingDeficit() {
-                    #expect(notice.reasonText == "目標に届いたので、1日に減らす分をなくしていくためです。")
+                    #expect(notice.reasonText == "目標に届いたので、1日の目安を推定消費カロリーに近づけていくためです。")
                 }
             }
 

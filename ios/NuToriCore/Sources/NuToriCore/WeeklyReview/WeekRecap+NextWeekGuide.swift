@@ -77,16 +77,16 @@ extension WeekRecap {
             switch hit {
             case .weeklyChange:
                 return
-                    "1週間に変える量は \(NutritionText.kilocalories(DailyGuide.weeklyChangeLimitKilocalories)) までにしています。"
+                    "1日の目安を1週間に変えるのは \(NutritionText.kilocalories(DailyGuide.weeklyChangeLimitKilocalories)) までにしています。"
             case .requiredPace:
                 let verb =
                     switch direction {
                     case .lose: "減らす"
-                    case .gain: "足す"
+                    case .gain: "増やす"
                     case .maintain: "戻す"
                     }
                 return
-                    "\(verb)速さは、1週間に体重の \(DailyGuide.requiredPaceLimitPercent(direction))% までにしています。"
+                    "1週間に\(verb)のは、体重の \(DailyGuide.requiredPaceLimitPercent(direction))% までにしています。"
             case .minimumEnergy:
                 return
                     "1日の目安は \(NutritionText.kilocalories(DailyGuide.minimumEnergyKilocalories)) より下げません。"

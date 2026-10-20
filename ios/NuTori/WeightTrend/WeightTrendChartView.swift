@@ -131,7 +131,7 @@ struct WeightTrendChartView: View {
             .foregroundStyle(Color(.secondaryLabel))
             .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
             .annotation(
-                position: .top, alignment: .trailing, spacing: 2,
+                position: .top, alignment: .leading, spacing: 2,
                 overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
             ) {
                 Text(chart.target?.label ?? "")

@@ -50,7 +50,7 @@ struct WeeklyReviewCardView: View {
         .accessibilityLabel("週の振り返り、\(card.daysText)")
         // 7日の丸を、曜日ごとに読む。帯の丸と同じ書き方にする
         .accessibilityValue((card.rings.map(ringDescription) + lines).joined(separator: "。"))
-        .accessibilityHint("その週の週の振り返りを開きます")
+        .accessibilityHint("この週の振り返りを開きます")
         .accessibilityIdentifier("weekly-review-card")
     }
 

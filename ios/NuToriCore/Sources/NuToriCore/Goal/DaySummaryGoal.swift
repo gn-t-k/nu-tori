@@ -72,7 +72,7 @@ public struct DaySummaryGoal: Hashable, Sendable {
         switch pace {
         case .onTrack: "間に合うペース"
         case .behind(let shortfall, _, _): "期限に \(GoalText.kilograms(tenths: shortfall)) 届かない"
-        case .inconclusive, .pending: "まだ言い切れません"
+        case .inconclusive, .pending: "間に合うかはまだわかりません"
         case .unavailable, .maintenance: nil
         }
     }

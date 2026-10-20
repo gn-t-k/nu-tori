@@ -44,7 +44,7 @@ public struct WeeklyReviewCard: Hashable, Sendable {
     /// まとめて見直したときだけに出す
     public var batchText: String? {
         otherReviewedWeekCount > 0
-            ? "ほかに \(otherReviewedWeekCount) 週を見直しました。‹ で前の週へ送れます。" : nil
+            ? "ほかに \(otherReviewedWeekCount) 週を見直しました。‹ で前の週を見られます。" : nil
     }
 
     /// カードのペースの1行。`Pace` が返さない週（期限の日か達成した日を迎えた）は、どちらを迎えたかを出す
@@ -98,11 +98,11 @@ public struct WeeklyReviewCard: Hashable, Sendable {
             case .behind(let shortfall):
                 "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
             case .inconclusive(let count):
-                "体重の記録が \(count) 日で、ペースはまだ言い切れません"
+                "体重の記録が \(count) 日で、間に合うかはまだわかりません"
             case .pending:
-                "ペースは目標を立てて 14 日たつと出ます"
+                "間に合うかは、目標を立てて 14 日たつと出ます"
             case .maintenance(let isWithinBand):
-                isWithinBand ? "保てています" : "幅から外れています"
+                isWithinBand ? "保てています" : "保てていません"
             case .achieved(let day, let kilograms):
                 "\(GoalText.monthDay(day))に \(WeightAmountText.kilograms(kilograms)) を達成しました"
             case .reachedEarlier(let canChooseNextGoal):

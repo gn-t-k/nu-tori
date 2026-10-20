@@ -59,7 +59,7 @@ extension GoalOverviewTests {
                         ]))
                 ).card
 
-                #expect(card.detail == "あと 76 日・ペースは目標を立てて 14 日たつと出ます")
+                #expect(card.detail == "あと 76 日・間に合うかは、目標を立てて 14 日たつと出ます")
             }
         }
 
@@ -187,7 +187,7 @@ extension GoalOverviewTests {
                 #expect(card.title == "68.3 kg を保つ")
                 #expect(
                     card.detail
-                        == "傾向 68.4 kg・保てています。12月24日の期限のあと次の目標を選ばなかったので、今の体重を保つ目標で続けています。")
+                        == "傾向 68.4 kg・保てています。12月24日の期限のあと次の目標を選ばなかったので、68.3 kg を保つ目標で続けています。")
             }
 
             @Test("次の目標を立てられること")

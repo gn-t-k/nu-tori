@@ -311,7 +311,7 @@ struct WeekRecapTests {
 
             @Test("言い切らず、記録の日数を書くこと")
             func showsRecordDayCount() {
-                #expect(line.headline == "まだ言い切れません")
+                #expect(line.headline == "間に合うかはまだわかりません")
                 #expect(line.sentence == "直近 14 日の体重の記録が 3 日なので、傾向が定まっていません。")
             }
         }
@@ -330,8 +330,8 @@ struct WeekRecapTests {
 
             @Test("いつペースを出すかを書くこと")
             func showsWhenPaceAppears() {
-                #expect(line.headline == "まだ言い切れません")
-                #expect(line.sentence == "目標を立てて 14 日たつと、間に合うペースかを出します。")
+                #expect(line.headline == "間に合うかはまだわかりません")
+                #expect(line.sentence == "目標を立てて 14 日たつと出ます。")
             }
         }
 
@@ -350,7 +350,7 @@ struct WeekRecapTests {
 
             @Test("日曜でなく今日で判定すること")
             func judgesToday() {
-                #expect(line.sentence == "目標を立てて 14 日たつと、間に合うペースかを出します。")
+                #expect(line.sentence == "目標を立てて 14 日たつと出ます。")
             }
         }
 
@@ -481,11 +481,11 @@ struct WeekRecapTests {
                 @Test("保てていると書くこと")
                 func saysKept() {
                     #expect(line.headline == "保てています")
-                    #expect(line.sentence == "体重の傾向は 65.3 kg で、65.0 kg を保つ幅（±0.7 kg）に入っています。")
+                    #expect(line.sentence == "体重の傾向は 65.3 kg で、65.0 kg ± 0.7 kg の範囲に入っています。")
                 }
             }
 
-            @Suite("体重の傾向が幅から外れていれば")
+            @Suite("体重の傾向が保つ範囲から外れていれば")
             struct OutsideBand {
                 let line: WeekRecap.TopLine
 
@@ -495,8 +495,8 @@ struct WeekRecapTests {
 
                 @Test("外れていると書くこと")
                 func saysOutside() {
-                    #expect(line.headline == "幅から外れています")
-                    #expect(line.sentence == "体重の傾向は 65.8 kg で、65.0 kg を保つ幅（±0.7 kg）から外れています。")
+                    #expect(line.headline == "保てていません")
+                    #expect(line.sentence == "体重の傾向は 65.8 kg で、65.0 kg ± 0.7 kg の範囲から外れています。")
                 }
             }
         }
