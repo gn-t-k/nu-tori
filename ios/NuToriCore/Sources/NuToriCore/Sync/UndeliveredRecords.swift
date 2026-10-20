@@ -49,7 +49,7 @@ public struct UndeliveredRecords: Hashable, Sendable {
                 sentTextIds.insert(pending.write.sentTextId)
             case .accountSettings, .aiUtterance, .dailyGuide, .dishEstimationStatus,
                 .expenditureEstimate, .goal, .mealEstimationStatus, .notice,
-                .sentTextStatus, .usualWeighingTime, .weightTrend:
+                .sentTextStatus, .usualWeighingTime, .weeklyReview, .weightTrend:
                 continue
             }
         }
@@ -71,7 +71,7 @@ public struct UndeliveredRecords: Hashable, Sendable {
                 }
         case .sentText(let bubble): containsSentText(id: bubble.sentText.id)
         case .rejectedWeightLine, .rejectedMealLine, .notice, .goalSetupNotice,
-            .rejectedSentTextLine,
+            .rejectedSentTextLine, .weeklyReviewCard, .dailyGuideChangeNotice, .goalNotice,
             .reply:
             false
         }

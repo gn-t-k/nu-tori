@@ -8,9 +8,14 @@
             timeline: sample.timeline, day: sample.day,
             weightRecords: DaySummarySheet.Sample.weightRecords,
             weightTrend: DaySummarySheet.Sample.weightTrend,
-            goalProgress: sample.goalProgress, today: .sampleToday,
-            startGoalSetup: sample.startsGoalSetup ? {} : nil
-        ) { _ in }
+            goalRecords: sample.goalRecords, today: .sampleToday,
+            startGoalSetup: sample.startsGoalSetup ? {} : nil,
+            weekRecapTitle: { day in
+                WeekRecap(weekOf: day, today: .sampleToday, records: sample.goalRecords, meals: [])?
+                    .title
+            },
+            openGoalScreen: {}, openWeeklyReview: { _ in }, openNextGoal: { _ in },
+            onSeeOnTimeline: { _ in })
     }
 
     extension DaySummarySheet {
@@ -38,12 +43,14 @@
             /// kcal はあるが P・F・C がすべて 0 の日。空の輪の中に kcal を書く
             case foodWithoutMacros
             /// 昨日から減量の目標を立てている今日。丸は1日の目安のうち食べた分だけ進み、P・F・C は「食べた量 / 目安」、
-            /// 体重の下に「あと N kg・あと N 日」
+            /// 体重の下に目標の行「あと N kg・あと N 日・まだ言い切れません」と週の振り返りの行「（途中）」
             case goalLosing
-            /// 昨日から維持の目標を立てている今日。体重の下に「65.0 kg を保つ」
+            /// 昨日から維持の目標を立てている今日。体重の下に「65.0 kg を保つ・保てています」
             case goalMaintaining
-            /// 減量の目標を立てた昨日。3回食べて1日の目安を超え、丸の起点に印が付く。今日でないので目標の要約は出さない
+            /// 減量の目標を立てた昨日。3回食べて1日の目安を超え、丸の起点に印が付く。目標の行はその日の形で書く
             case goalExceeded
+            /// 昨日立てた減量の目標を、今日達成した。目標の行「72.1 kg を達成しました」と紫の行「次の目標を選ぶ」
+            case goalAchieved
             /// 目標が無く、目標を立てる知らせのカードがタイムラインにある今日。体重の下に「目標を立てる」
             case goalSetupAvailable
 
@@ -55,23 +62,25 @@
                     Self.beforeGoalTimeline
                 case .goalLosing, .goalExceeded: Self.goalTimeline(Self.losingGoal)
                 case .goalMaintaining: Self.goalTimeline(Self.maintainingGoal)
+                case .goalAchieved: Self.goalTimeline(Self.achievedGoal)
                 }
             }
 
-            var goalProgress: GoalProgress? {
-                switch self {
-                case .weighedOnce, .weighedSeveralTimes, .unrecorded, .firstDay, .foodEstimated,
-                    .foodPartlyPending, .foodAllPending, .foodUnavailable,
-                    .foodUnavailableWithPending, .foodWithoutMacros, .goalSetupAvailable:
-                    nil
-                case .goalLosing, .goalExceeded:
-                    GoalProgress(
-                        goal: Self.losingGoal, today: .sampleToday, weightTrend: Self.weightTrend)
-                case .goalMaintaining:
-                    GoalProgress(
-                        goal: Self.maintainingGoal, today: .sampleToday,
-                        weightTrend: Self.weightTrend)
-                }
+            var goalRecords: GoalRecords {
+                let goals: [Goal] =
+                    switch self {
+                    case .weighedOnce, .weighedSeveralTimes, .unrecorded, .firstDay,
+                        .foodEstimated, .foodPartlyPending, .foodAllPending, .foodUnavailable,
+                        .foodUnavailableWithPending, .foodWithoutMacros, .goalSetupAvailable:
+                        []
+                    case .goalLosing, .goalExceeded: [Self.losingGoal]
+                    case .goalMaintaining: [Self.maintainingGoal]
+                    case .goalAchieved: [Self.achievedGoal]
+                    }
+                return GoalRecords(
+                    goals: goals, dailyGuides: goals.map { .sample(for: $0) },
+                    expenditureEstimates: [], weeklyReviews: [], weightTrend: Self.weightTrend,
+                    weightRecords: Self.weightRecords)
             }
 
             var startsGoalSetup: Bool {
@@ -80,7 +89,7 @@
                 case .weighedOnce, .weighedSeveralTimes, .unrecorded, .firstDay, .foodEstimated,
                     .foodPartlyPending, .foodAllPending, .foodUnavailable,
                     .foodUnavailableWithPending, .foodWithoutMacros, .goalLosing, .goalMaintaining,
-                    .goalExceeded:
+                    .goalExceeded, .goalAchieved:
                     false
                 }
             }
@@ -89,20 +98,32 @@
                 startedOn: CalendarDay.sampleToday.advanced(by: -1))
             private static let maintainingGoal = Goal.sampleMaintaining(
                 startedOn: CalendarDay.sampleToday.advanced(by: -1))
+            private static let achievedGoal = Goal(
+                id: losingGoal.id, startedDay: losingGoal.startedDay,
+                startingWeightTrendKilograms: losingGoal.startingWeightTrendKilograms,
+                targetWeightKilograms: 72.1, decidedAt: losingGoal.decidedAt,
+                timeZone: losingGoal.timeZone, direction: losingGoal.direction,
+                achievement: Goal.Achievement(
+                    achievedDay: .sampleToday,
+                    judgedAt: losingGoal.decidedAt.addingTimeInterval(86_400),
+                    timeZone: losingGoal.timeZone),
+                deadlineConfirmation: nil, closure: nil)
 
             /// 昨日から目標を立てている。昨日は3回、今日は1回食べた
             private static func goalTimeline(_ goal: Goal) -> Timeline {
                 let yesterday = CalendarDay.sampleToday.advanced(by: -1)
                 return Timeline(
                     input: Timeline.Input(
-                        weightRecords: weightRecords, rejectedLines: [],
+                        goalRecords: GoalRecords(
+                            goals: [goal], dailyGuides: [.sample(for: goal)],
+                            expenditureEstimates: [], weeklyReviews: [], weightTrend: nil,
+                            weightRecords: weightRecords), rejectedLines: [],
                         meals: [
                             .sampleEstimated(.sample(on: yesterday, at: 7, 40)),
                             .sampleEstimated(.sample(on: yesterday, at: 12, 10)),
                             .sampleEstimated(.sample(on: yesterday, at: 19, 30)),
                             .sampleEstimated(.sample(on: .sampleToday, at: 7, 40)),
-                        ], notices: [], undelivered: .none, conversation: .none,
-                        goals: [goal], dailyGuides: [.sample(for: goal)]),
+                        ], notices: [], undelivered: .none, conversation: .none),
                     firstDay: startedDay,
                     today: .sampleToday)
             }
@@ -110,8 +131,9 @@
             /// 目標を立てる前の日々
             private static let beforeGoalTimeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: weightRecords,
-                    rejectedLines: [],
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: weightRecords), rejectedLines: [],
                     meals: [
                         .sampleEstimated(.sample(on: Self.day(of: .foodEstimated), at: 12, 10)),
                         .sampleEstimated(
@@ -139,8 +161,7 @@
                             meal: .sample(on: Self.day(of: .foodUnavailableWithPending), at: 19, 0),
                             status: .deferredToNextDay, recordedOnThisDevice: true),
                         .sampleBlackCoffee(.sample(on: Self.day(of: .foodWithoutMacros), at: 9, 0)),
-                    ], notices: [], undelivered: .none, conversation: .none, goals: [],
-                    dailyGuides: []),
+                    ], notices: [], undelivered: .none, conversation: .none),
                 firstDay: startedDay,
                 today: .sampleToday
             )
@@ -180,7 +201,7 @@
                 case .foodUnavailable: startedDay.advanced(by: 6)
                 case .foodUnavailableWithPending: startedDay.advanced(by: 7)
                 case .foodWithoutMacros: startedDay.advanced(by: 8)
-                case .goalLosing, .goalMaintaining: .sampleToday
+                case .goalLosing, .goalMaintaining, .goalAchieved: .sampleToday
                 case .goalExceeded: CalendarDay.sampleToday.advanced(by: -1)
                 }
             }

@@ -16,6 +16,7 @@ export const recordTypes = [
   "sent_text",
   "sent_text_status",
   "usual_weighing_time",
+  "weekly_review",
   "weight_record",
   "weight_trend",
 ] as const;

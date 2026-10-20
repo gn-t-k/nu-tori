@@ -16,6 +16,8 @@
                     WeightChange(
                         deadlineDay: CalendarDay(year: 2026, month: 12, day: 24),
                         pacePlan: .standard)),
+                achievement: nil,
+                deadlineConfirmation: nil,
                 closure: nil
             )
         }
@@ -30,9 +32,15 @@
                 decidedAt: sampleDecidedAt(on: startedDay),
                 timeZone: sampleTimeZone,
                 direction: .maintain,
+                achievement: nil,
+                deadlineConfirmation: nil,
                 closure: nil
             )
         }
+
+        /// プレビューの見本の、9月14日（月）に立て、1週目を見直した減量の目標
+        static let sampleWeeklyReviewed = sampleLosing(
+            startedOn: CalendarDay(year: 2026, month: 9, day: 14))
 
         private static let sampleTimeZone = TimeZone(identifier: "Asia/Tokyo")!
 

@@ -12,6 +12,7 @@ import { createNoticeKind } from "../notice/domain/create-notice-kind";
 import { createSentTextKind } from "../sent-text/domain/create-sent-text-kind";
 import { createSentTextStatusKind } from "../sent-text-status/domain/create-sent-text-status-kind";
 import { createUsualWeighingTimeKind } from "../usual-weighing-time/domain/create-usual-weighing-time-kind";
+import { createWeeklyReviewKind } from "../weekly-review/domain/create-weekly-review-kind";
 import { createWeightRecordKind } from "../weight-record/domain/create-weight-record-kind";
 import { createWeightTrendKind } from "../weight-trend/domain/create-weight-trend-kind";
 import { findLatestValidTimeZone } from "./find-latest-valid-time-zone";
@@ -43,6 +44,7 @@ export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
       findLatestTimeZone: () => findLatestValidTimeZone(stores.latestTimeZone),
       receivedAt,
     }),
+    createWeeklyReviewKind(stores.weeklyReview),
     createWeightRecordKind({
       store: stores.weightRecord,
       findStartedOn: stores.firstSignIn.findStartedOn,

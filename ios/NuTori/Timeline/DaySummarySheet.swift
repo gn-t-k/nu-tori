@@ -6,11 +6,19 @@ struct DaySummarySheet: View {
     /// 速さの出す条件（記録のある日の数）を数えるための、キャッシュの体重記録（送り待ちを含む）
     let weightRecords: [WeightRecord]
     let weightTrend: WeightTrend?
-    /// 今日を含む目標の、進行中の要約。目標が無ければ nil。今日の日のまとめにだけ出す
-    let goalProgress: GoalProgress?
+    /// 目標の行と週の振り返りの行を、見ている日を含む目標で組むもとの記録
+    let goalRecords: GoalRecords
     let today: CalendarDay
     /// 目標が無いときの「目標を立てる」。シートを閉じ、タイムラインの知らせのカードまで送って広げる。目標があれば nil
     let startGoalSetup: (() -> Void)?
+    /// 週の振り返りの行に書く週（「9月21日〜27日（途中）」）。その週を含む目標が無ければ nil で、行を出さない
+    let weekRecapTitle: (CalendarDay) -> String?
+    /// シートを閉じ、タイムラインの上に押して進む
+    let openGoalScreen: () -> Void
+    /// 見ている日を含む週を開く。シートを閉じ、タイムラインの上に押して進む
+    let openWeeklyReview: (CalendarDay) -> Void
+    /// シートを閉じ、タイムラインの一番下に目標の設定のカードを出して広げる
+    let openNextGoal: (DaySummaryGoal.NextGoal) -> Void
     let onSeeOnTimeline: (CalendarDay) -> Void
 
     var body: some View {
@@ -45,14 +53,10 @@ struct DaySummarySheet: View {
                                 .contentTransition(.numericText())
                         }
                     }
-                    // 押しても開くものは無い（目標の画面は次の仕様）
-                    if shownDay == today, let goalProgress {
-                        LabeledContent("目標") {
-                            Text(goalProgress.text)
-                                .monospacedDigit()
-                                .contentTransition(.numericText())
-                        }
-                        .accessibilityIdentifier("day-summary-goal-progress")
+                    if let goal = DaySummaryGoal(
+                        day: shownDay, today: today, records: goalRecords)
+                    {
+                        goalRows(goal)
                     }
                     // 目標が無いことを文で書かず、立てる入口を置く
                     if let startGoalSetup {
@@ -84,16 +88,24 @@ struct DaySummarySheet: View {
 
     init(
         timeline: Timeline, day: CalendarDay, weightRecords: [WeightRecord],
-        weightTrend: WeightTrend?, goalProgress: GoalProgress?, today: CalendarDay,
+        weightTrend: WeightTrend?, goalRecords: GoalRecords, today: CalendarDay,
         startGoalSetup: (() -> Void)?,
+        weekRecapTitle: @escaping (CalendarDay) -> String?,
+        openGoalScreen: @escaping () -> Void,
+        openWeeklyReview: @escaping (CalendarDay) -> Void,
+        openNextGoal: @escaping (DaySummaryGoal.NextGoal) -> Void,
         onSeeOnTimeline: @escaping (CalendarDay) -> Void
     ) {
         self.timeline = timeline
         self.weightRecords = weightRecords
         self.weightTrend = weightTrend
-        self.goalProgress = goalProgress
+        self.goalRecords = goalRecords
         self.today = today
         self.startGoalSetup = startGoalSetup
+        self.weekRecapTitle = weekRecapTitle
+        self.openGoalScreen = openGoalScreen
+        self.openWeeklyReview = openWeeklyReview
+        self.openNextGoal = openNextGoal
         self.onSeeOnTimeline = onSeeOnTimeline
         _shownDay = State(initialValue: day)
     }
@@ -104,6 +116,53 @@ struct DaySummarySheet: View {
     /// 丸の中の kcal の大きさに合わせて、丸と輪の太さも大きくする
     @ScaledMetric(relativeTo: .title2) private var ringDiameter: CGFloat = 128
     @ScaledMetric(relativeTo: .title2) private var ringLineWidth: CGFloat = 14
+
+    /// 体重と同じまとまりに、目標の行（下に小さな文）、達成・期限・期限後の維持の紫の行、週の振り返りの行を足す
+    @ViewBuilder private func goalRows(_ goal: DaySummaryGoal) -> some View {
+        Button(action: openGoalScreen) {
+            disclosureRow(title: "目標", detail: goal.detail)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("day-summary-goal")
+        if let nextGoal = goal.nextGoal {
+            Button(nextGoal.title) {
+                openNextGoal(nextGoal)
+            }
+            .accessibilityIdentifier("day-summary-next-goal")
+        }
+        if let weekTitle = weekRecapTitle(shownDay) {
+            Button {
+                openWeeklyReview(shownDay)
+            } label: {
+                disclosureRow(title: "週の振り返り", detail: weekTitle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("day-summary-weekly-review")
+        }
+    }
+
+    /// 名前の下に小さな文を書き、右端に「›」を置く行
+    private func disclosureRow(title: String, detail: String?) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .foregroundStyle(Color.primary)
+                if let detail {
+                    Text(detail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color(.tertiaryLabel))
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
 
     private var foodLayout: AnyLayout {
         dynamicTypeSize.isAccessibilitySize

@@ -10,21 +10,16 @@ extension TimelineTests {
         let guide: DailyGuide
 
         init() throws {
-            let goal = try Goal.losing(id: UUID())
-            let startedGoal = Goal(
-                id: goal.id, startedDay: CalendarDay(year: 2026, month: 10, day: 6),
-                startingWeightTrendKilograms: goal.startingWeightTrendKilograms,
-                targetWeightKilograms: goal.targetWeightKilograms, decidedAt: goal.decidedAt,
-                timeZone: goal.timeZone, direction: goal.direction, closure: nil)
+            let startedGoal = try Goal.losing(startedOn: CalendarDay(year: 2026, month: 10, day: 6))
             guide = DailyGuide(
-                id: UUID(), goalId: goal.id, expenditureEstimateId: UUID(),
+                id: UUID(), goalId: startedGoal.id, expenditureEstimateId: UUID(),
                 effectiveDay: CalendarDay(year: 2026, month: 10, day: 6), energyKilocalories: 1850,
                 proteinGrams: 130, fatGrams: 50, carbohydrateGrams: 220, limitHits: [])
             timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none, goals: [startedGoal],
-                    dailyGuides: [guide]),
+                    goalRecords: .fixture(goals: [startedGoal], dailyGuides: [guide]),
+                    rejectedLines: [],
+                    meals: [], notices: [], undelivered: .none, conversation: .none),
                 firstDay: CalendarDay(year: 2026, month: 10, day: 5),
                 today: CalendarDay(year: 2026, month: 10, day: 7)
             )
@@ -42,8 +37,8 @@ extension TimelineTests {
         func comparesNoDay() {
             let timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none, conversation: .none, goals: [], dailyGuides: []),
+                    goalRecords: .fixture(), rejectedLines: [], meals: [],
+                    notices: [], undelivered: .none, conversation: .none),
                 firstDay: CalendarDay(year: 2026, month: 10, day: 5),
                 today: CalendarDay(year: 2026, month: 10, day: 6)
             )

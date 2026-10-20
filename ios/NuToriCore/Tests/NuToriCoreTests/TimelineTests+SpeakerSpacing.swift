@@ -39,8 +39,8 @@ extension TimelineTests {
             let replied = SentTextStatus(classification: .conversation, reply: .replied)
             timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [morning, evening, night], rejectedLines: [],
-                    meals: [breakfast, snack], notices: [notice],
+                    goalRecords: .fixture(weightRecords: [morning, evening, night]),
+                    rejectedLines: [], meals: [breakfast, snack], notices: [notice],
                     undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [
@@ -52,7 +52,7 @@ extension TimelineTests {
                                 classification: .meal, reply: .notRequested),
                             snackQuestion.id: replied, afterWeight.id: replied,
                         ],
-                        replies: [reply, snackReply], streams: [:]), goals: [], dailyGuides: []),
+                        replies: [reply, snackReply], streams: [:])),
                 firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                 today: CalendarDay(year: 2026, month: 9, day: 24))
         }

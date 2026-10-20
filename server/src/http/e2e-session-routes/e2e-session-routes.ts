@@ -1,26 +1,20 @@
 import { Hono } from "hono";
 import { createAuthentication } from "../../auth/create-authentication";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
+import { checkE2eAccess } from "./check-e2e-access";
+import { e2eRequestHeaders } from "./e2e-request-headers";
 
 // 開発用の環境で主な流れを確かめるジョブ（.github/workflows/deploy.yml）のための、Apple を通さないサインインの口。
-// 開いてはいけない環境（本番）で開くと誰でも入れてしまうので、次のすべてが揃ったときだけ開き、ほかは口が無いのと同じ 404 にする。
-// 1. 環境の名前（SENTRY_ENVIRONMENT）が development。許可する名前を挙げ、本番や綴りの違う名前は閉じる
-// 2. 秘密の値（E2E_SIGN_IN_SECRET）が置かれていて、推測されにくい長さがある。本番には置かない
-// 3. 要求が同じ秘密の値を送っている
+// 開くかは checkE2eAccess が決め、開かないときは口が無いのと同じ 404 に、秘密の値が違えば 401 にする。
 // OpenAPI の文書に載せない（アプリのクライアントに入れない）ので、スキーマ付きの経路にしない
 export const e2eSessionRoutes = new Hono<{ Bindings: Env }>().post(
   "/v1/e2e/sessions",
   async (c) => {
-    const minimumSecretLength = 32;
-    const secret = c.env.E2E_SIGN_IN_SECRET;
-    if (
-      c.env.SENTRY_ENVIRONMENT !== "development" ||
-      secret === undefined ||
-      secret.length < minimumSecretLength
-    ) {
+    const access = await checkE2eAccess(c.env, c.req.header(e2eRequestHeaders.signInSecret));
+    if (access === "closed") {
       return c.notFound();
     }
-    if (!(await isSameSecret(secret, c.req.header("x-e2e-sign-in-secret") ?? ""))) {
+    if (access === "unauthorized") {
       return c.body(null, 401);
     }
     const { internalAdapter } = await createAuthentication(c.env, c.req.url).$context;
@@ -38,12 +32,3 @@ export const e2eSessionRoutes = new Hono<{ Bindings: Env }>().post(
     return c.json({ sessionToken: session.token, accountId: user.id }, 201);
   },
 );
-
-// 長さを漏らさず、一致までの時間が内容によらないよう、ハッシュにしてから比べる
-const isSameSecret = async (expected: string, sent: string): Promise<boolean> => {
-  const [expectedDigest, sentDigest] = await Promise.all([sha256(expected), sha256(sent)]);
-  return crypto.subtle.timingSafeEqual(expectedDigest, sentDigest);
-};
-
-const sha256 = (value: string): Promise<ArrayBuffer> =>
-  crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));

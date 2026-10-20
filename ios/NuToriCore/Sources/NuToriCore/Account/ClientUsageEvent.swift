@@ -51,6 +51,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case replyMealOpened
     /// 目標の設定を開いた・閉じた・決めた・案を1つも出せなかった。体重・目標体重・kcal と身体データは載せない
     case goalSetup(GoalSetupObservation)
+    /// 週の振り返りを開いた。‹ › で週を送ったときも送る。`weeksAgo` は今日を含む週から何週前の週か
+    case weeklyReviewOpened(entry: WeeklyReviewEntry, weeksAgo: Int)
+    /// 目標の画面を開いた
+    case goalScreenOpened(entry: GoalScreenEntry, status: GoalScreenStatus)
 
     /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
     /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
@@ -64,6 +68,47 @@ public enum ClientUsageEvent: Sendable, Equatable {
     public enum ReplyRegenerateReason: Sendable, Equatable {
         case failed(SentTextStatus.FailureReason)
         case halted
+    }
+
+    /// 週の振り返りを開いたところ
+    public enum WeeklyReviewEntry: Sendable, Equatable, Hashable {
+        /// タイムラインの振り返りのカード
+        case weeklyReviewCard
+        /// 目標の画面の週の振り返りへの1行
+        case goalScreen
+        /// 日のまとめの週の振り返りの行
+        case daySummary
+    }
+
+    /// 目標の画面を開いたところ
+    public enum GoalScreenEntry: Sendable, Equatable, Hashable {
+        /// タイムラインの左上の入口
+        case goalLink
+        /// 1日の目安の変更の知らせの「目標 ›」
+        case dailyGuideChangeNotice
+        /// 日のまとめの目標の行
+        case daySummary
+        /// 体重の画面の「目標 ›」
+        case weightScreen
+    }
+
+    /// 目標の画面を開いたときの目標の状態。目標の値は持たない
+    public enum GoalScreenStatus: Sendable, Equatable {
+        case inProgress
+        case achievedBeforeDeadline
+        case deadlineReached
+        case maintainingAfterDeadline
+
+        /// 目標がなければ nil（目標の画面は開かない）
+        public init?(_ status: GoalStatus) {
+            switch status {
+            case .noGoal: return nil
+            case .inProgress: self = .inProgress
+            case .achievedBeforeDeadline: self = .achievedBeforeDeadline
+            case .deadlineReached: self = .deadlineReached
+            case .maintainingAfterDeadline: self = .maintainingAfterDeadline
+            }
+        }
     }
 
     public enum WeightInputMethod: Sendable, Equatable {
@@ -125,6 +170,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .goalSetup(.closed): "goal_setup_closed"
         case .goalSetup(.decided): "goal_decided"
         case .goalSetup(.plansUnavailable): "goal_plans_unavailable"
+        case .weeklyReviewOpened: "weekly_review_opened"
+        case .goalScreenOpened: "goal_screen_opened"
         }
     }
 
@@ -137,7 +184,7 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .missedWeightReminderOpened,
             .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
             .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
-            .replyMealOpened, .goalSetup:
+            .replyMealOpened, .goalSetup, .weeklyReviewOpened, .goalScreenOpened:
             nil
         case .screen(.timeline):
             "timeline"
@@ -216,6 +263,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
             ["choice": .token(choice.token), "recalculated": .flag(recalculated)]
         case .goalSetup(.plansUnavailable(let canBackCalculate)):
             canBackCalculate.map { ["can_back_calculate": .flag($0)] } ?? [:]
+        case .weeklyReviewOpened(let entry, let weeksAgo):
+            ["entry": .token(entry.token), "weeks_ago": .count(weeksAgo)]
+        case .goalScreenOpened(let entry, let status):
+            ["entry": .token(entry.token), "goal_status": .token(status.token)]
         }
     }
 
@@ -286,6 +337,16 @@ extension MealEstimationStatus {
     }
 }
 
+extension ClientUsageEvent.WeeklyReviewEntry {
+    fileprivate var token: String {
+        switch self {
+        case .weeklyReviewCard: "weekly_review_card"
+        case .goalScreen: "goal_screen"
+        case .daySummary: "day_summary"
+        }
+    }
+}
+
 extension GoalSetupObservation.Entry {
     fileprivate var token: String {
         switch self {
@@ -293,6 +354,31 @@ extension GoalSetupObservation.Entry {
         case .unansweredNoticeLine: "unanswered_notice_line"
         case .daySummary: "day_summary"
         case .weightScreen: "weight_screen"
+        case .chooseNextGoal: "choose_next_goal"
+        case .setNextGoal: "set_next_goal"
+        case .switchGoal: "switch_goal"
+        }
+    }
+}
+
+extension ClientUsageEvent.GoalScreenEntry {
+    fileprivate var token: String {
+        switch self {
+        case .goalLink: "goal_link"
+        case .dailyGuideChangeNotice: "daily_guide_change_notice"
+        case .daySummary: "day_summary"
+        case .weightScreen: "weight_screen"
+        }
+    }
+}
+
+extension ClientUsageEvent.GoalScreenStatus {
+    fileprivate var token: String {
+        switch self {
+        case .inProgress: "in_progress"
+        case .achievedBeforeDeadline: "achieved_before_deadline"
+        case .deadlineReached: "deadline_reached"
+        case .maintainingAfterDeadline: "maintaining_after_deadline"
         }
     }
 }

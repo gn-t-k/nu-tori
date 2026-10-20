@@ -61,6 +61,13 @@
                 ], dishEstimationStatuses: [:], unsentDishIds: [])
         }
 
+        /// プレビューの見本の、9月14日（月）に立てた減量の目標（`Goal.sampleWeeklyReviewed`）の1週目の、日ごとに推定できた食事（月・火・水・金・土）。
+        /// 週の振り返り（`WeeklyReview.sampleReviewed`）で見直した週
+        static let sampleWeeklyReviewedWeek: [MealCard] = [0, 1, 2, 4, 5].map {
+            .sampleEstimated(
+                .sample(on: Goal.sampleWeeklyReviewed.startedDay.advanced(by: $0), at: 12, 10))
+        }
+
         /// 値は基準の g（成分表と推定は 100 g、栄養成分表示は表示の単位）あたり。nil は「不明」
         private static func sampleIngredient(
             _ dish: Dish, _ position: Int, _ name: String, _ quantity: Double, _ unit: String,

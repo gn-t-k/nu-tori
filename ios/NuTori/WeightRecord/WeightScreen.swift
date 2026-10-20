@@ -14,6 +14,10 @@ struct WeightScreen: View {
     let saveWeight: (WeightEntry.Write) async -> Void
     /// 目標が無いときの「目標を立てる」。タイムラインまで戻り、知らせのカードまで送って広げる。目標があれば nil
     let startGoalSetup: (() -> Void)?
+    /// 目標までの道のり。目標がなければ nil
+    let goalPath: WeightGoalPath?
+    /// 「目標 ›」。この画面の上に目標の画面を押して進む（戻るは「‹ 体重」）
+    let openGoalScreen: () -> Void
 
     var body: some View {
         List {
@@ -35,7 +39,10 @@ struct WeightScreen: View {
                     Text(note)
                 }
             }
-            // 目標までの道のりは次の仕様。目標が無いあいだは、その場所に立てる入口を置く
+            if let goalPath {
+                goalPathSection(goalPath)
+            }
+            // 目標が無いあいだは、道のりの場所に立てる入口を置く
             if let startGoalSetup {
                 Section {
                     Button("目標を立てる", action: startGoalSetup)
@@ -88,6 +95,39 @@ struct WeightScreen: View {
     }
 
     @State private var correction = Correction.notEditing
+
+    /// 目標までの道のり。一覧の行（「減量　68.0 kg まで あと 2.8 kg」「期限　12月24日 あと 45 日」）と「目標 ›」、下にペースの注記
+    private func goalPathSection(_ path: WeightGoalPath) -> some View {
+        Section {
+            ForEach(path.rows, id: \.self) { row in
+                LabeledContent(row.label) {
+                    Text(row.value)
+                        .monospacedDigit()
+                }
+                .accessibilityIdentifier("weight-goal-path-row")
+            }
+            Button(action: openGoalScreen) {
+                HStack {
+                    Text("目標")
+                        .foregroundStyle(Color.primary)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color(.tertiaryLabel))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("weight-goal-link")
+        } header: {
+            Text("目標までの道のり")
+        } footer: {
+            if let note = path.note {
+                Text(note)
+                    .accessibilityIdentifier("weight-goal-path-note")
+            }
+        }
+    }
     @FocusState private var focusedRecordId: UUID?
 
     private var sameDayRecords: [WeightRecord] {

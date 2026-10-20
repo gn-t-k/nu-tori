@@ -118,7 +118,8 @@
                         startingWeightTrendKilograms: proposals.startingWeightTrendKilograms,
                         targetWeightKilograms: request.shown.targetWeightKg, decidedAt: now,
                         timeZone: TimeZone(identifier: request.timeZone) ?? .current,
-                        direction: direction, closure: nil)),
+                        direction: direction, achievement: nil, deadlineConfirmation: nil,
+                        closure: nil)),
                 .dailyGuide(
                     SyncedDailyGuide(
                         id: UUID(), goalId: goalId, expenditureEstimateId: estimateId,

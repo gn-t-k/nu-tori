@@ -17,13 +17,13 @@ struct ReplyFirstTextWatchTests {
     ) -> Timeline {
         Timeline(
             input: Timeline.Input(
-                weightRecords: [], rejectedLines: [], meals: [], notices: [],
+                goalRecords: .fixture(), rejectedLines: [], meals: [], notices: [],
                 undelivered: undelivered,
                 conversation: Timeline.Conversation(
                     sentTexts: [sentText],
                     statuses: status.map { [sentText.id: $0] } ?? [:],
                     replies: replies,
-                    streams: stream.map { [sentText.id: $0] } ?? [:]), goals: [], dailyGuides: []),
+                    streams: stream.map { [sentText.id: $0] } ?? [:])),
             firstDay: day, today: day)
     }
 

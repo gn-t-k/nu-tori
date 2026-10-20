@@ -23,6 +23,7 @@ extension SyncChange {
         case .sentText, .sentTextRemoval: .sentText
         case .sentTextStatus: .sentTextStatus
         case .usualWeighingTime: .usualWeighingTime
+        case .weeklyReview: .weeklyReview
         case .weightTrend, .weightTrendAbsence: .weightTrend
         case .unknown: nil
         }

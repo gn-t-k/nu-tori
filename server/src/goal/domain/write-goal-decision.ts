@@ -6,7 +6,8 @@ import {
   type InitialExpenditureSource,
   initialExpenditureSources,
 } from "../../expenditure-estimate/domain/expenditure-estimate";
-import { type Goal, pacePlans } from "./goal";
+import { type DecidedGoal, type Goal, pacePlans } from "./goal";
+import { isListed } from "../../domain/is-listed";
 
 // 目標を決めたことを書く口。初めての目標と立て直しの行の組を、外部キーが指す行を先にして書き、変えた記録を足す。
 // 記録の変化を書く入口（RecordChangeWriter）の run の中で呼ぶ。
@@ -17,7 +18,7 @@ export const writeGoalDecision = (
   decision: {
     // 端末が振った要求の ID。受け取りの行の ID になる
     requestId: string;
-    goal: Omit<Goal, "id" | "closure">;
+    goal: Omit<DecidedGoal, "id">;
     // 目標の開始の日から当てる
     dailyGuide: Pick<
       DailyGuide,
@@ -79,7 +80,7 @@ const requireWritable = ({
   currentGoal,
   currentEstimateId,
 }: {
-  goal: Omit<Goal, "id" | "closure">;
+  goal: Omit<DecidedGoal, "id">;
   dailyGuide: Pick<DailyGuide, "limitHits">;
   initialExpenditure: InitialExpenditure | undefined;
   currentGoal: Goal | undefined;
@@ -111,5 +112,3 @@ const requireWritable = ({
     throw new Error("当たった上限と下限の値が一覧に無い");
   }
 };
-
-const isListed = (values: readonly string[], value: string): boolean => values.includes(value);

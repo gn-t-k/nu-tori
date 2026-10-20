@@ -211,7 +211,7 @@ describe("目標を決める要求", () => {
                 recordId: firstGoal?.recordId,
                 record: {
                   ...firstGoal?.record,
-                  closure: { endedOn: today, nextGoalId: newGoal?.recordId },
+                  closure: { endedOn: today, nextGoalId: newGoal?.recordId, endReason: "switched" },
                 },
               },
               {

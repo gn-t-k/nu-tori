@@ -6,7 +6,15 @@ import type { Goal } from "../domain/goal";
 import type { GoalStore } from "../domain/goal-store";
 import { goalTables } from "./goal-tables";
 
-const { goals, weightChangeGoals, goalClosures, goalDecisionReceipts } = goalTables;
+const {
+  goals,
+  weightChangeGoals,
+  goalClosures,
+  goalDecisionReceipts,
+  goalAchievements,
+  goalDeadlineConfirmations,
+  postDeadlineMaintenanceGoals,
+} = goalTables;
 // 目標を閉じた次の目標。終わった日は、次の目標の開始の日から出す
 const nextGoals = alias(goals, "next_goals");
 
@@ -19,12 +27,30 @@ export const createGoalStore = (db: DrizzleSqliteDODatabase): GoalStore => {
           deadlineOn: weightChangeGoals.deadlineOn,
           pacePlan: weightChangeGoals.pacePlan,
         },
+        achievement: {
+          achievedOn: goalAchievements.achievedOn,
+          judgedAt: goalAchievements.judgedAt,
+          timeZone: goalAchievements.timeZone,
+        },
+        deadlineConfirmation: {
+          deadlineWeightTrendKg: goalDeadlineConfirmations.deadlineWeightTrendKg,
+          confirmedAt: goalDeadlineConfirmations.confirmedAt,
+          timeZone: goalDeadlineConfirmations.timeZone,
+        },
         closure: { endedOn: nextGoals.startedOn, nextGoalId: nextGoals.id },
+        // 次の目標が期限後の維持の目標なら、期限後の維持に移って閉じた
+        nextPostDeadlineMaintenanceGoalId: postDeadlineMaintenanceGoals.goalId,
       })
       .from(goals)
       .leftJoin(weightChangeGoals, eq(weightChangeGoals.goalId, goals.id))
       .leftJoin(goalClosures, eq(goalClosures.goalId, goals.id))
       .leftJoin(nextGoals, eq(nextGoals.id, goalClosures.nextGoalId))
+      .leftJoin(goalAchievements, eq(goalAchievements.goalId, goals.id))
+      .leftJoin(goalDeadlineConfirmations, eq(goalDeadlineConfirmations.goalId, goals.id))
+      .leftJoin(
+        postDeadlineMaintenanceGoals,
+        eq(postDeadlineMaintenanceGoals.goalId, goalClosures.nextGoalId),
+      )
       .where(eq(goals.id, id))
       .get();
     if (row === undefined) {
@@ -33,7 +59,18 @@ export const createGoalStore = (db: DrizzleSqliteDODatabase): GoalStore => {
     return {
       ...row.goal,
       weightChange: row.weightChange ?? undefined,
-      closure: row.closure ?? undefined,
+      achievement: row.achievement ?? undefined,
+      deadlineConfirmation: row.deadlineConfirmation ?? undefined,
+      closure:
+        row.closure === null
+          ? undefined
+          : {
+              ...row.closure,
+              endReason:
+                row.nextPostDeadlineMaintenanceGoalId === null
+                  ? "switched"
+                  : "moved_to_maintenance",
+            },
     };
   };
   return {
@@ -85,6 +122,15 @@ export const createGoalStore = (db: DrizzleSqliteDODatabase): GoalStore => {
     },
     insertDecisionReceipt: ({ requestId, goalId }) => {
       db.insert(goalDecisionReceipts).values({ id: requestId, goalId }).run();
+    },
+    insertPostDeadlineMaintenance: (goalId) => {
+      db.insert(postDeadlineMaintenanceGoals).values({ goalId }).run();
+    },
+    insertAchievement: (achievement) => {
+      db.insert(goalAchievements).values(achievement).run();
+    },
+    insertDeadlineConfirmation: (confirmation) => {
+      db.insert(goalDeadlineConfirmations).values(confirmation).run();
     },
   };
 };

@@ -50,10 +50,43 @@ const goalDecisionReceipts = sqliteTable(
   (table) => [uniqueIndex("goal_decision_receipts_goal_id").on(table.goalId)],
 );
 
-// 目標の表（#523）。どの表も書き足すだけ。宣言は durable-object-migrations/ の SQL に合わせる
+// 減量・増量の目標の達成（#613）。達成した日はスナップショットで持つ
+const goalAchievements = sqliteTable("goal_achievements", {
+  goalId: text("goal_id")
+    .$type<RecordId>()
+    .primaryKey()
+    .references(() => weightChangeGoals.goalId),
+  achievedOn: text("achieved_on").notNull(),
+  judgedAt: integer("judged_at", { mode: "timestamp_ms" }).notNull(),
+  timeZone: text("time_zone").notNull(),
+});
+
+// 減量・増量の目標の期限の日の確定（#613）。期限の日の体重の傾向はスナップショットで持つ
+const goalDeadlineConfirmations = sqliteTable("goal_deadline_confirmations", {
+  goalId: text("goal_id")
+    .$type<RecordId>()
+    .primaryKey()
+    .references(() => weightChangeGoals.goalId),
+  deadlineWeightTrendKg: real("deadline_weight_trend_kg").notNull(),
+  confirmedAt: integer("confirmed_at", { mode: "timestamp_ms" }).notNull(),
+  timeZone: text("time_zone").notNull(),
+});
+
+// 期限後の維持の目標のサブセット（#613）。移った時刻は目標の decided_at、前の目標は goal_closures から出す
+const postDeadlineMaintenanceGoals = sqliteTable("post_deadline_maintenance_goals", {
+  goalId: text("goal_id")
+    .$type<RecordId>()
+    .primaryKey()
+    .references(() => goals.id),
+});
+
+// 目標の表（#523・#613）。どの表も書き足すだけ。宣言は durable-object-migrations/ の SQL に合わせる
 export const goalTables = {
   goals,
   weightChangeGoals,
   goalClosures,
   goalDecisionReceipts,
+  goalAchievements,
+  goalDeadlineConfirmations,
+  postDeadlineMaintenanceGoals,
 };

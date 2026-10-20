@@ -1,6 +1,6 @@
 public import Foundation
 
-/// 目標。サーバーだけが書き、消えない。記録の ID は目標の ID。閉じると、同じ目標の変更がもう一度届く
+/// 目標。サーバーだけが書き、消えない。記録の ID は目標の ID。達成する・期限の日を確定する・閉じると、同じ目標の変更がもう一度届く
 public struct SyncedGoal: Sendable, Equatable {
     public let id: UUID
     /// 開始の日（YYYY-MM-DD）
@@ -12,6 +12,10 @@ public struct SyncedGoal: Sendable, Equatable {
     /// 目標を決めたときのタイムゾーン
     public let timeZone: TimeZone
     public let direction: Direction
+    /// 達成していなければ nil。減量・増量の目標だけに付く
+    public let achievement: Achievement?
+    /// 期限の日を確定していなければ nil。減量・増量の目標だけに付く
+    public let deadlineConfirmation: DeadlineConfirmation?
     /// 閉じていなければ nil
     public let closure: Closure?
 
@@ -23,6 +27,8 @@ public struct SyncedGoal: Sendable, Equatable {
         decidedAt: Date,
         timeZone: TimeZone,
         direction: Direction,
+        achievement: Achievement?,
+        deadlineConfirmation: DeadlineConfirmation?,
         closure: Closure?
     ) {
         self.id = id
@@ -32,6 +38,8 @@ public struct SyncedGoal: Sendable, Equatable {
         self.decidedAt = decidedAt
         self.timeZone = timeZone
         self.direction = direction
+        self.achievement = achievement
+        self.deadlineConfirmation = deadlineConfirmation
         self.closure = closure
     }
 
@@ -95,14 +103,52 @@ public struct SyncedGoal: Sendable, Equatable {
         case custom
     }
 
+    public struct Achievement: Sendable, Equatable {
+        /// 達成した日（YYYY-MM-DD）
+        public let achievedOn: String
+        public let judgedAt: Date
+        /// 達成を判定した要求のタイムゾーン
+        public let timeZone: TimeZone
+
+        public init(achievedOn: String, judgedAt: Date, timeZone: TimeZone) {
+            self.achievedOn = achievedOn
+            self.judgedAt = judgedAt
+            self.timeZone = timeZone
+        }
+    }
+
+    public struct DeadlineConfirmation: Sendable, Equatable {
+        /// 期限の日の体重の傾向
+        public let deadlineWeightTrendKilograms: Double
+        public let confirmedAt: Date
+        /// 期限の日を確定した要求のタイムゾーン
+        public let timeZone: TimeZone
+
+        public init(deadlineWeightTrendKilograms: Double, confirmedAt: Date, timeZone: TimeZone) {
+            self.deadlineWeightTrendKilograms = deadlineWeightTrendKilograms
+            self.confirmedAt = confirmedAt
+            self.timeZone = timeZone
+        }
+    }
+
     public struct Closure: Sendable, Equatable {
         /// 終わった日（YYYY-MM-DD）。次の目標の開始の日
         public let endedOn: String
         public let nextGoalId: UUID
+        public let endReason: EndReason
 
-        public init(endedOn: String, nextGoalId: UUID) {
+        public init(endedOn: String, nextGoalId: UUID, endReason: EndReason) {
             self.endedOn = endedOn
             self.nextGoalId = nextGoalId
+            self.endReason = endReason
         }
+    }
+
+    /// サーバーの `endReason` の値
+    public enum EndReason: String, Sendable, Equatable {
+        /// 立て直しによる切り替え
+        case switched
+        /// 期限後の維持に移った
+        case movedToMaintenance = "moved_to_maintenance"
     }
 }

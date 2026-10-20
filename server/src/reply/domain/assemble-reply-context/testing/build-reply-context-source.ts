@@ -6,6 +6,7 @@ import type { ExpenditureEstimate } from "../../../../expenditure-estimate/domai
 import type { Goal } from "../../../../goal/domain/goal";
 import type { Ingredient } from "../../../../ingredient/domain/ingredient";
 import type { SentText } from "../../../../sent-text/domain/sent-text";
+import type { WeeklyReview } from "../../../../weekly-review/domain/weekly-review";
 import type { WeightRecord } from "../../../../weight-record/domain/weight-record";
 import type { ReplyContextSource, ReplyContextSourceMeal } from "../../reply-context-source";
 
@@ -19,9 +20,11 @@ export const buildReplyContextSource = {
     meals: [],
     weightRecords: [],
     weightTrend: [],
+    weightRecordDays: [],
     goals: [],
     dailyGuides: [],
     expenditureEstimates: [],
+    latestWeeklyReview: undefined,
     ...overrides,
   }),
 
@@ -125,8 +128,10 @@ export const buildReplyContextSource = {
     {
       targetWeightKg,
       weightChange,
+      achievement,
       closure,
-    }: Pick<Goal, "targetWeightKg" | "weightChange"> & Partial<Pick<Goal, "closure">>,
+    }: Pick<Goal, "targetWeightKg" | "weightChange"> &
+      Partial<Pick<Goal, "achievement" | "closure">>,
   ): Goal => ({
     id: buildReplyContextSource.id(n),
     startedOn,
@@ -135,15 +140,18 @@ export const buildReplyContextSource = {
     decidedAt: new Date(`${startedOn}T03:00:00Z`),
     timeZone: "Asia/Tokyo",
     weightChange,
+    achievement,
+    deadlineConfirmation: undefined,
     closure,
   }),
 
-  // 1日の目安。P・F・C は 105・55・270 g
+  // 1日の目安。P・F・C は 105・55・270 g。計算に使った推定の ID は、末尾の数に 100 を足したもの
   dailyGuide: (
     n: number,
     goalId: RecordId,
     effectiveOn: string,
     energyKcal: number,
+    limitHits: DailyGuide["limitHits"] = [],
   ): DailyGuide => ({
     id: buildReplyContextSource.id(n),
     goalId,
@@ -153,7 +161,7 @@ export const buildReplyContextSource = {
     proteinG: 105,
     fatG: 55,
     carbohydrateG: 270,
-    limitHits: [],
+    limitHits,
   }),
 
   expenditureEstimate: (
@@ -166,5 +174,18 @@ export const buildReplyContextSource = {
     expenditureKcal,
     estimatedAt: new Date(`${effectiveOn}T03:00:00Z`),
     initialSource: undefined,
+  }),
+
+  // 週の見直し。見直した時刻は当てる月曜の 9:00（東京）
+  weeklyReview: (
+    n: number,
+    effectiveOn: string,
+    outcome: WeeklyReview["outcome"],
+  ): WeeklyReview => ({
+    id: buildReplyContextSource.id(n),
+    effectiveOn,
+    reviewedAt: new Date(`${effectiveOn}T00:00:00Z`),
+    timeZone: "Asia/Tokyo",
+    outcome,
   }),
 };

@@ -774,6 +774,8 @@ describe("目標の設定の要求", () => {
               appBuild: undefined,
               error: undefined,
               failedStage: undefined,
+              // 目標がまだ無いので、見直す週も無い
+              reviewedWeekCount: 0,
               durationMs: expect.any(Number),
             },
           ],

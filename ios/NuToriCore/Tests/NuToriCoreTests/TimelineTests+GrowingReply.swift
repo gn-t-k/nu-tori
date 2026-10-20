@@ -13,8 +13,8 @@ extension TimelineTests {
         ) -> [Timeline.Item] {
             Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none,
+                    goalRecords: .fixture(), rejectedLines: [], meals: [],
+                    notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
                         statuses: [
@@ -22,7 +22,7 @@ extension TimelineTests {
                                 classification: .conversation, reply: .awaiting)
                         ],
                         replies: replies,
-                        streams: [sentText.id: stream]), goals: [], dailyGuides: []),
+                        streams: [sentText.id: stream])),
                 firstDay: day, today: day
             ).days.flatMap(\.items)
         }
@@ -96,8 +96,8 @@ extension TimelineTests {
             func timeline(_ stream: ReplyStream, replies: [AiUtterance] = []) -> Timeline {
                 Timeline(
                     input: Timeline.Input(
-                        weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                        undelivered: .none,
+                        goalRecords: .fixture(), rejectedLines: [], meals: [],
+                        notices: [], undelivered: .none,
                         conversation: Timeline.Conversation(
                             sentTexts: [sentText],
                             statuses: [
@@ -105,7 +105,7 @@ extension TimelineTests {
                                     classification: .conversation, reply: .awaiting)
                             ],
                             replies: replies,
-                            streams: [sentText.id: stream]), goals: [], dailyGuides: []),
+                            streams: [sentText.id: stream])),
                     firstDay: Self.day, today: Self.day)
             }
             let growing = Self.stream([.replyStarted(replyId: replyId), .textDelta("野菜の")])

@@ -28,11 +28,12 @@
                     timeZone: timeZone)
                 day = clock.today()
                 input = Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [], notices: [],
-                    undelivered: .none,
+                    goalRecords: GoalRecords(
+                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
+                        weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
+                    notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
-                        sentTexts: [second, first], statuses: [:], replies: [], streams: [:]),
-                    goals: [], dailyGuides: [])
+                        sentTexts: [second, first], statuses: [:], replies: [], streams: [:]))
             }
 
             @Test("サーバーがミリ秒に丸めても、送った順に並ぶこと")

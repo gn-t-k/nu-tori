@@ -48,9 +48,26 @@ public struct Timeline: Sendable {
         let bubblesByDay = Dictionary(
             grouping: conversation.bubbles.filter { $0.sentText.day >= firstDay },
             by: \.sentText.day)
+        let ring = { (day: CalendarDay) in
+            DayRing(
+                hasWeightRecord: weightRecordsByDay[day] != nil,
+                food: DayFood(meals: mealsByEatenDay[day] ?? []),
+                dailyGuide: DailyGuideForDay(
+                    on: day, goals: input.goals, dailyGuides: input.dailyGuides)?.dailyGuide)
+        }
+        let weeklyReviewsByDay = Dictionary(
+            grouping: Self.weeklyReviewItems(input: input, firstDay: firstDay, ring: ring),
+            by: \.day)
+        let goalNoticesByDay = Dictionary(
+            grouping: GoalNotice.notices(
+                goals: input.goals,
+                currentGoalId: CurrentGoal(
+                    today: today, goals: input.goals, dailyGuides: input.dailyGuides)?.goal.id),
+            by: { max(CalendarDay(containing: $0.issuedAt, in: $0.timeZone), firstDay) })
         let lastDay =
             ([today] + weightRecordsByDay.keys + mealsByDay.keys + noticesByDay.keys
-            + bubblesByDay.keys + [goalSetupNoticeDay].compactMap(\.self)).max()!
+            + bubblesByDay.keys + [goalSetupNoticeDay].compactMap(\.self)
+            + weeklyReviewsByDay.keys + goalNoticesByDay.keys).max()!
         let range = firstDay...max(firstDay, lastDay)
         dayRange = range
         days = range.map { day in
@@ -65,6 +82,8 @@ public struct Timeline: Sendable {
                         NoticeCard(unanswered: $0.notice, today: today)
                     },
                     goalSetupNotice: goalSetupNoticeDay == day ? goalSetupNotice : nil,
+                    weeklyReviews: weeklyReviewsByDay[day] ?? [],
+                    goalNotices: goalNoticesByDay[day] ?? [],
                     bubbles: bubblesByDay[day] ?? [],
                     rejectedSentTextLines: conversation.separateLines.filter {
                         $0.sentText.day == day
@@ -155,7 +174,9 @@ public struct Timeline: Sendable {
 
     /// タイムラインに並べる元になるもの。種類が増えたら欄を足す
     public struct Input: Sendable {
-        public let weightRecords: [WeightRecord]
+        /// 目標・1日の目安・推定消費カロリー・週の見直し・体重の傾向・体重記録。1日の丸と日のまとめを、その日の1日の目安と比べ、
+        /// 振り返りのカードと変更の知らせを組むために引く。目標・1日の目安・推定消費カロリーがまだ届いていない見直しも含む
+        public let goalRecords: GoalRecords
         /// サーバーが受け付けなかった体重記録と食事の行
         public let rejectedLines: [RejectedLine]
         public let meals: [MealCard]
@@ -163,30 +184,29 @@ public struct Timeline: Sendable {
         public let notices: [Notice]
         public let undelivered: UndeliveredRecords
         public let conversation: Conversation
-        /// 閉じた目標も含む。1日の丸と日のまとめを、その日の1日の目安と比べるために引く
-        public let goals: [Goal]
-        /// 目標がまだ届いていない1日の目安も含む
-        public let dailyGuides: [DailyGuide]
 
         public init(
-            weightRecords: [WeightRecord],
+            goalRecords: GoalRecords,
             rejectedLines: [RejectedLine],
             meals: [MealCard],
             notices: [Notice],
             undelivered: UndeliveredRecords,
-            conversation: Conversation,
-            goals: [Goal],
-            dailyGuides: [DailyGuide]
+            conversation: Conversation
         ) {
-            self.weightRecords = weightRecords
+            self.goalRecords = goalRecords
             self.rejectedLines = rejectedLines
             self.meals = meals
             self.notices = notices
             self.undelivered = undelivered
             self.conversation = conversation
-            self.goals = goals
-            self.dailyGuides = dailyGuides
         }
+
+        /// 送り待ちを含む
+        public var weightRecords: [WeightRecord] { goalRecords.weightRecords }
+        /// 閉じた目標も含む
+        var goals: [Goal] { goalRecords.goals }
+        /// 目標がまだ届いていない1日の目安も含む
+        var dailyGuides: [DailyGuide] { goalRecords.dailyGuides }
     }
 
     public struct Day: Hashable, Sendable {
@@ -238,6 +258,12 @@ public struct Timeline: Sendable {
         case notice(NoticeCard)
         /// 目標を立てる知らせのカード。答えたあとも残り、目標が決まると決めた目標を示す形になる（形は画面が目標の記録で決める）
         case goalSetupNotice(Notice)
+        /// 週の振り返りのカード。見直した時刻に置く
+        case weeklyReviewCard(WeeklyReviewCard)
+        /// 1日の目安の変更の知らせ。振り返りのカードのすぐ下に置く
+        case dailyGuideChangeNotice(DailyGuideChangeNotice)
+        /// 目標の達成・期限・期限後の維持の知らせ
+        case goalNotice(GoalNotice)
         case sentText(SentTextBubble)
         /// 文章を送る（作る書き込み）を受け付けなかった1行。吹き出しを外した位置に出す
         case rejectedSentTextLine(RejectedSentTextLine)
@@ -250,7 +276,8 @@ public struct Timeline: Sendable {
                 .rejectedSentTextLine:
                 .me
             case .reply: .ai
-            case .notice, .goalSetupNotice: .app
+            case .notice, .goalSetupNotice, .weeklyReviewCard, .dailyGuideChangeNotice, .goalNotice:
+                .app
             }
         }
 
@@ -259,8 +286,10 @@ public struct Timeline: Sendable {
             switch self {
             case .notice(let card): card.notice.id
             case .goalSetupNotice(let notice): notice.id
+            // 同期で届いた記録から描くカードは、知らせの行（`Notice`）でない
             case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .sentText,
-                .rejectedSentTextLine, .reply:
+                .rejectedSentTextLine, .reply, .weeklyReviewCard, .dailyGuideChangeNotice,
+                .goalNotice:
                 nil
             }
         }
@@ -277,6 +306,11 @@ public struct Timeline: Sendable {
             case .rejectedSentTextLine(let line):
                 "sent-text-rejection-\(line.sentText.id.uuidString)"
             case .reply(let reply): "reply-\(reply.id.uuidString)"
+            case .weeklyReviewCard(let card): "weekly-review-\(card.review.id.uuidString)"
+            case .dailyGuideChangeNotice(let notice):
+                "daily-guide-change-\(notice.review.id.uuidString)"
+            case .goalNotice(let notice):
+                "goal-\(notice.kind.idPrefix)-\(notice.goal.id.uuidString)"
             }
         }
     }
@@ -289,6 +323,8 @@ public struct Timeline: Sendable {
         rejectedMealLines: [RejectedMealLine],
         notices: [NoticeCard],
         goalSetupNotice: Notice?,
+        weeklyReviews: [WeeklyReviewItems],
+        goalNotices: [GoalNotice],
         bubbles: [SentTextBubble],
         rejectedSentTextLines: [RejectedSentTextLine],
         replies: [UUID: [TimelineReply]]
@@ -297,6 +333,8 @@ public struct Timeline: Sendable {
             (records.map { Placed(record: $0) } + meals.map { Placed(card: $0) }
             + rejectedMealLines.map { Placed(line: $0) } + notices.map { Placed(notice: $0) }
             + [goalSetupNotice].compactMap(\.self).map { Placed(goalSetupNotice: $0) }
+            + weeklyReviews.map { Placed(weeklyReviewCard: $0.card) }
+            + goalNotices.map { Placed(goalNotice: $0) }
             + bubbles.map { Placed(bubble: $0) } + rejectedSentTextLines.map { Placed(line: $0) })
             .sorted()
         for line in rejectedLines.sorted(by: { $0.record.instant < $1.record.instant }) {
@@ -319,6 +357,12 @@ public struct Timeline: Sendable {
             }
         }
         var items = placed.map(\.item)
+        for review in weeklyReviews {
+            guard let notice = review.changeNotice,
+                let cardIndex = items.firstIndex(of: .weeklyReviewCard(review.card))
+            else { continue }
+            items.insert(.dailyGuideChangeNotice(notice), at: cardIndex + 1)
+        }
         for bubble in bubbles {
             guard let sentReplies = replies[bubble.sentText.id],
                 let bubbleIndex = items.firstIndex(of: .sentText(bubble))
@@ -371,6 +415,15 @@ public struct Timeline: Sendable {
 
         init(goalSetupNotice notice: Notice) {
             self.init(instant: notice.issuedAt, eatenAt: nil, item: .goalSetupNotice(notice))
+        }
+
+        init(weeklyReviewCard card: WeeklyReviewCard) {
+            self.init(
+                instant: card.review.reviewedAt, eatenAt: nil, item: .weeklyReviewCard(card))
+        }
+
+        init(goalNotice notice: GoalNotice) {
+            self.init(instant: notice.issuedAt, eatenAt: nil, item: .goalNotice(notice))
         }
 
         static func < (lhs: Placed, rhs: Placed) -> Bool {

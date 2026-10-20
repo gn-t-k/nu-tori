@@ -68,12 +68,13 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       await runMainFlow(flowOptions);
       expect(messages).toEqual([
         "サインインした",
-        "体重を記録した",
+        "7日前の体重を記録した",
         "目標の下見で、逆算できず、身体データを添えると減量の案を出せると答えた",
         "目標案を受け取った（推定消費カロリーの出どころ formula）",
-        "目標を決めた（goal・daily_guide・expenditure_estimate）",
+        "7日前に目標を決めた（goal・daily_guide・expenditure_estimate）",
         "同じ要求の ID の再送が、同じ応答で返った",
         "取りに行くで目標と1日の目安と推定消費カロリーが届いた",
+        "取りに行くで週の見直しが届いた（見送りの理由 within_first_week）",
         "写真の食事を送った",
         "推定できた（料理 2、材料 3）",
         "推定でできた料理の名前を直した",

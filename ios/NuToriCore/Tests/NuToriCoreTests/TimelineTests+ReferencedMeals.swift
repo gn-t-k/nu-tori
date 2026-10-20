@@ -24,8 +24,8 @@ extension TimelineTests {
                 "昼と昨日の夜の記録を直して", sentAt: "2026-09-24T13:00:00+09:00")
             timeline = Timeline(
                 input: Timeline.Input(
-                    weightRecords: [], rejectedLines: [], meals: [lunch, dinner], notices: [],
-                    undelivered: .none,
+                    goalRecords: .fixture(), rejectedLines: [],
+                    meals: [lunch, dinner], notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
                         statuses: [
@@ -36,7 +36,7 @@ extension TimelineTests {
                             AiUtterance(
                                 id: UUID(), body: "この食事のことですね。", sentTextId: sentText.id,
                                 mealIds: [dinner.meal.id, deletedMealId, lunch.meal.id])
-                        ], streams: [:]), goals: [], dailyGuides: []),
+                        ], streams: [:])),
                 // 使い始めた日より前の食事も指せる
                 firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                 today: CalendarDay(year: 2026, month: 9, day: 24))

@@ -105,14 +105,23 @@ struct GoalSetupNoticeCard: View {
 }
 
 extension GoalSetupNoticeCard.Flow {
-    /// 開いたことのある流れから。まだ開いていなければ nil
+    /// 開いたことのある流れから、その場所に描く形を出す。広げた流れは、開いた場所にだけ広げ、ほかの場所では途中まで進めた形にする
+    /// - Parameters:
+    ///   - flow: まだ開いていなければ nil
+    ///   - place: 描く場所
+    ///   - openedPlace: 流れを最後に開いた場所
     @MainActor
-    init(_ flow: GoalSetupFlow?) {
+    init(
+        _ flow: GoalSetupFlow?, on place: GoalSetupSession.Place,
+        openedOn openedPlace: GoalSetupSession.Place
+    ) {
         guard let flow else {
             self = .notStarted
             return
         }
-        if flow.isOpen {
+        if flow.isOpen, place != openedPlace {
+            self = .paused
+        } else if flow.isOpen {
             self = .expanded(
                 GoalSetupFlowContent(flow), GoalSetupFlowActions(flow, close: flow.close))
         } else {

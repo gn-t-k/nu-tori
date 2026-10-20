@@ -36,6 +36,38 @@ extension ClientUsageEventTests {
             #expect(events.allSatisfy { $0.screenToken == nil })
         }
 
+        @Test("目標の知らせの「次の目標を選ぶ」「次の目標を立てる」から開いたところを載せること")
+        func openedFromGoalNotice() {
+            let events: [ClientUsageEvent] = [
+                .goalSetup(.opened(entry: .chooseNextGoal, isRestart: true, resumed: false)),
+                .goalSetup(.opened(entry: .setNextGoal, isRestart: true, resumed: true)),
+            ]
+
+            #expect(
+                events.map(\.fields) == [
+                    [
+                        "entry": .token("choose_next_goal"), "is_restart": .flag(true),
+                        "resumed": .flag(false),
+                    ],
+                    [
+                        "entry": .token("set_next_goal"), "is_restart": .flag(true),
+                        "resumed": .flag(true),
+                    ],
+                ])
+        }
+
+        @Test("目標の画面の「目標を切り替える」から開いたところを載せること")
+        func openedFromGoalScreen() {
+            let event = ClientUsageEvent.goalSetup(
+                .opened(entry: .switchGoal, isRestart: true, resumed: false))
+
+            #expect(
+                event.fields == [
+                    "entry": .token("switch_goal"), "is_restart": .flag(true),
+                    "resumed": .flag(false),
+                ])
+        }
+
         @Test("閉じたページを載せること")
         func closed() {
             let pages: [GoalSetupObservation.Page] = [

@@ -67,6 +67,10 @@ extension RecordCacheMock {
             cache.usualWeighingTimeCache
         }
 
+        public func weeklyReview(in cache: RecordCacheMock) -> WeeklyReviewSyncing.Cache {
+            cache.weeklyReviewCache
+        }
+
         public func weightRecord(in cache: RecordCacheMock) -> WeightRecordSyncing.Cache {
             cache.weightRecordCache
         }

@@ -3,7 +3,10 @@ import { z } from "zod";
 import { mealTextBody } from "./meal-text-body";
 import { addDays } from "../src/domain/add-days";
 import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day-in-time-zone";
+import { computeStartOfWeek } from "../src/domain/compute-start-of-week";
+import { millisecondsPerDay } from "../src/domain/milliseconds-per-day";
 import { generateRecordId } from "../src/domain/record-id";
+import { e2eRequestHeaders } from "../src/http/e2e-session-routes/e2e-request-headers";
 import { goalDecisionSchema } from "../src/http/goal-setup-routes/goal-decision-schema";
 import { goalProposalsSchema } from "../src/http/goal-setup-routes/goal-proposals-schema";
 import { goalSetupPreviewSchema } from "../src/http/goal-setup-routes/goal-setup-preview-schema";
@@ -12,15 +15,19 @@ import { replyStreamEventSchema } from "../src/http/reply-stream-routes/reply-st
 // 送る文章は作り話にする（公開リポジトリ）
 const conversationTextBody = "今日はよく歩いたので、少し脚が疲れた";
 
-// 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから目標を決めて1日の目安が届くこと、写真と文章の食事の推定、会話の文章への返事、アカウントの削除までを通す。
+// 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから目標を決めて1日の目安が届くこと、週の見直し、写真と文章の食事の推定、会話の文章への返事、アカウントの削除までを通す。
 // 失敗したら、どの段で何が起きたかを書いて投げる。サインインしたあとは、失敗してもアカウントを消してから投げる
 export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
   const session = await signIn(options);
   options.log("サインインした");
+  // 新しいアカウントは前の週を持たないので、体重を量って目標を決めたのを 7 日前にする。
+  // 開始の日が前の週に入り、今週の月曜の週がまだ見直していない週になる
+  const goalDecidedAt = new Date(Date.now() - 7 * millisecondsPerDay);
   try {
-    await recordWeight(options, session);
-    options.log("体重を記録した");
-    await decideGoal(options, session);
+    await recordWeight(options, session, new Date(goalDecidedAt.getTime() - 60_000));
+    options.log("7日前の体重を記録した");
+    const goalId = await decideGoal(options, session, goalDecidedAt);
+    await requirePulledWeeklyReview(options, session, goalId);
     const mealId = await sendPhotographedMeal(options, session);
     options.log("写真の食事を送った");
     const { dishIds, ingredientCount } = await waitForEstimation(options, session, mealId);
@@ -74,7 +81,11 @@ const signIn = async (options: MainFlowOptions): Promise<Session> => {
   return z.object({ sessionToken: z.string(), accountId: z.string() }).parse(await response.json());
 };
 
-const recordWeight = async (options: MainFlowOptions, session: Session): Promise<void> => {
+const recordWeight = async (
+  options: MainFlowOptions,
+  session: Session,
+  measuredAt: Date,
+): Promise<void> => {
   await pushWrites(options, session, [
     {
       id: generateRecordId(),
@@ -82,7 +93,7 @@ const recordWeight = async (options: MainFlowOptions, session: Session): Promise
       weightRecord: {
         id: generateRecordId(),
         weightKg: 60.5,
-        measuredAt: Date.now(),
+        measuredAt: measuredAt.getTime(),
         timeZone: "Asia/Tokyo",
       },
     },
@@ -90,8 +101,15 @@ const recordWeight = async (options: MainFlowOptions, session: Session): Promise
 };
 
 // 初めての目標を、端末と同じ順で決める。使い始めたばかりで食べた量の記録が無いので逆算できず、身体データを添えて式で出す。
-// 減量の標準の案を、見せていた値のとおりに決め、同じ要求の ID の再送と、取りに行く応答に届くことまでを確かめる
-const decideGoal = async (options: MainFlowOptions, session: Session): Promise<void> => {
+// 減量の標準の案を、見せていた値のとおりに決め、同じ要求の ID の再送と、取りに行く応答に届くことまでを確かめる。
+// 目標の設定の要求は、開発用の環境だけで受け付ける時刻の差し替えで、決めた時刻（decidedAt）に送ったことにする。決めた目標の ID を返す
+const decideGoal = async (
+  options: MainFlowOptions,
+  session: Session,
+  decidedAt: Date,
+): Promise<string> => {
+  const post = (path: GoalSetupPath, body: Record<string, unknown>) =>
+    postGoalSetup(options, session, decidedAt, path, body);
   // 身体データは作り話にする（公開リポジトリ）。サーバーは計算に使ったら捨てる
   const bodyData = {
     sex: "female",
@@ -100,16 +118,14 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
     activity: { type: "level", level: "standing" },
   };
 
-  const preview = goalSetupPreviewSchema.parse(
-    await postGoalSetup(options, session, "preview", { direction: "lose" }),
-  );
+  const preview = goalSetupPreviewSchema.parse(await post("preview", { direction: "lose" }));
   if (preview.canBackCalculate !== false) {
     throw new Error(
       `食べた量の記録が無いのに、目標の下見が逆算できると答えた（canBackCalculate: ${String(preview.canBackCalculate)}）`,
     );
   }
   const previewWithBodyData = goalSetupPreviewSchema.parse(
-    await postGoalSetup(options, session, "preview", { direction: "lose", bodyData }),
+    await post("preview", { direction: "lose", bodyData }),
   );
   if (previewWithBodyData.canOfferLoseProposals !== true) {
     throw new Error(
@@ -119,10 +135,10 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
   options.log("目標の下見で、逆算できず、身体データを添えると減量の案を出せると答えた");
 
   // 期限は 13 週。開始の日は、サーバーが決めた日を目標案の応答から受け取って数える
-  const today = computeCalendarDayInTimeZone(new Date(), goalSetupTimeZone);
+  const decidedOn = computeCalendarDayInTimeZone(decidedAt, goalSetupTimeZone);
   const proposals = goalProposalsSchema.parse(
-    await postGoalSetup(options, session, "proposals", {
-      plan: { direction: "lose", deadlineOn: addDays(today, 90) },
+    await post("proposals", {
+      plan: { direction: "lose", deadlineOn: addDays(decidedOn, 90) },
       bodyData,
     }),
   );
@@ -148,7 +164,7 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
     rejectedCustomTargetWeightCount: 0,
     bodyData,
   };
-  const decision = await postGoalSetup(options, session, "decisions", decisionRequest);
+  const decision = await post("decisions", decisionRequest);
   const decided = goalDecisionSchema.parse(decision);
   if (decided.status !== "decided") {
     throw new Error(`目標が決まらず、${decided.status} が返った`);
@@ -157,9 +173,9 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
   if (decidedKinds.join("・") !== "goal・daily_guide・expenditure_estimate") {
     throw new Error(`決めた記録の並びが違う（${decidedKinds.join("・")}）`);
   }
-  options.log(`目標を決めた（${decidedKinds.join("・")}）`);
+  options.log(`7日前に目標を決めた（${decidedKinds.join("・")}）`);
 
-  const resent = await postGoalSetup(options, session, "decisions", decisionRequest);
+  const resent = await post("decisions", decisionRequest);
   if (!isDeepStrictEqual(resent, decision)) {
     throw new Error("同じ要求の ID の再送が、初めの応答と違う応答で返った");
   }
@@ -178,19 +194,68 @@ const decideGoal = async (options: MainFlowOptions, session: Session): Promise<v
     }
   }
   options.log("取りに行くで目標と1日の目安と推定消費カロリーが届いた");
+  const goalId = decided.changes.find(({ kind }) => kind === "goal")?.recordId;
+  if (goalId === undefined) {
+    throw new Error("決めた記録に目標が無い");
+  }
+  return goalId;
+};
+
+// 目標を決めたあとの取りに行く要求が、今週の月曜の週を見直し、その週の見直しの記録を、決めた目標に当てて届けることを確かめる。
+// 使い始めて1週に満たないので、見送りになる見込み。見送りでも見直せても記録は1つ届くので、どちらになったかは知らせるだけにする
+const requirePulledWeeklyReview = async (
+  options: MainFlowOptions,
+  session: Session,
+  goalId: string,
+): Promise<void> => {
+  const thisMonday = computeStartOfWeek(
+    computeCalendarDayInTimeZone(new Date(), createClientState().timeZone),
+  );
+  const weeklyReviews = (await pullAllChanges(options, session))
+    .filter(({ kind }) => kind === "weekly_review")
+    .map(({ record }) =>
+      z
+        .object({
+          effectiveOn: z.string(),
+          deferral: z.object({ reason: z.string(), goalId: z.string() }).optional(),
+          review: z.object({ mainReason: z.string() }).optional(),
+        })
+        .parse(record),
+    );
+  const weeklyReview = weeklyReviews.find(({ effectiveOn }) => effectiveOn === thisMonday);
+  if (weeklyReview === undefined) {
+    throw new Error(
+      `今週の月曜（${thisMonday}）の週の見直しが、取りに行く応答に無い（届いた週: ${weeklyReviews.map(({ effectiveOn }) => effectiveOn).join("・") || "なし"}）`,
+    );
+  }
+  if (weeklyReview.deferral !== undefined && weeklyReview.deferral.goalId !== goalId) {
+    throw new Error("見送った週の見直しが、決めた目標と違う目標に当たっている");
+  }
+  options.log(
+    weeklyReview.deferral === undefined
+      ? "取りに行くで週の見直しが届いた（見直せた）"
+      : `取りに行くで週の見直しが届いた（見送りの理由 ${weeklyReview.deferral.reason}）`,
+  );
 };
 
 const goalSetupTimeZone = "Asia/Tokyo";
+
+type GoalSetupPath = "preview" | "proposals" | "decisions";
 
 // 目標の設定の要求は同期の外でその場で答えるので、200 でなければ、断った理由（code）を添えて投げる
 const postGoalSetup = async (
   options: MainFlowOptions,
   session: Session,
-  path: "preview" | "proposals" | "decisions",
+  requestedAt: Date,
+  path: GoalSetupPath,
   body: Record<string, unknown>,
 ): Promise<unknown> => {
   const response = await callApi(options, session, "POST", `/v1/goal-setup/${path}`, {
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      [e2eRequestHeaders.signInSecret]: options.signInSecret,
+      [e2eRequestHeaders.requestedAt]: requestedAt.toISOString(),
+    },
     body: JSON.stringify({ timeZone: goalSetupTimeZone, ...body }),
   });
   if (response.status !== 200) {

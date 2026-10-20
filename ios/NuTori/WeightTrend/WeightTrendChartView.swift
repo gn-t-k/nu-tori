@@ -3,12 +3,14 @@ import NuToriCore
 import SwiftUI
 
 /// 体重の画面の、最近4週の傾向のグラフ。点は測った体重（日の代表値）、線はサーバーから届いた傾向。
-/// 色は DESIGN.md の「グラフ」: 線は Primary、点は文字の灰色、使い始める前の点はさらに薄く、グリッドは薄く
+/// 目標があれば目標体重の点線（縦軸に入らなければ端の矢印、維持は保つ幅を薄く塗る）。
+/// 色は DESIGN.md の「グラフ」: 線は Primary、点は文字の灰色、使い始める前の点はさらに薄く、目標は点線、グリッドは薄く
 struct WeightTrendChartView: View {
     let chart: WeightTrendChart
 
     var body: some View {
         Chart {
+            targetMarks
             if let divider = chart.firstDayDivider {
                 RuleMark(x: .value("日", offset(of: divider)))
                     .foregroundStyle(Color(.tertiaryLabel))
@@ -53,6 +55,7 @@ struct WeightTrendChartView: View {
         // Charts の AxisValueLabel は目盛りの右にずれ、今日のラベルが消えるので、横軸のラベルは自前で描く。縦のグリッドも引かない。今日から1週ずつの目盛りの線が、使い始めの点線と並んで紛れるため
         .chartXAxis(.hidden)
         .chartOverlay { xAxisLabels(proxy: $0) }
+        .chartOverlay { targetBeyondRange(proxy: $0) }
         .chartYAxis {
             AxisMarks(position: .leading, values: yTicks) { value in
                 AxisGridLine()
@@ -96,9 +99,63 @@ struct WeightTrendChartView: View {
     }
 
     private var lineDays: [WeightTrend.Day] {
-        switch chart.trendLine {
-        case .drawn(let days): days
-        case .tooFewRecordedDays: []
+        chart.trendLine.days
+    }
+
+    /// 目標体重の点線と、維持の保つ幅。縦軸に入らない目標体重は `targetBeyondRange` が端に書く
+    @ChartContentBuilder private var targetMarks: some ChartContent {
+        if case .band(let kilograms, let halfWidth) = chart.target {
+            RectangleMark(
+                xStart: .value("日", 0), xEnd: .value("日", lastOffset),
+                yStart: .value("保つ幅", kilograms - halfWidth),
+                yEnd: .value("保つ幅", kilograms + halfWidth)
+            )
+            .foregroundStyle(Color(.tertiaryLabel).opacity(0.18))
+            .accessibilityHidden(true)
+        }
+        if let kilograms = ruledTargetKilograms {
+            targetRule(kilograms)
+        }
+    }
+
+    /// 点線を引く目標体重。縦軸に入らなければ nil
+    private var ruledTargetKilograms: Double? {
+        switch chart.target {
+        case .line(let kilograms), .band(let kilograms, _): kilograms
+        case .beyondRange, nil: nil
+        }
+    }
+
+    private func targetRule(_ kilograms: Double) -> some ChartContent {
+        RuleMark(y: .value("目標", kilograms))
+            .foregroundStyle(Color(.secondaryLabel))
+            .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+            .annotation(
+                position: .top, alignment: .leading, spacing: 2,
+                overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
+            ) {
+                Text(chart.target?.label ?? "")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel(chart.target?.label ?? "")
+    }
+
+    /// 目標体重が縦軸に入らないとき、点線の代わりに上か下の端に「↓ 目標 70.0 kg」と書く
+    private func targetBeyondRange(proxy: ChartProxy) -> some View {
+        GeometryReader { geometry in
+            if case .beyondRange(_, let isAbove) = chart.target, let plotFrame = proxy.plotFrame {
+                let plot = geometry[plotFrame]
+                Text(chart.target?.label ?? "")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(4)
+                    .frame(
+                        width: plot.width, height: plot.height,
+                        alignment: isAbove ? .topTrailing : .bottomTrailing
+                    )
+                    .position(x: plot.midX, y: plot.midY)
+            }
         }
     }
 
@@ -116,15 +173,9 @@ struct WeightTrendChartView: View {
         Array(stride(from: lastOffset, through: 0, by: -7).reversed())
     }
 
-    /// 4週の中の点と線が収まる、整数の kg で区切った範囲。狭すぎると揺れが大きく見えるので 2 kg は取る
+    /// 縦軸は、点と線と保つ幅が収まる範囲（`WeightTrendChart.kilogramsRange`）
     private var yDomain: ClosedRange<Double> {
-        let values = chart.points.map(\.kilograms) + lineDays.map(\.kilograms)
-        guard let minimum = values.min(), let maximum = values.max() else {
-            return 0...2
-        }
-        let lower = (minimum - 0.3).rounded(.down)
-        let upper = max((maximum + 0.3).rounded(.up), lower + 2)
-        return lower...upper
+        chart.kilogramsRange
     }
 
     /// 整数の kg に目盛りを付け、範囲が広いときは 2 kg ごとにする

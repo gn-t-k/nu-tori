@@ -12,6 +12,7 @@ import { noticeTables } from "../notice/durable-object/notice-tables";
 import { replyTables } from "../reply/durable-object/reply-tables";
 import { sentTextTables } from "../sent-text/durable-object/sent-text-tables";
 import { usualWeighingTimeTables } from "../usual-weighing-time/durable-object/usual-weighing-time-tables";
+import { weeklyReviewTables } from "../weekly-review/durable-object/weekly-review-tables";
 import { weightRecordTables } from "../weight-record/durable-object/weight-record-tables";
 import { firstSignInTables } from "./first-sign-in-tables";
 import { syncLedgerTables } from "./sync-ledger-tables";
@@ -35,4 +36,5 @@ export const durableObjectTables = {
   ...goalTables,
   ...expenditureEstimateTables,
   ...dailyGuideTables,
+  ...weeklyReviewTables,
 };

@@ -75,7 +75,7 @@ struct GoalProgressTests {
                     Goal.WeightChange(
                         deadlineDay: CalendarDay(year: 2026, month: 11, day: 30),
                         pacePlan: .gentle)),
-                closure: nil)
+                achievement: nil, deadlineConfirmation: nil, closure: nil)
 
             let progress = GoalProgress(
                 goal: goal, today: GoalProgressTests.today,

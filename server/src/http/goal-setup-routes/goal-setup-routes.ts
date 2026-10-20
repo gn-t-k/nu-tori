@@ -4,6 +4,7 @@ import { captureException } from "@sentry/cloudflare";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { goalDirections } from "../../goal/domain/goal-direction";
 import { authenticateAccount } from "../authenticate-account";
+import { attachRequestedAt } from "./attach-requested-at";
 import {
   customTargetWeightAssessmentSchema,
   toCustomTargetWeightAssessmentResponse,
@@ -18,6 +19,7 @@ import { goalSetupSituationSchema, toGoalSetupSituation } from "./goal-setup-sit
 import { rejectUnreadableJsonBody } from "./reject-unreadable-json-body";
 import { respondGoalSetupRejected } from "./respond-goal-setup-rejected";
 import { weightChangeDirectionSchema } from "./weight-change-direction-schema";
+import type { RequestLogVariables } from "../observe-request";
 
 const rejectionSchema = z
   .object({
@@ -56,7 +58,7 @@ const goalProposalsPlanSchema = z
   ])
   .openapi("GoalProposalsPlan", { description: "選んだ向きと、減量・増量の期限" });
 
-export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
+export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: RequestLogVariables }>({
   // 形の誤りも Sentry に送る。誤っていた場所と種類だけを持たせ、届いた値は載せない
   defaultHook: (result, c) => {
     if (result.success) {
@@ -79,7 +81,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       description:
         "向きを選んだ直後に、逆算できるかと、減量の目標案を1つでも出せるかを答える。初めての目標では、先に体重記録を同期で送り切る。何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody, attachRequestedAt] as const,
       request: {
         body: {
           required: true,
@@ -106,10 +108,15 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
     }),
     async (c) => {
       const { direction, ...situation } = c.req.valid("json");
-      const previewed = await getAccountDurableObject(c.env, c.var.accountId).previewGoalSetup(
+      const { result: previewed, requestLog } = await getAccountDurableObject(
+        c.env,
+        c.var.accountId,
+      ).previewGoalSetup(
         c.var.accountId,
         { ...toGoalSetupSituation(situation), direction },
+        c.var.requestedAt,
       );
+      c.set("requestLog", requestLog);
       if (R.isFailure(previewed)) {
         return respondGoalSetupRejected(c, previewed.error);
       }
@@ -132,7 +139,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       description:
         "減量・増量は、期限までの3つの枠と、自分で決める目標体重の受け付ける幅を答える。維持は、目標体重と1日の目安を答える。そのときの体重の傾向で計算し、何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody, attachRequestedAt] as const,
       request: {
         body: {
           required: true,
@@ -153,10 +160,15 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
     }),
     async (c) => {
       const { plan, ...situation } = c.req.valid("json");
-      const proposed = await getAccountDurableObject(c.env, c.var.accountId).proposeGoals(
+      const { result: proposed, requestLog } = await getAccountDurableObject(
+        c.env,
+        c.var.accountId,
+      ).proposeGoals(
         c.var.accountId,
         { ...toGoalSetupSituation(situation), plan },
+        c.var.requestedAt,
       );
+      c.set("requestLog", requestLog);
       if (R.isFailure(proposed)) {
         return respondGoalSetupRejected(c, proposed.error);
       }
@@ -172,7 +184,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       description:
         "受け付けるなら、その目標体重の1日の目安と大変さを答える。受け付けないなら、受け付けるいちばん近い目標体重と理由を答える。何も書かない",
       security: [{ session: [] }],
-      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody, attachRequestedAt] as const,
       request: {
         body: {
           required: true,
@@ -203,15 +215,15 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
     }),
     async (c) => {
       const { direction, deadlineOn, targetWeightKg, ...situation } = c.req.valid("json");
-      const assessed = await getAccountDurableObject(
+      const { result: assessed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).assessCustomTargetWeight(c.var.accountId, {
-        ...toGoalSetupSituation(situation),
-        direction,
-        deadlineOn,
-        targetWeightKg,
-      });
+      ).assessCustomTargetWeight(
+        c.var.accountId,
+        { ...toGoalSetupSituation(situation), direction, deadlineOn, targetWeightKg },
+        c.var.requestedAt,
+      );
+      c.set("requestLog", requestLog);
       if (R.isFailure(assessed)) {
         return respondGoalSetupRejected(c, assessed.error);
       }
@@ -227,7 +239,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       description:
         "そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じなら決めて、目標・1日の目安・（初めての目標なら）推定消費カロリーの記録を返す。同じ記録は同期でも届く。開始の日か見せていた値が違えば、決めずに新しい目標案を返す（開始の日がずれて期限が受け付ける幅の外に出たら、受け付けるいちばん近い日を期限にする）。自分で決めた目標体重を受け付けないときは、決めずにいちばん近い目標体重を返す。同じ要求の ID の再送は、書かずに初めての応答と同じ形で返す",
       security: [{ session: [] }],
-      middleware: [authenticateAccount, rejectUnreadableJsonBody] as const,
+      middleware: [authenticateAccount, rejectUnreadableJsonBody, attachRequestedAt] as const,
       request: {
         body: {
           required: true,
@@ -243,10 +255,11 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env }>({
       },
     }),
     async (c) => {
-      const decided = await getAccountDurableObject(c.env, c.var.accountId).decideGoal(
+      const { result: decided, requestLog } = await getAccountDurableObject(
+        c.env,
         c.var.accountId,
-        toGoalDecisionRequest(c.req.valid("json")),
-      );
+      ).decideGoal(c.var.accountId, toGoalDecisionRequest(c.req.valid("json")), c.var.requestedAt);
+      c.set("requestLog", requestLog);
       if (R.isFailure(decided)) {
         return respondGoalSetupRejected(c, decided.error);
       }

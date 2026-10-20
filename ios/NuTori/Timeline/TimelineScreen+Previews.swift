@@ -6,7 +6,7 @@
     #Preview("状態ごと", arguments: TimelineScreen.Sample.allCases) { sample in
         TimelineScreen(
             records: sample.records,
-            weightTrend: nil,
+            weightTrend: sample.weightTrend,
             initialPull: sample.initialPull,
             today: .sampleToday,
             now: DeviceClock.live.now,
@@ -16,6 +16,8 @@
             notices: sample.notices,
             goals: sample.goals,
             dailyGuides: sample.dailyGuides,
+            weeklyReviews: sample.weeklyReviews,
+            expenditureEstimates: sample.expenditureEstimates,
             undeliveredRecords: sample.undeliveredRecords,
             capture: { _ in },
             reminderLanding: nil,
@@ -29,7 +31,8 @@
             conversation: sample.conversation,
             conversationActions: .noop,
             goalSetupFlow: .notStarted,
-            openGoalSetupFlow: { _ in }
+            goalScreenGoalSetupFlow: .notStarted,
+            openGoalSetupFlow: { _, _ in }
         )
     }
 
@@ -59,6 +62,23 @@
             case undelivered
             /// 文章で食事を記録した。食事が1つの文章、前の日の夜を含む3つの文章、食事をすべて消した文章がある
             case writtenMeals
+            /// 9月14日（月）に立てた目標の1週目を、今日（木）に見直した。振り返りのカードと変更の知らせ、左上の目標の入口
+            case weeklyReviewed
+
+            var weightTrend: WeightTrend? {
+                self == .weeklyReviewed ? WeightTrend.sampleWeeklyReviewed : nil
+            }
+
+            var weeklyReviews: [WeeklyReview] {
+                self == .weeklyReviewed ? [WeeklyReview.sampleReviewed] : []
+            }
+
+            var expenditureEstimates: [ExpenditureEstimate] {
+                self == .weeklyReviewed
+                    ? [
+                        ExpenditureEstimate.sampleFirst, ExpenditureEstimate.sampleReviewed,
+                    ] : []
+            }
 
             var initialPull: TimelineScreen.InitialPull {
                 switch self {
@@ -69,6 +89,8 @@
                     .answeredNotice, .undelivered, .writtenMeals:
                     .completed(startedDay: Self.startedDay)
                 case .startedDayUndecided: .completed(startedDay: nil)
+                case .weeklyReviewed:
+                    .completed(startedDay: Goal.sampleWeeklyReviewed.startedDay)
                 }
             }
 
@@ -82,6 +104,7 @@
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 9, 30, from: .manual)]
                 case .undelivered: Self.pastRecords + [Self.undeliveredRecord]
                 case .rejected: [Self.correctedRecord]
+                case .weeklyReviewed: WeightRecord.sampleWeeklyReviewedWeek
                 }
             }
 
@@ -89,7 +112,7 @@
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .meals, .goalDecided, .awaitingNotice, .answeredNotice, .undelivered,
-                    .writtenMeals:
+                    .writtenMeals, .weeklyReviewed:
                     []
                 case .rejected:
                     [
@@ -118,6 +141,7 @@
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .awaitingNotice, .answeredNotice:
                     []
+                case .weeklyReviewed: MealCard.sampleWeeklyReviewedWeek
                 case .undelivered:
                     [MealCard(meal: Self.undeliveredMeal, status: nil, recordedOnThisDevice: true)]
                 case .meals, .goalDecided:
@@ -156,7 +180,8 @@
             var conversation: Timeline.Conversation {
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals, .goalDecided, .awaitingNotice, .answeredNotice, .undelivered:
+                    .rejected, .meals, .goalDecided, .awaitingNotice, .answeredNotice, .undelivered,
+                    .weeklyReviewed:
                     .none
                 case .writtenMeals:
                     Timeline.Conversation(
@@ -174,7 +199,7 @@
             var notices: [Notice] {
                 switch self {
                 case .loading, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals, .undelivered, .writtenMeals:
+                    .rejected, .meals, .undelivered, .writtenMeals, .weeklyReviewed:
                     []
                 case .firstDay:
                     [.sampleGoalSetup(on: .sampleToday, answered: false)]
@@ -197,6 +222,7 @@
             var goals: [Goal] {
                 switch self {
                 case .goalDecided: [Self.goal]
+                case .weeklyReviewed: [Goal.sampleWeeklyReviewed]
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered,
                     .writtenMeals:
@@ -207,6 +233,8 @@
             var dailyGuides: [DailyGuide] {
                 switch self {
                 case .goalDecided: [.sample(for: Self.goal)]
+                case .weeklyReviewed:
+                    [DailyGuide.sampleFirst, DailyGuide.sampleReviewed]
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered,
                     .writtenMeals:
@@ -220,7 +248,7 @@
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .goalDecided, .awaitingNotice, .answeredNotice,
-                    .writtenMeals:
+                    .writtenMeals, .weeklyReviewed:
                     .none
                 case .undelivered:
                     UndeliveredRecords(

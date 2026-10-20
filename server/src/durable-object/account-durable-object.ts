@@ -1,23 +1,16 @@
-import { R } from "@praha/byethrow";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { captureException, instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
+import { accountRequests } from "../account/domain/account-requests";
+import type {
+  AccountRequestLog,
+  AccountResponse,
+  LoggedAccountResponse,
+} from "../account/domain/account-response";
 import type { RecordId } from "../domain/record-id";
-import { sendsUsageData } from "../account-settings/domain/sends-usage-data";
-import { recordFirstSignIn } from "../domain/record-first-sign-in";
-import { applySyncWrites } from "../domain/apply-sync-writes";
-import { computeNextAlarmAt } from "../domain/compute-next-alarm-at";
-import { pullSyncChanges } from "../domain/pull-sync-changes";
-import { receiveMealPhoto, type MealPhotoReceiptFailedError } from "../domain/receive-meal-photo";
-import { runAccountAlarm } from "../domain/run-account-alarm";
 import type { SyncClientState } from "../domain/sync-client-state";
 import type { SyncWrite } from "../domain/sync-write";
-import { decideGoal } from "../goal/domain/decide-goal";
-import { assessCustomTargetWeight } from "../goal/domain/assess-custom-target-weight";
-import { previewGoalSetup } from "../goal/domain/preview-goal-setup";
-import { proposeGoals } from "../goal/domain/propose-goals";
 import { createEstimationProvider } from "../estimation/durable-object/create-estimation-provider";
-import { readKeptMealPhoto } from "../meal/domain/read-kept-meal-photo";
 import { createMealPhotoArchive } from "../meal/durable-object/create-meal-photo-archive";
 import { createReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { createConversationProvider } from "../reply/durable-object/create-conversation-provider";
@@ -31,7 +24,8 @@ import { createRecordKindStores } from "./create-record-kind-stores";
 import { createLedgerStore } from "./create-ledger-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
-// 受け口は呼ぶたびに accountId を渡す。Sentry の報告に user の ID として付けるため
+// 受け口は呼ぶたびに accountId を渡す。Sentry の報告に user の ID として付けるため。
+// 要求ごとの処理はアカウントの口（accountRequests）が持ち、ここではストアを組んで渡し、答えのアラームを張り、出来事を送る
 export const AccountDurableObject = instrumentDurableObjectWithSentry(
   createSentryOptions,
   class extends DurableObject<Env> {
@@ -46,134 +40,150 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     recordFirstSignIn(
       accountId: string,
       signIn: { signedInAt: Date; timeZone: string | undefined },
-    ): void {
+    ): Promise<void> {
       setUser({ id: accountId });
-      recordFirstSignIn(createFirstSignInStore(drizzle(this.ctx.storage)), signIn);
+      return this.respond(
+        accountId,
+        accountRequests.recordFirstSignIn(
+          { firstSignIn: createFirstSignInStore(drizzle(this.ctx.storage)) },
+          signIn,
+        ),
+      );
     }
 
-    async pushSyncWrites(
+    pushSyncWrites(
       accountId: string,
       request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     ) {
       setUser({ id: accountId });
-      const { results, usageEvents } = applySyncWrites(
-        createLedgerStore(this.ctx.storage),
-        createRecordKindStores(this.ctx.storage),
-        {
-          ...request,
-          receivedAt: new Date(),
-        },
+      return this.respondWithRequestLog(
+        accountId,
+        accountRequests.pushSyncWrites(this.createSyncStores(), request, new Date()),
       );
-      await this.armAlarm();
-      await sendUsageEvents(this.env, accountId, usageEvents);
-      return results;
     }
 
-    async pullSyncChanges(
+    pullSyncChanges(
       accountId: string,
       request: { clientState: SyncClientState; afterSequence: number },
     ) {
       setUser({ id: accountId });
-      const { usageEvents, ...pulled } = pullSyncChanges(
-        createLedgerStore(this.ctx.storage),
-        createRecordKindStores(this.ctx.storage),
-        {
-          ...request,
-          receivedAt: new Date(),
-        },
+      return this.respondWithRequestLog(
+        accountId,
+        accountRequests.pullSyncChanges(this.createSyncStores(), request, new Date()),
       );
-      await sendUsageEvents(this.env, accountId, usageEvents);
-      return pulled;
     }
 
-    // 失敗したら PostHog に送り、失敗を受け口に返す。受け口は 500 にし、要求ごとのログに失敗した段を出す
-    async receiveMealPhoto(
-      accountId: string,
-      request: { photoId: RecordId; photo: ArrayBuffer },
-    ): R.ResultAsync<void, MealPhotoReceiptFailedError> {
+    // 失敗は受け口に返す。受け口は 500 にし、要求ごとのログに失敗した段を出す
+    async receiveMealPhoto(accountId: string, request: { photoId: RecordId; photo: ArrayBuffer }) {
       setUser({ id: accountId });
-      const stores = createRecordKindStores(this.ctx.storage);
-      return R.pipe(
-        receiveMealPhoto(
-          createRecordChangeWriter(this.ctx.storage),
-          stores,
-          createMealPhotoArchive(this.env.PHOTOS, accountId),
-          { ...request, receivedAt: new Date() },
-        ),
-        R.inspect(() => this.armAlarm()),
-        R.inspectError(({ stage }) =>
-          sendUsageEvents(
-            this.env,
-            accountId,
-            sendsUsageData(stores.accountSettings)
-              ? [{ name: "meal_photo_receipt_failed", stage }]
-              : [],
-          ),
+      return this.respond(
+        accountId,
+        await accountRequests.receiveMealPhoto(
+          {
+            writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
+            records: createRecordKindStores(this.ctx.storage),
+            mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
+          },
+          request,
+          new Date(),
         ),
       );
     }
 
     async readMealPhoto(accountId: string, photoId: RecordId): Promise<ArrayBuffer | undefined> {
       setUser({ id: accountId });
-      return readKeptMealPhoto(
-        createRecordKindStores(this.ctx.storage).mealPhoto,
-        createMealPhotoArchive(this.env.PHOTOS, accountId),
-        photoId,
+      return this.respond(
+        accountId,
+        await accountRequests.readMealPhoto(
+          {
+            records: createRecordKindStores(this.ctx.storage),
+            mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
+          },
+          photoId,
+        ),
       );
     }
 
     // 送った文章の見守る要求。文章が無ければ undefined
-    watchReply(accountId: string, sentTextId: RecordId): ReadableStream<Uint8Array> | undefined {
+    watchReply(
+      accountId: string,
+      sentTextId: RecordId,
+    ): Promise<ReadableStream<Uint8Array> | undefined> {
       setUser({ id: accountId });
-      return createReplyStream(
-        this.replyWatchers,
-        createRecordKindStores(this.ctx.storage),
-        sentTextId,
+      return this.respond(
+        accountId,
+        accountRequests.watchReply(
+          {
+            openReplyStream: (id) =>
+              createReplyStream(this.replyWatchers, createRecordKindStores(this.ctx.storage), id),
+          },
+          sentTextId,
+        ),
       );
     }
 
-    // 目標の設定の、その場で答える要求。下の3つは記録を書かない。どの要求も、要求に載った身体データと摂取エネルギーを残さない
-    previewGoalSetup(accountId: string, request: Parameters<typeof previewGoalSetup>[1]) {
+    // 目標の設定の、その場で答える要求。どの要求も、要求に載った身体データと摂取エネルギーを残さない。
+    // 時刻は受け口が渡す（確かめのジョブが、開発用の環境で過去の時刻に差し替えるため。resolve-requested-at.ts）
+    previewGoalSetup(
+      accountId: string,
+      request: Parameters<typeof accountRequests.previewGoalSetup>[1],
+      now: Date,
+    ) {
       setUser({ id: accountId });
-      return previewGoalSetup(createRecordKindStores(this.ctx.storage), request, new Date());
+      return this.respondWithRequestLog(
+        accountId,
+        accountRequests.previewGoalSetup(this.createRecordStores(), request, now),
+      );
     }
 
-    proposeGoals(accountId: string, request: Parameters<typeof proposeGoals>[1]) {
+    proposeGoals(
+      accountId: string,
+      request: Parameters<typeof accountRequests.proposeGoals>[1],
+      now: Date,
+    ) {
       setUser({ id: accountId });
-      return proposeGoals(createRecordKindStores(this.ctx.storage), request, new Date());
+      return this.respondWithRequestLog(
+        accountId,
+        accountRequests.proposeGoals(this.createRecordStores(), request, now),
+      );
     }
 
     assessCustomTargetWeight(
       accountId: string,
-      request: Parameters<typeof assessCustomTargetWeight>[1],
+      request: Parameters<typeof accountRequests.assessCustomTargetWeight>[1],
+      now: Date,
     ) {
       setUser({ id: accountId });
-      return assessCustomTargetWeight(
-        createRecordKindStores(this.ctx.storage),
-        request,
-        new Date(),
+      return this.respondWithRequestLog(
+        accountId,
+        accountRequests.assessCustomTargetWeight(this.createRecordStores(), request, now),
       );
     }
 
     // 目標を決める。決めたら、目標・1日の目安・推定消費カロリーの記録を、応答と同期の両方に出す
-    async decideGoal(accountId: string, request: Parameters<typeof decideGoal>[2]) {
+    decideGoal(
+      accountId: string,
+      request: Parameters<typeof accountRequests.decideGoal>[1],
+      now: Date,
+    ) {
       setUser({ id: accountId });
-      return R.pipe(
-        decideGoal(
-          createRecordChangeWriter(this.ctx.storage),
-          createRecordKindStores(this.ctx.storage),
-          request,
-          new Date(),
-        ),
-        R.inspect(({ usageEvents }) => sendUsageEvents(this.env, accountId, usageEvents)),
-        R.map(({ decision }) => decision),
+      return this.respondWithRequestLog(
+        accountId,
+        accountRequests.decideGoal(this.createRecordStores(), request, now),
       );
     }
 
     async deleteRecords(accountId: string): Promise<void> {
       setUser({ id: accountId });
-      await this.ctx.storage.deleteAlarm();
-      await this.ctx.storage.deleteAll();
+      return this.respond(
+        accountId,
+        await accountRequests.deleteRecords({
+          eraseRecords: async () => {
+            await this.ctx.storage.deleteAlarm();
+            await this.ctx.storage.deleteAll();
+          },
+        }),
+      );
     }
 
     // アラームには受け口が無いので、アカウント ID は idFromName で付けた名前から得る。
@@ -185,22 +195,21 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       }
       setUser({ id: accountId });
       const startedAt = Date.now();
-      const ran = await runAccountAlarm(
-        createRecordChangeWriter(this.ctx.storage),
-        createRecordKindStores(this.ctx.storage),
-        {
-          archive: createMealPhotoArchive(this.env.PHOTOS, accountId),
-          provider: createEstimationProvider(this.env, accountId),
+      const ran = await this.respond(
+        accountId,
+        await accountRequests.runAlarm({
+          writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
+          records: createRecordKindStores(this.ctx.storage),
+          mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
+          estimationProvider: createEstimationProvider(this.env, accountId),
           conversationProvider: createConversationProvider(this.env, accountId),
-          armAlarm: () => this.armAlarm(),
           replyWatchers: this.replyWatchers,
-        },
+          armAlarmAt: (alarmAt) => this.ctx.storage.setAlarm(alarmAt),
+        }),
       );
-      await this.setAlarm(ran.nextAlarmAt);
       for (const providerError of ran.providerErrors) {
         captureException(providerError);
       }
-      await sendUsageEvents(this.env, accountId, ran.usageEvents);
       console.log({
         accountId,
         route: "alarm",
@@ -218,15 +227,38 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       }
     }
 
-    // 送る要求と写真の要求の入口で、表から出したいちばん早い時刻に張り直す
-    private async armAlarm(): Promise<void> {
-      await this.setAlarm(computeNextAlarmAt(createRecordKindStores(this.ctx.storage), new Date()));
+    private createSyncStores() {
+      return {
+        ledger: createLedgerStore(this.ctx.storage),
+        ...this.createRecordStores(),
+      };
     }
 
-    private async setAlarm(alarmAt: Date | undefined): Promise<void> {
-      if (alarmAt !== undefined) {
-        await this.ctx.storage.setAlarm(alarmAt);
+    private createRecordStores() {
+      return {
+        writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
+        records: createRecordKindStores(this.ctx.storage),
+      };
+    }
+
+    // 要求ごとのログに足す値も、結果と一緒に受け口へ返す
+    private async respondWithRequestLog<Result>(
+      accountId: string,
+      response: LoggedAccountResponse<Result>,
+    ): Promise<{ result: Result; requestLog: AccountRequestLog }> {
+      return { result: await this.respond(accountId, response), requestLog: response.requestLog };
+    }
+
+    // 答えの時刻に張り、出来事を送ってから、結果を返す
+    private async respond<Result>(
+      accountId: string,
+      { result, nextAlarmAt, usageEvents }: AccountResponse<Result>,
+    ): Promise<Result> {
+      if (nextAlarmAt !== undefined) {
+        await this.ctx.storage.setAlarm(nextAlarmAt);
       }
+      await sendUsageEvents(this.env, accountId, usageEvents);
+      return result;
     }
   },
 );
