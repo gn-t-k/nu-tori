@@ -15,7 +15,7 @@ public struct WeightGoalPath: Hashable, Sendable {
             guard let weightChange = goal.direction.weightChange else {
                 rows = [Row(label: "維持", value: GoalStateText.keeping(goal))]
                 note = GoalStateText.isWithinBand(goal, day: today, records: records).map {
-                    $0 ? "体重の傾向は保つ幅に入っています。" : "体重の傾向は保つ幅から外れています。"
+                    "体重の傾向は \(GoalStateText.maintenanceRange(goal))\($0 ? "に入っています。" : "から外れています。")"
                 }
                 return
             }
@@ -65,9 +65,9 @@ public struct WeightGoalPath: Hashable, Sendable {
         case .behind(let shortfall, _, _):
             "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません。"
         case .inconclusive:
-            "体重の記録が少なく、ペースはまだ言い切れません。"
+            "体重の記録が少なく、間に合うかはまだわかりません。"
         case .pending:
-            "ペースは目標を立てて 14 日たつと出ます。"
+            "間に合うかは、目標を立てて 14 日たつと出ます。"
         case .unavailable, .maintenance:
             nil
         }

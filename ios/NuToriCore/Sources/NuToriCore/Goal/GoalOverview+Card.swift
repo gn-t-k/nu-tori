@@ -46,7 +46,7 @@ extension GoalOverview {
                         Self.bandDetail(goal: goal, today: today, records: records).map {
                             "\($0)。"
                         },
-                        "\(deadline ?? "期限のあと")次の目標を選ばなかったので、今の体重を保つ目標で続けています。",
+                        "\(deadline ?? "期限のあと")次の目標を選ばなかったので、\(Self.keepingTitle(goal))目標で続けています。",
                     ].compactMap(\.self).joined(),
                     lateAchievement: nil, action: .setNextGoal,
                     continuingNote: Self.continuingNote(goal))
@@ -159,7 +159,7 @@ extension GoalOverview {
                     weightRecordDays: records.weightRecords.map(\.day))
             else { return nil }
             return
-                "傾向 \(WeightAmountText.kilograms(trend))・\(isWithinBand ? "保てています" : "幅から外れています")"
+                "傾向 \(WeightAmountText.kilograms(trend))・\(isWithinBand ? "保てています" : "保てていません")"
         }
 
         /// 減量・増量の進行中の下の行に添えるペース。返さないときは添えない
@@ -168,8 +168,8 @@ extension GoalOverview {
             case .onTrack: "間に合うペースです"
             case .behind(let shortfall, _, _):
                 "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
-            case .inconclusive: "ペースはまだ言い切れません"
-            case .pending: "ペースは目標を立てて 14 日たつと出ます"
+            case .inconclusive: "間に合うかはまだわかりません"
+            case .pending: "間に合うかは、目標を立てて 14 日たつと出ます"
             case .unavailable, .maintenance: nil
             }
         }

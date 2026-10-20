@@ -40,9 +40,9 @@ extension WeekRecapTests {
 
     @Suite("次の週の1日の目安")
     struct NextWeekGuide {
-        /// 10月12日〜18日の週と、10月19日から当てる見直し。前の1日の目安は 1,880 kcal（推定消費カロリー 2,190 kcal）
+        /// 10月12日〜18日の週と、10月19日から当てる見直し。前の1日の目安は既定で 1,880 kcal（推定消費カロリー 2,190 kcal）
         static func recap(
-            goal: Goal? = nil,
+            goal: Goal? = nil, previousGuideKilocalories: Int = 1880,
             outcome: (_ estimateId: UUID, _ guideId: UUID) -> WeeklyReview.Outcome,
             newGuideKilocalories: Int = 1850, newGuideGoalId: UUID? = nil,
             limitHits: [DailyGuide.LimitHit] = [], newGuideArrived: Bool = true,
@@ -55,7 +55,8 @@ extension WeekRecapTests {
                 initialSource: .formula)
             let firstGuide = DailyGuide(
                 id: UUID(), goalId: goal.id, expenditureEstimateId: firstEstimate.id,
-                effectiveDay: WeekRecapTests.day(10, 1), energyKilocalories: 1880,
+                effectiveDay: WeekRecapTests.day(10, 1),
+                energyKilocalories: previousGuideKilocalories,
                 proteinGrams: 120, fatGrams: 55, carbohydrateGrams: 230, limitHits: [])
             let reviewedAt = try Date("2026-10-19T07:00:00+09:00", strategy: .iso8601)
             let newEstimate = ExpenditureEstimate(
@@ -98,6 +99,18 @@ extension WeekRecapTests {
                     endReason: endReason))
         }
 
+        /// 10月1日に始めた、12月24日までに 60.0 kg から 64.0 kg へ増やす目標
+        static func gaining() throws -> Goal {
+            Goal(
+                id: UUID(), startedDay: WeekRecapTests.day(10, 1),
+                startingWeightTrendKilograms: 60.0, targetWeightKilograms: 64.0,
+                decidedAt: try Date("2026-10-01T08:30:00+09:00", strategy: .iso8601),
+                timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                direction: .gain(
+                    Goal.WeightChange(deadlineDay: WeekRecapTests.day(12, 24), pacePlan: .standard)),
+                achievement: nil, deadlineConfirmation: nil, closure: nil)
+        }
+
         /// 10月19日の月曜に始めた、70.5 kg を保つ目標
         static func maintainingFromMonday(id: UUID) throws -> Goal {
             try Goal.maintaining(
@@ -130,9 +143,9 @@ extension WeekRecapTests {
             }
         }
 
-        @Suite("1日に減らす分の変化で変わったとき")
+        @Suite("1日の目安と推定消費カロリーの差の変化で変わったとき")
         struct BalanceChange {
-            @Suite("1日に減らす分を増やしたなら")
+            @Suite("1日の目安を推定消費カロリーからさらに下げたなら")
             struct Increased {
                 let guide: WeekRecap.NextWeekGuide
 
@@ -145,15 +158,16 @@ extension WeekRecapTests {
                         ).nextWeekGuide)
                 }
 
-                @Test("期限までの日が減ったことを理由にすること")
+                @Test("期限に間に合うよう目安を推定消費カロリーより下げたことを理由にすること")
                 func explainsBalance() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 1,750 kcal。期限までの日が減り、1日に減らす分を増やしたためです。推移は目標で見られます。")
+                            == "1,880 → 1,750 kcal。期限に間に合うよう、1日の目安を推定消費カロリーよりさらに下げたためです。推移は目標で見られます。"
+                    )
                 }
             }
 
-            @Suite("1日に減らす分を減らしたなら")
+            @Suite("1日の目安を推定消費カロリーに近づけたなら")
             struct Decreased {
                 let guide: WeekRecap.NextWeekGuide
 
@@ -165,15 +179,62 @@ extension WeekRecapTests {
                         ).nextWeekGuide)
                 }
 
-                @Test("予定より進んでいることを理由にすること")
+                @Test("体重が予定より早く減っていることを理由にすること")
                 func explainsBalanceDecrease() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 1,900 kcal。予定より進んでいるので、1日に減らす分を減らしたためです。推移は目標で見られます。")
+                            == "1,880 → 1,900 kcal。体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
+                    )
                 }
             }
 
-            @Suite("維持で1日に戻す分を増やしたなら")
+            @Suite("増量で1日の目安を推定消費カロリーからさらに上げたなら")
+            struct GainIncreased {
+                let guide: WeekRecap.NextWeekGuide
+
+                init() throws {
+                    // 前の週は推定消費カロリー 2,190 kcal に 210 kcal 足した 2,400 kcal
+                    guide = try #require(
+                        try NextWeekGuide.recap(
+                            goal: NextWeekGuide.gaining(), previousGuideKilocalories: 2400,
+                            outcome: NextWeekGuide.reviewed(.balanceChange),
+                            newGuideKilocalories: 2500
+                        ).nextWeekGuide)
+                }
+
+                @Test("期限に間に合うよう目安を推定消費カロリーより上げたことを理由にすること")
+                func explainsGainIncrease() {
+                    #expect(
+                        guide.sentence
+                            == "2,400 → 2,500 kcal。期限に間に合うよう、1日の目安を推定消費カロリーよりさらに上げたためです。推移は目標で見られます。"
+                    )
+                }
+            }
+
+            @Suite("増量で1日の目安を推定消費カロリーに近づけたなら")
+            struct GainDecreased {
+                let guide: WeekRecap.NextWeekGuide
+
+                init() throws {
+                    // 前の週は推定消費カロリー 2,190 kcal に 210 kcal 足した 2,400 kcal
+                    guide = try #require(
+                        try NextWeekGuide.recap(
+                            goal: NextWeekGuide.gaining(), previousGuideKilocalories: 2400,
+                            outcome: NextWeekGuide.reviewed(.balanceChange),
+                            newGuideKilocalories: 2250
+                        ).nextWeekGuide)
+                }
+
+                @Test("体重が予定より早く増えていることを理由にすること")
+                func explainsGainDecrease() {
+                    #expect(
+                        guide.sentence
+                            == "2,400 → 2,250 kcal。体重が予定より早く増えているので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
+                    )
+                }
+            }
+
+            @Suite("維持で1日の目安を推定消費カロリーより下げたなら")
             struct MaintenanceIncreased {
                 let guide: WeekRecap.NextWeekGuide
 
@@ -188,11 +249,60 @@ extension WeekRecapTests {
                         ).nextWeekGuide)
                 }
 
-                @Test("体重の傾向に合わせたことを理由にすること")
+                @Test("体重の傾向が目標体重を上回っていることを理由にすること")
                 func explainsMaintenanceBalance() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 1,800 kcal。体重の傾向に合わせて、1日に戻す分を増やしたためです。推移は目標で見られます。")
+                            == "1,880 → 1,800 kcal。体重の傾向が 72.4 kg を上回っているので、1日の目安を推定消費カロリーより下げたためです。推移は目標で見られます。"
+                    )
+                }
+            }
+
+            @Suite("維持で1日の目安を推定消費カロリーより上げたなら")
+            struct MaintenanceRaised {
+                let guide: WeekRecap.NextWeekGuide
+
+                init() throws {
+                    let maintaining = try Goal.maintaining(
+                        startedOn: WeekRecapTests.day(10, 1), kilograms: 72.4,
+                        decidedAt: "2026-10-01T08:30:00+09:00")
+                    guide = try #require(
+                        try NextWeekGuide.recap(
+                            goal: maintaining, outcome: NextWeekGuide.reviewed(.balanceChange),
+                            newGuideKilocalories: 2500
+                        ).nextWeekGuide)
+                }
+
+                @Test("体重の傾向が目標体重を下回っていることを理由にすること")
+                func explainsMaintenanceRaise() {
+                    #expect(
+                        guide.sentence
+                            == "1,880 → 2,500 kcal。体重の傾向が 72.4 kg を下回っているので、1日の目安を推定消費カロリーより上げたためです。推移は目標で見られます。"
+                    )
+                }
+            }
+
+            @Suite("維持で1日の目安を推定消費カロリーに近づけたなら")
+            struct MaintenanceEased {
+                let guide: WeekRecap.NextWeekGuide
+
+                init() throws {
+                    let maintaining = try Goal.maintaining(
+                        startedOn: WeekRecapTests.day(10, 1), kilograms: 72.4,
+                        decidedAt: "2026-10-01T08:30:00+09:00")
+                    guide = try #require(
+                        try NextWeekGuide.recap(
+                            goal: maintaining, outcome: NextWeekGuide.reviewed(.balanceChange),
+                            newGuideKilocalories: 2000
+                        ).nextWeekGuide)
+                }
+
+                @Test("体重の傾向が目標体重に近づいたことを理由にすること")
+                func explainsMaintenanceEase() {
+                    #expect(
+                        guide.sentence
+                            == "1,880 → 2,000 kcal。体重の傾向が 72.4 kg に近づいたので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
+                    )
                 }
             }
         }
@@ -216,7 +326,7 @@ extension WeekRecapTests {
             func explainsAchievement() {
                 #expect(
                     guide.sentence
-                        == "1,880 → 2,000 kcal。目標に届いたので、1日に減らす分をなくしていくためです。推移は目標で見られます。")
+                        == "1,880 → 2,000 kcal。目標に届いたので、1日の目安を推定消費カロリーに近づけていくためです。推移は目標で見られます。")
             }
         }
 
@@ -260,7 +370,7 @@ extension WeekRecapTests {
             func explainsLimits() {
                 #expect(
                     guide.sentence
-                        == "1,880 → 1,850 kcal。推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。推移は目標で見られます。1週間に変える量は 150 kcal までにしています。減らす速さは、1週間に体重の 0.75% までにしています。1日の目安は 1,200 kcal より下げません。"
+                        == "1,880 → 1,850 kcal。推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。推移は目標で見られます。1日の目安を1週間に変えるのは 150 kcal までにしています。1週間に減らすのは、体重の 0.75% までにしています。1日の目安は 1,200 kcal より下げません。"
                 )
             }
         }

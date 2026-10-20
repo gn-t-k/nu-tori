@@ -26,7 +26,12 @@ enum GoalStateText {
         guard let isWithinBand = isWithinBand(goal, day: day, records: records) else {
             return keeping(goal)
         }
-        return "\(keeping(goal))・\(isWithinBand ? "保てています" : "幅から外れています")"
+        return "\(keeping(goal))・\(isWithinBand ? "保てています" : "保てていません")"
+    }
+
+    /// 「72.0 kg ± 0.7 kg の範囲」
+    static func maintenanceRange(_ goal: Goal) -> String {
+        "\(WeightAmountText.kilograms(goal.targetWeightKilograms)) ± \(WeightAmountText.kilograms(Pace.maintenanceBandKilograms)) の範囲"
     }
 
     /// 体重の傾向が保つ幅に入っているか。体重の傾向がまだ無ければ nil

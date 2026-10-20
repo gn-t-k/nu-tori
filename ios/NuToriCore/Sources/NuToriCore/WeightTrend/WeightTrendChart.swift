@@ -119,7 +119,7 @@ public struct WeightTrendChart: Hashable, Sendable {
         /// 維持。保つ幅を薄く塗り、点線を引く
         case band(kilograms: Double, halfWidthKilograms: Double)
 
-        /// 「目標 70.0」「↓ 目標 70.0 kg」「保つ 72.0」
+        /// 「目標 70.0」「↓ 目標 70.0 kg」「維持 72.0 kg」
         public var label: String {
             switch self {
             case .line(let kilograms):
@@ -127,7 +127,7 @@ public struct WeightTrendChart: Hashable, Sendable {
             case .beyondRange(let kilograms, let isAbove):
                 "\(isAbove ? "↑" : "↓") 目標 \(WeightAmountText.kilograms(kilograms))"
             case .band(let kilograms, _):
-                "保つ \(Self.number(kilograms))"
+                "維持 \(WeightAmountText.kilograms(kilograms))"
             }
         }
 

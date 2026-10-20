@@ -95,9 +95,9 @@ struct WeightGoalPathTests {
                         weightRecords: try DaySummaryGoalTests.morningRecords([10])))
             }
 
-            @Test("ペースを言い切らないこと")
+            @Test("間に合うかはまだわからないと書くこと")
             func showsInconclusive() {
-                #expect(path.note == "体重の記録が少なく、ペースはまだ言い切れません。")
+                #expect(path.note == "体重の記録が少なく、間に合うかはまだわかりません。")
             }
         }
     }
@@ -114,10 +114,10 @@ struct WeightGoalPathTests {
                 ))
         }
 
-        @Test("保つ体重の行と、保つ幅に入っているかの注記を出すこと")
+        @Test("保つ体重の行と、保つ範囲に入っているかの注記を出すこと")
         func showsBand() {
             #expect(path.rows == [.init(label: "維持", value: "65.0 kg を保つ")])
-            #expect(path.note == "体重の傾向は保つ幅に入っています。")
+            #expect(path.note == "体重の傾向は 65.0 kg ± 0.7 kg の範囲に入っています。")
         }
     }
 

@@ -29,20 +29,21 @@ extension WeekRecap {
                     sentence: Self.paceSentence(goal: goal, actual: actual, required: required))
             case .inconclusive(let count):
                 self.init(
-                    headline: "まだ言い切れません",
+                    headline: "間に合うかはまだわかりません",
                     sentence: "直近 14 日の体重の記録が \(count) 日なので、傾向が定まっていません。")
             case .pending:
                 self.init(
-                    headline: "まだ言い切れません", sentence: "目標を立てて 14 日たつと、間に合うペースかを出します。")
+                    headline: "間に合うかはまだわかりません", sentence: "目標を立てて 14 日たつと出ます。")
             case .unavailable:
                 self.init(unavailableFor: goal, judgedDay: judgedDay, records: records)
             case .maintenance(let isWithinBand):
                 guard let trend = records.trendKilograms(onOrBefore: judgedDay) else { return nil }
-                let band =
-                    "体重の傾向は \(WeightAmountText.kilograms(trend)) で、\(WeightAmountText.kilograms(goal.targetWeightKilograms)) を保つ幅（±\(WeightAmountText.kilograms(Pace.maintenanceBandKilograms))）"
+                let range = GoalStateText.maintenanceRange(goal)
                 self.init(
-                    headline: isWithinBand ? "保てています" : "幅から外れています",
-                    sentence: isWithinBand ? "\(band)に入っています。" : "\(band)から外れています。")
+                    headline: isWithinBand ? "保てています" : "保てていません",
+                    sentence:
+                        "体重の傾向は \(WeightAmountText.kilograms(trend)) で、\(range)\(isWithinBand ? "に入っています。" : "から外れています。")"
+                )
             }
         }
 
