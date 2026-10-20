@@ -66,6 +66,7 @@ nonisolated final class CachedWeeklyReview {
                 switch mainReason {
                 case "expenditure_change": .expenditureChange
                 case "balance_change": .balanceChange
+                // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
                 default: nil
                 }
             return reason.map {
@@ -82,6 +83,7 @@ nonisolated final class CachedWeeklyReview {
                 case "within_first_week": .withinFirstWeek
                 case "no_weight": .noWeight
                 case "few_meal_records": .fewMealRecords
+                // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
                 default: nil
                 }
             return reason.map { .deferred(reason: $0, goalId: goalId) }

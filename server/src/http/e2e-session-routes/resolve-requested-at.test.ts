@@ -10,14 +10,14 @@ import { app } from "../app";
 import { signInTestAccount } from "../testing";
 
 const secret = "e2e-sign-in-secret-0123456789abcdef0123456789";
+// 体重を量った日と、差し替える時刻の日（日本時間）。今日より前の日にする
+const weighedOn = "2026-01-04";
+const requestedAt = "2026-01-05T03:00:00.000Z";
 
 // 確かめのジョブは、目標の設定の要求を過去の時刻に送ったことにして、新しいアカウントに前の週を作る。
 // 差し替えた時刻は、目標案の開始の日（その時刻の、要求のタイムゾーンでの日）で見る
 describe("確かめのジョブのための、目標の設定の要求の時刻の差し替え", () => {
   let sessionToken: string;
-  // 体重を量った日と、差し替える時刻の日（日本時間）。今日より前の日にする
-  const weighedOn = "2026-01-04";
-  const requestedAt = "2026-01-05T03:00:00.000Z";
   let today: string;
   let testEnv: Env;
   let headers: Record<string, string>;

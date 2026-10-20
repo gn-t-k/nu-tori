@@ -130,6 +130,7 @@ extension SyncChange {
                 syncedQuantity = nil
             case (let value?, let unit?, let source??):
                 syncedQuantity = SyncedDish.Quantity(value: value, unit: unit, source: source)
+            // swiftlint:disable:next no_default_in_switch - 量・単位・出どころは、揃ってあるか揃って無いかのほかを読めないとみなす
             default:
                 return nil
             }

@@ -76,6 +76,7 @@ public struct SyncedGoal: Sendable, Equatable {
                 self = .gain(weightChange)
             case "maintain":
                 self = .maintain
+            // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
             default:
                 return nil
             }

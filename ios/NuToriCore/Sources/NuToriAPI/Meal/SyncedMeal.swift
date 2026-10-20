@@ -52,6 +52,7 @@ public struct SyncedMeal: Sendable, Equatable {
             case ("captured", _): self = .captured
             case ("picked", _): self = .picked
             case ("written", let sentTextId?): self = .written(sentTextId: sentTextId)
+            // swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る
             default: return nil
             }
         }

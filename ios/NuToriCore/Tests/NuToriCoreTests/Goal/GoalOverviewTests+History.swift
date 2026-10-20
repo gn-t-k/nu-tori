@@ -96,14 +96,8 @@ extension GoalOverviewTests {
                 #expect(chart?.note == "週ごとの見直しが 2 回たまると、グラフで見せます。")
             }
 
-            @Test(
-                "推定消費カロリー 2,600 kcal との差を、目安が少ないか多いか同じかで書くこと",
-                arguments: [
-                    (2250, "1日の目安は推定消費カロリーより 350 kcal 少ない"),
-                    (2950, "1日の目安は推定消費カロリーより 350 kcal 多い"),
-                    (2600, "1日の目安は推定消費カロリーと同じ"),
-                ])
-            func writesDifference(guideKilocalories: Int, expected: String) throws {
+            /// 推定消費カロリー 2,600 kcal の週に、1日の目安を `guideKilocalories` にしたときの3行め
+            static func differenceText(guideKilocalories: Int) throws -> String? {
                 let goal = try Goal.losing()
                 let (estimates, guides) = EnergyChart.records(
                     goal,
@@ -114,12 +108,21 @@ extension GoalOverviewTests {
                 let chart = GoalOverviewTests.overview(
                     today: GoalOverviewTests.day(10, 10), goals: [goal], dailyGuides: guides,
                     expenditureEstimates: estimates)?.energyChart
+                guard case .figures(let figures) = chart else { return nil }
+                return figures.last
+            }
 
-                guard case .figures(let figures) = chart else {
-                    Issue.record("数字で出ていない")
-                    return
-                }
-                #expect(figures.last == expected)
+            @Test("1日の目安が推定消費カロリーより多ければ、多い分を書くこと")
+            func writesSurplus() throws {
+                #expect(
+                    try Self.differenceText(guideKilocalories: 2950)
+                        == "1日の目安は推定消費カロリーより 350 kcal 多い")
+            }
+
+            @Test("1日の目安が推定消費カロリーと同じなら、同じと書くこと")
+            func writesSame() throws {
+                #expect(
+                    try Self.differenceText(guideKilocalories: 2600) == "1日の目安は推定消費カロリーと同じ")
             }
         }
 

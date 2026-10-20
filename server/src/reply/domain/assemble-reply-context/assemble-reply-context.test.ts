@@ -52,7 +52,10 @@ describe("返事に渡す文脈の組み立て", () => {
 
   describe("文脈の窓", () => {
     // 応える文章は 2026-10-10 12:00（東京）= 03:00Z
-    const answeredAt = "2026-10-10T03:00:00Z";
+    let answeredAt: string;
+    beforeEach(() => {
+      answeredAt = "2026-10-10T03:00:00Z";
+    });
     const minutesBefore = (minutes: number): string =>
       new Date(Date.parse(answeredAt) - minutes * 60 * 1000).toISOString();
 
@@ -283,7 +286,10 @@ describe("返事に渡す文脈の組み立て", () => {
 
   describe("構造化した値", () => {
     // 応える文章は 2026-10-10（土）12:00（東京）
-    const answeredAt = "2026-10-10T03:00:00Z";
+    let answeredAt: string;
+    beforeEach(() => {
+      answeredAt = "2026-10-10T03:00:00Z";
+    });
 
     describe("今日と昨日と 7 日より前に食事があるとき", () => {
       let context: ReplyContext;

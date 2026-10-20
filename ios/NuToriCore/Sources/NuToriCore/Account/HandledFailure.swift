@@ -39,6 +39,7 @@ extension Error {
         switch self {
         case let error as URLError:
             return error.code == .cancelled
+        // swiftlint:disable:next no_default_in_switch - エラーは型が開いていて、見分けないものが来る
         default:
             return false
         }
@@ -63,6 +64,7 @@ extension Error {
             return error.underlyingError.isUnreachableOrTimedOut
         case let error as URLError:
             return unreachableOrTimedOutCodes.contains(error.code)
+        // swiftlint:disable:next no_default_in_switch - エラーは型が開いていて、見分けないものが来る
         default:
             return false
         }

@@ -25,7 +25,8 @@
     "byethrow/prefer-result-matchers": "error",
     "byethrow/prefer-result-maybe-async": "error",
     "nu-tori/no-switch-statement": "error",
-    "nu-tori/no-random-uuid": "error"
+    "nu-tori/no-random-uuid": "error",
+    "nu-tori/no-setup-in-describe": "error"
   },
   "ignorePatterns": ["worker-configuration.d.ts"],
   "overrides": [

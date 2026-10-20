@@ -23,7 +23,9 @@ struct RootView: View {
             case .active:
                 model.noteAppActive()
                 Task { await model.reopenIfSignedIn() }
-            default:
+            case .inactive:
+                break
+            @unknown default:
                 break
             }
         }
