@@ -96,33 +96,64 @@ extension GoalOverviewTests {
                 #expect(chart?.note == "週ごとの見直しが 2 回たまると、グラフで見せます。")
             }
 
-            /// 推定消費カロリー 2,600 kcal の週に、1日の目安を `guideKilocalories` にしたときの3行め
-            static func differenceText(guideKilocalories: Int) throws -> String? {
-                let goal = try Goal.losing()
-                let (estimates, guides) = EnergyChart.records(
-                    goal,
-                    [
-                        (GoalOverviewTests.day(10, 1), 2190, 1880),
-                        (GoalOverviewTests.day(10, 5), 2600, guideKilocalories),
-                    ])
-                let chart = GoalOverviewTests.overview(
-                    today: GoalOverviewTests.day(10, 10), goals: [goal], dailyGuides: guides,
-                    expenditureEstimates: estimates)?.energyChart
-                guard case .figures(let figures) = chart else { return nil }
-                return figures.last
+            @Suite("1日の目安が推定消費カロリーより多いとき")
+            struct Surplus {
+                let chart: GoalOverview.EnergyChart?
+
+                init() throws {
+                    let goal = try Goal.losing()
+                    let (estimates, guides) = EnergyChart.records(
+                        goal,
+                        [
+                            (GoalOverviewTests.day(10, 1), 2190, 1880),
+                            (GoalOverviewTests.day(10, 5), 2600, 2950),
+                        ])
+                    chart =
+                        GoalOverviewTests.overview(
+                            today: GoalOverviewTests.day(10, 10), goals: [goal],
+                            dailyGuides: guides,
+                            expenditureEstimates: estimates)?.energyChart
+                }
+
+                @Test("多い分を書くこと")
+                func writesSurplus() {
+                    #expect(
+                        chart
+                            == .figures([
+                                "推定消費カロリー 2,600 kcal", "1日の目安 2,950 kcal",
+                                "1日の目安は推定消費カロリーより 350 kcal 多い",
+                            ]))
+                }
             }
 
-            @Test("1日の目安が推定消費カロリーより多ければ、多い分を書くこと")
-            func writesSurplus() throws {
-                #expect(
-                    try Self.differenceText(guideKilocalories: 2950)
-                        == "1日の目安は推定消費カロリーより 350 kcal 多い")
-            }
+            @Suite("1日の目安が推定消費カロリーと同じとき")
+            struct Same {
+                let chart: GoalOverview.EnergyChart?
 
-            @Test("1日の目安が推定消費カロリーと同じなら、同じと書くこと")
-            func writesSame() throws {
-                #expect(
-                    try Self.differenceText(guideKilocalories: 2600) == "1日の目安は推定消費カロリーと同じ")
+                init() throws {
+                    let goal = try Goal.losing()
+                    let (estimates, guides) = EnergyChart.records(
+                        goal,
+                        [
+                            (GoalOverviewTests.day(10, 1), 2190, 1880),
+                            (GoalOverviewTests.day(10, 5), 2600, 2600),
+                        ])
+                    chart =
+                        GoalOverviewTests.overview(
+                            today: GoalOverviewTests.day(10, 10), goals: [goal],
+                            dailyGuides: guides,
+                            expenditureEstimates: estimates)?.energyChart
+                }
+
+                @Test("同じと書くこと")
+                func writesSame() {
+                    #expect(
+                        chart
+                            == .figures([
+                                "推定消費カロリー 2,600 kcal", "1日の目安 2,600 kcal",
+                                "1日の目安は推定消費カロリーと同じ",
+                            ]))
+                }
             }
         }
 

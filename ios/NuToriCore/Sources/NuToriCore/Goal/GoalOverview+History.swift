@@ -2,7 +2,7 @@ extension GoalOverview {
     /// 推定消費カロリーの線と1日の目安の階段を重ねたグラフ。見直した点が3つたまるまでは、グラフの代わりに今の値の数字
     public enum EnergyChart: Hashable, Sendable {
         case drawn(Graph)
-        /// 「推定消費カロリー 2,250 kcal」「1日の目安 1,900 kcal」「1日に減らす分 350 kcal」
+        /// 「推定消費カロリー 2,250 kcal」「1日の目安 1,900 kcal」「1日の目安は推定消費カロリーより 350 kcal 少ない」
         case figures([String])
 
         /// 減量・増量・維持の進行中と期限後の維持だけで出す。今の目標の1日の目安がまだ届いていなければ nil
