@@ -370,7 +370,7 @@ extension TimelineTests {
                         guideKilocalories: 1850, mainReason: .balanceChange)
                 }
 
-                @Test("期限までの日が減ったことを言うこと")
+                @Test("期限に間に合うよう目安を推定消費カロリーより下げたことを言うこと")
                 func saysFewerDays() {
                     #expect(notice.reasonText == "期限に間に合うよう、1日の目安を推定消費カロリーよりさらに下げたためです。")
                 }
@@ -386,7 +386,7 @@ extension TimelineTests {
                         guideKilocalories: 1900, mainReason: .balanceChange)
                 }
 
-                @Test("予定より進んでいることを言うこと")
+                @Test("体重が予定より早く減っていることを言うこと")
                 func saysAhead() {
                     #expect(notice.reasonText == "体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。")
                 }
@@ -405,7 +405,7 @@ extension TimelineTests {
                         guideKilocalories: 1850, mainReason: .balanceChange)
                 }
 
-                @Test("体重の傾向に合わせたことを言うこと")
+                @Test("体重の傾向が目標体重を上回っていることを言うこと")
                 func saysFollowingTrend() {
                     #expect(
                         notice.reasonText == "体重の傾向が 72.4 kg を上回っているので、1日の目安を推定消費カロリーより下げたためです。")

@@ -42,10 +42,11 @@ public enum DailyGuideChangeReason: Hashable, Sendable {
                 fromKilocalories: previousEstimate.expenditureKilocalories,
                 toKilocalories: estimate.expenditureKilocalories)
         case .balanceChange:
-            let balance = guide.energyKilocalories - estimate.expenditureKilocalories
-            let increased =
-                abs(balance)
-                > abs(previousGuide.energyKilocalories - previousEstimate.expenditureKilocalories)
+            // 1日の目安から推定消費カロリーを引いた差。負なら目安を推定より下げている
+            let previousDifference =
+                previousGuide.energyKilocalories - previousEstimate.expenditureKilocalories
+            let difference = guide.energyKilocalories - estimate.expenditureKilocalories
+            let increased = abs(difference) > abs(previousDifference)
             if let achievement = goal.achievement, achievement.achievedDay < guide.effectiveDay {
                 self = .achieved
                 return
@@ -56,7 +57,8 @@ public enum DailyGuideChangeReason: Hashable, Sendable {
             case .maintain:
                 self = .maintenanceAdjusted(
                     targetKilograms: goal.targetWeightKilograms,
-                    adjustment: !increased ? .eased : balance < 0 ? .lowered : .raised)
+                    adjustment: MaintenanceAdjustment(
+                        increased: increased, differenceKilocalories: difference))
             }
         }
     }
@@ -65,10 +67,14 @@ public enum DailyGuideChangeReason: Hashable, Sendable {
         switch self {
         case .expenditureChanged(let from, let to):
             "推定消費カロリーが \(NutritionText.number(.exactly(Double(from)), of: .energyKcal)) から \(NutritionText.kilocalories(to)) に\(to < from ? "下がった" : "上がった")ためです。"
-        case .balanceChanged(let balance, true):
-            "期限に間に合うよう、1日の目安を推定消費カロリーより\(balance == .lose ? "さらに下げた" : "さらに上げた")ためです。"
-        case .balanceChanged(let balance, false):
-            "体重が予定より早く\(balance == .lose ? "減って" : "増えて")いるので、1日の目安を推定消費カロリーに近づけたためです。"
+        case .balanceChanged(.lose, true):
+            "期限に間に合うよう、1日の目安を推定消費カロリーよりさらに下げたためです。"
+        case .balanceChanged(.gain, true):
+            "期限に間に合うよう、1日の目安を推定消費カロリーよりさらに上げたためです。"
+        case .balanceChanged(.lose, false):
+            "体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。"
+        case .balanceChanged(.gain, false):
+            "体重が予定より早く増えているので、1日の目安を推定消費カロリーに近づけたためです。"
         case .maintenanceAdjusted(let kilograms, .lowered):
             "体重の傾向が \(WeightAmountText.kilograms(kilograms)) を上回っているので、1日の目安を推定消費カロリーより下げたためです。"
         case .maintenanceAdjusted(let kilograms, .raised):
@@ -96,5 +102,18 @@ public enum DailyGuideChangeReason: Hashable, Sendable {
         case raised
         /// 体重の傾向が目標体重に近づき、目安を推定に近づけた
         case eased
+
+        /// - Parameters:
+        ///   - increased: 1日の目安と推定消費カロリーの差が、前の週より広がったか
+        ///   - differenceKilocalories: 1日の目安から推定消費カロリーを引いた差
+        init(increased: Bool, differenceKilocalories: Int) {
+            if !increased {
+                self = .eased
+            } else if differenceKilocalories < 0 {
+                self = .lowered
+            } else {
+                self = .raised
+            }
+        }
     }
 }

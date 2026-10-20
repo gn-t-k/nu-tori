@@ -99,6 +99,18 @@ extension WeekRecapTests {
         }
 
         /// 10月19日の月曜に始めた、70.5 kg を保つ目標
+        /// 10月1日に始めた、12月24日までに 60.0 kg から 64.0 kg へ増やす目標
+        static func gaining() throws -> Goal {
+            Goal(
+                id: UUID(), startedDay: WeekRecapTests.day(10, 1),
+                startingWeightTrendKilograms: 60.0, targetWeightKilograms: 64.0,
+                decidedAt: try Date("2026-10-01T08:30:00+09:00", strategy: .iso8601),
+                timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")),
+                direction: .gain(
+                    Goal.WeightChange(deadlineDay: WeekRecapTests.day(12, 24), pacePlan: .standard)),
+                achievement: nil, deadlineConfirmation: nil, closure: nil)
+        }
+
         static func maintainingFromMonday(id: UUID) throws -> Goal {
             try Goal.maintaining(
                 id: id, startedOn: WeekRecapTests.day(10, 19), kilograms: 70.5,
@@ -130,7 +142,7 @@ extension WeekRecapTests {
             }
         }
 
-        @Suite("1日に減らす分の変化で変わったとき")
+        @Suite("1日の目安と推定消費カロリーの差の変化で変わったとき")
         struct BalanceChange {
             @Suite("1日の目安を推定消費カロリーからさらに下げたなら")
             struct Increased {
@@ -145,7 +157,7 @@ extension WeekRecapTests {
                         ).nextWeekGuide)
                 }
 
-                @Test("期限までの日が減ったことを理由にすること")
+                @Test("期限に間に合うよう目安を推定消費カロリーより下げたことを理由にすること")
                 func explainsBalance() {
                     #expect(
                         guide.sentence
@@ -166,11 +178,55 @@ extension WeekRecapTests {
                         ).nextWeekGuide)
                 }
 
-                @Test("予定より進んでいることを理由にすること")
+                @Test("体重が予定より早く減っていることを理由にすること")
                 func explainsBalanceDecrease() {
                     #expect(
                         guide.sentence
                             == "1,880 → 1,900 kcal。体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
+                    )
+                }
+            }
+
+            @Suite("増量で1日の目安を推定消費カロリーからさらに上げたなら")
+            struct GainIncreased {
+                let guide: WeekRecap.NextWeekGuide
+
+                init() throws {
+                    guide = try #require(
+                        try NextWeekGuide.recap(
+                            goal: NextWeekGuide.gaining(),
+                            outcome: NextWeekGuide.reviewed(.balanceChange),
+                            newGuideKilocalories: 2600
+                        ).nextWeekGuide)
+                }
+
+                @Test("期限に間に合うよう目安を推定消費カロリーより上げたことを理由にすること")
+                func explainsGainIncrease() {
+                    #expect(
+                        guide.sentence
+                            == "1,880 → 2,600 kcal。期限に間に合うよう、1日の目安を推定消費カロリーよりさらに上げたためです。推移は目標で見られます。"
+                    )
+                }
+            }
+
+            @Suite("増量で1日の目安を推定消費カロリーに近づけたなら")
+            struct GainDecreased {
+                let guide: WeekRecap.NextWeekGuide
+
+                init() throws {
+                    guide = try #require(
+                        try NextWeekGuide.recap(
+                            goal: NextWeekGuide.gaining(),
+                            outcome: NextWeekGuide.reviewed(.balanceChange),
+                            newGuideKilocalories: 2300
+                        ).nextWeekGuide)
+                }
+
+                @Test("体重が予定より早く増えていることを理由にすること")
+                func explainsGainDecrease() {
+                    #expect(
+                        guide.sentence
+                            == "1,880 → 2,300 kcal。体重が予定より早く増えているので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
                     )
                 }
             }
@@ -190,7 +246,7 @@ extension WeekRecapTests {
                         ).nextWeekGuide)
                 }
 
-                @Test("体重の傾向に合わせたことを理由にすること")
+                @Test("体重の傾向が目標体重を上回っていることを理由にすること")
                 func explainsMaintenanceBalance() {
                     #expect(
                         guide.sentence
