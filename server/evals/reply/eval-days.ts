@@ -268,4 +268,48 @@ export const evalGoals = {
     latestWeeklyReview: undefined,
     pace: undefined,
   },
+  // 記録の多い日の人の減量で、直近の週（10/5 の月曜）を見直せた。1日の目安を前の週から 150 kcal 下げ、前の週からの変化の上限に当たった。ペースは間に合う
+  richLoseReviewed: {
+    direction: "lose",
+    deadlineOn: "2026-12-31",
+    targetWeightKg: 63.2,
+    dailyGuide: { energyKcal: 1600, proteinG: 100, fatG: 45, carbohydrateG: 200 },
+    expenditureKcal: 2050,
+    latestWeeklyReview: {
+      type: "reviewed",
+      effectiveOn: "2026-10-05",
+      limitHits: ["weekly_change"],
+      mainReason: "balance_change",
+      dailyGuideChangeKcal: -150,
+      expenditureChangeKcal: -50,
+    },
+    pace: { status: "onTrack", actualKgPerWeek: 0.5, requiredKgPerWeek: 0.4 },
+  },
+  // 記録の少ない日の人の減量で、直近の週（10/5 の月曜）は食事の記録が少なく見直しを見送った。体重記録も少なく、ペースは言い切れない
+  sparseLoseDeferred: {
+    direction: "lose",
+    deadlineOn: "2027-03-31",
+    targetWeightKg: 65.5,
+    dailyGuide: { energyKcal: 1700, proteinG: 105, fatG: 45, carbohydrateG: 220 },
+    expenditureKcal: 2000,
+    latestWeeklyReview: { type: "deferred", effectiveOn: "2026-10-05", reason: "few_meal_records" },
+    pace: { status: "inconclusive", weightRecordDayCount: 2 },
+  },
+  // 記録の多い日の人の減量で、期限が近く、今の体重の傾向の動きのままだと期限に 1.5 kg 届かない
+  richLoseBehind: {
+    direction: "lose",
+    deadlineOn: "2026-11-30",
+    targetWeightKg: 63.2,
+    dailyGuide: { energyKcal: 1500, proteinG: 100, fatG: 40, carbohydrateG: 185 },
+    expenditureKcal: 2050,
+    latestWeeklyReview: {
+      type: "reviewed",
+      effectiveOn: "2026-10-05",
+      limitHits: ["weekly_change"],
+      mainReason: "balance_change",
+      dailyGuideChangeKcal: -150,
+      expenditureChangeKcal: -50,
+    },
+    pace: { status: "behind", shortfallKg: 1.5, actualKgPerWeek: 0.5, requiredKgPerWeek: 0.7 },
+  },
 } as const satisfies Record<string, ReplyContextGoal>;

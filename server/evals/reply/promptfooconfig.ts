@@ -8,8 +8,8 @@ import { gradingPrompt } from "./grading-prompt";
 import type { ReplyShapeConfig } from "./judge-reply-shape";
 
 // 返事の指示の評価（#419 の「指示と評価」、#434）。
-// 35 場面の返事を Claude Sonnet 5.5 に作らせ、守ることを1項目ずつ判定役の Claude Opus 5.5 が判定し、長さと指し示す食事をコードで確かめる。
-// 35 場面すべてが通れば合格。
+// 場面ごとの返事を Claude Sonnet 5.5 に作らせ、守ることを1項目ずつ判定役の Claude Opus 5.5 が判定し、長さと指し示す食事をコードで確かめる。
+// すべての場面が通れば合格。
 // 回し方と鍵は run-eval.ts
 const config: Partial<UnifiedConfig> = {
   description: "返事の指示の評価（Claude Sonnet 5.5）",
