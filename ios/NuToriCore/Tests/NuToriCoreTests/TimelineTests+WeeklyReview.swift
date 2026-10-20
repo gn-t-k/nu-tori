@@ -371,7 +371,7 @@ extension TimelineTests {
                 }
 
                 @Test("期限に間に合うよう目安を推定消費カロリーより下げたことを言うこと")
-                func saysFewerDays() {
+                func saysLoweredToMeetDeadline() {
                     #expect(notice.reasonText == "期限に間に合うよう、1日の目安を推定消費カロリーよりさらに下げたためです。")
                 }
             }
@@ -406,7 +406,7 @@ extension TimelineTests {
                 }
 
                 @Test("体重の傾向が目標体重を上回っていることを言うこと")
-                func saysFollowingTrend() {
+                func saysTrendAboveTarget() {
                     #expect(
                         notice.reasonText == "体重の傾向が 72.4 kg を上回っているので、1日の目安を推定消費カロリーより下げたためです。")
                 }

@@ -40,9 +40,9 @@ extension WeekRecapTests {
 
     @Suite("次の週の1日の目安")
     struct NextWeekGuide {
-        /// 10月12日〜18日の週と、10月19日から当てる見直し。前の1日の目安は 1,880 kcal（推定消費カロリー 2,190 kcal）
+        /// 10月12日〜18日の週と、10月19日から当てる見直し。前の1日の目安は既定で 1,880 kcal（推定消費カロリー 2,190 kcal）
         static func recap(
-            goal: Goal? = nil,
+            goal: Goal? = nil, previousGuideKilocalories: Int = 1880,
             outcome: (_ estimateId: UUID, _ guideId: UUID) -> WeeklyReview.Outcome,
             newGuideKilocalories: Int = 1850, newGuideGoalId: UUID? = nil,
             limitHits: [DailyGuide.LimitHit] = [], newGuideArrived: Bool = true,
@@ -55,7 +55,8 @@ extension WeekRecapTests {
                 initialSource: .formula)
             let firstGuide = DailyGuide(
                 id: UUID(), goalId: goal.id, expenditureEstimateId: firstEstimate.id,
-                effectiveDay: WeekRecapTests.day(10, 1), energyKilocalories: 1880,
+                effectiveDay: WeekRecapTests.day(10, 1),
+                energyKilocalories: previousGuideKilocalories,
                 proteinGrams: 120, fatGrams: 55, carbohydrateGrams: 230, limitHits: [])
             let reviewedAt = try Date("2026-10-19T07:00:00+09:00", strategy: .iso8601)
             let newEstimate = ExpenditureEstimate(
@@ -98,7 +99,6 @@ extension WeekRecapTests {
                     endReason: endReason))
         }
 
-        /// 10月19日の月曜に始めた、70.5 kg を保つ目標
         /// 10月1日に始めた、12月24日までに 60.0 kg から 64.0 kg へ増やす目標
         static func gaining() throws -> Goal {
             Goal(
@@ -111,6 +111,7 @@ extension WeekRecapTests {
                 achievement: nil, deadlineConfirmation: nil, closure: nil)
         }
 
+        /// 10月19日の月曜に始めた、70.5 kg を保つ目標
         static func maintainingFromMonday(id: UUID) throws -> Goal {
             try Goal.maintaining(
                 id: id, startedOn: WeekRecapTests.day(10, 19), kilograms: 70.5,
@@ -192,11 +193,12 @@ extension WeekRecapTests {
                 let guide: WeekRecap.NextWeekGuide
 
                 init() throws {
+                    // 前の週は推定消費カロリー 2,190 kcal に 210 kcal 足した 2,400 kcal
                     guide = try #require(
                         try NextWeekGuide.recap(
-                            goal: NextWeekGuide.gaining(),
+                            goal: NextWeekGuide.gaining(), previousGuideKilocalories: 2400,
                             outcome: NextWeekGuide.reviewed(.balanceChange),
-                            newGuideKilocalories: 2600
+                            newGuideKilocalories: 2500
                         ).nextWeekGuide)
                 }
 
@@ -204,7 +206,7 @@ extension WeekRecapTests {
                 func explainsGainIncrease() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 2,600 kcal。期限に間に合うよう、1日の目安を推定消費カロリーよりさらに上げたためです。推移は目標で見られます。"
+                            == "2,400 → 2,500 kcal。期限に間に合うよう、1日の目安を推定消費カロリーよりさらに上げたためです。推移は目標で見られます。"
                     )
                 }
             }
@@ -214,11 +216,12 @@ extension WeekRecapTests {
                 let guide: WeekRecap.NextWeekGuide
 
                 init() throws {
+                    // 前の週は推定消費カロリー 2,190 kcal に 210 kcal 足した 2,400 kcal
                     guide = try #require(
                         try NextWeekGuide.recap(
-                            goal: NextWeekGuide.gaining(),
+                            goal: NextWeekGuide.gaining(), previousGuideKilocalories: 2400,
                             outcome: NextWeekGuide.reviewed(.balanceChange),
-                            newGuideKilocalories: 2300
+                            newGuideKilocalories: 2250
                         ).nextWeekGuide)
                 }
 
@@ -226,7 +229,7 @@ extension WeekRecapTests {
                 func explainsGainDecrease() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 2,300 kcal。体重が予定より早く増えているので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
+                            == "2,400 → 2,250 kcal。体重が予定より早く増えているので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
                     )
                 }
             }
