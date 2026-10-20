@@ -33,7 +33,7 @@ extension GoalOverview {
                 self = .figures([
                     "推定消費カロリー \(NutritionText.kilocalories(latest.expenditureKilocalories))",
                     "1日の目安 \(NutritionText.kilocalories(latest.dailyGuideKilocalories))",
-                    Self.balanceText(of: latest, direction: goal.direction),
+                    Self.balanceText(of: latest),
                 ])
                 return
             }
@@ -60,23 +60,12 @@ extension GoalOverview {
             }
         }
 
-        /// 「1日に減らす分 350 kcal」。増量は「足す分」、維持は「戻す分」
-        private static func balanceText(of point: Point, direction: Goal.Direction) -> String {
+        /// 「1日の目安は推定消費カロリーより 350 kcal 少ない」
+        private static func balanceText(of point: Point) -> String {
             let difference = point.dailyGuideKilocalories - point.expenditureKilocalories
-            let label: String
-            let amount: Int
-            switch direction {
-            case .lose:
-                label = "減らす分"
-                amount = -difference
-            case .gain:
-                label = "足す分"
-                amount = difference
-            case .maintain:
-                label = "戻す分"
-                amount = abs(difference)
-            }
-            return "1日に\(label) \(NutritionText.kilocalories(amount))"
+            if difference == 0 { return "1日の目安は推定消費カロリーと同じ" }
+            return
+                "1日の目安は推定消費カロリーより \(NutritionText.kilocalories(abs(difference))) \(difference < 0 ? "少ない" : "多い")"
         }
 
         /// 初めの推定と、見直した2回

@@ -150,7 +150,7 @@ extension WeekRecapTests {
                 let guide: WeekRecap.NextWeekGuide
 
                 init() throws {
-                    // 推定消費カロリー 2,190 → 2,140、1日に減らす分 310 → 390 kcal
+                    // 推定消費カロリー 2,190 → 2,140、1日の目安と推定消費カロリーの差 310 → 390 kcal
                     guide = try #require(
                         try NextWeekGuide.recap(
                             outcome: NextWeekGuide.reviewed(.balanceChange),

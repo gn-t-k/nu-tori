@@ -90,9 +90,36 @@ extension GoalOverviewTests {
                 #expect(
                     chart
                         == .figures([
-                            "推定消費カロリー 2,250 kcal", "1日の目安 1,900 kcal", "1日に減らす分 350 kcal",
+                            "推定消費カロリー 2,250 kcal", "1日の目安 1,900 kcal",
+                            "1日の目安は推定消費カロリーより 350 kcal 少ない",
                         ]))
                 #expect(chart?.note == "週ごとの見直しが 2 回たまると、グラフで見せます。")
+            }
+
+            @Test(
+                "推定消費カロリー 2,600 kcal との差を、目安が少ないか多いか同じかで書くこと",
+                arguments: [
+                    (2250, "1日の目安は推定消費カロリーより 350 kcal 少ない"),
+                    (2950, "1日の目安は推定消費カロリーより 350 kcal 多い"),
+                    (2600, "1日の目安は推定消費カロリーと同じ"),
+                ])
+            func writesDifference(guideKilocalories: Int, expected: String) throws {
+                let goal = try Goal.losing()
+                let (estimates, guides) = EnergyChart.records(
+                    goal,
+                    [
+                        (GoalOverviewTests.day(10, 1), 2190, 1880),
+                        (GoalOverviewTests.day(10, 5), 2600, guideKilocalories),
+                    ])
+                let chart = GoalOverviewTests.overview(
+                    today: GoalOverviewTests.day(10, 10), goals: [goal], dailyGuides: guides,
+                    expenditureEstimates: estimates)?.energyChart
+
+                guard case .figures(let figures) = chart else {
+                    Issue.record("数字で出ていない")
+                    return
+                }
+                #expect(figures.last == expected)
             }
         }
 
