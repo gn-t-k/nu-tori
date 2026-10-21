@@ -6,7 +6,8 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { addDays } from "../../domain/add-days";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
-import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
+import { computeStartOfWeek } from "../../domain/compute-start-of-week";
+import { daysPerWeek } from "../../domain/days-per-week";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
@@ -22,9 +23,12 @@ import {
 } from "../../observability/testing";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 
-// その日（YYYY-MM-DD）の日本時間の正午に時計を合わせる
+// その日（YYYY-MM-DD）の日本時間の正午
+const computeNoonInTokyo = (calendarDay: string) => Date.parse(`${calendarDay}T03:00:00Z`);
+
+// その日の日本時間の正午に時計を合わせる
 const setClockTo = (calendarDay: string) => {
-  vi.setSystemTime(Date.parse(`${calendarDay}T03:00:00Z`));
+  vi.setSystemTime(computeNoonInTokyo(calendarDay));
 };
 
 // 達成と期限の日の結果の確定を、受け口から確かめる
@@ -66,10 +70,13 @@ describe("目標の達成と期限の日の結果", () => {
     ({ accountId, sessionToken } = await signInTestAccount(generateRecordId(), {
       timeZone: "Asia/Tokyo",
     }));
-    // 時計をサインインの1日あとで止め、その日に、2日後を期限にして 72 kg から 70 kg を目指す減量の目標を立てたことにする
-    useFakeClock(Date.now() + millisecondsPerDay);
-    goalStartedOn = computeCalendarDayInTimeZone(new Date(), "Asia/Tokyo");
-    setClockTo(goalStartedOn);
+    // 来週の火曜に、2日後を期限にして 72 kg から 70 kg を目指す減量の目標を立てたことにする。
+    // 実行する曜日によらず、期限の日の翌日（金曜）まで月曜の見直しを挟まない
+    goalStartedOn = addDays(
+      computeStartOfWeek(computeCalendarDayInTimeZone(new Date(), "Asia/Tokyo")),
+      daysPerWeek + 1,
+    );
+    useFakeClock(computeNoonInTokyo(goalStartedOn));
     goalId = generateRecordId();
     await runInDurableObject(getAccountDurableObject(env, accountId), async (_, state) => {
       const factory = durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables }));
@@ -226,16 +233,13 @@ describe("目標の達成と期限の日の結果", () => {
       });
 
       test("期限の日の体重の傾向と目標体重との差を 0.1 kg 単位で、達成していなかったことと一緒に送ること", () => {
-        // 開始の日が金曜だと、取りに行く日が期限のあとの最初の月曜になり、期限後の維持に移った出来事も送る
-        expect(readGoalEvents().filter(({ event }) => event === "goal_deadline_confirmed")).toEqual(
-          [
-            {
-              event: "goal_deadline_confirmed",
-              distinct_id: accountId,
-              properties: { difference_from_target_kg: 1, achieved: false, $geoip_disable: true },
-            },
-          ],
-        );
+        expect(readGoalEvents()).toEqual([
+          {
+            event: "goal_deadline_confirmed",
+            distinct_id: accountId,
+            properties: { difference_from_target_kg: 1, achieved: false, $geoip_disable: true },
+          },
+        ]);
       });
 
       test("体重の値を含めないこと", () => {
