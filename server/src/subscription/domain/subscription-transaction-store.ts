@@ -1,6 +1,6 @@
 import type { RecordId } from "../../domain/record-id";
+import type { AppStoreSubscriptionKey } from "./app-store-subscription-key";
 import type {
-  AppStoreSubscriptionEnvironment,
   SubscriptionTransactionReason,
   SubscriptionTransactionReportTrigger,
 } from "./subscription";
@@ -60,9 +60,4 @@ export type SubscriptionTransactionStore = {
     subscriptionTransactionId: RecordId;
     reportTrigger: SubscriptionTransactionReportTrigger;
   }) => void;
-};
-
-export type AppStoreSubscriptionKey = {
-  environment: AppStoreSubscriptionEnvironment;
-  appStoreOriginalTransactionId: string;
 };

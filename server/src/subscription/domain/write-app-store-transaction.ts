@@ -1,3 +1,4 @@
+import { toAppStoreSubscriptionKey } from "./app-store-subscription-key";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { AppStoreSubscriptionTransaction } from "./read-app-store-subscription-transaction";
 import type { SubscriptionTransactionStore } from "./subscription-transaction-store";
@@ -26,10 +27,7 @@ export const writeAppStoreTransaction = (
   wroteTransaction: boolean;
   wroteRevocation: boolean;
 } => {
-  const key = {
-    environment: transaction.environment,
-    appStoreOriginalTransactionId: transaction.appStoreOriginalTransactionId,
-  };
+  const key = toAppStoreSubscriptionKey(transaction);
   const subscriptionId =
     store.findAppStoreSubscriptionId(key) ??
     (() => {
