@@ -52,7 +52,7 @@ struct AccountScreen: View {
             }
             Section {
                 Button(role: .destructive) {
-                    confirmingDeletion = true
+                    Task { await requestDeletion() }
                 } label: {
                     HStack {
                         Text("アカウントを削除")
@@ -93,6 +93,29 @@ struct AccountScreen: View {
         }
         // 消している途中で閉じると、消せなかったときの1行を出す先が無くなる
         .interactiveDismissDisabled(isDeleting)
+        .sheet(
+            item: $presentedDeletionGuide,
+            onDismiss: {
+                // シートを閉じ終えてから出さないと、確かめのダイアログが出ない
+                if proceedsAfterDeletionGuide {
+                    proceedsAfterDeletionGuide = false
+                    confirmingDeletion = true
+                }
+            }
+        ) { presented in
+            AccountDeletionGuideSheet(
+                guide: presented.guide,
+                actions: AccountDeletionGuideSheet.Actions(
+                    reread: actions.rereadAccountDeletionGuide,
+                    openedManageSubscriptions: actions.openedManageSubscriptions,
+                    proceedToDeletion: {
+                        proceedsAfterDeletionGuide = true
+                        presentedDeletionGuide = nil
+                    },
+                    cancel: { presentedDeletionGuide = nil }
+                )
+            )
+        }
         .alert("アカウントを削除しますか？", isPresented: $confirmingDeletion) {
             Button("アカウントを削除", role: .destructive) {
                 Task { await deleteAccount() }
@@ -133,12 +156,21 @@ struct AccountScreen: View {
         case failed(AccountDeletionFailure)
     }
 
+    /// シートの `item` に渡すため。開くたびに別のシートとして出す
+    private struct PresentedDeletionGuide: Identifiable {
+        let id = UUID()
+        let guide: AccountDeletionGuide
+    }
+
     @Environment(\.openURL) private var openURL
     /// 切り替えてから保存し終えるまで、スイッチを押した側に置いておく
     @State private var requestedSendsUsageData: Bool?
     @State private var accountId: String?
     @State private var deletion: Deletion
     @State private var confirmingDeletion = false
+    @State private var presentedDeletionGuide: PresentedDeletionGuide?
+    /// 退会の案内の「アカウントを削除」で閉じた。閉じ終えたら確かめのダイアログを出す
+    @State private var proceedsAfterDeletionGuide = false
 
     private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!
     /// このアプリの iPhone の設定
@@ -207,6 +239,16 @@ struct AccountScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    /// サブスクリプション中で自動更新がオンなら、確かめの前に退会の案内を出す
+    private func requestDeletion() async {
+        guard let guide = await actions.accountDeletionGuide() else {
+            confirmingDeletion = true
+            return
+        }
+        presentedDeletionGuide = PresentedDeletionGuide(guide: guide)
+        await actions.openedAccountDeletionGuide()
     }
 
     private func deleteAccount() async {

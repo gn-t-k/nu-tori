@@ -164,6 +164,11 @@ public actor RecordSync {
         return notices.contains { $0.id == noticeId }
     }
 
+    /// キャッシュのサブスクリプションの状態。まだ届いていない、読めないときは nil
+    public func subscriptionStatus() async -> SubscriptionStatus? {
+        try? await store.subscriptionStatus()
+    }
+
     /// 1回の撮る・選ぶでできた食事を記録する。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている。
     /// 写真はアプリの中に置いて裏で送り始め、食事の書き込みは送り待ちから裏で送る。送れなかった分は送り待ちに残る。
     /// 同期の往復を待たずに返す（呼び出し側が、タイムラインに戻ってすぐ栄養の許可を求めるため）。

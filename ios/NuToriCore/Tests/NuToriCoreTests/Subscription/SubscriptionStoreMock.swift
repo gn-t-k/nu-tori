@@ -26,11 +26,11 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
             entitlements: entitlements, syncResult: syncResult, willAutoRenew: willAutoRenew)
     }
 
-    /// 商品を読む・買うが投げる
-    static func error(_ error: any Error) -> SubscriptionStoreMock {
+    /// 商品を読む・買うが投げる。自動更新は、今使えるサブスクリプションの更新の情報だけを端末で読むので、投げずに返せる
+    static func error(_ error: any Error, willAutoRenew: Bool? = nil) -> SubscriptionStoreMock {
         SubscriptionStoreMock(
             products: .failure(error), purchase: .failure(error), unfinished: [],
-            entitlements: [], syncResult: .failed, willAutoRenew: nil)
+            entitlements: [], syncResult: .failed, willAutoRenew: willAutoRenew)
     }
 
     /// `Transaction.updates` に取引を流す
