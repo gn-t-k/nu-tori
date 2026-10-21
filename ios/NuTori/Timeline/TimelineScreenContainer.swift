@@ -7,10 +7,8 @@ import SwiftUI
 struct TimelineScreenContainer: View {
     let clock: DeviceClock
     let rejectedLines: [RejectedLine]
-    /// 送り待ちに料理を足す・名前を直す書き込みがある料理（まだ送れていない料理として見せる）
-    let unsentDishIds: Set<UUID>
-    /// まだ届いていない記録（薄く描く）
-    let undeliveredRecords: UndeliveredRecords
+    /// 送り待ちから作る見え方（まだ届いていない記録は薄く描き、まだ送れていない料理はそう見せる）
+    let pendingAppearance: PendingAppearance
     let capture: (ClientUsageEvent) async -> Void
     let reminderLanding: ReminderLanding?
     let noteReminderLanded: () -> Void
@@ -45,7 +43,7 @@ struct TimelineScreenContainer: View {
             expenditureEstimates: cachedExpenditureEstimates.compactMap {
                 $0.expenditureEstimate()
             },
-            undeliveredRecords: undeliveredRecords,
+            undeliveredRecords: pendingAppearance.undelivered,
             capture: capture,
             reminderLanding: reminderLanding,
             noteReminderLanded: noteReminderLanded,
@@ -118,7 +116,7 @@ struct TimelineScreenContainer: View {
                     dishes: dishes,
                     ingredients: dishes.flatMap { ingredientsByDish[$0.id] ?? [] },
                     dishEstimationStatuses: dishStatuses,
-                    unsentDishIds: unsentDishIds
+                    unsentDishIds: pendingAppearance.unsentDishIds
                 )
             }
         }

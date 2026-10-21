@@ -11,10 +11,8 @@ final class RootModel {
     let clock: DeviceClock
     /// 目標を立てる知らせのカードが広げる、目標の設定の流れ
     let goalSetup: GoalSetupSession
-    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカードで、まだ送れていない料理として見せる
-    private(set) var unsentDishIds: Set<UUID> = []
-    /// まだ届いていない記録。タイムラインで薄く描く
-    private(set) var undeliveredRecords = UndeliveredRecords.none
+    /// 送り待ちから作る見え方。まだ届いていない記録はタイムラインで薄く描き、まだ送れていない料理は食事のカードで見せる
+    private(set) var pendingAppearance = PendingAppearance.none
     /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事。タイムラインで伸ばして描く
     private(set) var replyStreams: [UUID: ReplyStream] = [:]
     var rejectedLines: [RejectedLine] {
@@ -46,13 +44,9 @@ final class RootModel {
         reflector.onReplacingRecord = { [weak self] recordId in
             self?.dropRejection(for: recordId)
         }
-        reflector.onUnsentDishIds = { [weak self] unsentDishIds in
-            guard self?.unsentDishIds != unsentDishIds else { return }
-            self?.unsentDishIds = unsentDishIds
-        }
-        reflector.onUndeliveredRecords = { [weak self] undeliveredRecords in
-            guard self?.undeliveredRecords != undeliveredRecords else { return }
-            self?.undeliveredRecords = undeliveredRecords
+        reflector.onPendingAppearance = { [weak self] appearance in
+            guard self?.pendingAppearance != appearance else { return }
+            self?.pendingAppearance = appearance
         }
         reflector.onReplyStreams = { [weak self] streams in
             self?.replyStreams = streams

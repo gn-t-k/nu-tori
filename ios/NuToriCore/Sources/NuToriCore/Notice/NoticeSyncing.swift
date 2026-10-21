@@ -35,6 +35,11 @@ public struct NoticeSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
+    /// 知らせへの答えは、届くまで薄く描かない
+    public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
+        []
+    }
+
     /// 知らせはユーザーが作った記録ではないので、受け付けなかった行は出さない。
     /// 値は同期の働きがサーバーの今の値で戻す。サーバーに知らせが無いときは、キャッシュから外す
     public func rejection(

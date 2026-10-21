@@ -35,6 +35,16 @@ public struct MealSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
+    /// 作る・直す書き込みの食事
+    public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
+        guard let pending = try? PendingMealWrite(entry: entry) else { return [] }
+        switch pending.write {
+        case .create(let meal): return [UndeliveredRecords.Record(kind: name, id: meal.id)]
+        case .update(let mealId, _): return [UndeliveredRecords.Record(kind: name, id: mealId)]
+        case .delete: return []
+        }
+    }
+
     /// 受け付けなかった作る書き込みは、サーバーに食事が無いときだけ、カードを外して行にする。
     /// 削除の印のときは、その食事はもう消されているので行を出さない。値があるときは、カードがそのまま残る。
     /// 受け付けなかった時刻を直す書き込みは、サーバーに値があれば直そうとした時刻の「直せなかった」行を、

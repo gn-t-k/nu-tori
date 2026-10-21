@@ -1,6 +1,7 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 extension TimelineTests {
@@ -15,7 +16,9 @@ extension TimelineTests {
                 input: Timeline.Input(
                     goalRecords: .fixture(weightRecords: weightRecords), rejectedLines: [],
                     meals: meals, notices: [],
-                    undelivered: UndeliveredRecords(pendingEntries: pending), conversation: .none),
+                    undelivered: UndeliveredRecords(
+                        pendingEntries: pending, kinds: RecordKindRegistry.ok().synced),
+                    conversation: .none),
                 firstDay: day, today: day)
         }
 
@@ -156,7 +159,7 @@ extension TimelineTests {
                             pendingEntries: try pending.map {
                                 try PendingSentTextWrite(enqueuedAt: sentText.sentAt, write: $0)
                                     .entry()
-                            }),
+                            }, kinds: RecordKindRegistry.ok().synced),
                         conversation: Timeline.Conversation(
                             sentTexts: [sentText], statuses: [:], replies: [], streams: [:])),
                     firstDay: Undelivered.day, today: Undelivered.day)

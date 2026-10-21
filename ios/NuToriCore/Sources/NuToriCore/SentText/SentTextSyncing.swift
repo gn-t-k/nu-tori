@@ -35,6 +35,12 @@ public struct SentTextSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
+    /// 送り直す2つも、届くまで吹き出しを薄く描き、応答待ちを出さない
+    public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
+        guard let pending = try? PendingSentTextWrite(entry: entry) else { return [] }
+        return [UndeliveredRecords.Record(kind: name, id: pending.write.sentTextId)]
+    }
+
     /// 受け付けなかった作る書き込みは、サーバーに文章が無いときだけ、吹き出しを外して行にする（値があれば、吹き出しがそのまま残る）。
     /// 受け付けなかった送り直す2つは、サーバーの今の値に戻した吹き出しの下に行を出す。
     /// 会話として送り直す書き込みで消した食事は、今の値（送った文章）では戻らず、次に全部取り直すまでキャッシュに無い。

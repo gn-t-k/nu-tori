@@ -227,14 +227,10 @@ public actor SyncEngine {
         }
     }
 
-    /// 送り待ちに料理を足す・名前を直す書き込みがある料理。食事のカード（`MealCard`）に渡し、まだ送れていない料理として見せる
-    public func unsentDishIds() async throws -> Set<UUID> {
-        DishSyncing.unsentDishIds(in: try await store.pendingEntries())
-    }
-
-    /// まだ届いていない記録。タイムラインに渡し、薄く描く
-    public func undeliveredRecords() async throws -> UndeliveredRecords {
-        UndeliveredRecords(pendingEntries: try await store.pendingEntries())
+    /// 送り待ちから作る見え方（まだ届いていない記録と、まだ送れていない料理）。画面に渡す
+    public func pendingAppearance() async throws -> PendingAppearance {
+        PendingAppearance(
+            pendingEntries: try await store.pendingEntries(), kinds: store.recordKinds)
     }
 
     /// 応答を待つ送った文章（`Timeline.Conversation.sentTextIdsAwaitingResponse(undelivered:)`）。
@@ -243,7 +239,9 @@ public actor SyncEngine {
         Timeline.Conversation(
             sentTexts: try await store.sentTexts(), statuses: try await store.sentTextStatuses(),
             replies: [], streams: [:]
-        ).sentTextIdsAwaitingResponse(undelivered: try await undeliveredRecords())
+        ).sentTextIdsAwaitingResponse(
+            undelivered: UndeliveredRecords(
+                pendingEntries: try await store.pendingEntries(), kinds: store.recordKinds))
     }
 
     /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる

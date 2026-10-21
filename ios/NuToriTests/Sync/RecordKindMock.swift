@@ -69,6 +69,10 @@ nonisolated struct RecordKindMock: RecordKind {
             .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: UUID())
         }
 
+        func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
+            []
+        }
+
         func rejection(
             of entry: PendingEntry,
             reason: SyncWriteResult.RejectionReason,

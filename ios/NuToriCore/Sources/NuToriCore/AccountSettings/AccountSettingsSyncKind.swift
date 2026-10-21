@@ -25,6 +25,11 @@ public struct AccountSettingsSyncKind: CacheApplying, RecordKindWrites {
         }
     }
 
+    /// アカウントの設定は、タイムラインに描かない
+    public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
+        []
+    }
+
     /// サーバーはアカウントの設定を受け付けないことが無いので、戻す先も画面に出すものも無い
     public func rejection(
         of entry: PendingEntry,

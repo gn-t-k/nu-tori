@@ -542,11 +542,8 @@ public actor RecordSync {
     /// 読めなければ知らせない（前に知らせたまま見せる）。
     /// 書き込みを送り待ちに並べたあとは、送るのを待たずに呼ぶ。まだ届いていない記録として、その場で薄く描くため
     private func publishFromPending(_ engine: SyncEngine) async {
-        if let unsentDishIds = try? await engine.unsentDishIds() {
-            await reflection.unsentDishIdsChanged(unsentDishIds)
-        }
-        if let undeliveredRecords = try? await engine.undeliveredRecords() {
-            await reflection.undeliveredRecordsChanged(undeliveredRecords)
+        if let appearance = try? await engine.pendingAppearance() {
+            await reflection.pendingAppearanceChanged(appearance)
         }
     }
 }
