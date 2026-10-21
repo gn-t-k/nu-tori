@@ -626,6 +626,9 @@ struct TimelineScreen: View {
                     }
                 }
             }
+        case .subscriptionNotice:
+            // 無料体験とサブスクリプションの知らせのカードは #678 で描く。それまでタイムラインに渡さないので、ここには来ない
+            EmptyView()
         case .goalSetupNotice(let notice):
             GoalSetupNoticeCard(
                 notice: notice,

@@ -164,6 +164,29 @@ struct MealCardDishWaitingTests {
             }
         }
 
+        @Suite("サブスクリプションを待っている料理のとき")
+        struct AwaitingSubscription {
+            let soup: DishContents
+
+            init() throws {
+                soup = try MealCardDishWaitingTests.soup(
+                    of: card(dishStatuses: [soupId: .awaitingSubscription]))
+            }
+
+            @Test("行の下に、回る印なしで「サブスクリプションを始めると推定します」を置くこと")
+            func showsAwaitingSubscriptionNote() {
+                #expect(soup.row.quantity == "—")
+                #expect(soup.row.kilocalories == "—")
+                #expect(soup.row.note?.text == "サブスクリプションを始めると推定します")
+                #expect(soup.row.note?.showsSpinner == false)
+            }
+
+            @Test("料理の画面で材料と栄養を出さないこと")
+            func hidesIngredients() {
+                #expect(!soup.showsIngredientsAndNutrients)
+            }
+        }
+
         @Suite("料理なしの料理のとき")
         struct NoDishes {
             let soup: DishContents
@@ -476,6 +499,38 @@ struct MealCardDishWaitingTests {
             @Test("食事の画面の料理の一覧の上に、翌日に推定の1行を置くこと")
             func showsMealNote() {
                 #expect(card.dishListNote == .deferredToNextDay)
+            }
+        }
+
+        @Suite("サブスクリプションを待っているとき")
+        struct AwaitingSubscription {
+            let card: MealCard
+
+            init() throws {
+                card = try cardWithoutDishes(.awaitingSubscription)
+            }
+
+            @Test("カードの名前の場所に「サブスクリプションを始めると推定します」を置くこと")
+            func showsStatusLine() {
+                #expect(card.namePlace.dishNames == nil)
+                #expect(card.namePlace.statusLine == "サブスクリプションを始めると推定します")
+            }
+
+            @Test("食事の画面の料理の一覧の上に、まだ推定していないわけと、料理を足す添え書きの無い1行を置くこと")
+            func showsMealNote() {
+                #expect(card.dishListNote == .awaitingSubscription)
+                #expect(card.dishListNote?.title == "サブスクリプションを待っている")
+                #expect(
+                    card.dishListNote?.detail
+                        == "サブスクリプション切れのあいだに届いたので、まだ推定していません。サブスクリプションを始めると、その日の回数の範囲で推定します。"
+                )
+                #expect(card.dishListNote?.addDishHint == nil)
+            }
+
+            @Test("写真の推定が済んでいない食事として、栄養を待つこと")
+            func awaitsEstimation() {
+                #expect(card.state.awaitsPhotoEstimation)
+                #expect(card.nutrition == .pending)
             }
         }
 

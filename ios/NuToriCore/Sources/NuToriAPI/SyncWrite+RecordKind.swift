@@ -15,7 +15,7 @@ extension SyncWrite {
 
     /// 送る書き込みの線上の形を、種類の符号化の表から引く
     func wire() throws -> Wire {
-        guard let wire = RecordKindWireCodings.coding(of: recordKind)?.writes?.wire(of: self) else {
+        guard let wire = RecordKindWireCodings.coding(of: recordKind).writes?.wire(of: self) else {
             throw MissingWireCodingError(kind: recordKind.rawValue)
         }
         return wire

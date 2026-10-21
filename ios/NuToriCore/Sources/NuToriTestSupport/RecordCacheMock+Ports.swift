@@ -63,6 +63,12 @@ extension RecordCacheMock {
             cache.sentTextStatusCache
         }
 
+        public func subscriptionStatus(in cache: RecordCacheMock)
+            -> SubscriptionStatusSyncing.Cache
+        {
+            cache.subscriptionStatusCache
+        }
+
         public func usualWeighingTime(in cache: RecordCacheMock) -> UsualWeighingTimeSyncing.Cache {
             cache.usualWeighingTimeCache
         }

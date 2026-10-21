@@ -24,6 +24,7 @@ nonisolated final class CachedMealEstimationStatus {
         case "estimated": .estimated
         case "no_dishes": .noDishes
         case "deferred_to_next_day": .deferredToNextDay
+        case "awaiting_subscription": .awaitingSubscription
         case "failed": .failed
         // swiftlint:disable:next no_default_in_switch - 置き場の文字列は、知らない値を読めないとみなす
         default: nil
@@ -37,6 +38,7 @@ nonisolated final class CachedMealEstimationStatus {
         case .estimated: "estimated"
         case .noDishes: "no_dishes"
         case .deferredToNextDay: "deferred_to_next_day"
+        case .awaitingSubscription: "awaiting_subscription"
         case .failed: "failed"
         }
     }

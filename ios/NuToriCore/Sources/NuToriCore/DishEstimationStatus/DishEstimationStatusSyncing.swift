@@ -76,6 +76,7 @@ extension DishEstimationStatus {
         switch status {
         case .estimating: self = .estimating
         case .deferredToNextDay: self = .deferredToNextDay
+        case .awaitingSubscription: self = .awaitingSubscription
         case .estimated: self = .estimated
         case .noDishes: self = .noDishes
         case .failed: self = .failed

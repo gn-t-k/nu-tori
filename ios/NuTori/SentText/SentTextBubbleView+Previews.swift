@@ -75,7 +75,8 @@
                         replyLine: nil, rejectedLine: nil)
                 case .halted:
                     SentTextBubble(
-                        sentText: Self.sentText, meals: [], replyLine: .halted, rejectedLine: nil)
+                        sentText: Self.sentText, meals: [], replyLine: .halted(.dailyLimit),
+                        rejectedLine: nil)
                 case .resendRejected:
                     SentTextBubble(
                         sentText: Self.sentText, meals: [], replyLine: .failed(.retriesExhausted),

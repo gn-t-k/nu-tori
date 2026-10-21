@@ -23,6 +23,7 @@ struct CachedMealEstimationStatusCacheTests {
             Status(mealId: UUID(), status: .estimated),
             Status(mealId: UUID(), status: .noDishes),
             Status(mealId: UUID(), status: .deferredToNextDay),
+            Status(mealId: UUID(), status: .awaitingSubscription),
             Status(mealId: UUID(), status: .failed),
         ]
         try cache.upsert(awaitingPhotos)

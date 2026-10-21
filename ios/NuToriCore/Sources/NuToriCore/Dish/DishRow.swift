@@ -26,6 +26,9 @@ public struct DishRow: Hashable, Sendable {
         case .deferredToNextDay:
             kilocalories = "—"
             note = .deferredToNextDay
+        case .awaitingSubscription:
+            kilocalories = "—"
+            note = .awaitingSubscription
         case .unestimable:
             kilocalories = NutritionText.amount(.exactly(0), of: .energyKcal)
             note = .unestimable
@@ -35,6 +38,7 @@ public struct DishRow: Hashable, Sendable {
     public enum Note: Hashable, Sendable {
         case estimating
         case deferredToNextDay
+        case awaitingSubscription
         case unestimable
 
         public var text: String {
@@ -42,6 +46,7 @@ public struct DishRow: Hashable, Sendable {
             case .estimating: "推定しています…"
             // 回数の上限の数は書かない
             case .deferredToNextDay: "今日はもう推定できないため、明日推定します"
+            case .awaitingSubscription: "サブスクリプションを始めると推定します"
             case .unestimable: "この名前からは材料を推定できませんでした"
             }
         }

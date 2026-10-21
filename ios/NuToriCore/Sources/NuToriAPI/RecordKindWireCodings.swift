@@ -1,10 +1,9 @@
 /// 記録の種類ごとの符号化の表。種類を足したら、`coding(of:)` に1行足す（サーバーの列挙に足した名前がここに無いと、コンパイルが止める）
 enum RecordKindWireCodings {
     static let all: [any RecordKindWireCoding] =
-        Components.Schemas.RecordKindName.allCases.compactMap(coding(of:))
+        Components.Schemas.RecordKindName.allCases.map(coding(of:))
 
-    /// 端末がまだ扱わない種類は nil（線上で届いても `change` が `.unknown` で読み飛ばす）
-    static func coding(of kind: Components.Schemas.RecordKindName) -> (any RecordKindWireCoding)? {
+    static func coding(of kind: Components.Schemas.RecordKindName) -> any RecordKindWireCoding {
         switch kind {
         case .accountSettings: AccountSettingsWireCoding()
         case .aiUtterance: AiUtteranceWireCoding()
@@ -19,12 +18,11 @@ enum RecordKindWireCodings {
         case .notice: NoticeWireCoding()
         case .sentText: SentTextWireCoding()
         case .sentTextStatus: SentTextStatusWireCoding()
+        case .subscriptionStatus: SubscriptionStatusWireCoding()
         case .usualWeighingTime: UsualWeighingTimeWireCoding()
         case .weeklyReview: WeeklyReviewWireCoding()
         case .weightRecord: WeightRecordWireCoding()
         case .weightTrend: WeightTrendWireCoding()
-        // #675 で端末の記録の種類として足すまでの手当て。それまでは端末で扱わず読み飛ばす
-        case .subscriptionStatus: nil
         }
     }
 

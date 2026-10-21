@@ -14,6 +14,8 @@ public struct SyncedDishEstimationStatus: Sendable, Equatable {
     public enum Status: String, Sendable, Equatable {
         case estimating
         case deferredToNextDay = "deferred_to_next_day"
+        /// サブスクリプション切れのあいだに推定し直しを頼んだので、推定を保留している
+        case awaitingSubscription = "awaiting_subscription"
         case estimated
         case noDishes = "no_dishes"
         case failed
