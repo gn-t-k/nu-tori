@@ -319,18 +319,18 @@ struct SyncBoxSaveOrderTests {
             #expect(log.saves.isEmpty)
         }
     }
-}
 
-/// 置き場の操作の閉包が呼ばれた順の記録。各テストの閉包が足す
-final class SaveLog {
-    enum Save: Equatable {
-        /// 送り待ちの置き場への保存。足した送り待ちと、書いたヘルスケアの同期の進み具合
-        case pending(enqueued: [PendingEntry], healthSyncState: HealthSyncState?)
-        /// キャッシュの置き場への保存。当てた変更の数と、この保存で書いた通し番号
-        case cache(changes: Int, afterSequence: Int?)
-        /// 結果を受け取った送り待ちを消す保存
-        case removingPending(writeIds: Set<UUID>)
+    /// 置き場の操作の閉包が呼ばれた順の記録。各テストの閉包が足す
+    final class SaveLog {
+        enum Save: Equatable {
+            /// 送り待ちの置き場への保存。足した送り待ちと、書いたヘルスケアの同期の進み具合
+            case pending(enqueued: [PendingEntry], healthSyncState: HealthSyncState?)
+            /// キャッシュの置き場への保存。当てた変更の数と、この保存で書いた通し番号
+            case cache(changes: Int, afterSequence: Int?)
+            /// 結果を受け取った送り待ちを消す保存
+            case removingPending(writeIds: Set<UUID>)
+        }
+
+        var saves: [Save] = []
     }
-
-    var saves: [Save] = []
 }

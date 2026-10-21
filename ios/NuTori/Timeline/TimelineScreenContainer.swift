@@ -27,7 +27,7 @@ struct TimelineScreenContainer: View {
     let holdsMealOriginals: (_ mealId: UUID) async -> Bool
 
     var body: some View {
-        let records = timelineRecords
+        let timeline = timelineRecords
         TimelineScreen(
             records: cachedRecords.compactMap { $0.weightRecord() },
             weightTrend: CachedWeightTrendDay.weightTrend(of: cachedWeightTrendDays),
@@ -36,7 +36,7 @@ struct TimelineScreenContainer: View {
             now: clock.now,
             timeZone: clock.timeZone,
             rejectedLines: rejectedLines,
-            meals: records.mealCards(
+            meals: timeline.mealCards(
                 recordedOnThisDevice: mealsRecordedHere,
                 unsentDishIds: pendingAppearance.unsentDishIds),
             notices: cachedNotices.compactMap { $0.notice() },
@@ -56,7 +56,7 @@ struct TimelineScreenContainer: View {
             sendText: sendText,
             accountActions: accountActions,
             mealActions: mealActions,
-            conversation: records.conversation(streams: replyStreams),
+            conversation: timeline.conversation(streams: replyStreams),
             conversationActions: conversationActions,
             goalSetupFlow: GoalSetupNoticeCard.Flow(
                 goalSetup.flow, on: .timeline, openedOn: goalSetup.place),
