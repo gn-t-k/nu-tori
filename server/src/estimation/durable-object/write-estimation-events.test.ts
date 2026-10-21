@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
+import type { UsageEvent } from "../../domain/usage-event";
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
@@ -30,6 +31,42 @@ const writeInAccount = (seed: Seed, run: Run): Promise<RecordChangeTarget<string
     );
     return changes;
   });
+
+// 推定を終える書き込みが返した出来事と、書いた完了・断念の行
+type Ended = { event: UsageEvent; completions: unknown[]; abandonments: unknown[] };
+
+// 書く前の予定と結果を seed で作り、end で推定を終えて、返った出来事と完了・断念の行を返す
+const endInAccount = (seed: Seed, end: (writes: EstimationWrites) => UsageEvent): Promise<Ended> =>
+  runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), async (_, state) => {
+    await seed(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
+    const event = createRecordKindStores(state.storage).writeEstimationEvents(
+      () => undefined,
+      new Date(),
+      end,
+    );
+    const read = (query: string) => state.storage.sql.exec(query).toArray();
+    return {
+      event,
+      completions: read("SELECT estimation_id, completed_at, result FROM estimation_completions"),
+      abandonments: read("SELECT estimation_id, abandoned_at FROM estimation_abandonments"),
+    };
+  });
+
+// 推定を始めた食事に、提供元のエラーで終えた試みと、通った試みを書く
+const writeTwoAttempts = (writes: EstimationWrites) => {
+  writes.beginAttempt({ id: "attempt-1", estimationId: "estimation-1", attemptedAt: startedAt });
+  writes.recordAttemptResult({
+    attemptId: "attempt-1",
+    endedAt: startedAt,
+    conclusion: { result: "provider_error", errorType: "overloaded_error" },
+  });
+  writes.beginAttempt({ id: "attempt-2", estimationId: "estimation-1", attemptedAt: startedAt });
+  writes.recordAttemptResult({
+    attemptId: "attempt-2",
+    endedAt: endedAt,
+    conclusion: { result: "succeeded" },
+  });
+};
 
 // 待っている予定のある食事。見送り・開始の前の形
 const seedWaitingSchedule = async (
@@ -71,6 +108,7 @@ const seedStartedEstimation = async (factory: ReturnType<typeof durableObjectFac
 };
 
 const startedAt = new Date("2026-01-01T00:00:00Z");
+const endedAt = new Date("2026-01-01T00:01:30Z");
 const nextDayStartsAt = new Date("2026-01-01T15:00:00Z");
 
 describe("推定の書き込みの口", () => {
@@ -177,7 +215,8 @@ describe("推定の書き込みの口", () => {
           estimationId: "estimation-1",
           target: { type: "meal", mealId: meal1 },
           completedAt: startedAt,
-          result: "estimated",
+          dishCount: 1,
+          ingredients: [],
         });
       };
     });
@@ -199,7 +238,8 @@ describe("推定の書き込みの口", () => {
           estimationId: "estimation-1",
           target: { type: "meal", mealId: meal1 },
           completedAt: startedAt,
-          result: "no_dishes",
+          dishCount: 0,
+          ingredients: [],
         });
       };
     });
@@ -229,6 +269,142 @@ describe("推定の書き込みの口", () => {
       expect(await writeInAccount(seed, run)).toEqual([
         { recordType: "meal_estimation_status", recordId: meal1 },
       ]);
+    });
+  });
+
+  describe("推定を終えるとき", () => {
+    describe("食事の推定を、料理を見つけて完了するとき", () => {
+      let ended: Ended;
+      beforeEach(async () => {
+        ended = await endInAccount(seedStartedEstimation, (writes) => {
+          writeTwoAttempts(writes);
+          return writes.complete({
+            estimationId: "estimation-1",
+            target: { type: "meal", mealId: meal1 },
+            completedAt: endedAt,
+            dishCount: 2,
+            ingredients: [
+              { nutrientSource: { type: "nutrition_label", labelBasisGrams: 100 } },
+              { nutrientSource: { type: "food_composition", foodNumber: "01088" } },
+              { nutrientSource: { type: "estimated" } },
+              { nutrientSource: { type: "estimated" } },
+            ],
+          });
+        });
+      });
+
+      test("推定できたで完了の行を書くこと", () => {
+        expect(ended.completions).toEqual([
+          { estimation_id: "estimation-1", completed_at: endedAt.getTime(), result: "estimated" },
+        ]);
+      });
+
+      test("推定できたの出来事を、試みと料理と材料の数えで返すこと", () => {
+        expect(ended.event).toEqual({
+          name: "estimation_ended",
+          trigger: "photo",
+          finalStatus: "estimated",
+          retryCount: 1,
+          dishCount: 2,
+          ingredientCount: 4,
+          nutritionLabelIngredientCount: 1,
+          foodCompositionIngredientCount: 1,
+          estimatedIngredientCount: 2,
+          secondsFromReceivedToEnded: 90,
+          providerErrorTypes: ["overloaded_error"],
+        });
+      });
+    });
+
+    describe("食事の推定を、料理を見つけずに完了するとき", () => {
+      let ended: Ended;
+      beforeEach(async () => {
+        ended = await endInAccount(seedStartedEstimation, (writes) =>
+          writes.complete({
+            estimationId: "estimation-1",
+            target: { type: "meal", mealId: meal1 },
+            completedAt: endedAt,
+            dishCount: 0,
+            ingredients: [],
+          }),
+        );
+      });
+
+      test("料理なしで完了の行を書くこと", () => {
+        expect(ended.completions).toEqual([
+          { estimation_id: "estimation-1", completed_at: endedAt.getTime(), result: "no_dishes" },
+        ]);
+      });
+
+      test("料理なしの出来事を返すこと", () => {
+        expect(ended.event).toMatchObject({
+          name: "estimation_ended",
+          finalStatus: "no_dishes",
+          dishCount: 0,
+          ingredientCount: 0,
+        });
+      });
+    });
+
+    describe("食事の推定を諦めるとき", () => {
+      let ended: Ended;
+      beforeEach(async () => {
+        ended = await endInAccount(seedStartedEstimation, (writes) => {
+          writeTwoAttempts(writes);
+          return writes.abandon({
+            estimationId: "estimation-1",
+            target: { type: "meal", mealId: meal1 },
+            abandonedAt: endedAt,
+          });
+        });
+      });
+
+      test("断念の行を書き、完了の行を書かないこと", () => {
+        expect({ completions: ended.completions, abandonments: ended.abandonments }).toEqual({
+          completions: [],
+          abandonments: [{ estimation_id: "estimation-1", abandoned_at: endedAt.getTime() }],
+        });
+      });
+
+      test("推定できなかったの出来事を、料理と材料を数えずに返すこと", () => {
+        expect(ended.event).toEqual({
+          name: "estimation_ended",
+          trigger: "photo",
+          finalStatus: "failed",
+          retryCount: 1,
+          dishCount: 0,
+          ingredientCount: 0,
+          nutritionLabelIngredientCount: 0,
+          foodCompositionIngredientCount: 0,
+          estimatedIngredientCount: 0,
+          secondsFromReceivedToEnded: 90,
+          providerErrorTypes: ["overloaded_error"],
+        });
+      });
+    });
+
+    describe("文章の食事の推定を終えるとき", () => {
+      let ended: Ended;
+      beforeEach(async () => {
+        ended = await endInAccount(
+          async (factory) => {
+            const sentTextId = generateRecordId();
+            await factory.sentTexts.create({ id: sentTextId });
+            await seedStartedEstimation(factory);
+            await factory.sentTextMeals.create({ mealId: meal1, sentTextId });
+          },
+          (writes) =>
+            writes.abandon({
+              estimationId: "estimation-1",
+              target: { type: "meal", mealId: meal1 },
+              abandonedAt: endedAt,
+            }),
+        );
+      });
+
+      test("きっかけを文章にした出来事を返すこと", () => {
+        expect(ended.event).toMatchObject({ name: "estimation_ended", trigger: "text" });
+      });
     });
   });
 
@@ -361,7 +537,8 @@ describe("推定の書き込みの口", () => {
             estimationId: "estimation-1",
             target: { type: "meal", mealId: meal1 },
             completedAt: startedAt,
-            result: "estimated",
+            dishCount: 1,
+            ingredients: [],
           });
           writes.recordCreatedMeal({ mealId: meal2, estimationId: "estimation-1" });
         }),

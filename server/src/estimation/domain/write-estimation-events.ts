@@ -4,6 +4,8 @@ import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-
 import type { MealStore } from "../../meal/domain/meal-store";
 import type { MealEstimationStatusStore } from "../../meal-estimation-status/domain/meal-estimation-status-store";
 import type { EstimationEventWriteStore } from "./estimation-event-write-store";
+import type { EstimationScheduleStore } from "./estimation-schedule-store";
+import type { EstimationStore } from "./estimation-store";
 import type { EstimationWrites } from "./estimation-writes";
 import { openEstimationEventWrites } from "./open-estimation-event-writes";
 
@@ -17,6 +19,8 @@ export const writeEstimationEvents = <T>(
     dish: DishStore;
     dishEstimationStatus: DishEstimationStatusStore;
     estimationEventWrite: EstimationEventWriteStore;
+    estimation: EstimationStore;
+    estimationSchedule: EstimationScheduleStore;
   },
   addChange: (
     change: RecordChangeTarget<"meal_estimation_status" | "dish_estimation_status">,
