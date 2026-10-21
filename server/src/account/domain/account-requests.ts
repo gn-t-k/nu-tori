@@ -23,10 +23,10 @@ import type { AccountStores } from "./account-stores";
 // どれも、張り直すアラームの時刻と、起きた利用状況の出来事を一緒に返す（送るかどうかは Durable Object が送る前に決める）
 export const accountRequests = {
   recordFirstSignIn: (
-    stores: Pick<AccountStores, "firstSignIn">,
+    stores: Pick<AccountStores, "firstSignIn" | "writeRecordChanges">,
     signIn: { signedInAt: Date; timeZone: string | undefined },
   ): AccountResponse<void> => {
-    recordFirstSignIn(stores.firstSignIn, signIn);
+    recordFirstSignIn(stores.writeRecordChanges, stores.firstSignIn, signIn);
     return respond(undefined);
   },
 

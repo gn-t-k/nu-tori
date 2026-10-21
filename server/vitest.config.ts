@@ -16,6 +16,8 @@ export default defineConfig({
           APPLE_REFRESH_TOKEN_KEYS: `1:${btoa(String.fromCharCode(...new Uint8Array(32).fill(1)))}`,
           // DSN が空なら Sentry は送らない
           SENTRY_DSN: "",
+          // 課金を入れた日。開発用の設定の値に左右されず、無料体験の最後の日を決めた値で確かめるため
+          BILLING_STARTED_ON: "2026-01-01",
           // 提供元（Anthropic）はテストで偽物に差し替え、本物には届かない
           ANTHROPIC_API_KEY: "test-anthropic-api-key",
         },

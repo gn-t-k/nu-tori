@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
+import { regularSubscriptionAccount } from "../../durable-object/testing/regular-subscription-account";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
 import type { ReplyWrites } from "../domain/reply-writes";
@@ -28,9 +29,12 @@ const writeInAccount = (seed: Seed, run: Run): Promise<Written> =>
     let error: string | undefined;
     try {
       state.storage.transactionSync(() => {
-        createRecordKindStores(state.storage).writeReplyEvents((change) => {
-          changes.push(change);
-        }, run);
+        createRecordKindStores(state.storage, regularSubscriptionAccount).writeReplyEvents(
+          (change) => {
+            changes.push(change);
+          },
+          run,
+        );
       });
     } catch (thrown) {
       error = thrown instanceof Error ? thrown.message : String(thrown);

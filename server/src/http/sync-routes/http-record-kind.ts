@@ -6,7 +6,8 @@ import type { SyncWrite } from "../../domain/sync-write";
 export type HttpRecordKind<
   TValue = unknown,
   TWriteSchema extends WriteSchema = WriteSchema,
-  TRecordSchema extends z.ZodObject = z.ZodObject,
+  // 値がタグ付きユニオンの種類（サブスクリプションの状態）は、オブジェクトのユニオンのスキーマを渡す
+  TRecordSchema extends RecordSchema = RecordSchema,
 > = {
   // サーバーだけが書く種類は、端末からの書き込みを宣言しない
   writes: HttpKindWrites<TWriteSchema> | undefined;
@@ -14,6 +15,8 @@ export type HttpRecordKind<
   recordSchema: TRecordSchema;
   toRecord(value: TValue, recordId: string): z.input<TRecordSchema>;
 };
+
+type RecordSchema = z.ZodObject | z.ZodDiscriminatedUnion<z.ZodObject[]>;
 
 // 端末からの書き込みのスキーマ。type の値で、どの種類の書き込みかを決める
 type WriteSchema = z.ZodObject<{ type: z.ZodLiteral<string> }>;

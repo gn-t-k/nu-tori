@@ -8,6 +8,7 @@ import rebuildDishAndIngredientTables from "../../durable-object-migrations/0007
 import createSentTextAndReplyTables from "../../durable-object-migrations/0008_create_sent_text_and_reply_tables.sql";
 import createGoalTables from "../../durable-object-migrations/0009_create_goal_tables.sql";
 import createWeeklyReviewAndGoalProgressTables from "../../durable-object-migrations/0010_create_weekly_review_and_goal_progress_tables.sql";
+import createSubscriptionTables from "../../durable-object-migrations/0011_create_subscription_tables.sql";
 import type { DurableObjectMigration } from "./apply-durable-object-migrations";
 
 // 版の順に並べる。SQL は ../../durable-object-migrations/ に置き、import で読む
@@ -22,4 +23,5 @@ export const durableObjectMigrations: readonly DurableObjectMigration[] = [
   { version: 8, sql: createSentTextAndReplyTables },
   { version: 9, sql: createGoalTables },
   { version: 10, sql: createWeeklyReviewAndGoalProgressTables },
+  { version: 11, sql: createSubscriptionTables },
 ];
