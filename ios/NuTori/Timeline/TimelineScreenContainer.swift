@@ -27,6 +27,7 @@ struct TimelineScreenContainer: View {
     let holdsMealOriginals: (_ mealId: UUID) async -> Bool
 
     var body: some View {
+        let joined = timelineRecords
         TimelineScreen(
             records: cachedRecords.compactMap { $0.weightRecord() },
             weightTrend: CachedWeightTrendDay.weightTrend(of: cachedWeightTrendDays),
@@ -35,7 +36,9 @@ struct TimelineScreenContainer: View {
             now: clock.now,
             timeZone: clock.timeZone,
             rejectedLines: rejectedLines,
-            meals: mealCards,
+            meals: joined.mealCards(
+                recordedOnThisDevice: mealsRecordedHere,
+                unsentDishIds: pendingAppearance.unsentDishIds),
             notices: cachedNotices.compactMap { $0.notice() },
             goals: cachedGoals.compactMap { $0.goal() },
             dailyGuides: cachedDailyGuides.compactMap { $0.dailyGuide() },
@@ -53,7 +56,7 @@ struct TimelineScreenContainer: View {
             sendText: sendText,
             accountActions: accountActions,
             mealActions: mealActions,
-            conversation: conversation,
+            conversation: joined.conversation(streams: replyStreams),
             conversationActions: conversationActions,
             goalSetupFlow: GoalSetupNoticeCard.Flow(
                 goalSetup.flow, on: .timeline, openedOn: goalSetup.place),
@@ -92,43 +95,17 @@ struct TimelineScreenContainer: View {
         return .completed(startedDay: state.startedOn.flatMap(CalendarDay.init(yearMonthDay:)))
     }
 
-    /// 推定の状態・料理・料理ごとの推定の状態・材料は食事と別の種類で、食事より先にも後にも届く
-    private var mealCards: [MealCard] {
-        var statuses: [UUID: MealEstimationStatus] = [:]
-        for row in cachedEstimationStatuses {
-            statuses[row.mealId] = row.estimationStatus()
-        }
-        // 食事ごとに全部を舐めないよう、親ごとにまとめてから渡す
-        let dishesByMeal = Dictionary(grouping: cachedDishes.map { $0.dish() }, by: \.mealId)
-        let ingredientsByDish = Dictionary(
-            grouping: cachedIngredients.compactMap { $0.ingredient() }, by: \.dishId)
-        var dishStatuses: [UUID: DishEstimationStatus] = [:]
-        for row in cachedDishEstimationStatuses {
-            dishStatuses[row.dishId] = row.estimationStatus()
-        }
-        return cachedMeals.compactMap { row in
-            row.meal().map { meal in
-                let dishes = dishesByMeal[meal.id] ?? []
-                return MealCard(
-                    meal: meal,
-                    status: statuses[meal.id],
-                    recordedOnThisDevice: mealsRecordedHere.contains(meal.id),
-                    dishes: dishes,
-                    ingredients: dishes.flatMap { ingredientsByDish[$0.id] ?? [] },
-                    dishEstimationStatuses: dishStatuses,
-                    unsentDishIds: pendingAppearance.unsentDishIds
-                )
-            }
-        }
-    }
-
-    /// 送った文章・その状態・返事は別の種類で、どれが先にも届く。送った文章が届くまで、状態と返事は並ばない
-    private var conversation: Timeline.Conversation {
-        Timeline.Conversation(
+    /// 行を記録にするだけにし、種類をまたいで組むのは `TimelineRecords` が行う。読めない行は飛ばす
+    private var timelineRecords: TimelineRecords {
+        TimelineRecords(
+            meals: cachedMeals.compactMap { $0.meal() },
+            mealEstimationStatuses: cachedEstimationStatuses.compactMap { $0.record() },
+            dishes: cachedDishes.map { $0.dish() },
+            dishEstimationStatuses: cachedDishEstimationStatuses.compactMap { $0.record() },
+            ingredients: cachedIngredients.compactMap { $0.ingredient() },
             sentTexts: cachedSentTexts.compactMap { $0.sentText() },
-            statuses: CachedSentTextStatus.statuses(of: cachedSentTextStatuses),
-            replies: cachedAiUtterances.map { $0.aiUtterance() },
-            streams: replyStreams)
+            sentTextStatuses: cachedSentTextStatuses.compactMap { $0.record() },
+            replies: cachedAiUtterances.map { $0.aiUtterance() })
     }
 
     private func readMealsRecordedHere() async {

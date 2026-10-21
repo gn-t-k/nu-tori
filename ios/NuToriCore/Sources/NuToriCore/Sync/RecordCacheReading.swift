@@ -28,7 +28,7 @@ extension RecordCacheReading {
     /// 食事の ID ごとの推定の状態。食事より先に届いた状態も含む
     public func mealEstimationStatuses() async throws -> [UUID: MealEstimationStatus] {
         try await read(MealEstimationStatusSyncing.self) {
-            byParentId(try $0.all()) { ($0.mealId, $0.status) }
+            try $0.all().statusesByParentId()
         }
     }
 
@@ -44,7 +44,7 @@ extension RecordCacheReading {
     /// 料理の ID ごとの推定の状態。料理より先に届いた状態も含む
     public func dishEstimationStatuses() async throws -> [UUID: DishEstimationStatus] {
         try await read(DishEstimationStatusSyncing.self) {
-            byParentId(try $0.all()) { ($0.dishId, $0.status) }
+            try $0.all().statusesByParentId()
         }
     }
 
@@ -75,15 +75,7 @@ extension RecordCacheReading {
     /// 送った文章の ID ごとの状態。送った文章より先に届いた状態も含む
     public func sentTextStatuses() async throws -> [UUID: SentTextStatus] {
         try await read(SentTextStatusSyncing.self) {
-            byParentId(try $0.all()) { ($0.sentTextId, $0.status) }
+            try $0.all().statusesByParentId()
         }
     }
-}
-
-/// 親の ID で引く状態を、親の ID ごとにまとめる。同じ親の状態が重なっていたら、あとの状態を取る
-private func byParentId<Record, Status>(
-    _ records: [Record],
-    _ parentIdAndStatus: (Record) -> (UUID, Status)
-) -> [UUID: Status] {
-    Dictionary(records.map(parentIdAndStatus), uniquingKeysWith: { _, last in last })
 }
