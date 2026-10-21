@@ -27,6 +27,14 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - `session-start.sh`（クラウドで始めたとき）: Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる。依存は、サブエージェントがライブラリのソースを読めるよう入れる（無いと CDN から取り直していた）
 - `warn-behind-main.sh`（クラウドで続けたとき〈resume・compact・clear〉と、手元で始めたときと続けたとき）: 作業ツリーが origin/main より遅れていたら知らせ、手元では main を取り込ませる。長いセッションのあいだに main が進み、古い版の働き方の文書を読んでチケットを切り違えたため。手元の worktree は古い main から作られ、まだ無い道具を探して止まったため
 
+## 許可のルール
+
+`.claude/settings.json` の `permissions` に書いたルールは、auto モードの判断より先に効く（[permission-modes](https://code.claude.com/docs/en/permission-modes#how-the-classifier-evaluates-actions) の「Actions matching your allow, ask, or deny rules resolve immediately」）。`Bash(*)` のように何でも走らせられるルールは、auto モードに入ると外される。ルールは deny・ask・allow の順に見られ、ask に当たると auto モードでも確認に回る。auto モードが同じ操作を通したり拒んだりしたもののうち、いつも通すと決めたものを `permissions` に足し、理由をこの節に書く（#566）。merge を通すルールの理由は `docs/agents/git.md` にある
+
+- `git commit --amend`: WIP コミットをまとめるため（`docs/agents/git.md`）。手元のコミットを書き換えるだけで、main に届くのは下の force push を経たときだけなので、ブランチは絞らない
+- `git push --force-with-lease origin claude/<名前>`: amend したブランチを上げ直すため。`*` は空白も含めて何にでも当たり、`claude/x main` や `claude/x:main` で main を書き換えられるので、ブランチ名のあとに続きがある形と `main` を含む形は ask で確認に回す。`claude/x:<main 以外のブランチ>` のようにコロンで別のブランチへ上げる形は、確かめずに通ってしまう。末尾の `:*` は `*` と同じに読まれ、コロンを当てるルールが書けないため。クラウドのセッションは作業ブランチにしか push できないので、ほかのブランチを書き換えうるのは手元のセッションだけになる。上げ直し方は `docs/agents/git.md`
+- `mcp__claude-code-remote__delete_trigger`: セッションが自分で作った予約（`send_later` など）を消すため。ルールは誰が作った予約かを見分けないので、消すのは自分で作ったものだけにする
+
 ## MCP
 
 - MCP のサーバーは、Claude Code（`.mcp.json`）・Codex（`.codex/config.toml`）・Cursor（`.cursor/mcp.json`）の3つの設定に同じものを置き、版や環境変数は起動スクリプト（`scripts/mobilebuildmcp`）の1か所に書く。Codex はプロジェクトを信頼したとき、Cursor は Customize でサーバーを一度オンにしたときに読む
