@@ -179,6 +179,8 @@ struct AccountScreen: View {
     @State private var deletion: Deletion
     @State private var confirmingDeletion = false
     @State private var presentedDeletionGuide: PresentedDeletionGuide?
+    /// 「アカウントを削除」を押して、退会の案内を出すかを読んでいる
+    @State private var preparingDeletion = false
     /// 退会の案内の「アカウントを削除」で閉じた。閉じ終えたら確かめのダイアログを出す
     @State private var proceedsAfterDeletionGuide = false
 
@@ -283,6 +285,10 @@ struct AccountScreen: View {
 
     /// サブスクリプション中で自動更新がオンなら、確かめの前に退会の案内を出す
     private func requestDeletion() async {
+        // 自動更新を読むあいだに続けて押されても、案内を2つ作らない
+        guard !preparingDeletion else { return }
+        preparingDeletion = true
+        defer { preparingDeletion = false }
         guard let guide = await actions.accountDeletionGuide() else {
             confirmingDeletion = true
             return
