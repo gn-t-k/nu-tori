@@ -339,6 +339,7 @@ extension MealEstimationStatus {
         case .estimated: "estimated"
         case .noDishes: "no_dishes"
         case .deferredToNextDay: "deferred_to_next_day"
+        case .awaitingSubscription: "awaiting_subscription"
         case .failed: "failed"
         }
     }

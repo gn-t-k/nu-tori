@@ -23,15 +23,16 @@ public struct SentTextBubble: Hashable, Sendable {
         /// 回る印と「読んでいます…」。読み分けを待つあいだと、会話と読み分けて返事の最初の文字を待つあいだ。
         /// 返事が来る場所（吹き出しの下の左の地の上）に出す
         case reading
-        /// その日の回数切れ。吹き出しの右下に、灰色の1行と「送り直す」
-        case halted
+        /// 止めた（その日の回数切れか、サブスクリプション切れ）。吹き出しの右下に、灰色の1行と「送り直す」
+        case halted(SentTextStatus.HaltReason)
         /// 作れなかった。吹き出しの右下に、灰色の1行と「送り直す」
         case failed(SentTextStatus.FailureReason)
 
         public var text: String {
             switch self {
             case .reading: "読んでいます…"
-            case .halted: "今日はもう返事を作れません"
+            case .halted(.dailyLimit): "今日はもう返事を作れません"
+            case .halted(.subscriptionExpired): "サブスクリプション切れのため、返事をしませんでした"
             case .failed(.retriesExhausted): "返事を作れませんでした"
             // 月の上限かは見分けず、上限は出さない（使う人にできることが無く、1日の上限と取り違える）
             case .failed(.badRequest): "今は返事を作れません。時間をおいて送り直してください"

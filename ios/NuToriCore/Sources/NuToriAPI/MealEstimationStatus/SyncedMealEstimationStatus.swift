@@ -17,6 +17,8 @@ public struct SyncedMealEstimationStatus: Sendable, Equatable {
         case estimated
         case noDishes = "no_dishes"
         case deferredToNextDay = "deferred_to_next_day"
+        /// サブスクリプション切れのあいだに届いたので、推定を保留している
+        case awaitingSubscription = "awaiting_subscription"
         case failed
     }
 }

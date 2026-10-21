@@ -175,7 +175,7 @@ extension TimelineTests {
                             sentText.id: SentTextStatus(
                                 classification: .conversation, reply: .replied),
                             next.id: SentTextStatus(
-                                classification: .conversation, reply: .halted),
+                                classification: .conversation, reply: .halted(.dailyLimit)),
                         ],
                         replies: [reply], streams: [:]))
             }

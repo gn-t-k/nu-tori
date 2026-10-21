@@ -32,7 +32,7 @@ struct TimelineConversationTests {
                 let settledStatuses = [
                     SentTextStatus(classification: .meal, reply: .notRequested),
                     SentTextStatus(classification: .conversation, reply: .replied),
-                    SentTextStatus(classification: .conversation, reply: .halted),
+                    SentTextStatus(classification: .conversation, reply: .halted(.dailyLimit)),
                     SentTextStatus(classification: .conversation, reply: .failed(.badRequest)),
                 ]
                 var byId: [UUID: SentTextStatus] = [:]
