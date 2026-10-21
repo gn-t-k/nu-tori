@@ -14,6 +14,12 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 
 - `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「好みのレビュー」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
 
+`isolation: "worktree"` で立てるサブエージェント（`/implement-spec` の実装役など）には、次の書き方を指示に入れる。worktree の見張りは、git が worktree の外で動かないと確かめられない Bash を拒む。#613 では実装役のコマンドが84回拒まれ、そのたびに打ち直した
+
+- ファイルは Read・Write・Edit で読み書きする。heredoc でファイルを書く形と、`F=<パス>; sed -n 1,9p $F` の形が拒まれる
+- Bash は1回に1つのコマンドにする。`&&`・`;` でつなぐと拒まれる
+- パスと値は、変数にせず二重引用で直に書く。cd せず、worktree の中の絶対パスで指す
+
 ## hook
 
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
