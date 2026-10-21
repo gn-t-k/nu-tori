@@ -82,9 +82,10 @@ const defaultReply: FakeReply = {
 
 const defaultReplies: FakeReplies = {
   classification: "meal",
-  classificationUsage: { inputTokens: 120, outputTokens: 4 },
+  classificationUsage: { type: "uncached", inputTokens: 120, outputTokens: 4 },
   reply: defaultReply,
   replyUsage: {
+    type: "cached",
     inputTokens: 2400,
     outputTokens: 180,
     cacheCreationInputTokens: 2000,

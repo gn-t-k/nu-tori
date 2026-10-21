@@ -892,8 +892,8 @@ describe("推定の試み", () => {
       let provider: EstimationProvider;
       beforeEach(() => {
         provider = mockEstimationProviderOk({
-          identifyDishesUsage: { inputTokens: 1500, outputTokens: 400 },
-          matchIngredientsUsage: { inputTokens: 800, outputTokens: 200 },
+          identifyDishesUsage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+          matchIngredientsUsage: { type: "uncached", inputTokens: 800, outputTokens: 200 },
         });
       });
 
@@ -901,8 +901,8 @@ describe("推定の試み", () => {
         expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
           result: "succeeded",
           usage: {
-            identifyDishes: { inputTokens: 1500, outputTokens: 400 },
-            matchIngredients: { inputTokens: 800, outputTokens: 200 },
+            identifyDishes: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+            matchIngredients: { type: "uncached", inputTokens: 800, outputTokens: 200 },
           },
         });
       });
@@ -913,7 +913,7 @@ describe("推定の試み", () => {
       beforeEach(() => {
         provider = mockEstimationProviderOk({
           identifiedDishes: { dishes: [greenTea] },
-          identifyDishesUsage: { inputTokens: 1500, outputTokens: 400 },
+          identifyDishesUsage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
         });
       });
 
@@ -925,7 +925,7 @@ describe("推定の試み", () => {
           outcome: {
             result: "succeeded",
             usage: {
-              identifyDishes: { inputTokens: 1500, outputTokens: 400 },
+              identifyDishes: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
               matchIngredients: undefined,
             },
           },
@@ -960,7 +960,7 @@ describe("推定の試み", () => {
       beforeEach(() => {
         provider = mockEstimationProviderError(
           new LlmCallInvalidResponseError({
-            usage: { inputTokens: 1200, outputTokens: 4096 },
+            usage: { type: "uncached", inputTokens: 1200, outputTokens: 4096 },
           }),
         );
       });
@@ -970,7 +970,7 @@ describe("推定の試み", () => {
           result: "invalid_response",
           failedStage: "identify_dishes",
           usage: {
-            identifyDishes: { inputTokens: 1200, outputTokens: 4096 },
+            identifyDishes: { type: "uncached", inputTokens: 1200, outputTokens: 4096 },
             matchIngredients: undefined,
           },
         });
@@ -982,7 +982,7 @@ describe("推定の試み", () => {
       beforeEach(() => {
         provider = mockEstimationProviderOk({
           identifiedDishes: { dishes: [{ ...udon, quantity: 0 }] },
-          identifyDishesUsage: { inputTokens: 1500, outputTokens: 400 },
+          identifyDishesUsage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
         });
       });
 
@@ -991,7 +991,7 @@ describe("推定の試み", () => {
           result: "invalid_response",
           failedStage: "identify_dishes",
           usage: {
-            identifyDishes: { inputTokens: 1500, outputTokens: 400 },
+            identifyDishes: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
             matchIngredients: undefined,
           },
         });
@@ -1011,7 +1011,7 @@ describe("推定の試み", () => {
           result: "provider_error",
           failedStage: "match_ingredients",
           usage: {
-            identifyDishes: { inputTokens: 1500, outputTokens: 400 },
+            identifyDishes: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
             matchIngredients: undefined,
           },
         });
@@ -1023,7 +1023,7 @@ describe("推定の試み", () => {
       beforeEach(() => {
         provider = mockEstimationProviderError(
           new LlmCallInvalidResponseError({
-            usage: { inputTokens: 900, outputTokens: 4096 },
+            usage: { type: "uncached", inputTokens: 900, outputTokens: 4096 },
           }),
           { failingCall: "match_ingredients" },
         );
@@ -1034,8 +1034,8 @@ describe("推定の試み", () => {
           result: "invalid_response",
           failedStage: "match_ingredients",
           usage: {
-            identifyDishes: { inputTokens: 1500, outputTokens: 400 },
-            matchIngredients: { inputTokens: 900, outputTokens: 4096 },
+            identifyDishes: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+            matchIngredients: { type: "uncached", inputTokens: 900, outputTokens: 4096 },
           },
         });
       });
@@ -1046,8 +1046,8 @@ describe("推定の試み", () => {
       beforeEach(() => {
         provider = mockEstimationProviderOk({
           matchIngredients: () => ({ ingredients: [] }),
-          identifyDishesUsage: { inputTokens: 1500, outputTokens: 400 },
-          matchIngredientsUsage: { inputTokens: 800, outputTokens: 200 },
+          identifyDishesUsage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+          matchIngredientsUsage: { type: "uncached", inputTokens: 800, outputTokens: 200 },
         });
       });
 
@@ -1056,8 +1056,8 @@ describe("推定の試み", () => {
           result: "invalid_response",
           failedStage: "match_ingredients",
           usage: {
-            identifyDishes: { inputTokens: 1500, outputTokens: 400 },
-            matchIngredients: { inputTokens: 800, outputTokens: 200 },
+            identifyDishes: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+            matchIngredients: { type: "uncached", inputTokens: 800, outputTokens: 200 },
           },
         });
       });

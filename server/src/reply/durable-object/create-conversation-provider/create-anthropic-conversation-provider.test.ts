@@ -33,7 +33,10 @@ describe("createAnthropicConversationProvider", () => {
         const result = await provider.classifySentText(request);
 
         expect(result).toBeSuccess((reply) => {
-          expect(reply).toEqual({ label: "meal", usage: { inputTokens: 420, outputTokens: 6 } });
+          expect(reply).toEqual({
+            label: "meal",
+            usage: { type: "uncached", inputTokens: 420, outputTokens: 6 },
+          });
         });
       });
 
@@ -336,6 +339,7 @@ describe("createAnthropicConversationProvider", () => {
             body: "お昼の親子丼、いいですね。",
             mealIds: [mealId],
             usage: {
+              type: "cached",
               inputTokens: 2400,
               outputTokens: 180,
               cacheCreationInputTokens: 2000,
@@ -485,6 +489,7 @@ describe("createAnthropicConversationProvider", () => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
             usage: {
+              type: "cached",
               inputTokens: 2400,
               outputTokens: 4096,
               cacheCreationInputTokens: 2000,
@@ -524,6 +529,7 @@ describe("createAnthropicConversationProvider", () => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
             usage: {
+              type: "cached",
               inputTokens: 2400,
               outputTokens: 4096,
               cacheCreationInputTokens: 2000,
@@ -563,6 +569,7 @@ describe("createAnthropicConversationProvider", () => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
             usage: {
+              type: "cached",
               inputTokens: 2400,
               outputTokens: 4096,
               cacheCreationInputTokens: 2000,

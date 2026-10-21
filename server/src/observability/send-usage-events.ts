@@ -229,7 +229,7 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
 
 // キャッシュのトークン数は、キャッシュの印を付ける呼び出しの使ったトークンにだけある
 const toCacheTokenProperties = (usage: TokenUsage | CachedTokenUsage | undefined) =>
-  usage !== undefined && "cacheCreationInputTokens" in usage
+  usage?.type === "cached"
     ? {
         cache_creation_input_tokens: usage.cacheCreationInputTokens,
         cache_read_input_tokens: usage.cacheReadInputTokens,
