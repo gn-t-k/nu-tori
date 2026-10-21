@@ -1,3 +1,5 @@
+import { sortSchedulesNewestFirst } from "../../estimation/domain/sort-schedules-newest-first";
+
 // 料理が対象の推定の予定ごとの、予定から先の出来事。見送った・保留した予定は推定を始めない。始めた予定は、完了か断念が来るまで推定中。
 // 取り消した予定は、前に書いた取り消しの行から読むだけで、推定も見送りも持たない。
 // 推定を始めた予定だけが、始めた推定の ID を持つ
@@ -12,9 +14,7 @@ export type DishEstimationSchedule = { scheduleId: string; dueAt: Date } & (
 export const findNewestActiveSchedule = (
   schedules: readonly DishEstimationSchedule[],
 ): ActiveDishEstimationSchedule | undefined =>
-  schedules
-    .filter((schedule) => schedule.progress !== "cancelled")
-    .toSorted((a, b) => b.dueAt.getTime() - a.dueAt.getTime())[0];
+  sortSchedulesNewestFirst(schedules.filter((schedule) => schedule.progress !== "cancelled"))[0];
 
 // 料理の推定を始めて、まだ完了も断念もしていない推定
 export const findOngoingEstimationIds = (schedules: readonly DishEstimationSchedule[]): string[] =>
@@ -43,7 +43,7 @@ const findReceivedAtOfSchedule = (
   schedules: readonly DishEstimationSchedule[],
   scheduleId: string,
 ): Date => {
-  const sorted = schedules.toSorted((a, b) => b.dueAt.getTime() - a.dueAt.getTime());
+  const sorted = sortSchedulesNewestFirst(schedules);
   const ownIndex = sorted.findIndex((schedule) => schedule.scheduleId === scheduleId);
   const own = sorted[ownIndex];
   if (own === undefined) {
