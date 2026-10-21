@@ -15,6 +15,11 @@ import { judgeGoalProgress } from "../../goal/domain/judge-goal-progress";
 import { previewGoalSetup } from "../../goal/domain/preview-goal-setup";
 import { proposeGoals } from "../../goal/domain/propose-goals";
 import { readKeptMealPhoto } from "../../meal/domain/read-kept-meal-photo";
+import {
+  type ReportedRecord,
+  reportSubscriptionTransaction,
+  type SubscriptionTransactionReport,
+} from "../../subscription/domain/report-subscription-transaction";
 import { agreeToTerms } from "../../terms-agreement/domain/agree-to-terms";
 import { findTermsAgreementRequirement } from "../../terms-agreement/domain/find-terms-agreement-requirement";
 import { recordSignInTermsAgreement } from "../../terms-agreement/domain/record-sign-in-terms-agreement";
@@ -162,6 +167,20 @@ export const accountRequests = {
     request: Parameters<typeof agreeToTerms>[1],
     now: Date,
   ) => respond(agreeToTerms(stores.termsAgreement, request, now)),
+
+  // 端末からの取引の知らせ。書いたらサブスクリプションの終わりと再開した推定の時刻が変わるので、アラームを張り直す
+  reportSubscriptionTransaction: (
+    stores: Pick<AccountStores, "writeRecordChanges" | "records" | "subscriptionTransaction">,
+    report: SubscriptionTransactionReport,
+    now: Date,
+  ): AccountResponse<ReportedRecord[]> => {
+    const records = reportSubscriptionTransaction(stores.writeRecordChanges, stores, report, now);
+    return {
+      result: records,
+      nextAlarmAt: computeNextAlarmAt(stores.records, now),
+      usageEvents: [],
+    };
+  },
 
   deleteRecords: async (
     stores: Pick<AccountStores, "eraseRecords">,

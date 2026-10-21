@@ -87,6 +87,20 @@ internal protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /v1/terms-agreements`.
     /// - Remark: Generated from `#/paths//v1/terms-agreements/post(agreeToTerms)`.
     func agreeToTerms(_ input: Operations.AgreeToTerms.Input) async throws -> Operations.AgreeToTerms.Output
+    /// 購入者のトークンを出す
+    ///
+    /// StoreKit で買うときに渡す購入者のトークン（appAccountToken）。まだ無ければ出し、2度目からは同じ値を返す
+    ///
+    /// - Remark: HTTP `POST /v1/app-account-token`.
+    /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)`.
+    func issueAppAccountToken(_ input: Operations.IssueAppAccountToken.Input) async throws -> Operations.IssueAppAccountToken.Output
+    /// 取引を知らせる
+    ///
+    /// 端末が StoreKit から受け取った取引を知らせる。署名を確かめ、このアカウントに結びつけて書き、保留した推定を再開する。端末は応答を受け取ってから Transaction.finish() を呼ぶ。同じ要求の ID の再送は、書かずに今の値を返す
+    ///
+    /// - Remark: HTTP `POST /v1/subscription-transactions`.
+    /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)`.
+    func reportSubscriptionTransaction(_ input: Operations.ReportSubscriptionTransaction.Input) async throws -> Operations.ReportSubscriptionTransaction.Output
 }
 
 /// Convenience overloads for operation inputs.
@@ -260,6 +274,30 @@ extension APIProtocol {
         body: Operations.AgreeToTerms.Input.Body
     ) async throws -> Operations.AgreeToTerms.Output {
         try await agreeToTerms(Operations.AgreeToTerms.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// 購入者のトークンを出す
+    ///
+    /// StoreKit で買うときに渡す購入者のトークン（appAccountToken）。まだ無ければ出し、2度目からは同じ値を返す
+    ///
+    /// - Remark: HTTP `POST /v1/app-account-token`.
+    /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)`.
+    internal func issueAppAccountToken(headers: Operations.IssueAppAccountToken.Input.Headers = .init()) async throws -> Operations.IssueAppAccountToken.Output {
+        try await issueAppAccountToken(Operations.IssueAppAccountToken.Input(headers: headers))
+    }
+    /// 取引を知らせる
+    ///
+    /// 端末が StoreKit から受け取った取引を知らせる。署名を確かめ、このアカウントに結びつけて書き、保留した推定を再開する。端末は応答を受け取ってから Transaction.finish() を呼ぶ。同じ要求の ID の再送は、書かずに今の値を返す
+    ///
+    /// - Remark: HTTP `POST /v1/subscription-transactions`.
+    /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)`.
+    internal func reportSubscriptionTransaction(
+        headers: Operations.ReportSubscriptionTransaction.Input.Headers = .init(),
+        body: Operations.ReportSubscriptionTransaction.Input.Body
+    ) async throws -> Operations.ReportSubscriptionTransaction.Output {
+        try await reportSubscriptionTransaction(Operations.ReportSubscriptionTransaction.Input(
             headers: headers,
             body: body
         ))
