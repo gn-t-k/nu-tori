@@ -12,18 +12,20 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
         unfinished: [AppStoreTransaction] = [],
         entitlements: [AppStoreTransaction] = [],
         syncResult: AppStoreSyncResult = .synced,
-        willAutoRenew: Bool? = nil
+        autoRenewal: SubscriptionPurchases.AutoRenewal = .unknown
     ) -> SubscriptionStoreMock {
         SubscriptionStoreMock(
             products: .success(products), unfinished: unfinished,
-            entitlements: entitlements, syncResult: syncResult, willAutoRenew: willAutoRenew)
+            entitlements: entitlements, syncResult: syncResult, autoRenewal: autoRenewal)
     }
 
     /// 商品を読むが投げる。自動更新は、今使えるサブスクリプションの更新の情報だけを端末で読むので、投げずに返せる
-    static func error(_ error: any Error, willAutoRenew: Bool? = nil) -> SubscriptionStoreMock {
+    static func error(
+        _ error: any Error, autoRenewal: SubscriptionPurchases.AutoRenewal = .unknown
+    ) -> SubscriptionStoreMock {
         SubscriptionStoreMock(
             products: .failure(error), unfinished: [],
-            entitlements: [], syncResult: .failed, willAutoRenew: willAutoRenew)
+            entitlements: [], syncResult: .failed, autoRenewal: autoRenewal)
     }
 
     /// `Transaction.updates` に取引を流す
@@ -62,8 +64,8 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
         state.withLock { $0.finished.append(transaction.id) }
     }
 
-    func willAutoRenew() async -> Bool? {
-        autoRenew
+    func autoRenewal() async -> SubscriptionPurchases.AutoRenewal {
+        autoRenewalResult
     }
 
     private struct State {
@@ -75,7 +77,7 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
     private let unfinished: [AppStoreTransaction]
     private let entitlements: [AppStoreTransaction]
     private let syncResult: AppStoreSyncResult
-    private let autoRenew: Bool?
+    private let autoRenewalResult: SubscriptionPurchases.AutoRenewal
     private let updates = AsyncStream.makeStream(of: AppStoreTransaction.self)
     private let state = Mutex(State())
 
@@ -84,12 +86,12 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
         unfinished: [AppStoreTransaction],
         entitlements: [AppStoreTransaction],
         syncResult: AppStoreSyncResult,
-        willAutoRenew: Bool?
+        autoRenewal: SubscriptionPurchases.AutoRenewal
     ) {
         productsResult = products
         self.unfinished = unfinished
         self.entitlements = entitlements
         self.syncResult = syncResult
-        autoRenew = willAutoRenew
+        autoRenewalResult = autoRenewal
     }
 }

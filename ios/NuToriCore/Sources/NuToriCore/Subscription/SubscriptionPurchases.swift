@@ -68,11 +68,7 @@ public actor SubscriptionPurchases {
 
     /// 今使えるサブスクリプションの自動更新。アカウントの行と退会の案内で「解約しました」を出すかに使う
     public func autoRenewal() async -> AutoRenewal {
-        switch await store.willAutoRenew() {
-        case true: .on
-        case false: .off
-        case nil: .unknown
-        }
+        await store.autoRenewal()
     }
 
     /// 月額・年額の商品。月額、年額の順

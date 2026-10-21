@@ -46,8 +46,8 @@
 
         func finish(_ transaction: AppStoreTransaction) async {}
 
-        func willAutoRenew() async -> Bool? {
-            nil
+        func autoRenewal() async -> SubscriptionPurchases.AutoRenewal {
+            .unknown
         }
     }
 #endif

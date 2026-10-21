@@ -21,8 +21,8 @@ public protocol SubscriptionStore: Sendable {
     /// 取引を終える。終えていない取引は、次に起動したときにもう一度流れる
     func finish(_ transaction: AppStoreTransaction) async
 
-    /// 今使えるサブスクリプションの更新の情報の自動更新。今使えるサブスクリプションが無い、読めないときは nil
-    func willAutoRenew() async -> Bool?
+    /// 今使えるサブスクリプションの更新の情報の自動更新
+    func autoRenewal() async -> SubscriptionPurchases.AutoRenewal
 }
 
 /// 買う操作の結果

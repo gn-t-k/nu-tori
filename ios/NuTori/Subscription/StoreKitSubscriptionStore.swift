@@ -53,16 +53,16 @@ nonisolated struct StoreKitSubscriptionStore: SubscriptionStore {
         }
     }
 
-    func willAutoRenew() async -> Bool? {
+    func autoRenewal() async -> SubscriptionPurchases.AutoRenewal {
         for await verification in Transaction.currentEntitlements {
             let transaction = verification.unsafePayloadValue
             guard transaction.productType == .autoRenewable,
                 let status = await transaction.subscriptionStatus,
                 case .verified(let renewalInfo) = status.renewalInfo
             else { continue }
-            return renewalInfo.willAutoRenew
+            return renewalInfo.willAutoRenew ? .on : .off
         }
-        return nil
+        return .unknown
     }
 }
 

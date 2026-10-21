@@ -439,33 +439,6 @@ struct SubscriptionPurchasesTests {
         }
     }
 
-    @Suite("自動更新を読むとき")
-    struct AutoRenewal {
-        @Test("更新の情報で自動更新がオンなら、オンと返すこと")
-        func on() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(willAutoRenew: true), transport: .ok())
-
-            #expect(await purchases.autoRenewal() == .on)
-        }
-
-        @Test("更新の情報で自動更新がオフなら、オフと返すこと")
-        func off() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(willAutoRenew: false), transport: .ok())
-
-            #expect(await purchases.autoRenewal() == .off)
-        }
-
-        @Test("更新の情報を読めなければ、分からないと返すこと")
-        func unknown() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(willAutoRenew: nil), transport: .ok())
-
-            #expect(await purchases.autoRenewal() == .unknown)
-        }
-    }
-
     @Suite("商品を読むとき")
     struct Products {
         @Test("月額と年額の商品を返すこと")
