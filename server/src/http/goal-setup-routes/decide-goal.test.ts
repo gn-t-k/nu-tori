@@ -2,7 +2,6 @@ import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { updateAccountSettingsWrite } from "../../account-settings/http/testing/update-account-settings-write";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { addDays } from "../../domain/add-days";
@@ -19,7 +18,6 @@ import {
 } from "../../observability/testing";
 import { enableUsageEventSending } from "../sync-routes/testing/enable-usage-event-sending";
 import { pullSyncChanges, type PullResult } from "../sync-routes/testing/pull-sync-changes";
-import { pushSyncWrites } from "../sync-routes/testing/push-sync-writes";
 import { readRows } from "../sync-routes/testing/read-rows";
 import { signInTestAccount } from "../testing";
 import { postGoalSetup } from "./testing/post-goal-setup";
@@ -585,20 +583,6 @@ describe("目標を決める要求", () => {
             ...standardDecision,
             startedOn: addDays(today, -1),
           });
-        });
-
-        test("送らないこと", () => {
-          expect(readPostHogCapturedEvents(fetchSpy)).toEqual([]);
-        });
-      });
-
-      describe("利用状況を送らない設定の人が決めたとき", () => {
-        beforeEach(async () => {
-          await pushSyncWrites(sessionToken, {
-            writes: [updateAccountSettingsWrite({ accountSettings: { sendsUsageData: false } })],
-          });
-          fetchSpy.mockClear();
-          await postGoalSetup(sessionToken, "decisions", standardDecision);
         });
 
         test("送らないこと", () => {

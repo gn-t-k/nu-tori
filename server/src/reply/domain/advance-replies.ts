@@ -1,4 +1,3 @@
-import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
@@ -23,7 +22,6 @@ export const advanceReplies = async (
   deps: { provider: ConversationProvider; armAlarm: () => Promise<void>; watchers: ReplyWatchers },
   now: Date,
 ): Promise<{
-  // 利用状況を送らない人には空
   usageEvents: UsageEvent[];
   // アラームの呼び出しごとのログに出す、試みごとの結果
   attempts: ReplyAttemptReport[];
@@ -57,7 +55,7 @@ export const advanceReplies = async (
     }
   }
   return {
-    usageEvents: sendsUsageData(stores.accountSettings) ? usageEvents : [],
+    usageEvents,
     attempts,
     providerErrors,
     stoppedError,
@@ -65,7 +63,7 @@ export const advanceReplies = async (
 };
 
 // 試みを書くときに読む置き場と、文脈を読む置き場と、見守る要求に送る状態を読む置き場
-type ReplyAdvanceStores = Pick<RecordKindStores, "accountSettings" | "reply"> &
+type ReplyAdvanceStores = Pick<RecordKindStores, "reply"> &
   Parameters<typeof runReplyAttempt>[1] &
   Parameters<ReplyWatchers["refresh"]>[0];
 

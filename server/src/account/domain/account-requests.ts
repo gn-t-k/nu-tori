@@ -1,5 +1,4 @@
 import { R } from "@praha/byethrow";
-import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import { applySyncWrites } from "../../domain/apply-sync-writes";
 import { computeNextAlarmAt } from "../../domain/compute-next-alarm-at";
 import { pullSyncChanges } from "../../domain/pull-sync-changes";
@@ -21,7 +20,7 @@ import type { AccountResponse, LoggedAccountResponse } from "./account-response"
 import type { AccountStores } from "./account-stores";
 
 // アカウントの Durable Object の受け口とアラームの、要求ごとの処理。
-// どれも、張り直すアラームの時刻と、送るかどうかを決めた利用状況の出来事を一緒に返す
+// どれも、張り直すアラームの時刻と、起きた利用状況の出来事を一緒に返す（送るかどうかは Durable Object が送る前に決める）
 export const accountRequests = {
   recordFirstSignIn: (
     stores: Pick<AccountStores, "firstSignIn">,
@@ -89,10 +88,9 @@ export const accountRequests = {
     return {
       result: received,
       nextAlarmAt: R.isSuccess(received) ? computeNextAlarmAt(stores.records, now) : undefined,
-      usageEvents:
-        R.isFailure(received) && sendsUsageData(stores.records.accountSettings)
-          ? [{ name: "meal_photo_receipt_failed", stage: received.error.stage }]
-          : [],
+      usageEvents: R.isFailure(received)
+        ? [{ name: "meal_photo_receipt_failed", stage: received.error.stage }]
+        : [],
     } satisfies AccountResponse<unknown>;
   },
 
@@ -185,8 +183,7 @@ export const accountRequests = {
   },
 };
 
-// 記録を当てたあと、応える前に、達成と期限の日の結果を判定し、まだ見直していない週を古い順に見直す。
-// 送る出来事は、利用状況の設定で絞ってから返す
+// 記録を当てたあと、応える前に、達成と期限の日の結果を判定し、まだ見直していない週を古い順に見直す
 const catchUpGoalProgress = (
   stores: Pick<AccountStores, "records" | "writeRecordChanges">,
   situation: { timeZone: string; now: Date },
@@ -195,9 +192,7 @@ const catchUpGoalProgress = (
   const reviewed = reviewUnreviewedWeeks(stores.writeRecordChanges, stores.records, situation);
   return {
     reviewedWeekCount: reviewed.reviewedWeekCount,
-    usageEvents: sendsUsageData(stores.records.accountSettings)
-      ? [...judged.usageEvents, ...reviewed.usageEvents]
-      : [],
+    usageEvents: [...judged.usageEvents, ...reviewed.usageEvents],
   };
 };
 
