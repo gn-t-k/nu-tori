@@ -31,11 +31,16 @@
     "nu-tori/no-object-in-test": "error",
     "nu-tori/test-title-ends-with-koto": "error",
     "nu-tori/japanese-describe-title": "error",
+    "nu-tori/filename-matches-export": "error",
     "vitest/require-top-level-describe": "error",
     "vitest/no-duplicate-hooks": "error"
   },
   "ignorePatterns": ["worker-configuration.d.ts"],
   "overrides": [
+    {
+      "files": ["**/*.mock.ts"],
+      "rules": { "nu-tori/filename-matches-export": "off" }
+    },
     {
       "files": ["src/domain/record-id/record-id.ts"],
       "rules": { "nu-tori/no-random-uuid": "off" }

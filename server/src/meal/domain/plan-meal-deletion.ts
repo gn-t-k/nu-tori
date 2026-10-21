@@ -1,7 +1,7 @@
 import type { RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
+import type { WriteReceiptId } from "../../domain/sync-ledger/create-sync-ledger";
 import type { UsageEvent } from "../../domain/usage-event";
 import { deleteDishes } from "../../dish/domain/delete-dishes";
 import { computeTargetDeletedEstimationEvents } from "../../estimation/domain/compute-target-deleted-estimation-events";

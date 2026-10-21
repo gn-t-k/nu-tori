@@ -1,4 +1,4 @@
-import { replyEvalCases } from "../cases";
+import { replyEvalCases } from "../reply-eval-cases";
 import { readReplyResults } from "../read-reply-results";
 
 // 返事の評価の結果を、PR の本文に貼る形（すべての回で通った場面の数、場面ごとの通った回、落ちた回と理由、プリセットの返事の本文）にする。

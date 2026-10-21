@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { appleRefreshTokens } from "../apple-refresh-token-tables";
+import { appleRefreshTokenTables } from "../apple-refresh-token-tables";
+
+const { appleRefreshTokens } = appleRefreshTokenTables;
 
 // 鍵は APPLE_REFRESH_TOKEN_KEYS に「版:base64 の鍵」をカンマで並べて置き、いちばん大きい版で暗号化する
 export const createAppleRefreshTokenStore = (d1: D1Database, encryptionKeys: string) => {

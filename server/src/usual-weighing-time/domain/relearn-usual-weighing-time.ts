@@ -1,6 +1,6 @@
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
+import type { WriteReceiptId } from "../../domain/sync-ledger/create-sync-ledger";
 import { learnUsualWeighingTime, usualWeighingTimeRangeDays } from "./learn-usual-weighing-time";
 import type { UsualWeighingTimeStore } from "./usual-weighing-time-store";
 

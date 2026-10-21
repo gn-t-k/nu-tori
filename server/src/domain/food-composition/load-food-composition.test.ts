@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadFoodComposition } from "./food-composition";
+import { loadFoodComposition } from "./load-food-composition";
 
 // 同梱の成分表のデータファイルを、本表の Excel の値と突き合わせる（食品番号は本表のもの）
 describe("同梱の成分表", () => {

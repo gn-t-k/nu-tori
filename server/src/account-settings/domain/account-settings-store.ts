@@ -1,4 +1,4 @@
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
+import type { WriteReceiptId } from "../../domain/sync-ledger/create-sync-ledger";
 import type { AccountSettings } from "./account-settings";
 
 export type AccountSettingsStore = {

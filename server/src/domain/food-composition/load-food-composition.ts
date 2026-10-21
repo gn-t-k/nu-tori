@@ -1,5 +1,5 @@
 import { createFoodCompositionSearch } from "./create-food-composition-search";
-import { loadFoodCompositionTable } from "./food-composition-table";
+import { loadFoodCompositionTable } from "./load-food-composition-table";
 
 let foodComposition: ReturnType<typeof createFoodCompositionSearch> | undefined;
 

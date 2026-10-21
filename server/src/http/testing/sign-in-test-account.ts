@@ -2,8 +2,10 @@ import { env } from "cloudflare:workers";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { z } from "zod";
-import { account as accountTable } from "../../auth/authentication-tables";
+import { authenticationTables } from "../../auth/authentication-tables";
 import { signInWithApple } from "./sign-in-with-apple";
+
+const { account: accountTable } = authenticationTables;
 
 export const signInTestAccount = async (
   appleUserId: string,
