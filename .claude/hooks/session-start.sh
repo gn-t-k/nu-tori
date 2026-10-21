@@ -1,5 +1,5 @@
 #!/bin/bash
-# クラウドセッション開始時に、Swift を入れ、mattpocock/skills の更新を確かめる（更新があれば別の PR にするよう伝える）。
+# クラウドセッション開始時に、Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる（更新があれば別の PR にするよう伝える）。
 # settings.json で async 実行しているので、結果は次のターンでClaudeに届く。
 set -euo pipefail
 
@@ -15,6 +15,12 @@ contexts=()
 if ! swift_log=$(scripts/install-swift 2>&1); then
   contexts+=("セッション開始時に Swift を入れられませんでした。scripts/check ios の前に scripts/install-swift を動かし、直らなければユーザーに伝えてください。
 $swift_log")
+fi
+
+# サブエージェントが依存のソースを読めるよう、先に入れておく。失敗してもセッションは止めない
+if ! pnpm_log=$(cd server && pnpm install --frozen-lockfile 2>&1); then
+  contexts+=("セッション開始時にサーバーの依存を入れられませんでした。server/ で pnpm install --frozen-lockfile を動かし、直らなければユーザーに伝えてください。
+$(tail -n 20 <<< "$pnpm_log")")
 fi
 
 # 作業ツリーに触れず、更新を作業の PR に混ぜないため、別の worktree で確かめる。

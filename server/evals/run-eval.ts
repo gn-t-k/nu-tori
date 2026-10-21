@@ -9,7 +9,7 @@ import { serverDirectory } from "./server-directory";
 
 // LLM の評価を回し、PR の本文に貼る要約を出す（読み分けは classify、返事は reply）。
 // 回し方（手で。CI と scripts/check には入れない）: server/ で `pnpm run evals:reply`（`--repeat 3` で場面ごとに 3 回回し、通った回を数える）。
-// 鍵は開発用のワークスペースのキー NU_TORI_ANTHROPIC_API_KEY。場面を回す前に鍵で呼べるかを確かめる。
+// 鍵の置き場は read-eval-api-key.ts。場面を回す前に鍵で呼べるかを確かめる。
 // 結果の JSON は .scratch/（gitignore）に書く。別の版と比べるときは compare-eval.ts
 const { suiteName, rest, repeat } = parseEvalArguments(
   process.argv.slice(2),

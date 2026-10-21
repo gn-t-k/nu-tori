@@ -1,16 +1,25 @@
 #!/bin/bash
-# 続けたセッション（resume・compact・clear）で、作業ツリーが origin/main より遅れていたら知らせる。
+# 作業ツリーが origin/main より遅れていたら知らせる。クラウドでは続けたセッション（resume・compact・clear）で、
+# 手元（Mac）では始めたときも続けたときも見る。
 # 長いセッションのあいだに main が進むと、古い版の働き方の文書を読んでしまうため。
+# 手元の worktree は古い main から作られることがあり、main には入ったがその worktree にはまだ無い道具（scripts/clean-builds など）を探して止まったため、取り込ませる
 set -euo pipefail
 
-if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
+event_source=$(jq -r '.source // empty' 2>/dev/null || true)
+remote=false
+if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
+  remote=true
+fi
+
+# クラウドで始めたときは、main から取ったばかりなので見ない
+if $remote && [ "$event_source" = startup ]; then
   exit 0
 fi
 
 cd "$CLAUDE_PROJECT_DIR"
 
-# 取りに行けなくてもセッションは止めない
-if ! timeout 30 git fetch -q origin main 2>/dev/null; then
+# 取りに行けなくてもセッションは止めない。待ちすぎは settings.json の timeout で打ち切る
+if ! git fetch -q origin main 2>/dev/null; then
   exit 0
 fi
 
@@ -21,8 +30,10 @@ fi
 
 if git merge-base --is-ancestor HEAD origin/main; then
   ctx="作業ツリーが origin/main より ${behind} コミット遅れています。働き方の文書（AGENTS.md、docs/agents/ など）を読む前に、origin/main に合わせてください（作業ブランチなら fast-forward、ブランチに付いていなければ git checkout --detach origin/main）。"
-else
+elif $remote; then
   ctx="作業ブランチが origin/main より ${behind} コミット遅れています。働き方の文書（AGENTS.md、docs/agents/ など）は、git show origin/main:<パス> で main の版を読んでください。main を取り込むかは、作業に合わせて決めてください。"
+else
+  ctx="作業ブランチが origin/main より ${behind} コミット遅れています。作業を始める前に git merge origin/main で取り込んでください。衝突したら、解いてから始めてください。"
 fi
 
 jq -n --arg ctx "$ctx" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}'

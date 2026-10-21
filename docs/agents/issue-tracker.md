@@ -10,6 +10,7 @@
 - **Issueを親のサブ Issue にする**：`gh api repos/gn-t-k/nu-tori/issues/<親>/sub_issues -X POST -F sub_issue_id=<子の DB ID>`。DB ID は `gh api repos/gn-t-k/nu-tori/issues/<子> --jq .id` で取る（`#番号` や `node_id` ではない）。サブ Issue が使えない場合は、子の本文の先頭に `Part of #<親>` と書く
 - **本文の長さ**：Issue の本文とコメントは 65,536 文字まで（バイトではなく文字）。仕様のような長い本文は、投稿の前に `python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read()))' <ファイル>` で数え、6 万文字を超えたら、ほかの節と重なる図や付録をコメントに分ける
 - **Issueを読む**：`gh api repos/gn-t-k/nu-tori/issues/<番号>`（ラベルは `.labels[].name`）と、コメントは `gh api repos/gn-t-k/nu-tori/issues/<番号>/comments`
+- **Issueを言葉で探す**：`mcp__github__search_issues`（PR は `mcp__github__search_pull_requests`）に、検索の条件 `repo:gn-t-k/nu-tori` を付けて呼ぶ。`gh search`・`gh issue list --search`・`gh api search/*` は、クラウドのセッションで 403 になる（#572）
 - **Issueを一覧する**：`gh api 'repos/gn-t-k/nu-tori/issues?state=open&per_page=100'`。`labels=<名前>` と `state` で絞り込む。PR も混ざるので、`pull_request` のあるものを除く
 - **Issueにコメントする**：`gh api repos/gn-t-k/nu-tori/issues/<番号>/comments -X POST -F body=@<ファイル>`
 - **ラベルを付ける／外す**：`gh api repos/gn-t-k/nu-tori/issues/<番号>/labels -X POST -f 'labels[]=...'` ／ `gh api repos/gn-t-k/nu-tori/issues/<番号>/labels/<名前> -X DELETE`
@@ -45,6 +46,22 @@ GitHub Issueを作る。
 - **着手可能なチケットの探し方**：マップの未クローズの子を一覧し（`gh api repos/gn-t-k/nu-tori/issues/<マップ>/sub_issues` のうち `state` が `open` のもの、またはタスクリストの子）、未解決のブロック元があるもの（`issue_dependencies_summary.blocked_by > 0`、または `Blocked by` 行に未クローズのIssueがあるもの）と担当者がいるものを除く。残ったうちマップ上で最初のものを選ぶ。
 - **着手宣言**：`gh api repos/gn-t-k/nu-tori/issues/<n>/assignees -X POST -f 'assignees[]=<自分の GitHub のユーザー名>'`。セッションで最初に行う書き込みにする。
 - **解決**：上の「Issueにコメントする」で回答を書き、続けて「クローズする」。最後にマップの「これまでの決定事項」に要点とリンクを追記する。
+
+## 調べもののチケットを終える
+
+`/research` は調べたことをファイルに書くところで止まるので、そのあとを次の順で続ける。チケットを閉じたら終わり。
+
+1. 調べたことを `docs/research/<題>.md` に置き、「調査: <結論>（#<チケット>）」のコミットにして PR を出す
+2. CI が通ったら merge する
+3. チケットに解決コメントを書く。結論と問いごとの答えを書き、調べたファイルは main のリンク（`https://github.com/gn-t-k/nu-tori/blob/main/docs/research/<題>.md`）で指す
+4. チケットの本文が、調べたことを使う Issue（親の Issue や、決定を待つ Issue）を名指していたら、その Issue に、解決コメントを指す1行のコメントを足す
+5. チケットを閉じる。マップの子なら、上の「wayfinderの操作」の「解決」のとおりマップの索引にも足す
+
+## 作業を先送りする
+
+今はできず、何かが起きてから行う作業（「App Store に出たら人気度を見る」など）は、解決コメントや本文の1行で済ませず、その作業の Issue を作る。起きるのを待つ出来事の Issue をブロック元にして依存を張り（上の「wayfinderの操作」の「ブロック関係」）、人が行う作業なら `ready-for-human`、エージェントが行う作業なら `ready-for-agent` を付ける。先送りを決めた解決コメントからは、作った Issue を指す。
+
+**Why:** 「[App Store のキーワードの人気度を見る](https://github.com/gn-t-k/nu-tori/issues/595)」で、出てから見る手順を仕様に入れるとだけ解決コメントに書き、開発者に「その時期に気づける？」と直された。ブロックされた Issue にすると、ブロック元が閉じたときに着手できるものとして見える（#612）
 
 ## 仕様をチケットに切る前に
 
