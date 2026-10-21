@@ -142,6 +142,15 @@ public actor RecordSync {
 
     /// 目標を決める要求の応答の記録を、取りに行った変更と同じ道でキャッシュに当てる。同じ記録があとで同期でも届く
     public func applyGoalDecision(_ changes: [SyncChange]) async throws {
+        try await applyOutOfSyncResponse(changes)
+    }
+
+    /// サブスクリプションの取引を知らせた要求の応答の記録を、取りに行った変更と同じ道でキャッシュに当てる。同じ記録があとで同期でも届く
+    public func applySubscriptionTransactionReport(_ changes: [SyncChange]) async throws {
+        try await applyOutOfSyncResponse(changes)
+    }
+
+    private func applyOutOfSyncResponse(_ changes: [SyncChange]) async throws {
         try await store.apply(
             SyncBoxResult(
                 kindChanges: changes.compactMap { change in

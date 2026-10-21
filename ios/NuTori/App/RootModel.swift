@@ -11,6 +11,8 @@ final class RootModel {
     let clock: DeviceClock
     /// 目標を立てる知らせのカードが広げる、目標の設定の流れ
     let goalSetup: GoalSetupSession
+    /// サブスクリプションを買う・復元する、自動更新を読む。課金画面とアカウントの画面が使う
+    let subscriptionPurchases: SubscriptionPurchases
     /// 送り待ちから作る見え方。まだ届いていない記録はタイムラインで薄く描き、まだ送れていない料理は食事のカードで見せる
     private(set) var pendingAppearance = PendingAppearance.none
     /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事。タイムラインで伸ばして描く
@@ -30,9 +32,11 @@ final class RootModel {
         missedWeightRecordWatch: MissedWeightRecordWatch,
         goalSetup: GoalSetupSession,
         termsAgreement: TermsAgreementPrompt,
+        subscriptionPurchases: SubscriptionPurchases,
         clock: DeviceClock
     ) {
         self.clock = clock
+        self.subscriptionPurchases = subscriptionPurchases
         self.termsAgreement = termsAgreement
         self.goalSetup = goalSetup
         self.accountSession = accountSession
@@ -77,8 +81,11 @@ final class RootModel {
         }
         // 同意が要るかは同期を待たずに問う。電波が無くて問えなければ、次に前面に来たときに問い直す
         async let termsAgreementAsked: Void = askTermsAgreementIfShowingTimeline()
+        async let unfinishedTransactionsReported: Void =
+            reportUnfinishedTransactionsIfShowingTimeline()
         await syncIfShowingTimeline()
         await termsAgreementAsked
+        await unfinishedTransactionsReported
     }
 
     /// 同意のシートの「同意して続ける」。その場の要求で同意を送り、受け付けられたらシートを消す
@@ -476,6 +483,12 @@ final class RootModel {
         let sheet = await termsAgreement.sheetOnOpen()
         guard termsAgreementSheet == nil, isShowingTimeline else { return }
         termsAgreementSheet = sheet
+    }
+
+    /// サインインしていなければ、知らせる先のアカウントが無いので、取引を終えずに残し、サインインしたあとに開いたときに知らせる
+    private func reportUnfinishedTransactionsIfShowingTimeline() async {
+        guard isShowingTimeline else { return }
+        await subscriptionPurchases.reportUnfinishedTransactions()
     }
 
     private var isShowingTimeline: Bool {
