@@ -1,11 +1,7 @@
 public import Foundation
 import NuToriAPI
 
-/// 送り待ちの箱が結果を当てる保存の順（ADR-0022）。順と分け方はここに1回だけ書き、箱（SwiftData とメモリ）は置き場の操作だけを渡す。
-/// 1. 送り待ちに足すものとヘルスケアの同期の進み具合を、1つの保存で書く（どちらも無ければ保存しない）
-/// 2. 種類の変更を、種類ごとに 100 件ずつに分けてキャッシュに当て、分けるたびに保存する。通し番号は最後の保存でだけ書く。
-///    変更が無く通し番号だけがあれば、通し番号だけを1つの保存で書く
-/// 3. 結果を受け取った送り待ちを、キャッシュのあとに1つの保存で消す（無ければ保存しない）
+/// 送り待ちの箱が結果を当てる保存の順（ADR-0022）。SwiftData とメモリの2つの箱が同じ順で保存するよう、順と分け方はここにだけ書く
 public enum SyncBoxSaveOrder {
     /// 1回の保存で当てる変更の数。メインのコンテキストを長く止めないよう、分けて保存する
     static let batchSize = 100
@@ -26,8 +22,8 @@ public enum SyncBoxSaveOrder {
         if !result.enqueuing.isEmpty || result.healthSyncState != nil {
             try savePending(result.enqueuing, result.healthSyncState)
         }
-        // 結果を受け取った送り待ちを最後に消すのは、間で落ちても送り待ちが残り、次に送って同じ戻しに戻るため
         try applyToCache(result, kinds: kinds, cache: cache, saveCache: saveCache)
+        // 結果を受け取った送り待ちを最後に消すのは、間で落ちても送り待ちが残り、次に送って同じ戻しに戻るため
         if !result.resolvedWriteIds.isEmpty {
             try removePending(Set(result.resolvedWriteIds))
         }

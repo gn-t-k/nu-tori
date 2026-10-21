@@ -35,7 +35,7 @@ public struct NoticeSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
-    /// 知らせへの答えは、届くまで薄く描かない
+    /// 知らせは端末が出すもので使う人が作った記録ではなく、まだ届いていない記録（使う人の作った・直した記録）に入らない
     public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
         []
     }

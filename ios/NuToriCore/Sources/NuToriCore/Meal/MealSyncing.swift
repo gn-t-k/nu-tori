@@ -35,12 +35,12 @@ public struct MealSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
-    /// 作る・直す書き込みの食事
     public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
         guard let pending = try? PendingMealWrite(entry: entry) else { return [] }
         switch pending.write {
         case .create(let meal): return [UndeliveredRecords.Record(kind: name, id: meal.id)]
         case .update(let mealId, _): return [UndeliveredRecords.Record(kind: name, id: mealId)]
+        // 消した食事は、その場でキャッシュから外れていて、薄く描くものが無い
         case .delete: return []
         }
     }

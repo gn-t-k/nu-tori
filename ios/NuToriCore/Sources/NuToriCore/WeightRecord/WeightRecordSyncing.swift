@@ -36,12 +36,12 @@ public struct WeightRecordSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
-    /// 作る・直す書き込みの体重記録
     public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
         guard let pending = try? PendingWeightRecordWrite(entry: entry) else { return [] }
         switch pending.write {
         case .createWeightRecord(let record), .correctWeightRecord(let record):
             return [UndeliveredRecords.Record(kind: name, id: record.id)]
+        // ヘルスケアで元が消えた書き込みは、使う人が作った・直した記録ではなく、消すかもサーバーが決める
         case .sourceDeletedWeightRecord:
             return []
         }

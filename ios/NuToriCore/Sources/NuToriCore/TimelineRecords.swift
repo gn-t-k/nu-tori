@@ -31,13 +31,13 @@ public struct TimelineRecords: Sendable {
         let dishesByMeal = Dictionary(grouping: dishes, by: \.mealId)
         let ingredientsByDish = Dictionary(grouping: ingredients, by: \.dishId)
         return meals.map { meal in
-            let dishes = dishesByMeal[meal.id] ?? []
+            let mealDishes = dishesByMeal[meal.id] ?? []
             return MealCard(
                 meal: meal,
                 status: mealEstimationStatuses[meal.id],
                 recordedOnThisDevice: recordedOnThisDevice.contains(meal.id),
-                dishes: dishes,
-                ingredients: dishes.flatMap { ingredientsByDish[$0.id] ?? [] },
+                dishes: mealDishes,
+                ingredients: mealDishes.flatMap { ingredientsByDish[$0.id] ?? [] },
                 dishEstimationStatuses: dishEstimationStatuses,
                 unsentDishIds: unsentDishIds
             )

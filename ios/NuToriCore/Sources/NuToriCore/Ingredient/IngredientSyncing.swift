@@ -31,7 +31,6 @@ public struct IngredientSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
-    /// 直す書き込みの材料
     public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
         guard let pending = try? PendingIngredientWrite(entry: entry) else { return [] }
         switch pending.write {

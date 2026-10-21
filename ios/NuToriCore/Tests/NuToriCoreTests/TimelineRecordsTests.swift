@@ -93,13 +93,14 @@ struct TimelineRecordsTests {
         @Suite("ほかの食事の料理があるとき")
         struct OtherMealsDish {
             let lunch: Meal
+            let dinner: Meal
             let lunchDish: Dish
             let records: TimelineRecords
 
             init() throws {
                 lunch = try .fixture(
                     eatenAt: "2026-09-24T12:10:00+09:00", sentAt: "2026-09-24T12:11:00+09:00")
-                let dinner = try Meal.fixture(
+                dinner = try .fixture(
                     eatenAt: "2026-09-24T19:10:00+09:00", sentAt: "2026-09-24T19:11:00+09:00")
                 lunchDish = .fixture(mealId: lunch.id, name: "親子丼")
                 records = TimelineRecords(
@@ -110,10 +111,11 @@ struct TimelineRecordsTests {
             }
 
             @Test("食事の順に、それぞれの食事の料理だけを入れること")
-            func keepsDishesToTheirMeal() {
+            func keepsDishesToTheirMeal() throws {
                 let cards = records.mealCards(recordedOnThisDevice: [], unsentDishIds: [])
-                #expect(cards.map(\.meal.id).first == lunch.id)
-                #expect(cards.first?.contents.dishes.map(\.dish.id) == [lunchDish.id])
+                #expect(cards.map(\.meal.id) == [lunch.id, dinner.id])
+                let lunchCard = try #require(cards.first)
+                #expect(lunchCard.contents.dishes.map(\.dish.id) == [lunchDish.id])
             }
         }
 
