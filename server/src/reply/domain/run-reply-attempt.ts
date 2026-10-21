@@ -2,10 +2,9 @@ import { R } from "@praha/byethrow";
 import { match } from "ts-pattern";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { SentText } from "../../sent-text/domain/sent-text";
-import { assembleReplyContext } from "./assemble-reply-context";
+import { buildReplyContext } from "./build-reply-context";
 import type { ConversationProvider, GeneratedReply } from "./conversation-provider";
 import { listReferableMealIds } from "./list-referable-meal-ids";
-import { readReplyContextSource } from "./read-reply-context-source";
 import type { ReplyAttemptOutcome } from "./reply-attempt-outcome";
 import { replyAttemptTimeLimitMs } from "./reply-attempt-time-limit-ms";
 import type { ReplyContext } from "./reply-context";
@@ -16,11 +15,11 @@ import type { ReplyContext } from "./reply-context";
 // onText には、提供元が返す本文のできた分をそのまま渡す
 export const runReplyAttempt = async (
   provider: ConversationProvider,
-  stores: Parameters<typeof readReplyContextSource>[0],
+  stores: Parameters<typeof buildReplyContext>[0],
   sentText: SentText,
   onText: (text: string) => void,
 ): Promise<ReplyAttemptOutcome> => {
-  const context = assembleReplyContext(readReplyContextSource(stores, sentText, new Date()));
+  const context = buildReplyContext(stores, sentText, new Date());
   const generated = await provider.generateReply(
     { context, onText },
     AbortSignal.timeout(replyAttemptTimeLimitMs),

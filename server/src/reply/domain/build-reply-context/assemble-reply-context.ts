@@ -22,7 +22,8 @@ import type {
   ReplyContextWeeklyReview,
   ReplyContextWindowEntry,
 } from "../reply-context";
-import type { ReplyContextSource, ReplyContextSourceMeal } from "../reply-context-source";
+import type { ReplyContextSource, ReplyContextSourceMeal } from "./reply-context-source";
+import { replyContextSpan } from "./reply-context-span";
 
 // 返事を作るときに AI に渡す文脈を組み立てる。
 // 今日は、応える送った文章の時刻とタイムゾーンでの日（電波がなくてあとで届いた文章でも、送ったときの日で読む）
@@ -50,14 +51,14 @@ export const assembleReplyContext = (source: ReplyContextSource): ReplyContext =
 // 窓に入れる発言の数と時間。始まりは段で動かし、末尾にだけ足していく（キャッシュを効かせるため）
 const maximumWindowUtterances = 20;
 const windowUtteranceStep = 10;
-const windowMilliseconds = 72 * 60 * 60 * 1000;
+const windowMilliseconds = replyContextSpan.windowHours * 60 * 60 * 1000;
 const windowStartStepMilliseconds = 6 * 60 * 60 * 1000;
 
 const assembleWindow = (
   { sentText, sentTexts, meals, weightRecords }: ReplyContextSource,
   toWallClock: (instant: Date) => string,
 ): ReplyContextWindowEntry[] => {
-  // 72 時間前を、6 時間の区切りに切り上げた時刻から。窓は 66〜72 時間になる
+  // 窓の時間の前を、6 時間の区切りに切り上げた時刻から。72 時間なら、窓は 66〜72 時間になる
   const earliest =
     Math.ceil((sentText.sentAt.getTime() - windowMilliseconds) / windowStartStepMilliseconds) *
     windowStartStepMilliseconds;
@@ -179,8 +180,8 @@ const assembleStructuredValues = (
       eatenAt: formatEatenAt(meal),
       dishNames: dishes.map(({ dish }) => dish.name),
     })),
-    previousDays: Array.from({ length: 7 }, (_, index) => {
-      const calendarDay = addDays(today, index - 7);
+    previousDays: Array.from({ length: replyContextSpan.previousDayCount }, (_, index) => {
+      const calendarDay = addDays(today, index - replyContextSpan.previousDayCount);
       const dayMeals = mealsOn(calendarDay);
       return dayMeals.length === 0
         ? { calendarDay, recorded: false as const }

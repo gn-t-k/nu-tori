@@ -1,45 +1,30 @@
 import { match } from "ts-pattern";
-import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
-import { dishAwaitsReestimation } from "../../dish-estimation-status/domain/dish-awaits-reestimation";
-import type { RecordId } from "../../domain/record-id";
-import type { RecordKindStores } from "../../domain/record-kind-stores";
-import { computeMealEstimationStatus } from "../../meal-estimation-status/domain/compute-meal-estimation-status";
-import type { MealEstimationStatus } from "../../meal-estimation-status/domain/meal-estimation-status";
-import type { SentText } from "../../sent-text/domain/sent-text";
-import { computeDailyRepresentativeWeights } from "../../weight-record/domain/compute-daily-representative-weights";
-import type { WeightRecord } from "../../weight-record/domain/weight-record";
-import { createWeightTrendKind } from "../../weight-trend/domain/create-weight-trend-kind";
-import { weightTrendRecordId } from "../../weight-trend/domain/weight-trend-record-id";
-import type {
-  MealEstimationProgress,
-  ReplyContextSource,
-  ReplyContextSourceMeal,
-} from "./reply-context-source";
+import { computeCalendarDayInTimeZone } from "../../../domain/compute-calendar-day-in-time-zone";
+import { dishAwaitsReestimation } from "../../../dish-estimation-status/domain/dish-awaits-reestimation";
+import type { RecordId } from "../../../domain/record-id";
+import type { RecordKindStores } from "../../../domain/record-kind-stores";
+import { millisecondsPerDay } from "../../../domain/milliseconds-per-day";
+import { computeMealEstimationStatus } from "../../../meal-estimation-status/domain/compute-meal-estimation-status";
+import type { MealEstimationStatus } from "../../../meal-estimation-status/domain/meal-estimation-status";
+import type { SentText } from "../../../sent-text/domain/sent-text";
+import { computeDailyRepresentativeWeights } from "../../../weight-record/domain/compute-daily-representative-weights";
+import type { WeightRecord } from "../../../weight-record/domain/weight-record";
+import { createWeightTrendKind } from "../../../weight-trend/domain/create-weight-trend-kind";
+import { weightTrendRecordId } from "../../../weight-trend/domain/weight-trend-record-id";
+import type { MealEstimationProgress } from "../reply-context";
+import type { buildReplyContext } from "./build-reply-context";
+import type { ReplyContextSource, ReplyContextSourceMeal } from "./reply-context-source";
+import { replyContextSpan } from "./reply-context-span";
 
 // 返事の文脈を組み立てる元の記録を、置き場から読む。組み立てる関数（assembleReplyContext）が範囲で絞るので、多めに読む。
-// 範囲は、応える文章の 9 日前から（72 時間の窓と、今日の 7 日前の 0:00 を、タイムゾーンによらず含む）。
+// 範囲は、応える文章の sourceDays 日前から（窓と、今日の前の日の始まりの 0:00 を、タイムゾーンによらず含む）。
 // 目標と1日の目安はすべて、推定消費カロリーは今日以前に始まるものを、週の見直しは今日以前に当てた最も新しいものを読む
 export const readReplyContextSource = (
-  stores: Pick<
-    RecordKindStores,
-    | "sentText"
-    | "reply"
-    | "aiUtterance"
-    | "meal"
-    | "mealEstimationStatus"
-    | "dish"
-    | "dishEstimationStatus"
-    | "ingredient"
-    | "weightRecord"
-    | "goal"
-    | "dailyGuide"
-    | "expenditureEstimate"
-    | "weeklyReview"
-  >,
+  stores: Parameters<typeof buildReplyContext>[0],
   sentText: SentText,
   now: Date,
 ): ReplyContextSource => {
-  const from = new Date(sentText.sentAt.getTime() - sourceDays * 86_400_000);
+  const from = new Date(sentText.sentAt.getTime() - sourceDays * millisecondsPerDay);
   const today = computeCalendarDayInTimeZone(sentText.sentAt, sentText.timeZone);
   const weightTrend = createWeightTrendKind(stores.weightRecord).readCurrent(weightTrendRecordId);
   return {
@@ -65,7 +50,11 @@ export const readReplyContextSource = (
   };
 };
 
-const sourceDays = 9;
+// 今日の前の日と今日の日数に、ずれの分の 1 日を足す（食事の日は食事の時差で、今日は送った文章のタイムゾーンで決めるため）。窓のほうが長ければ窓に合わせる
+const sourceDays = Math.max(
+  replyContextSpan.previousDayCount + 2,
+  Math.ceil(replyContextSpan.windowHours / 24),
+);
 
 const readMeal = (
   stores: Pick<

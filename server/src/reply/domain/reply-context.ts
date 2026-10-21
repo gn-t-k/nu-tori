@@ -9,7 +9,6 @@ import type { Pace } from "../../goal/domain/compute-pace";
 import type { GoalDirection } from "../../goal/domain/goal-direction";
 import type { NutrientAmount } from "../../ingredient/domain/nutrient-amount";
 import type { WeeklyReviewDeferralReason } from "../../weekly-review/domain/weekly-review";
-import type { MealEstimationProgress } from "./reply-context-source";
 
 // 返事を作るときに AI に渡す文脈。並べる順は、変わらない指示 → 文脈の窓 → 構造化した値 → 新しい発言（キャッシュが効く順）。
 // 時刻は、食事の時刻を除き、応える送った文章のタイムゾーンの壁時計（YYYY-MM-DDTHH:mm）。食事の時刻は食事の時差の壁時計
@@ -95,3 +94,6 @@ export type MainNutrients = {
   fatG: NutrientAmount;
   carbohydrateG: NutrientAmount;
 };
+
+// 食事の栄養が出そろったか（settled）、推定を待つか（awaiting）、推定できなかったか（failed）
+export type MealEstimationProgress = "awaiting" | "failed" | "settled";

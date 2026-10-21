@@ -1,33 +1,32 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import type { WeeklyReview } from "../../../weekly-review/domain/weekly-review";
-import type { ReplyContext } from "../reply-context";
-import type { ReplyContextSource } from "../reply-context-source";
-import { assembleReplyContext } from "./index";
-import { buildReplyContextSource as build } from "./testing/build-reply-context-source";
+import type { Goal } from "../../goal/domain/goal";
+import type { ReplyContext } from "../domain/reply-context";
+import { buildReplyContextInAccount } from "./testing/build-reply-context-in-account";
+import { buildReplyContextRecords as build } from "./testing/build-reply-context-records";
+
+type Records = Parameters<typeof buildReplyContextInAccount>[0];
+
+// 返事は、送った少しあとのアラームで作る。応える文章のあとに入った記録も、置き場から読める時刻にする
+const replyAlarmAt = (sentAt: string): Date => new Date(Date.parse(sentAt) + 60 * 60 * 1000);
 
 describe("返事に渡す文脈の組み立て", () => {
   describe("日の基準", () => {
     describe("ニューヨークで送った文章が、日本時間では翌日に届いたとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
-            // ニューヨークの 10/9（金）22:30。日本時間では 10/10 11:30
+      beforeEach(async () => {
+        // ニューヨークの 10/9（金）22:30。日本時間では 10/10 11:30
+        const sentAt = "2026-10-10T02:30:00Z";
+        const meal = build.meal(2, "2026-10-09T23:00:00Z");
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: {
-              ...build.sentText(1, "2026-10-10T02:30:00Z", "今日どうだった？"),
+              ...build.sentText(1, sentAt, "今日どうだった？"),
               timeZone: "America/New_York",
             },
-            meals: [
-              // ニューヨークの 10/9 の夜に食べた食事（時差 -04:00）
-              {
-                ...build.meal(2, "2026-10-09T23:00:00Z"),
-                meal: {
-                  ...build.meal(2, "2026-10-09T23:00:00Z").meal,
-                  eatenAtUtcOffsetSeconds: -4 * 60 * 60,
-                },
-              },
-            ],
+            // ニューヨークの 10/9 の夜に食べた食事（時差 -04:00）
+            meals: [{ ...meal, meal: { ...meal.meal, eatenAtUtcOffsetSeconds: -4 * 60 * 60 } }],
           }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -59,36 +58,39 @@ describe("返事に渡す文脈の組み立て", () => {
     const minutesBefore = (minutes: number): string =>
       new Date(Date.parse(answeredAt) - minutes * 60 * 1000).toISOString();
 
-    describe("72 時間より前の発言と、72 時間以内の発言があるとき", () => {
+    describe("72 時間より前の発言と、窓の始まりの段ちょうどの発言があるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             sentTexts: [
               build.conversation(2, "2026-10-07T02:59:00Z"),
+              // 72 時間前（10/07 03:00Z）を 6 時間の区切りに切り上げた時刻
               build.conversation(3, "2026-10-07T06:00:00Z"),
             ],
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
-      test("72 時間以内の発言だけを入れること", () => {
+      test("段ちょうどからの発言だけを入れること", () => {
         expect(context.window).toEqual([
           { type: "user_utterance", at: "2026-10-07T15:00", body: "文章3" },
         ]);
       });
     });
 
-    describe("72 時間以内だが、窓の始まりの段より前の発言があるとき", () => {
+    describe("72 時間以内だが、窓の始まりの段の直前の発言があるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
-            // 70 時間前。72 時間前（10/07 03:00Z）を 6 時間の区切りに切り上げた 06:00Z より前
-            sentTexts: [build.conversation(2, "2026-10-07T05:00:00Z")],
+            // 段（10/07 06:00Z）の 1 分前
+            sentTexts: [build.conversation(2, "2026-10-07T05:59:00Z")],
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -99,14 +101,15 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("72 時間以内に 20 発言あるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             sentTexts: Array.from({ length: 10 }, (_, index) =>
               build.conversation(index + 2, minutesBefore(100 - index), `返事${index + 2}`),
             ),
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -117,14 +120,15 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("72 時間以内に 21 発言あるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             sentTexts: Array.from({ length: 21 }, (_, index) =>
               build.conversation(index + 2, minutesBefore(100 - index)),
             ),
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -138,18 +142,20 @@ describe("返事に渡す文脈の組み立て", () => {
     describe("21 発言のあとに、もう1つ発言してから応えるとき", () => {
       let before: ReplyContext;
       let after: ReplyContext;
-      beforeEach(() => {
+      beforeEach(async () => {
         const sentTexts = Array.from({ length: 21 }, (_, index) =>
           build.conversation(index + 2, minutesBefore(100 - index)),
         );
-        before = assembleReplyContext(
-          build.source({ sentText: build.sentText(100, minutesBefore(50)), sentTexts }),
+        before = await buildReplyContextInAccount(
+          build.records({ sentText: build.sentText(100, minutesBefore(50)), sentTexts }),
+          replyAlarmAt(minutesBefore(50)),
         );
-        after = assembleReplyContext(
-          build.source({
+        after = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(101, answeredAt),
             sentTexts: [...sentTexts, build.conversation(100, minutesBefore(50))],
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -159,20 +165,15 @@ describe("返事に渡す文脈の組み立て", () => {
       });
     });
 
-    describe("応える文章が、ほかの送った文章と一緒に渡されたとき", () => {
+    describe("応える文章の前に、返事のある発言があるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt, "今の"),
-            sentTexts: [
-              build.conversation(2, minutesBefore(30), "返事2"),
-              {
-                ...build.conversation(1, answeredAt),
-                sentText: build.sentText(1, answeredAt, "今の"),
-              },
-            ],
+            sentTexts: [build.conversation(2, minutesBefore(30), "返事2")],
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -187,22 +188,25 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("食事と読み分けたままの文章から作った食事があるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        const meal = build.meal(
+          4,
+          minutesBefore(90),
+          [build.dish("親子丼", [])],
+          minutesBefore(60),
+        );
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             sentTexts: [
               build.conversation(2, minutesBefore(120), "返事2"),
-              {
-                sentText: build.sentText(3, minutesBefore(60), "親子丼食べた"),
-                replyRequest: undefined,
-              },
+              build.mealText(3, minutesBefore(60), "親子丼食べた"),
             ],
             meals: [
               {
-                ...build.meal(4, minutesBefore(90), [build.dish("親子丼", [])], minutesBefore(60)),
+                ...meal,
                 meal: {
-                  ...build.meal(4, minutesBefore(90), [], minutesBefore(60)).meal,
+                  ...meal.meal,
                   entryMethod: "written",
                   photoIds: [],
                   sentTextId: build.id(3),
@@ -210,6 +214,7 @@ describe("返事に渡す文脈の組み立て", () => {
               },
             ],
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -230,9 +235,9 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("発言のあいだに食事と体重記録が入ったとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             sentTexts: [
               build.conversation(2, minutesBefore(300), "返事2"),
@@ -256,6 +261,7 @@ describe("返事に渡す文脈の組み立て", () => {
               }),
             ],
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -293,9 +299,9 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("今日と昨日と 7 日より前に食事があるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             meals: [
               build.meal(2, "2026-10-09T23:30:00Z", [
@@ -324,6 +330,7 @@ describe("返事に渡す文脈の組み立て", () => {
               build.meal(6, "2026-10-10T03:30:00Z", [build.dish("アイス", [])]),
             ],
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -396,19 +403,55 @@ describe("返事に渡す文脈の組み立て", () => {
       });
     });
 
-    describe("今日の食事がまだ無いとき", () => {
-      test("今日の食事の合計を入れないこと", () => {
-        const context = assembleReplyContext(
-          build.source({ sentText: build.sentText(1, answeredAt) }),
+    describe("夜遅くに送った文章で、時差の大きい地域で今日の 7 日前の始まりに食べた食事があるとき", () => {
+      let context: ReplyContext;
+      beforeEach(async () => {
+        // 10/10 23:30（東京）。今日の 7 日前は 10/03
+        const sentAt = "2026-10-10T14:30:00Z";
+        // キリバスの 10/03 0:30（時差 +14:00）に食べて送った。応える文章の 8 日と 4 時間前
+        const meal = build.meal(2, "2026-10-02T10:30:00Z");
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, sentAt),
+            meals: [{ ...meal, meal: { ...meal.meal, eatenAtUtcOffsetSeconds: 14 * 60 * 60 } }],
+          }),
+          replyAlarmAt(sentAt),
         );
+      });
+
+      test("その食事を、前の日のいちばん古い日に数えること", () => {
+        expect(context.structuredValues.previousDays[0]).toEqual({
+          calendarDay: "2026-10-03",
+          recorded: true,
+          nutrients: {
+            energyKcal: { type: "exactly", value: 0 },
+            proteinG: { type: "exactly", value: 0 },
+            fatG: { type: "exactly", value: 0 },
+            carbohydrateG: { type: "exactly", value: 0 },
+          },
+        });
+      });
+    });
+
+    describe("今日の食事がまだ無いとき", () => {
+      let context: ReplyContext;
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({ sentText: build.sentText(1, answeredAt) }),
+          replyAlarmAt(answeredAt),
+        );
+      });
+
+      test("今日の食事の合計を入れないこと", () => {
         expect(context.structuredValues.todayNutrients).toBeUndefined();
       });
     });
 
     describe("今日の食事に、推定の済んだ食事と、推定を待つ食事があるとき", () => {
-      test("今日の食事の合計の分かる値を「以上」にすること", () => {
-        const context = assembleReplyContext(
-          build.source({
+      let context: ReplyContext;
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             meals: [
               build.meal(2, "2026-10-09T23:30:00Z", [
@@ -424,7 +467,23 @@ describe("返事に渡す文脈の組み立て", () => {
               { ...build.meal(3, "2026-10-10T01:00:00Z"), estimation: "awaiting" },
             ],
           }),
+          replyAlarmAt(answeredAt),
         );
+      });
+
+      test("推定を待つ食事を、推定しているところにすること", () => {
+        expect(
+          context.structuredValues.todayMeals.map(({ mealId, estimation }) => ({
+            mealId,
+            estimation,
+          })),
+        ).toEqual([
+          { mealId: build.id(2), estimation: "settled" },
+          { mealId: build.id(3), estimation: "awaiting" },
+        ]);
+      });
+
+      test("今日の食事の合計の分かる値を「以上」にすること", () => {
         expect(context.structuredValues.todayNutrients).toEqual({
           energyKcal: { type: "at_least", value: 260 },
           proteinG: { type: "at_least", value: 10 },
@@ -434,11 +493,30 @@ describe("返事に渡す文脈の組み立て", () => {
       });
     });
 
+    describe("今日の食事に、推定できなかった食事があるとき", () => {
+      let context: ReplyContext;
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, answeredAt),
+            meals: [{ ...build.meal(2, "2026-10-10T01:00:00Z"), estimation: "failed" }],
+          }),
+          replyAlarmAt(answeredAt),
+        );
+      });
+
+      test("その食事を、推定できなかったにすること", () => {
+        expect(context.structuredValues.todayMeals.map(({ estimation }) => estimation)).toEqual([
+          "failed",
+        ]);
+      });
+    });
+
     describe("前の日に、推定の済んだ食事と、推定を待つ食事があるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             meals: [
               build.meal(2, "2026-10-08T10:00:00Z", [
@@ -454,6 +532,7 @@ describe("返事に渡す文脈の組み立て", () => {
               { ...build.meal(3, "2026-10-08T12:00:00Z"), estimation: "awaiting" },
             ],
           }),
+          replyAlarmAt(answeredAt),
         );
       });
 
@@ -471,11 +550,11 @@ describe("返事に渡す文脈の組み立て", () => {
       });
     });
 
-    describe("体重記録と体重の傾向があるとき", () => {
+    describe("応える文章の前とあとに体重記録があるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             weightRecords: [
               build.weightRecord(2, "2026-10-08T22:00:00Z", 72.4),
@@ -491,25 +570,9 @@ describe("返事に渡す文脈の組み立て", () => {
               // 応える文章より後の記録は入れない
               build.weightRecord(4, "2026-10-10T04:00:00Z", 71.9),
             ],
-            weightTrend: [
-              { calendarDay: "2026-09-12", trendKg: 74.0 },
-              { calendarDay: "2026-09-13", trendKg: 73.9 },
-              { calendarDay: "2026-09-20", trendKg: 73.5 },
-              { calendarDay: "2026-09-21", trendKg: 73.4 },
-              { calendarDay: "2026-10-01", trendKg: 72.9 },
-              { calendarDay: "2026-10-03", trendKg: 72.7 },
-            ],
           }),
+          replyAlarmAt(answeredAt),
         );
-      });
-
-      test("今日までの 28 日を 7 日ずつに分け、週ごとに最後の傾向の値を入れること", () => {
-        expect(context.structuredValues.weeklyWeightTrend).toEqual([
-          { firstDay: "2026-09-13", lastDay: "2026-09-19", trendKg: 73.9 },
-          { firstDay: "2026-09-20", lastDay: "2026-09-26", trendKg: 73.4 },
-          { firstDay: "2026-09-27", lastDay: "2026-10-03", trendKg: 72.7 },
-          { firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: undefined },
-        ]);
       });
 
       test("応える文章までの最後の体重記録を、取り込んだものも含めて入れること", () => {
@@ -519,11 +582,58 @@ describe("返事に渡す文脈の組み立て", () => {
         });
       });
     });
+
+    describe("体重記録が、今日の 7 日前より前にしか無いとき", () => {
+      let context: ReplyContext;
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, answeredAt),
+            weightRecords: [build.weightRecordOn(2, "2026-09-20", 73.1)],
+          }),
+          replyAlarmAt(answeredAt),
+        );
+      });
+
+      test("その記録を最後の体重記録に入れること", () => {
+        expect(context.structuredValues.lastWeightRecord).toEqual({
+          at: "2026-09-20T09:00",
+          weightKg: 73.1,
+        });
+      });
+    });
+
+    describe("今日までの 28 日の体重記録から、体重の傾向が出るとき", () => {
+      let context: ReplyContext;
+      beforeEach(async () => {
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, answeredAt),
+            // 傾向は 9/19 まで 74.0 kg。そのあと 10/03 の 72.6 kg に向けて重み 0.1 でならす
+            weightRecords: [
+              build.weightRecordOn(2, "2026-09-12", 74.0),
+              build.weightRecordOn(3, "2026-09-19", 74.0),
+              build.weightRecordOn(4, "2026-10-03", 72.6),
+            ],
+          }),
+          replyAlarmAt(answeredAt),
+        );
+      });
+
+      test("今日までの 28 日を 7 日ずつに分け、週ごとに最後の傾向の値を入れること", () => {
+        expect(context.structuredValues.weeklyWeightTrend).toEqual([
+          { firstDay: "2026-09-13", lastDay: "2026-09-19", trendKg: 74.0 },
+          { firstDay: "2026-09-20", lastDay: "2026-09-26", trendKg: expect.closeTo(73.7695, 4) },
+          { firstDay: "2026-09-27", lastDay: "2026-10-03", trendKg: expect.closeTo(73.2941, 4) },
+          { firstDay: "2026-10-04", lastDay: "2026-10-10", trendKg: undefined },
+        ]);
+      });
+    });
   });
 
   describe("目標と1日の目安と推定消費カロリー", () => {
     // 10/03 に減量の目標を立て、10/10 に立て直した。どちらの日にも推定がある
-    let goalRecords: Pick<ReplyContextSource, "goals" | "dailyGuides" | "expenditureEstimates">;
+    let goalRecords: Pick<Records, "goals" | "dailyGuides" | "expenditureEstimates">;
     beforeEach(() => {
       const firstGoal = build.goal(10, "2026-10-03", {
         targetWeightKg: 70,
@@ -537,22 +647,34 @@ describe("返事に渡す文脈の組み立て", () => {
       goalRecords = {
         goals: [firstGoal, secondGoal],
         dailyGuides: [
-          build.dailyGuide(20, firstGoal.id, "2026-10-03", 1900),
-          build.dailyGuide(21, secondGoal.id, "2026-10-10", 2000),
+          build.dailyGuide(
+            20,
+            { goalId: firstGoal.id, expenditureEstimateId: build.id(120) },
+            "2026-10-03",
+            1900,
+          ),
+          build.dailyGuide(
+            21,
+            { goalId: secondGoal.id, expenditureEstimateId: build.id(121) },
+            "2026-10-10",
+            2000,
+          ),
         ],
         expenditureEstimates: [
-          build.expenditureEstimate(30, "2026-10-03", 2400),
-          build.expenditureEstimate(31, "2026-10-10", 2350),
+          build.expenditureEstimate(120, "2026-10-03", 2400),
+          build.expenditureEstimate(121, "2026-10-10", 2350),
         ],
       };
     });
 
     describe("その日を含む目標があるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
+      beforeEach(async () => {
         // 10/10 12:00（東京）
-        context = assembleReplyContext(
-          build.source({ sentText: build.sentText(1, "2026-10-10T03:00:00Z"), ...goalRecords }),
+        const sentAt = "2026-10-10T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({ sentText: build.sentText(1, sentAt), ...goalRecords }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -571,10 +693,12 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("立て直す前の日の文章のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
+      beforeEach(async () => {
         // 10/09 12:00（東京）
-        context = assembleReplyContext(
-          build.source({ sentText: build.sentText(1, "2026-10-09T03:00:00Z"), ...goalRecords }),
+        const sentAt = "2026-10-09T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({ sentText: build.sentText(1, sentAt), ...goalRecords }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -593,16 +717,25 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("維持の目標のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
+      beforeEach(async () => {
+        // 10/10 12:00（東京）
+        const sentAt = "2026-10-10T03:00:00Z";
         const goal = build.goal(10, "2026-10-03", { targetWeightKg: 72, weightChange: undefined });
-        context = assembleReplyContext(
-          build.source({
-            // 10/10 12:00（東京）
-            sentText: build.sentText(1, "2026-10-10T03:00:00Z"),
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, sentAt),
             goals: [goal],
-            dailyGuides: [build.dailyGuide(20, goal.id, "2026-10-03", 2400)],
-            expenditureEstimates: [build.expenditureEstimate(30, "2026-10-03", 2400)],
+            dailyGuides: [
+              build.dailyGuide(
+                20,
+                { goalId: goal.id, expenditureEstimateId: build.id(120) },
+                "2026-10-03",
+                2400,
+              ),
+            ],
+            expenditureEstimates: [build.expenditureEstimate(120, "2026-10-03", 2400)],
           }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -617,10 +750,12 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("目標を立てる前の日の文章のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
+      beforeEach(async () => {
         // 10/02 12:00（東京）
-        context = assembleReplyContext(
-          build.source({ sentText: build.sentText(1, "2026-10-02T03:00:00Z"), ...goalRecords }),
+        const sentAt = "2026-10-02T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({ sentText: build.sentText(1, sentAt), ...goalRecords }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -632,48 +767,61 @@ describe("返事に渡す文脈の組み立て", () => {
 
   describe("直近の週の見直し", () => {
     // 10/03（土）に減量の目標を立て、10/05（月）に見直し、10/12（月）は見送った
-    let reviewRecords: Pick<ReplyContextSource, "goals" | "dailyGuides" | "expenditureEstimates">;
-    let reviewedWeek: WeeklyReview;
-    let deferredWeek: WeeklyReview;
+    let reviewRecords: Pick<
+      Records,
+      "goals" | "dailyGuides" | "expenditureEstimates" | "weeklyReviews"
+    >;
+    let goal: Goal;
     beforeEach(() => {
-      const goal = build.goal(10, "2026-10-03", {
+      goal = build.goal(10, "2026-10-03", {
         targetWeightKg: 70,
         weightChange: { deadlineOn: "2027-01-01", pacePlan: "standard" },
       });
       reviewRecords = {
         goals: [goal],
         dailyGuides: [
-          build.dailyGuide(20, goal.id, "2026-10-03", 1900),
-          build.dailyGuide(21, goal.id, "2026-10-05", 1850, ["weekly_change"]),
+          build.dailyGuide(
+            20,
+            { goalId: goal.id, expenditureEstimateId: build.id(120) },
+            "2026-10-03",
+            1900,
+          ),
+          build.dailyGuide(
+            21,
+            { goalId: goal.id, expenditureEstimateId: build.id(121) },
+            "2026-10-05",
+            1850,
+            ["weekly_change"],
+          ),
         ],
         expenditureEstimates: [
           build.expenditureEstimate(120, "2026-10-03", 2400),
           build.expenditureEstimate(121, "2026-10-05", 2330),
         ],
+        weeklyReviews: [
+          build.weeklyReview(40, "2026-10-05", {
+            type: "reviewed",
+            expenditureEstimateId: build.id(121),
+            dailyGuideId: build.id(21),
+            mainReason: "expenditure_change",
+          }),
+          build.weeklyReview(41, "2026-10-12", {
+            type: "deferred",
+            reason: "few_meal_records",
+            goalId: goal.id,
+          }),
+        ],
       };
-      reviewedWeek = build.weeklyReview(40, "2026-10-05", {
-        type: "reviewed",
-        expenditureEstimateId: build.id(121),
-        dailyGuideId: build.id(21),
-        mainReason: "expenditure_change",
-      });
-      deferredWeek = build.weeklyReview(41, "2026-10-12", {
-        type: "deferred",
-        reason: "few_meal_records",
-        goalId: goal.id,
-      });
     });
 
     describe("見直せた週のあとの文章のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
+      beforeEach(async () => {
         // 10/07 12:00（東京）
-        context = assembleReplyContext(
-          build.source({
-            sentText: build.sentText(1, "2026-10-07T03:00:00Z"),
-            ...reviewRecords,
-            latestWeeklyReview: reviewedWeek,
-          }),
+        const sentAt = "2026-10-07T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({ sentText: build.sentText(1, sentAt), ...reviewRecords }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -691,14 +839,12 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("見送った週のあとの文章のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
+      beforeEach(async () => {
         // 10/13 12:00（東京）
-        context = assembleReplyContext(
-          build.source({
-            sentText: build.sentText(1, "2026-10-13T03:00:00Z"),
-            ...reviewRecords,
-            latestWeeklyReview: deferredWeek,
-          }),
+        const sentAt = "2026-10-13T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({ sentText: build.sentText(1, sentAt), ...reviewRecords }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -713,10 +859,12 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("目標を立てて、まだ見直していない日の文章のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
+      beforeEach(async () => {
         // 10/04 12:00（東京）
-        context = assembleReplyContext(
-          build.source({ sentText: build.sentText(1, "2026-10-04T03:00:00Z"), ...reviewRecords }),
+        const sentAt = "2026-10-04T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({ sentText: build.sentText(1, sentAt), ...reviewRecords }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -727,24 +875,20 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("見送った月曜に、新しい目標を立てた日の文章のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        const [firstGoal] = reviewRecords.goals;
-        if (firstGoal === undefined) {
-          throw new Error("目標が無い");
-        }
+      beforeEach(async () => {
+        // 10/12 12:00（東京）
+        const sentAt = "2026-10-12T03:00:00Z";
         const secondGoal = build.goal(11, "2026-10-12", {
           targetWeightKg: 72,
           weightChange: undefined,
         });
-        context = assembleReplyContext(
-          build.source({
-            // 10/12 12:00（東京）
-            sentText: build.sentText(1, "2026-10-12T03:00:00Z"),
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, sentAt),
             ...reviewRecords,
-            latestWeeklyReview: deferredWeek,
             goals: [
               {
-                ...firstGoal,
+                ...goal,
                 closure: {
                   endedOn: "2026-10-12",
                   nextGoalId: secondGoal.id,
@@ -755,9 +899,15 @@ describe("返事に渡す文脈の組み立て", () => {
             ],
             dailyGuides: [
               ...reviewRecords.dailyGuides,
-              build.dailyGuide(22, secondGoal.id, "2026-10-12", 2330),
+              build.dailyGuide(
+                22,
+                { goalId: secondGoal.id, expenditureEstimateId: build.id(121) },
+                "2026-10-12",
+                2330,
+              ),
             ],
           }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -773,47 +923,53 @@ describe("返事に渡す文脈の組み立て", () => {
 
   describe("その日のペース", () => {
     // 10/03（土）に、期限 2027/01/01、目標体重 70 kg の減量の目標を立てた
-    let paceRecords: Pick<ReplyContextSource, "goals" | "dailyGuides" | "weightTrend">;
+    let goalRecords: Pick<Records, "goals" | "dailyGuides" | "expenditureEstimates">;
     beforeEach(() => {
       const goal = build.goal(10, "2026-10-03", {
         targetWeightKg: 70,
         weightChange: { deadlineOn: "2027-01-01", pacePlan: "standard" },
       });
-      paceRecords = {
+      goalRecords = {
         goals: [goal],
-        dailyGuides: [build.dailyGuide(20, goal.id, "2026-10-03", 1900)],
-        weightTrend: [
-          { calendarDay: "2026-10-01", trendKg: 72.2 },
-          { calendarDay: "2026-10-06", trendKg: 72 },
-          { calendarDay: "2026-10-20", trendKg: 71 },
+        dailyGuides: [
+          build.dailyGuide(
+            20,
+            { goalId: goal.id, expenditureEstimateId: build.id(120) },
+            "2026-10-03",
+            1900,
+          ),
         ],
+        expenditureEstimates: [build.expenditureEstimate(120, "2026-10-03", 2400)],
       };
     });
 
     describe("目標を立てて 14 日たち、直近 14 日に体重記録のある日が4日あるとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
-            // 10/20 12:00（東京）
-            sentText: build.sentText(1, "2026-10-20T03:00:00Z"),
-            ...paceRecords,
-            weightRecordDays: [
-              "2026-10-06",
-              "2026-10-14",
-              "2026-10-15",
-              "2026-10-16",
-              "2026-10-20",
+      beforeEach(async () => {
+        // 10/20 12:00（東京）
+        const sentAt = "2026-10-20T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, sentAt),
+            ...goalRecords,
+            weightRecords: [
+              build.weightRecordOn(2, "2026-10-01", 72),
+              build.weightRecordOn(3, "2026-10-06", 72),
+              build.weightRecordOn(4, "2026-10-14", 70.4),
+              build.weightRecordOn(5, "2026-10-15", 70.2),
+              build.weightRecordOn(6, "2026-10-16", 70),
+              build.weightRecordOn(7, "2026-10-20", 69.2),
             ],
           }),
+          replyAlarmAt(sentAt),
         );
       });
 
       test("文章を送った日で判定した、間に合うかを入れること", () => {
-        // 速さは（71 − 72）÷ 2 = −0.5 kg/週、見込みは 71 − 0.5 × 73 ÷ 7 = 65.8 kg で目標体重に届く
+        // 傾向は 10/06 が 72 kg、10/20 が約 70.59 kg。速さは約 −0.71 kg/週、見込みは約 63.2 kg で目標体重に届く
         expect(context.structuredValues.goal?.pace).toEqual({
           status: "onTrack",
-          actualKgPerWeek: -0.5,
+          actualKgPerWeek: -0.7,
           requiredKgPerWeek: -0.1,
         });
       });
@@ -821,14 +977,21 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("直近 14 日に体重記録のある日が2日のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
-            sentText: build.sentText(1, "2026-10-20T03:00:00Z"),
-            ...paceRecords,
-            // 10/06 は 14 日の外
-            weightRecordDays: ["2026-10-06", "2026-10-07", "2026-10-19"],
+      beforeEach(async () => {
+        const sentAt = "2026-10-20T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, sentAt),
+            ...goalRecords,
+            // 10/01 と 10/06 は 14 日の外
+            weightRecords: [
+              build.weightRecordOn(2, "2026-10-01", 72),
+              build.weightRecordOn(3, "2026-10-06", 72),
+              build.weightRecordOn(4, "2026-10-07", 71.9),
+              build.weightRecordOn(5, "2026-10-19", 71),
+            ],
           }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -842,9 +1005,18 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("目標を立てて 14 日たっていない日の文章のとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({ sentText: build.sentText(1, "2026-10-16T03:00:00Z"), ...paceRecords }),
+      beforeEach(async () => {
+        const sentAt = "2026-10-16T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, sentAt),
+            ...goalRecords,
+            weightRecords: [
+              build.weightRecordOn(2, "2026-10-01", 72),
+              build.weightRecordOn(3, "2026-10-06", 72),
+            ],
+          }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -855,15 +1027,18 @@ describe("返事に渡す文脈の組み立て", () => {
 
     describe("目標の開始の日以前の体重の傾向が無いとき", () => {
       let context: ReplyContext;
-      beforeEach(() => {
-        context = assembleReplyContext(
-          build.source({
-            sentText: build.sentText(1, "2026-10-20T03:00:00Z"),
-            ...paceRecords,
-            weightTrend: paceRecords.weightTrend.filter(
-              ({ calendarDay }) => calendarDay > "2026-10-03",
-            ),
+      beforeEach(async () => {
+        const sentAt = "2026-10-20T03:00:00Z";
+        context = await buildReplyContextInAccount(
+          build.records({
+            sentText: build.sentText(1, sentAt),
+            ...goalRecords,
+            weightRecords: [
+              build.weightRecordOn(2, "2026-10-06", 72),
+              build.weightRecordOn(3, "2026-10-20", 71),
+            ],
           }),
+          replyAlarmAt(sentAt),
         );
       });
 
@@ -875,11 +1050,11 @@ describe("返事に渡す文脈の組み立て", () => {
 
   describe("渡さないもの", () => {
     let serialized: string;
-    beforeEach(() => {
+    beforeEach(async () => {
       const answeredAt = "2026-10-10T03:00:00Z";
       serialized = JSON.stringify(
-        assembleReplyContext(
-          build.source({
+        await buildReplyContextInAccount(
+          build.records({
             sentText: build.sentText(1, answeredAt),
             sentTexts: [build.conversation(2, "2026-10-10T01:00:00Z", "返事2")],
             meals: [
@@ -901,6 +1076,7 @@ describe("返事に渡す文脈の組み立て", () => {
               }),
             ],
           }),
+          replyAlarmAt(answeredAt),
         ),
       );
     });
