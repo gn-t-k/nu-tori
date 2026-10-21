@@ -91,6 +91,7 @@
 
   * { box-sizing: border-box; }
   body {
+    margin: 0;
     background: var(--background);
     color: var(--on-surface);
     font-family: var(--font);
@@ -121,7 +122,7 @@
   .badge-note { font-size: 14px; color: var(--text-secondary); }
 
   /* ヒーロー共通 */
-  .hero { padding-block: 24px 48px; }
+  .hero { padding-block: 24px 64px; }
   .hero h1 { font-size: clamp(30px, 5.6vw, 48px); line-height: 1.25; letter-spacing: -0.01em; font-weight: 700; }
   .hero .lead { font-size: clamp(18px, 2.1vw, 20px); color: var(--text-secondary); margin-top: 16px; max-width: 34em; }
   .hero .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 24px; }
@@ -140,10 +141,12 @@
   .hero-h2 .lead { margin-inline: auto; }
   .hero-h2 .actions { justify-content: center; flex-direction: column; }
   .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 48px; text-align: left; }
-  .step { background: var(--surface); border-radius: 12px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+  /* 地の色の決まり: ## の節ごとに、灰色の地と白い帯を交互にする。### と手順は箱に入れず、余白で区切る。
+     アプリの部品は、白い帯の中ではアプリと同じ灰色の板に載せ、灰色の地の上ではそのまま置く */
+  .step { display: grid; gap: 8px; align-content: start; }
   .step b { font-size: 18px; }
   .step > span { font-size: 16px; color: var(--text-secondary); }
-  .step .mini { margin-top: 8px; height: 112px; border-radius: 10px; background: var(--fill); display: grid; place-items: center; overflow: hidden; }
+  .step .mini { margin-top: 8px; height: 112px; border-radius: 12px; background: var(--surface); display: grid; place-items: center; overflow: hidden; }
 
   /* H3: グラフを主役に */
   .hero-h3 h1 { font-size: clamp(30px, 4.6vw, 44px); }
@@ -219,6 +222,13 @@
   .app-seg button { flex: 1; font: inherit; font-size: 13px; white-space: nowrap; padding: 0 8px; border: 0; background: transparent; color: var(--on-surface); border-radius: 7px; min-height: 32px; cursor: pointer; }
   .app-seg button[aria-pressed="true"] { background: var(--surface); font-weight: 600; }
   .est { display: grid; gap: 16px; }
+  /* 文章とその食事のかたまり（SentTextBubbleView）。上は own-message-bubble、下は写真の無い食事の行 */
+  .app-joined { border-radius: 18px; overflow: hidden; }
+  .app-joined .bubble { background: var(--primary); color: #fff; padding: 12px; font-size: 17px; line-height: 1.35; }
+  .app-joined .app-meal { border-radius: 0; }
+  .app-joined.small .bubble { padding: 8px 10px; font-size: 13px; }
+  .entries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; align-items: start; }
+  .entries > div { display: grid; gap: 8px; }
   .key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
   .est .share { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
   .calc { display: grid; gap: 16px; }
@@ -227,24 +237,14 @@
   .calc label output { color: var(--on-surface); font-variant-numeric: tabular-nums; }
   .calc input[type="range"] { width: 100%; accent-color: var(--primary); height: 32px; margin: 0; }
   .calc .formula { font-size: 14px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-  .feature.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  /* アプリの画面と同じ灰色の地に、白い一覧と知らせのカードを載せる。外のカードを白にしないで、箱を重ねない */
-  .feature.wide { background: transparent; }
-  .feature.wide .visual { background: transparent; padding: 0; min-height: 0; align-content: start; }
-  /* 1つの節だけ、幅いっぱいの白い帯にして並びに緩急を付ける。帯の中の見本は、アプリの灰色の地に載せる */
-  .feature.band { background: var(--surface); border-radius: 0; margin-inline: calc(50% - 50vw); padding-block: 48px; padding-inline: max(40px, calc(50vw - 480px)); }
-  .feature.band .visual { background: var(--background); padding: 16px; border-radius: 12px; }
   .est { max-width: 420px; width: 100%; justify-self: center; }
 
   /* 工夫の節 */
-  .features { padding-block: 24px 40px; }
+  .features, .faq { background: var(--surface); padding-block: 64px; }
   .section-title { font-size: clamp(24px, 3.4vw, 30px); font-weight: 700; line-height: 1.3; }
   .section-sub { color: var(--text-secondary); margin-top: 8px; font-size: 18px; max-width: 36em; }
-  .feature-list { display: grid; gap: 12px; margin-top: 32px; }
-  .feature {
-    background: var(--surface); border-radius: 18px; padding: 24px;
-    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); gap: 32px; align-items: start;
-  }
+  .feature-list { display: grid; gap: 64px; margin-top: 48px; }
+  .feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
   /* 見本が長くても、文は上にそろえて見本と並んで止まる */
   .feature > div:first-child { position: sticky; top: 24px; }
   .feature.no-visual { grid-template-columns: minmax(0, 1fr); }
@@ -252,34 +252,37 @@
   .feature .body { margin-top: 12px; display: grid; gap: 8px; max-width: 34em; }
   .feature .body p { font-size: 16px; }
   .fine { font-size: 14px; color: var(--text-secondary); }
-  .visual { border-radius: 12px; background: var(--fill); min-height: 150px; padding: 16px; display: grid; align-content: center; gap: 8px; font-size: 14px; }
+  /* 白い帯の中の、アプリの部品を載せる灰色の板 */
+  .visual { border-radius: 18px; background: var(--background); padding: 24px; display: grid; align-content: start; gap: 8px; font-size: 14px; }
   .kv { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
   .kv span:first-child { color: var(--text-secondary); }
   .price-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .price-box { background: var(--fill); border-radius: 10px; padding: 12px; text-align: center; }
+  .price-box { background: var(--surface); border-radius: 12px; padding: 12px; text-align: center; }
   .price-box b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
   .price-box span { font-size: 12px; color: var(--text-secondary); }
 
   /* 他のアプリを使ったことがある方へ */
-  .switchers { padding-block: 8px 32px; }
-  .switchers .box { background: var(--surface); border-radius: 18px; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+  .switchers { padding-block: 64px; }
   .eyebrow { font-size: 14px; color: var(--text-secondary); }
-  .compare { display: grid; gap: 10px; font-size: 14px; }
-  .compare .row { display: grid; grid-template-columns: 6em 1fr; gap: 8px; align-items: center; }
-  .compare .row span:first-child { color: var(--text-secondary); font-size: 14px; }
-  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .flow em { font-style: normal; background: var(--fill); border-radius: 9999px; padding: 2px 10px; font-size: 13px; }
-  .flow .arrow { color: var(--tertiary); }
+  .usual { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; color: var(--text-secondary); }
+  .usual em { font-style: normal; color: var(--on-surface); background: var(--surface); border-radius: 9999px; padding: 2px 10px; }
+  .flow3 { list-style: none; padding: 0; margin: 32px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; align-items: start; }
+  .flow3 li { display: grid; gap: 12px; }
+  .flow3 .n { font-size: 18px; font-weight: 700; }
+  .flow3 .n span { color: var(--primary); margin-right: 8px; font-variant-numeric: tabular-nums; }
+  .flow3 p { font-size: 16px; color: var(--text-secondary); }
+  /* 撮るところの絵。LP だけの絵で、アプリのカメラの画面ではない */
+  .shot { position: relative; border-radius: 18px; overflow: hidden; }
+  .shot img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; }
+  .shot::after { content: ""; position: absolute; left: 50%; bottom: 12px; width: 44px; height: 44px; margin-left: -22px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,0.3); }
 
   /* よくある質問（異論への答え） */
-  .faq { padding-block: 8px 32px; }
-  .faq dl { margin: 24px 0 0; display: grid; gap: 0; background: var(--surface); border-radius: 10px; overflow: hidden; }
-  .faq .qa { padding: 16px; border-top: 1px solid var(--separator); }
-  .faq .qa:first-child { border-top: 0; }
+  .faq dl { margin: 32px 0 0; display: grid; gap: 0; max-width: 44em; }
+  .faq .qa { padding-block: 24px; border-top: 1px solid var(--separator); }
   .faq dt { font-weight: 600; }
   .faq dd { margin: 4px 0 0; color: var(--text-secondary); font-size: 16px; }
 
-  .closing { padding-block: 16px 48px; text-align: center; }
+  .closing { padding-block: 64px; text-align: center; }
   .closing h2 { font-size: clamp(24px, 3vw, 30px); font-weight: 700; }
   .closing p { margin-top: 12px; }
 
@@ -318,9 +321,10 @@
 
   @media (max-width: 760px) {
     .feature > div:first-child { position: static; }
-    .feature.band { padding-block: 32px; }
+    .features, .faq, .switchers, .closing { padding-block: 48px; }
+    .feature-list { gap: 48px; }
     .app-seg button { font-size: 12px; }
-    .hero-h1 .grid, .hero-h3 .grid, .feature, .feature.wide, .switchers .box { grid-template-columns: minmax(0, 1fr); }
+    .hero-h1 .grid, .hero-h3 .grid, .feature, .flow3 { grid-template-columns: minmax(0, 1fr); }
     .steps, .pillars { grid-template-columns: minmax(0, 1fr); }
     .screen { max-width: 230px; }
     .proto-bar .current { display: none; }
@@ -430,19 +434,31 @@
       <p class="fine screen-caption">仮の画面。公開の LP では、撮った画面を Apple の端末の枠に入れる</p>`;
   }
 
+  // 料理の画面の「材料」の一覧（DishScreen）
+  function materials(key) {
+    const rows = MEALS[key].items.map(([name, k, q, unit]) => {
+      const src = T[k][0] ? `成分表 ${T[k][0]}` : '推定';
+      return `<div class="row"><span>${name}<small>${src}</small></span><span class="q">${q} ${unit}<span class="est-badge">推定</span></span></div>`;
+    }).join('');
+    return `<div><div class="app-list-head">材料</div><div class="app-list">${rows}</div></div>`;
+  }
+
+  // 文章とその食事のかたまり（SentTextBubbleView）。かたまりの外の「会話として送り直す」は、
+  // LP では何のことか伝わらないので描かない
+  function textMeal(key, said, time, opts = {}) {
+    const m = MEALS[key], t = totals(m);
+    return `<div class="app-joined${opts.small ? ' small' : ''}"><div class="bubble">${said}</div><div class="app-meal${opts.small ? ' small' : ''}"><div class="b"><span class="t"><span class="name">${m.dish}</span><span class="time">${time}</span><span class="nut">${nutLine(t)}</span></span><span class="chev" aria-hidden="true">›</span></div></div></div>`;
+  }
+
   // 撮った写真から推定した食事（読むだけ。材料の量の調整は初回の版に入らないので見せない）
   let estMeal = 'oyakodon';
   function estimate() {
     const m = MEALS[estMeal], t = totals(m);
-    const rows = m.items.map(([name, key, q, unit]) => {
-      const src = T[key][0] ? `成分表 ${T[key][0]}` : '推定';
-      return `<div class="row"><span>${name}<small>${src}</small></span><span class="q">${q} ${unit}<span class="est-badge">推定</span></span></div>`;
-    }).join('');
     return `
       <div class="est" id="est">
         <div class="app-seg" role="group" aria-label="写真を選ぶ">${Object.entries(MEALS).map(([k, x]) => `<button type="button" data-meal="${k}" aria-pressed="${k === estMeal}">${x.dish}</button>`).join('')}</div>
         ${mealCard(estMeal)}
-        <div><div class="app-list-head">材料</div><div class="app-list">${rows}</div></div>
+        ${materials(estMeal)}
         <div class="share">${ring(t, t.k / DAILY_GUIDE, 44, 7)}<span>1日の目安 ${fmt(DAILY_GUIDE)} kcal のうち ${Math.round(t.k / DAILY_GUIDE * 100)}%<br>${[['protein', 'P', t.p], ['fat', 'F', t.f], ['carb', 'C', t.c]].map(([v, l, g]) => `<span style="white-space:nowrap"><span class="key" style="background:var(--${v})"></span>${l} ${g.toFixed(1)} g</span>`).join('　')}</span></div>
       </div>`;
   }
@@ -616,7 +632,10 @@
       title: '撮るだけ。撮り忘れたら「昼にカレー」と書くだけ',
       body: `<p>写真から料理と材料と量を推し量り、栄養を出します。撮り忘れた食事は、書けば入ります。</p>
              <p>量が少しずれていても、直さなくてかまいません。1日の目安は体重の動きを見て合わせ直すので、ずれはそこでならされます。気になるときだけ、あとで直せます。</p>`,
-      visual: () => `<div class="visual" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;align-content:start"><span class="fine">撮った直後</span><span class="fine">食べ終わるころ</span>${mealCard('curry', { pending: true, small: true })}${mealCard('curry', { small: true })}</div>`,
+      visual: () => `<div class="visual"><div class="entries">
+        <div><span class="fine">撮ったとき</span>${mealCard('curry', { small: true })}</div>
+        <div><span class="fine">書いたとき</span>${textMeal('curry', '昼にカレー', '12:00', { small: true })}</div>
+      </div></div>`,
       note: notes(
         note('fact', `「入力・操作が面倒」計 65 件、「写真の推定がずれて手で直す」計 27 件（${comp}）。`),
         note('check', '「ずれは体重の動きでならされる」は ADR-0007 からの言い方。いつも同じ向きにずれるなら目安に吸収されるが、写真ごとにばらつくずれまで言い切れるか、開発者に確かめる。')
@@ -626,8 +645,6 @@
       title: '栄養は、日本食品標準成分表の値で数えます',
       body: `<p>料理を材料に分け、材料ごとに文部科学省の日本食品標準成分表の値を引いて数えます。どの食品の値を使ったかは、食事を開けば見られます。</p>
              <p class="fine">写真に栄養成分表示が写っていれば、その表示を使います。</p>`,
-      wide: true,
-      band: true,
       visual: () => `<div class="visual">${estimate()}</div>`,
       note: notes(
         note('fact', `日本食品標準成分表を説明文に書いているアプリは、調べた 11 本の中に無い（${comp} 問い2）。「食品が無い」の不満は、あすけん 7・MacroFactor 6・WiseMeal 12。`),
@@ -639,7 +656,6 @@
       title: '1日の目安は、毎週の体重の動きで直ります',
       body: `<p>毎週、その週の体重の傾向と食べた量から推定消費カロリーを出し直し、1日の目安を直します。</p>
              <p><b>最初の目安の出し方</b>：ヘルスケアに直前 28 日の食べた量と体重があれば、そこから逆算します。無ければ、身長・生まれた年・性別・活動量から式で出し、使うほど記録に合わせて直ります。</p>`,
-      wide: true,
       visual: () => `<div class="visual">${calc()}</div>`,
       note: notes(
         note('fact', `「目標・計算が合わない」はあすけん 8・カロミル 6・MacroFactor 4。MacroFactor の 4 件はどれも「目安が低すぎる」（${comp}）。毎週直す形でも消えないので、最初の目安の出し方を見せる。`),
@@ -674,7 +690,7 @@
     const items = o.keys.map(k => {
       const f = features[k];
       return `
-        <article class="feature${f.visual ? '' : ' no-visual'}${f.wide ? ' wide' : ''}${f.band ? ' band' : ''}">
+        <article class="feature${f.visual ? '' : ' no-visual'}">
           <div>
             <h3>${f.title}</h3>
             <div class="body">${f.body}</div>
@@ -692,23 +708,24 @@
       </div></section>`;
   }
 
+  // 撮る → 食べる → あとで見る・直す。絵は写真と、アプリの部品（待っている食事のカード、推定の済んだカードと材料）
   function renderSwitchers() {
     return `
-      <section class="switchers"><div class="wrap"><div class="box">
-        <div>
-          <span class="eyebrow">他のアプリを使ったことがある方へ</span>
-          <h2 class="section-title" style="margin-top:4px">撮ったら、確定を押さずに食べはじめられます</h2>
-          <p class="section-sub">写真を読むのは裏で進みます。候補を選んで確定する操作はありません。違っていたら、あとで食事を開いて直せます。</p>
-          ${notes(
-            note('fact', '調べた 5 本とも、結果を見て選ぶ・直す・確定する操作がある。差になりうるのは「待たなくてよい」より「確定の操作が要らない」のほう（「競合の撮ってから記録になるまでの流れを確かめる」）。'),
-            note('guess', '開発者の実感（n=1）からの仮説。ファーストビューに上げず、ここと、公開のあとの App Store のカスタムプロダクトページで試す（方針の 17。予約注文の期間に使えるかは Apple の文書で読み方が分かれる、AP4・AP7）。')
-          )}
-        </div>
-        <div class="compare">
-          <div class="row"><span>よくある流れ</span><div class="flow"><em>撮る</em><span class="arrow">→</span><em>待つ</em><span class="arrow">→</span><em>候補を選ぶ</em><span class="arrow">→</span><em>確定</em><span class="arrow">→</span><em>食べる</em></div></div>
-          <div class="row"><span>nu-tori</span><div class="flow"><em>撮る</em><span class="arrow">→</span><em>食べる</em><span class="arrow">→</span><em>あとで見る</em></div></div>
-        </div>
-      </div></div></section>`;
+      <section class="switchers"><div class="wrap">
+        <span class="eyebrow">他のアプリを使ったことがある方へ</span>
+        <h2 class="section-title" style="margin-top:4px">撮ったら、確定を押さずに食べはじめられます</h2>
+        <p class="section-sub">写真を読むのは裏で進みます。候補を選んで確定する操作はありません。</p>
+        <div class="usual">よくある流れ <em>撮る</em>→<em>待つ</em>→<em>候補を選ぶ</em>→<em>確定</em>→<em>食べる</em></div>
+        <ol class="flow3">
+          <li><div class="n"><span>1</span>撮る</div><div class="shot"><img src="${MEALS.oyakodon.img}" alt="${MEALS.oyakodon.alt}" width="800" height="600"></div><p>食べる前に1枚撮って、そのまま閉じます。</p></li>
+          <li><div class="n"><span>2</span>食べる</div>${mealCard('oyakodon', { pending: true })}<p>食べているあいだに、写真から料理と材料と量を読みます。</p></li>
+          <li><div class="n"><span>3</span>あとで見る・直す</div>${mealCard('oyakodon')}${materials('oyakodon')}<p>開けば、何をどれだけと読んだかが見られます。違っていたら、ここで直せます。</p></li>
+        </ol>
+        ${notes(
+          note('fact', '調べた 5 本とも、結果を見て選ぶ・直す・確定する操作がある。差になりうるのは「待たなくてよい」より「確定の操作が要らない」のほう（「競合の撮ってから記録になるまでの流れを確かめる」）。'),
+          note('guess', '開発者の実感（n=1）からの仮説。ファーストビューに上げず、ここと、公開のあとの App Store のカスタムプロダクトページで試す（方針の 17。予約注文の期間に使えるかは Apple の文書で読み方が分かれる、AP4・AP7）。')
+        )}
+      </div></section>`;
   }
 
   function renderFaq() {
