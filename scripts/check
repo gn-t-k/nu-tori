@@ -215,15 +215,28 @@ check_ios() {
         return 1
     fi
 
-    step "Xcode のプロジェクトの Package.resolved が NuToriCore と同じか"
-    local resolved="$ios/NuTori.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
-    if $fix; then
-        cp "$ios/NuToriCore/Package.resolved" "$resolved"
+    step "Xcode のプロジェクトの依存の版が AppDependencies の exact: と同じか"
+    if ! check_app_dependency_versions; then
+        return 1
     fi
-    if ! diff -u "$resolved" "$ios/NuToriCore/Package.resolved"; then
+
+    # AppDependencies は解かない。sentry-cocoa の xcframework（展開して約 3.1GB）を取らないため
+    step "Xcode のプロジェクトの Package.resolved が NuToriCore と AppDependencies を合わせたものと同じか"
+    local resolved="$ios/NuTori.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" merged
+    merged="$(mktemp)"
+    if ! merge_package_resolved "$ios/NuToriCore/Package.resolved" "$ios/AppDependencies/Package.resolved" > "$merged"; then
+        rm "$merged"
+        return 1
+    fi
+    if $fix; then
+        cp "$merged" "$resolved"
+    fi
+    if ! diff -u "$resolved" "$merged"; then
+        rm "$merged"
         echo "Xcode のプロジェクトの Package.resolved が古い。scripts/check ios --fix で写し直す" >&2
         return 1
     fi
+    rm "$merged"
 
     if command -v xcodebuild > /dev/null; then
         check_ios_app
@@ -231,6 +244,106 @@ check_ios() {
         check_ios_package
         echo "xcodebuild が無いので、アプリのビルドとテストは macOS の CI に任せる"
     fi
+}
+
+# AppDependencies の exact: の版と、Xcode のプロジェクトの同じ依存の参照の version を、文字だけで比べる（取ってこない）
+# マニフェストと project.pbxproj の読み方は scripts/update-swift-packages の exact_dependencies・set_xcode_package_version と同じ。片方を直したらもう片方も直す
+check_app_dependency_versions() {
+    local manifest="$ios/AppDependencies/Package.swift" project="$ios/NuTori.xcodeproj/project.pbxproj"
+    local url exact referenced compared=0 failed=false
+    while IFS=$'\t' read -r url exact; do
+        referenced="$(awk -v url="$url" '
+            index($0, "repositoryURL = \"" url "\";") > 0 { found = 1 }
+            found && /version = / {
+                sub(/.*version = /, "")
+                sub(/;.*/, "")
+                print
+                exit
+            }
+        ' "$project")"
+        compared=$((compared + 1))
+        if [ "$referenced" != "$exact" ]; then
+            echo "$url: AppDependencies は ${exact}、Xcode のプロジェクトは ${referenced:-（参照が無い）}" >&2
+            failed=true
+        fi
+    done < <(sed -nE 's/.*\.package\(url: "([^"]+)", exact: "([^"]+)"\).*/\1\t\2/p' "$manifest")
+    # マニフェストの書き方が変わって1つも読めないときに、比べずに通さない
+    if [ "$compared" -eq 0 ]; then
+        echo "ios/AppDependencies/Package.swift から .package(url: ..., exact: ...) の依存を読めない" >&2
+        return 1
+    fi
+    if $failed; then
+        echo "ios/NuTori.xcodeproj/project.pbxproj の参照の version を、ios/AppDependencies/Package.swift の exact: にそろえる（版の正本は AppDependencies）" >&2
+        return 1
+    fi
+}
+
+# 2つの Package.resolved の pins を、identity の順に並べた1つの Package.resolved にして出す
+# originHash は1つめのものを写す。-disableAutomaticPackageResolution のビルドは、Xcode のプロジェクトと合わない originHash でも通る（#606）
+# 同じ identity を違う中身（版、revision、location）で持っていたら、どちらかに決めずに、食い違った依存と2つの中身を出して落ちる
+merge_package_resolved() {
+    local first="$1" second="$2"
+    awk -v root="$root/" '
+        function value(line) {
+            sub(/^[^:]*: "/, "", line)
+            sub(/",?$/, "", line)
+            return line
+        }
+        function where(file) {
+            return substr(file, 1, length(root)) == root ? substr(file, length(root) + 1) : file
+        }
+        FNR == 1 { files++ }
+        files == 1 && /^  "originHash" : / { origin = $0 }
+        files == 1 && /^  "version" : / { format = $0 }
+        # pins の1つの記録は、4つ下げた { から } まで
+        /^    \{$/ { block = $0; identity = version = revision = location = ""; next }
+        block != "" {
+            line = $0
+            if (line ~ /^    \},?$/) {
+                block = block "\n    }"
+                if (identity in pins) {
+                    if (pins[identity] != block) {
+                        printf "%s: %s は %s（%s）、%s は %s（%s）。同じ依存は同じ版にそろえる\n", \
+                            identity, seenIn[identity], seenState[identity], seenLocation[identity], \
+                            where(FILENAME), version "・" revision, location > "/dev/stderr"
+                        conflict = 1
+                    }
+                } else {
+                    pins[identity] = block
+                    seenIn[identity] = where(FILENAME)
+                    seenState[identity] = version "・" revision
+                    seenLocation[identity] = location
+                    identities[count++] = identity
+                }
+                block = ""
+                next
+            }
+            block = block "\n" line
+            if (line ~ /^      "identity" : /) identity = value(line)
+            if (line ~ /^        "version" : /) version = value(line)
+            if (line ~ /^        "revision" : /) revision = value(line)
+            if (line ~ /^      "location" : /) location = value(line)
+        }
+        END {
+            if (conflict) exit 1
+            if (origin == "" || format == "") {
+                print "1つめの Package.resolved に originHash か version が無い" > "/dev/stderr"
+                exit 1
+            }
+            for (i = 1; i < count; i++) {
+                for (j = i; j > 0 && identities[j - 1] > identities[j]; j--) {
+                    swap = identities[j]; identities[j] = identities[j - 1]; identities[j - 1] = swap
+                }
+            }
+            print "{"
+            print origin
+            print "  \"pins\" : ["
+            for (i = 0; i < count; i++) print pins[identities[i]] (i < count - 1 ? "," : "")
+            print "  ],"
+            print format
+            print "}"
+        }
+    ' "$first" "$second"
 }
 
 # 全部は数分かかるので、機械で見分けられる決まりの破れを、書いた直後に早く見られるよう分けておく（--lint）

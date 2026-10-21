@@ -5,6 +5,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 ## 構成
 
 - 画面を持たないロジックは、ローカルの Swift パッケージ `NuToriCore/` に置き、SwiftUI・UIKit・HealthKit・SwiftData を import しない。下の「端末で行うもの」の計算と判定と、送り待ちの判断がここに入る。Linux のエージェントと CI でも型検査とテストを回すため
+- アプリのターゲットだけが使う依存の版の正本は、ターゲットを持たないパッケージ `AppDependencies/` に置き、`NuToriCore/` の依存にしない。理由は `AppDependencies/Package.swift` の先頭、上げ方は `docs/agents/dependencies.md`
 - 記録の種類（今は体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向、送った文章、送った文章の状態、返事、目標、1日の目安、推定消費カロリー、週の見直し）ごとに、フォルダを切る。`NuToriCore/Sources/NuToriCore/`・`NuToriCore/Sources/NuToriAPI/`・`NuTori/`（アプリのターゲット）のそれぞれに `WeightRecord/`、`AccountSettings/` を置き、その種類だけにかかる型・判断・SwiftData のモデル・画面を入れる。テストのターゲットも同じフォルダ名でそろえる。同期の共通のもの（同期の働き、同期の置き場の型、送り待ち）は `Sync/`、タイムラインは `Timeline/` に残す。機能を第一の軸にする切り方を採らなかった理由は「[コードの置き方を、機能ごとに縦に切るかを決める](https://github.com/gn-t-k/nu-tori/issues/153)」の解決コメント
 - 端末の SwiftData は2つの置き場に分ける（[ADR-0022](../docs/adr/0022-device-cache-and-pending-writes-in-separate-stores.md)）。`SwiftDataSyncStore` が両方を持つ
   - キャッシュ（`CacheStore`）: 記録（知らせ、いつもの時刻、体重の傾向、送った文章の状態、返事、目標、1日の目安、推定消費カロリー、週の見直しを含む）、アカウントの設定、同期の状態（通し番号など）、ヘルスケアに書いた料理の控え（`CachedHealthDishWrite`。書いた料理を書き直さず、消えた料理をヘルスケアから消すため）。サーバーの写しなので移行を持たず、形が合わず開けないときは置き場ごと消して全部取り直す（取り終えるまでタイムラインは初回の取得と同じ読み込み中）。モデルは `CacheStoreSchema` に並べる
