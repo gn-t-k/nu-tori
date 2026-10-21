@@ -113,26 +113,26 @@ export const subscriptionRoutes = new OpenAPIHono<{ Bindings: Env }>()
     }),
     async (c) => {
       const { requestId, signedTransaction, trigger } = c.req.valid("json");
-      const read = await R.pipe(
-        verifyAppStoreTransaction(signedTransaction, readAppStoreRootCertificate()),
-        R.andThen((transaction) =>
-          readAppStoreSubscriptionTransaction(transaction, c.env.APPLE_BUNDLE_ID),
-        ),
+      const verified = await verifyAppStoreTransaction(
+        signedTransaction,
+        readAppStoreRootCertificate(),
       );
+      if (R.isFailure(verified)) {
+        captureException(
+          new SubscriptionTransactionReportFailedError({ code: "transaction_unverified" }),
+        );
+        return c.json({ code: "transaction_unverified" as const }, 422);
+      }
+      const read = readAppStoreSubscriptionTransaction(verified.value, c.env.APPLE_BUNDLE_ID);
       if (R.isFailure(read)) {
-        const code = match(read.error)
-          .with(
-            { name: "AppStoreSignatureUnverifiedError" },
-            () => "transaction_unverified" as const,
-          )
-          .with({ name: "SubscriptionTransactionRejectedError" }, ({ reason }) =>
-            match(reason)
-              .with("bundle_id_mismatch", () => "transaction_unverified" as const)
-              .with("environment_unsupported", "product_unknown", (other) => other)
-              .exhaustive(),
-          )
+        const code = match(read.error.reason)
+          .with("bundle_id_mismatch", () => "transaction_unverified" as const)
+          .with("environment_unsupported", "product_unknown", (other) => other)
           .exhaustive();
-        captureException(new SubscriptionTransactionReportFailedError({ code }));
+        // Sandbox の取引は、開発用のビルドで買うたびに本番のサーバーにも届くので、Workers Logs にだけ出す
+        if (verified.value.environment !== "Sandbox") {
+          captureException(new SubscriptionTransactionReportFailedError({ code }));
+        }
         return c.json({ code }, 422);
       }
       const transaction = read.value;
