@@ -12,7 +12,7 @@ import { replyWithTextStream } from "./testing/reply-with-text-stream";
 // "account-1" の SHA-256（16 進）。ハッシュの正しさは、独立に計算した値で確かめる
 const hashOfAccount1 = "07e998012c1137decdf3efbbb1c3ee6d79b015638cbc197bdbcce1875de4faad";
 
-describe("createAnthropicConversationProvider", () => {
+describe("Anthropic の読み分けと返事の提供元", () => {
   describe("読み分け", () => {
     describe("食事と答えたとき", () => {
       let provider: ConversationProvider;
