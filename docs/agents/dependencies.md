@@ -57,9 +57,9 @@ flowchart TD
 
 上げるときは、変更履歴で API の変わったところを確かめ、手で上げる。
 
-1. `ios/NuToriCore/Package.swift` か `ios/OpenAPIGenerator/Package.swift` の `exact:` を書き換える。posthog-ios と sentry-cocoa は、Xcode のプロジェクト（`ios/NuTori.xcodeproj/project.pbxproj`）の参照の `version` も同じ版にする（版の正本は `NuToriCore`）
-2. `swift package update --package-path <パッケージ>` で `Package.resolved` を書き直す
-3. `scripts/check ios --fix` で、Xcode のプロジェクトの `Package.resolved` に写し、生成したクライアントを生成し直す。生成し直しただけの差分は別のコミットにする
+1. `ios/NuToriCore/Package.swift`・`ios/AppDependencies/Package.swift`・`ios/OpenAPIGenerator/Package.swift` のどれかの `exact:` を書き換える。`AppDependencies` の依存（posthog-ios と sentry-cocoa）は、Xcode のプロジェクト（`ios/NuTori.xcodeproj/project.pbxproj`）の参照の `version` も同じ版にする（版の正本は `AppDependencies`。食い違うと `scripts/check ios` が落ちる）
+2. `swift package update --package-path <パッケージ>` で `Package.resolved` を書き直す。`AppDependencies` を手で書き直したら、取った sentry-cocoa の xcframework を残さないよう `ios/AppDependencies/.build` を消す（`scripts/update-swift-packages` は消す）
+3. `scripts/check ios --fix` で、`NuToriCore` と `AppDependencies` の `Package.resolved` を合わせて Xcode のプロジェクトの `Package.resolved` に写し、生成したクライアントを生成し直す。2つが同じ依存を違う版で持っていると落ちるので、そろえてから回す。生成し直しただけの差分は別のコミットにする
 
 この PR は作者が人なので、check が通ったら人がマージする。
 

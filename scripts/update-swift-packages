@@ -14,7 +14,7 @@ main() {
 
     local manifest url current name held found updated updates="" majors=""
     local same_major_latest same_major_latest_tag newer_major_latest newer_major_latest_tag
-    for manifest in "$ios/NuToriCore/Package.swift" "$ios/OpenAPIGenerator/Package.swift"; do
+    for manifest in "$ios/NuToriCore/Package.swift" "$ios/AppDependencies/Package.swift" "$ios/OpenAPIGenerator/Package.swift"; do
         updated=false
         while IFS=$'\t' read -r url current; do
             name="$(dependency_name "$url")"
@@ -35,6 +35,10 @@ main() {
         done < <(exact_dependencies "$manifest")
         if $updated; then
             swift package update --package-path "$(dirname "$manifest")"
+        fi
+        # AppDependencies は sentry-cocoa の xcframework（展開して約 3.1GB）を取る。scripts/check はここを解かないので、残さない
+        if [ "$manifest" = "$ios/AppDependencies/Package.swift" ]; then
+            rm -rf "$ios/AppDependencies/.build"
         fi
     done
 
@@ -57,7 +61,7 @@ main() {
 print_usage() {
     cat << 'USAGE'
 使い方: scripts/update-swift-packages <書き出すフォルダ>
-  ios/NuToriCore と ios/OpenAPIGenerator のマニフェストの exact: の依存と、Xcode のプロジェクトの同じ依存の版を、
+  ios/NuToriCore・ios/AppDependencies・ios/OpenAPIGenerator のマニフェストの exact: の依存と、Xcode のプロジェクトの同じ依存の版を、
   今の major の中の最新の正式な版に書き換え、Package.resolved と生成したクライアントを揃える（scripts/check ios --fix）
   上げたものがあれば <書き出すフォルダ>/pull-request.md に PR の本文を、
   新しい major があれば <書き出すフォルダ>/majors.tsv に「名前 今の版 新しい版 リリースのページ」をタブ区切りで書き出す
@@ -66,6 +70,7 @@ USAGE
 }
 
 # マニフェストの .package(url: "...", exact: "...") を「URL<タブ>版」で並べる
+# 読み方は scripts/check の check_app_dependency_versions と同じ。片方を直したらもう片方も直す
 exact_dependencies() {
     sed -nE 's/.*\.package\(url: "([^"]+)", exact: "([^"]+)"\).*/\1\t\2/p' "$1"
 }
@@ -155,6 +160,7 @@ replace_literal() {
 }
 
 # repositoryURL のあとの requirement の version を書き換える
+# 探し方は scripts/check の check_app_dependency_versions と同じ。片方を直したらもう片方も直す
 set_xcode_package_version() {
     awk -v url="$1" -v new="$2" '
         index($0, "repositoryURL = \"" url "\";") > 0 { found = 1 }
