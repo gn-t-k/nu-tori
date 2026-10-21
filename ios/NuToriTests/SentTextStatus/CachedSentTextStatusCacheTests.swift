@@ -86,7 +86,7 @@ struct CachedSentTextStatusCacheTests {
                 try cache.upsert(replied)
 
                 let saved = try cache.savedRecords()
-                #expect(saved.count == 7)
+                #expect(saved.count == others.count + 1)
                 #expect(Set(saved) == others.union([replied]))
             }
         }
