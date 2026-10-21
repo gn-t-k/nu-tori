@@ -9,7 +9,7 @@ import Testing
 struct TermsAgreementPromptTests {
     @Suite("開いたとき")
     struct OnOpen {
-        @Test("同意が要れば、シートに出す版を返し、シートを出したことを PostHog に送ること")
+        @Test("同意が要れば、シートに出す版を返し、出す前には PostHog に送らないこと")
         func showsSheetWhenRequired() async {
             let analytics = AnalyticsSessionMock.ok()
             let prompt = TermsAgreementPrompt.fixture(
@@ -19,7 +19,7 @@ struct TermsAgreementPromptTests {
             let sheet = await prompt.sheetOnOpen()
 
             #expect(sheet == TermsAgreementSheet(termsVersion: "1"))
-            #expect(analytics.captured == [.termsAgreementSheetShown])
+            #expect(analytics.captured.isEmpty)
         }
 
         @Test("同意が要らなければ、シートを出さず、PostHog にも送らないこと")
@@ -71,6 +71,21 @@ struct TermsAgreementPromptTests {
 
             #expect(offline == nil)
             #expect(online == TermsAgreementSheet(termsVersion: "1"))
+        }
+    }
+
+    @Suite("シートを出したとき")
+    struct Presented {
+        @Test("シートを出したことを PostHog に送ること")
+        func capturesSheetShown() async {
+            let analytics = AnalyticsSessionMock.ok()
+            let prompt = TermsAgreementPrompt.fixture(
+                transport: .termsAgreement(agreementRequired: true, termsVersion: "1"),
+                analytics: analytics)
+
+            await prompt.sheetPresented()
+
+            #expect(analytics.captured == [.termsAgreementSheetShown])
         }
     }
 

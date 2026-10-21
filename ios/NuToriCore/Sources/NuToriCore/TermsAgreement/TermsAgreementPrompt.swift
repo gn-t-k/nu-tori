@@ -19,8 +19,12 @@ public actor TermsAgreementPrompt {
         guard
             case .required(let termsVersion) = try? await client.termsAgreementRequirement()
         else { return nil }
-        await analytics.capture(.termsAgreementSheetShown)
         return TermsAgreementSheet(termsVersion: termsVersion)
+    }
+
+    /// シートを画面に出した。問うあいだにサインインの画面に替わって出さなかったシートは数えない
+    public func sheetPresented() async {
+        await analytics.capture(.termsAgreementSheetShown)
     }
 
     /// 「同意して続ける」を押した。その場の要求で同意を送る。
