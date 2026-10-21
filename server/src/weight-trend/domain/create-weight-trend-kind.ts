@@ -1,8 +1,7 @@
 import { createServerOnlyKind } from "../../domain/sync-ledger/create-server-only-kind";
 import type { RecordKind } from "../../domain/sync-ledger/record-kind";
-import { readDailyWeights } from "./read-daily-weights";
 import type { WeightRecordStore } from "../../weight-record/domain/weight-record-store";
-import { computeWeightTrend } from "./compute-weight-trend";
+import { readWeightTrend } from "./read-weight-trend";
 import type { WeightTrend } from "./weight-trend";
 import { weightTrendRecordId } from "./weight-trend-record-id";
 
@@ -17,7 +16,7 @@ export const createWeightTrendKind = (
     follows: { source: "weight_record", afterSourceApplied: () => [weightTrendRecordId] },
     whenGone: "absence",
     find: () => {
-      const dailyWeights = readDailyWeights(weightRecordStore);
-      return dailyWeights.length === 0 ? undefined : computeWeightTrend(dailyWeights);
+      const weightTrend = readWeightTrend(weightRecordStore);
+      return weightTrend.length === 0 ? undefined : weightTrend;
     },
   });

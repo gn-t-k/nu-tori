@@ -9,8 +9,7 @@ import type { MealEstimationStatus } from "../../../meal-estimation-status/domai
 import type { SentText } from "../../../sent-text/domain/sent-text";
 import { computeDailyRepresentativeWeights } from "../../../weight-record/domain/compute-daily-representative-weights";
 import type { WeightRecord } from "../../../weight-record/domain/weight-record";
-import { createWeightTrendKind } from "../../../weight-trend/domain/create-weight-trend-kind";
-import { weightTrendRecordId } from "../../../weight-trend/domain/weight-trend-record-id";
+import { readWeightTrend } from "../../../weight-trend/domain/read-weight-trend";
 import type { MealEstimationProgress } from "../reply-context";
 import type { buildReplyContext } from "./build-reply-context";
 import type { ReplyContextSource, ReplyContextSourceMeal } from "./reply-context-source";
@@ -26,7 +25,6 @@ export const readReplyContextSource = (
 ): ReplyContextSource => {
   const from = new Date(sentText.sentAt.getTime() - sourceDays * millisecondsPerDay);
   const today = computeCalendarDayInTimeZone(sentText.sentAt, sentText.timeZone);
-  const weightTrend = createWeightTrendKind(stores.weightRecord).readCurrent(weightTrendRecordId);
   return {
     sentText,
     sentTexts: stores.sentText.findSentSince(from).map((other) => ({
@@ -39,7 +37,7 @@ export const readReplyContextSource = (
       .findIdsSentOrEatenSince(from)
       .flatMap((mealId) => readMeal(stores, mealId, now)),
     weightRecords: readWeightRecords(stores, from, now),
-    weightTrend: weightTrend.status === "value" ? weightTrend.value : [],
+    weightTrend: readWeightTrend(stores.weightRecord),
     weightRecordDays: computeDailyRepresentativeWeights(
       stores.weightRecord.findAllInMeasuredOrder(),
     ).map(({ calendarDay }) => calendarDay),
