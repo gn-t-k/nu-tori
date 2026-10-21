@@ -3,11 +3,9 @@ import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
-import { resumeHeldEstimations } from "../../estimation/domain/resume-held-estimations";
-import { createWrittenFactUsageEvents } from "./create-written-fact-usage-events";
 import type { AppStoreSubscriptionTransaction } from "./read-app-store-subscription-transaction";
 import type { SubscriptionTransactionStore } from "./subscription-transaction-store";
-import { writeAppStoreTransaction } from "./write-app-store-transaction";
+import { writeReceivedSubscriptionFacts } from "./write-received-subscription-facts";
 
 // 署名を確かめ、案内を引いた App Store のサーバー通知のうち、書くのに使う値
 export type AppStoreServerNotificationReceipt = {
@@ -41,12 +39,12 @@ export const receiveAppStoreServerNotification = (
   notification: AppStoreServerNotificationReceipt,
   now: Date,
 ): { result: AppStoreServerNotificationResult; usageEvents: UsageEvent[] } => {
-  const { subscriptionTransaction: store, records } = stores;
-  const firstSignInId = records.subscriptionStatus.findFacts()?.firstSignInId;
+  const { subscriptionTransaction: store } = stores;
+  const firstSignInId = stores.records.subscriptionStatus.findFacts()?.firstSignInId;
   if (firstSignInId === undefined) {
     throw new Error("最初のサインインの無いアカウントに App Store のサーバー通知が届いた");
   }
-  return writeRecordChanges(({ addChange, estimationAt }) => {
+  return writeRecordChanges((writes) => {
     if (store.hasNotificationReceipt(notification.notificationUuid)) {
       return { result: "duplicate", usageEvents: [] };
     }
@@ -57,62 +55,51 @@ export const receiveAppStoreServerNotification = (
       return { result: "awaiting_revocation", usageEvents: [] };
     }
     const receiptId = generateRecordId();
-    store.insertReceipt({ id: receiptId, receivedAt: now });
-    const { subscriptionId, subscriptionTransactionId, wroteTransaction, wroteRevocation } =
-      writeAppStoreTransaction(store, receiptId, notification.transaction);
-    store.insertNotificationReceipt({
-      subscriptionReceiptId: receiptId,
-      subscriptionId,
-      notificationUuid: notification.notificationUuid,
-      notificationType: notification.notificationType,
-      notificationSubtype: notification.notificationSubtype,
-    });
-    const wroteKindFact = match(notification)
-      .with({ notificationType: "DID_FAIL_TO_RENEW" }, ({ notificationSubtype }) => {
-        // 運んだ取引は、更新に失敗した期間の前の期間の取引
-        store.insertBillingFailure({
-          id: generateRecordId(),
-          subscriptionTransactionId,
+    const { usageEvents } = writeReceivedSubscriptionFacts(
+      stores,
+      writes,
+      { receiptId, firstSignInId, transaction: notification.transaction, now },
+      ({ subscriptionId, subscriptionTransactionId }) => {
+        store.insertNotificationReceipt({
           subscriptionReceiptId: receiptId,
-          failedAt: notification.signedAt,
-          gracePeriodExpiresAt: match(notificationSubtype)
-            .with("GRACE_PERIOD", () => notification.gracePeriodExpiresAt)
-            .otherwise(() => undefined),
+          subscriptionId,
+          notificationUuid: notification.notificationUuid,
+          notificationType: notification.notificationType,
+          notificationSubtype: notification.notificationSubtype,
         });
-        return true;
-      })
-      .with({ notificationType: "REFUND_REVERSED" }, () => {
-        for (const revocationId of reversedRevocationIds ?? []) {
-          store.insertRevocationReversal({
-            subscriptionTransactionRevocationId: revocationId,
-            subscriptionReceiptId: receiptId,
-            reversedAt: notification.signedAt,
-          });
-        }
-        return true;
-      })
-      // 取引と取り消し（REFUND・REVOKE の取引の revocationDate）は、運んだ取引の写しを書くときに書いた。
-      // EXPIRED・GRACE_PERIOD_EXPIRED などは受け取りだけ（終わりは事実に持たず導出する）
-      .with({ notificationType: P.string }, () => false)
-      .exhaustive();
-    if (!wroteTransaction && !wroteRevocation && !wroteKindFact) {
-      return { result: "written", usageEvents: [] };
-    }
-    addChange({ recordType: "subscription_status", recordId: firstSignInId });
-    // 使えるかを書いた事実で判定するので、事実の行のあとに呼ぶ
-    resumeHeldEstimations(records, estimationAt(now), now);
-    return {
-      result: "written",
-      usageEvents: createWrittenFactUsageEvents(
-        records,
-        notification.transaction,
-        {
-          wroteTransaction,
-          wroteRevocation,
-        },
-        now,
-      ),
-    };
+        return (
+          match(notification)
+            .with({ notificationType: "DID_FAIL_TO_RENEW" }, ({ notificationSubtype }) => {
+              // 運んだ取引は、更新に失敗した期間の前の期間の取引
+              store.insertBillingFailure({
+                id: generateRecordId(),
+                subscriptionTransactionId,
+                subscriptionReceiptId: receiptId,
+                failedAt: notification.signedAt,
+                gracePeriodExpiresAt: match(notificationSubtype)
+                  .with("GRACE_PERIOD", () => notification.gracePeriodExpiresAt)
+                  .otherwise(() => undefined),
+              });
+              return true;
+            })
+            .with({ notificationType: "REFUND_REVERSED" }, () => {
+              for (const revocationId of reversedRevocationIds ?? []) {
+                store.insertRevocationReversal({
+                  subscriptionTransactionRevocationId: revocationId,
+                  subscriptionReceiptId: receiptId,
+                  reversedAt: notification.signedAt,
+                });
+              }
+              return true;
+            })
+            // 取引と取り消し（REFUND・REVOKE の取引の revocationDate）は、運んだ取引の写しを書くときに書いた。
+            // EXPIRED・GRACE_PERIOD_EXPIRED などは受け取りだけ（終わりは事実に持たず導出する）
+            .with({ notificationType: P.string }, () => false)
+            .exhaustive()
+        );
+      },
+    );
+    return { result: "written", usageEvents };
   });
 };
 

@@ -7,14 +7,12 @@ import type { RecordType } from "../../domain/record-type";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { EstimationTarget } from "../../estimation/domain/estimation-target";
-import { resumeHeldEstimations } from "../../estimation/domain/resume-held-estimations";
 import { createMealEstimationStatusKind } from "../../meal-estimation-status/domain/create-meal-estimation-status-kind";
 import { createSubscriptionStatusKind } from "../../subscription-status/domain/create-subscription-status-kind";
-import { createWrittenFactUsageEvents } from "./create-written-fact-usage-events";
 import type { AppStoreSubscriptionTransaction } from "./read-app-store-subscription-transaction";
 import type { SubscriptionTransactionReportTrigger } from "./subscription";
 import type { SubscriptionTransactionStore } from "./subscription-transaction-store";
-import { writeAppStoreTransaction } from "./write-app-store-transaction";
+import { writeReceivedSubscriptionFacts } from "./write-received-subscription-facts";
 
 export type SubscriptionTransactionReport = {
   // 端末が振った要求の ID。受け取りの ID にし、冪等の鍵にする
@@ -58,38 +56,23 @@ export const reportSubscriptionTransaction = (
     throw new Error("最初のサインインの無いアカウントに取引が届いた");
   }
   const written = writeRecordChanges(
-    ({
-      addChange,
-      estimationAt,
-    }): { resumedTargets: EstimationTarget[]; usageEvents: UsageEvent[] } => {
+    (writes): { resumedTargets: EstimationTarget[]; usageEvents: UsageEvent[] } => {
       if (store.hasReceipt(report.requestId)) {
         return { resumedTargets: [], usageEvents: [] };
       }
-      store.insertReceipt({ id: report.requestId, receivedAt: now });
-      const { subscriptionTransactionId, wroteTransaction, wroteRevocation } =
-        writeAppStoreTransaction(store, report.requestId, report.transaction);
-      store.insertTransactionReportReceipt({
-        subscriptionReceiptId: report.requestId,
-        subscriptionTransactionId,
-        reportTrigger: report.trigger,
-      });
-      if (!wroteTransaction && !wroteRevocation) {
-        return { resumedTargets: [], usageEvents: [] };
-      }
-      addChange({ recordType: "subscription_status", recordId: firstSignInId });
-      return {
-        // 使えるかを書いた取引で判定するので、取引の行のあとに呼ぶ
-        resumedTargets: resumeHeldEstimations(records, estimationAt(now), now),
-        usageEvents: createWrittenFactUsageEvents(
-          records,
-          report.transaction,
-          {
-            wroteTransaction,
-            wroteRevocation,
-          },
-          now,
-        ),
-      };
+      return writeReceivedSubscriptionFacts(
+        stores,
+        writes,
+        { receiptId: report.requestId, firstSignInId, transaction: report.transaction, now },
+        ({ subscriptionTransactionId }) => {
+          store.insertTransactionReportReceipt({
+            subscriptionReceiptId: report.requestId,
+            subscriptionTransactionId,
+            reportTrigger: report.trigger,
+          });
+          return false;
+        },
+      );
     },
   );
   return {
