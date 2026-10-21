@@ -2,33 +2,24 @@
 # 作業ツリーが origin/main より遅れていたら知らせる。クラウドでは続けたセッション（resume・compact・clear）で、
 # 手元（Mac）では始めたときも続けたときも見る。
 # 長いセッションのあいだに main が進むと、古い版の働き方の文書を読んでしまうため。
-# 手元の worktree は古い main から作られることがあり、まだ main に無い道具（scripts/clean-builds など）を探して止まったため、取り込ませる
+# 手元の worktree は古い main から作られることがあり、main には入ったがその worktree にはまだ無い道具（scripts/clean-builds など）を探して止まったため、取り込ませる
 set -euo pipefail
 
-source=$(jq -r '.source // empty' 2>/dev/null || true)
+event_source=$(jq -r '.source // empty' 2>/dev/null || true)
 remote=false
 if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
   remote=true
 fi
 
 # クラウドで始めたときは、main から取ったばかりなので見ない
-if $remote && [ "$source" = startup ]; then
+if $remote && [ "$event_source" = startup ]; then
   exit 0
 fi
 
 cd "$CLAUDE_PROJECT_DIR"
 
-# macOS には timeout コマンドが無い
-fetch_main() {
-  if command -v timeout > /dev/null; then
-    timeout 30 git fetch -q origin main
-  else
-    git fetch -q origin main
-  fi
-}
-
-# 取りに行けなくてもセッションは止めない
-if ! fetch_main 2>/dev/null; then
+# 取りに行けなくてもセッションは止めない。待ちすぎは settings.json の timeout で打ち切る
+if ! git fetch -q origin main 2>/dev/null; then
   exit 0
 fi
 

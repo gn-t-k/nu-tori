@@ -53,8 +53,9 @@ GitHub Issueを作る。
 
 1. 調べたことを `docs/research/<題>.md` に置き、「調査: <結論>（#<チケット>）」のコミットにして PR を出す
 2. CI が通ったら merge する
-3. チケットに解決コメントを書いて閉じる。結論と問いごとの答えを書き、調べたファイルは main のリンク（`https://github.com/gn-t-k/nu-tori/blob/main/docs/research/<題>.md`）で指す。マップの子なら、上の「wayfinderの操作」の「解決」のとおりマップの索引にも足す
+3. チケットに解決コメントを書く。結論と問いごとの答えを書き、調べたファイルは main のリンク（`https://github.com/gn-t-k/nu-tori/blob/main/docs/research/<題>.md`）で指す
 4. チケットの本文が、調べたことを使う Issue（親の Issue や、決定を待つ Issue）を名指していたら、その Issue に、解決コメントを指す1行のコメントを足す
+5. チケットを閉じる。マップの子なら、上の「wayfinderの操作」の「解決」のとおりマップの索引にも足す
 
 ## 作業を先送りする
 

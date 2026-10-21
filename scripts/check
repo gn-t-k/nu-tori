@@ -72,13 +72,13 @@ pick_targets() {
     done
 }
 
-# 変わったファイルの一覧（$2）のうち、対象（$1）に当たるものを出す
 target_files() {
-    local paths="$1/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
+    local target="$1" files="$2"
+    local paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
     # アプリの API のクライアントは、サーバーの OpenAPI の文書から生成する
-    if [ "$1" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
+    if [ "$target" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
     # 文書（*.md）だけの変更では、確かめるものが無い
-    grep -vE '\.md$' <<< "$2" | grep -E "^($paths)" || true
+    grep -vE '\.md$' <<< "$files" | grep -E "^($paths)" || true
 }
 
 # CI がまだ見ていない分（まだ push していない変更と作業中の変更）が関わる対象だけを確かめる
@@ -88,7 +88,7 @@ check_changed() {
     upstream="$(git -C "$root" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null)" ||
         upstream=origin/main
     base="$(git -C "$root" merge-base "$upstream" HEAD 2> /dev/null)" || base=""
-    if [ -z "$base" ] || ! files="$(unpushed_files "$base")"; then
+    if [ -z "$base" ] || ! files="$(unpushed_files_except_main "$base")"; then
         echo "${upstream} と比べられないので、server と ios の両方を確かめる"
         check_target server
         check_target ios
@@ -109,7 +109,7 @@ check_changed() {
     if $run_server; then
         check_target server
         # --fix が server/openapi.json を書き出し直すと、アプリの API のクライアントも生成し直す
-        if ! $run_ios && files="$(unpushed_files "$base")" &&
+        if ! $run_ios && files="$(unpushed_files_except_main "$base")" &&
             [[ "$(pick_targets <<< "$files")" == *ios=true* ]]; then
             echo "server の確かめのあとに ios に関わる変更（server/openapi.json など）があるので、ios も確かめる"
             run_ios=true
@@ -129,7 +129,7 @@ changed_files() {
 
 # push 先がまだ main を取り込んでいないと、main を取り込んだだけのファイルも push 先と違って見える。
 # それらは origin/main と同じ中身で、CI が main で確かめているので除く
-unpushed_files() {
+unpushed_files_except_main() {
     local files from_main
     files="$(changed_files "$1")" || return 1
     if ! from_main="$(git -C "$root" diff --name-only --no-renames origin/main 2> /dev/null)"; then
@@ -143,15 +143,15 @@ $(git -C "$root" ls-files --others --exclude-standard)"
 
 # 確かめる理由が見えるよう、当たったファイルを先頭の3つまで出す
 report_target() {
-    local matched count
-    if ! $2; then
-        echo "  ${1}: 飛ばす（関わる変更が無い）"
+    local target="$1" run="$2" files="$3" matched count
+    if ! $run; then
+        echo "  ${target}: 飛ばす（関わる変更が無い）"
         return
     fi
-    matched="$(target_files "$1" "$3")"
+    matched="$(target_files "$target" "$files")"
     # macOS の wc は数の前に空白を付ける
     count="$(wc -l <<< "$matched" | tr -d ' ')"
-    echo "  ${1}: 確かめる（関わる変更 ${count} 件）"
+    echo "  ${target}: 確かめる（関わる変更 ${count} 件）"
     head -n 3 <<< "$matched" | sed 's/^/    /'
     if [ "$count" -gt 3 ]; then
         echo "    ほか $((count - 3)) 件"
