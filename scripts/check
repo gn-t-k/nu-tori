@@ -170,6 +170,14 @@ check_ios() {
         return 1
     fi
 
+    step "画面ごとにプレビューのファイルを置いているか"
+    missing="$(missing_screen_previews "$ios/NuTori")"
+    if [ -n "$missing" ]; then
+        echo "$missing" >&2
+        echo "上の画面と同じフォルダに、右のファイルを置く（docs/agents/languages/swift.md「状態ごとのプレビュー」）" >&2
+        return 1
+    fi
+
     step "Xcode のプロジェクトの依存が exactVersion か"
     if grep -A2 'requirement = {' "$ios/NuTori.xcodeproj/project.pbxproj" |
         grep 'kind = ' | grep -v 'kind = exactVersion'; then
@@ -583,6 +591,21 @@ missing_ui_test_screenshots() {
         !/^[[:space:]]*\/\// && /attachScreenshot\(/ { shot = 1 }
         END { report() }
     ' "$@"
+}
+
+# 名前が Screen・Sheet・Container で終わる View のうち、同じフォルダに <View>+Previews.swift が無いものを「ファイル: 置くファイル」の形で出す。<画面>Container は読んだ値を <画面> に渡すだけなので、<画面> のプレビューを探す
+missing_screen_previews() {
+    local file name preview
+    # 1件も当たらないとき（grep が 1 で終わる）も、pipefail で落とさない
+    { grep -rE --include='*.swift' \
+        '^[[:space:]]*([a-z]+[[:space:]]+)*struct [A-Za-z0-9_]+(Screen|Sheet|Container)[[:space:]]*(<[^>]*>)?[[:space:]]*:([^{]*,)?[[:space:]]*View[[:space:]]*([,{]|$)' "$1" || [ $? -eq 1 ]; } |
+        sed -E 's/^([^:]+):.*struct ([A-Za-z0-9_]+).*/\1:\2/' |
+        while IFS=: read -r file name; do
+            preview="$(dirname "$file")/${name%Container}+Previews.swift"
+            if [ ! -e "$preview" ]; then
+                echo "${file#"$root"/}: ${preview#"$root"/}"
+            fi
+        done
 }
 
 # いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
