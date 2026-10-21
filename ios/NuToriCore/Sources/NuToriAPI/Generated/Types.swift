@@ -73,6 +73,20 @@ internal protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /v1/sent-texts/{sentTextId}/reply-stream`.
     /// - Remark: Generated from `#/paths//v1/sent-texts/{sentTextId}/reply-stream/get(watchReply)`.
     func watchReply(_ input: Operations.WatchReply.Input) async throws -> Operations.WatchReply.Output
+    /// 規約の同意が要るか
+    ///
+    /// 同意を取り直す版より後の版のどれにも同意していなければ、同意が要る。端末は、開いたとき（前面に来たとき）に問い、要れば同意のシートを出す
+    ///
+    /// - Remark: HTTP `GET /v1/terms-agreement`.
+    /// - Remark: Generated from `#/paths//v1/terms-agreement/get(getTermsAgreementRequirement)`.
+    func getTermsAgreementRequirement(_ input: Operations.GetTermsAgreementRequirement.Input) async throws -> Operations.GetTermsAgreementRequirement.Output
+    /// 規約に同意する
+    ///
+    /// 同意のシートでの同意。送り待ちの箱を通さず、その場で送る。同じ要求の ID の再送は、書かずに受け付ける
+    ///
+    /// - Remark: HTTP `POST /v1/terms-agreements`.
+    /// - Remark: Generated from `#/paths//v1/terms-agreements/post(agreeToTerms)`.
+    func agreeToTerms(_ input: Operations.AgreeToTerms.Input) async throws -> Operations.AgreeToTerms.Output
 }
 
 /// Convenience overloads for operation inputs.
@@ -224,6 +238,30 @@ extension APIProtocol {
         try await watchReply(Operations.WatchReply.Input(
             path: path,
             headers: headers
+        ))
+    }
+    /// 規約の同意が要るか
+    ///
+    /// 同意を取り直す版より後の版のどれにも同意していなければ、同意が要る。端末は、開いたとき（前面に来たとき）に問い、要れば同意のシートを出す
+    ///
+    /// - Remark: HTTP `GET /v1/terms-agreement`.
+    /// - Remark: Generated from `#/paths//v1/terms-agreement/get(getTermsAgreementRequirement)`.
+    internal func getTermsAgreementRequirement(headers: Operations.GetTermsAgreementRequirement.Input.Headers = .init()) async throws -> Operations.GetTermsAgreementRequirement.Output {
+        try await getTermsAgreementRequirement(Operations.GetTermsAgreementRequirement.Input(headers: headers))
+    }
+    /// 規約に同意する
+    ///
+    /// 同意のシートでの同意。送り待ちの箱を通さず、その場で送る。同じ要求の ID の再送は、書かずに受け付ける
+    ///
+    /// - Remark: HTTP `POST /v1/terms-agreements`.
+    /// - Remark: Generated from `#/paths//v1/terms-agreements/post(agreeToTerms)`.
+    internal func agreeToTerms(
+        headers: Operations.AgreeToTerms.Input.Headers = .init(),
+        body: Operations.AgreeToTerms.Input.Body
+    ) async throws -> Operations.AgreeToTerms.Output {
+        try await agreeToTerms(Operations.AgreeToTerms.Input(
+            headers: headers,
+            body: body
         ))
     }
 }

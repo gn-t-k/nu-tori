@@ -1017,4 +1017,149 @@ internal struct Client: APIProtocol {
             }
         )
     }
+    /// 規約の同意が要るか
+    ///
+    /// 同意を取り直す版より後の版のどれにも同意していなければ、同意が要る。端末は、開いたとき（前面に来たとき）に問い、要れば同意のシートを出す
+    ///
+    /// - Remark: HTTP `GET /v1/terms-agreement`.
+    /// - Remark: Generated from `#/paths//v1/terms-agreement/get(getTermsAgreementRequirement)`.
+    internal func getTermsAgreementRequirement(_ input: Operations.GetTermsAgreementRequirement.Input) async throws -> Operations.GetTermsAgreementRequirement.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.GetTermsAgreementRequirement.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/terms-agreement",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.GetTermsAgreementRequirement.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.TermsAgreementRequirement.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 401:
+                    return .unauthorized(.init())
+                case 429:
+                    return .tooManyRequests(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// 規約に同意する
+    ///
+    /// 同意のシートでの同意。送り待ちの箱を通さず、その場で送る。同じ要求の ID の再送は、書かずに受け付ける
+    ///
+    /// - Remark: HTTP `POST /v1/terms-agreements`.
+    /// - Remark: Generated from `#/paths//v1/terms-agreements/post(agreeToTerms)`.
+    internal func agreeToTerms(_ input: Operations.AgreeToTerms.Input) async throws -> Operations.AgreeToTerms.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.AgreeToTerms.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/terms-agreements",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .json(value):
+                    body = try converter.setRequiredRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 204:
+                    return .noContent(.init())
+                case 400:
+                    return .badRequest(.init())
+                case 401:
+                    return .unauthorized(.init())
+                case 422:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.AgreeToTerms.Output.UnprocessableContent.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.TermsAgreementRejection.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .unprocessableContent(.init(body: body))
+                case 429:
+                    return .tooManyRequests(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
 }

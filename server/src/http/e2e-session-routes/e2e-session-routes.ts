@@ -28,6 +28,7 @@ export const e2eSessionRoutes = new Hono<{ Bindings: Env }>().post(
     await getAccountDurableObject(c.env, user.id).recordFirstSignIn(user.id, {
       signedInAt: new Date(),
       timeZone: undefined,
+      agreedTermsVersion: undefined,
     });
     return c.json({ sessionToken: session.token, accountId: user.id }, 201);
   },

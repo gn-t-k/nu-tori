@@ -12,6 +12,7 @@ import { rejectUnsupportedAppBuild } from "./reject-unsupported-app-build";
 import { replyStreamRoutes } from "./reply-stream-routes";
 import { sessionRoutes } from "./session-routes";
 import { syncRoutes } from "./sync-routes";
+import { termsAgreementRoutes } from "./terms-agreement-routes";
 
 export const app = new OpenAPIHono<{ Bindings: Env }>();
 
@@ -27,6 +28,7 @@ app
   .route("/", mealPhotoRoutes)
   .route("/", goalSetupRoutes)
   .route("/", replyStreamRoutes)
+  .route("/", termsAgreementRoutes)
   .route("/", appleServerNotificationRoutes);
 
 app.openAPIRegistry.registerComponent("securitySchemes", "session", {

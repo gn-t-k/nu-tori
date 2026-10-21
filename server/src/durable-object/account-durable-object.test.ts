@@ -15,11 +15,11 @@ import { durableObjectFactory } from "./testing/durable-object-factory";
 describe("アカウントの Durable Object", () => {
   describe("使い始めた日を決める呼び出しに、受け口がアカウント ID を渡したとき", () => {
     let accountId: string;
-    let signIn: { signedInAt: Date; timeZone: string | undefined };
+    let signIn: { signedInAt: Date; timeZone: string | undefined; agreedTermsVersion: undefined };
     let setUserSpy: ReturnType<typeof mockSetUserOk>;
     beforeEach(() => {
       accountId = generateRecordId();
-      signIn = { signedInAt: new Date(), timeZone: undefined };
+      signIn = { signedInAt: new Date(), timeZone: undefined, agreedTermsVersion: undefined };
       setUserSpy = mockSetUserOk();
     });
 
