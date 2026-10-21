@@ -89,8 +89,9 @@ export const buildReplyContextInAccount = (
             writes.complete({
               estimationId,
               completedAt: meal.sentAt,
-              result: "estimated",
               target,
+              dishCount: dishes.length,
+              ingredients: dishes.flatMap(({ ingredients }) => ingredients),
             });
           })
           .exhaustive();
