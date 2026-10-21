@@ -44,3 +44,60 @@ describe("D1 の表の宣言", () => {
     });
   });
 });
+
+describe("D1 の移行の 0002（課金の表）", () => {
+  describe("移行を当てた DB があるとき", () => {
+    let tables: string[];
+    let indexes: Record<string, unknown>[];
+    beforeEach(async () => {
+      tables = (
+        await env.DB.prepare(
+          "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('app_account_tokens', 'app_store_subscription_routes', 'free_trial_usages', 'test_users') ORDER BY name",
+        ).all<{ name: string }>()
+      ).results.map(({ name }) => name);
+      indexes = (
+        await env.DB.prepare(
+          `SELECT l.name AS name, s.name AS tbl_name, l."unique" AS is_unique, (SELECT group_concat(name) FROM pragma_index_info(l.name)) AS columns FROM sqlite_schema AS s JOIN pragma_index_list(s.name) AS l WHERE s.type = 'table' AND s.name IN ('app_account_tokens', 'app_store_subscription_routes', 'free_trial_usages') AND l.origin <> 'pk' ORDER BY l.name`,
+        ).all()
+      ).results;
+    });
+
+    test("課金の 4 つの表ができること", () => {
+      expect(tables).toEqual([
+        "app_account_tokens",
+        "app_store_subscription_routes",
+        "free_trial_usages",
+        "test_users",
+      ]);
+    });
+
+    test("3 つの一意の索引と、案内のアカウントの索引ができること", () => {
+      expect(indexes).toEqual([
+        {
+          name: "app_account_tokens_app_account_token",
+          tbl_name: "app_account_tokens",
+          is_unique: 1,
+          columns: "app_account_token",
+        },
+        {
+          name: "app_store_subscription_routes_account_id",
+          tbl_name: "app_store_subscription_routes",
+          is_unique: 0,
+          columns: "account_id",
+        },
+        {
+          name: "app_store_subscription_routes_environment",
+          tbl_name: "app_store_subscription_routes",
+          is_unique: 1,
+          columns: "environment,app_store_original_transaction_id",
+        },
+        {
+          name: "free_trial_usages_apple_sub_hash",
+          tbl_name: "free_trial_usages",
+          is_unique: 1,
+          columns: "apple_sub_hash",
+        },
+      ]);
+    });
+  });
+});

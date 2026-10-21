@@ -656,6 +656,119 @@ describe("Durable Object の移行の版 10（週の見直しと目標の経過�
   });
 });
 
+// 版 10 までの形の最初のサインインと週の見直し。版 11 の表のうち、無料体験なしが指す親の行
+const seedVersion10Rows = (sql: Sql) => {
+  sql.exec(
+    "INSERT INTO first_sign_ins (id, started_on, signed_in_at, time_zone) VALUES ('first-sign-in-1', '2026-09-01', 0, 'Asia/Tokyo')",
+  );
+  sql.exec(
+    "INSERT INTO weekly_reviews (id, effective_on, reviewed_at, time_zone) VALUES ('review-1', '2026-09-08', 0, 'Asia/Tokyo')",
+  );
+  sql.exec(
+    "INSERT INTO deferred_weekly_reviews (weekly_review_id, goal_id, reason) VALUES ('review-1', 'goal-1', 'within_first_week')",
+  );
+};
+
+describe("Durable Object の移行の版 11（課金の表）", () => {
+  describe("版 10 までの形の食事・料理・材料・控え・目標・週の見直し・最初のサインインがあるとき", () => {
+    let account: DurableObjectStub;
+    let rowsBefore: Record<string, unknown[]>;
+    beforeEach(async () => {
+      account = env.ACCOUNT.get(env.ACCOUNT.newUniqueId());
+      rowsBefore = await runInDurableObject(account, async (_, state) => {
+        await state.storage.deleteAll();
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 6),
+        );
+        seedVersion6Rows(state.storage.sql);
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 9),
+        );
+        seedVersion9GoalRows(state.storage.sql);
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 10),
+        );
+        seedVersion10Rows(state.storage.sql);
+        const rows = readAllRows(state.storage.sql);
+        applyDurableObjectMigrations(state.storage, durableObjectMigrations);
+        return rows;
+      });
+    });
+
+    test("課金の 15 の表ができること", async () => {
+      const tables = await runInAccount(account, (sql) =>
+        sql
+          .exec<{ name: string }>(
+            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('subscriptions', 'app_store_subscriptions', 'subscription_transactions', 'app_store_subscription_transactions', 'subscription_transaction_revocations', 'subscription_transaction_revocation_reversals', 'subscription_billing_failures', 'subscription_grace_periods', 'subscription_receipts', 'app_store_notification_receipts', 'subscription_transaction_report_receipts', 'free_trial_exclusions', 'estimation_holds', 'reply_request_subscription_halts', 'terms_agreements') ORDER BY name",
+          )
+          .toArray()
+          .map(({ name }) => name),
+      );
+      expect(tables).toEqual([
+        "app_store_notification_receipts",
+        "app_store_subscription_transactions",
+        "app_store_subscriptions",
+        "estimation_holds",
+        "free_trial_exclusions",
+        "reply_request_subscription_halts",
+        "subscription_billing_failures",
+        "subscription_grace_periods",
+        "subscription_receipts",
+        "subscription_transaction_report_receipts",
+        "subscription_transaction_revocation_reversals",
+        "subscription_transaction_revocations",
+        "subscription_transactions",
+        "subscriptions",
+        "terms_agreements",
+      ]);
+    });
+
+    test("3 つの一意の索引が、それぞれの表にできること", async () => {
+      const indexes = await runInAccount(account, (sql) =>
+        sql
+          .exec(
+            "SELECT s.name AS name, s.tbl_name AS tbl_name, l.\"unique\" AS is_unique FROM sqlite_schema AS s JOIN pragma_index_list(s.tbl_name) AS l ON l.name = s.name WHERE s.type = 'index' AND s.name IN ('app_store_subscriptions_environment', 'app_store_subscription_transactions_app_store_transaction_id', 'app_store_notification_receipts_notification_uuid') ORDER BY s.name",
+          )
+          .toArray(),
+      );
+      expect(indexes).toEqual([
+        {
+          name: "app_store_notification_receipts_notification_uuid",
+          tbl_name: "app_store_notification_receipts",
+          is_unique: 1,
+        },
+        {
+          name: "app_store_subscription_transactions_app_store_transaction_id",
+          tbl_name: "app_store_subscription_transactions",
+          is_unique: 1,
+        },
+        {
+          name: "app_store_subscriptions_environment",
+          tbl_name: "app_store_subscriptions",
+          is_unique: 1,
+        },
+      ]);
+    });
+
+    test("既存の表の行が変わらないこと", async () => {
+      const rowsAfter = await runInAccount(account, readAllRows);
+      expect(
+        Object.fromEntries(Object.keys(rowsBefore).map((name) => [name, rowsAfter[name]])),
+      ).toEqual(rowsBefore);
+    });
+
+    test("外部キーの違反が無いこと", async () => {
+      const violations = await runInAccount(account, (sql) =>
+        sql.exec("PRAGMA foreign_key_check").toArray(),
+      );
+      expect(violations).toEqual([]);
+    });
+  });
+});
+
 // 移行の版の表と Cloudflare・SQLite の表を除く、すべての表の行を、表の名前ごとに読む
 const readAllRows = (sql: Sql): Record<string, unknown[]> =>
   Object.fromEntries(

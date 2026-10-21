@@ -5,6 +5,7 @@ import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import type { UsageEvent } from "../../domain/usage-event";
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
+import { regularSubscriptionAccount } from "../../durable-object/testing/regular-subscription-account";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
 import type { EstimationWrites } from "../domain/estimation-writes";
@@ -22,7 +23,7 @@ const writeInAccount = (seed: Seed, run: Run): Promise<RecordChangeTarget<string
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), async (_, state) => {
     await seed(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
     const changes: RecordChangeTarget<string>[] = [];
-    createRecordKindStores(state.storage).writeEstimationEvents(
+    createRecordKindStores(state.storage, regularSubscriptionAccount).writeEstimationEvents(
       (change) => {
         changes.push(change);
       },
@@ -39,11 +40,10 @@ type Ended = { event: UsageEvent; completions: unknown[]; abandonments: unknown[
 const endInAccount = (seed: Seed, end: (writes: EstimationWrites) => UsageEvent): Promise<Ended> =>
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), async (_, state) => {
     await seed(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
-    const event = createRecordKindStores(state.storage).writeEstimationEvents(
-      () => undefined,
-      new Date(),
-      end,
-    );
+    const event = createRecordKindStores(
+      state.storage,
+      regularSubscriptionAccount,
+    ).writeEstimationEvents(() => undefined, new Date(), end);
     const read = (query: string) => state.storage.sql.exec(query).toArray();
     return {
       event,
@@ -494,7 +494,7 @@ describe("推定の書き込みの口", () => {
     const writeAndReadEatenAts = (seed: Seed, run: Run) =>
       runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), async (_, state) => {
         await seed(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
-        const stores = createRecordKindStores(state.storage);
+        const stores = createRecordKindStores(state.storage, regularSubscriptionAccount);
         stores.writeEstimationEvents(() => undefined, new Date(), run);
         return [meal1, meal2].map((mealId) => stores.meal.find(mealId)?.eatenAt);
       });

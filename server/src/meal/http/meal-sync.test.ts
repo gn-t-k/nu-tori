@@ -3,6 +3,7 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
+import { withoutSignInChanges } from "../../http/sync-routes/testing/without-sign-in-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
@@ -64,7 +65,7 @@ describe("食事の同期", () => {
 
     test("取りに行くと、端末が送った値のまま食事と、写真を待っている推定の状態が返ること", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(pulled.changes).toEqual([
+      expect(withoutSignInChanges(pulled.changes)).toEqual([
         {
           sequence: expect.any(Number),
           kind: "meal",
@@ -118,7 +119,7 @@ describe("食事の同期", () => {
 
       test("値を変えないこと", async () => {
         const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-        expect(pulled.changes[0]?.record).toEqual(existing.meal);
+        expect(withoutSignInChanges(pulled.changes)[0]?.record).toEqual(existing.meal);
       });
 
       test("写真の削除の印を書かないこと", async () => {
@@ -223,7 +224,7 @@ describe("食事の同期", () => {
       const pulled = await (
         await pullSyncChanges(sessionToken, { afterSequence: created.nextAfterSequence })
       ).json<PullResult>();
-      expect(pulled.changes).toEqual([
+      expect(withoutSignInChanges(pulled.changes)).toEqual([
         { sequence: expect.any(Number), kind: "meal_deletion", recordId: mealId, record: {} },
         {
           sequence: expect.any(Number),
@@ -304,7 +305,7 @@ describe("食事の同期", () => {
           "ignored_tombstone",
         );
         const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-        expect(pulled.changes.map(({ kind }) => kind)).toEqual([
+        expect(withoutSignInChanges(pulled.changes).map(({ kind }) => kind)).toEqual([
           "meal_estimation_status_deletion",
           "meal_deletion",
         ]);
@@ -353,7 +354,12 @@ describe("食事の同期", () => {
     test("削除の印を残して受け付けること", async () => {
       expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(pulled.changes.map(({ kind, recordId: id }) => ({ kind, recordId: id }))).toEqual([
+      expect(
+        withoutSignInChanges(pulled.changes).map(({ kind, recordId: id }) => ({
+          kind,
+          recordId: id,
+        })),
+      ).toEqual([
         { kind: "meal_deletion", recordId: mealId },
         { kind: "meal_estimation_status_deletion", recordId: mealId },
       ]);
@@ -413,7 +419,7 @@ describe("食事の同期", () => {
         const pulled = await (
           await pullSyncChanges(sessionToken, { afterSequence: afterCreated })
         ).json<PullResult>();
-        expect(pulled.changes).toEqual([
+        expect(withoutSignInChanges(pulled.changes)).toEqual([
           {
             sequence: expect.any(Number),
             kind: "meal",
@@ -432,9 +438,11 @@ describe("食事の同期", () => {
 
         test("取りに行くと、あとに受け取った時刻の食事が返ること", async () => {
           const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-          expect(pulled.changes.find(({ kind }) => kind === "meal")?.record["eatenAt"]).toBe(
-            Date.UTC(2026, 8, 30, 2, 15),
-          );
+          expect(
+            withoutSignInChanges(pulled.changes).find(({ kind }) => kind === "meal")?.record[
+              "eatenAt"
+            ],
+          ).toBe(Date.UTC(2026, 8, 30, 2, 15));
         });
       });
     });
@@ -455,7 +463,7 @@ describe("食事の同期", () => {
         const pulled = await (
           await pullSyncChanges(sessionToken, { afterSequence: afterCreated })
         ).json<PullResult>();
-        expect(pulled.changes).toEqual([]);
+        expect(withoutSignInChanges(pulled.changes)).toEqual([]);
       });
     });
 
@@ -535,7 +543,7 @@ describe("食事の同期", () => {
 
     test("前回の続きから取りに行くと、食事のあとに、その食事の料理すべてが版 2 で返ること", () => {
       expect(
-        pulled.changes.map(({ kind, recordId, record }) => ({
+        withoutSignInChanges(pulled.changes).map(({ kind, recordId, record }) => ({
           kind,
           recordId,
           version: record["version"],

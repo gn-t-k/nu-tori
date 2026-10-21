@@ -11,6 +11,7 @@ import { createMealEstimationStatusKind } from "../meal-estimation-status/domain
 import { createNoticeKind } from "../notice/domain/create-notice-kind";
 import { createSentTextKind } from "../sent-text/domain/create-sent-text-kind";
 import { createSentTextStatusKind } from "../sent-text-status/domain/create-sent-text-status-kind";
+import { createSubscriptionStatusKind } from "../subscription-status/domain/create-subscription-status-kind";
 import { createUsualWeighingTimeKind } from "../usual-weighing-time/domain/create-usual-weighing-time-kind";
 import { createWeeklyReviewKind } from "../weekly-review/domain/create-weekly-review-kind";
 import { createWeightRecordKind } from "../weight-record/domain/create-weight-record-kind";
@@ -38,6 +39,7 @@ export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
     createNoticeKind(stores.notice),
     createSentTextKind(stores, receivedAt),
     createSentTextStatusKind(stores.sentText, stores.sentTextStatus),
+    createSubscriptionStatusKind(stores.subscriptionStatus),
     createUsualWeighingTimeKind({
       store: stores.usualWeighingTime,
       weightRecordStore: stores.weightRecord,

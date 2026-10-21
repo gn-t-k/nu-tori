@@ -29,7 +29,12 @@
   // 本番にも受け継がれる
   "observability": { "enabled": true },
   // Sign in with Apple の ID トークンの aud。アプリの Bundle ID（ios/NuTori.xcodeproj の PRODUCT_BUNDLE_IDENTIFIER）
-  "vars": { "APPLE_BUNDLE_ID": "app.nu-tori", "SENTRY_ENVIRONMENT": "development" },
+  // BILLING_STARTED_ON は課金を入れた日（YYYY-MM-DD）。課金を入れる前からのアカウントの無料体験はこの日から数える（#647）。開発用は任意の日
+  "vars": {
+    "APPLE_BUNDLE_ID": "app.nu-tori",
+    "SENTRY_ENVIRONMENT": "development",
+    "BILLING_STARTED_ON": "2026-10-21",
+  },
   // namespace_id は Cloudflare のアカウントの中で一意にし、同じ値の Worker どうしで数を分け合う
   "ratelimits": [
     {
@@ -73,9 +78,11 @@
       // PostHog のプロジェクトのトークン（公開してよい phc_ の値）。PostHog には本番だけが送る
       // MINIMUM_APP_BUILD は受け付けるいちばん古いアプリのビルド番号。本番にだけ置き、開発用は判定しない。
       // 上げる手順は docs/agents/ios-release.md
+      // BILLING_STARTED_ON は、課金の入ったアプリの版を App Store に出す日に合わせる（#685）。それまでは遠い先の日にしておく
       "vars": {
         "APPLE_BUNDLE_ID": "app.nu-tori",
         "SENTRY_ENVIRONMENT": "production",
+        "BILLING_STARTED_ON": "2099-12-31",
         "POSTHOG_PROJECT_TOKEN": "phc_yYuKJmqxpHM77An2fa7NYoL8SK2RkbbEXgpVUQQ2fjze",
         "MINIMUM_APP_BUILD": 53,
       },

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import { createRecordChangeWriter } from "../../durable-object/create-record-change-writer";
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
+import { regularSubscriptionAccount } from "../../durable-object/testing/regular-subscription-account";
 import { writeGoalDecision } from "../../goal/domain/write-goal-decision";
 import { writeWeeklyReview } from "../domain/write-weekly-review";
 
@@ -22,7 +23,7 @@ const writeInAccount = (
   reviews: ((goalId: RecordId) => Review)[],
 ): Promise<Written & { goalId: RecordId }> =>
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), (_, state) => {
-    const stores = createRecordKindStores(state.storage);
+    const stores = createRecordKindStores(state.storage, regularSubscriptionAccount);
     const writeRecordChanges = createRecordChangeWriter(state.storage);
     const goalId = writeRecordChanges(({ addChange }) =>
       writeGoalDecision(stores, addChange, {

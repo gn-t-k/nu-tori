@@ -17,6 +17,7 @@ import type { ReplyStore } from "../reply/domain/reply-store";
 import type { ReplyWrites } from "../reply/domain/reply-writes";
 import type { SentTextStore } from "../sent-text/domain/sent-text-store";
 import type { SentTextStatusStore } from "../sent-text-status/domain/sent-text-status-store";
+import type { SubscriptionStatusStore } from "../subscription-status/domain/subscription-status-store";
 import type { LatestTimeZoneStore } from "./latest-time-zone-store";
 import type { FirstSignInStore } from "./record-first-sign-in";
 import type { UsualWeighingTimeStore } from "../usual-weighing-time/domain/usual-weighing-time-store";
@@ -39,6 +40,7 @@ export type RecordKindStores = {
   notice: NoticeStore;
   sentText: SentTextStore;
   sentTextStatus: SentTextStatusStore;
+  subscriptionStatus: SubscriptionStatusStore;
   usualWeighingTime: UsualWeighingTimeStore;
   weeklyReview: WeeklyReviewStore;
   weightRecord: WeightRecordStore;

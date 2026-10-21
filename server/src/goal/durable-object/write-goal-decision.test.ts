@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { generateRecordId } from "../../domain/record-id";
 import { createRecordChangeWriter } from "../../durable-object/create-record-change-writer";
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
+import { regularSubscriptionAccount } from "../../durable-object/testing/regular-subscription-account";
 import { writeGoalDecision } from "../domain/write-goal-decision";
 
 type Decision = Parameters<typeof writeGoalDecision>[2];
@@ -19,7 +20,7 @@ type Written = {
 // 新しいアカウントの置き場に、決めたことを順に書き、書いたあとの行を返す。1つずつ、記録の変化を書く入口のトランザクションで書く
 const writeInAccount = (decisions: Decision[]): Promise<Written> =>
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), (_, state) => {
-    const stores = createRecordKindStores(state.storage);
+    const stores = createRecordKindStores(state.storage, regularSubscriptionAccount);
     const errors = decisions.map((decision) => {
       try {
         createRecordChangeWriter(state.storage)(({ addChange }) =>

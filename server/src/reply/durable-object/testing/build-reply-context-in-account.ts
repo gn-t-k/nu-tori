@@ -4,6 +4,7 @@ import { computeCalendarDayInTimeZone } from "../../../domain/compute-calendar-d
 import { generateRecordId } from "../../../domain/record-id";
 import { createRecordChangeWriter } from "../../../durable-object/create-record-change-writer";
 import { createRecordKindStores } from "../../../durable-object/create-record-kind-stores";
+import { regularSubscriptionAccount } from "../../../durable-object/testing/regular-subscription-account";
 import { buildReplyContext } from "../../domain/build-reply-context";
 import type { ReplyContext } from "../../domain/reply-context";
 import type { buildReplyContextRecords } from "./build-reply-context-records";
@@ -15,7 +16,7 @@ export const buildReplyContextInAccount = (
   now: Date,
 ): Promise<ReplyContext> =>
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), (_instance, state) => {
-    const stores = createRecordKindStores(state.storage);
+    const stores = createRecordKindStores(state.storage, regularSubscriptionAccount);
     const writeRecordChanges = createRecordChangeWriter(state.storage);
 
     const sentTexts = [

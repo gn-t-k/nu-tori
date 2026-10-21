@@ -11,6 +11,8 @@ import { mealTables } from "../meal/durable-object/meal-tables";
 import { noticeTables } from "../notice/durable-object/notice-tables";
 import { replyTables } from "../reply/durable-object/reply-tables";
 import { sentTextTables } from "../sent-text/durable-object/sent-text-tables";
+import { subscriptionTables } from "../subscription/durable-object/subscription-tables";
+import { termsAgreementTables } from "../terms-agreement/durable-object/terms-agreement-tables";
 import { usualWeighingTimeTables } from "../usual-weighing-time/durable-object/usual-weighing-time-tables";
 import { weeklyReviewTables } from "../weekly-review/durable-object/weekly-review-tables";
 import { weightRecordTables } from "../weight-record/durable-object/weight-record-tables";
@@ -37,4 +39,6 @@ export const durableObjectTables = {
   ...expenditureEstimateTables,
   ...dailyGuideTables,
   ...weeklyReviewTables,
+  ...subscriptionTables,
+  ...termsAgreementTables,
 };
