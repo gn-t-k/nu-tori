@@ -15,6 +15,7 @@ final class SignInFirstLaunchUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["毎朝の体重と、食事の写真だけ。"].exists)
         XCTAssertTrue(app.staticTexts["続ける前に"].exists)
         XCTAssertTrue(app.staticText(containing: "続けると、これらに同意したことになります。").exists)
+        XCTAssertTrue(app.links["利用規約"].exists)
         XCTAssertTrue(app.links["プライバシーポリシー"].exists)
         XCTAssertFalse(app.otherElements["timeline"].exists)
         attachScreenshot(of: app, named: "サインインの画面")

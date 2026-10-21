@@ -7,6 +7,7 @@ import SwiftUI
 /// - 個人情報保護法 28 条
 /// - Apple Developer Program License Agreement 3.3.3(H)
 /// - 個人情報保護委員会の Q&A 12-10
+/// - 利用規約への同意（「利用規約と特商法の表記の中身を決める」#593 の解決コメント。サインインで見せた版をサーバーに送る）
 struct SignInConsentCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -17,7 +18,8 @@ struct SignInConsentCard: View {
                 記録と写真（ヘルスケアから読んだ情報を含む）は、米国の会社のサービスで保存・処理します。\
                 食事の推定と返事のために AI にも送り、不具合と利用状況も送って、その分析にも AI を使います。\
                 推定の値と返事は、確かめてから使ってください。\
-                送り先の国の制度と各社の措置を[プライバシーポリシー](https://nu-tori.app/privacy)で確かめてから、\
+                送り先の国の制度と各社の措置は、プライバシーポリシーに書きました。\
+                [利用規約](https://nu-tori.app/terms)と[プライバシーポリシー](https://nu-tori.app/privacy)を確かめてから、\
                 続けてください。続けると、これらに同意したことになります。
                 """
             )

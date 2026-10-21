@@ -215,7 +215,9 @@ import SwiftData
         )
         let model = RootModel(
             accountSession: session, recordSync: sync, reflector: reflector, health: health,
-            missedWeightRecordWatch: missedWeightRecordWatch, goalSetup: goalSetup, clock: clock)
+            missedWeightRecordWatch: missedWeightRecordWatch, goalSetup: goalSetup,
+            termsAgreement: TermsAgreementPrompt(client: client, analytics: observation.analytics),
+            clock: clock)
         let reminderTaps = MissedWeightReminderTapReceiver { [weak model] noticeId in
             Task { await model?.openFromReminder(noticeId: noticeId) }
         }
