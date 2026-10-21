@@ -140,12 +140,12 @@ export default {
 const isFunction = (node) =>
   node.type === "ArrowFunctionExpression" || node.type === "FunctionExpression";
 
-const isDescribe = (callee) => isCalleeNamed(callee, ["describe"]);
+const isDescribe = (callee) => isPlainCallOf(callee, ["describe"]);
 
-const isTest = (callee) => isCalleeNamed(callee, ["test", "it"]);
+const isTest = (callee) => isPlainCallOf(callee, ["test", "it"]);
 
 // each・for の表から作るまとまりとテストは、決まりが許す使い方と見分けられないので数えない（#691）
-const isCalleeNamed = (callee, names) =>
+const isPlainCallOf = (callee, names) =>
   (callee.type === "Identifier" && names.includes(callee.name)) ||
   (callee.type === "MemberExpression" &&
     callee.object.type === "Identifier" &&
