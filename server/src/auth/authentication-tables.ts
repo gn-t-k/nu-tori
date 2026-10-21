@@ -9,7 +9,7 @@ const date = customType<{ data: Date; driverData: string }>({
 
 // Better Auth の CLI（`@better-auth/cli generate`）が設定から書き出した Drizzle の宣言を、
 // d1-migrations/ の表の形（列の名前と型）に合わせて直したもの。Better Auth は Drizzle でなく D1 を直に読み書きする
-export const user = sqliteTable("user", {
+const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -19,7 +19,7 @@ export const user = sqliteTable("user", {
   updatedAt: date("updatedAt").notNull(),
 });
 
-export const session = sqliteTable(
+const session = sqliteTable(
   "session",
   {
     id: text("id").primaryKey(),
@@ -36,7 +36,7 @@ export const session = sqliteTable(
   (table) => [index("session_userId_idx").on(table.userId)],
 );
 
-export const account = sqliteTable(
+const account = sqliteTable(
   "account",
   {
     id: text("id").primaryKey(),
@@ -58,7 +58,7 @@ export const account = sqliteTable(
   (table) => [index("account_userId_idx").on(table.userId)],
 );
 
-export const verification = sqliteTable(
+const verification = sqliteTable(
   "verification",
   {
     id: text("id").primaryKey(),
@@ -70,3 +70,5 @@ export const verification = sqliteTable(
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
+
+export const authenticationTables = { user, session, account, verification };

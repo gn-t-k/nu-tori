@@ -7,7 +7,7 @@ import type {
 } from "../../src/reply/domain/reply-context";
 
 // 評価の組の文脈の元になる2日（作り話。公開リポジトリなので、開発者の記録は使わない）。
-// どちらも東京の 2026-10-10（土）に送った発言に応える。場面は、この日に発言を差し替えて作る（cases.ts）
+// どちらも東京の 2026-10-10（土）に送った発言に応える。場面は、この日に発言を差し替えて作る（reply-eval-cases.ts）
 
 const nutrients = (
   energyKcal: number,
@@ -235,7 +235,7 @@ const emptyToday: ReplyContext = {
 
 export const evalDays = { richDay, sparseDay, emptyToday };
 
-// 目標を立てた人の目標（作り話。仕様 #523 の「AI に渡す文脈」）。記録の多い日・少ない日に重ねて、目標を立てた人の場面を作る（cases.ts）。
+// 目標を立てた人の目標（作り話。仕様 #523 の「AI に渡す文脈」）。記録の多い日・少ない日に重ねて、目標を立てた人の場面を作る（reply-eval-cases.ts）。
 // 1日の目安は、仕様 #523 の「計算の決まり」に沿うように推定消費カロリー・期限・目標体重から逆に決めた値（評価は計算を確かめない）
 export const evalGoals = {
   // 記録の多い日の人の減量。今日の合計（1,665 kcal）が1日の目安（1,600 kcal）を超えている

@@ -3,7 +3,7 @@ import nutrientDefinitions from "../../../../../shared/nutrients.json";
 import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
 import type { RecordId } from "../../../domain/record-id";
-import { loadFoodComposition } from "../../../domain/food-composition/food-composition";
+import { loadFoodComposition } from "../../../domain/food-composition/load-food-composition";
 import { isNutrientName } from "../../../domain/food-composition/nutrient-name";
 import type { NutrientName } from "../../../domain/food-composition/nutrient-name";
 import type { IngredientNutrientSource } from "../../../ingredient/domain/ingredient";

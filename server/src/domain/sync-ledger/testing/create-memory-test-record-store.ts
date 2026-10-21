@@ -1,5 +1,5 @@
 import type { RecordId } from "../../record-id";
-import type { TestRecordStore } from "./test-record-kind";
+import type { TestRecordStore } from "./create-test-record-kind";
 
 export const createMemoryTestRecordStore = (operations: string[]): TestRecordStore => {
   const values = new Map<RecordId, number>();

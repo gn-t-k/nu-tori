@@ -116,6 +116,25 @@ export default {
         },
       }),
     },
+    "filename-matches-export": {
+      create: (context) => ({
+        Program: (node) => {
+          const names = localExportNames(node);
+          // export default だけの設定ファイルと、再 export だけの index.ts は、比べる名前を持たない
+          if (names.length === 0) {
+            return;
+          }
+          const fileName = context.filename.split("/").at(-1).split(".")[0];
+          if (names.some((name) => sameWords(name, fileName))) {
+            return;
+          }
+          context.report({
+            node,
+            message: `ファイル名「${fileName}」を、export する名前（${names.join("、")}）のどれかのケバブケースにする（docs/agents/languages/typescript.md「ファイルと公開するもの」）`,
+          });
+        },
+      }),
+    },
     "no-random-uuid": {
       create: (context) => ({
         MemberExpression: (node) => {
@@ -184,3 +203,30 @@ const titleText = (node) => {
   }
   return undefined;
 };
+
+// export { x } from "./x" と export * from は、ほかのファイルが出すものなので数えない。
+// export { x as default } は export default x と同じく名前を持たないので数えない
+const localExportNames = (program) =>
+  program.body
+    .filter((statement) => statement.type === "ExportNamedDeclaration" && statement.source === null)
+    .flatMap((statement) =>
+      statement.declaration === null
+        ? statement.specifiers.map((specifier) => moduleExportName(specifier.exported))
+        : declaredNames(statement.declaration),
+    )
+    .filter((name) => name !== "default");
+
+const declaredNames = (declaration) =>
+  declaration.type === "VariableDeclaration"
+    ? declaration.declarations.flatMap((declarator) =>
+        declarator.id.type === "Identifier" ? [declarator.id.name] : [],
+      )
+    : declaration.id?.type === "Identifier"
+      ? [declaration.id.name]
+      : [];
+
+const moduleExportName = (node) => (node.type === "Identifier" ? node.name : node.value);
+
+// ケバブケースのファイル名と、キャメルケース・パスカルケースの名前を、区切りと大文字小文字を除いて比べる
+const sameWords = (name, fileName) =>
+  name.toLowerCase() === fileName.replaceAll("-", "").toLowerCase();

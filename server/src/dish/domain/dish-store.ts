@@ -1,5 +1,5 @@
 import type { RecordId } from "../../domain/record-id";
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
+import type { WriteReceiptId } from "../../domain/sync-ledger/create-sync-ledger";
 import type { Dish, DishEstimationApplication, NewDish } from "./dish";
 import type { DishQuantityCorrection } from "./dish-write";
 

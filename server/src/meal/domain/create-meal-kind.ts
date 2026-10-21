@@ -14,7 +14,7 @@ import type { RejectionReason } from "../../domain/rejection-reason";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
+import type { WriteReceiptId } from "../../domain/sync-ledger/create-sync-ledger";
 import type { IngredientStore } from "../../ingredient/domain/ingredient-store";
 import type { Meal } from "./meal";
 import { isPhotoMealEntryMethod } from "./meal-entry-method";
