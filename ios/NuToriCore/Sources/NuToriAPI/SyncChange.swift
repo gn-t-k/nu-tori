@@ -36,6 +36,8 @@ public enum SyncChange: Sendable, Equatable {
     case sentTextRemoval(sentTextId: UUID)
     /// 送った文章より先に届くことがある
     case sentTextStatus(SyncedSentTextStatus)
+    /// アカウントに1つで、消えない。事実が変わると、同じ ID でもう一度届く
+    case subscriptionStatus(SyncedSubscriptionStatus)
     case usualWeighingTime(SyncedUsualWeighingTime)
     /// 並び全体。届いたらキャッシュを置き換える
     case weightTrend(SyncedWeightTrend)

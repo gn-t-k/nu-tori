@@ -34,10 +34,7 @@
             guard let recordKind else {
                 preconditionFailure("知らない種類の記録は置けない")
             }
-            guard let coding = RecordKindWireCodings.coding(of: recordKind) else {
-                preconditionFailure("端末がまだ扱わない種類の記録は置けない")
-            }
-            return coding
+            return RecordKindWireCodings.coding(of: recordKind)
         }
     }
 

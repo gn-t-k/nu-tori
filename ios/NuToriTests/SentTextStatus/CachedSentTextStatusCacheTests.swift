@@ -29,7 +29,11 @@ struct CachedSentTextStatusCacheTests {
             Status(
                 sentTextId: UUID(), status: .init(classification: .conversation, reply: .replied)),
             Status(
-                sentTextId: UUID(), status: .init(classification: .conversation, reply: .halted)),
+                sentTextId: UUID(),
+                status: .init(classification: .conversation, reply: .halted(.dailyLimit))),
+            Status(
+                sentTextId: UUID(),
+                status: .init(classification: .conversation, reply: .halted(.subscriptionExpired))),
             Status(
                 sentTextId: UUID(),
                 status: .init(classification: .conversation, reply: .failed(.badRequest))),

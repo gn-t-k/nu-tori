@@ -19,22 +19,25 @@ public struct SyncedSentTextStatus: Sendable, Equatable {
         case conversation
     }
 
-    /// 応答の状態。サーバーの `replyStatus` と、作れなかったときの `replyFailureReason` の値
+    /// 応答の状態。サーバーの `replyStatus` と、作れなかったときの `replyFailureReason`、止めたときの `replyHaltReason` の値
     public enum Reply: Sendable, Equatable {
         /// サーバーの none
         case notRequested
         case awaiting
         case replied
-        case halted
+        case halted(HaltReason)
         case failed(FailureReason)
 
-        /// 知らない応答の状態と作れなかった理由は nil
-        public init?(serverStatus: String, failureReason: String?) {
+        /// 知らない応答の状態と、作れなかった理由・止めた理由は nil。
+        /// 止めた理由の無い止めは、理由を足す前のサーバーの回数切れとして読む
+        public init?(serverStatus: String, failureReason: String?, haltReason: String?) {
             switch serverStatus {
             case "none": self = .notRequested
             case "awaiting": self = .awaiting
             case "replied": self = .replied
-            case "halted": self = .halted
+            case "halted":
+                guard let reason = HaltReason(serverValue: haltReason) else { return nil }
+                self = .halted(reason)
             case "failed":
                 guard let reason = failureReason.flatMap(FailureReason.init(rawValue:)) else {
                     return nil
@@ -45,14 +48,31 @@ public struct SyncedSentTextStatus: Sendable, Equatable {
             }
         }
 
-        public var serverValue: (status: String, failureReason: String?) {
+        public var serverValue: (status: String, failureReason: String?, haltReason: String?) {
             switch self {
-            case .notRequested: ("none", nil)
-            case .awaiting: ("awaiting", nil)
-            case .replied: ("replied", nil)
-            case .halted: ("halted", nil)
-            case .failed(let reason): ("failed", reason.rawValue)
+            case .notRequested: ("none", nil, nil)
+            case .awaiting: ("awaiting", nil, nil)
+            case .replied: ("replied", nil, nil)
+            case .halted(let reason): ("halted", nil, reason.rawValue)
+            case .failed(let reason): ("failed", reason.rawValue, nil)
             }
+        }
+    }
+
+    /// 止めた理由。サーバーの `replyHaltReason` の値。買っても再開しない
+    public enum HaltReason: String, Sendable, Equatable {
+        /// その日の回数切れ
+        case dailyLimit = "daily_limit"
+        /// サブスクリプション切れ
+        case subscriptionExpired = "subscription_expired"
+
+        /// 無ければ回数切れ（理由を足す前のサーバー）。知らない値は nil
+        init?(serverValue: String?) {
+            guard let serverValue else {
+                self = .dailyLimit
+                return
+            }
+            self.init(rawValue: serverValue)
         }
     }
 

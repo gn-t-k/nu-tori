@@ -306,7 +306,8 @@ struct MealScreen: View {
                 Text(note.title)
                     .foregroundStyle(.secondary)
             }
-        case .deferredToNextDay, .noDishes, .failed:
+        // サブスクリプションを待っているときの「サブスクリプションを見る」は #678 で足す
+        case .deferredToNextDay, .awaitingSubscription, .noDishes, .failed:
             VStack(spacing: 6) {
                 Text(note.title)
                     .fontWeight(.semibold)

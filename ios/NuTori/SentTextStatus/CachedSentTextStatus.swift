@@ -11,6 +11,8 @@ nonisolated final class CachedSentTextStatus {
     var replyStatus: String
     /// replyStatus が failed のときだけ持つ、作れなかった理由
     var replyFailureReason: String?
+    /// replyStatus が halted のときだけ持つ、止めた理由
+    var replyHaltReason: String?
 
     init(_ record: SentTextStatusSyncing.Status) {
         sentTextId = record.sentTextId
@@ -18,6 +20,7 @@ nonisolated final class CachedSentTextStatus {
         classification = stored.classification
         replyStatus = stored.replyStatus
         replyFailureReason = stored.replyFailureReason
+        replyHaltReason = stored.replyHaltReason
     }
 
     func apply(_ record: SentTextStatusSyncing.Status) {
@@ -25,12 +28,13 @@ nonisolated final class CachedSentTextStatus {
         classification = stored.classification
         replyStatus = stored.replyStatus
         replyFailureReason = stored.replyFailureReason
+        replyHaltReason = stored.replyHaltReason
     }
 
     /// 読めない値の行は nil
     func sentTextStatus() -> SentTextStatus? {
         SentTextStatus(
             storedClassification: classification, replyStatus: replyStatus,
-            replyFailureReason: replyFailureReason)
+            replyFailureReason: replyFailureReason, replyHaltReason: replyHaltReason)
     }
 }

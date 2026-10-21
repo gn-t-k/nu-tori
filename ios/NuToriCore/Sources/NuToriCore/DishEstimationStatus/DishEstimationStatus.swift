@@ -3,6 +3,8 @@
 public enum DishEstimationStatus: Hashable, Sendable {
     case estimating
     case deferredToNextDay
+    /// サブスクリプション切れのあいだに推定し直しを頼んだので、推定を保留している
+    case awaitingSubscription
     case estimated
     case noDishes
     case failed

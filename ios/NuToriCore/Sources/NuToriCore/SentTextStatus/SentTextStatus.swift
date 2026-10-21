@@ -23,10 +23,16 @@ public struct SentTextStatus: Hashable, Sendable {
         /// 応答待ち（返事を作るのを待っている・作っている・やり直しを待っている）
         case awaiting
         case replied
-        /// その日の回数切れ
-        case halted
+        /// 止めた（その日の回数切れか、サブスクリプション切れ）。買っても再開しない
+        case halted(HaltReason)
         /// 作れなかった
         case failed(FailureReason)
+    }
+
+    /// 止めた理由。理由ごとに1行の文言が変わる
+    public enum HaltReason: Hashable, Sendable {
+        case dailyLimit
+        case subscriptionExpired
     }
 
     /// 作れなかった理由。理由ごとに1行の文言が変わる

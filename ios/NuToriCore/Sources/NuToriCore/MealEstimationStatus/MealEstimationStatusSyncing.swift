@@ -79,6 +79,7 @@ extension MealEstimationStatus {
         case .estimated: self = .estimated
         case .noDishes: self = .noDishes
         case .deferredToNextDay: self = .deferredToNextDay
+        case .awaitingSubscription: self = .awaitingSubscription
         case .failed: self = .failed
         }
     }

@@ -26,7 +26,8 @@ struct SentTextStatusWireCoding: RecordKindWireCoding {
                     sentTextId: status.sentTextId.canonicalString,
                     classification: status.classification.rawValue,
                     replyStatus: status.reply.serverValue.status,
-                    replyFailureReason: status.reply.serverValue.failureReason))
+                    replyFailureReason: status.reply.serverValue.failureReason,
+                    replyHaltReason: status.reply.serverValue.haltReason))
         }
     #endif
 }
@@ -39,6 +40,8 @@ extension SyncChange {
         let replyStatus: String
         /// replyStatus が failed のときだけある
         let replyFailureReason: String?
+        /// replyStatus が halted のときだけある
+        let replyHaltReason: String?
 
         var syncedStatus: SyncedSentTextStatus? {
             guard let sentTextId = UUID(uuidString: sentTextId),
@@ -52,7 +55,9 @@ extension SyncChange {
         }
 
         private var reply: SyncedSentTextStatus.Reply? {
-            SyncedSentTextStatus.Reply(serverStatus: replyStatus, failureReason: replyFailureReason)
+            SyncedSentTextStatus.Reply(
+                serverStatus: replyStatus, failureReason: replyFailureReason,
+                haltReason: replyHaltReason)
         }
     }
 }

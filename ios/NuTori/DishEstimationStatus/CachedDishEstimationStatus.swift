@@ -21,6 +21,7 @@ nonisolated final class CachedDishEstimationStatus {
         switch status {
         case "estimating": .estimating
         case "deferred_to_next_day": .deferredToNextDay
+        case "awaiting_subscription": .awaitingSubscription
         case "estimated": .estimated
         case "no_dishes": .noDishes
         case "failed": .failed
@@ -33,6 +34,7 @@ nonisolated final class CachedDishEstimationStatus {
         switch status {
         case .estimating: "estimating"
         case .deferredToNextDay: "deferred_to_next_day"
+        case .awaitingSubscription: "awaiting_subscription"
         case .estimated: "estimated"
         case .noDishes: "no_dishes"
         case .failed: "failed"
