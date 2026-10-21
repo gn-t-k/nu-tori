@@ -13,16 +13,21 @@ struct SignInConsentCard: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("続ける前に")
                 .font(.headline)
-            Text(
-                """
-                記録と写真（ヘルスケアから読んだ情報を含む）は、米国の会社のサービスで保存・処理します。\
-                食事の推定と返事のために AI にも送り、不具合と利用状況も送って、その分析にも AI を使います。\
-                推定の値と返事は、確かめてから使ってください。\
-                送り先の国の制度と各社の措置は、プライバシーポリシーに書きました。\
-                [利用規約](https://nu-tori.app/terms)と[プライバシーポリシー](https://nu-tori.app/privacy)を確かめてから、\
-                続けてください。続けると、これらに同意したことになります。
-                """
-            )
+            VStack(alignment: .leading, spacing: 4) {
+                Text(
+                    """
+                    記録と写真（ヘルスケアから読んだ情報を含む）は、米国の会社のサービスで保存・処理します。
+                    食事の推定と返事、不具合と利用状況、それらの分析に AI を使います。
+                    推定の値と返事は、確かめてから使ってください。
+                    [利用規約](https://nu-tori.app/terms)と[プライバシーポリシー](https://nu-tori.app/privacy)を確かめてから、続けてください。
+                    """
+                )
+                bullet("利用規約: 無料体験とサブスクリプション、推定と返事の扱い、禁止すること など")
+                bullet(
+                    "プライバシーポリシー: 集める情報と使い道、送り先の会社、米国の個人情報の法律、各社が情報を守るためにしていること など"
+                )
+                Text("続けると、これらに同意したことになります。")
+            }
             .font(.subheadline)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -32,5 +37,14 @@ struct SignInConsentCard: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("consentCard")
+    }
+
+    /// 折り返した行を「・」の右にそろえる。文の中の改行と「・」だけでは、2行目が「・」の下から始まる
+    private func bullet(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text("・")
+            Text(text)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
