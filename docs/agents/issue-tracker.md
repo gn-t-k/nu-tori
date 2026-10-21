@@ -10,6 +10,7 @@
 - **Issueを親のサブ Issue にする**：`gh api repos/gn-t-k/nu-tori/issues/<親>/sub_issues -X POST -F sub_issue_id=<子の DB ID>`。DB ID は `gh api repos/gn-t-k/nu-tori/issues/<子> --jq .id` で取る（`#番号` や `node_id` ではない）。サブ Issue が使えない場合は、子の本文の先頭に `Part of #<親>` と書く
 - **本文の長さ**：Issue の本文とコメントは 65,536 文字まで（バイトではなく文字）。仕様のような長い本文は、投稿の前に `python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read()))' <ファイル>` で数え、6 万文字を超えたら、ほかの節と重なる図や付録をコメントに分ける
 - **Issueを読む**：`gh api repos/gn-t-k/nu-tori/issues/<番号>`（ラベルは `.labels[].name`）と、コメントは `gh api repos/gn-t-k/nu-tori/issues/<番号>/comments`
+- **Issueを言葉で探す**：`mcp__github__search_issues`（PR は `mcp__github__search_pull_requests`）に、検索の条件 `repo:gn-t-k/nu-tori` を付けて呼ぶ。`gh search`・`gh issue list --search`・`gh api search/*` は、クラウドのセッションで 403 になる（#572）
 - **Issueを一覧する**：`gh api 'repos/gn-t-k/nu-tori/issues?state=open&per_page=100'`。`labels=<名前>` と `state` で絞り込む。PR も混ざるので、`pull_request` のあるものを除く
 - **Issueにコメントする**：`gh api repos/gn-t-k/nu-tori/issues/<番号>/comments -X POST -F body=@<ファイル>`
 - **ラベルを付ける／外す**：`gh api repos/gn-t-k/nu-tori/issues/<番号>/labels -X POST -f 'labels[]=...'` ／ `gh api repos/gn-t-k/nu-tori/issues/<番号>/labels/<名前> -X DELETE`
