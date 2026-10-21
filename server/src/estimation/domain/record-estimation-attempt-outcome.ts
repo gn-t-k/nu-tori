@@ -11,11 +11,9 @@ import type { Meal } from "../../meal/domain/meal";
 import type { BegunEstimationAttempt } from "./begin-estimation-attempts";
 import { abandonEstimation } from "./abandon-estimation";
 import { applyDishEstimation } from "./apply-dish-estimation";
-import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimatedDish } from "./estimated-dish";
 import type { EstimatedWrittenMeals, EstimationAttemptOutcome } from "./estimation-attempt-outcome";
 import type { EstimationWrites } from "./estimation-writes";
-import { findEstimationOrigin } from "./find-estimation-origin";
 import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 
 // 呼び出しから戻ったときに、1つのトランザクションで試みの結果を書く。
@@ -24,10 +22,7 @@ import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 // 返すのは PostHog に送る出来事
 export const recordEstimationAttemptOutcome = (
   writeRecordChanges: RecordChangeWriter,
-  stores: Pick<
-    RecordKindStores,
-    "dish" | "dishEstimationStatus" | "estimation" | "estimationSchedule" | "ingredient" | "meal"
-  >,
+  stores: Pick<RecordKindStores, "dish" | "estimation" | "ingredient" | "meal">,
   attempt: BegunEstimationAttempt,
   outcome: EstimationAttemptOutcome,
   endedAt: Date,
@@ -46,72 +41,68 @@ export const recordEstimationAttemptOutcome = (
     if (target === undefined) {
       return [attemptEnded];
     }
-    const attempts = stores.estimation.findAttempts(estimationId);
-    const computeEnded = (
-      finalStatus: "estimated" | "no_dishes" | "failed",
-      dishCount: number,
-      ingredients: readonly Pick<NewIngredient, "nutrientSource">[],
-    ) =>
-      computeEstimationEndedEvent({
-        ...findEstimationOrigin(stores, target, estimationId),
-        finalStatus,
-        attempts,
-        endedAt,
-        dishCount,
-        ingredients,
-      });
-
     if (outcome.result === "succeeded") {
       if (target.type === "dish") {
         const [estimated] = outcome.dishes;
-        const result = estimated === undefined ? "no_dishes" : "estimated";
-        writes.complete({ estimationId, target, completedAt: endedAt, result });
+        const ended = writes.complete({
+          estimationId,
+          target,
+          completedAt: endedAt,
+          dishCount: outcome.dishes.length,
+          ingredients: estimated?.ingredients ?? [],
+        });
         applyDishEstimation(stores, addChange, {
           dishId: target.dishId,
           estimationId,
           estimated,
         });
-        return [
-          attemptEnded,
-          computeEnded(result, outcome.dishes.length, estimated?.ingredients ?? []),
-        ];
+        return [attemptEnded, ended];
       }
-      const dishCount =
-        outcome.dishes.length +
-        (outcome.writtenMeals?.laterMeals.reduce((sum, meal) => sum + meal.dishes.length, 0) ?? 0);
-      const result = dishCount === 0 ? "no_dishes" : "estimated";
-      writes.complete({ estimationId, target, completedAt: endedAt, result });
-      const ingredients = [
-        ...insertEstimatedDishes(stores, addChange, target.mealId, estimationId, outcome.dishes),
-        ...(outcome.writtenMeals === undefined
-          ? []
-          : recordWrittenMeals(stores, writes, addChange, {
-              mealId: target.mealId,
-              estimationId,
-              writtenMeals: outcome.writtenMeals,
-            })),
+      const estimatedDishes = [
+        ...outcome.dishes,
+        ...(outcome.writtenMeals?.laterMeals.flatMap(({ dishes }) => dishes) ?? []),
       ];
-      return [attemptEnded, computeEnded(result, dishCount, ingredients)];
-    }
-    if (outcome.result === "bad_request" || attempts.length >= maximumEstimationAttempts) {
-      abandonEstimation(stores, writes, addChange, {
+      const ended = writes.complete({
         estimationId,
         target,
-        abandonedAt: endedAt,
+        completedAt: endedAt,
+        dishCount: estimatedDishes.length,
+        ingredients: estimatedDishes.flatMap(({ ingredients }) => ingredients),
       });
-      return [attemptEnded, computeEnded("failed", 0, [])];
+      insertEstimatedDishes(stores, addChange, target.mealId, estimationId, outcome.dishes);
+      if (outcome.writtenMeals !== undefined) {
+        recordWrittenMeals(stores, writes, addChange, {
+          mealId: target.mealId,
+          estimationId,
+          writtenMeals: outcome.writtenMeals,
+        });
+      }
+      return [attemptEnded, ended];
+    }
+    if (
+      outcome.result === "bad_request" ||
+      stores.estimation.findAttempts(estimationId).length >= maximumEstimationAttempts
+    ) {
+      return [
+        attemptEnded,
+        abandonEstimation(stores, writes, addChange, {
+          estimationId,
+          target,
+          abandonedAt: endedAt,
+        }),
+      ];
     }
     return [attemptEnded];
   });
 
-// 推定した料理・当てた推定・材料を食事に書き、料理と材料の変更を足す。書いた材料を返す
+// 推定した料理・当てた推定・材料を食事に書き、料理と材料の変更を足す
 const insertEstimatedDishes = (
   stores: Pick<RecordKindStores, "dish" | "ingredient">,
   addChange: (change: RecordChangeTarget<RecordType>) => void,
   mealId: RecordId,
   estimationId: string,
   estimated: readonly EstimatedDish[],
-): NewIngredient[] => {
+): void => {
   const { dishes, applications, ingredients } = toRecords(mealId, estimationId, estimated);
   for (const dish of dishes) {
     stores.dish.insert(dish);
@@ -128,13 +119,12 @@ const insertEstimatedDishes = (
   for (const { id } of ingredients) {
     addChange({ recordType: "ingredient", recordId: id });
   }
-  return ingredients;
 };
 
 // 文章の食事の推定（#419 の「文章の食事」）。
 // 1つ目の食事（予定のつなぎの食事）に推定した時刻を書き、時刻の違う食事を、同じ送った文章の文章の食事として作って料理と材料を書く。
 // 2つめ以降の食事の推定の状態は、この推定から出す。
-// 1つ目の食事の今の時刻が変わったとき（使う人が直していないとき）だけ、食事の変更を足す。書いた材料を返す
+// 1つ目の食事の今の時刻が変わったとき（使う人が直していないとき）だけ、食事の変更を足す
 const recordWrittenMeals = (
   stores: Pick<RecordKindStores, "dish" | "ingredient" | "meal">,
   writes: EstimationWrites,
@@ -144,7 +134,7 @@ const recordWrittenMeals = (
     estimationId,
     writtenMeals,
   }: { mealId: RecordId; estimationId: string; writtenMeals: EstimatedWrittenMeals },
-): NewIngredient[] => {
+): void => {
   const first = stores.meal.find(mealId);
   if (first === undefined) {
     throw new Error(`推定の予定につながっている食事が無い: ${mealId}`);
@@ -153,7 +143,7 @@ const recordWrittenMeals = (
   if (stores.meal.find(mealId)?.eatenAt.getTime() !== first.eatenAt.getTime()) {
     addChange({ recordType: "meal", recordId: mealId });
   }
-  return writtenMeals.laterMeals.flatMap(({ eatenAt, dishes }) => {
+  for (const { eatenAt, dishes } of writtenMeals.laterMeals) {
     const meal: Meal = {
       id: generateRecordId(),
       eatenAt,
@@ -167,8 +157,8 @@ const recordWrittenMeals = (
     stores.meal.insert(meal);
     addChange({ recordType: "meal", recordId: meal.id });
     writes.recordCreatedMeal({ mealId: meal.id, estimationId });
-    return insertEstimatedDishes(stores, addChange, meal.id, estimationId, dishes);
-  });
+    insertEstimatedDishes(stores, addChange, meal.id, estimationId, dishes);
+  }
 };
 
 const toRecords = (

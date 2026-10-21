@@ -1,5 +1,4 @@
 import { R } from "@praha/byethrow";
-import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import { computeUtcOffsetSeconds } from "../../domain/compute-utc-offset-seconds";
 import { generateRecordId } from "../../domain/record-id";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
@@ -22,10 +21,9 @@ import type { SentTextClassification } from "./sent-text-classification";
 // 読み分けは推定の回数にも返事の回数にも数えない。呼んでいるあいだに止まったら、行が無いまま残り、次のアラームで読み直す
 export const classifySentTexts = async (
   writeRecordChanges: RecordChangeWriter,
-  stores: ClassificationStores & Pick<RecordKindStores, "accountSettings">,
+  stores: ClassificationStores,
   deps: { provider: ConversationProvider },
 ): Promise<{
-  // 利用状況を送らない人には空
   usageEvents: UsageEvent[];
   // アラームの呼び出しごとのログに出す、呼び出しごとの結果
   classifications: ClassificationReport[];
@@ -63,7 +61,7 @@ export const classifySentTexts = async (
     }
   }
   return {
-    usageEvents: sendsUsageData(stores.accountSettings) ? usageEvents : [],
+    usageEvents,
     classifications,
     providerErrors,
   };

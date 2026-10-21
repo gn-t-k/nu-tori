@@ -1,7 +1,5 @@
-import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import { match, P } from "ts-pattern";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
-import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
 import type { MealPhotoArchive } from "../../meal/domain/meal-photo-archive";
 import { beginEstimationAttempts } from "./begin-estimation-attempts";
@@ -16,8 +14,7 @@ import { runEstimationAttempt } from "./run-estimation-attempt";
 export const advanceEstimations = async (
   writeRecordChanges: RecordChangeWriter,
   stores: Parameters<typeof beginEstimationAttempts>[1] &
-    Parameters<typeof recordEstimationAttemptOutcome>[1] &
-    Pick<RecordKindStores, "accountSettings">,
+    Parameters<typeof recordEstimationAttemptOutcome>[1],
   deps: {
     archive: MealPhotoArchive;
     provider: EstimationProvider;
@@ -25,7 +22,6 @@ export const advanceEstimations = async (
   },
   now: Date,
 ): Promise<{
-  // 利用状況を送らない人には空
   usageEvents: UsageEvent[];
   // アラームの呼び出しごとのログに出す、試みごとの結果と失敗した段
   attempts: AttemptReport[];
@@ -59,7 +55,7 @@ export const advanceEstimations = async (
     ),
   ];
   return {
-    usageEvents: sendsUsageData(stores.accountSettings) ? usageEvents : [],
+    usageEvents,
     attempts: settled.map(toAttemptReport),
     providerErrors: settled.flatMap((attempt) =>
       attempt.status === "fulfilled" ? toProviderErrors(attempt.value.outcome) : [],

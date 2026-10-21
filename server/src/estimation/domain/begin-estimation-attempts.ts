@@ -8,12 +8,10 @@ import type { Meal } from "../../meal/domain/meal";
 import type { SentText } from "../../sent-text/domain/sent-text";
 import { abandonEstimation } from "./abandon-estimation";
 import { computeDishToReestimate } from "./compute-dish-to-reestimate";
-import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import { computeNextDayStart } from "./compute-next-day-start";
 import { computeNextEstimationAttemptAt } from "./compute-next-estimation-attempt-at";
 import type { IdentificationTarget } from "./estimation-provider";
 import type { EstimationTarget } from "./estimation-target";
-import { findEstimationOrigin } from "./find-estimation-origin";
 import { maximumDailyEstimations } from "./maximum-daily-estimations";
 import { maximumEstimationAttempts } from "./maximum-estimation-attempts";
 
@@ -41,7 +39,6 @@ export const beginEstimationAttempts = (
   stores: Pick<
     RecordKindStores,
     | "dish"
-    | "dishEstimationStatus"
     | "estimation"
     | "estimationSchedule"
     | "ingredient"
@@ -118,16 +115,8 @@ export const beginEstimationAttempts = (
         beginAttempt(estimationId, target);
         continue;
       }
-      abandonEstimation(stores, writes, addChange, { estimationId, target, abandonedAt: now });
       usageEvents.push(
-        computeEstimationEndedEvent({
-          ...findEstimationOrigin(stores, target, estimationId),
-          finalStatus: "failed",
-          attempts: previous,
-          endedAt: now,
-          dishCount: 0,
-          ingredients: [],
-        }),
+        abandonEstimation(stores, writes, addChange, { estimationId, target, abandonedAt: now }),
       );
     }
     return { attempts, usageEvents };

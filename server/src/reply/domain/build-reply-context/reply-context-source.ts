@@ -1,17 +1,18 @@
-import type { AiUtterance } from "../../ai-utterance/domain/ai-utterance";
-import type { DailyGuide } from "../../daily-guide/domain/daily-guide";
-import type { Dish } from "../../dish/domain/dish";
-import type { ExpenditureEstimate } from "../../expenditure-estimate/domain/expenditure-estimate";
-import type { Goal } from "../../goal/domain/goal";
-import type { Ingredient } from "../../ingredient/domain/ingredient";
-import type { Meal } from "../../meal/domain/meal";
-import type { WeeklyReview } from "../../weekly-review/domain/weekly-review";
-import type { SentText } from "../../sent-text/domain/sent-text";
-import type { WeightRecord } from "../../weight-record/domain/weight-record";
-import type { WeightTrend } from "../../weight-trend/domain/weight-trend";
+import type { AiUtterance } from "../../../ai-utterance/domain/ai-utterance";
+import type { DailyGuide } from "../../../daily-guide/domain/daily-guide";
+import type { Dish } from "../../../dish/domain/dish";
+import type { ExpenditureEstimate } from "../../../expenditure-estimate/domain/expenditure-estimate";
+import type { Goal } from "../../../goal/domain/goal";
+import type { Ingredient } from "../../../ingredient/domain/ingredient";
+import type { Meal } from "../../../meal/domain/meal";
+import type { WeeklyReview } from "../../../weekly-review/domain/weekly-review";
+import type { SentText } from "../../../sent-text/domain/sent-text";
+import type { WeightRecord } from "../../../weight-record/domain/weight-record";
+import type { WeightTrend } from "../../../weight-trend/domain/weight-trend";
+import type { MealEstimationProgress } from "../reply-context";
 
-// 返事に渡す文脈を組み立てる元の記録。組み立てる側が範囲で絞るので、読む側は多めに渡してよい。
-// 要るのは、応える文章の 72 時間前からの送った文章・食事・体重記録、応える文章の日の 7 日前からの食事、最後の体重記録、体重の傾向、
+// 返事に渡す文脈を組み立てる元の記録（buildReplyContext の中だけで使う）。組み立てる側が範囲で絞るので、読む側は多めに渡してよい。
+// 要るのは、応える文章の窓の時間の前からの送った文章・食事・体重記録、応える文章の日の前の日の始まりからの食事、最後の体重記録、体重の傾向、
 // 応える文章の日を含む目標とその1日の目安、その日以前の推定消費カロリーと、その日以前に当てた最も新しい週の見直し
 export type ReplyContextSource = {
   // 応える送った文章
@@ -39,5 +40,3 @@ export type ReplyContextSourceMeal = {
   estimation: MealEstimationProgress;
   dishes: readonly { dish: Dish; ingredients: readonly Ingredient[] }[];
 };
-
-export type MealEstimationProgress = "awaiting" | "failed" | "settled";

@@ -33,8 +33,8 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
 - ドメイン層は、実行基盤の型や API に触れない。ドメイン層が要る置き場と外への呼び出し（記録の置き場、写真の控え、LLM の提供元など）は、ドメイン層が型を定め、基盤に固有の層（Durable Object、D1・R2・LLM の提供元・Apple の API への入出力）がそれを実装する
-- 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。入口（受け口の Worker からの要求と、アラーム）ごとの処理は、アカウントの口（`src/account/domain/account-requests.ts` の `accountRequests`）に関数を1つずつ置く。関数は、ドメイン層が型を定めたストア（`AccountStores` のうち要るもの）と要求と今の時刻（要るときだけ）を受け、結果と、次に張るアラームの時刻と、送る利用状況の出来事（`AccountResponse`）を返す。見直しを起こす要求は、要求ごとのログに足す値（`LoggedAccountResponse` の `requestLog`）も返す。送るかどうか（利用状況の設定）は口の中で決める
-- Durable Object のクラスは、`setUser` でアカウント ID を付ける、ストアを組んで口を呼ぶ、返った時刻にアラームを張る、返った出来事を送る、だけをする薄い層にする。`alarm()` も同じ形にし、ログと Sentry への報告だけを足す。入口を足すときは、口に関数を足してから、Durable Object に同じ形のメソッドを足す
+- 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。入口（受け口の Worker からの要求と、アラーム）ごとの処理は、アカウントの口（`src/account/domain/account-requests.ts` の `accountRequests`）に関数を1つずつ置く。関数は、ドメイン層が型を定めたストア（`AccountStores` のうち要るもの）と要求と今の時刻（要るときだけ）を受け、結果と、次に張るアラームの時刻と、起きた利用状況の出来事（`AccountResponse`）を返す。見直しを起こす要求は、要求ごとのログに足す値（`LoggedAccountResponse` の `requestLog`）も返す。出来事を作るところ（口、流れ、種類）は利用状況の設定を読まない
+- Durable Object のクラスは、`setUser` でアカウント ID を付ける、ストアを組んで口を呼ぶ、返った時刻にアラームを張る、返った出来事を送る、だけをする薄い層にする。送るかどうか（利用状況の設定）は、どの入口の出来事も通る送る前の1か所（`respond` が呼ぶ `selectSendableUsageEvents`）で、口が答えを出し終えた直後の設定で決める。出来事を送る道をほかに作らない。`alarm()` も同じ形にし、ログと Sentry への報告だけを足す。入口を足すときは、口に関数を足してから、Durable Object に同じ形のメソッドを足す
 - HTTP の受け口は、記録を読み書きする要求なら、セッションを確かめ、回数の歯止めをかけてから、その人の Durable Object を呼ぶだけにする。まだセッションのないサインインと Apple のサーバー間通知は、受け口の Worker の認証で受ける。アカウントの削除は、受け口の Worker でドメイン層を呼ぶ。Durable Object の中身を消すときも、その Durable Object の入口を呼んで行う
 - 受け口は、Durable Object を呼ぶたびにアカウント ID を渡す。Durable Object の中では、その呼び出しの Sentry の報告に user の ID として付ける
 - 受け口のスキーマは要求の形だけを確かめる。受け付ける値の範囲はドメイン層で確かめる
@@ -69,7 +69,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
   - 書き込みが、自分の記録のほかに変える記録（食事を消すときの料理など）は、`decide` が返す `addedChanges` に載せる。帳簿は、書き込みの記録の変更のあとに、控えと結ばずに並びの順で足す。`commit` の中で変えた記録が分かる場合（推定の書き込みの口が足す推定の状態の変更）は、`commit` に渡る `addChange` で足す。帳簿は、`addedChanges` のあとに足した順で載せ、同じ記録の変更を最初の1つにまとめる。載せられる種類は `RecordKind` の4つ目の型引数で宣言し、登録簿に無い種類は型検査が止める
   - ほかの種類の記録から計算する種類（体重の傾向、いつもの時刻）は、`RecordKind` の `follows` に元の種類の名前と `afterSourceApplied` を書く。帳簿は、元の種類の書き込みを当て（`applied`）、その変更を並びに載せたあとに、計算する種類を登録簿の順に呼ぶ。計算する種類は、書いたあとの記録を読んで自分の行を書き、変えた記録の ID を返す。元の種類は、計算する種類を知らない（`decide` で、書いたあとの記録をメモリの上で作り直さない）
   - 端末の書き込みの外（受け口の要求、アラーム）で記録を変えるときは、記録の変化を書く入口（`src/domain/record-change-writer.ts` の `RecordChangeWriter`。Durable Object では `durable-object/create-record-change-writer/` が組み、中身は `domain/write-record-changes-to-stores.ts`）に `run` を渡し、その中で行を書いて、変えた記録を `addChange` で渡す。`run` の書き込みと変更は1つのトランザクションに入り、変更には渡した順に通し番号が付く。推定の予定と結果は `estimationAt(now)`、返事の流れの出来事は `reply` で書き、変わった状態の変更は入口が `run` のあとに足す。流れ（推定・返事・読み分け・写真の受け取り）は帳簿を組まず、入口と、自分が読み書きする置き場だけを受け取る
-- 書き込みを当てたときに PostHog に送る出来事（食事を受け取った、など）は、`decide` が返す `usageEvents` に載せる。帳簿は、その要求で初めて決めた書き込みの分だけを返し、同じ書き込みの ID が再び届いたときは返さない。送るかどうか（利用状況の設定）は、要求を当て終えたあとに `computeUsageEvents` が決める
+- 書き込みを当てたときに PostHog に送る出来事（食事を受け取った、など）は、`decide` が返す `usageEvents` に載せる。帳簿は、その要求で初めて決めた書き込みの分だけを返し、同じ書き込みの ID が再び届いたときは返さない。送るかどうか（利用状況の設定）は、要求を当て終えたあとの設定で Durable Object が送る前に決める（上の「層」）
 
 ## 推定
 
@@ -137,7 +137,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 必要な速さ（維持の幅を含む）は、目標を立てたときと同じ式（`computeRequiredPace`）で出す。続いた週の数は残さず、見直すたびにずれの向きの並びから数える
 - 期限後の維持には、今の減量・増量の目標の期限の日より後の最初の見直し（見送る週も含む）で、その週の見直しと同じ `run` の中で移る。推定は新しく出さず、見送った週は前の目標の最後の1日の目安を写す
 - 週の見直し・達成・期限の日の確定の行は、それぞれの書く口（`writeWeeklyReview`、`writeGoalAchievement`、`writeGoalDeadlineConfirmation`）を通してだけ書く。表で守れない決まりは口が書く前に確かめて投げる。週の見直しを書く口のテストは、Durable Object の置き場に当てる `src/weekly-review/durable-object/write-weekly-review.test.ts`
-- 見直しと目標の経過の PostHog の出来事は、`judgeGoalProgress` と `reviewUnreviewedWeeks` が返し、アカウントの口が利用状況の設定で絞る。体重・目標体重・kcal の値は載せず、差・日数・数・区分だけを載せる
+- 見直しと目標の経過の PostHog の出来事は、`judgeGoalProgress` と `reviewUnreviewedWeeks` が返す（利用状況の設定で絞るのは、上の「層」の送る前の1か所）。体重・目標体重・kcal の値は載せず、差・日数・数・区分だけを載せる
 - 見直しを起こす要求は、要求ごとのログに見直した週の数（`reviewedWeekCount`）を出す。見直しを起こさない要求では出さない
 
 ## DB
