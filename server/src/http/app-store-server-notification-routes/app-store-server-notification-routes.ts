@@ -1,15 +1,19 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { R } from "@praha/byethrow";
+import { captureException } from "@sentry/cloudflare";
 import { readAppStoreRootCertificate } from "../../app-store/app-store-root-certificate";
 import { verifyAppStoreServerNotification } from "../../app-store/verify-app-store-server-notification";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { routeAppStoreServerNotification } from "../../subscription/d1/route-app-store-server-notification";
 import { readAppStoreSubscriptionTransaction } from "../../subscription/domain/read-app-store-subscription-transaction";
 import type { AppStoreNotificationLogVariables } from "../observe-request";
+import { AppStoreServerNotificationUnhandledError } from "./app-store-server-notification-unhandled-error";
 
 // App Store のサーバー通知（App Store Server Notifications V2）の受け口（#647 の「App Store のサーバー通知を受ける」）。
 // Sign in with Apple の /v1/apple-server-notifications とは別の口。
-// Apple が呼ぶ口なので、アプリが読む OpenAPI の文書には出さない（アプリのクライアントに入れない）
+// Apple が呼ぶ口なので、アプリが読む OpenAPI の文書には出さない（アプリのクライアントに入れない）。
+// 断った通知と、Production の環境の案内できない通知は Sentry に送る。Sandbox の環境の案内できない通知は、
+// 開発用のビルドで買うたびに本番のサーバーにも届いて起きるので、Workers Logs にだけ出す
 export const appStoreServerNotificationRoutes = new OpenAPIHono<{
   Bindings: Env;
   Variables: { accountId?: string } & AppStoreNotificationLogVariables;
@@ -40,17 +44,37 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
     );
     if (R.isFailure(verified)) {
       c.set("appStoreNotification", { result: "rejected" });
+      captureException(
+        new AppStoreServerNotificationUnhandledError({
+          reason: "unverified",
+          notificationType: undefined,
+          notificationSubtype: undefined,
+        }),
+      );
       return c.body(null, 400);
     }
     const { notificationUUID, notificationType, subtype, signedDate, data } = verified.value;
     const log = { notificationType, notificationSubtype: subtype };
+    const reportUnhandled = (reason: AppStoreServerNotificationUnhandledError["reason"]): void => {
+      captureException(
+        new AppStoreServerNotificationUnhandledError({
+          reason,
+          notificationType,
+          notificationSubtype: subtype,
+        }),
+      );
+    };
     if (data !== undefined && data.bundleId !== c.env.APPLE_BUNDLE_ID) {
       c.set("appStoreNotification", { ...log, result: "rejected" });
+      reportUnhandled("bundle_id_mismatch");
       return c.body(null, 400);
     }
     // 取引を運ばない通知（TEST、更新の延長のまとめなど）は、どのサブスクリプションのものか分からないので案内できない
     if (data?.transaction === undefined) {
       c.set("appStoreNotification", { ...log, result: "unrouted" });
+      if (data?.environment === "Production") {
+        reportUnhandled("unrouted");
+      }
       return c.body(null, 200);
     }
     const transaction = readAppStoreSubscriptionTransaction(
@@ -59,11 +83,15 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
     );
     if (R.isFailure(transaction)) {
       c.set("appStoreNotification", { ...log, result: "rejected" });
+      reportUnhandled(transaction.error.reason);
       return c.body(null, 400);
     }
     const accountId = await routeAppStoreServerNotification(c.env.DB, transaction.value);
     if (accountId === undefined) {
       c.set("appStoreNotification", { ...log, result: "unrouted" });
+      if (transaction.value.environment === "production") {
+        reportUnhandled("unrouted");
+      }
       return c.body(null, 200);
     }
     c.set("accountId", accountId);

@@ -116,6 +116,12 @@ describe("サブスクリプションの利用状況の出来事", () => {
       addDays(computeCalendarDayInTimeZone(new Date(), "Asia/Tokyo"), -10),
     );
 
+  const runAlarmAt = async (time: string) => {
+    vi.setSystemTime(Date.parse(time));
+    captureSpy.mockClear();
+    await runDurableObjectAlarm(getAccountDurableObject(env, accountId));
+  };
+
   const readSubscriptionEvents = () =>
     readPostHogCapturedEvents(captureSpy).filter(({ event }) => event.startsWith("subscription_"));
 
@@ -308,11 +314,6 @@ describe("サブスクリプションの利用状況の出来事", () => {
   // 同期の要求は Asia/Tokyo で送る
   describe("課金の仕事のアラーム", () => {
     let lastDay: string;
-    const runAlarmAt = async (time: string) => {
-      vi.setSystemTime(Date.parse(time));
-      captureSpy.mockClear();
-      await runDurableObjectAlarm(getAccountDurableObject(env, accountId));
-    };
     beforeEach(async () => {
       lastDay = addDays(computeCalendarDayInTimeZone(new Date(), "Asia/Tokyo"), 3);
       await placeFreeTrialLastDay(accountId, lastDay);

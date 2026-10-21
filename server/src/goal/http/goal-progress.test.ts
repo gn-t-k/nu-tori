@@ -225,14 +225,17 @@ describe("目標の達成と期限の日の結果", () => {
         await pullSyncChanges(sessionToken);
       });
 
+      // 期限の日の翌日が月曜に当たる日に回すと、期限後の維持に移った出来事も一緒に送るので、確定の出来事だけを見る
       test("期限の日の体重の傾向と目標体重との差を 0.1 kg 単位で、達成していなかったことと一緒に送ること", () => {
-        expect(readGoalEvents()).toEqual([
-          {
-            event: "goal_deadline_confirmed",
-            distinct_id: accountId,
-            properties: { difference_from_target_kg: 1, achieved: false, $geoip_disable: true },
-          },
-        ]);
+        expect(readGoalEvents().filter(({ event }) => event === "goal_deadline_confirmed")).toEqual(
+          [
+            {
+              event: "goal_deadline_confirmed",
+              distinct_id: accountId,
+              properties: { difference_from_target_kg: 1, achieved: false, $geoip_disable: true },
+            },
+          ],
+        );
       });
 
       test("体重の値を含めないこと", () => {
