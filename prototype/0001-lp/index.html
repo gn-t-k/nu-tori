@@ -1,7 +1,9 @@
 <title>nu-tori LP 試作</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <!--
-  PROTOTYPE（捨てる前提）: 「LP の見た目と文言を見比べる」(#594) の試作、2版目。
+  PROTOTYPE（捨てる前提）: 「LP の見た目と文言を見比べる」(#594) の試作、4版目。
+  3版目の taste-skill の版（taste/）は不採用。その良かったところ（アプリの画面と同じ1日の丸・体重のグラフ・食事のカード、
+  動かして分かる目安の決まり方、写真からどう推定されるか）を、この版に入れた。
   docs/research/landing-page-skills.md の「nu-tori への当てはめ」のチェックリストに合わせて作り直した。
   下のバーで2つの軸を切り替えて見比べる。
     見出し: H1 柱を2つ並べる ／ H2 操作は2つだけ ／ H3 体重が目安を決める（ファーストビューの組み方も変わる）
@@ -97,7 +99,8 @@
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
-  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  /* 日本語の見出しを語の途中で折り返さない。入りきらないときだけ、どこでも折り返す */
+  h1, h2, h3 { text-wrap: balance; margin: 0; word-break: keep-all; overflow-wrap: anywhere; }
   p { margin: 0; }
   a { color: var(--primary); }
   :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
@@ -172,6 +175,57 @@
   .composer .btn { width: 30px; height: 30px; border-radius: 50%; background: var(--fill); flex: none; }
   .composer .btn.p { background: var(--primary); }
   .composer .field { flex: 1; height: 28px; border-radius: 14px; background: var(--surface); font-size: 11px; color: var(--tertiary); display: flex; align-items: center; padding-left: 10px; }
+
+  /* アプリの画面の切れ端。DESIGN.md のトークンと、ios/NuTori の MealCardView・DayRingView・
+     DishScreen・DailyGuideChangeNoticeCard の組み方に合わせる */
+  .app-meal { background: var(--own-record); border-radius: 12px; overflow: hidden; width: 100%; text-align: left; }
+  .app-meal img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; }
+  .app-meal .b { padding: 12px 14px; display: flex; align-items: center; gap: 8px; }
+  .app-meal .t { flex: 1; min-width: 0; display: grid; gap: 2px; }
+  .app-meal .name { font-size: 15px; font-weight: 600; line-height: 20px; }
+  .app-meal .status { font-size: 15px; color: var(--secondary); display: flex; align-items: center; gap: 6px; }
+  .app-meal .time { font-size: 12px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  .app-meal .nut { font-size: 13px; color: var(--secondary); display: flex; flex-wrap: wrap; gap: 0 8px; font-variant-numeric: tabular-nums; }
+  .app-meal .nut b { font-weight: 600; }
+  .app-meal .chev { color: var(--tertiary); font-size: 13px; }
+  .app-meal.pending { opacity: 0.55; }
+  .app-meal.small .b { padding: 8px 10px; }
+  .app-meal.small .name { font-size: 12px; line-height: 16px; }
+  .app-meal.small .time, .app-meal.small .nut, .app-meal.small .status { font-size: 10px; }
+  .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--tertiary); border-top-color: var(--secondary); animation: spin 0.9s linear infinite; flex: none; }
+  .app-meal.small .spinner { width: 10px; height: 10px; border-width: 1.5px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+  .app-notice { background: var(--surface); border-radius: 12px; padding: 16px; display: grid; gap: 12px; text-align: left; }
+  .app-notice .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .app-notice .head b { font-size: 15px; font-weight: 600; }
+  .app-notice .head span, .app-notice .reason { font-size: 13px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  .app-notice .value { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; font-variant-numeric: tabular-nums; }
+  .app-notice .value b { font-size: 22px; font-weight: 400; }
+  .app-notice .value span { font-size: 15px; color: var(--secondary); }
+  .app-notice .link { justify-self: end; font-size: 15px; color: var(--primary); }
+  .app-list-head { font-size: 13px; color: var(--secondary); padding: 0 16px 6px; }
+  .app-list { background: var(--surface); border-radius: 10px; overflow: hidden; }
+  .app-list .row { min-height: 44px; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; position: relative; font-size: 15px; }
+  .app-list .row + .row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 0.5px; background: var(--separator); }
+  .app-list .row small { display: block; font-size: 12px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  .app-list .q { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .est-badge { font-size: 11px; line-height: 14px; color: var(--secondary); border: 1px solid var(--tertiary); border-radius: 4px; padding: 0 4px; }
+  .app-seg { display: flex; background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; }
+  .app-seg button { flex: 1; font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--on-surface); border-radius: 7px; min-height: 32px; cursor: pointer; }
+  .app-seg button[aria-pressed="true"] { background: var(--surface); font-weight: 600; }
+  .est { display: grid; gap: 16px; }
+  .est .share { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  .calc { display: grid; gap: 16px; }
+  .calc .ctl { display: grid; gap: 4px; }
+  .calc label { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--secondary); }
+  .calc label output { color: var(--on-surface); font-variant-numeric: tabular-nums; }
+  .calc input[type="range"] { width: 100%; accent-color: var(--primary); height: 32px; margin: 0; }
+  .calc .formula { font-size: 13px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  .feature.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  /* アプリの画面と同じ灰色の地に、白い一覧と知らせのカードを載せる */
+  .feature.wide .visual { background: var(--background); padding: 16px; border-radius: 12px; min-height: 0; align-content: start; }
+  .est { max-width: 420px; width: 100%; justify-self: center; }
 
   /* 工夫の節 */
   .features { padding-block: 24px 40px; }
@@ -252,7 +306,7 @@
   .proto-bar .current { width: 100%; text-align: center; opacity: 0.85; }
 
   @media (max-width: 760px) {
-    .hero-h1 .grid, .hero-h3 .grid, .feature, .switchers .box { grid-template-columns: minmax(0, 1fr); }
+    .hero-h1 .grid, .hero-h3 .grid, .feature, .feature.wide, .switchers .box { grid-template-columns: minmax(0, 1fr); }
     .steps, .pillars { grid-template-columns: minmax(0, 1fr); }
     .screen { max-width: 230px; }
     .proto-bar .current { display: none; }
@@ -276,6 +330,7 @@
     <p>nu-tori は医療の助言をするものではありません。持病のある方や治療中の方は、目標を立てる前に医師に相談してください。</p>
     <p>nu-tori for iPhone。日本の App Store で配信予定。</p>
     <p>Apple および Apple ロゴは、米国その他の国で登録された Apple Inc. の商標です。App Store は Apple Inc. のサービスマークです。</p>
+    <p>写真: <a href="https://commons.wikimedia.org/wiki/File:Oyakodon_003.jpg">Oyakodon 003</a>、<a href="https://commons.wikimedia.org/wiki/File:Beef_curry_rice_003.jpg">Beef curry rice 003</a>、<a href="https://commons.wikimedia.org/w/index.php?curid=110007929">Onigiri 002</a>（Ocdp、CC0、Wikimedia Commons）</p>
   </div>
 </footer>
 
@@ -283,7 +338,6 @@
   <div class="grp"><span>見出し</span><div class="seg" id="seg-h"></div></div>
   <div class="grp"><span>並び</span><div class="seg" id="seg-o"></div></div>
   <div class="grp"><span>根拠</span><div class="seg" id="seg-n"></div></div>
-  <div class="grp"><a href="taste/index.html" style="color:inherit">taste-skill の版へ</a></div>
   <div class="current" id="current"></div>
 </div>
 
@@ -294,46 +348,147 @@
   const comp = '<code>docs/research/competitor-app-store-listings.md</code>';
 
   // ---- 見本の画面の部品 ----
-  function ringStyle(p, f, c) {
-    // P・F・C の kcal の割合で起点から時計回りに塗り、残りは輪の地（DESIGN.md の1日の丸）
-    const a = p, b = p + f, d = p + f + c;
-    return `background: conic-gradient(var(--protein) 0 ${a}%, var(--fat) ${a}% ${b}%, var(--carb) ${b}% ${d}%, var(--ring-track) ${d}% 100%)`;
+  // 成分表（八訂 増補2023年、server/src/domain/food-composition/food-composition-table.json）の
+  // 100 g あたりの値: [食品番号, kcal, P, F, C]。食品番号が null のものは推定の材料
+  const T = {
+    rice: ['01088', 156, 2, 0.2, 34.6], chicken: ['11221', 190, 17, 13.5, 0], egg: ['12004', 142, 11.3, 9.3, 0.3],
+    warishita: [null, 110, 2, 0, 22], beef: ['11060', 160, 19, 9.3, 0.1], potato: ['02019', 71, 1.4, 0, 14.6],
+    carrot: ['06215', 28, 0.5, 0.1, 5], onion: ['06155', 30, 0.5, 0, 4.7], roux: ['17051', 474, 5.7, 32.8, 35.1],
+    fukujin: ['06143', 137, 2.7, 0.1, 29.4], nori: ['09004', 297, 32, 2.2, 1.7]
+  };
+  // 料理と材料。量は [表に出す数, 単位, 掛ける g]
+  const MEALS = {
+    oyakodon: { dish: '親子丼', time: '12:10', img: 'img/oyakodon.jpg', alt: '親子丼の写真', items: [
+      ['ご飯', 'rice', 200, 'g', 200], ['鶏もも肉', 'chicken', 80, 'g', 80], ['卵', 'egg', 1, '個', 50], ['割り下', 'warishita', 30, 'ml', 30]] },
+    curry: { dish: 'カレーライス', time: '19:30', img: 'img/curry.jpg', alt: 'カレーライスの写真', items: [
+      ['ご飯', 'rice', 200, 'g', 200], ['牛肉（かた）', 'beef', 50, 'g', 50], ['じゃがいも', 'potato', 50, 'g', 50], ['たまねぎ', 'onion', 40, 'g', 40],
+      ['にんじん', 'carrot', 20, 'g', 20], ['カレールウ', 'roux', 20, 'g', 20], ['福神漬', 'fukujin', 10, 'g', 10]] },
+    onigiri: { dish: 'おにぎり', time: '8:05', img: 'img/onigiri.jpg', alt: 'のりを巻いたおにぎり2つの写真', items: [
+      ['ご飯', 'rice', 200, 'g', 200], ['焼きのり', 'nori', 2, 'g', 2]] }
+  };
+  const DAILY_GUIDE = 1760;
+  const fmt = n => Math.round(n).toLocaleString('ja-JP');
+  function totals(m) {
+    let k = 0, p = 0, f = 0, c = 0;
+    for (const [, key, , , g] of m.items) { const r = T[key]; k += r[1] * g / 100; p += r[2] * g / 100; f += r[3] * g / 100; c += r[4] * g / 100; }
+    return { k, p, f, c };
   }
-  const photo = (h1, h2) => `background: linear-gradient(135deg, ${h1}, ${h2})`;
+  const nutLine = t => `<b>${fmt(t.k)} kcal</b><span>P ${t.p.toFixed(1)} g</span><span>F ${t.f.toFixed(1)} g</span><span>C ${t.c.toFixed(1)} g</span>`;
+
+  // 食事のカード（MealCardView）。写真を上に 4:3 で出し、下に料理の名前・時刻・kcal と P・F・C
+  function mealCard(key, opts = {}) {
+    const m = MEALS[key], t = totals(m);
+    const text = opts.pending
+      ? `<span class="status"><span class="spinner" aria-hidden="true"></span>写真を読んでいます</span><span class="time">${m.time}</span>`
+      : `<span class="name">${m.dish}</span><span class="time">${m.time}</span><span class="nut">${nutLine(t)}</span>`;
+    return `<div class="app-meal${opts.pending ? ' pending' : ''}${opts.small ? ' small' : ''}"><img src="${m.img}" alt="${m.alt}" width="800" height="600"><div class="b"><span class="t">${text}</span><span class="chev" aria-hidden="true">›</span></div></div>`;
+  }
+
+  // 1日の丸（DayRingView）。1本の輪を P・F・C の長さで上から時計回りに塗り、色の間に細いすき間を空ける。
+  // 長さは P×4 : F×9 : C×4 の比で、食べた kcal を按分する（ADR-0016）。share は目安に対する割合
+  function ring(t, share, size, stroke) {
+    const r = (size - stroke) / 2, C = 2 * Math.PI * r, gap = stroke / 6 * 2;
+    const sum = t.p * 4 + t.f * 9 + t.c * 4 || 1;
+    const parts = [['protein', t.p * 4 / sum], ['fat', t.f * 9 / sum], ['carb', t.c * 4 / sum]];
+    let off = 0, out = `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--ring-track)" stroke-width="${stroke}"/>`;
+    for (const [v, frac] of parts) {
+      const len = C * Math.min(share, 1) * frac;
+      if (len > gap) out += `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--${v})" stroke-width="${stroke}" stroke-dasharray="${(len - gap).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off - gap / 2).toFixed(2)}" transform="rotate(-90 ${size / 2} ${size / 2})"/>`;
+      off += len;
+    }
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">${out}</svg>`;
+  }
 
   function screen() {
-    const days = [['月', 22, 30, 40], ['火', 20, 28, 45], ['水', 25, 25, 38], ['木', 18, 30, 42], ['金', 21, 26, 44], ['土', 24, 31, 36], ['日', 12, 14, 20]];
+    const week = [['月', 0.92], ['火', 1.04], ['水', 0.88], ['木', 0.97], ['金', 1.0], ['土', 0.83], ['日', 0.62]];
+    const base = totals(MEALS.curry);
     return `
       <div class="screen" aria-label="アプリの画面の見本">
         <div class="bar">10月18日（日）</div>
-        <div class="rings">${days.map(([d, p, f, c]) => `<div><span class="ring" style="${ringStyle(p, f, c)}"></span>${d}</div>`).join('')}</div>
+        <div class="rings">${week.map(([d, sh]) => `<div>${ring(base, sh, 26, 4)}${d}</div>`).join('')}</div>
         <div class="tl">
           <div class="day-head">10月18日（日）</div>
-          <div class="rec"><span class="photo" style="${photo('#d9a066', '#8a5a2b')}"></span>
-            <div><b>鮭の塩焼き定食</b><span class="muted">612 kcal</span>
-              <div class="pfc"><span><i style="background:var(--protein)"></i>P 38</span><span><i style="background:var(--fat)"></i>F 18</span><span><i style="background:var(--carb)"></i>C 72</span></div></div></div>
-          <div class="rec"><span class="photo" style="${photo('#9bc27a', '#4d7a33')}"></span>
-            <div><b>サラダチキンとおにぎり</b><span class="muted">438 kcal</span>
-              <div class="pfc"><span><i style="background:var(--protein)"></i>P 31</span><span><i style="background:var(--fat)"></i>F 6</span><span><i style="background:var(--carb)"></i>C 62</span></div></div></div>
-          <div class="rec pending"><span class="photo" style="${photo('#e3c08a', '#b0703a')}"></span>
-            <div><b>　</b><span class="muted">写真を読んでいます</span></div></div>
+          <div style="align-self:flex-end;width:82%">${mealCard('onigiri', { small: true })}</div>
+          <div style="align-self:flex-end;width:82%">${mealCard('oyakodon', { small: true, pending: true })}</div>
         </div>
         <div class="composer"><span class="btn p"></span><span class="btn"></span><span class="btn"></span><span class="field">書く</span></div>
       </div>
       <p class="fine screen-caption">仮の画面。公開の LP では、撮った画面を Apple の端末の枠に入れる</p>`;
   }
 
-  // 見本の体重の傾向と1日の目安（作り物）。縦軸を2本にせず、グラフを2つに分ける（DESIGN.md）
+  // 撮った写真から推定した食事（読むだけ。材料の量の調整は初回の版に入らないので見せない）
+  let estMeal = 'oyakodon';
+  function estimate() {
+    const m = MEALS[estMeal], t = totals(m);
+    const rows = m.items.map(([name, key, q, unit]) => {
+      const src = T[key][0] ? `成分表 ${T[key][0]}` : '推定';
+      return `<div class="row"><span>${name}<small>${src}</small></span><span class="q">${q} ${unit}<span class="est-badge">推定</span></span></div>`;
+    }).join('');
+    return `
+      <div class="est" id="est">
+        <div class="app-seg" role="group" aria-label="写真を選ぶ">${Object.entries(MEALS).map(([k, x]) => `<button type="button" data-meal="${k}" aria-pressed="${k === estMeal}">${x.dish}</button>`).join('')}</div>
+        ${mealCard(estMeal)}
+        <div><div class="app-list-head">材料</div><div class="app-list">${rows}</div></div>
+        <div class="share">${ring(t, t.k / DAILY_GUIDE, 44, 7)}<span>1日の目安 ${fmt(DAILY_GUIDE)} kcal のうち ${Math.round(t.k / DAILY_GUIDE * 100)}%</span></div>
+      </div>`;
+  }
+
+  // 目安の決まり方の見本の計算。推定消費 = 食べた量 − 傾向 × 7,700 ÷ 7、目安 = 推定消費 + ペース × 7,700 ÷ 7
+  const calcState = { intake: 1880, trend: -0.15, pace: -0.25 };
+  const KCAL_PER_KG = 7700, PREVIOUS = 1800;
+  const signed = (v, d = 2) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${Math.abs(v).toFixed(d)}`;
+  function calcOut() {
+    const tdee = calcState.intake - calcState.trend * KCAL_PER_KG / 7;
+    const guide = Math.round((tdee + calcState.pace * KCAL_PER_KG / 7) / 10) * 10;
+    const diff = guide - PREVIOUS;
+    const pace = calcState.pace === 0 ? '体重を保つ' : `週 ${Math.abs(calcState.pace)} kg 減らす`;
+    return `
+      <div class="app-notice" aria-live="polite">
+        <div class="head"><b>1日の目安が変わりました</b><span>7:02</span></div>
+        <div class="value"><b>${fmt(guide)} kcal</b><span>${diff === 0 ? '±0' : (diff > 0 ? '+' : '−') + fmt(Math.abs(diff))} kcal</span></div>
+        <div class="reason">推定消費カロリー ${fmt(tdee)} kcal から、${pace}ペースの分を${calcState.pace === 0 ? 'そのまま目安にしました' : '引きました'}。</div>
+        <span class="link">目標 ›</span>
+      </div>`;
+  }
+  function calc() {
+    return `
+      <div class="calc">
+        <div class="ctl"><label for="calc-intake">先週の1日平均の食べた量 <output id="calc-intake-v">${fmt(calcState.intake)} kcal</output></label><input type="range" id="calc-intake" min="1400" max="2800" step="10" value="${calcState.intake}"></div>
+        <div class="ctl"><label for="calc-trend">体重の傾向（週あたり） <output id="calc-trend-v">${signed(calcState.trend)} kg</output></label><input type="range" id="calc-trend" min="-1" max="0.6" step="0.05" value="${calcState.trend}"></div>
+        <div class="app-seg" role="group" aria-label="目標のペース">${[[0, '保つ'], [-0.25, '週 0.25 kg 減'], [-0.5, '週 0.5 kg 減']].map(([v, l]) => `<button type="button" data-pace="${v}" aria-pressed="${v === calcState.pace}">${l}</button>`).join('')}</div>
+        <div id="calc-out">${calcOut()}</div>
+        <p class="formula">見本の計算。体重 1 kg を 7,700 kcal として、食べた量と体重の傾向から推定消費カロリーを出し、ペースの分を引く。先週の目安は 1,800 kcal。</p>
+      </div>`;
+  }
+  document.addEventListener('click', e => {
+    const m = e.target.closest('[data-meal]');
+    if (m) { estMeal = m.dataset.meal; document.getElementById('est').outerHTML = estimate(); return; }
+    const pc = e.target.closest('[data-pace]');
+    if (pc) {
+      calcState.pace = +pc.dataset.pace;
+      pc.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === pc)));
+      document.getElementById('calc-out').innerHTML = calcOut();
+    }
+  });
+  document.addEventListener('input', e => {
+    if (e.target.id === 'calc-intake') { calcState.intake = +e.target.value; document.getElementById('calc-intake-v').textContent = `${fmt(calcState.intake)} kcal`; }
+    else if (e.target.id === 'calc-trend') { calcState.trend = +e.target.value; document.getElementById('calc-trend-v').textContent = `${signed(calcState.trend)} kg`; }
+    else return;
+    document.getElementById('calc-out').innerHTML = calcOut();
+  });
+
+  // 体重の傾向（GoalWeightChartView）と1日の目安（作り物）。目標の道筋は点線、傾向は Primary の線で、端に今の値を添える。
+  // 縦軸を2本にせず、グラフを2つに分ける（DESIGN.md）
   function charts() {
-    const W = 520, H = 130, padL = 40, padR = 12, padT = 10, padB = 22;
-    const weeks = 8;
-    const trend = Array.from({ length: weeks * 7 }, (_, i) => 68.0 - i * 0.032);
-    const raw = trend.map((v, i) => v + Math.sin(i * 1.7) * 0.35 + Math.cos(i * 0.9) * 0.2);
-    const minW = 65.5, maxW = 69;
-    const x = i => padL + (W - padL - padR) * i / (weeks * 7 - 1);
+    const W = 520, H = 130, padL = 40, padR = 40, padT = 10, padB = 22;
+    const weeks = 8, n = weeks * 7;
+    const trend = Array.from({ length: n }, (_, i) => 68.0 - i * 0.028 + Math.sin(i / 9) * 0.08);
+    const minW = 65.5, maxW = 68.5;
+    const x = i => padL + (W - padL - padR) * i / (n - 1);
     const yW = v => padT + (H - padT - padB) * (maxW - v) / (maxW - minW);
-    const dots = raw.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${yW(v).toFixed(1)}" r="2" fill="var(--tertiary)"/>`).join('');
+    const path = `M${x(0)},${yW(68.0)} L${x(n - 1)},${yW(66.0)}`;
     const line = trend.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${yW(v).toFixed(1)}`).join('');
+    const last = trend[n - 1];
     const ticksW = [66, 67, 68].map(v => `<line x1="${padL}" x2="${W - padR}" y1="${yW(v)}" y2="${yW(v)}" stroke="var(--separator)" stroke-width="0.5"/><text x="${padL - 6}" y="${yW(v) + 4}" font-size="11" text-anchor="end" fill="var(--secondary)">${v}</text>`).join('');
     const targets = [1800, 1800, 1750, 1720, 1760, 1740, 1780, 1770];
     const minK = 1600, maxK = 1900;
@@ -345,8 +500,8 @@
     const weekLabels = Array.from({ length: weeks }, (_, i) => `<text x="${(xs(i) + xs(i + 1)) / 2}" y="${H - 6}" font-size="11" text-anchor="middle" fill="var(--secondary)">${i + 1}週</text>`).join('');
     return `
       <div class="charts" aria-label="体重の傾向と1日の目安の見本">
-        <div class="label"><span>体重の傾向（kg）</span><span class="sample-tag">見本</span></div>
-        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="体重の見本のグラフ">${ticksW}${dots}<path d="${line}" fill="none" stroke="var(--primary)" stroke-width="2.5"/></svg>
+        <div class="label"><span>体重の傾向（kg）。点線は目標の道筋</span><span class="sample-tag">見本</span></div>
+        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="体重の見本のグラフ">${ticksW}<path d="${path}" fill="none" stroke="var(--secondary)" stroke-width="1.2" stroke-dasharray="3 3"/><path d="${line}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${x(n - 1)}" cy="${yW(last)}" r="3" fill="var(--primary)"/><text x="${x(n - 1) + 6}" y="${yW(last) + 4}" font-size="11" fill="var(--secondary)">${last.toFixed(1)}</text></svg>
         <div class="label"><span>1日の目安（kcal）。毎週の見直しで変わる</span></div>
         <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="1日の目安の見本のグラフ">${ticksK}<path d="${step}" fill="none" stroke="var(--primary)" stroke-width="2.5"/>${weekLabels}</svg>
       </div>`;
@@ -399,7 +554,7 @@
             <div class="step"><span class="when">朝</span><b>体重を量る</b><span>ヘルスケアにつながる体重計なら、量るだけで入ります</span>
               <div class="mini"><span style="font-size:28px;font-weight:300;font-variant-numeric:tabular-nums">67.4 kg</span></div></div>
             <div class="step"><span class="when">食べる前</span><b>撮る</b><span>撮り忘れたら「昼にカレー」と書きます</span>
-              <div class="mini"><span class="rec" style="width:85%;align-self:center"><span class="photo" style="${photo('#d9a066', '#8a5a2b')}"></span><span><b>鮭の塩焼き定食</b><span class="muted">612 kcal</span></span></span></div></div>
+              <div class="mini" style="height:auto;background:transparent">${mealCard('oyakodon', { small: true })}</div></div>
             <div class="step result"><span class="when">毎週、自動で</span><b>目安が変わる</b><span>体重の傾向から、1日の目安を直します</span>
               <div class="mini"><span style="font-size:15px;color:var(--secondary)">1,800 → <b style="color:var(--on-surface);font-size:24px">1,750</b> kcal</span></div></div>
           </div>
@@ -447,7 +602,7 @@
       title: '撮るだけ。撮り忘れたら「昼にカレー」と書くだけ',
       body: `<p>写真から料理と材料と量を推し量り、栄養を出します。撮り忘れた食事は、書けば入ります。</p>
              <p>量が少しずれていても、直さなくてかまいません。1日の目安は体重の動きを見て合わせ直すので、ずれはそこでならされます。気になるときだけ、あとで直せます。</p>`,
-      visual: `<div class="visual"><div class="kv"><span>ごはん</span><span>180 g</span></div><div class="kv"><span>鮭（塩ざけ・焼き）</span><span>80 g</span></div><div class="kv"><span>味噌汁</span><span>1 杯</span></div><div class="kv"><span>ほうれん草のおひたし</span><span>60 g</span></div><div class="kv" style="border-top:1px solid var(--separator);padding-top:8px"><span>合計</span><span><b>612 kcal</b></span></div><span class="sample-tag" style="justify-self:start">見本</span></div>`,
+      visual: () => `<div class="visual" style="gap:12px"><span class="fine">撮った直後</span>${mealCard('curry', { pending: true })}<span class="fine">食べ終わるころ</span>${mealCard('curry')}</div>`,
       note: notes(
         note('fact', `「入力・操作が面倒」計 65 件、「写真の推定がずれて手で直す」計 27 件（${comp}）。`),
         note('check', '「ずれは体重の動きでならされる」は ADR-0007 からの言い方。いつも同じ向きにずれるなら目安に吸収されるが、写真ごとにばらつくずれまで言い切れるか、開発者に確かめる。')
@@ -457,20 +612,24 @@
       title: '栄養は、日本食品標準成分表の値で数えます',
       body: `<p>料理を材料に分け、材料ごとに文部科学省の日本食品標準成分表の値を引いて数えます。どの食品の値を使ったかは、食事を開けば見られます。</p>
              <p class="fine">写真に栄養成分表示が写っていれば、その表示を使います。</p>`,
-      visual: `<div class="visual"><div class="kv"><span>しろさけ 塩ざけ 焼き</span><span>80 g</span></div><div class="kv"><span>栄養の出どころ</span><span>成分表</span></div><div class="kv"><span>こめ 精白米 めし</span><span>180 g</span></div><div class="kv"><span>栄養の出どころ</span><span>成分表</span></div><span class="sample-tag" style="justify-self:start">見本</span></div>`,
+      wide: true,
+      visual: () => `<div class="visual">${estimate()}</div>`,
       note: notes(
         note('fact', `日本食品標準成分表を説明文に書いているアプリは、調べた 11 本の中に無い（${comp} 問い2）。「食品が無い」の不満は、あすけん 7・MacroFactor 6・WiseMeal 12。`),
-        note('decision', 'ADR-0015（栄養は成分表から引く。出どころは表示 → 成分表 → 推定の順）。')
+        note('decision', 'ADR-0015（栄養は成分表から引く。出どころは表示 → 成分表 → 推定の順）。'),
+        note('fact', '写真を選ぶと、その写真から出る料理・材料・量・出どころが変わる。値は成分表（八訂 増補2023年）の 100 g あたりの値に量を掛けたもの。割り下は成分表に合うものが無い材料の見本で、値は推定（アプリの見本と同じ）。材料の量の調整は初回の版に入らないので、読むだけにした。写真は Wikimedia Commons の CC0（Ocdp）で、nu-tori の利用者の食事ではない。')
       )
     },
     weekly: {
       title: '1日の目安は、毎週の体重の動きで直ります',
       body: `<p>毎週、その週の体重の傾向と食べた量から推定消費カロリーを出し直し、1日の目安を直します。</p>
              <p><b>最初の目安の出し方</b>：ヘルスケアに直前 28 日の食べた量と体重があれば、そこから逆算します。無ければ、身長・生まれた年・性別・活動量から式で出し、使うほど記録に合わせて直ります。</p>`,
-      visual: `<div class="visual"><div class="kv"><span>1週目</span><span>1,800 kcal</span></div><div class="kv"><span>2週目</span><span>1,800 kcal</span></div><div class="kv"><span>3週目</span><span>1,750 kcal</span></div><div class="kv"><span>4週目</span><span>1,720 kcal</span></div><span class="sample-tag" style="justify-self:start">見本</span></div>`,
+      wide: true,
+      visual: () => `<div class="visual">${calc()}</div>`,
       note: notes(
         note('fact', `「目標・計算が合わない」はあすけん 8・カロミル 6・MacroFactor 4。MacroFactor の 4 件はどれも「目安が低すぎる」（${comp}）。毎週直す形でも消えないので、最初の目安の出し方を見せる。`),
-        note('check', '最初の目安をアプリでどう見せるかは仕様7「週の見直しと目標の経過」で決める。ここの文はそれに合わせて直す。')
+        note('check', '最初の目安をアプリでどう見せるかは仕様7「週の見直しと目標の経過」で決める。ここの文はそれに合わせて直す。'),
+        note('check', '動かせるのは LP の説明のための操作で、アプリの入力ではない。出力はアプリの「1日の目安が変わりました」の知らせのカードの形。計算は見本（7,700 kcal/kg は server/src/domain/kilocalories-per-kilogram.ts）で、アプリの見直しの計算（ADR-0007）と同じかは確かめていない。理由の文も見本。')
       )
     },
     price: {
@@ -500,13 +659,13 @@
     const items = o.keys.map(k => {
       const f = features[k];
       return `
-        <article class="feature${f.visual ? '' : ' no-visual'}">
+        <article class="feature${f.visual ? '' : ' no-visual'}${f.wide ? ' wide' : ''}">
           <div>
             <h3>${f.title}</h3>
             <div class="body">${f.body}</div>
             ${f.note}
           </div>
-          ${f.visual || ''}
+          ${typeof f.visual === 'function' ? f.visual() : (f.visual || '')}
         </article>`;
     }).join('');
     return `
