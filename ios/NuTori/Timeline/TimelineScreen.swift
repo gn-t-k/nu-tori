@@ -872,7 +872,7 @@ struct TimelineScreen: View {
                     goalRecords: GoalRecords(
                         goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
                         weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
-                    notices: [], undelivered: .none, conversation: .none),
+                    notices: [], undelivered: .none, conversation: .none, subscriptionNotices: []),
                 firstDay: monday,
                 today: today)
         ).weeks

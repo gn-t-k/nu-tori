@@ -27,7 +27,7 @@
                             weeklyReviews: [review], weightTrend: .sampleWeeklyReviewed,
                             weightRecords: WeightRecord.sampleWeeklyReviewedWeek),
                         rejectedLines: [], meals: MealCard.sampleWeeklyReviewedWeek, notices: [],
-                        undelivered: .none, conversation: .none),
+                        undelivered: .none, conversation: .none, subscriptionNotices: []),
                     firstDay: Goal.sampleWeeklyReviewed.startedDay, today: .sampleToday)
                 return timeline.days.lazy.flatMap(\.items).compactMap { item in
                     if case .weeklyReviewCard(let card) = item { card } else { nil }

@@ -18,7 +18,7 @@ extension TimelineTests {
                     meals: meals, notices: [],
                     undelivered: UndeliveredRecords(
                         pendingEntries: pending, kinds: RecordKindRegistry.ok().synced),
-                    conversation: .none),
+                    conversation: .none, subscriptionNotices: []),
                 firstDay: day, today: day)
         }
 
@@ -161,7 +161,8 @@ extension TimelineTests {
                                     .entry()
                             }, kinds: RecordKindRegistry.ok().synced),
                         conversation: Timeline.Conversation(
-                            sentTexts: [sentText], statuses: [:], replies: [], streams: [:])),
+                            sentTexts: [sentText], statuses: [:], replies: [], streams: [:]),
+                        subscriptionNotices: []),
                     firstDay: Undelivered.day, today: Undelivered.day)
             }
 

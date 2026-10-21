@@ -197,7 +197,7 @@ public struct Timeline: Sendable {
             notices: [Notice],
             undelivered: UndeliveredRecords,
             conversation: Conversation,
-            subscriptionNotices: [SubscriptionNotice] = []
+            subscriptionNotices: [SubscriptionNotice]
         ) {
             self.subscriptionNotices = subscriptionNotices
             self.goalRecords = goalRecords
