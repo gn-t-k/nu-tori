@@ -53,9 +53,11 @@ struct TermsAgreementSheetView: View {
 
     private var message: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("利用規約を定めました")
+            Text("利用規約への同意のお願い")
                 .font(.title2.bold())
-            Text("[利用規約](https://nu-tori.app/terms)を確かめてから、続けてください。")
+            Text(
+                "nu-tori を使い続けるには、[利用規約](https://nu-tori.app/terms)への同意が必要です。確かめてから、続けてください。"
+            )
                 .font(.body)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
