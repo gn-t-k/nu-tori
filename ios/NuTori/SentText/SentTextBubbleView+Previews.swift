@@ -6,8 +6,9 @@
 
     #Preview("状態ごと", arguments: SentTextBubbleView.Sample.allCases) { sample in
         SentTextBubbleView(
-            bubble: sample.bubble, isUndelivered: sample.isUndelivered, resend: { _ in },
-            resendAsConversation: {}, isMealUndelivered: { _ in sample.isMealUndelivered },
+            bubble: sample.bubble, isUndelivered: sample.isUndelivered,
+            regeneration: sample.regeneration,
+            isMealUndelivered: { _ in sample.isMealUndelivered },
             openMeal: { _ in },
             loadPhoto: { _, photoId in UIImage.sampleMealPhoto(for: photoId) }
         )
@@ -37,6 +38,10 @@
             case halted
             /// 送り直すを受け付けなかった
             case resendRejected
+            /// サブスクリプション切れで止めた。切れているあいだは送り直すを出さない
+            case haltedBySubscription
+            /// 食事が1つできたが、サブスクリプション切れのあいだ。会話として送り直すを出さない
+            case oneMealWhileSubscriptionExpired
 
             var bubble: SentTextBubble {
                 switch self {
@@ -54,7 +59,7 @@
                     SentTextBubble(
                         sentText: Self.sentText, meals: [], replyLine: .failed(.badRequest),
                         rejectedLine: nil)
-                case .oneMeal, .oneMealUndelivered:
+                case .oneMeal, .oneMealUndelivered, .oneMealWhileSubscriptionExpired:
                     SentTextBubble(
                         sentText: Self.mealText, meals: [Self.lunch], replyLine: nil,
                         rejectedLine: nil)
@@ -77,11 +82,25 @@
                     SentTextBubble(
                         sentText: Self.sentText, meals: [], replyLine: .halted(.dailyLimit),
                         rejectedLine: nil)
+                case .haltedBySubscription:
+                    SentTextBubble(
+                        sentText: Self.sentText, meals: [],
+                        replyLine: .halted(.subscriptionExpired), rejectedLine: nil)
                 case .resendRejected:
                     SentTextBubble(
                         sentText: Self.sentText, meals: [], replyLine: .failed(.retriesExhausted),
                         rejectedLine: RejectedSentTextLine(
                             sentText: Self.sentText, subject: .resend))
+                }
+            }
+
+            var regeneration: SentTextBubbleView.Regeneration {
+                switch self {
+                case .haltedBySubscription, .oneMealWhileSubscriptionExpired: .unavailable
+                case .undelivered, .reading, .replied, .oneMeal, .oneMealUndelivered,
+                    .mealsAtDifferentTimes, .failedRetriesExhausted, .failedBadRequest, .halted,
+                    .resendRejected:
+                    .available(resend: { _ in }, resendAsConversation: {})
                 }
             }
 

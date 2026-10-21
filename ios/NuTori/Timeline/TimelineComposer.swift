@@ -6,9 +6,12 @@ import UIKit
 /// タイムラインの下に固定する入力欄。上の行に左から「撮る」「写真」「体重」と、残りの幅の書く欄（大きな文字では、書く欄を一番下の行に全幅で置く）。
 /// 今日の体重が未記録のあいだは、「体重」をカプセルにして丸の行の下に全幅で置く（書く欄の幅が記録の前後で変わらないように）。
 /// 目標を立てる知らせのカードを広げているあいだは、未記録でも「体重」を丸い灰色のボタンにする（カードの塗ったボタンと並ばないように）。
-/// カメラを許可していない人が「撮る」を押したら、そのすぐ上に知らせを出す
+/// カメラを許可していない人が「撮る」を押したら、そのすぐ上に知らせを出す。
+/// サブスクリプション切れのあいだは、撮る・写真・書く欄を押せなくし、プリセットの代わりに課金画面を開くチップを置く（体重はいつもどおり）
 struct TimelineComposer: View {
     let weightRecordedToday: Bool
+    /// サブスクリプション切れ
+    let requiresSubscription: Bool
     /// 目標を立てる知らせのカードを広げている
     let expandsGoalSetup: Bool
     /// 体重のシートを開く前の、ヘルスケアの許可を求めているあいだ
@@ -20,9 +23,12 @@ struct TimelineComposer: View {
     let onPresetTapped: (TextPreset) -> Void
     /// 送れるときだけ呼ぶ。呼んだあと書く欄を空にする
     let onSendText: (TextDraft) -> Void
+    /// サブスクリプション切れのチップ。課金画面を開く
+    let onOpenPaywall: () -> Void
 
     init(
         weightRecordedToday: Bool,
+        requiresSubscription: Bool,
         expandsGoalSetup: Bool,
         preparingWeightEntry: Bool,
         showsCameraNotice: Bool,
@@ -31,9 +37,11 @@ struct TimelineComposer: View {
         onPickPhotos: @escaping () -> Void,
         onWeight: @escaping () -> Void,
         onPresetTapped: @escaping (TextPreset) -> Void,
-        onSendText: @escaping (TextDraft) -> Void
+        onSendText: @escaping (TextDraft) -> Void,
+        onOpenPaywall: @escaping () -> Void
     ) {
         self.weightRecordedToday = weightRecordedToday
+        self.requiresSubscription = requiresSubscription
         self.expandsGoalSetup = expandsGoalSetup
         self.preparingWeightEntry = preparingWeightEntry
         self.showsCameraNotice = showsCameraNotice
@@ -42,6 +50,7 @@ struct TimelineComposer: View {
         self.onWeight = onWeight
         self.onPresetTapped = onPresetTapped
         self.onSendText = onSendText
+        self.onOpenPaywall = onOpenPaywall
         _draft = State(initialValue: initialDraft)
     }
 
@@ -52,7 +61,9 @@ struct TimelineComposer: View {
                     .padding(.horizontal)
             }
             VStack(spacing: 8) {
-                if draft.showsPresets {
+                if requiresSubscription {
+                    subscriptionChip
+                } else if draft.showsPresets {
                     presets
                 }
                 if dynamicTypeSize.isAccessibilitySize {
@@ -114,12 +125,14 @@ struct TimelineComposer: View {
             circle(systemName: "camera.fill", filled: true)
         }
         .buttonStyle(.plain)
+        .disabled(requiresSubscription)
         .accessibilityLabel("撮る")
         .accessibilityIdentifier("composer-capture")
         Button(action: onPickPhotos) {
             circle(systemName: "photo.on.rectangle", filled: false)
         }
         .buttonStyle(.plain)
+        .disabled(requiresSubscription)
         .accessibilityLabel("写真")
         .accessibilityIdentifier("composer-photos")
         if showsWeightCircle && !writing {
@@ -162,6 +175,29 @@ struct TimelineComposer: View {
         .scrollClipDisabled()
     }
 
+    /// プリセットの場所に置くチップ。入力欄の中で、課金画面を開くのはこれだけ
+    private var subscriptionChip: some View {
+        Button(action: onOpenPaywall) {
+            HStack(spacing: 4) {
+                Text("撮って記録するには、サブスクリプションが必要です")
+                Image(systemName: "chevron.right")
+            }
+            .font(.footnote)
+            .foregroundStyle(Color.accentColor)
+            // DESIGN.md の Layout は余白を標準に任せるが、プリセットと同じ preset-chip（高さ 32、左右 12）にそろえる
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+            .overlay(Capsule().stroke(Color(.separator), lineWidth: 0.5))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("撮って記録するには、サブスクリプションが必要です")
+        .accessibilityIdentifier("composer-subscription-chip")
+    }
+
     /// 1行から始まり5行まで伸びる。「送る」は文字を入れたときだけ欄の右端に出し、送れないあいだは押せなくする
     private var field: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -171,6 +207,7 @@ struct TimelineComposer: View {
                 .focused($fieldFocused)
                 // 1行の欄の高さを composer-field の 36 にする（Body の1行に上下 7 を足す）。標準の余白では 36 にならない
                 .padding(.vertical, 7)
+                .disabled(requiresSubscription)
                 .accessibilityIdentifier("composer-field")
             if !draft.text.isEmpty {
                 Button(action: send) {
@@ -290,11 +327,32 @@ struct TimelineComposer: View {
         circle(filled: filled) { Image(systemName: systemName) }
     }
 
-    /// 塗った丸は Primary の地に白、灰色の丸は Fill の地に Primary
     private func circle(filled: Bool, @ViewBuilder icon: () -> some View) -> some View {
-        icon()
-            .frame(width: buttonSize, height: buttonSize)
-            .background(filled ? Color.accentColor : Color(.tertiarySystemFill), in: Circle())
-            .foregroundStyle(filled ? Color.white : Color.accentColor)
+        CircleButtonLabel(filled: filled, size: buttonSize, icon: icon())
+    }
+}
+
+/// 塗った丸は Primary の地に白、灰色の丸は Fill の地に Primary。
+/// 押せないあいだは、塗った丸も灰色の丸にし、印を押せない文字の色にする。
+/// 地を自前で塗っているので、`.disabled` だけでは押せない見た目にならないため（DESIGN.md の「押せないボタン」）
+private struct CircleButtonLabel<Icon: View>: View {
+    let filled: Bool
+    let size: CGFloat
+    let icon: Icon
+
+    var body: some View {
+        icon
+            .frame(width: size, height: size)
+            .background(
+                filled && isEnabled ? Color.accentColor : Color(.tertiarySystemFill), in: Circle()
+            )
+            .foregroundStyle(foreground)
+    }
+
+    @Environment(\.isEnabled) private var isEnabled
+
+    private var foreground: Color {
+        if !isEnabled { return Color(.tertiaryLabel) }
+        return filled ? Color.white : Color.accentColor
     }
 }

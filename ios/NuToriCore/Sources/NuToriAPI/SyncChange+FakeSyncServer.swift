@@ -60,6 +60,14 @@
         }
     }
 
+    extension Components.Schemas.SubscriptionTransactionReportChange {
+        init(_ change: SyncChange) throws {
+            self.init(
+                kind: change.wireKind, recordId: change.recordKey.id,
+                record: try change.recordPayload())
+        }
+    }
+
     extension Components.Schemas.SyncWriteCurrent.ChangePayload {
         init(_ change: SyncChange) throws {
             self.init(

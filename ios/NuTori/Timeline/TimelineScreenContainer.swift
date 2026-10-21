@@ -47,6 +47,7 @@ struct TimelineScreenContainer: View {
             expenditureEstimates: cachedExpenditureEstimates.compactMap {
                 $0.expenditureEstimate()
             },
+            subscriptionStatus: cachedSubscriptionStatuses.first?.subscriptionStatus(),
             undeliveredRecords: pendingAppearance.undelivered,
             capture: capture,
             reminderLanding: reminderLanding,
@@ -87,6 +88,7 @@ struct TimelineScreenContainer: View {
     @Query private var cachedSentTexts: [CachedSentText]
     @Query private var cachedSentTextStatuses: [CachedSentTextStatus]
     @Query private var cachedAiUtterances: [CachedAiUtterance]
+    @Query private var cachedSubscriptionStatuses: [CachedSubscriptionStatus]
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 

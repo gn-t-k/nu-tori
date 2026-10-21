@@ -2,8 +2,17 @@
     import Foundation
     import NuToriCore
 
-    /// UI テストは App Store につながない。商品も取引も無く、買う画面は閉じたことにする
+    /// UI テストは App Store につながない。商品も今使える取引も無く、買うと場面の決めた結果を返す
     nonisolated struct UITestSubscriptionStore: SubscriptionStore {
+        let purchaseResult: PurchaseResult
+
+        enum PurchaseResult {
+            /// 買う画面を閉じたことにする
+            case cancels
+            /// 買えたことにする。署名は偽の同期サーバーが確かめない
+            case succeeds
+        }
+
         func products(ids: [String]) async throws -> [SubscriptionProduct] {
             []
         }
@@ -11,7 +20,13 @@
         func purchase(productId: String, appAccountToken: UUID) async throws
             -> AppStorePurchaseAttempt
         {
-            .cancelled
+            switch purchaseResult {
+            case .cancels:
+                .cancelled
+            case .succeeds:
+                .purchased(
+                    AppStoreTransaction(id: 1, signedTransaction: "ui-test-signed-transaction"))
+            }
         }
 
         func transactionUpdates() -> AsyncStream<AppStoreTransaction> {

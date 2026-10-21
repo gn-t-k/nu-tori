@@ -9,6 +9,7 @@ struct PaywallSheet: View {
     var body: some View {
         PaywallScreen(
             content: content,
+            storefront: storefront,
             purchaseToken: session.purchaseToken,
             message: session.message,
             purchaseCompleted: session.purchaseCompleted(_:),
@@ -30,6 +31,7 @@ struct PaywallSheet: View {
     /// テストユーザーには開かない。開く前に `Request.init` が nil を返す
     init(request: Request, actions: PaywallActions, onClose: @escaping () -> Void) {
         self.content = request.content
+        self.storefront = actions.storefront
         self.onClose = onClose
         _session = State(
             initialValue: PaywallSession(
@@ -57,6 +59,7 @@ struct PaywallSheet: View {
     }
 
     private let content: PaywallContent
+    private let storefront: PaywallStorefront
     @State private var session: PaywallSession
 }
 

@@ -7,6 +7,7 @@
     #Preview("状態ごと", arguments: PaywallScreen.Sample.allCases) { sample in
         PaywallScreen(
             content: sample.content,
+            storefront: .storeKit,
             purchaseToken: sample.purchaseToken,
             message: sample.message,
             purchaseCompleted: { _ in },

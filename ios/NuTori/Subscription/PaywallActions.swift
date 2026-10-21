@@ -6,4 +6,5 @@ struct PaywallActions {
     let clock: DeviceClock
     let purchases: SubscriptionPurchases
     let capture: (ClientUsageEvent) async -> Void
+    let storefront: PaywallStorefront
 }
