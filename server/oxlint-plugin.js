@@ -19,16 +19,8 @@ export default {
           if (!isDescribe(node.callee)) {
             return;
           }
-          const callback = node.arguments.at(-1);
-          if (
-            callback === undefined ||
-            !isFunction(callback) ||
-            callback.body.type !== "BlockStatement"
-          ) {
-            return;
-          }
           // 準備の補助（関数）は、呼ぶまで何も作らないので置いてよい
-          for (const statement of callback.body.body) {
+          for (const statement of callbackStatements(node)) {
             if (
               statement.type === "VariableDeclaration" &&
               statement.declarations.some(
@@ -70,19 +62,11 @@ export default {
           if (!isTest(node.callee)) {
             return;
           }
-          const callback = node.arguments.at(-1);
-          if (
-            callback === undefined ||
-            !isFunction(callback) ||
-            callback.body.type !== "BlockStatement"
-          ) {
-            return;
-          }
-          for (const statement of callback.body.body) {
+          for (const statement of callbackStatements(node)) {
             if (
               statement.type === "VariableDeclaration" &&
               statement.declarations.some(
-                (declarator) => declarator.init?.type === "ObjectExpression",
+                (declarator) => withoutTypeAssertion(declarator.init)?.type === "ObjectExpression",
               )
             ) {
               context.report({
@@ -163,14 +147,27 @@ const isDescribe = (callee) =>
     callee.object.type === "Identifier" &&
     callee.object.name === "describe");
 
-// test・it とその skip・only など。each・for の表から作るテストは数えない
+// each・for の表から作るテストは、決まりが許す使い方と見分けられないので数えない（#691）
 const isTest = (callee) =>
-  (callee.type === "Identifier" && testNames.has(callee.name)) ||
+  (callee.type === "Identifier" && ["test", "it"].includes(callee.name)) ||
   (callee.type === "MemberExpression" &&
     callee.object.type === "Identifier" &&
-    testNames.has(callee.object.name));
+    ["test", "it"].includes(callee.object.name) &&
+    callee.property.type === "Identifier" &&
+    !["each", "for"].includes(callee.property.name));
 
-const testNames = new Set(["test", "it"]);
+const callbackStatements = (node) => {
+  const callback = node.arguments.at(-1);
+  if (callback === undefined || !isFunction(callback) || callback.body.type !== "BlockStatement") {
+    return [];
+  }
+  return callback.body.body;
+};
+
+const withoutTypeAssertion = (node) =>
+  node?.type === "TSAsExpression" || node?.type === "TSSatisfiesExpression"
+    ? withoutTypeAssertion(node.expression)
+    : node;
 
 const isMock = (callee) =>
   (callee.type === "Identifier" && /^mock[A-Z]/u.test(callee.name)) ||
@@ -180,7 +177,7 @@ const isMock = (callee) =>
     callee.property.type === "Identifier" &&
     callee.property.name === "spyOn");
 
-// 名前の文字列。式を埋め込んだテンプレートは、埋め込んだところを抜いた文字で見る
+// 埋め込んだ式の値はリントの時点では分からないので、テンプレートは書いた文字だけで見る
 const titleText = (node) => {
   if (node?.type === "Literal" && typeof node.value === "string") {
     return node.value;
