@@ -14,7 +14,11 @@ final class SubscribeFromComposerChipAfterFreeTrialUITests: XCTestCase {
 
     func test_切れの知らせと押せない入力欄のチップから買うと入力欄が戻ること() {
         XCTAssertTrue(app.staticText(containing: "無料体験が終わりました").waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["subscription-notice-open-paywall"].exists)
+        // 切れの知らせにはボタンが無い。昨日の「無料体験は今日まで」にはボタンがあるので、今日のカードの中だけを見る
+        let endedNotice = app.otherElements.matching(identifier: "subscription-notice")
+            .containing(NSPredicate(format: "label CONTAINS %@", "無料体験が終わりました")).firstMatch
+        XCTAssertTrue(endedNotice.exists)
+        XCTAssertFalse(endedNotice.buttons["subscription-notice-open-paywall"].exists)
         XCTAssertFalse(app.buttons["composer-capture"].isEnabled)
         XCTAssertFalse(app.buttons["composer-photos"].isEnabled)
         XCTAssertFalse(app.composerField.isEnabled)
