@@ -64,6 +64,8 @@ public struct Timeline: Sendable {
                 currentGoalId: CurrentGoal(
                     today: today, goals: input.goals, dailyGuides: input.dailyGuides)?.goal.id),
             by: { max(CalendarDay(containing: $0.issuedAt, in: $0.timeZone), firstDay) })
+        let subscriptionNoticesByDay = Dictionary(
+            grouping: input.subscriptionNotices.filter { $0.day >= firstDay }, by: \.day)
         let lastDay =
             ([today] + weightRecordsByDay.keys + mealsByDay.keys + noticesByDay.keys
             + bubblesByDay.keys + [goalSetupNoticeDay].compactMap(\.self)
@@ -73,23 +75,24 @@ public struct Timeline: Sendable {
         days = range.map { day in
             Day(
                 day: day,
-                items: Self.items(
-                    records: weightRecordsByDay[day] ?? [],
-                    rejectedLines: rejectedWeightLines.filter { $0.record.day == day },
-                    meals: mealsByDay[day] ?? [],
-                    rejectedMealLines: rejectedMealLines.filter { $0.meal.cardDay == day },
-                    notices: (noticesByDay[day] ?? []).compactMap {
-                        NoticeCard(unanswered: $0.notice, today: today)
-                    },
-                    goalSetupNotice: goalSetupNoticeDay == day ? goalSetupNotice : nil,
-                    weeklyReviews: weeklyReviewsByDay[day] ?? [],
-                    goalNotices: goalNoticesByDay[day] ?? [],
-                    bubbles: bubblesByDay[day] ?? [],
-                    rejectedSentTextLines: conversation.separateLines.filter {
-                        $0.sentText.day == day
-                    },
-                    replies: conversation.replies
-                ),
+                items: (subscriptionNoticesByDay[day] ?? []).map { .subscriptionNotice($0) }
+                    + Self.items(
+                        records: weightRecordsByDay[day] ?? [],
+                        rejectedLines: rejectedWeightLines.filter { $0.record.day == day },
+                        meals: mealsByDay[day] ?? [],
+                        rejectedMealLines: rejectedMealLines.filter { $0.meal.cardDay == day },
+                        notices: (noticesByDay[day] ?? []).compactMap {
+                            NoticeCard(unanswered: $0.notice, today: today)
+                        },
+                        goalSetupNotice: goalSetupNoticeDay == day ? goalSetupNotice : nil,
+                        weeklyReviews: weeklyReviewsByDay[day] ?? [],
+                        goalNotices: goalNoticesByDay[day] ?? [],
+                        bubbles: bubblesByDay[day] ?? [],
+                        rejectedSentTextLines: conversation.separateLines.filter {
+                            $0.sentText.day == day
+                        },
+                        replies: conversation.replies
+                    ),
                 food: DayFood(meals: mealsByEatenDay[day] ?? []),
                 dailyGuide: DailyGuideForDay(
                     on: day, goals: input.goals, dailyGuides: input.dailyGuides)?.dailyGuide
@@ -184,6 +187,8 @@ public struct Timeline: Sendable {
         public let notices: [Notice]
         public let undelivered: UndeliveredRecords
         public let conversation: Conversation
+        /// 無料体験とサブスクリプションの知らせ（`SubscriptionNotice.notices`）。その日の先頭に置く
+        public let subscriptionNotices: [SubscriptionNotice]
 
         public init(
             goalRecords: GoalRecords,
@@ -191,8 +196,10 @@ public struct Timeline: Sendable {
             meals: [MealCard],
             notices: [Notice],
             undelivered: UndeliveredRecords,
-            conversation: Conversation
+            conversation: Conversation,
+            subscriptionNotices: [SubscriptionNotice] = []
         ) {
+            self.subscriptionNotices = subscriptionNotices
             self.goalRecords = goalRecords
             self.rejectedLines = rejectedLines
             self.meals = meals
@@ -268,6 +275,8 @@ public struct Timeline: Sendable {
         /// 文章を送る（作る書き込み）を受け付けなかった1行。吹き出しを外した位置に出す
         case rejectedSentTextLine(RejectedSentTextLine)
         case reply(TimelineReply)
+        /// 無料体験とサブスクリプションの知らせ。その日の先頭に置く
+        case subscriptionNotice(SubscriptionNotice)
 
         /// 受け付けなかった1行は、自分が書いた記録や文章の代わりに出るので、自分にする
         public var speaker: Speaker {
@@ -276,7 +285,8 @@ public struct Timeline: Sendable {
                 .rejectedSentTextLine:
                 .me
             case .reply: .ai
-            case .notice, .goalSetupNotice, .weeklyReviewCard, .dailyGuideChangeNotice, .goalNotice:
+            case .notice, .goalSetupNotice, .weeklyReviewCard, .dailyGuideChangeNotice, .goalNotice,
+                .subscriptionNotice:
                 .app
             }
         }
@@ -289,7 +299,7 @@ public struct Timeline: Sendable {
             // 同期で届いた記録から描くカードは、知らせの行（`Notice`）でない
             case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .sentText,
                 .rejectedSentTextLine, .reply, .weeklyReviewCard, .dailyGuideChangeNotice,
-                .goalNotice:
+                .goalNotice, .subscriptionNotice:
                 nil
             }
         }
@@ -311,6 +321,7 @@ public struct Timeline: Sendable {
                 "daily-guide-change-\(notice.review.id.uuidString)"
             case .goalNotice(let notice):
                 "goal-\(notice.kind.idPrefix)-\(notice.goal.id.uuidString)"
+            case .subscriptionNotice(let notice): "subscription-\(notice.kind.idSuffix)"
             }
         }
     }

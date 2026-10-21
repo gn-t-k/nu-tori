@@ -22,7 +22,7 @@ public struct ReplyFirstTextWatch: Sendable {
                 }
             case .weightRecord, .rejectedWeightLine, .meal, .rejectedMealLine, .notice,
                 .goalSetupNotice, .weeklyReviewCard, .dailyGuideChangeNotice, .goalNotice,
-                .rejectedSentTextLine:
+                .rejectedSentTextLine, .subscriptionNotice:
                 continue
             }
         }
