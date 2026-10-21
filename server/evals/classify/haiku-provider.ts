@@ -5,17 +5,17 @@ import { catchAnthropicFailure } from "../../src/durable-object/anthropic/catch-
 import { createHaikuClassificationRequest } from "../../src/reply/durable-object/create-conversation-provider/create-haiku-classification-request";
 import { readHaikuClassification } from "../../src/reply/durable-object/create-conversation-provider/read-haiku-classification";
 import { describeLlmCallFailure } from "../describe-llm-call-failure";
+import { missingEvalApiKeyMessage, readEvalApiKey } from "../read-eval-api-key";
 
 // promptfoo の custom provider。Claude Haiku 5.5 を Anthropic の API で呼ぶ。要求の形と応答の読み方はサーバーと同じものを import する。
-// 鍵: 開発用のワークスペース（nu-tori-development）のキーを NU_TORI_ANTHROPIC_API_KEY に置く。
-// ANTHROPIC_API_KEY はクラウドのセッションでエージェント自身が使う名前なので避ける
+// 鍵の置き場は read-eval-api-key.ts
 export default class HaikuProvider implements ApiProvider {
   id = (): string => "claude-haiku-5-5";
 
   callApi = async (prompt: string): Promise<ProviderResponse> => {
-    const apiKey = process.env["NU_TORI_ANTHROPIC_API_KEY"];
+    const apiKey = readEvalApiKey();
     if (apiKey === undefined) {
-      return { error: "開発用のワークスペースのキーを NU_TORI_ANTHROPIC_API_KEY に置いてから回す" };
+      return { error: missingEvalApiKeyMessage };
     }
     // 呼び先を名指す。環境の ANTHROPIC_BASE_URL（エージェントの道具が置くことがある）に向かわないように
     const client = new Anthropic({ apiKey, baseURL: "https://api.anthropic.com" });

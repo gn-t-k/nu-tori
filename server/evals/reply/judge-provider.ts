@@ -5,6 +5,7 @@ import type { ApiProvider, ProviderResponse } from "promptfoo";
 import { z } from "zod";
 import { catchAnthropicFailure } from "../../src/durable-object/anthropic/catch-anthropic-failure";
 import { describeLlmCallFailure } from "../describe-llm-call-failure";
+import { missingEvalApiKeyMessage, readEvalApiKey } from "../read-eval-api-key";
 
 // promptfoo の判定役（llm-rubric の grading provider）。返事を作るモデルと別の Claude（Opus 5.5）に、守ることの1項目ずつを判定させる。
 // promptfoo が渡すプロンプトは、判定の指示（grading-prompt.ts）を描いたメッセージの並びの JSON。
@@ -13,9 +14,9 @@ export default class JudgeProvider implements ApiProvider {
   id = (): string => "claude-opus-5-5";
 
   callApi = async (prompt: string): Promise<ProviderResponse> => {
-    const apiKey = process.env["NU_TORI_ANTHROPIC_API_KEY"];
+    const apiKey = readEvalApiKey();
     if (apiKey === undefined) {
-      return { error: "開発用のワークスペースのキーを NU_TORI_ANTHROPIC_API_KEY に置いてから回す" };
+      return { error: missingEvalApiKeyMessage };
     }
     const messages = gradingMessagesSchema.parse(JSON.parse(prompt));
     const client = new Anthropic({ apiKey, baseURL: "https://api.anthropic.com" });
