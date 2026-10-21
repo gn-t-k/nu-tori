@@ -1,5 +1,6 @@
 import { advanceEstimations } from "../estimation/domain/advance-estimations";
 import { computeNextEstimationAttemptAt } from "../estimation/domain/compute-next-estimation-attempt-at";
+import { resumeHeldEstimations } from "../estimation/domain/resume-held-estimations";
 import type { EstimationProvider } from "../estimation/domain/estimation-provider";
 import { deleteLeftoverMealPhotoFiles } from "../meal/domain/delete-leftover-meal-photo-files";
 import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
@@ -8,6 +9,7 @@ import type { ConversationProvider } from "../reply/domain/conversation-provider
 import type { ReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { replyAttemptTimeLimitMs } from "../reply/domain/reply-attempt-time-limit-ms";
 import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
+import { readSubscriptionCheck } from "../subscription-status/domain/read-subscription-check";
 import type { AlarmJob } from "./alarm-job";
 import { computeNextAttemptAt } from "./compute-next-attempt-at";
 import { findEarliest } from "./find-earliest";
@@ -22,6 +24,22 @@ export const accountAlarmJobs: readonly AlarmJob<
   AccountAlarmDeps,
   AccountAlarmReport
 >[] = [
+  // 課金。無料体験とサブスクリプションの区切りの時刻に、サブスクリプションの状態の変更を足す（テストユーザーの旗の変化は、
+  // Durable Object が知らないので、これで届く）。使えるようになっていれば保留した推定を再開するので、推定より先に置く
+  {
+    advance: async (stores, deps) => {
+      const now = new Date();
+      const check = readSubscriptionCheck(stores, now);
+      if (check?.isDue === true) {
+        deps.writeRecordChanges(({ addChange, estimationAt }) => {
+          addChange({ recordType: "subscription_status", recordId: check.firstSignInId });
+          resumeHeldEstimations(stores, estimationAt(now), now);
+        });
+      }
+      return { result: "advanced", report: emptyReport };
+    },
+    computeNextAt: (stores, now) => readSubscriptionCheck(stores, now)?.nextAt,
+  },
   // 読み分け。食事と読み分けた文章の推定を同じアラームで始めるため、推定より先に置く
   {
     advance: async (stores, deps) => {

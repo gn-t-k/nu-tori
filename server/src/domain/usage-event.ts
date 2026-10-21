@@ -11,7 +11,10 @@ import type { ClassificationLabel } from "../reply/domain/conversation-provider"
 import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";
 import type { SentTextClassification } from "../sent-text/domain/sent-text-classification";
 import type { WeeklyReviewDeferralReason } from "../weekly-review/domain/weekly-review";
-import type { ReplyFailureReason } from "../sent-text-status/domain/sent-text-status";
+import type {
+  ReplyFailureReason,
+  ReplyHaltReason,
+} from "../sent-text-status/domain/sent-text-status";
 import type { RecordType } from "./record-type";
 import type { RejectionReason } from "./rejection-reason";
 import type { WriteKind } from "./sync-ledger/write-kind";
@@ -100,12 +103,14 @@ export type UsageEvent =
       providerErrorTypes: string[];
     }
   | {
-      // 1日の返事の回数の上限に達していて、提供元を呼ばずに依頼を回数切れにしたとき。1日 20 回を調整するのに見る
+      // 提供元を呼ばずに返事の依頼を止めたとき。1日の回数の上限（1日 10 回を調整するのに見る）か、サブスクリプション切れ
       name: "reply_request_halted";
+      reason: ReplyHaltReason;
     }
   | {
-      // 1日の回数の上限に達していて、予定を次の日に回したとき
+      // 推定を始めなかったとき。1日の回数の上限で予定を次の日に回したか、サブスクリプション切れで保留したか
       name: "estimation_deferred";
+      reason: "daily_limit" | "subscription_expired";
     }
   | {
       // 目標を決めたとき（初めてと立て直し）。同じ要求の ID の再送では送らない。体重・目標体重・kcal の値は含めない

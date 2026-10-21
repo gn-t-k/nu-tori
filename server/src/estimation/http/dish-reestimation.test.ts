@@ -513,7 +513,7 @@ describe("名前を直したときの推定し直し", () => {
         throw new Error("推定し直しの予定が無い");
       }
       countedOn = scheduledCountedOn;
-      await insertCountedEstimations(accountId, countedOn, 29);
+      await insertCountedEstimations(accountId, countedOn, 14);
       captureSpy = mockPostHogCaptureEndpointOk();
       await runEstimationAlarm(accountId);
     });
@@ -527,7 +527,7 @@ describe("名前を直したときの推定し直し", () => {
             `SELECT e.id FROM estimations e JOIN estimation_schedules s ON s.id = e.estimation_schedule_id WHERE s.counted_on = '${countedOn}'`,
           )
         ).length,
-      }).toEqual({ status: "deferred_to_next_day", estimationsOfDay: 30 });
+      }).toEqual({ status: "deferred_to_next_day", estimationsOfDay: 15 });
     });
 
     test("次の日の 0:00 の予定を、同じ料理に、次の日の分として足すこと", async () => {

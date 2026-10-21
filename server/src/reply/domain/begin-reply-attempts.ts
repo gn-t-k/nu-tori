@@ -3,6 +3,9 @@ import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
+import { isSubscriptionExpired } from "../../subscription-status/domain/is-subscription-expired";
+import { readSubscriptionStatus } from "../../subscription-status/domain/read-subscription-status";
+import type { SubscriptionStatus } from "../../subscription-status/domain/subscription-status";
 import { computeReplyGenerationEndedEvent } from "./compute-reply-generation-ended-event";
 import { maximumDailyReplyGenerations } from "./maximum-daily-reply-generations";
 import { maximumReplyAttempts } from "./maximum-reply-attempts";
@@ -16,10 +19,11 @@ export type BegunReplyAttempt = ReplyGenerationOrigin & { attemptId: RecordId };
 // 1つのトランザクションで、待っている依頼から返事の生成を始めて最初の試みを書き、次に試みる時刻が来た続いている生成の試みを書く。
 // 途中で止まった試みで上限に達した生成は、もう呼ばずに作れなかったにする。
 // 依頼の数える日の生成が1日の上限に達していれば、生成を始めず、提供元を呼ばずに回数切れにする（翌日に回さない）。
+// 依頼の数える日でサブスクリプション切れなら、同じく止める（買っても再開しない）。
 // 返す試みは、応える文章の送った順
 export const beginReplyAttempts = (
   writeRecordChanges: RecordChangeWriter,
-  stores: Pick<RecordKindStores, "reply">,
+  stores: Pick<RecordKindStores, "reply" | "subscriptionStatus">,
   now: Date,
 ): { attempts: BegunReplyAttempt[]; usageEvents: UsageEvent[] } =>
   writeRecordChanges(({ reply: writes }) => {
@@ -31,6 +35,8 @@ export const beginReplyAttempts = (
       attempts.push({ ...origin, attemptId });
     };
 
+    // 待っている依頼があるときだけ読む（最初のサインインより前のアカウントのアラームでも、依頼が無ければ読まない）
+    let subscriptionStatus: SubscriptionStatus | undefined;
     // 始めた生成の試みは呼び出し中なので、下の続いている生成では次に試みる時刻がまだ来ていない
     for (const {
       requestId,
@@ -38,9 +44,15 @@ export const beginReplyAttempts = (
       countedOn,
       requestedAt,
     } of stores.reply.findWaitingRequests()) {
+      subscriptionStatus ??= readSubscriptionStatus(stores.subscriptionStatus);
+      if (isSubscriptionExpired(subscriptionStatus, { countedOn, now })) {
+        writes.halt({ requestId, haltedAt: now, reason: "subscription_expired" });
+        usageEvents.push({ name: "reply_request_halted", reason: "subscription_expired" });
+        continue;
+      }
       if (stores.reply.countGenerationsCountedOn(countedOn) >= maximumDailyReplyGenerations) {
-        writes.halt({ requestId, haltedAt: now });
-        usageEvents.push({ name: "reply_request_halted" });
+        writes.halt({ requestId, haltedAt: now, reason: "daily_limit" });
+        usageEvents.push({ name: "reply_request_halted", reason: "daily_limit" });
         continue;
       }
       const generationId = generateRecordId();

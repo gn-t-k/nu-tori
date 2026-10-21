@@ -265,7 +265,7 @@ extension Components {
         internal struct DishEstimationStatusRecord: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord/dishId`.
             internal var dishId: Swift.String
-            /// 推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            /// 推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
             ///
             /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord/status`.
             internal var status: Swift.String
@@ -273,7 +273,7 @@ extension Components {
             ///
             /// - Parameters:
             ///   - dishId:
-            ///   - status: 推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            ///   - status: 推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
             internal init(
                 dishId: Swift.String,
                 status: Swift.String
@@ -921,13 +921,15 @@ extension Components {
         internal struct MealEstimationStatusRecord: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/MealEstimationStatusRecord/mealId`.
             internal var mealId: Swift.String
+            /// 写真を待っている（awaiting_photos）、推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            ///
             /// - Remark: Generated from `#/components/schemas/MealEstimationStatusRecord/status`.
             internal var status: Swift.String
             /// Creates a new `MealEstimationStatusRecord`.
             ///
             /// - Parameters:
             ///   - mealId:
-            ///   - status:
+            ///   - status: 写真を待っている（awaiting_photos）、推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
             internal init(
                 mealId: Swift.String,
                 status: Swift.String
@@ -1071,10 +1073,14 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/classification`.
             internal var classification: Swift.String
-            /// 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）
+            /// 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（止めた。理由は replyHaltReason）・failed（作れなかった）
             ///
             /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyStatus`.
             internal var replyStatus: Swift.String
+            /// replyStatus が halted のときだけある、止めた理由。daily_limit（その日の回数切れ）・subscription_expired（サブスクリプション切れ）。買っても再開しない
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyHaltReason`.
+            internal var replyHaltReason: Swift.String?
             /// replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）
             ///
             /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyFailureReason`.
@@ -1084,23 +1090,27 @@ extension Components {
             /// - Parameters:
             ///   - sentTextId:
             ///   - classification: 読み分けの今の結果。pending（読み分けを待っている）・meal・conversation
-            ///   - replyStatus: 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）
+            ///   - replyStatus: 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（止めた。理由は replyHaltReason）・failed（作れなかった）
+            ///   - replyHaltReason: replyStatus が halted のときだけある、止めた理由。daily_limit（その日の回数切れ）・subscription_expired（サブスクリプション切れ）。買っても再開しない
             ///   - replyFailureReason: replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）
             internal init(
                 sentTextId: Swift.String,
                 classification: Swift.String,
                 replyStatus: Swift.String,
+                replyHaltReason: Swift.String? = nil,
                 replyFailureReason: Swift.String? = nil
             ) {
                 self.sentTextId = sentTextId
                 self.classification = classification
                 self.replyStatus = replyStatus
+                self.replyHaltReason = replyHaltReason
                 self.replyFailureReason = replyFailureReason
             }
             internal enum CodingKeys: String, CodingKey {
                 case sentTextId
                 case classification
                 case replyStatus
+                case replyHaltReason
                 case replyFailureReason
             }
         }
@@ -4716,7 +4726,7 @@ extension Components {
                 case _type = "type"
             }
         }
-        /// その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる
+        /// 返事を作らずに止めた。その日の返事の回数を使い切っていた（daily_limit）か、サブスクリプション切れ（subscription_expired）。送ったあと閉じる
         ///
         /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent`.
         internal struct ReplyHaltedEvent: Codable, Hashable, Sendable {
@@ -4726,15 +4736,28 @@ extension Components {
             }
             /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/type`.
             internal var _type: Components.Schemas.ReplyHaltedEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/reason`.
+            internal enum ReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case dailyLimit = "daily_limit"
+                case subscriptionExpired = "subscription_expired"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/reason`.
+            internal var reason: Components.Schemas.ReplyHaltedEvent.ReasonPayload
             /// Creates a new `ReplyHaltedEvent`.
             ///
             /// - Parameters:
             ///   - _type:
-            internal init(_type: Components.Schemas.ReplyHaltedEvent._TypePayload) {
+            ///   - reason:
+            internal init(
+                _type: Components.Schemas.ReplyHaltedEvent._TypePayload,
+                reason: Components.Schemas.ReplyHaltedEvent.ReasonPayload
+            ) {
                 self._type = _type
+                self.reason = reason
             }
             internal enum CodingKeys: String, CodingKey {
                 case _type = "type"
+                case reason
             }
         }
         /// 返事を作れなかった（やり直しを使い切った・提供元の 400）。送ったあと閉じる

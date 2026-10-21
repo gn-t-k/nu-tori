@@ -1,10 +1,13 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import { recordIdSchema } from "../../domain/record-id";
 import { firstSignInTables } from "../../durable-object/first-sign-in-tables";
+import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { subscriptionTables } from "../../subscription/durable-object/subscription-tables";
 import type { SubscriptionStatusStore } from "../domain/subscription-status-store";
 
 const { firstSignIns } = firstSignInTables;
+const { recordChanges } = syncLedgerTables;
 const {
   subscriptionTransactions,
   appStoreSubscriptionTransactions,
@@ -20,6 +23,13 @@ export const createSubscriptionStatusStore = (
   db: DrizzleSqliteDODatabase,
   account: { isTestUser: boolean; billingStartedOn: string },
 ): SubscriptionStatusStore => ({
+  hasRecordedChange: () =>
+    db
+      .select({ sequence: recordChanges.sequence })
+      .from(recordChanges)
+      .where(eq(recordChanges.recordType, "subscription_status"))
+      .limit(1)
+      .get() !== undefined,
   findFacts: () => {
     const firstSignIn = db
       .select({ id: firstSignIns.id, startedOn: firstSignIns.startedOn })
@@ -72,7 +82,7 @@ export const createSubscriptionStatusStore = (
       )
       .all();
     return {
-      firstSignInId: firstSignIn.id,
+      firstSignInId: recordIdSchema.parse(firstSignIn.id),
       startedOn: firstSignIn.startedOn,
       billingStartedOn: account.billingStartedOn,
       isTestUser: account.isTestUser,

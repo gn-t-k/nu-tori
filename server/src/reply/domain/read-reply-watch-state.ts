@@ -32,7 +32,10 @@ export const readReplyWatchState = (
         }
         return { type: "ended", ending: { type: "replied", replyId: utterance.id } };
       })
-      .with({ type: "halted" }, () => ({ type: "ended", ending: { type: "reply_halted" } }))
+      .with({ type: "halted" }, ({ reason }) => ({
+        type: "ended",
+        ending: { type: "reply_halted", reason },
+      }))
       .with({ type: "failed" }, ({ reason }) => ({
         type: "ended",
         ending: { type: "reply_failed", failureReason: reason },

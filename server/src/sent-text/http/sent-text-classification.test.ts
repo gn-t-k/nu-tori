@@ -107,12 +107,12 @@ describe("読み分け", () => {
     });
   });
 
-  describe("その日の推定が 30 回に達しているときに、食事と読み分けたとき", () => {
+  describe("その日の推定が 15 回に達しているときに、食事と読み分けたとき", () => {
     beforeEach(async () => {
       mockCreateConversationProviderOk({ classification: "meal" });
       mockCreateEstimationProviderOk();
       const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(Date.now());
-      await insertCountedEstimations(accountId, today, 30);
+      await insertCountedEstimations(accountId, today, 15);
       await sendText();
       await runEstimationAlarm(accountId);
     });

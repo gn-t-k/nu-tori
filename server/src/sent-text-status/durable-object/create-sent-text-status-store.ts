@@ -12,6 +12,7 @@ const { syncWriteReceipts } = syncLedgerTables;
 const {
   replyRequests,
   replyRequestHalts,
+  replyRequestSubscriptionHalts,
   replyGenerations,
   replyGenerationAttempts,
   replyGenerationAttemptResults,
@@ -50,12 +51,17 @@ export const createSentTextStatusStore = (db: DrizzleSqliteDODatabase): SentText
     db
       .select({
         haltedAt: replyRequestHalts.haltedAt,
+        subscriptionHaltedAt: replyRequestSubscriptionHalts.haltedAt,
         generationId: replyGenerations.id,
         utteranceId: aiUtterances.replyGenerationId,
         abandonedAt: replyGenerationAbandonments.abandonedAt,
       })
       .from(replyRequests)
       .leftJoin(replyRequestHalts, eq(replyRequestHalts.replyRequestId, replyRequests.id))
+      .leftJoin(
+        replyRequestSubscriptionHalts,
+        eq(replyRequestSubscriptionHalts.replyRequestId, replyRequests.id),
+      )
       .leftJoin(replyGenerations, eq(replyGenerations.replyRequestId, replyRequests.id))
       .leftJoin(aiUtterances, eq(aiUtterances.replyGenerationId, replyGenerations.id))
       .leftJoin(
@@ -64,25 +70,40 @@ export const createSentTextStatusStore = (db: DrizzleSqliteDODatabase): SentText
       )
       .where(eq(replyRequests.sentTextId, sentTextId))
       .all()
-      .map(({ haltedAt, generationId, utteranceId, abandonedAt }): ReplyRequestProgress => {
-        if (haltedAt !== null) {
-          return { progress: "halted", endedAt: haltedAt };
-        }
-        if (generationId === null) {
-          return { progress: "waiting" };
-        }
-        if (utteranceId !== null) {
-          return { progress: "replied" };
-        }
-        if (abandonedAt !== null) {
-          return {
-            progress: "abandoned",
-            endedAt: abandonedAt,
-            lastAttemptResult: findLastAttemptResult(db, generationId),
-          };
-        }
-        return { progress: "generating" };
-      }),
+      .map(
+        ({
+          haltedAt,
+          subscriptionHaltedAt,
+          generationId,
+          utteranceId,
+          abandonedAt,
+        }): ReplyRequestProgress => {
+          if (haltedAt !== null) {
+            return { progress: "halted", endedAt: haltedAt, reason: "daily_limit" };
+          }
+          if (subscriptionHaltedAt !== null) {
+            return {
+              progress: "halted",
+              endedAt: subscriptionHaltedAt,
+              reason: "subscription_expired",
+            };
+          }
+          if (generationId === null) {
+            return { progress: "waiting" };
+          }
+          if (utteranceId !== null) {
+            return { progress: "replied" };
+          }
+          if (abandonedAt !== null) {
+            return {
+              progress: "abandoned",
+              endedAt: abandonedAt,
+              lastAttemptResult: findLastAttemptResult(db, generationId),
+            };
+          }
+          return { progress: "generating" };
+        },
+      ),
 });
 
 // 結果の無い試みなら undefined

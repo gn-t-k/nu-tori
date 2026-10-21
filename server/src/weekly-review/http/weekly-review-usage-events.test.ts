@@ -16,6 +16,7 @@ import { recordDailyWeights } from "../../http/goal-setup-routes/testing/record-
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { pullSyncChanges } from "../../http/sync-routes/testing/pull-sync-changes";
 import { signInTestAccount } from "../../http/testing";
+import { markTestUser } from "../../subscription-status/http/testing/mark-test-user";
 import {
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
@@ -121,6 +122,8 @@ describe("週の見直しの出来事", () => {
 
   describe("最初の月曜から 7 週あとに、はじめて取りに行ったとき", () => {
     beforeEach(async () => {
+      // 無料体験の 30 日を過ぎた週も、サブスクリプション切れでない理由で見るため
+      await markTestUser(accountId);
       vi.setSystemTime(Date.parse(`${addDays(firstMonday, 49)}T00:00:00Z`));
       await pullSyncChanges(sessionToken);
     });

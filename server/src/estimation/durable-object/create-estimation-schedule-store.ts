@@ -1,4 +1,4 @@
-import { and, asc, eq, isNotNull, isNull, lte, min } from "drizzle-orm";
+import { and, asc, eq, gte, isNotNull, isNull, lte, min, ne } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { EstimationScheduleStore } from "../domain/estimation-schedule-store";
 import { estimationScheduleTargets } from "./estimation-schedule-targets";
@@ -8,6 +8,7 @@ const {
   estimationSchedules,
   mealEstimationSchedules,
   estimationDeferrals,
+  estimationHolds,
   estimations,
   estimationScheduleCancellations,
 } = estimationTables;
@@ -39,6 +40,7 @@ export const createEstimationScheduleStore = (
           estimationDeferrals,
           eq(estimationDeferrals.estimationScheduleId, estimationSchedules.id),
         )
+        .leftJoin(estimationHolds, eq(estimationHolds.estimationScheduleId, estimationSchedules.id))
         // 取り消すのは料理の予定だけだが、食事の予定には取り消しの行が無いので、同じ条件で見る
         .leftJoin(
           estimationScheduleCancellations,
@@ -48,6 +50,7 @@ export const createEstimationScheduleStore = (
           and(
             isNull(estimations.id),
             isNull(estimationDeferrals.estimationScheduleId),
+            isNull(estimationHolds.estimationScheduleId),
             isNull(estimationScheduleCancellations.estimationScheduleId),
             dueBy === undefined ? undefined : lte(estimationSchedules.dueAt, dueBy),
           ),
@@ -62,6 +65,50 @@ export const createEstimationScheduleStore = (
           target: estimationScheduleTargets.toTarget({ mealId, dishId }),
         }))
     );
+  },
+  // 保留は1人に食事の数ほどしか無いので、保留ごとに、同じ対象のそれより新しい予定があるかを引く
+  findHeldTargets: () => {
+    const targets = estimationScheduleTargets.subquery(db);
+    return db
+      .select({
+        scheduleId: estimationSchedules.id,
+        dueAt: estimationSchedules.dueAt,
+        mealId: targets.mealId,
+        dishId: targets.dishId,
+      })
+      .from(estimationHolds)
+      .innerJoin(
+        estimationSchedules,
+        eq(estimationSchedules.id, estimationHolds.estimationScheduleId),
+      )
+      .innerJoin(targets, eq(targets.estimationScheduleId, estimationSchedules.id))
+      .orderBy(asc(estimationSchedules.dueAt), isNotNull(targets.dishId))
+      .all()
+      .filter((held) => {
+        const sameTarget = estimationScheduleTargets.subquery(db);
+        return (
+          db
+            .select({ id: estimationSchedules.id })
+            .from(estimationSchedules)
+            .innerJoin(sameTarget, eq(sameTarget.estimationScheduleId, estimationSchedules.id))
+            .leftJoin(
+              estimationScheduleCancellations,
+              eq(estimationScheduleCancellations.estimationScheduleId, estimationSchedules.id),
+            )
+            .where(
+              and(
+                held.dishId === null
+                  ? and(eq(sameTarget.mealId, held.mealId), isNull(sameTarget.dishId))
+                  : eq(sameTarget.dishId, held.dishId),
+                ne(estimationSchedules.id, held.scheduleId),
+                gte(estimationSchedules.dueAt, held.dueAt),
+                isNull(estimationScheduleCancellations.estimationScheduleId),
+              ),
+            )
+            .get() === undefined
+        );
+      })
+      .map(({ mealId, dishId }) => estimationScheduleTargets.toTarget({ mealId, dishId }));
   },
   findEarliestDueAtOfMeal: (mealId) =>
     db

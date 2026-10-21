@@ -3,6 +3,7 @@
 export type DishEstimationStatus =
   | "estimating"
   | "deferred_to_next_day"
+  | "awaiting_subscription"
   | "estimated"
   | "no_dishes"
   | "failed";

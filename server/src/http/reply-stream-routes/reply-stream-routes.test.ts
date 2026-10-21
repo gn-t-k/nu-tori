@@ -164,7 +164,7 @@ describe("見守る要求", () => {
       await insertCountedReplyRequests(
         accountId,
         new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(Date.now()),
-        { generated: 20, halted: 0 },
+        { generated: 10, halted: 0 },
       );
       const sentTextId = await sendText();
       response = await watchReplyStream(sessionToken, sentTextId);
@@ -172,7 +172,9 @@ describe("見守る要求", () => {
     });
 
     test("回数切れの結果を送って閉じること", async () => {
-      expect(await readReplyStreamEvents(response)).toEqual([{ type: "reply_halted" }]);
+      expect(await readReplyStreamEvents(response)).toEqual([
+        { type: "reply_halted", reason: "daily_limit" },
+      ]);
     });
   });
 

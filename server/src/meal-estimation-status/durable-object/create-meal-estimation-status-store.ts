@@ -9,6 +9,7 @@ const {
   estimationSchedules,
   mealEstimationSchedules,
   estimationDeferrals,
+  estimationHolds,
   estimations,
   estimationCompletions,
   estimationAbandonments,
@@ -25,6 +26,7 @@ export const createMealEstimationStatusStore = (
         .select({
           dueAt: estimationSchedules.dueAt,
           deferral: estimationDeferrals.estimationScheduleId,
+          hold: estimationHolds.estimationScheduleId,
           estimation: estimations.id,
           completion: estimationCompletions.result,
           abandonment: estimationAbandonments.estimationId,
@@ -38,6 +40,7 @@ export const createMealEstimationStatusStore = (
           estimationDeferrals,
           eq(estimationDeferrals.estimationScheduleId, estimationSchedules.id),
         )
+        .leftJoin(estimationHolds, eq(estimationHolds.estimationScheduleId, estimationSchedules.id))
         .leftJoin(estimations, eq(estimations.estimationScheduleId, estimationSchedules.id))
         .leftJoin(estimationCompletions, eq(estimationCompletions.estimationId, estimations.id))
         .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
@@ -47,6 +50,7 @@ export const createMealEstimationStatusStore = (
         .select({
           dueAt: estimationSchedules.dueAt,
           deferral: estimationDeferrals.estimationScheduleId,
+          hold: estimationHolds.estimationScheduleId,
           estimation: estimations.id,
           completion: estimationCompletions.result,
           abandonment: estimationAbandonments.estimationId,
@@ -61,24 +65,29 @@ export const createMealEstimationStatusStore = (
           estimationDeferrals,
           eq(estimationDeferrals.estimationScheduleId, estimationSchedules.id),
         )
+        .leftJoin(estimationHolds, eq(estimationHolds.estimationScheduleId, estimationSchedules.id))
         .leftJoin(estimationCompletions, eq(estimationCompletions.estimationId, estimations.id))
         .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
         .where(eq(estimationCreatedMeals.mealId, mealId))
         .all(),
-    ].map(({ dueAt, deferral, estimation, completion, abandonment }) => ({
+    ].map(({ dueAt, deferral, hold, estimation, completion, abandonment }) => ({
       dueAt,
-      progress: toProgress({ deferral, estimation, completion, abandonment }),
+      progress: toProgress({ deferral, hold, estimation, completion, abandonment }),
     })),
 });
 
 const toProgress = (events: {
   deferral: string | null;
+  hold: string | null;
   estimation: string | null;
   completion: "estimated" | "no_dishes" | null;
   abandonment: string | null;
 }): MealEstimationScheduleProgress => {
   if (events.deferral !== null) {
     return "deferred";
+  }
+  if (events.hold !== null) {
+    return "held";
   }
   if (events.estimation === null) {
     return "waiting";

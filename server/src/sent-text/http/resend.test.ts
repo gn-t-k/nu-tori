@@ -126,7 +126,7 @@ describe("送り直す", () => {
     let beforeResend: number;
     beforeEach(async () => {
       mockCreateConversationProviderOk({ classification: "conversation" });
-      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 20, halted: 0 });
+      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 10, halted: 0 });
       sentTextId = await sendText();
       await runEstimationAlarm(accountId);
     });
@@ -140,7 +140,12 @@ describe("送り直す", () => {
 
       test("回数をまた数えて、また回数切れにすること", async () => {
         expect(statusesIn((await pullChangesAfter(beforeResend)).changes)).toEqual([
-          { sentTextId, classification: "conversation", replyStatus: "halted" },
+          {
+            sentTextId,
+            classification: "conversation",
+            replyStatus: "halted",
+            replyHaltReason: "daily_limit",
+          },
         ]);
       });
     });

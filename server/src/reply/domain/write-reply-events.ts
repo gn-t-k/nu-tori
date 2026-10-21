@@ -46,14 +46,14 @@ export const writeReplyEvents = <T>(
     },
     halt: (halt) => {
       if (store.hasGeneration(halt.requestId)) {
-        throw new Error(`生成を始めた依頼を回数切れにしようとした: ${halt.requestId}`);
+        throw new Error(`生成を始めた依頼を止めようとした: ${halt.requestId}`);
       }
       remember(store.findSentTextIdOfRequest(halt.requestId));
       store.insertHalt(halt);
     },
     beginGeneration: (generation) => {
       if (store.hasHalt(generation.requestId)) {
-        throw new Error(`回数切れの依頼の生成を始めようとした: ${generation.requestId}`);
+        throw new Error(`止めた依頼の生成を始めようとした: ${generation.requestId}`);
       }
       remember(store.findSentTextIdOfRequest(generation.requestId));
       store.insertGeneration(generation);
