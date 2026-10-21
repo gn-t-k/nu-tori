@@ -42,7 +42,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     recordFirstSignIn(
       accountId: string,
-      signIn: { signedInAt: Date; timeZone: string | undefined },
+      signIn: Parameters<typeof accountRequests.recordFirstSignIn>[1],
     ): Promise<void> {
       setUser({ id: accountId });
       return this.respond(

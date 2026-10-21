@@ -24,7 +24,7 @@ import type { AccountStores } from "./account-stores";
 export const accountRequests = {
   recordFirstSignIn: (
     stores: Pick<AccountStores, "firstSignIn" | "writeRecordChanges">,
-    signIn: { signedInAt: Date; timeZone: string | undefined },
+    signIn: Parameters<typeof recordFirstSignIn>[2],
   ): AccountResponse<void> => {
     recordFirstSignIn(stores.writeRecordChanges, stores.firstSignIn, signIn);
     return respond(undefined);

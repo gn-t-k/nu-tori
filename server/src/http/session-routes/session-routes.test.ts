@@ -9,9 +9,12 @@ import {
   mockExchangeAppleAuthorizationCodeError,
   mockExchangeAppleAuthorizationCodeOk,
 } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
+import { mockRevokeAppleRefreshTokenOk } from "../../auth/revoke-apple-refresh-token/revoke-apple-refresh-token.mock";
 import { mockAppleKeysEndpointOk, signAppleIdToken } from "../../auth/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
+import { hashAppleSub } from "../../subscription/d1/testing/hash-apple-sub";
 import { app } from "../app";
+import { pullSyncChanges, type PullResult } from "../sync-routes/testing/pull-sync-changes";
 import { signInTestAccount, signInWithApple } from "../testing";
 import { sha256Hex } from "../testing/sha256-hex";
 
@@ -169,6 +172,69 @@ describe("サインイン", () => {
     });
   });
 
+  describe("無料体験", () => {
+    describe("退会した Apple ID で、また最初のサインインをしたとき", () => {
+      let appleUserId: string;
+      beforeEach(async () => {
+        appleUserId = generateRecordId();
+        mockAppleKeysEndpointOk();
+        mockExchangeAppleAuthorizationCodeOk();
+        mockRevokeAppleRefreshTokenOk();
+        const { sessionToken } = await signInTestAccount(appleUserId);
+        await app.request(
+          "/v1/account",
+          { method: "DELETE", headers: { authorization: `Bearer ${sessionToken}` } },
+          env,
+        );
+      });
+
+      test("作り直したアカウントとして、無料体験の無い状態が届くこと", async () => {
+        const { sessionToken } = await signInTestAccount(appleUserId);
+        expect(await pullFreeTrial(sessionToken)).toEqual({ type: "used_by_earlier_account" });
+      });
+    });
+
+    describe("古い版の鍵で、無料体験を使った Apple ID として残っているとき", () => {
+      let appleUserId: string;
+      beforeEach(async () => {
+        appleUserId = generateRecordId();
+        mockAppleKeysEndpointOk();
+        mockExchangeAppleAuthorizationCodeOk();
+        await env.DB.prepare(
+          "INSERT INTO free_trial_usages (id, apple_sub_hash, key_version) VALUES (?, ?, 1)",
+        )
+          .bind(generateRecordId(), await hashAppleSub(appleUserId, 1))
+          .run();
+      });
+
+      test("作り直したアカウントとして、無料体験の無い状態が届くこと", async () => {
+        const { sessionToken } = await signInTestAccount(appleUserId);
+        expect(await pullFreeTrial(sessionToken)).toEqual({ type: "used_by_earlier_account" });
+      });
+    });
+
+    describe("最初のサインインのあとに、同じ Apple ID のハッシュが残ったとき", () => {
+      let appleUserId: string;
+      let sessionToken: string;
+      beforeEach(async () => {
+        appleUserId = generateRecordId();
+        mockAppleKeysEndpointOk();
+        mockExchangeAppleAuthorizationCodeOk();
+        ({ sessionToken } = await signInTestAccount(appleUserId));
+        await env.DB.prepare(
+          "INSERT INTO free_trial_usages (id, apple_sub_hash, key_version) VALUES (?, ?, 2)",
+        )
+          .bind(generateRecordId(), await hashAppleSub(appleUserId, 2))
+          .run();
+      });
+
+      test("2回目のサインインで、無料体験を外さないこと", async () => {
+        await signInTestAccount(appleUserId);
+        expect(await pullFreeTrial(sessionToken)).toMatchObject({ type: "available" });
+      });
+    });
+  });
+
   describe("使い始めた日", () => {
     afterEach(() => {
       vi.useRealTimers();
@@ -303,6 +369,11 @@ describe("サインイン", () => {
     });
   });
 });
+
+const pullFreeTrial = async (sessionToken: string) => {
+  const { changes } = await (await pullSyncChanges(sessionToken)).json<PullResult>();
+  return changes.findLast(({ kind }) => kind === "subscription_status")?.record["freeTrial"];
+};
 
 const readFirstSignIn = (accountId: string) =>
   runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>

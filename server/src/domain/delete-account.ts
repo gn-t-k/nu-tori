@@ -6,6 +6,7 @@ import { ErrorFactory } from "@praha/error-factory";
 export const deleteAccount = async (
   accountId: string,
   steps: {
+    recordFreeTrialUsage: (accountId: string) => Promise<void>;
     revokeAppleAuthorization: (accountId: string) => Promise<void>;
     deleteRecords: (accountId: string) => Promise<void>;
     deleteMealPhotoFiles: (accountId: string) => Promise<void>;
@@ -14,6 +15,8 @@ export const deleteAccount = async (
     reportRetryFailure: (error: AccountDeletionRetryFailedError) => void;
   },
 ): Promise<void> => {
+  // 作り直したアカウントに無料体験を出さないため、何かを消す前に残す。やり直しても同じ行が増えない
+  await steps.recordFreeTrialUsage(accountId);
   await steps.revokeAppleAuthorization(accountId);
   await steps.deleteRecords(accountId);
   // R2 は Durable Object の表を読まずに消せるので、Durable Object を消したあとでも消せる
