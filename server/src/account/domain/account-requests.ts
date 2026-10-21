@@ -15,6 +15,9 @@ import { judgeGoalProgress } from "../../goal/domain/judge-goal-progress";
 import { previewGoalSetup } from "../../goal/domain/preview-goal-setup";
 import { proposeGoals } from "../../goal/domain/propose-goals";
 import { readKeptMealPhoto } from "../../meal/domain/read-kept-meal-photo";
+import { agreeToTerms } from "../../terms-agreement/domain/agree-to-terms";
+import { findTermsAgreementRequirement } from "../../terms-agreement/domain/find-terms-agreement-requirement";
+import { recordSignInTermsAgreement } from "../../terms-agreement/domain/record-sign-in-terms-agreement";
 import { reviewUnreviewedWeeks } from "../../weekly-review/domain/review-unreviewed-weeks";
 import type { AccountResponse, LoggedAccountResponse } from "./account-response";
 import type { AccountStores } from "./account-stores";
@@ -22,11 +25,13 @@ import type { AccountStores } from "./account-stores";
 // アカウントの Durable Object の受け口とアラームの、要求ごとの処理。
 // どれも、張り直すアラームの時刻と、起きた利用状況の出来事を一緒に返す（送るかどうかは Durable Object が送る前に決める）
 export const accountRequests = {
+  // サインインのたびに呼ぶ。サインインの画面で見せた規約の版への同意も、ここで残す
   recordFirstSignIn: (
-    stores: Pick<AccountStores, "firstSignIn" | "writeRecordChanges">,
-    signIn: { signedInAt: Date; timeZone: string | undefined },
+    stores: Pick<AccountStores, "firstSignIn" | "writeRecordChanges" | "termsAgreement">,
+    signIn: Parameters<typeof recordFirstSignIn>[2] & { agreedTermsVersion: string | undefined },
   ): AccountResponse<void> => {
     recordFirstSignIn(stores.writeRecordChanges, stores.firstSignIn, signIn);
+    recordSignInTermsAgreement(stores.termsAgreement, signIn);
     return respond(undefined);
   },
 
@@ -147,6 +152,16 @@ export const accountRequests = {
       requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
     } satisfies LoggedAccountResponse<unknown>;
   },
+
+  // 規約への同意は同期の外の要求で、同期の記録は変えない
+  findTermsAgreementRequirement: (stores: Pick<AccountStores, "termsAgreement">) =>
+    respond(findTermsAgreementRequirement(stores.termsAgreement)),
+
+  agreeToTerms: (
+    stores: Pick<AccountStores, "termsAgreement">,
+    request: Parameters<typeof agreeToTerms>[1],
+    now: Date,
+  ) => respond(agreeToTerms(stores.termsAgreement, request, now)),
 
   deleteRecords: async (
     stores: Pick<AccountStores, "eraseRecords">,

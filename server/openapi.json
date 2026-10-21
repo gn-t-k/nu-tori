@@ -2972,6 +2972,37 @@
           "failureReason"
         ],
         "description": "返事を作れなかった（やり直しを使い切った・提供元の 400）。送ったあと閉じる"
+      },
+      "TermsAgreementRequirement": {
+        "type": "object",
+        "properties": {
+          "agreementRequired": {
+            "type": "boolean"
+          },
+          "termsVersion": {
+            "type": "string",
+            "description": "今の規約の版。同意が要るとき、同意する要求でこの版を送る",
+            "example": "1"
+          }
+        },
+        "required": [
+          "agreementRequired",
+          "termsVersion"
+        ]
+      },
+      "TermsAgreementRejection": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "terms_version_unknown"
+            ]
+          }
+        },
+        "required": [
+          "code"
+        ]
       }
     },
     "parameters": {}
@@ -3002,6 +3033,11 @@
                     "type": "string",
                     "description": "端末の IANA のタイムゾーン名。最初のサインインで、使い始めた日をこの土地の日付にする",
                     "example": "Asia/Tokyo"
+                  },
+                  "agreedTermsVersion": {
+                    "type": "string",
+                    "description": "サインインの画面で見せた規約の版。続けると同意したことになるので、この版への同意を残す。送らない前の版のアプリでは残さず、同意のシートで取る",
+                    "example": "1"
                   }
                 },
                 "required": [
@@ -3925,6 +3961,99 @@
           },
           "404": {
             "description": "まだ受け取っていない送った文章"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/terms-agreement": {
+      "get": {
+        "operationId": "getTermsAgreementRequirement",
+        "summary": "規約の同意が要るか",
+        "description": "同意を取り直す版より後の版のどれにも同意していなければ、同意が要る。端末は、開いたとき（前面に来たとき）に問い、要れば同意のシートを出す",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "同意が要るかと、同意を求める版",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsAgreementRequirement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/terms-agreements": {
+      "post": {
+        "operationId": "agreeToTerms",
+        "summary": "規約に同意する",
+        "description": "同意のシートでの同意。送り待ちの箱を通さず、その場で送る。同じ要求の ID の再送は、書かずに受け付ける",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+                    "description": "端末が振った要求の ID（UUID v4）。同意の ID にし、冪等の鍵にする"
+                  },
+                  "termsVersion": {
+                    "type": "string",
+                    "description": "同意のシートで見せた規約の版（同意が要るかの答えの termsVersion）",
+                    "example": "1"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "termsVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "同意を受け付けた"
+          },
+          "400": {
+            "description": "要求の形が違う"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "422": {
+            "description": "知らない規約の版。不具合のときだけ起きる",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsAgreementRejection"
+                }
+              }
+            }
           },
           "429": {
             "description": "回数の歯止めにかかった"

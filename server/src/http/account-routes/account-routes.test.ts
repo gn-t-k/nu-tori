@@ -16,6 +16,7 @@ import {
 } from "../../meal/durable-object/testing/photos-bucket.mock";
 import { mockCaptureExceptionOk } from "../../observability/capture-exception.mock";
 import { mockDeletePostHogPersonOk } from "../../observability/delete-posthog-person/delete-posthog-person.mock";
+import { hashAppleSub } from "../../subscription/d1/testing/hash-apple-sub";
 import { app } from "../app";
 import { signInTestAccount } from "../testing";
 
@@ -23,11 +24,13 @@ describe("アカウントの削除", () => {
   describe("記録のあるアカウントでサインインしているとき", () => {
     let signedIn: { accountId: string; sessionToken: string };
     let revokeSpy: ReturnType<typeof mockRevokeAppleRefreshTokenOk>;
+    let appleUserId: string;
     beforeEach(async () => {
       mockAppleKeysEndpointOk();
       mockExchangeAppleAuthorizationCodeOk({ refreshToken: "apple-refresh-token" });
       revokeSpy = mockRevokeAppleRefreshTokenOk();
-      signedIn = await signInTestAccount(generateRecordId());
+      appleUserId = generateRecordId();
+      signedIn = await signInTestAccount(appleUserId);
       await runInDurableObject(getAccountDurableObject(env, signedIn.accountId), (_, state) => {
         state.storage.sql.exec("CREATE TABLE deletion_check_records (id TEXT PRIMARY KEY)");
       });
@@ -67,10 +70,80 @@ describe("アカウントの削除", () => {
         await deleteSignedInAccount(signedIn.sessionToken, env);
       });
 
+      test("Apple の sub を今の版の鍵でハッシュにして残すこと", async () => {
+        const rows = await env.DB.prepare(
+          "SELECT apple_sub_hash AS appleSubHash, key_version AS keyVersion FROM free_trial_usages WHERE apple_sub_hash IN (?1, ?2)",
+        )
+          .bind(await hashAppleSub(appleUserId, 1), await hashAppleSub(appleUserId, 2))
+          .all();
+        expect(rows.results).toEqual([
+          { appleSubHash: await hashAppleSub(appleUserId, 2), keyVersion: 2 },
+        ]);
+      });
+
       test("セッションを受け付けないこと", async () => {
         const response = await deleteSignedInAccount(signedIn.sessionToken, env);
         expect(response.status).toBe(401);
       });
+    });
+  });
+
+  describe("D1 に課金の行のあるアカウントでサインインしているとき", () => {
+    let signedIn: { accountId: string; sessionToken: string };
+    beforeEach(async () => {
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      mockRevokeAppleRefreshTokenOk();
+      signedIn = await signInTestAccount(generateRecordId());
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO test_users (account_id) VALUES (?)").bind(signedIn.accountId),
+        env.DB.prepare(
+          "INSERT INTO app_account_tokens (account_id, app_account_token) VALUES (?, ?)",
+        ).bind(signedIn.accountId, generateRecordId()),
+        env.DB.prepare(
+          "INSERT INTO app_store_subscription_routes (id, account_id, environment, app_store_original_transaction_id) VALUES (?, ?, 'sandbox', ?)",
+        ).bind(generateRecordId(), signedIn.accountId, generateRecordId()),
+      ]);
+    });
+
+    test("テストユーザー、購入者のトークン、サブスクリプションの案内の行を消すこと", async () => {
+      await deleteSignedInAccount(signedIn.sessionToken, env);
+      const rows = await env.DB.prepare(
+        `SELECT
+           (SELECT COUNT(*) FROM test_users WHERE account_id = ?1) AS testUsers,
+           (SELECT COUNT(*) FROM app_account_tokens WHERE account_id = ?1) AS appAccountTokens,
+           (SELECT COUNT(*) FROM app_store_subscription_routes WHERE account_id = ?1) AS appStoreSubscriptionRoutes`,
+      )
+        .bind(signedIn.accountId)
+        .first();
+      expect(rows).toEqual({ testUsers: 0, appAccountTokens: 0, appStoreSubscriptionRoutes: 0 });
+    });
+  });
+
+  describe("同じ Apple ID のハッシュがもう残っているとき", () => {
+    let signedIn: { accountId: string; sessionToken: string };
+    let appleUserId: string;
+    beforeEach(async () => {
+      mockAppleKeysEndpointOk();
+      mockExchangeAppleAuthorizationCodeOk();
+      mockRevokeAppleRefreshTokenOk();
+      appleUserId = generateRecordId();
+      signedIn = await signInTestAccount(appleUserId);
+      await env.DB.prepare(
+        "INSERT INTO free_trial_usages (id, apple_sub_hash, key_version) VALUES (?, ?, 2)",
+      )
+        .bind(generateRecordId(), await hashAppleSub(appleUserId, 2))
+        .run();
+    });
+
+    test("削除を終え、ハッシュの行を増やさないこと", async () => {
+      const response = await deleteSignedInAccount(signedIn.sessionToken, env);
+      const row = await env.DB.prepare(
+        "SELECT COUNT(*) AS count FROM free_trial_usages WHERE apple_sub_hash = ?",
+      )
+        .bind(await hashAppleSub(appleUserId, 2))
+        .first();
+      expect({ status: response.status, row }).toEqual({ status: 204, row: { count: 1 } });
     });
   });
 

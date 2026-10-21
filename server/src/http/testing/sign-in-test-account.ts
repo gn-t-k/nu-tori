@@ -7,7 +7,7 @@ import { signInWithApple } from "./sign-in-with-apple";
 
 export const signInTestAccount = async (
   appleUserId: string,
-  options: { timeZone?: string } = {},
+  options: { timeZone?: string; agreedTermsVersion?: string } = {},
 ): Promise<{ accountId: string; sessionToken: string }> => {
   const response = await signInWithApple(appleUserId, options);
   const { sessionToken } = z.object({ sessionToken: z.string() }).parse(await response.json());

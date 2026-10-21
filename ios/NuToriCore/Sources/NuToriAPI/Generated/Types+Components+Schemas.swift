@@ -4794,5 +4794,49 @@ extension Components {
                 case failureReason
             }
         }
+        /// - Remark: Generated from `#/components/schemas/TermsAgreementRequirement`.
+        internal struct TermsAgreementRequirement: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TermsAgreementRequirement/agreementRequired`.
+            internal var agreementRequired: Swift.Bool
+            /// 今の規約の版。同意が要るとき、同意する要求でこの版を送る
+            ///
+            /// - Remark: Generated from `#/components/schemas/TermsAgreementRequirement/termsVersion`.
+            internal var termsVersion: Swift.String
+            /// Creates a new `TermsAgreementRequirement`.
+            ///
+            /// - Parameters:
+            ///   - agreementRequired:
+            ///   - termsVersion: 今の規約の版。同意が要るとき、同意する要求でこの版を送る
+            internal init(
+                agreementRequired: Swift.Bool,
+                termsVersion: Swift.String
+            ) {
+                self.agreementRequired = agreementRequired
+                self.termsVersion = termsVersion
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case agreementRequired
+                case termsVersion
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/TermsAgreementRejection`.
+        internal struct TermsAgreementRejection: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TermsAgreementRejection/code`.
+            internal enum CodePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case termsVersionUnknown = "terms_version_unknown"
+            }
+            /// - Remark: Generated from `#/components/schemas/TermsAgreementRejection/code`.
+            internal var code: Components.Schemas.TermsAgreementRejection.CodePayload
+            /// Creates a new `TermsAgreementRejection`.
+            ///
+            /// - Parameters:
+            ///   - code:
+            internal init(code: Components.Schemas.TermsAgreementRejection.CodePayload) {
+                self.code = code
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case code
+            }
+        }
     }
 }
