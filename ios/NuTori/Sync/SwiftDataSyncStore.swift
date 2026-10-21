@@ -181,30 +181,36 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         return Contexts(cache: cache, pending: pending)
     }
 
-    /// 結果を受け取った送り待ちを最後に消すのは、間で落ちても送り待ちが残り、次に送って同じ戻しに戻るため
+    /// 保存の順と分け方は `SyncBoxSaveOrder` が決め、ここは置き場の操作だけを渡す
     @MainActor private static func apply(
         _ result: SyncBoxResult,
         kinds: RecordKindRegistry<ModelContext>,
         to stores: Contexts
     ) throws {
-        if !result.enqueuing.isEmpty || result.healthSyncState != nil {
-            for entry in result.enqueuing {
-                stores.pending.insert(PendingWriteRow(entry: entry))
-            }
-            if let healthSyncState = result.healthSyncState {
-                try write(healthSyncState, in: stores.pending)
-            }
-            try stores.pending.save()
-        }
-        try applyToCache(result, kinds: kinds, in: stores.cache)
-        if !result.resolvedWriteIds.isEmpty {
-            let removing = Set(result.resolvedWriteIds)
-            for row in try stores.pending.fetch(FetchDescriptor<PendingWriteRow>())
-            where removing.contains(row.writeId) {
-                stores.pending.delete(row)
-            }
-            try stores.pending.save()
-        }
+        try SyncBoxSaveOrder.apply(
+            result, kinds: kinds, cache: stores.cache,
+            savePending: { enqueuing, healthSyncState in
+                for entry in enqueuing {
+                    stores.pending.insert(PendingWriteRow(entry: entry))
+                }
+                if let healthSyncState {
+                    try write(healthSyncState, in: stores.pending)
+                }
+                try stores.pending.save()
+            },
+            saveCache: { _, syncState in
+                if let syncState {
+                    try write(syncState, in: stores.cache)
+                }
+                try stores.cache.save()
+            },
+            removePending: { writeIds in
+                for row in try stores.pending.fetch(FetchDescriptor<PendingWriteRow>())
+                where writeIds.contains(row.writeId) {
+                    stores.pending.delete(row)
+                }
+                try stores.pending.save()
+            })
     }
 
     @MainActor private static func cachedSyncState(in context: ModelContext) throws
@@ -222,37 +228,6 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
             existing.apply(state)
         } else {
             context.insert(CachedSyncState(state))
-        }
-    }
-
-    /// 登録簿の種類の変更を100件ずつ保存し、通し番号は最後の保存で書く。途中で落ちても、書いていない変更を追い越さない
-    @MainActor private static func applyToCache(
-        _ result: SyncBoxResult,
-        kinds: RecordKindRegistry<ModelContext>,
-        in context: ModelContext
-    ) throws {
-        // メインのコンテキストを長く止めないよう、分けて保存する
-        let batchSize = 100
-        var batches: [(kind: any RecordKind<ModelContext>, changes: [SyncChange])] = []
-        for group in result.kindChanges {
-            guard let kind = kinds.kind(named: group.kind) else {
-                throw UnknownRecordKindError.notRegistered(group.kind)
-            }
-            for start in stride(from: 0, to: group.changes.count, by: batchSize) {
-                let end = min(start + batchSize, group.changes.count)
-                batches.append((kind, Array(group.changes[start..<end])))
-            }
-        }
-        for (index, batch) in batches.enumerated() {
-            try batch.kind.apply(batch.changes, to: context)
-            if index == batches.count - 1, let state = result.syncState {
-                try write(state, in: context)
-            }
-            try context.save()
-        }
-        if batches.isEmpty, let state = result.syncState {
-            try write(state, in: context)
-            try context.save()
         }
     }
 

@@ -4,7 +4,7 @@ public import NuToriCore
 import Synchronization
 
 /// メモリの送り待ちの箱。送り待ちの箱の約束（保存の順、通し番号、全消去）を、保存の記録で確かめるために使う。
-/// キャッシュは `Cache` を渡し、種類が当てる。保存のたびに `saves` へ足す。
+/// 保存の順は本物の箱と同じ `SyncBoxSaveOrder` が決める。キャッシュは `Cache` を渡し、種類が当てる。保存のたびに `saves` へ足す。
 /// 失敗を渡すと、読み書きの失敗を確かめられる
 public final class SyncBoxMock<Cache: Sendable>: SyncBox {
     /// 1回の保存
@@ -17,9 +17,6 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
         case cache(changes: Int, afterSequence: Int?)
         case cacheCleared
     }
-
-    /// 100 件ずつ分けて保存する（本物の箱に合わせる）
-    public static var batchSize: Int { 100 }
 
     public let cache: Cache
     public let recordKinds: [any SyncedRecordKind]
@@ -77,23 +74,32 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
         try failIfNeeded()
         try failWriteIfNeeded()
         try storage.withLock { storage in
-            // 送り待ちと進み具合を先に1つの保存で書き、キャッシュをそのあとに保存する
-            if !result.enqueuing.isEmpty || result.healthSyncState != nil {
-                storage.entries.append(contentsOf: result.enqueuing)
-                if let healthSyncState = result.healthSyncState {
-                    storage.healthState = healthSyncState
-                }
-                storage.saves.append(.pending(added: result.enqueuing.count, removed: 0))
-            }
             if let syncState = result.syncState {
                 storage.appliedSyncStates.append(syncState)
             }
-            try applyToCache(result, in: &storage)
-            if !result.resolvedWriteIds.isEmpty {
-                let removing = Set(result.resolvedWriteIds)
-                storage.entries.removeAll { removing.contains($0.writeId) }
-                storage.saves.append(.pending(added: 0, removed: removing.count))
-            }
+            // 知らない種類の手前までを、当てるよう渡された変更として残す
+            storage.appliedKindChanges.append(
+                contentsOf: result.kindChanges.prefix { kinds.kind(named: $0.kind) != nil })
+            try SyncBoxSaveOrder.apply(
+                result, kinds: kinds, cache: cache,
+                savePending: { enqueuing, healthSyncState in
+                    storage.entries.append(contentsOf: enqueuing)
+                    if let healthSyncState {
+                        storage.healthState = healthSyncState
+                    }
+                    storage.saves.append(.pending(added: enqueuing.count, removed: 0))
+                },
+                saveCache: { changeCount, syncState in
+                    if let syncState {
+                        storage.state = syncState
+                    }
+                    storage.saves.append(
+                        .cache(changes: changeCount, afterSequence: syncState?.afterSequence))
+                },
+                removePending: { writeIds in
+                    storage.entries.removeAll { writeIds.contains($0.writeId) }
+                    storage.saves.append(.pending(added: 0, removed: writeIds.count))
+                })
         }
     }
 
@@ -141,37 +147,6 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
     private let failure: (any Error)?
     private let writeFailure: (any Error)?
     private let storage: Mutex<Storage>
-
-    private func applyToCache(_ result: SyncBoxResult, in storage: inout Storage) throws {
-        var chunks: [(kind: any RecordKind<Cache>, changes: [SyncChange])] = []
-        for group in result.kindChanges {
-            guard let kind = kinds.kind(named: group.kind) else {
-                throw UnknownRecordKindError.notRegistered(group.kind)
-            }
-            storage.appliedKindChanges.append(group)
-            for start in stride(from: 0, to: group.changes.count, by: Self.batchSize) {
-                let end = min(start + Self.batchSize, group.changes.count)
-                chunks.append((kind, Array(group.changes[start..<end])))
-            }
-        }
-        let finalState = result.syncState
-        if chunks.isEmpty {
-            guard let finalState else { return }
-            storage.state = finalState
-            storage.saves.append(.cache(changes: 0, afterSequence: finalState.afterSequence))
-            return
-        }
-        for (index, chunk) in chunks.enumerated() {
-            try chunk.kind.apply(chunk.changes, to: cache)
-            // 通し番号は、最後の保存で書く。途中で落ちても、書いていない変更を追い越さない
-            let isLast = index == chunks.count - 1
-            if isLast, let finalState { storage.state = finalState }
-            storage.saves.append(
-                .cache(
-                    changes: chunk.changes.count,
-                    afterSequence: isLast ? finalState?.afterSequence : nil))
-        }
-    }
 }
 
 extension SyncBoxMock: RecordCacheReading {

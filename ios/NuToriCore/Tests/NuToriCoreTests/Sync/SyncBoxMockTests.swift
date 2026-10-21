@@ -4,6 +4,7 @@ import NuToriCore
 import NuToriTestSupport
 import Testing
 
+// 保存の順そのものは SyncBoxSaveOrderTests で確かめ、ここはメモリの置き場の操作を確かめる
 @Suite("メモリの送り待ちの箱")
 struct SyncBoxMockTests {
     typealias Box = SyncBoxMock<RecordCacheMock>
@@ -20,8 +21,8 @@ struct SyncBoxMockTests {
             entry = RecordKindMock.entry(recordId: UUID())
         }
 
-        @Test("送り待ちを先に保存し、キャッシュをそのあとに保存すること")
-        func savesPendingBeforeCache() async throws {
+        @Test("送り待ちとキャッシュの保存を記録し、送り待ちを持つこと")
+        func recordsSavesAndHoldsPending() async throws {
             try await box.apply(
                 SyncBoxResult(
                     enqueuing: [entry],
@@ -52,27 +53,8 @@ struct SyncBoxMockTests {
             )
         }
 
-        @Test("送り待ちと同じ保存で、キャッシュより先に書くこと")
-        func savesWithPendingBeforeCache() async throws {
-            try await box.apply(
-                SyncBoxResult(
-                    enqueuing: [RecordKindMock.entry(recordId: UUID())],
-                    kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                    ],
-                    healthSyncState: state
-                ))
-
-            #expect(
-                box.saves == [
-                    .pending(added: 1, removed: 0),
-                    .cache(changes: 1, afterSequence: nil),
-                ])
-            #expect(box.healthState == state)
-        }
-
-        @Test("送り待ちに足すものが無くても、送り待ちの置き場に書くこと")
-        func savesWithoutEnqueuing() async throws {
+        @Test("送り待ちと同じ保存で書くこと")
+        func savesWithPending() async throws {
             try await box.apply(SyncBoxResult(healthSyncState: state))
 
             #expect(box.saves == [.pending(added: 0, removed: 0)])
@@ -94,8 +76,8 @@ struct SyncBoxMockTests {
                 pendingEntries: [resolved, waiting])
         }
 
-        @Test("キャッシュに当てたあとに、その送り待ちだけを消すこと")
-        func removesResolvedAfterCache() async throws {
+        @Test("結果を受け取った送り待ちだけを消すこと")
+        func removesOnlyResolved() async throws {
             try await box.apply(
                 SyncBoxResult(
                     resolvedWriteIds: [resolved.writeId],
@@ -110,89 +92,6 @@ struct SyncBoxMockTests {
                     .pending(added: 0, removed: 1),
                 ])
             #expect(try await box.pendingEntries() == [waiting])
-        }
-    }
-
-    @Suite("250 件の変更を含む頁を当てるとき")
-    struct PullingManyChanges {
-        let box: Box
-        let cache: RecordCacheMock
-        let result: SyncBoxResult
-
-        init() {
-            cache = RecordCacheMock()
-            box = Box(kinds: RecordKindRegistry([RecordKindMock.ok()]), cache: cache)
-            result = SyncBoxResult(
-                kindChanges: [
-                    KindChanges(
-                        kind: .accountSettings,
-                        changes: Array(repeating: .unknown(kind: "note"), count: 250))
-                ],
-                syncState: .fixture(afterSequence: 7)
-            )
-        }
-
-        @Test("100 件ずつ分けて保存し、通し番号は最後の保存でだけ書くこと")
-        func writesSequenceInLastSave() async throws {
-            try await box.apply(result)
-
-            #expect(
-                box.saves == [
-                    .cache(changes: 100, afterSequence: nil),
-                    .cache(changes: 100, afterSequence: nil),
-                    .cache(changes: 50, afterSequence: 7),
-                ])
-            #expect(cache.appliedCount(of: .accountSettings) == 250)
-            #expect(box.state?.afterSequence == 7)
-        }
-    }
-
-    @Suite("種類が変更を当てるのに失敗したとき")
-    struct KindFailing {
-        let box: Box
-        let result: SyncBoxResult
-
-        init() {
-            box = Box(
-                kinds: RecordKindRegistry([RecordKindMock.error(.init())]),
-                cache: RecordCacheMock(),
-                state: .fixture(afterSequence: 3))
-            result = SyncBoxResult(
-                kindChanges: [
-                    KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                ],
-                syncState: .fixture(afterSequence: 9)
-            )
-        }
-
-        @Test("通し番号を進めないこと")
-        func keepsSequence() async throws {
-            await #expect(throws: RecordKindMock.Failure()) {
-                try await box.apply(result)
-            }
-
-            #expect(box.state?.afterSequence == 3)
-        }
-    }
-
-    @Suite("登録簿に無い種類の変更を渡したとき")
-    struct UnknownKind {
-        let box: Box
-
-        init() {
-            box = Box(kinds: RecordKindRegistry([]), cache: RecordCacheMock())
-        }
-
-        @Test("知らない種類だと投げること")
-        func throwsUnknownKind() async throws {
-            await #expect(throws: UnknownRecordKindError.notRegistered(.accountSettings)) {
-                try await box.apply(
-                    SyncBoxResult(
-                        kindChanges: [
-                            KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                        ]
-                    ))
-            }
         }
     }
 
