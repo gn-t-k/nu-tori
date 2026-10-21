@@ -6,6 +6,7 @@ import { mockCreateEstimationProviderOk } from "../src/estimation/durable-object
 import { mockCreateConversationProviderOk } from "../src/reply/durable-object/create-conversation-provider/create-conversation-provider.mock";
 import { mealTextBody } from "./meal-text-body";
 import { runMainFlow } from "./run-main-flow";
+import { e2eRequestHeaders } from "../src/http/e2e-session-routes/e2e-request-headers";
 
 const signInSecret = "e2e-sign-in-secret-0123456789abcdef0123456789";
 
@@ -15,15 +16,17 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
   let flowOptions: Parameters<typeof runMainFlow>[0];
   let messages: string[];
   // 流れが作ったアカウント。ほかのテストも同じ D1 にアカウントを作るので、全体の数でなく、この ID で数える
-  let createdAccountId: string | undefined;
-  const countCreatedAccount = async () =>
+  let createdAccountIds: string[];
+  const countCreatedAccounts = async () =>
     (
-      await env.DB.prepare(`SELECT COUNT(*) AS count FROM "user" WHERE "id" = ?`)
-        .bind(createdAccountId ?? "")
+      await env.DB.prepare(
+        `SELECT COUNT(*) AS count FROM "user" WHERE "id" IN (SELECT value FROM json_each(?))`,
+      )
+        .bind(JSON.stringify(createdAccountIds))
         .first<{ count: number }>()
     )?.count;
   beforeEach(() => {
-    createdAccountId = undefined;
+    createdAccountIds = [];
     deployedEnv = { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: signInSecret };
     messages = [];
     flowOptions = {
@@ -33,7 +36,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       send: async (url, init) => {
         const response = await app.request(url, init, deployedEnv);
         if (url.endsWith("/v1/e2e/sessions") && response.status === 201) {
-          createdAccountId = (await response.clone().json<{ accountId: string }>()).accountId;
+          createdAccountIds.push((await response.clone().json<{ accountId: string }>()).accountId);
         }
         return response;
       },
@@ -53,13 +56,13 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       });
     });
 
-    test("最後まで通り、作ったアカウントを消すこと", async () => {
+    test("最後まで通り、作ったアカウントをどれも消すこと", async () => {
       await runMainFlow(flowOptions);
       expect({
-        created: createdAccountId !== undefined,
-        remaining: await countCreatedAccount(),
+        created: createdAccountIds.length,
+        remaining: await countCreatedAccounts(),
       }).toEqual({
-        created: true,
+        created: 2,
         remaining: 0,
       });
     });
@@ -68,6 +71,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       await runMainFlow(flowOptions);
       expect(messages).toEqual([
         "サインインした",
+        "無料体験中のアカウントだった",
         "7日前の体重を記録した",
         "目標の下見で、逆算できず、身体データを添えると減量の案を出せると答えた",
         "目標案を受け取った（推定消費カロリーの出どころ formula）",
@@ -84,7 +88,40 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
         "見守る要求で返事が届いた（流れた分 2）",
         "取りに行くで返事が届いた",
         "アカウントを削除した",
+        "60日前に使い始めたことにしてサインインした",
+        "無料体験の終わったアカウントだった",
+        "無料体験の終わったアカウントで写真の食事を送った",
+        "推定がサブスクリプションを待っているになった",
+        "無料体験の終わったアカウントを削除した",
       ]);
+    });
+  });
+
+  // 課金を入れた日が30日より前でない Worker と同じく、2つ目のアカウントの無料体験が終わらない。
+  // Durable Object は Worker に渡した環境でなくこの実行環境の設定を読むので、使い始めた日の差し替えを外して作る
+  describe("2つ目のアカウントの無料体験が終わっていないとき", () => {
+    beforeEach(() => {
+      mockCreateEstimationProviderOk();
+      mockCreateConversationProviderOk({
+        classification: (body) => (body === mealTextBody ? "meal" : "conversation"),
+      });
+      const { send } = flowOptions;
+      flowOptions = {
+        ...flowOptions,
+        send: (url, init) => {
+          const { [e2eRequestHeaders.requestedAt]: _, ...headers } = Object.fromEntries(
+            new Headers(init.headers),
+          );
+          return send(url, url.endsWith("/v1/e2e/sessions") ? { ...init, headers } : init);
+        },
+      };
+    });
+
+    test("課金を入れた日を直すよう知らせて失敗し、アカウントは消すこと", async () => {
+      await expect(runMainFlow(flowOptions)).rejects.toThrow(
+        "60日前に使い始めたことにしても、無料体験が終わっていない（開発用の BILLING_STARTED_ON を30日より前の日にする。最後の日: ",
+      );
+      expect(await countCreatedAccounts()).toBe(0);
     });
   });
 
@@ -104,7 +141,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       await expect(runMainFlow(flowOptions)).rejects.toThrow(
         "目標の設定の要求 preview が断られた（状態コード 404、理由: なし）",
       );
-      expect(await countCreatedAccount()).toBe(0);
+      expect(await countCreatedAccounts()).toBe(0);
     });
   });
 
@@ -118,7 +155,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       await expect(runMainFlow(flowOptions)).rejects.toThrow(
         "食事の文章が conversation と読み分けられた",
       );
-      expect(await countCreatedAccount()).toBe(0);
+      expect(await countCreatedAccounts()).toBe(0);
     });
   });
 
@@ -132,7 +169,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       await expect(runMainFlow(flowOptions)).rejects.toThrow(
         '会話の文章の見守る要求が、返事ありでなく {"type":"classified_as_meal"} で閉じた',
       );
-      expect(await countCreatedAccount()).toBe(0);
+      expect(await countCreatedAccounts()).toBe(0);
     });
   });
 
@@ -145,7 +182,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       await expect(runMainFlow(flowOptions)).rejects.toThrow(
         "推定できたにならず、no_dishes で終わった",
       );
-      expect(await countCreatedAccount()).toBe(0);
+      expect(await countCreatedAccounts()).toBe(0);
     });
   });
 
@@ -159,7 +196,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
       await expect(runMainFlow(flowOptions)).rejects.toThrow(
         "推定できたにならないまま 500 ミリ秒たった（最後の状態: estimating）",
       );
-      expect(await countCreatedAccount()).toBe(0);
+      expect(await countCreatedAccounts()).toBe(0);
     });
   });
 

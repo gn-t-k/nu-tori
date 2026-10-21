@@ -51,12 +51,12 @@ jobs:
       url: https://api.nu-tori.app
     secrets: inherit
 
-  # 開発用の環境へ出した Worker に、本物の API を通して主な流れ（サインイン、体重、写真の食事、推定、アカウントの削除）を確かめる。
+  # 開発用の環境へ出した Worker に、本物の API を通して主な流れ（サインイン、体重、写真の食事、推定、アカウントの削除、無料体験の終わったアカウントの推定の保留）を確かめる。
   # 落ちたらこのジョブが赤くなるだけにする。必須のチェックにせず、本番のデプロイも待たせない（docs/agents/tooling.md の「CI」）
   verify-development:
     needs: development
     runs-on: ubuntu-latest
-    # 流れが待つ上限の合計（8 分。e2e/verify-development.ts）と準備より長くし、時間切れで止まる前に流れが止まった段を書き、作ったアカウントを消せるようにする
+    # 流れが待つ上限の合計（11 分。e2e/verify-development.ts）と準備より長くし、時間切れで止まる前に流れが止まった段を書き、作ったアカウントを消せるようにする
     timeout-minutes: 15
     # E2E_SIGN_IN_SECRET を、開発用の Environment の秘密の値から読む。本番の Environment には置かない
     environment: development
