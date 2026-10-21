@@ -432,6 +432,10 @@ check_server() {
     step "型検査（tsc）"
     (cd "$server" && pnpm exec tsc)
 
+    # Vitest のテストは先に app を読むので、入口だけが読み込みで落ちても気づけない（#699）
+    step "E2E の入口を読み込めるか"
+    (cd "$server" && pnpm exec tsx --eval 'import("./e2e/run-main-flow.ts")')
+
     step "OpenAPI の文書が経路のスキーマと合っているか"
     local document
     document="$(cd "$server" && pnpm exec tsx scripts/print-openapi-document.ts)"
