@@ -238,7 +238,13 @@ struct AccountScreen: View {
             if row.opensPaywall {
                 Button(action: openPaywall) {
                     HStack {
-                        LabeledContent("サブスクリプション", value: row.value)
+                        // ボタンに付けた .primary が値にも及ぶので、ほかの行の値と同じ secondary に戻す
+                        LabeledContent("サブスクリプション") {
+                            Text(row.value)
+                                .foregroundStyle(.secondary)
+                        }
+                        // 大きな文字では見出しと値を縦に積んで幅が縮むので、印をほかの行と同じ右端に寄せる
+                        Spacer(minLength: 0)
                         Image(systemName: "chevron.right")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(.tertiary)
