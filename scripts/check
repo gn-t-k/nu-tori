@@ -593,19 +593,21 @@ missing_ui_test_screenshots() {
     ' "$@"
 }
 
-# 名前が Screen・Sheet・Container で終わる View のうち、同じフォルダに <View>+Previews.swift が無いものを「ファイル: 置くファイル」の形で出す。<画面>Container は読んだ値を <画面> に渡すだけなので、<画面> のプレビューを探す
+# 名前が Screen・Sheet・Container で終わる View のうち、同じフォルダに <View>+Previews.swift が無いものを「ファイル: 置くファイル」の形で出す。<画面>Container は読んだ値を <画面> に渡すだけなので、<画面> のプレビューを探す。View への準拠を struct と同じ行に書いたものだけを見る
 missing_screen_previews() {
     local file name preview
     # 1件も当たらないとき（grep が 1 で終わる）も、pipefail で落とさない
     { grep -rE --include='*.swift' \
-        '^[[:space:]]*([a-z]+[[:space:]]+)*struct [A-Za-z0-9_]+(Screen|Sheet|Container)[[:space:]]*(<[^>]*>)?[[:space:]]*:([^{]*,)?[[:space:]]*View[[:space:]]*([,{]|$)' "$1" || [ $? -eq 1 ]; } |
+        '^[[:space:]]*([@A-Za-z]+[[:space:]]+)*struct [A-Za-z0-9_]+(Screen|Sheet|Container)[[:space:]]*(<[^>]*>)?[[:space:]]*:([^{]*,)?[[:space:]]*View[[:space:]]*([,{]|where|$)' "$1" || [ $? -eq 1 ]; } |
         sed -E 's/^([^:]+):.*struct ([A-Za-z0-9_]+).*/\1:\2/' |
         while IFS=: read -r file name; do
             preview="$(dirname "$file")/${name%Container}+Previews.swift"
             if [ ! -e "$preview" ]; then
                 echo "${file#"$root"/}: ${preview#"$root"/}"
             fi
-        done
+        done |
+        # <画面> と <画面>Container の両方が同じファイルを求めるので、1行にまとめる
+        sort -u -t: -k2,2
 }
 
 # いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
