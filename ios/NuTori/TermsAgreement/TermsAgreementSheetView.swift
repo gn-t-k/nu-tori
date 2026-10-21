@@ -58,7 +58,7 @@ struct TermsAgreementSheetView: View {
             Text(
                 "nu-tori を使い続けるには、[利用規約](https://nu-tori.app/terms)への同意が必要です。確かめてから、続けてください。"
             )
-                .font(.body)
+            .font(.body)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding([.horizontal, .top])

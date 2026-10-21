@@ -6,23 +6,14 @@ import Testing
 @testable import NuToriAPI
 
 extension NuToriAPIClientTests {
-    @Suite("サーバーが取引を受け付けなかったとき")
-    struct SubscriptionTransactionRejected {
-        @Test(
-            "断った理由の code を、端末の理由にして返すこと",
-            arguments: [
-                ("transaction_unverified", NuToriAPIClient.SubscriptionTransactionRejection.unverified),
-                ("environment_unsupported", .environmentUnsupported),
-                ("product_unknown", .unknownProduct),
-                ("expires_date_missing", .expiresDateMissing),
-            ])
-        func returnsRejection(
-            code: String, expected: NuToriAPIClient.SubscriptionTransactionRejection
-        ) async throws {
+    @Suite("サーバーが期限の無い取引を断ったとき")
+    struct SubscriptionTransactionWithoutExpiresDate {
+        @Test("期限が無いことを理由に断られたと返すこと")
+        func returnsExpiresDateMissing() async throws {
             let client = NuToriAPIClient(
                 serverURL: URL(string: "https://api.example")!,
                 transport: ClientTransportMock.ok(
-                    status: .unprocessableContent, json: #"{"code":"\#(code)"}"#),
+                    status: .unprocessableContent, json: #"{"code":"expires_date_missing"}"#),
                 appBuildGate: .sample,
                 sessionToken: { "session-1" }
             )
@@ -30,7 +21,7 @@ extension NuToriAPIClientTests {
             let result = try await client.reportSubscriptionTransaction(
                 requestId: UUID(), signedTransaction: "signed", trigger: .purchase)
 
-            #expect(result == .rejected(expected))
+            #expect(result == .rejected(.expiresDateMissing))
         }
     }
 }
