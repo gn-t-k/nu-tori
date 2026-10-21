@@ -7,6 +7,7 @@ import SwiftUI
 /// 価格・期間・購入・規約のリンクは StoreKit が描き、払う額は購入ボタンに価格と期間を載せる形で `Product.displayPrice` から出す
 struct PaywallScreen: View {
     let content: PaywallContent
+    let storefront: PaywallStorefront
     let purchaseToken: PaywallSession.PurchaseToken
     /// 購入ボタンの上に出す1行
     let message: String?
@@ -17,7 +18,7 @@ struct PaywallScreen: View {
 
     var body: some View {
         NavigationStack {
-            store
+            storefrontView
                 // 押せなくした課金の部分の外に置き、「購入を復元」と「閉じる」はいつも押せるようにする
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -38,6 +39,17 @@ struct PaywallScreen: View {
     }
 
     @State private var isRestoring = false
+
+    @ViewBuilder private var storefrontView: some View {
+        switch storefront {
+        case .storeKit:
+            store
+        #if DEBUG
+            case .fixed(let purchase):
+                fixedStore(purchase: purchase)
+        #endif
+        }
+    }
 
     private var store: some View {
         SubscriptionStoreView(productIDs: SubscriptionProduct.ids.keys.sorted()) {
@@ -65,6 +77,24 @@ struct PaywallScreen: View {
         // 選ぶところと購入ボタンだけを止める口は StoreKit に無いので、規約のリンクも一緒に押せなくなる
         .disabled(!canPurchase)
     }
+
+    #if DEBUG
+        /// UI テストの買うところ。宣伝の部分の下に、月額を買うボタンだけを置く
+        private func fixedStore(
+            purchase: @escaping (_ appAccountToken: UUID) async -> AppStorePurchaseAttempt
+        ) -> some View {
+            ScrollView {
+                marketing
+                Button("月額で始める") {
+                    guard case .issued(let token) = purchaseToken else { return }
+                    Task { await purchaseCompleted(await purchase(token)) }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canPurchase)
+                .accessibilityIdentifier("paywall-purchase")
+            }
+        }
+    #endif
 
     private static let termsURL = URL(string: "https://nu-tori.app/terms")!
     private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!

@@ -25,6 +25,8 @@ struct TimelineScreen: View {
     /// 指す推定消費カロリー・1日の目安・目標がまだ届いていない見直しも含む
     let weeklyReviews: [WeeklyReview]
     let expenditureEstimates: [ExpenditureEstimate]
+    /// 同期で届いたサブスクリプションの状態。まだ届いていなければ nil（知らせを出さず、入力欄も押せるまま）
+    let subscriptionStatus: SubscriptionStatus?
     /// まだ届いていない記録（薄く描く）
     let undeliveredRecords: UndeliveredRecords
     let capture: (ClientUsageEvent) async -> Void
@@ -133,6 +135,7 @@ struct TimelineScreen: View {
                         returnToTimeline: {
                             navigationPath = NavigationPath()
                         },
+                        openPaywall: { openPaywall(from: .awaitingMeal) },
                         rejectedLines: rejectedLines,
                         confirmsDeletion: false,
                         confirmsLastDishDeletion: false,
@@ -185,6 +188,7 @@ struct TimelineScreen: View {
                 }
                 .accessibilityIdentifier("account-screen")
             }
+            .paywallSheet($paywallRequest, actions: paywallActions)
             .sheet(isPresented: summaryPresented) {
                 if let summaryDay, let loaded {
                     DaySummarySheet(
@@ -285,6 +289,7 @@ struct TimelineScreen: View {
     }
 
     @State private var showsAccount = false
+    @State private var paywallRequest: PaywallSheet.Request?
     /// 潜った画面の並び。食事を消したら、料理の画面からでもタイムラインまで戻す
     @State private var navigationPath = NavigationPath()
     @State private var weightEntryPhase = WeightEntryPhase.closed
@@ -571,17 +576,7 @@ struct TimelineScreen: View {
         case .sentText(let bubble):
             SentTextBubbleView(
                 bubble: bubble, isUndelivered: timeline.isUndelivered(item),
-                resend: { reason in
-                    viewport.textResent()
-                    Task { await conversationActions.resend(bubble.sentText.id, reason) }
-                },
-                resendAsConversation: {
-                    viewport.textResent()
-                    Task {
-                        await conversationActions.resendAsConversation(
-                            bubble.sentText.id, bubble.meals.count)
-                    }
-                },
+                regeneration: replyRegeneration(of: bubble),
                 isMealUndelivered: { timeline.isUndelivered(.meal($0)) },
                 openMeal: { navigationPath.append(MealRoute(mealId: $0.meal.id)) },
                 loadPhoto: mealActions.loadPhoto
@@ -629,9 +624,11 @@ struct TimelineScreen: View {
                     }
                 }
             }
-        case .subscriptionNotice:
-            // 無料体験とサブスクリプションの知らせのカードは #678 で描く。それまでタイムラインに渡さないので、ここには来ない
-            EmptyView()
+        case .subscriptionNotice(let notice):
+            SubscriptionNoticeCard(notice: notice) {
+                openPaywall(from: .noticeCard)
+            }
+            .id(item.id)
         case .goalSetupNotice(let notice):
             GoalSetupNoticeCard(
                 notice: notice,
@@ -725,6 +722,7 @@ struct TimelineScreen: View {
     private func composer() -> some View {
         TimelineComposer(
             weightRecordedToday: records.contains { $0.day == today },
+            requiresSubscription: subscriptionStanding?.isExpired ?? false,
             expandsGoalSetup: goalSetupFlow.expandedPage != nil,
             preparingWeightEntry: weightEntryPhase == .preparing,
             showsCameraNotice: showsCameraNotice,
@@ -756,8 +754,42 @@ struct TimelineScreen: View {
             onSendText: { draft in
                 showsCameraNotice = false
                 Task { await sendText(draft) }
-            }
+            },
+            onOpenPaywall: hidingCameraNotice { openPaywall(from: .composerChip) }
         )
+    }
+
+    /// 端末の今日でのサブスクリプションの状態。状態がまだ届いていなければ nil
+    private var subscriptionStanding: SubscriptionStanding? {
+        subscriptionStatus.map {
+            SubscriptionStanding(status: $0, now: now(), timeZone: timeZone())
+        }
+    }
+
+    /// 開いたときの状態で課金画面を開く。テストユーザーと、状態がまだ届いていないときは開かない
+    private func openPaywall(from entry: ClientUsageEvent.PaywallEntry) {
+        guard let subscriptionStanding else { return }
+        paywallRequest = PaywallSheet.Request(
+            entry: entry, standing: subscriptionStanding, today: today)
+    }
+
+    /// サブスクリプション切れのあいだは、返事を作り直す操作を出さない
+    private func replyRegeneration(of bubble: SentTextBubble) -> SentTextBubbleView.Regeneration {
+        if subscriptionStanding?.isExpired ?? false {
+            return .unavailable
+        }
+        return .available(
+            resend: { reason in
+                viewport.textResent()
+                Task { await conversationActions.resend(bubble.sentText.id, reason) }
+            },
+            resendAsConversation: {
+                viewport.textResent()
+                Task {
+                    await conversationActions.resendAsConversation(
+                        bubble.sentText.id, bubble.meals.count)
+                }
+            })
     }
 
     private func perform(
@@ -850,7 +882,11 @@ struct TimelineScreen: View {
         Timeline(
             input: Timeline.Input(
                 goalRecords: goalRecords, rejectedLines: rejectedLines, meals: meals,
-                notices: notices, undelivered: undeliveredRecords, conversation: conversation),
+                notices: notices, undelivered: undeliveredRecords, conversation: conversation,
+                subscriptionNotices: subscriptionStatus.map {
+                    SubscriptionNotice.notices(
+                        status: $0, now: now(), timeZone: timeZone(), firstSignInDay: firstDay)
+                } ?? []),
             firstDay: firstDay, today: today)
     }
 

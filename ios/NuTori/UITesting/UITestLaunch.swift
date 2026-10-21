@@ -117,8 +117,14 @@
                     finishedMealPhotoUploads: photoUploader.finishedUploads,
                     reminderCenter: UITestReminderCenter(),
                     clock: clock,
-                    subscriptionStore: UITestSubscriptionStore()
+                    subscriptionStore: subscriptionStore
                 ))
+        }
+
+        /// StoreKit の口の偽物。アプリと課金画面の買うボタン（`PaywallStorefront.fixed`）が同じ結果を返すよう、場面から決める
+        var subscriptionStore: UITestSubscriptionStore {
+            UITestSubscriptionStore(
+                purchaseResult: api == .subscriptionExpired ? .succeeds : .cancels)
         }
 
         /// 始める前の同期の状態と、送り待ちに残した記録
@@ -250,6 +256,8 @@
             case goalAchieved = "goal-achieved"
             /// `goalAchieved` に加えて、今日の 8:00 に 72.0 kg を保つ目標に立て直した。達成の知らせのボタンは押せない
             case goalSwitchedAfterAchieved = "goal-switched-after-achieved"
+            /// 昨日で無料体験が終わり、サブスクリプション切れ。買うと月額のサブスクリプション中に結びつく
+            case subscriptionExpired = "subscription-expired"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

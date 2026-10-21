@@ -18,6 +18,8 @@ struct MealScreen: View {
     let actions: MealActions
     /// 料理の画面にいても、タイムラインまで戻る（食事を消したとき）
     let returnToTimeline: () -> Void
+    /// サブスクリプションを待っている食事の「サブスクリプションを見る」。課金画面を開く
+    let openPaywall: () -> Void
 
     var body: some View {
         list
@@ -42,6 +44,7 @@ struct MealScreen: View {
         capture: @escaping (ClientUsageEvent) async -> Void,
         actions: MealActions,
         returnToTimeline: @escaping () -> Void,
+        openPaywall: @escaping () -> Void,
         rejectedLines: [RejectedLine],
         confirmsDeletion: Bool,
         confirmsLastDishDeletion: Bool,
@@ -55,6 +58,7 @@ struct MealScreen: View {
         self.capture = capture
         self.actions = actions
         self.returnToTimeline = returnToTimeline
+        self.openPaywall = openPaywall
         _confirmsDeletion = State(initialValue: confirmsDeletion)
         _confirmsLastDishDeletion = State(initialValue: confirmsLastDishDeletion)
         _addingDish = State(initialValue: addingDish)
@@ -102,6 +106,12 @@ struct MealScreen: View {
                 .onChange(of: card.contents.dishes.count) { _, _ in
                     confirmsLastDishDeletion = false
                 }
+            if card.dishListNote == .awaitingSubscription {
+                Section {
+                    Button(SubscriptionNotice.subscriptionButtonTitle, action: openPaywall)
+                        .accessibilityIdentifier("meal-open-paywall")
+                }
+            }
             addDishSection
             if card.contents.showsNutrientCitation {
                 Section {
@@ -306,7 +316,6 @@ struct MealScreen: View {
                 Text(note.title)
                     .foregroundStyle(.secondary)
             }
-        // サブスクリプションを待っているときの「サブスクリプションを見る」は #678 で足す
         case .deferredToNextDay, .awaitingSubscription, .noDishes, .failed:
             VStack(spacing: 6) {
                 Text(note.title)

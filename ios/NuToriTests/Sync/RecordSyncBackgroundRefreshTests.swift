@@ -82,6 +82,6 @@ private func makeRuntime(store: SwiftDataSyncStore, clock: DeviceClock) throws -
             finishedMealPhotoUploads: photoUploader.finishedUploads,
             reminderCenter: UITestReminderCenter(),
             clock: clock,
-            subscriptionStore: UITestSubscriptionStore()
+            subscriptionStore: UITestSubscriptionStore(purchaseResult: .cancels)
         ))
 }

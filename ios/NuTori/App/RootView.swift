@@ -54,6 +54,24 @@ struct RootView: View {
         return .picker
     }
 
+    /// UI テストは、本物の StoreKit で買う `SubscriptionStoreView` を出さず、StoreKit の口の偽物で月額を買う
+    private var paywallStorefront: PaywallStorefront {
+        #if DEBUG
+            if let store = UITestLaunch.current?.subscriptionStore {
+                return .fixed(purchase: { appAccountToken in
+                    guard
+                        let monthly = SubscriptionProduct.ids.first(where: { $0.value == .monthly })
+                    else { return .cancelled }
+                    // 偽物は投げない
+                    return
+                        (try? await store.purchase(
+                            productId: monthly.key, appAccountToken: appAccountToken)) ?? .cancelled
+                })
+            }
+        #endif
+        return .storeKit
+    }
+
     @ViewBuilder private var content: some View {
         switch model.screen {
         case .opening:
@@ -113,7 +131,8 @@ struct RootView: View {
                 paywallActions: PaywallActions(
                     clock: model.clock,
                     purchases: model.subscriptionPurchases,
-                    capture: { await model.capture($0) }
+                    capture: { await model.capture($0) },
+                    storefront: paywallStorefront
                 ),
                 mealActions: MealActions(
                     prepareCamera: { await CameraReadiness.prepare() },
