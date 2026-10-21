@@ -1,8 +1,10 @@
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { FirstSignInStore } from "../domain/record-first-sign-in";
+import { subscriptionTables } from "../subscription/durable-object/subscription-tables";
 import { firstSignInTables } from "./first-sign-in-tables";
 
 const { firstSignIns } = firstSignInTables;
+const { freeTrialExclusions } = subscriptionTables;
 
 export const createFirstSignInStore = (db: DrizzleSqliteDODatabase): FirstSignInStore => ({
   exists: () => db.select({ id: firstSignIns.id }).from(firstSignIns).limit(1).all().length > 0,
@@ -12,5 +14,8 @@ export const createFirstSignInStore = (db: DrizzleSqliteDODatabase): FirstSignIn
     db.insert(firstSignIns)
       .values({ id, startedOn, signedInAt, timeZone: timeZone ?? null })
       .run();
+  },
+  excludeFreeTrial: (firstSignInId) => {
+    db.insert(freeTrialExclusions).values({ firstSignInId }).run();
   },
 });

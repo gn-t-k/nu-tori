@@ -14,6 +14,8 @@ export default defineConfig({
           APPLE_KEY_ID: "KEY0000000",
           APPLE_PRIVATE_KEY: await generateApplePrivateKey(),
           APPLE_REFRESH_TOKEN_KEYS: `1:${btoa(String.fromCharCode(...new Uint8Array(32).fill(1)))}`,
+          // 古い版の鍵で残したハッシュにも当たるかを確かめるため、版を2つ並べる
+          APPLE_SUB_HASH_KEYS: `1:${btoa(String.fromCharCode(...new Uint8Array(32).fill(2)))},2:${btoa(String.fromCharCode(...new Uint8Array(32).fill(3)))}`,
           // DSN が空なら Sentry は送らない
           SENTRY_DSN: "",
           // 課金を入れた日。開発用の設定の値に左右されず、無料体験の最後の日を決めた値で確かめるため

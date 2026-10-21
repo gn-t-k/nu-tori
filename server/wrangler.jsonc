@@ -50,6 +50,8 @@
       "APPLE_KEY_ID",
       "APPLE_PRIVATE_KEY",
       "APPLE_REFRESH_TOKEN_KEYS",
+      // 無料体験を使った Apple ID のハッシュの鍵。「版:base64 の鍵」をカンマで並べる
+      "APPLE_SUB_HASH_KEYS",
       "SENTRY_DSN",
       // 推定の提供元（Anthropic）の API キー。環境ごとのワークスペース（nu-tori-development）のもの
       "ANTHROPIC_API_KEY",
@@ -100,6 +102,7 @@
           "APPLE_KEY_ID",
           "APPLE_PRIVATE_KEY",
           "APPLE_REFRESH_TOKEN_KEYS",
+          "APPLE_SUB_HASH_KEYS",
           "SENTRY_DSN",
           // 推定の提供元（Anthropic）の API キー。本番のワークスペース（nu-tori-production）のもの
           "ANTHROPIC_API_KEY",

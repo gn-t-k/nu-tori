@@ -28,6 +28,8 @@ export const e2eSessionRoutes = new Hono<{ Bindings: Env }>().post(
     await getAccountDurableObject(c.env, user.id).recordFirstSignIn(user.id, {
       signedInAt: new Date(),
       timeZone: undefined,
+      // Apple を通さないので、前に無料体験を使った Apple ID には当たらない
+      isFreeTrialUsedByEarlierAccount: false,
     });
     return c.json({ sessionToken: session.token, accountId: user.id }, 201);
   },
