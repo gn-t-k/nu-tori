@@ -4,7 +4,7 @@
 
 ### Issue管理
 
-Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する。詳細は `docs/agents/issue-tracker.md` を参照。
+Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する。Issue を作る・読む・探す・閉じるとき、`/research` の調べものを終えるとき、作業を先送りするときは、`docs/agents/issue-tracker.md` を読む。
 
 ### triageラベル
 
