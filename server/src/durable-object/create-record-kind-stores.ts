@@ -3,8 +3,6 @@ import { createAccountSettingsStore } from "../account-settings/durable-object/c
 import { createAiUtteranceStore } from "../ai-utterance/durable-object/create-ai-utterance-store";
 import { createDailyGuideStore } from "../daily-guide/durable-object/create-daily-guide-store";
 import type { RecordKindStores } from "../domain/record-kind-stores";
-import { createEstimationScheduleStore } from "../estimation/durable-object/create-estimation-schedule-store";
-import { createEstimationStore } from "../estimation/durable-object/create-estimation-store";
 import { writeEstimationEvents } from "../estimation/domain/write-estimation-events";
 import { createExpenditureEstimateStore } from "../expenditure-estimate/durable-object/create-expenditure-estimate-store";
 import { createGoalStore } from "../goal/durable-object/create-goal-store";
@@ -27,6 +25,8 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     meal,
     mealEstimationStatus,
     estimationEventWrite,
+    estimationSchedule,
+    estimation,
     dish,
     dishEstimationStatus,
     sentText,
@@ -53,12 +53,20 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     firstSignIn: createFirstSignInStore(db),
     latestTimeZone: createLatestTimeZoneStore(db),
     mealPhoto: createMealPhotoStore(db),
-    estimationSchedule: createEstimationScheduleStore(db),
-    estimation: createEstimationStore(db),
+    estimationSchedule,
+    estimation,
     reply: createReplyStore(db),
     writeEstimationEvents: (addChange, now, run) =>
       writeEstimationEvents(
-        { meal, mealEstimationStatus, dish, dishEstimationStatus, estimationEventWrite },
+        {
+          meal,
+          mealEstimationStatus,
+          dish,
+          dishEstimationStatus,
+          estimationEventWrite,
+          estimation,
+          estimationSchedule,
+        },
         addChange,
         now,
         run,

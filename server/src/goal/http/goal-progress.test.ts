@@ -20,7 +20,6 @@ import {
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
 } from "../../observability/testing";
-import { updateAccountSettingsWrite } from "../../account-settings/http/testing/update-account-settings-write";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 
 // その日（YYYY-MM-DD）の日本時間の正午に時計を合わせる
@@ -255,19 +254,6 @@ describe("目標の達成と期限の日の結果", () => {
             .filter(({ event }) => event === "goal_deadline_confirmed")
             .map(({ properties }) => properties["achieved"]),
         ).toEqual([true]);
-      });
-    });
-
-    describe("利用状況を送らない人が、目標体重に届いたとき", () => {
-      beforeEach(async () => {
-        await pushSyncWrites(sessionToken, {
-          writes: [updateAccountSettingsWrite({ accountSettings: { sendsUsageData: false } })],
-        });
-        await sendWeights([goalStartedOn], 69.8, { isFinalBatch: true });
-      });
-
-      test("目標の出来事を送らないこと", () => {
-        expect(readGoalEvents()).toEqual([]);
       });
     });
   });

@@ -8,11 +8,8 @@ import { computeNutrientTotal } from "../../../ingredient/domain/compute-nutrien
 import type { Ingredient } from "../../../ingredient/domain/ingredient";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import type { Meal } from "../../../meal/domain/meal";
-import { classifyGoal } from "../../../goal/domain/classify-goal";
 import { computeGoalDirection } from "../../../goal/domain/compute-goal-direction";
-import { computePace, type Pace } from "../../../goal/domain/compute-pace";
-import type { Goal } from "../../../goal/domain/goal";
-import { findWeightTrendOnOrBefore } from "../../../weight-trend/domain/find-weight-trend-on-or-before";
+import { computeGoalPace } from "../../../goal/domain/compute-goal-pace";
 import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type {
   MainNutrients,
@@ -22,7 +19,8 @@ import type {
   ReplyContextWeeklyReview,
   ReplyContextWindowEntry,
 } from "../reply-context";
-import type { ReplyContextSource, ReplyContextSourceMeal } from "../reply-context-source";
+import type { ReplyContextSource, ReplyContextSourceMeal } from "./reply-context-source";
+import { replyContextSpan } from "./reply-context-span";
 
 // 返事を作るときに AI に渡す文脈を組み立てる。
 // 今日は、応える送った文章の時刻とタイムゾーンでの日（電波がなくてあとで届いた文章でも、送ったときの日で読む）
@@ -50,14 +48,14 @@ export const assembleReplyContext = (source: ReplyContextSource): ReplyContext =
 // 窓に入れる発言の数と時間。始まりは段で動かし、末尾にだけ足していく（キャッシュを効かせるため）
 const maximumWindowUtterances = 20;
 const windowUtteranceStep = 10;
-const windowMilliseconds = 72 * 60 * 60 * 1000;
+const windowMilliseconds = replyContextSpan.windowHours * 60 * 60 * 1000;
 const windowStartStepMilliseconds = 6 * 60 * 60 * 1000;
 
 const assembleWindow = (
   { sentText, sentTexts, meals, weightRecords }: ReplyContextSource,
   toWallClock: (instant: Date) => string,
 ): ReplyContextWindowEntry[] => {
-  // 72 時間前を、6 時間の区切りに切り上げた時刻から。窓は 66〜72 時間になる
+  // 窓の時間の前を、6 時間の区切りに切り上げた時刻から。72 時間なら、窓は 66〜72 時間になる
   const earliest =
     Math.ceil((sentText.sentAt.getTime() - windowMilliseconds) / windowStartStepMilliseconds) *
     windowStartStepMilliseconds;
@@ -179,8 +177,8 @@ const assembleStructuredValues = (
       eatenAt: formatEatenAt(meal),
       dishNames: dishes.map(({ dish }) => dish.name),
     })),
-    previousDays: Array.from({ length: 7 }, (_, index) => {
-      const calendarDay = addDays(today, index - 7);
+    previousDays: Array.from({ length: replyContextSpan.previousDayCount }, (_, index) => {
+      const calendarDay = addDays(today, index - replyContextSpan.previousDayCount);
       const dayMeals = mealsOn(calendarDay);
       return dayMeals.length === 0
         ? { calendarDay, recorded: false as const }
@@ -250,34 +248,13 @@ const assembleGoal = (source: GoalSource, today: string): ReplyContextGoal | und
           },
     expenditureKcal: expenditureEstimate?.expenditureKcal,
     latestWeeklyReview: assembleLatestWeeklyReview(source, goal.id),
-    pace: assemblePace(source, { goal, today }),
+    pace: computeGoalPace({
+      goal,
+      judgedOn: today,
+      weightTrend: source.weightTrend,
+      weightRecordDays: source.weightRecordDays,
+    }),
   };
-};
-
-// ペースは、目標の開始の日以前に体重の傾向がある目標だけを判定できる（目標を立てたあとに、その前の体重記録を消すと無くなる）
-const assemblePace = (
-  { weightTrend, weightRecordDays }: Pick<ReplyContextSource, "weightTrend" | "weightRecordDays">,
-  { goal, today }: { goal: Goal; today: string },
-): Pace | undefined => {
-  if (findWeightTrendOnOrBefore(weightTrend, goal.startedOn) === undefined) {
-    return undefined;
-  }
-  const classified = classifyGoal(goal);
-  return computePace({
-    judgedOn: today,
-    weightTrend,
-    weightRecordDays,
-    goal:
-      classified.direction === "maintain"
-        ? { direction: "maintain", targetWeightKg: goal.targetWeightKg }
-        : {
-            direction: classified.direction,
-            startedOn: goal.startedOn,
-            deadlineOn: classified.weightChange.deadlineOn,
-            targetWeightKg: goal.targetWeightKg,
-          },
-    achievedOn: goal.achievement?.achievedOn,
-  });
 };
 
 const findGoalDailyGuideForDay = (

@@ -3,7 +3,8 @@
 - MobileBuildMCP で、変えたら `test_sim` を回し、関係する画面を開いて `screenshot` で確かめる。`test_sim` が行き先を見つけられずに失敗したら、開発者に `xcodebuild -downloadPlatform iOS`（数 GB）を頼む。computer use は、これらで確かめられないときにだけ使う
 - UI を変えたら、状態ごとのプレビューを RenderPreview（下の「Xcode の道具」）で描いて確かめる。ライトのほか、ダーク（`Color Scheme`）と最大の文字（`Dynamic Type` の `AX 5`）も `previewVariantOverrides` で描く
 - Mac のシェルは zsh で、合うファイルの無いグロブは「no matches found」で止まる。`grep --include='*.swift'` のように、グロブは引用符で囲む
-- ディスクが溜まったら、`scripts/clean-builds` を回す。引数なしで、元の worktree が無い DerivedData と MobileBuildMCP の置き場、済んだ worktree を並べ、`--delete` で前の2つを消す。済んだ worktree は消さないので、並んだものを見て消すかを決める
+- ディスクが溜まったら、`scripts/clean-builds` を回す。引数なしで、元の worktree が無い DerivedData と MobileBuildMCP の置き場、済んだ worktree を並べ、`--delete` で前の2つを消す。済んだ worktree は消さないので、並んだものを見て消すかを決める。`scripts/check` と MobileBuildMCP のビルドは worktree の中の `ios/.build/DerivedData` に置き、worktree と一緒に消えるので、並ぶ DerivedData は Xcode の道具（下の「Xcode の道具」）が作ったもの
+- `scripts/check` と MobileBuildMCP は同じ DerivedData を使うので、同じ worktree で同時に回すと、あとから始めたほうが `build.db: database is locked` で落ちる。終わってからやり直す
 - `ios` の中を探すときは、`rg` か Grep の道具を使う。どちらも `.gitignore` で Swift のビルド生成物（`.build/`）を飛ばし、`.gitignore` を読まないときもリポジトリ直下の `.ignore` で飛ばす。`grep -r` は生成物まで読み、120 秒を超えた
 - 整形の正は、`ios/.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
 

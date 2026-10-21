@@ -269,6 +269,7 @@ check_ios_app() {
         -project "$ios/NuTori.xcodeproj" \
         -scheme NuTori \
         -destination "id=$simulator" \
+        -derivedDataPath "$derived_data" \
         -disableAutomaticPackageResolution \
         build-for-testing
 }
@@ -299,6 +300,7 @@ check_ios_ui_test() {
         -project "$ios/NuTori.xcodeproj" \
         -scheme NuTori \
         -destination "id=$ui_test_simulator" \
+        -derivedDataPath "$derived_data" \
         -resultBundlePath "$results" \
         -collect-test-diagnostics never \
         ${only_testing[@]+"${only_testing[@]}"} \
@@ -563,6 +565,8 @@ list_simulators_with_runtime() {
 root="$(cd "$(dirname "$0")/.." && pwd)"
 ios="$root/ios"
 server="$root/server"
+# MobileBuildMCP（.mobilebuildmcp/config.yaml の derivedDataPath）と同じ置き場にし、worktree を消せば一緒に消えるようにする。同時に回したときの引き換えは docs/agents/ios-mac.md
+derived_data="$ios/.build/DerivedData"
 swiftlint_version=0.65.1
 swiftlint=""
 ui_test_simulator=""

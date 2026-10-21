@@ -2,7 +2,6 @@ import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { updateAccountSettingsWrite } from "../../account-settings/http/testing/update-account-settings-write";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { addDays } from "../../domain/add-days";
@@ -16,7 +15,6 @@ import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { recordDailyWeights } from "../../http/goal-setup-routes/testing/record-daily-weights";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { pullSyncChanges } from "../../http/sync-routes/testing/pull-sync-changes";
-import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { signInTestAccount } from "../../http/testing";
 import {
   mockPostHogCaptureEndpointOk,
@@ -150,19 +148,6 @@ describe("週の見直しの出来事", () => {
           ({ properties }) => properties["expenditure_change_from_initial_kcal"],
         ),
       ).toEqual([undefined, undefined, undefined, -50, undefined, undefined, undefined, -50]);
-    });
-  });
-
-  describe("利用状況を送らない人が、見直せる週の月曜に取りに行ったとき", () => {
-    beforeEach(async () => {
-      await pushSyncWrites(sessionToken, {
-        writes: [updateAccountSettingsWrite({ accountSettings: { sendsUsageData: false } })],
-      });
-      await pullSyncChanges(sessionToken);
-    });
-
-    test("週の見直しの出来事を送らないこと", () => {
-      expect(readWeeklyReviewEvents()).toEqual([]);
     });
   });
 });

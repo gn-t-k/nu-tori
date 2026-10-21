@@ -9,10 +9,9 @@ import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import { readRecordedEnergyIntakes } from "../../expenditure-estimate/domain/read-recorded-energy-intakes";
-import { countDaysInclusive } from "../../goal/domain/accepted-deadline/count-days-inclusive";
-import { classifyGoal } from "../../goal/domain/classify-goal";
 import type { Goal } from "../../goal/domain/goal";
 import { planPostDeadlineMaintenance } from "../../goal/domain/plan-post-deadline-maintenance";
+import { toRequiredPaceGoalFromDay } from "../../goal/domain/to-required-pace-goal-from-day";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
@@ -112,11 +111,11 @@ export const reviewUnreviewedWeeks = (
           : computeReviewedOutcome(stores, {
               currentGoal,
               reviewedGoalId,
-              // 期限後の維持に移る週は、維持の式で出す
+              // 見直す月曜の前の日曜の体重の傾向から出す。期限後の維持に移る週は、維持の式で出す
               requiredPaceGoal:
                 postDeadlineMaintenance === undefined
-                  ? toRequiredPaceGoal(currentGoal, {
-                      reviewedMonday,
+                  ? toRequiredPaceGoalFromDay(currentGoal, {
+                      firstDay: reviewedMonday,
                       weightTrendKg: judgement.sundayWeightTrendKg,
                     })
                   : {
@@ -240,23 +239,5 @@ const computeReviewedOutcome = (
       deviationDirection: expenditure.deviationDirection,
     },
     dailyGuide: { ...dailyGuide, goalId: reviewedGoalId },
-  };
-};
-
-// 見直しでは、M の前の日曜の体重の傾向と、M から期限の日までの日数で必要な速さを出す。上限は目標の開始の日の体重の傾向から出す
-const toRequiredPaceGoal = (
-  goal: Goal,
-  { reviewedMonday, weightTrendKg }: { reviewedMonday: string; weightTrendKg: number },
-): RequiredPaceGoal => {
-  const classified = classifyGoal(goal);
-  if (classified.direction === "maintain") {
-    return { direction: "maintain", targetWeightKg: goal.targetWeightKg, weightTrendKg };
-  }
-  return {
-    direction: classified.direction,
-    goalStartingWeightTrendKg: goal.startingWeightTrendKg,
-    targetWeightKg: goal.targetWeightKg,
-    weightTrendKg,
-    daysToDeadline: countDaysInclusive(reviewedMonday, classified.weightChange.deadlineOn),
   };
 };

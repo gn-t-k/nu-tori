@@ -7,7 +7,10 @@ import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-
 import type { MealStore } from "../../meal/domain/meal-store";
 import { createMealEstimationStatusKind } from "../../meal-estimation-status/domain/create-meal-estimation-status-kind";
 import type { MealEstimationStatusStore } from "../../meal-estimation-status/domain/meal-estimation-status-store";
+import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimationEventWriteStore } from "./estimation-event-write-store";
+import type { EstimationScheduleStore } from "./estimation-schedule-store";
+import type { EstimationStore } from "./estimation-store";
 import type { EstimationTarget } from "./estimation-target";
 import type { EstimationWrites } from "./estimation-writes";
 
@@ -15,6 +18,7 @@ import type { EstimationWrites } from "./estimation-writes";
 // addStatusChanges は、書き終えたあとに1回呼ぶ。覚えた状態と今の状態を比べ、違う記録にだけ、書いた順に推定の状態の変更を足す。
 // 料理の推定を始めたときは、状態が同じでも変更を足す: 見送りから作った次の日の予定は、0:00 を過ぎると出来事が無いまま
 // 翌日に推定から推定中に変わるので、比べると変わっておらず、端末に届かないため（#332 の「料理ごとの推定の状態の出し方」）。
+// 推定を終える書き込み（完了・断念）は、書いた推定の出来事を返す（compute-estimation-ended-event.ts）。
 // now は料理ごとの推定の状態を決める時刻
 export const openEstimationEventWrites = (
   stores: {
@@ -23,6 +27,8 @@ export const openEstimationEventWrites = (
     dish: DishStore;
     dishEstimationStatus: DishEstimationStatusStore;
     estimationEventWrite: EstimationEventWriteStore;
+    estimation: EstimationStore;
+    estimationSchedule: EstimationScheduleStore;
   },
   addChange: (
     change: RecordChangeTarget<"meal_estimation_status" | "dish_estimation_status">,
@@ -110,13 +116,30 @@ export const openEstimationEventWrites = (
     recordAttemptResult: (attemptResult) => {
       store.insertAttemptResult(attemptResult);
     },
-    complete: ({ target, ...completion }) => {
+    complete: ({ target, dishCount, ingredients, ...completion }) => {
       rememberTarget(target);
-      store.insertCompletion(completion);
+      const result = dishCount === 0 ? "no_dishes" : "estimated";
+      store.insertCompletion({ ...completion, result });
+      return computeEstimationEndedEvent(stores, {
+        estimationId: completion.estimationId,
+        target,
+        finalStatus: result,
+        endedAt: completion.completedAt,
+        dishCount,
+        ingredients,
+      });
     },
     abandon: ({ target, ...abandonment }) => {
       rememberTarget(target);
       store.insertAbandonment(abandonment);
+      return computeEstimationEndedEvent(stores, {
+        estimationId: abandonment.estimationId,
+        target,
+        finalStatus: "failed",
+        endedAt: abandonment.abandonedAt,
+        dishCount: 0,
+        ingredients: [],
+      });
     },
     estimateMealEatenAt: (estimation) => {
       store.insertMealEatenAtEstimation(estimation);

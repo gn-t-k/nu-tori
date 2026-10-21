@@ -7,7 +7,7 @@ import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
-import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
+import { computeTargetDeletedEstimationEvents } from "../../estimation/domain/compute-target-deleted-estimation-events";
 import { scheduleDishReestimation } from "../../estimation/domain/schedule-dish-reestimation";
 import { computeReestimatedDishEditedEvents } from "./compute-reestimated-dish-edited-events";
 import { dishAwaitsEstimation } from "./dish-awaits-estimation";
@@ -138,7 +138,12 @@ const decideDelete = (
       dish === undefined
         ? []
         : [
-            ...computeDishDeletedEstimationEvents(stores, dish, "dish_deleted", receivedAt),
+            ...computeTargetDeletedEstimationEvents(
+              stores,
+              { type: "dish", dishId, mealId: dish.mealId },
+              "dish_deleted",
+              receivedAt,
+            ),
             ...computeReestimatedDishEditedEvents(stores.dish, dishId, "deleted", receivedAt),
           ],
     commit: (receiptId) => {

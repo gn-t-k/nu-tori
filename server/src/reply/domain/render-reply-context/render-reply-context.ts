@@ -3,6 +3,7 @@ import type { Pace } from "../../../goal/domain/compute-pace";
 import type { NutrientAmount } from "../../../ingredient/domain/nutrient-amount";
 import { computeDayOfWeek } from "../../../domain/compute-day-of-week";
 import type { DayOfWeek } from "../../../domain/day-of-week";
+import { replyContextSpan } from "../build-reply-context";
 import type {
   MainNutrients,
   ReplyContext,
@@ -34,7 +35,7 @@ const renderWindow = (window: readonly ReplyContextWindowEntry[]): string =>
   [
     "# 直近の会話と記録",
     ...(window.length === 0
-      ? ["（直近 72 時間の会話はありません）"]
+      ? [`（直近 ${replyContextSpan.windowHours} 時間の会話はありません）`]
       : window.map((entry) =>
           match(entry)
             .with(
@@ -90,7 +91,7 @@ const renderStructuredValues = (values: ReplyContextStructuredValues): string =>
             `- ${formatTime(eatenAt)} ${formatDishNames(dishNames)}（食事 ID: ${mealId}）`,
         )),
     "",
-    "## 前の 7 日の合計",
+    `## 前の ${replyContextSpan.previousDayCount} 日の合計`,
     ...values.previousDays.map((day) =>
       day.recorded
         ? `- ${formatDate(day.calendarDay)}: ${formatNutrients(day.nutrients)}`

@@ -1,6 +1,8 @@
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import { captureException, instrumentDurableObjectWithSentry, setUser } from "@sentry/cloudflare";
 import { DurableObject } from "cloudflare:workers";
+import { selectSendableUsageEvents } from "../account-settings/domain/select-sendable-usage-events";
+import { createAccountSettingsStore } from "../account-settings/durable-object/create-account-settings-store";
 import { accountRequests } from "../account/domain/account-requests";
 import type {
   AccountRequestLog,
@@ -25,7 +27,7 @@ import { createLedgerStore } from "./create-ledger-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
 // 受け口は呼ぶたびに accountId を渡す。Sentry の報告に user の ID として付けるため。
-// 要求ごとの処理はアカウントの口（accountRequests）が持ち、ここではストアを組んで渡し、答えのアラームを張り、出来事を送る
+// 要求ごとの処理はアカウントの口（accountRequests）が持ち、ここではストアを組んで渡し、答えのアラームを張り、出来事を利用状況の設定で絞って送る
 export const AccountDurableObject = instrumentDurableObjectWithSentry(
   createSentryOptions,
   class extends DurableObject<Env> {
@@ -249,15 +251,21 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       return { result: await this.respond(accountId, response), requestLog: response.requestLog };
     }
 
-    // 答えの時刻に張り、出来事を送ってから、結果を返す
+    // 答えの時刻に張り、出来事を送ってから、結果を返す。
+    // 出来事はどの入口のものもここを通ってアカウントから出るので、送るかどうか（利用状況の設定）はここで1度だけ決める。
+    // 設定は、口が答えを出し終えた直後（同じ要求で切り替えた書き込みを当てたあと）に、何も待たずに読む
     private async respond<Result>(
       accountId: string,
       { result, nextAlarmAt, usageEvents }: AccountResponse<Result>,
     ): Promise<Result> {
+      const sendableUsageEvents = selectSendableUsageEvents(
+        createAccountSettingsStore(drizzle(this.ctx.storage)),
+        usageEvents,
+      );
       if (nextAlarmAt !== undefined) {
         await this.ctx.storage.setAlarm(nextAlarmAt);
       }
-      await sendUsageEvents(this.env, accountId, usageEvents);
+      await sendUsageEvents(this.env, accountId, sendableUsageEvents);
       return result;
     }
   },
