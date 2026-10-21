@@ -185,6 +185,7 @@ struct TimelineComposer: View {
                 Image(systemName: "chevron.right")
             }
             .font(.footnote)
+            // DESIGN.md の preset-chip の文字の色（on-surface）に従わない。押すと文面を入れるプリセットと違い、課金画面を開くので、ほかの画面を開く文字のボタンと同じ Primary の文字と › で見分けられるようにする
             .foregroundStyle(Color.accentColor)
             // DESIGN.md の Layout は余白を標準に任せるが、プリセットと同じ preset-chip（高さ 32、左右 12）にそろえる
             .padding(.horizontal, 12)
