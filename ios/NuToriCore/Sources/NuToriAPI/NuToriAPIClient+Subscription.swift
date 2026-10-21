@@ -92,12 +92,15 @@ extension NuToriAPIClient {
         case environmentUnsupported
         /// サーバーが知らない商品
         case unknownProduct
+        /// 期限の無い取引（サブスクリプションでない取引）
+        case expiresDateMissing
 
         init(_ code: Components.Schemas.SubscriptionTransactionRejection.CodePayload) {
             switch code {
             case .transactionUnverified: self = .unverified
             case .environmentUnsupported: self = .environmentUnsupported
             case .productUnknown: self = .unknownProduct
+            case .expiresDateMissing: self = .expiresDateMissing
             }
         }
     }

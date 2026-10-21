@@ -5002,6 +5002,7 @@ extension Components {
                 case transactionUnverified = "transaction_unverified"
                 case environmentUnsupported = "environment_unsupported"
                 case productUnknown = "product_unknown"
+                case expiresDateMissing = "expires_date_missing"
             }
             /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionRejection/code`.
             internal var code: Components.Schemas.SubscriptionTransactionRejection.CodePayload

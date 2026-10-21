@@ -4186,7 +4186,7 @@ internal enum Operations {
                     self.body = body
                 }
             }
-            /// 受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）
+            /// 受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）・expires_date_missing（期限が無い）
             ///
             /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/422`.
             ///
