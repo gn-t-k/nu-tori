@@ -5,6 +5,9 @@ import Foundation
 public enum ServerRecordKindNames {
     /// サーバーの書き方（snake_case）の名前
     public static var names: Set<String> {
-        Set(Components.Schemas.RecordKindName.allCases.map(\.rawValue))
+        // #675 で端末の記録の種類として足すまでの手当て。端末がまだ扱わない種類は、突き合わせから外す
+        Set(
+            Components.Schemas.RecordKindName.allCases.filter { $0 != .subscriptionStatus }.map(
+                \.rawValue))
     }
 }
