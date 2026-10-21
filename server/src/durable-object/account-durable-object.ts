@@ -19,6 +19,7 @@ import { createConversationProvider } from "../reply/durable-object/create-conve
 import { createReplyStream } from "../reply/durable-object/create-reply-stream";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { readSubscriptionAccount } from "../subscription/d1/read-subscription-account";
+import { createSubscriptionTransactionStore } from "../subscription/durable-object/create-subscription-transaction-store";
 import { createTermsAgreementStore } from "../terms-agreement/durable-object/create-terms-agreement-store";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
@@ -206,6 +207,25 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         accountRequests.agreeToTerms(
           { termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)) },
           request,
+          new Date(),
+        ),
+      );
+    }
+
+    // 端末からの取引の知らせ。案内は受け口が D1 で決めてから呼ぶ
+    async reportSubscriptionTransaction(
+      accountId: string,
+      report: Parameters<typeof accountRequests.reportSubscriptionTransaction>[1],
+    ) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.reportSubscriptionTransaction(
+          {
+            ...(await this.createRecordStores(accountId)),
+            subscriptionTransaction: createSubscriptionTransactionStore(drizzle(this.ctx.storage)),
+          },
+          report,
           new Date(),
         ),
       );

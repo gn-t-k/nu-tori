@@ -4838,5 +4838,183 @@ extension Components {
                 case code
             }
         }
+        /// - Remark: Generated from `#/components/schemas/AppAccountToken`.
+        internal struct AppAccountToken: Codable, Hashable, Sendable {
+            /// UUID（小文字）
+            ///
+            /// - Remark: Generated from `#/components/schemas/AppAccountToken/appAccountToken`.
+            internal var appAccountToken: Swift.String
+            /// Creates a new `AppAccountToken`.
+            ///
+            /// - Parameters:
+            ///   - appAccountToken: UUID（小文字）
+            internal init(appAccountToken: Swift.String) {
+                self.appAccountToken = appAccountToken
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case appAccountToken
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReport`.
+        internal enum SubscriptionTransactionReport: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReport/LinkedSubscriptionTransactionReport`.
+            case linked(Components.Schemas.LinkedSubscriptionTransactionReport)
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReport/OwnedByOtherAccountSubscriptionTransactionReport`.
+            case ownedByOtherAccount(Components.Schemas.OwnedByOtherAccountSubscriptionTransactionReport)
+            internal enum CodingKeys: String, CodingKey {
+                case result
+            }
+            internal init(from decoder: any Swift.Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                let discriminator = try container.decode(
+                    Swift.String.self,
+                    forKey: .result
+                )
+                switch discriminator {
+                case "linked":
+                    self = .linked(try .init(from: decoder))
+                case "owned_by_other_account":
+                    self = .ownedByOtherAccount(try .init(from: decoder))
+                default:
+                    throw Swift.DecodingError.unknownOneOfDiscriminator(
+                        discriminatorKey: CodingKeys.result,
+                        discriminatorValue: discriminator,
+                        codingPath: decoder.codingPath
+                    )
+                }
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .linked(value):
+                    try value.encode(to: encoder)
+                case let .ownedByOtherAccount(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// このアカウントに結びつけた。同じ要求の ID の再送を含む
+        ///
+        /// - Remark: Generated from `#/components/schemas/LinkedSubscriptionTransactionReport`.
+        internal struct LinkedSubscriptionTransactionReport: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/LinkedSubscriptionTransactionReport/result`.
+            internal enum ResultPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case linked = "linked"
+            }
+            /// - Remark: Generated from `#/components/schemas/LinkedSubscriptionTransactionReport/result`.
+            internal var result: Components.Schemas.LinkedSubscriptionTransactionReport.ResultPayload
+            /// 端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、サブスクリプションの状態、再開した食事・料理の推定の状態
+            ///
+            /// - Remark: Generated from `#/components/schemas/LinkedSubscriptionTransactionReport/changes`.
+            internal var changes: [Components.Schemas.SubscriptionTransactionReportChange]
+            /// Creates a new `LinkedSubscriptionTransactionReport`.
+            ///
+            /// - Parameters:
+            ///   - result:
+            ///   - changes: 端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、サブスクリプションの状態、再開した食事・料理の推定の状態
+            internal init(
+                result: Components.Schemas.LinkedSubscriptionTransactionReport.ResultPayload,
+                changes: [Components.Schemas.SubscriptionTransactionReportChange]
+            ) {
+                self.result = result
+                self.changes = changes
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case result
+                case changes
+            }
+        }
+        /// 取りに行く変更（SyncChange）から通し番号を除いた形で、record は種類ごとの SubscriptionStatusRecord・MealEstimationStatusRecord・DishEstimationStatusRecord
+        ///
+        /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange`.
+        internal struct SubscriptionTransactionReportChange: Codable, Hashable, Sendable {
+            /// subscription_status・meal_estimation_status・dish_estimation_status
+            ///
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange/kind`.
+            internal var kind: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange/recordId`.
+            internal var recordId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange/record`.
+            internal struct RecordPayload: Codable, Hashable, Sendable {
+                /// A container of undocumented properties.
+                internal var additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer]
+                /// Creates a new `RecordPayload`.
+                ///
+                /// - Parameters:
+                ///   - additionalProperties: A container of undocumented properties.
+                internal init(additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer] = .init()) {
+                    self.additionalProperties = additionalProperties
+                }
+                internal init(from decoder: any Swift.Decoder) throws {
+                    additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                }
+                internal func encode(to encoder: any Swift.Encoder) throws {
+                    try encoder.encodeAdditionalProperties(additionalProperties)
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange/record`.
+            internal var record: Components.Schemas.SubscriptionTransactionReportChange.RecordPayload
+            /// Creates a new `SubscriptionTransactionReportChange`.
+            ///
+            /// - Parameters:
+            ///   - kind: subscription_status・meal_estimation_status・dish_estimation_status
+            ///   - recordId:
+            ///   - record:
+            internal init(
+                kind: Swift.String,
+                recordId: Swift.String,
+                record: Components.Schemas.SubscriptionTransactionReportChange.RecordPayload
+            ) {
+                self.kind = kind
+                self.recordId = recordId
+                self.record = record
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case kind
+                case recordId
+                case record
+            }
+        }
+        /// ほかの nu-tori のアカウントのサブスクリプション。何も書いていない
+        ///
+        /// - Remark: Generated from `#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport`.
+        internal struct OwnedByOtherAccountSubscriptionTransactionReport: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport/result`.
+            internal enum ResultPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case ownedByOtherAccount = "owned_by_other_account"
+            }
+            /// - Remark: Generated from `#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport/result`.
+            internal var result: Components.Schemas.OwnedByOtherAccountSubscriptionTransactionReport.ResultPayload
+            /// Creates a new `OwnedByOtherAccountSubscriptionTransactionReport`.
+            ///
+            /// - Parameters:
+            ///   - result:
+            internal init(result: Components.Schemas.OwnedByOtherAccountSubscriptionTransactionReport.ResultPayload) {
+                self.result = result
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case result
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionRejection`.
+        internal struct SubscriptionTransactionRejection: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionRejection/code`.
+            internal enum CodePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case transactionUnverified = "transaction_unverified"
+                case environmentUnsupported = "environment_unsupported"
+                case productUnknown = "product_unknown"
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionRejection/code`.
+            internal var code: Components.Schemas.SubscriptionTransactionRejection.CodePayload
+            /// Creates a new `SubscriptionTransactionRejection`.
+            ///
+            /// - Parameters:
+            ///   - code:
+            internal init(code: Components.Schemas.SubscriptionTransactionRejection.CodePayload) {
+                self.code = code
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case code
+            }
+        }
     }
 }

@@ -3771,4 +3771,508 @@ internal enum Operations {
             }
         }
     }
+    /// 購入者のトークンを出す
+    ///
+    /// StoreKit で買うときに渡す購入者のトークン（appAccountToken）。まだ無ければ出し、2度目からは同じ値を返す
+    ///
+    /// - Remark: HTTP `POST /v1/app-account-token`.
+    /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)`.
+    internal enum IssueAppAccountToken {
+        internal static let id: Swift.String = "issueAppAccountToken"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/app-account-token/POST/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.IssueAppAccountToken.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.IssueAppAccountToken.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.IssueAppAccountToken.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            internal init(headers: Operations.IssueAppAccountToken.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/app-account-token/POST/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/app-account-token/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.AppAccountToken)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.AppAccountToken {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.IssueAppAccountToken.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.IssueAppAccountToken.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 購入者のトークン
+            ///
+            /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.IssueAppAccountToken.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.IssueAppAccountToken.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.IssueAppAccountToken.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.IssueAppAccountToken.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.IssueAppAccountToken.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.IssueAppAccountToken.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// 取引を知らせる
+    ///
+    /// 端末が StoreKit から受け取った取引を知らせる。署名を確かめ、このアカウントに結びつけて書き、保留した推定を再開する。端末は応答を受け取ってから Transaction.finish() を呼ぶ。同じ要求の ID の再送は、書かずに今の値を返す
+    ///
+    /// - Remark: HTTP `POST /v1/subscription-transactions`.
+    /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)`.
+    internal enum ReportSubscriptionTransaction {
+        internal static let id: Swift.String = "reportSubscriptionTransaction"
+        internal struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/header`.
+            internal struct Headers: Sendable, Hashable {
+                internal var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ReportSubscriptionTransaction.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                internal init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ReportSubscriptionTransaction.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            internal var headers: Operations.ReportSubscriptionTransaction.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/requestBody`.
+            internal enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/requestBody/json`.
+                internal struct JsonPayload: Codable, Hashable, Sendable {
+                    /// 端末が振った要求の ID（UUID v4）。冪等の鍵にする
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/requestBody/json/requestId`.
+                    internal var requestId: Swift.String
+                    /// StoreKit の Transaction の jwsRepresentation
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/requestBody/json/signedTransaction`.
+                    internal var signedTransaction: Swift.String
+                    /// purchase（買った直後）・restore（購入を復元）・transaction_updates（Transaction.updates と、終えていない取引）
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/requestBody/json/trigger`.
+                    internal enum TriggerPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                        case purchase = "purchase"
+                        case restore = "restore"
+                        case transactionUpdates = "transaction_updates"
+                    }
+                    /// purchase（買った直後）・restore（購入を復元）・transaction_updates（Transaction.updates と、終えていない取引）
+                    ///
+                    /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/requestBody/json/trigger`.
+                    internal var trigger: Operations.ReportSubscriptionTransaction.Input.Body.JsonPayload.TriggerPayload
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - requestId: 端末が振った要求の ID（UUID v4）。冪等の鍵にする
+                    ///   - signedTransaction: StoreKit の Transaction の jwsRepresentation
+                    ///   - trigger: purchase（買った直後）・restore（購入を復元）・transaction_updates（Transaction.updates と、終えていない取引）
+                    internal init(
+                        requestId: Swift.String,
+                        signedTransaction: Swift.String,
+                        trigger: Operations.ReportSubscriptionTransaction.Input.Body.JsonPayload.TriggerPayload
+                    ) {
+                        self.requestId = requestId
+                        self.signedTransaction = signedTransaction
+                        self.trigger = trigger
+                    }
+                    internal enum CodingKeys: String, CodingKey {
+                        case requestId
+                        case signedTransaction
+                        case trigger
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/requestBody/content/application\/json`.
+                case json(Operations.ReportSubscriptionTransaction.Input.Body.JsonPayload)
+            }
+            internal var body: Operations.ReportSubscriptionTransaction.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            internal init(
+                headers: Operations.ReportSubscriptionTransaction.Input.Headers = .init(),
+                body: Operations.ReportSubscriptionTransaction.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        internal enum Output: Sendable, Hashable {
+            internal struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/responses/200/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.SubscriptionTransactionReport)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.SubscriptionTransactionReport {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.ReportSubscriptionTransaction.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.ReportSubscriptionTransaction.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// 結びつけたか、ほかのアカウントのものだった
+            ///
+            /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ReportSubscriptionTransaction.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            internal var ok: Operations.ReportSubscriptionTransaction.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct BadRequest: Sendable, Hashable {
+                /// Creates a new `BadRequest`.
+                internal init() {}
+            }
+            /// 要求の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.ReportSubscriptionTransaction.Output.BadRequest)
+            /// 要求の形が違う
+            ///
+            /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            internal static var badRequest: Self {
+                .badRequest(.init())
+            }
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            internal var badRequest: Operations.ReportSubscriptionTransaction.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                internal init() {}
+            }
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.ReportSubscriptionTransaction.Output.Unauthorized)
+            /// セッションが無いか、切れている
+            ///
+            /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            internal static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            internal var unauthorized: Operations.ReportSubscriptionTransaction.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct UnprocessableContent: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/responses/422/content`.
+                internal enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/subscription-transactions/POST/responses/422/content/application\/json`.
+                    case json(Components.Schemas.SubscriptionTransactionRejection)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    internal var json: Components.Schemas.SubscriptionTransactionRejection {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                internal var body: Operations.ReportSubscriptionTransaction.Output.UnprocessableContent.Body
+                /// Creates a new `UnprocessableContent`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                internal init(body: Operations.ReportSubscriptionTransaction.Output.UnprocessableContent.Body) {
+                    self.body = body
+                }
+            }
+            /// 受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）
+            ///
+            /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/422`.
+            ///
+            /// HTTP response code: `422 unprocessableContent`.
+            case unprocessableContent(Operations.ReportSubscriptionTransaction.Output.UnprocessableContent)
+            /// The associated value of the enum case if `self` is `.unprocessableContent`.
+            ///
+            /// - Throws: An error if `self` is not `.unprocessableContent`.
+            /// - SeeAlso: `.unprocessableContent`.
+            internal var unprocessableContent: Operations.ReportSubscriptionTransaction.Output.UnprocessableContent {
+                get throws {
+                    switch self {
+                    case let .unprocessableContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unprocessableContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            internal struct TooManyRequests: Sendable, Hashable {
+                /// Creates a new `TooManyRequests`.
+                internal init() {}
+            }
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            case tooManyRequests(Operations.ReportSubscriptionTransaction.Output.TooManyRequests)
+            /// 回数の歯止めにかかった
+            ///
+            /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)/responses/429`.
+            ///
+            /// HTTP response code: `429 tooManyRequests`.
+            internal static var tooManyRequests: Self {
+                .tooManyRequests(.init())
+            }
+            /// The associated value of the enum case if `self` is `.tooManyRequests`.
+            ///
+            /// - Throws: An error if `self` is not `.tooManyRequests`.
+            /// - SeeAlso: `.tooManyRequests`.
+            internal var tooManyRequests: Operations.ReportSubscriptionTransaction.Output.TooManyRequests {
+                get throws {
+                    switch self {
+                    case let .tooManyRequests(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "tooManyRequests",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        internal enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            internal init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            internal var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            internal static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
 }

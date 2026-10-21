@@ -1162,4 +1162,169 @@ internal struct Client: APIProtocol {
             }
         )
     }
+    /// 購入者のトークンを出す
+    ///
+    /// StoreKit で買うときに渡す購入者のトークン（appAccountToken）。まだ無ければ出し、2度目からは同じ値を返す
+    ///
+    /// - Remark: HTTP `POST /v1/app-account-token`.
+    /// - Remark: Generated from `#/paths//v1/app-account-token/post(issueAppAccountToken)`.
+    internal func issueAppAccountToken(_ input: Operations.IssueAppAccountToken.Input) async throws -> Operations.IssueAppAccountToken.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.IssueAppAccountToken.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/app-account-token",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.IssueAppAccountToken.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.AppAccountToken.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 401:
+                    return .unauthorized(.init())
+                case 429:
+                    return .tooManyRequests(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// 取引を知らせる
+    ///
+    /// 端末が StoreKit から受け取った取引を知らせる。署名を確かめ、このアカウントに結びつけて書き、保留した推定を再開する。端末は応答を受け取ってから Transaction.finish() を呼ぶ。同じ要求の ID の再送は、書かずに今の値を返す
+    ///
+    /// - Remark: HTTP `POST /v1/subscription-transactions`.
+    /// - Remark: Generated from `#/paths//v1/subscription-transactions/post(reportSubscriptionTransaction)`.
+    internal func reportSubscriptionTransaction(_ input: Operations.ReportSubscriptionTransaction.Input) async throws -> Operations.ReportSubscriptionTransaction.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ReportSubscriptionTransaction.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/subscription-transactions",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .json(value):
+                    body = try converter.setRequiredRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ReportSubscriptionTransaction.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.SubscriptionTransactionReport.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 400:
+                    return .badRequest(.init())
+                case 401:
+                    return .unauthorized(.init())
+                case 422:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ReportSubscriptionTransaction.Output.UnprocessableContent.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.SubscriptionTransactionRejection.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .unprocessableContent(.init(body: body))
+                case 429:
+                    return .tooManyRequests(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
 }

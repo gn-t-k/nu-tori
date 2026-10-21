@@ -3003,6 +3003,113 @@
         "required": [
           "code"
         ]
+      },
+      "AppAccountToken": {
+        "type": "object",
+        "properties": {
+          "appAccountToken": {
+            "type": "string",
+            "description": "UUID（小文字）",
+            "example": "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
+          }
+        },
+        "required": [
+          "appAccountToken"
+        ]
+      },
+      "SubscriptionTransactionReport": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LinkedSubscriptionTransactionReport"
+          },
+          {
+            "$ref": "#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "result",
+          "mapping": {
+            "linked": "#/components/schemas/LinkedSubscriptionTransactionReport",
+            "owned_by_other_account": "#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport"
+          }
+        }
+      },
+      "LinkedSubscriptionTransactionReport": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "linked"
+            ]
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionTransactionReportChange"
+            },
+            "description": "端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、サブスクリプションの状態、再開した食事・料理の推定の状態"
+          }
+        },
+        "required": [
+          "result",
+          "changes"
+        ],
+        "description": "このアカウントに結びつけた。同じ要求の ID の再送を含む"
+      },
+      "SubscriptionTransactionReportChange": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "subscription_status・meal_estimation_status・dish_estimation_status",
+            "example": "subscription_status"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "record": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "kind",
+          "recordId",
+          "record"
+        ],
+        "description": "取りに行く変更（SyncChange）から通し番号を除いた形で、record は種類ごとの SubscriptionStatusRecord・MealEstimationStatusRecord・DishEstimationStatusRecord"
+      },
+      "OwnedByOtherAccountSubscriptionTransactionReport": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "owned_by_other_account"
+            ]
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "description": "ほかの nu-tori のアカウントのサブスクリプション。何も書いていない"
+      },
+      "SubscriptionTransactionRejection": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "transaction_unverified",
+              "environment_unsupported",
+              "product_unknown"
+            ]
+          }
+        },
+        "required": [
+          "code"
+        ]
       }
     },
     "parameters": {}
@@ -4051,6 +4158,115 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TermsAgreementRejection"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/app-account-token": {
+      "post": {
+        "operationId": "issueAppAccountToken",
+        "summary": "購入者のトークンを出す",
+        "description": "StoreKit で買うときに渡す購入者のトークン（appAccountToken）。まだ無ければ出し、2度目からは同じ値を返す",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "購入者のトークン",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppAccountToken"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/subscription-transactions": {
+      "post": {
+        "operationId": "reportSubscriptionTransaction",
+        "summary": "取引を知らせる",
+        "description": "端末が StoreKit から受け取った取引を知らせる。署名を確かめ、このアカウントに結びつけて書き、保留した推定を再開する。端末は応答を受け取ってから Transaction.finish() を呼ぶ。同じ要求の ID の再送は、書かずに今の値を返す",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+                    "description": "端末が振った要求の ID（UUID v4）。冪等の鍵にする"
+                  },
+                  "signedTransaction": {
+                    "type": "string",
+                    "description": "StoreKit の Transaction の jwsRepresentation"
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "purchase",
+                      "restore",
+                      "transaction_updates"
+                    ],
+                    "description": "purchase（買った直後）・restore（購入を復元）・transaction_updates（Transaction.updates と、終えていない取引）"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "signedTransaction",
+                  "trigger"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "結びつけたか、ほかのアカウントのものだった",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionTransactionReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "要求の形が違う"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "422": {
+            "description": "受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionTransactionRejection"
                 }
               }
             }
