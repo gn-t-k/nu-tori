@@ -70,6 +70,7 @@ USAGE
 }
 
 # マニフェストの .package(url: "...", exact: "...") を「URL<タブ>版」で並べる
+# 読み方は scripts/check の check_app_dependency_versions と同じ。片方を直したらもう片方も直す
 exact_dependencies() {
     sed -nE 's/.*\.package\(url: "([^"]+)", exact: "([^"]+)"\).*/\1\t\2/p' "$1"
 }
@@ -159,6 +160,7 @@ replace_literal() {
 }
 
 # repositoryURL のあとの requirement の version を書き換える
+# 探し方は scripts/check の check_app_dependency_versions と同じ。片方を直したらもう片方も直す
 set_xcode_package_version() {
     awk -v url="$1" -v new="$2" '
         index($0, "repositoryURL = \"" url "\";") > 0 { found = 1 }

@@ -219,6 +219,7 @@ check_ios() {
 }
 
 # AppDependencies の exact: の版と、Xcode のプロジェクトの同じ依存の参照の version を、文字だけで比べる（取ってこない）
+# マニフェストと project.pbxproj の読み方は scripts/update-swift-packages の exact_dependencies・set_xcode_package_version と同じ。片方を直したらもう片方も直す
 check_app_dependency_versions() {
     local manifest="$ios/AppDependencies/Package.swift" project="$ios/NuTori.xcodeproj/project.pbxproj"
     local url exact referenced compared=0 failed=false
