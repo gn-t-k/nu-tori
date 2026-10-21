@@ -5,7 +5,7 @@ import SwiftUI
 struct TermsAgreementSheetView: View {
     /// progress はシートを出したときの状態。送るのは画面の中で進むので、あとから渡し直しても変わらない
     init(
-        progress: Progress = .ready,
+        progress: Progress,
         agree: @escaping () async -> TermsAgreementPrompt.AgreeOutcome
     ) {
         _progress = State(initialValue: progress)

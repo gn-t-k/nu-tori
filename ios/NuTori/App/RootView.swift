@@ -182,7 +182,7 @@ struct RootView: View {
             )
             // 閉じられないシート。同意を受け付けられたら、モデルが消して閉じる
             .sheet(isPresented: isShowingTermsAgreementSheet) {
-                TermsAgreementSheetView { await model.agreeToTerms() }
+                TermsAgreementSheetView(progress: .ready) { await model.agreeToTerms() }
                     .task { await model.termsAgreementSheetPresented() }
             }
         }
