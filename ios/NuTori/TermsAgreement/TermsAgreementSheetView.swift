@@ -83,6 +83,8 @@ struct TermsAgreementSheetView: View {
                         .tint(.white)
                 }
                 Text("同意して続ける")
+                    // 送れなかった1行と並ぶと、大きな文字では縦が足りずに「…」で切れる。切らずに折り返す
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity)
         }
