@@ -960,13 +960,16 @@ describe("食事の同期", () => {
     });
 
     test("料理と、前の推定の材料も含むすべての材料の削除の印を、食事を消した書き込みの控えつきで書くこと", () => {
-      const receipt = { kind: "delete", recordType: "meal", recordId: mealId };
       expect({
         dishes: inspected.dishDeletionReceipts,
         ingredients: inspected.ingredientDeletionReceipts,
       }).toEqual({
-        dishes: Object.fromEntries(dishIds.map((id) => [id, receipt])),
-        ingredients: Object.fromEntries(ingredientIds.map((id) => [id, receipt])),
+        dishes: Object.fromEntries(
+          dishIds.map((id) => [id, { kind: "delete", recordType: "meal", recordId: mealId }]),
+        ),
+        ingredients: Object.fromEntries(
+          ingredientIds.map((id) => [id, { kind: "delete", recordType: "meal", recordId: mealId }]),
+        ),
       });
     });
 
