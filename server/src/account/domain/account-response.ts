@@ -1,11 +1,11 @@
 import type { UsageEvent } from "../../domain/usage-event";
 
-// アカウントの口の答え。Durable Object は nextAlarmAt に張り、usageEvents を送り、result を返す
+// アカウントの口の答え。Durable Object は nextAlarmAt に張り、usageEvents を利用状況の設定で絞って送り、result を返す
 export type AccountResponse<Result> = {
   result: Result;
   // 張り直すものが無ければ undefined（今のアラームをそのままにする）
   nextAlarmAt: Date | undefined;
-  // 送るかどうかを決めたあとの出来事。利用状況を送らない人には空
+  // 起きた出来事。送るかどうか（利用状況の設定）は、Durable Object が送る前に1か所で決めるので、ここでは絞らない
   usageEvents: UsageEvent[];
 };
 

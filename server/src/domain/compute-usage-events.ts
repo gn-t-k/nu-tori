@@ -3,18 +3,13 @@ import { isTimeZoneName } from "./is-time-zone-name";
 import type { SyncClientState } from "./sync-client-state";
 import type { UsageEvent } from "./usage-event";
 
-// 要求の書き込みを当て終えたあとの設定で決める。利用状況を送らない人には、この要求で切り替えた場合も含めて何も返さない
 export const computeUsageEvents = (request: {
   clientState: SyncClientState;
-  sendsUsageData: boolean;
   receivedAt: Date;
   previousRequestReceivedAt: Date | undefined;
   // 書き込みを当てたときの出来事（受け付けなかった書き込みと、種類が送るもの）
   writeEvents: UsageEvent[];
 }): UsageEvent[] => {
-  if (!request.sendsUsageData) {
-    return [];
-  }
   const pendingWritesReported = computePendingWritesReported(request);
   return pendingWritesReported === undefined
     ? request.writeEvents

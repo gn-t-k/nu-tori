@@ -1,6 +1,5 @@
 import { R } from "@praha/byethrow";
 import { match } from "ts-pattern";
-import { sendsUsageData } from "../../account-settings/domain/sends-usage-data";
 import type { ComputedDailyGuide } from "../../daily-guide/domain/computed-daily-guide";
 import type { DailyGuideAmounts } from "../../daily-guide/domain/daily-guide-amounts";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
@@ -73,7 +72,7 @@ export type GoalDecision =
     };
 
 // 目標を決める。そのときの体重の傾向と開始の日で計算し直し、端末が見せていた値と同じときだけ、1つのトランザクションで書く。
-// usageEvents は、決めたときに PostHog へ送る出来事（利用状況を送らない人と、再送では空）
+// usageEvents は、決めたときに PostHog へ送る出来事（再送では空）
 export const decideGoal = (
   writeRecordChanges: RecordChangeWriter,
   stores: GoalDecisionStores,
@@ -126,8 +125,7 @@ export const decideGoal = (
     );
   });
 
-type GoalDecisionStores = GoalSetupStores &
-  Pick<RecordKindStores, "dailyGuide" | "accountSettings">;
+type GoalDecisionStores = GoalSetupStores & Pick<RecordKindStores, "dailyGuide">;
 
 type GoalDecisionResult = R.Result<
   { decision: GoalDecision; usageEvents: UsageEvent[] },
@@ -271,20 +269,18 @@ const writeDecidedGoal = ({
   }
   return {
     decision: { status: "decided", records: readGoalDecisionRecords(stores, goal) },
-    usageEvents: sendsUsageData(stores.accountSettings)
-      ? [
-          {
-            name: "goal_decision_recorded",
-            direction: proposalsPlanOf(request.choice).direction,
-            isFirstGoal: basis.currentGoal === undefined,
-            chosenPlan: accepted.weightChange?.pacePlan ?? "maintain",
-            hadSlowedProposal: accepted.hadSlowedProposal,
-            rejectedCustomTargetWeightCount: request.rejectedCustomTargetWeightCount,
-            expenditureSource: observedExpenditureSource,
-            limitHits: accepted.dailyGuide.limitHits,
-          },
-        ]
-      : [],
+    usageEvents: [
+      {
+        name: "goal_decision_recorded",
+        direction: proposalsPlanOf(request.choice).direction,
+        isFirstGoal: basis.currentGoal === undefined,
+        chosenPlan: accepted.weightChange?.pacePlan ?? "maintain",
+        hadSlowedProposal: accepted.hadSlowedProposal,
+        rejectedCustomTargetWeightCount: request.rejectedCustomTargetWeightCount,
+        expenditureSource: observedExpenditureSource,
+        limitHits: accepted.dailyGuide.limitHits,
+      },
+    ],
   };
 };
 
