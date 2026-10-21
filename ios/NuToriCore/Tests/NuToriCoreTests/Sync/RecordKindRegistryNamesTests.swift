@@ -15,7 +15,8 @@ struct RecordKindRegistryNamesTests {
                 "account_settings", "ai_utterance", "daily_guide", "dish",
                 "dish_estimation_status", "expenditure_estimate", "goal", "ingredient", "meal",
                 "meal_estimation_status", "notice", "sent_text", "sent_text_status",
-                "usual_weighing_time", "weekly_review", "weight_record", "weight_trend",
+                "subscription_status", "usual_weighing_time", "weekly_review", "weight_record",
+                "weight_trend",
             ])
     }
 

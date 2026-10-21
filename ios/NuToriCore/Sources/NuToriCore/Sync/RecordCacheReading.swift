@@ -63,6 +63,11 @@ extension RecordCacheReading {
         try await read(GoalSyncing.self) { try $0.all() }
     }
 
+    /// まだ届いていなければ nil
+    public func subscriptionStatus() async throws -> SubscriptionStatus? {
+        try await read(SubscriptionStatusSyncing.self) { try $0.read() }
+    }
+
     /// まだ学んでいなければ nil
     public func usualWeighingTime() async throws -> UsualWeighingTime? {
         try await read(UsualWeighingTimeSyncing.self) { try $0.read() }
