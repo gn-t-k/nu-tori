@@ -1,7 +1,7 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import { mockAppStoreRootCertificate } from "../../app-store/app-store-root-certificate/app-store-root-certificate.mock";
+import { mockReadAppStoreRootCertificateOk } from "../../app-store/app-store-root-certificate/read-app-store-root-certificate.mock";
 import {
   type AppStoreTransactionPayload,
   createTestCertificateChain,
@@ -38,7 +38,7 @@ describe("App Store のサーバー通知を受ける", () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
     chain = await createTestCertificateChain();
-    mockAppStoreRootCertificate(chain.rootCertificate);
+    mockReadAppStoreRootCertificateOk(chain.rootCertificate);
     ({ accountId, sessionToken } = await signInTestAccount(generateRecordId()));
     ({ appAccountToken } = await (
       await app.request(

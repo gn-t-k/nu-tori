@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import { mockAppStoreRootCertificate } from "../../app-store/app-store-root-certificate/app-store-root-certificate.mock";
+import { mockReadAppStoreRootCertificateOk } from "../../app-store/app-store-root-certificate/read-app-store-root-certificate.mock";
 import {
   type AppStoreTransactionPayload,
   createTestCertificateChain,
@@ -29,7 +29,7 @@ describe("サブスクリプションの失敗の Sentry への報告", () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
     chain = await createTestCertificateChain();
-    mockAppStoreRootCertificate(chain.rootCertificate);
+    mockReadAppStoreRootCertificateOk(chain.rootCertificate);
     appleUserId = generateRecordId();
     ({ sessionToken } = await signInTestAccount(appleUserId));
     ({ appAccountToken } = await (
