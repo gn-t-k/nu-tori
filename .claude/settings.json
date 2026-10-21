@@ -1,4 +1,11 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(scripts/clean-builds --delete)",
+      "Bash(gh pr merge:*)",
+      "mcp__github__merge_pull_request"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
