@@ -2,6 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { sentry } from "@sentry/hono/cloudflare";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { accountRoutes } from "./account-routes";
+import { appStoreServerNotificationRoutes } from "./app-store-server-notification-routes";
 import { appleServerNotificationRoutes } from "./apple-server-notification-routes";
 import { e2eSessionRoutes } from "./e2e-session-routes";
 import { goalSetupRoutes } from "./goal-setup-routes";
@@ -31,7 +32,8 @@ app
   .route("/", replyStreamRoutes)
   .route("/", termsAgreementRoutes)
   .route("/", subscriptionRoutes)
-  .route("/", appleServerNotificationRoutes);
+  .route("/", appleServerNotificationRoutes)
+  .route("/", appStoreServerNotificationRoutes);
 
 app.openAPIRegistry.registerComponent("securitySchemes", "session", {
   type: "http",
