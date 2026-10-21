@@ -11,7 +11,6 @@ import { computeDailyRepresentativeWeights } from "../../../weight-record/domain
 import type { WeightRecord } from "../../../weight-record/domain/weight-record";
 import { readWeightTrend } from "../../../weight-trend/domain/read-weight-trend";
 import type { MealEstimationProgress } from "../reply-context";
-import type { buildReplyContext } from "./build-reply-context";
 import type { ReplyContextSource, ReplyContextSourceMeal } from "./reply-context-source";
 import { replyContextSpan } from "./reply-context-span";
 
@@ -19,7 +18,22 @@ import { replyContextSpan } from "./reply-context-span";
 // 範囲は、応える文章の sourceDays 日前から（窓と、今日の前の日の始まりの 0:00 を、タイムゾーンによらず含む）。
 // 目標と1日の目安はすべて、推定消費カロリーは今日以前に始まるものを、週の見直しは今日以前に当てた最も新しいものを読む
 export const readReplyContextSource = (
-  stores: Parameters<typeof buildReplyContext>[0],
+  stores: Pick<
+    RecordKindStores,
+    | "sentText"
+    | "reply"
+    | "aiUtterance"
+    | "meal"
+    | "mealEstimationStatus"
+    | "dish"
+    | "dishEstimationStatus"
+    | "ingredient"
+    | "weightRecord"
+    | "goal"
+    | "dailyGuide"
+    | "expenditureEstimate"
+    | "weeklyReview"
+  >,
   sentText: SentText,
   now: Date,
 ): ReplyContextSource => {

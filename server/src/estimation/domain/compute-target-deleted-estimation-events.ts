@@ -1,9 +1,6 @@
 import { findOngoingEstimationIds } from "../../dish-estimation-status/domain/dish-estimation-schedule";
 import type { UsageEvent } from "../../domain/usage-event";
-import {
-  computeEstimationEndedEvent,
-  type EstimationEndedEventStores,
-} from "./compute-estimation-ended-event";
+import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimationTarget } from "./estimation-target";
 
 // 推定中に対象の食事・料理が消えるときの、推定中の推定ごとの出来事（消えたものの区分で送る）。
@@ -36,3 +33,5 @@ const findOngoingEstimationIdsOfTarget = (
   const estimationId = stores.estimation.findOngoingEstimationIdOfMeal(target.mealId);
   return estimationId === undefined ? [] : [estimationId];
 };
+
+type EstimationEndedEventStores = Parameters<typeof computeEstimationEndedEvent>[0];

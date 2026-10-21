@@ -10,15 +10,6 @@ import type { EstimationStore } from "./estimation-store";
 import type { EstimationTarget } from "./estimation-target";
 import { findEstimationOrigin } from "./find-estimation-origin";
 
-// 推定を終えるときに読む置き場。きっかけと受け取った時刻、試みを読む
-export type EstimationEndedEventStores = {
-  estimation: EstimationStore;
-  estimationSchedule: EstimationScheduleStore;
-  dishEstimationStatus: DishEstimationStatusStore;
-  dish: DishStore;
-  meal: MealStore;
-};
-
 // 推定ごとの出来事。推定を終える口（推定の書き込みの complete・abandon と、computeTargetDeletedEstimationEvents）だけが呼ぶ。
 // 料理と材料は、推定できたときだけ数える（料理なし・諦めた・食事が消えたは 0）
 export const computeEstimationEndedEvent = (
@@ -55,6 +46,15 @@ export const computeEstimationEndedEvent = (
       ),
     ],
   };
+};
+
+// 推定を終えるときに読む置き場。きっかけと受け取った時刻、試みを読む
+type EstimationEndedEventStores = {
+  estimation: EstimationStore;
+  estimationSchedule: EstimationScheduleStore;
+  dishEstimationStatus: DishEstimationStatusStore;
+  dish: DishStore;
+  meal: MealStore;
 };
 
 const toErrorTypes = (conclusion: EstimationEvents["attemptResult"]["conclusion"]): string[] =>
