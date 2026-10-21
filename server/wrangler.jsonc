@@ -29,11 +29,12 @@
   // 本番にも受け継がれる
   "observability": { "enabled": true },
   // Sign in with Apple の ID トークンの aud。アプリの Bundle ID（ios/NuTori.xcodeproj の PRODUCT_BUNDLE_IDENTIFIER）
-  // BILLING_STARTED_ON は課金を入れた日（YYYY-MM-DD）。課金を入れる前からのアカウントの無料体験はこの日から数える（#647）。開発用は任意の日
+  // BILLING_STARTED_ON は課金を入れた日（YYYY-MM-DD）。課金を入れる前からのアカウントの無料体験はこの日から数える（#647）。
+  // 開発用は、主な流れを確かめるジョブ（e2e/run-main-flow.ts）が無料体験の終わったアカウントを作れるよう、30日より前の日にする
   "vars": {
     "APPLE_BUNDLE_ID": "app.nu-tori",
     "SENTRY_ENVIRONMENT": "development",
-    "BILLING_STARTED_ON": "2026-10-21",
+    "BILLING_STARTED_ON": "2026-09-01",
   },
   // namespace_id は Cloudflare のアカウントの中で一意にし、同じ値の Worker どうしで数を分け合う
   "ratelimits": [
