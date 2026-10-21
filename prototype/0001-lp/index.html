@@ -24,6 +24,9 @@
     --surface: #FFFFFF;
     --on-surface: #000000;
     --secondary: rgba(60, 60, 67, 0.6);
+    /* LP の文の灰色。iOS の secondaryLabel は白の地で 3.4:1 で、Web の小さな字には薄いので、LP の文だけ 4.5:1 を超える灰色にする。
+       アプリの画面の切れ端はアプリの色のまま */
+    --text-secondary: #636366;
     --tertiary: rgba(60, 60, 67, 0.3);
     --fill: #EFEFF0;
     --separator: rgba(60, 60, 67, 0.29);
@@ -46,6 +49,7 @@
       --surface: #1C1C1E;
       --on-surface: #FFFFFF;
       --secondary: rgba(235, 235, 245, 0.6);
+      --text-secondary: #AEAEB2;
       --tertiary: rgba(235, 235, 245, 0.3);
       --fill: #323236;
       --separator: rgba(84, 84, 88, 0.6);
@@ -68,6 +72,7 @@
     --surface: #1C1C1E;
     --on-surface: #FFFFFF;
     --secondary: rgba(235, 235, 245, 0.6);
+    --text-secondary: #AEAEB2;
     --tertiary: rgba(235, 235, 245, 0.3);
     --fill: #323236;
     --separator: rgba(84, 84, 88, 0.6);
@@ -89,7 +94,8 @@
     background: var(--background);
     color: var(--on-surface);
     font-family: var(--font);
-    font-size: 17px;
+    font-size: 16px;
+    overflow-x: clip;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
@@ -107,47 +113,45 @@
 
   .site-header { padding-block: 16px 0; }
   .logo { font-weight: 700; font-size: 20px; letter-spacing: 0.01em; }
-  .logo small { font-weight: 400; font-size: 13px; color: var(--secondary); margin-left: 8px; }
+  .logo small { font-weight: 400; font-size: 14px; color: var(--text-secondary); margin-left: 8px; }
 
   /* App Store のバッジ: 高さ 40、周りに高さの 1/4 の余白。目立たせすぎない（Apple のガイドライン） */
   .badge { display: inline-block; padding: 10px; margin: -10px; line-height: 0; }
   .badge img { height: 40px; width: auto; display: block; }
-  .badge-note { font-size: 13px; color: var(--secondary); }
+  .badge-note { font-size: 14px; color: var(--text-secondary); }
 
   /* ヒーロー共通 */
   .hero { padding-block: 24px 48px; }
-  .hero h1 { font-size: clamp(30px, 5.6vw, 48px); line-height: 1.25; letter-spacing: -0.01em; font-weight: 800; }
-  .hero .lead { font-size: clamp(16px, 2.1vw, 19px); color: var(--secondary); margin-top: 14px; max-width: 34em; }
-  .hero .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 24px; }
+  .hero h1 { font-size: clamp(30px, 5.6vw, 48px); line-height: 1.25; letter-spacing: -0.01em; font-weight: 700; }
+  .hero .lead { font-size: clamp(18px, 2.1vw, 20px); color: var(--text-secondary); margin-top: 16px; max-width: 34em; }
+  .hero .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 24px; }
 
   /* H1: 文と画面を左右に */
   .hero-h1 h1 { font-size: clamp(30px, 4.4vw, 42px); }
-  .hero-h1 .grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 40px; align-items: center; }
-  .pillars { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 28px; }
+  .hero-h1 .grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 48px; align-items: center; }
+  .pillars { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 32px; }
   .pillar { background: var(--surface); border-radius: 12px; padding: 16px; }
-  .pillar b { display: block; font-size: 15px; }
-  .pillar span { font-size: 15px; color: var(--secondary); }
+  .pillar b { display: block; font-size: 16px; }
+  .pillar span { font-size: 16px; color: var(--text-secondary); }
 
   /* H2: 大きな見出しを真ん中に、下に2つの操作と、その結果 */
   .hero-h2 { text-align: center; }
-  .hero-h2 h1 { font-size: clamp(32px, 7vw, 60px); }
+  .hero-h2 h1 { font-size: clamp(30px, 7vw, 60px); }
   .hero-h2 .lead { margin-inline: auto; }
   .hero-h2 .actions { justify-content: center; flex-direction: column; }
-  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 36px; text-align: left; }
-  .step { background: var(--surface); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-content: start; }
-  .step .when { font-size: 13px; color: var(--secondary); }
-  .step b { font-size: 17px; }
-  .step span { font-size: 15px; color: var(--secondary); }
-  .step .mini { height: 110px; border-radius: 10px; background: var(--fill); display: grid; place-items: center; overflow: hidden; }
-  .step.result { background: transparent; border: 1px solid var(--separator); }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 48px; text-align: left; }
+  .step { background: var(--surface); border-radius: 12px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+  .step b { font-size: 18px; }
+  .step > span { font-size: 16px; color: var(--text-secondary); }
+  .step .mini { margin-top: 8px; height: 112px; border-radius: 10px; background: var(--fill); display: grid; place-items: center; overflow: hidden; }
 
   /* H3: グラフを主役に */
   .hero-h3 h1 { font-size: clamp(30px, 4.6vw, 44px); }
-  .hero-h3 .grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 40px; align-items: center; }
-  .charts { background: var(--surface); border-radius: 18px; padding: 20px; display: grid; gap: 16px; }
-  .charts .label { font-size: 13px; color: var(--secondary); display: flex; justify-content: space-between; gap: 8px; }
+  .hero-h3 .grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 48px; align-items: center; }
+  .charts { background: var(--surface); border-radius: 18px; padding: 24px; display: grid; gap: 16px; }
+  .charts .label { font-size: 14px; color: var(--text-secondary); display: flex; justify-content: space-between; gap: 8px; }
   .charts svg { width: 100%; height: auto; display: block; }
-  .sample-tag { font-size: 11px; color: var(--secondary); border: 1px solid var(--tertiary); border-radius: 4px; padding: 0 6px; white-space: nowrap; }
+  .sample-tag { font-size: 11px; color: var(--text-secondary); border: 1px solid var(--tertiary); border-radius: 4px; padding: 0 6px; white-space: nowrap; }
 
   /* 仮の画面。iPhone の絵は描かない（Apple は製品を模した絵を認めない）。公開の LP では
      UI テストで撮った画面を Apple の配る枠に入れる */
@@ -212,70 +216,77 @@
   .app-list .q { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .est-badge { font-size: 11px; line-height: 14px; color: var(--secondary); border: 1px solid var(--tertiary); border-radius: 4px; padding: 0 4px; }
   .app-seg { display: flex; background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; }
-  .app-seg button { flex: 1; font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--on-surface); border-radius: 7px; min-height: 32px; cursor: pointer; }
+  .app-seg button { flex: 1; font: inherit; font-size: 13px; white-space: nowrap; padding: 0 8px; border: 0; background: transparent; color: var(--on-surface); border-radius: 7px; min-height: 32px; cursor: pointer; }
   .app-seg button[aria-pressed="true"] { background: var(--surface); font-weight: 600; }
   .est { display: grid; gap: 16px; }
-  .est .share { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  .key { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
+  .est .share { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
   .calc { display: grid; gap: 16px; }
   .calc .ctl { display: grid; gap: 4px; }
-  .calc label { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--secondary); }
+  .calc label { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--text-secondary); }
   .calc label output { color: var(--on-surface); font-variant-numeric: tabular-nums; }
   .calc input[type="range"] { width: 100%; accent-color: var(--primary); height: 32px; margin: 0; }
-  .calc .formula { font-size: 13px; color: var(--secondary); font-variant-numeric: tabular-nums; }
-  .feature.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-  /* アプリの画面と同じ灰色の地に、白い一覧と知らせのカードを載せる */
-  .feature.wide .visual { background: var(--background); padding: 16px; border-radius: 12px; min-height: 0; align-content: start; }
+  .calc .formula { font-size: 14px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .feature.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  /* アプリの画面と同じ灰色の地に、白い一覧と知らせのカードを載せる。外のカードを白にしないで、箱を重ねない */
+  .feature.wide { background: transparent; }
+  .feature.wide .visual { background: transparent; padding: 0; min-height: 0; align-content: start; }
+  /* 1つの節だけ、幅いっぱいの白い帯にして並びに緩急を付ける。帯の中の見本は、アプリの灰色の地に載せる */
+  .feature.band { background: var(--surface); border-radius: 0; margin-inline: calc(50% - 50vw); padding-block: 48px; padding-inline: max(40px, calc(50vw - 480px)); }
+  .feature.band .visual { background: var(--background); padding: 16px; border-radius: 12px; }
   .est { max-width: 420px; width: 100%; justify-self: center; }
 
   /* 工夫の節 */
   .features { padding-block: 24px 40px; }
-  .section-title { font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; line-height: 1.3; }
-  .section-sub { color: var(--secondary); margin-top: 8px; max-width: 36em; }
-  .feature-list { display: grid; gap: 12px; margin-top: 28px; }
+  .section-title { font-size: clamp(24px, 3.4vw, 30px); font-weight: 700; line-height: 1.3; }
+  .section-sub { color: var(--text-secondary); margin-top: 8px; font-size: 18px; max-width: 36em; }
+  .feature-list { display: grid; gap: 12px; margin-top: 32px; }
   .feature {
     background: var(--surface); border-radius: 18px; padding: 24px;
-    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); gap: 24px; align-items: center;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); gap: 32px; align-items: start;
   }
+  /* 見本が長くても、文は上にそろえて見本と並んで止まる */
+  .feature > div:first-child { position: sticky; top: 24px; }
   .feature.no-visual { grid-template-columns: minmax(0, 1fr); }
-  .feature h3 { font-size: clamp(20px, 2.6vw, 26px); line-height: 1.35; font-weight: 700; }
+  .feature h3 { font-size: clamp(20px, 2.6vw, 24px); line-height: 1.35; font-weight: 700; }
   .feature .body { margin-top: 12px; display: grid; gap: 8px; max-width: 34em; }
   .feature .body p { font-size: 16px; }
-  .fine { font-size: 13px; color: var(--secondary); }
+  .fine { font-size: 14px; color: var(--text-secondary); }
   .visual { border-radius: 12px; background: var(--fill); min-height: 150px; padding: 16px; display: grid; align-content: center; gap: 8px; font-size: 14px; }
   .kv { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
-  .kv span:first-child { color: var(--secondary); }
+  .kv span:first-child { color: var(--text-secondary); }
   .price-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .price-box { background: var(--surface); border-radius: 10px; padding: 12px; text-align: center; }
+  .price-box { background: var(--fill); border-radius: 10px; padding: 12px; text-align: center; }
   .price-box b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
-  .price-box span { font-size: 12px; color: var(--secondary); }
+  .price-box span { font-size: 12px; color: var(--text-secondary); }
 
   /* 他のアプリを使ったことがある方へ */
   .switchers { padding-block: 8px 32px; }
-  .switchers .box { border: 1px solid var(--separator); border-radius: 18px; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
-  .eyebrow { font-size: 13px; color: var(--secondary); }
+  .switchers .box { background: var(--surface); border-radius: 18px; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+  .eyebrow { font-size: 14px; color: var(--text-secondary); }
   .compare { display: grid; gap: 10px; font-size: 14px; }
   .compare .row { display: grid; grid-template-columns: 6em 1fr; gap: 8px; align-items: center; }
-  .compare .row span:first-child { color: var(--secondary); font-size: 13px; }
+  .compare .row span:first-child { color: var(--text-secondary); font-size: 14px; }
   .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .flow em { font-style: normal; background: var(--fill); border-radius: 9999px; padding: 2px 10px; font-size: 13px; }
   .flow .arrow { color: var(--tertiary); }
 
   /* よくある質問（異論への答え） */
   .faq { padding-block: 8px 32px; }
-  .faq dl { margin: 20px 0 0; display: grid; gap: 0; background: var(--surface); border-radius: 10px; overflow: hidden; }
+  .faq dl { margin: 24px 0 0; display: grid; gap: 0; background: var(--surface); border-radius: 10px; overflow: hidden; }
   .faq .qa { padding: 16px; border-top: 1px solid var(--separator); }
   .faq .qa:first-child { border-top: 0; }
   .faq dt { font-weight: 600; }
-  .faq dd { margin: 4px 0 0; color: var(--secondary); font-size: 15px; }
+  .faq dd { margin: 4px 0 0; color: var(--text-secondary); font-size: 16px; }
 
   .closing { padding-block: 16px 48px; text-align: center; }
-  .closing h2 { font-size: clamp(22px, 3vw, 28px); font-weight: 800; }
-  .closing p { margin-top: 10px; }
+  .closing h2 { font-size: clamp(24px, 3vw, 30px); font-weight: 700; }
+  .closing p { margin-top: 12px; }
 
-  footer { border-top: 1px solid var(--separator); padding-block: 24px 140px; font-size: 13px; color: var(--secondary); }
-  footer .wrap { display: grid; gap: 10px; }
-  footer nav { display: flex; flex-wrap: wrap; gap: 8px 20px; }
-  footer nav a { color: var(--secondary); }
+  footer { padding-block: 32px 128px; font-size: 14px; color: var(--text-secondary); }
+  footer .wrap { display: grid; gap: 8px; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 8px; }
+  footer nav a { color: var(--text-secondary); }
 
   /* 根拠のメモ（評価のためのもので、LP の一部ではない） */
   .note {
@@ -306,6 +317,9 @@
   .proto-bar .current { width: 100%; text-align: center; opacity: 0.85; }
 
   @media (max-width: 760px) {
+    .feature > div:first-child { position: static; }
+    .feature.band { padding-block: 32px; }
+    .app-seg button { font-size: 12px; }
     .hero-h1 .grid, .hero-h3 .grid, .feature, .feature.wide, .switchers .box { grid-template-columns: minmax(0, 1fr); }
     .steps, .pillars { grid-template-columns: minmax(0, 1fr); }
     .screen { max-width: 230px; }
@@ -429,7 +443,7 @@
         <div class="app-seg" role="group" aria-label="写真を選ぶ">${Object.entries(MEALS).map(([k, x]) => `<button type="button" data-meal="${k}" aria-pressed="${k === estMeal}">${x.dish}</button>`).join('')}</div>
         ${mealCard(estMeal)}
         <div><div class="app-list-head">材料</div><div class="app-list">${rows}</div></div>
-        <div class="share">${ring(t, t.k / DAILY_GUIDE, 44, 7)}<span>1日の目安 ${fmt(DAILY_GUIDE)} kcal のうち ${Math.round(t.k / DAILY_GUIDE * 100)}%</span></div>
+        <div class="share">${ring(t, t.k / DAILY_GUIDE, 44, 7)}<span>1日の目安 ${fmt(DAILY_GUIDE)} kcal のうち ${Math.round(t.k / DAILY_GUIDE * 100)}%<br>${[['protein', 'P', t.p], ['fat', 'F', t.f], ['carb', 'C', t.c]].map(([v, l, g]) => `<span style="white-space:nowrap"><span class="key" style="background:var(--${v})"></span>${l} ${g.toFixed(1)} g</span>`).join('　')}</span></div>
       </div>`;
   }
 
@@ -551,11 +565,11 @@
           <p class="lead">撮れば、料理と量と栄養が並びます。1日の目安は、体重の動きを見て毎週変わります。</p>
           <div class="actions">${badge}${badgeNote}</div>
           <div class="steps">
-            <div class="step"><span class="when">朝</span><b>体重を量る</b><span>ヘルスケアにつながる体重計なら、量るだけで入ります</span>
+            <div class="step"><b>朝、体重を量る</b><span>ヘルスケアにつながる体重計なら、量るだけで入ります</span>
               <div class="mini"><span style="font-size:28px;font-weight:300;font-variant-numeric:tabular-nums">67.4 kg</span></div></div>
-            <div class="step"><span class="when">食べる前</span><b>撮る</b><span>撮り忘れたら「昼にカレー」と書きます</span>
-              <div class="mini" style="height:auto;background:transparent">${mealCard('oyakodon', { small: true })}</div></div>
-            <div class="step result"><span class="when">毎週、自動で</span><b>目安が変わる</b><span>体重の傾向から、1日の目安を直します</span>
+            <div class="step"><b>食べる前に撮る</b><span>撮り忘れたら「昼にカレー」と書きます</span>
+              <div class="mini" style="height:auto;background:transparent">${mealCard('oyakodon')}</div></div>
+            <div class="step"><b>毎週、目安が変わる</b><span>体重の傾向から、1日の目安を直します</span>
               <div class="mini"><span style="font-size:15px;color:var(--secondary)">1,800 → <b style="color:var(--on-surface);font-size:24px">1,750</b> kcal</span></div></div>
           </div>
           ${notes(
@@ -602,7 +616,7 @@
       title: '撮るだけ。撮り忘れたら「昼にカレー」と書くだけ',
       body: `<p>写真から料理と材料と量を推し量り、栄養を出します。撮り忘れた食事は、書けば入ります。</p>
              <p>量が少しずれていても、直さなくてかまいません。1日の目安は体重の動きを見て合わせ直すので、ずれはそこでならされます。気になるときだけ、あとで直せます。</p>`,
-      visual: () => `<div class="visual" style="gap:12px"><span class="fine">撮った直後</span>${mealCard('curry', { pending: true })}<span class="fine">食べ終わるころ</span>${mealCard('curry')}</div>`,
+      visual: () => `<div class="visual" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;align-content:start"><span class="fine">撮った直後</span><span class="fine">食べ終わるころ</span>${mealCard('curry', { pending: true, small: true })}${mealCard('curry', { small: true })}</div>`,
       note: notes(
         note('fact', `「入力・操作が面倒」計 65 件、「写真の推定がずれて手で直す」計 27 件（${comp}）。`),
         note('check', '「ずれは体重の動きでならされる」は ADR-0007 からの言い方。いつも同じ向きにずれるなら目安に吸収されるが、写真ごとにばらつくずれまで言い切れるか、開発者に確かめる。')
@@ -613,6 +627,7 @@
       body: `<p>料理を材料に分け、材料ごとに文部科学省の日本食品標準成分表の値を引いて数えます。どの食品の値を使ったかは、食事を開けば見られます。</p>
              <p class="fine">写真に栄養成分表示が写っていれば、その表示を使います。</p>`,
       wide: true,
+      band: true,
       visual: () => `<div class="visual">${estimate()}</div>`,
       note: notes(
         note('fact', `日本食品標準成分表を説明文に書いているアプリは、調べた 11 本の中に無い（${comp} 問い2）。「食品が無い」の不満は、あすけん 7・MacroFactor 6・WiseMeal 12。`),
@@ -659,7 +674,7 @@
     const items = o.keys.map(k => {
       const f = features[k];
       return `
-        <article class="feature${f.visual ? '' : ' no-visual'}${f.wide ? ' wide' : ''}">
+        <article class="feature${f.visual ? '' : ' no-visual'}${f.wide ? ' wide' : ''}${f.band ? ' band' : ''}">
           <div>
             <h3>${f.title}</h3>
             <div class="body">${f.body}</div>
