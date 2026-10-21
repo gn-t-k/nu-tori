@@ -8,29 +8,32 @@ public struct PaywallContent: Equatable, Sendable {
     /// まとめの「支払いが始まる日」。サブスクリプション中（月額と年額の切り替え）は、始まる日が切り替え方で変わるので書かない
     public let paymentStart: String?
     /// まとめの「自動更新」
-    public let renewal: String
+    public let renewal = "解約しない限り、自動で更新します。"
+    /// 「自動更新」の下に箇条書きで並べる、月額・年額の更新の間隔と次の更新日。
+    /// サブスクリプション中（月額と年額の切り替え）は、次の更新日が切り替え方で変わるので書かない
+    public let renewalSchedule: [String]
 
     /// テストユーザーは課金画面を開かないので nil
     public init?(standing: SubscriptionStanding, today: CalendarDay) {
-        let renewsAutomatically = "解約しない限り、自動で更新します。"
-        let nextRenewal =
-            "次の更新は、月額なら\(GoalText.monthDay(Self.adding(months: 1, to: today)))、"
-            + "年額なら\(Self.yearMonthDay(Self.adding(months: 12, to: today)))です。"
+        let schedule = [
+            "月額を選んだ場合: 1か月ごと（次は\(GoalText.monthDay(Self.adding(months: 1, to: today)))）",
+            "年額を選んだ場合: 1年ごと（次は\(Self.yearMonthDay(Self.adding(months: 12, to: today)))）",
+        ]
         switch standing {
         case .testUser:
             return nil
         case .freeTrial(_, let remainingDays):
             headline = Self.freeTrialHeadline
             paymentStart = "今日から。無料体験の残り \(remainingDays) 日はなくなります"
-            renewal = renewsAutomatically + nextRenewal
+            renewalSchedule = schedule
         case .expired:
             headline = "撮って記録するには、サブスクリプションが必要です"
             paymentStart = "今日から"
-            renewal = renewsAutomatically + nextRenewal
+            renewalSchedule = schedule
         case .subscribed:
             headline = Self.freeTrialHeadline
             paymentStart = nil
-            renewal = renewsAutomatically
+            renewalSchedule = []
         }
     }
 

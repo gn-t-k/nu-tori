@@ -22,9 +22,10 @@ struct SignInConsentCard: View {
                     [利用規約](https://nu-tori.app/terms)と[プライバシーポリシー](https://nu-tori.app/privacy)を確かめてから、続けてください。
                     """
                 )
-                bullet("利用規約: 無料体験とサブスクリプション、推定と返事の扱い、禁止すること など")
-                bullet(
-                    "プライバシーポリシー: 集める情報と使い道、送り先の会社、米国の個人情報の法律、各社が情報を守るためにしていること など"
+                BulletLine(text: "利用規約: 無料体験とサブスクリプション、推定と返事の扱い、禁止すること など")
+                BulletLine(
+                    text:
+                        "プライバシーポリシー: 集める情報と使い道、送り先の会社、米国の個人情報の法律、各社が情報を守るためにしていること など"
                 )
                 Text("続けると、これらに同意したことになります。")
             }
@@ -37,14 +38,5 @@ struct SignInConsentCard: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("consentCard")
-    }
-
-    /// 折り返した行を「・」の右にそろえる。文の中の改行と「・」だけでは、2行目が「・」の下から始まる
-    private func bullet(_ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 0) {
-            Text("・")
-            Text(text)
-        }
-        .accessibilityElement(children: .combine)
     }
 }
