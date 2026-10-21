@@ -397,13 +397,33 @@ describe("App Store のサーバー通知を受ける", () => {
       });
     });
 
-    describe.each(["EXPIRED", "DID_CHANGE_RENEWAL_STATUS"])("%s の通知が届いたとき", (type) => {
-      test("受け取りだけを書くこと", async () => {
+    describe("EXPIRED の通知が届いたとき", () => {
+      beforeEach(async () => {
         await postNotification({
-          notificationType: type,
+          notificationType: "EXPIRED",
           signedTransactionInfo: await signTransaction(),
         });
-        expect(await countNotificationRows(accountId)).toMatchObject({
+      });
+
+      test("受け取りだけを書くこと", async () => {
+        expect(await countSubscriptionRows(accountId)).toMatchObject({
+          subscription_receipts: 2,
+          app_store_notification_receipts: 2,
+          subscription_transactions: 1,
+        });
+      });
+    });
+
+    describe("DID_CHANGE_RENEWAL_STATUS の通知が届いたとき", () => {
+      beforeEach(async () => {
+        await postNotification({
+          notificationType: "DID_CHANGE_RENEWAL_STATUS",
+          signedTransactionInfo: await signTransaction(),
+        });
+      });
+
+      test("受け取りだけを書くこと", async () => {
+        expect(await countSubscriptionRows(accountId)).toMatchObject({
           subscription_receipts: 2,
           app_store_notification_receipts: 2,
           subscription_transactions: 1,
@@ -438,57 +458,91 @@ describe("App Store のサーバー通知を受ける", () => {
     });
   });
 
-  describe("受け付けない通知が届いたとき", () => {
-    test.each([
-      {
-        name: "署名が差し込んだ根につながらない",
-        post: async () =>
-          postSignedPayload(
-            await signAppStoreServerNotification(await createTestCertificateChain()),
-          ),
-      },
-      {
-        name: "取引の署名が差し込んだ根につながらない",
-        post: async () =>
-          postNotification({
-            notificationType: "SUBSCRIBED",
-            signedTransactionInfo: await signAppStoreTransaction(
-              await createTestCertificateChain(),
-              { originalTransactionId, appAccountToken },
-            ),
-          }),
-      },
-      {
-        name: "ほかのアプリの通知",
-        post: async () =>
-          postNotification({
-            notificationType: "SUBSCRIBED",
-            bundleId: "app.example.other",
-            signedTransactionInfo: await signTransaction(),
-          }),
-      },
-      {
-        name: "ほかのアプリの取引",
-        post: async () =>
-          postNotification({
-            notificationType: "SUBSCRIBED",
-            signedTransactionInfo: await signTransaction({ bundleId: "app.example.other" }),
-          }),
-      },
-      {
-        name: "環境が Xcode の取引",
-        post: async () =>
-          postNotification({
-            notificationType: "SUBSCRIBED",
-            environment: "Xcode",
-            signedTransactionInfo: await signTransaction({ environment: "Xcode" }),
-          }),
-      },
-    ])("$name なら、400 で断り、何も書かないこと", async ({ post }) => {
-      const response = await post();
+  describe("署名が差し込んだ根につながらない通知が届いたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postSignedPayload(
+        await signAppStoreServerNotification(await createTestCertificateChain()),
+      );
+    });
+
+    test("400 で断り、何も書かないこと", async () => {
       expect({
         status: response.status,
-        rows: await countNotificationRows(accountId),
+        rows: await countSubscriptionRows(accountId),
+      }).toMatchObject({ status: 400, rows: { subscription_receipts: 0 } });
+    });
+  });
+
+  describe("取引の署名が差し込んだ根につながらない通知が届いたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postNotification({
+        notificationType: "SUBSCRIBED",
+        signedTransactionInfo: await signAppStoreTransaction(await createTestCertificateChain(), {
+          originalTransactionId,
+          appAccountToken,
+        }),
+      });
+    });
+
+    test("400 で断り、何も書かないこと", async () => {
+      expect({
+        status: response.status,
+        rows: await countSubscriptionRows(accountId),
+      }).toMatchObject({ status: 400, rows: { subscription_receipts: 0 } });
+    });
+  });
+
+  describe("ほかのアプリの通知が届いたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postNotification({
+        notificationType: "SUBSCRIBED",
+        bundleId: "app.example.other",
+        signedTransactionInfo: await signTransaction(),
+      });
+    });
+
+    test("400 で断り、何も書かないこと", async () => {
+      expect({
+        status: response.status,
+        rows: await countSubscriptionRows(accountId),
+      }).toMatchObject({ status: 400, rows: { subscription_receipts: 0 } });
+    });
+  });
+
+  describe("ほかのアプリの取引を運ぶ通知が届いたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postNotification({
+        notificationType: "SUBSCRIBED",
+        signedTransactionInfo: await signTransaction({ bundleId: "app.example.other" }),
+      });
+    });
+
+    test("400 で断り、何も書かないこと", async () => {
+      expect({
+        status: response.status,
+        rows: await countSubscriptionRows(accountId),
+      }).toMatchObject({ status: 400, rows: { subscription_receipts: 0 } });
+    });
+  });
+
+  describe("環境が Xcode の通知が届いたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postNotification({
+        notificationType: "SUBSCRIBED",
+        environment: "Xcode",
+        signedTransactionInfo: await signTransaction({ environment: "Xcode" }),
+      });
+    });
+
+    test("400 で断り、何も書かないこと", async () => {
+      expect({
+        status: response.status,
+        rows: await countSubscriptionRows(accountId),
       }).toMatchObject({ status: 400, rows: { subscription_receipts: 0 } });
     });
   });
