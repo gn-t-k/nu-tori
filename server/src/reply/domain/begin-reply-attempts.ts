@@ -45,7 +45,7 @@ export const beginReplyAttempts = (
       requestedAt,
     } of stores.reply.findWaitingRequests()) {
       subscriptionStatus ??= readSubscriptionStatus(stores.subscriptionStatus);
-      if (isSubscriptionExpired(subscriptionStatus, { countedOn, now })) {
+      if (isSubscriptionExpired(subscriptionStatus, { countedOn, at: now })) {
         writes.halt({ requestId, haltedAt: now, reason: "subscription_expired" });
         usageEvents.push({ name: "reply_request_halted", reason: "subscription_expired" });
         continue;

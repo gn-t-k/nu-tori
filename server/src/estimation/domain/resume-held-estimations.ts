@@ -33,7 +33,7 @@ export const resumeHeldEstimations = (
       throw new Error(`保留した予定につながっている食事が無い: ${target.mealId}`);
     }
     const countedOn = computeCalendarDayInTimeZone(now, latestTimeZone ?? meal.sentTimeZone);
-    if (isSubscriptionExpired(status, { countedOn, now })) {
+    if (isSubscriptionExpired(status, { countedOn, at: now })) {
       continue;
     }
     const schedule = { id: generateRecordId(), dueAt: now, countedOn };

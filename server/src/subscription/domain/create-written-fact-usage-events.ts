@@ -43,7 +43,7 @@ export const createWrittenFactUsageEvents = (
     written.wroteRevocation &&
     isSubscriptionExpired(computeSubscriptionStatus(facts), {
       countedOn: computeCalendarDayInTimeZone(now, timeZone),
-      now,
+      at: now,
     });
   return isExpiredByRevocation
     ? [...transactionEvents, createSubscriptionExpiredEvent(facts, { byRevocation: true })]
