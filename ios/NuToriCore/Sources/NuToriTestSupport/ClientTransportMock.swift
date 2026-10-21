@@ -9,7 +9,7 @@ import Synchronization
 ///
 /// 作り方は、答え方ごとに `ok`（どの要求にも同じ答え）、`sync`（同期の書き込みと取得）、
 /// `account`（サインインと削除）、`mealPhotos`（縮小版を取りに行く）、`goalSetup`（目標の設定の要求に、テストが決めた答えを返す）、
-/// `error`（投げる）の6つ
+/// `termsAgreement`（規約の同意が要るかと同意）、`error`（投げる）の7つ
 public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     /// 目標の設定の要求は、答えを待つあいだに次の要求が重なるので、鍵で守る
     public var requests: [(request: HTTPRequest, body: String?)] {
@@ -201,6 +201,32 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             let answer = try await respond(endpoint, body ?? "")
             guard let json = answer.json else { return (HTTPResponse(status: answer.status), nil) }
             return jsonResponse(status: answer.status, json: json)
+        }
+    }
+
+    /// 規約の同意が要るかを問う要求に `agreementRequired` と `termsVersion` で、同意する要求に `agreeStatus` で答える。
+    /// `reachable` が false を返すあいだは、電波が無いときのエラーを投げる
+    public static func termsAgreement(
+        agreementRequired: Bool,
+        termsVersion: String,
+        agreeStatus: HTTPResponse.Status = .noContent,
+        reachable: @escaping @Sendable () -> Bool = { true }
+    ) -> ClientTransportMock {
+        ClientTransportMock { request, _ in
+            guard reachable() else { throw URLError(.notConnectedToInternet) }
+            switch request.path ?? "" {
+            case "/v1/terms-agreement":
+                return jsonResponse(
+                    status: .ok,
+                    json:
+                        #"{"agreementRequired":\#(agreementRequired),"termsVersion":"\#(termsVersion)"}"#
+                )
+            case "/v1/terms-agreements":
+                return (HTTPResponse(status: agreeStatus), nil)
+            // swiftlint:disable:next no_default_in_switch - パスは文字列で、差し替えが持たない経路が来る
+            default:
+                return (HTTPResponse(status: .notFound), nil)
+            }
         }
     }
 

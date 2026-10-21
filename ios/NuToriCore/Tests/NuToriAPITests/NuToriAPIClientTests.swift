@@ -36,19 +36,21 @@ struct NuToriAPIClientTests {
                     idToken: credentials.idToken,
                     nonce: credentials.nonce,
                     authorizationCode: credentials.code,
-                    timeZone: credentials.timeZone
+                    timeZone: credentials.timeZone,
+                    agreedTermsVersion: "1"
                 )
 
                 #expect(result == .started(sessionToken: "session-1", accountId: "account-1"))
             }
 
-            @Test("ID トークンと nonce と認可コードと端末のタイムゾーンを POST /v1/sessions に送ること")
+            @Test("ID トークンと nonce と認可コードと端末のタイムゾーンと同意した規約の版を POST /v1/sessions に送ること")
             func sendsCredentials() async throws {
                 _ = try await client.startSession(
                     idToken: credentials.idToken,
                     nonce: credentials.nonce,
                     authorizationCode: credentials.code,
-                    timeZone: credentials.timeZone
+                    timeZone: credentials.timeZone,
+                    agreedTermsVersion: "1"
                 )
 
                 let sent = try #require(transport.requests.first)
@@ -62,6 +64,7 @@ struct NuToriAPIClientTests {
                         "nonce": credentials.nonce,
                         "authorizationCode": credentials.code,
                         "timeZone": credentials.timeZone.identifier,
+                        "agreedTermsVersion": "1",
                     ]
                 )
             }
@@ -90,7 +93,8 @@ struct NuToriAPIClientTests {
                     idToken: credentials.idToken,
                     nonce: credentials.nonce,
                     authorizationCode: credentials.code,
-                    timeZone: credentials.timeZone
+                    timeZone: credentials.timeZone,
+                    agreedTermsVersion: "1"
                 )
 
                 #expect(result == .rejected)

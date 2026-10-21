@@ -15,6 +15,8 @@ final class RootModel {
     private(set) var pendingAppearance = PendingAppearance.none
     /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事。タイムラインで伸ばして描く
     private(set) var replyStreams: [UUID: ReplyStream] = [:]
+    /// 規約への同意のシート。出ているあいだは閉じられず、同意を受け付けられたら消す
+    private(set) var termsAgreementSheet: TermsAgreementSheet?
     var rejectedLines: [RejectedLine] {
         guard case .accepting(let rejected) = rejectionAcceptance else { return [] }
         return rejected.lines
@@ -27,9 +29,11 @@ final class RootModel {
         health: HealthSyncSession,
         missedWeightRecordWatch: MissedWeightRecordWatch,
         goalSetup: GoalSetupSession,
+        termsAgreement: TermsAgreementPrompt,
         clock: DeviceClock
     ) {
         self.clock = clock
+        self.termsAgreement = termsAgreement
         self.goalSetup = goalSetup
         self.accountSession = accountSession
         self.recordSync = recordSync
@@ -71,7 +75,20 @@ final class RootModel {
         if let tapWhileOpening {
             Task { await self.openFromReminder(noticeId: tapWhileOpening) }
         }
+        // 同意が要るかは同期を待たずに問う。電波が無くて問えなければ、次に前面に来たときに問い直す
+        async let termsAgreementAsked: Void = askTermsAgreementIfShowingTimeline()
         await syncIfShowingTimeline()
+        await termsAgreementAsked
+    }
+
+    /// 同意のシートの「同意して続ける」。その場の要求で同意を送り、受け付けられたらシートを消す
+    func agreeToTerms() async -> TermsAgreementPrompt.AgreeOutcome {
+        guard let sheet = termsAgreementSheet else { return .agreed }
+        let outcome = await termsAgreement.agree(to: sheet)
+        if outcome == .agreed, termsAgreementSheet == sheet {
+            termsAgreementSheet = nil
+        }
+        return outcome
     }
 
     /// 記録忘れの通知を押して開いた。ヘルスケアを読み、知らせを出すかを決めてから、
@@ -373,6 +390,7 @@ final class RootModel {
     private let recordSync: RecordSync
     private let health: HealthSyncSession
     private let missedWeightRecordWatch: MissedWeightRecordWatch
+    private let termsAgreement: TermsAgreementPrompt
     private var observationStart = ObservationStart.pending(tapWhileOpening: nil)
     private var rejectionAcceptance = RejectionAcceptance.accepting(RejectedLines())
 
@@ -399,6 +417,8 @@ final class RootModel {
             recordSync.stopWaitingForNoticeTime()
             Task { [recordSync] in await recordSync.stopFollowingReplies() }
             Task { [missedWeightRecordWatch] in await missedWeightRecordWatch.removeAll() }
+            // 同意はサインインで送るので、前のアカウントのシートを残さない
+            termsAgreementSheet = nil
         case .loadingTimeline, .timeline:
             break
         }
@@ -448,6 +468,21 @@ final class RootModel {
             .mealRecorded(entry: entry, photoCount: originals.count, mealCount: meals.count))
         // 撮る・選ぶ画面が閉じてタイムラインに戻ってから、栄養の書き込みの許可を求める
         await health.requestNutritionAuthorizationAfterMealRecorded()
+    }
+
+    /// シートを出しているあいだは問い直さない。問うあいだにサインインの画面に替わったら出さない
+    private func askTermsAgreementIfShowingTimeline() async {
+        guard termsAgreementSheet == nil, isShowingTimeline else { return }
+        let sheet = await termsAgreement.sheetOnOpen()
+        guard termsAgreementSheet == nil, isShowingTimeline else { return }
+        termsAgreementSheet = sheet
+    }
+
+    private var isShowingTimeline: Bool {
+        switch screen {
+        case .loadingTimeline, .timeline: true
+        case .opening, .signIn: false
+        }
     }
 
     private func syncIfShowingTimeline() async {

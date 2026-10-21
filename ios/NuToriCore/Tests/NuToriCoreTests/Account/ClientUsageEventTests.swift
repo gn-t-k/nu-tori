@@ -118,6 +118,27 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("規約への同意のシート")
+    struct TermsAgreement {
+        @Test("シートを出したことを、中身を持たない出来事にすること")
+        func sheetShownHasNoFields() {
+            let event = ClientUsageEvent.termsAgreementSheetShown
+
+            #expect(event.name == "terms_agreement_sheet_shown")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+
+        @Test("同意したことを、中身を持たない出来事にすること")
+        func agreedHasNoFields() {
+            let event = ClientUsageEvent.termsAgreed
+
+            #expect(event.name == "terms_agreed")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("答えていない知らせの1行を押したとき")
     struct UnansweredNoticeLineTapped {
         @Test("中身を持たない出来事にすること")
