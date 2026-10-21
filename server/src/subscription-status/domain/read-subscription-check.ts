@@ -1,7 +1,7 @@
-import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
 import type { RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import { findSubscriptionCheck } from "./find-subscription-check";
+import { findSubscriptionTimeZone } from "./find-subscription-time-zone";
 
 // 課金の仕事（アラーム）の時機。最初のサインインがまだ無ければ undefined。
 // 帳簿に状態の記録の変更がまだ1つも無い（課金を入れる前からの）アカウントは、今すぐ動いて変更を足す。
@@ -27,13 +27,6 @@ export const readSubscriptionCheck = (
   }
   return {
     firstSignInId: facts.firstSignInId,
-    ...findSubscriptionCheck(
-      facts,
-      {
-        latest: findLatestValidTimeZone(stores.latestTimeZone),
-        firstSignIn: stores.firstSignIn.findTimeZone(),
-      },
-      now,
-    ),
+    ...findSubscriptionCheck(facts, findSubscriptionTimeZone(stores), now),
   };
 };
