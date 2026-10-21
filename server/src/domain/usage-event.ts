@@ -113,6 +113,29 @@ export type UsageEvent =
       reason: "daily_limit" | "subscription_expired";
     }
   | {
+      // 理由が purchase の取引を初めて書いたとき（#647 の「観測」）。Production の環境の取引だけ。
+      // 商品の ID・価格・取引の ID・購入者のトークンは含めない
+      name: "subscription_started";
+      // 買った日（取引の買った時刻の、ユーザーの日付）が無料体験の最後の日までか
+      purchasedDuringFreeTrial: boolean;
+      // 前に無料体験を使った Apple ID で作り直したアカウントか
+      rebuiltAccount: boolean;
+    }
+  | {
+      // 理由が renewal の取引を初めて書いたとき。Production の環境の取引だけ
+      name: "subscription_renewed";
+    }
+  | {
+      // サブスクリプション切れになったとき。課金の仕事のアラームが区切りのあとに動いたとき、
+      // 取り消しを書いたとき、作り直したアカウントの最初のサインインのとき。アラームのやり直しなどでまれに2度送る
+      name: "subscription_expired";
+      // サブスクリプションを買ったことがあるか（取り消した取引も数える）
+      hasPurchased: boolean;
+      // 取り消しを書いて切れたか
+      byRevocation: boolean;
+      rebuiltAccount: boolean;
+    }
+  | {
       // 目標を決めたとき（初めてと立て直し）。同じ要求の ID の再送では送らない。体重・目標体重・kcal の値は含めない
       name: "goal_decision_recorded";
       direction: GoalDirection;

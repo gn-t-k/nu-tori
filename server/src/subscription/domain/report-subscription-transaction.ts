@@ -4,11 +4,13 @@ import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { RecordType } from "../../domain/record-type";
+import type { UsageEvent } from "../../domain/usage-event";
 import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
 import type { EstimationTarget } from "../../estimation/domain/estimation-target";
 import { resumeHeldEstimations } from "../../estimation/domain/resume-held-estimations";
 import { createMealEstimationStatusKind } from "../../meal-estimation-status/domain/create-meal-estimation-status-kind";
 import { createSubscriptionStatusKind } from "../../subscription-status/domain/create-subscription-status-kind";
+import { createWrittenFactUsageEvents } from "./create-written-fact-usage-events";
 import type { AppStoreSubscriptionTransaction } from "./read-app-store-subscription-transaction";
 import type { SubscriptionTransactionReportTrigger } from "./subscription";
 import type { SubscriptionTransactionStore } from "./subscription-transaction-store";
@@ -44,46 +46,65 @@ export const reportSubscriptionTransaction = (
       | "dish"
       | "dishEstimationStatus"
       | "subscriptionStatus"
+      | "firstSignIn"
     >;
   },
   report: SubscriptionTransactionReport,
   now: Date,
-): ReportedRecord[] => {
+): { records: ReportedRecord[]; usageEvents: UsageEvent[] } => {
   const { subscriptionTransaction: store, records } = stores;
   const firstSignInId = records.subscriptionStatus.findFacts()?.firstSignInId;
   if (firstSignInId === undefined) {
     throw new Error("最初のサインインの無いアカウントに取引が届いた");
   }
-  const resumedTargets = writeRecordChanges(({ addChange, estimationAt }): EstimationTarget[] => {
-    if (store.hasReceipt(report.requestId)) {
-      return [];
-    }
-    store.insertReceipt({ id: report.requestId, receivedAt: now });
-    const { subscriptionTransactionId, wroteFact } = writeAppStoreTransaction(
-      store,
-      report.requestId,
-      report.transaction,
-    );
-    store.insertTransactionReportReceipt({
-      subscriptionReceiptId: report.requestId,
-      subscriptionTransactionId,
-      reportTrigger: report.trigger,
-    });
-    if (!wroteFact) {
-      return [];
-    }
-    addChange({ recordType: "subscription_status", recordId: firstSignInId });
-    // 使えるかを書いた取引で判定するので、取引の行のあとに呼ぶ
-    return resumeHeldEstimations(records, estimationAt(now), now);
-  });
-  return [
-    {
-      recordType: "subscription_status",
-      recordId: firstSignInId,
-      current: createSubscriptionStatusKind(records.subscriptionStatus).readCurrent(firstSignInId),
+  const written = writeRecordChanges(
+    ({
+      addChange,
+      estimationAt,
+    }): { resumedTargets: EstimationTarget[]; usageEvents: UsageEvent[] } => {
+      if (store.hasReceipt(report.requestId)) {
+        return { resumedTargets: [], usageEvents: [] };
+      }
+      store.insertReceipt({ id: report.requestId, receivedAt: now });
+      const { subscriptionTransactionId, wroteTransaction, wroteRevocation } =
+        writeAppStoreTransaction(store, report.requestId, report.transaction);
+      store.insertTransactionReportReceipt({
+        subscriptionReceiptId: report.requestId,
+        subscriptionTransactionId,
+        reportTrigger: report.trigger,
+      });
+      if (!wroteTransaction && !wroteRevocation) {
+        return { resumedTargets: [], usageEvents: [] };
+      }
+      addChange({ recordType: "subscription_status", recordId: firstSignInId });
+      return {
+        // 使えるかを書いた取引で判定するので、取引の行のあとに呼ぶ
+        resumedTargets: resumeHeldEstimations(records, estimationAt(now), now),
+        usageEvents: createWrittenFactUsageEvents(
+          records,
+          report.transaction,
+          {
+            wroteTransaction,
+            wroteRevocation,
+          },
+          now,
+        ),
+      };
     },
-    ...resumedTargets.map((target) => readResumedStatus(records, target, now)),
-  ];
+  );
+  return {
+    usageEvents: written.usageEvents,
+    records: [
+      {
+        recordType: "subscription_status",
+        recordId: firstSignInId,
+        current: createSubscriptionStatusKind(records.subscriptionStatus).readCurrent(
+          firstSignInId,
+        ),
+      },
+      ...written.resumedTargets.map((target) => readResumedStatus(records, target, now)),
+    ],
+  };
 };
 
 const readResumedStatus = (

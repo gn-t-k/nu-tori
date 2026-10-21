@@ -9,7 +9,10 @@ import type { ConversationProvider } from "../reply/domain/conversation-provider
 import type { ReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { replyAttemptTimeLimitMs } from "../reply/domain/reply-attempt-time-limit-ms";
 import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
+import { findDeadlineExpiredEvent } from "../subscription-status/domain/find-deadline-expired-event";
+import { findSubscriptionTimeZone } from "../subscription-status/domain/find-subscription-time-zone";
 import { readSubscriptionCheck } from "../subscription-status/domain/read-subscription-check";
+import { readSubscriptionFacts } from "../subscription-status/domain/read-subscription-status";
 import type { AlarmJob } from "./alarm-job";
 import { computeNextAttemptAt } from "./compute-next-attempt-at";
 import { findEarliest } from "./find-earliest";
@@ -30,13 +33,22 @@ export const accountAlarmJobs: readonly AlarmJob<
     advance: async (stores, deps) => {
       const now = new Date();
       const check = readSubscriptionCheck(stores, now);
-      if (check?.isDue === true) {
-        deps.writeRecordChanges(({ addChange, estimationAt }) => {
-          addChange({ recordType: "subscription_status", recordId: check.firstSignInId });
-          resumeHeldEstimations(stores, estimationAt(now), now);
-        });
+      if (check?.isDue !== true) {
+        return { result: "advanced", report: emptyReport };
       }
-      return { result: "advanced", report: emptyReport };
+      const expiredEvent = deps.writeRecordChanges(({ addChange, estimationAt }) => {
+        addChange({ recordType: "subscription_status", recordId: check.firstSignInId });
+        resumeHeldEstimations(stores, estimationAt(now), now);
+        return findDeadlineExpiredEvent(
+          readSubscriptionFacts(stores.subscriptionStatus),
+          findSubscriptionTimeZone(stores),
+          now,
+        );
+      });
+      return {
+        result: "advanced",
+        report: { ...emptyReport, usageEvents: expiredEvent === undefined ? [] : [expiredEvent] },
+      };
     },
     computeNextAt: (stores, now) => readSubscriptionCheck(stores, now)?.nextAt,
   },

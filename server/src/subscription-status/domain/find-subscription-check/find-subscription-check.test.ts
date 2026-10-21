@@ -15,6 +15,7 @@ const freeTrialFacts: Facts = {
 const monthlyTransaction = (
   expiresAt: string,
 ): SubscriptionStatusFacts["transactions"][number] => ({
+  environment: "production",
   appStoreProductId: "app.nu-tori.subscription.monthly",
   expiresAt: new Date(expiresAt),
   revocations: [],

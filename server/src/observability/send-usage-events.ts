@@ -111,6 +111,25 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
       name: deferred.name,
       properties: { reason: deferred.reason },
     }))
+    .with({ name: "subscription_started" }, (started) => ({
+      name: started.name,
+      properties: {
+        purchased_during_free_trial: started.purchasedDuringFreeTrial,
+        rebuilt_account: started.rebuiltAccount,
+      },
+    }))
+    .with({ name: "subscription_renewed" }, (renewed) => ({
+      name: renewed.name,
+      properties: {},
+    }))
+    .with({ name: "subscription_expired" }, (expired) => ({
+      name: expired.name,
+      properties: {
+        has_purchased: expired.hasPurchased,
+        by_revocation: expired.byRevocation,
+        rebuilt_account: expired.rebuiltAccount,
+      },
+    }))
     .with({ name: "goal_decision_recorded" }, (recorded) => ({
       name: recorded.name,
       properties: {
