@@ -26,10 +26,25 @@
     "byethrow/prefer-result-maybe-async": "error",
     "nu-tori/no-switch-statement": "error",
     "nu-tori/no-random-uuid": "error",
-    "nu-tori/no-setup-in-describe": "error"
+    "nu-tori/no-setup-in-describe": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@peculiar/x509",
+            "message": "@peculiar/x509 は src/app-store/peculiar-x509.ts から import する。先に reflect-metadata を読み込まないと、読み込んだときに投げる"
+          }
+        ]
+      }
+    ]
   },
   "ignorePatterns": ["worker-configuration.d.ts"],
   "overrides": [
+    {
+      "files": ["src/app-store/peculiar-x509.ts"],
+      "rules": { "no-restricted-imports": "off" }
+    },
     {
       "files": ["src/domain/record-id/record-id.ts"],
       "rules": { "nu-tori/no-random-uuid": "off" }
