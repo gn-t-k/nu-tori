@@ -11,7 +11,7 @@ const maximumPhotoBytes = 3 * 1024 * 1024;
 const photoContentType = "image/jpeg";
 
 const photoIdParams = z.object({
-  photoId: recordIdSchema.openapi({
+  photoId: recordIdSchema.meta({
     param: { name: "photoId", in: "path" },
     description: "端末が振った写真の ID",
   }),

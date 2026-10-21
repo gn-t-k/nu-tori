@@ -48,7 +48,7 @@ const resendSentTextAsConversationWriteSchema = z
   .object({
     id: writeIdSchema,
     type: z.literal("resend_sent_text_as_conversation"),
-    sentTextId: recordIdSchema.openapi({
+    sentTextId: recordIdSchema.meta({
       description: "食事と読み分けた送った文章。その文章から作った食事を消し、会話にする",
     }),
   })
@@ -58,7 +58,7 @@ const resendSentTextWriteSchema = z
   .object({
     id: writeIdSchema,
     type: z.literal("resend_sent_text"),
-    sentTextId: recordIdSchema.openapi({
+    sentTextId: recordIdSchema.meta({
       description: "返事を作れなかった・回数切れの送った文章。もう一度返事を作らせる",
     }),
   })

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 // API と DB の UUID の文字列は、小文字の正規形（RFC 9562 の出し方）だけにする。
 // ID は文字列のまま比べるので、大文字の綴りを黙って直さず、受け口で断る（#362）
+// 素の zod で作るので、HTTP 層で説明を足すときは .openapi() でなく .meta() を使う。zod はスキーマを作るときにメソッドを写し、
+// @hono/zod-openapi より先に評価されると .openapi が付かない（#699）
 export const recordIdSchema = z
   .string()
   .regex(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/, "UUID を小文字の正規形で書く")
