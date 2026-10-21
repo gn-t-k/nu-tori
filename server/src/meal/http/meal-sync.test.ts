@@ -911,6 +911,7 @@ describe("食事の同期", () => {
     let estimationCountsAfter: Awaited<ReturnType<typeof countEstimations>>;
     let write: ReturnType<typeof deleteMealWrite>;
     let inspected: Awaited<ReturnType<typeof inspectDeletedContents>>;
+    let deletionReceipt: { kind: string; recordType: string; recordId: string };
     beforeEach(async () => {
       // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
       useFakeClock(Date.now() + 86_400_000);
@@ -928,6 +929,7 @@ describe("食事の同期", () => {
         ingredientIds,
       });
       estimationCountsAfter = await countEstimations(accountId);
+      deletionReceipt = { kind: "delete", recordType: "meal", recordId: mealId };
     });
 
     test("控えを外部キーで指す表のうち、削除の印と帳簿のほかに、消した食事・料理・材料の控えから辿れる行が残らないこと", () => {
@@ -960,13 +962,12 @@ describe("食事の同期", () => {
     });
 
     test("料理と、前の推定の材料も含むすべての材料の削除の印を、食事を消した書き込みの控えつきで書くこと", () => {
-      const receipt = { kind: "delete", recordType: "meal", recordId: mealId };
       expect({
         dishes: inspected.dishDeletionReceipts,
         ingredients: inspected.ingredientDeletionReceipts,
       }).toEqual({
-        dishes: Object.fromEntries(dishIds.map((id) => [id, receipt])),
-        ingredients: Object.fromEntries(ingredientIds.map((id) => [id, receipt])),
+        dishes: Object.fromEntries(dishIds.map((id) => [id, deletionReceipt])),
+        ingredients: Object.fromEntries(ingredientIds.map((id) => [id, deletionReceipt])),
       });
     });
 
