@@ -2,7 +2,7 @@ import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core
 import type { RecordId } from "../../domain/record-id";
 import { firstSignInTables } from "../../durable-object/first-sign-in-tables";
 import {
-  appStoreEnvironments,
+  appStoreSubscriptionEnvironments,
   subscriptionTransactionReasons,
   subscriptionTransactionReportTriggers,
 } from "../domain/subscription";
@@ -27,7 +27,7 @@ const appStoreSubscriptions = sqliteTable(
       .$type<RecordId>()
       .primaryKey()
       .references(() => subscriptions.id),
-    environment: text("environment", { enum: appStoreEnvironments }).notNull(),
+    environment: text("environment", { enum: appStoreSubscriptionEnvironments }).notNull(),
     appStoreOriginalTransactionId: text("app_store_original_transaction_id").notNull(),
   },
   (table) => [

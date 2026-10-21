@@ -1,6 +1,6 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { user } from "../../auth/authentication-tables";
-import { appStoreEnvironments } from "../domain/subscription";
+import { appStoreSubscriptionEnvironments } from "../domain/subscription";
 
 // 購入者のトークン（appAccountToken）。サーバーが出し、アカウントの ID とは別の値にする
 const appAccountTokens = sqliteTable(
@@ -22,7 +22,7 @@ const appStoreSubscriptionRoutes = sqliteTable(
     accountId: text("account_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    environment: text("environment", { enum: appStoreEnvironments }).notNull(),
+    environment: text("environment", { enum: appStoreSubscriptionEnvironments }).notNull(),
     appStoreOriginalTransactionId: text("app_store_original_transaction_id").notNull(),
   },
   (table) => [

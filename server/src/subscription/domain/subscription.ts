@@ -1,9 +1,10 @@
 // サブスクリプションの区分の値と、判定に使う事実の型（#647 の「判定の決まり」）。
 // 区分の値は列に CHECK を書かないので、書く口がこの一覧で確かめ、表の宣言は text({ enum }) でここから引く
 
-// App Store の環境。Xcode・LocalTesting の取引は断るので持たない
-export const appStoreEnvironments = ["production", "sandbox"] as const;
-export type AppStoreEnvironment = (typeof appStoreEnvironments)[number];
+// 表に書く App Store の環境。届く値（src/app-store/app-store-environment.ts の Production・Sandbox）を小文字にしたもの。
+// Xcode・LocalTesting の取引は断るので持たない
+export const appStoreSubscriptionEnvironments = ["production", "sandbox"] as const;
+export type AppStoreSubscriptionEnvironment = (typeof appStoreSubscriptionEnvironments)[number];
 
 // 取引の理由（App Store の transactionReason）
 export const subscriptionTransactionReasons = ["purchase", "renewal"] as const;
