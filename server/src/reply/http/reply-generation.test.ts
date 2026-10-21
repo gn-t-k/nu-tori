@@ -590,7 +590,12 @@ describe("返事を作る", () => {
       mockCreateConversationProviderOk({
         classification: "conversation",
         reply: { body: "よく眠れましたか。", mealIds: [] },
-        replyUsage: { inputTokens: 2400, outputTokens: 180 },
+        replyUsage: {
+          inputTokens: 2400,
+          outputTokens: 180,
+          cacheCreationInputTokens: 2000,
+          cacheReadInputTokens: 300,
+        },
       });
       await sendText({ body: "おはよう" });
       captureSpy = mockPostHogCaptureEndpointOk();
@@ -609,6 +614,8 @@ describe("返事を作る", () => {
             result: "succeeded",
             input_tokens: 2400,
             output_tokens: 180,
+            cache_creation_input_tokens: 2000,
+            cache_read_input_tokens: 300,
           },
         },
         {

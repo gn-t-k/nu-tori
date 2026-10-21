@@ -82,8 +82,8 @@ export type UsageEvent =
       // 返事の試みの結果を書いたとき（呼び出しごと）。本文は含めない
       name: "reply_attempt_ended";
       result: ReplyAttemptOutcome["result"];
-      // 呼び出しで使ったトークン。分からなければ undefined
-      usage: TokenUsage | undefined;
+      // 呼び出しで使ったトークン（キャッシュに書いた・読んだ分も）。分からなければ undefined
+      usage: ReplyAttemptOutcome["usage"];
       // 提供元のエラーと 400 のときの、提供元のエラーの種類
       providerErrorType: string | undefined;
     }
