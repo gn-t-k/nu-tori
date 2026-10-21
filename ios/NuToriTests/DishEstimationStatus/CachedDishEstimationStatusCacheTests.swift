@@ -72,7 +72,7 @@ struct CachedDishEstimationStatusCacheTests {
                 try cache.upsert(estimated)
 
                 let saved = try cache.savedRecords()
-                #expect(saved.count == 5)
+                #expect(saved.count == others.count + 1)
                 #expect(Set(saved) == others.union([estimated]))
             }
         }
