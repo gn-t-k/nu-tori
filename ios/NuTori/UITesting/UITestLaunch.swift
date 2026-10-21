@@ -116,7 +116,8 @@
                     mealPhotoUploader: photoUploader,
                     finishedMealPhotoUploads: photoUploader.finishedUploads,
                     reminderCenter: UITestReminderCenter(),
-                    clock: clock
+                    clock: clock,
+                    subscriptionStore: UITestSubscriptionStore()
                 ))
         }
 
