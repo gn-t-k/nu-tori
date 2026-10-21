@@ -23,7 +23,7 @@ import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/pl
 import { app } from "../app";
 import { pullSyncChanges, type PullResult } from "../sync-routes/testing/pull-sync-changes";
 import { signInTestAccount } from "../testing";
-import { countSubscriptionRows } from "./testing/count-subscription-rows";
+import { countSubscriptionRows } from "../../subscription/durable-object/testing/count-subscription-rows";
 
 describe("購入者のトークンを出す", () => {
   let sessionToken: string;
@@ -130,6 +130,11 @@ describe("取引を知らせる", () => {
         subscription_transactions: 1,
         app_store_subscription_transactions: 1,
         subscription_transaction_report_receipts: 1,
+        app_store_notification_receipts: 0,
+        subscription_transaction_revocations: 0,
+        subscription_transaction_revocation_reversals: 0,
+        subscription_billing_failures: 0,
+        subscription_grace_periods: 0,
       });
     });
 
@@ -181,6 +186,11 @@ describe("取引を知らせる", () => {
           subscription_transactions: 1,
           app_store_subscription_transactions: 1,
           subscription_transaction_report_receipts: 2,
+          app_store_notification_receipts: 0,
+          subscription_transaction_revocations: 0,
+          subscription_transaction_revocation_reversals: 0,
+          subscription_billing_failures: 0,
+          subscription_grace_periods: 0,
         });
       });
     });
