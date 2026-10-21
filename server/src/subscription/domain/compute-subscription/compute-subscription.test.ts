@@ -8,7 +8,12 @@ const yearly = "app.nu-tori.subscription.yearly";
 const transaction = (
   fact: Pick<SubscriptionTransactionFact, "appStoreProductId" | "expiresAt"> &
     Partial<SubscriptionTransactionFact>,
-): SubscriptionTransactionFact => ({ revocations: [], gracePeriodExpiresAts: [], ...fact });
+): SubscriptionTransactionFact => ({
+  environment: "production",
+  revocations: [],
+  gracePeriodExpiresAts: [],
+  ...fact,
+});
 
 describe("サブスクリプション", () => {
   describe("取引が無いとき", () => {

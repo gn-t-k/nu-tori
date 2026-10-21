@@ -314,7 +314,12 @@ describe("createAnthropicConversationProvider", () => {
             {
               type: "stop",
               stopReason: "end_turn",
-              usage: { input_tokens: 2400, output_tokens: 180 },
+              usage: {
+                input_tokens: 2400,
+                output_tokens: 180,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 300,
+              },
             },
             signal,
           ),
@@ -330,7 +335,12 @@ describe("createAnthropicConversationProvider", () => {
           expect(reply).toEqual({
             body: "お昼の親子丼、いいですね。",
             mealIds: [mealId],
-            usage: { inputTokens: 2400, outputTokens: 180 },
+            usage: {
+              inputTokens: 2400,
+              outputTokens: 180,
+              cacheCreationInputTokens: 2000,
+              cacheReadInputTokens: 300,
+            },
           });
         });
       });
@@ -455,7 +465,12 @@ describe("createAnthropicConversationProvider", () => {
             {
               type: "stop",
               stopReason: "max_tokens",
-              usage: { input_tokens: 2400, output_tokens: 4096 },
+              usage: {
+                input_tokens: 2400,
+                output_tokens: 4096,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 300,
+              },
             },
             signal,
           ),
@@ -469,7 +484,12 @@ describe("createAnthropicConversationProvider", () => {
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
-            usage: { inputTokens: 2400, outputTokens: 4096 },
+            usage: {
+              inputTokens: 2400,
+              outputTokens: 4096,
+              cacheCreationInputTokens: 2000,
+              cacheReadInputTokens: 300,
+            },
           });
         });
       });
@@ -484,7 +504,12 @@ describe("createAnthropicConversationProvider", () => {
             {
               type: "stop",
               stopReason: "refusal",
-              usage: { input_tokens: 2400, output_tokens: 4096 },
+              usage: {
+                input_tokens: 2400,
+                output_tokens: 4096,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 300,
+              },
             },
             signal,
           ),
@@ -498,7 +523,12 @@ describe("createAnthropicConversationProvider", () => {
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
-            usage: { inputTokens: 2400, outputTokens: 4096 },
+            usage: {
+              inputTokens: 2400,
+              outputTokens: 4096,
+              cacheCreationInputTokens: 2000,
+              cacheReadInputTokens: 300,
+            },
           });
         });
       });
@@ -513,7 +543,12 @@ describe("createAnthropicConversationProvider", () => {
             {
               type: "stop",
               stopReason: "end_turn",
-              usage: { input_tokens: 2400, output_tokens: 4096 },
+              usage: {
+                input_tokens: 2400,
+                output_tokens: 4096,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 300,
+              },
             },
             signal,
           ),
@@ -527,7 +562,12 @@ describe("createAnthropicConversationProvider", () => {
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
-            usage: { inputTokens: 2400, outputTokens: 4096 },
+            usage: {
+              inputTokens: 2400,
+              outputTokens: 4096,
+              cacheCreationInputTokens: 2000,
+              cacheReadInputTokens: 300,
+            },
           });
         });
       });
@@ -716,7 +756,12 @@ type ClassificationRequest = Parameters<ConversationProvider["classifySentText"]
 const endTurn = {
   type: "stop",
   stopReason: "end_turn",
-  usage: { input_tokens: 2400, output_tokens: 180 },
+  usage: {
+    input_tokens: 2400,
+    output_tokens: 180,
+    cache_creation_input_tokens: 2000,
+    cache_read_input_tokens: 300,
+  },
 } as const;
 
 const neverEnds = () => new AbortController().signal;

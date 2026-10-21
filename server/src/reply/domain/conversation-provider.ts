@@ -1,6 +1,6 @@
 import type { R } from "@praha/byethrow";
 import type { RecordId } from "../../domain/record-id";
-import type { TokenUsage } from "../../domain/token-usage";
+import type { CachedTokenUsage, TokenUsage } from "../../domain/token-usage";
 import type { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
 import type { LlmCallError } from "../../domain/llm-call-error";
 import type { LlmCallInvalidResponseError } from "../../domain/llm-call-invalid-response-error";
@@ -39,6 +39,6 @@ export type GeneratedReply = {
   body: string;
   // 指し示す食事の ID。並びが返事の中の並び。文脈で ID を付けた食事のほかを返したら、ドメイン層が読めない応答にする
   mealIds: readonly RecordId[];
-  // 呼び出しで実際に使ったトークン
-  usage: TokenUsage;
+  // 呼び出しで実際に使ったトークン。キャッシュに書いた・読んだ分も数える
+  usage: CachedTokenUsage;
 };

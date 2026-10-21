@@ -2,7 +2,9 @@ import { match, P } from "ts-pattern";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
+import type { UsageEvent } from "../../domain/usage-event";
 import { resumeHeldEstimations } from "../../estimation/domain/resume-held-estimations";
+import { createWrittenFactUsageEvents } from "./create-written-fact-usage-events";
 import type { AppStoreSubscriptionTransaction } from "./read-app-store-subscription-transaction";
 import type { SubscriptionTransactionStore } from "./subscription-transaction-store";
 import { writeAppStoreTransaction } from "./write-app-store-transaction";
@@ -33,34 +35,31 @@ export const receiveAppStoreServerNotification = (
     subscriptionTransaction: SubscriptionTransactionStore;
     records: Pick<
       RecordKindStores,
-      "estimationSchedule" | "latestTimeZone" | "meal" | "subscriptionStatus"
+      "estimationSchedule" | "latestTimeZone" | "meal" | "subscriptionStatus" | "firstSignIn"
     >;
   },
   notification: AppStoreServerNotificationReceipt,
   now: Date,
-): AppStoreServerNotificationResult => {
+): { result: AppStoreServerNotificationResult; usageEvents: UsageEvent[] } => {
   const { subscriptionTransaction: store, records } = stores;
   const firstSignInId = records.subscriptionStatus.findFacts()?.firstSignInId;
   if (firstSignInId === undefined) {
     throw new Error("最初のサインインの無いアカウントに App Store のサーバー通知が届いた");
   }
-  return writeRecordChanges(({ addChange, estimationAt }): AppStoreServerNotificationResult => {
+  return writeRecordChanges(({ addChange, estimationAt }) => {
     if (store.hasNotificationReceipt(notification.notificationUuid)) {
-      return "duplicate";
+      return { result: "duplicate", usageEvents: [] };
     }
     const reversedRevocationIds = match(notification.notificationType)
       .with("REFUND_REVERSED", () => findUnreversedRevocationIds(store, notification.transaction))
       .otherwise(() => undefined);
     if (reversedRevocationIds?.length === 0) {
-      return "awaiting_revocation";
+      return { result: "awaiting_revocation", usageEvents: [] };
     }
     const receiptId = generateRecordId();
     store.insertReceipt({ id: receiptId, receivedAt: now });
-    const { subscriptionId, subscriptionTransactionId, wroteFact } = writeAppStoreTransaction(
-      store,
-      receiptId,
-      notification.transaction,
-    );
+    const { subscriptionId, subscriptionTransactionId, wroteTransaction, wroteRevocation } =
+      writeAppStoreTransaction(store, receiptId, notification.transaction);
     store.insertNotificationReceipt({
       subscriptionReceiptId: receiptId,
       subscriptionId,
@@ -96,13 +95,24 @@ export const receiveAppStoreServerNotification = (
       // EXPIRED・GRACE_PERIOD_EXPIRED などは受け取りだけ（終わりは事実に持たず導出する）
       .with({ notificationType: P.string }, () => false)
       .exhaustive();
-    if (!wroteFact && !wroteKindFact) {
-      return "written";
+    if (!wroteTransaction && !wroteRevocation && !wroteKindFact) {
+      return { result: "written", usageEvents: [] };
     }
     addChange({ recordType: "subscription_status", recordId: firstSignInId });
     // 使えるかを書いた事実で判定するので、事実の行のあとに呼ぶ
     resumeHeldEstimations(records, estimationAt(now), now);
-    return "written";
+    return {
+      result: "written",
+      usageEvents: createWrittenFactUsageEvents(
+        records,
+        notification.transaction,
+        {
+          wroteTransaction,
+          wroteRevocation,
+        },
+        now,
+      ),
+    };
   });
 };
 
