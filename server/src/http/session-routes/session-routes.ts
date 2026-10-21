@@ -32,6 +32,11 @@ export const sessionRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
                   "端末の IANA のタイムゾーン名。最初のサインインで、使い始めた日をこの土地の日付にする",
                 example: "Asia/Tokyo",
               }),
+              agreedTermsVersion: z.string().optional().openapi({
+                description:
+                  "サインインの画面で見せた規約の版。続けると同意したことになるので、この版への同意を残す。送らない前の版のアプリでは残さず、同意のシートで取る",
+                example: "1",
+              }),
             }),
           },
         },
@@ -53,7 +58,7 @@ export const sessionRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
     },
   }),
   async (c) => {
-    const { idToken, nonce, authorizationCode, timeZone } = c.req.valid("json");
+    const { idToken, nonce, authorizationCode, timeZone, agreedTermsVersion } = c.req.valid("json");
     const signedIn = await R.pipe(
       R.do(),
       R.bind("session", () =>
@@ -82,6 +87,7 @@ export const sessionRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
         c.env,
         session.user.id,
       ),
+      agreedTermsVersion,
     });
     return c.json({ sessionToken: session.token, accountId: session.user.id }, 201);
   },

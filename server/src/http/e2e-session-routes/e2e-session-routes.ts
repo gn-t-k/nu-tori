@@ -30,6 +30,7 @@ export const e2eSessionRoutes = new Hono<{ Bindings: Env }>().post(
       timeZone: undefined,
       // Apple を通さないので、前に無料体験を使った Apple ID には当たらない
       isFreeTrialUsedByEarlierAccount: false,
+      agreedTermsVersion: undefined,
     });
     return c.json({ sessionToken: session.token, accountId: user.id }, 201);
   },

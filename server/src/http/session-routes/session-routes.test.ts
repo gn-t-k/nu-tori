@@ -17,6 +17,7 @@ import { app } from "../app";
 import { pullSyncChanges, type PullResult } from "../sync-routes/testing/pull-sync-changes";
 import { signInTestAccount, signInWithApple } from "../testing";
 import { sha256Hex } from "../testing/sha256-hex";
+import { readTermsAgreements } from "../terms-agreement-routes/testing/read-terms-agreements";
 
 describe("サインイン", () => {
   describe("ID トークンと認可コードを受け付けたとき", () => {
@@ -374,6 +375,56 @@ const pullFreeTrial = async (sessionToken: string) => {
   const { changes } = await (await pullSyncChanges(sessionToken)).json<PullResult>();
   return changes.findLast(({ kind }) => kind === "subscription_status")?.record["freeTrial"];
 };
+
+describe("サインインの画面で見せた規約の版", () => {
+  beforeEach(() => {
+    mockAppleKeysEndpointOk();
+    mockExchangeAppleAuthorizationCodeOk();
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-21T09:00:00Z") });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe("版が届いたとき", () => {
+    test("サインインの画面での、その版への同意を残すこと", async () => {
+      const { accountId } = await signInTestAccount(generateRecordId(), {
+        agreedTermsVersion: "1",
+      });
+      expect(await readTermsAgreements(accountId)).toEqual([
+        {
+          id: expect.any(String),
+          terms_version: "1",
+          agreement_screen: "sign_in",
+          agreed_at: new Date("2026-10-21T09:00:00Z").getTime(),
+        },
+      ]);
+    });
+  });
+
+  describe("その版に同意したあと、もう一度サインインしたとき", () => {
+    let appleUserId: string;
+    let firstAgreementIds: unknown[];
+    beforeEach(async () => {
+      appleUserId = generateRecordId();
+      const { accountId } = await signInTestAccount(appleUserId, { agreedTermsVersion: "1" });
+      firstAgreementIds = (await readTermsAgreements(accountId)).map(({ id }) => id);
+    });
+
+    test("同意を足さないこと", async () => {
+      const { accountId } = await signInTestAccount(appleUserId, { agreedTermsVersion: "1" });
+      const ids = (await readTermsAgreements(accountId)).map(({ id }) => id);
+      expect(ids).toEqual(firstAgreementIds);
+    });
+  });
+
+  describe("版を送らない前の版のアプリでサインインしたとき", () => {
+    test("同意を残さないこと", async () => {
+      const { accountId } = await signInTestAccount(generateRecordId());
+      expect(await readTermsAgreements(accountId)).toEqual([]);
+    });
+  });
+});
 
 const readFirstSignIn = (accountId: string) =>
   runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>

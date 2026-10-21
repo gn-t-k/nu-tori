@@ -19,6 +19,7 @@ describe("アカウントの Durable Object", () => {
       signedInAt: Date;
       timeZone: string | undefined;
       isFreeTrialUsedByEarlierAccount: boolean;
+      agreedTermsVersion: undefined;
     };
     let setUserSpy: ReturnType<typeof mockSetUserOk>;
     beforeEach(() => {
@@ -27,6 +28,7 @@ describe("アカウントの Durable Object", () => {
         signedInAt: new Date(),
         timeZone: undefined,
         isFreeTrialUsedByEarlierAccount: false,
+        agreedTermsVersion: undefined,
       };
       setUserSpy = mockSetUserOk();
     });

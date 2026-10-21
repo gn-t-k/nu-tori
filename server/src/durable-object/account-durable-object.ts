@@ -19,6 +19,7 @@ import { createConversationProvider } from "../reply/durable-object/create-conve
 import { createReplyStream } from "../reply/durable-object/create-reply-stream";
 import { createSentryOptions } from "../observability/create-sentry-options";
 import { readSubscriptionAccount } from "../subscription/d1/read-subscription-account";
+import { createTermsAgreementStore } from "../terms-agreement/durable-object/create-terms-agreement-store";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
@@ -50,6 +51,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         accountRequests.recordFirstSignIn(
           {
             firstSignIn: createFirstSignInStore(drizzle(this.ctx.storage)),
+            termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)),
             writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
           },
           signIn,
@@ -184,6 +186,28 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       return this.respondWithRequestLog(
         accountId,
         accountRequests.decideGoal(await this.createRecordStores(accountId), request, now),
+      );
+    }
+
+    findTermsAgreementRequirement(accountId: string) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.findTermsAgreementRequirement({
+          termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)),
+        }),
+      );
+    }
+
+    agreeToTerms(accountId: string, request: Parameters<typeof accountRequests.agreeToTerms>[1]) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.agreeToTerms(
+          { termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)) },
+          request,
+          new Date(),
+        ),
       );
     }
 
