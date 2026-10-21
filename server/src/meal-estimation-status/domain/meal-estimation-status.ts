@@ -5,4 +5,6 @@ export type MealEstimationStatus =
   | "estimated"
   | "no_dishes"
   | "deferred_to_next_day"
+  // サブスクリプション切れのため推定を始めず、買うのを待っている（いちばん新しい予定が保留）
+  | "awaiting_subscription"
   | "failed";

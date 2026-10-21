@@ -8,7 +8,7 @@ const dishEstimationStatusRecordSchema = z
     dishId: z.string(),
     status: z.string().openapi({
       description:
-        "推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
+        "推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
       example: "estimating",
     }),
   })

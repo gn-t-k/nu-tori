@@ -29,6 +29,8 @@ import {
   mockCreateConversationProviderError,
   mockCreateConversationProviderOk,
 } from "../durable-object/create-conversation-provider/create-conversation-provider.mock";
+import { markTestUser } from "../../subscription-status/http/testing/mark-test-user";
+import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/place-free-trial-last-day";
 import { insertCountedReplyRequests } from "./testing/insert-counted-reply-requests";
 import { readGenerateReplyContexts } from "./testing/read-generate-reply-contexts";
 
@@ -249,28 +251,28 @@ describe("返事を作る", () => {
     });
   });
 
-  describe("その日の返事の生成が 19 回のとき", () => {
+  describe("その日の返事の生成が 9 回のとき", () => {
     let sentTextId: string;
     beforeEach(async () => {
       mockCreateConversationProviderOk({ classification: "conversation" });
-      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 19, halted: 0 });
+      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 9, halted: 0 });
       sentTextId = await sendText();
       await runEstimationAlarm(accountId);
     });
 
-    test("20 回目の返事を作ること", async () => {
+    test("10 回目の返事を作ること", async () => {
       expect(await pullRecordsOf("sent_text_status")).toEqual([
         { sentTextId, classification: "conversation", replyStatus: "replied" },
       ]);
     });
   });
 
-  describe("その日の返事の生成が 20 回のとき", () => {
+  describe("その日の返事の生成が 10 回のとき", () => {
     let sentTextId: string;
     let replySpy: ReturnType<typeof mockCreateConversationProviderOk>;
     beforeEach(async () => {
       replySpy = mockCreateConversationProviderOk({ classification: "conversation" });
-      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 20, halted: 0 });
+      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 10, halted: 0 });
       sentTextId = await sendText();
       await runEstimationAlarm(accountId);
     });
@@ -282,7 +284,14 @@ describe("返事を作る", () => {
         utterances: await pullRecordsOf("ai_utterance"),
       }).toEqual({
         calls: 0,
-        statuses: [{ sentTextId, classification: "conversation", replyStatus: "halted" }],
+        statuses: [
+          {
+            sentTextId,
+            classification: "conversation",
+            replyStatus: "halted",
+            replyHaltReason: "daily_limit",
+          },
+        ],
         utterances: [],
       });
     });
@@ -298,17 +307,24 @@ describe("返事を作る", () => {
           statuses: await pullRecordsOf("sent_text_status"),
         }).toEqual({
           calls: 0,
-          statuses: [{ sentTextId, classification: "conversation", replyStatus: "halted" }],
+          statuses: [
+            {
+              sentTextId,
+              classification: "conversation",
+              replyStatus: "halted",
+              replyHaltReason: "daily_limit",
+            },
+          ],
         });
       });
     });
   });
 
-  describe("その日に 19 回生成し、1 回回数切れにしたとき", () => {
+  describe("その日に 9 回生成し、1 回回数切れにしたとき", () => {
     let sentTextId: string;
     beforeEach(async () => {
       mockCreateConversationProviderOk({ classification: "conversation" });
-      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 19, halted: 1 });
+      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 9, halted: 1 });
       sentTextId = await sendText();
       await runEstimationAlarm(accountId);
     });
@@ -320,14 +336,14 @@ describe("返事を作る", () => {
     });
   });
 
-  describe("送った文章のタイムゾーンでの日に 20 回生成していて、最新のタイムゾーンでの日には生成していないとき", () => {
+  describe("送った文章のタイムゾーンでの日に 10 回生成していて、最新のタイムゾーンでの日には生成していないとき", () => {
     let sentTextId: string;
     beforeEach(async () => {
       mockCreateConversationProviderOk({ classification: "conversation" });
       const todayInNewYork = new Intl.DateTimeFormat("en-CA", {
         timeZone: "America/New_York",
       }).format(Date.now());
-      await insertCountedReplyRequests(accountId, todayInNewYork, { generated: 20, halted: 0 });
+      await insertCountedReplyRequests(accountId, todayInNewYork, { generated: 10, halted: 0 });
       // 端末のタイムゾーン（東京）と違うタイムゾーンで送る
       sentTextId = await sendText({ timeZone: "America/New_York" });
       await runEstimationAlarm(accountId);
@@ -616,7 +632,7 @@ describe("返事を作る", () => {
     beforeEach(async () => {
       await enableUsageEventSending(accountId);
       mockCreateConversationProviderOk({ classification: "conversation" });
-      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 20, halted: 0 });
+      await insertCountedReplyRequests(accountId, todayInTokyo(), { generated: 10, halted: 0 });
       await sendText({ body: "今日はもう一回聞きたい" });
       captureSpy = mockPostHogCaptureEndpointOk();
       await runEstimationAlarm(accountId);
@@ -629,8 +645,92 @@ describe("返事を作る", () => {
         {
           event: "reply_request_halted",
           distinct_id: accountId,
-          properties: { $geoip_disable: true },
+          properties: { reason: "daily_limit", $geoip_disable: true },
         },
+      ]);
+    });
+  });
+
+  describe("無料体験が終わったアカウントが、会話の文章を送ったとき", () => {
+    let sentTextId: string;
+    let replySpy: ReturnType<typeof mockCreateConversationProviderOk>;
+    let captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
+    beforeEach(async () => {
+      await placeFreeTrialLastDay(accountId, addDays(todayInTokyo(), -10));
+      await enableUsageEventSending(accountId);
+      replySpy = mockCreateConversationProviderOk({ classification: "conversation" });
+      sentTextId = await sendText();
+      captureSpy = mockPostHogCaptureEndpointOk();
+      await runEstimationAlarm(accountId);
+    });
+
+    test("提供元を呼ばずに、送った文章の状態がサブスクリプション切れの止めで届くこと", async () => {
+      expect({
+        calls: readGenerateReplyContexts(replySpy).length,
+        statuses: await pullRecordsOf("sent_text_status"),
+      }).toEqual({
+        calls: 0,
+        statuses: [
+          {
+            sentTextId,
+            classification: "conversation",
+            replyStatus: "halted",
+            replyHaltReason: "subscription_expired",
+          },
+        ],
+      });
+    });
+
+    test("止めた出来事を、理由をサブスクリプション切れにして送ること", () => {
+      expect(
+        readPostHogCapturedEvents(captureSpy).filter(({ event }) => event.startsWith("reply_")),
+      ).toEqual([
+        {
+          event: "reply_request_halted",
+          distinct_id: accountId,
+          properties: { reason: "subscription_expired", $geoip_disable: true },
+        },
+      ]);
+    });
+
+    describe("そのあとテストユーザーの旗を立て、次のアラームが動いたとき", () => {
+      beforeEach(async () => {
+        await markTestUser(accountId);
+        await runRetryAlarm();
+      });
+
+      test("返事を作り直さず、止めたままであること", async () => {
+        expect({
+          calls: readGenerateReplyContexts(replySpy).length,
+          statuses: await pullRecordsOf("sent_text_status"),
+        }).toEqual({
+          calls: 0,
+          statuses: [
+            {
+              sentTextId,
+              classification: "conversation",
+              replyStatus: "halted",
+              replyHaltReason: "subscription_expired",
+            },
+          ],
+        });
+      });
+    });
+  });
+
+  describe("無料体験が終わったテストユーザーが、会話の文章を送ったとき", () => {
+    let sentTextId: string;
+    beforeEach(async () => {
+      await placeFreeTrialLastDay(accountId, addDays(todayInTokyo(), -10));
+      await markTestUser(accountId);
+      mockCreateConversationProviderOk({ classification: "conversation" });
+      sentTextId = await sendText();
+      await runEstimationAlarm(accountId);
+    });
+
+    test("返事を作ること", async () => {
+      expect(await pullRecordsOf("sent_text_status")).toEqual([
+        { sentTextId, classification: "conversation", replyStatus: "replied" },
       ]);
     });
   });

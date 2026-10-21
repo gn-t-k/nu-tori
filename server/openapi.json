@@ -192,7 +192,7 @@
           },
           "status": {
             "type": "string",
-            "description": "推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
+            "description": "推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
             "example": "estimating"
           }
         },
@@ -560,6 +560,7 @@
           },
           "status": {
             "type": "string",
+            "description": "写真を待っている（awaiting_photos）、推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
             "example": "estimating"
           }
         },
@@ -657,8 +658,13 @@
           },
           "replyStatus": {
             "type": "string",
-            "description": "応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）",
+            "description": "応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（止めた。理由は replyHaltReason）・failed（作れなかった）",
             "example": "awaiting"
+          },
+          "replyHaltReason": {
+            "type": "string",
+            "description": "replyStatus が halted のときだけある、止めた理由。daily_limit（その日の回数切れ）・subscription_expired（サブスクリプション切れ）。買っても再開しない",
+            "example": "daily_limit"
           },
           "replyFailureReason": {
             "type": "string",
@@ -2929,12 +2935,20 @@
             "enum": [
               "reply_halted"
             ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "daily_limit",
+              "subscription_expired"
+            ]
           }
         },
         "required": [
-          "type"
+          "type",
+          "reason"
         ],
-        "description": "その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる"
+        "description": "返事を作らずに止めた。その日の返事の回数を使い切っていた（daily_limit）か、サブスクリプション切れ（subscription_expired）。送ったあと閉じる"
       },
       "ReplyFailedEvent": {
         "type": "object",

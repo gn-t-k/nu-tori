@@ -116,7 +116,13 @@ const readMeal = (
 const toProgress = (status: MealEstimationStatus): MealEstimationProgress =>
   match(status)
     .returnType<MealEstimationProgress>()
-    .with("awaiting_photos", "estimating", "deferred_to_next_day", () => "awaiting")
+    .with(
+      "awaiting_photos",
+      "estimating",
+      "deferred_to_next_day",
+      "awaiting_subscription",
+      () => "awaiting",
+    )
     .with("failed", () => "failed")
     .with("estimated", "no_dishes", () => "settled")
     .exhaustive();

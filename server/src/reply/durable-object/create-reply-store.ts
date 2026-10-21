@@ -15,6 +15,7 @@ const {
   conversationResendReplyRequests,
   resendReplyRequests,
   replyRequestHalts,
+  replyRequestSubscriptionHalts,
   replyGenerations,
   replyGenerationAttempts,
   replyGenerationAttemptResults,
@@ -70,7 +71,7 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
       }));
 
   return {
-    // 待っている依頼は「回数切れも生成も無いこと」で絞るので、索引が効かない（#419 の「索引」の置かないもの）
+    // 待っている依頼は「止めも生成も無いこと」で絞るので、索引が効かない（#419 の「索引」の置かないもの）
     findWaitingRequests: () =>
       db
         .select({
@@ -84,8 +85,18 @@ export const createReplyStore = (db: DrizzleSqliteDODatabase): ReplyStore => {
         .innerJoin(sentTexts, eq(sentTexts.id, replyRequests.sentTextId))
         .innerJoin(requestTimes, eq(requestTimes.replyRequestId, replyRequests.id))
         .leftJoin(replyRequestHalts, eq(replyRequestHalts.replyRequestId, replyRequests.id))
+        .leftJoin(
+          replyRequestSubscriptionHalts,
+          eq(replyRequestSubscriptionHalts.replyRequestId, replyRequests.id),
+        )
         .leftJoin(replyGenerations, eq(replyGenerations.replyRequestId, replyRequests.id))
-        .where(and(isNull(replyRequestHalts.replyRequestId), isNull(replyGenerations.id)))
+        .where(
+          and(
+            isNull(replyRequestHalts.replyRequestId),
+            isNull(replyRequestSubscriptionHalts.replyRequestId),
+            isNull(replyGenerations.id),
+          ),
+        )
         .orderBy(asc(sentTexts.sentAt), asc(sentTexts.id))
         .all()
         .map(({ requestId, countedOn, sentText, ...times }) => ({

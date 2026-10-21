@@ -1,13 +1,15 @@
 import type { RecordId } from "../../domain/record-id";
 import type { ReplyAttemptConclusion } from "./reply-attempt";
+import type { ReplyHaltReason } from "../../sent-text-status/domain/sent-text-status";
 import type { ReplyRequest } from "./reply-request";
 
-// 返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・返事・作れなかった）を書く置き場。どれも INSERT だけで持つ。
+// 返事の流れの出来事（依頼・きっかけ・止め・生成・試み・結果・返事・作れなかった）を書く置き場。どれも INSERT だけで持つ。
 // 返事の書き込みの口（writeReplyEvents）にだけ渡し、ほかは読みだけの置き場で読む
 export type ReplyEventWriteStore = {
   // 依頼と、きっかけのサブセット1つを書く
   insertRequest: (request: ReplyRequest) => void;
-  insertHalt: (halt: { requestId: RecordId; haltedAt: Date }) => void;
+  // 理由ごとに別の表に書く（回数切れと、サブスクリプション切れ）
+  insertHalt: (halt: { requestId: RecordId; haltedAt: Date; reason: ReplyHaltReason }) => void;
   insertGeneration: (generation: { id: RecordId; requestId: RecordId; startedAt: Date }) => void;
   insertAttempt: (attempt: { id: RecordId; generationId: RecordId; attemptedAt: Date }) => void;
   // 提供元のエラーと 400 なら、エラーの種類も書く

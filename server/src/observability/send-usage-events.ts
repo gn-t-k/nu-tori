@@ -105,11 +105,11 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
     }))
     .with({ name: "reply_request_halted" }, (halted) => ({
       name: halted.name,
-      properties: {},
+      properties: { reason: halted.reason },
     }))
     .with({ name: "estimation_deferred" }, (deferred) => ({
       name: deferred.name,
-      properties: {},
+      properties: { reason: deferred.reason },
     }))
     .with({ name: "goal_decision_recorded" }, (recorded) => ({
       name: recorded.name,

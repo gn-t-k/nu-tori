@@ -1,6 +1,7 @@
 import type { RecordId } from "../../domain/record-id";
 import type { SentTextClassification } from "../../sent-text/domain/sent-text-classification";
 import type { ReplyAttemptConclusion } from "../../reply/domain/reply-attempt";
+import type { ReplyHaltReason } from "./sent-text-status";
 
 export type SentTextStatusStore = {
   // 読み分けの今の結果。まだ読み分けていなければ undefined
@@ -9,11 +10,11 @@ export type SentTextStatusStore = {
   findReplyRequestProgresses: (sentTextId: RecordId) => ReplyRequestProgress[];
 };
 
-// 返事の依頼から先の出来事。回数切れと作れなかったは、終えた時刻を持つ（最後に終わった依頼を決めるため。設計判断 38）。
+// 返事の依頼から先の出来事。止め（回数切れとサブスクリプション切れ）と作れなかったは、終えた時刻を持つ（最後に終わった依頼を決めるため。設計判断 38）。
 // 作れなかったは、理由を決める最後の試みの結果を持つ（結果の無い試みなら undefined）
 export type ReplyRequestProgress =
   | { progress: "waiting" | "generating" | "replied" }
-  | { progress: "halted"; endedAt: Date }
+  | { progress: "halted"; endedAt: Date; reason: ReplyHaltReason }
   | {
       progress: "abandoned";
       endedAt: Date;

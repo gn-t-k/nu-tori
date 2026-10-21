@@ -11,6 +11,7 @@ const {
   conversationResendReplyRequests,
   resendReplyRequests,
   replyRequestHalts,
+  replyRequestSubscriptionHalts,
   replyGenerations,
   replyGenerationAttempts,
   replyGenerationAttemptResults,
@@ -38,8 +39,12 @@ export const createReplyEventWriteStore = (db: DrizzleSqliteDODatabase): ReplyEv
       })
       .exhaustive();
   },
-  insertHalt: ({ requestId, haltedAt }) => {
-    db.insert(replyRequestHalts).values({ replyRequestId: requestId, haltedAt }).run();
+  insertHalt: ({ requestId, haltedAt, reason }) => {
+    const table = match(reason)
+      .with("daily_limit", () => replyRequestHalts)
+      .with("subscription_expired", () => replyRequestSubscriptionHalts)
+      .exhaustive();
+    db.insert(table).values({ replyRequestId: requestId, haltedAt }).run();
   },
   insertGeneration: ({ id, requestId, startedAt }) => {
     db.insert(replyGenerations).values({ id, replyRequestId: requestId, startedAt }).run();
@@ -106,6 +111,11 @@ export const createReplyEventWriteStore = (db: DrizzleSqliteDODatabase): ReplyEv
       .select({ id: replyRequestHalts.replyRequestId })
       .from(replyRequestHalts)
       .where(eq(replyRequestHalts.replyRequestId, requestId))
+      .get() !== undefined ||
+    db
+      .select({ id: replyRequestSubscriptionHalts.replyRequestId })
+      .from(replyRequestSubscriptionHalts)
+      .where(eq(replyRequestSubscriptionHalts.replyRequestId, requestId))
       .get() !== undefined,
   hasUtterance: (generationId) =>
     db

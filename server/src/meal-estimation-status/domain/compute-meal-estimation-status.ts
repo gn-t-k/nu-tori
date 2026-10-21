@@ -18,6 +18,7 @@ export const computeMealEstimationStatus = (
         : "estimating",
     )
     .with("deferred", () => "deferred_to_next_day")
+    .with("held", () => "awaiting_subscription")
     .with("estimating", () => "estimating")
     .with("estimated", () => "estimated")
     .with("no_dishes", () => "no_dishes")

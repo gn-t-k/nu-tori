@@ -21,6 +21,8 @@ import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes"
 import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { signInTestAccount, signInWithApple } from "../../http/testing";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
+import { markTestUser } from "../../subscription-status/http/testing/mark-test-user";
+import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/place-free-trial-last-day";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
 
@@ -89,6 +91,40 @@ describe("まだ見直していない週を見る要求", () => {
           reason: "no_weight",
         },
       ]);
+    });
+  });
+
+  describe("無料体験の最後の日が月曜の前の日で、月曜 0:00 を過ぎて送り切った印のある送る要求が届いたとき", () => {
+    beforeEach(async () => {
+      await placeFreeTrialLastDay(accountId, addDays(firstMonday, -1));
+      await pushSyncWrites(sessionToken, { writes: [], isFinalBatch: true });
+    });
+
+    test("その月曜の週を、サブスクリプション切れとして見送ること", async () => {
+      expect((await readReviews()).map(({ reason }) => reason)).toEqual(["subscription_expired"]);
+    });
+  });
+
+  describe("無料体験の最後の日が月曜で、月曜 0:00 を過ぎて送り切った印のある送る要求が届いたとき", () => {
+    beforeEach(async () => {
+      await placeFreeTrialLastDay(accountId, firstMonday);
+      await pushSyncWrites(sessionToken, { writes: [], isFinalBatch: true });
+    });
+
+    test("その月曜の週を、サブスクリプション切れでない理由で見ること", async () => {
+      expect((await readReviews()).map(({ reason }) => reason)).toEqual(["no_weight"]);
+    });
+  });
+
+  describe("無料体験が終わったテストユーザーに、月曜 0:00 を過ぎて送り切った印のある送る要求が届いたとき", () => {
+    beforeEach(async () => {
+      await placeFreeTrialLastDay(accountId, addDays(firstMonday, -1));
+      await markTestUser(accountId);
+      await pushSyncWrites(sessionToken, { writes: [], isFinalBatch: true });
+    });
+
+    test("その月曜の週を、サブスクリプション切れでない理由で見ること", async () => {
+      expect((await readReviews()).map(({ reason }) => reason)).toEqual(["no_weight"]);
     });
   });
 

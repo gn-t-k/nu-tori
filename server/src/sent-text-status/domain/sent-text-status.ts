@@ -13,8 +13,11 @@ export type SentTextReplyStatus =
   // 依頼が回数切れでも、作れなかったでも、返事ありでもない（生成を待っている・作っている・やり直しを待っている）
   | { type: "awaiting" }
   | { type: "replied" }
-  | { type: "halted" }
+  | { type: "halted"; reason: ReplyHaltReason }
   | { type: "failed"; reason: ReplyFailureReason };
+
+// 止めた理由。その日の回数切れか、サブスクリプション切れ（#647）
+export type ReplyHaltReason = "daily_limit" | "subscription_expired";
 
 // 作れなかった理由。最後の試みの結果が 400 なら bad_request、ほかはやり直しを使い切った
 export type ReplyFailureReason = "retries_exhausted" | "bad_request";
