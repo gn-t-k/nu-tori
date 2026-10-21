@@ -214,6 +214,25 @@ describe("取引を知らせる", () => {
       });
     });
 
+    describe("取り消しが載った同じ取引の写しを知らせたとき", () => {
+      let revoked: Response;
+      beforeEach(async () => {
+        revoked = await postSubscriptionTransaction(sessionToken, {
+          requestId: generateRecordId(),
+          signedTransaction: await signTransaction({
+            revocationDate: Date.parse("2030-01-15T09:00:00Z"),
+          }),
+          trigger: "transaction_updates",
+        });
+      });
+
+      test("取り消しを足し、サブスクリプションの無い状態を返すこと", async () => {
+        expect(await revoked.json()).toMatchObject({
+          changes: [{ record: { subscription: { type: "none" } } }],
+        });
+      });
+    });
+
     describe("ほかのアカウントが同じサブスクリプションを復元したとき", () => {
       let other: { accountId: string; sessionToken: string };
       let restored: Response;

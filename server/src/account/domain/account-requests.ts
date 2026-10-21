@@ -20,6 +20,11 @@ import {
   reportSubscriptionTransaction,
   type SubscriptionTransactionReport,
 } from "../../subscription/domain/report-subscription-transaction";
+import {
+  type AppStoreServerNotificationReceipt,
+  type AppStoreServerNotificationResult,
+  receiveAppStoreServerNotification,
+} from "../../subscription/domain/receive-app-store-server-notification";
 import { agreeToTerms } from "../../terms-agreement/domain/agree-to-terms";
 import { findTermsAgreementRequirement } from "../../terms-agreement/domain/find-terms-agreement-requirement";
 import { recordSignInTermsAgreement } from "../../terms-agreement/domain/record-sign-in-terms-agreement";
@@ -181,6 +186,17 @@ export const accountRequests = {
       usageEvents: [],
     };
   },
+
+  // App Store のサーバー通知。案内は受け口が D1 で決めてから呼ぶ
+  receiveAppStoreServerNotification: (
+    stores: Pick<AccountStores, "writeRecordChanges" | "records" | "subscriptionTransaction">,
+    notification: AppStoreServerNotificationReceipt,
+    now: Date,
+  ): AccountResponse<AppStoreServerNotificationResult> => ({
+    result: receiveAppStoreServerNotification(stores.writeRecordChanges, stores, notification, now),
+    nextAlarmAt: computeNextAlarmAt(stores.records, now),
+    usageEvents: [],
+  }),
 
   deleteRecords: async (
     stores: Pick<AccountStores, "eraseRecords">,
