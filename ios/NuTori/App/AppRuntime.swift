@@ -67,6 +67,8 @@ import SwiftData
         let reminderCenter: any MissedWeightRecordReminderCenter
         /// 今とタイムゾーン（本番は端末の時計、UI テストは起動の値で止めた時計）
         let clock: DeviceClock
+        /// StoreKit の口（本番は StoreKit 2、UI テストは App Store につながない差し替え）
+        let subscriptionStore: any SubscriptionStore
     }
 
     private static func live() throws -> AppRuntime {
@@ -99,7 +101,8 @@ import SwiftData
                 mealPhotoUploader: photoUploader,
                 finishedMealPhotoUploads: photoUploader.finishedUploads,
                 reminderCenter: UserNotificationReminderCenter(),
-                clock: .live
+                clock: .live,
+                subscriptionStore: StoreKitSubscriptionStore()
             ))
     }
 
@@ -213,10 +216,17 @@ import SwiftData
                 )
             }
         )
+        let subscriptionPurchases = SubscriptionPurchases(
+            store: parts.subscriptionStore,
+            client: client,
+            applyReportedChanges: { try await sync.applySubscriptionTransactionReport($0) })
+        // 起動したらすぐ聞き始める。聞き始める前に流れた取引は取りこぼす
+        Task { await subscriptionPurchases.watchTransactionUpdates() }
         let model = RootModel(
             accountSession: session, recordSync: sync, reflector: reflector, health: health,
             missedWeightRecordWatch: missedWeightRecordWatch, goalSetup: goalSetup,
             termsAgreement: TermsAgreementPrompt(client: client, analytics: observation.analytics),
+            subscriptionPurchases: subscriptionPurchases,
             clock: clock)
         let reminderTaps = MissedWeightReminderTapReceiver { [weak model] noticeId in
             Task { await model?.openFromReminder(noticeId: noticeId) }
