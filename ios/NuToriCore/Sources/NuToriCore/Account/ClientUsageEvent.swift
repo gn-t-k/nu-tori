@@ -59,6 +59,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case termsAgreementSheetShown
     /// 同意のシートの「同意して続ける」で、同意を受け付けられた
     case termsAgreed
+    /// 課金画面を開いた。開いたところと、開いたときのサブスクリプションの状態
+    case paywallOpened(entry: PaywallEntry, standing: SubscriptionStanding)
+    /// 課金画面を閉じた。閉じるまでの StoreKit の購入の結果
+    case paywallClosed(PaywallResult)
 
     /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
     /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
@@ -72,6 +76,27 @@ public enum ClientUsageEvent: Sendable, Equatable {
     public enum ReplyRegenerateReason: Sendable, Equatable {
         case failed(SentTextStatus.FailureReason)
         case halted
+    }
+
+    /// 課金画面を開いたところ
+    public enum PaywallEntry: Sendable, Equatable, Hashable {
+        /// アカウントの画面の「サブスクリプション」の行
+        case accountRow
+        /// 無料体験の知らせのカードの「サブスクリプションを見る」
+        case noticeCard
+        /// サブスクリプション切れの入力欄の上のチップ
+        case composerChip
+        /// 食事の画面の、サブスクリプションを待っている推定の行の「サブスクリプションを見る」
+        case awaitingMeal
+    }
+
+    /// 課金画面を閉じるまでの StoreKit の購入の結果
+    public enum PaywallResult: Sendable, Equatable {
+        case purchased
+        /// 買う画面を閉じた。購入ボタンを押さずに課金画面を閉じたときも含む
+        case cancelled
+        /// 承認を待っている
+        case pending
     }
 
     /// 週の振り返りを開いたところ
@@ -178,6 +203,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .goalScreenOpened: "goal_screen_opened"
         case .termsAgreementSheetShown: "terms_agreement_sheet_shown"
         case .termsAgreed: "terms_agreed"
+        case .paywallOpened: "paywall_opened"
+        case .paywallClosed: "paywall_closed"
         }
     }
 
@@ -191,7 +218,7 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
             .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
             .replyMealOpened, .goalSetup, .weeklyReviewOpened, .goalScreenOpened,
-            .termsAgreementSheetShown, .termsAgreed:
+            .termsAgreementSheetShown, .termsAgreed, .paywallOpened, .paywallClosed:
             nil
         case .screen(.timeline):
             "timeline"
@@ -274,6 +301,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
             ["entry": .token(entry.token), "weeks_ago": .count(weeksAgo)]
         case .goalScreenOpened(let entry, let status):
             ["entry": .token(entry.token), "goal_status": .token(status.token)]
+        case .paywallOpened(let entry, let standing):
+            ["entry": .token(entry.token), "standing": .token(standing.token)]
+        case .paywallClosed(let result):
+            ["result": .token(result.token)]
         }
     }
 
@@ -415,6 +446,39 @@ extension GoalSetupObservation.Choice {
         case .hard: "hard"
         case .custom: "custom"
         case .maintain: "maintain"
+        }
+    }
+}
+
+extension ClientUsageEvent.PaywallEntry {
+    fileprivate var token: String {
+        switch self {
+        case .accountRow: "account_row"
+        case .noticeCard: "notice_card"
+        case .composerChip: "composer_chip"
+        case .awaitingMeal: "awaiting_meal"
+        }
+    }
+}
+
+extension ClientUsageEvent.PaywallResult {
+    fileprivate var token: String {
+        switch self {
+        case .purchased: "purchased"
+        case .cancelled: "cancelled"
+        case .pending: "pending"
+        }
+    }
+}
+
+extension SubscriptionStanding {
+    /// 日付と日数は送らない
+    fileprivate var token: String {
+        switch self {
+        case .testUser: "test_user"
+        case .freeTrial: "free_trial"
+        case .subscribed: "subscribed"
+        case .expired: "expired"
         }
     }
 }

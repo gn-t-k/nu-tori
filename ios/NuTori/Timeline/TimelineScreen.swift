@@ -38,6 +38,8 @@ struct TimelineScreen: View {
     /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
     let sendText: (TextDraft) async -> Void
     let accountActions: AccountActions
+    /// 課金画面を開く（`paywallSheet`）ときに渡す
+    let paywallActions: PaywallActions
     let mealActions: MealActions
     /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
     let conversation: Timeline.Conversation
@@ -176,7 +178,8 @@ struct TimelineScreen: View {
             }
             .sheet(isPresented: $showsAccount) {
                 NavigationStack {
-                    AccountScreenContainer(actions: accountActions) {
+                    AccountScreenContainer(actions: accountActions, paywallActions: paywallActions)
+                    {
                         showsAccount = false
                     }
                 }
