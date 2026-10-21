@@ -29,7 +29,7 @@ export type ReportedRecord = {
 };
 
 // 端末からの取引の知らせを、記録の変化を書く入口の1つのトランザクションで書く（案内は呼ぶ前に D1 で決めておく）。
-// 初めての取引を書いたら、サブスクリプションの状態の変更を足し、保留した推定を再開する。
+// 取引か取り消しを書いたら、サブスクリプションの状態の変更を足し、保留した推定を再開する。
 // 同じ要求の ID の再送は、書かずに今の状態を返す
 export const reportSubscriptionTransaction = (
   writeRecordChanges: RecordChangeWriter,
@@ -59,7 +59,7 @@ export const reportSubscriptionTransaction = (
       return [];
     }
     store.insertReceipt({ id: report.requestId, receivedAt: now });
-    const { subscriptionTransactionId, isNewTransaction } = writeAppStoreTransaction(
+    const { subscriptionTransactionId, wroteFact } = writeAppStoreTransaction(
       store,
       report.requestId,
       report.transaction,
@@ -69,7 +69,7 @@ export const reportSubscriptionTransaction = (
       subscriptionTransactionId,
       reportTrigger: report.trigger,
     });
-    if (!isNewTransaction) {
+    if (!wroteFact) {
       return [];
     }
     addChange({ recordType: "subscription_status", recordId: firstSignInId });

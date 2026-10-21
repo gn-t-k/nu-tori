@@ -59,6 +59,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case termsAgreementSheetShown
     /// 同意のシートの「同意して続ける」で、同意を受け付けられた
     case termsAgreed
+    /// サブスクリプション中に「アカウントを削除」を押し、退会の案内のシートを出した
+    case accountDeletionGuideOpened
+    /// 退会の案内のシートの「サブスクリプションを解約」で、解約の画面を開いた
+    case manageSubscriptionsOpened
     /// 課金画面を開いた。開いたところと、開いたときのサブスクリプションの状態
     case paywallOpened(entry: PaywallEntry, standing: SubscriptionStanding)
     /// 課金画面を閉じた。閉じるまでの StoreKit の購入の結果
@@ -203,6 +207,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .goalScreenOpened: "goal_screen_opened"
         case .termsAgreementSheetShown: "terms_agreement_sheet_shown"
         case .termsAgreed: "terms_agreed"
+        case .accountDeletionGuideOpened: "account_deletion_guide_opened"
+        case .manageSubscriptionsOpened: "manage_subscriptions_opened"
         case .paywallOpened: "paywall_opened"
         case .paywallClosed: "paywall_closed"
         }
@@ -218,7 +224,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
             .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
             .replyMealOpened, .goalSetup, .weeklyReviewOpened, .goalScreenOpened,
-            .termsAgreementSheetShown, .termsAgreed, .paywallOpened, .paywallClosed:
+            .termsAgreementSheetShown, .termsAgreed, .accountDeletionGuideOpened,
+            .manageSubscriptionsOpened, .paywallOpened, .paywallClosed:
             nil
         case .screen(.timeline):
             "timeline"
@@ -248,7 +255,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .cameraPermissionNoticeShown, .mealTimeCorrected, .dishCorrected, .dishAdded,
             .dishDeleted,
             .unansweredNoticeLineTapped,
-            .notificationSettingsOpened, .replyMealOpened, .termsAgreementSheetShown, .termsAgreed:
+            .notificationSettingsOpened, .replyMealOpened, .termsAgreementSheetShown, .termsAgreed,
+            .accountDeletionGuideOpened, .manageSubscriptionsOpened:
             [:]
         case .resentAsConversation(let deletedMealCount):
             ["deleted_meal_count": .count(deletedMealCount)]

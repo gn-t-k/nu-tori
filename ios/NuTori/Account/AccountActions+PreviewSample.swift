@@ -10,7 +10,11 @@
                 turnOffUsageData: {},
                 deleteAccount: { nil },
                 notificationPermission: { .permitted },
-                openedNotificationSettings: {}
+                openedNotificationSettings: {},
+                accountDeletionGuide: { nil },
+                rereadAccountDeletionGuide: { $0 },
+                openedAccountDeletionGuide: {},
+                openedManageSubscriptions: {}
             )
         }
     }
