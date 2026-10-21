@@ -24,7 +24,7 @@ export type AppStoreSubscriptionTransaction = {
 };
 
 // 署名を確かめた取引のうち、このアプリのサブスクリプションの取引だけを受け付ける。
-// 知らない商品の取引は書かない（サブスクリプションの状態の計算が、知らない商品の取引で投げるため）
+// 知らない商品と期限の無い取引は書かない（サブスクリプションの状態の計算が、知らない商品の取引で投げ、期限で終わりを出すため）
 export const readAppStoreSubscriptionTransaction = (
   transaction: AppStoreTransaction,
   bundleId: string,
@@ -41,11 +41,11 @@ export const readAppStoreSubscriptionTransaction = (
   if (transaction.bundleId !== bundleId) {
     return R.fail(new SubscriptionTransactionRejectedError({ reason: "bundle_id_mismatch" }));
   }
-  if (
-    !Object.hasOwn(appStoreProductPlans, transaction.productId) ||
-    transaction.expiresDate === undefined
-  ) {
+  if (!Object.hasOwn(appStoreProductPlans, transaction.productId)) {
     return R.fail(new SubscriptionTransactionRejectedError({ reason: "product_unknown" }));
+  }
+  if (transaction.expiresDate === undefined) {
+    return R.fail(new SubscriptionTransactionRejectedError({ reason: "expires_date_missing" }));
   }
   return R.succeed({
     environment,
@@ -65,11 +65,15 @@ export const readAppStoreSubscriptionTransaction = (
   });
 };
 
-// 環境が Production・Sandbox でない（Xcode の StoreKit のテストなど）、ほかのアプリの取引、知らない商品の取引
+// 環境が Production・Sandbox でない（Xcode の StoreKit のテストなど）、ほかのアプリの取引、知らない商品の取引、期限の無い取引
 export class SubscriptionTransactionRejectedError extends ErrorFactory({
   name: "SubscriptionTransactionRejectedError",
   message: "受け付けない取引",
   fields: ErrorFactory.fields<{
-    reason: "environment_unsupported" | "bundle_id_mismatch" | "product_unknown";
+    reason:
+      | "environment_unsupported"
+      | "bundle_id_mismatch"
+      | "product_unknown"
+      | "expires_date_missing";
   }>(),
 }) {}

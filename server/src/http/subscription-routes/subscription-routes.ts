@@ -12,6 +12,7 @@ import { readAppStoreSubscriptionTransaction } from "../../subscription/domain/r
 import { subscriptionTransactionReportTriggers } from "../../subscription/domain/subscription";
 import { authenticateAccount } from "../authenticate-account";
 import { SubscriptionTransactionReportFailedError } from "./subscription-transaction-report-failed-error";
+import { subscriptionTransactionRejectionCodes } from "./subscription-transaction-rejection-codes";
 import { toChangeBody } from "../sync-routes/to-change-body";
 import { subscriptionTransactionReportSchema } from "./subscription-transaction-report-schema";
 
@@ -93,16 +94,12 @@ export const subscriptionRoutes = new OpenAPIHono<{ Bindings: Env }>()
         401: { description: "セッションが無いか、切れている" },
         422: {
           description:
-            "受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）",
+            "受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）・expires_date_missing（期限が無い）",
           content: {
             "application/json": {
               schema: z
                 .object({
-                  code: z.enum([
-                    "transaction_unverified",
-                    "environment_unsupported",
-                    "product_unknown",
-                  ]),
+                  code: z.enum(subscriptionTransactionRejectionCodes),
                 })
                 .openapi("SubscriptionTransactionRejection"),
             },
@@ -127,7 +124,12 @@ export const subscriptionRoutes = new OpenAPIHono<{ Bindings: Env }>()
       if (R.isFailure(read)) {
         const code = match(read.error.reason)
           .with("bundle_id_mismatch", () => "transaction_unverified" as const)
-          .with("environment_unsupported", "product_unknown", (other) => other)
+          .with(
+            "environment_unsupported",
+            "product_unknown",
+            "expires_date_missing",
+            (other) => other,
+          )
           .exhaustive();
         // Sandbox の取引は、開発用のビルドで買うたびに本番のサーバーにも届くので、Workers Logs にだけ出す
         if (verified.value.environment !== "Sandbox") {

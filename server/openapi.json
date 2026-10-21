@@ -3103,7 +3103,8 @@
             "enum": [
               "transaction_unverified",
               "environment_unsupported",
-              "product_unknown"
+              "product_unknown",
+              "expires_date_missing"
             ]
           }
         },
@@ -4262,7 +4263,7 @@
             "description": "セッションが無いか、切れている"
           },
           "422": {
-            "description": "受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）",
+            "description": "受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）・expires_date_missing（期限が無い）",
             "content": {
               "application/json": {
                 "schema": {

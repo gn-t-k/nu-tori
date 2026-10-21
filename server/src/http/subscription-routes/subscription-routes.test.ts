@@ -344,41 +344,116 @@ describe("取引を知らせる", () => {
     });
   });
 
-  describe("受け付けない取引を知らせたとき", () => {
-    test.each([
-      {
-        name: "署名が差し込んだ根につながらない",
-        sign: async () => signAppStoreTransaction(await createTestCertificateChain()),
-        code: "transaction_unverified",
-      },
-      {
-        name: "ほかのアプリの取引",
-        sign: () => signTransaction({ bundleId: "app.example.other" }),
-        code: "transaction_unverified",
-      },
-      {
-        name: "環境が Xcode",
-        sign: () => signTransaction({ environment: "Xcode" }),
-        code: "environment_unsupported",
-      },
-      {
-        name: "知らない商品",
-        sign: () => signTransaction({ productId: "app.nu-tori.unknown" }),
-        code: "product_unknown",
-      },
-    ])("$name なら、$code で断り、何も書かないこと", async ({ sign, code }) => {
-      const response = await postSubscriptionTransaction(sessionToken, {
+  describe("署名が差し込んだ根につながらない取引を知らせたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postSubscriptionTransaction(sessionToken, {
         requestId: generateRecordId(),
-        signedTransaction: await sign(),
+        signedTransaction: await signAppStoreTransaction(await createTestCertificateChain()),
         trigger: "purchase",
       });
+    });
+
+    test("transaction_unverified で断り、何も書かないこと", async () => {
       expect({
         status: response.status,
         body: await response.json(),
         rows: await countSubscriptionRows(accountId),
       }).toMatchObject({
         status: 422,
-        body: { code },
+        body: { code: "transaction_unverified" },
+        rows: { subscription_receipts: 0 },
+      });
+    });
+  });
+
+  describe("ほかのアプリの取引を知らせたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postSubscriptionTransaction(sessionToken, {
+        requestId: generateRecordId(),
+        signedTransaction: await signTransaction({ bundleId: "app.example.other" }),
+        trigger: "purchase",
+      });
+    });
+
+    test("transaction_unverified で断り、何も書かないこと", async () => {
+      expect({
+        status: response.status,
+        body: await response.json(),
+        rows: await countSubscriptionRows(accountId),
+      }).toMatchObject({
+        status: 422,
+        body: { code: "transaction_unverified" },
+        rows: { subscription_receipts: 0 },
+      });
+    });
+  });
+
+  describe("環境が Xcode の取引を知らせたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postSubscriptionTransaction(sessionToken, {
+        requestId: generateRecordId(),
+        signedTransaction: await signTransaction({ environment: "Xcode" }),
+        trigger: "purchase",
+      });
+    });
+
+    test("environment_unsupported で断り、何も書かないこと", async () => {
+      expect({
+        status: response.status,
+        body: await response.json(),
+        rows: await countSubscriptionRows(accountId),
+      }).toMatchObject({
+        status: 422,
+        body: { code: "environment_unsupported" },
+        rows: { subscription_receipts: 0 },
+      });
+    });
+  });
+
+  describe("知らない商品の取引を知らせたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postSubscriptionTransaction(sessionToken, {
+        requestId: generateRecordId(),
+        signedTransaction: await signTransaction({ productId: "app.nu-tori.unknown" }),
+        trigger: "purchase",
+      });
+    });
+
+    test("product_unknown で断り、何も書かないこと", async () => {
+      expect({
+        status: response.status,
+        body: await response.json(),
+        rows: await countSubscriptionRows(accountId),
+      }).toMatchObject({
+        status: 422,
+        body: { code: "product_unknown" },
+        rows: { subscription_receipts: 0 },
+      });
+    });
+  });
+
+  describe("期限の無い取引を知らせたとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postSubscriptionTransaction(sessionToken, {
+        requestId: generateRecordId(),
+        signedTransaction: await signTransaction({ expiresDate: undefined }),
+        trigger: "purchase",
+      });
+    });
+
+    test("expires_date_missing で断り、何も書かないこと", async () => {
+      expect({
+        status: response.status,
+        body: await response.json(),
+        rows: await countSubscriptionRows(accountId),
+      }).toMatchObject({
+        status: 422,
+        body: { code: "expires_date_missing" },
         rows: { subscription_receipts: 0 },
       });
     });
