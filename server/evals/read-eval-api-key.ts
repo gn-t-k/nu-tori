@@ -6,13 +6,15 @@ const environmentVariable = "NU_TORI_ANTHROPIC_API_KEY";
 const keychainService = "nu-tori-eval";
 const keychainAccount = "anthropic";
 
-// 提供元は場面ごとに呼ぶので、キーチェーンを読むのは1回の実行で1度にする（spawnSync のあいだは並べた呼び出しが止まる）
-let cached: { apiKey: string | undefined } | undefined;
-
 export const readEvalApiKey = (): string | undefined => {
   cached ??= { apiKey: readUncached() };
   return cached.apiKey;
 };
+
+export const missingEvalApiKeyMessage = `開発用のワークスペースのキーを、環境変数 ${environmentVariable} か、Mac のキーチェーン（security add-generic-password -s ${keychainService} -a ${keychainAccount} -w で置く）に置いてから回す`;
+
+// 提供元は場面ごとに呼ぶので、キーチェーンを読むのは1回の実行で1度にする（spawnSync のあいだは並べた呼び出しが止まる）
+let cached: { apiKey: string | undefined } | undefined;
 
 const readUncached = (): string | undefined => {
   const fromEnvironment = process.env[environmentVariable];
@@ -26,5 +28,3 @@ const readUncached = (): string | undefined => {
   );
   return keychain.status === 0 ? keychain.stdout.trim() : undefined;
 };
-
-export const missingEvalApiKeyMessage = `開発用のワークスペースのキーを、環境変数 ${environmentVariable} か、Mac のキーチェーン（security add-generic-password -s ${keychainService} -a ${keychainAccount} -w で置く）に置いてから回す`;
