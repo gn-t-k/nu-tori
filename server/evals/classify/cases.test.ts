@@ -4,7 +4,7 @@ import cases from "./cases.json";
 // 読み分けの評価の組（仕様 #419 の「読み分け」）。promptfoo の tests の形で、正解を開発者が確かめる。
 describe("読み分けの評価の組", () => {
   describe("組の全体", () => {
-    test("80 個あること", () => {
+    test("決めた数だけあること", () => {
       expect(cases).toHaveLength(80);
     });
 
@@ -28,7 +28,7 @@ describe("読み分けの評価の組", () => {
         boundaryCases = cases.filter(({ vars }) => vars.boundary === "ate");
       });
 
-      test("18 個あること", () => {
+      test("決めた数だけあること", () => {
         expect(boundaryCases).toHaveLength(18);
       });
 
@@ -43,7 +43,7 @@ describe("読み分けの評価の組", () => {
         boundaryCases = cases.filter(({ vars }) => vars.boundary === "ate_with_question");
       });
 
-      test("10 個あること", () => {
+      test("決めた数だけあること", () => {
         expect(boundaryCases).toHaveLength(10);
       });
 
@@ -58,7 +58,7 @@ describe("読み分けの評価の組", () => {
         boundaryCases = cases.filter(({ vars }) => vars.boundary === "bare_word");
       });
 
-      test("10 個あること", () => {
+      test("決めた数だけあること", () => {
         expect(boundaryCases).toHaveLength(10);
       });
 
@@ -75,7 +75,7 @@ describe("読み分けの評価の組", () => {
         boundaryCases = cases.filter(({ vars }) => vars.boundary === "will_eat");
       });
 
-      test("10 個あること", () => {
+      test("決めた数だけあること", () => {
         expect(boundaryCases).toHaveLength(10);
       });
 
@@ -90,7 +90,7 @@ describe("読み分けの評価の組", () => {
         boundaryCases = cases.filter(({ vars }) => vars.boundary === "correction");
       });
 
-      test("10 個あること", () => {
+      test("決めた数だけあること", () => {
         expect(boundaryCases).toHaveLength(10);
       });
 
@@ -105,7 +105,7 @@ describe("読み分けの評価の組", () => {
         boundaryCases = cases.filter(({ vars }) => vars.boundary === "did_not_eat");
       });
 
-      test("10 個あること", () => {
+      test("決めた数だけあること", () => {
         expect(boundaryCases).toHaveLength(10);
       });
 
@@ -120,7 +120,7 @@ describe("読み分けの評価の組", () => {
         boundaryCases = cases.filter(({ vars }) => vars.boundary === "question");
       });
 
-      test("12 個あること", () => {
+      test("決めた数だけあること", () => {
         expect(boundaryCases).toHaveLength(12);
       });
 
