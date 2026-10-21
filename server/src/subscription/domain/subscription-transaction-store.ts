@@ -24,6 +24,37 @@ export type SubscriptionTransactionStore = {
     appStoreTransactionId: string;
     appStoreProductId: string;
   }) => void;
+  // 取引に取り消しの時刻の取り消しがあるか（戻したものを含む）
+  hasRevocationAt: (subscriptionTransactionId: RecordId, revokedAt: Date) => boolean;
+  insertRevocation: (revocation: {
+    id: RecordId;
+    subscriptionTransactionId: RecordId;
+    subscriptionReceiptId: RecordId;
+    revokedAt: Date;
+  }) => void;
+  // 取引の取り消しのうち、戻していないもの
+  findUnreversedRevocationIds: (subscriptionTransactionId: RecordId) => RecordId[];
+  insertRevocationReversal: (reversal: {
+    subscriptionTransactionRevocationId: RecordId;
+    subscriptionReceiptId: RecordId;
+    reversedAt: Date;
+  }) => void;
+  // 請求の失敗と、猶予があればその終わりを書く
+  insertBillingFailure: (failure: {
+    id: RecordId;
+    subscriptionTransactionId: RecordId;
+    subscriptionReceiptId: RecordId;
+    failedAt: Date;
+    gracePeriodExpiresAt: Date | undefined;
+  }) => void;
+  hasNotificationReceipt: (notificationUuid: string) => boolean;
+  insertNotificationReceipt: (receipt: {
+    subscriptionReceiptId: RecordId;
+    subscriptionId: RecordId;
+    notificationUuid: string;
+    notificationType: string;
+    notificationSubtype: string | undefined;
+  }) => void;
   insertTransactionReportReceipt: (receipt: {
     subscriptionReceiptId: RecordId;
     subscriptionTransactionId: RecordId;

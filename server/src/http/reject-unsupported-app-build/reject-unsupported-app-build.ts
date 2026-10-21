@@ -8,7 +8,10 @@ export const rejectUnsupportedAppBuild = createMiddleware<{
   Variables: { unsupportedAppBuild?: number };
 }>(async (c, next) => {
   // アプリから来ない経路。Apple はビルド番号を送らない
-  const excludedPaths = new Set(["/v1/apple-server-notifications"]);
+  const excludedPaths = new Set([
+    "/v1/apple-server-notifications",
+    "/v1/app-store-server-notifications",
+  ]);
   const minimumAppBuild = c.env.MINIMUM_APP_BUILD;
   const appBuild = parseAppBuild(c.req.header("x-app-build"));
   // 最低バージョンを持たない環境（開発用）では判定しない

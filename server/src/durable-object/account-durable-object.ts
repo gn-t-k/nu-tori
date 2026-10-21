@@ -231,6 +231,25 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
+    // App Store のサーバー通知。案内は受け口が D1 で決めてから呼ぶ
+    async receiveAppStoreServerNotification(
+      accountId: string,
+      notification: Parameters<typeof accountRequests.receiveAppStoreServerNotification>[1],
+    ) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.receiveAppStoreServerNotification(
+          {
+            ...(await this.createRecordStores(accountId)),
+            subscriptionTransaction: createSubscriptionTransactionStore(drizzle(this.ctx.storage)),
+          },
+          notification,
+          new Date(),
+        ),
+      );
+    }
+
     async deleteRecords(accountId: string): Promise<void> {
       setUser({ id: accountId });
       return this.respond(

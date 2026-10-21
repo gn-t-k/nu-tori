@@ -19,6 +19,8 @@ export type AppStoreSubscriptionTransaction = {
   expiresAt: Date;
   // 買うときに渡した購入者のトークン（小文字）。渡さずに買った取引には無い
   appAccountToken: string | undefined;
+  // 返金などで取り消された時刻。取り消されていない写しには無い
+  revokedAt: Date | undefined;
 };
 
 // 署名を確かめた取引のうち、このアプリのサブスクリプションの取引だけを受け付ける。
@@ -58,6 +60,8 @@ export const readAppStoreSubscriptionTransaction = (
     purchasedAt: new Date(transaction.purchaseDate),
     expiresAt: new Date(transaction.expiresDate),
     appAccountToken: transaction.appAccountToken?.toLowerCase(),
+    revokedAt:
+      transaction.revocationDate === undefined ? undefined : new Date(transaction.revocationDate),
   });
 };
 
