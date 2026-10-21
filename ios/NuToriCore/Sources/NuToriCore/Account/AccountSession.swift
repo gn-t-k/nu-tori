@@ -65,7 +65,8 @@ public actor AccountSession {
                 idToken: credential.idToken,
                 nonce: credential.nonce,
                 authorizationCode: credential.authorizationCode,
-                timeZone: timeZone()
+                timeZone: timeZone(),
+                agreedTermsVersion: TermsVersion.shownAtSignIn
             )
         } catch is CancellationError {
             throw CancellationError()

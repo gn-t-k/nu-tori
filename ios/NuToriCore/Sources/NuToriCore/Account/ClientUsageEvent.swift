@@ -55,6 +55,10 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case weeklyReviewOpened(entry: WeeklyReviewEntry, weeksAgo: Int)
     /// 目標の画面を開いた
     case goalScreenOpened(entry: GoalScreenEntry, status: GoalScreenStatus)
+    /// 開いたときに、規約への同意のシートを出した
+    case termsAgreementSheetShown
+    /// 同意のシートの「同意して続ける」で、同意を受け付けられた
+    case termsAgreed
 
     /// `now` は消した時刻。端末の時計が送った時刻より前なら、0 秒にする。
     /// 推定の状態がまだ届いていない食事は、サーバーで予定がまだ無いので、写真を待っているとして送る
@@ -172,6 +176,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .goalSetup(.plansUnavailable): "goal_plans_unavailable"
         case .weeklyReviewOpened: "weekly_review_opened"
         case .goalScreenOpened: "goal_screen_opened"
+        case .termsAgreementSheetShown: "terms_agreement_sheet_shown"
+        case .termsAgreed: "terms_agreed"
         }
     }
 
@@ -184,7 +190,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .missedWeightReminderOpened,
             .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
             .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
-            .replyMealOpened, .goalSetup, .weeklyReviewOpened, .goalScreenOpened:
+            .replyMealOpened, .goalSetup, .weeklyReviewOpened, .goalScreenOpened,
+            .termsAgreementSheetShown, .termsAgreed:
             nil
         case .screen(.timeline):
             "timeline"
@@ -214,7 +221,7 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .cameraPermissionNoticeShown, .mealTimeCorrected, .dishCorrected, .dishAdded,
             .dishDeleted,
             .unansweredNoticeLineTapped,
-            .notificationSettingsOpened, .replyMealOpened:
+            .notificationSettingsOpened, .replyMealOpened, .termsAgreementSheetShown, .termsAgreed:
             [:]
         case .resentAsConversation(let deletedMealCount):
             ["deleted_meal_count": .count(deletedMealCount)]

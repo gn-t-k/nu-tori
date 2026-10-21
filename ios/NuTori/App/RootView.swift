@@ -33,6 +33,14 @@ struct RootView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
+    private var isShowingTermsAgreementSheet: Binding<Bool> {
+        Binding(
+            get: { model.termsAgreementSheet != nil },
+            // 下へ送って閉じることはできないので、閉じたことを受け取らない
+            set: { _ in }
+        )
+    }
+
     /// UI テストは、標準の選ぶ画面を開かずに、決まった写真を選んだことにする
     private var photoSelection: MealPhotoSelection {
         #if DEBUG
@@ -140,6 +148,10 @@ struct RootView: View {
                 ),
                 holdsMealOriginals: { await model.holdsMealOriginals($0) }
             )
+            // 閉じられないシート。同意を受け付けられたら、モデルが消して閉じる
+            .sheet(isPresented: isShowingTermsAgreementSheet) {
+                TermsAgreementSheetView { await model.agreeToTerms() }
+            }
         }
     }
 }

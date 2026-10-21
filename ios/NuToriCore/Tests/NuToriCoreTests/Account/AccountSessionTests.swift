@@ -300,6 +300,16 @@ struct AccountSessionTests {
                 #expect(body.authorizationCode == "auth-code")
                 #expect(body.timeZone == "Asia/Tokyo")
             }
+
+            @Test("サインインの画面で見せた規約の版を、同意した版として送ること")
+            func sendsAgreedTermsVersion() async throws {
+                _ = try await session.signIn(with: credential)
+
+                let request = try #require(transport.requests.first)
+                let body = try JSONDecoder().decode(
+                    SessionRequestBody.self, from: Data(try #require(request.body).utf8))
+                #expect(body.agreedTermsVersion == "1")
+            }
         }
 
         @Suite("前のアカウントと別のアカウントのとき")
