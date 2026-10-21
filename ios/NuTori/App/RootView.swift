@@ -100,6 +100,14 @@ struct RootView: View {
                     notificationPermission: { await model.notificationPermission() },
                     openedNotificationSettings: {
                         await model.capture(.notificationSettingsOpened)
+                    },
+                    accountDeletionGuide: { await model.accountDeletionGuide() },
+                    rereadAccountDeletionGuide: { await model.rereadAccountDeletionGuide($0) },
+                    openedAccountDeletionGuide: {
+                        await model.capture(.accountDeletionGuideOpened)
+                    },
+                    openedManageSubscriptions: {
+                        await model.capture(.manageSubscriptionsOpened)
                     }
                 ),
                 mealActions: MealActions(

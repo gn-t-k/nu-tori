@@ -139,6 +139,27 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("退会の案内のシート")
+    struct AccountDeletionGuide {
+        @Test("シートを出したことを、中身を持たない出来事にすること")
+        func guideOpenedHasNoFields() {
+            let event = ClientUsageEvent.accountDeletionGuideOpened
+
+            #expect(event.name == "account_deletion_guide_opened")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+
+        @Test("解約の画面を開いたことを、中身を持たない出来事にすること")
+        func manageSubscriptionsOpenedHasNoFields() {
+            let event = ClientUsageEvent.manageSubscriptionsOpened
+
+            #expect(event.name == "manage_subscriptions_opened")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("答えていない知らせの1行を押したとき")
     struct UnansweredNoticeLineTapped {
         @Test("中身を持たない出来事にすること")

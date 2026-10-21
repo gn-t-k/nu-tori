@@ -363,6 +363,17 @@ final class RootModel {
         }
     }
 
+    /// サブスクリプション中で自動更新がオンのときだけ返す。返したら、確かめの前に退会の案内を出す
+    func accountDeletionGuide() async -> AccountDeletionGuide? {
+        await AccountDeletionGuide.prepare(
+            status: await recordSync.subscriptionStatus(), now: clock.now(),
+            timeZone: clock.timeZone(), purchases: subscriptionPurchases)
+    }
+
+    func rereadAccountDeletionGuide(_ guide: AccountDeletionGuide) async -> AccountDeletionGuide {
+        await guide.rereadingRenewal(purchases: subscriptionPurchases)
+    }
+
     func signIn(with result: AppleSignInResult) async {
         guard case .signIn(let prompt, _) = screen else { return }
         switch result {
