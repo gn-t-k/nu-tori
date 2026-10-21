@@ -23,6 +23,24 @@ public struct AccountDeletionGuide: Sendable, Equatable {
         self.renewal = renewal
     }
 
+    /// 「月額・自動更新」
+    public var subscriptionText: String { "\(plan.name)・自動更新" }
+
+    /// 「11月7日に ¥980」。価格を読めないときは日だけ。日付はアカウントの行・知らせと同じ書き方にする
+    public var nextBillingText: String {
+        let day = GoalText.monthDay(renewsOn)
+        guard let displayPrice else { return day }
+        return "\(day)に \(displayPrice)"
+    }
+
+    /// 1つめの段（解約する）の文
+    public var cancellationStepText: String {
+        "サブスクリプションを解約する。解約しても、\(GoalText.monthDay(renewsOn))まで使えます。"
+    }
+
+    /// 解約したあとの「使える日」。「11月18日まで」
+    public var usableThroughText: String { "\(GoalText.monthDay(usableThrough))まで" }
+
     /// 案内を出すときだけ返す。出すのは、テストユーザーでなく、今サブスクリプション中で、自動更新がオンのとき
     public static func prepare(
         status: SubscriptionStatus?, now: Date, timeZone: TimeZone,

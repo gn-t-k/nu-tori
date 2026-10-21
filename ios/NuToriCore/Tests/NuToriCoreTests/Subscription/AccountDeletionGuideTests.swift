@@ -141,6 +141,46 @@ struct AccountDeletionGuideTests {
         }
     }
 
+    @Suite("案内の文")
+    struct Wording {
+        let guide: AccountDeletionGuide
+
+        init() {
+            guide = AccountDeletionGuide(
+                plan: .yearly, renewsOn: periodEndDay, usableThrough: graceEndDay,
+                displayPrice: "¥8,800", renewal: .autoRenewing)
+        }
+
+        @Test("サブスクリプションを、プランの名前と自動更新で書くこと")
+        func subscription() {
+            #expect(guide.subscriptionText == "年額・自動更新")
+        }
+
+        @Test("次の請求を、アカウントの行と同じ月日の書き方と価格で書くこと")
+        func nextBilling() {
+            #expect(guide.nextBillingText == "11月7日に ¥8,800")
+        }
+
+        @Test("価格を読めないときは、次の請求を日だけで書くこと")
+        func nextBillingWithoutPrice() {
+            let withoutPrice = AccountDeletionGuide(
+                plan: .yearly, renewsOn: periodEndDay, usableThrough: graceEndDay,
+                displayPrice: nil, renewal: .autoRenewing)
+
+            #expect(withoutPrice.nextBillingText == "11月7日")
+        }
+
+        @Test("解約の段に、解約しても次の更新日まで使えることを書くこと")
+        func cancellationStep() {
+            #expect(guide.cancellationStepText == "サブスクリプションを解約する。解約しても、11月7日まで使えます。")
+        }
+
+        @Test("解約したあとの使える日を、サブスクリプションの終わりを含む日で書くこと")
+        func usableThrough() {
+            #expect(guide.usableThroughText == "11月18日まで")
+        }
+    }
+
     @Suite("解約の画面から戻ったとき")
     struct ReturnedFromManageSubscriptions {
         let guide: AccountDeletionGuide
