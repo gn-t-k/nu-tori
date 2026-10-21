@@ -31,6 +31,14 @@ public struct IngredientSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
+    public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
+        guard let pending = try? PendingIngredientWrite(entry: entry) else { return [] }
+        switch pending.write {
+        case .update(let ingredientId, _):
+            return [UndeliveredRecords.Record(kind: name, id: ingredientId)]
+        }
+    }
+
     /// 受け付けなかった直す書き込みは、1行にし、サーバーに材料が無いときだけ、材料をキャッシュから外す。
     /// 推定し直しで置き換わった前の材料と、料理ごと消えていた材料は、削除の印を同期の働きが当てて外す。
     /// 推定し直しで置き換わっていたら（`ingredients_replaced`）、今の値が削除の印でも「直せなかった」行（使う人が直した値が黙って消えないよう）。

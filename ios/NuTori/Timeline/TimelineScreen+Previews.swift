@@ -251,17 +251,11 @@
                     .writtenMeals, .weeklyReviewed:
                     .none
                 case .undelivered:
-                    UndeliveredRecords(
-                        pendingEntries: [
-                            try? PendingWeightRecordWrite(
-                                enqueuedAt: Self.undeliveredRecord.instant,
-                                write: .createWeightRecord(Self.undeliveredRecord)
-                            ).entry(),
-                            try? PendingMealWrite(
-                                enqueuedAt: Self.undeliveredMeal.sentAt,
-                                write: .create(Self.undeliveredMeal)
-                            ).entry(),
-                        ].compactMap(\.self))
+                    UndeliveredRecords(records: [
+                        UndeliveredRecords.Record(
+                            kind: .weightRecord, id: Self.undeliveredRecord.id),
+                        UndeliveredRecords.Record(kind: .meal, id: Self.undeliveredMeal.id),
+                    ])
                 }
             }
 

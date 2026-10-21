@@ -33,13 +33,4 @@ nonisolated final class CachedSentTextStatus {
             storedClassification: classification, replyStatus: replyStatus,
             replyFailureReason: replyFailureReason)
     }
-
-    /// 送った文章の ID ごとの状態。読めない値の行は入れない
-    static func statuses(of rows: [CachedSentTextStatus]) -> [UUID: SentTextStatus] {
-        var statuses: [UUID: SentTextStatus] = [:]
-        for row in rows {
-            statuses[row.sentTextId] = row.sentTextStatus()
-        }
-        return statuses
-    }
 }

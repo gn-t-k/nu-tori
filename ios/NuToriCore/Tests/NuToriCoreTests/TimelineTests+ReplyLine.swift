@@ -1,6 +1,7 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 extension TimelineTests {
@@ -22,7 +23,7 @@ extension TimelineTests {
                     undelivered: UndeliveredRecords(
                         pendingEntries: try pending.map {
                             try PendingSentTextWrite(enqueuedAt: sentText.sentAt, write: $0).entry()
-                        }),
+                        }, kinds: RecordKindRegistry.ok().synced),
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
                         statuses: status.map { [sentText.id: $0] } ?? [:],

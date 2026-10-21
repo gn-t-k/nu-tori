@@ -34,6 +34,18 @@ public struct DishSyncing: CacheApplying, RecordKindWrites {
         }
     }
 
+    /// 料理を足す書き込みは、料理の食事を薄く描く。直す・名前を直す書き込みは、その料理
+    public func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
+        guard let pending = try? PendingDishWrite(entry: entry) else { return [] }
+        switch pending.write {
+        case .create(let dish): return [UndeliveredRecords.Record(kind: .meal, id: dish.mealId)]
+        case .update(let correction), .rename(let correction):
+            return [UndeliveredRecords.Record(kind: name, id: correction.id)]
+        // 消した料理はキャッシュに無く、どの食事の料理だったかが分からないので、食事を薄く描かない
+        case .delete: return []
+        }
+    }
+
     /// 受け付けなかった作る・直す書き込みは、1行にし、サーバーに料理が無いときだけ、料理をキャッシュから外す。
     /// 値と削除の印は同期の働きが当てる（推定し直しで材料が入れ替わっていたときは、料理の量が料理の今の値に戻り、
     /// 置き換わった前の材料は、続けて取りに行く変更の削除の印で外れる）。

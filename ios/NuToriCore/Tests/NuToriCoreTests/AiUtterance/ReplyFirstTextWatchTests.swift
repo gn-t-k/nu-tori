@@ -1,6 +1,7 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 @Suite("返事の最初の文字を出したときの出来事")
@@ -128,11 +129,12 @@ struct ReplyFirstTextWatchTests {
             sentText = try SentText.fixture("次は？", sentAt: "2026-09-24T12:11:00+09:00")
             reply = AiUtterance(
                 id: UUID(), body: "野菜を足しましょう。", sentTextId: sentText.id, mealIds: [])
-            let undelivered = UndeliveredRecords(pendingEntries: [
-                try PendingSentTextWrite(
-                    enqueuedAt: ReplyFirstTextWatchTests.start, write: .create(sentText)
-                ).entry()
-            ])
+            let undelivered = UndeliveredRecords(
+                pendingEntries: [
+                    try PendingSentTextWrite(
+                        enqueuedAt: ReplyFirstTextWatchTests.start, write: .create(sentText)
+                    ).entry()
+                ], kinds: RecordKindRegistry.ok().synced)
             var watch = ReplyFirstTextWatch()
             _ = watch.note(
                 ReplyFirstTextWatchTests.timeline(

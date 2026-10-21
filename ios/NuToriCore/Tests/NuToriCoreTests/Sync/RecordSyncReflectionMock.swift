@@ -11,8 +11,8 @@ final class RecordSyncReflectionMock: RecordSyncReflection, Sendable {
         state.withLock { $0.destinations }
     }
 
-    var undeliveredRecords: [UndeliveredRecords] {
-        state.withLock { $0.undeliveredRecords }
+    var appearances: [PendingAppearance] {
+        state.withLock { $0.appearances }
     }
 
     static func ok() -> RecordSyncReflectionMock {
@@ -28,17 +28,15 @@ final class RecordSyncReflectionMock: RecordSyncReflection, Sendable {
 
     func recordReplacing(id recordId: UUID) async {}
 
-    func unsentDishIdsChanged(_ unsentDishIds: Set<UUID>) async {}
-
-    func undeliveredRecordsChanged(_ undeliveredRecords: UndeliveredRecords) async {
-        state.withLock { $0.undeliveredRecords.append(undeliveredRecords) }
+    func pendingAppearanceChanged(_ appearance: PendingAppearance) async {
+        state.withLock { $0.appearances.append(appearance) }
     }
 
     func replyStreamsChanged(_ streams: [UUID: ReplyStream]) async {}
 
     private struct State {
         var destinations: [SignInDestination] = []
-        var undeliveredRecords: [UndeliveredRecords] = []
+        var appearances: [PendingAppearance] = []
     }
 
     private let state = Mutex(State())

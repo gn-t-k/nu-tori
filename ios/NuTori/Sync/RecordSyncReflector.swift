@@ -9,8 +9,7 @@ import NuToriCore
     var onDestination: (SignInDestination) -> Void = { _ in }
     var onRejectedWrites: ([RejectedWrite]) -> Void = { _ in }
     var onReplacingRecord: (UUID) -> Void = { _ in }
-    var onUnsentDishIds: (Set<UUID>) -> Void = { _ in }
-    var onUndeliveredRecords: (UndeliveredRecords) -> Void = { _ in }
+    var onPendingAppearance: (PendingAppearance) -> Void = { _ in }
     var onReplyStreams: ([UUID: ReplyStream]) -> Void = { _ in }
 
     @MainActor func destinationChanged(_ destination: SignInDestination) async {
@@ -25,12 +24,8 @@ import NuToriCore
         onReplacingRecord(recordId)
     }
 
-    @MainActor func unsentDishIdsChanged(_ unsentDishIds: Set<UUID>) async {
-        onUnsentDishIds(unsentDishIds)
-    }
-
-    @MainActor func undeliveredRecordsChanged(_ undeliveredRecords: UndeliveredRecords) async {
-        onUndeliveredRecords(undeliveredRecords)
+    @MainActor func pendingAppearanceChanged(_ appearance: PendingAppearance) async {
+        onPendingAppearance(appearance)
     }
 
     @MainActor func replyStreamsChanged(_ streams: [UUID: ReplyStream]) async {

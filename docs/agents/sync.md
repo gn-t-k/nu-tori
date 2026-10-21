@@ -102,7 +102,7 @@
   - キャッシュを読む口（`RecordCacheReading`）は、登録簿から種類の口を引いて読む `read` の1つで、種類を足しても箱（`SwiftDataSyncStore`・`SyncBoxMock`）に足すものは無い。よく読む形（`meals()` など）は、`RecordCacheReading` の extension に1回だけ書く。登録簿に無い種類を読むと、種類の `kindName` で `UnknownRecordKindError.notRegistered` を投げる
   - rawValue は送り待ちに保存した文字列なので、変えると送り待ちの置き場の移行が要る
   - NuToriCore の種類の中では、自分の変更かを `SyncChange.kindName` と自分の名前で決め、自分の case を `if case` で取り出す（ほかの種類の case を並べない）
-  - 端末が書く種類は、`SyncedRecordKind.writes` に、送る書き込み（`syncWrite`）と受け付けなかったときの扱い（`rejection`）を持つ `RecordKindWrites` を返す。送り待ちの中身は種類ごとの型（見本は食事の `MealWrite`）で、`PendingWriteBody` に従い、JSON の形（`Stored`）との行き来だけを書く。JSON への変換と読めないときのエラーは `PendingWriteBody` の既定の実装が持つ。送り待ちは `Pending` の1つの口で作り、`PendingEntry` に種類の名前と一緒に入れる
+  - 端末が書く種類は、`SyncedRecordKind.writes` に、送る書き込み（`syncWrite`）、届くまで薄く描く記録（`undeliveredRecords(of:)`。まだ届いていない記録）、受け付けなかったときの扱い（`rejection`）を持つ `RecordKindWrites` を返す。送り待ちの中身は種類ごとの型（見本は食事の `MealWrite`）で、`PendingWriteBody` に従い、JSON の形（`Stored`）との行き来だけを書く。JSON への変換と読めないときのエラーは `PendingWriteBody` の既定の実装が持つ。送り待ちは `Pending` の1つの口で作り、`PendingEntry` に種類の名前と一緒に入れる
   - サーバーだけが書く種類（食事の推定の状態、料理ごとの推定の状態、いつもの時刻、体重の傾向、送った文章の状態、返事、目標、1日の目安、推定消費カロリー、週の見直し）は `writes` に nil を返す。送り待ちに入らないので、送る書き込みも受け付けなかったときの扱いも持たない。そういう種類の名前の送り待ちがあれば、同期の働きは送らずに `UnknownRecordKindError.serverOnly` を投げる
   - 端末で記録を消す書き込みは、その場で削除の印と同じ変更をキャッシュに当て、消す書き込みを送り待ちに入れる。ほかの種類の記録も一緒に消えるとき（食事と推定の状態、料理と材料と料理ごとの推定の状態）は、その種類の削除の印の変更も同じ結果に入れる。直す書き込みがほかの種類の記録も変えるとき（料理の量を直したときの材料の比例）も、その種類の変更を同じ結果に入れる
 - 受け付けられないことがある書き込みを持つ種類は、サーバーに記録も削除の印も無いとき（`absent`）の外し方を `rejection` で決める。持たない種類は `KindRejection.none` を返す

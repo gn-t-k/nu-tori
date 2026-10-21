@@ -63,6 +63,10 @@ struct RecordKindMock: RecordKind {
             return .sourceDeletedWeightRecord(writeId: entry.writeId, weightRecordId: recordId)
         }
 
+        func undeliveredRecords(of entry: PendingEntry) -> [UndeliveredRecords.Record] {
+            []
+        }
+
         func rejection(
             of entry: PendingEntry,
             reason: SyncWriteResult.RejectionReason,

@@ -24,7 +24,7 @@ extension SyncEngineTests {
 
                 @Test("まだ送れていない料理にすること")
                 func isUnsent() async throws {
-                    #expect(try await engine.unsentDishIds() == [dishId])
+                    #expect(try await engine.pendingAppearance().unsentDishIds == [dishId])
                 }
             }
 
@@ -41,7 +41,7 @@ extension SyncEngineTests {
 
                 @Test("まだ送れていない料理にしないこと")
                 func isNotUnsent() async throws {
-                    #expect(try await engine.unsentDishIds().isEmpty)
+                    #expect(try await engine.pendingAppearance().unsentDishIds.isEmpty)
                 }
             }
         }
@@ -59,7 +59,8 @@ extension SyncEngineTests {
 
                 @Test("まだ送れていない料理にすること")
                 func isUnsent() async throws {
-                    #expect(try await engine.unsentDishIds() == [DishWrites.dishId])
+                    #expect(
+                        try await engine.pendingAppearance().unsentDishIds == [DishWrites.dishId])
                 }
             }
 
@@ -75,7 +76,7 @@ extension SyncEngineTests {
 
                 @Test("まだ送れていない料理にしないこと")
                 func isNotUnsent() async throws {
-                    #expect(try await engine.unsentDishIds().isEmpty)
+                    #expect(try await engine.pendingAppearance().unsentDishIds.isEmpty)
                 }
             }
         }
@@ -91,7 +92,7 @@ extension SyncEngineTests {
 
             @Test("まだ送れていない料理にしないこと")
             func isNotUnsent() async throws {
-                #expect(try await engine.unsentDishIds().isEmpty)
+                #expect(try await engine.pendingAppearance().unsentDishIds.isEmpty)
             }
         }
 
@@ -110,7 +111,7 @@ extension SyncEngineTests {
             // 料理ごとの推定の状態が届くまでは、前の状態のまま待っていない料理に見せない（#332 の「まだ送れていない」）
             @Test("名前を直した料理を、まだ送れていない料理のままにすること")
             func keepsRenamedDishUnsent() async throws {
-                #expect(try await engine.unsentDishIds() == [DishWrites.dishId])
+                #expect(try await engine.pendingAppearance().unsentDishIds == [DishWrites.dishId])
             }
 
             @Test("次の同期で、同じ書き込みの ID で送り直すこと")

@@ -83,3 +83,7 @@ extension MealEstimationStatus {
         }
     }
 }
+
+extension MealEstimationStatusSyncing.Status: ParentKeyedStatus {
+    public var parentId: UUID { mealId }
+}

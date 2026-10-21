@@ -82,3 +82,7 @@ extension DishEstimationStatus {
         }
     }
 }
+
+extension DishEstimationStatusSyncing.Status: ParentKeyedStatus {
+    public var parentId: UUID { dishId }
+}

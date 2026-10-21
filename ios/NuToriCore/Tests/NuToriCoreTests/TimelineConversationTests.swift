@@ -1,6 +1,7 @@
 import Foundation
 import NuToriAPI
 import NuToriCore
+import NuToriTestSupport
 import Testing
 
 @Suite("タイムラインに並べる会話の元")
@@ -40,11 +41,12 @@ struct TimelineConversationTests {
                 conversation = Timeline.Conversation(
                     sentTexts: waiting + settled + [undelivered], statuses: byId, replies: [],
                     streams: [:])
-                pending = UndeliveredRecords(pendingEntries: [
-                    try PendingSentTextWrite(
-                        enqueuedAt: undelivered.sentAt, write: .create(undelivered)
-                    ).entry()
-                ])
+                pending = UndeliveredRecords(
+                    pendingEntries: [
+                        try PendingSentTextWrite(
+                            enqueuedAt: undelivered.sentAt, write: .create(undelivered)
+                        ).entry()
+                    ], kinds: RecordKindRegistry.ok().synced)
             }
 
             @Test("読み分けを待つ文章と返事を待つ文章だけを、応答を待つ文章とすること")

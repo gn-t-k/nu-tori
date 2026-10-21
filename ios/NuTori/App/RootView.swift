@@ -59,8 +59,7 @@ struct RootView: View {
             TimelineScreenContainer(
                 clock: model.clock,
                 rejectedLines: model.rejectedLines,
-                unsentDishIds: model.unsentDishIds,
-                undeliveredRecords: model.undeliveredRecords,
+                pendingAppearance: model.pendingAppearance,
                 capture: { await model.capture($0) },
                 reminderLanding: model.reminderLanding,
                 noteReminderLanded: { model.noteReminderLanded() },

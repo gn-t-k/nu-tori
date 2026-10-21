@@ -104,3 +104,7 @@ extension SyncedSentTextStatus.Reply {
             }
     }
 }
+
+extension SentTextStatusSyncing.Status: ParentKeyedStatus {
+    public var parentId: UUID { sentTextId }
+}
