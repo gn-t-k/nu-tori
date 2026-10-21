@@ -226,13 +226,16 @@ describe("目標の達成と期限の日の結果", () => {
       });
 
       test("期限の日の体重の傾向と目標体重との差を 0.1 kg 単位で、達成していなかったことと一緒に送ること", () => {
-        expect(readGoalEvents()).toEqual([
-          {
-            event: "goal_deadline_confirmed",
-            distinct_id: accountId,
-            properties: { difference_from_target_kg: 1, achieved: false, $geoip_disable: true },
-          },
-        ]);
+        // 開始の日が金曜だと、取りに行く日が期限のあとの最初の月曜になり、期限後の維持に移った出来事も送る
+        expect(readGoalEvents().filter(({ event }) => event === "goal_deadline_confirmed")).toEqual(
+          [
+            {
+              event: "goal_deadline_confirmed",
+              distinct_id: accountId,
+              properties: { difference_from_target_kg: 1, achieved: false, $geoip_disable: true },
+            },
+          ],
+        );
       });
 
       test("体重の値を含めないこと", () => {
