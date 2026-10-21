@@ -5,3 +5,5 @@ sessionDefaults:
   scheme: 'NuTori'
   bundleId: 'app.nu-tori'
   simulatorName: 'iPhone 17'
+  # scripts/check の derived_data と同じ置き場。同時に回したときの引き換えは docs/agents/ios-mac.md
+  derivedDataPath: './ios/.build/DerivedData'
