@@ -140,19 +140,16 @@ export default {
 const isFunction = (node) =>
   node.type === "ArrowFunctionExpression" || node.type === "FunctionExpression";
 
-// describe とその skip・only など。each・for の表から作るまとまりは数えない
-const isDescribe = (callee) =>
-  (callee.type === "Identifier" && callee.name === "describe") ||
-  (callee.type === "MemberExpression" &&
-    callee.object.type === "Identifier" &&
-    callee.object.name === "describe");
+const isDescribe = (callee) => isCalleeNamed(callee, ["describe"]);
 
-// each・for の表から作るテストは、決まりが許す使い方と見分けられないので数えない（#691）
-const isTest = (callee) =>
-  (callee.type === "Identifier" && ["test", "it"].includes(callee.name)) ||
+const isTest = (callee) => isCalleeNamed(callee, ["test", "it"]);
+
+// each・for の表から作るまとまりとテストは、決まりが許す使い方と見分けられないので数えない（#691）
+const isCalleeNamed = (callee, names) =>
+  (callee.type === "Identifier" && names.includes(callee.name)) ||
   (callee.type === "MemberExpression" &&
     callee.object.type === "Identifier" &&
-    ["test", "it"].includes(callee.object.name) &&
+    names.includes(callee.object.name) &&
     callee.property.type === "Identifier" &&
     !["each", "for"].includes(callee.property.name));
 
