@@ -4,6 +4,9 @@ import SwiftUI
 import UIKit
 
 struct AccountScreen: View {
+    /// 一番上の「サブスクリプション」の行。サブスクリプションの状態がまだ届いていなければ nil で、行を出さない
+    let subscription: AccountSubscriptionRow?
+    let openPaywall: () -> Void
     /// 保存してある「利用状況を送る」
     let sendsUsageData: Bool
     let cameraAccess: CameraAccess
@@ -17,6 +20,9 @@ struct AccountScreen: View {
 
     var body: some View {
         List {
+            if let subscription {
+                subscriptionSection(subscription)
+            }
             Section {
                 NavigationLink {
                     HealthAccessScreen()
@@ -131,6 +137,8 @@ struct AccountScreen: View {
 
     /// deletion は開いたときの状態。削除は画面の中で進むので、あとから渡し直しても変わらない
     init(
+        subscription: AccountSubscriptionRow?,
+        openPaywall: @escaping () -> Void,
         sendsUsageData: Bool,
         cameraAccess: CameraAccess,
         notificationPermission: NotificationPermission?,
@@ -140,6 +148,8 @@ struct AccountScreen: View {
         actions: AccountActions,
         onClose: @escaping () -> Void
     ) {
+        self.subscription = subscription
+        self.openPaywall = openPaywall
         self.sendsUsageData = sendsUsageData
         self.cameraAccess = cameraAccess
         self.notificationPermission = notificationPermission
@@ -221,6 +231,30 @@ struct AccountScreen: View {
             components.queryItems?.append(URLQueryItem(name: "entry.2004378953", value: accountId))
         }
         return components.url!
+    }
+
+    private func subscriptionSection(_ row: AccountSubscriptionRow) -> some View {
+        Section {
+            if row.opensPaywall {
+                Button(action: openPaywall) {
+                    HStack {
+                        LabeledContent("サブスクリプション", value: row.value)
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .foregroundStyle(.primary)
+                .accessibilityIdentifier("subscription-row")
+            } else {
+                LabeledContent("サブスクリプション", value: row.value)
+                    .accessibilityIdentifier("subscription-row")
+            }
+        } footer: {
+            if let note = row.note {
+                Text(note)
+            }
+        }
     }
 
     private func externalLink(_ title: String, url: URL) -> some View {

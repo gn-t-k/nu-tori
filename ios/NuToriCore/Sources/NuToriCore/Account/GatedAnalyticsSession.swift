@@ -30,7 +30,7 @@ public actor GatedAnalyticsSession: AnalyticsSession {
             .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
             .replyMealOpened, .goalSetup, .weeklyReviewOpened, .goalScreenOpened,
             .termsAgreementSheetShown, .termsAgreed, .accountDeletionGuideOpened,
-            .manageSubscriptionsOpened:
+            .manageSubscriptionsOpened, .paywallOpened, .paywallClosed:
             guard identified else { return }
             await forwarding.capture(event)
         }

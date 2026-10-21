@@ -1,4 +1,5 @@
 #if DEBUG
+    import Foundation
     import NuToriCore
     import SwiftUI
 
@@ -6,6 +7,8 @@
         // シートに載せると、出てくる途中の動きを描いてしまう
         NavigationStack {
             AccountScreen(
+                subscription: AccountScreen.SubscriptionSample.freeTrial.row,
+                openPaywall: {},
                 sendsUsageData: sample.sendsUsageData,
                 cameraAccess: sample.cameraAccess,
                 notificationPermission: sample.notificationPermission,
@@ -18,7 +21,62 @@
         }
     }
 
+    // サブスクリプションの行の形は、ほかの状態と組み合わせずに並べる
+    #Preview("サブスクリプションの行", arguments: AccountScreen.SubscriptionSample.allCases) { sample in
+        NavigationStack {
+            AccountScreen(
+                subscription: sample.row,
+                openPaywall: {},
+                sendsUsageData: true,
+                cameraAccess: .permitted,
+                notificationPermission: .permitted,
+                deletion: .idle,
+                appVersion: "1.0",
+                appBuild: 53,
+                actions: .noop,
+                onClose: {}
+            )
+        }
+    }
+
     extension AccountScreen {
+        fileprivate enum SubscriptionSample: CaseIterable {
+            case freeTrial
+            case subscribed
+            /// 自動更新をオフにした
+            case cancelled
+            case expired
+            case testUser
+            /// サブスクリプションの状態がまだ届いていない
+            case notArrived
+
+            var row: AccountSubscriptionRow? {
+                let tokyo = TimeZone(identifier: "Asia/Tokyo")!
+                let periodEndsAt = CalendarDay.sampleToday.advanced(by: 30).noon(in: tokyo)
+                let subscribed = SubscriptionStanding.subscribed(
+                    plan: .monthly, periodEndsAt: periodEndsAt, endsAt: periodEndsAt)
+                return switch self {
+                case .freeTrial:
+                    AccountSubscriptionRow(
+                        standing: .freeTrial(
+                            lastDay: CalendarDay.sampleToday.advanced(by: 9), remainingDays: 10),
+                        autoRenewal: .unknown, timeZone: tokyo)
+                case .subscribed:
+                    AccountSubscriptionRow(standing: subscribed, autoRenewal: .on, timeZone: tokyo)
+                case .cancelled:
+                    AccountSubscriptionRow(standing: subscribed, autoRenewal: .off, timeZone: tokyo)
+                case .expired:
+                    AccountSubscriptionRow(
+                        standing: .expired, autoRenewal: .unknown, timeZone: tokyo)
+                case .testUser:
+                    AccountSubscriptionRow(
+                        standing: .testUser, autoRenewal: .unknown, timeZone: tokyo)
+                case .notArrived:
+                    nil
+                }
+            }
+        }
+
         fileprivate enum Sample: CaseIterable {
             /// 利用状況を送る
             case sendingUsageData

@@ -27,6 +27,7 @@
             saveWeight: { _ in },
             sendText: { _ in },
             accountActions: .noop,
+            paywallActions: .noop,
             mealActions: .noop,
             conversation: sample.conversation,
             conversationActions: .noop,

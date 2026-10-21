@@ -110,6 +110,11 @@ struct RootView: View {
                         await model.capture(.manageSubscriptionsOpened)
                     }
                 ),
+                paywallActions: PaywallActions(
+                    clock: model.clock,
+                    purchases: model.subscriptionPurchases,
+                    capture: { await model.capture($0) }
+                ),
                 mealActions: MealActions(
                     prepareCamera: { await CameraReadiness.prepare() },
                     recordCapturedPhoto: { original, exif, sentAt in

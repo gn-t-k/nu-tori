@@ -18,16 +18,8 @@ nonisolated struct StoreKitSubscriptionStore: SubscriptionStore {
         guard let product = try await Product.products(for: [productId]).first else {
             throw ProductNotFoundError()
         }
-        switch try await product.purchase(options: [.appAccountToken(appAccountToken)]) {
-        case .success(let verification):
-            return .purchased(AppStoreTransaction(verification))
-        case .userCancelled:
-            return .cancelled
-        case .pending:
-            return .pending
-        @unknown default:
-            return .cancelled
-        }
+        return AppStorePurchaseAttempt(
+            try await product.purchase(options: [.appAccountToken(appAccountToken)]))
     }
 
     func transactionUpdates() -> AsyncStream<AppStoreTransaction> {
@@ -84,6 +76,22 @@ nonisolated struct StoreKitSubscriptionStore: SubscriptionStore {
     }
 
     private struct ProductNotFoundError: Error {}
+}
+
+nonisolated extension AppStorePurchaseAttempt {
+    /// 課金画面の `SubscriptionStoreView` で買えた結果も、これで口の形にする
+    init(_ result: Product.PurchaseResult) {
+        switch result {
+        case .success(let verification):
+            self = .purchased(AppStoreTransaction(verification))
+        case .userCancelled:
+            self = .cancelled
+        case .pending:
+            self = .pending
+        @unknown default:
+            self = .cancelled
+        }
+    }
 }
 
 nonisolated extension AppStoreTransaction {

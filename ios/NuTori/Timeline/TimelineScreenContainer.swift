@@ -22,6 +22,7 @@ struct TimelineScreenContainer: View {
     let goalSetup: GoalSetupSession
     let conversationActions: ConversationActions
     let accountActions: AccountActions
+    let paywallActions: PaywallActions
     let mealActions: MealActions
     /// この端末で記録した（元の大きさの写真を持っている）食事か
     let holdsMealOriginals: (_ mealId: UUID) async -> Bool
@@ -55,6 +56,7 @@ struct TimelineScreenContainer: View {
             saveWeight: saveWeight,
             sendText: sendText,
             accountActions: accountActions,
+            paywallActions: paywallActions,
             mealActions: mealActions,
             conversation: timeline.conversation(streams: replyStreams),
             conversationActions: conversationActions,

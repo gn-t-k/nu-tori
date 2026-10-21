@@ -19,13 +19,9 @@ public actor SubscriptionPurchases {
     /// 購入者のトークンを渡して買い、買えた取引を知らせる
     public func purchase(productId: String) async -> PurchaseOutcome {
         let token: UUID
-        do {
-            guard case .issued(let issued) = try await client.issueAppAccountToken() else {
-                return .purchaseFailed(.retryLater)
-            }
-            token = issued
-        } catch {
-            return .purchaseFailed(error.isUnreachableOrTimedOut ? .unreachable : .retryLater)
+        switch await appAccountToken() {
+        case .issued(let issued): token = issued
+        case .unavailable(let reason): return .purchaseFailed(reason)
         }
         let attempt: AppStorePurchaseAttempt
         do {
@@ -40,6 +36,18 @@ public actor SubscriptionPurchases {
             return .cancelled
         case .pending:
             return .pending
+        }
+    }
+
+    /// 買うときに App Store に渡す購入者のトークン。課金画面の `SubscriptionStoreView` は、これを購入の選択肢で渡す
+    public func appAccountToken() async -> AppAccountTokenOutcome {
+        do {
+            guard case .issued(let token) = try await client.issueAppAccountToken() else {
+                return .unavailable(.retryLater)
+            }
+            return .issued(token)
+        } catch {
+            return .unavailable(error.isUnreachableOrTimedOut ? .unreachable : .retryLater)
         }
     }
 
@@ -111,6 +119,12 @@ public actor SubscriptionPurchases {
         case notLinkedYet(FailureReason)
         /// サーバーが取引を受け付けなかった。不具合のときだけ起きる
         case rejected
+    }
+
+    public enum AppAccountTokenOutcome: Sendable, Equatable {
+        case issued(UUID)
+        /// 受け取れなかった。受け取れるまで買えない
+        case unavailable(FailureReason)
     }
 
     public enum RestoreOutcome: Sendable, Equatable {

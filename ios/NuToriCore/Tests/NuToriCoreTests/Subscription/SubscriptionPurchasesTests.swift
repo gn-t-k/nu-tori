@@ -243,6 +243,54 @@ struct SubscriptionPurchasesTests {
         }
     }
 
+    @Suite("課金画面に渡す購入者のトークンを求めるとき")
+    struct AppAccountToken {
+        @Suite("サーバーが出したとき")
+        struct Issued {
+            let purchases: SubscriptionPurchases
+
+            init() {
+                purchases = .fixture(store: .ok(), transport: .subscription { _ in (.ok, nil) })
+            }
+
+            @Test("サーバーが出したトークンを返すこと")
+            func returnsToken() async {
+                #expect(
+                    await purchases.appAccountToken()
+                        == .issued(UUID(uuidString: "6F1C2A3B-4D5E-4F60-8A7B-9C0D1E2F3A4B")!))
+            }
+        }
+
+        @Suite("電波が無いとき")
+        struct Unreachable {
+            let purchases: SubscriptionPurchases
+
+            init() {
+                purchases = .fixture(
+                    store: .ok(), transport: .error(URLError(.notConnectedToInternet)))
+            }
+
+            @Test("つながらなかったと返すこと")
+            func returnsUnreachable() async {
+                #expect(await purchases.appAccountToken() == .unavailable(.unreachable))
+            }
+        }
+
+        @Suite("セッションが切れていたとき")
+        struct SessionExpired {
+            let purchases: SubscriptionPurchases
+
+            init() {
+                purchases = .fixture(store: .ok(), transport: .ok(status: .unauthorized))
+            }
+
+            @Test("あとでもう一度と返すこと")
+            func returnsRetryLater() async {
+                #expect(await purchases.appAccountToken() == .unavailable(.retryLater))
+            }
+        }
+    }
+
     @Suite("知らせられなかった取引を開き直して知らせるとき")
     struct ResendOnNextOpen {
         let reachability: ReportReachability
@@ -542,13 +590,13 @@ private func reportBodies(_ transport: ClientTransportMock) throws -> [[String: 
 }
 
 extension AppStoreTransaction {
-    fileprivate static func sample(id: UInt64) -> AppStoreTransaction {
+    static func sample(id: UInt64) -> AppStoreTransaction {
         AppStoreTransaction(id: id, signedTransaction: "jws-\(id)")
     }
 }
 
 extension SubscriptionPurchases {
-    fileprivate static func fixture(
+    static func fixture(
         store: SubscriptionStoreMock,
         transport: ClientTransportMock,
         applied: ChangesRecorder = ChangesRecorder(),
