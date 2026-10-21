@@ -4,10 +4,7 @@ import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-
 import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
 import type { UsageEvent } from "../../domain/usage-event";
 import { deleteDishes } from "../../dish/domain/delete-dishes";
-import { computeDishDeletedEstimationEvents } from "../../estimation/domain/compute-dish-deleted-estimation-events";
-import { computeEstimationEndedEvent } from "../../estimation/domain/compute-estimation-ended-event";
-import { findMealEstimationTrigger } from "../../estimation/domain/find-meal-estimation-trigger";
-import { findMealReceivedAt } from "../../estimation/domain/find-meal-received-at";
+import { computeTargetDeletedEstimationEvents } from "../../estimation/domain/compute-target-deleted-estimation-events";
 
 // 食事を消す口が読み書きする置き場
 export type MealDeletionStores = Pick<
@@ -55,11 +52,16 @@ export const planMealDeletion = (
       })),
     ],
     usageEvents: [
-      ...computeMealDeletedEstimationEvents(stores, mealId, deletedAt),
+      ...computeTargetDeletedEstimationEvents(
+        stores,
+        { type: "meal", mealId },
+        "meal_deleted",
+        deletedAt,
+      ),
       ...scheduledDishIds.flatMap((dishId) =>
-        computeDishDeletedEstimationEvents(
+        computeTargetDeletedEstimationEvents(
           stores,
-          { id: dishId, mealId },
+          { type: "dish", dishId, mealId },
           "meal_deleted",
           deletedAt,
         ),
@@ -76,26 +78,4 @@ export const planMealDeletion = (
       }
     },
   };
-};
-
-const computeMealDeletedEstimationEvents = (
-  stores: MealDeletionStores,
-  mealId: RecordId,
-  deletedAt: Date,
-): UsageEvent[] => {
-  const estimationId = stores.estimation.findOngoingEstimationIdOfMeal(mealId);
-  if (estimationId === undefined) {
-    return [];
-  }
-  return [
-    computeEstimationEndedEvent({
-      trigger: findMealEstimationTrigger(stores.meal, mealId),
-      finalStatus: "meal_deleted",
-      attempts: stores.estimation.findAttempts(estimationId),
-      receivedAt: findMealReceivedAt(stores.estimationSchedule, mealId),
-      endedAt: deletedAt,
-      dishCount: 0,
-      ingredients: [],
-    }),
-  ];
 };
