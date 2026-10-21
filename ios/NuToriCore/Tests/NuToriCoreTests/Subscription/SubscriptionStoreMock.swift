@@ -2,34 +2,27 @@ import Foundation
 import NuToriCore
 import Synchronization
 
-/// StoreKit の口の差し替え。買う・終える・突き合わせるを記録する
+/// StoreKit の口の差し替え。終える・突き合わせるを記録する
 final class SubscriptionStoreMock: SubscriptionStore, Sendable {
-    var purchases: [Purchase] { state.withLock { $0.purchases } }
     var finished: [UInt64] { state.withLock { $0.finished } }
     var syncCount: Int { state.withLock { $0.syncCount } }
 
-    struct Purchase: Equatable {
-        let productId: String
-        let appAccountToken: UUID
-    }
-
     static func ok(
         products: [SubscriptionProduct] = [],
-        purchase: AppStorePurchaseAttempt = .cancelled,
         unfinished: [AppStoreTransaction] = [],
         entitlements: [AppStoreTransaction] = [],
         syncResult: AppStoreSyncResult = .synced,
         willAutoRenew: Bool? = nil
     ) -> SubscriptionStoreMock {
         SubscriptionStoreMock(
-            products: .success(products), purchase: .success(purchase), unfinished: unfinished,
+            products: .success(products), unfinished: unfinished,
             entitlements: entitlements, syncResult: syncResult, willAutoRenew: willAutoRenew)
     }
 
-    /// 商品を読む・買うが投げる。自動更新は、今使えるサブスクリプションの更新の情報だけを端末で読むので、投げずに返せる
+    /// 商品を読むが投げる。自動更新は、今使えるサブスクリプションの更新の情報だけを端末で読むので、投げずに返せる
     static func error(_ error: any Error, willAutoRenew: Bool? = nil) -> SubscriptionStoreMock {
         SubscriptionStoreMock(
-            products: .failure(error), purchase: .failure(error), unfinished: [],
+            products: .failure(error), unfinished: [],
             entitlements: [], syncResult: .failed, willAutoRenew: willAutoRenew)
     }
 
@@ -44,15 +37,6 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
 
     func products(ids: [String]) async throws -> [SubscriptionProduct] {
         try productsResult.get().filter { ids.contains($0.id) }
-    }
-
-    func purchase(productId: String, appAccountToken: UUID) async throws
-        -> AppStorePurchaseAttempt
-    {
-        state.withLock {
-            $0.purchases.append(Purchase(productId: productId, appAccountToken: appAccountToken))
-        }
-        return try purchaseResult.get()
     }
 
     func transactionUpdates() -> AsyncStream<AppStoreTransaction> {
@@ -83,13 +67,11 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
     }
 
     private struct State {
-        var purchases: [Purchase] = []
         var finished: [UInt64] = []
         var syncCount = 0
     }
 
     private let productsResult: Result<[SubscriptionProduct], any Error>
-    private let purchaseResult: Result<AppStorePurchaseAttempt, any Error>
     private let unfinished: [AppStoreTransaction]
     private let entitlements: [AppStoreTransaction]
     private let syncResult: AppStoreSyncResult
@@ -99,14 +81,12 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
 
     private init(
         products: Result<[SubscriptionProduct], any Error>,
-        purchase: Result<AppStorePurchaseAttempt, any Error>,
         unfinished: [AppStoreTransaction],
         entitlements: [AppStoreTransaction],
         syncResult: AppStoreSyncResult,
         willAutoRenew: Bool?
     ) {
         productsResult = products
-        purchaseResult = purchase
         self.unfinished = unfinished
         self.entitlements = entitlements
         self.syncResult = syncResult

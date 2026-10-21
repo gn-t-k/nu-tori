@@ -107,12 +107,6 @@ public final class PaywallSession {
             isFinished = true
         case .ownedByOtherAccount:
             message = Self.ownedByOtherAccount
-        case .cancelled:
-            message = nil
-        case .pending:
-            message = "承認を待っています。承認されると、使えるようになります。"
-        case .purchaseFailed:
-            message = Self.tryAgainLater
         // 取引は終えずに残してあり、開いたとき（前面に来たとき）に知らせ直す
         case .notLinkedYet:
             message = "支払いは済みました。インターネットにつながるところでアプリを開き直すと、使えるようになります。"

@@ -58,15 +58,7 @@ struct RootView: View {
     private var paywallStorefront: PaywallStorefront {
         #if DEBUG
             if let store = UITestLaunch.current?.subscriptionStore {
-                return .fixed(purchase: { appAccountToken in
-                    guard
-                        let monthly = SubscriptionProduct.ids.first(where: { $0.value == .monthly })
-                    else { return .cancelled }
-                    // 偽物は投げない
-                    return
-                        (try? await store.purchase(
-                            productId: monthly.key, appAccountToken: appAccountToken)) ?? .cancelled
-                })
+                return .fixed(purchase: { store.purchaseMonthly(appAccountToken: $0) })
             }
         #endif
         return .storeKit

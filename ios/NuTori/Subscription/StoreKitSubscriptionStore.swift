@@ -12,16 +12,6 @@ nonisolated struct StoreKitSubscriptionStore: SubscriptionStore {
         }
     }
 
-    func purchase(productId: String, appAccountToken: UUID) async throws
-        -> AppStorePurchaseAttempt
-    {
-        guard let product = try await Product.products(for: [productId]).first else {
-            throw ProductNotFoundError()
-        }
-        return AppStorePurchaseAttempt(
-            try await product.purchase(options: [.appAccountToken(appAccountToken)]))
-    }
-
     func transactionUpdates() -> AsyncStream<AppStoreTransaction> {
         AsyncStream { continuation in
             let task = Task {
@@ -74,8 +64,6 @@ nonisolated struct StoreKitSubscriptionStore: SubscriptionStore {
         }
         return nil
     }
-
-    private struct ProductNotFoundError: Error {}
 }
 
 nonisolated extension AppStorePurchaseAttempt {

@@ -1,13 +1,10 @@
-public import Foundation
+import Foundation
 
 /// StoreKit の口。アプリは StoreKit 2 の adapter を渡し、テストと UI テストは偽物を渡す。
 /// 課金画面の `SubscriptionStoreView` はこの口の外で、買えた取引だけを `SubscriptionPurchases.reportPurchase(_:)` に渡す
 public protocol SubscriptionStore: Sendable {
     /// App Store にある商品だけを返す
     func products(ids: [String]) async throws -> [SubscriptionProduct]
-
-    /// 購入者のトークンを渡して買う
-    func purchase(productId: String, appAccountToken: UUID) async throws -> AppStorePurchaseAttempt
 
     /// `Transaction.updates`。ほかの端末で買った・更新した取引と、起動した直後の終えていない取引が流れる
     func transactionUpdates() -> AsyncStream<AppStoreTransaction>

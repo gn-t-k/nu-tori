@@ -16,29 +16,6 @@ public actor SubscriptionPurchases {
         self.newRequestId = newRequestId
     }
 
-    /// 購入者のトークンを渡して買い、買えた取引を知らせる
-    public func purchase(productId: String) async -> PurchaseOutcome {
-        let token: UUID
-        switch await appAccountToken() {
-        case .issued(let issued): token = issued
-        case .unavailable(let reason): return .purchaseFailed(reason)
-        }
-        let attempt: AppStorePurchaseAttempt
-        do {
-            attempt = try await store.purchase(productId: productId, appAccountToken: token)
-        } catch {
-            return .purchaseFailed(.retryLater)
-        }
-        switch attempt {
-        case .purchased(let transaction):
-            return await reportPurchase(transaction)
-        case .cancelled:
-            return .cancelled
-        case .pending:
-            return .pending
-        }
-    }
-
     /// 買うときに App Store に渡す購入者のトークン。課金画面の `SubscriptionStoreView` は、これを購入の選択肢で渡す
     public func appAccountToken() async -> AppAccountTokenOutcome {
         do {
@@ -109,12 +86,6 @@ public actor SubscriptionPurchases {
         case linked
         /// この Apple アカウントのサブスクリプションは、ほかの nu-tori のアカウントのもの
         case ownedByOtherAccount
-        /// 買う画面を閉じた
-        case cancelled
-        /// 承認を待っている。承認されたら `Transaction.updates` で知らせる
-        case pending
-        /// 買えなかった（購入者のトークンを受け取れない、StoreKit が失敗した）
-        case purchaseFailed(FailureReason)
         /// 買えたが、まだサーバーに知らせられていない。取引は終えずに残し、次に開いたときに知らせ直す
         case notLinkedYet(FailureReason)
         /// サーバーが取引を受け付けなかった。不具合のときだけ起きる
