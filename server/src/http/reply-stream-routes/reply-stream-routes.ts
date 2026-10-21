@@ -16,7 +16,7 @@ export const replyStreamRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
     middleware: [authenticateAccount] as const,
     request: {
       params: z.object({
-        sentTextId: recordIdSchema.openapi({
+        sentTextId: recordIdSchema.meta({
           param: { name: "sentTextId", in: "path" },
           description: "送った文章の ID",
         }),
