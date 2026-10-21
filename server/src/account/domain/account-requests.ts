@@ -40,9 +40,9 @@ export const accountRequests = {
     stores: Pick<AccountStores, "firstSignIn" | "writeRecordChanges" | "termsAgreement">,
     signIn: Parameters<typeof recordFirstSignIn>[2] & { agreedTermsVersion: string | undefined },
   ): AccountResponse<void> => {
-    recordFirstSignIn(stores.writeRecordChanges, stores.firstSignIn, signIn);
+    const usageEvents = recordFirstSignIn(stores.writeRecordChanges, stores.firstSignIn, signIn);
     recordSignInTermsAgreement(stores.termsAgreement, signIn);
-    return respond(undefined);
+    return { ...respond(undefined), usageEvents };
   },
 
   // 送り待ちを送り切った印のある要求だけ、送った記録を当ててから、目標の経過とまだ見直していない週を見る
@@ -179,11 +179,16 @@ export const accountRequests = {
     report: SubscriptionTransactionReport,
     now: Date,
   ): AccountResponse<ReportedRecord[]> => {
-    const records = reportSubscriptionTransaction(stores.writeRecordChanges, stores, report, now);
+    const { records, usageEvents } = reportSubscriptionTransaction(
+      stores.writeRecordChanges,
+      stores,
+      report,
+      now,
+    );
     return {
       result: records,
       nextAlarmAt: computeNextAlarmAt(stores.records, now),
-      usageEvents: [],
+      usageEvents,
     };
   },
 
@@ -192,11 +197,15 @@ export const accountRequests = {
     stores: Pick<AccountStores, "writeRecordChanges" | "records" | "subscriptionTransaction">,
     notification: AppStoreServerNotificationReceipt,
     now: Date,
-  ): AccountResponse<AppStoreServerNotificationResult> => ({
-    result: receiveAppStoreServerNotification(stores.writeRecordChanges, stores, notification, now),
-    nextAlarmAt: computeNextAlarmAt(stores.records, now),
-    usageEvents: [],
-  }),
+  ): AccountResponse<AppStoreServerNotificationResult> => {
+    const { result, usageEvents } = receiveAppStoreServerNotification(
+      stores.writeRecordChanges,
+      stores,
+      notification,
+      now,
+    );
+    return { result, nextAlarmAt: computeNextAlarmAt(stores.records, now), usageEvents };
+  },
 
   deleteRecords: async (
     stores: Pick<AccountStores, "eraseRecords">,

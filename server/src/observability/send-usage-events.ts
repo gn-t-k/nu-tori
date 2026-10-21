@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import type { CachedTokenUsage, TokenUsage } from "../domain/token-usage";
 import type { UsageEvent } from "../domain/usage-event";
 
 // Durable Object では応答のあとに続ける仕組みが効かないので、数秒の上限を付けて待つ。throw すると、書き込みを当てたあとの応答が失敗する
@@ -89,6 +90,7 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         result: ended.result,
         input_tokens: ended.usage?.inputTokens,
         output_tokens: ended.usage?.outputTokens,
+        ...toCacheTokenProperties(ended.usage),
         provider_error_type: ended.providerErrorType,
       },
     }))
@@ -110,6 +112,25 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
     .with({ name: "estimation_deferred" }, (deferred) => ({
       name: deferred.name,
       properties: { reason: deferred.reason },
+    }))
+    .with({ name: "subscription_started" }, (started) => ({
+      name: started.name,
+      properties: {
+        purchased_during_free_trial: started.purchasedDuringFreeTrial,
+        rebuilt_account: started.rebuiltAccount,
+      },
+    }))
+    .with({ name: "subscription_renewed" }, (renewed) => ({
+      name: renewed.name,
+      properties: {},
+    }))
+    .with({ name: "subscription_expired" }, (expired) => ({
+      name: expired.name,
+      properties: {
+        has_purchased: expired.hasPurchased,
+        by_revocation: expired.byRevocation,
+        rebuilt_account: expired.rebuiltAccount,
+      },
     }))
     .with({ name: "goal_decision_recorded" }, (recorded) => ({
       name: recorded.name,
@@ -205,3 +226,12 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
     properties: { ...properties, $geoip_disable: true },
   };
 };
+
+// キャッシュのトークン数は、キャッシュの印を付ける呼び出しの使ったトークンにだけある
+const toCacheTokenProperties = (usage: TokenUsage | CachedTokenUsage | undefined) =>
+  usage !== undefined && "cacheCreationInputTokens" in usage
+    ? {
+        cache_creation_input_tokens: usage.cacheCreationInputTokens,
+        cache_read_input_tokens: usage.cacheReadInputTokens,
+      }
+    : {};

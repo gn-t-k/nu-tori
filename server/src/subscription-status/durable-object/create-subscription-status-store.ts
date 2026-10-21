@@ -9,6 +9,7 @@ import type { SubscriptionStatusStore } from "../domain/subscription-status-stor
 const { firstSignIns } = firstSignInTables;
 const { recordChanges } = syncLedgerTables;
 const {
+  appStoreSubscriptions,
   subscriptionTransactions,
   appStoreSubscriptionTransactions,
   subscriptionTransactionRevocations,
@@ -74,11 +75,16 @@ export const createSubscriptionStatusStore = (
         id: subscriptionTransactions.id,
         expiresAt: subscriptionTransactions.expiresAt,
         appStoreProductId: appStoreSubscriptionTransactions.appStoreProductId,
+        environment: appStoreSubscriptions.environment,
       })
       .from(subscriptionTransactions)
       .innerJoin(
         appStoreSubscriptionTransactions,
         eq(appStoreSubscriptionTransactions.subscriptionTransactionId, subscriptionTransactions.id),
+      )
+      .innerJoin(
+        appStoreSubscriptions,
+        eq(appStoreSubscriptions.subscriptionId, subscriptionTransactions.subscriptionId),
       )
       .all();
     return {
@@ -87,7 +93,8 @@ export const createSubscriptionStatusStore = (
       billingStartedOn: account.billingStartedOn,
       isTestUser: account.isTestUser,
       isExcludedByEarlierAccount: exclusion !== undefined,
-      transactions: transactions.map(({ id, expiresAt, appStoreProductId }) => ({
+      transactions: transactions.map(({ id, expiresAt, appStoreProductId, environment }) => ({
+        environment,
         appStoreProductId,
         expiresAt,
         revocations: revocations

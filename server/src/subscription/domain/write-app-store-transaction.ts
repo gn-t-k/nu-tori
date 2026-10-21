@@ -22,8 +22,9 @@ export const writeAppStoreTransaction = (
 ): {
   subscriptionId: RecordId;
   subscriptionTransactionId: RecordId;
-  // 取引か取り消しを書いたか。書いたら、サブスクリプションの状態が変わりうる
-  wroteFact: boolean;
+  // 取引・取り消しを書いたか。書いたら、サブスクリプションの状態が変わりうる
+  wroteTransaction: boolean;
+  wroteRevocation: boolean;
 } => {
   const key = {
     environment: transaction.environment,
@@ -69,6 +70,7 @@ export const writeAppStoreTransaction = (
   return {
     subscriptionId,
     subscriptionTransactionId,
-    wroteFact: writtenTransactionId === undefined || isNewRevocation,
+    wroteTransaction: writtenTransactionId === undefined,
+    wroteRevocation: isNewRevocation,
   };
 };

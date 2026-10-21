@@ -30,6 +30,8 @@ export const appStoreProductPlans: Readonly<Record<string, SubscriptionPlan>> = 
 
 // 判定に使う取引。取り消しと、ついた請求の猶予の終わりを持つ
 export type SubscriptionTransactionFact = {
+  // 利用状況の出来事を Production の環境の取引だけで送るのに使う
+  environment: AppStoreSubscriptionEnvironment;
   appStoreProductId: string;
   expiresAt: Date;
   // 取り消しごとに、戻されたか

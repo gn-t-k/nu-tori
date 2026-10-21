@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { R } from "@praha/byethrow";
 import { catchAnthropicFailure } from "../../../durable-object/anthropic/catch-anthropic-failure";
 import { parseJson } from "../../../durable-object/anthropic/parse-json";
-import type { TokenUsage } from "../../../domain/token-usage";
+import type { CachedTokenUsage } from "../../../domain/token-usage";
 import type { ConversationProvider, GeneratedReply } from "../../domain/conversation-provider";
 import { LlmCallError } from "../../../domain/llm-call-error";
 import { LlmCallInvalidResponseError } from "../../../domain/llm-call-invalid-response-error";
@@ -38,7 +38,7 @@ type StreamedMessage = {
   passedBody: string;
   // 終わりの出来事が届かなければ null
   stopReason: Anthropic.StopReason | null;
-  usage: TokenUsage;
+  usage: CachedTokenUsage;
 };
 
 const readStream = async (
@@ -49,11 +49,19 @@ const readStream = async (
     text: "",
     passedBody: "",
     stopReason: null,
-    usage: { inputTokens: 0, outputTokens: 0 },
+    usage: {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+    },
   };
   for await (const event of stream) {
     if (event.type === "message_start") {
       streamed.usage.inputTokens = event.message.usage.input_tokens;
+      streamed.usage.cacheCreationInputTokens =
+        event.message.usage.cache_creation_input_tokens ?? 0;
+      streamed.usage.cacheReadInputTokens = event.message.usage.cache_read_input_tokens ?? 0;
     }
     if (event.type === "message_delta") {
       streamed.stopReason = event.delta.stop_reason;
