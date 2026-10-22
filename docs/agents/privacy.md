@@ -22,3 +22,4 @@
 - 集めるもの、送り先、使い道、残る期間を変えるときは、同じ PR でプライバシーポリシー（`site/src/pages/privacy-page.tsx`）を直す
 - App Store Connect の App Privacy の回答が変わるなら、PR の本文で開発者に知らせる。回答は App Store Connect にしか無く、エージェントは直せない
 - 送り先や使い道が増えるときは、サインインの画面の同意の文も見直す（ポリシーの「改定」）
+- `nu-tori.app` だけで集めるもの（Cloudflare Web Analytics の訪問、LP の版の Cookie）を変えるときは、ポリシーの「1. 集める情報と集め方」の項と、「2. 使い道」「5. 保存する期間と削除」の行を一緒に直す。アプリの外のウェブなので、App Privacy の回答とサインインの同意の文は変えない
