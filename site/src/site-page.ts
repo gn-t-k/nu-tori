@@ -22,4 +22,5 @@ type SitePageKind =
   | { kind: "public"; footerLabel: string }
   // / に返すページ（仮のページと LP の版）。振り分けの Worker が /_lp/<名前>/ を読んで / で返すので、正規の URL はどれも / にする
   | { kind: "landing" }
+  // 検索に載せないページ（404 など）。正規の URL を持たない
   | { kind: "unindexed" };
