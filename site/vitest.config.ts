@@ -12,7 +12,7 @@ const {
 
 // 本番の LP_VARIANTS は LP を出すまで空なので、版の振り分けは、版を2つにした Worker で確かめる。
 // 2つめの版 b はテストだけの版で、vite build --mode test が本番のページに足して .wrangler/test-dist に書き出す（src/testing/test-site-app.tsx）。
-// 乱数は Worker の中の Math.random を vi.spyOn で差し替えられないので、版を選ぶ値（LP_VARIANT_DRAW）を b を引く値に決める
+// Worker は、版を選ぶ乱数を b を引く値に決めたテストだけの入口（src/testing/landing-variants-test-worker.ts）を束ねたもの
 const {
   workerOptions: { modulesRules: _variantsModulesRules, ...siteWithLandingVariantsOptions },
 } = unstable_getMiniflareWorkerOptions("./wrangler.jsonc", undefined, {
@@ -39,9 +39,9 @@ export default defineConfig({
             ...siteWithLandingVariantsOptions,
             name: "nu-tori-site-with-landing-variants-test",
             modules: true,
-            scriptPath: "./.wrangler/test-worker/worker.js",
+            scriptPath: "./.wrangler/test-landing-variants-worker/landing-variants-test-worker.js",
             // wrangler.jsonc の vars は LP_VARIANTS だけなので、置き換える。vars を足したら、ここにも足す
-            bindings: { LP_VARIANTS: ["a", "b"], LP_VARIANT_DRAW: 0.99 },
+            bindings: { LP_VARIANTS: ["a", "b"] },
           },
         ],
       },

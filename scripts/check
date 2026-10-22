@@ -520,6 +520,10 @@ check_site() {
     step "Worker の束ね（wrangler deploy --dry-run）"
     (cd "$site" && pnpm exec wrangler deploy --dry-run --outdir .wrangler/test-worker > /dev/null)
 
+    # 版を選ぶ乱数を決めた、テストだけの入口（site/vitest.config.ts）
+    step "テストの版の Worker の束ね（wrangler deploy --dry-run）"
+    (cd "$site" && pnpm exec wrangler deploy src/testing/landing-variants-test-worker.ts --dry-run --outdir .wrangler/test-landing-variants-worker > /dev/null)
+
     step "テスト（Vitest）"
     (cd "$site" && pnpm exec vitest run)
 }
