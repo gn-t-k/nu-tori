@@ -32,6 +32,7 @@ export const createSiteWorker = (drawVariant: () => number) => {
       throw new Error(`LP_VARIANTS の版の名前は英小文字と数字だけにする: ${variants.join(", ")}`);
     }
 
+    const variantCookieName = "nu_tori_lp";
     // 外した版と壊れた値は、一覧に無いので選び直す
     const remembered = getCookie(c, variantCookieName);
     if (remembered !== undefined && variants.includes(remembered)) {
@@ -60,8 +61,6 @@ export const createSiteWorker = (drawVariant: () => number) => {
 
   return app;
 };
-
-const variantCookieName = "nu_tori_lp";
 
 const fetchPage = async (env: Env, requestUrl: string, path: string): Promise<Response> => {
   const asset = await env.ASSETS.fetch(new URL(path, requestUrl));
