@@ -1,12 +1,12 @@
 import type { SitePage } from "../site-page";
+import { supportContact } from "../support-contact";
 
 // 問い合わせの入口だけを置く。よくある質問は、同じ問い合わせが2回来たら足す。個人の Gmail のアドレスは出さない
 // メールの送り先の案内は、プライバシーポリシーの「外国にある第三者への提供について」の同意の文と合わせて直す
 export const supportPage: SitePage = {
   outputPath: "/support",
   title: "サポート | nu-tori",
-  description:
-    "nu-tori への問い合わせは、問い合わせのフォームか support@nu-tori.app のメールで受け付けます。",
+  description: `nu-tori への問い合わせは、問い合わせのフォームか ${supportContact.email} のメールで受け付けます。`,
   search: { kind: "indexed", canonicalPath: "/support" },
   Content: () => (
     <>
@@ -22,10 +22,10 @@ export const supportPage: SitePage = {
       <p>次のどちらでも受け付けます。</p>
       <ul>
         <li>
-          <a href="https://forms.gle/KGg899DaWghiYnTx7">nu-tori 問い合わせフォーム</a>
+          <a href={supportContact.formUrl}>nu-tori 問い合わせフォーム</a>
         </li>
         <li>
-          メール: <a href="mailto:support@nu-tori.app">support@nu-tori.app</a>
+          メール: <a href={`mailto:${supportContact.email}`}>{supportContact.email}</a>
         </li>
       </ul>
       <p>

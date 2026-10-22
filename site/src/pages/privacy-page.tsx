@@ -1,4 +1,5 @@
 import type { SitePage } from "../site-page";
+import { supportContact } from "../support-contact";
 
 // 集めるもの、送り先、使い道、残る期間を変えたら、同じ PR でここを直す（docs/agents/privacy.md）
 export const privacyPage: SitePage = {
@@ -207,7 +208,7 @@ export const privacyPage: SitePage = {
       <h3>問い合わせ</h3>
       <p>
         問い合わせのフォームに書いた内容と、返事の送り先として書いたメールアドレス（任意）を受け取ります。アプリから開いたときは、アカウント
-        ID も受け取ります。support@nu-tori.app
+        ID も受け取ります。{supportContact.email}{" "}
         にメールを送ったときは、メールの本文と添付したファイル、差出人のメールアドレスと名前を受け取ります。
       </p>
 
@@ -300,7 +301,7 @@ export const privacyPage: SitePage = {
                   問い合わせのフォームに書いた内容、メールアドレス、アカウント ID を受け取ります。
                 </p>
                 <p>
-                  support@nu-tori.app
+                  {supportContact.email}{" "}
                   に送っていただいたメール（本文、添付したファイル、差出人のメールアドレスと名前）を受け取り、保存します。
                 </p>
               </td>
@@ -363,7 +364,7 @@ export const privacyPage: SitePage = {
         は、個人情報の保護に関する法律にいう外国にある第三者への提供として扱い、サインインの画面であなたの同意を得たうえで、これらの会社に情報を送ります。Google
         には、問い合わせのフォームの冒頭の案内を読んで送っていただいたこと、または
         <a href="/support">サポートのページ</a>
-        の案内を読んで support@nu-tori.app
+        の案内を読んで {supportContact.email}{" "}
         にメールを送っていただいたことで、同意を得たものとします。
       </p>
       <ul>
@@ -493,10 +494,10 @@ export const privacyPage: SitePage = {
       </p>
       <ul>
         <li>
-          <a href="https://forms.gle/KGg899DaWghiYnTx7">nu-tori 問い合わせフォーム</a>
+          <a href={supportContact.formUrl}>nu-tori 問い合わせフォーム</a>
         </li>
         <li>
-          メール: <a href="mailto:support@nu-tori.app">support@nu-tori.app</a>
+          メール: <a href={`mailto:${supportContact.email}`}>{supportContact.email}</a>
         </li>
       </ul>
       <p>

@@ -1,6 +1,7 @@
 import { formatYen } from "../format-yen";
 import type { SitePage } from "../site-page";
 import { subscriptionPrices } from "../subscription-prices";
+import { supportContact } from "../support-contact";
 
 // 事項と中身の正本は #593 の解決コメント（https://github.com/gn-t-k/nu-tori/issues/593#issuecomment-6257220570）。
 // 住所と電話番号の値は、請求のたびにメールで知らせ、ここにもリポジトリ・Issue・PR にも書かない（docs/agents/privacy.md）
@@ -28,14 +29,14 @@ export const legalPage: SitePage = {
               <th scope="row">住所・電話番号</th>
               <td>
                 ご請求があれば、遅滞なくメールでお知らせします。
-                <a href="mailto:support@nu-tori.app">support@nu-tori.app</a>
+                <a href={`mailto:${supportContact.email}`}>{supportContact.email}</a>
                 にご請求ください。
               </td>
             </tr>
             <tr>
               <th scope="row">メールアドレス</th>
               <td>
-                <a href="mailto:support@nu-tori.app">support@nu-tori.app</a>（
+                <a href={`mailto:${supportContact.email}`}>{supportContact.email}</a>（
                 <a href="/support">サポートのページ</a>
                 の問い合わせのフォームでも受け付けます）
               </td>
