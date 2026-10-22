@@ -7,7 +7,7 @@ import UIKit
 /// 今日の体重が未記録のあいだは、「体重」をカプセルにして丸の行の下に全幅で置く（書く欄の幅が記録の前後で変わらないように）。
 /// 目標を立てる知らせのカードを広げているあいだは、未記録でも「体重」を丸い灰色のボタンにする（カードの塗ったボタンと並ばないように）。
 /// カメラを許可していない人が「撮る」を押したら、そのすぐ上に知らせを出す。
-/// サブスクリプション切れのあいだは、撮る・写真・書く欄を押せなくし、プリセットの代わりに課金画面を開くチップを置く（体重はいつもどおり）
+/// サブスクリプション切れのあいだは、撮る・写真・書く欄と、残った下書きの「送る」を押せなくし、プリセットの代わりに課金画面を開くチップを置く（体重はいつもどおり）
 struct TimelineComposer: View {
     let weightRecordedToday: Bool
     /// サブスクリプション切れ
@@ -21,7 +21,7 @@ struct TimelineComposer: View {
     let onPickPhotos: () -> Void
     let onWeight: () -> Void
     let onPresetTapped: (TextPreset) -> Void
-    /// 送れるときだけ呼ぶ。呼んだあと書く欄を空にする
+    /// 送れるとき（切れていない、送れる文）だけ呼ぶ。呼んだあと書く欄を空にする
     let onSendText: (TextDraft) -> Void
     /// サブスクリプション切れのチップ。課金画面を開く
     let onOpenPaywall: () -> Void
@@ -179,12 +179,13 @@ struct TimelineComposer: View {
     private var subscriptionChip: some View {
         Button(action: onOpenPaywall) {
             HStack(spacing: 4) {
-                Text("撮って記録するには、サブスクリプションが必要です")
+                Text(PaywallContent.subscriptionRequired)
                     // 入力欄は画面の下に高さを詰めて置かれるので、大きな文字では折り返した文が「…」で切れる。切らずに全部を出す
                     .fixedSize(horizontal: false, vertical: true)
                 Image(systemName: "chevron.right")
             }
             .font(.footnote)
+            // DESIGN.md の preset-chip の文字の色（on-surface）に従わない。押すと文面を入れるプリセットと違い、課金画面を開くので、ほかの画面を開く文字のボタンと同じ Primary の文字と › で見分けられるようにする
             .foregroundStyle(Color.accentColor)
             // DESIGN.md の Layout は余白を標準に任せるが、プリセットと同じ preset-chip（高さ 32、左右 12）にそろえる
             .padding(.horizontal, 12)
@@ -196,7 +197,7 @@ struct TimelineComposer: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityLabel("撮って記録するには、サブスクリプションが必要です")
+        .accessibilityLabel(PaywallContent.subscriptionRequired)
         .accessibilityIdentifier("composer-subscription-chip")
     }
 
@@ -225,7 +226,8 @@ struct TimelineComposer: View {
                 .padding(4)
                 .contentShape(Rectangle())
                 .padding(-4)
-                .disabled(!draft.canSend)
+                // 書いている途中で日が変わって切れても、下書きは残す。送れるのは切れていないときだけ
+                .disabled(!canSend)
                 .accessibilityLabel("送る")
                 .accessibilityIdentifier("composer-send")
             }
@@ -304,8 +306,10 @@ struct TimelineComposer: View {
         }
     }
 
+    private var canSend: Bool { draft.canSend && !requiresSubscription }
+
     private func send() {
-        guard draft.canSend else { return }
+        guard canSend else { return }
         onSendText(draft)
         clearField()
     }

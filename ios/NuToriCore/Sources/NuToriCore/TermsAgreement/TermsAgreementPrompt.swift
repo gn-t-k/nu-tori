@@ -19,8 +19,12 @@ public actor TermsAgreementPrompt {
         guard
             case .required(let termsVersion) = try? await client.termsAgreementRequirement()
         else { return nil }
-        await analytics.capture(.termsAgreementSheetShown)
         return TermsAgreementSheet(termsVersion: termsVersion)
+    }
+
+    /// シートを画面に出した。問うあいだにサインインの画面に替わって出さなかったシートは数えない
+    public func sheetPresented() async {
+        await analytics.capture(.termsAgreementSheetShown)
     }
 
     /// 「同意して続ける」を押した。その場の要求で同意を送る。
@@ -33,7 +37,7 @@ public actor TermsAgreementPrompt {
             result = try await client.agreeToTerms(
                 requestId: requestId, termsVersion: sheet.termsVersion)
         } catch {
-            return .notAgreed(error.isUnreachableOrTimedOut ? .unreachable : .retryLater)
+            return .notAgreed(RequestFailureReason(error))
         }
         switch result {
         case .agreed:
@@ -49,14 +53,7 @@ public actor TermsAgreementPrompt {
         /// 受け付けられた。シートを閉じる
         case agreed
         /// 受け付けられなかった。シートを出したまま、押し直してもらう
-        case notAgreed(FailureReason)
-
-        public enum FailureReason: Sendable, Equatable {
-            /// 電波が無いときと時間切れ
-            case unreachable
-            /// 回数の歯止めとサーバーの失敗
-            case retryLater
-        }
+        case notAgreed(RequestFailureReason)
     }
 
     private let client: NuToriAPIClient

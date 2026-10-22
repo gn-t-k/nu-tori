@@ -5,7 +5,7 @@ import SwiftUI
 struct TermsAgreementSheetView: View {
     /// progress はシートを出したときの状態。送るのは画面の中で進むので、あとから渡し直しても変わらない
     init(
-        progress: Progress = .ready,
+        progress: Progress,
         agree: @escaping () async -> TermsAgreementPrompt.AgreeOutcome
     ) {
         _progress = State(initialValue: progress)
@@ -46,17 +46,21 @@ struct TermsAgreementSheetView: View {
         /// 同意を送って、応答を待っている
         case agreeing
         /// 受け付けられなかった。押し直してもらう
-        case failed(TermsAgreementPrompt.AgreeOutcome.FailureReason)
+        case failed(RequestFailureReason)
     }
 
     @State private var progress: Progress
 
     private var message: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("利用規約を定めました")
+            Text("利用規約への同意のお願い")
                 .font(.title2.bold())
-            Text("[利用規約](https://nu-tori.app/terms)を確かめてから、続けてください。")
-                .font(.body)
+            Text(
+                PublicPages.linkedText(
+                    "nu-tori を使い続けるには、[利用規約](\(PublicPages.terms))への同意が必要です。確かめてから、続けてください。"
+                )
+            )
+            .font(.body)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding([.horizontal, .top])
@@ -94,7 +98,7 @@ struct TermsAgreementSheetView: View {
     }
 
     private func failureMessage(
-        for reason: TermsAgreementPrompt.AgreeOutcome.FailureReason
+        for reason: RequestFailureReason
     ) -> String {
         switch reason {
         case .unreachable:

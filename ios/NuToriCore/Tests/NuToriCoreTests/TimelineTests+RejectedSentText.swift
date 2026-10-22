@@ -20,7 +20,7 @@ extension TimelineTests {
                 input: Timeline.Input(
                     goalRecords: .fixture(weightRecords: [morning, evening]),
                     rejectedLines: [.sentText(line)], meals: [], notices: [], undelivered: .none,
-                    conversation: .none),
+                    conversation: .none, subscriptionNotices: []),
                 firstDay: Self.day, today: Self.day)
             #expect(
                 timeline.days.map(\.items) == [
@@ -40,7 +40,7 @@ extension TimelineTests {
                     meals: [], notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText], statuses: [sentText.id: failed], replies: [],
-                        streams: [:])),
+                        streams: [:]), subscriptionNotices: []),
                 firstDay: Self.day, today: Self.day)
             #expect(
                 timeline.days.map(\.items) == [

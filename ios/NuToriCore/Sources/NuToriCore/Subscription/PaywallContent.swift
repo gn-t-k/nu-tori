@@ -8,31 +8,37 @@ public struct PaywallContent: Equatable, Sendable {
     /// まとめの「支払いが始まる日」。サブスクリプション中（月額と年額の切り替え）は、始まる日が切り替え方で変わるので書かない
     public let paymentStart: String?
     /// まとめの「自動更新」
-    public let renewal: String
+    public let renewal = "解約しない限り、自動で更新します。"
+    /// 「自動更新」の下に箇条書きで並べる、月額・年額の更新の間隔と次の更新日。
+    /// サブスクリプション中（月額と年額の切り替え）は、次の更新日が切り替え方で変わるので書かない
+    public let renewalSchedule: [String]
 
     /// テストユーザーは課金画面を開かないので nil
     public init?(standing: SubscriptionStanding, today: CalendarDay) {
-        let renewsAutomatically = "解約しない限り、自動で更新します。"
-        let nextRenewal =
-            "次の更新は、月額なら\(GoalText.monthDay(Self.adding(months: 1, to: today)))、"
-            + "年額なら\(Self.yearMonthDay(Self.adding(months: 12, to: today)))です。"
+        let schedule = [
+            "月額を選んだ場合: 1か月ごと（次は\(GoalText.monthDay(Self.adding(months: 1, to: today)))）",
+            "年額を選んだ場合: 1年ごと（次は\(Self.yearMonthDay(Self.adding(months: 12, to: today)))）",
+        ]
         switch standing {
         case .testUser:
             return nil
         case .freeTrial(_, let remainingDays):
-            headline = Self.freeTrialHeadline
+            headline = Self.featuresHeadline
             paymentStart = "今日から。無料体験の残り \(remainingDays) 日はなくなります"
-            renewal = renewsAutomatically + nextRenewal
+            renewalSchedule = schedule
         case .expired:
-            headline = "撮って記録するには、サブスクリプションが必要です"
+            headline = Self.subscriptionRequired
             paymentStart = "今日から"
-            renewal = renewsAutomatically + nextRenewal
+            renewalSchedule = schedule
         case .subscribed:
-            headline = Self.freeTrialHeadline
+            headline = Self.featuresHeadline
             paymentStart = nil
-            renewal = renewsAutomatically
+            renewalSchedule = []
         }
     }
+
+    /// 切れのあいだの見出し。入力欄のチップにも同じ文を出す
+    public static let subscriptionRequired = "撮って記録するには、サブスクリプションが必要です"
 
     /// 使えるもの
     public static let features = [
@@ -49,7 +55,8 @@ public struct PaywallContent: Equatable, Sendable {
     public static let cancellation =
         "iPhone の設定 → Apple アカウント → サブスクリプションから。更新日の24時間前までに解約すれば次の請求はありません"
 
-    private static let freeTrialHeadline = "撮るだけで、1日の目安が体に合っていく"
+    /// 切れていないとき（無料体験中・サブスクリプション中）の見出し。使えるものを1行で言う
+    private static let featuresHeadline = "撮るだけで、1日の目安が体に合っていく"
 
     /// 次の月に同じ日が無ければ、その月の終わりの日にする（App Store の更新日と同じ）
     private static func adding(months: Int, to day: CalendarDay) -> CalendarDay {

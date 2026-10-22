@@ -5,7 +5,7 @@ import NuToriCore
 import NuToriTestSupport
 import Testing
 
-@Suite("サブスクリプションの購入と取引の知らせ")
+@Suite("サブスクリプションの取引の知らせ")
 struct SubscriptionPurchasesTests {
     @Suite("買って、サーバーが結びつけたとき")
     struct PurchaseLinked {
@@ -15,7 +15,7 @@ struct SubscriptionPurchasesTests {
         let purchases: SubscriptionPurchases
 
         init() {
-            store = .ok(purchase: .purchased(.sample(id: 1)))
+            store = .ok()
             transport = .subscription { _ in (.ok, linkedJSON) }
             applied = ChangesRecorder()
             purchases = .fixture(
@@ -23,22 +23,9 @@ struct SubscriptionPurchasesTests {
                 newRequestId: { requestId })
         }
 
-        @Test("サーバーが出した購入者のトークンを渡して買うこと")
-        func purchasesWithAppAccountToken() async {
-            _ = await purchases.purchase(productId: monthlyId)
-
-            #expect(
-                store.purchases == [
-                    .init(
-                        productId: monthlyId,
-                        appAccountToken: UUID(
-                            uuidString: "6F1C2A3B-4D5E-4F60-8A7B-9C0D1E2F3A4B")!)
-                ])
-        }
-
         @Test("署名つきの取引を、買った直後のきっかけと要求の ID で知らせること")
         func reportsWithPurchaseTrigger() async throws {
-            _ = await purchases.purchase(productId: monthlyId)
+            _ = await purchases.reportPurchase(.sample(id: 1))
 
             #expect(
                 try reportBodies(transport) == [
@@ -51,7 +38,7 @@ struct SubscriptionPurchasesTests {
 
         @Test("結びついたと返し、取引を終えること")
         func returnsLinkedAndFinishes() async {
-            let outcome = await purchases.purchase(productId: monthlyId)
+            let outcome = await purchases.reportPurchase(.sample(id: 1))
 
             #expect(outcome == .linked)
             #expect(store.finished == [1])
@@ -59,7 +46,7 @@ struct SubscriptionPurchasesTests {
 
         @Test("応答のサブスクリプションの状態をキャッシュに当てること")
         func appliesChanges() async {
-            _ = await purchases.purchase(productId: monthlyId)
+            _ = await purchases.reportPurchase(.sample(id: 1))
 
             #expect(
                 applied.changes == [
@@ -81,7 +68,7 @@ struct SubscriptionPurchasesTests {
         let purchases: SubscriptionPurchases
 
         init() {
-            store = .ok(purchase: .purchased(.sample(id: 1)))
+            store = .ok()
             applied = ChangesRecorder()
             purchases = .fixture(
                 store: store,
@@ -91,7 +78,7 @@ struct SubscriptionPurchasesTests {
 
         @Test("ほかのアカウントのものと返し、取引を終えること")
         func returnsOwnedByOtherAccountAndFinishes() async {
-            let outcome = await purchases.purchase(productId: monthlyId)
+            let outcome = await purchases.reportPurchase(.sample(id: 1))
 
             #expect(outcome == .ownedByOtherAccount)
             #expect(store.finished == [1])
@@ -99,7 +86,7 @@ struct SubscriptionPurchasesTests {
 
         @Test("キャッシュに何も当てないこと")
         func appliesNothing() async {
-            _ = await purchases.purchase(productId: monthlyId)
+            _ = await purchases.reportPurchase(.sample(id: 1))
 
             #expect(applied.changes.isEmpty)
         }
@@ -111,7 +98,7 @@ struct SubscriptionPurchasesTests {
         let purchases: SubscriptionPurchases
 
         init() {
-            store = .ok(purchase: .purchased(.sample(id: 1)))
+            store = .ok()
             purchases = .fixture(
                 store: store,
                 transport: .subscription { _ in throw URLError(.notConnectedToInternet) })
@@ -119,7 +106,7 @@ struct SubscriptionPurchasesTests {
 
         @Test("まだ結びついていないと返し、取引を終えずに残すこと")
         func keepsTransactionUnfinished() async {
-            let outcome = await purchases.purchase(productId: monthlyId)
+            let outcome = await purchases.reportPurchase(.sample(id: 1))
 
             #expect(outcome == .notLinkedYet(.unreachable))
             #expect(store.finished.isEmpty)
@@ -132,14 +119,14 @@ struct SubscriptionPurchasesTests {
         let purchases: SubscriptionPurchases
 
         init() {
-            store = .ok(purchase: .purchased(.sample(id: 1)))
+            store = .ok()
             purchases = .fixture(
                 store: store, transport: .subscription { _ in (.internalServerError, nil) })
         }
 
         @Test("まだ結びついていないと返し、取引を終えずに残すこと")
         func keepsTransactionUnfinished() async {
-            let outcome = await purchases.purchase(productId: monthlyId)
+            let outcome = await purchases.reportPurchase(.sample(id: 1))
 
             #expect(outcome == .notLinkedYet(.retryLater))
             #expect(store.finished.isEmpty)
@@ -152,7 +139,7 @@ struct SubscriptionPurchasesTests {
         let purchases: SubscriptionPurchases
 
         init() {
-            store = .ok(purchase: .purchased(.sample(id: 1)))
+            store = .ok()
             purchases = .fixture(
                 store: store,
                 transport: .subscription { _ in
@@ -162,84 +149,10 @@ struct SubscriptionPurchasesTests {
 
         @Test("受け付けなかったと返し、取引を終えること")
         func finishesTransaction() async {
-            let outcome = await purchases.purchase(productId: monthlyId)
+            let outcome = await purchases.reportPurchase(.sample(id: 1))
 
             #expect(outcome == .rejected)
             #expect(store.finished == [1])
-        }
-    }
-
-    @Suite("買う画面を閉じたとき")
-    struct PurchaseCancelled {
-        let transport: ClientTransportMock
-        let purchases: SubscriptionPurchases
-
-        init() {
-            transport = .subscription { _ in (.ok, linkedJSON) }
-            purchases = .fixture(store: .ok(purchase: .cancelled), transport: transport)
-        }
-
-        @Test("閉じたと返し、何も知らせないこと")
-        func reportsNothing() async throws {
-            let outcome = await purchases.purchase(productId: monthlyId)
-
-            #expect(outcome == .cancelled)
-            #expect(try reportBodies(transport).isEmpty)
-        }
-    }
-
-    @Suite("承認を待っているとき")
-    struct PurchasePending {
-        let transport: ClientTransportMock
-        let purchases: SubscriptionPurchases
-
-        init() {
-            transport = .subscription { _ in (.ok, linkedJSON) }
-            purchases = .fixture(store: .ok(purchase: .pending), transport: transport)
-        }
-
-        @Test("待っていると返し、何も知らせないこと")
-        func reportsNothing() async throws {
-            let outcome = await purchases.purchase(productId: monthlyId)
-
-            #expect(outcome == .pending)
-            #expect(try reportBodies(transport).isEmpty)
-        }
-    }
-
-    @Suite("StoreKit が買えなかったとき")
-    struct PurchaseStoreFailed {
-        let purchases: SubscriptionPurchases
-
-        init() {
-            purchases = .fixture(
-                store: .error(StoreFailure()), transport: .subscription { _ in (.ok, linkedJSON) })
-        }
-
-        @Test("買えなかったと返すこと")
-        func returnsPurchaseFailed() async {
-            let outcome = await purchases.purchase(productId: monthlyId)
-
-            #expect(outcome == .purchaseFailed(.retryLater))
-        }
-    }
-
-    @Suite("購入者のトークンを受け取れなかったとき")
-    struct TokenUnreachable {
-        let store: SubscriptionStoreMock
-        let purchases: SubscriptionPurchases
-
-        init() {
-            store = .ok(purchase: .purchased(.sample(id: 1)))
-            purchases = .fixture(store: store, transport: .error(URLError(.notConnectedToInternet)))
-        }
-
-        @Test("買わずに、つながらなかったと返すこと")
-        func doesNotPurchase() async {
-            let outcome = await purchases.purchase(productId: monthlyId)
-
-            #expect(outcome == .purchaseFailed(.unreachable))
-            #expect(store.purchases.isEmpty)
         }
     }
 
@@ -302,7 +215,7 @@ struct SubscriptionPurchasesTests {
             let reachability = ReportReachability()
             reachability.isReachable = false
             self.reachability = reachability
-            store = .ok(purchase: .purchased(.sample(id: 1)), unfinished: [.sample(id: 1)])
+            store = .ok(unfinished: [.sample(id: 1)])
             transport = .subscription { _ in
                 guard reachability.isReachable else { throw URLError(.notConnectedToInternet) }
                 return (.ok, linkedJSON)
@@ -312,7 +225,7 @@ struct SubscriptionPurchasesTests {
 
         @Test("終えていない取引を、Transaction.updates のきっかけで知らせて終えること")
         func reportsUnfinishedAndFinishes() async throws {
-            _ = await purchases.purchase(productId: monthlyId)
+            _ = await purchases.reportPurchase(.sample(id: 1))
             reachability.isReachable = true
 
             await purchases.reportUnfinishedTransactions()
@@ -326,7 +239,7 @@ struct SubscriptionPurchasesTests {
 
         @Test("同じ取引には、同じ要求の ID で送り直すこと")
         func resendsWithSameRequestId() async throws {
-            _ = await purchases.purchase(productId: monthlyId)
+            _ = await purchases.reportPurchase(.sample(id: 1))
             reachability.isReachable = true
 
             await purchases.reportUnfinishedTransactions()
@@ -437,14 +350,12 @@ struct SubscriptionPurchasesTests {
 
         init() {
             transport = .subscription { _ in (.ok, linkedJSON) }
-            purchases = .fixture(
-                store: .ok(purchase: .purchased(.sample(id: 4)), entitlements: [.sample(id: 4)]),
-                transport: transport)
+            purchases = .fixture(store: .ok(entitlements: [.sample(id: 4)]), transport: transport)
         }
 
         @Test("復元のきっかけで、別の要求の ID で送り直すこと")
         func reportsAgainWithNewRequestId() async throws {
-            _ = await purchases.purchase(productId: monthlyId)
+            _ = await purchases.reportPurchase(.sample(id: 4))
 
             _ = await purchases.restore()
 
@@ -525,33 +436,6 @@ struct SubscriptionPurchasesTests {
 
             #expect(outcome == .cancelled)
             #expect(try reportBodies(transport).isEmpty)
-        }
-    }
-
-    @Suite("自動更新を読むとき")
-    struct AutoRenewal {
-        @Test("更新の情報で自動更新がオンなら、オンと返すこと")
-        func on() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(willAutoRenew: true), transport: .ok())
-
-            #expect(await purchases.autoRenewal() == .on)
-        }
-
-        @Test("更新の情報で自動更新がオフなら、オフと返すこと")
-        func off() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(willAutoRenew: false), transport: .ok())
-
-            #expect(await purchases.autoRenewal() == .off)
-        }
-
-        @Test("更新の情報を読めなければ、分からないと返すこと")
-        func unknown() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(willAutoRenew: nil), transport: .ok())
-
-            #expect(await purchases.autoRenewal() == .unknown)
         }
     }
 

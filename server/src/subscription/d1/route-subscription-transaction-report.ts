@@ -1,3 +1,4 @@
+import { toAppStoreSubscriptionKey } from "../domain/app-store-subscription-key";
 import type { AppStoreSubscriptionTransaction } from "../domain/read-app-store-subscription-transaction";
 import { createAppAccountTokenStore } from "./create-app-account-token-store";
 import { createAppStoreSubscriptionRouteStore } from "./create-app-store-subscription-route-store";
@@ -11,10 +12,7 @@ export const routeSubscriptionTransactionReport = async (
   transaction: AppStoreSubscriptionTransaction,
 ): Promise<"linked" | "owned_by_other_account"> => {
   const routes = createAppStoreSubscriptionRouteStore(d1);
-  const key = {
-    environment: transaction.environment,
-    appStoreOriginalTransactionId: transaction.appStoreOriginalTransactionId,
-  };
+  const key = toAppStoreSubscriptionKey(transaction);
   const routedAccountId = await routes.findAccountId(key);
   if (routedAccountId !== undefined && routedAccountId !== accountId) {
     return "owned_by_other_account";

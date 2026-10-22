@@ -90,7 +90,7 @@ export const beginEstimationAttempts = (
       now,
     )) {
       subscriptionStatus ??= readSubscriptionStatus(stores.subscriptionStatus);
-      if (isSubscriptionExpired(subscriptionStatus, { countedOn, now })) {
+      if (isSubscriptionExpired(subscriptionStatus, { countedOn, at: now })) {
         writes.hold({ scheduleId, target, heldAt: now });
         usageEvents.push({ name: "estimation_deferred", reason: "subscription_expired" });
         continue;

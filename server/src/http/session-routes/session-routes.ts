@@ -7,7 +7,6 @@ import { match } from "ts-pattern";
 import { createAppleRefreshTokenStore } from "../../auth/create-apple-refresh-token-store";
 import { createAuthentication } from "../../auth/create-authentication";
 import { exchangeAppleAuthorizationCode } from "../../auth/exchange-apple-authorization-code";
-import { findAppleSub } from "../../auth/find-apple-sub";
 import { computeSha256Hex } from "../../domain/compute-sha256-hex";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { createFreeTrialUsageStore } from "../../subscription/d1/create-free-trial-usage-store";
@@ -94,13 +93,8 @@ export const sessionRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
 );
 
 // 最初のサインインかどうかは Durable Object が決めるので、サインインのたびに引く
-const isFreeTrialUsedByEarlierAccount = async (env: Env, accountId: string): Promise<boolean> => {
-  const appleSub = await findAppleSub(env.DB, accountId);
-  if (appleSub === undefined) {
-    throw new Error("Apple でサインインしたアカウントに Apple の sub が無い");
-  }
-  return createFreeTrialUsageStore(env.DB, env.APPLE_SUB_HASH_KEYS).isUsed(appleSub);
-};
+const isFreeTrialUsedByEarlierAccount = (env: Env, accountId: string): Promise<boolean> =>
+  createFreeTrialUsageStore(env.DB, env.APPLE_SUB_HASH_KEYS).isUsed(accountId);
 
 const signInWithAppleIdToken = (
   authentication: ReturnType<typeof createAuthentication>,

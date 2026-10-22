@@ -3,7 +3,9 @@ import NuToriCore
 import SwiftData
 
 /// サブスクリプションの状態。アカウントに1つなので、行は1つだけ置く。
-/// 分かれる形を、省略できる列で平らに持つ（テストユーザーはほかの列を持たない）
+/// 分かれる形を、省略できる列で平らに持つ（テストユーザーはほかの列を持たない）。
+/// SwiftData の列は値を持つ enum を持てないので、列の組み合わせで書ける形のうち、`SubscriptionStatus` に無いもの（テストユーザーで商品がある、
+/// 商品があって期限が無いなど）も書けてしまう。書くのは `apply(_:)` だけにし、読む `subscriptionStatus()` はそれらを読めない行として nil にする
 @Model
 nonisolated final class CachedSubscriptionStatus {
     @Attribute(.unique) var singletonKey: String
@@ -45,11 +47,7 @@ nonisolated final class CachedSubscriptionStatus {
                 periodEndsAt = nil
                 billingGraceEndsAt = nil
             case .subscribed(let subscribedPlan, let endsAt, let billingGrace):
-                plan =
-                    switch subscribedPlan {
-                    case .monthly: "monthly"
-                    case .yearly: "yearly"
-                    }
+                plan = subscribedPlan.rawValue
                 periodEndsAt = endsAt
                 billingGraceEndsAt =
                     switch billingGrace {
@@ -73,14 +71,8 @@ nonisolated final class CachedSubscriptionStatus {
         guard let plan else {
             return .regular(freeTrial: freeTrial, subscription: .none)
         }
-        let subscribedPlan: SubscriptionStatus.Plan
-        switch plan {
-        case "monthly": subscribedPlan = .monthly
-        case "yearly": subscribedPlan = .yearly
-        // swiftlint:disable:next no_default_in_switch - 行の値は文字列で、知らない値がありうる
-        default: return nil
-        }
-        guard let periodEndsAt else { return nil }
+        guard let subscribedPlan = SubscriptionStatus.Plan(rawValue: plan), let periodEndsAt
+        else { return nil }
         return .regular(
             freeTrial: freeTrial,
             subscription: .subscribed(

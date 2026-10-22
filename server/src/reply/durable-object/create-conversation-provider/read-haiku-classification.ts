@@ -19,6 +19,7 @@ export const readHaikuClassification = (
     ? R.succeed({
         label: parsed.data.label,
         usage: {
+          type: "uncached",
           inputTokens: message.usage.input_tokens,
           outputTokens: message.usage.output_tokens,
         },

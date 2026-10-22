@@ -330,7 +330,7 @@ describe("読み分け", () => {
       await enableUsageEventSending(accountId);
       mockCreateConversationProviderOk({
         classification: "unsure",
-        classificationUsage: { inputTokens: 150, outputTokens: 3 },
+        classificationUsage: { type: "uncached", inputTokens: 150, outputTokens: 3 },
       });
       await sendText({ body: "今日は何を食べようかな" });
       captureSpy = mockPostHogCaptureEndpointOk();

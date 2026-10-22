@@ -17,9 +17,8 @@
             []
         }
 
-        func purchase(productId: String, appAccountToken: UUID) async throws
-            -> AppStorePurchaseAttempt
-        {
+        /// 課金画面の UI テストの買うところ（`PaywallStorefront.fixed`）が、月額を買ったことにする。本物の StoreKit では `SubscriptionStoreView` が買う
+        func purchaseMonthly(appAccountToken: UUID) -> AppStorePurchaseAttempt {
             switch purchaseResult {
             case .cancels:
                 .cancelled
@@ -47,8 +46,8 @@
 
         func finish(_ transaction: AppStoreTransaction) async {}
 
-        func willAutoRenew() async -> Bool? {
-            nil
+        func autoRenewal() async -> SubscriptionPurchases.AutoRenewal {
+            .unknown
         }
     }
 #endif

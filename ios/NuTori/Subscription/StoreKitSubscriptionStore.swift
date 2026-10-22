@@ -12,16 +12,6 @@ nonisolated struct StoreKitSubscriptionStore: SubscriptionStore {
         }
     }
 
-    func purchase(productId: String, appAccountToken: UUID) async throws
-        -> AppStorePurchaseAttempt
-    {
-        guard let product = try await Product.products(for: [productId]).first else {
-            throw ProductNotFoundError()
-        }
-        return AppStorePurchaseAttempt(
-            try await product.purchase(options: [.appAccountToken(appAccountToken)]))
-    }
-
     func transactionUpdates() -> AsyncStream<AppStoreTransaction> {
         AsyncStream { continuation in
             let task = Task {
@@ -63,19 +53,17 @@ nonisolated struct StoreKitSubscriptionStore: SubscriptionStore {
         }
     }
 
-    func willAutoRenew() async -> Bool? {
+    func autoRenewal() async -> SubscriptionPurchases.AutoRenewal {
         for await verification in Transaction.currentEntitlements {
             let transaction = verification.unsafePayloadValue
             guard transaction.productType == .autoRenewable,
                 let status = await transaction.subscriptionStatus,
                 case .verified(let renewalInfo) = status.renewalInfo
             else { continue }
-            return renewalInfo.willAutoRenew
+            return renewalInfo.willAutoRenew ? .on : .off
         }
-        return nil
+        return .unknown
     }
-
-    private struct ProductNotFoundError: Error {}
 }
 
 nonisolated extension AppStorePurchaseAttempt {

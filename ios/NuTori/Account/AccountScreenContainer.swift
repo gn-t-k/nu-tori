@@ -1,9 +1,13 @@
+import Foundation
 import NuToriCore
 import SwiftData
 import SwiftUI
 
 /// キャッシュのアカウントの設定とサブスクリプションの状態、通知の許可、自動更新を読んで、アカウントの画面に渡す
 struct AccountScreenContainer: View {
+    /// 開いたときの今とタイムゾーンで、サブスクリプションの状態と課金画面のまとめの次の更新日を書く
+    let now: () -> Date
+    let timeZone: () -> TimeZone
     let actions: AccountActions
     let paywallActions: PaywallActions
     let onClose: () -> Void
@@ -11,19 +15,19 @@ struct AccountScreenContainer: View {
     var body: some View {
         let standing = cachedSubscriptionStatuses.first?.subscriptionStatus().map {
             SubscriptionStanding(
-                status: $0, now: paywallActions.clock.now(),
-                timeZone: paywallActions.clock.timeZone())
+                status: $0, now: now(), timeZone: timeZone())
         }
         AccountScreen(
             subscription: standing.map {
                 AccountSubscriptionRow(
                     standing: $0, autoRenewal: autoRenewal,
-                    timeZone: paywallActions.clock.timeZone())
+                    timeZone: timeZone())
             },
             openPaywall: {
                 guard let standing else { return }
                 paywallRequest = PaywallSheet.Request(
-                    entry: .accountRow, standing: standing, today: paywallActions.clock.today())
+                    entry: .accountRow, standing: standing,
+                    today: CalendarDay(containing: now(), in: timeZone()))
             },
             sendsUsageData: UsageDataSetting.sendsUsageData(
                 cachedSettings.first?.accountSettings()),
@@ -43,7 +47,7 @@ struct AccountScreenContainer: View {
         // iPhone の設定で解約して戻ったときと、課金画面を閉じたときに読み直す
         .task(id: [scenePhase == .active, paywallRequest == nil]) {
             guard scenePhase == .active, paywallRequest == nil else { return }
-            autoRenewal = await paywallActions.purchases.autoRenewal()
+            autoRenewal = await actions.autoRenewal()
         }
         .paywallSheet($paywallRequest, actions: paywallActions)
     }

@@ -13,7 +13,7 @@ describe("サブスクリプション切れか", () => {
       expect(
         isSubscriptionExpired(status, {
           countedOn: "2027-01-01",
-          now: new Date("2027-01-01T00:00:00.000Z"),
+          at: new Date("2027-01-01T00:00:00.000Z"),
         }),
       ).toBe(false);
     });
@@ -33,7 +33,7 @@ describe("サブスクリプション切れか", () => {
       expect(
         isSubscriptionExpired(status, {
           countedOn: "2026-11-30",
-          now: new Date("2026-12-01T03:00:00.000Z"),
+          at: new Date("2026-12-01T03:00:00.000Z"),
         }),
       ).toBe(false);
     });
@@ -42,7 +42,7 @@ describe("サブスクリプション切れか", () => {
       expect(
         isSubscriptionExpired(status, {
           countedOn: "2026-12-01",
-          now: new Date("2026-12-01T03:00:00.000Z"),
+          at: new Date("2026-12-01T03:00:00.000Z"),
         }),
       ).toBe(true);
     });
@@ -67,7 +67,7 @@ describe("サブスクリプション切れか", () => {
       expect(
         isSubscriptionExpired(status, {
           countedOn: "2026-12-16",
-          now: new Date("2026-12-16T23:59:59.999Z"),
+          at: new Date("2026-12-16T23:59:59.999Z"),
         }),
       ).toBe(false);
     });
@@ -76,7 +76,7 @@ describe("サブスクリプション切れか", () => {
       expect(
         isSubscriptionExpired(status, {
           countedOn: "2026-12-17",
-          now: new Date("2026-12-17T00:00:00.000Z"),
+          at: new Date("2026-12-17T00:00:00.000Z"),
         }),
       ).toBe(true);
     });

@@ -7,7 +7,7 @@
             Spacer()
             TimelineComposer(
                 weightRecordedToday: sample.weightRecordedToday,
-                requiresSubscription: sample == .subscriptionExpired,
+                requiresSubscription: sample.requiresSubscription,
                 expandsGoalSetup: sample.expandsGoalSetup,
                 preparingWeightEntry: sample.preparingWeightEntry,
                 showsCameraNotice: sample.showsCameraNotice,
@@ -47,11 +47,23 @@
             case goalSetupExpanded
             /// サブスクリプション切れ。撮る・写真・書く欄を押せず、上にチップ。体重はいつもどおり
             case subscriptionExpired
+            /// 書いている途中で日が変わり、サブスクリプションが切れた。下書きは残るが「送る」も押せない
+            case subscriptionExpiredWhileWriting
+
+            var requiresSubscription: Bool {
+                switch self {
+                case .subscriptionExpired, .subscriptionExpiredWhileWriting: true
+                case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
+                    .cameraNotPermitted, .writing, .presetInserted, .onlyWhitespace, .nearLimit,
+                    .overLimit, .goalSetupExpanded:
+                    false
+                }
+            }
 
             var weightRecordedToday: Bool {
                 switch self {
                 case .weightUnrecorded, .preparingWeightEntry, .writing, .overLimit,
-                    .goalSetupExpanded, .subscriptionExpired:
+                    .goalSetupExpanded, .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 case .weightRecorded, .cameraNotPermitted, .presetInserted, .onlyWhitespace,
                     .nearLimit:
@@ -64,7 +76,7 @@
                 case .preparingWeightEntry: true
                 case .weightUnrecorded, .weightRecorded, .cameraNotPermitted, .writing,
                     .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded,
-                    .subscriptionExpired:
+                    .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 }
             }
@@ -74,7 +86,7 @@
                 case .goalSetupExpanded: true
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
                     .cameraNotPermitted, .writing, .presetInserted, .onlyWhitespace, .nearLimit,
-                    .overLimit, .subscriptionExpired:
+                    .overLimit, .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 }
             }
@@ -84,7 +96,7 @@
                 case .cameraNotPermitted: true
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry, .writing,
                     .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded,
-                    .subscriptionExpired:
+                    .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 }
             }
@@ -94,7 +106,7 @@
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
                     .cameraNotPermitted, .goalSetupExpanded, .subscriptionExpired:
                     TextDraft.empty
-                case .writing:
+                case .writing, .subscriptionExpiredWhileWriting:
                     TextDraft(text: "夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ")
                 case .presetInserted:
                     TextDraft(text: TextPreset.mealFeedbackSoFar.text)

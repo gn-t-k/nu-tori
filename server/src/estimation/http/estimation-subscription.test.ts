@@ -127,6 +127,37 @@ describe("サブスクリプション切れのときの推定", () => {
       });
     });
 
+    describe("そのあとテストユーザーの旗を立て、記録の無い送り切った印のある送る要求を送ったとき", () => {
+      let afterSequence: number;
+      beforeEach(async () => {
+        ({ nextAfterSequence: afterSequence } = await (
+          await pullSyncChanges(sessionToken)
+        ).json<PullResult>());
+        await markTestUser(accountId);
+        clock.advance(1000);
+        await pushSyncWrites(sessionToken, { writes: [], isFinalBatch: true });
+        await runEstimationAlarm(accountId);
+      });
+
+      test("アラームで、テストユーザーのサブスクリプションの状態の変更を足すこと", async () => {
+        expect(
+          (
+            await (await pullSyncChanges(sessionToken, { afterSequence })).json<PullResult>()
+          ).changes
+            .filter(({ kind }) => kind === "subscription_status")
+            .map(({ record }) => record),
+        ).toEqual([{ type: "test_user" }]);
+      });
+
+      test("保留した食事を推定すること", async () => {
+        expect(
+          (await pullStatusesOf("meal_estimation_status")).find(
+            (record) => record["mealId"] === mealId,
+          ),
+        ).toEqual({ mealId, status: "estimated" });
+      });
+    });
+
     describe("そのあとテストユーザーの旗を立て、今日の推定を使い切ってから別の食事を送ったとき", () => {
       beforeEach(async () => {
         await markTestUser(accountId);

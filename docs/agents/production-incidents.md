@@ -127,4 +127,4 @@ App Store Server API の鍵（課金で足す）のように新しい秘密の�
 2. 足す: `wrangler d1 execute nu-tori-production --remote --env production --command "INSERT INTO test_users (account_id) VALUES ('<アカウント ID>')"`
 3. 外す: `wrangler d1 execute nu-tori-production --remote --env production --command "DELETE FROM test_users WHERE account_id = '<アカウント ID>'"`
 
-旗の変化は、次にそのアカウントの Durable Object が D1 を引いたとき（同期の要求、アラーム）に端末へ届く。退会すると行は消える（CASCADE）。
+旗の変化は、サブスクリプションの状態の変更を足す時機に端末へ届く: 無料体験とサブスクリプションの区切りの時刻のアラーム（無料体験中に立てたら、あと3日の日の始まりまでに届く）と、取引・取り消しを書いたとき。切れているアカウントに立てたときは、保留した推定があれば、次の送る要求で張るアラームで届き、保留した推定も再開する。保留した推定が無い切れたアカウントには、次に変更を足す時機（取引を書くなど）まで届かない。退会すると行は消える（CASCADE）。

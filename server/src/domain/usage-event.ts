@@ -1,4 +1,5 @@
 import type { EstimationAttemptOutcome } from "../estimation/domain/estimation-attempt-outcome";
+import type { EstimationDeferralReason } from "../estimation/domain/estimation-deferral-reason";
 import type { TokenUsage } from "./token-usage";
 import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
@@ -108,9 +109,9 @@ export type UsageEvent =
       reason: ReplyHaltReason;
     }
   | {
-      // 推定を始めなかったとき。1日の回数の上限で予定を次の日に回したか、サブスクリプション切れで保留したか
+      // 推定を始めなかったとき
       name: "estimation_deferred";
-      reason: "daily_limit" | "subscription_expired";
+      reason: EstimationDeferralReason;
     }
   | {
       // 理由が purchase の取引を初めて書いたとき（#647 の「観測」）。Production の環境の取引だけ。

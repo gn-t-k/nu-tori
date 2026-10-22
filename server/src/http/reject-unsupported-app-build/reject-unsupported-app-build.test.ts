@@ -157,18 +157,34 @@ describe("古いビルドの締め出し", () => {
       });
     });
 
-    describe.each([
-      { path: "/v1/apple-server-notifications", body: { payload: "not-a-jws" } },
-      { path: "/v1/app-store-server-notifications", body: { signedPayload: "not-a-jws" } },
-    ])("Apple の通知（$path）がビルド番号のヘッダーなしで届いたとき", ({ path, body }) => {
+    describe("Sign in with Apple のサーバー間通知がビルド番号のヘッダーなしで届いたとき", () => {
       let response: Response;
       beforeEach(async () => {
         response = await app.request(
-          path,
+          "/v1/apple-server-notifications",
           {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ payload: "not-a-jws" }),
+          },
+          env,
+        );
+      });
+
+      test("締め出しの判定にかけないこと", () => {
+        expect(response.status).not.toBe(426);
+      });
+    });
+
+    describe("App Store のサーバー通知がビルド番号のヘッダーなしで届いたとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await app.request(
+          "/v1/app-store-server-notifications",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ signedPayload: "not-a-jws" }),
           },
           env,
         );

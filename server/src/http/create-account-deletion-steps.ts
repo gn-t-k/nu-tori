@@ -1,7 +1,6 @@
 import { captureException } from "@sentry/cloudflare";
 import { createAppleRefreshTokenStore } from "../auth/create-apple-refresh-token-store";
 import type { createAuthentication } from "../auth/create-authentication";
-import { findAppleSub } from "../auth/find-apple-sub";
 import { revokeAppleRefreshToken } from "../auth/revoke-apple-refresh-token";
 import type { AccountDeletionRetryFailedError } from "../domain/delete-account";
 import { getAccountDurableObject } from "../durable-object/get-account-durable-object";
@@ -15,12 +14,8 @@ export const createAccountDeletionSteps = (
 ) => {
   const appleRefreshTokens = createAppleRefreshTokenStore(env.DB, env.APPLE_REFRESH_TOKEN_KEYS);
   return {
-    recordFreeTrialUsage: async (accountId: string) => {
-      const appleSub = await findAppleSub(env.DB, accountId);
-      if (appleSub !== undefined) {
-        await createFreeTrialUsageStore(env.DB, env.APPLE_SUB_HASH_KEYS).record(appleSub);
-      }
-    },
+    recordFreeTrialUsage: (accountId: string) =>
+      createFreeTrialUsageStore(env.DB, env.APPLE_SUB_HASH_KEYS).record(accountId),
     revokeAppleAuthorization: async (accountId: string) => {
       const refreshToken = await appleRefreshTokens.find(accountId);
       if (refreshToken !== undefined) {

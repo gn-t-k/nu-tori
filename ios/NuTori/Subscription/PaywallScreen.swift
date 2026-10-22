@@ -57,8 +57,8 @@ struct PaywallScreen: View {
         }
         .subscriptionStoreButtonLabel(.multiline)
         .storeButton(.visible, for: .policies)
-        .subscriptionStorePolicyDestination(url: Self.termsURL, for: .termsOfService)
-        .subscriptionStorePolicyDestination(url: Self.privacyPolicyURL, for: .privacyPolicy)
+        .subscriptionStorePolicyDestination(url: PublicPages.terms, for: .termsOfService)
+        .subscriptionStorePolicyDestination(url: PublicPages.privacyPolicy, for: .privacyPolicy)
         // 「購入を復元」と閉じるはツールバーに自前で置く。復元の結果（ほかのアカウントのもの、復元するものが無い）を1行で出すため
         .storeButton(.hidden, for: .restorePurchases, .cancellation)
         .inAppPurchaseOptions { _ in
@@ -95,10 +95,6 @@ struct PaywallScreen: View {
             }
         }
     #endif
-
-    private static let termsURL = URL(string: "https://nu-tori.app/terms")!
-    private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!
-    private static let legalURL = URL(string: "https://nu-tori.app/legal")!
 
     private var canPurchase: Bool {
         switch purchaseToken {
@@ -138,20 +134,23 @@ struct PaywallScreen: View {
     private var summary: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let paymentStart = content.paymentStart {
-                summaryItem("支払いが始まる日", paymentStart)
+                summaryItem("支払いが始まる日") { Text(paymentStart) }
             }
-            summaryItem("自動更新", content.renewal)
-            summaryItem("解約の方法", PaywallContent.cancellation)
-            Link("特定商取引法に基づく表記", destination: Self.legalURL)
+            summaryItem("自動更新") {
+                Text(content.renewal)
+                ForEach(content.renewalSchedule, id: \.self) { BulletLine(text: $0) }
+            }
+            summaryItem("解約の方法") { Text(PaywallContent.cancellation) }
+            Link("特定商取引法に基づく表記", destination: PublicPages.legal)
                 .font(.footnote)
         }
     }
 
-    private func summaryItem(_ title: String, _ value: String) -> some View {
+    private func summaryItem(_ title: String, @ViewBuilder value: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.footnote.weight(.semibold))
-            Text(value)
+            Group(content: value)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

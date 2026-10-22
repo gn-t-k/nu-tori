@@ -1,13 +1,10 @@
-public import Foundation
+import Foundation
 
 /// StoreKit の口。アプリは StoreKit 2 の adapter を渡し、テストと UI テストは偽物を渡す。
 /// 課金画面の `SubscriptionStoreView` はこの口の外で、買えた取引だけを `SubscriptionPurchases.reportPurchase(_:)` に渡す
 public protocol SubscriptionStore: Sendable {
     /// App Store にある商品だけを返す
     func products(ids: [String]) async throws -> [SubscriptionProduct]
-
-    /// 購入者のトークンを渡して買う
-    func purchase(productId: String, appAccountToken: UUID) async throws -> AppStorePurchaseAttempt
 
     /// `Transaction.updates`。ほかの端末で買った・更新した取引と、起動した直後の終えていない取引が流れる
     func transactionUpdates() -> AsyncStream<AppStoreTransaction>
@@ -24,8 +21,8 @@ public protocol SubscriptionStore: Sendable {
     /// 取引を終える。終えていない取引は、次に起動したときにもう一度流れる
     func finish(_ transaction: AppStoreTransaction) async
 
-    /// 今使えるサブスクリプションの更新の情報の自動更新。今使えるサブスクリプションが無い、読めないときは nil
-    func willAutoRenew() async -> Bool?
+    /// 今使えるサブスクリプションの更新の情報の自動更新
+    func autoRenewal() async -> SubscriptionPurchases.AutoRenewal
 }
 
 /// 買う操作の結果

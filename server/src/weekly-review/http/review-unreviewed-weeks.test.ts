@@ -23,6 +23,7 @@ import { signInTestAccount, signInWithApple } from "../../http/testing";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
 import { markTestUser } from "../../subscription-status/http/testing/mark-test-user";
 import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/place-free-trial-last-day";
+import { placeSubscriptionTransaction } from "../../subscription-status/http/testing/place-subscription-transaction";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 import { millisecondsPerDay } from "../../domain/milliseconds-per-day";
 
@@ -125,6 +126,34 @@ describe("まだ見直していない週を見る要求", () => {
 
     test("その月曜の週を、サブスクリプション切れでない理由で見ること", async () => {
       expect((await readReviews()).map(({ reason }) => reason)).toEqual(["no_weight"]);
+    });
+  });
+
+  describe("無料体験が月曜の前の日に終わり、サブスクリプションが月曜の日本時間 1:00 に終わっていて、月曜 9:00 に送り切った印のある送る要求が届いたとき", () => {
+    beforeEach(async () => {
+      await placeFreeTrialLastDay(accountId, addDays(firstMonday, -1));
+      await placeSubscriptionTransaction(accountId, {
+        expiresAt: new Date(`${addDays(firstMonday, -1)}T16:00:00Z`),
+      });
+      await pushSyncWrites(sessionToken, { writes: [], isFinalBatch: true });
+    });
+
+    test("見直す月曜の始まりにはサブスクリプション中なので、サブスクリプション切れでない理由で見ること", async () => {
+      expect((await readReviews()).map(({ reason }) => reason)).toEqual(["no_weight"]);
+    });
+  });
+
+  describe("無料体験が月曜の前の日に終わり、サブスクリプションが月曜の日本時間 0:00 ちょうどに終わったとき", () => {
+    beforeEach(async () => {
+      await placeFreeTrialLastDay(accountId, addDays(firstMonday, -1));
+      await placeSubscriptionTransaction(accountId, {
+        expiresAt: new Date(`${addDays(firstMonday, -1)}T15:00:00Z`),
+      });
+      await pushSyncWrites(sessionToken, { writes: [], isFinalBatch: true });
+    });
+
+    test("その月曜の週を、サブスクリプション切れとして見送ること", async () => {
+      expect((await readReviews()).map(({ reason }) => reason)).toEqual(["subscription_expired"]);
     });
   });
 

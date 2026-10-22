@@ -25,11 +25,18 @@ struct PaywallContentTests {
             #expect(try #require(content).paymentStart == "今日から。無料体験の残り 10 日はなくなります")
         }
 
-        @Test("月額と年額の次の更新日を書くこと")
+        @Test("自動で更新することを書くこと")
         func renewal() throws {
+            #expect(try #require(content).renewal == "解約しない限り、自動で更新します。")
+        }
+
+        @Test("月額と年額の更新の間隔と、次の更新日を書くこと")
+        func renewalSchedule() throws {
             #expect(
-                try #require(content).renewal
-                    == "解約しない限り、自動で更新します。次の更新は、月額なら11月21日、年額なら2027年10月21日です。")
+                try #require(content).renewalSchedule == [
+                    "月額を選んだ場合: 1か月ごと（次は11月21日）",
+                    "年額を選んだ場合: 1年ごと（次は2027年10月21日）",
+                ])
         }
     }
 
@@ -51,6 +58,15 @@ struct PaywallContentTests {
         func paymentStart() throws {
             #expect(try #require(content).paymentStart == "今日から")
         }
+
+        @Test("月額と年額の更新の間隔と、次の更新日を書くこと")
+        func renewalSchedule() throws {
+            #expect(
+                try #require(content).renewalSchedule == [
+                    "月額を選んだ場合: 1か月ごと（次は11月21日）",
+                    "年額を選んだ場合: 1年ごと（次は2027年10月21日）",
+                ])
+        }
     }
 
     @Suite("次の月に同じ日が無いとき")
@@ -61,8 +77,10 @@ struct PaywallContentTests {
                 standing: .expired, today: CalendarDay(year: 2027, month: 1, day: 31))
 
             #expect(
-                try #require(content).renewal
-                    == "解約しない限り、自動で更新します。次の更新は、月額なら2月28日、年額なら2028年1月31日です。")
+                try #require(content).renewalSchedule == [
+                    "月額を選んだ場合: 1か月ごと（次は2月28日）",
+                    "年額を選んだ場合: 1年ごと（次は2028年1月31日）",
+                ])
         }
     }
 
@@ -86,6 +104,7 @@ struct PaywallContentTests {
         @Test("次の更新日を書かずに、自動で更新することだけを書くこと")
         func renewal() throws {
             #expect(try #require(content).renewal == "解約しない限り、自動で更新します。")
+            #expect(try #require(content).renewalSchedule.isEmpty)
         }
     }
 

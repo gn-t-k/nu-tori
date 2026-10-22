@@ -27,7 +27,7 @@ extension TimelineTests {
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
                         statuses: status.map { [sentText.id: $0] } ?? [:],
-                        replies: replies, streams: [:])),
+                        replies: replies, streams: [:]), subscriptionNotices: []),
                 firstDay: day, today: day)
             return timeline.days.flatMap(\.items).lazy.compactMap { item in
                 if case .sentText(let bubble) = item { bubble } else { nil }

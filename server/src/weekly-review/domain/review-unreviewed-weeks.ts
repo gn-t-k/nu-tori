@@ -18,6 +18,7 @@ import { isSubscriptionExpired } from "../../subscription-status/domain/is-subsc
 import { readSubscriptionStatus } from "../../subscription-status/domain/read-subscription-status";
 import { computeWeightTrend } from "../../weight-trend/domain/compute-weight-trend";
 import { readDailyWeights } from "../../weight-trend/domain/read-daily-weights";
+import { computeNextDayStart } from "../../estimation/domain/compute-next-day-start";
 import { computeReviewedExpenditure } from "./compute-reviewed-expenditure";
 import { findUnreviewedWeekMondays } from "./find-unreviewed-week-mondays";
 import { judgeReviewWeek, type ReviewWeekJudgement } from "./judge-review-week";
@@ -38,7 +39,7 @@ export type WeeklyReviewStores = Pick<
 >;
 
 // まだ見直していない週を古い順に1週ずつ見て、見送るか、新しい推定と1日の目安をその月曜から当てて書く。
-// 週の区切りと今日は要求のタイムゾーンで決める。見直す月曜を数える日にしてサブスクリプション切れなら、ほかの理由より先に見送る
+// 週の区切りと今日は要求のタイムゾーンで決める。見直す月曜を数える日に、その始まりの時刻で比べてサブスクリプション切れなら、ほかの理由より先に見送る
 // （見送った週は見直した週に数えるので、買ったあとにその週は見直さない。#647）。
 // 記録を当てたあと、応える前に呼ぶ。1つの週を記録の変化を書く入口の1つの run にし、変えた記録は同期で届く。
 // 見直した週の数（見送りを含む）と、週ごとの出来事を返す。出来事を送るかどうかは呼ぶ側が決める
@@ -86,7 +87,8 @@ export const reviewUnreviewedWeeks = (
   const usageEvents = mondays.flatMap((reviewedMonday, index): UsageEvent[] => {
     const judgement: ReviewWeekJudgement = isSubscriptionExpired(subscriptionStatus, {
       countedOn: reviewedMonday,
-      now,
+      // 今で比べると、月曜より後に切れた・買った週を、今の状態で見てしまう
+      at: computeNextDayStart(addDays(reviewedMonday, -1), timeZone).startsAt,
     })
       ? { type: "deferred", reason: "subscription_expired" }
       : judgeReviewWeek({

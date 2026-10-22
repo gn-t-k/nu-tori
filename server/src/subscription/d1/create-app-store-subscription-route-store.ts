@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { generateRecordId } from "../../domain/record-id";
-import type { AppStoreSubscriptionKey } from "../domain/subscription-transaction-store";
+import type { AppStoreSubscriptionKey } from "../domain/app-store-subscription-key";
 import { subscriptionD1Tables } from "./subscription-d1-tables";
 
 const { appStoreSubscriptionRoutes } = subscriptionD1Tables;

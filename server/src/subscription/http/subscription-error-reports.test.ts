@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import { mockAppStoreRootCertificate } from "../../app-store/app-store-root-certificate/app-store-root-certificate.mock";
+import { mockReadAppStoreRootCertificateOk } from "../../app-store/app-store-root-certificate/read-app-store-root-certificate.mock";
 import {
   type AppStoreTransactionPayload,
   createTestCertificateChain,
@@ -29,7 +29,7 @@ describe("サブスクリプションの失敗の Sentry への報告", () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
     chain = await createTestCertificateChain();
-    mockAppStoreRootCertificate(chain.rootCertificate);
+    mockReadAppStoreRootCertificateOk(chain.rootCertificate);
     appleUserId = generateRecordId();
     ({ sessionToken } = await signInTestAccount(appleUserId));
     ({ appAccountToken } = await (
@@ -150,6 +150,44 @@ describe("サブスクリプションの失敗の Sentry への報告", () => {
     });
   });
 
+  describe("Production の環境の、知らない商品の通知が届いたとき", () => {
+    beforeEach(async () => {
+      await postSignedPayload(
+        await signNotification(chain, {
+          environment: "Production",
+          signedTransactionInfo: await signTransaction({ productId: "app.nu-tori.unknown" }),
+        }),
+      );
+    });
+
+    test("断った理由を添えて送ること", () => {
+      expect(captureExceptionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "AppStoreServerNotificationUnhandledError",
+          reason: "product_unknown",
+        }),
+      );
+    });
+  });
+
+  describe("Sandbox の環境の、知らない商品の通知が届いたとき", () => {
+    beforeEach(async () => {
+      await postSignedPayload(
+        await signNotification(chain, {
+          environment: "Sandbox",
+          signedTransactionInfo: await signTransaction({
+            productId: "app.nu-tori.unknown",
+            environment: "Sandbox",
+          }),
+        }),
+      );
+    });
+
+    test("送らないこと", () => {
+      expect(captureExceptionSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("署名を確かめられない取引を端末が知らせたとき", () => {
     let signedTransaction: string;
     beforeEach(async () => {
@@ -189,6 +227,18 @@ describe("サブスクリプションの失敗の Sentry への報告", () => {
           code: "product_unknown",
         }),
       );
+    });
+  });
+
+  describe("Sandbox の環境の、知らない商品の取引を端末が知らせたとき", () => {
+    beforeEach(async () => {
+      await reportTransaction(
+        await signTransaction({ productId: "app.nu-tori.unknown", environment: "Sandbox" }),
+      );
+    });
+
+    test("送らないこと", () => {
+      expect(captureExceptionSpy).not.toHaveBeenCalled();
     });
   });
 });

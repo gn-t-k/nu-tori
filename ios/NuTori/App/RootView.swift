@@ -58,15 +58,7 @@ struct RootView: View {
     private var paywallStorefront: PaywallStorefront {
         #if DEBUG
             if let store = UITestLaunch.current?.subscriptionStore {
-                return .fixed(purchase: { appAccountToken in
-                    guard
-                        let monthly = SubscriptionProduct.ids.first(where: { $0.value == .monthly })
-                    else { return .cancelled }
-                    // 偽物は投げない
-                    return
-                        (try? await store.purchase(
-                            productId: monthly.key, appAccountToken: appAccountToken)) ?? .cancelled
-                })
+                return .fixed(purchase: { store.purchaseMonthly(appAccountToken: $0) })
             }
         #endif
         return .storeKit
@@ -119,6 +111,7 @@ struct RootView: View {
                     openedNotificationSettings: {
                         await model.capture(.notificationSettingsOpened)
                     },
+                    autoRenewal: { await model.subscriptionPurchases.autoRenewal() },
                     accountDeletionGuide: { await model.accountDeletionGuide() },
                     rereadAccountDeletionGuide: { await model.rereadAccountDeletionGuide($0) },
                     openedAccountDeletionGuide: {
@@ -129,7 +122,6 @@ struct RootView: View {
                     }
                 ),
                 paywallActions: PaywallActions(
-                    clock: model.clock,
                     purchases: model.subscriptionPurchases,
                     capture: { await model.capture($0) },
                     storefront: paywallStorefront
@@ -182,7 +174,8 @@ struct RootView: View {
             )
             // 閉じられないシート。同意を受け付けられたら、モデルが消して閉じる
             .sheet(isPresented: isShowingTermsAgreementSheet) {
-                TermsAgreementSheetView { await model.agreeToTerms() }
+                TermsAgreementSheetView(progress: .ready) { await model.agreeToTerms() }
+                    .task { await model.termsAgreementSheetPresented() }
             }
         }
     }

@@ -28,7 +28,7 @@ enum GoalNoticeScene {
             input: Timeline.Input(
                 goalRecords: .fixture(goals: goals, weightRecords: weightRecords),
                 rejectedLines: [], meals: [],
-                notices: [], undelivered: .none, conversation: .none),
+                notices: [], undelivered: .none, conversation: .none, subscriptionNotices: []),
             firstDay: CalendarDay(year: 2026, month: 10, day: 1), today: today)
     }
 

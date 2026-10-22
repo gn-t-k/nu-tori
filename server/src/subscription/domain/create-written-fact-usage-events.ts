@@ -5,7 +5,7 @@ import { computeSubscriptionStatus } from "../../subscription-status/domain/comp
 import { createSubscriptionExpiredEvent } from "../../subscription-status/domain/create-subscription-expired-event";
 import { findSubscriptionTimeZone } from "../../subscription-status/domain/find-subscription-time-zone";
 import { isSubscriptionExpired } from "../../subscription-status/domain/is-subscription-expired";
-import { readSubscriptionFacts } from "../../subscription-status/domain/read-subscription-status";
+import { readSubscriptionFacts } from "../../subscription-status/domain/read-subscription-facts";
 import { computeFreeTrial } from "./compute-free-trial";
 import { isWithinFreeTrial } from "./is-within-free-trial";
 import type { AppStoreSubscriptionTransaction } from "./read-app-store-subscription-transaction";
@@ -43,7 +43,7 @@ export const createWrittenFactUsageEvents = (
     written.wroteRevocation &&
     isSubscriptionExpired(computeSubscriptionStatus(facts), {
       countedOn: computeCalendarDayInTimeZone(now, timeZone),
-      now,
+      at: now,
     });
   return isExpiredByRevocation
     ? [...transactionEvents, createSubscriptionExpiredEvent(facts, { byRevocation: true })]

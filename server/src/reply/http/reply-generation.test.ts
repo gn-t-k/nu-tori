@@ -480,7 +480,7 @@ describe("返事を作る", () => {
       mockCreateConversationProviderError({
         failingCall: "generate_reply",
         error: new LlmCallInvalidResponseError({
-          usage: { inputTokens: 2400, outputTokens: 1024 },
+          usage: { type: "uncached", inputTokens: 2400, outputTokens: 1024 },
         }),
       });
       sentTextId = await sendText();
@@ -591,6 +591,7 @@ describe("返事を作る", () => {
         classification: "conversation",
         reply: { body: "よく眠れましたか。", mealIds: [] },
         replyUsage: {
+          type: "cached",
           inputTokens: 2400,
           outputTokens: 180,
           cacheCreationInputTokens: 2000,

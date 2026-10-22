@@ -53,7 +53,8 @@ const readStructuredOutput = <TSchema extends z.ZodType>(
   message: Anthropic.Message,
   schema: TSchema,
 ): R.Result<{ output: z.output<TSchema>; usage: TokenUsage }, LlmCallInvalidResponseError> => {
-  const usage = {
+  const usage: TokenUsage = {
+    type: "uncached",
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   };

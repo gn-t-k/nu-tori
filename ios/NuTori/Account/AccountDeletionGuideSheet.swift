@@ -12,12 +12,11 @@ struct AccountDeletionGuideSheet: View {
                 Section {
                     switch guide.renewal {
                     case .autoRenewing:
-                        LabeledContent("サブスクリプション", value: "\(planName)・自動更新")
-                        LabeledContent("次の請求", value: nextBilling)
+                        LabeledContent("サブスクリプション", value: guide.subscriptionText)
+                        LabeledContent("次の請求", value: guide.nextBillingText)
                     case .cancelled:
                         LabeledContent("サブスクリプション", value: "解約しました")
-                        LabeledContent(
-                            "使える日", value: "\(TimelineDayText.label(for: guide.usableThrough))まで")
+                        LabeledContent("使える日", value: guide.usableThroughText)
                     }
                 } footer: {
                     switch guide.renewal {
@@ -29,9 +28,7 @@ struct AccountDeletionGuideSheet: View {
                     switch guide.renewal {
                     case .autoRenewing:
                         VStack(alignment: .leading) {
-                            step(
-                                "サブスクリプションを解約する。解約しても、\(TimelineDayText.label(for: guide.renewsOn))まで使えます。",
-                                systemImage: "1.circle")
+                            step(guide.cancellationStepText, systemImage: "1.circle")
                             Button("サブスクリプションを解約") {
                                 showsManageSubscriptions = true
                                 Task { await actions.openedManageSubscriptions() }
@@ -84,20 +81,6 @@ struct AccountDeletionGuideSheet: View {
 
     @State private var guide: AccountDeletionGuide
     @State private var showsManageSubscriptions = false
-
-    private var planName: String {
-        switch guide.plan {
-        case .monthly: "月額"
-        case .yearly: "年額"
-        }
-    }
-
-    /// 「11月7日（土）に ¥980」。価格を読めないときは日だけ
-    private var nextBilling: String {
-        let day = TimelineDayText.label(for: guide.renewsOn)
-        guard let displayPrice = guide.displayPrice else { return day }
-        return "\(day)に \(displayPrice)"
-    }
 
     private func step(_ text: String, systemImage: String) -> some View {
         Label {

@@ -50,6 +50,7 @@ const readStream = async (
     passedBody: "",
     stopReason: null,
     usage: {
+      type: "cached",
       inputTokens: 0,
       outputTokens: 0,
       cacheCreationInputTokens: 0,

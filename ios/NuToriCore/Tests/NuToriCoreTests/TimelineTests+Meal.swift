@@ -20,7 +20,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         goalRecords: .fixture(), rejectedLines: [], meals: [meal],
-                        notices: [], undelivered: .none, conversation: .none),
+                        notices: [], undelivered: .none, conversation: .none,
+                        subscriptionNotices: []),
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: PlacingMeals.day
                 )
@@ -44,7 +45,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         goalRecords: .fixture(), rejectedLines: [], meals: [meal],
-                        notices: [], undelivered: .none, conversation: .none),
+                        notices: [], undelivered: .none, conversation: .none,
+                        subscriptionNotices: []),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -74,7 +76,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         goalRecords: .fixture(weightRecords: [evening, morning]), rejectedLines: [],
-                        meals: [lunch], notices: [], undelivered: .none, conversation: .none),
+                        meals: [lunch], notices: [], undelivered: .none, conversation: .none,
+                        subscriptionNotices: []),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -111,7 +114,7 @@ extension TimelineTests {
                     input: Timeline.Input(
                         goalRecords: .fixture(), rejectedLines: [],
                         meals: [dinner, breakfast, lunch], notices: [], undelivered: .none,
-                        conversation: .none),
+                        conversation: .none, subscriptionNotices: []),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -146,7 +149,7 @@ extension TimelineTests {
                     input: Timeline.Input(
                         goalRecords: .fixture(weightRecords: [morning]),
                         rejectedLines: [.meal(line)], meals: [before], notices: [],
-                        undelivered: .none, conversation: .none),
+                        undelivered: .none, conversation: .none, subscriptionNotices: []),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -175,7 +178,7 @@ extension TimelineTests {
                     input: Timeline.Input(
                         goalRecords: .fixture(),
                         rejectedLines: lines.map { .meal($0) }, meals: meals, notices: [],
-                        undelivered: .none, conversation: .none),
+                        undelivered: .none, conversation: .none, subscriptionNotices: []),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
@@ -250,7 +253,8 @@ extension TimelineTests {
                 timeline = Timeline(
                     input: Timeline.Input(
                         goalRecords: .fixture(), rejectedLines: [.weight(line)],
-                        meals: [lunch], notices: [], undelivered: .none, conversation: .none),
+                        meals: [lunch], notices: [], undelivered: .none, conversation: .none,
+                        subscriptionNotices: []),
                     firstDay: PlacingMeals.day,
                     today: PlacingMeals.day
                 )
