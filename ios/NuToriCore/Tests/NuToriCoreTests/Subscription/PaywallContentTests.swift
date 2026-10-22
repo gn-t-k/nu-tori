@@ -71,11 +71,15 @@ struct PaywallContentTests {
 
     @Suite("次の月に同じ日が無いとき")
     struct MonthEnd {
+        let content: PaywallContent?
+
+        init() {
+            content = PaywallContent(
+                standing: .expired, today: CalendarDay(year: 2027, month: 1, day: 31))
+        }
+
         @Test("月額の次の更新日を、次の月の終わりの日にすること")
         func renewal() throws {
-            let content = PaywallContent(
-                standing: .expired, today: CalendarDay(year: 2027, month: 1, day: 31))
-
             #expect(
                 try #require(content).renewalSchedule == [
                     "月額を選んだ場合: 1か月ごと（次は2月28日）",
@@ -110,12 +114,16 @@ struct PaywallContentTests {
 
     @Suite("テストユーザーのとき")
     struct TestUser {
+        let content: PaywallContent?
+
+        init() {
+            content = PaywallContent(
+                standing: .testUser, today: CalendarDay(year: 2026, month: 10, day: 21))
+        }
+
         @Test("課金画面を描かないこと")
         func noContent() {
-            #expect(
-                PaywallContent(
-                    standing: .testUser, today: CalendarDay(year: 2026, month: 10, day: 21))
-                    == nil)
+            #expect(content == nil)
         }
     }
 }

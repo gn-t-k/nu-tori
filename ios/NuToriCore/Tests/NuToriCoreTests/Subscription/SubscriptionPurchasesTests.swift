@@ -442,15 +442,21 @@ struct SubscriptionPurchasesTests {
 
     @Suite("商品を読むとき")
     struct Products {
-        @Test("月額と年額の商品を返すこと")
-        func returnsKnownProducts() async throws {
-            let monthly = SubscriptionProduct(id: monthlyId, plan: .monthly, displayPrice: "¥980")
-            let yearly = SubscriptionProduct(
+        let monthly: SubscriptionProduct
+        let yearly: SubscriptionProduct
+        let purchases: SubscriptionPurchases
+
+        init() {
+            monthly = SubscriptionProduct(id: monthlyId, plan: .monthly, displayPrice: "¥980")
+            yearly = SubscriptionProduct(
                 id: "app.nu-tori.subscription.yearly", plan: .yearly, displayPrice: "¥8,800")
             let other = SubscriptionProduct(id: "other", plan: .monthly, displayPrice: "¥1")
-            let purchases = SubscriptionPurchases.fixture(
+            purchases = .fixture(
                 store: .ok(products: [yearly, other, monthly]), transport: .ok())
+        }
 
+        @Test("月額と年額の商品を返すこと")
+        func returnsKnownProducts() async throws {
             #expect(try await purchases.products() == [monthly, yearly])
         }
     }

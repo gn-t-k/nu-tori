@@ -71,171 +71,221 @@ struct AccountDeletionGuideTests {
 
     @Suite("案内を出さないとき")
     struct NotShown {
-        @Test("自動更新がオフなら出さないこと")
-        func autoRenewalOff() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(products: products, autoRenewal: .off), transport: .ok())
+        @Suite("自動更新がオフのとき")
+        struct AutoRenewalOff {
+            let purchases: SubscriptionPurchases
 
-            let guide = await AccountDeletionGuide.prepare(
-                status: subscribed(.monthly), now: now, timeZone: tokyo, purchases: purchases)
+            init() {
+                purchases = .fixture(
+                    store: .ok(products: products, autoRenewal: .off), transport: .ok())
+            }
 
-            #expect(guide == nil)
+            @Test("出さないこと")
+            func notShown() async {
+                let guide = await AccountDeletionGuide.prepare(
+                    status: subscribed(.monthly), now: now, timeZone: tokyo, purchases: purchases)
+
+                #expect(guide == nil)
+            }
         }
 
-        @Test("今使えるサブスクリプションの更新の情報を読めなければ出さないこと")
-        func autoRenewalUnknown() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(products: products, autoRenewal: .unknown), transport: .ok())
+        @Suite("今使えるサブスクリプションの更新の情報を読めないとき")
+        struct AutoRenewalUnknown {
+            let purchases: SubscriptionPurchases
 
-            let guide = await AccountDeletionGuide.prepare(
-                status: subscribed(.monthly), now: now, timeZone: tokyo, purchases: purchases)
+            init() {
+                purchases = .fixture(
+                    store: .ok(products: products, autoRenewal: .unknown), transport: .ok())
+            }
 
-            #expect(guide == nil)
+            @Test("出さないこと")
+            func notShown() async {
+                let guide = await AccountDeletionGuide.prepare(
+                    status: subscribed(.monthly), now: now, timeZone: tokyo, purchases: purchases)
+
+                #expect(guide == nil)
+            }
         }
 
-        @Test("テストユーザーには出さないこと")
-        func testUser() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(products: products, autoRenewal: .on), transport: .ok())
+        @Suite("自動更新がオンのとき")
+        struct AutoRenewalOn {
+            let purchases: SubscriptionPurchases
 
-            let guide = await AccountDeletionGuide.prepare(
-                status: .testUser, now: now, timeZone: tokyo, purchases: purchases)
+            init() {
+                purchases = .fixture(
+                    store: .ok(products: products, autoRenewal: .on), transport: .ok())
+            }
 
-            #expect(guide == nil)
-        }
+            @Test("テストユーザーには出さないこと")
+            func testUser() async {
+                let guide = await AccountDeletionGuide.prepare(
+                    status: .testUser, now: now, timeZone: tokyo, purchases: purchases)
 
-        @Test("無料体験中には出さないこと")
-        func freeTrial() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(products: products, autoRenewal: .on), transport: .ok())
+                #expect(guide == nil)
+            }
 
-            let guide = await AccountDeletionGuide.prepare(
-                status: .regular(
-                    freeTrial: .available(lastDay: CalendarDay(year: 2026, month: 11, day: 1)),
-                    subscription: .none),
-                now: now, timeZone: tokyo, purchases: purchases)
+            @Test("無料体験中には出さないこと")
+            func freeTrial() async {
+                let guide = await AccountDeletionGuide.prepare(
+                    status: .regular(
+                        freeTrial: .available(lastDay: CalendarDay(year: 2026, month: 11, day: 1)),
+                        subscription: .none),
+                    now: now, timeZone: tokyo, purchases: purchases)
 
-            #expect(guide == nil)
-        }
+                #expect(guide == nil)
+            }
 
-        @Test("サブスクリプションの終わりちょうどには出さないこと")
-        func atEnd() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(products: products, autoRenewal: .on), transport: .ok())
+            @Test("サブスクリプションの終わりちょうどには出さないこと")
+            func atEnd() async {
+                let guide = await AccountDeletionGuide.prepare(
+                    status: subscribed(.monthly), now: periodEndsAt, timeZone: tokyo,
+                    purchases: purchases)
 
-            let guide = await AccountDeletionGuide.prepare(
-                status: subscribed(.monthly), now: periodEndsAt, timeZone: tokyo,
-                purchases: purchases)
+                #expect(guide == nil)
+            }
 
-            #expect(guide == nil)
-        }
+            @Test("サブスクリプションの状態がまだ届いていなければ出さないこと")
+            func statusNotYetPulled() async {
+                let guide = await AccountDeletionGuide.prepare(
+                    status: nil, now: now, timeZone: tokyo, purchases: purchases)
 
-        @Test("サブスクリプションの状態がまだ届いていなければ出さないこと")
-        func statusNotYetPulled() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(products: products, autoRenewal: .on), transport: .ok())
-
-            let guide = await AccountDeletionGuide.prepare(
-                status: nil, now: now, timeZone: tokyo, purchases: purchases)
-
-            #expect(guide == nil)
+                #expect(guide == nil)
+            }
         }
     }
 
     @Suite("案内の文")
     struct Wording {
-        let guide: AccountDeletionGuide
+        @Suite("価格を読めたとき")
+        struct WithPrice {
+            let guide: AccountDeletionGuide
 
-        init() {
-            guide = AccountDeletionGuide(
-                plan: .yearly, renewsOn: periodEndDay, usableThrough: graceEndDay,
-                displayPrice: "¥8,800", renewal: .autoRenewing)
+            init() {
+                guide = AccountDeletionGuide(
+                    plan: .yearly, renewsOn: periodEndDay, usableThrough: graceEndDay,
+                    displayPrice: "¥8,800", renewal: .autoRenewing)
+            }
+
+            @Test("サブスクリプションを、プランの名前と自動更新で書くこと")
+            func subscription() {
+                #expect(guide.subscriptionText == "年額・自動更新")
+            }
+
+            @Test("次の請求を、アカウントの行と同じ月日の書き方と価格で書くこと")
+            func nextBilling() {
+                #expect(guide.nextBillingText == "11月7日に ¥8,800")
+            }
+
+            @Test("解約の段に、解約しても次の更新日まで使えることを書くこと")
+            func cancellationStep() {
+                #expect(guide.cancellationStepText == "サブスクリプションを解約する。解約しても、11月7日まで使えます。")
+            }
+
+            @Test("解約したあとの使える日を、サブスクリプションの終わりを含む日で書くこと")
+            func usableThrough() {
+                #expect(guide.usableThroughText == "11月18日まで")
+            }
         }
 
-        @Test("サブスクリプションを、プランの名前と自動更新で書くこと")
-        func subscription() {
-            #expect(guide.subscriptionText == "年額・自動更新")
-        }
+        @Suite("価格を読めないとき")
+        struct WithoutPrice {
+            let guide: AccountDeletionGuide
 
-        @Test("次の請求を、アカウントの行と同じ月日の書き方と価格で書くこと")
-        func nextBilling() {
-            #expect(guide.nextBillingText == "11月7日に ¥8,800")
-        }
+            init() {
+                guide = AccountDeletionGuide(
+                    plan: .yearly, renewsOn: periodEndDay, usableThrough: graceEndDay,
+                    displayPrice: nil, renewal: .autoRenewing)
+            }
 
-        @Test("価格を読めないときは、次の請求を日だけで書くこと")
-        func nextBillingWithoutPrice() {
-            let withoutPrice = AccountDeletionGuide(
-                plan: .yearly, renewsOn: periodEndDay, usableThrough: graceEndDay,
-                displayPrice: nil, renewal: .autoRenewing)
-
-            #expect(withoutPrice.nextBillingText == "11月7日")
-        }
-
-        @Test("解約の段に、解約しても次の更新日まで使えることを書くこと")
-        func cancellationStep() {
-            #expect(guide.cancellationStepText == "サブスクリプションを解約する。解約しても、11月7日まで使えます。")
-        }
-
-        @Test("解約したあとの使える日を、サブスクリプションの終わりを含む日で書くこと")
-        func usableThrough() {
-            #expect(guide.usableThroughText == "11月18日まで")
+            @Test("次の請求を日だけで書くこと")
+            func nextBillingWithoutPrice() {
+                #expect(guide.nextBillingText == "11月7日")
+            }
         }
     }
 
     @Suite("解約の画面から戻ったとき")
     struct ReturnedFromManageSubscriptions {
-        let guide: AccountDeletionGuide
+        @Suite("自動更新がオフになっていたとき")
+        struct TurnedOff {
+            let guide: AccountDeletionGuide
+            let purchases: SubscriptionPurchases
 
-        init() {
-            guide = AccountDeletionGuide(
-                plan: .monthly, renewsOn: periodEndDay, usableThrough: periodEndDay,
-                displayPrice: "¥980", renewal: .autoRenewing)
+            init() {
+                guide = autoRenewingGuide
+                purchases = .fixture(store: .ok(autoRenewal: .off), transport: .ok())
+            }
+
+            @Test("解約したことにすること")
+            func cancelled() async {
+                let reread = await guide.rereadingRenewal(purchases: purchases)
+
+                #expect(reread.renewal == .cancelled)
+            }
         }
 
-        @Test("自動更新がオフになっていれば、解約したことにすること")
-        func cancelled() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(autoRenewal: .off), transport: .ok())
+        @Suite("自動更新がオンのままのとき")
+        struct StillOn {
+            let guide: AccountDeletionGuide
+            let purchases: SubscriptionPurchases
 
-            let reread = await guide.rereadingRenewal(purchases: purchases)
+            init() {
+                guide = autoRenewingGuide
+                purchases = .fixture(store: .ok(autoRenewal: .on), transport: .ok())
+            }
 
-            #expect(reread.renewal == .cancelled)
+            @Test("自動更新のままにすること")
+            func stillAutoRenewing() async {
+                let reread = await guide.rereadingRenewal(purchases: purchases)
+
+                #expect(reread == guide)
+            }
         }
 
-        @Test("自動更新がオンのままなら、自動更新のままにすること")
-        func stillAutoRenewing() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(autoRenewal: .on), transport: .ok())
+        @Suite("解約したあとに自動更新をオンに戻していたとき")
+        struct Resubscribed {
+            let guide: AccountDeletionGuide
+            let purchases: SubscriptionPurchases
 
-            let reread = await guide.rereadingRenewal(purchases: purchases)
+            init() {
+                guide = AccountDeletionGuide(
+                    plan: .monthly, renewsOn: periodEndDay, usableThrough: periodEndDay,
+                    displayPrice: "¥980", renewal: .cancelled)
+                purchases = .fixture(store: .ok(autoRenewal: .on), transport: .ok())
+            }
 
-            #expect(reread == guide)
+            @Test("自動更新に戻すこと")
+            func resubscribed() async {
+                let reread = await guide.rereadingRenewal(purchases: purchases)
+
+                #expect(reread.renewal == .autoRenewing)
+            }
         }
 
-        @Test("解約したあとに自動更新をオンに戻していれば、自動更新に戻すこと")
-        func resubscribed() async {
-            let cancelled = AccountDeletionGuide(
-                plan: .monthly, renewsOn: periodEndDay, usableThrough: periodEndDay,
-                displayPrice: "¥980", renewal: .cancelled)
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(autoRenewal: .on), transport: .ok())
+        @Suite("更新の情報を読めないとき")
+        struct Unknown {
+            let guide: AccountDeletionGuide
+            let purchases: SubscriptionPurchases
 
-            let reread = await cancelled.rereadingRenewal(purchases: purchases)
+            init() {
+                guide = autoRenewingGuide
+                purchases = .fixture(store: .ok(autoRenewal: .unknown), transport: .ok())
+            }
 
-            #expect(reread.renewal == .autoRenewing)
-        }
+            @Test("案内を変えないこと")
+            func unknown() async {
+                let reread = await guide.rereadingRenewal(purchases: purchases)
 
-        @Test("更新の情報を読めなければ、案内を変えないこと")
-        func unknown() async {
-            let purchases = SubscriptionPurchases.fixture(
-                store: .ok(autoRenewal: .unknown), transport: .ok())
-
-            let reread = await guide.rereadingRenewal(purchases: purchases)
-
-            #expect(reread == guide)
+                #expect(reread == guide)
+            }
         }
     }
 }
+
+/// 解約の画面へ行く前の、月額で自動更新の案内
+private let autoRenewingGuide = AccountDeletionGuide(
+    plan: .monthly, renewsOn: periodEndDay, usableThrough: periodEndDay,
+    displayPrice: "¥980", renewal: .autoRenewing)
 
 private let now = Date(timeIntervalSince1970: 1_793_000_000)
 private let periodEndsAt = Date(timeIntervalSince1970: 1_794_000_000)
