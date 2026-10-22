@@ -2,10 +2,8 @@ import { eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
 import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables";
-import type {
-  MealEstimationScheduleState,
-  MealEstimationStatusStore,
-} from "../domain/meal-estimation-status-store";
+import type { MealEstimationScheduleState } from "../domain/meal-estimation-schedule-progress";
+import type { MealEstimationStatusStore } from "../domain/meal-estimation-status-store";
 
 const {
   estimationSchedules,
@@ -72,10 +70,10 @@ export const createMealEstimationStatusStore = (
         .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
         .where(eq(estimationCreatedMeals.mealId, mealId))
         .all(),
-    ].map(({ dueAt, ...events }) => ({ dueAt, ...toProgress(events) })),
+    ].map(({ dueAt, ...events }) => ({ dueAt, ...toScheduleState(events) })),
 });
 
-const toProgress = (events: {
+const toScheduleState = (events: {
   deferral: string | null;
   hold: string | null;
   estimation: string | null;

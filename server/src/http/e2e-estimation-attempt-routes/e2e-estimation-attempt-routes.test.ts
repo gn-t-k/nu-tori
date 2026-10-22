@@ -7,7 +7,7 @@ const secret = "e2e-sign-in-secret-0123456789abcdef0123456789";
 
 describe("確かめのジョブのための、食事の最後に終わった推定の試みを読む口", () => {
   let testEnv: Env;
-  let request: { mealId: string; sentSecret: string; sessionToken: string | undefined };
+  let request: Parameters<typeof readLastEstimationAttempt>[1];
 
   describe("開発用の環境で、秘密の値が置かれているとき", () => {
     beforeEach(async () => {
