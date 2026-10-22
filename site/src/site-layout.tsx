@@ -53,6 +53,8 @@ export const SiteLayout = ({ page, children }: { page: SitePage; children: Child
 
 const footerLinks = [
   { href: "/privacy", label: "プライバシーポリシー" },
+  { href: "/terms", label: "利用規約" },
+  { href: "/legal", label: "特定商取引法に基づく表記" },
   { href: "/support", label: "サポート" },
   { href: "/daily-guide", label: "推定消費カロリーと1日の目安の出し方" },
   { href: "/announcements", label: "告知" },

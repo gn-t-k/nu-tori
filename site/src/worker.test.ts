@@ -30,6 +30,12 @@ describe("nu-tori.app の配信", () => {
       expect(body).toContain('<a href="/support">');
       expect(body).toContain('<a href="/announcements">');
     });
+
+    test("外枠の足から利用規約と特定商取引法に基づく表記へリンクすること", async () => {
+      const body = await response.text();
+      expect(body).toContain('<a href="/terms">');
+      expect(body).toContain('<a href="/legal">');
+    });
   });
 
   describe("サポート", () => {
