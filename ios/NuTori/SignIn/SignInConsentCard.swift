@@ -15,14 +15,15 @@ struct SignInConsentCard: View {
                 .font(.headline)
             VStack(alignment: .leading, spacing: 4) {
                 Text(
-                    """
-                    記録と写真（ヘルスケアから読んだ情報を含む）は、米国の会社のサービスで保存・処理します。
-                    食事の推定と返事のために、記録と写真を AI に送ります。
-                    不具合と利用状況は、米国の会社のサービスに送り、AI で分析します。
-                    推定の値と返事は、確かめてから使ってください。
-                    [利用規約](https://nu-tori.app/terms)と[プライバシーポリシー](https://nu-tori.app/privacy)を確かめてから、続けてください。
-                    """
-                )
+                    PublicPages.linkedText(
+                        """
+                        記録と写真（ヘルスケアから読んだ情報を含む）は、米国の会社のサービスで保存・処理します。
+                        食事の推定と返事のために、記録と写真を AI に送ります。
+                        不具合と利用状況は、米国の会社のサービスに送り、AI で分析します。
+                        推定の値と返事は、確かめてから使ってください。
+                        [利用規約](\(PublicPages.terms))と[プライバシーポリシー](\(PublicPages.privacyPolicy))を確かめてから、続けてください。
+                        """
+                    ))
                 BulletLine(text: "利用規約: 無料体験とサブスクリプション、推定と返事の扱い、禁止すること など")
                 BulletLine(
                     text:

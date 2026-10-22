@@ -53,7 +53,7 @@ struct AccountScreen: View {
                 Text("オフにすると、これから先は送りません。送った分は1年で消えます。")
             }
             Section {
-                externalLink("プライバシーポリシー", url: Self.privacyPolicyURL)
+                externalLink("プライバシーポリシー", url: PublicPages.privacyPolicy)
                 externalLink("問い合わせ", url: inquiryURL)
             }
             Section {
@@ -184,7 +184,6 @@ struct AccountScreen: View {
     /// 退会の案内の「アカウントを削除」で閉じた。閉じ終えたら確かめのダイアログを出す
     @State private var proceedsAfterDeletionGuide = false
 
-    private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!
     /// このアプリの iPhone の設定
     private static let appSettingsURL = URL(string: UIApplication.openSettingsURLString)!
     /// iPhone の設定の、このアプリの通知の設定

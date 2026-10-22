@@ -27,7 +27,7 @@ public struct PaywallContent: Equatable, Sendable {
             paymentStart = "今日から。無料体験の残り \(remainingDays) 日はなくなります"
             renewalSchedule = schedule
         case .expired:
-            headline = "撮って記録するには、サブスクリプションが必要です"
+            headline = Self.subscriptionRequired
             paymentStart = "今日から"
             renewalSchedule = schedule
         case .subscribed:
@@ -36,6 +36,9 @@ public struct PaywallContent: Equatable, Sendable {
             renewalSchedule = []
         }
     }
+
+    /// 切れのあいだの見出し。入力欄のチップにも同じ文を出す
+    public static let subscriptionRequired = "撮って記録するには、サブスクリプションが必要です"
 
     /// 使えるもの
     public static let features = [

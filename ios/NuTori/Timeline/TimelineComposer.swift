@@ -179,7 +179,7 @@ struct TimelineComposer: View {
     private var subscriptionChip: some View {
         Button(action: onOpenPaywall) {
             HStack(spacing: 4) {
-                Text("撮って記録するには、サブスクリプションが必要です")
+                Text(PaywallContent.subscriptionRequired)
                     // 入力欄は画面の下に高さを詰めて置かれるので、大きな文字では折り返した文が「…」で切れる。切らずに全部を出す
                     .fixedSize(horizontal: false, vertical: true)
                 Image(systemName: "chevron.right")
@@ -197,7 +197,7 @@ struct TimelineComposer: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityLabel("撮って記録するには、サブスクリプションが必要です")
+        .accessibilityLabel(PaywallContent.subscriptionRequired)
         .accessibilityIdentifier("composer-subscription-chip")
     }
 
