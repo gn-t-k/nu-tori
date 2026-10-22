@@ -59,7 +59,7 @@ struct TermsAgreementPromptTests {
 
         @Test("電波が無くて出さなかったあと、次に開いたときに問い直してシートを出すこと")
         func asksAgainOnNextOpen() async {
-            let reachability = Reachability()
+            let reachability = ReachabilitySwitch(isReachable: false)
             let prompt = TermsAgreementPrompt.fixture(
                 transport: .termsAgreement(
                     agreementRequired: true, termsVersion: "1",
@@ -185,9 +185,4 @@ extension TermsAgreementPrompt {
             newRequestId: newRequestId
         )
     }
-}
-
-/// 問い直すあいだに、電波が戻ったことにする
-private final class Reachability: @unchecked Sendable {
-    var isReachable = false
 }
