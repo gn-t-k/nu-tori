@@ -12,8 +12,9 @@ updates:
       github-actions:
         patterns: ["*"]
         update-types: [patch, minor]
+  # site は server と同じ版の依存を持つので、同じ週に一緒に上げる（docs/agents/dependencies.md）
   - package-ecosystem: npm
-    directory: /server
+    directories: [/server, /site]
     schedule:
       interval: weekly
       day: monday
