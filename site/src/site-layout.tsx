@@ -65,7 +65,7 @@ export const SiteLayout = ({ page, children }: { page: SitePage; children: Child
 const AppleTrademarkNotice = () =>
   useContext(AppStoreBadgePlacement)?.placed === true ? (
     <p>
-      Apple および Apple ロゴは、米国その他の国で登録された Apple Inc. の商標です。App Store は
-      Apple Inc. のサービスマークです。
+      Apple および Apple ロゴは、米国およびその他の国で登録された Apple Inc. の商標です。App Store
+      は、米国およびその他の国で登録された Apple Inc. のサービスマークです。
     </p>
   ) : null;
