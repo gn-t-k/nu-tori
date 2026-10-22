@@ -3,7 +3,7 @@ import SwiftUI
 
 /// 課金画面をシートで開く。開いたところと、開いたときの状態を `Request` で受け取る。
 /// 結びついたら閉じ、閉じたら PostHog に StoreKit の結果を送る
-struct PaywallSheet: View {
+struct PaywallScreenContainer: View {
     let onClose: () -> Void
 
     var body: some View {
@@ -65,11 +65,11 @@ struct PaywallSheet: View {
 
 extension View {
     /// 課金画面を開く口。`request` に値を入れると開き、閉じると nil に戻す
-    func paywallSheet(_ request: Binding<PaywallSheet.Request?>, actions: PaywallActions)
+    func paywallSheet(_ request: Binding<PaywallScreenContainer.Request?>, actions: PaywallActions)
         -> some View
     {
         sheet(item: request) { opened in
-            PaywallSheet(request: opened, actions: actions) {
+            PaywallScreenContainer(request: opened, actions: actions) {
                 request.wrappedValue = nil
             }
         }

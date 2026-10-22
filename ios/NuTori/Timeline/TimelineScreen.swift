@@ -291,7 +291,7 @@ struct TimelineScreen: View {
     }
 
     @State private var showsAccount = false
-    @State private var paywallRequest: PaywallSheet.Request?
+    @State private var paywallRequest: PaywallScreenContainer.Request?
     /// 潜った画面の並び。食事を消したら、料理の画面からでもタイムラインまで戻す
     @State private var navigationPath = NavigationPath()
     @State private var weightEntryPhase = WeightEntryPhase.closed
@@ -771,7 +771,7 @@ struct TimelineScreen: View {
     /// 開いたときの状態で課金画面を開く。テストユーザーと、状態がまだ届いていないときは開かない
     private func openPaywall(from entry: ClientUsageEvent.PaywallEntry) {
         guard let subscriptionStanding else { return }
-        paywallRequest = PaywallSheet.Request(
+        paywallRequest = PaywallScreenContainer.Request(
             entry: entry, standing: subscriptionStanding, today: today)
     }
 
