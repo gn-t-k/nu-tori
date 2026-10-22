@@ -7,7 +7,7 @@ export const supportPage: SitePage = {
   outputPath: "/support",
   title: "サポート | nu-tori",
   description: `nu-tori への問い合わせは、問い合わせのフォームか ${supportContact.email} のメールで受け付けます。`,
-  search: { kind: "indexed", canonicalPath: "/support" },
+  kind: "public",
   Content: () => (
     <>
       <h1>サポート</h1>

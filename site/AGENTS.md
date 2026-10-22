@@ -4,7 +4,7 @@
 
 ## ページを足す
 
-1. `src/pages/<名前>-page.tsx` に `SitePage`（`src/site-page.ts`）を1つ書く。`outputPath` は末尾のスラッシュ無し（`/terms` → `terms.html`）にし、検索に載せるページは `search` を `indexed` にして、正規の URL のパスを `outputPath` と同じにする
+1. `src/pages/<名前>-page.tsx` に `SitePage`（`src/site-page.ts`）を1つ書く。`outputPath` は末尾のスラッシュ無し（`/terms` → `terms.html`）にする。公開のページは `kind` を `public` にし、`outputPath` が正規の URL のパスになる
 2. ページの一覧（`src/site-pages.ts`）に足す。書き出し・`sitemap.xml`・`<head>`・テストがここを読む
 3. 公開のページなら、外枠の足のリンク（`src/site-layout.tsx` の `footerLinks`）に足す
 

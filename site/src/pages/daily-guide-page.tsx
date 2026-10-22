@@ -6,7 +6,7 @@ export const dailyGuidePage: SitePage = {
   outputPath: "/daily-guide",
   title: "推定消費カロリーと1日の目安の出し方 | nu-tori",
   description: "nu-tori が、推定消費カロリーと1日の目安をどう出し、毎週どう見直すかを説明します。",
-  search: { kind: "indexed", canonicalPath: "/daily-guide" },
+  kind: "public",
   Content: () => (
     <>
       <h1>推定消費カロリーと1日の目安の出し方</h1>

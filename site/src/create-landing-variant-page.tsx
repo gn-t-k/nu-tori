@@ -4,8 +4,7 @@ import type { AppStoreListing } from "./app-store-listing";
 import { isLandingVariantName } from "./is-landing-variant-name";
 import type { SitePage } from "./site-page";
 
-// LP の版のページ。振り分けの Worker が /_lp/<版>/ を読んで / で返すので、正規の URL はどの版も / にする。
-// 版の中身には、自分の版の名前から作ったキャンペーンのリンクを渡す（バッジと最後の節の文のリンク）
+// LP の版のページ。版の中身には、自分の版の名前から作ったキャンペーンのリンクを渡す（バッジと最後の節の文のリンク）
 export const createLandingVariantPage = ({
   variant,
   listing,
@@ -27,7 +26,7 @@ export const createLandingVariantPage = ({
     outputPath: `/_lp/${variant}/`,
     title,
     description,
-    search: { kind: "indexed", canonicalPath: "/" },
+    kind: "landing",
     Content: () => <Content appStoreUrl={appStoreUrl} />,
   };
 };

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { notFoundPage } from "./pages/not-found-page";
+import { canonicalPathOf } from "./site-page";
 import { sitePages } from "./site-pages";
 import { fetchSite } from "./testing/fetch-site";
 import { fetchSiteWithLandingVariants } from "./testing/fetch-site-with-landing-variants";
@@ -127,11 +128,10 @@ describe("nu-tori.app の配信", () => {
   describe("ページの一覧の検索に載せるページ", () => {
     let indexedPages: { canonicalPath: string; title: string }[];
     beforeEach(() => {
-      indexedPages = sitePages.flatMap((page) =>
-        page.search.kind === "indexed"
-          ? [{ canonicalPath: page.search.canonicalPath, title: page.title }]
-          : [],
-      );
+      indexedPages = sitePages.flatMap((page) => {
+        const canonicalPath = canonicalPathOf(page);
+        return canonicalPath === undefined ? [] : [{ canonicalPath, title: page.title }];
+      });
     });
 
     test("どれも正規の URL で 200 と自分の <title> を返すこと", async () => {
@@ -158,9 +158,7 @@ describe("nu-tori.app の配信", () => {
       pagePaths = [
         "/",
         "/no-such-page",
-        ...sitePages.flatMap((page) =>
-          page.search.kind === "indexed" ? [page.search.canonicalPath] : [],
-        ),
+        ...sitePages.flatMap((page) => canonicalPathOf(page) ?? []),
       ];
     });
 

@@ -5,7 +5,7 @@ export const notFoundPage: SitePage = {
   outputPath: "/404",
   title: "ページが見つかりません | nu-tori",
   description: "お探しのページは見つかりませんでした。",
-  search: { kind: "unindexed" },
+  kind: "unindexed",
   Content: () => (
     <>
       <h1>ページが見つかりません</h1>

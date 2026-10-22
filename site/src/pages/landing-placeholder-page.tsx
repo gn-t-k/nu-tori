@@ -5,7 +5,7 @@ import type { SitePage } from "../site-page";
 export const landingPlaceholderPage: SitePage = {
   outputPath: "/_lp/_placeholder/",
   ...landingPageHead,
-  search: { kind: "indexed", canonicalPath: "/" },
+  kind: "landing",
   Content: () => (
     <>
       <h1>nu-tori</h1>

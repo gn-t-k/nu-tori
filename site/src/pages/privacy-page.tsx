@@ -7,7 +7,7 @@ export const privacyPage: SitePage = {
   title: "プライバシーポリシー | nu-tori",
   description:
     "nu-tori で扱う情報について、集める情報、使い道、外部に送る情報、保存する期間、問い合わせ先を定めたプライバシーポリシーです。",
-  search: { kind: "indexed", canonicalPath: "/privacy" },
+  kind: "public",
   Content: () => (
     <>
       <h1>nu-tori プライバシーポリシー</h1>
