@@ -3,15 +3,6 @@ import SwiftUI
 
 /// 規約への同意のシートの中身。閉じられないシートに載せ、「同意して続ける」で同意を受け付けられたら、出した側が消す
 struct TermsAgreementSheetView: View {
-    /// progress はシートを出したときの状態。送るのは画面の中で進むので、あとから渡し直しても変わらない
-    init(
-        progress: Progress,
-        agree: @escaping () async -> TermsAgreementPrompt.AgreeOutcome
-    ) {
-        _progress = State(initialValue: progress)
-        self.agree = agree
-    }
-
     let agree: () async -> TermsAgreementPrompt.AgreeOutcome
 
     var body: some View {
@@ -39,6 +30,15 @@ struct TermsAgreementSheetView: View {
         .interactiveDismissDisabled()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("termsAgreementSheet")
+    }
+
+    /// progress はシートを出したときの状態。送るのは画面の中で進むので、あとから渡し直しても変わらない
+    init(
+        progress: Progress,
+        agree: @escaping () async -> TermsAgreementPrompt.AgreeOutcome
+    ) {
+        _progress = State(initialValue: progress)
+        self.agree = agree
     }
 
     enum Progress: Equatable {

@@ -7,8 +7,6 @@ public struct PaywallContent: Equatable, Sendable {
     public let headline: String
     /// まとめの「支払いが始まる日」。サブスクリプション中（月額と年額の切り替え）は、始まる日が切り替え方で変わるので書かない
     public let paymentStart: String?
-    /// まとめの「自動更新」
-    public let renewal = "解約しない限り、自動で更新します。"
     /// 「自動更新」の下に箇条書きで並べる、月額・年額の更新の間隔と次の更新日。
     /// サブスクリプション中（月額と年額の切り替え）は、次の更新日が切り替え方で変わるので書かない
     public let renewalSchedule: [String]
@@ -50,6 +48,9 @@ public struct PaywallContent: Equatable, Sendable {
     /// 使えるものに添える1行
     public static let keepsWithoutSubscription =
         "体重の記録と傾向、これまでの記録の見返しは、サブスクリプションが無くてもずっとできます。"
+
+    /// まとめの「自動更新」
+    public static let renewal = "解約しない限り、自動で更新します。"
 
     /// まとめの「解約の方法」
     public static let cancellation =

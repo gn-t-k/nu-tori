@@ -31,6 +31,8 @@
             case ownedByOtherAccount
 
             var content: PaywallContent {
+                let tokyo = TimeZone(identifier: "Asia/Tokyo")!
+                let periodEndsAt = CalendarDay.sampleToday.advanced(by: 30).noon(in: tokyo)
                 let standing: SubscriptionStanding =
                     switch self {
                     case .freeTrial, .requestingToken:
@@ -39,7 +41,8 @@
                     case .expired, .tokenUnreachable, .ownedByOtherAccount:
                         .expired
                     case .subscribed:
-                        .subscribed(plan: .monthly, periodEndsAt: .now, endsAt: .now)
+                        .subscribed(
+                            plan: .monthly, periodEndsAt: periodEndsAt, endsAt: periodEndsAt)
                     }
                 return PaywallContent(standing: standing, today: .sampleToday)!
             }

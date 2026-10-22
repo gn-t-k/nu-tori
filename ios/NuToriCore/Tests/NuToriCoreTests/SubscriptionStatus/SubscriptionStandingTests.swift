@@ -17,72 +17,112 @@ struct SubscriptionStandingTests {
 
     @Suite("無料体験中のアカウント")
     struct FreeTrial {
-        @Test("最後の日の2日前は、無料体験中で残りが3日であること")
-        func threeDaysLeft() {
-            let standing = SubscriptionStanding(
-                status: SubscriptionStandingTests.inFreeTrial,
-                now: SubscriptionStandingTests.noon(CalendarDay(year: 2026, month: 11, day: 17)),
-                timeZone: SubscriptionStandingTests.tokyo)
+        @Suite("最後の日の2日前")
+        struct ThreeDaysLeft {
+            let standing: SubscriptionStanding
 
-            #expect(
-                standing == .freeTrial(lastDay: SubscriptionStandingTests.lastDay, remainingDays: 3)
-            )
+            init() {
+                standing = SubscriptionStanding(
+                    status: SubscriptionStandingTests.inFreeTrial,
+                    now: SubscriptionStandingTests.noon(
+                        CalendarDay(year: 2026, month: 11, day: 17)),
+                    timeZone: SubscriptionStandingTests.tokyo)
+            }
+
+            @Test("無料体験中で残りが3日であること")
+            func threeDaysLeft() {
+                #expect(
+                    standing
+                        == .freeTrial(lastDay: SubscriptionStandingTests.lastDay, remainingDays: 3))
+            }
         }
 
-        @Test("アカウントを作った日（最後の日の29日前）は、残りが30日であること")
-        func firstDay() {
-            let standing = SubscriptionStanding(
-                status: SubscriptionStandingTests.inFreeTrial,
-                now: SubscriptionStandingTests.noon(CalendarDay(year: 2026, month: 10, day: 21)),
-                timeZone: SubscriptionStandingTests.tokyo)
+        @Suite("アカウントを作った日（最後の日の29日前）")
+        struct FirstDay {
+            let standing: SubscriptionStanding
 
-            #expect(
-                standing
-                    == .freeTrial(lastDay: SubscriptionStandingTests.lastDay, remainingDays: 30))
+            init() {
+                standing = SubscriptionStanding(
+                    status: SubscriptionStandingTests.inFreeTrial,
+                    now: SubscriptionStandingTests.noon(
+                        CalendarDay(year: 2026, month: 10, day: 21)),
+                    timeZone: SubscriptionStandingTests.tokyo)
+            }
+
+            @Test("残りが30日であること")
+            func firstDay() {
+                #expect(
+                    standing
+                        == .freeTrial(lastDay: SubscriptionStandingTests.lastDay, remainingDays: 30)
+                )
+            }
         }
 
-        @Test("最後の日の終わりまでは、無料体験中で残りが1日であること")
-        func lastDay() {
-            let endOfLastDay = CalendarDay(year: 2026, month: 11, day: 20).noon(
-                in: SubscriptionStandingTests.tokyo
-            ).addingTimeInterval(-12 * 3600 - 1)
+        @Suite("最後の日の終わり")
+        struct EndOfLastDay {
+            let standing: SubscriptionStanding
 
-            let standing = SubscriptionStanding(
-                status: SubscriptionStandingTests.inFreeTrial, now: endOfLastDay,
-                timeZone: SubscriptionStandingTests.tokyo)
+            init() {
+                let endOfLastDay = CalendarDay(year: 2026, month: 11, day: 20).noon(
+                    in: SubscriptionStandingTests.tokyo
+                ).addingTimeInterval(-12 * 3600 - 1)
+                standing = SubscriptionStanding(
+                    status: SubscriptionStandingTests.inFreeTrial, now: endOfLastDay,
+                    timeZone: SubscriptionStandingTests.tokyo)
+            }
 
-            #expect(
-                standing == .freeTrial(lastDay: SubscriptionStandingTests.lastDay, remainingDays: 1)
-            )
+            @Test("無料体験中で残りが1日であること")
+            func lastDay() {
+                #expect(
+                    standing
+                        == .freeTrial(lastDay: SubscriptionStandingTests.lastDay, remainingDays: 1))
+            }
         }
 
-        @Test("最後の日の次の日は、サブスクリプション切れであること")
-        func dayAfterLastDay() {
-            let standing = SubscriptionStanding(
-                status: SubscriptionStandingTests.inFreeTrial,
-                now: SubscriptionStandingTests.noon(CalendarDay(year: 2026, month: 11, day: 20)),
-                timeZone: SubscriptionStandingTests.tokyo)
+        @Suite("最後の日の次の日")
+        struct DayAfterLastDay {
+            let standing: SubscriptionStanding
 
-            #expect(standing == .expired)
-            #expect(standing.isExpired)
+            init() {
+                standing = SubscriptionStanding(
+                    status: SubscriptionStandingTests.inFreeTrial,
+                    now: SubscriptionStandingTests.noon(
+                        CalendarDay(year: 2026, month: 11, day: 20)),
+                    timeZone: SubscriptionStandingTests.tokyo)
+            }
+
+            @Test("サブスクリプション切れであること")
+            func dayAfterLastDay() {
+                #expect(standing == .expired)
+                #expect(standing.isExpired)
+            }
         }
 
-        @Test("タイムゾーンが変わると、同じ時刻でも今日が変わり、無料体験中かが変わること")
-        func timeZoneChanged() {
-            // 東京では 11月20日 5:00、ロサンゼルスでは 11月19日 12:00
-            let now = CalendarDay(year: 2026, month: 11, day: 20).noon(
-                in: SubscriptionStandingTests.tokyo
-            ).addingTimeInterval(-7 * 3600)
+        @Suite("同じ時刻で、タイムゾーンが変わったとき")
+        struct TimeZoneChanged {
+            let inTokyo: SubscriptionStanding
+            let inLosAngeles: SubscriptionStanding
 
-            #expect(
-                SubscriptionStanding(
+            init() {
+                // 東京では 11月20日 5:00、ロサンゼルスでは 11月19日 12:00
+                let now = CalendarDay(year: 2026, month: 11, day: 20).noon(
+                    in: SubscriptionStandingTests.tokyo
+                ).addingTimeInterval(-7 * 3600)
+                inTokyo = SubscriptionStanding(
                     status: SubscriptionStandingTests.inFreeTrial, now: now,
-                    timeZone: SubscriptionStandingTests.tokyo) == .expired)
-            #expect(
-                SubscriptionStanding(
+                    timeZone: SubscriptionStandingTests.tokyo)
+                inLosAngeles = SubscriptionStanding(
                     status: SubscriptionStandingTests.inFreeTrial, now: now,
                     timeZone: SubscriptionStandingTests.losAngeles)
-                    == .freeTrial(lastDay: SubscriptionStandingTests.lastDay, remainingDays: 1))
+            }
+
+            @Test("今日が変わり、無料体験中かが変わること")
+            func timeZoneChanged() {
+                #expect(inTokyo == .expired)
+                #expect(
+                    inLosAngeles
+                        == .freeTrial(lastDay: SubscriptionStandingTests.lastDay, remainingDays: 1))
+            }
         }
     }
 
@@ -98,77 +138,123 @@ struct SubscriptionStandingTests {
                     plan: .monthly, periodEndsAt: periodEndsAt, billingGrace: billingGrace))
         }
 
-        @Test("無料体験中に買ったら、無料体験中でなくサブスクリプション中であること")
-        func boughtInFreeTrial() {
-            let standing = SubscriptionStanding(
-                status: Self.status(billingGrace: .none),
-                now: SubscriptionStandingTests.noon(CalendarDay(year: 2026, month: 11, day: 17)),
-                timeZone: SubscriptionStandingTests.tokyo)
+        @Suite("無料体験中に買ったとき")
+        struct BoughtInFreeTrial {
+            let standing: SubscriptionStanding
 
-            #expect(
-                standing
-                    == .subscribed(
-                        plan: .monthly, periodEndsAt: Self.periodEndsAt, endsAt: Self.periodEndsAt))
-            #expect(!standing.isExpired)
+            init() {
+                standing = SubscriptionStanding(
+                    status: Subscribed.status(billingGrace: .none),
+                    now: SubscriptionStandingTests.noon(
+                        CalendarDay(year: 2026, month: 11, day: 17)),
+                    timeZone: SubscriptionStandingTests.tokyo)
+            }
+
+            @Test("無料体験中でなくサブスクリプション中であること")
+            func boughtInFreeTrial() {
+                #expect(
+                    standing
+                        == .subscribed(
+                            plan: .monthly, periodEndsAt: Subscribed.periodEndsAt,
+                            endsAt: Subscribed.periodEndsAt))
+                #expect(!standing.isExpired)
+            }
         }
 
-        @Test("期限ちょうどは、サブスクリプション切れであること")
-        func atPeriodEnd() {
-            let standing = SubscriptionStanding(
-                status: Self.status(billingGrace: .none), now: Self.periodEndsAt,
-                timeZone: SubscriptionStandingTests.tokyo)
+        @Suite("期限ちょうど")
+        struct AtPeriodEnd {
+            let standing: SubscriptionStanding
 
+            init() {
+                standing = SubscriptionStanding(
+                    status: Subscribed.status(billingGrace: .none), now: Subscribed.periodEndsAt,
+                    timeZone: SubscriptionStandingTests.tokyo)
+            }
+
+            @Test("サブスクリプション切れであること")
+            func atPeriodEnd() {
+                #expect(standing == .expired)
+            }
+        }
+
+        @Suite("期限の直前")
+        struct JustBeforePeriodEnd {
+            let standing: SubscriptionStanding
+
+            init() {
+                standing = SubscriptionStanding(
+                    status: Subscribed.status(billingGrace: .none),
+                    now: Subscribed.periodEndsAt.addingTimeInterval(-1),
+                    timeZone: SubscriptionStandingTests.tokyo)
+            }
+
+            @Test("サブスクリプション中であること")
+            func justBeforePeriodEnd() {
+                #expect(!standing.isExpired)
+            }
+        }
+
+        @Suite("請求の猶予があるとき")
+        struct InBillingGrace {
+            let graceEndsAt: Date
+            let inGrace: SubscriptionStanding
+            let atGraceEnd: SubscriptionStanding
+
+            init() {
+                graceEndsAt = Subscribed.periodEndsAt.addingTimeInterval(16 * 86_400)
+                inGrace = SubscriptionStanding(
+                    status: Subscribed.status(billingGrace: .granted(endsAt: graceEndsAt)),
+                    now: Subscribed.periodEndsAt.addingTimeInterval(86_400),
+                    timeZone: SubscriptionStandingTests.tokyo)
+                atGraceEnd = SubscriptionStanding(
+                    status: Subscribed.status(billingGrace: .granted(endsAt: graceEndsAt)),
+                    now: graceEndsAt, timeZone: SubscriptionStandingTests.tokyo)
+            }
+
+            @Test("期限を過ぎても猶予の終わりまではサブスクリプション中であること")
+            func inBillingGrace() {
+                #expect(
+                    inGrace
+                        == .subscribed(
+                            plan: .monthly, periodEndsAt: Subscribed.periodEndsAt,
+                            endsAt: graceEndsAt))
+                #expect(atGraceEnd == .expired)
+            }
+        }
+    }
+
+    @Suite("テストユーザーのアカウント")
+    struct TestUser {
+        let standing: SubscriptionStanding
+
+        init() {
+            standing = SubscriptionStanding(
+                status: .testUser,
+                now: SubscriptionStandingTests.noon(CalendarDay(year: 2030, month: 1, day: 1)),
+                timeZone: SubscriptionStandingTests.tokyo)
+        }
+
+        @Test("テストユーザーで、切れていないこと")
+        func testUser() {
+            #expect(standing == .testUser)
+            #expect(!standing.isExpired)
+        }
+    }
+
+    @Suite("作り直したアカウント")
+    struct Recreated {
+        let standing: SubscriptionStanding
+
+        init() {
+            standing = SubscriptionStanding(
+                status: .regular(freeTrial: .usedByEarlierAccount, subscription: .none),
+                now: SubscriptionStandingTests.noon(CalendarDay(year: 2026, month: 10, day: 21)),
+                timeZone: SubscriptionStandingTests.tokyo)
+        }
+
+        @Test("買うまで最初からサブスクリプション切れであること")
+        func recreatedAccount() {
             #expect(standing == .expired)
         }
-
-        @Test("期限の直前は、サブスクリプション中であること")
-        func justBeforePeriodEnd() {
-            let standing = SubscriptionStanding(
-                status: Self.status(billingGrace: .none),
-                now: Self.periodEndsAt.addingTimeInterval(-1),
-                timeZone: SubscriptionStandingTests.tokyo)
-
-            #expect(!standing.isExpired)
-        }
-
-        @Test("猶予があれば、期限を過ぎても猶予の終わりまではサブスクリプション中であること")
-        func inBillingGrace() {
-            let graceEndsAt = Self.periodEndsAt.addingTimeInterval(16 * 86_400)
-
-            let inGrace = SubscriptionStanding(
-                status: Self.status(billingGrace: .granted(endsAt: graceEndsAt)),
-                now: Self.periodEndsAt.addingTimeInterval(86_400),
-                timeZone: SubscriptionStandingTests.tokyo)
-            let atGraceEnd = SubscriptionStanding(
-                status: Self.status(billingGrace: .granted(endsAt: graceEndsAt)), now: graceEndsAt,
-                timeZone: SubscriptionStandingTests.tokyo)
-
-            #expect(
-                inGrace
-                    == .subscribed(
-                        plan: .monthly, periodEndsAt: Self.periodEndsAt, endsAt: graceEndsAt))
-            #expect(atGraceEnd == .expired)
-        }
-    }
-
-    @Test("テストユーザーは、テストユーザーで、切れていないこと")
-    func testUser() {
-        let standing = SubscriptionStanding(
-            status: .testUser,
-            now: SubscriptionStandingTests.noon(CalendarDay(year: 2030, month: 1, day: 1)),
-            timeZone: SubscriptionStandingTests.tokyo)
-
-        #expect(standing == .testUser)
-        #expect(!standing.isExpired)
-    }
-
-    @Test("作り直したアカウントは、買うまで最初からサブスクリプション切れであること")
-    func recreatedAccount() {
-        let standing = SubscriptionStanding(
-            status: .regular(freeTrial: .usedByEarlierAccount, subscription: .none),
-            now: SubscriptionStandingTests.noon(CalendarDay(year: 2026, month: 10, day: 21)),
-            timeZone: SubscriptionStandingTests.tokyo)
-
-        #expect(standing == .expired)
     }
 }

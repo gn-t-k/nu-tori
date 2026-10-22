@@ -88,12 +88,12 @@ final class RootModel {
         await unfinishedTransactionsReported
     }
 
-    /// 同意のシートの「同意して続ける」。その場の要求で同意を送り、受け付けられたらシートを消す
     /// 規約への同意のシートを画面に出した
     func termsAgreementSheetPresented() async {
         await termsAgreement.sheetPresented()
     }
 
+    /// 同意のシートの「同意して続ける」。その場の要求で同意を送り、受け付けられたらシートを消す
     func agreeToTerms() async -> TermsAgreementPrompt.AgreeOutcome {
         guard let sheet = termsAgreementSheet else { return .agreed }
         let outcome = await termsAgreement.agree(to: sheet)

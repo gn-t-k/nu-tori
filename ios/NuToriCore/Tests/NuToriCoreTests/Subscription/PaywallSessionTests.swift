@@ -188,14 +188,19 @@ struct PaywallSessionTests {
     @MainActor
     @Suite("買わずに閉じたとき")
     struct ClosedWithoutPurchase {
-        @Test("取り消したことを PostHog に送ること")
-        func capturesCancelled() async {
-            let analytics = AnalyticsSessionMock.ok()
-            let session = PaywallSession.fixture(
+        let analytics: AnalyticsSessionMock
+        let session: PaywallSession
+
+        init() async {
+            analytics = .ok()
+            session = .fixture(
                 standing: .expired, store: .ok(), transport: .subscription { _ in (.ok, nil) },
                 analytics: analytics)
             await session.open()
+        }
 
+        @Test("取り消したことを PostHog に送ること")
+        func capturesCancelled() async {
             await session.close()
 
             #expect(analytics.captured.last == .paywallClosed(.cancelled))
@@ -205,13 +210,17 @@ struct PaywallSessionTests {
     @MainActor
     @Suite("購入を復元して、このアカウントに結びついたとき")
     struct RestoredAndLinked {
-        @Test("シートを閉じること")
-        func finishes() async {
-            let session = PaywallSession.fixture(
+        let session: PaywallSession
+
+        init() async {
+            session = .fixture(
                 standing: .expired, store: .ok(entitlements: [.sample(id: 1)]),
                 transport: .subscription { _ in (.ok, paywallLinkedJSON) })
             await session.open()
+        }
 
+        @Test("シートを閉じること")
+        func finishes() async {
             await session.restore()
 
             #expect(session.isFinished)
@@ -221,12 +230,16 @@ struct PaywallSessionTests {
     @MainActor
     @Suite("購入を復元して、今使える取引が無かったとき")
     struct NothingToRestore {
-        @Test("復元できるものが無いことを出すこと")
-        func message() async {
-            let session = PaywallSession.fixture(
+        let session: PaywallSession
+
+        init() async {
+            session = .fixture(
                 standing: .expired, store: .ok(), transport: .subscription { _ in (.ok, nil) })
             await session.open()
+        }
 
+        @Test("復元できるものが無いことを出すこと")
+        func message() async {
             await session.restore()
 
             #expect(!session.isFinished)

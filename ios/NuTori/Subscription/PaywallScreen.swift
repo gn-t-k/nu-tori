@@ -137,7 +137,7 @@ struct PaywallScreen: View {
                 summaryItem("支払いが始まる日") { Text(paymentStart) }
             }
             summaryItem("自動更新") {
-                Text(content.renewal)
+                Text(PaywallContent.renewal)
                 ForEach(content.renewalSchedule, id: \.self) { BulletLine(text: $0) }
             }
             summaryItem("解約の方法") { Text(PaywallContent.cancellation) }

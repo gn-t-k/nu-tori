@@ -11,16 +11,17 @@ struct SubscriptionPurchasesTests {
     struct PurchaseLinked {
         let store: SubscriptionStoreMock
         let transport: ClientTransportMock
-        let applied: ChangesRecorder
+        private let applied: ChangesRecorder
         let purchases: SubscriptionPurchases
 
         init() {
             store = .ok()
             transport = .subscription { _ in (.ok, linkedJSON) }
-            applied = ChangesRecorder()
+            let applied = ChangesRecorder()
+            self.applied = applied
             purchases = .fixture(
-                store: store, transport: transport, applied: applied,
-                newRequestId: { requestId })
+                store: store, transport: transport,
+                applyReportedChanges: { applied.changes += $0 }, newRequestId: { requestId })
         }
 
         @Test("署名つきの取引を、買った直後のきっかけと要求の ID で知らせること")
@@ -64,16 +65,17 @@ struct SubscriptionPurchasesTests {
     @Suite("買って、ほかのアカウントのサブスクリプションだったとき")
     struct PurchaseOwnedByOtherAccount {
         let store: SubscriptionStoreMock
-        let applied: ChangesRecorder
+        private let applied: ChangesRecorder
         let purchases: SubscriptionPurchases
 
         init() {
             store = .ok()
-            applied = ChangesRecorder()
+            let applied = ChangesRecorder()
+            self.applied = applied
             purchases = .fixture(
                 store: store,
                 transport: .subscription { _ in (.ok, #"{"result":"owned_by_other_account"}"#) },
-                applied: applied)
+                applyReportedChanges: { applied.changes += $0 })
         }
 
         @Test("ほかのアカウントのものと返し、取引を終えること")
@@ -206,14 +208,13 @@ struct SubscriptionPurchasesTests {
 
     @Suite("知らせられなかった取引を開き直して知らせるとき")
     struct ResendOnNextOpen {
-        let reachability: ReportReachability
+        let reachability: ReachabilitySwitch
         let store: SubscriptionStoreMock
         let transport: ClientTransportMock
         let purchases: SubscriptionPurchases
 
         init() {
-            let reachability = ReportReachability()
-            reachability.isReachable = false
+            let reachability = ReachabilitySwitch(isReachable: false)
             self.reachability = reachability
             store = .ok(unfinished: [.sample(id: 1)])
             transport = .subscription { _ in
@@ -278,7 +279,7 @@ struct SubscriptionPurchasesTests {
     struct UnfinishedAlsoInUpdates {
         let store: SubscriptionStoreMock
         let transport: ClientTransportMock
-        let gate: ResponseGate
+        private let gate: ResponseGate
         let purchases: SubscriptionPurchases
 
         init() {
@@ -441,15 +442,21 @@ struct SubscriptionPurchasesTests {
 
     @Suite("商品を読むとき")
     struct Products {
-        @Test("月額と年額の商品を返すこと")
-        func returnsKnownProducts() async throws {
-            let monthly = SubscriptionProduct(id: monthlyId, plan: .monthly, displayPrice: "¥980")
-            let yearly = SubscriptionProduct(
+        let monthly: SubscriptionProduct
+        let yearly: SubscriptionProduct
+        let purchases: SubscriptionPurchases
+
+        init() {
+            monthly = SubscriptionProduct(id: monthlyId, plan: .monthly, displayPrice: "¥980")
+            yearly = SubscriptionProduct(
                 id: "app.nu-tori.subscription.yearly", plan: .yearly, displayPrice: "¥8,800")
             let other = SubscriptionProduct(id: "other", plan: .monthly, displayPrice: "¥1")
-            let purchases = SubscriptionPurchases.fixture(
+            purchases = .fixture(
                 store: .ok(products: [yearly, other, monthly]), transport: .ok())
+        }
 
+        @Test("月額と年額の商品を返すこと")
+        func returnsKnownProducts() async throws {
             #expect(try await purchases.products() == [monthly, yearly])
         }
     }
@@ -473,42 +480,8 @@ private func reportBodies(_ transport: ClientTransportMock) throws -> [[String: 
     }
 }
 
-extension AppStoreTransaction {
-    static func sample(id: UInt64) -> AppStoreTransaction {
-        AppStoreTransaction(id: id, signedTransaction: "jws-\(id)")
-    }
-}
-
-extension SubscriptionPurchases {
-    static func fixture(
-        store: SubscriptionStoreMock,
-        transport: ClientTransportMock,
-        applied: ChangesRecorder = ChangesRecorder(),
-        newRequestId: @escaping @Sendable () -> UUID = { UUID() }
-    ) -> SubscriptionPurchases {
-        SubscriptionPurchases(
-            store: store,
-            client: NuToriAPIClient(
-                serverURL: URL(string: "https://api.example")!,
-                transport: transport,
-                appBuildGate: .sample,
-                sessionToken: { "session-1" }
-            ),
-            applyReportedChanges: { applied.changes += $0 },
-            newRequestId: newRequestId
-        )
-    }
-}
-
-/// 知らせ直すあいだに、電波が戻ったことにする
-final class ReportReachability: @unchecked Sendable {
-    var isReachable = true
-}
-
-private struct StoreFailure: Error {}
-
 /// 取引を知らせる要求の応答を、テストが開けるまで待たせる
-actor ResponseGate {
+private actor ResponseGate {
     private var isOpen = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private var arrivals: [CheckedContinuation<Void, Never>] = []
@@ -534,6 +507,6 @@ actor ResponseGate {
 }
 
 /// 応答の記録を当てた先
-final class ChangesRecorder: @unchecked Sendable {
+private final class ChangesRecorder: @unchecked Sendable {
     var changes: [SyncChange] = []
 }
