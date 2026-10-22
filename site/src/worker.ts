@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { generateCookie, getCookie } from "hono/cookie";
 import { securityHeaders } from "./security-headers";
 
 // assets.run_worker_first（wrangler.jsonc）で、/ と /_lp/* だけがここを通る。ほかのパスは静的な asset のまま返る
@@ -19,12 +20,46 @@ app.get("/_lp/*", (c) => c.redirect("/", 301));
 
 app.get("/", async (c) => {
   const variants: readonly string[] = c.env.LP_VARIANTS;
-  if (variants.length > 0) {
-    throw new Error("LP の版の振り分けはまだ無い（#659）");
+  if (variants.length === 0) {
+    return fetchPage(c.env, c.req.url, "/_lp/_placeholder/");
   }
-  const asset = await c.env.ASSETS.fetch(new URL("/_lp/_placeholder/", c.req.url));
-  // asset の応答のヘッダーは書き換えられないので、作り直す
-  return new Response(asset.body, asset);
+  // 版の名前は Cookie とパスにそのまま入るので、設定の誤りは振り分ける前に止める
+  if (variants.some((variant) => !/^[a-z0-9]+$/u.test(variant))) {
+    throw new Error(`LP_VARIANTS の版の名前は英小文字と数字だけにする: ${variants.join(", ")}`);
+  }
+
+  // 外した版と壊れた値は、一覧に無いので選び直す
+  const remembered = getCookie(c, variantCookieName);
+  if (remembered !== undefined && variants.includes(remembered)) {
+    return fetchPage(c.env, c.req.url, `/_lp/${remembered}/`);
+  }
+
+  const draw = c.env.LP_VARIANT_DRAW ?? Math.random();
+  const chosen = variants[Math.floor(draw * variants.length)];
+  if (chosen === undefined) {
+    throw new Error(`版を選ぶ乱数が 0 以上 1 未満でない: ${draw}`);
+  }
+  const page = await fetchPage(c.env, c.req.url, `/_lp/${chosen}/`);
+  // 版の名前のほかは入れず、訪問者を見分ける値を作らない。名前・中身・残る期間を変えたら、プライバシーポリシーの「ウェブサイトのトップページの Cookie」も直す
+  page.headers.append(
+    "Set-Cookie",
+    generateCookie(variantCookieName, chosen, {
+      path: "/",
+      maxAge: 2_592_000,
+      secure: true,
+      httpOnly: true,
+      sameSite: "Lax",
+    }),
+  );
+  return page;
 });
 
 export default app;
+
+const variantCookieName = "nu_tori_lp";
+
+const fetchPage = async (env: Env, requestUrl: string, path: string): Promise<Response> => {
+  const asset = await env.ASSETS.fetch(new URL(path, requestUrl));
+  // asset の応答のヘッダーは書き換えられないので、作り直す
+  return new Response(asset.body, asset);
+};
