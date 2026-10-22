@@ -45,4 +45,7 @@ export const SiteLayout = ({ page, children }: { page: SitePage; children: Child
   </>
 );
 
-const footerLinks = [{ href: "/privacy", label: "プライバシーポリシー" }];
+const footerLinks = [
+  { href: "/privacy", label: "プライバシーポリシー" },
+  { href: "/daily-guide", label: "推定消費カロリーと1日の目安の出し方" },
+];
