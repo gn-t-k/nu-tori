@@ -111,6 +111,7 @@ struct RootView: View {
                     openedNotificationSettings: {
                         await model.capture(.notificationSettingsOpened)
                     },
+                    autoRenewal: { await model.subscriptionPurchases.autoRenewal() },
                     accountDeletionGuide: { await model.accountDeletionGuide() },
                     rereadAccountDeletionGuide: { await model.rereadAccountDeletionGuide($0) },
                     openedAccountDeletionGuide: {
@@ -121,7 +122,6 @@ struct RootView: View {
                     }
                 ),
                 paywallActions: PaywallActions(
-                    clock: model.clock,
                     purchases: model.subscriptionPurchases,
                     capture: { await model.capture($0) },
                     storefront: paywallStorefront

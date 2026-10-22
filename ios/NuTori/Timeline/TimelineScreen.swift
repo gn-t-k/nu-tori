@@ -181,8 +181,10 @@ struct TimelineScreen: View {
             }
             .sheet(isPresented: $showsAccount) {
                 NavigationStack {
-                    AccountScreenContainer(actions: accountActions, paywallActions: paywallActions)
-                    {
+                    AccountScreenContainer(
+                        now: now, timeZone: timeZone, actions: accountActions,
+                        paywallActions: paywallActions
+                    ) {
                         showsAccount = false
                     }
                 }

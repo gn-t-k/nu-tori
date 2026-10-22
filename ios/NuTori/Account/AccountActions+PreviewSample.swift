@@ -11,6 +11,7 @@
                 deleteAccount: { nil },
                 notificationPermission: { .permitted },
                 openedNotificationSettings: {},
+                autoRenewal: { .unknown },
                 accountDeletionGuide: { nil },
                 rereadAccountDeletionGuide: { $0 },
                 openedAccountDeletionGuide: {},
