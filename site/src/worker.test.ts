@@ -15,7 +15,7 @@ describe("nu-tori.app の配信", () => {
     });
 
     test("今のプライバシーポリシーの制定日と改定日を返すこと", async () => {
-      expect(await response.text()).toContain("制定日: 2026年9月29日　改定日: 2026年10月20日");
+      expect(await response.text()).toContain("制定日: 2026年9月29日　改定日: 2026年10月22日");
     });
   });
 

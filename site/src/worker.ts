@@ -40,7 +40,7 @@ app.get("/", async (c) => {
     throw new Error(`版を選ぶ乱数が 0 以上 1 未満でない: ${draw}`);
   }
   const page = await fetchPage(c.env, c.req.url, `/_lp/${chosen}/`);
-  // 版の名前のほかは入れず、訪問者を見分ける値を作らない（プライバシーポリシーの「nu-tori.app」）
+  // 版の名前のほかは入れず、訪問者を見分ける値を作らない。名前・中身・残る期間を変えたら、プライバシーポリシーの「ウェブサイトのトップページの Cookie」も直す
   page.headers.append(
     "Set-Cookie",
     generateCookie(variantCookieName, chosen, {
