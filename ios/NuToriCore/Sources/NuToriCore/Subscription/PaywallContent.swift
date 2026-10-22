@@ -23,7 +23,7 @@ public struct PaywallContent: Equatable, Sendable {
         case .testUser:
             return nil
         case .freeTrial(_, let remainingDays):
-            headline = Self.freeTrialHeadline
+            headline = Self.featuresHeadline
             paymentStart = "今日から。無料体験の残り \(remainingDays) 日はなくなります"
             renewalSchedule = schedule
         case .expired:
@@ -31,7 +31,7 @@ public struct PaywallContent: Equatable, Sendable {
             paymentStart = "今日から"
             renewalSchedule = schedule
         case .subscribed:
-            headline = Self.freeTrialHeadline
+            headline = Self.featuresHeadline
             paymentStart = nil
             renewalSchedule = []
         }
@@ -55,7 +55,8 @@ public struct PaywallContent: Equatable, Sendable {
     public static let cancellation =
         "iPhone の設定 → Apple アカウント → サブスクリプションから。更新日の24時間前までに解約すれば次の請求はありません"
 
-    private static let freeTrialHeadline = "撮るだけで、1日の目安が体に合っていく"
+    /// 切れていないとき（無料体験中・サブスクリプション中）の見出し。使えるものを1行で言う
+    private static let featuresHeadline = "撮るだけで、1日の目安が体に合っていく"
 
     /// 次の月に同じ日が無ければ、その月の終わりの日にする（App Store の更新日と同じ）
     private static func adding(months: Int, to day: CalendarDay) -> CalendarDay {

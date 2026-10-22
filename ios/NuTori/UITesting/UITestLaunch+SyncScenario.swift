@@ -96,10 +96,13 @@
                         freeTrial: freeTrial,
                         subscription: .subscribed(
                             plan: .monthly,
-                            periodEndsAt: clock.now().addingTimeInterval(30 * 24 * 60 * 60),
+                            periodEndsAt: clock.now().addingTimeInterval(
+                                Self.monthlyPeriodSeconds),
                             billingGrace: .none))))
         }
 
+        /// 結びついた月額の期限までの長さ。月の長さは問わないので、30日にする
+        private static let monthlyPeriodSeconds: TimeInterval = 30 * 24 * 60 * 60
         private static let manualId = fixedId("11111111-1111-4111-8111-111111111111")
         private static let importedId = fixedId("22222222-2222-4222-8222-222222222222")
         private static let withings = SyncedWeightRecord.Imported(
