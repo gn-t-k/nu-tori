@@ -368,6 +368,7 @@ merge_package_resolved() {
 # 両方に置く決めごとは shared/ の JSON から読むので、ここで比べるのは、文に出すだけの値のような、shared/ に置かない写しだけ（docs/agents/shared-rules.md）
 check_server_constant_copies() {
     local location name value definitions count server_value compared=0 failed=false
+    # CI の ios のジョブはコンテナの中で git を使えない（リポジトリの持ち主が違う）ので、git に頼らず find で集める。ビルドの置き場（.build）は数 GB あるので降りない
     while IFS=$'\t' read -r location name value; do
         compared=$((compared + 1))
         if [ -z "$value" ]; then
@@ -375,8 +376,7 @@ check_server_constant_copies() {
             failed=true
             continue
         fi
-        definitions="$(git -C "$root" ls-files --cached --others --exclude-standard -- 'server/src/*.ts' | grep -v '\.test\.ts$' |
-            (cd "$root" && xargs sed -nE "s/^[[:space:]]*(export )?const ${name}(: [A-Za-z]+)? = ([^;]+);.*/\3/p"))"
+        definitions="$(cd "$root" && find server/src -name '*.ts' ! -name '*.test.ts' -print0 | xargs -0 sed -nE "s/^[[:space:]]*(export )?const ${name}(: [A-Za-z]+)? = ([^;]+);.*/\3/p")"
         count="$(grep -c . <<< "$definitions" || true)"
         if [ "$count" -ne 1 ]; then
             echo "${location}: サーバーの server/src に const ${name} = 値; が ${count} 個ある（1個のはず）" >&2
@@ -388,7 +388,7 @@ check_server_constant_copies() {
             echo "${location}: 端末は ${value}、サーバーの ${name} は ${definitions}" >&2
             failed=true
         fi
-    done < <(git -C "$root" ls-files --cached --others --exclude-standard -- 'ios/*.swift' | (cd "$root" && xargs awk '
+    done < <(cd "$root" && find ios -name .build -prune -o -name '*.swift' -print0 | xargs -0 awk '
         function report(value) {
             printf "%s\t%s\t%s\n", location, pending, value
             pending = ""
@@ -415,7 +415,7 @@ check_server_constant_copies() {
             report(value)
         }
         END { if (pending != "") report("") }
-    '))
+    ')
     # コメントの書き方が変わって1つも読めないときに、比べずに通さない
     if [ "$compared" -eq 0 ]; then
         echo "ios/ の Swift に「正本はサーバーの \`名前\`」のコメントが1つも無い" >&2
