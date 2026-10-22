@@ -14,7 +14,50 @@ describe("nu-tori.app の配信", () => {
     });
 
     test("今のプライバシーポリシーの制定日と改定日を返すこと", async () => {
-      expect(await response.text()).toContain("制定日: 2026年9月29日　改定日: 2026年10月20日");
+      expect(await response.text()).toContain("制定日: 2026年9月29日　改定日: 2026年10月22日");
+    });
+
+    test("問い合わせ先のメールアドレスへリンクすること", async () => {
+      expect(await response.text()).toContain('<a href="mailto:support@nu-tori.app">');
+    });
+
+    test("外枠の足からサポートと告知のページへリンクすること", async () => {
+      const body = await response.text();
+      expect(body).toContain('<a href="/support">');
+      expect(body).toContain('<a href="/announcements">');
+    });
+  });
+
+  describe("サポート", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await fetchSite("/support");
+    });
+
+    test("/support が 200 で返ること（App Store Connect に入れる URL）", () => {
+      expect(response.status).toBe(200);
+    });
+
+    test("問い合わせのフォームと、メールの窓口と、告知のページへリンクすること", async () => {
+      const body = await response.text();
+      expect(body).toContain('<a href="https://forms.gle/KGg899DaWghiYnTx7">');
+      expect(body).toContain('<a href="mailto:support@nu-tori.app">');
+      expect(body).toContain('<a href="/announcements">');
+    });
+  });
+
+  describe("告知のページ", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await fetchSite("/announcements");
+    });
+
+    test("/announcements が 200 で返ること（アプリが開けないときに読む URL）", () => {
+      expect(response.status).toBe(200);
+    });
+
+    test("告知の問い合わせ先として、サポートのページへリンクすること", async () => {
+      expect(await response.text()).toContain('<a href="/support">');
     });
   });
 
@@ -116,6 +159,11 @@ describe("nu-tori.app の配信", () => {
     test("LP とプライバシーポリシーの正規の URL が並ぶこと", () => {
       expect(sitemap).toContain("<loc>https://nu-tori.app/</loc>");
       expect(sitemap).toContain("<loc>https://nu-tori.app/privacy</loc>");
+    });
+
+    test("サポートと告知のページの正規の URL が並ぶこと", () => {
+      expect(sitemap).toContain("<loc>https://nu-tori.app/support</loc>");
+      expect(sitemap).toContain("<loc>https://nu-tori.app/announcements</loc>");
     });
 
     test("LP の版の中のパスが無いこと", () => {

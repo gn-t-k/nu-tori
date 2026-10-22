@@ -45,4 +45,8 @@ export const SiteLayout = ({ page, children }: { page: SitePage; children: Child
   </>
 );
 
-const footerLinks = [{ href: "/privacy", label: "プライバシーポリシー" }];
+const footerLinks = [
+  { href: "/privacy", label: "プライバシーポリシー" },
+  { href: "/support", label: "サポート" },
+  { href: "/announcements", label: "告知" },
+];
