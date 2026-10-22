@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { notFoundPage } from "./pages/not-found-page";
+import { securityHeaders } from "./security-headers";
 import { canonicalPathOf } from "./site-page";
 import { sitePages } from "./site-pages";
 import { fetchSite } from "./testing/fetch-site";
@@ -202,11 +203,12 @@ describe("nu-tori.app の配信", () => {
       privacyResponse = await fetchSite("/privacy");
     });
 
+    // 仮のページと LP の版は正規の URL がどちらも / なので、版にだけあるバッジのキャンペーンのリンクが無いことで見分ける
     test("/ が仮のページを 200 で返すこと", async () => {
       expect(response.status).toBe(200);
-      expect(await response.text()).toContain(
-        '<link rel="canonical" href="https://nu-tori.app/"/>',
-      );
+      const body = await response.text();
+      expect(body).toContain('<link rel="canonical" href="https://nu-tori.app/"/>');
+      expect(body).not.toContain("ct=lp-");
     });
 
     test("仮のページから公開のページへリンクすること", async () => {
@@ -399,12 +401,4 @@ const campaignLinkOfVariantB =
   'href="https://apps.apple.com/jp/app/apple-store/id6816842705?pt=test-provider-token&amp;ct=lp-b&amp;mt=8"';
 
 const pickSecurityHeaders = (from: Response) =>
-  Object.fromEntries(
-    [
-      "Content-Security-Policy",
-      "X-Content-Type-Options",
-      "Referrer-Policy",
-      "Strict-Transport-Security",
-      "X-Frame-Options",
-    ].map((name) => [name, from.headers.get(name)]),
-  );
+  Object.fromEntries(Object.keys(securityHeaders).map((name) => [name, from.headers.get(name)]));
