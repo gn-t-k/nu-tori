@@ -231,7 +231,7 @@ struct TermsAgreementPromptTests {
                     try JSONDecoder().decode(
                         [String: String].self, from: Data(try #require($0.body).utf8))["requestId"]
                 }
-                #expect(requestIds.count == 2)
+                try #require(requestIds.count == 2)
                 #expect(requestIds[0] != nil)
                 #expect(requestIds[0] == requestIds[1])
             }

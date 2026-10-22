@@ -196,29 +196,46 @@ struct SubscriptionStandingTests {
 
         @Suite("請求の猶予があるとき")
         struct InBillingGrace {
-            let graceEndsAt: Date
-            let inGrace: SubscriptionStanding
-            let atGraceEnd: SubscriptionStanding
+            static let graceEndsAt = Subscribed.periodEndsAt.addingTimeInterval(16 * 86_400)
 
-            init() {
-                graceEndsAt = Subscribed.periodEndsAt.addingTimeInterval(16 * 86_400)
-                inGrace = SubscriptionStanding(
-                    status: Subscribed.status(billingGrace: .granted(endsAt: graceEndsAt)),
-                    now: Subscribed.periodEndsAt.addingTimeInterval(86_400),
-                    timeZone: SubscriptionStandingTests.tokyo)
-                atGraceEnd = SubscriptionStanding(
-                    status: Subscribed.status(billingGrace: .granted(endsAt: graceEndsAt)),
-                    now: graceEndsAt, timeZone: SubscriptionStandingTests.tokyo)
+            @Suite("期限を過ぎて、猶予の終わりより前")
+            struct BeforeGraceEnd {
+                let standing: SubscriptionStanding
+
+                init() {
+                    standing = SubscriptionStanding(
+                        status: Subscribed.status(
+                            billingGrace: .granted(endsAt: InBillingGrace.graceEndsAt)),
+                        now: Subscribed.periodEndsAt.addingTimeInterval(86_400),
+                        timeZone: SubscriptionStandingTests.tokyo)
+                }
+
+                @Test("サブスクリプション中で、猶予の終わりを終わりにすること")
+                func beforeGraceEnd() {
+                    #expect(
+                        standing
+                            == .subscribed(
+                                plan: .monthly, periodEndsAt: Subscribed.periodEndsAt,
+                                endsAt: InBillingGrace.graceEndsAt))
+                }
             }
 
-            @Test("期限を過ぎても猶予の終わりまではサブスクリプション中であること")
-            func inBillingGrace() {
-                #expect(
-                    inGrace
-                        == .subscribed(
-                            plan: .monthly, periodEndsAt: Subscribed.periodEndsAt,
-                            endsAt: graceEndsAt))
-                #expect(atGraceEnd == .expired)
+            @Suite("猶予の終わりちょうど")
+            struct AtGraceEnd {
+                let standing: SubscriptionStanding
+
+                init() {
+                    standing = SubscriptionStanding(
+                        status: Subscribed.status(
+                            billingGrace: .granted(endsAt: InBillingGrace.graceEndsAt)),
+                        now: InBillingGrace.graceEndsAt,
+                        timeZone: SubscriptionStandingTests.tokyo)
+                }
+
+                @Test("サブスクリプション切れであること")
+                func atGraceEnd() {
+                    #expect(standing == .expired)
+                }
             }
         }
     }
