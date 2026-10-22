@@ -1,5 +1,6 @@
+import { formatYen } from "../format-yen";
 import type { SitePage } from "../site-page";
-import { formatYen, subscriptionPrices } from "../subscription-prices";
+import { subscriptionPrices } from "../subscription-prices";
 
 // 事項と中身の正本は #593 の解決コメント（https://github.com/gn-t-k/nu-tori/issues/593#issuecomment-6257220570）。
 // 住所と電話番号の値は、請求のたびにメールで知らせ、ここにもリポジトリ・Issue・PR にも書かない（docs/agents/privacy.md）

@@ -4,5 +4,3 @@ export const subscriptionPrices = {
   monthlyYen: 980,
   yearlyYen: 8800,
 };
-
-export const formatYen = (yen: number) => `${yen.toLocaleString("ja-JP")}円`;

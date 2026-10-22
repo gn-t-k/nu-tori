@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
-import { appStoreCampaignUrl, type AppStoreListing } from "./app-store-campaign-url";
+import { appStoreCampaignUrl } from "./app-store-campaign-url";
+import type { AppStoreListing } from "./app-store-listing";
 import type { SitePage } from "./site-page";
 
 // LP の版のページ。振り分けの Worker が /_lp/<版>/ を読んで / で返すので、正規の URL はどの版も / にする。
