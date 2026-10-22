@@ -10,7 +10,7 @@ import { LlmCallBadRequestError } from "../src/domain/llm-call-bad-request-error
 import { mockCreateConversationProviderOk } from "../src/reply/durable-object/create-conversation-provider/create-conversation-provider.mock";
 import { mealTextBody } from "./meal-text-body";
 import { runMainFlow } from "./run-main-flow";
-import { e2eRequestHeaders } from "../src/http/e2e-session-routes/e2e-request-headers";
+import { e2eRequestHeaders } from "../src/http/e2e-access";
 
 const signInSecret = "e2e-sign-in-secret-0123456789abcdef0123456789";
 

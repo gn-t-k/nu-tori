@@ -1,5 +1,5 @@
 import { createMiddleware } from "hono/factory";
-import { resolveRequestedAt } from "../e2e-session-routes/resolve-requested-at";
+import { resolveRequestedAt } from "../e2e-access";
 
 // 目標の設定の要求を受けた時刻を c.var.requestedAt に置く。確かめのジョブの差し替えは resolveRequestedAt が受け付ける
 export const attachRequestedAt = createMiddleware<{

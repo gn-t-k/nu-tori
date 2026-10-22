@@ -117,11 +117,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async findLastEndedEstimationAttemptOfMeal(accountId: string, mealId: RecordId) {
+    async findLastEstimationAttemptConclusionOfMeal(accountId: string, mealId: RecordId) {
       setUser({ id: accountId });
       return this.respond(
         accountId,
-        accountRequests.findLastEndedEstimationAttemptOfMeal(
+        accountRequests.findLastEstimationAttemptConclusionOfMeal(
           { records: await this.createRecordKindStores(accountId) },
           mealId,
         ),

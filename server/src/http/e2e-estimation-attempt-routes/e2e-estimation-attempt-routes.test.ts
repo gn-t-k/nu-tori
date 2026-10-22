@@ -6,21 +6,22 @@ import { app } from "../app";
 const secret = "e2e-sign-in-secret-0123456789abcdef0123456789";
 
 describe("確かめのジョブのための、食事の最後に終わった推定の試みを読む口", () => {
+  let testEnv: Env;
+  let request: { mealId: string; sentSecret: string; sessionToken: string | undefined };
+
   describe("開発用の環境で、秘密の値が置かれているとき", () => {
-    let developmentEnv: Env;
-    let sessionToken: string;
     beforeEach(async () => {
-      developmentEnv = { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: secret };
-      sessionToken = await signInForE2e(developmentEnv);
+      testEnv = { ...env, SENTRY_ENVIRONMENT: "development", E2E_SIGN_IN_SECRET: secret };
+      request = {
+        mealId: generateRecordId(),
+        sentSecret: secret,
+        sessionToken: await signInForE2e(testEnv),
+      };
     });
 
     describe("推定を始めていない食事を読んだとき", () => {
       test("終わった試みが無いと返すこと", async () => {
-        const response = await readLastEstimationAttempt(developmentEnv, {
-          mealId: generateRecordId(),
-          sentSecret: secret,
-          sessionToken,
-        });
+        const response = await readLastEstimationAttempt(testEnv, request);
         expect({ status: response.status, body: await response.json() }).toEqual({
           status: 200,
           body: { lastEndedAttempt: null },
@@ -29,66 +30,71 @@ describe("確かめのジョブのための、食事の最後に終わった推�
     });
 
     describe("食事の ID が UUID の正規形でないとき", () => {
+      beforeEach(() => {
+        request = { ...request, mealId: "not-a-uuid" };
+      });
+
       test("400 を返すこと", async () => {
-        const response = await readLastEstimationAttempt(developmentEnv, {
-          mealId: "not-a-uuid",
-          sentSecret: secret,
-          sessionToken,
-        });
+        const response = await readLastEstimationAttempt(testEnv, request);
         expect(response.status).toBe(400);
       });
     });
 
     describe("違う秘密の値を送ったとき", () => {
+      beforeEach(() => {
+        request = { ...request, sentSecret: `${secret}x` };
+      });
+
       test("401 を返すこと", async () => {
-        const response = await readLastEstimationAttempt(developmentEnv, {
-          mealId: generateRecordId(),
-          sentSecret: `${secret}x`,
-          sessionToken,
-        });
+        const response = await readLastEstimationAttempt(testEnv, request);
         expect(response.status).toBe(401);
       });
     });
 
     describe("セッションを送らないとき", () => {
+      beforeEach(() => {
+        request = { ...request, sessionToken: undefined };
+      });
+
       test("401 を返すこと", async () => {
-        const response = await readLastEstimationAttempt(developmentEnv, {
-          mealId: generateRecordId(),
-          sentSecret: secret,
-          sessionToken: undefined,
-        });
+        const response = await readLastEstimationAttempt(testEnv, request);
         expect(response.status).toBe(401);
       });
     });
   });
 
   describe("本番の環境で、秘密の値が置かれてしまったとき", () => {
+    beforeEach(async () => {
+      request = {
+        mealId: generateRecordId(),
+        sentSecret: secret,
+        sessionToken: await signInForE2e({
+          ...env,
+          SENTRY_ENVIRONMENT: "development",
+          E2E_SIGN_IN_SECRET: secret,
+        }),
+      };
+      testEnv = { ...env, SENTRY_ENVIRONMENT: "production", E2E_SIGN_IN_SECRET: secret };
+    });
+
     test("正しい秘密の値を送っても、口が無いのと同じ 404 を返すこと", async () => {
-      const sessionToken = await signInForE2e({
-        ...env,
-        SENTRY_ENVIRONMENT: "development",
-        E2E_SIGN_IN_SECRET: secret,
-      });
-      const response = await readLastEstimationAttempt(
-        { ...env, SENTRY_ENVIRONMENT: "production", E2E_SIGN_IN_SECRET: secret },
-        { mealId: generateRecordId(), sentSecret: secret, sessionToken },
-      );
+      const response = await readLastEstimationAttempt(testEnv, request);
       expect(response.status).toBe(404);
     });
   });
 });
 
-const signInForE2e = async (testEnv: Env): Promise<string> => {
+const signInForE2e = async (signInEnv: Env): Promise<string> => {
   const response = await app.request(
     "/v1/e2e/sessions",
     { method: "POST", headers: { "x-e2e-sign-in-secret": secret } },
-    testEnv,
+    signInEnv,
   );
   return (await response.json<{ sessionToken: string }>()).sessionToken;
 };
 
 const readLastEstimationAttempt = (
-  testEnv: Env,
+  requestEnv: Env,
   request: { mealId: string; sentSecret: string; sessionToken: string | undefined },
 ) =>
   app.request(
@@ -101,5 +107,5 @@ const readLastEstimationAttempt = (
           : { authorization: `Bearer ${request.sessionToken}` }),
       },
     },
-    testEnv,
+    requestEnv,
   );

@@ -15,7 +15,7 @@ import { judgeGoalProgress } from "../../goal/domain/judge-goal-progress";
 import { previewGoalSetup } from "../../goal/domain/preview-goal-setup";
 import { proposeGoals } from "../../goal/domain/propose-goals";
 import { readKeptMealPhoto } from "../../meal/domain/read-kept-meal-photo";
-import { findLastEndedEstimationAttemptOfMeal } from "../../meal-estimation-status/domain/find-last-ended-estimation-attempt-of-meal";
+import { findLastEstimationAttemptConclusionOfMeal } from "../../meal-estimation-status/domain/find-last-estimation-attempt-conclusion-of-meal";
 import {
   type ReportedRecord,
   reportSubscriptionTransaction,
@@ -117,10 +117,10 @@ export const accountRequests = {
     respond(await readKeptMealPhoto(stores.records.mealPhoto, stores.mealPhotoArchive, photoId)),
 
   // 確かめのジョブだけが呼ぶ。記録は変えない
-  findLastEndedEstimationAttemptOfMeal: (
+  findLastEstimationAttemptConclusionOfMeal: (
     stores: Pick<AccountStores, "records">,
     mealId: RecordId,
-  ) => respond(findLastEndedEstimationAttemptOfMeal(stores.records, mealId)),
+  ) => respond(findLastEstimationAttemptConclusionOfMeal(stores.records, mealId)),
 
   watchReply: (
     stores: Pick<AccountStores, "openReplyStream">,

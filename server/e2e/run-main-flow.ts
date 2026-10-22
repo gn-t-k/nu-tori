@@ -6,7 +6,7 @@ import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day
 import { computeStartOfWeek } from "../src/domain/compute-start-of-week";
 import { millisecondsPerDay } from "../src/domain/milliseconds-per-day";
 import { generateRecordId } from "../src/domain/record-id";
-import { e2eRequestHeaders } from "../src/http/e2e-session-routes/e2e-request-headers";
+import { e2eRequestHeaders } from "../src/http/e2e-access";
 import { goalDecisionSchema } from "../src/http/goal-setup-routes/goal-decision-schema";
 import { goalProposalsSchema } from "../src/http/goal-setup-routes/goal-proposals-schema";
 import { goalSetupPreviewSchema } from "../src/http/goal-setup-routes/goal-setup-preview-schema";
