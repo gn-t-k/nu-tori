@@ -64,7 +64,7 @@ public final class PaywallSession {
 
     /// StoreKit が買えなかった
     public func purchaseFailed() {
-        message = Self.tryAgainLater
+        message = "始められませんでした。時間をおいて、もう一度お試しください。"
     }
 
     /// 「購入を復元」
@@ -91,7 +91,6 @@ public final class PaywallSession {
     }
 
     private static let ownedByOtherAccount = "このサブスクリプションは、ほかの nu-tori のアカウントで使っています"
-    private static let tryAgainLater = "始められませんでした。時間をおいて、もう一度お試しください。"
 
     private let entry: ClientUsageEvent.PaywallEntry
     private let standing: SubscriptionStanding

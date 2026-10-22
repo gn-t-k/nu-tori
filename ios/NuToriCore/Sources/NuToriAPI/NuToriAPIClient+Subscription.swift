@@ -72,8 +72,6 @@ extension NuToriAPIClient {
         case rateLimited
     }
 
-    struct MalformedAppAccountTokenError: Error {}
-
     /// 取引を知らせるきっかけ
     public enum SubscriptionTransactionTrigger: Sendable, Equatable {
         /// 買った直後
@@ -104,6 +102,8 @@ extension NuToriAPIClient {
             }
         }
     }
+
+    struct MalformedAppAccountTokenError: Error {}
 }
 
 extension Operations.ReportSubscriptionTransaction.Input.Body.JsonPayload.TriggerPayload {

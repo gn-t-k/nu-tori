@@ -26,8 +26,8 @@ struct PaywallContentTests {
         }
 
         @Test("自動で更新することを書くこと")
-        func renewal() throws {
-            #expect(try #require(content).renewal == "解約しない限り、自動で更新します。")
+        func renewal() {
+            #expect(PaywallContent.renewal == "解約しない限り、自動で更新します。")
         }
 
         @Test("月額と年額の更新の間隔と、次の更新日を書くこと")
@@ -103,7 +103,7 @@ struct PaywallContentTests {
 
         @Test("次の更新日を書かずに、自動で更新することだけを書くこと")
         func renewal() throws {
-            #expect(try #require(content).renewal == "解約しない限り、自動で更新します。")
+            #expect(PaywallContent.renewal == "解約しない限り、自動で更新します。")
             #expect(try #require(content).renewalSchedule.isEmpty)
         }
     }
