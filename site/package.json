@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "hono": "4.13.13"
+    "hono": "4.13.13",
+    "ts-pattern": "5.9.2"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.4.3",
