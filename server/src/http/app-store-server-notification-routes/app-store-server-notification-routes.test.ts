@@ -184,7 +184,9 @@ describe("App Store のサーバー通知を受ける", () => {
     });
 
     describe("同じ notificationUUID の通知がまた届いたとき", () => {
-      test("200 を返し、何も書かないこと", async () => {
+      let before: Awaited<ReturnType<typeof countSubscriptionRows>>;
+      let resent: Response;
+      beforeEach(async () => {
         const notificationUUID = generateRecordId();
         const signedTransactionInfo = await signRenewal();
         await postNotification({
@@ -192,12 +194,15 @@ describe("App Store のサーバー通知を受ける", () => {
           notificationUUID,
           signedTransactionInfo,
         });
-        const before = await countSubscriptionRows(accountId);
-        const resent = await postNotification({
+        before = await countSubscriptionRows(accountId);
+        resent = await postNotification({
           notificationType: "DID_RENEW",
           notificationUUID,
           signedTransactionInfo,
         });
+      });
+
+      test("200 を返し、何も書かないこと", async () => {
         expect({ status: resent.status, rows: await countSubscriptionRows(accountId) }).toEqual({
           status: 200,
           rows: before,
@@ -206,17 +211,20 @@ describe("App Store のサーバー通知を受ける", () => {
     });
 
     describe("購入者のトークンの無い更新の通知が届いたとき", () => {
-      test("元の取引の ID の案内で引き、更新した期限になること", async () => {
+      beforeEach(async () => {
         await postNotification({
           notificationType: "DID_RENEW",
           signedTransactionInfo: await signRenewal({ appAccountToken: undefined }),
         });
+      });
+
+      test("元の取引の ID の案内で引き、更新した期限になること", async () => {
         expect(await readSubscription()).toEqual(subscribedUntil("2030-03-10T09:00:00.000Z"));
       });
     });
 
     describe("同じ取引の古い写しが、更新のあとに届いたとき", () => {
-      test("最初の写しのまま書き換えないこと", async () => {
+      beforeEach(async () => {
         await postNotification({
           notificationType: "DID_RENEW",
           signedTransactionInfo: await signRenewal(),
@@ -227,6 +235,9 @@ describe("App Store のサーバー通知を受ける", () => {
             expiresDate: Date.parse("2030-02-20T09:00:00Z"),
           }),
         });
+      });
+
+      test("最初の写しのまま書き換えないこと", async () => {
         expect(await readSubscription()).toEqual(subscribedUntil("2030-03-10T09:00:00.000Z"));
       });
     });
@@ -270,11 +281,14 @@ describe("App Store のサーバー通知を受ける", () => {
       });
 
       describe("猶予が終わった通知が届いたとき", () => {
-        test("受け取りだけを書き、猶予の終わりを持つ状態のままにすること", async () => {
+        beforeEach(async () => {
           await postNotification({
             notificationType: "GRACE_PERIOD_EXPIRED",
             signedTransactionInfo: await signTransaction(),
           });
+        });
+
+        test("受け取りだけを書き、猶予の終わりを持つ状態のままにすること", async () => {
           expect({
             rows: await countSubscriptionRows(accountId),
             subscription: await readSubscription(),
@@ -302,7 +316,7 @@ describe("App Store のサーバー通知を受ける", () => {
     });
 
     describe("請求の失敗が、請求を取り戻した更新より遅れて届いたとき", () => {
-      test("取り戻した更新の期限の状態のままにすること", async () => {
+      beforeEach(async () => {
         await postNotification({
           notificationType: "DID_RENEW",
           subtype: "BILLING_RECOVERY",
@@ -320,75 +334,103 @@ describe("App Store のサーバー通知を受ける", () => {
             gracePeriodExpiresDate: Date.parse("2030-02-26T09:00:00Z"),
           }),
         });
+      });
+
+      test("取り戻した更新の期限の状態のままにすること", async () => {
         expect(await readSubscription()).toEqual(subscribedUntil("2030-03-15T09:00:00.000Z"));
       });
     });
 
-    describe("返金と、返金の取り消しと、また取り消しが届いたとき", () => {
-      test("返金で取引が取り消され、サブスクリプションが無くなること", async () => {
+    describe("返金が届いたとき", () => {
+      beforeEach(async () => {
         await postRefund(firstRevocationDate);
+      });
+
+      test("取引が取り消され、サブスクリプションが無くなること", async () => {
         expect(await readSubscription()).toEqual({ type: "none" });
       });
 
-      test("返金の取り消しで、またサブスクリプション中になること", async () => {
-        await postRefund(firstRevocationDate);
-        await postRefundReversed();
-        expect(await readSubscription()).toEqual(subscribedUntil("2030-02-10T09:00:00.000Z"));
-      });
-
-      test("同じ取り消しの時刻の返金がまた届いても、取り消しを足さないこと", async () => {
-        await postRefund(firstRevocationDate);
-        await postRefundReversed();
-        await postRefund(firstRevocationDate);
-        expect({
-          rows: await countSubscriptionRows(accountId),
-          subscription: await readSubscription(),
-        }).toMatchObject({
-          rows: {
-            subscription_transaction_revocations: 1,
-            subscription_transaction_revocation_reversals: 1,
-          },
-          subscription: subscribedUntil("2030-02-10T09:00:00.000Z"),
-        });
-      });
-
-      test("取り消しの時刻が違う新しい取り消しで、またサブスクリプションが無くなること", async () => {
-        await postRefund(firstRevocationDate);
-        await postRefundReversed();
-        await postRefund(secondRevocationDate);
-        expect({
-          rows: await countSubscriptionRows(accountId),
-          subscription: await readSubscription(),
-        }).toMatchObject({
-          rows: { subscription_transaction_revocations: 2 },
-          subscription: { type: "none" },
-        });
-      });
-
-      describe("返金の取り消しが、返金より先に届いたとき", () => {
-        test("500 を返し、何も書かないこと", async () => {
-          const before = await countSubscriptionRows(accountId);
-          const reversed = await postRefundReversed();
-          expect({
-            status: reversed.status,
-            rows: await countSubscriptionRows(accountId),
-          }).toEqual({ status: 500, rows: before });
+      describe("あとで返金の取り消しが届いたとき", () => {
+        beforeEach(async () => {
+          await postRefundReversed();
         });
 
-        test("返金のあとの送り直しで、返金を戻すこと", async () => {
-          const notificationUUID = generateRecordId();
-          const signedTransactionInfo = await signTransaction();
-          await postNotification({
-            notificationType: "REFUND_REVERSED",
-            notificationUUID,
-            signedTransactionInfo,
+        test("またサブスクリプション中になること", async () => {
+          expect(await readSubscription()).toEqual(subscribedUntil("2030-02-10T09:00:00.000Z"));
+        });
+
+        describe("同じ取り消しの時刻の返金がまた届いたとき", () => {
+          beforeEach(async () => {
+            await postRefund(firstRevocationDate);
           });
+
+          test("取り消しを足さないこと", async () => {
+            expect({
+              rows: await countSubscriptionRows(accountId),
+              subscription: await readSubscription(),
+            }).toMatchObject({
+              rows: {
+                subscription_transaction_revocations: 1,
+                subscription_transaction_revocation_reversals: 1,
+              },
+              subscription: subscribedUntil("2030-02-10T09:00:00.000Z"),
+            });
+          });
+        });
+
+        describe("取り消しの時刻が違う新しい返金が届いたとき", () => {
+          beforeEach(async () => {
+            await postRefund(secondRevocationDate);
+          });
+
+          test("またサブスクリプションが無くなること", async () => {
+            expect({
+              rows: await countSubscriptionRows(accountId),
+              subscription: await readSubscription(),
+            }).toMatchObject({
+              rows: { subscription_transaction_revocations: 2 },
+              subscription: { type: "none" },
+            });
+          });
+        });
+      });
+    });
+
+    describe("返金の取り消しが、返金より先に届いたとき", () => {
+      let notificationUUID: string;
+      let signedTransactionInfo: string;
+      let before: Awaited<ReturnType<typeof countSubscriptionRows>>;
+      let reversed: Response;
+      beforeEach(async () => {
+        notificationUUID = generateRecordId();
+        signedTransactionInfo = await signTransaction();
+        before = await countSubscriptionRows(accountId);
+        reversed = await postNotification({
+          notificationType: "REFUND_REVERSED",
+          notificationUUID,
+          signedTransactionInfo,
+        });
+      });
+
+      test("500 を返し、何も書かないこと", async () => {
+        expect({
+          status: reversed.status,
+          rows: await countSubscriptionRows(accountId),
+        }).toEqual({ status: 500, rows: before });
+      });
+
+      describe("あとで返金と、返金の取り消しの送り直しが届いたとき", () => {
+        let resent: Response;
+        beforeEach(async () => {
           await postRefund(firstRevocationDate);
-          const resent = await postNotification({
+          resent = await postNotification({
             notificationType: "REFUND_REVERSED",
             notificationUUID,
             signedTransactionInfo,
           });
+        });
+
+        test("200 を返し、返金を戻すこと", async () => {
           expect({ status: resent.status, subscription: await readSubscription() }).toEqual({
             status: 200,
             subscription: subscribedUntil("2030-02-10T09:00:00.000Z"),
@@ -433,12 +475,16 @@ describe("App Store のサーバー通知を受ける", () => {
   });
 
   describe("案内も購入者のトークンの持ち主も無い通知が届いたとき", () => {
-    test("200 を返し、案内を書かないこと", async () => {
-      const response = await postNotification({
+    let response: Response;
+    beforeEach(async () => {
+      response = await postNotification({
         notificationType: "SUBSCRIBED",
         subtype: "INITIAL_BUY",
         signedTransactionInfo: await signTransaction({ appAccountToken: generateRecordId() }),
       });
+    });
+
+    test("200 を返し、案内を書かないこと", async () => {
       const route = await env.DB.prepare(
         "SELECT count(*) AS count FROM app_store_subscription_routes WHERE app_store_original_transaction_id = ?",
       )
@@ -452,8 +498,12 @@ describe("App Store のサーバー通知を受ける", () => {
   });
 
   describe("取引を運ばない通知が届いたとき", () => {
-    test("200 を返すこと", async () => {
-      const response = await postNotification({ notificationType: "TEST" });
+    let response: Response;
+    beforeEach(async () => {
+      response = await postNotification({ notificationType: "TEST" });
+    });
+
+    test("200 を返すこと", () => {
       expect(response.status).toBe(200);
     });
   });

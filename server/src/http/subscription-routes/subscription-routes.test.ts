@@ -33,24 +33,39 @@ describe("購入者のトークンを出す", () => {
     ({ sessionToken } = await signInTestAccount(generateRecordId()));
   });
 
-  test("UUID を出して返し、2度目からは同じ値を返すこと", async () => {
-    const first = await postAppAccountToken(sessionToken);
-    const second = await postAppAccountToken(sessionToken);
-    const firstBody = await first.json<{ appAccountToken: string }>();
-    expect({
-      status: first.status,
-      isUuid: /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/.test(
-        firstBody.appAccountToken,
-      ),
-      second: await second.json(),
-    }).toEqual({ status: 200, isUuid: true, second: firstBody });
+  describe("同じアカウントで2度出したとき", () => {
+    let first: Response;
+    let firstBody: { appAccountToken: string };
+    let second: Response;
+    beforeEach(async () => {
+      first = await postAppAccountToken(sessionToken);
+      second = await postAppAccountToken(sessionToken);
+      firstBody = await first.json<{ appAccountToken: string }>();
+    });
+
+    test("UUID を出して返し、2度目からは同じ値を返すこと", async () => {
+      expect({
+        status: first.status,
+        isUuid: /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/.test(
+          firstBody.appAccountToken,
+        ),
+        second: await second.json(),
+      }).toEqual({ status: 200, isUuid: true, second: firstBody });
+    });
   });
 
-  test("アカウントごとに別の値を返すこと", async () => {
-    const other = await signInTestAccount(generateRecordId());
-    const mine = await (await postAppAccountToken(sessionToken)).json();
-    const others = await (await postAppAccountToken(other.sessionToken)).json();
-    expect(mine).not.toEqual(others);
+  describe("ほかのアカウントも出したとき", () => {
+    let mine: unknown;
+    let others: unknown;
+    beforeEach(async () => {
+      const other = await signInTestAccount(generateRecordId());
+      mine = await (await postAppAccountToken(sessionToken)).json();
+      others = await (await postAppAccountToken(other.sessionToken)).json();
+    });
+
+    test("アカウントごとに別の値を返すこと", () => {
+      expect(mine).not.toEqual(others);
+    });
   });
 });
 
@@ -322,24 +337,32 @@ describe("取引を知らせる", () => {
     });
 
     describe("そのあと購入者のトークンの持ち主が知らせたとき", () => {
-      test("結びつけること", async () => {
-        const reported = await postSubscriptionTransaction(sessionToken, {
+      let reported: Response;
+      beforeEach(async () => {
+        reported = await postSubscriptionTransaction(sessionToken, {
           requestId: generateRecordId(),
           signedTransaction: await signTransaction(),
           trigger: "purchase",
         });
+      });
+
+      test("結びつけること", async () => {
         expect(await reported.json()).toMatchObject({ result: "linked" });
       });
     });
   });
 
   describe("Sandbox の取引を知らせたとき", () => {
-    test("結びつけること", async () => {
-      const response = await postSubscriptionTransaction(sessionToken, {
+    let response: Response;
+    beforeEach(async () => {
+      response = await postSubscriptionTransaction(sessionToken, {
         requestId: generateRecordId(),
         signedTransaction: await signTransaction({ environment: "Sandbox" }),
         trigger: "purchase",
       });
+    });
+
+    test("結びつけること", async () => {
       expect(await response.json()).toMatchObject({ result: "linked" });
     });
   });

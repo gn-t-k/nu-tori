@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
 import type { UsageEvent } from "../../domain/usage-event";
@@ -25,20 +26,21 @@ export const createWrittenFactUsageEvents = (
   }
   const facts = readSubscriptionFacts(stores.subscriptionStatus);
   const timeZone = findSubscriptionTimeZone(stores);
-  const transactionEvents: UsageEvent[] = !written.wroteTransaction
-    ? []
-    : transaction.transactionReason === "renewal"
-      ? [{ name: "subscription_renewed" }]
-      : [
-          {
+  const transactionEvents: UsageEvent[] = written.wroteTransaction
+    ? [
+        match(transaction.transactionReason)
+          .with("purchase", (): UsageEvent => ({
             name: "subscription_started",
             purchasedDuringFreeTrial: isWithinFreeTrial(
               computeFreeTrial(facts),
               computeCalendarDayInTimeZone(transaction.purchasedAt, timeZone),
             ),
             rebuiltAccount: facts.isExcludedByEarlierAccount,
-          },
-        ];
+          }))
+          .with("renewal", (): UsageEvent => ({ name: "subscription_renewed" }))
+          .exhaustive(),
+      ]
+    : [];
   const isExpiredByRevocation =
     written.wroteRevocation &&
     isSubscriptionExpired(computeSubscriptionStatus(facts), {

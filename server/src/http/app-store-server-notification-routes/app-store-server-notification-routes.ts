@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { R } from "@praha/byethrow";
 import { captureException } from "@sentry/cloudflare";
+import { match } from "ts-pattern";
 import { readAppStoreRootCertificate } from "../../app-store/app-store-root-certificate";
 import { verifyAppStoreServerNotification } from "../../app-store/verify-app-store-server-notification";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
@@ -43,7 +44,7 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
       readAppStoreRootCertificate(),
     );
     if (R.isFailure(verified)) {
-      c.set("appStoreNotification", { result: "rejected" });
+      c.set("appStoreNotification", { signature: "unverified", result: "rejected" });
       captureException(
         new AppStoreServerNotificationUnhandledError({
           reason: "unverified",
@@ -54,7 +55,7 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
       return c.body(null, 400);
     }
     const { notificationUUID, notificationType, subtype, signedDate, data } = verified.value;
-    const log = { notificationType, notificationSubtype: subtype };
+    const log = { signature: "verified", notificationType, notificationSubtype: subtype } as const;
     const reportUnhandled = (reason: AppStoreServerNotificationUnhandledError["reason"]): void => {
       if (data?.environment !== "Production") {
         return;
@@ -109,6 +110,9 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
           : new Date(data.renewalInfo.gracePeriodExpiresDate),
     });
     c.set("appStoreNotification", { ...log, result });
-    return c.body(null, result === "awaiting_revocation" ? 500 : 200);
+    return match(result)
+      .with("written", "duplicate", () => c.body(null, 200))
+      .with("awaiting_revocation", () => c.body(null, 500))
+      .exhaustive();
   },
 );

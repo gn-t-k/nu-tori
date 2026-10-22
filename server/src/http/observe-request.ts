@@ -1,19 +1,24 @@
 import { setTag } from "@sentry/cloudflare";
 import { createMiddleware } from "hono/factory";
 import { routePath } from "hono/route";
+import { match, P } from "ts-pattern";
 import type { AccountRequestLog } from "../account/domain/account-response";
 
 // Durable Object の答えが持つ、要求ごとのログに足す値。受け口が置き、observeRequest が出す
 export type RequestLogVariables = { requestLog?: AccountRequestLog };
 
-// App Store のサーバー通知の受け口が置く、通知の種類と結果。本文は出さない
+// App Store のサーバー通知の受け口が置く、通知の種類と結果。本文は出さない。
+// 署名を確かめられないときは、種類を読めないので断ったことだけを持つ
 export type AppStoreNotificationLogVariables = {
-  appStoreNotification?: {
-    notificationType?: string;
-    notificationSubtype?: string | undefined;
-    // rejected: 断った。unrouted: 案内できず何も残さない。duplicate: 受け取り済み。awaiting_revocation: 戻しを待つ
-    result: "written" | "duplicate" | "unrouted" | "awaiting_revocation" | "rejected";
-  };
+  appStoreNotification?:
+    | { signature: "unverified"; result: "rejected" }
+    | {
+        signature: "verified";
+        notificationType: string;
+        notificationSubtype: string | undefined;
+        // rejected: 断った。unrouted: 案内できず何も残さない。duplicate: 受け取り済み。awaiting_revocation: 戻しを待つ
+        result: "written" | "duplicate" | "unrouted" | "awaiting_revocation" | "rejected";
+      };
 };
 
 // 要求 ID は Cloudflare の Ray ID にし、Workers Logs と Sentry の報告を同じ ID で辿れるようにする。
@@ -29,6 +34,17 @@ export const observeRequest = createMiddleware<{
   setTag("requestId", requestId);
   const startedAt = Date.now();
   await next();
+  const appStoreNotification = c.get("appStoreNotification");
+  const notificationKind = match(appStoreNotification)
+    .with({ signature: "verified" }, ({ notificationType, notificationSubtype }) => ({
+      notificationType,
+      notificationSubtype,
+    }))
+    .with({ signature: "unverified" }, P.nullish, () => ({
+      notificationType: undefined,
+      notificationSubtype: undefined,
+    }))
+    .exhaustive();
   console.log({
     requestId,
     accountId: c.get("accountId"),
@@ -38,9 +54,9 @@ export const observeRequest = createMiddleware<{
     error: c.error?.name,
     failedStage: c.error !== undefined && "stage" in c.error ? c.error.stage : undefined,
     reviewedWeekCount: c.get("requestLog")?.reviewedWeekCount,
-    notificationType: c.get("appStoreNotification")?.notificationType,
-    notificationSubtype: c.get("appStoreNotification")?.notificationSubtype,
-    notificationResult: c.get("appStoreNotification")?.result,
+    notificationType: notificationKind.notificationType,
+    notificationSubtype: notificationKind.notificationSubtype,
+    notificationResult: appStoreNotification?.result,
     durationMs: Date.now() - startedAt,
   });
 });
