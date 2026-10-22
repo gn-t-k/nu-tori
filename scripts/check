@@ -482,25 +482,33 @@ MESSAGE
     (cd "$server" && pnpm exec vitest run)
 }
 
-# 整形と Lint だけ。oxlint は型を見るので、Worker の型の宣言も書き出す（--lint）
+# 整形と Lint だけ（--lint）
 lint_server() {
-    step "サーバーの依存（pnpm）"
-    (cd "$server" && pnpm install --frozen-lockfile)
+    lint_worker_package "$server" "サーバーの依存（pnpm）"
+}
+
+# server と site で同じ手順の、整形と Lint。oxlint は型を見るので、Worker の型の宣言も書き出す
+# 引数: パッケージのディレクトリ、依存を入れる段の見出し
+lint_worker_package() {
+    local directory="$1" dependencies_heading="$2"
+
+    step "$dependencies_heading"
+    (cd "$directory" && pnpm install --frozen-lockfile)
 
     step "整形（oxfmt）"
     if $fix; then
-        (cd "$server" && pnpm exec oxfmt)
+        (cd "$directory" && pnpm exec oxfmt)
     fi
-    (cd "$server" && pnpm exec oxfmt --check)
+    (cd "$directory" && pnpm exec oxfmt --check)
 
     step "Worker の型の宣言（wrangler types）"
-    (cd "$server" && pnpm exec wrangler types > /dev/null)
+    (cd "$directory" && pnpm exec wrangler types > /dev/null)
 
     step "Lint（oxlint）"
     if $fix; then
-        (cd "$server" && pnpm exec oxlint --fix)
+        (cd "$directory" && pnpm exec oxlint --fix)
     fi
-    (cd "$server" && pnpm exec oxlint)
+    (cd "$directory" && pnpm exec oxlint)
 }
 
 check_site() {
@@ -528,25 +536,9 @@ check_site() {
     (cd "$site" && pnpm exec vitest run)
 }
 
-# 整形と Lint だけ。oxlint は型を見るので、Worker の型の宣言も書き出す（--lint）
+# 整形と Lint だけ（--lint）
 lint_site() {
-    step "公開のページの依存（pnpm）"
-    (cd "$site" && pnpm install --frozen-lockfile)
-
-    step "整形（oxfmt）"
-    if $fix; then
-        (cd "$site" && pnpm exec oxfmt)
-    fi
-    (cd "$site" && pnpm exec oxfmt --check)
-
-    step "Worker の型の宣言（wrangler types）"
-    (cd "$site" && pnpm exec wrangler types > /dev/null)
-
-    step "Lint（oxlint）"
-    if $fix; then
-        (cd "$site" && pnpm exec oxlint --fix)
-    fi
-    (cd "$site" && pnpm exec oxlint)
+    lint_worker_package "$site" "公開のページの依存（pnpm）"
 }
 
 print_usage() {
